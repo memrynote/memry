@@ -37,6 +37,7 @@ interface CalendarDayViewProps {
   selectedItemId: string | null
   onSelectItem?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
+  onAddToProject?: (eventId: string) => void
   onMoveEvent?: (
     item: CalendarProjectionItem,
     startAt: string,
@@ -51,6 +52,7 @@ export function CalendarDayView({
   selectedItemId,
   onSelectItem,
   onDeleteItem,
+  onAddToProject,
   onMoveEvent,
   onQuickSave
 }: CalendarDayViewProps): React.JSX.Element {
@@ -107,6 +109,7 @@ export function CalendarDayView({
                   isSelected={item.sourceType === 'event' && item.sourceId === selectedItemId}
                   onClick={onSelectItem}
                   onDeleteItem={onDeleteItem}
+                  onAddToProject={onAddToProject}
                 />
               </div>
             ))}
@@ -170,6 +173,7 @@ export function CalendarDayView({
                       isSelected={item.sourceType === 'event' && item.sourceId === selectedItemId}
                       onClick={handleChipClick}
                       onDeleteItem={onDeleteItem}
+                      onAddToProject={onAddToProject}
                     />
                     {resizable && (
                       <>

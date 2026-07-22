@@ -60,6 +60,7 @@ function createRepository(overrides: Partial<TasksQueryRepository> = {}): TasksQ
     getUpcomingTasks: vi.fn(() => []),
     getOverdueTasks: vi.fn(() => []),
     getTasksLinkedToNote: vi.fn(() => []),
+    listForItem: vi.fn(() => []),
     ...overrides
   }
 }

@@ -222,6 +222,11 @@ export const ProjectSetHomeNoteSchema = z.object({
   noteId: z.string().nullable()
 })
 
+export const ProjectListForItemSchema = z.object({
+  itemType: z.enum(['note', 'calendar_event', 'file']),
+  itemId: z.string()
+})
+
 export const StatusReorderSchema = z.object({
   statusIds: z.array(z.string()),
   positions: z.array(z.number().int())

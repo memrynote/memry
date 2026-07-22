@@ -39,6 +39,7 @@ interface CalendarShellProps {
   selectedItemId: string | null
   popoverState: {
     mode: 'create' | 'edit'
+    eventId?: string | null
     draft: CalendarEventDraft
     anchorRect: AnchorRect
     /** M5: rich read-only metadata surfaced below the editor in edit mode. */
@@ -72,6 +73,7 @@ interface CalendarShellProps {
   onToggleVisualType: (visualType: CalendarProjectionVisualType) => void
   onSelectItem: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
+  onAddToProject?: (eventId: string) => void
   onMoveEvent?: (
     item: CalendarProjectionItem,
     startAt: string,
@@ -121,6 +123,7 @@ export function CalendarShell({
   onToggleVisualType,
   onSelectItem,
   onDeleteItem,
+  onAddToProject,
   onMoveEvent,
   onPopoverDismiss,
   onPopoverDraftChange,
@@ -131,7 +134,7 @@ export function CalendarShell({
   googleConnectAction
 }: CalendarShellProps): React.JSX.Element {
   const viewProps = { anchorDate, items, selectedItemId, onSelectItem }
-  const chipViewProps = { ...viewProps, onDeleteItem }
+  const chipViewProps = { ...viewProps, onDeleteItem, onAddToProject }
   const [isRefreshing, setIsRefreshing] = useState(false)
   const { t } = useT('calendar')
   const hasGoogleCalendars = importedSources.length > 0
@@ -386,6 +389,7 @@ export function CalendarShell({
         <CalendarEventPopover
           anchorRect={popoverState.anchorRect}
           mode={popoverState.mode}
+          eventId={popoverState.eventId}
           draft={popoverState.draft}
           isSaving={isSaving}
           onDraftChange={onPopoverDraftChange}

@@ -1,6 +1,8 @@
+import { useCallback, useState } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
+import { toast } from 'sonner'
 import { Settings } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import {
@@ -11,6 +13,11 @@ import {
   useSidebar
 } from '@/components/ui/sidebar'
 import { useOptionalDragContext } from '@/contexts/drag-context'
+import { MEMRY_NOTE_DRAG_MIME } from '@/lib/drag-mime'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { linkSidebarItemToProject } from '@/lib/link-sidebar-item-to-project'
+import { notesService } from '@/services/notes-service'
+import { tasksService } from '@/services/tasks-service'
 import type { Project } from '@/data/tasks-data'
 import { useT } from '@memry/i18n/renderer'
 
@@ -37,6 +44,7 @@ export const SortableProjectItem = ({
   onDelete: _onDelete
 }: SortableProjectItemProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('notes')
+  const { t: tTasks } = useT('tasks')
   const { isMobile: _isMobile } = useSidebar()
 
   const dragContext = useOptionalDragContext()
@@ -76,16 +84,54 @@ export const SortableProjectItem = ({
   // Show as drop zone when a task is being dragged (not a project)
   const showAsDropZone = dragState.isDragging && !isSortableDragging
 
+  // Native HTML5 drop target for sidebar notes/files dragged from the notes tree
+  const [isNoteDragOver, setIsNoteDragOver] = useState(false)
+
+  const handleNoteDragOver = useCallback((e: React.DragEvent): void => {
+    if (!e.dataTransfer.types.includes(MEMRY_NOTE_DRAG_MIME)) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+    setIsNoteDragOver(true)
+  }, [])
+
+  const handleNoteDragLeave = useCallback((): void => {
+    setIsNoteDragOver(false)
+  }, [])
+
+  const handleNoteDrop = useCallback(
+    (e: React.DragEvent): void => {
+      if (!e.dataTransfer.types.includes(MEMRY_NOTE_DRAG_MIME)) return
+      e.preventDefault()
+      setIsNoteDragOver(false)
+      void (async () => {
+        try {
+          const linked = await linkSidebarItemToProject(e.dataTransfer, project.id, {
+            getFile: (id) => notesService.getFile(id),
+            link: (input) => tasksService.linkProjectItem(input)
+          })
+          if (linked) toast.success(tTasks('addToProject.toastSuccess', { name: project.name }))
+        } catch (error) {
+          toast.error(extractErrorMessage(error, tTasks('addToProject.toastError')))
+        }
+      })()
+    },
+    [project.id, project.name, tTasks]
+  )
+
   return (
     <SidebarMenuItem
       ref={setRefs}
       style={style}
+      onDragOver={handleNoteDragOver}
+      onDragLeave={handleNoteDragLeave}
+      onDrop={handleNoteDrop}
       className={cn(
         'group/project relative transition-all duration-150',
         isSortableDragging && 'opacity-50 z-50',
         // Drop zone visual feedback
         showAsDropZone && 'border border-dotted border-muted-foreground/40 rounded-md',
-        isOver && 'bg-primary/10 ring-2 ring-primary rounded-md shadow-sm'
+        isOver && 'bg-primary/10 ring-2 ring-primary rounded-md shadow-sm',
+        isNoteDragOver && 'bg-primary/10 ring-2 ring-primary rounded-md shadow-sm'
       )}
       {...attributes}
       {...listeners}

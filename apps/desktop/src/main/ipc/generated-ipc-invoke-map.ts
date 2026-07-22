@@ -364,6 +364,7 @@ export interface MainIpcInvokeHandlers {
   "tasks:project-get": (...args: [string]) => Awaited<Promise<import("../../../../../packages/domain-tasks/src/types").ProjectWithStatuses | undefined>>
   "tasks:project-link-item": (...args: [{ projectId: string; itemType: "file" | "note" | "calendar_event"; itemId: string; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; error: string; } | { success: boolean; error?: undefined; }>>
   "tasks:project-list": (...args: []) => Awaited<Promise<{ projects: import("../../../../../packages/domain-tasks/src/types").ProjectWithStats[]; }>>
+  "tasks:project-list-for-item": (...args: [{ itemType: "file" | "note" | "calendar_event"; itemId: string; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/domain-tasks/src/types").ProjectRef[]>>
   "tasks:project-list-links": (...args: [string]) => Awaited<Promise<import("../../../../../packages/domain-tasks/src/types").ProjectLink[]>>
   "tasks:project-reorder": (...args: [{ projectIds: string[]; positions: number[]; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
   "tasks:project-set-home-note": (...args: [{ projectId: string; noteId: string | null; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; error: string; project?: undefined; } | { success: boolean; project: import("../../../../../packages/domain-tasks/src/types").ProjectWithStatuses; error?: undefined; }>>

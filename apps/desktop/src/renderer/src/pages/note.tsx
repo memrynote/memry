@@ -62,6 +62,7 @@ import { Picker } from '@/components/ui/picker'
 import { Switch } from '@/components/ui/switch'
 import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
 import { AddNoteToProjectDialog } from '@/components/tasks/projects/add-note-to-project-dialog'
+import { ItemProjectChips } from '@/components/tasks/projects/item-project-chips'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -999,6 +1000,23 @@ export function NotePage({ noteId }: NotePageProps) {
     [openTab, backlinks]
   )
 
+  const handleOpenProject = useCallback(
+    (projectId: string) => {
+      openTab({
+        type: 'project',
+        title: 'Project',
+        icon: 'folder',
+        path: `/project/${projectId}`,
+        entityId: projectId,
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false
+      })
+    },
+    [openTab]
+  )
+
   // Handle clicking on a linked task
   const handleLinkedTaskClick = useCallback(
     (taskId: string) => {
@@ -1272,6 +1290,8 @@ export function NotePage({ noteId }: NotePageProps) {
             placeholder={t('editor.title.untitled')}
             inputRef={titleInputRef}
           />
+
+          <ItemProjectChips itemType="note" itemId={noteId} onProjectClick={handleOpenProject} />
 
           {/* Tags: visible when tags exist */}
           <TagsRow

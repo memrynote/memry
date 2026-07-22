@@ -7,6 +7,7 @@ import {
   GetUpcomingSchema,
   ProjectCreateSchema,
   ProjectLinkItemSchema,
+  ProjectListForItemSchema,
   ProjectReorderSchema,
   ProjectSetHomeNoteSchema,
   ProjectUpdateSchema,
@@ -241,6 +242,17 @@ export function registerTasksHandlers(): void {
       withDb(
         (db, input) => createTaskDomain(db).setProjectHomeNote(input),
         'Failed to set home note'
+      )
+    )
+  )
+
+  ipcMain.handle(
+    TasksChannels.invoke.PROJECT_LIST_FOR_ITEM,
+    createValidatedHandler(
+      ProjectListForItemSchema,
+      withDb(
+        (db, input) => createTaskDomain(db).listForItem(input.itemType, input.itemId),
+        'Failed to list projects for item'
       )
     )
   )

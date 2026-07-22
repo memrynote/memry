@@ -635,6 +635,23 @@ export function updateProjectHomeNote(db: DataDb, projectId: string, noteId: str
 }
 
 /**
+ * List the projects a given item (note, calendar event, or file) belongs to.
+ */
+export function getProjectsForItem(db: DataDb, itemType: string, itemId: string) {
+  return db
+    .select({
+      id: projects.id,
+      name: projects.name,
+      color: projects.color,
+      icon: projects.icon
+    })
+    .from(projectLinks)
+    .innerJoin(projects, eq(projectLinks.projectId, projects.id))
+    .where(and(eq(projectLinks.itemType, itemType), eq(projectLinks.itemId, itemId)))
+    .all()
+}
+
+/**
  * Delete every project link that points at a given item (across all projects).
  * Returns the distinct project ids that lost at least one link, so callers can
  * re-enqueue those projects for sync (the project payload carries its links).

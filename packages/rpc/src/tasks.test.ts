@@ -63,6 +63,12 @@ describe('tasksRpc domain shape', () => {
     expect(tasksRpc.events.onProjectDeleted.channel).toBe(TasksChannels.events.PROJECT_DELETED)
   })
 
+  it('exposes setProjectHomeNote on the PROJECT_SET_HOME_NOTE channel', () => {
+    expect(tasksRpc.methods.setProjectHomeNote.channel).toBe(
+      TasksChannels.invoke.PROJECT_SET_HOME_NOTE
+    )
+  })
+
   it('preserves custom invokeArgs formatting for reorder', () => {
     expect(tasksRpc.methods.reorder.invokeArgs).toEqual(['{ taskIds, positions }'])
   })

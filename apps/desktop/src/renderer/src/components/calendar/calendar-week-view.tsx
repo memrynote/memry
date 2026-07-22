@@ -58,6 +58,7 @@ interface CalendarWeekViewProps {
   selectedItemId: string | null
   onSelectItem?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
+  onAddToProject?: (eventId: string) => void
   onMoveEvent?: (
     item: CalendarProjectionItem,
     startAt: string,
@@ -74,6 +75,7 @@ export function CalendarWeekView({
   selectedItemId,
   onSelectItem,
   onDeleteItem,
+  onAddToProject,
   onMoveEvent,
   onQuickSave,
   onVisibleDayStartChange,
@@ -337,6 +339,7 @@ export function CalendarWeekView({
                             isSelected={false}
                             onClick={onSelectItem}
                             onDeleteItem={onDeleteItem}
+                            onAddToProject={onAddToProject}
                           />
                         </div>
                       ))}
@@ -436,6 +439,7 @@ export function CalendarWeekView({
                             }
                             onClick={handleChipClick}
                             onDeleteItem={onDeleteItem}
+                            onAddToProject={onAddToProject}
                           />
                           {resizable && (
                             <>

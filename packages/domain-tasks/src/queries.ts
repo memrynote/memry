@@ -1,5 +1,6 @@
 import type {
   ProjectLink,
+  ProjectRef,
   ProjectWithStats,
   ProjectWithStatuses,
   Status,
@@ -26,6 +27,7 @@ export interface TasksQueryRepository {
   getUpcomingTasks(days?: number): Task[]
   getOverdueTasks(): Task[]
   getTasksLinkedToNote(noteId: string): Task[]
+  listForItem(itemType: string, itemId: string): ProjectRef[]
 }
 
 export interface TaskListResult {
@@ -108,6 +110,10 @@ export function createTasksQueries(repository: TasksQueryRepository) {
 
     getLinkedTasks(noteId: string): Task[] {
       return repository.getTasksLinkedToNote(noteId)
+    },
+
+    listForItem(itemType: string, itemId: string): ProjectRef[] {
+      return repository.listForItem(itemType, itemId)
     }
   }
 }

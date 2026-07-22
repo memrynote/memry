@@ -58,6 +58,7 @@ export interface Project {
   createdAt: string
   modifiedAt: string
   archivedAt: string | null
+  homeNoteId?: string | null
 }
 
 export interface ProjectWithStats extends Project {
@@ -99,6 +100,13 @@ export interface ProjectLinkItemInput {
 export interface ProjectSetHomeNoteInput {
   projectId: string
   noteId: string | null
+}
+
+export interface ProjectRef {
+  id: string
+  name: string
+  color: string
+  icon: string | null
 }
 
 export interface Reminder {

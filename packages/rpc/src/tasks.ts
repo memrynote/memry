@@ -3,6 +3,8 @@ import { TasksChannels } from '../../contracts/src/ipc-channels.ts'
 import {
   ProjectCreateSchema,
   ProjectLinkItemSchema,
+  ProjectListForItemSchema,
+  ProjectSetHomeNoteSchema,
   ProjectUpdateSchema,
   StatusCreateSchema,
   TaskCreateSchema,
@@ -29,6 +31,8 @@ import {
 export type ProjectCreateInput = z.input<typeof ProjectCreateSchema>
 export type ProjectUpdateInput = z.input<typeof ProjectUpdateSchema>
 export type ProjectLinkItemInput = z.input<typeof ProjectLinkItemSchema>
+export type ProjectSetHomeNoteInput = z.input<typeof ProjectSetHomeNoteSchema>
+export type ProjectItemType = z.input<typeof ProjectListForItemSchema>['itemType']
 export type StatusCreateInput = z.input<typeof StatusCreateSchema>
 export type TaskCreateInput = z.input<typeof TaskCreateSchema>
 export type TaskUpdateInput = z.input<typeof TaskUpdateSchema>
@@ -51,6 +55,13 @@ export interface ProjectLink {
   itemId: string
   position: number
   createdAt: string
+}
+
+export interface ProjectRef {
+  id: string
+  name: string
+  color: string
+  icon: string | null
 }
 
 export interface Task {
@@ -250,6 +261,17 @@ export const tasksRpc = defineDomain({
       channel: TasksChannels.invoke.PROJECT_LIST_LINKS,
       params: ['projectId']
     }),
+    setProjectHomeNote: defineMethod<(input: ProjectSetHomeNoteInput) => ProjectMutationResponse>({
+      channel: TasksChannels.invoke.PROJECT_SET_HOME_NOTE,
+      params: ['input']
+    }),
+    listForItem: defineMethod<(itemType: ProjectItemType, itemId: string) => Promise<ProjectRef[]>>(
+      {
+        channel: TasksChannels.invoke.PROJECT_LIST_FOR_ITEM,
+        params: ['itemType', 'itemId'],
+        invokeArgs: ['{ itemType, itemId }']
+      }
+    ),
     createStatus: defineMethod<(input: StatusCreateInput) => StatusMutationResponse>({
       channel: TasksChannels.invoke.STATUS_CREATE,
       params: ['input']

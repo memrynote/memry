@@ -201,6 +201,7 @@ const createMockApi = () => ({
     linkProjectItem: vi.fn().mockResolvedValue({ success: true }),
     unlinkProjectItem: vi.fn().mockResolvedValue({ success: true }),
     listProjectLinks: vi.fn().mockResolvedValue([]),
+    listForItem: vi.fn().mockResolvedValue([]),
     createStatus: vi.fn().mockResolvedValue({ success: true }),
     updateStatus: vi.fn().mockResolvedValue({ success: true }),
     deleteStatus: vi.fn().mockResolvedValue({ success: true }),
