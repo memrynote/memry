@@ -42,6 +42,8 @@ import {
   type CardElement
 } from './canvas-cards'
 import { buildRedirectTab } from './canvas-redirect'
+import { noteCardClaims } from './canvas-note-lock'
+import { useNoteEditLock, lockReasonForCard } from './use-note-edit-lock'
 
 const log = createLogger('SpatialCanvas')
 
@@ -85,6 +87,19 @@ export const CanvasCardLayer = ({
   useEffect(() => {
     entitiesRef.current = entities
   }, [entities])
+
+  const lockCtx = useNoteEditLock()
+  // The capture-phase dblclick handler is imperative and is registered once,
+  // so it must read the latest lock inputs through a ref, not a closure.
+  const lockCtxRef = useRef(lockCtx)
+  useEffect(() => {
+    lockCtxRef.current = lockCtx
+  }, [lockCtx])
+
+  const visibleRefsRef = useRef(visibleRefs)
+  useEffect(() => {
+    visibleRefsRef.current = visibleRefs
+  }, [visibleRefs])
 
   const readScene = useCallback((): {
     cards: CanvasCardRef[]
@@ -261,6 +276,18 @@ export const CanvasCardLayer = ({
       if (hit) {
         e.preventDefault()
         e.stopPropagation()
+        // Unauthenticated + the note already live elsewhere => stay read-only.
+        // Two non-collaborative editors on one note clobber each other and both
+        // run ContentArea's task auto-conversion (M6 design §12/6).
+        if (lockReasonForCard(lockCtxRef.current, hit)) {
+          return
+        }
+        // Claim synchronously here, not in the effect below, so two panes racing
+        // on the same note cannot both pass the gate in one tick. The effect
+        // re-claims idempotently and owns the release.
+        if (hit.entityType === 'note' && !noteCardClaims.claim(hit.entityId, hit.elementId)) {
+          return
+        }
         dispatchActive({ type: 'activate', id: hit.elementId })
       }
     }
@@ -289,6 +316,30 @@ export const CanvasCardLayer = ({
       wrapper.removeEventListener('pointerdown', onPointerDownAway, { capture: true })
     }
   }, [wrapperRef, excalidrawAPI, createCardElement, dispatchActive])
+
+  // Release the claim when the card deactivates or the layer unmounts. Keyed on
+  // activeCardId only: visibleRefs changes on every geometry tick, and keying on
+  // it would churn claim/release during a drag.
+  useEffect(() => {
+    if (!activeCardId) return
+    const card = visibleRefsRef.current.find((c) => c.elementId === activeCardId)
+    if (!card || card.entityType !== 'note') return
+    const noteId = card.entityId
+    noteCardClaims.claim(noteId, activeCardId)
+    return () => noteCardClaims.release(noteId, activeCardId)
+  }, [activeCardId])
+
+  // A note tab becoming visible in another pane while a card is active would
+  // reopen the clobber window, so the card yields immediately. EmbeddedNoteEditor
+  // flushes its pending save on unmount, so nothing typed is lost.
+  useEffect(() => {
+    const active = activeCardIdRef.current
+    if (!active) return
+    const card = visibleRefsRef.current.find((c) => c.elementId === active)
+    if (card && lockReasonForCard(lockCtx, card)) {
+      dispatchActive({ type: 'deactivate' })
+    }
+  }, [lockCtx, dispatchActive])
 
   const handleCreateNote = useCallback(async () => {
     try {
@@ -322,6 +373,7 @@ export const CanvasCardLayer = ({
     () =>
       visibleRefs.map((card) => {
         const isActive = card.elementId === activeCardId
+        const locked = isActive ? null : lockReasonForCard(lockCtx, card)
         return (
           <div
             key={card.elementId}
@@ -347,12 +399,13 @@ export const CanvasCardLayer = ({
                 cardRef={card}
                 state={entities.get(entityKey(card.entityType, card.entityId))}
                 onRedirect={redirect}
+                locked={locked}
               />
             )}
           </div>
         )
       }),
-    [visibleRefs, entities, redirect, activeCardId, dispatchActive]
+    [visibleRefs, entities, redirect, activeCardId, dispatchActive, lockCtx]
   )
 
   return (

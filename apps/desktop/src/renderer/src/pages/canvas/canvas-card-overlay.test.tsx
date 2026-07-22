@@ -31,6 +31,14 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/contexts/tabs', () => ({ useTabActions: () => ({ openTab: mocks.openTab }) }))
+// This suite's subject is overlay geometry, not the note-edit lock (covered by
+// use-note-edit-lock.test.tsx against the real providers). Stub it collab-active
+// so it never guards activation here and the overlay avoids needing
+// SyncProvider/TabProvider in scope.
+vi.mock('./use-note-edit-lock', () => ({
+  useNoteEditLock: () => ({ collaborationActive: true, visibleNoteTabIds: new Set() }),
+  lockReasonForCard: () => null
+}))
 vi.mock('@/services/notes-service', () => ({
   notesService: { create: (input: unknown) => mocks.notesCreate(input) }
 }))

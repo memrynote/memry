@@ -131,6 +131,30 @@ test.describe('Spatial canvas — in-place editing (M6)', () => {
     await expect(card).not.toHaveAttribute('data-canvas-card-state', 'active', { timeout: 20000 })
   })
 
+  // M7 guard regression. The lock only triggers when the same note is live in
+  // ANOTHER visible pane; a single-pane canvas can never reach that state
+  // (tab-pane.tsx mounts only each group's active tab). So this asserts the
+  // guard does NOT over-trigger and silently break M6's happy path. The
+  // positive split-view case is covered by use-note-edit-lock.test.tsx against
+  // the real TabProvider, because Playwright has no reliable way to create a
+  // split (tabs.e2e.ts's `test:split-view` CustomEvent has no listener).
+  test('an unlocked note card still activates (M7 guard does not over-trigger)', async ({
+    page
+  }) => {
+    await openVault(page)
+    await setSpatialCanvasFlag(page, true)
+    await createCanvasFromSidebar(page)
+    const noteId = await seedNote(page, `Unlocked ${Date.now()}`, 'body')
+    await dropNote(page, noteId)
+
+    const card = page.locator(`[data-canvas-card-entity="note:${noteId}"]`)
+    await expect(card).toBeVisible({ timeout: 20000 })
+    await expect(card).not.toHaveAttribute('data-canvas-card-locked', 'true')
+
+    await dblclickCard(page, `note:${noteId}`)
+    await expect(card).toHaveAttribute('data-canvas-card-state', 'active', { timeout: 20000 })
+  })
+
   test('↗ redirect and double-click do not cross-fire (matrix #20)', async ({ page }) => {
     await openVault(page)
     await setSpatialCanvasFlag(page, true)
