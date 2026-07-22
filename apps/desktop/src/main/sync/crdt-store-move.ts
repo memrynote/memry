@@ -16,17 +16,17 @@ const MOVE_RETRY_DELAYS_MS = [50, 150, 400]
  * at all; the caller decides what that means.
  */
 export async function moveStoreDir(from: string, to: string): Promise<boolean> {
+  // One attempt, then one per backoff delay.
   for (let attempt = 0; attempt <= MOVE_RETRY_DELAYS_MS.length; attempt++) {
     try {
       renameSync(from, to)
       return true
     } catch (err) {
-      const delay = MOVE_RETRY_DELAYS_MS[attempt]
-      if (delay === undefined) {
+      if (attempt === MOVE_RETRY_DELAYS_MS.length) {
         log.warn('Renaming the CRDT store failed — falling back to copy', { from, to, error: err })
         break
       }
-      await new Promise((resolve) => setTimeout(resolve, delay))
+      await new Promise((resolve) => setTimeout(resolve, MOVE_RETRY_DELAYS_MS[attempt]))
     }
   }
 

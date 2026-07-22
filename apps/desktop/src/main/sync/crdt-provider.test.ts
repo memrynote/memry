@@ -1,5 +1,7 @@
 import * as Y from 'yjs'
 import * as fs from 'fs'
+import * as os from 'os'
+import * as path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { CrdtPreflightStage } from './crdt-preflight-protocol'
@@ -45,6 +47,9 @@ const mocks = vi.hoisted(() => {
   return {
     persistenceBehavior,
     persistenceOpFactory,
+    // Per-run temp dir, assigned once the real fs is importable (below). A
+    // fixed name in a world-writable dir is a symlink-swap target.
+    userDataDir: '',
     // Verdict of the disposable utilityProcess preflight (see crdt-preflight.ts).
     // preflightQueue serves per-call verdicts (quarantine retry = second call);
     // when empty, preflightResult is the standing answer.
@@ -76,7 +81,7 @@ const mocks = vi.hoisted(() => {
 })
 
 vi.mock('electron', () => ({
-  app: { getPath: () => '/tmp/memry-crdt-test' },
+  app: { getPath: () => mocks.userDataDir },
   BrowserWindow: {
     fromId: (id: number) => mocks.windows.get(id) ?? null,
     getAllWindows: () => Array.from(mocks.windows.values())
@@ -182,6 +187,8 @@ vi.mock('./microtask-batch-broadcaster', () => ({
 
 import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { CrdtProvider, getCrdtProvider, resetCrdtProvider } from './crdt-provider'
+
+mocks.userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-'))
 
 const createWindow = (id: number, destroyed = false) => {
   const win = {
@@ -827,7 +834,7 @@ describe('CrdtProvider persistence resilience', () => {
   // disk) aborts the binding — not just on a binding that is broken outright.
   // The two are told apart empirically: quarantine the store, re-probe fresh.
   describe('store quarantine', () => {
-    const userDataDir = '/tmp/memry-crdt-test'
+    const userDataDir = mocks.userDataDir
     const storeDir = `${userDataDir}/crdt-store`
 
     beforeEach(() => {
