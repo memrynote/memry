@@ -1,21 +1,22 @@
 import {
+  checkCertificatePinConfig,
   getConfiguredPinnedCertificateHashes,
-  getConfiguredSyncCertHostname,
-  hasPlaceholderHashes
+  getConfiguredSyncCertHostname
 } from '../src/main/sync/certificate-pins.ts'
 
 const hostname = getConfiguredSyncCertHostname(process.env.SYNC_SERVER_URL)
 const pins = getConfiguredPinnedCertificateHashes(process.env.SYNC_SERVER_URL)
+const strict = process.env.MEMRY_CERT_PINS_STRICT === '1'
 
-if (pins.length === 0) {
-  console.error(`ERROR: No certificate pins configured for sync host ${hostname}`)
+const result = checkCertificatePinConfig({ hostname, pins, strict })
+
+if (result.level === 'error') {
+  console.error(`ERROR: ${result.message}`)
   process.exit(1)
 }
 
-if (hasPlaceholderHashes(pins)) {
-  console.error(`ERROR: Placeholder certificate hashes found for sync host ${hostname}`)
-  console.error("Run 'pnpm cert:extract -- <hostname>' and update the matching host entry.")
-  process.exit(1)
+if (result.level === 'warn') {
+  console.warn(`WARNING: ${result.message}`)
+} else {
+  console.log(result.message)
 }
-
-console.log(`Certificate hashes OK for ${hostname} — no placeholders found`)
