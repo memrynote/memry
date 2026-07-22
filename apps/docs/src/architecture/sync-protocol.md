@@ -244,11 +244,28 @@ phrase can restore the correct key. See
 | ------------------ | ------------------------------------------------------------------------------------------ |
 | Offline            | Outbox queues; retry with backoff                                                          |
 | Auth expired (401) | Refresh the access token and retry the request once; only a failed refresh prompts sign-in |
+| Refresh rejected   | Stop refreshing entirely (see below); prompt the user to sign in again                     |
 | Payment required   | Sync stays local-only until a paid plan is active                                          |
 | Quota exceeded     | Surfaces in [Settings → Vault](/user-guide/settings#vault)                                 |
 | Server unavailable | Exponential backoff; status indicator turns yellow                                         |
 | Blob hash mismatch | Reject the item; log; alert health view                                                    |
 | Vault-key mismatch | Stop pulling without branding items; prompt recovery; sign out to restore the correct key  |
+
+### Rejected Refresh Tokens
+
+A 401 on `/auth/refresh` means the refresh token itself is dead, so no retry can succeed. Because
+every part of the app asks for a valid access token on demand — sync passes, websocket reconnects,
+CRDT pushes, attachment transfers, calendar sync, billing checks — an unlatched failure would let
+each of them re-enter the refresh path forever.
+
+A rejection therefore latches. The first two rejections open a backoff window (1 minute, then 5)
+during which no refresh request reaches the network at all; that spacing exists only so a transient
+server-side 401 can recover before the session is written off. The third rejection is terminal: the
+client stops refreshing for good and prompts the user to sign in again.
+
+Signing out remains an explicit user action. The session is already dead on the server, but local
+key material is never cleared on the strength of an HTTP status alone. Signing in again clears the
+latch and sync resumes.
 
 ## Encryption Stays End-to-End
 
