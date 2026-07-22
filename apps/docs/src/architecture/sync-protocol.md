@@ -256,6 +256,25 @@ list.
 | `POST /devices/*`         | mixed     | Linking, listing, revoking                                                     |
 | `POST /keys/*`            | mixed     | Key sealing during link, rotation                                              |
 
+## Realtime Socket Auth
+
+The change-notification WebSocket (`/sync/ws`) authenticates once at handshake with a Bearer access
+token. The server pins that token's expiry to the connection and sweeps every 60s, closing any
+socket whose token has expired (`WS_TOKEN_EXPIRED`, close code 4003).
+
+Because access tokens are short-lived, the client renews the connection **in place** rather than
+riding each token to expiry. Whenever the token manager refreshes — the same cycle that serves HTTP
+requests, and always well before expiry — the client sends the fresh token over the open socket:
+
+| Direction       | Message                                 | Meaning                                       |
+| --------------- | --------------------------------------- | --------------------------------------------- |
+| client → server | `{ type: 'auth', payload: { token } }`  | Renew this connection with a fresh token      |
+| server → client | `{ type: 'auth_ok', payload: { exp } }` | Accepted; the connection now expires at `exp` |
+
+The server verifies the token and requires it to belong to the same device before extending the
+expiry. Renewal is best-effort: a rejected or unanswered `auth` leaves the original expiry in place,
+so the socket closes at expiry and the client reconnects with a fresh token as it otherwise would.
+
 ## Vault-Key Verification
 
 Before syncing — and whenever an entire pull page fails to decrypt — the client verifies its local
@@ -267,15 +286,16 @@ phrase can restore the correct key. See
 
 ## Error Modes
 
-| Failure            | Behavior                                                                                   |
-| ------------------ | ------------------------------------------------------------------------------------------ |
-| Offline            | Outbox queues; retry with backoff                                                          |
-| Auth expired (401) | Refresh the access token and retry the request once; only a failed refresh prompts sign-in |
-| Payment required   | Sync stays local-only until a paid plan is active                                          |
-| Quota exceeded     | Surfaces in [Settings → Vault](/user-guide/settings#vault)                                 |
-| Server unavailable | Exponential backoff; status indicator turns yellow                                         |
-| Blob hash mismatch | Reject the item; log; alert health view                                                    |
-| Vault-key mismatch | Stop pulling without branding items; prompt recovery; sign out to restore the correct key  |
+| Failure             | Behavior                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------ |
+| Offline             | Outbox queues; retry with backoff                                                          |
+| Auth expired (401)  | Refresh the access token and retry the request once; only a failed refresh prompts sign-in |
+| Payment required    | Sync stays local-only until a paid plan is active                                          |
+| Quota exceeded      | Surfaces in [Settings → Vault](/user-guide/settings#vault)                                 |
+| Socket token expiry | In-place renewal over the open socket; a rejected renewal falls back to close + reconnect  |
+| Server unavailable  | Exponential backoff; status indicator turns yellow                                         |
+| Blob hash mismatch  | Reject the item; log; alert health view                                                    |
+| Vault-key mismatch  | Stop pulling without branding items; prompt recovery; sign out to restore the correct key  |
 
 ## Encryption Stays End-to-End
 
