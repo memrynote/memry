@@ -16,7 +16,7 @@ import * as path from 'path'
 import { test as base, expect, type ElectronApplication, type Page } from '@playwright/test'
 import { waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
 import {
-  destroyElectronApp,
+  destroyLaunchedElectron,
   launchElectronWithWindow,
   type LaunchedElectron
 } from './utils/electron-lifecycle'
@@ -82,11 +82,7 @@ const test = base.extend<{
     })
     ;(launched.app as unknown as { __launched?: LaunchedElectron }).__launched = launched
     await use(launched.app)
-    const dirs = [launched.userDataDir]
-    if (launched.resolvedUserDataDir !== launched.userDataDir) {
-      dirs.push(launched.resolvedUserDataDir)
-    }
-    await destroyElectronApp(launched.app, dirs)
+    await destroyLaunchedElectron(launched)
   },
 
   // Signs the single launched instance into the shared test account so

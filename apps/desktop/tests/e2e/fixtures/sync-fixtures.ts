@@ -10,7 +10,7 @@ import * as os from 'os'
 import * as path from 'path'
 import { waitForAppReady } from '../utils/electron-helpers'
 import {
-  destroyElectronApp,
+  destroyLaunchedElectron,
   launchElectronWithWindow,
   LaunchedElectron
 } from '../utils/electron-lifecycle'
@@ -83,11 +83,7 @@ export const test = base.extend<{
     })
     ;(launched.app as unknown as { __launched?: LaunchedElectron }).__launched = launched
     await use(launched.app)
-    const dirs = [launched.userDataDir]
-    if (launched.resolvedUserDataDir !== launched.userDataDir) {
-      dirs.push(launched.resolvedUserDataDir)
-    }
-    await destroyElectronApp(launched.app, dirs)
+    await destroyLaunchedElectron(launched)
   },
 
   electronAppB: async ({ deviceIdB, vaultPathB, syncServerUrl }, use) => {
@@ -98,11 +94,7 @@ export const test = base.extend<{
     })
     ;(launched.app as unknown as { __launched?: LaunchedElectron }).__launched = launched
     await use(launched.app)
-    const dirs = [launched.userDataDir]
-    if (launched.resolvedUserDataDir !== launched.userDataDir) {
-      dirs.push(launched.resolvedUserDataDir)
-    }
-    await destroyElectronApp(launched.app, dirs)
+    await destroyLaunchedElectron(launched)
   },
 
   pageA: async ({ electronAppA, vaultPathA }, use) => {

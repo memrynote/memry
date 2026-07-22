@@ -11,7 +11,7 @@ import * as os from 'os'
 import * as path from 'path'
 
 import {
-  destroyElectronApp,
+  destroyLaunchedElectron,
   launchElectronWithWindow,
   LaunchedElectron
 } from './utils/electron-lifecycle'
@@ -40,11 +40,7 @@ export const test = base.extend<{
 
     await use(launched.app)
 
-    const dirs = [launched.userDataDir]
-    if (launched.resolvedUserDataDir !== launched.userDataDir) {
-      dirs.push(launched.resolvedUserDataDir)
-    }
-    await destroyElectronApp(launched.app, dirs)
+    await destroyLaunchedElectron(launched)
   },
 
   page: async ({ electronApp }, use) => {

@@ -74,6 +74,25 @@ Main-push Desktop CI runs the full Electron E2E suite across 16 Playwright shard
 the default 60s test timeout and 20s assertion timeout, while CI raises those to 180s and 60s, with
 helper-specific headroom for sync replication and Agent/MCP startup on slower Linux runners.
 
+### E2E Keychain Cleanup (macOS)
+
+Sync E2E launches set `MEMRY_DEVICE=e2e-<uuid>-A|B`, and every keychain account is suffixed with
+that device id. The OS keychain is machine-global and outlives the throwaway user-data dir, so each
+launch mints permanent `com.memry.sync` items. Teardown now deletes them:
+`tests/e2e/utils/keychain-cleanup.ts` purges the run's accounts, and fixtures call
+`destroyLaunchedElectron(launched)` — prefer it over `destroyElectronApp`, since it derives the dirs
+and device id from the launch so a new fixture cannot forget the purge. The purge only ever fires
+for device ids matching `/^e2e-[A-Za-z0-9-]+$/`, so local `A`/`B`/`C`/`dev` vaults and production's
+bare `master-key` are never touched. macOS only — keytar is built for the Electron ABI here, so
+teardown shells out to `security(1)` instead.
+
+To reclaim a backlog from runs that predate this cleanup:
+
+```bash
+pnpm --filter @memry/desktop keychain:purge-e2e            # dry run, prints counts
+pnpm --filter @memry/desktop keychain:purge-e2e -- --apply # delete
+```
+
 ### E2E Test Hooks
 
 Desktop E2E helpers live behind `globalThis.__memryTestHooks` and only register when
