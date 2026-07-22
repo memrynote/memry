@@ -412,6 +412,15 @@ async function flushReadyWork() {
   await Promise.resolve()
 }
 
+// Drain microtasks until `predicate` holds (bounded by a safety cap), instead of
+// looping a hard-coded number of ticks that's coupled to the shutdown chain
+// length and breaks whenever an async step is added/removed.
+async function flushUntil(predicate: () => boolean, maxTicks = 100): Promise<void> {
+  for (let i = 0; i < maxTicks && !predicate(); i++) {
+    await Promise.resolve()
+  }
+}
+
 describe('main index phase2 exports', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -1612,9 +1621,7 @@ describe('main index phase2 exports', () => {
       ([event]) => event === 'app:flush-done'
     )?.[1] as () => void
     flushHandler()
-    for (let i = 0; i < 40; i++) {
-      await Promise.resolve()
-    }
+    await flushUntil(() => vi.mocked(app.exit).mock.calls.length > 0)
 
     expect(app.exit).toHaveBeenCalledWith(1)
   })
