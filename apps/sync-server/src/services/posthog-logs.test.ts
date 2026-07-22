@@ -53,4 +53,59 @@ describe('pushPostHogLogs', () => {
     ).resolves.toBeUndefined()
     vi.unstubAllGlobals()
   })
+
+  it('groups records into one resourceLogs entry per app', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
+    vi.stubGlobal('fetch', fetchSpy)
+
+    await pushPostHogLogs(env, [
+      { level: 'error', app: 'desktop', line: { id: 'd1' } },
+      { level: 'error', app: 'server', line: { id: 's1' } },
+      { level: 'error', app: 'desktop', line: { id: 'd2' } }
+    ])
+
+    const [, init] = fetchSpy.mock.calls[0]
+    const body = JSON.parse((init as RequestInit).body as string)
+    expect(body.resourceLogs).toHaveLength(2)
+
+    type ResourceAttribute = { key: string; value: { stringValue: string } }
+    type ResourceLogsEntry = { resource: { attributes: ResourceAttribute[] } }
+
+    const desktopEntry = body.resourceLogs.find((r: ResourceLogsEntry) =>
+      r.resource.attributes.some(
+        (a) => a.key === 'service.name' && a.value.stringValue === 'desktop'
+      )
+    )
+    const serverEntry = body.resourceLogs.find((r: ResourceLogsEntry) =>
+      r.resource.attributes.some(
+        (a) => a.key === 'service.name' && a.value.stringValue === 'server'
+      )
+    )
+
+    expect(
+      desktopEntry.scopeLogs[0].logRecords.map(
+        (r: { body: { stringValue: string } }) => r.body.stringValue
+      )
+    ).toEqual([JSON.stringify({ id: 'd1' }), JSON.stringify({ id: 'd2' })])
+    expect(
+      serverEntry.scopeLogs[0].logRecords.map(
+        (r: { body: { stringValue: string } }) => r.body.stringValue
+      )
+    ).toEqual([JSON.stringify({ id: 's1' })])
+    vi.unstubAllGlobals()
+  })
+
+  it('resolves instead of rejecting when a line is not JSON-safe', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const line: Record<string, unknown> = {}
+    line.self = line
+
+    await expect(
+      pushPostHogLogs(env, [{ level: 'error', app: 'server', line }])
+    ).resolves.toBeUndefined()
+    expect(fetchSpy).not.toHaveBeenCalled()
+    vi.unstubAllGlobals()
+  })
 })

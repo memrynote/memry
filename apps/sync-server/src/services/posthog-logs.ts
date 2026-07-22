@@ -28,35 +28,38 @@ export const pushPostHogLogs = async (env: PostHogEnv, records: LogRecord[]): Pr
   const environment = env.ENVIRONMENT ?? 'unknown'
   const timeUnixNano = `${Date.now()}000000`
 
-  // One resourceLogs entry per app so service.name stays a resource attribute
-  // rather than being duplicated onto every record.
-  const byApp = new Map<LogRecord['app'], LogRecord[]>()
-  for (const record of records) {
-    const bucket = byApp.get(record.app) ?? []
-    bucket.push(record)
-    byApp.set(record.app, bucket)
-  }
-
-  const resourceLogs = [...byApp.entries()].map(([app, appRecords]) => ({
-    resource: {
-      attributes: [attribute('service.name', app), attribute('deployment.environment', environment)]
-    },
-    scopeLogs: [
-      {
-        logRecords: appRecords.map((record) => ({
-          timeUnixNano,
-          severityText: record.level,
-          body: { stringValue: JSON.stringify(record.line) },
-          attributes: [
-            attribute('kind', record.kind ?? 'error'),
-            ...(record.distinctId ? [attribute('posthogDistinctId', record.distinctId)] : [])
-          ]
-        }))
-      }
-    ]
-  }))
-
   try {
+    // One resourceLogs entry per app so service.name stays a resource attribute
+    // rather than being duplicated onto every record.
+    const byApp = new Map<LogRecord['app'], LogRecord[]>()
+    for (const record of records) {
+      const bucket = byApp.get(record.app) ?? []
+      bucket.push(record)
+      byApp.set(record.app, bucket)
+    }
+
+    const resourceLogs = [...byApp.entries()].map(([app, appRecords]) => ({
+      resource: {
+        attributes: [
+          attribute('service.name', app),
+          attribute('deployment.environment', environment)
+        ]
+      },
+      scopeLogs: [
+        {
+          logRecords: appRecords.map((record) => ({
+            timeUnixNano,
+            severityText: record.level,
+            body: { stringValue: JSON.stringify(record.line) },
+            attributes: [
+              attribute('kind', record.kind ?? 'error'),
+              ...(record.distinctId ? [attribute('posthogDistinctId', record.distinctId)] : [])
+            ]
+          }))
+        }
+      ]
+    }))
+
     const response = await fetch(`${host}/v1/logs`, {
       method: 'POST',
       headers: {
