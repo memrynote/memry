@@ -119,12 +119,7 @@ In `packages/contracts/src/ipc-channels.ts`, inside `CalendarChannels.invoke`, d
     SEARCH_EVENTS: 'calendar:search-events',
 ```
 
-- [ ] **Step 5: Verify `ipc:check` now fails**
-
-Run: `pnpm ipc:check`
-Expected: FAIL — the generated invoke map has no entry for `calendar:search-events`. Record the exact message; it confirms the gate is live rather than vacuously green.
-
-- [ ] **Step 6: Add the RPC method in `packages/rpc/src/calendar.ts`**
+- [ ] **Step 5: Add the RPC method in `packages/rpc/src/calendar.ts`**
 
 Add `SearchCalendarEventsSchema` to the schema import list (alphabetically after `RetryCalendarSourceSyncSchema`), and `type CalendarEventSearchResponse` to the type import list (after `type CalendarEventRecord`).
 
@@ -149,13 +144,18 @@ Add the method inside `methods`, directly after `listEvents` (line 96-102):
     }),
 ```
 
+- [ ] **Step 6: Verify `ipc:check` now fails**
+
+Run: `pnpm ipc:check`
+Expected: FAIL — the generated invoke map has no entry for `calendar:search-events`. Record the exact message; it confirms the gate is live rather than vacuously green. It does not fail any earlier than this: the generator derives its output from the RPC domain methods and `ipcMain.handle` call sites, not from the raw contracts additions in Steps 3-4, so the gate cannot move until the RPC method above exists.
+
 - [ ] **Step 7: Regenerate and verify**
 
 Run: `pnpm ipc:generate && pnpm ipc:check`
-Expected: PASS. `git diff --stat` should show `generated-ipc-invoke-map.ts` and `generated-rpc.ts` each gaining a `calendar:search-events` line. `generated-rpc.ts` gains:
+Expected: PASS. `git diff --stat` should show only `generated-rpc.ts` gaining a `calendar:search-events` line:
 `"searchEvents": ((input) => invoke("calendar:search-events", input)) as GeneratedRpcApi["calendar"]["searchEvents"],`
 
-The invoke-map entry will not typecheck as a registered handler until Task 3 lands the `ipcMain.handle` call — that is expected between tasks.
+`generated-ipc-invoke-map.ts` stays unchanged here — it reflects registered `ipcMain.handle` call sites, not RPC methods, so it doesn't gain a `calendar:search-events` line until Task 3 registers the handler.
 
 - [ ] **Step 8: Commit**
 
