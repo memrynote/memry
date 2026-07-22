@@ -117,6 +117,25 @@ export function SidebarFeedbackButton() {
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               />
             )}
+
+            <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
+              <p className="font-medium text-foreground/80">
+                {t('phaseF.componentsAppSidebar.feedbackPrivacyTitle')}
+              </p>
+              <ul className="mt-1.5 flex list-disc flex-col gap-0.5 ps-4">
+                <li>{t('phaseF.componentsAppSidebar.feedbackPrivacyMessage')}</li>
+                <li>
+                  {signedInEmail
+                    ? t('phaseF.componentsAppSidebar.feedbackPrivacyEmailSignedIn', {
+                        email: signedInEmail
+                      })
+                    : t('phaseF.componentsAppSidebar.feedbackPrivacyEmailOptional')}
+                </li>
+                <li>{t('phaseF.componentsAppSidebar.feedbackPrivacyVersion')}</li>
+                {signedInEmail && <li>{t('phaseF.componentsAppSidebar.feedbackPrivacyPlan')}</li>}
+              </ul>
+              <p className="mt-1.5">{t('phaseF.componentsAppSidebar.feedbackPrivacyNote')}</p>
+            </div>
           </div>
 
           <DialogFooter>

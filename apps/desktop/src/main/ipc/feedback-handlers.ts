@@ -4,6 +4,7 @@ import { FeedbackChannels } from '@memry/contracts/ipc-channels'
 import { FeedbackSubmitSchema } from '@memry/contracts/feedback-api'
 
 import { postToServer } from '../sync/http-client'
+import { getValidAccessToken } from '../sync/token-manager'
 import { createLogger } from '../lib/logger'
 
 const logger = createLogger('IPC:Feedback')
@@ -20,7 +21,10 @@ export const registerFeedbackHandlers = (): void => {
     }
 
     try {
-      await postToServer('/feedback', parsed.data)
+      // Sent when signed in so the server can attach the real plan to the
+      // email. Anonymous feedback still works without it.
+      const token = await getValidAccessToken().catch(() => null)
+      await postToServer('/feedback', parsed.data, token ?? undefined)
       return { success: true }
     } catch (error) {
       logger.error('Failed to submit feedback', { error })
