@@ -6,13 +6,18 @@ canvas. The canvas stores the reference, never a copy of your content.
 ## Adding cards
 
 - **Drag a note** from the sidebar onto the canvas.
-- **Create a note in place** with the **New note** button at the bottom of the
-  canvas. The note is created for real and immediately carded.
+- **Click "Add card"** at the bottom of the canvas to search your notes, tasks
+  and events, or to create a new note without leaving the board. "Create
+  note …" is always the first option, and typing a title carries it into the
+  new note.
 
-Task and calendar-event cards are fully supported once they're on a canvas —
-they show a live preview and open their own in-place editor — but today the
-only way to add a card is dragging a note from the sidebar or the **New note**
-button above. There is no drag-in from the Tasks or Calendar pages yet.
+Task and calendar-event cards are added through **Add card**. Dragging works
+for notes from the sidebar; the Tasks and Calendar pages have no drag-in, so
+tasks and events always go through the picker.
+
+If you pick something that is already on the board, Memry scrolls to the card
+you already have instead of adding a duplicate — look for the **On canvas**
+badge in the results.
 
 Cards show a live preview: a note's title and the start of its body, a task's
 title and status, an event's title and time. Rename or complete the item
