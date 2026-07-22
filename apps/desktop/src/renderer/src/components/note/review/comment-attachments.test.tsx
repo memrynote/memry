@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CriticMarkupCommentAttachmentRef, CriticMarkupMark } from '@memry/shared'
 import { formatBytes } from '@/lib/format'
 import { CommentAttachments, classifyCommentAttachment } from './comment-attachments'
@@ -66,6 +66,11 @@ describe('classifyCommentAttachment', () => {
 describe('CommentAttachments', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    // Restore spies (e.g. window.open) so a mock never leaks into a later test.
+    vi.restoreAllMocks()
   })
 
   it('renders nothing when there are no attachments', () => {
