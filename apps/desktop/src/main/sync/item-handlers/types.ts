@@ -32,6 +32,25 @@ export interface SyncItemHandler<T = unknown> {
   markPushSynced?(db: DrizzleDb, itemId: string): void
 }
 
+/**
+ * A pulled item references an FK parent that does not exist locally. Thrown
+ * instead of letting SQLite raise a bare `FOREIGN KEY constraint failed`, which
+ * names neither the constraint nor the missing id — the pull coordinator needs
+ * both to decide between "parent hasn't landed yet" and "parent is gone
+ * everywhere, tombstone the child" (#837).
+ */
+export class MissingSyncParentError extends Error {
+  constructor(
+    readonly childType: string,
+    readonly childId: string,
+    readonly parentType: string,
+    readonly parentId: string
+  ) {
+    super(`${childType} ${childId} references missing ${parentType} ${parentId}`)
+    this.name = 'MissingSyncParentError'
+  }
+}
+
 export interface ClockResolution {
   action: 'skip' | 'apply' | 'merge'
   mergedClock: VectorClock

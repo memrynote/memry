@@ -189,7 +189,23 @@ landed in Loki as an unactionable bare `Error` with an empty stack. Reasons are 
 reporting: a real `Error` passes through, a cross-realm error's own frames are adopted, and
 anything else gets a stack synthesized at the handler plus a code naming the reason's type
 (`Rejection_string`, `Rejection_Object`, `Rejection_undefined`). The reason's message or value is
-never copied — only its shape.
+never copied — only its shape. A reason that crossed a structured-clone or IPC boundary keeps its
+`.name` but loses both its stack and its constructor; that name is preferred over the constructor
+name, so it reports `Rejection_TypeError` rather than collapsing to `Rejection_Error`. When the
+code is a `Rejection_*` name the stack is the handler's own frames, not the fault's — the code is
+the actionable part.
+
+A **window error** does not always carry an `error` object: cross-origin scripts and some Chromium
+failure paths report only a message and a source location, which previously landed as `StringError`
+with an empty stack and nothing to triage. The error class is recovered from the message's leading
+token (`Uncaught TypeError: …` → `TypeError`, subject to the same enum-token rule) and the
+`filename`/`lineno`/`colno` are rebuilt into a stack frame, so the code location survives the same
+frame filter and redaction as a real stack. The message text itself is still never shipped.
+
+Because a rejection reason or `event.error` can be **any** value — including a `Proxy` whose traps
+throw or an object with throwing getters — every property read in this path (including `instanceof`,
+which can trap `getPrototypeOf`) is individually guarded. A hostile value can no longer throw out of
+the diagnostics handler and destroy the report being built.
 
 The free-form exception **message is never sent**: on the desktop it can embed a note title,
 filename, or content. The stack is reduced to code-location frames only — the leading

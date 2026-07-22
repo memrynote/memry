@@ -108,6 +108,33 @@ broken the item re-quarantines within a few pulls, and if it was repaired server
 again without an emergency wipe. The manifest-check throttle (30 minutes) persists in sync state, so
 engine restarts and vault switches cannot re-arm an immediate check.
 
+### Foreign-key parents and orphan repair
+
+Some rows carry foreign keys — a task references its project and its status — and the data DB
+enforces them. Server cursor order is last-update order, not dependency order, so pulled items are
+sorted so FK parents apply before their children, and anything that still fails is retried once after
+every page has landed.
+
+That covers a parent that simply arrived late. It does not cover a parent that is **gone**, which is
+what a cascade delete produces: deleting a project removes its tasks locally through SQLite
+`ON DELETE cascade`, and a cascade is invisible to sync unless each child is tombstoned explicitly.
+Project deletion therefore pushes a tombstone for every task it cascades away, including completed
+and archived ones. Without that, the child rows stay alive on the server, every device re-pulls them,
+the FK insert fails, the item is skipped, the next manifest check still sees it server-only, and the
+cycle repeats forever.
+
+For installs already holding such orphans, the end of a pull run repairs them. The missing parent is
+re-fetched **by id**, which is authoritative in a way the cursor window is not:
+
+- the server still returns the parent → apply it, then the child lands normally.
+- the server no longer returns it → the parent is gone everywhere, so the child is a confirmed
+  orphan and is tombstoned. That is what the cascade should have pushed originally, and it ends the
+  re-pull loop on every device.
+
+Deletion is gated on that second condition alone; a child whose re-apply fails for any other reason
+is left untouched and retried on the next cycle. A dangling `status_id` is not an orphan at all — the
+FK is `ON DELETE SET NULL`, so the reference is simply cleared rather than failing the apply.
+
 ## Sync Type Negotiation
 
 Clients declare the record sync item types they understand via an `X-Memry-Sync-Types` header
@@ -229,6 +256,25 @@ list.
 | `POST /devices/*`         | mixed     | Linking, listing, revoking                                                     |
 | `POST /keys/*`            | mixed     | Key sealing during link, rotation                                              |
 
+## Realtime Socket Auth
+
+The change-notification WebSocket (`/sync/ws`) authenticates once at handshake with a Bearer access
+token. The server pins that token's expiry to the connection and sweeps every 60s, closing any
+socket whose token has expired (`WS_TOKEN_EXPIRED`, close code 4003).
+
+Because access tokens are short-lived, the client renews the connection **in place** rather than
+riding each token to expiry. Whenever the token manager refreshes — the same cycle that serves HTTP
+requests, and always well before expiry — the client sends the fresh token over the open socket:
+
+| Direction       | Message                                 | Meaning                                       |
+| --------------- | --------------------------------------- | --------------------------------------------- |
+| client → server | `{ type: 'auth', payload: { token } }`  | Renew this connection with a fresh token      |
+| server → client | `{ type: 'auth_ok', payload: { exp } }` | Accepted; the connection now expires at `exp` |
+
+The server verifies the token and requires it to belong to the same device before extending the
+expiry. Renewal is best-effort: a rejected or unanswered `auth` leaves the original expiry in place,
+so the socket closes at expiry and the client reconnects with a fresh token as it otherwise would.
+
 ## Vault-Key Verification
 
 Before syncing — and whenever an entire pull page fails to decrypt — the client verifies its local
@@ -240,16 +286,18 @@ phrase can restore the correct key. See
 
 ## Error Modes
 
-| Failure            | Behavior                                                                                   |
-| ------------------ | ------------------------------------------------------------------------------------------ |
-| Offline            | Outbox queues; retry with backoff                                                          |
-| Auth expired (401) | Refresh the access token and retry the request once; only a failed refresh prompts sign-in |
-| Refresh rejected   | Stop refreshing entirely (see below); prompt the user to sign in again                     |
-| Payment required   | Sync stays local-only until a paid plan is active                                          |
-| Quota exceeded     | Surfaces in [Settings → Vault](/user-guide/settings#vault)                                 |
-| Server unavailable | Exponential backoff; status indicator turns yellow                                         |
-| Blob hash mismatch | Reject the item; log; alert health view                                                    |
-| Vault-key mismatch | Stop pulling without branding items; prompt recovery; sign out to restore the correct key  |
+
+| Failure             | Behavior                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------ |
+| Offline             | Outbox queues; retry with backoff                                                          |
+| Auth expired (401)  | Refresh the access token and retry the request once; only a failed refresh prompts sign-in |
+| Refresh rejected    | Stop refreshing entirely (see below); prompt the user to sign in again                      |
+| Payment required    | Sync stays local-only until a paid plan is active                                          |
+| Quota exceeded      | Surfaces in [Settings → Vault](/user-guide/settings#vault)                                 |
+| Socket token expiry | In-place renewal over the open socket; a rejected renewal falls back to close + reconnect  |
+| Server unavailable  | Exponential backoff; status indicator turns yellow                                         |
+| Blob hash mismatch  | Reject the item; log; alert health view                                                    |
+| Vault-key mismatch  | Stop pulling without branding items; prompt recovery; sign out to restore the correct key  |
 
 ### Rejected Refresh Tokens
 

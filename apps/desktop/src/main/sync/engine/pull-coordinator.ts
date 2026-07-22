@@ -15,6 +15,7 @@ import { RecordPullResponseSchema } from '@memry/contracts/sync-api'
 import { secureCleanup } from '../../crypto/index'
 import { decryptPullBatch } from '../sync-crypto-batch'
 import { getRemoteSyncAdapter } from '../item-handlers'
+import { MissingSyncParentError } from '../item-handlers/types'
 import { withRetry } from '../retry'
 import { engineAuthRetryDeps, withAuthRetry } from '../auth-retry'
 import { postToServer, getFromServer, RateLimitError } from '../http-client'
@@ -27,6 +28,7 @@ import type { QuarantineManager } from './quarantine-manager'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import type { PushCoordinator } from './push-coordinator'
 import { CorruptItemTracker } from './corrupt-item-tracker'
+import { repairOrphans, type OrphanRef } from './orphan-repair'
 import { SYNC_STATE_KEYS, YIELD_EVERY_N_ITEMS, yieldToEventLoop, itemRefKey } from './sync-context'
 
 const log = createLogger('PullCoordinator')
@@ -90,6 +92,8 @@ export class PullCoordinator {
   private deviceKeyCache = new Map<string, Uint8Array | null>()
   /** Items whose apply threw (e.g. FK parent not pulled yet) — retried once after all pages land */
   private pendingApplyRetries: DecryptedPullItem[] = []
+  /** Items still missing an FK parent after the deferred retry — repaired at end of run (#837) */
+  private orphanedItems: OrphanRef[] = []
 
   constructor(
     ctx: SyncContext,
@@ -129,9 +133,11 @@ export class PullCoordinator {
         pullStartedAt
       )
       this.pendingApplyRetries = []
+      this.orphanedItems = []
       try {
         await this.pullChanges(runState)
         await this.applyDeferredRetries(runState)
+        await this.repairOrphanedItems(runState)
         if (runState.refused) {
           // The run stopped on a page it could not apply. Recording a success
           // history row and a fresh lastSyncAt here is what made a failing
@@ -458,6 +464,24 @@ export class PullCoordinator {
         this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
       } catch (retryError) {
         failed++
+        if (retryError instanceof MissingSyncParentError) {
+          // Not a dead end: the parent may simply sit outside this run's cursor
+          // window, or be gone everywhere. repairOrphanedItems() tells them
+          // apart instead of dropping the item until some future remote update
+          // (which, for a cascade-deleted project, never comes) — #837.
+          this.orphanedItems.push({
+            item: dec,
+            parentType: retryError.parentType,
+            parentId: retryError.parentId
+          })
+          log.warn('Pull: deferred retry still missing FK parent — queued for repair', {
+            itemId: dec.id,
+            type: dec.type,
+            parentType: retryError.parentType,
+            parentId: retryError.parentId
+          })
+          continue
+        }
         log.error('Pull: deferred retry failed — item skipped until next remote update', {
           itemId: dec.id,
           type: dec.type,
@@ -467,6 +491,36 @@ export class PullCoordinator {
     }
 
     log.info('Pull: deferred apply retries processed', { retried: retries.length, applied, failed })
+  }
+
+  /** See `repairOrphans` — resolves items left unwritable by a missing FK parent (#837). */
+  private async repairOrphanedItems(runState: PullRunState): Promise<void> {
+    const orphans = this.orphanedItems
+    this.orphanedItems = []
+    await repairOrphans({
+      orphans,
+      ctx: this.ctx,
+      corruptTracker: this.corruptTracker,
+      accessJwt: runState.accessJwt,
+      vaultKey: runState.vaultKey,
+      applyItem: (item) => this.applyOrphan(item, runState)
+    })
+  }
+
+  private applyOrphan(dec: DecryptedPullItem, runState: PullRunState): void {
+    const itemOp = dec.deletedAt ? 'delete' : (dec.operation as 'create' | 'update')
+    this.ctx.applier.apply({
+      itemId: dec.id,
+      type: dec.type as Parameters<typeof this.ctx.applier.apply>[0]['type'],
+      operation: itemOp,
+      content: new TextEncoder().encode(dec.content),
+      clock: dec.clock,
+      deletedAt: dec.deletedAt,
+      vaultKey: runState.vaultKey
+    })
+    runState.processedIds.add(itemRefKey(dec.type, dec.id))
+    runState.pulledCount++
+    this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
   }
 
   private async processPage(
@@ -652,7 +706,10 @@ export class PullCoordinator {
           log.error('Pull: failed to apply decrypted item — deferring for retry', {
             itemId: dec.id,
             type: dec.type,
-            error: applyError instanceof Error ? applyError.message : String(applyError)
+            error: applyError instanceof Error ? applyError.message : String(applyError),
+            ...(applyError instanceof MissingSyncParentError
+              ? { parentType: applyError.parentType, parentId: applyError.parentId }
+              : {})
           })
           this.pendingApplyRetries.push(dec)
           pageFailed++

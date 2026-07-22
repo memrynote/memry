@@ -2,6 +2,7 @@ import type { TelemetryResult } from '@memry/contracts/telemetry-api'
 import {
   buildErrorDetail,
   normalizeRejectionReason,
+  normalizeWindowError,
   toErrorCode,
   toSafeToken
 } from '@memry/contracts/telemetry-api'
@@ -56,7 +57,20 @@ export const trackRendererReady = (durationMs: number): void => {
 
 export const registerRendererDiagnostics = (): void => {
   window.addEventListener('error', (event) => {
-    trackRendererError('window_error', event.error ?? event.message)
+    // `event.error` is absent for cross-origin scripts and some Chromium failure
+    // paths; passing the bare message string on landed in telemetry as
+    // `StringError` with no stack. Normalize so a class name and the source
+    // location always survive.
+    trackRendererError(
+      'window_error',
+      normalizeWindowError({
+        error: event.error,
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno
+      })
+    )
   })
 
   window.addEventListener('unhandledrejection', (event) => {

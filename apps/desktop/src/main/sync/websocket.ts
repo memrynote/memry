@@ -22,6 +22,7 @@ const WebSocketMessageSchema = z.object({
     'crdt_updated',
     'calendar_changes_available',
     'heartbeat',
+    'auth_ok',
     'error',
     'linking_request',
     'linking_approved'
@@ -199,6 +200,29 @@ export class WebSocketManager extends EventEmitter {
       }
       this.emit('error', err)
     })
+  }
+
+  /**
+   * Push the current access token over the live socket so the server can extend
+   * the connection's expiry in place. Called when token-manager refreshes, which
+   * happens well before expiry — without it the server drops the socket with
+   * WS_TOKEN_EXPIRED and we pay a full reconnect every token lifetime.
+   * Best-effort: on failure the socket still expires and reconnects as before.
+   */
+  async refreshAuth(): Promise<void> {
+    if (!this._connected || this.ws?.readyState !== WebSocket.OPEN) return
+
+    try {
+      const token = await this.deps.getAccessToken()
+      if (!token) return
+      if (this.ws?.readyState !== WebSocket.OPEN) return
+      this.ws.send(JSON.stringify({ type: 'auth', payload: { token } }))
+      log.debug('Sent WebSocket auth refresh')
+    } catch (err) {
+      log.warn('WebSocket auth refresh failed', {
+        message: err instanceof Error ? err.message : String(err)
+      })
+    }
   }
 
   disconnect(): void {

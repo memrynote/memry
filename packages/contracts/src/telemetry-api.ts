@@ -227,6 +227,23 @@ const keepStackFrameLines = (stack: string): string =>
 
 const SAFE_TOKEN = /^(?!.*@)(?!.*:\/\/)(?!.*[/\\]).{1,64}$/
 
+// A rejection reason or `event.error` can be ANY value: a Proxy whose traps
+// throw, an object with throwing getters, a revoked Proxy. Every read below
+// happens inside a diagnostics handler, so a throw there destroys the very
+// report we are building — the original error is then lost for good.
+const safeRead = <T>(read: () => T, fallback: T): T => {
+  try {
+    return read()
+  } catch {
+    return fallback
+  }
+}
+
+// Read one property at a time: a single hostile getter must not cost us the
+// other properties, so each read gets its own guard.
+const readProp = (value: unknown, key: string): unknown =>
+  safeRead(() => (value as Record<string, unknown> | null | undefined)?.[key], undefined)
+
 /**
  * Coerce a value into a token safe to ship as telemetry metadata: known charset,
  * ≤64 chars, no '@', '://', '/' or '\'. Falls back when the value cannot be made
@@ -256,11 +273,11 @@ const MAX_CAUSE_DEPTH = 4
 
 const typedErrorCode = (error: unknown, depth = 0): string | undefined => {
   if (!error || typeof error !== 'object' || depth > MAX_CAUSE_DEPTH) return undefined
-  const candidate = error as {
-    telemetryCode?: unknown
-    code?: unknown
-    cause?: unknown
-    errors?: unknown
+  const candidate = {
+    telemetryCode: readProp(error, 'telemetryCode'),
+    code: readProp(error, 'code'),
+    cause: readProp(error, 'cause'),
+    errors: readProp(error, 'errors')
   }
   // A richer app-assigned code wins over the bare `.code`, so a note failure
   // keeps its originating errno (NoteError.telemetryCode = NOTE_WRITE_FAILED:EBUSY)
@@ -298,27 +315,52 @@ const typedErrorCode = (error: unknown, depth = 0): string | undefined => {
 export const toErrorCode = (error: unknown): string => {
   const typed = typedErrorCode(error)
   if (typed) return typed
-  if (error instanceof Error && error.name) {
-    return toSafeToken(error.name, 'Error')
+  const name = readProp(error, 'name')
+  if (isError(error) && typeof name === 'string' && name) {
+    return toSafeToken(name, 'Error')
   }
-  if (error && typeof error === 'object' && error.constructor?.name) {
-    return toSafeToken(error.constructor.name, 'UnknownError')
+  const ctor = constructorName(error)
+  if (error && typeof error === 'object' && ctor) {
+    return toSafeToken(ctor, 'UnknownError')
   }
   if (typeof error === 'string') return 'StringError'
   return 'UnknownError'
 }
 
-const hasStackFrames = (value: unknown): value is { stack: string } => {
-  const stack = (value as { stack?: unknown } | null | undefined)?.stack
-  return typeof stack === 'string' && /^\s*at\s/m.test(stack)
+// `instanceof` itself can throw: a Proxy may trap `getPrototypeOf`, and an
+// object may define a throwing `Symbol.hasInstance`.
+const isError = (value: unknown): value is Error => safeRead(() => value instanceof Error, false)
+
+const constructorName = (value: unknown): string | undefined => {
+  const name = readProp(readProp(value, 'constructor'), 'name')
+  return typeof name === 'string' && name ? name : undefined
+}
+
+// The value's own `.stack`, but only when it holds real "    at …" frames.
+const ownStackFrames = (value: unknown): string | undefined => {
+  const stack = readProp(value, 'stack')
+  return typeof stack === 'string' && /^\s*at\s/m.test(stack) ? stack : undefined
+}
+
+// A value's own `.name`, adopted only when it is already an enum-ish token. A
+// path/email/prose name is rejected outright (not character-substituted, which
+// would still leak its structure).
+const enumishName = (value: unknown): string | undefined => {
+  const name = readProp(value, 'name')
+  return typeof name === 'string' && TYPED_ERROR_CODE.test(name) ? name : undefined
 }
 
 const rejectionTypeName = (reason: unknown): string => {
   if (reason === null) return 'Rejection_null'
   if (reason === undefined) return 'Rejection_undefined'
   if (typeof reason !== 'object') return `Rejection_${typeof reason}`
-  const ctor = (reason as { constructor?: { name?: unknown } }).constructor?.name
-  return typeof ctor === 'string' && ctor ? `Rejection_${ctor}` : 'Rejection_object'
+  // An error that crossed a structured-clone / IPC boundary keeps its `.name`
+  // ('TypeError') but loses both its stack and its constructor, so it would
+  // otherwise collapse to the unactionable Rejection_Object / Rejection_Error.
+  const own = enumishName(reason)
+  if (own) return `Rejection_${own}`
+  const ctor = constructorName(reason)
+  return ctor ? `Rejection_${ctor}` : 'Rejection_object'
 }
 
 /**
@@ -333,20 +375,70 @@ const rejectionTypeName = (reason: unknown): string => {
  * copied — only its shape. buildErrorDetail still strips the stack header.
  */
 export const normalizeRejectionReason = (reason: unknown): Error => {
-  if (reason instanceof Error && hasStackFrames(reason)) return reason
+  const frames = ownStackFrames(reason)
+  if (isError(reason) && frames) return reason
 
   const normalized = new Error()
   normalized.name = toSafeToken(rejectionTypeName(reason), 'Rejection_unknown')
-  if (hasStackFrames(reason)) {
-    normalized.stack = reason.stack
-    const name = (reason as { name?: unknown }).name
-    // Adopt the reason's own name only when it is already an enum-ish token; a
-    // path/email/prose name is rejected (not character-substituted, which would
-    // still leak its structure) and the synthesized Rejection_* name is kept.
-    if (typeof name === 'string' && TYPED_ERROR_CODE.test(name)) {
-      normalized.name = name
-    }
+  if (frames) {
+    normalized.stack = frames
+    // Adopt the reason's own name only when it is already an enum-ish token.
+    const own = enumishName(reason)
+    if (own) normalized.name = own
   }
+  // Otherwise the stack stays the one captured here, i.e. this handler's own
+  // frames. That is deliberate — there is nothing better to report — and the
+  // Rejection_* name is what marks the stack as synthetic during triage.
+  return normalized
+}
+
+export interface WindowErrorReport {
+  error?: unknown
+  message?: unknown
+  filename?: unknown
+  lineno?: unknown
+  colno?: unknown
+}
+
+// "Uncaught TypeError: x is not a function" → TypeError. Only the leading
+// <Something>Error token is read; everything after it is prose that can embed a
+// note title or path, and is never touched.
+const MESSAGE_ERROR_CLASS =
+  /^(?:Uncaught\s+(?:\(in promise\)\s+)?)?([A-Za-z][A-Za-z0-9_$]{0,55}Error)\b/
+
+const MAX_SOURCE_FILENAME = 300
+
+// "    at window_error (file:///…/index-VP6Jd1Vs.js:121718:22)" — the browser's
+// filename/lineno/colno rebuilt as a stack frame, so it survives the same frame
+// filter and redaction as a real stack. A code location, never message text.
+const sourceFrame = (report: WindowErrorReport): string | undefined => {
+  const filename = typeof report.filename === 'string' ? report.filename.trim() : ''
+  if (!filename) return undefined
+  const line = Number.isFinite(report.lineno) ? (report.lineno as number) : 0
+  const column = Number.isFinite(report.colno) ? (report.colno as number) : 0
+  return `    at window_error (${filename.slice(0, MAX_SOURCE_FILENAME)}:${line}:${column})`
+}
+
+/**
+ * Normalize a window `error` event into an Error that carries a code and a
+ * location. `event.error` is absent for cross-origin scripts and for some
+ * Chromium failure paths, and passing the bare `event.message` string on landed
+ * in telemetry as `StringError` with no stack — nothing to triage at all.
+ *
+ * Privacy: the message is only pattern-matched for its leading error class; its
+ * text is never copied. The filename rides along as a stack frame, so it goes
+ * through the same redaction as any other frame.
+ */
+export const normalizeWindowError = (report: WindowErrorReport): Error => {
+  const frames = ownStackFrames(report.error)
+  if (isError(report.error) && frames) return report.error
+
+  const normalized = new Error()
+  const messageClass =
+    typeof report.message === 'string' ? MESSAGE_ERROR_CLASS.exec(report.message)?.[1] : undefined
+  normalized.name = toSafeToken(enumishName(report.error) ?? messageClass, 'WindowError')
+  const stack = frames ?? sourceFrame(report)
+  if (stack) normalized.stack = stack
   return normalized
 }
 
@@ -362,8 +454,8 @@ export const buildErrorDetail = (
   componentStack?: string
 ): TelemetryErrorDetail | undefined => {
   const detail: TelemetryErrorDetail = {}
-  const rawStack =
-    error instanceof Error && typeof error.stack === 'string' ? error.stack : undefined
+  const stack = readProp(error, 'stack')
+  const rawStack = isError(error) && typeof stack === 'string' ? stack : undefined
   if (rawStack) {
     const frames = keepStackFrameLines(rawStack)
     if (frames) detail.stack = truncate(redactSensitive(frames), 4000)

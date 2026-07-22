@@ -25,6 +25,25 @@ const CLOSE_CODE_DEVICE_REVOKED = 4004
 const CLOSE_CODE_RATE_LIMITED = 4008
 const CLOSE_CODE_VERSION_INCOMPATIBLE = 4009
 
+function parseClientMessage(
+  message: string | ArrayBuffer
+): { type: string; payload?: unknown } | null {
+  if (typeof message !== 'string') return null
+  try {
+    const parsed: unknown = JSON.parse(message)
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      typeof (parsed as { type?: unknown }).type === 'string'
+    ) {
+      return parsed as { type: string; payload?: unknown }
+    }
+  } catch {
+    // Not JSON — nothing to handle
+  }
+  return null
+}
+
 export function isVersionBelow(version: string, minimum: string): boolean {
   const parse = (v: string) => v.split('.').map(Number)
   const [aMaj, aMin = 0, aPat = 0] = parse(version)
@@ -250,7 +269,7 @@ export class UserSyncState extends DurableObject<Bindings> {
     ])
   }
 
-  webSocketMessage(ws: WebSocket): void {
+  webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): void | Promise<void> {
     try {
       const attachment = ws.deserializeAttachment() as WsAttachment | null
       if (!attachment) {
@@ -278,10 +297,62 @@ export class UserSyncState extends DurableObject<Bindings> {
           })
         )
         ws.close(CLOSE_CODE_RATE_LIMITED, 'Rate limit exceeded')
+        return
+      }
+
+      const parsed = parseClientMessage(message)
+      if (parsed?.type === 'auth') {
+        const token = (parsed.payload as { token?: unknown } | undefined)?.token
+        return this.handleAuthRefresh(ws, attachment, token).catch((error) =>
+          this.captureError('ws_auth_refresh', error)
+        )
       }
     } catch (error) {
       void this.captureError('ws_message', error)
     }
+  }
+
+  /**
+   * In-place token renewal: the client pushes a freshly refreshed access token
+   * over the live socket so the alarm's expiry sweep never has to drop it.
+   * Rejection is non-fatal — the socket keeps its existing tokenExp and the
+   * alarm closes it at the original expiry, which is the pre-renewal behaviour.
+   */
+  private async handleAuthRefresh(
+    ws: WebSocket,
+    attachment: WsAttachment,
+    token: unknown
+  ): Promise<void> {
+    const reject = (message: string): void => {
+      ws.send(
+        JSON.stringify({
+          type: 'error',
+          payload: { code: ErrorCodes.AUTH_INVALID_TOKEN, message }
+        })
+      )
+    }
+
+    if (typeof token !== 'string' || token.length === 0) {
+      reject('Missing token')
+      return
+    }
+
+    let claims: { userId: string; deviceId: string; exp: number }
+    try {
+      claims = await verifyAccessToken(token, this.env.JWT_PUBLIC_KEY)
+    } catch {
+      reject('Invalid token')
+      return
+    }
+
+    if (claims.deviceId !== attachment.deviceId) {
+      reject('Token does not match connection')
+      return
+    }
+
+    attachment.tokenExp = claims.exp
+    ws.serializeAttachment(attachment)
+    ws.send(JSON.stringify({ type: 'auth_ok', payload: { exp: claims.exp } }))
   }
 
   webSocketClose(ws: WebSocket, code: number, reason: string): void {
