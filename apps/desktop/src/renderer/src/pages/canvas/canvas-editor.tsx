@@ -91,6 +91,18 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
         if (!api) {
           return null
         }
+        // Teardown guard: on an in-session unmount (tab switch / close), React
+        // destroys the Excalidraw child BEFORE this parent's effect cleanup
+        // runs its flush — at which point getSceneElements() returns [] and we
+        // would serialize (and persist) an empty scene, wiping the real one.
+        // The wrapper node is already detached from the document by then, so
+        // treat a disconnected wrapper as "torn down, not readable" (the
+        // serialize contract's null case). During normal saves and the
+        // beforeunload/quit flush the wrapper is still connected, so those
+        // persist as before.
+        if (!wrapperRef.current?.isConnected) {
+          return null
+        }
         try {
           return serializeAsJSON(api.getSceneElements(), api.getAppState(), api.getFiles(), 'local')
         } catch (err) {

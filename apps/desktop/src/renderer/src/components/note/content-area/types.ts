@@ -80,6 +80,12 @@ export interface CollaborationInfo {
 export interface ContentAreaProps {
   /** Note ID for attachment uploads (T069) */
   noteId?: string
+  /**
+   * When false, this editor does NOT run note-level task auto-conversion side
+   * effects (a sibling editor on the same note in this window owns them, R17).
+   * Defaults to true; standalone callers own their effects.
+   */
+  runSideEffects?: boolean
   /** Initial content as BlockNote blocks, HTML string, or markdown string */
   initialContent?: Block[] | string
   /** Type of content being passed: 'html', 'markdown', or 'blocks' */

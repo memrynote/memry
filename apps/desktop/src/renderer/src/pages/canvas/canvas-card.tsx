@@ -62,6 +62,7 @@ const CanvasCardInner = ({ cardRef, state, onRedirect }: CanvasCardProps): React
       {/* Redirect button — the one interactive region on an idle card. */}
       <button
         type="button"
+        data-canvas-redirect=""
         onClick={handleRedirect}
         onPointerDown={(e) => e.stopPropagation()}
         className="pointer-events-auto absolute end-1.5 top-1.5 z-10 flex size-6 items-center justify-center rounded-md bg-background/70 text-text-secondary opacity-0 shadow-sm transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 group-hover/card:opacity-100"

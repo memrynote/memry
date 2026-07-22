@@ -25,6 +25,8 @@ import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useT } from '@memry/i18n/renderer'
 import { CanvasCard } from './canvas-card'
+import { CanvasCardActive } from './canvas-card-active'
+import { hitTestCard, shouldDeactivateForTool, nextActive, withActivePinned } from './canvas-active'
 import { useCanvasEntities, entityKey } from './use-canvas-entities'
 import {
   computeVisibleCardIds,
@@ -68,6 +70,15 @@ export const CanvasCardLayer = ({
   const visibleIdsRef = useRef<Set<string>>(new Set())
   const signatureRef = useRef('')
 
+  const [activeCardId, setActiveCardId] = useState<string | null>(null)
+  const activeCardIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    activeCardIdRef.current = activeCardId
+  }, [activeCardId])
+  const dispatchActive = useCallback((action: Parameters<typeof nextActive>[1]) => {
+    setActiveCardId((prev) => nextActive(prev, action))
+  }, [])
+
   const entities = useCanvasEntities(visibleRefs)
   // Keep entity state reachable from imperative handlers (dblclick redirect).
   const entitiesRef = useRef(entities)
@@ -104,11 +115,25 @@ export const CanvasCardLayer = ({
       width: clip.clientWidth,
       height: clip.clientHeight
     })
-    const nextIds = computeVisibleCardIds(cards, rect, {
-      enterPadding: ENTER_PADDING,
-      exitPadding: EXIT_PADDING,
-      previousVisible: visibleIdsRef.current
-    })
+    const nextIds = withActivePinned(
+      computeVisibleCardIds(cards, rect, {
+        enterPadding: ENTER_PADDING,
+        exitPadding: EXIT_PADDING,
+        previousVisible: visibleIdsRef.current
+      }),
+      activeCardIdRef.current
+    )
+    // Active card deleted from the scene, or a non-selection tool chosen → idle.
+    const active = activeCardIdRef.current
+    if (active) {
+      const stillPresent = cards.some((c) => c.elementId === active)
+      const toolType = (appState as unknown as { activeTool?: { type?: string } }).activeTool?.type
+      if (!stillPresent) {
+        dispatchActive({ type: 'cardGone', id: active })
+      } else if (toolType && shouldDeactivateForTool(toolType)) {
+        dispatchActive({ type: 'deactivate' })
+      }
+    }
     const visible = cards.filter((card) => nextIds.has(card.elementId))
     // Re-render on membership OR geometry change (a moved card), never on pan.
     const signature = visible
@@ -123,7 +148,7 @@ export const CanvasCardLayer = ({
       signatureRef.current = signature
       setVisibleRefs(visible)
     }
-  }, [readScene])
+  }, [readScene, dispatchActive])
 
   useEffect(() => {
     recompute()
@@ -220,39 +245,50 @@ export const CanvasCardLayer = ({
       createCardElement(item.entityType, item.entityId, scene.x, scene.y)
     }
 
+    // dblclick activates the hit card (↗ redirect stays the only way to open a
+    // tab — skip when the dblclick landed on that button, matrix #20).
     const onDblClick = (e: MouseEvent): void => {
+      if ((e.target as Element | null)?.closest('[data-canvas-redirect]')) {
+        return
+      }
       const appState = excalidrawAPI.getAppState()
       const scene = viewportCoordsToSceneCoords(
         { clientX: e.clientX, clientY: e.clientY },
         appState
       )
       const cards = getCardRefs(excalidrawAPI.getSceneElements() as unknown as CardElement[])
-      // Reverse z-order: last element is topmost.
-      for (let i = cards.length - 1; i >= 0; i--) {
-        const card = cards[i]
-        if (
-          scene.x >= card.x &&
-          scene.x <= card.x + card.width &&
-          scene.y >= card.y &&
-          scene.y <= card.y + card.height
-        ) {
-          e.preventDefault()
-          e.stopPropagation()
-          redirect(card)
-          return
-        }
+      const hit = hitTestCard(cards, scene)
+      if (hit) {
+        e.preventDefault()
+        e.stopPropagation()
+        dispatchActive({ type: 'activate', id: hit.elementId })
+      }
+    }
+
+    // Click-away deactivates the active card. Never stopPropagation here — the
+    // same pointerdown must still pan/select/draw on the canvas (C4).
+    const onPointerDownAway = (e: PointerEvent): void => {
+      const active = activeCardIdRef.current
+      if (!active) {
+        return
+      }
+      const target = e.target as Element | null
+      if (!target?.closest(`[data-canvas-active-card="${active}"]`)) {
+        dispatchActive({ type: 'deactivate' })
       }
     }
 
     wrapper.addEventListener('dragover', onDragOver, { capture: true })
     wrapper.addEventListener('drop', onDrop, { capture: true })
     wrapper.addEventListener('dblclick', onDblClick, { capture: true })
+    wrapper.addEventListener('pointerdown', onPointerDownAway, { capture: true })
     return () => {
       wrapper.removeEventListener('dragover', onDragOver, { capture: true })
       wrapper.removeEventListener('drop', onDrop, { capture: true })
       wrapper.removeEventListener('dblclick', onDblClick, { capture: true })
+      wrapper.removeEventListener('pointerdown', onPointerDownAway, { capture: true })
     }
-  }, [wrapperRef, excalidrawAPI, createCardElement, redirect])
+  }, [wrapperRef, excalidrawAPI, createCardElement, dispatchActive])
 
   const handleCreateNote = useCallback(async () => {
     try {
@@ -284,27 +320,39 @@ export const CanvasCardLayer = ({
 
   const cards = useMemo(
     () =>
-      visibleRefs.map((card) => (
-        <div
-          key={card.elementId}
-          className="absolute"
-          style={{
-            left: card.x,
-            top: card.y,
-            width: card.width,
-            height: card.height,
-            transform: card.angle ? `rotate(${card.angle}rad)` : undefined,
-            transformOrigin: 'center'
-          }}
-        >
-          <CanvasCard
-            cardRef={card}
-            state={entities.get(entityKey(card.entityType, card.entityId))}
-            onRedirect={redirect}
-          />
-        </div>
-      )),
-    [visibleRefs, entities, redirect]
+      visibleRefs.map((card) => {
+        const isActive = card.elementId === activeCardId
+        return (
+          <div
+            key={card.elementId}
+            className="absolute"
+            style={{
+              left: card.x,
+              top: card.y,
+              width: card.width,
+              height: card.height,
+              transform: card.angle ? `rotate(${card.angle}rad)` : undefined,
+              transformOrigin: 'center',
+              pointerEvents: isActive ? 'auto' : undefined
+            }}
+          >
+            {isActive ? (
+              <CanvasCardActive
+                cardRef={card}
+                state={entities.get(entityKey(card.entityType, card.entityId))}
+                onDeactivate={() => dispatchActive({ type: 'deactivate' })}
+              />
+            ) : (
+              <CanvasCard
+                cardRef={card}
+                state={entities.get(entityKey(card.entityType, card.entityId))}
+                onRedirect={redirect}
+              />
+            )}
+          </div>
+        )
+      }),
+    [visibleRefs, entities, redirect, activeCardId, dispatchActive]
   )
 
   return (
