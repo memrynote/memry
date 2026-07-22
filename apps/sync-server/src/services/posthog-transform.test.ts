@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest'
 
 import type { TelemetryBatch } from '@memry/contracts/telemetry-api'
 
-import { identifyEvent, personProperties, resolveDistinctId } from './posthog-transform'
+import {
+  identifyEvent,
+  personProperties,
+  productEvent,
+  resolveDistinctId
+} from './posthog-transform'
 
 export const batchFixture = (overrides: Partial<TelemetryBatch> = {}): TelemetryBatch => ({
   schemaVersion: 1,
@@ -65,5 +70,54 @@ describe('identifyEvent', () => {
     expect(event?.distinct_id).toBe('acct_1')
     expect(event?.properties.$anon_distinct_id).toBe('hash')
     expect(event?.properties.environment).toBe('production')
+  })
+})
+
+const ctx = { installHash: 'hash', environment: 'production' }
+
+const eventFixture = (overrides = {}) => ({
+  id: '33333333-3333-4333-8333-333333333333',
+  name: 'note_created' as const,
+  occurredAt: '2026-07-22T10:00:00.000Z',
+  surface: 'notes' as const,
+  action: 'create',
+  ...overrides
+})
+
+describe('productEvent', () => {
+  it('preserves the event name and maps the core fields', () => {
+    const result = productEvent(batchFixture(), eventFixture(), ctx)
+    expect(result.event).toBe('note_created')
+    expect(result.distinct_id).toBe('hash')
+    expect(result.timestamp).toBe('2026-07-22T10:00:00.000Z')
+    expect(result.properties.surface).toBe('notes')
+    expect(result.properties.action).toBe('create')
+    expect(result.properties.environment).toBe('production')
+  })
+
+  it('renames page_viewed to $pageview', () => {
+    const result = productEvent(batchFixture(), eventFixture({ name: 'page_viewed' }), ctx)
+    expect(result.event).toBe('$pageview')
+  })
+
+  it('attaches person properties via $set', () => {
+    const result = productEvent(batchFixture(), eventFixture(), ctx)
+    expect(result.properties.$set).toMatchObject({ platform: 'darwin', app_version: '2026.7.1' })
+  })
+
+  it('flattens metrics and the single dimension', () => {
+    const result = productEvent(
+      batchFixture(),
+      eventFixture({ metrics: { durationMs: 42 }, dimensions: { log_action: 'gpu_gone' } }),
+      ctx
+    )
+    expect(result.properties.duration_ms).toBe(42)
+    expect(result.properties.log_action).toBe('gpu_gone')
+  })
+
+  it('omits absent optional fields rather than emitting empty strings', () => {
+    const result = productEvent(batchFixture(), eventFixture(), ctx)
+    expect(result.properties).not.toHaveProperty('error_code')
+    expect(result.properties).not.toHaveProperty('object_type')
   })
 })
