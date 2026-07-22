@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CanvasTaskEditor } from './canvas-task-editor'
+import { flushAllPendingSaves, hasPendingSaves } from '@/lib/save-registry'
 import type { Task } from '@/data/task-model'
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -129,6 +130,29 @@ describe('CanvasTaskEditor', () => {
     const { unmount } = render(<CanvasTaskEditor taskId="t1" />)
     fireEvent.click(screen.getByTestId('description-editor'))
     unmount()
+    expect(mocks.updateTask).toHaveBeenCalledWith('t1', { description: 'new body' })
+  })
+
+  it('registers a pending-save flush while mounted and unregisters on unmount', () => {
+    vi.useFakeTimers()
+    currentTask = makeTask()
+    const { unmount } = render(<CanvasTaskEditor taskId="t1" />)
+    fireEvent.click(screen.getByTestId('description-editor'))
+    expect(hasPendingSaves()).toBe(true)
+    unmount()
+    expect(hasPendingSaves()).toBe(false)
+    expect(mocks.updateTask).toHaveBeenCalledWith('t1', { description: 'new body' })
+  })
+
+  it('flushes a pending description edit via the save-registry (quit handshake)', async () => {
+    vi.useFakeTimers()
+    currentTask = makeTask()
+    render(<CanvasTaskEditor taskId="t1" />)
+    fireEvent.click(screen.getByTestId('description-editor'))
+    expect(mocks.updateTask).not.toHaveBeenCalled()
+    await act(async () => {
+      await flushAllPendingSaves()
+    })
     expect(mocks.updateTask).toHaveBeenCalledWith('t1', { description: 'new body' })
   })
 })

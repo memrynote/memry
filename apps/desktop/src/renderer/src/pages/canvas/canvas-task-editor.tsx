@@ -16,6 +16,7 @@ import { InteractiveStatusBadge } from '@/components/tasks/interactive-status-ba
 import { InteractivePriorityBadge } from '@/components/tasks/interactive-priority-badge'
 import { InteractiveDueDateBadge } from '@/components/tasks/interactive-due-date-badge'
 import { TaskDescriptionEditor } from '@/components/tasks/task-description-editor'
+import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import type { Priority, Task as UiTask } from '@/data/task-model'
 
 const DESCRIPTION_SAVE_DEBOUNCE_MS = 500
@@ -56,7 +57,17 @@ export const CanvasTaskEditor = ({ taskId }: CanvasTaskEditorProps): React.JSX.E
     }
   }, [task, updateTask])
 
-  useEffect(() => flushDescription, [flushDescription])
+  // Register the debounced flush with the save-registry so an app quit /
+  // app:request-flush handshake during the debounce window doesn't drop the
+  // last <500ms of a description edit — mirrors embedded-note-editor.tsx.
+  useEffect(() => {
+    const registryKey = `canvas-task:${taskId}`
+    registerPendingSave(registryKey, flushDescription)
+    return () => {
+      unregisterPendingSave(registryKey)
+      flushDescription()
+    }
+  }, [taskId, flushDescription])
 
   const handleDescriptionChange = useCallback(
     (markdown: string) => {
