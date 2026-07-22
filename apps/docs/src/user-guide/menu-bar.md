@@ -21,7 +21,7 @@ palette, or the editor's slash menu.
 - **View** — Reload, Developer Tools, zoom, full screen, Toggle Sidebar, Toggle
   Day Panel, and a Theme submenu (Light, Dark, Paper, System).
 - **Window** — standard window controls (minimize, zoom, front).
-- **Help** — About, Documentation, and Keyboard Shortcuts.
+- **Help** — About, Documentation (<kbd>F1</kbd>), and Keyboard Shortcuts.
 
 ## About
 
@@ -36,7 +36,9 @@ result as the editor's slash (`/`) menu and formatting toolbar.
 
 ## Keyboard shortcuts
 
-Menu items intentionally do not display keyboard shortcuts. Shortcuts are owned
-by the app itself (and are remappable), so they keep working whether or not you
-use the menu. See [Keyboard Shortcuts](/user-guide/keyboard-shortcuts) for the
-full list.
+Menu items intentionally do not display keyboard shortcuts, with one exception:
+**Help → Documentation** shows <kbd>F1</kbd>, the fixed shortcut for opening the
+online docs at [docs.memrynote.com](https://docs.memrynote.com). Every other
+shortcut is owned by the app itself (and is remappable), so it keeps working
+whether or not you use the menu. See
+[Keyboard Shortcuts](/user-guide/keyboard-shortcuts) for the full list.
