@@ -41,10 +41,13 @@ export function ProjectIcon({
   fallback
 }: ProjectIconProps): React.JSX.Element {
   if (icon) {
-    // New HugeIcons value ("icon:Name") — tint via a wrapper (icons inherit currentColor).
-    if (isIconValue(icon)) {
+    // New shared-picker values: a HugeIcons "icon:Name" or a raw emoji glyph.
+    // Wrap in an aria-hidden `display:contents` span — the project name is the
+    // accessible label, so the glyph is decorative, and `contents` adds no layout
+    // box (color still inherits, tinting the HugeIcon; emoji ignore it).
+    if (isIconValue(icon) || containsNonAscii(icon)) {
       return (
-        <span className="inline-flex" style={color ? { color } : undefined}>
+        <span className="contents" style={color ? { color } : undefined} aria-hidden="true">
           <NoteIconDisplay value={icon} className={className} />
         </span>
       )
@@ -58,11 +61,6 @@ export function ProjectIcon({
         style: color ? { color } : undefined,
         'aria-hidden': 'true'
       })
-    }
-
-    // New raw emoji ("📚") — rendered as a glyph, never tinted.
-    if (containsNonAscii(icon)) {
-      return <NoteIconDisplay value={icon} className={className} />
     }
   }
 
