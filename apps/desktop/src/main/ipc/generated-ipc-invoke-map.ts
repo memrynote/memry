@@ -245,8 +245,8 @@ export interface MainIpcInvokeHandlers {
   "search:get-all-tags": (...args: []) => Awaited<Promise<string[]>>
   "search:get-reasons": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/search-api").SearchReason[]>>
   "search:get-stats": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/search-api").SearchStats>>
-  "search:query": (...args: [{ text: string; types?: ("inbox" | "note" | "task" | "journal")[] | undefined; tags?: string[] | undefined; dateRange?: { from: string; to: string; } | null | undefined; projectId?: string | null | undefined; folderPath?: string | null | undefined; limit?: number | undefined; offset?: number | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/search-api").SearchResponse>>
-  "search:quick": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/search-api").QuickSearchResponse>>
+  "search:query": (...args: [{ text: string; types?: ("inbox" | "note" | "task" | "journal")[] | undefined; tags?: string[] | undefined; dateRange?: { from: string; to: string; } | null | undefined; projectId?: string | null | undefined; folderPath?: string | null | undefined; limit?: number | undefined; offset?: number | undefined; noteFileTypes?: ("markdown" | "pdf" | "image" | "audio" | "video")[] | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/search-api").SearchResponse>>
+  "search:quick": (...args: [{ text: string; noteFileTypes?: ("markdown" | "pdf" | "image" | "audio" | "video")[] | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/search-api").QuickSearchResponse>>
   "search:rebuild-index": (...args: []) => Awaited<Promise<{ notes: number; tasks: number; inbox: number; durationMs: number; started: true; error?: undefined; } | { started: false; error: string; }>>
   "settings:downloadVoiceModel": (...args: []) => Awaited<Promise<{ success: boolean; error?: undefined; } | { success: boolean; error: string; }>>
   "settings:get": (...args: [string]) => Awaited<string | null>

@@ -7,7 +7,9 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/services/search-service', () => ({
-  searchService: { quick: (text: string) => mocks.quick(text) }
+  searchService: {
+    quick: (text: string, noteFileTypes?: string[]) => mocks.quick(text, noteFileTypes)
+  }
 }))
 vi.mock('@/services/calendar-service', () => ({
   calendarService: { getRange: (input: unknown) => mocks.getRange(input) }
@@ -50,7 +52,7 @@ describe('useCanvasAddSearch', () => {
   it('returns search results once the query resolves', async () => {
     const { result } = renderHook(() => useCanvasAddSearch(true, 'alpha'))
     await waitFor(() => expect(result.current.results).toEqual([{ id: 'n1' }]))
-    expect(mocks.quick).toHaveBeenCalledWith('alpha')
+    expect(mocks.quick).toHaveBeenCalledWith('alpha', ['markdown'])
     expect(result.current.loading).toBe(false)
   })
 
@@ -61,7 +63,7 @@ describe('useCanvasAddSearch', () => {
     rerender({ q: 'al' })
     rerender({ q: 'alp' })
     await waitFor(() => expect(mocks.quick).toHaveBeenCalledTimes(1))
-    expect(mocks.quick).toHaveBeenCalledWith('alp')
+    expect(mocks.quick).toHaveBeenCalledWith('alp', ['markdown'])
   })
 
   it('falls back to empty results when search rejects', async () => {

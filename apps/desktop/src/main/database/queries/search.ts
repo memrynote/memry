@@ -12,6 +12,8 @@ import { sql } from 'drizzle-orm'
 import type { DataDb, IndexDb } from '../types'
 import type {
   ContentType,
+  NoteFileType,
+  QuickSearchInput,
   SearchResultItem,
   SearchResultGroup,
   SearchResponse,
@@ -83,7 +85,27 @@ interface FtsInboxRow {
 // Per-type FTS queries
 // ============================================================================
 
-function searchNotes(indexDb: IndexDb, ftsQuery: string, limit: number): SearchResultItem[] {
+/**
+ * `file_type` is NULL for rows written before filed binaries existed, and those
+ * are always markdown — so the eligibility test has to coalesce, not compare.
+ * Returns an always-true fragment when the caller wants every file type.
+ */
+function noteFileTypeFilter(noteFileTypes: NoteFileType[] | undefined) {
+  if (!noteFileTypes || noteFileTypes.length === 0) {
+    return sql`1 = 1`
+  }
+  return sql`COALESCE(nc.file_type, 'markdown') IN (${sql.join(
+    noteFileTypes.map((fileType) => sql`${fileType}`),
+    sql`, `
+  )})`
+}
+
+function searchNotes(
+  indexDb: IndexDb,
+  ftsQuery: string,
+  limit: number,
+  noteFileTypes?: NoteFileType[]
+): SearchResultItem[] {
   if (!ftsQuery) return []
 
   const rows = indexDb.all<FtsNoteRow>(sql`
@@ -102,6 +124,7 @@ function searchNotes(indexDb: IndexDb, ftsQuery: string, limit: number): SearchR
     JOIN note_cache nc ON nc.id = fts_notes.id
     WHERE fts_notes MATCH ${ftsQuery}
       AND nc.date IS NULL
+      AND ${noteFileTypeFilter(noteFileTypes)}
     ORDER BY rank
     LIMIT ${limit}
   `)
@@ -282,12 +305,16 @@ interface TitleRow {
 }
 
 function getNoteTitles(
-  indexDb: IndexDb
+  indexDb: IndexDb,
+  noteFileTypes?: NoteFileType[]
 ): Array<TitleRow & { type: ContentType; metadata: NoteResultMetadata }> {
   const rows = indexDb.all<
     TitleRow & { path: string; emoji: string | null; fileType: NoteResultMetadata['fileType'] }
   >(
-    sql`SELECT id, title, path, emoji, file_type as fileType, modified_at as modifiedAt FROM note_cache WHERE date IS NULL`
+    sql`SELECT id, title, path, emoji, file_type as fileType, modified_at as modifiedAt
+        FROM note_cache nc
+        WHERE date IS NULL
+          AND ${noteFileTypeFilter(noteFileTypes)}`
   )
   return rows.map((r) => ({
     ...r,
@@ -454,10 +481,15 @@ function applyPostFilters(
   return filtered
 }
 
-function loadFuzzyCandidates(indexDb: IndexDb, dataDb: DataDb, type: ContentType) {
+function loadFuzzyCandidates(
+  indexDb: IndexDb,
+  dataDb: DataDb,
+  type: ContentType,
+  noteFileTypes?: NoteFileType[]
+) {
   switch (type) {
     case 'note':
-      return getNoteTitles(indexDb)
+      return getNoteTitles(indexDb, noteFileTypes)
     case 'journal':
       return getJournalTitles(indexDb)
     case 'task':
@@ -496,7 +528,7 @@ export function searchAll(indexDb: IndexDb, dataDb: DataDb, query: SearchQuery):
     try {
       switch (type) {
         case 'note':
-          results = searchNotes(indexDb, ftsQuery, fetchLimit)
+          results = searchNotes(indexDb, ftsQuery, fetchLimit, query.noteFileTypes)
           break
         case 'journal':
           results = searchJournals(indexDb, ftsQuery, fetchLimit)
@@ -523,7 +555,7 @@ export function searchAll(indexDb: IndexDb, dataDb: DataDb, query: SearchQuery):
 
     if (normalized.length < FUZZY_FALLBACK_THRESHOLD) {
       try {
-        const candidates = loadFuzzyCandidates(indexDb, dataDb, type)
+        const candidates = loadFuzzyCandidates(indexDb, dataDb, type, query.noteFileTypes)
         const existingIds = new Set(normalized.map((r) => r.id))
         const fuzzyResults = fuzzySearchTitles(candidates, query.text, query.limit).filter(
           (r) => !existingIds.has(r.id)
@@ -551,17 +583,22 @@ export function searchAll(indexDb: IndexDb, dataDb: DataDb, query: SearchQuery):
   return { groups, totalCount, queryTimeMs }
 }
 
-export function quickSearch(indexDb: IndexDb, dataDb: DataDb, text: string): QuickSearchResponse {
+export function quickSearch(
+  indexDb: IndexDb,
+  dataDb: DataDb,
+  input: QuickSearchInput
+): QuickSearchResponse {
   const startTime = performance.now()
   const query: SearchQuery = {
-    text,
+    text: input.text,
     types: [],
     tags: [],
     dateRange: null,
     projectId: null,
     folderPath: null,
     limit: 5,
-    offset: 0
+    offset: 0,
+    noteFileTypes: input.noteFileTypes
   }
 
   const response = searchAll(indexDb, dataDb, query)
