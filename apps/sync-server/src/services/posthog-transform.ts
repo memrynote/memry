@@ -123,6 +123,7 @@ export const exceptionEvent = (
 ): PostHogEvent | null => {
   if (!event.errorCode && !event.error) return null
 
+  // type only needs a label, so falling back to the event name is harmless here.
   const type = event.errorCode ?? event.name
   // Defense in depth: the client already redacted, re-run in mask mode (no hasher).
   const message = event.error?.message ? redactText(event.error.message, {}) : ''
@@ -140,7 +141,13 @@ export const exceptionEvent = (
           mechanism: { handled: true, synthetic: false }
         }
       ],
-      $exception_fingerprint: type,
+      // Unlike `type`, the fingerprint must NOT fall back to event.name: that would
+      // collapse every distinct error without an errorCode into one Error Tracking
+      // issue (all grouped under e.g. "app_error_seen"), defeating the pinning this
+      // comment block exists to justify. Omit the key when there is no errorCode so
+      // PostHog falls back to its own pattern-hash grouping instead. Do not
+      // "simplify" this back to an unconditional assignment.
+      ...(event.errorCode ? { $exception_fingerprint: event.errorCode } : {}),
       surface: event.surface,
       action: event.action,
       app_version: batch.appVersion,

@@ -200,4 +200,36 @@ describe('exceptionEvent', () => {
     const list = result?.properties.$exception_list as { value: string }[]
     expect(list[0].value).toBe('NO_DETAIL')
   })
+
+  it('omits $exception_fingerprint entirely when there is no errorCode', () => {
+    const result = exceptionEvent(
+      batchFixture(),
+      eventFixture({ name: 'app_error_seen', error: { message: 'boom' } }),
+      ctx
+    )
+    expect(result?.properties).not.toHaveProperty('$exception_fingerprint')
+  })
+
+  it('still sets $exception_list[0].type to the event name when there is no errorCode', () => {
+    const result = exceptionEvent(
+      batchFixture(),
+      eventFixture({ name: 'app_error_seen', error: { message: 'boom' } }),
+      ctx
+    )
+    const list = result?.properties.$exception_list as { type: string }[]
+    expect(list[0].type).toBe('app_error_seen')
+  })
+
+  it('pins $exception_fingerprint to the error code when one is present', () => {
+    const result = exceptionEvent(
+      batchFixture(),
+      eventFixture({
+        name: 'app_error_seen',
+        errorCode: 'SYNC_TIMEOUT',
+        error: { message: 'boom' }
+      }),
+      ctx
+    )
+    expect(result?.properties.$exception_fingerprint).toBe('SYNC_TIMEOUT')
+  })
 })
