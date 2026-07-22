@@ -459,3 +459,117 @@ describe('taskHandler applyUpsert with tags/linkedNoteIds', () => {
     expect(getTagsForTask('task-omit-1')).toEqual(['keep-me'])
   })
 })
+
+describe('taskHandler broadcasts notes:tags-changed on synced tag changes', () => {
+  let testDb: TestDatabaseResult
+  let ctx: ApplyContext
+
+  beforeEach(() => {
+    testDb = createTestDataDb()
+    ctx = makeCtx(testDb)
+    testDb.db.insert(projects).values(TEST_PROJECT).run()
+    testDb.db.insert(statuses).values(TEST_STATUSES).run()
+  })
+
+  afterEach(() => {
+    testDb.close()
+  })
+
+  it('emits on INSERT when the remote task carries tags', () => {
+    taskHandler.applyUpsert(ctx, 'sync-insert-1', makeTaskPayload({ tags: ['synced'] }), {
+      'device-B': 1
+    })
+    expect(ctx.emit).toHaveBeenCalledWith('notes:tags-changed', {})
+  })
+
+  it('does not emit on INSERT when the remote task has no tags field', () => {
+    taskHandler.applyUpsert(ctx, 'sync-insert-2', makeTaskPayload({}), { 'device-B': 1 })
+    expect(ctx.emit).not.toHaveBeenCalledWith('notes:tags-changed', {})
+  })
+
+  it('emits on APPLY (remote wins) when the payload carries tags', () => {
+    testDb.db
+      .insert(tasks)
+      .values({
+        id: 'sync-apply-1',
+        projectId: 'proj-1',
+        statusId: 'status-todo',
+        title: 'Task',
+        priority: 0,
+        position: 0,
+        clock: { 'device-A': 1 }
+      })
+      .run()
+
+    taskHandler.applyUpsert(ctx, 'sync-apply-1', makeTaskPayload({ tags: ['remote'] }), {
+      'device-A': 5
+    })
+    expect(ctx.emit).toHaveBeenCalledWith('notes:tags-changed', {})
+  })
+
+  it('emits on MERGE (concurrent edits) when the payload carries tags', () => {
+    const localFC = initAllFieldClocks({ 'device-A': 1 }, TASK_SYNCABLE_FIELDS)
+    testDb.db
+      .insert(tasks)
+      .values({
+        id: 'sync-merge-1',
+        projectId: 'proj-1',
+        statusId: 'status-todo',
+        title: 'Task',
+        priority: 0,
+        position: 0,
+        clock: { 'device-A': 2 },
+        fieldClocks: localFC
+      })
+      .run()
+
+    const remoteFC = initAllFieldClocks({ 'device-B': 1 }, TASK_SYNCABLE_FIELDS)
+    taskHandler.applyUpsert(
+      ctx,
+      'sync-merge-1',
+      makeTaskPayload({ tags: ['remote'], fieldClocks: remoteFC }),
+      { 'device-B': 2 }
+    )
+    expect(ctx.emit).toHaveBeenCalledWith('notes:tags-changed', {})
+  })
+
+  it('emits on DELETE when the deleted task had tags', () => {
+    testDb.db
+      .insert(tasks)
+      .values({
+        id: 'sync-del-1',
+        projectId: 'proj-1',
+        statusId: 'status-todo',
+        title: 'Task',
+        priority: 0,
+        position: 0,
+        clock: { 'device-A': 1 }
+      })
+      .run()
+    testDb.db
+      .insert(taskTags)
+      .values([{ taskId: 'sync-del-1', tag: 'gone' }])
+      .run()
+
+    taskHandler.applyDelete(ctx, 'sync-del-1')
+    expect(ctx.emit).toHaveBeenCalledWith('notes:tags-changed', {})
+  })
+
+  it('does not emit on DELETE when the deleted task had no tags', () => {
+    testDb.db
+      .insert(tasks)
+      .values({
+        id: 'sync-del-2',
+        projectId: 'proj-1',
+        statusId: 'status-todo',
+        title: 'Task',
+        priority: 0,
+        position: 0,
+        clock: { 'device-A': 1 }
+      })
+      .run()
+
+    taskHandler.applyDelete(ctx, 'sync-del-2')
+    expect(ctx.emit).not.toHaveBeenCalledWith('notes:tags-changed', {})
+  })
+})
