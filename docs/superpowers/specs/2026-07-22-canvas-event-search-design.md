@@ -138,6 +138,13 @@ made `ödeme` miss "Ödeme Toplantısı", `münchen` miss "MÜNCHEN Trip" and
 `toLowerCase().includes()` filter this design replaces. `ulower()` is
 JavaScript's `toLowerCase`, which folds the full Unicode range.
 
+`toLowerCase` still has one documented gap: it maps the Turkish dotted capital
+İ to `i` followed by a combining dot above (U+0069 U+0307), not to plain `i`,
+so a query of `istanbul` will not match a title of `İstanbul`. This is not a
+regression — the client-side filter it replaces used the same `toLowerCase`
+and had the identical gap — but it is worth naming here since it is exactly
+the kind of thing a Turkish-locale bug report would surface.
+
 The predicate is opaque to any index on `title`, so it full-scans non-archived
 rows. No such index exists, and `LIKE` with a leading wildcard could not have
 used one anyway.
@@ -173,8 +180,13 @@ Register the `removeHandler` line in the teardown block alongside the others.
 ### `use-canvas-add-search.ts`
 
 The two effects collapse into one debounced effect that fires
-`searchService.quick(query)` and `calendarService.searchEvents({ query })` in
-parallel, behind a single `loading` flag.
+`searchService.quick(trimmed, NOTE_FILE_TYPES)` and
+`calendarService.searchEvents({ query: trimmed })` in parallel, behind a single
+`loading` flag. `NOTE_FILE_TYPES` is `['markdown']`, a constant carried over
+from PR #887, which landed on main while this branch was in flight: quick-search
+caps results at 5 per type, and a filed binary is a "note" hit the picker can
+never place (#800), so without the filter a query matching several PDFs could
+fill the note cap with unplaceable rows and leave the Notes group empty.
 
 ```ts
 export interface CanvasAddSources {
@@ -225,8 +237,20 @@ on it.
 `EVENT_RANGE_DAYS` and `eventRange` are deleted; this change is what orphans
 them. Their tests go with them.
 
-`canvas-add-card-dialog.tsx` changes only where it reads the hook's `projections`
-and calls `candidatesFromProjections(projections, query, …)`.
+`canvas-add-card-dialog.tsx` swaps `projections`/`candidatesFromProjections(projections, query, …)`
+for `events`/`candidatesFromEvents(events, …)`; the `groups` memo drops `query`
+from its own dependency array because main now does the filtering, not the
+client.
+
+That drop has a knock-on effect on the highlight useEffect below it. Today
+that effect reads `[groups]` only, relying on `groups` itself changing
+whenever the query changes (it used to be a memo input) to catch the moment
+the query is cleared and re-highlight the create row. With `query` out of the
+`groups` deps, clearing the input no longer forces `groups` to recompute — for
+one frame the stale groups from the last non-empty query are still standing —
+so the effect gains an explicit `query.trim() === ''` guard that always wins
+the create row, and `query` moves into its dependency array so the effect
+re-runs on that transition even when `groups` does not.
 
 ## Behavior deltas
 
@@ -254,8 +278,9 @@ them. One `calendar_events` row is one candidate before and after, because
   query, response maps to the lean shape and drops `attendees`/`conferenceData`.
 - `canvas-add-card.test.ts` — `candidatesFromEvents` mapping and subtitle;
   `EVENT_RANGE_DAYS`/`eventRange` cases deleted.
-- `use-canvas-add-search.test.ts` — both calls fire once after the debounce;
-  blank query issues neither; one source failing leaves the other populated.
+- `use-canvas-add-search.test.ts` — both calls fire once after the debounce,
+  `searchService.quick` called with `NOTE_FILE_TYPES`; blank query issues
+  neither; one source failing leaves the other populated.
 - `canvas-add-card-dialog.test.tsx` — update the hook mock to `events`.
 
 Gates: `pnpm ipc:generate` then `pnpm ipc:check`, `pnpm typecheck`,

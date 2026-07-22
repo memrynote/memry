@@ -1031,8 +1031,8 @@ describe('calendar-handlers', () => {
     })
   })
 
-  it('searches events by title, ignoring archived ones, in a lean shape (#869)', async () => {
-    // #given — two events created through the real handler, one later archived
+  it('returns a title search hit in the lean shape, without the record fields (#869)', async () => {
+    // #given — one event created through the real handler
     registerCalendarHandlers()
     await invokeHandler(CalendarChannels.invoke.CREATE_EVENT, {
       title: 'Quarterly planning',

@@ -56,7 +56,10 @@ export function archiveCalendarEvent(db: DataDb, id: string, archivedAt: string)
  * `LIKE '%ödeme%'` would miss "Ödeme Toplantısı", `münchen` would miss
  * "MÜNCHEN Trip", and `лекция` would miss "ЛЕКЦИЯ". `ulower()` is JavaScript's
  * `toLowerCase`, which folds the full Unicode range — the same folding the
- * picker's old client-side `toLowerCase().includes()` filter did.
+ * picker's old client-side `toLowerCase().includes()` filter did. One gap
+ * carries over unchanged: `toLowerCase` maps the Turkish dotted İ to `i` plus
+ * a combining dot above rather than plain `i`, so `istanbul` will not match
+ * "İstanbul" — matching the old filter's behavior exactly, not a regression.
  *
  * The cost is a full scan of non-archived rows for the match predicate: the
  * function is opaque to any index on title. That index does not exist and LIKE
