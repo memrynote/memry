@@ -162,6 +162,52 @@ describe('embedding projector', () => {
     expect(readFile).toHaveBeenCalledWith('/vault/notes/two.md', 'utf-8')
   })
 
+  it('retains deferred ids when the model fails to load, then embeds them on a later reconcile', async () => {
+    const run = vi.fn()
+    // note-1 already has a (stale) vector, so it is only in the work list because
+    // it was deferred — the missing-vector filter alone would not re-catch it.
+    const prepare = vi.fn(() => ({ run, all: () => [{ note_id: 'note-1' }] }))
+    getRawIndexDatabase.mockReturnValue({ prepare })
+    getIndexDatabase.mockReturnValue({
+      all: vi.fn(() => [{ id: 'note-1', path: 'notes/one.md', title: 'One' }])
+    })
+    getSetting.mockImplementation((_db: unknown, key: string) =>
+      key === 'ai.embeddingInputVersion' ? String(EMBEDDING_INPUT_VERSION) : 'true'
+    )
+    readFile.mockResolvedValue('raw markdown')
+    parseNote.mockReturnValue({ content: 'parsed markdown long enough' })
+
+    let indexing = true
+    const projector = createEmbeddingProjector(
+      () => '/vault',
+      () => indexing
+    )
+
+    // Defer note-1 during indexing.
+    await projector.project({
+      type: 'note.upserted',
+      note: {
+        kind: 'markdown',
+        noteId: 'note-1',
+        title: 'One',
+        parsedContent: 'body one long enough'
+      }
+    } as never)
+    indexing = false
+
+    // First reconcile: the model won't load → the deferred id must be kept, not embedded.
+    isModelLoaded.mockReturnValue(false)
+    initEmbeddingModel.mockResolvedValueOnce(false)
+    await projector.reconcile()
+    expect(generateEmbedding).not.toHaveBeenCalled()
+
+    // Second reconcile: the model loads → the retained deferred id is embedded even
+    // though it still has a stale vector row.
+    initEmbeddingModel.mockResolvedValue(true)
+    await projector.reconcile()
+    expect(generateEmbedding).toHaveBeenCalledTimes(1)
+  })
+
   it('handles note events by storing, deleting, or skipping embeddings', async () => {
     const run = vi.fn()
     const prepare = vi.fn(() => ({ run }))

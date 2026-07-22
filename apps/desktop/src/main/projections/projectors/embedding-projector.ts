@@ -270,7 +270,8 @@ export function createEmbeddingProjector(
 
       const vaultPath = getVaultPath()
       if (!isAIEnabled() || !vaultPath) {
-        pendingEmbedding.clear()
+        // Deferred ids are left intact — nothing was embedded, so a later
+        // reconcile (or a full rebuild once AI is enabled) can still pick them up.
         emitProgress(markdownNotes.length, markdownNotes.length, 'complete')
         return
       }
@@ -288,9 +289,9 @@ export function createEmbeddingProjector(
       const workList = markdownNotes.filter(
         (note) => !embeddedIds.has(note.id) || pendingEmbedding.has(note.id)
       )
-      pendingEmbedding.clear()
 
       if (workList.length === 0) {
+        pendingEmbedding.clear()
         emitProgress(markdownNotes.length, markdownNotes.length, 'complete')
         return
       }
@@ -298,6 +299,9 @@ export function createEmbeddingProjector(
       if (!isModelLoaded()) {
         const loaded = await initEmbeddingModel()
         if (!loaded) {
+          // Keep the deferred ids: dropping them here would let an edited note
+          // (which still has a stale vector, so the missing-vector filter above
+          // won't re-catch it) keep that stale embedding after a failed load.
           emitProgress(markdownNotes.length, markdownNotes.length, 'complete')
           return
         }
@@ -305,6 +309,7 @@ export function createEmbeddingProjector(
 
       emitProgress(0, workList.length, 'embedding')
       await embedNotes(vaultPath, workList)
+      pendingEmbedding.clear()
       emitProgress(workList.length, workList.length, 'complete')
     }
   }
