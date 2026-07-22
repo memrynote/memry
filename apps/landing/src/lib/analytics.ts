@@ -1,4 +1,4 @@
-import { SYNC_SERVER_URL } from './account/config'
+import posthog from 'posthog-js'
 
 export type LandingEventName =
   | 'landing_scroll_25'
@@ -100,53 +100,43 @@ export function createLandingPageViewData(pathname: string, search = ''): Landin
   }
 }
 
-// Anonymous, fire-and-forget events → sync-server /telemetry/web → Cloudflare
-// Analytics Engine. Privacy: fixed event names, path-only pages, slug targets,
-// UTM params — no PII, no free-form strings. Errors are always swallowed so
-// analytics can never break the page.
-const TELEMETRY_ENDPOINT = `${SYNC_SERVER_URL}/telemetry/web`
-const VISITOR_ID_STORAGE_KEY = 'memry_landing_visitor_id'
-const UUID_VALUE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+// Product analytics + session replay via posthog-js, direct to PostHog's
+// reverse-proxy subdomain. Session replay cannot be server-proxied, so this
+// replaces the old sendBeacon/fetch pipe into sync-server. `init` no-ops when
+// there is no window (SSR/prerender) or no PostHog key configured, and only
+// runs once.
+let initialised = false
 
-let inMemoryVisitorId: string | undefined
+function init(): boolean {
+  if (initialised) return true
+  if (typeof window === 'undefined') return false
+  const key = import.meta.env.VITE_POSTHOG_KEY
+  if (!key) return false
 
-function getVisitorId(): string {
-  try {
-    const existing = window.localStorage.getItem(VISITOR_ID_STORAGE_KEY)
-    if (existing && UUID_VALUE.test(existing)) return existing
-    const created = crypto.randomUUID()
-    window.localStorage.setItem(VISITOR_ID_STORAGE_KEY, created)
-    return created
-  } catch {
-    // localStorage unavailable (private mode, blocked cookies) — session-scoped id
-    inMemoryVisitorId ??= crypto.randomUUID()
-    return inMemoryVisitorId
-  }
-}
-
-function sendLandingEvent(event: { name: string } & Partial<LandingEventData>): void {
-  if (typeof window === 'undefined') return
-  try {
-    const payload = JSON.stringify({ visitorId: getVisitorId(), events: [event] })
-    // A plain-string beacon posts as text/plain (no CORS preflight); the server
-    // parses the body as JSON regardless of content type.
-    if (navigator.sendBeacon?.(TELEMETRY_ENDPOINT, payload)) return
-    void fetch(TELEMETRY_ENDPOINT, { method: 'POST', keepalive: true, body: payload }).catch(
-      () => {}
-    )
-  } catch {
-    // never let analytics throw into the page
-  }
+  posthog.init(key, {
+    api_host: import.meta.env.VITE_POSTHOG_HOST ?? 'https://e.memrynote.com',
+    person_profiles: 'identified_only',
+    disable_external_dependency_loading: true,
+    session_recording: { maskAllInputs: true }
+  })
+  // Landing previously carried no environment tag, so prod, previews and local
+  // all blended into one stream. Tag it here to close that gap.
+  posthog.register({
+    environment: import.meta.env.MODE === 'production' ? 'production' : 'development'
+  })
+  initialised = true
+  return true
 }
 
 export function trackLandingPageView(pathname: string, search = ''): void {
-  sendLandingEvent({ name: 'landing_page_view', ...createLandingPageViewData(pathname, search) })
+  if (!init()) return
+  posthog.capture('$pageview', createLandingPageViewData(pathname, search))
 }
 
 export function trackLandingEvent(name: LandingEventName, target: string): void {
-  if (typeof window === 'undefined') return
-  sendLandingEvent({
+  if (!init()) return
+  posthog.capture(
     name,
-    ...createLandingEventData(target, window.location.pathname, window.location.search)
-  })
+    createLandingEventData(target, window.location.pathname, window.location.search)
+  )
 }
