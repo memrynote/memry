@@ -39,6 +39,34 @@ function createDbMock() {
   }
 }
 
+/** Flattens a drizzle SQL object into its literal text and bound params. */
+function sqlParts(query: unknown): { text: string; params: unknown[] } {
+  const chunks = (query as { queryChunks?: unknown[] }).queryChunks ?? []
+  let text = ''
+  const params: unknown[] = []
+  const walk = (chunk: unknown): void => {
+    // Bound values ride in the chunk list as bare primitives; only StringChunk
+    // (a `value: string[]`) and nested SQL carry literal text.
+    if (chunk === null || typeof chunk !== 'object') {
+      params.push(chunk)
+      return
+    }
+    const value = (chunk as { value?: unknown }).value
+    if (Array.isArray(value) && value.every((part) => typeof part === 'string')) {
+      text += value.join('')
+      return
+    }
+    const nested = (chunk as { queryChunks?: unknown[] }).queryChunks
+    if (nested) {
+      nested.forEach(walk)
+      return
+    }
+    params.push(value ?? chunk)
+  }
+  chunks.forEach(walk)
+  return { text, params }
+}
+
 function query(overrides: Partial<SearchQuery> = {}): SearchQuery {
   return {
     text: 'budget',
@@ -277,6 +305,45 @@ describe('cross-type search queries', () => {
     expect(fuzzySearchTitlesMock).toHaveBeenCalledTimes(2)
   })
 
+  it('filters note file types inside the FTS query so the cap counts eligible rows', () => {
+    indexDb.allQueue.push(noteRows(5))
+
+    searchAll(indexDb, dataDb, query({ types: ['note'], noteFileTypes: ['markdown'] }))
+
+    const fts = sqlParts(indexDb.all.mock.calls[0][0])
+    expect(fts.text).toContain("COALESCE(nc.file_type, 'markdown') IN (")
+    expect(fts.params).toContain('markdown')
+    // The eligibility test must sit above LIMIT, not after it.
+    expect(fts.text.indexOf('COALESCE')).toBeLessThan(fts.text.indexOf('LIMIT'))
+  })
+
+  it('filters fuzzy fallback candidates by note file type too', () => {
+    indexDb.allQueue.push(noteRows(1), [])
+
+    searchAll(indexDb, dataDb, query({ types: ['note'], noteFileTypes: ['markdown'] }))
+
+    const titles = sqlParts(indexDb.all.mock.calls[1][0])
+    expect(titles.text).toContain("COALESCE(nc.file_type, 'markdown') IN (")
+    expect(titles.params).toContain('markdown')
+  })
+
+  it('forwards quick-search note file types into the note query', () => {
+    indexDb.allQueue.push(noteRows(5), journalRows(5))
+    dataDb.allQueue.push(taskRows(5), inboxRows(5))
+
+    quickSearch(indexDb, dataDb, { text: 'invoice', noteFileTypes: ['markdown'] })
+
+    expect(sqlParts(indexDb.all.mock.calls[0][0]).params).toContain('markdown')
+  })
+
+  it('leaves note results unfiltered when no file types are requested', () => {
+    indexDb.allQueue.push(noteRows(5))
+
+    searchAll(indexDb, dataDb, query({ types: ['note'] }))
+
+    expect(sqlParts(indexDb.all.mock.calls[0][0]).text).not.toContain('COALESCE')
+  })
+
   it('continues after per-type FTS failures and keeps exact results if fuzzy fallback fails', () => {
     indexDb.allQueue.push(new Error('fts notes failed'))
     dataDb.allQueue.push(taskRows(1), new Error('title load failed'))
@@ -301,7 +368,7 @@ describe('cross-type search queries', () => {
     indexDb.allQueue.push(noteRows(3), journalRows(3))
     dataDb.allQueue.push(taskRows(3), inboxRows(3))
 
-    const quick = quickSearch(indexDb, dataDb, 'budget')
+    const quick = quickSearch(indexDb, dataDb, { text: 'budget' })
 
     expect(quick.results).toHaveLength(12)
     expect(quick.results[0].id).toBe('note-1')

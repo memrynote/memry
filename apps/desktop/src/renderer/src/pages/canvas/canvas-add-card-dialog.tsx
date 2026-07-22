@@ -10,16 +10,16 @@ import { Plus } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 import type { CanvasEntityType } from '@memry/contracts/canvas-api'
 import {
-  candidateKey,
   candidatesFromEvents,
   candidatesFromSearch,
   groupCandidates,
   markOnCanvas,
   type AddCardCandidate
 } from './canvas-add-card'
+import { entityKey } from './canvas-cards'
 import { useCanvasAddSearch } from './use-canvas-add-search'
 
-/** cmdk value for the pinned create row; never collides with a candidateKey. */
+/** cmdk value for the pinned create row; never collides with an entityKey. */
 const CREATE_VALUE = '__create_note__'
 
 export interface CanvasAddCardDialogProps {
@@ -72,7 +72,7 @@ export function CanvasAddCardDialog({
       return
     }
     const first = groups.note[0] ?? groups.task[0] ?? groups.calendar_event[0]
-    setValue(first ? candidateKey(first.entityType, first.entityId) : CREATE_VALUE)
+    setValue(first ? entityKey(first.entityType, first.entityId) : CREATE_VALUE)
   }, [groups, query])
 
   const select = (candidate: AddCardCandidate): void => {
@@ -91,7 +91,7 @@ export function CanvasAddCardDialog({
     return (
       <Command.Group heading={heading}>
         {items.map((candidate) => {
-          const key = candidateKey(candidate.entityType, candidate.entityId)
+          const key = entityKey(candidate.entityType, candidate.entityId)
           return (
             <Command.Item
               key={key}
@@ -127,6 +127,10 @@ export function CanvasAddCardDialog({
       value={value}
       onValueChange={setValue}
       label={t('canvas.card.addCard')}
+      // `className` lands on the cmdk root, not on the Radix parts — the scrim
+      // has to go through `overlayClassName` to dim the canvas behind. Matches
+      // the command palette's bg-black/50. See #872.
+      overlayClassName="fixed inset-0 z-50 bg-black/50"
       className="fixed start-1/2 top-24 z-50 w-[32rem] max-w-[90vw] -translate-x-1/2 overflow-hidden rounded-xl border border-border bg-card shadow-lg rtl:translate-x-1/2"
     >
       <Command.Input

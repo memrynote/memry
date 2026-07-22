@@ -10,6 +10,7 @@ import {
   safeWaitUntil,
   waitUntilCaptured
 } from '../services/analytics'
+import { hashTelemetryId } from '../services/telemetry'
 import type { AppContext } from '../types'
 
 const log = createLogger('Webhooks')
@@ -75,6 +76,7 @@ webhooks.post('/paddle', async (c) => {
   const result = await applyPaddleWebhook(c.env.DB, payload as never)
 
   if (result.processed && result.userId) {
+    const userId = result.userId
     const paddlePayload = payload as {
       event_type?: string
       eventType?: string
@@ -93,12 +95,21 @@ webhooks.post('/paddle', async (c) => {
               ? 'subscription_activated'
               : null
     if (subscriptionEvent) {
+      // paddle_customer_id maps 1:1 to a named paying customer — PostHog is a
+      // third-party sink, so it must only ever see the opaque hash, same as
+      // captureBusinessEvent's own handling of distinctId/userId.
+      const hashedCustomerId = customerId
+        ? hashTelemetryId(c.env.TELEMETRY_HMAC_KEY, customerId).catch(() => null)
+        : Promise.resolve(null)
+
       safeWaitUntil(
         c,
-        captureBusinessEvent(c.env, subscriptionEvent, result.userId, {
-          paddle_event_type: eventType,
-          paddle_customer_id: customerId || null
-        })
+        hashedCustomerId.then((paddleCustomerId) =>
+          captureBusinessEvent(c.env, subscriptionEvent, userId, {
+            paddle_event_type: eventType,
+            paddle_customer_id: paddleCustomerId
+          })
+        )
       )
     }
   }

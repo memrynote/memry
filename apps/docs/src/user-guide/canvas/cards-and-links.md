@@ -9,15 +9,26 @@ canvas. The canvas stores the reference, never a copy of your content.
 - **Click "Add card"** at the bottom of the canvas to search your notes, tasks
   and events, or to create a new note without leaving the board. "Create
   note …" is always the first option, and typing a title carries it into the
-  new note.
+  new note. The picker opens over a dimmed canvas; press <kbd>Esc</kbd> or
+  click outside it to go back to the board.
 
 Task and calendar-event cards are added through **Add card**. Dragging works
 for notes from the sidebar; the Tasks and Calendar pages have no drag-in, so
 tasks and events always go through the picker.
 
+Files you have filed into your vault — PDFs, images, audio and video — do not
+appear in the picker. A note card renders a markdown preview, so those open in
+the file viewer instead. They never take up room in the search results, so a
+matching note is always shown even when many filed files share its name.
+
 If you pick something that is already on the board, Memry scrolls to the card
 you already have instead of adding a duplicate — look for the **On canvas**
 badge in the results.
+
+A card added from the picker lands in the middle of your view, or in the
+nearest free spot beside it when something is already there. Add three tasks
+and an event in a row and they tile out from the centre instead of piling up on
+one point.
 
 Cards show a live preview: a note's title and the start of its body, a task's
 title and status, an event's title and time. Rename or complete the item

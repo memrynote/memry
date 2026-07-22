@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react'
 import type { CalendarEventSearchItem } from '@memry/contracts/calendar-api'
-import type { SearchResultItem } from '@memry/contracts/search-api'
+import type { NoteFileType, SearchResultItem } from '@memry/contracts/search-api'
 import { calendarService } from '@/services/calendar-service'
 import { searchService } from '@/services/search-service'
 import { createLogger } from '@/lib/logger'
@@ -23,6 +23,12 @@ const log = createLogger('SpatialCanvas')
 // results commit in the same tick as the query change and the highlight
 // would flicker to the create row on every keystroke.
 const SEARCH_DEBOUNCE_MS = 150
+
+// A filed binary is a "note" hit the picker can never place (see #800), and
+// quick-search caps results at 5 per type. Asking for markdown only makes the
+// cap count placeable rows, so matching PDFs can no longer eat every note slot
+// and leave the Notes group empty (#874).
+const NOTE_FILE_TYPES: NoteFileType[] = ['markdown']
 
 export interface CanvasAddSources {
   results: SearchResultItem[]
@@ -47,7 +53,7 @@ export function useCanvasAddSearch(open: boolean, query: string): CanvasAddSourc
     let cancelled = false
     const timer = setTimeout(() => {
       // Settled independently: one source failing must not blank the other.
-      const searching = searchService.quick(trimmed).then(
+      const searching = searchService.quick(trimmed, NOTE_FILE_TYPES).then(
         (response) => {
           if (!cancelled) setResults(response.results)
         },

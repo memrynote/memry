@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import type { SearchResultItem } from '@memry/contracts/search-api'
 import type { CalendarEventSearchItem } from '@memry/contracts/calendar-api'
 import {
-  candidateKey,
   candidatesFromEvents,
   candidatesFromSearch,
   groupCandidates,
@@ -10,6 +9,7 @@ import {
   onCanvasKeys,
   revealScroll
 } from './canvas-add-card'
+import { entityKey } from './canvas-cards'
 
 function noteHit(id: string, title: string, fileType?: string): SearchResultItem {
   return {
@@ -97,7 +97,7 @@ describe('candidatesFromSearch', () => {
 describe('markOnCanvas + groupCandidates', () => {
   it('flags entities already carded and groups by type', () => {
     const keys = onCanvasKeys([{ entityType: 'task', entityId: 't1' }])
-    expect(keys.has(candidateKey('task', 't1'))).toBe(true)
+    expect(keys.has(entityKey('task', 't1'))).toBe(true)
 
     const marked = markOnCanvas(
       candidatesFromSearch([noteHit('n1', 'Alpha'), taskHit('t1', 'Ship it')]),

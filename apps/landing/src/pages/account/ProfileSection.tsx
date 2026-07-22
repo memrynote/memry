@@ -107,11 +107,19 @@ export function ProfileSection() {
   return (
     <div className="space-y-8">
       <h1 className="font-editorial text-2xl tracking-[-0.01em]">Profile</h1>
-      {msg ? <p className="text-sm text-muted">{msg}</p> : null}
+      {/* Status messages ('Code sent to <email>', 'Confirmation code sent to
+          <email>') can contain the account email — keep out of session replay. */}
+      {msg ? (
+        <p className="text-sm text-muted" data-ph-mask>
+          {msg}
+        </p>
+      ) : null}
 
       <section className="rounded-2xl border border-border bg-card p-6">
         <h2 className="text-sm font-semibold">Email</h2>
-        <p className="mt-1 text-sm text-muted">{email || '—'}</p>
+        <p className="mt-1 text-sm text-muted" data-ph-mask>
+          {email || '—'}
+        </p>
         {emailStep === 'idle' ? (
           <div className="mt-4 flex gap-2">
             <Input

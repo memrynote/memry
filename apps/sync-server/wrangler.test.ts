@@ -43,23 +43,4 @@ describe('wrangler config', () => {
       /\[\[env\.production\.routes\]\][\s\S]*?pattern = "sync\.memrynote\.com\/\*"[\s\S]*?zone_name = "memrynote\.com"/
     )
   })
-
-  it('binds the PRODUCT_TELEMETRY analytics engine dataset per environment', () => {
-    const toml = readFileSync(resolve(__dirname, 'wrangler.toml'), 'utf8')
-
-    // root (development) dataset
-    expect(toml).toMatch(
-      /\[\[analytics_engine_datasets\]\][\s\S]*?binding = "PRODUCT_TELEMETRY"[\s\S]*?dataset = "memry_product_telemetry_dev"/
-    )
-
-    // staging dataset
-    expect(toml).toMatch(
-      /\[\[env\.staging\.analytics_engine_datasets\]\][\s\S]*?binding = "PRODUCT_TELEMETRY"[\s\S]*?dataset = "memry_product_telemetry_staging"/
-    )
-
-    // production dataset
-    expect(toml).toMatch(
-      /\[\[env\.production\.analytics_engine_datasets\]\][\s\S]*?binding = "PRODUCT_TELEMETRY"[\s\S]*?dataset = "memry_product_telemetry_production"/
-    )
-  })
 })

@@ -1,4 +1,5 @@
 import type {
+  NoteFileType,
   SearchQueryInput,
   SearchResponse,
   QuickSearchResponse,
@@ -13,8 +14,8 @@ export const searchService = {
     return window.api.search.query(params)
   },
 
-  quick(text: string): Promise<QuickSearchResponse> {
-    return window.api.search.quick(text)
+  quick(text: string, noteFileTypes?: NoteFileType[]): Promise<QuickSearchResponse> {
+    return window.api.search.quick(text, noteFileTypes)
   },
 
   getStats(): Promise<SearchStats> {

@@ -97,6 +97,16 @@ export function getCardRefs(elements: readonly CardElement[]): CanvasCardRef[] {
 }
 
 /**
+ * The one derivation of an entity's string identity. Everything that keys a
+ * Map/Set by (entityType, entityId) — ref dedup, the resolved-entity map, the
+ * picker's "already on canvas" check — goes through here so the shapes cannot
+ * drift apart.
+ */
+export function entityKey(entityType: CanvasEntityType, entityId: string): string {
+  return `${entityType}:${entityId}`
+}
+
+/**
  * Advisory entity refs for persistence, deduped by (entityType, entityId).
  * The store rewrites canvas_entity_refs from this on every save.
  */
@@ -104,7 +114,7 @@ export function extractEntityRefs(elements: readonly CardElement[]): CanvasEntit
   const seen = new Set<string>()
   const refs: CanvasEntityRef[] = []
   for (const card of getCardRefs(elements)) {
-    const key = `${card.entityType}:${card.entityId}`
+    const key = entityKey(card.entityType, card.entityId)
     if (seen.has(key)) {
       continue
     }
@@ -250,6 +260,83 @@ export function makeCardSkeleton(input: {
     roundness: { type: 3 },
     customData: { entityType: input.entityType, entityId: input.entityId }
   }
+}
+
+/** Scene-unit gap left between auto-placed cards. */
+export const CARD_PLACEMENT_GAP = 24
+/** How far the placement spiral searches before falling back to the centre. */
+const MAX_PLACEMENT_RINGS = 8
+
+function rectsOverlap(
+  a: { x: number; y: number; width: number; height: number },
+  b: { x: number; y: number; width: number; height: number }
+): boolean {
+  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
+}
+
+/**
+ * Grid offsets forming one square ring at radius `ring`, ordered clockwise from
+ * due east so the next card lands beside its predecessor rather than diagonally
+ * above it.
+ */
+function ringCells(ring: number): [number, number][] {
+  if (ring === 0) {
+    return [[0, 0]]
+  }
+  const cells: [number, number][] = []
+  for (let dy = -ring; dy <= ring; dy++) {
+    for (let dx = -ring; dx <= ring; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) === ring) {
+        cells.push([dx, dy])
+      }
+    }
+  }
+  const clockwise = ([dx, dy]: [number, number]): number => {
+    const angle = Math.atan2(dy, dx)
+    return angle < 0 ? angle + 2 * Math.PI : angle
+  }
+  return cells.sort((a, b) => clockwise(a) - clockwise(b))
+}
+
+/**
+ * Where to centre a newly added card: the viewport centre, or — when a card is
+ * already there — the first free cell of a card-sized grid spiralling out from
+ * it. Without this, adding several cards in a row stacks them exactly on top of
+ * each other and the user has to drag the pile apart to find them (#871).
+ *
+ * Occupancy is read from the live scene, so consecutive picks tile outwards
+ * without the caller tracking any placement state.
+ */
+export function findFreeCardCenter(
+  cards: readonly CanvasCardRef[],
+  rect: SceneRect,
+  size: { width: number; height: number } = {
+    width: CARD_DEFAULT_WIDTH,
+    height: CARD_DEFAULT_HEIGHT
+  }
+): { x: number; y: number } {
+  const centerX = (rect.minX + rect.maxX) / 2
+  const centerY = (rect.minY + rect.maxY) / 2
+  const stepX = size.width + CARD_PLACEMENT_GAP
+  const stepY = size.height + CARD_PLACEMENT_GAP
+  for (let ring = 0; ring <= MAX_PLACEMENT_RINGS; ring++) {
+    for (const [dx, dy] of ringCells(ring)) {
+      const x = centerX + dx * stepX
+      const y = centerY + dy * stepY
+      const candidate = {
+        x: x - size.width / 2,
+        y: y - size.height / 2,
+        width: size.width,
+        height: size.height
+      }
+      if (!cards.some((card) => rectsOverlap(candidate, card))) {
+        return { x, y }
+      }
+    }
+  }
+  // Everything within reach is taken — stack on the centre rather than fling
+  // the card somewhere the user would have to hunt for it.
+  return { x: centerX, y: centerY }
 }
 
 /**

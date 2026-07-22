@@ -17,14 +17,6 @@ migrations_dir = "migrations"
 binding = "STORAGE"
 bucket_name = "memry-encrypted-blobs-staging"
 
-[[analytics_engine_datasets]]
-binding = "PRODUCT_TELEMETRY"
-dataset = "memry_product_telemetry_dev"
-
-[[analytics_engine_datasets]]
-binding = "LANDING_TELEMETRY"
-dataset = "memry_landing_telemetry_dev"
-
 [durable_objects]
 bindings = [
   { name = "USER_SYNC_STATE", class_name = "UserSyncState" },
@@ -54,7 +46,7 @@ ALLOWED_ORIGIN = "https://staging.memrynote.com"
 WEB_OAUTH_REDIRECT_URI = "https://staging.memrynote.com/auth/oauth/callback"
 MIN_APP_VERSION = "0.1.0"
 PADDLE_ENVIRONMENT = "sandbox"
-LOKI_URL = "https://grafana.memrynote.com"
+POSTHOG_HOST = "https://us.i.posthog.com"
 
 [[env.staging.routes]]
 pattern = "sync-staging.memrynote.com/*"
@@ -70,14 +62,6 @@ migrations_dir = "migrations"
 binding = "STORAGE"
 bucket_name = "memry-encrypted-blobs-staging"
 
-[[env.staging.analytics_engine_datasets]]
-binding = "PRODUCT_TELEMETRY"
-dataset = "memry_product_telemetry_staging"
-
-[[env.staging.analytics_engine_datasets]]
-binding = "LANDING_TELEMETRY"
-dataset = "memry_landing_telemetry_staging"
-
 [env.staging.durable_objects]
 bindings = [
   { name = "USER_SYNC_STATE", class_name = "UserSyncState" },
@@ -92,7 +76,7 @@ ALLOWED_ORIGIN = "https://memrynote.com"
 WEB_OAUTH_REDIRECT_URI = "https://memrynote.com/auth/oauth/callback"
 MIN_APP_VERSION = "0.1.0"
 PADDLE_ENVIRONMENT = "production"
-LOKI_URL = "https://grafana.memrynote.com"
+POSTHOG_HOST = "https://us.i.posthog.com"
 
 [[env.production.routes]]
 pattern = "sync.memrynote.com/*"
@@ -107,14 +91,6 @@ migrations_dir = "migrations"
 [[env.production.r2_buckets]]
 binding = "STORAGE"
 bucket_name = "memry-encrypted-blobs-production"
-
-[[env.production.analytics_engine_datasets]]
-binding = "PRODUCT_TELEMETRY"
-dataset = "memry_product_telemetry_production"
-
-[[env.production.analytics_engine_datasets]]
-binding = "LANDING_TELEMETRY"
-dataset = "memry_landing_telemetry_production"
 
 [env.production.durable_objects]
 bindings = [

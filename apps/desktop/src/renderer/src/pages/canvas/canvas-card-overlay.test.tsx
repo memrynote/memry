@@ -271,6 +271,30 @@ describe('CanvasCardLayer', () => {
     ).toBe(true)
   })
 
+  it('offsets a placed card off one already sitting at the viewport centre (#871)', async () => {
+    mocks.notesCreate.mockResolvedValue({ success: true, note: { id: 'captured' } })
+    // jsdom reports a 0-size clip, so the viewport centre is (0, 0) — this card
+    // covers it, and the new card must not be dropped on top of it.
+    const occupied = cardEl('e1', 'n1', -130, -84)
+    const { api, updateScene } = makeApi([occupied])
+    render(<Harness api={api} />)
+
+    fireEvent.click(screen.getByTestId('canvas-add-card'))
+    fireEvent.click(screen.getByTestId('stub-create-note'))
+    await waitFor(() => expect(updateScene).toHaveBeenCalled())
+
+    const created = updateScene.mock.calls[0][0].elements.find(
+      (e: { customData?: { entityId?: string } }) => e.customData?.entityId === 'captured'
+    )
+    expect(created).toBeDefined()
+    expect(
+      created.x >= occupied.x + occupied.width ||
+        created.x + created.width <= occupied.x ||
+        created.y >= occupied.y + occupied.height ||
+        created.y + created.height <= occupied.y
+    ).toBe(true)
+  })
+
   it('reveals an existing card (searching the whole scene, not just visible cards) without adding a new element', async () => {
     mocks.entities = new Map([
       ['note:n1', { status: 'ready', kind: 'note', title: 'One' }],

@@ -1,0 +1,54 @@
+name: Deploy docs (production)
+
+# Automatic Git deployments are turned off for this project
+# ("git": { "deploymentEnabled": false } in the root vercel.json), so every push
+# no longer mints a Vercel deployment record. Production deploys happen here
+# instead, only when main moves and only when docs files changed.
+#
+# memry-docs has its Vercel Root Directory set to the repository root, so it
+# reads the root /vercel.json. apps/docs/vercel.json is vestigial and is never
+# read by Vercel — do not move this project's config there.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/docs/**'
+      - 'vercel.json'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-docs-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy memry-docs to production
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      # memry-docs. Not a secret: the project id is visible in the Vercel
+      # dashboard URL and is inert without VERCEL_TOKEN.
+      VERCEL_PROJECT_ID: prj_nve19PogMusECtpcMbvYKizqXm8m
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # Vercel runs the build remotely, so the root vercel.json still supplies
+      # installCommand (SKIP_ELECTRON_REBUILD=1) and ignoreCommand.
+      - name: Deploy to production
+        run: |
+          npx --yes vercel@latest deploy --prod --yes \
+            --token "$VERCEL_TOKEN" > deployment-url.txt
+          echo "Deployed: $(cat deployment-url.txt)" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

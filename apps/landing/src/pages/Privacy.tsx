@@ -56,9 +56,12 @@ export function PrivacyPage() {
         <p>
           Each event is one row from a fixed list — for example <em>app_started</em>,{' '}
           <em>note_created</em>, <em>search_performed</em>, <em>sync_run_completed</em>,{' '}
-          <em>app_error_seen</em>. We do not capture free-form strings. The schema rejects any
+          <em>app_error_seen</em>. Event dimensions are not free-form: the schema rejects any
           dimension that looks like an email address, URL, file path, or raw identifier before the
-          event ever leaves your device.
+          event ever leaves your device. Crash events (<em>app_error_seen</em>) may also carry a
+          short error message and stack frames; both are redacted on your device — emails, tokens,
+          UUIDs, and file paths replaced with placeholders — before upload, and the server re-checks
+          that redaction before storing anything.
         </p>
         <p>Each event ships with:</p>
         <ul>
@@ -84,8 +87,8 @@ export function PrivacyPage() {
         </p>
         <p>
           Crash reporting is part of the same stream. We see that an error happened, on which
-          surface, and an error code from a fixed list — never a stack trace that could contain your
-          data.
+          surface, and an error code from a fixed list, plus the redacted stack frames and error
+          message described above.
         </p>
 
         <h2>4. What Sync sends to our servers</h2>
@@ -112,8 +115,12 @@ export function PrivacyPage() {
 
         <h2>5. What the website collects</h2>
         <p>
-          memrynote.com does not run third-party advertising trackers, session replay, or cross-site
-          analytics, and does not sell visitor data.
+          memrynote.com does not run third-party advertising trackers and does not sell visitor
+          data. It does run product analytics and session replay, provided by PostHog, so we can see
+          how the site is used and diagnose problems. Every form field value is masked in the replay
+          by default, and pages that can show your email address (sign-in, account settings) mask
+          that text specifically as well, so it is never captured. PostHog sets cookies to keep
+          track of your session.
         </p>
         <p>
           If you contact us or sign up for an account, we store the email address you submit so we
@@ -159,9 +166,13 @@ export function PrivacyPage() {
         </p>
         <ul>
           <li>
-            <strong>Cloudflare</strong> — hosts the Sync API, stores encrypted blobs in R2, runs the
-            marketing website&apos;s edge, and receives anonymous desktop product usage metrics (if
-            you leave usage metrics on).
+            <strong>Cloudflare</strong> — hosts the Sync API, stores encrypted blobs in R2, and runs
+            the marketing website&apos;s edge.
+          </li>
+          <li>
+            <strong>PostHog</strong> — receives anonymous desktop product usage metrics and crash
+            reports (if you leave usage metrics on), and provides product analytics and session
+            replay for memrynote.com.
           </li>
           <li>
             <strong>Paddle</strong> — merchant of record for payments. Receives billing details

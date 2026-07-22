@@ -19,7 +19,7 @@ import {
 } from '@/services/tasks-service'
 import { calendarService, onCalendarChanged } from '@/services/calendar-service'
 import { createLogger } from '@/lib/logger'
-import type { CanvasCardRef } from './canvas-cards'
+import { entityKey, type CanvasCardRef } from './canvas-cards'
 import type { CanvasEntityType } from '@memry/contracts/canvas-api'
 
 const log = createLogger('SpatialCanvas')
@@ -38,9 +38,7 @@ export type CanvasEntityState =
       isAllDay: boolean
     }
 
-export function entityKey(entityType: CanvasEntityType, entityId: string): string {
-  return `${entityType}:${entityId}`
-}
+export { entityKey }
 
 type EntityMap = ReadonlyMap<string, CanvasEntityState>
 

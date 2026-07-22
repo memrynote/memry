@@ -31,7 +31,10 @@ describe('searchService', () => {
     expect(api.search.query).toHaveBeenCalledWith({ query: 'roadmap' })
 
     await searchService.quick('road')
-    expect(api.search.quick).toHaveBeenCalledWith('road')
+    expect(api.search.quick).toHaveBeenCalledWith('road', undefined)
+
+    await searchService.quick('road', ['markdown'])
+    expect(api.search.quick).toHaveBeenCalledWith('road', ['markdown'])
 
     await searchService.getStats()
     expect(api.search.getStats).toHaveBeenCalled()

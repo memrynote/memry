@@ -8,7 +8,7 @@
 import type { CanvasEntityType } from '@memry/contracts/canvas-api'
 import type { CalendarEventSearchItem } from '@memry/contracts/calendar-api'
 import type { SearchResultItem } from '@memry/contracts/search-api'
-import { formatEventTime } from './canvas-cards'
+import { entityKey, formatEventTime } from './canvas-cards'
 
 export interface AddCardCandidate {
   entityType: CanvasEntityType
@@ -26,11 +26,6 @@ export interface AddCardGroups {
   calendar_event: AddCardCandidate[]
 }
 
-/** Stable identity for a candidate, matching extractEntityRefs' key shape. */
-export function candidateKey(entityType: CanvasEntityType, entityId: string): string {
-  return `${entityType}:${entityId}`
-}
-
 /**
  * Notes and tasks from a quick-search response. Journal and inbox hits are
  * dropped — neither is a CanvasEntityType.
@@ -41,7 +36,8 @@ export function candidatesFromSearch(results: readonly SearchResultItem[]): AddC
     if (result.metadata.type === 'note') {
       // A "note" hit can be a filed binary (pdf/image/audio/video — see #800).
       // Canvas note cards render markdown previews and open the markdown
-      // editor, so a binary is not placeable.
+      // editor, so a binary is not placeable. The picker's quick-search call
+      // already asks for markdown only (#874); this is the backstop.
       if ((result.metadata.fileType ?? 'markdown') !== 'markdown') {
         continue
       }
@@ -69,7 +65,7 @@ export function candidatesFromSearch(results: readonly SearchResultItem[]): AddC
 export function onCanvasKeys(
   cards: readonly { entityType: CanvasEntityType; entityId: string }[]
 ): Set<string> {
-  return new Set(cards.map((card) => candidateKey(card.entityType, card.entityId)))
+  return new Set(cards.map((card) => entityKey(card.entityType, card.entityId)))
 }
 
 export function markOnCanvas(
@@ -78,7 +74,7 @@ export function markOnCanvas(
 ): AddCardCandidate[] {
   return candidates.map((candidate) => ({
     ...candidate,
-    onCanvas: keys.has(candidateKey(candidate.entityType, candidate.entityId))
+    onCanvas: keys.has(entityKey(candidate.entityType, candidate.entityId))
   }))
 }
 

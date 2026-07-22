@@ -782,7 +782,7 @@ auth.post('/logout', authMiddleware, async (c) => {
   try {
     await revokeDeviceTokens(c.env.DB, deviceId)
   } catch (err) {
-    // captureServerError logs + pushes to Loki; logout still succeeds
+    // captureServerError logs + pushes to PostHog; logout still succeeds
     safeWaitUntil(
       c,
       captureServerError(c.env, {

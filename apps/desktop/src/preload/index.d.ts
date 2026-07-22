@@ -815,6 +815,7 @@ export type InboxClientAPI = InboxRpc.InboxClientAPI
 
 // Search types
 import type {
+  NoteFileType,
   SearchResponse,
   QuickSearchResponse,
   SearchStats,
@@ -832,8 +833,9 @@ export interface SearchClientAPI {
     folderPath?: string | null
     limit?: number
     offset?: number
+    noteFileTypes?: NoteFileType[]
   }): Promise<SearchResponse>
-  quick(text: string): Promise<QuickSearchResponse>
+  quick(text: string, noteFileTypes?: NoteFileType[]): Promise<QuickSearchResponse>
   getStats(): Promise<SearchStats>
   rebuildIndex(): Promise<{ started: true }>
   getReasons(): Promise<SearchReason[]>

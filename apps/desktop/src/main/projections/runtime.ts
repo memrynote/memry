@@ -28,69 +28,112 @@ function selectProjectors(
   return projectors.filter((projector) => wanted.has(projector.name))
 }
 
+/**
+ * One independent queue per projector.
+ *
+ * Projectors used to share a single queue that awaited each of them in turn, so
+ * one slow projector blocked every other projector's writes head-of-line. The
+ * embedding projector awaits a multi-second model load inside project(), which
+ * left note_cache holding a renamed note's old path for seconds — long enough
+ * for every read of that note to resolve a file that no longer exists and come
+ * back null, i.e. a live note looking deleted to the renderer (#877).
+ *
+ * Each lane still drains its own events in publish order; only the ordering
+ * *between* projectors is relaxed, and no projector reads another's output
+ * during project() (they all work from the event payload).
+ */
+interface ProjectorLane {
+  projector: ProjectionProjector
+  bus: ProjectionBus
+  isScheduled: boolean
+  activeDrain: Promise<void> | null
+}
+
 export function createProjectionRuntime(options: ProjectionRuntimeOptions): ProjectionRuntime {
-  const bus = new ProjectionBus()
   const logger = options.logger
   const scheduleDrain = options.scheduleDrain ?? ((task: () => void) => queueMicrotask(task))
 
   let isStopped = false
-  let isScheduled = false
-  let activeDrain: Promise<void> | null = null
 
-  const runEvent = async (event: ProjectionEvent): Promise<void> => {
-    for (const projector of options.projectors) {
-      if (!projector.handles(event)) {
-        continue
-      }
+  const lanes: ProjectorLane[] = options.projectors.map((projector) => ({
+    projector,
+    bus: new ProjectionBus(),
+    isScheduled: false,
+    activeDrain: null
+  }))
 
-      try {
-        await projector.project(event)
-      } catch (error) {
-        logger?.error?.('Projection projector failed', {
-          projector: projector.name,
-          event,
-          error
-        })
-      }
+  const runEvent = async (lane: ProjectorLane, event: ProjectionEvent): Promise<void> => {
+    if (!lane.projector.handles(event)) {
+      return
+    }
+
+    try {
+      await lane.projector.project(event)
+    } catch (error) {
+      logger?.error?.('Projection projector failed', {
+        projector: lane.projector.name,
+        event,
+        error
+      })
     }
   }
 
-  const drain = async (): Promise<void> => {
-    if (activeDrain) {
-      return activeDrain
+  const drainLane = (lane: ProjectorLane): Promise<void> => {
+    if (lane.activeDrain) {
+      return lane.activeDrain
     }
 
-    activeDrain = (async () => {
+    // The handle is created and stored before the loop starts: an already-empty
+    // lane finishes its body synchronously, and assigning the promise afterwards
+    // would overwrite the null the `finally` already wrote, leaving the lane
+    // permanently "draining" (and drain()'s wait loop spinning).
+    let settle: () => void = () => {}
+    const handle = new Promise<void>((resolve) => {
+      settle = resolve
+    })
+    lane.activeDrain = handle
+
+    void (async () => {
       try {
-        while (!isStopped && bus.size > 0) {
-          const event = bus.dequeue()
+        while (!isStopped && lane.bus.size > 0) {
+          const event = lane.bus.dequeue()
           if (!event) {
             break
           }
 
-          await runEvent(event)
+          await runEvent(lane, event)
         }
       } finally {
-        isScheduled = false
-        activeDrain = null
+        lane.isScheduled = false
+        lane.activeDrain = null
+        settle()
 
-        if (!isStopped && bus.size > 0) {
-          schedule()
+        if (!isStopped && lane.bus.size > 0) {
+          schedule(lane)
         }
       }
     })()
 
-    return activeDrain
+    return handle
   }
 
-  const schedule = (): void => {
-    if (isStopped || isScheduled) {
+  const drain = async (): Promise<void> => {
+    // Lanes advance independently, so a lane can still be busy (or have been
+    // refilled) when a faster one settles. Loop until every lane is idle — or
+    // until the runtime stops, since a stopped lane never drains its backlog.
+    while (!isStopped && lanes.some((lane) => lane.bus.size > 0 || lane.activeDrain)) {
+      await Promise.all(lanes.map((lane) => drainLane(lane)))
+    }
+  }
+
+  const schedule = (lane: ProjectorLane): void => {
+    if (isStopped || lane.isScheduled) {
       return
     }
 
-    isScheduled = true
+    lane.isScheduled = true
     scheduleDrain(() => {
-      void drain()
+      void drainLane(lane)
     })
   }
 
@@ -101,8 +144,10 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
         return
       }
 
-      bus.enqueue(event)
-      schedule()
+      for (const lane of lanes) {
+        lane.bus.enqueue(event)
+        schedule(lane)
+      }
     },
 
     async flush() {
@@ -136,12 +181,14 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
       }
 
       isStopped = true
-      isScheduled = false
-      bus.clear()
+      for (const lane of lanes) {
+        lane.isScheduled = false
+        lane.bus.clear()
+      }
     },
 
     getPendingCount() {
-      return bus.size
+      return lanes.reduce((total, lane) => total + lane.bus.size, 0)
     }
   }
 }

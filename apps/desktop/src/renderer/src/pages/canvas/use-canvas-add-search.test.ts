@@ -7,7 +7,12 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/services/search-service', () => ({
-  searchService: { quick: (text: string) => mocks.quick(text) }
+  // Forwards EVERY argument on purpose. A mock that names a fixed arity drops
+  // whatever it does not name, which would silently hide a regression where the
+  // note file-type filter (#887) stops being passed to quick-search.
+  searchService: {
+    quick: (...args: unknown[]) => mocks.quick(...args)
+  }
 }))
 vi.mock('@/services/calendar-service', () => ({
   calendarService: { searchEvents: (input: unknown) => mocks.searchEvents(input) }
@@ -52,7 +57,8 @@ describe('useCanvasAddSearch', () => {
     // #then — search and event search both run, both results land
     await waitFor(() => expect(result.current.results).toEqual([{ id: 'n1' }]))
     expect(result.current.events).toEqual([{ id: 'e1' }])
-    expect(mocks.quick).toHaveBeenCalledWith('alpha')
+    // The note file-type filter (#887) must survive alongside the event source.
+    expect(mocks.quick).toHaveBeenCalledWith('alpha', ['markdown'])
     expect(mocks.searchEvents).toHaveBeenCalledWith({ query: 'alpha' })
     expect(result.current.loading).toBe(false)
   })
@@ -61,9 +67,10 @@ describe('useCanvasAddSearch', () => {
     // #given / #when — a query with leading and trailing whitespace
     const { result } = renderHook(() => useCanvasAddSearch(true, '  alpha  '))
 
-    // #then — both sources receive the trimmed query, not the raw one
+    // #then — both sources receive the trimmed query, not the raw one, and the
+    // trimming does not cost the note file-type filter (#887)
     await waitFor(() => expect(result.current.loading).toBe(false))
-    expect(mocks.quick).toHaveBeenCalledWith('alpha')
+    expect(mocks.quick).toHaveBeenCalledWith('alpha', ['markdown'])
     expect(mocks.searchEvents).toHaveBeenCalledWith({ query: 'alpha' })
   })
 
@@ -94,7 +101,7 @@ describe('useCanvasAddSearch', () => {
 
     // #then — one call each, for the last query only
     await waitFor(() => expect(mocks.quick).toHaveBeenCalledTimes(1))
-    expect(mocks.quick).toHaveBeenCalledWith('alp')
+    expect(mocks.quick).toHaveBeenCalledWith('alp', ['markdown'])
     expect(mocks.searchEvents).toHaveBeenCalledTimes(1)
     expect(mocks.searchEvents).toHaveBeenCalledWith({ query: 'alp' })
   })

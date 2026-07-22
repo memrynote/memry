@@ -1,0 +1,52 @@
+name: Deploy landing (production)
+
+# Automatic Git deployments are turned off for this project
+# ("git": { "deploymentEnabled": false } in apps/landing/vercel.json), so every
+# push no longer mints a Vercel deployment record. Production deploys happen
+# here instead, only when main moves and only when landing files changed.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/landing/**'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-landing-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy memrynote-landing to production
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      # memrynote-landing. Not a secret: the project id is visible in the Vercel
+      # dashboard URL and is inert without VERCEL_TOKEN.
+      VERCEL_PROJECT_ID: prj_Wr8cz8Dd2HBQaXM6ZCGjTDr5uOlO
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # Run from the repository root, never from apps/landing: the project's
+      # Root Directory setting is applied by Vercel during the build, so the CLI
+      # has to upload the whole repo for the workspace install to resolve.
+      # Vercel runs the build remotely, so apps/landing/vercel.json still
+      # supplies installCommand (SKIP_ELECTRON_REBUILD=1) and ignoreCommand.
+      - name: Deploy to production
+        run: |
+          npx --yes vercel@latest deploy --prod --yes \
+            --token "$VERCEL_TOKEN" > deployment-url.txt
+          echo "Deployed: $(cat deployment-url.txt)" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
