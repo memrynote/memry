@@ -69,6 +69,7 @@ import {
   generateEmbedding,
   getModelInfo,
   initEmbeddingModel,
+  isInformationalWorkerStderr,
   isModelLoaded,
   isModelLoading,
   resetEmbeddingModelFailure,
@@ -568,6 +569,33 @@ describe('embeddings', () => {
         (call) => call[1]?.action === 'embed_failed'
       )
       expect(embedFailures).toHaveLength(1)
+    })
+  })
+
+  describe('worker stderr classification', () => {
+    it('treats the transformers.js content-length note as informational', () => {
+      expect(
+        isInformationalWorkerStderr(
+          'Unable to determine content-length from response headers, will expand buffer when needed.'
+        )
+      ).toBe(true)
+    })
+
+    it('treats a real worker failure as an error', () => {
+      expect(isInformationalWorkerStderr('Error: ENOSPC: no space left on device')).toBe(false)
+    })
+
+    it('keeps a chunk at error when a real failure is interleaved with benign notes', () => {
+      const chunk = [
+        'Unable to determine content-length from response headers, will expand buffer when needed.',
+        'Error: ENOSPC: no space left on device'
+      ].join('\n')
+
+      expect(isInformationalWorkerStderr(chunk)).toBe(false)
+    })
+
+    it('does not classify an empty chunk as informational', () => {
+      expect(isInformationalWorkerStderr('   \n  ')).toBe(false)
     })
   })
 })

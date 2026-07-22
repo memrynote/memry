@@ -71,6 +71,28 @@ type PendingRequest = {
 }
 
 /**
+ * Progress notes transformers.js writes to the worker's stderr during a model
+ * download. They are informational, not failures, but logging the whole stream
+ * at error put them in the production error feed (#846).
+ */
+const INFORMATIONAL_WORKER_STDERR = [
+  /Unable to determine content-length from response headers/i
+] as const
+
+/**
+ * True only when every line in the chunk is a known-benign note, so a real
+ * error interleaved with progress output still surfaces at error level.
+ */
+export function isInformationalWorkerStderr(output: string): boolean {
+  const lines = output
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+  if (lines.length === 0) return false
+  return lines.every((line) => INFORMATIONAL_WORKER_STDERR.some((pattern) => pattern.test(line)))
+}
+
+/**
  * Emit model loading progress to all renderer windows
  */
 function emitProgress(phase: EmbeddingProgressPhase, progress: number, status: string): void {
@@ -313,9 +335,12 @@ class EmbeddingModelBridge {
     })
     child.stderr?.on('data', (chunk: Buffer | string) => {
       const output = chunk.toString().trim()
-      if (output) {
-        logger.error(`Embedding utility stderr: ${output}`)
+      if (!output) return
+      if (isInformationalWorkerStderr(output)) {
+        logger.debug(`Embedding utility stderr: ${output}`)
+        return
       }
+      logger.error(`Embedding utility stderr: ${output}`)
     })
 
     this.readyPromise = new Promise<void>((resolve, reject) => {

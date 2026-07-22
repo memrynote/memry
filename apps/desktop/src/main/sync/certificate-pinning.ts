@@ -25,14 +25,15 @@ export class CertificatePinningError extends Error {
 }
 
 // Placeholder pins mean pinning was never activated for this host; TLS-only
-// is the deliberate fallback, not a runtime failure. Warn once per process
-// instead of logging CRITICAL errors on every boot.
+// is the deliberate fallback, not a runtime failure. Log once per process at
+// debug: at warn this fired on every startup and was the single largest group
+// in the production log stream (#846), with nothing actionable for the user.
 let warnedPinningUnconfigured = false
 
 export function warnPinningUnconfiguredOnce(): void {
   if (warnedPinningUnconfigured) return
   warnedPinningUnconfigured = true
-  log.warn(
+  log.debug(
     'Certificate pinning not configured — using standard TLS. Run `pnpm cert:extract -- <hostname>` and update certificate-pins.ts to enable pinning.'
   )
 }

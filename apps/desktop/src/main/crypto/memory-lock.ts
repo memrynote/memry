@@ -7,6 +7,9 @@ type SodiumLockApi = Record<string, unknown> & {
   sodium_munlock?: (buf: Uint8Array) => void
 }
 
+// The WASM build never exposes mlock/munlock, so "unavailable" is the expected
+// steady state, not a fault — it stays at debug so it never reaches the remote
+// warn stream (#846). Real mlock/munlock *failures* below remain at warn.
 let warnedMissingMlock = false
 let warnedMissingMunlock = false
 
@@ -24,7 +27,7 @@ export function lockKeyMaterial(buffer: Uint8Array): boolean {
   if (!mlock) {
     if (!warnedMissingMlock) {
       warnedMissingMlock = true
-      log.warn(
+      log.debug(
         'sodium_mlock unavailable in WASM build. Key material will not be pinned to RAM. ' +
           'This is expected in Electron/Node.js — OS-level FDE provides equivalent swap protection.'
       )
@@ -48,7 +51,7 @@ export function unlockKeyMaterial(buffer: Uint8Array): boolean {
   if (!munlock) {
     if (!warnedMissingMunlock) {
       warnedMissingMunlock = true
-      log.warn('sodium_munlock unavailable in WASM build. Cleanup will continue without munlock.')
+      log.debug('sodium_munlock unavailable in WASM build. Cleanup will continue without munlock.')
     }
     return false
   }
