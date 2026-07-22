@@ -97,8 +97,28 @@ export const SafeDimensionValueSchema = z
     message: 'Telemetry dimension values must not contain raw identifiers'
   })
 
+// PostHog treats these as reserved/special-purpose property names regardless of
+// which object they land on (event properties, person properties, etc). A `$`
+// prefix is PostHog's own reserved-property convention; distinct_id in
+// particular lives in a different namespace on PostHogEvent (top-level, not
+// under `properties`) than anything productEvent itself writes, so ordering
+// tricks there cannot protect it — the key must never be accepted here.
+const RESERVED_DIMENSION_KEYS = new Set([
+  'distinct_id',
+  'set',
+  'set_once',
+  'groups',
+  'session_id',
+  'ip'
+])
+
+export const SafeDimensionKeySchema = SafeDimensionValueSchema.refine(
+  (key) => !key.startsWith('$') && !RESERVED_DIMENSION_KEYS.has(key),
+  { message: 'Telemetry dimension keys must not use a PostHog-reserved name' }
+)
+
 export const TelemetryDimensionsSchema = z
-  .record(SafeDimensionValueSchema, SafeDimensionValueSchema)
+  .record(SafeDimensionKeySchema, SafeDimensionValueSchema)
   .refine((dimensions) => Object.keys(dimensions).length <= 1, {
     message: 'Telemetry events support at most one dimension'
   })
@@ -422,9 +442,11 @@ export const normalizeWindowError = (report: WindowErrorReport): Error => {
 
 /**
  * Build the redacted, length-capped error detail attached to `app_error_seen`
- * desktop telemetry. Privacy: we NEVER send the error message (it can contain a
- * note title/filename/content) — only the stack frames (code locations) and the
- * React component stack, with home paths and stray identifiers scrubbed.
+ * desktop telemetry. buildErrorDetail itself never populates `message` — a raw
+ * error message can contain a note title/filename/content — so this only sends
+ * the stack frames (code locations) and the React component stack, with home
+ * paths and stray identifiers scrubbed. See TelemetryErrorDetailSchema.message
+ * above for the contract's own optional, redacted message field.
  * Returns undefined when there is nothing useful to send.
  */
 export const buildErrorDetail = (

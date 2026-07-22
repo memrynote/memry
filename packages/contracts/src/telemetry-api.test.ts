@@ -348,6 +348,58 @@ describe('TelemetryBatchSchema', () => {
       expect(result.success).toBe(false)
     })
 
+    it('rejects reserved PostHog dimension keys, one at a time', () => {
+      // #given each key PostHog treats as reserved/special-purpose
+      const reservedKeys = [
+        'distinct_id',
+        '$distinct_id',
+        '$set',
+        '$set_once',
+        'set',
+        'set_once',
+        'groups',
+        'session_id',
+        'ip'
+      ]
+
+      for (const key of reservedKeys) {
+        // #when an event carries that key as its one dimension
+        const batch = {
+          ...baseBatch,
+          events: [{ ...baseEvent, dimensions: { [key]: 'safe_value' } }]
+        }
+        const result = TelemetryBatchSchema.safeParse(batch)
+
+        // #then validation fails — a caller cannot smuggle an identity field
+        // through the dimensions bag
+        expect(result.success, `expected "${key}" to be rejected`).toBe(false)
+      }
+    })
+
+    it('still accepts a representative real dimension key from the desktop app', () => {
+      // #given the actual dimension keys the desktop app sends today (grepped
+      // from apps/desktop/src): log_action, capture_type, setting, from_version,
+      // itemType, transport, result_bucket
+      for (const key of [
+        'log_action',
+        'capture_type',
+        'setting',
+        'from_version',
+        'itemType',
+        'transport',
+        'result_bucket'
+      ]) {
+        const batch = {
+          ...baseBatch,
+          events: [{ ...baseEvent, dimensions: { [key]: 'safe_value' } }]
+        }
+        const result = TelemetryBatchSchema.safeParse(batch)
+
+        // #then none of the desktop's real keys are collateral damage
+        expect(result.success, `expected "${key}" to still validate`).toBe(true)
+      }
+    })
+
     it('rejects an action with a path separator', () => {
       // #given an event whose action contains a slash
       const batch = {
