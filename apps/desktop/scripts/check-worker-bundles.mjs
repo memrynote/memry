@@ -18,6 +18,9 @@ import { fileURLToPath } from 'node:url'
 const outMain = resolve(dirname(fileURLToPath(import.meta.url)), '../out/main')
 
 const WORKER_ENTRIES = [
+  // Not a worker_thread, but it runs under ELECTRON_RUN_AS_NODE as a fallback
+  // (see crdt-preflight.ts), where `electron` does not exist either.
+  'crdt-preflight-child.js',
   'sync-worker.js',
   'image-processing-worker.js',
   'voice-transcription-worker.js',

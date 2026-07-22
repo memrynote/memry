@@ -1,7 +1,7 @@
 import * as Y from 'yjs'
 import { LeveldbPersistence } from 'y-leveldb'
 import path from 'path'
-import { existsSync, renameSync } from 'fs'
+import { existsSync, rmSync } from 'fs'
 import { app, BrowserWindow } from 'electron'
 import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
@@ -11,6 +11,7 @@ import type { CrdtUpdateQueue } from './crdt-queue'
 import { MicrotaskBatchBroadcaster } from './microtask-batch-broadcaster'
 import { scheduleWriteback, flushPendingWritebacks, recordNetworkUpdate } from './crdt-writeback'
 import { runCrdtPreflight } from './crdt-preflight'
+import { moveStoreDir } from './crdt-store-move'
 import { toAbsolutePath } from '../vault/notes'
 import { safeRead } from '../vault/file-ops'
 import { parseNote } from '../vault/frontmatter'
@@ -131,7 +132,12 @@ export class CrdtProvider {
       // corrupt on-disk state aborts the child too. Only load it here if the
       // child survives.
       let preflight = await runCrdtPreflight(storagePath)
-      if (!preflight.ok && existsSync(storagePath)) {
+      // Only a child that actually opened the store can implicate it. A child
+      // that never started (Windows: utility process dies in Chromium/crashpad
+      // init) or that died loading the binding never touched the data, and
+      // quarantining on that verdict only churned the store dir every launch —
+      // with the restore then failing EPERM under AV. See crdt-preflight.ts.
+      if (!preflight.ok && preflight.stage === 'store' && existsSync(storagePath)) {
         // The abort may be the store's data (torn LDB/MANIFEST from a past
         // crash or full disk), not the binding. Quarantine the store and give
         // the binding one clean shot at a fresh directory: pass → the data was
@@ -140,24 +146,35 @@ export class CrdtProvider {
         // binding is the problem, so restore the store for a future launch
         // with a working binding and fall through to in-memory mode.
         const quarantinePath = `${storagePath}.broken-${Date.now()}`
-        renameSync(storagePath, quarantinePath)
-        preflight = await runCrdtPreflight(storagePath)
-        if (preflight.ok) {
-          log.warn(
-            'CRDT store quarantined after failed preflight — continuing with a fresh store',
-            {
-              storagePath,
-              quarantinePath
-            }
-          )
+        const quarantined = await moveStoreDir(storagePath, quarantinePath)
+        if (!quarantined) {
+          log.warn('Could not quarantine the CRDT store — leaving it in place', { storagePath })
         } else {
-          try {
-            renameSync(quarantinePath, storagePath)
-          } catch (restoreErr) {
-            log.warn('Failed to restore quarantined CRDT store', {
-              quarantinePath,
-              error: restoreErr
-            })
+          preflight = await runCrdtPreflight(storagePath)
+          if (preflight.ok) {
+            log.warn(
+              'CRDT store quarantined after failed preflight — continuing with a fresh store',
+              {
+                storagePath,
+                quarantinePath
+              }
+            )
+          } else {
+            // The failed re-probe can leave a partial fresh store behind, and
+            // on Windows renaming onto an existing directory fails EPERM —
+            // exactly what production logs show. That directory holds nothing
+            // (the probe never completed), so clear it before restoring.
+            try {
+              rmSync(storagePath, { recursive: true, force: true })
+            } catch (err) {
+              log.warn('Could not clear the fresh CRDT store before restoring', {
+                storagePath,
+                error: err
+              })
+            }
+            if (!(await moveStoreDir(quarantinePath, storagePath))) {
+              log.warn('Failed to restore quarantined CRDT store', { quarantinePath, storagePath })
+            }
           }
         }
       }
@@ -445,7 +462,6 @@ export class CrdtProvider {
     await this.destroy()
     const storagePath = path.join(app.getPath('userData'), 'crdt-store')
     try {
-      const { rmSync } = await import('fs')
       rmSync(storagePath, { recursive: true, force: true })
       log.info('CRDT storage wiped', { storagePath })
     } catch (err) {
