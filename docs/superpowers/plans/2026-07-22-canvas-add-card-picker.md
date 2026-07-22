@@ -10,7 +10,8 @@
 
 ## Global Constraints
 
-- **Base branch: `origin/spatial-canvas-m7-rollout`** (commit `0f642d48c`). The docs corrected in Task 5 do not exist on `main`. Branch from m7-rollout, not main.
+- **Base branch: `origin/spatial-canvas-m7-rollout`** (branched at `98793e0db`). The docs corrected in Task 5 do not exist on `main`. Work happens in the worktree `/Users/h4yfans/workspace/memry/.worktrees/canvas-add-card-picker` on branch `canvas-add-card-picker`.
+- **Line numbers in this plan are indicative, not exact** — the base branch moved after the plan was written. Locate code by content, not by line number.
 - **Renderer-only.** No contracts, IPC, DB schema, sync, or settings change. Do **not** run `pnpm ipc:generate` / `ipc:check` — nothing in `packages/contracts` changes.
 - Feature rides behind the existing `spatialCanvas` flag (default-off). No released-user exposure.
 - **Logging:** `createLogger('SpatialCanvas')` from `@/lib/logger`. Never `console.*`.
@@ -139,9 +140,23 @@ describe('candidatesFromSearch', () => {
   })
 
   it('drops journal and inbox hits', () => {
-    const journal = { ...noteHit('j1', 'Day'), type: 'journal' } as SearchResultItem
-    ;(journal as { metadata: { type: string } }).metadata = { type: 'journal' }
-    expect(candidatesFromSearch([journal])).toEqual([])
+    const journal = {
+      ...noteHit('j1', 'Day'),
+      type: 'journal',
+      metadata: { type: 'journal', date: '2026-07-01', path: 'j/1.md', tags: [] }
+    } as unknown as SearchResultItem
+    const inbox = {
+      ...noteHit('i1', 'Clipped'),
+      type: 'inbox',
+      metadata: {
+        type: 'inbox',
+        itemType: 'link',
+        sourceUrl: null,
+        sourceTitle: null,
+        filedAt: null
+      }
+    } as unknown as SearchResultItem
+    expect(candidatesFromSearch([journal, inbox])).toEqual([])
   })
 })
 
@@ -1039,48 +1054,12 @@ const [addOpen, setAddOpen] = useState(false)
 const [addKeys, setAddKeys] = useState<ReadonlySet<string>>(() => new Set<string>())
 ```
 
-(c) Replace `handleCreateNote` (currently at line 344) so it accepts a title:
+(c) Add the shared placement helper, then replace `handleCreateNote` so it
+accepts a title. Capture-first and pick both drop a card at the viewport
+centre, so that math lives in one place — do NOT inline it twice:
 
 ```ts
-const handleCreateNote = useCallback(
-  async (title: string) => {
-    try {
-      const result = await notesService.create({
-        title: title || 'Untitled Note',
-        content: ''
-      })
-      if (!result.success || !result.note) {
-        throw new Error(result.error ?? 'note create failed')
-      }
-      const { appState } = readScene()
-      const rect = viewportSceneRect(appState, {
-        width: clipRef.current?.clientWidth ?? 0,
-        height: clipRef.current?.clientHeight ?? 0
-      })
-      createCardElement(
-        'note',
-        result.note.id,
-        (rect.minX + rect.maxX) / 2,
-        (rect.minY + rect.maxY) / 2
-      )
-    } catch (err) {
-      log.error('Failed to create canvas note', err)
-      toast.error(
-        extractErrorMessage(
-          err,
-          getI18n().getFixedT(null, 'common')('canvas.card.createNoteFailed')
-        )
-      )
-    }
-  },
-  [readScene, createCardElement]
-)
-```
-
-(d) Add the pick and reveal handlers directly after it:
-
-```ts
-const handlePick = useCallback(
+const placeCard = useCallback(
   (entityType: CanvasCardRef['entityType'], entityId: string) => {
     const { appState } = readScene()
     const rect = viewportSceneRect(appState, {
@@ -1097,6 +1076,35 @@ const handlePick = useCallback(
   [readScene, createCardElement]
 )
 
+const handleCreateNote = useCallback(
+  async (title: string) => {
+    try {
+      const result = await notesService.create({
+        title: title || 'Untitled Note',
+        content: ''
+      })
+      if (!result.success || !result.note) {
+        throw new Error(result.error ?? 'note create failed')
+      }
+      placeCard('note', result.note.id)
+    } catch (err) {
+      log.error('Failed to create canvas note', err)
+      toast.error(
+        extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'common')('canvas.card.createNoteFailed')
+        )
+      )
+    }
+  },
+  [placeCard]
+)
+```
+
+(d) Add the reveal handler directly after it. There is no separate `handlePick` —
+the dialog's `onPick` is `placeCard`, whose signature already matches:
+
+```ts
 // Picking an entity that already has a card centers that card instead of
 // adding a second one, so entity refs stay 1:1 and arrows never fragment.
 const handleReveal = useCallback(
@@ -1153,7 +1161,7 @@ const openAddDialog = useCallback(() => {
         onOpenChange={setAddOpen}
         onCanvasKeys={addKeys}
         onCreateNote={(title) => void handleCreateNote(title)}
-        onPick={handlePick}
+        onPick={placeCard}
         onReveal={handleReveal}
       />
 ```
