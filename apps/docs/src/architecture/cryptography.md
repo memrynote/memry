@@ -107,6 +107,27 @@ allowed through the Electron verifier instead of being compared against an unrel
 pins. Development builds keep pinning disabled so local sync servers and test certificates remain
 usable.
 
+### Pin activation state
+
+A host entry in `certificate-pins.ts` may hold placeholder hashes, which means pinning has not been
+activated for that host yet. This is a supported state, not a broken one: the runtime falls back to
+standard TLS verification for placeholder pins rather than failing the connection.
+
+`pnpm cert:check` (also run by `prebuild` and `build:release`) audits the configured host and
+reflects the same rule:
+
+| Host pin state                                     | Result                               |
+| -------------------------------------------------- | ------------------------------------ |
+| Real SPKI hashes                                   | passes                               |
+| Placeholder hashes                                 | warns — build proceeds with TLS only |
+| Placeholder hashes with `MEMRY_CERT_PINS_STRICT=1` | fails                                |
+| No entry for the host, or a malformed pin          | fails                                |
+
+To activate pinning for a host, run `pnpm cert:extract -- <hostname>`, replace that host's
+placeholders with the emitted hashes (keep a backup pin for rotation), and set
+`MEMRY_CERT_PINS_STRICT=1` in the release build so the host can never silently regress to
+unpinned.
+
 ## Renderer Permission Policy
 
 The desktop app registers deny-by-default permission handlers on the Electron session at startup,

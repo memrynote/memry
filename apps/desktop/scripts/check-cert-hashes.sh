@@ -4,10 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-if [ "${CI:-}" = "true" ]; then
-  echo "CI detected — skipping certificate hash check (not a production build)"
-  exit 0
-fi
-
+# No CI escape hatch: placeholder pins now warn instead of failing, so the check
+# is safe to run everywhere and is only useful where releases are actually built.
 node --experimental-strip-types --experimental-transform-types \
   "$APP_ROOT/scripts/check-cert-hashes.ts"
