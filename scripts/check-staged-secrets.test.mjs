@@ -21,6 +21,16 @@ describe('check-staged-secrets JSX handling', () => {
   })
 })
 
+describe('check-staged-secrets numeric values', () => {
+  it('ignores a token-named variable reset to a number', () => {
+    assert.deepEqual(rules('  tokenIssuedAt = 0'), [])
+  })
+
+  it('still flags a token-named prop assigned a long quoted number-like string', () => {
+    assert.deepEqual(rules('  token={"01234567890123456789"}'), ['high-risk-secret-assignment'])
+  })
+})
+
 describe('check-staged-secrets constructor values', () => {
   it('ignores a secret-named key assigned a constructor call over a code reference', () => {
     assert.deepEqual(rules('  signingSecretKey: new Uint8Array(signingSecretKey),'), [])

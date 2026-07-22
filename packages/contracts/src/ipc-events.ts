@@ -107,7 +107,16 @@ export interface SyncResumedEvent {
   pendingCount: number
 }
 
-export type SessionExpiredReason = 'token_expired' | 'device_revoked' | 'server_error'
+/**
+ * 'refresh_rejected' — the server rejected the refresh token itself (401
+ * AUTH_INVALID_TOKEN). Unlike 'token_expired' this can never resolve on its
+ * own: the client stops refreshing entirely and the user must sign in again.
+ */
+export type SessionExpiredReason =
+  | 'token_expired'
+  | 'device_revoked'
+  | 'server_error'
+  | 'refresh_rejected'
 
 export interface SessionExpiredEvent {
   reason: SessionExpiredReason
