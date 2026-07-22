@@ -53,6 +53,14 @@ vi.mock('./canvas-card', () => ({
     </button>
   )
 }))
+// Stub the embedded note editor leaf so the real CanvasCardActive (whose
+// data-attrs + keyboard containment these tests exercise) renders without
+// pulling ContentArea → react-pdf (which needs DOMMatrix, absent in jsdom).
+vi.mock('./embedded-note-editor', () => ({
+  EmbeddedNoteEditor: ({ noteId }: { noteId: string }) => (
+    <div data-testid={`embedded-note-${noteId}`} />
+  )
+}))
 
 function cardEl(id: string, entityId: string, x = 0, y = 0): CardElement {
   return {

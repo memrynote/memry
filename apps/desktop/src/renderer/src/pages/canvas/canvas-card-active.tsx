@@ -1,12 +1,14 @@
 /**
  * CanvasCardActive — the single active card. pointer-events:auto so it captures
  * input; keydown/keyup are swallowed so Cmd/Ctrl+Z belongs to the mounted
- * editor (not Excalidraw), and Escape closes the editor. Tasks 5–7 replace the
- * per-type placeholder with the real note/task/event editors.
+ * editor (not Excalidraw), and Escape closes the editor. Note cards render the
+ * real note editor (Task 5); task/event cards keep the placeholder until
+ * Tasks 6–7 replace it.
  */
 import React, { useCallback, useEffect, useRef } from 'react'
 import type { CanvasCardRef } from './canvas-cards'
 import type { CanvasEntityState } from './use-canvas-entities'
+import { EmbeddedNoteEditor } from './embedded-note-editor'
 
 interface CanvasCardActiveProps {
   cardRef: CanvasCardRef
@@ -18,12 +20,14 @@ export const CanvasCardActive = ({
   cardRef,
   onDeactivate
 }: CanvasCardActiveProps): React.JSX.Element => {
-  const editorRef = useRef<HTMLDivElement>(null)
-  // Focus the editor on activation so keyboard events target this card (and
-  // its onKeyDown below) instead of whatever had focus before the dblclick —
-  // otherwise Escape/Cmd+Z never reach this container at all.
+  const containerRef = useRef<HTMLDivElement>(null)
+  // Focus the container on activation so keyboard events target this card
+  // (and its onKeyDown below) instead of whatever had focus before the
+  // dblclick — otherwise Escape/Cmd+Z never reach this container at all. This
+  // must live on the outer container (not the per-type editor inside) since
+  // the note branch mounts BlockNote, which owns its own focus.
   useEffect(() => {
-    editorRef.current?.focus()
+    containerRef.current?.focus()
   }, [])
 
   const onKeyDown = useCallback(
@@ -41,23 +45,27 @@ export const CanvasCardActive = ({
 
   return (
     <div
+      ref={containerRef}
+      tabIndex={-1}
       data-canvas-active-card={cardRef.elementId}
       data-canvas-card-id={cardRef.elementId}
       data-canvas-card-entity={`${cardRef.entityType}:${cardRef.entityId}`}
       data-canvas-card-state="active"
-      className="flex h-full w-full flex-col overflow-hidden rounded-md border border-primary bg-white text-start shadow-md dark:bg-zinc-900"
+      className="flex h-full w-full flex-col overflow-hidden rounded-md border border-primary bg-white text-start shadow-md outline-none dark:bg-zinc-900"
       onKeyDown={onKeyDown}
       onKeyUp={onKeyUp}
     >
-      {/* Placeholder editor — replaced by note/task/event editors in Tasks 5–7. */}
-      <div
-        ref={editorRef}
-        data-canvas-active-editor={cardRef.entityType}
-        contentEditable
-        suppressContentEditableWarning
-        tabIndex={-1}
-        className="min-h-0 flex-1 overflow-auto p-3 text-[13px] outline-none"
-      />
+      {cardRef.entityType === 'note' ? (
+        <EmbeddedNoteEditor noteId={cardRef.entityId} />
+      ) : (
+        // Placeholder editor — replaced by task/event editors in Tasks 6–7.
+        <div
+          data-canvas-active-editor={cardRef.entityType}
+          contentEditable
+          suppressContentEditableWarning
+          className="min-h-0 flex-1 overflow-auto p-3 text-[13px] outline-none"
+        />
+      )}
     </div>
   )
 }
