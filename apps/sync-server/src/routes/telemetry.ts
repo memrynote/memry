@@ -120,19 +120,28 @@ telemetry.post('/logs', async (c) => {
   }
   safeWaitUntil(
     c,
-    hashTelemetryId(c.env.TELEMETRY_HMAC_KEY, batch.installId).then((installHash) => {
-      // Resolved distinct id, not the raw install hash, so these logs surface
-      // on the right person profile once account resolution lands.
-      const distinctId = resolveDistinctId({
-        installHash,
-        accountId: undefined,
-        environment: c.env.ENVIRONMENT ?? 'unknown'
+    hashTelemetryId(c.env.TELEMETRY_HMAC_KEY, batch.installId)
+      .then((installHash) => {
+        // Resolved distinct id, not the raw install hash, so these logs surface
+        // on the right person profile once account resolution lands.
+        const distinctId = resolveDistinctId({
+          installHash,
+          accountId: undefined,
+          environment: c.env.ENVIRONMENT ?? 'unknown'
+        })
+        return pushPostHogLogs(
+          c.env,
+          batch.lines.map((line) => desktopLogRecord(line, meta, distinctId))
+        )
       })
-      return pushPostHogLogs(
-        c.env,
-        batch.lines.map((line) => desktopLogRecord(line, meta, distinctId))
-      )
-    })
+      // safeWaitUntil only guards the synchronous waitUntil() call, not this
+      // promise — hashTelemetryId throws when TELEMETRY_HMAC_KEY is missing/
+      // empty, which would otherwise surface as an unhandled rejection.
+      .catch((error) => {
+        logger.warn('Diagnostic log capture failed', {
+          error: error instanceof Error ? error.message : String(error)
+        })
+      })
   )
 
   return c.json({ accepted: batch.lines.length }, 202)

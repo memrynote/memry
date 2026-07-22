@@ -35,9 +35,16 @@ diagnostics.post('/report', async (c) => {
   const report = parsed.data
   safeWaitUntil(
     c,
-    hashTelemetryId(c.env.TELEMETRY_HMAC_KEY, report.installId).then((installHash) =>
-      pushPostHogLogs(c.env, desktopReportRecords(report, installHash))
-    )
+    hashTelemetryId(c.env.TELEMETRY_HMAC_KEY, report.installId)
+      .then((installHash) => pushPostHogLogs(c.env, desktopReportRecords(report, installHash)))
+      // safeWaitUntil only guards the synchronous waitUntil() call, not this
+      // promise — hashTelemetryId throws when TELEMETRY_HMAC_KEY is missing/
+      // empty, which would otherwise surface as an unhandled rejection.
+      .catch((error) => {
+        logger.warn('Diagnostic report capture failed', {
+          error: error instanceof Error ? error.message : String(error)
+        })
+      })
   )
 
   return c.json({ incidentId: report.incidentId }, 202)
