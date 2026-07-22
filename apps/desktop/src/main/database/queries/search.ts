@@ -44,6 +44,7 @@ interface FtsNoteRow {
   path: string
   date: string | null
   emoji: string | null
+  fileType: NoteResultMetadata['fileType']
   wordCount: number | null
   modifiedAt: string
   rank: number
@@ -92,6 +93,7 @@ function searchNotes(indexDb: IndexDb, ftsQuery: string, limit: number): SearchR
       nc.path,
       nc.date,
       nc.emoji,
+      nc.file_type as fileType,
       nc.word_count as wordCount,
       nc.modified_at as modifiedAt,
       bm25(fts_notes, 0.0, 2.0, 1.0, 1.0) as rank,
@@ -110,6 +112,7 @@ function searchNotes(indexDb: IndexDb, ftsQuery: string, limit: number): SearchR
       path: row.path,
       tags: [],
       emoji: row.emoji,
+      fileType: row.fileType ?? undefined,
       wordCount: row.wordCount
     }
     return {
@@ -281,13 +284,21 @@ interface TitleRow {
 function getNoteTitles(
   indexDb: IndexDb
 ): Array<TitleRow & { type: ContentType; metadata: NoteResultMetadata }> {
-  const rows = indexDb.all<TitleRow & { path: string; emoji: string | null }>(
-    sql`SELECT id, title, path, emoji, modified_at as modifiedAt FROM note_cache WHERE date IS NULL`
+  const rows = indexDb.all<
+    TitleRow & { path: string; emoji: string | null; fileType: NoteResultMetadata['fileType'] }
+  >(
+    sql`SELECT id, title, path, emoji, file_type as fileType, modified_at as modifiedAt FROM note_cache WHERE date IS NULL`
   )
   return rows.map((r) => ({
     ...r,
     type: 'note' as ContentType,
-    metadata: { type: 'note' as const, path: r.path, tags: [], emoji: r.emoji }
+    metadata: {
+      type: 'note' as const,
+      path: r.path,
+      tags: [],
+      emoji: r.emoji,
+      fileType: r.fileType ?? undefined
+    }
   }))
 }
 

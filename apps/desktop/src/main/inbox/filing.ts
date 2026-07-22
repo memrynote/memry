@@ -12,8 +12,11 @@ import path from 'path'
 import { rename, copyFile, unlink } from 'fs/promises'
 import { existsSync } from 'fs'
 import { createLogger } from '../lib/logger'
-import { getDatabase, requireDatabase } from '../database'
+import { getDatabase, requireDatabase, getIndexDatabase } from '../database'
 import { createNote, getNoteById, updateNote, createFolder, getFolders } from '../vault/notes'
+import { setNoteTags } from '../database/queries/notes'
+import { indexBinaryFile } from '../vault/indexer'
+import { getFileType } from '@memry/shared/file-types'
 import { getStatus, getConfig } from '../vault/index'
 import { inboxItems, inboxItemTags, filingHistory } from '@memry/db-schema/schema/inbox'
 import { generateId } from '../lib/id'
@@ -168,6 +171,40 @@ function getInboxItem(db: ReturnType<typeof getDatabase>, itemId: string): Inbox
 function getItemTags(db: ReturnType<typeof getDatabase>, itemId: string): string[] {
   const tags = db.select().from(inboxItemTags).where(eq(inboxItemTags.itemId, itemId)).all()
   return tags.map((t) => t.tag)
+}
+
+/**
+ * Persist tags onto a filed binary (image/PDF/audio/video).
+ *
+ * Binaries have no frontmatter, so tags can't ride along in file content the way
+ * markdown notes do. Instead we eagerly index the moved file to obtain its
+ * `note_cache` id (idempotent — the filesystem watcher reuses the same id by
+ * path and never touches `note_tags`) and write the tags to the index DB.
+ * No-op for unsupported/markdown extensions. See #800.
+ */
+async function persistBinaryTags(
+  relativePath: string,
+  absolutePath: string,
+  tags: string[]
+): Promise<void> {
+  if (tags.length === 0) return
+  const fileType = getFileType(path.extname(absolutePath))
+  if (!fileType || fileType === 'markdown') return
+
+  // Best-effort: the caller has already moved the file and deleted the inbox
+  // attachment folder, so a failure here (e.g. index DB unavailable) must not
+  // abort filing and leave the inbox item pointing at a now-missing attachment.
+  // Log and continue. See #800.
+  try {
+    const indexDb = getIndexDatabase()
+    const noteId = await indexBinaryFile(indexDb, relativePath, absolutePath, fileType)
+    setNoteTags(indexDb, noteId, tags)
+  } catch (error) {
+    log.warn(
+      'Failed to persist tags for filed binary (continuing):',
+      error instanceof Error ? error.message : String(error)
+    )
+  }
 }
 
 /**
@@ -474,7 +511,11 @@ function recordFilingHistory(
  * @param itemId - Inbox item ID
  * @param folderPath - Target folder path (relative to vault, empty string for root)
  */
-async function fileBinaryToFolder(itemId: string, folderPath: string): Promise<FileResponse> {
+async function fileBinaryToFolder(
+  itemId: string,
+  folderPath: string,
+  tags: string[] = []
+): Promise<FileResponse> {
   try {
     const db = requireDatabase()
 
@@ -493,6 +534,10 @@ async function fileBinaryToFolder(itemId: string, folderPath: string): Promise<F
     if (!item.attachmentPath) {
       return { success: false, filedTo: null, error: 'No attachment found for this item' }
     }
+
+    // Merge tags (existing inbox tags + new, deduplicated) — same shape as the
+    // markdown path so binaries keep their assigned tags after filing.
+    const mergedTags = [...new Set([...getItemTags(db, itemId), ...tags, 'inbox'])]
 
     // Ensure destination folder exists
     await ensureFolderExists(folderPath)
@@ -529,11 +574,14 @@ async function fileBinaryToFolder(itemId: string, folderPath: string): Promise<F
     // Calculate relative path from vault root for storage
     const relativePath = normalizeRelativePath(path.relative(vaultPath, finalPath))
 
+    // Persist the assigned tags onto the filed file (index DB / note_tags)
+    await persistBinaryTags(relativePath, finalPath, mergedTags)
+
     // Mark inbox item as filed
     markItemAsFiled(itemId, relativePath, 'folder')
 
-    // Record filing history (no content for binary files)
-    recordFilingHistory(item.type, null, relativePath, 'folder', [])
+    // Record filing history
+    recordFilingHistory(item.type, null, relativePath, 'folder', mergedTags)
 
     log.info(`Filed binary item to: ${relativePath}`)
 
@@ -578,9 +626,9 @@ export async function fileToFolder(
       return { success: false, filedTo: null, error: 'Item has already been filed' }
     }
 
-    // Binary types: move file directly (no markdown wrapper, no tags)
+    // Binary types: move file directly (no markdown wrapper), preserving tags
     if (isBinaryType(item.type)) {
-      return fileBinaryToFolder(itemId, folderPath)
+      return fileBinaryToFolder(itemId, folderPath, tags)
     }
 
     // Text + link types: create markdown note
@@ -920,6 +968,7 @@ async function linkBinaryToNotes(
   itemId: string,
   item: InboxItemRow,
   noteIds: string[],
+  tags: string[] = [],
   folderPath?: string
 ): Promise<{ success: boolean; error?: string; linkedCount?: number }> {
   try {
@@ -927,6 +976,11 @@ async function linkBinaryToNotes(
     if (!item.attachmentPath) {
       return { success: false, error: 'No attachment found for this item' }
     }
+
+    // Merge tags (existing inbox tags + new, deduplicated) — mirror the
+    // markdown link path so linked binaries keep their assigned tags. See #800.
+    const db = requireDatabase()
+    const mergedTags = [...new Set([...getItemTags(db, itemId), ...tags, 'inbox'])]
 
     // Validate all target notes exist first
     const targetNotes: Array<{ id: string; content: string; path: string }> = []
@@ -1017,11 +1071,14 @@ async function linkBinaryToNotes(
     // Calculate relative path for storage
     const relativePath = normalizeRelativePath(path.relative(vaultPath, finalPath))
 
+    // Persist the assigned tags onto the filed file (index DB / note_tags)
+    await persistBinaryTags(relativePath, finalPath, mergedTags)
+
     // Mark inbox item as filed
     markItemAsFiled(itemId, relativePath, 'linked')
 
-    // Record filing history (no content for binary files)
-    recordFilingHistory(item.type, null, relativePath, 'linked', [])
+    // Record filing history
+    recordFilingHistory(item.type, null, relativePath, 'linked', mergedTags)
 
     log.info(`Linked binary item to ${targetNotes.length} note(s): ${relativePath}`)
 
@@ -1070,7 +1127,7 @@ export async function linkToNotes(
 
     // Binary types: move file and add wiki-links to target notes
     if (isBinaryType(item.type)) {
-      return linkBinaryToNotes(itemId, item, noteIds, folderPath)
+      return linkBinaryToNotes(itemId, item, noteIds, tags, folderPath)
     }
 
     // Text types: create markdown note and add wiki-links (existing logic)

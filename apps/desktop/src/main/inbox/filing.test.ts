@@ -14,7 +14,19 @@ import { eq } from 'drizzle-orm'
 // Mock the database module
 vi.mock('../database', () => ({
   getDatabase: vi.fn(),
-  requireDatabase: vi.fn()
+  requireDatabase: vi.fn(),
+  getIndexDatabase: vi.fn()
+}))
+
+const mockIndexBinaryFile = vi.fn()
+const mockSetNoteTags = vi.fn()
+
+vi.mock('../vault/indexer', () => ({
+  indexBinaryFile: (...args: unknown[]) => mockIndexBinaryFile(...args)
+}))
+
+vi.mock('../database/queries/notes', () => ({
+  setNoteTags: (...args: unknown[]) => mockSetNoteTags(...args)
 }))
 
 const mockSend = vi.fn()
@@ -96,7 +108,7 @@ vi.mock('../lib/reminders', () => ({
   createReminder: (...args: unknown[]) => mockCreateReminder(...args)
 }))
 
-import { getDatabase, requireDatabase } from '../database'
+import { getDatabase, requireDatabase, getIndexDatabase } from '../database'
 import { getStatus } from '../vault/index'
 import {
   fileToFolder,
@@ -150,6 +162,10 @@ describe('Inbox Filing Operations', () => {
     testDb = createTestDatabase()
     vi.mocked(getDatabase).mockReturnValue(testDb.db)
     vi.mocked(requireDatabase).mockReturnValue(testDb.db)
+    vi.mocked(getIndexDatabase).mockReturnValue({} as never)
+
+    mockIndexBinaryFile.mockReset().mockResolvedValue('file-note-id')
+    mockSetNoteTags.mockReset()
 
     mockCreateNote.mockReset()
     mockGetNoteById.mockReset()
@@ -314,6 +330,49 @@ describe('Inbox Filing Operations', () => {
         '/mock-vault/notes/projects/screenshot.png'
       )
       expect(mockCreateNote).not.toHaveBeenCalled()
+      expect(mockSend).toHaveBeenCalledWith(
+        'inbox:filed',
+        expect.objectContaining({ id: itemId, filedAction: 'folder' })
+      )
+    })
+
+    it('preserves assigned + existing tags when filing a binary (#800)', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'image-tags',
+        type: 'image',
+        title: 'Screenshot'
+      })
+      seedInboxItemTags(testDb.db, itemId, ['Photos'])
+      updateInboxItem(itemId, { attachmentPath: 'attachments/inbox/image-tags/screenshot.png' })
+
+      const result = await fileToFolder(itemId, 'projects', ['Image'])
+
+      expect(result).toEqual({ success: true, filedTo: 'notes/projects/screenshot.png' })
+      // Binary is eagerly indexed as an image to obtain its note id...
+      expect(mockIndexBinaryFile).toHaveBeenCalledWith(
+        {},
+        'notes/projects/screenshot.png',
+        '/mock-vault/notes/projects/screenshot.png',
+        'image'
+      )
+      // ...and the merged tags (existing + assigned + 'inbox') are written to note_tags.
+      expect(mockSetNoteTags).toHaveBeenCalledWith({}, 'file-note-id', ['Photos', 'Image', 'inbox'])
+    })
+
+    it('still files the binary when tag persistence fails (best-effort) (#800)', async () => {
+      // The file is already moved before tags are persisted; a tag-write failure
+      // must not abort filing and orphan the inbox item.
+      mockIndexBinaryFile.mockRejectedValueOnce(new Error('index db unavailable'))
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'image-tagfail',
+        type: 'image',
+        title: 'Screenshot'
+      })
+      updateInboxItem(itemId, { attachmentPath: 'attachments/inbox/image-tagfail/screenshot.png' })
+
+      const result = await fileToFolder(itemId, 'projects', ['Image'])
+
+      expect(result).toEqual({ success: true, filedTo: 'notes/projects/screenshot.png' })
       expect(mockSend).toHaveBeenCalledWith(
         'inbox:filed',
         expect.objectContaining({ id: itemId, filedAction: 'folder' })
