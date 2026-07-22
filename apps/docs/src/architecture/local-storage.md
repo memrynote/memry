@@ -32,6 +32,28 @@ no user keys has no YAML block at all.
   inside a short window using the cached content hash (identical-content collisions match FIFO),
   since files carry no embedded id to match on.
 
+## Derived State Projections
+
+Index-DB state is not written inline by the code that changes a note. Write paths persist
+canonical data (the file plus `note_metadata` in the data DB) synchronously, then publish a
+projection event; projectors apply it to the index DB — `note_cache` and the link/tag tables,
+the FTS tables, and the embedding vectors.
+
+**Every projector has its own queue.** Each one still receives events in publish order, but a
+slow projector only delays itself. This matters because the embedding projector awaits a
+multi-second model load inside `project()`: on a single shared queue that stalled every other
+projector head-of-line, which left `note_cache` holding a renamed note's _old_ path long enough
+for reads of that note to resolve a file that no longer existed and come back `null` — a live
+note appearing deleted throughout the renderer.
+
+Two consequences worth knowing:
+
+- **Ordering between projectors is not guaranteed.** A projector must work from the event
+  payload, never from another projector's output.
+- **Index reads are eventually consistent.** They settle a microtask after the canonical write,
+  not synchronously with it. Callers needing the index to reflect a write immediately must
+  `await flushProjectionEvents()`, which drains every lane.
+
 ## Where the Files Live
 
 Inside the vault directory (chosen during [first run](/guide/first-run)):
