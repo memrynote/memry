@@ -92,6 +92,18 @@ export const productEvent = (
   properties.session_id = batch.sessionId
   properties.$set = personProperties(batch, ctx.environment)
 
+  // platform / app_version / build_channel are ALSO event properties, not only
+  // person properties via $set. Two reasons, both load-bearing:
+  //  1. A person property records the LATEST value, so "app version split" built
+  //     on $set answers "which version is each install on now", not "which
+  //     version emitted this event" — wrong for adoption and regression charts.
+  //  2. Dashboards built before this migration break down on the event property
+  //     `platform` (e.g. "Installs by Platform"). Emitting only $set would leave
+  //     those tiles silently empty after cutover instead of failing loudly.
+  properties.platform = batch.platform
+  properties.app_version = batch.appVersion
+  properties.build_channel = batch.buildChannel
+
   if (event.objectType) properties.object_type = event.objectType
   if (event.source) properties.source = event.source
   if (event.result) properties.result = event.result

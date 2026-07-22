@@ -96,6 +96,25 @@ describe('productEvent', () => {
     expect(result.properties.environment).toBe('production')
   })
 
+  it('emits platform, app_version and build_channel as event properties', () => {
+    // Not only as $set person properties: a person property holds the LATEST
+    // value, which would make version-adoption charts answer the wrong question,
+    // and pre-migration dashboards break down on the event property `platform`.
+    const result = productEvent(batchFixture(), eventFixture(), ctx)
+    expect(result.properties.platform).toBe('darwin')
+    expect(result.properties.app_version).toBe('2026.7.1')
+    expect(result.properties.build_channel).toBe('production')
+  })
+
+  it('does not let a client dimension override platform or app_version', () => {
+    const result = productEvent(
+      batchFixture(),
+      eventFixture({ dimensions: { platform: 'win32' } }),
+      ctx
+    )
+    expect(result.properties.platform).toBe('darwin')
+  })
+
   it('renames page_viewed to $pageview', () => {
     const result = productEvent(batchFixture(), eventFixture({ name: 'page_viewed' }), ctx)
     expect(result.event).toBe('$pageview')
