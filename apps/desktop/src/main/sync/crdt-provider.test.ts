@@ -1,6 +1,35 @@
 import * as Y from 'yjs'
 import * as fs from 'fs'
+import * as os from 'os'
+import * as path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import type { CrdtPreflightStage } from './crdt-preflight-protocol'
+
+type PreflightVerdict = {
+  ok: boolean
+  reason?: string
+  stage?: CrdtPreflightStage
+  /** Side effect the real child would have had on disk before dying. */
+  onCall?: () => void
+}
+
+// Lets a single test make `renameSync` fail the way Windows does (EPERM on a
+// locked store dir) without disturbing the real fs everything else here uses.
+const fsHooks = vi.hoisted(() => ({
+  renameSync: null as null | ((from: string, to: string) => void),
+  realRenameSync: (from: string, to: string): void => {
+    throw new Error(`fs mock not installed (${from} -> ${to})`)
+  }
+}))
+
+vi.mock('fs', async (importActual) => {
+  const actual = await importActual<typeof import('fs')>()
+  fsHooks.realRenameSync = actual.renameSync
+  const renameSync = (from: string, to: string): void =>
+    (fsHooks.renameSync ?? actual.renameSync)(from, to)
+  return { ...actual, default: { ...actual, renameSync }, renameSync }
+})
 
 const mocks = vi.hoisted(() => {
   // Simulates a broken classic-level native binding (napi_create_reference
@@ -18,11 +47,14 @@ const mocks = vi.hoisted(() => {
   return {
     persistenceBehavior,
     persistenceOpFactory,
+    // Per-run temp dir, assigned once the real fs is importable (below). A
+    // fixed name in a world-writable dir is a symlink-swap target.
+    userDataDir: '',
     // Verdict of the disposable utilityProcess preflight (see crdt-preflight.ts).
     // preflightQueue serves per-call verdicts (quarantine retry = second call);
     // when empty, preflightResult is the standing answer.
-    preflightResult: { ok: true } as { ok: boolean; reason?: string },
-    preflightQueue: [] as Array<{ ok: boolean; reason?: string }>,
+    preflightResult: { ok: true } as PreflightVerdict,
+    preflightQueue: [] as PreflightVerdict[],
     preflightCalls: [] as string[],
     sent: [] as Array<{ windowId: number; channel: string; payload: unknown }>,
     windows: new Map<
@@ -49,7 +81,7 @@ const mocks = vi.hoisted(() => {
 })
 
 vi.mock('electron', () => ({
-  app: { getPath: () => '/tmp/memry-crdt-test' },
+  app: { getPath: () => mocks.userDataDir },
   BrowserWindow: {
     fromId: (id: number) => mocks.windows.get(id) ?? null,
     getAllWindows: () => Array.from(mocks.windows.values())
@@ -69,7 +101,9 @@ vi.mock('./crdt-preflight', () => ({
   runCrdtPreflight: vi.fn(async (storeDir: string) => {
     mocks.preflightCalls.push(storeDir)
     const queued = mocks.preflightQueue.shift()
-    return queued ? { ...queued } : { ...mocks.preflightResult }
+    const { onCall, ...verdict } = queued ?? mocks.preflightResult
+    onCall?.()
+    return verdict
   })
 }))
 
@@ -153,6 +187,8 @@ vi.mock('./microtask-batch-broadcaster', () => ({
 
 import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { CrdtProvider, getCrdtProvider, resetCrdtProvider } from './crdt-provider'
+
+mocks.userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-'))
 
 const createWindow = (id: number, destroyed = false) => {
   const win = {
@@ -779,7 +815,7 @@ describe('CrdtProvider persistence resilience', () => {
   })
 
   it('never loads the store binding when the preflight child dies', async () => {
-    mocks.preflightResult = { ok: false, reason: 'child exited with code 134' }
+    mocks.preflightResult = { ok: false, reason: 'child exited with code 134', stage: 'store' }
     const provider = new CrdtProvider()
 
     await expect(provider.init()).resolves.toBeUndefined()
@@ -798,7 +834,7 @@ describe('CrdtProvider persistence resilience', () => {
   // disk) aborts the binding — not just on a binding that is broken outright.
   // The two are told apart empirically: quarantine the store, re-probe fresh.
   describe('store quarantine', () => {
-    const userDataDir = '/tmp/memry-crdt-test'
+    const userDataDir = mocks.userDataDir
     const storeDir = `${userDataDir}/crdt-store`
 
     beforeEach(() => {
@@ -812,7 +848,10 @@ describe('CrdtProvider persistence resilience', () => {
     it('quarantines a corrupt store and continues on a fresh one when the re-probe passes', async () => {
       fs.mkdirSync(storeDir, { recursive: true })
       fs.writeFileSync(`${storeDir}/MANIFEST-000001`, 'torn')
-      mocks.preflightQueue.push({ ok: false, reason: 'child exited with code 134' }, { ok: true })
+      mocks.preflightQueue.push(
+        { ok: false, reason: 'child exited with code 134', stage: 'store' },
+        { ok: true }
+      )
 
       const provider = new CrdtProvider()
       await expect(provider.init()).resolves.toBeUndefined()
@@ -832,8 +871,8 @@ describe('CrdtProvider persistence resilience', () => {
       fs.mkdirSync(storeDir, { recursive: true })
       fs.writeFileSync(`${storeDir}/MANIFEST-000001`, 'healthy-but-binding-broken')
       mocks.preflightQueue.push(
-        { ok: false, reason: 'child exited with code 134' },
-        { ok: false, reason: 'child exited with code 134' }
+        { ok: false, reason: 'child exited with code 134', stage: 'store' },
+        { ok: false, reason: 'child exited with code 134', stage: 'store' }
       )
 
       const provider = new CrdtProvider()
@@ -850,8 +889,119 @@ describe('CrdtProvider persistence resilience', () => {
       expect(provider.isInitialized()).toBe(true)
     })
 
+    // Production (9 Windows installs, v717.2 → v719.2): the preflight child
+    // died in Chromium/crashpad init (0xFFFF7003) before it ever opened the
+    // store, and the store got quarantined for it — every launch, with the
+    // restore then failing EPERM. A child that never reached the store cannot
+    // be evidence against it.
+    it('does not quarantine when the child never started', async () => {
+      fs.mkdirSync(storeDir, { recursive: true })
+      fs.writeFileSync(`${storeDir}/MANIFEST-000001`, 'healthy')
+      mocks.preflightQueue.push({
+        ok: false,
+        reason: 'child exited with code -36861 (0xFFFF7003)',
+        stage: 'bootstrap'
+      })
+
+      const provider = new CrdtProvider()
+      await expect(provider.init()).resolves.toBeUndefined()
+
+      expect(mocks.preflightCalls).toEqual([storeDir])
+      expect(fs.existsSync(`${storeDir}/MANIFEST-000001`)).toBe(true)
+      expect(
+        fs.readdirSync(userDataDir).filter((f) => f.startsWith('crdt-store.broken-'))
+      ).toHaveLength(0)
+      expect(mocks.persistenceInstances).toHaveLength(0)
+      expect(provider.isInitialized()).toBe(true)
+    })
+
+    it('does not quarantine when the child died loading the binding', async () => {
+      fs.mkdirSync(storeDir, { recursive: true })
+      fs.writeFileSync(`${storeDir}/MANIFEST-000001`, 'healthy')
+      mocks.preflightQueue.push({
+        ok: false,
+        reason: 'child exited with code 1',
+        stage: 'binding'
+      })
+
+      const provider = new CrdtProvider()
+      await expect(provider.init()).resolves.toBeUndefined()
+
+      expect(mocks.preflightCalls).toEqual([storeDir])
+      expect(fs.existsSync(`${storeDir}/MANIFEST-000001`)).toBe(true)
+      expect(
+        fs.readdirSync(userDataDir).filter((f) => f.startsWith('crdt-store.broken-'))
+      ).toHaveLength(0)
+    })
+
+    // The failed re-probe leaves a partial fresh store behind; renaming the
+    // quarantine back onto an existing directory is EPERM on Windows, which is
+    // how installs ended up with their history stranded in `.broken-*`.
+    it('restores the quarantined store over a partial fresh store', async () => {
+      fs.mkdirSync(storeDir, { recursive: true })
+      fs.writeFileSync(`${storeDir}/MANIFEST-000001`, 'healthy-but-binding-broken')
+      mocks.preflightQueue.push(
+        { ok: false, reason: 'child exited with code 134', stage: 'store' },
+        {
+          ok: false,
+          reason: 'child exited with code 134',
+          stage: 'store',
+          // The re-probe child created the fresh dir before dying.
+          onCall: () => fs.mkdirSync(`${storeDir}/LOCK`, { recursive: true })
+        }
+      )
+
+      const provider = new CrdtProvider()
+      await expect(provider.init()).resolves.toBeUndefined()
+
+      expect(fs.readFileSync(`${storeDir}/MANIFEST-000001`, 'utf8')).toBe(
+        'healthy-but-binding-broken'
+      )
+      expect(
+        fs.readdirSync(userDataDir).filter((f) => f.startsWith('crdt-store.broken-'))
+      ).toHaveLength(0)
+    })
+
+    it('restores by copy when the rename keeps failing', async () => {
+      fs.mkdirSync(storeDir, { recursive: true })
+      fs.writeFileSync(`${storeDir}/MANIFEST-000001`, 'healthy-but-binding-broken')
+      mocks.preflightQueue.push(
+        { ok: false, reason: 'child exited with code 134', stage: 'store' },
+        { ok: false, reason: 'child exited with code 134', stage: 'store' }
+      )
+
+      // Windows: AV or the just-exited child still holds the directory, so
+      // every rename after the quarantine fails.
+      let quarantined = false
+      fsHooks.renameSync = (from, to) => {
+        if (!quarantined) {
+          quarantined = true
+          fsHooks.realRenameSync(from, to)
+          return
+        }
+        const err = new Error('EPERM: operation not permitted, rename') as NodeJS.ErrnoException
+        err.code = 'EPERM'
+        throw err
+      }
+
+      try {
+        const provider = new CrdtProvider()
+        await expect(provider.init()).resolves.toBeUndefined()
+      } finally {
+        fsHooks.renameSync = null
+      }
+
+      // History is back where the next launch will look for it, not stranded.
+      expect(fs.readFileSync(`${storeDir}/MANIFEST-000001`, 'utf8')).toBe(
+        'healthy-but-binding-broken'
+      )
+      expect(
+        fs.readdirSync(userDataDir).filter((f) => f.startsWith('crdt-store.broken-'))
+      ).toHaveLength(0)
+    })
+
     it('does not re-probe when no store exists to quarantine', async () => {
-      mocks.preflightQueue.push({ ok: false, reason: 'child exited with code 134' })
+      mocks.preflightQueue.push({ ok: false, reason: 'child exited with code 134', stage: 'store' })
 
       const provider = new CrdtProvider()
       await expect(provider.init()).resolves.toBeUndefined()

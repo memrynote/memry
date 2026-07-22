@@ -586,17 +586,20 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           crdtQueue.pause()
         }
       })
-      setOnTokenRefreshed(() => {
-        if (network.online) {
-          crdtQueue.resume()
-        }
-      })
-
       const ws = new WebSocketManager({
         getAccessToken: () => getValidAccessToken(),
         getAppVersion: () => app.getVersion(),
         isOnline: () => network.online,
         serverUrl: resolveSyncServerUrl()
+      })
+
+      setOnTokenRefreshed(() => {
+        if (network.online) {
+          crdtQueue.resume()
+        }
+        // Hand the fresh token to the live socket so the server extends it in
+        // place instead of dropping it with WS_TOKEN_EXPIRED at expiry.
+        void ws.refreshAuth()
       })
 
       const engine = new SyncEngine({

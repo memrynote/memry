@@ -67,6 +67,9 @@ function broadcastRequest(excludeDeviceId: string, cursor: number, vaultId?: str
 describe('UserSyncState', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // mockReset (not clearAllMocks) drops leftover *Once queues so a test that
+    // stops short of consuming one cannot leak claims into the next test.
+    hoisted.verifyAccessTokenMock.mockReset()
     hoisted.verifyAccessTokenMock.mockResolvedValue({
       userId: 'user-1',
       deviceId: 'device-1',
@@ -284,7 +287,7 @@ describe('UserSyncState', () => {
 
       // #when - send 101 messages (limit is 100)
       for (let i = 0; i <= 100; i++) {
-        doObj.webSocketMessage(ws)
+        await doObj.webSocketMessage(ws, '{}')
       }
 
       // #then
@@ -294,6 +297,97 @@ describe('UserSyncState', () => {
 
       const errorMsg = mockWs.sentMessages.find((m) => m.includes(ErrorCodes.WS_RATE_LIMITED))
       expect(errorMsg).toBeDefined()
+    })
+  })
+
+  describe('webSocketMessage (auth refresh)', () => {
+    async function connectExpiring(doObj: UserSyncState, exp: number) {
+      hoisted.verifyAccessTokenMock.mockResolvedValueOnce({
+        userId: 'user-1',
+        deviceId: 'device-1',
+        exp
+      })
+      await doObj.fetch(connectRequest())
+      const sockets = getCtx(doObj).getWebSockets('device:device-1')
+      return sockets[0] as unknown as MockWebSocket
+    }
+
+    function authMessage(token = 'fresh-token'): string {
+      return JSON.stringify({ type: 'auth', payload: { token } })
+    }
+
+    it('extends tokenExp so the alarm no longer closes the socket', async () => {
+      // #given a socket whose original token has already expired
+      const doObj = createDO()
+      const ws = await connectExpiring(doObj, Math.floor(Date.now() / 1000) - 60)
+
+      // #when the client re-authenticates with a fresh token
+      const freshExp = Math.floor(Date.now() / 1000) + 900
+      hoisted.verifyAccessTokenMock.mockResolvedValueOnce({
+        userId: 'user-1',
+        deviceId: 'device-1',
+        exp: freshExp
+      })
+      await doObj.webSocketMessage(ws as unknown as WebSocket, authMessage())
+      await doObj.alarm()
+
+      // #then the socket survives and is acked
+      expect(ws.closeCalled).toBe(false)
+      expect(ws.sentMessages).toContainEqual(
+        JSON.stringify({ type: 'auth_ok', payload: { exp: freshExp } })
+      )
+      expect((ws.deserializeAttachment() as { tokenExp: number }).tokenExp).toBe(freshExp)
+    })
+
+    it('rejects an invalid token without closing the socket', async () => {
+      // #given
+      const doObj = createDO()
+      const originalExp = Math.floor(Date.now() / 1000) + 900
+      const ws = await connectExpiring(doObj, originalExp)
+
+      // #when
+      hoisted.verifyAccessTokenMock.mockRejectedValueOnce(new Error('invalid'))
+      await doObj.webSocketMessage(ws as unknown as WebSocket, authMessage('bad-token'))
+
+      // #then the existing (still valid) token keeps the socket alive
+      expect(ws.closeCalled).toBe(false)
+      expect((ws.deserializeAttachment() as { tokenExp: number }).tokenExp).toBe(originalExp)
+      expect(ws.sentMessages.find((m) => m.includes(ErrorCodes.AUTH_INVALID_TOKEN))).toBeDefined()
+    })
+
+    it('rejects a token issued for a different device', async () => {
+      // #given
+      const doObj = createDO()
+      const originalExp = Math.floor(Date.now() / 1000) + 900
+      const ws = await connectExpiring(doObj, originalExp)
+
+      // #when
+      hoisted.verifyAccessTokenMock.mockResolvedValueOnce({
+        userId: 'user-1',
+        deviceId: 'device-2',
+        exp: Math.floor(Date.now() / 1000) + 9000
+      })
+      await doObj.webSocketMessage(ws as unknown as WebSocket, authMessage())
+
+      // #then
+      expect((ws.deserializeAttachment() as { tokenExp: number }).tokenExp).toBe(originalExp)
+      expect(ws.sentMessages.find((m) => m.includes(ErrorCodes.AUTH_INVALID_TOKEN))).toBeDefined()
+    })
+
+    it('ignores non-JSON and non-auth messages', async () => {
+      // #given
+      const doObj = createDO()
+      const originalExp = Math.floor(Date.now() / 1000) + 900
+      const ws = await connectExpiring(doObj, originalExp)
+
+      // #when
+      await doObj.webSocketMessage(ws as unknown as WebSocket, 'not json')
+      await doObj.webSocketMessage(ws as unknown as WebSocket, JSON.stringify({ type: 'noop' }))
+
+      // #then
+      expect(ws.sentMessages).toHaveLength(0)
+      expect((ws.deserializeAttachment() as { tokenExp: number }).tokenExp).toBe(originalExp)
+      expect(hoisted.verifyAccessTokenMock).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -581,7 +675,7 @@ describe('UserSyncState', () => {
       }
 
       // #when
-      doObj.webSocketMessage(brokenWs as never)
+      doObj.webSocketMessage(brokenWs as never, '{}')
 
       // #then
       expect(fetchMock).toHaveBeenCalledTimes(1)

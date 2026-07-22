@@ -619,6 +619,9 @@ export class SyncEngine extends EventEmitter {
       }
       case 'heartbeat':
         break
+      case 'auth_ok':
+        log.debug('WS auth refreshed', { exp: message.payload?.exp })
+        break
       case 'error':
         if (message.payload?.code === 'AUTH_DEVICE_REVOKED') {
           this.handleDeviceRevoked()

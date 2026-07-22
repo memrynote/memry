@@ -21,7 +21,7 @@ let itemSyncedListeners: EventCallback[] = []
 let initialSyncProgressListeners: EventCallback[] = []
 let queueClearedListeners: VoidCallback[] = []
 let clockSkewWarningListeners: VoidCallback[] = []
-let sessionExpiredListeners: VoidCallback[] = []
+let sessionExpiredListeners: EventCallback[] = []
 let deviceRevokedListeners: EventCallback[] = []
 let securityWarningListeners: EventCallback[] = []
 let certificatePinFailedListeners: VoidCallback[] = []
@@ -455,7 +455,7 @@ describe('SyncProvider', () => {
       await vi.waitFor(() => expect(sessionExpiredListeners.length).toBeGreaterThan(0))
 
       act(() => {
-        for (const cb of sessionExpiredListeners) cb()
+        for (const cb of sessionExpiredListeners) cb({ reason: 'token_expired' })
       })
       expect(toastMock.error).toHaveBeenCalledWith(
         'Your session has expired. Sign in again to continue syncing.',
@@ -467,6 +467,21 @@ describe('SyncProvider', () => {
       })
       await vi.waitFor(() =>
         expect(result.current.state.error).toBe('This device has been removed from your account.')
+      )
+    })
+
+    it('#then prompts for re-auth instead of a toast when the refresh token is rejected', async () => {
+      renderHook(() => useSync(), { wrapper })
+      await vi.waitFor(() => expect(sessionExpiredListeners.length).toBeGreaterThan(0))
+
+      act(() => {
+        for (const cb of sessionExpiredListeners) cb({ reason: 'refresh_rejected' })
+      })
+
+      await screen.findByText('Your session has ended')
+      expect(toastMock.error).not.toHaveBeenCalledWith(
+        'Your session has expired. Sign in again to continue syncing.',
+        { duration: 8000 }
       )
     })
 

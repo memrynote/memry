@@ -171,6 +171,59 @@ describe('WebSocketManager', () => {
     })
   })
 
+  describe('#given connected WebSocket #when refreshAuth is called', () => {
+    it('#then sends the fresh access token over the live socket', async () => {
+      const deps = createMockDeps()
+      const manager = new WebSocketManager(deps)
+      await manager.connect()
+      lastWs().simulateOpen()
+
+      vi.mocked(deps.getAccessToken).mockResolvedValue('renewed-token')
+      await manager.refreshAuth()
+
+      expect(lastWs().send).toHaveBeenCalledWith(
+        JSON.stringify({ type: 'auth', payload: { token: 'renewed-token' } })
+      )
+    })
+
+    it('#then accepts the server auth_ok ack without an error', async () => {
+      const manager = new WebSocketManager(createMockDeps())
+      const messageSpy = vi.fn()
+      const errorSpy = vi.fn()
+      manager.on('message', messageSpy)
+      manager.on('error', errorSpy)
+
+      await manager.connect()
+      lastWs().simulateOpen()
+      lastWs().simulateMessage({ type: 'auth_ok', payload: { exp: 123 } })
+
+      expect(errorSpy).not.toHaveBeenCalled()
+      expect(messageSpy).toHaveBeenCalledWith({ type: 'auth_ok', payload: { exp: 123 } })
+    })
+
+    it('#then does nothing when the socket is not open', async () => {
+      const deps = createMockDeps()
+      const manager = new WebSocketManager(deps)
+      await manager.connect()
+
+      await manager.refreshAuth()
+
+      expect(lastWs().send).not.toHaveBeenCalled()
+    })
+
+    it('#then does nothing when no token is available', async () => {
+      const deps = createMockDeps()
+      const manager = new WebSocketManager(deps)
+      await manager.connect()
+      lastWs().simulateOpen()
+
+      vi.mocked(deps.getAccessToken).mockResolvedValue(null)
+      await manager.refreshAuth()
+
+      expect(lastWs().send).not.toHaveBeenCalled()
+    })
+  })
+
   describe('#given connected WebSocket #when heartbeat timeout fires', () => {
     it('#then terminates connection after 31s', async () => {
       const manager = new WebSocketManager(createMockDeps())

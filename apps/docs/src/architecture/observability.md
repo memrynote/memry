@@ -215,7 +215,23 @@ landed in Loki as an unactionable bare `Error` with an empty stack. Reasons are 
 reporting: a real `Error` passes through, a cross-realm error's own frames are adopted, and
 anything else gets a stack synthesized at the handler plus a code naming the reason's type
 (`Rejection_string`, `Rejection_Object`, `Rejection_undefined`). The reason's message or value is
-never copied — only its shape.
+never copied — only its shape. A reason that crossed a structured-clone or IPC boundary keeps its
+`.name` but loses both its stack and its constructor; that name is preferred over the constructor
+name, so it reports `Rejection_TypeError` rather than collapsing to `Rejection_Error`. When the
+code is a `Rejection_*` name the stack is the handler's own frames, not the fault's — the code is
+the actionable part.
+
+A **window error** does not always carry an `error` object: cross-origin scripts and some Chromium
+failure paths report only a message and a source location, which previously landed as `StringError`
+with an empty stack and nothing to triage. The error class is recovered from the message's leading
+token (`Uncaught TypeError: …` → `TypeError`, subject to the same enum-token rule) and the
+`filename`/`lineno`/`colno` are rebuilt into a stack frame, so the code location survives the same
+frame filter and redaction as a real stack. The message text itself is still never shipped.
+
+Because a rejection reason or `event.error` can be **any** value — including a `Proxy` whose traps
+throw or an object with throwing getters — every property read in this path (including `instanceof`,
+which can trap `getPrototypeOf`) is individually guarded. A hostile value can no longer throw out of
+the diagnostics handler and destroy the report being built.
 
 The free-form exception **message is never sent**: on the desktop it can embed a note title,
 filename, or content. The stack is reduced to code-location frames only — the leading
@@ -278,7 +294,11 @@ Loki adds the diagnostic detail (stacks, operational messages) that AE rows deli
   30s, drop-4xx-except-429) to `POST /telemetry/logs`, gated on the telemetry toggle
   (`getTelemetryRuntime().getSettings().enabled`) and disabled outright in dev builds. Repeated
   identical `level|scope|message` lines within a 3s window are throttled into one line with a
-  `repeatCount` field. Worker processes (embeddings, image processing, voice transcription)
+  `repeatCount` field. A record's arguments are flattened by `parseRecord`: the first string wins
+  the `message` slot, plain objects merge into the fields, and an `Error` contributes `errorName`
+  plus `errorMessage`. That last part matters — `logger.error('updater error', err)` used to ship
+  `{"errorName":"Error"}` and nothing else, because the label had already claimed the message slot
+  and the Error's own message was dropped. Worker processes (embeddings, image processing, voice transcription)
   forward their own `warn`/`error` records to main over `process.parentPort`
   (`apps/desktop/src/main/lib/log-forward.ts`, electron-free) for the same redaction + ship pass,
   tagged `origin: 'worker'` and `workerName`. The server re-runs `redactLogLine` in mask mode (no
@@ -306,8 +326,17 @@ Loki adds the diagnostic detail (stacks, operational messages) that AE rows deli
   re-redaction pass has no salt, so it masks them to a fixed `<id>` instead. A fixed field allowlist
   (`level, scope, action, errorCode, appVersion, buildChannel, platform, arch, origin, workerName,
 reason, phase, mode, status, kind, result`, plus numeric metric keys like
-  `durationMs`/`itemCount` and the [launch timeline](#launch-phase-timeline) phase offsets) ships
-  verbatim; most other field values run through the same redaction as the message.
+  `durationMs`/`itemCount`) ships verbatim; most other field values run through the same redaction as
+  the message.
+- **Updater failures**: every failure in `apps/desktop/src/main/updater.ts` logs a
+  `describeUpdaterError()` field bag alongside the raw error, so a silent auto-update failure is
+  diagnosable from Loki alone: `phase` (`startup-check`, `scheduled-check`, `auto-check-enable`,
+  `auto-download-enable`, or — for electron-updater's own `error` event, which carries no phase —
+  one of `check` / `download` / `downloaded` / `install` inferred from the status at the time),
+  plus `errorName`, `errorMessage`, `errorCode`, `httpStatus`, `url`, `errorCause` and the top
+  stack frames as `errorStack`. The field names are chosen against the redaction allowlist above:
+  `phase` and `errorCode` ship verbatim, `url` is path-redacted (query string stripped), the rest
+  are text-redacted and capped.
 - **Process lifecycle**: the main process reports a `child-process-gone` fault with a composite
   `type:reason:name` error code (e.g. `Utility:crashed:Embeddings`). The worker label comes from
   Electron's `details.name`, **not** `details.serviceName`: Electron routes a fork's `serviceName`

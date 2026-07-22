@@ -112,6 +112,8 @@ function isCodeDeclarationValue(filePath, value) {
   const normalized = normalizeValue(value)
 
   return (
+    // numeric literals (`tokenIssuedAt = 0`) carry no secret material
+    /^-?\d+(?:\.\d+)?$/.test(normalized) ||
     normalized.startsWith('() =>') ||
     /^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/i.test(normalized) ||
     isSourceCodeReferenceValue(filePath, value)

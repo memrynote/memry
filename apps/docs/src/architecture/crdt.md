@@ -23,13 +23,30 @@ utilityProcess** (`crdt-preflight-child.ts`) against the **real store
 directory**: a binding that hard-aborts (unsupported CPU instructions, AV
 interference) — or a store whose on-disk state (torn LDB/MANIFEST from a past
 crash or full disk) aborts the binding — kills that child, not the app, and
-the main process then never loads the binding at all. When the preflight
-fails and a store exists, it is **quarantined** (renamed to
+the main process then never loads the binding at all.
+
+The child reports how far it got by writing **stage markers** to stderr
+(`crdt-preflight-protocol.ts`), because the exit code alone cannot tell a bad
+store from a machine that cannot start a child at all:
+
+- `bootstrap` — the child never reached JS. Observed on Windows, where the
+  utility process dies in Chromium/crashpad init with exit `0xFFFF7003`. The
+  same probe is then retried as a plain node child
+  (`ELECTRON_RUN_AS_NODE`), which starts no Chromium and no crash handler.
+- `binding` — the child ran but the native binding failed to load. The store
+  was never opened.
+- `store` — the binding loaded and the probe died using it.
+
+Only a `store` verdict implicates the store. When it fails and a store
+exists, the store is **quarantined** (renamed to
 `crdt-store.broken-<timestamp>`) and the preflight retried once against a
 fresh directory: a pass means the data was at fault, so the app continues
 with a fresh store; a second failure means the binding itself is broken, so
 the original store is restored for a future launch and the provider goes
-in-memory. Only after the child survives is the y-leveldb store probed
+in-memory. Restoring first clears the partial fresh store the failed re-probe
+left behind (renaming onto an existing directory is `EPERM` on Windows), and
+falls back to retries and then copy+delete if the directory is still locked.
+Only after the child survives is the y-leveldb store probed
 in-process (a write/read/clear round-trip with a timeout) before it is
 trusted. A broken `classic-level` native binding doesn't
 fail cleanly — it throws outside the promise chain or hangs its callbacks — so

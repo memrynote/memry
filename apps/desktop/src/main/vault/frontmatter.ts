@@ -54,6 +54,12 @@ export interface ParsedNote {
    * `---` line and its EOL, or null when the file had no frontmatter.
    */
   rawFrontmatterBlock: string | null
+  /**
+   * YAML parse failure message when the frontmatter block could not be read,
+   * else null. On failure `frontmatter` is empty and the body is still parsed —
+   * the note stays usable and indexable instead of failing whole.
+   */
+  frontmatterError: string | null
   eol: Eol
   hadTrailingNewline: boolean
   /**
@@ -86,9 +92,21 @@ export function parseNote(
   stats?: ParseNoteStats
 ): ParsedNote {
   const { block, body } = splitFrontmatterBlock(rawContent)
-  // The `{}` options bypass gray-matter's content-keyed cache, which would
-  // otherwise leak `data` mutations into later parses of identical content.
-  const data = block ? (matter(block, {}).data as Record<string, unknown>) : {}
+  // Foreign vaults hold arbitrary YAML; a block we cannot parse must not cost
+  // the note its body (it would vanish from search, graph and backlinks — #844).
+  // The raw block is kept verbatim, so writeback preserves the broken bytes
+  // unless the user actually edits frontmatter.
+  let data: Record<string, unknown> = {}
+  let frontmatterError: string | null = null
+  if (block) {
+    try {
+      // The `{}` options bypass gray-matter's content-keyed cache, which would
+      // otherwise leak `data` mutations into later parses of identical content.
+      data = matter(block, {}).data as Record<string, unknown>
+    } catch (error) {
+      frontmatterError = error instanceof Error ? error.message : String(error)
+    }
+  }
   const hadFrontmatter = Object.keys(data).length > 0
   const now = new Date().toISOString()
 
@@ -107,6 +125,7 @@ export function parseNote(
     content: body,
     hadFrontmatter,
     rawFrontmatterBlock: block,
+    frontmatterError,
     eol: rawContent.includes('\r\n') ? '\r\n' : '\n',
     hadTrailingNewline: /\r?\n$/.test(rawContent),
     id: generateNoteId(),

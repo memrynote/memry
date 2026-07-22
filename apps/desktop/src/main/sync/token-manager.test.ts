@@ -267,6 +267,132 @@ describe('token-manager', () => {
     })
   })
 
+  describe('refresh-token rejection latch', () => {
+    /** Access token permanently expired + refresh token the server always rejects. */
+    function givenDeadRefreshToken(): { win: { webContents: { send: ReturnType<typeof vi.fn> } } } {
+      const expiredToken = encodeToken({ exp: nowSeconds() - 100 })
+      mockRetrieveKey.mockImplementation((entry) => {
+        if (entry.account === 'access-token') {
+          return Promise.resolve(new TextEncoder().encode(expiredToken))
+        }
+        if (entry.account === 'refresh-token') {
+          return Promise.resolve(new TextEncoder().encode('dead-refresh-tok'))
+        }
+        return Promise.resolve(null)
+      })
+      mockDecodeJwt.mockReturnValue({ exp: nowSeconds() - 100 })
+      const win = { webContents: { send: vi.fn() } }
+      mockGetAllWindows.mockReturnValue([win])
+      return { win }
+    }
+
+    async function rejectWith401(): Promise<void> {
+      const { SyncServerError } = await import('./http-client')
+      mockPostToServer.mockRejectedValue(new SyncServerError('Invalid refresh token', 401))
+    }
+
+    it('does not re-hit /auth/refresh while the backoff window is open', async () => {
+      // #given a dead refresh token and many callers demanding a token
+      givenDeadRefreshToken()
+      await rejectWith401()
+
+      // #when
+      await getValidAccessToken()
+      await getValidAccessToken()
+      await getValidAccessToken()
+
+      // #then only the first attempt reached the network
+      expect(mockPostToServer).toHaveBeenCalledTimes(1)
+    })
+
+    it('goes terminal after 3 rejections and never calls the server again', async () => {
+      // #given
+      const { win } = givenDeadRefreshToken()
+      await rejectWith401()
+
+      // #when three rejections, each after its backoff window elapses
+      await getValidAccessToken()
+      await vi.advanceTimersByTimeAsync(61_000)
+      await getValidAccessToken()
+      await vi.advanceTimersByTimeAsync(301_000)
+      await getValidAccessToken()
+
+      // #then
+      expect(mockPostToServer).toHaveBeenCalledTimes(3)
+      expect(win.webContents.send).toHaveBeenCalledWith('auth:session-expired', {
+        reason: 'refresh_rejected'
+      })
+
+      // #and the latch is permanent — no further requests, ever
+      await vi.advanceTimersByTimeAsync(60 * 60_000)
+      await getValidAccessToken()
+      await getValidAccessToken()
+      expect(mockPostToServer).toHaveBeenCalledTimes(3)
+    })
+
+    it('does not schedule a fallback retry after a rejection', async () => {
+      // #given a live session whose refresh token is then rejected
+      givenDeadRefreshToken()
+      await rejectWith401()
+      scheduleTokenRefresh(900)
+
+      // #when the scheduled refresh fires and is rejected
+      await vi.advanceTimersByTimeAsync(631_000)
+
+      // #then the fallback-retry timer must not add another attempt
+      expect(mockPostToServer).toHaveBeenCalledTimes(1)
+      await vi.advanceTimersByTimeAsync(900_000)
+      expect(mockPostToServer).toHaveBeenCalledTimes(1)
+    })
+
+    it('clears the latch when a new session is established', async () => {
+      // #given a session that went terminal
+      givenDeadRefreshToken()
+      await rejectWith401()
+      await getValidAccessToken()
+      await vi.advanceTimersByTimeAsync(61_000)
+      await getValidAccessToken()
+      await vi.advanceTimersByTimeAsync(301_000)
+      await getValidAccessToken()
+      expect(mockPostToServer).toHaveBeenCalledTimes(3)
+
+      // #when the user signs in again (sign-in schedules the next refresh)
+      scheduleTokenRefresh(900)
+      mockPostToServer.mockResolvedValue({
+        accessToken: 'new-access',
+        refreshToken: 'new-refresh',
+        expiresIn: 900
+      })
+
+      // #then refresh works again
+      await refreshAccessToken()
+      expect(mockPostToServer).toHaveBeenCalledTimes(4)
+    })
+
+    it('resets the rejection count after a successful refresh', async () => {
+      // #given one rejection
+      givenDeadRefreshToken()
+      await rejectWith401()
+      await refreshAccessToken()
+
+      // #when the next attempt succeeds
+      await vi.advanceTimersByTimeAsync(61_000)
+      mockPostToServer.mockResolvedValue({
+        accessToken: 'new-access',
+        refreshToken: 'new-refresh',
+        expiresIn: 900
+      })
+      await refreshAccessToken()
+
+      // #then a later rejection starts from a clean slate (short backoff, not terminal)
+      await rejectWith401()
+      await refreshAccessToken()
+      await vi.advanceTimersByTimeAsync(61_000)
+      await refreshAccessToken()
+      expect(mockPostToServer).toHaveBeenCalledTimes(4)
+    })
+  })
+
   describe('scheduleTokenRefresh / cancelTokenRefresh', () => {
     it('schedules a refresh that fires within the jitter window', async () => {
       // #given
