@@ -60,12 +60,20 @@ export function CanvasAddCardDialog({
     return groupCandidates(markOnCanvas(merged, onCanvasKeys))
   }, [results, events, onCanvasKeys, t])
 
-  // When there are matches the first one takes the highlight, so Enter picks an
-  // existing item; the create row is one arrow-up away.
+  // A blank query always highlights the create row — the hook clears `events`
+  // in its own effect, so for one frame after the user clears the input the
+  // groups can still hold a stale match, and without this guard Enter would
+  // add that stale card instead of creating a note. For a non-blank query the
+  // first match takes the highlight, so Enter picks an existing item; the
+  // create row is one arrow-up away.
   useEffect(() => {
+    if (query.trim() === '') {
+      setValue(CREATE_VALUE)
+      return
+    }
     const first = groups.note[0] ?? groups.task[0] ?? groups.calendar_event[0]
     setValue(first ? candidateKey(first.entityType, first.entityId) : CREATE_VALUE)
-  }, [groups])
+  }, [groups, query])
 
   const select = (candidate: AddCardCandidate): void => {
     if (candidate.onCanvas) {

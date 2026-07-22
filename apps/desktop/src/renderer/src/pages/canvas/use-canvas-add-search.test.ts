@@ -57,6 +57,16 @@ describe('useCanvasAddSearch', () => {
     expect(result.current.loading).toBe(false)
   })
 
+  it('trims the query the same way for both sources (#869)', async () => {
+    // #given / #when — a query with leading and trailing whitespace
+    const { result } = renderHook(() => useCanvasAddSearch(true, '  alpha  '))
+
+    // #then — both sources receive the trimmed query, not the raw one
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(mocks.quick).toHaveBeenCalledWith('alpha')
+    expect(mocks.searchEvents).toHaveBeenCalledWith({ query: 'alpha' })
+  })
+
   it('re-queries events per keystroke, unlike the old once-per-open range fetch', async () => {
     // #given — an open dialog
     const { rerender } = renderHook(({ q }) => useCanvasAddSearch(true, q), {
@@ -87,6 +97,46 @@ describe('useCanvasAddSearch', () => {
     expect(mocks.quick).toHaveBeenCalledWith('alp')
     expect(mocks.searchEvents).toHaveBeenCalledTimes(1)
     expect(mocks.searchEvents).toHaveBeenCalledWith({ query: 'alp' })
+  })
+
+  it('waits out the debounce before issuing either request', async () => {
+    // #given / #when — an open dialog with a query
+    renderHook(() => useCanvasAddSearch(true, 'alpha'))
+
+    // #then — partway through the debounce window, neither source has fired
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(mocks.quick).not.toHaveBeenCalled()
+    expect(mocks.searchEvents).not.toHaveBeenCalled()
+
+    // #when — the debounce window fully elapses
+    // #then — both sources are now called exactly once
+    await waitFor(() => expect(mocks.quick).toHaveBeenCalledTimes(1))
+    expect(mocks.searchEvents).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not let a stale response overwrite a newer, still in-flight query', async () => {
+    // #given — the first query's search call hangs until manually released
+    let release: (value: unknown) => void = () => {}
+    mocks.quick.mockReset().mockReturnValueOnce(
+      new Promise((resolve) => {
+        release = resolve
+      })
+    )
+
+    // #when — the stale query's debounce fires, then a second query
+    // supersedes it before either has settled
+    const { result, rerender } = renderHook(({ q }) => useCanvasAddSearch(true, q), {
+      initialProps: { q: 'stale' }
+    })
+    await waitFor(() => expect(mocks.quick).toHaveBeenCalledTimes(1))
+    rerender({ q: 'fresh' })
+
+    // #then — releasing the stale response while the newer query is still
+    // debouncing must not overwrite results or flip loading off
+    release({ results: [{ id: 'stale' }], queryTimeMs: 1 })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(result.current.results).toEqual([])
+    expect(result.current.loading).toBe(true)
   })
 
   it('keeps events when search rejects', async () => {

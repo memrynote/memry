@@ -140,6 +140,22 @@ describe('CanvasAddCardDialog', () => {
     expect(props.onPick).not.toHaveBeenCalled()
   })
 
+  it('keeps the create row highlighted for a blank query even when a stale event is present', () => {
+    // The hook clears `events` in its own effect (#869), so for one render
+    // after the user clears the input, groups.calendar_event can still hold
+    // a stale match. The highlight effect must prefer the create row anyway,
+    // or Enter would add that stale event instead of creating a note.
+    mocks.sources = {
+      results: [],
+      events: [eventItem('e1', 'Standup')],
+      loading: false
+    }
+    const props = setup()
+    fireEvent.keyDown(screen.getByTestId('canvas-add-input'), { key: 'Enter' })
+    expect(props.onCreateNote).toHaveBeenCalledWith('')
+    expect(props.onPick).not.toHaveBeenCalled()
+  })
+
   it('suppresses the empty state while a search is in flight', () => {
     mocks.sources = { results: [], events: [], loading: true }
     setup()

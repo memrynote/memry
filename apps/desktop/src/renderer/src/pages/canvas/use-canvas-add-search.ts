@@ -47,7 +47,7 @@ export function useCanvasAddSearch(open: boolean, query: string): CanvasAddSourc
     let cancelled = false
     const timer = setTimeout(() => {
       // Settled independently: one source failing must not blank the other.
-      const searching = searchService.quick(query).then(
+      const searching = searchService.quick(trimmed).then(
         (response) => {
           if (!cancelled) setResults(response.results)
         },
