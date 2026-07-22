@@ -5,6 +5,7 @@ interface ProjectStatsRowProps {
   taskCount: number
   noteCount: number
   eventCount: number
+  fileCount: number
   progressPct: number
   className?: string
 }
@@ -13,6 +14,7 @@ export const ProjectStatsRow = ({
   taskCount,
   noteCount,
   eventCount,
+  fileCount,
   progressPct,
   className
 }: ProjectStatsRowProps): React.JSX.Element => {
@@ -21,10 +23,11 @@ export const ProjectStatsRow = ({
     { label: t('projectHome.stats.tasks'), value: String(taskCount) },
     { label: t('projectHome.stats.notes'), value: String(noteCount) },
     { label: t('projectHome.stats.events'), value: String(eventCount) },
+    { label: t('projectHome.stats.files'), value: String(fileCount) },
     { label: t('projectHome.stats.progress'), value: `${progressPct}%` }
   ]
   return (
-    <div className={cn('grid grid-cols-4 gap-3 px-4 py-3', className)}>
+    <div className={cn('grid grid-cols-5 gap-3 px-4 py-3', className)}>
       {tiles.map((tile) => (
         <div
           key={tile.label}

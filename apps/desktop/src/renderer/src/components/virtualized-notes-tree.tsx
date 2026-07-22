@@ -925,21 +925,18 @@ export function VirtualizedNotesTree({
 
       e.dataTransfer.effectAllowed = 'copyMove'
       e.dataTransfer.setData('text/plain', itemId)
-      // Tag file-type items (pdf/image/audio/etc.) so the note editor can embed
-      // them by their own vault path on drop, instead of ignoring the drag.
       if (!isFolder(itemId)) {
-        const note = noteMap.get(itemId)
-        const fileType = (note?.fileType ?? 'markdown') as FileType
-        if (fileType !== 'markdown') {
-          e.dataTransfer.setData(MEMRY_NOTE_DRAG_MIME, itemId)
-        }
+        // Tag every note/file item so drop targets (note editor embed, sidebar
+        // project link) can resolve it by id. getFile(id) later discriminates
+        // a file (non-markdown, embeddable) from a plain note (returns null).
+        e.dataTransfer.setData(MEMRY_NOTE_DRAG_MIME, itemId)
         // Every non-folder item is a note entity — tag it so the spatial canvas
         // can create a referencing card on drop (markdown notes set no other MIME).
         e.dataTransfer.setData(CANVAS_ITEM_DRAG_MIME, canvasDragPayload('note', itemId))
       }
       setDragState((prev) => ({ ...prev, draggedId: itemId }))
     },
-    [isDragDisabled, noteMap]
+    [isDragDisabled]
   )
 
   const handleDragEnd = useCallback(() => {

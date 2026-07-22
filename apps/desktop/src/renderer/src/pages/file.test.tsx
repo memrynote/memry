@@ -25,6 +25,17 @@ vi.mock('@/services/notes-service', () => ({
   }
 }))
 
+vi.mock('@/components/tasks/projects/item-project-chips', () => ({
+  ItemProjectChips: ({ itemType, itemId }: { itemType: string; itemId: string }) => (
+    <div data-testid="chips" data-item-type={itemType} data-item-id={itemId} />
+  )
+}))
+
+vi.mock('@/components/tasks/projects/add-file-to-project-dialog', () => ({
+  AddFileToProjectDialog: ({ open }: { open: boolean }) =>
+    open ? <div data-testid="add-file-dialog" /> : null
+}))
+
 vi.mock('@/components/viewers', () => ({
   PdfViewer: ({ src }: { src: string }) => <div data-testid="pdf-viewer">{src}</div>,
   ImageViewer: ({ src, alt }: { src: string; alt: string }) => (
@@ -167,5 +178,23 @@ describe('FilePage', () => {
     expect(
       await screen.findByText('File not found. It may have been deleted or moved.')
     ).toBeInTheDocument()
+  })
+
+  it('renders file project chips with itemType file', async () => {
+    renderWithProviders(<FilePage fileId="file-1" />)
+
+    const chips = await screen.findByTestId('chips')
+    expect(chips).toHaveAttribute('data-item-type', 'file')
+    expect(chips).toHaveAttribute('data-item-id', 'file-1')
+  })
+
+  it('opens the add-to-project dialog from the info-bar button', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<FilePage fileId="file-1" />)
+
+    expect(await screen.findByText('File title')).toBeInTheDocument()
+    await user.click(screen.getByTitle('addToProject.menuLabel'))
+
+    expect(screen.getByTestId('add-file-dialog')).toBeInTheDocument()
   })
 })
