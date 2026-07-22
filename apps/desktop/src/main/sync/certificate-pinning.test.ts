@@ -288,10 +288,11 @@ describe('certificate-pinning', () => {
   })
 
   describe('placeholder pins fallback logging', () => {
-    it('#given packaged mode with placeholders #then warns once and never logs an error', async () => {
+    it('#given packaged mode with placeholders #then logs debug once and never warns or errors', async () => {
       // #given — fresh module so the once-guard starts clean
       vi.resetModules()
       mockApp.isPackaged = true
+      mockLog.debug.mockClear()
       mockLog.warn.mockClear()
       mockLog.error.mockClear()
       const fresh = await import('./certificate-pinning')
@@ -301,8 +302,10 @@ describe('certificate-pinning', () => {
       fresh.createPinnedAgent()
       fresh.warnPinningUnconfiguredOnce()
 
-      // #then — TLS-only fallback is deliberate: one warn, no CRITICAL noise
-      expect(mockLog.warn).toHaveBeenCalledTimes(1)
+      // #then — TLS-only fallback is deliberate: one debug line, nothing in the
+      // remote warn/error stream (which is floored at warn) — see #846
+      expect(mockLog.debug).toHaveBeenCalledTimes(1)
+      expect(mockLog.warn).not.toHaveBeenCalled()
       expect(mockLog.error).not.toHaveBeenCalled()
     })
   })

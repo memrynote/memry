@@ -1,6 +1,17 @@
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import sodium from 'libsodium-wrappers-sumo'
 import { lockKeyMaterial, unlockKeyMaterial } from './memory-lock'
+
+const mockLog = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn()
+}))
+
+vi.mock('../lib/logger', () => ({
+  createLogger: () => mockLog
+}))
 
 beforeAll(async () => {
   await sodium.ready
@@ -53,6 +64,29 @@ describe('unlockKeyMaterial', () => {
       const unlocked = unlockKeyMaterial(buffer)
       expect(locked).toBe(false)
       expect(unlocked).toBe(false)
+    })
+  })
+})
+
+describe('unavailable-API log level', () => {
+  describe('#given a WASM build with no mlock/munlock #when key material is locked', () => {
+    it('#then the notice stays at debug and never reaches the warn stream', async () => {
+      // #given — fresh module so the once-guards start clean
+      vi.resetModules()
+      mockLog.debug.mockClear()
+      mockLog.warn.mockClear()
+      mockLog.error.mockClear()
+      const fresh = await import('./memory-lock')
+      const buffer = sodium.randombytes_buf(32)
+
+      // #when
+      fresh.lockKeyMaterial(buffer)
+      fresh.unlockKeyMaterial(buffer)
+
+      // #then — expected steady state, not a fault (#846)
+      expect(mockLog.debug).toHaveBeenCalledTimes(2)
+      expect(mockLog.warn).not.toHaveBeenCalled()
+      expect(mockLog.error).not.toHaveBeenCalled()
     })
   })
 })
