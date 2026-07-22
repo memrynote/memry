@@ -30,6 +30,7 @@ import { hitTestCard, shouldDeactivateForTool, nextActive, withActivePinned } fr
 import { useCanvasEntities, entityKey } from './use-canvas-entities'
 import {
   computeVisibleCardIds,
+  findFreeCardCenter,
   getCardRefs,
   makeCardSkeleton,
   overlayTransform,
@@ -366,17 +367,15 @@ export const CanvasCardLayer = ({
 
   const placeCard = useCallback(
     (entityType: CanvasCardRef['entityType'], entityId: string) => {
-      const { appState } = readScene()
+      const { cards, appState } = readScene()
       const rect = viewportSceneRect(appState, {
         width: clipRef.current?.clientWidth ?? 0,
         height: clipRef.current?.clientHeight ?? 0
       })
-      createCardElement(
-        entityType,
-        entityId,
-        (rect.minX + rect.maxX) / 2,
-        (rect.minY + rect.maxY) / 2
-      )
+      // Free cell, not the raw centre: repeated picks would otherwise pile up
+      // on one point and have to be dragged apart (#871).
+      const { x, y } = findFreeCardCenter(cards, rect)
+      createCardElement(entityType, entityId, x, y)
     },
     [readScene, createCardElement]
   )
