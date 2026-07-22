@@ -100,7 +100,7 @@ describe('yjs-doc-registry', () => {
     expect(destroy).toHaveBeenCalledTimes(1)
   })
 
-  it('promotes exactly one survivor when the side-effect owner releases repeatedly', () => {
+  it('promotes ownership to a still-live consumer on each owner release', () => {
     const registry = createYjsDocRegistry(() => ({ destroy: vi.fn() }))
     const a = Symbol('a')
     const b = Symbol('b')
