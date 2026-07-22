@@ -189,6 +189,7 @@ jobs:
       - name: Create runtime environment
         env:
           GOOGLE_CALENDAR_CLIENT_ID: ${{ secrets.GOOGLE_CALENDAR_CLIENT_ID }}
+          GOOGLE_CALENDAR_CLIENT_SECRET: ${{ secrets.GOOGLE_CALENDAR_CLIENT_SECRET }}
           SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
         run: |
           set -euo pipefail
@@ -200,9 +201,14 @@ jobs:
             echo "::error::Set GOOGLE_CALENDAR_CLIENT_ID as a repository secret before publishing."
             exit 1
           fi
+          if [ -z "${GOOGLE_CALENDAR_CLIENT_SECRET:-}" ]; then
+            echo "::error::Set GOOGLE_CALENDAR_CLIENT_SECRET as a repository secret before publishing."
+            exit 1
+          fi
           {
             printf 'SYNC_SERVER_URL=%s\n' "$SYNC_SERVER_URL"
             printf 'GOOGLE_CALENDAR_CLIENT_ID=%s\n' "$GOOGLE_CALENDAR_CLIENT_ID"
+            printf 'GOOGLE_CALENDAR_CLIENT_SECRET=%s\n' "$GOOGLE_CALENDAR_CLIENT_SECRET"
           } > apps/desktop/.env.production
 
       - name: Build signed macOS artifacts
@@ -365,6 +371,7 @@ jobs:
       - name: Create runtime environment
         env:
           GOOGLE_CALENDAR_CLIENT_ID: ${{ secrets.GOOGLE_CALENDAR_CLIENT_ID }}
+          GOOGLE_CALENDAR_CLIENT_SECRET: ${{ secrets.GOOGLE_CALENDAR_CLIENT_SECRET }}
           SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
         shell: bash
         run: |
@@ -377,9 +384,14 @@ jobs:
             echo "::error::Set GOOGLE_CALENDAR_CLIENT_ID as a repository secret before publishing"
             exit 1
           fi
+          if [ -z "${GOOGLE_CALENDAR_CLIENT_SECRET:-}" ]; then
+            echo "::error::Set GOOGLE_CALENDAR_CLIENT_SECRET as a repository secret before publishing"
+            exit 1
+          fi
           {
             printf 'SYNC_SERVER_URL=%s\n' "$SYNC_SERVER_URL"
             printf 'GOOGLE_CALENDAR_CLIENT_ID=%s\n' "$GOOGLE_CALENDAR_CLIENT_ID"
+            printf 'GOOGLE_CALENDAR_CLIENT_SECRET=%s\n' "$GOOGLE_CALENDAR_CLIENT_SECRET"
           } > apps/desktop/.env.production
 
       # The runtime env is staged + shipped as resources/app-config, a filename
@@ -511,6 +523,7 @@ jobs:
       - name: Create runtime environment
         env:
           GOOGLE_CALENDAR_CLIENT_ID: ${{ secrets.GOOGLE_CALENDAR_CLIENT_ID }}
+          GOOGLE_CALENDAR_CLIENT_SECRET: ${{ secrets.GOOGLE_CALENDAR_CLIENT_SECRET }}
           SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
         run: |
           set -euo pipefail
@@ -522,9 +535,14 @@ jobs:
             echo "::error::Set GOOGLE_CALENDAR_CLIENT_ID as a repository secret before publishing."
             exit 1
           fi
+          if [ -z "${GOOGLE_CALENDAR_CLIENT_SECRET:-}" ]; then
+            echo "::error::Set GOOGLE_CALENDAR_CLIENT_SECRET as a repository secret before publishing."
+            exit 1
+          fi
           {
             printf 'SYNC_SERVER_URL=%s\n' "$SYNC_SERVER_URL"
             printf 'GOOGLE_CALENDAR_CLIENT_ID=%s\n' "$GOOGLE_CALENDAR_CLIENT_ID"
+            printf 'GOOGLE_CALENDAR_CLIENT_SECRET=%s\n' "$GOOGLE_CALENDAR_CLIENT_SECRET"
           } > apps/desktop/.env.production
 
       - name: Build Linux artifacts
