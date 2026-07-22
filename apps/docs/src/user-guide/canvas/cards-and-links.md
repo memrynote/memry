@@ -15,6 +15,11 @@ Task and calendar-event cards are added through **Add card**. Dragging works
 for notes from the sidebar; the Tasks and Calendar pages have no drag-in, so
 tasks and events always go through the picker.
 
+Files you have filed into your vault — PDFs, images, audio and video — do not
+appear in the picker. A note card renders a markdown preview, so those open in
+the file viewer instead. They never take up room in the search results, so a
+matching note is always shown even when many filed files share its name.
+
 If you pick something that is already on the board, Memry scrolls to the card
 you already have instead of adding a duplicate — look for the **On canvas**
 badge in the results.
