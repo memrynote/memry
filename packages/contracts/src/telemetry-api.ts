@@ -44,7 +44,13 @@ export const TelemetryEventNameSchema = z.enum([
   'agent_chat_message_sent',
   'command_palette_opened',
   'app_update_installed',
-  'app_error_seen'
+  'app_error_seen',
+  'canvas_sync_conflict_copy',
+  'canvas_too_large',
+  'sync_skipped_unknown_type',
+  'canvas_asset_uploaded',
+  'canvas_asset_dedup_hit',
+  'canvas_asset_gc_reaped'
 ])
 
 export const TelemetrySurfaceSchema = z.enum([

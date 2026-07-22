@@ -167,7 +167,9 @@ vi.mock('@/services/notes-service', () => ({
     setLocalOnly: mocks.setLocalOnly,
     update: mocks.notesUpdate,
     revealInFinder: mocks.revealInFinder,
-    openExternal: mocks.openExternal
+    openExternal: mocks.openExternal,
+    // #800 getFile probe (note.tsx): null → treated as a real markdown note.
+    getFile: vi.fn(async () => null)
   },
   onNoteDeleted: (handler: (event: { id: string }) => void) => {
     mocks.deletedHandler = handler
@@ -666,7 +668,7 @@ describe('NotePage', () => {
     mocks.noteState.isLoading = false
     mocks.noteState.error = new Error('load failed')
     rerender(<NotePage noteId="note-1" />)
-    expect(screen.getByText('load failed')).toBeInTheDocument()
+    expect(await screen.findByText('load failed')).toBeInTheDocument()
     fireEvent.click(screen.getByText('button.retry'))
     expect(mocks.refetchNote).toHaveBeenCalled()
   })
@@ -674,7 +676,7 @@ describe('NotePage', () => {
   it('saves title, tags, properties, backlinks, and linked task navigation', async () => {
     renderWithProviders(<NotePage noteId="note-1" />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Test Note' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Test Note' }))
     expect(mocks.renameNote).toHaveBeenCalledWith({ id: 'note-1', newTitle: 'Renamed Note' })
 
     fireEvent.click(screen.getByRole('button', { name: 'Add tag' }))
@@ -707,11 +709,11 @@ describe('NotePage', () => {
     )
   })
 
-  it('omits the review rail when there are no comments, keeping note controls', () => {
+  it('omits the review rail when there are no comments, keeping note controls', async () => {
     renderWithProviders(<NotePage noteId="note-1" />)
 
     expect(screen.queryByLabelText('comments.railAria')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Add tag' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Add tag' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add property' })).toBeInTheDocument()
     expect(screen.getByTestId('editor-content')).toHaveTextContent('Original body')
   })
@@ -720,7 +722,7 @@ describe('NotePage', () => {
     vi.useFakeTimers()
     renderWithProviders(<NotePage noteId="note-1" />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.showLocalGraph' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.showLocalGraph' }))
     expect(screen.getByText('Local graph')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Change markdown' }))
@@ -744,7 +746,7 @@ describe('NotePage', () => {
     vi.useFakeTimers()
     const first = renderWithProviders(<NotePage noteId="note-1" />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Change markdown' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Change markdown' }))
     const flush = mocks.registerPendingSave.mock.calls[0]?.[1] as (() => Promise<void>) | undefined
     await act(async () => {
       await flush?.()
@@ -758,7 +760,7 @@ describe('NotePage', () => {
     mocks.updateNote.mockResolvedValue({ success: true })
     const second = renderWithProviders(<NotePage noteId="note-1" />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Change markdown' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Change markdown' }))
     second.unmount()
 
     expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: '# Changed' })
@@ -769,7 +771,7 @@ describe('NotePage', () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
     renderWithProviders(<NotePage noteId="note-1" />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Pick reminder' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Pick reminder' }))
     expect(mocks.setReminder).toHaveBeenCalledWith(new Date('2026-05-10'), undefined)
 
     fireEvent.click(screen.getByTitle('editor.toolbar.addBookmark'))
@@ -821,7 +823,7 @@ describe('NotePage', () => {
   it('routes wiki links to notes, files, creation, and missing-file errors', async () => {
     renderWithProviders(<NotePage noteId="note-1" />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Internal note link' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Internal note link' }))
     await waitFor(() =>
       expect(mocks.openTab).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'note', entityId: 'existing-note' })
@@ -859,6 +861,8 @@ describe('NotePage', () => {
 
     expect(mocks.registerPendingSave).toHaveBeenCalledWith('note-page:note-1', expect.any(Function))
 
+    await screen.findByRole('button', { name: 'Find next' })
+
     act(() => {
       mocks.deletedHandler?.({ id: 'note-1' })
       mocks.renamedHandler?.({ id: 'note-1', newTitle: 'Remote title' })
@@ -880,9 +884,9 @@ describe('NotePage', () => {
     expect(mocks.findInPage.close).toHaveBeenCalled()
   })
 
-  it('remounts the editor for agent-driven note content updates', () => {
+  it('remounts the editor for agent-driven note content updates', async () => {
     renderWithProviders(<NotePage noteId="note-1" />)
-    expect(screen.getByTestId('editor-content')).toHaveTextContent('Original body')
+    expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
 
     act(() => {
       mocks.updatedHandler?.({
@@ -897,6 +901,8 @@ describe('NotePage', () => {
 
   it('blocks mutations after the note is deleted', async () => {
     renderWithProviders(<NotePage noteId="note-1" />)
+
+    await screen.findByRole('button', { name: 'Test Note' })
 
     act(() => {
       mocks.deletedHandler?.({ id: 'note-1' })
@@ -937,9 +943,9 @@ describe('NotePage', () => {
   })
 
   describe('note-view menu file actions', () => {
-    it('opens find in page from the menu', () => {
+    it('opens find in page from the menu', async () => {
       renderWithProviders(<NotePage noteId="note-1" />)
-      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.find' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.find' }))
       expect(mocks.findInPage.open).toHaveBeenCalled()
     })
 
@@ -948,7 +954,7 @@ describe('NotePage', () => {
       Object.assign(navigator, { clipboard: { writeText } })
 
       renderWithProviders(<NotePage noteId="note-1" />)
-      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.copyPath' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.copyPath' }))
 
       await waitFor(() => expect(writeText).toHaveBeenCalledWith('notes/Test Note.md'))
       expect(toast.success).toHaveBeenCalledWith('page.toast.pathCopied')
@@ -956,22 +962,24 @@ describe('NotePage', () => {
 
     it('reveals the note in the OS file manager', async () => {
       renderWithProviders(<NotePage noteId="note-1" />)
-      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.revealInFinder' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.revealInFinder' }))
       await waitFor(() => expect(mocks.revealInFinder).toHaveBeenCalledWith('note-1'))
     })
 
     it('opens the note in the default app', async () => {
       renderWithProviders(<NotePage noteId="note-1" />)
-      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.openInDefaultApp' }))
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'editor.toolbar.openInDefaultApp' })
+      )
       await waitFor(() => expect(mocks.openExternal).toHaveBeenCalledWith('note-1'))
     })
 
-    it('dispatches a reveal-in-sidebar event', () => {
+    it('dispatches a reveal-in-sidebar event', async () => {
       const listener = vi.fn()
       window.addEventListener('reveal-in-sidebar', listener)
       renderWithProviders(<NotePage noteId="note-1" />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.revealInSidebar' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.revealInSidebar' }))
 
       expect(listener).toHaveBeenCalledTimes(1)
       const event = listener.mock.calls[0][0] as CustomEvent
@@ -985,7 +993,7 @@ describe('NotePage', () => {
       // Dialog is closed until the menu item is chosen
       expect(screen.queryByTestId('move-dialog')).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.moveToFolder' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.moveToFolder' }))
       const dialog = screen.getByTestId('move-dialog')
       // current folder is derived from the note path
       expect(dialog).toHaveTextContent('move:note-1:notes')
@@ -1003,7 +1011,7 @@ describe('NotePage', () => {
       // Confirmation not shown until the delete item is chosen
       expect(screen.queryByTestId('delete-dialog')).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.delete' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.delete' }))
       expect(screen.getByTestId('delete-dialog')).toBeInTheDocument()
       // Nothing deleted just by opening the dialog
       expect(mocks.deleteNote).not.toHaveBeenCalled()
@@ -1017,7 +1025,7 @@ describe('NotePage', () => {
       mocks.deleteNote.mockResolvedValueOnce({ success: false, error: 'nope' })
       renderWithProviders(<NotePage noteId="note-1" />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.delete' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.delete' }))
       fireEvent.click(screen.getByRole('button', { name: 'page.deleteConfirm.confirm' }))
 
       await waitFor(() => expect(mocks.deleteNote).toHaveBeenCalledWith('note-1'))
@@ -1030,7 +1038,7 @@ describe('NotePage', () => {
       Object.assign(navigator, { clipboard: { writeText } })
 
       renderWithProviders(<NotePage noteId="note-1" />)
-      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.copyPath' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.copyPath' }))
 
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith('clipboard blocked'))
     })
@@ -1039,7 +1047,7 @@ describe('NotePage', () => {
       mocks.revealInFinder.mockRejectedValueOnce(new Error('reveal failed'))
       renderWithProviders(<NotePage noteId="note-1" />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.revealInFinder' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.revealInFinder' }))
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith('reveal failed'))
     })
 
@@ -1047,7 +1055,9 @@ describe('NotePage', () => {
       mocks.openExternal.mockRejectedValueOnce(new Error('open failed'))
       renderWithProviders(<NotePage noteId="note-1" />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.openInDefaultApp' }))
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'editor.toolbar.openInDefaultApp' })
+      )
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith('open failed'))
     })
 
@@ -1055,7 +1065,7 @@ describe('NotePage', () => {
       mocks.moveNote.mockResolvedValueOnce({ success: false, error: 'move blocked' })
       renderWithProviders(<NotePage noteId="note-1" />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.moveToFolder' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.moveToFolder' }))
       fireEvent.click(screen.getByRole('button', { name: 'Confirm move' }))
 
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith('move blocked'))
@@ -1065,7 +1075,7 @@ describe('NotePage', () => {
       mocks.deleteNote.mockRejectedValueOnce(new Error('delete crashed'))
       renderWithProviders(<NotePage noteId="note-1" />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.delete' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.delete' }))
       fireEvent.click(screen.getByRole('button', { name: 'page.deleteConfirm.confirm' }))
 
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith('delete crashed'))

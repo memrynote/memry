@@ -1,0 +1,430 @@
+import { and, eq, isNull } from 'drizzle-orm'
+import {
+  canvasAssets,
+  canvases,
+  canvasEntityRefs,
+  type CanvasRow
+} from '@memry/db-schema/data-schema'
+import { CanvasSyncPayloadSchema, type CanvasSyncPayload } from '@memry/contracts/sync-payloads'
+import { CanvasChannels } from '@memry/contracts/ipc-channels'
+import type { VectorClock } from '@memry/contracts/sync-api'
+import type { SyncQueueManager } from '../queue'
+import { increment } from '../vector-clock'
+import { createLogger } from '../../lib/logger'
+import { generateId } from '../../lib/id'
+import { encryptCanvasSceneForVault, decryptCanvasSceneForVault } from '../../canvas/encryption'
+import { extractEntityRefsFromScene } from '../../canvas/scene-refs'
+import { readMemryAssets } from '../../canvas/assets/memry-assets'
+import { ensureAssetsPresent, reconcileCanvasAssets } from '../../canvas/assets/asset-service'
+import { buildAssetServiceContext } from '../../canvas/assets/asset-service-context'
+import { getCanvasSyncService } from '../canvas-sync'
+import { trackMainEvent } from '../../telemetry/track'
+import { BaseItemHandler } from './base-handler'
+import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
+import type { MemryAssetDescriptor } from '@memry/contracts/canvas-api'
+
+const log = createLogger('CanvasHandler')
+
+type CanvasTx = Parameters<Parameters<DrizzleDb['transaction']>[0]>[0]
+
+function writeRefs(tx: CanvasTx, canvasId: string, scene: string): void {
+  for (const ref of extractEntityRefsFromScene(scene)) {
+    tx.insert(canvasEntityRefs)
+      .values({ canvasId, entityType: ref.entityType, entityId: ref.entityId })
+      .onConflictDoNothing()
+      .run()
+  }
+}
+
+/**
+ * M5: ingest the `memryAssets` scene sidecar into the per-device dedup/GC index
+ * (`canvas_assets`). Records one idempotent row per (canvas, asset) so a
+ * non-authoring device gets the dedup + GC bookkeeping it never uploaded, and
+ * the GC union (`hashesReferencedByOtherCanvases`) protects assets shared across
+ * canvases (incl. conflict copies). A pre-M5 / inline-base64 scene yields `[]`
+ * → zero rows (backward compat). Writes through the apply transaction handle
+ * (`tx`, like `writeRefs`), so it commits/rolls back atomically with the scene
+ * + entity-ref writes.
+ */
+function recordSceneAssets(
+  tx: CanvasTx,
+  vaultId: string,
+  canvasId: string,
+  descriptors: MemryAssetDescriptor[]
+): void {
+  const now = Date.now()
+  for (const descriptor of descriptors) {
+    tx.insert(canvasAssets)
+      .values({
+        vaultId,
+        canvasId,
+        contentHash: descriptor.contentHash,
+        attachmentId: descriptor.attachmentId,
+        fileId: descriptor.fileId,
+        filename: descriptor.filename,
+        mimeType: descriptor.mimeType,
+        sizeBytes: descriptor.sizeBytes,
+        chunkHashes: descriptor.chunkHashes,
+        createdAt: now
+      })
+      .onConflictDoNothing()
+      .run()
+  }
+}
+
+/**
+ * M5 device-B restore: after the apply tx commits, download any asset file the
+ * applied scene references but this device is missing, so the scene renders.
+ * Fire-and-forget — a failed/slow download must never fail (or block) the apply,
+ * and a closed vault (no asset context) is a silent no-op. `ensureAssetsPresent`
+ * already isolates per-asset errors and calls `markWritebackIgnored` first.
+ */
+async function restoreCanvasAssets(
+  canvasId: string,
+  descriptors: MemryAssetDescriptor[]
+): Promise<void> {
+  try {
+    const assetCtx = buildAssetServiceContext()
+    if (!assetCtx) return
+    await ensureAssetsPresent(assetCtx, canvasId, descriptors)
+  } catch (err) {
+    log.warn('canvas asset restore failed after apply', { canvasId, err })
+  }
+}
+
+/**
+ * M5 GC on remote delete: after the tombstone commits, reconcile the deleted
+ * canvas against an empty scene so all of its hashes are candidates for removal.
+ * The GC union still protects any hash a conflict copy / other canvas references,
+ * so a shared asset survives. Fire-and-forget / graceful — GC must never fail a
+ * delete, and a closed vault is a silent no-op.
+ */
+async function gcDeletedCanvasAssets(canvasId: string): Promise<void> {
+  try {
+    const assetCtx = buildAssetServiceContext()
+    if (!assetCtx) return
+    await reconcileCanvasAssets(assetCtx, canvasId, '')
+  } catch (err) {
+    log.warn('canvas asset GC failed after delete', { canvasId, err })
+  }
+}
+
+/**
+ * `canvas` record sync handler (whole-doc LWW + hand-built conflict copy).
+ *
+ * See docs/superpowers/specs/2026-07-17-spatial-canvas-design.md §5 and §18
+ * D1–D8. Key behaviours:
+ * - The scene is re-encrypted at rest under the vault key (`snapshotCiphertext`)
+ *   on apply, and decrypted fresh on push (`buildPushPayload`).
+ * - D5: a payload without a `scene` never clobbers local ink — it is skipped.
+ * - §5.4/D4: a concurrent clock hand-builds a conflict-copy row (new id, fresh
+ *   clock, duplicated snapshot + refs, enqueued for push) BEFORE the LWW
+ *   overwrite, so no ink is lost.
+ * - D3: deletes are soft tombstones; refs are pruned in the same tx.
+ * - D4: advisory `canvas_entity_refs` are rebuilt from the incoming scene.
+ */
+export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
+  readonly type = 'canvas' as const
+  readonly schema = CanvasSyncPayloadSchema
+
+  applyUpsert(
+    ctx: ApplyContext,
+    itemId: string,
+    data: CanvasSyncPayload,
+    clock: VectorClock
+  ): ApplyResult {
+    const vaultKey = ctx.vaultKey
+    if (!vaultKey) {
+      log.warn('Skipping canvas apply without vault key', { itemId })
+      return 'skipped'
+    }
+
+    // D5: the payload is all-optional for forward tolerance; a missing scene
+    // must never overwrite good local ink under LWW. Validate presence here (the
+    // use site), not in the schema.
+    if (typeof data.scene !== 'string') {
+      log.warn('Skipping canvas apply without scene', { itemId })
+      return 'skipped'
+    }
+    const scene = data.scene
+    // M5: assets externalized into the scene sidecar. `[]` for a pre-M5 /
+    // inline-base64 scene → no rows recorded, no downloads triggered.
+    const descriptors = readMemryAssets(scene)
+
+    const result = ctx.db.transaction((tx): ApplyResult => {
+      const existing = tx.select().from(canvases).where(eq(canvases.id, itemId)).get()
+      const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
+      const now = Date.now()
+
+      if (!existing) {
+        const vaultId = data.vaultId
+        if (!vaultId) {
+          log.warn('Skipping canvas create without vaultId', { itemId })
+          return 'skipped'
+        }
+        tx.insert(canvases)
+          .values({
+            id: itemId,
+            vaultId,
+            title: data.title ?? null,
+            snapshotCiphertext: encryptCanvasSceneForVault(scene, vaultKey),
+            vectorClock: {},
+            createdAt: now,
+            updatedAt: now,
+            deletedAt: null,
+            lastSyncedAt: now,
+            clock: remoteClock
+          })
+          .run()
+        writeRefs(tx, itemId, scene)
+        // M5: ingest the asset sidecar so this device gets dedup/GC rows.
+        recordSceneAssets(tx, vaultId, itemId, descriptors)
+        ctx.emit(CanvasChannels.events.CREATED, {
+          canvas: { id: itemId, title: data.title ?? null, createdAt: now, updatedAt: now }
+        })
+        return 'applied'
+      }
+
+      const resolution = this.resolveClock(existing.clock, remoteClock)
+      if (resolution.action === 'skip') {
+        log.info('Skipping remote canvas update, local is newer', { itemId })
+        return 'skipped'
+      }
+
+      // A conflict copy is only warranted by a genuine SCENE divergence. Identical
+      // scenes under concurrent clocks (common once a never-rebound `_offline` tick
+      // pollutes a clock) must NOT spawn spurious duplicate "(conflict copy)" rows
+      // on every remote edit — compare the decrypted scenes before minting one.
+      let madeCopy = false
+      if (resolution.action === 'merge') {
+        const localScene = decryptCanvasSceneForVault(existing.snapshotCiphertext, vaultKey)
+        if (localScene !== scene) {
+          // §5.4/D4: hand-build a conflict copy of the LOSING local snapshot BEFORE
+          // overwriting, so no ink is lost.
+          this.createConflictCopy(tx, ctx, existing, localScene, now)
+          madeCopy = true
+        }
+      }
+
+      // Preserve an explicit title clear (null): `?? existing.title` would treat a
+      // deliberate null the same as an absent field and never propagate the clear.
+      const nextTitle = data.title !== undefined ? data.title : existing.title
+
+      tx.update(canvases)
+        .set({
+          title: nextTitle,
+          snapshotCiphertext: encryptCanvasSceneForVault(scene, vaultKey),
+          clock: resolution.mergedClock,
+          updatedAt: now,
+          // An incoming edit means the canvas is alive on the authoring device:
+          // clear any local tombstone (delete-loses-to-concurrent-edit, R13/D2).
+          // For a live canvas this is a no-op. Tombstones arrive via applyDelete,
+          // never via a payload `deletedAt` (D3).
+          deletedAt: null,
+          lastSyncedAt: now
+        })
+        .where(eq(canvases.id, itemId))
+        .run()
+
+      // D4: rebuild advisory refs from the incoming scene.
+      tx.delete(canvasEntityRefs).where(eq(canvasEntityRefs.canvasId, itemId)).run()
+      writeRefs(tx, itemId, scene)
+      // M5: ingest the incoming scene's asset sidecar under this canvas. Rows are
+      // append-only (idempotent upsert); GC on save/delete prunes stale ones.
+      recordSceneAssets(tx, existing.vaultId, itemId, descriptors)
+
+      ctx.emit(CanvasChannels.events.UPDATED, {
+        canvas: { id: itemId, title: nextTitle, createdAt: existing.createdAt, updatedAt: now }
+      })
+      return madeCopy ? 'conflict' : 'applied'
+    })
+
+    // AFTER commit (never inside the tx): fetch any missing asset files so the
+    // applied scene renders. Skipped applies (D5 / LWW-lose) applied no scene, so
+    // there is nothing to restore. Fire-and-forget: a download must not fail apply.
+    if (result !== 'skipped' && descriptors.length > 0) {
+      void restoreCanvasAssets(itemId, descriptors)
+    }
+    return result
+  }
+
+  applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
+    const result = ctx.db.transaction((tx): 'applied' | 'skipped' => {
+      const existing = tx.select().from(canvases).where(eq(canvases.id, itemId)).get()
+      if (!existing || existing.deletedAt !== null) return 'skipped'
+
+      let nextClock: VectorClock = existing.clock ?? {}
+      if (clock) {
+        const resolution = this.resolveClock(existing.clock ?? {}, clock)
+        // Concurrent or older delete loses to local edits (R13/D2): skip so the
+        // canvas survives; a later delete with a dominating clock wins.
+        if (resolution.action === 'skip' || resolution.action === 'merge') {
+          log.info('Skipping remote canvas delete, local has unseen changes', { itemId })
+          return 'skipped'
+        }
+        // Persist the delete's clock on the tombstone (mirrors the local-delete
+        // path's buildDeletePayload bump). Otherwise the tombstone keeps a stale
+        // pre-delete clock and a later concurrent edit resolves differently across
+        // devices → split-brain resurrection.
+        nextClock = resolution.mergedClock
+      }
+
+      const now = Date.now()
+      tx.update(canvases)
+        .set({ deletedAt: now, updatedAt: now, lastSyncedAt: now, clock: nextClock })
+        .where(eq(canvases.id, itemId))
+        .run()
+      // D3: prune advisory refs in the same tx (FK cascade is dead code under a
+      // soft delete).
+      tx.delete(canvasEntityRefs).where(eq(canvasEntityRefs.canvasId, itemId)).run()
+      ctx.emit(CanvasChannels.events.DELETED, { id: itemId })
+      return 'applied'
+    })
+
+    // AFTER commit: GC the deleted canvas's assets (empty scene → all its hashes
+    // are removal candidates; the GC union protects any still shared). Only when
+    // a tombstone was actually written — a skipped delete leaves the canvas live.
+    if (result === 'applied') {
+      void gcDeletedCanvasAssets(itemId)
+    }
+    return result
+  }
+
+  fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
+    return db.select().from(canvases).where(eq(canvases.id, itemId)).get() as
+      | Record<string, unknown>
+      | undefined
+  }
+
+  buildPushPayload(
+    db: DrizzleDb,
+    itemId: string,
+    _deviceId: string,
+    _operation: string,
+    vaultKey?: Uint8Array
+  ): string | null {
+    if (!vaultKey) return null
+    const row = db.select().from(canvases).where(eq(canvases.id, itemId)).get()
+    if (!row) return null
+    return JSON.stringify({
+      id: row.id,
+      vaultId: row.vaultId,
+      title: row.title,
+      scene: decryptCanvasSceneForVault(row.snapshotCiphertext, vaultKey),
+      clock: row.clock ?? {},
+      deletedAt: row.deletedAt ?? null
+    })
+  }
+
+  markPushSynced(db: DrizzleDb, itemId: string): void {
+    db.update(canvases).set({ lastSyncedAt: Date.now() }).where(eq(canvases.id, itemId)).run()
+  }
+
+  seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
+    // D2/D7: seed canvases created before the canvas sync type shipped (clock
+    // NULL) so they reach other devices. Skip tombstones — seeding a soft-deleted
+    // canvas as a create would resurrect it fleet-wide.
+    const rows = db
+      .select()
+      .from(canvases)
+      .where(and(isNull(canvases.clock), isNull(canvases.deletedAt)))
+      .all()
+    for (const row of rows) {
+      const clock = increment({}, deviceId)
+      db.update(canvases).set({ clock }).where(eq(canvases.id, row.id)).run()
+      queue.enqueue({
+        type: 'canvas',
+        itemId: row.id,
+        operation: 'create',
+        // Metadata-only fallback; buildPushPayload rebuilds the scene with the
+        // vault key at push time.
+        payload: JSON.stringify({
+          id: row.id,
+          vaultId: row.vaultId,
+          title: row.title,
+          clock,
+          deletedAt: null
+        }),
+        priority: 0
+      })
+    }
+    return rows.length
+  }
+
+  private createConflictCopy(
+    tx: CanvasTx,
+    ctx: ApplyContext,
+    existing: CanvasRow,
+    localScene: string,
+    now: number
+  ): void {
+    const service = getCanvasSyncService()
+    const deviceId = service?.getDeviceId() ?? null
+
+    const copyId = generateId()
+    // If sync isn't running (no device id) we still PRESERVE the losing ink on
+    // disk with a null clock, so `seedUnclocked` pushes it on the next engine
+    // init. Never silently drop the losing snapshot.
+    const copyClock = deviceId ? increment({}, deviceId) : null
+    const copyTitle = `${existing.title ?? 'Canvas'} (conflict copy)`
+
+    tx.insert(canvases)
+      .values({
+        id: copyId,
+        vaultId: existing.vaultId,
+        title: copyTitle,
+        // Duplicate the LOSING local snapshot verbatim — no re-encrypt needed.
+        snapshotCiphertext: existing.snapshotCiphertext,
+        vectorClock: {},
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+        lastSyncedAt: null,
+        clock: copyClock
+      })
+      .run()
+
+    // Rebuild advisory refs for the copy from the LOSING local scene (D4) —
+    // derived from the scene itself, not the refs table, so the copy is correct
+    // even if the table was never populated for this row.
+    writeRefs(tx, copyId, localScene)
+
+    // M5 (R12 data-loss guard): the copy holds the LOSING LOCAL scene verbatim,
+    // so it must own asset rows for the assets THAT scene references — read from
+    // `localScene`, NOT the incoming winning scene. This puts the copy's hashes
+    // into the GC union (`hashesReferencedByOtherCanvases`), so when the original
+    // is later overwritten/deleted, GC will not reap an asset the copy still uses.
+    recordSceneAssets(tx, existing.vaultId, copyId, readMemryAssets(localScene))
+
+    if (deviceId) {
+      // Enqueue a METADATA-ONLY create push (no plaintext scene at rest in the
+      // sync queue — buildPushPayload rebuilds the scene from the copy row with
+      // the vault key at push time). Enqueue-inside-apply-tx is safe (D1).
+      service?.enqueueConflictCopyPush(
+        copyId,
+        JSON.stringify({
+          id: copyId,
+          vaultId: existing.vaultId,
+          title: copyTitle,
+          clock: copyClock,
+          deletedAt: null
+        })
+      )
+    } else {
+      log.warn('Canvas conflict copy created without device id; will seed on next sync', {
+        id: copyId
+      })
+    }
+
+    ctx.emit(CanvasChannels.events.CREATED, {
+      canvas: { id: copyId, title: copyTitle, createdAt: now, updatedAt: now }
+    })
+    trackMainEvent('canvas_sync_conflict_copy', {
+      surface: 'sync',
+      action: 'conflict_copy_created',
+      objectType: 'canvas'
+    })
+  }
+}
+
+export const canvasHandler = new CanvasHandler()

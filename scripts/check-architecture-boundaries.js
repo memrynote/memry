@@ -17,6 +17,7 @@ const blockedFeatureSyncImports = [
   path.resolve(mainSyncRoot, 'project-sync'),
   path.resolve(mainSyncRoot, 'inbox-sync'),
   path.resolve(mainSyncRoot, 'filter-sync'),
+  path.resolve(mainSyncRoot, 'canvas-sync'),
   path.resolve(mainSyncRoot, 'note-sync'),
   path.resolve(mainSyncRoot, 'journal-sync'),
   path.resolve(mainSyncRoot, 'settings-sync'),

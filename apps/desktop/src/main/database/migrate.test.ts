@@ -78,26 +78,24 @@ describe('0035_spatial_canvas migration', () => {
   })
 
   /**
-   * Copies drizzle-data/ to a temp folder with 0035+ stripped (SQL files + last
-   * journal entries) so a database migrated from it is shaped like a production
-   * install that pre-dates the canvas tables.
+   * Copies drizzle-data/ to a temp folder with 0035 and everything after it
+   * stripped (SQL files + journal entries) so a database migrated from it is
+   * shaped like a production install that pre-dates the canvas tables. Looks
+   * up 0035 by tag (not "last entry") so later migrations added after it
+   * don't break this helper.
    */
   function makePre0035Folder(): string {
     const copy = path.join(tempDir, 'drizzle-data-pre-0035')
     fs.cpSync(migrationsDir, copy, { recursive: true })
-    fs.rmSync(path.join(copy, '0035_spatial_canvas.sql'))
-    fs.rmSync(path.join(copy, '0036_project_links.sql'))
     const journalPath = path.join(copy, 'meta', '_journal.json')
     const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
       entries: { tag: string }[]
     }
-    // Remove 0036 and 0035 entries to get a pre-0035 database
-    while (
-      journal.entries.length > 0 &&
-      (journal.entries[journal.entries.length - 1].tag === '0036_project_links' ||
-        journal.entries[journal.entries.length - 1].tag === '0035_spatial_canvas')
-    ) {
-      journal.entries.pop()
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0035_spatial_canvas')
+    expect(cutoff).toBeGreaterThanOrEqual(0)
+    const removed = journal.entries.splice(cutoff)
+    for (const entry of removed) {
+      fs.rmSync(path.join(copy, `${entry.tag}.sql`))
     }
     fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
     return copy
@@ -196,6 +194,177 @@ describe('0035_spatial_canvas migration', () => {
     sqlite.prepare("DELETE FROM canvases WHERE id = 'c1'").run()
     const remaining = sqlite
       .prepare("SELECT COUNT(*) AS n FROM canvas_entity_refs WHERE canvas_id = 'c1'")
+      .get() as { n: number }
+    expect(remaining.n).toBe(0)
+    sqlite.close()
+  })
+})
+
+describe('0036_canvas_assets migration', () => {
+  let tempDir: string
+  const migrationsDir = path.join(__dirname, 'drizzle-data')
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-canvas-assets-migrate-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  /**
+   * Copies drizzle-data/ to a temp folder with 0036 stripped (SQL file + last
+   * journal entry) so a database migrated from it is shaped like a production
+   * install that pre-dates the canvas_assets table.
+   */
+  function makePre0036Folder(): string {
+    const copy = path.join(tempDir, 'drizzle-data-pre-0036')
+    fs.cpSync(migrationsDir, copy, { recursive: true })
+    const journalPath = path.join(copy, 'meta', '_journal.json')
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+      entries: { tag: string }[]
+    }
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0036_canvas_assets')
+    expect(cutoff).toBeGreaterThanOrEqual(0)
+    const removed = journal.entries.splice(cutoff)
+    for (const entry of removed) {
+      fs.rmSync(path.join(copy, `${entry.tag}.sql`))
+    }
+    fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
+    return copy
+  }
+
+  function tableNames(sqlite: InstanceType<typeof Database>): string[] {
+    return (
+      sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {
+        name: string
+      }[]
+    ).map((t) => t.name)
+  }
+
+  it('creates canvas_assets when upgrading an existing pre-0036 database', () => {
+    const dbPath = path.join(tempDir, 'data.db')
+    const sqlite = new Database(dbPath)
+    const db = drizzle(sqlite)
+
+    migrate(db, { migrationsFolder: makePre0036Folder() })
+    expect(tableNames(sqlite)).not.toContain('canvas_assets')
+    sqlite
+      .prepare(
+        "INSERT INTO canvases (id, vault_id, snapshot_ciphertext, vector_clock, created_at, updated_at) VALUES ('c-pre', 'v1', 'ct', '{}', 1, 1)"
+      )
+      .run()
+
+    migrate(db, { migrationsFolder: migrationsDir })
+
+    const names = tableNames(sqlite)
+    expect(names).toContain('canvas_assets')
+    const kept = sqlite.prepare("SELECT id FROM canvases WHERE id = 'c-pre'").get() as {
+      id: string
+    }
+    expect(kept.id).toBe('c-pre')
+    sqlite.close()
+  })
+
+  it('raw SQL statements are idempotent when executed twice', () => {
+    const dbPath = path.join(tempDir, 'data.db')
+    runMigrations(dbPath)
+
+    const sqlite = new Database(dbPath)
+    const statements = fs
+      .readFileSync(path.join(migrationsDir, '0036_canvas_assets.sql'), 'utf8')
+      .split('--> statement-breakpoint')
+      .map((s) => s.trim())
+      .filter(Boolean)
+
+    expect(statements.length).toBeGreaterThanOrEqual(3)
+    for (let round = 0; round < 2; round++) {
+      for (const statement of statements) {
+        expect(() => sqlite.exec(statement)).not.toThrow()
+      }
+    }
+    sqlite.close()
+  })
+
+  it('creates the expected columns', () => {
+    const dbPath = path.join(tempDir, 'data.db')
+    runMigrations(dbPath)
+
+    const sqlite = new Database(dbPath)
+    const columns = sqlite.pragma('table_info(canvas_assets)') as {
+      name: string
+      type: string
+      notnull: number
+      pk: number
+    }[]
+    const byName = Object.fromEntries(columns.map((c) => [c.name, c]))
+
+    expect(Object.keys(byName).sort()).toEqual(
+      [
+        'vault_id',
+        'canvas_id',
+        'content_hash',
+        'attachment_id',
+        'file_id',
+        'filename',
+        'mime_type',
+        'size_bytes',
+        'chunk_hashes',
+        'created_at'
+      ].sort()
+    )
+    for (const name of Object.keys(byName)) {
+      expect(byName[name].notnull, `${name} should be NOT NULL`).toBe(1)
+    }
+    expect(byName.size_bytes.type).toBe('INTEGER')
+    expect(byName.created_at.type).toBe('INTEGER')
+    expect(byName.canvas_id.pk).toBeGreaterThan(0)
+    expect(byName.content_hash.pk).toBeGreaterThan(0)
+    expect(byName.vault_id.pk).toBe(0)
+
+    sqlite.close()
+  })
+
+  it('creates the FK cascade, composite PK, and both indexes', () => {
+    const dbPath = path.join(tempDir, 'data.db')
+    runMigrations(dbPath)
+
+    const sqlite = new Database(dbPath)
+    sqlite.pragma('foreign_keys = ON')
+
+    const fks = sqlite.pragma('foreign_key_list(canvas_assets)') as {
+      table: string
+      from: string
+      to: string
+      on_delete: string
+    }[]
+    expect(fks).toHaveLength(1)
+    expect(fks[0]).toMatchObject({ table: 'canvases', from: 'canvas_id', on_delete: 'CASCADE' })
+
+    const indexNames = (
+      sqlite.prepare("SELECT name FROM sqlite_master WHERE type='index'").all() as {
+        name: string
+      }[]
+    ).map((i) => i.name)
+    expect(indexNames).toEqual(
+      expect.arrayContaining(['idx_canvas_assets_dedup', 'idx_canvas_assets_attachment'])
+    )
+
+    sqlite
+      .prepare(
+        "INSERT INTO canvases (id, vault_id, snapshot_ciphertext, vector_clock, created_at, updated_at) VALUES ('c1', 'v1', 'ct', '{}', 1, 1)"
+      )
+      .run()
+    const insertAsset = sqlite.prepare(
+      "INSERT INTO canvas_assets (vault_id, canvas_id, content_hash, attachment_id, file_id, filename, mime_type, size_bytes, chunk_hashes, created_at) VALUES ('v1', 'c1', 'hash1', 'att1', 'file1', 'img.png', 'image/png', 1234, '[]', 1)"
+    )
+    insertAsset.run()
+    // Duplicate (canvas_id, content_hash) violates the composite PK.
+    expect(() => insertAsset.run()).toThrow(/UNIQUE|PRIMARY/i)
+
+    sqlite.prepare("DELETE FROM canvases WHERE id = 'c1'").run()
+    const remaining = sqlite
+      .prepare("SELECT COUNT(*) AS n FROM canvas_assets WHERE canvas_id = 'c1'")
       .get() as { n: number }
     expect(remaining.n).toBe(0)
     sqlite.close()

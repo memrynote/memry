@@ -152,7 +152,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   yjsDoc,
   isRemoteUpdateRef,
   marqueeZoneEl,
-  review
+  review,
+  runSideEffects = true
 }: ContentAreaEditorProps) {
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
@@ -1105,6 +1106,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           onChange={(): void => {
             void handleChange()
 
+            // A non-owner editor (a sibling on the same note in this window, R17)
+            // must not run task auto-conversion — exactly one editor owns it.
+            // Rendering + Yjs binding above are unaffected.
+            if (!runSideEffects) return
+
             const intents = analyzeTaskIntents(editor.document as any[], dismissedBlocksRef.current)
 
             // Subtasks are unambiguous (the user already structured them as
@@ -1327,10 +1333,13 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
   const { state } = useSync()
   const syncActive =
     state.status === 'idle' || state.status === 'syncing' || state.status === 'offline'
-  const { fragment, doc, isReady, isRemoteUpdateRef } = useYjsCollaboration({
+  const { fragment, doc, isReady, isRemoteUpdateRef, isSideEffectOwner } = useYjsCollaboration({
     noteId: props.noteId,
     enabled: syncActive
   })
+  // Standalone/non-canvas callers pass no runSideEffects → own their effects.
+  // A second editor on the same note in this window (R17) is a non-owner.
+  const runSideEffects = props.runSideEffects ?? isSideEffectOwner
 
   if (syncActive && props.noteId && !isReady) {
     return (
@@ -1344,6 +1353,7 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
     <TaskPrefetchProvider noteId={props.noteId}>
       <ContentAreaEditor
         {...props}
+        runSideEffects={runSideEffects}
         yjsFragment={isReady && fragment ? fragment : undefined}
         yjsDoc={isReady && doc ? doc : undefined}
         isRemoteUpdateRef={isRemoteUpdateRef}

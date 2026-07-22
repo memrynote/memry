@@ -83,7 +83,9 @@ describe('embedding projector', () => {
 
   it('reconcile removes embeddings for notes that no longer exist', async () => {
     const run = vi.fn()
-    const prepare = vi.fn(() => ({ run }))
+    // note-1 already has a vector, so the backfill finds no work and only the
+    // orphan-prune DELETE runs.
+    const prepare = vi.fn(() => ({ run, all: () => [{ note_id: 'note-1' }] }))
 
     // Embedding input version already current → skip the migration rebuild and
     // exercise only the stale-row reconcile delete.
@@ -102,6 +104,108 @@ describe('embedding projector', () => {
 
     expect(prepare).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM vec_notes'))
     expect(run).toHaveBeenCalledTimes(1)
+    // note-1 already embedded → no re-embed
+    expect(generateEmbedding).not.toHaveBeenCalled()
+  })
+
+  it('defers embedding while indexing and backfills the deferred notes on reconcile', async () => {
+    const run = vi.fn()
+    const prepare = vi.fn(() => ({ run, all: () => [] as Array<{ note_id: string }> }))
+    getRawIndexDatabase.mockReturnValue({ prepare })
+    getIndexDatabase.mockReturnValue({
+      all: vi.fn(() => [
+        { id: 'note-1', path: 'notes/one.md', title: 'One' },
+        { id: 'note-2', path: 'notes/two.md', title: 'Two' }
+      ])
+    })
+    getSetting.mockImplementation((_db: unknown, key: string) =>
+      key === 'ai.embeddingInputVersion' ? String(EMBEDDING_INPUT_VERSION) : 'true'
+    )
+    readFile.mockResolvedValue('raw markdown')
+    parseNote.mockReturnValue({ content: 'parsed markdown long enough' })
+
+    let indexing = true
+    const projector = createEmbeddingProjector(
+      () => '/vault',
+      () => indexing
+    )
+
+    // While indexing, project() must NOT load the model or embed inline.
+    await projector.project({
+      type: 'note.upserted',
+      note: {
+        kind: 'markdown',
+        noteId: 'note-1',
+        title: 'One',
+        parsedContent: 'body one long enough'
+      }
+    } as never)
+    await projector.project({
+      type: 'note.upserted',
+      note: {
+        kind: 'markdown',
+        noteId: 'note-2',
+        title: 'Two',
+        parsedContent: 'body two long enough'
+      }
+    } as never)
+
+    expect(generateEmbedding).not.toHaveBeenCalled()
+    expect(initEmbeddingModel).not.toHaveBeenCalled()
+
+    // After indexing, the backgrounded reconcile embeds the deferred notes.
+    indexing = false
+    await projector.reconcile()
+
+    expect(generateEmbedding).toHaveBeenCalledTimes(2)
+    expect(readFile).toHaveBeenCalledWith('/vault/notes/one.md', 'utf-8')
+    expect(readFile).toHaveBeenCalledWith('/vault/notes/two.md', 'utf-8')
+  })
+
+  it('retains deferred ids when the model fails to load, then embeds them on a later reconcile', async () => {
+    const run = vi.fn()
+    // note-1 already has a (stale) vector, so it is only in the work list because
+    // it was deferred — the missing-vector filter alone would not re-catch it.
+    const prepare = vi.fn(() => ({ run, all: () => [{ note_id: 'note-1' }] }))
+    getRawIndexDatabase.mockReturnValue({ prepare })
+    getIndexDatabase.mockReturnValue({
+      all: vi.fn(() => [{ id: 'note-1', path: 'notes/one.md', title: 'One' }])
+    })
+    getSetting.mockImplementation((_db: unknown, key: string) =>
+      key === 'ai.embeddingInputVersion' ? String(EMBEDDING_INPUT_VERSION) : 'true'
+    )
+    readFile.mockResolvedValue('raw markdown')
+    parseNote.mockReturnValue({ content: 'parsed markdown long enough' })
+
+    let indexing = true
+    const projector = createEmbeddingProjector(
+      () => '/vault',
+      () => indexing
+    )
+
+    // Defer note-1 during indexing.
+    await projector.project({
+      type: 'note.upserted',
+      note: {
+        kind: 'markdown',
+        noteId: 'note-1',
+        title: 'One',
+        parsedContent: 'body one long enough'
+      }
+    } as never)
+    indexing = false
+
+    // First reconcile: the model won't load → the deferred id must be kept, not embedded.
+    isModelLoaded.mockReturnValue(false)
+    initEmbeddingModel.mockResolvedValueOnce(false)
+    await projector.reconcile()
+    expect(generateEmbedding).not.toHaveBeenCalled()
+
+    // Second reconcile: the model loads → the retained deferred id is embedded even
+    // though it still has a stale vector row.
+    initEmbeddingModel.mockResolvedValue(true)
+    await projector.reconcile()
+    expect(generateEmbedding).toHaveBeenCalledTimes(1)
   })
 
   it('handles note events by storing, deleting, or skipping embeddings', async () => {

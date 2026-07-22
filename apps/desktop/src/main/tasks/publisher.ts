@@ -18,10 +18,18 @@ function emitTaskEvent(channel: string, data: unknown): void {
   })
 }
 
+// Task tags share the global tag list (see getTagsWithCounts). The tag hooks
+// (useTags / useAllTags / useNoteTagsQuery) only refetch on `notes:tags-changed`,
+// so a task tag mutation must broadcast it or the list stays stale until restart.
+function emitTagsChanged(): void {
+  emitTaskEvent('notes:tags-changed', {})
+}
+
 export function createTasksPublisher(): TasksDomainPublisher {
   return {
     taskCreated: ({ task }) => {
       emitTaskEvent(TasksChannels.events.CREATED, { task })
+      if (task.tags && task.tags.length > 0) emitTagsChanged()
       syncTaskCreate(task.id)
       trackMainEvent('task_created', {
         surface: 'tasks',
@@ -32,11 +40,13 @@ export function createTasksPublisher(): TasksDomainPublisher {
     },
     taskUpdated: ({ id, task, changes, changedFields }) => {
       emitTaskEvent(TasksChannels.events.UPDATED, { id, task, changes })
+      if (changedFields.includes('tags')) emitTagsChanged()
       syncTaskUpdate(id, changedFields)
     },
     taskDeleted: ({ id, snapshot }) => {
       syncTaskDelete(id, snapshot)
       emitTaskEvent(TasksChannels.events.DELETED, { id })
+      if (snapshot?.tags && snapshot.tags.length > 0) emitTagsChanged()
     },
     taskCompleted: ({ id, task }) => {
       emitTaskEvent(TasksChannels.events.COMPLETED, { id, task })

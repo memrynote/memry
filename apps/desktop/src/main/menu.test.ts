@@ -3,14 +3,16 @@ import { BrowserWindow } from 'electron'
 import { AppChannels } from '@memry/contracts/ipc-channels'
 import { createMainI18n } from '@memry/i18n/main'
 
-const { buildFromTemplate } = vi.hoisted(() => ({
-  buildFromTemplate: vi.fn((template: unknown) => ({ template }))
+const { buildFromTemplate, openExternal } = vi.hoisted(() => ({
+  buildFromTemplate: vi.fn((template: unknown) => ({ template })),
+  openExternal: vi.fn()
 }))
 
 vi.mock('electron', () => ({
   app: { name: 'MemryNote' },
   BrowserWindow: { getFocusedWindow: vi.fn(), getAllWindows: vi.fn(() => []) },
-  Menu: { buildFromTemplate }
+  Menu: { buildFromTemplate },
+  shell: { openExternal }
 }))
 
 import { buildAppMenu, buildEditableTextContextMenu } from './menu'
@@ -34,6 +36,7 @@ function findMenuItem(label: string): TemplateItem | undefined {
 describe('buildAppMenu', () => {
   beforeEach(() => {
     buildFromTemplate.mockClear()
+    openExternal.mockClear()
     vi.mocked(BrowserWindow.getFocusedWindow).mockReset().mockReturnValue(null)
     vi.mocked(BrowserWindow.getAllWindows).mockReset().mockReturnValue([])
   })
@@ -99,6 +102,20 @@ describe('buildAppMenu', () => {
         })
       ])
     )
+  })
+
+  it('opens the online docs from Help → Documentation via F1', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+
+    buildAppMenu(i18n)
+
+    const docs = findMenuItem('Documentation')
+    // The action lives in the main process (shell.openExternal), so unlike the
+    // renderer-owned cmd() items this accelerator registers and fires F1 directly.
+    expect(docs).toMatchObject({ accelerator: 'F1' })
+
+    docs?.click?.()
+    expect(openExternal).toHaveBeenCalledWith('https://docs.memrynote.com')
   })
 
   it('routes Edit undo/redo through the renderer instead of native roles', async () => {

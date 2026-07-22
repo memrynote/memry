@@ -57,6 +57,8 @@ import { IncidentReportProvider } from '@/components/diagnostics/incident-report
 import { VaultOnboarding } from '@/components/vault-onboarding'
 import { UpdatingScreen } from '@/components/updating-screen'
 import { UpdatePromptDialog } from '@/components/updater/update-prompt-dialog'
+import { UpdateReleaseNotesTabOpener } from '@/components/updater/update-release-notes-tab-opener'
+import { ReleaseNotesDevTrigger } from '@/components/updater/release-notes-dev-trigger'
 import { useAppUpdater } from '@/hooks/use-app-updater'
 import { useThemeSync } from '@/hooks/use-theme-sync'
 import { useWeekStartSync } from '@/hooks/use-week-start-sync'
@@ -526,6 +528,12 @@ function App(): React.JSX.Element {
                                 <SidebarInset className="flex flex-col overflow-hidden">
                                   <AppContent />
                                 </SidebarInset>
+                                {/* Opens the ephemeral read-only release-notes tab as part
+                                    of the update flow. Lives inside TabProvider for openTab(). */}
+                                <UpdateReleaseNotesTabOpener />
+                                {/* Dev-only: window.openReleaseNotesDemo() to preview the tab
+                                    with dummy data (updater never fires in dev). */}
+                                {import.meta.env.DEV && <ReleaseNotesDevTrigger />}
                               </SidebarDrillDownProvider>
                               <TaskDragOverlay projects={projectsWithCounts} />
                               {/* Last child so paint order puts the chrome overlay above the

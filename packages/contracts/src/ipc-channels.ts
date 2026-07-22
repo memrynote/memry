@@ -660,12 +660,16 @@ export const CanvasChannels = {
     GET: 'canvas:get',
     UPDATE: 'canvas:update',
     DELETE: 'canvas:delete',
-    LIST: 'canvas:list'
+    LIST: 'canvas:list',
+    UPLOAD_ASSET: 'canvas:upload-asset',
+    GET_ASSET: 'canvas:get-asset',
+    LIST_ASSETS: 'canvas:list-assets'
   },
   events: {
     CREATED: 'canvas:created',
     UPDATED: 'canvas:updated',
-    DELETED: 'canvas:deleted'
+    DELETED: 'canvas:deleted',
+    TOO_LARGE: 'canvas:too-large'
   }
 } as const
 

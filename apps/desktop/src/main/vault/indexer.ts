@@ -207,6 +207,48 @@ async function indexMarkdownFile(
 }
 
 /**
+ * Index a single non-markdown file (PDF/image/audio/video) into the cache and
+ * return its `note_cache` id.
+ *
+ * Idempotent: `syncFileToCache` resolves the id by path, so calling this before
+ * the filesystem watcher indexes the same file (e.g. eagerly during inbox
+ * filing) reuses one id and never touches `note_tags`. See #800.
+ */
+export async function indexBinaryFile(
+  db: ReturnType<typeof getIndexDatabase>,
+  relativePath: string,
+  absolutePath: string,
+  fileType: 'pdf' | 'image' | 'audio' | 'video'
+): Promise<string> {
+  // Get file stats for metadata
+  const stats = await stat(absolutePath)
+
+  // Generate a new ID for this file (reused if the path is already cached)
+  const id = generateNoteId()
+
+  // Get MIME type
+  const ext = getExtension(absolutePath)
+  const mimeType = getMimeType(ext)
+
+  // Derive title from filename (without extension)
+  const title = path.basename(absolutePath, path.extname(absolutePath))
+
+  const result = syncFileToCache(db, {
+    id,
+    path: relativePath,
+    title,
+    fileType,
+    mimeType,
+    fileSize: stats.size,
+    createdAt: stats.birthtime,
+    modifiedAt: stats.mtime
+  })
+  await flushProjectionEvents()
+
+  return result.id
+}
+
+/**
  * Index a non-markdown file (PDF, images, audio, video).
  */
 async function indexNonMarkdownFile(
@@ -217,39 +259,7 @@ async function indexNonMarkdownFile(
   db: ReturnType<typeof getIndexDatabase>
 ): Promise<'indexed' | 'error'> {
   try {
-    // Get file stats for metadata
-    const stats = await stat(absolutePath)
-
-    // Generate a new ID for this file
-    const id = generateNoteId()
-
-    // Get MIME type
-    const ext = getExtension(absolutePath)
-    const mimeType = getMimeType(ext)
-
-    // Derive title from filename (without extension)
-    const title = path.basename(absolutePath, path.extname(absolutePath))
-
-    // Sync to cache
-    logger.debug(`Syncing file to cache:`, {
-      id,
-      path: relativePath,
-      title,
-      fileType,
-      mimeType
-    })
-    syncFileToCache(db, {
-      id,
-      path: relativePath,
-      title,
-      fileType,
-      mimeType,
-      fileSize: stats.size,
-      createdAt: stats.birthtime,
-      modifiedAt: stats.mtime
-    })
-    await flushProjectionEvents()
-
+    await indexBinaryFile(db, relativePath, absolutePath, fileType)
     logger.debug(`Successfully indexed: ${relativePath} (${fileType})`)
     return 'indexed'
   } catch (error) {

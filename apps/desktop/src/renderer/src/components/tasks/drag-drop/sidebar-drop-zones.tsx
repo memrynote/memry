@@ -1,10 +1,9 @@
-import { createElement } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { Trash2, Archive, Settings } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { useDragContext } from '@/contexts/drag-context'
-import { getIconByName } from '@/components/icon-picker'
+import { ProjectIcon } from '@/components/tasks/project-icon'
 import type { Project } from '@/data/tasks-data'
 import { useT } from '@memry/i18n/renderer'
 
@@ -60,9 +59,6 @@ export const DroppableProjectItem = ({
   // Only show as drop zone when dragging
   const showAsDropZone = dragState.isDragging
 
-  // Get the icon component
-  const IconComponent = getIconByName(project.icon)
-
   const handleClick = (): void => {
     onClick()
   }
@@ -99,29 +95,28 @@ export const DroppableProjectItem = ({
       className={cn(
         'group flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm transition-all duration-150',
         'hover:bg-accent/50 focus-visible:outline-none',
-        isSelected && 'bg-accent border-l-3 border-l-primary font-medium',
+        isSelected && 'bg-accent border-s-3 border-s-primary font-medium',
         // Drop zone styling
         showAsDropZone && 'border border-dotted border-muted-foreground/40',
         isOver && 'bg-primary/10 ring-2 ring-primary shadow-sm'
       )}
     >
       {/* Project Icon or Color Dot */}
-      {IconComponent ? (
-        createElement(IconComponent, {
-          className: 'size-4 shrink-0',
-          style: { color: project.color },
-          'aria-hidden': 'true'
-        })
-      ) : (
-        <span
-          className="size-3 shrink-0 rounded-full"
-          style={{ backgroundColor: project.color }}
-          aria-hidden="true"
-        />
-      )}
+      <ProjectIcon
+        icon={project.icon}
+        className="size-4 shrink-0"
+        color={project.color}
+        fallback={
+          <span
+            className="size-3 shrink-0 rounded-full"
+            style={{ backgroundColor: project.color }}
+            aria-hidden="true"
+          />
+        }
+      />
 
       {/* Project Name */}
-      <span className="flex-1 truncate text-left text-text-secondary">{project.name}</span>
+      <span className="flex-1 truncate text-start text-text-secondary">{project.name}</span>
 
       {/* Drop indicator */}
       {isOver && (

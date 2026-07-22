@@ -3,6 +3,7 @@ import { resolve } from 'node:path'
 import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { serializeCriticMarkup } from '@memry/shared'
 import { ReviewRail } from './review-rail'
 import {
   useCriticMarkupReview,
@@ -265,6 +266,54 @@ describe('review UI', () => {
       mentions: [],
       attachments: []
     })
+  })
+
+  it('opens the mention picker from the "@" button even after typing a word', async () => {
+    const user = userEvent.setup()
+    const searchQuery = vi.fn().mockResolvedValue({
+      groups: [
+        {
+          type: 'note',
+          totalInGroup: 1,
+          results: [
+            {
+              id: 'note-42',
+              type: 'note',
+              title: 'Planning note',
+              snippet: '',
+              score: 1,
+              normalizedScore: 1,
+              matchType: 'title',
+              modifiedAt: '2026-05-10T00:00:00.000Z',
+              metadata: { type: 'note', path: '/Planning note', tags: [], emoji: '📝' }
+            }
+          ]
+        }
+      ],
+      totalCount: 1,
+      queryTimeMs: 0
+    })
+    vi.mocked(window.api.search.query).mockImplementation(searchQuery)
+    Object.assign(window.api, {
+      calendar: {
+        ...((window.api as unknown as { calendar?: Record<string, unknown> }).calendar ?? {}),
+        listEvents: vi.fn().mockResolvedValue({ events: [] })
+      }
+    })
+
+    const review = createReview({ activeDraft: { text: 'draft target' } })
+    render(<ReviewRail review={review} />)
+
+    // Type a word first: previously the "@" button inserted a bare "@" after a
+    // word, which the mention regex ignored, so no picker opened.
+    await user.type(screen.getByLabelText('comments.commentPlaceholder'), 'hello')
+    await user.click(screen.getByRole('button', { name: 'comments.mentionAria' }))
+
+    const listbox = await screen.findByRole('listbox')
+    // Portalled to document.body so the review flyout's overflow cannot clip it.
+    expect(listbox.getAttribute('data-ref-picker')).toBe('')
+    expect(listbox.parentElement).toBe(document.body)
+    expect(await within(listbox).findByText('Planning note')).toBeInTheDocument()
   })
 
   it('edits a comment card inline and saves through updateComment', async () => {
@@ -802,6 +851,47 @@ describe('review UI', () => {
     })
 
     expect(undoEvent.defaultPrevented).toBe(true)
+    expect(result.current.marks).toHaveLength(0)
+  })
+
+  it('keeps a locally-added comment when a stale resync lands before save (issue #797)', () => {
+    const { result, rerender } = renderHook(
+      ({ markdown }: { markdown: string }) =>
+        useCriticMarkupReview({ markdown, onMarkdownChange: vi.fn() }),
+      { initialProps: { markdown: 'comment target' } }
+    )
+
+    act(() => {
+      result.current.openCommentComposer({ text: 'comment target', isEmpty: false })
+    })
+    act(() => {
+      result.current.submitComment({ body: 'Needs work', mentions: [], attachments: [] })
+    })
+    expect(result.current.marks).toHaveLength(1)
+    const commentId = result.current.marks[0].id
+
+    // A refetch/sync delivers still-stale content (lacking the just-added comment)
+    // during note.tsx's 1s save debounce. The comment must not be clobbered.
+    act(() => {
+      rerender({ markdown: 'comment target edited' })
+    })
+    expect(result.current.marks).toHaveLength(1)
+    expect(result.current.marks[0].id).toBe(commentId)
+    expect(result.current.marks[0]).toMatchObject({ kind: 'comment', body: 'Needs work' })
+
+    // Once the save round-trips (incoming markdown now reflects the comment),
+    // pending clears and normal external resync resumes.
+    const persisted = serializeCriticMarkup(result.current.plainMarkdown, result.current.marks)
+    act(() => {
+      rerender({ markdown: persisted })
+    })
+    expect(result.current.marks).toHaveLength(1)
+
+    // Guard is scoped to the pending window: a later genuinely-external change
+    // is no longer suppressed.
+    act(() => {
+      rerender({ markdown: 'totally different external content' })
+    })
     expect(result.current.marks).toHaveLength(0)
   })
 })

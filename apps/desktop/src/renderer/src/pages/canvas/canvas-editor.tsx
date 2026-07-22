@@ -15,11 +15,13 @@ import type {
 import '@excalidraw/excalidraw/index.css'
 import { useTheme } from 'next-themes'
 import { getI18n } from 'react-i18next'
+import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
-import { canvasService } from '@/services/canvas-service'
+import { canvasService, onCanvasTooLarge } from '@/services/canvas-service'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
 import { createScenePersister } from './canvas-persistence'
+import { externalizeSceneAssets } from './canvas-externalize'
 import { pickExcalidrawLangCode } from './excalidraw-lang'
 import { CanvasCardLayer } from './canvas-card-overlay'
 import { extractEntityRefs, type CardElement } from './canvas-cards'
@@ -67,6 +69,16 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
 
   const corrupt = initialData === CORRUPT
 
+  // §5.6: a save whose scene is too large to sync is kept locally but never
+  // pushed; surface it so the divergence is never silent.
+  useEffect(() => {
+    return onCanvasTooLarge((event) => {
+      if (event.id === canvasId) {
+        toast.error(t('canvas.tooLargeToSync'))
+      }
+    })
+  }, [canvasId, t])
+
   const persisterRef = useRef<{ notifyChange: () => void } | null>(null)
 
   useEffect(() => {
@@ -77,6 +89,18 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
       serialize: () => {
         const api = apiRef.current
         if (!api) {
+          return null
+        }
+        // Teardown guard: on an in-session unmount (tab switch / close), React
+        // destroys the Excalidraw child BEFORE this parent's effect cleanup
+        // runs its flush — at which point getSceneElements() returns [] and we
+        // would serialize (and persist) an empty scene, wiping the real one.
+        // The wrapper node is already detached from the document by then, so
+        // treat a disconnected wrapper as "torn down, not readable" (the
+        // serialize contract's null case). During normal saves and the
+        // beforeunload/quit flush the wrapper is still connected, so those
+        // persist as before.
+        if (!wrapperRef.current?.isConnected) {
           return null
         }
         try {
@@ -90,7 +114,20 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
         // Advisory entity refs are derived from the same scene, so the dedupe
         // key (scene string) still governs whether a save runs.
         const elements = (apiRef.current?.getSceneElements() ?? []) as unknown as CardElement[]
-        await canvasService.update({ id: canvasId, scene, entityRefs: extractEntityRefs(elements) })
+        let sceneToSave = scene
+        try {
+          sceneToSave = await externalizeSceneAssets(scene, canvasId, (input) =>
+            canvasService.uploadAsset(input)
+          )
+        } catch (err) {
+          log.error('Failed to externalize canvas assets; saving scene as-is', err)
+          // Fall back to the original scene — the pre-push size guard surfaces oversize saves.
+        }
+        await canvasService.update({
+          id: canvasId,
+          scene: sceneToSave,
+          entityRefs: extractEntityRefs(elements)
+        })
       },
       debounceMs: SCENE_SAVE_DEBOUNCE_MS,
       lastSavedScene: initialScene,

@@ -133,6 +133,7 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
 
           const updated = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
           ctx.emit(TasksChannels.events.UPDATED, { id: itemId, task: updated, changes: {} })
+          if (data.tags) ctx.emit('notes:tags-changed', {})
           publishProjectionEvent({ type: 'task.upserted', taskId: itemId })
           return result.hadConflicts ? 'conflict' : 'applied'
         }
@@ -169,6 +170,7 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
 
         const updated = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
         ctx.emit(TasksChannels.events.UPDATED, { id: itemId, task: updated, changes: {} })
+        if (data.tags) ctx.emit('notes:tags-changed', {})
         publishProjectionEvent({ type: 'task.upserted', taskId: itemId })
         return 'applied'
       }
@@ -206,6 +208,7 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
 
       const inserted = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
       ctx.emit(TasksChannels.events.CREATED, { task: inserted })
+      if (data.tags) ctx.emit('notes:tags-changed', {})
       publishProjectionEvent({ type: 'task.upserted', taskId: itemId })
       return 'applied'
     })
@@ -223,8 +226,11 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
       }
     }
 
+    const hadTags = queryTags(ctx.db, itemId).length > 0
+
     ctx.db.delete(tasks).where(eq(tasks.id, itemId)).run()
     ctx.emit(TasksChannels.events.DELETED, { id: itemId })
+    if (hadTags) ctx.emit('notes:tags-changed', {})
     publishProjectionEvent({ type: 'task.deleted', taskId: itemId })
     return 'applied'
   }

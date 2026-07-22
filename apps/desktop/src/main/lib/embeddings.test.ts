@@ -71,6 +71,7 @@ import {
   initEmbeddingModel,
   isModelLoaded,
   isModelLoading,
+  resetEmbeddingModelFailure,
   stopEmbeddingModel,
   unloadModel
 } from './embeddings'
@@ -169,6 +170,38 @@ describe('embeddings', () => {
 
     await expect(loadPromise).resolves.toBe(false)
     expect(getModelInfo().error).toBe('load failed')
+  })
+
+  it('short-circuits repeat load attempts after a failure until reset', async () => {
+    // First load fails.
+    const first = initEmbeddingModel()
+    mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+    await vi.waitFor(() => {
+      expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(1)
+    })
+    const worker = mockUtilityProcessInstance
+    const req = worker.postMessage.mock.calls[0]?.[0] as { requestId: string }
+    worker.simulateMessage({ type: 'error', requestId: req.requestId, error: 'load failed' })
+    await expect(first).resolves.toBe(false)
+    expect(mockFork).toHaveBeenCalledOnce()
+
+    // Circuit breaker latched: the next attempt returns false without forking a
+    // fresh worker or sending another load-model request — this is the per-note
+    // re-download loop that made vault-open hang (#803).
+    await expect(initEmbeddingModel()).resolves.toBe(false)
+    expect(mockFork).toHaveBeenCalledOnce()
+    expect(worker.postMessage).toHaveBeenCalledTimes(1)
+
+    // Reset re-enables loading; the next attempt issues a fresh load-model request.
+    resetEmbeddingModelFailure()
+    const third = initEmbeddingModel()
+    await vi.waitFor(() => {
+      expect(worker.postMessage).toHaveBeenCalledTimes(2)
+    })
+    const req3 = worker.postMessage.mock.calls[1]?.[0] as { requestId: string }
+    worker.simulateMessage({ type: 'load-model-result', requestId: req3.requestId })
+    await expect(third).resolves.toBe(true)
+    expect(isModelLoaded()).toBe(true)
   })
 
   it('tracks loading state and unloads the model', async () => {

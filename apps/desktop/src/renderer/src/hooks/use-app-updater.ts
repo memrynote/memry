@@ -11,6 +11,7 @@ const DEFAULT_STATE: AppUpdateState = {
   releaseName: null,
   releaseDate: null,
   releaseNotes: null,
+  releaseNotesHtml: null,
   downloadProgressPercent: null,
   lastCheckedAt: null,
   error: null,

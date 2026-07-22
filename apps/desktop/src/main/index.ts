@@ -15,7 +15,7 @@ import {
   dialog
 } from 'electron'
 import { createHash } from 'node:crypto'
-import { join, resolve, normalize, sep } from 'path'
+import { join, resolve, normalize } from 'path'
 import { homedir } from 'node:os'
 import { existsSync, readdirSync, statSync, createReadStream } from 'node:fs'
 import { lookup as mimeLookup } from 'mime-types'
@@ -39,6 +39,7 @@ import { configureSessionPermissions } from './session-permissions'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { stopVoiceModel } from './inbox/voice-model'
 import { stopImageProcessing } from './image-processing/bridge'
+import { stopEmbeddingModel } from './lib/embeddings'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { startInboxReviewScheduler, stopInboxReviewScheduler } from './inbox/review-scheduler'
 import { disposeTelemetryRuntime, initializeTelemetryRuntime } from './telemetry/runtime'
@@ -179,6 +180,25 @@ const shutdownLog = createLogger('Shutdown')
 const deepLinkLog = createLogger('DeepLink')
 const navGuardLog = createLogger('NavigationGuard')
 
+// Hand a memry-file:// URL to the OS default app after allowlist-checking the
+// resolved path against userData + vault dirs. Shared by the frame-navigation
+// guard (main-frame memry-file: nav, which would otherwise trap the app) and the
+// window-open handler, so the allowlist has a single source of truth. Returns
+// true when the URL was a memry-file URL (and thus handled here).
+function openMemryFileInOs(rawUrl: string): boolean {
+  const memryFilePath = resolveMemryFilePath(rawUrl)
+  if (!memryFilePath) return false
+  const allowedDirs = [app.getPath('userData'), getCurrentVaultPath(), getVaultStatus().path]
+    .filter((dir): dir is string => Boolean(dir))
+    .map((dir) => resolve(dir))
+  if (isPathInsideDirs(memryFilePath, allowedDirs)) {
+    void shell.openPath(memryFilePath)
+  } else {
+    log.warn('Blocked memry-file open outside allowed directories', { path: memryFilePath })
+  }
+  return true
+}
+
 // Frame-level navigation guard for every window's webContents: pins main-frame
 // navigation to the local app origin and re-routes external links through
 // shell.openExternal. Complements (does not replace) the per-window
@@ -194,6 +214,8 @@ app.on('web-contents-created', (_event, contents) => {
     details.preventDefault()
     if (decision === 'open-external' && isAllowedExternalUrl(details.url)) {
       void shell.openExternal(details.url)
+    } else if (decision === 'open-file') {
+      openMemryFileInOs(details.url)
     } else {
       navGuardLog.warn('Blocked frame navigation', {
         url: details.url.slice(0, 256),
@@ -638,16 +660,7 @@ function createWindow(): void {
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    const memryFilePath = resolveMemryFilePath(details.url)
-    if (memryFilePath) {
-      const allowedDirs = [app.getPath('userData'), getCurrentVaultPath(), getVaultStatus().path]
-        .filter((dir): dir is string => Boolean(dir))
-        .map((dir) => resolve(dir))
-      if (allowedDirs.some((dir) => memryFilePath.startsWith(dir + sep))) {
-        void shell.openPath(memryFilePath)
-      } else {
-        log.warn('Blocked memry-file open outside allowed directories', { path: memryFilePath })
-      }
+    if (openMemryFileInOs(details.url)) {
       return { action: 'deny' }
     }
     if (isAllowedExternalUrl(details.url)) {
@@ -1690,6 +1703,14 @@ app.on('before-quit', (event) => {
     .then(() => {
       shutdownLog.info('stopping image processing utility...')
       return stopImageProcessing()
+    })
+    .then(() => {
+      // Terminate the embeddings utilityProcess explicitly. On Windows it runs
+      // as the app binary (Memrynote.exe); if left to its 30s idle self-exit it
+      // can outlive the NSIS CHECK_APP_RUNNING window and block the update
+      // install ("MemryNote cannot be closed", #805).
+      shutdownLog.info('stopping embeddings utility...')
+      return stopEmbeddingModel()
     })
     .then(async () => {
       shutdownLog.info('stopping active heartbeat...')

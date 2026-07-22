@@ -14,6 +14,7 @@ import {
   CalendarEventSyncPayloadSchema,
   CalendarExternalEventSyncPayloadSchema,
   CalendarSourceSyncPayloadSchema,
+  CanvasSyncPayloadSchema,
   FilterSyncPayloadSchema,
   FolderConfigSyncPayloadSchema,
   InboxSyncPayloadSchema,
@@ -171,6 +172,36 @@ describe('FilterSyncPayloadSchema', () => {
   it('rejects non-number position', () => {
     const result = FilterSyncPayloadSchema.safeParse({ position: '0' })
     expect(result.success).toBe(false)
+  })
+})
+
+describe('CanvasSyncPayloadSchema', () => {
+  it('accepts an empty payload (all optional, forward-tolerant per D5)', () => {
+    expect(CanvasSyncPayloadSchema.safeParse({}).success).toBe(true)
+  })
+
+  it('accepts a full payload', () => {
+    const result = CanvasSyncPayloadSchema.safeParse({
+      id: 'canvas-1',
+      vaultId: 'vault-1',
+      title: 'My Canvas',
+      scene: '{"type":"excalidraw","elements":[]}',
+      clock: { 'device-a': 3 },
+      deletedAt: null
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts a null title and null deletedAt', () => {
+    expect(CanvasSyncPayloadSchema.safeParse({ title: null, deletedAt: null }).success).toBe(true)
+  })
+
+  it('rejects a non-string scene', () => {
+    expect(CanvasSyncPayloadSchema.safeParse({ scene: 42 }).success).toBe(false)
+  })
+
+  it('rejects a clock with a negative tick', () => {
+    expect(CanvasSyncPayloadSchema.safeParse({ clock: { 'device-a': -1 } }).success).toBe(false)
   })
 })
 

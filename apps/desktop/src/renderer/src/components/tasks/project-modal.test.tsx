@@ -62,30 +62,41 @@ vi.mock('@/components/ui/alert-dialog', () => ({
   )
 }))
 
-vi.mock('@/components/icon-picker', () => ({
-  getIconByName: (name: string) =>
-    name === 'MissingIcon' ? null : (props: { className?: string }) => <span {...props}>icon</span>,
-  IconPicker: ({
-    isOpen,
-    onClose,
+// The icon lives inside a Radix Popover in real code; passthrough mocks keep the
+// flow deterministic (Radix Popover open/focus is unreliable under jsdom).
+vi.mock('@/components/ui/popover', () => ({
+  Popover: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  PopoverTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  PopoverContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+}))
+
+// The shared emoji/icon picker. "pick Star" emits an icon: value; Remove clears it.
+vi.mock('@/components/note/note-title/EmojiPicker', () => ({
+  EmojiPicker: ({
     onSelect,
-    currentIcon
+    onRemove,
+    hasEmoji
   }: {
-    isOpen: boolean
-    onClose: () => void
-    onSelect: (iconName: string) => void
-    currentIcon: string
-  }) =>
-    isOpen ? (
-      <div role="listbox" aria-label={`icons-${currentIcon}`}>
-        <button type="button" onClick={() => onSelect('Star')}>
-          icon Star
+    onSelect: (value: string) => void
+    onRemove: () => void
+    hasEmoji: boolean
+  }) => (
+    <div role="listbox" aria-label="icon-picker">
+      <button type="button" onClick={() => onSelect('icon:StarIcon')}>
+        pick Star
+      </button>
+      {hasEmoji && (
+        <button type="button" onClick={onRemove}>
+          remove icon
         </button>
-        <button type="button" onClick={onClose}>
-          close icons
-        </button>
-      </div>
-    ) : null
+      )}
+    </div>
+  )
+}))
+
+vi.mock('@/components/tasks/project-icon', () => ({
+  ProjectIcon: ({ icon, fallback }: { icon: string | null; fallback: React.ReactNode }) =>
+    icon ? <span data-testid="project-icon">{icon}</span> : <>{fallback}</>
 }))
 
 vi.mock('@/components/tasks/color-picker', () => ({
@@ -140,7 +151,7 @@ function makeProject(overrides: Partial<Project> = {}): Project {
 }
 
 describe('ProjectModal', () => {
-  it('creates a project with edited fields, icon, color, and statuses', () => {
+  it('creates a project with edited fields, icon, color, and statuses', async () => {
     const onSave = vi.fn()
     const onClose = vi.fn()
 
@@ -150,8 +161,8 @@ describe('ProjectModal', () => {
     fireEvent.change(screen.getByPlaceholderText('briefDescriptionOfThisProject'), {
       target: { value: 'Ship checklist' }
     })
-    fireEvent.click(screen.getByRole('button', { name: 'selectIcon' }))
-    fireEvent.click(screen.getByRole('button', { name: 'icon Star' }))
+    // The picker is lazy-loaded; findBy flushes the Suspense boundary.
+    fireEvent.click(await screen.findByRole('button', { name: 'pick Star' }))
     fireEvent.click(screen.getByRole('button', { name: 'pick blue' }))
     fireEvent.click(screen.getByRole('button', { name: 'valid statuses' }))
 
@@ -161,7 +172,7 @@ describe('ProjectModal', () => {
       expect.objectContaining({
         name: 'Launch',
         description: 'Ship checklist',
-        icon: 'Star',
+        icon: 'icon:StarIcon',
         color: '#00f',
         statuses: validStatuses,
         isDefault: false,
@@ -173,7 +184,7 @@ describe('ProjectModal', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('edits, deletes, validates statuses, and confirms discarding changes', () => {
+  it('edits, deletes, validates statuses, and confirms discarding changes', async () => {
     const onSave = vi.fn()
     const onClose = vi.fn()
     const onDelete = vi.fn()
@@ -188,6 +199,8 @@ describe('ProjectModal', () => {
       />
     )
 
+    // Flush the lazy-loaded icon picker's Suspense boundary before sync assertions.
+    await screen.findByRole('button', { name: 'pick Star' })
     expect(screen.getByText('Edit Project')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'deleteProject' }))
     expect(onDelete).toHaveBeenCalledWith('project-1')
@@ -214,7 +227,7 @@ describe('ProjectModal', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('hides delete for default projects and closes clean forms immediately', () => {
+  it('hides delete for default projects and closes clean forms immediately', async () => {
     const onClose = vi.fn()
     render(
       <ProjectModal
@@ -226,6 +239,8 @@ describe('ProjectModal', () => {
       />
     )
 
+    // Flush the lazy-loaded icon picker's Suspense boundary before sync assertions.
+    await screen.findByRole('button', { name: 'pick Star' })
     expect(screen.queryByRole('button', { name: 'deleteProject' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'cancel' }))
     expect(onClose).toHaveBeenCalled()

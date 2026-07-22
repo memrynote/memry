@@ -234,6 +234,11 @@ vi.mock('./filter-sync', () => ({
   initFilterSyncService: runtimeMocks.filterSync.init,
   resetFilterSyncService: runtimeMocks.filterSync.reset
 }))
+vi.mock('./canvas-sync', () => ({
+  initCanvasSyncService: vi.fn(() => ({})),
+  resetCanvasSyncService: vi.fn(),
+  getCanvasSyncService: vi.fn(() => null)
+}))
 vi.mock('./project-sync', () => ({
   initProjectSyncService: runtimeMocks.projectSync.init,
   resetProjectSyncService: runtimeMocks.projectSync.reset

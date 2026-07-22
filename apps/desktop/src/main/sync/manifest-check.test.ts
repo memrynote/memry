@@ -12,6 +12,7 @@ import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { settings } from '@memry/db-schema/schema/settings'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
+import { canvases } from '@memry/db-schema/schema/canvas'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { SyncQueueManager } from './queue'
@@ -378,6 +379,94 @@ describe('checkManifestIntegrity', () => {
       // #then
       expect(result.rePullNeeded).toBe(false)
       expect(result.serverOnlyCount).toBe(0)
+    })
+  })
+
+  function insertCanvas(id: string, deletedAt: number | null): void {
+    testDb.db
+      .insert(canvases)
+      .values({
+        id,
+        vaultId: 'vault-1',
+        title: 'C',
+        snapshotCiphertext: 'ciphertext',
+        vectorClock: {},
+        createdAt: 1,
+        updatedAt: 1,
+        deletedAt,
+        lastSyncedAt: null,
+        clock: { 'device-A': 1 }
+      })
+      .run()
+  }
+
+  describe('#given a synced canvas present on server #when check runs', () => {
+    it('#then recognizes canvas as local and does not trigger re-pull', async () => {
+      insertCanvas('canvas-1', null)
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [{ id: 'canvas-1', type: 'canvas', version: 1, modifiedAt: 1000, size: 50 }],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      expect(result.rePullNeeded).toBe(false)
+      expect(result.serverOnlyCount).toBe(0)
+      expect(queue.getPendingCount()).toBe(0)
+    })
+  })
+
+  describe('#given a synced canvas missing from server #when check runs', () => {
+    it('#then re-enqueues it as a create', async () => {
+      insertCanvas('canvas-live', null)
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+      await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      const items = queue.dequeue(10)
+      const canvasItem = items.find((i) => i.itemId === 'canvas-live')
+      expect(canvasItem).toBeDefined()
+      expect(canvasItem!.type).toBe('canvas')
+      expect(canvasItem!.operation).toBe('create')
+    })
+  })
+
+  describe('#given a TOMBSTONED canvas missing from server #when check runs (D2)', () => {
+    it('#then does NOT re-enqueue it (no fleet-wide resurrection)', async () => {
+      insertCanvas('canvas-del', Date.now())
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+      await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      const items = queue.dequeue(10)
+      expect(items.find((i) => i.itemId === 'canvas-del')).toBeUndefined()
     })
   })
 

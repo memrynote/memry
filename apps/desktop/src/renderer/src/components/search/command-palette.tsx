@@ -7,6 +7,7 @@ import type {
   DateRange,
   SearchReason
 } from '@memry/contracts/search-api'
+import { getTabIconForFileType } from '@memry/shared/file-types'
 import { useTabs } from '@/contexts/tabs'
 import { useSearch } from '@/hooks/use-search'
 import { searchService } from '@/services/search-service'
@@ -147,12 +148,17 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
         objectType: item.type
       })
       switch (item.type) {
-        case 'note':
+        case 'note': {
+          // A "note" search result can actually be a filed binary (image/PDF/…).
+          // Open those via the file viewer with the correct icon, never the
+          // markdown editor (which would render raw bytes / freeze). See #800.
+          const fileType = item.metadata?.type === 'note' ? item.metadata.fileType : undefined
+          const isMarkdown = !fileType || fileType === 'markdown'
           openTab({
-            type: 'note',
+            type: isMarkdown ? 'note' : 'file',
             title: item.title,
-            icon: 'file-text',
-            path: `/note/${item.id}`,
+            icon: isMarkdown ? 'file-text' : getTabIconForFileType(fileType),
+            path: isMarkdown ? `/note/${item.id}` : `/file/${item.id}`,
             entityId: item.id,
             isPinned: false,
             isModified: false,
@@ -160,6 +166,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
             isDeleted: false
           })
           break
+        }
         case 'journal': {
           const date = item.metadata?.type === 'journal' ? item.metadata.date : item.id
           openTab({

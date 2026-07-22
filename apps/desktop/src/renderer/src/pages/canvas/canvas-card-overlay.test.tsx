@@ -53,6 +53,14 @@ vi.mock('./canvas-card', () => ({
     </button>
   )
 }))
+// Stub the embedded note editor leaf so the real CanvasCardActive (whose
+// data-attrs + keyboard containment these tests exercise) renders without
+// pulling ContentArea → react-pdf (which needs DOMMatrix, absent in jsdom).
+vi.mock('./embedded-note-editor', () => ({
+  EmbeddedNoteEditor: ({ noteId }: { noteId: string }) => (
+    <div data-testid={`embedded-note-${noteId}`} />
+  )
+}))
 
 function cardEl(id: string, entityId: string, x = 0, y = 0): CardElement {
   return {
@@ -200,7 +208,7 @@ describe('CanvasCardLayer', () => {
     ).toBe(true)
   })
 
-  it('redirects on a dblclick that hits a card', async () => {
+  it('activates (not redirects) on a dblclick that hits a card', async () => {
     mocks.entities = new Map([['note:n1', { status: 'ready', kind: 'note', title: 'Hit' }]])
     const { api, fire } = makeApi([cardEl('e1', 'n1', 100, 100)])
     render(<Harness api={api} />)
@@ -214,7 +222,59 @@ describe('CanvasCardLayer', () => {
     })
     wrapper.dispatchEvent(dbl)
     await waitFor(() =>
-      expect(mocks.openTab).toHaveBeenCalledWith(expect.objectContaining({ entityId: 'n1' }))
+      expect(document.querySelector('[data-canvas-active-card="e1"]')).toBeInTheDocument()
     )
+    expect(document.querySelector('[data-canvas-card-entity="note:n1"]')).toHaveAttribute(
+      'data-canvas-card-state',
+      'active'
+    )
+    expect(mocks.openTab).not.toHaveBeenCalled()
+  })
+
+  it('Escape deactivates the active card', async () => {
+    mocks.entities = new Map([['note:n1', { status: 'ready', kind: 'note', title: 'Hit' }]])
+    const { api, fire } = makeApi([cardEl('e1', 'n1', 100, 100)])
+    render(<Harness api={api} />)
+    fire()
+    const wrapper = screen.getByTestId('wrapper')
+    wrapper.dispatchEvent(
+      new MouseEvent('dblclick', { bubbles: true, cancelable: true, clientX: 150, clientY: 150 })
+    )
+    const active = await waitFor(() => {
+      const el = document.querySelector('[data-canvas-active-card="e1"]')
+      expect(el).toBeInTheDocument()
+      return el as HTMLElement
+    })
+    fireEvent.keyDown(active, { key: 'Escape' })
+    await waitFor(() =>
+      expect(document.querySelector('[data-canvas-active-card]')).not.toBeInTheDocument()
+    )
+  })
+
+  it('click-away pointerdown deactivates the active card without swallowing it', async () => {
+    mocks.entities = new Map([['note:n1', { status: 'ready', kind: 'note', title: 'Hit' }]])
+    const { api, fire } = makeApi([cardEl('e1', 'n1', 100, 100)])
+    render(<Harness api={api} />)
+    fire()
+    const wrapper = screen.getByTestId('wrapper')
+    wrapper.dispatchEvent(
+      new MouseEvent('dblclick', { bubbles: true, cancelable: true, clientX: 150, clientY: 150 })
+    )
+    await waitFor(() =>
+      expect(document.querySelector('[data-canvas-active-card="e1"]')).toBeInTheDocument()
+    )
+    const pointerdown = new MouseEvent('pointerdown', {
+      bubbles: true,
+      cancelable: true,
+      clientX: 10,
+      clientY: 10
+    })
+    const stopPropagation = vi.spyOn(pointerdown, 'stopPropagation')
+    wrapper.dispatchEvent(pointerdown)
+    await waitFor(() =>
+      expect(document.querySelector('[data-canvas-active-card]')).not.toBeInTheDocument()
+    )
+    // C4: the deactivating pointerdown must still be free to pan/select.
+    expect(stopPropagation).not.toHaveBeenCalled()
   })
 })

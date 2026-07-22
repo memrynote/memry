@@ -57,6 +57,9 @@ const LazyAgentConversationTab = React.lazy(async () => ({
 const LazyCanvasPage = React.lazy(async () => ({
   default: (await import('@/pages/canvas')).CanvasPage
 }))
+const LazyVirtualNotePage = React.lazy(async () => ({
+  default: (await import('@/pages/virtual-note')).VirtualNotePage
+}))
 const LazyHomePage = React.lazy(() => import('@/pages/home'))
 const LazyProjectHomePage = React.lazy(async () => ({
   default: (await import('@/pages/project-home')).ProjectHomePage
@@ -193,6 +196,15 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
 
       case 'canvas':
         return <LazyCanvasPage canvasId={tab.entityId} />
+
+      case 'virtual-note':
+        return (
+          <LazyVirtualNotePage
+            title={tab.title}
+            content={stringifyUnknown(tab.viewState?.content)}
+            contentType={tab.viewState?.contentType === 'markdown' ? 'markdown' : 'html'}
+          />
+        )
 
       case 'collection':
         return (

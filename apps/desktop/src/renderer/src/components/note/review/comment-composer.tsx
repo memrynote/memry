@@ -180,7 +180,11 @@ export function CommentComposer({
     const ownerWindow = ownerDocument.defaultView ?? window
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node | null
-      if (!target || composer.contains(target)) return
+      if (!target) return
+      // The mention picker renders in a body-level portal, so its options sit
+      // outside the composer subtree; treat clicks inside it as inside.
+      if (target instanceof Element && target.closest('[data-ref-picker]')) return
+      if (composer.contains(target)) return
       cancelIfEmpty()
     }
 
@@ -203,6 +207,7 @@ export function CommentComposer({
         <RefPicker
           query={mentionQuery}
           selectedIndex={selectedMentionIndex}
+          anchorRef={composerRef}
           onItemsChange={setMentionItems}
           onPick={insertMention}
           onSelectedIndexChange={setSelectedMentionIndex}
@@ -256,7 +261,7 @@ export function CommentComposer({
             aria-label={t('comments.mentionAria')}
             onClick={() => {
               editorRef.current?.focus()
-              editorRef.current?.insertText('@')
+              editorRef.current?.insertMentionTrigger()
             }}
           >
             <AtSign className="size-3.5" aria-hidden="true" />

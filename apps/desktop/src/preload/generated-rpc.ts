@@ -38,7 +38,8 @@ const eventChannels = {
   "onCalendarChanged": "calendar:changed",
   "onCanvasCreated": "canvas:created",
   "onCanvasUpdated": "canvas:updated",
-  "onCanvasDeleted": "canvas:deleted"
+  "onCanvasDeleted": "canvas:deleted",
+  "onCanvasTooLarge": "canvas:too-large"
 } as const
 
 export interface GeneratedRpcDeps {
@@ -303,6 +304,15 @@ export function createGeneratedRpcApi({
       "update": ((input) => invoke("canvas:update", input)) as GeneratedRpcApi["canvas"]["update"],
       "delete": ((id) => invoke("canvas:delete", id)) as GeneratedRpcApi["canvas"]["delete"],
       "list": (() => invoke("canvas:list")) as GeneratedRpcApi["canvas"]["list"],
+      "uploadAsset": (async (input) =>
+        invoke("canvas:upload-asset", {
+          canvasId: input.canvasId,
+          fileId: input.fileId,
+          mimeType: input.mimeType,
+          data: Array.from(new Uint8Array(input.data))
+        })) as GeneratedRpcApi["canvas"]["uploadAsset"],
+      "getAsset": ((canvasId, fileId) => invoke("canvas:get-asset", { canvasId, fileId })) as GeneratedRpcApi["canvas"]["getAsset"],
+      "listAssets": ((canvasId) => invoke("canvas:list-assets", { canvasId })) as GeneratedRpcApi["canvas"]["listAssets"],
     },
     "telemetry": {
       "track": ((event) => invoke("telemetry:track", event)) as GeneratedRpcApi["telemetry"]["track"],
