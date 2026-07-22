@@ -1,5 +1,7 @@
 import { eq, isNull } from 'drizzle-orm'
 import { tasks } from '@memry/db-schema/schema/tasks'
+import { projects } from '@memry/db-schema/schema/projects'
+import { statuses } from '@memry/db-schema/schema/statuses'
 import { taskTags, taskNotes } from '@memry/db-schema/schema/task-relations'
 import { TaskSyncPayloadSchema, type TaskSyncPayload } from '@memry/contracts/sync-payloads'
 import { TasksChannels } from '@memry/contracts/ipc-channels'
@@ -10,10 +12,50 @@ import { increment } from '../vector-clock'
 import { mergeTaskFields, initAllFieldClocks, TASK_SYNCABLE_FIELDS } from '../field-merge'
 import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from './base-handler'
+import { MissingSyncParentError } from './types'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 import { publishProjectionEvent } from '../../projections'
 
 const log = createLogger('TaskHandler')
+
+/**
+ * `tasks.project_id` is NOT NULL and FK-bound, so an absent project makes the
+ * row unwritable. Surface it as a typed error naming the missing id instead of
+ * SQLite's anonymous `FOREIGN KEY constraint failed` (#837).
+ */
+function requireProject(tx: DrizzleDb, taskId: string, projectId: string): void {
+  const parent = tx
+    .select({ id: projects.id })
+    .from(projects)
+    .where(eq(projects.id, projectId))
+    .get()
+  if (!parent) throw new MissingSyncParentError('task', taskId, 'project', projectId)
+}
+
+/**
+ * `tasks.status_id` is FK-bound with ON DELETE SET NULL, so null IS the
+ * schema's own answer for a status that no longer exists (a project update can
+ * reconcile statuses away underneath a task that still references one). Drop
+ * the dangling reference rather than failing the whole apply.
+ */
+function resolveStatusId(
+  tx: DrizzleDb,
+  taskId: string,
+  statusId: string | null | undefined
+): string | null {
+  if (!statusId) return null
+  const parent = tx
+    .select({ id: statuses.id })
+    .from(statuses)
+    .where(eq(statuses.id, statusId))
+    .get()
+  if (parent) return statusId
+  log.warn('Task references a status that no longer exists — clearing statusId', {
+    itemId: taskId,
+    statusId
+  })
+  return null
+}
 
 function queryTags(db: DrizzleDb, taskId: string): string[] {
   return db
@@ -109,6 +151,16 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
             }
           })
 
+          const mergedTx = tx as unknown as DrizzleDb
+          // Same "unchanged means omitted" rule as the plain-apply branch below.
+          const mergedProjectId = result.merged.projectId as string | undefined
+          if (mergedProjectId) requireProject(mergedTx, itemId, mergedProjectId)
+          result.merged.statusId = resolveStatusId(
+            mergedTx,
+            itemId,
+            result.merged.statusId as string | null
+          )
+
           tx.update(tasks)
             .set({
               ...result.merged,
@@ -140,12 +192,18 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
 
         const appliedFC = remoteFieldClocks ?? initAllFieldClocks(remoteClock, TASK_SYNCABLE_FIELDS)
 
+        // An absent projectId means "unchanged" — drizzle omits the column, so
+        // the existing (already valid) parent stays. Only a supplied one needs
+        // checking.
+        if (data.projectId) requireProject(tx as unknown as DrizzleDb, itemId, data.projectId)
+        const appliedStatusId = resolveStatusId(tx as unknown as DrizzleDb, itemId, data.statusId)
+
         tx.update(tasks)
           .set({
             title: data.title,
             description: data.description ?? null,
             projectId: data.projectId,
-            statusId: data.statusId ?? null,
+            statusId: appliedStatusId,
             parentId: data.parentId ?? null,
             priority: data.priority ?? 0,
             position: data.position ?? 0,
@@ -177,12 +235,15 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
 
       const insertedFC = remoteFieldClocks ?? initAllFieldClocks(remoteClock, TASK_SYNCABLE_FIELDS)
 
+      requireProject(tx as unknown as DrizzleDb, itemId, data.projectId!)
+      const insertedStatusId = resolveStatusId(tx as unknown as DrizzleDb, itemId, data.statusId)
+
       tx.insert(tasks)
         .values({
           id: itemId,
           title: data.title ?? 'Untitled',
           projectId: data.projectId!,
-          statusId: data.statusId ?? null,
+          statusId: insertedStatusId,
           parentId: data.parentId ?? null,
           description: data.description ?? null,
           priority: data.priority ?? 0,
