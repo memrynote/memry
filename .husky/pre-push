@@ -10,10 +10,13 @@ case "$current_branch" in
     ;;
 esac
 
-base_ref=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)
+# --verify --quiet resolves to an object or exits non-zero with no output. Do not use
+# --symbolic-full-name here: with no upstream some git versions echo the literal '@{u}'
+# and exit 0, which makes the origin/main fallback below unreachable.
+upstream_commit=$(git rev-parse --verify --quiet '@{u}' 2>/dev/null || true)
 
-if [ -n "$base_ref" ]; then
-  base_commit=$(git merge-base HEAD "$base_ref")
+if [ -n "$upstream_commit" ]; then
+  base_commit=$(git merge-base HEAD "$upstream_commit")
 elif git rev-parse --verify origin/main >/dev/null 2>&1; then
   base_commit=$(git merge-base HEAD origin/main)
 else
