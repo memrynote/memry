@@ -240,8 +240,16 @@
       "loading": "Loading…",
       "untitled": "Untitled",
       "allDay": "All day",
-      "newNote": "New note",
-      "createNoteFailed": "Could not create note"
+      "createNoteFailed": "Could not create note",
+      "addCard": "Add card",
+      "addPlaceholder": "Search notes, tasks and events…",
+      "addCreateNote": "Create note \"{query}\"",
+      "addCreateNoteEmpty": "Create new note",
+      "addEmpty": "Nothing found",
+      "addGroupNotes": "Notes",
+      "addGroupTasks": "Tasks",
+      "addGroupEvents": "Events",
+      "addOnCanvas": "On canvas"
     }
   },
   "phaseF": {

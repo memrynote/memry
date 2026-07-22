@@ -1,0 +1,160 @@
+/**
+ * The canvas "Add card" picker: search notes, tasks and events, or create a
+ * new note. Filtering is ours (shouldFilter={false}) because results arrive
+ * pre-filtered from two different sources.
+ */
+
+import React, { useEffect, useMemo, useState } from 'react'
+import { Command } from 'cmdk'
+import { Plus } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
+import type { CanvasEntityType } from '@memry/contracts/canvas-api'
+import {
+  candidateKey,
+  candidatesFromProjections,
+  candidatesFromSearch,
+  groupCandidates,
+  markOnCanvas,
+  type AddCardCandidate
+} from './canvas-add-card'
+import { useCanvasAddSearch } from './use-canvas-add-search'
+
+/** cmdk value for the pinned create row; never collides with a candidateKey. */
+const CREATE_VALUE = '__create_note__'
+
+export interface CanvasAddCardDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  /** `entityType:entityId` keys already carded on this canvas. */
+  onCanvasKeys: ReadonlySet<string>
+  onCreateNote: (title: string) => void
+  onPick: (entityType: CanvasEntityType, entityId: string) => void
+  onReveal: (entityType: CanvasEntityType, entityId: string) => void
+}
+
+export function CanvasAddCardDialog({
+  open,
+  onOpenChange,
+  onCanvasKeys,
+  onCreateNote,
+  onPick,
+  onReveal
+}: CanvasAddCardDialogProps): React.JSX.Element {
+  const { t } = useT('common')
+  const [query, setQuery] = useState('')
+  const [value, setValue] = useState(CREATE_VALUE)
+  const { results, projections, loading } = useCanvasAddSearch(open, query)
+
+  // Reset between openings so a stale query never greets the next open.
+  useEffect(() => {
+    if (!open) {
+      setQuery('')
+    }
+  }, [open])
+
+  const groups = useMemo(() => {
+    const merged = [
+      ...candidatesFromSearch(results),
+      ...candidatesFromProjections(projections, query, t('canvas.card.allDay'))
+    ]
+    return groupCandidates(markOnCanvas(merged, onCanvasKeys))
+  }, [results, projections, query, onCanvasKeys, t])
+
+  // When there are matches the first one takes the highlight, so Enter picks an
+  // existing item; the create row is one arrow-up away.
+  useEffect(() => {
+    const first = groups.note[0] ?? groups.task[0] ?? groups.calendar_event[0]
+    setValue(first ? candidateKey(first.entityType, first.entityId) : CREATE_VALUE)
+  }, [groups])
+
+  const select = (candidate: AddCardCandidate): void => {
+    if (candidate.onCanvas) {
+      onReveal(candidate.entityType, candidate.entityId)
+    } else {
+      onPick(candidate.entityType, candidate.entityId)
+    }
+    onOpenChange(false)
+  }
+
+  const renderGroup = (heading: string, items: AddCardCandidate[]): React.JSX.Element | null => {
+    if (items.length === 0) {
+      return null
+    }
+    return (
+      <Command.Group heading={heading}>
+        {items.map((candidate) => {
+          const key = candidateKey(candidate.entityType, candidate.entityId)
+          return (
+            <Command.Item
+              key={key}
+              value={key}
+              data-testid={`canvas-add-item-${key}`}
+              onSelect={() => select(candidate)}
+              className="flex cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-2 text-sm data-[selected=true]:bg-muted"
+            >
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate">{candidate.title}</span>
+                <span className="truncate text-xs text-text-tertiary">{candidate.subtitle}</span>
+              </span>
+              {candidate.onCanvas ? (
+                <span className="shrink-0 rounded-full border border-border px-1.5 py-0.5 text-[10px] text-text-tertiary">
+                  {t('canvas.card.addOnCanvas')}
+                </span>
+              ) : null}
+            </Command.Item>
+          )
+        })}
+      </Command.Group>
+    )
+  }
+
+  const hasResults =
+    groups.note.length > 0 || groups.task.length > 0 || groups.calendar_event.length > 0
+
+  return (
+    <Command.Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+      shouldFilter={false}
+      value={value}
+      onValueChange={setValue}
+      label={t('canvas.card.addCard')}
+      className="fixed start-1/2 top-24 z-50 w-[32rem] max-w-[90vw] -translate-x-1/2 overflow-hidden rounded-xl border border-border bg-card shadow-lg rtl:translate-x-1/2"
+    >
+      <Command.Input
+        value={query}
+        onValueChange={setQuery}
+        data-testid="canvas-add-input"
+        placeholder={t('canvas.card.addPlaceholder')}
+        className="w-full border-b border-border bg-transparent px-3 py-3 text-sm outline-none"
+      />
+      <Command.List className="max-h-80 overflow-y-auto p-2">
+        <Command.Item
+          value={CREATE_VALUE}
+          data-testid="canvas-add-create-note"
+          onSelect={() => {
+            onCreateNote(query.trim())
+            onOpenChange(false)
+          }}
+          className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm data-[selected=true]:bg-muted"
+        >
+          <Plus className="size-3.5 shrink-0" aria-hidden="true" />
+          {query.trim()
+            ? t('canvas.card.addCreateNote', { query: query.trim() })
+            : t('canvas.card.addCreateNoteEmpty')}
+        </Command.Item>
+        {!hasResults && query.trim() && !loading ? (
+          <div
+            data-testid="canvas-add-empty"
+            className="px-2 py-6 text-center text-sm text-text-tertiary"
+          >
+            {t('canvas.card.addEmpty')}
+          </div>
+        ) : null}
+        {renderGroup(t('canvas.card.addGroupNotes'), groups.note)}
+        {renderGroup(t('canvas.card.addGroupTasks'), groups.task)}
+        {renderGroup(t('canvas.card.addGroupEvents'), groups.calendar_event)}
+      </Command.List>
+    </Command.Dialog>
+  )
+}

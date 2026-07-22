@@ -37,9 +37,12 @@ canvases is the usual fix.
 
 - Real-time co-editing of one canvas is not supported (see conflict copies).
 - Canvas arrows do not create backlinks between notes.
-- Adding a task or calendar-event card requires the note-drag or New note
-  entry points described in [Cards & Links](./cards-and-links.md) — there is no
-  drag-in from the Tasks or Calendar pages yet.
+- The **Add card** picker searches events within 90 days either side of today.
+  Events outside that window are not listed.
+- There is no drag-in from the Tasks or Calendar pages — use **Add card**, as
+  described in [Cards & Links](./cards-and-links.md).
+- Filed PDFs, images, and other binaries don't show up as note results in the
+  **Add card** picker — only markdown notes are searchable there.
 - Palm rejection and pen pressure depend on your hardware and OS.
 - The drawing toolbar's language comes from the underlying canvas engine and may
   differ from memrynote's interface language.

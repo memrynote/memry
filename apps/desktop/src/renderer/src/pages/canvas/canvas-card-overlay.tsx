@@ -44,6 +44,8 @@ import {
 import { buildRedirectTab } from './canvas-redirect'
 import { noteCardClaims } from './canvas-note-lock'
 import { useNoteEditLock, lockReasonForCard } from './use-note-edit-lock'
+import { CanvasAddCardDialog } from './canvas-add-card-dialog'
+import { onCanvasKeys, revealScroll } from './canvas-add-card'
 
 const log = createLogger('SpatialCanvas')
 
@@ -79,6 +81,9 @@ export const CanvasCardLayer = ({
   // unrelated geometry/lockCtx change (design spec §3.3: persistent, not a
   // flash-on-failed-activation badge).
   const [claimFailedTick, setClaimFailedTick] = useState(0)
+
+  const [addOpen, setAddOpen] = useState(false)
+  const [addKeys, setAddKeys] = useState<ReadonlySet<string>>(() => new Set<string>())
 
   const [activeCardId, setActiveCardId] = useState<string | null>(null)
   const activeCardIdRef = useRef<string | null>(null)
@@ -359,33 +364,79 @@ export const CanvasCardLayer = ({
   }, [lockCtx, dispatchActive])
   /* eslint-enable react-you-might-not-need-an-effect/no-event-handler */
 
-  const handleCreateNote = useCallback(async () => {
-    try {
-      const result = await notesService.create({ title: 'Untitled Note', content: '' })
-      if (!result.success || !result.note) {
-        throw new Error(result.error ?? 'note create failed')
-      }
+  const placeCard = useCallback(
+    (entityType: CanvasCardRef['entityType'], entityId: string) => {
       const { appState } = readScene()
       const rect = viewportSceneRect(appState, {
         width: clipRef.current?.clientWidth ?? 0,
         height: clipRef.current?.clientHeight ?? 0
       })
       createCardElement(
-        'note',
-        result.note.id,
+        entityType,
+        entityId,
         (rect.minX + rect.maxX) / 2,
         (rect.minY + rect.maxY) / 2
       )
-    } catch (err) {
-      log.error('Failed to create canvas note', err)
-      toast.error(
-        extractErrorMessage(
-          err,
-          getI18n().getFixedT(null, 'common')('canvas.card.createNoteFailed')
+    },
+    [readScene, createCardElement]
+  )
+
+  const handleCreateNote = useCallback(
+    async (title: string) => {
+      try {
+        const result = await notesService.create({ title: title || 'Untitled Note', content: '' })
+        if (!result.success || !result.note) {
+          throw new Error(result.error ?? 'note create failed')
+        }
+        placeCard('note', result.note.id)
+      } catch (err) {
+        log.error('Failed to create canvas note', err)
+        toast.error(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'common')('canvas.card.createNoteFailed')
+          )
         )
+      }
+    },
+    [placeCard]
+  )
+
+  // Picking an entity that already has a card centers that card instead of
+  // adding a second one, so entity refs stay 1:1 and arrows never fragment.
+  const handleReveal = useCallback(
+    (entityType: CanvasCardRef['entityType'], entityId: string) => {
+      const { cards, appState } = readScene()
+      const card = cards.find((c) => c.entityType === entityType && c.entityId === entityId)
+      if (!card) {
+        return
+      }
+      const { scrollX, scrollY } = revealScroll(
+        card,
+        {
+          width: clipRef.current?.clientWidth ?? 0,
+          height: clipRef.current?.clientHeight ?? 0
+        },
+        appState.zoom.value
       )
-    }
-  }, [readScene, createCardElement])
+      excalidrawAPI.updateScene({
+        appState: { scrollX, scrollY, selectedElementIds: { [card.elementId]: true } },
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY
+      })
+      recompute()
+    },
+    [readScene, excalidrawAPI, recompute]
+  )
+
+  // Snapshot the carded entities when the picker opens. A useMemo keyed on
+  // `addOpen` would read the scene on every render and trip exhaustive-deps
+  // (addOpen is not referenced in the computation).
+  const openAddDialog = useCallback(() => {
+    setAddKeys(
+      onCanvasKeys(getCardRefs(excalidrawAPI.getSceneElements() as unknown as CardElement[]))
+    )
+    setAddOpen(true)
+  }, [excalidrawAPI])
 
   const cards = useMemo(() => {
     // Referenced (no-op) purely so this memo re-evaluates after a failed
@@ -449,15 +500,23 @@ export const CanvasCardLayer = ({
       </div>
       <button
         type="button"
-        onClick={() => void handleCreateNote()}
-        data-testid="canvas-new-note"
+        onClick={openAddDialog}
+        data-testid="canvas-add-card"
         // Horizontally centered (symmetric in RTL) via inline left/translate.
         style={{ left: '50%', transform: 'translateX(-50%)' }}
         className="pointer-events-auto absolute bottom-4 z-10 flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-text-secondary shadow-sm transition-colors hover:bg-muted hover:text-foreground"
       >
         <Plus className="size-3.5" aria-hidden="true" />
-        {t('canvas.card.newNote')}
+        {t('canvas.card.addCard')}
       </button>
+      <CanvasAddCardDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onCanvasKeys={addKeys}
+        onCreateNote={(title) => void handleCreateNote(title)}
+        onPick={placeCard}
+        onReveal={handleReveal}
+      />
     </>
   )
 }
