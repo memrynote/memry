@@ -161,7 +161,9 @@ function createProjectQueries(): ProjectQueryModule<TestDb> {
     getProjectLink: vi.fn(() => undefined),
     getProjectLinks: vi.fn(() => []),
     updateProjectHomeNote: vi.fn(),
-    getProjectsForItem: vi.fn(() => [])
+    getProjectsForItem: vi.fn(() => []),
+    deleteProjectLinksForItem: vi.fn(() => []),
+    clearProjectsHomeNote: vi.fn(() => [])
   }
 }
 
