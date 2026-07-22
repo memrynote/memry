@@ -9,8 +9,9 @@ import {
   reconcileCanvasAssets,
   uploadCanvasAsset
 } from '../canvas/assets/asset-service'
-import { updateCanvas, deleteCanvas } from '../canvas/store'
+import { createCanvas, getCanvas, updateCanvas, deleteCanvas } from '../canvas/store'
 import { syncCanvasUpdate, syncCanvasDelete } from '../canvas/sync-bridge'
+import { trackMainEvent } from '../telemetry/track'
 
 // Mock electron ipcMain so register/unregister can run in tests
 vi.mock('electron', () => ({
@@ -51,6 +52,9 @@ vi.mock('../canvas/sync-bridge', () => ({
   syncCanvasCreate: vi.fn(() => true),
   syncCanvasUpdate: vi.fn(() => true),
   syncCanvasDelete: vi.fn()
+}))
+vi.mock('../telemetry/track', () => ({
+  trackMainEvent: vi.fn()
 }))
 // Keep the sync/attachment runtime out of this registration test: the real
 // context builder pulls the whole attachment + writeback graph. Returning null
@@ -357,5 +361,64 @@ describe('canvas asset IPC handlers', () => {
 
       expect(reconcileCanvasAssets).not.toHaveBeenCalled()
     })
+  })
+})
+
+describe('canvas rollout telemetry', () => {
+  afterEach(() => {
+    unregisterCanvasHandlers()
+    vi.clearAllMocks()
+  })
+
+  it('emits canvas_created when a canvas is created', async () => {
+    await withWorkingCanvasContext()
+    vi.mocked(createCanvas).mockReturnValue({
+      id: 'canvas-1',
+      title: 'Board',
+      createdAt: 0,
+      updatedAt: 0,
+      scene: ''
+    })
+    const handlers = await registerAndGetHandlers()
+
+    await handlers[CanvasChannels.invoke.CREATE]({}, { title: 'Board' })
+
+    expect(trackMainEvent).toHaveBeenCalledWith('canvas_created', {
+      surface: 'canvas',
+      action: 'created',
+      objectType: 'canvas',
+      result: 'success'
+    })
+  })
+
+  it('emits canvas_opened when a canvas is fetched', async () => {
+    await withWorkingCanvasContext()
+    vi.mocked(getCanvas).mockReturnValue({
+      id: 'canvas-1',
+      title: null,
+      createdAt: 0,
+      updatedAt: 0,
+      scene: ''
+    })
+    const handlers = await registerAndGetHandlers()
+
+    await handlers[CanvasChannels.invoke.GET]({}, 'canvas-1')
+
+    expect(trackMainEvent).toHaveBeenCalledWith('canvas_opened', {
+      surface: 'canvas',
+      action: 'opened',
+      objectType: 'canvas',
+      result: 'success'
+    })
+  })
+
+  it('does not emit canvas_opened for a missing canvas', async () => {
+    await withWorkingCanvasContext()
+    vi.mocked(getCanvas).mockReturnValue(null)
+    const handlers = await registerAndGetHandlers()
+
+    await handlers[CanvasChannels.invoke.GET]({}, 'does-not-exist')
+
+    expect(trackMainEvent).not.toHaveBeenCalledWith('canvas_opened', expect.anything())
   })
 })

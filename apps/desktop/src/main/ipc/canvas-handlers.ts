@@ -36,6 +36,7 @@ import {
   uploadCanvasAsset
 } from '../canvas/assets/asset-service'
 import { buildAssetServiceContext } from '../canvas/assets/asset-service-context'
+import { trackMainEvent } from '../telemetry/track'
 
 function emitCanvasEvent(
   channel: string,
@@ -91,6 +92,12 @@ export function registerCanvasHandlers(): void {
     createValidatedHandler(CanvasCreateSchema, async (input) => {
       const { db, vaultId, vaultKey } = await getCanvasContext()
       const canvas = createCanvas(db, vaultKey, vaultId, input)
+      trackMainEvent('canvas_created', {
+        surface: 'canvas',
+        action: 'created',
+        objectType: 'canvas',
+        result: 'success'
+      })
       const { scene, ...summary } = canvas
       const synced = syncCanvasCreate(canvas.id, scene)
       emitCanvasEvent(CanvasChannels.events.CREATED, { canvas: summary })
@@ -107,7 +114,19 @@ export function registerCanvasHandlers(): void {
     CanvasChannels.invoke.GET,
     createStringHandler(async (id) => {
       const { db, vaultKey } = await getCanvasContext()
-      return getCanvas(db, vaultKey, id)
+      const canvas = getCanvas(db, vaultKey, id)
+      if (canvas) {
+        // Fires per successful load, so a tab-switch remount counts again. That
+        // is the intended meaning ("canvas loads"), documented in
+        // apps/docs/src/architecture/observability.md — it is NOT distinct opens.
+        trackMainEvent('canvas_opened', {
+          surface: 'canvas',
+          action: 'opened',
+          objectType: 'canvas',
+          result: 'success'
+        })
+      }
+      return canvas
     })
   )
 

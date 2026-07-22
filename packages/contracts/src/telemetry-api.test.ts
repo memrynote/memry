@@ -5,6 +5,7 @@ import {
   TelemetryBatchSchema,
   TelemetryEventNameSchema,
   TelemetryEventSchema,
+  TelemetrySurfaceSchema,
   buildErrorDetail,
   normalizeRejectionReason,
   normalizeWindowError,
@@ -477,6 +478,21 @@ describe('TelemetryEventSchema', () => {
     ]) {
       expect(TelemetryEventNameSchema.safeParse(name).success).toBe(true)
     }
+  })
+})
+
+describe('canvas rollout telemetry', () => {
+  it('accepts the canvas rollout event names', () => {
+    expect(TelemetryEventNameSchema.safeParse('canvas_created').success).toBe(true)
+    expect(TelemetryEventNameSchema.safeParse('canvas_opened').success).toBe(true)
+  })
+
+  it('accepts the canvas surface', () => {
+    expect(TelemetrySurfaceSchema.safeParse('canvas').success).toBe(true)
+  })
+
+  it('still rejects an unknown event name', () => {
+    expect(TelemetryEventNameSchema.safeParse('canvas_exploded').success).toBe(false)
   })
 })
 

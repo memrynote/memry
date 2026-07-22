@@ -24,13 +24,43 @@ vi.mock('@memry/i18n/renderer', () => ({
 vi.mock('react-i18next', () => ({ getI18n: () => ({ getFixedT: () => (k: string) => k }) }))
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
 
-const mocks = vi.hoisted(() => ({
-  openTab: vi.fn(),
-  notesCreate: vi.fn(),
-  entities: new Map<string, unknown>()
-}))
+const mocks = vi.hoisted(() => {
+  const lockCtxCache = new Map<
+    string | null,
+    { collaborationActive: boolean; visibleNoteTabIds: Set<string> }
+  >()
+  return {
+    openTab: vi.fn(),
+    notesCreate: vi.fn(),
+    entities: new Map<string, unknown>(),
+    lockReason: null as string | null,
+    // Cached per lockReason value so the returned reference is stable across
+    // re-renders while the reason is unchanged — mirrors the real hook's
+    // useMemo. A fresh object on every call would make the overlay's
+    // yield-to-tab effect (deps on this reference) re-run on every render
+    // regardless of whether the lock actually changed, confounding tests that
+    // want to isolate the activation gate from that effect.
+    getLockCtx(): { collaborationActive: boolean; visibleNoteTabIds: Set<string> } {
+      const key = this.lockReason
+      if (!lockCtxCache.has(key)) {
+        lockCtxCache.set(key, { collaborationActive: key === null, visibleNoteTabIds: new Set() })
+      }
+      return lockCtxCache.get(key)!
+    }
+  }
+})
 
 vi.mock('@/contexts/tabs', () => ({ useTabActions: () => ({ openTab: mocks.openTab }) }))
+// This suite's subject is overlay geometry, not the note-edit lock decision
+// itself (covered by use-note-edit-lock.test.tsx against the real providers,
+// SyncProvider/TabProvider not needed here). mocks.lockReason drives the
+// stub so individual tests can flip it — the enforcement POINT (activation
+// gate, claim refusal, yield-to-tab effect, locked prop passthrough) is this
+// suite's subject and needs the lock to actually be able to trigger.
+vi.mock('./use-note-edit-lock', () => ({
+  useNoteEditLock: () => mocks.getLockCtx(),
+  lockReasonForCard: () => mocks.lockReason
+}))
 vi.mock('@/services/notes-service', () => ({
   notesService: { create: (input: unknown) => mocks.notesCreate(input) }
 }))
@@ -43,12 +73,18 @@ vi.mock('./use-canvas-entities', async () => {
 vi.mock('./canvas-card', () => ({
   CanvasCard: ({
     cardRef,
-    onRedirect
+    onRedirect,
+    locked
   }: {
     cardRef: { elementId: string; entityType: string; entityId: string }
     onRedirect: (c: unknown) => void
+    locked?: string | null
   }) => (
-    <button data-testid={`card-${cardRef.elementId}`} onClick={() => onRedirect(cardRef)}>
+    <button
+      data-testid={`card-${cardRef.elementId}`}
+      data-canvas-card-locked={locked ? 'true' : undefined}
+      onClick={() => onRedirect(cardRef)}
+    >
       {cardRef.entityId}
     </button>
   )
@@ -127,6 +163,7 @@ describe('CanvasCardLayer', () => {
     mocks.openTab.mockReset()
     mocks.notesCreate.mockReset()
     mocks.entities = new Map()
+    mocks.lockReason = null
   })
 
   it('renders a card for each visible card element', async () => {
@@ -276,5 +313,56 @@ describe('CanvasCardLayer', () => {
     )
     // C4: the deactivating pointerdown must still be free to pan/select.
     expect(stopPropagation).not.toHaveBeenCalled()
+  })
+
+  describe('M7 note-edit lock enforcement', () => {
+    it('refuses to activate a locked card on dblclick', async () => {
+      mocks.lockReason = 'note-open-in-tab'
+      mocks.entities = new Map([['note:n1', { status: 'ready', kind: 'note', title: 'Hit' }]])
+      const { api, fire } = makeApi([cardEl('e1', 'n1', 100, 100)])
+      render(<Harness api={api} />)
+      fire()
+      const wrapper = screen.getByTestId('wrapper')
+      wrapper.dispatchEvent(
+        new MouseEvent('dblclick', { bubbles: true, cancelable: true, clientX: 150, clientY: 150 })
+      )
+      // The raw dispatchEvent above isn't wrapped in act(), so a synchronous
+      // check right after it could pass even with the gate removed (the state
+      // update just hasn't landed on the DOM yet) — give it a tick first so
+      // this assertion can genuinely fail.
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(document.querySelector('[data-canvas-active-card]')).not.toBeInTheDocument()
+    })
+
+    it('deactivates an already-active card once it becomes locked (yield-to-tab effect)', async () => {
+      mocks.entities = new Map([['note:n1', { status: 'ready', kind: 'note', title: 'Hit' }]])
+      const { api, fire } = makeApi([cardEl('e1', 'n1', 100, 100)])
+      const { rerender } = render(<Harness api={api} />)
+      fire()
+      const wrapper = screen.getByTestId('wrapper')
+      wrapper.dispatchEvent(
+        new MouseEvent('dblclick', { bubbles: true, cancelable: true, clientX: 150, clientY: 150 })
+      )
+      await waitFor(() =>
+        expect(document.querySelector('[data-canvas-active-card="e1"]')).toBeInTheDocument()
+      )
+
+      // The note becomes live in another visible pane — the lock context
+      // changes and the yield-to-tab effect must deactivate the card.
+      mocks.lockReason = 'note-open-in-tab'
+      rerender(<Harness api={api} />)
+
+      expect(document.querySelector('[data-canvas-active-card]')).not.toBeInTheDocument()
+    })
+
+    it('passes the locked prop down to an idle card', async () => {
+      mocks.lockReason = 'note-open-in-tab'
+      mocks.entities = new Map([['note:n1', { status: 'ready', kind: 'note', title: 'Hit' }]])
+      const { api } = makeApi([cardEl('e1', 'n1')])
+      render(<Harness api={api} />)
+      await waitFor(() =>
+        expect(screen.getByTestId('card-e1')).toHaveAttribute('data-canvas-card-locked', 'true')
+      )
+    })
   })
 })

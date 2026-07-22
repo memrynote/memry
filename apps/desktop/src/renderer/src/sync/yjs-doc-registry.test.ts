@@ -78,4 +78,80 @@ describe('yjs-doc-registry', () => {
     expect(registry.refCount('note-1')).toBe(1)
     expect(registry.refCount('note-2')).toBe(1)
   })
+
+  it('keeps refCount exact through interleaved acquire/release churn', () => {
+    const destroy = vi.fn()
+    const registry = createYjsDocRegistry(() => ({ destroy }))
+    const consumers = Array.from({ length: 6 }, () => Symbol('consumer'))
+
+    consumers.forEach((c) => registry.acquire('n1', c))
+    expect(registry.refCount('n1')).toBe(6)
+
+    // Release out of acquisition order, interleaved with a re-acquire.
+    registry.release('n1', consumers[3])
+    registry.release('n1', consumers[0])
+    const late = Symbol('late')
+    registry.acquire('n1', late)
+    registry.release('n1', consumers[5])
+    expect(registry.refCount('n1')).toBe(4)
+    expect(destroy).not.toHaveBeenCalled()
+    ;[consumers[1], consumers[2], consumers[4], late].forEach((c) => registry.release('n1', c))
+    expect(registry.refCount('n1')).toBe(0)
+    expect(destroy).toHaveBeenCalledTimes(1)
+  })
+
+  it('promotes ownership to a still-live consumer on each owner release', () => {
+    const registry = createYjsDocRegistry(() => ({ destroy: vi.fn() }))
+    const a = Symbol('a')
+    const b = Symbol('b')
+    const c = Symbol('c')
+    registry.acquire('n1', a)
+    registry.acquire('n1', b)
+    registry.acquire('n1', c)
+    expect(registry.isSideEffectOwner('n1', a)).toBe(true)
+
+    registry.release('n1', a)
+    const ownersAfterFirst = [b, c].filter((s) => registry.isSideEffectOwner('n1', s))
+    expect(ownersAfterFirst).toHaveLength(1)
+
+    registry.release('n1', ownersAfterFirst[0])
+    const remaining = [b, c].filter(
+      (s) => registry.refCount('n1') > 0 && registry.isSideEffectOwner('n1', s)
+    )
+    expect(remaining).toHaveLength(1)
+  })
+
+  it('survives a duplicate release without going negative or double-destroying', () => {
+    const destroy = vi.fn()
+    const registry = createYjsDocRegistry(() => ({ destroy }))
+    const a = Symbol('a')
+    registry.acquire('n1', a)
+    registry.release('n1', a)
+    registry.release('n1', a)
+    expect(registry.refCount('n1')).toBe(0)
+    expect(destroy).toHaveBeenCalledTimes(1)
+  })
+
+  it('re-creates a fresh entry after full teardown (no stale slot leak)', () => {
+    const createEntry = vi.fn(() => ({ destroy: vi.fn() }))
+    const registry = createYjsDocRegistry(createEntry)
+    const a = Symbol('a')
+    registry.acquire('n1', a)
+    registry.release('n1', a)
+    registry.acquire('n1', Symbol('b'))
+    expect(createEntry).toHaveBeenCalledTimes(2)
+    expect(registry.refCount('n1')).toBe(1)
+  })
+
+  it('refCount===1 stays byte-identical to the pre-registry path', () => {
+    const destroy = vi.fn()
+    const createEntry = vi.fn(() => ({ destroy }))
+    const registry = createYjsDocRegistry(createEntry)
+    const only = Symbol('only')
+    registry.acquire('n1', only)
+    expect(createEntry).toHaveBeenCalledTimes(1)
+    expect(registry.isSideEffectOwner('n1', only)).toBe(true)
+    registry.release('n1', only)
+    expect(destroy).toHaveBeenCalledTimes(1)
+  })
 })

@@ -1,0 +1,42 @@
+# Canvas Overview
+
+A canvas is an infinite, freeform board. You draw on it, and you place real
+notes, tasks, and calendar events on it as cards. Nothing on a canvas is a copy:
+a card points at the actual item, so editing it anywhere updates it everywhere.
+
+Canvases are useful when an outline is the wrong shape for your thinking —
+planning a project, mapping how ideas connect, sketching a diagram next to the
+notes it explains.
+
+## Turning it on
+
+Canvas is opt-in. Open **Settings → Features** and turn on **Canvas**. The
+setting is per device and persists across restarts.
+
+Once enabled, a **Canvases** section appears in the sidebar.
+
+## Creating and opening a canvas
+
+- Hover the **Canvases** sidebar section and click the **+** button (**New
+  canvas**) that appears.
+- Click any canvas in the sidebar to open it in a tab, like a note.
+- Canvases open in the normal tab system, so you can split the view and keep a
+  canvas beside a note. See [Tabs & Split View](../tabs-split-view.md).
+
+## Drawing
+
+The canvas uses a full drawing surface: freehand ink, shapes, arrows, text,
+colors, multi-select, grouping, and undo/redo. A pen or stylus with pressure
+support draws variable-width strokes where the hardware and OS report pressure.
+
+Palm rejection depends on your operating system and hardware rather than on
+memrynote, so resting your hand on a touchscreen while drawing may still
+register. Test it on your own device before relying on it.
+
+The drawing toolbar is provided by the underlying canvas engine and follows its
+own language list, which does not always match memrynote's interface language.
+
+## Next steps
+
+- [Cards & Links](./cards-and-links.md) — putting notes, tasks, and events on a canvas
+- [Sync & Limits](./sync-and-limits.md) — how canvases sync, and what to watch out for

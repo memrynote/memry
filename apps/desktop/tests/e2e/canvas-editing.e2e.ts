@@ -5,7 +5,7 @@
  * editing (matrix #20). Later tasks add note/task/event body assertions.
  */
 import { test, expect, type Page } from './fixtures'
-import { ready } from './utils/desktop-test-helpers'
+import { MOD, ready } from './utils/desktop-test-helpers'
 
 async function openVault(page: Page): Promise<void> {
   await page
@@ -62,6 +62,20 @@ async function dropNote(page: Page, noteId: string, dx = 0, dy = 0): Promise<voi
     },
     { id: noteId, ddx: dx, ddy: dy }
   )
+}
+/**
+ * Focus a split-view pane by its data-pane-id. A real mouse click is
+ * unreliable here: the tab bar is a `-webkit-app-region: drag` region
+ * (tab-bar-with-drag.tsx) that swallows synthetic clicks, and the content
+ * area below it is Excalidraw's own canvas. Dispatching a bubbling click
+ * directly on the pane's root element lands exactly on tab-pane.tsx's
+ * `onClick` (SET_ACTIVE_GROUP) without depending on what's rendered inside it.
+ */
+async function focusPane(page: Page, paneId: string): Promise<void> {
+  await page.evaluate((id) => {
+    const pane = document.querySelector(`[data-testid="tab-pane"][data-pane-id="${id}"]`)
+    pane?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+  }, paneId)
 }
 /** Double-click the visual center of a card's overlay div. */
 async function dblclickCard(page: Page, entity: string): Promise<void> {
@@ -129,6 +143,117 @@ test.describe('Spatial canvas — in-place editing (M6)', () => {
     const wrap = await page.locator('[data-canvas-editor]').boundingBox()
     await page.mouse.click(wrap.x + 20, wrap.y + 20)
     await expect(card).not.toHaveAttribute('data-canvas-card-state', 'active', { timeout: 20000 })
+  })
+
+  // M7 guard regression. The lock only triggers when the same note is live in
+  // ANOTHER visible pane; a single-pane canvas can never reach that state
+  // (tab-pane.tsx mounts only each group's active tab). So this asserts the
+  // guard does NOT over-trigger and silently break M6's happy path. The
+  // positive split-view case is covered below by a real split, driven by the
+  // renderer-level ⌘\ / Ctrl+\ keyboard shortcut (use-tab-keyboard-shortcuts.ts)
+  // — tabs.e2e.ts's `createHorizontalSplit` dispatches a `test:split-view`
+  // CustomEvent that no renderer code listens for, but that is a gap in that
+  // one helper, not a Playwright limitation: the keyboard shortcut is a plain
+  // `window` keydown listener and drives a real SPLIT_VIEW dispatch.
+  test('an unlocked note card still activates (M7 guard does not over-trigger)', async ({
+    page
+  }) => {
+    await openVault(page)
+    await setSpatialCanvasFlag(page, true)
+    await createCanvasFromSidebar(page)
+    const noteId = await seedNote(page, `Unlocked ${Date.now()}`, 'body')
+    await dropNote(page, noteId)
+
+    const card = page.locator(`[data-canvas-card-entity="note:${noteId}"]`)
+    await expect(card).toBeVisible({ timeout: 20000 })
+    await expect(card).not.toHaveAttribute('data-canvas-card-locked', 'true')
+
+    await dblclickCard(page, `note:${noteId}`)
+    await expect(card).toHaveAttribute('data-canvas-card-state', 'active', { timeout: 20000 })
+  })
+
+  // Positive split-view case, for real. Split with the renderer's own ⌘\ /
+  // Ctrl+\ shortcut (use-tab-keyboard-shortcuts.ts registers a plain
+  // `window` keydown handler for it — nothing native-menu-only about it), open
+  // the seeded note in the newly-created pane so it becomes that pane's ACTIVE
+  // tab (collectVisibleNoteTabIds only counts active tabs — tab-pane.tsx mounts
+  // only each group's active tab), then refocus the canvas pane and confirm
+  // the guard actually engages: the E2E vault is unauthenticated, so this is
+  // exactly the clobber-risk path the M7 guard exists for.
+  test('a note open in the split pane locks the canvas card (M7 guard, real split)', async ({
+    page
+  }) => {
+    await openVault(page)
+    await setSpatialCanvasFlag(page, true)
+    const canvasId = await createCanvasFromSidebar(page)
+    const title = `Split Lock ${Date.now()}`
+    const noteId = await seedNote(page, title, 'body')
+    await dropNote(page, noteId)
+
+    const card = page.locator(`[data-canvas-card-entity="note:${noteId}"]`)
+    await expect(card).toBeVisible({ timeout: 20000 })
+
+    // The card being visible in the DOM only proves the React scene state
+    // updated — CanvasEditor's persister debounces the actual save
+    // (SCENE_SAVE_DEBOUNCE_MS). Poll the persisted scene itself before
+    // splitting, exactly like the remount-regression test above does, so the
+    // split can't race an in-flight save.
+    const cardRectCount = async (): Promise<number> => {
+      const c = await page.evaluate(async (id) => window.api.canvas.get(id), canvasId)
+      const parsed = c?.scene ? JSON.parse(c.scene) : { elements: [] }
+      return (parsed.elements ?? []).filter(
+        (e) => e.type === 'rectangle' && !e.isDeleted && e.customData?.entityId === noteId
+      ).length
+    }
+    await expect.poll(cardRectCount, { timeout: 20000 }).toBe(1)
+
+    // The canvas pane is the only (and therefore active) pane right now —
+    // capture its id so it can be targeted precisely once a second pane exists.
+    const canvasPaneId = await page
+      .locator('[data-testid="tab-pane"]')
+      .first()
+      .getAttribute('data-pane-id')
+
+    await page.keyboard.press(`${MOD}+\\`)
+    await expect(page.locator('[data-testid="tab-pane"]')).toHaveCount(2, { timeout: 20000 })
+
+    // SPLIT_VIEW clones the active (canvas) tab into the new pane and leaves
+    // activeGroupId untouched (layout-reducer.ts), so the new pane is the one
+    // NOT currently active — identify it that way rather than by DOM order.
+    // Read its data-pane-id once, up front: a locator keyed on
+    // data-pane-active="false" would start matching the OTHER pane the
+    // instant this one's focus flips to true.
+    const newPaneId = await page
+      .locator('[data-testid="tab-pane"][data-pane-active="false"]')
+      .getAttribute('data-pane-id')
+    const newPane = page.locator(`[data-testid="tab-pane"][data-pane-id="${newPaneId}"]`)
+    await focusPane(page, newPaneId!)
+    await expect(newPane).toHaveAttribute('data-pane-active', 'true')
+
+    // Open the seeded note in the now-focused new pane via the same test-only
+    // hook note-sync-helpers.ts uses (App.tsx's openTab has no groupId, so it
+    // targets whichever pane is currently focused).
+    await page.evaluate(
+      ({ id, t }) => {
+        window.dispatchEvent(new CustomEvent('memry:test-open-note', { detail: { id, title: t } }))
+      },
+      { id: noteId, t: title }
+    )
+    await expect(page.getByRole('tab', { name: title })).toBeVisible({ timeout: 20000 })
+    // The new pane's own (cloned) canvas tab is now a background tab there, so
+    // its CanvasPage unmounts — wait for that before touching card locators,
+    // since until it does there are transiently two DOM nodes for this same
+    // card (one per pane, both rendering the same underlying canvas).
+    await expect(page.locator('[data-canvas-editor]')).toHaveCount(1, { timeout: 20000 })
+
+    // Refocus the canvas pane.
+    await focusPane(page, canvasPaneId!)
+    const canvasPane = page.locator(`[data-testid="tab-pane"][data-pane-id="${canvasPaneId}"]`)
+    await expect(canvasPane).toHaveAttribute('data-pane-active', 'true')
+
+    await dblclickCard(page, `note:${noteId}`)
+    await expect(card).toHaveAttribute('data-canvas-card-locked', 'true', { timeout: 20000 })
+    await expect(card).not.toHaveAttribute('data-canvas-card-state', 'active')
   })
 
   test('↗ redirect and double-click do not cross-fire (matrix #20)', async ({ page }) => {

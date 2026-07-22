@@ -47,6 +47,12 @@ The desktop app ships a `memrynote` CLI that can be enabled from Settings with a
 
 → [Command Line](/user-guide/cli)
 
+## Canvas
+
+Infinite boards with ink, shapes, and live cards for notes, tasks, and events. Opt-in under Settings → Features.
+
+→ [Canvas Overview](/user-guide/canvas/overview)
+
 ## Workspace Surfaces
 
 - [Tabs & Split View](/user-guide/tabs-split-view)

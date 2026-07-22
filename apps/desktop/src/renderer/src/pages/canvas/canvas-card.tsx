@@ -14,12 +14,19 @@ import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { renderTaskDescriptionMarkdown } from '@/components/tasks/task-description-preview'
 import { useT } from '@memry/i18n/renderer'
 import type { CanvasCardRef } from './canvas-cards'
+import type { NoteLockReason } from './canvas-note-lock'
 import type { CanvasEntityState } from './use-canvas-entities'
 
 interface CanvasCardProps {
   cardRef: CanvasCardRef
   state: CanvasEntityState | undefined
   onRedirect: (cardRef: CanvasCardRef) => void
+  /**
+   * Non-null when in-place editing is unavailable for this card (the same note
+   * is live in a visible tab, or another card already owns it). The card stays
+   * a read-only preview and points at the surface that can edit.
+   */
+  locked?: NoteLockReason | null
 }
 
 function formatDueDate(dueDate: string | null): string | null {
@@ -38,7 +45,12 @@ function formatEventTime(startAt: string, isAllDay: boolean, allDayLabel: string
   return `${date} · ${time}`
 }
 
-const CanvasCardInner = ({ cardRef, state, onRedirect }: CanvasCardProps): React.JSX.Element => {
+const CanvasCardInner = ({
+  cardRef,
+  state,
+  onRedirect,
+  locked
+}: CanvasCardProps): React.JSX.Element => {
   const { t } = useT('common')
 
   const handleRedirect = (e: React.MouseEvent): void => {
@@ -58,6 +70,7 @@ const CanvasCardInner = ({ cardRef, state, onRedirect }: CanvasCardProps): React
       data-canvas-card-id={cardRef.elementId}
       data-canvas-card-entity={`${cardRef.entityType}:${cardRef.entityId}`}
       data-canvas-card-state={state?.status ?? 'loading'}
+      data-canvas-card-locked={locked ? 'true' : undefined}
     >
       {/* Redirect button — the one interactive region on an idle card. */}
       <button
@@ -133,6 +146,18 @@ const CanvasCardInner = ({ cardRef, state, onRedirect }: CanvasCardProps): React
           <span className="text-xs text-text-tertiary">{t('canvas.card.loading')}</span>
         </div>
       )}
+      {locked ? (
+        <button
+          type="button"
+          data-canvas-redirect=""
+          onClick={handleRedirect}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="pointer-events-auto flex w-full shrink-0 items-center justify-center gap-1 border-t border-border bg-muted/60 px-2 py-1 text-[10px] font-medium text-text-secondary hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          <ArrowUpRight className="size-3" aria-hidden="true" />
+          {t('canvas.card.openToEdit')}
+        </button>
+      ) : null}
     </div>
   )
 }
