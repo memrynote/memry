@@ -224,6 +224,8 @@
     "attachAria": "Attach file",
     "mentionAria": "Mention a person, page or date",
     "sendAria": "Send comment",
+    "openImageAria": "Open image {name}",
+    "openAttachmentAria": "Open attachment {name}",
     "kind": {
       "comment": "Comment",
       "addition": "Addition",

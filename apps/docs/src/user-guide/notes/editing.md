@@ -137,6 +137,8 @@ Formatting applied in MemryNote round-trips. Underline written any other way —
 
 Select text to open the floating toolbar. **Comment** creates an anchored review card in the right rail; selecting the text itself does not open the rail. The right rail aligns each card beside the marked text. Comment cards can be resolved or deleted.
 
+Comments can carry file attachments. Image attachments show an inline thumbnail; clicking an image or PDF opens it in the in-app viewer (close with Esc, a click outside, or the ✕). Other file types open in your operating system's default app.
+
 ## What Notes Are Made Of
 
 Under the hood, every note is a Yjs CRDT (`Y.Doc`). Markdown is a derived export, not the canonical form — this is what lets edits from two devices merge cleanly. See [CRDT & Notes Sync](/architecture/crdt) for details.

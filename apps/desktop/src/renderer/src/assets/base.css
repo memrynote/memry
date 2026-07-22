@@ -651,7 +651,8 @@
   pointer-events: none;
 }
 
-.critic-review-content a {
+.critic-review-content a,
+.critic-review-content button {
   pointer-events: auto;
 }
 
@@ -683,7 +684,8 @@
 
 .critic-review-attachments {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 6px;
   margin-top: 8px;
 }

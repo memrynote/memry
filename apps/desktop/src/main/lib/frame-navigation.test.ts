@@ -71,10 +71,16 @@ describe('decideFrameNavigation', () => {
   })
 
   describe('memry-file custom scheme', () => {
-    it('allows memry-file URLs (protocol handler enforces its own path allowlist)', () => {
+    it('hands a main-frame memry-file navigation to the OS instead of navigating (would trap the app)', () => {
       expect(decideFrameNavigation('memry-file://local/Users/kaan/vault/file.pdf', prodMain)).toBe(
-        'allow'
+        'open-file'
       )
+      expect(decideFrameNavigation('memry-file://local/Users/kaan/vault/image.png', devMain)).toBe(
+        'open-file'
+      )
+    })
+
+    it('still allows memry-file in subframes (protocol handler enforces its own path allowlist)', () => {
       expect(decideFrameNavigation('memry-file://local/Users/kaan/vault/file.pdf', prodSub)).toBe(
         'allow'
       )

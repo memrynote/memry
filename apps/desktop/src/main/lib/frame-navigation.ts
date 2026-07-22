@@ -1,6 +1,6 @@
 import { isAllowedExternalUrl } from './external-url'
 
-export type FrameNavigationDecision = 'allow' | 'deny' | 'open-external'
+export type FrameNavigationDecision = 'allow' | 'deny' | 'open-external' | 'open-file'
 
 export interface FrameNavigationContext {
   /** Whether the navigation targets the window's top-level frame. */
@@ -51,9 +51,13 @@ export function decideFrameNavigation(
   const target = parseUrl(rawUrl)
   if (!target) return 'deny'
 
-  // App-controlled local scheme; the memry-file protocol handler enforces its
-  // own directory allowlist (userData + vault) on every request.
-  if (target.protocol === 'memry-file:') return 'allow'
+  // App-controlled local scheme. Inline resource loads (<img>/<audio>/<video>,
+  // react-pdf fetch) never fire will-frame-navigate, so a memry-file event here
+  // is a real navigation. On the main frame that would replace the SPA document
+  // with the protocol handler's raw file bytes and trap the app (no in-app back
+  // path) — hand the file to the OS instead. Subframes may still load it in-place
+  // (the protocol handler enforces its own userData+vault directory allowlist).
+  if (target.protocol === 'memry-file:') return isMainFrame ? 'open-file' : 'allow'
 
   if (!isMainFrame) {
     // Frames initialize as about:blank / about:srcdoc before real content.

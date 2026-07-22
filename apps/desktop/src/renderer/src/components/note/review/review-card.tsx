@@ -1,7 +1,7 @@
 import type { CSSProperties, MouseEvent } from 'react'
 import { MentionIcon, mentionColorForKind } from '@/agent-chat/mention-icons'
 import { useMemryLinkNavigation } from '@/agent-chat/messages/memry-links'
-import { Check, Paperclip, Pencil, Trash } from '@/lib/icons'
+import { Check, Pencil, Trash } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import type { CriticMarkupReviewController } from './use-critic-markup-review'
 import { useT } from '@memry/i18n/renderer'
 import type { CriticMarkupCommentMentionRef, CriticMarkupMark } from '@memry/shared'
+import { CommentAttachments } from './comment-attachments'
 import { iconForMention, splitCommentBody } from './comment-body'
 import { CommentComposer } from './comment-composer'
 import { syncInlineHoverClass } from './inline-hover'
@@ -227,24 +228,6 @@ function CommentMentionLink({
       <MentionIcon icon={iconForMention(mention)} className="size-3 text-current" />
       <span className="truncate">@{mention.label}</span>
     </a>
-  )
-}
-
-function CommentAttachments({ mark }: { mark: CriticMarkupMark }): React.JSX.Element | null {
-  if (!mark.attachments?.length) return null
-  return (
-    <div className="critic-review-attachments">
-      {mark.attachments.map((attachment) => (
-        <a
-          key={attachment.id}
-          href={attachment.path}
-          className="inline-flex max-w-full items-center gap-1 rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
-        >
-          <Paperclip className="size-3 shrink-0" aria-hidden="true" />
-          <span className="truncate">{attachment.name}</span>
-        </a>
-      ))}
-    </div>
   )
 }
 
