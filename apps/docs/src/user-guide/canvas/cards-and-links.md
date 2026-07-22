@@ -9,7 +9,8 @@ canvas. The canvas stores the reference, never a copy of your content.
 - **Click "Add card"** at the bottom of the canvas to search your notes, tasks
   and events, or to create a new note without leaving the board. "Create
   note …" is always the first option, and typing a title carries it into the
-  new note.
+  new note. The picker opens over a dimmed canvas; press <kbd>Esc</kbd> or
+  click outside it to go back to the board.
 
 Task and calendar-event cards are added through **Add card**. Dragging works
 for notes from the sidebar; the Tasks and Calendar pages have no drag-in, so
