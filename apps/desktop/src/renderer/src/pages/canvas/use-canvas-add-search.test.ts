@@ -47,11 +47,21 @@ describe('useCanvasAddSearch', () => {
     expect(result.current.results).toEqual([])
   })
 
-  it('debounces search and returns results', async () => {
+  it('returns search results once the query resolves', async () => {
     const { result } = renderHook(() => useCanvasAddSearch(true, 'alpha'))
     await waitFor(() => expect(result.current.results).toEqual([{ id: 'n1' }]))
     expect(mocks.quick).toHaveBeenCalledWith('alpha')
     expect(result.current.loading).toBe(false)
+  })
+
+  it('debounces rapid typing into a single search for the final query', async () => {
+    const { rerender } = renderHook(({ q }) => useCanvasAddSearch(true, q), {
+      initialProps: { q: 'a' }
+    })
+    rerender({ q: 'al' })
+    rerender({ q: 'alp' })
+    await waitFor(() => expect(mocks.quick).toHaveBeenCalledTimes(1))
+    expect(mocks.quick).toHaveBeenCalledWith('alp')
   })
 
   it('falls back to empty results when search rejects', async () => {
