@@ -117,9 +117,9 @@ export function searchCalendarEventsByTitle(
 Two queries, merged:
 
 ```
-upcoming: archived_at IS NULL AND title LIKE %q% AND start_at >= now
+upcoming: archived_at IS NULL AND ulower(title) LIKE ulower(%q%) AND start_at >= now
           ORDER BY start_at ASC  LIMIT n
-past:     archived_at IS NULL AND title LIKE %q% AND start_at <  now
+past:     archived_at IS NULL AND ulower(title) LIKE ulower(%q%) AND start_at <  now
           ORDER BY start_at DESC LIMIT n
 merge → sort by |start_at − now| → take n
 ```
@@ -128,6 +128,19 @@ Two string-comparison queries rather than `ORDER BY abs(julianday(...))`: they
 use the existing `start_at` index and avoid SQLite date parsing on all-day rows.
 Nearest-to-now ordering means a search with more matches than `limit` returns
 the ones a user is most likely to want, in both directions.
+
+Matching goes through `ulower()`, a deterministic user-defined function
+registered in `apps/desktop/src/main/database/sqlite-functions.ts` from both
+data-DB connection paths (`initDatabase` and the `createTestDataDb` test
+helper). SQLite's `LIKE` folds case for ASCII only, so bare `LIKE` would have
+made `ödeme` miss "Ödeme Toplantısı", `münchen` miss "MÜNCHEN Trip" and
+`лекция` miss "ЛЕКЦИЯ" — a regression against the client-side
+`toLowerCase().includes()` filter this design replaces. `ulower()` is
+JavaScript's `toLowerCase`, which folds the full Unicode range.
+
+The predicate is opaque to any index on `title`, so it full-scans non-archived
+rows. No such index exists, and `LIKE` with a leading wildcard could not have
+used one anyway.
 
 `%` and `_` in the user's query pass through unescaped, matching the existing
 precedent at `apps/desktop/src/main/inbox/queries.ts:254`. For a picker the
