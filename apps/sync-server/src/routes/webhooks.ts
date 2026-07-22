@@ -76,6 +76,7 @@ webhooks.post('/paddle', async (c) => {
   const result = await applyPaddleWebhook(c.env.DB, payload as never)
 
   if (result.processed && result.userId) {
+    const userId = result.userId
     const paddlePayload = payload as {
       event_type?: string
       eventType?: string
@@ -104,7 +105,7 @@ webhooks.post('/paddle', async (c) => {
       safeWaitUntil(
         c,
         hashedCustomerId.then((paddleCustomerId) =>
-          captureBusinessEvent(c.env, subscriptionEvent, result.userId, {
+          captureBusinessEvent(c.env, subscriptionEvent, userId, {
             paddle_event_type: eventType,
             paddle_customer_id: paddleCustomerId
           })
