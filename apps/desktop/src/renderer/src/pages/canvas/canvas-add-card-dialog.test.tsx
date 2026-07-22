@@ -54,8 +54,8 @@ function setup(overrides: Partial<Parameters<typeof CanvasAddCardDialog>[0]> = {
     onReveal: vi.fn(),
     ...overrides
   }
-  render(<CanvasAddCardDialog {...props} />)
-  return props
+  const { rerender } = render(<CanvasAddCardDialog {...props} />)
+  return { ...props, rerender: () => rerender(<CanvasAddCardDialog {...props} />) }
 }
 
 describe('CanvasAddCardDialog', () => {
@@ -110,5 +110,43 @@ describe('CanvasAddCardDialog', () => {
     await waitFor(() => expect(screen.getByTestId('canvas-add-item-task:t1')).toBeInTheDocument())
     fireEvent.click(screen.getByTestId('canvas-add-create-note'))
     expect(props.onCreateNote).toHaveBeenCalledWith('groceries')
+  })
+
+  it('hides the empty state for a blank query', () => {
+    setup()
+    expect(screen.queryByTestId('canvas-add-empty')).not.toBeInTheDocument()
+  })
+
+  it('shows the empty state when a non-blank query has no matches', () => {
+    setup()
+    fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'nomatch' } })
+    expect(screen.getByTestId('canvas-add-empty')).toBeInTheDocument()
+  })
+
+  it('hides the empty state once matches exist', async () => {
+    mocks.sources = { results: [taskResult('t1', 'Ship it')], projections: [], loading: false }
+    setup()
+    fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'ship' } })
+    await waitFor(() => expect(screen.getByTestId('canvas-add-item-task:t1')).toBeInTheDocument())
+    expect(screen.queryByTestId('canvas-add-empty')).not.toBeInTheDocument()
+  })
+
+  it('lets Enter pick the first match instead of creating a note', async () => {
+    const props = setup()
+    // Type before results exist, matching the real debounced-search timing:
+    // the query settles first, then results land in a later render. Changing
+    // both on the same render races cmdk's own value reset (it re-picks the
+    // first mounted item on every keystroke) against our own effect.
+    fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'a' } })
+    mocks.sources = {
+      results: [taskResult('t1', 'Ship it'), noteResult('n1', 'Alpha')],
+      projections: [],
+      loading: false
+    }
+    props.rerender()
+    await waitFor(() => expect(screen.getByTestId('canvas-add-item-note:n1')).toBeInTheDocument())
+    fireEvent.keyDown(screen.getByTestId('canvas-add-input'), { key: 'Enter' })
+    expect(props.onPick).toHaveBeenCalledWith('note', 'n1')
+    expect(props.onCreateNote).not.toHaveBeenCalled()
   })
 })

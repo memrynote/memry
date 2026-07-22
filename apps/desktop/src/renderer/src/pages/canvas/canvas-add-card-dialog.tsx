@@ -144,9 +144,12 @@ export function CanvasAddCardDialog({
             : t('canvas.card.addCreateNoteEmpty')}
         </Command.Item>
         {!hasResults && query.trim() ? (
-          <Command.Empty className="px-2 py-6 text-center text-sm text-text-tertiary">
+          <div
+            data-testid="canvas-add-empty"
+            className="px-2 py-6 text-center text-sm text-text-tertiary"
+          >
             {t('canvas.card.addEmpty')}
-          </Command.Empty>
+          </div>
         ) : null}
         {renderGroup(t('canvas.card.addGroupNotes'), groups.note)}
         {renderGroup(t('canvas.card.addGroupTasks'), groups.task)}
