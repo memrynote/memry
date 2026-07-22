@@ -82,11 +82,12 @@ describe('POST /telemetry/batch', () => {
     // #when posting through the app
     const response = await app.request(request, {}, env)
 
-    // #then the route accepts the event without authentication
+    // #then the route accepts the event without authentication and never touches
+    // #Analytics Engine — /telemetry/batch writes to PostHog only
     expect(response.status).toBe(202)
     const body = (await response.json()) as { accepted: number }
     expect(body.accepted).toBe(1)
-    expect(writeDataPoint).toHaveBeenCalledTimes(1)
+    expect(writeDataPoint).not.toHaveBeenCalled()
   })
 
   it('does not require an Authorization header', async () => {
@@ -328,24 +329,28 @@ describe('POST /telemetry/logs', () => {
     return app.request(request, {}, env)
   }
 
-  it('accepts a valid log batch, returns 202, and pushes lines to Loki', async () => {
-    // #given a valid diagnostic log batch and a configured Loki target
-    const { env } = createEnv({ LOKI_URL: 'https://grafana.example.com', LOKI_TOKEN: 'tok' })
-    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+  it('accepts a valid log batch, returns 202, and pushes lines to PostHog Logs', async () => {
+    // #given a valid diagnostic log batch and a configured PostHog target
+    const { env } = createEnv({
+      POSTHOG_KEY: 'phc_test',
+      POSTHOG_HOST: 'https://us.i.posthog.com'
+    })
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
 
     // #when posting through the app
     const response = await postLogs(env, sampleLogBatch)
 
-    // #then it 202s with the accepted count and eventually pushes to Loki
+    // #then it 202s with the accepted count and eventually pushes to PostHog Logs
     expect(response.status).toBe(202)
     const body = (await response.json()) as { accepted: number }
     expect(body.accepted).toBe(1)
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled())
     const [url, init] = fetchMock.mock.calls[0]
-    expect(String(url)).toContain('grafana.example.com')
+    expect(String(url)).toBe('https://us.i.posthog.com/v1/logs')
     const parsedBody = JSON.parse((init as { body: string }).body)
-    expect(parsedBody.streams[0].stream).toMatchObject({ kind: 'log' })
+    const record = parsedBody.resourceLogs[0].scopeLogs[0].logRecords[0]
+    expect(record.attributes).toContainEqual({ key: 'kind', value: { stringValue: 'log' } })
   })
 
   it('returns 400 for invalid payloads', async () => {
@@ -370,9 +375,9 @@ describe('POST /telemetry/logs', () => {
     expect(response.status).toBe(400)
   })
 
-  it('still 202s and does not call fetch when Loki is unconfigured', async () => {
-    // #given no LOKI_URL/LOKI_TOKEN
-    const { env } = createEnv({ LOKI_URL: undefined, LOKI_TOKEN: undefined })
+  it('still 202s and does not call fetch when PostHog is unconfigured', async () => {
+    // #given no POSTHOG_KEY/POSTHOG_HOST
+    const { env } = createEnv()
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
 
@@ -405,5 +410,54 @@ describe('telemetry route + rate limiter', () => {
     expect(createRateLimiter).toHaveBeenCalledWith(
       expect.objectContaining({ keyPrefix: 'telemetry-logs' })
     )
+  })
+})
+
+describe('POST /telemetry/batch → PostHog', () => {
+  it('captures each event and writes no Analytics Engine data point', async () => {
+    // #given PostHog configured and a wired Analytics Engine dataset
+    const fetchSpy = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
+    vi.stubGlobal('fetch', fetchSpy)
+    const { env, writeDataPoint } = createEnv({
+      POSTHOG_KEY: 'phc_test',
+      POSTHOG_HOST: 'https://us.i.posthog.com'
+    })
+    const request = new Request('http://localhost/telemetry/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        schemaVersion: 1,
+        installId: '11111111-1111-4111-8111-111111111111',
+        sessionId: '22222222-2222-4222-8222-222222222222',
+        appVersion: '2026.7.1',
+        buildChannel: 'production',
+        platform: 'darwin',
+        arch: 'arm64',
+        locale: 'tr-TR',
+        timezoneOffsetMinutes: 180,
+        authState: 'anonymous',
+        syncState: 'enabled',
+        events: [
+          {
+            id: '33333333-3333-4333-8333-333333333333',
+            name: 'note_created',
+            occurredAt: '2026-07-22T10:00:00.000Z',
+            surface: 'notes',
+            action: 'create'
+          }
+        ]
+      })
+    })
+
+    // #when posting through the app
+    const response = await app.request(request, {}, env)
+
+    // #then it captures via PostHog and never touches Analytics Engine
+    expect(response.status).toBe(202)
+    expect(writeDataPoint).not.toHaveBeenCalled()
+    const captureCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/batch/'))
+    expect(captureCall).toBeDefined()
+    const body = JSON.parse((captureCall?.[1] as RequestInit).body as string)
+    expect(body.batch.map((e: { event: string }) => e.event)).toContain('note_created')
   })
 })

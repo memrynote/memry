@@ -29,6 +29,8 @@ export type Bindings = {
   TELEMETRY_HMAC_KEY: string
   LOKI_URL?: string
   LOKI_TOKEN?: string
+  POSTHOG_KEY?: string
+  POSTHOG_HOST?: string
   fetch?: typeof fetch
 }
 
