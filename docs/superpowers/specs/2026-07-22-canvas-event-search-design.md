@@ -197,10 +197,17 @@ export function candidatesFromEvents(
 ): AddCardCandidate[]
 ```
 
-The client-side title filter, the blank-query guard, the `sourceType === 'event'`
-check and the recurring-occurrence dedup all go away — main returns one row per
-event, already filtered and ordered. Subtitle stays
+The client-side title filter, the blank-query guard and the
+`sourceType === 'event'` check all go away — main returns one row per event,
+already filtered and ordered. Subtitle stays
 `formatEventTime(startAt, isAllDay, allDayLabel)`.
+
+`candidatesFromProjections` also carried an occurrence-collapse map keyed by
+event id. That code was unreachable: `projection.ts` emits exactly one
+projection per `calendar_events` row and never expands `recurrenceRule`, so a
+native recurring event was always a single row and the map never collapsed
+anything. It goes away with the rest of the function; no behaviour depended
+on it.
 
 `EVENT_RANGE_DAYS` and `eventRange` are deleted; this change is what orphans
 them. Their tests go with them.
@@ -210,19 +217,24 @@ and calls `candidatesFromProjections(projections, query, …)`.
 
 ## Behavior deltas
 
-|                  | Before                       | After                           |
-| ---------------- | ---------------------------- | ------------------------------- |
-| Reach            | ±90 days                     | every non-archived event        |
-| Fetch            | once per open, whole window  | per keystroke, ≤20 lean rows    |
-| Recurring events | nearest occurrence in window | base row, by its own `startAt`  |
-| Ordering         | earliest first within window | nearest to now, both directions |
-| Blank query      | no events                    | no events (unchanged)           |
-| Archived events  | excluded                     | excluded (unchanged)            |
+|                 | Before                       | After                           |
+| --------------- | ---------------------------- | ------------------------------- |
+| Reach           | ±90 days                     | every non-archived event        |
+| Fetch           | once per open, whole window  | per keystroke, ≤20 lean rows    |
+| Ordering        | earliest first within window | nearest to now, both directions |
+| Blank query     | no events                    | no events (unchanged)           |
+| Archived events | excluded                     | excluded (unchanged)            |
+
+Recurring events are deliberately absent from this table: nothing changes for
+them. One `calendar_events` row is one candidate before and after, because
+`projection.ts` never expanded `recurrenceRule` in the first place.
 
 ## Testing
 
 - `calendar-events-repository.test.ts` — matches by title substring;
-  case-insensitivity for ASCII; archived rows excluded; `limit` respected;
+  case-insensitivity across the full Unicode range (Turkish, German, Cyrillic),
+  via the `ulower()` UDF rather than bare `LIKE`, which folds ASCII only;
+  archived rows excluded; `limit` respected;
   proximity ordering across the now boundary (a past event 1 day back outranks a
   future event 30 days out); empty result for no match.
 - `calendar-handlers.test.ts` — channel registered, validation rejects an empty

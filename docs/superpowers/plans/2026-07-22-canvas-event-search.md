@@ -67,7 +67,7 @@
 
 There is no meaningful unit test for a type declaration; `pnpm ipc:check` is this task's failing-then-passing gate. Run it _before_ generating to see it fail.
 
-- [ ] **Step 1: Add the schema to `packages/contracts/src/calendar-api.ts`**
+- [x] **Step 1: Add the schema to `packages/contracts/src/calendar-api.ts`**
 
 Directly below `ListCalendarEventsSchema` (line 74-76):
 
@@ -79,7 +79,7 @@ export const SearchCalendarEventsSchema = z.object({
 })
 ```
 
-- [ ] **Step 2: Add the inferred input type**
+- [x] **Step 2: Add the inferred input type**
 
 In the `export type` block, below `export type ListCalendarEventsInput = z.infer<typeof ListCalendarEventsSchema>` (line 120):
 
@@ -87,7 +87,7 @@ In the `export type` block, below `export type ListCalendarEventsInput = z.infer
 export type SearchCalendarEventsInput = z.infer<typeof SearchCalendarEventsSchema>
 ```
 
-- [ ] **Step 3: Add the response interfaces**
+- [x] **Step 3: Add the response interfaces**
 
 Directly below `CalendarEventListResponse` (line 315-317):
 
@@ -110,7 +110,7 @@ export interface CalendarEventSearchResponse {
 }
 ```
 
-- [ ] **Step 4: Add the channel constant**
+- [x] **Step 4: Add the channel constant**
 
 In `packages/contracts/src/ipc-channels.ts`, inside `CalendarChannels.invoke`, directly after `LIST_EVENTS` (line 621):
 
@@ -119,7 +119,7 @@ In `packages/contracts/src/ipc-channels.ts`, inside `CalendarChannels.invoke`, d
     SEARCH_EVENTS: 'calendar:search-events',
 ```
 
-- [ ] **Step 5: Add the RPC method in `packages/rpc/src/calendar.ts`**
+- [x] **Step 5: Add the RPC method in `packages/rpc/src/calendar.ts`**
 
 Add `SearchCalendarEventsSchema` to the schema import list (alphabetically after `RetryCalendarSourceSyncSchema`), and `type CalendarEventSearchResponse` to the type import list (after `type CalendarEventRecord`).
 
@@ -144,12 +144,12 @@ Add the method inside `methods`, directly after `listEvents` (line 96-102):
     }),
 ```
 
-- [ ] **Step 6: Verify `ipc:check` now fails**
+- [x] **Step 6: Verify `ipc:check` now fails**
 
 Run: `pnpm ipc:check`
 Expected: FAIL — the generated invoke map has no entry for `calendar:search-events`. Record the exact message; it confirms the gate is live rather than vacuously green. It does not fail any earlier than this: the generator derives its output from the RPC domain methods and `ipcMain.handle` call sites, not from the raw contracts additions in Steps 3-4, so the gate cannot move until the RPC method above exists.
 
-- [ ] **Step 7: Regenerate and verify**
+- [x] **Step 7: Regenerate and verify**
 
 Run: `pnpm ipc:generate && pnpm ipc:check`
 Expected: PASS. `git diff --stat` should show only `generated-rpc.ts` gaining a `calendar:search-events` line:
@@ -157,7 +157,7 @@ Expected: PASS. `git diff --stat` should show only `generated-rpc.ts` gaining a 
 
 `generated-ipc-invoke-map.ts` stays unchanged here — it reflects registered `ipcMain.handle` call sites, not RPC methods, so it doesn't gain a `calendar:search-events` line until Task 3 registers the handler.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add packages/contracts/src/calendar-api.ts packages/contracts/src/ipc-channels.ts packages/rpc/src/calendar.ts apps/desktop/src/main/ipc/generated-ipc-invoke-map.ts apps/desktop/src/preload/generated-rpc.ts
@@ -178,7 +178,7 @@ git commit -m "feat(contracts): add calendar:search-events channel (#869)"
 - Consumes: nothing from Task 1 (repository returns raw Drizzle rows, not contract types).
 - Produces: `searchCalendarEventsByTitle(db: DataDb, options: { query: string; limit: number; now: string }): CalendarEvent[]` — rows ordered nearest-to-now first.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `calendar-events-repository.test.ts`. The file already imports `createTestDataDb`, `TestDatabaseResult`, `TestDb` and `DataDb`; add `searchCalendarEventsByTitle` to the existing import from `./calendar-events-repository`.
 
@@ -288,14 +288,14 @@ describe('searchCalendarEventsByTitle (#869)', () => {
 })
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `pnpm --filter @memry/desktop test:main -- calendar-events-repository`
 Expected: FAIL — `searchCalendarEventsByTitle is not a function` / import error.
 
 If instead it fails with `ERR_DLOPEN_FAILED`, that is a NODE_MODULE_VERSION mismatch, not your code: run `pnpm --filter @memry/desktop rebuild:node` and re-run.
 
-- [ ] **Step 3: Implement the query**
+- [x] **Step 3: Implement the query**
 
 In `calendar-events-repository.ts`, widen the drizzle import on line 1 and append the function:
 
@@ -353,12 +353,12 @@ export function searchCalendarEventsByTitle(
 
 `%` and `_` in the query are passed through unescaped, matching the precedent at `apps/desktop/src/main/inbox/queries.ts:254`. For a picker the effect is a surprising match, never an error.
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `pnpm --filter @memry/desktop test:main -- calendar-events-repository`
 Expected: PASS, all six new tests green plus the pre-existing suite.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/desktop/src/main/calendar/repositories/calendar-events-repository.ts apps/desktop/src/main/calendar/repositories/calendar-events-repository.test.ts
@@ -379,7 +379,7 @@ git commit -m "feat(calendar): add title search over calendar events (#869)"
 - Consumes: `SearchCalendarEventsSchema`, `CalendarEventSearchItem`, `CalendarEventSearchResponse`, `CalendarChannels.invoke.SEARCH_EVENTS` (Task 1); `searchCalendarEventsByTitle` (Task 2).
 - Produces: a registered `calendar:search-events` handler returning `{ events: CalendarEventSearchItem[] }`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append inside the existing `describe('calendar-handlers', …)` block in `calendar-handlers.test.ts`:
 
@@ -446,12 +446,12 @@ it('returns no matches for an unrelated query (#869)', async () => {
 
 The existing `registers all calendar handlers` test asserts `handleCalls.length === Object.values(CalendarChannels.invoke).length`. It will fail until the handler is registered — that is the guard against adding a channel with no handler. Do not modify it.
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `pnpm --filter @memry/desktop test:main -- calendar-handlers`
 Expected: FAIL — `registers all calendar handlers` off by one, and the search tests reject with "No handler registered for calendar:search-events".
 
-- [ ] **Step 3: Implement the handler**
+- [x] **Step 3: Implement the handler**
 
 Add `SearchCalendarEventsSchema` to the schema import list from `@memry/contracts/calendar-api` (after `RetryCalendarSourceSyncSchema`), and `type CalendarEventSearchResponse`, `type CalendarEventSearchItem` to the type list (after `type CalendarEventRecord`).
 
@@ -498,17 +498,17 @@ Add the teardown line in `unregisterCalendarHandlers`, after `LIST_EVENTS` (line
 ipcMain.removeHandler(CalendarChannels.invoke.SEARCH_EVENTS)
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `pnpm --filter @memry/desktop test:main -- calendar-handlers`
 Expected: PASS, including `registers all calendar handlers`.
 
-- [ ] **Step 5: Verify the IPC contract is whole**
+- [x] **Step 5: Verify the IPC contract is whole**
 
 Run: `pnpm ipc:check && pnpm --filter @memry/desktop typecheck:node`
 Expected: PASS both.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/desktop/src/main/ipc/calendar-handlers.ts apps/desktop/src/main/ipc/calendar-handlers.test.ts
@@ -531,7 +531,7 @@ git commit -m "feat(calendar): handle calendar:search-events (#869)"
 
 This task **adds** `candidatesFromEvents` and leaves `candidatesFromProjections`, `eventRange` and `EVENT_RANGE_DAYS` in place so the tree stays green. Task 5 removes them once nothing imports them.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `canvas-add-card.test.ts`. Add `candidatesFromEvents` to the existing import from `./canvas-add-card`, and `CalendarEventSearchItem` to the type import from `@memry/contracts/calendar-api`.
 
@@ -592,12 +592,12 @@ describe('candidatesFromEvents (#869)', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `pnpm --filter @memry/desktop test:renderer -- canvas-add-card.test`
 Expected: FAIL — `candidatesFromEvents` is not exported.
 
-- [ ] **Step 3: Implement the mapper**
+- [x] **Step 3: Implement the mapper**
 
 In `canvas-add-card.ts`, add `CalendarEventSearchItem` to the type import from `@memry/contracts/calendar-api` and append:
 
@@ -621,12 +621,12 @@ export function candidatesFromEvents(
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `pnpm --filter @memry/desktop test:renderer -- canvas-add-card.test`
 Expected: PASS — new tests green, existing `candidatesFromProjections` and `eventRange` tests still green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/desktop/src/renderer/src/pages/canvas/canvas-add-card.ts apps/desktop/src/renderer/src/pages/canvas/canvas-add-card.test.ts
@@ -653,7 +653,7 @@ git commit -m "feat(canvas): map search-events results to card candidates (#869)
 
 The hook, the dialog and the dead exports must move together — they are one compile unit.
 
-- [ ] **Step 1: Rewrite the hook's tests**
+- [x] **Step 1: Rewrite the hook's tests**
 
 Replace the whole body of `use-canvas-add-search.test.ts`:
 
@@ -777,12 +777,12 @@ describe('useCanvasAddSearch', () => {
 })
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `pnpm --filter @memry/desktop test:renderer -- use-canvas-add-search`
 Expected: FAIL — the hook still calls `calendarService.getRange`, which the new mock does not define, and `result.current.events` is undefined.
 
-- [ ] **Step 3: Rewrite the hook**
+- [x] **Step 3: Rewrite the hook**
 
 Replace the whole of `use-canvas-add-search.ts`:
 
@@ -872,12 +872,12 @@ export function useCanvasAddSearch(open: boolean, query: string): CanvasAddSourc
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `pnpm --filter @memry/desktop test:renderer -- use-canvas-add-search`
 Expected: PASS, all seven tests.
 
-- [ ] **Step 5: Update the dialog**
+- [x] **Step 5: Update the dialog**
 
 In `canvas-add-card-dialog.tsx`, change the import on line 14 from `candidatesFromProjections` to `candidatesFromEvents`, then replace lines 46 and 55-61:
 
@@ -897,7 +897,7 @@ const groups = useMemo(() => {
 
 `query` leaves the dependency array — the memo no longer filters by it.
 
-- [ ] **Step 6: Update the dialog's test fixture**
+- [x] **Step 6: Update the dialog's test fixture**
 
 In `canvas-add-card-dialog.test.tsx`, rename the mock field and the fixture. Replace the `mocks` hoist (lines 9-15):
 
@@ -921,7 +921,7 @@ function eventItem(id: string, title: string) {
 
 Then replace every remaining `projections:` key with `events:` and every `eventProjection(` call with `eventItem(` — occurrences at lines 63, 75, 86, 96, 107, 127, 137, 148, 163.
 
-- [ ] **Step 7: Delete the dead exports and their tests**
+- [x] **Step 7: Delete the dead exports and their tests**
 
 In `canvas-add-card.ts`, delete `EVENT_RANGE_DAYS` (lines 13-14), `candidatesFromProjections` (lines 71-113) and `eventRange` (lines 157-164). Drop the now-unused `CalendarProjectionItem` type import. Update the file's top docblock, which still describes the two-source merge:
 
@@ -936,7 +936,7 @@ In `canvas-add-card.ts`, delete `EVENT_RANGE_DAYS` (lines 13-14), `candidatesFro
 
 In `canvas-add-card.test.ts`, delete the `describe('candidatesFromProjections', …)` block (lines 121-175), the `describe('eventRange', …)` block (lines 213-221), the `projection` helper (lines 58-79), and drop `candidatesFromProjections`, `eventRange` and the `CalendarProjectionItem` type import.
 
-- [ ] **Step 8: Run the full canvas suite**
+- [x] **Step 8: Run the full canvas suite**
 
 Run: `pnpm --filter @memry/desktop test:renderer -- canvas`
 Expected: PASS. Then confirm nothing still references the deleted exports:
@@ -944,7 +944,7 @@ Expected: PASS. Then confirm nothing still references the deleted exports:
 Run: `rtk proxy grep -rn "candidatesFromProjections\|eventRange\|EVENT_RANGE_DAYS" apps/desktop/src`
 Expected: no output.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add apps/desktop/src/renderer/src/pages/canvas/
@@ -964,7 +964,7 @@ git commit -m "feat(canvas): source Add-card events from search-events (#869)"
 - Consumes: everything above.
 - Produces: a shippable branch.
 
-- [ ] **Step 1: Remove the limitation**
+- [x] **Step 1: Remove the limitation**
 
 Delete these two lines from the "Known limitations" list:
 
@@ -975,12 +975,12 @@ Delete these two lines from the "Known limitations" list:
 
 Leave every other bullet untouched — the drag-in, filed-binaries, palm-rejection and toolbar-language limitations all still hold.
 
-- [ ] **Step 2: Verify no other page repeats the claim**
+- [x] **Step 2: Verify no other page repeats the claim**
 
 Run: `rtk proxy grep -rn "90 days\|90-day" apps/docs/src/user-guide/canvas/`
 Expected: no output.
 
-- [ ] **Step 3: Run the full gate**
+- [x] **Step 3: Run the full gate**
 
 Run each and confirm green before moving on:
 
@@ -1006,7 +1006,7 @@ git diff --check
 
 `pnpm ipc:generate` must produce no new diff at this point — if it does, an earlier task committed a stale generated file; commit the regenerated one.
 
-- [ ] **Step 4: Run the docs gate**
+- [x] **Step 4: Run the docs gate**
 
 ```bash
 pnpm docs:impact --base origin/main --strict
@@ -1018,7 +1018,7 @@ If it reports `missing-docs`, update real pages under `apps/docs/src/**` (or run
 pnpm docs:build
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/docs/src/user-guide/canvas/sync-and-limits.md
@@ -1031,24 +1031,24 @@ git commit -m "docs(canvas): drop the Add-card 90-day event window limit (#869)"
 
 Automated tests cover the units; this confirms the seam end-to-end in the real app.
 
-- [ ] **Step 1: Launch**
+- [x] **Step 1: Launch**
 
 ```bash
 pnpm dev
 ```
 
-- [ ] **Step 2: Seed an out-of-window event**
+- [x] **Step 2: Seed an out-of-window event**
 
 On the Calendar page, create an event dated more than 90 days from today — e.g. two years out — titled `Reachability check`.
 
-- [ ] **Step 3: Confirm it is now reachable**
+- [x] **Step 3: Confirm it is now reachable**
 
 Open a canvas, click **Add card**, type `reach`. The event appears under the Events group with a formatted date subtitle. Before this change it could not appear at all. Pick it and confirm a calendar-event card lands on the canvas.
 
-- [ ] **Step 4: Confirm the create row still wins on an empty query**
+- [x] **Step 4: Confirm the create row still wins on an empty query**
 
 Reopen **Add card** and press Enter without typing. A new note is created — the blank-query short-circuit still leaves "Create note …" highlighted.
 
-- [ ] **Step 5: Confirm the Calendar page is unaffected**
+- [x] **Step 5: Confirm the Calendar page is unaffected**
 
 Return to the Calendar page and page through a month. Events still render — `calendar:get-range` was not touched.
