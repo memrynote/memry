@@ -281,6 +281,12 @@ export default defineBackground(() => {
       setTimeout(() => void restoreQueueBadge(), 2000)
       return
     }
+    // On Firefox MV3 the loopback host permission is opt-in and can only be
+    // requested from a user-gesture page — the popup — so this background
+    // shortcut cannot prompt for it. Until it is granted, the loopback fetch
+    // fails and captureOrQueue queues the capture (the badge shows the count)
+    // rather than losing it; the queue flushes once the user grants access by
+    // saving from the popup once.
     const res = await captureOrQueue(extracted.capture)
     if (res.ok) {
       await browser.action.setBadgeText({ text: '✓' })

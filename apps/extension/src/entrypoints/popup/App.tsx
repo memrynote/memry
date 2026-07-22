@@ -122,6 +122,9 @@ export default function App() {
       .sendMessage({ type: 'CAPTURE', capture: state.draft })
       .catch(() => ({ ok: false, error: 'network' }))
     dispatch({ type: 'SAVE_DONE', result })
+    // Mirror onAdd: if the server came up between the timeout and this CAPTURE,
+    // flash "Sent" and close. Offline-queued / error stay open.
+    if (result.ok) setTimeout(() => window.close(), 600)
   }
 
   // One button. Firefox MV3 makes the loopback host permission opt-in, so
