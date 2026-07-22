@@ -97,6 +97,16 @@ export function getCardRefs(elements: readonly CardElement[]): CanvasCardRef[] {
 }
 
 /**
+ * The one derivation of an entity's string identity. Everything that keys a
+ * Map/Set by (entityType, entityId) — ref dedup, the resolved-entity map, the
+ * picker's "already on canvas" check — goes through here so the shapes cannot
+ * drift apart.
+ */
+export function entityKey(entityType: CanvasEntityType, entityId: string): string {
+  return `${entityType}:${entityId}`
+}
+
+/**
  * Advisory entity refs for persistence, deduped by (entityType, entityId).
  * The store rewrites canvas_entity_refs from this on every save.
  */
@@ -104,7 +114,7 @@ export function extractEntityRefs(elements: readonly CardElement[]): CanvasEntit
   const seen = new Set<string>()
   const refs: CanvasEntityRef[] = []
   for (const card of getCardRefs(elements)) {
-    const key = `${card.entityType}:${card.entityId}`
+    const key = entityKey(card.entityType, card.entityId)
     if (seen.has(key)) {
       continue
     }

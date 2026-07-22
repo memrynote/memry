@@ -10,16 +10,16 @@ import { Plus } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 import type { CanvasEntityType } from '@memry/contracts/canvas-api'
 import {
-  candidateKey,
   candidatesFromProjections,
   candidatesFromSearch,
   groupCandidates,
   markOnCanvas,
   type AddCardCandidate
 } from './canvas-add-card'
+import { entityKey } from './canvas-cards'
 import { useCanvasAddSearch } from './use-canvas-add-search'
 
-/** cmdk value for the pinned create row; never collides with a candidateKey. */
+/** cmdk value for the pinned create row; never collides with an entityKey. */
 const CREATE_VALUE = '__create_note__'
 
 export interface CanvasAddCardDialogProps {
@@ -64,7 +64,7 @@ export function CanvasAddCardDialog({
   // existing item; the create row is one arrow-up away.
   useEffect(() => {
     const first = groups.note[0] ?? groups.task[0] ?? groups.calendar_event[0]
-    setValue(first ? candidateKey(first.entityType, first.entityId) : CREATE_VALUE)
+    setValue(first ? entityKey(first.entityType, first.entityId) : CREATE_VALUE)
   }, [groups])
 
   const select = (candidate: AddCardCandidate): void => {
@@ -83,7 +83,7 @@ export function CanvasAddCardDialog({
     return (
       <Command.Group heading={heading}>
         {items.map((candidate) => {
-          const key = candidateKey(candidate.entityType, candidate.entityId)
+          const key = entityKey(candidate.entityType, candidate.entityId)
           return (
             <Command.Item
               key={key}
