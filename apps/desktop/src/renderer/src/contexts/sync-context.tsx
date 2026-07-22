@@ -14,6 +14,7 @@ import { useAuth } from './auth-context'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { DeviceRevokedDialog } from '@/components/sync/device-revoked-dialog'
 import { VaultRecoveryDialog } from '@/components/sync/vault-recovery-dialog'
+import { SessionExpiredDialog } from '@/components/sync/session-expired-dialog'
 import type {
   InitialSyncPhase,
   LinkingRequestEvent,
@@ -218,6 +219,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   const [state, dispatch] = useReducer(syncReducer, initialState)
   const [linkingRequest, setLinkingRequest] = useState<LinkingRequestEvent | null>(null)
   const [vaultRecovery, setVaultRecovery] = useState<VaultRecoveryNeededEvent | null>(null)
+  const [reauthRequired, setReauthRequired] = useState(false)
   const sessionExpiredRef = useRef(state.sessionExpired)
   useEffect(() => {
     sessionExpiredRef.current = state.sessionExpired
@@ -331,9 +333,13 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      window.api.onSessionExpired(() => {
+      window.api.onSessionExpired((event) => {
         if (cancelled) return
-        if (!sessionExpiredRef.current) {
+        // A rejected refresh token can never recover — the toast is too easy to
+        // miss for a session that is over, so escalate to a blocking prompt.
+        if (event.reason === 'refresh_rejected') {
+          setReauthRequired(true)
+        } else if (!sessionExpiredRef.current) {
           toast.error(t('sync.authExpired'), { duration: 8000 })
         }
         dispatch({ type: 'SESSION_EXPIRED', error: t('sync.authExpired') })
@@ -541,6 +547,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
         onDismiss={clearVaultRecovery}
         onSignOut={handleDeviceRevokedSignOut}
       />
+      <SessionExpiredDialog open={reauthRequired} onSignOut={handleDeviceRevokedSignOut} />
     </SyncContext.Provider>
   )
 }
