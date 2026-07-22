@@ -75,6 +75,12 @@ export const ListCalendarEventsSchema = z.object({
   includeArchived: z.boolean().default(false)
 })
 
+/** #869: query-driven event lookup for pickers that must reach every event. */
+export const SearchCalendarEventsSchema = z.object({
+  query: z.string().min(1),
+  limit: z.number().int().positive().max(100).default(20)
+})
+
 export const GetCalendarRangeSchema = z.object({
   startAt: z.string().datetime(),
   endAt: z.string().datetime(),
@@ -118,6 +124,7 @@ export type CalendarChangeEntityType = z.infer<typeof CalendarChangeEntityTypeSc
 export type CreateCalendarEventInput = z.infer<typeof CreateCalendarEventSchema>
 export type UpdateCalendarEventInput = z.infer<typeof UpdateCalendarEventSchema>
 export type ListCalendarEventsInput = z.infer<typeof ListCalendarEventsSchema>
+export type SearchCalendarEventsInput = z.infer<typeof SearchCalendarEventsSchema>
 export type GetCalendarRangeInput = z.infer<typeof GetCalendarRangeSchema>
 export type ListCalendarSourcesInput = z.infer<typeof ListCalendarSourcesSchema>
 export type UpdateCalendarSourceSelectionInput = z.infer<typeof UpdateCalendarSourceSelectionSchema>
@@ -314,6 +321,23 @@ export interface CalendarDeleteResponse {
 
 export interface CalendarEventListResponse {
   events: CalendarEventRecord[]
+}
+
+/**
+ * Lean event summary for pickers: exactly the fields a card candidate needs.
+ * Deliberately not CalendarEventRecord — attendees, reminders, conferenceData
+ * and clocks are dead weight over IPC for a search result.
+ */
+export interface CalendarEventSearchItem {
+  id: string
+  title: string
+  startAt: string
+  endAt: string | null
+  isAllDay: boolean
+}
+
+export interface CalendarEventSearchResponse {
+  events: CalendarEventSearchItem[]
 }
 
 export interface CalendarRangeResponse {
