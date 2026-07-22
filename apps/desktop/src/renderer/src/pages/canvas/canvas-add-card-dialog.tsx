@@ -119,6 +119,10 @@ export function CanvasAddCardDialog({
       value={value}
       onValueChange={setValue}
       label={t('canvas.card.addCard')}
+      // `className` lands on the cmdk root, not on the Radix parts — the scrim
+      // has to go through `overlayClassName` to dim the canvas behind. Matches
+      // the command palette's bg-black/50. See #872.
+      overlayClassName="fixed inset-0 z-50 bg-black/50"
       className="fixed start-1/2 top-24 z-50 w-[32rem] max-w-[90vw] -translate-x-1/2 overflow-hidden rounded-xl border border-border bg-card shadow-lg rtl:translate-x-1/2"
     >
       <Command.Input
