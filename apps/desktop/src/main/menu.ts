@@ -3,7 +3,7 @@ import { AppChannels } from '@memry/contracts/ipc-channels'
 import type { I18nInstance } from '@memry/i18n/main'
 import { sendAppNavigationDirection } from './app-navigation-command'
 
-const DOCS_URL = 'https://memrynote.com'
+const DOCS_URL = 'https://docs.memrynote.com'
 
 interface EditableContextMenuParams {
   isEditable?: boolean
@@ -228,7 +228,15 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
       label: t('help.label'),
       submenu: [
         ...(isMac ? [] : [aboutItem, { type: 'separator' as const }]),
-        { label: t('help.documentation'), click: () => void shell.openExternal(DOCS_URL) },
+        // F1 registers as a real accelerator (default registerAccelerator: true):
+        // the action lives here in the main process, so unlike the renderer-owned
+        // cmd() items there is no editor keydown to swallow. Opening the docs is
+        // always safe, and the menu now surfaces F1 for discoverability.
+        {
+          label: t('help.documentation'),
+          accelerator: 'F1',
+          click: () => void shell.openExternal(DOCS_URL)
+        },
         cmd('view.shortcuts', t('help.shortcuts'))
       ]
     }

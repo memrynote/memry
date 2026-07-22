@@ -77,6 +77,17 @@ The same shortcut reference opens from the question-mark button in the sidebar f
 It groups shortcuts into General, Tabs & Splits, Inbox, Journal, Notes / Editor, Tasks,
 and Settings sections so you can scan by workflow.
 
+## Help
+
+| Action                    | Shortcut      |
+| ------------------------- | ------------- |
+| Open documentation online | <kbd>F1</kbd> |
+
+<kbd>F1</kbd> opens [docs.memrynote.com](https://docs.memrynote.com) in your browser —
+the same page you reach from **Help → Documentation** in the menu bar. It works
+everywhere, including inside the editor. This is a fixed menu shortcut and isn't
+rebindable.
+
 ## Inbox
 
 When the inbox or a card has focus:
