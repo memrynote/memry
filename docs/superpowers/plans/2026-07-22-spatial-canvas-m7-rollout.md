@@ -56,11 +56,13 @@
 | `apps/docs/src/features.md`, `apps/docs/src/roadmap.md`, `apps/docs/src/user-guide/settings.md`, `apps/docs/src/user-guide/tabs-split-view.md` | Cross-links                                                                                         |
 | `apps/docs/src/architecture/observability.md`                                                                                                  | Canvas rollout panel queries                                                                        |
 
-### Why the split-view positive case is jsdom, not E2E
+### Split-view coverage: jsdom AND a real E2E
 
-The lock only triggers when **two panes are visible at once**. `tab-pane.tsx:56` renders only each group's active tab, so a single-pane E2E can never reach the locked state. There is no reliable UI or test hook to create a split in Playwright — `tabs.e2e.ts:535`'s `createHorizontalSplit` dispatches a `test:split-view` CustomEvent that **no renderer code listens for**, so it is a silent no-op, and the tests using it carry `test.skip` fallbacks.
+The lock only triggers when **two panes are visible at once**. `tab-pane.tsx:56` renders only each group's active tab, so a single-pane E2E can never reach the locked state.
 
-The real regression is therefore a jsdom integration test that mounts the **real `TabProvider`** and calls the real `splitView()` action — the precedent is `apps/desktop/src/renderer/src/pages/calendar.test.tsx:105-118`. E2E gets the _negative_ case only: with no note tab visible, a card must still activate normally, so the guard cannot silently break M6's happy path. This split is deliberate and is recorded in the spec.
+`tabs.e2e.ts:535`'s `createHorizontalSplit` dispatches a `test:split-view` CustomEvent that **no renderer code listens for**, so that one helper is a silent no-op (the tests using it carry `test.skip` fallbacks) — but that is a gap in that helper, not a Playwright limitation. `use-tab-keyboard-shortcuts.ts:186-194` registers a real renderer-level `keydown` listener for split-right (⌘\ / Ctrl+\, matched via `use-keyboard-shortcuts-base.ts:113`'s meta→metaKey/ctrlKey mapping), so `page.keyboard.press('ControlOrMeta+\\')` drives a genuine `SPLIT_VIEW` dispatch. `canvas-editing.e2e.ts`'s "a note open in the split pane locks the canvas card (M7 guard, real split)" test uses exactly that, plus the `memry:test-open-note` hook to land the note as the new pane's active tab, to cover the positive case end-to-end in the real, unauthenticated app.
+
+A jsdom integration test also covers the same decision against the real `TabProvider` (`use-note-edit-lock.test.tsx`, precedent `apps/desktop/src/renderer/src/pages/calendar.test.tsx:105-118`) — kept for fast, isolated coverage of `evaluateNoteLock`'s cross-pane branch. The two are complementary: E2E proves the real keyboard shortcut and real DOM attributes end-to-end; jsdom proves the lock decision alone, without needing a full app boot. E2E also keeps the _negative_ case: with no note tab visible, a card must still activate normally, so the guard cannot silently break M6's happy path.
 
 ---
 
@@ -1007,9 +1009,10 @@ In `apps/desktop/tests/e2e/canvas-editing.e2e.ts`, add inside the existing `test
 // ANOTHER visible pane; a single-pane canvas can never reach that state
 // (tab-pane.tsx mounts only each group's active tab). So this asserts the
 // guard does NOT over-trigger and silently break M6's happy path. The
-// positive split-view case is covered by use-note-edit-lock.test.tsx against
-// the real TabProvider, because Playwright has no reliable way to create a
-// split (tabs.e2e.ts's `test:split-view` CustomEvent has no listener).
+// positive split-view case is covered below by a real split, driven by the
+// renderer-level ⌘\ / Ctrl+\ keyboard shortcut (use-tab-keyboard-shortcuts.ts)
+// — tabs.e2e.ts's `test:split-view` CustomEvent has no listener, but that is a
+// gap in that one helper, not a Playwright limitation.
 test('an unlocked note card still activates (M7 guard does not over-trigger)', async ({ page }) => {
   await openVault(page)
   await setSpatialCanvasFlag(page, true)
@@ -1025,6 +1028,8 @@ test('an unlocked note card still activates (M7 guard does not over-trigger)', a
   await expect(card).toHaveAttribute('data-canvas-card-state', 'active', { timeout: 20000 })
 })
 ```
+
+Post-review addendum: the positive split-view case turned out to be reachable in Playwright too (see "Split-view coverage" above) — `canvas-editing.e2e.ts` also has "a note open in the split pane locks the canvas card (M7 guard, real split)", added in the final review pass.
 
 - [ ] **Step 8: Run the canvas E2E**
 
