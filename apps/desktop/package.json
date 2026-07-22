@@ -85,6 +85,8 @@
     "test:component": "pnpm exec vitest run --config config/vitest.config.ts tests/component",
     "pretest:e2e": "pnpm repair:links && bash scripts/ensure-native.sh electron",
     "test:e2e": "playwright test --config config/playwright.config.ts",
+    "test:keychain-tools": "node --test scripts/purge-e2e-keychain.test.mjs",
+    "keychain:purge-e2e": "node scripts/purge-e2e-keychain.mjs",
     "rpc:generate": "node --experimental-strip-types --experimental-transform-types scripts/generate-rpc-bindings.ts",
     "rpc:check": "node --experimental-strip-types --experimental-transform-types scripts/generate-rpc-bindings.ts --check",
     "ipc:generate": "pnpm rpc:generate && node scripts/generate-ipc-invoke-map.js",

@@ -9,6 +9,8 @@
  *    always unblocks it
  *  - best-effort cleanup of both the requested user-data-dir and the
  *    Electron-resolved one (they can differ on macOS)
+ *  - best-effort purge of the OS keychain items the run's `MEMRY_DEVICE`
+ *    minted, which outlive the userData dir (see keychain-cleanup.ts)
  */
 
 import { _electron as electron, ElectronApplication, Page } from '@playwright/test'
@@ -17,6 +19,7 @@ import { createRequire } from 'node:module'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
+import { purgeKeychainForDevice } from './keychain-cleanup'
 
 const MAIN_ENTRY = path.join(__dirname, '../../../out/main/index.js')
 const ELECTRON_INSTALLER = path.join(__dirname, '../../../scripts/install-electron-binary.cjs')
@@ -40,6 +43,7 @@ export interface LaunchedElectron {
   resolvedUserDataDir: string
   mainLogs: string[]
   logDir: string
+  deviceId?: string
 }
 
 function getElectronExecutablePath(): string {
@@ -99,7 +103,25 @@ function getElectronPlatformPath(): string {
   }
 }
 
-export async function destroyElectronApp(app: ElectronApplication, dirs: string[]): Promise<void> {
+/**
+ * Tear down a launch: stop the app, remove both user-data dirs, and purge the
+ * keychain items its `MEMRY_DEVICE` minted. Prefer this over `destroyElectronApp`
+ * — it derives everything from `launched`, so a new fixture cannot forget the
+ * keychain purge and silently start leaking again.
+ */
+export async function destroyLaunchedElectron(launched: LaunchedElectron): Promise<void> {
+  const dirs = [launched.userDataDir]
+  if (launched.resolvedUserDataDir !== launched.userDataDir) {
+    dirs.push(launched.resolvedUserDataDir)
+  }
+  await destroyElectronApp(launched.app, dirs, launched.deviceId)
+}
+
+export async function destroyElectronApp(
+  app: ElectronApplication,
+  dirs: string[],
+  deviceId?: string
+): Promise<void> {
   const child = app.process()
   const graceful = app.close().catch(() => {})
   const timedOut = await Promise.race([
@@ -122,6 +144,7 @@ export async function destroyElectronApp(app: ElectronApplication, dirs: string[
       // best-effort cleanup
     }
   }
+  purgeKeychainForDevice(deviceId)
 }
 
 /**
@@ -208,9 +231,17 @@ async function launchOnce(opts: LaunchOptions): Promise<LaunchedElectron> {
     } catch {
       // fall back to requested dir
     }
-    return { app, page, userDataDir, resolvedUserDataDir, mainLogs, logDir }
+    return {
+      app,
+      page,
+      userDataDir,
+      resolvedUserDataDir,
+      mainLogs,
+      logDir,
+      deviceId: opts.deviceId
+    }
   } catch (err) {
-    await destroyElectronApp(app, [userDataDir])
+    await destroyElectronApp(app, [userDataDir], opts.deviceId)
     const tail = mainLogs.slice(-40).join('').slice(-4000)
     const baseMsg = err instanceof Error ? err.message : String(err)
     throw new Error(`${baseMsg}\n--- main process output ---\n${tail}\n--- end ---`)
