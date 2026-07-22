@@ -97,6 +97,24 @@ metadata is sent — never note content, search text, tag names, or file paths.
 
 ---
 
+## Send Feedback
+
+The speech-bubble button in the sidebar footer, next to Settings, opens a feedback dialog. The
+message is required; everything else is optional. Submissions are emailed to the team, and the
+dialog lists exactly what is sent so nothing is collected out of sight:
+
+- **Your message**, exactly as written
+- **Your email**, only if you add it — when you are signed in your account email is used
+  automatically. It is set as the Reply-To on the email so the team can reply to you, and is used
+  for nothing else. Leave it out and the feedback arrives anonymously.
+- **App version and operating system**
+- **Your plan** (free, Plus, Pro or Believer) when you are signed in. The plan is read from your
+  account on the server rather than sent by the app; signed-out feedback carries no plan.
+
+Note content, titles, tags and file paths are never included.
+
+---
+
 ## Templates
 
 ### Built-in Templates
