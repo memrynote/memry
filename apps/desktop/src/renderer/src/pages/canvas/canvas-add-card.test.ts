@@ -1,12 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { SearchResultItem } from '@memry/contracts/search-api'
-import type { CalendarEventSearchItem, CalendarProjectionItem } from '@memry/contracts/calendar-api'
+import type { CalendarEventSearchItem } from '@memry/contracts/calendar-api'
 import {
   candidateKey,
   candidatesFromEvents,
-  candidatesFromProjections,
   candidatesFromSearch,
-  eventRange,
   groupCandidates,
   markOnCanvas,
   onCanvasKeys,
@@ -56,29 +54,6 @@ function taskHit(id: string, title: string): SearchResultItem {
   } as SearchResultItem
 }
 
-function projection(
-  sourceType: string,
-  sourceId: string,
-  title: string,
-  startAt: string
-): CalendarProjectionItem {
-  return {
-    projectionId: `${sourceId}-${startAt}`,
-    sourceType,
-    sourceId,
-    title,
-    descriptionPreview: null,
-    startAt,
-    endAt: null,
-    isAllDay: false,
-    timezone: 'UTC',
-    visualType: 'event',
-    editability: 'editable',
-    source: {},
-    binding: null
-  } as unknown as CalendarProjectionItem
-}
-
 describe('candidatesFromSearch', () => {
   it('keeps markdown notes and tasks', () => {
     const out = candidatesFromSearch([noteHit('n1', 'Alpha'), taskHit('t1', 'Ship it')])
@@ -116,62 +91,6 @@ describe('candidatesFromSearch', () => {
       }
     } as unknown as SearchResultItem
     expect(candidatesFromSearch([journal, inbox])).toEqual([])
-  })
-})
-
-describe('candidatesFromProjections', () => {
-  it('keeps only Memry events, not tasks or external ones', () => {
-    const out = candidatesFromProjections(
-      [
-        projection('event', 'e1', 'Standup', '2026-07-02T09:00:00.000Z'),
-        projection('task', 't1', 'A task', '2026-07-02T09:00:00.000Z'),
-        projection('external_event', 'g1', 'Google thing', '2026-07-02T09:00:00.000Z')
-      ],
-      'Standup',
-      'All day'
-    )
-    expect(out.map((c) => c.entityId)).toEqual(['e1'])
-  })
-
-  it('collapses a recurring event to its earliest occurrence', () => {
-    const out = candidatesFromProjections(
-      [
-        projection('event', 'e1', 'Standup', '2026-07-09T09:00:00.000Z'),
-        projection('event', 'e1', 'Standup', '2026-07-02T09:00:00.000Z')
-      ],
-      'Standup',
-      'All day'
-    )
-    expect(out).toHaveLength(1)
-    expect(out[0].entityId).toBe('e1')
-  })
-
-  it('filters by case-insensitive title substring and sorts by start', () => {
-    const out = candidatesFromProjections(
-      [
-        projection('event', 'e2', 'Retro', '2026-07-10T09:00:00.000Z'),
-        projection('event', 'e1', 'standup sync', '2026-07-02T09:00:00.000Z')
-      ],
-      'STAND',
-      'All day'
-    )
-    expect(out.map((c) => c.entityId)).toEqual(['e1'])
-  })
-
-  it('returns no events for a blank or whitespace-only query, even with matching projections', () => {
-    const items = [projection('event', 'e1', 'Standup', '2026-07-02T09:00:00.000Z')]
-    expect(candidatesFromProjections(items, '', 'All day')).toEqual([])
-    expect(candidatesFromProjections(items, '   ', 'All day')).toEqual([])
-  })
-
-  it('formats the subtitle with formatEventTime instead of a raw ISO string', () => {
-    const out = candidatesFromProjections(
-      [projection('event', 'e1', 'Standup', '2026-07-02T09:00:00.000Z')],
-      'Standup',
-      'All day'
-    )
-    expect(out[0].subtitle).not.toBe('2026-07-02T09:00:00.000Z')
-    expect(out[0].subtitle.length).toBeGreaterThan(0)
   })
 })
 
@@ -264,15 +183,5 @@ describe('candidatesFromEvents (#869)', () => {
   it('returns an empty list for no items', () => {
     // #given / #when / #then — no events in, no candidates out
     expect(candidatesFromEvents([], 'All day')).toEqual([])
-  })
-})
-
-describe('eventRange', () => {
-  it('spans EVENT_RANGE_DAYS either side of now', () => {
-    const now = Date.parse('2026-07-22T00:00:00.000Z')
-    expect(eventRange(now)).toEqual({
-      startAt: '2026-04-23T00:00:00.000Z',
-      endAt: '2026-10-20T00:00:00.000Z'
-    })
   })
 })

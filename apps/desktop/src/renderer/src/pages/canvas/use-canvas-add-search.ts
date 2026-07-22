@@ -1,18 +1,17 @@
 /**
  * The two async sources behind the canvas "Add card" picker.
  *
- * Notes and tasks come from quick-search. Events do NOT — the search index has
- * no calendar_event ContentType — so they come from one bounded
- * calendar.getRange call per dialog open, filtered client-side.
+ * Notes and tasks come from quick-search; events come from
+ * calendar:search-events (#869). Both are query-driven and share one debounce,
+ * so every event is reachable — the old ±90-day getRange window is gone.
  */
 
 import { useEffect, useState } from 'react'
-import type { CalendarProjectionItem } from '@memry/contracts/calendar-api'
+import type { CalendarEventSearchItem } from '@memry/contracts/calendar-api'
 import type { SearchResultItem } from '@memry/contracts/search-api'
 import { calendarService } from '@/services/calendar-service'
 import { searchService } from '@/services/search-service'
 import { createLogger } from '@/lib/logger'
-import { eventRange } from './canvas-add-card'
 
 const log = createLogger('SpatialCanvas')
 
@@ -27,71 +26,52 @@ const SEARCH_DEBOUNCE_MS = 150
 
 export interface CanvasAddSources {
   results: SearchResultItem[]
-  projections: CalendarProjectionItem[]
+  events: CalendarEventSearchItem[]
   loading: boolean
 }
 
 export function useCanvasAddSearch(open: boolean, query: string): CanvasAddSources {
   const [results, setResults] = useState<SearchResultItem[]>([])
-  const [projections, setProjections] = useState<CalendarProjectionItem[]>([])
+  const [events, setEvents] = useState<CalendarEventSearchItem[]>([])
   const [loading, setLoading] = useState(false)
 
-  // Events load once per open: getRange is a bounded window, not a query, so
-  // re-fetching per keystroke would decrypt the same set repeatedly.
   useEffect(() => {
-    if (!open) {
-      setProjections([])
-      return
-    }
-    let cancelled = false
-    void (async () => {
-      try {
-        const range = eventRange(Date.now())
-        const response = await calendarService.getRange({
-          ...range,
-          includeUnselectedSources: false
-        })
-        if (!cancelled) {
-          setProjections(response.items)
-        }
-      } catch (err) {
-        if (!cancelled) {
-          log.error('Canvas add-card: failed to load events', err)
-          setProjections([])
-        }
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [open])
-
-  useEffect(() => {
-    if (!open || query.trim() === '') {
+    const trimmed = query.trim()
+    if (!open || trimmed === '') {
       setResults([])
+      setEvents([])
       setLoading(false)
       return
     }
     setLoading(true)
     let cancelled = false
     const timer = setTimeout(() => {
-      void (async () => {
-        try {
-          const response = await searchService.quick(query)
-          if (!cancelled) {
-            setResults(response.results)
-          }
-        } catch (err) {
+      // Settled independently: one source failing must not blank the other.
+      const searching = searchService.quick(query).then(
+        (response) => {
+          if (!cancelled) setResults(response.results)
+        },
+        (err) => {
           if (!cancelled) {
             log.error('Canvas add-card: search failed', err)
             setResults([])
           }
-        } finally {
+        }
+      )
+      const searchingEvents = calendarService.searchEvents({ query: trimmed }).then(
+        (response) => {
+          if (!cancelled) setEvents(response.events)
+        },
+        (err) => {
           if (!cancelled) {
-            setLoading(false)
+            log.error('Canvas add-card: event search failed', err)
+            setEvents([])
           }
         }
-      })()
+      )
+      void Promise.all([searching, searchingEvents]).then(() => {
+        if (!cancelled) setLoading(false)
+      })
     }, SEARCH_DEBOUNCE_MS)
     return () => {
       cancelled = true
@@ -99,5 +79,5 @@ export function useCanvasAddSearch(open: boolean, query: string): CanvasAddSourc
     }
   }, [open, query])
 
-  return { results, projections, loading }
+  return { results, events, loading }
 }

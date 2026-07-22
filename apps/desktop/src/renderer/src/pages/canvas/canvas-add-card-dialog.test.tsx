@@ -9,7 +9,7 @@ Element.prototype.scrollIntoView = vi.fn()
 const mocks = vi.hoisted(() => ({
   sources: {
     results: [] as unknown[],
-    projections: [] as unknown[],
+    events: [] as unknown[],
     loading: false
   }
 }))
@@ -34,14 +34,8 @@ function noteResult(id: string, title: string) {
 function taskResult(id: string, title: string) {
   return { id, type: 'task', title, metadata: { type: 'task', projectName: 'Inbox' } }
 }
-function eventProjection(sourceId: string, title: string) {
-  return {
-    projectionId: `${sourceId}-1`,
-    sourceType: 'event',
-    sourceId,
-    title,
-    startAt: '2026-07-22T09:00:00.000Z'
-  }
+function eventItem(id: string, title: string) {
+  return { id, title, startAt: '2026-07-22T09:00:00.000Z', endAt: null, isAllDay: false }
 }
 
 function setup(overrides: Partial<Parameters<typeof CanvasAddCardDialog>[0]> = {}) {
@@ -60,7 +54,7 @@ function setup(overrides: Partial<Parameters<typeof CanvasAddCardDialog>[0]> = {
 
 describe('CanvasAddCardDialog', () => {
   beforeEach(() => {
-    mocks.sources = { results: [], projections: [], loading: false }
+    mocks.sources = { results: [], events: [], loading: false }
   })
 
   it('offers create-new-note when the query is empty', () => {
@@ -72,7 +66,7 @@ describe('CanvasAddCardDialog', () => {
   it('renders all three groups', async () => {
     mocks.sources = {
       results: [noteResult('n1', 'Alpha'), taskResult('t1', 'Ship it')],
-      projections: [eventProjection('e1', 'Standup')],
+      events: [eventItem('e1', 'Standup')],
       loading: false
     }
     setup()
@@ -83,7 +77,7 @@ describe('CanvasAddCardDialog', () => {
   })
 
   it('picks a fresh entity', async () => {
-    mocks.sources = { results: [taskResult('t1', 'Ship it')], projections: [], loading: false }
+    mocks.sources = { results: [taskResult('t1', 'Ship it')], events: [], loading: false }
     const props = setup()
     fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'ship' } })
     await waitFor(() => expect(screen.getByTestId('canvas-add-item-task:t1')).toBeInTheDocument())
@@ -93,7 +87,7 @@ describe('CanvasAddCardDialog', () => {
   })
 
   it('reveals instead of duplicating an entity already on the canvas', async () => {
-    mocks.sources = { results: [taskResult('t1', 'Ship it')], projections: [], loading: false }
+    mocks.sources = { results: [taskResult('t1', 'Ship it')], events: [], loading: false }
     const props = setup({ onCanvasKeys: new Set(['task:t1']) })
     fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'ship' } })
     await waitFor(() => expect(screen.getByTestId('canvas-add-item-task:t1')).toBeInTheDocument())
@@ -104,7 +98,7 @@ describe('CanvasAddCardDialog', () => {
   })
 
   it('keeps the create row visible while typing and carries the query', async () => {
-    mocks.sources = { results: [taskResult('t1', 'Ship it')], projections: [], loading: false }
+    mocks.sources = { results: [taskResult('t1', 'Ship it')], events: [], loading: false }
     const props = setup()
     fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'groceries' } })
     await waitFor(() => expect(screen.getByTestId('canvas-add-item-task:t1')).toBeInTheDocument())
@@ -124,28 +118,30 @@ describe('CanvasAddCardDialog', () => {
   })
 
   it('hides the empty state once matches exist', async () => {
-    mocks.sources = { results: [taskResult('t1', 'Ship it')], projections: [], loading: false }
+    mocks.sources = { results: [taskResult('t1', 'Ship it')], events: [], loading: false }
     setup()
     fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'ship' } })
     await waitFor(() => expect(screen.getByTestId('canvas-add-item-task:t1')).toBeInTheDocument())
     expect(screen.queryByTestId('canvas-add-empty')).not.toBeInTheDocument()
   })
 
-  it('keeps the create row highlighted and hides Events for a blank query, even with events available', () => {
+  it('keeps the create row highlighted for a blank query', () => {
+    // The hook (tested separately) never returns events for a blank query, so
+    // this mocks the state it actually produces — the dialog itself no longer
+    // filters by query (#869).
     mocks.sources = {
       results: [],
-      projections: [eventProjection('e1', 'Standup')],
+      events: [],
       loading: false
     }
     const props = setup()
-    expect(screen.queryByText('Standup')).not.toBeInTheDocument()
     fireEvent.keyDown(screen.getByTestId('canvas-add-input'), { key: 'Enter' })
     expect(props.onCreateNote).toHaveBeenCalledWith('')
     expect(props.onPick).not.toHaveBeenCalled()
   })
 
   it('suppresses the empty state while a search is in flight', () => {
-    mocks.sources = { results: [], projections: [], loading: true }
+    mocks.sources = { results: [], events: [], loading: true }
     setup()
     fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'ship' } })
     expect(screen.queryByTestId('canvas-add-empty')).not.toBeInTheDocument()
@@ -160,7 +156,7 @@ describe('CanvasAddCardDialog', () => {
     fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'a' } })
     mocks.sources = {
       results: [taskResult('t1', 'Ship it'), noteResult('n1', 'Alpha')],
-      projections: [],
+      events: [],
       loading: false
     }
     props.rerender()

@@ -11,7 +11,7 @@ import { useT } from '@memry/i18n/renderer'
 import type { CanvasEntityType } from '@memry/contracts/canvas-api'
 import {
   candidateKey,
-  candidatesFromProjections,
+  candidatesFromEvents,
   candidatesFromSearch,
   groupCandidates,
   markOnCanvas,
@@ -43,7 +43,7 @@ export function CanvasAddCardDialog({
   const { t } = useT('common')
   const [query, setQuery] = useState('')
   const [value, setValue] = useState(CREATE_VALUE)
-  const { results, projections, loading } = useCanvasAddSearch(open, query)
+  const { results, events, loading } = useCanvasAddSearch(open, query)
 
   // Reset between openings so a stale query never greets the next open.
   useEffect(() => {
@@ -55,10 +55,10 @@ export function CanvasAddCardDialog({
   const groups = useMemo(() => {
     const merged = [
       ...candidatesFromSearch(results),
-      ...candidatesFromProjections(projections, query, t('canvas.card.allDay'))
+      ...candidatesFromEvents(events, t('canvas.card.allDay'))
     ]
     return groupCandidates(markOnCanvas(merged, onCanvasKeys))
-  }, [results, projections, query, onCanvasKeys, t])
+  }, [results, events, onCanvasKeys, t])
 
   // When there are matches the first one takes the highlight, so Enter picks an
   // existing item; the create row is one arrow-up away.
