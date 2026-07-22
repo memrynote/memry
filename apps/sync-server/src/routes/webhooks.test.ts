@@ -1,13 +1,16 @@
 import { Hono } from 'hono'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { errorHandler } from '../lib/errors'
 import { hashChannelToken } from '../services/google-webhooks'
+import { hashTelemetryId } from '../services/telemetry'
 import type { AppContext } from '../types'
 
 import { webhooks } from './webhooks'
 
 const WEBHOOK_HMAC_KEY = 'test-hmac-key-abcdef012345'
+const PADDLE_WEBHOOK_SECRET = 'paddle-secret'
+const TELEMETRY_HMAC_KEY = 'test-telemetry-hmac-key'
 
 function createApp() {
   const app = new Hono<AppContext>()
@@ -82,6 +85,121 @@ function makeChannelRow(overrides: {
     expires_at: overrides.expires_at ?? Math.floor(Date.now() / 1000) + 3600
   }
 }
+
+function createPaddleDb() {
+  const statements: Array<{ sql: string; bindings: unknown[] }> = []
+  const db = {
+    prepare: vi.fn((sql: string) => {
+      const stmt = {
+        bindings: [] as unknown[],
+        bind: vi.fn((...args: unknown[]) => {
+          stmt.bindings = args
+          statements.push({ sql, bindings: args })
+          return stmt
+        }),
+        first: vi.fn(async () => {
+          if (sql.includes('FROM paddle_webhook_events')) return null
+          if (sql.includes('FROM users')) return { id: 'user-1' }
+          if (sql.includes('FROM sync_entitlements')) return null
+          return null
+        }),
+        run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 1 } })
+      }
+      return stmt
+    })
+  }
+  return { db: db as unknown as D1Database, statements }
+}
+
+function createPaddleEnv(db: D1Database) {
+  const { env } = createEnv({})
+  return {
+    ...env,
+    DB: db,
+    PADDLE_WEBHOOK_SECRET,
+    TELEMETRY_HMAC_KEY,
+    POSTHOG_KEY: 'phc_test',
+    POSTHOG_HOST: 'https://us.i.posthog.com'
+  }
+}
+
+async function signPaddleBody(secret: string, timestamp: number, rawBody: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  const signature = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    new TextEncoder().encode(`${timestamp}:${rawBody}`)
+  )
+  return Array.from(new Uint8Array(signature))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+describe('POST /webhooks/paddle', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('hashes paddle_customer_id before it reaches the PostHog wire', async () => {
+    // #given a valid, signed transaction.completed event carrying a customer id
+    const app = createApp()
+    const { db } = createPaddleDb()
+    const env = createPaddleEnv(db)
+    const rawBody = JSON.stringify({
+      event_id: 'evt_1',
+      event_type: 'transaction.completed',
+      data: {
+        id: 'txn_1',
+        customer_id: 'ctm_raw_customer_id',
+        subscription_id: 'sub_1',
+        status: 'completed',
+        custom_data: { app: 'memry', entitlement: 'sync', plan: 'plus', userId: 'user-1' }
+      }
+    })
+    const timestamp = Math.floor(Date.now() / 1000)
+    const signature = await signPaddleBody(PADDLE_WEBHOOK_SECRET, timestamp, rawBody)
+
+    const fetchSpy = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
+    vi.stubGlobal('fetch', fetchSpy)
+
+    // #when the webhook is processed
+    const res = await app.request(
+      '/webhooks/paddle',
+      {
+        method: 'POST',
+        headers: {
+          'Paddle-Signature': `ts=${timestamp};h1=${signature}`,
+          'content-type': 'application/json'
+        },
+        body: rawBody
+      },
+      env,
+      createExecutionCtx()
+    )
+    expect(res.status).toBe(200)
+
+    // waitUntil in the test execution context is fire-and-forget; poll for it
+    // rather than assuming a fixed number of microtask ticks.
+    await vi.waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalled()
+    })
+
+    // #then the raw customer id never reaches the PostHog wire — only its hash
+    const businessEventCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/batch/'))
+    expect(businessEventCall).toBeDefined()
+    const body = JSON.parse((businessEventCall![1] as RequestInit).body as string)
+    const expectedHash = await hashTelemetryId(TELEMETRY_HMAC_KEY, 'ctm_raw_customer_id')
+    expect(body.batch[0].properties.paddle_customer_id).toBe(expectedHash)
+    expect(body.batch[0].properties.paddle_customer_id).not.toBe('ctm_raw_customer_id')
+    expect(JSON.stringify(body)).not.toContain('ctm_raw_customer_id')
+  })
+})
 
 describe('POST /webhooks/google-calendar', () => {
   let app: ReturnType<typeof createApp>
