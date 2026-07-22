@@ -107,7 +107,7 @@ describe('useNoteEditLock', () => {
     noteCardClaims.release('note-1', noteCardClaims.claimedBy('note-1') ?? '')
   })
 
-  it('does not lock when the note is not open in any visible pane', async () => {
+  it('does not lock when the note is not open in any visible pane', () => {
     renderProbe()
     expect(screen.getByTestId('lock')).toHaveTextContent('null')
   })
@@ -145,7 +145,7 @@ describe('useNoteEditLock', () => {
     expect(screen.getByTestId('lock')).toHaveTextContent('null')
   })
 
-  it('locks when another card holds the claim', async () => {
+  it('locks when another card holds the claim', () => {
     noteCardClaims.claim('note-1', 'card-2')
     renderProbe()
     expect(screen.getByTestId('lock')).toHaveTextContent('note-active-on-another-card')

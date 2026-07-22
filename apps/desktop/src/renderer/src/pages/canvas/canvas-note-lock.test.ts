@@ -54,9 +54,15 @@ describe('collectVisibleNoteTabIds', () => {
     expect(collectVisibleNoteTabIds(groups)).toEqual(new Set())
   })
 
-  it('ignores non-note active tabs and note tabs with no entityId', () => {
+  it('ignores non-note active tabs', () => {
     const groups = {
-      a: group('a', [{ id: 't1', type: 'canvas', entityId: 'c1' }], 't1'),
+      a: group('a', [{ id: 't1', type: 'canvas', entityId: 'c1' }], 't1')
+    }
+    expect(collectVisibleNoteTabIds(groups)).toEqual(new Set())
+  })
+
+  it('ignores note tabs with no entityId', () => {
+    const groups = {
       b: group('b', [{ id: 't2', type: 'note' }], 't2')
     }
     expect(collectVisibleNoteTabIds(groups)).toEqual(new Set())

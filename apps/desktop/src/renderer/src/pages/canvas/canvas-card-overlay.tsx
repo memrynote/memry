@@ -72,6 +72,14 @@ export const CanvasCardLayer = ({
   const visibleIdsRef = useRef<Set<string>>(new Set())
   const signatureRef = useRef('')
 
+  // Bumped whenever a claim attempt fails (canvasNoteClaims is a module
+  // singleton, not React state, so another pane's successful claim wouldn't
+  // otherwise trigger a re-render here) — included in the `cards` memo deps
+  // so this card re-renders locked immediately instead of only on the next
+  // unrelated geometry/lockCtx change (design spec §3.3: persistent, not a
+  // flash-on-failed-activation badge).
+  const [claimFailedTick, setClaimFailedTick] = useState(0)
+
   const [activeCardId, setActiveCardId] = useState<string | null>(null)
   const activeCardIdRef = useRef<string | null>(null)
   useEffect(() => {
@@ -286,6 +294,7 @@ export const CanvasCardLayer = ({
         // on the same note cannot both pass the gate in one tick. The effect
         // re-claims idempotently and owns the release.
         if (hit.entityType === 'note' && !noteCardClaims.claim(hit.entityId, hit.elementId)) {
+          setClaimFailedTick((n) => n + 1)
           return
         }
         dispatchActive({ type: 'activate', id: hit.elementId })
@@ -315,7 +324,7 @@ export const CanvasCardLayer = ({
       wrapper.removeEventListener('dblclick', onDblClick, { capture: true })
       wrapper.removeEventListener('pointerdown', onPointerDownAway, { capture: true })
     }
-  }, [wrapperRef, excalidrawAPI, createCardElement, dispatchActive])
+  }, [wrapperRef, excalidrawAPI, createCardElement, dispatchActive, setClaimFailedTick])
 
   // Release the claim when the card deactivates or the layer unmounts. Keyed on
   // activeCardId only: visibleRefs changes on every geometry tick, and keying on
@@ -331,7 +340,15 @@ export const CanvasCardLayer = ({
 
   // A note tab becoming visible in another pane while a card is active would
   // reopen the clobber window, so the card yields immediately. EmbeddedNoteEditor
-  // flushes its pending save on unmount, so nothing typed is lost.
+  // flushes its pending save on unmount (embedded-note-editor.tsx), but that
+  // flush is fire-and-forget (`void flush()`) and races the newly-opened tab's
+  // own fetch — a sub-second window that only loses text if the user types
+  // into the tab before the flush lands. Pre-existing, shared with the ↗
+  // redirect path; not introduced by this guard.
+  // Reacts to an external context change (the note becoming locked elsewhere
+  // via useNoteEditLock), not a user action on this component — there is no
+  // event handler to move this into.
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler */
   useEffect(() => {
     const active = activeCardIdRef.current
     if (!active) return
@@ -340,6 +357,7 @@ export const CanvasCardLayer = ({
       dispatchActive({ type: 'deactivate' })
     }
   }, [lockCtx, dispatchActive])
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler */
 
   const handleCreateNote = useCallback(async () => {
     try {
@@ -369,44 +387,45 @@ export const CanvasCardLayer = ({
     }
   }, [readScene, createCardElement])
 
-  const cards = useMemo(
-    () =>
-      visibleRefs.map((card) => {
-        const isActive = card.elementId === activeCardId
-        const locked = isActive ? null : lockReasonForCard(lockCtx, card)
-        return (
-          <div
-            key={card.elementId}
-            className="absolute"
-            style={{
-              left: card.x,
-              top: card.y,
-              width: card.width,
-              height: card.height,
-              transform: card.angle ? `rotate(${card.angle}rad)` : undefined,
-              transformOrigin: 'center',
-              pointerEvents: isActive ? 'auto' : undefined
-            }}
-          >
-            {isActive ? (
-              <CanvasCardActive
-                cardRef={card}
-                state={entities.get(entityKey(card.entityType, card.entityId))}
-                onDeactivate={() => dispatchActive({ type: 'deactivate' })}
-              />
-            ) : (
-              <CanvasCard
-                cardRef={card}
-                state={entities.get(entityKey(card.entityType, card.entityId))}
-                onRedirect={redirect}
-                locked={locked}
-              />
-            )}
-          </div>
-        )
-      }),
-    [visibleRefs, entities, redirect, activeCardId, dispatchActive, lockCtx]
-  )
+  const cards = useMemo(() => {
+    // Referenced (no-op) purely so this memo re-evaluates after a failed
+    // cross-pane claim — see the claimFailedTick declaration above.
+    void claimFailedTick
+    return visibleRefs.map((card) => {
+      const isActive = card.elementId === activeCardId
+      const locked = isActive ? null : lockReasonForCard(lockCtx, card)
+      return (
+        <div
+          key={card.elementId}
+          className="absolute"
+          style={{
+            left: card.x,
+            top: card.y,
+            width: card.width,
+            height: card.height,
+            transform: card.angle ? `rotate(${card.angle}rad)` : undefined,
+            transformOrigin: 'center',
+            pointerEvents: isActive ? 'auto' : undefined
+          }}
+        >
+          {isActive ? (
+            <CanvasCardActive
+              cardRef={card}
+              state={entities.get(entityKey(card.entityType, card.entityId))}
+              onDeactivate={() => dispatchActive({ type: 'deactivate' })}
+            />
+          ) : (
+            <CanvasCard
+              cardRef={card}
+              state={entities.get(entityKey(card.entityType, card.entityId))}
+              onRedirect={redirect}
+              locked={locked}
+            />
+          )}
+        </div>
+      )
+    })
+  }, [visibleRefs, entities, redirect, activeCardId, dispatchActive, lockCtx, claimFailedTick])
 
   return (
     <>

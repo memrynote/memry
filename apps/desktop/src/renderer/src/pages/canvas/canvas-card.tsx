@@ -152,7 +152,7 @@ const CanvasCardInner = ({
           data-canvas-redirect=""
           onClick={handleRedirect}
           onPointerDown={(e) => e.stopPropagation()}
-          className="pointer-events-auto flex w-full shrink-0 items-center justify-center gap-1 border-t border-border bg-muted/60 px-2 py-1 text-[10px] font-medium text-text-secondary hover:bg-muted hover:text-foreground"
+          className="pointer-events-auto flex w-full shrink-0 items-center justify-center gap-1 border-t border-border bg-muted/60 px-2 py-1 text-[10px] font-medium text-text-secondary hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           <ArrowUpRight className="size-3" aria-hidden="true" />
           {t('canvas.card.openToEdit')}
