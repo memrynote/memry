@@ -49,6 +49,31 @@ vi.mock('../inbox/suggestions', () => ({
   updateNoteEmbedding: vi.fn(() => Promise.resolve())
 }))
 
+// Paths whose reads fail with a chosen errno — lets the unreadable-file path be
+// exercised deterministically without relying on filesystem permissions.
+const { unreadablePaths, loggerMock } = vi.hoisted(() => ({
+  unreadablePaths: new Map<string, string>(),
+  loggerMock: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
+}))
+
+vi.mock('fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs/promises')>()
+  return {
+    ...actual,
+    readFile: vi.fn((filePath: Parameters<typeof actual.readFile>[0], ...rest: unknown[]) => {
+      const code = unreadablePaths.get(String(filePath))
+      if (code) {
+        return Promise.reject(Object.assign(new Error(`${code}: mocked`), { code }))
+      }
+      return (actual.readFile as (...args: unknown[]) => Promise<unknown>)(filePath, ...rest)
+    })
+  }
+})
+
+vi.mock('../lib/logger', () => ({
+  createLogger: () => loggerMock
+}))
+
 // ============================================================================
 // Test Suite
 // ============================================================================
@@ -66,6 +91,8 @@ describe('indexer', () => {
   beforeEach(async () => {
     // Clear progress tracking
     progressCalls.length = 0
+    unreadablePaths.clear()
+    for (const fn of Object.values(loggerMock)) fn.mockClear()
 
     // Create fresh test fixtures
     tempVault = createTestVault('indexer-test')
@@ -294,6 +321,59 @@ Copied note`
       const rows = testDb.db.select().from(noteCache).all()
       expect(rows).toHaveLength(2)
       expect(rows[0].id).not.toBe(rows[1].id)
+    })
+
+    it('#844: indexes a note whose frontmatter is malformed YAML', async () => {
+      const notePath = path.join(tempVault.notesDir, 'Broken Frontmatter.md')
+      const raw = `---
+title: "unterminated
+tags: [work, personal
+---
+
+Body of a note with broken frontmatter
+`
+      fs.mkdirSync(tempVault.notesDir, { recursive: true })
+      fs.writeFileSync(notePath, raw)
+
+      const result = await indexer.indexVault(tempVault.path)
+
+      expect(result.indexed).toBe(1)
+      expect(result.errors).toBe(0)
+
+      // Searchable: the body is cached, the title falls back to the filename
+      const rows = testDb.db.select().from(noteCache).all()
+      expect(rows).toHaveLength(1)
+      expect(rows[0].title).toBe('Broken Frontmatter')
+      expect(rows[0].snippet).toContain('Body of a note with broken frontmatter')
+
+      // The indexer never writes files — broken bytes stay untouched
+      expect(fs.readFileSync(notePath, 'utf-8')).toBe(raw)
+    })
+
+    it('#844: indexes an empty note file instead of counting it as an error', async () => {
+      fs.mkdirSync(tempVault.notesDir, { recursive: true })
+      fs.writeFileSync(path.join(tempVault.notesDir, 'Empty.md'), '')
+
+      const result = await indexer.indexVault(tempVault.path)
+
+      expect(result.indexed).toBe(1)
+      expect(result.errors).toBe(0)
+    })
+
+    it('#844: logs the errno when a note file cannot be read', async () => {
+      const notePath = createTestNote(tempVault, { title: 'Locked', content: 'Secret' })
+      unreadablePaths.set(notePath, 'EACCES')
+
+      const result = await indexer.indexVault(tempVault.path)
+
+      expect(result.indexed).toBe(0)
+      expect(result.errors).toBe(1)
+
+      const warned = loggerMock.warn.mock.calls.find((call) =>
+        String(call[0]).includes('Could not read file')
+      )
+      expect(warned).toBeDefined()
+      expect(JSON.stringify(warned)).toContain('EACCES')
     })
   })
 
