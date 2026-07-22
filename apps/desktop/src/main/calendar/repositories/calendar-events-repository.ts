@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull, like, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm'
 import {
   calendarEvents,
   type CalendarEvent,
@@ -50,8 +50,17 @@ export function archiveCalendarEvent(db: DataDb, id: string, archivedAt: string)
  *
  * Two bounded queries rather than `ORDER BY abs(julianday(...))`: both sides
  * use the start_at index and neither depends on SQLite parsing all-day rows.
- * SQLite's LIKE is case-insensitive for ASCII, which is what the picker's old
- * client-side `toLowerCase().includes()` filter did.
+ *
+ * Matching goes through `ulower()` (registered in database/sqlite-functions.ts),
+ * not bare `LIKE`. SQLite's LIKE folds case for ASCII only, so a plain
+ * `LIKE '%ödeme%'` would miss "Ödeme Toplantısı", `münchen` would miss
+ * "MÜNCHEN Trip", and `лекция` would miss "ЛЕКЦИЯ". `ulower()` is JavaScript's
+ * `toLowerCase`, which folds the full Unicode range — the same folding the
+ * picker's old client-side `toLowerCase().includes()` filter did.
+ *
+ * The cost is a full scan of non-archived rows for the match predicate: the
+ * function is opaque to any index on title. That index does not exist and LIKE
+ * with a leading wildcard could not have used it anyway, so nothing regresses.
  */
 export function searchCalendarEventsByTitle(
   db: DataDb,
@@ -62,7 +71,10 @@ export function searchCalendarEventsByTitle(
     return []
   }
 
-  const matches = and(isNull(calendarEvents.archivedAt), like(calendarEvents.title, `%${needle}%`))
+  const matches = and(
+    isNull(calendarEvents.archivedAt),
+    sql`ulower(${calendarEvents.title}) LIKE ulower(${`%${needle}%`})`
+  )
 
   const upcoming = db
     .select()

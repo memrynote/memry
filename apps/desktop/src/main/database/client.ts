@@ -5,6 +5,7 @@ import * as dataSchema from '@memry/db-schema/data-schema'
 import * as indexSchema from '@memry/db-schema/index-schema'
 import * as sqliteVec from 'sqlite-vec'
 import { EMBEDDING_DIMENSION } from '../lib/embeddings-constants'
+import { registerDataDbFunctions } from './sqlite-functions'
 import type { DataDb, IndexDb, RawIndexDb } from './types'
 
 export type { DataDb, IndexDb, RawIndexDb } from './types'
@@ -38,6 +39,9 @@ export function initDatabase(dbPath: string): DataDb {
 
   // Store temp tables in memory
   sqliteDataDb.pragma(`temp_store = ${SQLITE_TEMP_STORE}`)
+
+  // Unicode-aware helpers queries can call (see sqlite-functions.ts)
+  registerDataDbFunctions(sqliteDataDb)
 
   dataDb = drizzle(sqliteDataDb, { schema: dataSchema })
   return dataDb

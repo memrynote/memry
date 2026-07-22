@@ -596,6 +596,50 @@ describe('searchCalendarEventsByTitle (#869)', () => {
     ).toHaveLength(0)
   })
 
+  it('folds case for Turkish titles, which SQLite LIKE alone does not', () => {
+    // #given — a Turkish title whose leading letter only folds under Unicode
+    // rules; bare `LIKE '%ödeme%'` would never match it
+    seed('tr', 'Ödeme Toplantısı', '2026-07-23T09:00:00.000Z')
+
+    // #when / #then — a lowercase query finds it, and so does the uppercase one
+    expect(
+      searchCalendarEventsByTitle(dataDb, { query: 'ödeme', limit: 20, now: NOW }).map(
+        (row) => row.id
+      )
+    ).toEqual(['tr'])
+    expect(
+      searchCalendarEventsByTitle(dataDb, { query: 'ÖDEME', limit: 20, now: NOW })
+    ).toHaveLength(1)
+  })
+
+  it('folds case for German umlauts', () => {
+    // #given — an all-caps German title
+    seed('de', 'MÜNCHEN Trip', '2026-07-23T09:00:00.000Z')
+
+    // #when / #then — the lowercase query still matches
+    expect(
+      searchCalendarEventsByTitle(dataDb, { query: 'münchen', limit: 20, now: NOW }).map(
+        (row) => row.id
+      )
+    ).toEqual(['de'])
+  })
+
+  it('folds case for Cyrillic titles', () => {
+    // #given — an all-caps Cyrillic title
+    seed('ru', 'ЛЕКЦИЯ', '2026-07-23T09:00:00.000Z')
+
+    // #when / #then — the lowercase query still matches, and a non-substring
+    // Cyrillic query still misses
+    expect(
+      searchCalendarEventsByTitle(dataDb, { query: 'лекция', limit: 20, now: NOW }).map(
+        (row) => row.id
+      )
+    ).toEqual(['ru'])
+    expect(
+      searchCalendarEventsByTitle(dataDb, { query: 'семинар', limit: 20, now: NOW })
+    ).toHaveLength(0)
+  })
+
   it('excludes archived events', () => {
     // #given — one live and one archived event with the same title
     seed('live', 'Standup', '2026-07-23T09:00:00.000Z')
