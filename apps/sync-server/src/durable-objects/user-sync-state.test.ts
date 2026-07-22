@@ -625,22 +625,22 @@ describe('UserSyncState', () => {
     expect(res.status).toBe(404)
   })
 
-  describe('error capture to Loki', () => {
+  describe('error capture to PostHog Logs', () => {
     afterEach(() => {
       vi.unstubAllGlobals()
     })
 
-    const lokiEnv = {
-      LOKI_URL: 'https://grafana.example.com',
-      LOKI_TOKEN: 'tok',
+    const postHogEnv = {
+      POSTHOG_KEY: 'phc_test',
+      POSTHOG_HOST: 'https://us.i.posthog.com',
       ENVIRONMENT: 'test'
     }
 
-    it('pushes alarm failures to Loki', async () => {
+    it('pushes alarm failures to PostHog Logs', async () => {
       // #given
-      const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+      const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }))
       vi.stubGlobal('fetch', fetchMock)
-      const doObj = createDO(undefined, lokiEnv)
+      const doObj = createDO(undefined, postHogEnv)
       getCtx(doObj).getWebSockets = () => {
         throw new Error('do exploded')
       }
@@ -650,24 +650,26 @@ describe('UserSyncState', () => {
 
       // #then
       expect(fetchMock).toHaveBeenCalledTimes(1)
-      const body = JSON.parse(fetchMock.mock.calls[0][1].body)
-      expect(body.streams[0].stream).toEqual({
-        app: 'server',
-        env: 'test',
-        level: 'error',
-        kind: 'error'
+      const [url, init] = fetchMock.mock.calls[0]
+      expect(url).toBe('https://us.i.posthog.com/v1/logs')
+      const body = JSON.parse(init.body)
+      const record = body.resourceLogs[0].scopeLogs[0].logRecords[0]
+      expect(record.severityText).toBe('error')
+      expect(body.resourceLogs[0].resource.attributes).toContainEqual({
+        key: 'service.name',
+        value: { stringValue: 'server' }
       })
-      const line = JSON.parse(body.streams[0].values[0][1])
+      const line = JSON.parse(record.body.stringValue)
       expect(line.source).toBe('user_sync_state_do')
       expect(line.action).toBe('alarm')
       expect(line.message).toBe('do exploded')
     })
 
-    it('pushes webSocketMessage failures to Loki', async () => {
+    it('pushes webSocketMessage failures to PostHog Logs', async () => {
       // #given
-      const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+      const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }))
       vi.stubGlobal('fetch', fetchMock)
-      const doObj = createDO(undefined, lokiEnv)
+      const doObj = createDO(undefined, postHogEnv)
       const brokenWs = {
         deserializeAttachment: () => {
           throw new Error('attachment corrupt')
@@ -679,7 +681,8 @@ describe('UserSyncState', () => {
 
       // #then
       expect(fetchMock).toHaveBeenCalledTimes(1)
-      const line = JSON.parse(JSON.parse(fetchMock.mock.calls[0][1].body).streams[0].values[0][1])
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+      const line = JSON.parse(body.resourceLogs[0].scopeLogs[0].logRecords[0].body.stringValue)
       expect(line.action).toBe('ws_message')
       expect(line.message).toBe('attachment corrupt')
     })

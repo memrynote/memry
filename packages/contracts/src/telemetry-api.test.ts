@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  LandingTelemetryBatchSchema,
   TelemetryBatchSchema,
   TelemetryErrorDetailSchema,
   TelemetryEventNameSchema,
@@ -494,74 +493,6 @@ describe('canvas rollout telemetry', () => {
 
   it('still rejects an unknown event name', () => {
     expect(TelemetryEventNameSchema.safeParse('canvas_exploded').success).toBe(false)
-  })
-})
-
-describe('LandingTelemetryBatchSchema', () => {
-  const baseLandingBatch = {
-    visitorId: VALID_INSTALL_ID,
-    events: [
-      {
-        name: 'landing_pricing_cta_click',
-        page: '/pricing',
-        target: 'pricing:plus',
-        utm_source: 'waitlist',
-        utm_medium: 'email',
-        utm_campaign: 'waitlist_01_launch',
-        utm_content: 'primary_cta',
-        utm_term: 'notes'
-      }
-    ]
-  }
-
-  it('accepts a valid landing batch', () => {
-    expect(LandingTelemetryBatchSchema.safeParse(baseLandingBatch).success).toBe(true)
-  })
-
-  it('accepts a minimal pageview event', () => {
-    const result = LandingTelemetryBatchSchema.safeParse({
-      visitorId: VALID_INSTALL_ID,
-      events: [{ name: 'landing_page_view', page: '/' }]
-    })
-    expect(result.success).toBe(true)
-  })
-
-  it('rejects a non-uuid visitor id', () => {
-    const result = LandingTelemetryBatchSchema.safeParse({
-      ...baseLandingBatch,
-      visitorId: 'visitor-1'
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects values that look like emails, URLs, paths, or raw identifiers', () => {
-    const badEvents = [
-      { name: 'landing_nav_click', page: '/pricing', target: 'user@example.com' },
-      { name: 'landing_nav_click', page: '/pricing', utm_source: 'https://evil.example' },
-      { name: 'landing_nav_click', page: '/pricing', utm_campaign: 'a/b' },
-      { name: 'landing_nav_click', page: '/pricing', utm_term: 'line\nbreak' },
-      { name: 'landing_nav_click', page: `/note/${VALID_INSTALL_ID}` },
-      { name: 'landing_nav_click', page: 'pricing' },
-      { name: 'Landing Nav Click!', page: '/pricing' }
-    ]
-    for (const event of badEvents) {
-      const result = LandingTelemetryBatchSchema.safeParse({
-        visitorId: VALID_INSTALL_ID,
-        events: [event]
-      })
-      expect(result.success).toBe(false)
-    }
-  })
-
-  it('rejects empty and oversize event lists', () => {
-    const empty = LandingTelemetryBatchSchema.safeParse({ ...baseLandingBatch, events: [] })
-    expect(empty.success).toBe(false)
-
-    const oversize = LandingTelemetryBatchSchema.safeParse({
-      ...baseLandingBatch,
-      events: Array.from({ length: 21 }, () => baseLandingBatch.events[0])
-    })
-    expect(oversize.success).toBe(false)
   })
 })
 
