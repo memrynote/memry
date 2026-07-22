@@ -1126,6 +1126,17 @@ describe('main index phase2 exports', () => {
 
     vi.advanceTimersByTime(10_000)
     expect(createdWindow.show).toHaveBeenCalledTimes(1)
+
+    // The reveal reports one structured timeline so the slow phase is
+    // attributable from the logs alone (#843).
+    const { createLogger } = await import('./lib/logger')
+    const scoped = vi.mocked(createLogger).mock.results[0]?.value as {
+      warn: ReturnType<typeof vi.fn>
+    }
+    const timeline = scoped.warn.mock.calls.find(([message]) => message === 'launch timeline')
+    expect(timeline?.[1]).toMatchObject({ reason: 'fallback-timeout', fallback: true })
+    expect(timeline?.[1]).toHaveProperty('windowCreatedMs')
+    expect(timeline?.[1]).toHaveProperty('shownMs')
   })
 
   it('reveals the main window on fatal load failure but ignores ERR_ABORTED', async () => {
