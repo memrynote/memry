@@ -22,6 +22,23 @@ log.error('pull failed', err)
 - Important launch, renderer, and main-process errors are mirrored as telemetry events when
   product telemetry is enabled.
 
+### Choosing a Level
+
+The redacted diagnostic log stream is floored at `warn` (see
+[Error Logs in Grafana (Loki)](#error-logs-in-grafana-loki)), so `warn` and `error` are the levels
+an operator actually triages. Reserve them for conditions someone can act on, and log expected
+steady states at `debug`:
+
+- Certificate pinning falling back to standard TLS when no pins are configured
+  (`main/sync/certificate-pinning.ts`) — a deliberate fallback, not a failure.
+- `sodium_mlock` / `sodium_munlock` being absent in the WASM libsodium build
+  (`main/crypto/memory-lock.ts`) — the expected state in Electron. An mlock/munlock call that
+  is present but _fails_ still logs at `warn`.
+- Progress notes the embedding worker writes to stderr, such as transformers.js reporting an
+  unknown content-length during a model download (`main/lib/embeddings.ts`). A stderr chunk is
+  only downgraded when every line in it matches a known-benign pattern, so a real failure
+  interleaved with progress output still reaches `error`.
+
 ### Log Locations
 
 | Platform | Path                                            |
