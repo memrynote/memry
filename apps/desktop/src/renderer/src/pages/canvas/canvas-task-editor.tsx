@@ -10,6 +10,7 @@
  * every field autosaves on change, sidestepping the disable-mid-click trap.
  */
 import React, { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { useTaskWorkspaceData, useTaskWorkspaceMutations } from '@/features/tasks/use-task-queries'
 import { InteractiveStatusBadge } from '@/components/tasks/interactive-status-badge'
 import { InteractivePriorityBadge } from '@/components/tasks/interactive-priority-badge'
@@ -24,6 +25,8 @@ interface CanvasTaskEditorProps {
 }
 
 export const CanvasTaskEditor = ({ taskId }: CanvasTaskEditorProps): React.JSX.Element => {
+  const { t } = useT('tasks')
+  const { t: tCommon } = useT('common')
   const { tasks, projects } = useTaskWorkspaceData({ enabled: true })
   const { updateTask } = useTaskWorkspaceMutations()
 
@@ -67,7 +70,7 @@ export const CanvasTaskEditor = ({ taskId }: CanvasTaskEditorProps): React.JSX.E
   if (!task) {
     return (
       <div className="min-h-0 flex-1 overflow-auto p-3 text-[13px] text-text-tertiary">
-        Loading…
+        {tCommon('state.loading')}
       </div>
     )
   }
@@ -79,8 +82,8 @@ export const CanvasTaskEditor = ({ taskId }: CanvasTaskEditorProps): React.JSX.E
         data-canvas-task-title
         value={task.title}
         onChange={(e) => void updateTask(task.id, { title: e.target.value })}
-        placeholder="Task name"
-        aria-label="Task name"
+        placeholder={t('task.namePlaceholder')}
+        aria-label={t('task.namePlaceholder')}
         className="w-full min-w-0 bg-transparent text-[13px] font-medium text-text-primary outline-none"
       />
       <div className="flex flex-wrap items-center gap-1.5">
@@ -106,7 +109,7 @@ export const CanvasTaskEditor = ({ taskId }: CanvasTaskEditorProps): React.JSX.E
         key={task.id}
         initialContent={task.description}
         onContentChange={handleDescriptionChange}
-        placeholder="Add a description…"
+        placeholder={t('task.descriptionPlaceholder')}
         className="text-[13px] leading-5 text-text-secondary"
       />
     </div>

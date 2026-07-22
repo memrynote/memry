@@ -27,7 +27,7 @@ interface CanvasEventEditorProps {
   onDone: () => void
 }
 
-function toDraft(event: CalendarEventRecord): CalendarEventDraft {
+export function toDraft(event: CalendarEventRecord): CalendarEventDraft {
   return {
     title: event.title,
     description: event.description ?? '',

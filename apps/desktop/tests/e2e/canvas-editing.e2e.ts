@@ -364,4 +364,64 @@ test.describe('Spatial canvas — in-place editing (M6)', () => {
       )
       .toBe(newTitle)
   })
+
+  test('40-card canvas with one active editor: off-screen cards unmount (matrix #16/#21)', async ({
+    page
+  }) => {
+    await openVault(page)
+    await setSpatialCanvasFlag(page, true)
+    const canvasId = await createCanvasFromSidebar(page)
+    const noteId = await seedNote(page, `Perf ${Date.now()}`, 'body')
+    for (let i = 0; i < 40; i++) {
+      await dropNote(page, noteId, (i % 8) * 320 - 1200, Math.floor(i / 8) * 220 - 500)
+    }
+    // Activate one card via a raw mouse dblclick at its bounding-box center
+    // (mirrors dblclickCard()): cards are pointer-events:none previews — the
+    // wrapper's capture-phase dblclick listener does its own hit-test — so
+    // Playwright's locator.dblclick() actionability check is the wrong tool
+    // here. The 40-card grid deliberately spans well beyond the viewport (to
+    // force virtualization), so a mounted (enter-padding-widened) card can
+    // still be clipped outside the visible canvas rect — only pick a card
+    // whose center actually falls inside the canvas wrapper, with a margin
+    // clear of the fixed window-chrome strip, so the click always lands on
+    // canvas and never on the tab bar / sidebar behind it.
+    const wrapperBox = await page.locator('[data-canvas-editor]').boundingBox()
+    if (!wrapperBox) throw new Error('no canvas wrapper box')
+    const margin = 40
+    const safeLeft = wrapperBox.x + margin
+    const safeTop = Math.max(wrapperBox.y, 60) + margin
+    const safeRight = wrapperBox.x + wrapperBox.width - margin
+    const safeBottom = wrapperBox.y + wrapperBox.height - margin
+    const cardLoc = page.locator('[data-canvas-card-id]')
+    const mountedBefore = await cardLoc.count()
+    let activated = false
+    for (let i = 0; i < mountedBefore; i++) {
+      const box = await cardLoc.nth(i).boundingBox()
+      if (!box) continue
+      const cx = box.x + box.width / 2
+      const cy = box.y + box.height / 2
+      if (cx < safeLeft || cx > safeRight || cy < safeTop || cy > safeBottom) continue
+      await page.mouse.dblclick(cx, cy)
+      activated = true
+      break
+    }
+    if (!activated) throw new Error('no clickable card found within the visible canvas rect')
+    await expect(page.locator('[data-canvas-active-card]')).toHaveCount(1, { timeout: 20000 })
+
+    // Scene persistence is debounced — poll until all 40 drops have flushed
+    // to disk (mirrors cardRectCount in the remount-regression test above).
+    const cardRectTotal = async (): Promise<number> => {
+      const c = await page.evaluate(async (id) => window.api.canvas.get(id), canvasId)
+      const parsed = c?.scene ? JSON.parse(c.scene) : { elements: [] }
+      return (parsed.elements ?? []).filter(
+        (e) => e.type === 'rectangle' && !e.isDeleted && e.customData?.entityId
+      ).length
+    }
+    await expect.poll(cardRectTotal, { timeout: 20000 }).toBeGreaterThanOrEqual(40)
+    const total = await cardRectTotal()
+    const mounted = await page.locator('[data-canvas-card-id]').count()
+    expect(mounted).toBeLessThan(total)
+    // Exactly one active editor.
+    expect(await page.locator('[data-canvas-active-card]').count()).toBe(1)
+  })
 })
