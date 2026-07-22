@@ -274,7 +274,10 @@ async function openVault(vaultPath: string): Promise<void> {
   startProjectionRuntime([
     createNoteDerivedStateProjector(() => vaultPath),
     createSearchProjector(() => vaultPath),
-    createEmbeddingProjector(() => vaultPath),
+    createEmbeddingProjector(
+      () => vaultPath,
+      () => currentStatus.isIndexing
+    ),
     createInboxStatsProjector()
   ])
 
@@ -336,12 +339,13 @@ async function openVault(vaultPath: string): Promise<void> {
   // linked) vault that pull writes notes/journals to disk via the current vault
   // path — which throws "No vault is currently open" if the status isn't set yet.
   //
-  // Vault-open must NOT wait on reconcileProjections(): the renderer only needs
-  // the index (built above) to render, but the embedding projector's reconcile
-  // loads the embedding model / backfills vectors, which takes ~18s on the first
-  // open after an embedding-version change — and on every fresh vault, since the
-  // stored version starts null. Blocking here stranded the app on the vault
-  // picker for that whole time. Reconcile in the background after opening.
+  // Vault-open must NOT wait on embeddings: the renderer only needs the index
+  // (built above) to render. Embedding is deferred out of the indexing pass —
+  // the embedding projector no-ops while isIndexing and records the note ids —
+  // so the ~23MB model load + per-note CPU inference never runs on the blocking
+  // path (this stranded imported vaults on the picker for minutes; #803). The
+  // backgrounded reconcileProjections() below embeds those deferred/missing
+  // notes after isOpen; a slow or failed model load can no longer block open.
   updateStatus({
     isOpen: true,
     path: vaultPath,
