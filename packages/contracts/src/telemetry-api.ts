@@ -1,5 +1,10 @@
 import { z } from 'zod'
 
+// DEPLOY ORDER: the sync-server validates /telemetry/batch with THIS schema
+// (apps/sync-server/src/routes/telemetry.ts). A server running older contracts
+// rejects the ENTIRE batch with a 400, not just the unknown event — so any
+// addition here must reach the deployed sync-server before a desktop release
+// ships it.
 export const TelemetryEventNameSchema = z.enum([
   'app_started',
   'app_backgrounded',
@@ -50,7 +55,9 @@ export const TelemetryEventNameSchema = z.enum([
   'sync_skipped_unknown_type',
   'canvas_asset_uploaded',
   'canvas_asset_dedup_hit',
-  'canvas_asset_gc_reaped'
+  'canvas_asset_gc_reaped',
+  'canvas_created',
+  'canvas_opened'
 ])
 
 export const TelemetrySurfaceSchema = z.enum([
@@ -69,7 +76,8 @@ export const TelemetrySurfaceSchema = z.enum([
   'sync',
   'ai',
   'voice',
-  'updater'
+  'updater',
+  'canvas'
 ])
 
 export const TelemetryResultSchema = z.enum(['success', 'failed', 'canceled', 'skipped'])
