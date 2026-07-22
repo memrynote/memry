@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils'
 import { notesService } from '@/services/notes-service'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
 import { useSync } from '@/contexts/sync-context'
+import { isCollaborationActive } from '@/sync/collaboration-status'
 import { useWikiLinkHover } from '@/hooks/use-wiki-link-hover'
 import { useLinkMentionHover } from '@/hooks/use-link-mention-hover'
 import { useAIInlineContext } from '@/contexts/ai-inline-context'
@@ -1331,8 +1332,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
 export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
   const { state } = useSync()
-  const syncActive =
-    state.status === 'idle' || state.status === 'syncing' || state.status === 'offline'
+  const syncActive = isCollaborationActive(state.status)
   const { fragment, doc, isReady, isRemoteUpdateRef, isSideEffectOwner } = useYjsCollaboration({
     noteId: props.noteId,
     enabled: syncActive

@@ -21,8 +21,7 @@ import type {
   VaultRecoveryNeededEvent
 } from '@memry/contracts/ipc-events'
 import { useT } from '@memry/i18n/renderer'
-
-type SyncStatus = 'idle' | 'syncing' | 'paused' | 'error' | 'offline' | 'unknown'
+import type { SyncStatus } from '@/sync/collaboration-status'
 
 interface ProgressEntry {
   progress: number
