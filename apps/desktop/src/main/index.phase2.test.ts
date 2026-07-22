@@ -49,6 +49,7 @@ const getCrdtProviderMock = vi.fn(() => ({
   getDoc: getProviderDocMock
 }))
 const stopSyncRuntimeMock = vi.fn(async () => undefined)
+const stopEmbeddingModelMock = vi.fn(async () => undefined)
 const startGoogleCalendarSyncRunnerMock = vi.fn(async () => undefined)
 const stopGoogleCalendarSyncRunnerMock = vi.fn()
 const triggerGoogleCalendarSyncNowMock = vi.fn()
@@ -204,6 +205,13 @@ vi.mock('./inbox/review-scheduler', () => ({
 
 vi.mock('./inbox/voice-model', () => ({
   stopVoiceModel: vi.fn(async () => undefined)
+}))
+
+// Keep the real module (other importers use initEmbeddingModel/getModelInfo/etc.);
+// spy only stopEmbeddingModel to assert the embeddings utilityProcess is stopped on quit (#805).
+vi.mock('./lib/embeddings', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./lib/embeddings')>()),
+  stopEmbeddingModel: stopEmbeddingModelMock
 }))
 
 vi.mock('./telemetry/runtime', () => ({
@@ -402,6 +410,15 @@ async function flushReadyWork() {
   await Promise.resolve()
   await Promise.resolve()
   await Promise.resolve()
+}
+
+// Drain microtasks until `predicate` holds (bounded by a safety cap), instead of
+// looping a hard-coded number of ticks that's coupled to the shutdown chain
+// length and breaks whenever an async step is added/removed.
+async function flushUntil(predicate: () => boolean, maxTicks = 100): Promise<void> {
+  for (let i = 0; i < maxTicks && !predicate(); i++) {
+    await Promise.resolve()
+  }
 }
 
 describe('main index phase2 exports', () => {
@@ -1445,6 +1462,9 @@ describe('main index phase2 exports', () => {
 
     expect(preventDefault).toHaveBeenCalled()
     expect(disposeTelemetryRuntimeMock).toHaveBeenCalled()
+    // Embeddings utilityProcess must be stopped on quit or it lingers as a
+    // Memrynote.exe and blocks the Windows NSIS update install (#805).
+    expect(stopEmbeddingModelMock).toHaveBeenCalled()
     expect(stopSyncRuntimeMock).toHaveBeenCalled()
     expect(closeVaultMock).toHaveBeenCalled()
   })
@@ -1601,9 +1621,7 @@ describe('main index phase2 exports', () => {
       ([event]) => event === 'app:flush-done'
     )?.[1] as () => void
     flushHandler()
-    for (let i = 0; i < 30; i++) {
-      await Promise.resolve()
-    }
+    await flushUntil(() => vi.mocked(app.exit).mock.calls.length > 0)
 
     expect(app.exit).toHaveBeenCalledWith(1)
   })
