@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   LandingTelemetryBatchSchema,
   TelemetryBatchSchema,
+  TelemetryErrorDetailSchema,
   TelemetryEventNameSchema,
   TelemetryEventSchema,
   TelemetrySurfaceSchema,
@@ -928,5 +929,30 @@ describe('normalizeWindowError', () => {
     // #then the window error handler still reports something
     expect(() => normalizeWindowError({ error: hostile, message: 'boom' })).not.toThrow()
     expect(normalizeWindowError({ error: hostile, message: 'boom' })).toBeInstanceOf(Error)
+  })
+})
+
+describe('contract widening for PostHog migration', () => {
+  it('accepts the app_crashed event name', () => {
+    expect(TelemetryEventNameSchema.safeParse('app_crashed').success).toBe(true)
+  })
+
+  it('accepts an optional redacted error message', () => {
+    const parsed = TelemetryErrorDetailSchema.safeParse({
+      message: 'Cannot read property id of undefined',
+      stack: 'at foo (app.js:1:1)'
+    })
+    expect(parsed.success).toBe(true)
+  })
+
+  it('still accepts an error detail with no message', () => {
+    expect(TelemetryErrorDetailSchema.safeParse({ stack: 'at foo (app.js:1:1)' }).success).toBe(
+      true
+    )
+  })
+
+  it('rejects an over-long error message', () => {
+    const parsed = TelemetryErrorDetailSchema.safeParse({ message: 'x'.repeat(513) })
+    expect(parsed.success).toBe(false)
   })
 })

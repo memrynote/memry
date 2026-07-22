@@ -50,6 +50,7 @@ export const TelemetryEventNameSchema = z.enum([
   'command_palette_opened',
   'app_update_installed',
   'app_error_seen',
+  'app_crashed',
   'canvas_sync_conflict_copy',
   'canvas_too_large',
   'sync_skipped_unknown_type',
@@ -114,9 +115,11 @@ export const TelemetryMetricsSchema = z.object({
 })
 
 export const TelemetryErrorDetailSchema = z.object({
-  // NOTE: there is intentionally NO free-form message field. On the desktop an
-  // error message can embed a note title, filename, or content, so we only ever
-  // ship the stack frames (code locations) and the React component stack.
+  // Historically there was NO message field: on the desktop an error message can
+  // embed a note title, filename, or content. That rule predates redact.ts. The
+  // message is now allowed, but ONLY after the client has run it through
+  // redactText — the server re-runs redaction in mask mode as a backstop.
+  message: z.string().max(512).optional(),
   stack: z.string().max(4000).optional(),
   componentStack: z.string().max(2000).optional()
 })
