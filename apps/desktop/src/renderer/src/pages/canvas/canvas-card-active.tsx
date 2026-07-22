@@ -3,13 +3,14 @@
  * input; keydown/keyup are swallowed so Cmd/Ctrl+Z belongs to the mounted
  * editor (not Excalidraw), and Escape closes the editor. Note cards render the
  * real note editor (Task 5); task cards render the slim task editor (Task 6);
- * event cards keep the placeholder until Task 7 replaces it.
+ * event cards render the extracted calendar event form (Task 7).
  */
 import React, { useCallback, useEffect, useRef } from 'react'
 import type { CanvasCardRef } from './canvas-cards'
 import type { CanvasEntityState } from './use-canvas-entities'
 import { EmbeddedNoteEditor } from './embedded-note-editor'
 import { CanvasTaskEditor } from './canvas-task-editor'
+import { CanvasEventEditor } from './canvas-event-editor'
 
 interface CanvasCardActiveProps {
   cardRef: CanvasCardRef
@@ -61,13 +62,7 @@ export const CanvasCardActive = ({
       ) : cardRef.entityType === 'task' ? (
         <CanvasTaskEditor taskId={cardRef.entityId} />
       ) : (
-        // Placeholder editor — replaced by the event editor in Task 7.
-        <div
-          data-canvas-active-editor={cardRef.entityType}
-          contentEditable
-          suppressContentEditableWarning
-          className="min-h-0 flex-1 overflow-auto p-3 text-[13px] outline-none"
-        />
+        <CanvasEventEditor eventId={cardRef.entityId} onDone={onDeactivate} />
       )}
     </div>
   )

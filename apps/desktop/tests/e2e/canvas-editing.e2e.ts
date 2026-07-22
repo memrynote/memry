@@ -308,4 +308,60 @@ test.describe('Spatial canvas — in-place editing (M6)', () => {
       )
       .toBe(newTitle)
   })
+
+  test('double-click an event card edits it in place; persists via calendar IPC (matrix #22 event)', async ({
+    page
+  }) => {
+    await openVault(page)
+    await setSpatialCanvasFlag(page, true)
+    await createCanvasFromSidebar(page)
+    const eventId = await page.evaluate(async () => {
+      const start = new Date()
+      start.setHours(10, 0, 0, 0)
+      const res = await window.api.calendar.createEvent({
+        title: 'Canvas Event',
+        startAt: start.toISOString(),
+        isAllDay: false,
+        timezone: 'UTC'
+      })
+      return res.event?.id ?? ''
+    })
+    await page.evaluate((id) => {
+      const wrapper = document.querySelector('[data-canvas-editor]') as HTMLElement
+      const r = wrapper.getBoundingClientRect()
+      const dt = new DataTransfer()
+      dt.setData(
+        'application/x-memry-canvas-item',
+        JSON.stringify({ entityType: 'calendar_event', entityId: id })
+      )
+      const ev = new DragEvent('drop', {
+        bubbles: true,
+        cancelable: true,
+        clientX: r.left + r.width / 2,
+        clientY: r.top + r.height / 2
+      })
+      Object.defineProperty(ev, 'dataTransfer', { value: dt })
+      wrapper.dispatchEvent(ev)
+    }, eventId)
+
+    const card = page.locator(`[data-canvas-card-entity="calendar_event:${eventId}"]`)
+    await expect(card).toBeVisible({ timeout: 20000 })
+    await dblclickCard(page, `calendar_event:${eventId}`)
+    await expect(card).toHaveAttribute('data-canvas-card-state', 'active', { timeout: 20000 })
+
+    const newTitle = `Event ${Date.now()}`
+    await page.locator('[data-canvas-active-card] input').first().fill(newTitle)
+    // Save fires on pointerdown (calendar form pattern).
+    await page.getByRole('button', { name: /Save/ }).click()
+
+    await expect
+      .poll(
+        async () => {
+          const e = await page.evaluate(async (id) => window.api.calendar.getEvent(id), eventId)
+          return e?.title ?? ''
+        },
+        { timeout: 20000 }
+      )
+      .toBe(newTitle)
+  })
 })
