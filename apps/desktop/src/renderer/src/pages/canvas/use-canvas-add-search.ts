@@ -16,6 +16,13 @@ import { eventRange } from './canvas-add-card'
 
 const log = createLogger('SpatialCanvas')
 
+// The dialog's own highlight effect (canvas-add-card-dialog.tsx) relies on
+// results landing in a LATER render commit than the query change: cmdk resets
+// its highlight to the first mounted item whenever the search value changes,
+// and the dialog's effect then re-highlights the first real match, winning
+// because it runs after. Dropping this debounce (or making it 0) would let
+// results commit in the same tick as the query change and the highlight
+// would flicker to the create row on every keystroke.
 const SEARCH_DEBOUNCE_MS = 150
 
 export interface CanvasAddSources {
@@ -48,8 +55,8 @@ export function useCanvasAddSearch(open: boolean, query: string): CanvasAddSourc
           setProjections(response.items)
         }
       } catch (err) {
-        log.error('Canvas add-card: failed to load events', err)
         if (!cancelled) {
+          log.error('Canvas add-card: failed to load events', err)
           setProjections([])
         }
       }
@@ -75,8 +82,8 @@ export function useCanvasAddSearch(open: boolean, query: string): CanvasAddSourc
             setResults(response.results)
           }
         } catch (err) {
-          log.error('Canvas add-card: search failed', err)
           if (!cancelled) {
+            log.error('Canvas add-card: search failed', err)
             setResults([])
           }
         } finally {

@@ -131,6 +131,26 @@ describe('CanvasAddCardDialog', () => {
     expect(screen.queryByTestId('canvas-add-empty')).not.toBeInTheDocument()
   })
 
+  it('keeps the create row highlighted and hides Events for a blank query, even with events available', () => {
+    mocks.sources = {
+      results: [],
+      projections: [eventProjection('e1', 'Standup')],
+      loading: false
+    }
+    const props = setup()
+    expect(screen.queryByText('Standup')).not.toBeInTheDocument()
+    fireEvent.keyDown(screen.getByTestId('canvas-add-input'), { key: 'Enter' })
+    expect(props.onCreateNote).toHaveBeenCalledWith('')
+    expect(props.onPick).not.toHaveBeenCalled()
+  })
+
+  it('suppresses the empty state while a search is in flight', () => {
+    mocks.sources = { results: [], projections: [], loading: true }
+    setup()
+    fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'ship' } })
+    expect(screen.queryByTestId('canvas-add-empty')).not.toBeInTheDocument()
+  })
+
   it('lets Enter pick the first match instead of creating a note', async () => {
     const props = setup()
     // Type before results exist, matching the real debounced-search timing:

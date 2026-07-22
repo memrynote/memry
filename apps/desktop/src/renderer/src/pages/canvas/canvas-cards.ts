@@ -278,3 +278,17 @@ export function readCanvasDragItem(
 export function canvasDragPayload(entityType: CanvasEntityType, entityId: string): string {
   return JSON.stringify({ entityType, entityId })
 }
+
+/**
+ * Locale-formatted event time for card/picker display, e.g. "Jul 20 · 9:30 AM"
+ * or "Jul 20 · All day". Shared by CanvasCard and the Add-card picker so
+ * there is one date formatter, not two.
+ */
+export function formatEventTime(startAt: string, isAllDay: boolean, allDayLabel: string): string {
+  const parsed = new Date(startAt)
+  if (Number.isNaN(parsed.getTime())) return startAt
+  const date = parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  if (isAllDay) return `${date} · ${allDayLabel}`
+  const time = parsed.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  return `${date} · ${time}`
+}

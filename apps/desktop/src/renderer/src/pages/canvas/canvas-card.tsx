@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { renderTaskDescriptionMarkdown } from '@/components/tasks/task-description-preview'
 import { useT } from '@memry/i18n/renderer'
-import type { CanvasCardRef } from './canvas-cards'
+import { formatEventTime, type CanvasCardRef } from './canvas-cards'
 import type { NoteLockReason } from './canvas-note-lock'
 import type { CanvasEntityState } from './use-canvas-entities'
 
@@ -34,15 +34,6 @@ function formatDueDate(dueDate: string | null): string | null {
   const parsed = new Date(`${dueDate}T00:00:00`)
   if (Number.isNaN(parsed.getTime())) return dueDate
   return parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-}
-
-function formatEventTime(startAt: string, isAllDay: boolean, allDayLabel: string): string {
-  const parsed = new Date(startAt)
-  if (Number.isNaN(parsed.getTime())) return startAt
-  const date = parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-  if (isAllDay) return `${date} · ${allDayLabel}`
-  const time = parsed.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
-  return `${date} · ${time}`
 }
 
 const CanvasCardInner = ({

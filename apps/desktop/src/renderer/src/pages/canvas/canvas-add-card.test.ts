@@ -126,7 +126,8 @@ describe('candidatesFromProjections', () => {
         projection('task', 't1', 'A task', '2026-07-02T09:00:00.000Z'),
         projection('external_event', 'g1', 'Google thing', '2026-07-02T09:00:00.000Z')
       ],
-      ''
+      'Standup',
+      'All day'
     )
     expect(out.map((c) => c.entityId)).toEqual(['e1'])
   })
@@ -137,10 +138,11 @@ describe('candidatesFromProjections', () => {
         projection('event', 'e1', 'Standup', '2026-07-09T09:00:00.000Z'),
         projection('event', 'e1', 'Standup', '2026-07-02T09:00:00.000Z')
       ],
-      ''
+      'Standup',
+      'All day'
     )
     expect(out).toHaveLength(1)
-    expect(out[0].subtitle).toBe('2026-07-02T09:00:00.000Z')
+    expect(out[0].entityId).toBe('e1')
   })
 
   it('filters by case-insensitive title substring and sorts by start', () => {
@@ -149,9 +151,26 @@ describe('candidatesFromProjections', () => {
         projection('event', 'e2', 'Retro', '2026-07-10T09:00:00.000Z'),
         projection('event', 'e1', 'standup sync', '2026-07-02T09:00:00.000Z')
       ],
-      'STAND'
+      'STAND',
+      'All day'
     )
     expect(out.map((c) => c.entityId)).toEqual(['e1'])
+  })
+
+  it('returns no events for a blank or whitespace-only query, even with matching projections', () => {
+    const items = [projection('event', 'e1', 'Standup', '2026-07-02T09:00:00.000Z')]
+    expect(candidatesFromProjections(items, '', 'All day')).toEqual([])
+    expect(candidatesFromProjections(items, '   ', 'All day')).toEqual([])
+  })
+
+  it('formats the subtitle with formatEventTime instead of a raw ISO string', () => {
+    const out = candidatesFromProjections(
+      [projection('event', 'e1', 'Standup', '2026-07-02T09:00:00.000Z')],
+      'Standup',
+      'All day'
+    )
+    expect(out[0].subtitle).not.toBe('2026-07-02T09:00:00.000Z')
+    expect(out[0].subtitle.length).toBeGreaterThan(0)
   })
 })
 

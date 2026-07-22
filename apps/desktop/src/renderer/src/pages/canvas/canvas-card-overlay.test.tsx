@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CanvasCardLayer } from './canvas-card-overlay'
 import { CANVAS_ITEM_DRAG_MIME, type CardElement } from './canvas-cards'
+import { revealScroll } from './canvas-add-card'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 
 // Stub the Excalidraw runtime imports so the overlay mounts in jsdom without
@@ -97,19 +98,28 @@ vi.mock('./embedded-note-editor', () => ({
     <div data-testid={`embedded-note-${noteId}`} />
   )
 }))
-// Stub the picker; its own test covers filtering and selection.
+// Stub the picker; its own test covers filtering and selection. Exposes
+// onReveal for the overlay's handleReveal wiring (FIX 8): a fixed testid
+// button reveals card n2, so the caller doesn't need cmdk's real UI.
 vi.mock('./canvas-add-card-dialog', () => ({
   CanvasAddCardDialog: ({
     open,
-    onCreateNote
+    onCreateNote,
+    onReveal
   }: {
     open: boolean
     onCreateNote: (title: string) => void
+    onReveal: (entityType: string, entityId: string) => void
   }) =>
     open ? (
-      <button data-testid="stub-create-note" onClick={() => onCreateNote('')}>
-        create
-      </button>
+      <>
+        <button data-testid="stub-create-note" onClick={() => onCreateNote('')}>
+          create
+        </button>
+        <button data-testid="stub-reveal-n2" onClick={() => onReveal('note', 'n2')}>
+          reveal
+        </button>
+      </>
     ) : null
 }))
 
@@ -259,6 +269,35 @@ describe('CanvasCardLayer', () => {
         (e: { customData?: { entityId?: string } }) => e.customData?.entityId === 'captured'
       )
     ).toBe(true)
+  })
+
+  it('reveals an existing card (searching the whole scene, not just visible cards) without adding a new element', async () => {
+    mocks.entities = new Map([
+      ['note:n1', { status: 'ready', kind: 'note', title: 'One' }],
+      ['note:n2', { status: 'ready', kind: 'note', title: 'Two' }]
+    ])
+    // e2 sits far outside the (0-size, in jsdom) viewport so it is NOT among
+    // the mounted/visible cards — proving handleReveal searches every scene
+    // element via readScene(), not just the rendered subset.
+    const { api, updateScene } = makeApi([cardEl('e1', 'n1', 0, 0), cardEl('e2', 'n2', 1000, 1000)])
+    render(<Harness api={api} />)
+
+    fireEvent.click(screen.getByTestId('canvas-add-card'))
+    fireEvent.click(screen.getByTestId('stub-reveal-n2'))
+
+    await waitFor(() => expect(updateScene).toHaveBeenCalled())
+    const passed = updateScene.mock.calls[0][0]
+    const expected = revealScroll(
+      { x: 1000, y: 1000, width: 260, height: 168 },
+      { width: 0, height: 0 },
+      1
+    )
+    expect(passed.captureUpdate).toBe('immediately')
+    expect(passed.appState.scrollX).toBe(expected.scrollX)
+    expect(passed.appState.scrollY).toBe(expected.scrollY)
+    expect(passed.appState.selectedElementIds).toEqual({ e2: true })
+    // Revealing centers the existing card — it must not create a new element.
+    expect(passed.elements).toBeUndefined()
   })
 
   it('activates (not redirects) on a dblclick that hits a card', async () => {
