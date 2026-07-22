@@ -79,7 +79,7 @@ describe('IconPickerButton', () => {
     expect(await screen.findByTestId('emoji-picker')).toBeDefined()
   })
 
-  it('calls onIconChange with the picked value', () => {
+  it('calls onIconChange with the picked value', async () => {
     const onIconChange = vi.fn()
     render(
       <IconPickerButton hasIcon={false} onIconChange={onIconChange} ariaLabel="Set icon">
@@ -88,12 +88,13 @@ describe('IconPickerButton', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Set icon' }))
-    fireEvent.click(screen.getByText('Select 🎯'))
+    // EmojiPicker is React.lazy — await it before interacting to avoid order-dependence.
+    fireEvent.click(await screen.findByText('Select 🎯'))
 
     expect(onIconChange).toHaveBeenCalledWith('🎯')
   })
 
-  it('calls onIconChange with null when removed', () => {
+  it('calls onIconChange with null when removed', async () => {
     const onIconChange = vi.fn()
     render(
       <IconPickerButton hasIcon onIconChange={onIconChange} ariaLabel="Set icon">
@@ -102,12 +103,12 @@ describe('IconPickerButton', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Set icon' }))
-    fireEvent.click(screen.getByText('Remove'))
+    fireEvent.click(await screen.findByText('Remove'))
 
     expect(onIconChange).toHaveBeenCalledWith(null)
   })
 
-  it('honours the controlled pickerOpen prop', () => {
+  it('honours the controlled pickerOpen prop', async () => {
     const { rerender } = render(
       <IconPickerButton
         hasIcon={false}
@@ -132,7 +133,39 @@ describe('IconPickerButton', () => {
         <span>📝</span>
       </IconPickerButton>
     )
-    expect(screen.getByTestId('emoji-picker')).toBeDefined()
+    expect(await screen.findByTestId('emoji-picker')).toBeDefined()
+  })
+
+  it('closes the picker when the picker requests close (uncontrolled)', async () => {
+    render(
+      <IconPickerButton hasIcon={false} onIconChange={vi.fn()} ariaLabel="Set icon">
+        <span>📝</span>
+      </IconPickerButton>
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Set icon' }))
+    fireEvent.click(await screen.findByText('Close'))
+
+    expect(screen.queryByTestId('emoji-picker')).toBeFalsy()
+  })
+
+  it('notifies onPickerOpenChange(false) when the picker requests close (controlled)', async () => {
+    const onPickerOpenChange = vi.fn()
+    render(
+      <IconPickerButton
+        hasIcon={false}
+        onIconChange={vi.fn()}
+        ariaLabel="Set icon"
+        pickerOpen
+        onPickerOpenChange={onPickerOpenChange}
+      >
+        <span>📝</span>
+      </IconPickerButton>
+    )
+
+    fireEvent.click(await screen.findByText('Close'))
+
+    expect(onPickerOpenChange).toHaveBeenCalledWith(false)
   })
 
   it('fires onPickerOpenChange(true) when the trigger is clicked (controlled)', () => {

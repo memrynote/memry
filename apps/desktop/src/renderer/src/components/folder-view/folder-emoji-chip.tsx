@@ -43,7 +43,7 @@ export function FolderEmojiChip({ icon, onIconChange }: FolderEmojiChipProps): R
           type="button"
           onClick={(e) => e.stopPropagation()}
           aria-label={t('phaseF.componentsFolderIconButton.setFolderIcon')}
-          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[9px] border bg-muted transition-colors hover:bg-accent"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border bg-muted transition-colors hover:bg-accent"
         >
           {icon ? (
             <NoteIconDisplay value={icon} className="text-[17px] leading-none" />
