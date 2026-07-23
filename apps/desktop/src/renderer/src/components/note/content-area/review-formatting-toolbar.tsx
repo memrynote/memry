@@ -134,12 +134,13 @@ function ReviewToolbarButton({ onSelect }: { onSelect?: (selection: ReviewSelect
     }
   })
   if (selectionState.isMultiBlock) {
-    // eslint-disable-next-line react-hooks/refs -- caches last single-block selection across renders so the comment button can reopen on a selection BlockNote has already cleared
+    // Caches last single-block selection across renders so the comment button
+    // can reopen on a selection BlockNote has already cleared.
     lastSelectionRef.current = null
   } else {
     const selected = getSelectableSelection(selectionState.selection)
     if (selected) {
-      // eslint-disable-next-line react-hooks/refs -- same selection cache; persists the prior frame's selection
+      // Same selection cache; persists the prior frame's selection.
       lastSelectionRef.current = selected
     }
   }
@@ -181,7 +182,7 @@ function ReviewToolbarButton({ onSelect }: { onSelect?: (selection: ReviewSelect
 
   const label = t('comments.toolbarComment')
   const Icon = MessageCircle
-  // eslint-disable-next-line react-hooks/refs -- reads cached last single-block selection (written above) as a render fallback
+  // Reads cached last single-block selection (written above) as a render fallback.
   const cachedSelection = getSelectableSelection(lastSelectionRef.current)
   const renderSelection = getSelectableSelection(selectionState.selection) ?? cachedSelection
   const isDisabled = !renderSelection

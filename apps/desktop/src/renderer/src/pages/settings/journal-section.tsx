@@ -41,7 +41,6 @@ export function JournalSettings() {
   // Sync editable copies whenever the persisted vault config loads or changes.
   useEffect(() => {
     if (!config) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setJournalFolder(config.journalFolder)
     setJournalDateFormat(config.journalDateFormat)
   }, [config])

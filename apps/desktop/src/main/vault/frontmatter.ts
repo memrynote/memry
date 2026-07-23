@@ -112,12 +112,12 @@ export function parseNote(
 
   // Normalize tags to array (read-side only, never written back)
   if (data.tags && !Array.isArray(data.tags)) {
-    data.tags = [String(data.tags)]
+    data.tags = [stringifyScalar(data.tags)]
   }
 
   // Normalize aliases to array (read-side only, never written back)
   if (data.aliases && !Array.isArray(data.aliases)) {
-    data.aliases = [String(data.aliases)]
+    data.aliases = [stringifyScalar(data.aliases)]
   }
 
   return {
@@ -133,6 +133,16 @@ export function parseNote(
     created: stats?.birthtime?.toISOString() ?? now,
     modified: stats?.mtime?.toISOString() ?? now
   }
+}
+
+/** Foreign YAML can put any scalar here; objects need JSON, not '[object Object]'. */
+function stringifyScalar(value: unknown): string {
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return String(value)
+  }
+  if (value instanceof Date) return value.toISOString()
+  return JSON.stringify(value)
 }
 
 /**

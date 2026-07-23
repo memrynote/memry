@@ -568,7 +568,11 @@ function sameTags(existing: unknown, next: string[]): boolean {
 function normalizeDateValue(value: unknown): string | null {
   if (value instanceof Date) return value.toISOString().slice(0, 10)
   if (typeof value === 'string') return value
-  return value == null ? null : String(value)
+  if (value == null) return null
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return String(value)
+  }
+  return JSON.stringify(value)
 }
 
 function getYjsTags(doc: Y.Doc): string[] {
