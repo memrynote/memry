@@ -199,7 +199,9 @@ describe('use-notes-query', () => {
         tag: 'work',
         color: '#ff0000',
         count: 2,
-        icon: null
+        icon: null,
+        categoryId: null,
+        sortOrder: 0
       })
     )
 

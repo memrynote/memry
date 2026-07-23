@@ -732,6 +732,8 @@ export interface TagWithCount {
   count: number
   color?: string
   icon?: string | null
+  categoryId?: string | null
+  sortOrder?: number
 }
 
 export interface GetAllWithCountsResponse {

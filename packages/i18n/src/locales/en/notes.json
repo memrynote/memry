@@ -795,6 +795,14 @@
   "tagsHub": {
     "loading": "Loading tags...",
     "newCategory": "New category",
-    "newTag": "New tag"
+    "newTag": "New tag",
+    "errors": {
+      "loadFailed": "Failed to load tag categories",
+      "createCategoryFailed": "Failed to create category",
+      "renameCategoryFailed": "Failed to rename category",
+      "deleteCategoryFailed": "Failed to delete category",
+      "createTagFailed": "Failed to create tag",
+      "reorderFailed": "Failed to reorder tags"
+    }
   }
 }

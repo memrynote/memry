@@ -2,11 +2,10 @@ import * as React from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { Button } from '@/components/ui/button'
 import { Plus } from '@/lib/icons'
-import type { CreateCategoryResponse } from '@/services/tags-service'
 
 export interface InlineCreateRowProps {
-  onCreateCategory: (name: string) => Promise<CreateCategoryResponse>
-  onCreateTag: (name: string) => Promise<void>
+  onCreateCategory: (name: string) => Promise<void>
+  onCreateTag: (name: string, color: string, categoryId: string | null) => Promise<void>
 }
 
 /**
