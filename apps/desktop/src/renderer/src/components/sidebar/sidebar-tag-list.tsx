@@ -6,11 +6,13 @@ import {
   ArrowUpAZ,
   X,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  LayoutGrid
 } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { useNoteTagsQuery } from '@/hooks/use-notes-query'
+import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { getTagColors } from '@/components/note/tags-row/tag-colors'
 import { buildTagTree, type TagTreeNode } from '@/lib/tag-tree'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
@@ -231,6 +233,7 @@ export function SidebarTagList({
 }: SidebarTagListProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
   const { t } = useT('common')
+  const { openSidebarItem } = useSidebarNavigation()
   const { tags, isLoading, error } = useNoteTagsQuery()
   const [showAll, setShowAll] = React.useState(false)
   const [searchOpen, setSearchOpen] = React.useState(false)
@@ -278,6 +281,23 @@ export function SidebarTagList({
           <Button
             variant="ghost"
             size="icon"
+            className="h-5 w-5"
+            onClick={() =>
+              openSidebarItem({
+                type: 'tags',
+                title: tPhaseF('tags.hubTitle'),
+                path: '/tags',
+                icon: 'tag'
+              })
+            }
+            aria-label={tPhaseF('tags.openHub')}
+          >
+            <LayoutGrid className="h-3 w-3" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
             className={cn('h-5 w-5', searchOpen && 'text-foreground')}
             onClick={toggleSearch}
             aria-label={searchOpen ? 'Close search' : 'Search tags'}
@@ -313,7 +333,7 @@ export function SidebarTagList({
     return () => {
       cancelled = true
     }
-  }, [searchOpen, sortBy, currentSortLabel, toggleSearch, onActionsReady])
+  }, [searchOpen, sortBy, currentSortLabel, toggleSearch, onActionsReady, openSidebarItem, tPhaseF])
 
   const handleToggle = React.useCallback((fullPath: string) => {
     setExpanded((prev) => {

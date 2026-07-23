@@ -23,6 +23,10 @@ vi.mock('@/hooks/use-notes-query', () => ({
   useNoteTagsQuery: () => mocks.query
 }))
 
+vi.mock('@/hooks/use-sidebar-navigation', () => ({
+  useSidebarNavigation: () => ({ openSidebarItem: vi.fn() })
+}))
+
 vi.mock('@/components/ui/picker', () => {
   const Picker = ({
     value,

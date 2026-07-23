@@ -51,6 +51,9 @@ const LazyTemplatesPage = React.lazy(async () => ({
 const LazyGraphPage = React.lazy(async () => ({
   default: (await import('@/components/graph/graph-page')).GraphPage
 }))
+const LazyTagsHubPage = React.lazy(async () => ({
+  default: (await import('@/pages/tags-hub')).TagsHubPage
+}))
 const LazyAgentConversationTab = React.lazy(async () => ({
   default: (await import('@/agent-chat/agent-conversation-tab')).AgentConversationTab
 }))
@@ -190,6 +193,9 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
 
       case 'graph':
         return <LazyGraphPage />
+
+      case 'tags':
+        return <LazyTagsHubPage />
 
       case 'agent-chat':
         return <LazyAgentConversationTab conversationId={tab.entityId} />

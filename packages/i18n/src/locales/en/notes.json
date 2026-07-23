@@ -787,5 +787,14 @@
     "cancel": "Cancel",
     "success": "Template applied",
     "failed": "Failed to apply template"
+  },
+  "tags": {
+    "hubTitle": "Tags",
+    "openHub": "Open tag hub"
+  },
+  "tagsHub": {
+    "loading": "Loading tags...",
+    "newCategory": "New category",
+    "newTag": "New tag"
   }
 }
