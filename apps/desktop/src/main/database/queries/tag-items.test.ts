@@ -102,6 +102,32 @@ describe('listTagItems', () => {
     expect(listTagItems(indexDb, dataDb, 'work').map((i) => i.id)).toEqual(['n1'])
   })
 
+  it('includes descendant tags and excludes prefix collisions for tasks', () => {
+    insertTask(dataDb, 't1', 'Own')
+    insertTaskTag(dataDb, 't1', 'work')
+    insertTask(dataDb, 't2', 'Child')
+    insertTaskTag(dataDb, 't2', 'work/meetings')
+    insertTask(dataDb, 't3', 'Decoy')
+    insertTaskTag(dataDb, 't3', 'workshop')
+
+    const items = listTagItems(indexDb, dataDb, 'work').filter((i) => i.kind === 'task')
+
+    expect(items.map((i) => i.id).sort()).toEqual(['t1', 't2'])
+  })
+
+  it('includes descendant tags and excludes prefix collisions for inbox items', () => {
+    const i1 = seedInboxItem(dataDb, { id: 'i1', title: 'Own' })
+    seedInboxItemTags(dataDb, i1, ['work'])
+    const i2 = seedInboxItem(dataDb, { id: 'i2', title: 'Child' })
+    seedInboxItemTags(dataDb, i2, ['work/meetings'])
+    const i3 = seedInboxItem(dataDb, { id: 'i3', title: 'Decoy' })
+    seedInboxItemTags(dataDb, i3, ['workshop'])
+
+    const items = listTagItems(indexDb, dataDb, 'work').filter((i) => i.kind === 'inbox')
+
+    expect(items.map((i) => i.id).sort()).toEqual(['i1', 'i2'])
+  })
+
   it('matches case-insensitively', () => {
     insertNote(indexDb, 'n1', 'Own')
     insertNoteTag(indexDb, 'n1', 'Work')
