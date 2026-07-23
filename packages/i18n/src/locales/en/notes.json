@@ -802,6 +802,7 @@
       "renameCategoryFailed": "Failed to rename category",
       "deleteCategoryFailed": "Failed to delete category",
       "createTagFailed": "Failed to create tag",
+      "createTagFiledFailed": "Tag created but could not be added to the category",
       "reorderFailed": "Failed to reorder tags"
     }
   }

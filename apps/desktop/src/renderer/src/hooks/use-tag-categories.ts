@@ -253,12 +253,17 @@ export function useTagCategories(): UseTagCategoriesResult {
           tags: [{ tag: name, categoryId, sortOrder: 0 }]
         })
         if (!reorderResult.success) {
+          // The tag was already created (and colored) by updateTagColor above;
+          // only its category assignment failed. Refetch so the uncategorized
+          // tag shows up, and say so rather than claiming creation failed.
           const message = extractErrorMessage(
             reorderResult.error,
-            errorsT()('tagsHub.errors.createTagFailed')
+            errorsT()('tagsHub.errors.createTagFiledFailed')
           )
           setError(message)
           toast.error(message)
+          await fetchCategories()
+          void refetchNoteTags?.()
           return
         }
 

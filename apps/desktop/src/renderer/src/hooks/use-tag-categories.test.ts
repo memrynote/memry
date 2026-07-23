@@ -3,6 +3,8 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { useTagCategories } from './use-tag-categories'
 
 const listCategories = vi.fn()
+const updateTagColor = vi.fn()
+const reorder = vi.fn()
 
 vi.mock('@/services/tags-service', () => ({
   tagsService: {
@@ -10,7 +12,8 @@ vi.mock('@/services/tags-service', () => ({
     createCategory: vi.fn().mockResolvedValue({ success: true }),
     renameCategory: vi.fn().mockResolvedValue({ success: true }),
     deleteCategory: vi.fn().mockResolvedValue({ success: true }),
-    reorder: vi.fn().mockResolvedValue({ success: true })
+    updateTagColor: (...a: unknown[]) => updateTagColor(...a),
+    reorder: (...a: unknown[]) => reorder(...a)
   },
   onTagCategoriesChanged: () => () => {}
 }))
@@ -59,5 +62,21 @@ describe('useTagCategories', () => {
 
     const { result } = renderHook(() => useTagCategories())
     await waitFor(() => expect(result.current.error).toBe('boom'))
+  })
+
+  it('refetches categories when a tag is created but filing it into a category fails', async () => {
+    updateTagColor.mockResolvedValue({ success: true })
+    reorder.mockResolvedValue({ success: false, error: 'boom' })
+
+    const { result } = renderHook(() => useTagCategories())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    const listCategoriesCallsBefore = listCategories.mock.calls.length
+
+    await result.current.createTag('draft', 'blue', 'cat-1')
+
+    await waitFor(() =>
+      expect(listCategories.mock.calls.length).toBeGreaterThan(listCategoriesCallsBefore)
+    )
   })
 })
