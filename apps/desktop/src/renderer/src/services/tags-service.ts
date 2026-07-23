@@ -12,7 +12,8 @@ import type {
   TagAssignment,
   ListCategoriesResponse,
   CategoryOperationResponse,
-  CreateCategoryResponse
+  CreateCategoryResponse,
+  TagsClientAPI
 } from '../../../preload/index.d'
 
 /**
@@ -20,12 +21,19 @@ import type {
  * Provides a typed interface for tag operations in the renderer process.
  *
  * `TagsClientAPI` is the shape of `window.api.tags` (the wire-level IPC
- * surface); most methods here forward 1:1. The tag category methods below
- * are deliberately flattened for ergonomic call sites and wrap the values
- * back into the object shape `window.api.tags` expects, so this object is
- * not a strict `TagsClientAPI` implementation.
+ * surface); most methods here forward 1:1 and are checked against it via
+ * `TagsService` below. The three tag category methods that take flat
+ * arguments (`createCategory`, `renameCategory`, `deleteCategory`) are
+ * deliberately overridden for ergonomic call sites and wrap the values
+ * back into the object shape `window.api.tags` expects.
  */
-export const tagsService = {
+type TagsService = Omit<TagsClientAPI, 'createCategory' | 'renameCategory' | 'deleteCategory'> & {
+  createCategory: (name: string) => Promise<CreateCategoryResponse>
+  renameCategory: (id: string, name: string) => Promise<CategoryOperationResponse>
+  deleteCategory: (id: string) => Promise<CategoryOperationResponse>
+}
+
+export const tagsService: TagsService = {
   /**
    * Get notes for a specific tag with pinned status.
    */
