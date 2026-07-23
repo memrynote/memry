@@ -314,6 +314,8 @@ export function createGeneratedRpcApi({
         })) as GeneratedRpcApi["canvas"]["uploadAsset"],
       "getAsset": ((canvasId, fileId) => invoke("canvas:get-asset", { canvasId, fileId })) as GeneratedRpcApi["canvas"]["getAsset"],
       "listAssets": ((canvasId) => invoke("canvas:list-assets", { canvasId })) as GeneratedRpcApi["canvas"]["listAssets"],
+      "libraryList": (() => invoke("canvas:library-list")) as GeneratedRpcApi["canvas"]["libraryList"],
+      "librarySave": ((libraryItems) => invoke("canvas:library-save", { libraryItems })) as GeneratedRpcApi["canvas"]["librarySave"],
     },
     "telemetry": {
       "track": ((event) => invoke("telemetry:track", event)) as GeneratedRpcApi["telemetry"]["track"],

@@ -7,7 +7,13 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Excalidraw, serializeAsJSON, languages, defaultLang } from '@excalidraw/excalidraw'
+import {
+  Excalidraw,
+  serializeAsJSON,
+  languages,
+  defaultLang,
+  useHandleLibrary
+} from '@excalidraw/excalidraw'
 import type {
   ExcalidrawImperativeAPI,
   ExcalidrawInitialDataState
@@ -24,6 +30,7 @@ import { createScenePersister } from './canvas-persistence'
 import { externalizeSceneAssets } from './canvas-externalize'
 import { pickExcalidrawLangCode } from './excalidraw-lang'
 import { CanvasCardLayer } from './canvas-card-overlay'
+import { createVaultLibraryAdapter } from './canvas-library-adapter'
 import { extractEntityRefs, type CardElement } from './canvas-cards'
 
 const log = createLogger('SpatialCanvas')
@@ -156,6 +163,30 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
       persisterRef.current = null
     }
   }, [canvasId, initialScene, corrupt])
+
+  // The library is vault-global, not per canvas: Excalidraw keeps one shared
+  // collection, and this editor remounts per canvas id, so anything held in
+  // component state would be lost on the next tab switch. The adapter is
+  // rebuilt per mount but reads from the vault, so that remount is harmless.
+  const libraryAdapter = useMemo(
+    () =>
+      createVaultLibraryAdapter({
+        list: () => canvasService.libraryList(),
+        save: (libraryItems) => canvasService.librarySave(libraryItems),
+        onError: (err, operation) => {
+          log.error(`Failed to ${operation} canvas library`, err)
+          if (operation === 'save') {
+            // A failed load leaves the panel as-is and retries on the next
+            // save; a failed save means the user's import is not on disk, so
+            // only that one is worth interrupting them for.
+            toast.error(t('canvas.libraryStoreFailed'))
+          }
+        }
+      }),
+    [t]
+  )
+
+  useHandleLibrary({ excalidrawAPI: api, adapter: libraryAdapter })
 
   // Excalidraw's own toolbar/menu i18n comes from its bundled translations via
   // langCode — independent of Memry's i18n and i18n:check; we do not translate

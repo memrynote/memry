@@ -10,12 +10,19 @@ const permissionLog = createLogger('SessionPermissions')
  * - `clipboard-read`: quick capture reads the clipboard to prefill a capture
  * - `clipboard-sanitized-write`: copy actions across the app (navigator.clipboard.writeText)
  * - `notifications`: inbox review notifications via the HTML5 Notification API
+ * - `fileSystem`: the canvas library panel imports/exports `.excalidrawlib`
+ *   files through the File System Access API (Excalidraw uses
+ *   browser-fs-access). Denying it let the OS picker open and then failed the
+ *   subsequent `handle.getFile()` read, surfacing as "Couldn't load library".
+ *   Every access is still driven by a picker the user opens themselves, and
+ *   `isTrustedAppOrigin` keeps it away from embedded web content.
  */
 const ALLOWED_PERMISSIONS: ReadonlySet<string> = new Set([
   'media',
   'clipboard-read',
   'clipboard-sanitized-write',
-  'notifications'
+  'notifications',
+  'fileSystem'
 ])
 
 export interface PermissionPolicyOptions {

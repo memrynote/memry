@@ -267,6 +267,13 @@
       "when": 1784721218000,
       "tag": "0037_project_links",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "6",
+      "when": 1784811299000,
+      "tag": "0038_canvas_library_items",
+      "breakpoints": true
     }
   ]
 }

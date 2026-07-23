@@ -73,6 +73,8 @@ export interface MainIpcInvokeHandlers {
   "canvas:delete": (...args: [string]) => Awaited<Promise<{ success: boolean; }>>
   "canvas:get": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/canvas-api").Canvas | null>>
   "canvas:get-asset": (...args: [{ canvasId: string; fileId: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/canvas-api").CanvasGetAssetResponse>>
+  "canvas:library-list": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/canvas-api").CanvasLibraryListResponse>>
+  "canvas:library-save": (...args: [{ libraryItems: { [x: string]: unknown; id: string; }[]; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/canvas-api").CanvasLibrarySaveResponse>>
   "canvas:list": (...args: []) => Awaited<Promise<{ canvases: import("../../../../../packages/contracts/src/canvas-api").CanvasSummary[]; }>>
   "canvas:list-assets": (...args: [{ canvasId: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/canvas-api").CanvasListAssetsResponse>>
   "canvas:update": (...args: [{ id: string; title?: string | null | undefined; scene?: string | undefined; entityRefs?: { entityType: "note" | "task" | "calendar_event"; entityId: string; }[] | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/canvas-api").CanvasSummary>>
