@@ -37,6 +37,11 @@ the generated vault stays current on the day a developer runs it. The seed set s
 real personal vault: linked notes, inbox captures, calendar items, and tasks should point at each
 other instead of standing alone.
 
+The seed includes canvases, which are encrypted at rest with the vault key. The script derives
+the same key the app will use and pre-binds the vault to it via the key-verifier setting, so the
+seeded vault opens without a key mismatch. Pass `--device=A|B|C` (default `dev`) to match the
+keychain entry of the app profile that will open the vault (`pnpm dev` vs `dev:a`/`dev:b`/`dev:c`).
+
 When changing seed data, run the relevant seed-data test file or the desktop main test project:
 
 ```bash
