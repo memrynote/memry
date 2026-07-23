@@ -107,7 +107,9 @@ export const TagsChannels = {
     /** Tag was deleted */
     DELETED: 'tags:deleted',
     /** Notes for a tag changed (pin/unpin, add/remove) */
-    NOTES_CHANGED: 'tags:notes-changed'
+    NOTES_CHANGED: 'tags:notes-changed',
+    /** Tag categories or their membership changed */
+    CATEGORIES_CHANGED: 'tags:categories-changed'
   }
 } as const
 
