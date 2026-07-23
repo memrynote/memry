@@ -258,7 +258,7 @@ export function useTagCategories(): UseTagCategoriesResult {
           // tag shows up, and say so rather than claiming creation failed.
           const message = extractErrorMessage(
             reorderResult.error,
-            errorsT()('tagsHub.errors.createTagFiledFailed')
+            errorsT()('tagsHub.errors.createTagCategorizeFailed')
           )
           setError(message)
           toast.error(message)

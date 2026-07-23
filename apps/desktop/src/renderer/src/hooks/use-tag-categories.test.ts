@@ -5,6 +5,7 @@ import { useTagCategories } from './use-tag-categories'
 const listCategories = vi.fn()
 const updateTagColor = vi.fn()
 const reorder = vi.fn()
+const refetchNoteTags = vi.fn()
 
 vi.mock('@/services/tags-service', () => ({
   tagsService: {
@@ -25,7 +26,8 @@ vi.mock('@/hooks/use-notes-query', () => ({
       { tag: 'idea', count: 22, color: 'red', icon: null, categoryId: null, sortOrder: 0 }
     ],
     isLoading: false,
-    error: null
+    error: null,
+    refetch: (...a: unknown[]) => refetchNoteTags(...a)
   })
 }))
 
@@ -34,6 +36,9 @@ beforeEach(() => {
     success: true,
     categories: [{ id: 'cat-1', name: 'Work', sortOrder: 0, tagCount: 1 }]
   })
+  updateTagColor.mockReset()
+  reorder.mockReset()
+  refetchNoteTags.mockReset()
 })
 
 describe('useTagCategories', () => {
@@ -74,6 +79,11 @@ describe('useTagCategories', () => {
     const listCategoriesCallsBefore = listCategories.mock.calls.length
 
     await result.current.createTag('draft', 'blue', 'cat-1')
+
+    // The tag's visibility in the hub comes from useNoteTagsQuery's data, not
+    // from listCategories, so refetchNoteTags is the call that actually makes
+    // the newly-created tag show up.
+    await waitFor(() => expect(refetchNoteTags).toHaveBeenCalled())
 
     await waitFor(() =>
       expect(listCategories.mock.calls.length).toBeGreaterThan(listCategoriesCallsBefore)
