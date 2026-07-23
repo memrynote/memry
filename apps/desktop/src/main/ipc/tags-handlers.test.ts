@@ -23,7 +23,10 @@ const fileMocks = vi.hoisted(() => ({
   syncTaggedTasks: vi.fn(),
   syncTagDefinitionDelete: vi.fn(),
   syncTagDefinitionRename: vi.fn(),
-  syncTagDefinitionUpdate: vi.fn()
+  syncTagDefinitionUpdate: vi.fn(),
+  syncTagCategoryCreate: vi.fn(),
+  syncTagCategoryUpdate: vi.fn(),
+  syncTagCategoryDelete: vi.fn()
 }))
 
 vi.mock('electron', () => ({
@@ -74,6 +77,15 @@ vi.mock('@main/database/queries/tags', () => ({
   mergeTagInTasks: vi.fn()
 }))
 
+vi.mock('@main/database/queries/tag-categories', () => ({
+  listTagCategories: vi.fn(),
+  createTagCategory: vi.fn(),
+  renameTagCategory: vi.fn(),
+  deleteTagCategory: vi.fn(),
+  reorderTags: vi.fn(),
+  reorderCategories: vi.fn()
+}))
+
 vi.mock('../vault/notes', () => ({
   toAbsolutePath: fileMocks.toAbsolutePath
 }))
@@ -94,13 +106,17 @@ vi.mock('../tags/runtime-effects', () => ({
   syncTaggedTasks: fileMocks.syncTaggedTasks,
   syncTagDefinitionDelete: fileMocks.syncTagDefinitionDelete,
   syncTagDefinitionRename: fileMocks.syncTagDefinitionRename,
-  syncTagDefinitionUpdate: fileMocks.syncTagDefinitionUpdate
+  syncTagDefinitionUpdate: fileMocks.syncTagDefinitionUpdate,
+  syncTagCategoryCreate: fileMocks.syncTagCategoryCreate,
+  syncTagCategoryUpdate: fileMocks.syncTagCategoryUpdate,
+  syncTagCategoryDelete: fileMocks.syncTagCategoryDelete
 }))
 
 import { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
 import { getIndexDatabase, getDatabase, requireDatabase } from '../database'
 import * as notesQueries from '@main/database/queries/notes'
 import * as tagQueries from '@main/database/queries/tags'
+import * as tagCategoryQueries from '@main/database/queries/tag-categories'
 
 function createDbMock(options?: { allResult?: unknown[]; getResult?: unknown }) {
   return {
@@ -383,5 +399,141 @@ describe('tags-handlers', () => {
 
     unregisterTagsHandlers()
     expect(removeHandlerCalls).toEqual(Object.values(TagsChannels.invoke))
+  })
+})
+
+describe('tag category handlers', () => {
+  beforeEach(() => {
+    resetIpcMocks()
+    vi.clearAllMocks()
+    handleCalls.length = 0
+    removeHandlerCalls.length = 0
+    mockSend.mockClear()
+    ;(getIndexDatabase as Mock).mockReturnValue(createDbMock())
+    ;(getDatabase as Mock).mockReturnValue(createDbMock())
+    ;(requireDatabase as Mock).mockReturnValue(createDbMock())
+  })
+
+  it('lists categories', async () => {
+    registerTagsHandlers()
+    ;(tagCategoryQueries.listTagCategories as Mock).mockReturnValue([
+      { id: 'cat-1', name: 'Work', sortOrder: 0, tagCount: 2 }
+    ])
+
+    const result = await invokeHandler(TagsChannels.invoke.LIST_CATEGORIES)
+
+    expect(result).toEqual({
+      success: true,
+      categories: [{ id: 'cat-1', name: 'Work', sortOrder: 0, tagCount: 2 }]
+    })
+  })
+
+  it('rejects a blank category name', async () => {
+    registerTagsHandlers()
+
+    const result = await invokeHandler(TagsChannels.invoke.CREATE_CATEGORY, { name: '   ' })
+
+    expect(result).toEqual({ success: false, error: 'Category name is required' })
+    expect(tagCategoryQueries.createTagCategory).not.toHaveBeenCalled()
+  })
+
+  it('creates a category, enqueues a sync create, and emits categories-changed', async () => {
+    registerTagsHandlers()
+    ;(tagCategoryQueries.createTagCategory as Mock).mockReturnValue({
+      id: 'cat-1',
+      name: 'Work',
+      sortOrder: 0,
+      tagCount: 0
+    })
+
+    const result = await invokeHandler(TagsChannels.invoke.CREATE_CATEGORY, { name: 'Work' })
+
+    expect(result).toEqual({
+      success: true,
+      category: { id: 'cat-1', name: 'Work', sortOrder: 0, tagCount: 0 }
+    })
+    expect(fileMocks.syncTagCategoryCreate).toHaveBeenCalledWith('cat-1')
+    expect(mockSend).toHaveBeenCalledWith(
+      TagsChannels.events.CATEGORIES_CHANGED,
+      expect.objectContaining({ categoryId: 'cat-1' })
+    )
+  })
+
+  it('renames a category, enqueues a sync update, and emits categories-changed', async () => {
+    registerTagsHandlers()
+
+    const result = await invokeHandler(TagsChannels.invoke.RENAME_CATEGORY, {
+      id: 'cat-1',
+      name: 'Personal'
+    })
+
+    expect(result).toEqual({ success: true })
+    expect(tagCategoryQueries.renameTagCategory).toHaveBeenCalledWith(
+      expect.any(Object),
+      'cat-1',
+      'Personal'
+    )
+    expect(fileMocks.syncTagCategoryUpdate).toHaveBeenCalledWith('cat-1')
+    expect(mockSend).toHaveBeenCalledWith(
+      TagsChannels.events.CATEGORIES_CHANGED,
+      expect.objectContaining({ categoryId: 'cat-1' })
+    )
+  })
+
+  it('rejects a blank rename', async () => {
+    registerTagsHandlers()
+
+    const result = await invokeHandler(TagsChannels.invoke.RENAME_CATEGORY, {
+      id: 'cat-1',
+      name: '   '
+    })
+
+    expect(result).toEqual({ success: false, error: 'Category name is required' })
+    expect(tagCategoryQueries.renameTagCategory).not.toHaveBeenCalled()
+  })
+
+  it('deletes a category, enqueues a sync delete, and emits categories-changed', async () => {
+    registerTagsHandlers()
+
+    const result = await invokeHandler(TagsChannels.invoke.DELETE_CATEGORY, { id: 'cat-1' })
+
+    expect(result).toEqual({ success: true })
+    expect(tagCategoryQueries.deleteTagCategory).toHaveBeenCalledWith(expect.any(Object), 'cat-1')
+    expect(fileMocks.syncTagCategoryDelete).toHaveBeenCalledWith('cat-1')
+    expect(mockSend).toHaveBeenCalledWith(
+      TagsChannels.events.CATEGORIES_CHANGED,
+      expect.objectContaining({ categoryId: 'cat-1' })
+    )
+  })
+
+  it('applies tags and categories in a single reorder call, enqueuing both types', async () => {
+    registerTagsHandlers()
+
+    const result = await invokeHandler(TagsChannels.invoke.REORDER, {
+      tags: [{ tag: 'Meetings', categoryId: 'cat-1', sortOrder: 0 }],
+      categories: [{ id: 'cat-1', sortOrder: 0 }]
+    })
+
+    expect(result).toEqual({ success: true })
+    expect(tagCategoryQueries.reorderTags).toHaveBeenCalledWith(expect.any(Object), [
+      { tag: 'Meetings', categoryId: 'cat-1', sortOrder: 0 }
+    ])
+    expect(tagCategoryQueries.reorderCategories).toHaveBeenCalledWith(expect.any(Object), [
+      { id: 'cat-1', sortOrder: 0 }
+    ])
+    expect(fileMocks.syncTagDefinitionUpdate).toHaveBeenCalledWith('meetings')
+    expect(fileMocks.syncTagCategoryUpdate).toHaveBeenCalledWith('cat-1')
+    expect(mockSend).toHaveBeenCalledWith(TagsChannels.events.CATEGORIES_CHANGED, expect.anything())
+  })
+
+  it('emits tags:categories-changed after a reorder', async () => {
+    registerTagsHandlers()
+
+    const result = await invokeHandler(TagsChannels.invoke.REORDER, { tags: [], categories: [] })
+
+    expect(result).toEqual({ success: true })
+    expect(mockSend).toHaveBeenCalledWith(TagsChannels.events.CATEGORIES_CHANGED, expect.anything())
+    expect(fileMocks.syncTagDefinitionUpdate).not.toHaveBeenCalled()
+    expect(fileMocks.syncTagCategoryUpdate).not.toHaveBeenCalled()
   })
 })

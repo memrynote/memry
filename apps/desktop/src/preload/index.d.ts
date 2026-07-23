@@ -760,6 +760,33 @@ export interface TagNotesChangedEvent {
   action: 'pinned' | 'unpinned' | 'removed' | 'added'
 }
 
+// Tag category types
+export interface TagCategoryRow {
+  id: string
+  name: string
+  sortOrder: number
+  tagCount: number
+}
+
+export interface TagAssignment {
+  tag: string
+  categoryId: string | null
+  sortOrder: number
+}
+
+export interface CategoryOperationResponse {
+  success: boolean
+  error?: string
+}
+
+export interface ListCategoriesResponse extends CategoryOperationResponse {
+  categories?: TagCategoryRow[]
+}
+
+export interface CreateCategoryResponse extends CategoryOperationResponse {
+  category?: TagCategoryRow
+}
+
 // Tags client API interface
 export interface TagsClientAPI {
   getNotesByTag(input: {
@@ -777,6 +804,14 @@ export interface TagsClientAPI {
   removeTagFromNote(input: { noteId: string; tag: string }): Promise<TagOperationResponse>
   getAllWithCounts(): Promise<GetAllWithCountsResponse>
   mergeTag(input: { source: string; target: string }): Promise<MergeTagResponse>
+  listCategories(): Promise<ListCategoriesResponse>
+  createCategory(input: { name: string }): Promise<CreateCategoryResponse>
+  renameCategory(input: { id: string; name: string }): Promise<CategoryOperationResponse>
+  deleteCategory(input: { id: string }): Promise<CategoryOperationResponse>
+  reorder(input: {
+    tags?: TagAssignment[]
+    categories?: { id: string; sortOrder: number }[]
+  }): Promise<CategoryOperationResponse>
 }
 
 export type InboxItemType = InboxRpc.InboxItemType
@@ -1843,6 +1878,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onTagColorUpdated: (callback: (event: TagColorUpdatedEvent) => void) => () => void
   onTagDeleted: (callback: (event: TagDeletedEvent) => void) => () => void
   onTagNotesChanged: (callback: (event: TagNotesChangedEvent) => void) => () => void
+  onTagCategoriesChanged: (callback: () => void) => () => void
   // Reminder event subscriptions
   onReminderCreated: (callback: (event: ReminderCreatedEvent) => void) => () => void
   onReminderUpdated: (callback: (event: ReminderUpdatedEvent) => void) => () => void
