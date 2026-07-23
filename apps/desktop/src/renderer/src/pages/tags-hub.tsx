@@ -28,6 +28,7 @@ import {
   applyTagAssignments,
   type HubState
 } from '@/components/tags-hub/reorder'
+import { filterHub } from '@/components/tags-hub/filter'
 
 // Space picks up/drops a drag; Enter is left alone so focusing a chip and
 // pressing Enter still opens it instead of starting a drag (dnd-kit's
@@ -63,9 +64,19 @@ export function TagsHubPage(): React.JSX.Element {
   // success the hook has already refetched the real order, on failure the
   // real, unchanged order takes back over — either way this stops lying).
   const [optimistic, setOptimistic] = useState<OptimisticState | null>(null)
+  const [query, setQuery] = useState('')
+  const isSearching = query.trim().length > 0
 
   const displayCategories = optimistic?.categories ?? categories
   const displayUncategorized = optimistic?.uncategorized ?? uncategorized
+
+  const filtered = useMemo(
+    () => filterHub({ categories: displayCategories, uncategorized: displayUncategorized }, query),
+    [displayCategories, displayUncategorized, query]
+  )
+  const filteredCategories = filtered.categories
+  const filteredUncategorized = filtered.uncategorized
+  const hasResults = filteredCategories.length > 0 || filteredUncategorized.length > 0
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -78,8 +89,15 @@ export function TagsHubPage(): React.JSX.Element {
       keyboardCodes
     })
   )
+  // A search query narrows the visible list to a subset — dragging within it
+  // would make `reorder()` renumber sort orders against that subset, not the
+  // real full list, corrupting order for anything filtered out of view. No
+  // sensor means dnd-kit can't start a drag at all, and `handleDragEnd` bails
+  // before touching `reorder()` even if a drag end event arrived some other
+  // way.
+  const activeSensors = isSearching ? [] : sensors
 
-  const categoryIds = useMemo(() => displayCategories.map((c) => c.id), [displayCategories])
+  const categoryIds = useMemo(() => filteredCategories.map((c) => c.id), [filteredCategories])
 
   const handleTagOpen = (tag: string): void => {
     openSidebarItem({ type: 'tag', title: tag, path: '/tags/' + tag, entityId: tag })
@@ -87,6 +105,12 @@ export function TagsHubPage(): React.JSX.Element {
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent): void => {
+      // Belt-and-suspenders alongside `activeSensors`: even if a drag end
+      // event arrives while a query is active, never let it reach
+      // `reorder()` — reordering a filtered view would write sort orders
+      // that don't reflect the real, unfiltered order.
+      if (isSearching) return
+
       const { active, over } = event
       if (!over) return
 
@@ -152,8 +176,12 @@ export function TagsHubPage(): React.JSX.Element {
       setOptimistic(applyTagAssignments(displayCategories, displayUncategorized, result))
       void reorder({ tags: result }).finally(() => setOptimistic(null))
     },
-    [displayCategories, displayUncategorized, reorder]
+    [isSearching, displayCategories, displayUncategorized, reorder]
   )
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (e.key === 'Escape') setQuery('')
+  }
 
   if (error) {
     return <div className="p-6 text-sm text-destructive">{error}</div>
@@ -165,32 +193,51 @@ export function TagsHubPage(): React.JSX.Element {
         {isLoading ? (
           <div className="text-sm text-muted-foreground">{t('tagsHub.loading')}</div>
         ) : (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext items={categoryIds} strategy={verticalListSortingStrategy}>
-              {displayCategories.map((category) => (
-                <CategoryBlock
-                  key={category.id}
-                  id={category.id}
-                  name={category.name}
-                  tags={category.tags}
-                  onTagOpen={handleTagOpen}
-                  onRename={(newName) => renameCategory(category.id, newName)}
-                  onDelete={() => deleteCategory(category.id)}
-                />
-              ))}
-            </SortableContext>
-            <CategoryBlock
-              id={null}
-              name={t('tagsHub.uncategorized')}
-              tags={displayUncategorized}
-              onTagOpen={handleTagOpen}
+          <>
+            <input
+              type="text"
+              aria-label={t('tagsHub.search.placeholder')}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              placeholder={t('tagsHub.search.placeholder')}
+              className="h-6 w-full max-w-xs rounded-md border bg-transparent px-2 text-[11px] placeholder:text-muted-foreground focus:outline-none"
             />
-            <InlineCreateRow onCreateCategory={createCategory} onCreateTag={createTag} />
-          </DndContext>
+            <DndContext
+              sensors={activeSensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              {isSearching && !hasResults ? (
+                <div className="text-sm text-muted-foreground">{t('tagsHub.search.empty')}</div>
+              ) : (
+                <>
+                  <SortableContext items={categoryIds} strategy={verticalListSortingStrategy}>
+                    {filteredCategories.map((category) => (
+                      <CategoryBlock
+                        key={category.id}
+                        id={category.id}
+                        name={category.name}
+                        tags={category.tags}
+                        onTagOpen={handleTagOpen}
+                        onRename={(newName) => renameCategory(category.id, newName)}
+                        onDelete={() => deleteCategory(category.id)}
+                      />
+                    ))}
+                  </SortableContext>
+                  {(!isSearching || filteredUncategorized.length > 0) && (
+                    <CategoryBlock
+                      id={null}
+                      name={t('tagsHub.uncategorized')}
+                      tags={filteredUncategorized}
+                      onTagOpen={handleTagOpen}
+                    />
+                  )}
+                </>
+              )}
+              <InlineCreateRow onCreateCategory={createCategory} onCreateTag={createTag} />
+            </DndContext>
+          </>
         )}
       </div>
     </ScrollArea>

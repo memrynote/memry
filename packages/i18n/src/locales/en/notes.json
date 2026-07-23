@@ -799,6 +799,10 @@
     "categoryNamePlaceholder": "Category name",
     "tagNamePlaceholder": "Tag name",
     "uncategorized": "Uncategorized",
+    "search": {
+      "placeholder": "Search categories and tags",
+      "empty": "No categories or tags match your search"
+    },
     "category": {
       "rename": "Rename category",
       "delete": "Delete category",

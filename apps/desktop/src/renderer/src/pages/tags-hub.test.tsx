@@ -147,7 +147,10 @@ describe('TagsHubPage', () => {
     expect(screen.getAllByRole('button', { name: /delete category/i })).toHaveLength(1)
 
     await userEvent.click(screen.getByRole('button', { name: /rename category/i }))
-    const input = screen.getByRole('textbox')
+    // `getByRole('textbox')` alone is now ambiguous — the page's search
+    // input is also a textbox — so target the rename input by its
+    // prefilled value instead.
+    const input = screen.getByDisplayValue('Work')
     await userEvent.clear(input)
     await userEvent.type(input, 'Job{Enter}')
     expect(renameCategory).toHaveBeenCalledWith('cat-1', 'Job')
@@ -251,5 +254,152 @@ describe('TagsHubPage', () => {
         { id: 'cat-1', sortOrder: 2 }
       ]
     })
+  })
+
+  it('filters categories and tags by the search query, showing all tags of a matching category', async () => {
+    // `mockReturnValue` (not `...Once`): typing drives `setQuery` on the
+    // page itself, so each keystroke re-renders `TagsHubPage` and re-calls
+    // the hook — a one-time value would be consumed by the first keystroke,
+    // leaving later renders with the mock's empty default.
+    mockUseTagCategories.mockReturnValue({
+      categories: [
+        {
+          id: 'cat-1',
+          name: 'Work',
+          sortOrder: 0,
+          tags: [
+            { tag: 'meetings', color: 'blue', icon: null, count: 3, sortOrder: 0 },
+            { tag: 'okr', color: 'blue', icon: null, count: 1, sortOrder: 1 }
+          ]
+        },
+        {
+          id: 'cat-2',
+          name: 'Books',
+          sortOrder: 1,
+          tags: [{ tag: 'general', color: 'stone', icon: null, count: 1, sortOrder: 0 }]
+        }
+      ],
+      uncategorized: [{ tag: 'idea', color: 'green', icon: null, count: 1, sortOrder: 0 }],
+      isLoading: false,
+      error: null,
+      createCategory: vi.fn(),
+      renameCategory: vi.fn(),
+      deleteCategory: vi.fn(),
+      createTag: vi.fn(),
+      reorder: vi.fn()
+    })
+
+    render(<TagsHubPage />)
+
+    await userEvent.type(screen.getByRole('textbox', { name: /search/i }), 'work')
+
+    expect(screen.getByText('Work')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /meetings/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /okr/ })).toBeInTheDocument()
+    expect(screen.queryByText('Books')).not.toBeInTheDocument()
+    expect(screen.queryByText('Uncategorized')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /idea/ })).not.toBeInTheDocument()
+  })
+
+  it('clears the search query on Escape', async () => {
+    mockUseTagCategories.mockReturnValue({
+      categories: [
+        { id: 'cat-1', name: 'Work', sortOrder: 0, tags: [] },
+        { id: 'cat-2', name: 'Books', sortOrder: 1, tags: [] }
+      ],
+      uncategorized: [],
+      isLoading: false,
+      error: null,
+      createCategory: vi.fn(),
+      renameCategory: vi.fn(),
+      deleteCategory: vi.fn(),
+      createTag: vi.fn(),
+      reorder: vi.fn()
+    })
+
+    render(<TagsHubPage />)
+
+    const input = screen.getByRole('textbox', { name: /search/i })
+    await userEvent.type(input, 'work')
+    expect(screen.queryByText('Books')).not.toBeInTheDocument()
+
+    await userEvent.type(input, '{Escape}')
+    expect(input).toHaveValue('')
+    expect(screen.getByText('Books')).toBeInTheDocument()
+  })
+
+  it('shows the search-empty state when nothing matches', async () => {
+    mockUseTagCategories.mockReturnValue({
+      categories: [{ id: 'cat-1', name: 'Work', sortOrder: 0, tags: [] }],
+      uncategorized: [{ tag: 'idea', color: 'green', icon: null, count: 1, sortOrder: 0 }],
+      isLoading: false,
+      error: null,
+      createCategory: vi.fn(),
+      renameCategory: vi.fn(),
+      deleteCategory: vi.fn(),
+      createTag: vi.fn(),
+      reorder: vi.fn()
+    })
+
+    render(<TagsHubPage />)
+
+    await userEvent.type(screen.getByRole('textbox', { name: /search/i }), 'nonexistent')
+
+    expect(screen.queryByText('Work')).not.toBeInTheDocument()
+    expect(screen.getByText(/no categories or tags match/i)).toBeInTheDocument()
+  })
+
+  it('never fires reorder() from a drag end event while a search query is active', async () => {
+    const reorder = vi.fn().mockResolvedValue(undefined)
+    mockUseTagCategories.mockReturnValueOnce({
+      categories: [
+        {
+          id: 'cat-1',
+          name: 'Work',
+          sortOrder: 0,
+          tags: [
+            { tag: 'meetings', color: 'blue', icon: null, count: 3, sortOrder: 0 },
+            { tag: 'standup', color: 'blue', icon: null, count: 2, sortOrder: 1 }
+          ]
+        },
+        {
+          id: 'cat-2',
+          name: 'Personal',
+          sortOrder: 1,
+          tags: [{ tag: 'personal', color: 'green', icon: null, count: 1, sortOrder: 0 }]
+        }
+      ],
+      uncategorized: [],
+      isLoading: false,
+      error: null,
+      createCategory: vi.fn(),
+      renameCategory: vi.fn(),
+      deleteCategory: vi.fn(),
+      createTag: vi.fn(),
+      reorder
+    })
+
+    render(<TagsHubPage />)
+
+    await userEvent.type(screen.getByRole('textbox', { name: /search/i }), 'work')
+
+    // Same drag-end payload the unfiltered "reorders a dragged tag" test
+    // uses — proves the query-active guard, not the mocked DndContext's
+    // `sensors` prop (which this harness ignores entirely), is what stops
+    // `reorder()` from firing.
+    await act(async () => {
+      dndMocks.onDragEnd?.({
+        active: {
+          id: 'meetings',
+          data: { current: { type: 'tag', tag: 'meetings', categoryId: 'cat-1' } }
+        },
+        over: {
+          id: 'personal',
+          data: { current: { type: 'tag', tag: 'personal', categoryId: 'cat-2' } }
+        }
+      } as DragEndEvent)
+    })
+
+    expect(reorder).not.toHaveBeenCalled()
   })
 })
