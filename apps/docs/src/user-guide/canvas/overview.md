@@ -36,6 +36,14 @@ register. Test it on your own device before relying on it.
 The drawing toolbar is provided by the underlying canvas engine and follows its
 own language list, which does not always match memrynote's interface language.
 
+## Saving
+
+Canvases save into your vault automatically as you draw — there is nothing to
+save by hand. Pressing **Cmd/Ctrl+S** simply confirms this with a short
+"changes are saved" notice; it never opens a file dialog. Canvases are not
+files on disk, so the drawing engine's own open/save/export-to-file actions
+are hidden.
+
 ## Next steps
 
 - [Cards & Links](./cards-and-links.md) — putting notes, tasks, and events on a canvas
