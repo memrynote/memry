@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { MoreHorizontal } from '@/lib/icons'
 import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
 import { useTagItems } from '@/hooks/use-tag-items'
+import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 
 export interface TagViewPageProps {
   tag: string
@@ -21,7 +22,9 @@ export interface TagViewPageProps {
 export function TagViewPage({ tag, color }: TagViewPageProps): React.JSX.Element {
   const { t } = useT('notes')
   const { total } = useTagItems(tag)
-  const colors = getTagColors(color ?? '', tag)
+  const { tags } = useNoteTagsQuery()
+  const storedColor = tags.find((row) => row.tag.toLowerCase() === tag.toLowerCase())?.color
+  const colors = getTagColors(storedColor ?? color ?? '', tag)
 
   return (
     <div className="flex h-full flex-col">
