@@ -20,8 +20,11 @@ const mocks = vi.hoisted(() => ({
 // render regardless of its own deps, masking whether the highlight effect's
 // dependency array is actually correct.
 vi.mock('@memry/i18n/renderer', () => {
-  const t = (key: string, vars?: Record<string, unknown>) =>
-    vars?.query ? `${key.split('.').at(-1)}:${String(vars.query)}` : (key.split('.').at(-1) ?? key)
+  const t = (key: string, vars?: Record<string, unknown>) => {
+    const last = key.split('.').at(-1) ?? key
+    const filled = vars?.query ?? vars?.date
+    return filled === undefined ? last : `${last}:${String(filled)}`
+  }
   const useTResult = { t }
   return {
     useT: () => useTResult
@@ -88,6 +91,95 @@ describe('CanvasAddCardDialog', () => {
     await waitFor(() => expect(screen.getByText('Alpha')).toBeInTheDocument())
     expect(screen.getByText('Ship it')).toBeInTheDocument()
     expect(screen.getByText('Standup')).toBeInTheDocument()
+  })
+
+  describe('row rendering', () => {
+    // The picker is a placement surface: a row has to say "note" / "task" /
+    // "event" on sight, the way the sidebar and the task list already do.
+    async function renderQuery(sources: typeof mocks.sources, anchor: string) {
+      mocks.sources = sources
+      setup()
+      fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'a' } })
+      await waitFor(() => expect(screen.getByText(anchor)).toBeInTheDocument())
+    }
+
+    it("shows a note's own icon, its path and when it was created", async () => {
+      // #given — a note carrying an emoji icon
+      await renderQuery(
+        {
+          results: [
+            {
+              id: 'n1',
+              type: 'note',
+              title: 'Alpha',
+              metadata: {
+                type: 'note',
+                path: 'n/Alpha.md',
+                tags: [],
+                emoji: '📌',
+                createdAt: '2026-06-01T00:00:00.000Z'
+              }
+            }
+          ],
+          events: [],
+          loading: false
+        },
+        'Alpha'
+      )
+
+      // #then — the note's identity, not a bare title/subtitle pair
+      expect(screen.getByText('📌')).toBeInTheDocument()
+      expect(screen.getByText('n/Alpha.md')).toBeInTheDocument()
+      expect(screen.getByText(/addCreatedAt:/)).toBeInTheDocument()
+    })
+
+    it("shows a task's project, status, priority and due date", async () => {
+      // #given — a task with every property the task list would show
+      await renderQuery(
+        {
+          results: [
+            {
+              id: 't1',
+              type: 'task',
+              title: 'Ship it',
+              metadata: {
+                type: 'task',
+                projectName: 'Inbox',
+                projectColor: '#ff671a',
+                statusId: 's1',
+                statusName: 'In progress',
+                dueDate: '2026-08-01',
+                priority: 4,
+                completedAt: null,
+                createdAt: '2026-06-01T00:00:00.000Z'
+              }
+            }
+          ],
+          events: [],
+          loading: false
+        },
+        'Ship it'
+      )
+
+      // #then — the same vocabulary the task list uses, priority label included
+      expect(screen.getByText('Inbox')).toBeInTheDocument()
+      expect(screen.getByText('In progress')).toBeInTheDocument()
+      expect(screen.getByText('Urgent')).toBeInTheDocument()
+      // Aug 1, not Jul 31 — the date-only due date must not shift westward.
+      expect(screen.getByText(/Aug/)).toBeInTheDocument()
+    })
+
+    it('shows an event as a time, never as a raw ISO string', async () => {
+      // #given — a timed calendar event
+      await renderQuery(
+        { results: [], events: [eventItem('e1', 'Standup')], loading: false },
+        'Standup'
+      )
+
+      // #then — humanized, like the calendar card renders it
+      expect(screen.queryByText('2026-07-22T09:00:00.000Z')).not.toBeInTheDocument()
+      expect(screen.getByText(/Jul/)).toBeInTheDocument()
+    })
   })
 
   it('picks a fresh entity', async () => {
