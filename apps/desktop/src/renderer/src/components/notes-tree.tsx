@@ -275,7 +275,14 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     const isPartOfSelection = isSelected && selectedIds.length > 1
 
     return (
-      <TreeNode key={note.id} nodeId={note.id} level={level} isLast={isLast} hideLines={hideLines}>
+      <TreeNode
+        key={note.id}
+        nodeId={note.id}
+        level={level}
+        isLast={isLast}
+        hideLines={hideLines}
+        canvasNoteId={note.id}
+      >
         <TreeNodeTrigger
           contextMenuContent={
             <>
