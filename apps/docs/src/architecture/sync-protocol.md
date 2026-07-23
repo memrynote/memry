@@ -310,12 +310,11 @@ phrase can restore the correct key. See
 
 ## Error Modes
 
-
 | Failure             | Behavior                                                                                   |
 | ------------------- | ------------------------------------------------------------------------------------------ |
 | Offline             | Outbox queues; retry with backoff                                                          |
 | Auth expired (401)  | Refresh the access token and retry the request once; only a failed refresh prompts sign-in |
-| Refresh rejected    | Stop refreshing entirely (see below); prompt the user to sign in again                      |
+| Refresh rejected    | Stop refreshing entirely (see below); prompt the user to sign in again                     |
 | Payment required    | Sync stays local-only until a paid plan is active                                          |
 | Quota exceeded      | Surfaces in [Settings → Vault](/user-guide/settings#vault)                                 |
 | Socket token expiry | In-place renewal over the open socket; a rejected renewal falls back to close + reconnect  |

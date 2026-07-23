@@ -50,11 +50,29 @@ export function renderCask({ tag, appVersion, shaArm, shaX64 }) {
 
   app "MemryNote.app"
 
+  # Three naming eras coexist. Today app.name is package.json "name"
+  # (@memry/desktop) — electron-builder never writes productName into the asar —
+  # so live app state (Chromium profile, crdt-store, models, config) sits under
+  # @memry/, logs under Logs/@memry, and electron-updater's cache under
+  # @memrydesktop-updater (name with "/" sanitized). The memrynote entries cover
+  # the runtime identity rename (PR #897) that moves userData/logs/updater cache
+  # there; @memry* entries stay for not-yet-migrated installs. The App Support/
+  # MemryNote entry is aspirational but harmless — kept. Bundle-id
+  # (com.memrynote.memry) keys Caches/HTTPStorages/Preferences/ShipIt and is
+  # rename-independent.
+  # Vault content (notes + .memry/*.db) lives under the user-chosen vault dir
+  # (default ~/Documents/Memry) and is deliberately NOT zapped.
   zap trash: [
+    "~/Library/Application Support/@memry",
     "~/Library/Application Support/MemryNote",
+    "~/Library/Application Support/memrynote",
+    "~/Library/Caches/@memrydesktop-updater",
     "~/Library/Caches/com.memrynote.memry",
-    "~/Library/Logs/memrynote",
+    "~/Library/Caches/com.memrynote.memry.ShipIt",
+    "~/Library/Caches/memrynote-updater",
+    "~/Library/HTTPStorages/com.memrynote.memry",
     "~/Library/Logs/@memry",
+    "~/Library/Logs/memrynote",
     "~/Library/Preferences/com.memrynote.memry.plist",
     "~/Library/Saved Application State/com.memrynote.memry.savedState",
   ]
@@ -92,6 +110,15 @@ function selfcheck() {
   assert.ok(!/app "Memry\.app"/.test(out), 'app stanza must not use stale Memry.app bundle name')
   assert.match(out, /arm:\s+"a{64}"/)
   assert.match(out, /intel:\s+"b{64}"/)
+  // zap must cover the REAL userData parent (@memry — app.name, not productName,
+  // drives it) and the electron-updater cache, or --zap leaves all app state behind.
+  assert.match(out, /"~\/Library\/Application Support\/@memry"/)
+  assert.match(out, /"~\/Library\/Caches\/@memrydesktop-updater"/)
+  // ...and the post-identity-rename (PR #897) memrynote paths, so the cask stays
+  // correct once userData/logs/updater cache move to the new name.
+  assert.match(out, /"~\/Library\/Application Support\/memrynote"/)
+  assert.match(out, /"~\/Library\/Caches\/memrynote-updater"/)
+  assert.match(out, /"~\/Library\/Logs\/@memry"/)
   // Regex backslashes must survive templating (JS drops unknown escapes).
   assert.match(out, /\\d\{4\}-\\d\{2\}-\\d\{2\}/)
   assert.throws(() =>
