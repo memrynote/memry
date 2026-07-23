@@ -792,6 +792,9 @@
     "hubTitle": "Tags",
     "openHub": "Open tag hub"
   },
+  "tagView": {
+    "moreActions": "More actions"
+  },
   "tagsHub": {
     "loading": "Loading tags...",
     "newCategory": "New category",

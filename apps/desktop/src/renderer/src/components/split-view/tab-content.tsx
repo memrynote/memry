@@ -54,6 +54,9 @@ const LazyGraphPage = React.lazy(async () => ({
 const LazyTagsHubPage = React.lazy(async () => ({
   default: (await import('@/pages/tags-hub')).TagsHubPage
 }))
+const LazyTagViewPage = React.lazy(async () => ({
+  default: (await import('@/pages/tag-view')).TagViewPage
+}))
 const LazyAgentConversationTab = React.lazy(async () => ({
   default: (await import('@/agent-chat/agent-conversation-tab')).AgentConversationTab
 }))
@@ -196,6 +199,12 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
 
       case 'tags':
         return <LazyTagsHubPage />
+
+      case 'tag':
+        // `Tab` carries no `color` field (only `SidebarItem` does, and it isn't
+        // threaded through `createTabFromSidebarItem`) — the page falls back to
+        // a deterministic tag-name color via `getTagColors` when none is given.
+        return <LazyTagViewPage tag={tab.entityId ?? ''} />
 
       case 'agent-chat':
         return <LazyAgentConversationTab conversationId={tab.entityId} />
