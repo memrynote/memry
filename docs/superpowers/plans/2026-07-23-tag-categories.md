@@ -1104,6 +1104,49 @@ git commit -m "feat(sync): carry tag category assignment through tag_definition 
 
 ---
 
+### Task 5b: `tag_category` push-side sync service
+
+**Added during execution.** This plan was written assuming a category sync-enqueue
+path already existed. It does not. Sync in this repo has two sides: the pull-side
+`item-handlers/` (Task 4) and a **push-side per-type service** —
+`tag-definition-sync.ts`, `folder-config-sync.ts`, and siblings — registered in
+`local-mutations.ts` and bootstrapped in `runtime.ts`. No `tag_category` push
+service exists, so `enqueueLocalSyncUpdate('tag_category', id)` typechecks and
+silently no-ops. Without this task categories never leave the device they were
+created on, which defeats the reason the design chose a synced table.
+
+Compatibility: purely additive — a new per-type service beside the existing ones.
+No protocol change, no schema change, no migration. Older builds already skip the
+`tag_category` item type on pull.
+
+**Files:**
+
+- Create: `apps/desktop/src/main/sync/tag-category-sync.ts`
+- Modify: `apps/desktop/src/main/sync/local-mutations.ts`
+- Modify: `apps/desktop/src/main/sync/runtime.ts`
+- Test: `apps/desktop/src/main/sync/tag-category-sync.test.ts`
+- Test: `apps/desktop/src/main/sync/local-mutations.test.ts`
+
+**Interfaces:**
+
+- Consumes: `tagCategories` (Task 1); `RecordSyncController`, `incrementClock`,
+  `withIncrementedClock` from `@memry/sync-core`; `SyncQueueManager` from `./queue`.
+- Produces: `initTagCategorySyncService(deps)`, `getTagCategorySyncService()`,
+  `resetTagCategorySyncService()`, and class `TagCategorySyncService` with
+  `enqueueCreate(id)`, `enqueueUpdate(id)`, `enqueueDelete(id, snapshotPayload?)`.
+  `deps` matches `TagDefinitionSyncDeps`: `{ queue, db, getDeviceId }`.
+
+The full step-by-step brief for this task lives at
+`.superpowers/sdd/task-5b-brief.md`. It mirrors `tag-definition-sync.ts` with three
+differences: the type string, an id-keyed rather than name-keyed `load`, and a
+delete-fallback payload that must satisfy `TagCategorySyncPayloadSchema` and carry
+`deletedAt` so a receiving device applies a tombstone rather than a resurrection.
+
+The task's decisive step is proving the wiring is live: a service that exists but
+is never called from `runtime.ts` is the same bug as no service at all.
+
+---
+
 ### Task 6: IPC surface
 
 **Files:**
