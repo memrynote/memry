@@ -21,6 +21,15 @@ appear in the picker. A note card renders a markdown preview, so those open in
 the file viewer instead. They never take up room in the search results, so a
 matching note is always shown even when many filed files share its name.
 
+Results are grouped into Notes, Tasks and Events, and each row is labelled the
+way the rest of the app labels it, so you can tell at a glance what you are
+about to place:
+
+- **Notes** show the note's own icon, its folder path and when it was created.
+- **Tasks** show a checkmark when they are done, plus their project, status,
+  priority and due date.
+- **Events** show a clock and the event's date and time.
+
 If you pick something that is already on the board, Memry scrolls to the card
 you already have instead of adding a duplicate — look for the **On canvas**
 badge in the results.
