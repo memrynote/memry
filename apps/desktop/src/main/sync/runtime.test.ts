@@ -102,6 +102,7 @@ const runtimeMocks = vi.hoisted(() => {
     noteSync: service('note'),
     journalSync: service('journal'),
     tagDefinitionSync: service('tag_definition'),
+    tagCategorySync: service('tag_category'),
     folderConfigSync: service('folder_config'),
     calendarEventSync: service('calendar_event'),
     calendarSourceSync: service('calendar_source'),
@@ -259,6 +260,10 @@ vi.mock('./journal-sync', () => ({
 vi.mock('./tag-definition-sync', () => ({
   initTagDefinitionSyncService: runtimeMocks.tagDefinitionSync.init,
   resetTagDefinitionSyncService: runtimeMocks.tagDefinitionSync.reset
+}))
+vi.mock('./tag-category-sync', () => ({
+  initTagCategorySyncService: runtimeMocks.tagCategorySync.init,
+  resetTagCategorySyncService: runtimeMocks.tagCategorySync.reset
 }))
 vi.mock('./folder-config-sync', () => ({
   initFolderConfigSyncService: runtimeMocks.folderConfigSync.init,
