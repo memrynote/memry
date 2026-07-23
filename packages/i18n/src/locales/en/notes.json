@@ -802,7 +802,11 @@
     "category": {
       "rename": "Rename category",
       "delete": "Delete category",
-      "emptyHint": "Drag a tag here"
+      "emptyHint": "Drag a tag here",
+      "deleteTitle": "Delete {name}?",
+      "deleteBody": "Tags will move to Uncategorized. They won't be deleted.",
+      "deleteConfirm": "Delete",
+      "deleteCancel": "Cancel"
     },
     "errors": {
       "loadFailed": "Failed to load tag categories",

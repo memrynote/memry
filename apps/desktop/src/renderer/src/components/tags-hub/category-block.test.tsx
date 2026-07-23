@@ -39,4 +39,31 @@ describe('CategoryBlock', () => {
     render(<CategoryBlock id="cat-1" name="Blog" tags={[]} onTagOpen={vi.fn()} />)
     expect(screen.getByText(/drag a tag here/i)).toBeInTheDocument()
   })
+
+  it('renames inline on Enter', async () => {
+    const onRename = vi.fn()
+    render(
+      <CategoryBlock id="cat-1" name="Work" tags={tags} onTagOpen={vi.fn()} onRename={onRename} />
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /rename/i }))
+    const input = screen.getByRole('textbox')
+    await userEvent.clear(input)
+    await userEvent.type(input, 'Job{Enter}')
+
+    expect(onRename).toHaveBeenCalledWith('Job')
+  })
+
+  it('warns that tags survive before deleting', async () => {
+    const onDelete = vi.fn()
+    render(
+      <CategoryBlock id="cat-1" name="Work" tags={tags} onTagOpen={vi.fn()} onDelete={onDelete} />
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /delete/i }))
+
+    expect(screen.getByText(/tags will move to uncategorized/i)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /^delete$/i }))
+    expect(onDelete).toHaveBeenCalled()
+  })
 })
