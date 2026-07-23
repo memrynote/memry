@@ -247,5 +247,31 @@ describe('tagDefinitionHandler', () => {
       expect(row?.categoryId).toBe('cat-1')
       expect(row?.sortOrder).toBe(3)
     })
+
+    it('clears categoryId when a remote payload explicitly un-assigns it, leaving sortOrder untouched', () => {
+      tagDefinitionHandler.applyUpsert(
+        ctx,
+        'work',
+        { name: 'work', color: 'blue', categoryId: 'cat-1', sortOrder: 5 },
+        { deviceA: 1 }
+      )
+
+      // A dominating clock (deviceA advances) so the update branch actually runs,
+      // not skipped or resolved as a concurrent merge.
+      tagDefinitionHandler.applyUpsert(
+        ctx,
+        'work',
+        { name: 'work', color: 'blue', categoryId: null },
+        { deviceA: 2 }
+      )
+
+      const row = testDb.db
+        .select()
+        .from(tagDefinitions)
+        .where(eq(tagDefinitions.name, 'work'))
+        .get()
+      expect(row?.categoryId).toBeNull()
+      expect(row?.sortOrder).toBe(5)
+    })
   })
 })
