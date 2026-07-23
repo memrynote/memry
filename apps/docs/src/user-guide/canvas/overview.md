@@ -36,13 +36,31 @@ register. Test it on your own device before relying on it.
 The drawing toolbar is provided by the underlying canvas engine and follows its
 own language list, which does not always match memrynote's interface language.
 
+## Shape library
+
+The library is the panel of reusable shapes you can drag onto any board. Open it
+with <kbd>0</kbd> or the library button in the toolbar.
+
+To install a shape kit, download an `.excalidrawlib` file — for example from
+[libraries.excalidraw.com](https://libraries.excalidraw.com) — and add it either
+way:
+
+- **Drag the file** onto the canvas.
+- **Open the library panel**, click the **⋯** menu, and choose **Open**.
+
+Your library is stored in your vault, encrypted, and is shared by every canvas
+rather than belonging to one board — so a kit you install stays available when
+you switch boards or restart. Removing an item from the panel removes it for
+good.
+
 ## Saving
 
 Canvases save into your vault automatically as you draw — there is nothing to
 save by hand. Pressing **Cmd/Ctrl+S** simply confirms this with a short
 "changes are saved" notice; it never opens a file dialog. Canvases are not
-files on disk, so the drawing engine's own open/save/export-to-file actions
-are hidden.
+files on disk, so the drawing engine's own open/save/export-to-file actions for
+_boards_ are hidden. The library's own file actions stay available, since a
+shape kit is a file you bring in from elsewhere.
 
 ## Next steps
 

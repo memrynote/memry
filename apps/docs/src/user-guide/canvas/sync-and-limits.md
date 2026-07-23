@@ -25,6 +25,14 @@ Images pasted or dropped onto a canvas are stored as attachments rather than
 inside the board itself, so boards stay small and an identical image used twice
 is stored once. Deleting the image, or the canvas, releases the stored copy.
 
+## The shape library
+
+Your shape library is stored in your vault encrypted, alongside your boards, and
+is shared by every canvas. It does not yet sync between devices: a kit you
+install on one computer stays on that computer, and you install it again on the
+next one. Installing different kits on two devices is safe — neither replaces
+the other.
+
 ## Size limit
 
 A canvas has a maximum synced size (the raw drawing data, not counting
@@ -46,3 +54,6 @@ canvases is the usual fix.
   differ from memrynote's interface language.
 - Canvas is opt-in per device — enabling it on one device does not enable it on
   another.
+- The shape library is stored per vault but does not sync between devices yet.
+- Publishing a shape kit to the public Excalidraw library from inside memrynote
+  is not supported; the panel's **Publish** action does not work here.
