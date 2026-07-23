@@ -1,16 +1,16 @@
 /**
  * CanvasCardActive — the single active card. pointer-events:auto so it captures
  * input; keydown/keyup are swallowed so Cmd/Ctrl+Z belongs to the mounted
- * editor (not Excalidraw), and Escape closes the editor. Note cards render the
- * real note editor (Task 5); task cards render the slim task editor (Task 6);
- * event cards render the extracted calendar event form (Task 7).
+ * editor (not Excalidraw), and Escape closes the editor.
+ *
+ * The body itself is <CanvasCardBody interactive> — the exact tree an idle card
+ * renders read-only — so activation changes only what is writable, never the
+ * layout.
  */
 import React, { useCallback, useEffect, useRef } from 'react'
 import type { CanvasCardRef } from './canvas-cards'
 import type { CanvasEntityState } from './use-canvas-entities'
-import { EmbeddedNoteEditor } from './embedded-note-editor'
-import { CanvasTaskEditor } from './canvas-task-editor'
-import { CanvasEventEditor } from './canvas-event-editor'
+import { CanvasCardBody } from './canvas-card-body'
 
 interface CanvasCardActiveProps {
   cardRef: CanvasCardRef
@@ -20,6 +20,7 @@ interface CanvasCardActiveProps {
 
 export const CanvasCardActive = ({
   cardRef,
+  state,
   onDeactivate
 }: CanvasCardActiveProps): React.JSX.Element => {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -57,13 +58,7 @@ export const CanvasCardActive = ({
       onKeyDown={onKeyDown}
       onKeyUp={onKeyUp}
     >
-      {cardRef.entityType === 'note' ? (
-        <EmbeddedNoteEditor noteId={cardRef.entityId} />
-      ) : cardRef.entityType === 'task' ? (
-        <CanvasTaskEditor taskId={cardRef.entityId} />
-      ) : (
-        <CanvasEventEditor eventId={cardRef.entityId} onDone={onDeactivate} />
-      )}
+      <CanvasCardBody cardRef={cardRef} state={state} interactive onDone={onDeactivate} />
     </div>
   )
 }

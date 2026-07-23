@@ -10,9 +10,7 @@ import {
   normalizeMarkdownHardBreaks
 } from '../wiki-link-utils'
 import { normalizeHashTags, extractInlineTags } from '../hash-tag'
-import { normalizeLinkMentions } from '../link-mention-utils'
-import { normalizeDateMentions } from '../date-mention-utils'
-import { normalizeTaskBlocks } from '../task-block/task-block-utils'
+import { normalizeNoteBlocks } from '../normalize-note-blocks'
 import {
   parseMarkdownPreservingBlanks,
   sanitizeBlockIds,
@@ -209,11 +207,7 @@ export function useEditorSync({
               blocks = await editor.tryParseHTMLToBlocks(content)
             }
 
-            let normalizedBlocks = normalizeWikiLinks(blocks).blocks
-            normalizedBlocks = normalizeLinkMentions(normalizedBlocks).blocks
-            normalizedBlocks = normalizeDateMentions(normalizedBlocks).blocks
-            const taskNormalized = normalizeTaskBlocks(normalizedBlocks)
-            normalizedBlocks = taskNormalized.blocks
+            let normalizedBlocks = normalizeNoteBlocks(blocks)
 
             if (noteTags?.length && tagColorMap) {
               const tagSet = new Set(noteTags.map((t) => t.toLowerCase()))
@@ -235,11 +229,7 @@ export function useEditorSync({
             log.error(`Failed to parse ${contentType} content`, error)
           }
         } else if (Array.isArray(initialContent) && initialContent.length > 0) {
-          let normalizedBlocks = normalizeWikiLinks(initialContent).blocks
-          normalizedBlocks = normalizeLinkMentions(normalizedBlocks).blocks
-          normalizedBlocks = normalizeDateMentions(normalizedBlocks).blocks
-          const taskNormalized = normalizeTaskBlocks(normalizedBlocks)
-          normalizedBlocks = taskNormalized.blocks
+          let normalizedBlocks = normalizeNoteBlocks(initialContent)
 
           if (noteTags?.length && tagColorMap) {
             const tagSet = new Set(noteTags.map((t) => t.toLowerCase()))

@@ -17,9 +17,91 @@ import {
 /** The custom drag MIME a card drop consumes ({ entityType, entityId } JSON). */
 export const CANVAS_ITEM_DRAG_MIME = 'application/x-memry-canvas-item'
 
-/** Default card rectangle size in scene units. */
+/** Default card rectangle size in scene units (task + calendar event). */
 export const CARD_DEFAULT_WIDTH = 260
 export const CARD_DEFAULT_HEIGHT = 168
+
+/**
+ * The largest a note card opens at. A task or event card shows a handful of
+ * fixed fields and always fits the compact rectangle, but a note renders real
+ * prose at the editor's own type size, where the compact card left roughly five
+ * clipped lines and wrapped almost every sentence mid-phrase.
+ *
+ * A note is never given this frame outright: `noteCardSize` measures the body
+ * and only reaches the maximum when the text actually fills it, so a note
+ * holding "hey" does not open as a mostly-empty wall. Anything past the maximum
+ * clips and scrolls inside the frame; the card is resizable either way.
+ */
+export const CARD_NOTE_MAX_WIDTH = 1040
+export const CARD_NOTE_MAX_HEIGHT = 800
+
+/**
+ * Measurement constants for `noteCardSize`, in scene units (= CSS px at zoom 1).
+ * Deliberately an estimate, not a real text measurement: the card only needs to
+ * open at a sane size, and a canvas-layout DOM measure per placed card would
+ * mean mounting the editor off-screen before the rectangle even exists.
+ */
+/** Mean advance width of the editor's 16px system sans. */
+const NOTE_CHAR_WIDTH = 8.2
+/** Body line height: BlockNote's 24px line box + its 1px block padding, twice. */
+const NOTE_LINE_HEIGHT = 26
+/** The body's `px-3` inset, both sides (canvas-card-body.tsx). */
+const NOTE_BODY_INSET = 24
+/** Title row + its `pt-3`, plus the body's `pb-3`. */
+const NOTE_CHROME_HEIGHT = 46
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
+}
+
+/**
+ * The rectangle a note card should open at, derived from its body.
+ *
+ * Width comes from the longest source line, so a note of short lines stays
+ * narrow instead of opening a wide, half-empty card. Height then counts the
+ * rows that body wraps to AT that width — measuring height against a width the
+ * card will not have is what makes estimates like this drift.
+ *
+ * Both axes clamp into [compact card, note maximum]: the floor keeps a
+ * three-letter note from collapsing to a sliver, and the ceiling keeps a
+ * 10,000-word note from becoming a rectangle nobody can pan around.
+ */
+export function noteCardSize(markdown: string): { width: number; height: number } {
+  const lines = markdown.split('\n').map((line) => line.trimEnd().length)
+  const longest = lines.reduce((max, length) => Math.max(max, length), 0)
+
+  const width = clamp(
+    Math.ceil(longest * NOTE_CHAR_WIDTH) + NOTE_BODY_INSET,
+    CARD_DEFAULT_WIDTH,
+    CARD_NOTE_MAX_WIDTH
+  )
+  const charsPerLine = Math.max(1, Math.floor((width - NOTE_BODY_INSET) / NOTE_CHAR_WIDTH))
+  const rows = lines.reduce(
+    (total, length) => total + Math.max(1, Math.ceil(length / charsPerLine)),
+    0
+  )
+  const height = clamp(
+    rows * NOTE_LINE_HEIGHT + NOTE_CHROME_HEIGHT,
+    CARD_DEFAULT_HEIGHT,
+    CARD_NOTE_MAX_HEIGHT
+  )
+  return { width, height }
+}
+
+/**
+ * The rectangle size for a new card. Notes are measured from `noteMarkdown`;
+ * every other type is a fixed compact card. An unknown note body yields the
+ * compact card — the safe floor, since a card that opens too small is one drag
+ * from right, while one that opens too large has already covered the canvas.
+ */
+export function cardDefaultSize(
+  entityType: CanvasEntityType,
+  noteMarkdown = ''
+): { width: number; height: number } {
+  return entityType === 'note'
+    ? noteCardSize(noteMarkdown)
+    : { width: CARD_DEFAULT_WIDTH, height: CARD_DEFAULT_HEIGHT }
+}
 
 /** Minimal element shape the card logic reads (subset of ExcalidrawElement). */
 export interface CardElement {
@@ -239,8 +321,9 @@ export function makeCardSkeleton(input: {
   width?: number
   height?: number
 }): CardSkeleton {
-  const width = input.width ?? CARD_DEFAULT_WIDTH
-  const height = input.height ?? CARD_DEFAULT_HEIGHT
+  const size = cardDefaultSize(input.entityType)
+  const width = input.width ?? size.width
+  const height = input.height ?? size.height
   return {
     type: 'rectangle',
     x: input.centerX - width / 2,

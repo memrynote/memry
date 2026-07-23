@@ -3,7 +3,7 @@ import { useRef } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CanvasCardLayer } from './canvas-card-overlay'
-import { CANVAS_ITEM_DRAG_MIME, type CardElement } from './canvas-cards'
+import { CANVAS_ITEM_DRAG_MIME, noteCardSize, type CardElement } from './canvas-cards'
 import { revealScroll } from './canvas-add-card'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 
@@ -64,6 +64,7 @@ const mocks = vi.hoisted(() => {
   return {
     openTab: vi.fn(),
     notesCreate: vi.fn(),
+    notesGet: vi.fn(),
     entities: new Map<string, unknown>(),
     lockReason: null as string | null,
     // Cached per lockReason value so the returned reference is stable across
@@ -94,7 +95,11 @@ vi.mock('./use-note-edit-lock', () => ({
   lockReasonForCard: () => mocks.lockReason
 }))
 vi.mock('@/services/notes-service', () => ({
-  notesService: { create: (input: unknown) => mocks.notesCreate(input) }
+  notesService: {
+    create: (input: unknown) => mocks.notesCreate(input),
+    // A new card is sized from the note's body, so placement reads it first.
+    get: (id: string) => mocks.notesGet(id)
+  }
 }))
 vi.mock('./use-canvas-entities', async () => {
   const actual =
@@ -128,6 +133,12 @@ vi.mock('./embedded-note-editor', () => ({
   EmbeddedNoteEditor: ({ noteId }: { noteId: string }) => (
     <div data-testid={`embedded-note-${noteId}`} />
   )
+}))
+// The read-only twin needs the same treatment: CanvasCardBody imports it
+// unconditionally, so it reaches react-pdf through editor-schema even when no
+// idle card renders. Without this the whole suite dies at import.
+vi.mock('./canvas-note-body', () => ({
+  CanvasNoteBody: ({ noteId }: { noteId: string }) => <div data-testid={`note-body-${noteId}`} />
 }))
 // Stub the picker; its own test covers filtering and selection. Exposes
 // onReveal for the overlay's handleReveal wiring (FIX 8): a fixed testid
@@ -218,6 +229,8 @@ describe('CanvasCardLayer', () => {
   beforeEach(() => {
     mocks.openTab.mockReset()
     mocks.notesCreate.mockReset()
+    mocks.notesGet.mockReset()
+    mocks.notesGet.mockResolvedValue({ id: 'n', content: '' })
     mocks.entities = new Map()
     mocks.lockReason = null
   })
@@ -260,6 +273,48 @@ describe('CanvasCardLayer', () => {
       )
     ).toBe(true)
     expect(onSceneMutated).toHaveBeenCalled()
+  })
+
+  it('sizes a dropped note card from its body, not a fixed frame', async () => {
+    // The "hey" regression: every note card opened at the maximum frame. The
+    // drop path must read the body and hand makeCardSkeleton a measured size.
+    async function dropNoteWithBody(content: string): Promise<{ width: number; height: number }> {
+      mocks.notesGet.mockResolvedValue({ id: 'dropped', content })
+      const { api, updateScene } = makeApi([])
+      const { unmount } = render(<Harness api={api} />)
+      const wrapper = screen.getByTestId('wrapper')
+      const drop = new Event('drop', { bubbles: true, cancelable: true })
+      Object.defineProperty(drop, 'dataTransfer', {
+        value: {
+          types: [CANVAS_ITEM_DRAG_MIME],
+          getData: (t: string) =>
+            t === CANVAS_ITEM_DRAG_MIME
+              ? JSON.stringify({ entityType: 'note', entityId: 'dropped' })
+              : ''
+        }
+      })
+      Object.defineProperty(drop, 'clientX', { value: 120 })
+      Object.defineProperty(drop, 'clientY', { value: 80 })
+      wrapper.dispatchEvent(drop)
+      await waitFor(() => expect(updateScene).toHaveBeenCalled())
+      const element = updateScene.mock.calls[0][0].elements.find(
+        (e: { customData?: { entityId?: string } }) => e.customData?.entityId === 'dropped'
+      ) as { width: number; height: number }
+      unmount()
+      return { width: element.width, height: element.height }
+    }
+
+    const tiny = await dropNoteWithBody('hey')
+    const big = await dropNoteWithBody(
+      Array.from(
+        { length: 200 },
+        (_, i) => `Paragraph ${i}. ${'A real sentence here. '.repeat(6)}`
+      ).join('\n')
+    )
+
+    expect(tiny).toEqual(noteCardSize('hey'))
+    expect(big.width).toBeGreaterThan(tiny.width)
+    expect(big.height).toBeGreaterThan(tiny.height)
   })
 
   it('ignores drops without the canvas MIME', async () => {

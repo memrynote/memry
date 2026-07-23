@@ -37,8 +37,8 @@ something that is already on the board and it scrolls to the card you have
 instead, marked with an **On canvas** badge.
 
 Files you have filed into your vault — PDFs, images, audio and video — do not
-appear in the picker. A note card renders a markdown preview, so those open in
-the file viewer instead. They never take up room in the search results, so a
+appear in the picker. A note card renders your note's own content, so those
+open in the file viewer instead. They never take up room in the search results, so a
 matching note is always shown even when many filed files share its name.
 
 Results are grouped into Notes, Tasks and Events, and each row is labelled the
@@ -61,9 +61,15 @@ Select a card and press <kbd>Backspace</kbd> to take it off the board. Only the
 card goes — the note, task or event itself is untouched and stays wherever it
 lives.
 
-Cards show a live preview: a note's title and the start of its body, a task's
-title and status, an event's title and time. Rename or complete the item
-anywhere in the app and the card updates.
+Cards render their item exactly as the editor does — a note shows its real
+formatting (headings, lists, checkboxes, linked task blocks, images, callouts
+and embeds), a task its fields, an event its details. Nothing is flattened to a
+plain-text preview, so an inline task or a heading looks the same on the board
+as it does in the note. Rename or complete the item anywhere in the app and the
+card updates.
+
+A note card is sized to its own content: a short note stays compact, while a
+longer one grows to a readable height and scrolls inside its frame.
 
 If the underlying item is deleted, the card stays but is marked as deleted, so
 you never lose the spatial context.
@@ -71,8 +77,10 @@ you never lose the spatial context.
 ## Editing on the canvas
 
 **Double-click a card** to edit it in place — the full note editor, the task
-fields, or the event form, right on the board. Click anywhere else, or press
-**Escape**, to go back to the preview.
+fields, or the event form, right on the board. The card does not change shape
+or size when you do: it is already the real editor, and the double-click only
+makes it writable. Click anywhere else, or press **Escape**, to make it
+read-only again.
 
 Only one card is editable at a time. That is deliberate: it keeps large boards
 responsive.

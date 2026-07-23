@@ -62,6 +62,9 @@ vi.mock('@excalidraw/excalidraw', () => ({
     return <div data-testid="excalidraw" />
   },
   serializeAsJSON: (elements: unknown[]) => JSON.stringify({ elements }),
+  // The editor installs the vault-backed shape library on mount; this suite is
+  // about scene persistence, so the hook is a no-op here.
+  useHandleLibrary: () => undefined,
   languages: [],
   defaultLang: { code: 'en' },
   // Library persistence is covered by the adapter's own tests; here it only

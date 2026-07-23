@@ -6,7 +6,12 @@ import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import * as schema from '@memry/db-schema/schema'
-import { canvases, canvasEntityRefs, projectLinks, vaultMetadata } from '@memry/db-schema/data-schema'
+import {
+  canvases,
+  canvasEntityRefs,
+  projectLinks,
+  vaultMetadata
+} from '@memry/db-schema/data-schema'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DATA_MIGRATIONS = resolve(__dirname, '../../src/main/database/drizzle-data')

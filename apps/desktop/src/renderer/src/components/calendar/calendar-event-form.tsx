@@ -33,6 +33,12 @@ export interface CalendarEventFormProps {
   onDismiss: () => void
   /** M5: read-only rich metadata (attendees/reminders/visibility/Meet link) shown below the form. */
   readOnlyMetadata?: CalendarEventReadOnlyMetadata
+  /**
+   * Focus the title on mount. Off for idle canvas cards, which mount this form
+   * purely to paint — several of them at once would fight over focus and steal
+   * it from the canvas.
+   */
+  autoFocus?: boolean
 }
 
 function extractDatePart(value: string, isAllDay: boolean): string | null {
@@ -149,7 +155,8 @@ export function CalendarEventForm({
   onDraftChange,
   onSave,
   onDismiss,
-  readOnlyMetadata
+  readOnlyMetadata,
+  autoFocus = true
 }: CalendarEventFormProps): React.JSX.Element {
   const titleRef = useRef<HTMLInputElement>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -161,8 +168,10 @@ export function CalendarEventForm({
 
   useEffect(() => {
     // Focus once on mount, mirroring the popover's onOpenAutoFocus behavior.
-    titleRef.current?.focus()
-  }, [])
+    if (autoFocus) {
+      titleRef.current?.focus()
+    }
+  }, [autoFocus])
 
   async function submit(): Promise<void> {
     if (!draft.title.trim() || isSaving) return

@@ -1,45 +1,57 @@
 /**
- * CanvasCard — read-only preview rendered over one card rectangle.
+ * CanvasCard — an idle card: the entity rendered exactly as its editor renders
+ * it, read-only.
+ *
+ * There is no separate "preview" layout any more. The idle card mounts the same
+ * <CanvasCardBody> the active card does, with `interactive={false}`, so a
+ * double-click only makes the leaves writable — nothing reflows, resizes, or
+ * re-typesets. The cheap flattened render (CanvasCardSummary) survives only as
+ * the level-of-detail fallback for far-out zoom / crowded scenes.
  *
  * The card body is pointer-events:none so canvas pan/draw/select passes through
  * to the underlying Excalidraw rectangle (which owns geometry, resize, and
- * arrow-binding). Only the ↗ redirect button is interactive. Idle previews are
- * static markdown-rendered React (no editor mounted) per the M2 perf strategy.
+ * arrow-binding), and `inert` keeps the read-only editor tree out of the focus
+ * and accessibility trees. Only the ↗ redirect button is interactive.
+ * Overflowing content is clipped with a bottom fade and scrolled imperatively by
+ * the overlay's wheel handler (canvas-card-scroll.ts).
  */
 
 import React from 'react'
-import { ArrowUpRight, CheckCircle, Circle, CalendarClock, AlertTriangle } from '@/lib/icons'
+import { ArrowUpRight, AlertTriangle } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { NoteIconDisplay } from '@/lib/render-note-icon'
-import { renderTaskDescriptionMarkdown } from '@/components/tasks/task-description-preview'
 import { useT } from '@memry/i18n/renderer'
-import { formatEventTime, type CanvasCardRef } from './canvas-cards'
+import type { CanvasCardRef } from './canvas-cards'
 import type { NoteLockReason } from './canvas-note-lock'
 import type { CanvasEntityState } from './use-canvas-entities'
+import { CanvasCardBody } from './canvas-card-body'
+import { CanvasCardSummary } from './canvas-card-summary'
+
+/** Marks the scroll container the overlay's wheel handler drives. */
+export const CARD_SCROLL_ATTR = 'data-canvas-card-scroll'
 
 interface CanvasCardProps {
   cardRef: CanvasCardRef
   state: CanvasEntityState | undefined
   onRedirect: (cardRef: CanvasCardRef) => void
   /**
+   * False when the layer is in level-of-detail fallback (zoomed far out or too
+   * many cards mounted) — the card draws the cheap summary instead.
+   */
+  rich?: boolean
+  /**
    * Non-null when in-place editing is unavailable for this card (the same note
-   * is live in a visible tab, or another card already owns it). The card stays
-   * a read-only preview and points at the surface that can edit.
+   * is live in a visible tab, or another card already owns it). The card still
+   * renders its content in full; it just cannot be activated, and it points at
+   * the surface that can edit.
    */
   locked?: NoteLockReason | null
-}
-
-function formatDueDate(dueDate: string | null): string | null {
-  if (!dueDate) return null
-  const parsed = new Date(`${dueDate}T00:00:00`)
-  if (Number.isNaN(parsed.getTime())) return dueDate
-  return parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 const CanvasCardInner = ({
   cardRef,
   state,
   onRedirect,
+  rich = true,
   locked
 }: CanvasCardProps): React.JSX.Element => {
   const { t } = useT('common')
@@ -51,6 +63,7 @@ const CanvasCardInner = ({
   }
 
   const dangling = state?.status === 'dangling'
+  const ready = state?.status === 'ready' ? state : null
 
   return (
     <div
@@ -80,62 +93,25 @@ const CanvasCardInner = ({
           <AlertTriangle className="size-4 text-destructive/70" aria-hidden="true" />
           <span className="text-xs text-text-tertiary">{t('canvas.card.deleted')}</span>
         </div>
-      ) : state?.status === 'ready' && state.kind === 'note' ? (
-        <div className="flex h-full flex-col gap-1.5 p-3">
-          <div className="flex items-center gap-1.5">
-            {state.emoji ? (
-              <NoteIconDisplay
-                value={state.emoji}
-                className="flex size-4 shrink-0 items-center justify-center text-sm"
-              />
-            ) : null}
-            <h3 className="truncate text-[13px] font-semibold text-foreground">
-              {state.title || t('canvas.card.untitled')}
-            </h3>
-          </div>
-          <div className="min-h-0 flex-1 overflow-hidden text-[11px] leading-snug text-text-secondary">
-            <p className="line-clamp-6 whitespace-pre-wrap break-words">
-              {renderTaskDescriptionMarkdown(state.body)}
-            </p>
-          </div>
-        </div>
-      ) : state?.status === 'ready' && state.kind === 'task' ? (
-        <div className="flex h-full flex-col justify-center gap-1.5 p-3">
-          <div className="flex items-start gap-1.5">
-            {state.completed ? (
-              <CheckCircle className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" />
-            ) : (
-              <Circle className="mt-0.5 size-3.5 shrink-0 text-text-tertiary" aria-hidden="true" />
-            )}
-            <span
-              className={cn(
-                'text-[13px] font-medium',
-                state.completed ? 'text-text-tertiary line-through' : 'text-foreground'
-              )}
-            >
-              {state.title || t('canvas.card.untitled')}
-            </span>
-          </div>
-          {formatDueDate(state.dueDate) ? (
-            <span className="ms-5 text-[11px] text-text-tertiary">
-              {formatDueDate(state.dueDate)}
-            </span>
-          ) : null}
-        </div>
-      ) : state?.status === 'ready' && state.kind === 'calendar_event' ? (
-        <div className="flex h-full flex-col justify-center gap-1 p-3">
-          <span className="text-[13px] font-medium text-foreground">
-            {state.title || t('canvas.card.untitled')}
-          </span>
-          <span className="flex items-center gap-1 text-[11px] text-text-tertiary">
-            <CalendarClock className="size-3" aria-hidden="true" />
-            {formatEventTime(state.startAt, state.isAllDay, t('canvas.card.allDay'))}
-          </span>
-        </div>
-      ) : (
+      ) : !ready ? (
         <div className="flex h-full items-center justify-center p-3">
           <span className="text-xs text-text-tertiary">{t('canvas.card.loading')}</span>
         </div>
+      ) : rich ? (
+        <div
+          {...{ [CARD_SCROLL_ATTR]: cardRef.elementId }}
+          // overflow-hidden (not auto) keeps the scrollbar and native wheel
+          // handling out of the way: the overlay scrolls this element
+          // imperatively so an un-scrollable card still zooms the canvas.
+          className="relative flex min-h-0 flex-1 flex-col overflow-hidden [mask-image:linear-gradient(to_bottom,black_calc(100%-24px),transparent)]"
+          // The read-only editor tree must never take focus or appear to screen
+          // readers as an editable surface while the card is idle.
+          inert
+        >
+          <CanvasCardBody cardRef={cardRef} state={state} interactive={false} />
+        </div>
+      ) : (
+        <CanvasCardSummary state={ready} />
       )}
       {locked ? (
         <button
