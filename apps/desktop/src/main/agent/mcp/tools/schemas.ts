@@ -152,8 +152,7 @@ export const TOOL_SCHEMAS = {
     input: desktopReadSchema,
     description:
       'Run an allowlisted read-only desktop API operation through the memrynote window. ' +
-      'Calendar examples: calendar.getProviderStatus with args [{"provider":"google"}], ' +
-      'calendar.listEvents with args [{}], calendar.getRange with args ' +
+      'Calendar examples: calendar.listEvents with args [{}], calendar.getRange with args ' +
       '[{"startAt":"2026-05-14T00:00:00.000Z","endAt":"2026-06-15T00:00:00.000Z"}].'
   },
   vault_create_note: {

@@ -109,6 +109,16 @@ vi.mock('../../vault/file-ops', async () => {
   }
 })
 
+vi.mock('../../vault/attachments', () => ({
+  getNoteAttachmentsDir: vi.fn((vaultPath: string, noteId: string) =>
+    path.join(vaultPath, 'attachments', noteId)
+  )
+}))
+
+vi.mock('../../vault/index', () => ({
+  getStatus: vi.fn(() => ({ path: VAULT_ROOT }))
+}))
+
 import { noteHandler } from './note-handler'
 import { deleteFile } from '../../vault/file-ops'
 import { parseNote, serializeParsedNote } from '../../vault/frontmatter'
@@ -610,5 +620,112 @@ describe('noteHandler.applyUpsert — path collision', () => {
     )
     expect(noteHandler.seedUnclocked(ctx.db, 'dev1', queue)).toBe(2)
     expect(seedUnclockedNotes).toHaveBeenCalledWith('dev1', queue)
+  })
+})
+
+describe('noteHandler.applyUpsert — embedded attachment references', () => {
+  let ctx: ApplyContext
+  let downloadEvents: Array<{
+    noteId: string
+    attachmentId: string
+    diskPath: string
+    intoDir?: boolean
+  }>
+  const listener = (e: {
+    noteId: string
+    attachmentId: string
+    diskPath: string
+    intoDir?: boolean
+  }): void => {
+    downloadEvents.push(e)
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    ctx = makeCtx()
+    downloadEvents = []
+    mockGetNoteMetadataById.mockReturnValue(undefined)
+    fs.rmSync(VAULT_ROOT, { recursive: true, force: true })
+    fs.mkdirSync(NOTES_DIR, { recursive: true })
+    attachmentEvents.onDownloadNeeded(listener)
+  })
+
+  afterEach(() => {
+    attachmentEvents.offDownloadNeeded(listener)
+  })
+
+  it('requests directory downloads for referenced attachments on create and persists the list', () => {
+    const result = noteHandler.applyUpsert(
+      ctx,
+      'note-att-create',
+      makeNotePayload({ attachmentReferences: ['att-a', 'att-b'] }),
+      {}
+    )
+
+    expect(result).toBe('applied')
+    expect(downloadEvents).toEqual([
+      {
+        noteId: 'note-att-create',
+        attachmentId: 'att-a',
+        diskPath: path.join(VAULT_ROOT, 'attachments', 'note-att-create'),
+        intoDir: true
+      },
+      {
+        noteId: 'note-att-create',
+        attachmentId: 'att-b',
+        diskPath: path.join(VAULT_ROOT, 'attachments', 'note-att-create'),
+        intoDir: true
+      }
+    ])
+    expect(mockUpdateNoteMetadata).toHaveBeenCalledWith(
+      expect.anything(),
+      'note-att-create',
+      expect.objectContaining({ attachmentReferences: ['att-a', 'att-b'] })
+    )
+  })
+
+  it('merges remote references into local ones on update and dedupes repeated requests', () => {
+    mockGetNoteMetadataById.mockReturnValue({
+      id: 'note-att-update',
+      path: path.join('notes', 'a1', 'a1.md'),
+      title: 'a1',
+      emoji: null,
+      fileType: 'markdown',
+      clock: { d1: 1 },
+      attachmentReferences: ['att-a']
+    } as unknown as ReturnType<typeof mockGetNoteMetadataById>)
+
+    const payload = makeNotePayload({ folderPath: null, attachmentReferences: ['att-b'] })
+    const result = noteHandler.applyUpsert(ctx, 'note-att-update', payload, { d1: 2 })
+
+    expect(result).toBe('applied')
+    expect(downloadEvents).toEqual([
+      {
+        noteId: 'note-att-update',
+        attachmentId: 'att-b',
+        diskPath: path.join(VAULT_ROOT, 'attachments', 'note-att-update'),
+        intoDir: true
+      }
+    ])
+    expect(mockUpdateNoteMetadata).toHaveBeenCalledWith(
+      expect.anything(),
+      'note-att-update',
+      expect.objectContaining({ attachmentReferences: ['att-a', 'att-b'] })
+    )
+
+    // Re-applying the same note (steady-state pull) must not re-emit requests.
+    downloadEvents = []
+    noteHandler.applyUpsert(ctx, 'note-att-update', payload, { d1: 3 })
+    expect(downloadEvents).toEqual([])
+  })
+
+  it('leaves the stored reference list untouched when the payload carries none', () => {
+    const result = noteHandler.applyUpsert(ctx, 'note-att-none', makeNotePayload(), {})
+
+    expect(result).toBe('applied')
+    expect(downloadEvents).toEqual([])
+    const call = mockUpdateNoteMetadata.mock.calls.find((c) => c[1] === 'note-att-none')
+    expect(call).toBeTruthy()
+    expect((call![2] as Record<string, unknown>).attachmentReferences).toBeUndefined()
   })
 })

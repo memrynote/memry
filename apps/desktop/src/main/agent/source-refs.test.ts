@@ -349,20 +349,15 @@ describe('Agent source refs', () => {
       }
     ])
 
+    // calendar.promoteExternalEvent is no longer an agent operation
+    // (Google Workspace Limited Use), so it yields no refs.
     expect(
       extractAgentSourceRefs(
         'vault_desktop_write',
         { operation: 'calendar.promoteExternalEvent', args: [] },
         { event: { id: 'event-3', title: 'Promoted', startAt: 'not-a-date' } }
       )
-    ).toEqual([
-      {
-        kind: 'calendar_event',
-        id: 'event-3',
-        title: 'Promoted',
-        href: 'memry://calendar/event/event-3?date=not-a-date'
-      }
-    ])
+    ).toEqual([])
   })
 
   it('decorates object results, nested collections, and existing refs', () => {

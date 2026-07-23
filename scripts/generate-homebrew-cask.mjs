@@ -56,9 +56,10 @@ export function renderCask({ tag, appVersion, shaArm, shaX64 }) {
   # @memry/, logs under Logs/@memry, and electron-updater's cache under
   # @memrydesktop-updater (name with "/" sanitized). The memrynote entries cover
   # the runtime identity rename (PR #897) that moves userData/logs/updater cache
-  # there; @memry* entries stay for not-yet-migrated installs. MemryNote entries
-  # are aspirational but harmless — kept. Bundle-id (com.memrynote.memry) keys
-  # Caches/HTTPStorages/Preferences/ShipIt and is rename-independent.
+  # there; @memry* entries stay for not-yet-migrated installs. The App Support/
+  # MemryNote entry is aspirational but harmless — kept. Bundle-id
+  # (com.memrynote.memry) keys Caches/HTTPStorages/Preferences/ShipIt and is
+  # rename-independent.
   # Vault content (notes + .memry/*.db) lives under the user-chosen vault dir
   # (default ~/Documents/Memry) and is deliberately NOT zapped.
   zap trash: [
@@ -71,7 +72,6 @@ export function renderCask({ tag, appVersion, shaArm, shaX64 }) {
     "~/Library/Caches/memrynote-updater",
     "~/Library/HTTPStorages/com.memrynote.memry",
     "~/Library/Logs/@memry",
-    "~/Library/Logs/MemryNote",
     "~/Library/Logs/memrynote",
     "~/Library/Preferences/com.memrynote.memry.plist",
     "~/Library/Saved Application State/com.memrynote.memry.savedState",
