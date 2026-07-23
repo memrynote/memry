@@ -32,7 +32,13 @@ const TAG_COLOR_PALETTE = [
 export function getOrCreateTag(
   db: DataDb,
   name: string
-): { name: string; color: string; icon: string | null } {
+): {
+  name: string
+  color: string
+  icon: string | null
+  categoryId: string | null
+  sortOrder: number
+} {
   const normalizedName = name.toLowerCase().trim()
 
   const existing = db
@@ -42,7 +48,13 @@ export function getOrCreateTag(
     .get()
 
   if (existing) {
-    return { name: existing.name, color: existing.color, icon: existing.icon }
+    return {
+      name: existing.name,
+      color: existing.color,
+      icon: existing.icon,
+      categoryId: existing.categoryId,
+      sortOrder: existing.sortOrder
+    }
   }
 
   const tagCount = db.select({ count: count() }).from(tagDefinitions).get()?.count ?? 0
@@ -50,20 +62,33 @@ export function getOrCreateTag(
 
   db.insert(tagDefinitions).values({ name: normalizedName, color }).run()
 
-  return { name: normalizedName, color, icon: null }
+  return { name: normalizedName, color, icon: null, categoryId: null, sortOrder: 0 }
 }
 
-export function getAllTagDefinitions(
-  db: DataDb
-): { name: string; color: string; icon: string | null }[] {
+export function getAllTagDefinitions(db: DataDb): {
+  name: string
+  color: string
+  icon: string | null
+  categoryId: string | null
+  sortOrder: number
+}[] {
   return db
     .select({
       name: tagDefinitions.name,
       color: tagDefinitions.color,
-      icon: tagDefinitions.icon
+      icon: tagDefinitions.icon,
+      categoryId: tagDefinitions.categoryId,
+      sortOrder: tagDefinitions.sortOrder
     })
     .from(tagDefinitions)
     .all()
+}
+
+export function setTagCategory(db: DataDb, name: string, categoryId: string | null): void {
+  db.update(tagDefinitions)
+    .set({ categoryId })
+    .where(eq(tagDefinitions.name, name.toLowerCase().trim()))
+    .run()
 }
 
 export function updateTagColor(db: DataDb, name: string, color: string): void {
