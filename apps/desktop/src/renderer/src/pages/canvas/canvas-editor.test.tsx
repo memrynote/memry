@@ -63,7 +63,10 @@ vi.mock('@excalidraw/excalidraw', () => ({
   },
   serializeAsJSON: (elements: unknown[]) => JSON.stringify({ elements }),
   languages: [],
-  defaultLang: { code: 'en' }
+  defaultLang: { code: 'en' },
+  // Library persistence is covered by the adapter's own tests; here it only
+  // needs to exist so the hook call does not blow up the component.
+  useHandleLibrary: () => {}
 }))
 vi.mock('@excalidraw/excalidraw/index.css', () => ({}))
 vi.mock('next-themes', () => ({ useTheme: () => ({ resolvedTheme: 'light' }) }))
