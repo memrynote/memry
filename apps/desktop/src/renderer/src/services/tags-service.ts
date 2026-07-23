@@ -13,6 +13,7 @@ import type {
   ListCategoriesResponse,
   CategoryOperationResponse,
   CreateCategoryResponse,
+  ListItemsResponse,
   TagsClientAPI
 } from '../../../preload/index.d'
 
@@ -139,6 +140,13 @@ export const tagsService: TagsService = {
     categories?: { id: string; sortOrder: number }[]
   }): Promise<CategoryOperationResponse> => {
     return window.api.tags.reorder(payload)
+  },
+
+  /**
+   * List notes, tasks and inbox items for a tag (including its `/` descendants).
+   */
+  listItems: (tag: string): Promise<ListItemsResponse> => {
+    return window.api.tags.listItems(tag)
   }
 }
 
@@ -207,5 +215,7 @@ export type {
   TagAssignment,
   ListCategoriesResponse,
   CategoryOperationResponse,
-  CreateCategoryResponse
+  CreateCategoryResponse,
+  TagItem,
+  ListItemsResponse
 } from '../../../preload/index.d'

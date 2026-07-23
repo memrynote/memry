@@ -32,7 +32,8 @@ export const tagsApi = {
   reorder: (input: {
     tags?: { tag: string; categoryId: string | null; sortOrder: number }[]
     categories?: { id: string; sortOrder: number }[]
-  }) => invoke(TagsChannels.invoke.REORDER, input)
+  }) => invoke(TagsChannels.invoke.REORDER, input),
+  listItems: (tag: string) => invoke(TagsChannels.invoke.LIST_ITEMS, tag)
 }
 
 export const tagEvents = {

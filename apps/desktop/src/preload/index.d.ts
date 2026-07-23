@@ -789,6 +789,25 @@ export interface CreateCategoryResponse extends CategoryOperationResponse {
   category?: TagCategoryRow
 }
 
+// Tag items types (notes/tasks/inbox for a tag, incl. `/` descendants)
+export interface TagItem {
+  id: string
+  kind: 'note' | 'task' | 'inbox'
+  title: string
+  emoji: string | null
+  path: string | null
+  tags: string[]
+  container: string | null
+  created: string
+  modified: string
+}
+
+export interface ListItemsResponse {
+  success: boolean
+  items?: TagItem[]
+  error?: string
+}
+
 // Tags client API interface
 export interface TagsClientAPI {
   getNotesByTag(input: {
@@ -814,6 +833,7 @@ export interface TagsClientAPI {
     tags?: TagAssignment[]
     categories?: { id: string; sortOrder: number }[]
   }): Promise<CategoryOperationResponse>
+  listItems(tag: string): Promise<ListItemsResponse>
 }
 
 export type InboxItemType = InboxRpc.InboxItemType
