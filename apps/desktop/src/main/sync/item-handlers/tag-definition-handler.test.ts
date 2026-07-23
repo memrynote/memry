@@ -185,4 +185,67 @@ describe('tagDefinitionHandler', () => {
       clock: { 'device-a': 1 }
     })
   })
+
+  describe('category fields', () => {
+    it('applies categoryId and sortOrder from a remote payload', () => {
+      tagDefinitionHandler.applyUpsert(
+        ctx,
+        'work',
+        { name: 'work', color: 'blue', categoryId: 'cat-1', sortOrder: 3 },
+        { deviceA: 1 }
+      )
+
+      const row = testDb.db
+        .select()
+        .from(tagDefinitions)
+        .where(eq(tagDefinitions.name, 'work'))
+        .get()
+      expect(row?.categoryId).toBe('cat-1')
+      expect(row?.sortOrder).toBe(3)
+    })
+
+    it('includes the category fields in the push payload', () => {
+      tagDefinitionHandler.applyUpsert(
+        ctx,
+        'work',
+        { name: 'work', color: 'blue', categoryId: 'cat-1', sortOrder: 3 },
+        { deviceA: 1 }
+      )
+
+      const json = tagDefinitionHandler.buildPushPayload(
+        testDb.db as unknown as DrizzleDb,
+        'work',
+        'deviceA',
+        'update'
+      )
+
+      expect(JSON.parse(json!)).toMatchObject({ categoryId: 'cat-1', sortOrder: 3 })
+    })
+
+    it('keeps the local category when an old-build payload omits it', () => {
+      tagDefinitionHandler.applyUpsert(
+        ctx,
+        'work',
+        { name: 'work', color: 'blue', categoryId: 'cat-1', sortOrder: 3 },
+        { deviceA: 1 }
+      )
+
+      // An older client only knows name/color/icon.
+      tagDefinitionHandler.applyUpsert(
+        ctx,
+        'work',
+        { name: 'work', color: 'red' },
+        { deviceA: 1, deviceB: 1 }
+      )
+
+      const row = testDb.db
+        .select()
+        .from(tagDefinitions)
+        .where(eq(tagDefinitions.name, 'work'))
+        .get()
+      expect(row?.color).toBe('red')
+      expect(row?.categoryId).toBe('cat-1')
+      expect(row?.sortOrder).toBe(3)
+    })
+  })
 })

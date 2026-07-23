@@ -44,6 +44,8 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
           .set({
             color: data.color ?? existing.color,
             icon: data.icon !== undefined ? data.icon : existing.icon,
+            categoryId: data.categoryId !== undefined ? data.categoryId : existing.categoryId,
+            sortOrder: data.sortOrder ?? existing.sortOrder,
             clock: resolution.mergedClock
           })
           .where(eq(tagDefinitions.name, itemId))
@@ -59,6 +61,8 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
           name: itemId,
           color: data.color ?? '#808080',
           icon: data.icon ?? null,
+          categoryId: data.categoryId ?? null,
+          sortOrder: data.sortOrder ?? 0,
           clock: remoteClock,
           createdAt: data.createdAt ?? now
         })
@@ -110,6 +114,8 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
       name: tag.name,
       color: tag.color,
       icon: tag.icon ?? null,
+      categoryId: tag.categoryId ?? null,
+      sortOrder: tag.sortOrder,
       clock: (tag.clock as VectorClock) ?? undefined,
       createdAt: tag.createdAt
     }
