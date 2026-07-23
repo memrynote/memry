@@ -60,7 +60,13 @@ import {
   stopGoogleCalendarSyncRunner,
   triggerGoogleCalendarSyncNow
 } from './calendar/google/sync-service'
-import { log, createLogger, disableConsoleTransport, applyPackagedLogLevels } from './lib/logger'
+import {
+  log,
+  createLogger,
+  disableConsoleTransport,
+  applyPackagedLogLevels,
+  migrateLegacyLogDir
+} from './lib/logger'
 import { isAllowedExternalUrl, isPathInsideDirs, resolveMemryFilePath } from './lib/external-url'
 import { decideFrameNavigation } from './lib/frame-navigation'
 import { registerTestHooks } from './test-hooks'
@@ -166,6 +172,11 @@ if (deviceId) {
   const deviceUserData = `${app.getPath('userData')}-${deviceId}`
   app.setPath('userData', deviceUserData)
 }
+
+// Existing installs logged into `@memry/desktop` (the raw package name);
+// move that history into the `memrynote` dir before workers spawn and this
+// launch's log volume starts landing there.
+migrateLegacyLogDir()
 
 // Must run before app 'ready': if a prior launch's GPU process crashed (old/
 // blacklisted Windows GPUs paint nothing, leaving an invisible window), fall

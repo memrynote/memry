@@ -47,6 +47,11 @@ steady states at `debug`:
 | Windows  | `%USERPROFILE%/AppData/Roaming/memrynote/logs/` |
 | Linux    | `~/.config/memrynote/logs/`                     |
 
+Older installs logged into an `@memry/desktop` directory (the raw package name). On startup the
+main process moves those files into the directories above (a name collision gains a `legacy-`
+prefix), then removes the emptied legacy directory. Dev profiles (`MEMRY_DEVICE`) log into a
+per-device `memrynote-<device>` directory instead.
+
 ### Launch Phase Timeline
 
 `src/main/launch-timeline.ts` stamps each startup milestone's offset (ms) from process start and
