@@ -425,7 +425,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Notes table",
       "selectAll": "Select all notes",
-      "selectRow": "Select note"
+      "selectRow": "Select note",
+      "kind": {
+        "Note": "Note",
+        "Task": "Task",
+        "Inbox": "Inbox"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Search notes...",

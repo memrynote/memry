@@ -64,6 +64,8 @@ export interface NoteWithProperties {
   modified: string
   wordCount: number
   properties: Record<string, unknown>
+  /** Row kind. Absent means 'note' — folder views only ever contain notes. */
+  kind?: 'note' | 'task' | 'inbox'
 }
 
 export interface AvailableProperty {

@@ -199,6 +199,8 @@ function getColumnType(columnId: string): PropertyType {
       return 'number'
     case 'tags':
       return 'multiselect'
+    case 'kind':
+      return 'text'
     default:
       return 'text'
   }
@@ -477,6 +479,22 @@ export function FolderTableView({
     return <WordCountCell value={value} />
   }, [])
 
+  // Memoized cell renderer for the row kind column (shared table reuse, e.g. tag page).
+  // Absent kind means 'note' — folder views themselves never set it.
+  const renderKindCell = useCallback(
+    (info: CellContext<NoteWithProperties, unknown>) => {
+      const kind = info.row.original.kind ?? 'note'
+      return (
+        <TextCell
+          value={tPhaseF(
+            `phaseF.componentsFolderViewFolderTableView.kind.${capitalizeFirst(kind)}`
+          )}
+        />
+      )
+    },
+    [tPhaseF]
+  )
+
   // Memoized cell renderer for generic properties
   // T116: Uses propertyTypes map for correct type rendering
   const renderPropertyCell = useCallback(
@@ -619,6 +637,14 @@ export function FolderTableView({
             size: col.width ?? 80
           }
 
+        case 'kind':
+          return {
+            ...baseColumn,
+            accessorFn: (row: NoteWithProperties) => row.kind ?? 'note',
+            cell: renderKindCell,
+            size: col.width ?? 100
+          }
+
         default:
           // Check if this is a formula column (id starts with "formula.")
           if (col.id.startsWith('formula.')) {
@@ -674,6 +700,7 @@ export function FolderTableView({
     renderTagsCell,
     renderDateCell,
     renderWordCountCell,
+    renderKindCell,
     renderPropertyCell,
     renderFormulaCell
   ])

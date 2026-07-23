@@ -461,6 +461,39 @@ describe('FolderTableView', () => {
       value: originalUserAgent
     })
   })
+
+  it('renders the kind column when configured', () => {
+    render(
+      <FolderTableView
+        notes={
+          [
+            { ...notes[0], id: 'n1', title: 'A note', kind: 'note' },
+            { ...notes[1], id: 't1', title: 'A task', kind: 'task' }
+          ] as any[]
+        }
+        columns={[
+          { id: 'title', width: 300 },
+          { id: 'kind', width: 100 }
+        ]}
+      />
+    )
+
+    expect(screen.getByText('Task')).toBeInTheDocument()
+  })
+
+  it('treats a row without a kind as a note', () => {
+    render(
+      <FolderTableView
+        notes={[{ ...notes[0], id: 'n1', title: 'A note' }] as any[]}
+        columns={[
+          { id: 'title', width: 300 },
+          { id: 'kind', width: 100 }
+        ]}
+      />
+    )
+
+    expect(screen.getByText('Note')).toBeInTheDocument()
+  })
 })
 
 describe('GroupedTable', () => {
