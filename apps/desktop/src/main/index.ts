@@ -60,7 +60,14 @@ import {
   stopGoogleCalendarSyncRunner,
   triggerGoogleCalendarSyncNow
 } from './calendar/google/sync-service'
-import { log, createLogger, disableConsoleTransport, applyPackagedLogLevels } from './lib/logger'
+import {
+  log,
+  createLogger,
+  disableConsoleTransport,
+  applyPackagedLogLevels,
+  migrateLegacyLogDir
+} from './lib/logger'
+import { applyMemrynoteIdentity } from './app-identity'
 import { isAllowedExternalUrl, isPathInsideDirs, resolveMemryFilePath } from './lib/external-url'
 import { decideFrameNavigation } from './lib/frame-navigation'
 import { registerTestHooks } from './test-hooks'
@@ -119,6 +126,13 @@ function resolveDeviceId(): string | undefined {
 
 const deviceId = resolveDeviceId()
 
+// Adopt the `memrynote` runtime identity (app name + userData dir, with
+// legacy migration) for production launches; dev profiles keep their
+// per-device `memry-<id>` identity below. The promise carries the macOS
+// Safe Storage keychain copy — awaited at the top of whenReady, before
+// anything decrypts secrets.
+const identityContinuity = deviceId ? Promise.resolve() : applyMemrynoteIdentity()
+
 let mainDiagnosticsRegistered = false
 
 function registerMainDiagnostics(): void {
@@ -166,6 +180,11 @@ if (deviceId) {
   const deviceUserData = `${app.getPath('userData')}-${deviceId}`
   app.setPath('userData', deviceUserData)
 }
+
+// Existing installs logged into `@memry/desktop` (the raw package name);
+// move that history into the `memrynote` dir before workers spawn and this
+// launch's log volume starts landing there.
+migrateLegacyLogDir()
 
 // Must run before app 'ready': if a prior launch's GPU process crashed (old/
 // blacklisted Windows GPUs paint nothing, leaving an invisible window), fall
@@ -938,6 +957,9 @@ if (!headlessCliArgs && !allowMultiInstanceForDeviceTests) {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 const appReady = app.whenReady().then(async () => {
+  // The Safe Storage keychain carry-over must land before anything reads
+  // secrets through safeStorage (see app-identity.ts).
+  await identityContinuity
   if (headlessCliArgs) return
 
   // Test-only reproduction of the customer's "app won't open" case: a startup that

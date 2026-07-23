@@ -309,9 +309,14 @@ vi.mock('./lib/logger', () => {
     log: { initialize: vi.fn(), warn: vi.fn() },
     createLogger: vi.fn(() => scopedLogger),
     disableConsoleTransport: disableConsoleTransportMock,
-    applyPackagedLogLevels: applyPackagedLogLevelsMock
+    applyPackagedLogLevels: applyPackagedLogLevelsMock,
+    migrateLegacyLogDir: vi.fn()
   }
 })
+
+vi.mock('./app-identity', () => ({
+  applyMemrynoteIdentity: vi.fn(() => Promise.resolve())
+}))
 
 vi.mock('node:fs', () => ({
   existsSync: existsSyncMock,

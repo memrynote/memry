@@ -53,7 +53,8 @@ export function renderCask({ tag, appVersion, shaArm, shaX64 }) {
   zap trash: [
     "~/Library/Application Support/MemryNote",
     "~/Library/Caches/com.memrynote.memry",
-    "~/Library/Logs/MemryNote",
+    "~/Library/Logs/memrynote",
+    "~/Library/Logs/@memry",
     "~/Library/Preferences/com.memrynote.memry.plist",
     "~/Library/Saved Application State/com.memrynote.memry.savedState",
   ]
