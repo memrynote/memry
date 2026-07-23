@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
+import { eq } from 'drizzle-orm'
+import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import {
   listTagCategories,
   createTagCategory,
@@ -48,12 +50,26 @@ describe('tag categories', () => {
   it('deleting a category keeps its tags and uncategorizes them', () => {
     const work = createTagCategory(db, 'Work')
     getOrCreateTag(db, 'meetings')
-    reorderTags(db, [{ tag: 'meetings', categoryId: work.id, sortOrder: 0 }])
+    reorderTags(db, [{ tag: 'meetings', categoryId: work.id, sortOrder: 7 }])
+
+    const before = db.select().from(tagDefinitions).where(eq(tagDefinitions.name, 'meetings')).get()
+    const rowCountBefore = db.select().from(tagDefinitions).all().length
 
     deleteTagCategory(db, work.id)
 
     expect(listTagCategories(db)).toEqual([])
-    expect(getOrCreateTag(db, 'meetings').categoryId).toBeNull()
+
+    const after = db.select().from(tagDefinitions).where(eq(tagDefinitions.name, 'meetings')).get()
+
+    // Query tag_definitions directly (not via getOrCreateTag, which is get-or-insert
+    // and would silently recreate a deleted row) to prove the tag row itself survives
+    // the category deletion rather than being hard-deleted.
+    expect(after).toBeDefined()
+    expect(after?.categoryId).toBeNull()
+    expect(after?.sortOrder).toBe(7)
+    expect(after?.color).toBe(before?.color)
+    expect(after?.createdAt).toBe(before?.createdAt)
+    expect(db.select().from(tagDefinitions).all().length).toBe(rowCountBefore)
   })
 
   it('moves a tag between categories in one call', () => {

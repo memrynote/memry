@@ -27,8 +27,8 @@ export function listTagCategories(db: DataDb): TagCategoryRow[] {
       name: tagCategories.name,
       sortOrder: tagCategories.sortOrder,
       tagCount: sql<number>`(
-        SELECT COUNT(*) FROM tag_definitions
-        WHERE tag_definitions.category_id = ${tagCategories.id}
+        SELECT COUNT(*) FROM ${tagDefinitions}
+        WHERE ${tagDefinitions.categoryId} = ${tagCategories.id}
       )`
     })
     .from(tagCategories)
