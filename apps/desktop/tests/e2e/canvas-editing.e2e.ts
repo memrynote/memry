@@ -549,4 +549,71 @@ test.describe('Spatial canvas — in-place editing (M6)', () => {
     // Exactly one active editor.
     expect(await page.locator('[data-canvas-active-card]').count()).toBe(1)
   })
+
+  // PR #899 headline invariant: a card renders at full editor fidelity in BOTH
+  // states; double-click only toggles writability. Activating must therefore
+  // not resize or move the card — the regression guard against the old
+  // preview→editor swap that reflowed the card on activation.
+  test('double-click does not shift a note card (zero layout shift)', async ({ page }) => {
+    await openVault(page)
+    await setSpatialCanvasFlag(page, true)
+    await createCanvasFromSidebar(page)
+    const noteId = await seedNote(
+      page,
+      `NoShift ${Date.now()}`,
+      '# Heading\n\nSome body text that gives the card real height.\n\n- one\n- two'
+    )
+    await dropNote(page, noteId)
+    const card = page.locator(`[data-canvas-card-entity="note:${noteId}"]`)
+    await expect(card).toBeVisible({ timeout: 20000 })
+    await expect(card).toHaveAttribute('data-canvas-card-state', 'ready', { timeout: 20000 })
+
+    const idleBox = await card.boundingBox()
+    if (!idleBox) throw new Error('no idle card box')
+    await page.screenshot({ path: 'test-results/live-cards/note-idle.png' })
+
+    await dblclickCard(page, `note:${noteId}`)
+    await expect(card).toHaveAttribute('data-canvas-card-state', 'active', { timeout: 20000 })
+    const activeBox = await card.boundingBox()
+    if (!activeBox) throw new Error('no active card box')
+    await page.screenshot({ path: 'test-results/live-cards/note-active.png' })
+
+    // Same geometry within a sub-pixel tolerance: activation toggles
+    // writability, not size or position.
+    expect(Math.abs(activeBox.x - idleBox.x)).toBeLessThanOrEqual(1)
+    expect(Math.abs(activeBox.y - idleBox.y)).toBeLessThanOrEqual(1)
+    expect(Math.abs(activeBox.width - idleBox.width)).toBeLessThanOrEqual(1)
+    expect(Math.abs(activeBox.height - idleBox.height)).toBeLessThanOrEqual(1)
+  })
+
+  // The reported bug: an idle note card showed raw {task:<id>} markers as plain
+  // text. Cards now share the editor's markdown load chain (normalize-note-
+  // blocks), so an inline task marker renders as the task block, and the linked
+  // task's live title resolves through TaskPrefetchProvider.
+  test('a note card renders {task:} markers as task blocks, not raw text', async ({ page }) => {
+    await openVault(page)
+    await setSpatialCanvasFlag(page, true)
+    await createCanvasFromSidebar(page)
+    const taskTitle = `Linked ${Date.now()}`
+    const taskId = await seedTask(page, taskTitle)
+    const noteId = await seedNote(
+      page,
+      `Markers ${Date.now()}`,
+      `# Notes\n\n- [ ] ${taskTitle} {task:${taskId}}`
+    )
+    await dropNote(page, noteId)
+    const card = page.locator(`[data-canvas-card-entity="note:${noteId}"]`)
+    await expect(card).toBeVisible({ timeout: 20000 })
+    await expect(card).toHaveAttribute('data-canvas-card-state', 'ready', { timeout: 20000 })
+
+    // The inline {task:} marker renders as a real task block (a taskBlock DOM
+    // node from the shared load chain), not raw text. Structural, so it does
+    // not race the linked task's async live-title resolution.
+    await expect(card.locator('[data-content-type="taskBlock"]')).toBeVisible({ timeout: 20000 })
+    // The heading renders too, proving the body loaded at editor fidelity.
+    await expect(card).toContainText('Notes', { timeout: 20000 })
+    await page.screenshot({ path: 'test-results/live-cards/note-task-marker.png' })
+    // …and the raw marker never leaks as plain text — the reported bug.
+    await expect(card).not.toContainText('{task:')
+  })
 })
