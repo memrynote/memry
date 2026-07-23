@@ -1,6 +1,8 @@
+import type { ReactNode } from 'react'
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { DragEndEvent } from '@dnd-kit/core'
 import TagsHubPage from './tags-hub'
 
 const mockUseTagCategories = vi.hoisted(() =>
@@ -35,6 +37,33 @@ const mockUseTagCategories = vi.hoisted(() =>
 )
 
 const mockOpenSidebarItem = vi.fn()
+
+// `handleDragEnd` (the page's drag-end handler) is only reachable through the
+// `onDragEnd` prop the page passes to dnd-kit's `DndContext` — there's no
+// other way to invoke it without a real pointer drag. Keep everything else
+// in the module real (sensors, `useDroppable`/`useSortable`'s internals via
+// `@dnd-kit/sortable`, which imports from this same mocked module) so
+// `CategoryBlock`/`TagChipItem` still render normally; only swap `DndContext`
+// for a stub that captures the callback and renders its children unwrapped
+// (dnd-kit's hooks fall back to their documented no-op default context when
+// used outside a real `DndContext`, so this doesn't break the render).
+const dndMocks = vi.hoisted(() => ({
+  onDragEnd: null as null | ((event: DragEndEvent) => void)
+}))
+
+vi.mock('@dnd-kit/core', async () => {
+  const actual = await vi.importActual<typeof import('@dnd-kit/core')>('@dnd-kit/core')
+  return {
+    ...actual,
+    DndContext: (props: {
+      onDragEnd?: (event: DragEndEvent) => void
+      children?: ReactNode
+    }): ReactNode => {
+      dndMocks.onDragEnd = props.onDragEnd ?? null
+      return props.children
+    }
+  }
+})
 
 vi.mock('@/hooks/use-tag-categories', () => ({
   useTagCategories: mockUseTagCategories
@@ -85,6 +114,142 @@ describe('TagsHubPage', () => {
       title: 'meetings',
       path: '/tags/meetings',
       entityId: 'meetings'
+    })
+  })
+
+  it('wires a real category block rename/delete to the hook, leaving Uncategorized with neither', async () => {
+    const renameCategory = vi.fn()
+    const deleteCategory = vi.fn()
+    mockUseTagCategories.mockReturnValueOnce({
+      categories: [
+        {
+          id: 'cat-1',
+          name: 'Work',
+          sortOrder: 0,
+          tags: [{ tag: 'meetings', color: 'blue', icon: null, count: 3, sortOrder: 0 }]
+        }
+      ],
+      uncategorized: [{ tag: 'misc', color: 'stone', icon: null, count: 1, sortOrder: 0 }],
+      isLoading: false,
+      error: null,
+      createCategory: vi.fn(),
+      renameCategory,
+      deleteCategory,
+      createTag: vi.fn(),
+      reorder: vi.fn()
+    })
+
+    render(<TagsHubPage />)
+
+    // Only the real category ("Work") should offer rename/delete at all —
+    // confirms the Uncategorized block below it renders neither affordance.
+    expect(screen.getAllByRole('button', { name: /rename category/i })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: /delete category/i })).toHaveLength(1)
+
+    await userEvent.click(screen.getByRole('button', { name: /rename category/i }))
+    const input = screen.getByRole('textbox')
+    await userEvent.clear(input)
+    await userEvent.type(input, 'Job{Enter}')
+    expect(renameCategory).toHaveBeenCalledWith('cat-1', 'Job')
+
+    await userEvent.click(screen.getByRole('button', { name: /delete category/i }))
+    await userEvent.click(screen.getByRole('button', { name: /^delete$/i }))
+    expect(deleteCategory).toHaveBeenCalledWith('cat-1')
+  })
+
+  it('reorders a dragged tag into its dropped category at the resolved index', async () => {
+    const reorder = vi.fn().mockResolvedValue(undefined)
+    mockUseTagCategories.mockReturnValueOnce({
+      categories: [
+        {
+          id: 'cat-1',
+          name: 'Work',
+          sortOrder: 0,
+          tags: [
+            { tag: 'meetings', color: 'blue', icon: null, count: 3, sortOrder: 0 },
+            { tag: 'standup', color: 'blue', icon: null, count: 2, sortOrder: 1 }
+          ]
+        },
+        {
+          id: 'cat-2',
+          name: 'Personal',
+          sortOrder: 1,
+          tags: [{ tag: 'personal', color: 'green', icon: null, count: 1, sortOrder: 0 }]
+        }
+      ],
+      uncategorized: [],
+      isLoading: false,
+      error: null,
+      createCategory: vi.fn(),
+      renameCategory: vi.fn(),
+      deleteCategory: vi.fn(),
+      createTag: vi.fn(),
+      reorder
+    })
+
+    render(<TagsHubPage />)
+
+    // "meetings" (cat-1) dropped on the "personal" chip (cat-2, index 0) —
+    // dnd-kit's real shape for a tag-over-tag drop (see TagChipItem's
+    // `useSortable` data).
+    await act(async () => {
+      dndMocks.onDragEnd?.({
+        active: {
+          id: 'meetings',
+          data: { current: { type: 'tag', tag: 'meetings', categoryId: 'cat-1' } }
+        },
+        over: {
+          id: 'personal',
+          data: { current: { type: 'tag', tag: 'personal', categoryId: 'cat-2' } }
+        }
+      } as DragEndEvent)
+    })
+
+    expect(reorder).toHaveBeenCalledWith({
+      tags: [
+        { tag: 'standup', categoryId: 'cat-1', sortOrder: 0 },
+        { tag: 'meetings', categoryId: 'cat-2', sortOrder: 0 },
+        { tag: 'personal', categoryId: 'cat-2', sortOrder: 1 }
+      ]
+    })
+  })
+
+  it('reorders categories when a category block is dragged past another', async () => {
+    const reorder = vi.fn().mockResolvedValue(undefined)
+    mockUseTagCategories.mockReturnValueOnce({
+      categories: [
+        { id: 'cat-1', name: 'Work', sortOrder: 0, tags: [] },
+        { id: 'cat-2', name: 'Personal', sortOrder: 1, tags: [] },
+        { id: 'cat-3', name: 'Ideas', sortOrder: 2, tags: [] }
+      ],
+      uncategorized: [],
+      isLoading: false,
+      error: null,
+      createCategory: vi.fn(),
+      renameCategory: vi.fn(),
+      deleteCategory: vi.fn(),
+      createTag: vi.fn(),
+      reorder
+    })
+
+    render(<TagsHubPage />)
+
+    // "Work" (index 0) dragged past "Ideas" (index 2) — dnd-kit's real shape
+    // for a category-over-category drop (see CategoryBlock's `useSortable`
+    // data).
+    await act(async () => {
+      dndMocks.onDragEnd?.({
+        active: { id: 'cat-1', data: { current: { type: 'category', categoryId: 'cat-1' } } },
+        over: { id: 'cat-3', data: { current: { type: 'category', categoryId: 'cat-3' } } }
+      } as DragEndEvent)
+    })
+
+    expect(reorder).toHaveBeenCalledWith({
+      categories: [
+        { id: 'cat-2', sortOrder: 0 },
+        { id: 'cat-3', sortOrder: 1 },
+        { id: 'cat-1', sortOrder: 2 }
+      ]
     })
   })
 })

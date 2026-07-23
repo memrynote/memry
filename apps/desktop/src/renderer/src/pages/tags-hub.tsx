@@ -45,8 +45,17 @@ interface OptimisticState {
 
 export function TagsHubPage(): React.JSX.Element {
   const { t } = useT('notes')
-  const { categories, uncategorized, isLoading, error, createCategory, createTag, reorder } =
-    useTagCategories()
+  const {
+    categories,
+    uncategorized,
+    isLoading,
+    error,
+    createCategory,
+    renameCategory,
+    deleteCategory,
+    createTag,
+    reorder
+  } = useTagCategories()
   const { openSidebarItem } = useSidebarNavigation()
 
   // Applied immediately on drop so the chip/block doesn't snap back while
@@ -169,6 +178,8 @@ export function TagsHubPage(): React.JSX.Element {
                   name={category.name}
                   tags={category.tags}
                   onTagOpen={handleTagOpen}
+                  onRename={(newName) => renameCategory(category.id, newName)}
+                  onDelete={() => deleteCategory(category.id)}
                 />
               ))}
             </SortableContext>
