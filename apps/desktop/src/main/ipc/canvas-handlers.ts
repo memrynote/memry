@@ -14,6 +14,9 @@ import {
   CanvasUpdateSchema,
   CanvasGetAssetSchema,
   CanvasListAssetsSchema,
+  CanvasLibrarySaveSchema,
+  type CanvasLibraryListResponse,
+  type CanvasLibrarySaveResponse,
   type CanvasCreatedEvent,
   type CanvasUpdatedEvent,
   type CanvasDeletedEvent,
@@ -27,6 +30,7 @@ import { requireDatabase, type DataDb } from '../database'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 import { getOrInitializeLocalVaultKey, secureCleanup } from '../crypto'
 import { createCanvas, deleteCanvas, getCanvas, listCanvases, updateCanvas } from '../canvas/store'
+import { listCanvasLibraryItems, saveCanvasLibraryItems } from '../canvas/library-store'
 import { syncCanvasCreate, syncCanvasUpdate, syncCanvasDelete } from '../canvas/sync-bridge'
 import {
   getCanvasAssetRef,
@@ -233,6 +237,29 @@ export function registerCanvasHandlers(): void {
       }
     )
   )
+
+  // canvas:library-list - The vault's Excalidraw library (shapes panel)
+  ipcMain.handle(
+    CanvasChannels.invoke.LIBRARY_LIST,
+    createHandler(async (): Promise<CanvasLibraryListResponse> => {
+      const { db, vaultId, vaultKey } = await getCanvasContext()
+      return { libraryItems: listCanvasLibraryItems(db, vaultKey, vaultId) }
+    })
+  )
+
+  // canvas:library-save - Reconcile the vault rows against Excalidraw's full
+  // item list. Excalidraw's persistence adapter has no per-item callbacks, so
+  // "absent from this payload" is how a delete reaches us.
+  ipcMain.handle(
+    CanvasChannels.invoke.LIBRARY_SAVE,
+    createValidatedHandler(
+      CanvasLibrarySaveSchema,
+      async (input): Promise<CanvasLibrarySaveResponse> => {
+        const { db, vaultId, vaultKey } = await getCanvasContext()
+        return { changed: saveCanvasLibraryItems(db, vaultKey, vaultId, input.libraryItems) }
+      }
+    )
+  )
 }
 
 export function unregisterCanvasHandlers(): void {
@@ -244,6 +271,8 @@ export function unregisterCanvasHandlers(): void {
   ipcMain.removeHandler(CanvasChannels.invoke.UPLOAD_ASSET)
   ipcMain.removeHandler(CanvasChannels.invoke.GET_ASSET)
   ipcMain.removeHandler(CanvasChannels.invoke.LIST_ASSETS)
+  ipcMain.removeHandler(CanvasChannels.invoke.LIBRARY_LIST)
+  ipcMain.removeHandler(CanvasChannels.invoke.LIBRARY_SAVE)
   if (vaultKeyPromise) {
     void vaultKeyPromise.then((key) => secureCleanup(key)).catch(() => {})
     vaultKeyPromise = null

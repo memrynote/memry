@@ -28,6 +28,42 @@ export const canvases = sqliteTable(
 )
 
 /**
+ * Excalidraw library items (the shapes panel), one row per LibraryItem.
+ *
+ * Vault-global, NOT per canvas — Excalidraw's library is a single collection
+ * shared by every scene, and the editor remounts per canvas id, so anything
+ * scoped to a canvas would vanish on the next tab switch.
+ *
+ * Row-per-item (rather than one blob) so a future sync type gets per-item LWW
+ * and real delete tombstones for free: two devices importing different kits
+ * both keep theirs. The sync columns are present from the first migration so
+ * enabling sync stays additive.
+ */
+export const canvasLibraryItems = sqliteTable(
+  'canvas_library_items',
+  {
+    // The Excalidraw LibraryItem id — stable across devices, which is what
+    // makes per-item reconciliation possible without a mapping table.
+    id: text('id').primaryKey(),
+    vaultId: text('vault_id').notNull(),
+    // Vault-key-encrypted LibraryItem JSON (elements, name, status, created).
+    itemCiphertext: text('item_ciphertext').notNull(),
+    vectorClock: text('vector_clock', { mode: 'json' }).$type<VectorClock>().notNull(),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+    // Soft-delete: removing an item from the panel must stay visible to sync,
+    // otherwise the item resurrects from another device on the next pull.
+    deletedAt: integer('deleted_at'),
+    lastSyncedAt: integer('last_synced_at'),
+    clock: text('clock', { mode: 'json' }).$type<VectorClock>()
+  },
+  (table) => [index('canvas_library_items_by_vault').on(table.vaultId, table.updatedAt)]
+)
+
+export type CanvasLibraryItemRow = typeof canvasLibraryItems.$inferSelect
+export type NewCanvasLibraryItemRow = typeof canvasLibraryItems.$inferInsert
+
+/**
  * Advisory index of which entities a canvas references. NOT authoritative —
  * the geometry/refs source of truth is the encrypted scene snapshot. Rows are
  * rewritten from the scene on every save/apply; consumers must LEFT JOIN and

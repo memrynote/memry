@@ -89,12 +89,20 @@ describe('isPermissionAllowed', () => {
     expect(isPermissionAllowed('notifications', FILE_ORIGIN, {}, prod)).toBe(true)
   })
 
+  it('allows fileSystem from the app origin so the canvas library can import files', () => {
+    // Excalidraw's library panel reads .excalidrawlib through the File System
+    // Access API; denying this let the picker open and then failed the read.
+    expect(isPermissionAllowed('fileSystem', FILE_ORIGIN, {}, prod)).toBe(true)
+    expect(isPermissionAllowed('fileSystem', DEV_ORIGIN, {}, dev)).toBe(true)
+  })
+
   it('denies allowlisted permissions from untrusted origins', () => {
     for (const permission of [
       'media',
       'clipboard-sanitized-write',
       'clipboard-read',
-      'notifications'
+      'notifications',
+      'fileSystem'
     ]) {
       expect(
         isPermissionAllowed(
@@ -130,7 +138,6 @@ describe('isPermissionAllowed', () => {
       'top-level-storage-access',
       'window-management',
       'deprecated-sync-clipboard-read',
-      'fileSystem',
       'unknown'
     ]
     for (const permission of denied) {

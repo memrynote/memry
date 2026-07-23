@@ -4,6 +4,9 @@ import {
   CanvasCreateSchema,
   CanvasUpdateSchema,
   type Canvas,
+  type CanvasLibraryItem,
+  type CanvasLibraryListResponse,
+  type CanvasLibrarySaveResponse,
   type CanvasSummary,
   type CanvasEntityRef,
   type CanvasListResponse,
@@ -33,6 +36,9 @@ export type {
   CanvasEntityRef,
   CanvasListResponse,
   CanvasDeleteResponse,
+  CanvasLibraryItem,
+  CanvasLibraryListResponse,
+  CanvasLibrarySaveResponse,
   CanvasCreatedEvent,
   CanvasUpdatedEvent,
   CanvasDeletedEvent,
@@ -90,6 +96,17 @@ export const canvasRpc = defineDomain({
       channel: CanvasChannels.invoke.LIST_ASSETS,
       params: ['canvasId'],
       invokeArgs: ['{ canvasId }']
+    }),
+    libraryList: defineMethod<() => Promise<CanvasLibraryListResponse>>({
+      channel: CanvasChannels.invoke.LIBRARY_LIST,
+      params: []
+    }),
+    librarySave: defineMethod<
+      (libraryItems: CanvasLibraryItem[]) => Promise<CanvasLibrarySaveResponse>
+    >({
+      channel: CanvasChannels.invoke.LIBRARY_SAVE,
+      params: ['libraryItems'],
+      invokeArgs: ['{ libraryItems }']
     })
   },
   events: {

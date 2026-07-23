@@ -73,6 +73,27 @@ export const CanvasUpdateSchema = z.object({
   entityRefs: z.array(CanvasEntityRefSchema).optional()
 })
 
+/**
+ * One Excalidraw LibraryItem. Only `id` is ours to reason about — it is the
+ * per-item storage key and the reconciliation key across devices. Everything
+ * else (elements, name, status, created) is stored verbatim and never
+ * interpreted, so an Excalidraw upgrade that adds fields round-trips intact;
+ * hence `looseObject` rather than a closed shape that would strip them.
+ */
+export const CanvasLibraryItemSchema = z.looseObject({
+  id: z.string().min(1)
+})
+export type CanvasLibraryItem = z.infer<typeof CanvasLibraryItemSchema>
+
+/**
+ * The whole library as Excalidraw hands it to us. Excalidraw's persistence
+ * adapter is blob-shaped (it always saves the full list); main diffs this
+ * against the stored rows, so an item missing here is a delete.
+ */
+export const CanvasLibrarySaveSchema = z.object({
+  libraryItems: z.array(CanvasLibraryItemSchema)
+})
+
 export const CanvasGetAssetSchema = z.object({
   canvasId: z.string().min(1),
   fileId: z.string().min(1)
@@ -121,6 +142,15 @@ export interface CanvasListAssetsResponse {
 
 export interface CanvasDeleteResponse {
   success: boolean
+}
+
+export interface CanvasLibraryListResponse {
+  libraryItems: CanvasLibraryItem[]
+}
+
+export interface CanvasLibrarySaveResponse {
+  /** Rows written (inserted + updated + tombstoned) — 0 means the save was a no-op. */
+  changed: number
 }
 
 export interface CanvasCreatedEvent {
