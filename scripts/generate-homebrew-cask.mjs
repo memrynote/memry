@@ -50,9 +50,21 @@ export function renderCask({ tag, appVersion, shaArm, shaX64 }) {
 
   app "MemryNote.app"
 
+  # userData is keyed by package.json "name" (@memry/desktop) — electron-builder
+  # never writes productName into the asar — so real app state (Chromium profile,
+  # crdt-store, models, config) lives under @memry/. electron-updater's download
+  # cache sanitizes the same name to @memrydesktop-updater; ShipIt is Squirrel.Mac
+  # update staging. Bundle-id (com.memrynote.memry) keys Caches/HTTPStorages/
+  # Preferences. MemryNote entries are aspirational but harmless — kept.
+  # Vault content (notes + .memry/*.db) lives under the user-chosen vault dir
+  # (default ~/Documents/Memry) and is deliberately NOT zapped.
   zap trash: [
+    "~/Library/Application Support/@memry",
     "~/Library/Application Support/MemryNote",
+    "~/Library/Caches/@memrydesktop-updater",
     "~/Library/Caches/com.memrynote.memry",
+    "~/Library/Caches/com.memrynote.memry.ShipIt",
+    "~/Library/HTTPStorages/com.memrynote.memry",
     "~/Library/Logs/MemryNote",
     "~/Library/Preferences/com.memrynote.memry.plist",
     "~/Library/Saved Application State/com.memrynote.memry.savedState",
@@ -91,6 +103,10 @@ function selfcheck() {
   assert.ok(!/app "Memry\.app"/.test(out), 'app stanza must not use stale Memry.app bundle name')
   assert.match(out, /arm:\s+"a{64}"/)
   assert.match(out, /intel:\s+"b{64}"/)
+  // zap must cover the REAL userData parent (@memry — app.name, not productName,
+  // drives it) and the electron-updater cache, or --zap leaves all app state behind.
+  assert.match(out, /"~\/Library\/Application Support\/@memry"/)
+  assert.match(out, /"~\/Library\/Caches\/@memrydesktop-updater"/)
   // Regex backslashes must survive templating (JS drops unknown escapes).
   assert.match(out, /\\d\{4\}-\\d\{2\}-\\d\{2\}/)
   assert.throws(() =>
