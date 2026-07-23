@@ -62,6 +62,7 @@ import {
 } from './calendar/google/sync-service'
 import { log, createLogger, disableConsoleTransport, applyPackagedLogLevels } from './lib/logger'
 import { isAllowedExternalUrl, isPathInsideDirs, resolveMemryFilePath } from './lib/external-url'
+import { remapCrossDeviceAttachmentPath } from './lib/attachment-path-remap'
 import { decideFrameNavigation } from './lib/frame-navigation'
 import { registerTestHooks } from './test-hooks'
 import {
@@ -1047,7 +1048,22 @@ const appReady = app.whenReady().then(async () => {
       if (!allowedDirs.includes(resolvedVaultPath)) allowedDirs.push(resolvedVaultPath)
     }
 
-    const isAllowed = isPathInsideDirs(filePath, allowedDirs)
+    let isAllowed = isPathInsideDirs(filePath, allowedDirs)
+    if (!isAllowed) {
+      // Note blocks store the ORIGIN machine's absolute path (memry-file://local/<abs>),
+      // so a note synced from another device points at a path that doesn't exist
+      // here. The bytes live at the same attachments/<noteId>/<file> spot inside
+      // this device's vault — serve from there when present.
+      const remapped = remapCrossDeviceAttachmentPath(filePath, vaultPaths)
+      if (remapped) {
+        mainLog.debug('memry-file: remapped cross-device attachment path', {
+          requested: filePath,
+          remapped
+        })
+        filePath = remapped
+        isAllowed = true
+      }
+    }
     if (!isAllowed) {
       mainLog.warn('memry-file: blocked path outside allowed directories', { filePath })
       return new Response(null, { status: 403, statusText: 'Forbidden' })

@@ -72,6 +72,12 @@ export function buildNotePushPayload(itemId: string, operation: string): string 
     emoji: cached.emoji,
     fileType: cached.fileType,
     folderPath,
+    // Ids of server-side attachment blobs this note embeds; the receiving
+    // device downloads any it is missing into its own vault (older clients
+    // parse with zod strip mode and simply ignore the key).
+    ...(cached.attachmentReferences?.length
+      ? { attachmentReferences: cached.attachmentReferences }
+      : {}),
     clock: cached.clock ?? {},
     createdAt: cached.createdAt,
     modifiedAt: cached.modifiedAt
@@ -118,6 +124,9 @@ export function seedUnclockedNotes(deviceId: string, queue: SyncQueueManager): n
         folderPath,
         ...(Object.keys(properties).length > 0 ? { properties } : {}),
         ...(pinnedTags.length > 0 ? { pinnedTags } : {}),
+        ...(item.attachmentReferences?.length
+          ? { attachmentReferences: item.attachmentReferences }
+          : {}),
         clock,
         createdAt: item.createdAt,
         modifiedAt: item.modifiedAt

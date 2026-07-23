@@ -23,6 +23,8 @@ import {
   generateUniquePathSync
 } from '../../vault/file-ops'
 import { toAbsolutePath, toRelativePath, getNotesDir } from '../../vault/notes'
+import { getNoteAttachmentsDir } from '../../vault/attachments'
+import { getStatus as getVaultStatus } from '../../vault/index'
 import {
   parseNote,
   serializeNote,
@@ -75,6 +77,50 @@ async function removeEmptyParents(dir: string, stopAt: string): Promise<void> {
     } catch {
       break
     }
+  }
+}
+
+// Session-scoped guard so re-applying the same note (steady-state pulls) does
+// not re-emit a download request per pull; the downloader additionally skips
+// files that already exist on disk.
+const requestedAttachmentDownloads = new Set<string>()
+
+function mergeAttachmentReferences(
+  local: string[] | null | undefined,
+  remote: string[] | null | undefined
+): string[] | undefined {
+  if (!remote?.length) return undefined
+  const merged = [...(local ?? [])]
+  for (const id of remote) {
+    if (!merged.includes(id)) merged.push(id)
+  }
+  return merged
+}
+
+/**
+ * Fetch server-side attachment blobs this note embeds. The note's markdown
+ * references files under `attachments/<noteId>/…` which only exist on the
+ * device that inserted them — every other device must materialize them from
+ * the encrypted blob store into its own vault.
+ */
+function requestEmbeddedAttachmentDownloads(
+  itemId: string,
+  refs: string[] | null | undefined
+): void {
+  if (!refs?.length) return
+  const vaultPath = getVaultStatus().path
+  if (!vaultPath) return
+  const attachmentsDir = getNoteAttachmentsDir(vaultPath, itemId)
+  for (const attachmentId of refs) {
+    const key = `${itemId}:${attachmentId}`
+    if (requestedAttachmentDownloads.has(key)) continue
+    requestedAttachmentDownloads.add(key)
+    attachmentEvents.emitDownloadNeeded({
+      noteId: itemId,
+      attachmentId,
+      diskPath: attachmentsDir,
+      intoDir: true
+    })
   }
 }
 
@@ -354,6 +400,11 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         applyPinnedTags(indexDb, itemId, data.pinnedTags)
       }
 
+      const mergedAttachmentRefs = mergeAttachmentReferences(
+        existing.attachmentReferences,
+        data.attachmentReferences
+      )
+
       updateNoteCache(indexDb, itemId, updateFields)
       updateNoteMetadata(ctx.db, itemId, {
         path: updateFields.path ?? existing.path,
@@ -362,11 +413,14 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         clock: resolution.mergedClock,
         syncedAt: now,
         modifiedAt: data.modifiedAt ?? now,
+        ...(mergedAttachmentRefs ? { attachmentReferences: mergedAttachmentRefs } : {}),
         propertyDefinitionNames:
           remoteProperties && Object.keys(remoteProperties).length > 0
             ? Object.keys(remoteProperties).sort((a, b) => a.localeCompare(b))
             : undefined
       })
+
+      requestEmbeddedAttachmentDownloads(itemId, data.attachmentReferences)
 
       ctx.emit(NotesChannels.events.UPDATED, { id: itemId, source: 'sync' })
       if (tagsChanged) {
@@ -474,6 +528,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     updateNoteMetadata(ctx.db, itemId, {
       clock: remoteClock,
       syncedAt: now,
+      ...(data.attachmentReferences?.length
+        ? { attachmentReferences: data.attachmentReferences }
+        : {}),
       propertyDefinitionNames:
         data.properties && Object.keys(data.properties).length > 0
           ? Object.keys(data.properties).sort((a, b) => a.localeCompare(b))
@@ -490,6 +547,8 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     const tmpPath = absolutePath + '.tmp'
     fs.writeFileSync(tmpPath, fileContent, 'utf-8')
     fs.renameSync(tmpPath, absolutePath)
+
+    requestEmbeddedAttachmentDownloads(itemId, data.attachmentReferences)
 
     ctx.emit(NotesChannels.events.CREATED, {
       note: { id: itemId, path: relPath, title },
