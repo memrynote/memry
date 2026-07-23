@@ -138,8 +138,19 @@ export const TagDefinitionSyncPayloadSchema = z.object({
   name: z.string(),
   color: z.string(),
   icon: z.string().nullable().optional(),
+  categoryId: z.string().nullable().optional(),
+  sortOrder: z.number().int().optional(),
   clock: VectorClockSchema.optional(),
   createdAt: z.string().optional()
+})
+
+export const TagCategorySyncPayloadSchema = z.object({
+  name: z.string(),
+  sortOrder: z.number().int(),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+  deletedAt: z.string().nullable().optional()
 })
 
 export const FolderConfigSyncPayloadSchema = z.object({
@@ -374,5 +385,6 @@ export type ProjectLinkSync = z.infer<typeof ProjectLinkSyncSchema>
 export type NoteSyncPayload = z.infer<typeof NoteSyncPayloadSchema>
 export type JournalSyncPayload = z.infer<typeof JournalSyncPayloadSchema>
 export type TagDefinitionSyncPayload = z.infer<typeof TagDefinitionSyncPayloadSchema>
+export type TagCategorySyncPayload = z.infer<typeof TagCategorySyncPayloadSchema>
 export type AgentConversationSyncPayload = z.infer<typeof AgentConversationSyncPayloadSchema>
 export type AgentMessageSyncPayload = z.infer<typeof AgentMessageSyncPayloadSchema>

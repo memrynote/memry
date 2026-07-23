@@ -7,6 +7,7 @@
 
 import { describe, it, expect } from 'vitest'
 
+import { TagCategorySyncPayloadSchema, TagDefinitionSyncPayloadSchema } from './sync-payloads'
 import {
   ChangesResponseSchema,
   ConflictResponseSchema,
@@ -780,5 +781,34 @@ describe('LEGACY_RECORD_SYNC_ITEM_TYPES', () => {
     for (const type of LEGACY_RECORD_SYNC_ITEM_TYPES) {
       expect(RECORD_SYNC_ITEM_TYPES).toContain(type)
     }
+  })
+})
+
+describe('tag_category sync registration', () => {
+  it('is a known sync item type in all three lists', () => {
+    expect(SYNC_ITEM_TYPES).toContain('tag_category')
+    expect(RECORD_SYNC_ITEM_TYPES).toContain('tag_category')
+    expect(RECORD_CLOCK_REQUIRED_ITEM_TYPES).toContain('tag_category')
+  })
+
+  it('parses a minimal category payload', () => {
+    const parsed = TagCategorySyncPayloadSchema.safeParse({ name: 'Work', sortOrder: 0 })
+    expect(parsed.success).toBe(true)
+  })
+
+  it('accepts a tag payload without the new category fields', () => {
+    const parsed = TagDefinitionSyncPayloadSchema.safeParse({ name: 'work', color: 'blue' })
+    expect(parsed.success).toBe(true)
+    expect(parsed.success && parsed.data.categoryId).toBeUndefined()
+  })
+
+  it('accepts a tag payload with the new category fields', () => {
+    const parsed = TagDefinitionSyncPayloadSchema.safeParse({
+      name: 'work',
+      color: 'blue',
+      categoryId: 'abc',
+      sortOrder: 3
+    })
+    expect(parsed.success && parsed.data.sortOrder).toBe(3)
   })
 })
