@@ -14,12 +14,8 @@ import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
-  MoreHorizontal,
   Pin,
   FileText,
-  Trash2,
-  Pencil,
-  Palette,
   ArrowUpDown,
   Clock,
   Calendar,
@@ -32,12 +28,7 @@ import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem
 } from '@/components/ui/dropdown-menu'
@@ -49,8 +40,7 @@ import { useTagDetail, type TagSortBy } from '@/hooks/use-tag-detail'
 import { useTaskTagDetail } from '@/hooks/use-task-tag-detail'
 import { useTaskWorkspaceData } from '@/features/tasks/use-task-queries'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
-import { COLOR_NAMES, getTagColors } from '@/components/note/tags-row/tag-colors'
-import { CustomColorSwatch } from '@/components/note/tags-row/CustomColorSwatch'
+import { getTagColors } from '@/components/note/tags-row/tag-colors'
 import { tagsService, onTagRenamed, onTagDeleted, type TagNoteItem } from '@/services/tags-service'
 import type { Task as ServiceTask } from '@/services/tasks-service'
 import { TaskTagsBadge } from '@/components/tasks/task-badges'
@@ -65,6 +55,7 @@ import { TagIconChip } from '@/components/settings/tag-icon-chip'
 import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { TagRenameDialog } from './tag-rename-dialog'
 import { TagDeleteDialog } from './tag-delete-dialog'
+import { TagOverflowMenu } from '@/pages/tag-view/tag-overflow-menu'
 import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Component:TagDetailView')
@@ -555,114 +546,6 @@ function NoteRowSkeleton(): React.JSX.Element {
       <span className="shrink-0 size-3.5 rounded bg-muted animate-pulse" />
       <span className="h-3 w-3/5 rounded bg-muted animate-pulse" />
     </div>
-  )
-}
-
-interface TagOverflowMenuProps {
-  tag: string
-  color: string
-  onRequestRename: () => void
-  onRequestDelete: () => void
-}
-
-function TagOverflowMenu({
-  tag,
-  color,
-  onRequestRename,
-  onRequestDelete
-}: TagOverflowMenuProps): React.JSX.Element {
-  const { t: tPhaseF } = useT('notes')
-  const [isUpdatingColor, setIsUpdatingColor] = React.useState(false)
-
-  const handleColorChange = async (newColor: string) => {
-    if (newColor === color || isUpdatingColor) {
-      return
-    }
-
-    setIsUpdatingColor(true)
-    try {
-      const result = await tagsService.updateTagColor({ tag, color: newColor })
-      if (!result.success) {
-        throw new Error(result.error ?? 'Failed to update tag color')
-      }
-    } catch (error) {
-      log.error('Failed to update tag color', error)
-      toast.error(
-        extractErrorMessage(
-          error,
-          getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToUpdateTagColor')
-        )
-      )
-    } finally {
-      setIsUpdatingColor(false)
-    }
-  }
-
-  const colorOptions = COLOR_NAMES
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 shrink-0"
-          aria-label={tPhaseF('phaseF.componentsSidebarTagDetailView.tagActions')}
-        >
-          <MoreHorizontal className="h-3.5 w-3.5" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem onClick={onRequestRename}>
-          <Pencil className="h-4 w-4 me-2" />
-
-          {tPhaseF('phaseF.componentsSidebarTagDetailView.editTagName')}
-        </DropdownMenuItem>
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
-            <Palette className="h-4 w-4 me-2" />
-
-            {tPhaseF('phaseF.componentsSidebarTagDetailView.changeColor')}
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="w-48 p-2">
-            <div className="grid grid-cols-6 gap-1">
-              {colorOptions.map((c) => {
-                const colors = getTagColors(c)
-                return (
-                  <button
-                    key={c}
-                    type="button"
-                    className={cn(
-                      'w-6 h-6 rounded-full border-2 transition-transform hover:scale-110',
-                      c === color ? 'ring-2 ring-primary ring-offset-2' : ''
-                    )}
-                    style={{ backgroundColor: colors.background, borderColor: colors.text }}
-                    onClick={() => void handleColorChange(c)}
-                    disabled={isUpdatingColor}
-                    title={c}
-                    aria-label={c}
-                  />
-                )
-              })}
-              <CustomColorSwatch
-                size="sm"
-                value={color}
-                onChange={(hex) => void handleColorChange(hex)}
-              />
-            </div>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={onRequestDelete}
-          className="text-destructive focus:text-destructive"
-        >
-          <Trash2 className="h-4 w-4 me-2" />
-
-          {tPhaseF('phaseF.componentsSidebarTagDetailView.deleteTag')}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
   )
 }
 

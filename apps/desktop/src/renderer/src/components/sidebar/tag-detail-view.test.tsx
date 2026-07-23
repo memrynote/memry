@@ -172,7 +172,7 @@ describe('TagDetailView rename + delete actions', () => {
       await renderView()
       await openOverflow(user)
 
-      await user.click(await screen.findByText('Edit tag name'))
+      await user.click(await screen.findByText('Rename tag'))
 
       const input = await screen.findByLabelText('New name')
       expect(input).toHaveValue('react')
@@ -182,7 +182,7 @@ describe('TagDetailView rename + delete actions', () => {
       const user = userEvent.setup()
       await renderView()
       await openOverflow(user)
-      await user.click(await screen.findByText('Edit tag name'))
+      await user.click(await screen.findByText('Rename tag'))
 
       const input = await screen.findByLabelText('New name')
       await user.clear(input)
@@ -200,7 +200,7 @@ describe('TagDetailView rename + delete actions', () => {
       const user = userEvent.setup()
       await renderView()
       await openOverflow(user)
-      await user.click(await screen.findByText('Edit tag name'))
+      await user.click(await screen.findByText('Rename tag'))
 
       const input = await screen.findByLabelText('New name')
       await user.clear(input)
@@ -215,7 +215,7 @@ describe('TagDetailView rename + delete actions', () => {
       const user = userEvent.setup()
       await renderView()
       await openOverflow(user)
-      await user.click(await screen.findByText('Edit tag name'))
+      await user.click(await screen.findByText('Rename tag'))
 
       const input = await screen.findByLabelText('New name')
       await user.clear(input)
