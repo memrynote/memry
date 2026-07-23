@@ -69,6 +69,22 @@ describe('tagCategoryHandler', () => {
     expect(row?.name).toBe('Job')
   })
 
+  it('updates the row and returns applied when the remote clock cleanly dominates the local one', () => {
+    tagCategoryHandler.applyUpsert(ctx(), 'cat-1', { name: 'Work', sortOrder: 0 }, { deviceA: 3 })
+
+    const result = tagCategoryHandler.applyUpsert(
+      ctx(),
+      'cat-1',
+      { name: 'Personal', sortOrder: 5 },
+      { deviceA: 7 }
+    )
+
+    expect(result).toBe('applied')
+    const row = db.select().from(tagCategories).where(eq(tagCategories.id, 'cat-1')).get()
+    expect(row?.name).toBe('Personal')
+    expect(row?.sortOrder).toBe(5)
+  })
+
   it('soft-deletes on delete rather than dropping the row', () => {
     tagCategoryHandler.applyUpsert(ctx(), 'cat-1', { name: 'Work', sortOrder: 0 }, { deviceA: 1 })
 
