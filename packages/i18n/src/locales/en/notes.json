@@ -796,6 +796,12 @@
     "loading": "Loading tags...",
     "newCategory": "New category",
     "newTag": "New tag",
+    "uncategorized": "Uncategorized",
+    "category": {
+      "rename": "Rename category",
+      "delete": "Delete category",
+      "emptyHint": "Drag a tag here"
+    },
     "errors": {
       "loadFailed": "Failed to load tag categories",
       "createCategoryFailed": "Failed to create category",

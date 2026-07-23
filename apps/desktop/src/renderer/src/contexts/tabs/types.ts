@@ -29,6 +29,7 @@ export type TabType =
   | 'templates' // Template list/management (Phase 15)
   | 'graph' // Knowledge graph visualization
   | 'tags' // Tag hub (categories + tag chips)
+  | 'tag' // Single tag page (table of tagged items)
   | 'agent-chat' // Agent conversation
   | 'canvas' // Spatial canvas (Excalidraw) — entity-based, one tab per canvas
   | 'virtual-note' // Ephemeral, read-only in-memory note (e.g. release notes) — never persisted or synced
