@@ -129,6 +129,13 @@ Switching to one-way is non-destructive — anything already synced to Google be
 
 Right-click an external event → **Promote to vault** to copy it into your encrypted vault. Useful when you want to attach notes, tags, or reminders that wouldn't survive on the source calendar.
 
+### Google Data and AI Features
+
+Events synced from Google Calendar are never shared with AI features. The Agent Chat assistant can
+only read events you created in memrynote — Google-synced events, calendar lists, and connection
+details are excluded from what it can access, and Google user data is never used to train or
+improve AI models.
+
 ## Day Cell Click Behavior
 
 [Settings → Calendar](/user-guide/settings#calendar) lets you choose what clicking a date does by default:

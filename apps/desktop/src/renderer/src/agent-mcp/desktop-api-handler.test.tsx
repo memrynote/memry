@@ -106,53 +106,32 @@ describe('useAgentMcpDesktopApiResponder', () => {
     })
   })
 
-  it('defaults calendar provider status args to google when omitted', async () => {
+  it('rejects Google Calendar integration operations', async () => {
     renderHook(() => useAgentMcpDesktopApiResponder())
     await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
-    await onMainInvokeCallback?.({
-      requestId: 'request-calendar-status-default',
-      channel: AgentMcpDesktopApiChannel,
-      payload: { operation: 'calendar.getProviderStatus' }
-    })
+    const operations = [
+      'calendar.getProviderStatus',
+      'calendar.listSources',
+      'calendar.listGoogleCalendars',
+      'calendar.promoteExternalEvent',
+      'settings.getCalendarGoogleSettings'
+    ]
 
-    expect(calendarGetProviderStatus).toHaveBeenCalledWith({ provider: 'google' })
-    expect(respondToMainInvoke).toHaveBeenCalledWith('request-calendar-status-default', {
-      ok: true,
-      data: { connected: true }
-    })
-  })
+    for (const operation of operations) {
+      await onMainInvokeCallback?.({
+        requestId: `request-${operation}`,
+        channel: AgentMcpDesktopApiChannel,
+        payload: { operation, args: [{}] }
+      })
 
-  it('parses stringified empty args for calendar provider status', async () => {
-    renderHook(() => useAgentMcpDesktopApiResponder())
-    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
+      expect(respondToMainInvoke).toHaveBeenCalledWith(`request-${operation}`, {
+        ok: false,
+        error: { code: 'VALIDATION', message: 'Invalid desktop API request.' }
+      })
+    }
 
-    await onMainInvokeCallback?.({
-      requestId: 'request-calendar-status-string',
-      channel: AgentMcpDesktopApiChannel,
-      payload: { operation: 'calendar.getProviderStatus', args: ['{}'] }
-    })
-
-    expect(calendarGetProviderStatus).toHaveBeenCalledWith({ provider: 'google' })
-  })
-
-  it('preserves explicit calendar provider status args', async () => {
-    renderHook(() => useAgentMcpDesktopApiResponder())
-    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
-
-    await onMainInvokeCallback?.({
-      requestId: 'request-calendar-status-explicit',
-      channel: AgentMcpDesktopApiChannel,
-      payload: {
-        operation: 'calendar.getProviderStatus',
-        args: [{ provider: 'google', accountId: 'account-1' }]
-      }
-    })
-
-    expect(calendarGetProviderStatus).toHaveBeenCalledWith({
-      provider: 'google',
-      accountId: 'account-1'
-    })
+    expect(calendarGetProviderStatus).not.toHaveBeenCalled()
   })
 
   it('normalizes positional date args for calendar range reads', async () => {
@@ -167,7 +146,8 @@ describe('useAgentMcpDesktopApiResponder', () => {
 
     expect(calendarGetRange).toHaveBeenCalledWith({
       startAt: localDayIso('2026-05-14'),
-      endAt: localDayIso('2026-06-15')
+      endAt: localDayIso('2026-06-15'),
+      includeExternal: false
     })
   })
 
@@ -186,11 +166,12 @@ describe('useAgentMcpDesktopApiResponder', () => {
 
     expect(calendarGetRange).toHaveBeenCalledWith({
       startAt: localDayIso('2026-05-14'),
-      endAt: localDayIso('2026-06-15')
+      endAt: localDayIso('2026-06-15'),
+      includeExternal: false
     })
   })
 
-  it('preserves calendar range datetime args and include-unselected flag', async () => {
+  it('forces native-only calendar range reads regardless of caller flags', async () => {
     renderHook(() => useAgentMcpDesktopApiResponder())
     await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
@@ -203,7 +184,8 @@ describe('useAgentMcpDesktopApiResponder', () => {
           {
             startAt: '2026-05-14T09:00:00.000Z',
             endAt: '2026-05-14T10:00:00.000Z',
-            includeUnselectedSources: true
+            includeUnselectedSources: true,
+            includeExternal: true
           }
         ]
       }
@@ -212,7 +194,7 @@ describe('useAgentMcpDesktopApiResponder', () => {
     expect(calendarGetRange).toHaveBeenCalledWith({
       startAt: '2026-05-14T09:00:00.000Z',
       endAt: '2026-05-14T10:00:00.000Z',
-      includeUnselectedSources: true
+      includeExternal: false
     })
   })
 

@@ -8,14 +8,40 @@
 import type { CanvasEntityType } from '@memry/contracts/canvas-api'
 import type { CalendarEventSearchItem } from '@memry/contracts/calendar-api'
 import type { SearchResultItem } from '@memry/contracts/search-api'
-import { entityKey, formatEventTime } from './canvas-cards'
+import { parseDueDate } from '@/lib/task-utils'
+import { entityKey } from './canvas-cards'
+
+/**
+ * Everything a picker row needs to render its entity the way the rest of the
+ * app renders it. Carried raw (not pre-formatted into one subtitle string) so
+ * the row can show an icon, a status and a date as separate affordances.
+ */
+export type AddCardDetail =
+  | {
+      type: 'note'
+      /** Emoji or hugeicon token from the note itself; null falls back to the type icon. */
+      emoji: string | null
+      path: string
+      createdAt: string | null
+    }
+  | {
+      type: 'task'
+      projectName: string
+      projectColor: string
+      statusName: string | null
+      /** 0–4, as stored. The row maps it to the shared priorityConfig. */
+      priority: number
+      dueDate: string | null
+      completed: boolean
+      createdAt: string | null
+    }
+  | { type: 'calendar_event'; startAt: string; isAllDay: boolean }
 
 export interface AddCardCandidate {
   entityType: CanvasEntityType
   entityId: string
   title: string
-  /** Secondary line: note path, project name, or event start. */
-  subtitle: string
+  detail: AddCardDetail
   /** True when this entity already has a card on the open canvas. */
   onCanvas: boolean
 }
@@ -45,7 +71,12 @@ export function candidatesFromSearch(results: readonly SearchResultItem[]): AddC
         entityType: 'note',
         entityId: result.id,
         title: result.title,
-        subtitle: result.metadata.path,
+        detail: {
+          type: 'note',
+          emoji: result.metadata.emoji ?? null,
+          path: result.metadata.path,
+          createdAt: result.metadata.createdAt ?? null
+        },
         onCanvas: false
       })
     } else if (result.metadata.type === 'task') {
@@ -53,7 +84,16 @@ export function candidatesFromSearch(results: readonly SearchResultItem[]): AddC
         entityType: 'task',
         entityId: result.id,
         title: result.title,
-        subtitle: result.metadata.projectName,
+        detail: {
+          type: 'task',
+          projectName: result.metadata.projectName,
+          projectColor: result.metadata.projectColor,
+          statusName: result.metadata.statusName,
+          priority: result.metadata.priority,
+          dueDate: result.metadata.dueDate,
+          completed: result.metadata.completedAt !== null,
+          createdAt: result.metadata.createdAt ?? null
+        },
         onCanvas: false
       })
     }
@@ -109,14 +149,43 @@ export function revealScroll(
  * pure mapping — no client-side filter, no occurrence dedup (one row per event).
  */
 export function candidatesFromEvents(
-  items: readonly CalendarEventSearchItem[],
-  allDayLabel: string
+  items: readonly CalendarEventSearchItem[]
 ): AddCardCandidate[] {
   return items.map((item) => ({
     entityType: 'calendar_event' as const,
     entityId: item.id,
     title: item.title,
-    subtitle: formatEventTime(item.startAt, item.isAllDay, allDayLabel),
+    detail: { type: 'calendar_event' as const, startAt: item.startAt, isAllDay: item.isAllDay },
     onCanvas: false
   }))
+}
+
+/**
+ * "Jul 2" for dates in the current year, "Jul 2, 2024" otherwise — an undated
+ * "Jul 2" three years old reads as recent, which is exactly backwards.
+ */
+function formatDate(parsed: Date, now: Date): string | null {
+  if (Number.isNaN(parsed.getTime())) return null
+  return parsed.toLocaleDateString(
+    undefined,
+    parsed.getFullYear() === now.getFullYear()
+      ? { month: 'short', day: 'numeric' }
+      : { month: 'short', day: 'numeric', year: 'numeric' }
+  )
+}
+
+/** Creation timestamps, which arrive as full datetimes. */
+export function formatShortDate(
+  value: string | null | undefined,
+  now: Date = new Date()
+): string | null {
+  return value ? formatDate(new Date(value), now) : null
+}
+
+/**
+ * Due dates are date-only strings; `new Date('2026-07-10')` parses as UTC and
+ * renders as the 9th west of Greenwich, so they go through parseDueDate.
+ */
+export function formatDueDate(value: string | null, now: Date = new Date()): string | null {
+  return value ? formatDate(parseDueDate(value), now) : null
 }

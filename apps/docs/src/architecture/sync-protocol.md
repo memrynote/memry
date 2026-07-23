@@ -210,6 +210,30 @@ Desktop periodically compares `/sync/manifest` with local syncable records. Note
 matched from canonical `note_metadata` first, with the rebuildable index cache as a fallback, so a
 freshly pushed note is not treated as server-only while indexing catches up.
 
+## Note Attachments
+
+Files embedded in a note (images, PDFs) live on disk under the vault's
+`attachments/<noteId>/` folder and are uploaded to the blob store as encrypted
+chunks with a signed, encrypted manifest. Three mechanisms make them portable
+across devices:
+
+- **Reference sync** — each note's payload carries `attachmentReferences`, the
+  ids of the blobs it embeds. When a device applies a note and is missing a
+  referenced file, it downloads the blob into its own
+  `attachments/<noteId>/` folder; the filename comes from the decrypted
+  manifest (sanitized, skipped when already materialized at the same size).
+  Older clients parse payloads in strip mode and ignore the field.
+- **Cross-device path remap** — note blocks store the origin machine's
+  absolute `memry-file://local/<path>` URL. The protocol handler resolves a
+  path that is outside this device's allowed roots by remapping its
+  `attachments/<noteId>/<file>` tail onto the local vault (traversal-guarded),
+  so notes written on another OS render without rewriting note content.
+- **Durable upload outbox** — the upload intent is persisted in the data DB
+  (`attachment_upload_queue`, migration 0039) before the transfer starts and
+  cleared only after the server accepts the file. Failed or quit-interrupted
+  uploads are retried on every sync runtime start instead of being lost with
+  the in-memory queue.
+
 ## Tombstones
 
 Deletions include `deleted_at` inside the **Ed25519-signed** payload — preventing a hostile server from forging deletions.
@@ -286,12 +310,11 @@ phrase can restore the correct key. See
 
 ## Error Modes
 
-
 | Failure             | Behavior                                                                                   |
 | ------------------- | ------------------------------------------------------------------------------------------ |
 | Offline             | Outbox queues; retry with backoff                                                          |
 | Auth expired (401)  | Refresh the access token and retry the request once; only a failed refresh prompts sign-in |
-| Refresh rejected    | Stop refreshing entirely (see below); prompt the user to sign in again                      |
+| Refresh rejected    | Stop refreshing entirely (see below); prompt the user to sign in again                     |
 | Payment required    | Sync stays local-only until a paid plan is active                                          |
 | Quota exceeded      | Surfaces in [Settings → Vault](/user-guide/settings#vault)                                 |
 | Socket token expiry | In-place renewal over the open socket; a rejected renewal falls back to close + reconnect  |

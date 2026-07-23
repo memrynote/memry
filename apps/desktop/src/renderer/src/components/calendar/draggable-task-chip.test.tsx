@@ -25,7 +25,7 @@ vi.mock('@dnd-kit/core', () => ({
 
 interface DraggableConfig {
   id: string
-  data: { type: string; sourceType: string; taskId: string }
+  data: Record<string, unknown>
 }
 
 function lastDraggableConfig(): DraggableConfig {
@@ -81,10 +81,49 @@ describe('DraggableTaskChip', () => {
     })
   })
 
-  it('does not wrap an event chip', () => {
+  it('does not wrap an event chip as a task drag', () => {
     renderChip(makeItem({ sourceType: 'event', sourceId: 'event-1', visualType: 'event' }))
 
+    // Rescheduling an event by dragging it is not a thing; the event chip is
+    // draggable only so it can be dropped on a canvas.
     expect(screen.queryByTestId('draggable-task-chip')).toBeNull()
+    expect(screen.getByTestId('draggable-canvas-chip')).toBeInTheDocument()
+  })
+
+  it('registers an event chip as a canvas-entity drag drag-context will ignore', () => {
+    renderChip(makeItem({ sourceType: 'event', sourceId: 'event-1', visualType: 'event' }))
+
+    const config = lastDraggableConfig()
+    expect(config.data).toEqual({
+      type: 'canvas-entity',
+      entityType: 'calendar_event',
+      entityId: 'event-1'
+    })
+  })
+
+  it('namespaces the event draggable id so it cannot collide with a task id', () => {
+    // drag-context resolves multi-select by matching active.id against the task
+    // list; a bare event id could collide with a task id and drag the wrong rows.
+    renderChip(makeItem({ sourceType: 'event', sourceId: 'event-1', visualType: 'event' }))
+
+    const config = lastDraggableConfig()
+    expect(config.id).toBe('canvas-event:event-1')
+  })
+
+  it('uses the event source id, not the projection id, for the entity', () => {
+    // A recurring event projects one item per occurrence; the card must
+    // reference the event, not the occurrence.
+    renderChip(
+      makeItem({
+        projectionId: 'event:event-1:2026-07-15',
+        sourceType: 'event',
+        sourceId: 'event-1',
+        visualType: 'event'
+      })
+    )
+
+    const config = lastDraggableConfig()
+    expect((config.data as unknown as { entityId: string }).entityId).toBe('event-1')
   })
 
   it('does not wrap a task chip that cannot move', () => {

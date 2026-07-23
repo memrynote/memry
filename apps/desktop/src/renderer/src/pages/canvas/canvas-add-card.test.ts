@@ -4,6 +4,8 @@ import type { CalendarEventSearchItem } from '@memry/contracts/calendar-api'
 import {
   candidatesFromEvents,
   candidatesFromSearch,
+  formatDueDate,
+  formatShortDate,
   groupCandidates,
   markOnCanvas,
   onCanvasKeys,
@@ -25,6 +27,7 @@ function noteHit(id: string, title: string, fileType?: string): SearchResultItem
       type: 'note',
       path: `notes/${title}.md`,
       tags: [],
+      createdAt: '2026-06-01T00:00:00.000Z',
       ...(fileType ? { fileType } : {})
     }
   } as SearchResultItem
@@ -49,7 +52,8 @@ function taskHit(id: string, title: string): SearchResultItem {
       statusName: null,
       dueDate: null,
       priority: 0,
-      completedAt: null
+      completedAt: null,
+      createdAt: '2026-06-01T00:00:00.000Z'
     }
   } as SearchResultItem
 }
@@ -62,11 +66,65 @@ describe('candidatesFromSearch', () => {
         entityType: 'note',
         entityId: 'n1',
         title: 'Alpha',
-        subtitle: 'notes/Alpha.md',
+        detail: {
+          type: 'note',
+          emoji: null,
+          path: 'notes/Alpha.md',
+          createdAt: '2026-06-01T00:00:00.000Z'
+        },
         onCanvas: false
       },
-      { entityType: 'task', entityId: 't1', title: 'Ship it', subtitle: 'Inbox', onCanvas: false }
+      {
+        entityType: 'task',
+        entityId: 't1',
+        title: 'Ship it',
+        detail: {
+          type: 'task',
+          projectName: 'Inbox',
+          projectColor: '#fff',
+          statusName: null,
+          priority: 0,
+          dueDate: null,
+          completed: false,
+          createdAt: '2026-06-01T00:00:00.000Z'
+        },
+        onCanvas: false
+      }
     ])
+  })
+
+  it('carries the fields a row renders: icon, status and dates', () => {
+    // #given — a note with its own icon and a completed, prioritised task
+    const note = noteHit('n1', 'Alpha')
+    ;(note.metadata as { emoji?: string | null }).emoji = '📌'
+    const task = taskHit('t1', 'Ship it')
+    Object.assign(task.metadata, {
+      statusName: 'In progress',
+      priority: 4,
+      dueDate: '2026-08-01',
+      completedAt: '2026-07-20T00:00:00.000Z'
+    })
+
+    // #when — they become candidates
+    const [noteCandidate, taskCandidate] = candidatesFromSearch([note, task])
+
+    // #then — nothing the row needs was flattened away
+    expect(noteCandidate.detail).toMatchObject({ emoji: '📌' })
+    expect(taskCandidate.detail).toMatchObject({
+      statusName: 'In progress',
+      priority: 4,
+      dueDate: '2026-08-01',
+      completed: true
+    })
+  })
+
+  it('treats a missing createdAt from an older main process as absent, not a crash', () => {
+    // #given — a note hit predating the createdAt field
+    const note = noteHit('n1', 'Alpha')
+    delete (note.metadata as { createdAt?: string | null }).createdAt
+
+    // #when / #then — the candidate still builds, with a null date
+    expect(candidatesFromSearch([note])[0].detail).toMatchObject({ createdAt: null })
   })
 
   it('drops filed binaries masquerading as notes (#800)', () => {
@@ -149,7 +207,7 @@ describe('candidatesFromEvents (#869)', () => {
     ]
 
     // #when — we map them to candidates
-    const out = candidatesFromEvents(items, 'All day')
+    const out = candidatesFromEvents(items)
 
     // #then — nothing is dropped or reordered client-side
     expect(out.map((c) => c.entityId)).toEqual(['e1', 'e2'])
@@ -157,31 +215,52 @@ describe('candidatesFromEvents (#869)', () => {
     expect(out.every((c) => c.onCanvas === false)).toBe(true)
   })
 
-  it('formats the subtitle with formatEventTime instead of a raw ISO string', () => {
-    // #given — a timed event
-    const out = candidatesFromEvents(
-      [eventItem('e1', 'Standup', '2026-07-02T09:00:00.000Z')],
-      'All day'
-    )
+  it('carries the raw start so the row can format it, all-day flag included', () => {
+    // #given — one timed and one all-day event
+    const out = candidatesFromEvents([
+      eventItem('e1', 'Standup', '2026-07-02T09:00:00.000Z'),
+      eventItem('e2', 'Offsite', '2026-07-02T00:00:00.000Z', true)
+    ])
 
-    // #then — the subtitle is humanized
-    expect(out[0].subtitle).not.toBe('2026-07-02T09:00:00.000Z')
-    expect(out[0].subtitle.length).toBeGreaterThan(0)
-  })
-
-  it('uses the all-day label for all-day events', () => {
-    // #given — an all-day event
-    const out = candidatesFromEvents(
-      [eventItem('e1', 'Offsite', '2026-07-02T00:00:00.000Z', true)],
-      'All day'
-    )
-
-    // #then — the label appears in the subtitle
-    expect(out[0].subtitle).toContain('All day')
+    // #then — formatting is the row's job now, not the candidate's
+    expect(out[0].detail).toEqual({
+      type: 'calendar_event',
+      startAt: '2026-07-02T09:00:00.000Z',
+      isAllDay: false
+    })
+    expect(out[1].detail).toMatchObject({ isAllDay: true })
   })
 
   it('returns an empty list for no items', () => {
     // #given / #when / #then — no events in, no candidates out
-    expect(candidatesFromEvents([], 'All day')).toEqual([])
+    expect(candidatesFromEvents([])).toEqual([])
+  })
+})
+
+describe('date formatting', () => {
+  it('omits the year for the current year and includes it otherwise', () => {
+    // #given — a fixed "now" in 2026
+    const now = new Date('2026-07-23T12:00:00.000Z')
+
+    // #when / #then — same-year dates stay short, older ones carry the year
+    expect(formatShortDate('2026-07-02T09:00:00.000Z', now)).not.toContain('2026')
+    expect(formatShortDate('2024-07-02T09:00:00.000Z', now)).toContain('2024')
+  })
+
+  it('keeps a date-only due date on its own day regardless of timezone', () => {
+    // #given — a due date that `new Date()` would parse as the previous day
+    // west of Greenwich (see the parseDueDate off-by-one)
+    const formatted = formatDueDate('2026-07-10', new Date('2026-07-23T12:00:00.000Z'))
+
+    // #then — the 10th, not the 9th
+    expect(formatted).toContain('10')
+  })
+
+  it('returns null for missing or unparseable values', () => {
+    // #given / #when / #then — nothing to show beats "Invalid Date"
+    expect(formatShortDate(null)).toBeNull()
+    expect(formatShortDate(undefined)).toBeNull()
+    expect(formatShortDate('not-a-date')).toBeNull()
+    expect(formatDueDate(null)).toBeNull()
   })
 })

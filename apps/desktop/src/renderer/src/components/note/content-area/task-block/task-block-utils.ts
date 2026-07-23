@@ -17,7 +17,7 @@ export {
 } from '@memry/shared/task-block'
 export type { TaskBlockProps } from '@memry/shared/task-block'
 
-const DB_PRIORITY_MAP: Record<number, Priority> = {
+export const DB_PRIORITY_MAP: Record<number, Priority> = {
   0: 'none',
   1: 'low',
   2: 'medium',

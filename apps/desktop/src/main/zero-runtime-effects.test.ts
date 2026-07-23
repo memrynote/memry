@@ -53,7 +53,8 @@ vi.mock('keytar', () => ({
 }))
 
 vi.mock('@memry/storage-data', () => ({
-  updateNoteMetadata: mocks.updateNoteMetadata
+  updateNoteMetadata: mocks.updateNoteMetadata,
+  getNoteMetadataById: vi.fn(() => undefined)
 }))
 
 vi.mock('@main/database/queries/notes', () => ({

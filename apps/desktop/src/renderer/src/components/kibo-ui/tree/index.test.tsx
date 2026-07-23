@@ -12,6 +12,7 @@ import {
   TreeView,
   useTree
 } from './index'
+import { CANVAS_ITEM_DRAG_MIME } from '@/pages/canvas/canvas-cards'
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({ t: (key: string) => key.split('.').at(-1) ?? key })
@@ -296,5 +297,58 @@ describe('TreeProvider and tree primitives', () => {
     expect(() => render(<TreeNodeTrigger>orphan</TreeNodeTrigger>)).toThrow(
       'Tree components must be used within a TreeProvider'
     )
+  })
+})
+
+describe('canvas drag payload', () => {
+  function renderNode(canvasNoteId?: string) {
+    render(
+      <TreeProvider persistKey="tree-canvas-test" draggable>
+        <TreeView>
+          <TreeNode nodeId="note-1" canvasNoteId={canvasNoteId}>
+            <TreeNodeTrigger>
+              <span>Note One</span>
+            </TreeNodeTrigger>
+          </TreeNode>
+        </TreeView>
+      </TreeProvider>
+    )
+    return screen.getByText('Note One').closest('[draggable]') as HTMLElement
+  }
+
+  it('tags a note so the spatial canvas can card it on drop', () => {
+    const node = renderNode('note-1')
+    const transfer = dataTransfer()
+
+    fireEvent.dragStart(node, { dataTransfer: transfer })
+
+    expect(transfer.setData).toHaveBeenCalledWith(
+      CANVAS_ITEM_DRAG_MIME,
+      JSON.stringify({ entityType: 'note', entityId: 'note-1' })
+    )
+    // Chromium refuses a drop whose dropEffect is not permitted by
+    // effectAllowed, and the canvas asks for 'copy'. Leaving this at the
+    // tree's own 'move' silently kills the drop with no visible error.
+    expect(transfer.effectAllowed).toBe('copyMove')
+  })
+
+  it('still carries the tree payload its own reordering needs', () => {
+    const node = renderNode('note-1')
+    const transfer = dataTransfer()
+
+    fireEvent.dragStart(node, { dataTransfer: transfer })
+
+    expect(transfer.setData).toHaveBeenCalledWith('application/x-memry-tree-node', 'note-1')
+  })
+
+  it('leaves a node with no canvas entity untouched', () => {
+    const node = renderNode(undefined)
+    const transfer = dataTransfer()
+
+    fireEvent.dragStart(node, { dataTransfer: transfer })
+
+    expect(transfer.setData).toHaveBeenCalledTimes(1)
+    expect(transfer.setData).toHaveBeenCalledWith('application/x-memry-tree-node', 'note-1')
+    expect(transfer.effectAllowed).toBe('move')
   })
 })

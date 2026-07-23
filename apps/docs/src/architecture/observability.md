@@ -47,6 +47,18 @@ steady states at `debug`:
 | Windows  | `%USERPROFILE%/AppData/Roaming/memrynote/logs/` |
 | Linux    | `~/.config/memrynote/logs/`                     |
 
+Older installs logged into an `@memry/desktop` directory (the raw package name). On startup the
+main process moves those files into the directories above (a name collision gains a `legacy-`
+prefix), then removes the emptied legacy directory. Dev profiles (`MEMRY_DEVICE`) log into a
+per-device `memrynote-<device>` directory instead.
+
+The same applies to the app identity as a whole: production launches adopt the `memrynote`
+runtime app name and move userData (`Application Support/@memry/desktop` → `…/memrynote`,
+leaving a compatibility symlink for downgraded binaries and stored absolute paths). The macOS
+Safe Storage keychain item is copied to the new name so existing encrypted secrets keep
+decrypting; on Linux a populated safeStorage store keeps the install on the legacy identity
+(the keyring item cannot be carried over). See `src/main/app-identity.ts`.
+
 ### Launch Phase Timeline
 
 `src/main/launch-timeline.ts` stamps each startup milestone's offset (ms) from process start and

@@ -698,6 +698,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         .then(({ refreshVaultDirectory }) => refreshVaultDirectory({ force: true }))
         .catch(() => {})
 
+      // Retry attachment uploads that failed or were interrupted in earlier
+      // sessions — the durable outbox holds them across restarts.
+      void import('./attachment-outbox')
+        .then(({ drainAttachmentOutbox }) => drainAttachmentOutbox())
+        .catch(() => {})
+
       trackMainEvent('sync_enabled', {
         surface: 'sync',
         action: 'enabled',

@@ -251,7 +251,8 @@
       "addGroupNotes": "Notes",
       "addGroupTasks": "Tasks",
       "addGroupEvents": "Events",
-      "addOnCanvas": "On canvas"
+      "addOnCanvas": "On canvas",
+      "addCreatedAt": "Created {date}"
     }
   },
   "phaseF": {
