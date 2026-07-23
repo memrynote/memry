@@ -1,0 +1,182 @@
+/**
+ * CanvasEditor persistence-safety tests.
+ *
+ * jsdom cannot host the real Excalidraw (no layout, no canvas), so the
+ * component is stubbed with a controllable imperative API. The subject here is
+ * the serialize/flush safety net around it:
+ *
+ * 1. The init-window wipe (regression): Excalidraw applies initialData
+ *    asynchronously, so right after mount getSceneElements() is [] while
+ *    appState.isLoading is true. StrictMode's simulated remount runs the
+ *    persistence effect's cleanup flush inside that window with the wrapper
+ *    still connected — without the isLoading serialize guard that flush
+ *    persisted an EMPTY scene over the stored drawing.
+ * 2. Cmd/Ctrl+S must flush to the vault and never reach Excalidraw's
+ *    save-to-disk file dialog.
+ */
+
+import { act, fireEvent, render } from '@testing-library/react'
+import React from 'react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { CanvasEditor } from './canvas-editor'
+
+interface FakeApi {
+  getSceneElements: () => unknown[]
+  getAppState: () => { isLoading: boolean }
+  getFiles: () => Record<string, unknown>
+}
+
+const mocks = vi.hoisted(() => ({
+  update: vi.fn(),
+  toastSuccess: vi.fn(),
+  // Mutable fake-Excalidraw state each test drives to simulate init phases.
+  api: {
+    elements: [] as unknown[],
+    isLoading: true
+  },
+  onChange: null as (() => void) | null,
+  excalidrawProps: {} as Record<string, unknown>
+}))
+
+vi.mock('@excalidraw/excalidraw', () => ({
+  Excalidraw: (props: {
+    excalidrawAPI: (api: FakeApi) => void
+    onChange: () => void
+    [key: string]: unknown
+  }) => {
+    mocks.excalidrawProps = props
+    mocks.onChange = props.onChange
+    // The real Excalidraw hands out its imperative API on mount — long before
+    // initialData is applied. A child effect still runs before the parent's
+    // persistence effect, so the ordering under test is preserved (calling it
+    // during render would be a cross-component setState → render loop).
+    React.useEffect(() => {
+      props.excalidrawAPI({
+        getSceneElements: () => mocks.api.elements,
+        getAppState: () => ({ isLoading: mocks.api.isLoading }),
+        getFiles: () => ({})
+      })
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only, like the real API handoff
+    }, [])
+    return <div data-testid="excalidraw" />
+  },
+  serializeAsJSON: (elements: unknown[]) => JSON.stringify({ elements }),
+  languages: [],
+  defaultLang: { code: 'en' }
+}))
+vi.mock('@excalidraw/excalidraw/index.css', () => ({}))
+vi.mock('next-themes', () => ({ useTheme: () => ({ resolvedTheme: 'light' }) }))
+vi.mock('@memry/i18n/renderer', () => ({
+  useT: () => ({ t: (key: string) => key })
+}))
+vi.mock('react-i18next', () => ({ getI18n: () => ({ language: 'en' }) }))
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: (...args: unknown[]) => mocks.toastSuccess(...args) }
+}))
+vi.mock('@/services/canvas-service', () => ({
+  canvasService: {
+    update: (...args: unknown[]) => mocks.update(...args),
+    uploadAsset: vi.fn()
+  },
+  onCanvasTooLarge: () => () => {}
+}))
+vi.mock('./canvas-card-overlay', () => ({ CanvasCardLayer: () => null }))
+vi.mock('@/lib/save-registry', () => ({
+  registerPendingSave: vi.fn(),
+  unregisterPendingSave: vi.fn()
+}))
+vi.mock('@/lib/logger', () => ({
+  createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() })
+}))
+vi.mock('./canvas-externalize', () => ({
+  externalizeSceneAssets: (scene: string) => Promise.resolve(scene)
+}))
+
+const STORED_SCENE = JSON.stringify({ elements: [{ id: 'stroke-1', type: 'freedraw' }] })
+
+/** Drives the fake Excalidraw through "initialData has been applied". */
+function finishInit(): void {
+  mocks.api.elements = [{ id: 'stroke-1', type: 'freedraw' }]
+  mocks.api.isLoading = false
+}
+
+describe('CanvasEditor persistence safety', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    mocks.update.mockReset().mockResolvedValue({ id: 'c1' })
+    mocks.toastSuccess.mockReset()
+    mocks.api.elements = []
+    mocks.api.isLoading = true
+    mocks.onChange = null
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('never persists the empty init-window scene on a StrictMode remount (wipe regression)', async () => {
+    // StrictMode mounts, runs effects, then simulates a remount: cleanup (which
+    // flushes the persister) runs while the wrapper is still connected and the
+    // fake scene is still in its pre-init state ([] + isLoading).
+    render(
+      <React.StrictMode>
+        <CanvasEditor canvasId="c1" initialScene={STORED_SCENE} />
+      </React.StrictMode>
+    )
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+    expect(mocks.update).not.toHaveBeenCalled()
+  })
+
+  it('persists a changed scene after init completes', async () => {
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    finishInit()
+    act(() => {
+      mocks.onChange?.()
+    })
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+    expect(mocks.update).toHaveBeenCalledTimes(1)
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'c1', scene: JSON.stringify({ elements: mocks.api.elements }) })
+    )
+  })
+
+  it('Cmd+S flushes to the vault and never reaches Excalidraw', async () => {
+    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    finishInit()
+    act(() => {
+      mocks.onChange?.()
+    })
+
+    const documentKeydown = vi.fn()
+    document.addEventListener('keydown', documentKeydown)
+    try {
+      const wrapper = container.querySelector('[data-canvas-editor="c1"]')!
+      const prevented = !fireEvent.keyDown(wrapper.querySelector('[data-testid="excalidraw"]')!, {
+        key: 's',
+        metaKey: true
+      })
+      // Flushed immediately — no 800ms debounce wait.
+      await act(async () => {
+        await Promise.resolve()
+      })
+      expect(prevented).toBe(true)
+      expect(documentKeydown).not.toHaveBeenCalled()
+      expect(mocks.update).toHaveBeenCalledTimes(1)
+      expect(mocks.toastSuccess).toHaveBeenCalledWith('canvas.savedToVault')
+    } finally {
+      document.removeEventListener('keydown', documentKeydown)
+    }
+  })
+
+  it('disables Excalidraw file actions (open / save to disk) via UIOptions', () => {
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    expect(mocks.excalidrawProps.UIOptions).toEqual({
+      canvasActions: { export: false, loadScene: false, saveToActiveFile: false }
+    })
+  })
+})

@@ -231,6 +231,7 @@
     "notFound": "This canvas could not be found",
     "corruptScene": "This canvas could not be read. Editing is disabled to avoid losing data.",
     "tooLargeToSync": "This canvas is too large to sync. It's saved on this device but won't reach your other devices until it's smaller.",
+    "savedToVault": "All changes are saved to your vault automatically",
     "disabledTitle": "Canvas is not enabled",
     "disabledBody": "This tab belongs to a feature that is not enabled on this device.",
     "card": {

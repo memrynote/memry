@@ -79,7 +79,7 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
     })
   }, [canvasId, t])
 
-  const persisterRef = useRef<{ notifyChange: () => void } | null>(null)
+  const persisterRef = useRef<{ notifyChange: () => void; flush: () => Promise<void> } | null>(null)
 
   useEffect(() => {
     if (corrupt) {
@@ -101,6 +101,17 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
         // beforeunload/quit flush the wrapper is still connected, so those
         // persist as before.
         if (!wrapperRef.current?.isConnected) {
+          return null
+        }
+        // Init guard: Excalidraw applies initialData asynchronously after
+        // mount (componentDidMount → initializeScene). Until that resolves,
+        // getSceneElements() returns [] while appState.isLoading is true —
+        // and the isConnected guard above does not cover this window (e.g.
+        // StrictMode's simulated remount runs this effect's cleanup flush
+        // with the wrapper still attached). Serializing here would persist
+        // an empty scene over the stored one, so treat a still-loading
+        // scene as not readable.
+        if (api.getAppState().isLoading) {
           return null
         }
         try {
@@ -162,14 +173,43 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
     )
   }
 
+  // Cmd/Ctrl+S (and Cmd/Ctrl+Shift+S) would reach Excalidraw's document-level
+  // keydown listener and open its save-to-disk file dialog — file semantics
+  // that don't exist here: the scene autosaves into the vault. Intercept in
+  // the capture phase (Excalidraw listens on document in the bubble phase),
+  // flush any pending change, and confirm the autosave instead.
+  const handleKeyDownCapture = (event: React.KeyboardEvent): void => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's' && !event.altKey) {
+      event.preventDefault()
+      event.stopPropagation()
+      void persisterRef.current?.flush()
+      toast.success(t('canvas.savedToVault'))
+    }
+  }
+
   return (
-    <div ref={wrapperRef} className="relative h-full w-full" data-canvas-editor={canvasId}>
+    <div
+      ref={wrapperRef}
+      className="relative h-full w-full"
+      data-canvas-editor={canvasId}
+      onKeyDownCapture={handleKeyDownCapture}
+    >
       <Excalidraw
         excalidrawAPI={(instance) => {
           apiRef.current = instance
           setApi(instance)
         }}
         initialData={initialData}
+        // The vault is the only store: hide Excalidraw's own file actions
+        // (open .excalidraw, save to disk) so they can't bypass — or, via
+        // loadScene, silently replace — the vault-persisted scene.
+        UIOptions={{
+          canvasActions: {
+            export: false,
+            loadScene: false,
+            saveToActiveFile: false
+          }
+        }}
         onChange={() => persisterRef.current?.notifyChange()}
         // Three Memry themes exist (light/dark/white); anything not dark maps
         // to Excalidraw's light theme.
