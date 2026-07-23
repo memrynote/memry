@@ -109,6 +109,7 @@ export const ENCRYPTABLE_ITEM_TYPES = [
   'filter',
   'journal',
   'tag_definition',
+  'tag_category',
   'folder_config',
   'calendar_event',
   'calendar_source',

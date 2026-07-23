@@ -95,6 +95,15 @@ describe('constants', () => {
     expect(ENCRYPTABLE_ITEM_TYPES).not.toContain('attachment')
   })
 
+  it('encryptable list stays in lockstep with record sync item types', () => {
+    // Every record type carries user data and must be encryptable, and nothing
+    // should be encryptable that isn't a record type (e.g. attachment, which is
+    // in SYNC_ITEM_TYPES but deliberately excluded from both lists). If a new
+    // type is added to RECORD_SYNC_ITEM_TYPES without a matching addition here,
+    // this fails.
+    expect(new Set(ENCRYPTABLE_ITEM_TYPES)).toEqual(new Set(RECORD_SYNC_ITEM_TYPES))
+  })
+
   it('offline device id is stable', () => {
     expect(OFFLINE_CLOCK_DEVICE_ID).toBe('_offline')
   })
