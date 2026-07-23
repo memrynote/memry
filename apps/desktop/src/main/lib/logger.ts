@@ -1,5 +1,5 @@
 import log from 'electron-log'
-import { existsSync, mkdirSync, readdirSync, renameSync, rmdirSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, realpathSync, renameSync, rmdirSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { homedir } from 'node:os'
 
@@ -9,14 +9,13 @@ log.transports.file.level = isDev ? 'debug' : 'info'
 log.transports.file.maxSize = 5 * 1024 * 1024
 log.transports.file.format = '{y}-{m}-{d} {h}:{i}:{s}.{ms} [{level}] [{scope}] {text}'
 
-// electron-log names the log directory after the app name, which resolves to
-// the package.json name `@memry/desktop` both in the packaged main process
-// (productName lives only in electron-builder.yml, never in the asar
-// package.json) and in workers (no electron module, so electron-log's node
-// fallback reads package.json). That leaks `~/Library/Logs/@memry/desktop`
-// onto user machines while the docs promise `memrynote`. Resolve the
-// documented directory ourselves — electron-free, because this module is
-// bundled into worker entries (see scripts/check-worker-bundles.mjs).
+// electron-log names the log directory after the app name. The main process
+// adopts the `memrynote` identity at startup (see app-identity.ts), but
+// workers resolve the name from package.json (`@memry/desktop` — no electron
+// module, so electron-log falls back to it) and Linux legacy holdouts keep
+// the old app name entirely. Resolve the documented `memrynote` directory
+// ourselves — electron-free, because this module is bundled into worker
+// entries (see scripts/check-worker-bundles.mjs).
 const LOG_DIR_NAME = 'memrynote'
 
 function appLogDir(dirName: string): string {
@@ -85,6 +84,14 @@ function migrateLegacyLogDir(overrides?: { legacyDir?: string; targetDir?: strin
     const legacyDir = overrides?.legacyDir ?? appLogDir(join('@memry', 'desktop'))
     const targetDir = overrides?.targetDir ?? appLogDir(LOG_DIR_NAME)
     if (!existsSync(legacyDir)) return
+    // After the userData migration the legacy path can be a compatibility
+    // symlink into the new tree (win/linux nest logs inside userData) —
+    // "moving" through it would shuffle the live log files onto themselves.
+    try {
+      if (existsSync(targetDir) && realpathSync(legacyDir) === realpathSync(targetDir)) return
+    } catch {
+      /* realpath is advisory */
+    }
     mkdirSync(targetDir, { recursive: true })
     for (const entry of readdirSync(legacyDir, { withFileTypes: true })) {
       if (!entry.isFile()) continue

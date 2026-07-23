@@ -275,6 +275,22 @@ describe('migrateLegacyLogDir', () => {
     expect(existsSync(join(legacyDir, 'nested'))).toBe(true)
   })
 
+  it('is a no-op when the legacy dir is a symlink into the target', async () => {
+    const { symlinkSync } = await import('node:fs')
+    const targetDir = join(base, 'target')
+    const legacyDir = join(base, 'legacy')
+    mkdirSync(targetDir, { recursive: true })
+    writeFileSync(join(targetDir, 'main.log'), 'new-main')
+    symlinkSync(targetDir, legacyDir, 'dir')
+
+    await migrate({ legacyDir, targetDir })
+
+    expect(readFileSync(join(targetDir, 'main.log'), 'utf8')).toBe('new-main')
+    expect(existsSync(join(targetDir, 'legacy-main.log'))).toBe(false)
+    const { lstatSync } = await import('node:fs')
+    expect(lstatSync(legacyDir).isSymbolicLink()).toBe(true)
+  })
+
   it('does nothing when the legacy dir does not exist', async () => {
     const legacyDir = join(base, 'legacy')
     const targetDir = join(base, 'target')
