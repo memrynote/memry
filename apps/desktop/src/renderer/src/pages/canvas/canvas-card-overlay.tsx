@@ -24,11 +24,14 @@ import { notesService } from '@/services/notes-service'
 import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useT } from '@memry/i18n/renderer'
-import { CanvasCard } from './canvas-card'
+import { CanvasCard, CARD_SCROLL_ATTR } from './canvas-card'
 import { CanvasCardActive } from './canvas-card-active'
+import { shouldRenderRich } from './canvas-card-render-mode'
+import { wheelScrollDelta } from './canvas-card-scroll'
 import { hitTestCard, shouldDeactivateForTool, nextActive, withActivePinned } from './canvas-active'
 import { useCanvasEntities, entityKey } from './use-canvas-entities'
 import {
+  cardDefaultSize,
   computeVisibleCardIds,
   findFreeCardCenter,
   getCardRefs,
@@ -74,6 +77,13 @@ export const CanvasCardLayer = ({
   const [visibleRefs, setVisibleRefs] = useState<CanvasCardRef[]>([])
   const visibleIdsRef = useRef<Set<string>>(new Set())
   const signatureRef = useRef('')
+
+  // Level of detail: cards render their entity at full editor fidelity until
+  // the scene gets too small to read or too crowded to mount (see
+  // canvas-card-render-mode.ts). Mirrored in a ref so the imperative recompute
+  // only calls setState when the mode actually flips.
+  const [rich, setRich] = useState(true)
+  const richRef = useRef(true)
 
   // Bumped whenever a claim attempt fails (canvasNoteClaims is a module
   // singleton, not React state, so another pane's successful claim wouldn't
@@ -164,6 +174,14 @@ export const CanvasCardLayer = ({
       }
     }
     const visible = cards.filter((card) => nextIds.has(card.elementId))
+    const nextRich = shouldRenderRich({
+      zoom: appState.zoom.value,
+      visibleCount: visible.length
+    })
+    if (nextRich !== richRef.current) {
+      richRef.current = nextRich
+      setRich(nextRich)
+    }
     // Re-render on membership OR geometry change (a moved card), never on pan.
     const signature = visible
       .map(
@@ -218,14 +236,47 @@ export const CanvasCardLayer = ({
     [openTab]
   )
 
+  /**
+   * The rectangle a new card should open at. Notes are measured from their own
+   * body — a note holding "hey" must not open at the full note frame — which
+   * costs one read before the card exists. A failed read falls back to the
+   * compact card rather than blocking the placement.
+   */
+  const resolveCardSize = useCallback(
+    async (
+      entityType: CanvasCardRef['entityType'],
+      entityId: string
+    ): Promise<{ width: number; height: number }> => {
+      if (entityType !== 'note') {
+        return cardDefaultSize(entityType)
+      }
+      try {
+        const note = await notesService.get(entityId)
+        return cardDefaultSize('note', note?.content ?? '')
+      } catch (err) {
+        log.error('Failed to size canvas note card', { entityId, error: err })
+        return cardDefaultSize('note')
+      }
+    },
+    []
+  )
+
   const createCardElement = useCallback(
     (
       entityType: CanvasCardRef['entityType'],
       entityId: string,
       centerX: number,
-      centerY: number
+      centerY: number,
+      size: { width: number; height: number }
     ): void => {
-      const skeleton = makeCardSkeleton({ entityType, entityId, centerX, centerY })
+      const skeleton = makeCardSkeleton({
+        entityType,
+        entityId,
+        centerX,
+        centerY,
+        width: size.width,
+        height: size.height
+      })
       const created = convertToExcalidrawElements([skeleton] as unknown as Parameters<
         typeof convertToExcalidrawElements
       >[0])
@@ -271,7 +322,10 @@ export const CanvasCardLayer = ({
         { clientX: e.clientX, clientY: e.clientY },
         appState
       )
-      createCardElement(item.entityType, item.entityId, scene.x, scene.y)
+      // The size read is async, but the drop point is not — capture it here.
+      void resolveCardSize(item.entityType, item.entityId).then((size) => {
+        createCardElement(item.entityType, item.entityId, scene.x, scene.y, size)
+      })
     }
 
     // dblclick activates the hit card (↗ redirect stays the only way to open a
@@ -307,6 +361,49 @@ export const CanvasCardLayer = ({
       }
     }
 
+    // An idle card is pointer-events:none, so it never receives a wheel event of
+    // its own: the layer hit-tests the card under the cursor and scrolls it
+    // imperatively. The event is only consumed when that scroll actually moves
+    // (canvas-card-scroll.ts), so a short card — or one already at its edge —
+    // still zooms the canvas. The active card scrolls natively; Cmd/Ctrl+wheel
+    // is always Excalidraw's zoom.
+    const onWheel = (e: WheelEvent): void => {
+      if (e.ctrlKey || e.metaKey) {
+        return
+      }
+      const appState = excalidrawAPI.getAppState()
+      const scene = viewportCoordsToSceneCoords(
+        { clientX: e.clientX, clientY: e.clientY },
+        appState
+      )
+      const cards = getCardRefs(excalidrawAPI.getSceneElements() as unknown as CardElement[])
+      const hit = hitTestCard(cards, scene)
+      if (!hit || hit.elementId === activeCardIdRef.current) {
+        return
+      }
+      const scroller = layerRef.current?.querySelector<HTMLElement>(
+        `[${CARD_SCROLL_ATTR}="${hit.elementId}"]`
+      )
+      if (!scroller) {
+        return
+      }
+      const applied = wheelScrollDelta(
+        {
+          scrollTop: scroller.scrollTop,
+          scrollHeight: scroller.scrollHeight,
+          clientHeight: scroller.clientHeight
+        },
+        e.deltaY,
+        appState.zoom.value
+      )
+      if (applied === 0) {
+        return
+      }
+      e.preventDefault()
+      e.stopPropagation()
+      scroller.scrollTop += applied
+    }
+
     // Click-away deactivates the active card. Never stopPropagation here — the
     // same pointerdown must still pan/select/draw on the canvas (C4).
     const onPointerDownAway = (e: PointerEvent): void => {
@@ -324,13 +421,23 @@ export const CanvasCardLayer = ({
     wrapper.addEventListener('drop', onDrop, { capture: true })
     wrapper.addEventListener('dblclick', onDblClick, { capture: true })
     wrapper.addEventListener('pointerdown', onPointerDownAway, { capture: true })
+    // Non-passive: consuming the gesture requires preventDefault().
+    wrapper.addEventListener('wheel', onWheel, { capture: true, passive: false })
     return () => {
       wrapper.removeEventListener('dragover', onDragOver, { capture: true })
       wrapper.removeEventListener('drop', onDrop, { capture: true })
       wrapper.removeEventListener('dblclick', onDblClick, { capture: true })
       wrapper.removeEventListener('pointerdown', onPointerDownAway, { capture: true })
+      wrapper.removeEventListener('wheel', onWheel, { capture: true })
     }
-  }, [wrapperRef, excalidrawAPI, createCardElement, dispatchActive, setClaimFailedTick])
+  }, [
+    wrapperRef,
+    excalidrawAPI,
+    createCardElement,
+    resolveCardSize,
+    dispatchActive,
+    setClaimFailedTick
+  ])
 
   // Release the claim when the card deactivates or the layer unmounts. Keyed on
   // activeCardId only: visibleRefs changes on every geometry tick, and keying on
@@ -366,18 +473,21 @@ export const CanvasCardLayer = ({
   /* eslint-enable react-you-might-not-need-an-effect/no-event-handler */
 
   const placeCard = useCallback(
-    (entityType: CanvasCardRef['entityType'], entityId: string) => {
+    async (entityType: CanvasCardRef['entityType'], entityId: string) => {
+      const size = await resolveCardSize(entityType, entityId)
+      // Read the scene AFTER the size await, so a card added meanwhile counts.
       const { cards, appState } = readScene()
       const rect = viewportSceneRect(appState, {
         width: clipRef.current?.clientWidth ?? 0,
         height: clipRef.current?.clientHeight ?? 0
       })
       // Free cell, not the raw centre: repeated picks would otherwise pile up
-      // on one point and have to be dragged apart (#871).
-      const { x, y } = findFreeCardCenter(cards, rect)
-      createCardElement(entityType, entityId, x, y)
+      // on one point and have to be dragged apart (#871). The spiral steps by
+      // the size this card will actually get, so note cards clear each other.
+      const { x, y } = findFreeCardCenter(cards, rect, size)
+      createCardElement(entityType, entityId, x, y, size)
     },
-    [readScene, createCardElement]
+    [readScene, createCardElement, resolveCardSize]
   )
 
   const handleCreateNote = useCallback(
@@ -387,7 +497,7 @@ export const CanvasCardLayer = ({
         if (!result.success || !result.note) {
           throw new Error(result.error ?? 'note create failed')
         }
-        placeCard('note', result.note.id)
+        await placeCard('note', result.note.id)
       } catch (err) {
         log.error('Failed to create canvas note', err)
         toast.error(
@@ -469,13 +579,23 @@ export const CanvasCardLayer = ({
               cardRef={card}
               state={entities.get(entityKey(card.entityType, card.entityId))}
               onRedirect={redirect}
+              rich={rich}
               locked={locked}
             />
           )}
         </div>
       )
     })
-  }, [visibleRefs, entities, redirect, activeCardId, dispatchActive, lockCtx, claimFailedTick])
+  }, [
+    visibleRefs,
+    entities,
+    redirect,
+    activeCardId,
+    dispatchActive,
+    lockCtx,
+    claimFailedTick,
+    rich
+  ])
 
   return (
     <>
@@ -513,7 +633,7 @@ export const CanvasCardLayer = ({
         onOpenChange={setAddOpen}
         onCanvasKeys={addKeys}
         onCreateNote={(title) => void handleCreateNote(title)}
-        onPick={placeCard}
+        onPick={(entityType, entityId) => void placeCard(entityType, entityId)}
         onReveal={handleReveal}
       />
     </>

@@ -1,28 +1,27 @@
+import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { CanvasCardActive } from './canvas-card-active'
 import type { CanvasCardRef } from './canvas-cards'
 
-// Stub the per-type editor leaves so this test exercises only the container's
-// own concerns: data attributes, focus-on-mount, and keyboard containment
-// (canvas-card-overlay.test.tsx already covers the note branch via a real
-// mount through the overlay; these stubs let us hit the task/event branches
-// too without pulling BlockNote/react-pdf or the task/calendar query stacks).
-vi.mock('./embedded-note-editor', () => ({
-  EmbeddedNoteEditor: ({ noteId }: { noteId: string }) => (
-    <div data-testid="embedded-note-editor">{noteId}</div>
-  )
-}))
-vi.mock('./canvas-task-editor', () => ({
-  CanvasTaskEditor: ({ taskId }: { taskId: string }) => (
-    <div data-testid="canvas-task-editor">{taskId}</div>
-  )
-}))
-vi.mock('./canvas-event-editor', () => ({
-  CanvasEventEditor: ({ eventId, onDone }: { eventId: string; onDone: () => void }) => (
-    <button data-testid="canvas-event-editor" onClick={onDone}>
-      {eventId}
+// Stub the shared body so this test exercises only the container's own
+// concerns: data attributes, focus-on-mount, and keyboard containment. Which
+// editor each entity type gets is canvas-card-body.test.tsx's job, and the stub
+// keeps BlockNote/react-pdf and the task/calendar query stacks out of this
+// module graph.
+vi.mock('./canvas-card-body', () => ({
+  CanvasCardBody: ({
+    cardRef,
+    interactive,
+    onDone
+  }: {
+    cardRef: CanvasCardRef
+    interactive: boolean
+    onDone?: () => void
+  }) => (
+    <button data-testid="canvas-card-body" data-interactive={String(interactive)} onClick={onDone}>
+      {`${cardRef.entityType}:${cardRef.entityId}`}
     </button>
   )
 }))
@@ -41,25 +40,36 @@ function cardRef(entityType: CanvasCardRef['entityType'], entityId: string): Can
 }
 
 describe('CanvasCardActive', () => {
-  it('renders the note editor for a note card and sets its data attributes', () => {
+  it('renders the shared body as interactive and sets its data attributes', () => {
     render(
       <CanvasCardActive cardRef={cardRef('note', 'n1')} state={undefined} onDeactivate={vi.fn()} />
     )
-    expect(screen.getByTestId('embedded-note-editor')).toHaveTextContent('n1')
+    const body = screen.getByTestId('canvas-card-body')
+    expect(body).toHaveTextContent('note:n1')
+    expect(body).toHaveAttribute('data-interactive', 'true')
     const root = document.querySelector('[data-canvas-active-card="e1"]')
     expect(root).toHaveAttribute('data-canvas-card-id', 'e1')
     expect(root).toHaveAttribute('data-canvas-card-entity', 'note:n1')
     expect(root).toHaveAttribute('data-canvas-card-state', 'active')
   })
 
-  it('renders the task editor for a task card', () => {
-    render(
+  it('passes the card through to the body for every entity type', () => {
+    const { rerender } = render(
       <CanvasCardActive cardRef={cardRef('task', 't1')} state={undefined} onDeactivate={vi.fn()} />
     )
-    expect(screen.getByTestId('canvas-task-editor')).toHaveTextContent('t1')
+    expect(screen.getByTestId('canvas-card-body')).toHaveTextContent('task:t1')
+
+    rerender(
+      <CanvasCardActive
+        cardRef={cardRef('calendar_event', 'ev1')}
+        state={undefined}
+        onDeactivate={vi.fn()}
+      />
+    )
+    expect(screen.getByTestId('canvas-card-body')).toHaveTextContent('calendar_event:ev1')
   })
 
-  it('renders the event editor for a calendar_event card, wiring onDone to onDeactivate', () => {
+  it('wires the body onDone to onDeactivate (event cards close after save)', () => {
     const onDeactivate = vi.fn()
     render(
       <CanvasCardActive
@@ -68,9 +78,7 @@ describe('CanvasCardActive', () => {
         onDeactivate={onDeactivate}
       />
     )
-    const editor = screen.getByTestId('canvas-event-editor')
-    expect(editor).toHaveTextContent('ev1')
-    fireEvent.click(editor)
+    fireEvent.click(screen.getByTestId('canvas-card-body'))
     expect(onDeactivate).toHaveBeenCalledTimes(1)
   })
 
