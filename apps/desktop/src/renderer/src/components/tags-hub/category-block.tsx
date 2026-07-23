@@ -1,6 +1,9 @@
 import * as React from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
+import { useDroppable } from '@dnd-kit/core'
+import { useSortable, SortableContext, rectSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -13,9 +16,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
-import { Pencil, Trash } from '@/lib/icons'
+import { GripVertical, Pencil, Trash } from '@/lib/icons'
 import { TagChipItem } from '@/components/tags-hub/tag-chip-item'
+import { cn } from '@/lib/utils'
 import type { HubTag } from '@/hooks/use-tag-categories'
+
+/** Stable sortable id for the Uncategorized block, which never reorders. */
+const UNCATEGORIZED_SORTABLE_ID = '__uncategorized__'
 
 export interface CategoryBlockProps {
   id: string | null
@@ -30,12 +37,19 @@ export interface CategoryBlockProps {
  * One category section in the tag hub: a heading (name + tag count, plus
  * hover-revealed rename/delete for real categories) followed by a wrapping
  * row of tag chips. `id === null` is the Uncategorized block, which has no
- * rename or delete affordance.
+ * rename or delete affordance — and, since it isn't a real category, no
+ * drag handle either (it never participates in category reordering).
  *
  * Rename swaps the heading for an inline input (matching the create
  * affordance): Enter commits the trimmed name, Escape reverts. Delete opens
  * the app's `AlertDialog` — its body calls out that tags survive the delete
  * and move to Uncategorized, since that isn't obvious from "Delete".
+ *
+ * Drag and drop: the block itself is a dnd-kit sortable (category
+ * reordering, drag handle only — the heading/rename/delete stay click-only)
+ * and its tag row is both a `useDroppable` container (so an empty category
+ * can still receive a dropped tag) and a nested `SortableContext` using
+ * `rectSortingStrategy` (chips wrap, unlike the vertical list of blocks).
  */
 export function CategoryBlock({
   id,
@@ -50,6 +64,31 @@ export function CategoryBlock({
   const [draftName, setDraftName] = useState(name)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setSortableNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({
+    id: id ?? UNCATEGORIZED_SORTABLE_ID,
+    disabled: id === null,
+    data: { type: 'category' as const, categoryId: id }
+  })
+
+  const { setNodeRef: setDroppableNodeRef, isOver } = useDroppable({
+    id: `tag-container-${id ?? 'uncategorized'}`,
+    data: { type: 'tag-container' as const, categoryId: id }
+  })
+
+  const sectionStyle: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition
+  }
+
+  const tagIds = useMemo(() => tags.map((t) => t.tag), [tags])
 
   useEffect(() => {
     if (isRenaming) {
@@ -91,8 +130,23 @@ export function CategoryBlock({
   }
 
   return (
-    <section className="flex flex-col gap-2">
+    <section
+      ref={setSortableNodeRef}
+      style={sectionStyle}
+      className={cn('flex flex-col gap-2', isDragging && 'opacity-50')}
+    >
       <div className="group flex items-center gap-2">
+        {id !== null && (
+          <button
+            type="button"
+            aria-label={t('tagsHub.category.dragHandle')}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground/50 opacity-0 transition-opacity hover:text-muted-foreground group-hover:opacity-100 cursor-grab active:cursor-grabbing"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-3.5 w-3.5" />
+          </button>
+        )}
         {isRenaming ? (
           <Input
             ref={inputRef}
@@ -146,17 +200,28 @@ export function CategoryBlock({
         </AlertDialog>
       )}
 
-      {tags.length === 0 ? (
-        <div className="rounded-md border border-dashed py-3 text-center text-xs text-muted-foreground">
-          {t('tagsHub.category.emptyHint')}
+      <SortableContext items={tagIds} strategy={rectSortingStrategy}>
+        <div
+          ref={setDroppableNodeRef}
+          className={cn(
+            tags.length === 0
+              ? 'rounded-md border border-dashed py-3 text-center text-xs text-muted-foreground'
+              : 'flex flex-wrap gap-2',
+            isOver && tags.length === 0 && 'border-primary/50 bg-primary/5 text-primary'
+          )}
+        >
+          {tags.length === 0
+            ? t('tagsHub.category.emptyHint')
+            : tags.map((tag) => (
+                <TagChipItem
+                  key={tag.tag}
+                  tag={tag}
+                  categoryId={id}
+                  onOpen={() => onTagOpen(tag.tag)}
+                />
+              ))}
         </div>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {tags.map((tag) => (
-            <TagChipItem key={tag.tag} tag={tag} onOpen={() => onTagOpen(tag.tag)} />
-          ))}
-        </div>
-      )}
+      </SortableContext>
     </section>
   )
 }

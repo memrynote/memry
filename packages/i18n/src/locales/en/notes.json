@@ -802,6 +802,7 @@
     "category": {
       "rename": "Rename category",
       "delete": "Delete category",
+      "dragHandle": "Drag to reorder category",
       "emptyHint": "Drag a tag here",
       "deleteTitle": "Delete {name}?",
       "deleteBody": "Tags will move to Uncategorized. They won't be deleted.",
