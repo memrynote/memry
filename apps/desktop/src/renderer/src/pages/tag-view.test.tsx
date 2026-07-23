@@ -15,7 +15,6 @@ const mocks = vi.hoisted(() => ({
     | null,
   deletedHandler: null as ((event: { tag: string; affectedNotes: number }) => void) | null,
   closeTab: vi.fn(),
-  updateTabTitleByEntityId: vi.fn(),
   activeTab: { id: 'tab-1', entityId: 'meetings' } as { id: string; entityId?: string } | null
 }))
 
@@ -65,8 +64,7 @@ vi.mock('@/services/tags-service', async (importOriginal) => {
 
 vi.mock('@/contexts/tabs', () => ({
   useTabs: () => ({
-    closeTab: mocks.closeTab,
-    updateTabTitleByEntityId: mocks.updateTabTitleByEntityId
+    closeTab: mocks.closeTab
   }),
   useActiveTab: () => mocks.activeTab
 }))
@@ -89,6 +87,10 @@ function renderWithTabs(
 
 function emitTagDeleted(event: { tag: string }) {
   mocks.deletedHandler?.({ tag: event.tag, affectedNotes: 0 })
+}
+
+function emitTagRenamed(event: { oldName: string; newName: string }) {
+  mocks.renamedHandler?.({ oldName: event.oldName, newName: event.newName, affectedNotes: 0 })
 }
 
 describe('TagViewPage', () => {
@@ -127,5 +129,36 @@ describe('TagViewPage', () => {
     emitTagDeleted({ tag: 'meetings' })
 
     await waitFor(() => expect(closeTab).toHaveBeenCalled())
+  })
+
+  it('closes the tab when the tag is renamed elsewhere', async () => {
+    const closeTab = vi.fn()
+    renderWithTabs(<TagViewPage tag="meetings" />, { closeTab })
+
+    emitTagRenamed({ oldName: 'meetings', newName: 'standups' })
+
+    await waitFor(() => expect(closeTab).toHaveBeenCalled())
+  })
+
+  it('does not close the tab when a different tag is deleted', async () => {
+    const closeTab = vi.fn()
+    renderWithTabs(<TagViewPage tag="meetings" />, { closeTab })
+
+    emitTagDeleted({ tag: 'other' })
+
+    // Give any (incorrect) async close a chance to fire before asserting.
+    await waitFor(() => expect(screen.getByText('meetings')).toBeInTheDocument())
+    expect(closeTab).not.toHaveBeenCalled()
+  })
+
+  it('does not close the tab when a different tag is renamed', async () => {
+    const closeTab = vi.fn()
+    renderWithTabs(<TagViewPage tag="meetings" />, { closeTab })
+
+    emitTagRenamed({ oldName: 'other', newName: 'renamed-other' })
+
+    // Give any (incorrect) async close a chance to fire before asserting.
+    await waitFor(() => expect(screen.getByText('meetings')).toBeInTheDocument())
+    expect(closeTab).not.toHaveBeenCalled()
   })
 })

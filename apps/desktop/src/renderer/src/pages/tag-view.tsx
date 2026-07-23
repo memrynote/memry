@@ -38,7 +38,7 @@ export function TagViewPage({ tag, color }: TagViewPageProps): React.JSX.Element
   const colors = getTagColors(resolvedColor, tag)
   const tagIcon = tagRow?.icon ?? null
 
-  const { closeTab, updateTabTitleByEntityId } = useTabs()
+  const { closeTab } = useTabs()
   const activeTab = useActiveTab()
 
   const [renameOpen, setRenameOpen] = useState(false)
@@ -78,11 +78,13 @@ export function TagViewPage({ tag, color }: TagViewPageProps): React.JSX.Element
           throw new Error(result.error ?? tSettings('tags.toasts.renameFailed'))
         }
         toast.success(tSettings('tags.toasts.renamed', { oldName: tag, newName }))
-        // The `onTagRenamed` subscription below also updates the tab (it's
-        // the only path for a rename triggered from another window/tab), but
-        // update it here too so this tab relabels immediately, not just once
-        // the round-tripped event arrives.
-        updateTabTitleByEntityId(tag, newName)
+        // This tab's identity is `tag` (the OLD name), and there's no
+        // tabs-context action to repoint an existing tab's `entityId`. Close
+        // it rather than relabel in place, so it doesn't keep resolving
+        // color/items against a name that no longer exists. The
+        // `onTagRenamed` subscription below closes it too for a rename
+        // triggered from another window/tab.
+        closeThisTab()
       } catch (err) {
         log.error('Failed to rename tag', err)
         const message = extractErrorMessage(err, tSettings('tags.toasts.renameFailed'))
@@ -90,7 +92,7 @@ export function TagViewPage({ tag, color }: TagViewPageProps): React.JSX.Element
         throw err instanceof Error ? err : new Error(message)
       }
     },
-    [tag, updateTabTitleByEntityId]
+    [tag, closeThisTab]
   )
 
   const handleDeleteConfirm = useCallback(async () => {
@@ -108,23 +110,21 @@ export function TagViewPage({ tag, color }: TagViewPageProps): React.JSX.Element
     }
   }, [tag, total, closeThisTab])
 
-  // Keep this tab in sync with the tag's lifecycle, replacing the `goBack()`
-  // the sidebar drill-down used: a rename (from this tab or another
-  // window) relabels the tab so it keeps tracking the renamed tag; a delete
-  // closes the tab outright since there's nothing left to show.
-  //
-  // Known gap: `updateTabTitleByEntityId` only updates the tab's title.
-  // There's no tabs-context action to also repoint the tab's `entityId`, so
-  // after a rename this tab's `entityId` (and the `tag` prop it renders with,
-  // sourced from `tab.entityId`) still refers to the OLD tag name.
+  // Keep this tab in sync with the tag's lifecycle, mirroring the
+  // `goBack()` the sidebar drill-down used. This tab's identity is
+  // `tab.entityId`, the tag's name at open time, and there's no
+  // tabs-context action to repoint an existing tab's `entityId`. So a
+  // rename (from this tab or another window) closes the tab, same as a
+  // delete — otherwise it would keep resolving color/items against a name
+  // that no longer exists while the tab strip shows the new one.
   useEffect(() => {
     const unsubscribeRenamed = onTagRenamed((event) => {
       if (event.oldName.toLowerCase() === tag.toLowerCase()) {
-        updateTabTitleByEntityId(tag, event.newName)
+        closeThisTab()
       }
     })
     return unsubscribeRenamed
-  }, [tag, updateTabTitleByEntityId])
+  }, [tag, closeThisTab])
 
   useEffect(() => {
     const unsubscribeDeleted = onTagDeleted((event) => {
