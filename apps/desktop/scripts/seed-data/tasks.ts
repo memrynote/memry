@@ -82,7 +82,8 @@ export const PROJECTS: SeedProject[] = [
     description: 'Ship memrynote v0.1 to ~50 friends + IndieHackers.',
     color: '#6366f1',
     icon: '🚀',
-    position: 2
+    position: 2,
+    homeNoteId: NOTE_IDS.projMemryLaunch
   },
   {
     id: PROJECT_IDS.istanbulWeekend,
@@ -90,7 +91,8 @@ export const PROJECTS: SeedProject[] = [
     description: 'Plan a three-day Istanbul weekend with bookings, packing, food, and memories.',
     color: '#0ea5e9',
     icon: '🌉',
-    position: 1
+    position: 1,
+    homeNoteId: NOTE_IDS.travelIstanbul
   },
   {
     id: PROJECT_IDS.reading,
@@ -98,7 +100,8 @@ export const PROJECTS: SeedProject[] = [
     description: '2026 reading queue and finished list.',
     color: '#f59e0b',
     icon: '📚',
-    position: 3
+    position: 3,
+    homeNoteId: NOTE_IDS.lifeOnReading
   },
   {
     id: PROJECT_IDS.fitness,
@@ -106,7 +109,8 @@ export const PROJECTS: SeedProject[] = [
     description: 'Cut, train, sleep, repeat.',
     color: '#10b981',
     icon: '💪',
-    position: 4
+    position: 4,
+    homeNoteId: NOTE_IDS.weightCut2026
   },
   {
     id: PROJECT_IDS.tokyo,
@@ -114,7 +118,8 @@ export const PROJECTS: SeedProject[] = [
     description: 'April 2026 Tokyo trip — past, mostly closed out.',
     color: '#ec4899',
     icon: '🗼',
-    position: 5
+    position: 5,
+    homeNoteId: NOTE_IDS.travelTokyoTrip
   },
   {
     id: PROJECT_IDS.side,
@@ -122,7 +127,8 @@ export const PROJECTS: SeedProject[] = [
     description: 'Personal experiments, half-baked, sometimes shipped.',
     color: '#8b5cf6',
     icon: '✨',
-    position: 6
+    position: 6,
+    homeNoteId: NOTE_IDS.projSideProjectIdeas
   }
 ]
 

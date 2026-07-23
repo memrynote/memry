@@ -6,7 +6,7 @@ import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import * as schema from '@memry/db-schema/schema'
-import { canvases, canvasEntityRefs, vaultMetadata } from '@memry/db-schema/data-schema'
+import { canvases, canvasEntityRefs, projectLinks, vaultMetadata } from '@memry/db-schema/data-schema'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DATA_MIGRATIONS = resolve(__dirname, '../../src/main/database/drizzle-data')
@@ -132,6 +132,8 @@ export interface SeedProject {
   icon?: string | null
   position: number
   isInbox?: boolean
+  /** Overview note shown at the top of Project Home (projects.home_note_id). */
+  homeNoteId?: string | null
 }
 
 export function insertProjects(db: DataDb, projects: SeedProject[]): number {
@@ -145,11 +147,36 @@ export function insertProjects(db: DataDb, projects: SeedProject[]): number {
         color: p.color,
         icon: p.icon ?? null,
         position: p.position,
-        isInbox: p.isInbox ?? false
+        isInbox: p.isInbox ?? false,
+        homeNoteId: p.homeNoteId ?? null
       }))
     )
     .run()
   return projects.length
+}
+
+export interface SeedProjectLink {
+  id: string
+  projectId: string
+  itemType: 'note' | 'calendar_event' | 'file'
+  itemId: string
+  position: number
+}
+
+export function insertProjectLinks(db: DataDb, links: SeedProjectLink[]): number {
+  if (links.length === 0) return 0
+  db.insert(projectLinks)
+    .values(
+      links.map((l) => ({
+        id: l.id,
+        projectId: l.projectId,
+        itemType: l.itemType,
+        itemId: l.itemId,
+        position: l.position
+      }))
+    )
+    .run()
+  return links.length
 }
 
 export interface SeedStatus {

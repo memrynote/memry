@@ -21,6 +21,13 @@ const tokyoLocalAt = (days: number, hour: number, minute = 0): string => {
   return d.toISOString()
 }
 
+const ISTANBUL_OFFSET_MS = 3 * 60 * 60 * 1000
+const istanbulLocalAt = (days: number, hour: number, minute = 0): string => {
+  const d = new Date(seedISOAt(days, hour, minute))
+  d.setTime(d.getTime() - ISTANBUL_OFFSET_MS)
+  return d.toISOString()
+}
+
 // ============================================================================
 // Calendar Sources (one local, one stub Google)
 // ============================================================================
@@ -464,5 +471,29 @@ export const CALENDAR_EVENTS: SeedCalendarEvent[] = [
     endAt: isoDateAt(-14, 13, 30),
     timezone: 'America/Los_Angeles',
     colorId: 'f59e0b'
+  },
+
+  // ========================================================================
+  // Istanbul weekend — the two blocks the trip project links to
+  // ========================================================================
+  {
+    id: generateId(),
+    title: 'Bosphorus ferry — evening route',
+    description: 'See [[Istanbul]].',
+    location: 'Eminönü pier',
+    startAt: istanbulLocalAt(3, 17, 30),
+    endAt: istanbulLocalAt(3, 19),
+    timezone: 'Europe/Istanbul',
+    colorId: '0ea5e9'
+  },
+  {
+    id: generateId(),
+    title: 'Dinner — Kadıköy',
+    description: 'See [[Istanbul]].',
+    location: 'Kadıköy, Istanbul',
+    startAt: istanbulLocalAt(3, 20),
+    endAt: istanbulLocalAt(3, 22),
+    timezone: 'Europe/Istanbul',
+    colorId: '0ea5e9'
   }
 ]
