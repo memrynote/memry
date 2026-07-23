@@ -14,9 +14,11 @@ import { homedir } from 'os'
 import { wipeVault } from './seed-vault/wipe'
 import { writeNoteFiles } from './seed-vault/file-writer'
 import {
+  ensureVaultMetadata,
   insertBookmarks,
   insertCalendarEvents,
   insertCalendarSources,
+  insertCanvases,
   insertFilingHistory,
   insertFolderConfigs,
   insertHomePages,
@@ -29,8 +31,15 @@ import {
   insertTaskNotes,
   insertTasks,
   insertTaskTags,
-  openDataDb
+  openDataDb,
+  upsertSetting
 } from './seed-vault/db-writer'
+import {
+  computeVaultKeyVerifier,
+  encryptCanvasScene,
+  resolveVaultKey,
+  VAULT_KEY_VERIFIER_SETTING
+} from './seed-vault/canvas-crypto'
 
 import { FOLDER_CONFIGS, NOTES, NOTE_METADATA } from './seed-data/notes'
 import { JOURNAL_NOTES, JOURNAL_METADATA } from './seed-data/journal'
@@ -38,9 +47,16 @@ import { PROJECTS, STATUSES, TASKS, TASK_NOTES, TASK_TAGS } from './seed-data/ta
 import { CALENDAR_EVENTS, CALENDAR_SOURCES } from './seed-data/calendar'
 import { FILING_HISTORY_ROWS, INBOX_ITEMS } from './seed-data/inbox'
 import { HOME_BOOKMARKS, HOME_PAGES } from './seed-data/home'
+import { CANVASES } from './seed-data/canvas'
 
 interface CliArgs {
   vaultPath: string
+  /**
+   * Keychain device suffix used to derive the canvas encryption key. Must match
+   * the app instance that will open the vault: 'dev' for plain `pnpm dev`
+   * (default), 'A'/'B'/'C' for the dev:a/b/c profiles.
+   */
+  device: string
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -49,9 +65,13 @@ function parseArgs(argv: string[]): CliArgs {
     if (raw.startsWith('--vault=')) {
       args.vaultPath = resolve(raw.slice('--vault='.length))
     }
+    if (raw.startsWith('--device=')) {
+      args.device = raw.slice('--device='.length)
+    }
   }
   return {
-    vaultPath: args.vaultPath ?? resolve(homedir(), 'MemryDemoVault')
+    vaultPath: args.vaultPath ?? resolve(homedir(), 'MemryDemoVault'),
+    device: args.device || 'dev'
   }
 }
 
@@ -132,8 +152,8 @@ function writeMinimalConfig(vaultPath: string): void {
   }
 }
 
-function main(): void {
-  const { vaultPath } = parseArgs(process.argv.slice(2))
+async function main(): Promise<void> {
+  const { vaultPath, device } = parseArgs(process.argv.slice(2))
 
   console.log(`Seeding demo vault at: ${vaultPath}`)
 
@@ -194,6 +214,23 @@ function main(): void {
 
     const homePageCount = insertHomePages(db, HOME_PAGES)
     console.log(`  → home_pages: ${homePageCount}`)
+
+    // Canvas scenes are encrypted at rest with the vault key; derive the same
+    // key the app will use and pre-bind the vault to it via the verifier.
+    const vaultId = ensureVaultMetadata(db)
+    const vaultKey = await resolveVaultKey(device)
+    upsertSetting(db, VAULT_KEY_VERIFIER_SETTING, computeVaultKeyVerifier(vaultKey, vaultId))
+    const canvasCount = insertCanvases(
+      db,
+      vaultId,
+      CANVASES.map((c) => ({
+        id: c.id,
+        title: c.title,
+        snapshotCiphertext: encryptCanvasScene(c.scene, vaultKey),
+        entityRefs: c.entityRefs
+      }))
+    )
+    console.log(`  → canvases: ${canvasCount} (scenes encrypted for device '${device}')`)
   } finally {
     close()
   }
@@ -207,11 +244,17 @@ function main(): void {
   console.log('')
   console.log('Done.')
   console.log(
-    `Seeded ${notesWritten} notes, ${journalsWritten} journal entries, ${TASKS.length} tasks, ${CALENDAR_EVENTS.length} events, ${INBOX_ITEMS.length} inbox items, ${HOME_PAGES.length} home board with ${HOME_PAGES[0].widgets.length} widgets.`
+    `Seeded ${notesWritten} notes, ${journalsWritten} journal entries, ${TASKS.length} tasks, ${CALENDAR_EVENTS.length} events, ${INBOX_ITEMS.length} inbox items, ${HOME_PAGES.length} home board with ${HOME_PAGES[0].widgets.length} widgets, ${CANVASES.length} canvases.`
   )
   console.log(`Vault path: ${vaultPath}`)
   console.log('')
   console.log('Open memrynote → Switch Vault → choose this path to view.')
+  console.log(
+    `Note: canvas scenes are bound to the '${device}' dev keychain device — open the vault with the matching app profile (--device=A|B|C to target dev:a/b/c).`
+  )
 }
 
-main()
+main().catch((error) => {
+  console.error(error)
+  process.exit(1)
+})

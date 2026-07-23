@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { resolve } from 'path'
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
@@ -5,6 +6,7 @@ import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import * as schema from '@memry/db-schema/schema'
+import { canvases, canvasEntityRefs, vaultMetadata } from '@memry/db-schema/data-schema'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DATA_MIGRATIONS = resolve(__dirname, '../../src/main/database/drizzle-data')
@@ -501,6 +503,64 @@ export function insertHomePages(db: DataDb, pages: SeedHomePage[]): number {
     )
     .run()
   return pages.length
+}
+
+/**
+ * Creates the vault_metadata singleton the app otherwise writes on first open
+ * (see main/agent/storage/vault-id.ts). Canvas rows carry this vault UUID.
+ */
+export function ensureVaultMetadata(db: DataDb): string {
+  const existing = db.select().from(vaultMetadata).get()
+  if (existing) return existing.vaultUuid
+
+  const uuid = randomUUID()
+  const now = Date.now()
+  db.insert(vaultMetadata)
+    .values({ id: 'singleton', vaultUuid: uuid, createdAt: now, updatedAt: now })
+    .run()
+  return uuid
+}
+
+export function upsertSetting(db: DataDb, key: string, value: string): void {
+  db.insert(schema.settings)
+    .values({ key, value })
+    .onConflictDoUpdate({ target: schema.settings.key, set: { value } })
+    .run()
+}
+
+export interface SeedCanvasRow {
+  id: string
+  title: string
+  snapshotCiphertext: string
+  entityRefs: Array<{ entityType: 'note' | 'task' | 'calendar_event'; entityId: string }>
+}
+
+export function insertCanvases(db: DataDb, vaultId: string, rows: SeedCanvasRow[]): number {
+  if (rows.length === 0) return 0
+  const now = Date.now()
+  for (const c of rows) {
+    db.insert(canvases)
+      .values({
+        id: c.id,
+        vaultId,
+        title: c.title,
+        snapshotCiphertext: c.snapshotCiphertext,
+        vectorClock: {},
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+        lastSyncedAt: null,
+        clock: null
+      })
+      .run()
+    for (const ref of c.entityRefs) {
+      db.insert(canvasEntityRefs)
+        .values({ canvasId: c.id, entityType: ref.entityType, entityId: ref.entityId })
+        .onConflictDoNothing()
+        .run()
+    }
+  }
+  return rows.length
 }
 
 export interface SeedBookmark {
