@@ -95,7 +95,10 @@ export const CanvasPage = ({ canvasId }: CanvasPageProps): React.JSX.Element => 
   return (
     <div className="h-full min-h-0" data-canvas-page={canvas.id}>
       <React.Suspense fallback={<div className="h-full" />}>
-        <LazyCanvasEditor canvasId={canvas.id} initialScene={canvas.scene} />
+        {/* Keyed so a canvasId prop change swaps in a fresh editor once the new
+            scene arrives — initialData is mount-only, and a reused editor would
+            persist the old scene under the new canvas id. */}
+        <LazyCanvasEditor key={canvas.id} canvasId={canvas.id} initialScene={canvas.scene} />
       </React.Suspense>
     </div>
   )

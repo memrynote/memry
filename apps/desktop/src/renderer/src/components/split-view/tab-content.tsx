@@ -195,7 +195,11 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
         return <LazyAgentConversationTab conversationId={tab.entityId} />
 
       case 'canvas':
-        return <LazyCanvasPage canvasId={tab.entityId} />
+        // Keyed by entity id: Excalidraw consumes initialData only at mount, so
+        // switching between canvas tabs must remount the page. Without the key,
+        // the reused editor keeps the previous canvas's scene and its persister
+        // saves that scene under the NEW canvas id, overwriting it.
+        return <LazyCanvasPage key={tab.entityId} canvasId={tab.entityId} />
 
       case 'virtual-note':
         return (
