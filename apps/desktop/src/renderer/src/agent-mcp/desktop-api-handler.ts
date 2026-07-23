@@ -32,8 +32,6 @@ function resolveDesktopApiOperation(operation: string): (...args: unknown[]) => 
 
 function normalizeDesktopApiArgs(operation: string, args: unknown[]): unknown[] {
   switch (operation) {
-    case 'calendar.getProviderStatus':
-      return [normalizeCalendarProviderStatusInput(args)]
     case 'calendar.listEvents':
       return [normalizeCalendarListEventsInput(args)]
     case 'calendar.getRange':
@@ -41,13 +39,6 @@ function normalizeDesktopApiArgs(operation: string, args: unknown[]): unknown[] 
     default:
       return args
   }
-}
-
-function normalizeCalendarProviderStatusInput(args: unknown[]): JsonRecord {
-  const input = objectArg(args[0]) ?? {}
-  const provider = stringValue(input.provider) ?? 'google'
-  const accountId = stringValue(input.accountId)
-  return { provider, ...(accountId ? { accountId } : {}) }
 }
 
 function normalizeCalendarListEventsInput(args: unknown[]): JsonRecord {
@@ -64,9 +55,9 @@ function normalizeCalendarRangeInput(args: unknown[]): JsonRecord {
   return {
     startAt: start ? normalizeCalendarRangeBound(start, 'start') : start,
     endAt: end ? normalizeCalendarRangeBound(end, 'end') : end,
-    ...(typeof input.includeUnselectedSources === 'boolean'
-      ? { includeUnselectedSources: input.includeUnselectedSources }
-      : {})
+    // Google Workspace Limited Use: agent range reads must never include
+    // Google-synced external events, regardless of caller-supplied flags.
+    includeExternal: false
   }
 }
 

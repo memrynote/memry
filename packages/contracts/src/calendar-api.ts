@@ -84,7 +84,10 @@ export const SearchCalendarEventsSchema = z.object({
 export const GetCalendarRangeSchema = z.object({
   startAt: z.string().datetime(),
   endAt: z.string().datetime(),
-  includeUnselectedSources: z.boolean().default(false)
+  includeUnselectedSources: z.boolean().default(false),
+  // false = native memrynote events only, no Google-synced external events
+  // (forced by the agent MCP surface for Google Workspace Limited Use).
+  includeExternal: z.boolean().optional()
 })
 
 export const ListCalendarSourcesSchema = z.object({
