@@ -7,7 +7,7 @@ import { net } from 'electron'
 
 import { createLogger } from '../lib/logger'
 import { secureDeleteFile } from '../lib/secure-fs'
-import { ensureDirectory, withTransientFsRetry } from '../vault/file-ops'
+import { ensureDirectory, sanitizeFilename, withTransientFsRetry } from '../vault/file-ops'
 import { encrypt, decrypt, wrapFileKey, unwrapFileKey } from '../crypto/encryption'
 import { generateFileKey } from '../crypto/keys'
 import { secureCleanup } from '../crypto/index'
@@ -455,7 +455,11 @@ export class AttachmentSyncService {
   // Download (T151 download side)
   // ==========================================================================
 
-  async downloadAttachment(attachmentId: string, targetPath: string): Promise<DownloadResult> {
+  async downloadAttachment(
+    attachmentId: string,
+    targetPath: string,
+    opts?: { targetIsDir?: boolean }
+  ): Promise<DownloadResult> {
     const [token, vaultKey] = await this.requireAuth()
 
     log.info('starting download', { attachmentId })
@@ -473,7 +477,27 @@ export class AttachmentSyncService {
 
     try {
       const totalChunks = manifest.chunks.length
-      const destPath = targetPath
+      // Embedded-attachment flow: the caller only knows the note's attachments
+      // directory — the filename lives in the (signed, decrypted) manifest.
+      // basename + sanitize so a crafted manifest cannot escape the directory.
+      const destPath = opts?.targetIsDir
+        ? path.join(targetPath, sanitizeFilename(path.basename(manifest.filename)))
+        : targetPath
+
+      if (opts?.targetIsDir) {
+        try {
+          const existing = await stat(destPath)
+          if (existing.size === manifest.size) {
+            log.debug('attachment already materialized, skipping download', {
+              attachmentId,
+              path: destPath
+            })
+            return { filePath: destPath, manifest }
+          }
+        } catch {
+          // not on disk yet — proceed with the download
+        }
+      }
 
       const downloadProgress: TransferProgress = {
         attachmentId,
