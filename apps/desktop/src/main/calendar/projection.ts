@@ -625,7 +625,7 @@ export function getCalendarRangeProjection(
     ...loadReminderItems(db, input),
     ...loadNoteDateReminderItems(db, indexDb, input),
     ...loadInboxSnoozeItems(db, input),
-    ...loadExternalEvents(db, input),
+    ...(input.includeExternal === false ? [] : loadExternalEvents(db, input)),
     ...notePropertyItems,
     ...noteCreatedItems
   ])
