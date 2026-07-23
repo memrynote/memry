@@ -796,6 +796,8 @@
     "loading": "Loading tags...",
     "newCategory": "New category",
     "newTag": "New tag",
+    "categoryNamePlaceholder": "Category name",
+    "tagNamePlaceholder": "Tag name",
     "uncategorized": "Uncategorized",
     "category": {
       "rename": "Rename category",
