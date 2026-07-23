@@ -16,6 +16,7 @@ import {
   markOnCanvas,
   type AddCardCandidate
 } from './canvas-add-card'
+import { CanvasAddCardRow } from './canvas-add-card-row'
 import { entityKey } from './canvas-cards'
 import { useCanvasAddSearch } from './use-canvas-add-search'
 
@@ -53,12 +54,9 @@ export function CanvasAddCardDialog({
   }, [open])
 
   const groups = useMemo(() => {
-    const merged = [
-      ...candidatesFromSearch(results),
-      ...candidatesFromEvents(events, t('canvas.card.allDay'))
-    ]
+    const merged = [...candidatesFromSearch(results), ...candidatesFromEvents(events)]
     return groupCandidates(markOnCanvas(merged, onCanvasKeys))
-  }, [results, events, onCanvasKeys, t])
+  }, [results, events, onCanvasKeys])
 
   // A blank query always highlights the create row — the hook clears `events`
   // in its own effect, so for one frame after the user clears the input the
@@ -98,17 +96,14 @@ export function CanvasAddCardDialog({
               value={key}
               data-testid={`canvas-add-item-${key}`}
               onSelect={() => select(candidate)}
-              className="flex cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-2 text-sm data-[selected=true]:bg-muted"
+              className="flex cursor-pointer items-start gap-2.5 rounded-md px-2 py-2 text-sm data-[selected=true]:bg-muted"
             >
-              <span className="flex min-w-0 flex-col">
-                <span className="truncate">{candidate.title}</span>
-                <span className="truncate text-xs text-text-tertiary">{candidate.subtitle}</span>
-              </span>
-              {candidate.onCanvas ? (
-                <span className="shrink-0 rounded-full border border-border px-1.5 py-0.5 text-[10px] text-text-tertiary">
-                  {t('canvas.card.addOnCanvas')}
-                </span>
-              ) : null}
+              <CanvasAddCardRow
+                candidate={candidate}
+                createdLabel={(date) => t('canvas.card.addCreatedAt', { date })}
+                allDayLabel={t('canvas.card.allDay')}
+                onCanvasLabel={t('canvas.card.addOnCanvas')}
+              />
             </Command.Item>
           )
         })}
