@@ -51,10 +51,17 @@ scripts just produce a separately-named artifact for the Edge Add-ons store.
 `zip:edge` produces `.output/*-edge.zip` for submission to the Microsoft Edge
 Add-ons store.
 
-## Release
+## Publishing
 
-`pnpm --filter @memry/extension release` bumps the version and pushes an
-`extension-v*` tag, which triggers `.github/workflows/publish-extension.yml`.
+Submission is automated by [`.github/workflows/publish-extension.yml`](../../.github/workflows/publish-extension.yml),
+triggered by pushing an `extension-v*` tag (`pnpm --filter @memry/extension release`)
+or a manual **workflow_dispatch**. It runs two independent jobs:
+
+- **Chrome** (`zip` → `submit`) → Chrome Web Store. Secrets: `CHROME_EXTENSION_ID`,
+  `CHROME_CLIENT_ID`, `CHROME_CLIENT_SECRET`, `CHROME_REFRESH_TOKEN`.
+- **Firefox** (`zip:firefox` → `sources:firefox` → `submit:firefox`) → AMO. Secrets:
+  `FIREFOX_EXTENSION_ID` (the `gecko.id`, `web-clipper@memrynote.com`),
+  `FIREFOX_JWT_ISSUER`, `FIREFOX_JWT_SECRET`.
 
 > [!IMPORTANT]
 > **Ship the desktop app first.** The extension only ever adds fields to the
@@ -63,6 +70,29 @@ Add-ons store.
 > that desktop doesn't know yet (currently PDF clips, which are also never queued,
 > so each one is lost). Release order is always: desktop version containing the
 > contract change → then the `extension-v*` tag.
+
+Run `pnpm --filter @memry/extension exec wxt submit init` once to obtain the store
+credentials; add them as GitHub **repository secrets**. The Firefox submit step
+skips (job stays green) until `FIREFOX_JWT_SECRET` exists.
+
+### Firefox source-code review
+
+AMO requires a rebuildable source ZIP because the add-on is bundled/minified. WXT's
+own sources ZIP is incomplete in this monorepo (it omits the workspace package
+`@memry/article-extract`), so `sources:firefox` builds a self-contained bundle via
+[`scripts/build-extension-firefox-sources.mjs`](../../scripts/build-extension-firefox-sources.mjs):
+the extension + `@memry/article-extract` + `@memry/typescript-config` + root
+manifests, with a trimmed `pnpm-workspace.yaml` so a reviewer builds only those
+three packages (no Electron). Verify once locally before relying on CI:
+
+```bash
+pnpm --filter @memry/extension zip:firefox
+pnpm --filter @memry/extension sources:firefox   # → .output/firefox-review-sources.zip
+```
+
+**First listing is manual:** the AMO API only pushes _updates_ to an existing add-on.
+Create the initial listing once via AMO's "Submit a New Add-on" wizard (upload the
+`*-firefox.zip` and the sources ZIP); afterwards CI pushes every new version.
 
 ## Manual QA (the Phase-3 acceptance gate — human-required)
 
