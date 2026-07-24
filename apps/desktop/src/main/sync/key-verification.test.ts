@@ -30,6 +30,7 @@ vi.mock('./token-manager', () => ({
 
 import {
   checkLocalKeyAgainstAccount,
+  clearKeyMaterialActivity,
   isKeyMaterialActivityRecent,
   markKeyMaterialActivity,
   persistAccountKeyVerifier,
@@ -53,6 +54,16 @@ describe('key-verification', () => {
       expect(isKeyMaterialActivityRecent()).toBe(true)
       resetKeyVerificationForTests()
       expect(isKeyMaterialActivityRecent()).toBe(false)
+    })
+
+    it('clearKeyMaterialActivity lifts the transition hold so checks classify again', async () => {
+      markKeyMaterialActivity()
+      await expect(checkLocalKeyAgainstAccount()).resolves.toBe('transition')
+
+      clearKeyMaterialActivity()
+      expect(isKeyMaterialActivityRecent()).toBe(false)
+      mockStoreGet.mockReturnValue({ accountKeyVerifier: 'local-verifier' })
+      await expect(checkLocalKeyAgainstAccount()).resolves.toBe('match')
     })
   })
 

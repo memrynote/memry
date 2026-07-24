@@ -79,9 +79,10 @@ registers) is cached locally at sign-in/recovery/linking and fetched from `GET /
 `checkLocalKeyAgainstAccount()` compares the verifier derived from the keychain master key against
 the account verifier and returns one of four verdicts: `match` (safe to sync), `mismatch` (this key
 can never decrypt the account's data), `transition` (a sign-in/recovery/linking flow is
-re-establishing key material — a ~2-minute activity window after `persistKeysAndRegisterDevice`), or
-`unknown` (offline with no cached verifier, no session, or an unreadable keychain — never classified
-destructively).
+re-establishing key material right now — armed when `persistKeysAndRegisterDevice` starts and
+lifted the moment the flow finalizes, so sync can start immediately after sign-in; a ~2-minute
+timer backstops flows that abort mid-way), or `unknown` (offline with no cached verifier, no
+session, or an unreadable keychain — never classified destructively).
 
 The check runs at three points: the startup integrity check, sync-runtime start, and any pull page
 where every item fails to decrypt or verify. Only a **confirmed mismatch** acts: sync is blocked, a

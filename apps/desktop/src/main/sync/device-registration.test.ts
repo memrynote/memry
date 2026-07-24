@@ -22,6 +22,9 @@ const mocks = vi.hoisted(() => ({
   getOrCreateVaultUuid: vi.fn(() => 'vault-1'),
   getSyncEngine: vi.fn(),
   startSyncRuntime: vi.fn(),
+  markKeyMaterialActivity: vi.fn(),
+  clearKeyMaterialActivity: vi.fn(),
+  persistAccountKeyVerifier: vi.fn(),
   startGoogleCalendarSyncRunner: vi.fn(),
   activate: vi.fn(),
   parseDeviceResponse: vi.fn(),
@@ -106,8 +109,9 @@ vi.mock('./runtime', () => ({
 }))
 
 vi.mock('./key-verification', () => ({
-  markKeyMaterialActivity: vi.fn(),
-  persistAccountKeyVerifier: vi.fn()
+  markKeyMaterialActivity: (...args: unknown[]) => mocks.markKeyMaterialActivity(...args),
+  clearKeyMaterialActivity: (...args: unknown[]) => mocks.clearKeyMaterialActivity(...args),
+  persistAccountKeyVerifier: (...args: unknown[]) => mocks.persistAccountKeyVerifier(...args)
 }))
 
 vi.mock('../calendar/google/sync-service', () => ({
@@ -220,6 +224,15 @@ describe('device registration', () => {
     expect(mocks.dbInsert).toHaveBeenCalled()
     expect(mocks.activate).toHaveBeenCalled()
     expect(mocks.startGoogleCalendarSyncRunner).toHaveBeenCalled()
+
+    // The transition hold must be armed for the duration of the flow and
+    // lifted at finalize, before activation kicks the runtime — a runtime
+    // start that still sees 'transition' stands down and leaves sync dark.
+    expect(mocks.markKeyMaterialActivity).toHaveBeenCalled()
+    expect(mocks.clearKeyMaterialActivity).toHaveBeenCalled()
+    expect(mocks.clearKeyMaterialActivity.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.activate.mock.invocationCallOrder[0]
+    )
   })
 
   it('removes the signing key when server registration fails', async () => {
@@ -238,6 +251,8 @@ describe('device registration', () => {
 
     expect(mocks.deleteKey).toHaveBeenCalledWith(keychainEntries.DEVICE_SIGNING_KEY)
     expect(mocks.storeKey).not.toHaveBeenCalledWith(keychainEntries.MASTER_KEY, expect.anything())
+    // Aborted flow: key material stays uncertain, so the transition hold stays armed.
+    expect(mocks.clearKeyMaterialActivity).not.toHaveBeenCalled()
   })
 
   it('deregisters the device and clears tokens when master-key storage fails', async () => {
