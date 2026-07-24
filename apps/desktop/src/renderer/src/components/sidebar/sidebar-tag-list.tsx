@@ -4,6 +4,7 @@ import {
   ArrowUpDown,
   ArrowDownAZ,
   ArrowUpAZ,
+  GripVertical,
   X,
   ChevronRight,
   ChevronDown,
@@ -13,6 +14,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
+import { useTagCategories, type HubTag } from '@/hooks/use-tag-categories'
 import { getTagColors } from '@/components/note/tags-row/tag-colors'
 import { buildTagTree, type TagTreeNode } from '@/lib/tag-tree'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
@@ -22,12 +24,18 @@ import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/component
 import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
 import { useT } from '@memry/i18n/renderer'
 
-type TagSortOption = 'count-desc' | 'count-asc' | 'alpha-asc' | 'alpha-desc'
+type TagSortOption = 'manual' | 'count-desc' | 'count-asc' | 'alpha-asc' | 'alpha-desc'
 
 const SORT_STORAGE_KEY = 'sidebar-tags-sort'
 const EXPANDED_STORAGE_KEY = 'sidebar-tags-expanded'
 
+// Category headings share the tag-tree's expanded-state Set, prefixed so a
+// category id can never collide with a `/`-tree tag path.
+const CATEGORY_KEY_PREFIX = 'category:'
+const UNCATEGORIZED_GROUP_ID = 'uncategorized'
+
 const SORT_OPTIONS: ReadonlyArray<{ value: TagSortOption; label: string }> = [
+  { value: 'manual', label: 'Manual' },
   { value: 'count-desc', label: 'Most used' },
   { value: 'count-asc', label: 'Least used' },
   { value: 'alpha-asc', label: 'A → Z' },
@@ -35,6 +43,7 @@ const SORT_OPTIONS: ReadonlyArray<{ value: TagSortOption; label: string }> = [
 ] as const
 
 const SORT_ICONS: Record<TagSortOption, React.ReactNode> = {
+  manual: <GripVertical className="h-3.5 w-3.5" />,
   'count-desc': <ArrowUpDown className="h-3.5 w-3.5" />,
   'count-asc': <ArrowUpDown className="h-3.5 w-3.5" />,
   'alpha-asc': <ArrowDownAZ className="h-3.5 w-3.5" />,
@@ -50,7 +59,7 @@ function loadSortPreference(): TagSortOption {
   } catch {
     /* ignore */
   }
-  return 'count-desc'
+  return 'manual'
 }
 
 function loadExpandedState(): Set<string> {
@@ -69,6 +78,72 @@ function saveExpandedState(expanded: Set<string>): void {
   } catch {
     /* ignore */
   }
+}
+
+// =============================================================================
+// Grouping — one `/`-tree per category, plus an Uncategorized tree
+// =============================================================================
+
+interface TagGroup {
+  id: string
+  name: string
+  nodes: TagTreeNode[]
+}
+
+function compareTreeNodes(
+  sortBy: TagSortOption,
+  order: Map<string, number>
+): (a: TagTreeNode, b: TagTreeNode) => number {
+  return (a, b) => {
+    switch (sortBy) {
+      case 'manual': {
+        const orderA = order.get(a.fullPath) ?? Number.MAX_SAFE_INTEGER
+        const orderB = order.get(b.fullPath) ?? Number.MAX_SAFE_INTEGER
+        return orderA - orderB
+      }
+      case 'count-desc':
+        return b.totalCount - a.totalCount
+      case 'count-asc':
+        return a.totalCount - b.totalCount
+      case 'alpha-asc':
+        return a.name.localeCompare(b.name)
+      case 'alpha-desc':
+        return b.name.localeCompare(a.name)
+    }
+  }
+}
+
+function sortTreeNodes(
+  nodes: TagTreeNode[],
+  compare: (a: TagTreeNode, b: TagTreeNode) => number
+): TagTreeNode[] {
+  return [...nodes]
+    .sort(compare)
+    .map((node) => ({ ...node, children: sortTreeNodes(node.children, compare) }))
+}
+
+// Builds one group's `/`-tree from its own tags only, so nested tags
+// ("work/project") still nest inside their category rather than flattening.
+// `order` (for the 'manual' sort) is keyed by fullPath from this group's own
+// tags — already sorted by the backend's sortOrder — so a tag's position in
+// that pre-sorted list becomes its manual rank; a virtual path segment that
+// isn't itself a tag (e.g. "work" when only "work/project" exists) has no
+// rank and sorts after every real entry in the group.
+function buildGroupNodes(
+  groupTags: HubTag[],
+  searchQuery: string,
+  sortBy: TagSortOption
+): TagTreeNode[] {
+  const filtered = groupTags
+    .filter((t) => t.count > 0)
+    .filter((t) => !searchQuery || t.tag.toLowerCase().includes(searchQuery.toLowerCase()))
+
+  const order = new Map(filtered.map((t, index) => [t.tag, index]))
+  const built = buildTagTree(
+    filtered.map((t) => ({ tag: t.tag, count: t.count, color: t.color, icon: t.icon }))
+  )
+
+  return sortTreeNodes(built, compareTreeNodes(sortBy, order))
 }
 
 // =============================================================================
@@ -234,8 +309,10 @@ export function SidebarTagList({
   const { t: tPhaseF } = useT('notes')
   const { t } = useT('common')
   const { openSidebarItem } = useSidebarNavigation()
-  const { tags, isLoading, error } = useNoteTagsQuery()
-  const [showAll, setShowAll] = React.useState(false)
+  const { tags, isLoading: isLoadingTags, error } = useNoteTagsQuery()
+  const { categories, uncategorized, isLoading: isLoadingCategories } = useTagCategories()
+  const isLoading = isLoadingTags || isLoadingCategories
+  const [showAllByGroup, setShowAllByGroup] = React.useState<Record<string, boolean>>({})
   const [searchOpen, setSearchOpen] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState('')
   const [sortBy, setSortBy] = React.useState<TagSortOption>(loadSortPreference)
@@ -355,42 +432,31 @@ export function SidebarTagList({
     [onTagClick]
   )
 
-  const tree = React.useMemo(() => {
-    const filtered = tags
-      .filter((t) => t.count > 0)
-      .filter((t) => {
-        if (!searchQuery) return true
-        return t.tag.toLowerCase().includes(searchQuery.toLowerCase())
-      })
+  const groups = React.useMemo<TagGroup[]>(() => {
+    const result: TagGroup[] = []
 
-    const built = buildTagTree(
-      filtered.map((t) => ({ tag: t.tag, count: t.count, color: t.color, icon: t.icon }))
-    )
-
-    const sortNodes = (nodes: TagTreeNode[]): TagTreeNode[] => {
-      const sorted = [...nodes].sort((a, b) => {
-        switch (sortBy) {
-          case 'count-desc':
-            return b.totalCount - a.totalCount
-          case 'count-asc':
-            return a.totalCount - b.totalCount
-          case 'alpha-asc':
-            return a.name.localeCompare(b.name)
-          case 'alpha-desc':
-            return b.name.localeCompare(a.name)
-        }
-      })
-      return sorted.map((node) => ({
-        ...node,
-        children: sortNodes(node.children)
-      }))
+    for (const category of categories) {
+      const nodes = buildGroupNodes(category.tags, searchQuery, sortBy)
+      if (nodes.length > 0) {
+        result.push({ id: category.id, name: category.name, nodes })
+      }
     }
 
-    return sortNodes(built)
-  }, [tags, searchQuery, sortBy])
+    const uncategorizedNodes = buildGroupNodes(uncategorized, searchQuery, sortBy)
+    if (uncategorizedNodes.length > 0) {
+      result.push({
+        id: UNCATEGORIZED_GROUP_ID,
+        name: tPhaseF('phaseF.componentsSidebarSidebarTagList.Uncategorized'),
+        nodes: uncategorizedNodes
+      })
+    }
 
-  const visibleTree = showAll ? tree : tree.slice(0, maxVisible)
-  const hasMore = tree.length > maxVisible
+    return result
+  }, [categories, uncategorized, searchQuery, sortBy, tPhaseF])
+
+  const toggleShowAllForGroup = React.useCallback((groupId: string): void => {
+    setShowAllByGroup((prev) => ({ ...prev, [groupId]: !prev[groupId] }))
+  }, [])
 
   const handleSearchKeyDown = (e: React.KeyboardEvent): void => {
     if (e.key === 'Escape') {
@@ -449,34 +515,63 @@ export function SidebarTagList({
         </div>
       )}
 
-      <div className="flex flex-col gap-0.5">
-        {visibleTree.length === 0 && searchQuery ? (
+      <div className="flex flex-col gap-1">
+        {groups.length === 0 && searchQuery ? (
           <span className="text-[11px] text-muted-foreground px-2">
             {tPhaseF('phaseF.componentsSidebarSidebarTagList.noMatchingTags')}
           </span>
         ) : (
-          visibleTree.map((node) => (
-            <TagTreeItem
-              key={node.fullPath}
-              node={node}
-              selectedTag={selectedTag}
-              expanded={expanded}
-              onToggle={handleToggle}
-              onTagClick={handleTagClick}
-            />
-          ))
-        )}
+          groups.map((group) => {
+            const isGroupExpanded = !expanded.has(`${CATEGORY_KEY_PREFIX}${group.id}`)
+            const showAllForGroup = showAllByGroup[group.id] ?? false
+            const visibleNodes = showAllForGroup ? group.nodes : group.nodes.slice(0, maxVisible)
+            const hasMoreInGroup = group.nodes.length > maxVisible
 
-        {hasMore && !searchQuery && (
-          <button
-            type="button"
-            onClick={() => setShowAll(!showAll)}
-            className="rounded-sm py-0.5 px-2 ms-6 text-[11px] font-medium leading-3.5 text-sidebar-muted hover:text-sidebar-foreground transition-colors text-start"
-          >
-            {showAll
-              ? t('action.showLess')
-              : t('action.showMore', { count: tree.length - maxVisible })}
-          </button>
+            return (
+              <div key={group.id} className="flex flex-col gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => handleToggle(`${CATEGORY_KEY_PREFIX}${group.id}`)}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70 hover:text-foreground hover:bg-muted transition-colors"
+                  aria-label={isGroupExpanded ? t('action.collapse') : t('action.expand')}
+                >
+                  {isGroupExpanded ? (
+                    <ChevronDown className="size-2.5 shrink-0" />
+                  ) : (
+                    <ChevronRight className="size-2.5 shrink-0" />
+                  )}
+                  <span className="truncate">{group.name}</span>
+                </button>
+
+                {isGroupExpanded && (
+                  <div data-testid={`tag-group-${group.id}`} className="flex flex-col gap-0.5">
+                    {visibleNodes.map((node) => (
+                      <TagTreeItem
+                        key={node.fullPath}
+                        node={node}
+                        selectedTag={selectedTag}
+                        expanded={expanded}
+                        onToggle={handleToggle}
+                        onTagClick={handleTagClick}
+                      />
+                    ))}
+
+                    {hasMoreInGroup && !searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => toggleShowAllForGroup(group.id)}
+                        className="rounded-sm py-0.5 px-2 ms-6 text-[11px] font-medium leading-3.5 text-sidebar-muted hover:text-sidebar-foreground transition-colors text-start"
+                      >
+                        {showAllForGroup
+                          ? t('action.showLess')
+                          : t('action.showMore', { count: group.nodes.length - maxVisible })}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })
         )}
       </div>
     </div>

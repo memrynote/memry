@@ -599,7 +599,8 @@
       "failedToLoadTags": "Failed to load tags",
       "noTagsYet": "No tags yet",
       "filterTags": "Filter tags...",
-      "noMatchingTags": "No matching tags"
+      "noMatchingTags": "No matching tags",
+      "Uncategorized": "Uncategorized"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Drop here",
