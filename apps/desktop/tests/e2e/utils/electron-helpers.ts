@@ -326,9 +326,20 @@ export async function createTask(
   try {
     await dismissFirstRunOnboarding(page)
 
-    // Strategy 1: Try Quick Add input (inline input in task list)
+    // Strategy 1: the Quick Add input (inline input in task list). This must
+    // WAIT for visibility, not probe it: isVisible() returns immediately (its
+    // timeout option is ignored by Playwright), and on a slow runner the input
+    // often hasn't rendered yet right after a tab switch. The old instant probe
+    // then diverted into the "Add Task" fallback below — but the empty-state
+    // "Add Task" button focuses this same quick-add input instead of opening a
+    // modal, so the fallback silently created nothing and the caller's row
+    // assertion burned its full timeout (macOS smoke job ran into its 45-min
+    // ceiling exactly this way).
     const quickAddInput = page.locator(SELECTORS.taskInput).first()
-    const hasQuickAdd = await quickAddInput.isVisible({ timeout: 2000 }).catch(() => false)
+    const hasQuickAdd = await quickAddInput
+      .waitFor({ state: 'visible', timeout: 10_000 })
+      .then(() => true)
+      .catch(() => false)
 
     if (hasQuickAdd) {
       await quickAddInput.click()
@@ -340,7 +351,7 @@ export async function createTask(
 
     // Strategy 2: Try Add Task button (opens modal)
     const addButton = page.locator(SELECTORS.addTaskButton).first()
-    const hasAddButton = await addButton.isVisible({ timeout: 2000 }).catch(() => false)
+    const hasAddButton = await addButton.isVisible().catch(() => false)
 
     if (hasAddButton) {
       await addButton.click()
@@ -360,6 +371,20 @@ export async function createTask(
 
         // Submit with Cmd+Enter or click Add Task button
         await page.keyboard.press('Meta+Enter')
+        await page.waitForTimeout(500)
+        return
+      }
+
+      // No modal: the empty-state "Add Task" button focuses the quick-add
+      // input instead. Type into it now that it exists.
+      const focusedQuickAdd = page.locator(SELECTORS.taskInput).first()
+      const quickAddAppeared = await focusedQuickAdd
+        .waitFor({ state: 'visible', timeout: 2000 })
+        .then(() => true)
+        .catch(() => false)
+      if (quickAddAppeared) {
+        await focusedQuickAdd.fill(title)
+        await focusedQuickAdd.press('Enter')
         await page.waitForTimeout(500)
         return
       }

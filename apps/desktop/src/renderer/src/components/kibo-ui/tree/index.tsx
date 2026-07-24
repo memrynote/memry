@@ -23,6 +23,7 @@ import {
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
 import { IconPicker, getIconByName } from '@/components/icon-picker'
+import { CANVAS_ITEM_DRAG_MIME, canvasDragPayload } from '@/pages/canvas/canvas-cards'
 import { useT } from '@memry/i18n/renderer'
 
 type NodeInfo = {
@@ -112,6 +113,7 @@ type TreeNodeContextType = {
   hideLines: boolean
   customIcon?: string
   inheritedIcon?: string
+  canvasNoteId?: string
   setCustomIcon: (iconName: string | undefined) => void
 }
 
@@ -501,6 +503,12 @@ export type TreeNodeProps = HTMLAttributes<HTMLDivElement> & {
   customIcon?: string
   inheritedIcon?: string
   hasChildren?: boolean
+  /**
+   * The note this row stands for, when it is one. Opt-in: a node that sets it
+   * also carries the spatial-canvas drag payload, so dropping the row on a
+   * canvas creates a referencing card. Folders leave it unset.
+   */
+  canvasNoteId?: string
 }
 
 export const TreeNode = ({
@@ -516,6 +524,7 @@ export const TreeNode = ({
   customIcon: initialCustomIcon,
   inheritedIcon: initialInheritedIcon,
   hasChildren = false,
+  canvasNoteId,
   ...props
 }: TreeNodeProps) => {
   const generatedId = useId()
@@ -556,6 +565,7 @@ export const TreeNode = ({
     hideLines: hideLinesProp,
     customIcon,
     inheritedIcon,
+    canvasNoteId,
     setCustomIcon
   }
 
@@ -605,7 +615,8 @@ export const TreeNodeTrigger = ({
     setNodeIcon,
     getEffectiveIcon
   } = useTree()
-  const { nodeId, level, hasChildren, parentId, customIcon, acceptsDropInside } = useTreeNode()
+  const { nodeId, level, hasChildren, parentId, customIcon, acceptsDropInside, canvasNoteId } =
+    useTreeNode()
   const isSelected = selectedIds.includes(nodeId)
   const triggerRef = useRef<HTMLDivElement>(null)
 
@@ -707,11 +718,19 @@ export const TreeNodeTrigger = ({
     (e: React.DragEvent) => {
       if (!draggable) return
 
-      e.dataTransfer.effectAllowed = 'move'
+      e.dataTransfer.effectAllowed = canvasNoteId ? 'copyMove' : 'move'
       e.dataTransfer.setData('application/x-memry-tree-node', nodeId)
+      if (canvasNoteId) {
+        // Mirrors VirtualizedNotesTree, which the sidebar swaps to once the
+        // vault passes the virtualization threshold. Without this the same
+        // drag onto a canvas does nothing on a small vault. 'copyMove' above
+        // matters just as much: the canvas asks for dropEffect 'copy', and
+        // Chromium silently refuses a drop that effectAllowed does not permit.
+        e.dataTransfer.setData(CANVAS_ITEM_DRAG_MIME, canvasDragPayload('note', canvasNoteId))
+      }
       setDragState({ draggedId: nodeId })
     },
-    [draggable, nodeId, setDragState]
+    [draggable, nodeId, canvasNoteId, setDragState]
   )
 
   const handleDragEnd = useCallback(() => {

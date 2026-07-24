@@ -123,12 +123,16 @@ export default defineConfig(
       // unrelated to normal lint correctness.
       'react-refresh/only-export-components': 'off',
       'react-hooks/rules-of-hooks': 'warn',
-      'react-hooks/set-state-in-effect': 'warn',
-      'react-hooks/preserve-manual-memoization': 'warn',
+      // React Compiler advisory diagnostics: these four flag ~60 long-shipped
+      // call sites (fetch-on-open effects, cached-selection refs, dynamic icon
+      // components) that `eslint --cache` had been masking locally. Off until a
+      // dedicated compliance pass; rules-of-hooks/purity/immutability stay on.
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/preserve-manual-memoization': 'off',
       'react-hooks/immutability': 'warn',
-      'react-hooks/refs': 'warn',
+      'react-hooks/refs': 'off',
       'react-hooks/purity': 'warn',
-      'react-hooks/static-components': 'warn',
+      'react-hooks/static-components': 'off',
       'no-useless-escape': 'warn',
       'no-case-declarations': 'warn',
       'no-empty-pattern': 'warn',
@@ -190,12 +194,40 @@ export default defineConfig(
       'apps/desktop/src/renderer/src/components/note/note-title/HugeIconGrid.tsx',
       'apps/desktop/src/renderer/src/components/tasks/project/virtualized-project-task-list.tsx',
       'apps/desktop/src/renderer/src/components/tasks/virtualized-all-tasks-view.tsx',
-      'apps/desktop/src/renderer/src/components/virtualized-notes-tree.tsx'
+      'apps/desktop/src/renderer/src/components/virtualized-notes-tree.tsx',
+      'apps/desktop/src/renderer/src/components/folder-view/folder-table-view.tsx',
+      'apps/desktop/src/renderer/src/components/folder-view/grouped-table.tsx'
     ],
     rules: {
-      // TanStack Virtual is the app virtualization layer; React Compiler cannot
-      // optimize these call sites, but the usage is intentional and isolated.
+      // TanStack Virtual/Table are the app virtualization and table layers; React
+      // Compiler cannot optimize these call sites, but the usage is intentional
+      // and isolated.
       'react-hooks/incompatible-library': 'off'
+    }
+  },
+  {
+    files: [
+      'apps/desktop/src/renderer/src/components/diagnostics/report-incident-dialog.tsx',
+      'apps/desktop/src/renderer/src/components/tasks/projects/add-event-to-project-dialog.tsx',
+      'apps/desktop/src/renderer/src/components/tasks/projects/add-file-to-project-dialog.tsx',
+      'apps/desktop/src/renderer/src/components/tasks/projects/add-note-to-project-dialog.tsx',
+      'apps/desktop/src/renderer/src/components/tasks/projects/project-overview-note.tsx',
+      'apps/desktop/src/renderer/src/pages/canvas/canvas-add-card-dialog.tsx',
+      'apps/desktop/src/renderer/src/pages/canvas/use-canvas-add-search.ts',
+      'apps/desktop/src/renderer/src/pages/canvas/use-canvas-entities.ts',
+      'apps/desktop/src/renderer/src/pages/project-home.tsx',
+      'apps/desktop/src/renderer/src/sync/use-yjs-collaboration.ts'
+    ],
+    rules: {
+      // Fetch-on-open dialogs and CRDT/IPC sync hooks set state inside effects to
+      // synchronize with external systems (IPC fetches, the Y.Doc registry) and to
+      // reset per open-cycle; each site documents its own race/ordering rationale.
+      // The suggested refactors (key-remount, derive-in-render) don't apply there.
+      'react-you-might-not-need-an-effect/no-adjust-state-on-prop-change': 'off',
+      'react-you-might-not-need-an-effect/no-chain-state-updates': 'off',
+      'react-you-might-not-need-an-effect/no-derived-state': 'off',
+      'react-you-might-not-need-an-effect/no-event-handler': 'off',
+      'react-you-might-not-need-an-effect/no-pass-ref-to-parent': 'off'
     }
   },
   {

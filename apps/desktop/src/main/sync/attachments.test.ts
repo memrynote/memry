@@ -409,6 +409,149 @@ describe('AttachmentSyncService', () => {
     })
   })
 
+  describe('downloadAttachment into a directory (embedded attachments)', () => {
+    function buildDownloadFixture(filename: string): {
+      deps: AttachmentSyncDeps
+      mockFetch: ReturnType<typeof vi.fn>
+      plaintext: Buffer
+    } {
+      const vaultKey = generateFileKey()
+      const fileKey = generateFileKey()
+
+      const plaintext = Buffer.alloc(256, 'D')
+      const plaintextHash = sodium.to_hex(sodium.crypto_hash_sha256(plaintext))
+
+      const nonce = sodium.randombytes_buf(24)
+      const ciphertext = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+        plaintext,
+        null,
+        null,
+        nonce,
+        fileKey
+      )
+      const encryptedWithNonce = new Uint8Array(nonce.length + ciphertext.length)
+      encryptedWithNonce.set(nonce, 0)
+      encryptedWithNonce.set(ciphertext, nonce.length)
+      const encryptedHash = sodium.to_hex(sodium.crypto_hash_sha256(encryptedWithNonce))
+
+      const manifest = {
+        id: 'att-dir',
+        filename,
+        mimeType: 'application/pdf',
+        size: 256,
+        checksum: plaintextHash,
+        chunks: [{ index: 0, hash: plaintextHash, encryptedHash, size: 256 }],
+        chunkSize: 8388608,
+        createdAt: Date.now()
+      }
+
+      const toB64 = (b: Uint8Array): string => sodium.to_base64(b, sodium.base64_variants.ORIGINAL)
+      const manifestBytes = new TextEncoder().encode(JSON.stringify(manifest))
+      const manifestNonce = sodium.randombytes_buf(24)
+      const manifestCiphertext = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+        manifestBytes,
+        null,
+        null,
+        manifestNonce,
+        fileKey
+      )
+      const wrappedNonce = sodium.randombytes_buf(24)
+      const wrappedKey = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+        fileKey,
+        null,
+        null,
+        wrappedNonce,
+        vaultKey
+      )
+      const signingKeypair = sodium.crypto_sign_keypair()
+      const signaturePayload: Record<string, unknown> = {
+        encryptedManifest: toB64(manifestCiphertext),
+        manifestNonce: toB64(manifestNonce),
+        encryptedFileKey: toB64(wrappedKey),
+        keyNonce: toB64(wrappedNonce)
+      }
+      const manifestSignature = signPayload(
+        signaturePayload,
+        CBOR_FIELD_ORDER.ATTACHMENT_MANIFEST,
+        signingKeypair.privateKey
+      )
+      const encManifest = {
+        encryptedManifest: toB64(manifestCiphertext),
+        manifestNonce: toB64(manifestNonce),
+        encryptedFileKey: toB64(wrappedKey),
+        keyNonce: toB64(wrappedNonce),
+        manifestSignature: toB64(manifestSignature),
+        signerDeviceId: 'device-1'
+      }
+
+      const responses = new Map<string, { status: number; body?: unknown; binary?: Uint8Array }>()
+      responses.set('GET /attachments/att-dir/manifest', { status: 200, body: encManifest })
+      responses.set('GET /attachments/chunks/', { status: 200, binary: encryptedWithNonce })
+      const mockFetch = createMockFetch(responses)
+
+      const deps: AttachmentSyncDeps = {
+        getAccessToken: vi.fn().mockResolvedValue('test-token'),
+        getVaultKey: vi.fn().mockResolvedValue(vaultKey),
+        getSigningKeys: vi.fn().mockResolvedValue({
+          secretKey: signingKeypair.privateKey,
+          publicKey: signingKeypair.publicKey,
+          deviceId: 'device-1'
+        }),
+        getDevicePublicKey: vi.fn().mockResolvedValue(signingKeypair.publicKey),
+        getSyncServerUrl: () => 'http://localhost:8787',
+        fetchFn: mockFetch
+      }
+
+      return { deps, mockFetch, plaintext }
+    }
+
+    it('resolves the filename from the decrypted manifest when given a directory', async () => {
+      const { deps, plaintext } = buildDownloadFixture('h45j2u-report.pdf')
+      const service = new AttachmentSyncService(deps)
+      const dir = path.join(tmpDir, 'attachments', 'note-1')
+
+      const result = await service.downloadAttachment('att-dir', dir, { targetIsDir: true })
+
+      expect(result.filePath).toBe(path.join(dir, 'h45j2u-report.pdf'))
+      const downloaded = await import('node:fs/promises').then((m) => m.readFile(result.filePath))
+      expect(downloaded.equals(plaintext)).toBe(true)
+    })
+
+    it('skips the chunk download when the file is already materialized at the same size', async () => {
+      const { deps, mockFetch } = buildDownloadFixture('cached.pdf')
+      const service = new AttachmentSyncService(deps)
+      const dir = path.join(tmpDir, 'attachments', 'note-2')
+      await import('node:fs/promises').then(async (m) => {
+        await m.mkdir(dir, { recursive: true })
+        await m.writeFile(path.join(dir, 'cached.pdf'), Buffer.alloc(256, 'X'))
+      })
+
+      const result = await service.downloadAttachment('att-dir', dir, { targetIsDir: true })
+
+      expect(result.filePath).toBe(path.join(dir, 'cached.pdf'))
+      const chunkCalls = mockFetch.mock.calls.filter(([url]) =>
+        String(url).includes('/attachments/chunks/')
+      )
+      expect(chunkCalls).toHaveLength(0)
+      // existing bytes untouched
+      const kept = await import('node:fs/promises').then((m) =>
+        m.readFile(path.join(dir, 'cached.pdf'))
+      )
+      expect(kept.equals(Buffer.alloc(256, 'X'))).toBe(true)
+    })
+
+    it('never escapes the target directory even if the manifest filename tries to traverse', async () => {
+      const { deps } = buildDownloadFixture('../../evil.pdf')
+      const service = new AttachmentSyncService(deps)
+      const dir = path.join(tmpDir, 'attachments', 'note-3')
+
+      const result = await service.downloadAttachment('att-dir', dir, { targetIsDir: true })
+
+      expect(path.dirname(result.filePath)).toBe(dir)
+      expect(result.filePath.includes('..')).toBe(false)
+    })
+  })
+
   describe('progress tracking', () => {
     it('should track upload progress via callback', async () => {
       const testFile = path.join(tmpDir, 'progress.txt')

@@ -11,7 +11,14 @@ interface AttachmentSavedEvent {
 interface AttachmentDownloadNeededEvent {
   noteId: string
   attachmentId: string
+  /**
+   * Where to materialize the file. With `intoDir` unset this is the exact
+   * target file path (binary-note flow). With `intoDir: true` it is the
+   * note's attachments DIRECTORY — the final filename is only known after
+   * the encrypted manifest is fetched and decrypted (embedded-attachment flow).
+   */
   diskPath: string
+  intoDir?: boolean
 }
 
 type DownloadNeededHandler = (event: AttachmentDownloadNeededEvent) => void

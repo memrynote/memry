@@ -135,12 +135,12 @@ export function useCriticMarkupReview({
     undoStackRef.current = []
     plainMarkdownRef.current = parsed.plainText
     marksRef.current = parsed.marks
-    /* eslint-disable react-hooks/set-state-in-effect, react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- genuine external sync: resync local review state from incoming CRDT markdown only when it differs from what we last emitted (guarded above), while also resetting the undo stack and mirror refs; this cannot be computed during render */
+    /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- genuine external sync: resync local review state from incoming CRDT markdown only when it differs from what we last emitted (guarded above), while also resetting the undo stack and mirror refs; this cannot be computed during render */
     setPlainMarkdown(parsed.plainText)
     setMarks(parsed.marks)
     setHoveredMarkId(null)
     setMarkPositions({})
-    /* eslint-enable react-hooks/set-state-in-effect, react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
+    /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
   }, [markdown, parsed.plainText, parsed.marks, parsedMarkIds])
 
   const persist = useCallback(

@@ -58,7 +58,7 @@ export interface MainIpcInvokeHandlers {
   "calendar:disconnect-provider": (...args: [{ provider: string; accountId?: string | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/calendar-api").CalendarProviderMutationResponse>>
   "calendar:get-event": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/calendar-api").CalendarEventRecord | null>>
   "calendar:get-provider-status": (...args: [{ provider: string; accountId?: string | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/calendar-api").CalendarProviderStatus>>
-  "calendar:get-range": (...args: [{ startAt: string; endAt: string; includeUnselectedSources?: boolean | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/calendar-api").CalendarRangeResponse>>
+  "calendar:get-range": (...args: [{ startAt: string; endAt: string; includeUnselectedSources?: boolean | undefined; includeExternal?: boolean | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/calendar-api").CalendarRangeResponse>>
   "calendar:list-events": (...args: [{ includeArchived?: boolean | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/calendar-api").CalendarEventListResponse>>
   "calendar:list-google-calendars": (...args: [Record<string, never> | undefined]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/calendar-api").ListGoogleCalendarsResponse>>
   "calendar:list-sources": (...args: [{ provider?: string | undefined; kind?: "calendar" | "account" | undefined; selectedOnly?: boolean | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/calendar-api").CalendarSourceListResponse>>
@@ -73,6 +73,8 @@ export interface MainIpcInvokeHandlers {
   "canvas:delete": (...args: [string]) => Awaited<Promise<{ success: boolean; }>>
   "canvas:get": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/canvas-api").Canvas | null>>
   "canvas:get-asset": (...args: [{ canvasId: string; fileId: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/canvas-api").CanvasGetAssetResponse>>
+  "canvas:library-list": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/canvas-api").CanvasLibraryListResponse>>
+  "canvas:library-save": (...args: [{ libraryItems: { [x: string]: unknown; id: string; }[]; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/canvas-api").CanvasLibrarySaveResponse>>
   "canvas:list": (...args: []) => Awaited<Promise<{ canvases: import("../../../../../packages/contracts/src/canvas-api").CanvasSummary[]; }>>
   "canvas:list-assets": (...args: [{ canvasId: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/canvas-api").CanvasListAssetsResponse>>
   "canvas:update": (...args: [{ id: string; title?: string | null | undefined; scene?: string | undefined; entityRefs?: { entityType: "note" | "task" | "calendar_event"; entityId: string; }[] | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/canvas-api").CanvasSummary>>

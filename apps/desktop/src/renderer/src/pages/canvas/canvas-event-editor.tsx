@@ -19,12 +19,19 @@ import type { CalendarEventDraft } from '@/components/calendar/types'
 import { calendarService, type CalendarEventRecord } from '@/services/calendar-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { cn } from '@/lib/utils'
 
 const log = createLogger('CanvasEventEditor')
 
 interface CanvasEventEditorProps {
   eventId: string
   onDone: () => void
+  /**
+   * False on an idle card: the same form, mounted purely to paint — no
+   * focus-on-mount (several cards would fight over focus and steal it from the
+   * canvas) and natural height, with the card shell clipping + scrolling it.
+   */
+  interactive?: boolean
 }
 
 export function toDraft(event: CalendarEventRecord): CalendarEventDraft {
@@ -46,7 +53,8 @@ export function toDraft(event: CalendarEventRecord): CalendarEventDraft {
 
 export const CanvasEventEditor = ({
   eventId,
-  onDone
+  onDone,
+  interactive = true
 }: CanvasEventEditorProps): React.JSX.Element => {
   const [draft, setDraft] = useState<CalendarEventDraft | null>(null)
   const [isSaving, setSaving] = useState(false)
@@ -71,9 +79,11 @@ export const CanvasEventEditor = ({
     }
   }, [eventId])
 
+  const rootLayout = interactive ? 'min-h-0 flex-1 overflow-auto' : 'w-full'
+
   if (!draft) {
     return (
-      <div className="min-h-0 flex-1 overflow-auto p-3 text-[13px] text-text-tertiary">
+      <div className={cn('p-3 text-[13px] text-text-tertiary', rootLayout)}>
         {tCommon('state.loading')}
       </div>
     )
@@ -102,9 +112,10 @@ export const CanvasEventEditor = ({
   }
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto p-3">
+    <div className={cn('p-3', rootLayout)}>
       <CalendarEventForm
         mode="edit"
+        autoFocus={interactive}
         draft={draft}
         isSaving={isSaving}
         onDraftChange={setDraft}

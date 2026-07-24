@@ -14,11 +14,11 @@ function migratedDb(): Database.Database {
       created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     );
   `)
-  db.exec(readFileSync(join(__dirname, 'drizzle-data/0038_tag_categories.sql'), 'utf8'))
+  db.exec(readFileSync(join(__dirname, 'drizzle-data/0040_tag_categories.sql'), 'utf8'))
   return db
 }
 
-describe('0038_tag_categories migration', () => {
+describe('0040_tag_categories migration', () => {
   it('creates tag_categories with the expected columns', () => {
     const db = migratedDb()
     const cols = db.prepare('PRAGMA table_info(tag_categories)').all() as { name: string }[]
@@ -40,7 +40,7 @@ describe('0038_tag_categories migration', () => {
     `)
     db.prepare("INSERT INTO tag_definitions (name, color) VALUES ('work', 'blue')").run()
 
-    db.exec(readFileSync(join(__dirname, 'drizzle-data/0038_tag_categories.sql'), 'utf8'))
+    db.exec(readFileSync(join(__dirname, 'drizzle-data/0040_tag_categories.sql'), 'utf8'))
 
     const row = db.prepare("SELECT * FROM tag_definitions WHERE name = 'work'").get() as {
       color: string

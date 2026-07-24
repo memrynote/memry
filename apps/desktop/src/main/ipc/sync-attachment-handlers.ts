@@ -28,6 +28,12 @@ import {
 import { trackMainError } from '../telemetry/diagnostics'
 import { UploadQueue } from '../sync/upload-queue'
 import { attachmentEvents } from '../sync/attachment-events'
+import {
+  enqueueUpload,
+  clearUpload,
+  markUploadFailed,
+  registerOutboxUploader
+} from '../sync/attachment-outbox'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { getStatus as getVaultStatus } from '../vault/index'
 
@@ -283,8 +289,30 @@ export function registerAttachmentHandlers(): void {
     'Failed to fetch download progress'
   )
 
+  registerOutboxUploader(
+    async (noteId, diskPath) => {
+      const queue = getOrCreateUploadQueue()
+      if (!queue) throw new Error('Sync not initialized')
+      const result = await queue.enqueue(noteId, diskPath, broadcastUploadProgress)
+      return { attachmentId: result.attachmentId }
+    },
+    () => getDatabase(),
+    (noteId, attachmentId) => recordUploadedAttachment(noteId, attachmentId)
+  )
+
   attachmentEvents.onSaved(({ noteId, diskPath }) => {
     void (async () => {
+      // Persist intent BEFORE attempting: if the upload fails or the app quits
+      // mid-transfer, the outbox row survives and the next sync runtime start
+      // retries it — previously a failed upload was logged and lost forever.
+      if (isDatabaseInitialized()) {
+        try {
+          enqueueUpload(getDatabase(), noteId, diskPath)
+        } catch (outboxErr) {
+          logger.warn('Failed to persist attachment upload intent', { noteId, err: outboxErr })
+        }
+      }
+
       const token = await getValidAccessToken()
       if (!token) return
 
@@ -294,6 +322,12 @@ export function registerAttachmentHandlers(): void {
         const result = await queue.enqueue(noteId, diskPath, broadcastUploadProgress)
         if (isDatabaseInitialized()) {
           recordUploadedAttachment(noteId, result.attachmentId)
+          // Outbox cleanup must never turn a successful upload into a failure.
+          try {
+            clearUpload(getDatabase(), noteId, diskPath)
+          } catch (outboxErr) {
+            logger.warn('Failed to clear attachment upload intent', { noteId, err: outboxErr })
+          }
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error'
@@ -303,6 +337,13 @@ export function registerAttachmentHandlers(): void {
         // reaches a user and they just get the generic "stays on this device".
         const { category } = classifyError(err)
         logger.error('Attachment upload failed', { noteId, diskPath, error: message, category })
+        if (isDatabaseInitialized()) {
+          try {
+            markUploadFailed(getDatabase(), noteId, diskPath, message)
+          } catch (outboxErr) {
+            logger.warn('Failed to record attachment upload failure', { noteId, err: outboxErr })
+          }
+        }
         // electron-log alone kept this outage invisible for 58 days — the only
         // reason it surfaced was a server-side 413. Route it to telemetry too so
         // an attachment outage is visible from the client side.
@@ -341,7 +382,7 @@ export function registerAttachmentHandlers(): void {
     })()
   })
 
-  attachmentEvents.onDownloadNeeded(({ noteId, attachmentId, diskPath }) => {
+  attachmentEvents.onDownloadNeeded(({ noteId, attachmentId, diskPath, intoDir }) => {
     void (async () => {
       const token = await getValidAccessToken()
       if (!token) return
@@ -350,10 +391,16 @@ export function registerAttachmentHandlers(): void {
       if (!service) return
       try {
         markWritebackIgnored(diskPath)
-        await service.downloadAttachment(attachmentId, diskPath)
-        const stats = await fs.promises.stat(diskPath)
-        if (isDatabaseInitialized()) {
-          recordDownloadedFileSize(noteId, stats.size)
+        const result = intoDir
+          ? await service.downloadAttachment(attachmentId, diskPath, { targetIsDir: true })
+          : await service.downloadAttachment(attachmentId, diskPath)
+        // Embedded attachments land inside attachments/<noteId>/ — the note's
+        // own fileSize (a binary-note concept) must not be overwritten by them.
+        if (!intoDir) {
+          const stats = await fs.promises.stat(result.filePath)
+          if (isDatabaseInitialized()) {
+            recordDownloadedFileSize(noteId, stats.size)
+          }
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error'
@@ -376,6 +423,7 @@ export function registerAttachmentHandlers(): void {
 }
 
 export function unregisterAttachmentHandlers(): void {
+  registerOutboxUploader(null, null, null)
   attachmentEvents.removeAllListeners('saved')
   attachmentEvents.removeAllListeners('download-needed')
 

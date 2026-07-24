@@ -121,7 +121,7 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
     // Lanes advance independently, so a lane can still be busy (or have been
     // refilled) when a faster one settles. Loop until every lane is idle — or
     // until the runtime stops, since a stopped lane never drains its backlog.
-    while (!isStopped && lanes.some((lane) => lane.bus.size > 0 || lane.activeDrain)) {
+    while (!isStopped && lanes.some((lane) => lane.bus.size > 0 || lane.activeDrain !== null)) {
       await Promise.all(lanes.map((lane) => drainLane(lane)))
     }
   }

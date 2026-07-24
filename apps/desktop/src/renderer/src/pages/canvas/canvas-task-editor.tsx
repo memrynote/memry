@@ -17,15 +17,24 @@ import { InteractivePriorityBadge } from '@/components/tasks/interactive-priorit
 import { InteractiveDueDateBadge } from '@/components/tasks/interactive-due-date-badge'
 import { TaskDescriptionEditor } from '@/components/tasks/task-description-editor'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
+import { cn } from '@/lib/utils'
 import type { Priority, Task as UiTask } from '@/data/task-model'
 
 const DESCRIPTION_SAVE_DEBOUNCE_MS = 500
 
 interface CanvasTaskEditorProps {
   taskId: string
+  /**
+   * False on an idle card: identical tree, read-only leaves, natural height
+   * (the card shell owns scrolling then — see canvas-card-scroll.ts).
+   */
+  interactive?: boolean
 }
 
-export const CanvasTaskEditor = ({ taskId }: CanvasTaskEditorProps): React.JSX.Element => {
+export const CanvasTaskEditor = ({
+  taskId,
+  interactive = true
+}: CanvasTaskEditorProps): React.JSX.Element => {
   const { t } = useT('tasks')
   const { t: tCommon } = useT('common')
   const { tasks, projects } = useTaskWorkspaceData({ enabled: true })
@@ -61,13 +70,14 @@ export const CanvasTaskEditor = ({ taskId }: CanvasTaskEditorProps): React.JSX.E
   // app:request-flush handshake during the debounce window doesn't drop the
   // last <500ms of a description edit — mirrors embedded-note-editor.tsx.
   useEffect(() => {
+    if (!interactive) return
     const registryKey = `canvas-task:${taskId}`
     registerPendingSave(registryKey, flushDescription)
     return () => {
       unregisterPendingSave(registryKey)
       flushDescription()
     }
-  }, [taskId, flushDescription])
+  }, [taskId, flushDescription, interactive])
 
   const handleDescriptionChange = useCallback(
     (markdown: string) => {
@@ -78,20 +88,25 @@ export const CanvasTaskEditor = ({ taskId }: CanvasTaskEditorProps): React.JSX.E
     [flushDescription]
   )
 
+  // An idle card lets its content run at natural height and the card shell
+  // clips + scrolls it; an active card scrolls itself.
+  const rootLayout = interactive ? 'min-h-0 flex-1 overflow-auto' : 'w-full'
+
   if (!task) {
     return (
-      <div className="min-h-0 flex-1 overflow-auto p-3 text-[13px] text-text-tertiary">
+      <div className={cn('p-3 text-[13px] text-text-tertiary', rootLayout)}>
         {tCommon('state.loading')}
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-3">
+    <div className={cn('flex flex-col gap-2 p-3', rootLayout)}>
       <input
         type="text"
         data-canvas-task-title
         value={task.title}
+        readOnly={!interactive}
         onChange={(e) => void updateTask(task.id, { title: e.target.value })}
         placeholder={t('task.namePlaceholder')}
         aria-label={t('task.namePlaceholder')}
@@ -119,7 +134,8 @@ export const CanvasTaskEditor = ({ taskId }: CanvasTaskEditorProps): React.JSX.E
       <TaskDescriptionEditor
         key={task.id}
         initialContent={task.description}
-        onContentChange={handleDescriptionChange}
+        editable={interactive}
+        onContentChange={interactive ? handleDescriptionChange : undefined}
         placeholder={t('task.descriptionPlaceholder')}
         className="text-[13px] leading-5 text-text-secondary"
       />

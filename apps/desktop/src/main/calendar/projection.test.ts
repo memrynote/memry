@@ -511,6 +511,126 @@ describe('getCalendarRangeProjection', () => {
     ])
   })
 
+  it('excludes external events when includeExternal is false', () => {
+    const range = getLocalDayRange({ year: 2026, monthIndex: 3, day: 14 })
+
+    db.run(sql`
+      INSERT INTO calendar_events (
+        id,
+        title,
+        description,
+        start_at,
+        end_at,
+        timezone,
+        is_all_day,
+        clock,
+        created_at,
+        modified_at
+      )
+      VALUES (
+        ${'event-native'},
+        ${'Team Sync'},
+        ${'Planning notes'},
+        ${'2026-04-14T09:00:00.000Z'},
+        ${'2026-04-14T10:00:00.000Z'},
+        ${'UTC'},
+        ${0},
+        ${JSON.stringify({ 'device-a': 1 })},
+        ${'2026-04-12T08:00:00.000Z'},
+        ${'2026-04-12T08:00:00.000Z'}
+      )
+    `)
+
+    db.run(sql`
+      INSERT INTO calendar_sources (
+        id,
+        provider,
+        kind,
+        account_id,
+        remote_id,
+        title,
+        timezone,
+        color,
+        is_selected,
+        is_memry_managed,
+        sync_status,
+        clock,
+        created_at,
+        modified_at
+      )
+      VALUES (
+        ${'source-selected'},
+        ${'google'},
+        ${'calendar'},
+        ${'google-account-1'},
+        ${'remote-selected'},
+        ${'Work'},
+        ${'UTC'},
+        ${'#0f9d58'},
+        ${1},
+        ${0},
+        ${'ok'},
+        ${JSON.stringify({ 'device-a': 1 })},
+        ${'2026-04-12T08:30:00.000Z'},
+        ${'2026-04-12T08:30:00.000Z'}
+      )
+    `)
+
+    db.run(sql`
+      INSERT INTO calendar_external_events (
+        id,
+        source_id,
+        remote_event_id,
+        remote_etag,
+        remote_updated_at,
+        title,
+        description,
+        start_at,
+        end_at,
+        timezone,
+        is_all_day,
+        status,
+        raw_payload,
+        clock,
+        created_at,
+        modified_at
+      )
+      VALUES (
+        ${'external-1'},
+        ${'source-selected'},
+        ${'google-external-1'},
+        ${'etag-1'},
+        ${'2026-04-12T08:40:00.000Z'},
+        ${'Imported review'},
+        ${'From Google'},
+        ${'2026-04-14T13:00:00.000Z'},
+        ${'2026-04-14T14:00:00.000Z'},
+        ${'UTC'},
+        ${0},
+        ${'confirmed'},
+        ${JSON.stringify({ summary: 'Imported review' })},
+        ${JSON.stringify({ 'device-a': 1 })},
+        ${'2026-04-12T08:40:00.000Z'},
+        ${'2026-04-12T08:40:00.000Z'}
+      )
+    `)
+
+    const result = getCalendarRangeProjection(
+      db as unknown as DataDb,
+      indexDb,
+      {
+        startAt: range.startAt,
+        endAt: range.endAt,
+        includeUnselectedSources: false,
+        includeExternal: false
+      },
+      []
+    )
+
+    expect(result.items.some((item) => item.sourceType === 'external_event')).toBe(false)
+    expect(result.items.some((item) => item.sourceId === 'event-native')).toBe(true)
+  })
+
   it('projects notes with an enabled date property', () => {
     indexDbResult.db.run(sql`
       INSERT INTO note_cache (id, path, title, file_type, created_at, modified_at)

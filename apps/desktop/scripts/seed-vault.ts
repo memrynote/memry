@@ -24,6 +24,7 @@ import {
   insertHomePages,
   insertInboxItems,
   insertProjects,
+  insertProjectLinks,
   insertNoteMetadata,
   insertPropertyDefinitions,
   insertStatuses,
@@ -44,6 +45,7 @@ import {
 import { FOLDER_CONFIGS, NOTES, NOTE_METADATA } from './seed-data/notes'
 import { JOURNAL_NOTES, JOURNAL_METADATA } from './seed-data/journal'
 import { PROJECTS, STATUSES, TASKS, TASK_NOTES, TASK_TAGS } from './seed-data/tasks'
+import { PROJECT_LINKS } from './seed-data/project-links'
 import { CALENDAR_EVENTS, CALENDAR_SOURCES } from './seed-data/calendar'
 import { FILING_HISTORY_ROWS, INBOX_ITEMS } from './seed-data/inbox'
 import { HOME_BOOKMARKS, HOME_PAGES } from './seed-data/home'
@@ -203,6 +205,11 @@ async function main(): Promise<void> {
     const calendarEventCount = insertCalendarEvents(db, CALENDAR_EVENTS)
     console.log(`  → calendar_events: ${calendarEventCount}`)
 
+    // Project Home links — notes + events. Rows carry no FK to their target,
+    // so they must be seeded after the notes/events they point at.
+    const projectLinkCount = insertProjectLinks(db, PROJECT_LINKS)
+    console.log(`  → project_links: ${projectLinkCount}`)
+
     const inboxCount = insertInboxItems(db, INBOX_ITEMS)
     console.log(`  → inbox_items: ${inboxCount}`)
 
@@ -244,7 +251,7 @@ async function main(): Promise<void> {
   console.log('')
   console.log('Done.')
   console.log(
-    `Seeded ${notesWritten} notes, ${journalsWritten} journal entries, ${TASKS.length} tasks, ${CALENDAR_EVENTS.length} events, ${INBOX_ITEMS.length} inbox items, ${HOME_PAGES.length} home board with ${HOME_PAGES[0].widgets.length} widgets, ${CANVASES.length} canvases.`
+    `Seeded ${notesWritten} notes, ${journalsWritten} journal entries, ${TASKS.length} tasks, ${CALENDAR_EVENTS.length} events, ${PROJECT_LINKS.length} project links, ${INBOX_ITEMS.length} inbox items, ${HOME_PAGES.length} home board with ${HOME_PAGES[0].widgets.length} widgets, ${CANVASES.length} canvases.`
   )
   console.log(`Vault path: ${vaultPath}`)
   console.log('')

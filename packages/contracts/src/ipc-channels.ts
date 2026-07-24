@@ -679,7 +679,10 @@ export const CanvasChannels = {
     LIST: 'canvas:list',
     UPLOAD_ASSET: 'canvas:upload-asset',
     GET_ASSET: 'canvas:get-asset',
-    LIST_ASSETS: 'canvas:list-assets'
+    LIST_ASSETS: 'canvas:list-assets',
+    /** Excalidraw library (shapes panel) — vault-global, not per canvas. */
+    LIBRARY_LIST: 'canvas:library-list',
+    LIBRARY_SAVE: 'canvas:library-save'
   },
   events: {
     CREATED: 'canvas:created',

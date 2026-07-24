@@ -136,8 +136,8 @@ export const ProjectHomePage = ({
   const fileCount = useMemo(() => links.filter((link) => link.itemType === 'file').length, [links])
 
   const handleNoteClick = useCallback(
-    async (noteId: string) => {
-      await openRelatedVaultItem(noteId, openTab)
+    (noteId: string): void => {
+      void openRelatedVaultItem(noteId, openTab)
     },
     [openTab]
   )

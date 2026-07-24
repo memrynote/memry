@@ -48,6 +48,7 @@ interface FtsNoteRow {
   emoji: string | null
   fileType: NoteResultMetadata['fileType']
   wordCount: number | null
+  createdAt: string
   modifiedAt: string
   rank: number
   snippet: string
@@ -64,6 +65,7 @@ interface FtsTaskRow {
   dueDate: string | null
   priority: number
   completedAt: string | null
+  createdAt: string
   modifiedAt: string
   rank: number
   snippet: string
@@ -117,6 +119,7 @@ function searchNotes(
       nc.emoji,
       nc.file_type as fileType,
       nc.word_count as wordCount,
+      nc.created_at as createdAt,
       nc.modified_at as modifiedAt,
       bm25(fts_notes, 0.0, 2.0, 1.0, 1.0) as rank,
       snippet(fts_notes, 2, '<mark>', '</mark>', '...', 20) as snippet
@@ -136,7 +139,8 @@ function searchNotes(
       tags: [],
       emoji: row.emoji,
       fileType: row.fileType ?? undefined,
-      wordCount: row.wordCount
+      wordCount: row.wordCount,
+      createdAt: row.createdAt
     }
     return {
       id: row.id,
@@ -163,6 +167,7 @@ function searchJournals(indexDb: IndexDb, ftsQuery: string, limit: number): Sear
       nc.date,
       nc.emoji,
       nc.word_count as wordCount,
+      nc.created_at as createdAt,
       nc.modified_at as modifiedAt,
       bm25(fts_notes, 0.0, 2.0, 1.0, 1.0) as rank,
       snippet(fts_notes, 2, '<mark>', '</mark>', '...', 20) as snippet
@@ -211,6 +216,7 @@ function searchTasks(dataDb: DataDb, ftsQuery: string, limit: number): SearchRes
       t.due_date as dueDate,
       t.priority,
       t.completed_at as completedAt,
+      t.created_at as createdAt,
       t.modified_at as modifiedAt,
       bm25(fts_tasks, 0.0, 2.0, 1.0, 1.0) as rank,
       snippet(fts_tasks, 1, '<mark>', '</mark>', '...', 20) as snippet
@@ -233,7 +239,8 @@ function searchTasks(dataDb: DataDb, ftsQuery: string, limit: number): SearchRes
       statusName: row.statusName,
       dueDate: row.dueDate,
       priority: row.priority,
-      completedAt: row.completedAt
+      completedAt: row.completedAt,
+      createdAt: row.createdAt
     }
     return {
       id: row.id,
@@ -309,9 +316,15 @@ function getNoteTitles(
   noteFileTypes?: NoteFileType[]
 ): Array<TitleRow & { type: ContentType; metadata: NoteResultMetadata }> {
   const rows = indexDb.all<
-    TitleRow & { path: string; emoji: string | null; fileType: NoteResultMetadata['fileType'] }
+    TitleRow & {
+      path: string
+      emoji: string | null
+      fileType: NoteResultMetadata['fileType']
+      createdAt: string
+    }
   >(
-    sql`SELECT id, title, path, emoji, file_type as fileType, modified_at as modifiedAt
+    sql`SELECT id, title, path, emoji, file_type as fileType,
+          created_at as createdAt, modified_at as modifiedAt
         FROM note_cache nc
         WHERE date IS NULL
           AND ${noteFileTypeFilter(noteFileTypes)}`
@@ -324,7 +337,8 @@ function getNoteTitles(
       path: r.path,
       tags: [],
       emoji: r.emoji,
-      fileType: r.fileType ?? undefined
+      fileType: r.fileType ?? undefined,
+      createdAt: r.createdAt
     }
   }))
 }
@@ -355,9 +369,10 @@ function getTaskTitles(
       dueDate: string | null
       priority: number
       completedAt: string | null
+      createdAt: string
     }
   >(sql`
-    SELECT t.id, t.title, t.modified_at as modifiedAt,
+    SELECT t.id, t.title, t.created_at as createdAt, t.modified_at as modifiedAt,
       t.project_id as projectId, p.name as projectName, p.color as projectColor,
       t.status_id as statusId, s.name as statusName,
       t.due_date as dueDate, t.priority, t.completed_at as completedAt
@@ -377,7 +392,8 @@ function getTaskTitles(
       statusName: r.statusName,
       dueDate: r.dueDate,
       priority: r.priority,
-      completedAt: r.completedAt
+      completedAt: r.completedAt,
+      createdAt: r.createdAt
     }
   }))
 }

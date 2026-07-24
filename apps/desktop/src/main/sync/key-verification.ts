@@ -30,6 +30,15 @@ export function markKeyMaterialActivity(): void {
   lastKeyMaterialActivityAt = Date.now()
 }
 
+/**
+ * The flow that touched key material has finalized: the keychain holds the
+ * final key and the account verifier is cached, so mismatch checks can
+ * classify again immediately instead of waiting out the transition window.
+ */
+export function clearKeyMaterialActivity(): void {
+  lastKeyMaterialActivityAt = 0
+}
+
 export function isKeyMaterialActivityRecent(): boolean {
   return Date.now() - lastKeyMaterialActivityAt < KEY_MATERIAL_ACTIVITY_WINDOW_MS
 }

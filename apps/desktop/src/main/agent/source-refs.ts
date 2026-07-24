@@ -332,10 +332,6 @@ function desktopOperationRefs(args: unknown, result: unknown): AgentSourceRef[] 
     return [buildCalendarEventRef(id, title, dateFromIso(startAt), firstString(result.visualType))]
   }
 
-  if (operation === 'calendar.promoteExternalEvent' && isRecord(result)) {
-    if (isRecord(result.event)) return maybeRef(result.event, calendarEventRefFromRecord)
-  }
-
   return []
 }
 

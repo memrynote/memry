@@ -9,11 +9,15 @@ export function PrivacyPage() {
         eyebrow="Legal · Privacy"
         title="Privacy Policy"
         intro="memrynote is built on a simple promise: your notes belong to you, and we cannot read them."
-        lastUpdated="May 19, 2026"
+        lastUpdated="July 23, 2026"
       >
         <h2>Summary in 30 seconds</h2>
         <ul>
           <li>Your notes, tasks, and journal stay on your device. We never see their content.</li>
+          <li>
+            If you connect Google Calendar, its data also stays on your device — and is never shared
+            with AI models or used to train them.
+          </li>
           <li>
             Sync uploads only ciphertext. Every byte is encrypted on your device with
             XChaCha20-Poly1305 before it leaves.
@@ -46,7 +50,39 @@ export function PrivacyPage() {
           version.
         </p>
 
-        <h2>3. Optional anonymous usage metrics</h2>
+        <h2>3. Optional Google Calendar connection</h2>
+        <p>
+          If you connect Google Calendar, memrynote requests the Google Calendar scope to sync
+          events both ways. Event data travels directly between Google and the app on your device
+          and is stored locally in your vault; your OAuth tokens are kept in your operating
+          system&apos;s keychain. Nothing from your Google Calendar is sold, used for advertising,
+          or uploaded to our servers in plaintext. You can disconnect at any time in{' '}
+          <strong>Settings → Calendar</strong>, or revoke memrynote&apos;s access at{' '}
+          <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.
+        </p>
+        <p>
+          memrynote&apos;s use and transfer to any other app of information received from Google
+          APIs will adhere to the{' '}
+          <a href="https://developers.google.com/terms/api-services-user-data-policy">
+            Google API Services User Data Policy
+          </a>
+          , including the Limited Use requirements. The use of raw or derived user data received
+          from Google Workspace APIs adheres to the Google User Data Policy, including the Limited
+          Use requirements.
+        </p>
+        <p>
+          <strong>AI features and Google user data.</strong> memrynote&apos;s AI features never
+          receive Google Calendar data, and we never use Google user data to create, train, or
+          improve AI or machine-learning models. AI in memrynote runs locally on your device by
+          default — bundled on-device models power semantic search and voice transcription, and the
+          optional assistant can run against a self-hosted model (such as Ollama) that you operate
+          yourself. In that self-hosted or offline mode, data is processed locally and never
+          transmitted to any model provider. If you choose to connect your own AI account or API key
+          (Anthropic or OpenAI), events synced from Google Calendar are architecturally excluded
+          from what those integrations can access.
+        </p>
+
+        <h2>4. Optional anonymous usage metrics</h2>
         <p>
           memrynote includes an optional, anonymous telemetry stream so we can understand which
           features get used, where the app crashes, and where it slows down. You can turn it off at
@@ -91,7 +127,7 @@ export function PrivacyPage() {
           message described above.
         </p>
 
-        <h2>4. What Sync sends to our servers</h2>
+        <h2>5. What Sync sends to our servers</h2>
         <p>If you opt into the paid Sync service, the following is uploaded:</p>
         <ul>
           <li>
@@ -113,7 +149,7 @@ export function PrivacyPage() {
           server&apos;s view of your notes is a stream of opaque encrypted bytes.
         </p>
 
-        <h2>5. What the website collects</h2>
+        <h2>6. What the website collects</h2>
         <p>
           memrynote.com does not run third-party advertising trackers and does not sell visitor
           data. It does run product analytics and session replay, provided by PostHog, so we can see
@@ -128,7 +164,7 @@ export function PrivacyPage() {
           unsubscribes for those emails so we can understand whether the campaign is working.
         </p>
 
-        <h2>6. How we use the data we have</h2>
+        <h2>7. How we use the data we have</h2>
         <p>We use the data described above only to:</p>
         <ul>
           <li>Operate, sync, and secure your account.</li>
@@ -147,7 +183,7 @@ export function PrivacyPage() {
           anyone.
         </p>
 
-        <h2>7. Encryption details</h2>
+        <h2>8. Encryption details</h2>
         <p>
           memrynote uses end-to-end encryption based on the libsodium primitives: XChaCha20-Poly1305
           for content, Ed25519 for signatures, and Argon2id for password-based key derivation. Your
@@ -159,7 +195,7 @@ export function PrivacyPage() {
           ourselves.
         </p>
 
-        <h2>8. Sub-processors</h2>
+        <h2>9. Sub-processors</h2>
         <p>
           We use a small set of third-party services to operate memrynote. Each is contractually
           bound to handle your data only for the purpose listed:
@@ -187,14 +223,14 @@ export function PrivacyPage() {
           We do not share data with advertising networks, data brokers, or social media platforms.
         </p>
 
-        <h2>9. International transfers</h2>
+        <h2>10. International transfers</h2>
         <p>
           memrynote is a small indie operation. Our infrastructure is global by default — encrypted
           blobs may be served from data centers near you for performance. Where personal data
           crosses borders, we rely on standard contractual clauses with our sub-processors.
         </p>
 
-        <h2>10. How long we keep things</h2>
+        <h2>11. How long we keep things</h2>
         <ul>
           <li>
             <strong>Encrypted blobs:</strong> kept while your Sync account exists. Deleted-item
@@ -217,7 +253,7 @@ export function PrivacyPage() {
           </li>
         </ul>
 
-        <h2>11. Your rights</h2>
+        <h2>12. Your rights</h2>
         <p>
           Depending on where you live (GDPR, UK GDPR, CCPA, and similar laws), you have the right
           to:
@@ -239,7 +275,7 @@ export function PrivacyPage() {
           hear from you first, but you do not have to.
         </p>
 
-        <h2>12. Children</h2>
+        <h2>13. Children</h2>
         <p>
           memrynote is not designed for children under 13 (or under 16 in jurisdictions that require
           it). We do not knowingly collect data from children. If you believe a child has signed up,
@@ -247,7 +283,7 @@ export function PrivacyPage() {
           the account.
         </p>
 
-        <h2>13. Security incidents</h2>
+        <h2>14. Security incidents</h2>
         <p>
           If we discover an incident that affects your data, we will notify you within 72 hours of
           confirming the impact. Because content is end-to-end encrypted, the most likely incident
@@ -255,13 +291,13 @@ export function PrivacyPage() {
           tell you exactly what was affected.
         </p>
 
-        <h2>14. Changes to this policy</h2>
+        <h2>15. Changes to this policy</h2>
         <p>
           We will update this page when our practices change. Material changes will be announced in
           the app and via email at least 14 days before they take effect.
         </p>
 
-        <h2>15. Contact</h2>
+        <h2>16. Contact</h2>
         <p>
           Privacy questions: <a href="mailto:privacy@memrynote.com">privacy@memrynote.com</a>.
           Anything else: <a href="mailto:hi@memrynote.com">hi@memrynote.com</a>.

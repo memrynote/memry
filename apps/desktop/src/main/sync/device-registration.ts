@@ -23,7 +23,11 @@ import { getStoredDeviceId, setStoredDeviceId } from '../store'
 import { getDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
 import { deleteFromServer, postToServer } from './http-client'
-import { markKeyMaterialActivity, persistAccountKeyVerifier } from './key-verification'
+import {
+  clearKeyMaterialActivity,
+  markKeyMaterialActivity,
+  persistAccountKeyVerifier
+} from './key-verification'
 import { getSyncEngine, startSyncRuntime } from './runtime'
 import { startGoogleCalendarSyncRunner } from '../calendar/google/sync-service'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
@@ -196,6 +200,12 @@ export const persistKeysAndRegisterDevice = async (
   })
 
   setStoredDeviceId(deviceResponse.deviceId)
+
+  // Flow finalized: the final master key is stored and the account verifier is
+  // cached, so lift the transition hold now. Left armed, the activation below
+  // (and any sync trigger for the next two minutes) classifies as 'transition'
+  // and stands down — sync stays dark right after sign-in / recovery / linking.
+  clearKeyMaterialActivity()
 
   // Stamp the registered uuid onto the current vault's store entry so the
   // account vault directory can self-register it (with its name) right away.

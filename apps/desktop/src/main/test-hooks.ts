@@ -123,6 +123,7 @@ export interface GoogleEventProbe {
 interface MemryTestHooks {
   bootstrapSyncDevice(input: SyncTestBootstrapInput): Promise<{ deviceId: string }>
   setNetworkOnlineForTests(online: boolean): Promise<void>
+  resetVaultDirectoryThrottle(): Promise<void>
   getCrdtPendingCount(): Promise<number>
   seedCalendarProjection(input: CalendarProjectionSeedInput): Promise<void>
   getCrdtDocMarkdown(noteId: string): Promise<string | null>
@@ -303,6 +304,14 @@ export function registerTestHooks(): void {
       }
 
       network.setOnlineForTests(online)
+    },
+
+    async resetVaultDirectoryThrottle(): Promise<void> {
+      // The sync runtime's own startup refresh stamps the vault-directory
+      // throttle; tests that seed server-side vault rows afterwards need the
+      // next listAccount() to refresh for real instead of no-opping for 30s.
+      const { __resetThrottleForTests } = await import('./sync/vault-directory')
+      __resetThrottleForTests()
     },
 
     async getCrdtPendingCount(): Promise<number> {

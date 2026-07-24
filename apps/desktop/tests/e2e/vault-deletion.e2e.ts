@@ -181,6 +181,7 @@ test.describe('vault deletion', () => {
   // registered the vault.
   test('deletes a cloud-only vault (no local copy) from the account', async ({
     page,
+    electronApp,
     syncBootstrap
   }) => {
     const cloudOnlyUuid = randomUUID()
@@ -199,6 +200,19 @@ test.describe('vault deletion', () => {
       )
       .bind(randomUUID(), user.id, cloudOnlyUuid, now, now)
       .run()
+
+    // The sync runtime's startup refresh stamps the vault-directory throttle
+    // before this row existed; reset it so the next listAccount() refreshes
+    // for real instead of serving the pre-seed cache for up to 30 seconds.
+    await electronApp.evaluate(async () => {
+      const hooks = (
+        globalThis as typeof globalThis & {
+          __memryTestHooks?: { resetVaultDirectoryThrottle(): Promise<void> }
+        }
+      ).__memryTestHooks
+      if (!hooks) throw new Error('Memry test hooks are not registered')
+      await hooks.resetVaultDirectoryThrottle()
+    })
 
     // refreshVaultDirectory silently no-ops (by design — it's a best-effort
     // background refresh) if the nameKey derived from the local master key

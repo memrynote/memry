@@ -1,9 +1,9 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useRef } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CanvasCardLayer } from './canvas-card-overlay'
-import { CANVAS_ITEM_DRAG_MIME, type CardElement } from './canvas-cards'
+import { CANVAS_ITEM_DRAG_MIME, noteCardSize, type CardElement } from './canvas-cards'
 import { revealScroll } from './canvas-add-card'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 
@@ -17,6 +17,37 @@ vi.mock('@excalidraw/excalidraw', () => ({
     y: clientY
   }),
   CaptureUpdateAction: { IMMEDIATELY: 'immediately' }
+}))
+
+// dnd-kit's monitor throws outside a DndContext, and a real DndContext gives
+// no way to synthesize a drag in jsdom. Capturing the listeners instead lets
+// the suite drive the overlay's own drop handler directly — the mapping it
+// feeds on is unit-tested in canvas-drop-entity.test.ts.
+const dnd = vi.hoisted(() => ({
+  listeners: {} as {
+    onDragStart?: (event: unknown) => void
+    onDragEnd?: (event: unknown) => void
+    onDragCancel?: () => void
+  },
+  isOver: false,
+  droppableId: null as string | null,
+  droppableData: null as unknown,
+  dragContext: null as { dragState: { draggedTasks: { id: string }[] } } | null
+}))
+
+vi.mock('@/contexts/drag-context', () => ({
+  useOptionalDragContext: () => dnd.dragContext
+}))
+
+vi.mock('@dnd-kit/core', () => ({
+  useDndMonitor: (listeners: typeof dnd.listeners) => {
+    dnd.listeners = listeners
+  },
+  useDroppable: ({ id, data }: { id: string; data: unknown }) => {
+    dnd.droppableId = id
+    dnd.droppableData = data
+    return { setNodeRef: () => {}, isOver: dnd.isOver }
+  }
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -33,6 +64,7 @@ const mocks = vi.hoisted(() => {
   return {
     openTab: vi.fn(),
     notesCreate: vi.fn(),
+    notesGet: vi.fn(),
     entities: new Map<string, unknown>(),
     lockReason: null as string | null,
     // Cached per lockReason value so the returned reference is stable across
@@ -63,7 +95,11 @@ vi.mock('./use-note-edit-lock', () => ({
   lockReasonForCard: () => mocks.lockReason
 }))
 vi.mock('@/services/notes-service', () => ({
-  notesService: { create: (input: unknown) => mocks.notesCreate(input) }
+  notesService: {
+    create: (input: unknown) => mocks.notesCreate(input),
+    // A new card is sized from the note's body, so placement reads it first.
+    get: (id: string) => mocks.notesGet(id)
+  }
 }))
 vi.mock('./use-canvas-entities', async () => {
   const actual =
@@ -97,6 +133,12 @@ vi.mock('./embedded-note-editor', () => ({
   EmbeddedNoteEditor: ({ noteId }: { noteId: string }) => (
     <div data-testid={`embedded-note-${noteId}`} />
   )
+}))
+// The read-only twin needs the same treatment: CanvasCardBody imports it
+// unconditionally, so it reaches react-pdf through editor-schema even when no
+// idle card renders. Without this the whole suite dies at import.
+vi.mock('./canvas-note-body', () => ({
+  CanvasNoteBody: ({ noteId }: { noteId: string }) => <div data-testid={`note-body-${noteId}`} />
 }))
 // Stub the picker; its own test covers filtering and selection. Exposes
 // onReveal for the overlay's handleReveal wiring (FIX 8): a fixed testid
@@ -187,6 +229,8 @@ describe('CanvasCardLayer', () => {
   beforeEach(() => {
     mocks.openTab.mockReset()
     mocks.notesCreate.mockReset()
+    mocks.notesGet.mockReset()
+    mocks.notesGet.mockResolvedValue({ id: 'n', content: '' })
     mocks.entities = new Map()
     mocks.lockReason = null
   })
@@ -229,6 +273,48 @@ describe('CanvasCardLayer', () => {
       )
     ).toBe(true)
     expect(onSceneMutated).toHaveBeenCalled()
+  })
+
+  it('sizes a dropped note card from its body, not a fixed frame', async () => {
+    // The "hey" regression: every note card opened at the maximum frame. The
+    // drop path must read the body and hand makeCardSkeleton a measured size.
+    async function dropNoteWithBody(content: string): Promise<{ width: number; height: number }> {
+      mocks.notesGet.mockResolvedValue({ id: 'dropped', content })
+      const { api, updateScene } = makeApi([])
+      const { unmount } = render(<Harness api={api} />)
+      const wrapper = screen.getByTestId('wrapper')
+      const drop = new Event('drop', { bubbles: true, cancelable: true })
+      Object.defineProperty(drop, 'dataTransfer', {
+        value: {
+          types: [CANVAS_ITEM_DRAG_MIME],
+          getData: (t: string) =>
+            t === CANVAS_ITEM_DRAG_MIME
+              ? JSON.stringify({ entityType: 'note', entityId: 'dropped' })
+              : ''
+        }
+      })
+      Object.defineProperty(drop, 'clientX', { value: 120 })
+      Object.defineProperty(drop, 'clientY', { value: 80 })
+      wrapper.dispatchEvent(drop)
+      await waitFor(() => expect(updateScene).toHaveBeenCalled())
+      const element = updateScene.mock.calls[0][0].elements.find(
+        (e: { customData?: { entityId?: string } }) => e.customData?.entityId === 'dropped'
+      ) as { width: number; height: number }
+      unmount()
+      return { width: element.width, height: element.height }
+    }
+
+    const tiny = await dropNoteWithBody('hey')
+    const big = await dropNoteWithBody(
+      Array.from(
+        { length: 200 },
+        (_, i) => `Paragraph ${i}. ${'A real sentence here. '.repeat(6)}`
+      ).join('\n')
+    )
+
+    expect(tiny).toEqual(noteCardSize('hey'))
+    expect(big.width).toBeGreaterThan(tiny.width)
+    expect(big.height).toBeGreaterThan(tiny.height)
   })
 
   it('ignores drops without the canvas MIME', async () => {
@@ -443,5 +529,181 @@ describe('CanvasCardLayer', () => {
         expect(screen.getByTestId('card-e1')).toHaveAttribute('data-canvas-card-locked', 'true')
       )
     })
+  })
+})
+
+describe('CanvasCardLayer — dnd-kit drops', () => {
+  beforeEach(() => {
+    mocks.entities = new Map()
+    mocks.lockReason = null
+    dnd.listeners = {}
+    dnd.isOver = false
+    dnd.droppableId = null
+    dnd.droppableData = null
+    dnd.dragContext = null
+  })
+
+  /** A dnd-kit drag-end landing on the canvas droppable at (clientX, clientY). */
+  function dropEvent(
+    data: Record<string, unknown>,
+    activeId: string,
+    at: { clientX: number; clientY: number } | null = { clientX: 120, clientY: 80 },
+    overId: string | null = dnd.droppableId
+  ): unknown {
+    return {
+      active: { id: activeId, data: { current: data } },
+      over: overId === null ? null : { id: overId },
+      activatorEvent: at ?? {},
+      delta: { x: 0, y: 0 }
+    }
+  }
+
+  function entityIds(passed: { elements: { customData?: { entityId?: string } }[] }): string[] {
+    return passed.elements.map((e) => e.customData?.entityId).filter(Boolean) as string[]
+  }
+
+  it('registers a droppable that task drop handlers can tell apart', () => {
+    const { api } = makeApi([])
+    render(<Harness api={api} />)
+    expect(dnd.droppableId).toBeTruthy()
+    // use-drag-handlers switches on over.data.current.type; 'canvas' must not
+    // collide with a task drop target or the task would also be rescheduled.
+    expect(dnd.droppableData).toEqual({ type: 'canvas' })
+  })
+
+  it('cards a task dropped from a task list at the drop point', async () => {
+    const { api, updateScene } = makeApi([])
+    const onSceneMutated = vi.fn()
+    render(<Harness api={api} onSceneMutated={onSceneMutated} />)
+
+    act(() => {
+      dnd.listeners.onDragEnd?.(dropEvent({ type: 'task', task: { id: 't1' } }, 't1'))
+    })
+
+    await waitFor(() => expect(updateScene).toHaveBeenCalled())
+    const passed = updateScene.mock.calls[0][0]
+    expect(entityIds(passed)).toEqual(['t1'])
+    const card = passed.elements[0]
+    expect(card.customData).toEqual({ entityType: 'task', entityId: 't1' })
+    // makeApi's viewport is 1:1 at the origin, so scene == client coords, and
+    // the skeleton is centred on the drop point.
+    expect(card.x + card.width / 2).toBe(120)
+    expect(card.y + card.height / 2).toBe(80)
+    expect(onSceneMutated).toHaveBeenCalled()
+  })
+
+  it('cards a calendar event dragged from a calendar view', async () => {
+    const { api, updateScene } = makeApi([])
+    render(<Harness api={api} />)
+
+    act(() => {
+      dnd.listeners.onDragEnd?.(
+        dropEvent(
+          { type: 'canvas-entity', entityType: 'calendar_event', entityId: 'ev1' },
+          'canvas-event:ev1'
+        )
+      )
+    })
+
+    await waitFor(() => expect(updateScene).toHaveBeenCalled())
+    expect(updateScene.mock.calls[0][0].elements[0].customData).toEqual({
+      entityType: 'calendar_event',
+      entityId: 'ev1'
+    })
+  })
+
+  it('ignores a drop that landed on another droppable', () => {
+    const { api, updateScene } = makeApi([])
+    render(<Harness api={api} />)
+
+    act(() => {
+      dnd.listeners.onDragEnd?.(
+        dropEvent(
+          { type: 'task', task: { id: 't1' } },
+          't1',
+          { clientX: 1, clientY: 1 },
+          'some-list'
+        )
+      )
+      dnd.listeners.onDragEnd?.(
+        dropEvent({ type: 'task', task: { id: 't1' } }, 't1', { clientX: 1, clientY: 1 }, null)
+      )
+    })
+
+    expect(updateScene).not.toHaveBeenCalled()
+  })
+
+  it('ignores a drag the canvas cannot place', () => {
+    const { api, updateScene } = makeApi([])
+    render(<Harness api={api} />)
+
+    act(() => {
+      dnd.listeners.onDragEnd?.(dropEvent({ type: 'column', columnId: 'c1' }, 'c1'))
+    })
+
+    expect(updateScene).not.toHaveBeenCalled()
+  })
+
+  it('places one card per task of a multi-select drop, without stacking them', async () => {
+    dnd.dragContext = {
+      dragState: { draggedTasks: [{ id: 't1' }, { id: 't2' }, { id: 't3' }] }
+    }
+    const { api, updateScene } = makeApi([])
+    render(<Harness api={api} />)
+
+    act(() => {
+      dnd.listeners.onDragEnd?.(dropEvent({ type: 'task', task: { id: 't1' } }, 't1'))
+    })
+
+    await waitFor(() => expect(updateScene).toHaveBeenCalled())
+    const passed = updateScene.mock.calls[0][0]
+    expect(entityIds(passed)).toEqual(['t1', 't2', 't3'])
+    const centers = passed.elements.map(
+      (e: { x: number; y: number; width: number; height: number }) =>
+        `${e.x + e.width / 2},${e.y + e.height / 2}`
+    )
+    expect(new Set(centers).size).toBe(3)
+  })
+
+  it('still places a card when the drag carries no pointer (keyboard sensor)', async () => {
+    const { api, updateScene } = makeApi([])
+    render(<Harness api={api} />)
+
+    act(() => {
+      dnd.listeners.onDragEnd?.(dropEvent({ type: 'task', task: { id: 't1' } }, 't1', null))
+    })
+
+    await waitFor(() => expect(updateScene).toHaveBeenCalled())
+    expect(entityIds(updateScene.mock.calls[0][0])).toEqual(['t1'])
+  })
+
+  it('shows the drop ring only while a placeable drag is over the canvas', async () => {
+    dnd.isOver = true
+    const { api } = makeApi([])
+    const { rerender } = render(<Harness api={api} />)
+    expect(screen.queryByTestId('canvas-drop-ring')).toBeNull()
+
+    act(() => {
+      dnd.listeners.onDragStart?.({ active: { id: 't1', data: { current: { type: 'task' } } } })
+    })
+    await waitFor(() => expect(screen.getByTestId('canvas-drop-ring')).toBeInTheDocument())
+
+    act(() => {
+      dnd.listeners.onDragCancel?.()
+    })
+    rerender(<Harness api={api} />)
+    await waitFor(() => expect(screen.queryByTestId('canvas-drop-ring')).toBeNull())
+  })
+
+  it('does not show the drop ring for a drag the canvas cannot place', async () => {
+    dnd.isOver = true
+    const { api } = makeApi([])
+    render(<Harness api={api} />)
+
+    act(() => {
+      dnd.listeners.onDragStart?.({ active: { id: 'c1', data: { current: { type: 'column' } } } })
+    })
+
+    await waitFor(() => expect(screen.queryByTestId('canvas-drop-ring')).toBeNull())
   })
 })

@@ -40,6 +40,8 @@ export interface NoteResultMetadata {
   tags: string[]
   emoji?: string | null
   wordCount?: number | null
+  /** Index-row creation time. Absent in responses from older main processes. */
+  createdAt?: string | null
   /**
    * Underlying file type. Absent/`'markdown'` = a real note; a binary value
    * (image/pdf/audio/video) means this "note" result is actually a filed file
@@ -66,6 +68,8 @@ export interface TaskResultMetadata {
   dueDate: string | null
   priority: number
   completedAt: string | null
+  /** Task row creation time. Absent in responses from older main processes. */
+  createdAt?: string | null
 }
 
 export interface InboxResultMetadata {

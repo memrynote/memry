@@ -3,6 +3,7 @@ import { act, renderHook } from '@testing-library/react'
 import type { DragEndEvent } from '@dnd-kit/core'
 
 import { useDragHandlers } from './use-drag-handlers'
+import { CANVAS_DROP_DATA } from '@/pages/canvas/canvas-drop-entity'
 import type { DragState } from '@/contexts/drag-context'
 import type { Priority, Task } from '@/data/task-model'
 import type { Project, Status, StatusType } from '@/data/tasks-data'
@@ -111,6 +112,40 @@ describe('useDragHandlers', () => {
       result.current.handleDragStart({} as never, createDragState())
       result.current.handleDragOver({} as never, createDragState())
       result.current.undo()
+    })
+
+    expect(onUpdateTask).not.toHaveBeenCalled()
+    expect(onDeleteTask).not.toHaveBeenCalled()
+    expect(onReorder).not.toHaveBeenCalled()
+    expect(result.current.canUndo).toBe(false)
+  })
+
+  it('leaves a task untouched when it is dropped on a spatial canvas', () => {
+    // A canvas drop only creates a referencing card (canvas-card-overlay owns
+    // that through useDndMonitor). The task itself must not be rescheduled,
+    // reordered, moved between projects, or trashed on the way past.
+    const onUpdateTask = vi.fn()
+    const onDeleteTask = vi.fn()
+    const onReorder = vi.fn()
+
+    const { result } = renderHook(() =>
+      useDragHandlers({
+        tasks: [createTask()],
+        projects: [createProject()],
+        onUpdateTask,
+        onDeleteTask,
+        onReorder
+      })
+    )
+
+    act(() => {
+      result.current.handleDragEnd(
+        createDragEvent({
+          active: { id: 'task-1', data: { current: { type: 'task', task: createTask() } } },
+          over: { id: 'canvas-drop-1', data: { current: CANVAS_DROP_DATA } }
+        }),
+        createDragState({ overType: null, overId: 'canvas-drop-1', overSectionId: null })
+      )
     })
 
     expect(onUpdateTask).not.toHaveBeenCalled()

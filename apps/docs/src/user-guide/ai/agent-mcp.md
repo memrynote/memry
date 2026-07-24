@@ -230,10 +230,16 @@ actions, and raw secret writes. Unsupported or unavailable desktop API operation
 MCP error instead of falling back to an arbitrary desktop call.
 
 Calendar desktop reads accept the same single-object shape as the renderer bridge. For example:
-`calendar.getProviderStatus` with no args or `args: [{}]` checks Google provider status,
 `calendar.listEvents` accepts `args: [{}]`, and `calendar.getRange` accepts either
 `args: ["2026-05-14", "2026-06-14"]` or
 `args: [{"startAt": "2026-05-14T00:00:00.000Z", "endAt": "2026-06-15T00:00:00.000Z"}]`.
+
+Agent calendar access covers native memrynote events only. Google-integration operations —
+calendar sources, provider status, Google calendar lists, promoting external events, and Google
+calendar settings — are excluded from the agent allowlists, and `calendar.getRange` always runs
+with Google-synced external events filtered out. Data obtained from Google APIs is never included
+in agent tool results or forwarded to any AI backend, in line with the Google API Services User
+Data Policy (Limited Use).
 
 By default, Agent Chat accepts these tool calls automatically. The chat still shows each requested
 tool as compact, subdued text with a readable label such as `Reading note` or `Creating task`.
