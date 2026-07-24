@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   openTab: vi.fn(),
   closeTab: vi.fn(),
   getActiveTab: vi.fn(),
-  openTag: vi.fn(),
+  openSidebarItem: vi.fn(),
   setDensity: vi.fn(),
   setFolderIcon: vi.fn(),
   createNote: vi.fn(),
@@ -58,8 +58,8 @@ vi.mock('@/contexts/tabs', () => ({
   })
 }))
 
-vi.mock('@/contexts/sidebar-drill-down', () => ({
-  useSidebarDrillDown: () => ({ openTag: mocks.openTag })
+vi.mock('@/hooks/use-sidebar-navigation', () => ({
+  useSidebarNavigation: () => ({ openSidebarItem: mocks.openSidebarItem })
 }))
 
 vi.mock('@/hooks/use-display-density', async (importOriginal) => ({
@@ -442,7 +442,13 @@ describe('FolderViewPage', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Open tag' }))
-    expect(mocks.openTag).toHaveBeenCalledWith('work', 'blue')
+    expect(mocks.openSidebarItem).toHaveBeenCalledWith({
+      type: 'tag',
+      title: 'work',
+      path: '/tags/work',
+      entityId: 'work',
+      color: 'blue'
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove tag' }))
     expect(mocks.updateNoteTags).toHaveBeenCalledWith('note-1', [])

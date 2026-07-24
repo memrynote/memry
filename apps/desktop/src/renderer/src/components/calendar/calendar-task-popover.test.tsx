@@ -67,9 +67,9 @@ vi.mock('@/contexts/tabs', () => ({
   useTabs: () => ({ openTab: openTabMock })
 }))
 
-const openTagMock = vi.fn()
-vi.mock('@/contexts/sidebar-drill-down', () => ({
-  useSidebarDrillDown: () => ({ openTag: openTagMock })
+const openSidebarItemMock = vi.fn()
+vi.mock('@/hooks/use-sidebar-navigation', () => ({
+  useSidebarNavigation: () => ({ openSidebarItem: openSidebarItemMock })
 }))
 
 import { CalendarTaskPopover } from './calendar-task-popover'
@@ -128,7 +128,7 @@ describe('CalendarTaskPopover', () => {
     updateMock.mockClear()
     noteGetMock.mockClear()
     openTabMock.mockClear()
-    openTagMock.mockClear()
+    openSidebarItemMock.mockClear()
     mockTask.sourceNoteId = null
     mockTask.repeatConfig = null
     mockTask.tags = []
@@ -202,7 +202,9 @@ describe('CalendarTaskPopover', () => {
       const onDismiss = vi.fn()
       render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={onDismiss} />)
       await userEvent.click(screen.getByText('focus'))
-      expect(openTagMock).toHaveBeenCalledWith('focus', 'rose')
+      expect(openSidebarItemMock).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'tag', entityId: 'focus', color: 'rose' })
+      )
       expect(onDismiss).not.toHaveBeenCalled()
     } finally {
       mockTask.tags = []

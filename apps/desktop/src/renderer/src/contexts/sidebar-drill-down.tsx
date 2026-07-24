@@ -1,7 +1,7 @@
 /**
  * Sidebar Drill-Down Context
  *
- * Manages the sidebar navigation state for drill-down views like tag details.
+ * Manages the sidebar navigation state for drill-down views.
  * Uses a stack-based approach where views can be pushed/popped.
  */
 
@@ -12,19 +12,13 @@ import { createContext, useContext, useState, useCallback, useMemo, useEffect } 
 // Types
 // ============================================================================
 
-export type DrillDownViewType = 'main' | 'tag'
+export type DrillDownViewType = 'main'
 
 export interface MainView {
   type: 'main'
 }
 
-export interface TagView {
-  type: 'tag'
-  tag: string
-  color: string
-}
-
-export type DrillDownView = MainView | TagView
+export type DrillDownView = MainView
 
 export interface SidebarDrillDownState {
   /** Current view stack */
@@ -38,8 +32,6 @@ export interface SidebarDrillDownState {
 }
 
 export interface SidebarDrillDownActions {
-  /** Navigate to a tag detail view */
-  openTag: (tag: string, color: string) => void
   /** Go back to the previous view */
   goBack: () => void
   /** Reset to main view */
@@ -83,12 +75,6 @@ export function SidebarDrillDownProvider({ children }: SidebarDrillDownProviderP
     return undefined
   }, [animationDirection])
 
-  // Navigate to tag detail view
-  const openTag = useCallback((tag: string, color: string) => {
-    setAnimationDirection('left') // Slide left to reveal new view
-    setViewStack([MAIN_VIEW, { type: 'tag', tag, color }])
-  }, [])
-
   // Go back to previous view
   const goBack = useCallback(() => {
     setViewStack((prev) => {
@@ -126,11 +112,10 @@ export function SidebarDrillDownProvider({ children }: SidebarDrillDownProviderP
       currentView,
       isAtMain,
       animationDirection,
-      openTag,
       goBack,
       resetToMain
     }),
-    [viewStack, currentView, isAtMain, animationDirection, openTag, goBack, resetToMain]
+    [viewStack, currentView, isAtMain, animationDirection, goBack, resetToMain]
   )
 
   return (

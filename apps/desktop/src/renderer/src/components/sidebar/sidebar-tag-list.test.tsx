@@ -17,7 +17,8 @@ const mocks = vi.hoisted(() => ({
     isLoading: false,
     error: null as Error | null
   },
-  categoryRows: [] as Array<{ id: string; name: string; sortOrder: number }>
+  categoryRows: [] as Array<{ id: string; name: string; sortOrder: number }>,
+  openSidebarItem: vi.fn()
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -32,7 +33,7 @@ vi.mock('@/hooks/use-notes-query', () => ({
 }))
 
 vi.mock('@/hooks/use-sidebar-navigation', () => ({
-  useSidebarNavigation: () => ({ openSidebarItem: vi.fn() })
+  useSidebarNavigation: () => ({ openSidebarItem: mocks.openSidebarItem })
 }))
 
 // Mirrors the real useTagCategories' bucketing (tag.categoryId -> category,
@@ -208,6 +209,7 @@ describe('SidebarTagList', () => {
     mocks.query.isLoading = false
     mocks.query.error = null
     mocks.categoryRows = []
+    mocks.openSidebarItem.mockClear()
   })
 
   it('renders loading, error, and empty states', () => {
@@ -233,7 +235,6 @@ describe('SidebarTagList', () => {
     // untagged-sortOrder fixtures alphabetically instead. Pin the sort
     // explicitly rather than depending on whatever the default happens to be.
     localStorage.setItem('sidebar-tags-sort', 'count-desc')
-    const onTagClick = vi.fn()
     mocks.query.tags = [
       { tag: 'work', count: 5, color: 'blue' },
       { tag: 'work/project', count: 3, color: 'green' },
@@ -242,7 +243,7 @@ describe('SidebarTagList', () => {
       { tag: 'unused', count: 0, color: 'stone' }
     ]
 
-    renderWithActions({ maxVisible: 1, selectedTag: 'alpha', onTagClick })
+    renderWithActions({ maxVisible: 1 })
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Search tags' })).toBeInTheDocument()
@@ -259,7 +260,13 @@ describe('SidebarTagList', () => {
     expect(localStorage.getItem('sidebar-tags-expanded')).toContain('work')
 
     fireEvent.click(screen.getByTitle('alpha (2)'))
-    expect(onTagClick).toHaveBeenCalledWith('alpha', 'red')
+    expect(mocks.openSidebarItem).toHaveBeenCalledWith({
+      type: 'tag',
+      title: 'alpha',
+      path: '/tags/alpha',
+      entityId: 'alpha',
+      color: 'red'
+    })
 
     fireEvent.click(screen.getByLabelText(/sort tags/i))
     fireEvent.click(screen.getByRole('option', { name: 'A → Z' }))
@@ -309,6 +316,16 @@ describe('SidebarTagList', () => {
     renderSidebarTagList()
     expect(screen.getByText('Work')).toBeInTheDocument()
     expect(screen.getByText('Uncategorized')).toBeInTheDocument()
+  })
+
+  it('opens a tag tab instead of a drill-down', async () => {
+    renderSidebarTagList()
+
+    await userEvent.click(screen.getByRole('button', { name: /meetings/ }))
+
+    expect(mocks.openSidebarItem).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'tag', entityId: 'meetings' })
+    )
   })
 
   it('defaults to manual sort', async () => {

@@ -25,7 +25,7 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { useTabs } from '@/contexts/tabs'
-import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
+import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { FolderTableView } from '@/components/folder-view/folder-table-view'
 import { GroupedTable } from '@/components/folder-view/grouped-table'
 import { ColumnSelector } from '@/components/folder-view/column-selector'
@@ -69,7 +69,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
   const { openTab, closeTab, getActiveTab } = useTabs()
-  const { openTag } = useSidebarDrillDown()
+  const { openSidebarItem } = useSidebarNavigation()
   const { tags: allTags } = useNoteTagsQuery()
   const { folders, setFolderIcon } = useNoteFoldersQuery()
 
@@ -285,9 +285,15 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   const handleTagClick = useCallback(
     (tag: string): void => {
       const color = tagMetaMap.get(tag.toLowerCase())?.color ?? ''
-      openTag(tag, color)
+      openSidebarItem({
+        type: 'tag',
+        title: tag,
+        path: '/tags/' + tag,
+        entityId: tag,
+        color
+      })
     },
-    [openTag, tagMetaMap]
+    [openSidebarItem, tagMetaMap]
   )
 
   const handleTagRemove = useCallback(

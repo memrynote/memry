@@ -152,7 +152,6 @@ function buildGroupNodes(
 
 interface TagTreeItemProps {
   node: TagTreeNode
-  selectedTag?: string | null
   expanded: Set<string>
   onToggle: (fullPath: string) => void
   onTagClick: (tag: string, color: string) => void
@@ -160,7 +159,6 @@ interface TagTreeItemProps {
 
 function TagTreeItem({
   node,
-  selectedTag,
   expanded,
   onToggle,
   onTagClick
@@ -169,7 +167,6 @@ function TagTreeItem({
   const hasChildren = node.children.length > 0
   const isExpanded = expanded.has(node.fullPath)
   const colors = getTagColors(node.color ?? '', node.fullPath)
-  const isSelected = selectedTag === node.fullPath
 
   // The tag pill shrink-wraps its label, so the fade mask must only apply when
   // the name is actually clipped — otherwise short names fade with room to spare.
@@ -227,7 +224,6 @@ function TagTreeItem({
               title={`${node.fullPath} (${node.totalCount})`}
               className={cn(
                 'flex items-center gap-1.5 rounded-sm py-0.5 px-1.5 text-[11px] font-medium leading-3.5 min-w-0',
-                isSelected && 'ring-1 ring-current',
                 node.isVirtual && 'opacity-60'
               )}
               style={
@@ -275,7 +271,6 @@ function TagTreeItem({
             <TagTreeItem
               key={child.fullPath}
               node={child}
-              selectedTag={selectedTag}
               expanded={expanded}
               onToggle={onToggle}
               onTagClick={onTagClick}
@@ -293,16 +288,12 @@ function TagTreeItem({
 
 interface SidebarTagListProps {
   maxVisible?: number
-  onTagClick?: (tag: string, color: string) => void
-  selectedTag?: string | null
   className?: string
   onActionsReady?: (actions: React.ReactNode) => void
 }
 
 export function SidebarTagList({
   maxVisible = 8,
-  onTagClick,
-  selectedTag,
   className,
   onActionsReady
 }: SidebarTagListProps): React.JSX.Element {
@@ -427,9 +418,15 @@ export function SidebarTagList({
 
   const handleTagClick = React.useCallback(
     (tagName: string, tagColor: string) => {
-      onTagClick?.(tagName, tagColor)
+      openSidebarItem({
+        type: 'tag',
+        title: tagName,
+        path: '/tags/' + tagName,
+        entityId: tagName,
+        color: tagColor
+      })
     },
-    [onTagClick]
+    [openSidebarItem]
   )
 
   const groups = React.useMemo<TagGroup[]>(() => {
@@ -549,7 +546,6 @@ export function SidebarTagList({
                       <TagTreeItem
                         key={node.fullPath}
                         node={node}
-                        selectedTag={selectedTag}
                         expanded={expanded}
                         onToggle={handleToggle}
                         onTagClick={handleTagClick}

@@ -11,7 +11,7 @@ const contentAreaMocks = vi.hoisted(() => ({
   pasteSelect: null as null | ((option: 'url' | 'mention' | 'embed', url: string) => void),
   handleChange: vi.fn(),
   retryAI: vi.fn(),
-  openTag: vi.fn(),
+  openSidebarItem: vi.fn(),
   analyzeTaskIntents: vi.fn(),
   tasksService: {
     listProjects: vi.fn(),
@@ -153,8 +153,8 @@ vi.mock('@/contexts/ai-inline-context', () => ({
   }))
 }))
 
-vi.mock('@/contexts/sidebar-drill-down', () => ({
-  useSidebarDrillDown: vi.fn(() => ({ openTag: contentAreaMocks.openTag }))
+vi.mock('@/hooks/use-sidebar-navigation', () => ({
+  useSidebarNavigation: vi.fn(() => ({ openSidebarItem: contentAreaMocks.openSidebarItem }))
 }))
 
 vi.mock('@/contexts/tasks', () => ({
@@ -437,7 +437,9 @@ describe('ContentArea', () => {
     expect(contentAreaMocks.retryAI).toHaveBeenCalledTimes(1)
 
     fireEvent.click(screen.getByText('tag alpha'))
-    expect(contentAreaMocks.openTag).toHaveBeenCalledWith('alpha')
+    expect(contentAreaMocks.openSidebarItem).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'tag', entityId: 'alpha' })
+    )
     fireEvent.click(screen.getByText('note beta'))
     expect(onInternalLinkClick).toHaveBeenCalledWith('note-b')
 
