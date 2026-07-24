@@ -7,14 +7,16 @@
  *
  *  1. Settings → Tags: each tag row has an icon chip that opens the shared
  *     emoji/icon picker.
- *  2. Sidebar → Tags → drill into a tag: the detail header chip opens the
- *     same picker (this surface had only a static color dot before).
+ *  2. Sidebar → click a tag to open its tag tab (`pages/tag-view.tsx`,
+ *     replacing the sidebar drill-down `tag-detail-view.tsx` removed in Task
+ *     20): the tag page header chip opens the same picker (this surface had
+ *     only a static color dot before).
  *  3. A chosen icon renders in the sidebar tag list and the settings tag row.
  *  4. Picking an icon from the picker UI round-trips: persist → re-display.
  */
 
 import { test, expect } from './fixtures'
-import { waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
+import { waitForAppReady, waitForVaultReady, SELECTORS } from './utils/electron-helpers'
 
 const UNIQUE = Date.now().toString(36)
 const PICKER = 'Emoji and icon picker' // notes:menus.emoji.aria
@@ -68,14 +70,20 @@ async function expandTagsSection(page): Promise<void> {
   }
 }
 
-async function openTagDrilldown(page, tag: string): Promise<void> {
+async function openTagTab(page, tag: string): Promise<void> {
   await expandTagsSection(page)
   const tagTrigger = page.getByRole('button', { name: tag, exact: true }).first()
   await tagTrigger.waitFor({ state: 'visible', timeout: 15000 })
   await tagTrigger.click()
-  await page
-    .locator('button[aria-label="Go back"]:not([disabled])')
-    .waitFor({ state: 'visible', timeout: 10000 })
+  // Clicking a tag opens a `tag` tab (pages/tag-view.tsx) rather than the old
+  // sidebar drill-down. Wait for the tab and its header's icon chip.
+  const activeTab = page.locator(SELECTORS.activeTab).first()
+  await expect(activeTab).toBeVisible({ timeout: 10000 })
+  await expect(activeTab).toContainText(tag)
+  await page.getByRole('button', { name: 'Change icon' }).waitFor({
+    state: 'visible',
+    timeout: 10000
+  })
 }
 
 test.describe('Tag icon picker', () => {
@@ -97,10 +105,10 @@ test.describe('Tag icon picker', () => {
     await expect(picker.getByRole('button', { name: 'Icons' })).toBeVisible()
   })
 
-  test('sidebar: the tag detail view opens the same picker', async ({ page }) => {
+  test('sidebar: the tag tab opens the same picker', async ({ page }) => {
     const tag = `sideicon${UNIQUE}`
     await seedNoteWithTag(page, tag)
-    await openTagDrilldown(page, tag)
+    await openTagTab(page, tag)
 
     // This chip replaced the old static color dot — it must open the picker.
     const chip = page.getByRole('button', { name: 'Change icon' })
@@ -133,7 +141,7 @@ test.describe('Tag icon picker', () => {
   test('picking an icon from the picker persists and re-displays it', async ({ page }) => {
     const tag = `pickicon${UNIQUE}`
     await seedNoteWithTag(page, tag)
-    await openTagDrilldown(page, tag)
+    await openTagTab(page, tag)
 
     await page.getByRole('button', { name: 'Change icon' }).click()
     const picker = page.getByRole('dialog', { name: PICKER })

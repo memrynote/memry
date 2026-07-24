@@ -2,9 +2,13 @@
 /**
  * Tags Rename + Delete E2E
  *
- * Covers the sidebar tag detail view's overflow menu flows:
- *  - Rename dialog: input prefilled, save calls rename, sidebar refreshes.
- *  - Delete dialog: confirmation, tag removed from sidebar after confirm.
+ * Covers the tag page's overflow menu flows (the sidebar tag drill-down,
+ * `tag-detail-view.tsx`, was removed in Task 20; clicking a tag now opens a
+ * `tag` tab, `pages/tag-view.tsx`, whose header hosts the same menu):
+ *  - Rename dialog: input prefilled, save calls rename, the tag tab closes,
+ *    sidebar refreshes.
+ *  - Delete dialog: confirmation, tag tab closes, tag removed from sidebar
+ *    after confirm.
  *
  * Plan ref: .claude/plans/tech-debt-remediation.md § 5.2
  */
@@ -43,16 +47,18 @@ async function expandTagsSection(page): Promise<void> {
   }
 }
 
-async function openTagDrilldown(page, tag: string): Promise<void> {
+async function openTagTab(page, tag: string): Promise<void> {
   await expandTagsSection(page)
   const tagTrigger = page.getByRole('button', { name: tag, exact: true }).first()
   await tagTrigger.waitFor({ state: 'visible', timeout: 15000 })
   await tagTrigger.click()
-  // The window-controls titlebar also has aria-label="Go back" but is permanently
-  // disabled. Filter to the enabled drilldown back button to avoid strict-mode
-  // violations.
+  // Clicking a tag opens a `tag` tab (pages/tag-view.tsx) rather than the old
+  // sidebar drill-down. Wait for the tab and its header's "Tag actions" menu.
+  const activeTab = page.locator(SELECTORS.activeTab).first()
+  await expect(activeTab).toBeVisible({ timeout: 10000 })
+  await expect(activeTab).toContainText(tag)
   await page
-    .locator('button[aria-label="Go back"]:not([disabled])')
+    .locator('button[aria-label="Tag actions"]')
     .waitFor({ state: 'visible', timeout: 10000 })
 }
 
@@ -64,10 +70,10 @@ test.describe('Tag rename + delete (§5.2)', () => {
 
   test('renames a tag via overflow menu', async ({ page }) => {
     await seedNoteWithTag(page, TAG)
-    await openTagDrilldown(page, TAG)
+    await openTagTab(page, TAG)
 
     await page.locator('button[aria-label="Tag actions"]').click()
-    await page.locator('text=Edit tag name').click()
+    await page.locator('text=Rename tag').click()
 
     const input = page.locator('#tag-rename-input')
     await expect(input).toBeVisible()
@@ -76,7 +82,12 @@ test.describe('Tag rename + delete (§5.2)', () => {
     await input.fill(RENAMED)
     await page.locator('button', { hasText: 'Save' }).click()
 
-    // After success we auto-navigate back; sidebar should show renamed tag
+    // After success the tag tab closes itself (there is no rename-in-place
+    // for an open tab — see pages/tag-view.tsx); sidebar should show the
+    // renamed tag.
+    await expect(page.locator('[role="tab"]', { hasText: TAG })).toHaveCount(0, {
+      timeout: 10000
+    })
     await expandTagsSection(page)
     await expect(page.getByRole('button', { name: RENAMED, exact: true }).first()).toBeVisible({
       timeout: 10000
@@ -87,7 +98,7 @@ test.describe('Tag rename + delete (§5.2)', () => {
   test('deletes a tag via overflow menu', async ({ page }) => {
     const deleteTag = `deletecandidate${UNIQUE}`
     await seedNoteWithTag(page, deleteTag)
-    await openTagDrilldown(page, deleteTag)
+    await openTagTab(page, deleteTag)
 
     await page.locator('button[aria-label="Tag actions"]').click()
     await page.locator('text=Delete tag').first().click()
@@ -97,12 +108,13 @@ test.describe('Tag rename + delete (§5.2)', () => {
     // Click the destructive confirm — matches the "Delete tag" button in the dialog
     await page.locator('[role="alertdialog"] button', { hasText: 'Delete tag' }).click()
 
+    // The tag tab closes itself on delete, same as rename.
+    await expect(page.locator('[role="tab"]', { hasText: deleteTag })).toHaveCount(0, {
+      timeout: 10000
+    })
     await expandTagsSection(page)
     await expect(page.getByRole('button', { name: deleteTag, exact: true })).toHaveCount(0, {
       timeout: 10000
     })
   })
 })
-
-// Keep referenced so unused-imports linters stay quiet if SELECTORS evolves.
-void SELECTORS
