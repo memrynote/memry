@@ -225,19 +225,22 @@ async function launchOnce(opts: LaunchOptions): Promise<LaunchedElectron> {
   try {
     const page = await app.firstWindow({ timeout: FIRST_WINDOW_MS })
     await page.waitForLoadState('domcontentloaded')
-    // Normalize the window size across runners. macOS CI displays are
-    // 1024x768 while ubuntu xvfb runs 1280x1024+, and at 1024 wide the app's
-    // responsive layout squeezes flex titles (e.g. the file-viewer heading)
-    // to zero width, failing toBeVisible assertions that pass everywhere
-    // else. A window larger than the display is fine: layout, hit-testing
-    // and Playwright visibility work on the window's logical size.
-    try {
-      await app.evaluate(({ BrowserWindow }) => {
-        const win = BrowserWindow.getAllWindows()[0]
-        if (win) win.setBounds({ x: 0, y: 0, width: 1440, height: 900 })
-      })
-    } catch {
-      // best-effort — a failed resize should never fail the launch
+    // Widen the window on macOS runners only. Their displays are 1024x768, and
+    // at 1024 wide the app's responsive layout squeezes flex titles (e.g. the
+    // file-viewer heading) to zero width, failing toBeVisible assertions that
+    // pass on the wider ubuntu/Windows runners. A window larger than the
+    // display is fine: layout, hit-testing and Playwright visibility work on
+    // the window's logical size. Deliberately darwin-scoped — resizing ubuntu
+    // changed the geometry coordinate-based canvas tests are tuned for.
+    if (process.platform === 'darwin') {
+      try {
+        await app.evaluate(({ BrowserWindow }) => {
+          const win = BrowserWindow.getAllWindows()[0]
+          if (win) win.setBounds({ x: 0, y: 0, width: 1440, height: 900 })
+        })
+      } catch {
+        // best-effort — a failed resize should never fail the launch
+      }
     }
     let resolvedUserDataDir = userDataDir
     try {
