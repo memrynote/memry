@@ -55,7 +55,7 @@ export class TagCategorySyncService {
         return { ...local, clock: newClock }
       },
       serialize: (local) => local,
-      buildDeletePayload: ({ itemId, extra, deviceId }) => {
+      buildDeletePayload: ({ itemId, local, extra, deviceId }) => {
         const snapshotPayload = extra[0]
         if (snapshotPayload) {
           return withIncrementedClock(snapshotPayload, deviceId)
@@ -64,12 +64,16 @@ export class TagCategorySyncService {
         // Categories soft-delete: the fallback must satisfy
         // TagCategorySyncPayloadSchema (name + sortOrder required) and carry
         // deletedAt, or a receiving device would resurrect the category
-        // instead of tombstoning it.
+        // instead of tombstoning it. Critically, the clock must be the
+        // deleted row's real clock incremented -- NOT a fresh clock -- or the
+        // delete won't dominate the peer's existing clock and will be
+        // skipped, letting the category get resurrected.
+        const row = local as { name?: string; sortOrder?: number; clock?: VectorClock } | undefined
         return JSON.stringify({
-          name: itemId,
-          sortOrder: 0,
+          name: row?.name ?? itemId,
+          sortOrder: row?.sortOrder ?? 0,
           deletedAt: utcNow(),
-          clock: incrementClock({}, deviceId)
+          clock: incrementClock(row?.clock ?? {}, deviceId)
         })
       }
     })

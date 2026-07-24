@@ -76,18 +76,27 @@ class TagCategoryHandler extends BaseItemHandler<TagCategorySyncPayload> {
     const existing = ctx.db.select().from(tagCategories).where(eq(tagCategories.id, itemId)).get()
     if (!existing) return 'skipped'
 
+    let mergedClock: VectorClock | undefined = clock
     if (clock && existing.clock) {
       const resolution = this.resolveClock(existing.clock as VectorClock | null, clock)
       if (resolution.action === 'skip' || resolution.action === 'merge') {
         log.info('Skipping remote tag category delete, local has unseen changes', { itemId })
         return 'skipped'
       }
+      mergedClock = resolution.mergedClock
     }
 
     // Soft delete: the row is the tombstone, and member tags must survive.
+    // Persist the winning clock too, or the tombstone keeps its stale
+    // pre-delete clock and a later upsert with a "newer" clock can
+    // resurrect the category.
     ctx.db
       .update(tagCategories)
-      .set({ deletedAt: utcNow(), updatedAt: utcNow() })
+      .set({
+        deletedAt: utcNow(),
+        updatedAt: utcNow(),
+        ...(mergedClock ? { clock: mergedClock } : {})
+      })
       .where(eq(tagCategories.id, itemId))
       .run()
 

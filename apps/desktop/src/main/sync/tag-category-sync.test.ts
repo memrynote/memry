@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   createTestDataDb,
   asClientDb,
@@ -10,6 +10,7 @@ import { TagCategorySyncPayloadSchema } from '@memry/contracts/sync-payloads'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { eq } from 'drizzle-orm'
 import { SyncQueueManager } from './queue'
+import { tagCategoryHandler } from './item-handlers/tag-category-handler'
 import {
   TagCategorySyncService,
   initTagCategorySyncService,
@@ -153,6 +154,51 @@ describe('TagCategorySyncService', () => {
       // A fallback without deletedAt would let a receiving device resurrect a
       // deleted category instead of tombstoning it.
       expect(parsed.deletedAt).toBeTruthy()
+    })
+  })
+
+  describe('#given a peer deletes a category with no snapshot #when the built payload is applied through applyDelete on another device', () => {
+    it('#then the delete propagates instead of being skipped', () => {
+      // Origin: the row already has a non-trivial real clock (as it would
+      // after prior syncs), and the delete carries no snapshot -- the case
+      // syncTagCategoryDelete always hits.
+      const originClock: VectorClock = { 'device-A': 2 }
+      testDb.db
+        .insert(tagCategories)
+        .values({ ...TEST_CATEGORY, clock: originClock })
+        .run()
+
+      service.enqueueDelete('category-1')
+
+      const [item] = queue.dequeue(1)
+      expect(item.operation).toBe('delete')
+      const payload = JSON.parse(item.payload) as { clock: VectorClock }
+
+      // Peer: the same category, at the same clock it had after the last
+      // sync -- exactly the state a receiving device would be in.
+      const peerDb = createTestDataDb()
+      try {
+        peerDb.db
+          .insert(tagCategories)
+          .values({ ...TEST_CATEGORY, clock: originClock })
+          .run()
+
+        const result = tagCategoryHandler.applyDelete(
+          { db: asSyncDb(peerDb.db), emit: vi.fn() },
+          'category-1',
+          payload.clock
+        )
+
+        expect(result).toBe('applied')
+        const row = peerDb.db
+          .select()
+          .from(tagCategories)
+          .where(eq(tagCategories.id, 'category-1'))
+          .get()
+        expect(row?.deletedAt).toBeTruthy()
+      } finally {
+        peerDb.close()
+      }
     })
   })
 
