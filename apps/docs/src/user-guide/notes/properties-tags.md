@@ -15,17 +15,21 @@ A row under the title shows the note's free-form labels.
 - Tags are global — the same tag on two notes is the same tag
 - Tags keep the capitalization you type (`#Work` stays `#Work`), but identity is case-insensitive: `#Work` and `#work` are the same tag with one color and one combined count. This also applies to imported notes — an Obsidian vault's tag casing survives the import.
 
-Tags appear in the sidebar **Tags** section. Click any tag to drill into everything that
-shares it — notes first, then tasks carrying the same tag. See
+Tags appear in the sidebar **Tags** section, grouped by category (see
+[Tag Categories](#tag-categories) below). Click any tag — in the sidebar, on a note, or in
+the tag hub — to open its own tab: a table of every note, task, and inbox item that carries
+it, with a filter for kind (notes / tasks / inbox). See
 [Capturing Tasks](/user-guide/tasks/capturing) for tagging tasks.
 
-The drill-down includes nested tags: opening `work` also lists items tagged `work/urgent`.
+The tag page includes nested tags: opening `work` also lists items tagged `work/urgent`.
 (The task filter bar matches exactly, so filtering tasks on `work` there won't include
 `work/urgent`.)
 
 ### Renaming or Deleting Tags
 
-Manage tags globally from [Settings → Tags](/user-guide/settings#tags). Renames apply across every note instantly.
+Manage tags globally from [Settings → Tags](/user-guide/settings#tags), or open a tag's own
+page and use its header menu to rename, recolor, or delete it directly. Renames apply across
+every note instantly.
 
 Renaming or deleting a tag currently updates your **notes** only — tasks keep the original
 tag, so a task tagged `MIT` stays `MIT` even after you rename that tag. **Merging** two tags
@@ -35,7 +39,31 @@ does carry across tasks. To retag a task directly, edit it in the task detail dr
 
 Give any tag a custom icon to tell it apart at a glance. In [Settings → Tags](/user-guide/settings#tags), click the icon next to a tag name and pick an emoji or icon (or clear it to fall back to the default). The icon is stored on the tag and syncs across your devices.
 
-You can also set a tag's icon straight from the sidebar: drill into a tag and click the chip in its detail header. Once set, the icon shows everywhere the tag appears — the sidebar tag list, the tag chips on a note or journal entry, and inline `#tags` in the editor.
+You can also set a tag's icon straight from its own page: click the chip in the page header. Once set, the icon shows everywhere the tag appears — the sidebar tag list, the tag chips on a note or journal entry, and inline `#tags` in the editor.
+
+## Tag Categories
+
+Group related tags together and give the sidebar a stable, deliberate order. Open the **tag
+hub** — the grid icon next to the sidebar's **Tags** section header — to manage categories
+and tags in one place.
+
+- **New category** — click **New category**, name it, press Enter.
+- **New tag** — click **New tag** in the hub, name it, and pick a starting color. (You can
+  still create a tag the usual way, by typing `#tag` on a note or in the tags row — this is
+  just a second entry point that lets you place it in a category up front.)
+- **Rename or delete a category** — hover its heading for the pencil and trash icons.
+  Deleting a category does not delete its tags; they fall back to **Uncategorized**.
+- **Reorder** — drag a category to reorder categories, or drag a tag chip between or within
+  categories to change its category and its position at the same time.
+- **Search** — the hub's search box filters both category and tag names as you type.
+
+The sidebar's Tags section mirrors the hub's categories and order. Its sort control defaults
+to **Manual** (the hub's drag order), with Most used, Least used, A → Z, and Z → A as
+alternatives. A tag with no category — or one whose category was deleted on another device
+before this one synced — shows under **Uncategorized** rather than disappearing.
+
+Categories and each tag's category/position sync across your devices like everything else in
+the vault.
 
 ## Properties Panel
 
@@ -82,20 +110,23 @@ Tags are zero-cost and discoverable. Properties are structured and great for fil
 
 ## Filtering and Discovery
 
-- **Sidebar tag list** — click any tag for a tag detail view
+- **Sidebar tag list or tag hub** — click any tag to open its page
 - **Folder view columns** — show any property as a sortable column
 - **Search palette** — type `#tag` to filter results by tag
 
 ## Where Tags Show Up
 
 - Tags row on each note
-- Sidebar Tags section (alphabetical, with usage counts)
+- Sidebar Tags section (grouped by category, with usage counts)
+- The tag hub (organize categories) and each tag's own page (everything tagged with it)
 - Wiki link autocomplete (`[[#tag]]`)
 - Search (`#tag` filter)
 
 ## Storage
 
-Tags and property values live in the data DB. Tag indexes and link graphs are mirrored into the index DB for fast lookups.
+Tags and property values live in the data DB, alongside tag categories and each tag's
+category/sort order. Tag indexes and link graphs are mirrored into the index DB for fast
+lookups.
 
 In the vault's markdown files, a note's frontmatter contains only your own properties (plus `tags` and `aliases`). MemryNote keeps its internal bookkeeping — the note id and created/modified dates — in the local database and never writes its own keys into your files; a note with no properties has no frontmatter block at all.
 
