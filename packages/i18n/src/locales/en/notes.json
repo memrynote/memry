@@ -798,7 +798,18 @@
     "openHub": "Open tag hub"
   },
   "tagView": {
-    "moreActions": "More actions"
+    "moreActions": "More actions",
+    "kindFilter": {
+      "all": "All",
+      "notes": "Notes",
+      "tasks": "Tasks",
+      "inbox": "Inbox"
+    },
+    "pin": {
+      "action": "Pin {count, plural, one {# note} other {# notes}} to tag",
+      "success": "Pinned {count, plural, one {# note} other {# notes}} to tag",
+      "failed": "Failed to pin note to tag"
+    }
   },
   "tagsHub": {
     "loading": "Loading tags...",

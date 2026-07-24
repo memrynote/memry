@@ -1,20 +1,46 @@
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getI18n } from 'react-i18next'
 import { toast } from 'sonner'
+import { useT } from '@memry/i18n/renderer'
+import type { ColumnConfig } from '@memry/contracts/folder-view-api'
 import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
 import { useTagItems } from '@/hooks/use-tag-items'
 import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
+import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { tagsService, onTagRenamed, onTagDeleted } from '@/services/tags-service'
 import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { TagIconChip } from '@/components/settings/tag-icon-chip'
 import { TagRenameDialog } from '@/components/sidebar/tag-rename-dialog'
 import { TagDeleteDialog } from '@/components/sidebar/tag-delete-dialog'
+import { Button } from '@/components/ui/button'
+import { Picker } from '@/components/ui/picker'
+import { FolderTableView } from '@/components/folder-view'
+import { Pin } from '@/lib/icons'
 import { TagOverflowMenu } from './tag-view/tag-overflow-menu'
 
 const log = createLogger('Page:TagView')
+
+type KindFilter = 'all' | 'note' | 'task' | 'inbox'
+
+const KIND_FILTER_OPTIONS: KindFilter[] = ['all', 'note', 'task', 'inbox']
+
+const KIND_FILTER_LABEL_KEYS: Record<KindFilter, string> = {
+  all: 'tagView.kindFilter.all',
+  note: 'tagView.kindFilter.notes',
+  task: 'tagView.kindFilter.tasks',
+  inbox: 'tagView.kindFilter.inbox'
+}
+
+const TABLE_COLUMNS: ColumnConfig[] = [
+  { id: 'title', width: 280 },
+  { id: 'kind', width: 100 },
+  { id: 'tags', width: 160 },
+  { id: 'folder', width: 140 },
+  { id: 'modified', width: 130 }
+]
 
 export interface TagViewPageProps {
   tag: string
@@ -31,7 +57,9 @@ export interface TagViewPageProps {
  * drill-down (`tag-detail-view.tsx`, removed in Task 20).
  */
 export function TagViewPage({ tag, color }: TagViewPageProps): React.JSX.Element {
-  const { total } = useTagItems(tag)
+  const { t: tNotes } = useT('notes')
+  const { items, total, isLoading, error, refresh } = useTagItems({ tag })
+  const { openSidebarItem } = useSidebarNavigation()
   const { tags } = useNoteTagsQuery()
   const tagRow = tags.find((row) => row.tag.toLowerCase() === tag.toLowerCase())
   const resolvedColor = tagRow?.color ?? color ?? ''
@@ -43,6 +71,108 @@ export function TagViewPage({ tag, color }: TagViewPageProps): React.JSX.Element
 
   const [renameOpen, setRenameOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [kindFilter, setKindFilter] = useState<KindFilter>('all')
+  const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set())
+  const [isPinning, setIsPinning] = useState(false)
+
+  const filteredItems = useMemo(
+    () =>
+      kindFilter === 'all' ? items : items.filter((item) => (item.kind ?? 'note') === kindFilter),
+    [items, kindFilter]
+  )
+
+  // Only note rows can be pinned — task/inbox rows carry no tag pin concept.
+  const selectedNoteIds = useMemo(
+    () =>
+      Array.from(selectedRowIds).filter((id) => {
+        const item = items.find((row) => row.id === id)
+        return item !== undefined && (item.kind ?? 'note') === 'note'
+      }),
+    [items, selectedRowIds]
+  )
+
+  // Selection is row-id based; a stale id from before a filter/tag change
+  // could otherwise silently reference a row that's no longer shown. Reset
+  // in render (not an effect) on a signature change, matching the
+  // render-phase sync convention `FolderTableView` itself uses for the same
+  // kind of derived-from-props reset.
+  const selectionResetKey = `${tag}:${kindFilter}`
+  const [lastSelectionResetKey, setLastSelectionResetKey] = useState(selectionResetKey)
+  if (lastSelectionResetKey !== selectionResetKey) {
+    setLastSelectionResetKey(selectionResetKey)
+    setSelectedRowIds(new Set())
+  }
+
+  const handleNoteOpen = useCallback(
+    (noteId: string) => {
+      const item = items.find((row) => row.id === noteId)
+      if (!item) return
+      const kind = item.kind ?? 'note'
+
+      if (kind === 'task') {
+        openSidebarItem({
+          type: 'tasks',
+          title: 'Tasks',
+          icon: 'CheckSquare',
+          path: '/tasks',
+          viewState: {
+            openTaskId: item.id,
+            activeInternalTab: 'all',
+            activeTab: 'all'
+          }
+        })
+        return
+      }
+
+      if (kind === 'inbox') {
+        openSidebarItem({
+          type: 'inbox',
+          title: 'Inbox',
+          icon: 'Inbox',
+          path: '/inbox',
+          viewState: { selectedItemId: item.id }
+        })
+        return
+      }
+
+      openSidebarItem({
+        type: 'note',
+        path: item.path,
+        entityId: item.id,
+        title: item.title,
+        emoji: item.emoji
+      })
+    },
+    [items, openSidebarItem]
+  )
+
+  // Minimal preservation of `useTagDetail`'s pin action, now that the items
+  // table replaces the sidebar drill-down's pinned/unpinned note lists (Task
+  // 20 removes that view entirely): pin every selected note row to this tag
+  // from the toolbar. `TagItem` carries no pinned flag, so there's no
+  // per-row pin indicator or unpin toggle here — see the task report for
+  // what's deferred.
+  const handlePinSelected = useCallback(async () => {
+    if (selectedNoteIds.length === 0) return
+    setIsPinning(true)
+    try {
+      const results = await Promise.all(
+        selectedNoteIds.map((noteId) => tagsService.pinNoteToTag({ noteId, tag }))
+      )
+      const failed = results.find((result) => !result.success)
+      if (failed) {
+        throw new Error(failed.error ?? tNotes('tagView.pin.failed'))
+      }
+      toast.success(tNotes('tagView.pin.success', { count: selectedNoteIds.length }))
+      setSelectedRowIds(new Set())
+      await refresh()
+    } catch (err) {
+      log.error('Failed to pin note(s) to tag', err)
+      toast.error(extractErrorMessage(err, tNotes('tagView.pin.failed')))
+    } finally {
+      setIsPinning(false)
+    }
+  }, [selectedNoteIds, tag, tNotes, refresh])
 
   // This page is only ever mounted as the active tab of some group (`TabPane`
   // renders one `TabContent` for the active tab only), so the currently
@@ -176,7 +306,60 @@ export function TagViewPage({ tag, color }: TagViewPageProps): React.JSX.Element
         onConfirm={handleDeleteConfirm}
       />
 
-      {/* Table arrives in Task 18 */}
+      <div className="flex shrink-0 items-center gap-2 border-b px-4 py-2">
+        <Picker
+          mode="single"
+          value={kindFilter}
+          onValueChange={(value) => setKindFilter(value as KindFilter)}
+        >
+          <Picker.Trigger asChild>
+            <Button variant="outline" size="sm" className="gap-1.5">
+              {tNotes(KIND_FILTER_LABEL_KEYS[kindFilter])}
+            </Button>
+          </Picker.Trigger>
+          <Picker.Content align="start" width={160}>
+            <Picker.List>
+              {KIND_FILTER_OPTIONS.map((option) => (
+                <Picker.Item
+                  key={option}
+                  value={option}
+                  label={tNotes(KIND_FILTER_LABEL_KEYS[option])}
+                  indicator="check"
+                  role="menuitemradio"
+                  aria-checked={kindFilter === option}
+                />
+              ))}
+            </Picker.List>
+          </Picker.Content>
+        </Picker>
+
+        {selectedNoteIds.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            disabled={isPinning}
+            onClick={() => void handlePinSelected()}
+          >
+            <Pin className="size-3.5" />
+            {tNotes('tagView.pin.action', { count: selectedNoteIds.length })}
+          </Button>
+        )}
+
+        <div className="flex-1" />
+      </div>
+
+      {error && <div className="shrink-0 border-b px-4 py-2 text-sm text-destructive">{error}</div>}
+
+      <FolderTableView
+        notes={filteredItems}
+        columns={TABLE_COLUMNS}
+        selectedRowIds={selectedRowIds}
+        onSelectionChange={setSelectedRowIds}
+        onNoteOpen={handleNoteOpen}
+        isLoading={isLoading}
+        className="min-h-0 flex-1"
+      />
     </div>
   )
 }
