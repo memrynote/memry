@@ -195,6 +195,19 @@ const FIXTURE_ITEMS: NoteWithProperties[] = [
     wordCount: 0,
     properties: {},
     kind: 'task'
+  },
+  {
+    id: 'i1',
+    path: '/inbox/i1',
+    title: 'Follow up link',
+    emoji: null,
+    folder: 'Inbox',
+    tags: ['meetings'],
+    created: '2026-07-21T00:00:00Z',
+    modified: '2026-07-21T00:00:00Z',
+    wordCount: 0,
+    properties: {},
+    kind: 'inbox'
   }
 ]
 
@@ -289,7 +302,7 @@ describe('TagViewPage', () => {
     useFixtureItems()
     render(<TagViewPage tag="meetings" />)
     await userEvent.click(screen.getByRole('button', { name: /all/i }))
-    await userEvent.click(screen.getByRole('menuitemradio', { name: /tasks/i }))
+    await userEvent.click(screen.getByRole('option', { name: /tasks/i }))
 
     expect(screen.queryByText('Q3 kickoff')).not.toBeInTheDocument()
   })
@@ -305,6 +318,24 @@ describe('TagViewPage', () => {
       expect.objectContaining({
         type: 'tasks',
         viewState: expect.objectContaining({ openTaskId: 't1' })
+      })
+    )
+  })
+
+  it('opens an inbox item with a focus token the Inbox page reads', async () => {
+    useFixtureItems()
+    const openSidebarItem = vi.fn()
+    renderWithNavigation(<TagViewPage tag="meetings" />, { openSidebarItem })
+
+    await userEvent.click(screen.getByText('Follow up link'))
+
+    expect(openSidebarItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'inbox',
+        viewState: expect.objectContaining({
+          focusInboxItemId: 'i1',
+          focusedAt: expect.any(Number)
+        })
       })
     )
   })

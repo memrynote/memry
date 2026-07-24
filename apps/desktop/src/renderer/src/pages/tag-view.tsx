@@ -115,6 +115,10 @@ export function TagViewPage({ tag, color }: TagViewPageProps): React.JSX.Element
           title: 'Tasks',
           icon: 'CheckSquare',
           path: '/tasks',
+          // No `selectedProjectId` here: `TagItem` carries no project id,
+          // only a container name, so the Tasks page falls back to its
+          // default project scope (unlike `tag-detail-view.tsx`, which had
+          // a real project id to pass).
           viewState: {
             openTaskId: item.id,
             activeInternalTab: 'all',
@@ -130,7 +134,10 @@ export function TagViewPage({ tag, color }: TagViewPageProps): React.JSX.Element
           title: 'Inbox',
           icon: 'Inbox',
           path: '/inbox',
-          viewState: { selectedItemId: item.id }
+          // Inbox reads `focusInboxItemId` + `focusedAt` (a fresh token so
+          // the focus effect re-fires on every open), not `selectedItemId`
+          // — see inbox.tsx's focus effect.
+          viewState: { focusInboxItemId: item.id, focusedAt: Date.now() }
         })
         return
       }
@@ -325,8 +332,6 @@ export function TagViewPage({ tag, color }: TagViewPageProps): React.JSX.Element
                   value={option}
                   label={tNotes(KIND_FILTER_LABEL_KEYS[option])}
                   indicator="check"
-                  role="menuitemradio"
-                  aria-checked={kindFilter === option}
                 />
               ))}
             </Picker.List>
