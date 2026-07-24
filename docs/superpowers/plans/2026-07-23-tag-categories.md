@@ -2698,18 +2698,52 @@ git commit -m "feat(sidebar): group tags by category with a manual order"
 
 ### Task 20: Open a tab on click and delete the drill-down
 
+**Scope expanded during execution.** This plan assumed the tag drill-down was
+opened only from `sidebar-tag-list.tsx`. It is not. `openTag` from the
+`useSidebarDrillDown` context is called from SEVEN production sites — every place a
+tag chip is clickable in the app. Deleting the drill-down's tag branch while leaving
+those callers would slide six other surfaces to a blank panel. So this task migrates
+EVERY `openTag` call site to open the `tag` tab, then deletes the drill-down tag
+branch and the dead component. The `openTag` context method itself is removed once no
+caller remains — a green typecheck is the proof the removal is clean.
+
+The seven call sites (verified via `rtk grep -rn "openTag\b"`):
+
+- `components/app-sidebar.tsx:293` — `SidebarTagList`'s `onTagClick` prop
+- `components/app-sidebar.tsx:318` — tag bookmark click
+- `pages/note.tsx:1371` — tag chip in note metadata
+- `components/note/content-area/ContentArea.tsx:1284` — tag click in note content
+- `components/note/content-area/hooks/use-tag-suggestions.ts:103` — inline `#tag` pill click
+- `components/calendar/calendar-task-popover.tsx:169` — tag in a calendar task popover
+- `pages/folder-view.tsx:288` — tag chip in the folder table
+
 **Files:**
 
 - Modify: `apps/desktop/src/renderer/src/components/sidebar/sidebar-tag-list.tsx`
-- Modify: `apps/desktop/src/renderer/src/contexts/sidebar-drill-down.tsx`
-- Modify: `apps/desktop/src/renderer/src/components/sidebar/sidebar-drill-down-container.tsx`
+- Modify: `apps/desktop/src/renderer/src/components/app-sidebar.tsx`
+- Modify: `apps/desktop/src/renderer/src/pages/note.tsx`
+- Modify: `apps/desktop/src/renderer/src/components/note/content-area/ContentArea.tsx`
+- Modify: `apps/desktop/src/renderer/src/components/note/content-area/hooks/use-tag-suggestions.ts`
+- Modify: `apps/desktop/src/renderer/src/components/calendar/calendar-task-popover.tsx`
+- Modify: `apps/desktop/src/renderer/src/pages/folder-view.tsx`
+- Modify: `apps/desktop/src/renderer/src/contexts/sidebar-drill-down.tsx` (remove `openTag` + tag view)
+- Modify: `apps/desktop/src/renderer/src/components/sidebar/sidebar-drill-down-container.tsx` (remove the tag render case)
 - Delete: `apps/desktop/src/renderer/src/components/sidebar/tag-detail-view.tsx`
 - Delete: `apps/desktop/src/renderer/src/components/sidebar/tag-detail-view.test.tsx`
 - Test: `apps/desktop/src/renderer/src/components/sidebar/sidebar-tag-list.test.tsx`
 
 **Interfaces:**
 
-- Produces: clicking a sidebar tag calls `openSidebarItem({ type: 'tag', title: tag, path: '/tags/' + tag, entityId: tag, color })`.
+- Produces: clicking a tag ANYWHERE (sidebar, note body, note metadata, folder table,
+  calendar popover, bookmark) calls `openSidebarItem({ type: 'tag', title: tag, path:
+'/tags/' + tag, entityId: tag, color })`. The `openTag` drill-down method is gone.
+
+Each migration is mechanical: swap `openTag(tag, color)` for
+`openSidebarItem({ type: 'tag', title: tag, path: '/tags/' + tag, entityId: tag, color })`,
+pulling `openSidebarItem` from `useSidebarNavigation` where the file doesn't already
+have it. The bookmark site opens a bookmarked tag (`bookmark.itemId`) with an empty
+color — same shape. Preserve each call site's existing surrounding behavior (e.g. a
+popover that closes after the click still closes).
 
 - [ ] **Step 1: Write the failing test**
 
