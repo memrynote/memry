@@ -28,6 +28,7 @@ import {
   insertNoteMetadata,
   insertPropertyDefinitions,
   insertStatuses,
+  insertTagCategories,
   insertTagDefinitions,
   insertTaskNotes,
   insertTasks,
@@ -35,6 +36,8 @@ import {
   openDataDb,
   upsertSetting
 } from './seed-vault/db-writer'
+import type { SeedTagCategory, SeedTagDefinition } from './seed-vault/db-writer'
+import { generateId } from '../src/main/lib/id'
 import {
   computeVaultKeyVerifier,
   encryptCanvasScene,
@@ -77,37 +80,80 @@ function parseArgs(argv: string[]): CliArgs {
   }
 }
 
-const TAG_PALETTE = [
+const TAG_CATEGORY_IDS = {
+  engineering: generateId(),
+  projects: generateId(),
+  reading: generateId(),
+  travel: generateId(),
+  routines: generateId()
+} as const
+
+const TAG_CATEGORIES: SeedTagCategory[] = [
+  { id: TAG_CATEGORY_IDS.engineering, name: 'Engineering', sortOrder: 0 },
+  { id: TAG_CATEGORY_IDS.projects, name: 'Projects', sortOrder: 1 },
+  { id: TAG_CATEGORY_IDS.reading, name: 'Reading', sortOrder: 2 },
+  { id: TAG_CATEGORY_IDS.travel, name: 'Travel', sortOrder: 3 },
+  { id: TAG_CATEGORY_IDS.routines, name: 'Routines', sortOrder: 4 }
+]
+
+// `research` / `active` / `archive` stay uncategorized on purpose — the sidebar
+// and tag hub both need a populated Uncategorized bucket to look real.
+const TAG_PALETTE: SeedTagDefinition[] = [
   { name: 'research', color: '#3b82f6' },
   { name: 'active', color: '#10b981' },
   { name: 'archive', color: '#6b7280' },
-  { name: 'sci-fi', color: '#8b5cf6' },
-  { name: 'fiction', color: '#f59e0b' },
-  { name: 'nonfiction', color: '#ec4899' },
-  { name: 'classic', color: '#a855f7' },
-  { name: 'reread', color: '#0ea5e9' },
-  { name: 'tech/typescript', color: '#0ea5e9' },
-  { name: 'tech/sql', color: '#a855f7' },
-  { name: 'tech/sync', color: '#22c55e' },
-  { name: 'tech/rust', color: '#dc2626' },
-  { name: 'tech/electron', color: '#9333ea' },
-  { name: 'tech/postgres', color: '#0284c7' },
-  { name: 'tech/python', color: '#22c55e' },
-  { name: 'projects/memry', color: '#6366f1' },
-  { name: 'projects/active', color: '#14b8a6' },
-  { name: 'projects/personal', color: '#f97316' },
-  { name: 'projects/home', color: '#84cc16' },
-  { name: 'travel/asia', color: '#f97316' },
-  { name: 'travel/europe', color: '#0ea5e9' },
-  { name: 'travel/japan', color: '#ef4444' },
-  { name: 'food', color: '#e11d48' },
-  { name: 'city-break', color: '#22c55e' },
-  { name: 'favorites', color: '#f59e0b' },
-  { name: 'fitness', color: '#84cc16' },
-  { name: 'reading', color: '#f59e0b' },
-  { name: 'daily', color: '#6366f1' },
-  { name: 'flow', color: '#10b981' },
-  { name: 'reflection', color: '#a855f7' }
+  {
+    name: 'tech/typescript',
+    color: '#0ea5e9',
+    categoryId: TAG_CATEGORY_IDS.engineering,
+    sortOrder: 0
+  },
+  { name: 'tech/sql', color: '#a855f7', categoryId: TAG_CATEGORY_IDS.engineering, sortOrder: 1 },
+  { name: 'tech/sync', color: '#22c55e', categoryId: TAG_CATEGORY_IDS.engineering, sortOrder: 2 },
+  { name: 'tech/rust', color: '#dc2626', categoryId: TAG_CATEGORY_IDS.engineering, sortOrder: 3 },
+  {
+    name: 'tech/electron',
+    color: '#9333ea',
+    categoryId: TAG_CATEGORY_IDS.engineering,
+    sortOrder: 4
+  },
+  {
+    name: 'tech/postgres',
+    color: '#0284c7',
+    categoryId: TAG_CATEGORY_IDS.engineering,
+    sortOrder: 5
+  },
+  { name: 'tech/python', color: '#22c55e', categoryId: TAG_CATEGORY_IDS.engineering, sortOrder: 6 },
+  { name: 'projects/memry', color: '#6366f1', categoryId: TAG_CATEGORY_IDS.projects, sortOrder: 0 },
+  {
+    name: 'projects/active',
+    color: '#14b8a6',
+    categoryId: TAG_CATEGORY_IDS.projects,
+    sortOrder: 1
+  },
+  {
+    name: 'projects/personal',
+    color: '#f97316',
+    categoryId: TAG_CATEGORY_IDS.projects,
+    sortOrder: 2
+  },
+  { name: 'projects/home', color: '#84cc16', categoryId: TAG_CATEGORY_IDS.projects, sortOrder: 3 },
+  { name: 'sci-fi', color: '#8b5cf6', categoryId: TAG_CATEGORY_IDS.reading, sortOrder: 0 },
+  { name: 'fiction', color: '#f59e0b', categoryId: TAG_CATEGORY_IDS.reading, sortOrder: 1 },
+  { name: 'nonfiction', color: '#ec4899', categoryId: TAG_CATEGORY_IDS.reading, sortOrder: 2 },
+  { name: 'classic', color: '#a855f7', categoryId: TAG_CATEGORY_IDS.reading, sortOrder: 3 },
+  { name: 'reread', color: '#0ea5e9', categoryId: TAG_CATEGORY_IDS.reading, sortOrder: 4 },
+  { name: 'reading', color: '#f59e0b', categoryId: TAG_CATEGORY_IDS.reading, sortOrder: 5 },
+  { name: 'favorites', color: '#f59e0b', categoryId: TAG_CATEGORY_IDS.reading, sortOrder: 6 },
+  { name: 'travel/asia', color: '#f97316', categoryId: TAG_CATEGORY_IDS.travel, sortOrder: 0 },
+  { name: 'travel/europe', color: '#0ea5e9', categoryId: TAG_CATEGORY_IDS.travel, sortOrder: 1 },
+  { name: 'travel/japan', color: '#ef4444', categoryId: TAG_CATEGORY_IDS.travel, sortOrder: 2 },
+  { name: 'food', color: '#e11d48', categoryId: TAG_CATEGORY_IDS.travel, sortOrder: 3 },
+  { name: 'city-break', color: '#22c55e', categoryId: TAG_CATEGORY_IDS.travel, sortOrder: 4 },
+  { name: 'fitness', color: '#84cc16', categoryId: TAG_CATEGORY_IDS.routines, sortOrder: 0 },
+  { name: 'daily', color: '#6366f1', categoryId: TAG_CATEGORY_IDS.routines, sortOrder: 1 },
+  { name: 'flow', color: '#10b981', categoryId: TAG_CATEGORY_IDS.routines, sortOrder: 2 },
+  { name: 'reflection', color: '#a855f7', categoryId: TAG_CATEGORY_IDS.routines, sortOrder: 3 }
 ]
 
 const PROPERTY_DEFS = [
@@ -170,6 +216,9 @@ async function main(): Promise<void> {
   const { db, close } = openDataDb(dataDbPath)
 
   try {
+    const tagCategoryCount = insertTagCategories(db, TAG_CATEGORIES)
+    console.log(`  → tag_categories: ${tagCategoryCount}`)
+
     const tagCount = insertTagDefinitions(db, TAG_PALETTE)
     console.log(`  → tag_definitions: ${tagCount}`)
 

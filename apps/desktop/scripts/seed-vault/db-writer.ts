@@ -41,9 +41,32 @@ export function openDataDb(dataDbPath: string): OpenedDb {
   }
 }
 
+export interface SeedTagCategory {
+  id: string
+  name: string
+  sortOrder: number
+}
+
+export function insertTagCategories(db: DataDb, categories: SeedTagCategory[]): number {
+  if (categories.length === 0) return 0
+  db.insert(schema.tagCategories)
+    .values(
+      categories.map((c) => ({
+        id: c.id,
+        name: c.name,
+        sortOrder: c.sortOrder
+      }))
+    )
+    .run()
+  return categories.length
+}
+
 export interface SeedTagDefinition {
   name: string
   color: string
+  /** Omit to leave the tag uncategorized. */
+  categoryId?: string
+  sortOrder?: number
 }
 
 export function insertTagDefinitions(db: DataDb, tags: SeedTagDefinition[]): number {
@@ -52,7 +75,9 @@ export function insertTagDefinitions(db: DataDb, tags: SeedTagDefinition[]): num
     .values(
       tags.map((t) => ({
         name: t.name,
-        color: t.color
+        color: t.color,
+        categoryId: t.categoryId ?? null,
+        sortOrder: t.sortOrder ?? 0
       }))
     )
     .run()
