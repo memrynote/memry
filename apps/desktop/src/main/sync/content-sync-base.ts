@@ -51,6 +51,16 @@ export abstract class ContentSyncService<
     this.getController().enqueueDelete(itemId, ...extra)
   }
 
+  /**
+   * Re-queue a push that was lost, WITHOUT advancing the clock — the item's
+   * stored clock is the one that never made it to the server, so bumping it
+   * again would only widen the gap. An item that is actually in step is
+   * replay-detected server side and simply stamped as synced.
+   */
+  enqueueRecoveredUpdate(itemId: string): void {
+    this.getController().enqueueRecoveredUpdate(itemId)
+  }
+
   private getController(): RecordSyncController<NoteMetadata, TArgs, TArgs> {
     if (this.controller) return this.controller
 

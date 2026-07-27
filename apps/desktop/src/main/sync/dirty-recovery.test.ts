@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
+import { noteMetadata } from '@memry/db-schema/data-schema'
 import type { DataDb } from '../database/client'
 import { SyncQueueManager } from './queue'
 import { initTaskSyncService, resetTaskSyncService } from './task-sync'
@@ -261,5 +262,97 @@ describe('dirty-recovery', () => {
     // #then
     expect(result.tasks).toBe(0)
     expect(result.projects).toBe(0)
+  })
+
+  describe('notes', () => {
+    const recovered: string[] = []
+    const noteAdapters = {
+      getLocal: (type: string) =>
+        type === 'note' ? { enqueueRecoveredUpdate: (id: string) => recovered.push(id) } : undefined
+    } as unknown as Parameters<typeof recoverDirtyItems>[1]
+
+    const insertNote = (values: Record<string, unknown>): void => {
+      db.insert(noteMetadata)
+        .values({
+          path: `notes/${values.id as string}.md`,
+          title: 'A note',
+          createdAt: '2026-01-01T00:00:00Z',
+          ...values
+        } as never)
+        .run()
+    }
+
+    beforeEach(() => {
+      recovered.length = 0
+    })
+
+    it('recovers a synced note whose local change never reached the server', () => {
+      // #given — the push that carried the rename was dropped, so the note is
+      // modified after its last confirmed sync but nothing is queued
+      insertNote({
+        id: 'note-diverged',
+        clock: { 'device-A': 2 },
+        syncedAt: '2026-01-01T00:00:00Z',
+        modifiedAt: '2026-01-02T00:00:00Z'
+      })
+
+      // #when
+      const result = recoverDirtyItems(db, noteAdapters)
+
+      // #then
+      expect(result.notes).toBe(1)
+      expect(recovered).toEqual(['note-diverged'])
+    })
+
+    it('recovers a synced note that has never been stamped as pushed', () => {
+      // #given — legacy rows carry no syncedAt at all
+      insertNote({
+        id: 'note-legacy',
+        clock: { 'device-A': 1 },
+        syncedAt: null,
+        modifiedAt: '2026-01-02T00:00:00Z'
+      })
+
+      // #when
+      const result = recoverDirtyItems(db, noteAdapters)
+
+      // #then
+      expect(result.notes).toBe(1)
+      expect(recovered).toEqual(['note-legacy'])
+    })
+
+    it('leaves clean, local-only, journal and never-synced notes alone', () => {
+      // clean: already stamped after its last edit
+      insertNote({
+        id: 'note-clean',
+        clock: { 'device-A': 1 },
+        syncedAt: '2026-01-03T00:00:00Z',
+        modifiedAt: '2026-01-02T00:00:00Z'
+      })
+      // local-only: must never be pushed
+      insertNote({
+        id: 'note-local',
+        clock: { 'device-A': 1 },
+        localOnly: true,
+        syncPolicy: 'local-only',
+        modifiedAt: '2026-01-02T00:00:00Z'
+      })
+      // journal: owned by the journal sync service
+      insertNote({
+        id: 'note-journal',
+        clock: { 'device-A': 1 },
+        journalDate: '2026-01-02',
+        modifiedAt: '2026-01-02T00:00:00Z'
+      })
+      // never synced: seedUnclockedNotes owns clock-less notes
+      insertNote({ id: 'note-unclocked', modifiedAt: '2026-01-02T00:00:00Z' })
+
+      // #when
+      const result = recoverDirtyItems(db, noteAdapters)
+
+      // #then
+      expect(result.notes).toBe(0)
+      expect(recovered).toEqual([])
+    })
   })
 })

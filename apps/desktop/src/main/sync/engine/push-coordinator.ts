@@ -116,6 +116,10 @@ export class PushCoordinator {
           }
 
           const dedupedItems = this.deduplicateByItemId(items)
+          // Payload as it stood at dequeue. A local mutation made while this
+          // batch is in flight coalesces into the same row (queue.ts enqueue),
+          // so the ack below must only delete rows that still look like this.
+          const payloadAtDequeue = new Map(dedupedItems.map((item) => [item.id, item.payload]))
 
           if (this.ctx.deps.crdtProvider) {
             const snapshotTasks = dedupedItems
@@ -200,7 +204,7 @@ export class PushCoordinator {
             if (pi > 0 && pi % YIELD_EVERY_N_ITEMS === 0) await yieldToEventLoop()
             const { queueId, pushItem } = pushItems[pi]
             if (acceptedSet.has(pushItem.id)) {
-              this.ctx.deps.queue.markSuccess(queueId)
+              this.ctx.deps.queue.markSuccess(queueId, payloadAtDequeue.get(queueId))
               this.markItemSynced(pushItem.id, pushItem.type)
               pushedCount++
               this.stateManager.emitItemSynced(pushItem.id, pushItem.type, 'push')
@@ -212,7 +216,7 @@ export class PushCoordinator {
                   queueId: queueId.slice(0, 8),
                   itemId: pushItem.id.slice(0, 8)
                 })
-                this.ctx.deps.queue.markSuccess(queueId)
+                this.ctx.deps.queue.markSuccess(queueId, payloadAtDequeue.get(queueId))
                 this.markItemSynced(pushItem.id, pushItem.type)
               } else if (reason === 'STORAGE_QUOTA_EXCEEDED') {
                 log.warn('Push: storage quota exceeded', { itemId: pushItem.id.slice(0, 8) })
@@ -353,21 +357,21 @@ export class PushCoordinator {
     items: Array<typeof import('@memry/db-schema/schema/sync-queue').syncQueue.$inferSelect>
   ): typeof items {
     const seen = new Map<string, (typeof items)[0]>()
-    const dupeIds: string[] = []
+    const dupes: Array<{ id: string; payload: string }> = []
 
     for (const item of items) {
       const key = `${item.type}:${item.itemId}`
       if (!seen.has(key)) {
         seen.set(key, item)
       } else {
-        dupeIds.push(item.id)
+        dupes.push({ id: item.id, payload: item.payload })
       }
     }
 
-    if (dupeIds.length > 0) {
-      log.info('Push: deduplicated queue items', { removed: dupeIds.length })
-      for (const id of dupeIds) {
-        this.ctx.deps.queue.markSuccess(id)
+    if (dupes.length > 0) {
+      log.info('Push: deduplicated queue items', { removed: dupes.length })
+      for (const dupe of dupes) {
+        this.ctx.deps.queue.markSuccess(dupe.id, dupe.payload)
       }
     }
 
