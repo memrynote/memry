@@ -26,6 +26,9 @@ vi.mock('../../inbox/suggestions', () => ({
 
 const FIXTURE_DIR = path.join(__dirname, '__fixtures__', 'sample')
 const EMBED_FIXTURE_DIR = path.join(__dirname, '__fixtures__', 'wiki-embeds')
+// Mirrors a Capacities/Obsidian export: notes in one folder, media in a sibling
+// folder, referenced as `../Images/Media/…` from the note.
+const NESTED_ASSETS_DIR = path.join(__dirname, '__fixtures__', 'nested-assets')
 
 describe('markdownImporter (integration)', () => {
   let tempVault: TestVaultResult
@@ -143,6 +146,39 @@ describe('markdownImporter (integration)', () => {
     // Note links and note transclusions are not assets and stay untouched.
     expect(content).toContain('[[wikilink]]')
     expect(content).toContain('![[Some Note]]')
+  })
+
+  it('copies an asset referenced above the note but inside the selected folder', async () => {
+    const ctx = importContext.createImportContext('it6', new AbortController().signal)
+    const summary = await importer.markdownImporter.run({ sourcePaths: [NESTED_ASSETS_DIR] }, ctx)
+
+    expect(summary.failed).toEqual([])
+    expect(summary.imported).toBe(1)
+    expect(summary.attachments).toBe(1)
+    expect(summary.skipped).toBe(0)
+
+    const note = path.join(tempVault.notesDir, 'Markdown', 'Notes', 'People', 'Person Note.md')
+    expect(fs.existsSync(note)).toBe(true)
+    const content = fs.readFileSync(note, 'utf8')
+    expect(content).toContain('memry-file://')
+    expect(content).not.toContain('](../Images/Media/shared.png)')
+  })
+
+  it('still rejects an asset that escapes the selected folder', async () => {
+    // Selecting only the notes sub-folder puts the media outside the granted
+    // root — the traversal guard must keep skipping it.
+    const ctx = importContext.createImportContext('it7', new AbortController().signal)
+    const summary = await importer.markdownImporter.run(
+      { sourcePaths: [path.join(NESTED_ASSETS_DIR, 'Notes', 'People')] },
+      ctx
+    )
+
+    expect(summary.imported).toBe(1)
+    expect(summary.attachments).toBe(0)
+    expect(summary.skipped).toBe(1)
+
+    const note = path.join(tempVault.notesDir, 'Markdown', 'Person Note.md')
+    expect(fs.readFileSync(note, 'utf8')).toContain('](../Images/Media/shared.png)')
   })
 
   it('stops early when cancelled', async () => {

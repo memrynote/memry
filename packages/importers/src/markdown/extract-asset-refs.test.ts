@@ -30,6 +30,12 @@ describe('extractAssetRefs', () => {
     expect(extractAssetRefs('[[Some Note]]')).toEqual([])
   })
 
+  it('skips links to other markdown notes', () => {
+    expect(extractAssetRefs('[link](../root-note.md)')).toEqual([])
+    expect(extractAssetRefs('[link](notes/other.markdown)')).toEqual([])
+    expect(extractAssetRefs('[link](../root-note.md#heading)')).toEqual([])
+  })
+
   it('deduplicates repeated refs', () => {
     const body = '![](img.png) and again ![](img.png)'
     expect(extractAssetRefs(body)).toEqual(['img.png'])

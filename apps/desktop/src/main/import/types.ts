@@ -6,6 +6,12 @@ export interface ImportFileSpec {
   allowMultiple: boolean
   /** Pick a directory; selecting it grants recursive read of its contents. */
   directory?: boolean
+  /**
+   * Offer a folder picker *in addition to* the file picker. Electron cannot
+   * show one native panel that accepts both on Windows/Linux (it silently
+   * degrades to directory-only), so the dialog renders a second button.
+   */
+  allowDirectory?: boolean
   /** Pre-navigate the native picker to this absolute path. */
   defaultPath?: string
   /** Guidance shown inside the native picker. */

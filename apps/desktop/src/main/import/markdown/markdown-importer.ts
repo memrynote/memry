@@ -51,7 +51,7 @@ async function collectMarkdownFiles(
     } else if (entry.isFile()) {
       const ext = path.extname(entry.name).toLowerCase()
       if (MD_EXTENSIONS.has(ext)) {
-        out.push({ relPath: path.relative(rootDir, absPath), absPath })
+        out.push({ relPath: path.relative(rootDir, absPath), absPath, rootDir })
       }
     }
   }
@@ -61,7 +61,14 @@ export const markdownImporter: Importer = {
   id: 'markdown',
   name: 'Markdown',
   descriptionKey: 'import.sources.markdown',
-  fileSpec: { label: 'Markdown files', extensions: ['md', 'markdown'], allowMultiple: true },
+  fileSpec: {
+    label: 'Markdown files',
+    extensions: ['md', 'markdown'],
+    allowMultiple: true,
+    // Folder picks are what make co-located media work: assets referenced as
+    // `../Images/…` resolve against the selected folder, not the note's own.
+    allowDirectory: true
+  },
 
   async run(input: ImportInput, ctx: ImportContext): Promise<ImportSummary> {
     // ---- Phase 1: scan ----
@@ -86,7 +93,13 @@ export const markdownImporter: Importer = {
       } else {
         const ext = path.extname(sourcePath).toLowerCase()
         if (MD_EXTENSIONS.has(ext)) {
-          descriptors.push({ relPath: path.basename(sourcePath), absPath: sourcePath })
+          // A lone file grants nothing beyond its own folder, so that folder is
+          // the root — assets must sit next to it or below it.
+          descriptors.push({
+            relPath: path.basename(sourcePath),
+            absPath: sourcePath,
+            rootDir: path.dirname(sourcePath)
+          })
         }
       }
     }
@@ -131,11 +144,15 @@ export const markdownImporter: Importer = {
           // decode for disk resolution while keeping the original `ref` to rewrite
           // the body link. `../` is preserved so the traversal guard stays meaningful.
           const decodedRef = percentDecodeRef(ref)
-          // Guard against path traversal — must stay within the same source directory tree
+          // Refs are relative to the note, but the boundary is the folder the
+          // user selected — exports routinely keep media in a sibling folder
+          // (`../Images/Media/x.png`), which is still inside what they granted.
           const absRef = path.resolve(sourceDir, decodedRef)
-          const refRelToSource = path.relative(sourceDir, absRef)
-          if (refRelToSource.startsWith('..')) {
-            ctx.reportSkipped(ref, 'Path traversal outside source directory')
+          const refRelToRoot = path.relative(notePlan.rootDir, absRef)
+          // `path.relative` returns an absolute path when the two sides live on
+          // different Windows drives, so check that too.
+          if (refRelToRoot.startsWith('..') || path.isAbsolute(refRelToRoot)) {
+            ctx.reportSkipped(ref, 'Path traversal outside selected folder')
             continue
           }
 

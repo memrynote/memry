@@ -66,7 +66,14 @@ Notion produces a `.zip` (large exports are split into nested `Export-….zip �
 Import a single `.md` file, several files, or a whole folder. No export step is needed — just gather your `.md` / `.markdown` files.
 
 1. Open **Settings → Import** and click **Import** next to **Markdown**.
-2. Choose one or more `.md` / `.markdown` files, or a folder.
+2. Click **Choose file…** for individual notes, or **Choose folder…** for a whole export.
+
+::: tip Pick the folder if your export has images
+Exports from Capacities, Obsidian and similar apps keep media in a shared folder
+and reference it from notes as `../Images/Media/photo.png`. Those references only
+resolve when you select the folder that contains both — picking loose `.md` files
+leaves the images behind.
+:::
 
 | Markdown source               | memrynote                             |
 | ----------------------------- | ------------------------------------- |
@@ -85,7 +92,7 @@ an attachment and replace the whole embed with the imported image; the display s
 dropped, since you resize images in the editor instead. `![[Some Note]]` and
 `![[Some Note.md]]` embed another note rather than a file, so they are left untouched.
 
-**Limitations:** only `.md` / `.markdown` files are imported (other files only as referenced attachments); links to files outside the selected folder are not treated as attachments; wikilinks are kept literally; the display size on a sized embed is not carried over.
+**Limitations:** only `.md` / `.markdown` files are imported (other files only as referenced attachments); links to files outside the selected folder are not treated as attachments; links to other `.md` notes stay plain links rather than becoming attachments; note wikilinks are kept literally; the display size on a sized embed is not carried over.
 
 ## Importing from HTML
 

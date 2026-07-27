@@ -22,6 +22,13 @@ export interface FileDescriptor {
   relPath: string
   /** Absolute path on disk. */
   absPath: string
+  /**
+   * Absolute path the user actually selected — the folder they picked, or the
+   * containing folder of a single picked file. Asset references are allowed to
+   * point anywhere inside this root (exports commonly keep media in a sibling
+   * folder, e.g. `../Images/Media/x.png`) but never outside it.
+   */
+  rootDir: string
 }
 
 /** One note entry in the import plan. */
@@ -31,6 +38,8 @@ export interface NotePlan {
   title: string
   /** Vault folder path, e.g. 'Markdown' or 'Markdown/notes'. */
   vaultFolder: string
+  /** Selection root this note came from — bounds its asset resolution. */
+  rootDir: string
 }
 
 /** Result of mapFiles. */

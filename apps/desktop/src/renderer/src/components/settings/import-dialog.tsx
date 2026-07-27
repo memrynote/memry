@@ -48,13 +48,13 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
     onOpenChange(next)
   }
 
-  const choose = async () => {
+  const choose = async (directory = false) => {
     if (!item) return
     const result = await window.api.import.pickFiles({
       label: item.fileSpec.label,
       extensions: item.fileSpec.extensions,
       allowMultiple: item.fileSpec.allowMultiple,
-      directory: item.fileSpec.directory,
+      directory: directory || item.fileSpec.directory,
       defaultPath: item.fileSpec.defaultPath,
       message: item.fileSpec.message
     })
@@ -64,6 +64,9 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
   }
 
   const isDirectoryPick = Boolean(item?.fileSpec.directory)
+  // Electron degrades a combined file+directory panel to directory-only on
+  // Windows/Linux, so an importer that accepts either gets two buttons.
+  const offersFolderToo = Boolean(item?.fileSpec.allowDirectory) && !isDirectoryPick
 
   const startImport = () => {
     if (!item || paths.length === 0 || run.isRunning) return
@@ -87,14 +90,31 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
             {isDirectoryPick && (
               <p className="text-xs/4 text-muted-foreground">{t('import.dialog.folderHint')}</p>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void choose()}
-              disabled={run.isRunning || run.isPreviewing}
-            >
-              {isDirectoryPick ? t('import.dialog.chooseFolder') : t('import.dialog.choose')}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void choose()}
+                disabled={run.isRunning || run.isPreviewing}
+              >
+                {isDirectoryPick ? t('import.dialog.chooseFolder') : t('import.dialog.choose')}
+              </Button>
+              {offersFolderToo && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void choose(true)}
+                  disabled={run.isRunning || run.isPreviewing}
+                >
+                  {t('import.dialog.chooseDirectory')}
+                </Button>
+              )}
+            </div>
+            {offersFolderToo && (
+              <p className="text-xs/4 text-muted-foreground">
+                {t('import.dialog.folderKeepsAssets')}
+              </p>
+            )}
             {paths.length > 0 && (
               <p className="text-xs/4 text-muted-foreground truncate">
                 {t('import.dialog.selected', { count: paths.length })}
