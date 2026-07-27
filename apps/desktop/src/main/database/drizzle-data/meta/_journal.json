@@ -281,6 +281,13 @@
       "when": 1784831400000,
       "tag": "0039_attachment_upload_queue",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "6",
+      "when": 1785173794000,
+      "tag": "0040_project_link_pinned",
+      "breakpoints": true
     }
   ]
 }
