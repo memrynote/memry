@@ -53,6 +53,8 @@ import { editorSchema } from './editor-schema'
 import { analyzeTaskIntents } from './scan-task-intents'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
+import { useVault } from '@/hooks/use-vault'
+import { resolveNoteRelativeUrl } from '@/lib/resolve-note-relative-url'
 import {
   ReviewFormattingToolbar,
   ReviewFormattingToolbarController
@@ -130,6 +132,7 @@ interface ContentAreaEditorProps extends ContentAreaProps {
 
 const ContentAreaEditor = memo(function ContentAreaEditor({
   noteId,
+  notePath,
   initialContent,
   contentType = 'html',
   placeholder,
@@ -205,11 +208,30 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     return result.path
   }, [])
 
+  // Vaults written by other apps reference media with a plain relative path
+  // (`../Images/Media/photo.png`). Without this, BlockNote hands that string to
+  // `<img src>`, where it resolves against the renderer document's base URL
+  // instead of the vault and 404s. Render-time only — the markdown on disk keeps
+  // its relative path, so the vault stays readable by the app that wrote it.
+  const { vaultPath } = useVault()
+  const notePathRef = useRef(notePath)
+  const vaultPathRef = useRef(vaultPath)
+  useEffect(() => {
+    notePathRef.current = notePath
+    vaultPathRef.current = vaultPath
+  }, [notePath, vaultPath])
+
+  const resolveFileUrl = useCallback(
+    async (url: string) => resolveNoteRelativeUrl(url, notePathRef.current, vaultPathRef.current),
+    []
+  )
+
   // Create the BlockNote editor instance
   const editor = useCreateBlockNote({
     schema: editorSchema,
     setIdAttribute: true,
     uploadFile,
+    resolveFileUrl,
     placeholders: {
       default: resolvedPlaceholder,
       heading: t('editor.content.headingPlaceholder'),

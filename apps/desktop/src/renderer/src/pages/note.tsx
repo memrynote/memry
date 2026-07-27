@@ -1417,6 +1417,7 @@ export function NotePage({ noteId }: NotePageProps) {
             <ContentArea
               key={`${noteId}-${externalUpdateCount}`}
               noteId={noteId}
+              notePath={note.path}
               initialContent={review.editorInitialContent}
               contentType="markdown"
               placeholder={t('editor.content.placeholder')}

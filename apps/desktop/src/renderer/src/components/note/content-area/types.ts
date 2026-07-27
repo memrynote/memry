@@ -81,6 +81,12 @@ export interface ContentAreaProps {
   /** Note ID for attachment uploads (T069) */
   noteId?: string
   /**
+   * The note's path relative to the vault root (`Folder/Note.md`). Used to
+   * resolve relative image/file URLs written by other apps (Obsidian,
+   * Capacities) against the note's own folder at render time.
+   */
+  notePath?: string
+  /**
    * When false, this editor does NOT run note-level task auto-conversion side
    * effects (a sibling editor on the same note in this window owns them, R17).
    * Defaults to true; standalone callers own their effects.
