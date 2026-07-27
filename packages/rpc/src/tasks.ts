@@ -15,6 +15,9 @@ import {
 import type {
   Project,
   ProjectContents,
+  ProjectLinkedEvent,
+  ProjectLinkedFile,
+  ProjectLinkedNote,
   ProjectWithStats,
   RepeatConfig,
   Status,
@@ -44,6 +47,9 @@ export type TaskListOptions = z.input<typeof TaskListSchema>
 export type {
   Project,
   ProjectContents,
+  ProjectLinkedEvent,
+  ProjectLinkedFile,
+  ProjectLinkedNote,
   ProjectWithStats,
   RepeatConfig,
   Status,
