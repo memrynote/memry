@@ -178,6 +178,9 @@ const localSyncRegistry = createSyncAdapterRegistry([
       enqueueUpdate(itemId: string): void {
         getNoteSyncService()?.enqueueUpdate(itemId)
       },
+      enqueueRecoveredUpdate(itemId: string): void {
+        getNoteSyncService()?.enqueueRecoveredUpdate(itemId)
+      },
       enqueueDelete(itemId: string): void {
         getNoteSyncService()?.enqueueDelete(itemId)
       }

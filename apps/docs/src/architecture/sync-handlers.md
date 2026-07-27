@@ -62,6 +62,19 @@ ctx.db.transaction(() => {
 
 A partial write is impossible — either every change in a handler invocation applies, or none.
 
+Atomicity stops at the data DB, though. Index rows are derived state, published as projection events
+and drained on their own lane, so a handler returns before the index reflects what it just applied.
+Anything asking "does this item exist here?" must therefore ask the data DB, or accept that a freshly
+applied item can look absent. The debounced CRDT write-back is the case that matters for notes: from
+the index alone, a note the handler had already applied looked new, so the write-back re-derived its
+title from the Yjs `meta` map — the placeholder a note is created with — and the canonical upsert
+overwrote the correct title and path. It now falls back to the canonical row before treating a note
+as new.
+
+The Yjs `meta` title is not a source of truth in the other direction either. It is set once at note
+creation and updated only while the note's doc is open in memory, so a note renamed from the sidebar
+never records the new title there. Read it only when nothing else knows the note.
+
 ## Adding a New Sync Type
 
 1. Define a Zod schema in `packages/contracts/<domain>-api.ts`.
