@@ -43,8 +43,14 @@ capture input, five in-page tabs, and a right rail carrying overview / progress 
   (`data/tasks-data.ts:21-32`) — status counts must be derived, never hardcoded to three.
 - `Task` has **no** identifier/key field (`data/task-model.ts:39-74`). The `MEM-12` labels in
   the Paper mockups are design fiction.
-- `projects` table has `created_at` but **no** `updated_at`
-  (`packages/db-schema/src/schema/projects.ts:13`).
+- `projects` already has `modified_at` (`packages/db-schema/src/schema/projects.ts:19`),
+  stamped by every mutation path in `main/database/queries/projects.ts` and already listed in
+  `PROJECT_SYNCABLE_FIELDS` (`main/sync/field-merge.ts:37`). **No new column is needed for
+  "Updated".**
+- `note_metadata` and `calendar_events` live in the same data DB as `project_links`
+  (`packages/db-schema/src/data-schema.ts`), so the aggregate query is a plain JOIN.
+  `note_metadata` carries `title`, `emoji`, `fileType`, `mimeType`, `fileSize`, `modifiedAt` —
+  everything the note and file rows render.
 - `notesService.importFiles` returns `{destPath, filename, fileType}[]` with **no ids**
   (`main/vault/notes-crud.ts:184-190`); the indexer mints the id afterwards.
 - `PanelRight` icon is already exported (`lib/icons/icon-map.ts:460`).
@@ -109,11 +115,12 @@ work the renderer cannot do safely: URL title extraction, and — for files — 
 `notes:get-by-path` poll would race the indexer. One handler that imports, awaits indexing and
 links is both simpler and correct.
 
-### D5 — `projects.updated_at` as a real column
+### D5 — "Updated" reuses the existing `projects.modified_at`
 
-Additive, nullable. Derivation from linked-item activity was rejected: it answers a different
-question ("something happened in this project") than the one the Details panel asks, and costs
-a scan on every render.
+The brainstorming decision was to add an `updated_at` column rather than derive the value.
+Reading the schema showed the column already exists as `modified_at`: every project mutation
+stamps it, and it is already a field-merged sync field. So the decision stands — Details reads
+a real stored column, not a derived one — but it costs no migration and no sync change.
 
 ### D6 — Overview-pinned notes via `project_links.pinned`
 
@@ -202,7 +209,7 @@ components. Tasks reuses the existing virtualized project task list.
   control; unpinning keeps the project link.
 - **PROGRESS** — `<done> of <total> done` with a bar, then one row per project status (D7),
   then `Overdue`.
-- **DETAILS** — Created, Updated (falls back to Created when `updated_at` is null), and Linked
+- **DETAILS** — Created, Updated (`projects.modified_at`), and Linked
   counts (`20 notes · 40 files · 10 events`).
 
 ### Conventions
@@ -260,16 +267,12 @@ by `project-picker.tsx` and `use-project-quick-create.tsx`), and the three
 Hand-written, additive — data-DB Drizzle snapshots are broken past 0021:
 
 ```sql
--- apps/desktop/src/main/database/drizzle-data/0040_project_hub.sql
-ALTER TABLE projects ADD COLUMN updated_at TEXT;
+-- apps/desktop/src/main/database/drizzle-data/0040_project_link_pinned.sql
 ALTER TABLE project_links ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;
 ```
 
-`projects.updated_at` is nullable with no backfill: existing rows stay `NULL` and the Details
-panel falls back to Created. It is added to the Drizzle `projects` schema, to
-`PROJECT_SYNCABLE_FIELDS` (`main/sync/field-merge.ts`) and to `ProjectSyncPayloadSchema`
-(`packages/contracts/src/sync-payloads.ts`), and is stamped by the project mutation paths in
-main.
+Only one column. "Updated" needs no migration (D5) — it reads the existing
+`projects.modified_at`, which is already synced.
 
 `project_links.pinned` defaults to `0`, so every existing link keeps its current behaviour.
 `ProjectLinkSyncSchema` gains `pinned: z.number().optional()`.
@@ -291,7 +294,7 @@ Added to `packages/contracts/src/ipc-channels.ts` next to the existing `PROJECT_
 then `pnpm ipc:generate` && `pnpm ipc:check`:
 
 - `tasks:project-list-contents` → `{ tasks, notes, files, events, pinnedNotes, counts,
-homeNoteId, createdAt, updatedAt }`. One SQL pass; notes/files/events resolved by joining
+homeNoteId, createdAt, modifiedAt }`. One SQL pass; notes/files/events resolved by joining
   `project_links` to their tables so orphaned links never reach the renderer. `pinnedNotes` is
   the `pinned = 1` subset of `notes`, ordered by `position`.
 - `tasks:project-set-link-pinned` → `{ projectId, itemId, pinned }`. Pin or unpin an existing
@@ -308,10 +311,9 @@ Errors surface through `extractErrorMessage`; handlers log via `createLogger`.
 
 Per the production mandate: the migration is additive and preserves every existing row; no
 new `SyncItemType`; `item_type` stays `'project'`. `ProjectSyncPayloadSchema` and
-`ProjectLinkSyncSchema` are plain `z.object`s, so older clients strip `updatedAt` and `pinned`
-rather than rejecting the payload. A payload from an older client carries neither field —
-field-merge leaves `updatedAt` alone, and the `reconcileLinks` fallback above leaves `pinned`
-alone. No server change; the payload is an opaque encrypted blob in R2.
+`ProjectLinkSyncSchema` are plain `z.object`s, so older clients strip `pinned` rather than
+rejecting the payload. A payload from an older client carries no `pinned` field, and the
+`reconcileLinks` fallback above leaves the local value alone. No server change; the payload is an opaque encrypted blob in R2.
 
 ## 7. Testing
 
@@ -329,11 +331,10 @@ Unit:
 
 Sync (required by the backward-compat mandate):
 
-- A project payload with no `updatedAt` key applies without clearing the local value.
 - **A project payload whose links carry no `pinned` key leaves local pins intact** — this is
   the `reconcileLinks` landmine in §6 and the test that proves the fallback works. Mutate the
   fallback to `l.pinned ?? 0` and the test must fail.
-- Push → pull round-trip preserves `updatedAt` and `pinned`.
+- Push → pull round-trip preserves `pinned`.
 
 E2E:
 
