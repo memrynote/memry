@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { DragEndEvent } from '@dnd-kit/core'
+import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
 import TagsHubPage from './tags-hub'
 
 const mockUseTagCategories = vi.hoisted(() =>
@@ -48,6 +48,8 @@ const mockOpenSidebarItem = vi.fn()
 // (dnd-kit's hooks fall back to their documented no-op default context when
 // used outside a real `DndContext`, so this doesn't break the render).
 const dndMocks = vi.hoisted(() => ({
+  onDragStart: null as null | ((event: DragStartEvent) => void),
+  onDragOver: null as null | ((event: DragOverEvent) => void),
   onDragEnd: null as null | ((event: DragEndEvent) => void)
 }))
 
@@ -56,14 +58,26 @@ vi.mock('@dnd-kit/core', async () => {
   return {
     ...actual,
     DndContext: (props: {
+      onDragStart?: (event: DragStartEvent) => void
+      onDragOver?: (event: DragOverEvent) => void
       onDragEnd?: (event: DragEndEvent) => void
       children?: ReactNode
     }): ReactNode => {
+      dndMocks.onDragStart = props.onDragStart ?? null
+      dndMocks.onDragOver = props.onDragOver ?? null
       dndMocks.onDragEnd = props.onDragEnd ?? null
       return props.children
-    }
+    },
+    // The overlay portals to the body and would duplicate every chip in the
+    // queries below; the ghost's own rendering is covered by
+    // `tag-chip-item.test.tsx`.
+    DragOverlay: (): ReactNode => null
   }
 })
+
+/** Chips carry `title="<tag> (<count>)"`, which nothing else on the page does. */
+const chipTitles = (): string[] =>
+  screen.getAllByTitle(/\(\d+\)$/).map((el) => el.getAttribute('title') ?? '')
 
 vi.mock('@/hooks/use-tag-categories', () => ({
   useTagCategories: mockUseTagCategories
@@ -215,6 +229,203 @@ describe('TagsHubPage', () => {
         { tag: 'standup', categoryId: 'cat-1', sortOrder: 0 },
         { tag: 'meetings', categoryId: 'cat-2', sortOrder: 0 },
         { tag: 'personal', categoryId: 'cat-2', sortOrder: 1 }
+      ]
+    })
+  })
+
+  it('previews the dragged tag inside its target category before the drop', async () => {
+    const reorder = vi.fn().mockResolvedValue(undefined)
+    // `mockReturnValue`, not `...Once`: each drag event drives setState, so
+    // the page re-renders and re-calls the hook several times per drag.
+    mockUseTagCategories.mockReturnValue({
+      categories: [
+        {
+          id: 'cat-1',
+          name: 'Work',
+          sortOrder: 0,
+          tags: [
+            { tag: 'meetings', color: 'blue', icon: null, count: 3, sortOrder: 0 },
+            { tag: 'standup', color: 'blue', icon: null, count: 2, sortOrder: 1 }
+          ]
+        },
+        {
+          id: 'cat-2',
+          name: 'Personal',
+          sortOrder: 1,
+          tags: [{ tag: 'personal', color: 'green', icon: null, count: 1, sortOrder: 0 }]
+        }
+      ],
+      uncategorized: [],
+      isLoading: false,
+      error: null,
+      createCategory: vi.fn(),
+      renameCategory: vi.fn(),
+      deleteCategory: vi.fn(),
+      createTag: vi.fn(),
+      reorder
+    })
+
+    render(<TagsHubPage />)
+
+    expect(chipTitles()).toEqual(['meetings (3)', 'standup (2)', 'personal (1)'])
+
+    const active = {
+      id: 'meetings',
+      data: { current: { type: 'tag', tag: 'meetings', categoryId: 'cat-1' } }
+    }
+    const over = {
+      id: 'personal',
+      data: { current: { type: 'tag', tag: 'personal', categoryId: 'cat-2' } }
+    }
+
+    await act(async () => {
+      dndMocks.onDragStart?.({ active } as unknown as DragStartEvent)
+    })
+    await act(async () => {
+      dndMocks.onDragOver?.({ active, over } as unknown as DragOverEvent)
+    })
+
+    // The chip has left Work and now sits ahead of "personal" in Personal —
+    // this is the feedback the hub was missing entirely, and it happens
+    // before the pointer is released.
+    expect(chipTitles()).toEqual(['standup (2)', 'meetings (3)', 'personal (1)'])
+    expect(reorder).not.toHaveBeenCalled()
+  })
+
+  it('commits a previewed tag drag against the pre-drag order, not the preview', async () => {
+    const reorder = vi.fn().mockResolvedValue(undefined)
+    mockUseTagCategories.mockReturnValue({
+      categories: [
+        {
+          id: 'cat-1',
+          name: 'Work',
+          sortOrder: 0,
+          tags: [
+            { tag: 'meetings', color: 'blue', icon: null, count: 3, sortOrder: 0 },
+            { tag: 'standup', color: 'blue', icon: null, count: 2, sortOrder: 1 }
+          ]
+        },
+        {
+          id: 'cat-2',
+          name: 'Personal',
+          sortOrder: 1,
+          tags: [{ tag: 'personal', color: 'green', icon: null, count: 1, sortOrder: 0 }]
+        }
+      ],
+      uncategorized: [],
+      isLoading: false,
+      error: null,
+      createCategory: vi.fn(),
+      renameCategory: vi.fn(),
+      deleteCategory: vi.fn(),
+      createTag: vi.fn(),
+      reorder
+    })
+
+    render(<TagsHubPage />)
+
+    const active = {
+      id: 'meetings',
+      data: { current: { type: 'tag', tag: 'meetings', categoryId: 'cat-1' } }
+    }
+    const over = {
+      id: 'personal',
+      data: { current: { type: 'tag', tag: 'personal', categoryId: 'cat-2' } }
+    }
+
+    await act(async () => {
+      dndMocks.onDragStart?.({ active } as unknown as DragStartEvent)
+    })
+    await act(async () => {
+      dndMocks.onDragOver?.({ active, over } as unknown as DragOverEvent)
+    })
+    // Released without moving further. The preview has already put "meetings"
+    // where "personal" used to be, so the chip now under the pointer is
+    // "meetings" itself — that, not the original hover target, is what dnd-kit
+    // reports as `over` at drop time.
+    await act(async () => {
+      dndMocks.onDragEnd?.({
+        active,
+        over: {
+          id: 'meetings',
+          data: { current: { type: 'tag', tag: 'meetings', categoryId: 'cat-2' } }
+        }
+      } as unknown as DragEndEvent)
+    })
+
+    // Feeding the preview into the ordering arithmetic instead of the
+    // drag-start snapshot would ask "move meetings to where meetings already
+    // is" and persist nothing at all.
+    expect(reorder).toHaveBeenCalledWith({
+      tags: [
+        { tag: 'standup', categoryId: 'cat-1', sortOrder: 0 },
+        { tag: 'meetings', categoryId: 'cat-2', sortOrder: 0 },
+        { tag: 'personal', categoryId: 'cat-2', sortOrder: 1 }
+      ]
+    })
+  })
+
+  it('drops a previewed tag below the chip it was released over', async () => {
+    const reorder = vi.fn().mockResolvedValue(undefined)
+    mockUseTagCategories.mockReturnValue({
+      categories: [
+        {
+          id: 'cat-1',
+          name: 'Work',
+          sortOrder: 0,
+          tags: [
+            { tag: 'meetings', color: 'blue', icon: null, count: 3, sortOrder: 0 },
+            { tag: 'standup', color: 'blue', icon: null, count: 2, sortOrder: 1 }
+          ]
+        },
+        {
+          id: 'cat-2',
+          name: 'Personal',
+          sortOrder: 1,
+          tags: [{ tag: 'personal', color: 'green', icon: null, count: 1, sortOrder: 0 }]
+        }
+      ],
+      uncategorized: [],
+      isLoading: false,
+      error: null,
+      createCategory: vi.fn(),
+      renameCategory: vi.fn(),
+      deleteCategory: vi.fn(),
+      createTag: vi.fn(),
+      reorder
+    })
+
+    render(<TagsHubPage />)
+
+    const active = {
+      id: 'meetings',
+      data: { current: { type: 'tag', tag: 'meetings', categoryId: 'cat-1' } }
+    }
+    const overPersonal = {
+      id: 'personal',
+      data: { current: { type: 'tag', tag: 'personal', categoryId: 'cat-2' } }
+    }
+
+    await act(async () => {
+      dndMocks.onDragStart?.({ active } as unknown as DragStartEvent)
+    })
+    await act(async () => {
+      dndMocks.onDragOver?.({ active, over: overPersonal } as unknown as DragOverEvent)
+    })
+    // The pointer carried on past "personal" before release, so `over` is
+    // "personal" — which now sits *behind* the previewed chip. Position within
+    // a category is settled here rather than in the preview, which is what
+    // makes above-versus-below expressible at all.
+    await act(async () => {
+      dndMocks.onDragEnd?.({ active, over: overPersonal } as unknown as DragEndEvent)
+    })
+
+    // "personal" keeps cat-2/0, and `moveTag` only emits rows whose category
+    // or sort order actually changed, so it is absent by design.
+    expect(reorder).toHaveBeenCalledWith({
+      tags: [
+        { tag: 'standup', categoryId: 'cat-1', sortOrder: 0 },
+        { tag: 'meetings', categoryId: 'cat-2', sortOrder: 1 }
       ]
     })
   })

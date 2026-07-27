@@ -1,15 +1,23 @@
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
+import { useReducedMotion } from 'motion/react'
 import {
   DndContext,
+  DragOverlay,
   KeyboardCode,
   KeyboardSensor,
   PointerSensor,
-  closestCenter,
+  closestCorners,
+  defaultDropAnimationSideEffects,
+  pointerWithin,
   useSensor,
   useSensors,
-  type DragEndEvent
+  type CollisionDetection,
+  type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
+  type DropAnimation
 } from '@dnd-kit/core'
 import {
   SortableContext,
@@ -18,17 +26,20 @@ import {
 } from '@dnd-kit/sortable'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Search } from '@/lib/icons'
-import { useTagCategories, type HubCategory, type HubTag } from '@/hooks/use-tag-categories'
+import { useTagCategories, type HubTag } from '@/hooks/use-tag-categories'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
-import { CategoryBlock } from '@/components/tags-hub/category-block'
+import { CategoryBlock, CategoryDragChip } from '@/components/tags-hub/category-block'
+import { TagChipContent } from '@/components/tags-hub/tag-chip-item'
 import { InlineCreateRow } from '@/components/tags-hub/inline-create-row'
+import { moveCategory, applyCategoryOrder, type HubState } from '@/components/tags-hub/reorder'
 import {
-  moveCategory,
-  moveTag,
-  applyCategoryOrder,
-  applyTagAssignments,
-  type HubState
-} from '@/components/tags-hub/reorder'
+  beginTagDrag,
+  commitTagMove,
+  previewContainerMove,
+  resolveTagDrop,
+  type OverTarget,
+  type TagDragSession
+} from '@/components/tags-hub/drag-session'
 import { filterHub } from '@/components/tags-hub/filter'
 
 // Space picks up/drops a drag; Enter is left alone so focusing a chip and
@@ -40,9 +51,49 @@ const keyboardCodes = {
   end: [KeyboardCode.Space]
 }
 
-interface OptimisticState {
-  categories: HubCategory[]
-  uncategorized: HubTag[]
+/**
+ * Scopes collision detection to droppables the current drag can actually
+ * accept, then prefers the pointer's own hit over nearest-neighbour guessing.
+ *
+ * The hub mixes three kinds of droppable — category sections, per-category
+ * tag containers, and the chips themselves — and an unscoped `closestCenter`
+ * happily matches a category section while the pointer sits inside a tag
+ * container, which `onDragEnd` then rejects. Scoping first means a category
+ * drag only ever sees categories and a tag drag only ever sees chips and
+ * containers.
+ *
+ * Within a tag drag, chips are ranked ahead of the container holding them, so
+ * hovering a chip inserts at that chip's index instead of falling through to
+ * "append to the end of the category".
+ */
+const hubCollisionDetection: CollisionDetection = (args) => {
+  const activeType = args.active.data.current?.type
+  const droppableContainers = args.droppableContainers.filter((container) => {
+    const type = container.data.current?.type
+    return activeType === 'category'
+      ? type === 'category'
+      : type === 'tag' || type === 'tag-container'
+  })
+
+  const scoped = { ...args, droppableContainers }
+  const pointerHits = pointerWithin(scoped)
+  const collisions = pointerHits.length > 0 ? pointerHits : closestCorners(scoped)
+  if (activeType === 'category') return collisions
+
+  const typeById = new Map(droppableContainers.map((c) => [c.id, c.data.current?.type]))
+  return [...collisions].sort(
+    (a, b) => (typeById.get(a.id) === 'tag' ? 0 : 1) - (typeById.get(b.id) === 'tag' ? 0 : 1)
+  )
+}
+
+type ActiveDrag = { kind: 'tag'; tag: HubTag } | { kind: 'category'; name: string; count: number }
+
+function findHubTag(state: HubState, tag: string): HubTag | null {
+  return (
+    state.uncategorized.find((t) => t.tag === tag) ??
+    state.categories.flatMap((c) => c.tags).find((t) => t.tag === tag) ??
+    null
+  )
 }
 
 export function TagsHubPage(): React.JSX.Element {
@@ -59,17 +110,32 @@ export function TagsHubPage(): React.JSX.Element {
     reorder
   } = useTagCategories()
   const { openSidebarItem } = useSidebarNavigation()
+  const reduceMotion = useReducedMotion()
 
-  // Applied immediately on drop so the chip/block doesn't snap back while
-  // `reorder()` round-trips through IPC; cleared once that settles (on
-  // success the hook has already refetched the real order, on failure the
-  // real, unchanged order takes back over — either way this stops lying).
-  const [optimistic, setOptimistic] = useState<OptimisticState | null>(null)
+  // What the list actually renders, standing in for the hook's data in two
+  // consecutive phases of the same gesture: the live preview while a tag is
+  // being dragged (so it can be seen landing before the pointer is released),
+  // then the optimistic result while `reorder()` round-trips through IPC.
+  // Cleared once that settles — on success the hook has already refetched the
+  // real order, on failure the real, unchanged order takes back over.
+  const [override, setOverride] = useState<HubState | null>(null)
+  // `onDragEnd` needs the last preview `onDragOver` produced, and reading it
+  // from `override` would race the render that applied it. The ref is the
+  // authority; the state exists to trigger the render.
+  const overrideRef = useRef<HubState | null>(null)
+  const applyOverride = useCallback((next: HubState | null): void => {
+    overrideRef.current = next
+    setOverride(next)
+  }, [])
+
+  const dragSessionRef = useRef<TagDragSession | null>(null)
+  const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null)
+
   const [query, setQuery] = useState('')
   const isSearching = query.trim().length > 0
 
-  const displayCategories = optimistic?.categories ?? categories
-  const displayUncategorized = optimistic?.uncategorized ?? uncategorized
+  const displayCategories = override?.categories ?? categories
+  const displayUncategorized = override?.uncategorized ?? uncategorized
 
   const filtered = useMemo(
     () => filterHub({ categories: displayCategories, uncategorized: displayUncategorized }, query),
@@ -100,84 +166,153 @@ export function TagsHubPage(): React.JSX.Element {
 
   const categoryIds = useMemo(() => filteredCategories.map((c) => c.id), [filteredCategories])
 
+  // The overlay is the only thing that follows the cursor. Its default drop
+  // animation flies the ghost into the node it is replacing — which, because
+  // the preview has already relocated the chip, is the slot at the
+  // destination rather than the chip's original home.
+  const dropAnimation: DropAnimation | null = reduceMotion
+    ? null
+    : {
+        duration: 180,
+        easing: 'ease-out',
+        sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } })
+      }
+
   const handleTagOpen = (tag: string): void => {
     openSidebarItem({ type: 'tag', title: tag, path: '/tags/' + tag, entityId: tag })
   }
 
+  const handleDragStart = useCallback(
+    (event: DragStartEvent): void => {
+      const activeData = event.active.data.current as { type?: string } | undefined
+      const snapshot: HubState = {
+        categories: displayCategories,
+        uncategorized: displayUncategorized
+      }
+
+      if (activeData?.type === 'tag') {
+        const tagName = String(event.active.id)
+        const hubTag = findHubTag(snapshot, tagName)
+        if (!hubTag) return
+        dragSessionRef.current = beginTagDrag(snapshot, tagName)
+        setActiveDrag({ kind: 'tag', tag: hubTag })
+        // Seed the preview with the pre-drag arrangement so every later
+        // `onDragOver` has a base to move the tag within.
+        applyOverride(snapshot)
+        return
+      }
+
+      if (activeData?.type === 'category') {
+        const category = displayCategories.find((c) => c.id === event.active.id)
+        if (!category) return
+        setActiveDrag({ kind: 'category', name: category.name, count: category.tags.length })
+      }
+    },
+    [displayCategories, displayUncategorized, applyOverride]
+  )
+
+  // Tag drags preview as they go: the chip is moved into whatever category the
+  // pointer is over, so the user watches it land instead of guessing. Only the
+  // change of category is written to state — `previewContainerMove` explains
+  // why previewing position *within* a category loops forever. Category drags
+  // are left alone entirely; `verticalListSortingStrategy` already displaces
+  // their neighbours, and moving them in state as well would fight it.
+  const handleDragOver = useCallback(
+    (event: DragOverEvent): void => {
+      const session = dragSessionRef.current
+      if (!session || !event.over) return
+
+      const overData = event.over.data.current as OverTarget | undefined
+      if (!overData || (overData.type !== 'tag' && overData.type !== 'tag-container')) return
+
+      const base = overrideRef.current ?? session.snapshot
+      const next = previewContainerMove(base, session.tag, overData)
+      if (next) applyOverride(next)
+    },
+    [applyOverride]
+  )
+
+  const handleDragCancel = useCallback((): void => {
+    dragSessionRef.current = null
+    setActiveDrag(null)
+    applyOverride(null)
+  }, [applyOverride])
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent): void => {
+      const session = dragSessionRef.current
+      dragSessionRef.current = null
+      setActiveDrag(null)
+
       // Belt-and-suspenders alongside `activeSensors`: even if a drag end
       // event arrives while a query is active, never let it reach
       // `reorder()` — reordering a filtered view would write sort orders
       // that don't reflect the real, unfiltered order.
-      if (isSearching) return
+      if (isSearching) {
+        applyOverride(null)
+        return
+      }
 
-      const { active, over } = event
-      if (!over) return
+      const activeData = event.active.data.current as { type?: string } | undefined
 
-      const activeData = active.data.current as
-        | { type: 'category'; categoryId: string | null }
-        | { type: 'tag'; categoryId: string | null }
-        | undefined
-      if (!activeData) return
+      if (activeData?.type === 'category') {
+        const overData = event.over?.data.current as { type?: string } | undefined
+        if (!event.over || overData?.type !== 'category') {
+          applyOverride(null)
+          return
+        }
 
-      if (activeData.type === 'category') {
-        const overData = over.data.current as { type?: string } | undefined
-        if (overData?.type !== 'category') return
-
-        const fromIndex = displayCategories.findIndex((c) => c.id === active.id)
-        const toIndex = displayCategories.findIndex((c) => c.id === over.id)
-        if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return
+        const fromIndex = displayCategories.findIndex((c) => c.id === event.active.id)
+        const toIndex = displayCategories.findIndex((c) => c.id === event.over?.id)
+        if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
+          applyOverride(null)
+          return
+        }
 
         const result = moveCategory(displayCategories, fromIndex, toIndex)
-        if (result.length === 0) return
+        if (result.length === 0) {
+          applyOverride(null)
+          return
+        }
 
-        setOptimistic({
+        applyOverride({
           categories: applyCategoryOrder(displayCategories, result),
           uncategorized: displayUncategorized
         })
-        void reorder({ categories: result }).finally(() => setOptimistic(null))
+        void reorder({ categories: result }).finally(() => applyOverride(null))
         return
       }
 
-      // Tag drag: dropped either on another chip (insert at that chip's
-      // index within its category) or on a category's tag-container (an
-      // empty category, or blank space past the last chip — append to end).
-      const tag = String(active.id)
-      const overData = over.data.current as
-        | { type: 'tag'; tag: string; categoryId: string | null }
-        | { type: 'tag-container'; categoryId: string | null }
-        | undefined
-      if (!overData) return
+      // Tag drag. Normally the preview already holds the final arrangement
+      // and only has to be turned into persisted assignments, computed
+      // against the session's pre-drag snapshot — see `drag-session.ts` for
+      // why the preview must not itself be the input. When the drag ended
+      // before any `onDragOver` ran, there is no preview to read and the
+      // final collision is resolved directly instead.
+      const preview = overrideRef.current
+      const overData = event.over?.data.current as OverTarget | undefined
+      const isTagTarget = overData && (overData.type === 'tag' || overData.type === 'tag-container')
+      const assignments =
+        session && preview
+          ? commitTagMove(session, preview, isTagTarget ? overData : undefined)
+          : isTagTarget
+            ? resolveTagDrop(
+                { categories: displayCategories, uncategorized: displayUncategorized },
+                String(event.active.id),
+                overData
+              )
+            : []
 
-      const targetTagsFor = (categoryId: string | null): HubTag[] =>
-        categoryId === null
-          ? displayUncategorized
-          : (displayCategories.find((c) => c.id === categoryId)?.tags ?? [])
-
-      let toCategoryId: string | null
-      let toIndex: number
-
-      if (overData.type === 'tag') {
-        toCategoryId = overData.categoryId
-        const targetTags = targetTagsFor(toCategoryId)
-        const overIndex = targetTags.findIndex((t) => t.tag === overData.tag)
-        toIndex = overIndex === -1 ? targetTags.length : overIndex
-      } else if (overData.type === 'tag-container') {
-        toCategoryId = overData.categoryId
-        toIndex = targetTagsFor(toCategoryId).length
-      } else {
+      if (assignments.length === 0) {
+        applyOverride(null)
         return
       }
 
-      const state: HubState = { categories: displayCategories, uncategorized: displayUncategorized }
-      const result = moveTag(state, tag, toCategoryId, toIndex)
-      if (result.length === 0) return
-
-      setOptimistic(applyTagAssignments(displayCategories, displayUncategorized, result))
-      void reorder({ tags: result }).finally(() => setOptimistic(null))
+      // The preview stays on screen as the optimistic state until the write
+      // settles, so nothing snaps back mid-flight.
+      void reorder({ tags: assignments }).finally(() => applyOverride(null))
     },
-    [isSearching, displayCategories, displayUncategorized, reorder]
+    [isSearching, displayCategories, displayUncategorized, reorder, applyOverride]
   )
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
@@ -192,8 +327,10 @@ export function TagsHubPage(): React.JSX.Element {
     <ScrollArea className="h-full">
       {/* Full-bleed, not a centred measure: the column spans the window so
           section rules run the full width, while the content inside it stays
-          left-aligned. Vertical rhythm comes from each section's own
-          `border-t py-[22px]`, so this column deliberately has no `gap`. */}
+          on the start edge. Vertical rhythm comes from each section's own
+          `border-t py-[22px]`, so this column deliberately has no `gap`. The
+          leading section drops its rule (`isFirst`) so the list starts
+          directly under the action bar instead of behind a stray divider. */}
       <div className="flex w-full flex-col px-10 pt-6 pb-10">
         {isLoading ? (
           <div className="text-sm text-muted-foreground">{t('tagsHub.loading')}</div>
@@ -201,7 +338,10 @@ export function TagsHubPage(): React.JSX.Element {
           <>
             <DndContext
               sensors={activeSensors}
-              collisionDetection={closestCenter}
+              collisionDetection={hubCollisionDetection}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragCancel={handleDragCancel}
               onDragEnd={handleDragEnd}
             >
               {/* One action bar leads the page: create affordances and search
@@ -237,12 +377,13 @@ export function TagsHubPage(): React.JSX.Element {
               ) : (
                 <>
                   <SortableContext items={categoryIds} strategy={verticalListSortingStrategy}>
-                    {filteredCategories.map((category) => (
+                    {filteredCategories.map((category, index) => (
                       <CategoryBlock
                         key={category.id}
                         id={category.id}
                         name={category.name}
                         tags={category.tags}
+                        isFirst={index === 0}
                         onTagOpen={handleTagOpen}
                         onRename={(newName) => renameCategory(category.id, newName)}
                         onDelete={() => deleteCategory(category.id)}
@@ -254,11 +395,22 @@ export function TagsHubPage(): React.JSX.Element {
                       id={null}
                       name={t('tagsHub.uncategorized')}
                       tags={filteredUncategorized}
+                      isFirst={filteredCategories.length === 0}
                       onTagOpen={handleTagOpen}
                     />
                   )}
                 </>
               )}
+              {/* The lifted ghost: a calm 5% scale and a shadow, no tilt —
+                  a tag chip is small enough that rotation reads as novelty
+                  rather than weight. */}
+              <DragOverlay dropAnimation={dropAnimation}>
+                {activeDrag?.kind === 'tag' ? (
+                  <TagChipContent tag={activeDrag.tag} className="scale-105 shadow-lg" />
+                ) : activeDrag?.kind === 'category' ? (
+                  <CategoryDragChip name={activeDrag.name} count={activeDrag.count} />
+                ) : null}
+              </DragOverlay>
             </DndContext>
           </>
         )}

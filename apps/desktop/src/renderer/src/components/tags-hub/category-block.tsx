@@ -30,10 +30,72 @@ import type { HubTag } from '@/hooks/use-tag-categories'
 /** Stable sortable id for the Uncategorized block, which never reorders. */
 const UNCATEGORIZED_SORTABLE_ID = '__uncategorized__'
 
+/**
+ * Classes for a category's tag row, which doubles as its drop zone.
+ *
+ * Split out of the component because `isOver` only flips during a live
+ * pointer drag, which jsdom can't drive — as a pure function the branch is
+ * directly assertable (`category-drop-zone.test.ts`).
+ *
+ * A populated row used to get no hover treatment at all (the highlight was
+ * gated on the category being empty), so dragging a tag onto a category that
+ * already had chips gave no signal about where it would land. Both states
+ * now respond. The populated row's padding is cancelled by a matching
+ * negative margin so gaining the highlight box shifts no chip.
+ */
+export function tagDropZoneClasses({
+  isOver,
+  isEmpty
+}: {
+  isOver: boolean
+  isEmpty: boolean
+}): string {
+  if (isEmpty) {
+    return cn(
+      'rounded-lg border border-dashed py-2.5 ps-3 text-start text-xs transition-colors',
+      isOver
+        ? 'border-primary/50 bg-primary/5 text-primary'
+        : 'border-border text-muted-foreground/80'
+    )
+  }
+  return cn(
+    '-m-1 flex flex-wrap gap-2 rounded-lg border border-transparent p-1 transition-colors',
+    isOver && 'border-primary/30 bg-primary/5'
+  )
+}
+
+/**
+ * The compact stand-in a category becomes while being dragged, rendered by
+ * the page's `DragOverlay`. Deliberately not the whole section: a wide
+ * category would otherwise lift a ghost covering half the window, which
+ * fights the hub's calm register. Name and count are enough to say what is
+ * being moved.
+ */
+export function CategoryDragChip({
+  name,
+  count
+}: {
+  name: string
+  count: number
+}): React.JSX.Element {
+  return (
+    <div className="flex h-8 items-center gap-2 rounded-lg border border-border bg-popover ps-2 pe-3 shadow-lg">
+      <GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+      <span className="text-[13px] font-medium leading-[18px] tracking-[-0.005em] text-foreground">
+        {name}
+      </span>
+      <span className="text-xs tabular-nums text-muted-foreground/70">{count}</span>
+    </div>
+  )
+}
+
 export interface CategoryBlockProps {
   id: string | null
   name: string
   tags: HubTag[]
+  /** Drops this block's top rule — the rules separate blocks, so the block
+      leading the list gets none and sits directly under the action bar. */
+  isFirst?: boolean
   onTagOpen(tag: string): void
   onRename?(name: string): void
   onDelete?(): void
@@ -63,6 +125,7 @@ export function CategoryBlock({
   id,
   name,
   tags,
+  isFirst = false,
   onTagOpen,
   onRename,
   onDelete
@@ -142,7 +205,8 @@ export function CategoryBlock({
       ref={setSortableNodeRef}
       style={sectionStyle}
       className={cn(
-        'flex flex-col gap-[11px] border-t border-border py-[22px]',
+        'flex flex-col gap-[11px] py-[22px]',
+        !isFirst && 'border-t border-border',
         isDragging && 'opacity-50'
       )}
     >
@@ -233,12 +297,7 @@ export function CategoryBlock({
       <SortableContext items={tagIds} strategy={rectSortingStrategy}>
         <div
           ref={setDroppableNodeRef}
-          className={cn(
-            tags.length === 0
-              ? 'rounded-lg border border-dashed border-border py-2.5 ps-3 text-start text-xs text-muted-foreground/80'
-              : 'flex flex-wrap gap-2',
-            isOver && tags.length === 0 && 'border-primary/50 bg-primary/5 text-primary'
-          )}
+          className={tagDropZoneClasses({ isOver, isEmpty: tags.length === 0 })}
         >
           {tags.length === 0
             ? t('tagsHub.category.emptyHint')
