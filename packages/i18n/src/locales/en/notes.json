@@ -532,7 +532,9 @@
       "resizePdf": "Resize PDF",
       "alignLeft": "Align left",
       "alignCenter": "Align center",
-      "alignRight": "Align right"
+      "alignRight": "Align right",
+      "previousPage": "Previous page",
+      "nextPage": "Next page"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Open in task panel",

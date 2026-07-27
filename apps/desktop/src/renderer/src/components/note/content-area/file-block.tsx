@@ -19,6 +19,8 @@ import {
   Download,
   Upload,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
   LeftToRightBlockQuote,
   TextAlignCenter,
   RightToLeftBlockQuote
@@ -124,6 +126,12 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
   const { t: tPhaseF } = useT('notes')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // --- Paging ---------------------------------------------------------------
+  // The embed stays chromeless at rest; the page controls are a hover overlay
+  // and only exist at all when the document actually has more than one page.
+  const [numPages, setNumPages] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1)
 
   // --- Resize state ---------------------------------------------------------
   // The column bounds the max width so the page never overflows horizontally;
@@ -273,9 +281,18 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
     [cardWidth, cardHeight, width, height, widthLimit, heightLimit, pageNaturalHeight, onResize]
   )
 
-  const handleLoadSuccess = () => {
+  const handleLoadSuccess = ({ numPages: total }: { numPages: number }) => {
+    setNumPages(total)
+    setCurrentPage(1)
     setLoading(false)
   }
+
+  const goToPage = useCallback(
+    (page: number) => {
+      setCurrentPage((current) => (page >= 1 && page <= numPages ? page : current))
+    },
+    [numPages]
+  )
 
   const handleLoadError = (err: Error) => {
     setError(
@@ -329,13 +346,47 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
               loading={PDF_LOADING_INDICATOR}
             >
               <Page
-                pageNumber={1}
+                pageNumber={currentPage}
                 width={pageWidth}
                 renderTextLayer={true}
                 renderAnnotationLayer={true}
               />
             </Document>
           </div>
+
+          {/* Page controls — hover reveal, bottom-centered. `inset-x-0` + a
+              centering flex row keeps this RTL-safe without a translate, and
+              only the pill itself takes pointer events so the page stays
+              selectable underneath. Sits above react-pdf's text layer (z-2). */}
+          {!loading && !error && numPages > 1 && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-2 z-10 flex justify-center opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+              <div className="pointer-events-auto flex items-center gap-px rounded-md border border-border bg-background/90 p-0.5 shadow-sm">
+                <button
+                  type="button"
+                  aria-label={tPhaseF('phaseF.componentsNoteContentAreaFileBlock.previousPage')}
+                  disabled={currentPage <= 1}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => goToPage(currentPage - 1)}
+                  className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent/50 disabled:opacity-40 disabled:hover:bg-transparent"
+                >
+                  <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
+                </button>
+                <span className="px-1 text-xs tabular-nums text-muted-foreground">
+                  {currentPage} / {numPages}
+                </span>
+                <button
+                  type="button"
+                  aria-label={tPhaseF('phaseF.componentsNoteContentAreaFileBlock.nextPage')}
+                  disabled={currentPage >= numPages}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => goToPage(currentPage + 1)}
+                  className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent/50 disabled:opacity-40 disabled:hover:bg-transparent"
+                >
+                  <ChevronRight className="h-4 w-4 rtl:rotate-180" />
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Alignment controls — hover reveal, top-inline-end */}
           {!loading && !error && (

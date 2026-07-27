@@ -11,7 +11,8 @@ const mocks = vi.hoisted(() => ({
   syncState: {
     uploadProgress: {} as Record<string, { progress: number; status: string }>,
     downloadProgress: {} as Record<string, { progress: number; status: string }>
-  }
+  },
+  pdfPageCount: 2
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -44,7 +45,7 @@ vi.mock('react-pdf', () => ({
     onLoadError?: (error: Error) => void
   }) => (
     <div data-testid="pdf-document">
-      <button type="button" onClick={() => onLoadSuccess?.({ numPages: 2 })}>
+      <button type="button" onClick={() => onLoadSuccess?.({ numPages: mocks.pdfPageCount })}>
         load pdf
       </button>
       <button type="button" onClick={() => onLoadError?.(new Error('broken pdf'))}>
@@ -60,6 +61,7 @@ vi.mock('react-pdf', () => ({
 describe('file block helpers', () => {
   beforeEach(() => {
     mocks.syncState = { uploadProgress: {}, downloadProgress: {} }
+    mocks.pdfPageCount = 2
   })
 
   it('serializes, parses, and creates file block content', () => {
@@ -222,6 +224,67 @@ describe('file block helpers', () => {
     expect(updateBlock).toHaveBeenCalledWith(block, {
       props: expect.objectContaining({ width: expect.any(Number) })
     })
+  })
+
+  it('pages through a multi-page PDF from the hover controls', () => {
+    const Render = (createFileBlock as any).render
+
+    render(
+      <Render
+        contentRef={vi.fn()}
+        block={{
+          props: {
+            url: '/vault/manual.pdf',
+            name: 'manual.pdf',
+            size: 2048,
+            mimeType: 'application/pdf'
+          }
+        }}
+      />
+    )
+    fireEvent.click(screen.getAllByText('load pdf')[0])
+
+    const prev = screen.getByLabelText('phaseF.componentsNoteContentAreaFileBlock.previousPage')
+    const next = screen.getByLabelText('phaseF.componentsNoteContentAreaFileBlock.nextPage')
+
+    // Opens on page 1; there is no page before it.
+    expect(screen.getByText('page 1')).toBeInTheDocument()
+    expect(screen.getByText('1 / 2')).toBeInTheDocument()
+    expect(prev).toBeDisabled()
+    expect(next).toBeEnabled()
+
+    fireEvent.click(next)
+    expect(screen.getByText('page 2')).toBeInTheDocument()
+    expect(screen.getByText('2 / 2')).toBeInTheDocument()
+    expect(next).toBeDisabled()
+
+    fireEvent.click(prev)
+    expect(screen.getByText('page 1')).toBeInTheDocument()
+    expect(prev).toBeDisabled()
+  })
+
+  it('keeps single-page PDFs chromeless (no page controls)', () => {
+    const Render = (createFileBlock as any).render
+    mocks.pdfPageCount = 1
+
+    render(
+      <Render
+        contentRef={vi.fn()}
+        block={{
+          props: {
+            url: '/vault/manual.pdf',
+            name: 'manual.pdf',
+            size: 2048,
+            mimeType: 'application/pdf'
+          }
+        }}
+      />
+    )
+    fireEvent.click(screen.getAllByText('load pdf')[0])
+
+    expect(screen.queryByLabelText('phaseF.componentsNoteContentAreaFileBlock.nextPage')).toBeNull()
+    // The rest of the chrome-free embed still works.
+    expect(screen.getByRole('slider')).toBeInTheDocument()
   })
 
   it('commits an alignment to the block prop via the editor', () => {
