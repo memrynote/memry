@@ -25,6 +25,7 @@ import { prepareVoiceMemoAudio } from '@/lib/voice-memo-audio'
 import { VoiceRecorder, type VoiceRecorderHandle } from './voice-recorder'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts-base'
 import { useT } from '@memry/i18n/renderer'
+import { isLikelyUrl, normalizeUrl } from '@/lib/capture-intent'
 
 /**
  * All allowed attachment MIME types for inbox capture.
@@ -69,39 +70,7 @@ interface CaptureInputProps {
   focusSignal?: number
 }
 
-/**
- * Simple URL detection regex
- * Matches common URL patterns including http(s), www, and common TLDs
- */
-const URL_REGEX =
-  /^(https?:\/\/|www\.)[^\s]+$|^[^\s]+\.(com|org|net|io|co|dev|app|me|info|biz|edu|gov)[^\s]*$/i
-
 const RECORDER_TRANSITION_MS = 250
-
-/**
- * Check if a string looks like a URL
- */
-function isLikelyUrl(text: string): boolean {
-  const trimmed = text.trim()
-  // Don't match if it's multi-line (notes can contain URLs)
-  if (trimmed.includes('\n')) return false
-  return URL_REGEX.test(trimmed)
-}
-
-/**
- * Normalize a URL by adding https:// if missing
- */
-function normalizeUrl(text: string): string {
-  const trimmed = text.trim()
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-    return trimmed
-  }
-  if (trimmed.startsWith('www.')) {
-    return `https://${trimmed}`
-  }
-  // For bare domains like "example.com/path"
-  return `https://${trimmed}`
-}
 
 export function CaptureInput({
   onCaptureSuccess,

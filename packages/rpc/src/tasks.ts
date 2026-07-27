@@ -6,6 +6,8 @@ import {
   ProjectListForItemSchema,
   ProjectSetHomeNoteSchema,
   ProjectSetLinkPinnedSchema,
+  ProjectCaptureUrlSchema,
+  ProjectImportFilesSchema,
   ProjectUpdateSchema,
   StatusCreateSchema,
   TaskCreateSchema,
@@ -38,6 +40,20 @@ export type ProjectUpdateInput = z.input<typeof ProjectUpdateSchema>
 export type ProjectLinkItemInput = z.input<typeof ProjectLinkItemSchema>
 export type ProjectSetHomeNoteInput = z.input<typeof ProjectSetHomeNoteSchema>
 export type ProjectSetLinkPinnedInput = z.input<typeof ProjectSetLinkPinnedSchema>
+export type ProjectCaptureUrlInput = z.input<typeof ProjectCaptureUrlSchema>
+export type ProjectImportFilesInput = z.input<typeof ProjectImportFilesSchema>
+
+export interface ProjectCaptureUrlResponse {
+  success: boolean
+  noteId?: string
+  error?: string
+}
+
+export interface ProjectImportFilesResponse {
+  success: boolean
+  linked: string[]
+  failed: { path: string; error: string }[]
+}
 export type ProjectItemType = z.input<typeof ProjectListForItemSchema>['itemType']
 export type StatusCreateInput = z.input<typeof StatusCreateSchema>
 export type TaskCreateInput = z.input<typeof TaskCreateSchema>
@@ -270,6 +286,18 @@ export const tasksRpc = defineDomain({
     listProjectLinks: defineMethod<(projectId: string) => Promise<ProjectLink[]>>({
       channel: TasksChannels.invoke.PROJECT_LIST_LINKS,
       params: ['projectId']
+    }),
+    captureUrlToProject: defineMethod<
+      (input: ProjectCaptureUrlInput) => Promise<ProjectCaptureUrlResponse>
+    >({
+      channel: TasksChannels.invoke.PROJECT_CAPTURE_URL,
+      params: ['input']
+    }),
+    importFilesToProject: defineMethod<
+      (input: ProjectImportFilesInput) => Promise<ProjectImportFilesResponse>
+    >({
+      channel: TasksChannels.invoke.PROJECT_IMPORT_FILES,
+      params: ['input']
     }),
     listProjectContents: defineMethod<(projectId: string) => Promise<ProjectContents>>({
       channel: TasksChannels.invoke.PROJECT_LIST_CONTENTS,

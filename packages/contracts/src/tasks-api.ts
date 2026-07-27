@@ -232,6 +232,16 @@ export const ProjectSetLinkPinnedSchema = z.object({
   pinned: z.boolean()
 })
 
+export const ProjectCaptureUrlSchema = z.object({
+  projectId: z.string(),
+  url: z.string()
+})
+
+export const ProjectImportFilesSchema = z.object({
+  projectId: z.string(),
+  sourcePaths: z.array(z.string())
+})
+
 export const ProjectListForItemSchema = z.object({
   itemType: z.enum(['note', 'calendar_event', 'file']),
   itemId: z.string()

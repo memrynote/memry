@@ -143,6 +143,8 @@ export function createGeneratedRpcApi({
       "linkProjectItem": ((input) => invoke("tasks:project-link-item", input)) as GeneratedRpcApi["tasks"]["linkProjectItem"],
       "unlinkProjectItem": ((input) => invoke("tasks:project-unlink-item", input)) as GeneratedRpcApi["tasks"]["unlinkProjectItem"],
       "listProjectLinks": ((projectId) => invoke("tasks:project-list-links", projectId)) as GeneratedRpcApi["tasks"]["listProjectLinks"],
+      "captureUrlToProject": ((input) => invoke("tasks:project-capture-url", input)) as GeneratedRpcApi["tasks"]["captureUrlToProject"],
+      "importFilesToProject": ((input) => invoke("tasks:project-import-files", input)) as GeneratedRpcApi["tasks"]["importFilesToProject"],
       "listProjectContents": ((projectId) => invoke("tasks:project-list-contents", projectId)) as GeneratedRpcApi["tasks"]["listProjectContents"],
       "setProjectLinkPinned": ((input) => invoke("tasks:project-set-link-pinned", input)) as GeneratedRpcApi["tasks"]["setProjectLinkPinned"],
       "setProjectHomeNote": ((input) => invoke("tasks:project-set-home-note", input)) as GeneratedRpcApi["tasks"]["setProjectHomeNote"],

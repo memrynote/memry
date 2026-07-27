@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTasksContext } from '@/contexts/tasks'
 import { getFilteredTasks } from '@/lib/task-utils'
 import { tasksService, onProjectUpdated } from '@/services/tasks-service'
@@ -58,6 +58,14 @@ const EMPTY_CONTENTS: ProjectContents = {
 
 const EMPTY_PROGRESS: ProjectProgress = { done: 0, total: 0, pct: 0, statuses: [], overdue: 0 }
 
+interface LoadedProject {
+  projectId: string
+  contents: ProjectContents
+  homeNoteId: string | null
+  createdAt: Date | null
+  modifiedAt: Date | null
+}
+
 const byOrder = (a: Status, b: Status): number => a.order - b.order
 
 /**
@@ -114,16 +122,12 @@ export function deriveProgress(project: Project | null, tasks: Task[]): ProjectP
 export function useProjectHub(projectId: string | undefined): ProjectHubData {
   const { tasks, projects } = useTasksContext()
 
-  const [contents, setContents] = useState<ProjectContents>(EMPTY_CONTENTS)
-  const [isLoading, setIsLoading] = useState(false)
-  // `undefined` = not resolved yet, so the rail does not flash a
-  // "create overview note" affordance before the first response lands.
-  const [homeNoteId, setHomeNoteId] = useState<string | null | undefined>(undefined)
-  const [timestamps, setTimestamps] = useState<{ createdAt: Date; modifiedAt: Date } | null>(null)
-
-  // Guards against an out-of-order response for a project the user already
-  // navigated away from stomping fresher state.
-  const latestRequestRef = useRef<string | undefined>(undefined)
+  // One state slot holding the project the data belongs to. Keeping the id with
+  // the payload means "is this stale?" is a comparison at render time instead of
+  // a pile of resets whenever the prop changes.
+  const [loaded, setLoaded] = useState<LoadedProject | null>(null)
+  // Bumped by refresh() and by PROJECT_UPDATED; re-runs the effect below.
+  const [reloadToken, setReloadToken] = useState(0)
 
   const project = useMemo(
     () => projects.find((candidate) => candidate.id === projectId) ?? null,
@@ -135,51 +139,55 @@ export function useProjectHub(projectId: string | undefined): ProjectHubData {
     return getFilteredTasks(tasks, projectId, 'project', projects)
   }, [tasks, projectId, projects])
 
-  const load = useCallback(async (): Promise<void> => {
-    if (!projectId) {
-      latestRequestRef.current = undefined
-      setContents(EMPTY_CONTENTS)
-      setHomeNoteId(null)
-      setTimestamps(null)
-      return
-    }
-
-    latestRequestRef.current = projectId
-    setIsLoading(true)
-    try {
-      const [loadedContents, loadedProject] = await Promise.all([
-        tasksService.listProjectContents(projectId),
-        tasksService.getProject(projectId)
-      ])
-      if (latestRequestRef.current !== projectId) return
-
-      setContents(loadedContents)
-      setHomeNoteId(loadedProject?.homeNoteId ?? null)
-      setTimestamps(
-        loadedProject
-          ? {
-              createdAt: new Date(loadedProject.createdAt),
-              modifiedAt: new Date(loadedProject.modifiedAt)
-            }
-          : null
-      )
-    } catch (error) {
-      if (latestRequestRef.current !== projectId) return
-      log.error('Failed to load project contents', extractErrorMessage(error))
-    } finally {
-      if (latestRequestRef.current === projectId) setIsLoading(false)
-    }
-  }, [projectId])
-
   useEffect(() => {
-    void load()
-  }, [load])
+    if (!projectId) return
+
+    // Cancellation is per effect run, so a response for a project the user has
+    // already navigated away from can never be stored.
+    let cancelled = false
+
+    void (async () => {
+      try {
+        const [contents, loadedProject] = await Promise.all([
+          tasksService.listProjectContents(projectId),
+          tasksService.getProject(projectId)
+        ])
+        if (cancelled) return
+
+        setLoaded({
+          projectId,
+          contents,
+          homeNoteId: loadedProject?.homeNoteId ?? null,
+          createdAt: loadedProject ? new Date(loadedProject.createdAt) : null,
+          modifiedAt: loadedProject ? new Date(loadedProject.modifiedAt) : null
+        })
+      } catch (error) {
+        if (cancelled) return
+        log.error('Failed to load project contents', extractErrorMessage(error))
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [projectId, reloadToken])
+
+  const refresh = useCallback(() => setReloadToken((token) => token + 1), [])
 
   useEffect(() => {
     return onProjectUpdated((event) => {
-      if (event.id === projectId) void load()
+      if (event.id === projectId) refresh()
     })
-  }, [projectId, load])
+  }, [projectId, refresh])
+
+  // Everything below is derived: a payload for a different project is stale and
+  // reads as "still loading" rather than briefly showing the previous project.
+  const fresh = loaded?.projectId === projectId ? loaded : null
+  const contents = fresh?.contents ?? EMPTY_CONTENTS
+  // `undefined` = not resolved yet, so the rail does not flash a
+  // "create overview note" affordance before the first response lands.
+  const homeNoteId = fresh ? fresh.homeNoteId : undefined
+  const isLoading = projectId != null && fresh === null
 
   const pinnedNotes = useMemo(() => contents.notes.filter((note) => note.pinned), [contents.notes])
 
@@ -200,9 +208,9 @@ export function useProjectHub(projectId: string | undefined): ProjectHubData {
     },
     progress,
     homeNoteId,
-    createdAt: timestamps?.createdAt ?? null,
-    modifiedAt: timestamps?.modifiedAt ?? null,
+    createdAt: fresh?.createdAt ?? null,
+    modifiedAt: fresh?.modifiedAt ?? null,
     isLoading,
-    refresh: () => void load()
+    refresh
   }
 }

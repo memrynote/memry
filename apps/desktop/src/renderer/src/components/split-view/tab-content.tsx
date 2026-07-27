@@ -61,8 +61,8 @@ const LazyVirtualNotePage = React.lazy(async () => ({
   default: (await import('@/pages/virtual-note')).VirtualNotePage
 }))
 const LazyHomePage = React.lazy(() => import('@/pages/home'))
-const LazyProjectHomePage = React.lazy(async () => ({
-  default: (await import('@/pages/project-home')).ProjectHomePage
+const LazyProjectPage = React.lazy(async () => ({
+  default: (await import('@/pages/project')).ProjectPage
 }))
 
 interface TabContentProps {
@@ -125,7 +125,7 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
         return <LazyCalendarPage />
 
       case 'project':
-        return <LazyProjectHomePage projectId={tab.entityId} />
+        return <LazyProjectPage projectId={tab.entityId} />
 
       case 'tasks':
       case 'all-tasks':

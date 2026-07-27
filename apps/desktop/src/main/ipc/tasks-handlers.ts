@@ -11,6 +11,8 @@ import {
   ProjectReorderSchema,
   ProjectSetHomeNoteSchema,
   ProjectSetLinkPinnedSchema,
+  ProjectCaptureUrlSchema,
+  ProjectImportFilesSchema,
   ProjectUpdateSchema,
   StatusCreateSchema,
   StatusReorderSchema,
@@ -27,6 +29,10 @@ import { createLogger } from '../lib/logger'
 import { generateId } from '../lib/id'
 import { createHandler, createStringHandler, createValidatedHandler, withDb } from './validate'
 import { createDesktopTasksDomain } from '../tasks/domain'
+import { captureUrlToProject } from '../tasks/capture-url'
+import { importFilesToProject } from '../tasks/import-files-to-project'
+import { createNote, importFiles, getNoteByPath } from '../vault/notes-crud'
+import { fetchUrlMetadata } from '../inbox/metadata'
 import { createTasksPublisher } from '../tasks/publisher'
 import { trackMainEvent } from '../telemetry/track'
 
@@ -234,6 +240,50 @@ export function registerTasksHandlers(): void {
   ipcMain.handle(
     TasksChannels.invoke.PROJECT_LIST_LINKS,
     createStringHandler(async (id) => createTaskDomain(requireDatabase()).listProjectLinks(id))
+  )
+
+  ipcMain.handle(
+    TasksChannels.invoke.PROJECT_CAPTURE_URL,
+    createValidatedHandler(
+      ProjectCaptureUrlSchema,
+      withDb(async (db, input) => {
+        const domain = createTaskDomain(db)
+        return captureUrlToProject(
+          {
+            fetchTitle: async (url) => (await fetchUrlMetadata(url)).title ?? null,
+            createNote: async ({ title, content }) => createNote({ title, content }),
+            linkToProject: (projectId, noteId) => {
+              void domain.linkItemToProject({ projectId, itemType: 'note', itemId: noteId })
+            }
+          },
+          input
+        )
+      }, 'Failed to capture link')
+    )
+  )
+
+  ipcMain.handle(
+    TasksChannels.invoke.PROJECT_IMPORT_FILES,
+    createValidatedHandler(
+      ProjectImportFilesSchema,
+      withDb(async (db, input) => {
+        const domain = createTaskDomain(db)
+        return importFilesToProject(
+          {
+            importFiles: async (sourcePaths) => {
+              const result = await importFiles({ sourcePaths })
+              return { importedFiles: result.importedFiles, errors: result.errors }
+            },
+            getIdByPath: async (destPath) => (await getNoteByPath(destPath))?.id ?? null,
+            linkToProject: (projectId, fileId) => {
+              void domain.linkItemToProject({ projectId, itemType: 'file', itemId: fileId })
+            },
+            sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+          },
+          input
+        )
+      }, 'Failed to import files')
+    )
   )
 
   ipcMain.handle(
