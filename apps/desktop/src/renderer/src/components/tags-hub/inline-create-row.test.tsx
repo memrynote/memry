@@ -34,6 +34,18 @@ describe('InlineCreateRow', () => {
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
+  it('cancels from the trailing clear button without creating', async () => {
+    const onCreateCategory = vi.fn()
+    render(<InlineCreateRow onCreateCategory={onCreateCategory} onCreateTag={vi.fn()} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /new category/i }))
+    await userEvent.type(screen.getByRole('textbox'), 'Blog')
+    await userEvent.click(screen.getByRole('button', { name: /cancel/i }))
+
+    expect(onCreateCategory).not.toHaveBeenCalled()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  })
+
   it('ignores a blank name', async () => {
     const onCreateCategory = vi.fn()
     render(<InlineCreateRow onCreateCategory={onCreateCategory} onCreateTag={vi.fn()} />)
@@ -44,13 +56,34 @@ describe('InlineCreateRow', () => {
     expect(onCreateCategory).not.toHaveBeenCalled()
   })
 
-  it('offers a color palette when creating a tag', async () => {
+  it('keeps the color palette out of the row until it is asked for', async () => {
     render(<InlineCreateRow onCreateCategory={vi.fn()} onCreateTag={vi.fn()} />)
 
     await userEvent.click(screen.getByRole('button', { name: /new tag/i }))
 
     expect(screen.getByRole('textbox')).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: /color/i }).length).toBeGreaterThan(0)
+    // Only the swatch that opens the palette — not the palette itself, which
+    // used to stack ~20 swatches under the input and push the rows below it.
+    expect(screen.getAllByRole('button', { name: /color/i })).toHaveLength(1)
+  })
+
+  it('opens the full palette from the swatch', async () => {
+    render(<InlineCreateRow onCreateCategory={vi.fn()} onCreateTag={vi.fn()} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /new tag/i }))
+    await userEvent.click(screen.getByRole('button', { name: /choose color/i }))
+
+    expect(screen.getAllByRole('button', { name: /color/i }).length).toBeGreaterThan(1)
+  })
+
+  it('creates a tag with a color without the user picking one', async () => {
+    const onCreateTag = vi.fn().mockResolvedValue(undefined)
+    render(<InlineCreateRow onCreateCategory={vi.fn()} onCreateTag={onCreateTag} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /new tag/i }))
+    await userEvent.type(screen.getByRole('textbox'), 'draft{Enter}')
+
+    expect(onCreateTag).toHaveBeenCalledWith('draft', expect.stringMatching(/\S/), null)
   })
 
   it('passes the owning category id when creating a tag', async () => {

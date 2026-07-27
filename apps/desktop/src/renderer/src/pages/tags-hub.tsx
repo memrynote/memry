@@ -17,6 +17,7 @@ import {
   verticalListSortingStrategy
 } from '@dnd-kit/sortable'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Search } from '@/lib/icons'
 import { useTagCategories, type HubCategory, type HubTag } from '@/hooks/use-tag-categories'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { CategoryBlock } from '@/components/tags-hub/category-block'
@@ -189,27 +190,50 @@ export function TagsHubPage(): React.JSX.Element {
 
   return (
     <ScrollArea className="h-full">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-6">
+      {/* Full-bleed, not a centred measure: the column spans the window so
+          section rules run the full width, while the content inside it stays
+          left-aligned. Vertical rhythm comes from each section's own
+          `border-t py-[22px]`, so this column deliberately has no `gap`. */}
+      <div className="flex w-full flex-col px-10 pt-6 pb-10">
         {isLoading ? (
           <div className="text-sm text-muted-foreground">{t('tagsHub.loading')}</div>
         ) : (
           <>
-            <input
-              type="text"
-              aria-label={t('tagsHub.search.placeholder')}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleSearchKeyDown}
-              placeholder={t('tagsHub.search.placeholder')}
-              className="h-6 w-full max-w-xs rounded-md border bg-transparent px-2 text-[11px] placeholder:text-muted-foreground focus:outline-none"
-            />
             <DndContext
               sensors={activeSensors}
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
+              {/* One action bar leads the page: create affordances and search
+                  sit together, above the list, so both stay reachable without
+                  scrolling past every category. `items-start` keeps the search
+                  field pinned to the top row when the create affordance
+                  expands into a name input plus colour palette. */}
+              <div className="flex items-start gap-2 pb-[22px]">
+                <InlineCreateRow onCreateCategory={createCategory} onCreateTag={createTag} />
+                <div className="relative shrink-0">
+                  <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                  {/* Chromeless until it matters: nothing but the icon and
+                      placeholder on the page background, earning a hairline
+                      only while focused. The border is always there but
+                      transparent, so gaining it shifts nothing; `border-ring`
+                      is a neutral grey, so focus stays perceivable without
+                      shouting. */}
+                  <input
+                    type="text"
+                    aria-label={t('tagsHub.search.placeholder')}
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={handleSearchKeyDown}
+                    placeholder={t('tagsHub.search.placeholder')}
+                    className="h-8 w-[240px] rounded-md border border-transparent bg-transparent ps-8 pe-2.5 text-xs placeholder:text-muted-foreground transition-colors focus:border-ring focus:outline-none"
+                  />
+                </div>
+              </div>
               {isSearching && !hasResults ? (
-                <div className="text-sm text-muted-foreground">{t('tagsHub.search.empty')}</div>
+                <div className="border-t border-border py-[22px] text-sm text-muted-foreground">
+                  {t('tagsHub.search.empty')}
+                </div>
               ) : (
                 <>
                   <SortableContext items={categoryIds} strategy={verticalListSortingStrategy}>
@@ -235,7 +259,6 @@ export function TagsHubPage(): React.JSX.Element {
                   )}
                 </>
               )}
-              <InlineCreateRow onCreateCategory={createCategory} onCreateTag={createTag} />
             </DndContext>
           </>
         )}

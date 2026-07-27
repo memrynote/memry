@@ -141,12 +141,13 @@ describe('TagsHubPage', () => {
 
     render(<TagsHubPage />)
 
-    // Only the real category ("Work") should offer rename/delete at all —
-    // confirms the Uncategorized block below it renders neither affordance.
-    expect(screen.getAllByRole('button', { name: /rename category/i })).toHaveLength(1)
-    expect(screen.getAllByRole('button', { name: /delete category/i })).toHaveLength(1)
+    // Rename/delete live behind a per-category `⋯` menu, and only the real
+    // category ("Work") should have one — confirms the Uncategorized block
+    // below it renders no menu at all.
+    expect(screen.getAllByRole('button', { name: /category options/i })).toHaveLength(1)
 
-    await userEvent.click(screen.getByRole('button', { name: /rename category/i }))
+    await userEvent.click(screen.getByRole('button', { name: /category options/i }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /rename category/i }))
     // `getByRole('textbox')` alone is now ambiguous — the page's search
     // input is also a textbox — so target the rename input by its
     // prefilled value instead.
@@ -155,7 +156,8 @@ describe('TagsHubPage', () => {
     await userEvent.type(input, 'Job{Enter}')
     expect(renameCategory).toHaveBeenCalledWith('cat-1', 'Job')
 
-    await userEvent.click(screen.getByRole('button', { name: /delete category/i }))
+    await userEvent.click(screen.getByRole('button', { name: /category options/i }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /delete category/i }))
     await userEvent.click(screen.getByRole('button', { name: /^delete$/i }))
     expect(deleteCategory).toHaveBeenCalledWith('cat-1')
   })

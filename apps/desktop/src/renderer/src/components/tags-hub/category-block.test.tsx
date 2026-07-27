@@ -53,7 +53,7 @@ describe('CategoryBlock', () => {
 
   it('offers no rename or delete on the uncategorized block', () => {
     renderBlock({ id: null, name: 'Uncategorized', tags, onTagOpen: vi.fn() })
-    expect(screen.queryByRole('button', { name: /rename/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /category options/i })).not.toBeInTheDocument()
   })
 
   it('shows an empty hint when a category has no tags', () => {
@@ -65,7 +65,8 @@ describe('CategoryBlock', () => {
     const onRename = vi.fn()
     renderBlock({ id: 'cat-1', name: 'Work', tags, onTagOpen: vi.fn(), onRename })
 
-    await userEvent.click(screen.getByRole('button', { name: /rename/i }))
+    await userEvent.click(screen.getByRole('button', { name: /category options/i }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /rename category/i }))
     const input = screen.getByRole('textbox')
     await userEvent.clear(input)
     await userEvent.type(input, 'Job{Enter}')
@@ -77,9 +78,10 @@ describe('CategoryBlock', () => {
     const onDelete = vi.fn()
     renderBlock({ id: 'cat-1', name: 'Work', tags, onTagOpen: vi.fn(), onDelete })
 
-    await userEvent.click(screen.getByRole('button', { name: /delete/i }))
+    await userEvent.click(screen.getByRole('button', { name: /category options/i }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /delete category/i }))
 
-    expect(screen.getByText(/tags will move to uncategorized/i)).toBeInTheDocument()
+    expect(await screen.findByText(/tags will move to uncategorized/i)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /^delete$/i }))
     expect(onDelete).toHaveBeenCalled()
   })

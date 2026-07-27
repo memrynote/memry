@@ -52,6 +52,40 @@ describe('useTagCategories', () => {
     expect(result.current.uncategorized.map((t) => t.tag)).toEqual(['idea'])
   })
 
+  it('never returns to the loading state once loaded, so a create updates in place', async () => {
+    const { result } = renderHook(() => useTagCategories())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    // Hold the post-create refetch open, so if the hook flipped isLoading
+    // back on we'd observe it here rather than racing past it. The hub
+    // renders `isLoading ? "Loading tags…" : <the whole list>`, so a true
+    // value at any point after the first load blanks and rebuilds the page.
+    let releaseRefetch: (() => void) | undefined
+    listCategories.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releaseRefetch = () =>
+            resolve({
+              success: true,
+              categories: [
+                { id: 'cat-1', name: 'Work', sortOrder: 0, tagCount: 1 },
+                { id: 'cat-2', name: 'Blog', sortOrder: 1, tagCount: 0 }
+              ]
+            })
+        })
+    )
+
+    const created = result.current.createCategory('Blog')
+    await waitFor(() => expect(releaseRefetch).toBeDefined())
+    expect(result.current.isLoading).toBe(false)
+
+    releaseRefetch?.()
+    await created
+
+    await waitFor(() => expect(result.current.categories).toHaveLength(2))
+    expect(result.current.isLoading).toBe(false)
+  })
+
   it('treats a tag pointing at a missing category as uncategorized', async () => {
     listCategories.mockResolvedValue({ success: true, categories: [] })
 

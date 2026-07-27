@@ -16,7 +16,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
-import { GripVertical, Pencil, Trash } from '@/lib/icons'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { GripVertical, MoreHorizontal, Pencil, Trash } from '@/lib/icons'
 import { TagChipItem } from '@/components/tags-hub/tag-chip-item'
 import { cn } from '@/lib/utils'
 import type { HubTag } from '@/hooks/use-tag-categories'
@@ -34,11 +40,13 @@ export interface CategoryBlockProps {
 }
 
 /**
- * One category section in the tag hub: a heading (name + tag count, plus
- * hover-revealed rename/delete for real categories) followed by a wrapping
- * row of tag chips. `id === null` is the Uncategorized block, which has no
- * rename or delete affordance — and, since it isn't a real category, no
- * drag handle either (it never participates in category reordering).
+ * One category section in the tag hub: a heading (name + tag count, plus a
+ * hover-revealed `⋯` menu carrying rename/delete for real categories)
+ * followed by a wrapping row of tag chips. The menu sits directly after the
+ * count rather than at the far end of the row, so the whole heading stays
+ * one compact cluster on the left lane. `id === null` is the Uncategorized
+ * block, which has no menu — and, since it isn't a real category, no drag
+ * handle either (it never participates in category reordering).
  *
  * Rename swaps the heading for an inline input (matching the create
  * affordance): Enter commits the trimmed name, Escape reverts. Delete opens
@@ -133,20 +141,30 @@ export function CategoryBlock({
     <section
       ref={setSortableNodeRef}
       style={sectionStyle}
-      className={cn('flex flex-col gap-2', isDragging && 'opacity-50')}
+      className={cn(
+        'flex flex-col gap-[11px] border-t border-border py-[22px]',
+        isDragging && 'opacity-50'
+      )}
     >
-      <div className="group flex items-center gap-2">
-        {id !== null && (
-          <button
-            type="button"
-            aria-label={t('tagsHub.category.dragHandle')}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground/50 opacity-0 transition-opacity hover:text-muted-foreground group-hover:opacity-100 cursor-grab active:cursor-grabbing"
-            {...attributes}
-            {...listeners}
-          >
-            <GripVertical className="h-3.5 w-3.5" />
-          </button>
-        )}
+      {/* The 24px handle slot + 4px gap is cancelled by `-ms-7`, so the
+          heading text lands on the same left lane as the chips below it
+          while the handle itself hangs in the page gutter. The slot is
+          rendered even for Uncategorized (which has no handle) so both
+          headings still start at that lane. */}
+      <div className="group -ms-7 flex items-center gap-1">
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center">
+          {id !== null && (
+            <button
+              type="button"
+              aria-label={t('tagsHub.category.dragHandle')}
+              className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground/50 opacity-0 transition-opacity hover:text-muted-foreground group-hover:opacity-100 cursor-grab active:cursor-grabbing"
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
         {isRenaming ? (
           <Input
             ref={inputRef}
@@ -156,30 +174,42 @@ export function CategoryBlock({
             className="h-7 w-48"
           />
         ) : (
-          <h3 className="text-sm font-medium text-foreground">{name}</h3>
+          <h3
+            className={cn(
+              'text-[13px] font-medium leading-[18px] tracking-[-0.005em]',
+              id === null ? 'text-muted-foreground' : 'text-foreground'
+            )}
+          >
+            {name}
+          </h3>
         )}
-        <span className="ms-auto text-xs text-muted-foreground tabular-nums">{tags.length}</span>
+        <span className="ms-1.5 text-xs text-muted-foreground/70 tabular-nums">{tags.length}</span>
         {id !== null && !isRenaming && (
-          <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              aria-label={t('tagsHub.category.rename')}
-              onClick={startRename}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              aria-label={t('tagsHub.category.delete')}
-              onClick={() => setIsDeleteOpen(true)}
-            >
-              <Trash className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="ms-1 h-6 w-6 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 data-[state=open]:opacity-100"
+                aria-label={t('tagsHub.category.more')}
+              >
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-44">
+              <DropdownMenuItem onClick={startRename}>
+                <Pencil className="me-2 h-3.5 w-3.5" />
+                {t('tagsHub.category.rename')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setIsDeleteOpen(true)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash className="me-2 h-3.5 w-3.5" />
+                {t('tagsHub.category.delete')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
 
@@ -205,7 +235,7 @@ export function CategoryBlock({
           ref={setDroppableNodeRef}
           className={cn(
             tags.length === 0
-              ? 'rounded-md border border-dashed py-3 text-center text-xs text-muted-foreground'
+              ? 'rounded-lg border border-dashed border-border py-2.5 ps-3 text-start text-xs text-muted-foreground/80'
               : 'flex flex-wrap gap-2',
             isOver && tags.length === 0 && 'border-primary/50 bg-primary/5 text-primary'
           )}

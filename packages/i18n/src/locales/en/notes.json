@@ -816,6 +816,7 @@
     "loading": "Loading tags...",
     "newCategory": "New category",
     "newTag": "New tag",
+    "cancelCreate": "Cancel",
     "categoryNamePlaceholder": "Category name",
     "tagNamePlaceholder": "Tag name",
     "uncategorized": "Uncategorized",
@@ -824,6 +825,7 @@
       "empty": "No categories or tags match your search"
     },
     "category": {
+      "more": "Category options",
       "rename": "Rename category",
       "delete": "Delete category",
       "dragHandle": "Drag to reorder category",

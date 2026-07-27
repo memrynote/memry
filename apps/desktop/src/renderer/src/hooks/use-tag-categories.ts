@@ -66,13 +66,18 @@ function sortTags(tags: HubTag[]): HubTag[] {
 
 export function useTagCategories(): UseTagCategoriesResult {
   const [categoryRows, setCategoryRows] = useState<CategoryRow[]>(EMPTY_CATEGORY_ROWS)
-  const [isLoadingCategories, setIsLoadingCategories] = useState(true)
+  // Tracks "have we ever loaded", not "are we fetching". Only the very first
+  // load is allowed to blank the hub; every later refetch — a create, rename,
+  // delete, reorder, or a tag-categories change event — resolves in the
+  // background and swaps the rows underneath the rendered list. Otherwise
+  // adding one tag would flip the whole page back to "Loading tags…" and
+  // rebuild every category, instead of updating the section that changed.
+  const [hasLoadedCategories, setHasLoadedCategories] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const { tags: noteTags, isLoading: isLoadingTags, refetch: refetchNoteTags } = useNoteTagsQuery()
 
   const fetchCategories = useCallback(async () => {
-    setIsLoadingCategories(true)
     try {
       const response = await tagsService.listCategories()
       if (!response.success) {
@@ -87,7 +92,7 @@ export function useTagCategories(): UseTagCategoriesResult {
       setError(extractErrorMessage(err, errorsT()('tagsHub.errors.loadFailed')))
       setCategoryRows(EMPTY_CATEGORY_ROWS)
     } finally {
-      setIsLoadingCategories(false)
+      setHasLoadedCategories(true)
     }
   }, [])
 
@@ -310,7 +315,7 @@ export function useTagCategories(): UseTagCategoriesResult {
   return {
     categories,
     uncategorized,
-    isLoading: isLoadingCategories || isLoadingTags,
+    isLoading: !hasLoadedCategories || isLoadingTags,
     error,
     createCategory,
     renameCategory,
