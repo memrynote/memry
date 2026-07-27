@@ -122,6 +122,94 @@ export function separateBlockImages(markdown: string): string {
   return out
 }
 
+/**
+ * Obsidian embeds an image as `![[photo.png]]`, optionally with a display size
+ * or alias after a pipe (`![[photo.png|300x200]]`). The target stops at `|`;
+ * `[`/`]`/`#` are excluded so a run cannot overrun the closing `]]`, and so a
+ * heading transclusion (`![[Some Note#Heading]]`) never matches — that is a
+ * note embed, not an image.
+ *
+ * The leading `!` is required: a bare `[[Note]]` is a link between notes and
+ * keeps its `wikiLink` atom.
+ */
+const WIKI_IMAGE_EMBED_RE = /!\[\[([^\][|#]+)(?:\|([^\][]*))?\]\]/g
+
+/**
+ * Only real image extensions are treated as embedded images. `![[Some Note]]`
+ * and `![[report.pdf]]` are transclusions of other things and keep whatever
+ * handling they have today.
+ */
+const IMAGE_EMBED_EXT_RE = /\.(png|jpe?g|gif|webp|svg|avif|bmp)$/i
+
+function eachWikiImageEmbed(
+  markdown: string,
+  visit: (match: RegExpExecArray, ref: string) => void
+): void {
+  for (const region of splitByCodeFences(markdown)) {
+    if (region.isCode) continue
+    WIKI_IMAGE_EMBED_RE.lastIndex = 0
+    let match: RegExpExecArray | null
+    while ((match = WIKI_IMAGE_EMBED_RE.exec(region.text)) !== null) {
+      const ref = match[1].trim()
+      if (!ref || !IMAGE_EMBED_EXT_RE.test(ref)) continue
+      visit(match, ref)
+    }
+  }
+}
+
+/**
+ * Every distinct image target embedded with Obsidian syntax, in first-seen
+ * order. Callers resolve these to `memry-file://` URLs and hand the results
+ * back to `rewriteWikiImageEmbeds`.
+ */
+export function extractWikiImageEmbedRefs(markdown: string): string[] {
+  if (!markdown.includes('![[')) return []
+  const seen = new Set<string>()
+  eachWikiImageEmbed(markdown, (_match, ref) => seen.add(ref))
+  return Array.from(seen)
+}
+
+/**
+ * Rewrite `![[photo.png]]` into the CommonMark `![photo.png](url)` form that
+ * BlockNote parses into an image block. Without this the `[[…]]` half becomes a
+ * wikiLink atom and the `!` is left behind as literal text, so the image never
+ * renders.
+ *
+ * `resolve` maps the embed target to a URL the renderer can actually load —
+ * image blocks only resolve absolute `memry-file://` URLs, so an embed whose
+ * target is not found is left exactly as it was rather than rewritten into a
+ * broken image. The display size (`|300x200`) is dropped: markdown cannot carry
+ * it and BlockNote takes its width from the block's `previewWidth` prop.
+ */
+export function rewriteWikiImageEmbeds(
+  markdown: string,
+  resolve: (ref: string) => string | undefined
+): string {
+  if (!markdown.includes('![[')) return markdown
+
+  const regions = splitByCodeFences(markdown)
+  let out = ''
+
+  for (const region of regions) {
+    if (region.isCode) {
+      out += region.text
+      continue
+    }
+    WIKI_IMAGE_EMBED_RE.lastIndex = 0
+    out += region.text.replace(WIKI_IMAGE_EMBED_RE, (whole, rawRef: string) => {
+      const ref = rawRef.trim()
+      if (!ref || !IMAGE_EMBED_EXT_RE.test(ref)) return whole
+      const url = resolve(ref)
+      if (!url) return whole
+      // Strip brackets from the alt text so the filename cannot break `![](…)`.
+      const alt = (ref.split('/').pop() ?? ref).replace(/[[\]]/g, '')
+      return `![${alt}](${url})`
+    })
+  }
+
+  return out
+}
+
 const LIST_ITEM_LINE = /^[ \t]*(?:[-*+]|\d+[.)])\s/
 
 /**

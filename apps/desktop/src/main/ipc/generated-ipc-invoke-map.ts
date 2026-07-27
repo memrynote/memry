@@ -411,6 +411,7 @@ export interface MainIpcInvokeHandlers {
   "vault:list-account": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").AccountVaultInfo[]>>
   "vault:reindex": (...args: []) => Awaited<Promise<void>>
   "vault:remove": (...args: [string]) => Awaited<Promise<void>>
+  "vault:resolve-embeds": (...args: [string[]]) => Awaited<Promise<Record<string, string>>>
   "vault:reveal": (...args: []) => Awaited<Promise<void>>
   "vault:select": (...args: [{ path?: string | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").SelectVaultResponse>>
   "vault:switch": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").SelectVaultResponse>>

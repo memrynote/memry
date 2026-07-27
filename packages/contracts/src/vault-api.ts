@@ -101,6 +101,13 @@ export interface GetVaultsResponse {
 // Handler Signatures (for main process implementation)
 // ============================================================================
 
+/**
+ * Embed target → loadable `memry-file://` URL. Targets that do not resolve to a
+ * file inside the vault are omitted, so callers can leave those embeds as the
+ * author wrote them instead of rendering a broken image.
+ */
+export type ResolvedEmbeds = Record<string, string>
+
 export interface VaultHandlers {
   [VaultChannels.invoke.SELECT]: (
     input: z.infer<typeof SelectVaultSchema>
@@ -137,6 +144,8 @@ export interface VaultHandlers {
   ) => Promise<SelectVaultResponse>
 
   [VaultChannels.invoke.DELETE_FROM_ACCOUNT]: (vaultUuid: string) => Promise<void>
+
+  [VaultChannels.invoke.RESOLVE_EMBEDS]: (refs: string[]) => Promise<ResolvedEmbeds>
 }
 
 // ============================================================================
@@ -177,4 +186,5 @@ export interface VaultClientAPI {
   listAccount(): Promise<AccountVaultInfo[]>
   downloadRemote(vaultUuid: string, parentPath?: string): Promise<SelectVaultResponse>
   deleteFromAccount(vaultUuid: string): Promise<void>
+  resolveEmbeds(refs: string[]): Promise<ResolvedEmbeds>
 }

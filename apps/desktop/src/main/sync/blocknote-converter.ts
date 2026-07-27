@@ -34,6 +34,8 @@ import {
   splitMarkdownPreservingBlanks,
   assembleMarkdownWithBlanks,
   separateBlockImages,
+  extractWikiImageEmbedRefs,
+  rewriteWikiImageEmbeds,
   normalizeSerializedMarkdown,
   type MarkdownSegment
 } from '@memry/shared/empty-lines'
@@ -43,6 +45,7 @@ import {
   splitMarkdownByBlockNestingMarkers
 } from '@memry/shared/block-nesting'
 import { createLogger } from '../lib/logger'
+import { resolveVaultEmbeds } from '../vault/resolve-embed'
 
 const log = createLogger('BlockNoteConverter')
 
@@ -304,13 +307,33 @@ async function serializeBlocksWithNestingMarkers(
   return parts.join('\n\n')
 }
 
+/**
+ * Main-process twin of the renderer's embed resolution: same rewrite, but the
+ * vault lookup is a direct call instead of an IPC round trip. A closed vault or
+ * an unreadable index resolves nothing, which leaves every embed as written.
+ */
+function resolveWikiImageEmbedsInMarkdown(markdown: string): string {
+  const refs = extractWikiImageEmbedRefs(markdown)
+  if (refs.length === 0) return markdown
+
+  try {
+    const resolved = resolveVaultEmbeds(refs)
+    return rewriteWikiImageEmbeds(markdown, (ref) => resolved[ref])
+  } catch {
+    return markdown
+  }
+}
+
 async function markdownToBlocksPreserving(
   editor: ServerBlockNoteEditor,
   markdown: string
 ): Promise<Block[]> {
+  // Obsidian image embeds become `![alt](memry-file://…)` first, so the same
+  // note renders identically here and in the editor (see normalize-note-blocks).
+  const withEmbeds = resolveWikiImageEmbedsInMarkdown(markdown)
   // Inline color spans are masked into markdown-inert tokens before parsing
   // (BlockNote strips raw spans), then re-applied as styles on the parsed runs.
-  const { text, spans } = maskInlineColorSpans(separateBlockImages(markdown))
+  const { text, spans } = maskInlineColorSpans(separateBlockImages(withEmbeds))
   const segments = splitMarkdownPreservingBlanks(text)
   const blocks: Block[] = []
 

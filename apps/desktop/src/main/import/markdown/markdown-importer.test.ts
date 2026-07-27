@@ -25,6 +25,7 @@ vi.mock('../../inbox/suggestions', () => ({
 }))
 
 const FIXTURE_DIR = path.join(__dirname, '__fixtures__', 'sample')
+const EMBED_FIXTURE_DIR = path.join(__dirname, '__fixtures__', 'wiki-embeds')
 
 describe('markdownImporter (integration)', () => {
   let tempVault: TestVaultResult
@@ -117,6 +118,31 @@ describe('markdownImporter (integration)', () => {
 
     const rootNote = path.join(tempVault.notesDir, 'Markdown', 'Root Note.md')
     expect(fs.existsSync(rootNote)).toBe(true)
+  })
+
+  it('saves obsidian `![[image.png]]` embeds as attachments and rewrites the token', async () => {
+    const ctx = importContext.createImportContext('it5', new AbortController().signal)
+    const summary = await importer.markdownImporter.run({ sourcePaths: [EMBED_FIXTURE_DIR] }, ctx)
+
+    expect(summary.failed).toEqual([])
+    expect(summary.imported).toBe(1)
+    // photo.png is embedded twice but saved once; Images/nested.png is the second.
+    expect(summary.attachments).toBe(2)
+
+    const note = path.join(tempVault.notesDir, 'Markdown', 'Embed Note.md')
+    expect(fs.existsSync(note)).toBe(true)
+    const content = fs.readFileSync(note, 'utf8')
+
+    // Every embed form is replaced by the saved attachment, size hint and all.
+    expect(content).not.toContain('![[photo.png]]')
+    expect(content).not.toContain('![[photo.png|300x200]]')
+    expect(content).not.toContain('![[Images/nested.png]]')
+    expect(content.match(/!\[photo\.png]\(memry-file:\/\//g)).toHaveLength(2)
+    expect(content).toContain('![nested.png](memry-file://')
+
+    // Note links and note transclusions are not assets and stay untouched.
+    expect(content).toContain('[[wikilink]]')
+    expect(content).toContain('![[Some Note]]')
   })
 
   it('stops early when cancelled', async () => {
