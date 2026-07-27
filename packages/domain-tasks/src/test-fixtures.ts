@@ -90,6 +90,12 @@ export function createCommandRepository(
     getProject: vi.fn(() => undefined),
     listStatuses: vi.fn(() => []),
     listProjectLinks: vi.fn(() => []),
+    listProjectContents: vi.fn(() => ({
+      notes: [],
+      files: [],
+      events: [],
+      counts: { notes: 0, files: 0, events: 0 }
+    })),
     getAllTaskTags: vi.fn(() => []),
     getTaskStats: vi.fn(() => ({
       total: 0,
@@ -133,6 +139,7 @@ export function createCommandRepository(
     unlinkItemFromProject: vi.fn(),
     findProjectLink: vi.fn(() => undefined),
     setProjectHomeNote: vi.fn(),
+    setProjectLinkPinned: vi.fn(),
     deleteProjectLinksForItem: vi.fn(() => []),
     clearProjectsHomeNote: vi.fn(() => []),
     createStatus: vi.fn((s) => ({ ...s, createdAt: 'n' })),

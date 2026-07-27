@@ -102,6 +102,12 @@ export interface ProjectSetHomeNoteInput {
   noteId: string | null
 }
 
+export interface ProjectSetLinkPinnedInput {
+  projectId: string
+  itemId: string
+  pinned: boolean
+}
+
 export interface ProjectRef {
   id: string
   name: string
@@ -139,4 +145,50 @@ export interface TaskListOptions {
   sortOrder?: 'asc' | 'desc'
   limit?: number
   offset?: number
+}
+
+// ============================================================================
+// Project hub contents
+// ============================================================================
+
+/**
+ * A markdown note linked to a project, resolved for the project hub.
+ * `pinned` means the note is also shown in the hub's overview rail.
+ */
+export interface ProjectLinkedNote {
+  id: string
+  title: string
+  emoji: string | null
+  modifiedAt: string
+  pinned: boolean
+}
+
+/** A non-markdown file linked to a project, resolved for the project hub. */
+export interface ProjectLinkedFile {
+  id: string
+  title: string
+  fileType: string
+  mimeType: string | null
+  fileSize: number | null
+  modifiedAt: string
+}
+
+/** A calendar event linked to a project, resolved for the project hub. */
+export interface ProjectLinkedEvent {
+  id: string
+  title: string
+  startAt: string
+  endAt: string | null
+  isAllDay: boolean
+}
+
+/**
+ * Everything a project links to, resolved in one pass. Links whose target no
+ * longer exists are dropped by the join, so every entry here is renderable.
+ */
+export interface ProjectContents {
+  notes: ProjectLinkedNote[]
+  files: ProjectLinkedFile[]
+  events: ProjectLinkedEvent[]
+  counts: { notes: number; files: number; events: number }
 }

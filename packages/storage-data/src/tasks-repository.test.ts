@@ -160,6 +160,13 @@ function createProjectQueries(): ProjectQueryModule<TestDb> {
     deleteProjectLink: vi.fn(),
     getProjectLink: vi.fn(() => undefined),
     getProjectLinks: vi.fn(() => []),
+    getProjectContents: vi.fn(() => ({
+      notes: [],
+      files: [],
+      events: [],
+      counts: { notes: 0, files: 0, events: 0 }
+    })),
+    setProjectLinkPinned: vi.fn(),
     updateProjectHomeNote: vi.fn(),
     getProjectsForItem: vi.fn(() => []),
     deleteProjectLinksForItem: vi.fn(() => []),

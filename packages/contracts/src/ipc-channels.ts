@@ -150,6 +150,8 @@ export const TasksChannels = {
     PROJECT_LINK_ITEM: 'tasks:project-link-item',
     PROJECT_UNLINK_ITEM: 'tasks:project-unlink-item',
     PROJECT_LIST_LINKS: 'tasks:project-list-links',
+    PROJECT_LIST_CONTENTS: 'tasks:project-list-contents',
+    PROJECT_SET_LINK_PINNED: 'tasks:project-set-link-pinned',
     PROJECT_SET_HOME_NOTE: 'tasks:project-set-home-note',
     PROJECT_LIST_FOR_ITEM: 'tasks:project-list-for-item',
 

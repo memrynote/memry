@@ -10,6 +10,7 @@ import {
   ProjectListForItemSchema,
   ProjectReorderSchema,
   ProjectSetHomeNoteSchema,
+  ProjectSetLinkPinnedSchema,
   ProjectUpdateSchema,
   StatusCreateSchema,
   StatusReorderSchema,
@@ -233,6 +234,22 @@ export function registerTasksHandlers(): void {
   ipcMain.handle(
     TasksChannels.invoke.PROJECT_LIST_LINKS,
     createStringHandler(async (id) => createTaskDomain(requireDatabase()).listProjectLinks(id))
+  )
+
+  ipcMain.handle(
+    TasksChannels.invoke.PROJECT_LIST_CONTENTS,
+    createStringHandler(async (id) => createTaskDomain(requireDatabase()).listProjectContents(id))
+  )
+
+  ipcMain.handle(
+    TasksChannels.invoke.PROJECT_SET_LINK_PINNED,
+    createValidatedHandler(
+      ProjectSetLinkPinnedSchema,
+      withDb(
+        (db, input) => createTaskDomain(db).setProjectLinkPinned(input),
+        'Failed to update pinned state'
+      )
+    )
   )
 
   ipcMain.handle(

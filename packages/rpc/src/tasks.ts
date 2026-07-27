@@ -5,6 +5,7 @@ import {
   ProjectLinkItemSchema,
   ProjectListForItemSchema,
   ProjectSetHomeNoteSchema,
+  ProjectSetLinkPinnedSchema,
   ProjectUpdateSchema,
   StatusCreateSchema,
   TaskCreateSchema,
@@ -13,6 +14,7 @@ import {
 } from '../../contracts/src/tasks-api.ts'
 import type {
   Project,
+  ProjectContents,
   ProjectWithStats,
   RepeatConfig,
   Status,
@@ -32,6 +34,7 @@ export type ProjectCreateInput = z.input<typeof ProjectCreateSchema>
 export type ProjectUpdateInput = z.input<typeof ProjectUpdateSchema>
 export type ProjectLinkItemInput = z.input<typeof ProjectLinkItemSchema>
 export type ProjectSetHomeNoteInput = z.input<typeof ProjectSetHomeNoteSchema>
+export type ProjectSetLinkPinnedInput = z.input<typeof ProjectSetLinkPinnedSchema>
 export type ProjectItemType = z.input<typeof ProjectListForItemSchema>['itemType']
 export type StatusCreateInput = z.input<typeof StatusCreateSchema>
 export type TaskCreateInput = z.input<typeof TaskCreateSchema>
@@ -40,6 +43,7 @@ export type TaskListOptions = z.input<typeof TaskListSchema>
 
 export type {
   Project,
+  ProjectContents,
   ProjectWithStats,
   RepeatConfig,
   Status,
@@ -260,6 +264,16 @@ export const tasksRpc = defineDomain({
     listProjectLinks: defineMethod<(projectId: string) => Promise<ProjectLink[]>>({
       channel: TasksChannels.invoke.PROJECT_LIST_LINKS,
       params: ['projectId']
+    }),
+    listProjectContents: defineMethod<(projectId: string) => Promise<ProjectContents>>({
+      channel: TasksChannels.invoke.PROJECT_LIST_CONTENTS,
+      params: ['projectId']
+    }),
+    setProjectLinkPinned: defineMethod<
+      (input: ProjectSetLinkPinnedInput) => ProjectMutationResponse
+    >({
+      channel: TasksChannels.invoke.PROJECT_SET_LINK_PINNED,
+      params: ['input']
     }),
     setProjectHomeNote: defineMethod<(input: ProjectSetHomeNoteInput) => ProjectMutationResponse>({
       channel: TasksChannels.invoke.PROJECT_SET_HOME_NOTE,
