@@ -679,9 +679,9 @@
   },
   "projectHub": {
     "header": {
-      "setIcon": "Set icon for {{name}}",
-      "done": "{{done}}/{{total}} done",
-      "overdue": "{{count}} overdue",
+      "setIcon": "Set icon for {name}",
+      "done": "{done}/{total} done",
+      "overdue": "{count} overdue",
       "toggleRail": "Toggle project details",
       "menu": "Project actions",
       "editProject": "Edit project",
@@ -697,7 +697,7 @@
     },
     "sections": {
       "viewAll": "View all",
-      "add": "Add to {{title}}",
+      "add": "Add to {title}",
       "emptyTasks": "No tasks yet.",
       "emptyNotes": "No notes linked yet.",
       "emptyFiles": "No files linked yet.",
@@ -706,34 +706,34 @@
       "newNoteError": "Could not add the note"
     },
     "rows": {
-      "openTask": "Open task {{title}}",
-      "openNote": "Open note {{title}}",
-      "openFile": "Open file {{title}}",
-      "openEvent": "Open event {{title}}",
-      "setNoteIcon": "Set icon for {{title}}"
+      "openTask": "Open task {title}",
+      "openNote": "Open note {title}",
+      "openFile": "Open file {title}",
+      "openEvent": "Open event {title}",
+      "setNoteIcon": "Set icon for {title}"
     },
     "rail": {
       "overview": "Overview",
       "progress": "Progress",
       "details": "Details",
-      "doneOf": "{{done}} of {{total}} done",
+      "doneOf": "{done} of {total} done",
       "overdue": "Overdue",
       "created": "Created",
       "updated": "Updated",
       "linked": "Linked",
-      "linkedSummary": "{{notes}} notes · {{files}} files · {{events}} events",
+      "linkedSummary": "{notes, plural, one {# note} other {# notes}} · {files, plural, one {# file} other {# files}} · {events, plural, one {# event} other {# events}}",
       "addNote": "Add note",
-      "unpinNote": "Remove {{title}} from the overview",
+      "unpinNote": "Remove {title} from the overview",
       "pinError": "Could not add the note to the overview",
       "unpinError": "Could not remove the note from the overview"
     },
     "capture": {
-      "placeholder": "Add to {{name}} — type a task, jot a note, or paste a link…",
+      "placeholder": "Add to {name} — type a task, jot a note, or paste a link…",
       "attach": "Attach files",
       "linkAdded": "Link added to the project",
       "linkError": "Could not save the link",
-      "filesAdded": "{{count}} file(s) added to the project",
-      "fileError": "Could not link {{name}}",
+      "filesAdded": "{count, plural, one {# file added to the project} other {# files added to the project}}",
+      "fileError": "Could not link {name}",
       "fileErrorGeneric": "Could not import the files"
     }
   }
