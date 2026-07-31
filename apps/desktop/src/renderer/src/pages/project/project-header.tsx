@@ -79,7 +79,7 @@ export const ProjectHeader = ({
           aria-pressed={railOpen}
           aria-label={t('projectHub.header.toggleRail')}
           className={cn(
-            'rounded-sm p-1.5 transition-colors hover:bg-surface-hover',
+            'rounded-sm p-1.5 transition-colors hover:bg-surface-active',
             railOpen ? 'text-foreground' : 'text-muted-foreground'
           )}
         >
@@ -91,7 +91,7 @@ export const ProjectHeader = ({
             <button
               type="button"
               aria-label={t('projectHub.header.menu')}
-              className="rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
+              className="rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-surface-active hover:text-foreground"
             >
               <MoreHorizontal className="size-4" aria-hidden="true" />
             </button>

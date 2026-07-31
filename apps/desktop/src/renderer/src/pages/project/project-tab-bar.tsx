@@ -57,7 +57,7 @@ export const ProjectTabBar = ({
               'flex items-center gap-1.5 rounded-t-md px-3 py-2 text-sm transition-colors',
               isActive
                 ? 'bg-surface font-medium text-foreground'
-                : 'text-muted-foreground hover:text-foreground'
+                : 'text-muted-foreground hover:bg-surface-active hover:text-foreground'
             )}
           >
             {t(`projectHub.tabs.${key}`)}

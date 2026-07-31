@@ -89,6 +89,11 @@ test.describe('Project hub E2E', () => {
     await expect(page.getByRole('tab', { name: /tasks/i })).toHaveAttribute('aria-selected', 'true')
     expect(await page.locator('[role="tab"]').count()).toBe(appTabsBefore)
 
+    // The task list is virtualized and `contain: strict`, so it renders nothing
+    // unless its parent gives it a definite height. Selecting the tab is not
+    // proof the rows are there — assert the seeded task is actually visible.
+    await expect(page.getByText(taskTitle)).toBeVisible()
+
     // The rail toggle stays in place while the rail is closed.
     const railToggle = page.getByRole('button', { name: /toggle project details/i })
     await expect(page.getByTestId('project-rail')).toBeVisible()

@@ -51,7 +51,7 @@ export const HubSection = ({
             type="button"
             onClick={onAdd}
             aria-label={t('projectHub.sections.add', { title })}
-            className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
+            className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-surface-active hover:text-foreground"
           >
             <Plus className="size-3.5" aria-hidden="true" />
           </button>

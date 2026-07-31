@@ -238,9 +238,18 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
       <ProjectTabBar active={activeTabKey} onChange={goToTab} counts={hub.counts} />
 
       <div className="flex min-h-0 flex-1">
-        <div className="min-w-0 flex-1 overflow-y-auto">
+        {/*
+          A flex column, NOT a scroll container: VirtualizedProjectTaskList sizes
+          itself with `flex-1` and sets `contain: strict` on its scroller, so it
+          takes no height from its content. Inside a plain block wrapper it
+          collapses to zero and renders no rows at all. Tasks therefore scrolls
+          itself; the other tabs get their own scroll wrapper below.
+        */}
+        <div className="flex min-w-0 flex-1 flex-col">
           {activeTabKey === 'overview' ? (
-            <OverviewTab project={project} hub={hub} handlers={handlers} />
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <OverviewTab project={project} hub={hub} handlers={handlers} />
+            </div>
           ) : activeTabKey === 'tasks' ? (
             <TaskList
               tasks={hub.tasks}
@@ -253,7 +262,9 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
               onNoteClick={handleOpenNote}
             />
           ) : (
-            <ListTab kind={activeTabKey} hub={hub} handlers={handlers} />
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <ListTab kind={activeTabKey} hub={hub} handlers={handlers} />
+            </div>
           )}
         </div>
 

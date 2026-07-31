@@ -131,7 +131,7 @@ export const ProjectCaptureInput = ({
         onPointerDown={() => void handleAttach()}
         disabled={isBusy}
         aria-label={t('projectHub.capture.attach')}
-        className="shrink-0 rounded-md p-2 text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-60"
+        className="shrink-0 rounded-md p-2 text-muted-foreground transition-colors hover:bg-surface-active hover:text-foreground disabled:opacity-60"
       >
         {isBusy ? (
           <Loader2 className="size-4 animate-spin" aria-hidden="true" />
