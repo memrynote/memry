@@ -1,4 +1,5 @@
 import { FolderViewChannels } from '@memry/contracts/ipc-channels'
+import type { ViewScope } from '@memry/contracts/folder-view-api'
 import { invoke, subscribe } from '../lib/ipc'
 import type { MainIpcInvokeArgs } from '../../main/ipc/generated-ipc-invoke-map'
 
@@ -6,21 +7,21 @@ export const folderViewApi = {
   getConfig: (folderPath: string) => invoke(FolderViewChannels.invoke.GET_CONFIG, { folderPath }),
   setConfig: (folderPath: string, config: Record<string, unknown>) =>
     invoke(FolderViewChannels.invoke.SET_CONFIG, { folderPath, config }),
-  getViews: (folderPath: string) => invoke(FolderViewChannels.invoke.GET_VIEWS, { folderPath }),
-  setView: (folderPath: string, view: Record<string, unknown>) =>
-    invoke(FolderViewChannels.invoke.SET_VIEW, { folderPath, view } as MainIpcInvokeArgs<
+  getViews: (scope: ViewScope) => invoke(FolderViewChannels.invoke.GET_VIEWS, { scope }),
+  setView: (scope: ViewScope, view: Record<string, unknown>) =>
+    invoke(FolderViewChannels.invoke.SET_VIEW, { scope, view } as MainIpcInvokeArgs<
       typeof FolderViewChannels.invoke.SET_VIEW
     >[0]),
-  deleteView: (folderPath: string, viewName: string) =>
-    invoke(FolderViewChannels.invoke.DELETE_VIEW, { folderPath, viewName }),
+  deleteView: (scope: ViewScope, viewName: string) =>
+    invoke(FolderViewChannels.invoke.DELETE_VIEW, { scope, viewName }),
   listWithProperties: (options: {
-    folderPath: string
+    scope: ViewScope
     properties?: string[]
     limit?: number
     offset?: number
   }) => invoke(FolderViewChannels.invoke.LIST_WITH_PROPERTIES, options),
-  getAvailableProperties: (folderPath: string) =>
-    invoke(FolderViewChannels.invoke.GET_AVAILABLE_PROPERTIES, { folderPath }),
+  getAvailableProperties: (scope: ViewScope) =>
+    invoke(FolderViewChannels.invoke.GET_AVAILABLE_PROPERTIES, { scope }),
   getFolderSuggestions: (noteId: string) =>
     invoke(FolderViewChannels.invoke.GET_FOLDER_SUGGESTIONS, { noteId }),
   folderExists: (folderPath: string): Promise<boolean> =>
