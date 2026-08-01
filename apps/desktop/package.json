@@ -103,7 +103,7 @@
     "jsdom": "^27.4.0",
     "keytar": "^7.9.0",
     "libsodium-wrappers-sumo": "^0.8.2",
-    "sharp": "0.34.5",
+    "sharp": "0.35.0",
     "sqlite-vec": "0.1.7-alpha.2",
     "y-leveldb": "^0.2.0",
     "yjs": "^13.6.29"
@@ -157,7 +157,7 @@
     "@memry/storage-vault": "workspace:*",
     "@memry/sync-core": "workspace:*",
     "@memry/sync-harness": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.26.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@playwright/test": "^1.57.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",

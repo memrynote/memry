@@ -26,10 +26,11 @@ allowBuilds:
 
 # Moved from package.json "pnpm.overrides" (no longer read by pnpm 11)
 overrides:
-  tar: '>=7.5.16'
+  tar: '>=7.5.21'
   rollup: '>=4.59.0'
-  hono: '>=4.12.25'
-  '@hono/node-server': '>=1.19.14'
+  hono: '>=4.12.27'
+  # @modelcontextprotocol/sdk >=1.30 accepts '^1.19.9 || ^2.0.5'; 1.x has no patch.
+  '@hono/node-server': '>=2.0.5 <3'
   esbuild: '>=0.28.1'
   express-rate-limit: '>=8.2.2'
   # Electron 43 (ABI 148) ABI detection: @electron/rebuild's transitive node-abi
@@ -49,15 +50,16 @@ overrides:
   vite: ^7.3.5
   markdown-it: '>=14.2.0'
   qs: '>=6.15.2'
-  protobufjs: '>=7.6.3 <8'
+  protobufjs: '>=7.6.5 <8'
   serialize-javascript: 7.0.5
   '@xmldom/xmldom': 0.8.13
   # Dependabot security alerts — pinned patched transitive versions
   shell-quote: '>=1.8.4'
-  linkify-it: '>=5.0.1'
-  dompurify: '>=3.4.11'
+  # Stay on the 5.x line: markdown-it 14 declares linkify-it ^5.0.0.
+  linkify-it: '>=5.0.2 <6'
+  dompurify: '>=3.4.12'
   form-data: '>=4.0.6'
-  fast-uri: '>=3.1.2 <4'
+  fast-uri: '>=3.1.4 <4'
   ip-address: '>=10.1.1'
   smol-toml: '>=1.6.1'
   srvx: '>=0.11.13'
@@ -66,13 +68,27 @@ overrides:
   '@babel/core': '>=7.29.6 <8'
   '@opentelemetry/core': '>=2.8.0 <3'
   '@tootallnate/once': '>=2.0.1 <3'
+  adm-zip: '>=0.6.0'
+  axios: '>=1.18.0 <2'
+  builder-util-runtime: '>=9.7.0 <10'
+  lodash-es: '>=4.18.0 <5'
+  postcss: '>=8.5.18 <9'
+  re2: '>=1.25.2 <2'
+  # @huggingface/transformers and miniflare otherwise pin the vulnerable 0.34.5.
+  sharp: '>=0.35.0 <0.36'
   # Scoped: only bump the vulnerable major line, leave other majors untouched
   'ajv@>=8.0.0 <8.18.0': '8.18.0'
-  'brace-expansion@>=5.0.0 <5.0.6': '5.0.6'
+  'body-parser@>=2.0.0 <2.3.0': '2.3.0'
+  'brace-expansion@<1.1.16': '1.1.16'
+  'brace-expansion@>=2.0.0 <2.1.3': '2.1.3'
+  'brace-expansion@>=5.0.0 <5.0.7': '5.0.7'
   'js-yaml@>=3.0.0 <3.15.0': '3.15.0'
-  'js-yaml@>=4.0.0 <4.2.0': '4.2.0'
+  'js-yaml@>=4.0.0 <4.3.0': '4.3.0'
+  # nanoid 4.x has no patched release; the advisory's fix ships in 5.0.9.
+  'nanoid@>=3.0.0 <3.3.8': '3.3.8'
+  'nanoid@>=4.0.0 <5.0.9': '5.0.9'
   'uuid@>=8.0.0 <9.0.0': '11.1.1'
-  'react-router@>=7.12.0 <7.15.1': '7.15.1'
+  'react-router@>=7.0.0 <7.18.0': '7.18.0'
 
 minimumReleaseAgeExclude:
   - defuddle@0.19.0
