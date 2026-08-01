@@ -25,3 +25,4 @@ export {
   type TagAssignment
 } from '@main/database/queries/tag-categories'
 export { listTagItems, type TagItem } from '@main/database/queries/tag-items'
+export { readTagViews, writeTagViews } from '@main/database/queries/tag-definitions'

@@ -280,7 +280,7 @@ export function useFolderView({
       return {
         views: viewsResult.views,
         defaultIndex: viewsResult.defaultIndex,
-        summaries: (configResult?.config.summaries ?? {}) as Record<string, SummaryConfig>
+        summaries: configResult?.config.summaries ?? {}
       }
     },
     staleTime: 30_000, // 30 seconds

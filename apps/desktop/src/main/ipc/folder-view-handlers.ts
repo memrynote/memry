@@ -40,8 +40,7 @@ import { readFolderConfig, writeFolderConfig, folderExists } from '../vault/fold
 import { getConfig } from '../vault'
 import { getIndexDatabase as getDataDb, getDatabase } from '../database'
 import { noteCache, noteTags, noteProperties } from '@memry/db-schema/schema/notes-cache'
-import { listTagItems } from '../database/queries/tag-items'
-import { readTagViews, writeTagViews } from '../database/queries/tag-definitions'
+import { listTagItems, readTagViews, writeTagViews } from '../tags/store'
 
 const logger = createLogger('IPC:FolderView')
 
