@@ -647,10 +647,10 @@ export interface FolderViewHandlers {
  * const folderView = window.api.folderView;
  *
  * // Get all views for a folder (reads .folder.md)
- * const { views, defaultIndex } = await folderView.getViews('projects');
+ * const { views, defaultIndex } = await folderView.getViews({ kind: 'folder', path: 'projects' });
  *
  * // Add/update a view (writes .folder.md)
- * await folderView.setView('projects', {
+ * await folderView.setView({ kind: 'folder', path: 'projects' }, {
  *   name: 'Active Only',
  *   type: 'table',
  *   columns: [{ id: 'title', width: 250 }],
@@ -660,11 +660,16 @@ export interface FolderViewHandlers {
  *
  * // List notes with properties
  * const { notes, total } = await folderView.listWithProperties({
- *   folderPath: 'projects'
+ *   scope: { kind: 'folder', path: 'projects' }
+ * });
+ *
+ * // List notes with a tag scope
+ * const { notes } = await folderView.listWithProperties({
+ *   scope: { kind: 'tag', tag: 'araba' }
  * });
  *
  * // Get available properties for column selector
- * const { builtIn, properties, formulas } = await folderView.getAvailableProperties('projects');
+ * const { builtIn, properties, formulas } = await folderView.getAvailableProperties({ kind: 'folder', path: 'projects' });
  * ```
  */
 export interface FolderViewClientAPI {
