@@ -14,7 +14,13 @@ import { cn } from '@/lib/utils'
 import type { NoteWithProperties } from '@memry/contracts/folder-view-api'
 import { FolderViewEmptyState } from './folder-view-empty-state'
 import { TagChip } from '@/components/note/tags-row/TagChip'
-import { toTagChip, pastelFor, formatRelative, type TagMetaMap } from './note-card-pieces'
+import {
+  toTagChip,
+  pastelFor,
+  formatRelative,
+  NoteCardKindIcon,
+  type TagMetaMap
+} from './note-card-pieces'
 
 export interface FolderGalleryViewProps {
   notes: NoteWithProperties[]
@@ -83,9 +89,12 @@ export function FolderGalleryView({
             <span className="text-[34px] leading-none">{note.emoji || '📄'}</span>
           </div>
           <div className="flex flex-col gap-2 p-3">
-            <span className="line-clamp-2 text-[13px] font-semibold leading-[17px] text-foreground">
-              {note.title || 'Untitled'}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <NoteCardKindIcon kind={note.kind} />
+              <span className="line-clamp-2 text-[13px] font-semibold leading-[17px] text-foreground">
+                {note.title || 'Untitled'}
+              </span>
+            </div>
             {note.tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {note.tags.slice(0, 3).map((tag) => (
