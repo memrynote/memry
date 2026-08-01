@@ -54,7 +54,9 @@ export const VaultChannels = {
     /** Provision + open a cloud-only vault locally */
     DOWNLOAD_REMOTE: 'vault:download-remote',
     /** Purge a vault from the sync account; never touches files on disk */
-    DELETE_FROM_ACCOUNT: 'vault:delete-from-account'
+    DELETE_FROM_ACCOUNT: 'vault:delete-from-account',
+    /** Map Obsidian image embed targets (`![[photo.png]]`) to memry-file:// URLs */
+    RESOLVE_EMBEDS: 'vault:resolve-embeds'
   },
   events: {
     STATUS_CHANGED: 'vault:status-changed',

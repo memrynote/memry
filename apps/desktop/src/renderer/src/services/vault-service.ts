@@ -107,6 +107,14 @@ export const vaultService: VaultClientAPI = {
    */
   deleteFromAccount: (vaultUuid: string): Promise<void> => {
     return window.api.vault.deleteFromAccount(vaultUuid)
+  },
+
+  /**
+   * Map Obsidian image embed targets (`![[photo.png]]`) to loadable
+   * `memry-file://` URLs. Targets not found in the vault are omitted.
+   */
+  resolveEmbeds: (refs: string[]): Promise<Record<string, string>> => {
+    return window.api.vault.resolveEmbeds(refs)
   }
 }
 

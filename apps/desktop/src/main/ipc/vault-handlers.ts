@@ -1,4 +1,5 @@
 import { ipcMain, shell } from 'electron'
+import { z } from 'zod'
 import {
   VaultChannels,
   DownloadRemoteVaultSchema,
@@ -113,6 +114,15 @@ export function registerVaultHandlers(): void {
       const { deleteAccountVault, refreshVaultDirectory } = await import('../sync/vault-directory')
       await deleteAccountVault(vaultUuid)
       await refreshVaultDirectory({ force: true })
+    })
+  )
+
+  // vault:resolve-embeds - Map `![[photo.png]]` targets to memry-file:// URLs
+  ipcMain.handle(
+    VaultChannels.invoke.RESOLVE_EMBEDS,
+    createValidatedHandler(z.array(z.string()).max(500), async (refs) => {
+      const { resolveVaultEmbeds } = await import('../vault/resolve-embed')
+      return resolveVaultEmbeds(refs)
     })
   )
 

@@ -5,6 +5,8 @@ import {
   splitMarkdownPreservingBlanks,
   assembleMarkdownWithBlanks,
   separateBlockImages,
+  extractWikiImageEmbedRefs,
+  rewriteWikiImageEmbeds,
   normalizeSerializedMarkdown,
   type MarkdownSegment
 } from '@memry/shared/empty-lines'
@@ -154,13 +156,35 @@ export function sanitizeBlockIds(blocks: Block[]): Block[] {
   return didChange ? nextBlocks : blocks
 }
 
+/**
+ * Turn Obsidian image embeds into the `![alt](url)` form BlockNote parses into
+ * an image block. The target has to become an absolute `memry-file://` URL for
+ * the image to load at all, so the main process resolves it against the vault;
+ * anything it cannot find is left as the author wrote it. Failures degrade to
+ * "no embeds resolved" rather than blocking the note from opening.
+ */
+async function resolveWikiImageEmbeds(markdown: string): Promise<string> {
+  const refs = extractWikiImageEmbedRefs(markdown)
+  if (refs.length === 0) return markdown
+
+  let resolved: Record<string, string> = {}
+  try {
+    resolved = (await window.api?.vault?.resolveEmbeds?.(refs)) ?? {}
+  } catch {
+    return markdown
+  }
+
+  return rewriteWikiImageEmbeds(markdown, (ref) => resolved[ref])
+}
+
 export async function parseMarkdownPreservingBlanks(
   editor: any,
   markdown: string
 ): Promise<Block[]> {
+  const withEmbeds = await resolveWikiImageEmbeds(markdown)
   // Inline color spans are masked into markdown-inert tokens before parsing
   // (BlockNote strips raw spans), then re-applied as styles on the parsed runs.
-  const { text: maskedMarkdown, spans } = maskInlineColorSpans(markdown)
+  const { text: maskedMarkdown, spans } = maskInlineColorSpans(withEmbeds)
   const calloutSegments = splitMarkdownByCallouts(maskedMarkdown)
   const blocks: Block[] = []
 
