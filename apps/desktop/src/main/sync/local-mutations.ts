@@ -3,18 +3,22 @@ import { createSyncAdapterRegistry } from '@memry/sync-core'
 import { getDatabase } from '../database'
 import { createLogger } from '../lib/logger'
 import {
+  incrementBookmarkClockOffline,
   incrementCanvasClockOffline,
   incrementFilterClockOffline,
   incrementInboxClockOffline,
   incrementProjectClocksOffline,
+  incrementReminderClockOffline,
   incrementTaskClocksOffline
 } from './offline-clock'
+import { getBookmarkSyncService } from './bookmark-sync'
 import { getCanvasSyncService } from './canvas-sync'
 import { getFilterSyncService } from './filter-sync'
 import { getInboxSyncService } from './inbox-sync'
 import { getJournalSyncService } from './journal-sync'
 import { getNoteSyncService } from './note-sync'
 import { getProjectSyncService } from './project-sync'
+import { getReminderSyncService } from './reminder-sync'
 import { getSettingsSyncManager } from './settings-sync'
 import { getTagDefinitionSyncService } from './tag-definition-sync'
 import { getTaskSyncService } from './task-sync'
@@ -138,6 +142,62 @@ const localSyncRegistry = createSyncAdapterRegistry([
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
         getFilterSyncService()?.enqueueDelete(itemId, snapshotPayload)
+      }
+    }
+  },
+  {
+    type: 'bookmark',
+    kind: 'record',
+    local: {
+      enqueueCreate(itemId: string): void {
+        const service = getBookmarkSyncService()
+        if (service) {
+          service.enqueueCreate(itemId)
+          return
+        }
+
+        incrementBookmarkClockOffline(getDatabase(), itemId)
+      },
+      enqueueUpdate(itemId: string): void {
+        const service = getBookmarkSyncService()
+        if (service) {
+          service.enqueueUpdate(itemId)
+          return
+        }
+
+        incrementBookmarkClockOffline(getDatabase(), itemId)
+      },
+      enqueueDelete(itemId: string, snapshotPayload?: string): void {
+        if (!snapshotPayload) return
+        getBookmarkSyncService()?.enqueueDelete(itemId, snapshotPayload)
+      }
+    }
+  },
+  {
+    type: 'reminder',
+    kind: 'record',
+    local: {
+      enqueueCreate(itemId: string): void {
+        const service = getReminderSyncService()
+        if (service) {
+          service.enqueueCreate(itemId)
+          return
+        }
+
+        incrementReminderClockOffline(getDatabase(), itemId)
+      },
+      enqueueUpdate(itemId: string): void {
+        const service = getReminderSyncService()
+        if (service) {
+          service.enqueueUpdate(itemId)
+          return
+        }
+
+        incrementReminderClockOffline(getDatabase(), itemId)
+      },
+      enqueueDelete(itemId: string, snapshotPayload?: string): void {
+        if (!snapshotPayload) return
+        getReminderSyncService()?.enqueueDelete(itemId, snapshotPayload)
       }
     }
   },

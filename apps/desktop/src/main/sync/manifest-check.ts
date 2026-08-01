@@ -8,6 +8,8 @@ import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters, settings } from '@memry/db-schema/schema/settings'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import { canvases } from '@memry/db-schema/schema/canvas'
+import { bookmarks } from '@memry/db-schema/schema/bookmarks'
+import { reminders } from '@memry/db-schema/schema/reminders'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import type { RecordSyncItemType, RecordSyncManifest } from '@memry/contracts/sync-api'
 import { withRetry } from './retry'
@@ -177,6 +179,19 @@ function getLocalSyncableItems(db: DrizzleDb): LocalSyncableItem[] {
   const syncedFilters = db.select().from(savedFilters).where(isNotNull(savedFilters.clock)).all()
   for (const f of syncedFilters) {
     addLocalItem({ id: f.id, type: 'filter', payload: JSON.stringify(f) })
+  }
+
+  const syncedBookmarks = db.select().from(bookmarks).where(isNotNull(bookmarks.clock)).all()
+  for (const b of syncedBookmarks) {
+    addLocalItem({ id: b.id, type: 'bookmark', payload: JSON.stringify(b) })
+  }
+
+  // triggeredAt is device-local: strip it before treating a reminder as a
+  // syncable payload, mirroring reminder-sync.ts's serialize.
+  const syncedReminders = db.select().from(reminders).where(isNotNull(reminders.clock)).all()
+  for (const r of syncedReminders) {
+    const { triggeredAt: _triggeredAt, ...syncable } = r
+    addLocalItem({ id: r.id, type: 'reminder', payload: JSON.stringify(syncable) })
   }
 
   // Diverges from the tasks template (D2): tombstones MUST be excluded. The
