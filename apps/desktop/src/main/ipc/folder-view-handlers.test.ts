@@ -441,4 +441,66 @@ describe('folder-view-handlers', () => {
       expect(result.notes.every((r) => r.kind === undefined || r.kind === 'note')).toBe(true)
     })
   })
+
+  describe('get-available-properties under tag scope', () => {
+    let dataDb: TestDatabaseResult
+
+    beforeEach(() => {
+      registerFolderViewHandlers()
+
+      dataDb = createTestDataDb()
+      ;(getDatabase as Mock).mockReturnValue(dataDb.db)
+    })
+
+    afterEach(() => {
+      dataDb.close()
+    })
+
+    it('offers kind as a filterable built-in', async () => {
+      const result = await invokeHandler(FolderViewChannels.invoke.GET_AVAILABLE_PROPERTIES, {
+        scope: { kind: 'tag', tag: 'araba' }
+      })
+
+      expect(result.builtIn.map((c) => c.id)).toContain('kind')
+    })
+
+    it('does not offer kind for a folder, where every row is a note', async () => {
+      const result = await invokeHandler(FolderViewChannels.invoke.GET_AVAILABLE_PROPERTIES, {
+        scope: { kind: 'folder', path: 'projects' }
+      })
+
+      expect(result.builtIn.map((c) => c.id)).not.toContain('kind')
+    })
+
+    it("counts properties across the tag's notes, not a folder", async () => {
+      insertTaggedNote(indexDb.db, {
+        id: 'note-araba',
+        title: 'Araba notu',
+        path: 'projects/araba.md',
+        tag: 'araba',
+        property: { name: 'status', value: 'active' }
+      })
+
+      const result = await invokeHandler(FolderViewChannels.invoke.GET_AVAILABLE_PROPERTIES, {
+        scope: { kind: 'tag', tag: 'araba' }
+      })
+
+      expect(result.properties).toContainEqual({ name: 'status', type: 'text', usageCount: 1 })
+    })
+
+    it('returns no formulas for a tag, which has no .folder.md', async () => {
+      insertTaggedNote(indexDb.db, {
+        id: 'note-araba',
+        title: 'Araba notu',
+        path: 'projects/araba.md',
+        tag: 'araba'
+      })
+
+      const result = await invokeHandler(FolderViewChannels.invoke.GET_AVAILABLE_PROPERTIES, {
+        scope: { kind: 'tag', tag: 'araba' }
+      })
+
+      expect(result.formulas).toEqual([])
+    })
+  })
 })

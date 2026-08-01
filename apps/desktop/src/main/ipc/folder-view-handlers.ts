@@ -115,6 +115,53 @@ async function fetchPropertiesFor(
   return propertiesMap
 }
 
+/**
+ * Batch-fetch property usage counts and types across the given notes.
+ * Shared by both scope branches of get-available-properties — a tag's
+ * columns come from the same note_properties rows a folder's do, just
+ * counted over a different note id set.
+ */
+async function fetchPropertyCounts(
+  db: ReturnType<typeof getDataDb>,
+  noteIds: string[]
+): Promise<Map<string, { count: number; type: string }>> {
+  const propCounts = new Map<string, { count: number; type: string }>()
+
+  for (const noteId of noteIds) {
+    const props = await db
+      .select({ name: noteProperties.name, type: noteProperties.type })
+      .from(noteProperties)
+      .where(eq(noteProperties.noteId, noteId))
+
+    props.forEach((p) => {
+      const existing = propCounts.get(p.name)
+      if (existing) {
+        existing.count++
+      } else {
+        propCounts.set(p.name, { count: 1, type: p.type })
+      }
+    })
+  }
+
+  return propCounts
+}
+
+/** Usage counts -> the sorted AvailableProperty list the response returns (highest usage first). */
+function toAvailableProperties(
+  propCounts: Map<string, { count: number; type: string }>
+): AvailableProperty[] {
+  const properties: AvailableProperty[] = Array.from(propCounts.entries()).map(
+    ([name, { count, type }]) => ({
+      name,
+      type: type as AvailableProperty['type'],
+      usageCount: count
+    })
+  )
+
+  properties.sort((a, b) => b.usageCount - a.usageCount)
+  return properties
+}
+
 // ============================================================================
 // Handlers
 // ============================================================================
@@ -392,22 +439,51 @@ export function registerFolderViewHandlers(): void {
                   : ('text' as const)
         }))
 
+        // Only a tag view mixes row kinds, so only it gets the column — and
+        // with it, `kind` filtering through the normal Filter By path.
+        const builtInForScope =
+          input.scope.kind === 'tag'
+            ? [...builtIn, { id: 'kind' as const, displayName: 'Kind', type: 'text' as const }]
+            : builtIn
+
         let db: ReturnType<typeof getDataDb>
         try {
           db = getDataDb()
         } catch {
-          return { builtIn, properties: [], formulas: [] }
+          return { builtIn: builtInForScope, properties: [], formulas: [] }
         }
 
+        if (input.scope.kind === 'tag') {
+          let dataDb: ReturnType<typeof getDatabase>
+          try {
+            dataDb = getDatabase()
+          } catch {
+            return { builtIn: builtInForScope, properties: [], formulas: [] }
+          }
+
+          const items = listTagItems(db, dataDb, input.scope.tag)
+          const noteIds = items.filter((item) => item.kind === 'note').map((item) => item.id)
+          const propCounts = await fetchPropertyCounts(db, noteIds)
+
+          // Formulas live in `.folder.md`, which a tag has no equivalent of.
+          return {
+            builtIn: builtInForScope,
+            properties: toAvailableProperties(propCounts),
+            formulas: []
+          }
+        }
+
+        const folderPath = input.scope.path
+
         // Get folder config for formulas
-        const folderConfig = await readFolderConfig(input.folderPath)
+        const folderConfig = await readFolderConfig(folderPath)
         const formulas = folderConfig?.formulas
           ? Object.entries(folderConfig.formulas).map(([id, expression]) => ({ id, expression }))
           : []
 
         // Query distinct property names used in this folder
         const prefix = getNotesPrefix()
-        const pathPattern = input.folderPath ? `${prefix}${input.folderPath}/%` : `${prefix}%`
+        const pathPattern = folderPath ? `${prefix}${folderPath}/%` : `${prefix}%`
 
         // Get notes in folder first
         const folderNotes = await db
@@ -416,41 +492,15 @@ export function registerFolderViewHandlers(): void {
           .where(and(like(noteCache.path, pathPattern), isNull(noteCache.date)))
 
         if (folderNotes.length === 0) {
-          return { builtIn, properties: [], formulas }
+          return { builtIn: builtInForScope, properties: [], formulas }
         }
 
-        // Get property usage counts
-        const propCounts = new Map<string, { count: number; type: string }>()
-
-        for (const note of folderNotes) {
-          const props = await db
-            .select({ name: noteProperties.name, type: noteProperties.type })
-            .from(noteProperties)
-            .where(eq(noteProperties.noteId, note.id))
-
-          props.forEach((p) => {
-            const existing = propCounts.get(p.name)
-            if (existing) {
-              existing.count++
-            } else {
-              propCounts.set(p.name, { count: 1, type: p.type })
-            }
-          })
-        }
-
-        // Convert to array
-        const properties: AvailableProperty[] = Array.from(propCounts.entries()).map(
-          ([name, { count, type }]) => ({
-            name,
-            type: type as AvailableProperty['type'],
-            usageCount: count
-          })
+        const propCounts = await fetchPropertyCounts(
+          db,
+          folderNotes.map((note) => note.id)
         )
 
-        // Sort by usage count descending
-        properties.sort((a, b) => b.usageCount - a.usageCount)
-
-        return { builtIn, properties, formulas }
+        return { builtIn: builtInForScope, properties: toAvailableProperties(propCounts), formulas }
       }
     )
   )

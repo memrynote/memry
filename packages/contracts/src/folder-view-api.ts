@@ -581,9 +581,15 @@ export interface ListWithPropertiesResponse {
 }
 
 export interface GetAvailablePropertiesResponse {
-  /** Built-in columns (always available) */
+  /**
+   * Built-in columns (always available). Under tag scope this additionally
+   * includes 'kind' — only a tag view mixes notes, tasks and inbox items, so
+   * only it needs a `kind` column and filter. 'kind' is deliberately not part
+   * of `BUILT_IN_COLUMNS` itself: every folder-scope row is a note, where the
+   * column would be dead weight in the column selector.
+   */
   builtIn: Array<{
-    id: BuiltInColumn
+    id: BuiltInColumn | 'kind'
     displayName: string
     type: 'text' | 'date' | 'number' | 'multiselect'
   }>
