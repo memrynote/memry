@@ -53,7 +53,7 @@ import { editorSchema } from './editor-schema'
 import { analyzeTaskIntents } from './scan-task-intents'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
-import { useVault } from '@/hooks/use-vault'
+import { vaultService } from '@/services/vault-service'
 import { resolveNoteRelativeUrl } from '@/lib/resolve-note-relative-url'
 import {
   ReviewFormattingToolbar,
@@ -213,18 +213,30 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // `<img src>`, where it resolves against the renderer document's base URL
   // instead of the vault and 404s. Render-time only — the markdown on disk keeps
   // its relative path, so the vault stays readable by the app that wrote it.
-  const { vaultPath } = useVault()
+  //
+  // BlockNote calls `resolveFileUrl` once, as it builds the image block's DOM,
+  // and keeps whatever it returns. So the vault path has to be *awaited* here
+  // rather than read off a hook: `useVault` starts at null and fills in after an
+  // IPC round-trip, which the editor mount routinely wins — leaving the image
+  // permanently broken even though the path arrives moments later. Fetched once
+  // per editor, on the first ref that actually needs resolving.
   const notePathRef = useRef(notePath)
-  const vaultPathRef = useRef(vaultPath)
   useEffect(() => {
     notePathRef.current = notePath
-    vaultPathRef.current = vaultPath
-  }, [notePath, vaultPath])
+  }, [notePath])
 
-  const resolveFileUrl = useCallback(
-    async (url: string) => resolveNoteRelativeUrl(url, notePathRef.current, vaultPathRef.current),
-    []
-  )
+  const vaultPathRef = useRef<Promise<string | null> | null>(null)
+  const resolveFileUrl = useCallback(async (url: string) => {
+    const notePath = notePathRef.current
+    if (!notePath) return url
+    if (!vaultPathRef.current) {
+      vaultPathRef.current = vaultService
+        .getStatus()
+        .then((status) => status.path ?? null)
+        .catch(() => null)
+    }
+    return resolveNoteRelativeUrl(url, notePath, await vaultPathRef.current)
+  }, [])
 
   // Create the BlockNote editor instance
   const editor = useCreateBlockNote({
