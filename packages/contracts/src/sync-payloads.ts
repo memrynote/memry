@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { FieldClocksSchema, VectorClockSchema } from './sync-api'
+import { ViewConfigSchema } from './folder-view-api'
 
 export const TaskSyncPayloadSchema = z.object({
   title: z.string().optional(),
@@ -141,6 +142,9 @@ export const TagDefinitionSyncPayloadSchema = z.object({
   icon: z.string().nullable().optional(),
   categoryId: z.string().nullable().optional(),
   sortOrder: z.number().int().optional(),
+  // `undefined` (key absent) means the sender predates saved views and must not
+  // clobber the local value; `null` is an explicit clear. See tag-definition-handler.ts.
+  views: z.array(ViewConfigSchema).nullable().optional(),
   clock: VectorClockSchema.optional(),
   createdAt: z.string().optional()
 })
