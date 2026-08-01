@@ -279,6 +279,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const { handleChange } = useEditorSync({
     editor,
     noteId,
+    notePath,
     initialContent,
     contentType,
     yjsFragment,

@@ -34,8 +34,11 @@ rendered as a broken image — so a typo stays visible and fixable.
 
 ::: tip
 Editing a note that contains `![[photo.png]]` rewrites the embed to memrynote's standard
-image syntax the next time the note is saved. The picture and its position are unchanged;
-only the markup differs.
+image syntax the next time the note is saved — `![photo.png](../Images/photo.png)`. The
+picture and its position are unchanged; only the markup differs.
+
+The rewritten link is **relative to the note**, so it keeps working after the note syncs to
+your other devices, and the vault stays readable by Obsidian.
 :::
 
 ## Backlinks Panel
