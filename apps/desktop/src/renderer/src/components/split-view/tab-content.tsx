@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils'
 import { InboxPage } from '@/pages/inbox'
 import { useT } from '@memry/i18n/renderer'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
+import type { ViewScope } from '@memry/contracts/folder-view-api'
 
 // =============================================================================
 // MEMOIZED PAGE COMPONENTS
@@ -53,9 +54,6 @@ const LazyGraphPage = React.lazy(async () => ({
 }))
 const LazyTagsHubPage = React.lazy(async () => ({
   default: (await import('@/pages/tags-hub')).TagsHubPage
-}))
-const LazyTagViewPage = React.lazy(async () => ({
-  default: (await import('@/pages/tag-view')).TagViewPage
 }))
 const LazyAgentConversationTab = React.lazy(async () => ({
   default: (await import('@/agent-chat/agent-conversation-tab')).AgentConversationTab
@@ -116,6 +114,20 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
     }
   }, [tab.id, tab.scrollPosition])
 
+  // FolderViewPage's `useFolderView` keys its live-refresh subscriptions off
+  // scope identity — memoized here (independent of the broader `content`
+  // memo below, whose deps include `tasksContext` and can recompute more
+  // often) so scope stays referentially stable across renders that don't
+  // actually change the folder/tag.
+  const folderScope = useMemo<ViewScope>(
+    () => ({ kind: 'folder', path: tab.entityId ?? '' }),
+    [tab.entityId]
+  )
+  const tagScope = useMemo<ViewScope>(
+    () => ({ kind: 'tag', tag: tab.entityId ?? '' }),
+    [tab.entityId]
+  )
+
   // PERFORMANCE: Memoize content based on tab identity to prevent remounting
   // Key insight: useMemo ensures React reuses the component instance when
   // only unrelated state changes (like other tabs being modified)
@@ -174,7 +186,7 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
         return <LazyFilePage fileId={tab.entityId} />
 
       case 'folder':
-        return <LazyFolderViewPage folderPath={tab.entityId} />
+        return <LazyFolderViewPage scope={folderScope} />
 
       case 'journal':
         return <LazyJournalPage />
@@ -201,10 +213,13 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
         return <LazyTagsHubPage />
 
       case 'tag':
-        // `Tab` carries no `color` field (only `SidebarItem` does, and it isn't
-        // threaded through `createTabFromSidebarItem`) — the page falls back to
-        // a deterministic tag-name color via `getTagColors` when none is given.
-        return <LazyTagViewPage tag={tab.entityId ?? ''} />
+        // Renders the same folder-view page as `case 'folder'`, scoped to a
+        // tag instead of a directory (Task 9 of the tag→folder-view
+        // migration). `Tab` carries no `color` field (only `SidebarItem`
+        // does, and it isn't threaded through `createTabFromSidebarItem`) —
+        // the page falls back to a deterministic tag-name color via
+        // `getTagColors` when none is given.
+        return <LazyFolderViewPage scope={tagScope} />
 
       case 'agent-chat':
         return <LazyAgentConversationTab conversationId={tab.entityId} />
@@ -244,7 +259,16 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
     }
     // Dependencies: tab identity fields and tasksContext for TasksPage props
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab.id, tab.type, tab.entityId, tab.title, tab.viewState?.query, tasksContext])
+  }, [
+    tab.id,
+    tab.type,
+    tab.entityId,
+    tab.title,
+    tab.viewState?.query,
+    tasksContext,
+    folderScope,
+    tagScope
+  ])
 
   return (
     <div

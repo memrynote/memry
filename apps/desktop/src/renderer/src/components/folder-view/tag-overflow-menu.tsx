@@ -33,8 +33,10 @@ export interface TagOverflowMenuProps {
 /**
  * Tag actions overflow menu: rename, change color, delete.
  *
- * Moved here from the sidebar drill-down (`tag-detail-view.tsx`, removed in
- * Task 20) so the tag page owns it going forward. Unchanged beyond the move.
+ * Originally moved here from the sidebar drill-down (`tag-detail-view.tsx`,
+ * removed in Task 20) into `pages/tag-view.tsx`, then moved again into
+ * `components/folder-view/` so both the legacy tag page and the tag-scoped
+ * `folder-view.tsx` header can share it. Unchanged beyond the moves.
  */
 export function TagOverflowMenu({
   tag,

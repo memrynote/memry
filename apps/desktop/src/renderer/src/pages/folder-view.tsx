@@ -5,7 +5,8 @@
  * Supports multiple views, filtering, and sorting.
  */
 
-import { Fragment, useMemo, useState, useLayoutEffect, useCallback, useRef } from 'react'
+import { Fragment, useMemo, useState, useLayoutEffect, useCallback, useEffect, useRef } from 'react'
+import { getI18n } from 'react-i18next'
 import { ChevronRight, Plus, Search, X } from '@/lib/icons'
 
 import { useDebouncedValue } from '@/hooks/use-task-filters'
@@ -24,7 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
-import { useTabs } from '@/contexts/tabs'
+import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { FolderTableView } from '@/components/folder-view/folder-table-view'
 import { GroupedTable } from '@/components/folder-view/grouped-table'
@@ -38,16 +39,25 @@ import { FolderGalleryView } from '@/components/folder-view/folder-gallery-view'
 import { BulkActionBar } from '@/components/folder-view/bulk-action-bar'
 import type { TagMetaMap } from '@/components/folder-view/note-card-pieces'
 import { ViewSwitcher } from '@/components/folder-view/view-switcher'
+import { TagIconChip } from '@/components/settings/tag-icon-chip'
+import { TagOverflowMenu } from '@/components/folder-view/tag-overflow-menu'
+import { TagRenameDialog } from '@/components/sidebar/tag-rename-dialog'
+import { TagDeleteDialog } from '@/components/sidebar/tag-delete-dialog'
+import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
+import { getTagSegments } from '@/lib/tag-utils'
 import { cn } from '@/lib/utils'
 import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
 import { useFolderView } from '@/hooks/use-folder-view'
 import { useNoteMutations, useNoteTagsQuery, useNoteFoldersQuery } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
+import { tagsService, onTagRenamed, onTagDeleted } from '@/services/tags-service'
 import {
   DEFAULT_COLUMNS,
+  scopeKey,
   type FilterExpression,
   type ColumnConfig,
-  type GroupByConfig
+  type GroupByConfig,
+  type ViewScope
 } from '@memry/contracts/folder-view-api'
 import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -57,14 +67,14 @@ import { useT } from '@memry/i18n/renderer'
 const log = createLogger('Page:FolderView')
 
 interface FolderViewPageProps {
-  /** Folder path relative to notes/ */
-  folderPath?: string
+  /** What this page is scoped to — a folder directory or a tag. */
+  scope: ViewScope
 }
 
 /**
  * Folder View Page Component
  */
-export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.Element {
+export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
@@ -72,6 +82,11 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   const { openSidebarItem } = useSidebarNavigation()
   const { tags: allTags } = useNoteTagsQuery()
   const { folders, setFolderIcon } = useNoteFoldersQuery()
+
+  // Folder scope's path, or undefined under tag scope — kept as a local so
+  // the (unchanged) folder-only breadcrumb/icon logic below reads the same
+  // as before the scope prop swap.
+  const folderPath = scope.kind === 'folder' ? scope.path : undefined
 
   // Use mutations hook for creating new notes (with folder template support)
   const { createNote } = useNoteMutations()
@@ -111,7 +126,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     removeNotesOptimistically,
     updateNoteProperty,
     updateNoteTags
-  } = useFolderView({ folderPath: folderPath ?? '' })
+  } = useFolderView({ scope })
 
   // Get first note for formula preview in editor
   const sampleNote = notes.length > 0 ? notes[0] : null
@@ -128,6 +143,10 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   const [moveDialogOpen, setMoveDialogOpen] = useState(false)
   const [notesToMove, setNotesToMove] = useState<string[]>([])
   const [movingNoteTitle, setMovingNoteTitle] = useState<string | undefined>()
+
+  // Tag scope: rename/delete dialog state (ported from tag-view.tsx)
+  const [tagRenameOpen, setTagRenameOpen] = useState(false)
+  const [tagDeleteOpen, setTagDeleteOpen] = useState(false)
 
   // ============================================================================
   // Phase 21: View Settings State
@@ -146,12 +165,14 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set())
 
   /**
-   * Clear selection during render when the folder changes — keeps the reset
-   * out of an effect so the no-adjust-state-on-prop-change rule stays happy.
+   * Clear selection during render when the scope changes (folder or tag) —
+   * keeps the reset out of an effect so the no-adjust-state-on-prop-change
+   * rule stays happy.
    */
-  const [selectionFolderPath, setSelectionFolderPath] = useState(folderPath)
-  if (selectionFolderPath !== folderPath) {
-    setSelectionFolderPath(folderPath)
+  const currentScopeKey = scopeKey(scope)
+  const [selectionScopeKey, setSelectionScopeKey] = useState(currentScopeKey)
+  if (selectionScopeKey !== currentScopeKey) {
+    setSelectionScopeKey(currentScopeKey)
     setSelectedRowIds(new Set())
   }
 
@@ -243,6 +264,24 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     return map
   }, [allTags])
 
+  // Tag scope's header identity — the stored tag definition (color/icon), a
+  // deterministic color fallback via getTagColors (same as tag-view.tsx),
+  // and the hierarchy segments for a nested tag like "araba/lastik".
+  const tagRow =
+    scope.kind === 'tag'
+      ? allTags.find((row) => row.tag.toLowerCase() === scope.tag.toLowerCase())
+      : undefined
+  const tagResolvedColor = tagRow?.color ?? ''
+  const tagIcon = tagRow?.icon ?? null
+  const tagColors = useMemo(
+    () => (scope.kind === 'tag' ? getTagColors(tagResolvedColor, scope.tag) : null),
+    [scope, tagResolvedColor]
+  )
+  const tagSegments = useMemo(
+    () => (scope.kind === 'tag' ? getTagSegments(scope.tag) : []),
+    [scope]
+  )
+
   // Handle opening a note (single click opens permanent tab)
   const handleNoteOpen = (noteId: string): void => {
     const note = notes.find((n) => n.id === noteId)
@@ -305,6 +344,116 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     },
     [notes, updateNoteTags]
   )
+
+  // ============================================================================
+  // Tag scope: rename/delete + lifecycle subscriptions (ported from
+  // tag-view.tsx:193-273, verbatim in behaviour). This page is only ever
+  // mounted as the active tab of some group, so the currently active tab is
+  // this page's own tab. The tab's identity is the tag name at open time and
+  // there's no tabs-context action to repoint an existing tab's `entityId`,
+  // so a rename (from this tab or another window) closes the tab, same as a
+  // delete — otherwise it would keep resolving color/items against a name
+  // that no longer exists while the tab strip shows the new one.
+  // ============================================================================
+
+  const activeTab = useActiveTab()
+  const closeThisTab = useCallback(() => {
+    if (activeTab) {
+      closeTab(activeTab.id)
+    }
+  }, [activeTab, closeTab])
+
+  const handleTagIconChange = useCallback(
+    async (icon: string | null) => {
+      if (scope.kind !== 'tag') return
+      const tag = scope.tag
+      const tSettings = getI18n().getFixedT(null, 'settings')
+      try {
+        const result = await tagsService.updateTagIcon({ tag, icon })
+        if (!result.success) {
+          throw new Error(result.error ?? tSettings('tags.toasts.iconFailed'))
+        }
+      } catch (err) {
+        log.error('Failed to update tag icon', err)
+        toast.error(extractErrorMessage(err, tSettings('tags.toasts.iconFailed')))
+      }
+    },
+    [scope]
+  )
+
+  const handleTagRenameSubmit = useCallback(
+    async (newName: string) => {
+      if (scope.kind !== 'tag') return
+      const tag = scope.tag
+      const tSettings = getI18n().getFixedT(null, 'settings')
+      try {
+        const result = await tagsService.renameTag({ oldName: tag, newName })
+        if (!result.success) {
+          throw new Error(result.error ?? tSettings('tags.toasts.renameFailed'))
+        }
+        toast.success(tSettings('tags.toasts.renamed', { oldName: tag, newName }))
+        closeThisTab()
+      } catch (err) {
+        log.error('Failed to rename tag', err)
+        const message = extractErrorMessage(err, tSettings('tags.toasts.renameFailed'))
+        toast.error(message)
+        throw err instanceof Error ? err : new Error(message)
+      }
+    },
+    [scope, closeThisTab]
+  )
+
+  const handleTagDeleteConfirm = useCallback(async () => {
+    if (scope.kind !== 'tag') return
+    const tag = scope.tag
+    const tSettings = getI18n().getFixedT(null, 'settings')
+    try {
+      const result = await tagsService.deleteTag(tag)
+      if (!result.success) {
+        throw new Error(result.error ?? tSettings('tags.toasts.deleteFailed'))
+      }
+      toast.success(tSettings('tags.toasts.deleted', { name: tag, count: totalNotes }))
+      closeThisTab()
+    } catch (err) {
+      log.error('Failed to delete tag', err)
+      toast.error(extractErrorMessage(err, tSettings('tags.toasts.deleteFailed')))
+    }
+  }, [scope, totalNotes, closeThisTab])
+
+  // Keep this tab in sync with the tag's lifecycle, mirroring tag-view.tsx's
+  // subscriptions. Depends on the tag string (not `scope`) so a new `scope`
+  // object reference each render doesn't resubscribe.
+  const activeTagName = scope.kind === 'tag' ? scope.tag : null
+
+  useEffect(() => {
+    if (activeTagName === null) return
+    const currentTag = activeTagName
+    const unsubscribeRenamed = onTagRenamed((event) => {
+      if (event.oldName.toLowerCase() === currentTag.toLowerCase()) {
+        closeThisTab()
+      }
+    })
+    return unsubscribeRenamed
+  }, [activeTagName, closeThisTab])
+
+  useEffect(() => {
+    if (activeTagName === null) return
+    const currentTag = activeTagName
+    const unsubscribeDeleted = onTagDeleted((event) => {
+      if (event.tag.toLowerCase() === currentTag.toLowerCase()) {
+        closeThisTab()
+      }
+    })
+    return unsubscribeDeleted
+  }, [activeTagName, closeThisTab])
+
+  // View-rename isn't wired up for tag scope (renameView is .folder.md-backed
+  // and the hook gates it to folder scope) — surface why instead of letting
+  // ViewSwitcher's rename input silently revert on blur.
+  const handleRenameViewUnavailable = useCallback((): Promise<void> => {
+    toast.error(t('page.renameViewUnavailableForTags'), { id: 'tag-scope-rename-view' })
+    return Promise.resolve()
+  }, [t])
 
   // Handle opening note in new tab (for context menu)
   const handleOpenInNewTab = useCallback(
@@ -457,16 +606,19 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   // ============================================================================
 
   /**
-   * Handle creating a new note in the current folder.
-   * Uses folder template from .folder.md if one exists.
+   * Handle creating a new note.
+   * Folder scope: creates it in the current folder (template auto-applied
+   * from .folder.md if one exists). Tag scope: creates it in the default
+   * folder with the scoped tag already applied, so the new row appears in
+   * the view the user is standing in.
    */
   const handleCreateNote = useCallback(async () => {
     try {
-      const result = await createNote.mutateAsync({
-        title: 'Untitled',
-        folder: folderPath ?? undefined
-        // Template is auto-applied by backend from .folder.md
-      })
+      const result = await createNote.mutateAsync(
+        scope.kind === 'folder'
+          ? { title: 'Untitled', folder: scope.path || undefined }
+          : { title: 'Untitled', tags: [scope.tag] }
+      )
 
       if (result.success && result.note) {
         openTab({
@@ -485,7 +637,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     } catch (err) {
       log.error('Failed to create note:', err)
     }
-  }, [createNote, folderPath, openTab])
+  }, [createNote, scope, openTab])
 
   /**
    * Handle clearing all search and filters.
@@ -548,54 +700,99 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     <div className="flex flex-col h-full w-full min-w-0 max-w-full overflow-hidden">
       {/* Header - min-w-0 breaks minimum content size chain to prevent table from pushing it */}
       <header className="flex h-14 items-center gap-3 px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex-shrink-0 min-w-0 overflow-hidden text-xs antialiased">
-        {/* Folder icon box — shows the folder's custom icon, click to change */}
-        <FolderEmojiChip
-          icon={folderIcon}
-          onIconChange={(icon) => void setFolderIcon(folderPath ?? '', icon)}
-        />
+        {scope.kind === 'folder' ? (
+          <>
+            {/* Folder icon box — shows the folder's custom icon, click to change */}
+            <FolderEmojiChip
+              icon={folderIcon}
+              onIconChange={(icon) => void setFolderIcon(folderPath ?? '', icon)}
+            />
 
-        {/* Breadcrumb trail + note count */}
-        <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-          {breadcrumbs.map((crumb, i) => {
-            const isLast = i === breadcrumbs.length - 1
-            const crumbPath = crumb.path
-            return (
-              <Fragment key={crumbPath ?? 'root'}>
-                {i > 0 && (
-                  <ChevronRight className="size-3 flex-shrink-0 text-muted-foreground/50" />
-                )}
-                {crumbPath !== null && !isLast ? (
-                  <button
-                    type="button"
-                    onClick={() => handleBreadcrumbNav(crumbPath, crumb.label)}
-                    className="truncate font-medium text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {crumb.label}
-                  </button>
-                ) : (
-                  <span
-                    className={cn(
-                      'truncate font-medium',
-                      isLast ? 'text-foreground/80' : 'text-muted-foreground'
+            {/* Breadcrumb trail + note count */}
+            <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+              {breadcrumbs.map((crumb, i) => {
+                const isLast = i === breadcrumbs.length - 1
+                const crumbPath = crumb.path
+                return (
+                  <Fragment key={crumbPath ?? 'root'}>
+                    {i > 0 && (
+                      <ChevronRight className="size-3 flex-shrink-0 text-muted-foreground/50" />
                     )}
-                  >
-                    {crumb.label}
-                  </span>
+                    {crumbPath !== null && !isLast ? (
+                      <button
+                        type="button"
+                        onClick={() => handleBreadcrumbNav(crumbPath, crumb.label)}
+                        className="truncate font-medium text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {crumb.label}
+                      </button>
+                    ) : (
+                      <span
+                        className={cn(
+                          'truncate font-medium',
+                          isLast ? 'text-foreground/80' : 'text-muted-foreground'
+                        )}
+                      >
+                        {crumb.label}
+                      </span>
+                    )}
+                  </Fragment>
+                )
+              })}
+              <span className="flex-shrink-0 font-medium text-muted-foreground/50">·</span>
+              <span className="flex-shrink-0 whitespace-nowrap font-medium text-text-tertiary">
+                {isLoading ? (
+                  <Skeleton className="h-3.5 w-16" />
+                ) : totalNotes < unfilteredCount ? (
+                  `${totalNotes} of ${unfilteredCount} notes`
+                ) : (
+                  `${totalNotes} notes`
                 )}
-              </Fragment>
-            )
-          })}
-          <span className="flex-shrink-0 font-medium text-muted-foreground/50">·</span>
-          <span className="flex-shrink-0 whitespace-nowrap font-medium text-text-tertiary">
-            {isLoading ? (
-              <Skeleton className="h-3.5 w-16" />
-            ) : totalNotes < unfilteredCount ? (
-              `${totalNotes} of ${unfilteredCount} notes`
-            ) : (
-              `${totalNotes} notes`
-            )}
-          </span>
-        </div>
+              </span>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Tag icon box — shows the tag's custom icon, click to change */}
+            <TagIconChip
+              icon={tagIcon}
+              color={tagColors?.text}
+              onIconChange={(icon) => void handleTagIconChange(icon)}
+            />
+
+            {/* Colored tag chip (segmented for a hierarchical tag) + item count */}
+            <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+              <span
+                className="inline-flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
+                style={{
+                  backgroundColor: withAlpha(tagColors?.text ?? '', 0.12),
+                  color: tagColors?.text
+                }}
+              >
+                <span
+                  className="size-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: tagColors?.text }}
+                />
+                {tagSegments.map((segment, i) => (
+                  <Fragment key={i}>
+                    {i > 0 && <span className="opacity-50">/</span>}
+                    <span className="truncate">{segment}</span>
+                  </Fragment>
+                ))}
+              </span>
+              <span className="flex-shrink-0 font-medium text-muted-foreground/50">·</span>
+              <span className="flex-shrink-0 whitespace-nowrap font-medium text-text-tertiary">
+                {isLoading ? (
+                  <Skeleton className="h-3.5 w-16" />
+                ) : totalNotes < unfilteredCount ? (
+                  t('page.itemsCountFiltered', { shown: totalNotes, total: unfilteredCount })
+                ) : (
+                  t('page.itemsCount', { count: totalNotes })
+                )}
+              </span>
+            </div>
+          </>
+        )}
 
         {/* Spacer */}
         <div className="flex-1" />
@@ -679,12 +876,14 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             formulas={formulas}
             onColumnsChange={(...args) => void updateColumns(...args)}
             onSearchChange={setColumnSearchQuery}
-            onFormulaAdd={addFormula}
-            onFormulaEdit={updateFormula}
-            onFormulaDelete={deleteFormula}
+            onFormulaAdd={scope.kind === 'folder' ? addFormula : undefined}
+            onFormulaEdit={scope.kind === 'folder' ? updateFormula : undefined}
+            onFormulaDelete={scope.kind === 'folder' ? deleteFormula : undefined}
             sampleNote={sampleNote}
             summaries={summaries}
-            onSummaryChange={(...args) => void updateSummaryConfig(...args)}
+            onSummaryChange={
+              scope.kind === 'folder' ? (...args) => void updateSummaryConfig(...args) : undefined
+            }
             showSummaries={activeView?.showSummaries ?? false}
             onToggleSummaries={() => void updateView({ showSummaries: !activeView?.showSummaries })}
             columnBorders={activeView?.columnBorders ?? false}
@@ -712,7 +911,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             onViewChange={setActiveViewIndex}
             onAddView={addView}
             onUpdateView={updateView}
-            onRenameView={renameView}
+            onRenameView={scope.kind === 'folder' ? renameView : handleRenameViewUnavailable}
             onSetViewAsDefault={setViewAsDefault}
             onDeleteView={deleteView}
           />
@@ -727,6 +926,16 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             <Plus className="size-3.5" />
             {tPhaseF('phaseF.pagesFolderView.createNewNote')}
           </button>
+
+          {/* Tag actions overflow menu (rename, color, icon, delete) — tag scope only */}
+          {scope.kind === 'tag' && (
+            <TagOverflowMenu
+              tag={scope.tag}
+              color={tagResolvedColor}
+              onRequestRename={() => setTagRenameOpen(true)}
+              onRequestDelete={() => setTagDeleteOpen(true)}
+            />
+          )}
         </div>
       </header>
 
@@ -911,6 +1120,24 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         onMove={(...args) => void handleMoveConfirm(...args)}
         noteTitle={movingNoteTitle}
       />
+
+      {/* Tag scope: rename / delete dialogs (ported from tag-view.tsx) */}
+      {scope.kind === 'tag' && (
+        <>
+          <TagRenameDialog
+            tag={scope.tag}
+            open={tagRenameOpen}
+            onOpenChange={setTagRenameOpen}
+            onSubmit={handleTagRenameSubmit}
+          />
+          <TagDeleteDialog
+            tag={scope.tag}
+            open={tagDeleteOpen}
+            onOpenChange={setTagDeleteOpen}
+            onConfirm={handleTagDeleteConfirm}
+          />
+        </>
+      )}
     </div>
   )
 }

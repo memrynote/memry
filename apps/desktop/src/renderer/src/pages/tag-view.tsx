@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button'
 import { Picker } from '@/components/ui/picker'
 import { FolderTableView } from '@/components/folder-view'
 import { Pin } from '@/lib/icons'
-import { TagOverflowMenu } from './tag-view/tag-overflow-menu'
+import { TagOverflowMenu } from '@/components/folder-view/tag-overflow-menu'
 
 const log = createLogger('Page:TagView')
 

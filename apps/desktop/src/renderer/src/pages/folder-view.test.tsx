@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   openTab: vi.fn(),
   closeTab: vi.fn(),
   getActiveTab: vi.fn(),
+  activeTab: { id: 'tab-1' } as { id: string } | null,
   openSidebarItem: vi.fn(),
   setDensity: vi.fn(),
   setFolderIcon: vi.fn(),
@@ -22,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   updateView: vi.fn(),
   addView: vi.fn(),
   deleteView: vi.fn(),
+  renameView: vi.fn(),
   setViewAsDefault: vi.fn(),
   updateColumns: vi.fn(),
   updateSorting: vi.fn(),
@@ -33,6 +35,11 @@ const mocks = vi.hoisted(() => ({
   addFormula: vi.fn(),
   updateFormula: vi.fn(),
   deleteFormula: vi.fn(),
+  renameTag: vi.fn(async () => ({ success: true })),
+  updateTagIcon: vi.fn(async () => ({ success: true })),
+  deleteTag: vi.fn(async () => ({ success: true })),
+  renamedHandler: null as ((event: { oldName: string; newName: string }) => void) | null,
+  deletedHandler: null as ((event: { tag: string }) => void) | null,
   folderState: {
     isLoading: false,
     error: null as string | null,
@@ -55,8 +62,30 @@ vi.mock('@/contexts/tabs', () => ({
     openTab: mocks.openTab,
     closeTab: mocks.closeTab,
     getActiveTab: mocks.getActiveTab
-  })
+  }),
+  useActiveTab: () => mocks.activeTab
 }))
+
+vi.mock('@/services/tags-service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/services/tags-service')>()
+  return {
+    ...actual,
+    tagsService: {
+      ...actual.tagsService,
+      renameTag: mocks.renameTag,
+      updateTagIcon: mocks.updateTagIcon,
+      deleteTag: mocks.deleteTag
+    },
+    onTagRenamed: (handler: (event: { oldName: string; newName: string }) => void) => {
+      mocks.renamedHandler = handler
+      return vi.fn()
+    },
+    onTagDeleted: (handler: (event: { tag: string }) => void) => {
+      mocks.deletedHandler = handler
+      return vi.fn()
+    }
+  }
+})
 
 vi.mock('@/hooks/use-sidebar-navigation', () => ({
   useSidebarNavigation: () => ({ openSidebarItem: mocks.openSidebarItem })
@@ -107,6 +136,7 @@ vi.mock('@/hooks/use-folder-view', () => ({
     updateView: mocks.updateView,
     addView: mocks.addView,
     deleteView: mocks.deleteView,
+    renameView: mocks.renameView,
     setViewAsDefault: mocks.setViewAsDefault,
     updateColumns: mocks.updateColumns,
     updateSorting: mocks.updateSorting,
@@ -160,7 +190,21 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
     </button>
   ),
   DropdownMenuLabel: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
-  DropdownMenuSeparator: () => <hr />
+  DropdownMenuSeparator: () => <hr />,
+  DropdownMenuItem: ({
+    children,
+    onClick
+  }: {
+    children: React.ReactNode
+    onClick?: () => void
+  }) => (
+    <button type="button" role="menuitem" onClick={onClick}>
+      {children}
+    </button>
+  ),
+  DropdownMenuSub: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuSubTrigger: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuSubContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
 }))
 
 vi.mock('@/components/ui/alert-dialog', () => ({
@@ -417,6 +461,9 @@ describe('FolderViewPage', () => {
     mocks.folderState.activeView = null
     mocks.folderState.notes = [note]
     mocks.getActiveTab.mockReturnValue({ id: 'folder-tab' })
+    mocks.activeTab = { id: 'tab-1' }
+    mocks.renamedHandler = null
+    mocks.deletedHandler = null
     mocks.createNote.mockResolvedValue({
       success: true,
       note: { id: 'new-note', title: 'Untitled' }
@@ -426,7 +473,7 @@ describe('FolderViewPage', () => {
   })
 
   it('drives the standard folder table workflows', async () => {
-    renderWithProviders(<FolderViewPage folderPath="Work/Plans" />)
+    renderWithProviders(<FolderViewPage scope={{ kind: 'folder', path: 'Work/Plans' }} />)
 
     expect(screen.getByText('Plans')).toBeInTheDocument()
     expect(screen.getByText('Folder Note')).toBeInTheDocument()
@@ -471,7 +518,7 @@ describe('FolderViewPage', () => {
   })
 
   it('drives view toolbar and destructive dialogs', async () => {
-    renderWithProviders(<FolderViewPage folderPath="Work/Plans" />)
+    renderWithProviders(<FolderViewPage scope={{ kind: 'folder', path: 'Work/Plans' }} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Add view' }))
     expect(mocks.addView).toHaveBeenCalled()
@@ -500,26 +547,108 @@ describe('FolderViewPage', () => {
       groupBy: { columnId: 'rating' },
       showSummaries: false
     }
-    const { rerender } = renderWithProviders(<FolderViewPage folderPath="Work" />)
+    const { rerender } = renderWithProviders(
+      <FolderViewPage scope={{ kind: 'folder', path: 'Work' }} />
+    )
 
     fireEvent.click(screen.getByRole('button', { name: 'Open grouped note' }))
     expect(mocks.openTab).toHaveBeenCalledWith(expect.objectContaining({ entityId: 'note-1' }))
 
     mocks.folderState.activeView = null
     mocks.folderState.isLoading = true
-    rerender(<FolderViewPage folderPath="Work" />)
+    rerender(<FolderViewPage scope={{ kind: 'folder', path: 'Work' }} />)
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0)
 
     mocks.folderState.isLoading = false
     mocks.folderState.error = 'No folder'
-    rerender(<FolderViewPage folderPath="Work" />)
+    rerender(<FolderViewPage scope={{ kind: 'folder', path: 'Work' }} />)
     fireEvent.click(screen.getByRole('button', { name: 'Retry folder' }))
     expect(mocks.refresh).toHaveBeenCalled()
 
     mocks.folderState.error = null
     mocks.folderState.folderNotFound = true
-    rerender(<FolderViewPage folderPath="Work" />)
+    rerender(<FolderViewPage scope={{ kind: 'folder', path: 'Work' }} />)
     fireEvent.click(screen.getByRole('button', { name: 'Go back folder' }))
     expect(mocks.closeTab).toHaveBeenCalledWith('folder-tab')
+  })
+})
+
+describe('FolderViewPage tag scope', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.folderState.isLoading = false
+    mocks.folderState.error = null
+    mocks.folderState.folderNotFound = false
+    mocks.folderState.activeView = null
+    mocks.folderState.notes = [note]
+    mocks.activeTab = { id: 'tab-1' }
+    mocks.renamedHandler = null
+    mocks.deletedHandler = null
+    mocks.createNote.mockResolvedValue({
+      success: true,
+      note: { id: 'new-note', title: 'Untitled' }
+    })
+  })
+
+  it('renders the tag chip and item count instead of a breadcrumb', async () => {
+    renderWithProviders(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+    expect(await screen.findByText('araba')).toBeInTheDocument()
+  })
+
+  it('still renders a folder breadcrumb under folder scope', async () => {
+    renderWithProviders(<FolderViewPage scope={{ kind: 'folder', path: 'projects' }} />)
+    expect(await screen.findByText('projects')).toBeInTheDocument()
+  })
+
+  it('segments a hierarchical tag into its parts', async () => {
+    renderWithProviders(<FolderViewPage scope={{ kind: 'tag', tag: 'araba/lastik' }} />)
+    expect(await screen.findByText('araba')).toBeInTheDocument()
+    expect(screen.getByText('lastik')).toBeInTheDocument()
+  })
+
+  it('closes the tab when the tag is renamed from another window', async () => {
+    renderWithProviders(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+    await screen.findByText('araba')
+
+    mocks.renamedHandler?.({ oldName: 'araba', newName: 'oto' })
+
+    await waitFor(() => expect(mocks.closeTab).toHaveBeenCalledWith('tab-1'))
+  })
+
+  it('does not close the tab when a different tag is renamed', async () => {
+    renderWithProviders(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+    await screen.findByText('araba')
+
+    mocks.renamedHandler?.({ oldName: 'other', newName: 'oto' })
+
+    expect(mocks.closeTab).not.toHaveBeenCalled()
+  })
+
+  it('closes the tab when the tag is deleted from another window', async () => {
+    renderWithProviders(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+    await screen.findByText('araba')
+
+    mocks.deletedHandler?.({ tag: 'araba' })
+
+    await waitFor(() => expect(mocks.closeTab).toHaveBeenCalledWith('tab-1'))
+  })
+
+  it('does not close the tab when a different tag is deleted', async () => {
+    renderWithProviders(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+    await screen.findByText('araba')
+
+    mocks.deletedHandler?.({ tag: 'other' })
+
+    expect(mocks.closeTab).not.toHaveBeenCalled()
+  })
+
+  it('applies the scoped tag to a note created from the header', async () => {
+    renderWithProviders(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create table note' }))
+
+    await waitFor(() =>
+      expect(mocks.createNote).toHaveBeenCalledWith(expect.objectContaining({ tags: ['araba'] }))
+    )
   })
 })
