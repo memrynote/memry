@@ -774,6 +774,27 @@ export function GroupedTable({
 
   const { rows } = table.getRowModel()
 
+  /**
+   * Note-only subset of the current selection, passed to the row context
+   * menu's bulk delete/move. Tag scope can select a mix of notes, tasks,
+   * and inbox items; onDelete/onMoveToFolder are notes-only IPCs, so
+   * task/inbox ids must never reach them. Folder scope rows are always
+   * notes (kind absent), so this is a no-op there. Group header rows are
+   * excluded (they have no real note behind `.original`).
+   */
+  const selectedNoteIdsForMenu = useMemo(
+    () =>
+      rows
+        .filter(
+          (r) =>
+            !r.getIsGrouped() &&
+            selectedRowIds.has(r.original.id) &&
+            (r.original.kind ?? 'note') === 'note'
+        )
+        .map((r) => r.original.id),
+    [rows, selectedRowIds]
+  )
+
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => tableContainerRef.current,
@@ -984,7 +1005,16 @@ export function GroupedTable({
         case 'M': {
           if ((e.metaKey || e.ctrlKey) && e.shiftKey && selectedRowIds.size > 0) {
             e.preventDefault()
-            onMoveToFolder?.(Array.from(selectedRowIds))
+            // Tag scope can select a mix of notes, tasks, and inbox items —
+            // onMoveToFolder is a notes-only IPC, so exclude non-note ids.
+            const noteIds = rows
+              .filter(
+                (r) => selectedRowIds.has(r.original.id) && (r.original.kind ?? 'note') === 'note'
+              )
+              .map((r) => r.original.id)
+            if (noteIds.length > 0) {
+              onMoveToFolder?.(noteIds)
+            }
           }
           break
         }
@@ -1188,7 +1218,7 @@ export function GroupedTable({
                   note={row.original}
                   isPartOfSelection={isPartOfSelection}
                   selectedCount={selectedRowIds.size}
-                  selectedNoteIds={Array.from(selectedRowIds)}
+                  selectedNoteIds={selectedNoteIdsForMenu}
                   onNoteOpen={onNoteOpen}
                   onOpenInNewTab={onOpenInNewTab}
                   onMoveToFolder={onMoveToFolder}

@@ -88,8 +88,16 @@ vi.mock('./sortable-column-header', () => ({
   )
 }))
 
+// Captures every RowContextMenu render's props so tests can assert on the
+// `selectedNoteIds` wiring without opening a real (jsdom-unsupported) Radix
+// context menu.
+const rowContextMenuCalls = vi.hoisted(() => [] as any[])
+
 vi.mock('./row-context-menu', () => ({
-  RowContextMenu: ({ children }: { children: React.ReactNode }) => <>{children}</>
+  RowContextMenu: (props: { children: React.ReactNode; note: { id: string } }) => {
+    rowContextMenuCalls.push(props)
+    return <>{props.children}</>
+  }
 }))
 
 vi.mock('./folder-view-empty-state', () => ({
@@ -494,6 +502,37 @@ describe('FolderTableView', () => {
 
     expect(screen.getByText('Note')).toBeInTheDocument()
   })
+
+  it('filters task/inbox ids out of the row context menu selection and the move-selected shortcut', () => {
+    const onMoveToFolder = vi.fn()
+    const mixedNotes = [
+      { ...notes[0], id: 'note-1', kind: undefined },
+      { ...notes[1], id: 'task-1', kind: 'task' },
+      { ...notes[1], id: 'inbox-1', title: 'Inbox item', kind: 'inbox' }
+    ] as any[]
+
+    rowContextMenuCalls.length = 0
+
+    render(
+      <FolderTableView
+        notes={mixedNotes}
+        columns={columns}
+        selectedRowIds={new Set(['note-1', 'task-1', 'inbox-1'])}
+        onMoveToFolder={onMoveToFolder}
+      />
+    )
+
+    // RowContextMenu wiring: the note row's selectedNoteIds must exclude the
+    // task/inbox ids even though all three are selected.
+    const noteRowCall = rowContextMenuCalls.filter((call) => call.note.id === 'note-1').at(-1)
+    expect(noteRowCall.selectedNoteIds).toEqual(['note-1'])
+
+    // ⇧⌘M keyboard shortcut (bypasses RowContextMenu entirely) must apply
+    // the same note-only filter before calling onMoveToFolder.
+    const grid = screen.getByRole('grid', { name: 'notesTable' })
+    fireEvent.keyDown(grid, { key: 'm', metaKey: true, shiftKey: true })
+    expect(onMoveToFolder).toHaveBeenCalledWith(['note-1'])
+  })
 })
 
 describe('GroupedTable', () => {
@@ -788,5 +827,32 @@ describe('GroupedTable', () => {
     const groupToggle = screen.getByText('Open').closest('tr')?.querySelector('button')
     fireEvent.click(groupToggle as HTMLButtonElement)
     expect(screen.queryByRole('button', { name: /Alpha plan/ })).not.toBeInTheDocument()
+  })
+
+  it('filters task/inbox ids out of the row context menu selection and the move-selected shortcut', () => {
+    const onMoveToFolder = vi.fn()
+    const mixedNotes = [
+      { ...notes[0], id: 'note-1', kind: undefined },
+      { ...notes[1], id: 'task-1', kind: 'task' },
+      { ...notes[1], id: 'inbox-1', title: 'Inbox item', kind: 'inbox' }
+    ] as any[]
+
+    rowContextMenuCalls.length = 0
+
+    render(
+      <GroupedTable
+        notes={mixedNotes}
+        columns={columns}
+        selectedRowIds={new Set(['note-1', 'task-1', 'inbox-1'])}
+        onMoveToFolder={onMoveToFolder}
+      />
+    )
+
+    const noteRowCall = rowContextMenuCalls.filter((call) => call.note.id === 'note-1').at(-1)
+    expect(noteRowCall.selectedNoteIds).toEqual(['note-1'])
+
+    const grid = screen.getByRole('grid', { name: 'groupedNotesTable' })
+    fireEvent.keyDown(grid, { key: 'm', metaKey: true, shiftKey: true })
+    expect(onMoveToFolder).toHaveBeenCalledWith(['note-1'])
   })
 })
