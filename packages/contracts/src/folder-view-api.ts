@@ -62,6 +62,30 @@ export const PropertyTypes = {
 export type PropertyType = (typeof PropertyTypes)[keyof typeof PropertyTypes]
 
 // ============================================================================
+// View Scope — what a folder view is looking at
+// ============================================================================
+
+/**
+ * What a folder view is scoped to. A folder view over a directory and a
+ * folder view over a tag are the same page with a different row source.
+ */
+export type ViewScope = { kind: 'folder'; path: string } | { kind: 'tag'; tag: string }
+
+export const ViewScopeSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('folder'), path: z.string() }),
+  z.object({ kind: z.literal('tag'), tag: z.string().min(1) })
+])
+
+/**
+ * Stable cache/query key for a scope. Tag names are case-preserving but
+ * match case-insensitively (see migration 0034), so the key folds case for
+ * tags and preserves it for paths.
+ */
+export function scopeKey(scope: ViewScope): string {
+  return scope.kind === 'folder' ? `folder:${scope.path}` : `tag:${scope.tag.toLowerCase()}`
+}
+
+// ============================================================================
 // Column Configuration
 // ============================================================================
 
@@ -468,21 +492,21 @@ export const SetConfigRequestSchema = z.object({
 })
 
 export const GetViewsRequestSchema = z.object({
-  folderPath: z.string()
+  scope: ViewScopeSchema
 })
 
 export const SetViewRequestSchema = z.object({
-  folderPath: z.string(),
+  scope: ViewScopeSchema,
   view: ViewConfigSchema
 })
 
 export const DeleteViewRequestSchema = z.object({
-  folderPath: z.string(),
+  scope: ViewScopeSchema,
   viewName: z.string()
 })
 
 export const ListWithPropertiesRequestSchema = z.object({
-  folderPath: z.string(),
+  scope: ViewScopeSchema,
   /** Property IDs to fetch (in addition to built-in fields) */
   properties: z.array(z.string()).optional(),
   /** Pagination limit */
@@ -492,7 +516,7 @@ export const ListWithPropertiesRequestSchema = z.object({
 })
 
 export const GetAvailablePropertiesRequestSchema = z.object({
-  folderPath: z.string()
+  scope: ViewScopeSchema
 })
 
 // ============================================================================
@@ -648,17 +672,17 @@ export interface FolderViewClientAPI {
 
   setConfig(folderPath: string, config: Partial<FolderViewConfig>): Promise<SetConfigResponse>
 
-  getViews(folderPath: string): Promise<GetViewsResponse>
+  getViews(scope: ViewScope): Promise<GetViewsResponse>
 
-  setView(folderPath: string, view: ViewConfig): Promise<SetViewResponse>
+  setView(scope: ViewScope, view: ViewConfig): Promise<SetViewResponse>
 
-  deleteView(folderPath: string, viewName: string): Promise<DeleteViewResponse>
+  deleteView(scope: ViewScope, viewName: string): Promise<DeleteViewResponse>
 
   listWithProperties(
     options: z.infer<typeof ListWithPropertiesRequestSchema>
   ): Promise<ListWithPropertiesResponse>
 
-  getAvailableProperties(folderPath: string): Promise<GetAvailablePropertiesResponse>
+  getAvailableProperties(scope: ViewScope): Promise<GetAvailablePropertiesResponse>
 
   /** Get AI-powered folder suggestions for moving a note (Phase 27) */
   getFolderSuggestions(noteId: string): Promise<GetFolderSuggestionsResponse>
