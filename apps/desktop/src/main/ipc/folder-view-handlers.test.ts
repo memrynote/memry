@@ -481,6 +481,16 @@ describe('folder-view-handlers', () => {
         property: { name: 'status', value: 'active' }
       })
 
+      // Add an untagged note with the same property name to prove the handler
+      // correctly scopes the count to only the tag's notes, not all notes in the database.
+      insertTaggedNote(indexDb.db, {
+        id: 'note-untagged',
+        title: 'Untagged note',
+        path: 'notes/untagged.md',
+        tag: 'other-tag',
+        property: { name: 'status', value: 'done' }
+      })
+
       const result = await invokeHandler(FolderViewChannels.invoke.GET_AVAILABLE_PROPERTIES, {
         scope: { kind: 'tag', tag: 'araba' }
       })
