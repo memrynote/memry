@@ -46,6 +46,8 @@ const findButtonWithText = (text: string): HTMLElement => {
   return button
 }
 
+const menuTexts = (): string[] => screen.getAllByRole('button').map((el) => el.textContent ?? '')
+
 describe('RowContextMenu', () => {
   it('offers Delete and Move for a folder-scope row (kind absent) and they work', () => {
     const onDelete = vi.fn()
@@ -141,7 +143,7 @@ describe('RowContextMenu', () => {
     expect(onMoveToFolder).not.toHaveBeenCalled()
   })
 
-  it('passes only the ids given via selectedNoteIds through bulk delete/move (caller is expected to pre-filter)', () => {
+  it('labels bulk actions with the note-only count it actually acts on, not the raw selection size', () => {
     const onDelete = vi.fn()
     const onMoveToFolder = vi.fn()
 
@@ -158,10 +160,63 @@ describe('RowContextMenu', () => {
       </RowContextMenu>
     )
 
-    fireEvent.click(findButtonWithText('delete'))
+    const deleteButton = findButtonWithText('delete')
+    expect(deleteButton.textContent).toContain('1')
+    expect(deleteButton.textContent).not.toContain('3')
+    fireEvent.click(deleteButton)
     expect(onDelete).toHaveBeenCalledWith(['note-1'])
 
-    fireEvent.click(findButtonWithText('Move 3'))
+    fireEvent.click(findButtonWithText('Move 1 Notes to Folder'))
     expect(onMoveToFolder).toHaveBeenCalledWith(['note-1'])
+  })
+
+  it('labels and acts on the note-only subset for a mixed multi-selection', () => {
+    const onDelete = vi.fn()
+    const onMoveToFolder = vi.fn()
+
+    render(
+      <RowContextMenu
+        note={makeNote({ id: 'note-1' })}
+        isPartOfSelection
+        selectedCount={3}
+        selectedNoteIds={['note-1', 'note-2']}
+        onDelete={onDelete}
+        onMoveToFolder={onMoveToFolder}
+      >
+        <div>row</div>
+      </RowContextMenu>
+    )
+
+    const deleteButton = findButtonWithText('delete')
+    expect(deleteButton.textContent).toContain('2')
+    expect(deleteButton.textContent).not.toContain('3')
+    fireEvent.click(deleteButton)
+    expect(onDelete).toHaveBeenCalledWith(['note-1', 'note-2'])
+
+    fireEvent.click(findButtonWithText('Move 2 Notes to Folder'))
+    expect(onMoveToFolder).toHaveBeenCalledWith(['note-1', 'note-2'])
+  })
+
+  it('does not offer bulk Delete or Move when the selection holds no notes', () => {
+    const onDelete = vi.fn()
+    const onMoveToFolder = vi.fn()
+
+    render(
+      <RowContextMenu
+        note={makeNote({ id: 'task-1', kind: 'task' })}
+        isPartOfSelection
+        selectedCount={3}
+        selectedNoteIds={[]}
+        onDelete={onDelete}
+        onMoveToFolder={onMoveToFolder}
+      >
+        <div>row</div>
+      </RowContextMenu>
+    )
+
+    expect(menuTexts().some((text) => text.includes('Notes to Folder'))).toBe(false)
+    expect(menuTexts().some((text) => text.includes('delete'))).toBe(false)
+    expect(onDelete).not.toHaveBeenCalled()
+    expect(onMoveToFolder).not.toHaveBeenCalled()
   })
 })

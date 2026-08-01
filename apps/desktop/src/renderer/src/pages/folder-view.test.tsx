@@ -409,6 +409,12 @@ vi.mock('@/components/folder-view/folder-table-view', () => ({
       <button type="button" onClick={() => onTagRemove('note-1', 'work')}>
         Remove tag
       </button>
+      <button type="button" onClick={() => onTagRemove('task-1', 'work')}>
+        Remove tag on task row
+      </button>
+      <button type="button" onClick={() => onTagRemove('inbox-1', 'work')}>
+        Remove tag on inbox row
+      </button>
       <button type="button" onClick={() => onPropertyUpdate('note-1', 'rating', 5)}>
         Update property
       </button>
@@ -473,6 +479,7 @@ vi.mock('@/components/folder-view/bulk-action-bar', () => ({
     count,
     onDelete,
     onMove,
+    onAddTag,
     onClear
   }: {
     scope?: { kind: string }
@@ -480,6 +487,7 @@ vi.mock('@/components/folder-view/bulk-action-bar', () => ({
     count: number
     onDelete: () => void
     onMove: () => void
+    onAddTag: (tag: string) => void
     onClear: () => void
   }) => (
     <div>
@@ -491,6 +499,9 @@ vi.mock('@/components/folder-view/bulk-action-bar', () => ({
       </button>
       <button type="button" onClick={onMove}>
         Bulk move
+      </button>
+      <button type="button" onClick={() => onAddTag('urgent')}>
+        Bulk add tag
       </button>
       <button type="button" onClick={onClear}>
         Clear bulk selection
@@ -871,6 +882,69 @@ describe('FolderViewPage bulk action bar wiring', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Select note' }))
 
     expect(await screen.findByTestId('bulk-scope-kind')).toHaveTextContent('folder')
+  })
+})
+
+describe('FolderViewPage tag mutations stay note-only', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.folderState.isLoading = false
+    mocks.folderState.error = null
+    mocks.folderState.folderNotFound = false
+    mocks.folderState.activeView = null
+    mocks.folderState.notes = [note, taskRow, inboxRow]
+  })
+
+  it('bulk add tag hits the note IPC once per note row and never with a task or inbox id', async () => {
+    renderWithProviders(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Select mixed rows' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Bulk add tag' }))
+
+    await waitFor(() =>
+      expect(mocks.updateNoteTags).toHaveBeenCalledWith('note-1', ['work', 'urgent'])
+    )
+    expect(mocks.updateNoteTags).toHaveBeenCalledTimes(1)
+    expect(mocks.updateNoteTags).not.toHaveBeenCalledWith('task-1', expect.anything())
+    expect(mocks.updateNoteTags).not.toHaveBeenCalledWith('inbox-1', expect.anything())
+  })
+
+  it('removing a tag chip on a task row does not touch the note IPC', async () => {
+    renderWithProviders(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove tag on task row' }))
+
+    expect(mocks.updateNoteTags).not.toHaveBeenCalled()
+  })
+
+  it('removing a tag chip on an inbox row does not touch the note IPC', async () => {
+    renderWithProviders(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove tag on inbox row' }))
+
+    expect(mocks.updateNoteTags).not.toHaveBeenCalled()
+  })
+
+  it('still removes a tag chip on a note row under tag scope', async () => {
+    renderWithProviders(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove tag' }))
+
+    expect(mocks.updateNoteTags).toHaveBeenCalledWith('note-1', [])
+  })
+
+  it('still bulk adds a tag to every selected row under folder scope', async () => {
+    mocks.folderState.notes = [note, secondNote]
+    renderWithProviders(<FolderViewPage scope={{ kind: 'folder', path: 'Work' }} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Select two notes' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Bulk add tag' }))
+
+    await waitFor(() =>
+      expect(mocks.updateNoteTags).toHaveBeenCalledWith('note-1', ['work', 'urgent'])
+    )
+    expect(mocks.updateNoteTags).toHaveBeenCalledWith('note-2', ['work', 'urgent'])
+    expect(mocks.updateNoteTags).toHaveBeenCalledTimes(2)
   })
 })
 

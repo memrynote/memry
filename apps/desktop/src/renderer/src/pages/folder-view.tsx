@@ -415,10 +415,20 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     [openSidebarItem, tagMetaMap]
   )
 
+  // `updateNoteTags` goes to the notes-only `notesService.update` IPC, but the
+  // table wires this to every row's tag chips — and under tag scope a row can
+  // be a task or an inbox item. Gate on kind so a non-note id can never reach
+  // it. Ideally the chip's remove affordance wouldn't be offered on those rows
+  // at all, but the per-row `onTagRemove` closure lives in the table
+  // components; this is the last line before the IPC.
   const handleTagRemove = useCallback(
     (noteId: string, tag: string): void => {
       const note = notes.find((n) => n.id === noteId)
       if (!note) return
+      if ((note.kind ?? 'note') !== 'note') {
+        log.warn('Ignoring tag removal on a non-note row', { id: noteId, kind: note.kind })
+        return
+      }
       const nextTags = note.tags.filter((t) => t !== tag)
       void updateNoteTags(noteId, nextTags)
     },
@@ -776,19 +786,22 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     }
   }, [selectedRowIds, t])
 
+  // Tags the note rows of the selection. Runs over `selectedNoteIds`, not the
+  // raw selection, so a task/inbox row in a mixed selection is skipped instead
+  // of being sent to the notes-only `notesService.update` IPC — the note rows
+  // of that same selection still get tagged.
   const handleBulkAddTag = useCallback(
     async (tag: string) => {
-      const ids = Array.from(selectedRowIds)
-      if (ids.length === 0 || !tag) return
+      if (selectedNoteIds.length === 0 || !tag) return
       await Promise.all(
-        ids.map((id) => {
+        selectedNoteIds.map((id) => {
           const note = notes.find((n) => n.id === id)
           if (!note || note.tags.includes(tag)) return Promise.resolve()
           return updateNoteTags(id, [...note.tags, tag])
         })
       )
     },
-    [selectedRowIds, notes, updateNoteTags]
+    [selectedNoteIds, notes, updateNoteTags]
   )
 
   // ponytail: per-note native save dialog (cancel aborts the run). A single-folder

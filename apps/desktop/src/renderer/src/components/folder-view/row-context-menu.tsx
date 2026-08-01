@@ -72,14 +72,21 @@ export function RowContextMenu({
   onDelete
 }: RowContextMenuProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
-  // Determine if we should show bulk actions
-  const showBulkActions = isPartOfSelection && selectedCount > 1
 
   // Delete and Move to Folder are notes-only IPCs (notesService.delete /
   // notesService.move). Folder view rows are always notes (kind absent),
   // but tag view can show task and inbox rows too — those must never offer
   // (or invoke) these actions.
   const isNote = (note.kind ?? 'note') === 'note'
+
+  // The bulk items act on `selectedNoteIds` (the note-only subset of the
+  // selection), so they must be labelled with that count and hidden entirely
+  // when the selection holds no notes — otherwise a task-only selection would
+  // offer "Delete 0 Notes".
+  const selectedNoteCount = selectedNoteIds.length
+
+  // Determine if we should show bulk actions
+  const showBulkActions = isPartOfSelection && selectedCount > 1 && selectedNoteCount > 0
 
   // Single note actions
   const handleOpen = (): void => {
@@ -174,14 +181,14 @@ export function RowContextMenu({
           <>
             <ContextMenuItem onClick={handleBulkMoveToFolder}>
               <FolderInput className="me-2 h-4 w-4" />
-              Move {selectedCount} Notes to Folder...
+              Move {selectedNoteCount} Notes to Folder...
               <ContextMenuShortcut>⇧⌘M</ContextMenuShortcut>
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem variant="destructive" onClick={handleBulkDelete}>
               <Trash2 className="me-2 h-4 w-4" />
               {tPhaseF('phaseF.componentsFolderViewRowContextMenu.delete')}
-              {selectedCount} {tPhaseF('phaseF.componentsFolderViewRowContextMenu.notes')}
+              {selectedNoteCount} {tPhaseF('phaseF.componentsFolderViewRowContextMenu.notes')}
             </ContextMenuItem>
           </>
         ) : (
