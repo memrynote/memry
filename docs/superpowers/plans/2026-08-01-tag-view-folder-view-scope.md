@@ -18,7 +18,7 @@
 - **Tailwind logical properties** in new/edited markup: `ms-*`/`me-*`, `ps-*`/`pe-*`, `start-*`/`end-*`, `text-start`/`text-end`, `border-s`/`border-e`, `rounded-s-*`/`rounded-e-*`.
 - **After any contract edit:** `pnpm ipc:generate` then `pnpm ipc:check`.
 - `getIndexDatabase` is imported into `folder-view-handlers.ts` under the alias `getDataDb`. It is the **index** DB. Do not "fix" the alias in this work; do not assume it means the data DB.
-- Every task ends green: `pnpm --filter @memry/desktop typecheck:web` and `typecheck:node` as relevant, plus the task's own tests.
+- **Every task ends with its own tests green.** Repo-wide typecheck is a different matter: Task 1 changes the IPC contract, so the desktop app does not compile until Task 7 finishes threading `scope` through preload and services. Tasks 1–6 therefore require only their own tests to pass. From Task 7 onward, every task ends with `pnpm --filter @memry/desktop typecheck:node` and `typecheck:web` green. Do not "fix" an intermediate compile error by reverting the contract — finish the sequence.
 
 ---
 
