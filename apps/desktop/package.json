@@ -272,7 +272,7 @@
     "openai": "^6.15.0",
     "pako": "^2.1.0",
     "pdfjs-dist": "5.4.296",
-    "postcss": "^8.5.15",
+    "postcss": "^8.5.18",
     "prettier": "^3.8.3",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.3",
