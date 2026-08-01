@@ -107,9 +107,7 @@ export const TagsChannels = {
     /** Delete a tag category (its tags become uncategorized) */
     DELETE_CATEGORY: 'tags:delete-category',
     /** Apply a drag result: tag assignments and/or category order, in one transaction */
-    REORDER: 'tags:reorder',
-    /** List notes, tasks and inbox items for a tag (including its `/` descendants) */
-    LIST_ITEMS: 'tags:list-items'
+    REORDER: 'tags:reorder'
   },
   events: {
     /** Tag was renamed */

@@ -339,7 +339,6 @@ export interface MainIpcInvokeHandlers {
   "tags:get-all-with-counts": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/tags-api").GetAllWithCountsResponse>>
   "tags:get-notes-by-tag": (...args: [{ tag: string; sortBy?: "title" | "modified" | "created" | undefined; sortOrder?: "asc" | "desc" | undefined; includeDescendants?: boolean | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/tags-api").GetNotesByTagResponse>>
   "tags:list-categories": (...args: []) => Awaited<{ success: boolean; categories: import("../database/queries/tag-categories").TagCategoryRow[]; error?: undefined; } | { success: boolean; error: string; categories?: undefined; }>
-  "tags:list-items": (...args: [string]) => Awaited<{ success: boolean; items: import("../database/queries/tag-items").TagItem[]; error?: undefined; } | { success: boolean; error: string; items?: undefined; }>
   "tags:merge": (...args: [{ source: string; target: string; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/tags-api").MergeTagResponse>>
   "tags:pin-note-to-tag": (...args: [{ noteId: string; tag: string; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/tags-api").TagOperationResponse>>
   "tags:remove-from-note": (...args: [{ noteId: string; tag: string; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/tags-api").TagOperationResponse>>

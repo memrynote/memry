@@ -805,12 +805,6 @@
   },
   "tagView": {
     "moreActions": "More actions",
-    "kindFilter": {
-      "all": "All",
-      "notes": "Notes",
-      "tasks": "Tasks",
-      "inbox": "Inbox"
-    },
     "pin": {
       "action": "Pin {count, plural, one {# note} other {# notes}} to tag",
       "success": "Pinned {count, plural, one {# note} other {# notes}} to tag",

@@ -60,7 +60,6 @@ import {
   deleteTagCategory,
   reorderTags,
   reorderCategories,
-  listTagItems,
   type TagAssignment
 } from '../tags/store'
 import { createLogger } from '../lib/logger'
@@ -578,18 +577,6 @@ export function registerTagsHandlers(): void {
       }
     }
   )
-
-  // tags:list-items - List notes, tasks and inbox items for a tag (including descendants)
-  ipcMain.handle(TagsChannels.invoke.LIST_ITEMS, (_e, tag: string) => {
-    try {
-      const indexDb = requireIndexDatabase()
-      const dataDb = requireDatabase()
-      return { success: true, items: listTagItems(indexDb, dataDb, tag) }
-    } catch (error) {
-      log.error('Failed to list tag items', error)
-      return { success: false, error: extractErrorMessage(error, 'Failed to list tag items') }
-    }
-  })
 }
 
 /**
@@ -611,5 +598,4 @@ export function unregisterTagsHandlers(): void {
   ipcMain.removeHandler(TagsChannels.invoke.RENAME_CATEGORY)
   ipcMain.removeHandler(TagsChannels.invoke.DELETE_CATEGORY)
   ipcMain.removeHandler(TagsChannels.invoke.REORDER)
-  ipcMain.removeHandler(TagsChannels.invoke.LIST_ITEMS)
 }
