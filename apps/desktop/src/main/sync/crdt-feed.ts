@@ -7,6 +7,21 @@
 
 import { getCrdtProvider, ORIGIN_LOCAL } from './crdt-provider'
 import { markdownToBlocks, blocksToYFragment } from './blocknote-converter'
+import { getIndexDatabase } from '../database'
+import { getNoteCacheById } from '@main/database/queries/notes'
+
+/**
+ * The note's vault-relative path, so embed targets are rewritten relative to it
+ * rather than as this machine's absolute paths. Unknown notes resolve to
+ * undefined, which keeps the previous absolute-URL behaviour.
+ */
+function noteCachePath(noteId: string): string | undefined {
+  try {
+    return getNoteCacheById(getIndexDatabase(), noteId)?.path
+  } catch {
+    return undefined
+  }
+}
 
 /**
  * Full XML-fragment replace of a note's body inside its live Y.Doc.
@@ -18,7 +33,7 @@ export async function replaceNoteBodyInCrdt(noteId: string, markdown: string): P
   const doc = provider.getDoc(noteId)
   if (!doc) return false
 
-  const blocks = await markdownToBlocks(markdown)
+  const blocks = await markdownToBlocks(markdown, noteCachePath(noteId))
   if (!blocks) return false
 
   const fragment = doc.getXmlFragment('prosemirror')

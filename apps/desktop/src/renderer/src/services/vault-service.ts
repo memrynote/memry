@@ -113,8 +113,11 @@ export const vaultService: VaultClientAPI = {
    * Map Obsidian image embed targets (`![[photo.png]]`) to loadable
    * `memry-file://` URLs. Targets not found in the vault are omitted.
    */
-  resolveEmbeds: (refs: string[]): Promise<Record<string, string>> => {
-    return window.api.vault.resolveEmbeds(refs)
+  resolveEmbeds: (input: {
+    refs: string[]
+    notePath?: string
+  }): Promise<Record<string, string>> => {
+    return window.api.vault.resolveEmbeds(input)
   }
 }
 

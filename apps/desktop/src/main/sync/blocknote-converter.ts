@@ -112,10 +112,13 @@ export async function yDocToMarkdown(
   }
 }
 
-export async function markdownToBlocks(markdown: string): Promise<Block[] | null> {
+export async function markdownToBlocks(
+  markdown: string,
+  notePath?: string
+): Promise<Block[] | null> {
   try {
     const editor = getEditor()
-    return await markdownToBlocksPreserving(editor, markdown)
+    return await markdownToBlocksPreserving(editor, markdown, notePath)
   } catch (err) {
     log.error('Markdown-to-blocks conversion failed', err)
     return null
@@ -171,10 +174,11 @@ export function repairEmptyBlockIds(fragment: Y.XmlFragment): number {
 
 export async function markdownToYFragment(
   markdown: string,
-  fragment: Y.XmlFragment
+  fragment: Y.XmlFragment,
+  notePath?: string
 ): Promise<boolean> {
   const parsed = parseCriticMarkup(markdown)
-  const blocks = await markdownToBlocks(parsed.plainText)
+  const blocks = await markdownToBlocks(parsed.plainText, notePath)
   if (!blocks) return false
   // Upgrade `- [ ] … {task:id}` checkboxes into taskBlock nodes so the renderer
   // binds the custom block on first paint instead of a raw checkbox.
@@ -312,12 +316,12 @@ async function serializeBlocksWithNestingMarkers(
  * vault lookup is a direct call instead of an IPC round trip. A closed vault or
  * an unreadable index resolves nothing, which leaves every embed as written.
  */
-function resolveWikiImageEmbedsInMarkdown(markdown: string): string {
+function resolveWikiImageEmbedsInMarkdown(markdown: string, notePath?: string): string {
   const refs = extractWikiImageEmbedRefs(markdown)
   if (refs.length === 0) return markdown
 
   try {
-    const resolved = resolveVaultEmbeds(refs)
+    const resolved = resolveVaultEmbeds(refs, notePath)
     return rewriteWikiImageEmbeds(markdown, (ref) => resolved[ref])
   } catch {
     return markdown
@@ -326,11 +330,12 @@ function resolveWikiImageEmbedsInMarkdown(markdown: string): string {
 
 async function markdownToBlocksPreserving(
   editor: ServerBlockNoteEditor,
-  markdown: string
+  markdown: string,
+  notePath?: string
 ): Promise<Block[]> {
   // Obsidian image embeds become `![alt](memry-file://…)` first, so the same
   // note renders identically here and in the editor (see normalize-note-blocks).
-  const withEmbeds = resolveWikiImageEmbedsInMarkdown(markdown)
+  const withEmbeds = resolveWikiImageEmbedsInMarkdown(markdown, notePath)
   // Inline color spans are masked into markdown-inert tokens before parsing
   // (BlockNote strips raw spans), then re-applied as styles on the parsed runs.
   const { text, spans } = maskInlineColorSpans(separateBlockImages(withEmbeds))

@@ -565,7 +565,9 @@ export class CrdtProvider {
     const parsed = parseNote(raw, cached.path)
     if (!parsed.content?.trim()) return
 
-    const ok = await markdownToYFragment(parsed.content, fragment)
+    // Pass the note's path so embed targets are written relative to it — this
+    // fragment is what gets serialized back to the vault file.
+    const ok = await markdownToYFragment(parsed.content, fragment, cached.path)
     if (ok && this.persistence) {
       await this.persistence.storeUpdate(noteId, Y.encodeStateAsUpdate(doc)).catch((err) => {
         log.error('Failed to persist markdown-seeded CRDT doc', { noteId, error: err })

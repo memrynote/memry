@@ -68,6 +68,54 @@ describe('resolveVaultEmbed', () => {
     expect(url).toContain('photo.png')
   })
 
+  // Whatever this returns is spliced into the note's markdown, so it is also
+  // what gets written back to the vault file on the next save. Given the note's
+  // own path it must stay portable — no absolute, machine-specific prefix in a
+  // file that syncs to other devices and is meant to stay readable in Obsidian.
+  describe('given the note path', () => {
+    it('returns a target relative to the note, not an absolute URL', () => {
+      writeVaultFile('Images/photo.png')
+      const target = resolver.resolveVaultEmbed('Images/photo.png', 'People/Person.md')
+      expect(target).toBe('../Images/photo.png')
+    })
+
+    it('resolves a sibling file without any ../ prefix', () => {
+      writeVaultFile('People/photo.png')
+      expect(resolver.resolveVaultEmbed('People/photo.png', 'People/Person.md')).toBe('photo.png')
+    })
+
+    it('keeps a note at the vault root simple', () => {
+      writeVaultFile('Images/photo.png')
+      expect(resolver.resolveVaultEmbed('Images/photo.png', 'Root.md')).toBe('Images/photo.png')
+    })
+
+    it('encodes characters that would break the markdown link', () => {
+      writeVaultFile('Images/my photo (1).png')
+      expect(resolver.resolveVaultEmbed('Images/my photo (1).png', 'Root.md')).toBe(
+        'Images/my%20photo%20%281%29.png'
+      )
+    })
+
+    it('still resolves a bare filename found by index lookup', () => {
+      writeVaultFile('Images/nested.png')
+      indexDb.sqlite
+        .prepare(
+          `INSERT INTO note_cache (id, path, title, file_type, created_at, modified_at)
+           VALUES (?, ?, ?, 'image', 0, 0)`
+        )
+        .run('img1', 'Images/nested.png', 'nested')
+
+      expect(resolver.resolveVaultEmbed('nested.png', 'People/Person.md')).toBe(
+        '../Images/nested.png'
+      )
+    })
+  })
+
+  it('falls back to an absolute URL when the note path is unknown', () => {
+    writeVaultFile('Images/photo.png')
+    expect(resolver.resolveVaultEmbed('Images/photo.png')).toMatch(/^memry-file:\/\/local\//)
+  })
+
   it('resolves a target relative to the notes folder', () => {
     writeVaultFile('notes/Media/shot.png')
     expect(resolver.resolveVaultEmbed('Media/shot.png')).toContain('shot.png')

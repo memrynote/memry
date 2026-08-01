@@ -482,7 +482,7 @@ export interface VaultClientAPI {
   listAccount(): Promise<AccountVaultInfo[]>
   downloadRemote(vaultUuid: string, parentPath?: string): Promise<SelectVaultResponse>
   deleteFromAccount(vaultUuid: string): Promise<void>
-  resolveEmbeds(refs: string[]): Promise<Record<string, string>>
+  resolveEmbeds(input: { refs: string[]; notePath?: string }): Promise<Record<string, string>>
 }
 
 // Notes client API interface
