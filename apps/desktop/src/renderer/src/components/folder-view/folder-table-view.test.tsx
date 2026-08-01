@@ -533,6 +533,58 @@ describe('FolderTableView', () => {
     fireEvent.keyDown(grid, { key: 'm', metaKey: true, shiftKey: true })
     expect(onMoveToFolder).toHaveBeenCalledWith(['note-1'])
   })
+
+  it('passes the whole selection with no search and no grouping (folder scope unchanged)', () => {
+    const onMoveToFolder = vi.fn()
+    rowContextMenuCalls.length = 0
+
+    render(
+      <FolderTableView
+        notes={notes}
+        columns={columns}
+        selectedRowIds={new Set(['note-1', 'note-2'])}
+        onMoveToFolder={onMoveToFolder}
+      />
+    )
+
+    const noteRowCall = rowContextMenuCalls.filter((call) => call.note.id === 'note-1').at(-1)
+    expect(noteRowCall.selectedNoteIds).toEqual(['note-1', 'note-2'])
+
+    const grid = screen.getByRole('grid', { name: 'notesTable' })
+    fireEvent.keyDown(grid, { key: 'm', metaKey: true, shiftKey: true })
+    expect(onMoveToFolder).toHaveBeenCalledWith(['note-1', 'note-2'])
+  })
+
+  it('keeps search-hidden selected notes in the bulk selection and the move shortcut', () => {
+    const onMoveToFolder = vi.fn()
+    const searchNotes = [
+      { ...notes[0], id: 'note-1', title: 'Alpha plan' },
+      { ...notes[1], id: 'note-2', title: 'Beta brief' },
+      { ...notes[1], id: 'note-3', title: 'Gamma memo' }
+    ] as any[]
+
+    rowContextMenuCalls.length = 0
+
+    render(
+      <FolderTableView
+        notes={searchNotes}
+        columns={columns}
+        globalFilter="Alpha"
+        selectedRowIds={new Set(['note-1', 'note-2', 'note-3'])}
+        onMoveToFolder={onMoveToFolder}
+      />
+    )
+
+    // Only the matching row is rendered, but selection is not pruned by search.
+    expect(screen.queryByRole('button', { name: /Beta brief/ })).not.toBeInTheDocument()
+
+    const noteRowCall = rowContextMenuCalls.filter((call) => call.note.id === 'note-1').at(-1)
+    expect(noteRowCall.selectedNoteIds).toEqual(['note-1', 'note-2', 'note-3'])
+
+    const grid = screen.getByRole('grid', { name: 'notesTable' })
+    fireEvent.keyDown(grid, { key: 'm', metaKey: true, shiftKey: true })
+    expect(onMoveToFolder).toHaveBeenCalledWith(['note-1', 'note-2', 'note-3'])
+  })
 })
 
 describe('GroupedTable', () => {
@@ -854,5 +906,32 @@ describe('GroupedTable', () => {
     const grid = screen.getByRole('grid', { name: 'groupedNotesTable' })
     fireEvent.keyDown(grid, { key: 'm', metaKey: true, shiftKey: true })
     expect(onMoveToFolder).toHaveBeenCalledWith(['note-1'])
+  })
+
+  it('keeps selected notes inside a collapsed group in the bulk selection and the move shortcut', () => {
+    const onMoveToFolder = vi.fn()
+    rowContextMenuCalls.length = 0
+
+    render(
+      <GroupedTable
+        notes={notes}
+        columns={columns}
+        groupBy={{ property: 'status', collapsed: true } as any}
+        selectedRowIds={new Set(['note-1', 'note-2'])}
+        onMoveToFolder={onMoveToFolder}
+      />
+    )
+
+    // Expand only the "Open" group; note-2 stays inside the collapsed "Done" group.
+    fireEvent.click(screen.getByText('Open').closest('tr')!)
+    expect(screen.getByRole('button', { name: /Alpha plan/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Beta brief/ })).not.toBeInTheDocument()
+
+    const noteRowCall = rowContextMenuCalls.filter((call) => call.note.id === 'note-1').at(-1)
+    expect(noteRowCall.selectedNoteIds).toEqual(['note-1', 'note-2'])
+
+    const grid = screen.getByRole('grid', { name: 'groupedNotesTable' })
+    fireEvent.keyDown(grid, { key: 'm', metaKey: true, shiftKey: true })
+    expect(onMoveToFolder).toHaveBeenCalledWith(['note-1', 'note-2'])
   })
 })
