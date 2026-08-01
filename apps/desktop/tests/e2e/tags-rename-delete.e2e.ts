@@ -4,7 +4,7 @@
  *
  * Covers the tag page's overflow menu flows (the sidebar tag drill-down,
  * `tag-detail-view.tsx`, was removed in Task 20; clicking a tag now opens a
- * `tag` tab, `pages/tag-view.tsx`, whose header hosts the same menu):
+ * `tag` tab, `pages/folder-view.tsx` (tag scope), whose header hosts the same menu):
  *  - Rename dialog: input prefilled, save calls rename, the tag tab closes,
  *    sidebar refreshes.
  *  - Delete dialog: confirmation, tag tab closes, tag removed from sidebar
@@ -52,7 +52,7 @@ async function openTagTab(page, tag: string): Promise<void> {
   const tagTrigger = page.getByRole('button', { name: tag, exact: true }).first()
   await tagTrigger.waitFor({ state: 'visible', timeout: 15000 })
   await tagTrigger.click()
-  // Clicking a tag opens a `tag` tab (pages/tag-view.tsx) rather than the old
+  // Clicking a tag opens a `tag` tab (pages/folder-view.tsx, tag scope) rather than the old
   // sidebar drill-down. Wait for the tab and its header's "Tag actions" menu.
   const activeTab = page.locator(SELECTORS.activeTab).first()
   await expect(activeTab).toBeVisible({ timeout: 10000 })
@@ -83,7 +83,7 @@ test.describe('Tag rename + delete (§5.2)', () => {
     await page.locator('button', { hasText: 'Save' }).click()
 
     // After success the tag tab closes itself (there is no rename-in-place
-    // for an open tab — see pages/tag-view.tsx); sidebar should show the
+    // for an open tab — see pages/folder-view.tsx, tag scope); sidebar should show the
     // renamed tag.
     await expect(page.locator('[role="tab"]', { hasText: TAG })).toHaveCount(0, {
       timeout: 10000

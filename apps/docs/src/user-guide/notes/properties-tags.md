@@ -17,13 +17,19 @@ A row under the title shows the note's free-form labels.
 
 Tags appear in the sidebar **Tags** section, grouped by category (see
 [Tag Categories](#tag-categories) below). Click any tag — in the sidebar, on a note, or in
-the tag hub — to open its own tab: a table of every note, task, and inbox item that carries
-it, with a filter for kind (notes / tasks / inbox). See
-[Capturing Tasks](/user-guide/tasks/capturing) for tagging tasks.
+the tag hub — to open its own tab: the same [Folder View](/user-guide/folder-view), scoped to
+that tag, listing every note, task, and inbox item that carries it. Filter by `kind` (notes /
+tasks / inbox) alongside any other property. See [Capturing Tasks](/user-guide/tasks/capturing)
+for tagging tasks.
 
-The tag page includes nested tags: opening `work` also lists items tagged `work/urgent`.
-(The task filter bar matches exactly, so filtering tasks on `work` there won't include
-`work/urgent`.)
+The tag itself shows as a locked `tag = <name>` filter chip — it defines the view and can't be
+removed, unlike every other filter you add. The tag page includes nested tags: opening `work`
+also lists items tagged `work/urgent`. (The task filter bar matches exactly, so filtering tasks
+on `work` there won't include `work/urgent`.)
+
+A tag's saved views (columns, sort, group, filters) are scoped to that tag — a "By status" view
+saved on `work` doesn't show up on `personal` — and sync to your other devices along with the
+tag itself. See [Saved Views](/user-guide/folder-view#saved-views).
 
 ### Renaming or Deleting Tags
 

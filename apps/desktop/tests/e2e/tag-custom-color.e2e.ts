@@ -6,7 +6,7 @@
  * reachable surface that hosts the color picker (the create-tag ColorPicker
  * popup is not mounted anywhere in the app, and the Settings → Tags color
  * dialog is not navigable through any existing E2E path; both noted as gaps
- * below). The tag page (`pages/tag-view.tsx`) is opened by clicking a tag in
+ * below). The tag page (`pages/folder-view.tsx` (tag scope)) is opened by clicking a tag in
  * the sidebar — it replaced the sidebar drill-down (`tag-detail-view.tsx`,
  * removed in Task 20) that used to host this menu.
  *
@@ -63,7 +63,7 @@ async function openTagTab(page, tag: string): Promise<void> {
   const tagTrigger = page.getByRole('button', { name: tag, exact: true }).first()
   await tagTrigger.waitFor({ state: 'visible', timeout: 15000 })
   await tagTrigger.click()
-  // Clicking a tag opens a `tag` tab (pages/tag-view.tsx) rather than the old
+  // Clicking a tag opens a `tag` tab (pages/folder-view.tsx, tag scope) rather than the old
   // sidebar drill-down. Wait for the tab and its header's "Tag actions" menu.
   const activeTab = page.locator(SELECTORS.activeTab).first()
   await expect(activeTab).toBeVisible({ timeout: 10000 })

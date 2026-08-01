@@ -7,7 +7,7 @@
  *
  *  1. Settings → Tags: each tag row has an icon chip that opens the shared
  *     emoji/icon picker.
- *  2. Sidebar → click a tag to open its tag tab (`pages/tag-view.tsx`,
+ *  2. Sidebar → click a tag to open its tag tab (`pages/folder-view.tsx` (tag scope),
  *     replacing the sidebar drill-down `tag-detail-view.tsx` removed in Task
  *     20): the tag page header chip opens the same picker (this surface had
  *     only a static color dot before).
@@ -75,7 +75,7 @@ async function openTagTab(page, tag: string): Promise<void> {
   const tagTrigger = page.getByRole('button', { name: tag, exact: true }).first()
   await tagTrigger.waitFor({ state: 'visible', timeout: 15000 })
   await tagTrigger.click()
-  // Clicking a tag opens a `tag` tab (pages/tag-view.tsx) rather than the old
+  // Clicking a tag opens a `tag` tab (pages/folder-view.tsx, tag scope) rather than the old
   // sidebar drill-down. Wait for the tab and its header's icon chip.
   const activeTab = page.locator(SELECTORS.activeTab).first()
   await expect(activeTab).toBeVisible({ timeout: 10000 })
