@@ -1,6 +1,10 @@
 import { count, eq, like } from 'drizzle-orm'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
+import type { ViewConfig } from '@memry/contracts/folder-view-api'
+import { createLogger } from '../../lib/logger'
 import type { DataDb } from '../types'
+
+const logger = createLogger('TagDefinitions')
 
 const TAG_COLOR_PALETTE = [
   'rose',
@@ -160,6 +164,38 @@ export function deleteTagDefinition(
       .where(like(tagDefinitions.name, `${normalizedName}/%`))
       .run()
   }
+}
+
+/**
+ * Saved folder-view configurations for a tag.
+ *
+ * Folders keep theirs in `.folder.md`; a tag has no directory, so they live
+ * on the tag_definitions row and sync with the tag definition itself.
+ * Corrupt JSON reads as "no saved views" rather than throwing — a bad blob
+ * must not make the tag unopenable.
+ */
+export function readTagViews(db: DataDb, tag: string): ViewConfig[] | null {
+  const row = db
+    .select({ views: tagDefinitions.views })
+    .from(tagDefinitions)
+    .where(eq(tagDefinitions.name, tag))
+    .get()
+
+  if (!row?.views) return null
+  try {
+    const parsed = JSON.parse(row.views)
+    return Array.isArray(parsed) ? (parsed as ViewConfig[]) : null
+  } catch {
+    logger.warn('Discarding corrupt saved views for tag', { tag })
+    return null
+  }
+}
+
+export function writeTagViews(db: DataDb, tag: string, views: ViewConfig[] | null): void {
+  db.update(tagDefinitions)
+    .set({ views: views && views.length > 0 ? JSON.stringify(views) : null })
+    .where(eq(tagDefinitions.name, tag))
+    .run()
 }
 
 export function ensureTagDefinitions(

@@ -11,7 +11,8 @@ export const tagDefinitions = sqliteTable('tag_definitions', {
     .notNull()
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   categoryId: text('category_id'),
-  sortOrder: integer('sort_order').notNull().default(0)
+  sortOrder: integer('sort_order').notNull().default(0),
+  views: text('views')
 })
 
 export type TagDefinition = typeof tagDefinitions.$inferSelect
