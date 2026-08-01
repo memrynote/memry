@@ -7,6 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest'
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
 import { FolderViewChannels } from '@memry/contracts/ipc-channels'
+import { DEFAULT_VIEW } from '@memry/contracts/folder-view-api'
 import { noteCache, noteTags, noteProperties } from '@memry/db-schema/schema/notes-cache'
 import {
   createTestIndexDb,
@@ -79,6 +80,14 @@ function insertTask(dataDb: TestDb, id: string, title: string): void {
 
 function insertTaskTag(dataDb: TestDb, taskId: string, tag: string): void {
   dataDb.run(sql`INSERT OR IGNORE INTO task_tags (task_id, tag) VALUES (${taskId}, ${tag})`)
+}
+
+/**
+ * Seed a tag_definitions row. writeTagViews only UPDATEs an existing row, so
+ * saved-views tests need the row to already exist before they can round-trip.
+ */
+function insertTagDefinition(dataDb: TestDb, tag: string): void {
+  dataDb.run(sql`INSERT INTO tag_definitions (name, color) VALUES (${tag}, 'red')`)
 }
 
 function insertTaggedNote(
@@ -178,11 +187,8 @@ describe('folder-view-handlers', () => {
     })
 
     expect(result).toEqual({ success: true })
-    // SET_VIEW still reads the pre-scope `input.folderPath`, which no longer
-    // exists on the request — a later task owns rewiring it to `scope.path`.
-    // Until then it always calls through with `undefined`.
     expect(folderFiles.writeFolderConfig).toHaveBeenCalledWith(
-      undefined,
+      'projects',
       expect.objectContaining({
         views: [
           expect.objectContaining({ name: 'Default', default: false }),
@@ -202,11 +208,8 @@ describe('folder-view-handlers', () => {
       viewName: 'Only'
     })
     expect(deleteAll).toEqual({ success: true })
-    // DELETE_VIEW still reads the pre-scope `input.folderPath`, which no
-    // longer exists on the request — a later task owns rewiring it to
-    // `scope.path`. Until then it always calls through with `undefined`.
     expect(folderFiles.writeFolderConfig).toHaveBeenCalledWith(
-      undefined,
+      'projects',
       expect.objectContaining({ views: undefined })
     )
     ;(folderFiles.readFolderConfig as Mock).mockResolvedValue({
@@ -221,7 +224,7 @@ describe('folder-view-handlers', () => {
     })
     expect(deleteDefault).toEqual({ success: true })
     expect(folderFiles.writeFolderConfig).toHaveBeenCalledWith(
-      undefined,
+      'projects',
       expect.objectContaining({
         views: [expect.objectContaining({ name: 'Alt', default: true })]
       })
@@ -511,6 +514,77 @@ describe('folder-view-handlers', () => {
       })
 
       expect(result.formulas).toEqual([])
+    })
+  })
+
+  describe('saved views under tag scope', () => {
+    let dataDb: TestDatabaseResult
+
+    beforeEach(() => {
+      registerFolderViewHandlers()
+
+      dataDb = createTestDataDb()
+      ;(getDatabase as Mock).mockReturnValue(dataDb.db)
+      insertTagDefinition(dataDb.db, 'araba')
+      // Folder-scope reads must not accidentally pick up another test's
+      // leftover mock value — pin this block's folder store to "no config".
+      ;(folderFiles.readFolderConfig as Mock).mockResolvedValue(null)
+    })
+
+    afterEach(() => {
+      dataDb.close()
+    })
+
+    it('falls back to the default view when the tag has none', async () => {
+      const result = await invokeHandler(FolderViewChannels.invoke.GET_VIEWS, {
+        scope: { kind: 'tag', tag: 'araba' }
+      })
+
+      expect(result.views).toEqual([DEFAULT_VIEW])
+      expect(result.defaultIndex).toBe(0)
+    })
+
+    it('round-trips a saved view through the tag definition', async () => {
+      await invokeHandler(FolderViewChannels.invoke.SET_VIEW, {
+        scope: { kind: 'tag', tag: 'araba' },
+        view: { name: 'Open tasks', type: 'table', default: true }
+      })
+
+      const result = await invokeHandler(FolderViewChannels.invoke.GET_VIEWS, {
+        scope: { kind: 'tag', tag: 'araba' }
+      })
+
+      expect(result.views.map((v) => v.name)).toEqual(['Open tasks'])
+    })
+
+    it('deleting the last view falls back to the default again', async () => {
+      await invokeHandler(FolderViewChannels.invoke.SET_VIEW, {
+        scope: { kind: 'tag', tag: 'araba' },
+        view: { name: 'Open tasks', type: 'table', default: true }
+      })
+      await invokeHandler(FolderViewChannels.invoke.DELETE_VIEW, {
+        scope: { kind: 'tag', tag: 'araba' },
+        viewName: 'Open tasks'
+      })
+
+      const result = await invokeHandler(FolderViewChannels.invoke.GET_VIEWS, {
+        scope: { kind: 'tag', tag: 'araba' }
+      })
+
+      expect(result.views).toEqual([DEFAULT_VIEW])
+    })
+
+    it('keeps folder and tag views in separate stores', async () => {
+      await invokeHandler(FolderViewChannels.invoke.SET_VIEW, {
+        scope: { kind: 'tag', tag: 'araba' },
+        view: { name: 'Tag view', type: 'table', default: true }
+      })
+
+      const folderResult = await invokeHandler(FolderViewChannels.invoke.GET_VIEWS, {
+        scope: { kind: 'folder', path: 'araba' }
+      })
+
+      expect(folderResult.views.map((v) => v.name)).not.toContain('Tag view')
     })
   })
 })

@@ -19,6 +19,8 @@ import {
   GetFolderSuggestionsRequestSchema,
   DEFAULT_VIEW,
   BUILT_IN_COLUMNS,
+  type ViewScope,
+  type ViewConfig,
   type FolderViewConfig,
   type NoteWithProperties,
   type AvailableProperty,
@@ -39,6 +41,7 @@ import { getConfig } from '../vault'
 import { getIndexDatabase as getDataDb, getDatabase } from '../database'
 import { noteCache, noteTags, noteProperties } from '@memry/db-schema/schema/notes-cache'
 import { listTagItems } from '../database/queries/tag-items'
+import { readTagViews, writeTagViews } from '../database/queries/tag-definitions'
 
 const logger = createLogger('IPC:FolderView')
 
@@ -162,6 +165,26 @@ function toAvailableProperties(
   return properties
 }
 
+/**
+ * Saved views for a scope. Folders keep theirs in `.folder.md`; a tag has no
+ * directory, so its views live on the tag_definitions row instead (Task 2).
+ * Centralising the split here keeps GET_VIEWS/SET_VIEW/DELETE_VIEW thin.
+ */
+async function readScopedViews(scope: ViewScope): Promise<ViewConfig[] | null> {
+  if (scope.kind === 'tag') return readTagViews(getDatabase(), scope.tag)
+  const folderConfig = await readFolderConfig(scope.path)
+  return folderConfig?.views ?? null
+}
+
+async function writeScopedViews(scope: ViewScope, views: ViewConfig[] | null): Promise<void> {
+  if (scope.kind === 'tag') {
+    writeTagViews(getDatabase(), scope.tag, views)
+    return
+  }
+  const currentConfig = (await readFolderConfig(scope.path)) || {}
+  await writeFolderConfig(scope.path, { ...currentConfig, views: views ?? undefined })
+}
+
 // ============================================================================
 // Handlers
 // ============================================================================
@@ -212,18 +235,18 @@ export function registerFolderViewHandlers(): void {
     )
   )
 
-  // folder-view:get-views - Get all views for a folder
+  // folder-view:get-views - Get all views for a folder or tag
   ipcMain.handle(
     FolderViewChannels.invoke.GET_VIEWS,
     createValidatedHandler(GetViewsRequestSchema, async (input): Promise<GetViewsResponse> => {
-      const folderConfig = await readFolderConfig(input.folderPath)
+      const views = await readScopedViews(input.scope)
 
-      if (!folderConfig || !folderConfig.views || folderConfig.views.length === 0) {
+      if (!views || views.length === 0) {
         return { views: [DEFAULT_VIEW], defaultIndex: 0 }
       }
 
-      const defaultIndex = folderConfig.views.findIndex((v) => v.default) ?? 0
-      return { views: folderConfig.views, defaultIndex: Math.max(0, defaultIndex) }
+      const defaultIndex = views.findIndex((v) => v.default) ?? 0
+      return { views, defaultIndex: Math.max(0, defaultIndex) }
     })
   )
 
@@ -233,8 +256,7 @@ export function registerFolderViewHandlers(): void {
     createValidatedHandler(
       SetViewRequestSchema,
       withErrorHandler(async (input): Promise<SetViewResponse> => {
-        const currentConfig = (await readFolderConfig(input.folderPath)) || {}
-        const views = currentConfig.views || []
+        const views = (await readScopedViews(input.scope)) || []
 
         const existingIndex = views.findIndex((v) => v.name === input.view.name)
 
@@ -252,7 +274,7 @@ export function registerFolderViewHandlers(): void {
           })
         }
 
-        await writeFolderConfig(input.folderPath, { ...currentConfig, views })
+        await writeScopedViews(input.scope, views)
         return { success: true }
       }, 'Failed to set view')
     )
@@ -264,18 +286,17 @@ export function registerFolderViewHandlers(): void {
     createValidatedHandler(
       DeleteViewRequestSchema,
       withErrorHandler(async (input): Promise<DeleteViewResponse> => {
-        const currentConfig = (await readFolderConfig(input.folderPath)) || {}
-        const views = currentConfig.views || []
+        const views = (await readScopedViews(input.scope)) || []
 
         const filtered = views.filter((v) => v.name !== input.viewName)
 
         if (filtered.length === 0) {
-          await writeFolderConfig(input.folderPath, { ...currentConfig, views: undefined })
+          await writeScopedViews(input.scope, null)
         } else {
           if (!filtered.some((v) => v.default)) {
             filtered[0].default = true
           }
-          await writeFolderConfig(input.folderPath, { ...currentConfig, views: filtered })
+          await writeScopedViews(input.scope, filtered)
         }
 
         return { success: true }
