@@ -19,15 +19,18 @@ import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
 
 const log = createLogger('Hook:FolderView')
-import { DEFAULT_COLUMNS, BUILT_IN_COLUMNS } from '@memry/contracts/folder-view-api'
+import { DEFAULT_COLUMNS, BUILT_IN_COLUMNS, scopeKey } from '@memry/contracts/folder-view-api'
 import type {
   FilterExpression,
   SummaryConfig,
-  GroupByConfig
+  GroupByConfig,
+  ViewScope,
+  ViewConfig as ContractViewConfig
 } from '@memry/contracts/folder-view-api'
 import { evaluateFilter } from '@/lib/filter-evaluator'
 import { propertiesService } from '@/services/properties-service'
-import { notesService } from '@/services/notes-service'
+import { notesService, onTagsChanged } from '@/services/notes-service'
+import { onTagNotesChanged } from '@/services/tags-service'
 
 // ============================================================================
 // Types (mirrored from preload for renderer use)
@@ -89,12 +92,12 @@ const DEFAULT_VIEW: ViewConfig = {
 
 export const folderViewKeys = {
   all: ['folder-view'] as const,
-  folderExists: (folderPath: string) => [...folderViewKeys.all, 'exists', folderPath] as const,
-  views: (folderPath: string) => [...folderViewKeys.all, 'views', folderPath] as const,
-  availableProperties: (folderPath: string) =>
-    [...folderViewKeys.all, 'available-properties', folderPath] as const,
+  folderExists: (scope: ViewScope) => [...folderViewKeys.all, 'exists', scopeKey(scope)] as const,
+  views: (scope: ViewScope) => [...folderViewKeys.all, 'views', scopeKey(scope)] as const,
+  availableProperties: (scope: ViewScope) =>
+    [...folderViewKeys.all, 'available-properties', scopeKey(scope)] as const,
   // Stable notes key - does NOT include propertyIds to avoid refetch on column change
-  notes: (folderPath: string) => [...folderViewKeys.all, 'notes', folderPath] as const
+  notes: (scope: ViewScope) => [...folderViewKeys.all, 'notes', scopeKey(scope)] as const
 }
 
 // ============================================================================
@@ -102,8 +105,8 @@ export const folderViewKeys = {
 // ============================================================================
 
 interface UseFolderViewOptions {
-  /** Folder path relative to notes/ */
-  folderPath: string
+  /** What this view is scoped to — a folder directory or a tag. */
+  scope: ViewScope
   /** Initial page size */
   pageSize?: number
   /** Saved view name to activate on load, preferred over the folder default (e.g. Home widget config). */
@@ -226,7 +229,7 @@ interface UseFolderViewResult {
  * Uses TanStack Query for caching - data persists across tab switches.
  */
 export function useFolderView({
-  folderPath,
+  scope,
   pageSize = 100,
   initialViewName
 }: UseFolderViewOptions): UseFolderViewResult {
@@ -245,32 +248,39 @@ export function useFolderView({
   // ============================================================================
 
   /**
-   * T115: Folder existence query - checks if folder exists
+   * T115: Folder existence query - checks if folder exists.
+   * Tags have no directory, so this is gated to folder scope only — asking
+   * for a tag would always answer "no" and render the missing-folder empty
+   * state over a perfectly valid tag.
    */
   const folderExistsQuery = useQuery({
-    queryKey: folderViewKeys.folderExists(folderPath),
+    queryKey: folderViewKeys.folderExists(scope),
     queryFn: async (): Promise<boolean> => {
-      return window.api.folderView.folderExists(folderPath)
+      if (scope.kind !== 'folder') return true
+      return window.api.folderView.folderExists(scope.path)
     },
+    enabled: scope.kind === 'folder',
     staleTime: 60_000, // 60 seconds
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true
   })
 
   /**
-   * Views query - fetches view configurations and summaries
+   * Views query - fetches view configurations and summaries.
+   * Summaries live in .folder.md, which only folders have, so tag scope
+   * gets an empty summaries map instead of a getConfig call.
    */
   const viewsQuery = useQuery({
-    queryKey: folderViewKeys.views(folderPath),
+    queryKey: folderViewKeys.views(scope),
     queryFn: async (): Promise<ViewsQueryData> => {
       const [viewsResult, configResult] = await Promise.all([
-        window.api.folderView.getViews(folderPath),
-        window.api.folderView.getConfig(folderPath)
+        window.api.folderView.getViews(scope),
+        scope.kind === 'folder' ? window.api.folderView.getConfig(scope.path) : null
       ])
       return {
         views: viewsResult.views,
         defaultIndex: viewsResult.defaultIndex,
-        summaries: (configResult.config.summaries ?? {}) as Record<string, SummaryConfig>
+        summaries: (configResult?.config.summaries ?? {}) as Record<string, SummaryConfig>
       }
     },
     staleTime: 30_000, // 30 seconds
@@ -283,9 +293,9 @@ export function useFolderView({
    * Available properties query - fetches column metadata and formulas
    */
   const propertiesQuery = useQuery({
-    queryKey: folderViewKeys.availableProperties(folderPath),
+    queryKey: folderViewKeys.availableProperties(scope),
     queryFn: async (): Promise<PropertiesQueryData> => {
-      const result = await window.api.folderView.getAvailableProperties(folderPath)
+      const result = await window.api.folderView.getAvailableProperties(scope)
       return {
         properties: result.properties,
         builtIn: result.builtIn,
@@ -307,7 +317,7 @@ export function useFolderView({
   // pattern instead of an effect, so we avoid no-derived-state warnings.
   // When initialViewName is provided (Home widget), prefer the named view over the default.
   const [initKey, setInitKey] = useState<string | null>(null)
-  const desiredInitKey = `${folderPath}::${initialViewName ?? ''}`
+  const desiredInitKey = `${scopeKey(scope)}::${initialViewName ?? ''}`
   if (viewsQuery.data && initKey !== desiredInitKey) {
     setInitKey(desiredInitKey)
     const namedIndex = initialViewName
@@ -322,17 +332,17 @@ export function useFolderView({
   /**
    * Notes infinite query - fetches notes with pagination
    *
-   * Note: Query key is stable (based only on folderPath) to prevent
+   * Note: Query key is stable (based only on scope) to prevent
    * full refetch when columns are added/removed. We fetch all properties
    * so column changes don't require a refetch.
    */
   const notesQuery = useInfiniteQuery({
-    queryKey: folderViewKeys.notes(folderPath),
+    queryKey: folderViewKeys.notes(scope),
     queryFn: async ({ pageParam = 0 }): Promise<ListWithPropertiesResponse> => {
       // Fetch all available properties to avoid refetch when columns change
       // This is a trade-off: slightly larger payload vs better UX
       const result = await window.api.folderView.listWithProperties({
-        folderPath,
+        scope,
         // Don't filter properties - fetch all so column changes don't need refetch
         properties: undefined,
         limit: pageSize,
@@ -421,7 +431,7 @@ export function useFolderView({
       const updatedView: ViewConfig = cleanUndefinedValues({ ...activeView, ...updates })
 
       // Optimistic update to cache
-      queryClient.setQueryData<ViewsQueryData>(folderViewKeys.views(folderPath), (old) => {
+      queryClient.setQueryData<ViewsQueryData>(folderViewKeys.views(scope), (old) => {
         if (!old) return old
         const newViews = [...old.views]
         newViews[activeViewIndex] = updatedView
@@ -437,8 +447,8 @@ export function useFolderView({
         void (async () => {
           try {
             const result = await window.api.folderView.setView(
-              folderPath,
-              updatedView as unknown as Record<string, unknown>
+              scope,
+              updatedView as unknown as ContractViewConfig
             )
 
             if (!result.success) {
@@ -447,12 +457,12 @@ export function useFolderView({
           } catch (err) {
             log.error('updateView failed:', err)
             // Revert on error
-            void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
+            void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
           }
         })()
       }, 300)
     },
-    [activeView, activeViewIndex, folderPath, queryClient]
+    [activeView, activeViewIndex, scope, queryClient]
   )
 
   /**
@@ -462,8 +472,8 @@ export function useFolderView({
     async (view: ViewConfig) => {
       try {
         const result = await window.api.folderView.setView(
-          folderPath,
-          view as unknown as Record<string, unknown>
+          scope,
+          view as unknown as ContractViewConfig
         )
 
         if (!result.success) {
@@ -471,10 +481,10 @@ export function useFolderView({
         }
 
         // Invalidate to refetch views
-        await queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
+        await queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
 
         // Find and set the new view as active
-        const newData = queryClient.getQueryData<ViewsQueryData>(folderViewKeys.views(folderPath))
+        const newData = queryClient.getQueryData<ViewsQueryData>(folderViewKeys.views(scope))
         if (newData) {
           const newIndex = newData.views.findIndex((v) => v.name === view.name)
           if (newIndex >= 0) {
@@ -486,7 +496,7 @@ export function useFolderView({
         throw err
       }
     },
-    [folderPath, queryClient]
+    [scope, queryClient]
   )
 
   /**
@@ -495,17 +505,17 @@ export function useFolderView({
   const deleteView = useCallback(
     async (viewName: string) => {
       try {
-        const result = await window.api.folderView.deleteView(folderPath, viewName)
+        const result = await window.api.folderView.deleteView(scope, viewName)
 
         if (!result.success) {
           throw new Error(result.error || 'Failed to delete view')
         }
 
         // Invalidate to refetch views
-        await queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
+        await queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
 
         // Adjust active index if needed
-        const newData = queryClient.getQueryData<ViewsQueryData>(folderViewKeys.views(folderPath))
+        const newData = queryClient.getQueryData<ViewsQueryData>(folderViewKeys.views(scope))
         if (newData && activeViewIndex >= newData.views.length) {
           setActiveViewIndex(Math.max(0, newData.views.length - 1))
         }
@@ -514,7 +524,7 @@ export function useFolderView({
         throw err
       }
     },
-    [folderPath, queryClient, activeViewIndex]
+    [scope, queryClient, activeViewIndex]
   )
 
   /**
@@ -527,6 +537,16 @@ export function useFolderView({
    */
   const renameView = useCallback(
     async (index: number, newName: string) => {
+      // Whole-array rewrite goes through folderView.setConfig, which only
+      // folders have (a tag has no .folder.md to rewrite). Tag-scoped
+      // rename isn't wired up yet, so bail rather than apply an optimistic
+      // update that would silently revert on the next fetch.
+      if (scope.kind !== 'folder') {
+        log.warn('renameView is not supported for tag scope yet')
+        return
+      }
+      const folderPath = scope.path
+
       const target = views[index]
       if (!target) return
       const name = newName.trim()
@@ -539,7 +559,7 @@ export function useFolderView({
       const newViews = views.map((v, i) => (i === index ? { ...v, name } : v))
 
       // Optimistic update to cache
-      queryClient.setQueryData<ViewsQueryData>(folderViewKeys.views(folderPath), (old) =>
+      queryClient.setQueryData<ViewsQueryData>(folderViewKeys.views(scope), (old) =>
         old ? { ...old, views: newViews } : old
       )
 
@@ -560,12 +580,12 @@ export function useFolderView({
           } catch (err) {
             log.error('renameView failed:', err)
             // Revert on error
-            void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
+            void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
           }
         })()
       }, 300)
     },
-    [views, folderPath, queryClient]
+    [views, scope, queryClient]
   )
 
   /**
@@ -580,7 +600,7 @@ export function useFolderView({
       }
 
       // Optimistic update to cache
-      queryClient.setQueryData<ViewsQueryData>(folderViewKeys.views(folderPath), (old) => {
+      queryClient.setQueryData<ViewsQueryData>(folderViewKeys.views(scope), (old) => {
         if (!old) return old
         return {
           ...old,
@@ -590,10 +610,10 @@ export function useFolderView({
       })
 
       try {
-        const result = await window.api.folderView.setView(folderPath, {
+        const result = await window.api.folderView.setView(scope, {
           ...targetView,
           default: true
-        } as unknown as Record<string, unknown>)
+        } as unknown as ContractViewConfig)
 
         if (!result.success) {
           throw new Error(result.error || 'Failed to set default view')
@@ -603,11 +623,11 @@ export function useFolderView({
       } catch (err) {
         log.error('setViewAsDefault failed:', err)
         // Revert on error
-        void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
+        void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
         throw err
       }
     },
-    [views, folderPath, queryClient]
+    [views, scope, queryClient]
   )
 
   /**
@@ -645,8 +665,13 @@ export function useFolderView({
    */
   const updateSummaryConfig = useCallback(
     async (columnId: string, config: SummaryConfig | undefined) => {
+      // Summaries live in .folder.md, which only folders have.
+      if (scope.kind !== 'folder') {
+        log.warn('updateSummaryConfig is not supported for tag scope yet')
+        return
+      }
       try {
-        const configResult = await window.api.folderView.getConfig(folderPath)
+        const configResult = await window.api.folderView.getConfig(scope.path)
         const existingConfig = configResult.config
 
         const updatedSummaries = {
@@ -658,13 +683,13 @@ export function useFolderView({
           delete updatedSummaries[columnId]
         }
 
-        await window.api.folderView.setConfig(folderPath, {
+        await window.api.folderView.setConfig(scope.path, {
           ...existingConfig,
           summaries: Object.keys(updatedSummaries).length > 0 ? updatedSummaries : undefined
         })
 
         // Update cache
-        queryClient.setQueryData<ViewsQueryData>(folderViewKeys.views(folderPath), (old) => {
+        queryClient.setQueryData<ViewsQueryData>(folderViewKeys.views(scope), (old) => {
           if (!old) return old
           return { ...old, summaries: updatedSummaries }
         })
@@ -672,7 +697,7 @@ export function useFolderView({
         log.error('updateSummaryConfig failed:', err)
       }
     },
-    [folderPath, queryClient]
+    [scope, queryClient]
   )
 
   /**
@@ -706,7 +731,7 @@ export function useFolderView({
       const updatedView: ViewConfig = { ...activeView, columns: updatedColumns }
 
       // Optimistic update
-      queryClient.setQueryData<ViewsQueryData>(folderViewKeys.views(folderPath), (old) => {
+      queryClient.setQueryData<ViewsQueryData>(folderViewKeys.views(scope), (old) => {
         if (!old) return old
         const newViews = [...old.views]
         newViews[activeViewIndex] = updatedView
@@ -721,34 +746,36 @@ export function useFolderView({
       updateTimeoutRef.current = setTimeout(() => {
         void (async () => {
           try {
-            await window.api.folderView.setView(
-              folderPath,
-              updatedView as unknown as Record<string, unknown>
-            )
+            await window.api.folderView.setView(scope, updatedView as unknown as ContractViewConfig)
 
-            const configResult = await window.api.folderView.getConfig(folderPath)
-            const existingConfig = configResult.config
+            // The properties.{id}.displayName record lives in .folder.md,
+            // which only folders have — the per-view column override above
+            // is all a tag scope gets for now.
+            if (scope.kind === 'folder') {
+              const configResult = await window.api.folderView.getConfig(scope.path)
+              const existingConfig = configResult.config
 
-            const updatedConfig = {
-              ...existingConfig,
-              properties: {
-                ...existingConfig.properties,
-                [columnId]: {
-                  ...(existingConfig.properties?.[columnId] || {}),
-                  displayName
+              const updatedConfig = {
+                ...existingConfig,
+                properties: {
+                  ...existingConfig.properties,
+                  [columnId]: {
+                    ...(existingConfig.properties?.[columnId] || {}),
+                    displayName
+                  }
                 }
               }
-            }
 
-            await window.api.folderView.setConfig(folderPath, updatedConfig)
+              await window.api.folderView.setConfig(scope.path, updatedConfig)
+            }
           } catch (err) {
             log.error('Failed to save display name:', err)
-            void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
+            void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
           }
         })()
       }, 300)
     },
-    [activeView, activeViewIndex, folderPath, queryClient]
+    [activeView, activeViewIndex, scope, queryClient]
   )
 
   /**
@@ -768,7 +795,7 @@ export function useFolderView({
       const idSet = new Set(noteIds)
 
       queryClient.setQueryData<InfiniteData<ListWithPropertiesResponse>>(
-        folderViewKeys.notes(folderPath),
+        folderViewKeys.notes(scope),
         (old) => {
           if (!old) return old
           return {
@@ -781,7 +808,7 @@ export function useFolderView({
         }
       )
     },
-    [queryClient, folderPath]
+    [queryClient, scope]
   )
 
   /**
@@ -790,7 +817,7 @@ export function useFolderView({
   const updateNoteProperty = useCallback(
     async (noteId: string, propertyId: string, value: unknown) => {
       const previousData = queryClient.getQueryData<InfiniteData<ListWithPropertiesResponse>>(
-        folderViewKeys.notes(folderPath)
+        folderViewKeys.notes(scope)
       )
 
       const currentProperties = (() => {
@@ -810,7 +837,7 @@ export function useFolderView({
       }
 
       queryClient.setQueryData<InfiniteData<ListWithPropertiesResponse>>(
-        folderViewKeys.notes(folderPath),
+        folderViewKeys.notes(scope),
         (old) => {
           if (!old) return old
           return {
@@ -834,11 +861,11 @@ export function useFolderView({
         log.error('Failed to update property:', err)
         toast.error(getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToUpdateProperty'))
         if (previousData) {
-          queryClient.setQueryData(folderViewKeys.notes(folderPath), previousData)
+          queryClient.setQueryData(folderViewKeys.notes(scope), previousData)
         }
       }
     },
-    [folderPath, queryClient]
+    [scope, queryClient]
   )
 
   /**
@@ -847,11 +874,11 @@ export function useFolderView({
   const updateNoteTags = useCallback(
     async (noteId: string, tags: string[]) => {
       const previousData = queryClient.getQueryData<InfiniteData<ListWithPropertiesResponse>>(
-        folderViewKeys.notes(folderPath)
+        folderViewKeys.notes(scope)
       )
 
       queryClient.setQueryData<InfiniteData<ListWithPropertiesResponse>>(
-        folderViewKeys.notes(folderPath),
+        folderViewKeys.notes(scope),
         (old) => {
           if (!old) return old
           return {
@@ -873,11 +900,11 @@ export function useFolderView({
         log.error('Failed to update tags:', err)
         toast.error(getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToUpdateTags'))
         if (previousData) {
-          queryClient.setQueryData(folderViewKeys.notes(folderPath), previousData)
+          queryClient.setQueryData(folderViewKeys.notes(scope), previousData)
         }
       }
     },
-    [folderPath, queryClient]
+    [scope, queryClient]
   )
 
   /**
@@ -885,11 +912,11 @@ export function useFolderView({
    */
   const refresh = useCallback(async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) }),
-      queryClient.invalidateQueries({ queryKey: folderViewKeys.availableProperties(folderPath) }),
-      queryClient.invalidateQueries({ queryKey: folderViewKeys.notes(folderPath) })
+      queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) }),
+      queryClient.invalidateQueries({ queryKey: folderViewKeys.availableProperties(scope) }),
+      queryClient.invalidateQueries({ queryKey: folderViewKeys.notes(scope) })
     ])
-  }, [queryClient, folderPath])
+  }, [queryClient, scope])
 
   // ============================================================================
   // Formula Methods
@@ -900,8 +927,12 @@ export function useFolderView({
    */
   const addFormula = useCallback(
     async (name: string, expression: string) => {
+      // Formulas live in .folder.md, which only folders have.
+      if (scope.kind !== 'folder') {
+        throw new Error('Formulas are not supported for tag scope yet')
+      }
       try {
-        const configResult = await window.api.folderView.getConfig(folderPath)
+        const configResult = await window.api.folderView.getConfig(scope.path)
         const existingConfig = configResult.config
 
         const updatedFormulas = {
@@ -909,21 +940,21 @@ export function useFolderView({
           [name]: expression
         }
 
-        await window.api.folderView.setConfig(folderPath, {
+        await window.api.folderView.setConfig(scope.path, {
           ...existingConfig,
           formulas: updatedFormulas
         })
 
         // Invalidate to refetch
         void queryClient.invalidateQueries({
-          queryKey: folderViewKeys.availableProperties(folderPath)
+          queryKey: folderViewKeys.availableProperties(scope)
         })
       } catch (err) {
         log.error('addFormula failed:', err)
         throw err
       }
     },
-    [folderPath, queryClient]
+    [scope, queryClient]
   )
 
   /**
@@ -931,8 +962,12 @@ export function useFolderView({
    */
   const updateFormula = useCallback(
     async (name: string, expression: string) => {
+      // Formulas live in .folder.md, which only folders have.
+      if (scope.kind !== 'folder') {
+        throw new Error('Formulas are not supported for tag scope yet')
+      }
       try {
-        const configResult = await window.api.folderView.getConfig(folderPath)
+        const configResult = await window.api.folderView.getConfig(scope.path)
         const existingConfig = configResult.config
 
         const updatedFormulas = {
@@ -940,21 +975,21 @@ export function useFolderView({
           [name]: expression
         }
 
-        await window.api.folderView.setConfig(folderPath, {
+        await window.api.folderView.setConfig(scope.path, {
           ...existingConfig,
           formulas: updatedFormulas
         })
 
         // Invalidate to refetch
         void queryClient.invalidateQueries({
-          queryKey: folderViewKeys.availableProperties(folderPath)
+          queryKey: folderViewKeys.availableProperties(scope)
         })
       } catch (err) {
         log.error('updateFormula failed:', err)
         throw err
       }
     },
-    [folderPath, queryClient]
+    [scope, queryClient]
   )
 
   /**
@@ -962,28 +997,32 @@ export function useFolderView({
    */
   const deleteFormula = useCallback(
     async (name: string) => {
+      // Formulas live in .folder.md, which only folders have.
+      if (scope.kind !== 'folder') {
+        throw new Error('Formulas are not supported for tag scope yet')
+      }
       try {
-        const configResult = await window.api.folderView.getConfig(folderPath)
+        const configResult = await window.api.folderView.getConfig(scope.path)
         const existingConfig = configResult.config
 
         const updatedFormulas = { ...existingConfig.formulas }
         delete updatedFormulas[name]
 
-        await window.api.folderView.setConfig(folderPath, {
+        await window.api.folderView.setConfig(scope.path, {
           ...existingConfig,
           formulas: Object.keys(updatedFormulas).length > 0 ? updatedFormulas : undefined
         })
 
         // Invalidate to refetch
         void queryClient.invalidateQueries({
-          queryKey: folderViewKeys.availableProperties(folderPath)
+          queryKey: folderViewKeys.availableProperties(scope)
         })
       } catch (err) {
         log.error('deleteFormula failed:', err)
         throw err
       }
     },
-    [folderPath, queryClient]
+    [scope, queryClient]
   )
 
   // ============================================================================
@@ -1001,6 +1040,36 @@ export function useFolderView({
 
   // Note: Event listeners for cache sync are handled globally in useFolderViewEvents()
   // This ensures all folder-view tabs stay in sync even when unmounted
+
+  // Ported from the deleted `useTagItems` — tag scope only, a folder has no
+  // tag to match against. `tags:notes-changed` carries the tag (pin/unpin,
+  // tag added or removed on a note, task/inbox tag changes); `notes:tags-changed`
+  // carries none — inline tag editing fires it — so it invalidates
+  // unconditionally.
+  //
+  // Callers pass an object literal for `scope`, a new reference every
+  // render, so the effects depend on `scopeKey(scope)` (stable per logical
+  // scope) instead of `scope` itself to avoid resubscribing on every render.
+  useEffect(() => {
+    if (scope.kind !== 'tag') return
+    const currentTag = scope.tag
+    const unsubscribe = onTagNotesChanged((event) => {
+      if (event.tag.toLowerCase() === currentTag.toLowerCase()) {
+        void queryClient.invalidateQueries({ queryKey: folderViewKeys.notes(scope) })
+      }
+    })
+    return unsubscribe
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scopeKey(scope), queryClient])
+
+  useEffect(() => {
+    if (scope.kind !== 'tag') return
+    const unsubscribe = onTagsChanged(() => {
+      void queryClient.invalidateQueries({ queryKey: folderViewKeys.notes(scope) })
+    })
+    return unsubscribe
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scopeKey(scope), queryClient])
 
   // ============================================================================
   // Return
