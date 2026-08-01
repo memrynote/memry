@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { FilterBuilder } from './filter-builder'
@@ -186,5 +186,57 @@ describe('FilterBuilder', () => {
     )
 
     expect(screen.getByText(/row 0 title contains memo/)).toBeInTheDocument()
+  })
+
+  it('renders the locked condition with no remove control', () => {
+    render(
+      <FilterBuilder
+        builtInColumns={builtInColumns}
+        availableProperties={availableProperties}
+        onFiltersChange={vi.fn()}
+        lockedCondition={{ label: 'tag = araba' }}
+      />
+    )
+
+    const lockedRow = screen.getByTestId('locked-filter-row')
+    expect(lockedRow).toHaveTextContent('tag = araba')
+    expect(within(lockedRow).queryByRole('button', { name: /remove/i })).not.toBeInTheDocument()
+  })
+
+  it('never emits the locked condition as part of the filter expression', () => {
+    const onFiltersChange = vi.fn()
+    render(
+      <FilterBuilder
+        builtInColumns={builtInColumns}
+        availableProperties={availableProperties}
+        onFiltersChange={onFiltersChange}
+        lockedCondition={{ label: 'tag = araba' }}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /addFilter/ }))
+    flushDebounce()
+    fireEvent.click(screen.getByRole('button', { name: /update cond_/ }))
+    flushDebounce()
+
+    expect(onFiltersChange).toHaveBeenLastCalledWith('status == "done"')
+    expect(JSON.stringify(onFiltersChange.mock.calls)).not.toContain('araba')
+  })
+
+  it('excludes the locked condition from the filter-count badge', () => {
+    render(
+      <FilterBuilder
+        builtInColumns={builtInColumns}
+        availableProperties={availableProperties}
+        onFiltersChange={vi.fn()}
+        filters={'status == "todo"'}
+        lockedCondition={{ label: 'tag = araba' }}
+      />
+    )
+
+    // Badge reflects only the real filter expression (1 condition) — the
+    // locked row never enters `filters`, so it must not be counted as a 2nd.
+    expect(screen.getByText('1')).toBeInTheDocument()
+    expect(screen.queryByText('2')).not.toBeInTheDocument()
   })
 })

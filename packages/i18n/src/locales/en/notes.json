@@ -415,7 +415,8 @@
       "addCondition": "Add condition",
       "addFilter": "Add filter",
       "addGroup": "Add group",
-      "removeGroup": "Remove group"
+      "removeGroup": "Remove group",
+      "lockedConditionHint": "This condition defines the current view and can't be removed here."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Built-in",
