@@ -36,8 +36,9 @@ import { getNoteFolderSuggestions } from '../inbox/suggestions'
 import { createValidatedHandler, withErrorHandler } from './validate'
 import { readFolderConfig, writeFolderConfig, folderExists } from '../vault/folders'
 import { getConfig } from '../vault'
-import { getIndexDatabase as getDataDb } from '../database'
+import { getIndexDatabase as getDataDb, getDatabase } from '../database'
 import { noteCache, noteTags, noteProperties } from '@memry/db-schema/schema/notes-cache'
+import { listTagItems } from '../database/queries/tag-items'
 
 const logger = createLogger('IPC:FolderView')
 
@@ -83,6 +84,35 @@ function computeRelativeFolder(
   }
 
   return '/'
+}
+
+/**
+ * Batch-fetch every property value for the given notes.
+ * Shared by both scopes — a tag view is worthless if its property columns
+ * are blank, so tag rows go through exactly the same fetch folders use.
+ */
+async function fetchPropertiesFor(
+  db: ReturnType<typeof getDataDb>,
+  noteIds: string[]
+): Promise<Map<string, Record<string, unknown>>> {
+  const propertiesMap = new Map<string, Record<string, unknown>>()
+  for (const noteId of noteIds) {
+    const propsResult = await db
+      .select({ name: noteProperties.name, value: noteProperties.value })
+      .from(noteProperties)
+      .where(eq(noteProperties.noteId, noteId))
+
+    const props: Record<string, unknown> = {}
+    propsResult.forEach((row) => {
+      try {
+        props[row.name] = row.value ? JSON.parse(row.value) : null
+      } catch {
+        props[row.name] = row.value
+      }
+    })
+    propertiesMap.set(noteId, props)
+  }
+  return propertiesMap
 }
 
 // ============================================================================
@@ -219,11 +249,58 @@ export function registerFolderViewHandlers(): void {
           return { notes: [], total: 0, hasMore: false }
         }
 
+        if (input.scope.kind === 'tag') {
+          let dataDb: ReturnType<typeof getDatabase>
+          try {
+            dataDb = getDatabase()
+          } catch {
+            return { notes: [], total: 0, hasMore: false }
+          }
+
+          const items = listTagItems(db, dataDb, input.scope.tag)
+          const noteIds = items.filter((i) => i.kind === 'note').map((i) => i.id)
+          const propertiesMap = await fetchPropertiesFor(db, noteIds)
+
+          const rows: NoteWithProperties[] = items.map((item) => ({
+            id: item.id,
+            // Tasks and inbox items have no note path; synthesise a stable one so
+            // row identity and any path-keyed UI still work.
+            path:
+              item.kind === 'note'
+                ? (item.path ?? '')
+                : item.kind === 'task'
+                  ? `/tasks/${item.id}`
+                  : `/inbox/${item.id}`,
+            title: item.title,
+            emoji: item.emoji,
+            // `container` is the note's parent folder or the task's project name.
+            folder: item.container ?? '',
+            tags: item.tags,
+            created: item.created,
+            modified: item.modified,
+            // TagItem carries no word count for any kind.
+            wordCount: 0,
+            properties: propertiesMap.get(item.id) ?? {},
+            kind: item.kind
+          }))
+
+          const page = rows.slice(input.offset, input.offset + input.limit)
+          return {
+            notes: page,
+            total: rows.length,
+            hasMore: input.offset + page.length < rows.length
+          }
+        }
+
         // Build path pattern for LIKE query.
         // Prefix matches the vault layout: "" (flat root) or "notes/".
-        // folderPath "projects" -> match "<prefix>projects/%"
+        // scope.path "projects" -> match "<prefix>projects/%"
+        // Captured into a local so the 'folder' narrowing survives into the
+        // .map() closure below (TS doesn't carry discriminated-union
+        // narrowing of a property access across a nested function).
+        const folderPath = input.scope.path
         const prefix = getNotesPrefix()
-        const pathPattern = input.folderPath ? `${prefix}${input.folderPath}/%` : `${prefix}%`
+        const pathPattern = folderPath ? `${prefix}${folderPath}/%` : `${prefix}%`
 
         // Query notes in folder (exclude journal entries where date IS NOT NULL)
         const notesResult = await db
@@ -267,28 +344,11 @@ export function registerFolderViewHandlers(): void {
           tagsByNote.get(row.noteId)!.push(row.tag)
         })
 
-        // Batch fetch properties for all notes
+        // Batch fetch properties for all notes.
         // When input.properties is undefined, fetch ALL properties (for column flexibility)
-        // When input.properties is specified, only fetch those (for optimization)
-        const propertiesMap = new Map<string, Record<string, unknown>>()
-
-        // Always fetch properties - if undefined, fetch all; if specified, could filter (but we fetch all for simplicity)
-        for (const noteId of noteIds) {
-          const propsResult = await db
-            .select({ name: noteProperties.name, value: noteProperties.value })
-            .from(noteProperties)
-            .where(eq(noteProperties.noteId, noteId))
-
-          const props: Record<string, unknown> = {}
-          propsResult.forEach((row) => {
-            try {
-              props[row.name] = row.value ? JSON.parse(row.value) : null
-            } catch {
-              props[row.name] = row.value
-            }
-          })
-          propertiesMap.set(noteId, props)
-        }
+        // When input.properties is specified, only fetch those (for optimization) —
+        // currently fetchPropertiesFor always fetches all, for simplicity.
+        const propertiesMap = await fetchPropertiesFor(db, noteIds)
 
         // Build response
         const notesWithProps: NoteWithProperties[] = notes.map((note) => ({
@@ -296,7 +356,7 @@ export function registerFolderViewHandlers(): void {
           path: note.path,
           title: note.title,
           emoji: note.emoji,
-          folder: computeRelativeFolder(note.path, input.folderPath, prefix),
+          folder: computeRelativeFolder(note.path, folderPath, prefix),
           tags: tagsByNote.get(note.id) || [],
           created: note.created,
           modified: note.modified,
