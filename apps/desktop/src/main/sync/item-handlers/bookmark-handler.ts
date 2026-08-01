@@ -52,11 +52,16 @@ class BookmarkHandler extends BaseItemHandler<BookmarkSyncPayload> {
         return resolution.action === 'merge' ? 'conflict' : 'applied'
       }
 
+      if (!data.itemType || !data.itemId) {
+        log.warn('Skipping bookmark insert, payload missing itemType or itemId', { itemId })
+        return 'skipped'
+      }
+
       tx.insert(bookmarks)
         .values({
           id: itemId,
-          itemType: data.itemType ?? 'note',
-          itemId: data.itemId ?? '',
+          itemType: data.itemType,
+          itemId: data.itemId,
           position: data.position ?? 0,
           clock: remoteClock,
           syncedAt: now,

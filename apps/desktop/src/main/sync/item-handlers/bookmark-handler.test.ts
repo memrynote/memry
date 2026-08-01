@@ -37,6 +37,28 @@ describe('bookmarkHandler', () => {
     expect(row?.clock).toEqual({ a: 1 })
   })
 
+  it('skips inserting when the payload has no itemId', () => {
+    const result = bookmarkHandler.applyUpsert(
+      ctx,
+      'bmk_note_note_1',
+      { ...payload, itemId: undefined },
+      { a: 1 }
+    )
+    expect(result).toBe('skipped')
+    expect(testDb.db.select().from(bookmarks).all()).toHaveLength(0)
+  })
+
+  it('skips inserting when the payload has no itemType', () => {
+    const result = bookmarkHandler.applyUpsert(
+      ctx,
+      'bmk_note_note_1',
+      { ...payload, itemType: undefined },
+      { a: 1 }
+    )
+    expect(result).toBe('skipped')
+    expect(testDb.db.select().from(bookmarks).all()).toHaveLength(0)
+  })
+
   it('applies a newer-clock update', () => {
     bookmarkHandler.applyUpsert(ctx, 'bmk_note_note_1', payload, { a: 1 })
     const result = bookmarkHandler.applyUpsert(
