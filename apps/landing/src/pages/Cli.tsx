@@ -32,14 +32,14 @@ function Term({ title, lines }: { title?: string; lines: TermLine[] }) {
       </div>
       <div className="overflow-x-auto p-4">
         <pre className="font-mono text-[13px] leading-relaxed">
-          {lines.map((line, i) =>
+          {lines.map((line) =>
             'prompt' in line ? (
-              <div key={i} className="whitespace-pre text-white/90">
+              <div key={`p:${line.prompt}`} className="whitespace-pre text-white/90">
                 <span className="text-terracotta">$ </span>
                 {line.prompt}
               </div>
             ) : (
-              <div key={i} className="whitespace-pre text-white/45">
+              <div key={`o:${line.out}`} className="whitespace-pre text-white/45">
                 {line.out}
               </div>
             )

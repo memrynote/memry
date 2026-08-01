@@ -417,7 +417,7 @@ function AuditLogCard() {
       <ul className="overflow-hidden rounded-xl border border-border/60 bg-paper">
         {AUDIT_LOG.map((row, i) => (
           <li
-            key={`${row.time}-${i}`}
+            key={`${row.time}-${row.who}`}
             className={cn(
               'grid grid-cols-[auto_1fr_auto] items-center gap-3 px-3 py-2 text-[13px]',
               i !== AUDIT_LOG.length - 1 && 'border-b border-border/40'

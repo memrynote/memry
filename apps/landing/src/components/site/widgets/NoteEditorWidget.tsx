@@ -29,7 +29,7 @@ const TAG_COLORS: Record<string, string> = {
 const TAG_POOL = ['travel', 'ideas', 'summer'] as const
 
 const GHOST_BUTTON =
-  'flex h-7 w-7 items-center justify-center rounded-md text-muted transition-all duration-150 ease-out hover:bg-paper-deep hover:text-ink active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60'
+  'flex h-7 w-7 items-center justify-center rounded-md text-muted transition-[color,background-color,transform] duration-150 ease-out hover:bg-paper-deep hover:text-ink active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60'
 
 const CRUMB_BUTTON =
   'rounded-sm px-1 py-0.5 text-muted transition-colors duration-150 hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60'
@@ -207,7 +207,7 @@ export function NoteEditorWidget({ className }: NoteEditorWidgetProps) {
                     type="button"
                     aria-label={`Remove tag ${tag}`}
                     onClick={() => setTags((value) => value.filter((item) => item !== tag))}
-                    className="absolute -end-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#78716c] text-white opacity-0 shadow-sm transition-all duration-150 hover:scale-110 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60 group-hover/chip:opacity-100"
+                    className="absolute -end-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#78716c] text-white opacity-0 shadow-sm transition-[opacity,transform] duration-150 hover:scale-110 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60 group-hover/chip:opacity-100"
                   >
                     <X className="h-2 w-2" strokeWidth={3} />
                   </button>
