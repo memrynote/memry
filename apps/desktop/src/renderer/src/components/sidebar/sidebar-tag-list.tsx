@@ -8,7 +8,7 @@ import {
   X,
   ChevronRight,
   ChevronDown,
-  LayoutGrid
+  Tags
 } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
@@ -360,7 +360,7 @@ export function SidebarTagList({
             }
             aria-label={tPhaseF('tags.openHub')}
           >
-            <LayoutGrid className="h-3 w-3" />
+            <Tags className="h-3 w-3" />
           </Button>
 
           <Button
