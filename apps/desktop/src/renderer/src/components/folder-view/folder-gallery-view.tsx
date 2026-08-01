@@ -89,12 +89,18 @@ export function FolderGalleryView({
             <span className="text-[34px] leading-none">{note.emoji || '📄'}</span>
           </div>
           <div className="flex flex-col gap-2 p-3">
-            <div className="flex items-center gap-1.5">
-              <NoteCardKindIcon kind={note.kind} />
+            {note.kind === 'task' || note.kind === 'inbox' ? (
+              <div className="flex items-center gap-1.5">
+                <NoteCardKindIcon kind={note.kind} />
+                <span className="line-clamp-2 text-[13px] font-semibold leading-[17px] text-foreground">
+                  {note.title || 'Untitled'}
+                </span>
+              </div>
+            ) : (
               <span className="line-clamp-2 text-[13px] font-semibold leading-[17px] text-foreground">
                 {note.title || 'Untitled'}
               </span>
-            </div>
+            )}
             {note.tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {note.tags.slice(0, 3).map((tag) => (
