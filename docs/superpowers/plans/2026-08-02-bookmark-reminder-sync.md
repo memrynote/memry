@@ -398,9 +398,25 @@ import type { VectorClock } from '@memry/contracts/sync-api'
 
 Apply the identical two-column addition to `packages/db-schema/src/schema/reminders.ts` after its `modifiedAt` column.
 
-- [ ] **Step 5: Run migration and tests**
+- [ ] **Step 5: Register the migration in the Drizzle journal**
 
-Run:
+A hand-written migration is invisible to Drizzle's migrator unless it is listed in `apps/desktop/src/main/database/drizzle-data/meta/_journal.json`. Append to the `entries` array, after the existing `idx: 39` entry:
+
+```json
+{
+  "idx": 40,
+  "version": "6",
+  "when": 1785628800000,
+  "tag": "0040_bookmark_reminder_sync",
+  "breakpoints": true
+}
+```
+
+`when` MUST be strictly greater than 0039's `1784831400000`. A non-increasing timestamp makes the migrator skip the file silently.
+
+- [ ] **Step 6: Run migration and tests**
+
+Do **NOT** run `db:generate` for the data DB — Drizzle snapshots are broken past 0021 and it would emit a bogus migration over the hand-written one.
 
 ```bash
 pnpm --filter @memry/desktop db:push
@@ -409,7 +425,7 @@ pnpm --filter @memry/desktop test:main -- migrate
 
 Expected: migration applies, all three tests PASS.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add packages/db-schema apps/desktop/src/main/database
@@ -1753,8 +1769,10 @@ git commit -m "feat(sync): converge derived note_date reminders on a determinist
 
 - [ ] **Step 1: Run the full gate**
 
+Do **NOT** run `db:generate` for the data DB (Drizzle snapshots broken past 0021 — migration 0040 is hand-written and must stay that way).
+
 ```bash
-pnpm --filter @memry/desktop db:generate && pnpm --filter @memry/desktop db:push
+pnpm --filter @memry/desktop db:push
 pnpm ipc:generate && pnpm ipc:check
 pnpm check:contracts && pnpm check:architecture
 pnpm typecheck
