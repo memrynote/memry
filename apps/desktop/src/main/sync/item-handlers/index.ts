@@ -6,6 +6,7 @@ import { taskHandler } from './task-handler'
 import { inboxHandler } from './inbox-handler'
 import { filterHandler } from './filter-handler'
 import { bookmarkHandler } from './bookmark-handler'
+import { reminderHandler } from './reminder-handler'
 import { projectHandler } from './project-handler'
 import { settingsHandler } from './settings-handler'
 import { noteHandler } from './note-handler'
@@ -28,6 +29,7 @@ const handlers = new Map<SyncItemType, SyncItemHandler>([
   ['inbox', inboxHandler],
   ['filter', filterHandler],
   ['bookmark', bookmarkHandler],
+  ['reminder', reminderHandler],
   ['project', projectHandler],
   ['settings', settingsHandler],
   ['note', noteHandler],
