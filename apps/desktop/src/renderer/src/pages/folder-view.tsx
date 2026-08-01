@@ -177,6 +177,29 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   }
 
   /**
+   * Prune stale ids from the selection when the visible row set changes —
+   * a stale id from before a filter change would otherwise silently
+   * reference a row that's no longer shown (use-folder-view.ts applies
+   * filters client-side, so `notes` shrinks reactively). Reset in render
+   * (not an effect) on a signature change, matching the render-phase sync
+   * convention `FolderTableView` itself uses for the same kind of
+   * derived-from-props reset. Keyed on the actual visible ids (not just a
+   * filter parameter) so a selection that stays fully visible across an
+   * unrelated filter change is left untouched.
+   */
+  const visibleNoteIdsKey = notes.map((note) => note.id).join(',')
+  const [lastVisibleNoteIdsKey, setLastVisibleNoteIdsKey] = useState(visibleNoteIdsKey)
+  if (lastVisibleNoteIdsKey !== visibleNoteIdsKey) {
+    setLastVisibleNoteIdsKey(visibleNoteIdsKey)
+    setSelectedRowIds((prev) => {
+      if (prev.size === 0) return prev
+      const visibleIds = new Set(notes.map((n) => n.id))
+      const next = new Set([...prev].filter((id) => visibleIds.has(id)))
+      return next.size === prev.size ? prev : next
+    })
+  }
+
+  /**
    * Handle selection change from table
    */
   const handleSelectionChange = useCallback((newSelection: Set<string>) => {
@@ -727,6 +750,18 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     [notes, selectedRowIds]
   )
 
+  // Note-only subset of the selection, for the destructive Delete/Move
+  // handlers. Derived from the live `notes` (not the raw `selectedRowIds`)
+  // so a stale id — whether non-note in kind, or simply fallen out of view
+  // after a filter change — can never reach a notes-only IPC.
+  const selectedNoteIds = useMemo(
+    () =>
+      notes
+        .filter((note) => selectedRowIds.has(note.id) && (note.kind ?? 'note') === 'note')
+        .map((note) => note.id),
+    [notes, selectedRowIds]
+  )
+
   const handleClearSelection = useCallback(() => setSelectedRowIds(new Set()), [])
 
   const handleCopyLinks = useCallback(async () => {
@@ -1148,11 +1183,11 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
                 selectedRows={selectedRows}
                 availableTags={tagNames}
                 tagMeta={tagMetaMap}
-                onMove={() => handleMoveRequest(Array.from(selectedRowIds))}
+                onMove={() => handleMoveRequest(selectedNoteIds)}
                 onCopyLinks={() => void handleCopyLinks()}
                 onAddTag={(tag) => void handleBulkAddTag(tag)}
                 onExport={() => void handleBulkExport()}
-                onDelete={() => handleDeleteRequest(Array.from(selectedRowIds))}
+                onDelete={() => handleDeleteRequest(selectedNoteIds)}
                 onClear={handleClearSelection}
               />
             </div>

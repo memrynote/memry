@@ -424,6 +424,9 @@ vi.mock('@/components/folder-view/folder-table-view', () => ({
       <button type="button" onClick={() => onSelectionChange(new Set(['note-1', 'task-1']))}>
         Select mixed rows
       </button>
+      <button type="button" onClick={() => onSelectionChange(new Set(['note-1', 'note-2']))}>
+        Select two notes
+      </button>
       <button type="button" onClick={() => onDelete(['note-1'])}>
         Delete note
       </button>
@@ -468,17 +471,27 @@ vi.mock('@/components/folder-view/bulk-action-bar', () => ({
     scope,
     selectedRows,
     count,
+    onDelete,
+    onMove,
     onClear
   }: {
     scope?: { kind: string }
     selectedRows?: Array<{ id: string; kind?: string }>
     count: number
+    onDelete: () => void
+    onMove: () => void
     onClear: () => void
   }) => (
     <div>
       <span data-testid="bulk-scope-kind">{scope?.kind ?? ''}</span>
       <span data-testid="bulk-selected-rows">{JSON.stringify(selectedRows ?? [])}</span>
       <span data-testid="bulk-count">{count}</span>
+      <button type="button" onClick={onDelete}>
+        Bulk delete
+      </button>
+      <button type="button" onClick={onMove}>
+        Bulk move
+      </button>
       <button type="button" onClick={onClear}>
         Clear bulk selection
       </button>
@@ -509,6 +522,16 @@ const inboxRow = {
   emoji: null,
   tags: ['work'],
   kind: 'inbox' as const
+}
+
+// A second plain note row, used to prove a selection that stays fully
+// visible across a filter change is left alone (pruning must not be
+// over-eager).
+const secondNote = {
+  id: 'note-2',
+  title: 'Second Folder Note',
+  emoji: null,
+  tags: ['work']
 }
 
 describe('FolderViewPage', () => {
@@ -848,5 +871,78 @@ describe('FolderViewPage bulk action bar wiring', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Select note' }))
 
     expect(await screen.findByTestId('bulk-scope-kind')).toHaveTextContent('folder')
+  })
+})
+
+describe('FolderViewPage stale selection after a filter change', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.folderState.isLoading = false
+    mocks.folderState.error = null
+    mocks.folderState.folderNotFound = false
+    mocks.folderState.activeView = null
+    mocks.folderState.notes = [note, taskRow]
+    mocks.deleteNote.mockResolvedValue({ success: true })
+    mocks.moveNote.mockResolvedValue({ success: true })
+  })
+
+  it('refuses to delete a row that vanished from view after a filter change drops it', async () => {
+    const { rerender } = renderWithProviders(
+      <FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />
+    )
+
+    // Mixed selection: a note row and a task row. Delete would be disabled
+    // by BulkActionBar's own guard at this point (not exercised here, since
+    // the mock bar always renders its buttons).
+    fireEvent.click(await screen.findByRole('button', { name: 'Select mixed rows' }))
+
+    // Filter change drops the task row — `notes` shrinks reactively, as
+    // use-folder-view.ts applies filters client-side. `task-1` is still in
+    // `selectedRowIds` at this point.
+    mocks.folderState.notes = [note]
+    rerender(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Bulk delete' }))
+    fireEvent.click(screen.getByRole('button', { name: 'button.delete' }))
+
+    await waitFor(() => expect(mocks.deleteNote).toHaveBeenCalledWith('note-1'))
+    expect(mocks.deleteNote).not.toHaveBeenCalledWith('task-1')
+  })
+
+  it('refuses to move a row that vanished from view after a filter change drops it', async () => {
+    const { rerender } = renderWithProviders(
+      <FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Select mixed rows' }))
+
+    mocks.folderState.notes = [note]
+    rerender(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Bulk move' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm move' }))
+
+    await waitFor(() => expect(mocks.moveNote).toHaveBeenCalledWith('note-1', 'Archive'))
+    expect(mocks.moveNote).not.toHaveBeenCalledWith('task-1', 'Archive')
+  })
+
+  it('keeps a selection intact across an unrelated filter change (pruning is not over-eager)', async () => {
+    mocks.folderState.notes = [note, secondNote, taskRow]
+    const { rerender } = renderWithProviders(
+      <FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Select two notes' }))
+
+    // Unrelated filter change drops only the task row — both selected notes
+    // stay visible, so their selection must survive untouched.
+    mocks.folderState.notes = [note, secondNote]
+    rerender(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Bulk delete' }))
+    fireEvent.click(screen.getByRole('button', { name: 'button.delete' }))
+
+    await waitFor(() => expect(mocks.deleteNote).toHaveBeenCalledWith('note-1'))
+    expect(mocks.deleteNote).toHaveBeenCalledWith('note-2')
   })
 })
