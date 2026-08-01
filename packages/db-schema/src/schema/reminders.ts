@@ -9,6 +9,7 @@
 
 import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core'
 import { sql } from 'drizzle-orm'
+import type { VectorClock } from '@memry/contracts/sync-api'
 export {
   reminderTargetType,
   reminderStatus,
@@ -102,7 +103,17 @@ export const reminders = sqliteTable(
     /** When the reminder was last modified */
     modifiedAt: text('modified_at')
       .notNull()
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+
+    // ========================================================================
+    // Sync
+    // ========================================================================
+
+    /** Vector clock for sync conflict resolution */
+    clock: text('clock', { mode: 'json' }).$type<VectorClock>(),
+
+    /** When this row was last synced to the server */
+    syncedAt: text('synced_at')
   },
   (table) => [
     /** Index for finding reminders by target */
