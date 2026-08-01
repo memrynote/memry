@@ -52,6 +52,40 @@ export const FilterSyncPayloadSchema = z.object({
   createdAt: z.string().optional()
 })
 
+export const BookmarkSyncPayloadSchema = z.object({
+  itemType: z.string().optional(),
+  itemId: z.string().optional(),
+  position: z.number().optional(),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional()
+})
+
+/**
+ * Reminder sync payload.
+ *
+ * `triggeredAt` is deliberately ABSENT: each device shows its own OS
+ * notification, so a synced value would suppress the notification on a device
+ * that never displayed it. Dismiss/snooze state DOES sync, so silencing a
+ * reminder on one device silences it everywhere.
+ */
+export const ReminderSyncPayloadSchema = z.object({
+  targetType: z.string().optional(),
+  targetId: z.string().optional(),
+  remindAt: z.string().optional(),
+  anchorId: z.string().nullable().optional(),
+  highlightText: z.string().nullable().optional(),
+  highlightStart: z.number().nullable().optional(),
+  highlightEnd: z.number().nullable().optional(),
+  title: z.string().nullable().optional(),
+  note: z.string().nullable().optional(),
+  status: z.string().optional(),
+  dismissedAt: z.string().nullable().optional(),
+  snoozedUntil: z.string().nullable().optional(),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional(),
+  modifiedAt: z.string().optional()
+})
+
 /**
  * Spatial-canvas sync payload. Every field is optional on purpose (repo
  * forward-tolerance convention): a payload written by a newer client must
@@ -368,6 +402,8 @@ export type CalendarExternalEventSyncPayload = z.infer<
 export type TaskSyncPayload = z.infer<typeof TaskSyncPayloadSchema>
 export type InboxSyncPayload = z.infer<typeof InboxSyncPayloadSchema>
 export type FilterSyncPayload = z.infer<typeof FilterSyncPayloadSchema>
+export type BookmarkSyncPayload = z.infer<typeof BookmarkSyncPayloadSchema>
+export type ReminderSyncPayload = z.infer<typeof ReminderSyncPayloadSchema>
 export type CanvasSyncPayload = z.infer<typeof CanvasSyncPayloadSchema>
 export type ProjectSyncPayload = z.infer<typeof ProjectSyncPayloadSchema>
 export type StatusSync = z.infer<typeof StatusSyncSchema>

@@ -18,6 +18,8 @@ type SyncDomain =
   | 'calendar'
   | 'agent_chat'
   | 'canvas'
+  | 'bookmarks'
+  | 'reminders'
 
 const logger = createLogger('SyncTelemetry')
 
@@ -59,6 +61,10 @@ const toSyncDomain = (itemType: SyncItemType): SyncDomain => {
       return 'agent_chat'
     case 'canvas':
       return 'canvas'
+    case 'bookmark':
+      return 'bookmarks'
+    case 'reminder':
+      return 'reminders'
   }
 }
 

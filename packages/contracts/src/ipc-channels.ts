@@ -594,6 +594,8 @@ export const BookmarksChannels = {
   events: {
     /** Bookmark was created */
     CREATED: 'bookmarks:created',
+    /** Bookmark was updated (e.g. position merged from another device) */
+    UPDATED: 'bookmarks:updated',
     /** Bookmark was deleted */
     DELETED: 'bookmarks:deleted',
     /** Bookmarks were reordered */
