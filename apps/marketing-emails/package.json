@@ -11,8 +11,8 @@
     "build": "email export --dir emails --outDir out"
   },
   "dependencies": {
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "react-email": "^6.1.4"
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router'
 import { Container } from './Container'
 import { FOOTER_LINKS, TWITTER_DEV_URL } from '@/lib/constants'
 import { trackLandingEvent } from '@/lib/analytics'

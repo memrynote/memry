@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion'
 import { ArrowRight, Play } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import heroBg from '@/assets/hero-bg.png'
 import paperLeft from '@/assets/paper-left.png'
 import paperRight from '@/assets/paper-right.png'
