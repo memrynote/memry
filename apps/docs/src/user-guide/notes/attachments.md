@@ -57,8 +57,9 @@ up as normal image blocks. Nothing is copied or rewritten — the markdown on di
 keeps its relative path, so the vault stays readable by the app that wrote it.
 
 A path that points outside the vault is left alone rather than resolved, and so
-are absolute paths and `http(s)` URLs. If an image shows up broken, check that
-the referenced file actually sits where the path points, relative to the note.
+are absolute paths (including Windows `\\server\share` style ones) and `http(s)`
+URLs. If an image shows up broken, check that the referenced file actually sits
+where the path points, relative to the note.
 
 ## Removing or Replacing
 
