@@ -301,6 +301,63 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     }
   }
 
+  // Handle opening a tag-scoped row by kind (ported from tag-view.tsx's
+  // handleNoteOpen, lines 106-154). Task and inbox rows route to their own
+  // pages instead of opening as a note tab; folder scope has no task/inbox
+  // rows and keeps handleNoteOpen above unchanged.
+  const handleTagRowOpen = useCallback(
+    (rowId: string): void => {
+      const item = notes.find((n) => n.id === rowId)
+      if (!item) return
+      const kind = item.kind ?? 'note'
+
+      if (kind === 'task') {
+        openSidebarItem({
+          type: 'tasks',
+          title: 'Tasks',
+          icon: 'CheckSquare',
+          path: '/tasks',
+          // No `selectedProjectId`: under tag scope a row carries no project
+          // id, only a folder name, so the Tasks page falls back to its
+          // default project scope.
+          viewState: {
+            openTaskId: item.id,
+            activeInternalTab: 'all',
+            activeTab: 'all'
+          }
+        })
+        return
+      }
+
+      if (kind === 'inbox') {
+        openSidebarItem({
+          type: 'inbox',
+          title: 'Inbox',
+          icon: 'Inbox',
+          path: '/inbox',
+          // Fresh `focusedAt` token so Inbox's focus effect re-fires even
+          // when the same item is opened twice in a row (it dedupes on the
+          // token) — see inbox.tsx's focus effect.
+          viewState: { focusInboxItemId: item.id, focusedAt: Date.now() }
+        })
+        return
+      }
+
+      openSidebarItem({
+        type: 'note',
+        path: item.path,
+        entityId: item.id,
+        title: item.title,
+        emoji: item.emoji
+      })
+    },
+    [notes, openSidebarItem]
+  )
+
+  // Tag scope opens rows by kind; folder scope only ever has note rows and
+  // keeps the plain-tab handler above.
+  const onRowOpen = scope.kind === 'tag' ? handleTagRowOpen : handleNoteOpen
+
   // Handle clicking a subfolder
   const handleFolderClick = (subfolderPath: string): void => {
     // Combine current folder path with subfolder
@@ -658,6 +715,18 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
 
   const tagNames = useMemo(() => allTags.map((tag) => tag.tag), [allTags])
 
+  // Selected rows, derived from the live rows + selection set on every
+  // render — BulkActionBar uses `kind` to guard pin/delete/move to note
+  // rows only, so a stale or partial list here would silently let a
+  // task/inbox row through (or block a note row wrongly).
+  const selectedRows = useMemo(
+    () =>
+      notes
+        .filter((note) => selectedRowIds.has(note.id))
+        .map((note) => ({ id: note.id, kind: note.kind })),
+    [notes, selectedRowIds]
+  )
+
   const handleClearSelection = useCallback(() => setSelectedRowIds(new Set()), [])
 
   const handleCopyLinks = useCallback(async () => {
@@ -866,6 +935,11 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
             availableProperties={availableProperties}
             builtInColumns={builtInColumns}
             onFiltersChange={(...args) => void updateFilters(...args)}
+            lockedCondition={
+              scope.kind === 'tag'
+                ? { label: t('page.tagFilterLabel', { tag: scope.tag }), color: tagColors?.text }
+                : undefined
+            }
           />
 
           {/* Properties */}
@@ -970,7 +1044,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               searchQuery={debouncedSearchQuery}
               density="compact"
               tagMetaMap={tagMetaMap}
-              onNoteOpen={handleNoteOpen}
+              onNoteOpen={onRowOpen}
               onTagClick={handleTagClick}
               onCreateNote={() => void handleCreateNote()}
               onClearAll={handleClearAll}
@@ -981,7 +1055,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               notes={notes}
               searchQuery={debouncedSearchQuery}
               tagMetaMap={tagMetaMap}
-              onNoteOpen={handleNoteOpen}
+              onNoteOpen={onRowOpen}
               onTagClick={handleTagClick}
               onCreateNote={() => void handleCreateNote()}
               onClearAll={handleClearAll}
@@ -1000,7 +1074,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               highlightQuery={debouncedSearchQuery}
               selectedRowIds={selectedRowIds}
               onSelectionChange={handleSelectionChange}
-              onNoteOpen={handleNoteOpen}
+              onNoteOpen={onRowOpen}
               onOpenInNewTab={handleOpenInNewTab}
               onFolderClick={handleFolderClick}
               onTagClick={handleTagClick}
@@ -1034,7 +1108,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               highlightQuery={debouncedSearchQuery}
               selectedRowIds={selectedRowIds}
               onSelectionChange={handleSelectionChange}
-              onNoteOpen={handleNoteOpen}
+              onNoteOpen={onRowOpen}
               onOpenInNewTab={handleOpenInNewTab}
               onFolderClick={handleFolderClick}
               onTagClick={handleTagClick}
@@ -1070,6 +1144,8 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               <BulkActionBar
                 className="pointer-events-auto"
                 count={selectedRowIds.size}
+                scope={scope}
+                selectedRows={selectedRows}
                 availableTags={tagNames}
                 tagMeta={tagMetaMap}
                 onMove={() => handleMoveRequest(Array.from(selectedRowIds))}

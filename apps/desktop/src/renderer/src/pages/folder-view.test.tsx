@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithProviders } from '@tests/utils/render'
+import { renderWithProviders, userEvent } from '@tests/utils/render'
 import { FolderViewPage } from './folder-view'
 import type React from 'react'
 
@@ -285,10 +285,19 @@ vi.mock('@/components/folder-view/column-selector', () => ({
 }))
 
 vi.mock('@/components/folder-view/filter-builder', () => ({
-  FilterBuilder: ({ onFiltersChange }: { onFiltersChange: (filters: unknown) => void }) => (
-    <button type="button" onClick={() => onFiltersChange({ op: 'and', conditions: [] })}>
-      Change filters
-    </button>
+  FilterBuilder: ({
+    onFiltersChange,
+    lockedCondition
+  }: {
+    onFiltersChange: (filters: unknown) => void
+    lockedCondition?: { label: string; color?: string }
+  }) => (
+    <div>
+      {lockedCondition && <span data-testid="locked-condition">{lockedCondition.label}</span>}
+      <button type="button" onClick={() => onFiltersChange({ op: 'and', conditions: [] })}>
+        Change filters
+      </button>
+    </div>
   )
 }))
 
@@ -382,6 +391,12 @@ vi.mock('@/components/folder-view/folder-table-view', () => ({
       <button type="button" onClick={() => onNoteOpen('note-1')}>
         Open note
       </button>
+      <button type="button" onClick={() => onNoteOpen('task-1')}>
+        Open task row
+      </button>
+      <button type="button" onClick={() => onNoteOpen('inbox-1')}>
+        Open inbox row
+      </button>
       <button type="button" onClick={() => onOpenInNewTab('note-1')}>
         Open note new tab
       </button>
@@ -405,6 +420,9 @@ vi.mock('@/components/folder-view/folder-table-view', () => ({
       </button>
       <button type="button" onClick={() => onSelectionChange(new Set(['note-1']))}>
         Select note
+      </button>
+      <button type="button" onClick={() => onSelectionChange(new Set(['note-1', 'task-1']))}>
+        Select mixed rows
       </button>
       <button type="button" onClick={() => onDelete(['note-1'])}>
         Delete note
@@ -445,11 +463,52 @@ vi.mock('@/components/folder-view/move-to-folder-dialog', () => ({
     ) : null
 }))
 
+vi.mock('@/components/folder-view/bulk-action-bar', () => ({
+  BulkActionBar: ({
+    scope,
+    selectedRows,
+    count,
+    onClear
+  }: {
+    scope?: { kind: string }
+    selectedRows?: Array<{ id: string; kind?: string }>
+    count: number
+    onClear: () => void
+  }) => (
+    <div>
+      <span data-testid="bulk-scope-kind">{scope?.kind ?? ''}</span>
+      <span data-testid="bulk-selected-rows">{JSON.stringify(selectedRows ?? [])}</span>
+      <span data-testid="bulk-count">{count}</span>
+      <button type="button" onClick={onClear}>
+        Clear bulk selection
+      </button>
+    </div>
+  )
+}))
+
 const note = {
   id: 'note-1',
   title: 'Folder Note',
   emoji: 'x',
   tags: ['work']
+}
+
+// Task/inbox rows, as `NoteWithProperties` looks under tag scope (`kind`
+// absent means 'note' — see use-folder-view.ts).
+const taskRow = {
+  id: 'task-1',
+  title: 'Tag Task',
+  emoji: null,
+  tags: ['work'],
+  kind: 'task' as const
+}
+
+const inboxRow = {
+  id: 'inbox-1',
+  title: 'Tag Inbox Item',
+  emoji: null,
+  tags: ['work'],
+  kind: 'inbox' as const
 }
 
 describe('FolderViewPage', () => {
@@ -650,5 +709,144 @@ describe('FolderViewPage tag scope', () => {
     await waitFor(() =>
       expect(mocks.createNote).toHaveBeenCalledWith(expect.objectContaining({ tags: ['araba'] }))
     )
+  })
+})
+
+describe('FolderViewPage tag scope row opening by kind', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.folderState.isLoading = false
+    mocks.folderState.error = null
+    mocks.folderState.folderNotFound = false
+    mocks.folderState.activeView = null
+    mocks.folderState.notes = [note, taskRow, inboxRow]
+    mocks.activeTab = { id: 'tab-1' }
+  })
+
+  it('opens a note row through sidebar navigation, not a plain tab', async () => {
+    renderWithProviders(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Open note' }))
+
+    expect(mocks.openSidebarItem).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'note', entityId: 'note-1', title: 'Folder Note' })
+    )
+    expect(mocks.openTab).not.toHaveBeenCalled()
+  })
+
+  it('opens a task row in the Tasks page with no selectedProjectId', async () => {
+    renderWithProviders(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Open task row' }))
+
+    expect(mocks.openSidebarItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'tasks',
+        viewState: expect.objectContaining({ openTaskId: 'task-1' })
+      })
+    )
+    const [item] = mocks.openSidebarItem.mock.calls[0]
+    expect(item.viewState).not.toHaveProperty('selectedProjectId')
+  })
+
+  it('opens an inbox row with a fresh focus token on every open', async () => {
+    // Real Date.now() resolution (1ms) could tie two back-to-back clicks on
+    // a fast machine — spy with a strictly-increasing counter so the "fresh
+    // token" assertion is deterministic, not a timing race.
+    let now = 0
+    const nowSpy = vi.spyOn(Date, 'now').mockImplementation(() => ++now)
+
+    try {
+      renderWithProviders(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+      const openInboxButton = await screen.findByRole('button', { name: 'Open inbox row' })
+
+      await userEvent.click(openInboxButton)
+      await userEvent.click(openInboxButton)
+
+      expect(mocks.openSidebarItem).toHaveBeenCalledTimes(2)
+      expect(mocks.openSidebarItem).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          type: 'inbox',
+          viewState: expect.objectContaining({ focusInboxItemId: 'inbox-1' })
+        })
+      )
+      const [first, second] = mocks.openSidebarItem.mock.calls.map(
+        (call) => call[0].viewState.focusedAt
+      )
+      expect(first).toBeDefined()
+      expect(second).not.toBe(first)
+    } finally {
+      nowSpy.mockRestore()
+    }
+  })
+
+  it('still opens a folder-scope row as a plain tab, not via sidebar navigation', async () => {
+    mocks.folderState.notes = [note]
+    renderWithProviders(<FolderViewPage scope={{ kind: 'folder', path: 'Work' }} />)
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Open note' }))
+
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'note', entityId: 'note-1' })
+    )
+    expect(mocks.openSidebarItem).not.toHaveBeenCalled()
+  })
+})
+
+describe('FolderViewPage locked filter condition', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.folderState.isLoading = false
+    mocks.folderState.error = null
+    mocks.folderState.folderNotFound = false
+    mocks.folderState.activeView = null
+    mocks.folderState.notes = [note]
+  })
+
+  it('passes a locked tag condition to the filter builder under tag scope', async () => {
+    renderWithProviders(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+
+    expect(await screen.findByTestId('locked-condition')).toBeInTheDocument()
+  })
+
+  it('passes no locked condition under folder scope', async () => {
+    renderWithProviders(<FolderViewPage scope={{ kind: 'folder', path: 'Work' }} />)
+
+    await screen.findByText('Folder Note')
+    expect(screen.queryByTestId('locked-condition')).not.toBeInTheDocument()
+  })
+})
+
+describe('FolderViewPage bulk action bar wiring', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.folderState.isLoading = false
+    mocks.folderState.error = null
+    mocks.folderState.folderNotFound = false
+    mocks.folderState.activeView = null
+    mocks.folderState.notes = [note, taskRow]
+  })
+
+  it('passes the live scope and the actual selected rows (not stale/partial) to the bulk bar', async () => {
+    renderWithProviders(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Select mixed rows' }))
+
+    expect(await screen.findByTestId('bulk-scope-kind')).toHaveTextContent('tag')
+    const selectedRowsJson = screen.getByTestId('bulk-selected-rows').textContent
+    expect(JSON.parse(selectedRowsJson ?? '[]')).toEqual([
+      { id: 'note-1' },
+      { id: 'task-1', kind: 'task' }
+    ])
+  })
+
+  it('does not render a scope for the bulk bar under folder scope', async () => {
+    mocks.folderState.notes = [note]
+    renderWithProviders(<FolderViewPage scope={{ kind: 'folder', path: 'Work' }} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Select note' }))
+
+    expect(await screen.findByTestId('bulk-scope-kind')).toHaveTextContent('folder')
   })
 })

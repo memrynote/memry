@@ -28,6 +28,7 @@
     "deleteDialogTitle": "{count, plural, one {Delete Note} other {Delete # Notes}}",
     "itemsCount": "{count, plural, one {# item} other {# items}}",
     "itemsCountFiltered": "{shown} of {total, plural, one {# item} other {# items}}",
+    "tagFilterLabel": "tag = {tag}",
     "renameViewUnavailableForTags": "Renaming saved views isn't available for tags yet",
     "deleteConfirm": {
       "title": "Delete note",
