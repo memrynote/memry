@@ -54,6 +54,30 @@ describe('resolveNoteRelativeUrl', () => {
     expect(resolveNoteRelativeUrl('../../../etc/passwd', NOTE, VAULT)).toBe('../../../etc/passwd')
   })
 
+  // `toMemryFileUrl` rewrites `\` to `/`, so a backslash ref that slipped past
+  // the guard as one opaque segment would only become a traversal afterwards.
+  it('treats backslashes as separators when resolving', () => {
+    expect(resolveNoteRelativeUrl('..\\Images\\Media\\a.png', NOTE, VAULT)).toBe(
+      'memry-file://local/Users/me/vault/Images/Media/a.png'
+    )
+    expect(resolveNoteRelativeUrl('sub\\a.png', NOTE, VAULT)).toBe(
+      'memry-file://local/Users/me/vault/People%20(1)/sub/a.png'
+    )
+  })
+
+  it('leaves a backslash ref untouched when it would escape the vault', () => {
+    expect(resolveNoteRelativeUrl('..\\..\\..\\etc\\passwd', NOTE, VAULT)).toBe(
+      '..\\..\\..\\etc\\passwd'
+    )
+  })
+
+  it.each([['\\Images\\a.png'], ['\\\\server\\share\\a.png']])(
+    'leaves the leading-backslash ref %s untouched',
+    (url) => {
+      expect(resolveNoteRelativeUrl(url, NOTE, VAULT)).toBe(url)
+    }
+  )
+
   it('leaves the url untouched without a note path or vault path', () => {
     expect(resolveNoteRelativeUrl('a.png', undefined, VAULT)).toBe('a.png')
     expect(resolveNoteRelativeUrl('a.png', NOTE, null)).toBe('a.png')

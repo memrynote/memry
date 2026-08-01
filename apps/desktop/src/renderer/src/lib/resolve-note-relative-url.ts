@@ -17,12 +17,20 @@ import { toMemryFileUrl } from './memry-file-url'
 const HAS_SCHEME = /^[a-zA-Z][a-zA-Z\d+\-.]*:/
 
 /**
+ * Both separators count: `toMemryFileUrl` rewrites `\` to `/` when it builds the
+ * URL, so a ref like `..\..\x.png` would otherwise pass through here as one
+ * opaque segment — skipping the `..` checks — and only become a traversal after
+ * the guard had already approved it.
+ */
+const SEPARATOR = /[/\\]/
+
+/**
  * Join a vault-relative directory with a relative ref, collapsing `.` and `..`.
  * Returns null if the ref climbs above the vault root.
  */
 function joinWithinVault(dir: string, ref: string): string | null {
   const out: string[] = []
-  for (const segment of [...dir.split('/'), ...ref.split('/')]) {
+  for (const segment of [...dir.split(SEPARATOR), ...ref.split(SEPARATOR)]) {
     if (!segment || segment === '.') continue
     if (segment === '..') {
       if (out.length === 0) return null
@@ -48,8 +56,9 @@ export function resolveNoteRelativeUrl(
 ): string {
   if (!url || !notePath || !vaultPath) return url
   if (HAS_SCHEME.test(url)) return url
-  // A leading slash is ambiguous (vault root? filesystem root?) — don't guess.
-  if (url.startsWith('/')) return url
+  // A leading separator is ambiguous (vault root? filesystem root? a Windows UNC
+  // share, for `\\server\share`?) — don't guess.
+  if (url.startsWith('/') || url.startsWith('\\')) return url
 
   // Refs are commonly percent-encoded (`my%20photo.png`); decode for the disk
   // path, then let toMemryFileUrl re-encode each segment.
