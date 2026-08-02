@@ -8,7 +8,7 @@ A 60-second lap through the parts of the app you'll use most.
 
 The left sidebar is your primary navigation.
 
-At the very top, the **New** button creates a note in one click. Click the chevron on its right to open the create menu — New Note, Journal, Calendar, Inbox, or Tasks — the same menu as the **+** on the tab bar. These create-menu entries open ready to act: **Calendar** pops the new-event popover, **Inbox** focuses the capture field, and **Tasks** opens your default project with the quick-add input focused.
+At the very top, the **New** button creates a note in one click. Click the chevron on its right to open the create menu — New Note, Journal, Calendar, Inbox, Tasks, or Tags — the same menu as the **+** on the tab bar. Some create-menu entries open ready to act: **Calendar** pops the new-event popover, **Inbox** focuses the capture field, and **Tasks** opens your default project with the quick-add input focused. **Tags** opens the tag hub, where your tag categories live.
 
 Opening the same views from the sidebar sections below focuses the input too (Inbox capture, Tasks quick-add), but the sidebar's **Calendar** just opens the calendar without the new-event popover — the popover is reserved for the create menu and the tab-bar **+**.
 

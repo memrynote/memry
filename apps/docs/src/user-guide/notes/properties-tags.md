@@ -50,8 +50,9 @@ You can also set a tag's icon straight from its own page: click the chip in the 
 ## Tag Categories
 
 Group related tags together and give the sidebar a stable, deliberate order. Open the **tag
-hub** — the grid icon next to the sidebar's **Tags** section header — to manage categories
-and tags in one place.
+hub** to manage categories and tags in one place — either from the grid icon next to the
+sidebar's **Tags** section header, or by picking **Tags** in the create menu (the chevron
+beside the sidebar's **New** button, and the **+** on the tab bar).
 
 - **New category** — click **New category**, name it, press Enter.
 - **New tag** — click **New tag** in the hub, name it, and pick a starting color. (You can
