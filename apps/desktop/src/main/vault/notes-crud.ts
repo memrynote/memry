@@ -50,10 +50,25 @@ import { getStatus, getConfig } from './index'
 import { emitNoteEvent, getNotesDir, toAbsolutePath, toRelativePath } from './notes-io'
 import { maybeCreateSignificantSnapshot } from './notes-versions'
 import { noteToListItem } from './notes-queries'
-import { createRemindersService } from '@memry/app-core/reminders'
+import { createRemindersService, type RemindersServiceHooks } from '@memry/app-core/reminders'
 import { syncNoteDateReminders, clearNoteDateReminders } from '../notes/note-date-reminders'
+import {
+  enqueueLocalSyncCreate,
+  enqueueLocalSyncDelete,
+  enqueueLocalSyncUpdate
+} from '../sync/local-mutations'
 
 const logger = createLogger('VaultNotesCrud')
+
+// Forwards app-core reminder writes to the sync queue. app-core cannot import
+// desktop sync code directly (architecture boundary), so this is injected.
+const reminderSyncHooks: RemindersServiceHooks = {
+  onMutate: (op, id, snapshot) => {
+    if (op === 'create') enqueueLocalSyncCreate('reminder', id)
+    else if (op === 'update') enqueueLocalSyncUpdate('reminder', id)
+    else enqueueLocalSyncDelete('reminder', id, snapshot)
+  }
+}
 
 // ============================================================================
 // Types
@@ -284,7 +299,7 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
   })
 
   try {
-    await syncNoteDateReminders(note.id, content, createRemindersService(dataDb))
+    await syncNoteDateReminders(note.id, content, createRemindersService(dataDb, reminderSyncHooks))
   } catch (err) {
     logger.warn('Failed to sync note_date reminders on create', { noteId: note.id, err })
   }
@@ -611,7 +626,11 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
 
   if (wrote) {
     try {
-      await syncNoteDateReminders(input.id, newContent, createRemindersService(dataDb))
+      await syncNoteDateReminders(
+        input.id,
+        newContent,
+        createRemindersService(dataDb, reminderSyncHooks)
+      )
     } catch (err) {
       logger.warn('Failed to sync note_date reminders on update', { noteId: input.id, err })
     }
@@ -648,7 +667,7 @@ export async function deleteNote(id: string): Promise<void> {
   })
 
   try {
-    await clearNoteDateReminders(id, createRemindersService(getDatabase()))
+    await clearNoteDateReminders(id, createRemindersService(getDatabase(), reminderSyncHooks))
   } catch (err) {
     logger.warn('Failed to clear note_date reminders on delete', { noteId: id, err })
   }
