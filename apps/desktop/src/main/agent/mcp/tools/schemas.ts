@@ -393,6 +393,33 @@ export const TOOL_SCHEMAS = {
     input: z.object({ id: idSchema, folder_path: z.string().min(1) }),
     description: 'Move a note to a folder. Requires user approval.'
   },
+  vault_add_canvas_item: {
+    input: z.object({
+      canvas_id: idSchema,
+      items: z
+        .array(
+          z.object({
+            entity_type: z.enum(['note', 'task', 'calendar_event']),
+            entity_id: idSchema
+          })
+        )
+        .min(1)
+        .max(20)
+    }),
+    description:
+      'Put existing notes/tasks/events on a canvas as cards. Applies to the open editor when ' +
+      'the user has that canvas open. Requires user approval.'
+  },
+  vault_remove_canvas_item: {
+    input: z.object({
+      canvas_id: idSchema,
+      entity_type: z.enum(['note', 'task', 'calendar_event']),
+      entity_id: idSchema
+    }),
+    description:
+      "Remove an entity's card from a canvas, clearing any arrows bound to it. " +
+      'The note/task/event itself is not deleted. Requires user approval.'
+  },
   vault_desktop_write: {
     input: desktopWriteSchema,
     description: 'Run an allowlisted desktop CRUD mutation. Requires user approval.'
@@ -464,6 +491,8 @@ export const WRITE_TOOL_NAMES = [
   'vault_add_tag',
   'vault_remove_tag',
   'vault_move_to_folder',
+  'vault_add_canvas_item',
+  'vault_remove_canvas_item',
   'vault_desktop_write'
 ] as const satisfies readonly ToolName[]
 
@@ -513,6 +542,8 @@ export const UPDATE_TOOL_NAMES = [
   'vault_add_tag',
   'vault_remove_tag',
   'vault_move_to_folder',
+  'vault_add_canvas_item',
+  'vault_remove_canvas_item',
   'vault_desktop_write'
 ] as const satisfies readonly ToolName[]
 

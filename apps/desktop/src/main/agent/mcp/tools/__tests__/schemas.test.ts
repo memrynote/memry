@@ -63,6 +63,8 @@ describe('Vault MCP tool schemas', () => {
       'vault_add_tag',
       'vault_remove_tag',
       'vault_move_to_folder',
+      'vault_add_canvas_item',
+      'vault_remove_canvas_item',
       'vault_desktop_write'
     ])
   })
