@@ -120,7 +120,14 @@ export const AgentMcpDesktopReadOperations = [
   'vault.getAll',
   'vault.getStatus',
   'vault.getConfig',
-  'vault.listAccount'
+  'vault.listAccount',
+  // Canvas (#916). canvas.get is deliberately absent — it returns the whole
+  // serialized scene, which is the geometry dump vault_read_canvas exists to
+  // avoid. See docs/superpowers/specs/2026-08-03-mcp-canvas-coverage-design.md §3.2.
+  'canvas.list',
+  'canvas.getAsset',
+  'canvas.listAssets',
+  'canvas.libraryList'
 ] as const
 
 export const AgentMcpDesktopWriteOperations = [
@@ -271,7 +278,13 @@ export const AgentMcpDesktopWriteOperations = [
   'vault.switch',
   'vault.reindex',
   'vault.updateConfig',
-  'vault.downloadRemote'
+  'vault.downloadRemote',
+  // Canvas (#916). Whole-canvas lifecycle only. canvas.update (blind
+  // whole-scene clobber of an open editor), canvas.librarySave (a partial list
+  // deletes the user's shape library) and canvas.uploadAsset (binary payload)
+  // stay out; item add/remove goes through the dedicated canvas item tools.
+  'canvas.create',
+  'canvas.delete'
 ] as const
 
 export const AgentMcpDesktopOperations = [
