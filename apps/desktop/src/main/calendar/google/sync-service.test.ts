@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import {
+  asClientDb,
   createTestDataDb,
   seedInboxItem,
   seedTestData,
@@ -61,6 +62,8 @@ import {
   syncGoogleCalendarNow,
   syncGoogleCalendarSource
 } from './sync-service'
+import { SyncQueueManager } from '../../sync/queue'
+import { initReminderSyncService, resetReminderSyncService } from '../../sync/reminder-sync'
 
 describe('google calendar sync service', () => {
   let dbResult: TestDatabaseResult
@@ -729,6 +732,97 @@ describe('google calendar sync service', () => {
     expect(db.select().from(inboxItems).where(eq(inboxItems.id, 'inbox-1')).get()).toMatchObject({
       title: 'Snooze survives',
       snoozedUntil: null
+    })
+  })
+
+  describe('reminder Google Calendar writeback enqueues the local sync queue', () => {
+    let queue: SyncQueueManager
+
+    beforeEach(() => {
+      queue = new SyncQueueManager(asClientDb(db))
+      initReminderSyncService({ queue, db: asClientDb(db), getDeviceId: () => 'device-a' })
+    })
+
+    afterEach(() => {
+      resetReminderSyncService()
+    })
+
+    it('enqueues an update and bumps the clock when Google deletes the reminder event (soft-dismiss writeback)', async () => {
+      db.insert(reminders)
+        .values({
+          id: 'rem-gcal-1',
+          targetType: 'note',
+          targetId: 'note-1',
+          remindAt: '2026-04-14T11:00:00.000Z',
+          status: 'pending',
+          clock: { 'device-a': 1 },
+          createdAt: '2026-04-12T09:05:00.000Z',
+          modifiedAt: '2026-04-12T09:05:00.000Z'
+        })
+        .run()
+
+      await applyGoogleCalendarDelete(db, {
+        sourceType: 'reminder',
+        sourceId: 'rem-gcal-1',
+        writebackMode: 'broad'
+      })
+
+      // Local write took effect and the sync clock was bumped, not just left
+      // as a silent DB-only mutation.
+      const row = db.select().from(reminders).where(eq(reminders.id, 'rem-gcal-1')).get()
+      expect(row?.status).toBe('dismissed')
+      expect(row?.clock).toEqual({ 'device-a': 2 })
+
+      const items = queue.dequeue(10)
+      const reminderItem = items.find((i) => i.itemId === 'rem-gcal-1')
+      expect(reminderItem).toBeDefined()
+      expect(reminderItem!.type).toBe('reminder')
+      expect(reminderItem!.operation).toBe('update')
+    })
+
+    it('enqueues an update and bumps the clock when Google updates the reminder event', async () => {
+      db.insert(reminders)
+        .values({
+          id: 'rem-gcal-2',
+          targetType: 'note',
+          targetId: 'note-1',
+          remindAt: '2026-04-14T11:00:00.000Z',
+          title: 'Old title',
+          status: 'pending',
+          clock: { 'device-a': 1 },
+          createdAt: '2026-04-12T09:05:00.000Z',
+          modifiedAt: '2026-04-12T09:05:00.000Z'
+        })
+        .run()
+
+      await applyGoogleCalendarWriteback(
+        db,
+        { sourceType: 'reminder', sourceId: 'rem-gcal-2', writebackMode: 'broad' },
+        {
+          id: 'remote-rem-gcal-2',
+          calendarId: 'remote-memry-calendar',
+          title: 'Updated title',
+          description: 'Updated note',
+          location: null,
+          startAt: '2026-04-15T16:00:00.000Z',
+          endAt: null,
+          isAllDay: false,
+          timezone: 'UTC',
+          status: 'confirmed',
+          etag: '"etag-rem-gcal-2"',
+          updatedAt: '2026-04-12T10:10:00.000Z',
+          raw: {}
+        }
+      )
+
+      const row = db.select().from(reminders).where(eq(reminders.id, 'rem-gcal-2')).get()
+      expect(row?.title).toBe('Updated title')
+      expect(row?.clock).toEqual({ 'device-a': 2 })
+
+      const items = queue.dequeue(10)
+      const reminderItem = items.find((i) => i.itemId === 'rem-gcal-2')
+      expect(reminderItem).toBeDefined()
+      expect(reminderItem!.operation).toBe('update')
     })
   })
 

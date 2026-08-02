@@ -49,10 +49,18 @@ export class ReminderSyncService {
 
         return { ...local, clock: newClock }
       },
-      // triggeredAt is device-local: never push it.
+      // triggeredAt is device-local: never push it. status='triggered' is
+      // too — it just means THIS device's scheduler fired — so normalize it
+      // to 'pending' on the way out. Real transitions (dismissed/snoozed)
+      // still sync unchanged. Keep in sync with reminder-handler.ts's
+      // buildPushPayload/seedUnclocked and manifest-check.ts's reminder
+      // block — all four outbound sites must agree.
       serialize: (local) => {
         const { triggeredAt: _triggeredAt, ...syncable } = local
-        return syncable
+        return {
+          ...syncable,
+          status: syncable.status === 'triggered' ? 'pending' : syncable.status
+        }
       },
       buildDeletePayload: ({ extra, deviceId }) => withIncrementedClock(extra[0], deviceId)
     })

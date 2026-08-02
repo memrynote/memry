@@ -1061,7 +1061,7 @@ describe('reminders service', () => {
       const id = seedReminder({ status: reminderStatus.TRIGGERED })
       dataDb.db
         .update(reminders)
-        .set({ triggeredAt: '2025-01-01T00:05:00.000Z' })
+        .set({ triggeredAt: '2025-01-01T00:05:00.000Z', clock: { 'device-a': 3 } })
         .where(eq(reminders.id, id))
         .run()
 
@@ -1072,7 +1072,12 @@ describe('reminders service', () => {
         string,
         unknown
       >
+      // Real fields must survive the destructure — a regression that
+      // replaced it with e.g. `JSON.stringify({ id })` would still pass the
+      // `id`/`triggeredAt`-absence checks below but lose everything else.
       expect(snapshot.id).toBe(id)
+      expect(snapshot.status).toBe(reminderStatus.TRIGGERED)
+      expect(snapshot.clock).toEqual({ 'device-a': 3 })
       expect('triggeredAt' in snapshot).toBe(false)
     })
   })

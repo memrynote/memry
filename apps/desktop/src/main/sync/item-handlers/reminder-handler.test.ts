@@ -126,6 +126,50 @@ describe('reminderHandler', () => {
     expect(reminderHandler.applyDelete(ctx, 'rem_missing', { a: 1 })).toBe('skipped')
   })
 
+  describe('buildPushPayload', () => {
+    it('normalizes status=triggered to pending (device-local, like triggeredAt)', () => {
+      testDb.db
+        .insert(reminders)
+        .values({
+          id: 'rem_1',
+          targetType: 'note',
+          targetId: 'note_1',
+          remindAt: '2026-08-03T09:00:00.000Z',
+          status: 'triggered',
+          triggeredAt: '2026-08-03T09:00:01.000Z'
+        })
+        .run()
+
+      const raw = reminderHandler.buildPushPayload(ctx.db, 'rem_1', 'device-a', 'update')
+      expect(raw).not.toBeNull()
+      const payload = JSON.parse(raw as string)
+      expect(payload.status).toBe('pending')
+      expect(payload).not.toHaveProperty('triggeredAt')
+    })
+
+    it('leaves a real status (dismissed) untouched', () => {
+      testDb.db
+        .insert(reminders)
+        .values({
+          id: 'rem_2',
+          targetType: 'note',
+          targetId: 'note_1',
+          remindAt: '2026-08-03T09:00:00.000Z',
+          status: 'dismissed',
+          dismissedAt: '2026-08-03T09:05:00.000Z'
+        })
+        .run()
+
+      const raw = reminderHandler.buildPushPayload(ctx.db, 'rem_2', 'device-a', 'update')
+      const payload = JSON.parse(raw as string)
+      expect(payload.status).toBe('dismissed')
+    })
+
+    it('returns null for an unknown reminder', () => {
+      expect(reminderHandler.buildPushPayload(ctx.db, 'missing', 'device-a', 'update')).toBeNull()
+    })
+  })
+
   it('seedUnclocked clocks pre-existing rows and enqueues them', () => {
     testDb.db
       .insert(reminders)
@@ -156,5 +200,27 @@ describe('reminderHandler', () => {
 
     const row = testDb.db.select().from(reminders).where(eq(reminders.id, 'rem_1')).get()
     expect(row?.clock).toEqual({ 'device-a': 1 })
+  })
+
+  it('seedUnclocked normalizes status=triggered to pending in the enqueued payload', () => {
+    testDb.db
+      .insert(reminders)
+      .values({
+        id: 'rem_trig',
+        targetType: 'note',
+        targetId: 'note_1',
+        remindAt: '2026-08-03T09:00:00.000Z',
+        status: 'triggered',
+        triggeredAt: '2026-08-03T09:00:01.000Z'
+      })
+      .run()
+
+    const queue = new SyncQueueManager(asSyncDb(testDb.db))
+    reminderHandler.seedUnclocked(ctx.db, 'device-a', queue)
+
+    const [queued] = queue.dequeue(1)
+    const payload = JSON.parse(queued.payload)
+    expect(payload.status).toBe('pending')
+    expect(payload).not.toHaveProperty('triggeredAt')
   })
 })

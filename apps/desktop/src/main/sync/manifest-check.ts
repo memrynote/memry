@@ -187,11 +187,22 @@ function getLocalSyncableItems(db: DrizzleDb): LocalSyncableItem[] {
   }
 
   // triggeredAt is device-local: strip it before treating a reminder as a
-  // syncable payload, mirroring reminder-sync.ts's serialize.
+  // syncable payload, mirroring reminder-sync.ts's serialize. status='triggered'
+  // is device-local too — normalize it to 'pending' so this manifest payload
+  // matches what reminder-sync.ts/reminder-handler.ts actually push (all
+  // outbound reminder sites must agree, or a mismatch here reads as a
+  // spurious manifest disagreement with the server).
   const syncedReminders = db.select().from(reminders).where(isNotNull(reminders.clock)).all()
   for (const r of syncedReminders) {
     const { triggeredAt: _triggeredAt, ...syncable } = r
-    addLocalItem({ id: r.id, type: 'reminder', payload: JSON.stringify(syncable) })
+    addLocalItem({
+      id: r.id,
+      type: 'reminder',
+      payload: JSON.stringify({
+        ...syncable,
+        status: syncable.status === 'triggered' ? 'pending' : syncable.status
+      })
+    })
   }
 
   // Diverges from the tasks template (D2): tombstones MUST be excluded. The

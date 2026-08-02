@@ -458,9 +458,9 @@ export function deleteReminder(id: string): boolean {
   // so a missing snapshot here means the delete silently never syncs.
   const { triggeredAt: _triggeredAt, ...snapshot } = reminder
 
+  enqueueLocalSyncDelete('reminder', id, JSON.stringify(snapshot))
   db.delete(reminders).where(eq(reminders.id, id)).run()
 
-  enqueueLocalSyncDelete('reminder', id, JSON.stringify(snapshot))
   emitEvent(ReminderChannels.events.DELETED, {
     id,
     targetType: reminder.targetType,

@@ -12,12 +12,34 @@ import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 
 const log = createLogger('ReminderHandler')
 
+type ReminderRow = typeof reminders.$inferSelect
+
 /**
  * `triggeredAt` is intentionally never read from or written by the payload.
  * It records that THIS device showed an OS notification. Syncing it would make
  * a device that never displayed the reminder believe it already had, silently
  * swallowing the notification.
+ *
+ * `status: 'triggered'` is device-local for the same reason: it just means
+ * THIS device's scheduler fired. Outbound payloads normalize it to 'pending'
+ * (see buildPushPayload / seedUnclocked) so a device that hasn't reached
+ * remindAt yet doesn't get talked out of its own notification. Real user
+ * intent — 'dismissed' / 'snoozed' — still syncs unchanged.
  */
+
+/**
+ * Strip the device-local `triggeredAt` field and normalize a device-local
+ * `status: 'triggered'` to `'pending'` before a reminder row goes out over
+ * the wire. See the doc comment above for why.
+ */
+function toOutboundReminderPayload(row: ReminderRow): Record<string, unknown> {
+  const { triggeredAt: _triggeredAt, ...syncable } = row
+  return {
+    ...syncable,
+    status: syncable.status === 'triggered' ? 'pending' : syncable.status
+  }
+}
+
 class ReminderHandler extends BaseItemHandler<ReminderSyncPayload> {
   readonly type = 'reminder' as const
   readonly schema = ReminderSyncPayloadSchema
@@ -132,8 +154,7 @@ class ReminderHandler extends BaseItemHandler<ReminderSyncPayload> {
   ): string | null {
     const reminder = db.select().from(reminders).where(eq(reminders.id, itemId)).get()
     if (!reminder) return null
-    const { triggeredAt: _triggeredAt, ...syncable } = reminder
-    return JSON.stringify(syncable)
+    return JSON.stringify(toOutboundReminderPayload(reminder))
   }
 
   markPushSynced(db: DrizzleDb, itemId: string): void {
@@ -145,12 +166,11 @@ class ReminderHandler extends BaseItemHandler<ReminderSyncPayload> {
     for (const item of items) {
       const clock = increment({}, deviceId)
       db.update(reminders).set({ clock }).where(eq(reminders.id, item.id)).run()
-      const { triggeredAt: _triggeredAt, ...syncable } = item
       queue.enqueue({
         type: 'reminder',
         itemId: item.id,
         operation: 'create',
-        payload: JSON.stringify({ ...syncable, clock }),
+        payload: JSON.stringify({ ...toOutboundReminderPayload(item), clock }),
         priority: 0
       })
     }
