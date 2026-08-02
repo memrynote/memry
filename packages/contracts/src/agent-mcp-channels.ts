@@ -42,6 +42,9 @@ export const AgentMcpDesktopReadOperations = [
   'tasks.getUpcoming',
   'tasks.getOverdue',
   'tasks.getLinkedTasks',
+  'tasks.listProjectLinks',
+  'tasks.listProjectContents',
+  'tasks.listForItem',
   'inbox.get',
   'inbox.list',
   'inbox.previewLink',
@@ -172,6 +175,16 @@ export const AgentMcpDesktopWriteOperations = [
   'tasks.deleteProject',
   'tasks.archiveProject',
   'tasks.reorderProjects',
+  'tasks.linkProjectItem',
+  'tasks.unlinkProjectItem',
+  'tasks.setProjectLinkPinned',
+  'tasks.setProjectHomeNote',
+  // These two reach the network and the filesystem, but on caller-supplied
+  // input only — the same footing as the allowlisted `inbox.captureLink` and
+  // `notes.importFiles`. What stays out is opening native UI or handing an
+  // item to the OS (`notes.showImportDialog`, `openExternal`, `revealInFinder`).
+  'tasks.captureUrlToProject',
+  'tasks.importFilesToProject',
   'tasks.createStatus',
   'tasks.updateStatus',
   'tasks.deleteStatus',

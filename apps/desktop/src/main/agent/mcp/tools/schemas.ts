@@ -123,7 +123,7 @@ export const TOOL_SCHEMAS = {
   },
   vault_list_projects: {
     input: z.object({}).default({}),
-    description: 'List all projects with task counts.'
+    description: 'List all projects with task counts and linked note/file/event counts.'
   },
   vault_get_project: {
     input: z.object({ id: idSchema }),

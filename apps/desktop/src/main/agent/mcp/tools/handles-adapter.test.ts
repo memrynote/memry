@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   listJournalEntriesInRange: vi.fn(),
   getNoteCacheById: vi.fn(),
   getInboxProject: vi.fn(),
+  getProjectLinkCounts: vi.fn(),
   createDesktopInboxDomain: vi.fn(),
   createDesktopInboxCrudHandlers: vi.fn(),
   deleteJournalEntryFile: vi.fn(),
@@ -42,7 +43,8 @@ vi.mock('../../../database/queries/notes', () => ({
 }))
 
 vi.mock('../../../database/queries/projects', () => ({
-  getInboxProject: mocks.getInboxProject
+  getInboxProject: mocks.getInboxProject,
+  getProjectLinkCounts: mocks.getProjectLinkCounts
 }))
 
 vi.mock('../../../inbox/domain', () => ({
@@ -669,13 +671,40 @@ describe('createVaultServiceHandles', () => {
 
     taskDomain.listProjects.mockReturnValue({
       projects: [
-        { id: 'project-1', name: 'Active', archivedAt: null, taskCount: 2 },
+        {
+          id: 'project-1',
+          name: 'Active',
+          archivedAt: null,
+          taskCount: 2,
+          icon: '🚀',
+          homeNoteId: 'note-home'
+        },
         { id: 'project-2', name: 'Archived', archivedAt: '2026-05-11', taskCount: 0 }
       ]
     })
+    mocks.getProjectLinkCounts.mockReturnValue(
+      new Map([['project-1', { notes: 3, files: 1, events: 2 }]])
+    )
     await expect(handles.projects.list()).resolves.toEqual([
-      { id: 'project-1', name: 'Active', status: 'active', task_count: 2 },
-      { id: 'project-2', name: 'Archived', status: 'archived', task_count: 0 }
+      {
+        id: 'project-1',
+        name: 'Active',
+        status: 'active',
+        task_count: 2,
+        icon: '🚀',
+        home_note_id: 'note-home',
+        linked_counts: { notes: 3, files: 1, events: 2 }
+      },
+      {
+        id: 'project-2',
+        name: 'Archived',
+        status: 'archived',
+        task_count: 0,
+        icon: null,
+        home_note_id: null,
+        // A project with no links is absent from the counts map.
+        linked_counts: { notes: 0, files: 0, events: 0 }
+      }
     ])
 
     taskDomain.getTask.mockReturnValueOnce({ id: 'task-1' })

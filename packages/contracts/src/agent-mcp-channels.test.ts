@@ -16,9 +16,29 @@ const googleIntegrationOperations = [
   'settings.setCalendarGoogleSettings'
 ] as const
 
+// The Projects hub added a project↔item link layer. Agents get the same reads
+// and writes the hub itself uses, so "what is linked to project X" and "what
+// projects is note Y in" are answerable without a desktop-only detour.
+const projectHubReadOperations = [
+  'tasks.listProjectLinks',
+  'tasks.listProjectContents',
+  'tasks.listForItem'
+] as const
+
+const projectHubWriteOperations = [
+  'tasks.linkProjectItem',
+  'tasks.unlinkProjectItem',
+  'tasks.setProjectLinkPinned',
+  'tasks.setProjectHomeNote',
+  'tasks.captureUrlToProject',
+  'tasks.importFilesToProject'
+] as const
+
 // Deliberately excluded from both allowlists: reporting pipelines the agent has
 // no business driving, and shell/UI operations whose effect happens outside the
-// vault where the agent cannot observe or undo it.
+// vault where the agent cannot observe or undo it. Reaching the network or the
+// filesystem is not itself the line — `inbox.captureLink`,
+// `notes.importFiles`, and `tasks.captureUrlToProject` are all allowlisted.
 const deliberatelyExcludedOperations = [
   'telemetry.track',
   'telemetry.flush',
@@ -72,6 +92,20 @@ describe('agent MCP desktop operation allowlists', () => {
   it('gives inbox settings the same get/set pair as every other settings group', () => {
     expect(AgentMcpDesktopReadOperations).toContain('settings.getInboxSettings')
     expect(AgentMcpDesktopWriteOperations).toContain('settings.setInboxSettings')
+  })
+
+  it('exposes the project hub link layer as reads', () => {
+    for (const operation of projectHubReadOperations) {
+      expect(AgentMcpDesktopReadOperations).toContain(operation)
+      expect(AgentMcpDesktopWriteOperations).not.toContain(operation)
+    }
+  })
+
+  it('exposes the project hub mutations as writes', () => {
+    for (const operation of projectHubWriteOperations) {
+      expect(AgentMcpDesktopWriteOperations).toContain(operation)
+      expect(AgentMcpDesktopReadOperations).not.toContain(operation)
+    }
   })
 
   it('excludes telemetry, feedback, diagnostics, and shell operations', () => {

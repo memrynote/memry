@@ -55,6 +55,15 @@ export interface ProjectSummary {
   name: string
   status: string | null
   task_count: number
+  icon: string | null
+  /** The project's overview note, if one is set. */
+  home_note_id: string | null
+  /**
+   * Notes, files and events linked to the project. Nonzero counts are the
+   * signal to follow up with `tasks.listProjectContents` — task_count alone
+   * says nothing about the hub's link layer.
+   */
+  linked_counts: { notes: number; files: number; events: number }
 }
 
 export interface JournalEntry {
