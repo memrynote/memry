@@ -19,7 +19,8 @@ export const vaultApi = {
     invoke(VaultChannels.invoke.DOWNLOAD_REMOTE, { vaultUuid, parentPath }),
   deleteFromAccount: (vaultUuid: string) =>
     invoke(VaultChannels.invoke.DELETE_FROM_ACCOUNT, vaultUuid),
-  resolveEmbeds: (refs: string[]) => invoke(VaultChannels.invoke.RESOLVE_EMBEDS, refs)
+  resolveEmbeds: (input: { refs: string[]; notePath?: string }) =>
+    invoke(VaultChannels.invoke.RESOLVE_EMBEDS, input)
 }
 
 export const vaultEvents = {

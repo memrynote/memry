@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { createHashTagInlinePlugin } from '../hash-tag-inline-plugin'
 import { defaultTagColorName } from '@/components/note/tags-row/tag-colors'
-import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
+import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 
 interface TagSuggestionsParams {
   editor: any
@@ -23,7 +23,7 @@ export function useTagSuggestions({
   tagColorMap,
   tagIconMap
 }: TagSuggestionsParams): TagSuggestionsResult {
-  const { openTag } = useSidebarDrillDown()
+  const { openSidebarItem } = useSidebarNavigation()
   const tagColorMapRef = useRef(tagColorMap)
   const tagIconMapRef = useRef(tagIconMap)
 
@@ -100,12 +100,20 @@ export function useTagSuggestions({
 
       const tag = pill.dataset.hashTag
       const color = pill.dataset.hashTagColor || ''
-      if (tag) openTag(tag, color)
+      if (tag) {
+        openSidebarItem({
+          type: 'tag',
+          title: tag,
+          path: '/tags/' + tag,
+          entityId: tag,
+          color
+        })
+      }
     }
 
     container.addEventListener('click', handleTagClick)
     return () => container.removeEventListener('click', handleTagClick)
-  }, [openTag, editorContainerRef])
+  }, [openSidebarItem, editorContainerRef])
 
   const handleTagSuggestionSelect = useCallback(
     (tag: string, color: string, nodePos: number) => {

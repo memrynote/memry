@@ -23,7 +23,16 @@ export const tagsApi = {
     invoke(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE, input),
   getAllWithCounts: () => invoke(TagsChannels.invoke.GET_ALL_WITH_COUNTS),
   mergeTag: (input: { source: string; target: string }) =>
-    invoke(TagsChannels.invoke.MERGE_TAG, input)
+    invoke(TagsChannels.invoke.MERGE_TAG, input),
+  listCategories: () => invoke(TagsChannels.invoke.LIST_CATEGORIES),
+  createCategory: (input: { name: string }) => invoke(TagsChannels.invoke.CREATE_CATEGORY, input),
+  renameCategory: (input: { id: string; name: string }) =>
+    invoke(TagsChannels.invoke.RENAME_CATEGORY, input),
+  deleteCategory: (input: { id: string }) => invoke(TagsChannels.invoke.DELETE_CATEGORY, input),
+  reorder: (input: {
+    tags?: { tag: string; categoryId: string | null; sortOrder: number }[]
+    categories?: { id: string; sortOrder: number }[]
+  }) => invoke(TagsChannels.invoke.REORDER, input)
 }
 
 export const tagEvents = {
@@ -52,5 +61,8 @@ export const tagEvents = {
       tag: string
       noteId: string
       action: 'pinned' | 'unpinned' | 'removed' | 'added'
-    }>(TagsChannels.events.NOTES_CHANGED, callback)
+    }>(TagsChannels.events.NOTES_CHANGED, callback),
+
+  onTagCategoriesChanged: (callback: () => void): (() => void) =>
+    subscribe(TagsChannels.events.CATEGORIES_CHANGED, callback)
 }

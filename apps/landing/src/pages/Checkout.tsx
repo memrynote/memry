@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { Navigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useSearchParams } from 'react-router'
 import { Container } from '@/components/layout/Container'
 import { PageHead } from '@/components/shared/PageHead'
 import { Button } from '@/components/ui/button'

@@ -46,6 +46,7 @@ const toSyncDomain = (itemType: SyncItemType): SyncDomain => {
     case 'attachment':
       return 'attachments'
     case 'tag_definition':
+    case 'tag_category':
       return 'tags'
     case 'folder_config':
       return 'folders'

@@ -26,7 +26,7 @@ export function FolderHeaderControls({
   const { folders } = useNoteFoldersQuery()
   const folderPath = typeof config.folderPath === 'string' ? config.folderPath : ''
   const viewName = typeof config.viewName === 'string' ? config.viewName : undefined
-  const { views, activeView } = useFolderView({ folderPath })
+  const { views, activeView } = useFolderView({ scope: { kind: 'folder', path: folderPath } })
   const currentViewName = viewName ?? activeView?.name
 
   return (

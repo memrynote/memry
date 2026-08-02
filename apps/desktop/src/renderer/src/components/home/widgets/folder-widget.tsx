@@ -40,7 +40,7 @@ export function FolderWidget({ config }: WidgetComponentProps): React.JSX.Elemen
     updateDisplayName,
     isLoading,
     error
-  } = useFolderView({ folderPath, initialViewName: viewName })
+  } = useFolderView({ scope: { kind: 'folder', path: folderPath }, initialViewName: viewName })
   const { tags: allTags } = useNoteTagsQuery()
   const { density } = useDisplayDensity()
   const { openTab } = useTabActions()

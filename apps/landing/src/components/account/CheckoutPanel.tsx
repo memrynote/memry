@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { Check, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SYNC_PLAN_TIERS, type CheckoutPlanId } from '@/lib/constants'

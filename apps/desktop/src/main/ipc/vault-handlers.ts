@@ -120,10 +120,13 @@ export function registerVaultHandlers(): void {
   // vault:resolve-embeds - Map `![[photo.png]]` targets to memry-file:// URLs
   ipcMain.handle(
     VaultChannels.invoke.RESOLVE_EMBEDS,
-    createValidatedHandler(z.array(z.string()).max(500), async (refs) => {
-      const { resolveVaultEmbeds } = await import('../vault/resolve-embed')
-      return resolveVaultEmbeds(refs)
-    })
+    createValidatedHandler(
+      z.object({ refs: z.array(z.string()).max(500), notePath: z.string().optional() }),
+      async ({ refs, notePath }) => {
+        const { resolveVaultEmbeds } = await import('../vault/resolve-embed')
+        return resolveVaultEmbeds(refs, notePath)
+      }
+    )
   )
 
   // vault:reindex - Trigger manual reindex

@@ -134,6 +134,8 @@ const TAB_ICONS: Record<TabType, string> = {
   'template-editor': 'layout-template',
   templates: 'layout-template',
   graph: 'graph',
+  tags: 'tag',
+  tag: 'tag',
   'agent-chat': 'bot',
   canvas: 'pen-tool',
   'virtual-note': 'file-text'

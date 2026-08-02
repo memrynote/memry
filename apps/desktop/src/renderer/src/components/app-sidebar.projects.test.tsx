@@ -131,10 +131,6 @@ vi.mock('@/services/notes-service', () => ({
   notesService: { create: vi.fn(), importFiles: vi.fn() }
 }))
 
-vi.mock('@/contexts/sidebar-drill-down', () => ({
-  useSidebarDrillDown: () => ({ openTag: vi.fn() })
-}))
-
 vi.mock('@/contexts/auth-context', () => ({
   useAuth: () => ({ state: { status: 'unauthenticated' } })
 }))

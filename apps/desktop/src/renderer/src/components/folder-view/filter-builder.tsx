@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
-import { Filter, Plus, X } from '@/lib/icons'
+import { Filter, Lock, Plus, X } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -19,6 +19,7 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { withAlpha } from '@/components/note/tags-row/tag-colors'
 import {
   countFilterConditions,
   serializeCondition,
@@ -42,6 +43,14 @@ interface FilterBuilderProps {
   builtInColumns: Array<{ id: string; displayName: string; type: string }>
   /** Called when filters change (debounced) */
   onFiltersChange: (filters: FilterExpression | undefined) => void
+  /**
+   * A condition imposed by the view's scope (e.g. tag scope) rather than by
+   * the user. Rendered as an undeletable row above the editable conditions —
+   * display only. It never enters `filters`/`onFiltersChange`: the scoping
+   * is already applied server-side by whatever sources the rows, so folding
+   * it into the expression here would apply it twice.
+   */
+  lockedCondition?: { label: string; color?: string }
   /** Additional CSS classes */
   className?: string
 }
@@ -213,6 +222,7 @@ export function FilterBuilder({
   availableProperties,
   builtInColumns,
   onFiltersChange,
+  lockedCondition,
   className
 }: FilterBuilderProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
@@ -489,6 +499,35 @@ export function FilterBuilder({
 
           {/* Conditions */}
           <div className="flex max-h-[400px] flex-col gap-1.5 overflow-y-auto px-3 py-2.5">
+            {/* Locked scope condition — display only, never part of the filter expression */}
+            {lockedCondition && (
+              <div
+                data-testid="locked-filter-row"
+                className="flex h-[26px] items-center gap-1.5 rounded-md border-border bg-muted/50 px-2 text-[11.5px] font-medium text-foreground"
+                style={
+                  lockedCondition.color
+                    ? {
+                        backgroundColor: withAlpha(lockedCondition.color, 0.12),
+                        color: lockedCondition.color
+                      }
+                    : undefined
+                }
+              >
+                <span className="truncate">{lockedCondition.label}</span>
+                <div className="grow" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center text-muted-foreground/70">
+                      <Lock className="h-3 w-3" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    {tPhaseF('phaseF.componentsFolderViewFilterBuilder.lockedConditionHint')}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            )}
+
             {/* Top-level conditions */}
             {state.conditions.map((condition) => (
               <FilterRow

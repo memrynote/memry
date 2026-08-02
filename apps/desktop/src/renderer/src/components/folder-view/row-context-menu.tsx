@@ -2,8 +2,12 @@ import { getI18n } from 'react-i18next'
 /**
  * Row Context Menu
  *
- * Right-click context menu for table rows in folder view.
+ * Secondary-click context menu for table rows in folder view.
  * Supports single note actions and bulk actions for multi-select.
+ *
+ * Under tag scope rows can be tasks or inbox items, so the note-only
+ * actions (delete, move) are gated on row kind — `notesService` would
+ * otherwise receive an id it cannot resolve.
  */
 
 import {
@@ -68,8 +72,21 @@ export function RowContextMenu({
   onDelete
 }: RowContextMenuProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
+
+  // Delete and Move to Folder are notes-only IPCs (notesService.delete /
+  // notesService.move). Folder view rows are always notes (kind absent),
+  // but tag view can show task and inbox rows too — those must never offer
+  // (or invoke) these actions.
+  const isNote = (note.kind ?? 'note') === 'note'
+
+  // The bulk items act on `selectedNoteIds` (the note-only subset of the
+  // selection), so they must be labelled with that count and hidden entirely
+  // when the selection holds no notes — otherwise a task-only selection would
+  // offer "Delete 0 Notes".
+  const selectedNoteCount = selectedNoteIds.length
+
   // Determine if we should show bulk actions
-  const showBulkActions = isPartOfSelection && selectedCount > 1
+  const showBulkActions = isPartOfSelection && selectedCount > 1 && selectedNoteCount > 0
 
   // Single note actions
   const handleOpen = (): void => {
@@ -136,11 +153,13 @@ export function RowContextMenu({
   }
 
   const handleDelete = (): void => {
+    if (!isNote) return
     onDelete?.([note.id])
   }
 
   // Move to folder actions
   const handleMoveToFolder = (): void => {
+    if (!isNote) return
     onMoveToFolder?.([note.id])
   }
 
@@ -161,15 +180,15 @@ export function RowContextMenu({
           // Bulk actions menu (multi-select)
           <>
             <ContextMenuItem onClick={handleBulkMoveToFolder}>
-              <FolderInput className="mr-2 h-4 w-4" />
-              Move {selectedCount} Notes to Folder...
+              <FolderInput className="me-2 h-4 w-4" />
+              Move {selectedNoteCount} Notes to Folder...
               <ContextMenuShortcut>⇧⌘M</ContextMenuShortcut>
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem variant="destructive" onClick={handleBulkDelete}>
-              <Trash2 className="mr-2 h-4 w-4" />
+              <Trash2 className="me-2 h-4 w-4" />
               {tPhaseF('phaseF.componentsFolderViewRowContextMenu.delete')}
-              {selectedCount} {tPhaseF('phaseF.componentsFolderViewRowContextMenu.notes')}
+              {selectedNoteCount} {tPhaseF('phaseF.componentsFolderViewRowContextMenu.notes')}
             </ContextMenuItem>
           </>
         ) : (
@@ -177,12 +196,12 @@ export function RowContextMenu({
           <>
             {/* Open actions */}
             <ContextMenuItem onClick={handleOpen}>
-              <FileText className="mr-2 h-4 w-4" />
+              <FileText className="me-2 h-4 w-4" />
 
               {tPhaseF('phaseF.componentsFolderViewRowContextMenu.open')}
             </ContextMenuItem>
             <ContextMenuItem onClick={handleOpenInNewTab}>
-              <FileText className="mr-2 h-4 w-4" />
+              <FileText className="me-2 h-4 w-4" />
               Open in New Tab
               <ContextMenuShortcut>⌘↵</ContextMenuShortcut>
             </ContextMenuItem>
@@ -191,17 +210,17 @@ export function RowContextMenu({
 
             {/* External actions */}
             <ContextMenuItem onClick={() => void handleOpenExternal()}>
-              <ExternalLink className="mr-2 h-4 w-4" />
+              <ExternalLink className="me-2 h-4 w-4" />
 
               {tPhaseF('phaseF.componentsFolderViewRowContextMenu.openInExternalEditor')}
             </ContextMenuItem>
             <ContextMenuItem onClick={() => void handleRevealInFinder()}>
-              <FolderOpen className="mr-2 h-4 w-4" />
+              <FolderOpen className="me-2 h-4 w-4" />
 
               {tPhaseF('phaseF.componentsFolderViewRowContextMenu.revealInFinder')}
             </ContextMenuItem>
             <ContextMenuItem onClick={handleRevealInSidebar}>
-              <PanelLeft className="mr-2 h-4 w-4" />
+              <PanelLeft className="me-2 h-4 w-4" />
 
               {tPhaseF('phaseF.componentsFolderViewRowContextMenu.revealInSidebar')}
             </ContextMenuItem>
@@ -210,24 +229,30 @@ export function RowContextMenu({
 
             {/* Utility actions */}
             <ContextMenuItem onClick={() => void handleCopyLink()}>
-              <Link className="mr-2 h-4 w-4" />
+              <Link className="me-2 h-4 w-4" />
 
               {tPhaseF('phaseF.componentsFolderViewRowContextMenu.copyLink')}
             </ContextMenuItem>
-            <ContextMenuItem onClick={handleMoveToFolder}>
-              <FolderInput className="mr-2 h-4 w-4" />
-              Move to Folder...
-              <ContextMenuShortcut>⇧⌘M</ContextMenuShortcut>
-            </ContextMenuItem>
+            {isNote && (
+              <ContextMenuItem onClick={handleMoveToFolder}>
+                <FolderInput className="me-2 h-4 w-4" />
+                Move to Folder...
+                <ContextMenuShortcut>⇧⌘M</ContextMenuShortcut>
+              </ContextMenuItem>
+            )}
 
-            <ContextMenuSeparator />
+            {isNote && (
+              <>
+                <ContextMenuSeparator />
 
-            {/* Destructive actions */}
-            <ContextMenuItem variant="destructive" onClick={handleDelete}>
-              <Trash2 className="mr-2 h-4 w-4" />
+                {/* Destructive actions */}
+                <ContextMenuItem variant="destructive" onClick={handleDelete}>
+                  <Trash2 className="me-2 h-4 w-4" />
 
-              {tPhaseF('phaseF.componentsFolderViewRowContextMenu.delete2')}
-            </ContextMenuItem>
+                  {tPhaseF('phaseF.componentsFolderViewRowContextMenu.delete2')}
+                </ContextMenuItem>
+              </>
+            )}
           </>
         )}
       </ContextMenuContent>

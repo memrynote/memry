@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router'
 import { Menu, X, ChevronDown, type LucideIcon } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -252,7 +252,7 @@ function DesktopDropdown({
           make it a backdrop root and suppress the panel's backdrop blur until the
           transition ends (glass "popping in" late). Transform is safe.
           focus-within keeps the menu reachable by keyboard, not just hover. */}
-      <div className="invisible absolute start-0 top-full z-50 mt-3 origin-top translate-y-1 scale-[0.97] transition-all duration-200 [transition-timing-function:var(--ease-out-expo)] group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:scale-100 motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:transition-[visibility]">
+      <div className="invisible absolute start-0 top-full z-50 mt-3 origin-top translate-y-1 scale-[0.97] transition-[transform,visibility] duration-200 [transition-timing-function:var(--ease-out-expo)] group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:scale-100 motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:transition-[visibility]">
         <div
           className={cn(
             'rounded-[22px] border border-white/60 bg-card/55 backdrop-blur-2xl backdrop-saturate-150 p-3 opacity-0 transition-opacity duration-200 [transition-timing-function:var(--ease-out-expo)] group-hover:opacity-100 group-focus-within:opacity-100 shadow-[0_26px_80px_-28px_rgba(31,41,55,0.28),inset_0_1px_0_rgba(255,255,255,0.7)]',

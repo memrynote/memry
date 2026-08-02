@@ -1,6 +1,18 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { BulkActionBar } from './bulk-action-bar'
+import { tagsService } from '@/services/tags-service'
+
+vi.mock('@/services/tags-service', () => ({
+  tagsService: {
+    pinNoteToTag: vi.fn()
+  }
+}))
+
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn() }
+}))
 
 describe('BulkActionBar', () => {
   it('renders selection count', () => {
@@ -163,5 +175,68 @@ describe('BulkActionBar', () => {
     fireEvent.click(importantTag)
 
     expect(input.value).toBe('')
+  })
+})
+
+describe('BulkActionBar tag scope', () => {
+  const noteRow = { id: 'note-1', kind: 'note' as const }
+  const taskRow = { id: 'task-1', kind: 'task' as const }
+
+  const props = {
+    availableTags: [],
+    onMove: vi.fn(),
+    onCopyLinks: vi.fn(),
+    onAddTag: vi.fn(),
+    onExport: vi.fn(),
+    onDelete: vi.fn(),
+    onClear: vi.fn()
+  }
+
+  beforeEach(() => {
+    vi.mocked(tagsService.pinNoteToTag).mockReset()
+    vi.mocked(tagsService.pinNoteToTag).mockResolvedValue({ success: true })
+  })
+
+  it('pins only the selected note rows to the tag', async () => {
+    render(
+      <BulkActionBar
+        {...props}
+        count={2}
+        scope={{ kind: 'tag', tag: 'araba' }}
+        selectedRows={[noteRow, taskRow]}
+      />
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /pin/i }))
+
+    expect(tagsService.pinNoteToTag).toHaveBeenCalledTimes(1)
+    expect(tagsService.pinNoteToTag).toHaveBeenCalledWith({ noteId: 'note-1', tag: 'araba' })
+  })
+
+  it('hides the pin action under folder scope', () => {
+    render(
+      <BulkActionBar
+        {...props}
+        count={1}
+        scope={{ kind: 'folder', path: 'projects' }}
+        selectedRows={[noteRow]}
+      />
+    )
+
+    expect(screen.queryByRole('button', { name: /pin/i })).not.toBeInTheDocument()
+  })
+
+  it('disables delete and move when a non-note row is selected', () => {
+    render(
+      <BulkActionBar
+        {...props}
+        count={2}
+        scope={{ kind: 'tag', tag: 'araba' }}
+        selectedRows={[noteRow, taskRow]}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: /delete/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /move/i })).toBeDisabled()
   })
 })

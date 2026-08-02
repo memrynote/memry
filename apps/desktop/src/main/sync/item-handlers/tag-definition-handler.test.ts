@@ -2,7 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { TagsChannels } from '@memry/contracts/ipc-channels'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
-import { createTestDataDb, asSyncDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  createTestDataDb,
+  asClientDb,
+  asSyncDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
+import { readTagViews, writeTagViews } from '../../database/queries/tag-definitions'
 import { SyncQueueManager } from '../queue'
 import { tagDefinitionHandler } from './tag-definition-handler'
 import type { ApplyContext, DrizzleDb } from './types'
@@ -183,6 +189,151 @@ describe('tagDefinitionHandler', () => {
     expect(JSON.parse(queued.payload)).toMatchObject({
       name: 'local-only',
       clock: { 'device-a': 1 }
+    })
+  })
+
+  describe('category fields', () => {
+    it('applies categoryId and sortOrder from a remote payload', () => {
+      tagDefinitionHandler.applyUpsert(
+        ctx,
+        'work',
+        { name: 'work', color: 'blue', categoryId: 'cat-1', sortOrder: 3 },
+        { deviceA: 1 }
+      )
+
+      const row = testDb.db
+        .select()
+        .from(tagDefinitions)
+        .where(eq(tagDefinitions.name, 'work'))
+        .get()
+      expect(row?.categoryId).toBe('cat-1')
+      expect(row?.sortOrder).toBe(3)
+    })
+
+    it('includes the category fields in the push payload', () => {
+      tagDefinitionHandler.applyUpsert(
+        ctx,
+        'work',
+        { name: 'work', color: 'blue', categoryId: 'cat-1', sortOrder: 3 },
+        { deviceA: 1 }
+      )
+
+      const json = tagDefinitionHandler.buildPushPayload(
+        testDb.db as unknown as DrizzleDb,
+        'work',
+        'deviceA',
+        'update'
+      )
+
+      expect(JSON.parse(json!)).toMatchObject({ categoryId: 'cat-1', sortOrder: 3 })
+    })
+
+    it('keeps the local category when an old-build payload omits it', () => {
+      tagDefinitionHandler.applyUpsert(
+        ctx,
+        'work',
+        { name: 'work', color: 'blue', categoryId: 'cat-1', sortOrder: 3 },
+        { deviceA: 1 }
+      )
+
+      // An older client only knows name/color/icon.
+      tagDefinitionHandler.applyUpsert(
+        ctx,
+        'work',
+        { name: 'work', color: 'red' },
+        { deviceA: 1, deviceB: 1 }
+      )
+
+      const row = testDb.db
+        .select()
+        .from(tagDefinitions)
+        .where(eq(tagDefinitions.name, 'work'))
+        .get()
+      expect(row?.color).toBe('red')
+      expect(row?.categoryId).toBe('cat-1')
+      expect(row?.sortOrder).toBe(3)
+    })
+
+    it('clears categoryId when a remote payload explicitly un-assigns it, leaving sortOrder untouched', () => {
+      tagDefinitionHandler.applyUpsert(
+        ctx,
+        'work',
+        { name: 'work', color: 'blue', categoryId: 'cat-1', sortOrder: 5 },
+        { deviceA: 1 }
+      )
+
+      // A dominating clock (deviceA advances) so the update branch actually runs,
+      // not skipped or resolved as a concurrent merge.
+      tagDefinitionHandler.applyUpsert(
+        ctx,
+        'work',
+        { name: 'work', color: 'blue', categoryId: null },
+        { deviceA: 2 }
+      )
+
+      const row = testDb.db
+        .select()
+        .from(tagDefinitions)
+        .where(eq(tagDefinitions.name, 'work'))
+        .get()
+      expect(row?.categoryId).toBeNull()
+      expect(row?.sortOrder).toBe(5)
+    })
+  })
+
+  describe('views', () => {
+    it('keeps local views when a remote payload omits the field (older client)', () => {
+      tagDefinitionHandler.applyUpsert(ctx, 'work', { name: 'work', color: 'blue' }, { deviceA: 1 })
+      writeTagViews(asClientDb(testDb.db), 'work', [{ name: 'Mine', type: 'table' }])
+
+      // An older client only knows name/color — no `views` key at all.
+      tagDefinitionHandler.applyUpsert(ctx, 'work', { name: 'work', color: 'red' }, { deviceA: 2 })
+
+      expect(readTagViews(asClientDb(testDb.db), 'work')).toEqual([{ name: 'Mine', type: 'table' }])
+    })
+
+    it('clears local views when a remote payload explicitly sends null', () => {
+      tagDefinitionHandler.applyUpsert(ctx, 'work', { name: 'work', color: 'blue' }, { deviceA: 1 })
+      writeTagViews(asClientDb(testDb.db), 'work', [{ name: 'Mine', type: 'table' }])
+
+      tagDefinitionHandler.applyUpsert(
+        ctx,
+        'work',
+        { name: 'work', color: 'red', views: null },
+        { deviceA: 2 }
+      )
+
+      expect(readTagViews(asClientDb(testDb.db), 'work')).toBeNull()
+    })
+
+    it('overwrites local views when a remote payload sends its own', () => {
+      tagDefinitionHandler.applyUpsert(ctx, 'work', { name: 'work', color: 'blue' }, { deviceA: 1 })
+      writeTagViews(asClientDb(testDb.db), 'work', [{ name: 'Mine', type: 'table' }])
+
+      tagDefinitionHandler.applyUpsert(
+        ctx,
+        'work',
+        { name: 'work', color: 'red', views: [{ name: 'Theirs', type: 'list' }] },
+        { deviceA: 2 }
+      )
+
+      expect(readTagViews(asClientDb(testDb.db), 'work')).toEqual([
+        { name: 'Theirs', type: 'list' }
+      ])
+    })
+
+    it('includes saved views in the push payload', () => {
+      tagDefinitionHandler.applyUpsert(ctx, 'work', { name: 'work', color: 'blue' }, { deviceA: 1 })
+      writeTagViews(asClientDb(testDb.db), 'work', [{ name: 'Mine', type: 'table' }])
+
+      const json = tagDefinitionHandler.buildPushPayload(
+        testDb.db as unknown as DrizzleDb,
+        'work',
+        'deviceA',
+        'update'
+      )
+
+      expect(JSON.parse(json!)).toMatchObject({ views: [{ name: 'Mine', type: 'table' }] })
     })
   })
 })

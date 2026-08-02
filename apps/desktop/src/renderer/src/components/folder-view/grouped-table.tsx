@@ -774,6 +774,27 @@ export function GroupedTable({
 
   const { rows } = table.getRowModel()
 
+  /**
+   * Note-only subset of the current selection, used by the row context menu's
+   * bulk delete/move and by the ⇧⌘M shortcut. Tag scope can select a mix of
+   * notes, tasks, and inbox items; onDelete/onMoveToFolder are notes-only
+   * IPCs, so task/inbox ids must never reach them.
+   *
+   * Derived from `notes` (the full, unnarrowed data) rather than the table row
+   * model: the row model is narrowed by the header search and by group
+   * expansion (a collapsed group omits its leaf rows), while selection is
+   * pruned by neither, so filtering through it would silently shrink which
+   * rows a bulk action affects. Using `notes` also sidesteps group header
+   * rows, which have no real note of their own behind `.original`.
+   */
+  const selectedNoteIds = useMemo(
+    () =>
+      notes
+        .filter((n) => selectedRowIds.has(n.id) && (n.kind ?? 'note') === 'note')
+        .map((n) => n.id),
+    [notes, selectedRowIds]
+  )
+
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => tableContainerRef.current,
@@ -984,7 +1005,11 @@ export function GroupedTable({
         case 'M': {
           if ((e.metaKey || e.ctrlKey) && e.shiftKey && selectedRowIds.size > 0) {
             e.preventDefault()
-            onMoveToFolder?.(Array.from(selectedRowIds))
+            // Notes-only IPC: a selection of only tasks/inbox items has
+            // nothing to move, so there is no dialog to open.
+            if (selectedNoteIds.length > 0) {
+              onMoveToFolder?.(selectedNoteIds)
+            }
           }
           break
         }
@@ -995,6 +1020,7 @@ export function GroupedTable({
       table,
       onNoteOpen,
       onMoveToFolder,
+      selectedNoteIds,
       selectedRowIds,
       setSelectedRowIds,
       scrollToRowById
@@ -1188,7 +1214,7 @@ export function GroupedTable({
                   note={row.original}
                   isPartOfSelection={isPartOfSelection}
                   selectedCount={selectedRowIds.size}
-                  selectedNoteIds={Array.from(selectedRowIds)}
+                  selectedNoteIds={selectedNoteIds}
                   onNoteOpen={onNoteOpen}
                   onOpenInNewTab={onOpenInNewTab}
                   onMoveToFolder={onMoveToFolder}

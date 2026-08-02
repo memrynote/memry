@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { motion } from 'framer-motion'
 import { Check, Minus, Plus, X } from 'lucide-react'
 import { Container } from '@/components/layout/Container'

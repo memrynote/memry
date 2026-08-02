@@ -108,6 +108,17 @@ export interface GetVaultsResponse {
  */
 export type ResolvedEmbeds = Record<string, string>
 
+/**
+ * `notePath` (vault-relative) makes the resolver return targets relative to that
+ * note, which is what keeps the rewritten markdown portable when the note is
+ * saved back. Omit it only on read-only surfaces that never persist what they
+ * render; those get absolute `memry-file://` URLs instead.
+ */
+export interface ResolveEmbedsInput {
+  refs: string[]
+  notePath?: string
+}
+
 export interface VaultHandlers {
   [VaultChannels.invoke.SELECT]: (
     input: z.infer<typeof SelectVaultSchema>
@@ -145,7 +156,7 @@ export interface VaultHandlers {
 
   [VaultChannels.invoke.DELETE_FROM_ACCOUNT]: (vaultUuid: string) => Promise<void>
 
-  [VaultChannels.invoke.RESOLVE_EMBEDS]: (refs: string[]) => Promise<ResolvedEmbeds>
+  [VaultChannels.invoke.RESOLVE_EMBEDS]: (input: ResolveEmbedsInput) => Promise<ResolvedEmbeds>
 }
 
 // ============================================================================
@@ -186,5 +197,5 @@ export interface VaultClientAPI {
   listAccount(): Promise<AccountVaultInfo[]>
   downloadRemote(vaultUuid: string, parentPath?: string): Promise<SelectVaultResponse>
   deleteFromAccount(vaultUuid: string): Promise<void>
-  resolveEmbeds(refs: string[]): Promise<ResolvedEmbeds>
+  resolveEmbeds(input: ResolveEmbedsInput): Promise<ResolvedEmbeds>
 }

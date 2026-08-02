@@ -157,19 +157,23 @@ export function sanitizeBlockIds(blocks: Block[]): Block[] {
 }
 
 /**
- * Turn Obsidian image embeds into the `![alt](url)` form BlockNote parses into
- * an image block. The target has to become an absolute `memry-file://` URL for
- * the image to load at all, so the main process resolves it against the vault;
+ * Turn Obsidian image embeds into the `![alt](target)` form BlockNote parses
+ * into an image block. The main process resolves the target against the vault;
  * anything it cannot find is left as the author wrote it. Failures degrade to
  * "no embeds resolved" rather than blocking the note from opening.
+ *
+ * `notePath` matters beyond correctness: with it the target comes back relative
+ * to the note, so saving the note writes a portable link rather than this
+ * machine's absolute path into a file that syncs. Callers that never persist
+ * what they render may omit it.
  */
-async function resolveWikiImageEmbeds(markdown: string): Promise<string> {
+async function resolveWikiImageEmbeds(markdown: string, notePath?: string): Promise<string> {
   const refs = extractWikiImageEmbedRefs(markdown)
   if (refs.length === 0) return markdown
 
   let resolved: Record<string, string> = {}
   try {
-    resolved = (await window.api?.vault?.resolveEmbeds?.(refs)) ?? {}
+    resolved = (await window.api?.vault?.resolveEmbeds?.({ refs, notePath })) ?? {}
   } catch {
     return markdown
   }
@@ -179,9 +183,10 @@ async function resolveWikiImageEmbeds(markdown: string): Promise<string> {
 
 export async function parseMarkdownPreservingBlanks(
   editor: any,
-  markdown: string
+  markdown: string,
+  notePath?: string
 ): Promise<Block[]> {
-  const withEmbeds = await resolveWikiImageEmbeds(markdown)
+  const withEmbeds = await resolveWikiImageEmbeds(markdown, notePath)
   // Inline color spans are masked into markdown-inert tokens before parsing
   // (BlockNote strips raw spans), then re-applied as styles on the parsed runs.
   const { text: maskedMarkdown, spans } = maskInlineColorSpans(withEmbeds)

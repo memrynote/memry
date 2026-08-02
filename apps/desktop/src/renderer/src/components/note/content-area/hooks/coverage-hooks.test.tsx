@@ -7,7 +7,7 @@ import { useFolderSuggestions, clearFolderSuggestionsCache } from '@/hooks/use-f
 import { usePropertySection } from '@/hooks/use-property-section'
 
 const mocks = vi.hoisted(() => ({
-  openTag: vi.fn(),
+  openSidebarItem: vi.fn(),
   createHashTagInlinePlugin: vi.fn((getTagColor: (tag: string) => string) => ({
     spec: { key: 'hash-tag-inline-plugin' },
     getTagColor
@@ -21,8 +21,8 @@ vi.mock('../hash-tag-inline-plugin', () => ({
   createHashTagInlinePlugin: mocks.createHashTagInlinePlugin
 }))
 
-vi.mock('@/contexts/sidebar-drill-down', () => ({
-  useSidebarDrillDown: () => ({ openTag: mocks.openTag })
+vi.mock('@/hooks/use-sidebar-navigation', () => ({
+  useSidebarNavigation: () => ({ openSidebarItem: mocks.openSidebarItem })
 }))
 
 vi.mock('@/hooks/use-properties', () => ({
@@ -193,7 +193,9 @@ describe('coverage hooks around note editing', () => {
     pill.dataset.hashTagColor = 'green'
     container.append(pill)
     act(() => pill.dispatchEvent(new MouseEvent('click', { bubbles: true })))
-    expect(mocks.openTag).toHaveBeenCalledWith('work', 'green')
+    expect(mocks.openSidebarItem).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'tag', entityId: 'work', color: 'green' })
+    )
 
     act(() => result.current.handleTagSuggestionSelect('workflow', 'purple', 12))
     expect(hashTagNodeType.create).toHaveBeenCalledWith({

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { Mascot } from '@/components/ui/mascot'
 import { HomeSection, SectionTitle } from '@/components/site/primitives'
 import { trackLandingEvent } from '@/lib/analytics'

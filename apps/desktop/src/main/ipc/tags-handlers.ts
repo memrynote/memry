@@ -50,7 +50,18 @@ import {
   getNoteTags,
   getNoteCacheById
 } from '../tags/store'
-import { getAllTagsWithCounts, mergeTagInNotes, mergeTagInTasks } from '../tags/store'
+import {
+  getAllTagsWithCounts,
+  mergeTagInNotes,
+  mergeTagInTasks,
+  listTagCategories,
+  createTagCategory,
+  renameTagCategory,
+  deleteTagCategory,
+  reorderTags,
+  reorderCategories,
+  type TagAssignment
+} from '../tags/store'
 import { createLogger } from '../lib/logger'
 import { toAbsolutePath } from '../vault/notes'
 import { parseNote, serializeParsedNote } from '../vault/frontmatter'
@@ -61,7 +72,10 @@ import {
   syncTaggedTasks,
   syncTagDefinitionDelete,
   syncTagDefinitionRename,
-  syncTagDefinitionUpdate
+  syncTagDefinitionUpdate,
+  syncTagCategoryCreate,
+  syncTagCategoryUpdate,
+  syncTagCategoryDelete
 } from '../tags/runtime-effects'
 
 const log = createLogger('TagsHandlers')
@@ -73,6 +87,13 @@ function emitTagEvent(channel: string, data: unknown): void {
   BrowserWindow.getAllWindows().forEach((win) => {
     win.webContents.send(channel, data)
   })
+}
+
+/**
+ * Extract a safe, user-facing message from an error, never leaking a raw error object.
+ */
+function extractErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback
 }
 
 /**
@@ -463,6 +484,99 @@ export function registerTagsHandlers(): void {
       }, 'Failed to merge tags')
     )
   )
+
+  // tags:list-categories - List tag categories with their tag counts
+  ipcMain.handle(TagsChannels.invoke.LIST_CATEGORIES, () => {
+    try {
+      return { success: true, categories: listTagCategories(requireDatabase()) }
+    } catch (error) {
+      log.error('Failed to list tag categories', error)
+      return { success: false, error: extractErrorMessage(error, 'Failed to list tag categories') }
+    }
+  })
+
+  // tags:create-category - Create a tag category
+  ipcMain.handle(TagsChannels.invoke.CREATE_CATEGORY, (_e, { name }: { name: string }) => {
+    try {
+      if (!name?.trim()) return { success: false, error: 'Category name is required' }
+      const category = createTagCategory(requireDatabase(), name)
+      syncTagCategoryCreate(category.id)
+      emitTagEvent(TagsChannels.events.CATEGORIES_CHANGED, { categoryId: category.id })
+      return { success: true, category }
+    } catch (error) {
+      log.error('Failed to create tag category', error)
+      return { success: false, error: extractErrorMessage(error, 'Failed to create tag category') }
+    }
+  })
+
+  // tags:rename-category - Rename a tag category
+  ipcMain.handle(
+    TagsChannels.invoke.RENAME_CATEGORY,
+    (_e, { id, name }: { id: string; name: string }) => {
+      try {
+        if (!name?.trim()) return { success: false, error: 'Category name is required' }
+        renameTagCategory(requireDatabase(), id, name)
+        syncTagCategoryUpdate(id)
+        emitTagEvent(TagsChannels.events.CATEGORIES_CHANGED, { categoryId: id })
+        return { success: true }
+      } catch (error) {
+        log.error('Failed to rename tag category', error)
+        return {
+          success: false,
+          error: extractErrorMessage(error, 'Failed to rename tag category')
+        }
+      }
+    }
+  )
+
+  // tags:delete-category - Delete a tag category (its tags become uncategorized)
+  ipcMain.handle(TagsChannels.invoke.DELETE_CATEGORY, (_e, { id }: { id: string }) => {
+    try {
+      deleteTagCategory(requireDatabase(), id)
+      syncTagCategoryDelete(id)
+      emitTagEvent(TagsChannels.events.CATEGORIES_CHANGED, { categoryId: id })
+      return { success: true }
+    } catch (error) {
+      log.error('Failed to delete tag category', error)
+      return { success: false, error: extractErrorMessage(error, 'Failed to delete tag category') }
+    }
+  })
+
+  // tags:reorder - Apply a drag result: tag assignments and/or category order, in one transaction
+  ipcMain.handle(
+    TagsChannels.invoke.REORDER,
+    (
+      _e,
+      {
+        tags,
+        categories
+      }: { tags?: TagAssignment[]; categories?: { id: string; sortOrder: number }[] }
+    ) => {
+      try {
+        const dataDb = requireDatabase()
+
+        if (tags?.length) {
+          reorderTags(dataDb, tags)
+          for (const assignment of tags) {
+            syncTagDefinitionUpdate(assignment.tag.toLowerCase().trim())
+          }
+        }
+
+        if (categories?.length) {
+          reorderCategories(dataDb, categories)
+          for (const category of categories) {
+            syncTagCategoryUpdate(category.id)
+          }
+        }
+
+        emitTagEvent(TagsChannels.events.CATEGORIES_CHANGED, {})
+        return { success: true }
+      } catch (error) {
+        log.error('Failed to reorder tag categories', error)
+        return { success: false, error: extractErrorMessage(error, 'Failed to reorder tags') }
+      }
+    }
+  )
 }
 
 /**
@@ -479,4 +593,9 @@ export function unregisterTagsHandlers(): void {
   ipcMain.removeHandler(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE)
   ipcMain.removeHandler(TagsChannels.invoke.GET_ALL_WITH_COUNTS)
   ipcMain.removeHandler(TagsChannels.invoke.MERGE_TAG)
+  ipcMain.removeHandler(TagsChannels.invoke.LIST_CATEGORIES)
+  ipcMain.removeHandler(TagsChannels.invoke.CREATE_CATEGORY)
+  ipcMain.removeHandler(TagsChannels.invoke.RENAME_CATEGORY)
+  ipcMain.removeHandler(TagsChannels.invoke.DELETE_CATEGORY)
+  ipcMain.removeHandler(TagsChannels.invoke.REORDER)
 }
