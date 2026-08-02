@@ -24,7 +24,10 @@ default Agent Chat access mode and action-confirmation behavior.
 ## Agent Chat
 
 Open the right sidebar, choose **Agent**, and pick a provider. The compact Day/Agent switch keeps
-the active view highlighted at the top of the right sidebar. The Agent header includes a
+the active view highlighted at the top of the right sidebar, and switching to Agent takes effect on
+the first click even when the sidebar opened on the Day view. The assistant backend still starts up
+on first use rather than at launch, so the panel can show a brief loading state while providers and
+conversation history are detected. The Agent header includes a
 new-conversation button, a history menu for switching back to recent conversations, and a pop-out
 button for moving the current conversation into a workspace tab. Popped-out conversations keep the
 generated conversation title as the tab name, use the same centered reading column as notes, and
