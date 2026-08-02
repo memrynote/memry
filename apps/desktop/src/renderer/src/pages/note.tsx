@@ -34,7 +34,7 @@ import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/services/notes-service'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
-import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
+import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { ReminderPicker } from '@/components/reminder'
 import { useNoteReminders } from '@/hooks/use-note-reminders'
 import {
@@ -154,7 +154,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const { tags: allAvailableTags } = useNoteTagsQuery()
   const { openTab, setTabDeleted, updateTabTitleByEntityId, closeTab } = useTabs()
   const activeTab = useActiveTab()
-  const { openTag } = useSidebarDrillDown()
+  const { openSidebarItem } = useSidebarNavigation()
   const queryClient = useQueryClient()
   const prefersReducedMotion = useReducedMotion()
 
@@ -1368,7 +1368,15 @@ export function NotePage({ noteId }: NotePageProps) {
             onAddTag={(...args) => void handleAddTag(...args)}
             onCreateTag={(...args) => void handleCreateTag(...args)}
             onRemoveTag={(...args) => void handleRemoveTag(...args)}
-            onTagClick={(tag) => openTag(tag.name, tag.color)}
+            onTagClick={(tag) =>
+              openSidebarItem({
+                type: 'tag',
+                title: tag.name,
+                path: '/tags/' + tag.name,
+                entityId: tag.name,
+                color: tag.color
+              })
+            }
             hideWhenEmpty
             hideAddButton
           />

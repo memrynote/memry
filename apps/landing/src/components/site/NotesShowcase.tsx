@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { ArrowRight, FolderOpen, Link2, Mic, Scissors } from 'lucide-react'
 import { FeatureChip, HomeSection, MegaCard, SectionTitle } from '@/components/site/primitives'
 import { NoteEditorWidget } from '@/components/site/widgets/NoteEditorWidget'

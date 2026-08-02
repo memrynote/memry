@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router'
 import { Container } from '@/components/layout/Container'
 import { useAuth } from '@/contexts/auth-context'
 import { registerWebDevice } from '@/lib/account/auth-client'

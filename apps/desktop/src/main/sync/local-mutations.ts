@@ -21,6 +21,7 @@ import { getProjectSyncService } from './project-sync'
 import { getReminderSyncService } from './reminder-sync'
 import { getSettingsSyncManager } from './settings-sync'
 import { getTagDefinitionSyncService } from './tag-definition-sync'
+import { getTagCategorySyncService } from './tag-category-sync'
 import { getTaskSyncService } from './task-sync'
 import { getFolderConfigSyncService } from './folder-config-sync'
 import { getCalendarEventSyncService } from './calendar-event-sync'
@@ -276,6 +277,21 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         getTagDefinitionSyncService()?.enqueueDelete(itemId, snapshotPayload)
+      }
+    }
+  },
+  {
+    type: 'tag_category',
+    kind: 'record',
+    local: {
+      enqueueCreate(itemId: string): void {
+        getTagCategorySyncService()?.enqueueCreate(itemId)
+      },
+      enqueueUpdate(itemId: string): void {
+        getTagCategorySyncService()?.enqueueUpdate(itemId)
+      },
+      enqueueDelete(itemId: string, snapshotPayload?: string): void {
+        getTagCategorySyncService()?.enqueueDelete(itemId, snapshotPayload)
       }
     }
   },

@@ -118,7 +118,14 @@ const NOTE_GC_TIME = 5 * 60 * 1000
 
 /** Stable empty arrays/objects to avoid recreating on every render */
 const EMPTY_FOLDERS: FolderInfo[] = []
-const EMPTY_TAGS: Array<{ tag: string; color: string; count: number; icon: string | null }> = []
+const EMPTY_TAGS: Array<{
+  tag: string
+  color: string
+  count: number
+  icon: string | null
+  categoryId: string | null
+  sortOrder: number
+}> = []
 const EMPTY_NOTES_LIST: NoteListResponse = { notes: [], total: 0, hasMore: false }
 const EMPTY_LINKS: NoteLinksResponse = { outgoing: [], incoming: [] }
 
@@ -275,7 +282,9 @@ export function useNoteTagsQuery(options: { enabled?: boolean } = {}) {
         tag: t.name,
         color: t.color ?? '',
         count: t.count,
-        icon: t.icon ?? null
+        icon: t.icon ?? null,
+        categoryId: t.categoryId ?? null,
+        sortOrder: t.sortOrder ?? 0
       }))
     },
     enabled,

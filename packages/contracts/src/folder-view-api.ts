@@ -62,6 +62,30 @@ export const PropertyTypes = {
 export type PropertyType = (typeof PropertyTypes)[keyof typeof PropertyTypes]
 
 // ============================================================================
+// View Scope — what a folder view is looking at
+// ============================================================================
+
+/**
+ * What a folder view is scoped to. A folder view over a directory and a
+ * folder view over a tag are the same page with a different row source.
+ */
+export type ViewScope = { kind: 'folder'; path: string } | { kind: 'tag'; tag: string }
+
+export const ViewScopeSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('folder'), path: z.string() }),
+  z.object({ kind: z.literal('tag'), tag: z.string().min(1) })
+])
+
+/**
+ * Stable cache/query key for a scope. Tag names are case-preserving but
+ * match case-insensitively (see migration 0034), so the key folds case for
+ * tags and preserves it for paths.
+ */
+export function scopeKey(scope: ViewScope): string {
+  return scope.kind === 'folder' ? `folder:${scope.path}` : `tag:${scope.tag.toLowerCase()}`
+}
+
+// ============================================================================
 // Column Configuration
 // ============================================================================
 
@@ -431,6 +455,9 @@ export interface NoteWithProperties {
 
   /** Property values keyed by property name */
   properties: Record<string, unknown>
+
+  /** Row kind. Absent means 'note' — folder views only ever contain notes. */
+  kind?: 'note' | 'task' | 'inbox'
 }
 
 // ============================================================================
@@ -465,21 +492,21 @@ export const SetConfigRequestSchema = z.object({
 })
 
 export const GetViewsRequestSchema = z.object({
-  folderPath: z.string()
+  scope: ViewScopeSchema
 })
 
 export const SetViewRequestSchema = z.object({
-  folderPath: z.string(),
+  scope: ViewScopeSchema,
   view: ViewConfigSchema
 })
 
 export const DeleteViewRequestSchema = z.object({
-  folderPath: z.string(),
+  scope: ViewScopeSchema,
   viewName: z.string()
 })
 
 export const ListWithPropertiesRequestSchema = z.object({
-  folderPath: z.string(),
+  scope: ViewScopeSchema,
   /** Property IDs to fetch (in addition to built-in fields) */
   properties: z.array(z.string()).optional(),
   /** Pagination limit */
@@ -489,7 +516,7 @@ export const ListWithPropertiesRequestSchema = z.object({
 })
 
 export const GetAvailablePropertiesRequestSchema = z.object({
-  folderPath: z.string()
+  scope: ViewScopeSchema
 })
 
 // ============================================================================
@@ -554,9 +581,15 @@ export interface ListWithPropertiesResponse {
 }
 
 export interface GetAvailablePropertiesResponse {
-  /** Built-in columns (always available) */
+  /**
+   * Built-in columns (always available). Under tag scope this additionally
+   * includes 'kind' — only a tag view mixes notes, tasks and inbox items, so
+   * only it needs a `kind` column and filter. 'kind' is deliberately not part
+   * of `BUILT_IN_COLUMNS` itself: every folder-scope row is a note, where the
+   * column would be dead weight in the column selector.
+   */
   builtIn: Array<{
-    id: BuiltInColumn
+    id: BuiltInColumn | 'kind'
     displayName: string
     type: 'text' | 'date' | 'number' | 'multiselect'
   }>
@@ -620,10 +653,10 @@ export interface FolderViewHandlers {
  * const folderView = window.api.folderView;
  *
  * // Get all views for a folder (reads .folder.md)
- * const { views, defaultIndex } = await folderView.getViews('projects');
+ * const { views, defaultIndex } = await folderView.getViews({ kind: 'folder', path: 'projects' });
  *
  * // Add/update a view (writes .folder.md)
- * await folderView.setView('projects', {
+ * await folderView.setView({ kind: 'folder', path: 'projects' }, {
  *   name: 'Active Only',
  *   type: 'table',
  *   columns: [{ id: 'title', width: 250 }],
@@ -633,11 +666,16 @@ export interface FolderViewHandlers {
  *
  * // List notes with properties
  * const { notes, total } = await folderView.listWithProperties({
- *   folderPath: 'projects'
+ *   scope: { kind: 'folder', path: 'projects' }
+ * });
+ *
+ * // List notes with a tag scope
+ * const { notes } = await folderView.listWithProperties({
+ *   scope: { kind: 'tag', tag: 'araba' }
  * });
  *
  * // Get available properties for column selector
- * const { builtIn, properties, formulas } = await folderView.getAvailableProperties('projects');
+ * const { builtIn, properties, formulas } = await folderView.getAvailableProperties({ kind: 'folder', path: 'projects' });
  * ```
  */
 export interface FolderViewClientAPI {
@@ -645,17 +683,17 @@ export interface FolderViewClientAPI {
 
   setConfig(folderPath: string, config: Partial<FolderViewConfig>): Promise<SetConfigResponse>
 
-  getViews(folderPath: string): Promise<GetViewsResponse>
+  getViews(scope: ViewScope): Promise<GetViewsResponse>
 
-  setView(folderPath: string, view: ViewConfig): Promise<SetViewResponse>
+  setView(scope: ViewScope, view: ViewConfig): Promise<SetViewResponse>
 
-  deleteView(folderPath: string, viewName: string): Promise<DeleteViewResponse>
+  deleteView(scope: ViewScope, viewName: string): Promise<DeleteViewResponse>
 
   listWithProperties(
     options: z.infer<typeof ListWithPropertiesRequestSchema>
   ): Promise<ListWithPropertiesResponse>
 
-  getAvailableProperties(folderPath: string): Promise<GetAvailablePropertiesResponse>
+  getAvailableProperties(scope: ViewScope): Promise<GetAvailablePropertiesResponse>
 
   /** Get AI-powered folder suggestions for moving a note (Phase 27) */
   getFolderSuggestions(noteId: string): Promise<GetFolderSuggestionsResponse>

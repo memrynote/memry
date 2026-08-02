@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, useInView, useReducedMotion } from 'framer-motion'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { Container } from '@/components/layout/Container'
 
 const EASE = [0.16, 1, 0.3, 1] as const

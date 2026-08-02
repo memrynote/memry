@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { ArrowRight, Check } from 'lucide-react'
 import { HomeSection, SectionTitle } from '@/components/site/primitives'
 import { SYNC_PLAN_TIERS, type SyncPlanId, type SyncPlanTier } from '@/lib/constants'

@@ -31,6 +31,7 @@ import { initSettingsSyncManager, resetSettingsSyncManager } from './settings-sy
 import { initNoteSyncService, resetNoteSyncService } from './note-sync'
 import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
 import { initTagDefinitionSyncService, resetTagDefinitionSyncService } from './tag-definition-sync'
+import { initTagCategorySyncService, resetTagCategorySyncService } from './tag-category-sync'
 import { initFolderConfigSyncService, resetFolderConfigSyncService } from './folder-config-sync'
 import { initCalendarEventSyncService, resetCalendarEventSyncService } from './calendar-event-sync'
 import {
@@ -163,6 +164,7 @@ function resetSyncServiceSingletons(): void {
   resetNoteSyncService()
   resetJournalSyncService()
   resetTagDefinitionSyncService()
+  resetTagCategorySyncService()
   resetFolderConfigSyncService()
   resetCalendarEventSyncService()
   resetCalendarSourceSyncService()
@@ -332,6 +334,11 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const noteSync = initNoteSyncService({ queue, getDeviceId })
       const journalSync = initJournalSyncService({ queue, getDeviceId })
       const tagDefinitionSync = initTagDefinitionSyncService({
+        queue,
+        db: runtimeSyncDb,
+        getDeviceId
+      })
+      initTagCategorySyncService({
         queue,
         db: runtimeSyncDb,
         getDeviceId

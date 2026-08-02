@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Check, ShieldCheck, ExternalLink } from 'lucide-react'
 import { Container } from '@/components/layout/Container'

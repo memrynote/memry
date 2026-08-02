@@ -471,29 +471,33 @@ describe('preload api wrappers', () => {
       { folderPath: 'projects', config: { layout: 'table' } }
     )
     await expectInvoke(
-      () => folderViewApi.getViews('projects'),
+      () => folderViewApi.getViews({ kind: 'folder', path: 'projects' }),
       FolderViewChannels.invoke.GET_VIEWS,
-      { folderPath: 'projects' }
+      { scope: { kind: 'folder', path: 'projects' } }
     )
     await expectInvoke(
-      () => folderViewApi.setView('projects', { name: 'Main' }),
+      () => folderViewApi.setView({ kind: 'folder', path: 'projects' }, { name: 'Main' }),
       FolderViewChannels.invoke.SET_VIEW,
-      { folderPath: 'projects', view: { name: 'Main' } }
+      { scope: { kind: 'folder', path: 'projects' }, view: { name: 'Main' } }
     )
     await expectInvoke(
-      () => folderViewApi.deleteView('projects', 'Main'),
+      () => folderViewApi.deleteView({ kind: 'folder', path: 'projects' }, 'Main'),
       FolderViewChannels.invoke.DELETE_VIEW,
-      { folderPath: 'projects', viewName: 'Main' }
+      { scope: { kind: 'folder', path: 'projects' }, viewName: 'Main' }
     )
     await expectInvoke(
-      () => folderViewApi.listWithProperties({ folderPath: 'projects', limit: 10 }),
+      () =>
+        folderViewApi.listWithProperties({
+          scope: { kind: 'folder', path: 'projects' },
+          limit: 10
+        }),
       FolderViewChannels.invoke.LIST_WITH_PROPERTIES,
-      { folderPath: 'projects', limit: 10 }
+      { scope: { kind: 'folder', path: 'projects' }, limit: 10 }
     )
     await expectInvoke(
-      () => folderViewApi.getAvailableProperties('projects'),
+      () => folderViewApi.getAvailableProperties({ kind: 'folder', path: 'projects' }),
       FolderViewChannels.invoke.GET_AVAILABLE_PROPERTIES,
-      { folderPath: 'projects' }
+      { scope: { kind: 'folder', path: 'projects' } }
     )
     await expectInvoke(
       () => folderViewApi.getFolderSuggestions('note-1'),

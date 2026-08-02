@@ -99,7 +99,17 @@ export const TagsChannels = {
     /** Get all tags with usage counts across notes + tasks */
     GET_ALL_WITH_COUNTS: 'tags:get-all-with-counts',
     /** Merge source tag into target tag (rename + deduplicate) */
-    MERGE_TAG: 'tags:merge'
+    MERGE_TAG: 'tags:merge',
+    /** List tag categories with their tag counts */
+    LIST_CATEGORIES: 'tags:list-categories',
+    /** Create a tag category */
+    CREATE_CATEGORY: 'tags:create-category',
+    /** Rename a tag category */
+    RENAME_CATEGORY: 'tags:rename-category',
+    /** Delete a tag category (its tags become uncategorized) */
+    DELETE_CATEGORY: 'tags:delete-category',
+    /** Apply a drag result: tag assignments and/or category order, in one transaction */
+    REORDER: 'tags:reorder'
   },
   events: {
     /** Tag was renamed */
@@ -109,7 +119,9 @@ export const TagsChannels = {
     /** Tag was deleted */
     DELETED: 'tags:deleted',
     /** Notes for a tag changed (pin/unpin, add/remove) */
-    NOTES_CHANGED: 'tags:notes-changed'
+    NOTES_CHANGED: 'tags:notes-changed',
+    /** Tag categories or their membership changed */
+    CATEGORIES_CHANGED: 'tags:categories-changed'
   }
 } as const
 

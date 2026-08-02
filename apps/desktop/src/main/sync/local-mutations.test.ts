@@ -40,6 +40,10 @@ vi.mock('./tag-definition-sync', () => ({
   getTagDefinitionSyncService: vi.fn()
 }))
 
+vi.mock('./tag-category-sync', () => ({
+  getTagCategorySyncService: vi.fn()
+}))
+
 vi.mock('./settings-sync', () => ({
   getSettingsSyncManager: vi.fn()
 }))
@@ -96,6 +100,7 @@ import { getNoteSyncService } from './note-sync'
 import { getSettingsSyncManager } from './settings-sync'
 import { getJournalSyncService } from './journal-sync'
 import { getTagDefinitionSyncService } from './tag-definition-sync'
+import { getTagCategorySyncService } from './tag-category-sync'
 import { getTaskSyncService } from './task-sync'
 import {
   enqueueLocalSyncCreate,
@@ -116,6 +121,7 @@ describe('local-mutations', () => {
       getNoteSyncService,
       getJournalSyncService,
       getTagDefinitionSyncService,
+      getTagCategorySyncService,
       getSettingsSyncManager,
       getFolderConfigSyncService,
       getCalendarEventSyncService,
@@ -246,6 +252,7 @@ describe('local-mutations', () => {
       ['inbox', getInboxSyncService],
       ['filter', getFilterSyncService],
       ['tag_definition', getTagDefinitionSyncService],
+      ['tag_category', getTagCategorySyncService],
       ['folder_config', getFolderConfigSyncService],
       ['calendar_source', getCalendarSourceSyncService],
       ['calendar_binding', getCalendarBindingSyncService],

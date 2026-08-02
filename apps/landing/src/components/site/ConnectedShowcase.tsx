@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from 'framer-motion'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { ArrowUpRight } from 'lucide-react'
 import { ClipperStack } from '@/components/site/ClipperStack'
 import { HomeSection, SectionTitle } from '@/components/site/primitives'

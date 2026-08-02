@@ -16,10 +16,47 @@ import {
   ListWithPropertiesRequestSchema,
   GetAvailablePropertiesRequestSchema,
   GetFolderSuggestionsRequestSchema,
+  ViewScopeSchema,
+  scopeKey,
   BUILT_IN_COLUMNS,
   DEFAULT_COLUMNS,
   DEFAULT_VIEW
 } from './folder-view-api'
+
+describe('ViewScope', () => {
+  it('accepts a folder scope, including the empty root path', () => {
+    expect(ViewScopeSchema.parse({ kind: 'folder', path: '' })).toEqual({
+      kind: 'folder',
+      path: ''
+    })
+    expect(ViewScopeSchema.parse({ kind: 'folder', path: 'projects' })).toEqual({
+      kind: 'folder',
+      path: 'projects'
+    })
+  })
+
+  it('accepts a tag scope but rejects an empty tag', () => {
+    expect(ViewScopeSchema.parse({ kind: 'tag', tag: 'araba' })).toEqual({
+      kind: 'tag',
+      tag: 'araba'
+    })
+    expect(ViewScopeSchema.safeParse({ kind: 'tag', tag: '' }).success).toBe(false)
+  })
+
+  it('rejects an unknown kind', () => {
+    expect(ViewScopeSchema.safeParse({ kind: 'project', id: 'x' }).success).toBe(false)
+  })
+
+  it('produces stable, collision-free cache keys', () => {
+    expect(scopeKey({ kind: 'folder', path: 'work' })).toBe('folder:work')
+    expect(scopeKey({ kind: 'folder', path: '' })).toBe('folder:')
+    expect(scopeKey({ kind: 'tag', tag: 'work' })).toBe('tag:work')
+  })
+
+  it('folds tag case, because tags are case-preserving but match case-insensitively', () => {
+    expect(scopeKey({ kind: 'tag', tag: 'Araba' })).toBe(scopeKey({ kind: 'tag', tag: 'araba' }))
+  })
+})
 
 describe('ColumnConfigSchema', () => {
   it('should validate minimal column config', () => {
@@ -281,16 +318,29 @@ describe('Request Schemas', () => {
   })
 
   describe('GetViewsRequestSchema', () => {
-    it('should validate folder path', () => {
-      const result = GetViewsRequestSchema.safeParse({ folderPath: 'notes' })
+    it('should validate folder scope', () => {
+      const result = GetViewsRequestSchema.safeParse({ scope: { kind: 'folder', path: 'notes' } })
+      expect(result.success).toBe(true)
+    })
+
+    it('should validate tag scope', () => {
+      const result = GetViewsRequestSchema.safeParse({ scope: { kind: 'tag', tag: 'work' } })
       expect(result.success).toBe(true)
     })
   })
 
   describe('SetViewRequestSchema', () => {
-    it('should validate folder path with view', () => {
+    it('should validate folder scope with view', () => {
       const result = SetViewRequestSchema.safeParse({
-        folderPath: 'projects',
+        scope: { kind: 'folder', path: 'projects' },
+        view: { name: 'Active', type: 'table' }
+      })
+      expect(result.success).toBe(true)
+    })
+
+    it('should validate tag scope with view', () => {
+      const result = SetViewRequestSchema.safeParse({
+        scope: { kind: 'tag', tag: 'work' },
         view: { name: 'Active', type: 'table' }
       })
       expect(result.success).toBe(true)
@@ -298,9 +348,17 @@ describe('Request Schemas', () => {
   })
 
   describe('DeleteViewRequestSchema', () => {
-    it('should validate folder path with view name', () => {
+    it('should validate folder scope with view name', () => {
       const result = DeleteViewRequestSchema.safeParse({
-        folderPath: 'projects',
+        scope: { kind: 'folder', path: 'projects' },
+        viewName: 'Old View'
+      })
+      expect(result.success).toBe(true)
+    })
+
+    it('should validate tag scope with view name', () => {
+      const result = DeleteViewRequestSchema.safeParse({
+        scope: { kind: 'tag', tag: 'work' },
         viewName: 'Old View'
       })
       expect(result.success).toBe(true)
@@ -308,8 +366,21 @@ describe('Request Schemas', () => {
   })
 
   describe('ListWithPropertiesRequestSchema', () => {
-    it('should validate minimal request with defaults', () => {
-      const result = ListWithPropertiesRequestSchema.safeParse({ folderPath: 'notes' })
+    it('should validate minimal folder request with defaults', () => {
+      const result = ListWithPropertiesRequestSchema.safeParse({
+        scope: { kind: 'folder', path: 'notes' }
+      })
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data.limit).toBe(500)
+        expect(result.data.offset).toBe(0)
+      }
+    })
+
+    it('should validate minimal tag request with defaults', () => {
+      const result = ListWithPropertiesRequestSchema.safeParse({
+        scope: { kind: 'tag', tag: 'work' }
+      })
       expect(result.success).toBe(true)
       if (result.success) {
         expect(result.data.limit).toBe(500)
@@ -319,7 +390,7 @@ describe('Request Schemas', () => {
 
     it('should validate full request', () => {
       const result = ListWithPropertiesRequestSchema.safeParse({
-        folderPath: 'projects',
+        scope: { kind: 'folder', path: 'projects' },
         properties: ['status', 'priority'],
         limit: 100,
         offset: 50
@@ -329,7 +400,7 @@ describe('Request Schemas', () => {
 
     it('should reject limit above 1000', () => {
       const result = ListWithPropertiesRequestSchema.safeParse({
-        folderPath: 'notes',
+        scope: { kind: 'folder', path: 'notes' },
         limit: 1001
       })
       expect(result.success).toBe(false)
@@ -337,7 +408,7 @@ describe('Request Schemas', () => {
 
     it('should reject negative offset', () => {
       const result = ListWithPropertiesRequestSchema.safeParse({
-        folderPath: 'notes',
+        scope: { kind: 'folder', path: 'notes' },
         offset: -1
       })
       expect(result.success).toBe(false)
@@ -345,8 +416,17 @@ describe('Request Schemas', () => {
   })
 
   describe('GetAvailablePropertiesRequestSchema', () => {
-    it('should validate folder path', () => {
-      const result = GetAvailablePropertiesRequestSchema.safeParse({ folderPath: 'projects' })
+    it('should validate folder scope', () => {
+      const result = GetAvailablePropertiesRequestSchema.safeParse({
+        scope: { kind: 'folder', path: 'projects' }
+      })
+      expect(result.success).toBe(true)
+    })
+
+    it('should validate tag scope', () => {
+      const result = GetAvailablePropertiesRequestSchema.safeParse({
+        scope: { kind: 'tag', tag: 'work' }
+      })
       expect(result.success).toBe(true)
     })
   })

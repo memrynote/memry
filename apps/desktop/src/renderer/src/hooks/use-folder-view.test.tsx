@@ -3,13 +3,37 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type React from 'react'
 import { toast } from 'sonner'
-import { useFolderView } from './use-folder-view'
+import { useFolderView, folderViewKeys } from './use-folder-view'
+import type { ViewScope } from '@memry/contracts/folder-view-api'
 
-const mocks = vi.hoisted(() => ({
-  evaluateFilter: vi.fn(),
-  propertiesSet: vi.fn(),
-  notesUpdate: vi.fn()
-}))
+const workScope: ViewScope = { kind: 'folder', path: 'Work' }
+const missingScope: ViewScope = { kind: 'folder', path: 'Missing' }
+
+const mocks = vi.hoisted(() => {
+  const tagNotesChangedCallbacks: Array<(event: { tag: string }) => void> = []
+  const tagsChangedCallbacks: Array<() => void> = []
+  return {
+    evaluateFilter: vi.fn(),
+    propertiesSet: vi.fn(),
+    notesUpdate: vi.fn(),
+    tagNotesChangedCallbacks,
+    tagsChangedCallbacks,
+    onTagNotesChanged: vi.fn((callback: (event: { tag: string }) => void) => {
+      tagNotesChangedCallbacks.push(callback)
+      return () => {
+        const index = tagNotesChangedCallbacks.indexOf(callback)
+        if (index >= 0) tagNotesChangedCallbacks.splice(index, 1)
+      }
+    }),
+    onTagsChanged: vi.fn((callback: () => void) => {
+      tagsChangedCallbacks.push(callback)
+      return () => {
+        const index = tagsChangedCallbacks.indexOf(callback)
+        if (index >= 0) tagsChangedCallbacks.splice(index, 1)
+      }
+    })
+  }
+})
 
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() })
@@ -40,8 +64,21 @@ vi.mock('@/services/properties-service', () => ({
 vi.mock('@/services/notes-service', () => ({
   notesService: {
     update: mocks.notesUpdate
-  }
+  },
+  onTagsChanged: mocks.onTagsChanged
 }))
+
+vi.mock('@/services/tags-service', () => ({
+  onTagNotesChanged: mocks.onTagNotesChanged
+}))
+
+function emitTagNotesChanged(event: { tag: string }): void {
+  for (const callback of [...mocks.tagNotesChangedCallbacks]) callback(event)
+}
+
+function emitTagsChanged(): void {
+  for (const callback of [...mocks.tagsChangedCallbacks]) callback()
+}
 
 const firstPage = [
   {
@@ -149,6 +186,8 @@ describe('useFolderView', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
+    mocks.tagNotesChangedCallbacks.length = 0
+    mocks.tagsChangedCallbacks.length = 0
     mocks.evaluateFilter.mockImplementation((note: { id: string }) => note.id === 'n1')
     mocks.propertiesSet.mockResolvedValue({ success: true })
     mocks.notesUpdate.mockResolvedValue({ success: true })
@@ -162,7 +201,7 @@ describe('useFolderView', () => {
   })
 
   it('loads folder metadata, filters notes, paginates, and exposes formulas', async () => {
-    const { result } = renderHook(() => useFolderView({ folderPath: 'Work', pageSize: 2 }), {
+    const { result } = renderHook(() => useFolderView({ scope: workScope, pageSize: 2 }), {
       wrapper: makeWrapper()
     })
 
@@ -170,7 +209,7 @@ describe('useFolderView', () => {
 
     expect(window.api.folderView.folderExists).toHaveBeenCalledWith('Work')
     expect(window.api.folderView.listWithProperties).toHaveBeenCalledWith({
-      folderPath: 'Work',
+      scope: workScope,
       properties: undefined,
       limit: 2,
       offset: 0
@@ -196,7 +235,7 @@ describe('useFolderView', () => {
 
     await waitFor(() => expect(window.api.folderView.listWithProperties).toHaveBeenCalledTimes(2))
     expect(window.api.folderView.listWithProperties).toHaveBeenLastCalledWith({
-      folderPath: 'Work',
+      scope: workScope,
       properties: undefined,
       limit: 2,
       offset: 2
@@ -204,7 +243,7 @@ describe('useFolderView', () => {
   })
 
   it('optimistically updates views, summaries, formulas, note properties, and tags', async () => {
-    const { result } = renderHook(() => useFolderView({ folderPath: 'Work' }), {
+    const { result } = renderHook(() => useFolderView({ scope: workScope }), {
       wrapper: makeWrapper()
     })
 
@@ -217,7 +256,7 @@ describe('useFolderView', () => {
     })
 
     expect(window.api.folderView.setView).toHaveBeenCalledWith(
-      'Work',
+      workScope,
       expect.objectContaining({
         name: 'Main',
         columns: [{ id: 'title' }, { id: 'wordCount', width: 160 }]
@@ -228,7 +267,7 @@ describe('useFolderView', () => {
       await result.current.setViewAsDefault(1)
     })
     expect(window.api.folderView.setView).toHaveBeenCalledWith(
-      'Work',
+      workScope,
       expect.objectContaining({ name: 'Second', default: true })
     )
 
@@ -281,7 +320,7 @@ describe('useFolderView', () => {
       error: 'cannot save'
     })
 
-    const { result } = renderHook(() => useFolderView({ folderPath: 'Work' }), {
+    const { result } = renderHook(() => useFolderView({ scope: workScope }), {
       wrapper: makeWrapper()
     })
 
@@ -322,7 +361,7 @@ describe('useFolderView', () => {
   })
 
   it('covers view-management success and failure branches', async () => {
-    const { result } = renderHook(() => useFolderView({ folderPath: 'Work' }), {
+    const { result } = renderHook(() => useFolderView({ scope: workScope }), {
       wrapper: makeWrapper()
     })
 
@@ -335,10 +374,10 @@ describe('useFolderView', () => {
     })
 
     expect(window.api.folderView.setView).toHaveBeenCalledWith(
-      'Work',
+      workScope,
       expect.objectContaining({ name: 'Added' })
     )
-    expect(window.api.folderView.deleteView).toHaveBeenCalledWith('Work', 'Second')
+    expect(window.api.folderView.deleteView).toHaveBeenCalledWith(workScope, 'Second')
     ;(window.api.folderView.setView as any).mockResolvedValueOnce({
       success: false,
       error: 'add failed'
@@ -359,7 +398,7 @@ describe('useFolderView', () => {
   })
 
   it('renames a view in place via setConfig without going through setView', async () => {
-    const { result } = renderHook(() => useFolderView({ folderPath: 'Work' }), {
+    const { result } = renderHook(() => useFolderView({ scope: workScope }), {
       wrapper: makeWrapper()
     })
 
@@ -395,7 +434,7 @@ describe('useFolderView', () => {
   })
 
   it('covers summary delete, note-property deletion, missing cache, and formula failures', async () => {
-    const { result } = renderHook(() => useFolderView({ folderPath: 'Work' }), {
+    const { result } = renderHook(() => useFolderView({ scope: workScope }), {
       wrapper: makeWrapper()
     })
 
@@ -434,7 +473,7 @@ describe('useFolderView', () => {
     mocks.propertiesSet.mockResolvedValueOnce({ success: false, error: 'No write' })
     mocks.notesUpdate.mockRejectedValueOnce(new Error('No tags'))
 
-    const { result } = renderHook(() => useFolderView({ folderPath: 'Missing' }), {
+    const { result } = renderHook(() => useFolderView({ scope: missingScope }), {
       wrapper: makeWrapper()
     })
 
@@ -448,5 +487,83 @@ describe('useFolderView', () => {
 
     expect(toast.error).toHaveBeenCalledWith('phaseI.toasts.failedToUpdateProperty')
     expect(toast.error).toHaveBeenCalledWith('phaseI.toasts.failedToUpdateTags')
+  })
+
+  it('keys caches by scope so a folder and a same-named tag never collide', () => {
+    expect(folderViewKeys.notes({ kind: 'folder', path: 'araba' })).not.toEqual(
+      folderViewKeys.notes({ kind: 'tag', tag: 'araba' })
+    )
+  })
+
+  it('requests tag-scoped rows through the folder view channel', async () => {
+    renderHook(() => useFolderView({ scope: { kind: 'tag', tag: 'araba' } }), {
+      wrapper: makeWrapper()
+    })
+
+    await waitFor(() =>
+      expect(window.api.folderView.listWithProperties).toHaveBeenCalledWith(
+        expect.objectContaining({ scope: { kind: 'tag', tag: 'araba' } })
+      )
+    )
+  })
+
+  it('never calls folderExists for a tag scope', async () => {
+    renderHook(() => useFolderView({ scope: { kind: 'tag', tag: 'araba' } }), {
+      wrapper: makeWrapper()
+    })
+
+    await waitFor(() => expect(window.api.folderView.listWithProperties).toHaveBeenCalled())
+    expect(window.api.folderView.folderExists).not.toHaveBeenCalled()
+  })
+
+  it('refetches when a note gains or loses this tag', async () => {
+    const { result } = renderHook(() => useFolderView({ scope: { kind: 'tag', tag: 'araba' } }), {
+      wrapper: makeWrapper()
+    })
+    // Wait for the initial fetch to fully settle, not just for the mock to
+    // have been invoked — invalidating a still-in-flight query is a no-op,
+    // it just rides along with the fetch already underway.
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(window.api.folderView.listWithProperties).toHaveBeenCalledTimes(1)
+
+    act(() => emitTagNotesChanged({ tag: 'araba' }))
+
+    await waitFor(() => expect(window.api.folderView.listWithProperties).toHaveBeenCalledTimes(2))
+  })
+
+  it('ignores a change to a different tag', async () => {
+    const { result } = renderHook(() => useFolderView({ scope: { kind: 'tag', tag: 'araba' } }), {
+      wrapper: makeWrapper()
+    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(window.api.folderView.listWithProperties).toHaveBeenCalledTimes(1)
+
+    act(() => emitTagNotesChanged({ tag: 'bisiklet' }))
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(window.api.folderView.listWithProperties).toHaveBeenCalledTimes(1)
+  })
+
+  it('refetches on the untargeted tags-changed signal', async () => {
+    const { result } = renderHook(() => useFolderView({ scope: { kind: 'tag', tag: 'araba' } }), {
+      wrapper: makeWrapper()
+    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(window.api.folderView.listWithProperties).toHaveBeenCalledTimes(1)
+
+    act(() => emitTagsChanged())
+
+    await waitFor(() => expect(window.api.folderView.listWithProperties).toHaveBeenCalledTimes(2))
+  })
+
+  it('does not subscribe to tag events under folder scope', async () => {
+    renderHook(() => useFolderView({ scope: workScope }), {
+      wrapper: makeWrapper()
+    })
+    await waitFor(() => expect(window.api.folderView.listWithProperties).toHaveBeenCalled())
+
+    expect(mocks.onTagNotesChanged).not.toHaveBeenCalled()
   })
 })

@@ -285,8 +285,22 @@
     {
       "idx": 40,
       "version": "6",
+      "when": 1784892405671,
+      "tag": "0040_tag_categories",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "6",
+      "when": 1785585337000,
+      "tag": "0041_tag_definition_views",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "6",
       "when": 1785628800000,
-      "tag": "0040_bookmark_reminder_sync",
+      "tag": "0042_bookmark_reminder_sync",
       "breakpoints": true
     }
   ]
