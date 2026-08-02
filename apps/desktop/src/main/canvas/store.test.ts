@@ -7,7 +7,14 @@ import { eq } from 'drizzle-orm'
 import sodium from 'libsodium-wrappers-sumo'
 
 import * as schema from '@memry/db-schema/data-schema'
-import { createCanvas, deleteCanvas, getCanvas, listCanvases, updateCanvas } from './store'
+import {
+  createCanvas,
+  deleteCanvas,
+  getCanvas,
+  listCanvases,
+  listCanvasesWithCounts,
+  updateCanvas
+} from './store'
 import { decryptCanvasSceneForVault } from './encryption'
 
 const MIGRATION_SQL = fs.readFileSync(
@@ -78,7 +85,7 @@ describe('canvas store', () => {
       entityRefs: [{ entityType: 'note', entityId: 'n2' }]
     })
 
-    expect(summary?.title).toBe('Renamed')
+    expect(summary.ok && summary.summary.title).toBe('Renamed')
     const fetched = getCanvas(db, vaultKey, created.id)
     expect(fetched?.scene).toBe(nextScene)
 
@@ -91,11 +98,66 @@ describe('canvas store', () => {
     expect(refs[0]).toMatchObject({ entityType: 'note', entityId: 'n2' })
   })
 
-  it('returns null when updating a missing or deleted canvas', () => {
-    expect(updateCanvas(db, vaultKey, 'nope', { title: 'x' })).toBeNull()
+  it('reports not-found when updating a missing or deleted canvas', () => {
+    expect(updateCanvas(db, vaultKey, 'nope', { title: 'x' })).toEqual({
+      ok: false,
+      reason: 'not-found'
+    })
     const created = createCanvas(db, vaultKey, 'vault-1', {})
     deleteCanvas(db, created.id)
-    expect(updateCanvas(db, vaultKey, created.id, { title: 'x' })).toBeNull()
+    expect(updateCanvas(db, vaultKey, created.id, { title: 'x' })).toEqual({
+      ok: false,
+      reason: 'not-found'
+    })
+  })
+
+  it('rejects an update whose expectedUpdatedAt does not match the row', () => {
+    const created = createCanvas(db, vaultKey, 'vault-1', { title: 'A', scene: SCENE })
+
+    const result = updateCanvas(db, vaultKey, created.id, {
+      scene: 'v2',
+      expectedUpdatedAt: created.updatedAt - 1
+    })
+
+    expect(result).toEqual({ ok: false, reason: 'conflict' })
+    expect(getCanvas(db, vaultKey, created.id)?.scene).toBe(SCENE)
+  })
+
+  it('applies an update whose expectedUpdatedAt matches', () => {
+    const created = createCanvas(db, vaultKey, 'vault-1', { title: 'A', scene: SCENE })
+
+    const result = updateCanvas(db, vaultKey, created.id, {
+      scene: 'v2',
+      expectedUpdatedAt: created.updatedAt
+    })
+
+    expect(result.ok).toBe(true)
+    expect(getCanvas(db, vaultKey, created.id)?.scene).toBe('v2')
+  })
+
+  it('applies an update with no expectedUpdatedAt (unchanged legacy behaviour)', () => {
+    const created = createCanvas(db, vaultKey, 'vault-1', { title: 'A', scene: SCENE })
+
+    const result = updateCanvas(db, vaultKey, created.id, { scene: 'v2' })
+
+    expect(result).toEqual({ ok: true, summary: expect.objectContaining({ id: created.id }) })
+    expect(getCanvas(db, vaultKey, created.id)?.scene).toBe('v2')
+  })
+
+  it('lists canvases with their entity-ref counts', () => {
+    const a = createCanvas(db, vaultKey, 'vault-1', { title: 'A' })
+    const b = createCanvas(db, vaultKey, 'vault-1', { title: 'B' })
+    updateCanvas(db, vaultKey, a.id, {
+      entityRefs: [
+        { entityType: 'note', entityId: 'n1' },
+        { entityType: 'task', entityId: 't1' }
+      ]
+    })
+
+    const listed = listCanvasesWithCounts(db, 'vault-1')
+
+    expect(listed.find((c) => c.id === a.id)?.itemCount).toBe(2)
+    expect(listed.find((c) => c.id === b.id)?.itemCount).toBe(0)
   })
 
   it('soft-deletes: tombstones the row, hides it from get/list, prunes refs', () => {

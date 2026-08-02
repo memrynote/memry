@@ -10,9 +10,15 @@
  * the future sync layer; see the spatial-canvas spec §5.4.
  */
 
-import { and, desc, eq, isNull } from 'drizzle-orm'
+import { and, count, desc, eq, isNull } from 'drizzle-orm'
 import { canvases, canvasEntityRefs, type CanvasRow } from '@memry/db-schema/data-schema'
-import type { Canvas, CanvasSummary, CanvasEntityRef } from '@memry/contracts/canvas-api'
+import type {
+  Canvas,
+  CanvasSummary,
+  CanvasSummaryWithCount,
+  CanvasEntityRef,
+  CanvasUpdateFailure
+} from '@memry/contracts/canvas-api'
 import type { DataDb } from '../database'
 import { generateId } from '../lib/id'
 import { decryptCanvasSceneForVault, encryptCanvasSceneForVault } from './encryption'
@@ -26,7 +32,13 @@ export interface CanvasUpdateInput {
   title?: string | null
   scene?: string
   entityRefs?: CanvasEntityRef[]
+  /** Optimistic guard — see CanvasUpdateSchema. */
+  expectedUpdatedAt?: number
 }
+
+export type CanvasUpdateResult =
+  | { ok: true; summary: CanvasSummary }
+  | { ok: false; reason: CanvasUpdateFailure }
 
 function toSummary(
   row: Pick<CanvasRow, 'id' | 'title' | 'createdAt' | 'updatedAt'>
@@ -86,14 +98,20 @@ export function updateCanvas(
   vaultKey: Uint8Array,
   id: string,
   input: CanvasUpdateInput
-): CanvasSummary | null {
+): CanvasUpdateResult {
   return db.transaction((tx) => {
     const row = tx
       .select()
       .from(canvases)
       .where(and(eq(canvases.id, id), isNull(canvases.deletedAt)))
       .get()
-    if (!row) return null
+    if (!row) return { ok: false, reason: 'not-found' } as const
+
+    // Compared inside the transaction on purpose: the same check outside it
+    // would be the identical lost-update race wearing a longer coat.
+    if (input.expectedUpdatedAt !== undefined && row.updatedAt !== input.expectedUpdatedAt) {
+      return { ok: false, reason: 'conflict' } as const
+    }
 
     const now = Date.now()
     const changes: Partial<typeof canvases.$inferInsert> = { updatedAt: now }
@@ -113,7 +131,10 @@ export function updateCanvas(
       }
     }
 
-    return toSummary({ ...row, title: changes.title ?? row.title, updatedAt: now })
+    return {
+      ok: true,
+      summary: toSummary({ ...row, title: changes.title ?? row.title, updatedAt: now })
+    } as const
   })
 }
 
@@ -148,4 +169,27 @@ export function listCanvases(db: DataDb, vaultId: string): CanvasSummary[] {
     .orderBy(desc(canvases.updatedAt))
     .all()
     .map(toSummary)
+}
+
+/**
+ * Like listCanvases, plus how many entities each canvas holds. Counted from the
+ * advisory canvas_entity_refs rows (maintained on every save and on every sync
+ * apply) rather than by decrypting every scene, so listing stays cheap. Left
+ * join so a canvas with no cards still appears, with a count of 0.
+ */
+export function listCanvasesWithCounts(db: DataDb, vaultId: string): CanvasSummaryWithCount[] {
+  return db
+    .select({
+      id: canvases.id,
+      title: canvases.title,
+      createdAt: canvases.createdAt,
+      updatedAt: canvases.updatedAt,
+      itemCount: count(canvasEntityRefs.entityId)
+    })
+    .from(canvases)
+    .leftJoin(canvasEntityRefs, eq(canvasEntityRefs.canvasId, canvases.id))
+    .where(and(eq(canvases.vaultId, vaultId), isNull(canvases.deletedAt)))
+    .groupBy(canvases.id)
+    .orderBy(desc(canvases.updatedAt))
+    .all()
 }
