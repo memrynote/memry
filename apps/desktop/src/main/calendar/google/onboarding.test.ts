@@ -128,7 +128,8 @@ describe('setDefaultGoogleCalendar (M2)', () => {
       defaultTargetCalendarId: 'primary@group.calendar.google.com',
       onboardingCompleted: true,
       promoteConfirmDismissed: false,
-      pushEventsToGoogle: true
+      pushEventsToGoogle: true,
+      agentReadEventsConsent: null
     })
   })
 

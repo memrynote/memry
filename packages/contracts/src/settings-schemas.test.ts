@@ -711,6 +711,44 @@ describe('CalendarGoogleSettingsSchema (M2)', () => {
     expect(promoteConfirmDismissed).toBe(false)
   })
 
+  it('leaves agent access unanswered on a fresh install', () => {
+    // #given — the default payload
+    // #then — null means "we have not asked yet", which reads as denied everywhere
+    expect(CALENDAR_GOOGLE_SETTINGS_DEFAULTS.agentReadEventsConsent).toBeNull()
+  })
+
+  it('reads settings written before agent access shipped as unanswered', () => {
+    // #given — a payload from an older install, with no agentReadEventsConsent key
+    const result = CalendarGoogleSettingsSchema.safeParse({
+      defaultTargetCalendarId: null,
+      onboardingCompleted: true,
+      promoteConfirmDismissed: true,
+      pushEventsToGoogle: true
+    })
+
+    // #then — it parses, and the user counts as not yet asked (so: no agent access)
+    expect(result.success).toBe(true)
+    expect(result.success && result.data.agentReadEventsConsent).toBeNull()
+  })
+
+  it('accepts an explicit agent access answer in both directions', () => {
+    for (const agentReadEventsConsent of [true, false, null]) {
+      const result = CalendarGoogleSettingsSchema.safeParse({
+        ...CALENDAR_GOOGLE_SETTINGS_DEFAULTS,
+        agentReadEventsConsent
+      })
+      expect(result.success).toBe(true)
+    }
+  })
+
+  it('rejects a non-boolean agent access answer', () => {
+    const result = CalendarGoogleSettingsSchema.safeParse({
+      ...CALENDAR_GOOGLE_SETTINGS_DEFAULTS,
+      agentReadEventsConsent: 'yes'
+    })
+    expect(result.success).toBe(false)
+  })
+
   it('accepts a user who picked a default calendar during onboarding', () => {
     const result = CalendarGoogleSettingsSchema.safeParse({
       defaultTargetCalendarId: 'primary@group.calendar.google.com',

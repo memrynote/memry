@@ -275,6 +275,102 @@ describe('Google Calendar integration row', () => {
     expect(mockDisconnectGoogleCalendarProvider).toHaveBeenCalledTimes(1)
   })
 
+  const AGENT_ACCESS_LABEL = 'Let AI read Google Calendar events'
+
+  it('#given no Google connection #then the AI access switch is not offered', async () => {
+    mockGetGoogleCalendarStatus.mockResolvedValue(DISCONNECTED_STATUS)
+    mockListSources.mockResolvedValue({ sources: [] })
+
+    renderIntegrationList()
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Connect' })).toBeInTheDocument())
+    expect(screen.queryByRole('switch', { name: AGENT_ACCESS_LABEL })).not.toBeInTheDocument()
+  })
+
+  it('#given consent was granted #then the AI access switch reads as on', async () => {
+    mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
+    mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
+    vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
+      defaultTargetCalendarId: null,
+      onboardingCompleted: true,
+      promoteConfirmDismissed: false,
+      pushEventsToGoogle: true,
+      agentReadEventsConsent: true
+    })
+
+    renderIntegrationList()
+
+    await waitFor(() =>
+      expect(screen.getByRole('switch', { name: AGENT_ACCESS_LABEL })).toBeChecked()
+    )
+  })
+
+  it('#given consent is unanswered #then the AI access switch reads as off', async () => {
+    mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
+    mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
+    vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
+      defaultTargetCalendarId: null,
+      onboardingCompleted: true,
+      promoteConfirmDismissed: false,
+      pushEventsToGoogle: true,
+      agentReadEventsConsent: null
+    })
+
+    renderIntegrationList()
+
+    await waitFor(() =>
+      expect(screen.getByRole('switch', { name: AGENT_ACCESS_LABEL })).not.toBeChecked()
+    )
+  })
+
+  it('#when the user grants AI access from Settings #then the answer is persisted', async () => {
+    const user = userEvent.setup()
+    mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
+    mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
+    vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
+      defaultTargetCalendarId: null,
+      onboardingCompleted: true,
+      promoteConfirmDismissed: false,
+      pushEventsToGoogle: true,
+      agentReadEventsConsent: null
+    })
+
+    renderIntegrationList()
+
+    await waitFor(() =>
+      expect(screen.getByRole('switch', { name: AGENT_ACCESS_LABEL })).toBeInTheDocument()
+    )
+    await user.click(screen.getByRole('switch', { name: AGENT_ACCESS_LABEL }))
+
+    expect(window.api.settings.setCalendarGoogleSettings).toHaveBeenCalledWith({
+      agentReadEventsConsent: true
+    })
+  })
+
+  it('#when the user revokes AI access from Settings #then the answer is persisted', async () => {
+    const user = userEvent.setup()
+    mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
+    mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
+    vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
+      defaultTargetCalendarId: null,
+      onboardingCompleted: true,
+      promoteConfirmDismissed: false,
+      pushEventsToGoogle: true,
+      agentReadEventsConsent: true
+    })
+
+    renderIntegrationList()
+
+    await waitFor(() =>
+      expect(screen.getByRole('switch', { name: AGENT_ACCESS_LABEL })).toBeChecked()
+    )
+    await user.click(screen.getByRole('switch', { name: AGENT_ACCESS_LABEL }))
+
+    expect(window.api.settings.setCalendarGoogleSettings).toHaveBeenCalledWith({
+      agentReadEventsConsent: false
+    })
+  })
+
   it('#given an existing Google connection + onboardingCompleted=false #when the row mounts #then the onboarding dialog opens automatically (M2 review fix)', async () => {
     mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
     mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
