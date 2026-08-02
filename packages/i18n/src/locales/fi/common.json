@@ -638,5 +638,8 @@
     "remindLater": "Muistuta myöhemmin",
     "restartNow": "Käynnistä uudelleen nyt",
     "skip": "Ohita tämä versio"
+  },
+  "capture": {
+    "focusShortcut": "Kohdista tallennussyöttöön"
   }
 }

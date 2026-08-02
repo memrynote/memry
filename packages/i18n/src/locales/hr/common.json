@@ -638,5 +638,8 @@
     "remindLater": "Podsjeti me kasnije",
     "restartNow": "Ponovno pokreni sada",
     "skip": "Preskoči ovu verziju"
+  },
+  "capture": {
+    "focusShortcut": "Fokusiraj polje za snimanje"
   }
 }

@@ -638,5 +638,8 @@
     "remindLater": "Nhắc tôi sau",
     "restartNow": "Khởi động lại ngay",
     "skip": "Bỏ qua phiên bản này"
+  },
+  "capture": {
+    "focusShortcut": "Đưa con trỏ vào ô ghi nhanh"
   }
 }

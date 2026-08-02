@@ -638,5 +638,8 @@
     "remindLater": "稍後提醒我",
     "restartNow": "立即重新啟動",
     "skip": "略過此版本"
+  },
+  "capture": {
+    "focusShortcut": "聚焦擷取輸入欄"
   }
 }

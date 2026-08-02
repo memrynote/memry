@@ -53,7 +53,7 @@ export const PinnedTab = ({
             'relative flex items-center justify-center',
             'w-9 h-9 pt-0.5 cursor-pointer',
             'select-none',
-            'border-r border-r-border/40',
+            'border-e border-e-border/40',
             'border-b-2',
             'transition-colors duration-150 ease-out',
 
@@ -77,6 +77,7 @@ export const PinnedTab = ({
             type={tab.type}
             icon={tab.icon}
             emoji={tab.emoji}
+            entityId={tab.entityId}
             className={cn(
               'w-4 h-4 transition-colors duration-150',
               isActive ? 'text-foreground' : 'text-text-tertiary hover:text-text-secondary'
@@ -87,7 +88,7 @@ export const PinnedTab = ({
           {tab.isModified && (
             <div
               className={cn(
-                'absolute top-1 right-1',
+                'absolute top-1 end-1',
                 'w-1.5 h-1.5 rounded-full',
                 'bg-tint',
                 'animate-pulse'

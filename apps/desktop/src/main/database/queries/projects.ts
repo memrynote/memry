@@ -6,11 +6,19 @@
  */
 
 import { nanoid } from 'nanoid'
-import { eq, asc, and, isNull, sql, count } from 'drizzle-orm'
+import { eq, asc, and, isNull, inArray, sql, count } from 'drizzle-orm'
 import { projects, type Project, type NewProject } from '@memry/db-schema/schema/projects'
 import { statuses, type Status, type NewStatus } from '@memry/db-schema/schema/statuses'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projectLinks, type ProjectLink } from '@memry/db-schema/schema/project-links'
+import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
+import type {
+  ProjectContents,
+  ProjectLinkedEvent,
+  ProjectLinkedFile,
+  ProjectLinkedNote
+} from '@memry/domain-tasks'
 import type { DataDb } from '../types'
 
 // ============================================================================
@@ -627,6 +635,106 @@ export function getProjectLinks(db: DataDb, projectId: string): ProjectLink[] {
     .where(eq(projectLinks.projectId, projectId))
     .orderBy(asc(projectLinks.position), asc(projectLinks.createdAt))
     .all()
+}
+
+/**
+ * Pin or unpin a linked item. Unpinning keeps the link — only the hub's
+ * overview rail changes. Bumps the project so the change rides the next push.
+ */
+export function setProjectLinkPinned(
+  db: DataDb,
+  projectId: string,
+  itemId: string,
+  pinned: boolean
+): void {
+  db.update(projectLinks)
+    .set({ pinned: pinned ? 1 : 0 })
+    .where(and(eq(projectLinks.projectId, projectId), eq(projectLinks.itemId, itemId)))
+    .run()
+  db.update(projects)
+    .set({ modifiedAt: new Date().toISOString() })
+    .where(eq(projects.id, projectId))
+    .run()
+}
+
+/**
+ * Resolve everything a project links to in one pass, for the project hub.
+ *
+ * Inner joins do the orphan filtering: a link whose note or event was deleted
+ * elsewhere simply produces no row, so callers never see a half-resolved item.
+ */
+export function getProjectContents(db: DataDb, projectId: string): ProjectContents {
+  const noteRows = db
+    .select({
+      id: noteMetadata.id,
+      title: noteMetadata.title,
+      emoji: noteMetadata.emoji,
+      fileType: noteMetadata.fileType,
+      mimeType: noteMetadata.mimeType,
+      fileSize: noteMetadata.fileSize,
+      modifiedAt: noteMetadata.modifiedAt,
+      pinned: projectLinks.pinned
+    })
+    .from(projectLinks)
+    .innerJoin(noteMetadata, eq(noteMetadata.id, projectLinks.itemId))
+    .where(
+      and(eq(projectLinks.projectId, projectId), inArray(projectLinks.itemType, ['note', 'file']))
+    )
+    .orderBy(asc(projectLinks.position), asc(noteMetadata.title))
+    .all()
+
+  const eventRows = db
+    .select({
+      id: calendarEvents.id,
+      title: calendarEvents.title,
+      startAt: calendarEvents.startAt,
+      endAt: calendarEvents.endAt,
+      isAllDay: calendarEvents.isAllDay
+    })
+    .from(projectLinks)
+    .innerJoin(calendarEvents, eq(calendarEvents.id, projectLinks.itemId))
+    .where(and(eq(projectLinks.projectId, projectId), eq(projectLinks.itemType, 'calendar_event')))
+    .orderBy(asc(calendarEvents.startAt))
+    .all()
+
+  // `item_type` records what the user linked; `file_type` is what the row
+  // actually is. Trust the row — a link written before a file was converted
+  // would otherwise land in the wrong list.
+  const notes: ProjectLinkedNote[] = noteRows
+    .filter((row) => row.fileType === 'markdown')
+    .map((row) => ({
+      id: row.id,
+      title: row.title,
+      emoji: row.emoji,
+      modifiedAt: row.modifiedAt,
+      pinned: row.pinned === 1
+    }))
+
+  const files: ProjectLinkedFile[] = noteRows
+    .filter((row) => row.fileType !== 'markdown')
+    .map((row) => ({
+      id: row.id,
+      title: row.title,
+      fileType: row.fileType,
+      mimeType: row.mimeType,
+      fileSize: row.fileSize,
+      modifiedAt: row.modifiedAt
+    }))
+
+  const events: ProjectLinkedEvent[] = eventRows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    startAt: row.startAt,
+    endAt: row.endAt,
+    isAllDay: Boolean(row.isAllDay)
+  }))
+
+  return {
+    notes,
+    files,
+    events,
+    counts: { notes: notes.length, files: files.length, events: events.length }
+  }
 }
 
 /**

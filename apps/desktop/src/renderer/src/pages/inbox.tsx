@@ -212,8 +212,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
 
           {currentView === 'inbox' && (
             <CaptureInput
-              compact
-              density="compact"
+              className="grow shrink basis-0 min-w-0"
               focusSignal={focusCaptureSignal}
               onCaptureSuccess={() => toast.success(t('view.itemCaptured'))}
               onCaptureError={(errorMsg) => toast.error(errorMsg)}

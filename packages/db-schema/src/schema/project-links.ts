@@ -12,6 +12,8 @@ export const projectLinks = sqliteTable(
     itemType: text('item_type').notNull(),
     itemId: text('item_id').notNull(),
     position: integer('position').notNull().default(0),
+    /** 1 when the linked item is shown in the project hub's overview rail. */
+    pinned: integer('pinned').notNull().default(0),
     createdAt: text('created_at')
       .notNull()
       .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)

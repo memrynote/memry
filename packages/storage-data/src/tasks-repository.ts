@@ -1,5 +1,6 @@
 import type {
   Project,
+  ProjectContents,
   ProjectLink,
   ProjectRef,
   ProjectWithStats,
@@ -114,6 +115,8 @@ export interface ProjectQueryModule<TDb> {
     link: { id: string; projectId: string; itemType: string; itemId: string }
   ): ProjectLinkRecord
   deleteProjectLink(db: TDb, projectId: string, itemType: string, itemId: string): void
+  getProjectContents(db: TDb, projectId: string): ProjectContents
+  setProjectLinkPinned(db: TDb, projectId: string, itemId: string, pinned: boolean): void
   getProjectLink(
     db: TDb,
     projectId: string,
@@ -377,6 +380,14 @@ export function createTasksRepository<TDb>({
 
     listProjectLinks(projectId: string): ProjectLink[] {
       return projectQueries.getProjectLinks(db, projectId)
+    },
+
+    listProjectContents(projectId: string): ProjectContents {
+      return projectQueries.getProjectContents(db, projectId)
+    },
+
+    setProjectLinkPinned(projectId: string, itemId: string, pinned: boolean): void {
+      projectQueries.setProjectLinkPinned(db, projectId, itemId, pinned)
     },
 
     setProjectHomeNote(projectId: string, noteId: string | null): void {

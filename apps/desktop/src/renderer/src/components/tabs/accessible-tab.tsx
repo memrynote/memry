@@ -107,6 +107,7 @@ export const AccessibleTab = ({
         type={tab.type}
         icon={tab.icon}
         emoji={tab.emoji}
+        entityId={tab.entityId}
         className="w-4 h-4 flex-shrink-0"
         aria-hidden="true"
       />

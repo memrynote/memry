@@ -28,9 +28,15 @@ import {
   createDefaultStatuses,
   countTasksInStatus,
   getProjectWithStatuses,
-  getProjectsWithStatuses
+  getProjectsWithStatuses,
+  getProjectContents,
+  insertProjectLink,
+  getProjectLink,
+  setProjectLinkPinned
 } from './projects'
 import { insertTask } from './tasks'
+import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 
 const BASE_TIME = new Date('2026-01-15T10:00:00.000Z')
 
@@ -423,5 +429,112 @@ describe('projects queries', () => {
 
     const all = getProjectsWithStatuses(db)
     expect(all[0].statuses.length).toBeGreaterThan(0)
+  })
+
+  describe('project contents', () => {
+    const seedNote = (
+      id: string,
+      title: string,
+      fileType: string,
+      extra: Record<string, unknown> = {}
+    ): void => {
+      db.insert(noteMetadata)
+        .values({
+          id,
+          path: `notes/${id}.md`,
+          title,
+          fileType: fileType as never,
+          createdAt: BASE_TIME.toISOString(),
+          modifiedAt: BASE_TIME.toISOString(),
+          ...extra
+        })
+        .run()
+    }
+
+    const seedProjectWithLinks = (): void => {
+      insertProject(db, {
+        id: 'p-hub',
+        name: 'Hub',
+        color: '#6366f1',
+        position: 0,
+        isInbox: false
+      })
+      seedNote('n1', 'Spec', 'markdown')
+      seedNote('f1', 'diagram.png', 'image', { fileSize: 2048, mimeType: 'image/png' })
+      db.insert(calendarEvents)
+        .values({
+          id: 'e1',
+          title: 'Review',
+          startAt: '2026-08-08T12:00:00.000Z',
+          endAt: '2026-08-08T13:00:00.000Z',
+          isAllDay: false,
+          createdAt: BASE_TIME.toISOString(),
+          modifiedAt: BASE_TIME.toISOString()
+        })
+        .run()
+
+      insertProjectLink(db, { id: 'l1', projectId: 'p-hub', itemType: 'note', itemId: 'n1' })
+      insertProjectLink(db, { id: 'l2', projectId: 'p-hub', itemType: 'file', itemId: 'f1' })
+      insertProjectLink(db, {
+        id: 'l3',
+        projectId: 'p-hub',
+        itemType: 'calendar_event',
+        itemId: 'e1'
+      })
+      // Orphan: no note row with this id.
+      insertProjectLink(db, { id: 'l4', projectId: 'p-hub', itemType: 'note', itemId: 'gone' })
+    }
+
+    it('returns linked notes, files and events, skipping orphaned links', () => {
+      seedProjectWithLinks()
+      setProjectLinkPinned(db, 'p-hub', 'n1', true)
+
+      const contents = getProjectContents(db, 'p-hub')
+
+      expect(contents.notes).toEqual([
+        { id: 'n1', title: 'Spec', emoji: null, modifiedAt: expect.any(String), pinned: true }
+      ])
+      expect(contents.files[0]).toMatchObject({
+        id: 'f1',
+        title: 'diagram.png',
+        fileType: 'image',
+        fileSize: 2048
+      })
+      expect(contents.events[0]).toMatchObject({
+        id: 'e1',
+        title: 'Review',
+        startAt: '2026-08-08T12:00:00.000Z',
+        isAllDay: false
+      })
+      expect(contents.counts).toEqual({ notes: 1, files: 1, events: 1 })
+    })
+
+    it('returns empty lists for a project with no links', () => {
+      insertProject(db, {
+        id: 'p-empty',
+        name: 'Empty',
+        color: '#6366f1',
+        position: 0,
+        isInbox: false
+      })
+      expect(getProjectContents(db, 'p-empty')).toEqual({
+        notes: [],
+        files: [],
+        events: [],
+        counts: { notes: 0, files: 0, events: 0 }
+      })
+    })
+
+    it('pins and unpins a link without removing it', () => {
+      seedProjectWithLinks()
+
+      setProjectLinkPinned(db, 'p-hub', 'n1', true)
+      expect(getProjectLink(db, 'p-hub', 'note', 'n1')?.pinned).toBe(1)
+
+      setProjectLinkPinned(db, 'p-hub', 'n1', false)
+      const link = getProjectLink(db, 'p-hub', 'note', 'n1')
+      expect(link).toBeDefined()
+      expect(link?.pinned).toBe(0)
+    })
   })
 })

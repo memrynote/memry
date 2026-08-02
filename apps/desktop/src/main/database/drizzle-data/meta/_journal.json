@@ -295,6 +295,13 @@
       "when": 1785585337000,
       "tag": "0041_tag_definition_views",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "6",
+      "when": 1785585338000,
+      "tag": "0042_project_link_pinned",
+      "breakpoints": true
     }
   ]
 }

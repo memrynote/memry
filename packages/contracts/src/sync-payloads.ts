@@ -88,6 +88,9 @@ export const ProjectLinkSyncSchema = z.object({
   itemType: z.string(),
   itemId: z.string(),
   position: z.number(),
+  // Optional so payloads written by clients that predate the project hub still
+  // parse. `reconcileLinks` falls back to the local value when it is absent.
+  pinned: z.number().optional(),
   createdAt: z.string().optional()
 })
 

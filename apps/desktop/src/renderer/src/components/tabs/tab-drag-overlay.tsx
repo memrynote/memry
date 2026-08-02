@@ -33,6 +33,7 @@ export const TabDragOverlay = ({ tab }: TabDragOverlayProps): React.JSX.Element 
         type={tab.type}
         icon={tab.icon}
         emoji={tab.emoji}
+        entityId={tab.entityId}
         className="w-4 h-4 flex-shrink-0 text-sidebar-terracotta"
       />
 

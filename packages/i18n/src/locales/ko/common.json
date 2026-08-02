@@ -638,5 +638,8 @@
     "remindLater": "나중에 다시 알림",
     "restartNow": "지금 다시 시작",
     "skip": "이 버전 건너뛰기"
+  },
+  "capture": {
+    "focusShortcut": "수집 입력에 포커스"
   }
 }

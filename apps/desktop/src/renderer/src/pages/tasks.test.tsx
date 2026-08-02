@@ -311,12 +311,12 @@ vi.mock('@/components/tasks/tasks-tab-bar', () => ({
   )
 }))
 
-vi.mock('@/components/tasks/quick-add-input', () => ({
-  QuickAddInput: ({
-    onAdd,
-    onOpenModal
+vi.mock('@/components/capture-bar', () => ({
+  CaptureBar: ({
+    onSubmit,
+    onOpenDetail
   }: {
-    onAdd: (
+    onSubmit: (
       title: string,
       parsed?: {
         dueDate: Date | null
@@ -325,19 +325,19 @@ vi.mock('@/components/tasks/quick-add-input', () => ({
         statusId?: string | null
       }
     ) => void
-    onOpenModal: (title: string) => void
+    onOpenDetail: (title: string) => void
   }) => (
     <div>
       <button
         type="button"
-        onClick={() => onAdd('Quick task', { dueDate: null, priority: 'high', projectId: null })}
+        onClick={() => onSubmit('Quick task', { dueDate: null, priority: 'high', projectId: null })}
       >
         Quick add
       </button>
       <button
         type="button"
         onClick={() =>
-          onAdd('Status task', {
+          onSubmit('Status task', {
             dueDate: null,
             priority: 'none',
             projectId: 'project-1',
@@ -347,7 +347,7 @@ vi.mock('@/components/tasks/quick-add-input', () => ({
       >
         Quick add status
       </button>
-      <button type="button" onClick={() => onOpenModal('Draft title')}>
+      <button type="button" onClick={() => onOpenDetail('Draft title')}>
         Open add modal
       </button>
     </div>

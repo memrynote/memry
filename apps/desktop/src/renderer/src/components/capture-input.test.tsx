@@ -111,7 +111,7 @@ describe('CaptureInput', () => {
     fireEvent.change(screen.getByLabelText('captureInput'), {
       target: { value: 'First line\nsecond line' }
     })
-    await user.click(screen.getByRole('button', { name: 'Capture note' }))
+    await user.click(screen.getByRole('button', { name: 'captureNote' }))
 
     await waitFor(() =>
       expect(mocks.captureText).toHaveBeenCalledWith({
@@ -122,6 +122,8 @@ describe('CaptureInput', () => {
       })
     )
     expect(screen.getByText(/Existing captured thought/)).toBeInTheDocument()
+    // The duplicate is unresolved, so the text has to survive in the field.
+    expect(screen.getByLabelText('captureInput')).toHaveValue('First line\nsecond line')
 
     await user.click(screen.getByRole('button', { name: 'captureAnyway' }))
 
@@ -134,6 +136,7 @@ describe('CaptureInput', () => {
       })
     )
     expect(onCaptureSuccess).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(screen.getByLabelText('captureInput')).toHaveValue(''))
   })
 
   it('normalizes URL captures and reports failed results', async () => {
@@ -144,7 +147,7 @@ describe('CaptureInput', () => {
     render(<CaptureInput onCaptureError={onCaptureError} />)
 
     await user.type(screen.getByLabelText('captureInput'), 'example.com/path')
-    await user.click(screen.getByRole('button', { name: 'Capture link' }))
+    await user.click(screen.getByRole('button', { name: 'captureLink' }))
 
     await waitFor(() =>
       expect(mocks.captureLink).toHaveBeenCalledWith({
@@ -192,8 +195,8 @@ describe('CaptureInput', () => {
 
     await user.click(screen.getByRole('button', { name: 'recordVoiceMemo' }))
 
-    const inputShell = screen.getByRole('textbox', { name: 'captureInput' }).parentElement
-    const recorderSlot = screen.getByTestId('voice-recorder').parentElement
+    const inputShell = screen.getByTestId('capture-bar-shell')
+    const recorderSlot = screen.getByTestId('capture-bar-recorder')
 
     await waitFor(() => {
       expect(inputShell).toHaveClass('w-[60%]')
@@ -212,7 +215,7 @@ describe('CaptureInput', () => {
     await user.click(screen.getByRole('button', { name: 'recordVoiceMemo' }))
     await user.click(screen.getByRole('button', { name: 'cancel voice' }))
 
-    const recorderSlot = screen.getByTestId('voice-recorder').parentElement
+    const recorderSlot = screen.getByTestId('capture-bar-recorder')
 
     expect(recorderSlot).toHaveClass('w-0')
     expect(recorderSlot).toHaveClass('opacity-0')

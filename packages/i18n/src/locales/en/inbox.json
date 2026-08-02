@@ -312,8 +312,9 @@
       "alreadyCaptured": "Already captured: “",
       "rdquo": "rdquo;",
       "captureAnyway": "Capture Anyway",
-      "focusShortcut": "Focus capture input",
-      "q": "Q"
+      "placeholder": "Quick capture — paste a link, jot a thought…",
+      "captureLink": "Capture link",
+      "captureNote": "Capture note"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Choose folder",

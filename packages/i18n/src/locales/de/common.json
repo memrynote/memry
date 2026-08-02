@@ -638,5 +638,8 @@
     "remindLater": "Später erinnern",
     "restartNow": "Jetzt neu starten",
     "skip": "Diese Version überspringen"
+  },
+  "capture": {
+    "focusShortcut": "Erfassungseingabe fokussieren"
   }
 }

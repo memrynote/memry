@@ -638,5 +638,8 @@
     "remindLater": "Later herinneren",
     "restartNow": "Nu opnieuw opstarten",
     "skip": "Deze versie overslaan"
+  },
+  "capture": {
+    "focusShortcut": "Vastlegveld focussen"
   }
 }

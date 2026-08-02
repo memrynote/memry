@@ -638,5 +638,8 @@
     "remindLater": "Připomenout později",
     "restartNow": "Restartovat nyní",
     "skip": "Přeskočit tuto verzi"
+  },
+  "capture": {
+    "focusShortcut": "Zaměřit pole pro zachycení"
   }
 }

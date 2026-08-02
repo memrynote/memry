@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // cmdk scrolls the highlighted item into view on selection change; jsdom has
 // no layout engine, so Element.prototype.scrollIntoView doesn't exist. Same
-// shim as components/tasks/quick-add-input.test.tsx.
+// shim as components/capture-bar/capture-bar.test.tsx.
 Element.prototype.scrollIntoView = vi.fn()
 
 const mocks = vi.hoisted(() => ({

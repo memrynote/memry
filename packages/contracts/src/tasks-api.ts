@@ -12,6 +12,10 @@ export type {
   Task,
   TaskListItem,
   Project,
+  ProjectContents,
+  ProjectLinkedNote,
+  ProjectLinkedFile,
+  ProjectLinkedEvent,
   ProjectWithStats,
   ProjectWithStatuses,
   Status,
@@ -220,6 +224,22 @@ export const ProjectLinkItemSchema = z.object({
 export const ProjectSetHomeNoteSchema = z.object({
   projectId: z.string(),
   noteId: z.string().nullable()
+})
+
+export const ProjectSetLinkPinnedSchema = z.object({
+  projectId: z.string(),
+  itemId: z.string(),
+  pinned: z.boolean()
+})
+
+export const ProjectCaptureUrlSchema = z.object({
+  projectId: z.string(),
+  url: z.string()
+})
+
+export const ProjectImportFilesSchema = z.object({
+  projectId: z.string(),
+  sourcePaths: z.array(z.string())
 })
 
 export const ProjectListForItemSchema = z.object({

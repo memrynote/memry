@@ -638,5 +638,8 @@
     "remindLater": "Påmind mig senere",
     "restartNow": "Genstart nu",
     "skip": "Spring denne version over"
+  },
+  "capture": {
+    "focusShortcut": "Fokusér optagelsesfelt"
   }
 }

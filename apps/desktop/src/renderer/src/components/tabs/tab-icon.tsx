@@ -32,6 +32,8 @@ import {
 import type { TabType } from '@/contexts/tabs/types'
 import { cn } from '@/lib/utils'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { ProjectIcon } from '@/components/tasks/project-icon'
+import { useTasksOptional } from '@/contexts/tasks'
 
 interface TabIconProps {
   /** Tab type for default icon lookup */
@@ -40,6 +42,8 @@ interface TabIconProps {
   icon?: string
   /** Optional emoji (overrides icon) */
   emoji?: string | null
+  /** Entity the tab points at — project tabs resolve their icon/color from it */
+  entityId?: string
   /** CSS classes */
   className?: string
 }
@@ -103,11 +107,60 @@ const TYPE_TO_ICON: Record<TabType, string> = {
 }
 
 /**
+ * Project tabs show the project's own emoji/icon tinted with its color, and the
+ * project color dot when no custom icon is set — the same treatment the sidebar
+ * drop zones and project picker use. Reading from the tasks context instead of
+ * the stored tab icon keeps an open tab in sync when the project is edited.
+ */
+const ProjectTabIcon = ({
+  projectId,
+  className
+}: {
+  projectId: string
+  className?: string
+}): React.JSX.Element => {
+  const tasksContext = useTasksOptional()
+  const project = tasksContext?.projects.find((p) => p.id === projectId)
+
+  if (!project) return <Folder className={cn('shrink-0', className)} />
+
+  return (
+    <ProjectIcon
+      icon={project.icon}
+      color={project.color}
+      className={cn('shrink-0', className)}
+      fallback={
+        <span
+          className={cn('inline-flex shrink-0 items-center justify-center', className)}
+          aria-hidden="true"
+        >
+          <span
+            data-testid="project-tab-color-dot"
+            className="size-2.5 rounded-full"
+            style={{ backgroundColor: project.color }}
+          />
+        </span>
+      }
+    />
+  )
+}
+
+/**
  * Renders the appropriate icon for a tab
  * If emoji is provided, renders emoji instead of icon
  * Memoized to prevent unnecessary re-renders
  */
-const TabIconComponent = ({ type, icon, emoji, className }: TabIconProps): React.JSX.Element => {
+const TabIconComponent = ({
+  type,
+  icon,
+  emoji,
+  entityId,
+  className
+}: TabIconProps): React.JSX.Element => {
+  if (type === 'project' && entityId) {
+    return <ProjectTabIcon projectId={entityId} className={className} />
+  }
+
   if (emoji) {
     return (
       <NoteIconDisplay

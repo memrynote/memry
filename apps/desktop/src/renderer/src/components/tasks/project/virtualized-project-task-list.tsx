@@ -45,6 +45,12 @@ interface VirtualizedProjectTaskListProps {
     }
   ) => void
   className?: string
+  /**
+   * Extra classes for the scrolling area itself, so a host can give the list a
+   * gutter without insetting the scrollbar. The Tasks page leaves it unset and
+   * keeps its full-bleed list; the project hub passes its section padding.
+   */
+  contentClassName?: string
   isSelectionMode?: boolean
   selectedIds?: Set<string>
   onToggleSelect?: (taskId: string) => void
@@ -236,6 +242,7 @@ export const VirtualizedProjectTaskList = ({
   onNoteClick,
   onQuickAdd,
   className,
+  contentClassName,
   isSelectionMode = false,
   selectedIds,
   onToggleSelect,
@@ -312,7 +319,7 @@ export const VirtualizedProjectTaskList = ({
 
   if (isEmpty && virtualItems.length === 0) {
     return (
-      <div className={cn('flex-1 overflow-auto pt-4', className)}>
+      <div className={cn('flex-1 overflow-auto pt-4', contentClassName, className)}>
         <TaskEmptyState
           variant="project"
           projectName={project.name}
@@ -324,7 +331,11 @@ export const VirtualizedProjectTaskList = ({
 
   return (
     <div className={cn('flex flex-1 flex-col overflow-hidden', className)}>
-      <div ref={parentRef} className="flex-1 overflow-auto pt-4" style={{ contain: 'strict' }}>
+      <div
+        ref={parentRef}
+        className={cn('flex-1 overflow-auto pt-4', contentClassName)}
+        style={{ contain: 'strict' }}
+      >
         <div
           style={{
             height: `${virtualizer.getTotalSize()}px`,

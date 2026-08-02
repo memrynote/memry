@@ -102,6 +102,7 @@ const RegularTabComponent = ({
         type={tab.type}
         icon={tab.icon}
         emoji={tab.emoji}
+        entityId={tab.entityId}
         className={cn(
           'w-4 h-4 flex-shrink-0 transition-colors duration-150',
           isActive ? 'text-foreground' : 'text-text-tertiary group-hover:text-text-secondary'

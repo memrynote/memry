@@ -638,5 +638,8 @@
     "remindLater": "Påminn mig senare",
     "restartNow": "Starta om nu",
     "skip": "Hoppa över denna version"
+  },
+  "capture": {
+    "focusShortcut": "Fokusera insamlingsfält"
   }
 }

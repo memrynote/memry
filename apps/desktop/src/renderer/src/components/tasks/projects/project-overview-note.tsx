@@ -194,7 +194,7 @@ export const ProjectOverviewNote = ({
           disabled={isCreating}
           className={cn(
             'flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border p-4',
-            'text-sm text-muted-foreground transition-colors hover:bg-surface-hover disabled:opacity-60'
+            'text-sm text-muted-foreground transition-colors hover:bg-surface-active disabled:opacity-60'
           )}
         >
           {isCreating ? (
