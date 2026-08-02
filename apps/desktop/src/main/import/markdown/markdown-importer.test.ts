@@ -5,6 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'fs'
+import * as os from 'os'
 import * as path from 'path'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
@@ -26,6 +27,9 @@ vi.mock('../../inbox/suggestions', () => ({
 
 const FIXTURE_DIR = path.join(__dirname, '__fixtures__', 'sample')
 const EMBED_FIXTURE_DIR = path.join(__dirname, '__fixtures__', 'wiki-embeds')
+// Mirrors a Capacities/Obsidian export: notes in one folder, media in a sibling
+// folder, referenced as `../Images/Media/…` from the note.
+const NESTED_ASSETS_DIR = path.join(__dirname, '__fixtures__', 'nested-assets')
 
 describe('markdownImporter (integration)', () => {
   let tempVault: TestVaultResult
@@ -144,6 +148,98 @@ describe('markdownImporter (integration)', () => {
     expect(content).toContain('[[wikilink]]')
     expect(content).toContain('![[Some Note]]')
   })
+
+  it('copies an asset referenced above the note but inside the selected folder', async () => {
+    const ctx = importContext.createImportContext('it6', new AbortController().signal)
+    const summary = await importer.markdownImporter.run({ sourcePaths: [NESTED_ASSETS_DIR] }, ctx)
+
+    expect(summary.failed).toEqual([])
+    expect(summary.imported).toBe(1)
+    expect(summary.attachments).toBe(1)
+    expect(summary.skipped).toBe(0)
+
+    const note = path.join(tempVault.notesDir, 'Markdown', 'Notes', 'People', 'Person Note.md')
+    expect(fs.existsSync(note)).toBe(true)
+    const content = fs.readFileSync(note, 'utf8')
+    expect(content).toContain('memry-file://')
+    expect(content).not.toContain('](../Images/Media/shared.png)')
+  })
+
+  it('still rejects an asset that escapes the selected folder', async () => {
+    // Selecting only the notes sub-folder puts the media outside the granted
+    // root — the traversal guard must keep skipping it.
+    const ctx = importContext.createImportContext('it7', new AbortController().signal)
+    const summary = await importer.markdownImporter.run(
+      { sourcePaths: [path.join(NESTED_ASSETS_DIR, 'Notes', 'People')] },
+      ctx
+    )
+
+    expect(summary.imported).toBe(1)
+    expect(summary.attachments).toBe(0)
+    expect(summary.skipped).toBe(1)
+
+    const note = path.join(tempVault.notesDir, 'Markdown', 'Person Note.md')
+    expect(fs.readFileSync(note, 'utf8')).toContain('](../Images/Media/shared.png)')
+  })
+
+  it('copies an asset from a folder whose name merely starts with dots', async () => {
+    // `path.relative` returns `..media/shared.png` for a sibling folder named
+    // `..media` — inside the root, even though it opens with two dots.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'markdown-import-dots-'))
+    try {
+      fs.mkdirSync(path.join(root, '..media'))
+      fs.writeFileSync(path.join(root, '..media', 'shared.png'), Buffer.from([0x89, 0x50]))
+      fs.mkdirSync(path.join(root, 'Notes'))
+      fs.writeFileSync(
+        path.join(root, 'Notes', 'dotted.md'),
+        '# Dotted\n\n![shared](../..media/shared.png)\n'
+      )
+
+      const ctx = importContext.createImportContext('it8', new AbortController().signal)
+      const summary = await importer.markdownImporter.run({ sourcePaths: [root] }, ctx)
+
+      expect(summary.failed).toEqual([])
+      expect(summary.imported).toBe(1)
+      expect(summary.attachments).toBe(1)
+      expect(summary.skipped).toBe(0)
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  // Directory symlinks need elevation on Windows; the guard itself is platform-agnostic.
+  it.skipIf(process.platform === 'win32')(
+    'rejects an asset reached through a symlink that leaves the selected folder',
+    async () => {
+      const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'markdown-import-outside-'))
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'markdown-import-symlink-'))
+      try {
+        fs.writeFileSync(path.join(outside, 'secret.png'), Buffer.from([0x89, 0x50]))
+        // `Images` looks like a folder inside the selection, but everything
+        // under it lands outside the root once the link is resolved.
+        fs.symlinkSync(outside, path.join(root, 'Images'), 'dir')
+        fs.mkdirSync(path.join(root, 'Notes'))
+        fs.writeFileSync(
+          path.join(root, 'Notes', 'linked.md'),
+          '# Linked\n\n![secret](../Images/secret.png)\n'
+        )
+
+        const ctx = importContext.createImportContext('it9', new AbortController().signal)
+        const summary = await importer.markdownImporter.run({ sourcePaths: [root] }, ctx)
+
+        expect(summary.failed).toEqual([])
+        expect(summary.imported).toBe(1)
+        expect(summary.attachments).toBe(0)
+        expect(summary.skipped).toBe(1)
+
+        const note = path.join(tempVault.notesDir, 'Markdown', 'Notes', 'linked.md')
+        expect(fs.readFileSync(note, 'utf8')).toContain('](../Images/secret.png)')
+      } finally {
+        fs.rmSync(root, { recursive: true, force: true })
+        fs.rmSync(outside, { recursive: true, force: true })
+      }
+    }
+  )
 
   it('stops early when cancelled', async () => {
     const ac = new AbortController()
