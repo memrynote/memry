@@ -1,4 +1,4 @@
-import { FileText, BookOpen, Calendar, Inbox, ListTodo } from '@/lib/icons'
+import { FileText, BookOpen, Calendar, Inbox, ListTodo, Tags } from '@/lib/icons'
 import { Picker } from '@/components/ui/picker'
 import { useT } from '@memry/i18n/renderer'
 
@@ -8,6 +8,7 @@ export interface NewItemActions {
   onCalendar: () => void
   onInbox: () => void
   onTasks: () => void
+  onTags: () => void
 }
 
 interface NewItemMenuItemsProps {
@@ -48,6 +49,12 @@ export function NewItemMenuItems({ actions }: NewItemMenuItemsProps): React.JSX.
         label={tPhaseF('phaseF.componentsTabsNewTabMenu.tasks')}
         icon={<ListTodo className="size-4" />}
         onClick={actions.onTasks}
+      />
+      <Picker.Item
+        value="tags"
+        label={tPhaseF('phaseF.componentsTabsNewTabMenu.tags')}
+        icon={<Tags className="size-4" />}
+        onClick={actions.onTags}
       />
     </Picker.List>
   )

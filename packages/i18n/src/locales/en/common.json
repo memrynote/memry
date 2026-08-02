@@ -427,7 +427,8 @@
       "journal": "Journal",
       "calendar": "Calendar",
       "inboxCapture": "Inbox Capture",
-      "tasks": "Tasks"
+      "tasks": "Tasks",
+      "tags": "Tags"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Unsaved changes",

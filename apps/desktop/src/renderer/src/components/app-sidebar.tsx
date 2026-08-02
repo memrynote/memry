@@ -684,7 +684,8 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
                         title: 'Tasks',
                         path: '/tasks',
                         viewState: newItemViewState('tasks')
-                      })
+                      }),
+                    onTags: () => openSidebarItem({ type: 'tags', title: 'Tags', path: '/tags' })
                   }}
                 />
               </Picker.Content>

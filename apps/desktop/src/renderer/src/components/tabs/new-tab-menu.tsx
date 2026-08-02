@@ -144,6 +144,22 @@ export function NewTabMenu({ groupId }: NewTabMenuProps): React.JSX.Element {
     )
   }, [openTab, groupId])
 
+  const handleOpenTags = useCallback(() => {
+    openTab(
+      {
+        type: 'tags',
+        title: 'Tags',
+        icon: 'tag',
+        path: '/tags',
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false
+      },
+      { groupId }
+    )
+  }, [openTab, groupId])
+
   return (
     <Picker open={open} onOpenChange={setOpen}>
       <Tooltip>
@@ -178,7 +194,8 @@ export function NewTabMenu({ groupId }: NewTabMenuProps): React.JSX.Element {
             onJournal: handleNewJournal,
             onCalendar: handleOpenCalendar,
             onInbox: handleOpenInbox,
-            onTasks: handleNewTask
+            onTasks: handleNewTask,
+            onTags: handleOpenTags
           }}
         />
       </Picker.Content>

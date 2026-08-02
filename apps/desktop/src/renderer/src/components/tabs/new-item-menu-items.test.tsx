@@ -24,7 +24,8 @@ describe('NewItemMenuItems', () => {
       onJournal: vi.fn(),
       onCalendar: vi.fn(),
       onInbox: vi.fn(),
-      onTasks: vi.fn()
+      onTasks: vi.fn(),
+      onTags: vi.fn()
     }
     renderMenu(actions)
 
@@ -42,5 +43,8 @@ describe('NewItemMenuItems', () => {
 
     fireEvent.click(screen.getByText('tasks'))
     expect(actions.onTasks).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(screen.getByText('tags'))
+    expect(actions.onTags).toHaveBeenCalledTimes(1)
   })
 })
