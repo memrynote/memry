@@ -23,7 +23,8 @@ import {
   type CanvasTooLargeEvent,
   type CanvasUploadAssetResponse,
   type CanvasGetAssetResponse,
-  type CanvasListAssetsResponse
+  type CanvasListAssetsResponse,
+  type CanvasUpdateResponse
 } from '@memry/contracts/canvas-api'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
 import { getCanvasContext, disposeCanvasVaultKey } from '../canvas/vault-key'
@@ -117,10 +118,15 @@ export function registerCanvasHandlers(): void {
           ? injectSceneAssetSidecar(assetCtx, input.id, input.scene)
           : input.scene
 
-      const summary = updateCanvas(db, vaultKey, input.id, { ...input, scene: sceneToPersist })
-      if (!summary) {
-        throw new Error('Canvas not found')
+      const result = updateCanvas(db, vaultKey, input.id, { ...input, scene: sceneToPersist })
+      if (!result.ok) {
+        throw new Error(
+          result.reason === 'conflict'
+            ? 'Canvas was modified by someone else since it was read'
+            : 'Canvas not found'
+        )
       }
+      const summary = result.summary
       const synced = syncCanvasUpdate(input.id, sceneToPersist)
       emitCanvasEvent(CanvasChannels.events.UPDATED, { canvas: summary })
       if (!synced) {
@@ -133,7 +139,9 @@ export function registerCanvasHandlers(): void {
       if (assetCtx && input.scene !== undefined) {
         await reconcileCanvasAssets(assetCtx, input.id, sceneToPersist ?? '')
       }
-      return summary
+      // tooLarge mirrors the TOO_LARGE event for callers with no subscription
+      // (agent MCP writes); the event stays for the renderer's toast.
+      return { ...summary, tooLarge: !synced } satisfies CanvasUpdateResponse
     })
   )
 

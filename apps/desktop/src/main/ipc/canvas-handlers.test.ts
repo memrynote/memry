@@ -304,7 +304,10 @@ describe('canvas asset IPC handlers', () => {
       const fakeCtx = { marker: 'ctx' }
       vi.mocked(buildAssetServiceContext).mockReturnValue(fakeCtx as never)
       vi.mocked(injectSceneAssetSidecar).mockReturnValue('{"scene":"with-sidecar"}')
-      vi.mocked(updateCanvas).mockReturnValue({ id: 'canvas-1', title: null } as never)
+      vi.mocked(updateCanvas).mockReturnValue({
+        ok: true,
+        summary: { id: 'canvas-1', title: null, createdAt: 0, updatedAt: 1 }
+      } as never)
       const handlers = await registerAndGetHandlers()
 
       await handlers[CanvasChannels.invoke.UPDATE]({}, { id: 'canvas-1', scene: '{"scene":"raw"}' })
@@ -325,7 +328,10 @@ describe('canvas asset IPC handlers', () => {
     it('skips sidecar injection and GC when no vault is open (ctx is null)', async () => {
       await withWorkingCanvasContext()
       vi.mocked(buildAssetServiceContext).mockReturnValue(null)
-      vi.mocked(updateCanvas).mockReturnValue({ id: 'canvas-1', title: null } as never)
+      vi.mocked(updateCanvas).mockReturnValue({
+        ok: true,
+        summary: { id: 'canvas-1', title: null, createdAt: 0, updatedAt: 1 }
+      } as never)
       const handlers = await registerAndGetHandlers()
 
       await handlers[CanvasChannels.invoke.UPDATE]({}, { id: 'canvas-1', scene: '{"scene":"raw"}' })
@@ -333,6 +339,56 @@ describe('canvas asset IPC handlers', () => {
       expect(injectSceneAssetSidecar).not.toHaveBeenCalled()
       expect(vi.mocked(updateCanvas).mock.calls[0][3]).toMatchObject({ scene: '{"scene":"raw"}' })
       expect(reconcileCanvasAssets).not.toHaveBeenCalled()
+    })
+
+    it('reports tooLarge when the saved scene could not sync', async () => {
+      await withWorkingCanvasContext()
+      vi.mocked(buildAssetServiceContext).mockReturnValue(null)
+      vi.mocked(updateCanvas).mockReturnValue({
+        ok: true,
+        summary: { id: 'canvas-1', title: null, createdAt: 0, updatedAt: 1 }
+      } as never)
+      vi.mocked(syncCanvasUpdate).mockReturnValue(false)
+      const handlers = await registerAndGetHandlers()
+
+      const result = await handlers[CanvasChannels.invoke.UPDATE](
+        {},
+        { id: 'canvas-1', scene: 'x' }
+      )
+
+      expect(result).toMatchObject({ id: 'canvas-1', tooLarge: true })
+    })
+
+    it('reports tooLarge:false on a scene that synced', async () => {
+      await withWorkingCanvasContext()
+      vi.mocked(buildAssetServiceContext).mockReturnValue(null)
+      vi.mocked(updateCanvas).mockReturnValue({
+        ok: true,
+        summary: { id: 'canvas-1', title: null, createdAt: 0, updatedAt: 1 }
+      } as never)
+      vi.mocked(syncCanvasUpdate).mockReturnValue(true)
+      const handlers = await registerAndGetHandlers()
+
+      const result = await handlers[CanvasChannels.invoke.UPDATE](
+        {},
+        { id: 'canvas-1', scene: 'x' }
+      )
+
+      expect(result).toMatchObject({ id: 'canvas-1', tooLarge: false })
+    })
+
+    it('throws a distinguishable error when the optimistic guard rejects', async () => {
+      await withWorkingCanvasContext()
+      vi.mocked(buildAssetServiceContext).mockReturnValue(null)
+      vi.mocked(updateCanvas).mockReturnValue({ ok: false, reason: 'conflict' } as never)
+      const handlers = await registerAndGetHandlers()
+
+      await expect(
+        handlers[CanvasChannels.invoke.UPDATE](
+          {},
+          { id: 'canvas-1', scene: 'x', expectedUpdatedAt: 1 }
+        )
+      ).rejects.toThrow(/modified/i)
     })
   })
 
