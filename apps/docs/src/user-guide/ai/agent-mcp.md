@@ -261,42 +261,6 @@ calendar, graph, and spatial canvas — so an agent can tell whether an action i
 before suggesting it, and `settings.setFeaturesSettings` toggles them. `settings.getInboxSettings`
 and `settings.setInboxSettings` cover the daily inbox review reminder.
 
-## Project Links
-
-`vault_list_projects` returns each project's `icon`, `home_note_id`, and `linked_counts` (notes,
-files, events) alongside `task_count`. Nonzero `linked_counts` are the signal that a project has a
-hub link layer worth reading; `task_count` alone says nothing about it.
-
-The hub's link layer is reachable through the desktop bridge. Reads, via `vault_desktop_read`:
-
-| Operation                   | Args                 | Answers                                          |
-| --------------------------- | -------------------- | ------------------------------------------------ |
-| `tasks.listProjectContents` | `[projectId]`        | Which notes, files, and events a project holds   |
-| `tasks.listProjectLinks`    | `[projectId]`        | The raw link rows, including pin state           |
-| `tasks.listForItem`         | `[itemType, itemId]` | Which projects a note, file, or event belongs to |
-
-`itemType` is one of `note`, `file`, or `calendar_event`.
-
-Writes, via `vault_desktop_write`, behind the same approval flow as other writes:
-
-| Operation                    | Args                                |
-| ---------------------------- | ----------------------------------- |
-| `tasks.linkProjectItem`      | `[{ projectId, itemType, itemId }]` |
-| `tasks.unlinkProjectItem`    | `[{ projectId, itemType, itemId }]` |
-| `tasks.setProjectLinkPinned` | `[{ projectId, itemId, pinned }]`   |
-| `tasks.setProjectHomeNote`   | `[{ projectId, noteId }]`           |
-| `tasks.captureUrlToProject`  | `[{ projectId, url }]`              |
-| `tasks.importFilesToProject` | `[{ projectId, sourcePaths }]`      |
-
-`captureUrlToProject` fetches the page title over the network, and `importFilesToProject` copies
-files from paths you supply into the vault — both on caller-supplied input, like the already
-available `inbox.captureLink` and `notes.importFiles`. Operations that open native UI or hand an
-item to the OS stay out of the allowlist.
-
-`importFilesToProject` waits for the indexer to assign an id to each imported file, so importing
-several large files at once can exceed the bridge's ten-second window. The import still completes;
-the tool call reports a timeout. Import in smaller batches to see the result.
-
 Calendar desktop reads accept the same single-object shape as the renderer bridge. For example:
 `calendar.listEvents` accepts `args: [{}]`, and `calendar.getRange` accepts either
 `args: ["2026-05-14", "2026-06-14"]` or
@@ -324,6 +288,45 @@ approval controls inside the tool row. You can allow the request once, allow cre
 that conversation, deny it, or edit the arguments before allowing. Note updates load a before/after
 diff before the write is applied. Unauthenticated or context-free write requests continue to be
 denied.
+
+## Project Links
+
+`vault_list_projects` returns each project's `icon`, `home_note_id`, and `linked_counts` (notes,
+files, events) alongside `task_count`. Nonzero `linked_counts` are the signal that a project has a
+hub link layer worth reading; `task_count` alone says nothing about it.
+
+The hub's link layer is reachable through the desktop bridge. Reads, via `vault_desktop_read`:
+
+| Operation                   | Args                 | Answers                                          |
+| --------------------------- | -------------------- | ------------------------------------------------ |
+| `tasks.listProjectContents` | `[projectId]`        | Which notes, files, and events a project holds    |
+| `tasks.listProjectLinks`    | `[projectId]`        | The raw link rows, including pin state            |
+| `tasks.listForItem`         | `[itemType, itemId]` | Which projects a note, file, or event belongs to  |
+
+`itemType` is one of `note`, `file`, or `calendar_event`.
+
+Writes, via `vault_desktop_write`, behind the same approval flow as other writes:
+
+| Operation                    | Args                                |
+| ---------------------------- | ----------------------------------- |
+| `tasks.linkProjectItem`      | `[{ projectId, itemType, itemId }]` |
+| `tasks.unlinkProjectItem`    | `[{ projectId, itemType, itemId }]` |
+| `tasks.setProjectLinkPinned` | `[{ projectId, itemId, pinned }]`   |
+| `tasks.setProjectHomeNote`   | `[{ projectId, noteId }]`           |
+| `tasks.captureUrlToProject`  | `[{ projectId, url }]`              |
+| `tasks.importFilesToProject` | `[{ projectId, sourcePaths }]`      |
+
+`setProjectHomeNote` takes `noteId: null` to clear the project's home note, the same way the hub's
+own overview rail does.
+
+`captureUrlToProject` fetches the page title over the network, and `importFilesToProject` copies
+files from paths you supply into the vault — both on caller-supplied input, like the already
+available `inbox.captureLink` and `notes.importFiles`. Operations that open native UI or hand an
+item to the OS stay out of the allowlist.
+
+`importFilesToProject` waits for the indexer to assign an id to each imported file, so importing
+several large files at once can exceed the bridge's ten-second window. The import still completes;
+the tool call reports a timeout. Import in smaller batches to see the result.
 
 ## Current Note
 

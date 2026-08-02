@@ -182,7 +182,8 @@ export const AgentMcpDesktopWriteOperations = [
   // These two reach the network and the filesystem, but on caller-supplied
   // input only — the same footing as the allowlisted `inbox.captureLink` and
   // `notes.importFiles`. What stays out is opening native UI or handing an
-  // item to the OS (`notes.showImportDialog`, `openExternal`, `revealInFinder`).
+  // item to the OS (`notes.showImportDialog`, `notes.openExternal`,
+  // `notes.revealInFinder`).
   'tasks.captureUrlToProject',
   'tasks.importFilesToProject',
   'tasks.createStatus',
