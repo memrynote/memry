@@ -1,7 +1,7 @@
 import path from 'node:path'
 
 import { searchAll } from '../../../database/queries/search'
-import { listJournalEntriesInRange } from '../../../database/queries/notes'
+import { getNoteCacheById, listJournalEntriesInRange } from '../../../database/queries/notes'
 import { getInboxProject } from '../../../database/queries/projects'
 import { createDesktopInboxDomain } from '../../../inbox/domain'
 import { createDesktopInboxCrudHandlers } from '../../../inbox/domain'
@@ -175,7 +175,7 @@ function inboxVisualType(item: {
 export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): VaultServiceHandles {
   return {
     notes: {
-      async search({ query, limit = 10, folderId }) {
+      async search({ query, limit = 10, folderId, fileTypes }) {
         const result = searchAll(indexDb, dataDb, {
           text: query,
           types: ['note'],
@@ -184,7 +184,10 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           projectId: null,
           folderPath: folderId ? cacheFolderFromToolPath(folderId) : null,
           limit,
-          offset: 0
+          offset: 0,
+          // Filtering inside the FTS query keeps `limit` counting eligible rows
+          // only, so filed binaries can't starve markdown notes out (#874).
+          noteFileTypes: fileTypes
         })
         const notes = result.groups.find((group) => group.type === 'note')?.results ?? []
         return notes.map<NoteSummary>((note) => {
@@ -194,11 +197,32 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
             title: note.title,
             snippet: note.snippet ?? '',
             folder_path: metadata?.path ? folderPathFromNotePath(metadata.path) : null,
+            file_type: metadata?.fileType ?? 'markdown',
             ...(metadata?.emoji ? { icon: metadata.emoji } : {})
           }
         })
       },
       async read(id) {
+        const cached = getNoteCacheById(indexDb, id)
+        if (!cached) return null
+
+        const fileType = cached.fileType ?? 'markdown'
+        if (fileType !== 'markdown') {
+          // Filed binary (#800): reading it off disk would only hand `parseNote`
+          // bytes to mangle. Return identity + file type so the tool layer can
+          // refuse it — the empty body never reaches an agent (#919).
+          return {
+            id: cached.id,
+            title: cached.title,
+            content_markdown: '',
+            tags: [],
+            folder_path: folderPathFromNotePath(cached.path),
+            frontmatter: {},
+            file_type: fileType,
+            ...(cached.emoji ? { icon: cached.emoji } : {})
+          }
+        }
+
         const note = await getNoteById(id)
         if (!note) return null
         const icon =
@@ -214,6 +238,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           tags: note.tags,
           folder_path: folderPathFromNotePath(note.path),
           frontmatter: note.frontmatter,
+          file_type: 'markdown',
           ...(icon ? { icon } : {})
         }
       },

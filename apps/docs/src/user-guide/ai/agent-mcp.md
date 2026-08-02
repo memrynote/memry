@@ -176,6 +176,23 @@ Read tools are available to Agent Chat and external MCP clients:
 - `vault_get_tags`
 - `vault_desktop_read`
 
+### Notes and filed files
+
+Filing a PDF, image, audio file, or video into the vault indexes it alongside your markdown notes,
+so it can turn up in `vault_search_notes`. Every search hit therefore carries a `file_type`:
+
+- `markdown` — a real note. `vault_read_note` returns its content.
+- `pdf`, `image`, `audio`, `video` — a filed file. There is no markdown to read, so
+  `vault_read_note` refuses it with a `VALIDATION` error naming the file type instead of returning
+  bytes for the client to treat as text.
+
+Pass `file_types` to narrow the search up front — `["markdown"]` for notes only, or
+`["pdf", "image"]` to look for filed documents. The filter runs inside the search query, so `limit`
+counts only matching rows. Omit `file_types` to search every file type.
+
+Notes indexed by older memrynote versions have no recorded file type; those are always treated as
+markdown, so upgrading never hides existing notes.
+
 Create, update, delete, archive, move, and reorder tools require Agent Chat context. They can be
 auto-accepted or shown for inline approval depending on the Agent Permissions setting:
 
