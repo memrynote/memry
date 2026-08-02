@@ -26,6 +26,13 @@ export interface ReminderRecord {
 }
 
 export interface CreateReminderInput {
+  /**
+   * Explicit row id. Optional: only `note_date` reminders set it, because they
+   * are derived from the note's date pills by a reconciler that runs on EVERY
+   * device, so both devices must land on the SAME row (see
+   * `noteDateReminderId`). Every other caller omits it and gets a generated id.
+   */
+  id?: string
   targetType: ReminderTargetType
   targetId: string
   remindAt: string
@@ -75,6 +82,17 @@ export interface RemindersService {
   delete(id: string): Promise<boolean>
 }
 
+export interface RemindersServiceHooks {
+  /**
+   * Called after a reminder row is written. Desktop wires this to the sync
+   * queue; `app-core` must not import desktop sync code directly (architecture
+   * boundary). For 'delete', `snapshot` is the JSON row captured BEFORE
+   * removal, with `triggeredAt` stripped (it is device-local — it records
+   * that THIS device showed the OS notification, and must never sync).
+   */
+  onMutate?: (op: 'create' | 'update' | 'delete', id: string, snapshot?: string) => void
+}
+
 function nowIso(): string {
   return new Date().toISOString()
 }
@@ -108,7 +126,10 @@ function activeReminder(reminder: ReminderRecord): boolean {
   return reminder.status === 'pending' || reminder.status === 'snoozed'
 }
 
-export function createRemindersService(dataDb: DataDb): RemindersService {
+export function createRemindersService(
+  dataDb: DataDb,
+  hooks?: RemindersServiceHooks
+): RemindersService {
   return {
     async create(input) {
       if (!input.targetId.trim()) throw new Error('Reminder target id is required')
@@ -117,7 +138,7 @@ export function createRemindersService(dataDb: DataDb): RemindersService {
       }
 
       const time = nowIso()
-      const id = createId('reminder')
+      const id = input.id ?? createId('reminder')
       dataDb
         .insert(reminders)
         .values({
@@ -139,6 +160,7 @@ export function createRemindersService(dataDb: DataDb): RemindersService {
 
       const reminder = await this.get(id)
       if (!reminder) throw new Error('Reminder not found after create')
+      hooks?.onMutate?.('create', id)
       return reminder
     },
 
@@ -167,7 +189,9 @@ export function createRemindersService(dataDb: DataDb): RemindersService {
         .where(eq(reminders.id, input.id))
         .returning()
         .get()
-      return row ? toReminder(row) : null
+      if (!row) return null
+      hooks?.onMutate?.('update', row.id)
+      return toReminder(row)
     },
 
     async list(options = {}) {
@@ -224,6 +248,7 @@ export function createRemindersService(dataDb: DataDb): RemindersService {
         .returning()
         .get()
       if (!row) throw new Error(`Reminder not found: ${id}`)
+      hooks?.onMutate?.('update', row.id)
       return toReminder(row)
     },
 
@@ -237,7 +262,10 @@ export function createRemindersService(dataDb: DataDb): RemindersService {
           .where(eq(reminders.id, id))
           .returning()
           .get()
-        if (row) dismissedCount += 1
+        if (row) {
+          dismissedCount += 1
+          hooks?.onMutate?.('update', row.id)
+        }
       }
       return { success: true, dismissedCount }
     },
@@ -251,10 +279,22 @@ export function createRemindersService(dataDb: DataDb): RemindersService {
         .returning()
         .get()
       if (!row) throw new Error(`Reminder not found: ${id}`)
+      hooks?.onMutate?.('update', row.id)
       return toReminder(row)
     },
 
     async delete(id) {
+      // Snapshot must be captured BEFORE the delete runs — reading the row
+      // after deletion yields undefined, and the downstream enqueueDelete
+      // no-ops on a falsy snapshot (the row would never sync and would
+      // resurrect on the next pull). triggeredAt is device-local (this
+      // device showed the OS notification) and must not sync.
+      const row = dataDb.select().from(reminders).where(eq(reminders.id, id)).get()
+      if (row) {
+        const { triggeredAt: _triggeredAt, ...snapshot } = row
+        hooks?.onMutate?.('delete', id, JSON.stringify(snapshot))
+      }
+
       dataDb.delete(reminders).where(eq(reminders.id, id)).run()
       return true
     }

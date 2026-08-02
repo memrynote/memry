@@ -21,10 +21,15 @@ import {
   type BookmarkListResponse,
   type BookmarkItemMeta
 } from '@memry/contracts/bookmarks-api'
+import { bookmarkSyncId } from '@memry/contracts/bookmark-types'
 import { createValidatedHandler, createStringHandler } from './validate'
 import { requireDatabase, getIndexDatabase } from '../database'
-import { generateId } from '../lib/id'
 import { bookmarkQueries, notesQueries, tasksQueries } from '../bookmarks/store'
+import {
+  enqueueBookmarkCreate,
+  enqueueBookmarkDelete,
+  enqueueBookmarkUpdate
+} from '../bookmarks/runtime-effects'
 
 /**
  * Emit bookmark event to all windows
@@ -170,7 +175,7 @@ export function registerBookmarksHandlers(): void {
         }
       }
 
-      const id = generateId()
+      const id = bookmarkSyncId(input.itemType, input.itemId)
       const position = bookmarkQueries.getNextBookmarkPosition(db)
 
       const bookmark = bookmarkQueries.insertBookmark(db, {
@@ -179,6 +184,8 @@ export function registerBookmarksHandlers(): void {
         itemId: input.itemId,
         position
       })
+
+      enqueueBookmarkCreate(id)
 
       emitBookmarkEvent(BookmarksChannels.events.CREATED, { bookmark })
 
@@ -198,6 +205,8 @@ export function registerBookmarksHandlers(): void {
       }
 
       bookmarkQueries.deleteBookmark(db, id)
+
+      enqueueBookmarkDelete(id, bookmark)
 
       emitBookmarkEvent(BookmarksChannels.events.DELETED, {
         id,
@@ -260,13 +269,17 @@ export function registerBookmarksHandlers(): void {
       // Capture existing bookmark BEFORE toggle (since toggle deletes it)
       const existing = bookmarkQueries.getBookmarkByItem(db, input.itemType, input.itemId)
 
-      const result = bookmarkQueries.toggleBookmark(db, input.itemType, input.itemId, generateId)
+      const result = bookmarkQueries.toggleBookmark(db, input.itemType, input.itemId, () =>
+        bookmarkSyncId(input.itemType, input.itemId)
+      )
 
       // Emit appropriate event
       if (result.isBookmarked && result.bookmark) {
+        enqueueBookmarkCreate(result.bookmark.id)
         emitBookmarkEvent(BookmarksChannels.events.CREATED, { bookmark: result.bookmark })
       } else if (existing) {
         // Use the 'existing' we captured before toggle deleted it
+        enqueueBookmarkDelete(existing.id, existing)
         emitBookmarkEvent(BookmarksChannels.events.DELETED, {
           id: existing.id,
           itemType: input.itemType,
@@ -302,6 +315,10 @@ export function registerBookmarksHandlers(): void {
       const db = requireDatabase()
       bookmarkQueries.reorderBookmarks(db, input.bookmarkIds)
 
+      input.bookmarkIds.forEach((id) => {
+        enqueueBookmarkUpdate(id)
+      })
+
       emitBookmarkEvent(BookmarksChannels.events.REORDERED, {
         bookmarkIds: input.bookmarkIds
       })
@@ -332,7 +349,18 @@ export function registerBookmarksHandlers(): void {
     BookmarksChannels.invoke.BULK_DELETE,
     createValidatedHandler(BookmarkBulkDeleteSchema, (input) => {
       const db = requireDatabase()
+
+      // Capture snapshots BEFORE deleting: enqueueBookmarkDelete no-ops without one.
+      const bookmarksToDelete = input.bookmarkIds.flatMap((id) => {
+        const bookmark = bookmarkQueries.getBookmarkById(db, id)
+        return bookmark ? [bookmark] : []
+      })
+
       const deletedCount = bookmarkQueries.bulkDeleteBookmarks(db, input.bookmarkIds)
+
+      bookmarksToDelete.forEach((bookmark) => {
+        enqueueBookmarkDelete(bookmark.id, bookmark)
+      })
 
       // Emit event for each deleted bookmark
       // (In a real scenario, you might want a bulk event instead)
@@ -349,9 +377,13 @@ export function registerBookmarksHandlers(): void {
     BookmarksChannels.invoke.BULK_CREATE,
     createValidatedHandler(BookmarkBulkCreateSchema, (input) => {
       const db = requireDatabase()
-      const createdCount = bookmarkQueries.bulkCreateBookmarks(db, input.items, generateId)
+      const createdBookmarks = bookmarkQueries.bulkCreateBookmarks(db, input.items, bookmarkSyncId)
 
-      return { success: true, createdCount }
+      createdBookmarks.forEach((bookmark) => {
+        enqueueBookmarkCreate(bookmark.id)
+      })
+
+      return { success: true, createdCount: createdBookmarks.length }
     })
   )
 }

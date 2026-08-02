@@ -4,6 +4,8 @@ import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters } from '@memry/db-schema/schema/settings'
 import { canvases } from '@memry/db-schema/schema/canvas'
+import { bookmarks } from '@memry/db-schema/schema/bookmarks'
+import { reminders } from '@memry/db-schema/schema/reminders'
 import {
   OFFLINE_CLOCK_DEVICE_ID,
   type VectorClock,
@@ -178,6 +180,38 @@ export function incrementFilterClockOffline(db: DataDb, filterId: string): void 
     log.debug('Incremented offline filter clock', { filterId })
   } catch (err) {
     log.warn('Failed to increment offline filter clock', { filterId, error: err })
+  }
+}
+
+export function incrementBookmarkClockOffline(db: DataDb, bookmarkId: string): void {
+  try {
+    const bookmark = db.select().from(bookmarks).where(eq(bookmarks.id, bookmarkId)).get()
+    if (!bookmark) return
+
+    const existingClock = (bookmark.clock as VectorClock) ?? {}
+    const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
+
+    db.update(bookmarks).set({ clock: newClock }).where(eq(bookmarks.id, bookmarkId)).run()
+
+    log.debug('Incremented offline bookmark clock', { bookmarkId })
+  } catch (err) {
+    log.warn('Failed to increment offline bookmark clock', { bookmarkId, error: err })
+  }
+}
+
+export function incrementReminderClockOffline(db: DataDb, reminderId: string): void {
+  try {
+    const reminder = db.select().from(reminders).where(eq(reminders.id, reminderId)).get()
+    if (!reminder) return
+
+    const existingClock = (reminder.clock as VectorClock) ?? {}
+    const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
+
+    db.update(reminders).set({ clock: newClock }).where(eq(reminders.id, reminderId)).run()
+
+    log.debug('Incremented offline reminder clock', { reminderId })
+  } catch (err) {
+    log.warn('Failed to increment offline reminder clock', { reminderId, error: err })
   }
 }
 

@@ -14,6 +14,7 @@
 
 import { sqliteTable, text, integer, index, uniqueIndex } from 'drizzle-orm/sqlite-core'
 import { sql } from 'drizzle-orm'
+import type { VectorClock } from '@memry/contracts/sync-api'
 export { BookmarkItemTypes, type BookmarkItemType } from '@memry/contracts/bookmark-types'
 
 // ============================================================================
@@ -50,7 +51,13 @@ export const bookmarks = sqliteTable(
     /** When the bookmark was created */
     createdAt: text('created_at')
       .notNull()
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+
+    /** Vector clock for sync conflict resolution */
+    clock: text('clock', { mode: 'json' }).$type<VectorClock>(),
+
+    /** When this row was last synced to the server */
+    syncedAt: text('synced_at')
   },
   (table) => [
     // Prevent duplicate bookmarks of the same item

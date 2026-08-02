@@ -95,7 +95,7 @@ describe('bookmarks queries', () => {
       () => `bookmark-${Math.random()}`
     )
 
-    expect(created).toBe(2)
+    expect(created).toHaveLength(2)
     const all = listBookmarks(db)
     expect(
       bulkDeleteBookmarks(

@@ -13,6 +13,7 @@ import { settings } from '@memry/db-schema/schema/settings'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { canvases } from '@memry/db-schema/schema/canvas'
+import { reminders } from '@memry/db-schema/schema/reminders'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { SyncQueueManager } from './queue'
@@ -379,6 +380,50 @@ describe('checkManifestIntegrity', () => {
       // #then
       expect(result.rePullNeeded).toBe(false)
       expect(result.serverOnlyCount).toBe(0)
+    })
+  })
+
+  describe('#given a triggered reminder missing from server manifest #when check runs', () => {
+    it('#then re-enqueues it with status normalized to pending (triggered is device-local)', async () => {
+      // #given
+      const clock: VectorClock = { 'device-A': 1 }
+      testDb.db
+        .insert(reminders)
+        .values({
+          id: 'rem-1',
+          targetType: 'note',
+          targetId: 'note-1',
+          remindAt: '2026-05-15T08:00:00.000Z',
+          status: 'triggered',
+          triggeredAt: '2026-05-15T08:00:01.000Z',
+          clock
+        })
+        .run()
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      // #when
+      await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      // #then — re-enqueued as create, but with status normalized and
+      // triggeredAt stripped, matching reminder-sync.ts/reminder-handler.ts
+      const items = queue.dequeue(10)
+      const reminderItem = items.find((i) => i.itemId === 'rem-1')
+      expect(reminderItem).toBeDefined()
+      expect(reminderItem!.type).toBe('reminder')
+      const payload = JSON.parse(reminderItem!.payload)
+      expect(payload.status).toBe('pending')
+      expect(payload).not.toHaveProperty('triggeredAt')
     })
   })
 

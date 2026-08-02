@@ -1,7 +1,7 @@
 import { and, asc, eq } from 'drizzle-orm'
 import { bookmarks } from '@memry/db-schema/data-schema'
+import { bookmarkSyncId } from '@memry/contracts/bookmark-types'
 import type { DataDb } from './database.ts'
-import { createId } from './ids.ts'
 
 export interface BookmarkRecord {
   id: string
@@ -84,7 +84,7 @@ export function createBookmarksService(dataDb: DataDb): BookmarksService {
       const existing = dataDb.select().from(bookmarks).where(whereItem(itemType, itemId)).get()
       if (existing) return toBookmark(existing)
 
-      const id = createId('bookmark')
+      const id = bookmarkSyncId(itemType, itemId)
       dataDb
         .insert(bookmarks)
         .values({

@@ -370,3 +370,167 @@ describe('0036_canvas_assets migration', () => {
     sqlite.close()
   })
 })
+
+describe('0043_bookmark_reminder_sync migration', () => {
+  let tempDir: string
+  const migrationsDir = path.join(__dirname, 'drizzle-data')
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-bookmark-reminder-migrate-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  /**
+   * Copies drizzle-data/ to a temp folder with 0043 and everything after it
+   * stripped (SQL files + journal entries) so a database migrated from it is
+   * shaped like a production install: nanoid bookmark ids, ad-hoc reminder ids,
+   * no clock columns.
+   */
+  function makePre0043Folder(): string {
+    const copy = path.join(tempDir, 'drizzle-data-pre-0043')
+    fs.cpSync(migrationsDir, copy, { recursive: true })
+    const journalPath = path.join(copy, 'meta', '_journal.json')
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+      entries: { tag: string }[]
+    }
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0043_bookmark_reminder_sync')
+    expect(cutoff).toBeGreaterThanOrEqual(0)
+    const removed = journal.entries.splice(cutoff)
+    for (const entry of removed) {
+      fs.rmSync(path.join(copy, `${entry.tag}.sql`))
+    }
+    fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
+    return copy
+  }
+
+  function columnNames(sqlite: InstanceType<typeof Database>, table: string): string[] {
+    return (sqlite.pragma(`table_info(${table})`) as { name: string }[]).map((c) => c.name)
+  }
+
+  /** Opens a database migrated only up to 0039 — the pre-upgrade production shape. */
+  function openPre0043(): {
+    sqlite: InstanceType<typeof Database>
+    db: ReturnType<typeof drizzle>
+  } {
+    const sqlite = new Database(path.join(tempDir, 'data.db'))
+    const db = drizzle(sqlite)
+    migrate(db, { migrationsFolder: makePre0043Folder() })
+    return { sqlite, db }
+  }
+
+  // Drizzle's migrator skips already-applied migrations by journal `when` and
+  // never re-executes SQL, so running migrations twice on a fresh database is
+  // green-by-construction. The only meaningful test is the upgrade path: a
+  // database that already applied 0000-0039 and holds legacy rows.
+  it('rewrites bookmark ids deterministically and preserves every row', () => {
+    const { sqlite, db } = openPre0043()
+    expect(columnNames(sqlite, 'bookmarks')).not.toContain('clock')
+
+    const insert = sqlite.prepare(
+      `INSERT INTO bookmarks (id, item_type, item_id, position, created_at)
+       VALUES (?, ?, ?, ?, ?)`
+    )
+    insert.run('nanoid_legacy_1', 'note', 'note_abc', 0, '2026-01-01T00:00:00.000Z')
+    // This row's legacy id is exactly the deterministic id the row above will
+    // take, so a single-pass rewrite would collide on the primary key.
+    insert.run('bmk_note_note_abc', 'task', 'task_xyz', 1, '2026-01-02T00:00:00.000Z')
+
+    migrate(db, { migrationsFolder: migrationsDir })
+
+    const rows = sqlite.prepare('SELECT * FROM bookmarks ORDER BY position').all() as {
+      id: string
+      item_type: string
+      item_id: string
+      position: number
+      created_at: string
+      clock: string | null
+      synced_at: string | null
+    }[]
+    expect(rows).toHaveLength(2)
+    expect(rows[0].id).toBe('bmk_note_note_abc')
+    expect(rows[0].item_id).toBe('note_abc')
+    expect(rows[0].position).toBe(0)
+    expect(rows[0].created_at).toBe('2026-01-01T00:00:00.000Z')
+    expect(rows[0].clock).toBeNull()
+    expect(rows[0].synced_at).toBeNull()
+    expect(rows[1].id).toBe('bmk_task_task_xyz')
+    expect(rows[1].item_id).toBe('task_xyz')
+    sqlite.close()
+  })
+
+  it('collapses duplicate note_date reminders before rewriting ids', () => {
+    const { sqlite, db } = openPre0043()
+    expect(columnNames(sqlite, 'reminders')).not.toContain('clock')
+
+    const insert = sqlite.prepare(
+      `INSERT INTO reminders (id, target_type, target_id, remind_at, anchor_id, status, created_at, modified_at)
+       VALUES (?, 'note_date', ?, ?, ?, 'pending', ?, ?)`
+    )
+    insert.run(
+      'rem_a',
+      'note_1',
+      '2026-08-03T09:00:00.000Z',
+      'anchor_1',
+      '2026-01-01T00:00:00.000Z',
+      '2026-01-01T00:00:00.000Z'
+    )
+    insert.run(
+      'rem_b',
+      'note_1',
+      '2026-08-03T09:00:00.000Z',
+      'anchor_1',
+      '2026-01-02T00:00:00.000Z',
+      '2026-01-02T00:00:00.000Z'
+    )
+    // A different anchor on the same note is a different reminder — it survives.
+    insert.run(
+      'rem_c',
+      'note_1',
+      '2026-08-04T09:00:00.000Z',
+      'anchor_2',
+      '2026-01-03T00:00:00.000Z',
+      '2026-01-03T00:00:00.000Z'
+    )
+
+    migrate(db, { migrationsFolder: migrationsDir })
+
+    const rows = sqlite
+      .prepare("SELECT id, created_at FROM reminders WHERE target_type = 'note_date' ORDER BY id")
+      .all() as { id: string; created_at: string }[]
+    expect(rows).toHaveLength(2)
+    expect(rows[0].id).toBe('rem_nd_note_1_anchor_1')
+    // MIN(id) survives the collapse: rem_a, not rem_b.
+    expect(rows[0].created_at).toBe('2026-01-01T00:00:00.000Z')
+    expect(rows[1].id).toBe('rem_nd_note_1_anchor_2')
+    sqlite.close()
+  })
+
+  it('leaves non-note_date reminder ids untouched', () => {
+    const { sqlite, db } = openPre0043()
+
+    sqlite
+      .prepare(
+        `INSERT INTO reminders (id, target_type, target_id, remind_at, status, created_at, modified_at)
+         VALUES ('rem_keepme', 'note', 'note_1', '2026-08-03T09:00:00.000Z', 'pending', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
+      )
+      .run()
+    // note_date rows without an anchor id are outside the rewrite too.
+    sqlite
+      .prepare(
+        `INSERT INTO reminders (id, target_type, target_id, remind_at, status, created_at, modified_at)
+         VALUES ('rem_no_anchor', 'note_date', 'note_1', '2026-08-03T09:00:00.000Z', 'pending', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
+      )
+      .run()
+
+    migrate(db, { migrationsFolder: migrationsDir })
+
+    const ids = (
+      sqlite.prepare('SELECT id FROM reminders ORDER BY id').all() as { id: string }[]
+    ).map((r) => r.id)
+    expect(ids).toEqual(['rem_keepme', 'rem_no_anchor'])
+    sqlite.close()
+  })
+})

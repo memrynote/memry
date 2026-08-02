@@ -46,7 +46,7 @@ describe('EncryptItemSchema', () => {
   it('rejects an unknown type', () => {
     const result = EncryptItemSchema.safeParse({
       itemId: 'item-1',
-      type: 'bookmark',
+      type: 'unknown_type',
       content: {}
     })
     expect(result.success).toBe(false)

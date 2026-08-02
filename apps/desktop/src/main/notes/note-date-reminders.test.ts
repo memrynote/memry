@@ -1,6 +1,16 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { syncNoteDateReminders } from './note-date-reminders'
 import { serializeDateMentionToken } from '@memry/shared/date-mention'
+import { createRemindersService, type RemindersService } from '@memry/app-core/reminders'
+import type { ReminderSyncPayload } from '@memry/contracts/sync-payloads'
+import {
+  createTestDataDb,
+  asClientDb,
+  asSyncDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
+import { makeCtx } from '@tests/utils/fixtures/sync-item-handlers'
+import { reminderHandler } from '../sync/item-handlers/reminder-handler'
 
 function fakeService(existing: any[] = []) {
   const rows = [...existing]
@@ -100,5 +110,125 @@ describe('syncNoteDateReminders', () => {
     expect(svc.update).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'rem_x', remindAt: '2026-06-20T08:00:00.000Z' })
     )
+  })
+})
+
+// note_date rows are DERIVED: every device re-runs this reconciler over its own
+// CRDT-synced copy of the note. With reminders syncing, two writers target one
+// logical row, so these use the REAL reminders service with its sync hook
+// attached — a fake service cannot prove that a re-run enqueues nothing.
+describe('syncNoteDateReminders sync convergence', () => {
+  const markdown = `due ${remindingToken}`
+  const deterministicId = 'rem_nd_note_1_dm_1'
+
+  let testDb: TestDatabaseResult
+  let onMutate: Mock
+  let service: RemindersService
+
+  beforeEach(() => {
+    testDb = createTestDataDb()
+    onMutate = vi.fn()
+    service = createRemindersService(asClientDb(testDb.db), { onMutate })
+  })
+
+  afterEach(() => {
+    testDb.close()
+  })
+
+  async function listRows(svc: RemindersService = service) {
+    return (await svc.list({ targetType: 'note_date', targetId: 'note_1', limit: 1000 })).reminders
+  }
+
+  it('creates the reminder with a deterministic id', async () => {
+    await syncNoteDateReminders('note_1', markdown, service)
+
+    const rows = await listRows()
+    expect(rows).toHaveLength(1)
+    expect(rows[0].id).toBe(deterministicId)
+  })
+
+  /** What device A puts on the wire for the same pill, via the real push path. */
+  async function pushFromDeviceA(): Promise<{ id: string; payload: ReminderSyncPayload }> {
+    const deviceA = createTestDataDb()
+    try {
+      const serviceA = createRemindersService(asClientDb(deviceA.db))
+      await syncNoteDateReminders('note_1', markdown, serviceA)
+      const id = (await listRows(serviceA))[0].id
+      const payload = JSON.parse(
+        reminderHandler.buildPushPayload(asSyncDb(deviceA.db), id, 'device_a', 'create') as string
+      ) as ReminderSyncPayload
+      return { id, payload }
+    } finally {
+      deviceA.close()
+    }
+  }
+
+  it('converges to one row when the same pill derived on another device syncs in', async () => {
+    const { id: pushedId, payload } = await pushFromDeviceA()
+
+    // This device already derived the same pill from the CRDT-synced note
+    // content before A's row arrived; the handler then applies A's push.
+    await syncNoteDateReminders('note_1', markdown, service)
+    reminderHandler.applyUpsert(makeCtx(testDb), pushedId, payload, { device_a: 1 })
+
+    const rows = await listRows()
+    expect(rows).toHaveLength(1)
+    expect(rows[0].id).toBe(deterministicId)
+  })
+
+  // The reverse arrival order, which is the one a fresh or long-offline device
+  // actually hits: 'note' and 'reminder' share the same pull-apply rank and
+  // note bodies land through a separate CRDT writeback, so A's reminder can
+  // reach this device before the note content it is derived from.
+  it('does not duplicate when the remote row arrives before this device reconciles', async () => {
+    const { id: pushedId, payload } = await pushFromDeviceA()
+
+    // A note_date row is owned by the local reconciler, so the handler refuses
+    // to insert one rather than invent a remindAt it cannot derive yet.
+    expect(reminderHandler.applyUpsert(makeCtx(testDb), pushedId, payload, { device_a: 1 })).toBe(
+      'skipped'
+    )
+    expect(await listRows()).toHaveLength(0)
+    expect(onMutate).not.toHaveBeenCalled()
+
+    // The note content then lands over CRDT and the writeback reconciles: one
+    // row, one enqueue — the legitimate first local derivation.
+    await syncNoteDateReminders('note_1', markdown, service)
+    expect(await listRows()).toHaveLength(1)
+    expect(onMutate).toHaveBeenCalledTimes(1)
+    expect(onMutate).toHaveBeenCalledWith('create', deterministicId)
+
+    // Steady state: every later note write enqueues nothing.
+    onMutate.mockClear()
+    await syncNoteDateReminders('note_1', markdown, service)
+    expect(onMutate).not.toHaveBeenCalled()
+  })
+
+  it('enqueues nothing on a re-run over unchanged markdown (loop guard)', async () => {
+    await syncNoteDateReminders('note_1', markdown, service)
+    onMutate.mockClear()
+
+    await syncNoteDateReminders('note_1', markdown, service)
+
+    expect(onMutate).not.toHaveBeenCalled()
+  })
+
+  it('keeps a dismissed status when the note is re-written', async () => {
+    await syncNoteDateReminders('note_1', markdown, service)
+    await service.dismiss(deterministicId)
+
+    await syncNoteDateReminders('note_1', markdown, service)
+
+    expect((await service.get(deterministicId))?.status).toBe('dismissed')
+  })
+
+  it('deletes the row and enqueues the delete when the pill is removed', async () => {
+    await syncNoteDateReminders('note_1', markdown, service)
+    onMutate.mockClear()
+
+    await syncNoteDateReminders('note_1', 'no dates here', service)
+
+    expect(await listRows()).toHaveLength(0)
+    expect(onMutate).toHaveBeenCalledWith('delete', deterministicId, expect.any(String))
   })
 })

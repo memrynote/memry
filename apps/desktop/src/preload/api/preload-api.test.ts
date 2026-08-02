@@ -429,6 +429,10 @@ describe('preload api wrappers', () => {
       BookmarksChannels.events.CREATED
     )
     expectSubscribe(
+      () => bookmarkEvents.onBookmarkUpdated(callback),
+      BookmarksChannels.events.UPDATED
+    )
+    expectSubscribe(
       () => bookmarkEvents.onBookmarkDeleted(callback),
       BookmarksChannels.events.DELETED
     )

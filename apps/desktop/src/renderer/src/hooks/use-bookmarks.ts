@@ -374,6 +374,12 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
       void refresh()
     })
 
+    // Only sync emits UPDATED: an inbound merge changed an existing row's
+    // position (a reorder done on another device). Refresh to pick up the order.
+    const unsubUpdated = window.api.onBookmarkUpdated?.(() => {
+      void refresh()
+    })
+
     const unsubDeleted = window.api.onBookmarkDeleted?.((event) => {
       setBookmarks((prev) => prev.filter((b) => b.id !== event.id))
       setTotal((prev) => Math.max(0, prev - 1))
@@ -386,6 +392,7 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
 
     return () => {
       unsubCreated?.()
+      unsubUpdated?.()
       unsubDeleted?.()
       unsubReordered?.()
     }
@@ -450,14 +457,27 @@ export function useIsBookmarked(itemType: string, itemId: string) {
   useEffect(() => {
     void checkBookmark()
 
-    // Subscribe to bookmark events
+    // Subscribe to bookmark events.
+    //
+    // The local IPC path sends the resolved row / item pair, so the event alone
+    // says whether it concerns this item. Sync sends only `{ id }` for inbound
+    // changes — nothing to compare against — so fall back to asking the main
+    // process, otherwise the star icon silently keeps the pre-sync state.
     const unsubCreated = window.api.onBookmarkCreated?.((event) => {
-      if (event.bookmark?.itemType === itemType && event.bookmark?.itemId === itemId) {
+      if (!event?.bookmark) {
+        void checkBookmark()
+        return
+      }
+      if (event.bookmark.itemType === itemType && event.bookmark.itemId === itemId) {
         setIsBookmarked(true)
       }
     })
 
     const unsubDeleted = window.api.onBookmarkDeleted?.((event) => {
+      if (!event?.itemType && !event?.itemId) {
+        void checkBookmark()
+        return
+      }
       if (event.itemType === itemType && event.itemId === itemId) {
         setIsBookmarked(false)
       }

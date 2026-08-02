@@ -433,6 +433,7 @@ export function createMockAPI(config?: MockAPIConfig): Record<string, unknown> {
     onSearchIndexRebuildProgress: vi.fn().mockReturnValue(() => {}),
     onSearchIndexRebuildCompleted: vi.fn().mockReturnValue(() => {}),
     onBookmarkCreated: vi.fn().mockReturnValue(() => {}),
+    onBookmarkUpdated: vi.fn().mockReturnValue(() => {}),
     onBookmarkDeleted: vi.fn().mockReturnValue(() => {}),
     onBookmarksReordered: vi.fn().mockReturnValue(() => {}),
     onReminderCreated: vi.fn().mockReturnValue(() => {}),

@@ -4,6 +4,7 @@ import {
   computeRemindAt
 } from '@memry/shared/date-mention'
 import type { RemindersService } from '@memry/app-core/reminders'
+import { noteDateReminderId } from '@memry/contracts/reminder-types'
 import { createLogger } from '../lib/logger'
 
 const log = createLogger('NoteDateReminders')
@@ -41,6 +42,10 @@ export async function syncNoteDateReminders(
     const row = existingByAnchor.get(anchorId)
     if (!row) {
       await service.create({
+        // Deterministic: this reconciler runs on every device over its own
+        // CRDT-synced copy of the note, so both devices must derive the SAME
+        // row id or one pill ends up as two forever-diverging rows.
+        id: noteDateReminderId(noteId, anchorId),
         targetType: 'note_date',
         targetId: noteId,
         anchorId,

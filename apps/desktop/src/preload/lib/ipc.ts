@@ -5,6 +5,28 @@ import type {
   MainIpcInvokeResult
 } from '../../main/ipc/generated-ipc-invoke-map'
 
+/**
+ * Every preload API module imports this file, so it has to stay import-light:
+ * pulling `./logger` (electron-log/renderer) in here hangs the preload test
+ * suite at collection time.
+ *
+ * `__electronLog` is the same sink `createLogger()` writes to — electron-log's
+ * own preload script, installed by `log.initialize()` in the main process, puts
+ * it on this world's global. Falling back to console keeps the failure visible
+ * when it isn't there (tests, or an initialize that didn't run).
+ */
+function logListenerError(channel: string, error: unknown): void {
+  const message = `[PreloadIpc] Listener for "${channel}" threw`
+  const sink = (globalThis as typeof globalThis & { __electronLog?: unknown }).__electronLog as
+    | { error?: (...data: unknown[]) => void }
+    | undefined
+  if (typeof sink?.error === 'function') {
+    sink.error(message, error)
+    return
+  }
+  console.error(message, error)
+}
+
 export function invoke<C extends MainIpcInvokeChannel>(
   channel: C,
   ...args: MainIpcInvokeArgs<C>
@@ -37,7 +59,15 @@ export function subscribe<T>(channel: string, callback: (payload: T) => void): (
     const callbacks: IpcCallback[] = []
     const handler = (_event: Electron.IpcRendererEvent, payload: unknown): void => {
       for (const current of [...callbacks]) {
-        current(payload)
+        // One throwing listener must not abort the fan-out. Without this guard
+        // a single unexpected payload shape takes down every subscriber
+        // registered after it — for the rest of the session, not just this
+        // event — because the loop unwinds out of the IPC dispatch.
+        try {
+          current(payload)
+        } catch (error) {
+          logListenerError(channel, error)
+        }
       }
     }
     subscription = { callbacks, handler }

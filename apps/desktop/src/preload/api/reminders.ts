@@ -60,16 +60,22 @@ export const remindersApi = {
 }
 
 export const reminderEvents = {
-  onReminderCreated: (callback: (event: { reminder: unknown }) => void): (() => void) =>
-    subscribe<{ reminder: unknown }>(ReminderChannels.events.CREATED, callback),
+  // CREATED / UPDATED / DELETED have two producers: the local IPC path sends
+  // the resolved row, the sync handler sends only `{ id }` for inbound changes.
+  onReminderCreated: (
+    callback: (event: { reminder?: unknown; id?: string }) => void
+  ): (() => void) =>
+    subscribe<{ reminder?: unknown; id?: string }>(ReminderChannels.events.CREATED, callback),
 
-  onReminderUpdated: (callback: (event: { reminder: unknown }) => void): (() => void) =>
-    subscribe<{ reminder: unknown }>(ReminderChannels.events.UPDATED, callback),
+  onReminderUpdated: (
+    callback: (event: { reminder?: unknown; id?: string }) => void
+  ): (() => void) =>
+    subscribe<{ reminder?: unknown; id?: string }>(ReminderChannels.events.UPDATED, callback),
 
   onReminderDeleted: (
-    callback: (event: { id: string; targetType: string; targetId: string }) => void
+    callback: (event: { id: string; targetType?: string; targetId?: string }) => void
   ): (() => void) =>
-    subscribe<{ id: string; targetType: string; targetId: string }>(
+    subscribe<{ id: string; targetType?: string; targetId?: string }>(
       ReminderChannels.events.DELETED,
       callback
     ),

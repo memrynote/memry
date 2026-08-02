@@ -20,6 +20,14 @@ vi.mock('./filter-sync', () => ({
   getFilterSyncService: vi.fn()
 }))
 
+vi.mock('./bookmark-sync', () => ({
+  getBookmarkSyncService: vi.fn()
+}))
+
+vi.mock('./reminder-sync', () => ({
+  getReminderSyncService: vi.fn()
+}))
+
 vi.mock('./note-sync', () => ({
   getNoteSyncService: vi.fn()
 }))
@@ -64,7 +72,9 @@ vi.mock('./offline-clock', () => ({
   incrementTaskClocksOffline: vi.fn(),
   incrementProjectClocksOffline: vi.fn(),
   incrementInboxClockOffline: vi.fn(),
-  incrementFilterClockOffline: vi.fn()
+  incrementFilterClockOffline: vi.fn(),
+  incrementBookmarkClockOffline: vi.fn(),
+  incrementReminderClockOffline: vi.fn()
 }))
 
 import { getDatabase } from '../database'
@@ -76,11 +86,15 @@ import { getFilterSyncService } from './filter-sync'
 import { getFolderConfigSyncService } from './folder-config-sync'
 import { getInboxSyncService } from './inbox-sync'
 import {
+  incrementBookmarkClockOffline,
   incrementFilterClockOffline,
   incrementInboxClockOffline,
   incrementProjectClocksOffline,
+  incrementReminderClockOffline,
   incrementTaskClocksOffline
 } from './offline-clock'
+import { getBookmarkSyncService } from './bookmark-sync'
+import { getReminderSyncService } from './reminder-sync'
 import { getProjectSyncService } from './project-sync'
 import { getNoteSyncService } from './note-sync'
 import { getSettingsSyncManager } from './settings-sync'
@@ -113,11 +127,89 @@ describe('local-mutations', () => {
       getCalendarEventSyncService,
       getCalendarSourceSyncService,
       getCalendarBindingSyncService,
-      getCalendarExternalEventSyncService
+      getCalendarExternalEventSyncService,
+      getBookmarkSyncService,
+      getReminderSyncService
     ]) {
       ;(getter as Mock).mockReset().mockReturnValue(null)
     }
     ;(getDatabase as Mock).mockReturnValue('db')
+  })
+
+  // Bookmarks and reminders reach the queue only through this registry — a
+  // mutation that writes the DB without routing here syncs nothing, with no
+  // error to notice. Both directions are pinned: delegate when a service is
+  // live, fall back to an offline clock bump when it is not.
+  describe.each([
+    {
+      type: 'bookmark' as const,
+      getService: getBookmarkSyncService,
+      offlineBump: incrementBookmarkClockOffline,
+      itemId: 'bm-1'
+    },
+    {
+      type: 'reminder' as const,
+      getService: getReminderSyncService,
+      offlineBump: incrementReminderClockOffline,
+      itemId: 'rem-1'
+    }
+  ])('$type local mutations', ({ type, getService, offlineBump, itemId }) => {
+    it('routes creates to the live service', () => {
+      const enqueueCreate = vi.fn()
+      ;(getService as Mock).mockReturnValue({ enqueueCreate })
+
+      enqueueLocalSyncCreate(type, itemId)
+
+      expect(enqueueCreate).toHaveBeenCalledWith(itemId)
+      expect(offlineBump).not.toHaveBeenCalled()
+    })
+
+    it('routes updates to the live service', () => {
+      const enqueueUpdate = vi.fn()
+      ;(getService as Mock).mockReturnValue({ enqueueUpdate })
+
+      enqueueLocalSyncUpdate(type, itemId)
+
+      expect(enqueueUpdate).toHaveBeenCalledWith(itemId)
+      expect(offlineBump).not.toHaveBeenCalled()
+    })
+
+    it('falls back to an offline clock bump on create when no service is registered', () => {
+      ;(getService as Mock).mockReturnValue(null)
+
+      enqueueLocalSyncCreate(type, itemId)
+
+      expect(offlineBump).toHaveBeenCalledWith('db', itemId)
+    })
+
+    it('falls back to an offline clock bump on update when no service is registered', () => {
+      ;(getService as Mock).mockReturnValue(null)
+
+      enqueueLocalSyncUpdate(type, itemId)
+
+      expect(offlineBump).toHaveBeenCalledWith('db', itemId)
+    })
+
+    it('routes deletes to the live service with the snapshot payload', () => {
+      const enqueueDelete = vi.fn()
+      ;(getService as Mock).mockReturnValue({ enqueueDelete })
+
+      enqueueLocalSyncDelete(type, itemId, '{"id":"snap"}')
+
+      expect(enqueueDelete).toHaveBeenCalledWith(itemId, '{"id":"snap"}')
+    })
+
+    // enqueueDelete no-ops on a falsy snapshot: the delete payload cannot be
+    // rebuilt after the row is gone, so a caller that forgets the snapshot
+    // must not silently enqueue an unusable delete.
+    it('drops a delete with no snapshot payload', () => {
+      const enqueueDelete = vi.fn()
+      ;(getService as Mock).mockReturnValue({ enqueueDelete })
+
+      enqueueLocalSyncDelete(type, itemId)
+
+      expect(enqueueDelete).not.toHaveBeenCalled()
+    })
   })
 
   it('routes task creates through the local sync adapter registry', () => {

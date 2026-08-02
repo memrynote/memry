@@ -60,6 +60,8 @@ memrynote shows a toast with:
 
 A system notification is shown as well. On macOS, dismissing or snoozing the reminder also removes its delivered banner from Notification Center, so handled reminders don't pile up there.
 
+Dismissing or snoozing a reminder syncs to your other devices, so a reminder you've handled on one device won't fire again on another. Each device still shows its own toast and system notification locally when the reminder's time arrives.
+
 ### Dock & Taskbar Badge
 
 The app icon shows a badge with the number of pending reminders (scheduled or snoozed). The badge updates as reminders fire, get created, snoozed, or dismissed, and clears when nothing is pending. Numeric badges appear on the macOS Dock and Linux Unity launcher; Windows does not support numeric taskbar badges.

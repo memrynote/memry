@@ -8,9 +8,12 @@ import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters, settings } from '@memry/db-schema/schema/settings'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import { canvases } from '@memry/db-schema/schema/canvas'
+import { bookmarks } from '@memry/db-schema/schema/bookmarks'
+import { reminders } from '@memry/db-schema/schema/reminders'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import type { RecordSyncItemType, RecordSyncManifest } from '@memry/contracts/sync-api'
 import { withRetry } from './retry'
+import { toOutboundReminderPayload } from './reminder-outbound'
 import { getFromServer } from './http-client'
 import { itemRefKey } from './engine/sync-context'
 import type { SyncQueueManager } from './queue'
@@ -177,6 +180,24 @@ function getLocalSyncableItems(db: DrizzleDb): LocalSyncableItem[] {
   const syncedFilters = db.select().from(savedFilters).where(isNotNull(savedFilters.clock)).all()
   for (const f of syncedFilters) {
     addLocalItem({ id: f.id, type: 'filter', payload: JSON.stringify(f) })
+  }
+
+  const syncedBookmarks = db.select().from(bookmarks).where(isNotNull(bookmarks.clock)).all()
+  for (const b of syncedBookmarks) {
+    addLocalItem({ id: b.id, type: 'bookmark', payload: JSON.stringify(b) })
+  }
+
+  // Device-local reminder fields are stripped by the same helper the real push
+  // paths use, so this manifest payload matches exactly what reminder-sync.ts
+  // and reminder-handler.ts send. A mismatch here reads as a spurious manifest
+  // disagreement with the server. See reminder-outbound.ts.
+  const syncedReminders = db.select().from(reminders).where(isNotNull(reminders.clock)).all()
+  for (const r of syncedReminders) {
+    addLocalItem({
+      id: r.id,
+      type: 'reminder',
+      payload: JSON.stringify(toOutboundReminderPayload(r))
+    })
   }
 
   // Diverges from the tasks template (D2): tombstones MUST be excluded. The

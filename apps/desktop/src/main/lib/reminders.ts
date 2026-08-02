@@ -34,6 +34,11 @@ import { getMainI18n } from './main-i18n'
 import { publishProjectionEvent } from '../projections'
 import { emitCalendarProjectionChanged } from '../calendar/change-events'
 import { scheduleGoogleCalendarSourceSync } from '../calendar/google/local-sync-effects'
+import {
+  enqueueLocalSyncCreate,
+  enqueueLocalSyncDelete,
+  enqueueLocalSyncUpdate
+} from '../sync/local-mutations'
 
 const logger = createLogger('Reminders')
 
@@ -376,6 +381,7 @@ export function createReminder(input: CreateReminderInput): Reminder {
 
   const result = toReminder(reminder)
   emitEvent(ReminderChannels.events.CREATED, { reminder: result })
+  enqueueLocalSyncCreate('reminder', id)
   syncReminderCalendarState(id)
   updateAppBadge()
 
@@ -425,6 +431,7 @@ export function updateReminder(input: UpdateReminderInput): Reminder | null {
 
   const result = toReminder(reminder)
   emitEvent(ReminderChannels.events.UPDATED, { reminder: result })
+  enqueueLocalSyncUpdate('reminder', input.id)
   syncReminderCalendarState(input.id)
   updateAppBadge()
 
@@ -445,6 +452,13 @@ export function deleteReminder(id: string): boolean {
     return false
   }
 
+  // Snapshot must be captured BEFORE the delete runs (a post-delete read
+  // returns undefined) and triggeredAt must be stripped — it is device-local
+  // and must never sync. enqueueLocalSyncDelete no-ops on a falsy snapshot,
+  // so a missing snapshot here means the delete silently never syncs.
+  const { triggeredAt: _triggeredAt, ...snapshot } = reminder
+
+  enqueueLocalSyncDelete('reminder', id, JSON.stringify(snapshot))
   db.delete(reminders).where(eq(reminders.id, id)).run()
 
   emitEvent(ReminderChannels.events.DELETED, {
@@ -631,6 +645,7 @@ export function dismissReminder(id: string): Reminder | null {
 
   const result = toReminder(reminder)
   emitEvent(ReminderChannels.events.DISMISSED, { reminder: result })
+  enqueueLocalSyncUpdate('reminder', id)
   syncReminderCalendarState(id)
   removeDeliveredNotification(id)
   updateAppBadge()
@@ -669,6 +684,7 @@ export function snoozeReminder(input: SnoozeReminderInput): Reminder | null {
 
   const result = toReminder(reminder)
   emitEvent(ReminderChannels.events.SNOOZED, { reminder: result })
+  enqueueLocalSyncUpdate('reminder', input.id)
   syncReminderCalendarState(input.id)
   removeDeliveredNotification(input.id)
   updateAppBadge()
@@ -701,6 +717,7 @@ export function bulkDismissReminders(reminderIds: string[]): number {
 
     if (result.changes > 0) {
       dismissedCount++
+      enqueueLocalSyncUpdate('reminder', id)
       syncReminderCalendarState(id)
     }
   }
@@ -738,6 +755,8 @@ function processDueReminders(): void {
     const timestamp = now()
 
     for (const reminder of dueReminders) {
+      // triggeredAt is device-local (see reminder-handler): each device shows its
+      // own notification, so this transition must never push.
       db.update(reminders)
         .set({
           status: reminderStatus.TRIGGERED,

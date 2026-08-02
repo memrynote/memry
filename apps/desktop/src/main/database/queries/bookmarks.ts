@@ -198,14 +198,14 @@ export function reorderBookmarks(db: DataDb, bookmarkIds: string[]): void {
 
 /**
  * Bulk create bookmarks.
- * Returns the number of successfully created bookmarks (duplicates are skipped).
+ * Returns the bookmarks that were actually created (duplicates are skipped).
  */
 export function bulkCreateBookmarks(
   db: DataDb,
   items: Array<{ itemType: string; itemId: string }>,
-  generateId: () => string
-): number {
-  let created = 0
+  generateId: (itemType: string, itemId: string) => string
+): Bookmark[] {
+  const created: Bookmark[] = []
   const startPosition = getNextBookmarkPosition(db)
 
   for (let i = 0; i < items.length; i++) {
@@ -217,15 +217,17 @@ export function bulkCreateBookmarks(
     }
 
     try {
-      db.insert(bookmarks)
+      const bookmark = db
+        .insert(bookmarks)
         .values({
-          id: generateId(),
+          id: generateId(itemType, itemId),
           itemType,
           itemId,
-          position: startPosition + created
+          position: startPosition + created.length
         })
-        .run()
-      created++
+        .returning()
+        .get()
+      created.push(bookmark)
     } catch {
       // Skip on unique constraint violation (shouldn't happen due to check above)
     }

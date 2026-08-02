@@ -30,12 +30,27 @@ import { flushProjectionEvents } from '../projections'
 import { getIndexDatabase, getDatabase } from '../database/client'
 import { getNoteCacheById, getNoteCacheByPath } from '@main/database/queries/notes'
 import { getNoteMetadataById } from '@memry/storage-data'
-import { createRemindersService } from '@memry/app-core/reminders'
+import { createRemindersService, type RemindersServiceHooks } from '@memry/app-core/reminders'
 import { syncNoteDateReminders, clearNoteDateReminders } from '../notes/note-date-reminders'
 import { deleteFile } from '../vault/file-ops'
 import { NotesChannels, JournalChannels } from '@memry/contracts/ipc-channels'
 import { BrowserWindow } from 'electron'
 import path from 'path'
+import {
+  enqueueLocalSyncCreate,
+  enqueueLocalSyncDelete,
+  enqueueLocalSyncUpdate
+} from './local-mutations'
+
+// Forwards app-core reminder writes to the sync queue. app-core cannot import
+// desktop sync code directly (architecture boundary), so this is injected.
+const reminderSyncHooks: RemindersServiceHooks = {
+  onMutate: (op, id, snapshot) => {
+    if (op === 'create') enqueueLocalSyncCreate('reminder', id)
+    else if (op === 'update') enqueueLocalSyncUpdate('reminder', id)
+    else enqueueLocalSyncDelete('reminder', id, snapshot)
+  }
+}
 
 const log = createLogger('CrdtWriteback')
 
@@ -226,7 +241,11 @@ async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
       await writebackNewNote(noteId, doc, markdown, indexDb)
     }
     try {
-      await syncNoteDateReminders(noteId, markdown, createRemindersService(getDatabase()))
+      await syncNoteDateReminders(
+        noteId,
+        markdown,
+        createRemindersService(getDatabase(), reminderSyncHooks)
+      )
     } catch (err) {
       log.warn('Failed to sync note_date reminders on write-back', { noteId, err })
     }
@@ -529,7 +548,7 @@ export async function handleSyncDeletion(noteId: string): Promise<void> {
 
   if (!isJournalId(noteId)) {
     try {
-      await clearNoteDateReminders(noteId, createRemindersService(getDatabase()))
+      await clearNoteDateReminders(noteId, createRemindersService(getDatabase(), reminderSyncHooks))
     } catch (err) {
       log.warn('Failed to clear note_date reminders on sync deletion', { noteId, err })
     }

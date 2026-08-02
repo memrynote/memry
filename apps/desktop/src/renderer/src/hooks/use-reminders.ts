@@ -40,6 +40,36 @@ export const reminderKeys = {
 }
 
 // ============================================================================
+// Event helpers
+// ============================================================================
+
+/**
+ * Reminder events reach the renderer from two producers. The local IPC path
+ * (main/lib/reminders.ts) sends the resolved row, so the target can be compared
+ * directly. The sync handler (main/sync/item-handlers/reminder-handler.ts) has
+ * no resolved row for an inbound change and sends only `{ id }` — reading
+ * `event.reminder.targetType` there threw and, before the preload fan-out was
+ * hardened, killed every later listener on the channel.
+ *
+ * With no target on the event there is nothing to compare, so treat it as a
+ * match: a redundant refetch is cheap, a missed one leaves stale UI.
+ */
+function eventMatchesTarget(
+  event: {
+    reminder?: { targetType?: string; targetId?: string } | null
+    targetType?: string
+    targetId?: string
+  },
+  targetType: ReminderTargetType,
+  targetId: string
+): boolean {
+  const eventTargetType = event?.reminder?.targetType ?? event?.targetType
+  const eventTargetId = event?.reminder?.targetId ?? event?.targetId
+  if (!eventTargetType || !eventTargetId) return true
+  return eventTargetType === targetType && eventTargetId === targetId
+}
+
+// ============================================================================
 // Hooks
 // ============================================================================
 
@@ -121,28 +151,21 @@ export function useRemindersForTarget(
   useEffect(() => {
     if (!targetId) return
 
-    const unsubs = [
-      onReminderCreated((event) => {
-        if (event.reminder.targetType === targetType && event.reminder.targetId === targetId) {
-          void queryClient.invalidateQueries({
-            queryKey: reminderKeys.forTarget(targetType, targetId)
-          })
-        }
-      }),
-      onReminderDeleted((event) => {
-        if (event.targetType === targetType && event.targetId === targetId) {
-          void queryClient.invalidateQueries({
-            queryKey: reminderKeys.forTarget(targetType, targetId)
-          })
-        }
-      }),
-      onReminderDismissed((event) => {
-        if (event.reminder.targetType === targetType && event.reminder.targetId === targetId) {
-          void queryClient.invalidateQueries({
-            queryKey: reminderKeys.forTarget(targetType, targetId)
-          })
-        }
+    const invalidateIfMatching = (event: Parameters<typeof eventMatchesTarget>[0]): void => {
+      if (!eventMatchesTarget(event, targetType, targetId)) return
+      void queryClient.invalidateQueries({
+        queryKey: reminderKeys.forTarget(targetType, targetId)
       })
+    }
+
+    const unsubs = [
+      onReminderCreated(invalidateIfMatching),
+      // Sync applies an inbound dismiss/snooze as a plain merge and emits
+      // UPDATED, never DISMISSED. Without this the fired pill, journal badge
+      // and task chip keep showing a reminder the other device silenced.
+      onReminderUpdated(invalidateIfMatching),
+      onReminderDeleted(invalidateIfMatching),
+      onReminderDismissed(invalidateIfMatching)
     ]
 
     return () => unsubs.forEach((unsub) => unsub())

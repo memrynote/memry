@@ -78,7 +78,10 @@ function markSyncedTableMutation(
   }
 }
 
-function tryEnqueueProjectionSyncUpdate(entityType: 'task' | 'inbox', id: string): void {
+function tryEnqueueProjectionSyncUpdate(
+  entityType: 'task' | 'inbox' | 'reminder',
+  id: string
+): void {
   try {
     enqueueLocalSyncUpdate(entityType, id)
   } catch (error) {
@@ -99,6 +102,10 @@ function publishTaskCalendarMutation(taskId: string): void {
 }
 
 function publishReminderCalendarMutation(reminderId: string): void {
+  // Both callers (writeback update and delete-as-dismiss) only ever mutate an
+  // existing row in place — never remove it — so this is always an update,
+  // never enqueueLocalSyncDelete.
+  tryEnqueueProjectionSyncUpdate('reminder', reminderId)
   emitCalendarProjectionChanged(`reminder:${reminderId}`)
 }
 

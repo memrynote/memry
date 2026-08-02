@@ -10,6 +10,7 @@ import { describe, it, expect } from 'vitest'
 
 import {
   AgentMessageSyncPayloadSchema,
+  BookmarkSyncPayloadSchema,
   CalendarBindingSyncPayloadSchema,
   CalendarEventSyncPayloadSchema,
   CalendarExternalEventSyncPayloadSchema,
@@ -21,6 +22,7 @@ import {
   JournalSyncPayloadSchema,
   NoteSyncPayloadSchema,
   ProjectSyncPayloadSchema,
+  ReminderSyncPayloadSchema,
   StatusSyncSchema,
   TagDefinitionSyncPayloadSchema,
   TaskSyncPayloadSchema
@@ -524,5 +526,59 @@ describe('ProjectSyncPayloadSchema — links + homeNoteId', () => {
     const parsed = ProjectSyncPayloadSchema.parse({ name: 'P' })
     expect(parsed.links).toBeUndefined()
     expect(parsed.homeNoteId).toBeUndefined()
+  })
+})
+
+describe('BookmarkSyncPayloadSchema', () => {
+  it('parses a full payload', () => {
+    const result = BookmarkSyncPayloadSchema.safeParse({
+      itemType: 'note',
+      itemId: 'note_1',
+      position: 3,
+      createdAt: '2026-08-02T00:00:00.000Z',
+      clock: { device_a: 2 }
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('parses an empty payload (forward tolerance)', () => {
+    expect(BookmarkSyncPayloadSchema.safeParse({}).success).toBe(true)
+  })
+
+  it('ignores unknown fields from a newer client', () => {
+    const result = BookmarkSyncPayloadSchema.safeParse({ itemId: 'n1', futureField: 'x' })
+    expect(result.success).toBe(true)
+  })
+})
+
+describe('ReminderSyncPayloadSchema', () => {
+  it('parses a full payload', () => {
+    const result = ReminderSyncPayloadSchema.safeParse({
+      targetType: 'note',
+      targetId: 'note_1',
+      remindAt: '2026-08-03T09:00:00.000Z',
+      anchorId: 'anchor_1',
+      highlightText: 'hello',
+      highlightStart: 0,
+      highlightEnd: 5,
+      title: 'Check this',
+      note: 'because',
+      status: 'pending',
+      dismissedAt: null,
+      snoozedUntil: null,
+      createdAt: '2026-08-02T00:00:00.000Z',
+      modifiedAt: '2026-08-02T00:00:00.000Z',
+      clock: { device_a: 1 }
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('parses an empty payload (forward tolerance)', () => {
+    expect(ReminderSyncPayloadSchema.safeParse({}).success).toBe(true)
+  })
+
+  it('has no triggeredAt field — it is device-local', () => {
+    const parsed = ReminderSyncPayloadSchema.parse({ triggeredAt: '2026-08-02T00:00:00.000Z' })
+    expect('triggeredAt' in parsed).toBe(false)
   })
 })
