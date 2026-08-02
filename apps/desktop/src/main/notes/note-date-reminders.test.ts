@@ -147,30 +147,61 @@ describe('syncNoteDateReminders sync convergence', () => {
     expect(rows[0].id).toBe(deterministicId)
   })
 
-  it('converges to one row when the same pill derived on another device syncs in', async () => {
-    // Device A derives the pill from its own copy of the note and pushes it.
+  /** What device A puts on the wire for the same pill, via the real push path. */
+  async function pushFromDeviceA(): Promise<{ id: string; payload: ReminderSyncPayload }> {
     const deviceA = createTestDataDb()
-    const serviceA = createRemindersService(asClientDb(deviceA.db))
-    await syncNoteDateReminders('note_1', markdown, serviceA)
-    const pushedId = (await listRows(serviceA))[0].id
-    const pushed = JSON.parse(
-      reminderHandler.buildPushPayload(
-        asSyncDb(deviceA.db),
-        pushedId,
-        'device_a',
-        'create'
-      ) as string
-    ) as ReminderSyncPayload
-    deviceA.close()
+    try {
+      const serviceA = createRemindersService(asClientDb(deviceA.db))
+      await syncNoteDateReminders('note_1', markdown, serviceA)
+      const id = (await listRows(serviceA))[0].id
+      const payload = JSON.parse(
+        reminderHandler.buildPushPayload(asSyncDb(deviceA.db), id, 'device_a', 'create') as string
+      ) as ReminderSyncPayload
+      return { id, payload }
+    } finally {
+      deviceA.close()
+    }
+  }
+
+  it('converges to one row when the same pill derived on another device syncs in', async () => {
+    const { id: pushedId, payload } = await pushFromDeviceA()
 
     // This device already derived the same pill from the CRDT-synced note
     // content before A's row arrived; the handler then applies A's push.
     await syncNoteDateReminders('note_1', markdown, service)
-    reminderHandler.applyUpsert(makeCtx(testDb), pushedId, pushed, { device_a: 1 })
+    reminderHandler.applyUpsert(makeCtx(testDb), pushedId, payload, { device_a: 1 })
 
     const rows = await listRows()
     expect(rows).toHaveLength(1)
     expect(rows[0].id).toBe(deterministicId)
+  })
+
+  // The reverse arrival order, which is the one a fresh or long-offline device
+  // actually hits: 'note' and 'reminder' share the same pull-apply rank and
+  // note bodies land through a separate CRDT writeback, so A's reminder can
+  // reach this device before the note content it is derived from.
+  it('does not duplicate when the remote row arrives before this device reconciles', async () => {
+    const { id: pushedId, payload } = await pushFromDeviceA()
+
+    // A note_date row is owned by the local reconciler, so the handler refuses
+    // to insert one rather than invent a remindAt it cannot derive yet.
+    expect(reminderHandler.applyUpsert(makeCtx(testDb), pushedId, payload, { device_a: 1 })).toBe(
+      'skipped'
+    )
+    expect(await listRows()).toHaveLength(0)
+    expect(onMutate).not.toHaveBeenCalled()
+
+    // The note content then lands over CRDT and the writeback reconciles: one
+    // row, one enqueue — the legitimate first local derivation.
+    await syncNoteDateReminders('note_1', markdown, service)
+    expect(await listRows()).toHaveLength(1)
+    expect(onMutate).toHaveBeenCalledTimes(1)
+    expect(onMutate).toHaveBeenCalledWith('create', deterministicId)
+
+    // Steady state: every later note write enqueues nothing.
+    onMutate.mockClear()
+    await syncNoteDateReminders('note_1', markdown, service)
+    expect(onMutate).not.toHaveBeenCalled()
   })
 
   it('enqueues nothing on a re-run over unchanged markdown (loop guard)', async () => {

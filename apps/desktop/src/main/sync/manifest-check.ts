@@ -13,6 +13,7 @@ import { reminders } from '@memry/db-schema/schema/reminders'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import type { RecordSyncItemType, RecordSyncManifest } from '@memry/contracts/sync-api'
 import { withRetry } from './retry'
+import { toOutboundReminderPayload } from './reminder-outbound'
 import { getFromServer } from './http-client'
 import { itemRefKey } from './engine/sync-context'
 import type { SyncQueueManager } from './queue'
@@ -186,22 +187,16 @@ function getLocalSyncableItems(db: DrizzleDb): LocalSyncableItem[] {
     addLocalItem({ id: b.id, type: 'bookmark', payload: JSON.stringify(b) })
   }
 
-  // triggeredAt is device-local: strip it before treating a reminder as a
-  // syncable payload, mirroring reminder-sync.ts's serialize. status='triggered'
-  // is device-local too — normalize it to 'pending' so this manifest payload
-  // matches what reminder-sync.ts/reminder-handler.ts actually push (all
-  // outbound reminder sites must agree, or a mismatch here reads as a
-  // spurious manifest disagreement with the server).
+  // Device-local reminder fields are stripped by the same helper the real push
+  // paths use, so this manifest payload matches exactly what reminder-sync.ts
+  // and reminder-handler.ts send. A mismatch here reads as a spurious manifest
+  // disagreement with the server. See reminder-outbound.ts.
   const syncedReminders = db.select().from(reminders).where(isNotNull(reminders.clock)).all()
   for (const r of syncedReminders) {
-    const { triggeredAt: _triggeredAt, ...syncable } = r
     addLocalItem({
       id: r.id,
       type: 'reminder',
-      payload: JSON.stringify({
-        ...syncable,
-        status: syncable.status === 'triggered' ? 'pending' : syncable.status
-      })
+      payload: JSON.stringify(toOutboundReminderPayload(r))
     })
   }
 

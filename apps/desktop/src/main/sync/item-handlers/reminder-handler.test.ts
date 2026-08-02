@@ -168,6 +168,148 @@ describe('reminderHandler', () => {
     it('returns null for an unknown reminder', () => {
       expect(reminderHandler.buildPushPayload(ctx.db, 'missing', 'device-a', 'update')).toBeNull()
     })
+
+    // computeRemindAt resolves in the host OS timezone on purpose, so two
+    // devices derive different instants for the same date pill. The value is
+    // re-derivable from note content that already syncs via CRDT, so it must
+    // not travel — see reminder-outbound.ts.
+    it('omits the device-local derived remindAt for a note_date row', () => {
+      testDb.db
+        .insert(reminders)
+        .values({
+          id: 'rem_nd_note_1_dm_1',
+          targetType: 'note_date',
+          targetId: 'note_1',
+          anchorId: 'dm_1',
+          remindAt: '2026-08-03T09:00:00.000Z',
+          status: 'dismissed',
+          dismissedAt: '2026-08-03T08:00:00.000Z'
+        })
+        .run()
+
+      const payload = JSON.parse(
+        reminderHandler.buildPushPayload(
+          ctx.db,
+          'rem_nd_note_1_dm_1',
+          'device-a',
+          'update'
+        ) as string
+      )
+      expect(payload).not.toHaveProperty('remindAt')
+      // The user's intent still syncs.
+      expect(payload.status).toBe('dismissed')
+      expect(payload.dismissedAt).toBe('2026-08-03T08:00:00.000Z')
+    })
+
+    it('still sends remindAt for a non-derived (note) reminder', () => {
+      testDb.db
+        .insert(reminders)
+        .values({
+          id: 'rem_3',
+          targetType: 'note',
+          targetId: 'note_1',
+          remindAt: '2026-08-03T09:00:00.000Z',
+          status: 'pending'
+        })
+        .run()
+
+      const payload = JSON.parse(
+        reminderHandler.buildPushPayload(ctx.db, 'rem_3', 'device-a', 'update') as string
+      )
+      expect(payload.remindAt).toBe('2026-08-03T09:00:00.000Z')
+    })
+  })
+
+  describe('note_date rows are owned by the local reconciler', () => {
+    const noteDateId = 'rem_nd_note_1_dm_1'
+    const noteDatePayload: ReminderSyncPayload = {
+      targetType: 'note_date',
+      targetId: 'note_1',
+      anchorId: 'dm_1',
+      status: 'pending',
+      createdAt: '2026-08-02T00:00:00.000Z',
+      modifiedAt: '2026-08-02T00:00:00.000Z'
+    }
+
+    function seedLocalNoteDateRow(remindAt: string, status = 'pending'): void {
+      testDb.db
+        .insert(reminders)
+        .values({
+          id: noteDateId,
+          targetType: 'note_date',
+          targetId: 'note_1',
+          anchorId: 'dm_1',
+          remindAt,
+          status,
+          clock: { device_b: 1 }
+        })
+        .run()
+    }
+
+    it('skips an inbound upsert when no local row exists yet', () => {
+      const result = reminderHandler.applyUpsert(ctx, noteDateId, noteDatePayload, { device_a: 1 })
+
+      expect(result).toBe('skipped')
+      expect(testDb.db.select().from(reminders).all()).toHaveLength(0)
+    })
+
+    it('applies dismissal state onto an existing local row without touching remindAt', () => {
+      seedLocalNoteDateRow('2026-08-03T06:00:00.000Z')
+
+      const result = reminderHandler.applyUpsert(
+        ctx,
+        noteDateId,
+        {
+          ...noteDatePayload,
+          status: 'dismissed',
+          dismissedAt: '2026-08-03T05:00:00.000Z',
+          snoozedUntil: null
+        },
+        { device_a: 1, device_b: 1 }
+      )
+      expect(result).toBe('applied')
+
+      const row = testDb.db.select().from(reminders).where(eq(reminders.id, noteDateId)).get()
+      expect(row?.status).toBe('dismissed')
+      expect(row?.dismissedAt).toBe('2026-08-03T05:00:00.000Z')
+      expect(row?.remindAt).toBe('2026-08-03T06:00:00.000Z')
+    })
+
+    // The mixed-timezone scenario end to end: UTC-5 dismissed the reminder,
+    // UTC+3 derived a different instant for the same pill. The dismiss must
+    // land and the local derived time must survive, even though this payload
+    // still carries remindAt (an older client, or one queued before the
+    // outbound rule existed).
+    it('keeps both the dismiss and the local remindAt against a foreign remindAt', () => {
+      seedLocalNoteDateRow('2026-08-03T06:00:00.000Z', 'dismissed')
+
+      reminderHandler.applyUpsert(
+        ctx,
+        noteDateId,
+        {
+          ...noteDatePayload,
+          remindAt: '2026-08-02T22:00:00.000Z',
+          status: 'dismissed',
+          dismissedAt: '2026-08-03T05:00:00.000Z'
+        },
+        { device_a: 1, device_b: 1 }
+      )
+
+      const row = testDb.db.select().from(reminders).where(eq(reminders.id, noteDateId)).get()
+      expect(row?.status).toBe('dismissed')
+      expect(row?.remindAt).toBe('2026-08-03T06:00:00.000Z')
+    })
+
+    it('seedUnclocked omits remindAt for a note_date row', () => {
+      seedLocalNoteDateRow('2026-08-03T06:00:00.000Z')
+      testDb.db.update(reminders).set({ clock: null }).where(eq(reminders.id, noteDateId)).run()
+
+      const queue = new SyncQueueManager(asSyncDb(testDb.db))
+      reminderHandler.seedUnclocked(ctx.db, 'device-a', queue)
+
+      const [queued] = queue.dequeue(1)
+      expect(JSON.parse(queued.payload)).not.toHaveProperty('remindAt')
+    })
   })
 
   it('seedUnclocked clocks pre-existing rows and enqueues them', () => {

@@ -4,6 +4,7 @@ import type * as schema from '@memry/db-schema/data-schema'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
+import { toOutboundReminderPayload } from './reminder-outbound'
 import type { SyncQueueManager } from './queue'
 
 type DrizzleDb = BetterSQLite3Database<typeof schema>
@@ -49,19 +50,10 @@ export class ReminderSyncService {
 
         return { ...local, clock: newClock }
       },
-      // triggeredAt is device-local: never push it. status='triggered' is
-      // too — it just means THIS device's scheduler fired — so normalize it
-      // to 'pending' on the way out. Real transitions (dismissed/snoozed)
-      // still sync unchanged. Keep in sync with reminder-handler.ts's
-      // buildPushPayload/seedUnclocked and manifest-check.ts's reminder
-      // block — all four outbound sites must agree.
-      serialize: (local) => {
-        const { triggeredAt: _triggeredAt, ...syncable } = local
-        return {
-          ...syncable,
-          status: syncable.status === 'triggered' ? 'pending' : syncable.status
-        }
-      },
+      // Device-local fields (triggeredAt, status='triggered', and a note_date
+      // row's derived remindAt) never go out. All four outbound sites share
+      // one implementation so they cannot drift — see reminder-outbound.ts.
+      serialize: (local) => toOutboundReminderPayload(local),
       buildDeletePayload: ({ extra, deviceId }) => withIncrementedClock(extra[0], deviceId)
     })
   }

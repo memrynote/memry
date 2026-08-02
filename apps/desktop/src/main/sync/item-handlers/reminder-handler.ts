@@ -7,12 +7,11 @@ import { utcNow } from '@memry/shared/utc'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { createLogger } from '../../lib/logger'
+import { toOutboundReminderPayload } from '../reminder-outbound'
 import { BaseItemHandler } from './base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 
 const log = createLogger('ReminderHandler')
-
-type ReminderRow = typeof reminders.$inferSelect
 
 /**
  * `triggeredAt` is intentionally never read from or written by the payload.
@@ -22,23 +21,13 @@ type ReminderRow = typeof reminders.$inferSelect
  *
  * `status: 'triggered'` is device-local for the same reason: it just means
  * THIS device's scheduler fired. Outbound payloads normalize it to 'pending'
- * (see buildPushPayload / seedUnclocked) so a device that hasn't reached
- * remindAt yet doesn't get talked out of its own notification. Real user
- * intent — 'dismissed' / 'snoozed' — still syncs unchanged.
+ * (see reminder-outbound.ts) so a device that hasn't reached remindAt yet
+ * doesn't get talked out of its own notification. Real user intent —
+ * 'dismissed' / 'snoozed' — still syncs unchanged.
+ *
+ * `remindAt` on a `note_date` row is device-local too: it is derived from the
+ * note's date pill in the host OS timezone. See reminder-outbound.ts.
  */
-
-/**
- * Strip the device-local `triggeredAt` field and normalize a device-local
- * `status: 'triggered'` to `'pending'` before a reminder row goes out over
- * the wire. See the doc comment above for why.
- */
-function toOutboundReminderPayload(row: ReminderRow): Record<string, unknown> {
-  const { triggeredAt: _triggeredAt, ...syncable } = row
-  return {
-    ...syncable,
-    status: syncable.status === 'triggered' ? 'pending' : syncable.status
-  }
-}
 
 class ReminderHandler extends BaseItemHandler<ReminderSyncPayload> {
   readonly type = 'reminder' as const
@@ -65,12 +54,19 @@ class ReminderHandler extends BaseItemHandler<ReminderSyncPayload> {
           log.warn('Concurrent reminder edit, using last-write-wins', { itemId })
         }
 
+        // `remindAt` on a note_date row is device-local (derived from the note's
+        // date pill in THIS device's timezone — see reminder-outbound.ts).
+        // Current clients omit it from the payload, but one running an older
+        // build, or a payload queued before this rule existed, still sends it.
+        // Ignoring it here is what stops the two devices contending over the
+        // value and resetting each other's dismiss.
+        const localRemindAt = (data.targetType ?? existing.targetType) === 'note_date'
         // triggeredAt is deliberately absent from this set — device-local.
         tx.update(reminders)
           .set({
             targetType: data.targetType ?? existing.targetType,
             targetId: data.targetId ?? existing.targetId,
-            remindAt: data.remindAt ?? existing.remindAt,
+            remindAt: localRemindAt ? existing.remindAt : (data.remindAt ?? existing.remindAt),
             anchorId: data.anchorId ?? existing.anchorId,
             highlightText: data.highlightText ?? existing.highlightText,
             highlightStart: data.highlightStart ?? existing.highlightStart,
@@ -93,6 +89,22 @@ class ReminderHandler extends BaseItemHandler<ReminderSyncPayload> {
 
       if (!data.targetType || !data.targetId) {
         log.warn('Skipping reminder insert, payload missing targetType or targetId', { itemId })
+        return 'skipped'
+      }
+
+      // A note_date row is OWNED by the local reconciler
+      // (notes/note-date-reminders.ts): it derives the row — including its
+      // device-local remindAt — from the note's date pills, and that note
+      // content already syncs via CRDT. Sync carries only the user's dismissal
+      // state for these rows, so there is nothing to insert here. With remindAt
+      // absent from the payload an insert would have to invent a time, and
+      // `now` would fire the reminder immediately. Once this device's copy of
+      // the note lands, its reconciler creates the row correctly and later
+      // merges carry the dismissal.
+      if (data.targetType === 'note_date') {
+        log.info('Skipping remote note_date reminder insert, derived locally from note content', {
+          itemId
+        })
         return 'skipped'
       }
 
