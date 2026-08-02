@@ -34,6 +34,18 @@ vi.mock('../calendar/google/local-sync-effects', () => ({
   scheduleGoogleCalendarSourceSync
 }))
 
+const { enqueueCreateSpy, enqueueUpdateSpy, enqueueDeleteSpy } = vi.hoisted(() => ({
+  enqueueCreateSpy: vi.fn(),
+  enqueueUpdateSpy: vi.fn(),
+  enqueueDeleteSpy: vi.fn()
+}))
+
+vi.mock('../sync/local-mutations', () => ({
+  enqueueLocalSyncCreate: enqueueCreateSpy,
+  enqueueLocalSyncUpdate: enqueueUpdateSpy,
+  enqueueLocalSyncDelete: enqueueDeleteSpy
+}))
+
 const notificationInstances: MockNotification[] = []
 const getStatusMock = vi.fn(() => ({
   isOpen: true,
@@ -162,6 +174,9 @@ describe('reminders service', () => {
     reminderCounter = 0
     emitCalendarProjectionChanged.mockClear()
     scheduleGoogleCalendarSourceSync.mockClear()
+    enqueueCreateSpy.mockClear()
+    enqueueUpdateSpy.mockClear()
+    enqueueDeleteSpy.mockClear()
     getStatusMock.mockReset()
     getStatusMock.mockReturnValue({
       isOpen: true,
@@ -965,6 +980,100 @@ describe('reminders service', () => {
       expect(reminder?.targetTitle).toBeNull()
       expect(reminder?.targetExists).toBe(false)
       expect(reminder?.highlightExists).toBe(false)
+    })
+  })
+
+  describe('reminder sync enqueue', () => {
+    it('enqueues a create when a reminder is created', () => {
+      const futureDate = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+      const created = remindersService.createReminder({
+        targetType: 'note',
+        targetId: 'note-1',
+        remindAt: futureDate
+      })
+
+      expect(enqueueCreateSpy).toHaveBeenCalledWith('reminder', created.id)
+    })
+
+    it('enqueues an update when a reminder is updated', () => {
+      const id = seedReminder({ remindAt: '2025-01-20T09:00:00.000Z' })
+      enqueueUpdateSpy.mockClear()
+
+      remindersService.updateReminder({ id, title: 'Updated title' })
+
+      expect(enqueueUpdateSpy).toHaveBeenCalledWith('reminder', id)
+    })
+
+    it('enqueues an update when a reminder is dismissed', () => {
+      const id = seedReminder({ status: reminderStatus.PENDING })
+      enqueueUpdateSpy.mockClear()
+
+      remindersService.dismissReminder(id)
+
+      expect(enqueueUpdateSpy).toHaveBeenCalledWith('reminder', id)
+    })
+
+    it('enqueues an update when a reminder is snoozed', () => {
+      const id = seedReminder({ status: reminderStatus.PENDING })
+      enqueueUpdateSpy.mockClear()
+
+      const snoozeUntil = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+      remindersService.snoozeReminder({ id, snoozeUntil })
+
+      expect(enqueueUpdateSpy).toHaveBeenCalledWith('reminder', id)
+    })
+
+    it('enqueues an update per dismissed reminder on bulk dismiss', () => {
+      const idA = seedReminder({ status: reminderStatus.PENDING })
+      const idB = seedReminder({ status: reminderStatus.PENDING })
+      enqueueUpdateSpy.mockClear()
+
+      remindersService.bulkDismissReminders([idA, idB, 'missing'])
+
+      expect(enqueueUpdateSpy).toHaveBeenCalledWith('reminder', idA)
+      expect(enqueueUpdateSpy).toHaveBeenCalledWith('reminder', idB)
+      expect(enqueueUpdateSpy).not.toHaveBeenCalledWith('reminder', 'missing')
+    })
+
+    it('does NOT enqueue when the scheduler marks a reminder triggered', () => {
+      seedReminder({
+        id: 'rem-trigger-enqueue',
+        remindAt: '2000-01-01T00:00:00.000Z',
+        status: reminderStatus.PENDING
+      })
+      enqueueUpdateSpy.mockClear()
+      enqueueCreateSpy.mockClear()
+
+      remindersService.startReminderScheduler()
+      remindersService.stopReminderScheduler()
+
+      const updated = dataDb.db
+        .select()
+        .from(reminders)
+        .where(eq(reminders.id, 'rem-trigger-enqueue'))
+        .get()
+      expect(updated?.status).toBe(reminderStatus.TRIGGERED)
+      expect(enqueueUpdateSpy).not.toHaveBeenCalled()
+      expect(enqueueCreateSpy).not.toHaveBeenCalled()
+    })
+
+    it('enqueues a delete with a snapshot that omits triggeredAt', () => {
+      const id = seedReminder({ status: reminderStatus.TRIGGERED })
+      dataDb.db
+        .update(reminders)
+        .set({ triggeredAt: '2025-01-01T00:05:00.000Z' })
+        .where(eq(reminders.id, id))
+        .run()
+
+      remindersService.deleteReminder(id)
+
+      expect(enqueueDeleteSpy).toHaveBeenCalledWith('reminder', id, expect.any(String))
+      const snapshot = JSON.parse(enqueueDeleteSpy.mock.calls[0]?.[2] as string) as Record<
+        string,
+        unknown
+      >
+      expect(snapshot.id).toBe(id)
+      expect('triggeredAt' in snapshot).toBe(false)
     })
   })
 })
