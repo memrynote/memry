@@ -61,6 +61,18 @@ describe('reminderHandler', () => {
     expect(testDb.db.select().from(reminders).all()).toHaveLength(0)
   })
 
+  it('skips inserting when the payload has no remindAt', () => {
+    // Filling one in (`now`) would fire a notification the user never set.
+    const result = reminderHandler.applyUpsert(
+      ctx,
+      'rem_1',
+      { ...payload, remindAt: undefined },
+      { a: 1 }
+    )
+    expect(result).toBe('skipped')
+    expect(testDb.db.select().from(reminders).all()).toHaveLength(0)
+  })
+
   it('propagates a dismiss from another device', () => {
     reminderHandler.applyUpsert(ctx, 'rem_1', payload, { a: 1 })
     const result = reminderHandler.applyUpsert(
@@ -74,6 +86,47 @@ describe('reminderHandler', () => {
     const row = testDb.db.select().from(reminders).where(eq(reminders.id, 'rem_1')).get()
     expect(row?.status).toBe('dismissed')
     expect(row?.dismissedAt).toBe('2026-08-03T10:00:00.000Z')
+  })
+
+  it('propagates a clear, so an explicit null does not leave a stale value behind', () => {
+    reminderHandler.applyUpsert(
+      ctx,
+      'rem_1',
+      { ...payload, status: 'snoozed', snoozedUntil: '2026-08-03T10:00:00.000Z', title: 'standup' },
+      { a: 1 }
+    )
+
+    // updateReminder's reschedule path writes snoozedUntil: null, and clearing
+    // a title writes title: null. Push payloads carry the whole row, so both
+    // reach this handler as explicit nulls — not as absent fields.
+    const result = reminderHandler.applyUpsert(
+      ctx,
+      'rem_1',
+      { ...payload, status: 'pending', snoozedUntil: null, title: null },
+      { a: 2 }
+    )
+    expect(result).toBe('applied')
+
+    const row = testDb.db.select().from(reminders).where(eq(reminders.id, 'rem_1')).get()
+    expect(row?.snoozedUntil).toBeNull()
+    expect(row?.title).toBeNull()
+  })
+
+  it('keeps a local value when the field is absent rather than null', () => {
+    reminderHandler.applyUpsert(
+      ctx,
+      'rem_1',
+      { ...payload, status: 'snoozed', snoozedUntil: '2026-08-03T10:00:00.000Z', title: 'standup' },
+      { a: 1 }
+    )
+
+    // An older client that never sent these fields must not be read as a clear.
+    reminderHandler.applyUpsert(ctx, 'rem_1', { ...payload, status: 'dismissed' }, { a: 2 })
+
+    const row = testDb.db.select().from(reminders).where(eq(reminders.id, 'rem_1')).get()
+    expect(row?.status).toBe('dismissed')
+    expect(row?.snoozedUntil).toBe('2026-08-03T10:00:00.000Z')
+    expect(row?.title).toBe('standup')
   })
 
   it('preserves local triggeredAt across an inbound upsert', () => {

@@ -371,7 +371,7 @@ describe('0036_canvas_assets migration', () => {
   })
 })
 
-describe('0040_bookmark_reminder_sync migration', () => {
+describe('0042_bookmark_reminder_sync migration', () => {
   let tempDir: string
   const migrationsDir = path.join(__dirname, 'drizzle-data')
 
@@ -384,19 +384,19 @@ describe('0040_bookmark_reminder_sync migration', () => {
   })
 
   /**
-   * Copies drizzle-data/ to a temp folder with 0040 and everything after it
+   * Copies drizzle-data/ to a temp folder with 0042 and everything after it
    * stripped (SQL files + journal entries) so a database migrated from it is
    * shaped like a production install: nanoid bookmark ids, ad-hoc reminder ids,
    * no clock columns.
    */
-  function makePre0040Folder(): string {
-    const copy = path.join(tempDir, 'drizzle-data-pre-0040')
+  function makePre0042Folder(): string {
+    const copy = path.join(tempDir, 'drizzle-data-pre-0042')
     fs.cpSync(migrationsDir, copy, { recursive: true })
     const journalPath = path.join(copy, 'meta', '_journal.json')
     const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
       entries: { tag: string }[]
     }
-    const cutoff = journal.entries.findIndex((e) => e.tag === '0040_bookmark_reminder_sync')
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0042_bookmark_reminder_sync')
     expect(cutoff).toBeGreaterThanOrEqual(0)
     const removed = journal.entries.splice(cutoff)
     for (const entry of removed) {
@@ -411,13 +411,13 @@ describe('0040_bookmark_reminder_sync migration', () => {
   }
 
   /** Opens a database migrated only up to 0039 — the pre-upgrade production shape. */
-  function openPre0040(): {
+  function openPre0042(): {
     sqlite: InstanceType<typeof Database>
     db: ReturnType<typeof drizzle>
   } {
     const sqlite = new Database(path.join(tempDir, 'data.db'))
     const db = drizzle(sqlite)
-    migrate(db, { migrationsFolder: makePre0040Folder() })
+    migrate(db, { migrationsFolder: makePre0042Folder() })
     return { sqlite, db }
   }
 
@@ -426,7 +426,7 @@ describe('0040_bookmark_reminder_sync migration', () => {
   // green-by-construction. The only meaningful test is the upgrade path: a
   // database that already applied 0000-0039 and holds legacy rows.
   it('rewrites bookmark ids deterministically and preserves every row', () => {
-    const { sqlite, db } = openPre0040()
+    const { sqlite, db } = openPre0042()
     expect(columnNames(sqlite, 'bookmarks')).not.toContain('clock')
 
     const insert = sqlite.prepare(
@@ -462,7 +462,7 @@ describe('0040_bookmark_reminder_sync migration', () => {
   })
 
   it('collapses duplicate note_date reminders before rewriting ids', () => {
-    const { sqlite, db } = openPre0040()
+    const { sqlite, db } = openPre0042()
     expect(columnNames(sqlite, 'reminders')).not.toContain('clock')
 
     const insert = sqlite.prepare(
@@ -509,7 +509,7 @@ describe('0040_bookmark_reminder_sync migration', () => {
   })
 
   it('leaves non-note_date reminder ids untouched', () => {
-    const { sqlite, db } = openPre0040()
+    const { sqlite, db } = openPre0042()
 
     sqlite
       .prepare(

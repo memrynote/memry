@@ -20,7 +20,7 @@ ALTER TABLE reminders ADD COLUMN synced_at TEXT;
 --
 -- idx_bookmarks_unique_item on (item_type, item_id) guarantees at most one row
 -- per pair, so this mapping is strictly 1:1 — every row survives.
-UPDATE bookmarks SET id = 'tmp0040_' || id;
+UPDATE bookmarks SET id = 'tmp0042_' || id;
 --> statement-breakpoint
 UPDATE bookmarks SET id = 'bmk_' || item_type || '_' || item_id;
 --> statement-breakpoint
@@ -37,7 +37,7 @@ WHERE target_type = 'note_date'
     GROUP BY target_id, anchor_id
   );
 --> statement-breakpoint
-UPDATE reminders SET id = 'tmp0040_' || id
+UPDATE reminders SET id = 'tmp0042_' || id
 WHERE target_type = 'note_date' AND anchor_id IS NOT NULL;
 --> statement-breakpoint
 UPDATE reminders SET id = 'rem_nd_' || target_id || '_' || anchor_id

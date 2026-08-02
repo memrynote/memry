@@ -64,24 +64,38 @@ class ReminderHandler extends BaseItemHandler<ReminderSyncPayload> {
         // devices contending over the value and resetting each other's dismiss.
         // Unanchored note_date rows are ordinary user intent with a
         // user-supplied time, so theirs must keep syncing.
+        //
+        // A push payload is the WHOLE row, so on a NULLABLE column an absent
+        // field and an explicit `null` mean different things: absent is a
+        // sender that never had the field (an older build, or a value stripped
+        // on the way out), `null` is a user CLEAR. `updateReminder`'s reschedule
+        // path nulls `snoozedUntil`, and clearing a title writes `title: null`.
+        // `??` collapses both into "keep what we have", which would pin the
+        // stale value on every other device permanently — the two rows never
+        // reconverge. Nullable fields therefore merge on `undefined`, not on
+        // falsiness. Non-nullable ones keep `??`: null cannot reach them.
+        const nextAnchorId = data.anchorId !== undefined ? data.anchorId : existing.anchorId
         const localRemindAt =
-          (data.targetType ?? existing.targetType) === 'note_date' &&
-          !!(data.anchorId ?? existing.anchorId)
+          (data.targetType ?? existing.targetType) === 'note_date' && !!nextAnchorId
         // triggeredAt is deliberately absent from this set — device-local.
         tx.update(reminders)
           .set({
             targetType: data.targetType ?? existing.targetType,
             targetId: data.targetId ?? existing.targetId,
             remindAt: localRemindAt ? existing.remindAt : (data.remindAt ?? existing.remindAt),
-            anchorId: data.anchorId ?? existing.anchorId,
-            highlightText: data.highlightText ?? existing.highlightText,
-            highlightStart: data.highlightStart ?? existing.highlightStart,
-            highlightEnd: data.highlightEnd ?? existing.highlightEnd,
-            title: data.title ?? existing.title,
-            note: data.note ?? existing.note,
+            anchorId: nextAnchorId,
+            highlightText:
+              data.highlightText !== undefined ? data.highlightText : existing.highlightText,
+            highlightStart:
+              data.highlightStart !== undefined ? data.highlightStart : existing.highlightStart,
+            highlightEnd:
+              data.highlightEnd !== undefined ? data.highlightEnd : existing.highlightEnd,
+            title: data.title !== undefined ? data.title : existing.title,
+            note: data.note !== undefined ? data.note : existing.note,
             status: data.status ?? existing.status,
-            dismissedAt: data.dismissedAt ?? existing.dismissedAt,
-            snoozedUntil: data.snoozedUntil ?? existing.snoozedUntil,
+            dismissedAt: data.dismissedAt !== undefined ? data.dismissedAt : existing.dismissedAt,
+            snoozedUntil:
+              data.snoozedUntil !== undefined ? data.snoozedUntil : existing.snoozedUntil,
             modifiedAt: data.modifiedAt ?? now,
             clock: resolution.mergedClock,
             syncedAt: now
@@ -93,8 +107,14 @@ class ReminderHandler extends BaseItemHandler<ReminderSyncPayload> {
         return resolution.action === 'merge' ? 'conflict' : 'applied'
       }
 
-      if (!data.targetType || !data.targetId) {
-        log.warn('Skipping reminder insert, payload missing targetType or targetId', { itemId })
+      // Every field on the payload is optional (forward tolerance), but these
+      // three back NOT NULL columns and a row without them is not a reminder:
+      // the insert would throw on the constraint, or — with `remindAt` filled in
+      // as `now` — fire a notification the user never set. Degrade to `skipped`.
+      if (!data.targetType || !data.targetId || !data.remindAt) {
+        log.warn('Skipping reminder insert, payload missing targetType, targetId or remindAt', {
+          itemId
+        })
         return 'skipped'
       }
 
@@ -124,7 +144,7 @@ class ReminderHandler extends BaseItemHandler<ReminderSyncPayload> {
           id: itemId,
           targetType: data.targetType,
           targetId: data.targetId,
-          remindAt: data.remindAt ?? now,
+          remindAt: data.remindAt,
           anchorId: data.anchorId ?? null,
           highlightText: data.highlightText ?? null,
           highlightStart: data.highlightStart ?? null,
