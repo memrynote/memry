@@ -26,9 +26,7 @@ import {
   type CanvasListAssetsResponse
 } from '@memry/contracts/canvas-api'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
-import { requireDatabase, type DataDb } from '../database'
-import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
-import { getOrInitializeLocalVaultKey, secureCleanup } from '../crypto'
+import { getCanvasContext, disposeCanvasVaultKey } from '../canvas/vault-key'
 import { createCanvas, deleteCanvas, getCanvas, listCanvases, updateCanvas } from '../canvas/store'
 import { listCanvasLibraryItems, saveCanvasLibraryItems } from '../canvas/library-store'
 import { syncCanvasCreate, syncCanvasUpdate, syncCanvasDelete } from '../canvas/sync-bridge'
@@ -51,14 +49,6 @@ function emitCanvasEvent(
   })
 }
 
-// Resolved once per process, like agent bootstrap (main/agent/bootstrap.ts):
-// getOrInitializeLocalVaultKey consults the OS keychain, and under
-// NODE_ENV=test the keychain degrades to not-found (400ms timeout in
-// crypto/keychain.ts) — so only the first call in a process can initialize;
-// every later call would throw "verifier exists but master key is missing".
-// A failed resolution is not cached so a transient keychain error can retry.
-let vaultKeyPromise: Promise<Uint8Array> | null = null
-
 // Binary payload validation is app-side, not contracts (A3): the renderer
 // serializes ArrayBuffer to number[] over the invoke bridge, so accept both.
 const UploadCanvasAssetSchema = z.object({
@@ -67,27 +57,6 @@ const UploadCanvasAssetSchema = z.object({
   mimeType: z.string().min(1),
   data: z.instanceof(ArrayBuffer).or(z.array(z.number()))
 })
-
-function getVaultKeyOnce(db: DataDb, vaultId: string): Promise<Uint8Array> {
-  if (!vaultKeyPromise) {
-    vaultKeyPromise = getOrInitializeLocalVaultKey(db, vaultId).catch((error: unknown) => {
-      vaultKeyPromise = null
-      throw error
-    })
-  }
-  return vaultKeyPromise
-}
-
-async function getCanvasContext(): Promise<{
-  db: DataDb
-  vaultId: string
-  vaultKey: Uint8Array
-}> {
-  const db = requireDatabase()
-  const vaultId = getOrCreateVaultUuid(db)
-  const vaultKey = await getVaultKeyOnce(db, vaultId)
-  return { db, vaultId, vaultKey }
-}
 
 export function registerCanvasHandlers(): void {
   // canvas:create - Create a new canvas (optionally with an initial scene)
@@ -273,8 +242,5 @@ export function unregisterCanvasHandlers(): void {
   ipcMain.removeHandler(CanvasChannels.invoke.LIST_ASSETS)
   ipcMain.removeHandler(CanvasChannels.invoke.LIBRARY_LIST)
   ipcMain.removeHandler(CanvasChannels.invoke.LIBRARY_SAVE)
-  if (vaultKeyPromise) {
-    void vaultKeyPromise.then((key) => secureCleanup(key)).catch(() => {})
-    vaultKeyPromise = null
-  }
+  disposeCanvasVaultKey()
 }
