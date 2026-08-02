@@ -113,6 +113,11 @@ export interface ImporterMeta {
      * including attachments — become readable without Full Disk Access.
      */
     directory?: boolean
+    /**
+     * Offer a folder picker alongside the file picker (the dialog renders a
+     * second button — Electron cannot combine both in one native panel).
+     */
+    allowDirectory?: boolean
     /** Pre-navigate the picker to this absolute path. */
     defaultPath?: string
     /** Guidance shown inside the native picker. */

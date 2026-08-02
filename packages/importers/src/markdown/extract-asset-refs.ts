@@ -6,6 +6,8 @@
  *   - is NOT a URL (no scheme like http://)
  *   - is NOT an absolute path (no leading /)
  *   - is NOT a wikilink ([[...]])
+ *   - is NOT another markdown file (that's a note-to-note link, not an asset —
+ *     copying it in would duplicate the note as a file attachment)
  *
  * Returns deduplicated list of relative path strings.
  */
@@ -29,12 +31,15 @@ const WIKI_EMBED_RE = /!\[\[([^\][|#]+)(?:[|#][^\][]*)?\]\]/g
 
 const URL_RE = /^[a-zA-Z][a-zA-Z\d+\-.]*:/
 const WIKILINK_RE = /^\[\[/
+/** Sibling notes, matched after stripping any `#anchor` / `?query` tail. */
+const MARKDOWN_REF_RE = /\.(md|markdown)$/i
 
 /**
  * An embed points at an asset only when it names a file with an extension that
  * is not another note: `![[Some Note]]` and `![[Some Note.md]]` transclude a
  * note, and copying either in would duplicate the note as a file attachment.
- * Markdown-syntax refs need no such test — they carry a real path already.
+ * Markdown-syntax refs carry a real path already, so they only need the
+ * narrower `MARKDOWN_REF_RE` check for the same note-link case.
  */
 const EMBEDDABLE_REF_RE = /\.(?!md$|markdown$)[^./\\]+$/i
 
@@ -48,6 +53,7 @@ export function extractAssetRefs(body: string): string[] {
     if (URL_RE.test(ref)) continue
     if (WIKILINK_RE.test(ref)) continue
     if (ref.startsWith('/')) continue
+    if (MARKDOWN_REF_RE.test(ref.split(/[?#]/)[0])) continue
     seen.add(ref)
   }
 
