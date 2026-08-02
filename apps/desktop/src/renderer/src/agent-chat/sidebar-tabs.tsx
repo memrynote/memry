@@ -19,7 +19,7 @@ import { ConversationList } from './conversation-list'
 
 export type RightSidebarTab = 'day' | 'agent'
 
-const RIGHT_SIDEBAR_TAB_KEY = ['right', 'sidebar', 'tab'].join('-')
+export const RIGHT_SIDEBAR_TAB_KEY = ['right', 'sidebar', 'tab'].join('-')
 const RIGHT_SIDEBAR_TABS: RightSidebarTab[] = ['day', 'agent']
 
 interface SidebarTabsProps {
