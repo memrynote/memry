@@ -28,14 +28,15 @@ function noteTitle(relPath: string): string {
 export function mapFiles(files: FileDescriptor[]): MarkdownImportPlan {
   const notes: NotePlan[] = []
 
-  for (const { relPath, absPath } of files) {
+  for (const { relPath, absPath, rootDir } of files) {
     const ext = path.extname(relPath).toLowerCase()
     if (!MD_EXTENSIONS.has(ext)) continue
 
     notes.push({
       absPath,
       title: noteTitle(relPath),
-      vaultFolder: vaultFolder(relPath)
+      vaultFolder: vaultFolder(relPath),
+      rootDir
     })
   }
 
