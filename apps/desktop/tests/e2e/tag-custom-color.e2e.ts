@@ -2,11 +2,13 @@
 /**
  * Tag custom color E2E
  *
- * Covers the sidebar tag overflow menu's "Change color" submenu — the one
+ * Covers the tag page's overflow menu "Change color" submenu — the one
  * reachable surface that hosts the color picker (the create-tag ColorPicker
  * popup is not mounted anywhere in the app, and the Settings → Tags color
  * dialog is not navigable through any existing E2E path; both noted as gaps
- * below).
+ * below). The tag page (`pages/folder-view.tsx` (tag scope)) is opened by clicking a tag in
+ * the sidebar — it replaced the sidebar drill-down (`tag-detail-view.tsx`,
+ * removed in Task 20) that used to host this menu.
  *
  * Flows:
  *  - Pick a named palette color via the swatch grid → persists, menu stays open.
@@ -56,13 +58,18 @@ async function expandTagsSection(page): Promise<void> {
   }
 }
 
-async function openTagDrilldown(page, tag: string): Promise<void> {
+async function openTagTab(page, tag: string): Promise<void> {
   await expandTagsSection(page)
   const tagTrigger = page.getByRole('button', { name: tag, exact: true }).first()
   await tagTrigger.waitFor({ state: 'visible', timeout: 15000 })
   await tagTrigger.click()
+  // Clicking a tag opens a `tag` tab (pages/folder-view.tsx, tag scope) rather than the old
+  // sidebar drill-down. Wait for the tab and its header's "Tag actions" menu.
+  const activeTab = page.locator(SELECTORS.activeTab).first()
+  await expect(activeTab).toBeVisible({ timeout: 10000 })
+  await expect(activeTab).toContainText(tag)
   await page
-    .locator('button[aria-label="Go back"]:not([disabled])')
+    .locator('button[aria-label="Tag actions"]')
     .waitFor({ state: 'visible', timeout: 10000 })
 }
 
@@ -93,7 +100,7 @@ test.describe('Tag custom color', () => {
   test('selects a named palette color from the swatch grid', async ({ page }) => {
     const tag = `colornamed${UNIQUE}`
     await seedNoteWithTag(page, tag)
-    await openTagDrilldown(page, tag)
+    await openTagTab(page, tag)
     await openChangeColorSubmenu(page)
 
     // Named swatches carry the color name as their title attribute.
@@ -107,7 +114,7 @@ test.describe('Tag custom color', () => {
   test('selects a custom hex via the native color input', async ({ page }) => {
     const tag = `colorhex${UNIQUE}`
     await seedNoteWithTag(page, tag)
-    await openTagDrilldown(page, tag)
+    await openTagTab(page, tag)
     await openChangeColorSubmenu(page)
 
     // The native OS chooser can't be driven; drive the input value directly the
@@ -125,7 +132,7 @@ test.describe('Tag custom color', () => {
   test('keeps the menu open when the native picker steals/returns focus', async ({ page }) => {
     const tag = `colorguard${UNIQUE}`
     await seedNoteWithTag(page, tag)
-    await openTagDrilldown(page, tag)
+    await openTagTab(page, tag)
     await openChangeColorSubmenu(page)
 
     await page.locator('input[type="color"]').evaluate((el: HTMLInputElement) => {
@@ -140,6 +147,3 @@ test.describe('Tag custom color', () => {
     await expect(page.locator('input[type="color"]')).toBeVisible()
   })
 })
-
-// Keep referenced so unused-imports linters stay quiet if SELECTORS evolves.
-void SELECTORS

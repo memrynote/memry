@@ -1,6 +1,10 @@
 import { count, eq, like } from 'drizzle-orm'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
+import type { ViewConfig } from '@memry/contracts/folder-view-api'
+import { createLogger } from '../../lib/logger'
 import type { DataDb } from '../types'
+
+const logger = createLogger('TagDefinitions')
 
 const TAG_COLOR_PALETTE = [
   'rose',
@@ -32,7 +36,13 @@ const TAG_COLOR_PALETTE = [
 export function getOrCreateTag(
   db: DataDb,
   name: string
-): { name: string; color: string; icon: string | null } {
+): {
+  name: string
+  color: string
+  icon: string | null
+  categoryId: string | null
+  sortOrder: number
+} {
   const normalizedName = name.toLowerCase().trim()
 
   const existing = db
@@ -42,7 +52,13 @@ export function getOrCreateTag(
     .get()
 
   if (existing) {
-    return { name: existing.name, color: existing.color, icon: existing.icon }
+    return {
+      name: existing.name,
+      color: existing.color,
+      icon: existing.icon,
+      categoryId: existing.categoryId,
+      sortOrder: existing.sortOrder
+    }
   }
 
   const tagCount = db.select({ count: count() }).from(tagDefinitions).get()?.count ?? 0
@@ -50,20 +66,33 @@ export function getOrCreateTag(
 
   db.insert(tagDefinitions).values({ name: normalizedName, color }).run()
 
-  return { name: normalizedName, color, icon: null }
+  return { name: normalizedName, color, icon: null, categoryId: null, sortOrder: 0 }
 }
 
-export function getAllTagDefinitions(
-  db: DataDb
-): { name: string; color: string; icon: string | null }[] {
+export function getAllTagDefinitions(db: DataDb): {
+  name: string
+  color: string
+  icon: string | null
+  categoryId: string | null
+  sortOrder: number
+}[] {
   return db
     .select({
       name: tagDefinitions.name,
       color: tagDefinitions.color,
-      icon: tagDefinitions.icon
+      icon: tagDefinitions.icon,
+      categoryId: tagDefinitions.categoryId,
+      sortOrder: tagDefinitions.sortOrder
     })
     .from(tagDefinitions)
     .all()
+}
+
+export function setTagCategory(db: DataDb, name: string, categoryId: string | null): void {
+  db.update(tagDefinitions)
+    .set({ categoryId })
+    .where(eq(tagDefinitions.name, name.toLowerCase().trim()))
+    .run()
 }
 
 export function updateTagColor(db: DataDb, name: string, color: string): void {
@@ -135,6 +164,38 @@ export function deleteTagDefinition(
       .where(like(tagDefinitions.name, `${normalizedName}/%`))
       .run()
   }
+}
+
+/**
+ * Saved folder-view configurations for a tag.
+ *
+ * Folders keep theirs in `.folder.md`; a tag has no directory, so they live
+ * on the tag_definitions row and sync with the tag definition itself.
+ * Corrupt JSON reads as "no saved views" rather than throwing — a bad blob
+ * must not make the tag unopenable.
+ */
+export function readTagViews(db: DataDb, tag: string): ViewConfig[] | null {
+  const row = db
+    .select({ views: tagDefinitions.views })
+    .from(tagDefinitions)
+    .where(eq(tagDefinitions.name, tag))
+    .get()
+
+  if (!row?.views) return null
+  try {
+    const parsed = JSON.parse(row.views)
+    return Array.isArray(parsed) ? (parsed as ViewConfig[]) : null
+  } catch {
+    logger.warn('Discarding corrupt saved views for tag', { tag })
+    return null
+  }
+}
+
+export function writeTagViews(db: DataDb, tag: string, views: ViewConfig[] | null): void {
+  db.update(tagDefinitions)
+    .set({ views: views && views.length > 0 ? JSON.stringify(views) : null })
+    .where(eq(tagDefinitions.name, tag))
+    .run()
 }
 
 export function ensureTagDefinitions(

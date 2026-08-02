@@ -53,11 +53,11 @@ Active filters show as chips you can dismiss.
 
 A density toggle in the toolbar:
 
-| Density | Row height |
-| --- | --- |
-| Compact | minimal padding |
-| Normal | comfortable |
-| Spacious | extra room |
+| Density  | Row height      |
+| -------- | --------------- |
+| Compact  | minimal padding |
+| Normal   | comfortable     |
+| Spacious | extra room      |
 
 Persisted per device.
 
@@ -84,9 +84,15 @@ Select rows with checkboxes for:
 
 The bulk action bar appears at the top of the table when rows are selected.
 
+## Saved Views
+
+Save the current columns, sort, group, and filters as a named view with **Add view** in the toolbar. Switch between saved views from the same dropdown, duplicate one as a starting point, set one as the default, or delete it. Saved views persist across restarts and sync to your other devices.
+
+Opening a tag (see [Properties & Tags](/user-guide/notes/properties-tags)) shows this same folder view, scoped to that tag, with its own set of saved views — a "By status" view saved on tag `work` doesn't show up on tag `personal`. Renaming a saved view isn't available for tags yet; rename, duplicate, default, and delete all work normally.
+
 ## Breadcrumb
 
-If you opened folder view from a folder, a breadcrumb at the top lets you navigate up to parent folders.
+If you opened folder view from a folder, a breadcrumb at the top lets you navigate up to parent folders. A tag-scoped folder view shows the tag instead, as a locked `tag = <name>` filter chip that can't be removed — it defines the view.
 
 ## See Also
 

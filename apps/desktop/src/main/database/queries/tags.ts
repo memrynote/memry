@@ -17,6 +17,8 @@ export function getAllTagsWithCounts(indexDb: IndexDb, dataDb: DataDb): TagWithC
   // first-seen casing from actual usage
   const colorMap = new Map(definitions.map((d) => [d.name.toLowerCase(), d.color]))
   const iconMap = new Map(definitions.map((d) => [d.name.toLowerCase(), d.icon]))
+  const categoryIdMap = new Map(definitions.map((d) => [d.name.toLowerCase(), d.categoryId]))
+  const sortOrderMap = new Map(definitions.map((d) => [d.name.toLowerCase(), d.sortOrder]))
   const merged = new Map<string, TagWithCount>()
 
   for (const { tag, count } of noteCounts) {
@@ -25,7 +27,14 @@ export function getAllTagsWithCounts(indexDb: IndexDb, dataDb: DataDb): TagWithC
     if (existing) {
       existing.count += count
     } else {
-      merged.set(key, { name: tag.trim(), count, color: colorMap.get(key), icon: iconMap.get(key) })
+      merged.set(key, {
+        name: tag.trim(),
+        count,
+        color: colorMap.get(key),
+        icon: iconMap.get(key),
+        categoryId: categoryIdMap.get(key) ?? null,
+        sortOrder: sortOrderMap.get(key) ?? 0
+      })
     }
   }
 
@@ -35,7 +44,14 @@ export function getAllTagsWithCounts(indexDb: IndexDb, dataDb: DataDb): TagWithC
     if (existing) {
       existing.count += count
     } else {
-      merged.set(key, { name: tag.trim(), count, color: colorMap.get(key), icon: iconMap.get(key) })
+      merged.set(key, {
+        name: tag.trim(),
+        count,
+        color: colorMap.get(key),
+        icon: iconMap.get(key),
+        categoryId: categoryIdMap.get(key) ?? null,
+        sortOrder: sortOrderMap.get(key) ?? 0
+      })
     }
   }
 
@@ -43,6 +59,8 @@ export function getAllTagsWithCounts(indexDb: IndexDb, dataDb: DataDb): TagWithC
     if (!entry.color) {
       const created = getOrCreateTag(dataDb, entry.name)
       entry.color = created.color
+      entry.categoryId = created.categoryId
+      entry.sortOrder = created.sortOrder
     }
   }
 

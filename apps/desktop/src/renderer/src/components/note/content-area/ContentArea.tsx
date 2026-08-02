@@ -51,7 +51,7 @@ import { parseQuickAdd } from '@/lib/quick-add-parser'
 import { formatDateKey } from '@/lib/task-utils'
 import { editorSchema } from './editor-schema'
 import { analyzeTaskIntents } from './scan-task-intents'
-import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
+import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { vaultService } from '@/services/vault-service'
 import { createNoteFileUrlResolver } from '@/lib/create-note-file-url-resolver'
@@ -164,7 +164,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const { clockFormat: dateMentionClockFormat } = useDateMentionPrefs()
   const { resolvedTheme } = useTheme()
   const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
-  const { openTag } = useSidebarDrillDown()
+  const { openSidebarItem } = useSidebarNavigation()
   const { enabled: aiEnabled } = useAISettingsContext()
   const { port: aiPort, error: aiError, retry: retryAI } = useAIInlineContext()
   const { isEnabled: isFeatureEnabled } = useFeatureFlags()
@@ -1305,7 +1305,15 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             position={wikiLinkHover.position}
             onMouseEnter={wikiLinkHover.handleCardMouseEnter}
             onMouseLeave={wikiLinkHover.handleCardMouseLeave}
-            onTagClick={openTag}
+            onTagClick={(tag, color) =>
+              openSidebarItem({
+                type: 'tag',
+                title: tag,
+                path: '/tags/' + tag,
+                entityId: tag,
+                color
+              })
+            }
             onNoteClick={onInternalLinkClick}
           />
         )}

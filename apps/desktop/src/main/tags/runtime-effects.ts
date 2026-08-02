@@ -45,3 +45,15 @@ export function syncTaggedTasks(taskIds: string[]): void {
     enqueueLocalSyncUpdate('task', taskId)
   }
 }
+
+export function syncTagCategoryCreate(id: string): void {
+  enqueueLocalSyncCreate('tag_category', id)
+}
+
+export function syncTagCategoryUpdate(id: string): void {
+  enqueueLocalSyncUpdate('tag_category', id)
+}
+
+export function syncTagCategoryDelete(id: string): void {
+  enqueueLocalSyncDelete('tag_category', id)
+}

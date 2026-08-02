@@ -7,17 +7,40 @@
  */
 
 import { useMemo, useState } from 'react'
-import { Download, FolderInput, Link, Tag, Trash2, X } from '@/lib/icons'
+import { Download, FolderInput, Link, Pin, Tag, Trash2, X } from '@/lib/icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Input } from '@/components/ui/input'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import type { TagMetaMap } from '@/components/folder-view/note-card-pieces'
+import type { ViewScope } from '@memry/contracts/folder-view-api'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
+import { tagsService } from '@/services/tags-service'
+import { createLogger } from '@/lib/logger'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { toast } from 'sonner'
+
+const log = createLogger('Component:BulkActionBar')
+
+/**
+ * Minimal shape of a selected row needed to tell notes apart from tasks and
+ * inbox items. Absent `kind` means 'note' (folder scope rows carry no
+ * `kind` at all — see `NoteWithProperties.kind` in the folder-view contract).
+ */
+export interface BulkActionRow {
+  id: string
+  kind?: 'note' | 'task' | 'inbox'
+}
 
 interface BulkActionBarProps {
-  /** Number of selected notes */
+  /** Number of selected rows */
   count: number
+  /** What the view is scoped to. Pin-to-tag only shows under tag scope. */
+  scope?: ViewScope
+  /** Selected rows, used to tell notes apart from task/inbox rows for the
+   *  note-only guard on pin/delete/move. Defaults to empty (folder scope
+   *  today only ever has note rows, so the guard is a no-op there). */
+  selectedRows?: BulkActionRow[]
   /** Existing tag names for add-tag suggestions */
   availableTags?: string[]
   /** Per-tag icon + color (keyed by lowercased name) for suggestion glyphs */
@@ -36,16 +59,25 @@ interface BarButtonProps {
   label: string
   onClick?: () => void
   destructive?: boolean
+  disabled?: boolean
 }
 
-function BarButton({ icon: Icon, label, onClick, destructive }: BarButtonProps): React.JSX.Element {
+function BarButton({
+  icon: Icon,
+  label,
+  onClick,
+  destructive,
+  disabled
+}: BarButtonProps): React.JSX.Element {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       className={cn(
         'flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] font-medium transition-colors',
-        destructive ? 'text-destructive hover:bg-destructive/10' : 'text-foreground hover:bg-muted'
+        destructive ? 'text-destructive hover:bg-destructive/10' : 'text-foreground hover:bg-muted',
+        disabled && 'pointer-events-none opacity-40'
       )}
     >
       <Icon className="size-3.5 shrink-0" />
@@ -60,6 +92,8 @@ function Divider(): React.JSX.Element {
 
 export function BulkActionBar({
   count,
+  scope,
+  selectedRows = [],
   availableTags = [],
   tagMeta,
   onMove,
@@ -71,6 +105,37 @@ export function BulkActionBar({
   className
 }: BulkActionBarProps): React.JSX.Element {
   const { t } = useT('notes')
+  const [isPinning, setIsPinning] = useState(false)
+
+  // Only note rows can be pinned, deleted, or moved — task/inbox rows carry
+  // no tag pin concept and aren't valid delete/move targets from here.
+  const noteRowIds = useMemo(
+    () => selectedRows.filter((row) => (row.kind ?? 'note') === 'note').map((row) => row.id),
+    [selectedRows]
+  )
+  const hasNonNoteRow = noteRowIds.length < selectedRows.length
+
+  const handlePinSelected = async (): Promise<void> => {
+    if (!scope || scope.kind !== 'tag' || noteRowIds.length === 0) return
+    const tag = scope.tag
+    setIsPinning(true)
+    try {
+      const results = await Promise.all(
+        noteRowIds.map((noteId) => tagsService.pinNoteToTag({ noteId, tag }))
+      )
+      const failed = results.find((result) => !result.success)
+      if (failed) {
+        throw new Error(failed.error ?? t('tagView.pin.failed'))
+      }
+      toast.success(t('tagView.pin.success', { count: noteRowIds.length }))
+      onClear()
+    } catch (err) {
+      log.error('Failed to pin note(s) to tag', err)
+      toast.error(extractErrorMessage(err, t('tagView.pin.failed')))
+    } finally {
+      setIsPinning(false)
+    }
+  }
 
   return (
     <div
@@ -89,7 +154,12 @@ export function BulkActionBar({
 
       <Divider />
 
-      <BarButton icon={FolderInput} label={t('bulkActions.move')} onClick={onMove} />
+      <BarButton
+        icon={FolderInput}
+        label={t('bulkActions.move')}
+        onClick={onMove}
+        disabled={hasNonNoteRow}
+      />
       <BarButton icon={Link} label={t('bulkActions.copyLinks')} onClick={onCopyLinks} />
       <AddTagButton
         label={t('bulkActions.addTag')}
@@ -100,9 +170,24 @@ export function BulkActionBar({
       />
       <BarButton icon={Download} label={t('bulkActions.export')} onClick={onExport} />
 
+      {scope?.kind === 'tag' && (
+        <BarButton
+          icon={Pin}
+          label={t('tagView.pin.action', { count: noteRowIds.length })}
+          onClick={() => void handlePinSelected()}
+          disabled={isPinning || noteRowIds.length === 0}
+        />
+      )}
+
       <Divider />
 
-      <BarButton icon={Trash2} label={t('bulkActions.delete')} onClick={onDelete} destructive />
+      <BarButton
+        icon={Trash2}
+        label={t('bulkActions.delete')}
+        onClick={onDelete}
+        destructive
+        disabled={hasNonNoteRow}
+      />
 
       <button
         type="button"
