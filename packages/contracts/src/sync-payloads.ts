@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { FieldClocksSchema, VectorClockSchema } from './sync-api'
+import { ViewConfigSchema } from './folder-view-api'
 
 export const TaskSyncPayloadSchema = z.object({
   title: z.string().optional(),
@@ -142,8 +143,22 @@ export const TagDefinitionSyncPayloadSchema = z.object({
   name: z.string(),
   color: z.string(),
   icon: z.string().nullable().optional(),
+  categoryId: z.string().nullable().optional(),
+  sortOrder: z.number().int().optional(),
+  // `undefined` (key absent) means the sender predates saved views and must not
+  // clobber the local value; `null` is an explicit clear. See tag-definition-handler.ts.
+  views: z.array(ViewConfigSchema).nullable().optional(),
   clock: VectorClockSchema.optional(),
   createdAt: z.string().optional()
+})
+
+export const TagCategorySyncPayloadSchema = z.object({
+  name: z.string(),
+  sortOrder: z.number().int(),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+  deletedAt: z.string().nullable().optional()
 })
 
 export const FolderConfigSyncPayloadSchema = z.object({
@@ -378,5 +393,6 @@ export type ProjectLinkSync = z.infer<typeof ProjectLinkSyncSchema>
 export type NoteSyncPayload = z.infer<typeof NoteSyncPayloadSchema>
 export type JournalSyncPayload = z.infer<typeof JournalSyncPayloadSchema>
 export type TagDefinitionSyncPayload = z.infer<typeof TagDefinitionSyncPayloadSchema>
+export type TagCategorySyncPayload = z.infer<typeof TagCategorySyncPayloadSchema>
 export type AgentConversationSyncPayload = z.infer<typeof AgentConversationSyncPayloadSchema>
 export type AgentMessageSyncPayload = z.infer<typeof AgentMessageSyncPayloadSchema>

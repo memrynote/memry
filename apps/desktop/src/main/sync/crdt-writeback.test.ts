@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   yDocToMarkdown: vi.fn(),
   getNoteCacheById: vi.fn(),
   getNoteCacheByPath: vi.fn(),
+  getNoteMetadataById: vi.fn(),
   atomicWrite: vi.fn(),
   safeRead: vi.fn(),
   fileExists: vi.fn(),
@@ -112,6 +113,10 @@ vi.mock('@main/database/queries/notes', () => ({
   getNoteCacheByPath: (...args: unknown[]) => mocks.getNoteCacheByPath(...args)
 }))
 
+vi.mock('@memry/storage-data', () => ({
+  getNoteMetadataById: (...args: unknown[]) => mocks.getNoteMetadataById(...args)
+}))
+
 vi.mock('@memry/app-core/reminders', () => ({
   createRemindersService: (...args: unknown[]) => mocks.createRemindersService(...args)
 }))
@@ -155,6 +160,7 @@ describe('crdt writeback', () => {
       title: 'Existing'
     })
     mocks.getNoteCacheByPath.mockReturnValue(undefined)
+    mocks.getNoteMetadataById.mockReturnValue(undefined)
     mocks.safeRead.mockResolvedValue('---\ntitle: Existing\n---\nold markdown')
     mocks.parseNote.mockReturnValue({
       frontmatter: { id: 'note-1', title: 'Existing', tags: ['old'] },
@@ -274,6 +280,40 @@ describe('crdt writeback', () => {
     expect(mocks.syncNoteToCache).toHaveBeenCalledWith(
       { kind: 'index-db' },
       expect.objectContaining({ parsedContent: 'updated markdown {++added++} {--deleted--}' }),
+      { isNew: false }
+    )
+  })
+
+  it('treats a note the item handler already applied as existing while its index row is still projecting', async () => {
+    // The note handler writes note_metadata synchronously but only queues the
+    // note_cache row (`void flushProjectionEvents()`), so a write-back landing
+    // in that gap used to look "new" and clobber the freshly-applied title and
+    // path with the Y.Doc meta title — the "Untitled" a note is born with.
+    mocks.getNoteCacheById.mockReturnValue(undefined)
+    mocks.getNoteMetadataById.mockReturnValue({
+      id: 'note-applied',
+      path: 'notes/Real Title.md',
+      title: 'Real Title',
+      createdAt: '2025-12-01T00:00:00.000Z',
+      localOnly: false,
+      emoji: null
+    })
+
+    scheduleWriteback('note-applied', makeDoc('Untitled'))
+    await vi.advanceTimersByTimeAsync(500)
+
+    // #then no second file, no CREATED event, and the applied title survives
+    expect(mocks.generateNotePath).not.toHaveBeenCalled()
+    expect(mocks.sent).not.toContainEqual(
+      expect.objectContaining({ channel: NotesChannels.events.CREATED })
+    )
+    expect(mocks.syncNoteToCache).toHaveBeenCalledWith(
+      { kind: 'index-db' },
+      expect.objectContaining({
+        id: 'note-applied',
+        path: 'notes/Real Title.md',
+        title: 'Real Title'
+      }),
       { isNew: false }
     )
   })

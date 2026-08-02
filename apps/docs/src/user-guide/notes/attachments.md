@@ -43,6 +43,24 @@ transcript with the audio file, so opening the file page shows the player and tr
 
 Images render as image blocks (not file blocks). Drag them to resize; double-click for the lightbox.
 
+### Images From Another App's Vault
+
+Vaults written by Obsidian, Capacities and similar apps keep media in a shared
+folder and reference it from notes with a relative path:
+
+```markdown
+![photo](../Images/Media/photo.png)
+```
+
+MemryNote resolves those paths against the note's own folder, so the images show
+up as normal image blocks. Nothing is copied or rewritten — the markdown on disk
+keeps its relative path, so the vault stays readable by the app that wrote it.
+
+A path that points outside the vault is left alone rather than resolved, and so
+are absolute paths (including Windows `\\server\share` style ones) and `http(s)`
+URLs. If an image shows up broken, check that the referenced file actually sits
+where the path points, relative to the note.
+
 ## Removing or Replacing
 
 Click the file block menu to:

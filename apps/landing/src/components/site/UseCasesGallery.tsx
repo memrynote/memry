@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { Mascot } from '@/components/ui/mascot'
 import { cn } from '@/lib/utils'
 import { TINT_CLASSES, type MegaCardTint } from '@/lib/site-tints'

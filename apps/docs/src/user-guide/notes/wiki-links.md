@@ -18,6 +18,29 @@ The link displays the target's current title, but the underlying reference uses 
 
 Click any wiki link to open the target in a new tab. <kbd>⌘</kbd>+click to open in the background; <kbd>⌥</kbd>+click to open in a split pane.
 
+## Image Embeds
+
+A wiki link written with a leading `!` and pointing at an image embeds the picture instead
+of linking to it. This is the syntax Obsidian vaults use, so notes written elsewhere render
+their images without any conversion step:
+
+- `![[photo.png]]` — looked up anywhere in the vault by filename
+- `![[Images/photo.png]]` — a path relative to the vault root, or to your notes folder
+- `![[photo.png|300x200]]` — the size hint is ignored; resize the image in the editor
+
+Only real image files embed this way. `![[Some Note]]` and `![[report.pdf]]` stay as they
+are, and a target that doesn't match any file in the vault is left untouched rather than
+rendered as a broken image — so a typo stays visible and fixable.
+
+::: tip
+Editing a note that contains `![[photo.png]]` rewrites the embed to memrynote's standard
+image syntax the next time the note is saved — `![photo.png](../Images/photo.png)`. The
+picture and its position are unchanged; only the markup differs.
+
+The rewritten link is **relative to the note**, so it keeps working after the note syncs to
+your other devices, and the vault stays readable by Obsidian.
+:::
+
 ## Backlinks Panel
 
 The collapsible **Backlinks** section at the bottom of every note lists every other note that links to it.

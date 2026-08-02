@@ -19,6 +19,8 @@ import {
   GetFolderSuggestionsRequestSchema,
   DEFAULT_VIEW,
   BUILT_IN_COLUMNS,
+  type ViewScope,
+  type ViewConfig,
   type FolderViewConfig,
   type NoteWithProperties,
   type AvailableProperty,
@@ -36,8 +38,9 @@ import { getNoteFolderSuggestions } from '../inbox/suggestions'
 import { createValidatedHandler, withErrorHandler } from './validate'
 import { readFolderConfig, writeFolderConfig, folderExists } from '../vault/folders'
 import { getConfig } from '../vault'
-import { getIndexDatabase as getDataDb } from '../database'
+import { getIndexDatabase as getDataDb, getDatabase } from '../database'
 import { noteCache, noteTags, noteProperties } from '@memry/db-schema/schema/notes-cache'
+import { listTagItems, readTagViews, writeTagViews } from '../tags/store'
 
 const logger = createLogger('IPC:FolderView')
 
@@ -83,6 +86,102 @@ function computeRelativeFolder(
   }
 
   return '/'
+}
+
+/**
+ * Batch-fetch every property value for the given notes.
+ * Shared by both scopes — a tag view is worthless if its property columns
+ * are blank, so tag rows go through exactly the same fetch folders use.
+ */
+async function fetchPropertiesFor(
+  db: ReturnType<typeof getDataDb>,
+  noteIds: string[]
+): Promise<Map<string, Record<string, unknown>>> {
+  const propertiesMap = new Map<string, Record<string, unknown>>()
+  for (const noteId of noteIds) {
+    const propsResult = await db
+      .select({ name: noteProperties.name, value: noteProperties.value })
+      .from(noteProperties)
+      .where(eq(noteProperties.noteId, noteId))
+
+    const props: Record<string, unknown> = {}
+    propsResult.forEach((row) => {
+      try {
+        props[row.name] = row.value ? JSON.parse(row.value) : null
+      } catch {
+        props[row.name] = row.value
+      }
+    })
+    propertiesMap.set(noteId, props)
+  }
+  return propertiesMap
+}
+
+/**
+ * Batch-fetch property usage counts and types across the given notes.
+ * Shared by both scope branches of get-available-properties — a tag's
+ * columns come from the same note_properties rows a folder's do, just
+ * counted over a different note id set.
+ */
+async function fetchPropertyCounts(
+  db: ReturnType<typeof getDataDb>,
+  noteIds: string[]
+): Promise<Map<string, { count: number; type: string }>> {
+  const propCounts = new Map<string, { count: number; type: string }>()
+
+  for (const noteId of noteIds) {
+    const props = await db
+      .select({ name: noteProperties.name, type: noteProperties.type })
+      .from(noteProperties)
+      .where(eq(noteProperties.noteId, noteId))
+
+    props.forEach((p) => {
+      const existing = propCounts.get(p.name)
+      if (existing) {
+        existing.count++
+      } else {
+        propCounts.set(p.name, { count: 1, type: p.type })
+      }
+    })
+  }
+
+  return propCounts
+}
+
+/** Usage counts -> the sorted AvailableProperty list the response returns (highest usage first). */
+function toAvailableProperties(
+  propCounts: Map<string, { count: number; type: string }>
+): AvailableProperty[] {
+  const properties: AvailableProperty[] = Array.from(propCounts.entries()).map(
+    ([name, { count, type }]) => ({
+      name,
+      type: type as AvailableProperty['type'],
+      usageCount: count
+    })
+  )
+
+  properties.sort((a, b) => b.usageCount - a.usageCount)
+  return properties
+}
+
+/**
+ * Saved views for a scope. Folders keep theirs in `.folder.md`; a tag has no
+ * directory, so its views live on the tag_definitions row instead (Task 2).
+ * Centralising the split here keeps GET_VIEWS/SET_VIEW/DELETE_VIEW thin.
+ */
+async function readScopedViews(scope: ViewScope): Promise<ViewConfig[] | null> {
+  if (scope.kind === 'tag') return readTagViews(getDatabase(), scope.tag)
+  const folderConfig = await readFolderConfig(scope.path)
+  return folderConfig?.views ?? null
+}
+
+async function writeScopedViews(scope: ViewScope, views: ViewConfig[] | null): Promise<void> {
+  if (scope.kind === 'tag') {
+    writeTagViews(getDatabase(), scope.tag, views)
+    return
+  }
+  const currentConfig = (await readFolderConfig(scope.path)) || {}
+  await writeFolderConfig(scope.path, { ...currentConfig, views: views ?? undefined })
 }
 
 // ============================================================================
@@ -135,18 +234,18 @@ export function registerFolderViewHandlers(): void {
     )
   )
 
-  // folder-view:get-views - Get all views for a folder
+  // folder-view:get-views - Get all views for a folder or tag
   ipcMain.handle(
     FolderViewChannels.invoke.GET_VIEWS,
     createValidatedHandler(GetViewsRequestSchema, async (input): Promise<GetViewsResponse> => {
-      const folderConfig = await readFolderConfig(input.folderPath)
+      const views = await readScopedViews(input.scope)
 
-      if (!folderConfig || !folderConfig.views || folderConfig.views.length === 0) {
+      if (!views || views.length === 0) {
         return { views: [DEFAULT_VIEW], defaultIndex: 0 }
       }
 
-      const defaultIndex = folderConfig.views.findIndex((v) => v.default) ?? 0
-      return { views: folderConfig.views, defaultIndex: Math.max(0, defaultIndex) }
+      const defaultIndex = views.findIndex((v) => v.default) ?? 0
+      return { views, defaultIndex: Math.max(0, defaultIndex) }
     })
   )
 
@@ -156,8 +255,7 @@ export function registerFolderViewHandlers(): void {
     createValidatedHandler(
       SetViewRequestSchema,
       withErrorHandler(async (input): Promise<SetViewResponse> => {
-        const currentConfig = (await readFolderConfig(input.folderPath)) || {}
-        const views = currentConfig.views || []
+        const views = (await readScopedViews(input.scope)) || []
 
         const existingIndex = views.findIndex((v) => v.name === input.view.name)
 
@@ -175,7 +273,7 @@ export function registerFolderViewHandlers(): void {
           })
         }
 
-        await writeFolderConfig(input.folderPath, { ...currentConfig, views })
+        await writeScopedViews(input.scope, views)
         return { success: true }
       }, 'Failed to set view')
     )
@@ -187,18 +285,17 @@ export function registerFolderViewHandlers(): void {
     createValidatedHandler(
       DeleteViewRequestSchema,
       withErrorHandler(async (input): Promise<DeleteViewResponse> => {
-        const currentConfig = (await readFolderConfig(input.folderPath)) || {}
-        const views = currentConfig.views || []
+        const views = (await readScopedViews(input.scope)) || []
 
         const filtered = views.filter((v) => v.name !== input.viewName)
 
         if (filtered.length === 0) {
-          await writeFolderConfig(input.folderPath, { ...currentConfig, views: undefined })
+          await writeScopedViews(input.scope, null)
         } else {
           if (!filtered.some((v) => v.default)) {
             filtered[0].default = true
           }
-          await writeFolderConfig(input.folderPath, { ...currentConfig, views: filtered })
+          await writeScopedViews(input.scope, filtered)
         }
 
         return { success: true }
@@ -219,11 +316,58 @@ export function registerFolderViewHandlers(): void {
           return { notes: [], total: 0, hasMore: false }
         }
 
+        if (input.scope.kind === 'tag') {
+          let dataDb: ReturnType<typeof getDatabase>
+          try {
+            dataDb = getDatabase()
+          } catch {
+            return { notes: [], total: 0, hasMore: false }
+          }
+
+          const items = listTagItems(db, dataDb, input.scope.tag)
+          const noteIds = items.filter((i) => i.kind === 'note').map((i) => i.id)
+          const propertiesMap = await fetchPropertiesFor(db, noteIds)
+
+          const rows: NoteWithProperties[] = items.map((item) => ({
+            id: item.id,
+            // Tasks and inbox items have no note path; synthesise a stable one so
+            // row identity and any path-keyed UI still work.
+            path:
+              item.kind === 'note'
+                ? (item.path ?? '')
+                : item.kind === 'task'
+                  ? `/tasks/${item.id}`
+                  : `/inbox/${item.id}`,
+            title: item.title,
+            emoji: item.emoji,
+            // `container` is the note's parent folder or the task's project name.
+            folder: item.container ?? '',
+            tags: item.tags,
+            created: item.created,
+            modified: item.modified,
+            // TagItem carries no word count for any kind.
+            wordCount: 0,
+            properties: propertiesMap.get(item.id) ?? {},
+            kind: item.kind
+          }))
+
+          const page = rows.slice(input.offset, input.offset + input.limit)
+          return {
+            notes: page,
+            total: rows.length,
+            hasMore: input.offset + page.length < rows.length
+          }
+        }
+
         // Build path pattern for LIKE query.
         // Prefix matches the vault layout: "" (flat root) or "notes/".
-        // folderPath "projects" -> match "<prefix>projects/%"
+        // scope.path "projects" -> match "<prefix>projects/%"
+        // Captured into a local so the 'folder' narrowing survives into the
+        // .map() closure below (TS doesn't carry discriminated-union
+        // narrowing of a property access across a nested function).
+        const folderPath = input.scope.path
         const prefix = getNotesPrefix()
-        const pathPattern = input.folderPath ? `${prefix}${input.folderPath}/%` : `${prefix}%`
+        const pathPattern = folderPath ? `${prefix}${folderPath}/%` : `${prefix}%`
 
         // Query notes in folder (exclude journal entries where date IS NOT NULL)
         const notesResult = await db
@@ -267,28 +411,11 @@ export function registerFolderViewHandlers(): void {
           tagsByNote.get(row.noteId)!.push(row.tag)
         })
 
-        // Batch fetch properties for all notes
+        // Batch fetch properties for all notes.
         // When input.properties is undefined, fetch ALL properties (for column flexibility)
-        // When input.properties is specified, only fetch those (for optimization)
-        const propertiesMap = new Map<string, Record<string, unknown>>()
-
-        // Always fetch properties - if undefined, fetch all; if specified, could filter (but we fetch all for simplicity)
-        for (const noteId of noteIds) {
-          const propsResult = await db
-            .select({ name: noteProperties.name, value: noteProperties.value })
-            .from(noteProperties)
-            .where(eq(noteProperties.noteId, noteId))
-
-          const props: Record<string, unknown> = {}
-          propsResult.forEach((row) => {
-            try {
-              props[row.name] = row.value ? JSON.parse(row.value) : null
-            } catch {
-              props[row.name] = row.value
-            }
-          })
-          propertiesMap.set(noteId, props)
-        }
+        // When input.properties is specified, only fetch those (for optimization) —
+        // currently fetchPropertiesFor always fetches all, for simplicity.
+        const propertiesMap = await fetchPropertiesFor(db, noteIds)
 
         // Build response
         const notesWithProps: NoteWithProperties[] = notes.map((note) => ({
@@ -296,7 +423,7 @@ export function registerFolderViewHandlers(): void {
           path: note.path,
           title: note.title,
           emoji: note.emoji,
-          folder: computeRelativeFolder(note.path, input.folderPath, prefix),
+          folder: computeRelativeFolder(note.path, folderPath, prefix),
           tags: tagsByNote.get(note.id) || [],
           created: note.created,
           modified: note.modified,
@@ -332,22 +459,51 @@ export function registerFolderViewHandlers(): void {
                   : ('text' as const)
         }))
 
+        // Only a tag view mixes row kinds, so only it gets the column — and
+        // with it, `kind` filtering through the normal Filter By path.
+        const builtInForScope =
+          input.scope.kind === 'tag'
+            ? [...builtIn, { id: 'kind' as const, displayName: 'Kind', type: 'text' as const }]
+            : builtIn
+
         let db: ReturnType<typeof getDataDb>
         try {
           db = getDataDb()
         } catch {
-          return { builtIn, properties: [], formulas: [] }
+          return { builtIn: builtInForScope, properties: [], formulas: [] }
         }
 
+        if (input.scope.kind === 'tag') {
+          let dataDb: ReturnType<typeof getDatabase>
+          try {
+            dataDb = getDatabase()
+          } catch {
+            return { builtIn: builtInForScope, properties: [], formulas: [] }
+          }
+
+          const items = listTagItems(db, dataDb, input.scope.tag)
+          const noteIds = items.filter((item) => item.kind === 'note').map((item) => item.id)
+          const propCounts = await fetchPropertyCounts(db, noteIds)
+
+          // Formulas live in `.folder.md`, which a tag has no equivalent of.
+          return {
+            builtIn: builtInForScope,
+            properties: toAvailableProperties(propCounts),
+            formulas: []
+          }
+        }
+
+        const folderPath = input.scope.path
+
         // Get folder config for formulas
-        const folderConfig = await readFolderConfig(input.folderPath)
+        const folderConfig = await readFolderConfig(folderPath)
         const formulas = folderConfig?.formulas
           ? Object.entries(folderConfig.formulas).map(([id, expression]) => ({ id, expression }))
           : []
 
         // Query distinct property names used in this folder
         const prefix = getNotesPrefix()
-        const pathPattern = input.folderPath ? `${prefix}${input.folderPath}/%` : `${prefix}%`
+        const pathPattern = folderPath ? `${prefix}${folderPath}/%` : `${prefix}%`
 
         // Get notes in folder first
         const folderNotes = await db
@@ -356,41 +512,15 @@ export function registerFolderViewHandlers(): void {
           .where(and(like(noteCache.path, pathPattern), isNull(noteCache.date)))
 
         if (folderNotes.length === 0) {
-          return { builtIn, properties: [], formulas }
+          return { builtIn: builtInForScope, properties: [], formulas }
         }
 
-        // Get property usage counts
-        const propCounts = new Map<string, { count: number; type: string }>()
-
-        for (const note of folderNotes) {
-          const props = await db
-            .select({ name: noteProperties.name, type: noteProperties.type })
-            .from(noteProperties)
-            .where(eq(noteProperties.noteId, note.id))
-
-          props.forEach((p) => {
-            const existing = propCounts.get(p.name)
-            if (existing) {
-              existing.count++
-            } else {
-              propCounts.set(p.name, { count: 1, type: p.type })
-            }
-          })
-        }
-
-        // Convert to array
-        const properties: AvailableProperty[] = Array.from(propCounts.entries()).map(
-          ([name, { count, type }]) => ({
-            name,
-            type: type as AvailableProperty['type'],
-            usageCount: count
-          })
+        const propCounts = await fetchPropertyCounts(
+          db,
+          folderNotes.map((note) => note.id)
         )
 
-        // Sort by usage count descending
-        properties.sort((a, b) => b.usageCount - a.usageCount)
-
-        return { builtIn, properties, formulas }
+        return { builtIn: builtInForScope, properties: toAvailableProperties(propCounts), formulas }
       }
     )
   )

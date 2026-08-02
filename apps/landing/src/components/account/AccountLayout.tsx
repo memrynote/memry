@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router'
 import { Container } from '@/components/layout/Container'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/auth-context'

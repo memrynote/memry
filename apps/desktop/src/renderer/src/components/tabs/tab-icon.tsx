@@ -26,7 +26,8 @@ import {
   Music,
   Video,
   Bot,
-  PenTool
+  PenTool,
+  Tag
 } from '@/lib/icons'
 import type { TabType } from '@/contexts/tabs/types'
 import { cn } from '@/lib/utils'
@@ -73,7 +74,8 @@ const ICON_COMPONENTS: Record<string, React.ComponentType<{ className?: string }
   'file-video': Video,
   graph: ChartRelationship,
   bot: Bot,
-  'pen-tool': PenTool
+  'pen-tool': PenTool,
+  tag: Tag
 }
 
 /**
@@ -97,6 +99,8 @@ const TYPE_TO_ICON: Record<TabType, string> = {
   'template-editor': 'layout-template',
   templates: 'layout-template',
   graph: 'graph',
+  tags: 'tag',
+  tag: 'tag',
   'agent-chat': 'bot',
   canvas: 'pen-tool',
   'virtual-note': 'file-text'

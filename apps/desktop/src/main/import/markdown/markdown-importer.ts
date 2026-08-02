@@ -19,16 +19,22 @@ function escapeRegExp(value: string): string {
 }
 
 /**
- * Replace every markdown image/link token pointing at `ref` (`![alt](ref)` or
- * `[text](ref)`) with the already-built attachment markdown, dropping whatever
- * alt/link text the source authored. Mirrors `extractAssetRefs`' token shape so
- * images and non-image file blocks both swap cleanly regardless of label.
+ * Replace every token pointing at `ref` with the already-built attachment
+ * markdown, dropping whatever alt/link text the source authored. Mirrors
+ * `extractAssetRefs`' token shapes — markdown `![alt](ref)` / `[text](ref)` and
+ * Obsidian's `![[ref]]` embed — so images and non-image file blocks both swap
+ * cleanly regardless of label.
  */
 function replaceAssetToken(body: string, ref: string, replacement: string): string {
-  const tokenRe = new RegExp(`!?\\[[^\\][]*\\]\\(${escapeRegExp(ref)}\\)`, 'g')
+  const escaped = escapeRegExp(ref)
+  const tokenRe = new RegExp(`!?\\[[^\\][]*\\]\\(${escaped}\\)`, 'g')
+  // Obsidian carries the target inside the brackets, optionally followed by a
+  // display size / alias (`|300x200`) or an anchor (`#page=3`); the whole embed
+  // goes, tail included, since the attachment markdown cannot express either.
+  const embedRe = new RegExp(`!\\[\\[${escaped}(?:[|#][^\\][]*)?\\]\\]`, 'g')
   // Function replacer so `$` in the attachment markdown (e.g. a filename) is not
   // treated as a `String.replace` substitution pattern.
-  return body.replace(tokenRe, () => replacement)
+  return body.replace(tokenRe, () => replacement).replace(embedRe, () => replacement)
 }
 
 /** Collect all .md/.markdown files under a directory recursively. */

@@ -54,7 +54,6 @@ import { newItemViewState } from '@/contexts/tabs/helpers'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { notesService } from '@/services/notes-service'
 import { canvasService, type CanvasSummary } from '@/services/canvas-service'
-import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { useTasksOptional } from '@/contexts/tasks'
 import { useAuth } from '@/contexts/auth-context'
 import { SyncStatus } from '@/components/sync/sync-status'
@@ -172,9 +171,6 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   // Tab actions for opening new notes (stable reference, won't cause re-renders)
   const { openTab } = useTabActions()
 
-  // Drill-down context for tag navigation
-  const { openTag } = useSidebarDrillDown()
-
   const { settings: generalSettings } = useGeneralSettings()
 
   // Handle creating a new note (⌘N shortcut target)
@@ -287,18 +283,10 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   // While the modifier is held, section icons swap to their shortcut number.
   const isModifierHeld = useModifierHeld()
 
-  // Handle tag click - open tag drill-down view
-  const handleTagClick = useCallback(
-    (tag: string, color: string) => {
-      openTag(tag, color)
-    },
-    [openTag]
-  )
-
   // Handle bookmark click - navigate to bookmarked item
   const handleBookmarkClick = useCallback(
     (bookmark: BookmarkWithItem) => {
-      // Folders open as a folder-view tab; tags drill down in the sidebar.
+      // Folders open as a folder-view tab; tags open the tag tab.
       if (bookmark.itemType === BookmarkItemTypes.FOLDER) {
         openTab({
           type: 'folder',
@@ -315,7 +303,13 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
         return
       }
       if (bookmark.itemType === BookmarkItemTypes.TAG) {
-        openTag(bookmark.itemId, '')
+        openSidebarItem({
+          type: 'tag',
+          title: bookmark.itemId,
+          path: '/tags/' + bookmark.itemId,
+          entityId: bookmark.itemId,
+          color: ''
+        })
         return
       }
 
@@ -337,7 +331,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
       }
       openSidebarItem(item)
     },
-    [openSidebarItem, openTab, openTag]
+    [openSidebarItem, openTab]
   )
 
   // Open a canvas in a tab (entityId dedupe keeps it to one tab per canvas)
@@ -602,11 +596,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           defaultExpanded={false}
           actions={tagsActions}
         >
-          <SidebarTagList
-            maxVisible={6}
-            onTagClick={handleTagClick}
-            onActionsReady={setTagsActions}
-          />
+          <SidebarTagList maxVisible={6} onActionsReady={setTagsActions} />
         </SidebarSection>
 
         {/* Drop overlay — covers entire scrollable area, blocks pointer events when visible */}

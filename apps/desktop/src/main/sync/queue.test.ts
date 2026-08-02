@@ -256,6 +256,44 @@ describe('SyncQueueManager', () => {
       // #then
       expect(queue.getSize()).toBe(0)
     })
+
+    it('keeps a row that was coalesced into while the push was in flight', () => {
+      // #given a create pushed with the placeholder title the note is born with
+      const frozen = JSON.stringify({ title: 'Untitled', clock: { mac: 1 } })
+      const id = queue.enqueue(makeInput({ payload: frozen }))
+      const [inFlight] = queue.dequeue(10)
+      expect(inFlight.payload).toBe(frozen)
+
+      // #when the user renames the note before the server answers — enqueue
+      // coalesces into the same attempts=0 row
+      queue.enqueue(
+        makeInput({
+          operation: 'update',
+          payload: JSON.stringify({ title: 'Real Title', clock: { mac: 2 } })
+        })
+      )
+
+      // #when the ack for the payload we actually pushed arrives
+      const removed = queue.markSuccess(id, inFlight.payload)
+
+      // #then the rename survives for the next push instead of being deleted
+      expect(removed).toBe(false)
+      expect(queue.getPendingCount()).toBe(1)
+      expect(queue.peek(1)[0].payload).toContain('Real Title')
+    })
+
+    it('removes the row when it is unchanged since dequeue', () => {
+      // #given item dequeued and not touched since
+      const id = queue.enqueue(makeInput())
+      const [inFlight] = queue.dequeue(10)
+
+      // #when markSuccess with the payload that was pushed
+      const removed = queue.markSuccess(id, inFlight.payload)
+
+      // #then
+      expect(removed).toBe(true)
+      expect(queue.getSize()).toBe(0)
+    })
   })
 
   describe('markFailed', () => {

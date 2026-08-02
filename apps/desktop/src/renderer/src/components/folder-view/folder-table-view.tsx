@@ -199,6 +199,8 @@ function getColumnType(columnId: string): PropertyType {
       return 'number'
     case 'tags':
       return 'multiselect'
+    case 'kind':
+      return 'text'
     default:
       return 'text'
   }
@@ -477,6 +479,22 @@ export function FolderTableView({
     return <WordCountCell value={value} />
   }, [])
 
+  // Memoized cell renderer for the row kind column (shared table reuse, e.g. tag page).
+  // Absent kind means 'note' — folder views themselves never set it.
+  const renderKindCell = useCallback(
+    (info: CellContext<NoteWithProperties, unknown>) => {
+      const kind = info.row.original.kind ?? 'note'
+      return (
+        <TextCell
+          value={tPhaseF(
+            `phaseF.componentsFolderViewFolderTableView.kind.${capitalizeFirst(kind)}`
+          )}
+        />
+      )
+    },
+    [tPhaseF]
+  )
+
   // Memoized cell renderer for generic properties
   // T116: Uses propertyTypes map for correct type rendering
   const renderPropertyCell = useCallback(
@@ -619,6 +637,14 @@ export function FolderTableView({
             size: col.width ?? 80
           }
 
+        case 'kind':
+          return {
+            ...baseColumn,
+            accessorFn: (row: NoteWithProperties) => row.kind ?? 'note',
+            cell: renderKindCell,
+            size: col.width ?? 100
+          }
+
         default:
           // Check if this is a formula column (id starts with "formula.")
           if (col.id.startsWith('formula.')) {
@@ -674,6 +700,7 @@ export function FolderTableView({
     renderTagsCell,
     renderDateCell,
     renderWordCountCell,
+    renderKindCell,
     renderPropertyCell,
     renderFormulaCell
   ])
@@ -709,6 +736,25 @@ export function FolderTableView({
 
   /** Get filtered/sorted rows from table for virtualization */
   const { rows } = table.getRowModel()
+
+  /**
+   * Note-only subset of the current selection, used by the row context menu's
+   * bulk delete/move and by the ⇧⌘M shortcut. Tag scope can select a mix of
+   * notes, tasks, and inbox items; onDelete/onMoveToFolder are notes-only
+   * IPCs, so task/inbox ids must never reach them.
+   *
+   * Derived from `notes` (the full, unnarrowed data) rather than the table row
+   * model: the row model is narrowed by the header search, while selection is
+   * not, so filtering through it would silently shrink which rows a bulk
+   * action affects. Kind is a property of a row, not of its visibility.
+   */
+  const selectedNoteIds = useMemo(
+    () =>
+      notes
+        .filter((n) => selectedRowIds.has(n.id) && (n.kind ?? 'note') === 'note')
+        .map((n) => n.id),
+    [notes, selectedRowIds]
+  )
 
   /**
    * Row virtualizer for efficient rendering of large datasets.
@@ -968,7 +1014,11 @@ export function FolderTableView({
         case 'M': {
           if ((e.metaKey || e.ctrlKey) && e.shiftKey && selectedRowIds.size > 0) {
             e.preventDefault()
-            onMoveToFolder?.(Array.from(selectedRowIds))
+            // Notes-only IPC: a selection of only tasks/inbox items has
+            // nothing to move, so there is no dialog to open.
+            if (selectedNoteIds.length > 0) {
+              onMoveToFolder?.(selectedNoteIds)
+            }
           }
           break
         }
@@ -979,6 +1029,7 @@ export function FolderTableView({
       table,
       onNoteOpen,
       onMoveToFolder,
+      selectedNoteIds,
       selectedRowIds,
       setSelectedRowIds,
       scrollToRowById
@@ -1154,7 +1205,7 @@ export function FolderTableView({
                   note={row.original}
                   isPartOfSelection={isPartOfSelection}
                   selectedCount={selectedRowIds.size}
-                  selectedNoteIds={Array.from(selectedRowIds)}
+                  selectedNoteIds={selectedNoteIds}
                   onNoteOpen={onNoteOpen}
                   onOpenInNewTab={onOpenInNewTab}
                   onMoveToFolder={onMoveToFolder}

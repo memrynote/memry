@@ -63,6 +63,10 @@ import type {
   VaultRecoveryNeededEvent
 } from '../shared/contracts/ipc-sync'
 import type { CrdtOpenDocResult, CrdtSyncStep1Result } from '@memry/contracts/ipc-crdt'
+import type {
+  FolderViewClientAPI as ContractFolderViewClientAPI,
+  ConfigUpdatedEvent as FolderViewConfigUpdatedEvent
+} from '@memry/contracts/folder-view-api'
 
 // Vault types (mirrored from contracts for preload compatibility)
 export interface VaultInfo {
@@ -482,6 +486,7 @@ export interface VaultClientAPI {
   listAccount(): Promise<AccountVaultInfo[]>
   downloadRemote(vaultUuid: string, parentPath?: string): Promise<SelectVaultResponse>
   deleteFromAccount(vaultUuid: string): Promise<void>
+  resolveEmbeds(input: { refs: string[]; notePath?: string }): Promise<Record<string, string>>
 }
 
 // Notes client API interface
@@ -732,6 +737,8 @@ export interface TagWithCount {
   count: number
   color?: string
   icon?: string | null
+  categoryId?: string | null
+  sortOrder?: number
 }
 
 export interface GetAllWithCountsResponse {
@@ -760,6 +767,33 @@ export interface TagNotesChangedEvent {
   action: 'pinned' | 'unpinned' | 'removed' | 'added'
 }
 
+// Tag category types
+export interface TagCategoryRow {
+  id: string
+  name: string
+  sortOrder: number
+  tagCount: number
+}
+
+export interface TagAssignment {
+  tag: string
+  categoryId: string | null
+  sortOrder: number
+}
+
+export interface CategoryOperationResponse {
+  success: boolean
+  error?: string
+}
+
+export interface ListCategoriesResponse extends CategoryOperationResponse {
+  categories?: TagCategoryRow[]
+}
+
+export interface CreateCategoryResponse extends CategoryOperationResponse {
+  category?: TagCategoryRow
+}
+
 // Tags client API interface
 export interface TagsClientAPI {
   getNotesByTag(input: {
@@ -777,6 +811,14 @@ export interface TagsClientAPI {
   removeTagFromNote(input: { noteId: string; tag: string }): Promise<TagOperationResponse>
   getAllWithCounts(): Promise<GetAllWithCountsResponse>
   mergeTag(input: { source: string; target: string }): Promise<MergeTagResponse>
+  listCategories(): Promise<ListCategoriesResponse>
+  createCategory(input: { name: string }): Promise<CreateCategoryResponse>
+  renameCategory(input: { id: string; name: string }): Promise<CategoryOperationResponse>
+  deleteCategory(input: { id: string }): Promise<CategoryOperationResponse>
+  reorder(input: {
+    tags?: TagAssignment[]
+    categories?: { id: string; sortOrder: number }[]
+  }): Promise<CategoryOperationResponse>
 }
 
 export type InboxItemType = InboxRpc.InboxItemType
@@ -1139,122 +1181,11 @@ export interface RemindersClientAPI {
   bulkDismiss(input: { reminderIds: string[] }): Promise<BulkDismissResponse>
 }
 
-// Folder View types (Bases-like database view)
-export interface FolderViewColumn {
-  id: string
-  width?: number
-  displayName?: string
-  showSummary?: boolean
-}
-
-export interface FolderViewConfig {
-  path: string
-  template?: string
-  inherit?: boolean
-  views?: FolderViewView[]
-  formulas?: Record<string, string>
-  properties?: Record<string, unknown>
-  summaries?: Record<string, unknown>
-}
-
-export interface FolderViewGroupBy {
-  property: string
-  direction?: 'asc' | 'desc'
-  collapsed?: boolean
-  showSummary?: boolean
-}
-
-export interface FolderViewView {
-  name: string
-  type: 'table' | 'grid' | 'list'
-  default?: boolean
-  columns?: FolderViewColumn[]
-  filters?: unknown
-  order?: Array<{ property: string; direction: 'asc' | 'desc' }>
-  groupBy?: FolderViewGroupBy
-  limit?: number
-  showSummaries?: boolean
-}
-
-export interface FolderViewNote {
-  id: string
-  path: string
-  title: string
-  emoji: string | null
-  folder: string
-  tags: string[]
-  created: string
-  modified: string
-  wordCount: number
-  properties: Record<string, unknown>
-}
-
-export interface FolderViewAvailableProperty {
-  name: string
-  type: string
-  usageCount: number
-}
-
-export interface FolderViewGetConfigResponse {
-  config: FolderViewConfig
-  isDefault: boolean
-}
-
-export interface FolderViewGetViewsResponse {
-  views: FolderViewView[]
-  defaultIndex: number
-}
-
-export interface FolderViewListResponse {
-  notes: FolderViewNote[]
-  total: number
-  hasMore: boolean
-}
-
-export interface FolderViewAvailablePropertiesResponse {
-  builtIn: Array<{ id: string; displayName: string; type: string }>
-  properties: FolderViewAvailableProperty[]
-  formulas: Array<{ id: string; expression: string }>
-}
-
-export interface FolderViewConfigUpdatedEvent {
-  path: string
-  source: 'internal' | 'external'
-}
-
-// Folder Suggestion types (Phase 27)
-export interface FolderSuggestion {
-  path: string
-  confidence: number
-  reason: string
-}
-
-export interface FolderViewGetFolderSuggestionsResponse {
-  suggestions: FolderSuggestion[]
-}
-
-// Folder View client API interface
-export interface FolderViewClientAPI {
-  getConfig(folderPath: string): Promise<FolderViewGetConfigResponse>
-  setConfig(
-    folderPath: string,
-    config: Record<string, unknown>
-  ): Promise<{ success: boolean; error?: string }>
-  getViews(folderPath: string): Promise<FolderViewGetViewsResponse>
-  setView(
-    folderPath: string,
-    view: Record<string, unknown>
-  ): Promise<{ success: boolean; error?: string }>
-  deleteView(folderPath: string, viewName: string): Promise<{ success: boolean; error?: string }>
-  listWithProperties(options: {
-    folderPath: string
-    properties?: string[]
-    limit?: number
-    offset?: number
-  }): Promise<FolderViewListResponse>
-  getAvailableProperties(folderPath: string): Promise<FolderViewAvailablePropertiesResponse>
-  /** Get AI-powered folder suggestions for moving a note (Phase 27) */
-  getFolderSuggestions(noteId: string): Promise<FolderViewGetFolderSuggestionsResponse>
+// Folder View client API interface — re-exported from
+// @memry/contracts/folder-view-api so this declaration cannot drift from the
+// real contract. `folderExists` is a preload-only existence check (T115) not
+// modeled in the contract type itself.
+export type FolderViewClientAPI = ContractFolderViewClientAPI & {
   /** Check if a folder exists (T115) */
   folderExists(folderPath: string): Promise<boolean>
 }
@@ -1843,6 +1774,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onTagColorUpdated: (callback: (event: TagColorUpdatedEvent) => void) => () => void
   onTagDeleted: (callback: (event: TagDeletedEvent) => void) => () => void
   onTagNotesChanged: (callback: (event: TagNotesChangedEvent) => void) => () => void
+  onTagCategoriesChanged: (callback: () => void) => () => void
   // Reminder event subscriptions
   onReminderCreated: (callback: (event: ReminderCreatedEvent) => void) => () => void
   onReminderUpdated: (callback: (event: ReminderUpdatedEvent) => void) => () => void

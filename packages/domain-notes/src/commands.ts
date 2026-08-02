@@ -57,8 +57,18 @@ export function buildCanonicalNoteMetadata(input: UpsertCanonicalNoteInput): New
   const propertyDefinitionNames =
     input.propertyDefinitionNames ??
     (input.properties ? Object.keys(input.properties).sort((a, b) => a.localeCompare(b)) : null)
+  // `undefined` means "caller had nothing to say", and it must survive as
+  // undefined: upsertNoteMetadata's onConflictDoUpdate writes every key it is
+  // given, and drizzle drops only undefined. Materialising `null` here turned
+  // every vault save (edit, rename, move, re-index) into an erase of the
+  // note's sync bookkeeping — most visibly attachmentReferences, which is how
+  // other devices learn that a note embeds an image or PDF.
   const attachmentReferences =
-    input.attachmentReferences ?? (input.attachmentId ? [input.attachmentId] : null)
+    input.attachmentReferences !== undefined
+      ? input.attachmentReferences
+      : input.attachmentId
+        ? [input.attachmentId]
+        : undefined
   const localOnly = input.localOnly ?? false
 
   return {
@@ -69,20 +79,23 @@ export function buildCanonicalNoteMetadata(input: UpsertCanonicalNoteInput): New
     fileType: input.fileType ?? 'markdown',
     mimeType: input.mimeType ?? null,
     fileSize: input.fileSize ?? null,
-    attachmentId: input.attachmentId ?? null,
+    attachmentId: input.attachmentId,
     attachmentReferences,
     localOnly,
     syncPolicy: resolveNoteSyncPolicy(localOnly, input.syncPolicy),
     journalDate: input.journalDate ?? null,
     propertyDefinitionNames,
     clock: input.clock,
-    syncedAt: input.syncedAt ?? null,
+    syncedAt: input.syncedAt,
     createdAt: input.createdAt,
     modifiedAt: input.modifiedAt
   }
 }
 
-export function saveCanonicalNote(db: NoteMetadataDb, input: UpsertCanonicalNoteInput): NoteMetadata {
+export function saveCanonicalNote(
+  db: NoteMetadataDb,
+  input: UpsertCanonicalNoteInput
+): NoteMetadata {
   return upsertNoteMetadata(db, buildCanonicalNoteMetadata(input))
 }
 

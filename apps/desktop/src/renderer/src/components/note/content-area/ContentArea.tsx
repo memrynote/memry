@@ -51,8 +51,10 @@ import { parseQuickAdd } from '@/lib/quick-add-parser'
 import { formatDateKey } from '@/lib/task-utils'
 import { editorSchema } from './editor-schema'
 import { analyzeTaskIntents } from './scan-task-intents'
-import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
+import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
+import { vaultService } from '@/services/vault-service'
+import { createNoteFileUrlResolver } from '@/lib/create-note-file-url-resolver'
 import {
   ReviewFormattingToolbar,
   ReviewFormattingToolbarController
@@ -130,6 +132,7 @@ interface ContentAreaEditorProps extends ContentAreaProps {
 
 const ContentAreaEditor = memo(function ContentAreaEditor({
   noteId,
+  notePath,
   initialContent,
   contentType = 'html',
   placeholder,
@@ -161,7 +164,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const { clockFormat: dateMentionClockFormat } = useDateMentionPrefs()
   const { resolvedTheme } = useTheme()
   const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
-  const { openTag } = useSidebarDrillDown()
+  const { openSidebarItem } = useSidebarNavigation()
   const { enabled: aiEnabled } = useAISettingsContext()
   const { port: aiPort, error: aiError, retry: retryAI } = useAIInlineContext()
   const { isEnabled: isFeatureEnabled } = useFeatureFlags()
@@ -205,11 +208,31 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     return result.path
   }, [])
 
+  // Vaults written by other apps reference media with a plain relative path
+  // (`../Images/Media/photo.png`). Without this, BlockNote hands that string to
+  // `<img src>`, where it resolves against the renderer document's base URL
+  // instead of the vault and 404s. Render-time only — the markdown on disk keeps
+  // its relative path, so the vault stays readable by the app that wrote it.
+  // See `createNoteFileUrlResolver` for why the vault path is awaited rather
+  // than read off a hook.
+  const notePathRef = useRef(notePath)
+  useEffect(() => {
+    notePathRef.current = notePath
+  }, [notePath])
+
+  const resolveFileUrl = useRef(
+    createNoteFileUrlResolver(
+      () => notePathRef.current,
+      async () => (await vaultService.getStatus()).path ?? null
+    )
+  ).current
+
   // Create the BlockNote editor instance
   const editor = useCreateBlockNote({
     schema: editorSchema,
     setIdAttribute: true,
     uploadFile,
+    resolveFileUrl,
     placeholders: {
       default: resolvedPlaceholder,
       heading: t('editor.content.headingPlaceholder'),
@@ -245,6 +268,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const { handleChange } = useEditorSync({
     editor,
     noteId,
+    notePath,
     initialContent,
     contentType,
     yjsFragment,
@@ -1281,7 +1305,15 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             position={wikiLinkHover.position}
             onMouseEnter={wikiLinkHover.handleCardMouseEnter}
             onMouseLeave={wikiLinkHover.handleCardMouseLeave}
-            onTagClick={openTag}
+            onTagClick={(tag, color) =>
+              openSidebarItem({
+                type: 'tag',
+                title: tag,
+                path: '/tags/' + tag,
+                entityId: tag,
+                color
+              })
+            }
             onNoteClick={onInternalLinkClick}
           />
         )}

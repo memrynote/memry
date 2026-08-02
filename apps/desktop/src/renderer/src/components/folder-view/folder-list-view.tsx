@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 import type { NoteWithProperties } from '@memry/contracts/folder-view-api'
 import { FolderViewEmptyState } from './folder-view-empty-state'
 import { TagChip } from '@/components/note/tags-row/TagChip'
-import { toTagChip, formatRelative, type TagMetaMap } from './note-card-pieces'
+import { toTagChip, formatRelative, NoteCardKindIcon, type TagMetaMap } from './note-card-pieces'
 
 export interface FolderListViewProps {
   notes: NoteWithProperties[]
@@ -87,6 +87,7 @@ export function FolderListView({
           <span className="shrink-0 truncate text-[13px] font-medium text-foreground/90">
             {note.title || 'Untitled'}
           </span>
+          <NoteCardKindIcon kind={note.kind} />
           <div className="flex shrink-0 items-center gap-1.5">
             {note.tags.slice(0, 3).map((tag) => (
               <TagChip

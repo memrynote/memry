@@ -29,6 +29,7 @@ import { syncNoteToCache, deleteNoteFromCache } from '../vault/note-sync'
 import { flushProjectionEvents } from '../projections'
 import { getIndexDatabase, getDatabase } from '../database/client'
 import { getNoteCacheById, getNoteCacheByPath } from '@main/database/queries/notes'
+import { getNoteMetadataById } from '@memry/storage-data'
 import { createRemindersService } from '@memry/app-core/reminders'
 import { syncNoteDateReminders, clearNoteDateReminders } from '../notes/note-date-reminders'
 import { deleteFile } from '../vault/file-ops'
@@ -167,6 +168,35 @@ export async function flushPendingWritebacks(): Promise<void> {
   )
 }
 
+/**
+ * Second opinion on "does this note already exist here?".
+ *
+ * `note_metadata` (data DB) is written synchronously by the sync item handler,
+ * while its `note_cache` row (index DB) only lands once the projection lane
+ * drains — which `applyUpsert` does not await. A write-back firing inside that
+ * gap used to see no cache row, take the `writebackNewNote` branch, and
+ * overwrite the just-applied title and path with the Y.Doc meta title (the
+ * literal 'Untitled' a note is born with), producing an "Untitled" note whose
+ * content is correct on every receiving device.
+ */
+function resolveFromCanonicalMetadata(
+  noteId: string
+): ReturnType<typeof getNoteCacheById> | undefined {
+  try {
+    const canonical = getNoteMetadataById(getDatabase(), noteId)
+    if (!canonical) return undefined
+
+    log.debug('Write-back: index row not projected yet, using canonical metadata', { noteId })
+    return {
+      ...canonical,
+      date: canonical.journalDate ?? null
+    } as unknown as ReturnType<typeof getNoteCacheById>
+  } catch (err) {
+    log.warn('Write-back: canonical metadata lookup failed', { noteId, error: err })
+    return undefined
+  }
+}
+
 async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
   const plainMarkdown = await yDocToMarkdown(doc)
   const markdown =
@@ -185,7 +215,7 @@ async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
   }
 
   const indexDb = getIndexDatabase()
-  const cached = getNoteCacheById(indexDb, noteId)
+  const cached = getNoteCacheById(indexDb, noteId) ?? resolveFromCanonicalMetadata(noteId)
 
   if (isJournalId(noteId)) {
     await writebackJournal(noteId, doc, markdown, cached, indexDb)

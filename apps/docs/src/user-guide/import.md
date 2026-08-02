@@ -76,9 +76,16 @@ Import a single `.md` file, several files, or a whole folder. No export step is 
 | Other frontmatter keys        | Note properties                       |
 | `[[wikilinks]]`               | Preserved as-is                       |
 | Relative image / file links   | Saved as attachments; links rewritten |
+| `![[image.png]]` embeds       | Saved as attachments; embed rewritten |
 | File created / modified times | Preserved on the note                 |
 
-**Limitations:** only `.md` / `.markdown` files are imported (other files only as referenced attachments); links to files outside the selected folder are not treated as attachments; wikilinks are kept literally.
+Obsidian-style embeds are handled alongside ordinary markdown links. `![[photo.png]]`,
+`![[Images/photo.png]]` and the sized form `![[photo.png|300x200]]` all save the file as
+an attachment and replace the whole embed with the imported image; the display size is
+dropped, since you resize images in the editor instead. `![[Some Note]]` and
+`![[Some Note.md]]` embed another note rather than a file, so they are left untouched.
+
+**Limitations:** only `.md` / `.markdown` files are imported (other files only as referenced attachments); links to files outside the selected folder are not treated as attachments; wikilinks are kept literally; the display size on a sized embed is not carried over.
 
 ## Importing from HTML
 

@@ -3,6 +3,8 @@ import {
   splitMarkdownPreservingBlanks,
   assembleMarkdownWithBlanks,
   separateBlockImages,
+  extractWikiImageEmbedRefs,
+  rewriteWikiImageEmbeds,
   normalizeSerializedMarkdown,
   type MarkdownSegment
 } from './empty-lines'
@@ -331,6 +333,80 @@ describe('assembleMarkdownWithBlanks', () => {
 // ---------------------------------------------------------------------------
 // separateBlockImages
 // ---------------------------------------------------------------------------
+
+describe('wiki image embeds', () => {
+  const RESOLVED = 'memry-file://local/vault/notes/photo.png'
+  const resolveAll = (ref: string): string => `memry-file://local/vault/notes/${ref}`
+  const resolveNone = (): undefined => undefined
+
+  it('extracts a plain embed', () => {
+    expect(extractWikiImageEmbedRefs('![[photo.png]]')).toEqual(['photo.png'])
+  })
+
+  it('extracts an embed carrying a display size', () => {
+    expect(extractWikiImageEmbedRefs('![[photo.png|300x200]]')).toEqual(['photo.png'])
+  })
+
+  it('extracts a subfolder target', () => {
+    expect(extractWikiImageEmbedRefs('![[Images/photo.png]]')).toEqual(['Images/photo.png'])
+  })
+
+  it('deduplicates repeated embeds', () => {
+    expect(extractWikiImageEmbedRefs('![[a.png]] ![[a.png|20]] ![[b.jpg]]')).toEqual([
+      'a.png',
+      'b.jpg'
+    ])
+  })
+
+  it('ignores non-image and note transclusions', () => {
+    expect(extractWikiImageEmbedRefs('![[Some Note]] ![[doc.pdf]] ![[Note#Heading]]')).toEqual([])
+  })
+
+  it('ignores a plain wikilink with no bang', () => {
+    expect(extractWikiImageEmbedRefs('[[photo.png]]')).toEqual([])
+  })
+
+  it('ignores embeds inside a code fence', () => {
+    expect(extractWikiImageEmbedRefs('```\n![[photo.png]]\n```')).toEqual([])
+  })
+
+  it('rewrites a resolved embed into a markdown image', () => {
+    expect(rewriteWikiImageEmbeds('![[photo.png]]', () => RESOLVED)).toBe(
+      `![photo.png](${RESOLVED})`
+    )
+  })
+
+  it('drops the display size and keeps the filename as alt text', () => {
+    expect(rewriteWikiImageEmbeds('![[Images/photo.png|300x200]]', () => RESOLVED)).toBe(
+      `![photo.png](${RESOLVED})`
+    )
+  })
+
+  it('rewrites an embed sitting inline in a sentence', () => {
+    expect(rewriteWikiImageEmbeds('see ![[photo.png]] here', () => RESOLVED)).toBe(
+      `see ![photo.png](${RESOLVED}) here`
+    )
+  })
+
+  it('leaves an unresolved embed untouched rather than breaking the image', () => {
+    expect(rewriteWikiImageEmbeds('![[photo.png]]', resolveNone)).toBe('![[photo.png]]')
+  })
+
+  it('leaves note links, note embeds and fenced embeds untouched', () => {
+    const md = '[[Note]] and ![[Some Note]] and ![[doc.pdf]]\n\n```\n![[photo.png]]\n```'
+    expect(rewriteWikiImageEmbeds(md, resolveAll)).toBe(md)
+  })
+
+  it('returns the input unchanged when there is no embed syntax', () => {
+    const md = 'plain ![alt](img.png) text'
+    expect(rewriteWikiImageEmbeds(md, resolveAll)).toBe(md)
+  })
+
+  it('feeds separateBlockImages so a rewritten embed becomes its own block', () => {
+    const rewritten = rewriteWikiImageEmbeds('before\n![[photo.png]]\nafter', () => RESOLVED)
+    expect(separateBlockImages(rewritten)).toBe(`before\n\n![photo.png](${RESOLVED})\n\nafter`)
+  })
+})
 
 describe('separateBlockImages', () => {
   const url = 'memry-file://local/v/attachments/n/abc-image.png'

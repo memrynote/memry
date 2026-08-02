@@ -594,6 +594,15 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     return fetchLocalNote(itemId)
   }
 
+  /**
+   * Stamp the note as "the server has this state". Without it `syncedAt` only
+   * ever recorded incoming pulls, so dirty-recovery could not tell a note whose
+   * push was lost from one that is perfectly in step.
+   */
+  markPushSynced(db: DrizzleDb, itemId: string): void {
+    updateNoteMetadata(db, itemId, { syncedAt: utcNow() })
+  }
+
   buildPushPayload(
     _db: DrizzleDb,
     itemId: string,

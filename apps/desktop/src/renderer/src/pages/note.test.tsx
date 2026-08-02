@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => ({
   updateTabTitleByEntityId: vi.fn(),
   revealInFinder: vi.fn(),
   openExternal: vi.fn(),
-  openTag: vi.fn(),
+  openSidebarItem: vi.fn(),
   invalidateQueries: vi.fn(),
   handleAddProperty: vi.fn(),
   handleDeleteProperty: vi.fn(),
@@ -208,8 +208,8 @@ vi.mock('@/contexts/tabs', () => ({
   })
 }))
 
-vi.mock('@/contexts/sidebar-drill-down', () => ({
-  useSidebarDrillDown: () => ({ openTag: mocks.openTag })
+vi.mock('@/hooks/use-sidebar-navigation', () => ({
+  useSidebarNavigation: () => ({ openSidebarItem: mocks.openSidebarItem })
 }))
 
 vi.mock('@/hooks/use-note-reminders', () => ({
@@ -689,7 +689,13 @@ describe('NotePage', () => {
     expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', tags: [] })
 
     fireEvent.click(screen.getByRole('button', { name: 'Open tag' }))
-    expect(mocks.openTag).toHaveBeenCalledWith('work', 'blue')
+    expect(mocks.openSidebarItem).toHaveBeenCalledWith({
+      type: 'tag',
+      title: 'work',
+      path: '/tags/work',
+      entityId: 'work',
+      color: 'blue'
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Add property' }))
     expect(mocks.setPropertiesCollapsed).toHaveBeenCalledWith(false)

@@ -10,6 +10,7 @@ import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { createLogger } from '../../lib/logger'
+import { readTagViews, writeTagViews } from '../../database/queries/tag-definitions'
 import { BaseItemHandler } from './base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 
@@ -44,10 +45,20 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
           .set({
             color: data.color ?? existing.color,
             icon: data.icon !== undefined ? data.icon : existing.icon,
+            categoryId: data.categoryId !== undefined ? data.categoryId : existing.categoryId,
+            sortOrder: data.sortOrder ?? existing.sortOrder,
             clock: resolution.mergedClock
           })
           .where(eq(tagDefinitions.name, itemId))
           .run()
+
+        // `undefined` means the sending client does not know about this field —
+        // keep whatever is local. `null` is an explicit clear. Anything else wins.
+        // Collapsing these two into a falsy check silently destroys saved views
+        // whenever an older client syncs the tag (the project_links bug, again).
+        if (data.views !== undefined) {
+          writeTagViews(tx, itemId, data.views)
+        }
 
         ctx.emit(TagsChannels.events.COLOR_UPDATED, { tag: itemId, color: data.color })
         ctx.emit('notes:tags-changed', {})
@@ -59,10 +70,16 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
           name: itemId,
           color: data.color ?? '#808080',
           icon: data.icon ?? null,
+          categoryId: data.categoryId ?? null,
+          sortOrder: data.sortOrder ?? 0,
           clock: remoteClock,
           createdAt: data.createdAt ?? now
         })
         .run()
+
+      if (data.views !== undefined) {
+        writeTagViews(tx, itemId, data.views)
+      }
 
       ctx.emit(TagsChannels.events.NOTES_CHANGED, { tag: itemId })
       ctx.emit('notes:tags-changed', {})
@@ -110,6 +127,9 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
       name: tag.name,
       color: tag.color,
       icon: tag.icon ?? null,
+      categoryId: tag.categoryId ?? null,
+      sortOrder: tag.sortOrder,
+      views: readTagViews(db, itemId),
       clock: (tag.clock as VectorClock) ?? undefined,
       createdAt: tag.createdAt
     }

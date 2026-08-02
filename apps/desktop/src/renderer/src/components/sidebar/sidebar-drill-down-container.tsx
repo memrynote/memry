@@ -9,7 +9,6 @@ import * as React from 'react'
 
 import { cn } from '@/lib/utils'
 import { useSidebarDrillDown, type DrillDownView } from '@/contexts/sidebar-drill-down'
-import { TagDetailView } from './tag-detail-view'
 
 interface SidebarDrillDownContainerProps {
   /** Main sidebar content (when at root) */
@@ -62,8 +61,6 @@ export function SidebarDrillDownContainer({
  */
 function DetailViewRenderer({ view }: { view: DrillDownView }): React.JSX.Element | null {
   switch (view.type) {
-    case 'tag':
-      return <TagDetailView tag={view.tag} color={view.color} />
     case 'main':
     default:
       return null

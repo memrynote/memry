@@ -5,6 +5,8 @@ import {
   splitMarkdownPreservingBlanks,
   assembleMarkdownWithBlanks,
   separateBlockImages,
+  extractWikiImageEmbedRefs,
+  rewriteWikiImageEmbeds,
   normalizeSerializedMarkdown,
   type MarkdownSegment
 } from '@memry/shared/empty-lines'
@@ -154,13 +156,40 @@ export function sanitizeBlockIds(blocks: Block[]): Block[] {
   return didChange ? nextBlocks : blocks
 }
 
+/**
+ * Turn Obsidian image embeds into the `![alt](target)` form BlockNote parses
+ * into an image block. The main process resolves the target against the vault;
+ * anything it cannot find is left as the author wrote it. Failures degrade to
+ * "no embeds resolved" rather than blocking the note from opening.
+ *
+ * `notePath` matters beyond correctness: with it the target comes back relative
+ * to the note, so saving the note writes a portable link rather than this
+ * machine's absolute path into a file that syncs. Callers that never persist
+ * what they render may omit it.
+ */
+async function resolveWikiImageEmbeds(markdown: string, notePath?: string): Promise<string> {
+  const refs = extractWikiImageEmbedRefs(markdown)
+  if (refs.length === 0) return markdown
+
+  let resolved: Record<string, string> = {}
+  try {
+    resolved = (await window.api?.vault?.resolveEmbeds?.({ refs, notePath })) ?? {}
+  } catch {
+    return markdown
+  }
+
+  return rewriteWikiImageEmbeds(markdown, (ref) => resolved[ref])
+}
+
 export async function parseMarkdownPreservingBlanks(
   editor: any,
-  markdown: string
+  markdown: string,
+  notePath?: string
 ): Promise<Block[]> {
+  const withEmbeds = await resolveWikiImageEmbeds(markdown, notePath)
   // Inline color spans are masked into markdown-inert tokens before parsing
   // (BlockNote strips raw spans), then re-applied as styles on the parsed runs.
-  const { text: maskedMarkdown, spans } = maskInlineColorSpans(markdown)
+  const { text: maskedMarkdown, spans } = maskInlineColorSpans(withEmbeds)
   const calloutSegments = splitMarkdownByCallouts(maskedMarkdown)
   const blocks: Block[] = []
 

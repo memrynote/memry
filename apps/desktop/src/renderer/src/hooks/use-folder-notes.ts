@@ -37,7 +37,7 @@ export function useFolderNotes({
     queryKey: ['folder-notes', folderPath, limit, sortBy, sortOrder] as const,
     queryFn: async (): Promise<NoteWithProperties[]> => {
       const result = await window.api.folderView.listWithProperties({
-        folderPath,
+        scope: { kind: 'folder', path: folderPath },
         properties: undefined,
         limit,
         offset: 0

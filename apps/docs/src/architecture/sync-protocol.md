@@ -108,6 +108,31 @@ broken the item re-quarantines within a few pulls, and if it was repaired server
 again without an emergency wipe. The manifest-check throttle (30 minutes) persists in sync state, so
 engine restarts and vault switches cannot re-arm an immediate check.
 
+### Push acknowledgements and in-flight mutations
+
+The push queue coalesces: a new mutation for an item that already has an unattempted row overwrites
+that row's payload instead of inserting a second one, and dequeue is a plain read that leaves no
+in-flight marker. A row handed to a push therefore stays a valid coalesce target for the whole
+flight — worker encryption, the round trip, and every retry — and the user can rename or re-tag the
+item at any point in that window.
+
+An acknowledgement is consequently conditional: the push remembers the payload each row held when it
+was dequeued and only deletes rows that still match. A row that changed under the push is left
+queued and goes out on the next iteration. Deleting unconditionally would drop the newer mutation
+permanently, because the local clock advances at mutation time: the item would sit ahead of the
+server with nothing queued, and every later pull would resolve `skip` rather than repair it.
+
+### Recovering pushes that never landed
+
+Items expose a "the server has this state" stamp (`syncedAt`) that advances on a confirmed push as
+well as on an applied pull. Anything modified after its stamp — or never stamped at all — is
+re-queued on the next full sync for tasks, projects and notes alike.
+
+Recovery re-sends the item's **stored** clock rather than bumping it. An item that is genuinely in
+step is then replay-detected by the server, costs one round trip, and is stamped clean; only an item
+that really is ahead of the server changes anything. Scope is limited to items the server already
+knows: clock-less rows belong to the initial seed, and journals to their own handler.
+
 ### Foreign-key parents and orphan repair
 
 Some rows carry foreign keys — a task references its project and its status — and the data DB
@@ -233,6 +258,13 @@ across devices:
   cleared only after the server accepts the file. Failed or quit-interrupted
   uploads are retried on every sync runtime start instead of being lost with
   the in-memory queue.
+
+`attachmentReferences` is the only signal that tells another device a note
+embeds a file — the markdown link alone points at a path that exists nowhere
+but the authoring machine. It is sync bookkeeping, not file state, so the
+canonical note upsert leaves it (and the sync stamp) untouched when a caller
+has nothing to say about it. Ordinary vault writes — a content save, a rename,
+a move, a re-index — carry file state only, and must not erase it.
 
 ## Tombstones
 

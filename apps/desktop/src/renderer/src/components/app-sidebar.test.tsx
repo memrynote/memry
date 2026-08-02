@@ -11,7 +11,6 @@ const mocks = vi.hoisted(() => ({
   isActiveItem: vi.fn(() => false),
   openTab: vi.fn(),
   openSettings: vi.fn(),
-  openTag: vi.fn(),
   createNote: vi.fn(),
   importFiles: vi.fn(),
   notesTreeExpandAll: vi.fn(),
@@ -126,18 +125,23 @@ vi.mock('@/components/notes-tree', () => ({
 }))
 
 vi.mock('@/components/sidebar/sidebar-tag-list', () => ({
-  SidebarTagList: ({
-    onTagClick,
-    onActionsReady
-  }: {
-    onTagClick: (tag: string, color: string) => void
-    onActionsReady: (node: ReactNode) => void
-  }) => {
+  SidebarTagList: ({ onActionsReady }: { onActionsReady: (node: ReactNode) => void }) => {
     useEffect(() => {
       onActionsReady(<button type="button">Tag action</button>)
     }, [onActionsReady])
     return (
-      <button type="button" onClick={() => onTagClick('work', '#2563eb')}>
+      <button
+        type="button"
+        onClick={() =>
+          mocks.openSidebarItem({
+            type: 'tag',
+            title: 'work',
+            path: '/tags/work',
+            entityId: 'work',
+            color: '#2563eb'
+          })
+        }
+      >
         Tag work
       </button>
     )
@@ -213,10 +217,6 @@ vi.mock('@/services/notes-service', () => ({
     create: mocks.createNote,
     importFiles: mocks.importFiles
   }
-}))
-
-vi.mock('@/contexts/sidebar-drill-down', () => ({
-  useSidebarDrillDown: () => ({ openTag: mocks.openTag })
 }))
 
 vi.mock('@/contexts/auth-context', () => ({
@@ -344,7 +344,13 @@ describe('AppSidebar', () => {
     render(<AppSidebar currentPage="inbox" viewCounts={{}} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Tag work' }))
-    expect(mocks.openTag).toHaveBeenCalledWith('work', '#2563eb')
+    expect(mocks.openSidebarItem).toHaveBeenCalledWith({
+      type: 'tag',
+      title: 'work',
+      path: '/tags/work',
+      entityId: 'work',
+      color: '#2563eb'
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Bookmark item' }))
     expect(mocks.openSidebarItem).toHaveBeenCalledWith({

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion'
 import { ArrowRight, Play } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import heroBg from '@/assets/hero-bg.png'
 import paperLeft from '@/assets/paper-left.png'
 import paperRight from '@/assets/paper-right.png'
@@ -248,7 +248,7 @@ export function Hero2() {
             </div>
             {/* Watch cue — hidden until hover/keyboard focus; always shown on touch (no hover). */}
             <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <span className="flex translate-y-1 scale-95 items-center gap-2 rounded-full bg-ink/75 px-5 py-2.5 text-sm font-medium text-white opacity-0 shadow-[0_16px_50px_rgba(31,41,55,0.45)] backdrop-blur-md transition-all duration-200 ease-out group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:scale-100 group-focus-visible:opacity-100 motion-reduce:transition-none [@media(hover:none)]:translate-y-0 [@media(hover:none)]:scale-100 [@media(hover:none)]:opacity-100">
+              <span className="flex translate-y-1 scale-95 items-center gap-2 rounded-full bg-ink/75 px-5 py-2.5 text-sm font-medium text-white opacity-0 shadow-[0_16px_50px_rgba(31,41,55,0.45)] backdrop-blur-md transition-[transform,opacity] duration-200 ease-out group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:scale-100 group-focus-visible:opacity-100 motion-reduce:transition-none [@media(hover:none)]:translate-y-0 [@media(hover:none)]:scale-100 [@media(hover:none)]:opacity-100">
                 <Play className="h-4 w-4 fill-current" strokeWidth={1.6} />
                 Watch demo
               </span>

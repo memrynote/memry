@@ -108,9 +108,38 @@ export class SyncQueueManager {
       .all()
   }
 
-  markSuccess(id: string): void {
+  /**
+   * Drop an item the server accepted.
+   *
+   * `pushedPayload` makes the delete conditional, and callers that push over
+   * the network MUST pass it. `enqueue` coalesces a new mutation into any
+   * existing `attempts = 0` row, and nothing marks a row as in flight — so a
+   * rename made while a push is awaiting its response lands in the very row
+   * the push is about to delete. Deleting unconditionally loses that mutation
+   * forever: its clock bump is already persisted, so the local item stays
+   * permanently ahead of the server and no later pull can repair it (the note
+   * that produced this guard synced across devices as "Untitled").
+   *
+   * @returns true when the row was removed, false when it changed under us and
+   * was kept for the next push iteration.
+   */
+  markSuccess(id: string, pushedPayload?: string): boolean {
+    const where =
+      pushedPayload === undefined
+        ? eq(syncQueue.id, id)
+        : and(eq(syncQueue.id, id), eq(syncQueue.payload, pushedPayload))
+
+    const changes = this.db.delete(syncQueue).where(where).run().changes
+
+    if (changes === 0 && pushedPayload !== undefined) {
+      log.info('markSuccess: item changed while in flight, keeping it queued', {
+        id: id.slice(0, 8)
+      })
+      return false
+    }
+
     log.debug('markSuccess: deleting item', { id: id.slice(0, 8) })
-    this.db.delete(syncQueue).where(eq(syncQueue.id, id)).run()
+    return true
   }
 
   markFailed(id: string, error: string): void {

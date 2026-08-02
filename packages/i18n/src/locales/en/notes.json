@@ -26,6 +26,10 @@
       "deleteFailed": "Failed to delete note"
     },
     "deleteDialogTitle": "{count, plural, one {Delete Note} other {Delete # Notes}}",
+    "itemsCount": "{count, plural, one {# item} other {# items}}",
+    "itemsCountFiltered": "{shown} of {total, plural, one {# item} other {# items}}",
+    "tagFilterLabel": "tag = {tag}",
+    "renameViewUnavailableForTags": "Renaming saved views isn't available for tags yet",
     "deleteConfirm": {
       "title": "Delete note",
       "description": "Are you sure you want to delete \"{title}\"? This action cannot be undone.",
@@ -412,7 +416,8 @@
       "addCondition": "Add condition",
       "addFilter": "Add filter",
       "addGroup": "Add group",
-      "removeGroup": "Remove group"
+      "removeGroup": "Remove group",
+      "lockedConditionHint": "This condition defines the current view and can't be removed here."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Built-in",
@@ -425,7 +430,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Notes table",
       "selectAll": "Select all notes",
-      "selectRow": "Select note"
+      "selectRow": "Select note",
+      "kind": {
+        "Note": "Note",
+        "Task": "Task",
+        "Inbox": "Inbox"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Search notes...",
@@ -532,7 +542,9 @@
       "resizePdf": "Resize PDF",
       "alignLeft": "Align left",
       "alignCenter": "Align center",
-      "alignRight": "Align right"
+      "alignRight": "Align right",
+      "previousPage": "Previous page",
+      "nextPage": "Next page"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Open in task panel",
@@ -594,7 +606,8 @@
       "failedToLoadTags": "Failed to load tags",
       "noTagsYet": "No tags yet",
       "filterTags": "Filter tags...",
-      "noMatchingTags": "No matching tags"
+      "noMatchingTags": "No matching tags",
+      "Uncategorized": "Uncategorized"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Drop here",
@@ -787,5 +800,50 @@
     "cancel": "Cancel",
     "success": "Template applied",
     "failed": "Failed to apply template"
+  },
+  "tags": {
+    "hubTitle": "Tags",
+    "openHub": "Open tag hub"
+  },
+  "tagView": {
+    "moreActions": "More actions",
+    "pin": {
+      "action": "Pin {count, plural, one {# note} other {# notes}} to tag",
+      "success": "Pinned {count, plural, one {# note} other {# notes}} to tag",
+      "failed": "Failed to pin note to tag"
+    }
+  },
+  "tagsHub": {
+    "loading": "Loading tags...",
+    "newCategory": "New category",
+    "newTag": "New tag",
+    "cancelCreate": "Cancel",
+    "categoryNamePlaceholder": "Category name",
+    "tagNamePlaceholder": "Tag name",
+    "uncategorized": "Uncategorized",
+    "search": {
+      "placeholder": "Search categories and tags",
+      "empty": "No categories or tags match your search"
+    },
+    "category": {
+      "more": "Category options",
+      "rename": "Rename category",
+      "delete": "Delete category",
+      "dragHandle": "Drag to reorder category",
+      "emptyHint": "Drag a tag here",
+      "deleteTitle": "Delete {name}?",
+      "deleteBody": "Tags will move to Uncategorized. They won't be deleted.",
+      "deleteConfirm": "Delete",
+      "deleteCancel": "Cancel"
+    },
+    "errors": {
+      "loadFailed": "Failed to load tag categories",
+      "createCategoryFailed": "Failed to create category",
+      "renameCategoryFailed": "Failed to rename category",
+      "deleteCategoryFailed": "Failed to delete category",
+      "createTagFailed": "Failed to create tag",
+      "createTagCategorizeFailed": "Tag created but could not be added to the category",
+      "reorderFailed": "Failed to reorder tags"
+    }
   }
 }

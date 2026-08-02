@@ -104,6 +104,8 @@ function hydrateLinkMentionFavicons(editor: any): void {
 interface EditorSyncParams {
   editor: any
   noteId?: string
+  /** Vault-relative path of the note, so embed targets resolve relative to it. */
+  notePath?: string
   initialContent?: Block[] | string
   contentType?: 'html' | 'markdown' | 'blocks'
   yjsFragment?: Y.XmlFragment
@@ -127,6 +129,7 @@ interface EditorSyncResult {
 export function useEditorSync({
   editor,
   noteId,
+  notePath,
   initialContent,
   contentType = 'html',
   yjsFragment,
@@ -202,7 +205,7 @@ export function useEditorSync({
 
             let blocks
             if (contentType === 'markdown') {
-              blocks = await parseMarkdownPreservingBlanks(editor, content)
+              blocks = await parseMarkdownPreservingBlanks(editor, content, notePath)
             } else {
               blocks = await editor.tryParseHTMLToBlocks(content)
             }

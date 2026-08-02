@@ -94,7 +94,7 @@ export default defineConfig(({ mode }) => {
           // dynamic import() + a hydrateRoot() migration (createRoot replaces the
           // prerendered DOM, so React.lazy would flash a fallback on direct loads).
           manualChunks: {
-            'react-vendor': ['react', 'react-dom', 'react-router', 'react-router-dom'],
+            'react-vendor': ['react', 'react-dom', 'react-router'],
             motion: ['framer-motion', 'lenis'],
             paddle: ['@paddle/paddle-js'],
             crypto: ['libsodium-wrappers-sumo'],

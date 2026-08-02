@@ -87,6 +87,49 @@ describe('note-metadata-repository', () => {
       expect(created.localOnly).toBe(true)
       expect(created.journalDate).toBe('2026-04-16')
     })
+
+    it('keeps sync bookkeeping the caller did not supply', () => {
+      // #given a note the sync layer has already stamped
+      upsertNoteMetadata(
+        db,
+        makeNote({
+          clock: { 'device-a': 4 },
+          syncedAt: '2026-01-01T00:00:00.000Z',
+          attachmentId: 'att-1',
+          attachmentReferences: ['att-1', 'att-2']
+        })
+      )
+
+      // #when a plain content save re-upserts it (vault saves carry no sync fields)
+      const updated = upsertNoteMetadata(
+        db,
+        makeNote({ title: 'Edited', modifiedAt: '2026-02-01T00:00:00.000Z' })
+      )
+
+      // #then the embedded-attachment refs and sync stamps survive the edit —
+      // wiping them stops other devices from ever materializing the images and
+      // PDFs the note embeds
+      expect(updated.title).toBe('Edited')
+      expect(updated.attachmentReferences).toEqual(['att-1', 'att-2'])
+      expect(updated.attachmentId).toBe('att-1')
+      expect(updated.clock).toEqual({ 'device-a': 4 })
+      expect(updated.syncedAt).toBe('2026-01-01T00:00:00.000Z')
+    })
+
+    it('still clears attachment references when the caller passes null explicitly', () => {
+      // #given
+      upsertNoteMetadata(db, makeNote({ attachmentReferences: ['att-1'] }))
+
+      // #when
+      const updated = upsertNoteMetadata(
+        db,
+        makeNote({ attachmentReferences: null, attachmentId: null })
+      )
+
+      // #then
+      expect(updated.attachmentReferences).toBeNull()
+      expect(updated.attachmentId).toBeNull()
+    })
   })
 
   describe('updateNoteMetadata', () => {

@@ -12,7 +12,7 @@ import { useProject } from '@/hooks/use-project'
 import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { useTabs } from '@/contexts/tabs'
 import { useTasksOptional } from '@/contexts/tasks'
-import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
+import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { tasksService } from '@/services/tasks-service'
 import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -41,7 +41,7 @@ export function CalendarTaskPopover({
   const { tags: allTags } = useNoteTagsQuery({ enabled: (task?.tags?.length ?? 0) > 0 })
   const tasksContext = useTasksOptional()
   const { openTab } = useTabs()
-  const { openTag } = useSidebarDrillDown()
+  const { openSidebarItem } = useSidebarNavigation()
   const { t } = useT('calendar')
 
   const isCompleted = !!task?.completedAt
@@ -166,9 +166,15 @@ export function CalendarTaskPopover({
 
   const handleTagClick = useCallback(
     (tag: { name: string; color: string }): void => {
-      openTag(tag.name, tag.color)
+      openSidebarItem({
+        type: 'tag',
+        title: tag.name,
+        path: '/tags/' + tag.name,
+        entityId: tag.name,
+        color: tag.color
+      })
     },
-    [openTag]
+    [openSidebarItem]
   )
 
   const handlePickDateTime = useCallback(() => {

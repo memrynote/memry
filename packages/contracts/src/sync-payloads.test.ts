@@ -336,6 +336,44 @@ describe('TagDefinitionSyncPayloadSchema', () => {
   it('rejects missing color', () => {
     expect(TagDefinitionSyncPayloadSchema.safeParse({ name: 'work' }).success).toBe(false)
   })
+
+  it('accepts a views array', () => {
+    const result = TagDefinitionSyncPayloadSchema.safeParse({
+      name: 'work',
+      color: '#abc',
+      views: [{ name: 'Mine', type: 'table' }]
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts explicit null views (clear)', () => {
+    expect(
+      TagDefinitionSyncPayloadSchema.safeParse({ name: 'work', color: '#abc', views: null }).success
+    ).toBe(true)
+  })
+
+  it('tolerates an old payload with no views key (backward compat, project_links-style regression)', () => {
+    const parsed = TagDefinitionSyncPayloadSchema.parse({ name: 'work', color: '#abc' })
+    expect(parsed.views).toBeUndefined()
+  })
+
+  it('rejects a non-array views value', () => {
+    const result = TagDefinitionSyncPayloadSchema.safeParse({
+      name: 'work',
+      color: '#abc',
+      views: 'not-an-array'
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects a views entry missing the required name', () => {
+    const result = TagDefinitionSyncPayloadSchema.safeParse({
+      name: 'work',
+      color: '#abc',
+      views: [{ type: 'table' }]
+    })
+    expect(result.success).toBe(false)
+  })
 })
 
 describe('FolderConfigSyncPayloadSchema', () => {

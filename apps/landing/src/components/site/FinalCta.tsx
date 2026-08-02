@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DownloadButton } from '@/components/shared/DownloadCTA'
@@ -17,6 +17,8 @@ const SUN_ARCS = [
   { d: 'M256 240a104 104 0 0 1 208 0', o: 0.3 }
 ] as const
 
+const SUN_VIEWPORT = { once: true, margin: '-80px' } as const
+
 /**
  * Terracotta sunrise — concentric arcs over a half-sun that RISES from the banner's
  * bottom edge as the closer scrolls into view: the sunrise metaphor the surrounding
@@ -27,7 +29,6 @@ const SUN_ARCS = [
  */
 function SunArc() {
   const reduce = useReducedMotion()
-  const viewport = { once: true, margin: '-80px' } as const
 
   return (
     <svg
@@ -45,7 +46,7 @@ function SunArc() {
             strokeWidth="2"
             initial={reduce ? false : { opacity: 0, y: 12 }}
             whileInView={reduce ? undefined : { opacity: 1, y: 0 }}
-            viewport={viewport}
+            viewport={SUN_VIEWPORT}
             transition={reduce ? undefined : { duration: 0.7, delay: 0.15 + i * 0.08, ease: EASE }}
           />
         ))}
@@ -56,7 +57,7 @@ function SunArc() {
         fillOpacity="0.85"
         initial={reduce ? false : { opacity: 0, y: 26 }}
         whileInView={reduce ? undefined : { opacity: 1, y: 0 }}
-        viewport={viewport}
+        viewport={SUN_VIEWPORT}
         transition={reduce ? undefined : { duration: 0.9, delay: 0.28, ease: EASE }}
       />
     </svg>

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router'
 import { useEffect } from 'react'
 import { MotionConfig } from 'framer-motion'
 import { HelmetProvider } from 'react-helmet-async'
