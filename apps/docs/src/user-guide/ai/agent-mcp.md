@@ -226,11 +226,22 @@ auto-accepted or shown for inline approval depending on the Agent Permissions se
 `vault_desktop_read` and `vault_desktop_write` cover the remaining desktop CRUD surface through an
 allowlisted desktop API operation name plus an `args` array. They are used for desktop domains such
 as templates, saved filters, bookmarks, reminders, calendar events, folder views, properties, tags,
-search reasons, and settings. The write bridge uses the same in-app approval flow as named write
-tools. Security-sensitive and system operations stay outside the allowlist, including account/auth
-flows, provider connect/disconnect/refresh actions, app updater actions, external open/reveal
-actions, and raw secret writes. Unsupported or unavailable desktop API operations return a structured
-MCP error instead of falling back to an arbitrary desktop call.
+search reasons, inbox conversions, and settings. The write bridge uses the same in-app approval flow
+as named write tools. Security-sensitive and system operations stay outside the allowlist, including
+account/auth flows, provider connect/disconnect/refresh actions, app updater actions, external
+open/reveal actions, import dialogs, OS settings panes, telemetry, feedback and diagnostics
+reporting, and raw secret writes. Unsupported or unavailable desktop API operations return a
+structured MCP error instead of falling back to an arbitrary desktop call.
+
+Inbox items convert through the bridge into any of the four targets the app itself offers:
+`inbox.convertToNote`, `inbox.convertToTask`, `inbox.convertToEvent`, and
+`inbox.convertToReminder`. `notes.applyTemplate` applies a template the agent can already read
+through `templates.get` to an existing note.
+
+`settings.getFeaturesSettings` reports which surfaces are turned on — home, inbox, journal, tasks,
+calendar, graph, and spatial canvas — so an agent can tell whether an action is even available
+before suggesting it, and `settings.setFeaturesSettings` toggles them. `settings.getInboxSettings`
+and `settings.setInboxSettings` cover the daily inbox review reminder.
 
 Calendar desktop reads accept the same single-object shape as the renderer bridge. For example:
 `calendar.listEvents` accepts `args: [{}]`, and `calendar.getRange` accepts either
