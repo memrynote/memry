@@ -433,6 +433,22 @@ describe('createVaultServiceHandles', () => {
     })
   })
 
+  it('refuses to overwrite a filed binary with markdown', async () => {
+    const handles = createVaultServiceHandles(deps)
+
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'file-1',
+      title: 'Scan',
+      path: 'notes/work/scan.pdf',
+      fileType: 'pdf'
+    })
+
+    await expect(
+      handles.notes.update({ id: 'file-1', mode: 'replace', content_markdown: 'Body' })
+    ).rejects.toMatchObject({ code: 'VALIDATION', details: { id: 'file-1', file_type: 'pdf' } })
+    expect(mocks.updateNoteCommand).not.toHaveBeenCalled()
+  })
+
   it('returns null when the note cache has no row for the id', async () => {
     const handles = createVaultServiceHandles(deps)
 

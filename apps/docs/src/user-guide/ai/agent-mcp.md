@@ -184,7 +184,8 @@ so it can turn up in `vault_search_notes`. Every search hit therefore carries a 
 - `markdown` — a real note. `vault_read_note` returns its content.
 - `pdf`, `image`, `audio`, `video` — a filed file. There is no markdown to read, so
   `vault_read_note` refuses it with a `VALIDATION` error naming the file type instead of returning
-  bytes for the client to treat as text.
+  bytes for the client to treat as text. `vault_update_note` refuses it the same way, so an agent
+  cannot overwrite a filed document with markdown.
 
 Pass `file_types` to narrow the search up front — `["markdown"]` for notes only, or
 `["pdf", "image"]` to look for filed documents. The filter runs inside the search query, so `limit`

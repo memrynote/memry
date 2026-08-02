@@ -32,6 +32,7 @@ import {
 } from '../../../notes/folder-config-effects'
 import type { RepeatConfig } from '@memry/domain-tasks'
 import type { DataDb, IndexDb } from '../../../database'
+import { AgentToolError } from '../errors'
 import { snapshotCurrentNoteFromWindow } from './current-note'
 import { invokeDesktopApiFromWindow } from './desktop-api'
 import type {
@@ -260,6 +261,19 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         return { id }
       },
       async update(input) {
+        // A filed pdf/image/audio/video indexes as a "note" row (#800), so an
+        // agent can reach one from search. Writing markdown over it would
+        // destroy the user's file — refuse before touching disk (#919).
+        const fileType = getNoteCacheById(indexDb, input.id)?.fileType ?? 'markdown'
+        if (fileType !== 'markdown') {
+          throw new AgentToolError(
+            'VALIDATION',
+            `Note ${input.id} is a filed ${fileType} file, not a markdown note. ` +
+              'Writing markdown to it would destroy the file.',
+            { id: input.id, file_type: fileType }
+          )
+        }
+
         const note = await getNoteById(input.id)
         if (!note) {
           throw new Error(`Note not found: ${input.id}`)
