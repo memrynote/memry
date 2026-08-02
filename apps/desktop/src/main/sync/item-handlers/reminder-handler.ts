@@ -54,13 +54,17 @@ class ReminderHandler extends BaseItemHandler<ReminderSyncPayload> {
           log.warn('Concurrent reminder edit, using last-write-wins', { itemId })
         }
 
-        // `remindAt` on a note_date row is device-local (derived from the note's
-        // date pill in THIS device's timezone — see reminder-outbound.ts).
-        // Current clients omit it from the payload, but one running an older
-        // build, or a payload queued before this rule existed, still sends it.
-        // Ignoring it here is what stops the two devices contending over the
-        // value and resetting each other's dismiss.
-        const localRemindAt = (data.targetType ?? existing.targetType) === 'note_date'
+        // `remindAt` on an ANCHORED note_date row is device-local (derived from
+        // the note's date pill in THIS device's timezone — see
+        // reminder-outbound.ts). Current clients omit it from the payload, but
+        // one running an older build, or a payload queued before this rule
+        // existed, still sends it. Ignoring it here is what stops the two
+        // devices contending over the value and resetting each other's dismiss.
+        // Unanchored note_date rows are ordinary user intent with a
+        // user-supplied time, so theirs must keep syncing.
+        const localRemindAt =
+          (data.targetType ?? existing.targetType) === 'note_date' &&
+          !!(data.anchorId ?? existing.anchorId)
         // triggeredAt is deliberately absent from this set — device-local.
         tx.update(reminders)
           .set({
@@ -92,7 +96,7 @@ class ReminderHandler extends BaseItemHandler<ReminderSyncPayload> {
         return 'skipped'
       }
 
-      // A note_date row is OWNED by the local reconciler
+      // An ANCHORED note_date row is OWNED by the local reconciler
       // (notes/note-date-reminders.ts): it derives the row — including its
       // device-local remindAt — from the note's date pills, and that note
       // content already syncs via CRDT. Sync carries only the user's dismissal
@@ -101,7 +105,12 @@ class ReminderHandler extends BaseItemHandler<ReminderSyncPayload> {
       // `now` would fire the reminder immediately. Once this device's copy of
       // the note lands, its reconciler creates the row correctly and later
       // merges carry the dismissal.
-      if (data.targetType === 'note_date') {
+      //
+      // Unanchored note_date rows are NOT reconciler-owned — no date pill maps
+      // to them, so nothing would ever recreate one here. Skipping those would
+      // be silent cross-device data loss, since the pull cursor moves past a
+      // skipped item.
+      if (data.targetType === 'note_date' && data.anchorId) {
         log.info('Skipping remote note_date reminder insert, derived locally from note content', {
           itemId
         })

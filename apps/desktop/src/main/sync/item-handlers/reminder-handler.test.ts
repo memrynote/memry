@@ -218,6 +218,29 @@ describe('reminderHandler', () => {
       )
       expect(payload.remindAt).toBe('2026-08-03T09:00:00.000Z')
     })
+
+    // Only ANCHORED note_date rows are derived. An unanchored one is ordinary
+    // user intent with a user-supplied time (the CLI's `reminder create
+    // note_date` has no --anchor-id, and lib/reminders.ts's createReminder
+    // never writes anchorId), and nothing would ever recreate it.
+    it('still sends remindAt for an UNANCHORED note_date reminder', () => {
+      testDb.db
+        .insert(reminders)
+        .values({
+          id: 'rem_cli_1',
+          targetType: 'note_date',
+          targetId: 'note_1',
+          anchorId: null,
+          remindAt: '2026-08-03T09:00:00.000Z',
+          status: 'pending'
+        })
+        .run()
+
+      const payload = JSON.parse(
+        reminderHandler.buildPushPayload(ctx.db, 'rem_cli_1', 'device-a', 'update') as string
+      )
+      expect(payload.remindAt).toBe('2026-08-03T09:00:00.000Z')
+    })
   })
 
   describe('note_date rows are owned by the local reconciler', () => {
@@ -251,6 +274,48 @@ describe('reminderHandler', () => {
 
       expect(result).toBe('skipped')
       expect(testDb.db.select().from(reminders).all()).toHaveLength(0)
+    })
+
+    // The skip is only correct because an anchored row is guaranteed to be
+    // re-derived locally. Nothing re-derives an unanchored one, and a skipped
+    // item is not revisited — the pull cursor moves past it — so skipping this
+    // would silently lose the row on every other device.
+    it('inserts an UNANCHORED inbound note_date row instead of skipping it', () => {
+      const result = reminderHandler.applyUpsert(
+        ctx,
+        'rem_cli_1',
+        {
+          ...noteDatePayload,
+          anchorId: null,
+          remindAt: '2026-08-03T09:00:00.000Z'
+        },
+        { device_a: 1 }
+      )
+
+      expect(result).toBe('applied')
+      const row = testDb.db.select().from(reminders).where(eq(reminders.id, 'rem_cli_1')).get()
+      expect(row?.targetType).toBe('note_date')
+      expect(row?.anchorId).toBeNull()
+      expect(row?.remindAt).toBe('2026-08-03T09:00:00.000Z')
+    })
+
+    it('lets an UNANCHORED note_date row be rescheduled from another device', () => {
+      reminderHandler.applyUpsert(
+        ctx,
+        'rem_cli_1',
+        { ...noteDatePayload, anchorId: null, remindAt: '2026-08-03T09:00:00.000Z' },
+        { device_a: 1 }
+      )
+
+      reminderHandler.applyUpsert(
+        ctx,
+        'rem_cli_1',
+        { ...noteDatePayload, anchorId: null, remindAt: '2026-08-04T09:00:00.000Z' },
+        { device_a: 2 }
+      )
+
+      const row = testDb.db.select().from(reminders).where(eq(reminders.id, 'rem_cli_1')).get()
+      expect(row?.remindAt).toBe('2026-08-04T09:00:00.000Z')
     })
 
     it('applies dismissal state onto an existing local row without touching remindAt', () => {
