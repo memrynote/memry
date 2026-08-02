@@ -76,7 +76,18 @@ test.describe('Project hub E2E', () => {
 
     expect(seeded.projectId).toBeTruthy()
 
-    // Open the project from the sidebar, the way a user reaches its hub.
+    // Open the project from the sidebar, the way a user reaches its hub. The
+    // Projects section starts collapsed on a fresh profile, and a collapsed
+    // section keeps its rows out of the accessibility tree.
+    const projectsSection = page.locator('button[aria-label^="Projects section, "]')
+    await projectsSection.waitFor({ state: 'visible', timeout: 10000 })
+    if (((await projectsSection.getAttribute('aria-label')) ?? '').includes('collapsed')) {
+      await projectsSection.click()
+      await page
+        .locator('button[aria-label^="Projects section, expanded"]')
+        .waitFor({ state: 'visible', timeout: 5000 })
+    }
+
     await page.getByRole('button', { name: projectName }).first().click()
     await expect(page.getByRole('tab', { name: /overview/i })).toHaveAttribute(
       'aria-selected',
