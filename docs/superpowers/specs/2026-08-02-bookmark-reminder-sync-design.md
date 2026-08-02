@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-02
 **Branch:** `bookmark-reminder-sync`
-**Status:** Design approved, not implemented
+**Status:** Implemented (PR #914)
 
 ## Problem
 
