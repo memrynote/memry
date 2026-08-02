@@ -8,7 +8,7 @@ export interface CaptureUrlDeps {
   /** Resolve the page's title. Injected so tests never touch the network. */
   fetchTitle: (url: string) => Promise<string | null>
   createNote: (input: { title: string; content: string }) => Promise<{ id: string } | null>
-  linkToProject: (projectId: string, noteId: string) => void
+  linkToProject: (projectId: string, noteId: string) => Promise<void>
 }
 
 export interface CaptureUrlInput {
@@ -36,6 +36,14 @@ export function titleFromUrl(url: string): string {
   }
 }
 
+/**
+ * A page title is arbitrary text; a `[` or `]` in it would close the markdown
+ * link early and leave the rest as loose text in the note.
+ */
+function escapeLinkText(text: string): string {
+  return text.replace(/([\\[\]])/g, '\\$1')
+}
+
 export async function captureUrlToProject(
   deps: CaptureUrlDeps,
   input: CaptureUrlInput
@@ -49,13 +57,26 @@ export async function captureUrlToProject(
     title = null
   }
 
+  const linkText = title?.trim() || input.url
   const note = await deps.createNote({
     title: title?.trim() || titleFromUrl(input.url),
-    content: `[${title?.trim() || input.url}](${input.url})\n`
+    content: `[${escapeLinkText(linkText)}](${input.url})\n`
   })
 
   if (!note) return { success: false, error: 'Failed to create note' }
 
-  deps.linkToProject(input.projectId, note.id)
+  // The link is the whole point of the capture, so a failure here is a failure
+  // of the capture. Reporting success would hide a note that never joined the
+  // project — the exact stray-note case this function exists to prevent.
+  try {
+    await deps.linkToProject(input.projectId, note.id)
+  } catch (error) {
+    return {
+      success: false,
+      noteId: note.id,
+      error: error instanceof Error ? error.message : 'Failed to link note to project'
+    }
+  }
+
   return { success: true, noteId: note.id }
 }

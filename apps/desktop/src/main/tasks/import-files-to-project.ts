@@ -15,7 +15,7 @@ export interface ImportFilesToProjectDeps {
   }>
   /** Resolve a vault-relative path to its indexed id, or null if not indexed yet. */
   getIdByPath: (destPath: string) => Promise<string | null>
-  linkToProject: (projectId: string, fileId: string) => void
+  linkToProject: (projectId: string, fileId: string) => Promise<void>
   sleep: (ms: number) => Promise<void>
 }
 
@@ -62,7 +62,18 @@ export async function importFilesToProject(
       continue
     }
 
-    deps.linkToProject(input.projectId, id)
+    try {
+      await deps.linkToProject(input.projectId, id)
+    } catch (error) {
+      // The copy landed but the file never joined the project, so it belongs in
+      // `failed` — otherwise the UI reports "added" for a file that is not there.
+      failed.push({
+        path: file.destPath,
+        error: error instanceof Error ? error.message : 'Failed to link file to project'
+      })
+      continue
+    }
+
     linked.push(id)
   }
 

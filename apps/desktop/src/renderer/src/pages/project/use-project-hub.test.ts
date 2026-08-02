@@ -1,7 +1,18 @@
-import { describe, it, expect } from 'vitest'
-import { deriveProgress } from './use-project-hub'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { tasksService } from '@/services/tasks-service'
+import { deriveProgress, useProjectHub } from './use-project-hub'
 import type { Project, Status } from '@/data/tasks-data'
 import type { Task } from '@/data/task-model'
+
+vi.mock('@/contexts/tasks', () => ({
+  useTasksContext: () => ({ tasks: [], projects: [] })
+}))
+
+vi.mock('@/services/tasks-service', () => ({
+  tasksService: { listProjectContents: vi.fn(), getProject: vi.fn() },
+  onProjectUpdated: vi.fn(() => () => {})
+}))
 
 const DEFAULT_STATUSES: Status[] = [
   { id: 'todo', name: 'To Do', color: '#6b7280', type: 'todo', order: 0 },
@@ -124,5 +135,47 @@ describe('deriveProgress', () => {
     const progress = deriveProgress(makeProject(), tasks)
     expect(progress.total).toBe(1)
     expect(progress.statuses.every((s) => s.count === 0)).toBe(true)
+  })
+})
+
+describe('useProjectHub', () => {
+  beforeEach(() => {
+    vi.mocked(tasksService.listProjectContents).mockReset()
+    vi.mocked(tasksService.getProject).mockReset()
+  })
+
+  const emptyContents = {
+    notes: [],
+    files: [],
+    events: [],
+    counts: { notes: 0, files: 0, events: 0 }
+  }
+
+  it('stops loading when the contents request fails', async () => {
+    vi.mocked(tasksService.listProjectContents).mockRejectedValue(new Error('db closed'))
+    vi.mocked(tasksService.getProject).mockRejectedValue(new Error('db closed'))
+
+    const { result } = renderHook(() => useProjectHub('p1'))
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.homeNoteId).toBeNull()
+    expect(result.current.notes).toEqual([])
+  })
+
+  it('applies a new overview note id before the refetch lands', async () => {
+    vi.mocked(tasksService.listProjectContents).mockResolvedValue(emptyContents)
+    vi.mocked(tasksService.getProject).mockResolvedValue({
+      homeNoteId: null,
+      createdAt: '2026-03-02T00:00:00.000Z',
+      modifiedAt: '2026-03-02T00:00:00.000Z'
+    } as never)
+
+    const { result } = renderHook(() => useProjectHub('p1'))
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.homeNoteId).toBeNull()
+
+    act(() => result.current.setHomeNoteId('note-9'))
+    expect(result.current.homeNoteId).toBe('note-9')
   })
 })

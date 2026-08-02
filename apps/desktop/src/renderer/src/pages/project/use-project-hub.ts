@@ -47,6 +47,7 @@ export interface ProjectHubData {
   modifiedAt: Date | null
   isLoading: boolean
   refresh: () => void
+  setHomeNoteId: (noteId: string | null) => void
 }
 
 const EMPTY_CONTENTS: ProjectContents = {
@@ -164,6 +165,16 @@ export function useProjectHub(projectId: string | undefined): ProjectHubData {
       } catch (error) {
         if (cancelled) return
         log.error('Failed to load project contents', extractErrorMessage(error))
+        // `isLoading` is derived from "no payload for this project", so leaving
+        // the slot empty would pin the hub on its skeleton for good. An empty
+        // payload renders the page instead, and refresh() can still retry.
+        setLoaded({
+          projectId,
+          contents: EMPTY_CONTENTS,
+          homeNoteId: null,
+          createdAt: null,
+          modifiedAt: null
+        })
       }
     })()
 
@@ -173,6 +184,18 @@ export function useProjectHub(projectId: string | undefined): ProjectHubData {
   }, [projectId, reloadToken])
 
   const refresh = useCallback(() => setReloadToken((token) => token + 1), [])
+
+  // The overview note reports its new id the moment it creates or clears one.
+  // Applying it locally keeps the rail from showing the "create" affordance
+  // again for the length of the refetch that follows.
+  const setHomeNoteId = useCallback(
+    (noteId: string | null) => {
+      setLoaded((current) =>
+        current && current.projectId === projectId ? { ...current, homeNoteId: noteId } : current
+      )
+    },
+    [projectId]
+  )
 
   useEffect(() => {
     return onProjectUpdated((event) => {
@@ -211,6 +234,7 @@ export function useProjectHub(projectId: string | undefined): ProjectHubData {
     createdAt: fresh?.createdAt ?? null,
     modifiedAt: fresh?.modifiedAt ?? null,
     isLoading,
-    refresh
+    refresh,
+    setHomeNoteId
   }
 }

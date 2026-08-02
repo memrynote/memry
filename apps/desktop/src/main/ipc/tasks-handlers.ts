@@ -252,8 +252,13 @@ export function registerTasksHandlers(): void {
           {
             fetchTitle: async (url) => (await fetchUrlMetadata(url)).title ?? null,
             createNote: async ({ title, content }) => createNote({ title, content }),
-            linkToProject: (projectId, noteId) => {
-              void domain.linkItemToProject({ projectId, itemType: 'note', itemId: noteId })
+            linkToProject: async (projectId, noteId) => {
+              const linked = await domain.linkItemToProject({
+                projectId,
+                itemType: 'note',
+                itemId: noteId
+              })
+              if (!linked.success) throw new Error(linked.error ?? 'Failed to link note')
             }
           },
           input
@@ -275,8 +280,13 @@ export function registerTasksHandlers(): void {
               return { importedFiles: result.importedFiles, errors: result.errors }
             },
             getIdByPath: async (destPath) => (await getNoteByPath(destPath))?.id ?? null,
-            linkToProject: (projectId, fileId) => {
-              void domain.linkItemToProject({ projectId, itemType: 'file', itemId: fileId })
+            linkToProject: async (projectId, fileId) => {
+              const linked = await domain.linkItemToProject({
+                projectId,
+                itemType: 'file',
+                itemId: fileId
+              })
+              if (!linked.success) throw new Error(linked.error ?? 'Failed to link file')
             },
             sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms))
           },

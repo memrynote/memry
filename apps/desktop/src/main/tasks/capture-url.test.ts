@@ -4,7 +4,7 @@ import { captureUrlToProject, titleFromUrl, type CaptureUrlDeps } from './captur
 const makeDeps = (overrides: Partial<CaptureUrlDeps> = {}): CaptureUrlDeps => ({
   fetchTitle: vi.fn(async () => 'CRDT survey'),
   createNote: vi.fn(async () => ({ id: 'note-1' })),
-  linkToProject: vi.fn(),
+  linkToProject: vi.fn(async () => {}),
   ...overrides
 })
 
@@ -65,6 +65,31 @@ describe('captureUrlToProject', () => {
     expect(deps.createNote).toHaveBeenCalledWith(
       expect.objectContaining({ content: '[CRDT survey](https://example.com/a)\n' })
     )
+  })
+
+  it('escapes brackets in the title so the markdown link stays intact', async () => {
+    const deps = makeDeps({ fetchTitle: vi.fn(async () => 'Yjs [v13] notes') })
+
+    await captureUrlToProject(deps, { projectId: 'p1', url: 'https://example.com/a' })
+
+    expect(deps.createNote).toHaveBeenCalledWith(
+      expect.objectContaining({ content: '[Yjs \\[v13\\] notes](https://example.com/a)\n' })
+    )
+  })
+
+  it('reports failure when the note is created but the link is not', async () => {
+    const deps = makeDeps({
+      linkToProject: vi.fn(async () => {
+        throw new Error('Project not found')
+      })
+    })
+
+    const result = await captureUrlToProject(deps, {
+      projectId: 'p1',
+      url: 'https://example.com/a'
+    })
+
+    expect(result).toEqual({ success: false, noteId: 'note-1', error: 'Project not found' })
   })
 })
 

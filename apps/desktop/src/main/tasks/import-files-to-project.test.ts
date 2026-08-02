@@ -10,7 +10,7 @@ const file = (destPath: string): { destPath: string; filename: string; fileType:
 const makeDeps = (overrides: Partial<ImportFilesToProjectDeps> = {}): ImportFilesToProjectDeps => ({
   importFiles: vi.fn(async () => ({ importedFiles: [file('notes/a.pdf')], errors: [] })),
   getIdByPath: vi.fn(async () => 'file-1'),
-  linkToProject: vi.fn(),
+  linkToProject: vi.fn(async () => {}),
   sleep: vi.fn(async () => {}),
   ...overrides
 })
@@ -87,5 +87,22 @@ describe('importFilesToProject', () => {
 
     expect(result.failed).toEqual([{ path: '', error: 'disk full' }])
     expect(result.linked).toEqual([])
+  })
+
+  it('reports a file whose link failed instead of counting it as added', async () => {
+    const deps = makeDeps({
+      linkToProject: vi.fn(async () => {
+        throw new Error('Project not found')
+      })
+    })
+
+    const result = await importFilesToProject(deps, {
+      projectId: 'p1',
+      sourcePaths: ['/tmp/a.pdf']
+    })
+
+    expect(result.linked).toEqual([])
+    expect(result.failed).toEqual([{ path: 'notes/a.pdf', error: 'Project not found' }])
+    expect(result.success).toBe(false)
   })
 })
