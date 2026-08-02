@@ -638,5 +638,8 @@
     "remindLater": "Sonra Hatırlat",
     "restartNow": "Şimdi Yeniden Başlat",
     "skip": "Bu Sürümü Atla"
+  },
+  "capture": {
+    "focusShortcut": "Yakalama girişine odaklan"
   }
 }

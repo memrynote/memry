@@ -638,5 +638,8 @@
     "remindLater": "後で通知",
     "restartNow": "今すぐ再起動",
     "skip": "このバージョンをスキップ"
+  },
+  "capture": {
+    "focusShortcut": "キャプチャ入力にフォーカス"
   }
 }

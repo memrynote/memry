@@ -44,6 +44,16 @@ function escapeLinkText(text: string): string {
   return text.replace(/([\\[\]])/g, '\\$1')
 }
 
+/**
+ * A bare markdown destination stops at the first space or paren, and pasted URLs
+ * routinely carry both (`…/Foo_(bar)`). Angle brackets take the rest verbatim —
+ * only `<`/`>` cannot live inside them, so those get percent-encoded.
+ */
+function markdownDestination(url: string): string {
+  if (!/[\s()<>]/.test(url)) return url
+  return `<${url.replace(/</g, '%3C').replace(/>/g, '%3E')}>`
+}
+
 export async function captureUrlToProject(
   deps: CaptureUrlDeps,
   input: CaptureUrlInput
@@ -60,7 +70,7 @@ export async function captureUrlToProject(
   const linkText = title?.trim() || input.url
   const note = await deps.createNote({
     title: title?.trim() || titleFromUrl(input.url),
-    content: `[${escapeLinkText(linkText)}](${input.url})\n`
+    content: `[${escapeLinkText(linkText)}](${markdownDestination(input.url)})\n`
   })
 
   if (!note) return { success: false, error: 'Failed to create note' }

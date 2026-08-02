@@ -469,7 +469,7 @@ export const CaptureBar = ({
                 disabled={disabled}
                 aria-label={voice.label}
                 title={voice.title ?? voice.label}
-                className="flex size-5 items-center justify-center rounded-md text-muted-foreground/50 transition-all duration-150 ease-out hover:text-muted-foreground active:scale-90 disabled:cursor-not-allowed disabled:opacity-30 disabled:active:scale-100"
+                className="flex size-5 items-center justify-center rounded-md text-muted-foreground/50 transition-[color,opacity,transform] duration-150 ease-out hover:text-muted-foreground active:scale-90 disabled:cursor-not-allowed disabled:opacity-30 disabled:active:scale-100"
               >
                 <Mic className="size-3" aria-hidden="true" />
               </button>
@@ -483,7 +483,7 @@ export const CaptureBar = ({
               disabled={!trimmed || disabled}
               aria-label={submitLabel?.(value) ?? t('capture.submit')}
               className={cn(
-                'flex size-5 items-center justify-center rounded-md transition-all duration-200',
+                'flex size-5 items-center justify-center rounded-md transition-colors duration-200',
                 'disabled:cursor-not-allowed',
                 !trimmed || disabled
                   ? 'text-muted-foreground/30'

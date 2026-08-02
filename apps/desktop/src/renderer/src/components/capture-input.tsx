@@ -163,6 +163,10 @@ export function CaptureInput({
     [captureText, captureLink, onCaptureSuccess, onCaptureError]
   )
 
+  const handleCaptureAnyway = useCallback(async (): Promise<void> => {
+    if (await handleSubmit(pendingTextRef.current, true)) setClearSignal((n) => n + 1)
+  }, [handleSubmit])
+
   const handleRecordingComplete = useCallback(
     async (audioBlob: Blob, duration: number): Promise<void> => {
       try {
@@ -298,11 +302,7 @@ export function CaptureInput({
               </p>
               <button
                 type="button"
-                onClick={() => {
-                  void handleSubmit(pendingTextRef.current, true).then((cleared) => {
-                    if (cleared) setClearSignal((n) => n + 1)
-                  })
-                }}
+                onClick={() => void handleCaptureAnyway()}
                 className="shrink-0 text-xs font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
               >
                 {t('phaseF.componentsCaptureInput.captureAnyway')}

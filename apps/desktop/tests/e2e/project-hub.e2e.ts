@@ -1,11 +1,15 @@
 import { test, expect } from './fixtures'
 import { ready, uniqueLabel } from './utils/desktop-test-helpers'
+import { PROJECT_RAIL_VISIBLE } from '../../src/renderer/src/pages/project/project-view-state'
 
 /**
  * The three promises the hub redesign makes:
  *  - "View all" focuses a category without opening another app tab
  *  - the rail closes and reopens from the same control
  *  - a linked event leaves for the Calendar
+ *
+ * The rail ships behind `PROJECT_RAIL_VISIBLE`, so its block reads the same flag
+ * the UI does — flipping the flag on turns the assertions back on with it.
  *
  * The exact calendar viewState (focusDate + focusCalendarEventId) is asserted in
  * the `open-linked-item` unit test; here we only check the navigation happens.
@@ -94,14 +98,20 @@ test.describe('Project hub E2E', () => {
     // proof the rows are there — assert the seeded task is actually visible.
     await expect(page.getByText(taskTitle)).toBeVisible()
 
-    // The rail toggle stays in place while the rail is closed.
-    const railToggle = page.getByRole('button', { name: /toggle project details/i })
-    await expect(page.getByTestId('project-rail')).toBeVisible()
-    await railToggle.click()
-    await expect(page.getByTestId('project-rail')).toHaveCount(0)
-    await expect(railToggle).toBeVisible()
-    await railToggle.click()
-    await expect(page.getByTestId('project-rail')).toBeVisible()
+    if (PROJECT_RAIL_VISIBLE) {
+      // The rail toggle stays in place while the rail is closed.
+      const railToggle = page.getByRole('button', { name: /toggle project details/i })
+      await expect(page.getByTestId('project-rail')).toBeVisible()
+      await railToggle.click()
+      await expect(page.getByTestId('project-rail')).toHaveCount(0)
+      await expect(railToggle).toBeVisible()
+      await railToggle.click()
+      await expect(page.getByTestId('project-rail')).toBeVisible()
+    } else {
+      // Hidden means hidden: neither the rail nor its toggle reach the user.
+      await expect(page.getByTestId('project-rail')).toHaveCount(0)
+      await expect(page.getByRole('button', { name: /toggle project details/i })).toHaveCount(0)
+    }
 
     // A linked event leaves the hub for the Calendar.
     await page.getByRole('tab', { name: /events/i }).click()

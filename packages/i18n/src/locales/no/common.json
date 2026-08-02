@@ -638,5 +638,8 @@
     "remindLater": "Minn meg på det senere",
     "restartNow": "Start på nytt nå",
     "skip": "Hopp over denne versjonen"
+  },
+  "capture": {
+    "focusShortcut": "Fokuser fangstfelt"
   }
 }

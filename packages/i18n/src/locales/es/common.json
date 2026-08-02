@@ -638,5 +638,8 @@
     "remindLater": "Recordármelo más tarde",
     "restartNow": "Reiniciar ahora",
     "skip": "Omitir esta versión"
+  },
+  "capture": {
+    "focusShortcut": "Enfocar el campo de captura"
   }
 }

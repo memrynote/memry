@@ -638,5 +638,8 @@
     "remindLater": "Przypomnij później",
     "restartNow": "Uruchom ponownie",
     "skip": "Pomiń tę wersję"
+  },
+  "capture": {
+    "focusShortcut": "Ustaw fokus na polu zapisu"
   }
 }

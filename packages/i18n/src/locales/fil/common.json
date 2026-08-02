@@ -638,5 +638,8 @@
     "remindLater": "Paalalahanan Mo Ako Mamaya",
     "restartNow": "I-restart Ngayon",
     "skip": "Laktawan ang Bersyong Ito"
+  },
+  "capture": {
+    "focusShortcut": "I-focus ang capture input"
   }
 }

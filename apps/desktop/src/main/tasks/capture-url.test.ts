@@ -77,6 +77,21 @@ describe('captureUrlToProject', () => {
     )
   })
 
+  it('wraps a url carrying parens or spaces so the destination stays whole', async () => {
+    const deps = makeDeps()
+
+    await captureUrlToProject(deps, {
+      projectId: 'p1',
+      url: 'https://en.wikipedia.org/wiki/Yjs_(CRDT)'
+    })
+
+    expect(deps.createNote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: '[CRDT survey](<https://en.wikipedia.org/wiki/Yjs_(CRDT)>)\n'
+      })
+    )
+  })
+
   it('reports failure when the note is created but the link is not', async () => {
     const deps = makeDeps({
       linkToProject: vi.fn(async () => {

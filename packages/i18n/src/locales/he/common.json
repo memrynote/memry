@@ -638,5 +638,8 @@
     "remindLater": "הזכר לי מאוחר יותר",
     "restartNow": "הפעל מחדש עכשיו",
     "skip": "דלג על גרסה זו"
+  },
+  "capture": {
+    "focusShortcut": "מקד את קלט הלכידה"
   }
 }
