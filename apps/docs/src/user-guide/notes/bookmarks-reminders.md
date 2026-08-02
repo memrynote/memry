@@ -10,7 +10,7 @@ Toggle a bookmark from the note toolbar. Bookmarked notes:
 
 - Appear under the sidebar **Bookmarks** section
 - Persist across sessions
-- Sync across devices
+- Sync across devices, including reordering and removal
 
 A bookmark is a flag on the note; toggling it doesn't move the note or change its content.
 
@@ -52,6 +52,8 @@ Notes with upcoming reminders show a small bell badge in the sidebar and tab bar
 ## Persistence
 
 Reminders are stored in the data DB and sync end-to-end encrypted. If memrynote isn't running when a reminder fires, the toast appears the next time the app opens.
+
+Reminders sync across devices: set one on your laptop and it shows up on your other devices too. Dismissing or snoozing a reminder on one device carries over everywhere else, so a reminder you've already handled won't nag you again elsewhere. Each device still shows its own toast locally when the reminder's time arrives — sync keeps the reminder's state in agreement, not the notification itself.
 
 ## See Also
 
