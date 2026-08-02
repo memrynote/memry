@@ -1,5 +1,9 @@
 import { z } from 'zod'
 
+// .ts extension required: this file is read by the rpc bindings generator under
+// node --experimental-strip-types (same constraint as canvas-api.ts).
+import { CanvasEntityRefSchema } from './canvas-api.ts'
+
 export const AgentMcpChannels = {
   invoke: {
     GET_STATUS: 'agent_mcp:get_status',
@@ -309,6 +313,44 @@ export type AgentMcpDesktopApiRequest = z.infer<typeof AgentMcpDesktopApiRequest
 
 export type AgentMcpDesktopApiResponse =
   | { ok: true; data: unknown }
+  | { ok: false; error: { code: string; message: string } }
+
+// ============================================================================
+// Canvas item writes (#916)
+// ============================================================================
+
+/**
+ * Main→renderer channel for agent canvas item writes. Writes go through a
+ * renderer because convertToExcalidrawElements — the only thing that correctly
+ * mints element ids, seeds, version counters and fractional indices — exists
+ * only there. The renderer applies to the live Excalidraw instance when it has
+ * that canvas open, and otherwise does a guarded headless read-modify-write.
+ */
+export const AgentMcpCanvasWriteChannel = 'agent_mcp:canvas_write'
+
+export const AgentMcpCanvasWriteRequestSchema = z.object({
+  canvasId: z.string().min(1),
+  op: z.enum(['add', 'remove']),
+  items: z.array(CanvasEntityRefSchema).min(1).max(20)
+})
+export type AgentMcpCanvasWriteRequest = z.infer<typeof AgentMcpCanvasWriteRequestSchema>
+
+export interface AgentMcpCanvasWriteSkip {
+  ref: { entityType: string; entityId: string }
+  reason: 'already-on-canvas' | 'not-on-canvas'
+}
+
+export type AgentMcpCanvasWriteResponse =
+  | {
+      ok: true
+      applied: { entityType: string; entityId: string }[]
+      skipped: AgentMcpCanvasWriteSkip[]
+      updatedAt: number
+      /** Saved locally but too large to sync (canvas spec §5.6). */
+      tooLarge: boolean
+      /** Which route ran — 'live' means the user has that canvas open. */
+      path: 'live' | 'headless'
+    }
   | { ok: false; error: { code: string; message: string } }
 
 export const AgentMcpStatusSchema = z.object({

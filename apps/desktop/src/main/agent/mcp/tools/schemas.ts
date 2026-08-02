@@ -148,6 +148,18 @@ export const TOOL_SCHEMAS = {
     input: z.object({}).default({}),
     description: 'List all tags with usage counts.'
   },
+  vault_list_canvases: {
+    input: z.object({}).default({}),
+    description:
+      'List spatial canvases with how many notes/tasks/events sit on each. ' +
+      'Never returns scene geometry.'
+  },
+  vault_read_canvas: {
+    input: z.object({ id: idSchema }),
+    description:
+      'Read one canvas: title, the entities on it (with titles), and any text written on it. ' +
+      'Returns no scene geometry — use vault_add_canvas_item to change what is on it.'
+  },
   vault_desktop_read: {
     input: desktopReadSchema,
     description:
@@ -404,6 +416,8 @@ export const READ_TOOL_NAMES = [
   'vault_list_inbox_items',
   'vault_get_inbox_item',
   'vault_get_tags',
+  'vault_list_canvases',
+  'vault_read_canvas',
   'vault_desktop_read'
 ] as const satisfies readonly ToolName[]
 
