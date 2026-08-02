@@ -5,6 +5,7 @@
 
 import { useMemo } from 'react'
 import { useTabs } from '@/contexts/tabs'
+import { isLastHomeTab } from '@/contexts/tabs/helpers'
 import { useKeyboardShortcuts, type KeyboardShortcut } from './use-keyboard-shortcuts-base'
 
 /**
@@ -43,24 +44,23 @@ export const useTabKeyboardShortcuts = (): void => {
         description: 'New tab'
       },
 
-      // Close tab (⌘W) — if only inbox remains, close the window
+      // Close tab (⌘W) — closes the window only once Home is all that is left
       {
         key: 'w',
         modifiers: { meta: true },
         action: () => {
           if (!activeTab) return
 
-          const isOnlyTab = activeGroup?.tabs.length === 1
-          const isSingleGroup = Object.keys(state.tabGroups).length === 1
-          const isInboxTab = activeTab.type === 'inbox'
-
-          if (isOnlyTab && isSingleGroup && isInboxTab) {
+          if (isLastHomeTab(state, state.activeGroupId)) {
             window.api.windowClose()
           } else {
             closeTab(activeTab.id, state.activeGroupId)
           }
         },
-        description: 'Close tab'
+        description: 'Close tab',
+        // ⌘W must still close the tab while the caret sits in the note editor,
+        // the capture bar, or any other field — same as a browser.
+        allowInInput: true
       },
 
       // Close all tabs (⌘⇧W)

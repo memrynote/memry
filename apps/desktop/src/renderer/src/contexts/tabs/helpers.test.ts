@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { buildHistoryEntries, createDefaultTab, DEFAULT_TAB_SETTINGS } from './helpers'
+import {
+  buildHistoryEntries,
+  createDefaultTab,
+  DEFAULT_TAB_SETTINGS,
+  isLastHomeTab
+} from './helpers'
 import { SINGLETON_TAB_TYPES } from './types'
-import type { Tab, TabSystemState } from './types'
+import type { Tab, TabType, TabSystemState } from './types'
 
 describe('home tab', () => {
   it('home is a singleton tab type', () => {
@@ -9,6 +14,67 @@ describe('home tab', () => {
   })
   it('default tab is home', () => {
     expect(createDefaultTab().type).toBe('home')
+  })
+})
+
+// -- isLastHomeTab ------------------------------------------------------------
+
+const mkTypedTab = (id: string, type: TabType): Tab => ({
+  ...mkTab(id),
+  type,
+  path: `/${type}`
+})
+
+const mkGroupedState = (groups: Record<string, Tab[]>): TabSystemState => {
+  const groupIds = Object.keys(groups)
+  return {
+    tabGroups: Object.fromEntries(
+      groupIds.map((id) => [
+        id,
+        {
+          id,
+          tabs: groups[id],
+          activeTabId: groups[id][0]?.id ?? null,
+          isActive: true,
+          back: [],
+          forward: []
+        }
+      ])
+    ),
+    layout: { type: 'leaf', tabGroupId: groupIds[0] },
+    activeGroupId: groupIds[0],
+    settings: { ...DEFAULT_TAB_SETTINGS },
+    recentlyClosed: []
+  }
+}
+
+describe('isLastHomeTab', () => {
+  it('is true for the sole Home tab of the only group', () => {
+    const state = mkGroupedState({ g1: [mkTypedTab('home', 'home')] })
+    expect(isLastHomeTab(state, 'g1')).toBe(true)
+  })
+
+  it('is false while another tab is still open beside Home', () => {
+    const state = mkGroupedState({ g1: [mkTypedTab('home', 'home'), mkTypedTab('n1', 'note')] })
+    expect(isLastHomeTab(state, 'g1')).toBe(false)
+  })
+
+  it('is false for a lone non-Home tab', () => {
+    const state = mkGroupedState({ g1: [mkTypedTab('inbox', 'inbox')] })
+    expect(isLastHomeTab(state, 'g1')).toBe(false)
+  })
+
+  it('is false while a split keeps a second group open', () => {
+    const state = mkGroupedState({
+      g1: [mkTypedTab('home', 'home')],
+      g2: [mkTypedTab('home-2', 'home')]
+    })
+    expect(isLastHomeTab(state, 'g1')).toBe(false)
+  })
+
+  it('is false for an unknown group', () => {
+    const state = mkGroupedState({ g1: [mkTypedTab('home', 'home')] })
+    expect(isLastHomeTab(state, 'nope')).toBe(false)
   })
 })
 

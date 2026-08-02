@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useTheme } from 'next-themes'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
+import { isLastHomeTab } from '@/contexts/tabs/helpers'
 import { useSidebar } from '@/components/ui/sidebar'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
@@ -21,7 +22,7 @@ interface MenuCommandHandlers {
  * through to the focused BlockNote editor.
  */
 export function useMenuCommands({ onNewNote, onOpenSearch }: MenuCommandHandlers): void {
-  const { closeTab } = useTabs()
+  const { state, closeTab } = useTabs()
   const activeTab = useActiveTab()
   const { toggleSidebar } = useSidebar()
   const { toggle: toggleDayPanel } = useDayPanel()
@@ -31,7 +32,13 @@ export function useMenuCommands({ onNewNote, onOpenSearch }: MenuCommandHandlers
   const handlers: Record<string, () => void> = {
     'file.newNote': onNewNote,
     'file.openQuickly': onOpenSearch,
-    'file.closeTab': () => activeTab && closeTab(activeTab.id),
+    // Same rule as ⌘W: the last Home tab is the floor, so closing it closes the window.
+    'file.closeTab': () => {
+      if (!activeTab) return
+      if (isLastHomeTab(state, state.activeGroupId)) window.api.windowClose()
+      else closeTab(activeTab.id)
+    },
+    'file.closeWindow': () => window.api.windowClose(),
     'file.exportPdf': () => window.dispatchEvent(new CustomEvent('memry:menu-export')),
     'edit.undo': () => runHistoryMenuCommand('undo'),
     'edit.redo': () => runHistoryMenuCommand('redo'),

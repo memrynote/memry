@@ -128,8 +128,13 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
         { type: 'separator' },
         cmd('file.exportPdf', t('file.exportPdf')),
         { type: 'separator' },
-        cmd('file.closeTab', t('file.closeTab')),
-        { label: t('file.close'), role: 'close' },
+        cmd('file.closeTab', t('file.closeTab'), 'CmdOrCtrl+W'),
+        // Not role 'close': a role defaults its accelerator to CmdOrCtrl+W, and
+        // registerAccelerator only suppresses that on Windows/Linux — so on macOS
+        // the role owned ⌘W and closed the window instead of the active tab. The
+        // renderer decides (tab close, or window close once only Home is left) and
+        // closes through the IPC path that flushes pending work first.
+        cmd('file.closeWindow', t('file.close')),
         ...(isMac ? [] : [{ type: 'separator' as const }, { role: 'quit' as const }])
       ]
     },

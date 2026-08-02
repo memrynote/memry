@@ -54,8 +54,8 @@ describe('useTabKeyboardShortcuts', () => {
       tabGroups: {
         main: {
           id: 'main',
-          tabs: [{ id: 'inbox', type: 'inbox', title: 'Inbox' }],
-          activeTabId: 'inbox'
+          tabs: [{ id: 'home', type: 'home', title: 'Home' }],
+          activeTabId: 'home'
         }
       }
     }
@@ -64,7 +64,7 @@ describe('useTabKeyboardShortcuts', () => {
     }
   })
 
-  it('registers tab shortcuts and routes singleton inbox close to the window', () => {
+  it('registers tab shortcuts and routes the last Home tab close to the window', () => {
     const newTabMenu = vi.fn()
     window.addEventListener('memry:new-tab-menu', newTabMenu)
 
@@ -105,6 +105,81 @@ describe('useTabKeyboardShortcuts', () => {
 
     expect(shortcut('Close split pane').when()).toBe(false)
     window.removeEventListener('memry:new-tab-menu', newTabMenu)
+  })
+
+  it('closes the tab while typing, so the editor and capture bar cannot swallow ⌘W', () => {
+    renderHook(() => useTabKeyboardShortcuts())
+
+    expect(shortcut('Close tab').allowInInput).toBe(true)
+  })
+
+  it.each([
+    ['inbox', 'inbox'],
+    ['calendar', 'calendar'],
+    ['tasks', 'tasks']
+  ])('closes a lone %s tab instead of the window', (_name, type) => {
+    mocks.state = {
+      activeGroupId: 'main',
+      tabGroups: {
+        main: {
+          id: 'main',
+          tabs: [{ id: 'singleton', type, title: type }],
+          activeTabId: 'singleton'
+        }
+      }
+    }
+
+    renderHook(() => useTabKeyboardShortcuts())
+    shortcut('Close tab').action()
+
+    expect(mocks.closeTab).toHaveBeenCalledWith('singleton', 'main')
+    expect(mocks.windowClose).not.toHaveBeenCalled()
+  })
+
+  it('closes the Home tab like any other while a sibling tab is open', () => {
+    mocks.state = {
+      activeGroupId: 'main',
+      tabGroups: {
+        main: {
+          id: 'main',
+          tabs: [
+            { id: 'home', type: 'home', title: 'Home' },
+            { id: 'note-1', type: 'note', title: 'Note' }
+          ],
+          activeTabId: 'home'
+        }
+      }
+    }
+
+    renderHook(() => useTabKeyboardShortcuts())
+    shortcut('Close tab').action()
+
+    expect(mocks.closeTab).toHaveBeenCalledWith('home', 'main')
+    expect(mocks.windowClose).not.toHaveBeenCalled()
+  })
+
+  it('collapses the split instead of closing the window on a lone Home tab', () => {
+    mocks.state = {
+      activeGroupId: 'main',
+      tabGroups: {
+        main: {
+          id: 'main',
+          tabs: [{ id: 'home', type: 'home', title: 'Home' }],
+          activeTabId: 'home'
+        },
+        side: {
+          id: 'side',
+          tabs: [{ id: 'note-1', type: 'note', title: 'Note' }],
+          activeTabId: 'note-1'
+        }
+      }
+    }
+
+    renderHook(() => useTabKeyboardShortcuts())
+    shortcut('Close tab').action()
+
+    expect(mocks.closeTab).toHaveBeenCalledWith('home', 'main')
+    expect(mocks.windowClose).not.toHaveBeenCalled()
   })
 
   it('routes normal tab close, pin, duplicate, split, and close-split actions', () => {
