@@ -79,10 +79,34 @@ never records the new title there. Read it only when nothing else knows the note
 
 1. Define a Zod schema in `packages/contracts/<domain>-api.ts`.
 2. Add tables / columns in `packages/db-schema` and write a hand-written migration.
-3. Implement a handler in `apps/desktop/src/main/sync/item-handlers/<domain>-handler.ts`.
-4. Register it in `index.ts`.
-5. Add a server-side validator in `apps/sync-server` if the new type has unusual constraints.
-6. Add tests under the handler file (every existing handler has one).
+3. Add the type to every list in `packages/contracts/src/sync-api.ts`: `SYNC_ITEM_TYPES`,
+   `RECORD_SYNC_ITEM_TYPES`, `RECORD_CLOCK_REQUIRED_ITEM_TYPES`, and `ENCRYPTABLE_ITEM_TYPES`. Never
+   add to `LEGACY_RECORD_SYNC_ITEM_TYPES` — it is frozen at the pre-negotiation client's vocabulary.
+4. Implement a handler (the pull side) in
+   `apps/desktop/src/main/sync/item-handlers/<domain>-handler.ts`.
+5. Register it in `index.ts`.
+6. Implement a push service (the local side) in `apps/desktop/src/main/sync/<domain>-sync.ts`, then
+   register it in **both** `local-mutations.ts` and the adapter registry in `runtime.ts`.
+7. Add a server-side validator in `apps/sync-server` if the new type has unusual constraints.
+8. Add tests under the handler file (every existing handler has one).
+
+Steps 5 and 6 are three separate registrations and each fails silently on its own:
+`enqueueLocalSync*` typechecks and no-ops when no push service is registered, so the entity never
+leaves the device. Cover the seam with a test that runs a local mutation through to a peer's apply,
+not just per-side unit tests.
+
+### Initial seeding
+
+Rows written without a vector clock — anything a seed script or an older build inserted — are picked
+up by each handler's `seedUnclocked`, driven by `runInitialSeed` on every full sync. That seed reads
+the **complete** handler registry (`getAllRemoteSyncAdapters()`), deliberately not the runtime
+adapter registry: every other consumer falls back with
+`adapters?.getRemote(type) ?? getRemoteSyncAdapter(type)`, but `getAllRemote()` has no fallback, so a
+type missing from the runtime list would silently never seed and strand its clock-less rows on that
+device forever.
+
+`agent_conversation` and `agent_message` are the intentional exception — their `seedUnclocked`
+returns `0` because agent data syncs through the entitlement-gated backfill in `main/agent/sync/`.
 
 Handlers that persist locally encrypted fields must receive the vault key from the sync engine during
 pull apply and push payload encoding. Agent conversation and message handlers use that key to decrypt
