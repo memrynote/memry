@@ -48,6 +48,26 @@ const noteDataTransfer = (id: string) => ({
   dropEffect: 'none'
 })
 
+describe('SortableProjectItem label', () => {
+  it('#then stretches the faded label so short names are not masked', () => {
+    renderItem()
+
+    const label = screen.getByText('Launch')
+    expect(label.className).toContain('sidebar-label-fade')
+    // Without flex-1 the span shrink-wraps the text and the fade mask lands on
+    // the last characters of every name, however short.
+    expect(label.className).toContain('flex-1')
+  })
+
+  it('#then uses the notes tree typography', () => {
+    renderItem()
+
+    const label = screen.getByText('Launch')
+    expect(label.className).toContain('text-[13px]')
+    expect(label.className).toContain('font-medium')
+  })
+})
+
 describe('SortableProjectItem drop-to-link', () => {
   beforeEach(() => {
     vi.clearAllMocks()

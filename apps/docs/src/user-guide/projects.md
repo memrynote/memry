@@ -31,7 +31,7 @@ Status types matter for cross-project views: "All Tasks → kanban grouped by st
 
 ### Editing Statuses
 
-Open the project header menu and choose **Edit statuses**. From there you can:
+Open the project's **⋯** menu and choose **Edit statuses**. From there you can:
 
 - Add new statuses
 - Rename / recolor
@@ -61,13 +61,11 @@ memrynote remembers per-project view preferences.
 
 Opening a project from the sidebar opens its **hub** — a page that gathers everything related to the project in one calm place, not just its tasks.
 
-<!-- screenshot: project hub with tabs and the details rail -->
-
-The header names the project and summarizes it: how many of its tasks are done, and — only when there are any — how many are overdue. Click the icon to change it; the **⋯** menu edits or archives the project.
+<!-- screenshot: project hub with tabs -->
 
 ### Capture bar
 
-One input sits under the header and does the right thing with whatever you give it:
+The capture bar is the top of the page — there is no title header above it. One input, running the full width, does the right thing with whatever you give it:
 
 - **Plain text** becomes a task in this project. The usual quick-add shorthand still works, so `Ship the beta build friday p1` sets the due date and priority.
 - **A link** becomes a note holding that link, already added to the project. memrynote uses the page's own title where it can reach it, and the address itself where it cannot.
@@ -77,30 +75,17 @@ One input sits under the header and does the right thing with whatever you give 
 
 Five views, switched in place — none of them opens another tab:
 
+The **⋯** menu — which edits or archives the project — sits at the end of the tab row.
+
 - **Overview** — the first five of each category, with a **View all** that jumps to that category's tab
 - **Tasks** — the full task list, with the list, quick-add, and subtasks you already know
 - **Notes** · **Files** · **Events** — everything of that kind linked to the project
 
+The Notes, Files, and Events tabs group their rows into time sections, exactly the way the Inbox does — same headings, same row type and spacing. Notes and files fall under **Today**, **Yesterday**, or **Older** by when they were last changed. Events look forward instead, under **Today**, **Tomorrow**, **Upcoming**, and **Past**, soonest first. Empty sections are not shown, and any section header collapses on click.
+
 Each row behaves the way it does in its home view: change a task's status or priority straight from its row, click a note's icon to change it, and click any row to open the item. Clicking a linked event opens the Calendar **on that event's day** with its details showing, rather than dropping you on today.
 
 Every category keeps its heading even when it is empty, so you can always see what a project is able to hold — and add the first one with **+**.
-
-### Details rail
-
-A rail on the right stays with you across all five tabs. The toggle beside the **⋯** menu closes it and — staying exactly where it was — opens it again. Each project remembers your choice.
-
-- **Overview** — the project's overview note, editable inline. Below it, the notes you have pinned to the overview; **Add note** links an existing note and pins it in one step, and removing a pin leaves the note linked to the project.
-- **Progress** — how many tasks are done, then a row for **every status the project defines**. A project with four in-progress statuses gets four rows. An **Overdue** row appears only when something is past due.
-- **Details** — when the project was created and last changed, and how many notes, files, and events it holds.
-
-### Overview note
-
-A project can point at a real note that renders inline in the rail as its overview.
-
-- **Create overview note** — creates a fresh note and sets it as the project's overview; edit it inline, changes save automatically
-- **Clear overview** — unlinks the note as the overview (the note itself stays in your vault)
-
-The overview is a pointer to a note, so it never shows up twice — it does not also appear in the Notes tab.
 
 ### Linking notes, events, and files
 

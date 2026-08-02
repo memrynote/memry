@@ -62,7 +62,7 @@
   },
   "quickAdd": {
     "label": "Quick add task",
-    "focusDescription": "Focus quick add input"
+    "placeholder": "Add a task…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Close task details",
@@ -524,11 +524,6 @@
     "componentsTasksQuickAddQuickOptionsBar": {
       "quickOptions": "Quick options:"
     },
-    "componentsTasksQuickAddInput": {
-      "q": "Q",
-      "q2": "Q",
-      "detailHint": "detail"
-    },
     "componentsTasksRepeatIndicator": {
       "of": "of ",
       "completed": "completed"
@@ -679,9 +674,6 @@
   },
   "projectHub": {
     "header": {
-      "setIcon": "Set icon for {name}",
-      "done": "{done}/{total} done",
-      "overdue": "{count} overdue",
       "toggleRail": "Toggle project details",
       "menu": "Project actions",
       "editProject": "Edit project",
@@ -694,6 +686,14 @@
       "notes": "Notes",
       "files": "Files",
       "events": "Events"
+    },
+    "groups": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "older": "Older",
+      "tomorrow": "Tomorrow",
+      "upcoming": "Upcoming",
+      "past": "Past"
     },
     "sections": {
       "viewAll": "View all",
@@ -734,7 +734,8 @@
       "linkError": "Could not save the link",
       "filesAdded": "{count, plural, one {# file added to the project} other {# files added to the project}}",
       "fileError": "Could not link {name}",
-      "fileErrorGeneric": "Could not import the files"
+      "fileErrorGeneric": "Could not import the files",
+      "label": "Add to {name}"
     }
   }
 }

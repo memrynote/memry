@@ -1,8 +1,8 @@
-import { useMemo } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import type { ProjectLinkedFile } from '@memry/rpc/tasks'
-import { HubRow } from './hub-row'
+import { HubRow, HUB_ROW_TITLE } from './hub-row'
 import { fileIconFor, formatFileSize } from './file-icon'
+import { useRelativeTime } from '../use-relative-time'
 
 interface FileRowProps {
   file: ProjectLinkedFile
@@ -14,13 +14,9 @@ export const FileRow = ({ file, onOpen }: FileRowProps): React.JSX.Element => {
   const Icon = fileIconFor(file.fileType, file.title)
   const size = formatFileSize(file.fileSize)
 
-  const modified = useMemo(
-    () =>
-      new Intl.DateTimeFormat(i18n.language, { month: 'short', day: 'numeric' }).format(
-        new Date(file.modifiedAt)
-      ),
-    [file.modifiedAt, i18n.language]
-  )
+  // Relative, like the Inbox — under a "Today"/"Older" heading an absolute date
+  // only repeats what the section already said.
+  const modified = useRelativeTime(file.modifiedAt, i18n.language)
 
   return (
     <HubRow
@@ -34,11 +30,11 @@ export const FileRow = ({ file, onOpen }: FileRowProps): React.JSX.Element => {
               {size}
             </span>
           ) : null}
-          <span>{modified}</span>
+          <span className="w-9 shrink-0 text-end tabular-nums">{modified}</span>
         </>
       }
     >
-      <span className="truncate text-sm">{file.title}</span>
+      <span className={HUB_ROW_TITLE}>{file.title}</span>
     </HubRow>
   )
 }

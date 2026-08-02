@@ -19,8 +19,7 @@ import { createLogger } from '@/lib/logger'
 import type { Project } from '@/data/tasks-data'
 import type { ProjectLinkedEvent } from '@memry/rpc/tasks'
 import { useProjectHub, type ProjectTabKey } from './use-project-hub'
-import { readProjectTab, readRailOpen } from './project-view-state'
-import { ProjectHeader } from './project-header'
+import { PROJECT_RAIL_VISIBLE, readProjectTab, readRailOpen } from './project-view-state'
 import { ProjectTabBar } from './project-tab-bar'
 import { ProjectRail } from './project-rail'
 import { ProjectCaptureInput } from './project-capture-input'
@@ -47,6 +46,9 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
   const project = hub.project
 
   const [isEditing, setIsEditing] = useState(false)
+  // Scroll-edge state for the page chrome, mirroring Inbox and Tasks. The tabs
+  // own their scrollers, so this listens in the capture phase from the root.
+  const [isScrolled, setIsScrolled] = useState(false)
   // Bumped to move focus into the capture input (the Tasks section's "+").
   const [captureFocusSignal, setCaptureFocusSignal] = useState(0)
   const [importSignal, setImportSignal] = useState(0)
@@ -60,6 +62,12 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
     registerUndo,
     removeUndoEntry
   })
+
+  const handleScrollCapture = useCallback((event: React.UIEvent<HTMLElement>) => {
+    const target = event.target
+    if (!(target instanceof HTMLElement)) return
+    setIsScrolled(target.scrollTop > 0)
+  }, [])
 
   const activeTabKey = readProjectTab(activeTab?.viewState)
   const railOpen = readRailOpen(activeTab?.viewState)
@@ -152,6 +160,31 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
     }
   }, [project, hub, handleOpenNote, t])
 
+  // Tasks open where every other surface opens them: the Tasks tab with the
+  // detail drawer already focused on that task (see calendar-task-popover and
+  // tag-detail-view). The hub itself has no task editor to route to.
+  const handleOpenTask = useCallback(
+    (taskId: string) => {
+      openTab({
+        type: 'tasks',
+        title: 'Tasks',
+        icon: 'CheckSquare',
+        path: '/tasks',
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false,
+        viewState: {
+          openTaskId: taskId,
+          selectedProjectId: projectId ?? null,
+          activeInternalTab: 'all',
+          activeTab: 'all'
+        }
+      })
+    },
+    [openTab, projectId]
+  )
+
   // Creating an event lives in the Calendar, which owns the whole event editor.
   // The hub opens it on today with the create intent the Calendar already reads.
   const handleAddEvent = useCallback(() => {
@@ -171,7 +204,7 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
   const handlers: HubHandlers = useMemo(
     () => ({
       onGoToTab: goToTab,
-      onOpenTask: (taskId) => writeViewState({ openTaskId: taskId }),
+      onOpenTask: handleOpenTask,
       onStatusChange: (taskId, statusId) => void updateTask(taskId, { statusId }),
       onToggleComplete: handleToggleComplete,
       onPriorityChange: (taskId, priority) => void updateTask(taskId, { priority }),
@@ -186,8 +219,8 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
     }),
     [
       goToTab,
-      writeViewState,
       updateTask,
+      handleOpenTask,
       handleToggleComplete,
       handleOpenNote,
       handleNoteIconChange,
@@ -213,29 +246,36 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
   }
 
   return (
-    <div className={cn('flex h-full min-h-0 flex-col', className)}>
-      <ProjectHeader
-        project={project}
-        done={hub.progress.done}
-        total={hub.progress.total}
-        overdue={hub.progress.overdue}
-        railOpen={railOpen}
-        onToggleRail={toggleRail}
-        onIconChange={(icon) => void updateProject(project.id, { icon: icon ?? 'folder' })}
-        onEdit={() => setIsEditing(true)}
-        onArchive={() => void updateProject(project.id, { isArchived: true })}
-      />
+    <div
+      className={cn('flex h-full min-h-0 flex-col', className)}
+      onScrollCapture={handleScrollCapture}
+    >
+      {/*
+        The page chrome, the same band Inbox and Tasks put above their content:
+        translucent blur plus the scroll-edge shadow. The hub's header is two
+        rows (capture, then tabs), so the band wraps both and the shadow lands
+        under the block rather than between its rows.
+      */}
+      <div data-scrolled={isScrolled || undefined} className="page-chrome z-30 shrink-0">
+        <ProjectCaptureInput
+          project={project}
+          projects={projects}
+          onAddTask={handleQuickAdd}
+          onChanged={hub.refresh}
+          focusSignal={captureFocusSignal}
+          importSignal={importSignal}
+        />
 
-      <ProjectCaptureInput
-        project={project}
-        projects={projects}
-        onAddTask={handleQuickAdd}
-        onChanged={hub.refresh}
-        focusSignal={captureFocusSignal}
-        importSignal={importSignal}
-      />
-
-      <ProjectTabBar active={activeTabKey} onChange={goToTab} counts={hub.counts} />
+        <ProjectTabBar
+          active={activeTabKey}
+          onChange={goToTab}
+          counts={hub.counts}
+          railOpen={railOpen}
+          onToggleRail={toggleRail}
+          onEdit={() => setIsEditing(true)}
+          onArchive={() => void updateProject(project.id, { isArchived: true })}
+        />
+      </div>
 
       <div className="flex min-h-0 flex-1">
         {/*
@@ -256,9 +296,13 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
               projects={projects}
               selectedId={project.id}
               selectedType="project"
+              // The hub's own gutter, so tasks sit in the same column as the
+              // overview's rows instead of running edge to edge.
+              contentClassName="px-4 pb-6"
               onToggleComplete={handleToggleComplete}
               onUpdateTask={(taskId, updates) => void updateTask(taskId, updates)}
               onQuickAdd={handleQuickAdd}
+              onTaskClick={handleOpenTask}
               onNoteClick={handleOpenNote}
             />
           ) : (
@@ -268,11 +312,14 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
           )}
         </div>
 
-        {railOpen ? (
+        {PROJECT_RAIL_VISIBLE && railOpen ? (
           <ProjectRail
             projectId={project.id}
             homeNoteId={hub.homeNoteId}
-            onHomeNoteChange={() => hub.refresh()}
+            onHomeNoteChange={(noteId) => {
+              hub.setHomeNoteId(noteId)
+              hub.refresh()
+            }}
             pinnedNotes={hub.pinnedNotes}
             progress={hub.progress}
             createdAt={hub.createdAt}

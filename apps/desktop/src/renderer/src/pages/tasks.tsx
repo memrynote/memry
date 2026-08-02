@@ -9,7 +9,7 @@ import { TasksTabBar, type TasksInternalTab } from '@/components/tasks/tasks-tab
 import { AddTaskModal } from '@/components/tasks/add-task-modal'
 import { ProjectModal } from '@/components/tasks/project-modal'
 import { KanbanBoard } from '@/components/tasks/kanban'
-import { QuickAddInput } from '@/components/tasks/quick-add-input'
+import { CaptureBar } from '@/components/capture-bar'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail-drawer'
 import {
   FilterBar,
@@ -268,7 +268,7 @@ export const TasksPage = ({
   )
 
   // Quick-add focus: viewState.focusQuickAddAt is the single source of truth, fed to
-  // QuickAddInput.focusSignal. Both the sidebar "Tasks" click and the empty-state
+  // CaptureBar.focusSignal. Both the sidebar "Tasks" click and the empty-state
   // "Add task" button stamp a fresh timestamp, so the input refocuses each time.
   const focusQuickAddSignal =
     typeof taskTabViewState.focusQuickAddAt === 'number'
@@ -923,12 +923,14 @@ export const TasksPage = ({
             />
 
             {/* Inline Quick-Add Input */}
-            <QuickAddInput
-              compact
-              onAdd={handleQuickAdd}
-              onOpenModal={handleOpenAddTaskModal}
-              projects={projects}
-              projectColor={quickAddProjectColor}
+            <CaptureBar
+              className="grow shrink basis-0 min-w-0"
+              ariaLabel={t('quickAdd.label')}
+              placeholder={t('quickAdd.placeholder')}
+              accentColor={quickAddProjectColor}
+              quickAdd={{ projects }}
+              onSubmit={handleQuickAdd}
+              onOpenDetail={handleOpenAddTaskModal}
               focusSignal={focusQuickAddSignal}
             />
 

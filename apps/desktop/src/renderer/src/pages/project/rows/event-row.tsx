@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { Calendar } from '@/lib/icons'
 import type { ProjectLinkedEvent } from '@memry/rpc/tasks'
-import { HubRow } from './hub-row'
+import { HubRow, HUB_ROW_TITLE } from './hub-row'
 
 interface EventRowProps {
   event: ProjectLinkedEvent
@@ -34,7 +34,7 @@ export const EventRow = ({ event, onOpen }: EventRowProps): React.JSX.Element =>
       openLabel={t('projectHub.rows.openEvent', { title: event.title })}
       trailing={<span>{when}</span>}
     >
-      <span className="truncate text-sm">{event.title}</span>
+      <span className={HUB_ROW_TITLE}>{event.title}</span>
     </HubRow>
   )
 }

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
-import { Loader2, Paperclip } from '@/lib/icons'
-import { QuickAddInput } from '@/components/tasks/quick-add-input'
+import { CaptureBar, type CaptureBarParsed } from '@/components/capture-bar'
+import { PageToolbar } from '@/components/ui/page-toolbar'
 import { classifyCapture, normalizeUrl } from '@/lib/capture-intent'
 import { tasksService } from '@/services/tasks-service'
 import { notesService } from '@/services/notes-service'
@@ -29,9 +29,10 @@ interface ProjectCaptureInputProps {
 }
 
 /**
- * The hub's one capture affordance. Plain text becomes a task in this project
- * (through the existing quick-add parser, so `friday p1` still works); a bare
- * URL becomes a linked note; the paperclip imports files and links them.
+ * The hub's one capture affordance — the shared CaptureBar wired to the project.
+ * Plain text becomes a task in this project (quick-add syntax still works, so
+ * `!friday !!high` parses); a bare URL becomes a linked note; the paperclip
+ * imports files and links them.
  */
 export const ProjectCaptureInput = ({
   project,
@@ -65,16 +66,13 @@ export const ProjectCaptureInput = ({
     [project.id, onChanged, t]
   )
 
-  const handleAdd = useCallback(
-    (
-      title: string,
-      parsedData?: { dueDate: Date | null; priority: Priority; projectId: string | null }
-    ): void => {
+  const handleSubmit = useCallback(
+    (title: string, parsed?: CaptureBarParsed): void => {
       if (classifyCapture(title) === 'url') {
         void captureUrl(title)
         return
       }
-      onAddTask(title, parsedData)
+      onAddTask(title, parsed)
     },
     [captureUrl, onAddTask]
   )
@@ -95,7 +93,13 @@ export const ProjectCaptureInput = ({
         onChanged()
       }
       for (const failure of result.failed) {
-        toast.error(t('projectHub.capture.fileError', { name: failure.path }))
+        // Importer-level failures carry no path (the copy never produced one),
+        // so naming a file would be a lie — show what actually went wrong.
+        toast.error(
+          failure.path
+            ? t('projectHub.capture.fileError', { name: failure.path })
+            : failure.error || t('projectHub.capture.fileErrorGeneric')
+        )
         log.error('Failed to link imported file', failure.path, failure.error)
       }
     } catch (error) {
@@ -115,30 +119,26 @@ export const ProjectCaptureInput = ({
   }, [importSignal, handleAttach])
 
   return (
-    <div className="flex items-center gap-2 px-4 pb-2">
-      <QuickAddInput
-        onAdd={handleAdd}
-        projects={projects}
-        projectColor={project.color}
+    // The real toolbar, not just its padding: PageToolbar also sets the
+    // `text-[12px] leading-4` context the CaptureBar's unfocused shortcut badge
+    // inherits. Without it the badge falls back to the page's 14px/1.5 strut,
+    // grows past the action buttons, and the box visibly shrinks the moment
+    // focus unmounts it. `min-h-[38px]` pins the row the same way as Inbox/Tasks.
+    <PageToolbar className="px-2 py-1 min-h-[38px] border-b-0">
+      <CaptureBar
+        className="grow shrink basis-0 min-w-0"
+        ariaLabel={t('projectHub.capture.label', { name: project.name })}
         placeholder={t('projectHub.capture.placeholder', { name: project.name })}
-        className="flex-1"
+        accentColor={project.color}
+        quickAdd={{ projects }}
+        onSubmit={handleSubmit}
         focusSignal={focusSignal}
+        attachment={{
+          onAttach: handleAttach,
+          label: t('projectHub.capture.attach'),
+          busy: isBusy
+        }}
       />
-      <button
-        type="button"
-        // The button disables itself while importing; firing on pointerdown keeps
-        // the activation from being swallowed by the re-render that adds `disabled`.
-        onPointerDown={() => void handleAttach()}
-        disabled={isBusy}
-        aria-label={t('projectHub.capture.attach')}
-        className="shrink-0 rounded-md p-2 text-muted-foreground transition-colors hover:bg-surface-active hover:text-foreground disabled:opacity-60"
-      >
-        {isBusy ? (
-          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-        ) : (
-          <Paperclip className="size-4" aria-hidden="true" />
-        )}
-      </button>
-    </div>
+    </PageToolbar>
   )
 }

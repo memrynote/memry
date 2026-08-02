@@ -3,7 +3,7 @@ import { FileText, X } from '@/lib/icons'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { IconPickerButton } from '@/components/icon-picker-button'
 import type { ProjectLinkedNote } from '@memry/rpc/tasks'
-import { HubRow } from './hub-row'
+import { HubRow, HUB_ROW_TITLE } from './hub-row'
 import { useRelativeTime } from '../use-relative-time'
 
 interface NoteRowProps {
@@ -42,7 +42,7 @@ export const NoteRow = ({
       openLabel={t('projectHub.rows.openNote', { title: note.title })}
       trailing={
         <>
-          <span>{relative}</span>
+          <span className="w-9 shrink-0 text-end tabular-nums">{relative}</span>
           {onUnpin ? (
             <button
               type="button"
@@ -56,7 +56,7 @@ export const NoteRow = ({
         </>
       }
     >
-      <span className="truncate text-sm">{note.title}</span>
+      <span className={HUB_ROW_TITLE}>{note.title}</span>
     </HubRow>
   )
 }

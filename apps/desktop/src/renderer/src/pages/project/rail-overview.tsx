@@ -98,7 +98,7 @@ export const RailOverview = ({
       />
 
       {pinnedNotes.length > 0 ? (
-        <ul className="mt-2 space-y-0.5">
+        <div role="list" className="mt-2 space-y-px">
           {pinnedNotes.map((note) => (
             <NoteRow
               key={note.id}
@@ -108,7 +108,7 @@ export const RailOverview = ({
               onUnpin={(noteId) => void handleUnpin(noteId)}
             />
           ))}
-        </ul>
+        </div>
       ) : null}
 
       {isPicking ? (

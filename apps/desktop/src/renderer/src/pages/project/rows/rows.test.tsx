@@ -9,6 +9,12 @@ import type { Project } from '@/data/tasks-data'
 import type { Task } from '@/data/task-model'
 import type { ProjectLinkedEvent, ProjectLinkedFile, ProjectLinkedNote } from '@memry/rpc/tasks'
 
+// TaskTagsBadge resolves tag definitions through react-query; the rows here
+// render outside a QueryClientProvider.
+vi.mock('@/hooks/use-notes-query', () => ({
+  useNoteTagsQuery: () => ({ tags: [{ tag: 'sync', count: 1, color: 'cyan', icon: null }] })
+}))
+
 const project: Project = {
   id: 'p1',
   name: 'Hub',
@@ -205,7 +211,7 @@ describe('FileRow', () => {
         <FileRow file={{ ...file, fileSize: null }} onOpen={noop} />
       </ul>
     )
-    expect(screen.queryByText(/MB|KB| B$/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/\s(?:MB|KB|B)$/)).not.toBeInTheDocument()
   })
 })
 
