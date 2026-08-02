@@ -38,7 +38,12 @@ export const SELECTORS = {
   taskItem: '[role="button"][aria-label*="Task:"], [data-testid="task-item"]',
   taskCheckbox: '[role="checkbox"], [data-testid="task-checkbox"]',
   addTaskButton: 'button:has-text("Add Task")', // Header button opens modal
-  taskInput: 'input[aria-label="Quick add task"], input[placeholder*="Add task"]', // Quick add input
+  // Quick add input. The Tasks page renders this through the shared CaptureBar,
+  // which is a `textarea` — an `input`-only selector silently stops matching and
+  // sends createTask() down the fallback path that creates nothing (see the note
+  // in createTask; that is how the smoke job reaches its job timeout).
+  taskInput:
+    '[aria-label="Quick add task"], input[placeholder*="Add task"], textarea[placeholder*="Add task"]',
   taskModalTitleInput: '#task-title', // Title input in Add Task modal
   taskModal: '[role="dialog"]:has-text("Add Task")', // Add Task modal
   kanbanBoard: '[data-testid="kanban-board"], [class*="kanban"]',
