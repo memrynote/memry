@@ -143,6 +143,95 @@ describe('useReminders', () => {
       expect(result.current.reminders).toEqual([])
     })
   })
+
+  // ==========================================================================
+  // Sync-emitted events
+  //
+  // The sync handler (main/sync/item-handlers/reminder-handler.ts) emits
+  // `{ id }` — it has no resolved row for an inbound change. The local IPC path
+  // keeps sending `{ reminder }`. Both shapes must work.
+  // ==========================================================================
+
+  describe('sync-emitted events', () => {
+    const lastSubscriber = (fn: unknown): ((event: unknown) => void) => {
+      const calls = (fn as ReturnType<typeof vi.fn>).mock.calls
+      return calls[calls.length - 1][0] as (event: unknown) => void
+    }
+
+    const mountForTarget = async () => {
+      ;(window.api.reminders.getForTarget as ReturnType<typeof vi.fn>).mockResolvedValue([])
+
+      const { result } = renderHook(() => useRemindersForTarget('note_date', 'note-1'), { wrapper })
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+      expect(window.api.reminders.getForTarget).toHaveBeenCalledTimes(1)
+
+      return result
+    }
+
+    it('does not throw on a {id}-shaped created event and refetches', async () => {
+      await mountForTarget()
+
+      const emitCreated = lastSubscriber(window.api.onReminderCreated)
+
+      expect(() => emitCreated({ id: 'rem-remote' })).not.toThrow()
+
+      await waitFor(() => {
+        expect(window.api.reminders.getForTarget).toHaveBeenCalledTimes(2)
+      })
+    })
+
+    it('refetches on a {id}-shaped updated event (inbound dismiss/snooze)', async () => {
+      await mountForTarget()
+
+      const emitUpdated = lastSubscriber(window.api.onReminderUpdated)
+
+      expect(() => emitUpdated({ id: 'rem-remote' })).not.toThrow()
+
+      await waitFor(() => {
+        expect(window.api.reminders.getForTarget).toHaveBeenCalledTimes(2)
+      })
+    })
+
+    it('refetches on a {id}-shaped deleted event', async () => {
+      await mountForTarget()
+
+      const emitDeleted = lastSubscriber(window.api.onReminderDeleted)
+
+      expect(() => emitDeleted({ id: 'rem-remote' })).not.toThrow()
+
+      await waitFor(() => {
+        expect(window.api.reminders.getForTarget).toHaveBeenCalledTimes(2)
+      })
+    })
+
+    it('still ignores a locally-emitted event for a different target', async () => {
+      await mountForTarget()
+
+      const emitCreated = lastSubscriber(window.api.onReminderCreated)
+
+      emitCreated({ reminder: createMockReminder({ targetType: 'note', targetId: 'other-note' }) })
+
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(window.api.reminders.getForTarget).toHaveBeenCalledTimes(1)
+    })
+
+    it('still refetches for a locally-emitted event on this target', async () => {
+      await mountForTarget()
+
+      const emitCreated = lastSubscriber(window.api.onReminderCreated)
+
+      emitCreated({
+        reminder: createMockReminder({ targetType: 'note_date', targetId: 'note-1' })
+      })
+
+      await waitFor(() => {
+        expect(window.api.reminders.getForTarget).toHaveBeenCalledTimes(2)
+      })
+    })
+  })
 })
 
 // ============================================================================

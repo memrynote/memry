@@ -25,8 +25,10 @@ const log = createLogger('ReminderHandler')
  * doesn't get talked out of its own notification. Real user intent —
  * 'dismissed' / 'snoozed' — still syncs unchanged.
  *
- * `remindAt` on a `note_date` row is device-local too: it is derived from the
- * note's date pill in the host OS timezone. See reminder-outbound.ts.
+ * `remindAt` on an ANCHORED `note_date` row is device-local too: it is derived
+ * from the note's date pill in the host OS timezone. The ANCHORED qualifier is
+ * load-bearing — unanchored `note_date` rows carry a user-supplied time and
+ * must keep syncing. See reminder-outbound.ts.
  */
 
 class ReminderHandler extends BaseItemHandler<ReminderSyncPayload> {

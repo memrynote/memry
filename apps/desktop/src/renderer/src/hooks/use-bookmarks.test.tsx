@@ -368,6 +368,42 @@ describe('useBookmarks', () => {
       expect(window.api.bookmarks.list).toHaveBeenCalledTimes(2)
     })
   })
+
+  // ==========================================================================
+  // Sync-emitted events
+  //
+  // `bookmarks:updated` has a single producer: the sync handler, when an
+  // inbound merge changed an existing row's position (a reorder on another
+  // device). Without a consumer the sidebar keeps the pre-sync order.
+  // ==========================================================================
+
+  describe('sync-emitted events', () => {
+    it('should refresh the list on a bookmarks:updated event', async () => {
+      ;(window.api.bookmarks.list as ReturnType<typeof vi.fn>).mockResolvedValue({
+        bookmarks: [createMockBookmark({ id: 'bm-1' })],
+        total: 1,
+        hasMore: false
+      })
+
+      const { result } = renderHook(() => useBookmarks(), { wrapper })
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+      expect(window.api.bookmarks.list).toHaveBeenCalledTimes(1)
+
+      const calls = (window.api.onBookmarkUpdated as ReturnType<typeof vi.fn>).mock.calls
+      const emitUpdated = calls[calls.length - 1][0] as (event: { id: string }) => void
+
+      await act(async () => {
+        emitUpdated({ id: 'bm-1' })
+      })
+
+      await waitFor(() => {
+        expect(window.api.bookmarks.list).toHaveBeenCalledTimes(2)
+      })
+    })
+  })
 })
 
 // ============================================================================
@@ -457,5 +493,100 @@ describe('useIsBookmarked', () => {
     })
 
     expect(result.current.isBookmarked).toBe(true)
+  })
+
+  // ==========================================================================
+  // Sync-emitted events
+  //
+  // The sync handler emits `{ id }` for created/deleted — no itemType/itemId to
+  // compare — so the hook has to ask the main process instead of matching.
+  // ==========================================================================
+
+  const lastSubscriber = (fn: unknown): ((event: unknown) => void) => {
+    const calls = (fn as ReturnType<typeof vi.fn>).mock.calls
+    return calls[calls.length - 1][0] as (event: unknown) => void
+  }
+
+  it('should flip on for a {id}-shaped created event', async () => {
+    ;(window.api.bookmarks.isBookmarked as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValue(true)
+
+    const { result } = renderHook(() => useIsBookmarked('note', 'note-1'), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isBookmarked).toBe(false)
+    })
+
+    const emitCreated = lastSubscriber(window.api.onBookmarkCreated)
+
+    await act(async () => {
+      emitCreated({ id: 'bm-remote' })
+    })
+
+    await waitFor(() => {
+      expect(result.current.isBookmarked).toBe(true)
+    })
+  })
+
+  it('should flip off for a {id}-shaped deleted event', async () => {
+    ;(window.api.bookmarks.isBookmarked as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValue(false)
+
+    const { result } = renderHook(() => useIsBookmarked('note', 'note-1'), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isBookmarked).toBe(true)
+    })
+
+    const emitDeleted = lastSubscriber(window.api.onBookmarkDeleted)
+
+    await act(async () => {
+      emitDeleted({ id: 'bm-remote' })
+    })
+
+    await waitFor(() => {
+      expect(result.current.isBookmarked).toBe(false)
+    })
+  })
+
+  it('should still match locally-emitted events without an extra IPC round-trip', async () => {
+    ;(window.api.bookmarks.isBookmarked as ReturnType<typeof vi.fn>).mockResolvedValue(false)
+
+    const { result } = renderHook(() => useIsBookmarked('note', 'note-1'), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+    expect(window.api.bookmarks.isBookmarked).toHaveBeenCalledTimes(1)
+
+    const emitCreated = lastSubscriber(window.api.onBookmarkCreated)
+
+    await act(async () => {
+      emitCreated({ bookmark: createMockBookmark({ itemType: 'note', itemId: 'note-1' }) })
+    })
+
+    expect(result.current.isBookmarked).toBe(true)
+    expect(window.api.bookmarks.isBookmarked).toHaveBeenCalledTimes(1)
+  })
+
+  it('should ignore a locally-emitted event for a different item', async () => {
+    ;(window.api.bookmarks.isBookmarked as ReturnType<typeof vi.fn>).mockResolvedValue(false)
+
+    const { result } = renderHook(() => useIsBookmarked('note', 'note-1'), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    const emitCreated = lastSubscriber(window.api.onBookmarkCreated)
+
+    await act(async () => {
+      emitCreated({ bookmark: createMockBookmark({ itemType: 'note', itemId: 'other-note' }) })
+    })
+
+    expect(result.current.isBookmarked).toBe(false)
+    expect(window.api.bookmarks.isBookmarked).toHaveBeenCalledTimes(1)
   })
 })

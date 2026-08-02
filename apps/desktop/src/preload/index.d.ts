@@ -656,14 +656,26 @@ export interface BookmarkDeleteResponse {
   error?: string
 }
 
+/**
+ * Bookmark events have two producers with different payload shapes:
+ * the local IPC handlers (main/ipc/bookmarks-handlers.ts) send the resolved
+ * row, while the sync handler (main/sync/item-handlers/bookmark-handler.ts)
+ * has no resolved row for an inbound change and sends only `{ id }`.
+ * Consumers must tolerate both.
+ */
 export interface BookmarkCreatedEvent {
-  bookmark: Bookmark
+  bookmark?: Bookmark
+  id?: string
+}
+
+export interface BookmarkUpdatedEvent {
+  id: string
 }
 
 export interface BookmarkDeletedEvent {
   id: string
-  itemType: string
-  itemId: string
+  itemType?: string
+  itemId?: string
 }
 
 export interface BookmarksReorderedEvent {
@@ -1093,18 +1105,25 @@ export interface BulkDismissResponse {
 }
 
 // Reminder event types
+//
+// Two producers, two payload shapes: the local IPC path (main/lib/reminders.ts)
+// sends the resolved row, while the sync handler
+// (main/sync/item-handlers/reminder-handler.ts) has no resolved row for an
+// inbound change and sends only `{ id }`. Consumers must tolerate both.
 export interface ReminderCreatedEvent {
-  reminder: Reminder
+  reminder?: Reminder
+  id?: string
 }
 
 export interface ReminderUpdatedEvent {
-  reminder: Reminder
+  reminder?: Reminder
+  id?: string
 }
 
 export interface ReminderDeletedEvent {
   id: string
-  targetType: string
-  targetId: string
+  targetType?: string
+  targetId?: string
 }
 
 export interface ReminderDueEvent {
@@ -1837,6 +1856,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onJournalExternalChange: (callback: (event: JournalExternalChangeEvent) => void) => () => void
   // Bookmarks event subscriptions
   onBookmarkCreated: (callback: (event: BookmarkCreatedEvent) => void) => () => void
+  onBookmarkUpdated: (callback: (event: BookmarkUpdatedEvent) => void) => () => void
   onBookmarkDeleted: (callback: (event: BookmarkDeletedEvent) => void) => () => void
   onBookmarksReordered: (callback: (event: BookmarksReorderedEvent) => void) => () => void
   // Tags event subscriptions

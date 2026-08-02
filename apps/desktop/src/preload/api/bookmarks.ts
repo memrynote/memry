@@ -28,13 +28,22 @@ export const bookmarksApi = {
 }
 
 export const bookmarkEvents = {
-  onBookmarkCreated: (callback: (event: { bookmark: unknown }) => void): (() => void) =>
-    subscribe<{ bookmark: unknown }>(BookmarksChannels.events.CREATED, callback),
+  onBookmarkCreated: (
+    callback: (event: { bookmark?: unknown; id?: string }) => void
+  ): (() => void) =>
+    subscribe<{ bookmark?: unknown; id?: string }>(BookmarksChannels.events.CREATED, callback),
+
+  /**
+   * Emitted only by the sync handler, when an inbound merge changed an existing
+   * bookmark row (a reorder done on another device). Payload is `{ id }`.
+   */
+  onBookmarkUpdated: (callback: (event: { id: string }) => void): (() => void) =>
+    subscribe<{ id: string }>(BookmarksChannels.events.UPDATED, callback),
 
   onBookmarkDeleted: (
-    callback: (event: { id: string; itemType: string; itemId: string }) => void
+    callback: (event: { id: string; itemType?: string; itemId?: string }) => void
   ): (() => void) =>
-    subscribe<{ id: string; itemType: string; itemId: string }>(
+    subscribe<{ id: string; itemType?: string; itemId?: string }>(
       BookmarksChannels.events.DELETED,
       callback
     ),
