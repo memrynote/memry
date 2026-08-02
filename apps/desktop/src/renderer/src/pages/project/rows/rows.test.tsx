@@ -134,7 +134,10 @@ describe('NoteRow', () => {
     id: 'n1',
     title: 'Sync architecture decisions',
     emoji: null,
-    modifiedAt: new Date(Date.now() - 2 * 3_600_000).toISOString(),
+    // `useNowMinute` truncates now to the minute, so a timestamp exactly 2h old
+    // reads as 119-and-a-bit minutes and floors to "1h". The extra minute keeps
+    // the label off that boundary.
+    modifiedAt: new Date(Date.now() - (2 * 3_600_000 + 60_000)).toISOString(),
     pinned: false
   }
 
