@@ -328,6 +328,44 @@ describe('SyncEngine', () => {
     })
   })
 
+  describe('#given a runtime adapter registry that omits a record type #when fullSync seeds', () => {
+    it('#then still seeds every registered handler type', async () => {
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+
+      const initialSeedModule = await import('./initial-seed')
+      const seedSpy = vi.spyOn(initialSeedModule, 'runInitialSeed').mockImplementation(() => {})
+
+      const { createSyncAdapterRegistry } = await import('@memry/sync-core')
+      const { getRemoteSyncAdapter, getAllRemoteSyncAdapters } = await import('./item-handlers')
+      const deps = {
+        ...createMockDeps(getDb()),
+        // The real runtime registry once omitted tag_category. Seeding must not
+        // inherit that gap, or clock-less rows never leave the device.
+        adapters: createSyncAdapterRegistry([
+          { type: 'task' as const, kind: 'record' as const, remote: getRemoteSyncAdapter('task') }
+        ])
+      }
+      const engine = new SyncEngine(deps)
+
+      await engine.fullSync()
+
+      // Mirror what runInitialSeed does with its argument: an omitted list means
+      // the complete handler registry, a passed list is the whole seed set.
+      const seedArgs = seedSpy.mock.calls[0]?.[0]
+      const seededTypes = (seedArgs?.adapters ?? getAllRemoteSyncAdapters()).map(
+        (adapter) => adapter.type
+      )
+      expect(seededTypes).toContain('tag_category')
+
+      vi.restoreAllMocks()
+    })
+  })
+
   describe('#given fullSync #when no signing keys', () => {
     it('#then skips runInitialSeed', async () => {
       vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({

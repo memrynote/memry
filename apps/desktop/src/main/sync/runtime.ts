@@ -338,7 +338,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         db: runtimeSyncDb,
         getDeviceId
       })
-      initTagCategorySyncService({
+      const tagCategorySync = initTagCategorySyncService({
         queue,
         db: runtimeSyncDb,
         getDeviceId
@@ -420,6 +420,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           kind: 'record',
           local: tagDefinitionSync,
           remote: getRemoteSyncAdapter('tag_definition')
+        },
+        {
+          type: 'tag_category',
+          kind: 'record',
+          local: tagCategorySync,
+          remote: getRemoteSyncAdapter('tag_category')
         },
         {
           type: 'folder_config',

@@ -5,6 +5,7 @@ import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters } from '@memry/db-schema/schema/settings'
+import { tagCategories } from '@memry/db-schema/schema/tag-categories'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { SyncQueueManager } from './queue'
@@ -139,6 +140,29 @@ describe('runInitialSeed', () => {
       const queued = queue.peek(1)[0]
       expect(queued?.type).toBe('filter')
       expect(queued?.itemId).toBe('filter-1')
+    })
+  })
+
+  describe('#given tag categories with NULL clock #when seed runs', () => {
+    it('#then stamps clock and enqueues each category', () => {
+      // #given
+      testDb.db.insert(tagCategories).values({ id: 'cat-1', name: 'Reading', sortOrder: 0 }).run()
+
+      // #when
+      runInitialSeed(deps)
+
+      // #then
+      const category = testDb.db
+        .select()
+        .from(tagCategories)
+        .where(eq(tagCategories.id, 'cat-1'))
+        .get()
+      expect(category?.clock).toEqual({ [DEVICE_ID]: 1 })
+      expect(queue.getSize()).toBe(1)
+
+      const queued = queue.peek(1)[0]
+      expect(queued?.type).toBe('tag_category')
+      expect(queued?.itemId).toBe('cat-1')
     })
   })
 

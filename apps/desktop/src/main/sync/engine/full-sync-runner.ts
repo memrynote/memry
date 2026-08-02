@@ -60,11 +60,16 @@ export class FullSyncRunner {
       const queueBeforeSeed = this.ctx.deps.queue.getPendingCount()
       const signingKeys = await this.ctx.deps.getSigningKeys()
       if (signingKeys) {
+        // Seed from the complete handler registry (runInitialSeed's default),
+        // never from the runtime adapter registry. Every other consumer reads
+        // that registry as `getRemote(type) ?? getRemoteSyncAdapter(type)`, but
+        // `getAllRemote()` has no such fallback: a type missing from the runtime
+        // list silently never seeds, stranding its clock-less rows on this
+        // device forever. tag_category shipped that way.
         runInitialSeed({
           db: this.ctx.deps.db,
           queue: this.ctx.deps.queue,
-          deviceId: signingKeys.deviceId,
-          adapters: this.ctx.deps.adapters?.getAllRemote()
+          deviceId: signingKeys.deviceId
         })
       }
       const seededCount = Math.max(0, this.ctx.deps.queue.getPendingCount() - queueBeforeSeed)
