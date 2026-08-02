@@ -312,6 +312,16 @@ describe('bookmarks-handlers', () => {
         'bmk_note_note_1',
         JSON.stringify(existingBookmark)
       )
+      // The snapshot must be read BEFORE the row is deleted — deleteBookmark
+      // wipes the row, so fetching it after would enqueue an empty/undefined
+      // snapshot and enqueueLocalSyncDelete would silently no-op. Pinning both
+      // the order AND the call count: order alone doesn't catch a regression
+      // that keeps the existing pre-delete fetch but adds a second, later
+      // fetch and uses that one for the snapshot instead.
+      expect(bookmarkQueries.getBookmarkById).toHaveBeenCalledTimes(1)
+      expect((bookmarkQueries.getBookmarkById as Mock).mock.invocationCallOrder[0]).toBeLessThan(
+        (bookmarkQueries.deleteBookmark as Mock).mock.invocationCallOrder[0]
+      )
     })
 
     it('creates bookmarks with a deterministic id on the toggle create branch and enqueues a create', async () => {
@@ -356,6 +366,11 @@ describe('bookmarks-handlers', () => {
         'bookmark',
         'bmk_note_note_1',
         JSON.stringify(existingBookmark)
+      )
+      // 'existing' must be captured BEFORE toggleBookmark runs — toggleBookmark
+      // deletes the row internally, so fetching it after would see nothing.
+      expect((bookmarkQueries.getBookmarkByItem as Mock).mock.invocationCallOrder[0]).toBeLessThan(
+        (bookmarkQueries.toggleBookmark as Mock).mock.invocationCallOrder[0]
       )
     })
 
@@ -431,6 +446,13 @@ describe('bookmarks-handlers', () => {
         bookmark2.id,
         JSON.stringify(bookmark2)
       )
+      // Every snapshot fetch must happen BEFORE the bulk delete runs —
+      // bulkDeleteBookmarks wipes all the rows in one statement, so fetching
+      // any snapshot after it would return undefined and silently drop sync.
+      const getBookmarkByIdMock = bookmarkQueries.getBookmarkById as Mock
+      const bulkDeleteMock = bookmarkQueries.bulkDeleteBookmarks as Mock
+      const lastSnapshotFetchOrder = Math.max(...getBookmarkByIdMock.mock.invocationCallOrder)
+      expect(lastSnapshotFetchOrder).toBeLessThan(bulkDeleteMock.mock.invocationCallOrder[0])
     })
   })
 })
