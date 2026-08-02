@@ -5,6 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'fs'
+import * as os from 'os'
 import * as path from 'path'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
@@ -179,6 +180,31 @@ describe('markdownImporter (integration)', () => {
 
     const note = path.join(tempVault.notesDir, 'Markdown', 'Person Note.md')
     expect(fs.readFileSync(note, 'utf8')).toContain('](../Images/Media/shared.png)')
+  })
+
+  it('copies an asset from a folder whose name merely starts with dots', async () => {
+    // `path.relative` returns `..media/shared.png` for a sibling folder named
+    // `..media` — inside the root, even though it opens with two dots.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'markdown-import-dots-'))
+    try {
+      fs.mkdirSync(path.join(root, '..media'))
+      fs.writeFileSync(path.join(root, '..media', 'shared.png'), Buffer.from([0x89, 0x50]))
+      fs.mkdirSync(path.join(root, 'Notes'))
+      fs.writeFileSync(
+        path.join(root, 'Notes', 'dotted.md'),
+        '# Dotted\n\n![shared](../..media/shared.png)\n'
+      )
+
+      const ctx = importContext.createImportContext('it8', new AbortController().signal)
+      const summary = await importer.markdownImporter.run({ sourcePaths: [root] }, ctx)
+
+      expect(summary.failed).toEqual([])
+      expect(summary.imported).toBe(1)
+      expect(summary.attachments).toBe(1)
+      expect(summary.skipped).toBe(0)
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true })
+    }
   })
 
   it('stops early when cancelled', async () => {

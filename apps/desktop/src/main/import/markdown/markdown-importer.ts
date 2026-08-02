@@ -149,9 +149,12 @@ export const markdownImporter: Importer = {
           // (`../Images/Media/x.png`), which is still inside what they granted.
           const absRef = path.resolve(sourceDir, decodedRef)
           const refRelToRoot = path.relative(notePlan.rootDir, absRef)
-          // `path.relative` returns an absolute path when the two sides live on
-          // different Windows drives, so check that too.
-          if (refRelToRoot.startsWith('..') || path.isAbsolute(refRelToRoot)) {
+          // Only a whole `..` segment escapes the root — a folder named `..img`
+          // yields `..img/x.png`, which is inside it. `path.relative` also
+          // returns an absolute path when the two sides live on different
+          // Windows drives, so check that too.
+          const escapesRoot = refRelToRoot === '..' || refRelToRoot.startsWith(`..${path.sep}`)
+          if (escapesRoot || path.isAbsolute(refRelToRoot)) {
             ctx.reportSkipped(ref, 'Path traversal outside selected folder')
             continue
           }
