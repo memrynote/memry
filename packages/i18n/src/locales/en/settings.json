@@ -937,7 +937,7 @@
       "choose": "Choose file…",
       "chooseFolder": "Select Apple Notes folder…",
       "chooseDirectory": "Choose folder…",
-      "folderKeepsAssets": "Choosing the folder keeps images and attachments — picking loose files leaves them behind.",
+      "folderKeepsAssets": "Choose the folder when images sit outside the notes' own folder — exports often keep media in a shared one.",
       "chooseHint": "Select your {label}",
       "folderHint": "Click below and select the “group.com.apple.notes” folder when the picker opens (it starts there). This lets Memry read your notes and attachments — no Full Disk Access needed.",
       "selected": "{count, plural, one {# file selected} other {# files selected}}",

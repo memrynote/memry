@@ -207,6 +207,40 @@ describe('markdownImporter (integration)', () => {
     }
   })
 
+  // Directory symlinks need elevation on Windows; the guard itself is platform-agnostic.
+  it.skipIf(process.platform === 'win32')(
+    'rejects an asset reached through a symlink that leaves the selected folder',
+    async () => {
+      const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'markdown-import-outside-'))
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'markdown-import-symlink-'))
+      try {
+        fs.writeFileSync(path.join(outside, 'secret.png'), Buffer.from([0x89, 0x50]))
+        // `Images` looks like a folder inside the selection, but everything
+        // under it lands outside the root once the link is resolved.
+        fs.symlinkSync(outside, path.join(root, 'Images'), 'dir')
+        fs.mkdirSync(path.join(root, 'Notes'))
+        fs.writeFileSync(
+          path.join(root, 'Notes', 'linked.md'),
+          '# Linked\n\n![secret](../Images/secret.png)\n'
+        )
+
+        const ctx = importContext.createImportContext('it9', new AbortController().signal)
+        const summary = await importer.markdownImporter.run({ sourcePaths: [root] }, ctx)
+
+        expect(summary.failed).toEqual([])
+        expect(summary.imported).toBe(1)
+        expect(summary.attachments).toBe(0)
+        expect(summary.skipped).toBe(1)
+
+        const note = path.join(tempVault.notesDir, 'Markdown', 'Notes', 'linked.md')
+        expect(fs.readFileSync(note, 'utf8')).toContain('](../Images/secret.png)')
+      } finally {
+        fs.rmSync(root, { recursive: true, force: true })
+        fs.rmSync(outside, { recursive: true, force: true })
+      }
+    }
+  )
+
   it('stops early when cancelled', async () => {
     const ac = new AbortController()
     ac.abort()

@@ -72,7 +72,8 @@ Import a single `.md` file, several files, or a whole folder. No export step is 
 Exports from Capacities, Obsidian and similar apps keep media in a shared folder
 and reference it from notes as `../Images/Media/photo.png`. Those references only
 resolve when you select the folder that contains both — picking loose `.md` files
-leaves the images behind.
+leaves those images behind. Images sitting next to the note you picked still come
+across either way.
 :::
 
 | Markdown source               | memrynote                             |
@@ -92,7 +93,7 @@ an attachment and replace the whole embed with the imported image; the display s
 dropped, since you resize images in the editor instead. `![[Some Note]]` and
 `![[Some Note.md]]` embed another note rather than a file, so they are left untouched.
 
-**Limitations:** only `.md` / `.markdown` files are imported (other files only as referenced attachments); links to files outside the selected folder are not treated as attachments; links to other `.md` notes stay plain links rather than becoming attachments; note wikilinks are kept literally; the display size on a sized embed is not carried over.
+**Limitations:** only `.md` / `.markdown` files are imported (other files only as referenced attachments); links to files outside the selected folder are not treated as attachments (including files reached through a symlink that leads out of it); links to other `.md` notes stay plain links rather than becoming attachments; note wikilinks are kept literally; the display size on a sized embed is not carried over.
 
 ## Importing from HTML
 

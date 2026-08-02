@@ -37,6 +37,24 @@ function replaceAssetToken(body: string, ref: string, replacement: string): stri
   return body.replace(tokenRe, () => replacement).replace(embedRe, () => replacement)
 }
 
+/**
+ * Real path of a selected root, memoised. Falls back to the literal path when
+ * it cannot be resolved — the boundary check then behaves as it did before,
+ * rather than dropping every asset under that root.
+ */
+async function resolveRealRoot(rootDir: string, cache: Map<string, string>): Promise<string> {
+  const cached = cache.get(rootDir)
+  if (cached !== undefined) return cached
+  let real = rootDir
+  try {
+    real = await fs.realpath(rootDir)
+  } catch {
+    // keep the literal path
+  }
+  cache.set(rootDir, real)
+  return real
+}
+
 /** Collect all .md/.markdown files under a directory recursively. */
 async function collectMarkdownFiles(
   dir: string,
@@ -113,6 +131,8 @@ export const markdownImporter: Importer = {
     // ---- Phase 2: import each note ----
     ctx.setPhase('importing')
     let done = 0
+    /** One `realpath` per selected root, reused by every note under it. */
+    const realRoots = new Map<string, string>()
 
     for (const notePlan of plan.notes) {
       if (ctx.isCancelled()) return ctx.toSummary()
@@ -135,6 +155,7 @@ export const markdownImporter: Importer = {
         // ---- Attachments: save co-located assets referenced in the body ----
         const refs = extractAssetRefs(body)
         const sourceDir = path.dirname(notePlan.absPath)
+        const realRoot = await resolveRealRoot(notePlan.rootDir, realRoots)
 
         let rewritten = body
         for (const ref of refs) {
@@ -148,7 +169,20 @@ export const markdownImporter: Importer = {
           // user selected — exports routinely keep media in a sibling folder
           // (`../Images/Media/x.png`), which is still inside what they granted.
           const absRef = path.resolve(sourceDir, decodedRef)
-          const refRelToRoot = path.relative(notePlan.rootDir, absRef)
+          // A symlink inside the selection can point anywhere, and a string
+          // compare would still read it as in-bounds while `readFile` walks
+          // straight out of the folder — so resolve the ref for real first.
+          // ENOENT here is a missing (or dangling) asset, same skip as a failed
+          // read. `realRoot` is resolved the same way for a like-for-like
+          // compare: macOS hands back `/private/var` for a `/var` path.
+          let realRef: string
+          try {
+            realRef = await fs.realpath(absRef)
+          } catch {
+            ctx.reportSkipped(ref, 'Asset file not found')
+            continue
+          }
+          const refRelToRoot = path.relative(realRoot, realRef)
           // Only a whole `..` segment escapes the root — a folder named `..img`
           // yields `..img/x.png`, which is inside it. `path.relative` also
           // returns an absolute path when the two sides live on different
@@ -161,7 +195,7 @@ export const markdownImporter: Importer = {
 
           let bytes: Buffer
           try {
-            bytes = await fs.readFile(absRef)
+            bytes = await fs.readFile(realRef)
           } catch {
             ctx.reportSkipped(ref, 'Asset file not found')
             continue

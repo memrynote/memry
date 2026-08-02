@@ -38,7 +38,8 @@ const MARKDOWN_REF_RE = /\.(md|markdown)$/i
  * An embed points at an asset only when it names a file with an extension that
  * is not another note: `![[Some Note]]` and `![[Some Note.md]]` transclude a
  * note, and copying either in would duplicate the note as a file attachment.
- * Markdown-syntax refs need no such test — they carry a real path already.
+ * Markdown-syntax refs carry a real path already, so they only need the
+ * narrower `MARKDOWN_REF_RE` check for the same note-link case.
  */
 const EMBEDDABLE_REF_RE = /\.(?!md$|markdown$)[^./\\]+$/i
 
