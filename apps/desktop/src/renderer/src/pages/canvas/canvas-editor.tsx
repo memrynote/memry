@@ -12,7 +12,8 @@ import {
   serializeAsJSON,
   languages,
   defaultLang,
-  useHandleLibrary
+  useHandleLibrary,
+  CaptureUpdateAction
 } from '@excalidraw/excalidraw'
 import type {
   ExcalidrawImperativeAPI,
@@ -32,6 +33,12 @@ import { pickExcalidrawLangCode } from './excalidraw-lang'
 import { CanvasCardLayer } from './canvas-card-overlay'
 import { createVaultLibraryAdapter } from './canvas-library-adapter'
 import { extractEntityRefs, type CardElement } from './canvas-cards'
+import {
+  registerLiveCanvas,
+  unregisterLiveCanvas,
+  type LiveCanvasHandle
+} from './canvas-live-registry'
+import type { SceneEditElement } from './canvas-scene-edit'
 
 const log = createLogger('SpatialCanvas')
 
@@ -163,6 +170,33 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
       persisterRef.current = null
     }
   }, [canvasId, initialScene, corrupt])
+
+  // Agent MCP writes to THIS canvas must reach this live instance rather than a
+  // headless read-modify-write, or our next autosave overwrites them (#916 §2e).
+  // Main is told which window owns the canvas so it can route the write here.
+  useEffect(() => {
+    if (!api || corrupt) return
+
+    const handle: LiveCanvasHandle = {
+      getElements: () => api.getSceneElements() as unknown as SceneEditElement[],
+      updateScene: (elements) => {
+        api.updateScene({
+          elements: elements as never,
+          captureUpdate: CaptureUpdateAction.IMMEDIATELY
+        })
+      },
+      flush: async () => {
+        await persisterRef.current?.flush()
+      }
+    }
+    registerLiveCanvas(canvasId, handle)
+    void window.api.canvas.liveOpened(canvasId)
+
+    return () => {
+      unregisterLiveCanvas(canvasId, handle)
+      void window.api.canvas.liveClosed(canvasId)
+    }
+  }, [api, canvasId, corrupt])
 
   // The library is vault-global, not per canvas: Excalidraw keeps one shared
   // collection, and this editor remounts per canvas id, so anything held in

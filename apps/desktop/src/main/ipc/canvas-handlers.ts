@@ -28,6 +28,7 @@ import {
 } from '@memry/contracts/canvas-api'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
 import { getCanvasContext, disposeCanvasVaultKey } from '../canvas/vault-key'
+import { forgetWindow, markCanvasClosed, markCanvasOpen } from '../canvas/live-registry'
 import { createCanvas, deleteCanvas, getCanvas, listCanvases, updateCanvas } from '../canvas/store'
 import { listCanvasLibraryItems, saveCanvasLibraryItems } from '../canvas/library-store'
 import { syncCanvasCreate, syncCanvasUpdate, syncCanvasDelete } from '../canvas/sync-bridge'
@@ -237,6 +238,22 @@ export function registerCanvasHandlers(): void {
       }
     )
   )
+
+  // Live-canvas ownership. Raw ipcMain.handle rather than a validate.ts helper
+  // because the payload we actually care about is the SENDER's window id.
+  ipcMain.handle(CanvasChannels.invoke.LIVE_OPENED, (event, canvasId: string) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win || typeof canvasId !== 'string' || !canvasId) return { ok: false }
+    markCanvasOpen(canvasId, win.id)
+    win.once('closed', () => forgetWindow(win.id))
+    return { ok: true }
+  })
+  ipcMain.handle(CanvasChannels.invoke.LIVE_CLOSED, (event, canvasId: string) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win || typeof canvasId !== 'string' || !canvasId) return { ok: false }
+    markCanvasClosed(canvasId, win.id)
+    return { ok: true }
+  })
 }
 
 export function unregisterCanvasHandlers(): void {
@@ -250,5 +267,7 @@ export function unregisterCanvasHandlers(): void {
   ipcMain.removeHandler(CanvasChannels.invoke.LIST_ASSETS)
   ipcMain.removeHandler(CanvasChannels.invoke.LIBRARY_LIST)
   ipcMain.removeHandler(CanvasChannels.invoke.LIBRARY_SAVE)
+  ipcMain.removeHandler(CanvasChannels.invoke.LIVE_OPENED)
+  ipcMain.removeHandler(CanvasChannels.invoke.LIVE_CLOSED)
   disposeCanvasVaultKey()
 }

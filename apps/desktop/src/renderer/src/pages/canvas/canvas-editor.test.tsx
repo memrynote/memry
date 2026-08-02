@@ -36,7 +36,9 @@ const mocks = vi.hoisted(() => ({
     isLoading: true
   },
   onChange: null as (() => void) | null,
-  excalidrawProps: {} as Record<string, unknown>
+  excalidrawProps: {} as Record<string, unknown>,
+  liveOpened: vi.fn(),
+  liveClosed: vi.fn()
 }))
 
 vi.mock('@excalidraw/excalidraw', () => ({
@@ -115,6 +117,13 @@ describe('CanvasEditor persistence safety', () => {
     mocks.api.elements = []
     mocks.api.isLoading = true
     mocks.onChange = null
+    // The editor reports live-canvas ownership to main so agent writes can be
+    // routed to this instance (#916); this suite only needs the calls to land.
+    mocks.liveOpened.mockReset().mockResolvedValue({ ok: true })
+    mocks.liveClosed.mockReset().mockResolvedValue({ ok: true })
+    ;(window as Window & { api: unknown }).api = {
+      canvas: { liveOpened: mocks.liveOpened, liveClosed: mocks.liveClosed }
+    }
   })
 
   afterEach(() => {
