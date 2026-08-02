@@ -33,6 +33,7 @@ import {
 import type { RepeatConfig } from '@memry/domain-tasks'
 import type { DataDb, IndexDb } from '../../../database'
 import { snapshotCurrentNoteFromWindow } from './current-note'
+import { assertSpatialCanvasEnabled, isCanvasOperation } from './canvas-flag'
 import { invokeDesktopApiFromWindow } from './desktop-api'
 import type {
   FolderEntry,
@@ -702,9 +703,13 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
     },
     desktop: {
       async read(input, windowId) {
+        // The escape hatch must honour the same flag as the dedicated canvas
+        // tools, or an agent could reach canvas.* with the feature off.
+        if (isCanvasOperation(input.operation)) assertSpatialCanvasEnabled()
         return invokeDesktopApiFromWindow(windowId, input)
       },
       async write(input, windowId) {
+        if (isCanvasOperation(input.operation)) assertSpatialCanvasEnabled()
         return invokeDesktopApiFromWindow(windowId, input)
       }
     },
