@@ -131,8 +131,8 @@ Per the `adding-sync-item-type` checklist, applied twice:
   `REORDERED`; the handler needs it for inbound position merges. `ReminderChannels.events`
   already carries `CREATED` / `UPDATED` / `DELETED` and needs no change.
 - `packages/db-schema/src/schema/bookmarks.ts`, `schema/reminders.ts`, `data-schema.ts`
-- `apps/desktop/src/main/database/drizzle-data/0042_bookmark_reminder_sync.sql` —
-  hand-written migration (0041 is the current head)
+- `apps/desktop/src/main/database/drizzle-data/0043_bookmark_reminder_sync.sql` —
+  hand-written migration (0042 is the current head)
 - `apps/desktop/src/main/sync/item-handlers/{bookmark,reminder}-handler.ts` (+ tests)
 - `apps/desktop/src/main/sync/item-handlers/index.ts`
 - `apps/desktop/src/main/sync/{bookmark,reminder}-sync.ts`

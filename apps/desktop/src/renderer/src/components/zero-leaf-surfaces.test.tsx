@@ -11,7 +11,6 @@ import {
 } from './note/content-area/hash-tag-space-plugin'
 import { TabErrorBoundary } from './tabs/tab-error-boundary'
 import { KanbanDragOverlay } from './tasks/kanban/kanban-drag-overlay'
-import { ProjectsTabContent } from './tasks/projects/projects-tab-content'
 import { useSnoozeCountdown } from './snooze/use-snooze-countdown'
 import { VaultSettings } from '@/pages/settings/vault-section'
 
@@ -237,53 +236,6 @@ describe('zero-covered leaf surfaces', () => {
     await waitFor(() => expect(mocks.refreshStorage).toHaveBeenCalled())
     fireEvent.click(screen.getByRole('button', { name: 'vault.reveal' }))
     expect((window as any).api.vault.reveal).toHaveBeenCalled()
-  })
-
-  it('selects project tasks, quick-adds into the effective project, and renders empty projects', async () => {
-    const onProjectSelect = vi.fn()
-    const onQuickAdd = vi.fn()
-    const onCreateProject = vi.fn()
-    const { rerender } = render(
-      <ProjectsTabContent
-        tasks={[baseTask]}
-        projects={projects}
-        selectedTaskId={null}
-        selectedProjectId={null}
-        onProjectSelect={onProjectSelect}
-        onToggleComplete={vi.fn()}
-        onToggleSubtaskComplete={vi.fn()}
-        onTaskClick={vi.fn()}
-        onQuickAdd={onQuickAdd}
-        onCreateProject={onCreateProject}
-      />
-    )
-
-    await waitFor(() => expect(onProjectSelect).toHaveBeenCalledWith('project-1'))
-    expect(screen.getByText('task-list:1')).toBeInTheDocument()
-    fireEvent.click(screen.getByText('quick add'))
-    expect(onQuickAdd).toHaveBeenCalledWith(
-      'New task',
-      expect.objectContaining({ priority: 'high', projectId: 'project-1' })
-    )
-
-    rerender(
-      <ProjectsTabContent
-        tasks={[]}
-        projects={[]}
-        selectedTaskId={null}
-        selectedProjectId={null}
-        onProjectSelect={onProjectSelect}
-        onToggleComplete={vi.fn()}
-        onToggleSubtaskComplete={vi.fn()}
-        onTaskClick={vi.fn()}
-        onQuickAdd={onQuickAdd}
-        onCreateProject={onCreateProject}
-      />
-    )
-    fireEvent.click(
-      screen.getByText('phaseF.componentsTasksProjectsProjectsTabContent.createYourFirstProject')
-    )
-    expect(onCreateProject).toHaveBeenCalled()
   })
 
   it('confirms archive actions', () => {

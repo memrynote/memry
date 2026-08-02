@@ -30,7 +30,7 @@ export type ReminderStatus = (typeof reminderStatus)[keyof typeof reminderStatus
  * device A already synced. A random id would produce two rows for one pill;
  * this makes them the same row.
  *
- * MUST stay character-identical to the SQL in migration 0040.
+ * MUST stay character-identical to the SQL in migration 0043.
  */
 export function noteDateReminderId(noteId: string, anchorId: string): string {
   return `rem_nd_${noteId}_${anchorId}`

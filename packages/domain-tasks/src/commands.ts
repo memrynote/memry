@@ -3,6 +3,7 @@ import type {
   ProjectLink,
   ProjectLinkItemInput,
   ProjectSetHomeNoteInput,
+  ProjectSetLinkPinnedInput,
   ProjectWithStatuses,
   Status,
   Task
@@ -166,6 +167,7 @@ export interface TasksCommandRepository extends TasksQueryRepository {
   unlinkItemFromProject(projectId: string, itemType: string, itemId: string): void
   findProjectLink(projectId: string, itemType: string, itemId: string): ProjectLink | undefined
   setProjectHomeNote(projectId: string, noteId: string | null): void
+  setProjectLinkPinned(projectId: string, itemId: string, pinned: boolean): void
   deleteProjectLinksForItem(itemType: string, itemId: string): string[]
   clearProjectsHomeNote(noteId: string): string[]
   createStatus(status: Omit<Status, 'createdAt'>): Status
@@ -704,6 +706,18 @@ export function createTasksCommands({
 
     async unlinkItemFromProject(input: ProjectLinkItemInput) {
       repository.unlinkItemFromProject(input.projectId, input.itemType, input.itemId)
+
+      const project = repository.getProject(input.projectId)
+      if (!project) {
+        return { success: false, error: 'Project not found' }
+      }
+
+      await publisher.projectUpdated({ id: input.projectId, project, changedFields: ['links'] })
+      return { success: true }
+    },
+
+    async setProjectLinkPinned(input: ProjectSetLinkPinnedInput) {
+      repository.setProjectLinkPinned(input.projectId, input.itemId, input.pinned)
 
       const project = repository.getProject(input.projectId)
       if (!project) {

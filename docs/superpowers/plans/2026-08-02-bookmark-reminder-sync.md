@@ -177,7 +177,7 @@ In `packages/contracts/src/bookmark-types.ts`:
  * `(item_type, item_id)` unique index at pull time. Deriving the id from the
  * same pair makes both devices produce the identical row, so LWW merges it.
  *
- * MUST stay character-identical to the SQL in migration 0040.
+ * MUST stay character-identical to the SQL in migration 0043.
  */
 export function bookmarkSyncId(itemType: string, itemId: string): string {
   return `bmk_${itemType}_${itemId}`
@@ -196,7 +196,7 @@ In `packages/contracts/src/reminder-types.ts`:
  * device A already synced. A random id would produce two rows for one pill;
  * this makes them the same row.
  *
- * MUST stay character-identical to the SQL in migration 0040.
+ * MUST stay character-identical to the SQL in migration 0043.
  */
 export function noteDateReminderId(noteId: string, anchorId: string): string {
   return `rem_nd_${noteId}_${anchorId}`
@@ -248,7 +248,7 @@ git commit -m "feat(sync): add bookmark and reminder sync contracts"
 
 ---
 
-### Task 2: Database schema and migration 0040
+### Task 2: Database schema and migration 0043
 
 **Files:**
 
@@ -267,7 +267,7 @@ git commit -m "feat(sync): add bookmark and reminder sync contracts"
 Append to `apps/desktop/src/main/database/migrate.test.ts` (follow the existing file's harness for opening a migrated in-memory DB):
 
 ```ts
-describe('migration 0040 — bookmark/reminder sync columns', () => {
+describe('migration 0043 — bookmark/reminder sync columns', () => {
   it('rewrites bookmark ids deterministically and preserves every row', () => {
     const db = openMigratedDbAt('0039')
     db.prepare(
@@ -332,7 +332,7 @@ describe('migration 0040 — bookmark/reminder sync columns', () => {
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `pnpm --filter @memry/desktop test:main -- migrate`
-Expected: FAIL — migration 0040 does not exist.
+Expected: FAIL — migration 0043 does not exist.
 
 - [ ] **Step 3: Write the migration SQL**
 
@@ -1769,7 +1769,7 @@ git commit -m "feat(sync): converge derived note_date reminders on a determinist
 
 - [ ] **Step 1: Run the full gate**
 
-Do **NOT** run `db:generate` for the data DB (Drizzle snapshots broken past 0021 — migration 0040 is hand-written and must stay that way).
+Do **NOT** run `db:generate` for the data DB (Drizzle snapshots broken past 0021 — migration 0043 is hand-written and must stay that way).
 
 ```bash
 pnpm --filter @memry/desktop db:push

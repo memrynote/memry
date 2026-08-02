@@ -23,16 +23,29 @@ const isSameDay = (date1: Date, date2: Date): boolean => {
  * Get Date object from item's createdAt field
  * Handles both Date objects and ISO strings
  */
-const getItemDate = (item: InboxItem | InboxItemListItem): Date => {
+export const getItemDate = (item: InboxItem | InboxItemListItem): Date => {
   const createdAt = item.createdAt
   return createdAt instanceof Date ? createdAt : new Date(createdAt)
 }
 
-// Helper to group items by time period
-export const groupItemsByTimePeriod = <T extends InboxItem | InboxItemListItem>(
+/**
+ * Helper to group items by time period.
+ *
+ * Inbox items default to `createdAt`. Anything else — the project hub groups
+ * notes, files and events into the same buckets — supplies its own accessor.
+ */
+export function groupItemsByTimePeriod<T extends InboxItem | InboxItemListItem>(
   items: T[],
   dateAccessor?: (item: T) => Date
-): GroupedItems<T>[] => {
+): GroupedItems<T>[]
+export function groupItemsByTimePeriod<T>(
+  items: T[],
+  dateAccessor: (item: T) => Date
+): GroupedItems<T>[]
+export function groupItemsByTimePeriod<T>(
+  items: T[],
+  dateAccessor?: (item: T) => Date
+): GroupedItems<T>[] {
   const now = new Date()
   const yesterday = new Date(now)
   yesterday.setDate(yesterday.getDate() - 1)
@@ -44,7 +57,9 @@ export const groupItemsByTimePeriod = <T extends InboxItem | InboxItemListItem>(
   }
 
   items.forEach((item) => {
-    const itemDate = dateAccessor ? dateAccessor(item) : getItemDate(item)
+    const itemDate = dateAccessor
+      ? dateAccessor(item)
+      : getItemDate(item as InboxItem | InboxItemListItem)
     if (isSameDay(itemDate, now)) {
       groups.TODAY.push(item)
     } else if (isSameDay(itemDate, yesterday)) {

@@ -62,7 +62,7 @@
   },
   "quickAdd": {
     "label": "Quick add task",
-    "focusDescription": "Focus quick add input"
+    "placeholder": "Add a task…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Close task details",
@@ -524,11 +524,6 @@
     "componentsTasksQuickAddQuickOptionsBar": {
       "quickOptions": "Quick options:"
     },
-    "componentsTasksQuickAddInput": {
-      "q": "Q",
-      "q2": "Q",
-      "detailHint": "detail"
-    },
     "componentsTasksRepeatIndicator": {
       "of": "of ",
       "completed": "completed"
@@ -650,27 +645,6 @@
       "failedToLoadLinkedTasks": "Failed to load linked tasks"
     }
   },
-  "projectNotes": {
-    "title": "Notes",
-    "loading": "Loading notes…",
-    "loadError": "Failed to load project notes",
-    "removeFromProject": "Remove from project",
-    "removeError": "Failed to remove note from project"
-  },
-  "projectFiles": {
-    "title": "Files",
-    "loading": "Loading files…",
-    "loadError": "Failed to load project files",
-    "removeFromProject": "Remove from project",
-    "removeError": "Failed to remove file from project"
-  },
-  "projectEvents": {
-    "title": "Events",
-    "loading": "Loading events…",
-    "loadError": "Could not load events",
-    "removeFromProject": "Remove from project",
-    "removeError": "Could not remove event"
-  },
   "addToProject": {
     "menuLabel": "Add to project",
     "dialogTitle": "Add to project",
@@ -680,13 +654,6 @@
     "toastError": "Failed to add to project"
   },
   "projectHome": {
-    "stats": {
-      "tasks": "Tasks",
-      "notes": "Notes",
-      "events": "Events",
-      "files": "Files",
-      "progress": "Progress"
-    },
     "emptyTitle": "No project selected",
     "emptyBody": "Pick a project from the sidebar to open its home.",
     "loadError": "Could not load project details",
@@ -704,5 +671,71 @@
   },
   "itemProjects": {
     "openProject": "Open project {name}"
+  },
+  "projectHub": {
+    "header": {
+      "toggleRail": "Toggle project details",
+      "menu": "Project actions",
+      "editProject": "Edit project",
+      "archiveProject": "Archive project"
+    },
+    "tabs": {
+      "label": "Project views",
+      "overview": "Overview",
+      "tasks": "Tasks",
+      "notes": "Notes",
+      "files": "Files",
+      "events": "Events"
+    },
+    "groups": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "older": "Older",
+      "tomorrow": "Tomorrow",
+      "upcoming": "Upcoming",
+      "past": "Past"
+    },
+    "sections": {
+      "viewAll": "View all",
+      "add": "Add to {title}",
+      "emptyTasks": "No tasks yet.",
+      "emptyNotes": "No notes linked yet.",
+      "emptyFiles": "No files linked yet.",
+      "emptyEvents": "No events linked yet.",
+      "newNoteTitle": "Untitled note",
+      "newNoteError": "Could not add the note"
+    },
+    "rows": {
+      "openTask": "Open task {title}",
+      "openNote": "Open note {title}",
+      "openFile": "Open file {title}",
+      "openEvent": "Open event {title}",
+      "setNoteIcon": "Set icon for {title}"
+    },
+    "rail": {
+      "overview": "Overview",
+      "progress": "Progress",
+      "details": "Details",
+      "doneOf": "{done} of {total} done",
+      "overdue": "Overdue",
+      "created": "Created",
+      "updated": "Updated",
+      "linked": "Linked",
+      "linkedSummary": "{notes, plural, one {# note} other {# notes}} · {files, plural, one {# file} other {# files}} · {events, plural, one {# event} other {# events}}",
+      "addNote": "Add note",
+      "unpinNote": "Remove {title} from the overview",
+      "pinError": "Could not add the note to the overview",
+      "unpinError": "Could not remove the note from the overview"
+    },
+    "capture": {
+      "placeholder": "Add to {name} — type a task, jot a note, or paste a link…",
+      "attach": "Attach files",
+      "linkAdded": "Link added to the project",
+      "linkError": "Could not save the link",
+      "filesAdded": "{count, plural, one {# file added to the project} other {# files added to the project}}",
+      "fileError": "Could not link {name}",
+      "fileErrorGeneric": "Could not import the files",
+      "label": "Add to {name}"
+    }
   }
 }

@@ -14,11 +14,16 @@ export const ProjectsSkeleton = ({
   className
 }: ProjectsSkeletonProps): React.JSX.Element => {
   return (
-    <div className={cn('space-y-1', className)}>
+    <div className={cn('ms-1', className)}>
       {Array.from({ length: count }).map((_, index) => (
-        <div key={index} className="flex items-center gap-2 px-2 py-1.5 rounded-md">
-          {/* Color dot skeleton */}
-          <div className="size-2.5 rounded-full bg-sidebar-accent animate-pulse shrink-0" />
+        <div key={index} className="flex h-7 items-center gap-1.5 ps-1 pe-2.5 rounded-[5px] pb-px">
+          {/* Color dot skeleton — same leading slots as a real project row */}
+          <div className="flex shrink-0 items-center gap-0.5">
+            <div className="size-4" />
+            <div className="flex size-5 items-center justify-center">
+              <div className="size-2.5 rounded-full bg-sidebar-accent animate-pulse" />
+            </div>
+          </div>
 
           {/* Project name skeleton */}
           <div

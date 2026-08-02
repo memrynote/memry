@@ -1,20 +1,16 @@
 import { getI18n } from 'react-i18next'
 /**
- * Capture Input Component
+ * Inbox capture — the CaptureBar wired to the inbox.
  *
- * A refined input for quickly capturing text notes, links, and voice memos to the inbox.
- * Auto-detects URLs vs plain text and uses the appropriate capture method.
- * Includes voice recording with automatic transcription.
- * Matches the contemplative editorial design of the Journal page.
+ * Auto-detects URLs vs plain text and uses the matching capture method, records
+ * voice memos with transcription, and accepts file attachments. Geometry and
+ * keyboard behaviour come from CaptureBar, shared with Tasks and the Project hub.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react'
-import { flushSync } from 'react-dom'
-import { Send, Loader2, Link, FileText, Mic, Paperclip, Copy } from '@/lib/icons'
-import { cn } from '@/lib/utils'
+import { useCallback, useRef, useState } from 'react'
+import { Copy } from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useCaptureText, useCaptureLink, useCaptureVoice, useCaptureImage } from '@/hooks/use-inbox'
-import type { DisplayDensity } from '@/hooks/use-display-density'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import {
@@ -22,9 +18,9 @@ import {
   getVoiceRecordingSettingsTarget
 } from '@/lib/voice-recording-readiness'
 import { prepareVoiceMemoAudio } from '@/lib/voice-memo-audio'
-import { VoiceRecorder, type VoiceRecorderHandle } from './voice-recorder'
-import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts-base'
 import { useT } from '@memry/i18n/renderer'
+import { isLikelyUrl, normalizeUrl } from '@/lib/capture-intent'
+import { CaptureBar } from '@/components/capture-bar'
 
 /**
  * All allowed attachment MIME types for inbox capture.
@@ -62,69 +58,28 @@ type AllowedAttachmentType = (typeof ALLOWED_ATTACHMENT_TYPES)[number]
 interface CaptureInputProps {
   onCaptureSuccess?: () => void
   onCaptureError?: (error: string) => void
-  density?: DisplayDensity
-  compact?: boolean
   className?: string
   /** Bump to focus the capture field (changes each time to re-fire). */
   focusSignal?: number
 }
 
-/**
- * Simple URL detection regex
- * Matches common URL patterns including http(s), www, and common TLDs
- */
-const URL_REGEX =
-  /^(https?:\/\/|www\.)[^\s]+$|^[^\s]+\.(com|org|net|io|co|dev|app|me|info|biz|edu|gov)[^\s]*$/i
-
-const RECORDER_TRANSITION_MS = 250
-
-/**
- * Check if a string looks like a URL
- */
-function isLikelyUrl(text: string): boolean {
-  const trimmed = text.trim()
-  // Don't match if it's multi-line (notes can contain URLs)
-  if (trimmed.includes('\n')) return false
-  return URL_REGEX.test(trimmed)
-}
-
-/**
- * Normalize a URL by adding https:// if missing
- */
-function normalizeUrl(text: string): string {
-  const trimmed = text.trim()
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-    return trimmed
-  }
-  if (trimmed.startsWith('www.')) {
-    return `https://${trimmed}`
-  }
-  // For bare domains like "example.com/path"
-  return `https://${trimmed}`
-}
-
 export function CaptureInput({
   onCaptureSuccess,
   onCaptureError,
-  density: _density = 'comfortable',
-  compact = false,
   className,
   focusSignal
 }: CaptureInputProps): React.JSX.Element {
-  const { t: tPhaseF } = useT('inbox')
-  const [value, setValue] = useState('')
-  const [isFocused, setIsFocused] = useState(false)
-  const [isRecording, setIsRecording] = useState(false)
-  const [isRecorderMounted, setIsRecorderMounted] = useState(false)
+  const { t } = useT('inbox')
   const [duplicateMatch, setDuplicateMatch] = useState<{
     id: string
     title: string
     createdAt: string
   } | null>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const voiceRecorderRef = useRef<VoiceRecorderHandle | null>(null)
-  const recorderDismissTimerRef = useRef<number | null>(null)
+  // The text the duplicate notice refers to — CaptureBar keeps it in the field
+  // while the notice is up, so "Capture Anyway" resubmits exactly this.
+  const pendingTextRef = useRef('')
+  const [clearSignal, setClearSignal] = useState(0)
   const { enabled: aiEnabled } = useAISettingsContext()
 
   const captureText = useCaptureText()
@@ -133,146 +88,90 @@ export function CaptureInput({
   const captureImage = useCaptureImage()
   const { open: openSettings } = useSettingsModal()
 
-  useKeyboardShortcuts([
-    {
-      key: 'q',
-      action: () => textareaRef.current?.focus(),
-      description: tPhaseF('phaseF.componentsCaptureInput.focusShortcut')
-    }
-  ])
-
   const isCapturing =
     captureText.isPending ||
     captureLink.isPending ||
     captureVoice.isPending ||
     captureImage.isPending
-  const isUrl = isLikelyUrl(value)
-  const recorderSlotMounted = aiEnabled && isRecorderMounted
 
-  const clearRecorderDismissTimer = useCallback(() => {
-    if (recorderDismissTimerRef.current !== null) {
-      window.clearTimeout(recorderDismissTimerRef.current)
-      recorderDismissTimerRef.current = null
-    }
-  }, [])
-
-  const showRecorder = useCallback(() => {
-    clearRecorderDismissTimer()
-    setIsRecorderMounted(true)
-    setIsRecording(true)
-  }, [clearRecorderDismissTimer])
-
-  const hideRecorder = useCallback(() => {
-    setIsRecording(false)
-    clearRecorderDismissTimer()
-    recorderDismissTimerRef.current = window.setTimeout(() => {
-      setIsRecorderMounted(false)
-      recorderDismissTimerRef.current = null
-    }, RECORDER_TRANSITION_MS)
-  }, [clearRecorderDismissTimer])
-
-  // Auto-resize textarea
-  useEffect(() => {
-    const textarea = textareaRef.current
-    if (textarea) {
-      textarea.style.height = 'auto'
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`
-    }
-  }, [value])
-
-  useEffect(() => clearRecorderDismissTimer, [clearRecorderDismissTimer])
-
-  // Focus on demand (e.g. clicking Inbox in the sidebar). The signal changes each
-  // time, so this re-fires even when the Inbox tab is already open.
-  useEffect(() => {
-    if (focusSignal) textareaRef.current?.focus()
-  }, [focusSignal])
-
+  /**
+   * Returns false when the text must stay in the field: a duplicate the user
+   * still has to decide about, or a failed capture.
+   */
   const handleSubmit = useCallback(
-    async (force = false) => {
-      const trimmed = value.trim()
-      if (!trimmed || isCapturing) return
-
+    async (text: string, force = false): Promise<boolean> => {
       setDuplicateMatch(null)
 
       try {
-        if (isLikelyUrl(trimmed)) {
-          const url = normalizeUrl(trimmed)
-          const result = await captureLink.mutateAsync({ url, force, source: 'inline' })
-          if (result.duplicate && result.existingItem) {
-            setDuplicateMatch(result.existingItem)
-            return
-          }
-          if (result.success) {
-            setValue('')
-            onCaptureSuccess?.()
-          } else {
-            onCaptureError?.(
-              extractErrorMessage(
-                result.error,
-                getI18n().getFixedT(null, 'inbox')('phaseI.errors.failedToCaptureLink')
-              )
-            )
-          }
-        } else {
-          const lines = trimmed.split('\n')
-          const title = lines.length > 1 ? lines[0].slice(0, 100) : trimmed.slice(0, 100)
-
-          const result = await captureText.mutateAsync({
-            content: trimmed,
-            title: title + (title.length < trimmed.length ? '...' : ''),
+        if (isLikelyUrl(text)) {
+          const result = await captureLink.mutateAsync({
+            url: normalizeUrl(text),
             force,
             source: 'inline'
           })
           if (result.duplicate && result.existingItem) {
             setDuplicateMatch(result.existingItem)
-            return
+            return false
           }
           if (result.success) {
-            setValue('')
             onCaptureSuccess?.()
-          } else {
-            onCaptureError?.(
-              extractErrorMessage(
-                result.error,
-                getI18n().getFixedT(null, 'inbox')('phaseI.errors.failedToCaptureNote')
-              )
-            )
+            return true
           }
+          onCaptureError?.(
+            extractErrorMessage(
+              result.error,
+              getI18n().getFixedT(null, 'inbox')('phaseI.errors.failedToCaptureLink')
+            )
+          )
+          return false
         }
-      } catch (err) {
-        const message = extractErrorMessage(
-          err,
-          getI18n().getFixedT(null, 'inbox')('phaseI.errors.captureFailed')
+
+        const lines = text.split('\n')
+        const title = lines.length > 1 ? lines[0].slice(0, 100) : text.slice(0, 100)
+
+        const result = await captureText.mutateAsync({
+          content: text,
+          title: title + (title.length < text.length ? '...' : ''),
+          force,
+          source: 'inline'
+        })
+        if (result.duplicate && result.existingItem) {
+          setDuplicateMatch(result.existingItem)
+          return false
+        }
+        if (result.success) {
+          onCaptureSuccess?.()
+          return true
+        }
+        onCaptureError?.(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'inbox')('phaseI.errors.failedToCaptureNote')
+          )
         )
-        onCaptureError?.(message)
+        return false
+      } catch (err) {
+        onCaptureError?.(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'inbox')('phaseI.errors.captureFailed')
+          )
+        )
+        return false
       }
     },
-    [value, isCapturing, captureText, captureLink, onCaptureSuccess, onCaptureError]
+    [captureText, captureLink, onCaptureSuccess, onCaptureError]
   )
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      // Enter to submit (unless Shift is held for multi-line)
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault()
-        void handleSubmit()
-      }
-    },
-    [handleSubmit]
-  )
+  const handleCaptureAnyway = useCallback(async (): Promise<void> => {
+    if (await handleSubmit(pendingTextRef.current, true)) setClearSignal((n) => n + 1)
+  }, [handleSubmit])
 
-  /**
-   * Handle voice recording completion
-   */
   const handleRecordingComplete = useCallback(
-    async (audioBlob: Blob, duration: number) => {
-      hideRecorder()
-
+    async (audioBlob: Blob, duration: number): Promise<void> => {
       try {
         const preparedAudio = await prepareVoiceMemoAudio(audioBlob)
 
-        // Capture voice memo
         const result = await captureVoice.mutateAsync({
           data: preparedAudio.data,
           duration: duration || preparedAudio.duration,
@@ -293,42 +192,27 @@ export function CaptureInput({
           )
         }
       } catch (err) {
-        const message = extractErrorMessage(
-          err,
-          getI18n().getFixedT(null, 'inbox')('phaseI.errors.voiceCaptureFailed')
+        onCaptureError?.(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'inbox')('phaseI.errors.voiceCaptureFailed')
+          )
         )
-        onCaptureError?.(message)
       }
     },
-    [hideRecorder, captureVoice, onCaptureSuccess, onCaptureError]
+    [captureVoice, onCaptureSuccess, onCaptureError]
   )
 
-  /**
-   * Handle voice recording cancellation
-   */
-  const handleRecordingCancel = useCallback(() => {
-    hideRecorder()
-  }, [hideRecorder])
-
-  const handleMicClick = useCallback(async () => {
-    if (!aiEnabled) return
-
-    const ready = await ensureVoiceRecordingReady((readiness) => {
-      openSettings(getVoiceRecordingSettingsTarget(readiness))
-    })
-
-    if (ready) {
-      flushSync(showRecorder)
-      void voiceRecorderRef.current?.start()
-    }
-  }, [aiEnabled, openSettings, showRecorder])
-
-  const handleAttachClick = useCallback(() => {
-    fileInputRef.current?.click()
-  }, [])
+  const handleVoiceReadiness = useCallback(
+    () =>
+      ensureVoiceRecordingReady((readiness) =>
+        openSettings(getVoiceRecordingSettingsTarget(readiness))
+      ),
+    [openSettings]
+  )
 
   const handleFileSelect = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
+    async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
       const file = e.target.files?.[0]
       if (!file) return
 
@@ -361,213 +245,82 @@ export function CaptureInput({
           )
         }
       } catch (err) {
-        const message = extractErrorMessage(
-          err,
-          getI18n().getFixedT(null, 'inbox')('phaseI.errors.fileCaptureFailed')
+        onCaptureError?.(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'inbox')('phaseI.errors.fileCaptureFailed')
+          )
         )
-        onCaptureError?.(message)
       }
     },
     [captureImage, onCaptureSuccess, onCaptureError]
   )
 
   return (
-    <div
-      className={cn(
-        'relative group flex flex-col gap-2',
-        compact && 'grow shrink basis-0 min-w-0',
-        'transition-all duration-300',
-        className
-      )}
-    >
-      <div className="flex w-full min-w-0 items-stretch">
-        <div
-          className={cn(
-            'relative flex min-w-0 shrink-0 items-center',
-            recorderSlotMounted && isRecording ? 'w-[60%]' : 'w-full',
-            compact ? 'gap-1.5 px-2.5 py-1 rounded-md' : 'gap-2.5 px-3.5 py-2.5 rounded-[10px]',
-            'border-[1.5px] border-dashed',
-            'transition-[width,border-color,background-color,box-shadow] duration-300 ease-out',
-            !isFocused &&
-              (compact
-                ? 'border-border hover:border-text-tertiary'
-                : 'border-border/30 bg-muted/20'),
-            isFocused &&
-              (compact
-                ? 'border-amber-500/60 bg-muted/10'
-                : 'bg-muted/30 border-border/50 ring-1 ring-amber-500/20')
-          )}
-        >
-          <div
-            className={cn(
-              'text-muted-foreground/50 transition-colors duration-200',
-              isFocused && 'text-amber-600 dark:text-amber-400'
-            )}
-          >
-            {isUrl ? (
-              <Link className={compact ? 'size-3.5' : 'size-4'} aria-hidden="true" />
-            ) : (
-              <FileText className={compact ? 'size-3.5' : 'size-4'} aria-hidden="true" />
-            )}
-          </div>
-
-          <textarea
-            ref={textareaRef}
-            value={value}
-            onChange={(e) => {
-              setValue(e.target.value)
-              if (duplicateMatch) setDuplicateMatch(null)
-            }}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              compact
-                ? 'Capture a link or thought...'
-                : 'Quick capture — paste a link, jot a thought...'
-            }
-            disabled={isCapturing}
-            rows={1}
-            className={cn(
-              'flex-1 bg-transparent resize-none focus:outline-none',
-              'disabled:opacity-50 disabled:cursor-not-allowed',
-              compact
-                ? 'min-h-[18px] max-h-[18px] text-[12px] leading-[18px] placeholder:text-text-tertiary'
-                : 'min-h-[24px] max-h-[200px] text-sm text-foreground/90 leading-6 placeholder:text-muted-foreground/40'
-            )}
-            aria-label={tPhaseF('phaseF.componentsCaptureInput.captureInput')}
-          />
-
-          <div className={cn('flex shrink-0 items-center', compact ? 'gap-0.5' : 'gap-1')}>
-            <span
-              className={cn(
-                'rounded-[3px] px-1 bg-foreground/5 border border-border transition-opacity duration-150',
-                isFocused
-                  ? 'opacity-0 pointer-events-none w-0 overflow-hidden border-0 px-0'
-                  : 'opacity-100'
-              )}
-            >
-              <span className="text-[9px] text-text-tertiary font-[family-name:var(--font-mono)] font-medium leading-3">
-                {tPhaseF('phaseF.componentsCaptureInput.q')}
-              </span>
-            </span>
-            <button
-              type="button"
-              onClick={handleAttachClick}
-              disabled={isCapturing}
-              className={cn(
-                'flex items-center justify-center rounded-md',
-                'text-muted-foreground/50 transition-colors duration-200',
-                'hover:text-muted-foreground',
-                'disabled:opacity-30 disabled:cursor-not-allowed',
-                compact ? 'size-5' : 'size-7'
-              )}
-              aria-label={tPhaseF('phaseF.componentsCaptureInput.attachFile')}
-              title={tPhaseF('phaseF.componentsCaptureInput.attachFileImagesAudioVideoPdf')}
-            >
-              <Paperclip className={compact ? 'size-3' : 'size-[15px]'} aria-hidden="true" />
-            </button>
-
-            {aiEnabled && (
+    <>
+      <CaptureBar
+        className={className}
+        icon="auto"
+        ariaLabel={t('phaseF.componentsCaptureInput.captureInput')}
+        placeholder={t('phaseF.componentsCaptureInput.placeholder')}
+        isBusy={isCapturing}
+        focusSignal={focusSignal}
+        clearSignal={clearSignal}
+        onSubmit={(text) => {
+          pendingTextRef.current = text
+          return handleSubmit(text)
+        }}
+        submitLabel={(value) =>
+          isLikelyUrl(value)
+            ? t('phaseF.componentsCaptureInput.captureLink')
+            : t('phaseF.componentsCaptureInput.captureNote')
+        }
+        attachment={{
+          onAttach: () => fileInputRef.current?.click(),
+          label: t('phaseF.componentsCaptureInput.attachFile'),
+          title: t('phaseF.componentsCaptureInput.attachFileImagesAudioVideoPdf')
+        }}
+        voice={
+          aiEnabled
+            ? {
+                onComplete: handleRecordingComplete,
+                onBeforeStart: handleVoiceReadiness,
+                label: t('phaseF.componentsCaptureInput.recordVoiceMemo'),
+                title: t('phaseF.componentsCaptureInput.recordVoiceMemo2')
+              }
+            : undefined
+        }
+        footer={
+          duplicateMatch ? (
+            <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2">
+              <Copy className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <p className="flex-1 text-xs text-muted-foreground">
+                {t('phaseF.componentsCaptureInput.alreadyCaptured')}
+                {duplicateMatch.title.slice(0, 50)}
+                {duplicateMatch.title.length > 50 ? '...' : ''}&
+                {t('phaseF.componentsCaptureInput.rdquo')}
+              </p>
               <button
                 type="button"
-                onClick={() => void handleMicClick()}
-                disabled={isCapturing}
-                className={cn(
-                  'flex items-center justify-center rounded-md',
-                  'text-muted-foreground/50 transition-all duration-150 ease-out',
-                  'hover:text-muted-foreground active:scale-90',
-                  'disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100',
-                  compact ? 'size-5' : 'size-7'
-                )}
-                aria-label={tPhaseF('phaseF.componentsCaptureInput.recordVoiceMemo')}
-                title={tPhaseF('phaseF.componentsCaptureInput.recordVoiceMemo2')}
+                onClick={() => void handleCaptureAnyway()}
+                className="shrink-0 text-xs font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
               >
-                <Mic className={compact ? 'size-3' : 'size-[15px]'} aria-hidden="true" />
+                {t('phaseF.componentsCaptureInput.captureAnyway')}
               </button>
-            )}
+            </div>
+          ) : null
+        }
+      />
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={ALLOWED_ATTACHMENT_TYPES.join(',')}
-              onChange={(...args) => void handleFileSelect(...args)}
-              className="hidden"
-              aria-hidden="true"
-              tabIndex={-1}
-            />
-
-            <button
-              type="button"
-              onClick={() => void handleSubmit()}
-              disabled={!value.trim() || isCapturing}
-              className={cn(
-                'flex items-center justify-center rounded-md',
-                'transition-all duration-200',
-                value.trim() && !isCapturing
-                  ? 'bg-amber-500 text-background dark:text-black'
-                  : compact
-                    ? 'text-muted-foreground/30'
-                    : 'bg-muted/40 text-muted-foreground/30',
-                'disabled:cursor-not-allowed',
-                compact ? 'size-5' : 'size-7'
-              )}
-              aria-label={isUrl ? 'Capture link' : 'Capture note'}
-            >
-              {isCapturing ? (
-                <Loader2
-                  className={cn('animate-spin', compact ? 'size-3' : 'size-3.5')}
-                  aria-hidden="true"
-                />
-              ) : (
-                <Send className={compact ? 'size-3' : 'size-3.5'} aria-hidden="true" />
-              )}
-            </button>
-          </div>
-        </div>
-
-        {recorderSlotMounted && (
-          <div
-            aria-hidden={!isRecording}
-            className={cn(
-              'flex min-w-0 shrink-0 items-center overflow-hidden',
-              'transition-[width,opacity,transform,padding] duration-300 ease-out',
-              'motion-reduce:transition-none',
-              isRecording
-                ? cn('w-[40%] translate-x-0 opacity-100', compact ? 'ps-1.5' : 'ps-2')
-                : 'w-0 translate-x-2 ps-0 opacity-0 pointer-events-none'
-            )}
-          >
-            <VoiceRecorder
-              ref={voiceRecorderRef}
-              onRecordingComplete={(...args) => void handleRecordingComplete(...args)}
-              onCancel={handleRecordingCancel}
-              maxDuration={300}
-              className="h-full w-full"
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Duplicate notice */}
-      {duplicateMatch && (
-        <div className="mt-2 flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2">
-          <Copy className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
-          <p className="flex-1 text-xs text-muted-foreground">
-            {tPhaseF('phaseF.componentsCaptureInput.alreadyCaptured')}
-            {duplicateMatch.title.slice(0, 50)}
-            {duplicateMatch.title.length > 50 ? '...' : ''}&
-            {tPhaseF('phaseF.componentsCaptureInput.rdquo')}
-          </p>
-          <button
-            type="button"
-            onClick={() => void handleSubmit(true)}
-            className="shrink-0 text-xs font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
-          >
-            {tPhaseF('phaseF.componentsCaptureInput.captureAnyway')}
-          </button>
-        </div>
-      )}
-    </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={ALLOWED_ATTACHMENT_TYPES.join(',')}
+        onChange={(...args) => void handleFileSelect(...args)}
+        className="hidden"
+        aria-hidden="true"
+        tabIndex={-1}
+      />
+    </>
   )
 }

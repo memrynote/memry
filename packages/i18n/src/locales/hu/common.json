@@ -638,5 +638,8 @@
     "remindLater": "Emlékeztess később",
     "restartNow": "Újraindítás most",
     "skip": "Verzió kihagyása"
+  },
+  "capture": {
+    "focusShortcut": "Rögzítési mező fókuszálása"
   }
 }

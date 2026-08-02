@@ -126,7 +126,8 @@ export const SortableProjectItem = ({
       onDragLeave={handleNoteDragLeave}
       onDrop={handleNoteDrop}
       className={cn(
-        'group/project relative transition-all duration-150',
+        // Matches the notes tree row rhythm: 4px inset + 1px gutter between rows
+        'group/project relative ms-1 pb-px transition-all duration-150',
         isSortableDragging && 'opacity-50 z-50',
         // Drop zone visual feedback
         showAsDropZone && 'border border-dotted border-muted-foreground/40 rounded-md',
@@ -143,18 +144,29 @@ export const SortableProjectItem = ({
         </span>
       )}
 
-      <SidebarMenuButton tooltip={project.name} isActive={isActive} onClick={onClick}>
-        <span
-          className="size-2.5 rounded-full shrink-0"
-          style={{ backgroundColor: project.color }}
-          aria-hidden="true"
-        />
-        <span className="sidebar-label-fade">{project.name}</span>
+      {/* Geometry mirrors TreeNodeTrigger so projects read as one list with the notes tree */}
+      <SidebarMenuButton
+        tooltip={project.name}
+        isActive={isActive}
+        onClick={onClick}
+        className="h-7 gap-1.5 rounded-[5px] py-0 ps-1"
+      >
+        {/* Leading block mirrors the tree: expander slot + icon slot */}
+        <span className="flex shrink-0 items-center gap-0.5" aria-hidden="true">
+          <span className="size-4" />
+          <span className="flex size-5 items-center justify-center">
+            <span className="size-2.5 rounded-full" style={{ backgroundColor: project.color }} />
+          </span>
+        </span>
+        {/* flex-1 keeps the fade mask over the row's trailing space, so short names stay crisp */}
+        <span className="sidebar-label-fade flex-1 text-[13px] leading-4 font-medium">
+          {project.name}
+        </span>
       </SidebarMenuButton>
 
       {/* Task count badge - hide when showing drop indicator */}
       {!isOver && (
-        <SidebarMenuBadge className={cn(!isActive && 'group-hover/project:hidden')}>
+        <SidebarMenuBadge className={cn('top-1', !isActive && 'group-hover/project:hidden')}>
           {project.taskCount > 0 ? project.taskCount : ''}
         </SidebarMenuBadge>
       )}
@@ -164,6 +176,7 @@ export const SortableProjectItem = ({
         <SidebarMenuAction
           showOnHover
           className={cn(
+            'top-1',
             !isActive && 'opacity-0 group-hover/project:opacity-100',
             isActive && 'hidden'
           )}

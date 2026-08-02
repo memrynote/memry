@@ -1,4 +1,10 @@
 {
+  "capture": {
+    "focusHint": "Q",
+    "focusShortcut": "Focus capture input",
+    "detailHint": "detail",
+    "submit": "Capture"
+  },
   "updatePrompt": {
     "availableTitle": "A new version of MemryNote is available!",
     "availableBody": "{version} is available — you have {current}. Would you like to download it now?",

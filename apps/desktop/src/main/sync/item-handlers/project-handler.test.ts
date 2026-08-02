@@ -365,6 +365,69 @@ describe('projectHandler', () => {
       expect(links.map((l) => l.itemId)).toEqual(['keep'])
     })
 
+    it('#then preserves local pinned when an incoming link omits the field', () => {
+      testDb.db
+        .insert(projects)
+        .values({ ...TEST_PROJECT, clock: { 'device-A': 1 } })
+        .run()
+      testDb.db
+        .insert(projectLinks)
+        .values({
+          id: 'l1',
+          projectId: 'proj-1',
+          itemType: 'note',
+          itemId: 'n1',
+          position: 0,
+          pinned: 1
+        })
+        .run()
+
+      // An older client pushes the same link with no `pinned` key.
+      const data: ProjectSyncPayload = {
+        name: 'P',
+        clock: { 'device-A': 1, 'device-B': 1 },
+        links: [{ id: 'l1', itemType: 'note', itemId: 'n1', position: 0 }]
+      }
+      projectHandler.applyUpsert(ctx, 'proj-1', data, { 'device-A': 1, 'device-B': 1 })
+
+      const links = testDb.db.select().from(projectLinks).all()
+      expect(links[0].pinned).toBe(1)
+    })
+
+    it('#then round-trips pinned through push and apply', () => {
+      testDb.db.insert(projects).values(TEST_PROJECT).run()
+      testDb.db
+        .insert(projectLinks)
+        .values({
+          id: 'l1',
+          projectId: 'proj-1',
+          itemType: 'note',
+          itemId: 'n1',
+          position: 0,
+          pinned: 1
+        })
+        .run()
+
+      const payload = JSON.parse(
+        projectHandler.buildPushPayload(testDb.db as never, 'proj-1', 'device-A', 'update')!
+      )
+      expect(payload.links[0].pinned).toBe(1)
+
+      // Fresh link ids — reusing 'l1' would hit the update branch, which never
+      // reparents an existing link, so nothing would be inserted for proj-2.
+      projectHandler.applyUpsert(
+        ctx,
+        'proj-2',
+        {
+          name: 'P2',
+          links: payload.links.map((l: { id: string }) => ({ ...l, id: `${l.id}-copy` }))
+        },
+        { 'device-B': 1 }
+      )
+      const applied = testDb.db.select().from(projectLinks).all()
+      expect(applied.find((l) => l.projectId === 'proj-2')?.pinned).toBe(1)
+    })
+
     it('#then round-trips homeNoteId', () => {
       const data: ProjectSyncPayload = { name: 'P', homeNoteId: 'note-7' }
       projectHandler.applyUpsert(ctx, 'proj-h', data, { 'device-B': 1 })

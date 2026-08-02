@@ -31,7 +31,7 @@ Status types matter for cross-project views: "All Tasks → kanban grouped by st
 
 ### Editing Statuses
 
-Open the project header menu and choose **Edit statuses**. From there you can:
+Open the project's **⋯** menu and choose **Edit statuses**. From there you can:
 
 - Add new statuses
 - Rename / recolor
@@ -57,48 +57,46 @@ Each project has its own:
 
 memrynote remembers per-project view preferences.
 
-## Project Home
+## Project Hub
 
-Opening a project from the sidebar opens its **Project Home** — a dedicated page that gathers everything related to the project in one calm place, not just its tasks.
+Opening a project from the sidebar opens its **hub** — a page that gathers everything related to the project in one calm place, not just its tasks.
 
-<!-- screenshot: Project Home page with stats row and sections -->
+<!-- screenshot: project hub with tabs -->
 
-At the top, a stats row summarizes the project:
+### Capture bar
 
-- **Tasks** — total tasks in the project
-- **Notes** — linked notes
-- **Events** — linked calendar events
-- **Files** — linked files
-- **Progress** — share of the project's tasks that are complete (derived live from the done ratio; there is nothing to configure)
+The capture bar is the top of the page — there is no title header above it. One input, running the full width, does the right thing with whatever you give it:
 
-Below the stats, Project Home stacks these sections:
+- **Plain text** becomes a task in this project. The usual quick-add shorthand still works, so `Ship the beta build friday p1` sets the due date and priority.
+- **A link** becomes a note holding that link, already added to the project. memrynote uses the page's own title where it can reach it, and the address itself where it cannot.
+- **The paperclip** imports files into your vault and adds them to the project in one step.
 
-- **Overview** — an optional inline note that acts as the project's description/home (see below)
-- **Tasks** — the project's task list (the same list and quick-add you already know)
-- **Notes** — the notes linked to this project
-- **Calendar** — the calendar events linked to this project
-- **Files** — the files linked to this project (PDFs, images, audio, video)
+### Tabs
 
-### Overview note
+Five views, switched in place — none of them opens another tab:
 
-A project can point at a real note that renders inline at the top of Project Home as its overview.
+The **⋯** menu — which edits or archives the project — sits at the end of the tab row.
 
-- **Create overview note** — creates a fresh note and sets it as the project's overview; edit it inline, changes save automatically
-- **Clear overview** — unlinks the note as the overview (the note itself stays in your vault)
+- **Overview** — the first five of each category, with a **View all** that jumps to that category's tab
+- **Tasks** — the full task list, with the list, quick-add, and subtasks you already know
+- **Notes** · **Files** · **Events** — everything of that kind linked to the project
 
-The overview is a pointer to a note, so it never shows up twice — it does not also appear in the Notes section.
+The Notes, Files, and Events tabs group their rows into time sections, exactly the way the Inbox does — same headings, same row type and spacing. Notes and files fall under **Today**, **Yesterday**, or **Older** by when they were last changed. Events look forward instead, under **Today**, **Tomorrow**, **Upcoming**, and **Past**, soonest first. Empty sections are not shown, and any section header collapses on click.
+
+Each row behaves the way it does in its home view: change a task's status or priority straight from its row, click a note's icon to change it, and click any row to open the item. Clicking a linked event opens the Calendar **on that event's day** with its details showing, rather than dropping you on today.
+
+Every category keeps its heading even when it is empty, so you can always see what a project is able to hold — and add the first one with **+**.
 
 ### Linking notes, events, and files
 
 Notes, events, and files join a project as **links** (many-to-many): the same note or file can belong to more than one project.
 
 - **Add a note** — from a note's **⋯** menu choose **Add to project**, or drag the note onto a project in the sidebar
-- **Add a file** — open the file and choose **Add to project** from its toolbar, or drag the file onto a project in the sidebar
+- **Add a file** — open the file and choose **Add to project** from its toolbar, drag it onto a project in the sidebar, or use the hub's paperclip
 - **Add an event** — right-click a calendar event and choose **Add to project**
 - Dragging any note or file from the sidebar onto a project links it in one step — memrynote tells notes and files apart automatically, so the same drag works for either
-- Linked items appear in Project Home's **Notes** / **Calendar** / **Files** sections; use each row's remove control to unlink (this only unlinks — it never deletes the note, event, or file)
 
-Wherever a note, event, or file lives, small **project chips** under its title show which projects it belongs to. On notes and events, click a chip to jump to that Project Home.
+Wherever a note, event, or file lives, small **project chips** under its title show which projects it belongs to. On notes and events, click a chip to jump to that project's hub.
 
 ## Deleting a Project
 

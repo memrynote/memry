@@ -1,4 +1,5 @@
 import type {
+  ProjectContents,
   ProjectLink,
   ProjectRef,
   ProjectWithStats,
@@ -21,6 +22,7 @@ export interface TasksQueryRepository {
   getProject(projectId: string): ProjectWithStatuses | undefined
   listStatuses(projectId: string): Status[]
   listProjectLinks(projectId: string): ProjectLink[]
+  listProjectContents(projectId: string): ProjectContents
   getAllTaskTags(): { tag: string; count: number }[]
   getTaskStats(): TaskStats
   getTodayTasks(): Task[]
@@ -83,6 +85,10 @@ export function createTasksQueries(repository: TasksQueryRepository) {
 
     listProjectLinks(projectId: string): ProjectLink[] {
       return repository.listProjectLinks(projectId)
+    },
+
+    listProjectContents(projectId: string): ProjectContents {
+      return repository.listProjectContents(projectId)
     },
 
     getTags(): { tag: string; count: number }[] {

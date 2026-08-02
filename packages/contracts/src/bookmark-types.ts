@@ -26,7 +26,7 @@ export type BookmarkItemType = (typeof BookmarkItemTypes)[keyof typeof BookmarkI
  * `(item_type, item_id)` unique index at pull time. Deriving the id from the
  * same pair makes both devices produce the identical row, so LWW merges it.
  *
- * MUST stay character-identical to the SQL in migration 0040.
+ * MUST stay character-identical to the SQL in migration 0043.
  */
 export function bookmarkSyncId(itemType: string, itemId: string): string {
   return `bmk_${itemType}_${itemId}`

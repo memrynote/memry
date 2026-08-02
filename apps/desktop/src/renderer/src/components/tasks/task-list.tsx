@@ -29,6 +29,8 @@ interface TaskListProps {
   /** Focus the toolbar quick-add input (used by the empty-state Add task button). */
   onFocusQuickAdd?: () => void
   className?: string
+  /** Gutter for the scrolling list area. Project lists only (the project hub). */
+  contentClassName?: string
   // Selection props
   isSelectionMode?: boolean
   selectedIds?: Set<string>
@@ -63,6 +65,7 @@ export const TaskList = ({
   onQuickAdd,
   onFocusQuickAdd,
   className,
+  contentClassName,
   // Selection props
   isSelectionMode = false,
   selectedIds,
@@ -94,6 +97,7 @@ export const TaskList = ({
         onNoteClick={onNoteClick}
         onQuickAdd={onQuickAdd}
         className={className}
+        contentClassName={contentClassName}
         isSelectionMode={isSelectionMode}
         selectedIds={selectedIds}
         onToggleSelect={onToggleSelect}

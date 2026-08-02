@@ -37,7 +37,7 @@ the generated vault stays current on the day a developer runs it. The seed set s
 real personal vault: linked notes, inbox captures, calendar items, and tasks should point at each
 other instead of standing alone.
 
-Project Home is seeded too: `project_links` rows point each project at its notes and calendar
+The project hub is seeded too: `project_links` rows point each project at its notes and calendar
 events (`scripts/seed-data/project-links.ts`), and `projects.home_note_id` supplies the overview
 note. Those links carry no foreign key to their target, so they are inserted after the notes and
 events they reference. File links are intentionally absent — binary files get their id from the

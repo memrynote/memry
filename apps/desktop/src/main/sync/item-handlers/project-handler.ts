@@ -76,7 +76,15 @@ function reconcileLinks(tx: DrizzleDb, projectId: string, incoming: ProjectLinkS
     const existing = tx.select().from(projectLinks).where(eq(projectLinks.id, l.id)).get()
     if (existing) {
       tx.update(projectLinks)
-        .set({ itemType: l.itemType, itemId: l.itemId, position: l.position })
+        .set({
+          itemType: l.itemType,
+          itemId: l.itemId,
+          position: l.position,
+          // Clients that predate the project hub push links with no `pinned`
+          // key. Falling back to the column default would wipe every local pin
+          // on their next push, so fall back to the row we already have.
+          pinned: l.pinned ?? existing.pinned ?? 0
+        })
         .where(eq(projectLinks.id, l.id))
         .run()
     } else {
@@ -87,6 +95,7 @@ function reconcileLinks(tx: DrizzleDb, projectId: string, incoming: ProjectLinkS
           itemType: l.itemType,
           itemId: l.itemId,
           position: l.position,
+          pinned: l.pinned ?? 0,
           createdAt: l.createdAt ?? utcNow()
         })
         .run()

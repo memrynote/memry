@@ -638,5 +638,8 @@
     "remindLater": "Amintește-mi mai târziu",
     "restartNow": "Repornește acum",
     "skip": "Omite această versiune"
+  },
+  "capture": {
+    "focusShortcut": "Focalizează câmpul de captură"
   }
 }

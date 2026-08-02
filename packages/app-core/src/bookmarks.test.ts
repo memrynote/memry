@@ -35,7 +35,7 @@ function createInMemoryDataDb(): DataDb {
 // Bookmark row ids must be deterministic (`bmk_<itemType>_<itemId>`), not random
 // nanoids. Two devices bookmarking the same item offline would otherwise mint
 // two different ids for one logical bookmark and collide on
-// idx_bookmarks_unique_item at sync-pull time — the exact bug migration 0040
+// idx_bookmarks_unique_item at sync-pull time — the exact bug migration 0043
 // exists to clean up. See packages/contracts/src/bookmark-types.ts.
 test('bookmarks service mints deterministic ids on add, toggle, and bulkCreate', async () => {
   const dataDb = createInMemoryDataDb()

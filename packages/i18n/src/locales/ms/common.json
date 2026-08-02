@@ -638,5 +638,8 @@
     "remindLater": "Ingatkan Saya Nanti",
     "restartNow": "Mula Semula Sekarang",
     "skip": "Langkau Versi Ini"
+  },
+  "capture": {
+    "focusShortcut": "Fokus input tangkapan"
   }
 }
