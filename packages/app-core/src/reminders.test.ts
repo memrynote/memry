@@ -155,6 +155,32 @@ test('createRemindersService: onMutate fires delete with a non-empty snapshot th
   assert.equal(parsedSnapshot.id, row.id)
 })
 
+// note_date rows are re-derived on every device from the note's date pills, so
+// the reconciler has to name the row itself (noteDateReminderId) or one pill
+// becomes two forever-diverging rows. Every other caller omits `id`.
+test('createRemindersService: create honours an explicit id and falls back to a generated one', async () => {
+  const dataDb = createInMemoryDataDb()
+  const { hooks, calls } = collectMutations()
+  const service = createRemindersService(dataDb, hooks)
+
+  const explicit = await service.create({
+    id: 'rem_nd_note_1_dm_1',
+    targetType: 'note_date',
+    targetId: 'note_1',
+    anchorId: 'dm_1',
+    remindAt: '2026-08-03T09:00:00.000Z'
+  })
+  assert.equal(explicit.id, 'rem_nd_note_1_dm_1')
+  assert.deepEqual(calls, [{ op: 'create', id: 'rem_nd_note_1_dm_1', snapshot: undefined }])
+
+  const generated = await service.create({
+    targetType: 'note',
+    targetId: 'note_1',
+    remindAt: '2026-08-03T09:00:00.000Z'
+  })
+  assert.match(generated.id, /^reminder_/)
+})
+
 test('createRemindersService: works without hooks (existing call sites keep compiling and behaving)', async () => {
   const dataDb = createInMemoryDataDb()
   const service = createRemindersService(dataDb)

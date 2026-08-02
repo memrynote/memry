@@ -26,6 +26,13 @@ export interface ReminderRecord {
 }
 
 export interface CreateReminderInput {
+  /**
+   * Explicit row id. Optional: only `note_date` reminders set it, because they
+   * are derived from the note's date pills by a reconciler that runs on EVERY
+   * device, so both devices must land on the SAME row (see
+   * `noteDateReminderId`). Every other caller omits it and gets a generated id.
+   */
+  id?: string
   targetType: ReminderTargetType
   targetId: string
   remindAt: string
@@ -131,7 +138,7 @@ export function createRemindersService(
       }
 
       const time = nowIso()
-      const id = createId('reminder')
+      const id = input.id ?? createId('reminder')
       dataDb
         .insert(reminders)
         .values({
