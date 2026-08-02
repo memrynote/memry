@@ -1,11 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
   sendSync: vi.fn(),
   send: vi.fn(),
   on: vi.fn(),
-  removeListener: vi.fn()
+  removeListener: vi.fn(),
+  logError: vi.fn()
 }))
 
 vi.mock('electron', () => ({
@@ -20,7 +21,21 @@ vi.mock('electron', () => ({
 
 import { invoke, invokeSync, send, subscribe } from './ipc'
 
-beforeEach(() => vi.clearAllMocks())
+// electron-log's own preload script puts this on the preload world's global;
+// `subscribe` writes listener failures there rather than importing
+// electron-log (which would hang the preload suite at collection time).
+const globalWithLog = globalThis as typeof globalThis & {
+  __electronLog?: { error: (...data: unknown[]) => void }
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  globalWithLog.__electronLog = { error: mocks.logError }
+})
+
+afterEach(() => {
+  delete globalWithLog.__electronLog
+})
 
 describe('preload ipc primitives', () => {
   it('invoke forwards channel + args and returns the underlying promise', async () => {
@@ -103,5 +118,47 @@ describe('subscribe reference counting', () => {
     off()
     off()
     expect(mocks.removeListener).toHaveBeenCalledTimes(1)
+  })
+
+  it('a throwing callback does not abort the rest of the fan-out', () => {
+    // #given a listener that throws on an unexpected payload shape, registered
+    // before two healthy ones (this is what a sync-emitted `{ id }` event did)
+    const boom = vi.fn(() => {
+      throw new TypeError("Cannot read properties of undefined (reading 'targetType')")
+    })
+    const second = vi.fn()
+    const third = vi.fn()
+    subscribe('chan-throw', boom)
+    subscribe('chan-throw', second)
+    subscribe('chan-throw', third)
+    const handler = mocks.on.mock.calls[0][1] as (e: unknown, p: unknown) => void
+
+    // #when the shared handler dispatches
+    expect(() => handler({}, { id: 'rem-1' })).not.toThrow()
+
+    // #then every later listener still ran, and the failure was logged
+    expect(boom).toHaveBeenCalledWith({ id: 'rem-1' })
+    expect(second).toHaveBeenCalledWith({ id: 'rem-1' })
+    expect(third).toHaveBeenCalledWith({ id: 'rem-1' })
+    expect(mocks.logError).toHaveBeenCalledWith(
+      '[PreloadIpc] Listener for "chan-throw" threw',
+      expect.any(TypeError)
+    )
+  })
+
+  it('a throwing callback does not poison later events on the channel', () => {
+    const boom = vi.fn(() => {
+      throw new Error('bad payload')
+    })
+    const healthy = vi.fn()
+    subscribe('chan-throw-repeat', boom)
+    subscribe('chan-throw-repeat', healthy)
+    const handler = mocks.on.mock.calls[0][1] as (e: unknown, p: unknown) => void
+
+    handler({}, 'first')
+    handler({}, 'second')
+
+    expect(healthy).toHaveBeenCalledTimes(2)
+    expect(healthy).toHaveBeenLastCalledWith('second')
   })
 })
