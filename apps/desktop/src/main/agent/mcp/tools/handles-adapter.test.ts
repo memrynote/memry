@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   syncFolderConfigRename: vi.fn(),
   getConfig: vi.fn(),
   getAllTagsWithCounts: vi.fn(),
+  listTagCategories: vi.fn(),
   generateId: vi.fn(),
   snapshotCurrentNoteFromWindow: vi.fn(),
   invokeDesktopApiFromWindow: vi.fn()
@@ -93,7 +94,8 @@ vi.mock('../../../vault', () => ({
 }))
 
 vi.mock('../../../tags/store', () => ({
-  getAllTagsWithCounts: mocks.getAllTagsWithCounts
+  getAllTagsWithCounts: mocks.getAllTagsWithCounts,
+  listTagCategories: mocks.listTagCategories
 }))
 
 vi.mock('../../../lib/id', () => ({
@@ -919,7 +921,18 @@ describe('createVaultServiceHandles', () => {
     ).rejects.toThrow('snooze failed')
 
     mocks.getAllTagsWithCounts.mockReturnValue([{ name: 'focus', count: 3 }])
-    await expect(handles.tags.listAll()).resolves.toEqual([{ name: 'focus', count: 3 }])
+    mocks.listTagCategories.mockReturnValue([])
+    await expect(handles.tags.listAll()).resolves.toEqual([
+      {
+        name: 'focus',
+        count: 3,
+        color: null,
+        icon: null,
+        category_id: null,
+        category_name: null,
+        sort_order: 0
+      }
+    ])
 
     mocks.snapshotCurrentNoteFromWindow.mockResolvedValue({ id: 'note-1' })
     await expect(handles.windows.snapshotCurrentNote('window-1')).resolves.toEqual({ id: 'note-1' })
@@ -946,5 +959,56 @@ describe('createVaultServiceHandles', () => {
       operation: 'templates.create',
       args: [{ name: 'Template' }]
     })
+  })
+
+  it('tags.listAll keeps category, color, icon and sort order', async () => {
+    const handles = createVaultServiceHandles(deps)
+
+    mocks.getAllTagsWithCounts.mockReturnValue([
+      {
+        name: 'Fiction',
+        count: 4,
+        color: '#ff671a',
+        icon: '📚',
+        categoryId: 'cat-1',
+        sortOrder: 2
+      },
+      { name: 'loose', count: 1, color: '#888888', icon: null, categoryId: null, sortOrder: 0 },
+      { name: 'orphan', count: 2, categoryId: 'cat-missing', sortOrder: 1 }
+    ])
+    mocks.listTagCategories.mockReturnValue([
+      { id: 'cat-1', name: 'Reading', sortOrder: 0, tagCount: 1 }
+    ])
+
+    await expect(handles.tags.listAll()).resolves.toEqual([
+      {
+        name: 'Fiction',
+        count: 4,
+        color: '#ff671a',
+        icon: '📚',
+        category_id: 'cat-1',
+        category_name: 'Reading',
+        sort_order: 2
+      },
+      {
+        name: 'loose',
+        count: 1,
+        color: '#888888',
+        icon: null,
+        category_id: null,
+        category_name: null,
+        sort_order: 0
+      },
+      {
+        name: 'orphan',
+        count: 2,
+        color: null,
+        icon: null,
+        category_id: 'cat-missing',
+        category_name: null,
+        sort_order: 1
+      }
+    ])
+    expect(mocks.listTagCategories).toHaveBeenCalledWith(deps.dataDb)
   })
 })

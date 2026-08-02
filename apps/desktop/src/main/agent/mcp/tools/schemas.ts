@@ -154,7 +154,9 @@ export const TOOL_SCHEMAS = {
   },
   vault_get_tags: {
     input: z.object({}).default({}),
-    description: 'List all tags with usage counts.'
+    description:
+      'List all tags with usage counts, color, icon, sort order, and the tag category they ' +
+      'belong to (category_id and category_name, both null when uncategorized).'
   },
   vault_list_canvases: {
     input: z.object({}).default({}),

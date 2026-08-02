@@ -136,7 +136,17 @@ function fake(): VaultServiceHandles {
       removeTag: async ({ id }) => ({ id })
     },
     tags: {
-      listAll: async () => [{ name: 'todo', count: 3 }]
+      listAll: async () => [
+        {
+          name: 'todo',
+          count: 3,
+          color: '#ff671a',
+          icon: null,
+          category_id: 'cat-1',
+          category_name: 'Workflow',
+          sort_order: 0
+        }
+      ]
     },
     canvas: {
       list: async () => [{ id: 'c1', title: 'Roadmap', updated_at: 5, item_count: 2 }],
@@ -346,11 +356,21 @@ describe('Read tools', () => {
     expect(out).toMatchObject({ id: 'i1', title: 'Cool' })
   })
 
-  it('vault_get_tags returns tag counts', async () => {
+  it('vault_get_tags returns tag counts with category metadata', async () => {
     const out = (await tools
       .find((t) => t.name === 'vault_get_tags')!
       .handler({}, { conversationId: null, windowId: null })) as unknown[]
-    expect(out).toEqual([{ name: 'todo', count: 3 }])
+    expect(out).toEqual([
+      {
+        name: 'todo',
+        count: 3,
+        color: '#ff671a',
+        icon: null,
+        category_id: 'cat-1',
+        category_name: 'Workflow',
+        sort_order: 0
+      }
+    ])
   })
 
   it('vault_desktop_read forwards allowlisted desktop read operations', async () => {

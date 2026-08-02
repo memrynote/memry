@@ -91,6 +91,11 @@ export interface InboxSummary {
 export interface TagCount {
   name: string
   count: number
+  color: string | null
+  icon: string | null
+  category_id: string | null
+  category_name: string | null
+  sort_order: number
 }
 
 export interface CurrentNoteSnapshot {
