@@ -83,4 +83,17 @@ log.info('created note', { id })
 
 ## Main → Renderer Broadcasts
 
-Main-process code that fans an event out to every open window — sync status, task and calendar change events, inbox capture/filing/snooze/transcription events, search and embedding progress, updater state, reminders, agent events, and FTS rebuild progress — goes through `broadcastToAllWindows(channel, data)` in `src/main/lib/window-broadcast.ts`. The helper skips destroyed windows: short-lived windows (splash, quick capture, print/export) can still appear in `BrowserWindow.getAllWindows()` after destruction, and an unguarded `webContents.send()` throws — inside a sync item handler that throw escapes `ctx.emit` within the item's DB transaction and rolls it back. Use the helper instead of hand-rolling a `getAllWindows()` loop.
+Main-process code that fans an event out to every open window goes through `broadcastToAllWindows(channel, data?)` in `src/main/lib/window-broadcast.ts`. The helper skips destroyed windows: short-lived windows (splash, quick capture, print/export) can still appear in `BrowserWindow.getAllWindows()` after destruction, and an unguarded `webContents.send()` throws — inside a sync item handler that throw escapes `ctx.emit` within the item's DB transaction and rolls it back. Use the helper instead of hand-rolling a `getAllWindows()` loop.
+
+```ts
+import { broadcastToAllWindows } from '../lib/window-broadcast'
+
+broadcastToAllWindows(SettingsChannels.events.CHANGED, { key, value })
+broadcastToAllWindows('quick-capture:open') // payload is optional
+```
+
+Every fan-out site in main uses it: sync status, session expiry, OAuth and device pairing events, settings changes (local writes and merged remote settings), attachment upload/download progress, vault status, index progress and index recovery, watcher and note-rename events, import progress, template events, inbox capture/filing/snooze/transcription events, search and embedding progress, updater state, reminders, agent events, FTS rebuild progress, and calendar, task, tag, bookmark, saved-filter, journal, canvas, locale, and AI inline events.
+
+The helper is for fan-out only. Code that targets one specific window — a `find()` / `filter()` lookup, `getAllWindows()[0]`, or `BrowserWindow.fromWebContents()` — still uses `BrowserWindow` directly.
+
+Main-process tests that mock `electron` must give each mocked window an `isDestroyed()` that returns `false`, and the same on its `webContents`; otherwise the guard filters the window out and the broadcast assertion never fires.
