@@ -102,6 +102,32 @@ describe('migrateTemplateFilesToDb', () => {
     expect(migrateTemplateFilesToDb(testDb.db as never, vaultPath)).toBe(0)
   })
 
+  it('stays unflagged when the directory is absent so a late arrival still imports', () => {
+    // A cloud-sync client mid-hydration (or a rollback to the file-based build)
+    // makes the folder appear after the first post-upgrade launch. Flagging on
+    // an empty check would strand those templates forever.
+    expect(migrateTemplateFilesToDb(testDb.db as never, vaultPath)).toBe(0)
+    expect(getSetting(testDb.db as never, 'templates.importedFromFiles')).toBeNull()
+
+    writeTemplateFile('late', { id: 'late', name: 'Late Arrival', isBuiltIn: false }, 'body')
+
+    expect(migrateTemplateFilesToDb(testDb.db as never, vaultPath)).toBe(1)
+    expect(getSetting(testDb.db as never, 'templates.importedFromFiles')).toBe('1')
+  })
+
+  it('does not read built-in files it is only going to discard', () => {
+    writeTemplateFile('blank', { id: 'blank', name: 'Blank Note', isBuiltIn: true }, '')
+    writeTemplateFile('keep', { id: 'keep', name: 'Keep', isBuiltIn: false }, 'body')
+
+    const readSpy = vi.spyOn(fs, 'readFileSync')
+    expect(migrateTemplateFilesToDb(testDb.db as never, vaultPath)).toBe(1)
+
+    const readFiles = readSpy.mock.calls.map(([p]) => path.basename(String(p)))
+    expect(readFiles).toContain('keep.md')
+    expect(readFiles).not.toContain('blank.md')
+    readSpy.mockRestore()
+  })
+
   it('skips unparseable files without aborting the migration', () => {
     const dir = path.join(vaultPath, '.memry', 'templates')
     fs.mkdirSync(dir, { recursive: true })
