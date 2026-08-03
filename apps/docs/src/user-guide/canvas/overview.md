@@ -12,6 +12,9 @@ notes it explains.
 
 Canvas is on by default: a **Canvases** section is already in your sidebar.
 
+Canvas was off by default in earlier versions, so upgrading turns it on once
+even if it was off before. Turning it off after that keeps it off for good.
+
 To hide it, open **Settings → Features** and turn **Canvas** off. The setting is
 per device and persists across restarts, so turning it off on your laptop leaves
 it on elsewhere. Turning it off hides the surface — it does not delete any
