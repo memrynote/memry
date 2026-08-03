@@ -69,7 +69,9 @@
       "noDueDate": "ללא תאריך יעד",
       "overdue": "באיחור",
       "repeating": "חוזרות"
-    }
+    },
+    "repeatTypeOneTime": "חד-פעמית",
+    "repeatTypeRepeating": "חוזרת"
   },
   "quickAdd": {
     "label": "משימת הוספה מהירה",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "למחוק משימה?",
-      "deleteTask2": "מחק את המשימה"
+      "deleteTask2": "מחק את המשימה",
+      "deleteConfirmBody": "המשימה \"{title}\" תימחק לצמיתות. לא ניתן לבטל פעולה זו."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "כל המשימות המשימות הושלמו!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "האם תרצה לסמן גם את משימת האב כהשלמה?",
       "keepTaskOpen": "השאר את המשימה פתוחה",
-      "completeTask": "השלם משימה ✓"
+      "completeTask": "השלם משימה ✓",
+      "allSubtasksDoneBody": "במשימה \"{title}\" {count, plural, one {הושלמה תת-המשימה היחידה} two {הושלמו שתי תת-המשימות} other {הושלמו כל # תת-המשימות}}."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "הגדר תאריך יעד עבור כל המשימות משנה",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "חל גם על משימות משנה שהושלמו (",
       "clearDate": "תאריך ברור",
       "cancel": "בטל",
-      "apply": "החל"
+      "apply": "החל",
+      "alsoApplyToCompletedSubtasksCount": "החל גם על תת-משימות שהושלמו ({count})",
+      "setDueDateForSubtasksIn": "הגדר תאריך יעד עבור {count, plural, one {תת-משימה אחת} two {# תת-משימות} other {# תת-משימות}} במשימה \"{title}\""
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "הגדר עדיפות לכל המשימות משנה",
       "setPriorityFor": "הגדר עדיפות עבור ",
       "alsoApplyToCompletedSubtasks": "חל גם על משימות משנה שהושלמו (",
       "cancel": "בטל",
-      "apply": "החל"
+      "apply": "החל",
+      "alsoApplyToCompletedSubtasksCount": "החל גם על תת-משימות שהושלמו ({count})",
+      "setPriorityForSubtasksIn": "הגדר עדיפות עבור {count, plural, one {תת-משימה אחת} two {# תת-משימות} other {# תת-משימות}} במשימה \"{title}\""
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "להשלים משימה עם משימות משנה לא הושלמו?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "למחוק את כל המשימות משנה?",
       "thisActionCannotBeUndone": "לא ניתן לבטל פעולה זו.",
       "cancel": "בטל",
-      "deleteAll": "מחק הכל"
+      "deleteAll": "מחק הכל",
+      "deleteSubtasksConfirmation": "פעולה זו תמחק {count, plural, one {תת-משימה אחת} two {# תת-משימות} other {# תת-משימות}} מהמשימה \"{title}\"."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "למחוק משימה עם משימות משנה?",
@@ -350,7 +359,11 @@
       "createACopyOf": "צור עותק של \"",
       "alsoDuplicateSubtasks": "שכפל גם משימות משנה (",
       "cancel": "בטל",
-      "duplicate": "שכפול "
+      "duplicate": "שכפול ",
+      "alsoDuplicateSubtasksCount": "שכפל גם תת-משימות ({count})",
+      "createACopyOfTitle": "צור עותק של \"{title}\"",
+      "duplicateTaskOnly": "שכפל משימה",
+      "duplicateWithItems": "שכפל ({count, plural, one {פריט אחד} two {# פריטים} other {# פריטים}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "הפוך מטלת משנה של...",
@@ -871,5 +884,17 @@
     "done": "בוצע",
     "inProgress": "בתהליך",
     "todo": "לביצוע"
+  },
+  "colors": {
+    "blue": "כחול",
+    "gray": "אפור",
+    "green": "ירוק",
+    "indigo": "אינדיגו",
+    "orange": "כתום",
+    "pink": "ורוד",
+    "purple": "סגול",
+    "red": "אדום",
+    "teal": "טורקיז",
+    "yellow": "צהוב"
   }
 }

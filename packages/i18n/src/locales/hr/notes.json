@@ -368,7 +368,8 @@
       "delete2": "Izbriši",
       "columnBorders": "Rubovi stupaca",
       "display": "Prikaz",
-      "showSummaries": "Prikaži sažetke"
+      "showSummaries": "Prikaži sažetke",
+      "deleteFormulaBody": "Jeste li sigurni da želite izbrisati formulu „{name}”? Ova se radnja ne može poništiti."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtar",
@@ -422,7 +423,8 @@
       "usingNote": "Korištenje napomene: \"",
       "cancel": "Odustani",
       "namePlaceholder": "dana_do_roka",
-      "expressionPlaceholder": "dateDiff(datum_roka, danas(), \"dani\")"
+      "expressionPlaceholder": "dateDiff(datum_roka, danas(), \"dani\")",
+      "usingNoteTitle": "Koristi se bilješka: „{title}”"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Jasno grupiranje",
@@ -450,7 +452,10 @@
       "allFolders": "SVE MAPE",
       "noFoldersMatch": "Nijedna mapa ne odgovara \"",
       "create": "Stvori \"",
-      "cancel": "Odustani"
+      "cancel": "Odustani",
+      "createFolderNamed": "Stvori „{name}”",
+      "currentFolderBadge": "(trenutna)",
+      "noFoldersMatchQuery": "Nijedna mapa ne odgovara upitu „{query}”"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Izbriši ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (dvoklik za uređivanje)"
+      "doubleClickToEdit": "{name} (dvoklik za uređivanje)",
+      "dragToReorder": "Povucite za promjenu redoslijeda stupca: {name}"
     },
     "columns": {
       "created": "Stvoreno",

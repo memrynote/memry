@@ -368,7 +368,8 @@
       "delete2": "Ta bort",
       "columnBorders": "Kolumnkanter",
       "display": "Visning",
-      "showSummaries": "Visa sammanfattningar"
+      "showSummaries": "Visa sammanfattningar",
+      "deleteFormulaBody": "Är du säker på att du vill ta bort formeln ”{name}”? Den här åtgärden kan inte ångras."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filter",
@@ -422,7 +423,8 @@
       "usingNote": "Använder not: \"",
       "cancel": "Avbryt",
       "namePlaceholder": "days_until_due",
-      "expressionPlaceholder": "dateDiff(due_date, idag(), \"dagar\")"
+      "expressionPlaceholder": "dateDiff(due_date, idag(), \"dagar\")",
+      "usingNoteTitle": "Använder anteckning: ”{title}”"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Tydlig gruppering",
@@ -450,7 +452,10 @@
       "allFolders": "ALLA MAPPAR",
       "noFoldersMatch": "Inga mappar matchar",
       "create": "Skapa ",
-      "cancel": "Avbryt"
+      "cancel": "Avbryt",
+      "createFolderNamed": "Skapa ”{name}”",
+      "currentFolderBadge": "(nuvarande)",
+      "noFoldersMatchQuery": "Inga mappar matchar ”{query}”"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Radera ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (dubbelklicka för att redigera)"
+      "doubleClickToEdit": "{name} (dubbelklicka för att redigera)",
+      "dragToReorder": "Dra för att ändra kolumnordning: {name}"
     },
     "columns": {
       "created": "Skapad",

@@ -57,7 +57,10 @@
     "downloadFailed": "Sťahovanie prílohy zlyhalo",
     "downloadProgressFailed": "Nepodarilo sa načítať priebeh sťahovania",
     "uploadFailed": "Nahrávanie prílohy zlyhalo",
-    "uploadProgressFailed": "Nepodarilo sa načítať priebeh nahrávania"
+    "uploadProgressFailed": "Nepodarilo sa načítať priebeh nahrávania",
+    "emptyFile": "Prázdny súbor sa nedá nahrať",
+    "exceedsMaxSize": "Súbor je príliš veľký: {size} prekračuje limit {limit}",
+    "exceedsPlanLimit": "Súbor je väčší, než umožňuje váš plán: {size} prekračuje {limit}"
   },
   "encryption": {
     "failed": "Nepodarilo sa zašifrovať dáta. Môže byť potrebné znovu vygenerovať vaše kľúče.",

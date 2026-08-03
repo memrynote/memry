@@ -69,7 +69,9 @@
       "noDueDate": "Sans date d'échéance",
       "overdue": "En retard",
       "repeating": "Récurrentes"
-    }
+    },
+    "repeatTypeOneTime": "Ponctuelles",
+    "repeatTypeRepeating": "Récurrentes"
   },
   "quickAdd": {
     "label": "Tâche d'ajout rapide",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Supprimer la tâche ?",
-      "deleteTask2": "Supprimer la tâche"
+      "deleteTask2": "Supprimer la tâche",
+      "deleteConfirmBody": "La tâche « {title} » sera définitivement supprimée. Cette action ne peut pas être annulée."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Toutes les sous-tâches sont terminées !",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Souhaitez-vous également marquer la tâche parent comme terminée ?",
       "keepTaskOpen": "Garder la tâche ouverte",
-      "completeTask": "Tâche terminée ✓"
+      "completeTask": "Tâche terminée ✓",
+      "allSubtasksDoneBody": "{count, plural, one {La sous-tâche de « {title} » est terminée.} many {Les # sous-tâches de « {title} » sont terminées.} other {Les # sous-tâches de « {title} » sont terminées.}}"
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Définir la date d'échéance pour toutes les sous-tâches",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "Appliquer également aux sous-tâches terminées (",
       "clearDate": "Effacer la date",
       "cancel": "Annuler",
-      "apply": "Postuler"
+      "apply": "Postuler",
+      "alsoApplyToCompletedSubtasksCount": "Appliquer également aux sous-tâches terminées ({count})",
+      "setDueDateForSubtasksIn": "Définir la date d'échéance pour {count, plural, one {# sous-tâche} many {# sous-tâches} other {# sous-tâches}} de « {title} »"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Définir la priorité pour toutes les sous-tâches",
       "setPriorityFor": "Définir la priorité pour ",
       "alsoApplyToCompletedSubtasks": "Appliquer également aux sous-tâches terminées (",
       "cancel": "Annuler",
-      "apply": "Postuler"
+      "apply": "Postuler",
+      "alsoApplyToCompletedSubtasksCount": "Appliquer également aux sous-tâches terminées ({count})",
+      "setPriorityForSubtasksIn": "Définir la priorité pour {count, plural, one {# sous-tâche} many {# sous-tâches} other {# sous-tâches}} de « {title} »"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Tâche terminée avec des sous-tâches incomplètes ?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "Supprimer toutes les sous-tâches ?",
       "thisActionCannotBeUndone": "Cette action ne peut pas être annulée.",
       "cancel": "Annuler",
-      "deleteAll": "Supprimer tout"
+      "deleteAll": "Supprimer tout",
+      "deleteSubtasksConfirmation": "Cette action supprimera {count, plural, one {# sous-tâche} many {# sous-tâches} other {# sous-tâches}} de « {title} »."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Supprimer une tâche avec des sous-tâches ?",
@@ -350,7 +359,11 @@
       "createACopyOf": "Créez une copie de «",
       "alsoDuplicateSubtasks": "Dupliquer également les sous-tâches (",
       "cancel": "Annuler",
-      "duplicate": "Dupliquer "
+      "duplicate": "Dupliquer ",
+      "alsoDuplicateSubtasksCount": "Dupliquer également les sous-tâches ({count})",
+      "createACopyOfTitle": "Créer une copie de « {title} »",
+      "duplicateTaskOnly": "Dupliquer la tâche",
+      "duplicateWithItems": "Dupliquer ({count, plural, one {# élément} many {# éléments} other {# éléments}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Faire une sous-tâche de...",
@@ -871,5 +884,17 @@
     "done": "Terminé",
     "inProgress": "En cours",
     "todo": "À faire"
+  },
+  "colors": {
+    "blue": "Bleu",
+    "gray": "Gris",
+    "green": "Vert",
+    "indigo": "Indigo",
+    "orange": "Orange",
+    "pink": "Rose",
+    "purple": "Violet",
+    "red": "Rouge",
+    "teal": "Sarcelle",
+    "yellow": "Jaune"
   }
 }

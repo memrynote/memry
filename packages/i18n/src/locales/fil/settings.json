@@ -710,7 +710,8 @@
       "removeFailed": "Nabigong alisin ang device",
       "renamed": "Pinalitan ng pangalan sa \"{name}\"",
       "renameFailed": "Nabigong palitan ang pangalan ng device"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "I-link ang bagong device",
@@ -1205,7 +1206,12 @@
       "last30Days": "Huling 30 araw",
       "loadingSyncHistory": "Nilo-load ang kasaysayan ng pag-sync",
       "noSyncActivityYet": "Wala pang aktibidad sa pag-sync",
-      "loadMore": "Mag-load pa"
+      "loadMore": "Mag-load pa",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, ipakita ang mga detalye ng error",
+      "summaryFailed": "Nabigo ang pag-sync",
+      "summaryPulled": "{count, plural, one {# item ang hinila} other {# item ang hinila}}",
+      "summaryPushed": "{count, plural, one {# item ang itinulak} other {# item ang itinulak}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Huling na-sync ",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "Walang magulang ang sub-task na \"{title}\" sa indent {indent}; na-import bilang top-level",
         "unknownPriority": "Hindi kilalang priyoridad na {priority} → wala",
         "unparsedDate": "Hindi ma-parse ang petsang \"{date}\""
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Kinokopya ang database ng Apple Notes…"
+      },
+      "bear": {
+        "scanning": "Ini-scan ang export ng Bear…"
+      },
+      "csv": {
+        "importing": "Ini-import ang mga tala mula sa CSV…"
+      },
+      "evernote": {
+        "scanning": "Ini-scan ang mga .enex file…"
+      },
+      "html": {
+        "scanning": "Ini-scan ang mga HTML file…"
+      },
+      "importingItem": "Ini-import ang {title}",
+      "raindrop": {
+        "importing": "Ini-import ang mga bookmark ng Raindrop…"
+      },
+      "roam": {
+        "reading": "Binabasa ang export ng Roam…"
+      },
+      "scanningExport": "Ini-scan ang export…",
+      "scanningFiles": "Ini-scan ang mga file…",
+      "ticktick": {
+        "importing": "Ini-import ang mga gawain mula sa TickTick…"
+      },
+      "todoist": {
+        "importing": "Ini-import ang mga gawain mula sa Todoist…"
       }
     }
   },

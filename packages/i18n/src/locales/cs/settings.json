@@ -710,7 +710,8 @@
       "removeFailed": "Zařízení se nepodařilo odebrat",
       "renamed": "Přejmenováno na \"{name}\"",
       "renameFailed": "Přejmenování zařízení se nezdařilo"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Připojte nové zařízení",
@@ -1205,7 +1206,12 @@
       "last30Days": "Posledních 30 dní",
       "loadingSyncHistory": "Načítání historie synchronizace",
       "noSyncActivityYet": "Zatím žádná synchronizační aktivita",
-      "loadMore": "Načíst více"
+      "loadMore": "Načíst více",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, zobrazit podrobnosti chyby",
+      "summaryFailed": "Synchronizace selhala",
+      "summaryPulled": "{count, plural, one {# položka stažena} few {# položky staženy} many {# položky staženo} other {# položek staženo}}",
+      "summaryPushed": "{count, plural, one {# položka odeslána} few {# položky odeslány} many {# položky odesláno} other {# položek odesláno}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Poslední synchronizace ",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "Dílčí úkol „{title}“ nemá nadřazený úkol na odsazení {indent}; importován na nejvyšší úrovni",
         "unknownPriority": "Neznámá priorita {priority} → žádná",
         "unparsedDate": "Nepodařilo se zpracovat datum „{date}“"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Kopírování databáze Apple Notes…"
+      },
+      "bear": {
+        "scanning": "Prohledávání exportu z Bearu…"
+      },
+      "csv": {
+        "importing": "Import poznámek z CSV…"
+      },
+      "evernote": {
+        "scanning": "Prohledávání souborů .enex…"
+      },
+      "html": {
+        "scanning": "Prohledávání souborů HTML…"
+      },
+      "importingItem": "Importuje se {title}",
+      "raindrop": {
+        "importing": "Import záložek z Raindropu…"
+      },
+      "roam": {
+        "reading": "Čtení exportu z Roamu…"
+      },
+      "scanningExport": "Prohledávání exportu…",
+      "scanningFiles": "Prohledávání souborů…",
+      "ticktick": {
+        "importing": "Import úkolů z TickTicku…"
+      },
+      "todoist": {
+        "importing": "Import úkolů z Todoistu…"
       }
     }
   },

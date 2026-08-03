@@ -69,7 +69,9 @@
       "noDueDate": "期限なし",
       "overdue": "期限超過",
       "repeating": "繰り返し"
-    }
+    },
+    "repeatTypeOneTime": "単発",
+    "repeatTypeRepeating": "繰り返し"
   },
   "quickAdd": {
     "label": "タスクのクイック追加",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "タスクを削除しますか?",
-      "deleteTask2": "タスクの削除"
+      "deleteTask2": "タスクの削除",
+      "deleteConfirmBody": "「{title}」は完全に削除されます。この操作は元に戻すことができません。"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "すべてのサブタスクが完了しました。",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "親タスクも完了としてマークしますか?",
       "keepTaskOpen": "タスクを開いたままにしておく",
-      "completeTask": "タスクを完了する ✓"
+      "completeTask": "タスクを完了する ✓",
+      "allSubtasksDoneBody": "「{title}」の{count, plural, other {# 件のサブタスク}}がすべて完了しました。"
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "すべてのサブタスクの期限を設定する",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "完了したサブタスクにも適用されます (",
       "clearDate": "クリア日付",
       "cancel": "キャンセル",
-      "apply": "申し込む"
+      "apply": "申し込む",
+      "alsoApplyToCompletedSubtasksCount": "完了したサブタスクにも適用（{count}）",
+      "setDueDateForSubtasksIn": "「{title}」内の{count, plural, other {# 件のサブタスク}}に期限を設定"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "すべてのサブタスクの優先度を設定する",
       "setPriorityFor": "優先順位を設定する ",
       "alsoApplyToCompletedSubtasks": "完了したサブタスクにも適用されます (",
       "cancel": "キャンセル",
-      "apply": "申し込む"
+      "apply": "申し込む",
+      "alsoApplyToCompletedSubtasksCount": "完了したサブタスクにも適用（{count}）",
+      "setPriorityForSubtasksIn": "「{title}」内の{count, plural, other {# 件のサブタスク}}に優先度を設定"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "未完了のサブタスクを含むタスクを完了しますか?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "すべてのサブタスクを削除しますか?",
       "thisActionCannotBeUndone": "この操作は元に戻すことができません。",
       "cancel": "キャンセル",
-      "deleteAll": "すべて削除"
+      "deleteAll": "すべて削除",
+      "deleteSubtasksConfirmation": "「{title}」から{count, plural, other {# 件のサブタスク}}を削除します。"
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "サブタスクを含むタスクを削除しますか?",
@@ -350,7 +359,11 @@
       "createACopyOf": "「」のコピーを作成します。",
       "alsoDuplicateSubtasks": "サブタスクも重複します (",
       "cancel": "キャンセル",
-      "duplicate": "重複 "
+      "duplicate": "重複 ",
+      "alsoDuplicateSubtasksCount": "サブタスクも複製（{count}）",
+      "createACopyOfTitle": "「{title}」のコピーを作成",
+      "duplicateTaskOnly": "タスクを複製",
+      "duplicateWithItems": "複製（{count, plural, other {# 件}}）"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "サブタスクを作成...",
@@ -871,5 +884,17 @@
     "done": "完了",
     "inProgress": "進行中",
     "todo": "未着手"
+  },
+  "colors": {
+    "blue": "青",
+    "gray": "グレー",
+    "green": "緑",
+    "indigo": "インディゴ",
+    "orange": "オレンジ",
+    "pink": "ピンク",
+    "purple": "紫",
+    "red": "赤",
+    "teal": "ティール",
+    "yellow": "黄色"
   }
 }

@@ -368,7 +368,8 @@
       "delete2": "מחק",
       "columnBorders": "גבולות עמודות",
       "display": "תצוגה",
-      "showSummaries": "הצג סיכומים"
+      "showSummaries": "הצג סיכומים",
+      "deleteFormulaBody": "האם למחוק את הנוסחה \"{name}\"? לא ניתן לבטל פעולה זו."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "מסנן",
@@ -422,7 +423,8 @@
       "usingNote": "שימוש בהערה: \"",
       "cancel": "בטל",
       "namePlaceholder": "ימים_עד_מועד",
-      "expressionPlaceholder": "dateDiff(due_date, today(), \"ימים\")"
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"ימים\")",
+      "usingNoteTitle": "שימוש בהערה: \"{title}\""
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "קיבוץ ברור",
@@ -450,7 +452,10 @@
       "allFolders": "כל התיקיות",
       "noFoldersMatch": "אין תיקיות תואמות \"",
       "create": "צור \"",
-      "cancel": "בטל"
+      "cancel": "בטל",
+      "createFolderNamed": "צור \"{name}\"",
+      "currentFolderBadge": "(נוכחי)",
+      "noFoldersMatchQuery": "אין תיקיות התואמות ל\"{query}\""
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "מחק ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (לחיצה כפולה לעריכה)"
+      "doubleClickToEdit": "{name} (לחיצה כפולה לעריכה)",
+      "dragToReorder": "גרור כדי לשנות את סדר העמודה: {name}"
     },
     "columns": {
       "created": "נוצר",

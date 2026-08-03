@@ -57,7 +57,10 @@
     "downloadFailed": "Falha ao transferir o anexo",
     "downloadProgressFailed": "Falha ao obter o progresso da transferência",
     "uploadFailed": "Falha ao carregar o anexo",
-    "uploadProgressFailed": "Falha ao obter o progresso do carregamento"
+    "uploadProgressFailed": "Falha ao obter o progresso do carregamento",
+    "emptyFile": "Não é possível carregar um arquivo vazio",
+    "exceedsMaxSize": "Arquivo muito grande: {size} excede o limite de {limit}",
+    "exceedsPlanLimit": "O arquivo é maior do que o seu plano permite: {size} excede {limit}"
   },
   "encryption": {
     "failed": "Falha ao criptografar dados. Talvez suas chaves precisem ser regeneradas.",

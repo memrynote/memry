@@ -203,7 +203,9 @@
       "search": "검색",
       "searchNotesTasksJournalInbox": "메모, 작업, 일지, 받은 편지함 검색...",
       "noResultsFor": "“에 대한 검색결과가 없습니다.",
-      "result": "결과"
+      "result": "결과",
+      "noResultsForQuery": "“{query}”에 대한 검색 결과가 없습니다",
+      "resultCount": "{count, plural, other {결과 #개}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "항목을 검색하고 클릭하여 트레일을 구축하세요.",
@@ -291,7 +293,8 @@
       "noteIcon": "메모 아이콘"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "저장되지 않은 변경사항"
+      "unsavedChanges": "저장되지 않은 변경사항",
+      "unsavedChangesBody": "“{title}”에 저장되지 않은 변경사항이 있습니다. 어떻게 할까요?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "새로운 작업공간",

@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "Fånga länk",
       "captureNote": "Fånga anteckning",
-      "placeholder": "Snabbfångst — klistra in en länk, skriv ner en tanke…"
+      "placeholder": "Snabbfångst — klistra in en länk, skriv ner en tanke…",
+      "duplicateNotice": "Redan fångad: ”{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Välj mapp",
@@ -459,7 +460,8 @@
       "dismissError": "Avvisa fel",
       "alreadyCaptured": "Redan fångad",
       "captureAnyway": "Spela in ändå",
-      "close": "Stäng"
+      "close": "Stäng",
+      "duplicateMeta": "”{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Släpp för att fånga",

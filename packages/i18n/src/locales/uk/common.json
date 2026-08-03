@@ -203,7 +203,9 @@
       "search": "Пошук",
       "searchNotesTasksJournalInbox": "Шукати нотатки, завдання, журнал, вхідні...",
       "noResultsFor": "Немає результатів для “",
-      "result": "результат"
+      "result": "результат",
+      "noResultsForQuery": "Немає результатів для «{query}»",
+      "resultCount": "{count, plural, one {# результат} few {# результати} many {# результатів} other {# результату}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Шукайте та натискайте елементи, щоб будувати свій шлях",
@@ -291,7 +293,8 @@
       "noteIcon": "Іконка нотатки"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Незбережені зміни"
+      "unsavedChanges": "Незбережені зміни",
+      "unsavedChangesBody": "У «{title}» є незбережені зміни. Що ви хочете зробити?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Новий робочий простір",

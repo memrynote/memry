@@ -203,7 +203,9 @@
       "search": "Traži",
       "searchNotesTasksJournalInbox": "Pretražite bilješke, zadatke, dnevnik, inbox...",
       "noResultsFor": "Nema rezultata za \"",
-      "result": "rezultat"
+      "result": "rezultat",
+      "noResultsForQuery": "Nema rezultata za „{query}”",
+      "resultCount": "{count, plural, one {# rezultat} few {# rezultata} other {# rezultata}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Pretražujte i kliknite stavke kako biste izgradili svoj trag",
@@ -291,7 +293,8 @@
       "noteIcon": "Ikona bilješke"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Nespremljene promjene"
+      "unsavedChanges": "Nespremljene promjene",
+      "unsavedChangesBody": "„{title}” ima nespremljene promjene. Što želite učiniti?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Novi radni prostor",

@@ -203,7 +203,9 @@
       "search": "חפש",
       "searchNotesTasksJournalInbox": "חפש בהערות, משימות, יומן, תיבת דואר נכנס...",
       "noResultsFor": "אין תוצאות עבור \"",
-      "result": "תוצאה"
+      "result": "תוצאה",
+      "noResultsForQuery": "אין תוצאות עבור \"{query}\"",
+      "resultCount": "{count, plural, one {תוצאה אחת} two {# תוצאות} other {# תוצאות}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "חפש ולחץ על פריטים כדי לבנות את המסלול שלך",
@@ -291,7 +293,8 @@
       "noteIcon": "סמל הערה"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "שינויים שלא נשמרו"
+      "unsavedChanges": "שינויים שלא נשמרו",
+      "unsavedChangesBody": "יש שינויים שלא נשמרו ב\"{title}\". מה ברצונך לעשות?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "חלל עבודה חדש",

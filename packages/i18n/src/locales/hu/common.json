@@ -203,7 +203,9 @@
       "search": "Keresés",
       "searchNotesTasksJournalInbox": "Jegyzetek, feladatok, napló, beérkező levelek keresése...",
       "noResultsFor": "Nincs találat a következőre",
-      "result": "eredményt"
+      "result": "eredményt",
+      "noResultsForQuery": "Nincs találat a következőre: „{query}”",
+      "resultCount": "{count, plural, one {# találat} other {# találat}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Keressen és kattintson az elemekre a nyomvonal megépítéséhez",
@@ -291,7 +293,8 @@
       "noteIcon": "Megjegyzés ikonra"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Nem mentett módosítások"
+      "unsavedChanges": "Nem mentett módosítások",
+      "unsavedChangesBody": "A(z) „{title}” nem mentett módosításokat tartalmaz. Mit szeretne tenni?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Új munkaterület",

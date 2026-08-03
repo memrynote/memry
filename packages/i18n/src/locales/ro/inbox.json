@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "Capturează linkul",
       "captureNote": "Capturează nota",
-      "placeholder": "Captură rapidă — lipește un link, notează un gând…"
+      "placeholder": "Captură rapidă — lipește un link, notează un gând…",
+      "duplicateNotice": "Deja capturat: „{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Alegeți folderul",
@@ -459,7 +460,8 @@
       "dismissError": "Închideți eroarea",
       "alreadyCaptured": "Deja capturat",
       "captureAnyway": "Captură oricum",
-      "close": "Închide"
+      "close": "Închide",
+      "duplicateMeta": "„{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Aruncă pentru a captura",

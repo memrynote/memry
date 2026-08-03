@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "링크 캡처",
       "captureNote": "메모 캡처",
-      "placeholder": "빠른 캡처 — 링크를 붙여넣거나 떠오른 생각을 적어보세요…"
+      "placeholder": "빠른 캡처 — 링크를 붙여넣거나 떠오른 생각을 적어보세요…",
+      "duplicateNotice": "이미 캡처함: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "폴더 선택",
@@ -459,7 +460,8 @@
       "dismissError": "오류 무시",
       "alreadyCaptured": "이미 캡처됨",
       "captureAnyway": "어쨌든 캡처",
-      "close": "닫기"
+      "close": "닫기",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "드롭하여 캡처",

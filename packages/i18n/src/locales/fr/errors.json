@@ -57,7 +57,10 @@
     "downloadFailed": "Échec du téléchargement de la pièce jointe",
     "downloadProgressFailed": "Échec de la récupération de la progression du téléchargement",
     "uploadFailed": "Échec de l'envoi de la pièce jointe",
-    "uploadProgressFailed": "Échec de la récupération de la progression de l'envoi"
+    "uploadProgressFailed": "Échec de la récupération de la progression de l'envoi",
+    "emptyFile": "Impossible d'envoyer un fichier vide",
+    "exceedsMaxSize": "Fichier trop volumineux : {size} dépasse la limite de {limit}",
+    "exceedsPlanLimit": "Fichier plus volumineux que ne l'autorise votre forfait : {size} dépasse {limit}"
   },
   "encryption": {
     "failed": "Échec du chiffrement des données. Vos clés devront peut-être être régénérées.",

@@ -203,7 +203,9 @@
       "search": "Pesquisar",
       "searchNotesTasksJournalInbox": "Pesquise notas, tarefas, diário, caixa de entrada...",
       "noResultsFor": "Nenhum resultado para “",
-      "result": "resultado"
+      "result": "resultado",
+      "noResultsForQuery": "Nenhum resultado para “{query}”",
+      "resultCount": "{count, plural, one {# resultado} many {# resultados} other {# resultados}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Pesquise e clique nos itens para construir sua trilha",
@@ -291,7 +293,8 @@
       "noteIcon": "Ícone de nota"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Alterações não salvas"
+      "unsavedChanges": "Alterações não salvas",
+      "unsavedChangesBody": "\"{title}\" tem alterações não salvas. O que deseja fazer?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Novo espaço de trabalho",

@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "Zachytit odkaz",
       "captureNote": "Zachytit poznámku",
-      "placeholder": "Rychlé zachycení — vložte odkaz, zapište myšlenku…"
+      "placeholder": "Rychlé zachycení — vložte odkaz, zapište myšlenku…",
+      "duplicateNotice": "Již zachyceno: „{title}“"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Vyberte složku",
@@ -459,7 +460,8 @@
       "dismissError": "Odmítnout chybu",
       "alreadyCaptured": "Již zachyceno",
       "captureAnyway": "Každopádně zachytit",
-      "close": "Zavřít"
+      "close": "Zavřít",
+      "duplicateMeta": "„{title}“ · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Zachyťte pádem",

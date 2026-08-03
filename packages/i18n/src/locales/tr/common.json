@@ -203,7 +203,9 @@
       "search": "Ara",
       "searchNotesTasksJournalInbox": "Notlarda, görevlerde, günlükte, gelen kutusunda arama yapın...",
       "noResultsFor": "Sonuç bulunamadı: “",
-      "result": "sonuç"
+      "result": "sonuç",
+      "noResultsForQuery": "“{query}” için sonuç bulunamadı",
+      "resultCount": "{count, plural, one {# sonuç} other {# sonuç}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "İzinizi oluşturmak için öğeleri arayın ve tıklayın",
@@ -291,7 +293,8 @@
       "noteIcon": "Not simgesi"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Kaydedilmemiş Değişiklikler"
+      "unsavedChanges": "Kaydedilmemiş Değişiklikler",
+      "unsavedChangesBody": "“{title}” sekmesinde kaydedilmemiş değişiklikler var. Ne yapmak istersiniz?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Yeni çalışma alanı",

@@ -710,7 +710,8 @@
       "removeFailed": "Misslyckades med att ta bort enhet",
       "renamed": "Bytt namn till \"{name}\"",
       "renameFailed": "Misslyckades med att byta namn på enhet"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Länka ny enhet",
@@ -1205,7 +1206,12 @@
       "last30Days": "Senaste 30 dagarna",
       "loadingSyncHistory": "Laddar synkroniseringshistorik",
       "noSyncActivityYet": "Ingen synkprimeringsaktivitet än",
-      "loadMore": "Ladda mer"
+      "loadMore": "Ladda mer",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, visa felinformation",
+      "summaryFailed": "Synkroniseringen misslyckades",
+      "summaryPulled": "{count, plural, one {# objekt hämtat} other {# objekt hämtade}}",
+      "summaryPushed": "{count, plural, one {# objekt skickat} other {# objekt skickade}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Senast synkroniserad",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "Deluppgiften ”{title}” saknar överordnad uppgift på indrag {indent}; importerad på översta nivån",
         "unknownPriority": "Okänd prioritet {priority} → ingen",
         "unparsedDate": "Kunde inte tolka datumet ”{date}”"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Kopierar Apple Notes-databasen…"
+      },
+      "bear": {
+        "scanning": "Skannar Bear-exporten…"
+      },
+      "csv": {
+        "importing": "Importerar CSV-anteckningar…"
+      },
+      "evernote": {
+        "scanning": "Skannar .enex-filer…"
+      },
+      "html": {
+        "scanning": "Skannar HTML-filer…"
+      },
+      "importingItem": "Importerar {title}",
+      "raindrop": {
+        "importing": "Importerar Raindrop-bokmärken…"
+      },
+      "roam": {
+        "reading": "Läser Roam-exporten…"
+      },
+      "scanningExport": "Skannar exporten…",
+      "scanningFiles": "Skannar filer…",
+      "ticktick": {
+        "importing": "Importerar TickTick-uppgifter…"
+      },
+      "todoist": {
+        "importing": "Importerar Todoist-uppgifter…"
       }
     }
   },

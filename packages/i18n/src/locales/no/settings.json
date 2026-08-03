@@ -710,7 +710,8 @@
       "removeFailed": "Kunne ikke fjerne enheten",
       "renamed": "Omdøpt til \"{name}\"",
       "renameFailed": "Kunne ikke gi nytt navn til enheten"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Koble til ny enhet",
@@ -1205,7 +1206,12 @@
       "last30Days": "Siste 30 dager",
       "loadingSyncHistory": "Laster synkroniseringslogg",
       "noSyncActivityYet": "Ingen synkroniseringsaktivitet ennå",
-      "loadMore": "Last inn mer"
+      "loadMore": "Last inn mer",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, vis feildetaljer",
+      "summaryFailed": "Synkronisering mislyktes",
+      "summaryPulled": "{count, plural, one {# element hentet} other {# elementer hentet}}",
+      "summaryPushed": "{count, plural, one {# element sendt} other {# elementer sendt}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Sist synkronisert ",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "Deloppgaven «{title}» har ingen overordnet oppgave på innrykk {indent}; importert på øverste nivå",
         "unknownPriority": "Ukjent prioritet {priority} → ingen",
         "unparsedDate": "Kunne ikke tolke datoen «{date}»"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Kopierer Apple Notes-databasen…"
+      },
+      "bear": {
+        "scanning": "Skanner Bear-eksporten…"
+      },
+      "csv": {
+        "importing": "Importerer CSV-notater…"
+      },
+      "evernote": {
+        "scanning": "Skanner .enex-filer…"
+      },
+      "html": {
+        "scanning": "Skanner HTML-filer…"
+      },
+      "importingItem": "Importerer {title}",
+      "raindrop": {
+        "importing": "Importerer Raindrop-bokmerker…"
+      },
+      "roam": {
+        "reading": "Leser Roam-eksporten…"
+      },
+      "scanningExport": "Skanner eksporten…",
+      "scanningFiles": "Skanner filer…",
+      "ticktick": {
+        "importing": "Importerer TickTick-oppgaver…"
+      },
+      "todoist": {
+        "importing": "Importerer Todoist-oppgaver…"
       }
     }
   },

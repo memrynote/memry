@@ -368,7 +368,8 @@
       "delete2": "Smazat",
       "columnBorders": "Ohraničení sloupců",
       "display": "Zobrazení",
-      "showSummaries": "Zobrazit souhrny"
+      "showSummaries": "Zobrazit souhrny",
+      "deleteFormulaBody": "Opravdu chcete smazat vzorec „{name}“? Tuto akci nelze vrátit zpět."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtr",
@@ -422,7 +423,8 @@
       "usingNote": "Použití poznámky: \"",
       "cancel": "Zrušit",
       "namePlaceholder": "dnů_do_splatnosti",
-      "expressionPlaceholder": "dateDiff(datum_splatnosti, dnes(), \"dny\")"
+      "expressionPlaceholder": "dateDiff(datum_splatnosti, dnes(), \"dny\")",
+      "usingNoteTitle": "Použitá poznámka: „{title}“"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Jasné seskupení",
@@ -450,7 +452,10 @@
       "allFolders": "VŠECHNY SLOŽKY",
       "noFoldersMatch": "Žádné složky neodpovídají \"",
       "create": "Vytvořit \"",
-      "cancel": "Zrušit"
+      "cancel": "Zrušit",
+      "createFolderNamed": "Vytvořit „{name}“",
+      "currentFolderBadge": "(aktuální)",
+      "noFoldersMatchQuery": "Dotazu „{query}“ neodpovídají žádné složky"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Smazat ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (dvojklikem upravíte)"
+      "doubleClickToEdit": "{name} (dvojklikem upravíte)",
+      "dragToReorder": "Přetažením změníte pořadí sloupce: {name}"
     },
     "columns": {
       "created": "Vytvořeno",

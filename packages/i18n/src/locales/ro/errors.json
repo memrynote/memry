@@ -57,7 +57,10 @@
     "downloadFailed": "Descărcarea atașamentului a eșuat",
     "downloadProgressFailed": "Nu s-a putut prelua progresul descărcării",
     "uploadFailed": "Încărcarea atașamentului a eșuat",
-    "uploadProgressFailed": "Nu s-a putut prelua progresul încărcării"
+    "uploadProgressFailed": "Nu s-a putut prelua progresul încărcării",
+    "emptyFile": "Nu se poate încărca un fișier gol",
+    "exceedsMaxSize": "Fișier prea mare: {size} depășește limita de {limit}",
+    "exceedsPlanLimit": "Fișierul este mai mare decât permite planul tău: {size} depășește {limit}"
   },
   "encryption": {
     "failed": "Nu s-au putut cripta datele. Este posibil ca cheile dvs. să fie regenerate.",

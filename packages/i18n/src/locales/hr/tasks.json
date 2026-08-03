@@ -69,7 +69,9 @@
       "noDueDate": "Bez roka",
       "overdue": "Zakašnjelo",
       "repeating": "Ponavljajući"
-    }
+    },
+    "repeatTypeOneTime": "Jednokratni",
+    "repeatTypeRepeating": "Ponavljajući"
   },
   "quickAdd": {
     "label": "Brzo dodavanje zadatka",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Izbrisati zadatak?",
-      "deleteTask2": "Izbriši zadatak"
+      "deleteTask2": "Izbriši zadatak",
+      "deleteConfirmBody": "„{title}” bit će trajno izbrisan. Ova se radnja ne može poništiti."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Svi podzadaci dovršeni!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Želite li i nadređeni zadatak označiti kao dovršen?",
       "keepTaskOpen": "Držite zadatak otvorenim",
-      "completeTask": "Izvršite zadatak ✓"
+      "completeTask": "Izvršite zadatak ✓",
+      "allSubtasksDoneBody": "Svi podzadaci u „{title}” su dovršeni ({count, plural, one {# podzadatak} few {# podzadatka} other {# podzadataka}})."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Postavite rok za sve podzadatke",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "Primijeni i na dovršene podzadatke (",
       "clearDate": "Jasan datum",
       "cancel": "Odustani",
-      "apply": "primijeniti"
+      "apply": "primijeniti",
+      "alsoApplyToCompletedSubtasksCount": "Primijeni i na dovršene podzadatke ({count})",
+      "setDueDateForSubtasksIn": "Postavite rok za {count, plural, one {# podzadatak} few {# podzadatka} other {# podzadataka}} u „{title}”"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Postavite prioritet za sve podzadatke",
       "setPriorityFor": "Postavite prioritet za ",
       "alsoApplyToCompletedSubtasks": "Primijeni i na dovršene podzadatke (",
       "cancel": "Odustani",
-      "apply": "primijeniti"
+      "apply": "primijeniti",
+      "alsoApplyToCompletedSubtasksCount": "Primijeni i na dovršene podzadatke ({count})",
+      "setPriorityForSubtasksIn": "Postavite prioritet za {count, plural, one {# podzadatak} few {# podzadatka} other {# podzadataka}} u „{title}”"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Dovršiti zadatak s nedovršenim podzadacima?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "Izbrisati sve podzadatke?",
       "thisActionCannotBeUndone": "Ova se radnja ne može poništiti.",
       "cancel": "Odustani",
-      "deleteAll": "Izbriši sve"
+      "deleteAll": "Izbriši sve",
+      "deleteSubtasksConfirmation": "Ovim će se iz „{title}” izbrisati {count, plural, one {# podzadatak} few {# podzadatka} other {# podzadataka}}."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Izbrisati zadatak s podzadacima?",
@@ -350,7 +359,11 @@
       "createACopyOf": "Napravite kopiju \"",
       "alsoDuplicateSubtasks": "Također duplicirati podzadatke (",
       "cancel": "Odustani",
-      "duplicate": "Duplikat "
+      "duplicate": "Duplikat ",
+      "alsoDuplicateSubtasksCount": "Dupliciraj i podzadatke ({count})",
+      "createACopyOfTitle": "Napravite kopiju „{title}”",
+      "duplicateTaskOnly": "Dupliciraj zadatak",
+      "duplicateWithItems": "Dupliciraj ({count, plural, one {# stavka} few {# stavke} other {# stavki}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Napravi podzadatak od...",
@@ -871,5 +884,17 @@
     "done": "Gotovo",
     "inProgress": "U tijeku",
     "todo": "Za napraviti"
+  },
+  "colors": {
+    "blue": "Plava",
+    "gray": "Siva",
+    "green": "Zelena",
+    "indigo": "Indigo",
+    "orange": "Narančasta",
+    "pink": "Ružičasta",
+    "purple": "Ljubičasta",
+    "red": "Crvena",
+    "teal": "Tirkizna",
+    "yellow": "Žuta"
   }
 }

@@ -69,7 +69,9 @@
       "noDueDate": "Bez termínu",
       "overdue": "Po termíne",
       "repeating": "Opakujúce sa"
-    }
+    },
+    "repeatTypeOneTime": "Jednorazová",
+    "repeatTypeRepeating": "Opakujúca sa"
   },
   "quickAdd": {
     "label": "Rýchlo pridať úlohu",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Vymazať úlohu?",
-      "deleteTask2": "Vymazať úlohu"
+      "deleteTask2": "Vymazať úlohu",
+      "deleteConfirmBody": "Úloha „{title}“ bude natrvalo odstránená. Túto akciu nie je možné vrátiť späť."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Všetky podúlohy dokončené!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Chcete tiež označiť nadradenú úlohu ako dokončenú?",
       "keepTaskOpen": "Nechajte úlohu otvorenú",
-      "completeTask": "Dokončiť úlohu ✓"
+      "completeTask": "Dokončiť úlohu ✓",
+      "allSubtasksDoneBody": "V úlohe „{title}“ sú hotové všetky podúlohy ({count, plural, one {# podúloha} few {# podúlohy} many {# podúlohy} other {# podúloh}})."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Nastaviť lehotu pre všetky podúlohy",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "Použiť aj na dokončené podúlohy (",
       "clearDate": "Vymazať dátum",
       "cancel": "Zrušiť",
-      "apply": "Prihláste sa"
+      "apply": "Prihláste sa",
+      "alsoApplyToCompletedSubtasksCount": "Použiť aj na dokončené podúlohy ({count})",
+      "setDueDateForSubtasksIn": "Nastaviť termín pre {count, plural, one {# podúlohu} few {# podúlohy} many {# podúlohy} other {# podúloh}} v úlohe „{title}“"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Nastaviť prioritu pre všetky podúlohy",
       "setPriorityFor": "Nastaviť prioritu pre",
       "alsoApplyToCompletedSubtasks": "Použiť aj na dokončené podúlohy (",
       "cancel": "Zrušiť",
-      "apply": "Prihláste sa"
+      "apply": "Prihláste sa",
+      "alsoApplyToCompletedSubtasksCount": "Použiť aj na dokončené podúlohy ({count})",
+      "setPriorityForSubtasksIn": "Nastaviť prioritu pre {count, plural, one {# podúlohu} few {# podúlohy} many {# podúlohy} other {# podúloh}} v úlohe „{title}“"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Dokončiť úlohu s nedokončenými podúlohami?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "Odstrániť všetky podúlohy?",
       "thisActionCannotBeUndone": "Túto akciu nie je možné vrátiť späť.",
       "cancel": "Zrušiť",
-      "deleteAll": "Odstrániť všetko"
+      "deleteAll": "Odstrániť všetko",
+      "deleteSubtasksConfirmation": "Týmto sa z úlohy „{title}“ {count, plural, one {odstráni # podúloha} few {odstránia # podúlohy} many {odstráni # podúlohy} other {odstráni # podúloh}}."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Odstrániť úlohu s podúlohami?",
@@ -350,7 +359,11 @@
       "createACopyOf": "Vytvoriť kópiu „",
       "alsoDuplicateSubtasks": "Duplikovať aj podúlohy (",
       "cancel": "Zrušiť",
-      "duplicate": "Duplikovať "
+      "duplicate": "Duplikovať ",
+      "alsoDuplicateSubtasksCount": "Duplikovať aj podúlohy ({count})",
+      "createACopyOfTitle": "Vytvoriť kópiu úlohy „{title}“",
+      "duplicateTaskOnly": "Duplikovať úlohu",
+      "duplicateWithItems": "Duplikovať ({count, plural, one {# položka} few {# položky} many {# položky} other {# položiek}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Urobiť podúlohou...",
@@ -871,5 +884,17 @@
     "done": "Hotovo",
     "inProgress": "Prebieha",
     "todo": "Na urobenie"
+  },
+  "colors": {
+    "blue": "Modrá",
+    "gray": "Sivá",
+    "green": "Zelená",
+    "indigo": "Indigová",
+    "orange": "Oranžová",
+    "pink": "Ružová",
+    "purple": "Fialová",
+    "red": "Červená",
+    "teal": "Tyrkysová",
+    "yellow": "Žltá"
   }
 }

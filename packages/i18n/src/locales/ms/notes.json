@@ -368,7 +368,8 @@
       "delete2": "Padam",
       "columnBorders": "Sempadan lajur",
       "display": "Paparan",
-      "showSummaries": "Tunjukkan ringkasan"
+      "showSummaries": "Tunjukkan ringkasan",
+      "deleteFormulaBody": "Adakah anda pasti mahu memadamkan formula \"{name}\"? Tindakan ini tidak boleh dibuat asal."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Penapis",
@@ -422,7 +423,8 @@
       "usingNote": "Menggunakan nota: \"",
       "cancel": "Batal",
       "namePlaceholder": "hari_hingga_tamat",
-      "expressionPlaceholder": "dateDiff(tarikh_masa, hari ini(), \"hari\")"
+      "expressionPlaceholder": "dateDiff(tarikh_masa, hari ini(), \"hari\")",
+      "usingNoteTitle": "Menggunakan nota: \"{title}\""
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Pengumpulan yang jelas",
@@ -450,7 +452,10 @@
       "allFolders": "SEMUA FOLDER",
       "noFoldersMatch": "Tiada folder yang sepadan \"",
       "create": "Buat \"",
-      "cancel": "Batal"
+      "cancel": "Batal",
+      "createFolderNamed": "Cipta \"{name}\"",
+      "currentFolderBadge": "(semasa)",
+      "noFoldersMatchQuery": "Tiada folder sepadan dengan \"{query}\""
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Padam ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (dwiklik untuk mengedit)"
+      "doubleClickToEdit": "{name} (dwiklik untuk mengedit)",
+      "dragToReorder": "Seret untuk menyusun semula lajur: {name}"
     },
     "columns": {
       "created": "Dicipta",

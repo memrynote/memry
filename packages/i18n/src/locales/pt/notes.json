@@ -368,7 +368,8 @@
       "delete2": "Excluir",
       "columnBorders": "Limites das colunas",
       "display": "Apresentação",
-      "showSummaries": "Mostrar resumos"
+      "showSummaries": "Mostrar resumos",
+      "deleteFormulaBody": "Tem certeza de que deseja excluir a fórmula \"{name}\"? Esta ação não pode ser desfeita."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtro",
@@ -422,7 +423,8 @@
       "usingNote": "Usando nota: \"",
       "cancel": "Cancelar",
       "namePlaceholder": "dias_até_vencimento",
-      "expressionPlaceholder": "dateDiff(data_de vencimento, hoje(), \"dias\")"
+      "expressionPlaceholder": "dateDiff(data_de vencimento, hoje(), \"dias\")",
+      "usingNoteTitle": "Usando nota: \"{title}\""
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Limpar agrupamento",
@@ -450,7 +452,10 @@
       "allFolders": "TODAS AS PASTAS",
       "noFoldersMatch": "Nenhuma pasta corresponde a \"",
       "create": "Criar \"",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "createFolderNamed": "Criar \"{name}\"",
+      "currentFolderBadge": "(atual)",
+      "noFoldersMatchQuery": "Nenhuma pasta corresponde a \"{query}\""
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Excluir ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (clique duas vezes para editar)"
+      "doubleClickToEdit": "{name} (clique duas vezes para editar)",
+      "dragToReorder": "Arraste para reordenar a coluna: {name}"
     },
     "columns": {
       "created": "Criado",

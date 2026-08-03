@@ -710,7 +710,8 @@
       "removeFailed": "Не удалось удалить устройство.",
       "renamed": "Переименован в «{name}».",
       "renameFailed": "Не удалось переименовать устройство"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Привязать новое устройство",
@@ -1205,7 +1206,12 @@
       "last30Days": "Последние 30 дней",
       "loadingSyncHistory": "Загрузка истории синхронизации",
       "noSyncActivityYet": "Синхронизация еще не выполнена",
-      "loadMore": "Загрузить больше"
+      "loadMore": "Загрузить больше",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, показать подробности ошибки",
+      "summaryFailed": "Синхронизация не удалась",
+      "summaryPulled": "{count, plural, one {Получен # элемент} few {Получено # элемента} many {Получено # элементов} other {Получено # элемента}}",
+      "summaryPushed": "{count, plural, one {Отправлен # элемент} few {Отправлено # элемента} many {Отправлено # элементов} other {Отправлено # элемента}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Последняя синхронизация ",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "У подзадачи «{title}» нет родителя на отступе {indent}; импортирована на верхний уровень",
         "unknownPriority": "Неизвестный приоритет {priority} → без приоритета",
         "unparsedDate": "Не удалось разобрать дату «{date}»"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Копирование базы данных Apple Notes…"
+      },
+      "bear": {
+        "scanning": "Сканирование экспорта Bear…"
+      },
+      "csv": {
+        "importing": "Импорт заметок из CSV…"
+      },
+      "evernote": {
+        "scanning": "Сканирование файлов .enex…"
+      },
+      "html": {
+        "scanning": "Сканирование файлов HTML…"
+      },
+      "importingItem": "Импорт: {title}",
+      "raindrop": {
+        "importing": "Импорт закладок Raindrop…"
+      },
+      "roam": {
+        "reading": "Чтение экспорта Roam…"
+      },
+      "scanningExport": "Сканирование экспорта…",
+      "scanningFiles": "Сканирование файлов…",
+      "ticktick": {
+        "importing": "Импорт задач TickTick…"
+      },
+      "todoist": {
+        "importing": "Импорт задач Todoist…"
       }
     }
   },

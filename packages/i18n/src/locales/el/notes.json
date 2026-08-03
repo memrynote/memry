@@ -368,7 +368,8 @@
       "delete2": "Διαγραφή",
       "columnBorders": "Περιγράμματα στηλών",
       "display": "Εμφάνιση",
-      "showSummaries": "Εμφάνιση συνόψεων"
+      "showSummaries": "Εμφάνιση συνόψεων",
+      "deleteFormulaBody": "Είστε βέβαιοι ότι θέλετε να διαγράψετε τον τύπο «{name}»; Αυτή η ενέργεια δεν μπορεί να αναιρεθεί."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Φίλτρο",
@@ -422,7 +423,8 @@
       "usingNote": "Χρήση σημείωσης: \"",
       "cancel": "Ακύρωση",
       "namePlaceholder": "ημέρες_μέχρι_λήγει",
-      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
+      "usingNoteTitle": "Χρήση σημείωσης: «{title}»"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Σαφής ομαδοποίηση",
@@ -450,7 +452,10 @@
       "allFolders": "ΟΛΟΙ ΟΙ ΦΑΚΕΛΟΙ",
       "noFoldersMatch": "Δεν ταιριάζουν φάκελοι \"",
       "create": "Δημιουργία \"",
-      "cancel": "Ακύρωση"
+      "cancel": "Ακύρωση",
+      "createFolderNamed": "Δημιουργία «{name}»",
+      "currentFolderBadge": "(τρέχων)",
+      "noFoldersMatchQuery": "Κανένας φάκελος δεν ταιριάζει με «{query}»"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Διαγραφή ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (διπλό κλικ για επεξεργασία)"
+      "doubleClickToEdit": "{name} (διπλό κλικ για επεξεργασία)",
+      "dragToReorder": "Σύρετε για αναδιάταξη της στήλης: {name}"
     },
     "columns": {
       "created": "Δημιουργήθηκε",

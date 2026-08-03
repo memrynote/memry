@@ -368,7 +368,8 @@
       "delete2": "Hapus",
       "columnBorders": "Batas kolom",
       "display": "Tampilan",
-      "showSummaries": "Tampilkan ringkasan"
+      "showSummaries": "Tampilkan ringkasan",
+      "deleteFormulaBody": "Apakah Anda yakin ingin menghapus rumus “{name}”? Tindakan ini tidak dapat dibatalkan."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Menyaring",
@@ -422,7 +423,8 @@
       "usingNote": "Menggunakan catatan: \"",
       "cancel": "Batalkan",
       "namePlaceholder": "hari_sampai_jatuh tempo",
-      "expressionPlaceholder": "dateDiff(tanggal jatuh tempo, hari ini(), \"hari\")"
+      "expressionPlaceholder": "dateDiff(tanggal jatuh tempo, hari ini(), \"hari\")",
+      "usingNoteTitle": "Menggunakan catatan: “{title}”"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Pengelompokan yang jelas",
@@ -450,7 +452,10 @@
       "allFolders": "SEMUA FOLDER",
       "noFoldersMatch": "Tidak ada folder yang cocok \"",
       "create": "Buat \"",
-      "cancel": "Batalkan"
+      "cancel": "Batalkan",
+      "createFolderNamed": "Buat “{name}”",
+      "currentFolderBadge": "(saat ini)",
+      "noFoldersMatchQuery": "Tidak ada folder yang cocok dengan “{query}”"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Hapus ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (klik dua kali untuk menyunting)"
+      "doubleClickToEdit": "{name} (klik dua kali untuk menyunting)",
+      "dragToReorder": "Tarik untuk menyusun ulang kolom: {name}"
     },
     "columns": {
       "created": "Dibuat",

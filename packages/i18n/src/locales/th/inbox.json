@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "บันทึกลิงก์",
       "captureNote": "บันทึกโน้ต",
-      "placeholder": "บันทึกด่วน — วางลิงก์ หรือจดความคิด…"
+      "placeholder": "บันทึกด่วน — วางลิงก์ หรือจดความคิด…",
+      "duplicateNotice": "บันทึกไว้แล้ว: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "เลือกโฟลเดอร์",
@@ -459,7 +460,8 @@
       "dismissError": "ปิดข้อผิดพลาด",
       "alreadyCaptured": "จับภาพแล้ว",
       "captureAnyway": "จับภาพต่อ",
-      "close": "ปิด"
+      "close": "ปิด",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "วางเพื่อจับภาพ",

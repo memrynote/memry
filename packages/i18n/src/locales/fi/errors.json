@@ -57,7 +57,10 @@
     "downloadFailed": "Liitteen lataus epäonnistui",
     "downloadProgressFailed": "Latauksen edistymisen haku epäonnistui",
     "uploadFailed": "Liitteen lähetys epäonnistui",
-    "uploadProgressFailed": "Lähetyksen edistymisen haku epäonnistui"
+    "uploadProgressFailed": "Lähetyksen edistymisen haku epäonnistui",
+    "emptyFile": "Tyhjää tiedostoa ei voi lähettää",
+    "exceedsMaxSize": "Tiedosto on liian suuri: {size} ylittää rajan {limit}",
+    "exceedsPlanLimit": "Tiedosto on suurempi kuin tilauksesi sallii: {size} ylittää rajan {limit}"
   },
   "encryption": {
     "failed": "Tietojen salaus epäonnistui. Avaimesi on ehkä luotava uudelleen.",

@@ -69,7 +69,9 @@
       "noDueDate": "Sem data de vencimento",
       "overdue": "Atrasadas",
       "repeating": "Repetitivas"
-    }
+    },
+    "repeatTypeOneTime": "Únicas",
+    "repeatTypeRepeating": "Repetitivas"
   },
   "quickAdd": {
     "label": "Tarefa de adição rápida",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Excluir tarefa?",
-      "deleteTask2": "Excluir tarefa"
+      "deleteTask2": "Excluir tarefa",
+      "deleteConfirmBody": "“{title}” será excluído permanentemente. Esta ação não pode ser desfeita."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Todas as subtarefas concluídas!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Gostaria de marcar a tarefa pai como concluída também?",
       "keepTaskOpen": "Mantenha a tarefa aberta",
-      "completeTask": "Conclua a tarefa ✓"
+      "completeTask": "Conclua a tarefa ✓",
+      "allSubtasksDoneBody": "“{title}” {count, plural, one {tem # subtarefa concluída} many {tem todas as # subtarefas concluídas} other {tem todas as # subtarefas concluídas}}."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Defina a data de vencimento para todas as subtarefas",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "Também se aplica a subtarefas concluídas (",
       "clearDate": "Limpar data",
       "cancel": "Cancelar",
-      "apply": "Aplicar"
+      "apply": "Aplicar",
+      "alsoApplyToCompletedSubtasksCount": "Aplicar também às subtarefas concluídas ({count})",
+      "setDueDateForSubtasksIn": "Definir data de vencimento para {count, plural, one {# subtarefa} many {# subtarefas} other {# subtarefas}} em “{title}”"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Defina prioridade para todas as subtarefas",
       "setPriorityFor": "Definir prioridade para ",
       "alsoApplyToCompletedSubtasks": "Também se aplica a subtarefas concluídas (",
       "cancel": "Cancelar",
-      "apply": "Aplicar"
+      "apply": "Aplicar",
+      "alsoApplyToCompletedSubtasksCount": "Aplicar também às subtarefas concluídas ({count})",
+      "setPriorityForSubtasksIn": "Definir prioridade para {count, plural, one {# subtarefa} many {# subtarefas} other {# subtarefas}} em “{title}”"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Concluir tarefa com subtarefas incompletas?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "Excluir todas as subtarefas?",
       "thisActionCannotBeUndone": "Esta ação não pode ser desfeita.",
       "cancel": "Cancelar",
-      "deleteAll": "Excluir tudo"
+      "deleteAll": "Excluir tudo",
+      "deleteSubtasksConfirmation": "Isso excluirá {count, plural, one {# subtarefa} many {# subtarefas} other {# subtarefas}} de “{title}”."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Excluir tarefa com subtarefas?",
@@ -350,7 +359,11 @@
       "createACopyOf": "Crie uma cópia de “",
       "alsoDuplicateSubtasks": "Também duplique subtarefas (",
       "cancel": "Cancelar",
-      "duplicate": "Duplicar "
+      "duplicate": "Duplicar ",
+      "alsoDuplicateSubtasksCount": "Duplicar também as subtarefas ({count})",
+      "createACopyOfTitle": "Criar uma cópia de “{title}”",
+      "duplicateTaskOnly": "Duplicar tarefa",
+      "duplicateWithItems": "Duplicar ({count, plural, one {# item} many {# itens} other {# itens}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Faça uma subtarefa de...",
@@ -871,5 +884,17 @@
     "done": "Concluído",
     "inProgress": "Em curso",
     "todo": "Por fazer"
+  },
+  "colors": {
+    "blue": "Azul",
+    "gray": "Cinza",
+    "green": "Verde",
+    "indigo": "Índigo",
+    "orange": "Laranja",
+    "pink": "Rosa",
+    "purple": "Roxo",
+    "red": "Vermelho",
+    "teal": "Turquesa",
+    "yellow": "Amarelo"
   }
 }

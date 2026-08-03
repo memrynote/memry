@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "Захватить ссылку",
       "captureNote": "Захватить заметку",
-      "placeholder": "Быстрый захват — вставьте ссылку, запишите мысль…"
+      "placeholder": "Быстрый захват — вставьте ссылку, запишите мысль…",
+      "duplicateNotice": "Уже захвачено: «{title}»"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Выбрать папку",
@@ -459,7 +460,8 @@
       "dismissError": "Ошибка закрытия",
       "alreadyCaptured": "Уже захвачено",
       "captureAnyway": "Все равно захватить",
-      "close": "Закрыть"
+      "close": "Закрыть",
+      "duplicateMeta": "«{title}» · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Отбросьте, чтобы захватить",

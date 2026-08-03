@@ -203,7 +203,9 @@
       "search": "搜尋",
       "searchNotesTasksJournalInbox": "搜尋筆記、任務、日誌、收件箱...",
       "noResultsFor": "未找到“",
-      "result": "結果"
+      "result": "結果",
+      "noResultsForQuery": "找不到「{query}」的結果",
+      "resultCount": "{count, plural, other {# 個結果}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "搜尋並點擊項目以建立你的足跡",
@@ -291,7 +293,8 @@
       "noteIcon": "筆記圖示"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "未儲存的變更"
+      "unsavedChanges": "未儲存的變更",
+      "unsavedChangesBody": "「{title}」有未儲存的變更。您想要如何處理？"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "新工作空間",

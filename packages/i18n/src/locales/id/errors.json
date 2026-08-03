@@ -57,7 +57,10 @@
     "downloadFailed": "Unduhan lampiran gagal",
     "downloadProgressFailed": "Gagal mengambil progres unduhan",
     "uploadFailed": "Unggahan lampiran gagal",
-    "uploadProgressFailed": "Gagal mengambil progres unggahan"
+    "uploadProgressFailed": "Gagal mengambil progres unggahan",
+    "emptyFile": "Tidak dapat mengunggah file kosong",
+    "exceedsMaxSize": "File terlalu besar: {size} melebihi batas {limit}",
+    "exceedsPlanLimit": "File lebih besar dari yang diizinkan paket Anda: {size} melebihi {limit}"
   },
   "encryption": {
     "failed": "Gagal mengenkripsi data. Kunci Anda mungkin perlu dibuat ulang.",

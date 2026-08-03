@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "リンクをキャプチャ",
       "captureNote": "メモをキャプチャ",
-      "placeholder": "クイックキャプチャ — リンクを貼る、思いつきを書き留める…"
+      "placeholder": "クイックキャプチャ — リンクを貼る、思いつきを書き留める…",
+      "duplicateNotice": "すでにキャプチャ済み:「{title}」"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "フォルダーを選択してください",
@@ -459,7 +460,8 @@
       "dismissError": "エラーを無視",
       "alreadyCaptured": "すでに捕獲されています",
       "captureAnyway": "とにかくキャプチャする",
-      "close": "閉じる"
+      "close": "閉じる",
+      "duplicateMeta": "「{title}」· {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "ドロップしてキャプチャ",

@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "Ghi lại liên kết",
       "captureNote": "Ghi lại ghi chú",
-      "placeholder": "Ghi nhanh — dán một liên kết, ghi vội một suy nghĩ…"
+      "placeholder": "Ghi nhanh — dán một liên kết, ghi vội một suy nghĩ…",
+      "duplicateNotice": "Đã ghi lại trước đó: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Chọn thư mục",
@@ -459,7 +460,8 @@
       "dismissError": "Bỏ qua lỗi",
       "alreadyCaptured": "Đã chụp",
       "captureAnyway": "Ghi lại dù sao",
-      "close": "Đóng"
+      "close": "Đóng",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Thả để chụp",

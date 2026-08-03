@@ -710,7 +710,8 @@
       "removeFailed": "הסרת המכשיר נכשלה",
       "renamed": "השם שונה ל-\"{name}\"",
       "renameFailed": "שינוי שם המכשיר נכשל"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "קשר מכשיר חדש",
@@ -1205,7 +1206,12 @@
       "last30Days": "30 הימים האחרונים",
       "loadingSyncHistory": "טוען היסטוריית סנכרון",
       "noSyncActivityYet": "עדיין אין פעילות סנכרון",
-      "loadMore": "טען עוד"
+      "loadMore": "טען עוד",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, הצג פרטי שגיאה",
+      "summaryFailed": "הסנכרון נכשל",
+      "summaryPulled": "{count, plural, one {פריט אחד נמשך} two {# פריטים נמשכו} other {# פריטים נמשכו}}",
+      "summaryPushed": "{count, plural, one {פריט אחד נדחף} two {# פריטים נדחפו} other {# פריטים נדחפו}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "סנכרון אחרון ",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "לתת-המשימה \"{title}\" אין משימת אב בהזחה {indent}; יובאה כמשימה ראשית",
         "unknownPriority": "עדיפות לא מוכרת {priority} ← ללא",
         "unparsedDate": "לא ניתן היה לפענח את התאריך \"{date}\""
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "מעתיק את מסד הנתונים של Apple Notes…"
+      },
+      "bear": {
+        "scanning": "סורק את הייצוא מ-Bear…"
+      },
+      "csv": {
+        "importing": "מייבא פתקים מ-CSV…"
+      },
+      "evernote": {
+        "scanning": "סורק קובצי .enex…"
+      },
+      "html": {
+        "scanning": "סורק קובצי HTML…"
+      },
+      "importingItem": "מייבא את {title}",
+      "raindrop": {
+        "importing": "מייבא סימניות מ-Raindrop…"
+      },
+      "roam": {
+        "reading": "קורא את הייצוא מ-Roam…"
+      },
+      "scanningExport": "סורק את הייצוא…",
+      "scanningFiles": "סורק קבצים…",
+      "ticktick": {
+        "importing": "מייבא משימות מ-TickTick…"
+      },
+      "todoist": {
+        "importing": "מייבא משימות מ-Todoist…"
       }
     }
   },

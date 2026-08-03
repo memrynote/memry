@@ -710,7 +710,8 @@
       "removeFailed": "移除设备失败",
       "renamed": "已重命名为 \"{name}\"",
       "renameFailed": "重命名设备失败"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "连接新设备",
@@ -1205,7 +1206,12 @@
       "last30Days": "最近30天",
       "loadingSyncHistory": "正在加载同步历史",
       "noSyncActivityYet": "尚无同步活动",
-      "loadMore": "加载更多"
+      "loadMore": "加载更多",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}，显示错误详情",
+      "summaryFailed": "同步失败",
+      "summaryPulled": "{count, plural, other {已拉取 # 个项目}}",
+      "summaryPushed": "{count, plural, other {已推送 # 个项目}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "上次同步",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "子任务“{title}”在缩进 {indent} 处没有父任务；已作为顶级任务导入",
         "unknownPriority": "未知优先级 {priority} → 无",
         "unparsedDate": "无法解析日期“{date}”"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "正在复制 Apple Notes 数据库…"
+      },
+      "bear": {
+        "scanning": "正在扫描 Bear 导出文件…"
+      },
+      "csv": {
+        "importing": "正在导入 CSV 笔记…"
+      },
+      "evernote": {
+        "scanning": "正在扫描 .enex 文件…"
+      },
+      "html": {
+        "scanning": "正在扫描 HTML 文件…"
+      },
+      "importingItem": "正在导入 {title}",
+      "raindrop": {
+        "importing": "正在导入 Raindrop 书签…"
+      },
+      "roam": {
+        "reading": "正在读取 Roam 导出文件…"
+      },
+      "scanningExport": "正在扫描导出文件…",
+      "scanningFiles": "正在扫描文件…",
+      "ticktick": {
+        "importing": "正在导入 TickTick 任务…"
+      },
+      "todoist": {
+        "importing": "正在导入 Todoist 任务…"
       }
     }
   },

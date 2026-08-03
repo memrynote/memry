@@ -203,7 +203,9 @@
       "search": "Hledat",
       "searchNotesTasksJournalInbox": "Hledat poznámky, úkoly, deník, doručenou poštu...",
       "noResultsFor": "Žádné výsledky pro „",
-      "result": "výsledek"
+      "result": "výsledek",
+      "noResultsForQuery": "Žádné výsledky pro „{query}“",
+      "resultCount": "{count, plural, one {# výsledek} few {# výsledky} many {# výsledku} other {# výsledků}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Vyhledejte a klikněte na položky a vytvořte si svou stezku",
@@ -291,7 +293,8 @@
       "noteIcon": "Ikona poznámky"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Neuložené změny"
+      "unsavedChanges": "Neuložené změny",
+      "unsavedChangesBody": "„{title}“ má neuložené změny. Co chcete udělat?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Nový pracovní prostor",

@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "Zabilježi poveznicu",
       "captureNote": "Zabilježi bilješku",
-      "placeholder": "Brzo bilježenje — zalijepite poveznicu, zapišite misao…"
+      "placeholder": "Brzo bilježenje — zalijepite poveznicu, zapišite misao…",
+      "duplicateNotice": "Već zabilježeno: „{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Odaberite mapu",
@@ -459,7 +460,8 @@
       "dismissError": "Odbaci pogrešku",
       "alreadyCaptured": "Već zarobljen",
       "captureAnyway": "Svejedno uhvati",
-      "close": "Zatvori"
+      "close": "Zatvori",
+      "duplicateMeta": "„{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Ispustite za snimanje",

@@ -57,7 +57,10 @@
     "downloadFailed": "Ek indirilemedi",
     "downloadProgressFailed": "İndirme ilerlemesi alınamadı",
     "uploadFailed": "Ek yüklenemedi",
-    "uploadProgressFailed": "Yükleme ilerlemesi alınamadı"
+    "uploadProgressFailed": "Yükleme ilerlemesi alınamadı",
+    "emptyFile": "Boş dosya yüklenemez",
+    "exceedsMaxSize": "Dosya çok büyük: {size}, {limit} sınırını aşıyor",
+    "exceedsPlanLimit": "Dosya, planınızın izin verdiğinden büyük: {size}, {limit} sınırını aşıyor"
   },
   "encryption": {
     "failed": "Veriler şifrelenemedi. Anahtarlarınızın yeniden oluşturulması gerekebilir.",

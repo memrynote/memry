@@ -69,7 +69,9 @@
       "noDueDate": "Ingen forfallsdato",
       "overdue": "Forfalt",
       "repeating": "Gjentakende"
-    }
+    },
+    "repeatTypeOneTime": "Engangs",
+    "repeatTypeRepeating": "Gjentakende"
   },
   "quickAdd": {
     "label": "Rask legge til oppgave",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Vil du slette oppgaven?",
-      "deleteTask2": "Slett oppgave"
+      "deleteTask2": "Slett oppgave",
+      "deleteConfirmBody": "«{title}» blir slettet for godt. Denne handlingen kan ikke angres."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Alle deloppgaver fullført!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Vil du også markere overordnet oppgave som fullført?",
       "keepTaskOpen": "Hold oppgaven åpen",
-      "completeTask": "Fullfør oppgaven ✓"
+      "completeTask": "Fullfør oppgaven ✓",
+      "allSubtasksDoneBody": "{count, plural, one {Deloppgaven i «{title}» er fullført.} other {Alle de # deloppgavene i «{title}» er fullført.}}"
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Angi forfallsdato for alle deloppgaver",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "Gjelder også fullførte deloppgaver (",
       "clearDate": "Klar dato",
       "cancel": "Avbryt",
-      "apply": "Søk"
+      "apply": "Søk",
+      "alsoApplyToCompletedSubtasksCount": "Gjelder også fullførte deloppgaver ({count})",
+      "setDueDateForSubtasksIn": "Angi forfallsdato for {count, plural, one {# deloppgave} other {# deloppgaver}} i «{title}»"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Angi prioritet for alle deloppgaver",
       "setPriorityFor": "Sett prioritet for ",
       "alsoApplyToCompletedSubtasks": "Gjelder også fullførte deloppgaver (",
       "cancel": "Avbryt",
-      "apply": "Søk"
+      "apply": "Søk",
+      "alsoApplyToCompletedSubtasksCount": "Gjelder også fullførte deloppgaver ({count})",
+      "setPriorityForSubtasksIn": "Angi prioritet for {count, plural, one {# deloppgave} other {# deloppgaver}} i «{title}»"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Fullfør oppgave med ufullstendige deloppgaver?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "Vil du slette alle deloppgavene?",
       "thisActionCannotBeUndone": "Denne handlingen kan ikke angres.",
       "cancel": "Avbryt",
-      "deleteAll": "Slett alle"
+      "deleteAll": "Slett alle",
+      "deleteSubtasksConfirmation": "Dette sletter {count, plural, one {# deloppgave} other {# deloppgaver}} fra «{title}»."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Vil du slette oppgave med deloppgaver?",
@@ -350,7 +359,11 @@
       "createACopyOf": "Lag en kopi av \"",
       "alsoDuplicateSubtasks": "Dupliser også underoppgaver (",
       "cancel": "Avbryt",
-      "duplicate": "Duplikat "
+      "duplicate": "Duplikat ",
+      "alsoDuplicateSubtasksCount": "Dupliser også deloppgavene ({count})",
+      "createACopyOfTitle": "Lag en kopi av «{title}»",
+      "duplicateTaskOnly": "Dupliser oppgaven",
+      "duplicateWithItems": "Dupliser ({count, plural, one {# element} other {# elementer}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Lag deloppgave av...",
@@ -871,5 +884,17 @@
     "done": "Ferdig",
     "inProgress": "Pågår",
     "todo": "Å gjøre"
+  },
+  "colors": {
+    "blue": "Blå",
+    "gray": "Grå",
+    "green": "Grønn",
+    "indigo": "Indigo",
+    "orange": "Oransje",
+    "pink": "Rosa",
+    "purple": "Lilla",
+    "red": "Rød",
+    "teal": "Turkis",
+    "yellow": "Gul"
   }
 }

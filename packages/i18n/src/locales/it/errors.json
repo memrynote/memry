@@ -57,7 +57,10 @@
     "downloadFailed": "Download dell'allegato non riuscito",
     "downloadProgressFailed": "Impossibile recuperare l'avanzamento del download",
     "uploadFailed": "Caricamento dell'allegato non riuscito",
-    "uploadProgressFailed": "Impossibile recuperare l'avanzamento del caricamento"
+    "uploadProgressFailed": "Impossibile recuperare l'avanzamento del caricamento",
+    "emptyFile": "Impossibile caricare un file vuoto",
+    "exceedsMaxSize": "File troppo grande: {size} supera il limite di {limit}",
+    "exceedsPlanLimit": "Il file è più grande di quanto consenta il tuo piano: {size} supera {limit}"
   },
   "encryption": {
     "failed": "Impossibile crittografare i dati. Potrebbe essere necessario rigenerare le chiavi.",

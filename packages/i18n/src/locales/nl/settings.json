@@ -710,7 +710,8 @@
       "removeFailed": "Kan apparaat niet verwijderen",
       "renamed": "Hernoemd naar \"{name}\"",
       "renameFailed": "Kan de naam van het apparaat niet wijzigen"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Nieuw apparaat koppelen",
@@ -1205,7 +1206,12 @@
       "last30Days": "Laatste 30 dagen",
       "loadingSyncHistory": "Synchronisatiegeschiedenis laden",
       "noSyncActivityYet": "Nog geen synchronisatieactiviteit",
-      "loadMore": "Laad meer"
+      "loadMore": "Laad meer",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, foutdetails tonen",
+      "summaryFailed": "Synchronisatie mislukt",
+      "summaryPulled": "{count, plural, one {# item opgehaald} other {# items opgehaald}}",
+      "summaryPushed": "{count, plural, one {# item verzonden} other {# items verzonden}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Laatst gesynchroniseerd ",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "Subtaak “{title}” heeft geen bovenliggende taak op inspringniveau {indent}; geïmporteerd op hoofdniveau",
         "unknownPriority": "Onbekende prioriteit {priority} → geen",
         "unparsedDate": "Kan de datum “{date}” niet lezen"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Apple Notes-database kopiëren…"
+      },
+      "bear": {
+        "scanning": "Bear-export scannen…"
+      },
+      "csv": {
+        "importing": "CSV-notities importeren…"
+      },
+      "evernote": {
+        "scanning": ".enex-bestanden scannen…"
+      },
+      "html": {
+        "scanning": "HTML-bestanden scannen…"
+      },
+      "importingItem": "{title} importeren",
+      "raindrop": {
+        "importing": "Raindrop-bladwijzers importeren…"
+      },
+      "roam": {
+        "reading": "Roam-export lezen…"
+      },
+      "scanningExport": "Export scannen…",
+      "scanningFiles": "Bestanden scannen…",
+      "ticktick": {
+        "importing": "TickTick-taken importeren…"
+      },
+      "todoist": {
+        "importing": "Todoist-taken importeren…"
       }
     }
   },

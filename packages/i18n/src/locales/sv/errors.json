@@ -57,7 +57,10 @@
     "downloadFailed": "Nedladdningen av bilagan misslyckades",
     "downloadProgressFailed": "Misslyckades med att hämta nedladdningsförloppet",
     "uploadFailed": "Uppladdningen av bilagan misslyckades",
-    "uploadProgressFailed": "Misslyckades med att hämta uppladdningsförloppet"
+    "uploadProgressFailed": "Misslyckades med att hämta uppladdningsförloppet",
+    "emptyFile": "Det går inte att ladda upp en tom fil",
+    "exceedsMaxSize": "Filen är för stor: {size} överskrider gränsen på {limit}",
+    "exceedsPlanLimit": "Filen är större än din plan tillåter: {size} överskrider {limit}"
   },
   "encryption": {
     "failed": "Misslyckades med att kryptera data. Dina nycklar kan behöva regenereras.",

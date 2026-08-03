@@ -710,7 +710,8 @@
       "removeFailed": "No se pudo eliminar el dispositivo",
       "renamed": "Renombrado a \"{name}\"",
       "renameFailed": "No se pudo cambiar el nombre del dispositivo"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Vincular nuevo dispositivo",
@@ -1205,7 +1206,12 @@
       "last30Days": "últimos 30 días",
       "loadingSyncHistory": "Cargando historial de sincronización",
       "noSyncActivityYet": "Aún no hay actividad de sincronización",
-      "loadMore": "Cargar más"
+      "loadMore": "Cargar más",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, mostrar los detalles del error",
+      "summaryFailed": "Error de sincronización",
+      "summaryPulled": "{count, plural, one {# elemento recibido} many {# elementos recibidos} other {# elementos recibidos}}",
+      "summaryPushed": "{count, plural, one {# elemento enviado} many {# elementos enviados} other {# elementos enviados}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Última sincronización ",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "La subtarea \"{title}\" no tiene tarea principal en la sangría {indent}; se importó al nivel superior",
         "unknownPriority": "Prioridad desconocida {priority} → ninguna",
         "unparsedDate": "No se pudo interpretar la fecha \"{date}\""
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Copiando la base de datos de Apple Notes…"
+      },
+      "bear": {
+        "scanning": "Analizando la exportación de Bear…"
+      },
+      "csv": {
+        "importing": "Importando las notas del CSV…"
+      },
+      "evernote": {
+        "scanning": "Analizando los archivos .enex…"
+      },
+      "html": {
+        "scanning": "Analizando los archivos HTML…"
+      },
+      "importingItem": "Importando {title}",
+      "raindrop": {
+        "importing": "Importando los marcadores de Raindrop…"
+      },
+      "roam": {
+        "reading": "Leyendo la exportación de Roam…"
+      },
+      "scanningExport": "Analizando la exportación…",
+      "scanningFiles": "Analizando los archivos…",
+      "ticktick": {
+        "importing": "Importando las tareas de TickTick…"
+      },
+      "todoist": {
+        "importing": "Importando las tareas de Todoist…"
       }
     }
   },

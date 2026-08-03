@@ -69,7 +69,9 @@
       "noDueDate": "Kein Fälligkeitsdatum",
       "overdue": "Überfällig",
       "repeating": "Wiederkehrend"
-    }
+    },
+    "repeatTypeOneTime": "Einmalig",
+    "repeatTypeRepeating": "Wiederkehrend"
   },
   "quickAdd": {
     "label": "Aufgabe schnell hinzufügen",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Aufgabe löschen?",
-      "deleteTask2": "Aufgabe löschen"
+      "deleteTask2": "Aufgabe löschen",
+      "deleteConfirmBody": "„{title}“ wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Alle Teilaufgaben erledigt!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Möchten Sie die übergeordnete Aufgabe auch als erledigt markieren?",
       "keepTaskOpen": "Aufgabe offen lassen",
-      "completeTask": "Aufgabe abschließen ✓"
+      "completeTask": "Aufgabe abschließen ✓",
+      "allSubtasksDoneBody": "Bei „{title}“ {count, plural, one {ist # Teilaufgabe erledigt} other {sind alle # Teilaufgaben erledigt}}."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Legen Sie das Fälligkeitsdatum für alle Unteraufgaben fest",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "Gilt auch für abgeschlossene Teilaufgaben (",
       "clearDate": "Klares Datum",
       "cancel": "Abbrechen",
-      "apply": "Bewerben"
+      "apply": "Bewerben",
+      "alsoApplyToCompletedSubtasksCount": "Auch auf erledigte Teilaufgaben anwenden ({count})",
+      "setDueDateForSubtasksIn": "Fälligkeitsdatum für {count, plural, one {# Teilaufgabe} other {# Teilaufgaben}} in „{title}“ festlegen"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Legen Sie die Priorität für alle Unteraufgaben fest",
       "setPriorityFor": "Priorität festlegen für ",
       "alsoApplyToCompletedSubtasks": "Gilt auch für abgeschlossene Teilaufgaben (",
       "cancel": "Abbrechen",
-      "apply": "Bewerben"
+      "apply": "Bewerben",
+      "alsoApplyToCompletedSubtasksCount": "Auch auf erledigte Teilaufgaben anwenden ({count})",
+      "setPriorityForSubtasksIn": "Priorität für {count, plural, one {# Teilaufgabe} other {# Teilaufgaben}} in „{title}“ festlegen"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Komplette Aufgabe mit unvollständigen Teilaufgaben?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "Alle Unteraufgaben löschen?",
       "thisActionCannotBeUndone": "Diese Aktion kann nicht rückgängig gemacht werden.",
       "cancel": "Abbrechen",
-      "deleteAll": "Alle löschen"
+      "deleteAll": "Alle löschen",
+      "deleteSubtasksConfirmation": "Damit {count, plural, one {wird # Teilaufgabe} other {werden # Teilaufgaben}} aus „{title}“ gelöscht."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Aufgabe mit Unteraufgaben löschen?",
@@ -350,7 +359,11 @@
       "createACopyOf": "Erstellen Sie eine Kopie von „",
       "alsoDuplicateSubtasks": "Auch doppelte Unteraufgaben (",
       "cancel": "Abbrechen",
-      "duplicate": "Duplizieren "
+      "duplicate": "Duplizieren ",
+      "alsoDuplicateSubtasksCount": "Teilaufgaben ebenfalls duplizieren ({count})",
+      "createACopyOfTitle": "Eine Kopie von „{title}“ erstellen",
+      "duplicateTaskOnly": "Aufgabe duplizieren",
+      "duplicateWithItems": "Duplizieren ({count, plural, one {# Element} other {# Elemente}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Unteraufgabe erstellen aus...",
@@ -871,5 +884,17 @@
     "done": "Erledigt",
     "inProgress": "In Bearbeitung",
     "todo": "Zu erledigen"
+  },
+  "colors": {
+    "blue": "Blau",
+    "gray": "Grau",
+    "green": "Grün",
+    "indigo": "Indigo",
+    "orange": "Orange",
+    "pink": "Rosa",
+    "purple": "Violett",
+    "red": "Rot",
+    "teal": "Türkis",
+    "yellow": "Gelb"
   }
 }

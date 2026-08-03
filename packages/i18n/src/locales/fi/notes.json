@@ -368,7 +368,8 @@
       "delete2": "Poista",
       "columnBorders": "Sarakkeiden reunat",
       "display": "Näyttö",
-      "showSummaries": "Näytä yhteenvedot"
+      "showSummaries": "Näytä yhteenvedot",
+      "deleteFormulaBody": "Haluatko varmasti poistaa kaavan ”{name}”? Tätä toimintoa ei voi kumota."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Suodata",
@@ -422,7 +423,8 @@
       "usingNote": "Käytä huomautusta: \"",
       "cancel": "Peruuta",
       "namePlaceholder": "päivää_erään_päivään",
-      "expressionPlaceholder": "dateDiff(eräpäivä, tänään(), \"päivät\")"
+      "expressionPlaceholder": "dateDiff(eräpäivä, tänään(), \"päivät\")",
+      "usingNoteTitle": "Käytetään muistiinpanoa: ”{title}”"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Selkeä ryhmittely",
@@ -450,7 +452,10 @@
       "allFolders": "KAIKKI KANSIOT",
       "noFoldersMatch": "Yksikään kansio ei vastaa \"",
       "create": "Luo \"",
-      "cancel": "Peruuta"
+      "cancel": "Peruuta",
+      "createFolderNamed": "Luo ”{name}”",
+      "currentFolderBadge": "(nykyinen)",
+      "noFoldersMatchQuery": "Yksikään kansio ei vastaa hakua ”{query}”"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Poista ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (muokkaa kaksoisnapsauttamalla)"
+      "doubleClickToEdit": "{name} (muokkaa kaksoisnapsauttamalla)",
+      "dragToReorder": "Järjestä sarake uudelleen vetämällä: {name}"
     },
     "columns": {
       "created": "Luotu",

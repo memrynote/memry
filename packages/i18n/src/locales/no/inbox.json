@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "Fang inn lenke",
       "captureNote": "Fang inn notat",
-      "placeholder": "Rask fangst — lim inn en lenke, noter en tanke…"
+      "placeholder": "Rask fangst — lim inn en lenke, noter en tanke…",
+      "duplicateNotice": "Allerede fanget inn: «{title}»"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Velg mappe",
@@ -459,7 +460,8 @@
       "dismissError": "Avvis feil",
       "alreadyCaptured": "Allerede tatt",
       "captureAnyway": "Fang uansett",
-      "close": "Lukk"
+      "close": "Lukk",
+      "duplicateMeta": "«{title}» · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Slipp for å fange",

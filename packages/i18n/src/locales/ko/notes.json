@@ -368,7 +368,8 @@
       "delete2": "삭제",
       "columnBorders": "열 테두리",
       "display": "표시",
-      "showSummaries": "요약 표시"
+      "showSummaries": "요약 표시",
+      "deleteFormulaBody": "수식 “{name}”을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "필터",
@@ -422,7 +423,8 @@
       "usingNote": "메모 사용: \"",
       "cancel": "취소",
       "namePlaceholder": "days_until_due",
-      "expressionPlaceholder": "dateDiff(due_date, today(), \"일\")"
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"일\")",
+      "usingNoteTitle": "사용 중인 메모: “{title}”"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "그룹화 지우기",
@@ -450,7 +452,10 @@
       "allFolders": "모든 폴더",
       "noFoldersMatch": "\"와(과) 일치하는 폴더가 없습니다.",
       "create": "\" 만들기",
-      "cancel": "취소"
+      "cancel": "취소",
+      "createFolderNamed": "“{name}” 만들기",
+      "currentFolderBadge": "(현재)",
+      "noFoldersMatchQuery": "“{query}”와 일치하는 폴더가 없습니다"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "삭제 ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (더블 클릭하여 편집)"
+      "doubleClickToEdit": "{name} (더블 클릭하여 편집)",
+      "dragToReorder": "열 순서를 바꾸려면 드래그하세요: {name}"
     },
     "columns": {
       "created": "만든 날짜",

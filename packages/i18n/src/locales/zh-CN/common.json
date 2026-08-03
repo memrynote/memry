@@ -203,7 +203,9 @@
       "search": "搜索",
       "searchNotesTasksJournalInbox": "搜索笔记、任务、日记、收件箱...",
       "noResultsFor": "“ 未找到结果",
-      "result": "结果"
+      "result": "结果",
+      "noResultsForQuery": "未找到“{query}”的结果",
+      "resultCount": "{count, plural, other {# 条结果}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "搜索并点击项目以建立你的轨迹",
@@ -291,7 +293,8 @@
       "noteIcon": "笔记图标"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "未保存的更改"
+      "unsavedChanges": "未保存的更改",
+      "unsavedChangesBody": "“{title}”有未保存的更改。你想怎么做？"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "新工作区",

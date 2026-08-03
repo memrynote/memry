@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "Bağlantıyı yakala",
       "captureNote": "Notu yakala",
-      "placeholder": "Hızlı yakalama — bir bağlantı yapıştırın, bir fikri not edin…"
+      "placeholder": "Hızlı yakalama — bir bağlantı yapıştırın, bir fikri not edin…",
+      "duplicateNotice": "Zaten yakalandı: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Klasör seç",
@@ -459,7 +460,8 @@
       "dismissError": "Hatayı reddet",
       "alreadyCaptured": "Zaten yakalandı",
       "captureAnyway": "Yine de Yakala",
-      "close": "Kapat"
+      "close": "Kapat",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Yakalamak için bırakın",

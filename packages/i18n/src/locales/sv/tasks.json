@@ -69,7 +69,9 @@
       "noDueDate": "Inget förfallodatum",
       "overdue": "Försenade",
       "repeating": "Upprepande"
-    }
+    },
+    "repeatTypeOneTime": "Enstaka",
+    "repeatTypeRepeating": "Återkommande"
   },
   "quickAdd": {
     "label": "Snabb tilläggsuppgift",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Ta bort uppgift?",
-      "deleteTask2": "Ta bort uppgift"
+      "deleteTask2": "Ta bort uppgift",
+      "deleteConfirmBody": "”{title}” tas bort permanent. Den här åtgärden kan inte ångras."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Alla deluppgifter kompletta!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Vill du även markera huvuduppgiften som klar?",
       "keepTaskOpen": "Behåll uppgiften öppen",
-      "completeTask": "Slutför uppgift ✓"
+      "completeTask": "Slutför uppgift ✓",
+      "allSubtasksDoneBody": "{count, plural, one {Den enda deluppgiften i ”{title}” är klar.} other {Alla # deluppgifter i ”{title}” är klara.}}"
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Ange förfallodatum för alla deluppgifter",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "Tillämpa även på slutförda deluppgifter (",
       "clearDate": "Rensa datum",
       "cancel": "Avbryt",
-      "apply": "Tillämpa"
+      "apply": "Tillämpa",
+      "alsoApplyToCompletedSubtasksCount": "Tillämpa även på slutförda deluppgifter ({count})",
+      "setDueDateForSubtasksIn": "Ange förfallodatum för {count, plural, one {# deluppgift} other {# deluppgifter}} i ”{title}”"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Ange prioritet för alla deluppgifter",
       "setPriorityFor": "Ange prioritet för ",
       "alsoApplyToCompletedSubtasks": "Tillämpa även på slutförda deluppgifter (",
       "cancel": "Avbryt",
-      "apply": "Tillämpa"
+      "apply": "Tillämpa",
+      "alsoApplyToCompletedSubtasksCount": "Tillämpa även på slutförda deluppgifter ({count})",
+      "setPriorityForSubtasksIn": "Ange prioritet för {count, plural, one {# deluppgift} other {# deluppgifter}} i ”{title}”"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Slutför uppgift med ofullständiga deluppgifter?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "Radera alla deluppgifter?",
       "thisActionCannotBeUndone": "Den här åtgärden kan inte ångras.",
       "cancel": "Avbryt",
-      "deleteAll": "Radera allt"
+      "deleteAll": "Radera allt",
+      "deleteSubtasksConfirmation": "Detta tar bort {count, plural, one {# deluppgift} other {# deluppgifter}} från ”{title}”."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Radera uppgift med deluppgifter?",
@@ -350,7 +359,11 @@
       "createACopyOf": "Skapa en kopia av “",
       "alsoDuplicateSubtasks": "Duplicera även deluppgifter (",
       "cancel": "Avbryt",
-      "duplicate": "Duplicera"
+      "duplicate": "Duplicera",
+      "alsoDuplicateSubtasksCount": "Duplicera även deluppgifter ({count})",
+      "createACopyOfTitle": "Skapa en kopia av ”{title}”",
+      "duplicateTaskOnly": "Duplicera uppgift",
+      "duplicateWithItems": "Duplicera ({count, plural, one {# objekt} other {# objekt}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Gör till deluppgift av...",
@@ -871,5 +884,17 @@
     "done": "Klar",
     "inProgress": "Pågår",
     "todo": "Att göra"
+  },
+  "colors": {
+    "blue": "Blå",
+    "gray": "Grå",
+    "green": "Grön",
+    "indigo": "Indigo",
+    "orange": "Orange",
+    "pink": "Rosa",
+    "purple": "Lila",
+    "red": "Röd",
+    "teal": "Turkos",
+    "yellow": "Gul"
   }
 }

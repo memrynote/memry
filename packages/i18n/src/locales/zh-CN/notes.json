@@ -368,7 +368,8 @@
       "delete2": "删除",
       "columnBorders": "列边框",
       "display": "显示",
-      "showSummaries": "显示摘要"
+      "showSummaries": "显示摘要",
+      "deleteFormulaBody": "确定要删除公式“{name}”吗？此操作无法撤销。"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "筛选",
@@ -422,7 +423,8 @@
       "usingNote": "使用笔记:",
       "cancel": "取消",
       "namePlaceholder": "距到期天数",
-      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
+      "usingNoteTitle": "使用笔记：“{title}”"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "清除分组",
@@ -450,7 +452,10 @@
       "allFolders": "所有文件夹",
       "noFoldersMatch": "没有匹配的文件夹",
       "create": "创建",
-      "cancel": "取消"
+      "cancel": "取消",
+      "createFolderNamed": "创建“{name}”",
+      "currentFolderBadge": "（当前）",
+      "noFoldersMatchQuery": "没有与“{query}”匹配的文件夹"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "删除",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name}（双击以编辑）"
+      "doubleClickToEdit": "{name}（双击以编辑）",
+      "dragToReorder": "拖动以重新排序列：{name}"
     },
     "columns": {
       "created": "创建时间",

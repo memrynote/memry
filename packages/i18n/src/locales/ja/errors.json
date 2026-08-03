@@ -57,7 +57,10 @@
     "downloadFailed": "添付ファイルのダウンロードに失敗しました",
     "downloadProgressFailed": "ダウンロードの進捗を取得できませんでした",
     "uploadFailed": "添付ファイルのアップロードに失敗しました",
-    "uploadProgressFailed": "アップロードの進捗を取得できませんでした"
+    "uploadProgressFailed": "アップロードの進捗を取得できませんでした",
+    "emptyFile": "空のファイルはアップロードできません",
+    "exceedsMaxSize": "ファイルが大きすぎます: {size} は上限の {limit} を超えています",
+    "exceedsPlanLimit": "ファイルがプランの上限を超えています: {size} は {limit} を超えています"
   },
   "encryption": {
     "failed": "データの暗号化に失敗しました。キーの再生成が必要になる場合があります。",

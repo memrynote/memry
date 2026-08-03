@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "Καταγραφή συνδέσμου",
       "captureNote": "Καταγραφή σημείωσης",
-      "placeholder": "Γρήγορη καταγραφή — επικολλήστε έναν σύνδεσμο, σημειώστε μια σκέψη…"
+      "placeholder": "Γρήγορη καταγραφή — επικολλήστε έναν σύνδεσμο, σημειώστε μια σκέψη…",
+      "duplicateNotice": "Έχει ήδη καταγραφεί: «{title}»"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Επιλέξτε φάκελο",
@@ -459,7 +460,8 @@
       "dismissError": "Παράβλεψη σφάλματος",
       "alreadyCaptured": "Ήδη συλληφθεί",
       "captureAnyway": "Λήψη Τέλος πάντων",
-      "close": "Κλείσιμο"
+      "close": "Κλείσιμο",
+      "duplicateMeta": "«{title}» · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Απόθεση για λήψη",

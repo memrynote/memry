@@ -203,7 +203,9 @@
       "search": "Cari",
       "searchNotesTasksJournalInbox": "Cari nota, tugasan, jurnal, peti masuk...",
       "noResultsFor": "Tiada hasil untuk “",
-      "result": "hasil"
+      "result": "hasil",
+      "noResultsForQuery": "Tiada hasil untuk “{query}”",
+      "resultCount": "{count, plural, other {# hasil}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Cari dan klik item untuk membina jejak anda",
@@ -291,7 +293,8 @@
       "noteIcon": "Ikon nota"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Perubahan Tidak Disimpan"
+      "unsavedChanges": "Perubahan Tidak Disimpan",
+      "unsavedChangesBody": "\"{title}\" mempunyai perubahan yang belum disimpan. Apa yang anda ingin lakukan?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Ruang kerja baharu",

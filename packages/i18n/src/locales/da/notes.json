@@ -368,7 +368,8 @@
       "delete2": "Slet",
       "columnBorders": "Kolonnekanter",
       "display": "Visning",
-      "showSummaries": "Vis opsummeringer"
+      "showSummaries": "Vis opsummeringer",
+      "deleteFormulaBody": "Er du sikker på, at du vil slette formlen “{name}”? Denne handling kan ikke fortrydes."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filter",
@@ -422,7 +423,8 @@
       "usingNote": "Bruger note: \"",
       "cancel": "Annuller",
       "namePlaceholder": "dage_indtil_termin",
-      "expressionPlaceholder": "dateDiff(forfaldsdato, i dag(), \"dage\")"
+      "expressionPlaceholder": "dateDiff(forfaldsdato, i dag(), \"dage\")",
+      "usingNoteTitle": "Bruger note: “{title}”"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Tydelig gruppering",
@@ -450,7 +452,10 @@
       "allFolders": "ALLE MAPPER",
       "noFoldersMatch": "Ingen mapper matcher \"",
       "create": "Opret \"",
-      "cancel": "Annuller"
+      "cancel": "Annuller",
+      "createFolderNamed": "Opret “{name}”",
+      "currentFolderBadge": "(nuværende)",
+      "noFoldersMatchQuery": "Ingen mapper matcher “{query}”"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Slet ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (dobbeltklik for at redigere)"
+      "doubleClickToEdit": "{name} (dobbeltklik for at redigere)",
+      "dragToReorder": "Træk for at omarrangere kolonnen: {name}"
     },
     "columns": {
       "created": "Oprettet",

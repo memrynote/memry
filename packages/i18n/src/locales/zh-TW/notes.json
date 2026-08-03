@@ -368,7 +368,8 @@
       "delete2": "刪除",
       "columnBorders": "欄邊框",
       "display": "顯示",
-      "showSummaries": "顯示摘要"
+      "showSummaries": "顯示摘要",
+      "deleteFormulaBody": "確定要刪除公式「{name}」嗎？此操作無法復原。"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "篩選",
@@ -422,7 +423,8 @@
       "usingNote": "使用筆記：",
       "cancel": "取消",
       "namePlaceholder": "days_until_due",
-      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
+      "usingNoteTitle": "使用筆記：「{title}」"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "清除群組",
@@ -450,7 +452,10 @@
       "allFolders": "所有資料夾",
       "noFoldersMatch": "沒有符合的資料夾",
       "create": "建立",
-      "cancel": "取消"
+      "cancel": "取消",
+      "createFolderNamed": "建立「{name}」",
+      "currentFolderBadge": "（目前）",
+      "noFoldersMatchQuery": "沒有符合「{query}」的資料夾"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "  \n刪除  ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name}（雙擊以編輯）"
+      "doubleClickToEdit": "{name}（雙擊以編輯）",
+      "dragToReorder": "拖曳以重新排列欄位：{name}"
     },
     "columns": {
       "created": "建立時間",

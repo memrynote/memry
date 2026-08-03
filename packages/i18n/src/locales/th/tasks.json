@@ -69,7 +69,9 @@
       "noDueDate": "ไม่มีวันครบกำหนด",
       "overdue": "เลยกำหนด",
       "repeating": "ทำซ้ำ"
-    }
+    },
+    "repeatTypeOneTime": "ครั้งเดียว",
+    "repeatTypeRepeating": "ทำซ้ำ"
   },
   "quickAdd": {
     "label": "เพิ่มงานอย่างรวดเร็ว",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "ต้องการลบงานหรือไม่?",
-      "deleteTask2": "ลบงาน"
+      "deleteTask2": "ลบงาน",
+      "deleteConfirmBody": "“{title}” จะถูกลบอย่างถาวร การกระทำนี้ไม่สามารถย้อนกลับได้"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "งานย่อยทั้งหมดเสร็จสมบูรณ์!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "คุณต้องการทำเครื่องหมายงานหลักว่าเสร็จสมบูรณ์ด้วยหรือไม่?",
       "keepTaskOpen": "เก็บงานให้อยู่ในสถานะเปิด",
-      "completeTask": "ทำงานให้เสร็จ ✓"
+      "completeTask": "ทำงานให้เสร็จ ✓",
+      "allSubtasksDoneBody": "งานย่อยทั้ง {count, plural, other {# รายการ}} ของ “{title}” เสร็จเรียบร้อยแล้ว"
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "กำหนดวันที่ครบกำหนดสำหรับงานย่อยทั้งหมด",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "ใช้กับงานย่อยที่เสร็จสมบูรณ์ด้วย (",
       "clearDate": "ล้างวันที่",
       "cancel": "ยกเลิก",
-      "apply": "ใช้"
+      "apply": "ใช้",
+      "alsoApplyToCompletedSubtasksCount": "ใช้กับงานย่อยที่เสร็จแล้วด้วย ({count})",
+      "setDueDateForSubtasksIn": "ตั้งวันครบกำหนดให้งานย่อย {count, plural, other {# รายการ}} ใน “{title}”"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "ตั้งค่าลำดับความสำคัญสำหรับงานย่อยทั้งหมด",
       "setPriorityFor": "ตั้งค่าลำดับความสำคัญสำหรับ ",
       "alsoApplyToCompletedSubtasks": "ใช้กับงานย่อยที่เสร็จสมบูรณ์ด้วย (",
       "cancel": "ยกเลิก",
-      "apply": "ใช้"
+      "apply": "ใช้",
+      "alsoApplyToCompletedSubtasksCount": "ใช้กับงานย่อยที่เสร็จแล้วด้วย ({count})",
+      "setPriorityForSubtasksIn": "ตั้งลำดับความสำคัญให้งานย่อย {count, plural, other {# รายการ}} ใน “{title}”"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "ทำงานให้เสร็จพร้อมกับงานย่อยที่ยังไม่เสร็จ?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "ลบงานย่อยทั้งหมดหรือไม่?  ",
       "thisActionCannotBeUndone": "การกระทำนี้ไม่สามารถยกเลิกได้",
       "cancel": "ยกเลิก",
-      "deleteAll": "ลบทั้งหมด  "
+      "deleteAll": "ลบทั้งหมด  ",
+      "deleteSubtasksConfirmation": "การดำเนินการนี้จะลบงานย่อย {count, plural, other {# รายการ}} ออกจาก “{title}”"
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "ลบงานพร้อมงานย่อยหรือไม่?  ",
@@ -350,7 +359,11 @@
       "createACopyOf": "สร้างสำเนาของ “  ",
       "alsoDuplicateSubtasks": "ก็ทำสำเนางานย่อยด้วย (  ",
       "cancel": "ยกเลิก",
-      "duplicate": "ทำสำเนา  "
+      "duplicate": "ทำสำเนา  ",
+      "alsoDuplicateSubtasksCount": "ทำสำเนางานย่อยด้วย ({count})",
+      "createACopyOfTitle": "สร้างสำเนาของ “{title}”",
+      "duplicateTaskOnly": "ทำสำเนางาน",
+      "duplicateWithItems": "ทำสำเนา ({count, plural, other {# รายการ}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "ทำให้งานย่อยของ...  ",
@@ -871,5 +884,17 @@
     "done": "เสร็จแล้ว",
     "inProgress": "กำลังดำเนินการ",
     "todo": "ที่ต้องทำ"
+  },
+  "colors": {
+    "blue": "สีน้ำเงิน",
+    "gray": "สีเทา",
+    "green": "สีเขียว",
+    "indigo": "สีน้ำเงินคราม",
+    "orange": "สีส้ม",
+    "pink": "สีชมพู",
+    "purple": "สีม่วง",
+    "red": "สีแดง",
+    "teal": "สีเขียวน้ำทะเล",
+    "yellow": "สีเหลือง"
   }
 }

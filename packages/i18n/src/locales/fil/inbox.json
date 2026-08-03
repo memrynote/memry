@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "Kunin ang link",
       "captureNote": "Kunin ang tala",
-      "placeholder": "Mabilis na pagkuha — mag-paste ng link, magtala ng ideya…"
+      "placeholder": "Mabilis na pagkuha — mag-paste ng link, magtala ng ideya…",
+      "duplicateNotice": "Nakunan na: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Pumili ng folder",
@@ -459,7 +460,8 @@
       "dismissError": "I-dismiss ang error",
       "alreadyCaptured": "Nakunan na",
       "captureAnyway": "Kunin Anyway",
-      "close": "Isara"
+      "close": "Isara",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "I-drop para makuha",

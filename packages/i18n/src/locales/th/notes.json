@@ -368,7 +368,8 @@
       "delete2": "ลบ",
       "columnBorders": "เส้นขอบคอลัมน์",
       "display": "การแสดงผล",
-      "showSummaries": "แสดงสรุป"
+      "showSummaries": "แสดงสรุป",
+      "deleteFormulaBody": "คุณแน่ใจหรือว่าต้องการลบสูตร “{name}”? การกระทำนี้ไม่สามารถย้อนกลับได้"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "  \nกรอง  ",
@@ -422,7 +423,8 @@
       "usingNote": "ใช้บันทึก:",
       "cancel": "ยกเลิก",
       "namePlaceholder": "days_until_due",
-      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
+      "usingNoteTitle": "ใช้โน้ต: “{title}”"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "ล้างการจัดกลุ่ม",
@@ -450,7 +452,10 @@
       "allFolders": "โฟลเดอร์ทั้งหมด",
       "noFoldersMatch": "ไม่มีโฟลเดอร์ที่ตรงกัน",
       "create": "สร้าง",
-      "cancel": "ยกเลิก"
+      "cancel": "ยกเลิก",
+      "createFolderNamed": "สร้าง “{name}”",
+      "currentFolderBadge": "(ปัจจุบัน)",
+      "noFoldersMatchQuery": "ไม่มีโฟลเดอร์ที่ตรงกับ “{query}”"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "  \nลบ  ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (ดับเบิลคลิกเพื่อแก้ไข)"
+      "doubleClickToEdit": "{name} (ดับเบิลคลิกเพื่อแก้ไข)",
+      "dragToReorder": "ลากเพื่อจัดลำดับคอลัมน์: {name}"
     },
     "columns": {
       "created": "สร้างเมื่อ",

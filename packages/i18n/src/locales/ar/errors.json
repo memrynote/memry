@@ -57,7 +57,10 @@
     "downloadFailed": "فشل تنزيل المرفق",
     "downloadProgressFailed": "فشل جلب تقدّم التنزيل",
     "uploadFailed": "فشل رفع المرفق",
-    "uploadProgressFailed": "فشل جلب تقدّم الرفع"
+    "uploadProgressFailed": "فشل جلب تقدّم الرفع",
+    "emptyFile": "لا يمكن رفع ملف فارغ",
+    "exceedsMaxSize": "الملف كبير جدًا: {size} يتجاوز الحد المسموح به {limit}",
+    "exceedsPlanLimit": "حجم الملف أكبر مما تسمح به خطتك: {size} يتجاوز {limit}"
   },
   "encryption": {
     "failed": "فشل في تشفير البيانات. قد تحتاج المفاتيح الخاصة بك إلى التجديد.",

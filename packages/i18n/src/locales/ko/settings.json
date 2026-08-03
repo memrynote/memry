@@ -710,7 +710,8 @@
       "removeFailed": "장치를 제거하지 못했습니다.",
       "renamed": "\"{name}\"로 이름이 변경되었습니다.",
       "renameFailed": "장치 이름을 바꾸지 못했습니다."
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "새 기기 연결",
@@ -1205,7 +1206,12 @@
       "last30Days": "지난 30일",
       "loadingSyncHistory": "동기화 기록 로드 중",
       "noSyncActivityYet": "아직 동기화 활동이 없습니다.",
-      "loadMore": "더 로드하기"
+      "loadMore": "더 로드하기",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, 오류 세부 정보 보기",
+      "summaryFailed": "동기화 실패",
+      "summaryPulled": "{count, plural, other {항목 #개 가져옴}}",
+      "summaryPushed": "{count, plural, other {항목 #개 보냄}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "마지막 동기화 ",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "\"{title}\" 하위 작업은 들여쓰기 {indent} 위치에 상위 항목이 없어 최상위로 가져왔습니다.",
         "unknownPriority": "알 수 없는 우선순위 {priority} → 없음",
         "unparsedDate": "\"{date}\" 날짜를 해석할 수 없습니다."
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Apple Notes 데이터베이스 복사 중…"
+      },
+      "bear": {
+        "scanning": "Bear 내보내기 스캔 중…"
+      },
+      "csv": {
+        "importing": "CSV 노트 가져오는 중…"
+      },
+      "evernote": {
+        "scanning": ".enex 파일 스캔 중…"
+      },
+      "html": {
+        "scanning": "HTML 파일 스캔 중…"
+      },
+      "importingItem": "{title} 가져오는 중",
+      "raindrop": {
+        "importing": "Raindrop 북마크 가져오는 중…"
+      },
+      "roam": {
+        "reading": "Roam 내보내기 읽는 중…"
+      },
+      "scanningExport": "내보내기 스캔 중…",
+      "scanningFiles": "파일 스캔 중…",
+      "ticktick": {
+        "importing": "TickTick 작업 가져오는 중…"
+      },
+      "todoist": {
+        "importing": "Todoist 작업 가져오는 중…"
       }
     }
   },

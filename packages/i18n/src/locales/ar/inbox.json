@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "التقاط رابط",
       "captureNote": "التقاط ملاحظة",
-      "placeholder": "التقاط سريع — الصق رابطًا، أو دوّن فكرة…"
+      "placeholder": "التقاط سريع — الصق رابطًا، أو دوّن فكرة…",
+      "duplicateNotice": "تم التقاطه بالفعل: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "اختر المجلد",
@@ -459,7 +460,8 @@
       "dismissError": "تجاهل الخطأ",
       "alreadyCaptured": "تم التقاطها بالفعل",
       "captureAnyway": "التقط على أي حال",
-      "close": "إغلاق"
+      "close": "إغلاق",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "إسقاط لالتقاط",

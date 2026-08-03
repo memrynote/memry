@@ -710,7 +710,8 @@
       "removeFailed": "移除裝置失敗",
       "renamed": "已重新命名為 \"{name}\"",
       "renameFailed": "重新命名裝置失敗"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "連接新裝置",
@@ -1205,7 +1206,12 @@
       "last30Days": "過去 30 天",
       "loadingSyncHistory": "正在加載同步歷史",
       "noSyncActivityYet": "尚無同步活動",
-      "loadMore": "加載更多"
+      "loadMore": "加載更多",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}，顯示錯誤詳細資料",
+      "summaryFailed": "同步失敗",
+      "summaryPulled": "{count, plural, other {已拉取 # 個項目}}",
+      "summaryPushed": "{count, plural, other {已推送 # 個項目}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "上次同步",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "子任務「{title}」在縮排層級 {indent} 沒有上層任務；已匯入為頂層任務",
         "unknownPriority": "未知的優先順序 {priority} → 無",
         "unparsedDate": "無法解析日期「{date}」"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "正在複製 Apple Notes 資料庫…"
+      },
+      "bear": {
+        "scanning": "正在掃描 Bear 匯出檔…"
+      },
+      "csv": {
+        "importing": "正在匯入 CSV 筆記…"
+      },
+      "evernote": {
+        "scanning": "正在掃描 .enex 檔案…"
+      },
+      "html": {
+        "scanning": "正在掃描 HTML 檔案…"
+      },
+      "importingItem": "正在匯入 {title}",
+      "raindrop": {
+        "importing": "正在匯入 Raindrop 書籤…"
+      },
+      "roam": {
+        "reading": "正在讀取 Roam 匯出檔…"
+      },
+      "scanningExport": "正在掃描匯出檔…",
+      "scanningFiles": "正在掃描檔案…",
+      "ticktick": {
+        "importing": "正在匯入 TickTick 任務…"
+      },
+      "todoist": {
+        "importing": "正在匯入 Todoist 任務…"
       }
     }
   },

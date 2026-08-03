@@ -57,7 +57,10 @@
     "downloadFailed": "Downloaden van de bijlage mislukt",
     "downloadProgressFailed": "Kan de downloadvoortgang niet ophalen",
     "uploadFailed": "Uploaden van de bijlage mislukt",
-    "uploadProgressFailed": "Kan de uploadvoortgang niet ophalen"
+    "uploadProgressFailed": "Kan de uploadvoortgang niet ophalen",
+    "emptyFile": "Kan geen leeg bestand uploaden",
+    "exceedsMaxSize": "Bestand te groot: {size} overschrijdt de limiet van {limit}",
+    "exceedsPlanLimit": "Bestand is groter dan je abonnement toestaat: {size} overschrijdt {limit}"
   },
   "encryption": {
     "failed": "Kan gegevens niet coderen. Mogelijk moeten uw sleutels opnieuw worden gegenereerd.",

@@ -57,7 +57,10 @@
     "downloadFailed": "Pobieranie załącznika nie powiodło się",
     "downloadProgressFailed": "Nie udało się pobrać postępu pobierania",
     "uploadFailed": "Przesyłanie załącznika nie powiodło się",
-    "uploadProgressFailed": "Nie udało się pobrać postępu przesyłania"
+    "uploadProgressFailed": "Nie udało się pobrać postępu przesyłania",
+    "emptyFile": "Nie można przesłać pustego pliku",
+    "exceedsMaxSize": "Plik jest zbyt duży: {size} przekracza limit {limit}",
+    "exceedsPlanLimit": "Plik jest większy, niż pozwala Twój plan: {size} przekracza {limit}"
   },
   "encryption": {
     "failed": "Nie udało się zaszyfrować danych. Twoje klucze mogą wymagać regeneracji.",

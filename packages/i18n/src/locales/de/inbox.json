@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "Link erfassen",
       "captureNote": "Notiz erfassen",
-      "placeholder": "Schnell erfassen — Link einfügen, Gedanken festhalten…"
+      "placeholder": "Schnell erfassen — Link einfügen, Gedanken festhalten…",
+      "duplicateNotice": "Bereits erfasst: „{title}“"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Ordner auswählen",
@@ -459,7 +460,8 @@
       "dismissError": "Fehler verwerfen",
       "alreadyCaptured": "Bereits erfasst",
       "captureAnyway": "Trotzdem erfassen",
-      "close": "Schließen"
+      "close": "Schließen",
+      "duplicateMeta": "„{title}“ · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Lassen Sie es fallen, um es einzufangen",

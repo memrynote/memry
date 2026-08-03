@@ -203,7 +203,9 @@
       "search": "Søg",
       "searchNotesTasksJournalInbox": "Søg i noter, opgaver, journal, indbakke...",
       "noResultsFor": "Ingen resultater for \"",
-      "result": "resultat"
+      "result": "resultat",
+      "noResultsForQuery": "Ingen resultater for “{query}”",
+      "resultCount": "{count, plural, one {# resultat} other {# resultater}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Søg og klik på elementer for at bygge dit spor",
@@ -291,7 +293,8 @@
       "noteIcon": "Bemærk ikon"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Ikke-gemte ændringer"
+      "unsavedChanges": "Ikke-gemte ændringer",
+      "unsavedChangesBody": "“{title}” har ikke-gemte ændringer. Hvad vil du gøre?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Nyt arbejdsrum",

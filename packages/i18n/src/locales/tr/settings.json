@@ -710,7 +710,8 @@
       "removeFailed": "Cihaz kaldırılamadı",
       "renamed": "\" olarak yeniden adlandırıldı{name}\"",
       "renameFailed": "Cihaz yeniden adlandırılamadı"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Yeni cihazı bağla",
@@ -1205,7 +1206,12 @@
       "last30Days": "Son 30 gün",
       "loadingSyncHistory": "Senkronizasyon geçmişi yükleniyor",
       "noSyncActivityYet": "Henüz senkronizasyon etkinliği yok",
-      "loadMore": "Daha fazlasını yükle"
+      "loadMore": "Daha fazlasını yükle",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, hata ayrıntılarını göster",
+      "summaryFailed": "Senkronizasyon başarısız oldu",
+      "summaryPulled": "{count, plural, one {# öğe alındı} other {# öğe alındı}}",
+      "summaryPushed": "{count, plural, one {# öğe gönderildi} other {# öğe gönderildi}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Son senkronize edildi ",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "\"{title}\" alt görevinin {indent} girinti düzeyinde üst görevi yok; üst düzey olarak içe aktarıldı",
         "unknownPriority": "Bilinmeyen öncelik {priority} → yok",
         "unparsedDate": "\"{date}\" tarihi çözümlenemedi"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Apple Notes veritabanı kopyalanıyor…"
+      },
+      "bear": {
+        "scanning": "Bear dışa aktarımı taranıyor…"
+      },
+      "csv": {
+        "importing": "CSV notları içe aktarılıyor…"
+      },
+      "evernote": {
+        "scanning": ".enex dosyaları taranıyor…"
+      },
+      "html": {
+        "scanning": "HTML dosyaları taranıyor…"
+      },
+      "importingItem": "{title} içe aktarılıyor",
+      "raindrop": {
+        "importing": "Raindrop yer imleri içe aktarılıyor…"
+      },
+      "roam": {
+        "reading": "Roam dışa aktarımı okunuyor…"
+      },
+      "scanningExport": "Dışa aktarım taranıyor…",
+      "scanningFiles": "Dosyalar taranıyor…",
+      "ticktick": {
+        "importing": "TickTick görevleri içe aktarılıyor…"
+      },
+      "todoist": {
+        "importing": "Todoist görevleri içe aktarılıyor…"
       }
     }
   },

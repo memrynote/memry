@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "Optag link",
       "captureNote": "Optag note",
-      "placeholder": "Hurtig optagelse — indsæt et link, notér en tanke…"
+      "placeholder": "Hurtig optagelse — indsæt et link, notér en tanke…",
+      "duplicateNotice": "Allerede fanget: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Vælg mappe",
@@ -459,7 +460,8 @@
       "dismissError": "Afvis fejl",
       "alreadyCaptured": "Allerede fanget",
       "captureAnyway": "Fang alligevel",
-      "close": "Luk"
+      "close": "Luk",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Slip for at fange",

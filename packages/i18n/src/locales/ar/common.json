@@ -203,7 +203,9 @@
       "search": "بحث",
       "searchNotesTasksJournalInbox": "البحث في الملاحظات والمهام والمجلة والبريد الوارد...",
       "noResultsFor": "لا توجد نتائج ل \"\"",
-      "result": "نتيجة"
+      "result": "نتيجة",
+      "noResultsForQuery": "لا توجد نتائج لـ “{query}”",
+      "resultCount": "{count, plural, zero {لا توجد نتائج} one {نتيجة واحدة} two {نتيجتان} few {# نتائج} many {# نتيجة} other {# نتيجة}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "ابحث وانقر فوق العناصر لبناء المسار الخاص بك",
@@ -291,7 +293,8 @@
       "noteIcon": "أيقونة الملاحظة"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "التغييرات غير المحفوظة"
+      "unsavedChanges": "التغييرات غير المحفوظة",
+      "unsavedChangesBody": "يحتوي \"{title}\" على تغييرات غير محفوظة. ماذا تريد أن تفعل؟"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "مساحة عمل جديدة",

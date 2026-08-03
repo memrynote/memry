@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "Cattura link",
       "captureNote": "Cattura nota",
-      "placeholder": "Cattura rapida — incolla un link, annota un pensiero…"
+      "placeholder": "Cattura rapida — incolla un link, annota un pensiero…",
+      "duplicateNotice": "Già catturato: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Scegli la cartella",
@@ -459,7 +460,8 @@
       "dismissError": "Ignora errore",
       "alreadyCaptured": "Già catturato",
       "captureAnyway": "Cattura comunque",
-      "close": "Chiudi"
+      "close": "Chiudi",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Rilascia per catturare",

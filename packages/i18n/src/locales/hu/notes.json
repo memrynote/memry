@@ -368,7 +368,8 @@
       "delete2": "Törölje",
       "columnBorders": "Oszlopszegélyek",
       "display": "Megjelenítés",
-      "showSummaries": "Összegzések megjelenítése"
+      "showSummaries": "Összegzések megjelenítése",
+      "deleteFormulaBody": "Biztosan törli a(z) „{name}” képletet? Ez a művelet nem vonható vissza."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Szűrés",
@@ -422,7 +423,8 @@
       "usingNote": "Megjegyzés használatával: \"",
       "cancel": "Mégsem",
       "namePlaceholder": "napok_esedékességig",
-      "expressionPlaceholder": "dateDiff(esedékes_dátum, mai(), \"napok\")"
+      "expressionPlaceholder": "dateDiff(esedékes_dátum, mai(), \"napok\")",
+      "usingNoteTitle": "Használt jegyzet: „{title}”"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Tiszta csoportosítás",
@@ -450,7 +452,10 @@
       "allFolders": "MINDEN MAPPA",
       "noFoldersMatch": "Egyik mappa sem egyezik",
       "create": "Létrehoz",
-      "cancel": "Mégsem"
+      "cancel": "Mégsem",
+      "createFolderNamed": "A(z) „{name}” létrehozása",
+      "currentFolderBadge": "(jelenlegi)",
+      "noFoldersMatchQuery": "Egyetlen mappa sem egyezik ezzel: „{query}”"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Törölje ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (dupla kattintás a szerkesztéshez)"
+      "doubleClickToEdit": "{name} (dupla kattintás a szerkesztéshez)",
+      "dragToReorder": "Húzza az oszlop átrendezéséhez: {name}"
     },
     "columns": {
       "created": "Létrehozva",

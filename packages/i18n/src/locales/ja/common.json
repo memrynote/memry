@@ -203,7 +203,9 @@
       "search": "検索",
       "searchNotesTasksJournalInbox": "メモ、タスク、日記、受信トレイを検索...",
       "noResultsFor": "「」の結果はありません",
-      "result": "結果"
+      "result": "結果",
+      "noResultsForQuery": "「{query}」の結果はありません",
+      "resultCount": "{count, plural, other {# 件の結果}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "アイテムを検索してクリックしてトレイルを構築します",
@@ -291,7 +293,8 @@
       "noteIcon": "注記アイコン"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "未保存の変更"
+      "unsavedChanges": "未保存の変更",
+      "unsavedChangesBody": "「{title}」に未保存の変更があります。どうしますか？"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "新しいワークスペース",

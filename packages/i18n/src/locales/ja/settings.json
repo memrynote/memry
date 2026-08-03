@@ -710,7 +710,8 @@
       "removeFailed": "デバイスの削除に失敗しました",
       "renamed": "「{name}」に名前変更",
       "renameFailed": "デバイス名の変更に失敗しました"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "新しいデバイスをリンクする",
@@ -1205,7 +1206,12 @@
       "last30Days": "過去 30 日間",
       "loadingSyncHistory": "同期履歴を読み込んでいます",
       "noSyncActivityYet": "まだ同期アクティビティはありません",
-      "loadMore": "さらにロードする"
+      "loadMore": "さらにロードする",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}、エラーの詳細を表示",
+      "summaryFailed": "同期に失敗しました",
+      "summaryPulled": "{count, plural, other {# 件のアイテムを取得しました}}",
+      "summaryPushed": "{count, plural, other {# 件のアイテムを送信しました}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "最後に同期しました ",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "サブタスク「{title}」にはインデント {indent} の親がないため、トップレベルとしてインポートしました",
         "unknownPriority": "不明な優先度 {priority} → なし",
         "unparsedDate": "日付「{date}」を解析できませんでした"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Apple Notes のデータベースをコピー中…"
+      },
+      "bear": {
+        "scanning": "Bear のエクスポートをスキャン中…"
+      },
+      "csv": {
+        "importing": "CSV のノートをインポート中…"
+      },
+      "evernote": {
+        "scanning": ".enex ファイルをスキャン中…"
+      },
+      "html": {
+        "scanning": "HTML ファイルをスキャン中…"
+      },
+      "importingItem": "{title} をインポート中",
+      "raindrop": {
+        "importing": "Raindrop のブックマークをインポート中…"
+      },
+      "roam": {
+        "reading": "Roam のエクスポートを読み込み中…"
+      },
+      "scanningExport": "エクスポートをスキャン中…",
+      "scanningFiles": "ファイルをスキャン中…",
+      "ticktick": {
+        "importing": "TickTick のタスクをインポート中…"
+      },
+      "todoist": {
+        "importing": "Todoist のタスクをインポート中…"
       }
     }
   },

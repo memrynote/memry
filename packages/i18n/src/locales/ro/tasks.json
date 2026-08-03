@@ -69,7 +69,9 @@
       "noDueDate": "Fără dată scadentă",
       "overdue": "Restante",
       "repeating": "Recurente"
-    }
+    },
+    "repeatTypeOneTime": "Unice",
+    "repeatTypeRepeating": "Recurente"
   },
   "quickAdd": {
     "label": "Sarcină de adăugare rapidă",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Ștergeți sarcina?",
-      "deleteTask2": "Ștergeți sarcina"
+      "deleteTask2": "Ștergeți sarcina",
+      "deleteConfirmBody": "„{title}” va fi ștearsă definitiv. Această acțiune nu poate fi anulată."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Toate subsarcinile finalizate!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Doriți să marcați și sarcina părinte ca finalizată?",
       "keepTaskOpen": "Păstrați sarcina deschisă",
-      "completeTask": "Finalizați sarcina ✓"
+      "completeTask": "Finalizați sarcina ✓",
+      "allSubtasksDoneBody": "{count, plural, one {Singura subsarcină din „{title}” este finalizată.} few {Toate cele # subsarcini din „{title}” sunt finalizate.} other {Toate cele # de subsarcini din „{title}” sunt finalizate.}}"
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Setați data limită pentru toate sarcinile secundare",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "Se aplică și subsarcinilor finalizate (",
       "clearDate": "Data clară",
       "cancel": "Anulează",
-      "apply": "Aplicați"
+      "apply": "Aplicați",
+      "alsoApplyToCompletedSubtasksCount": "Se aplică și subsarcinilor finalizate ({count})",
+      "setDueDateForSubtasksIn": "Setați data scadentă pentru {count, plural, one {# subsarcină} few {# subsarcini} other {# de subsarcini}} din „{title}”"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Setați prioritate pentru toate sarcinile secundare",
       "setPriorityFor": "Setați prioritate pentru ",
       "alsoApplyToCompletedSubtasks": "Se aplică și subsarcinilor finalizate (",
       "cancel": "Anulează",
-      "apply": "Aplicați"
+      "apply": "Aplicați",
+      "alsoApplyToCompletedSubtasksCount": "Se aplică și subsarcinilor finalizate ({count})",
+      "setPriorityForSubtasksIn": "Setați prioritatea pentru {count, plural, one {# subsarcină} few {# subsarcini} other {# de subsarcini}} din „{title}”"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Sarcina completă cu subsarcini incomplete?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "Ștergeți toate sarcinile secundare?",
       "thisActionCannotBeUndone": "Această acțiune nu poate fi anulată.",
       "cancel": "Anulează",
-      "deleteAll": "Ștergeți toate"
+      "deleteAll": "Ștergeți toate",
+      "deleteSubtasksConfirmation": "{count, plural, one {Se va șterge # subsarcină din „{title}”.} few {Se vor șterge # subsarcini din „{title}”.} other {Se vor șterge # de subsarcini din „{title}”.}}"
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Ștergeți sarcina cu subsarcini?",
@@ -350,7 +359,11 @@
       "createACopyOf": "Creați o copie a „",
       "alsoDuplicateSubtasks": "De asemenea, duplicați subsarcini (",
       "cancel": "Anulează",
-      "duplicate": "Duplicat "
+      "duplicate": "Duplicat ",
+      "alsoDuplicateSubtasksCount": "Duplicați și subsarcinile ({count})",
+      "createACopyOfTitle": "Creați o copie a „{title}”",
+      "duplicateTaskOnly": "Duplicați sarcina",
+      "duplicateWithItems": "Duplicați ({count, plural, one {# element} few {# elemente} other {# de elemente}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Faceți o sarcină secundară de...",
@@ -871,5 +884,17 @@
     "done": "Finalizat",
     "inProgress": "În curs",
     "todo": "De făcut"
+  },
+  "colors": {
+    "blue": "Albastru",
+    "gray": "Gri",
+    "green": "Verde",
+    "indigo": "Indigo",
+    "orange": "Portocaliu",
+    "pink": "Roz",
+    "purple": "Violet",
+    "red": "Roșu",
+    "teal": "Turcoaz",
+    "yellow": "Galben"
   }
 }

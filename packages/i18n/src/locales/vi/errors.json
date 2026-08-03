@@ -57,7 +57,10 @@
     "downloadFailed": "Tải tệp đính kèm xuống thất bại",
     "downloadProgressFailed": "Không thể lấy tiến trình tải xuống",
     "uploadFailed": "Tải tệp đính kèm lên thất bại",
-    "uploadProgressFailed": "Không thể lấy tiến trình tải lên"
+    "uploadProgressFailed": "Không thể lấy tiến trình tải lên",
+    "emptyFile": "Không thể tải lên tệp rỗng",
+    "exceedsMaxSize": "Tệp quá lớn: {size} vượt quá giới hạn {limit}",
+    "exceedsPlanLimit": "Tệp lớn hơn mức gói của bạn cho phép: {size} vượt quá {limit}"
   },
   "encryption": {
     "failed": "Không mã hóa được dữ liệu. Có thể cần tạo lại khóa.",

@@ -57,7 +57,10 @@
     "downloadFailed": "Preuzimanje privitka nije uspjelo",
     "downloadProgressFailed": "Dohvaćanje napretka preuzimanja nije uspjelo",
     "uploadFailed": "Prijenos privitka nije uspio",
-    "uploadProgressFailed": "Dohvaćanje napretka prijenosa nije uspjelo"
+    "uploadProgressFailed": "Dohvaćanje napretka prijenosa nije uspjelo",
+    "emptyFile": "Nije moguće prenijeti praznu datoteku",
+    "exceedsMaxSize": "Datoteka je prevelika: {size} premašuje ograničenje od {limit}",
+    "exceedsPlanLimit": "Datoteka je veća nego što vaš plan dopušta: {size} premašuje {limit}"
   },
   "encryption": {
     "failed": "Šifriranje podataka nije uspjelo. Vaše ključeve će možda trebati regenerirati.",

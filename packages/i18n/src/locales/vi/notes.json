@@ -368,7 +368,8 @@
       "delete2": "Xóa",
       "columnBorders": "Viền cột",
       "display": "Hiển thị",
-      "showSummaries": "Hiện tóm tắt"
+      "showSummaries": "Hiện tóm tắt",
+      "deleteFormulaBody": "Bạn có chắc chắn muốn xóa công thức “{name}” không? Hành động này không thể hoàn tác."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "  \nBộ lọc  ",
@@ -422,7 +423,8 @@
       "usingNote": "Sử dụng ghi chú:",
       "cancel": "Hủy",
       "namePlaceholder": "ngày_đến_hạn",
-      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
+      "usingNoteTitle": "Đang dùng ghi chú: “{title}”"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Xóa nhóm",
@@ -450,7 +452,10 @@
       "allFolders": "TẤT CẢ THƯ MỤC",
       "noFoldersMatch": "Không có thư mục nào phù hợp",
       "create": "Tạo",
-      "cancel": "Hủy"
+      "cancel": "Hủy",
+      "createFolderNamed": "Tạo “{name}”",
+      "currentFolderBadge": "(hiện tại)",
+      "noFoldersMatchQuery": "Không có thư mục nào khớp với “{query}”"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "  \nXóa  ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (nhấp đúp để chỉnh sửa)"
+      "doubleClickToEdit": "{name} (nhấp đúp để chỉnh sửa)",
+      "dragToReorder": "Kéo để sắp xếp lại cột: {name}"
     },
     "columns": {
       "created": "Ngày tạo",

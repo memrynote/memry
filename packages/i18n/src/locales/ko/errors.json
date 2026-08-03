@@ -57,7 +57,10 @@
     "downloadFailed": "첨부파일을 다운로드하지 못했습니다.",
     "downloadProgressFailed": "다운로드 진행 상황을 가져오지 못했습니다.",
     "uploadFailed": "첨부파일을 업로드하지 못했습니다.",
-    "uploadProgressFailed": "업로드 진행 상황을 가져오지 못했습니다."
+    "uploadProgressFailed": "업로드 진행 상황을 가져오지 못했습니다.",
+    "emptyFile": "빈 파일은 업로드할 수 없습니다.",
+    "exceedsMaxSize": "파일이 너무 큽니다. 크기 {size}, 최대 허용 크기 {limit}.",
+    "exceedsPlanLimit": "파일이 현재 요금제에서 허용하는 크기를 초과합니다. 크기 {size}, 허용 한도 {limit}."
   },
   "encryption": {
     "failed": "데이터를 암호화하지 못했습니다. 키를 다시 생성해야 할 수도 있습니다.",

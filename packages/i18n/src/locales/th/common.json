@@ -203,7 +203,9 @@
       "search": "ค้นหา",
       "searchNotesTasksJournalInbox": "ค้นหาบันทึก งาน วารสาร กล่องข้อความ...",
       "noResultsFor": "ไม่พบผลลัพธ์สำหรับ “",
-      "result": "ผลลัพธ์"
+      "result": "ผลลัพธ์",
+      "noResultsForQuery": "ไม่พบผลลัพธ์สำหรับ “{query}”",
+      "resultCount": "{count, plural, other {ผลลัพธ์ # รายการ}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "ค้นหาและคลิกที่รายการเพื่อสร้างเส้นทางของคุณ",
@@ -291,7 +293,8 @@
       "noteIcon": "ไอคอนหมายเหตุ"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก"
+      "unsavedChanges": "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
+      "unsavedChangesBody": "“{title}” มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก คุณต้องการทำอย่างไร?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "พื้นที่ทํางานใหม่",

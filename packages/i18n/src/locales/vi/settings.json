@@ -710,7 +710,8 @@
       "removeFailed": "Không xóa được thiết bị",
       "renamed": "Đã đổi tên thành \"{name}\"",
       "renameFailed": "Không đổi tên được thiết bị"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Liên kết thiết bị mới",
@@ -1205,7 +1206,12 @@
       "last30Days": "30 ngày qua",
       "loadingSyncHistory": "Đang tải lịch sử đồng bộ",
       "noSyncActivityYet": "Chưa có hoạt động đồng bộ",
-      "loadMore": "Tải thêm"
+      "loadMore": "Tải thêm",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, hiện chi tiết lỗi",
+      "summaryFailed": "Đồng bộ thất bại",
+      "summaryPulled": "{count, plural, other {Đã kéo # mục}}",
+      "summaryPushed": "{count, plural, other {Đã đẩy # mục}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Đồng bộ lần cuối ",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "Công việc con “{title}” không có công việc cha ở mức thụt lề {indent}; đã nhập ở cấp cao nhất",
         "unknownPriority": "Mức ưu tiên không xác định {priority} → không có",
         "unparsedDate": "Không thể phân tích ngày “{date}”"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Đang sao chép cơ sở dữ liệu Apple Notes…"
+      },
+      "bear": {
+        "scanning": "Đang quét bản xuất Bear…"
+      },
+      "csv": {
+        "importing": "Đang nhập ghi chú CSV…"
+      },
+      "evernote": {
+        "scanning": "Đang quét các tệp .enex…"
+      },
+      "html": {
+        "scanning": "Đang quét các tệp HTML…"
+      },
+      "importingItem": "Đang nhập {title}",
+      "raindrop": {
+        "importing": "Đang nhập dấu trang Raindrop…"
+      },
+      "roam": {
+        "reading": "Đang đọc bản xuất Roam…"
+      },
+      "scanningExport": "Đang quét bản xuất…",
+      "scanningFiles": "Đang quét các tệp…",
+      "ticktick": {
+        "importing": "Đang nhập công việc TickTick…"
+      },
+      "todoist": {
+        "importing": "Đang nhập công việc Todoist…"
       }
     }
   },

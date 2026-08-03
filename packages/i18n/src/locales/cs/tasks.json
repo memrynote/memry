@@ -69,7 +69,9 @@
       "noDueDate": "Bez data splatnosti",
       "overdue": "Po splatnosti",
       "repeating": "Opakující se"
-    }
+    },
+    "repeatTypeOneTime": "Jednorázové",
+    "repeatTypeRepeating": "Opakující se"
   },
   "quickAdd": {
     "label": "Rychlé přidání úkolu",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Smazat úkol?",
-      "deleteTask2": "Smazat úkol"
+      "deleteTask2": "Smazat úkol",
+      "deleteConfirmBody": "Úkol „{title}“ bude trvale smazán. Tuto akci nelze vrátit zpět."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Všechny dílčí úkoly dokončeny!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Chcete také označit rodičovský úkol jako dokončený?",
       "keepTaskOpen": "Nechte úkol otevřený",
-      "completeTask": "Dokončete úkol ✓"
+      "completeTask": "Dokončete úkol ✓",
+      "allSubtasksDoneBody": "V úkolu „{title}“ {count, plural, one {je dokončený # dílčí úkol} few {jsou dokončené všechny # dílčí úkoly} many {je dokončeno všech # dílčího úkolu} other {je dokončeno všech # dílčích úkolů}}."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Nastavte termín pro všechny dílčí úkoly",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "Platí také pro dokončené dílčí úkoly (",
       "clearDate": "Vymazat datum",
       "cancel": "Zrušit",
-      "apply": "Použít"
+      "apply": "Použít",
+      "alsoApplyToCompletedSubtasksCount": "Použít i na dokončené dílčí úkoly ({count})",
+      "setDueDateForSubtasksIn": "Nastavit datum splatnosti u {count, plural, one {# dílčího úkolu} few {# dílčích úkolů} many {# dílčího úkolu} other {# dílčích úkolů}} v „{title}“"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Nastavte prioritu pro všechny dílčí úkoly",
       "setPriorityFor": "Nastavit prioritu pro ",
       "alsoApplyToCompletedSubtasks": "Platí také pro dokončené dílčí úkoly (",
       "cancel": "Zrušit",
-      "apply": "Použít"
+      "apply": "Použít",
+      "alsoApplyToCompletedSubtasksCount": "Použít i na dokončené dílčí úkoly ({count})",
+      "setPriorityForSubtasksIn": "Nastavit prioritu u {count, plural, one {# dílčího úkolu} few {# dílčích úkolů} many {# dílčího úkolu} other {# dílčích úkolů}} v „{title}“"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Dokončit úkol s nedokončenými dílčími úkoly?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "Smazat všechny dílčí úkoly?",
       "thisActionCannotBeUndone": "Tuto akci nelze vrátit zpět.",
       "cancel": "Zrušit",
-      "deleteAll": "Smazat vše"
+      "deleteAll": "Smazat vše",
+      "deleteSubtasksConfirmation": "Tím se z „{title}“ {count, plural, one {smaže # dílčí úkol} few {smažou # dílčí úkoly} many {smaže # dílčího úkolu} other {smaže # dílčích úkolů}}."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Smazat úkol s dílčími úkoly?",
@@ -350,7 +359,11 @@
       "createACopyOf": "Vytvořit kopii „",
       "alsoDuplicateSubtasks": "Také duplicitní dílčí úkoly (",
       "cancel": "Zrušit",
-      "duplicate": "Duplicitní "
+      "duplicate": "Duplicitní ",
+      "alsoDuplicateSubtasksCount": "Duplikovat i dílčí úkoly ({count})",
+      "createACopyOfTitle": "Vytvořit kopii „{title}“",
+      "duplicateTaskOnly": "Duplikovat úkol",
+      "duplicateWithItems": "Duplikovat ({count, plural, one {# položka} few {# položky} many {# položky} other {# položek}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Udělejte dílčí úkol z...",
@@ -871,5 +884,17 @@
     "done": "Hotovo",
     "inProgress": "Probíhá",
     "todo": "K udělání"
+  },
+  "colors": {
+    "blue": "Modrá",
+    "gray": "Šedá",
+    "green": "Zelená",
+    "indigo": "Indigová",
+    "orange": "Oranžová",
+    "pink": "Růžová",
+    "purple": "Fialová",
+    "red": "Červená",
+    "teal": "Tyrkysová",
+    "yellow": "Žlutá"
   }
 }

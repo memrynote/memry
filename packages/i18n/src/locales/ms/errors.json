@@ -57,7 +57,10 @@
     "downloadFailed": "Muat turun lampiran gagal",
     "downloadProgressFailed": "Gagal mengambil kemajuan muat turun",
     "uploadFailed": "Muat naik lampiran gagal",
-    "uploadProgressFailed": "Gagal mengambil kemajuan muat naik"
+    "uploadProgressFailed": "Gagal mengambil kemajuan muat naik",
+    "emptyFile": "Tidak dapat memuat naik fail kosong",
+    "exceedsMaxSize": "Fail terlalu besar: {size} melebihi had {limit}",
+    "exceedsPlanLimit": "Fail lebih besar daripada yang dibenarkan oleh pelan anda: {size} melebihi {limit}"
   },
   "encryption": {
     "failed": "Gagal menyulitkan data. Kunci anda mungkin perlu dijana semula.",

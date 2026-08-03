@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "Tangkap pautan",
       "captureNote": "Tangkap nota",
-      "placeholder": "Tangkapan pantas — tampal pautan, catat idea…"
+      "placeholder": "Tangkapan pantas — tampal pautan, catat idea…",
+      "duplicateNotice": "Sudah ditangkap: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Pilih folder",
@@ -459,7 +460,8 @@
       "dismissError": "Tolak ralat",
       "alreadyCaptured": "Sudah ditangkap",
       "captureAnyway": "Tangkap Bagaimanapun",
-      "close": "tutup"
+      "close": "tutup",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Jatuhkan untuk menangkap",

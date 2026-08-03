@@ -69,7 +69,9 @@
       "noDueDate": "Son Tarih Yok",
       "overdue": "Vadesi Geçmiş",
       "repeating": "Tekrarlayan"
-    }
+    },
+    "repeatTypeOneTime": "Tek seferlik",
+    "repeatTypeRepeating": "Tekrarlayan"
   },
   "quickAdd": {
     "label": "Hızlı ekleme görevi",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Görev silinsin mi?",
-      "deleteTask2": "Görevi Sil"
+      "deleteTask2": "Görevi Sil",
+      "deleteConfirmBody": "“{title}” kalıcı olarak silinecek. Bu eylem geri alınamaz."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Tüm alt görevler tamamlandı!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Ana görevi de tamamlandı olarak işaretlemek ister misiniz?",
       "keepTaskOpen": "Görevi açık tut",
-      "completeTask": "Görevi tamamla ✓"
+      "completeTask": "Görevi tamamla ✓",
+      "allSubtasksDoneBody": "“{title}” görevinin {count, plural, one {tek alt görevi} other {# alt görevinin tümü}} tamamlandı."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Tüm alt görevler için bitiş tarihini ayarlayın",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "Ayrıca tamamlanan alt görevlere de uygula (",
       "clearDate": "Tarihi temizle",
       "cancel": "İptal",
-      "apply": "Uygula"
+      "apply": "Uygula",
+      "alsoApplyToCompletedSubtasksCount": "Tamamlanan alt görevlere de uygula ({count})",
+      "setDueDateForSubtasksIn": "“{title}” görevindeki {count, plural, one {# alt görev} other {# alt görev}} için son tarihi ayarlayın"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Tüm alt görevler için önceliği ayarlayın",
       "setPriorityFor": "Şunun için öncelik ayarla: ",
       "alsoApplyToCompletedSubtasks": "Ayrıca tamamlanan alt görevlere de uygula (",
       "cancel": "İptal",
-      "apply": "Uygula"
+      "apply": "Uygula",
+      "alsoApplyToCompletedSubtasksCount": "Tamamlanan alt görevlere de uygula ({count})",
+      "setPriorityForSubtasksIn": "“{title}” görevindeki {count, plural, one {# alt görev} other {# alt görev}} için önceliği ayarlayın"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Tamamlanmamış alt görevlerle görev tamamlansın mı?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "Tüm alt görevler silinsin mi?",
       "thisActionCannotBeUndone": "Bu eylem geri alınamaz.",
       "cancel": "İptal",
-      "deleteAll": "Tümünü Sil"
+      "deleteAll": "Tümünü Sil",
+      "deleteSubtasksConfirmation": "Bu işlem, “{title}” görevindeki {count, plural, one {# alt görevi} other {# alt görevi}} silecek."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Alt görevleri içeren görev silinsin mi?",
@@ -350,7 +359,11 @@
       "createACopyOf": "Şunun bir kopyasını oluştur: “",
       "alsoDuplicateSubtasks": "Ayrıca alt görevleri çoğaltın (",
       "cancel": "İptal",
-      "duplicate": "Çoğalt "
+      "duplicate": "Çoğalt ",
+      "alsoDuplicateSubtasksCount": "Alt görevleri de çoğalt ({count})",
+      "createACopyOfTitle": "“{title}” görevinin bir kopyasını oluşturun",
+      "duplicateTaskOnly": "Görevi çoğalt",
+      "duplicateWithItems": "Çoğalt ({count, plural, one {# öğe} other {# öğe}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Alt görevi yap...",
@@ -871,5 +884,17 @@
     "done": "Tamamlandı",
     "inProgress": "Devam Ediyor",
     "todo": "Yapılacak"
+  },
+  "colors": {
+    "blue": "Mavi",
+    "gray": "Gri",
+    "green": "Yeşil",
+    "indigo": "Çivit mavisi",
+    "orange": "Turuncu",
+    "pink": "Pembe",
+    "purple": "Mor",
+    "red": "Kırmızı",
+    "teal": "Turkuaz",
+    "yellow": "Sarı"
   }
 }

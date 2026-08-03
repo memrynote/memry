@@ -368,7 +368,8 @@
       "delete2": "Видалити",
       "columnBorders": "Межі стовпців",
       "display": "Відображення",
-      "showSummaries": "Показувати підсумки"
+      "showSummaries": "Показувати підсумки",
+      "deleteFormulaBody": "Ви впевнені, що хочете видалити формулу «{name}»? Цю дію неможливо скасувати."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Фільтр",
@@ -422,7 +423,8 @@
       "usingNote": "Використовуючи нотатку: \"",
       "cancel": "Скасувати",
       "namePlaceholder": "days_until_due",
-      "expressionPlaceholder": "dateDiff(due_date, today(), «days»)"
+      "expressionPlaceholder": "dateDiff(due_date, today(), «days»)",
+      "usingNoteTitle": "Використовується нотатка: «{title}»"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Чітке групування",
@@ -450,7 +452,10 @@
       "allFolders": "УСІ ПАПКИ",
       "noFoldersMatch": "Немає відповідних папок",
       "create": "Створити ",
-      "cancel": "Скасувати"
+      "cancel": "Скасувати",
+      "createFolderNamed": "Створити «{name}»",
+      "currentFolderBadge": "(поточна)",
+      "noFoldersMatchQuery": "Немає папок, що відповідають «{query}»"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Видалити ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (двічі клацніть, щоб редагувати)"
+      "doubleClickToEdit": "{name} (двічі клацніть, щоб редагувати)",
+      "dragToReorder": "Перетягніть, щоб змінити порядок стовпця: {name}"
     },
     "columns": {
       "created": "Створено",

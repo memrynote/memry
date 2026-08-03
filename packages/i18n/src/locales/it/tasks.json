@@ -69,7 +69,9 @@
       "noDueDate": "Senza data di scadenza",
       "overdue": "In ritardo",
       "repeating": "Ricorrenti"
-    }
+    },
+    "repeatTypeOneTime": "Una tantum",
+    "repeatTypeRepeating": "Ricorrente"
   },
   "quickAdd": {
     "label": "Attività di aggiunta rapida",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Eliminare l'attività?",
-      "deleteTask2": "Elimina attività"
+      "deleteTask2": "Elimina attività",
+      "deleteConfirmBody": "L'attività “{title}” verrà eliminata definitivamente. Questa azione non può essere annullata."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Tutte le attività secondarie sono state completate!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Desideri contrassegnare anche l'attività principale come completata?",
       "keepTaskOpen": "Mantieni l'attività aperta",
-      "completeTask": "Completa l'attività ✓"
+      "completeTask": "Completa l'attività ✓",
+      "allSubtasksDoneBody": "{count, plural, one {L'unica attività secondaria di “{title}” è completata.} many {Tutte le # attività secondarie di “{title}” sono completate.} other {Tutte le # attività secondarie di “{title}” sono completate.}}"
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Imposta la data di scadenza per tutte le attività secondarie",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "Si applica anche alle attività secondarie completate (",
       "clearDate": "Data chiara",
       "cancel": "Annulla",
-      "apply": "Applicare"
+      "apply": "Applicare",
+      "alsoApplyToCompletedSubtasksCount": "Applica anche alle attività secondarie completate ({count})",
+      "setDueDateForSubtasksIn": "Imposta la data di scadenza per {count, plural, one {# attività secondaria} many {# attività secondarie} other {# attività secondarie}} in “{title}”"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Imposta la priorità per tutte le attività secondarie",
       "setPriorityFor": "Imposta la priorità per ",
       "alsoApplyToCompletedSubtasks": "Si applica anche alle attività secondarie completate (",
       "cancel": "Annulla",
-      "apply": "Applicare"
+      "apply": "Applicare",
+      "alsoApplyToCompletedSubtasksCount": "Applica anche alle attività secondarie completate ({count})",
+      "setPriorityForSubtasksIn": "Imposta la priorità per {count, plural, one {# attività secondaria} many {# attività secondarie} other {# attività secondarie}} in “{title}”"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Completare l'attività con sottoattività incomplete?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "Eliminare tutte le attività secondarie?",
       "thisActionCannotBeUndone": "Questa azione non può essere annullata.",
       "cancel": "Annulla",
-      "deleteAll": "Elimina tutto"
+      "deleteAll": "Elimina tutto",
+      "deleteSubtasksConfirmation": "{count, plural, one {Verrà eliminata # attività secondaria da “{title}”.} many {Verranno eliminate # attività secondarie da “{title}”.} other {Verranno eliminate # attività secondarie da “{title}”.}}"
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Eliminare l'attività con le sottoattività?",
@@ -350,7 +359,11 @@
       "createACopyOf": "Crea una copia di \"",
       "alsoDuplicateSubtasks": "Duplica anche le attività secondarie (",
       "cancel": "Annulla",
-      "duplicate": "Duplicato "
+      "duplicate": "Duplicato ",
+      "alsoDuplicateSubtasksCount": "Duplica anche le attività secondarie ({count})",
+      "createACopyOfTitle": "Crea una copia di “{title}”",
+      "duplicateTaskOnly": "Duplica attività",
+      "duplicateWithItems": "Duplica ({count, plural, one {# elemento} many {# elementi} other {# elementi}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Crea una sottoattività di...",
@@ -871,5 +884,17 @@
     "done": "Fatto",
     "inProgress": "In corso",
     "todo": "Da fare"
+  },
+  "colors": {
+    "blue": "Blu",
+    "gray": "Grigio",
+    "green": "Verde",
+    "indigo": "Indaco",
+    "orange": "Arancione",
+    "pink": "Rosa",
+    "purple": "Viola",
+    "red": "Rosso",
+    "teal": "Verde acqua",
+    "yellow": "Giallo"
   }
 }

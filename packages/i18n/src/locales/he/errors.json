@@ -57,7 +57,10 @@
     "downloadFailed": "הורדת הקובץ המצורף נכשלה",
     "downloadProgressFailed": "אחזור התקדמות ההורדה נכשל",
     "uploadFailed": "העלאת הקובץ המצורף נכשלה",
-    "uploadProgressFailed": "אחזור התקדמות ההעלאה נכשל"
+    "uploadProgressFailed": "אחזור התקדמות ההעלאה נכשל",
+    "emptyFile": "לא ניתן להעלות קובץ ריק",
+    "exceedsMaxSize": "הקובץ גדול מדי: {size} חורג מהמגבלה של {limit}",
+    "exceedsPlanLimit": "הקובץ גדול ממה שהתוכנית שלך מתירה: {size} חורג מ-{limit}"
   },
   "encryption": {
     "failed": "הצפנת הנתונים נכשלה. ייתכן שיהיה צורך לשחזר את המפתחות שלך.",

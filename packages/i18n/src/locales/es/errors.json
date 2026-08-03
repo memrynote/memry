@@ -57,7 +57,10 @@
     "downloadFailed": "No se pudo descargar el archivo adjunto",
     "downloadProgressFailed": "No se pudo obtener el progreso de la descarga",
     "uploadFailed": "No se pudo subir el archivo adjunto",
-    "uploadProgressFailed": "No se pudo obtener el progreso de la subida"
+    "uploadProgressFailed": "No se pudo obtener el progreso de la subida",
+    "emptyFile": "No se puede subir un archivo vacío",
+    "exceedsMaxSize": "Archivo demasiado grande: {size} supera el límite de {limit}",
+    "exceedsPlanLimit": "El archivo es más grande de lo que permite su plan: {size} supera {limit}"
   },
   "encryption": {
     "failed": "No se pudieron cifrar los datos. Es posible que sea necesario regenerar sus claves.",

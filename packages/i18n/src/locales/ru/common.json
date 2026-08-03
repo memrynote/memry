@@ -203,7 +203,9 @@
       "search": "Поиск",
       "searchNotesTasksJournalInbox": "Поиск заметок, задач, журнала, почтового ящика...",
       "noResultsFor": "Нет результатов по запросу «",
-      "result": "результат"
+      "result": "результат",
+      "noResultsForQuery": "Нет результатов по запросу «{query}»",
+      "resultCount": "{count, plural, one {# результат} few {# результата} many {# результатов} other {# результата}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Ищите и нажимайте на предметы, чтобы построить свой след",
@@ -291,7 +293,8 @@
       "noteIcon": "Значок заметки"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Несохраненные изменения"
+      "unsavedChanges": "Несохраненные изменения",
+      "unsavedChangesBody": "В «{title}» есть несохраненные изменения. Что вы хотите сделать?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Новое рабочее пространство",

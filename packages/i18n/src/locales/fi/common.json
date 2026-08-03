@@ -203,7 +203,9 @@
       "search": "Etsi",
       "searchNotesTasksJournalInbox": "Hae muistiinpanoja, tehtäviä, päiväkirjaa, postilaatikkoa...",
       "noResultsFor": "Ei tuloksia haulle \"",
-      "result": "tulos"
+      "result": "tulos",
+      "noResultsForQuery": "Ei tuloksia haulle ”{query}”",
+      "resultCount": "{count, plural, one {# tulos} other {# tulosta}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Hae ja napsauta kohteita rakentaaksesi polkusi",
@@ -291,7 +293,8 @@
       "noteIcon": "Huomautus-kuvake"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Tallentamattomat muutokset"
+      "unsavedChanges": "Tallentamattomat muutokset",
+      "unsavedChangesBody": "Kohteessa ”{title}” on tallentamattomia muutoksia. Mitä haluat tehdä?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Uusi työtila",

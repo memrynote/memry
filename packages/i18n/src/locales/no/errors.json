@@ -57,7 +57,10 @@
     "downloadFailed": "Nedlasting av vedlegget mislyktes",
     "downloadProgressFailed": "Kunne ikke hente nedlastingsstatus",
     "uploadFailed": "Opplasting av vedlegget mislyktes",
-    "uploadProgressFailed": "Kunne ikke hente opplastingsstatus"
+    "uploadProgressFailed": "Kunne ikke hente opplastingsstatus",
+    "emptyFile": "Kan ikke laste opp en tom fil",
+    "exceedsMaxSize": "Filen er for stor: {size} overskrider grensen på {limit}",
+    "exceedsPlanLimit": "Filen er større enn abonnementet ditt tillater: {size} overskrider {limit}"
   },
   "encryption": {
     "failed": "Kunne ikke kryptere data. Det kan hende at nøklene dine må regenereres.",

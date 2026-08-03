@@ -69,7 +69,9 @@
       "noDueDate": "Nincs határidő",
       "overdue": "Lejárt",
       "repeating": "Ismétlődő"
-    }
+    },
+    "repeatTypeOneTime": "Egyszeri",
+    "repeatTypeRepeating": "Ismétlődő"
   },
   "quickAdd": {
     "label": "Gyors hozzáadási feladat",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Törli a feladatot?",
-      "deleteTask2": "Feladat törlése"
+      "deleteTask2": "Feladat törlése",
+      "deleteConfirmBody": "A(z) „{title}” véglegesen törlődik. Ez a művelet nem vonható vissza."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Minden részfeladat kész!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "A szülői feladatot is készként szeretné megjelölni?",
       "keepTaskOpen": "Tartsa nyitva a feladatot",
-      "completeTask": "Fejezd be a feladatot ✓"
+      "completeTask": "Fejezd be a feladatot ✓",
+      "allSubtasksDoneBody": "A(z) „{title}” {count, plural, one {# részfeladata elkészült} other {mind a(z) # részfeladata elkészült}}."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Állítsa be az összes részfeladat határidejét",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "Alkalmas az elvégzett részfeladatokra is (",
       "clearDate": "Tiszta dátum",
       "cancel": "Mégsem",
-      "apply": "Alkalmazni"
+      "apply": "Alkalmazni",
+      "alsoApplyToCompletedSubtasksCount": "Alkalmazás az elvégzett részfeladatokra is ({count})",
+      "setDueDateForSubtasksIn": "Határidő beállítása a(z) „{title}” {count, plural, one {# részfeladatához} other {# részfeladatához}}"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Állítsa be az összes részfeladat prioritását",
       "setPriorityFor": "Állítsa be a prioritást ",
       "alsoApplyToCompletedSubtasks": "Alkalmas az elvégzett részfeladatokra is (",
       "cancel": "Mégsem",
-      "apply": "Alkalmazni"
+      "apply": "Alkalmazni",
+      "alsoApplyToCompletedSubtasksCount": "Alkalmazás az elvégzett részfeladatokra is ({count})",
+      "setPriorityForSubtasksIn": "Prioritás beállítása a(z) „{title}” {count, plural, one {# részfeladatához} other {# részfeladatához}}"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Befejezett feladat hiányos részfeladatokkal?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "Törli az összes részfeladatot?",
       "thisActionCannotBeUndone": "Ez a művelet nem vonható vissza.",
       "cancel": "Mégsem",
-      "deleteAll": "Összes törlése"
+      "deleteAll": "Összes törlése",
+      "deleteSubtasksConfirmation": "Ezzel {count, plural, one {# részfeladat} other {# részfeladat}} törlődik a(z) „{title}” feladatból."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Törli a feladatot részfeladatokkal?",
@@ -350,7 +359,11 @@
       "createACopyOf": "Hozzon létre egy másolatot a \"",
       "alsoDuplicateSubtasks": "A részfeladatok megkettőzése is (",
       "cancel": "Mégsem",
-      "duplicate": "Megkettőzés "
+      "duplicate": "Megkettőzés ",
+      "alsoDuplicateSubtasksCount": "A részfeladatok másolása is ({count})",
+      "createACopyOfTitle": "Másolat készítése a(z) „{title}” feladatról",
+      "duplicateTaskOnly": "Feladat másolása",
+      "duplicateWithItems": "Másolás ({count, plural, one {# elem} other {# elem}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Készítsen részfeladatot...",
@@ -871,5 +884,17 @@
     "done": "Kész",
     "inProgress": "Folyamatban",
     "todo": "Teendő"
+  },
+  "colors": {
+    "blue": "Kék",
+    "gray": "Szürke",
+    "green": "Zöld",
+    "indigo": "Indigó",
+    "orange": "Narancssárga",
+    "pink": "Rózsaszín",
+    "purple": "Lila",
+    "red": "Piros",
+    "teal": "Kékeszöld",
+    "yellow": "Sárga"
   }
 }

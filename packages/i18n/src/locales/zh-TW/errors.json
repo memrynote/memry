@@ -57,7 +57,10 @@
     "downloadFailed": "附件下載失敗",
     "downloadProgressFailed": "取得下載進度失敗",
     "uploadFailed": "附件上傳失敗",
-    "uploadProgressFailed": "取得上傳進度失敗"
+    "uploadProgressFailed": "取得上傳進度失敗",
+    "emptyFile": "無法上傳空白檔案",
+    "exceedsMaxSize": "檔案過大：{size} 超過 {limit} 的上限",
+    "exceedsPlanLimit": "檔案超過您方案允許的大小：{size} 超過 {limit}"
   },
   "encryption": {
     "failed": "加密資料失敗。您的金鑰可能需要重新生成。",

@@ -57,7 +57,10 @@
     "downloadFailed": "附件下载失败",
     "downloadProgressFailed": "获取下载进度失败",
     "uploadFailed": "附件上传失败",
-    "uploadProgressFailed": "获取上传进度失败"
+    "uploadProgressFailed": "获取上传进度失败",
+    "emptyFile": "无法上传空文件",
+    "exceedsMaxSize": "文件太大：{size} 超过 {limit} 的上限",
+    "exceedsPlanLimit": "文件超出你的套餐允许的大小：{size} 超过 {limit}"
   },
   "encryption": {
     "failed": "数据加密失败。您的密钥可能需要重新生成。",

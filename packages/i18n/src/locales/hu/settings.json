@@ -710,7 +710,8 @@
       "removeFailed": "Nem sikerült eltávolítani az eszközt",
       "renamed": "Átnevezve \"{name}\"-re",
       "renameFailed": "Nem sikerült átnevezni az eszközt"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Új eszköz összekapcsolása",
@@ -1205,7 +1206,12 @@
       "last30Days": "Az elmúlt 30 nap",
       "loadingSyncHistory": "Szinkronizálási előzmények betöltése",
       "noSyncActivityYet": "Még nincs szinkronizálási tevékenység",
-      "loadMore": "Töltsön be többet"
+      "loadMore": "Töltsön be többet",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, hibarészletek megjelenítése",
+      "summaryFailed": "A szinkronizálás sikertelen",
+      "summaryPulled": "{count, plural, one {# elem letöltve} other {# elem letöltve}}",
+      "summaryPushed": "{count, plural, one {# elem feltöltve} other {# elem feltöltve}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Utolsó szinkronizálás ",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "A(z) „{title}” részfeladatnak nincs szülője a(z) {indent} behúzási szinten; legfelső szintre importálva",
         "unknownPriority": "Ismeretlen prioritás: {priority} → nincs",
         "unparsedDate": "Nem sikerült értelmezni a(z) „{date}” dátumot"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Az Apple Notes adatbázisának másolása…"
+      },
+      "bear": {
+        "scanning": "A Bear-export átvizsgálása…"
+      },
+      "csv": {
+        "importing": "CSV-jegyzetek importálása…"
+      },
+      "evernote": {
+        "scanning": ".enex fájlok átvizsgálása…"
+      },
+      "html": {
+        "scanning": "HTML-fájlok átvizsgálása…"
+      },
+      "importingItem": "{title} importálása",
+      "raindrop": {
+        "importing": "Raindrop-könyvjelzők importálása…"
+      },
+      "roam": {
+        "reading": "A Roam-export beolvasása…"
+      },
+      "scanningExport": "Az export átvizsgálása…",
+      "scanningFiles": "Fájlok átvizsgálása…",
+      "ticktick": {
+        "importing": "TickTick-feladatok importálása…"
+      },
+      "todoist": {
+        "importing": "Todoist-feladatok importálása…"
       }
     }
   },

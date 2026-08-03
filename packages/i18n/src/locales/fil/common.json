@@ -203,7 +203,9 @@
       "search": "Maghanap",
       "searchNotesTasksJournalInbox": "Maghanap ng mga tala, gawain, journal, inbox...",
       "noResultsFor": "Walang mga resulta para sa \"",
-      "result": "resulta"
+      "result": "resulta",
+      "noResultsForQuery": "Walang resulta para sa “{query}”",
+      "resultCount": "{count, plural, one {# resulta} other {# resulta}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Maghanap at mag-click ng mga item para buuin ang iyong trail",
@@ -291,7 +293,8 @@
       "noteIcon": "Icon ng tala"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Mga Hindi Na-save na Pagbabago"
+      "unsavedChanges": "Mga Hindi Na-save na Pagbabago",
+      "unsavedChangesBody": "May mga hindi na-save na pagbabago ang \"{title}\". Ano ang gusto mong gawin?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Bagong workspace",

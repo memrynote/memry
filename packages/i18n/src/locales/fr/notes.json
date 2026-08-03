@@ -368,7 +368,8 @@
       "delete2": "Supprimer",
       "columnBorders": "Bordures de colonne",
       "display": "Affichage",
-      "showSummaries": "Afficher les résumés"
+      "showSummaries": "Afficher les résumés",
+      "deleteFormulaBody": "Voulez-vous vraiment supprimer la formule « {name} » ? Cette action ne peut pas être annulée."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtrer",
@@ -422,7 +423,8 @@
       "usingNote": "Remarque d'utilisation : \"",
       "cancel": "Annuler",
       "namePlaceholder": "jours_jusqu'à_échéance",
-      "expressionPlaceholder": "dateDiff(due_date, aujourd'hui(), \"jours\")"
+      "expressionPlaceholder": "dateDiff(due_date, aujourd'hui(), \"jours\")",
+      "usingNoteTitle": "Note utilisée : « {title} »"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Regroupement clair",
@@ -450,7 +452,10 @@
       "allFolders": "TOUS LES DOSSIERS",
       "noFoldersMatch": "Aucun dossier ne correspond à \"",
       "create": "Créer \"",
-      "cancel": "Annuler"
+      "cancel": "Annuler",
+      "createFolderNamed": "Créer « {name} »",
+      "currentFolderBadge": "(actuel)",
+      "noFoldersMatchQuery": "Aucun dossier ne correspond à « {query} »"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Supprimer ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (double-cliquez pour modifier)"
+      "doubleClickToEdit": "{name} (double-cliquez pour modifier)",
+      "dragToReorder": "Faites glisser pour réorganiser la colonne : {name}"
     },
     "columns": {
       "created": "Créé le",

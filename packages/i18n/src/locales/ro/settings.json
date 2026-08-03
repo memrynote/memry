@@ -710,7 +710,8 @@
       "removeFailed": "Dispozitivul nu a fost eliminat",
       "renamed": "Redenumită în „{name}”",
       "renameFailed": "Nu s-a putut redenumi dispozitivul"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Conectați dispozitivul nou",
@@ -1205,7 +1206,12 @@
       "last30Days": "Ultimele 30 de zile",
       "loadingSyncHistory": "Se încarcă istoricul de sincronizare",
       "noSyncActivityYet": "Nicio activitate de sincronizare încă",
-      "loadMore": "Încărcați mai multe"
+      "loadMore": "Încărcați mai multe",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, afișați detaliile erorii",
+      "summaryFailed": "Sincronizarea a eșuat",
+      "summaryPulled": "{count, plural, one {# element primit} few {# elemente primite} other {# de elemente primite}}",
+      "summaryPushed": "{count, plural, one {# element trimis} few {# elemente trimise} other {# de elemente trimise}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Ultima sincronizare ",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "Subsarcina „{title}” nu are părinte la indentarea {indent}; a fost importată la nivelul principal",
         "unknownPriority": "Prioritate necunoscută {priority} → niciuna",
         "unparsedDate": "Data „{date}” nu a putut fi interpretată"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Se copiază baza de date Apple Notes…"
+      },
+      "bear": {
+        "scanning": "Se scanează exportul Bear…"
+      },
+      "csv": {
+        "importing": "Se importă notițele CSV…"
+      },
+      "evernote": {
+        "scanning": "Se scanează fișierele .enex…"
+      },
+      "html": {
+        "scanning": "Se scanează fișierele HTML…"
+      },
+      "importingItem": "Se importă {title}",
+      "raindrop": {
+        "importing": "Se importă marcajele Raindrop…"
+      },
+      "roam": {
+        "reading": "Se citește exportul Roam…"
+      },
+      "scanningExport": "Se scanează exportul…",
+      "scanningFiles": "Se scanează fișierele…",
+      "ticktick": {
+        "importing": "Se importă sarcinile TickTick…"
+      },
+      "todoist": {
+        "importing": "Se importă sarcinile Todoist…"
       }
     }
   },

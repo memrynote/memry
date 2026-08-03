@@ -710,7 +710,8 @@
       "removeFailed": "Laitteen poistaminen epäonnistui",
       "renamed": "Nimetty uudelleen muotoon \"{name}\"",
       "renameFailed": "Laitteen uudelleennimeäminen epäonnistui"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Linkitä uusi laite",
@@ -1205,7 +1206,12 @@
       "last30Days": "Viimeiset 30 päivää",
       "loadingSyncHistory": "Ladataan synkronointihistoriaa",
       "noSyncActivityYet": "Ei vielä synkronointitoimintaa",
-      "loadMore": "Lataa lisää"
+      "loadMore": "Lataa lisää",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, näytä virheen tiedot",
+      "summaryFailed": "Synkronointi epäonnistui",
+      "summaryPulled": "{count, plural, one {# kohde vedetty} other {# kohdetta vedetty}}",
+      "summaryPushed": "{count, plural, one {# kohde työnnetty} other {# kohdetta työnnetty}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Viimeksi synkronoitu ",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "Osatehtävällä \"{title}\" ei ole ylätehtävää sisennystasolla {indent}; tuotiin ylimmälle tasolle",
         "unknownPriority": "Tuntematon prioriteetti {priority} → ei mitään",
         "unparsedDate": "Päivämäärää \"{date}\" ei voitu tulkita"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Kopioidaan Apple Notes -tietokantaa…"
+      },
+      "bear": {
+        "scanning": "Käydään läpi Bear-vientiä…"
+      },
+      "csv": {
+        "importing": "Tuodaan CSV-muistiinpanoja…"
+      },
+      "evernote": {
+        "scanning": "Käydään läpi .enex-tiedostoja…"
+      },
+      "html": {
+        "scanning": "Käydään läpi HTML-tiedostoja…"
+      },
+      "importingItem": "Tuodaan {title}",
+      "raindrop": {
+        "importing": "Tuodaan Raindrop-kirjanmerkkejä…"
+      },
+      "roam": {
+        "reading": "Luetaan Roam-vientiä…"
+      },
+      "scanningExport": "Käydään läpi vientiä…",
+      "scanningFiles": "Käydään läpi tiedostoja…",
+      "ticktick": {
+        "importing": "Tuodaan TickTick-tehtäviä…"
+      },
+      "todoist": {
+        "importing": "Tuodaan Todoist-tehtäviä…"
       }
     }
   },

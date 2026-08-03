@@ -710,7 +710,8 @@
       "removeFailed": "Impossibile rimuovere il dispositivo",
       "renamed": "Rinominato in \"{name}\"",
       "renameFailed": "Impossibile rinominare il dispositivo"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Collega il nuovo dispositivo",
@@ -1205,7 +1206,12 @@
       "last30Days": "Ultimi 30 giorni",
       "loadingSyncHistory": "Caricamento della cronologia di sincronizzazione",
       "noSyncActivityYet": "Nessuna attività di sincronizzazione ancora",
-      "loadMore": "Carica di più"
+      "loadMore": "Carica di più",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, mostra i dettagli dell'errore",
+      "summaryFailed": "Sincronizzazione non riuscita",
+      "summaryPulled": "{count, plural, one {# elemento ricevuto} many {# elementi ricevuti} other {# elementi ricevuti}}",
+      "summaryPushed": "{count, plural, one {# elemento inviato} many {# elementi inviati} other {# elementi inviati}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Ultima sincronizzazione ",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "L'attività secondaria \"{title}\" non ha un'attività principale al rientro {indent}; importata al livello superiore",
         "unknownPriority": "Priorità sconosciuta {priority} → nessuna",
         "unparsedDate": "Impossibile interpretare la data \"{date}\""
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Copia del database di Apple Notes…"
+      },
+      "bear": {
+        "scanning": "Scansione dell'esportazione di Bear…"
+      },
+      "csv": {
+        "importing": "Importazione delle note CSV…"
+      },
+      "evernote": {
+        "scanning": "Scansione dei file .enex…"
+      },
+      "html": {
+        "scanning": "Scansione dei file HTML…"
+      },
+      "importingItem": "Importazione di {title}",
+      "raindrop": {
+        "importing": "Importazione dei segnalibri di Raindrop…"
+      },
+      "roam": {
+        "reading": "Lettura dell'esportazione di Roam…"
+      },
+      "scanningExport": "Scansione dell'esportazione…",
+      "scanningFiles": "Scansione dei file…",
+      "ticktick": {
+        "importing": "Importazione delle attività di TickTick…"
+      },
+      "todoist": {
+        "importing": "Importazione delle attività di Todoist…"
       }
     }
   },

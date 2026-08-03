@@ -69,7 +69,9 @@
       "noDueDate": "Không Có Ngày Đến Hạn",
       "overdue": "Quá Hạn",
       "repeating": "Lặp Lại"
-    }
+    },
+    "repeatTypeOneTime": "Một lần",
+    "repeatTypeRepeating": "Lặp lại"
   },
   "quickAdd": {
     "label": "Thêm nhiệm vụ nhanh",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Xóa nhiệm vụ?",
-      "deleteTask2": "Xóa nhiệm vụ"
+      "deleteTask2": "Xóa nhiệm vụ",
+      "deleteConfirmBody": "“{title}” sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Tất cả các nhiệm vụ con đã hoàn thành!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Bạn có muốn đánh dấu nhiệm vụ chính là đã hoàn thành không?",
       "keepTaskOpen": "Giữ nhiệm vụ mở",
-      "completeTask": "Hoàn thành nhiệm vụ ✓"
+      "completeTask": "Hoàn thành nhiệm vụ ✓",
+      "allSubtasksDoneBody": "“{title}” đã hoàn thành tất cả {count, plural, other {# công việc con}}."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Đặt ngày hoàn thành cho tất cả nhiệm vụ con",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "Áp dụng cả cho các nhiệm vụ con đã hoàn thành (",
       "clearDate": "Xóa ngày",
       "cancel": "Hủy",
-      "apply": "Áp dụng"
+      "apply": "Áp dụng",
+      "alsoApplyToCompletedSubtasksCount": "Áp dụng cho cả công việc con đã hoàn thành ({count})",
+      "setDueDateForSubtasksIn": "Đặt ngày đến hạn cho {count, plural, other {# công việc con}} trong “{title}”"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Đặt mức ưu tiên cho tất cả nhiệm vụ con",
       "setPriorityFor": "Đặt mức ưu tiên cho ",
       "alsoApplyToCompletedSubtasks": "Áp dụng cả cho các nhiệm vụ con đã hoàn thành (",
       "cancel": "Hủy",
-      "apply": "Áp dụng"
+      "apply": "Áp dụng",
+      "alsoApplyToCompletedSubtasksCount": "Áp dụng cho cả công việc con đã hoàn thành ({count})",
+      "setPriorityForSubtasksIn": "Đặt mức ưu tiên cho {count, plural, other {# công việc con}} trong “{title}”"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Hoàn thành nhiệm vụ với các nhiệm vụ con chưa hoàn thành?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "Xóa tất cả các công việc phụ?",
       "thisActionCannotBeUndone": "  \nHành động này không thể hoàn tác.  ",
       "cancel": "Hủy",
-      "deleteAll": "Xóa tất cả"
+      "deleteAll": "Xóa tất cả",
+      "deleteSubtasksConfirmation": "Thao tác này sẽ xóa {count, plural, other {# công việc con}} khỏi “{title}”."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Xóa công việc có công việc phụ?",
@@ -350,7 +359,11 @@
       "createACopyOf": "Tạo một bản sao của “",
       "alsoDuplicateSubtasks": "Cũng nhân bản các công việc phụ (",
       "cancel": "Hủy",
-      "duplicate": "Nhân bản "
+      "duplicate": "Nhân bản ",
+      "alsoDuplicateSubtasksCount": "Nhân bản cả công việc con ({count})",
+      "createACopyOfTitle": "Tạo một bản sao của “{title}”",
+      "duplicateTaskOnly": "Nhân bản công việc",
+      "duplicateWithItems": "Nhân bản ({count, plural, other {# mục}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Biến thành công việc phụ của...",
@@ -871,5 +884,17 @@
     "done": "Xong",
     "inProgress": "Đang Thực hiện",
     "todo": "Cần Làm"
+  },
+  "colors": {
+    "blue": "Xanh lam",
+    "gray": "Xám",
+    "green": "Xanh lá",
+    "indigo": "Chàm",
+    "orange": "Cam",
+    "pink": "Hồng",
+    "purple": "Tím",
+    "red": "Đỏ",
+    "teal": "Xanh mòng két",
+    "yellow": "Vàng"
   }
 }

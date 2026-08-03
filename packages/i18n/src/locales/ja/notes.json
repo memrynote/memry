@@ -368,7 +368,8 @@
       "delete2": "削除",
       "columnBorders": "列の境界線",
       "display": "表示",
-      "showSummaries": "サマリーを表示"
+      "showSummaries": "サマリーを表示",
+      "deleteFormulaBody": "数式「{name}」を削除してもよろしいですか？この操作は元に戻すことができません。"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "フィルター",
@@ -422,7 +423,8 @@
       "usingNote": "メモの使用: \"",
       "cancel": "キャンセル",
       "namePlaceholder": "days_until_due",
-      "expressionPlaceholder": "dateDiff(due_date, today(), \"日\")"
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"日\")",
+      "usingNoteTitle": "使用中のメモ:「{title}」"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "明確なグループ化",
@@ -450,7 +452,10 @@
       "allFolders": "すべてのフォルダー",
       "noFoldersMatch": "一致するフォルダーはありません。」",
       "create": "「」を作成します。",
-      "cancel": "キャンセル"
+      "cancel": "キャンセル",
+      "createFolderNamed": "「{name}」を作成",
+      "currentFolderBadge": "（現在）",
+      "noFoldersMatchQuery": "「{query}」に一致するフォルダはありません"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "削除 ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name}（ダブルクリックで編集）"
+      "doubleClickToEdit": "{name}（ダブルクリックで編集）",
+      "dragToReorder": "ドラッグして列を並べ替え: {name}"
     },
     "columns": {
       "created": "作成日",

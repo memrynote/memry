@@ -203,7 +203,9 @@
       "search": "Αναζήτηση",
       "searchNotesTasksJournalInbox": "Αναζήτηση σημειώσεων, εργασιών, ημερολογίου, εισερχομένων...",
       "noResultsFor": "Δεν υπάρχουν αποτελέσματα για \"",
-      "result": "αποτέλεσμα"
+      "result": "αποτέλεσμα",
+      "noResultsForQuery": "Δεν υπάρχουν αποτελέσματα για «{query}»",
+      "resultCount": "{count, plural, one {# αποτέλεσμα} other {# αποτελέσματα}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Αναζητήστε και κάντε κλικ σε στοιχεία για να δημιουργήσετε το μονοπάτι σας",
@@ -291,7 +293,8 @@
       "noteIcon": "Σημείωση εικονίδιο"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Μη αποθηκευμένες αλλαγές"
+      "unsavedChanges": "Μη αποθηκευμένες αλλαγές",
+      "unsavedChangesBody": "Το «{title}» έχει μη αποθηκευμένες αλλαγές. Τι θέλετε να κάνετε;"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Νέος χώρος εργασίας",

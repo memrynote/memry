@@ -368,7 +368,8 @@
       "delete2": "Удалить",
       "columnBorders": "Границы столбцов",
       "display": "Отображение",
-      "showSummaries": "Показывать сводки"
+      "showSummaries": "Показывать сводки",
+      "deleteFormulaBody": "Вы уверены, что хотите удалить формулу «{name}»? Это действие нельзя отменить."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Фильтр",
@@ -422,7 +423,8 @@
       "usingNote": "Используя примечание: \"",
       "cancel": "Отмена",
       "namePlaceholder": "дней_до_даты",
-      "expressionPlaceholder": "dateDiff(due_date, Today(), \"дни\")"
+      "expressionPlaceholder": "dateDiff(due_date, Today(), \"дни\")",
+      "usingNoteTitle": "Используется заметка: «{title}»"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Очистить группировку",
@@ -450,7 +452,10 @@
       "allFolders": "ВСЕ ПАПКИ",
       "noFoldersMatch": "Ни одна папка не соответствует \"",
       "create": "Создать \"",
-      "cancel": "Отмена"
+      "cancel": "Отмена",
+      "createFolderNamed": "Создать «{name}»",
+      "currentFolderBadge": "(текущая)",
+      "noFoldersMatchQuery": "Нет папок, соответствующих запросу «{query}»"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Удалить ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (двойной щелчок для редактирования)"
+      "doubleClickToEdit": "{name} (двойной щелчок для редактирования)",
+      "dragToReorder": "Перетащите, чтобы изменить порядок столбцов: {name}"
     },
     "columns": {
       "created": "Создано",

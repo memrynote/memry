@@ -57,7 +57,10 @@
     "downloadFailed": "A melléklet letöltése nem sikerült",
     "downloadProgressFailed": "Nem sikerült lekérni a letöltés állapotát",
     "uploadFailed": "A melléklet feltöltése nem sikerült",
-    "uploadProgressFailed": "Nem sikerült lekérni a feltöltés állapotát"
+    "uploadProgressFailed": "Nem sikerült lekérni a feltöltés állapotát",
+    "emptyFile": "Üres fájl nem tölthető fel",
+    "exceedsMaxSize": "A fájl túl nagy: {size} meghaladja a(z) {limit} korlátot",
+    "exceedsPlanLimit": "A fájl nagyobb, mint amit a csomagja megenged: {size} meghaladja a(z) {limit} méretet"
   },
   "encryption": {
     "failed": "Nem sikerült titkosítani az adatokat. Lehet, hogy a kulcsokat újra kell generálni.",

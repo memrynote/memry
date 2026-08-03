@@ -710,7 +710,8 @@
       "removeFailed": "فشل في إزالة الجهاز",
       "renamed": "تمت إعادة تسميته إلى \"{name}\"",
       "renameFailed": "فشلت إعادة تسمية الجهاز"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "ربط الجهاز الجديد",
@@ -1205,7 +1206,12 @@
       "last30Days": "آخر 30 يومًا",
       "loadingSyncHistory": "جارٍ تحميل سجل المزامنة",
       "noSyncActivityYet": "لا يوجد نشاط مزامنة حتى الآن",
-      "loadMore": "تحميل المزيد"
+      "loadMore": "تحميل المزيد",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}، إظهار تفاصيل الخطأ",
+      "summaryFailed": "فشلت المزامنة",
+      "summaryPulled": "{count, plural, zero {لم يُسحب أي عنصر} one {تم سحب عنصر واحد} two {تم سحب عنصرين} few {تم سحب # عناصر} many {تم سحب # عنصرًا} other {تم سحب # عنصر}}",
+      "summaryPushed": "{count, plural, zero {لم يُرفع أي عنصر} one {تم رفع عنصر واحد} two {تم رفع عنصرين} few {تم رفع # عناصر} many {تم رفع # عنصرًا} other {تم رفع # عنصر}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "آخر مزامنة ",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "المهمة الفرعية \"{title}\" ليس لها مهمة أصل عند المستوى {indent}؛ تم استيرادها في المستوى الأعلى",
         "unknownPriority": "أولوية غير معروفة {priority} ← بلا",
         "unparsedDate": "تعذّر تحليل التاريخ \"{date}\""
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "جارٍ نسخ قاعدة بيانات Apple Notes…"
+      },
+      "bear": {
+        "scanning": "جارٍ فحص تصدير Bear…"
+      },
+      "csv": {
+        "importing": "جارٍ استيراد ملاحظات CSV…"
+      },
+      "evernote": {
+        "scanning": "جارٍ فحص ملفات .enex…"
+      },
+      "html": {
+        "scanning": "جارٍ فحص ملفات HTML…"
+      },
+      "importingItem": "جارٍ استيراد {title}",
+      "raindrop": {
+        "importing": "جارٍ استيراد إشارات Raindrop المرجعية…"
+      },
+      "roam": {
+        "reading": "جارٍ قراءة تصدير Roam…"
+      },
+      "scanningExport": "جارٍ فحص التصدير…",
+      "scanningFiles": "جارٍ فحص الملفات…",
+      "ticktick": {
+        "importing": "جارٍ استيراد مهام TickTick…"
+      },
+      "todoist": {
+        "importing": "جارٍ استيراد مهام Todoist…"
       }
     }
   },

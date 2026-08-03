@@ -368,7 +368,8 @@
       "delete2": "Sil",
       "columnBorders": "Sütun kenarlıkları",
       "display": "Görünüm",
-      "showSummaries": "Özetleri göster"
+      "showSummaries": "Özetleri göster",
+      "deleteFormulaBody": "“{name}” formülünü silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtre",
@@ -422,7 +423,8 @@
       "usingNote": "Not kullanılıyor: \"",
       "cancel": "İptal",
       "namePlaceholder": "Formül adı",
-      "expressionPlaceholder": "Formül ifadesi girin"
+      "expressionPlaceholder": "Formül ifadesi girin",
+      "usingNoteTitle": "Not kullanılıyor: “{title}”"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Gruplandırmayı temizle",
@@ -450,7 +452,10 @@
       "allFolders": "TÜM KLASÖRLER",
       "noFoldersMatch": "Eşleşen klasör yok \"",
       "create": "Oluştur \"",
-      "cancel": "İptal"
+      "cancel": "İptal",
+      "createFolderNamed": "“{name}” oluştur",
+      "currentFolderBadge": "(geçerli)",
+      "noFoldersMatchQuery": "“{query}” ile eşleşen klasör yok"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Sil ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (düzenlemek için çift tıklayın)"
+      "doubleClickToEdit": "{name} (düzenlemek için çift tıklayın)",
+      "dragToReorder": "Sütunu yeniden sıralamak için sürükleyin: {name}"
     },
     "columns": {
       "created": "Oluşturuldu",

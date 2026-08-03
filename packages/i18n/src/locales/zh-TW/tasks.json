@@ -69,7 +69,9 @@
       "noDueDate": "沒有到期日",
       "overdue": "已逾期",
       "repeating": "重複任務"
-    }
+    },
+    "repeatTypeOneTime": "一次性",
+    "repeatTypeRepeating": "重複"
   },
   "quickAdd": {
     "label": "快速新增任務",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "刪除任務？",
-      "deleteTask2": "刪除任務"
+      "deleteTask2": "刪除任務",
+      "deleteConfirmBody": "「{title}」將被永久刪除。此操作無法復原。"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "所有子任務已完成！",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "你也想將父任務標記為完成嗎？",
       "keepTaskOpen": "保持任務未完成",
-      "completeTask": "完成任務 ✓"
+      "completeTask": "完成任務 ✓",
+      "allSubtasksDoneBody": "「{title}」的 {count, plural, other {# 項子任務}} 已全部完成。"
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "為所有子任務設定到期日",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "也適用於已完成的子任務（",
       "clearDate": "清除日期",
       "cancel": "取消",
-      "apply": "應用"
+      "apply": "應用",
+      "alsoApplyToCompletedSubtasksCount": "也適用於已完成的子任務（{count}）",
+      "setDueDateForSubtasksIn": "為「{title}」中的 {count, plural, other {# 項子任務}} 設定截止日期"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "設定所有子任務的優先順序",
       "setPriorityFor": "設定優先順序",
       "alsoApplyToCompletedSubtasks": "也適用於已完成的子任務（",
       "cancel": "取消",
-      "apply": "應用"
+      "apply": "應用",
+      "alsoApplyToCompletedSubtasksCount": "也適用於已完成的子任務（{count}）",
+      "setPriorityForSubtasksIn": "為「{title}」中的 {count, plural, other {# 項子任務}} 設定優先順序"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "完成具有未完成子任務的任務？",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "刪除所有子任務？",
       "thisActionCannotBeUndone": "此操作無法還原。",
       "cancel": "取消",
-      "deleteAll": "全部刪除"
+      "deleteAll": "全部刪除",
+      "deleteSubtasksConfirmation": "這將從「{title}」中刪除 {count, plural, other {# 項子任務}}。"
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "刪除包含子任務的任務嗎？",
@@ -350,7 +359,11 @@
       "createACopyOf": "建立「的副本",
       "alsoDuplicateSubtasks": "也複製子任務（",
       "cancel": "取消",
-      "duplicate": "重複"
+      "duplicate": "重複",
+      "alsoDuplicateSubtasksCount": "也複製子任務（{count}）",
+      "createACopyOfTitle": "建立「{title}」的副本",
+      "duplicateTaskOnly": "複製任務",
+      "duplicateWithItems": "複製（{count, plural, other {# 個項目}}）"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "建立子任務於...",
@@ -871,5 +884,17 @@
     "done": "已完成",
     "inProgress": "進行中",
     "todo": "待辦"
+  },
+  "colors": {
+    "blue": "藍色",
+    "gray": "灰色",
+    "green": "綠色",
+    "indigo": "靛藍",
+    "orange": "橙色",
+    "pink": "粉紅色",
+    "purple": "紫色",
+    "red": "紅色",
+    "teal": "藍綠色",
+    "yellow": "黃色"
   }
 }

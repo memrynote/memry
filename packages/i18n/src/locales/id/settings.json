@@ -710,7 +710,8 @@
       "removeFailed": "Gagal menghapus perangkat",
       "renamed": "Berganti nama menjadi \"{name}\"",
       "renameFailed": "Gagal mengganti nama perangkat"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Tautkan perangkat baru",
@@ -1205,7 +1206,12 @@
       "last30Days": "30 hari terakhir",
       "loadingSyncHistory": "Memuat riwayat sinkronisasi",
       "noSyncActivityYet": "Belum ada aktivitas sinkronisasi",
-      "loadMore": "Muat lebih banyak"
+      "loadMore": "Muat lebih banyak",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, tampilkan detail kesalahan",
+      "summaryFailed": "Sinkronisasi gagal",
+      "summaryPulled": "{count, plural, other {# item ditarik}}",
+      "summaryPushed": "{count, plural, other {# item didorong}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Terakhir disinkronkan ",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "Subtugas \"{title}\" tidak memiliki induk pada indentasi {indent}; diimpor sebagai tugas tingkat atas",
         "unknownPriority": "Prioritas {priority} tidak dikenal → tidak ada",
         "unparsedDate": "Tidak dapat membaca tanggal \"{date}\""
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Menyalin basis data Apple Notes…"
+      },
+      "bear": {
+        "scanning": "Memindai ekspor Bear…"
+      },
+      "csv": {
+        "importing": "Mengimpor catatan CSV…"
+      },
+      "evernote": {
+        "scanning": "Memindai file .enex…"
+      },
+      "html": {
+        "scanning": "Memindai file HTML…"
+      },
+      "importingItem": "Mengimpor {title}",
+      "raindrop": {
+        "importing": "Mengimpor bookmark Raindrop…"
+      },
+      "roam": {
+        "reading": "Membaca ekspor Roam…"
+      },
+      "scanningExport": "Memindai ekspor…",
+      "scanningFiles": "Memindai file…",
+      "ticktick": {
+        "importing": "Mengimpor tugas TickTick…"
+      },
+      "todoist": {
+        "importing": "Mengimpor tugas Todoist…"
       }
     }
   },

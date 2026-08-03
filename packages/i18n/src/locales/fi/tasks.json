@@ -69,7 +69,9 @@
       "noDueDate": "Ei eräpäivää",
       "overdue": "Myöhässä",
       "repeating": "Toistuvat"
-    }
+    },
+    "repeatTypeOneTime": "Kertaluonteinen",
+    "repeatTypeRepeating": "Toistuva"
   },
   "quickAdd": {
     "label": "Nopea lisätehtävä",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Poistetaanko tehtävä?",
-      "deleteTask2": "Poista tehtävä"
+      "deleteTask2": "Poista tehtävä",
+      "deleteConfirmBody": "”{title}” poistetaan pysyvästi. Tätä toimintoa ei voi kumota."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Kaikki osatehtävät suoritettu!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Haluatko merkitä myös vanhemman tehtävän suoritetuksi?",
       "keepTaskOpen": "Pidä tehtävä avoinna",
-      "completeTask": "Suorita tehtävä ✓"
+      "completeTask": "Suorita tehtävä ✓",
+      "allSubtasksDoneBody": "Tehtävän ”{title}” {count, plural, one {# alitehtävä on valmis} other {kaikki # alitehtävää ovat valmiita}}."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Aseta eräpäivä kaikille alatehtäville",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "Käytä myös suoritettuja osatehtäviä (",
       "clearDate": "Selkeä päivämäärä",
       "cancel": "Peruuta",
-      "apply": "Käytä"
+      "apply": "Käytä",
+      "alsoApplyToCompletedSubtasksCount": "Koskee myös valmiita alitehtäviä ({count})",
+      "setDueDateForSubtasksIn": "Aseta eräpäivä {count, plural, one {# alitehtävälle} other {# alitehtävälle}} tehtävässä ”{title}”"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Aseta prioriteetti kaikille alitehtäville",
       "setPriorityFor": "Aseta prioriteetti kohteelle ",
       "alsoApplyToCompletedSubtasks": "Käytä myös suoritettuja osatehtäviä (",
       "cancel": "Peruuta",
-      "apply": "Käytä"
+      "apply": "Käytä",
+      "alsoApplyToCompletedSubtasksCount": "Koskee myös valmiita alitehtäviä ({count})",
+      "setPriorityForSubtasksIn": "Aseta prioriteetti {count, plural, one {# alitehtävälle} other {# alitehtävälle}} tehtävässä ”{title}”"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Täydellinen tehtävä epätäydellisillä osatehtävillä?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "Poistetaanko kaikki alitehtävät?",
       "thisActionCannotBeUndone": "Tätä toimintoa ei voi kumota.",
       "cancel": "Peruuta",
-      "deleteAll": "Poista kaikki"
+      "deleteAll": "Poista kaikki",
+      "deleteSubtasksConfirmation": "Tämä poistaa tehtävästä ”{title}” {count, plural, one {# alitehtävän} other {# alitehtävää}}."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Poistetaanko tehtävä alitehtävineen?",
@@ -350,7 +359,11 @@
       "createACopyOf": "Luo kopio \"",
       "alsoDuplicateSubtasks": "Myös päällekkäisiä alitehtäviä (",
       "cancel": "Peruuta",
-      "duplicate": "Kopioi "
+      "duplicate": "Kopioi ",
+      "alsoDuplicateSubtasksCount": "Kopioi myös alitehtävät ({count})",
+      "createACopyOfTitle": "Luo kopio tehtävästä ”{title}”",
+      "duplicateTaskOnly": "Kopioi tehtävä",
+      "duplicateWithItems": "Kopioi ({count, plural, one {# kohde} other {# kohdetta}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Tee alatehtävä...",
@@ -871,5 +884,17 @@
     "done": "Valmis",
     "inProgress": "Kesken",
     "todo": "Tekemättä"
+  },
+  "colors": {
+    "blue": "Sininen",
+    "gray": "Harmaa",
+    "green": "Vihreä",
+    "indigo": "Indigonsininen",
+    "orange": "Oranssi",
+    "pink": "Vaaleanpunainen",
+    "purple": "Violetti",
+    "red": "Punainen",
+    "teal": "Sinivihreä",
+    "yellow": "Keltainen"
   }
 }

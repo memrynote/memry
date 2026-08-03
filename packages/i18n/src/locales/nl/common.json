@@ -203,7 +203,9 @@
       "search": "Zoeken",
       "searchNotesTasksJournalInbox": "Zoek naar notities, taken, dagboek, inbox...",
       "noResultsFor": "Geen resultaat voor “",
-      "result": "resultaat"
+      "result": "resultaat",
+      "noResultsForQuery": "Geen resultaten voor “{query}”",
+      "resultCount": "{count, plural, one {# resultaat} other {# resultaten}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Zoek en klik op items om je parcours te bouwen",
@@ -291,7 +293,8 @@
       "noteIcon": "Notitiepictogram"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Niet-opgeslagen wijzigingen"
+      "unsavedChanges": "Niet-opgeslagen wijzigingen",
+      "unsavedChangesBody": "“{title}” heeft niet-opgeslagen wijzigingen. Wat wil je doen?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Nieuwe werkruimte",

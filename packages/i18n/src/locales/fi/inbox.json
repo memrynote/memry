@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "Tallenna linkki",
       "captureNote": "Tallenna muistiinpano",
-      "placeholder": "Pikatallennus — liitä linkki tai kirjaa ajatus…"
+      "placeholder": "Pikatallennus — liitä linkki tai kirjaa ajatus…",
+      "duplicateNotice": "Jo tallennettu: ”{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Valitse kansio",
@@ -459,7 +460,8 @@
       "dismissError": "Hylkää virhe",
       "alreadyCaptured": "Jo vangittu",
       "captureAnyway": "Kaappaa joka tapauksessa",
-      "close": "Sulje"
+      "close": "Sulje",
+      "duplicateMeta": "”{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Kuvaa pudottamalla",

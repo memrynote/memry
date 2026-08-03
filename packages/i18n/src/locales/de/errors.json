@@ -57,7 +57,10 @@
     "downloadFailed": "Der Anhang konnte nicht heruntergeladen werden",
     "downloadProgressFailed": "Der Downloadfortschritt konnte nicht abgerufen werden",
     "uploadFailed": "Der Anhang konnte nicht hochgeladen werden",
-    "uploadProgressFailed": "Der Uploadfortschritt konnte nicht abgerufen werden"
+    "uploadProgressFailed": "Der Uploadfortschritt konnte nicht abgerufen werden",
+    "emptyFile": "Leere Dateien können nicht hochgeladen werden",
+    "exceedsMaxSize": "Datei zu groß: {size} überschreitet das Limit von {limit}",
+    "exceedsPlanLimit": "Datei ist größer, als Ihr Tarif erlaubt: {size} überschreitet {limit}"
   },
   "encryption": {
     "failed": "Daten konnten nicht verschlüsselt werden. Möglicherweise müssen Ihre Schlüssel neu generiert werden.",

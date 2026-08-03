@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "Link rögzítése",
       "captureNote": "Jegyzet rögzítése",
-      "placeholder": "Gyors rögzítés — illessz be egy linket, jegyezz fel egy gondolatot…"
+      "placeholder": "Gyors rögzítés — illessz be egy linket, jegyezz fel egy gondolatot…",
+      "duplicateNotice": "Már rögzítve: „{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Válasszon mappát",
@@ -459,7 +460,8 @@
       "dismissError": "Elvetési hiba",
       "alreadyCaptured": "Már elfogták",
       "captureAnyway": "Mindenképpen rögzítse",
-      "close": "Bezárás"
+      "close": "Bezárás",
+      "duplicateMeta": "„{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Emelje le a rögzítéshez",

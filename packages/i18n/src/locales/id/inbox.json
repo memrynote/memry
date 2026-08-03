@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "Tangkap tautan",
       "captureNote": "Tangkap catatan",
-      "placeholder": "Tangkap cepat — tempel tautan, catat ide…"
+      "placeholder": "Tangkap cepat — tempel tautan, catat ide…",
+      "duplicateNotice": "Sudah ditangkap: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Pilih map",
@@ -459,7 +460,8 @@
       "dismissError": "Singkirkan kesalahan",
       "alreadyCaptured": "Sudah ditangkap",
       "captureAnyway": "Tangkap Pokoknya",
-      "close": "Tutup"
+      "close": "Tutup",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Jatuhkan untuk menangkap",

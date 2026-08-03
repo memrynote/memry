@@ -203,7 +203,9 @@
       "search": "Caută",
       "searchNotesTasksJournalInbox": "Căutați note, sarcini, jurnal, inbox...",
       "noResultsFor": "Nu există rezultate pentru „",
-      "result": "rezultat"
+      "result": "rezultat",
+      "noResultsForQuery": "Niciun rezultat pentru „{query}”",
+      "resultCount": "{count, plural, one {# rezultat} few {# rezultate} other {# de rezultate}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Căutați și faceți clic pe elemente pentru a vă construi traseul",
@@ -291,7 +293,8 @@
       "noteIcon": "Pictograma notă"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Modificări nesalvate"
+      "unsavedChanges": "Modificări nesalvate",
+      "unsavedChangesBody": "„{title}” are modificări nesalvate. Ce doriți să faceți?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Nou spațiu de lucru",

@@ -69,7 +69,9 @@
       "noDueDate": "Χωρίς ημερομηνία λήξης",
       "overdue": "Εκπρόθεσμα",
       "repeating": "Επαναλαμβανόμενα"
-    }
+    },
+    "repeatTypeOneTime": "Μία φορά",
+    "repeatTypeRepeating": "Επαναλαμβανόμενη"
   },
   "quickAdd": {
     "label": "Γρήγορη προσθήκη εργασίας",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Διαγραφή εργασίας;",
-      "deleteTask2": "Διαγραφή Εργασίας"
+      "deleteTask2": "Διαγραφή Εργασίας",
+      "deleteConfirmBody": "Το «{title}» θα διαγραφεί οριστικά. Αυτή η ενέργεια δεν μπορεί να αναιρεθεί."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Όλες οι δευτερεύουσες εργασίες ολοκληρώθηκαν!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Θέλετε να επισημάνετε και τη γονική εργασία ως ολοκληρωμένη;",
       "keepTaskOpen": "Κρατήστε την εργασία ανοιχτή",
-      "completeTask": "Ολοκληρώστε την εργασία ✓"
+      "completeTask": "Ολοκληρώστε την εργασία ✓",
+      "allSubtasksDoneBody": "{count, plural, one {Η μοναδική δευτερεύουσα εργασία του «{title}» ολοκληρώθηκε.} other {Και οι # δευτερεύουσες εργασίες του «{title}» ολοκληρώθηκαν.}}"
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Ορίστε ημερομηνία λήξης για όλες τις δευτερεύουσες εργασίες",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "Εφαρμόστε επίσης σε ολοκληρωμένες δευτερεύουσες εργασίες (",
       "clearDate": "Καθαρή ημερομηνία",
       "cancel": "Ακύρωση",
-      "apply": "Εφαρμογή"
+      "apply": "Εφαρμογή",
+      "alsoApplyToCompletedSubtasksCount": "Εφαρμογή και στις ολοκληρωμένες δευτερεύουσες εργασίες ({count})",
+      "setDueDateForSubtasksIn": "Ορισμός ημερομηνίας λήξης για {count, plural, one {# δευτερεύουσα εργασία} other {# δευτερεύουσες εργασίες}} στο «{title}»"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Ορίστε προτεραιότητα για όλες τις δευτερεύουσες εργασίες",
       "setPriorityFor": "Ορίστε προτεραιότητα για ",
       "alsoApplyToCompletedSubtasks": "Εφαρμόστε επίσης σε ολοκληρωμένες δευτερεύουσες εργασίες (",
       "cancel": "Ακύρωση",
-      "apply": "Εφαρμογή"
+      "apply": "Εφαρμογή",
+      "alsoApplyToCompletedSubtasksCount": "Εφαρμογή και στις ολοκληρωμένες δευτερεύουσες εργασίες ({count})",
+      "setPriorityForSubtasksIn": "Ορισμός προτεραιότητας για {count, plural, one {# δευτερεύουσα εργασία} other {# δευτερεύουσες εργασίες}} στο «{title}»"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Ολοκληρωμένη εργασία με ημιτελείς δευτερεύουσες εργασίες;",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "Διαγραφή όλων των δευτερευουσών εργασιών;",
       "thisActionCannotBeUndone": "Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.",
       "cancel": "Ακύρωση",
-      "deleteAll": "Διαγραφή όλων"
+      "deleteAll": "Διαγραφή όλων",
+      "deleteSubtasksConfirmation": "{count, plural, one {Θα διαγραφεί # δευτερεύουσα εργασία από το «{title}».} other {Θα διαγραφούν # δευτερεύουσες εργασίες από το «{title}».}}"
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Διαγραφή εργασίας με δευτερεύουσες εργασίες;",
@@ -350,7 +359,11 @@
       "createACopyOf": "Δημιουργήστε ένα αντίγραφο του \"",
       "alsoDuplicateSubtasks": "Επίσης διπλότυπες δευτερεύουσες εργασίες (",
       "cancel": "Ακύρωση",
-      "duplicate": "Διπλότυπο "
+      "duplicate": "Διπλότυπο ",
+      "alsoDuplicateSubtasksCount": "Αντιγραφή και των δευτερευουσών εργασιών ({count})",
+      "createACopyOfTitle": "Δημιουργία αντιγράφου του «{title}»",
+      "duplicateTaskOnly": "Αντιγραφή εργασίας",
+      "duplicateWithItems": "Αντιγραφή ({count, plural, one {# στοιχείο} other {# στοιχεία}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Κάντε υποεργασία του...",
@@ -871,5 +884,17 @@
     "done": "Ολοκληρώθηκε",
     "inProgress": "Σε εξέλιξη",
     "todo": "Προς εκτέλεση"
+  },
+  "colors": {
+    "blue": "Μπλε",
+    "gray": "Γκρι",
+    "green": "Πράσινο",
+    "indigo": "Λουλακί",
+    "orange": "Πορτοκαλί",
+    "pink": "Ροζ",
+    "purple": "Μοβ",
+    "red": "Κόκκινο",
+    "teal": "Γαλαζοπράσινο",
+    "yellow": "Κίτρινο"
   }
 }

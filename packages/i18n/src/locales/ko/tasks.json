@@ -69,7 +69,9 @@
       "noDueDate": "마감일 없음",
       "overdue": "기한 지남",
       "repeating": "반복"
-    }
+    },
+    "repeatTypeOneTime": "일회성",
+    "repeatTypeRepeating": "반복"
   },
   "quickAdd": {
     "label": "빠른 추가 작업",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "할 일을 삭제하시겠습니까?",
-      "deleteTask2": "작업 삭제"
+      "deleteTask2": "작업 삭제",
+      "deleteConfirmBody": "“{title}”이(가) 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "모든 하위 작업이 완료되었습니다!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "상위 작업도 완료로 표시하시겠습니까?",
       "keepTaskOpen": "할 일을 열어두세요",
-      "completeTask": "작업 완료 ✓"
+      "completeTask": "작업 완료 ✓",
+      "allSubtasksDoneBody": "“{title}”의 {count, plural, other {하위 작업 #개}}를 모두 완료했습니다."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "모든 하위 작업의 마감일 설정",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "완료된 하위 작업에도 적용됩니다(",
       "clearDate": "날짜 지우기",
       "cancel": "취소",
-      "apply": "적용"
+      "apply": "적용",
+      "alsoApplyToCompletedSubtasksCount": "완료된 하위 작업에도 적용 ({count})",
+      "setDueDateForSubtasksIn": "“{title}”의 {count, plural, other {하위 작업 #개}}에 마감일 설정"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "모든 하위 작업의 우선순위 설정",
       "setPriorityFor": "우선순위 설정 ",
       "alsoApplyToCompletedSubtasks": "완료된 하위 작업에도 적용됩니다(",
       "cancel": "취소",
-      "apply": "적용"
+      "apply": "적용",
+      "alsoApplyToCompletedSubtasksCount": "완료된 하위 작업에도 적용 ({count})",
+      "setPriorityForSubtasksIn": "“{title}”의 {count, plural, other {하위 작업 #개}}에 우선순위 설정"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "완료되지 않은 하위 작업이 있는 작업을 완료하시겠습니까?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "모든 하위 할 일을 삭제하시겠습니까?",
       "thisActionCannotBeUndone": "이 작업은 취소할 수 없습니다.",
       "cancel": "취소",
-      "deleteAll": "모두 삭제"
+      "deleteAll": "모두 삭제",
+      "deleteSubtasksConfirmation": "“{title}”에서 {count, plural, other {하위 작업 #개}}를 삭제합니다."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "하위 할 일이 있는 할 일을 삭제하시겠습니까?",
@@ -350,7 +359,11 @@
       "createACopyOf": "\"의 사본을 작성하십시오.",
       "alsoDuplicateSubtasks": "하위 작업도 중복됩니다(",
       "cancel": "취소",
-      "duplicate": "중복 "
+      "duplicate": "중복 ",
+      "alsoDuplicateSubtasksCount": "하위 작업도 함께 복제 ({count})",
+      "createACopyOfTitle": "“{title}”의 사본을 만듭니다",
+      "duplicateTaskOnly": "작업만 복제",
+      "duplicateWithItems": "복제 ({count, plural, other {항목 #개}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "하위 할 일 만들기...",
@@ -871,5 +884,17 @@
     "done": "완료",
     "inProgress": "진행 중",
     "todo": "할 일"
+  },
+  "colors": {
+    "blue": "파랑",
+    "gray": "회색",
+    "green": "초록",
+    "indigo": "남색",
+    "orange": "주황",
+    "pink": "분홍",
+    "purple": "보라",
+    "red": "빨강",
+    "teal": "청록",
+    "yellow": "노랑"
   }
 }

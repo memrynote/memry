@@ -69,7 +69,9 @@
       "noDueDate": "Walang Takdang Petsa",
       "overdue": "Lampas na sa Takda",
       "repeating": "Umuulit"
-    }
+    },
+    "repeatTypeOneTime": "Isang beses",
+    "repeatTypeRepeating": "Paulit-ulit"
   },
   "quickAdd": {
     "label": "Mabilis na magdagdag ng gawain",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Tanggalin ang gawain?",
-      "deleteTask2": "Tanggalin ang Gawain"
+      "deleteTask2": "Tanggalin ang Gawain",
+      "deleteConfirmBody": "Permanenteng tatanggalin ang “{title}”. Hindi na ito maaaring bawiin."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Kumpleto na ang lahat ng subtasks!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Gusto mo bang markahan ang gawain ng magulang bilang kumpleto na rin?",
       "keepTaskOpen": "Panatilihing bukas ang gawain",
-      "completeTask": "Kumpletuhin ang gawain ✓"
+      "completeTask": "Kumpletuhin ang gawain ✓",
+      "allSubtasksDoneBody": "Tapos na ang lahat ng {count, plural, one {# subtask} other {# subtask}} sa “{title}”."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Itakda ang takdang petsa para sa lahat ng mga subtask",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "Ilapat din sa mga nakumpletong subtask (",
       "clearDate": "I-clear ang petsa",
       "cancel": "Kanselahin",
-      "apply": "Mag-apply"
+      "apply": "Mag-apply",
+      "alsoApplyToCompletedSubtasksCount": "Ilapat din sa mga nakumpletong subtask ({count})",
+      "setDueDateForSubtasksIn": "Itakda ang takdang petsa para sa {count, plural, one {# subtask} other {# subtask}} sa “{title}”"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Magtakda ng priyoridad para sa lahat ng mga subtask",
       "setPriorityFor": "Magtakda ng priyoridad para sa ",
       "alsoApplyToCompletedSubtasks": "Ilapat din sa mga nakumpletong subtask (",
       "cancel": "Kanselahin",
-      "apply": "Mag-apply"
+      "apply": "Mag-apply",
+      "alsoApplyToCompletedSubtasksCount": "Ilapat din sa mga nakumpletong subtask ({count})",
+      "setPriorityForSubtasksIn": "Magtakda ng priyoridad para sa {count, plural, one {# subtask} other {# subtask}} sa “{title}”"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Kumpletuhin ang gawain na may hindi kumpletong mga subtask?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "I-delete ang lahat ng subtasks?",
       "thisActionCannotBeUndone": "Ang pagkilos na ito ay hindi maaaring i-undo.",
       "cancel": "Kanselahin",
-      "deleteAll": "Tanggalin Lahat"
+      "deleteAll": "Tanggalin Lahat",
+      "deleteSubtasksConfirmation": "Tatanggalin nito ang {count, plural, one {# subtask} other {# subtask}} mula sa “{title}”."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Tanggalin ang gawain na may mga subtask?",
@@ -350,7 +359,11 @@
       "createACopyOf": "Gumawa ng kopya ng “",
       "alsoDuplicateSubtasks": "Doblehin din ang mga subtask (",
       "cancel": "Kanselahin",
-      "duplicate": "I-duplicate "
+      "duplicate": "I-duplicate ",
+      "alsoDuplicateSubtasksCount": "Doblehin din ang mga subtask ({count})",
+      "createACopyOfTitle": "Gumawa ng kopya ng “{title}”",
+      "duplicateTaskOnly": "I-duplicate ang gawain",
+      "duplicateWithItems": "I-duplicate ({count, plural, one {# item} other {# item}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Gumawa ng subtask ng...",
@@ -871,5 +884,17 @@
     "done": "Tapos",
     "inProgress": "Isinasagawa",
     "todo": "Gagawin"
+  },
+  "colors": {
+    "blue": "Asul",
+    "gray": "Kulay-abo",
+    "green": "Berde",
+    "indigo": "Indigo",
+    "orange": "Kahel",
+    "pink": "Rosas",
+    "purple": "Lila",
+    "red": "Pula",
+    "teal": "Teal",
+    "yellow": "Dilaw"
   }
 }

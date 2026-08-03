@@ -368,7 +368,8 @@
       "delete2": "Ștergeți",
       "columnBorders": "Margini de coloană",
       "display": "Afișare",
-      "showSummaries": "Arată rezumatele"
+      "showSummaries": "Arată rezumatele",
+      "deleteFormulaBody": "Sigur doriți să ștergeți formula „{name}”? Această acțiune nu poate fi anulată."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtru",
@@ -422,7 +423,8 @@
       "usingNote": "Folosind nota: \"",
       "cancel": "Anulează",
       "namePlaceholder": "zile_până_la_scadenţă",
-      "expressionPlaceholder": "dateDiff(due_date, today(), „zile”)"
+      "expressionPlaceholder": "dateDiff(due_date, today(), „zile”)",
+      "usingNoteTitle": "Se folosește nota: „{title}”"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Ștergeți gruparea",
@@ -450,7 +452,10 @@
       "allFolders": "TOATE DOSARELE",
       "noFoldersMatch": "Niciun folder nu se potrivește cu \"",
       "create": "Creați \"",
-      "cancel": "Anulează"
+      "cancel": "Anulează",
+      "createFolderNamed": "Creați „{name}”",
+      "currentFolderBadge": "(curent)",
+      "noFoldersMatchQuery": "Niciun dosar nu se potrivește cu „{query}”"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Ștergeți ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (dublu clic pentru a edita)"
+      "doubleClickToEdit": "{name} (dublu clic pentru a edita)",
+      "dragToReorder": "Trageți pentru a reordona coloana: {name}"
     },
     "columns": {
       "created": "Creat",

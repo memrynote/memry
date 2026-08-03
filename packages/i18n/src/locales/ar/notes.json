@@ -368,7 +368,8 @@
       "delete2": "حذف",
       "columnBorders": "حدود الأعمدة",
       "display": "العرض",
-      "showSummaries": "إظهار الملخصات"
+      "showSummaries": "إظهار الملخصات",
+      "deleteFormulaBody": "هل أنت متأكد أنك تريد حذف الصيغة \"{name}\"؟ لا يمكن التراجع عن هذا الإجراء."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "تصفية",
@@ -422,7 +423,8 @@
       "usingNote": "باستخدام الملاحظة: \"",
       "cancel": "إلغاء",
       "namePlaceholder": "days_until_due",
-      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
+      "usingNoteTitle": "باستخدام الملاحظة: \"{title}\""
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "مسح التجميع",
@@ -450,7 +452,10 @@
       "allFolders": "كافة المجلدات",
       "noFoldersMatch": "لا توجد مجلدات متطابقة \"",
       "create": "إنشاء \"",
-      "cancel": "إلغاء"
+      "cancel": "إلغاء",
+      "createFolderNamed": "إنشاء \"{name}\"",
+      "currentFolderBadge": "(الحالي)",
+      "noFoldersMatchQuery": "لا توجد مجلدات تطابق \"{query}\""
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "حذف ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (انقر نقرًا مزدوجًا للتحرير)"
+      "doubleClickToEdit": "{name} (انقر نقرًا مزدوجًا للتحرير)",
+      "dragToReorder": "اسحب لإعادة ترتيب العمود: {name}"
     },
     "columns": {
       "created": "تاريخ الإنشاء",

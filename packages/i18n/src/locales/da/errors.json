@@ -57,7 +57,10 @@
     "downloadFailed": "Download af vedhæftningen mislykkedes",
     "downloadProgressFailed": "Kunne ikke hente downloadstatus",
     "uploadFailed": "Upload af vedhæftningen mislykkedes",
-    "uploadProgressFailed": "Kunne ikke hente uploadstatus"
+    "uploadProgressFailed": "Kunne ikke hente uploadstatus",
+    "emptyFile": "Kan ikke uploade en tom fil",
+    "exceedsMaxSize": "Filen er for stor: {size} overskrider grænsen på {limit}",
+    "exceedsPlanLimit": "Filen er større, end din plan tillader: {size} overskrider {limit}"
   },
   "encryption": {
     "failed": "Kunne ikke kryptere data. Dine nøgler skal muligvis regenereres.",

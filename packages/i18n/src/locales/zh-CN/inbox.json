@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "捕获链接",
       "captureNote": "捕获笔记",
-      "placeholder": "快速捕获——粘贴链接，记下想法…"
+      "placeholder": "快速捕获——粘贴链接，记下想法…",
+      "duplicateNotice": "已捕获：“{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "选择文件夹",
@@ -459,7 +460,8 @@
       "dismissError": "忽略错误",
       "alreadyCaptured": "已捕获",
       "captureAnyway": "仍要捕获",
-      "close": "关闭"
+      "close": "关闭",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "拖动以捕获",

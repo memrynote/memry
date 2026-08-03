@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "ללכוד קישור",
       "captureNote": "ללכוד הערה",
-      "placeholder": "לכידה מהירה — הדבק קישור, רשום מחשבה…"
+      "placeholder": "לכידה מהירה — הדבק קישור, רשום מחשבה…",
+      "duplicateNotice": "כבר נלכד: \"{title}\""
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "בחר תיקיה",
@@ -459,7 +460,8 @@
       "dismissError": "בטל שגיאה",
       "alreadyCaptured": "כבר נלכד",
       "captureAnyway": "ללכוד בכל מקרה",
-      "close": "סגור"
+      "close": "סגור",
+      "duplicateMeta": "\"{title}\" · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "זרוק כדי ללכוד",

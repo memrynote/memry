@@ -57,7 +57,10 @@
     "downloadFailed": "Stažení přílohy se nezdařilo",
     "downloadProgressFailed": "Nepodařilo se načíst průběh stahování",
     "uploadFailed": "Nahrání přílohy se nezdařilo",
-    "uploadProgressFailed": "Nepodařilo se načíst průběh nahrávání"
+    "uploadProgressFailed": "Nepodařilo se načíst průběh nahrávání",
+    "emptyFile": "Prázdný soubor nelze nahrát",
+    "exceedsMaxSize": "Soubor je příliš velký: {size} překračuje limit {limit}",
+    "exceedsPlanLimit": "Soubor je větší, než váš plán dovoluje: {size} překračuje {limit}"
   },
   "encryption": {
     "failed": "Data se nepodařilo zašifrovat. Vaše klíče může být nutné regenerovat.",

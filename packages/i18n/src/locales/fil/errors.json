@@ -57,7 +57,10 @@
     "downloadFailed": "Nabigo ang pag-download ng attachment",
     "downloadProgressFailed": "Nabigong makuha ang progreso ng pag-download",
     "uploadFailed": "Nabigo ang pag-upload ng attachment",
-    "uploadProgressFailed": "Nabigong makuha ang progreso ng pag-upload"
+    "uploadProgressFailed": "Nabigong makuha ang progreso ng pag-upload",
+    "emptyFile": "Hindi mai-upload ang walang lamang file",
+    "exceedsMaxSize": "Masyadong malaki ang file: lumalampas ang {size} sa limitasyong {limit}",
+    "exceedsPlanLimit": "Mas malaki ang file kaysa sa pinapayagan ng iyong plano: lumalampas ang {size} sa {limit}"
   },
   "encryption": {
     "failed": "Nabigong i-encrypt ang data. Maaaring kailanganin na muling buuin ang iyong mga susi.",

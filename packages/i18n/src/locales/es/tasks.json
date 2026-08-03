@@ -69,7 +69,9 @@
       "noDueDate": "Sin fecha de vencimiento",
       "overdue": "Vencidas",
       "repeating": "Recurrentes"
-    }
+    },
+    "repeatTypeOneTime": "Únicas",
+    "repeatTypeRepeating": "Recurrentes"
   },
   "quickAdd": {
     "label": "Tarea de adición rápida",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "¿Eliminar tarea?",
-      "deleteTask2": "Eliminar tarea"
+      "deleteTask2": "Eliminar tarea",
+      "deleteConfirmBody": "“{title}” se eliminará permanentemente. Esta acción no se puede deshacer."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "¡Todas las subtareas completadas!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "¿Le gustaría marcar la tarea principal como completa también?",
       "keepTaskOpen": "Mantener la tarea abierta",
-      "completeTask": "Completar tarea ✓"
+      "completeTask": "Completar tarea ✓",
+      "allSubtasksDoneBody": "{count, plural, one {“{title}” ya tiene completada su # subtarea.} many {“{title}” ya tiene completadas sus # subtareas.} other {“{title}” ya tiene completadas sus # subtareas.}}"
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Establecer fecha de vencimiento para todas las subtareas",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "También se aplica a las subtareas completadas (",
       "clearDate": "Borrar fecha",
       "cancel": "Cancelar",
-      "apply": "Aplicar"
+      "apply": "Aplicar",
+      "alsoApplyToCompletedSubtasksCount": "Aplicar también a las subtareas completadas ({count})",
+      "setDueDateForSubtasksIn": "Establecer la fecha de vencimiento de {count, plural, one {# subtarea} many {# subtareas} other {# subtareas}} en “{title}”"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Establecer prioridad para todas las subtareas",
       "setPriorityFor": "Establecer prioridad para ",
       "alsoApplyToCompletedSubtasks": "También se aplica a las subtareas completadas (",
       "cancel": "Cancelar",
-      "apply": "Aplicar"
+      "apply": "Aplicar",
+      "alsoApplyToCompletedSubtasksCount": "Aplicar también a las subtareas completadas ({count})",
+      "setPriorityForSubtasksIn": "Establecer la prioridad de {count, plural, one {# subtarea} many {# subtareas} other {# subtareas}} en “{title}”"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "¿Tarea completa con subtareas incompletas?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "¿Eliminar todas las subtareas?",
       "thisActionCannotBeUndone": "Esta acción no se puede deshacer.",
       "cancel": "Cancelar",
-      "deleteAll": "Eliminar todo"
+      "deleteAll": "Eliminar todo",
+      "deleteSubtasksConfirmation": "{count, plural, one {Se eliminará # subtarea de “{title}”.} many {Se eliminarán # subtareas de “{title}”.} other {Se eliminarán # subtareas de “{title}”.}}"
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "¿Eliminar tarea con subtareas?",
@@ -350,7 +359,11 @@
       "createACopyOf": "Crea una copia de “",
       "alsoDuplicateSubtasks": "También duplicar subtareas (",
       "cancel": "Cancelar",
-      "duplicate": "Duplicar "
+      "duplicate": "Duplicar ",
+      "alsoDuplicateSubtasksCount": "Duplicar también las subtareas ({count})",
+      "createACopyOfTitle": "Crear una copia de “{title}”",
+      "duplicateTaskOnly": "Duplicar tarea",
+      "duplicateWithItems": "Duplicar ({count, plural, one {# elemento} many {# elementos} other {# elementos}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Hacer subtarea de...",
@@ -871,5 +884,17 @@
     "done": "Hecho",
     "inProgress": "En curso",
     "todo": "Por hacer"
+  },
+  "colors": {
+    "blue": "Azul",
+    "gray": "Gris",
+    "green": "Verde",
+    "indigo": "Índigo",
+    "orange": "Naranja",
+    "pink": "Rosa",
+    "purple": "Morado",
+    "red": "Rojo",
+    "teal": "Verde azulado",
+    "yellow": "Amarillo"
   }
 }

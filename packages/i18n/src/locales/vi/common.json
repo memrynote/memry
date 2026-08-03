@@ -203,7 +203,9 @@
       "search": "Tìm kiếm",
       "searchNotesTasksJournalInbox": "Tìm kiếm ghi chú, công việc, nhật ký, hộp thư đến...",
       "noResultsFor": "Không có kết quả cho “",
-      "result": "kết quả"
+      "result": "kết quả",
+      "noResultsForQuery": "Không có kết quả cho “{query}”",
+      "resultCount": "{count, plural, other {# kết quả}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Tìm kiếm và nhấp vào các mục để xây dựng dấu vết của bạn",
@@ -291,7 +293,8 @@
       "noteIcon": "Biểu tượng ghi chú"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Thay đổi Chưa lưu"
+      "unsavedChanges": "Thay đổi Chưa lưu",
+      "unsavedChangesBody": "“{title}” có thay đổi chưa lưu. Bạn muốn làm gì?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Không gian làm việc mới",

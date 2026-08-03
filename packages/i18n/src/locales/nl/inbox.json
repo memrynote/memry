@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "Link vastleggen",
       "captureNote": "Notitie vastleggen",
-      "placeholder": "Snel vastleggen — plak een link, noteer een gedachte…"
+      "placeholder": "Snel vastleggen — plak een link, noteer een gedachte…",
+      "duplicateNotice": "Al vastgelegd: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Kies map",
@@ -459,7 +460,8 @@
       "dismissError": "Fout afwijzen",
       "alreadyCaptured": "Al vastgelegd",
       "captureAnyway": "Hoe dan ook vastleggen",
-      "close": "Sluiten"
+      "close": "Sluiten",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Laat vallen om vast te leggen",

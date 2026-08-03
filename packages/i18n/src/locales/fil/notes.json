@@ -368,7 +368,8 @@
       "delete2": "Tanggalin",
       "columnBorders": "Mga hangganan ng column",
       "display": "Pagpapakita",
-      "showSummaries": "Ipakita ang mga buod"
+      "showSummaries": "Ipakita ang mga buod",
+      "deleteFormulaBody": "Sigurado ka bang tatanggalin ang formula na \"{name}\"? Hindi na ito maaaring bawiin."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Salain",
@@ -422,7 +423,8 @@
       "usingNote": "Gamit ang tala: \"",
       "cancel": "Kanselahin",
       "namePlaceholder": "araw_until_due",
-      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
+      "usingNoteTitle": "Gamit ang tala: \"{title}\""
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "I-clear ang pagpapangkat",
@@ -450,7 +452,10 @@
       "allFolders": "LAHAT NG FOLDERS",
       "noFoldersMatch": "Walang mga folder na tumutugma \"",
       "create": "Lumikha\"",
-      "cancel": "Kanselahin"
+      "cancel": "Kanselahin",
+      "createFolderNamed": "Lumikha ng \"{name}\"",
+      "currentFolderBadge": "(kasalukuyan)",
+      "noFoldersMatchQuery": "Walang folder na tumutugma sa \"{query}\""
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Tanggalin ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (i-double-click para i-edit)"
+      "doubleClickToEdit": "{name} (i-double-click para i-edit)",
+      "dragToReorder": "I-drag upang muling ayusin ang column: {name}"
     },
     "columns": {
       "created": "Nilikha",

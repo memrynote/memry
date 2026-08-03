@@ -69,7 +69,9 @@
       "noDueDate": "Geen vervaldatum",
       "overdue": "Te laat",
       "repeating": "Herhalend"
-    }
+    },
+    "repeatTypeOneTime": "Eenmalig",
+    "repeatTypeRepeating": "Herhalend"
   },
   "quickAdd": {
     "label": "Snel taak toevoegen",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Taak verwijderen?",
-      "deleteTask2": "Taak verwijderen"
+      "deleteTask2": "Taak verwijderen",
+      "deleteConfirmBody": "“{title}” wordt definitief verwijderd. Deze actie kan niet ongedaan worden gemaakt."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Alle subtaken voltooid!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Wilt u de bovenliggende taak ook als voltooid markeren?",
       "keepTaskOpen": "Houd de taak open",
-      "completeTask": "Voltooi taak ✓"
+      "completeTask": "Voltooi taak ✓",
+      "allSubtasksDoneBody": "Alle {count, plural, one {# subtaak} other {# subtaken}} van “{title}” zijn voltooid."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Stel de vervaldatum in voor alle subtaken",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "Ook van toepassing op voltooide subtaken (",
       "clearDate": "Duidelijke datum",
       "cancel": "Annuleer",
-      "apply": "Toepassen"
+      "apply": "Toepassen",
+      "alsoApplyToCompletedSubtasksCount": "Ook toepassen op voltooide subtaken ({count})",
+      "setDueDateForSubtasksIn": "Vervaldatum instellen voor {count, plural, one {# subtaak} other {# subtaken}} in “{title}”"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Stel prioriteit in voor alle subtaken",
       "setPriorityFor": "Prioriteit instellen voor ",
       "alsoApplyToCompletedSubtasks": "Ook van toepassing op voltooide subtaken (",
       "cancel": "Annuleer",
-      "apply": "Toepassen"
+      "apply": "Toepassen",
+      "alsoApplyToCompletedSubtasksCount": "Ook toepassen op voltooide subtaken ({count})",
+      "setPriorityForSubtasksIn": "Prioriteit instellen voor {count, plural, one {# subtaak} other {# subtaken}} in “{title}”"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Volledige taak met onvolledige subtaken?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "Alle subtaken verwijderen?",
       "thisActionCannotBeUndone": "Deze actie kan niet ongedaan worden gemaakt.",
       "cancel": "Annuleer",
-      "deleteAll": "Alles verwijderen"
+      "deleteAll": "Alles verwijderen",
+      "deleteSubtasksConfirmation": "Hiermee {count, plural, one {wordt # subtaak} other {worden # subtaken}} uit “{title}” verwijderd."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Taak met subtaken verwijderen?",
@@ -350,7 +359,11 @@
       "createACopyOf": "Maak een kopie van “",
       "alsoDuplicateSubtasks": "Dupliceer ook subtaken (",
       "cancel": "Annuleer",
-      "duplicate": "Duplicaat "
+      "duplicate": "Duplicaat ",
+      "alsoDuplicateSubtasksCount": "Subtaken ook dupliceren ({count})",
+      "createACopyOfTitle": "Een kopie maken van “{title}”",
+      "duplicateTaskOnly": "Taak dupliceren",
+      "duplicateWithItems": "Dupliceren ({count, plural, one {# item} other {# items}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Maak een subtaak van...",
@@ -871,5 +884,17 @@
     "done": "Klaar",
     "inProgress": "In uitvoering",
     "todo": "Te doen"
+  },
+  "colors": {
+    "blue": "Blauw",
+    "gray": "Grijs",
+    "green": "Groen",
+    "indigo": "Indigo",
+    "orange": "Oranje",
+    "pink": "Roze",
+    "purple": "Paars",
+    "red": "Rood",
+    "teal": "Turquoise",
+    "yellow": "Geel"
   }
 }

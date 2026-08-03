@@ -368,7 +368,8 @@
       "delete2": "Verwijderen",
       "columnBorders": "Kolomranden",
       "display": "Weergave",
-      "showSummaries": "Samenvattingen tonen"
+      "showSummaries": "Samenvattingen tonen",
+      "deleteFormulaBody": "Weet je zeker dat je de formule “{name}” wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filteren",
@@ -422,7 +423,8 @@
       "usingNote": "Opmerking gebruiken: \"",
       "cancel": "Annuleer",
       "namePlaceholder": "dagen_tot_due",
-      "expressionPlaceholder": "dateDiff(due_date, vandaag(), \"dagen\")"
+      "expressionPlaceholder": "dateDiff(due_date, vandaag(), \"dagen\")",
+      "usingNoteTitle": "Gebruikte notitie: “{title}”"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Duidelijke groepering",
@@ -450,7 +452,10 @@
       "allFolders": "ALLE MAPPEN",
       "noFoldersMatch": "Er komen geen mappen overeen \"",
       "create": "Creëer \"",
-      "cancel": "Annuleer"
+      "cancel": "Annuleer",
+      "createFolderNamed": "“{name}” aanmaken",
+      "currentFolderBadge": "(huidige)",
+      "noFoldersMatchQuery": "Geen mappen gevonden voor “{query}”"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Verwijderen ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (dubbelklik om te bewerken)"
+      "doubleClickToEdit": "{name} (dubbelklik om te bewerken)",
+      "dragToReorder": "Sleep om de kolom opnieuw te ordenen: {name}"
     },
     "columns": {
       "created": "Aangemaakt",

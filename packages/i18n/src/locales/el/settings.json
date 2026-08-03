@@ -710,7 +710,8 @@
       "removeFailed": "Η αφαίρεση της συσκευής απέτυχε",
       "renamed": "Μετονομάστηκε σε \"{name}\"",
       "renameFailed": "Η μετονομασία της συσκευής απέτυχε"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Σύνδεση νέας συσκευής",
@@ -1205,7 +1206,12 @@
       "last30Days": "Τελευταίες 30 ημέρες",
       "loadingSyncHistory": "Φόρτωση ιστορικού συγχρονισμού",
       "noSyncActivityYet": "Δεν υπάρχει ακόμη δραστηριότητα συγχρονισμού",
-      "loadMore": "Φορτώστε περισσότερα"
+      "loadMore": "Φορτώστε περισσότερα",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, εμφάνιση λεπτομερειών σφάλματος",
+      "summaryFailed": "Ο συγχρονισμός απέτυχε",
+      "summaryPulled": "{count, plural, one {# στοιχείο ελήφθη} other {# στοιχεία ελήφθησαν}}",
+      "summaryPushed": "{count, plural, one {# στοιχείο στάλθηκε} other {# στοιχεία στάλθηκαν}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Τελευταίος συγχρονισμός ",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "Η υποεργασία \"{title}\" δεν έχει γονική εργασία στην εσοχή {indent}· εισήχθη στο ανώτερο επίπεδο",
         "unknownPriority": "Άγνωστη προτεραιότητα {priority} → καμία",
         "unparsedDate": "Δεν ήταν δυνατή η ανάλυση της ημερομηνίας \"{date}\""
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Αντιγραφή της βάσης δεδομένων του Apple Notes…"
+      },
+      "bear": {
+        "scanning": "Σάρωση της εξαγωγής Bear…"
+      },
+      "csv": {
+        "importing": "Εισαγωγή σημειώσεων CSV…"
+      },
+      "evernote": {
+        "scanning": "Σάρωση αρχείων .enex…"
+      },
+      "html": {
+        "scanning": "Σάρωση αρχείων HTML…"
+      },
+      "importingItem": "Εισαγωγή: {title}",
+      "raindrop": {
+        "importing": "Εισαγωγή σελιδοδεικτών Raindrop…"
+      },
+      "roam": {
+        "reading": "Ανάγνωση της εξαγωγής Roam…"
+      },
+      "scanningExport": "Σάρωση της εξαγωγής…",
+      "scanningFiles": "Σάρωση αρχείων…",
+      "ticktick": {
+        "importing": "Εισαγωγή εργασιών TickTick…"
+      },
+      "todoist": {
+        "importing": "Εισαγωγή εργασιών Todoist…"
       }
     }
   },

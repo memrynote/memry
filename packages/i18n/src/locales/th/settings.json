@@ -710,7 +710,8 @@
       "removeFailed": "ลบอุปกรณ์ไม่สำเร็จ",
       "renamed": "เปลี่ยนชื่อเป็น \"{name}\" แล้ว",
       "renameFailed": "เปลี่ยนชื่ออุปกรณ์ไม่สำเร็จ"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "เชื่อมต่ออุปกรณ์ใหม่",
@@ -1205,7 +1206,12 @@
       "last30Days": "30 วันที่ผ่านมา",
       "loadingSyncHistory": "กำลังโหลดประวัติการซิงค์",
       "noSyncActivityYet": "ยังไม่มีประวัติการซิงค์",
-      "loadMore": "โหลดเพิ่มเติม"
+      "loadMore": "โหลดเพิ่มเติม",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, แสดงรายละเอียดข้อผิดพลาด",
+      "summaryFailed": "การซิงค์ล้มเหลว",
+      "summaryPulled": "{count, plural, other {ดึงเข้า # รายการ}}",
+      "summaryPushed": "{count, plural, other {ส่งออก # รายการ}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "ซิงค์ล่าสุด",
@@ -1515,6 +1521,38 @@
         "subtaskNoParent": "งานย่อย \"{title}\" ไม่มีงานหลักที่ระดับเยื้อง {indent} จึงนำเข้าเป็นงานระดับบนสุด",
         "unknownPriority": "ลำดับความสำคัญ {priority} ไม่รู้จัก → ไม่มี",
         "unparsedDate": "ไม่สามารถแปลงค่าวันที่ \"{date}\" ได้"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "กำลังคัดลอกฐานข้อมูล Apple Notes…"
+      },
+      "bear": {
+        "scanning": "กำลังสแกนไฟล์ส่งออกจาก Bear…"
+      },
+      "csv": {
+        "importing": "กำลังนำเข้าโน้ตจาก CSV…"
+      },
+      "evernote": {
+        "scanning": "กำลังสแกนไฟล์ .enex…"
+      },
+      "html": {
+        "scanning": "กำลังสแกนไฟล์ HTML…"
+      },
+      "importingItem": "กำลังนำเข้า {title}",
+      "raindrop": {
+        "importing": "กำลังนำเข้าบุ๊กมาร์กจาก Raindrop…"
+      },
+      "roam": {
+        "reading": "กำลังอ่านไฟล์ส่งออกจาก Roam…"
+      },
+      "scanningExport": "กำลังสแกนไฟล์ส่งออก…",
+      "scanningFiles": "กำลังสแกนไฟล์…",
+      "ticktick": {
+        "importing": "กำลังนำเข้างานจาก TickTick…"
+      },
+      "todoist": {
+        "importing": "กำลังนำเข้างานจาก Todoist…"
       }
     }
   },

@@ -69,7 +69,9 @@
       "noDueDate": "Без срока",
       "overdue": "Просрочено",
       "repeating": "Повторяющиеся"
-    }
+    },
+    "repeatTypeOneTime": "Разовые",
+    "repeatTypeRepeating": "Повторяющиеся"
   },
   "quickAdd": {
     "label": "Быстрое добавление задачи",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Удалить задачу?",
-      "deleteTask2": "Удалить задачу"
+      "deleteTask2": "Удалить задачу",
+      "deleteConfirmBody": "Задача «{title}» будет удалена без возможности восстановления. Это действие нельзя отменить."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Все подзадачи выполнены!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Хотите также пометить родительскую задачу как выполненную?",
       "keepTaskOpen": "Оставить задачу открытой",
-      "completeTask": "Выполнить задание ✓"
+      "completeTask": "Выполнить задание ✓",
+      "allSubtasksDoneBody": "В задаче «{title}» {count, plural, one {выполнена # подзадача} few {выполнены все # подзадачи} many {выполнены все # подзадач} other {выполнены все # подзадачи}}."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Установите срок выполнения для всех подзадач",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "Также применяется к завершенным подзадачам (",
       "clearDate": "Очистить дату",
       "cancel": "Отмена",
-      "apply": "Применить"
+      "apply": "Применить",
+      "alsoApplyToCompletedSubtasksCount": "Также применить к выполненным подзадачам ({count})",
+      "setDueDateForSubtasksIn": "Установить срок выполнения для {count, plural, one {# подзадачи} few {# подзадач} many {# подзадач} other {# подзадачи}} в задаче «{title}»"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Установить приоритет для всех подзадач",
       "setPriorityFor": "Установить приоритет для ",
       "alsoApplyToCompletedSubtasks": "Также применяется к завершенным подзадачам (",
       "cancel": "Отмена",
-      "apply": "Применить"
+      "apply": "Применить",
+      "alsoApplyToCompletedSubtasksCount": "Также применить к выполненным подзадачам ({count})",
+      "setPriorityForSubtasksIn": "Установить приоритет для {count, plural, one {# подзадачи} few {# подзадач} many {# подзадач} other {# подзадачи}} в задаче «{title}»"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Завершить задачу с невыполненными подзадачами?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "Удалить все подзадачи?",
       "thisActionCannotBeUndone": "Это действие невозможно отменить.",
       "cancel": "Отмена",
-      "deleteAll": "Удалить все"
+      "deleteAll": "Удалить все",
+      "deleteSubtasksConfirmation": "Из задачи «{title}» {count, plural, one {будет удалена # подзадача} few {будут удалены # подзадачи} many {будет удалено # подзадач} other {будет удалено # подзадачи}}."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Удалить задачу с подзадачами?",
@@ -350,7 +359,11 @@
       "createACopyOf": "Создайте копию «",
       "alsoDuplicateSubtasks": "Также дублируйте подзадачи (",
       "cancel": "Отмена",
-      "duplicate": "Дублировать "
+      "duplicate": "Дублировать ",
+      "alsoDuplicateSubtasksCount": "Также дублировать подзадачи ({count})",
+      "createACopyOfTitle": "Создать копию «{title}»",
+      "duplicateTaskOnly": "Дублировать задачу",
+      "duplicateWithItems": "Дублировать ({count, plural, one {# элемент} few {# элемента} many {# элементов} other {# элемента}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Сделать подзадачу...",
@@ -871,5 +884,17 @@
     "done": "Готово",
     "inProgress": "В работе",
     "todo": "К выполнению"
+  },
+  "colors": {
+    "blue": "Синий",
+    "gray": "Серый",
+    "green": "Зелёный",
+    "indigo": "Индиго",
+    "orange": "Оранжевый",
+    "pink": "Розовый",
+    "purple": "Фиолетовый",
+    "red": "Красный",
+    "teal": "Бирюзовый",
+    "yellow": "Жёлтый"
   }
 }

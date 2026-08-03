@@ -203,7 +203,9 @@
       "search": "Søk",
       "searchNotesTasksJournalInbox": "Søk i notater, oppgaver, journal, innboks...",
       "noResultsFor": "Ingen resultater for \"",
-      "result": "resultat"
+      "result": "resultat",
+      "noResultsForQuery": "Ingen resultater for «{query}»",
+      "resultCount": "{count, plural, one {# resultat} other {# resultater}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Søk og klikk på elementer for å bygge stien din",
@@ -291,7 +293,8 @@
       "noteIcon": "Merknadsikon"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Ulagrede endringer"
+      "unsavedChanges": "Ulagrede endringer",
+      "unsavedChangesBody": "«{title}» har ulagrede endringer. Hva vil du gjøre?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Ny arbeidsplass",

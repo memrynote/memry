@@ -69,7 +69,9 @@
       "noDueDate": "Bez terminu",
       "overdue": "Zaległe",
       "repeating": "Powtarzające się"
-    }
+    },
+    "repeatTypeOneTime": "Jednorazowe",
+    "repeatTypeRepeating": "Powtarzające się"
   },
   "quickAdd": {
     "label": "Szybkie dodawanie zadania",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Usunąć zadanie?",
-      "deleteTask2": "Usuń zadanie"
+      "deleteTask2": "Usuń zadanie",
+      "deleteConfirmBody": "Zadanie „{title}” zostanie trwale usunięte. Tej akcji nie można cofnąć."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Wszystkie podzadania ukończone!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Czy chcesz oznaczyć zadanie nadrzędne również jako ukończone?",
       "keepTaskOpen": "Pozostaw zadanie otwarte",
-      "completeTask": "Wykonaj zadanie ✓"
+      "completeTask": "Wykonaj zadanie ✓",
+      "allSubtasksDoneBody": "{count, plural, one {W zadaniu „{title}” ukończono # podzadanie.} few {W zadaniu „{title}” ukończono wszystkie # podzadania.} many {W zadaniu „{title}” ukończono wszystkie # podzadań.} other {W zadaniu „{title}” ukończono wszystkie # podzadania.}}"
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Ustaw terminy wszystkich podzadań",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "Dotyczy również ukończonych podzadań (",
       "clearDate": "Wyczyść datę",
       "cancel": "Anuluj",
-      "apply": "Zastosuj"
+      "apply": "Zastosuj",
+      "alsoApplyToCompletedSubtasksCount": "Zastosuj także do ukończonych podzadań ({count})",
+      "setDueDateForSubtasksIn": "Ustaw termin dla {count, plural, one {# podzadania} few {# podzadań} many {# podzadań} other {# podzadania}} w zadaniu „{title}”"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Ustaw priorytet dla wszystkich podzadań",
       "setPriorityFor": "Ustaw priorytet dla ",
       "alsoApplyToCompletedSubtasks": "Dotyczy również ukończonych podzadań (",
       "cancel": "Anuluj",
-      "apply": "Zastosuj"
+      "apply": "Zastosuj",
+      "alsoApplyToCompletedSubtasksCount": "Zastosuj także do ukończonych podzadań ({count})",
+      "setPriorityForSubtasksIn": "Ustaw priorytet dla {count, plural, one {# podzadania} few {# podzadań} many {# podzadań} other {# podzadania}} w zadaniu „{title}”"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Ukończyć zadanie z niekompletnymi podzadaniami?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "Usunąć wszystkie podzadania?",
       "thisActionCannotBeUndone": "Tej akcji nie można cofnąć.",
       "cancel": "Anuluj",
-      "deleteAll": "Usuń wszystko"
+      "deleteAll": "Usuń wszystko",
+      "deleteSubtasksConfirmation": "Spowoduje to usunięcie {count, plural, one {# podzadania} few {# podzadań} many {# podzadań} other {# podzadania}} z zadania „{title}”."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Usunąć zadanie z podzadaniami?",
@@ -350,7 +359,11 @@
       "createACopyOf": "Utwórz kopię „",
       "alsoDuplicateSubtasks": "Zduplikuj także podzadania (",
       "cancel": "Anuluj",
-      "duplicate": "Duplikat "
+      "duplicate": "Duplikat ",
+      "alsoDuplicateSubtasksCount": "Zduplikuj także podzadania ({count})",
+      "createACopyOfTitle": "Utwórz kopię „{title}”",
+      "duplicateTaskOnly": "Duplikuj zadanie",
+      "duplicateWithItems": "Duplikuj ({count, plural, one {# element} few {# elementy} many {# elementów} other {# elementu}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Zrób podzadanie z...",
@@ -871,5 +884,17 @@
     "done": "Gotowe",
     "inProgress": "W trakcie",
     "todo": "Do zrobienia"
+  },
+  "colors": {
+    "blue": "Niebieski",
+    "gray": "Szary",
+    "green": "Zielony",
+    "indigo": "Indygo",
+    "orange": "Pomarańczowy",
+    "pink": "Różowy",
+    "purple": "Fioletowy",
+    "red": "Czerwony",
+    "teal": "Morski",
+    "yellow": "Żółty"
   }
 }

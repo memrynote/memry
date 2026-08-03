@@ -368,7 +368,8 @@
       "delete2": "Elimina",
       "columnBorders": "Bordi colonna",
       "display": "Visualizzazione",
-      "showSummaries": "Mostra riepiloghi"
+      "showSummaries": "Mostra riepiloghi",
+      "deleteFormulaBody": "Vuoi davvero eliminare la formula \"{name}\"? Questa azione non può essere annullata."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtra",
@@ -422,7 +423,8 @@
       "usingNote": "Usando la nota: \"",
       "cancel": "Annulla",
       "namePlaceholder": "giorni_fino_alla_scadenza",
-      "expressionPlaceholder": "dateDiff(data_scadenza, oggi(), \"giorni\")"
+      "expressionPlaceholder": "dateDiff(data_scadenza, oggi(), \"giorni\")",
+      "usingNoteTitle": "Nota utilizzata: \"{title}\""
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Raggruppamento chiaro",
@@ -450,7 +452,10 @@
       "allFolders": "TUTTE LE CARTELLE",
       "noFoldersMatch": "Nessuna cartella corrisponde a \"",
       "create": "Crea\"",
-      "cancel": "Annulla"
+      "cancel": "Annulla",
+      "createFolderNamed": "Crea \"{name}\"",
+      "currentFolderBadge": "(corrente)",
+      "noFoldersMatchQuery": "Nessuna cartella corrisponde a \"{query}\""
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Elimina ",
@@ -847,7 +852,8 @@
   },
   "folderView": {
     "columnHeader": {
-      "doubleClickToEdit": "{name} (doppio clic per modificare)"
+      "doubleClickToEdit": "{name} (doppio clic per modificare)",
+      "dragToReorder": "Trascina per riordinare la colonna: {name}"
     },
     "columns": {
       "created": "Creata",

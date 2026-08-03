@@ -203,7 +203,9 @@
       "search": "Sök",
       "searchNotesTasksJournalInbox": "Sök anteckningar, uppgifter, dagbok, inkorg...",
       "noResultsFor": "Inga resultat för “",
-      "result": "resultat"
+      "result": "resultat",
+      "noResultsForQuery": "Inga resultat för ”{query}”",
+      "resultCount": "{count, plural, one {# resultat} other {# resultat}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Sök och klicka på objekt för att bygga din spårning",
@@ -291,7 +293,8 @@
       "noteIcon": "Anteckningsikon"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Osparade ändringar"
+      "unsavedChanges": "Osparade ändringar",
+      "unsavedChangesBody": "”{title}” har osparade ändringar. Vad vill du göra?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Nytt arbetsområde",

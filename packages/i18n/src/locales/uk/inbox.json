@@ -358,7 +358,8 @@
       "q": "Q",
       "captureLink": "Захопити посилання",
       "captureNote": "Захопити нотатку",
-      "placeholder": "Швидке захоплення — вставте посилання, занотуйте думку…"
+      "placeholder": "Швидке захоплення — вставте посилання, занотуйте думку…",
+      "duplicateNotice": "Вже захоплено: «{title}»"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Вибрати папку",
@@ -459,7 +460,8 @@
       "dismissError": "Закрити помилку",
       "alreadyCaptured": "Вже захоплено",
       "captureAnyway": "Захопити все одно",
-      "close": "Закрити"
+      "close": "Закрити",
+      "duplicateMeta": "«{title}» · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Перетягніть для захоплення",

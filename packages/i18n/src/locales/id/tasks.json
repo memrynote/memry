@@ -69,7 +69,9 @@
       "noDueDate": "Tanpa Tanggal Jatuh Tempo",
       "overdue": "Terlambat",
       "repeating": "Berulang"
-    }
+    },
+    "repeatTypeOneTime": "Sekali",
+    "repeatTypeRepeating": "Berulang"
   },
   "quickAdd": {
     "label": "Tambahkan tugas dengan cepat",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Hapus tugas?",
-      "deleteTask2": "Hapus Tugas"
+      "deleteTask2": "Hapus Tugas",
+      "deleteConfirmBody": "“{title}” akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Semua subtugas selesai!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Apakah Anda ingin menandai tugas orang tua sebagai selesai juga?",
       "keepTaskOpen": "Biarkan tugas tetap terbuka",
-      "completeTask": "Selesaikan tugas ✓"
+      "completeTask": "Selesaikan tugas ✓",
+      "allSubtasksDoneBody": "Semua {count, plural, other {# subtugas}} di “{title}” sudah selesai."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Tetapkan tanggal jatuh tempo untuk semua subtugas",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "Juga berlaku untuk subtugas yang diselesaikan (",
       "clearDate": "Hapus tanggal",
       "cancel": "Batalkan",
-      "apply": "Terapkan"
+      "apply": "Terapkan",
+      "alsoApplyToCompletedSubtasksCount": "Terapkan juga ke subtugas yang sudah selesai ({count})",
+      "setDueDateForSubtasksIn": "Tetapkan tanggal jatuh tempo untuk {count, plural, other {# subtugas}} di “{title}”"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Tetapkan prioritas untuk semua subtugas",
       "setPriorityFor": "Tetapkan prioritas untuk ",
       "alsoApplyToCompletedSubtasks": "Juga berlaku untuk subtugas yang diselesaikan (",
       "cancel": "Batalkan",
-      "apply": "Terapkan"
+      "apply": "Terapkan",
+      "alsoApplyToCompletedSubtasksCount": "Terapkan juga ke subtugas yang sudah selesai ({count})",
+      "setPriorityForSubtasksIn": "Tetapkan prioritas untuk {count, plural, other {# subtugas}} di “{title}”"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Selesaikan tugas dengan subtugas yang belum lengkap?",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "Hapus semua subtugas?",
       "thisActionCannotBeUndone": "Tindakan ini tidak dapat dibatalkan.",
       "cancel": "Batalkan",
-      "deleteAll": "Hapus Semua"
+      "deleteAll": "Hapus Semua",
+      "deleteSubtasksConfirmation": "Ini akan menghapus {count, plural, other {# subtugas}} dari “{title}”."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Hapus tugas dengan subtugas?",
@@ -350,7 +359,11 @@
       "createACopyOf": "Buat salinan “",
       "alsoDuplicateSubtasks": "Juga duplikat subtugas (",
       "cancel": "Batalkan",
-      "duplicate": "Duplikat "
+      "duplicate": "Duplikat ",
+      "alsoDuplicateSubtasksCount": "Duplikat juga subtugas ({count})",
+      "createACopyOfTitle": "Buat salinan “{title}”",
+      "duplicateTaskOnly": "Duplikat tugas",
+      "duplicateWithItems": "Duplikat ({count, plural, other {# item}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Buatlah subtugas dari...",
@@ -871,5 +884,17 @@
     "done": "Selesai",
     "inProgress": "Sedang Berjalan",
     "todo": "Perlu Dikerjakan"
+  },
+  "colors": {
+    "blue": "Biru",
+    "gray": "Abu-abu",
+    "green": "Hijau",
+    "indigo": "Nila",
+    "orange": "Oranye",
+    "pink": "Merah Jambu",
+    "purple": "Ungu",
+    "red": "Merah",
+    "teal": "Tosca",
+    "yellow": "Kuning"
   }
 }

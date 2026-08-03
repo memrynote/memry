@@ -69,7 +69,9 @@
       "noDueDate": "بلا تاريخ استحقاق",
       "overdue": "متأخرة",
       "repeating": "متكررة"
-    }
+    },
+    "repeatTypeOneTime": "لمرة واحدة",
+    "repeatTypeRepeating": "متكررة"
   },
   "quickAdd": {
     "label": "مهمة إضافة سريعة",
@@ -290,13 +292,15 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "هل تريد حذف المهمة؟",
-      "deleteTask2": "حذف المهمة"
+      "deleteTask2": "حذف المهمة",
+      "deleteConfirmBody": "سيتم حذف “{title}” نهائيًا. لا يمكن التراجع عن هذا الإجراء."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "جميع المهام الفرعية كاملة!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "هل ترغب في وضع علامة على المهمة الرئيسية كمكتملة أيضًا؟",
       "keepTaskOpen": "أبقِ المهمة مفتوحة",
-      "completeTask": "إكمال المهمة ✓"
+      "completeTask": "إكمال المهمة ✓",
+      "allSubtasksDoneBody": "اكتملت جميع المهام الفرعية في “{title}”، وعددها {count, plural, zero {# مهمة فرعية} one {مهمة فرعية واحدة} two {مهمتان فرعيتان} few {# مهام فرعية} many {# مهمة فرعية} other {# مهمة فرعية}}."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "تحديد تاريخ الاستحقاق لجميع المهام الفرعية",
@@ -304,14 +308,18 @@
       "alsoApplyToCompletedSubtasks": "ينطبق أيضًا على المهام الفرعية المكتملة (",
       "clearDate": "تاريخ واضح",
       "cancel": "إلغاء",
-      "apply": "تطبيق"
+      "apply": "تطبيق",
+      "alsoApplyToCompletedSubtasksCount": "طبّق أيضًا على المهام الفرعية المكتملة ({count})",
+      "setDueDateForSubtasksIn": "تحديد تاريخ الاستحقاق {count, plural, zero {لـ# مهمة فرعية} one {لمهمة فرعية واحدة} two {لمهمتين فرعيتين} few {لـ# مهام فرعية} many {لـ# مهمة فرعية} other {لـ# مهمة فرعية}} في “{title}”"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "تحديد الأولوية لجميع المهام الفرعية",
       "setPriorityFor": "تحديد الأولوية ل ",
       "alsoApplyToCompletedSubtasks": "ينطبق أيضًا على المهام الفرعية المكتملة (",
       "cancel": "إلغاء",
-      "apply": "تطبيق"
+      "apply": "تطبيق",
+      "alsoApplyToCompletedSubtasksCount": "طبّق أيضًا على المهام الفرعية المكتملة ({count})",
+      "setPriorityForSubtasksIn": "تعيين الأولوية {count, plural, zero {لـ# مهمة فرعية} one {لمهمة فرعية واحدة} two {لمهمتين فرعيتين} few {لـ# مهام فرعية} many {لـ# مهمة فرعية} other {لـ# مهمة فرعية}} في “{title}”"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "مهمة كاملة مع المهام الفرعية غير مكتملة؟",
@@ -331,7 +339,8 @@
       "deleteAllSubtasks": "هل تريد حذف كافة المهام الفرعية؟",
       "thisActionCannotBeUndone": "لا يمكن التراجع عن هذا الإجراء.",
       "cancel": "إلغاء",
-      "deleteAll": "حذف الكل"
+      "deleteAll": "حذف الكل",
+      "deleteSubtasksConfirmation": "سيؤدي هذا إلى حذف {count, plural, zero {# مهمة فرعية} one {مهمة فرعية واحدة} two {مهمتين فرعيتين} few {# مهام فرعية} many {# مهمة فرعية} other {# مهمة فرعية}} من “{title}”."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "هل تريد حذف المهمة التي تحتوي على مهام فرعية؟",
@@ -350,7 +359,11 @@
       "createACopyOf": "إنشاء نسخة من \"",
       "alsoDuplicateSubtasks": "مهام فرعية مكررة أيضًا (",
       "cancel": "إلغاء",
-      "duplicate": "مكررة "
+      "duplicate": "مكررة ",
+      "alsoDuplicateSubtasksCount": "انسخ أيضًا المهام الفرعية ({count})",
+      "createACopyOfTitle": "إنشاء نسخة من “{title}”",
+      "duplicateTaskOnly": "نسخ المهمة",
+      "duplicateWithItems": "نسخ ({count, plural, zero {# عنصر} one {عنصر واحد} two {عنصرين} few {# عناصر} many {# عنصرًا} other {# عنصر}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "قم بمهمة فرعية...",
@@ -871,5 +884,17 @@
     "done": "منجزة",
     "inProgress": "قيد التنفيذ",
     "todo": "قيد الانتظار"
+  },
+  "colors": {
+    "blue": "أزرق",
+    "gray": "رمادي",
+    "green": "أخضر",
+    "indigo": "نيلي",
+    "orange": "برتقالي",
+    "pink": "وردي",
+    "purple": "بنفسجي",
+    "red": "أحمر",
+    "teal": "فيروزي",
+    "yellow": "أصفر"
   }
 }
