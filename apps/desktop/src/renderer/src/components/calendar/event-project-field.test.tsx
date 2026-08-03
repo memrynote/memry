@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { EventProjectField } from './event-project-field'
 
 const {
@@ -31,20 +31,25 @@ vi.mock('sonner', () => ({
 
 // Projects come from the app-wide TasksProvider, same as calendar-task-popover.
 // A third project (p3) exists so a stale-state race test can pick a project
-// that is neither the current link nor the first race click's target.
+// that is neither the current link nor the first race click's target. `p4` is
+// archived: the real picker filters archived projects out of its list, so a
+// link to one can never be represented by the picker.
 vi.mock('@/contexts/tasks', () => ({
   useTasksOptional: () => ({
     projects: [
       { id: 'p1', name: 'Launch', color: '#ff0000', icon: null, isArchived: false },
       { id: 'p2', name: 'Finance', color: '#00ff00', icon: null, isArchived: false },
-      { id: 'p3', name: 'Marketing', color: '#0000ff', icon: null, isArchived: false }
+      { id: 'p3', name: 'Marketing', color: '#0000ff', icon: null, isArchived: false },
+      { id: 'p4', name: 'Retired', color: '#999999', icon: null, isArchived: true }
     ]
   })
 }))
 
 // The real Picker is Radix Popover-based and does not open on click in jsdom
 // (codebase convention: mock it). This passthrough exposes one button per
-// option so the field's own orchestration is what gets tested.
+// option so the field's own orchestration is what gets tested. It drops
+// archived projects exactly like the real one (project-picker.tsx), which is
+// what makes an archived link unrepresentable here.
 vi.mock('@/components/tasks/project-picker', () => ({
   ProjectPicker: ({
     value,
@@ -54,18 +59,20 @@ vi.mock('@/components/tasks/project-picker', () => ({
   }: {
     value: string | null
     onChange: (id: string | null) => void
-    projects: Array<{ id: string; name: string }>
+    projects: Array<{ id: string; name: string; isArchived: boolean }>
     allOptionLabel?: string
   }) => (
     <div data-testid="project-picker" data-value={value ?? ''}>
       <button type="button" onClick={() => onChange(null)}>
         {allOptionLabel}
       </button>
-      {projects.map((project) => (
-        <button key={project.id} type="button" onClick={() => onChange(project.id)}>
-          {`pick-${project.name}`}
-        </button>
-      ))}
+      {projects
+        .filter((project) => !project.isArchived)
+        .map((project) => (
+          <button key={project.id} type="button" onClick={() => onChange(project.id)}>
+            {`pick-${project.name}`}
+          </button>
+        ))}
     </div>
   )
 }))
@@ -398,6 +405,131 @@ describe('EventProjectField · edit mode', () => {
       itemType: 'calendar_event',
       itemId: 'evt-1'
     })
+  })
+
+  it('keeps the picked project primary when the reload returns the links reordered', async () => {
+    // `getProjectsForItem` has no ORDER BY, so row order is insertion order:
+    // after unlink(p1) + link(p3) the surviving legacy link (p2) comes back
+    // FIRST and the just-picked p3 second. Reading `links[0]` here would show
+    // Finance in the picker and demote Marketing — the project the user just
+    // chose — to a chip.
+    mockListForItem
+      .mockResolvedValueOnce([
+        { id: 'p1', name: 'Launch', color: '#ff0000', icon: null },
+        { id: 'p2', name: 'Finance', color: '#00ff00', icon: null }
+      ])
+      .mockResolvedValue([
+        { id: 'p2', name: 'Finance', color: '#00ff00', icon: null },
+        { id: 'p3', name: 'Marketing', color: '#0000ff', icon: null }
+      ])
+
+    render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
+    await waitFor(() =>
+      expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', 'p1')
+    )
+
+    fireEvent.click(screen.getByText('pick-Marketing'))
+
+    await waitFor(() => expect(mockListForItem).toHaveBeenCalledTimes(2))
+    await waitFor(() =>
+      expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', 'p3')
+    )
+    // Finance was never picked here, so it stays the chip it already was.
+    expect(screen.getByRole('button', { name: 'Remove from Finance' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Remove from Marketing' })).not.toBeInTheDocument()
+  })
+
+  it('shows a link to an archived project as a chip rather than as "No project"', async () => {
+    // The picker cannot render an archived project (it filters them out), so
+    // the link has to stay visible somewhere — otherwise the row reads "No
+    // project" while a link exists, a regression against the read-only chips.
+    mockListForItem.mockResolvedValue([{ id: 'p4', name: 'Retired', color: '#999999', icon: null }])
+
+    render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
+
+    expect(await screen.findByRole('button', { name: 'Remove from Retired' })).toBeInTheDocument()
+    expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', '')
+  })
+
+  it('does not unlink an archived link the picker never showed', async () => {
+    mockListForItem.mockResolvedValue([{ id: 'p4', name: 'Retired', color: '#999999', icon: null }])
+
+    render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
+    // Wait on the load itself, not on how the link ends up rendered, so the
+    // click below happens with `links` committed either way.
+    await waitFor(() => expect(mockListForItem).toHaveBeenCalledTimes(1))
+    await act(async () => {})
+
+    fireEvent.click(screen.getByText('pick-Launch'))
+
+    await waitFor(() =>
+      expect(mockLinkProjectItem).toHaveBeenCalledWith({
+        projectId: 'p1',
+        itemType: 'calendar_event',
+        itemId: 'evt-1'
+      })
+    )
+    // The archived link was never on screen as a picker value, so the user
+    // never chose to replace it. Only an explicit chip × may remove it.
+    expect(mockUnlinkProjectItem).not.toHaveBeenCalled()
+  })
+
+  it('keeps the write guard closed when a project update reloads mid-swap', async () => {
+    // `unlinkItemFromProject` publishes `projectUpdated` BEFORE it resolves,
+    // so a reload lands between the unlink and the link of one swap and sees
+    // the intermediate (empty) DB state. Sharing one flag between load and
+    // write let that reload's `finally` reopen the guard with stale-empty
+    // `links`, and the next click would link a third project without
+    // unlinking anything.
+    mockListForItem
+      .mockResolvedValueOnce([{ id: 'p1', name: 'Launch', color: '#ff0000', icon: null }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValue([{ id: 'p2', name: 'Finance', color: '#00ff00', icon: null }])
+    let updateHandler: (() => void) | undefined
+    mockOnProjectUpdated.mockImplementation((cb: () => void) => {
+      updateHandler = cb
+      return () => {}
+    })
+    let resolveUnlink: ((value: { success: boolean }) => void) | undefined
+    mockUnlinkProjectItem.mockReturnValue(
+      new Promise((resolve) => {
+        resolveUnlink = resolve
+      })
+    )
+
+    render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
+    await waitFor(() =>
+      expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', 'p1')
+    )
+
+    fireEvent.click(screen.getByText('pick-Finance'))
+    await waitFor(() => expect(mockUnlinkProjectItem).toHaveBeenCalledTimes(1))
+
+    // The broadcast the in-flight unlink itself publishes.
+    updateHandler?.()
+    await waitFor(() => expect(mockListForItem).toHaveBeenCalledTimes(2))
+    // That reload has resolved and committed the intermediate empty state.
+    await waitFor(() =>
+      expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', '')
+    )
+
+    // A click landing in exactly that window, on a THIRD project so it cannot
+    // be absorbed by the "same id, no-op" short-circuit.
+    fireEvent.click(screen.getByText('pick-Marketing'))
+
+    resolveUnlink?.({ success: true })
+    await waitFor(() =>
+      expect(mockLinkProjectItem).toHaveBeenCalledWith({
+        projectId: 'p2',
+        itemType: 'calendar_event',
+        itemId: 'evt-1'
+      })
+    )
+    expect(mockLinkProjectItem).toHaveBeenCalledTimes(1)
+    expect(mockLinkProjectItem).not.toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: 'p3' })
+    )
+    expect(mockUnlinkProjectItem).toHaveBeenCalledTimes(1)
   })
 
   it('shows no chips when the event has a single project', async () => {
