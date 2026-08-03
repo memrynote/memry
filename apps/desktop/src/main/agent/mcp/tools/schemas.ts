@@ -3,6 +3,7 @@ import {
   AgentMcpDesktopReadOperations,
   AgentMcpDesktopWriteOperations
 } from '@memry/contracts/agent-mcp-channels'
+import { NoteFileTypeEnum } from '@memry/contracts/search-api'
 
 const idSchema = z.string().min(1)
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -79,13 +80,20 @@ export const TOOL_SCHEMAS = {
     input: z.object({
       query: z.string().min(1),
       limit: z.number().int().positive().max(50).optional(),
-      folder_id: idSchema.optional()
+      folder_id: idSchema.optional(),
+      file_types: z.array(NoteFileTypeEnum).min(1).optional()
     }),
-    description: 'Full-text search across notes; returns id, title, snippet, folder_path.'
+    description:
+      'Full-text search across notes and filed files; returns id, title, snippet, folder_path, ' +
+      'file_type. A file_type other than "markdown" (pdf/image/audio/video) is a filed file, not ' +
+      'a note — vault_read_note rejects those. Pass file_types to restrict the search, e.g. ' +
+      '["markdown"] for notes only; omitted returns every file type.'
   },
   vault_read_note: {
     input: z.object({ id: idSchema }),
-    description: 'Read a note by id; returns full markdown content + metadata.'
+    description:
+      'Read a markdown note by id; returns full markdown content + metadata. Errors with ' +
+      'VALIDATION when the id belongs to a filed pdf/image/audio/video file.'
   },
   vault_list_folder: {
     input: z.object({

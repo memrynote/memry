@@ -5,12 +5,20 @@ import type {
   AgentMcpDesktopReadOperation,
   AgentMcpDesktopWriteOperation
 } from '@memry/contracts/agent-mcp-channels'
+import type { NoteFileType } from '@memry/contracts/search-api'
 
+/**
+ * `file_type` is always populated: index rows written before filed binaries
+ * existed carry no file type, and those are always markdown (#800, #919). A
+ * binary value means the row is a filed file, not a note — `vault_read_note`
+ * rejects it rather than handing an agent bytes to read as markdown.
+ */
 export interface NoteSummary {
   id: string
   title: string
   snippet: string
   folder_path: string | null
+  file_type: NoteFileType
   icon?: string | null
 }
 
@@ -21,6 +29,7 @@ export interface NoteFull {
   tags: string[]
   folder_path: string | null
   frontmatter: Record<string, unknown>
+  file_type: NoteFileType
   icon?: string | null
 }
 
@@ -84,7 +93,12 @@ export interface CurrentNoteSnapshot {
 
 export interface VaultServiceHandles {
   notes: {
-    search(input: { query: string; limit?: number; folderId?: string }): Promise<NoteSummary[]>
+    search(input: {
+      query: string
+      limit?: number
+      folderId?: string
+      fileTypes?: NoteFileType[]
+    }): Promise<NoteSummary[]>
     read(id: string): Promise<NoteFull | null>
     create(input: {
       title: string

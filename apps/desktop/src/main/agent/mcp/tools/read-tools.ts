@@ -5,6 +5,7 @@ import type { ToolRegistration } from '../server'
 import type { VaultServiceHandles } from './handles'
 import { TOOL_SCHEMAS, READ_TOOL_NAMES } from './schemas'
 import type { AgentMcpDesktopReadOperation } from '@memry/contracts/agent-mcp-channels'
+import type { NoteFileType } from '@memry/contracts/search-api'
 
 function parse<T>(schema: ZodTypeAny, input: unknown): T {
   const r = schema.safeParse(input)
@@ -21,11 +22,18 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
       description: TOOL_SCHEMAS.vault_search_notes.description,
       inputSchema: TOOL_SCHEMAS.vault_search_notes.input,
       handler: async (input) => {
-        const a = parse<{ query: string; limit?: number; folder_id?: string }>(
-          TOOL_SCHEMAS.vault_search_notes.input,
-          input
-        )
-        return handles.notes.search({ query: a.query, limit: a.limit, folderId: a.folder_id })
+        const a = parse<{
+          query: string
+          limit?: number
+          folder_id?: string
+          file_types?: NoteFileType[]
+        }>(TOOL_SCHEMAS.vault_search_notes.input, input)
+        return handles.notes.search({
+          query: a.query,
+          limit: a.limit,
+          folderId: a.folder_id,
+          fileTypes: a.file_types
+        })
       }
     },
     vault_read_note: {
@@ -36,6 +44,17 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
         const a = parse<{ id: string }>(TOOL_SCHEMAS.vault_read_note.input, input)
         const note = await handles.notes.read(a.id)
         if (!note) throw new AgentToolError('NOT_FOUND', `Note ${a.id} not found`, { id: a.id })
+        // A filed pdf/image/audio/video indexes as a "note" row (#800). Handing
+        // its body to an agent would be binary garbage dressed as markdown, so
+        // refuse loudly instead of letting it read or edit one. See #919.
+        if (note.file_type !== 'markdown') {
+          throw new AgentToolError(
+            'VALIDATION',
+            `Note ${a.id} is a filed ${note.file_type} file, not a markdown note. ` +
+              'vault_read_note returns markdown only.',
+            { id: a.id, file_type: note.file_type }
+          )
+        }
         return note
       }
     },
