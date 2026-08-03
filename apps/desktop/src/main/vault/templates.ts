@@ -14,7 +14,6 @@
  */
 
 import { eq } from 'drizzle-orm'
-import { BrowserWindow } from 'electron'
 import { templates as templatesTable, type TemplateRow } from '@memry/db-schema/schema/templates'
 import { TemplatesChannels } from '@memry/contracts/ipc-channels'
 import type {
@@ -27,6 +26,7 @@ import type {
 import { BUILT_IN_TEMPLATES } from './built-in-templates'
 import { getDatabase } from '../database'
 import { VaultError, VaultErrorCode } from '../lib/errors'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { generateNoteId } from '../lib/id'
 import { createLogger } from '../lib/logger'
 import {
@@ -59,9 +59,7 @@ const BUILT_IN_IDS = new Set(BUILT_IN_TEMPLATES.map((t) => t.id))
  * Emit template event to all windows.
  */
 function emitTemplateEvent(channel: string, payload: unknown): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, payload)
-  })
+  broadcastToAllWindows(channel, payload)
 }
 
 function toBuiltInTemplate(template: Omit<Template, 'createdAt' | 'modifiedAt'>): Template {
