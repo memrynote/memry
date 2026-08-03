@@ -428,24 +428,75 @@ Index DB only. It is re-exported through `index-schema.ts` automatically (`expor
 
 - [ ] **Step 1: Write the failing test**
 
-Open `apps/desktop/src/main/database/tag-categories-schema.test.ts` first and copy its harness exactly — same imports, same db construction, same migration invocation. Then:
+Follow `apps/desktop/src/main/database/tag-categories-schema.test.ts` — raw `better-sqlite3` in memory, the migration SQL read off disk with `readFileSync`. Write this file, setting `MIGRATION` to the filename generated in Step 4:
 
 ```ts
-describe('property_refs schema', () => {
+import { describe, it, expect } from 'vitest'
+import Database from 'better-sqlite3'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+const MIGRATION = 'drizzle-index/0020_<generated_name>.sql'
+
+function migratedDb(): Database.Database {
+  const db = new Database(':memory:')
+  db.pragma('foreign_keys = ON')
+  db.exec(`
+    CREATE TABLE note_cache (
+      id TEXT PRIMARY KEY NOT NULL,
+      path TEXT NOT NULL,
+      title TEXT NOT NULL
+    );
+  `)
+  db.exec(readFileSync(join(__dirname, MIGRATION), 'utf8'))
+  return db
+}
+
+describe('property_refs migration', () => {
   it('creates the table with the expected columns', () => {
-    const columns = db.all(sql`PRAGMA table_info(property_refs)`) as Array<{ name: string }>
-    const names = columns.map((c) => c.name).sort()
-    expect(names).toEqual(['property_name', 'source_note_id', 'target_id', 'target_type'])
+    const db = migratedDb()
+    const cols = db.prepare('PRAGMA table_info(property_refs)').all() as { name: string }[]
+    expect(cols.map((c) => c.name).sort()).toEqual(
+      ['property_name', 'source_note_id', 'target_id', 'target_type'].sort()
+    )
+  })
+
+  it('indexes the target for reverse lookups', () => {
+    const db = migratedDb()
+    const indexes = db.prepare('PRAGMA index_list(property_refs)').all() as { name: string }[]
+    expect(indexes.some((i) => i.name === 'idx_property_refs_target')).toBe(true)
   })
 
   it('cascades when the source note is deleted', () => {
-    // insert a note_cache row, then a property_refs row pointing at it,
-    // delete the note, expect zero property_refs rows.
+    const db = migratedDb()
+    db.prepare("INSERT INTO note_cache (id, path, title) VALUES ('nte_1', 'a.md', 'A')").run()
+    db.prepare(
+      `INSERT INTO property_refs (source_note_id, property_name, target_type, target_id)
+       VALUES ('nte_1', 'father', 'note', 'nte_dad')`
+    ).run()
+
+    db.prepare("DELETE FROM note_cache WHERE id = 'nte_1'").run()
+
+    const remaining = db.prepare('SELECT COUNT(*) AS n FROM property_refs').get() as { n: number }
+    expect(remaining.n).toBe(0)
+  })
+
+  it('rejects a duplicate (note, property, type, target) row', () => {
+    const db = migratedDb()
+    db.prepare("INSERT INTO note_cache (id, path, title) VALUES ('nte_1', 'a.md', 'A')").run()
+    const insert = (): void => {
+      db.prepare(
+        `INSERT INTO property_refs (source_note_id, property_name, target_type, target_id)
+         VALUES ('nte_1', 'father', 'note', 'nte_dad')`
+      ).run()
+    }
+    insert()
+    expect(insert).toThrow()
   })
 })
 ```
 
-Fill the second test body using the note-insert helper the neighbouring schema test already uses; do not invent a new one.
+`db.pragma('foreign_keys = ON')` is load-bearing: SQLite does not enforce foreign keys by default, so without it the cascade test passes vacuously and proves nothing. The `note_cache` stub above carries only the columns the FK needs — do not reproduce the real table.
 
 - [ ] **Step 2: Run test to verify it fails**
 
