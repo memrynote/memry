@@ -141,6 +141,13 @@
       "when": 1783206460942,
       "tag": "0019_bitter_zarda",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1785779846984,
+      "tag": "0020_freezing_triathlon",
+      "breakpoints": true
     }
   ]
 }
