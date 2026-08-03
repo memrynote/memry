@@ -71,7 +71,7 @@ properties:
 ### Contracts
 
 - Add `RELATION: 'relation'` to `PropertyTypes` (`packages/contracts/src/property-types.ts:3`, currently 8 types).
-- Add a `relation` variant to `PropertyDefinitionSchema`. Definition shape is minimal — `{ name, type: 'relation' }`. **No target-kind restriction field**: such a field would be a definition-only fact, unsyncable per the gate above, so the picker offers all kinds and the value carries its own kind.
+- **`PropertyDefinitionSchema` is not touched.** That discriminated union covers only the four types carrying extra config — status, select, multiselect, date (`property-types.ts:98`); `text`, `number`, `checkbox`, and `url` have no member. `relation` carries no config either, so it follows them. **No target-kind restriction field**: such a field would be a definition-only fact, unsyncable per the gate above, so the picker offers all kinds and the value carries its own kind. This also means `.memry/properties.md` never needs a format change for step 1.
 - Mirror in the renderer registry: `PropertyType` union and `PROPERTY_TYPE_CONFIG` (`apps/desktop/src/renderer/src/components/note/info-section/types.ts:13,49`).
 - `properties:set` already carries `z.record(z.string(), z.unknown())` — no change. New IPC channels below go through `packages/contracts` + `pnpm ipc:generate`.
 
