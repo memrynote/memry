@@ -9,7 +9,11 @@ vi.mock('electron', () => ({
     }),
     { isSupported: () => true }
   ),
-  BrowserWindow: { getAllWindows: () => [{ isDestroyed: () => false, webContents: { send } }] },
+  BrowserWindow: {
+    getAllWindows: () => [
+      { isDestroyed: () => false, webContents: { isDestroyed: () => false, send } }
+    ]
+  },
   powerMonitor: { on: vi.fn(), removeListener: vi.fn() }
 }))
 vi.mock('../vault', () => ({ getStatus: () => ({ isOpen: true }) }))

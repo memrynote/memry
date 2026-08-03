@@ -43,7 +43,9 @@ const mockCreateReminder = vi.fn()
 
 vi.mock('electron', () => ({
   BrowserWindow: {
-    getAllWindows: vi.fn(() => [{ webContents: { send: mockSend } }])
+    getAllWindows: vi.fn(() => [
+      { isDestroyed: () => false, webContents: { isDestroyed: () => false, send: mockSend } }
+    ])
   }
 }))
 

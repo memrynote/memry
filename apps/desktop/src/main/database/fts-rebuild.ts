@@ -1,16 +1,14 @@
-import { BrowserWindow } from 'electron'
 import { sql } from 'drizzle-orm'
 import type { DataDb, IndexDb } from './client'
 import { SearchChannels } from '@memry/contracts/ipc-channels'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { rebuildProjections } from '../projections'
 
 const logger = createLogger('FtsRebuild')
 
 function broadcast(channel: string, data: unknown): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, data)
-  })
+  broadcastToAllWindows(channel, data)
 }
 
 function isTableCorrupt(db: DataDb | IndexDb, tableName: string): boolean {
