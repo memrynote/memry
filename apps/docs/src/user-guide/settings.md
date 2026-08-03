@@ -73,9 +73,23 @@ When memrynote finds an update it opens an in-app **update prompt** showing the 
 
 ### Language & Region
 
-- **Language** — UI locale dropdown
+- **Language** — UI locale dropdown, 32 languages
 - **Clock Format** — 12-hour or 24-hour
 - **Date Format** — how calendar dates display throughout the app (`MM/DD/YYYY`, `DD/MM/YYYY`, `YYYY-MM-DD`, or `DD.MM.YYYY`). This preference is per device and isn't synced.
+
+On a brand-new install the app picks its starting language from your operating system, mapping
+regional variants onto the closest supported locale (`de-AT` → German, `pt-BR` → Portuguese,
+`zh-Hans` → Simplified Chinese) and falling back to English for anything unsupported. The detected
+language is saved straight away, so it is a one-time guess you can override in this dropdown.
+An existing install is never re-detected — if you already have a vault, your current language stays
+put across updates.
+
+Changing the language takes effect immediately, including the native application menu. A language
+change made on another device applies as soon as it syncs, without a restart.
+
+Dates, times, weekday and month names follow the selected language rather than the operating
+system, so a Japanese interface shows Japanese weekdays even on an English system. Arabic and
+Hebrew switch the interface to right-to-left.
 
 The desktop app loads the active language bundle at startup and fetches another locale when the
 language setting changes. English fallback messages remain available for errors before the selected
