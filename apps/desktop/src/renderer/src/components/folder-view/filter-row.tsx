@@ -24,6 +24,7 @@ import {
 import { cn } from '@/lib/utils'
 import { getOperatorsForType, getDefaultOperator, type PropertyType } from '@/lib/filter-evaluator'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
+import { getColumnLabel } from '@/lib/contract-display-names'
 import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
@@ -60,13 +61,15 @@ interface FilterRowProps {
 // Built-in Properties
 // ============================================================================
 
-const BUILT_IN_PROPERTIES: PropertyInfo[] = [
-  { id: 'title', name: 'Title', type: 'text' },
-  { id: 'folder', name: 'Folder', type: 'text' },
-  { id: 'tags', name: 'Tags', type: 'multiselect' },
-  { id: 'created', name: 'Created', type: 'date' },
-  { id: 'modified', name: 'Modified', type: 'date' },
-  { id: 'wordCount', name: 'Word Count', type: 'number' }
+/** Built-in filterable columns. `id` is the persisted contract identifier; the
+ *  visible name is resolved per render so it follows the active language. */
+const BUILT_IN_PROPERTY_TYPES: Array<{ id: string; type: PropertyType }> = [
+  { id: 'title', type: 'text' },
+  { id: 'folder', type: 'text' },
+  { id: 'tags', type: 'multiselect' },
+  { id: 'created', type: 'date' },
+  { id: 'modified', type: 'date' },
+  { id: 'wordCount', type: 'number' }
 ]
 
 /** Shared chip styling for the property + operator selectors. */
@@ -99,6 +102,14 @@ export function FilterRow({
   className
 }: FilterRowProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
+  // Built-in properties: `id` is the persisted contract identifier; the visible
+  // name is resolved on every render so it follows the active language.
+  const builtInProperties: PropertyInfo[] = BUILT_IN_PROPERTY_TYPES.map((p) => ({
+    id: p.id,
+    name: getColumnLabel(p.id),
+    type: p.type
+  }))
+
   // Combine built-in and custom properties
   const allProperties = useMemo(() => {
     const customProps = availableProperties.map((p) => ({
@@ -106,8 +117,8 @@ export function FilterRow({
       name: p.name,
       type: p.type
     }))
-    return [...BUILT_IN_PROPERTIES, ...customProps]
-  }, [availableProperties])
+    return [...builtInProperties, ...customProps]
+  }, [builtInProperties, availableProperties])
 
   // Get current property info
   const currentProperty = useMemo(() => {
@@ -188,7 +199,7 @@ export function FilterRow({
           <div className="px-2 py-1 text-[10px] font-medium text-muted-foreground uppercase">
             {tPhaseF('phaseF.componentsFolderViewFilterRow.builtIn')}
           </div>
-          {BUILT_IN_PROPERTIES.map((prop) => (
+          {builtInProperties.map((prop) => (
             <SelectItem key={prop.id} value={prop.id} className="text-xs">
               <span className="flex items-center gap-2">
                 <PropertyIcon icon={getColumnIcon(prop.id)} className="h-3.5 w-3.5" />

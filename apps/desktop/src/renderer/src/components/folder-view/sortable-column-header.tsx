@@ -14,6 +14,7 @@ import type { Header } from '@tanstack/react-table'
 import type { NoteWithProperties, ColumnConfig } from '@memry/contracts/folder-view-api'
 import { GripVertical, type AppIcon } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { getColumnLabel } from '@/lib/contract-display-names'
 import { useT } from '@memry/i18n/renderer'
 
 interface SortableColumnHeaderProps {
@@ -39,15 +40,6 @@ interface SortableColumnHeaderProps {
   showColumnBorders?: boolean
   /** Whether this is the last column (no border on right) - T099 */
   isLastColumn?: boolean
-}
-
-/**
- * Capitalize first letter and add spaces before capitals (for camelCase)
- */
-function formatColumnName(str: string): string {
-  if (!str) return str
-  const spaced = str.replace(/([A-Z])/g, ' $1').trim()
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
 }
 
 /**
@@ -93,7 +85,7 @@ export function SortableColumnHeader({
   const canSort = column.getCanSort()
 
   // Display name
-  const displayName = columnConfig.displayName || formatColumnName(columnId)
+  const displayName = columnConfig.displayName || getColumnLabel(columnId)
 
   // Styles for the header cell
   // NOTE: We intentionally do NOT apply CSS transforms to table cells
@@ -298,7 +290,7 @@ export function SortableColumnHeader({
           <span
             className="truncate"
             onDoubleClick={handleDoubleClick}
-            title={`${displayName} (double-click to edit)`}
+            title={tPhaseF('folderView.columnHeader.doubleClickToEdit', { name: displayName })}
           >
             {displayName}
           </span>

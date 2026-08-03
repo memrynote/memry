@@ -28,6 +28,7 @@ import type {
   ViewConfig as ContractViewConfig
 } from '@memry/contracts/folder-view-api'
 import { evaluateFilter } from '@/lib/filter-evaluator'
+import { getColumnLabel } from '@/lib/contract-display-names'
 import { propertiesService } from '@/services/properties-service'
 import { notesService, onTagsChanged } from '@/services/notes-service'
 import { onTagNotesChanged } from '@/services/tags-service'
@@ -383,13 +384,19 @@ export function useFolderView({
 
   // Get properties data from query
   const availableProperties = propertiesQuery.data?.properties ?? []
-  const builtInColumns =
+  const rawBuiltInColumns: Array<{ id: string; displayName: string; type: string }> =
     propertiesQuery.data?.builtIn ??
     BUILT_IN_COLUMNS.map((id) => ({
       id,
       displayName: id.charAt(0).toUpperCase() + id.slice(1),
       type: 'text'
     }))
+  // The `displayName` above is a mechanical capitalization of the English column
+  // id, never a user value — so it is only the fallback for the translated label.
+  const builtInColumns = rawBuiltInColumns.map((col) => ({
+    ...col,
+    displayName: getColumnLabel(col.id, col.displayName)
+  }))
   const formulas = useMemo(
     () => propertiesQuery.data?.formulas ?? [],
     [propertiesQuery.data?.formulas]

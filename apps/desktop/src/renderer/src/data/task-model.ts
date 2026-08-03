@@ -1,3 +1,11 @@
+import type { TFunction } from 'i18next'
+import { getI18n } from 'react-i18next'
+
+const tasksT = (): TFunction<'tasks'> | null => {
+  const i18n = getI18n()
+  return i18n ? i18n.getFixedT(null, 'tasks') : null
+}
+
 // ============================================================================
 // TASK TYPES AND INTERFACES
 // ============================================================================
@@ -75,6 +83,19 @@ export interface Task {
 // PRIORITY CONFIGURATION
 // ============================================================================
 
+/**
+ * `priorityConfig` is a module-level constant, so it is evaluated before
+ * `createRendererI18n` runs in `main.tsx`. Resolve each label lazily so it
+ * follows the active locale, and fall back to English while i18n is booting.
+ */
+const priorityLabels: Record<Priority, () => string> = {
+  none: () => tasksT()?.('task.priorityLabels.none') ?? 'No Priority',
+  low: () => tasksT()?.('task.priorityLabels.low') ?? 'Low',
+  medium: () => tasksT()?.('task.priorityLabels.medium') ?? 'Medium',
+  high: () => tasksT()?.('task.priorityLabels.high') ?? 'High',
+  urgent: () => tasksT()?.('task.priorityLabels.urgent') ?? 'Urgent'
+}
+
 export const priorityConfig: Record<
   Priority,
   { color: string | null; bgColor: string | null; label: string | null; order: number }
@@ -82,31 +103,41 @@ export const priorityConfig: Record<
   none: {
     color: 'var(--task-priority-none)',
     bgColor: 'var(--task-priority-none-bg)',
-    label: 'No Priority',
+    get label() {
+      return priorityLabels.none()
+    },
     order: 4
   },
   low: {
     color: 'var(--task-priority-low)',
     bgColor: 'var(--task-priority-low-bg)',
-    label: 'Low',
+    get label() {
+      return priorityLabels.low()
+    },
     order: 3
   },
   medium: {
     color: 'var(--task-priority-medium)',
     bgColor: 'var(--task-priority-medium-bg)',
-    label: 'Medium',
+    get label() {
+      return priorityLabels.medium()
+    },
     order: 2
   },
   high: {
     color: 'var(--task-priority-high)',
     bgColor: 'var(--task-priority-high-bg)',
-    label: 'High',
+    get label() {
+      return priorityLabels.high()
+    },
     order: 1
   },
   urgent: {
     color: 'var(--task-priority-urgent)',
     bgColor: 'var(--task-priority-urgent-bg)',
-    label: 'Urgent',
+    get label() {
+      return priorityLabels.urgent()
+    },
     order: 0
   }
 }

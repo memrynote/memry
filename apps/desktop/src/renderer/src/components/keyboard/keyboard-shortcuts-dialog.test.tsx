@@ -3,16 +3,28 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { KeyboardShortcutsDialog } from './keyboard-shortcuts-dialog'
 
-vi.mock('@memry/i18n/renderer', () => ({
-  useT: () => ({
-    t: (key: string) => {
-      if (key.endsWith('keyboardShortcuts')) return 'Keyboard Shortcuts'
-      if (key.endsWith('press')) return 'Press'
-      if (key.endsWith('toToggleThisDialog')) return 'to open and close this dialog'
-      return key
-    }
-  })
-}))
+vi.mock('@memry/i18n/renderer', () => {
+  const groupTitles: Record<string, string> = {
+    'shortcuts.groups.general.title': 'General',
+    'shortcuts.groups.tabs.title': 'Tabs & Splits',
+    'shortcuts.groups.inbox.title': 'Inbox',
+    'shortcuts.groups.journal.title': 'Journal',
+    'shortcuts.groups.notes.title': 'Notes / Editor',
+    'shortcuts.groups.tasks.title': 'Tasks',
+    'shortcuts.groups.settings.title': 'Settings'
+  }
+
+  return {
+    useT: () => ({
+      t: (key: string) => {
+        if (key.endsWith('keyboardShortcuts')) return 'Keyboard Shortcuts'
+        if (key.endsWith('press')) return 'Press'
+        if (key.endsWith('toToggleThisDialog')) return 'to open and close this dialog'
+        return groupTitles[key] ?? key
+      }
+    })
+  }
+})
 
 describe('KeyboardShortcutsDialog', () => {
   it('renders the full shortcut section catalog', () => {

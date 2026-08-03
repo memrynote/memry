@@ -1,4 +1,22 @@
+import type { TFunction } from 'i18next'
+import { getI18n } from 'react-i18next'
+
 import type { Priority } from './task-model'
+
+// ============================================================================
+// LOCALIZATION
+// ============================================================================
+
+/**
+ * The label tables below are module-level constants, so they are evaluated
+ * before `createRendererI18n` runs in `main.tsx`. Resolve each label lazily so
+ * it follows the active locale, and fall back to English while i18n is still
+ * booting.
+ */
+const tasksT = (): TFunction<'tasks'> | null => {
+  const i18n = getI18n()
+  return i18n ? i18n.getFixedT(null, 'tasks') : null
+}
 
 // ============================================================================
 // STATUS TYPES AND INTERFACES
@@ -94,15 +112,35 @@ export const statusColors = [
 // ============================================================================
 
 export const statusTypeOptions: { value: StatusType; label: string }[] = [
-  { value: 'todo', label: 'To Do' },
-  { value: 'in_progress', label: 'In Progress' },
-  { value: 'done', label: 'Done' }
+  {
+    value: 'todo',
+    get label() {
+      return tasksT()?.('project.statusTypes.todo') ?? 'To Do'
+    }
+  },
+  {
+    value: 'in_progress',
+    get label() {
+      return tasksT()?.('project.statusTypes.inProgress') ?? 'In Progress'
+    }
+  },
+  {
+    value: 'done',
+    get label() {
+      return tasksT()?.('project.statusTypes.done') ?? 'Done'
+    }
+  }
 ]
 
 // ============================================================================
 // DEFAULT STATUSES FOR NEW PROJECTS
 // ============================================================================
 
+/**
+ * `name` here is a PERSISTED value: `createDefaultProject` copies it into new
+ * projects, and it is written to the data DB and synced. Do not localize it —
+ * only `statusTypeOptions` above (display-only) is translated.
+ */
 export const defaultStatuses: Status[] = [
   { id: 'todo', name: 'To Do', color: '#6b7280', type: 'todo', order: 0 },
   { id: 'in-progress', name: 'In Progress', color: '#F59E0B', type: 'in_progress', order: 1 },
@@ -178,35 +216,43 @@ export const validateProject = (name: string, statuses: Status[]): ProjectValida
 
   // Name validation
   if (!name.trim()) {
-    errors.name = 'Project name is required'
+    errors.name = tasksT()?.('project.validation.nameRequired') ?? 'Project name is required'
   } else if (name.length > 50) {
-    errors.name = 'Project name must be 50 characters or less'
+    errors.name =
+      tasksT()?.('project.validation.nameTooLong') ?? 'Project name must be 50 characters or less'
   }
 
   // Status validation
   if (statuses.length < 2) {
-    errors.statuses = 'Projects need at least 2 statuses'
+    errors.statuses =
+      tasksT()?.('project.validation.minStatuses') ?? 'Projects need at least 2 statuses'
   } else {
     const hasTodo = statuses.some((s) => s.type === 'todo')
     const hasDone = statuses.some((s) => s.type === 'done')
 
     if (!hasTodo) {
-      errors.statuses = "Projects need at least one 'To Do' status for new tasks"
+      errors.statuses =
+        tasksT()?.('project.validation.needsTodoStatusForNewTasks') ??
+        "Projects need at least one 'To Do' status for new tasks"
     } else if (!hasDone) {
-      errors.statuses = "Projects need at least one 'Done' status for completed tasks"
+      errors.statuses =
+        tasksT()?.('project.validation.needsDoneStatusForCompletedTasks') ??
+        "Projects need at least one 'Done' status for completed tasks"
     }
 
     // Check for empty status names
     const hasEmptyName = statuses.some((s) => !s.name.trim())
     if (hasEmptyName && !errors.statuses) {
-      errors.statuses = 'All statuses must have a name'
+      errors.statuses =
+        tasksT()?.('project.validation.statusNameRequired') ?? 'All statuses must have a name'
     }
 
     // Check for duplicate status names
     const names = statuses.map((s) => s.name.toLowerCase().trim()).filter((n) => n)
     const hasDuplicates = names.length !== new Set(names).size
     if (hasDuplicates && !errors.statuses) {
-      errors.statuses = 'Status names must be unique'
+      errors.statuses =
+        tasksT()?.('project.validation.statusNamesUnique') ?? 'Status names must be unique'
     }
   }
 
@@ -221,26 +267,42 @@ export const canDeleteStatus = (
   statusId: string
 ): { canDelete: boolean; reason?: string } => {
   if (statuses.length <= 2) {
-    return { canDelete: false, reason: 'Projects need at least 2 statuses' }
+    return {
+      canDelete: false,
+      reason: tasksT()?.('project.validation.minStatuses') ?? 'Projects need at least 2 statuses'
+    }
   }
 
   const status = statuses.find((s) => s.id === statusId)
   if (!status) {
-    return { canDelete: false, reason: 'Status not found' }
+    return {
+      canDelete: false,
+      reason: tasksT()?.('project.validation.statusNotFound') ?? 'Status not found'
+    }
   }
 
   // Check if this is the only status of its type (for todo and done)
   if (status.type === 'todo') {
     const todoCount = statuses.filter((s) => s.type === 'todo').length
     if (todoCount <= 1) {
-      return { canDelete: false, reason: "Projects need at least one 'To Do' status" }
+      return {
+        canDelete: false,
+        reason:
+          tasksT()?.('project.validation.needsTodoStatus') ??
+          "Projects need at least one 'To Do' status"
+      }
     }
   }
 
   if (status.type === 'done') {
     const doneCount = statuses.filter((s) => s.type === 'done').length
     if (doneCount <= 1) {
-      return { canDelete: false, reason: "Projects need at least one 'Done' status" }
+      return {
+        canDelete: false,
+        reason:
+          tasksT()?.('project.validation.needsDoneStatus') ??
+          "Projects need at least one 'Done' status"
+      }
     }
   }
 
@@ -367,17 +429,41 @@ export const defaultSort: TaskSort = {
 // FILTER OPTIONS CONFIGURATION
 // ============================================================================
 
-export const dueDateFilterOptions: { value: DueDateFilterType; label: string }[] = [
-  { value: 'any', label: 'Any due date' },
-  { value: 'none', label: 'No due date' },
-  { value: 'overdue', label: 'Overdue' },
-  { value: 'today', label: 'Today' },
-  { value: 'tomorrow', label: 'Tomorrow' },
-  { value: 'this-week', label: 'This week' },
-  { value: 'next-week', label: 'Next week' },
-  { value: 'this-month', label: 'This month' },
-  { value: 'custom', label: 'Custom range...' }
-]
+/**
+ * Single source of truth for due date filter labels. Anything that renders a
+ * `DueDateFilterType` reads it from here instead of keeping its own table.
+ * Declaration order is also the order the options are offered in.
+ */
+const dueDateFilterLabels: Record<DueDateFilterType, () => string> = {
+  any: () => tasksT()?.('filters.dueDate.any') ?? 'Any due date',
+  none: () => tasksT()?.('filters.dueDate.none') ?? 'No due date',
+  overdue: () => tasksT()?.('filters.dueDate.overdue') ?? 'Overdue',
+  today: () => tasksT()?.('filters.dueDate.today') ?? 'Today',
+  tomorrow: () => tasksT()?.('filters.dueDate.tomorrow') ?? 'Tomorrow',
+  'this-week': () => tasksT()?.('filters.dueDate.thisWeek') ?? 'This week',
+  'next-week': () => tasksT()?.('filters.dueDate.nextWeek') ?? 'Next week',
+  'this-month': () => tasksT()?.('filters.dueDate.thisMonth') ?? 'This month',
+  custom: () => tasksT()?.('filters.dueDate.custom') ?? 'Custom range...'
+}
+
+/**
+ * `type` reaches this function from persisted + synced saved filters, so it can
+ * hold a value this build does not know about. Fall back to the raw type rather
+ * than throwing, which is what the previous `.find()` lookup effectively did.
+ */
+export const dueDateFilterLabel = (type: DueDateFilterType): string => {
+  const label = dueDateFilterLabels[type] as (() => string) | undefined
+  return label ? label() : type
+}
+
+export const dueDateFilterOptions: { value: DueDateFilterType; label: string }[] = (
+  Object.keys(dueDateFilterLabels) as DueDateFilterType[]
+).map((value) => ({
+  value,
+  get label() {
+    return dueDateFilterLabel(value)
+  }
+}))
 
 export const sortFieldOptions: { value: SortField; label: string }[] = [
   { value: 'dueDate', label: 'Due Date' },
@@ -402,7 +488,9 @@ export interface QuickFilterPreset {
 export const quickFilterPresets: QuickFilterPreset[] = [
   {
     id: 'overdue',
-    label: 'Overdue',
+    get label() {
+      return tasksT()?.('filters.quickPresets.overdue') ?? 'Overdue'
+    },
     icon: 'AlertTriangle',
     filters: {
       dueDate: { type: 'overdue', customStart: null, customEnd: null }
@@ -410,7 +498,9 @@ export const quickFilterPresets: QuickFilterPreset[] = [
   },
   {
     id: 'high-priority',
-    label: 'High Priority',
+    get label() {
+      return tasksT()?.('filters.quickPresets.highPriority') ?? 'High Priority'
+    },
     icon: 'Flag',
     filters: {
       priorities: ['urgent', 'high']
@@ -418,7 +508,9 @@ export const quickFilterPresets: QuickFilterPreset[] = [
   },
   {
     id: 'due-this-week',
-    label: 'Due This Week',
+    get label() {
+      return tasksT()?.('filters.quickPresets.dueThisWeek') ?? 'Due This Week'
+    },
     icon: 'Calendar',
     filters: {
       dueDate: { type: 'this-week', customStart: null, customEnd: null }
@@ -426,7 +518,9 @@ export const quickFilterPresets: QuickFilterPreset[] = [
   },
   {
     id: 'repeating',
-    label: 'Repeating',
+    get label() {
+      return tasksT()?.('filters.quickPresets.repeating') ?? 'Repeating'
+    },
     icon: 'Repeat',
     filters: {
       repeatType: 'repeating'
@@ -434,7 +528,9 @@ export const quickFilterPresets: QuickFilterPreset[] = [
   },
   {
     id: 'no-due-date',
-    label: 'No Due Date',
+    get label() {
+      return tasksT()?.('filters.quickPresets.noDueDate') ?? 'No Due Date'
+    },
     icon: 'HelpCircle',
     filters: {
       dueDate: { type: 'none', customStart: null, customEnd: null }

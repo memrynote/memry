@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useImportRun } from '@/hooks/use-import-run'
 import { notesKeys } from '@/hooks/use-notes-query'
+import { formatImportMessage } from '@/lib/import-message'
 import type { ImporterItem } from '@/hooks/use-importers'
 
 interface ImportDialogProps {
@@ -134,7 +135,7 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
                   <div key={gi} className="rounded-md border border-border p-3 text-xs/4">
                     <div className="font-medium text-[13px]/4 text-foreground">{g.label}</div>
                     {g.error ? (
-                      <div className="mt-1 text-destructive">{g.error}</div>
+                      <div className="mt-1 text-destructive">{formatImportMessage(g.error)}</div>
                     ) : (
                       <>
                         <div className="mt-1 text-muted-foreground">
@@ -152,7 +153,7 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
                             </summary>
                             <ul className="mt-1 ps-4 list-disc">
                               {g.warnings.map((w, i) => (
-                                <li key={i}>{w}</li>
+                                <li key={i}>{formatImportMessage(w)}</li>
                               ))}
                             </ul>
                           </details>

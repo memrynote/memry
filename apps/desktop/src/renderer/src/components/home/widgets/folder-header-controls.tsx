@@ -9,6 +9,7 @@ import {
   DropdownMenuItem
 } from '@/components/ui/dropdown-menu'
 import { ChevronDown, Folder, Check } from '@/lib/icons/icon-map'
+import { getViewDisplayName } from '@/lib/contract-display-names'
 import { useT } from '@memry/i18n/renderer'
 
 // Last path segment — compact label for nested folders ("Work/Specs" → "Specs").
@@ -90,7 +91,9 @@ export function FolderHeaderControls({
               className="inline-flex h-[22px] min-w-0 max-w-[120px] shrink items-center gap-1 rounded-full border border-[var(--border)] bg-card px-2 text-[11px] font-semibold text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
             >
               <span className="truncate">
-                {currentViewName ?? t('home.widget.folderViewSelect')}
+                {currentViewName
+                  ? getViewDisplayName(currentViewName)
+                  : t('home.widget.folderViewSelect')}
               </span>
               <ChevronDown
                 className="size-3 shrink-0 text-[var(--text-tertiary)]"
@@ -105,7 +108,7 @@ export function FolderHeaderControls({
                 onSelect={() => onChange({ ...config, viewName: view.name })}
                 className="gap-2"
               >
-                <span className="truncate">{view.name}</span>
+                <span className="truncate">{getViewDisplayName(view.name)}</span>
                 {view.name === currentViewName && (
                   <Check
                     className="ms-auto size-3.5 shrink-0 text-[var(--tint)]"

@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { getActiveLocale } from '@/lib/active-locale'
 import { Check, Loader2, AlertCircle } from '@/lib/icons'
 import { useQueryClient } from '@tanstack/react-query'
 import { useT } from '@memry/i18n/renderer'
@@ -465,7 +466,7 @@ export function InboxListView({
               })
               void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
               const snoozeDate = new Date(snoozeUntil)
-              const timeString = snoozeDate.toLocaleString('en-US', {
+              const timeString = snoozeDate.toLocaleString(getActiveLocale(), {
                 weekday: 'short',
                 month: 'short',
                 day: 'numeric',
@@ -651,7 +652,7 @@ export function InboxListView({
               })
               void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
               const snoozeDate = new Date(snoozeUntil)
-              const timeString = snoozeDate.toLocaleString('en-US', {
+              const timeString = snoozeDate.toLocaleString(getActiveLocale(), {
                 weekday: 'short',
                 month: 'short',
                 day: 'numeric',
