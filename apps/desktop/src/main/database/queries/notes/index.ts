@@ -70,6 +70,12 @@ export {
 } from './property-queries'
 
 export {
+  setPropertyRefs,
+  getPropertyRefsForNote,
+  getIncomingPropertyRefs
+} from './property-ref-queries'
+
+export {
   insertNoteSnapshot,
   getNoteSnapshots,
   getNoteSnapshotById,

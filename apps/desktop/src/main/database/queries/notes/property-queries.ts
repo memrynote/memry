@@ -11,6 +11,7 @@ import {
 } from '@memry/db-schema/schema/notes-cache'
 import type { IndexDb } from '../../types'
 import { serializeValue, deserializeValue } from './query-helpers'
+import { setPropertyRefs } from './property-ref-queries'
 
 // ============================================================================
 // Property Value Operations
@@ -45,6 +46,8 @@ export function setNoteProperties(
     })
     db.insert(noteProperties).values(propertyRecords).run()
   }
+
+  setPropertyRefs(db, noteId, properties)
 }
 
 export function getNoteProperties(db: IndexDb, noteId: string): PropertyValue[] {
