@@ -52,7 +52,9 @@ import {
   getHeatmapData,
   getJournalMonthEntries,
   getJournalYearStats,
-  getJournalStreak
+  getJournalStreak,
+  deserializeValue,
+  serializeValue
 } from '.'
 
 const BASE_TIME = new Date('2026-01-15T00:00:00.000Z')
@@ -415,5 +417,20 @@ describe('notes cache queries', () => {
     expect(streak.currentStreak).toBe(3)
     expect(streak.longestStreak).toBe(3)
     expect(streak.lastEntryDate).toBe('2026-01-15')
+  })
+})
+
+describe('deserializeValue — relation', () => {
+  it('round-trips a relation array', () => {
+    const value = ['memry://note/nte_1', 'memry://task/tsk_2']
+    expect(deserializeValue(serializeValue(value), 'relation')).toEqual(value)
+  })
+
+  it('falls back to a single-element array for non-array JSON', () => {
+    expect(deserializeValue('memry://note/nte_1', 'relation')).toEqual(['memry://note/nte_1'])
+  })
+
+  it('returns null for a null value', () => {
+    expect(deserializeValue(null, 'relation')).toBeNull()
   })
 })
