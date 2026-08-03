@@ -466,21 +466,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Chỉ kho lưu trữ",
+        "computerAccess": "Truy cập máy tính"
       },
       "webSearch": {
         "on": "On",
         "off": "Off",
-        "label": "Web search"
+        "label": "Tìm kiếm web"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Quyền của Agent: {access}, tìm kiếm web {webSearch}",
       "permissions": {
         "label": "Permissions",
         "access": "Access",
         "tools": "Tools"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Cài đặt mô hình Agent: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Không có kết quả phù hợp"

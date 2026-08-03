@@ -250,7 +250,7 @@
     "errorPrefix": "Fel:"
   },
   "export": {
-    "noteTitle": "Journal - {month} {day}, {year}"
+    "noteTitle": "Journal – {day} {month} {year}"
   },
   "note": {
     "generatedTitle": "Anteckning - {date}",

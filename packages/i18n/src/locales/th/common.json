@@ -466,21 +466,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "เฉพาะคลัง",
+        "computerAccess": "เข้าถึงคอมพิวเตอร์"
       },
       "webSearch": {
         "on": "On",
         "off": "Off",
-        "label": "Web search"
+        "label": "ค้นหาเว็บ"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "สิทธิ์ของ Agent: {access}, ค้นหาเว็บ {webSearch}",
       "permissions": {
         "label": "Permissions",
         "access": "Access",
         "tools": "Tools"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "การตั้งค่าโมเดลของ Agent: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "ไม่มีการแข่งขัน"

@@ -37,7 +37,7 @@
       "closeAll": "Închideți totul",
       "duplicate": "Duplicați fila",
       "splitRight": "Split dreapta",
-      "splitDown": "Split Down",
+      "splitDown": "Split jos",
       "copyPath": "Copiați calea",
       "revealInSidebar": "Dezvăluie în bara laterală"
     }
@@ -466,21 +466,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Doar seiful",
+        "computerAccess": "Acces la computer"
       },
       "webSearch": {
         "on": "On",
         "off": "Off",
-        "label": "Web search"
+        "label": "Căutare web"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Permisiuni agent: {access}, căutare web {webSearch}",
       "permissions": {
         "label": "Permissions",
         "access": "Access",
         "tools": "Tools"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Setări model agent: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Nicio potrivire"

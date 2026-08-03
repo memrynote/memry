@@ -466,21 +466,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Tylko skarbiec",
+        "computerAccess": "Dostęp do komputera"
       },
       "webSearch": {
         "on": "On",
         "off": "Off",
-        "label": "Web search"
+        "label": "Wyszukiwanie w sieci"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Uprawnienia agenta: {access}, wyszukiwanie w sieci {webSearch}",
       "permissions": {
         "label": "Permissions",
         "access": "Access",
         "tools": "Tools"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Ustawienia modelu agenta: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Brak dopasowań"

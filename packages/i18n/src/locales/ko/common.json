@@ -466,21 +466,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "볼트만",
+        "computerAccess": "컴퓨터 액세스"
       },
       "webSearch": {
         "on": "On",
         "off": "Off",
-        "label": "Web search"
+        "label": "웹 검색"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Agent 권한: {access}, 웹 검색 {webSearch}",
       "permissions": {
         "label": "Permissions",
         "access": "Access",
         "tools": "Tools"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Agent 모델 설정: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "일치하는 항목이 없습니다."

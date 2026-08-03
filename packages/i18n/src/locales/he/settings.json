@@ -223,7 +223,7 @@
         "options": {
           "system": "מערכת ברירת מחדל",
           "sansSerif": "סנסריף",
-          "serif": "Serif (Crimson Pro)",
+          "serif": "סריף (Crimson Pro)",
           "gelasio": "ג'לסיו",
           "geist": "גיסט",
           "inter": "אינטר",
@@ -1264,7 +1264,7 @@
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "גישת שרת מקומי עבור לקוחות MCP חיצוניים."
     },
     "groups": {
       "connection": "Connection",
@@ -1273,31 +1273,31 @@
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "השתמש בנקודת הקצה המקומית הזו מתוך Cursor, Claude Desktop או Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "אסימון Bearer",
+        "description": "פרטי גישה בזיכרון, לאורך הפעלה זו של האפליקציה."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "החלף אסימון",
+        "description": "מבטל את תוקף ההפעלות הקיימות של לקוחות חיצוניים."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "העתק {label}",
+    "notRunning": "לא פועל",
+    "toolsBadge": "{count, plural, one {# כלי} two {# כלים} other {# כלים}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "הרשאות Agent",
+      "subtitle": "בחר גישת ברירת מחדל, אישורים וספקים מקומיים עבור צ'אט Agent."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "ספק מקומי תואם OpenAI",
+      "actions": "בדיקות חיבור"
     },
     "presets": {
       "ollama": "Ollama",
@@ -1310,50 +1310,50 @@
         "label": "Preset"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "כתובת בסיס",
+        "description": "נקודת קצה /v1 תואמת OpenAI."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "אפשר נקודת קצה שאינה loopback",
+        "description": "הנתונים נשלחים לנקודת הקצה שהוגדרה."
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "בחר מודל מהתוצאות או הזן אחד ידנית."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "מפתח API",
+        "description": "פרטי גישה אופציונליים, נשמרים במחזיק המפתחות של מערכת ההפעלה.",
+        "configured": "מפתח API כבר שמור במחזיק המפתחות של מערכת ההפעלה."
       }
     },
     "actions": {
       "save": "Save",
       "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "test": "בדוק חיבור",
+      "probe": "בדוק כלים"
     },
     "status": {
       "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "toolsDisabled": "כלים מושבתים",
+      "fullTools": "כל הכלים מופעלים",
       "checking": "בודק…",
       "connected": "מחובר",
       "label": "חיבור"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "הרשאות Agent",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "גישת ברירת מחדל",
+        "description": "קובע את מצב הגישה ההתחלתי לתורות Agent חדשים.",
+        "vaultOnly": "כספת בלבד",
+        "computerAccess": "גישה למחשב"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "אישור פעולות",
+        "description": "בחר אם קריאות לכלים יפעלו אוטומטית או ימתינו לאישור בצ'אט.",
+        "alwaysAllow": "אפשר תמיד",
+        "askBeforeChanges": "שאל לפני שינויים"
       }
     }
   },

@@ -466,21 +466,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "الخزنة فقط",
+        "computerAccess": "الوصول إلى الكمبيوتر"
       },
       "webSearch": {
         "on": "On",
         "off": "Off",
-        "label": "Web search"
+        "label": "البحث في الويب"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "أذونات الوكيل: {access}، البحث في الويب {webSearch}",
       "permissions": {
         "label": "Permissions",
         "access": "Access",
         "tools": "Tools"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "إعدادات نموذج الوكيل: {model}، {settings}"
     },
     "refPicker": {
       "noMatches": "لا توجد تطابقات"

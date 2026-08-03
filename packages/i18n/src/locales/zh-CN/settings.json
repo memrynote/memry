@@ -1264,7 +1264,7 @@
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "供外部 MCP 客户端访问的本地服务器。"
     },
     "groups": {
       "connection": "Connection",
@@ -1273,31 +1273,31 @@
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "在 Cursor、Claude Desktop 或 Zed 中使用此 localhost 地址。"
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Bearer 令牌",
+        "description": "仅在本次应用启动期间有效的内存凭据。"
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "轮换令牌",
+        "description": "使现有的外部客户端会话失效。"
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "复制 {label}",
+    "notRunning": "未运行",
+    "toolsBadge": "{count, plural, one {# 个工具} other {# 个工具}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Agent 权限",
+      "subtitle": "为 Agent 聊天选择默认访问权限、确认方式和本地提供商。"
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "本地 OpenAI 兼容提供商",
+      "actions": "连接检查"
     },
     "presets": {
       "ollama": "Ollama",
@@ -1310,50 +1310,50 @@
         "label": "Preset"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "基础 URL",
+        "description": "OpenAI 兼容的 /v1 接口地址。"
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "允许非回环地址",
+        "description": "数据会发送到所配置的地址。"
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "选择返回的模型，或手动输入一个。"
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "API 密钥",
+        "description": "可选凭据，保存在系统钥匙串中。",
+        "configured": "系统钥匙串中已保存了一个 API 密钥。"
       }
     },
     "actions": {
       "save": "Save",
       "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "test": "测试连接",
+      "probe": "探测工具"
     },
     "status": {
       "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "toolsDisabled": "工具已禁用",
+      "fullTools": "已启用全部工具",
       "checking": "检查中…",
       "connected": "已连接",
       "label": "连接"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Agent 权限",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "默认访问权限",
+        "description": "设置新 Agent 对话轮次的初始访问模式。",
+        "vaultOnly": "仅保险库",
+        "computerAccess": "计算机访问"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "确认操作",
+        "description": "选择工具调用是自动运行，还是在聊天中等待批准。",
+        "alwaysAllow": "始终允许",
+        "askBeforeChanges": "更改前询问"
       }
     }
   },

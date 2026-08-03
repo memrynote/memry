@@ -223,7 +223,7 @@
         "options": {
           "system": "ค่าเริ่มต้นของระบบ",
           "sansSerif": "ไม่ลงท้าย",
-          "serif": "Serif (Crimson Pro)",
+          "serif": "เซริฟ (Crimson Pro)",
           "gelasio": "Gelasio",
           "geist": "Geist",
           "inter": "Inter",
@@ -1264,7 +1264,7 @@
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "การเข้าถึงเซิร์ฟเวอร์ในเครื่องสำหรับไคลเอนต์ MCP ภายนอก"
     },
     "groups": {
       "connection": "Connection",
@@ -1273,31 +1273,31 @@
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "ใช้จุดเชื่อมต่อ localhost นี้จาก Cursor, Claude Desktop หรือ Zed"
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "โทเคน Bearer",
+        "description": "ข้อมูลรับรองในหน่วยความจำสำหรับการเปิดแอปครั้งนี้"
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "หมุนเวียนโทเคน",
+        "description": "ยกเลิกเซสชันของไคลเอนต์ภายนอกที่มีอยู่"
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "คัดลอก {label}",
+    "notRunning": "ไม่ได้ทำงาน",
+    "toolsBadge": "{count, plural, other {เครื่องมือ # รายการ}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "สิทธิ์ของ Agent",
+      "subtitle": "เลือกการเข้าถึงเริ่มต้น การยืนยัน และผู้ให้บริการในเครื่องสำหรับ Agent Chat"
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "ผู้ให้บริการในเครื่องที่เข้ากันได้กับ OpenAI",
+      "actions": "การตรวจสอบการเชื่อมต่อ"
     },
     "presets": {
       "ollama": "Ollama",
@@ -1310,50 +1310,50 @@
         "label": "Preset"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "URL หลัก",
+        "description": "จุดเชื่อมต่อ /v1 ที่เข้ากันได้กับ OpenAI"
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "อนุญาตจุดเชื่อมต่อที่ไม่ใช่ loopback",
+        "description": "ข้อมูลจะถูกส่งไปยังจุดเชื่อมต่อที่ตั้งค่าไว้"
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "เลือกโมเดลที่ระบบดึงมา หรือพิมพ์ชื่อโมเดลเอง"
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "คีย์ API",
+        "description": "ข้อมูลรับรองเสริม จัดเก็บไว้ในพวงกุญแจของระบบปฏิบัติการ",
+        "configured": "มีคีย์ API จัดเก็บไว้ในพวงกุญแจของระบบปฏิบัติการแล้ว"
       }
     },
     "actions": {
       "save": "Save",
       "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "test": "ทดสอบการเชื่อมต่อ",
+      "probe": "ตรวจหาเครื่องมือ"
     },
     "status": {
       "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "toolsDisabled": "ปิดใช้งานเครื่องมือ",
+      "fullTools": "เปิดใช้งานเครื่องมือทั้งหมด",
       "checking": "กำลังตรวจสอบ…",
       "connected": "เชื่อมต่อแล้ว",
       "label": "การเชื่อมต่อ"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "สิทธิ์ของ Agent",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "การเข้าถึงเริ่มต้น",
+        "description": "กำหนดโหมดการเข้าถึงตั้งต้นสำหรับรอบการทำงานใหม่ของ Agent",
+        "vaultOnly": "เฉพาะคลัง",
+        "computerAccess": "เข้าถึงคอมพิวเตอร์"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "ยืนยันการดำเนินการ",
+        "description": "เลือกว่าจะให้การเรียกใช้เครื่องมือทำงานโดยอัตโนมัติ หรือรอการอนุมัติในแชท",
+        "alwaysAllow": "อนุญาตเสมอ",
+        "askBeforeChanges": "ถามก่อนเปลี่ยนแปลง"
       }
     }
   },

@@ -6,9 +6,9 @@
       "all": "Lahat"
     },
     "viewMode": {
-      "label": "View mode",
+      "label": "Mode ng view",
       "list": "View ng listahan",
-      "kanban": "Kanban view"
+      "kanban": "View ng Kanban"
     },
     "projectScope": {
       "allProjects": "Lahat ng proyekto",
@@ -77,7 +77,7 @@
     "searchRelated": "Maghanap ng kaugnay…"
   },
   "kanban": {
-    "board": "Kanban board"
+    "board": "Board ng Kanban"
   },
   "toasts": {
     "projectUpdated": "Na-update ang proyekto",

@@ -89,7 +89,7 @@
       "richTextAria": "Uređivač obogaćenog teksta",
       "headingPlaceholder": "Naslov",
       "listPlaceholder": "Stavka popisa",
-      "todoPlaceholder": "To-do item"
+      "todoPlaceholder": "Stavka zadatka"
     },
     "toolbar": {
       "reminderSet": "Podsjetnik postavljen",

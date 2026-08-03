@@ -1263,8 +1263,8 @@
   },
   "agentMcp": {
     "header": {
-      "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "title": "MCP للوكيل",
+      "subtitle": "وصول الخادم المحلي لعملاء MCP الخارجيين."
     },
     "groups": {
       "connection": "Connection",
@@ -1273,31 +1273,31 @@
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "استخدم نقطة نهاية localhost هذه من Cursor أو Claude Desktop أو Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "رمز Bearer",
+        "description": "بيانات اعتماد في الذاكرة لجلسة تشغيل التطبيق هذه."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "تدوير الرمز",
+        "description": "إبطال جلسات العملاء الخارجيين الحالية."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "نسخ {label}",
+    "notRunning": "غير قيد التشغيل",
+    "toolsBadge": "{count, plural, zero {لا أدوات} one {أداة واحدة} two {أداتان} few {# أدوات} many {# أداة} other {# أداة}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "أذونات الوكيل",
+      "subtitle": "اختر الوصول الافتراضي والتأكيدات والمزودين المحليين لدردشة الوكيل."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "مزود محلي متوافق مع OpenAI",
+      "actions": "فحوصات الاتصال"
     },
     "presets": {
       "ollama": "Ollama",
@@ -1310,50 +1310,50 @@
         "label": "Preset"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "عنوان URL الأساسي",
+        "description": "نقطة نهاية /v1 متوافقة مع OpenAI."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "السماح بنقطة نهاية غير محلية",
+        "description": "تُرسل البيانات إلى نقطة النهاية المُعدّة."
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "اختر نموذجًا من النماذج المُعادة أو أدخل واحدًا يدويًا."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "مفتاح API",
+        "description": "بيانات اعتماد اختيارية تُخزَّن في سلسلة مفاتيح نظام التشغيل.",
+        "configured": "يوجد مفتاح API مخزَّن بالفعل في سلسلة مفاتيح نظام التشغيل."
       }
     },
     "actions": {
       "save": "Save",
       "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "test": "اختبار الاتصال",
+      "probe": "فحص الأدوات"
     },
     "status": {
       "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "toolsDisabled": "الأدوات معطّلة",
+      "fullTools": "الأدوات الكاملة مفعّلة",
       "checking": "جارٍ التحقق…",
       "connected": "متصل",
       "label": "الاتصال"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "أذونات الوكيل",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "الوصول الافتراضي",
+        "description": "يحدد وضع الوصول المبدئي لأدوار الوكيل الجديدة.",
+        "vaultOnly": "الخزنة فقط",
+        "computerAccess": "الوصول إلى الكمبيوتر"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "تأكيد الإجراءات",
+        "description": "اختر ما إذا كانت استدعاءات الأدوات تعمل تلقائيًا أم تنتظر الموافقة في الدردشة.",
+        "alwaysAllow": "السماح دائمًا",
+        "askBeforeChanges": "السؤال قبل التغييرات"
       }
     }
   },

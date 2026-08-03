@@ -51,7 +51,7 @@
   },
   "empty": {
     "successAria": "Uspjeh, inbox je prazan",
-    "title": "Inbox Zero",
+    "title": "Prazan inbox",
     "body": "Sve je obrađeno. Snimite nešto novo s gornjim unosom ili zalijepite vezu da biste započeli.",
     "filedThisWeek": "{count, plural, one {# podnio ovaj tjedan} other {# podnio ovaj tjedan}}",
     "dayStreak": "{count, plural, one {# dnevni niz} other {# dnevni niz}}",

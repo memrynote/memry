@@ -14,7 +14,7 @@
       "allProjects": "Todos los proyectos",
       "searchProjects": "Buscar proyectos…",
       "editProject": "Editar {name}",
-      "unstarSavedFilter": "Unstar {name}"
+      "unstarSavedFilter": "Quitar la estrella a {name}"
     }
   },
   "task": {

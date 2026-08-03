@@ -323,7 +323,7 @@
       "selectAFolderToStoreYourNotesAndTasks": "Odaberite mapu za pohranjivanje bilješki i zadataka.",
       "opening": "Otvaranje...",
       "selectVaultFolder": "Odaberite mapu trezora",
-      "plainMarkdown": "Plain Markdown",
+      "plainMarkdown": "Običan Markdown",
       "yourNotesStayPortable": "Vaše bilješke ostaju prenosive",
       "syncAnywhere": "Sinkronizirajte bilo gdje",
       "useDropboxIcloudGit": "Koristite Dropbox, iCloud, Git",
@@ -389,7 +389,7 @@
     }
   },
   "agentChat": {
-    "title": "Agent chat",
+    "title": "Razgovor s agentom",
     "loading": "Učitavanje razgovora agenta...",
     "conversationLoading": "Razgovor se učitava...",
     "newConversation": "Novi razgovor",
@@ -466,21 +466,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Samo trezor",
+        "computerAccess": "Pristup računalu"
       },
       "webSearch": {
         "on": "On",
         "off": "Off",
-        "label": "Web search"
+        "label": "Pretraživanje weba"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Dopuštenja agenta: {access}, pretraživanje weba {webSearch}",
       "permissions": {
         "label": "Permissions",
         "access": "Access",
         "tools": "Tools"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Postavke modela agenta: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Nema podudaranja"

@@ -1264,7 +1264,7 @@
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Lokaler Serverzugriff für externe MCP-Clients."
     },
     "groups": {
       "connection": "Connection",
@@ -1273,31 +1273,31 @@
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Verwenden Sie diesen localhost-Endpunkt in Cursor, Claude Desktop oder Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Bearer-Token",
+        "description": "Zugangsdaten nur im Arbeitsspeicher, gültig für diesen App-Start."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Token erneuern",
+        "description": "Macht bestehende Sitzungen externer Clients ungültig."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "{label} kopieren",
+    "notRunning": "Läuft nicht",
+    "toolsBadge": "{count, plural, one {# Tool} other {# Tools}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Agent-Berechtigungen",
+      "subtitle": "Wählen Sie Standardzugriff, Bestätigungen und lokale Anbieter für den Agent-Chat."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Lokaler OpenAI-kompatibler Anbieter",
+      "actions": "Verbindungsprüfungen"
     },
     "presets": {
       "ollama": "Ollama",
@@ -1310,50 +1310,50 @@
         "label": "Preset"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "Basis-URL",
+        "description": "OpenAI-kompatibler /v1-Endpunkt."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Endpunkt außerhalb von Loopback zulassen",
+        "description": "Daten werden an den konfigurierten Endpunkt gesendet."
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "Wählen Sie ein gefundenes Modell oder geben Sie eines manuell ein."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "API-Schlüssel",
+        "description": "Optionale Zugangsdaten, gespeichert im Schlüsselbund des Betriebssystems.",
+        "configured": "Im Schlüsselbund des Betriebssystems ist bereits ein API-Schlüssel gespeichert."
       }
     },
     "actions": {
       "save": "Save",
       "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "test": "Verbindung testen",
+      "probe": "Tools prüfen"
     },
     "status": {
       "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "toolsDisabled": "Tools deaktiviert",
+      "fullTools": "Alle Tools aktiviert",
       "checking": "Wird geprüft…",
       "connected": "Verbunden",
       "label": "Verbindung"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Agent-Berechtigungen",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Standardzugriff",
+        "description": "Legt den anfänglichen Zugriffsmodus für neue Agent-Turns fest.",
+        "vaultOnly": "Nur Tresor",
+        "computerAccess": "Computerzugriff"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Aktionen bestätigen",
+        "description": "Legen Sie fest, ob Tool-Aufrufe automatisch ausgeführt werden oder im Chat auf Genehmigung warten.",
+        "alwaysAllow": "Immer zulassen",
+        "askBeforeChanges": "Vor Änderungen fragen"
       }
     }
   },

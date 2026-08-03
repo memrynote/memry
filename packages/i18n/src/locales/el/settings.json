@@ -1264,7 +1264,7 @@
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Τοπική πρόσβαση διακομιστή για εξωτερικά προγράμματα-πελάτες MCP."
     },
     "groups": {
       "connection": "Connection",
@@ -1273,31 +1273,31 @@
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Χρησιμοποιήστε αυτό το τελικό σημείο localhost από το Cursor, το Claude Desktop ή το Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Διακριτικό Bearer",
+        "description": "Διαπιστευτήριο στη μνήμη, μόνο για αυτήν την εκκίνηση της εφαρμογής."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Ανανέωση διακριτικού",
+        "description": "Ακυρώνει τις υπάρχουσες συνεδρίες εξωτερικών προγραμμάτων-πελατών."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "Αντιγραφή {label}",
+    "notRunning": "Δεν εκτελείται",
+    "toolsBadge": "{count, plural, one {# εργαλείο} other {# εργαλεία}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Δικαιώματα Agent",
+      "subtitle": "Επιλέξτε προεπιλεγμένη πρόσβαση, επιβεβαιώσεις και τοπικούς παρόχους για τη συνομιλία Agent."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Τοπικός πάροχος συμβατός με OpenAI",
+      "actions": "Έλεγχοι σύνδεσης"
     },
     "presets": {
       "ollama": "Ollama",
@@ -1310,50 +1310,50 @@
         "label": "Preset"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "Βασική διεύθυνση URL",
+        "description": "Τελικό σημείο /v1 συμβατό με OpenAI."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Να επιτρέπεται τελικό σημείο εκτός loopback",
+        "description": "Τα δεδομένα αποστέλλονται στο τελικό σημείο που έχει οριστεί."
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "Επιλέξτε ένα μοντέλο από τη λίστα ή εισαγάγετε ένα χειροκίνητα."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "Κλειδί API",
+        "description": "Προαιρετικό διαπιστευτήριο, αποθηκευμένο στο keychain του λειτουργικού συστήματος.",
+        "configured": "Ένα κλειδί API είναι ήδη αποθηκευμένο στο keychain του λειτουργικού συστήματος."
       }
     },
     "actions": {
       "save": "Save",
       "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "test": "Δοκιμή σύνδεσης",
+      "probe": "Ανίχνευση εργαλείων"
     },
     "status": {
       "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "toolsDisabled": "Εργαλεία απενεργοποιημένα",
+      "fullTools": "Πλήρη εργαλεία ενεργοποιημένα",
       "checking": "Έλεγχος…",
       "connected": "Συνδεδεμένο",
       "label": "Σύνδεση"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Δικαιώματα Agent",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Προεπιλεγμένη πρόσβαση",
+        "description": "Ορίζει την αρχική λειτουργία πρόσβασης για νέους γύρους του Agent.",
+        "vaultOnly": "Μόνο θησαυροφυλάκιο",
+        "computerAccess": "Πρόσβαση στον υπολογιστή"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Επιβεβαίωση ενεργειών",
+        "description": "Επιλέξτε αν οι κλήσεις εργαλείων εκτελούνται αυτόματα ή περιμένουν έγκριση στη συνομιλία.",
+        "alwaysAllow": "Να επιτρέπεται πάντα",
+        "askBeforeChanges": "Ερώτηση πριν από αλλαγές"
       }
     }
   },

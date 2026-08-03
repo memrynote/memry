@@ -21,12 +21,12 @@
         "calendar": "Kalendaryo",
         "appearance": "Hitsura",
         "shortcuts": "Mga shortcut",
-        "ai": "AI Assistant",
+        "ai": "Katulong na AI",
         "integrations": "Mga pagsasama",
         "vault": "Vault",
         "tags": "Mga tag",
         "properties": "Mga Katangian",
-        "commandLine": "Command Line",
+        "commandLine": "Linya ng Command",
         "features": "Mga Feature",
         "import": "Pag-import",
         "inbox": "Inbox"
@@ -147,7 +147,7 @@
         "sendReport": {
           "button": "Magpadala ng diagnostic report",
           "description": "Magpadala ng isang beses na ulat ng mga na-redact na teknikal na log para matulungan kaming ayusin ang problemang naranasan mo.",
-          "label": "Diagnostic Report"
+          "label": "Ulat ng Diagnostic"
         },
         "sending": "Ipinapadala…",
         "sent": "Naipadala ang ulat — sanggunian {incidentId}",
@@ -258,7 +258,7 @@
       "error": "Nabigong i-update ang lapad ng editor"
     },
     "toolbarMode": {
-      "label": "Sticky Formatting Toolbar",
+      "label": "Nakadikit na Toolbar sa Pag-format",
       "description": "Palaging ipakita ang toolbar sa itaas ng editor",
       "error": "Nabigong i-update ang toolbar mode"
     },
@@ -319,7 +319,7 @@
     },
     "groups": {
       "defaultTemplate": "Default na Template",
-      "sidebarVisibility": "Sidebar Visibility",
+      "sidebarVisibility": "Pagpapakita ng Sidebar",
       "footer": "Footer",
       "location": "Lokasyon at Format"
     },
@@ -414,7 +414,7 @@
       "error": "Nabigong i-update ang default na view"
     },
     "staleInbox": {
-      "label": "Stale Inbox Threshold",
+      "label": "Threshold ng Lipas na Inbox",
       "description": "Ang mga gawaing mas matanda pa rito ay naka-highlight bilang lipas",
       "unit": "araw",
       "error": "Nabigong i-update ang lipas na threshold ng inbox"
@@ -541,10 +541,10 @@
       },
       "planStatus": "Status ng plano",
       "plans": {
-        "believer": "Believer plan",
+        "believer": "Believer na plano",
         "free": "Libreng plano",
-        "plus": "Plus plan",
-        "pro": "Pro plan"
+        "plus": "Plus na plano",
+        "pro": "Pro na plano"
       },
       "statuses": {
         "active": "Aktibo",
@@ -590,7 +590,7 @@
       "seePlans": "Tingnan ang mga plano"
     },
     "email": {
-      "label": "Email address",
+      "label": "Address ng email",
       "placeholder": "Ilagay ang iyong email address...",
       "invalid": "Mangyaring magpasok ng wastong email address",
       "sending": "Nagpapadala ng code..."
@@ -668,7 +668,7 @@
       "goBack": "Bumalik ka",
       "waitingTitle": "Naghihintay ng pag-apruba",
       "waitingDescription": "Buksan ang memrynote sa iyong iba pang device at aprubahan ang kahilingan sa pag-link.",
-      "verificationCode": "Verification code",
+      "verificationCode": "Code ng beripikasyon",
       "confirmCode": "Kumpirmahin na tumutugma ito sa code sa iyong iba pang device",
       "vaultPickerChooseFolder": "Pumili ng folder",
       "vaultPickerConfirm": "Kunin ang napili",
@@ -736,7 +736,7 @@
     "description": "Ang isang device ay humihiling ng access sa iyong naka-encrypt na data. Aprubahan lang kung sinimulan mo ang kahilingang ito.",
     "unknownDevice": "Hindi kilalang device",
     "unknownPlatform": "Hindi kilalang platform",
-    "verificationCode": "Verification code",
+    "verificationCode": "Code ng beripikasyon",
     "computing": "Nagko-compute...",
     "unavailable": "Hindi magagamit",
     "confirmCode": "Kumpirmahin na tumutugma ang code na ito sa ipinapakita sa bagong device",
@@ -748,7 +748,7 @@
   },
   "ai": {
     "header": {
-      "title": "AI Assistant",
+      "title": "Katulong na AI",
       "subtitle": "Ang mga pag-embed ay tumatakbo nang lokal. Maaaring gamitin ng mga voice memo ang Whisper Small o ang iyong OpenAI key.",
       "loading": "Nilo-load ang mga setting..."
     },
@@ -940,7 +940,7 @@
     },
     "loadingStorage": "Nilo-load ang impormasyon ng storage...",
     "signInStorage": "Mag-sign in para tingnan ang paggamit ng storage",
-    "vaultPath": "Vault Path",
+    "vaultPath": "Path ng Vault",
     "reveal": "Ibunyag",
     "storage": {
       "title": "Imbakan",
@@ -1071,7 +1071,7 @@
     "noMatch": "Walang mga shortcut na tumutugma sa iyong paghahanap",
     "conflict": "Mga salungatan sa: {labels}",
     "globalCapture": {
-      "title": "Global Capture",
+      "title": "Pandaigdigang Pagkuha",
       "description": "Kumuha ng tala mula sa kahit saan",
       "permissionNeeded": "Kailangan ng pahintulot",
       "active": "Aktibo",
@@ -1264,7 +1264,7 @@
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Lokal na access sa server para sa mga panlabas na MCP client."
     },
     "groups": {
       "connection": "Connection",
@@ -1273,31 +1273,31 @@
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Gamitin ang localhost endpoint na ito mula sa Cursor, Claude Desktop, o Zed."
       },
       "bearer": {
         "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "description": "Kredensyal na nasa memory lang para sa paglulunsad na ito ng app."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "I-rotate ang token",
+        "description": "Pawalang-bisa ang mga kasalukuyang session ng panlabas na client."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "Kopyahin ang {label}",
+    "notRunning": "Hindi tumatakbo",
+    "toolsBadge": "{count, plural, one {# tool} other {# na tool}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Mga Pahintulot ng Agent",
+      "subtitle": "Piliin ang default na access, mga kumpirmasyon, at mga lokal na provider para sa Agent Chat."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Lokal na provider na tugma sa OpenAI",
+      "actions": "Mga pagsusuri sa koneksyon"
     },
     "presets": {
       "ollama": "Ollama",
@@ -1311,49 +1311,49 @@
       },
       "baseUrl": {
         "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "description": "Endpoint na /v1 na tugma sa OpenAI."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Payagan ang non-loopback na endpoint",
+        "description": "Ipinapadala ang data sa naka-configure na endpoint."
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "Pumili ng ibinalik na modelo o maglagay nang manu-mano."
       },
       "apiKey": {
         "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "description": "Opsyonal na kredensyal na nakaimbak sa OS keychain.",
+        "configured": "May nakaimbak nang API key sa OS keychain."
       }
     },
     "actions": {
       "save": "Save",
       "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "test": "Subukan ang koneksyon",
+      "probe": "Suriin ang mga tool"
     },
     "status": {
       "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "toolsDisabled": "Hindi pinagana ang mga tool",
+      "fullTools": "Pinagana ang lahat ng tool",
       "checking": "Sinusuri…",
       "connected": "Nakakonekta",
       "label": "Koneksyon"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Mga pahintulot ng agent",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Default na access",
+        "description": "Itinatakda ang panimulang access mode para sa mga bagong turn ng Agent.",
+        "vaultOnly": "Vault lang",
+        "computerAccess": "Access sa computer"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Kumpirmahin ang mga aksyon",
+        "description": "Piliin kung awtomatikong tatakbo ang mga tool call o maghihintay ng pag-apruba sa chat.",
+        "alwaysAllow": "Palaging payagan",
+        "askBeforeChanges": "Magtanong bago magbago"
       }
     }
   },
@@ -1379,7 +1379,7 @@
     },
     "header": {
       "subtitle": "I-set up ang memrynote command para sa iyong terminal",
-      "title": "Command Line"
+      "title": "Linya ng Command"
     },
     "status": {
       "defaultVaultUpdatedToast": "Na-update ang default na CLI vault",

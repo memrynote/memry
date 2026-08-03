@@ -427,7 +427,7 @@
       "loading": "Beállítások betöltése..."
     },
     "groups": {
-      "dayCellClick": "Day Cell Click",
+      "dayCellClick": "Napcellára kattintás",
       "notes": "Jegyzetek",
       "weekStart": "Hét"
     },
@@ -940,7 +940,7 @@
     },
     "loadingStorage": "Tárhelyadatok betöltése...",
     "signInStorage": "Jelentkezzen be a tárhelyhasználat megtekintéséhez",
-    "vaultPath": "Vault Path",
+    "vaultPath": "Tár elérési útja",
     "reveal": "Felfedni",
     "storage": {
       "title": "Tárolás",
@@ -1264,7 +1264,7 @@
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Helyi szerverhozzáférés külső MCP-kliensek számára."
     },
     "groups": {
       "connection": "Connection",
@@ -1273,31 +1273,31 @@
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Használja ezt a localhost végpontot a Cursor, a Claude Desktop vagy a Zed alkalmazásból."
       },
       "bearer": {
         "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "description": "Csak a memóriában tárolt hitelesítő adat az alkalmazás jelenlegi futásához."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Token cseréje",
+        "description": "Érvényteleníti a külső kliensek meglévő munkameneteit."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "{label} másolása",
+    "notRunning": "Nem fut",
+    "toolsBadge": "{count, plural, one {# eszköz} other {# eszköz}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Agent jogosultságok",
+      "subtitle": "Válassza ki az alapértelmezett hozzáférést, a megerősítéseket és a helyi szolgáltatókat az Agent csevegéshez."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Helyi, OpenAI-kompatibilis szolgáltató",
+      "actions": "Kapcsolatellenőrzés"
     },
     "presets": {
       "ollama": "Ollama",
@@ -1310,50 +1310,50 @@
         "label": "Preset"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "Alap URL",
+        "description": "OpenAI-kompatibilis /v1 végpont."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Nem loopback végpont engedélyezése",
+        "description": "Az adatok a beállított végpontra kerülnek."
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "Válasszon a visszaadott modellek közül, vagy adjon meg egyet kézzel."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "API kulcs",
+        "description": "Opcionális hitelesítő adat, amelyet az operációs rendszer kulcstartója tárol.",
+        "configured": "Már van API kulcs tárolva az operációs rendszer kulcstartójában."
       }
     },
     "actions": {
       "save": "Save",
       "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "test": "Kapcsolat tesztelése",
+      "probe": "Eszközök vizsgálata"
     },
     "status": {
       "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "toolsDisabled": "Eszközök letiltva",
+      "fullTools": "Teljes eszközkészlet engedélyezve",
       "checking": "Ellenőrzés…",
       "connected": "Csatlakoztatva",
       "label": "Kapcsolat"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Agent jogosultságok",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Alapértelmezett hozzáférés",
+        "description": "Beállítja az új Agent fordulók kezdeti hozzáférési módját.",
+        "vaultOnly": "Csak a tár",
+        "computerAccess": "Számítógép-hozzáférés"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Műveletek megerősítése",
+        "description": "Válassza ki, hogy az eszközhívások automatikusan lefussanak, vagy jóváhagyásra várjanak a csevegésben.",
+        "alwaysAllow": "Mindig engedélyezve",
+        "askBeforeChanges": "Kérdezzen módosítás előtt"
       }
     }
   },

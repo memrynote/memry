@@ -844,7 +844,7 @@
       "apiKey": "API nøgle",
       "apiKeyDescription": "Gemt lokalt, sendes kun til udbyderen",
       "apiKeyPlaceholder": "Indtast {provider} API-nøgle",
-      "ollamaUrl": "Ollama URL",
+      "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokal serveradresse",
       "connection": "Forbindelse",
       "activePort": "Aktiv på port {port}",
@@ -940,7 +940,7 @@
     },
     "loadingStorage": "Indlæser lageroplysninger...",
     "signInStorage": "Log ind for at se lagerforbrug",
-    "vaultPath": "Vault Path",
+    "vaultPath": "Sti til boks",
     "reveal": "Afsløre",
     "storage": {
       "title": "Opbevaring",
@@ -1071,7 +1071,7 @@
     "noMatch": "Ingen genveje matcher din søgning",
     "conflict": "Konflikter med: {labels}",
     "globalCapture": {
-      "title": "Global Capture",
+      "title": "Global fangst",
       "description": "Fang en note fra hvor som helst",
       "permissionNeeded": "Tilladelse nødvendig",
       "active": "Aktiv",
@@ -1264,7 +1264,7 @@
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Lokal serveradgang for eksterne MCP-klienter."
     },
     "groups": {
       "connection": "Connection",
@@ -1273,31 +1273,31 @@
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Brug dette localhost-endpoint fra Cursor, Claude Desktop eller Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Bearer-token",
+        "description": "Nøgle i hukommelsen, der kun gælder denne opstart af appen."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Rotér token",
+        "description": "Ugyldiggør eksisterende sessioner for eksterne klienter."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "Kopiér {label}",
+    "notRunning": "Kører ikke",
+    "toolsBadge": "{count, plural, one {# værktøj} other {# værktøjer}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Agenttilladelser",
+      "subtitle": "Vælg standardadgang, bekræftelser og lokale udbydere til Agentchat."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Lokal OpenAI-kompatibel udbyder",
+      "actions": "Forbindelsestjek"
     },
     "presets": {
       "ollama": "Ollama",
@@ -1310,50 +1310,50 @@
         "label": "Preset"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "Basis-URL",
+        "description": "OpenAI-kompatibelt /v1-endpoint."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Tillad endpoint uden for loopback",
+        "description": "Data sendes til det konfigurerede endpoint."
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "Vælg en af de returnerede modeller, eller indtast en manuelt."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "API-nøgle",
+        "description": "Valgfri nøgle, der gemmes i OS-nøgleringen.",
+        "configured": "Der er allerede gemt en API-nøgle i OS-nøgleringen."
       }
     },
     "actions": {
       "save": "Save",
       "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "test": "Test forbindelsen",
+      "probe": "Afprøv værktøjer"
     },
     "status": {
       "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "toolsDisabled": "Værktøjer deaktiveret",
+      "fullTools": "Alle værktøjer aktiveret",
       "checking": "Kontrollerer…",
       "connected": "Forbundet",
       "label": "Forbindelse"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Agenttilladelser",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Standardadgang",
+        "description": "Angiver den adgangstilstand, som nye agentture starter i.",
+        "vaultOnly": "Kun boksen",
+        "computerAccess": "Computeradgang"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Bekræft handlinger",
+        "description": "Vælg, om værktøjskald skal køre automatisk eller vente på godkendelse i chatten.",
+        "alwaysAllow": "Tillad altid",
+        "askBeforeChanges": "Spørg før ændringer"
       }
     }
   },
@@ -1439,7 +1439,7 @@
       "progress": "{completed} af {total}",
       "running": "Importerer…",
       "selected": "{count, plural, one {# fil valgt} other {# filer valgt}}",
-      "start": "Start import",
+      "start": "Start importen",
       "summary": {
         "attachments": "{count, plural, one {# vedhæftning kopieret} other {# vedhæftninger kopieret}}",
         "failed": "{count} mislykkedes",
@@ -1504,7 +1504,7 @@
       "error": "Påmindelsen kunne ikke opdateres.",
       "group": "Daglig påmindelse om gennemgang",
       "test": {
-        "button": "Send test",
+        "button": "Send testen",
         "description": "Send påmindelsen nu for at tjekke dine systemnotifikationer.",
         "label": "Testnotifikation",
         "sent": "Testnotifikationen er sendt.",

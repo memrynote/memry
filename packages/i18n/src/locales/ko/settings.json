@@ -1264,7 +1264,7 @@
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "외부 MCP 클라이언트를 위한 로컬 서버 액세스입니다."
     },
     "groups": {
       "connection": "Connection",
@@ -1273,31 +1273,31 @@
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Cursor, Claude Desktop 또는 Zed에서 이 localhost 엔드포인트를 사용하세요."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Bearer 토큰",
+        "description": "이번 앱 실행 동안에만 메모리에 유지되는 자격 증명입니다."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "토큰 교체",
+        "description": "기존 외부 클라이언트 세션을 무효화합니다."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "{label} 복사",
+    "notRunning": "실행 중이 아님",
+    "toolsBadge": "{count, plural, other {도구 #개}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Agent 권한",
+      "subtitle": "Agent 채팅의 기본 액세스, 확인 방식, 로컬 공급자를 선택하세요."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "로컬 OpenAI 호환 공급자",
+      "actions": "연결 확인"
     },
     "presets": {
       "ollama": "Ollama",
@@ -1310,50 +1310,50 @@
         "label": "Preset"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "기본 URL",
+        "description": "OpenAI 호환 /v1 엔드포인트입니다."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "루프백이 아닌 엔드포인트 허용",
+        "description": "데이터가 설정된 엔드포인트로 전송됩니다."
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "반환된 모델을 선택하거나 직접 입력하세요."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "API 키",
+        "description": "OS 키체인에 저장되는 선택적 자격 증명입니다.",
+        "configured": "API 키가 이미 OS 키체인에 저장되어 있습니다."
       }
     },
     "actions": {
       "save": "Save",
       "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "test": "연결 테스트",
+      "probe": "도구 검사"
     },
     "status": {
       "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "toolsDisabled": "도구 비활성화됨",
+      "fullTools": "전체 도구 활성화됨",
       "checking": "확인 중…",
       "connected": "연결됨",
       "label": "연결"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Agent 권한",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "기본 액세스",
+        "description": "새 Agent 차례가 시작될 때의 액세스 모드를 설정합니다.",
+        "vaultOnly": "볼트만",
+        "computerAccess": "컴퓨터 액세스"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "작업 확인",
+        "description": "도구 호출을 자동으로 실행할지, 채팅에서 승인을 기다릴지 선택하세요.",
+        "alwaysAllow": "항상 허용",
+        "askBeforeChanges": "변경 전 확인"
       }
     }
   },

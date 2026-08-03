@@ -28,7 +28,7 @@
     "showLess": "Magpakita ng mas kaunti"
   },
   "tabs": {
-    "pin": "Pin Tab",
+    "pin": "I-pin ang Tab",
     "unpin": "I-unpin ang Tab",
     "contextMenu": {
       "close": "Isara",
@@ -182,7 +182,7 @@
       "account": "Account",
       "billing": "Pagsingil",
       "notifications": "Mga abiso",
-      "logOut": "Log out"
+      "logOut": "Mag-log out"
     },
     "componentsSearchCommandPalette": {
       "search": "Maghanap",
@@ -283,7 +283,7 @@
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Bagong workspace",
-      "darkMode": "Dark mode",
+      "darkMode": "Madilim na mode",
       "settings": "Mga setting",
       "integrations": "Mga pagsasama",
       "signOut": "Mag-sign Out",
@@ -323,7 +323,7 @@
       "selectAFolderToStoreYourNotesAndTasks": "Pumili ng folder upang iimbak ang iyong mga tala at gawain.",
       "opening": "Binubuksan...",
       "selectVaultFolder": "Piliin ang Vault Folder",
-      "plainMarkdown": "Plain Markdown",
+      "plainMarkdown": "Payak na Markdown",
       "yourNotesStayPortable": "Ang iyong mga tala ay mananatiling portable",
       "syncAnywhere": "I-sync Kahit Saan",
       "useDropboxIcloudGit": "Gumamit ng Dropbox, iCloud, Git",
@@ -348,7 +348,7 @@
       "noVaultsYet": "Wala pang vault",
       "openVault": "Buksan ang vault",
       "settings": "Mga setting",
-      "logOut": "Log out",
+      "logOut": "Mag-log out",
       "signInToSync": "Mag-sign in para mag-sync",
       "remove": "Tanggalin \"",
       "rdquoFromList": "rdquo; mula sa listahan?",
@@ -389,7 +389,7 @@
     }
   },
   "agentChat": {
-    "title": "Agent chat",
+    "title": "Chat ng agent",
     "loading": "Nilo-load ang chat ng ahente...",
     "conversationLoading": "Naglo-load ang pag-uusap...",
     "newConversation": "Bagong pag-uusap",
@@ -466,21 +466,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Vault lang",
+        "computerAccess": "Access sa computer"
       },
       "webSearch": {
         "on": "On",
         "off": "Off",
-        "label": "Web search"
+        "label": "Paghahanap sa web"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Mga pahintulot ng agent: {access}, paghahanap sa web {webSearch}",
       "permissions": {
         "label": "Permissions",
         "access": "Access",
         "tools": "Tools"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Mga setting ng modelo ng agent: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Walang tugma"
@@ -650,7 +650,7 @@
     "downloadedBody": "Na-download na ang {version}. I-restart ang MemryNote para tapusin ang pag-install.",
     "downloadedTitle": "Handa nang i-install ang update",
     "later": "Mamaya",
-    "releaseNotesLabel": "Release Notes",
+    "releaseNotesLabel": "Mga Tala sa Paglabas",
     "remindLater": "Paalalahanan Mo Ako Mamaya",
     "restartNow": "I-restart Ngayon",
     "skip": "Laktawan ang Bersyong Ito"

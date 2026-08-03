@@ -119,7 +119,7 @@
       "parentFolderAria": "Siirry yläkansioon"
     },
     "errorBoundary": {
-      "title": "Editor Error",
+      "title": "Editorin virhe",
       "body": "Toimittaja havaitsi virheen. Muistiinpanosi sisältö on turvassa.",
       "technicalDetails": "Tekniset tiedot",
       "reloadAria": "Lataa editori uudelleen",

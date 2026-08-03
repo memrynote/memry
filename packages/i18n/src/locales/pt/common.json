@@ -326,7 +326,7 @@
       "plainMarkdown": "Remarcação simples",
       "yourNotesStayPortable": "Suas anotações permanecem portáteis",
       "syncAnywhere": "Sincronize em qualquer lugar",
-      "useDropboxIcloudGit": "Use Dropbox, iCloud, Git",
+      "useDropboxIcloudGit": "Use Dropbox, iCloud ou Git",
       "recentVaults": "Cofres recentes",
       "notesLastOpened": "notas · Última abertura",
       "brandName": "Memrynote",
@@ -466,21 +466,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Apenas o cofre",
+        "computerAccess": "Acesso ao computador"
       },
       "webSearch": {
         "on": "On",
         "off": "Off",
-        "label": "Web search"
+        "label": "Pesquisa na web"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Permissões do Agent: {access}, pesquisa na web {webSearch}",
       "permissions": {
         "label": "Permissions",
         "access": "Access",
         "tools": "Tools"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Configurações do modelo do Agent: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Sem correspondências"

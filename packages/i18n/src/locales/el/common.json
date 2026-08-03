@@ -37,7 +37,7 @@
       "closeAll": "Κλείσιμο όλων",
       "duplicate": "Διπλότυπη καρτέλα",
       "splitRight": "Διαίρεση δεξιά",
-      "splitDown": "Split Down",
+      "splitDown": "Διαίρεση κάτω",
       "copyPath": "Αντιγραφή διαδρομής",
       "revealInSidebar": "Αποκάλυψη στο Sidebar"
     }
@@ -466,21 +466,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Μόνο θησαυροφυλάκιο",
+        "computerAccess": "Πρόσβαση στον υπολογιστή"
       },
       "webSearch": {
         "on": "On",
         "off": "Off",
-        "label": "Web search"
+        "label": "Αναζήτηση στον ιστό"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Δικαιώματα Agent: {access}, αναζήτηση στον ιστό {webSearch}",
       "permissions": {
         "label": "Permissions",
         "access": "Access",
         "tools": "Tools"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Ρυθμίσεις μοντέλου Agent: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Δεν υπάρχουν αντιστοιχίες"

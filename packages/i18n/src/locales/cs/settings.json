@@ -223,7 +223,7 @@
         "options": {
           "system": "Výchozí nastavení systému",
           "sansSerif": "Bezpatkové",
-          "serif": "Serif (Crimson Pro)",
+          "serif": "Patkové (Crimson Pro)",
           "gelasio": "Gelasio",
           "geist": "Geist",
           "inter": "Inter",
@@ -1264,7 +1264,7 @@
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Přístup k místnímu serveru pro externí klienty MCP."
     },
     "groups": {
       "connection": "Connection",
@@ -1273,31 +1273,31 @@
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Použijte tento koncový bod localhost v aplikacích Cursor, Claude Desktop nebo Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Token Bearer",
+        "description": "Přihlašovací údaj v paměti platný pro toto spuštění aplikace."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Obnovit token",
+        "description": "Zneplatní stávající relace externích klientů."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "Kopírovat {label}",
+    "notRunning": "Neběží",
+    "toolsBadge": "{count, plural, one {# nástroj} few {# nástroje} many {# nástroje} other {# nástrojů}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Oprávnění agenta",
+      "subtitle": "Zvolte výchozí přístup, potvrzování a místní poskytovatele pro Chat Agent."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Místní poskytovatel kompatibilní s OpenAI",
+      "actions": "Kontroly připojení"
     },
     "presets": {
       "ollama": "Ollama",
@@ -1310,50 +1310,50 @@
         "label": "Preset"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "Základní URL",
+        "description": "Koncový bod /v1 kompatibilní s OpenAI."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Povolit koncový bod mimo loopback",
+        "description": "Data se odesílají na nastavený koncový bod."
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "Vyberte vrácený model nebo jej zadejte ručně."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "Klíč API",
+        "description": "Volitelný přihlašovací údaj uložený v klíčence OS.",
+        "configured": "V klíčence OS je již uložen klíč API."
       }
     },
     "actions": {
       "save": "Save",
       "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "test": "Otestovat připojení",
+      "probe": "Prověřit nástroje"
     },
     "status": {
       "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "toolsDisabled": "Nástroje vypnuty",
+      "fullTools": "Všechny nástroje povoleny",
       "checking": "Kontrola…",
       "connected": "Připojeno",
       "label": "Připojení"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Oprávnění agenta",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Výchozí přístup",
+        "description": "Nastaví počáteční režim přístupu pro nová kola agenta.",
+        "vaultOnly": "Pouze trezor",
+        "computerAccess": "Přístup k počítači"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Potvrzovat akce",
+        "description": "Zvolte, zda se volání nástrojů spouštějí automaticky, nebo čekají na schválení v chatu.",
+        "alwaysAllow": "Vždy povolit",
+        "askBeforeChanges": "Zeptat se před změnami"
       }
     }
   },

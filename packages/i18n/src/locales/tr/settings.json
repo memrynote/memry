@@ -541,10 +541,10 @@
       },
       "planStatus": "Plan durumu",
       "plans": {
-        "believer": "Believer plan",
+        "believer": "Believer planı",
         "free": "Ücretsiz plan",
-        "plus": "Plus plan",
-        "pro": "Pro plan"
+        "plus": "Plus planı",
+        "pro": "Pro planı"
       },
       "statuses": {
         "active": "Etkin",
@@ -1264,7 +1264,7 @@
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Harici MCP istemcileri için yerel sunucu erişimi."
     },
     "groups": {
       "connection": "Connection",
@@ -1273,31 +1273,31 @@
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Bu localhost uç noktasını Cursor, Claude Desktop veya Zed üzerinden kullanın."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Bearer belirteci",
+        "description": "Yalnızca bu uygulama oturumu boyunca bellekte tutulan kimlik bilgisi."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Belirteci yenile",
+        "description": "Mevcut harici istemci oturumlarını geçersiz kılar."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "{label} kopyala",
+    "notRunning": "Çalışmıyor",
+    "toolsBadge": "{count, plural, one {# araç} other {# araç}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Agent İzinleri",
+      "subtitle": "Agent sohbeti için varsayılan erişimi, onayları ve yerel sağlayıcıları seçin."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Yerel OpenAI uyumlu sağlayıcı",
+      "actions": "Bağlantı kontrolleri"
     },
     "presets": {
       "ollama": "Ollama",
@@ -1310,50 +1310,50 @@
         "label": "Preset"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "Temel URL",
+        "description": "OpenAI uyumlu /v1 uç noktası."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Loopback dışı uç noktaya izin ver",
+        "description": "Veriler yapılandırılan uç noktaya gönderilir."
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "Dönen modellerden birini seçin veya elle girin."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "API Anahtarı",
+        "description": "İşletim sistemi anahtarlığında saklanan isteğe bağlı kimlik bilgisi.",
+        "configured": "İşletim sistemi anahtarlığında zaten bir API anahtarı kayıtlı."
       }
     },
     "actions": {
       "save": "Save",
       "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "test": "Bağlantıyı test et",
+      "probe": "Araçları yokla"
     },
     "status": {
       "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "toolsDisabled": "Araçlar devre dışı",
+      "fullTools": "Tüm araçlar etkin",
       "checking": "Kontrol ediliyor…",
       "connected": "Bağlandı",
       "label": "Bağlantı"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Agent izinleri",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Varsayılan erişim",
+        "description": "Yeni Agent dönüşleri için başlangıç erişim modunu belirler.",
+        "vaultOnly": "Yalnızca kasa",
+        "computerAccess": "Bilgisayar erişimi"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "İşlemleri onayla",
+        "description": "Araç çağrılarının otomatik mi çalışacağını yoksa sohbette onay mı bekleyeceğini seçin.",
+        "alwaysAllow": "Her zaman izin ver",
+        "askBeforeChanges": "Değişikliklerden önce sor"
       }
     }
   },

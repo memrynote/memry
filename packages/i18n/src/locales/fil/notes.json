@@ -86,7 +86,7 @@
     "content": {
       "placeholder": "Magsimulang magsulat, o pindutin ang '/' para sa mga utos...",
       "regionAria": "Editor ng tala",
-      "richTextAria": "Rich text editor",
+      "richTextAria": "Editor ng rich text",
       "headingPlaceholder": "Heading",
       "listPlaceholder": "Listahan ng item",
       "todoPlaceholder": "Item na gagawin"
@@ -145,8 +145,8 @@
       "create": "Gumawa ng bagong tala",
       "embed": "I-embed",
       "embedAria": "I-embed ang {title}",
-      "wikiLink": "Wiki link",
-      "wikiLinkAria": "Wiki link {title}"
+      "wikiLink": "Link ng wiki",
+      "wikiLinkAria": "Link ng wiki sa {title}"
     },
     "tags": {
       "aria": "I-tag ang mga mungkahi",
@@ -479,7 +479,7 @@
       "createANewViewWithCustomColumnsFiltersAndSorting": "Gumawa ng bagong view gamit ang mga custom na column, filter, at pag-uuri.",
       "viewName": "Tingnan ang Pangalan",
       "myCustomView": "Aking Custom View",
-      "baseConfiguration": "Base Configuration",
+      "baseConfiguration": "Batayang Configuration",
       "copyFromCurrentView": "Kopyahin mula sa kasalukuyang view",
       "startFreshDefaultColumns": "Magsimula ng bago (mga default na column)",
       "cancel": "Kanselahin",

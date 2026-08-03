@@ -1263,8 +1263,8 @@
   },
   "agentMcp": {
     "header": {
-      "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "title": "MCP агента",
+      "subtitle": "Доступ до локального сервера для зовнішніх клієнтів MCP."
     },
     "groups": {
       "connection": "Connection",
@@ -1273,31 +1273,31 @@
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Використовуйте цю кінцеву точку localhost у Cursor, Claude Desktop або Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Токен Bearer",
+        "description": "Тимчасові облікові дані в пам'яті на час цього запуску застосунку."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Оновити токен",
+        "description": "Скасовує наявні сеанси зовнішніх клієнтів."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "Скопіювати {label}",
+    "notRunning": "Не запущено",
+    "toolsBadge": "{count, plural, one {# інструмент} few {# інструменти} many {# інструментів} other {# інструмента}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Дозволи агента",
+      "subtitle": "Виберіть доступ за замовчуванням, підтвердження та локальних постачальників для чату з агентом."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Локальний постачальник, сумісний з OpenAI",
+      "actions": "Перевірки з'єднання"
     },
     "presets": {
       "ollama": "Ollama",
@@ -1310,50 +1310,50 @@
         "label": "Preset"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "Базовий URL",
+        "description": "Кінцева точка /v1, сумісна з OpenAI."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Дозволити нелокальну кінцеву точку",
+        "description": "Дані надсилаються до вказаної кінцевої точки."
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "Виберіть одну з отриманих моделей або введіть назву вручну."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "API ключ",
+        "description": "Необов'язкові облікові дані, збережені в системному сховищі ключів.",
+        "configured": "API ключ уже збережено в системному сховищі ключів."
       }
     },
     "actions": {
       "save": "Save",
       "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "test": "Перевірити з'єднання",
+      "probe": "Опитати інструменти"
     },
     "status": {
       "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "toolsDisabled": "Інструменти вимкнено",
+      "fullTools": "Увімкнено всі інструменти",
       "checking": "Перевірка…",
       "connected": "Підключено",
       "label": "З’єднання"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Дозволи агента",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Доступ за замовчуванням",
+        "description": "Визначає початковий режим доступу для нових запитів до агента.",
+        "vaultOnly": "Лише сховище",
+        "computerAccess": "Доступ до комп'ютера"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Підтверджувати дії",
+        "description": "Виберіть, чи виклики інструментів виконуються автоматично, чи очікують на схвалення в чаті.",
+        "alwaysAllow": "Завжди дозволяти",
+        "askBeforeChanges": "Запитувати перед змінами"
       }
     }
   },

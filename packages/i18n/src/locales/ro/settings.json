@@ -1264,7 +1264,7 @@
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Acces la serverul local pentru clienții MCP externi."
     },
     "groups": {
       "connection": "Connection",
@@ -1273,31 +1273,31 @@
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Folosește acest endpoint localhost din Cursor, Claude Desktop sau Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Token Bearer",
+        "description": "Credențială păstrată în memorie pentru această pornire a aplicației."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Rotește tokenul",
+        "description": "Invalidează sesiunile existente ale clienților externi."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "Copiază {label}",
+    "notRunning": "Nu rulează",
+    "toolsBadge": "{count, plural, one {# instrument} few {# instrumente} other {# de instrumente}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Permisiuni agent",
+      "subtitle": "Alege accesul implicit, confirmările și furnizorii locali pentru chatul Agent."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Furnizor local compatibil OpenAI",
+      "actions": "Verificări ale conexiunii"
     },
     "presets": {
       "ollama": "Ollama",
@@ -1310,50 +1310,50 @@
         "label": "Preset"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "URL de bază",
+        "description": "Endpoint /v1 compatibil OpenAI."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Permite endpoint non-loopback",
+        "description": "Datele sunt trimise către endpointul configurat."
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "Alege un model returnat sau introdu unul manual."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "Cheie API",
+        "description": "Credențială opțională stocată în brelocul sistemului de operare.",
+        "configured": "O cheie API este deja stocată în brelocul sistemului de operare."
       }
     },
     "actions": {
       "save": "Save",
       "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "test": "Testează conexiunea",
+      "probe": "Detectează instrumentele"
     },
     "status": {
       "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "toolsDisabled": "Instrumente dezactivate",
+      "fullTools": "Toate instrumentele activate",
       "checking": "Se verifică…",
       "connected": "Conectat",
       "label": "Conexiune"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Permisiuni agent",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Acces implicit",
+        "description": "Stabilește modul de acces inițial pentru turele noi ale agentului.",
+        "vaultOnly": "Doar seiful",
+        "computerAccess": "Acces la computer"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Confirmă acțiunile",
+        "description": "Alege dacă apelurile instrumentelor rulează automat sau așteaptă aprobarea în chat.",
+        "alwaysAllow": "Permite întotdeauna",
+        "askBeforeChanges": "Întreabă înainte de modificări"
       }
     }
   },

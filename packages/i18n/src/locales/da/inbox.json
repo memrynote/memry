@@ -80,7 +80,7 @@
     "transcriptionFailed": "Transskription mislykkedes",
     "retryTranscription": "Prøv igen",
     "pageCount": "{count, plural, one {# side} other {# sider}}",
-    "snoozedUntilShort": "snoozed til {date}"
+    "snoozedUntilShort": "udsat til {date}"
   },
   "loading": {
     "inbox": "Indlæser indbakke...",

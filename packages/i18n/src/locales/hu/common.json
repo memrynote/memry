@@ -389,7 +389,7 @@
     }
   },
   "agentChat": {
-    "title": "Agent chat",
+    "title": "Agent csevegés",
     "loading": "Ügynöki csevegés betöltése...",
     "conversationLoading": "Beszélgetés betöltése...",
     "newConversation": "Új beszélgetés",
@@ -466,21 +466,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Csak a tár",
+        "computerAccess": "Számítógép-hozzáférés"
       },
       "webSearch": {
         "on": "On",
         "off": "Off",
-        "label": "Web search"
+        "label": "Webes keresés"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Agent jogosultságok: {access}, webes keresés {webSearch}",
       "permissions": {
         "label": "Permissions",
         "access": "Access",
         "tools": "Tools"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Agent modellbeállítások: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Nincs találat"

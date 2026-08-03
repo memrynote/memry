@@ -273,7 +273,7 @@
     "taskFallback": "Tehtävä"
   },
   "insights": {
-    "captureActivity": "Capture Activity",
+    "captureActivity": "Sieppausaktiivisuus",
     "byType": "Tyypin mukaan",
     "recentFilings": "Viimeaikaiset hakemukset",
     "captured": "Vangittu",
@@ -358,7 +358,7 @@
       "suggested": "Ehdotettu"
     },
     "componentsInboxInboxCaptureHeatmap": {
-      "captureActivity": "Capture Activity"
+      "captureActivity": "Sieppausaktiivisuus"
     },
     "componentsInboxInboxFilingHistory": {
       "noItemsFiledYet": "Kohteita ei ole vielä tallennettu",

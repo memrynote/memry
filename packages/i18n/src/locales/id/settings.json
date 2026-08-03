@@ -1264,7 +1264,7 @@
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Akses server lokal untuk klien MCP eksternal."
     },
     "groups": {
       "connection": "Connection",
@@ -1273,31 +1273,31 @@
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Gunakan endpoint localhost ini dari Cursor, Claude Desktop, atau Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Token bearer",
+        "description": "Kredensial dalam memori untuk sesi aplikasi ini."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Rotasi token",
+        "description": "Batalkan sesi klien eksternal yang masih aktif."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "Salin {label}",
+    "notRunning": "Tidak berjalan",
+    "toolsBadge": "{count, plural, other {# alat}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Izin Agent",
+      "subtitle": "Pilih akses bawaan, konfirmasi, dan penyedia lokal untuk Obrolan Agent."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Penyedia lokal yang kompatibel dengan OpenAI",
+      "actions": "Pemeriksaan koneksi"
     },
     "presets": {
       "ollama": "Ollama",
@@ -1310,50 +1310,50 @@
         "label": "Preset"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "URL dasar",
+        "description": "Endpoint /v1 yang kompatibel dengan OpenAI."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Izinkan endpoint non-loopback",
+        "description": "Data dikirim ke endpoint yang dikonfigurasi."
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "Pilih model yang tersedia atau masukkan sendiri secara manual."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "Kunci API",
+        "description": "Kredensial opsional yang disimpan di gantungan kunci OS.",
+        "configured": "Kunci API sudah tersimpan di gantungan kunci OS."
       }
     },
     "actions": {
       "save": "Save",
       "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "test": "Uji koneksi",
+      "probe": "Periksa alat"
     },
     "status": {
       "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "toolsDisabled": "Alat dinonaktifkan",
+      "fullTools": "Semua alat aktif",
       "checking": "Memeriksa…",
       "connected": "Terhubung",
       "label": "Koneksi"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Izin Agent",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Akses bawaan",
+        "description": "Menetapkan mode akses awal untuk giliran Agent yang baru.",
+        "vaultOnly": "Hanya brankas",
+        "computerAccess": "Akses komputer"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Konfirmasi tindakan",
+        "description": "Pilih apakah panggilan alat berjalan otomatis atau menunggu persetujuan di obrolan.",
+        "alwaysAllow": "Selalu izinkan",
+        "askBeforeChanges": "Tanya sebelum mengubah"
       }
     }
   },

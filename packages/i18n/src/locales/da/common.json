@@ -389,7 +389,7 @@
     }
   },
   "agentChat": {
-    "title": "Agent chat",
+    "title": "Agentchat",
     "loading": "Indlæser agentchat...",
     "conversationLoading": "Samtalen indlæses...",
     "newConversation": "Ny samtale",
@@ -466,21 +466,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Kun boksen",
+        "computerAccess": "Computeradgang"
       },
       "webSearch": {
         "on": "On",
         "off": "Off",
-        "label": "Web search"
+        "label": "Websøgning"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Agenttilladelser: {access}, websøgning {webSearch}",
       "permissions": {
         "label": "Permissions",
         "access": "Access",
         "tools": "Tools"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Agentens modelindstillinger: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Ingen resultater"

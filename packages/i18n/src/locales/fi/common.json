@@ -389,7 +389,7 @@
     }
   },
   "agentChat": {
-    "title": "Agent chat",
+    "title": "Agent-chat",
     "loading": "Ladataan agentin keskustelua...",
     "conversationLoading": "Keskustelua ladataan...",
     "newConversation": "Uusi keskustelu",
@@ -466,21 +466,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Vain holvi",
+        "computerAccess": "Tietokoneen käyttö"
       },
       "webSearch": {
         "on": "On",
         "off": "Off",
-        "label": "Web search"
+        "label": "Verkkohaku"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Agentin käyttöoikeudet: {access}, verkkohaku {webSearch}",
       "permissions": {
         "label": "Permissions",
         "access": "Access",
         "tools": "Tools"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Agentin malliasetukset: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Ei osumia"

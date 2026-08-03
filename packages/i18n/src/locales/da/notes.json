@@ -85,8 +85,8 @@
     },
     "content": {
       "placeholder": "Begynd at skrive, eller tryk på '/' for kommandoer...",
-      "regionAria": "Note editor",
-      "richTextAria": "Rich text editor",
+      "regionAria": "Noteeditor",
+      "richTextAria": "Editor til formateret tekst",
       "headingPlaceholder": "Overskrift",
       "listPlaceholder": "Listeelement",
       "todoPlaceholder": "Opgaveelement"

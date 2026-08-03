@@ -389,7 +389,7 @@
     }
   },
   "agentChat": {
-    "title": "Agent chat",
+    "title": "Agentchat",
     "loading": "Laster agentchat...",
     "conversationLoading": "Samtalen lastes inn...",
     "newConversation": "Ny samtale",
@@ -466,21 +466,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Kun hvelv",
+        "computerAccess": "Datamaskintilgang"
       },
       "webSearch": {
         "on": "On",
         "off": "Off",
-        "label": "Web search"
+        "label": "Nettsøk"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Agenttillatelser: {access}, nettsøk {webSearch}",
       "permissions": {
         "label": "Permissions",
         "access": "Access",
         "tools": "Tools"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Agentens modellinnstillinger: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Ingen treff"

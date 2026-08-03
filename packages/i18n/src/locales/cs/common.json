@@ -28,7 +28,7 @@
     "showLess": "Ukažte méně"
   },
   "tabs": {
-    "pin": "Pin Tab",
+    "pin": "Připnout kartu",
     "unpin": "Odepnout kartu",
     "contextMenu": {
       "close": "Zavřít",
@@ -323,7 +323,7 @@
       "selectAFolderToStoreYourNotesAndTasks": "Vyberte složku pro ukládání poznámek a úkolů.",
       "opening": "Otevírání...",
       "selectVaultFolder": "Vyberte složku Vault",
-      "plainMarkdown": "Plain Markdown",
+      "plainMarkdown": "Prostý Markdown",
       "yourNotesStayPortable": "Vaše poznámky zůstanou přenosné",
       "syncAnywhere": "Synchronizovat kdekoli",
       "useDropboxIcloudGit": "Použijte Dropbox, iCloud, Git",
@@ -466,21 +466,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Pouze trezor",
+        "computerAccess": "Přístup k počítači"
       },
       "webSearch": {
         "on": "On",
         "off": "Off",
-        "label": "Web search"
+        "label": "Vyhledávání na webu"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Oprávnění agenta: {access}, vyhledávání na webu {webSearch}",
       "permissions": {
         "label": "Permissions",
         "access": "Access",
         "tools": "Tools"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Nastavení modelu agenta: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Žádné shody"

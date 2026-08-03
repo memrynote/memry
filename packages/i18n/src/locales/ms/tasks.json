@@ -13,7 +13,7 @@
     "projectScope": {
       "allProjects": "Semua projek",
       "searchProjects": "Cari projek…",
-      "editProject": "Edit {name}",
+      "editProject": "Sunting {name}",
       "unstarSavedFilter": "Nyahbintang {name}"
     }
   },

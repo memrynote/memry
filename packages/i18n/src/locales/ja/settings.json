@@ -615,7 +615,7 @@
       "displayDescription": "すべてのデバイスにアクセスできなくなった場合、これが暗号化されたデータを回復する唯一の方法です。",
       "warning": "これを書き留めて安全な場所に保管してください。もう二度と見ることはありません。",
       "wordsAria": "回復フレーズの単語",
-      "wordAria": "Word {index}: {word}",
+      "wordAria": "単語 {index}: {word}",
       "copyAria": "リカバリフレーズをクリップボードにコピー",
       "copiedAria": "リカバリフレーズをコピーしました",
       "copied": "コピーされました",
@@ -1264,7 +1264,7 @@
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "外部の MCP クライアント向けのローカルサーバーアクセス。"
     },
     "groups": {
       "connection": "Connection",
@@ -1273,31 +1273,31 @@
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Cursor、Claude Desktop、Zed からこの localhost エンドポイントを使用します。"
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Bearer トークン",
+        "description": "このアプリの起動中だけメモリ上に保持される認証情報。"
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "トークンを再生成",
+        "description": "既存の外部クライアントのセッションを無効にします。"
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "{label} をコピー",
+    "notRunning": "停止中",
+    "toolsBadge": "{count, plural, other {# 個のツール}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Agent の権限",
+      "subtitle": "Agent チャットのデフォルトのアクセス、確認方法、ローカルプロバイダを選択します。"
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "ローカルの OpenAI 互換プロバイダ",
+      "actions": "接続の確認"
     },
     "presets": {
       "ollama": "Ollama",
@@ -1310,50 +1310,50 @@
         "label": "Preset"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "ベース URL",
+        "description": "OpenAI 互換の /v1 エンドポイント。"
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "ループバック以外のエンドポイントを許可する",
+        "description": "設定したエンドポイントにデータが送信されます。"
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "返されたモデルから選ぶか、手動で入力します。"
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "API キー",
+        "description": "OS キーチェーンに保存される任意の認証情報。",
+        "configured": "API キーはすでに OS キーチェーンに保存されています。"
       }
     },
     "actions": {
       "save": "Save",
       "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "test": "接続をテスト",
+      "probe": "ツールを検出"
     },
     "status": {
       "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "toolsDisabled": "ツールは無効",
+      "fullTools": "すべてのツールが有効",
       "checking": "確認中…",
       "connected": "接続済み",
       "label": "接続"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Agent の権限",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "デフォルトのアクセス",
+        "description": "新しい Agent ターンで最初に使うアクセスモードを設定します。",
+        "vaultOnly": "ボールトのみ",
+        "computerAccess": "コンピュータへのアクセス"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "操作の確認",
+        "description": "ツール呼び出しを自動的に実行するか、チャットで承認を待つかを選択します。",
+        "alwaysAllow": "常に許可",
+        "askBeforeChanges": "変更前に確認"
       }
     }
   },

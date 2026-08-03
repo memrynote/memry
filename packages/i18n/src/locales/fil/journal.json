@@ -18,7 +18,7 @@
     "journalSettings": "Mga Setting ng Journal",
     "fullMode": "Buong Mode",
     "compactMode": "Compact na Mode",
-    "focusMode": "Focus Mode",
+    "focusMode": "Focus na Mode",
     "exitFocusMode": "Lumabas sa Focus Mode",
     "enterFocusMode": "Ipasok ang Focus Mode",
     "createNote": "Lumikha ng Tala",
@@ -63,7 +63,7 @@
       "checklist": "Checklist",
       "quote": "Quote",
       "divider": "Divider",
-      "codeBlock": "Code Block"
+      "codeBlock": "Bloke ng Code"
     },
     "prompt": {
       "enterUrl": "Ilagay ang URL:"
@@ -201,7 +201,7 @@
     "words": "{count} salita",
     "characters": "{count} na mga character",
     "completed": "Nakumpleto ang {count}",
-    "overdue": "{count} overdue"
+    "overdue": "{count} na overdue"
   },
   "stats": {
     "wordCount": "Bilang ng salita",
