@@ -7,6 +7,7 @@ import { inboxHandler } from './inbox-handler'
 import { filterHandler } from './filter-handler'
 import { bookmarkHandler } from './bookmark-handler'
 import { reminderHandler } from './reminder-handler'
+import { templateHandler } from './template-handler'
 import { projectHandler } from './project-handler'
 import { settingsHandler } from './settings-handler'
 import { noteHandler } from './note-handler'
@@ -44,7 +45,8 @@ const handlers = new Map<SyncItemType, SyncItemHandler>([
   ['calendar_external_event', calendarExternalEventHandler],
   ['agent_conversation', agentConversationHandler],
   ['agent_message', agentMessageHandler],
-  ['canvas', canvasHandler]
+  ['canvas', canvasHandler],
+  ['template', templateHandler]
 ])
 
 type DesktopRemoteSyncAdapter = RemoteSyncAdapter<DrizzleDb, EmitToWindows>
