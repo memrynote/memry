@@ -244,12 +244,12 @@ auto-accepted or shown for inline approval depending on the Agent Permissions se
 `vault_desktop_read` and `vault_desktop_write` cover the remaining desktop CRUD surface through an
 allowlisted desktop API operation name plus an `args` array. They are used for desktop domains such
 as templates, saved filters, bookmarks, reminders, calendar events, folder views, properties, tags,
-search reasons, inbox conversions, and settings. The write bridge uses the same in-app approval flow
-as named write tools. Security-sensitive and system operations stay outside the allowlist, including
-account/auth flows, provider connect/disconnect/refresh actions, app updater actions, external
-open/reveal actions, import dialogs, OS settings panes, telemetry, feedback and diagnostics
-reporting, and raw secret writes. Unsupported or unavailable desktop API operations return a
-structured MCP error instead of falling back to an arbitrary desktop call.
+search reasons, inbox conversions, project links, and settings. The write bridge uses the same in-app
+approval flow as named write tools. Security-sensitive and system operations stay outside the
+allowlist, including account/auth flows, provider connect/disconnect/refresh actions, app updater
+actions, external open/reveal actions, import dialogs, OS settings panes, telemetry, feedback and
+diagnostics reporting, and raw secret writes. Unsupported or unavailable desktop API operations
+return a structured MCP error instead of falling back to an arbitrary desktop call.
 
 Inbox items convert through the bridge into any of the four targets the app itself offers:
 `inbox.convertToNote`, `inbox.convertToTask`, `inbox.convertToEvent`, and
@@ -288,6 +288,45 @@ approval controls inside the tool row. You can allow the request once, allow cre
 that conversation, deny it, or edit the arguments before allowing. Note updates load a before/after
 diff before the write is applied. Unauthenticated or context-free write requests continue to be
 denied.
+
+## Project Links
+
+`vault_list_projects` returns each project's `icon`, `home_note_id`, and `linked_counts` (notes,
+files, events) alongside `task_count`. Nonzero `linked_counts` are the signal that a project has a
+hub link layer worth reading; `task_count` alone says nothing about it.
+
+The hub's link layer is reachable through the desktop bridge. Reads, via `vault_desktop_read`:
+
+| Operation                   | Args                 | Answers                                          |
+| --------------------------- | -------------------- | ------------------------------------------------ |
+| `tasks.listProjectContents` | `[projectId]`        | Which notes, files, and events a project holds    |
+| `tasks.listProjectLinks`    | `[projectId]`        | The raw link rows, including pin state            |
+| `tasks.listForItem`         | `[itemType, itemId]` | Which projects a note, file, or event belongs to  |
+
+`itemType` is one of `note`, `file`, or `calendar_event`.
+
+Writes, via `vault_desktop_write`, behind the same approval flow as other writes:
+
+| Operation                    | Args                                |
+| ---------------------------- | ----------------------------------- |
+| `tasks.linkProjectItem`      | `[{ projectId, itemType, itemId }]` |
+| `tasks.unlinkProjectItem`    | `[{ projectId, itemType, itemId }]` |
+| `tasks.setProjectLinkPinned` | `[{ projectId, itemId, pinned }]`   |
+| `tasks.setProjectHomeNote`   | `[{ projectId, noteId }]`           |
+| `tasks.captureUrlToProject`  | `[{ projectId, url }]`              |
+| `tasks.importFilesToProject` | `[{ projectId, sourcePaths }]`      |
+
+`setProjectHomeNote` takes `noteId: null` to clear the project's home note, the same way the hub's
+own overview rail does.
+
+`captureUrlToProject` fetches the page title over the network, and `importFilesToProject` copies
+files from paths you supply into the vault — both on caller-supplied input, like the already
+available `inbox.captureLink` and `notes.importFiles`. Operations that open native UI or hand an
+item to the OS stay out of the allowlist.
+
+`importFilesToProject` waits for the indexer to assign an id to each imported file, so importing
+several large files at once can exceed the bridge's ten-second window. The import still completes;
+the tool call reports a timeout. Import in smaller batches to see the result.
 
 ## Current Note
 

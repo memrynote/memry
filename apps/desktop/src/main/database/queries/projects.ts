@@ -737,6 +737,63 @@ export function getProjectContents(db: DataDb, projectId: string): ProjectConten
   }
 }
 
+export interface ProjectLinkCounts {
+  notes: number
+  files: number
+  events: number
+}
+
+/**
+ * Linked-item counts for every project in one pass, for callers that list
+ * projects and would otherwise run `getProjectContents` per row.
+ *
+ * Same inner joins and same `file_type` split as `getProjectContents`, for the
+ * same reason: a count that includes orphaned links would promise items the
+ * hub does not show. Projects with no links are absent from the map.
+ */
+export function getProjectLinkCounts(db: DataDb): Map<string, ProjectLinkCounts> {
+  const noteRows = db
+    .select({
+      projectId: projectLinks.projectId,
+      fileType: noteMetadata.fileType,
+      total: count()
+    })
+    .from(projectLinks)
+    .innerJoin(noteMetadata, eq(noteMetadata.id, projectLinks.itemId))
+    .where(inArray(projectLinks.itemType, ['note', 'file']))
+    .groupBy(projectLinks.projectId, noteMetadata.fileType)
+    .all()
+
+  const eventRows = db
+    .select({ projectId: projectLinks.projectId, total: count() })
+    .from(projectLinks)
+    .innerJoin(calendarEvents, eq(calendarEvents.id, projectLinks.itemId))
+    .where(eq(projectLinks.itemType, 'calendar_event'))
+    .groupBy(projectLinks.projectId)
+    .all()
+
+  const counts = new Map<string, ProjectLinkCounts>()
+  const entryFor = (projectId: string): ProjectLinkCounts => {
+    const existing = counts.get(projectId)
+    if (existing) return existing
+    const created = { notes: 0, files: 0, events: 0 }
+    counts.set(projectId, created)
+    return created
+  }
+
+  for (const row of noteRows) {
+    const entry = entryFor(row.projectId)
+    if (row.fileType === 'markdown') entry.notes += row.total
+    else entry.files += row.total
+  }
+
+  for (const row of eventRows) {
+    entryFor(row.projectId).events += row.total
+  }
+
+  return counts
+}
+
 /**
  * Set (or clear) a project's home note.
  */

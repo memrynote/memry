@@ -89,7 +89,17 @@ function fake(): VaultServiceHandles {
       removeTag: async () => {}
     },
     projects: {
-      list: async () => [{ id: 'p1', name: 'memrynote', status: 'active', task_count: 5 }],
+      list: async () => [
+        {
+          id: 'p1',
+          name: 'memrynote',
+          status: 'active',
+          task_count: 5,
+          icon: null,
+          home_note_id: null,
+          linked_counts: { notes: 0, files: 0, events: 0 }
+        }
+      ],
       get: async (id) => (id === 'p1' ? { id, name: 'memrynote' } : null),
       create: async () => ({ id: 'unused' }),
       update: async ({ id }) => ({ id }),

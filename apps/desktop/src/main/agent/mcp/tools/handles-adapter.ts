@@ -2,7 +2,7 @@ import path from 'node:path'
 
 import { searchAll } from '../../../database/queries/search'
 import { getNoteCacheById, listJournalEntriesInRange } from '../../../database/queries/notes'
-import { getInboxProject } from '../../../database/queries/projects'
+import { getInboxProject, getProjectLinkCounts } from '../../../database/queries/projects'
 import { createDesktopInboxDomain } from '../../../inbox/domain'
 import { createDesktopInboxCrudHandlers } from '../../../inbox/domain'
 import { deleteJournalEntryFile, readJournalEntry, writeJournalEntry } from '../../../vault/journal'
@@ -542,11 +542,17 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
     projects: {
       async list() {
         const result = createTaskDomain(dataDb).listProjects()
+        // One aggregate for the whole list: a per-project contents call would
+        // be an N+1 on a tool the model calls before most project writes.
+        const linkCounts = getProjectLinkCounts(dataDb)
         return result.projects.map<ProjectSummary>((project) => ({
           id: project.id,
           name: project.name,
           status: project.archivedAt ? 'archived' : 'active',
-          task_count: project.taskCount
+          task_count: project.taskCount,
+          icon: project.icon ?? null,
+          home_note_id: project.homeNoteId ?? null,
+          linked_counts: linkCounts.get(project.id) ?? { notes: 0, files: 0, events: 0 }
         }))
       },
       async get(id) {
