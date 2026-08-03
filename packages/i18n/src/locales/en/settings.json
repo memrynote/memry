@@ -972,7 +972,39 @@
         "skipped": "{count} skipped",
         "failed": "{count} failed"
       },
-      "error": "Import failed"
+      "error": "Import failed",
+      "previewError": "Preview failed"
+    },
+    "messages": {
+      "readFileFailed": "Failed to read file",
+      "csv": {
+        "noHeaders": "CSV file has no headers",
+        "emptyTitle": "Skipped row with empty title (column \"{column}\")",
+        "columns": "Columns: {columns}",
+        "titleColumn": "Title from \"{column}\"; other columns saved as properties"
+      },
+      "raindrop": {
+        "csvEmpty": "Raindrop CSV is empty",
+        "headerNotFound": "Raindrop CSV header row (\"url\" column) not found",
+        "rowNoUrl": "Row {row} skipped: no URL"
+      },
+      "ticktick": {
+        "headerNotFound": "TickTick CSV header row (\"Folder Name\") not found",
+        "foldersDropped": "TickTick folders have no Memry equivalent and were dropped",
+        "subtaskParentMissing": "Subtask \"{title}\" parent not found; imported top-level",
+        "unknownPriority": "Unknown TickTick priority {priority} → none",
+        "unsupportedRepeat": "Unsupported repeat rule \"{rule}\" skipped",
+        "reminderNoAnchor": "Reminder \"{reminder}\" skipped (no date anchor)"
+      },
+      "todoist": {
+        "headerNotFound": "Not a Todoist CSV: missing TYPE header row",
+        "sectionFlattened": "Section \"{section}\" flattened",
+        "orphanComment": "Comment with no preceding task skipped",
+        "emptyTitle": "Task with empty content imported as (untitled)",
+        "unknownPriority": "Unknown priority {priority} → none",
+        "unparsedDate": "Could not parse date \"{date}\"",
+        "subtaskNoParent": "Sub-task \"{title}\" has no parent at indent {indent}; imported top-level"
+      }
     }
   },
   "integrations": {

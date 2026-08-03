@@ -284,6 +284,11 @@
       "status": "Status",
       "select": "Select",
       "multiselect": "Multiselect"
+    },
+    "statusCategories": {
+      "todo": "To-do",
+      "inProgress": "In progress",
+      "done": "Complete"
     }
   },
   "templateSelector": {
@@ -844,6 +849,25 @@
       "createTagFailed": "Failed to create tag",
       "createTagCategorizeFailed": "Tag created but could not be added to the category",
       "reorderFailed": "Failed to reorder tags"
+    }
+  },
+  "folderView": {
+    "columns": {
+      "title": "Title",
+      "folder": "Folder",
+      "tags": "Tags",
+      "created": "Created",
+      "modified": "Modified",
+      "wordCount": "Word count",
+      "kind": "Kind"
+    },
+    "defaultViewName": "Default",
+    "selectView": "Select View",
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (double-click to edit)"
+    },
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# note} other {# notes}}"
     }
   }
 }

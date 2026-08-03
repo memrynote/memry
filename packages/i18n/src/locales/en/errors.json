@@ -22,7 +22,19 @@
     "writeFailed": "Failed to save this note. Check disk space and permissions.",
     "readFailed": "Failed to read this note. The file may be locked or corrupted.",
     "deleteFailed": "Failed to delete this note. Check file permissions.",
-    "invalidPath": "The note path is invalid."
+    "invalidPath": "The note path is invalid.",
+    "createFailed": "Failed to create note",
+    "updateFailed": "Failed to update note",
+    "renameFailed": "Failed to rename note",
+    "moveFailed": "Failed to move note",
+    "applyTemplateFailed": "Failed to apply template",
+    "exportPdfFailed": "Failed to export PDF",
+    "exportHtmlFailed": "Failed to export HTML",
+    "restoreVersionFailed": "Failed to restore version",
+    "deleteVersionFailed": "Failed to delete version",
+    "reorderFailed": "Failed to reorder notes",
+    "importFilesFailed": "Failed to import files",
+    "setLocalOnlyFailed": "Failed to set local-only"
   },
   "database": {
     "connectionFailed": "Could not connect to the local database. Try restarting the app.",
@@ -41,7 +53,11 @@
     "fileTooLarge": "This file is too large to attach.",
     "unsupportedType": "This file type is not supported.",
     "writeFailed": "Failed to save the attachment. Check disk space.",
-    "deleteFailed": "Failed to delete the attachment."
+    "deleteFailed": "Failed to delete the attachment.",
+    "uploadFailed": "Attachment upload failed",
+    "uploadProgressFailed": "Failed to fetch upload progress",
+    "downloadFailed": "Attachment download failed",
+    "downloadProgressFailed": "Failed to fetch download progress"
   },
   "encryption": {
     "failed": "Failed to encrypt data. Your keys may need to be regenerated.",
@@ -77,6 +93,184 @@
     "securityQuarantinePermanent": "A sync item could not be verified and has been quarantined for security.",
     "securityQuarantineRetry": "A sync item failed signature verification and will be retried.",
     "certificatePinPaused": "Secure connection to sync server could not be verified. Syncing has been paused for your protection.",
-    "vaultRecovered": "Vault key restored. Syncing will resume."
+    "vaultRecovered": "Vault key restored. Syncing will resume.",
+    "serverUnreachable": "Unable to connect to sync server. Please check your internet connection.",
+    "keyPersistenceFailed": "Failed to save encryption key securely. Device registration has been rolled back. Please try again.",
+    "historyFetchFailed": "Failed to fetch sync history",
+    "updateSyncedSettingFailed": "Failed to update synced setting"
+  },
+  "googleCalendar": {
+    "connectFailed": "Couldn't connect to Google Calendar. Please try again in a moment.",
+    "reconnectNeeded": "Your Google Calendar connection has expired. Please disconnect and connect again.",
+    "misconfigured": "Google Calendar is not configured correctly. Please contact support if this keeps happening.",
+    "scopeMissing": "We couldn't access your Google Calendar because Calendar permission wasn't granted. Please try again and make sure the Calendar checkbox stays ticked on the Google consent screen.",
+    "accessDenied": "Google Calendar access was declined. You can connect again whenever you are ready.",
+    "temporarilyUnavailable": "Google Calendar is temporarily unavailable. Please try again shortly."
+  },
+  "agent": {
+    "runtimeStarting": "Agent runtime is starting. Try again.",
+    "conversationBusy": "Conversation busy"
+  },
+  "ai": {
+    "inlineDisabled": "AI inline editing is disabled",
+    "listOllamaModelsFailed": "Failed to list Ollama models"
+  },
+  "auth": {
+    "notAuthenticated": "Not authenticated",
+    "sessionExpired": "Session expired. Please sign in again.",
+    "invalidRecoveryPhraseFormat": "Invalid recovery phrase format",
+    "recoveryPhraseMismatch": "Recovery phrase does not match. Please try again.",
+    "cannotRemoveCurrentDevice": "Cannot remove the current device",
+    "requestOtpFailed": "Failed to request OTP",
+    "verifyOtpFailed": "Failed to verify OTP",
+    "resendOtpFailed": "Failed to resend OTP",
+    "linkDeviceQrFailed": "Failed to link device via QR",
+    "completeLinkingFailed": "Failed to complete linking",
+    "finalizeVaultChoiceFailed": "Failed to finalize vault choice",
+    "pickFolderFailed": "Failed to pick folder",
+    "linkRecoveryPhraseFailed": "Failed to link via recovery phrase",
+    "approveLinkingFailed": "Failed to approve linking",
+    "fetchSasCodeFailed": "Failed to fetch SAS code",
+    "removeDeviceFailed": "Failed to remove device",
+    "renameDeviceFailed": "Failed to rename device",
+    "initiateOAuthFailed": "Failed to initiate OAuth",
+    "setupFirstDeviceOAuthFailed": "Failed to setup first device via OAuth",
+    "confirmRecoveryPhraseFailed": "Failed to confirm recovery phrase"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "Item is already bookmarked",
+    "notFound": "Bookmark not found"
+  },
+  "calendar": {
+    "eventNotFound": "Calendar event not found",
+    "sourceNotFound": "Calendar source not found",
+    "onlySourcesSelectable": "Only calendar sources can be selected",
+    "onlyGoogleSourcesRetryable": "Only Google calendar sources can be retried",
+    "signInBeforeRefresh": "Sign in to memrynote before refreshing Google Calendar",
+    "googleNotConnected": "Google Calendar is not connected on this device",
+    "syncFailed": "Sync failed",
+    "createEventFailed": "Failed to create calendar event",
+    "updateEventFailed": "Failed to update calendar event",
+    "deleteEventFailed": "Failed to delete calendar event",
+    "updateSourceSelectionFailed": "Failed to update calendar source selection",
+    "connectProviderFailed": "Failed to connect calendar provider",
+    "disconnectProviderFailed": "Failed to disconnect calendar provider",
+    "refreshProviderFailed": "Failed to refresh calendar provider",
+    "listGoogleCalendarsFailed": "Failed to list Google calendars",
+    "setDefaultGoogleCalendarFailed": "Failed to set default Google calendar",
+    "retryGoogleSourceSyncFailed": "Failed to retry Google Calendar source sync",
+    "promoteExternalEventFailed": "Failed to promote external calendar event"
+  },
+  "folder": {
+    "createFailed": "Failed to create folder",
+    "renameFailed": "Failed to rename folder",
+    "deleteFailed": "Failed to delete folder",
+    "setConfigFailed": "Failed to set folder config"
+  },
+  "folderView": {
+    "setConfigFailed": "Failed to set config",
+    "setViewFailed": "Failed to set view",
+    "deleteViewFailed": "Failed to delete view"
+  },
+  "importer": {
+    "fileSelectionFailed": "File selection failed",
+    "importFailed": "Import failed",
+    "cancelFailed": "Cancel failed",
+    "previewFailed": "Preview failed",
+    "listFailed": "Failed to list importers"
+  },
+  "project": {
+    "createFailed": "Failed to create project",
+    "updateFailed": "Failed to update project",
+    "deleteFailed": "Failed to delete project",
+    "archiveFailed": "Failed to archive project",
+    "reorderFailed": "Failed to reorder projects",
+    "linkItemFailed": "Failed to link item",
+    "unlinkItemFailed": "Failed to unlink item",
+    "captureLinkFailed": "Failed to capture link",
+    "importFilesFailed": "Failed to import files",
+    "updatePinnedFailed": "Failed to update pinned state",
+    "setHomeNoteFailed": "Failed to set home note",
+    "listForItemFailed": "Failed to list projects for item"
+  },
+  "property": {
+    "entityNotFound": "Entity not found",
+    "notFound": "Property \"{name}\" not found",
+    "alreadyExists": "Property \"{name}\" already exists",
+    "setFailed": "Failed to set properties",
+    "renameFailed": "Failed to rename property",
+    "createDefinitionFailed": "Failed to create property definition",
+    "updateDefinitionFailed": "Failed to update property definition",
+    "setCalendarVisibilityFailed": "Failed to set calendar property visibility"
+  },
+  "reminder": {
+    "notFound": "Reminder not found",
+    "createFailed": "Failed to create reminder",
+    "updateFailed": "Failed to update reminder",
+    "dismissFailed": "Failed to dismiss reminder",
+    "snoozeFailed": "Failed to snooze reminder",
+    "dismissAllFailed": "Failed to dismiss reminders"
+  },
+  "savedFilter": {
+    "notFound": "Saved filter not found"
+  },
+  "search": {
+    "rebuildFailed": "Rebuild failed"
+  },
+  "settings": {
+    "unknownVault": "Unknown vault",
+    "modelAlreadyLoading": "Model is already loading",
+    "modelLoadFailed": "Failed to load model",
+    "voiceModelDownloadFailed": "Failed to download voice model",
+    "terminalCommandInstallFailed": "Failed to install terminal command",
+    "terminalCommandUninstallFailed": "Failed to uninstall terminal command",
+    "shortcutInUse": "Shortcut {shortcut} is already in use"
+  },
+  "tag": {
+    "mergeSameTag": "Source and target tags are the same",
+    "categoryNameRequired": "Category name is required",
+    "pinNoteFailed": "Failed to pin note",
+    "unpinNoteFailed": "Failed to unpin note",
+    "renameFailed": "Failed to rename tag",
+    "updateColorFailed": "Failed to update tag color",
+    "updateIconFailed": "Failed to update tag icon",
+    "deleteFailed": "Failed to delete tag",
+    "removeFromNoteFailed": "Failed to remove tag from note",
+    "mergeFailed": "Failed to merge tags",
+    "reorderFailed": "Failed to reorder tags",
+    "listCategoriesFailed": "Failed to list tag categories",
+    "createCategoryFailed": "Failed to create tag category",
+    "renameCategoryFailed": "Failed to rename tag category",
+    "deleteCategoryFailed": "Failed to delete tag category"
+  },
+  "task": {
+    "createFailed": "Failed to create task",
+    "updateFailed": "Failed to update task",
+    "deleteFailed": "Failed to delete task",
+    "completeFailed": "Failed to complete task",
+    "uncompleteFailed": "Failed to uncomplete task",
+    "archiveFailed": "Failed to archive task",
+    "unarchiveFailed": "Failed to unarchive task",
+    "moveFailed": "Failed to move task",
+    "reorderFailed": "Failed to reorder tasks",
+    "duplicateFailed": "Failed to duplicate task",
+    "convertToSubtaskFailed": "Failed to convert to subtask",
+    "convertToTaskFailed": "Failed to convert to task",
+    "completeManyFailed": "Failed to complete tasks",
+    "deleteManyFailed": "Failed to delete tasks",
+    "moveManyFailed": "Failed to move tasks",
+    "archiveManyFailed": "Failed to archive tasks"
+  },
+  "taskStatus": {
+    "createFailed": "Failed to create status",
+    "updateFailed": "Failed to update status",
+    "deleteFailed": "Failed to delete status",
+    "reorderFailed": "Failed to reorder statuses"
+  },
+  "template": {
+    "createFailed": "Failed to create template",
+    "updateFailed": "Failed to update template",
+    "deleteFailed": "Failed to delete template",
+    "duplicateFailed": "Failed to duplicate template"
   }
 }
