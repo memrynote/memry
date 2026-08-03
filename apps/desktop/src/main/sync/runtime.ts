@@ -25,6 +25,7 @@ import { initTaskSyncService, resetTaskSyncService } from './task-sync'
 import { initInboxSyncService, resetInboxSyncService } from './inbox-sync'
 import { initFilterSyncService, resetFilterSyncService } from './filter-sync'
 import { initBookmarkSyncService, resetBookmarkSyncService } from './bookmark-sync'
+import { initTemplateSyncService, resetTemplateSyncService } from './template-sync'
 import { initReminderSyncService, resetReminderSyncService } from './reminder-sync'
 import { initCanvasSyncService, resetCanvasSyncService } from './canvas-sync'
 import { initProjectSyncService, resetProjectSyncService } from './project-sync'
@@ -154,6 +155,7 @@ function resetSyncServiceSingletons(): void {
   resetInboxSyncService()
   resetFilterSyncService()
   resetBookmarkSyncService()
+  resetTemplateSyncService()
   resetReminderSyncService()
   resetCanvasSyncService()
   resetProjectSyncService()
@@ -324,6 +326,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const inboxSync = initInboxSyncService({ queue, db: runtimeSyncDb, getDeviceId })
       const filterSync = initFilterSyncService({ queue, db: runtimeSyncDb, getDeviceId })
       const bookmarkSync = initBookmarkSyncService({ queue, db: runtimeSyncDb, getDeviceId })
+      const templateSync = initTemplateSyncService({ queue, db: runtimeSyncDb, getDeviceId })
       const reminderSync = initReminderSyncService({ queue, db: runtimeSyncDb, getDeviceId })
       const canvasSync = initCanvasSyncService({ queue, db: runtimeSyncDb, getDeviceId })
       const projectSync = initProjectSyncService({ queue, db: runtimeSyncDb, getDeviceId })
@@ -380,6 +383,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           kind: 'record',
           local: bookmarkSync,
           remote: getRemoteSyncAdapter('bookmark')
+        },
+        {
+          type: 'template',
+          kind: 'record',
+          local: templateSync,
+          remote: getRemoteSyncAdapter('template')
         },
         {
           type: 'reminder',
