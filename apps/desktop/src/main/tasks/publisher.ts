@@ -1,4 +1,3 @@
-import { BrowserWindow } from 'electron'
 import type { TasksDomainPublisher } from '@memry/domain-tasks'
 import { TasksChannels } from '@memry/contracts/ipc-channels'
 
@@ -11,11 +10,10 @@ import {
   syncTaskUpdate
 } from './runtime-effects'
 import { trackMainEvent } from '../telemetry/track'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 
 function emitTaskEvent(channel: string, data: unknown): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, data)
-  })
+  broadcastToAllWindows(channel, data)
 }
 
 // Task tags share the global tag list (see getTagsWithCounts). The tag hooks
