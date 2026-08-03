@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { SyncEngine } from './engine'
+import { SyncEngine, SYNC_LOCK_STALE_MS } from './engine'
 import type { WebSocketMessage } from './websocket'
 import { createMockDeps, createMockNetwork, setupTestDb } from '@tests/utils/engine-mocks'
 
@@ -31,6 +31,65 @@ describe('SyncEngine', () => {
 
       expect(deps.ws.connect).toHaveBeenCalled()
       vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given initial full sync fails #when start called', () => {
+    it('#then start resolves and the periodic pull is armed', async () => {
+      vi.useFakeTimers()
+      const getSpy = vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+      vi.spyOn(engine, 'fullSync').mockRejectedValueOnce(new Error('transient first-sync failure'))
+
+      // #when — must not throw: a throwing start() tears down the sync runtime
+      await engine.start()
+
+      // #then — the 60s tick still pulls, so sync self-heals this session
+      const callsAfterStart = getSpy.mock.calls.length
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(getSpy.mock.calls.length).toBeGreaterThan(callsAfterStart)
+
+      await engine.stop()
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given the sync lock is stuck past the stale threshold #when the watchdog runs', () => {
+    it('#then force-releases the lock and aborts the in-flight sync', () => {
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+      const abortController = new AbortController()
+      engine['ctx'].syncing = true
+      engine['ctx'].fullSyncActive = true
+      engine['ctx'].abortController = abortController
+      engine['syncLockAcquiredAt'] = Date.now() - SYNC_LOCK_STALE_MS - 1
+
+      engine['recoverStaleSyncLock']()
+
+      expect(engine['ctx'].syncing).toBe(false)
+      expect(engine['ctx'].fullSyncActive).toBe(false)
+      expect(abortController.signal.aborted).toBe(true)
+    })
+
+    it('#then leaves a freshly acquired lock alone', () => {
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+      engine['ctx'].syncing = true
+      engine['syncLockAcquiredAt'] = Date.now()
+
+      engine['recoverStaleSyncLock']()
+
+      expect(engine['ctx'].syncing).toBe(true)
+      // The engine is a static singleton: a leaked syncing=true makes every
+      // later `new SyncEngine` in this file throw "instance already active".
+      engine['ctx'].syncing = false
     })
   })
 
