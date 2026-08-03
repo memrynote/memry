@@ -256,7 +256,7 @@ export interface MainIpcInvokeHandlers {
   "settings:getAIModelStatus": (...args: []) => Awaited<Promise<import("./settings-handlers").AIModelStatus>>
   "settings:getAISettings": (...args: []) => Awaited<import("./settings-handlers").AISettings>
   "settings:getBackupSettings": (...args: []) => Awaited<{ autoBackup: boolean; frequencyHours: 1 | 6 | 12 | 24; maxBackups: number; lastBackupAt: string | null; }>
-  "settings:getCalendarGoogleSettings": (...args: []) => Awaited<{ defaultTargetCalendarId: string | null; onboardingCompleted: boolean; promoteConfirmDismissed: boolean; pushEventsToGoogle: boolean; }>
+  "settings:getCalendarGoogleSettings": (...args: []) => Awaited<{ defaultTargetCalendarId: string | null; onboardingCompleted: boolean; promoteConfirmDismissed: boolean; pushEventsToGoogle: boolean; agentReadEventsConsent: boolean | null; }>
   "settings:getCalendarSettings": (...args: []) => Awaited<{ dayCellClickBehavior: "calendar" | "journal"; calendarPageClickOverride: "calendar" | "inherit" | "journal"; weekStartDay: "sunday" | "monday"; showNotesOnCalendar: boolean; }>
   "settings:getEditorSettings": (...args: []) => Awaited<{ width: string; toolbarMode: "floating" | "sticky"; spellCheck: boolean; }>
   "settings:getFeaturesSettings": (...args: []) => Awaited<{ home: boolean; inbox: boolean; journal: boolean; tasks: boolean; calendar: boolean; graph: boolean; spatialCanvas: boolean; }>
@@ -284,7 +284,7 @@ export interface MainIpcInvokeHandlers {
   "settings:set": (...args: [{ key: string; value: string; }]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
   "settings:setAISettings": (...args: [Partial<import("./settings-handlers").AISettings>]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
   "settings:setBackupSettings": (...args: [Partial<{ autoBackup: boolean; frequencyHours: 1 | 6 | 12 | 24; maxBackups: number; lastBackupAt: string | null; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
-  "settings:setCalendarGoogleSettings": (...args: [Partial<{ defaultTargetCalendarId: string | null; onboardingCompleted: boolean; promoteConfirmDismissed: boolean; pushEventsToGoogle: boolean; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
+  "settings:setCalendarGoogleSettings": (...args: [Partial<{ defaultTargetCalendarId: string | null; onboardingCompleted: boolean; promoteConfirmDismissed: boolean; pushEventsToGoogle: boolean; agentReadEventsConsent: boolean | null; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
   "settings:setCalendarSettings": (...args: [Partial<{ dayCellClickBehavior: "calendar" | "journal"; calendarPageClickOverride: "calendar" | "inherit" | "journal"; weekStartDay: "sunday" | "monday"; showNotesOnCalendar: boolean; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
   "settings:setEditorSettings": (...args: [Partial<{ width: "normal" | "full"; toolbarMode: "floating" | "sticky"; spellCheck: boolean; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
   "settings:setFeaturesSettings": (...args: [Partial<{ home: boolean; inbox: boolean; journal: boolean; tasks: boolean; calendar: boolean; graph: boolean; spatialCanvas: boolean; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>

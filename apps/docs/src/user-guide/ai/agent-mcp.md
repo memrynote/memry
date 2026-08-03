@@ -266,12 +266,17 @@ Calendar desktop reads accept the same single-object shape as the renderer bridg
 `args: ["2026-05-14", "2026-06-14"]` or
 `args: [{"startAt": "2026-05-14T00:00:00.000Z", "endAt": "2026-06-15T00:00:00.000Z"}]`.
 
-Agent calendar access covers native memrynote events only. Google-integration operations —
-calendar sources, provider status, Google calendar lists, promoting external events, and Google
-calendar settings — are excluded from the agent allowlists, and `calendar.getRange` always runs
-with Google-synced external events filtered out. Data obtained from Google APIs is never included
-in agent tool results or forwarded to any AI backend, in line with the Google API Services User
-Data Policy (Limited Use).
+Google-integration operations — calendar sources, provider status, Google calendar lists, promoting
+external events, and Google calendar settings — are excluded from the agent allowlists outright.
+
+Google-synced events themselves are gated on explicit user consent. `calendar.getRange` resolves
+`includeExternal` from the stored answer to the **Let AI read Google Calendar events** setting, never
+from the caller: an agent that passes `includeExternal: true` still gets native-only results unless
+the user granted access. Not asked yet, declined, or a settings read that failed all resolve to
+native-only. See [Calendar → Google Data and AI Features](/user-guide/calendar#google-data-and-ai-features).
+
+Google user data is never used to train or improve AI models, in line with the Google API Services
+User Data Policy (Limited Use).
 
 By default, Agent Chat accepts these tool calls automatically. The chat still shows each requested
 tool as compact, subdued text with a readable label such as `Reading note` or `Creating task`.
