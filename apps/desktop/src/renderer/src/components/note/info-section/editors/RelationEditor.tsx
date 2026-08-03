@@ -116,7 +116,7 @@ export function RelationEditor({ value, onChange }: RelationEditorProps) {
               'border-[1.5px] border-dashed border-border text-text-tertiary',
               'transition-colors duration-150',
               'hover:border-muted-foreground hover:text-muted-foreground',
-              'focus:outline-none'
+              'focus:outline-none focus-visible:ring-1 focus-visible:ring-ring'
             )}
           >
             <Plus className="size-3" strokeWidth={2.5} />

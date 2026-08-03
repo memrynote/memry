@@ -170,6 +170,17 @@ describe('RelationEditor', () => {
     expect(screen.getByLabelText('Add relation')).toBeInTheDocument()
   })
 
+  // The app strips the default focus ring globally
+  // (`*:focus-visible { outline: none; }` in assets/main.css), so every
+  // interactive element needs its own compensating focus-visible treatment
+  // or a keyboard user tabbing to it sees nothing. jsdom does not compute
+  // styles from Tailwind classes, so this asserts on the className carrying
+  // a focus-visible: treatment as a proxy for the real visual indicator.
+  it('gives the add trigger a visible focus-visible treatment', () => {
+    renderWithI18n(<RelationEditor value={[]} onChange={vi.fn()} />)
+    expect(screen.getByLabelText('Add relation').className).toMatch(/focus-visible:/)
+  })
+
   it('does not add a duplicate URI', async () => {
     mockResolveRefs([
       {
