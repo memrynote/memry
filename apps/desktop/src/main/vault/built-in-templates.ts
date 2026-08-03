@@ -241,3 +241,9 @@ How do I feel about this week overall?
 `
   }
 ]
+
+/**
+ * Ids reserved by built-ins. Derived once here so the CRUD guard, the legacy
+ * import and the sync handler cannot drift apart on what counts as built-in.
+ */
+export const BUILT_IN_IDS: ReadonlySet<string> = new Set(BUILT_IN_TEMPLATES.map((t) => t.id))

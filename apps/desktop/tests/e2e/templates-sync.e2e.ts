@@ -3,7 +3,8 @@ import {
   test as legacyTest,
   expect as legacyExpect,
   LEGACY_TEMPLATE_ID,
-  LEGACY_TEMPLATE_NAME
+  LEGACY_TEMPLATE_NAME,
+  LEGACY_TEMPLATE_BODY
 } from './fixtures/legacy-template-fixtures'
 import { goOffline, goOnline, syncBothAndWait, waitForSyncOnline } from './utils/network-control'
 import type { Page } from '@playwright/test'
@@ -143,7 +144,7 @@ legacyTest.describe('Legacy template migration', () => {
       await syncBothAndWait(pageA, pageB)
 
       legacyExpect(await listTemplateNames(pageB)).toContain(LEGACY_TEMPLATE_NAME)
-      legacyExpect(await getTemplateContent(pageB, LEGACY_TEMPLATE_ID)).toBe('## Legacy Blockers')
+      legacyExpect(await getTemplateContent(pageB, LEGACY_TEMPLATE_ID)).toBe(LEGACY_TEMPLATE_BODY)
     }
   )
 })

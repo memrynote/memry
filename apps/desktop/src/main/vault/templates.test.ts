@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
 import { eq } from 'drizzle-orm'
 import { templates as templatesTable } from '@memry/db-schema/schema/templates'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
@@ -15,6 +18,11 @@ vi.mock('../sync/local-mutations', () => ({
 
 let testDb: TestDatabaseResult
 vi.mock('../database', () => ({ getDatabase: () => testDb.db }))
+
+// Without this the suite would read the developer's real electron-store and
+// resolve legacy template paths inside their actual vault.
+let mockVaultPath: string | null = null
+vi.mock('../store', () => ({ getCurrentVaultPath: () => mockVaultPath }))
 
 vi.mock('electron', () => ({
   BrowserWindow: { getAllWindows: () => [] }
@@ -109,6 +117,32 @@ describe('templates CRUD', () => {
     // Without the snapshot the tombstone never reaches the other device.
     const snapshot = JSON.parse(enqueueDelete.mock.calls[0][2] as string)
     expect(snapshot).toMatchObject({ id: created.id, name: 'Standup' })
+  })
+
+  it('deletes the pre-sync file too, so a fresh data.db cannot re-import it', async () => {
+    const vaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-tpl-delete-'))
+    mockVaultPath = vaultPath
+    try {
+      const created = await createTemplate({ name: 'Standup', content: 'v1' })
+
+      const legacyDir = path.join(vaultPath, '.memry', 'templates')
+      fs.mkdirSync(legacyDir, { recursive: true })
+      const legacyFile = path.join(legacyDir, `${created.id}.md`)
+      fs.writeFileSync(legacyFile, '---\nname: Standup\n---\nv1')
+
+      // A sibling file must survive: the downgrade path depends on legacy
+      // files for templates the user has NOT deleted.
+      const otherFile = path.join(legacyDir, 'someone-else.md')
+      fs.writeFileSync(otherFile, '---\nname: Other\n---\nx')
+
+      await deleteTemplate(created.id)
+
+      expect(fs.existsSync(legacyFile)).toBe(false)
+      expect(fs.existsSync(otherFile)).toBe(true)
+    } finally {
+      mockVaultPath = null
+      fs.rmSync(vaultPath, { recursive: true, force: true })
+    }
   })
 
   it('refuses to modify or delete built-ins', async () => {

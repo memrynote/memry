@@ -4,7 +4,7 @@
  * Custom note templates. Stored in data.db (source of truth, not rebuildable).
  *
  * Built-in templates are code constants (see BUILT_IN_TEMPLATES in
- * main/vault/templates.ts) and never appear here — they have fixed ids, are
+ * main/vault/built-in-templates.ts) and never appear here — they have fixed ids, are
  * identical on every device, and are immutable, so syncing them would only
  * create duplicates.
  *

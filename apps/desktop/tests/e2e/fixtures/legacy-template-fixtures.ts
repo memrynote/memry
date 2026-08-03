@@ -15,7 +15,7 @@ export const LEGACY_TEMPLATE_BODY = '## Legacy Blockers'
  * Every other e2e seeds after launch and reindexes; the migration only runs on
  * vault open, so it must be on disk beforehand.
  */
-export const test = base.extend<{ seededLegacyTemplate: void }>({
+export const test = base.extend({
   vaultPathA: async ({ vaultPathA }, use) => {
     const dir = path.join(vaultPathA, '.memry', 'templates')
     fs.mkdirSync(dir, { recursive: true })
@@ -31,11 +31,6 @@ export const test = base.extend<{ seededLegacyTemplate: void }>({
       })
     )
     await use(vaultPathA)
-  },
-
-  seededLegacyTemplate: async ({ vaultPathA }, use) => {
-    void vaultPathA
-    await use()
   }
 })
 

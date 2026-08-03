@@ -13,6 +13,8 @@
  * @module vault/templates
  */
 
+import path from 'path'
+import { existsSync, unlinkSync } from 'fs'
 import { eq } from 'drizzle-orm'
 import { templates as templatesTable, type TemplateRow } from '@memry/db-schema/schema/templates'
 import { TemplatesChannels } from '@memry/contracts/ipc-channels'
@@ -23,7 +25,9 @@ import type {
   TemplateUpdateInput,
   TemplateProperty
 } from '@memry/contracts/templates-api'
-import { BUILT_IN_TEMPLATES } from './built-in-templates'
+import { BUILT_IN_TEMPLATES, BUILT_IN_IDS } from './built-in-templates'
+import { getMemryDir } from './init'
+import { getCurrentVaultPath } from '../store'
 import { getDatabase } from '../database'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
@@ -49,7 +53,17 @@ const BUILT_IN_TIMESTAMP = '2025-01-01T00:00:00.000Z'
 
 export { BUILT_IN_TEMPLATES }
 
-const BUILT_IN_IDS = new Set(BUILT_IN_TEMPLATES.map((t) => t.id))
+/**
+ * Built-ins are a fixed constant, so their list projection and sort order can
+ * never change. Compute both once instead of on every listTemplates() call.
+ */
+const BUILT_IN_LIST_ITEMS: readonly TemplateListItem[] = BUILT_IN_TEMPLATES.map((t) => ({
+  id: t.id,
+  name: t.name,
+  description: t.description,
+  icon: t.icon,
+  isBuiltIn: true as const
+})).sort((a, b) => a.name.localeCompare(b.name))
 
 // ============================================================================
 // Helpers
@@ -77,12 +91,31 @@ function rowToTemplate(row: TemplateRow): Template {
     description: row.description ?? undefined,
     icon: row.icon ?? null,
     isBuiltIn: false,
-    tags: row.tags ?? [],
-    properties: (row.properties ?? []) as TemplateProperty[],
+    // Array guards, not casts: these are JSON columns and the sync path can
+    // write whatever a peer pushed. applyTemplate iterates properties, so a
+    // non-array here would throw "not iterable" at note-creation time.
+    tags: Array.isArray(row.tags) ? row.tags : [],
+    properties: Array.isArray(row.properties) ? (row.properties as TemplateProperty[]) : [],
     content: row.content,
     createdAt: row.createdAt,
     modifiedAt: row.modifiedAt
   }
+}
+
+/**
+ * Path of the pre-sync markdown file for a template, if a vault is open.
+ *
+ * Custom templates used to live at .memry/templates/<id>.md. The migration
+ * deliberately leaves those files on disk as a downgrade path, but a file for a
+ * template the user has since deleted is a resurrection source: the import
+ * guard lives in data.db while the file lives in the vault folder, and the two
+ * have independent lifetimes (a vault synced by Dropbox/iCloud/git, or a
+ * reinstall onto an existing vault, can easily produce one without the other).
+ */
+function legacyTemplateFilePath(id: string): string | null {
+  const vaultPath = getCurrentVaultPath()
+  if (!vaultPath) return null
+  return path.join(getMemryDir(vaultPath), 'templates', `${id}.md`)
 }
 
 function getRow(id: string): TemplateRow | undefined {
@@ -103,17 +136,28 @@ function assertNotBuiltIn(id: string, action: 'modify' | 'delete'): void {
  * List all templates: built-ins from code, custom ones from the DB.
  */
 export async function listTemplates(): Promise<TemplateListItem[]> {
-  const items: TemplateListItem[] = BUILT_IN_TEMPLATES.map((t) => ({
-    id: t.id,
-    name: t.name,
-    description: t.description,
-    icon: t.icon,
-    isBuiltIn: true
-  }))
+  const custom: TemplateListItem[] = []
 
   try {
-    for (const row of getDatabase().select().from(templatesTable).all()) {
-      items.push({
+    // Projected select: the full markdown body plus the tags/properties/clock
+    // JSON columns would all be parsed and then discarded.
+    const rows = getDatabase()
+      .select({
+        id: templatesTable.id,
+        name: templatesTable.name,
+        description: templatesTable.description,
+        icon: templatesTable.icon
+      })
+      .from(templatesTable)
+      .all()
+
+    for (const row of rows) {
+      // A row carrying a built-in id would otherwise render as a second entry
+      // with a duplicate id that getTemplate shadows and assertNotBuiltIn
+      // refuses to delete — an undeletable ghost. Built-ins always win.
+      if (BUILT_IN_IDS.has(row.id)) continue
+
+      custom.push({
         id: row.id,
         name: row.name,
         description: row.description ?? undefined,
@@ -125,15 +169,10 @@ export async function listTemplates(): Promise<TemplateListItem[]> {
     logger.error('Failed to list custom templates:', error)
   }
 
-  // Sort: built-in first, then by name
-  items.sort((a, b) => {
-    if (a.isBuiltIn !== b.isBuiltIn) {
-      return a.isBuiltIn ? -1 : 1
-    }
-    return a.name.localeCompare(b.name)
-  })
+  custom.sort((a, b) => a.name.localeCompare(b.name))
 
-  return items
+  // Built-ins first, then custom by name — both halves are already sorted.
+  return [...BUILT_IN_LIST_ITEMS, ...custom]
 }
 
 /**
@@ -256,6 +295,16 @@ export async function deleteTemplate(id: string): Promise<void> {
   const snapshot = JSON.stringify(row)
 
   getDatabase().delete(templatesTable).where(eq(templatesTable.id, id)).run()
+
+  // Drop the pre-sync file too, or the next data.db without the import flag
+  // re-imports this template and pushes it back to every device. Other legacy
+  // files are still left alone, so the downgrade path survives.
+  try {
+    const legacyPath = legacyTemplateFilePath(id)
+    if (legacyPath && existsSync(legacyPath)) unlinkSync(legacyPath)
+  } catch (error) {
+    logger.warn('Failed to remove legacy template file', { id, error })
+  }
 
   enqueueLocalSyncDelete('template', id, snapshot)
 

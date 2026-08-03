@@ -109,7 +109,7 @@ Built-in templates are baked into the app version and not synced; they're identi
 
 Earlier versions stored custom templates as markdown files in `.memry/templates/` inside the vault, and those files never synced. The first time you open a vault with this version, each custom template is imported into the vault database and queued for sync — ids are preserved, so a vault you copied between machines converges instead of duplicating.
 
-The original files are left untouched on disk. They're no longer read after the import, but they stay as a safety net if you ever roll back to an older build. Deleting a template after the upgrade is permanent: the import runs once and will not bring it back.
+The original files are left on disk. They're no longer read after the import, but they stay as a safety net if you ever roll back to an older build. The one exception is deletion: deleting a template also removes its original file, so it cannot come back if the vault database is ever rebuilt.
 
 ## See Also
 
