@@ -52,8 +52,8 @@ canvases is the usual fix.
 - Palm rejection and pen pressure depend on your hardware and OS.
 - The drawing toolbar's language comes from the underlying canvas engine and may
   differ from memrynote's interface language.
-- Canvas is opt-in per device — enabling it on one device does not enable it on
-  another.
+- The Canvas toggle is per device — turning it off on one device does not turn
+  it off on another.
 - The shape library is stored per vault but does not sync between devices yet.
 - Publishing a shape kit to the public Excalidraw library from inside memrynote
   is not supported; the panel's **Publish** action does not work here.

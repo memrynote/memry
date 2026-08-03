@@ -8,12 +8,14 @@ Canvases are useful when an outline is the wrong shape for your thinking —
 planning a project, mapping how ideas connect, sketching a diagram next to the
 notes it explains.
 
-## Turning it on
+## Turning it on and off
 
-Canvas is opt-in. Open **Settings → Features** and turn on **Canvas**. The
-setting is per device and persists across restarts.
+Canvas is on by default: a **Canvases** section is already in your sidebar.
 
-Once enabled, a **Canvases** section appears in the sidebar.
+To hide it, open **Settings → Features** and turn **Canvas** off. The setting is
+per device and persists across restarts, so turning it off on your laptop leaves
+it on elsewhere. Turning it off hides the surface — it does not delete any
+canvas you have already made.
 
 ## Creating and opening a canvas
 
