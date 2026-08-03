@@ -141,13 +141,32 @@ describe('AgentProvider', () => {
 
   it('retries backend status bootstrap while lazy agent handlers start', async () => {
     agentApi.getBackendStatuses.mockRejectedValueOnce(
-      new Error('Agent runtime is starting. Try again.')
+      new Error(
+        "Error invoking remote method 'agent:getBackendStatuses': Error: errors:agent.runtimeStarting"
+      )
     )
 
     const { result } = renderHook(() => useAgent(), { wrapper })
 
     await waitFor(() => expect(result.current.state.backendStatuses).toEqual(backendStatuses))
     expect(agentApi.getBackendStatuses).toHaveBeenCalledTimes(2)
+  })
+
+  // Regression guard: the retry predicate must key on the code, not on display
+  // text. Once the message has been translated for the user there is no English
+  // sentence left to match, so matching on rendered text stalls the panel in
+  // every non-English locale.
+  it('retries bootstrap on the code, not on the rendered sentence', async () => {
+    agentApi.getWindowId.mockRejectedValueOnce(new Error('errors:agent.runtimeStarting'))
+    agentApi.getBackendStatuses.mockRejectedValueOnce(
+      new Error('Der Agent-Runtime startet gerade. Bitte erneut versuchen.')
+    )
+
+    const { result } = renderHook(() => useAgent(), { wrapper })
+
+    await waitFor(() => expect(result.current.state.sourceWindowId).toBe('window-1'))
+    expect(agentApi.getWindowId).toHaveBeenCalledTimes(2)
+    expect(agentApi.getBackendStatuses).toHaveBeenCalledTimes(1)
   })
 
   it('routes conversation actions through the agent IPC API', async () => {

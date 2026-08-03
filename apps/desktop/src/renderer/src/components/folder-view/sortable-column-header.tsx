@@ -258,7 +258,7 @@ export function SortableColumnHeader({
             'text-muted-foreground/50 hover:text-muted-foreground',
             '-ms-1 me-0.5'
           )}
-          aria-label={`Drag to reorder column: ${columnConfig.displayName ?? columnConfig.id}`}
+          aria-label={tPhaseF('folderView.columnHeader.dragToReorder', { name: displayName })}
           title={tPhaseF('phaseF.componentsFolderViewSortableColumnHeader.dragToReorderColumn')}
         >
           <GripVertical className="h-4 w-4" />

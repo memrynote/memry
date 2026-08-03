@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { TaskFilters, TaskSort, Project } from '@/data/tasks-data'
 import { dueDateFilterOptions } from '@/data/tasks-data'
+import { priorityConfig } from '@/data/task-model'
 import { getActiveLocale } from '@/lib/active-locale'
 import { useT } from '@memry/i18n/renderer'
 
@@ -72,7 +73,9 @@ export const SaveFilterDialog = ({
 
     // Priorities
     if (filters.priorities.length > 0) {
-      const priorityLabels = filters.priorities.map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+      // `priorityConfig` resolves its labels lazily, so reading them here (inside
+      // the memo, not at module load) picks up the active locale.
+      const priorityLabels = filters.priorities.map((p) => priorityConfig[p]?.label ?? p)
       items.push(
         tPhaseF('phaseF.componentsTasksFiltersSaveFilterDialog.summaryPriorities', {
           names: priorityLabels.join(', ')

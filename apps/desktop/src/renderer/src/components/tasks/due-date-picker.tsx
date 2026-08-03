@@ -21,7 +21,7 @@ import {
 import { nextSaturday, nextMonday, type ParsedDateResult } from '@/lib/natural-date-parser'
 import { getActiveLocale } from '@/lib/active-locale'
 import { useT } from '@memry/i18n/renderer'
-import { getI18n } from 'react-i18next'
+import type { TFunction } from 'i18next'
 
 // ============================================================================
 // TYPES
@@ -47,9 +47,9 @@ interface QuickDateOption {
   shortcutNumber: number // Number shortcut (1-4)
 }
 
-const getQuickDateOptions = (): QuickDateOption[] => {
-  // Runs outside React (from a `useMemo` body), so it reaches i18next directly.
-  const t = getI18n().getFixedT(null, 'tasks')
+// Takes the component's `t` so the labels are re-resolved whenever the active
+// language changes, instead of being frozen at the picker's first render.
+const getQuickDateOptions = (t: TFunction<'tasks'>): QuickDateOption[] => {
   const today = startOfDay(new Date())
   const tomorrow = addDays(today, 1)
   const saturday = nextSaturday(today)
@@ -112,10 +112,13 @@ const getQuickDateOptions = (): QuickDateOption[] => {
 
 /**
  * Format date for display in trigger button
+ *
+ * Takes the component's `t` so the label follows the active language.
  */
-const formatSelectedDate = (date: Date): { text: string; status: DueDateStatus } => {
-  // Runs outside React (from a `useMemo` body), so it reaches i18next directly.
-  const t = getI18n().getFixedT(null, 'tasks')
+const formatSelectedDate = (
+  date: Date,
+  t: TFunction<'tasks'>
+): { text: string; status: DueDateStatus } => {
   const today = startOfDay(new Date())
   const selectedDate = startOfDay(date)
 
@@ -188,13 +191,15 @@ export const DueDatePicker = ({
   const naturalDateInputRef = useRef<NaturalDateInputRef>(null)
   const pickerContentId = useId()
 
-  const quickOptions = useMemo(() => getQuickDateOptions(), [])
+  // `tPhaseF` gets a fresh identity on `languageChanged`, so both memos
+  // re-resolve their labels after a mid-session language switch.
+  const quickOptions = useMemo(() => getQuickDateOptions(tPhaseF), [tPhaseF])
 
   // Determine date display status
   const dateDisplay = useMemo(() => {
     if (!date) return null
-    return formatSelectedDate(date)
-  }, [date])
+    return formatSelectedDate(date, tPhaseF)
+  }, [date, tPhaseF])
 
   // Check if input is empty (for conditional shortcuts)
   const inputIsEmpty = inputValue.trim() === ''

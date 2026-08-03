@@ -27,6 +27,8 @@ const editableContextMenuPopupMock = vi.fn()
 const buildEditableTextContextMenuMock = vi.fn(() => ({ popup: editableContextMenuPopupMock }))
 const getCurrentVaultPathMock = vi.fn(() => null as string | null)
 const getStoredLocaleMock = vi.fn(() => null as string | null)
+const getVaultsMock = vi.fn(() => [] as Array<{ path: string }>)
+const setStoredLocaleMock = vi.fn()
 type StoredWindowBoundsShape = {
   width: number
   height: number
@@ -166,6 +168,12 @@ vi.mock('./vault', () => ({
 vi.mock('./store', () => ({
   getCurrentVaultPath: getCurrentVaultPathMock,
   getStoredLocale: getStoredLocaleMock,
+  // getVaults/setStoredLocale back first-run locale detection. Leaving them off
+  // this mock does not fail loudly: detectFirstRunLocale()'s try/catch swallows
+  // the "not a function" TypeError and silently returns null, so the whole
+  // detection path would sit untested while every assertion still passed.
+  getVaults: getVaultsMock,
+  setStoredLocale: setStoredLocaleMock,
   getWindowBounds: getWindowBoundsMock,
   setWindowBounds: setWindowBoundsMock
 }))
@@ -417,6 +425,20 @@ async function flushReadyWork() {
   await Promise.resolve()
 }
 
+// Run `body` with the electron mock reporting `osLocale` from app.getLocale().
+// The mock keeps its implementation across `vi.clearAllMocks()`, so the default
+// is restored afterwards the same way the packaged-build test restores
+// `isPackaged` — otherwise one test's OS locale leaks into every later one.
+async function withOsLocale(osLocale: string, body: () => Promise<void>): Promise<void> {
+  const { app } = await import('electron')
+  vi.mocked(app.getLocale).mockReturnValue(osLocale)
+  try {
+    await body()
+  } finally {
+    vi.mocked(app.getLocale).mockReturnValue('en-US')
+  }
+}
+
 // Drain microtasks until `predicate` holds (bounded by a safety cap), instead of
 // looping a hard-coded number of ticks that's coupled to the shutdown chain
 // length and breaks whenever an async step is added/removed.
@@ -438,6 +460,7 @@ describe('main index phase2 exports', () => {
     applyGlobalCaptureShortcutMock.mockReturnValue({ registered: true })
     getCurrentVaultPathMock.mockReturnValue(null)
     getStoredLocaleMock.mockReturnValue(null)
+    getVaultsMock.mockReturnValue([])
     getWindowBoundsMock.mockReturnValue(null)
     getVaultStatusMock.mockReturnValue({ path: null })
     readPreferencesMock.mockReturnValue({ language: 'en' })
@@ -577,6 +600,106 @@ describe('main index phase2 exports', () => {
 
     expect(readPreferencesMock).not.toHaveBeenCalled()
     expect(createMainI18nMock).toHaveBeenCalledWith({ locale: 'tr' })
+  })
+
+  it('adopts the OS locale on a genuinely fresh install and persists it once', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    // Fresh install: nothing stored, no current vault, empty vault registry.
+    getStoredLocaleMock.mockReturnValue(null)
+    getCurrentVaultPathMock.mockReturnValue(null)
+    getVaultsMock.mockReturnValue([])
+
+    await withOsLocale('de-DE', async () => {
+      await importMainModule()
+      await flushReadyWork()
+    })
+
+    expect(createMainI18nMock).toHaveBeenCalledWith({ locale: 'de' })
+    // Persisted so the choice is made exactly once — later launches read it back
+    // through getStoredLocale() and never re-detect.
+    expect(setStoredLocaleMock).toHaveBeenCalledWith('de')
+  })
+
+  it('keeps an existing install on English even when the OS locale is not English', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    // Every install predating the locale setting also has a null stored locale,
+    // so the vault registry is the real first-run signal. A registered vault
+    // means this user already runs the English UI — shipping OS detection must
+    // never flip their language out from under them.
+    getStoredLocaleMock.mockReturnValue(null)
+    getCurrentVaultPathMock.mockReturnValue(null)
+    getVaultsMock.mockReturnValue([{ path: '/existing-vault' }])
+
+    await withOsLocale('de-DE', async () => {
+      await importMainModule()
+      await flushReadyWork()
+    })
+
+    expect(createMainI18nMock).toHaveBeenCalledWith({ locale: 'en' })
+    expect(setStoredLocaleMock).not.toHaveBeenCalled()
+  })
+
+  it('treats a current vault with an empty registry as an existing install', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    // A config written before `vaults` existed merges in as an empty array, so
+    // currentVault alone still identifies an existing user.
+    getStoredLocaleMock.mockReturnValue(null)
+    getCurrentVaultPathMock.mockReturnValue('/legacy-vault')
+    getVaultsMock.mockReturnValue([])
+    // Unparseable vault preference: the boot locale stays whatever detection
+    // left in place, so this asserts detection and not the preference read.
+    readPreferencesMock.mockReturnValue({ language: 'not-a-locale' })
+
+    await withOsLocale('de-DE', async () => {
+      await importMainModule()
+      await flushReadyWork()
+    })
+
+    expect(createMainI18nMock).toHaveBeenCalledWith({ locale: 'en' })
+    expect(setStoredLocaleMock).not.toHaveBeenCalled()
+  })
+
+  it('falls back to English when a fresh install reports an unsupported OS locale', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    getStoredLocaleMock.mockReturnValue(null)
+    getCurrentVaultPathMock.mockReturnValue(null)
+    getVaultsMock.mockReturnValue([])
+
+    await withOsLocale('xh-ZA', async () => {
+      await importMainModule()
+      await flushReadyWork()
+    })
+
+    expect(createMainI18nMock).toHaveBeenCalledWith({ locale: 'en' })
+    // English is still a decision, so it is persisted like any other — the
+    // detection runs once and never revisits an unsupported OS locale.
+    expect(setStoredLocaleMock).toHaveBeenCalledWith('en')
+  })
+
+  it('boots in English without crashing when first-run detection throws', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    getStoredLocaleMock.mockReturnValue(null)
+    getCurrentVaultPathMock.mockReturnValue(null)
+    getVaultsMock.mockReturnValue([])
+    // Unwritable config. `mockImplementationOnce` rather than a plain
+    // implementation because `vi.clearAllMocks()` does not reset
+    // implementations, so a persistent thrower would leak into later tests; the
+    // `toHaveBeenCalledWith` below proves the one-shot was actually consumed.
+    setStoredLocaleMock.mockImplementationOnce(() => {
+      throw new Error('config is read-only')
+    })
+
+    await withOsLocale('de-DE', async () => {
+      await importMainModule()
+      await flushReadyWork()
+    })
+
+    expect(setStoredLocaleMock).toHaveBeenCalledWith('de')
+    // The detected locale is discarded rather than returned unpersisted, so the
+    // next launch re-detects instead of running a language it never stored.
+    expect(createMainI18nMock).toHaveBeenCalledWith({ locale: 'en' })
+    // Locale detection is never the reason a launch fails: boot continues.
+    expect(registerAllHandlersMock).toHaveBeenCalled()
   })
 
   it('applies packaged log levels when running packaged', async () => {
