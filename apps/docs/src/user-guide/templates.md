@@ -101,7 +101,15 @@ Custom templates have a delete action in the gallery. The confirmation dialog wa
 
 ## Sync
 
-Templates sync as standard sync items. Built-in templates are baked into the app version and not synced; they're identical across all your devices automatically.
+Custom templates sync as standard sync items, end-to-end encrypted like the rest of your vault. Create or edit a template on one device and it appears on the others after the next sync. When the same template is edited on two devices at once, the most recent edit wins for the whole template — templates are not merged field by field.
+
+Built-in templates are baked into the app version and not synced; they're identical across all your devices automatically, so they never appear twice.
+
+### Upgrading from an older version
+
+Earlier versions stored custom templates as markdown files in `.memry/templates/` inside the vault, and those files never synced. The first time you open a vault with this version, each custom template is imported into the vault database and queued for sync — ids are preserved, so a vault you copied between machines converges instead of duplicating.
+
+The original files are left on disk. They're no longer read after the import, but they stay as a safety net if you ever roll back to an older build. The one exception is deletion: deleting a template also removes its original file, so it cannot come back if the vault database is ever rebuilt.
 
 ## See Also
 

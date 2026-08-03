@@ -9,6 +9,7 @@ import { savedFilters, settings } from '@memry/db-schema/schema/settings'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import { canvases } from '@memry/db-schema/schema/canvas'
 import { bookmarks } from '@memry/db-schema/schema/bookmarks'
+import { templates } from '@memry/db-schema/schema/templates'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import type { RecordSyncItemType, RecordSyncManifest } from '@memry/contracts/sync-api'
@@ -180,6 +181,11 @@ function getLocalSyncableItems(db: DrizzleDb): LocalSyncableItem[] {
   const syncedFilters = db.select().from(savedFilters).where(isNotNull(savedFilters.clock)).all()
   for (const f of syncedFilters) {
     addLocalItem({ id: f.id, type: 'filter', payload: JSON.stringify(f) })
+  }
+
+  const syncedTemplates = db.select().from(templates).where(isNotNull(templates.clock)).all()
+  for (const t of syncedTemplates) {
+    addLocalItem({ id: t.id, type: 'template', payload: JSON.stringify(t) })
   }
 
   const syncedBookmarks = db.select().from(bookmarks).where(isNotNull(bookmarks.clock)).all()

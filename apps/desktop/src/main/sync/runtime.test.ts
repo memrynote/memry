@@ -99,6 +99,7 @@ const runtimeMocks = vi.hoisted(() => {
     filterSync: service('filter'),
     bookmarkSync: service('bookmark'),
     reminderSync: service('reminder'),
+    templateSync: service('template'),
     projectSync: service('project'),
     settingsSync: service('settings'),
     noteSync: service('note'),
@@ -246,6 +247,11 @@ vi.mock('./filter-sync', () => ({
 vi.mock('./bookmark-sync', () => ({
   initBookmarkSyncService: runtimeMocks.bookmarkSync.init,
   resetBookmarkSyncService: runtimeMocks.bookmarkSync.reset
+}))
+
+vi.mock('./template-sync', () => ({
+  initTemplateSyncService: runtimeMocks.templateSync.init,
+  resetTemplateSyncService: runtimeMocks.templateSync.reset
 }))
 vi.mock('./reminder-sync', () => ({
   initReminderSyncService: runtimeMocks.reminderSync.init,
@@ -523,7 +529,10 @@ describe('sync runtime', () => {
       expect.arrayContaining([
         expect.objectContaining({ type: 'task' }),
         expect.objectContaining({ type: 'note', kind: 'crdt' }),
-        expect.objectContaining({ type: 'calendar_external_event' })
+        expect.objectContaining({ type: 'calendar_external_event' }),
+        // Without a registry entry the handler exists but nothing ever routes
+        // template mutations to it, so custom templates silently stop syncing.
+        expect.objectContaining({ type: 'template', kind: 'record' })
       ])
     )
     expect(runtimeMocks.crdtProvider.init).toHaveBeenCalled()

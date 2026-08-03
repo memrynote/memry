@@ -4,6 +4,7 @@ import { getDatabase } from '../database'
 import { createLogger } from '../lib/logger'
 import {
   incrementBookmarkClockOffline,
+  incrementTemplateClockOffline,
   incrementCanvasClockOffline,
   incrementFilterClockOffline,
   incrementInboxClockOffline,
@@ -12,6 +13,7 @@ import {
   incrementTaskClocksOffline
 } from './offline-clock'
 import { getBookmarkSyncService } from './bookmark-sync'
+import { getTemplateSyncService } from './template-sync'
 import { getCanvasSyncService } from './canvas-sync'
 import { getFilterSyncService } from './filter-sync'
 import { getInboxSyncService } from './inbox-sync'
@@ -143,6 +145,34 @@ const localSyncRegistry = createSyncAdapterRegistry([
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
         getFilterSyncService()?.enqueueDelete(itemId, snapshotPayload)
+      }
+    }
+  },
+  {
+    type: 'template',
+    kind: 'record',
+    local: {
+      enqueueCreate(itemId: string): void {
+        const service = getTemplateSyncService()
+        if (service) {
+          service.enqueueCreate(itemId)
+          return
+        }
+
+        incrementTemplateClockOffline(getDatabase(), itemId)
+      },
+      enqueueUpdate(itemId: string): void {
+        const service = getTemplateSyncService()
+        if (service) {
+          service.enqueueUpdate(itemId)
+          return
+        }
+
+        incrementTemplateClockOffline(getDatabase(), itemId)
+      },
+      enqueueDelete(itemId: string, snapshotPayload?: string): void {
+        if (!snapshotPayload) return
+        getTemplateSyncService()?.enqueueDelete(itemId, snapshotPayload)
       }
     }
   },

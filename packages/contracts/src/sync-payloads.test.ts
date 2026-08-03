@@ -25,8 +25,18 @@ import {
   ReminderSyncPayloadSchema,
   StatusSyncSchema,
   TagDefinitionSyncPayloadSchema,
-  TaskSyncPayloadSchema
+  TaskSyncPayloadSchema,
+  TemplateSyncPayloadSchema
 } from './sync-payloads'
+
+import {
+  SYNC_ITEM_TYPES,
+  RECORD_SYNC_ITEM_TYPES,
+  RECORD_CLOCK_REQUIRED_ITEM_TYPES,
+  ENCRYPTABLE_ITEM_TYPES,
+  CRDT_SYNC_ITEM_TYPES,
+  LEGACY_RECORD_SYNC_ITEM_TYPES
+} from './sync-api'
 
 describe('AgentMessageSyncPayloadSchema', () => {
   it('accepts inbox and calendar event attachments', () => {
@@ -580,5 +590,46 @@ describe('ReminderSyncPayloadSchema', () => {
   it('has no triggeredAt field — it is device-local', () => {
     const parsed = ReminderSyncPayloadSchema.parse({ triggeredAt: '2026-08-02T00:00:00.000Z' })
     expect('triggeredAt' in parsed).toBe(false)
+  })
+})
+
+describe('template sync item type', () => {
+  it('is registered in all four required arrays', () => {
+    expect(SYNC_ITEM_TYPES).toContain('template')
+    expect(RECORD_SYNC_ITEM_TYPES).toContain('template')
+    expect(RECORD_CLOCK_REQUIRED_ITEM_TYPES).toContain('template')
+    // Omitting this one makes encryption refuse the type and sync drops it silently.
+    expect(ENCRYPTABLE_ITEM_TYPES).toContain('template')
+  })
+
+  it('is not a CRDT type and never leaks into the frozen legacy list', () => {
+    expect(CRDT_SYNC_ITEM_TYPES).not.toContain('template')
+    expect(LEGACY_RECORD_SYNC_ITEM_TYPES).not.toContain('template')
+  })
+})
+
+describe('TemplateSyncPayloadSchema', () => {
+  it('parses a full payload', () => {
+    const result = TemplateSyncPayloadSchema.safeParse({
+      name: 'Standup',
+      description: 'Daily standup',
+      icon: '✅',
+      tags: ['daily'],
+      properties: [{ name: 'date', type: 'date', value: null }],
+      content: '## Blockers',
+      clock: { 'device-a': 1 },
+      createdAt: '2026-07-16T00:00:00.000Z',
+      modifiedAt: '2026-07-16T00:00:00.000Z'
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('parses an empty payload (every field optional)', () => {
+    expect(TemplateSyncPayloadSchema.safeParse({}).success).toBe(true)
+  })
+
+  it('accepts a null icon and null description', () => {
+    const result = TemplateSyncPayloadSchema.safeParse({ icon: null, description: null })
+    expect(result.success).toBe(true)
   })
 })

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { FieldClocksSchema, VectorClockSchema } from './sync-api'
 import { ViewConfigSchema } from './folder-view-api'
+import { TemplatePropertySchema } from './templates-api'
 
 export const TaskSyncPayloadSchema = z.object({
   title: z.string().optional(),
@@ -51,6 +52,22 @@ export const FilterSyncPayloadSchema = z.object({
   position: z.number().optional(),
   clock: VectorClockSchema.optional(),
   createdAt: z.string().optional()
+})
+
+export const TemplateSyncPayloadSchema = z.object({
+  name: z.string().optional(),
+  description: z.string().nullable().optional(),
+  icon: z.string().nullable().optional(),
+  tags: z.array(z.string()).optional(),
+  // Must stay an array: applyTemplate iterates this, so a non-array from a
+  // differently-versioned peer would be stored verbatim and then throw
+  // "not iterable" at note-creation time. Matches the IPC-side
+  // TemplateCreateSchema/TemplateUpdateSchema, which already validate it.
+  properties: z.array(TemplatePropertySchema).optional(),
+  content: z.string().optional(),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional(),
+  modifiedAt: z.string().optional()
 })
 
 export const BookmarkSyncPayloadSchema = z.object({
@@ -420,6 +437,7 @@ export type CalendarExternalEventSyncPayload = z.infer<
 export type TaskSyncPayload = z.infer<typeof TaskSyncPayloadSchema>
 export type InboxSyncPayload = z.infer<typeof InboxSyncPayloadSchema>
 export type FilterSyncPayload = z.infer<typeof FilterSyncPayloadSchema>
+export type TemplateSyncPayload = z.infer<typeof TemplateSyncPayloadSchema>
 export type BookmarkSyncPayload = z.infer<typeof BookmarkSyncPayloadSchema>
 export type ReminderSyncPayload = z.infer<typeof ReminderSyncPayloadSchema>
 export type CanvasSyncPayload = z.infer<typeof CanvasSyncPayloadSchema>

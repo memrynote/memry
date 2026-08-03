@@ -9,6 +9,7 @@ import {
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
+import { templates } from '@memry/db-schema/schema/templates'
 import { settings } from '@memry/db-schema/schema/settings'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
@@ -212,6 +213,41 @@ describe('checkManifestIntegrity', () => {
       const inboxQueueItem = items.find((i) => i.itemId === 'inbox-1')
       expect(inboxQueueItem).toBeDefined()
       expect(inboxQueueItem!.type).toBe('inbox')
+    })
+  })
+
+  describe('#given clocked and unclocked templates #when check runs', () => {
+    it('#then re-enqueues only the clocked template', async () => {
+      // #given — an unclocked row belongs to seedUnclocked, not manifest repair
+      testDb.db
+        .insert(templates)
+        .values([
+          { id: 'tpl-synced', name: 'Synced', clock: { 'device-A': 1 } as VectorClock },
+          { id: 'tpl-local', name: 'Local Only' }
+        ])
+        .run()
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      // #when
+      await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      // #then
+      const items = queue.dequeue(10)
+      const queued = items.find((i) => i.itemId === 'tpl-synced')
+      expect(queued).toBeDefined()
+      expect(queued!.type).toBe('template')
+      expect(items.find((i) => i.itemId === 'tpl-local')).toBeUndefined()
     })
   })
 
