@@ -143,6 +143,12 @@ Change your answer any time at [Settings → Integrations](/user-guide/settings#
 Google Calendar → **Let AI read Google Calendar events**. Turning it off takes effect on the next
 question you ask; turning it on likewise applies from that point forward.
 
+This setting covers events that live on your Google calendars. A [promoted](#promote-external-events)
+event is different: the copy sits in your vault as a memrynote event, so the assistant can read it
+like any other event you created. While AI access is off, memrynote confirms every promotion and
+says so in the dialog, and **Don't ask again** does not skip that confirmation. Your original Google
+event stays hidden from the assistant either way.
+
 Either way you keep seeing your Google events in the calendar, calendar lists and connection
 details stay out of what the assistant can access, and Google user data is never used to train or
 improve AI models.
