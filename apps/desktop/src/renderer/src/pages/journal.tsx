@@ -928,6 +928,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                             onAddTag={handleAddTag}
                             onCreateTag={handleCreateTag}
                             onAddProperty={handleAddPropertyWithExpand}
+                            existingNames={properties.map((p) => p.name)}
                           />
                         </div>
 
