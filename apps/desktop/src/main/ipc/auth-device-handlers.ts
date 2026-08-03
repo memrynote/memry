@@ -1,4 +1,4 @@
-import { BrowserWindow, clipboard, ipcMain } from 'electron'
+import { clipboard, ipcMain } from 'electron'
 
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
@@ -43,6 +43,7 @@ import {
 } from '../sync/linking-service'
 import { getValidAccessToken, retrieveToken, storeToken } from '../sync/token-manager'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { registerCommand } from './lib/register-command'
 
 const logger = createLogger('IPC:Sync:Device')
@@ -193,10 +194,7 @@ const startOtpClipboardDetection = (): void => {
     lastClipboardValue = text
 
     if (OTP_PATTERN.test(text)) {
-      const windows = BrowserWindow.getAllWindows()
-      for (const win of windows) {
-        win.webContents.send(SYNC_EVENTS.OTP_DETECTED, { code: text })
-      }
+      broadcastToAllWindows(SYNC_EVENTS.OTP_DETECTED, { code: text })
     }
   }, OTP_CLIPBOARD_POLL_MS)
 
@@ -507,12 +505,10 @@ export function registerAuthDeviceHandlers(): void {
           .run()
       }
 
-      for (const win of BrowserWindow.getAllWindows()) {
-        win.webContents.send(SYNC_EVENTS.DEVICE_RENAMED, {
-          deviceId: input.deviceId,
-          name: input.newName
-        })
-      }
+      broadcastToAllWindows(SYNC_EVENTS.DEVICE_RENAMED, {
+        deviceId: input.deviceId,
+        name: input.newName
+      })
 
       logger.info(`Device renamed: ${input.deviceId} → ${input.newName}`)
       return { success: true }

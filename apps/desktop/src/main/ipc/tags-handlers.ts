@@ -6,7 +6,7 @@
  */
 
 import { readFile } from 'fs/promises'
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain } from 'electron'
 import { eq } from 'drizzle-orm'
 import { TagsChannels } from '@memry/contracts/ipc-channels'
 import {
@@ -63,6 +63,7 @@ import {
   type TagAssignment
 } from '../tags/store'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { toAbsolutePath } from '../vault/notes'
 import { parseNote, serializeParsedNote } from '../vault/frontmatter'
 import { atomicWrite } from '../vault/file-ops'
@@ -84,9 +85,7 @@ const log = createLogger('TagsHandlers')
  * Emit tag event to all windows
  */
 function emitTagEvent(channel: string, data: unknown): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, data)
-  })
+  broadcastToAllWindows(channel, data)
 }
 
 /**

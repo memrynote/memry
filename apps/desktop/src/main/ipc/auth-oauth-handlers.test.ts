@@ -201,7 +201,9 @@ describe('auth-oauth handlers', () => {
   describe('AUTH_INIT_OAUTH', () => {
     it('opens the provider URL and relays successful loopback callbacks', async () => {
       const send = vi.fn()
-      mockGetAllWindows.mockReturnValue([{ webContents: { send } }])
+      mockGetAllWindows.mockReturnValue([
+        { isDestroyed: () => false, webContents: { isDestroyed: () => false, send } }
+      ])
       registerAuthOAuthHandlers()
 
       const result = await invokeHandler(SYNC_CHANNELS.AUTH_INIT_OAUTH, { provider: 'google' })
@@ -247,7 +249,9 @@ describe('auth-oauth handlers', () => {
 
     it('relays OAuth errors and rejects malformed provider responses', async () => {
       const send = vi.fn()
-      mockGetAllWindows.mockReturnValue([{ webContents: { send } }])
+      mockGetAllWindows.mockReturnValue([
+        { isDestroyed: () => false, webContents: { isDestroyed: () => false, send } }
+      ])
       registerAuthOAuthHandlers()
 
       await invokeHandler(SYNC_CHANNELS.AUTH_INIT_OAUTH, { provider: 'google' })

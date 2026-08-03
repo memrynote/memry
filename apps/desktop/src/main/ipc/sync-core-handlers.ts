@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { ipcMain } from 'electron'
 import sodium from 'libsodium-wrappers-sumo'
 
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
@@ -22,6 +22,7 @@ import { getDatabase, isDatabaseInitialized } from '../database/client'
 import { getFromServer } from '../sync/http-client'
 
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { withErrorHandler } from './validate'
 import { registerCommand } from './lib/register-command'
 import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
@@ -174,9 +175,7 @@ export async function checkSyncIntegrity(): Promise<void> {
 }
 
 function emitVaultRecoveryNeededToWindows(event: VaultRecoveryNeededEvent): void {
-  for (const win of BrowserWindow.getAllWindows()) {
-    win.webContents.send(EVENT_CHANNELS.VAULT_RECOVERY_NEEDED, event)
-  }
+  broadcastToAllWindows(EVENT_CHANNELS.VAULT_RECOVERY_NEEDED, event)
 }
 
 async function cleanupLocalSyncState(): Promise<void> {

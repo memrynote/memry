@@ -339,8 +339,8 @@ describe('auth-device handlers', () => {
       await invokeHandler(SYNC_CHANNELS.AUTH_REQUEST_OTP, { email: 'user@example.com' })
 
       // then clipboard polling is started - verified by advancing timers
-      const mockWebContents = { send: vi.fn() }
-      const mockWindow = { webContents: mockWebContents }
+      const mockWebContents = { isDestroyed: () => false, send: vi.fn() }
+      const mockWindow = { isDestroyed: () => false, webContents: mockWebContents }
       mockGetAllWindows.mockReturnValue([mockWindow])
       mockClipboardReadText.mockReturnValue('123456')
 
@@ -368,8 +368,10 @@ describe('auth-device handlers', () => {
         code: '123456'
       })
 
-      const mockWebContents = { send: vi.fn() }
-      mockGetAllWindows.mockReturnValue([{ webContents: mockWebContents }])
+      const mockWebContents = { isDestroyed: () => false, send: vi.fn() }
+      mockGetAllWindows.mockReturnValue([
+        { isDestroyed: () => false, webContents: mockWebContents }
+      ])
       mockClipboardReadText.mockReturnValue('654321')
 
       vi.advanceTimersByTime(2000)
@@ -384,8 +386,10 @@ describe('auth-device handlers', () => {
       mockPostToServer.mockResolvedValue({ success: true })
       await invokeHandler(SYNC_CHANNELS.AUTH_REQUEST_OTP, { email: 'user@example.com' })
 
-      const mockWebContents = { send: vi.fn() }
-      mockGetAllWindows.mockReturnValue([{ webContents: mockWebContents }])
+      const mockWebContents = { isDestroyed: () => false, send: vi.fn() }
+      mockGetAllWindows.mockReturnValue([
+        { isDestroyed: () => false, webContents: mockWebContents }
+      ])
       mockClipboardReadText.mockReturnValue('not-a-code')
 
       // #when
@@ -404,8 +408,10 @@ describe('auth-device handlers', () => {
       // #when - advance past 10-minute timeout
       vi.advanceTimersByTime(10 * 60 * 1000 + 1000)
 
-      const mockWebContents = { send: vi.fn() }
-      mockGetAllWindows.mockReturnValue([{ webContents: mockWebContents }])
+      const mockWebContents = { isDestroyed: () => false, send: vi.fn() }
+      mockGetAllWindows.mockReturnValue([
+        { isDestroyed: () => false, webContents: mockWebContents }
+      ])
       mockClipboardReadText.mockReturnValue('123456')
 
       vi.advanceTimersByTime(2000)
@@ -801,7 +807,9 @@ describe('auth-device handlers', () => {
     it('removes remote devices locally without revoking the current renderer, and tolerates server 404s', async () => {
       registerAuthDeviceHandlers()
       const send = vi.fn()
-      mockGetAllWindows.mockReturnValue([{ webContents: { send } }])
+      mockGetAllWindows.mockReturnValue([
+        { isDestroyed: () => false, webContents: { isDestroyed: () => false, send } }
+      ])
 
       await expect(
         invokeHandler(SYNC_CHANNELS.REMOVE_DEVICE, { deviceId: 'dev-remote' })
@@ -837,7 +845,9 @@ describe('auth-device handlers', () => {
     it('renames a device locally and broadcasts the new name', async () => {
       registerAuthDeviceHandlers()
       const send = vi.fn()
-      mockGetAllWindows.mockReturnValue([{ webContents: { send } }])
+      mockGetAllWindows.mockReturnValue([
+        { isDestroyed: () => false, webContents: { isDestroyed: () => false, send } }
+      ])
 
       await expect(
         invokeHandler(SYNC_CHANNELS.RENAME_DEVICE, {

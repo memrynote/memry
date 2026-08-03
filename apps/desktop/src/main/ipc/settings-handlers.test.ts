@@ -940,7 +940,7 @@ describe('settings-handlers', () => {
 
       callback?.()
       expect(mockGlobalShortcutRegister).toHaveBeenCalledWith('Control+K', expect.any(Function))
-      expect(mockSend).toHaveBeenCalledWith('quick-capture:open')
+      expect(mockSend).toHaveBeenCalledWith('quick-capture:open', undefined)
     })
   })
 

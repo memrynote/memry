@@ -1,5 +1,6 @@
 import * as Y from 'yjs'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getCrdtProvider } from './crdt-provider'
 import { yDocToMarkdown } from './blocknote-converter'
 import { readCriticMarkupMarksFromYDoc, serializeCriticMarkup } from '@memry/shared'
@@ -34,7 +35,6 @@ import { createRemindersService, type RemindersServiceHooks } from '@memry/app-c
 import { syncNoteDateReminders, clearNoteDateReminders } from '../notes/note-date-reminders'
 import { deleteFile } from '../vault/file-ops'
 import { NotesChannels, JournalChannels } from '@memry/contracts/ipc-channels'
-import { BrowserWindow } from 'electron'
 import path from 'path'
 import {
   enqueueLocalSyncCreate,
@@ -134,9 +134,7 @@ export function wasRecentNetworkUpdate(noteId: string): boolean {
 }
 
 function emitToRenderer(channel: string, data: unknown): void {
-  for (const win of BrowserWindow.getAllWindows()) {
-    win.webContents.send(channel, data)
-  }
+  broadcastToAllWindows(channel, data)
 }
 
 export function scheduleWriteback(noteId: string, doc: Y.Doc): void {

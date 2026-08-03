@@ -5,7 +5,7 @@
  * @module ipc/bookmarks-handlers
  */
 
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain } from 'electron'
 import {
   BookmarksChannels,
   BookmarkItemTypes,
@@ -23,6 +23,7 @@ import {
 } from '@memry/contracts/bookmarks-api'
 import { bookmarkSyncId } from '@memry/contracts/bookmark-types'
 import { createValidatedHandler, createStringHandler } from './validate'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { requireDatabase, getIndexDatabase } from '../database'
 import { bookmarkQueries, notesQueries, tasksQueries } from '../bookmarks/store'
 import {
@@ -35,9 +36,7 @@ import {
  * Emit bookmark event to all windows
  */
 function emitBookmarkEvent(channel: string, data: unknown): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, data)
-  })
+  broadcastToAllWindows(channel, data)
 }
 
 /**

@@ -21,6 +21,7 @@ import {
 import { listCalendarExternalEventsBySource } from './calendar/repositories/calendar-external-events-repository'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { getMainI18n } from './lib/main-i18n'
+import { broadcastToAllWindows } from './lib/window-broadcast'
 import { getOrInitializeLocalVaultKey, VAULT_KEY_VERIFIER_SETTING } from './crypto/vault-key-state'
 import { getOrCreateVaultUuid } from './agent/storage/vault-id'
 import { inboxItems, inboxItemType } from '@memry/db-schema/schema/inbox'
@@ -517,20 +518,18 @@ export function registerTestHooks(): void {
         `)
       }
 
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(CalendarChannels.events.CHANGED, {
-          entityType: 'calendar_external_event',
-          id: 'calendar-e2e-external'
+      broadcastToAllWindows(CalendarChannels.events.CHANGED, {
+        entityType: 'calendar_external_event',
+        id: 'calendar-e2e-external'
+      })
+      if (input.overlapMemryTitle) {
+        broadcastToAllWindows(CalendarChannels.events.CHANGED, {
+          entityType: 'calendar_event',
+          id: 'calendar-e2e-memry-overlap'
         })
-        if (input.overlapMemryTitle) {
-          win.webContents.send(CalendarChannels.events.CHANGED, {
-            entityType: 'calendar_event',
-            id: 'calendar-e2e-memry-overlap'
-          })
-        }
-        win.webContents.send(TasksChannels.events.CREATED, {
-          task: { id: 'calendar-e2e-task' }
-        })
+      }
+      broadcastToAllWindows(TasksChannels.events.CREATED, {
+        task: { id: 'calendar-e2e-task' }
       })
     },
 

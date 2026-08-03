@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { ipcMain } from 'electron'
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
 import { CalendarChannels } from '@memry/contracts/ipc-channels'
 import {
@@ -39,6 +39,7 @@ import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-externa
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { trackCalendar } from './calendar-telemetry'
 import { requireDatabase, getIndexDatabase, type DataDb } from '../database'
 import { generateId } from '../lib/id'
@@ -89,9 +90,7 @@ import {
 const log = createLogger('IPC:Calendar')
 
 function emitCalendarChanged(event: CalendarChangedEvent): void {
-  for (const win of BrowserWindow.getAllWindows()) {
-    win.webContents.send(CalendarChannels.events.CHANGED, event)
-  }
+  broadcastToAllWindows(CalendarChannels.events.CHANGED, event)
 }
 
 function mapCalendarEvent(row: typeof calendarEvents.$inferSelect): CalendarEventRecord {
