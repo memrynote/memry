@@ -344,4 +344,70 @@ describe('EventProjectField · edit mode', () => {
       expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', 'p2')
     )
   })
+
+  it('renders extra links as removable chips beside the picker', async () => {
+    mockListForItem.mockResolvedValue([
+      { id: 'p1', name: 'Launch', color: '#ff0000', icon: null },
+      { id: 'p2', name: 'Finance', color: '#00ff00', icon: null }
+    ])
+
+    render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', 'p1')
+    )
+    expect(await screen.findByText('Finance')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove from Finance' })).toBeInTheDocument()
+  })
+
+  it('unlinks only the chip that was removed', async () => {
+    mockListForItem.mockResolvedValue([
+      { id: 'p1', name: 'Launch', color: '#ff0000', icon: null },
+      { id: 'p2', name: 'Finance', color: '#00ff00', icon: null }
+    ])
+
+    render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
+    const remove = await screen.findByRole('button', { name: 'Remove from Finance' })
+
+    fireEvent.click(remove)
+
+    await waitFor(() => expect(mockUnlinkProjectItem).toHaveBeenCalledTimes(1))
+    expect(mockUnlinkProjectItem).toHaveBeenCalledWith({
+      projectId: 'p2',
+      itemType: 'calendar_event',
+      itemId: 'evt-1'
+    })
+  })
+
+  it('switching the primary project leaves the extra link untouched', async () => {
+    mockListForItem.mockResolvedValue([
+      { id: 'p1', name: 'Launch', color: '#ff0000', icon: null },
+      { id: 'p2', name: 'Finance', color: '#00ff00', icon: null }
+    ])
+
+    render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
+    await waitFor(() =>
+      expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', 'p1')
+    )
+
+    fireEvent.click(screen.getByText('pick-Finance'))
+
+    await waitFor(() => expect(mockUnlinkProjectItem).toHaveBeenCalledTimes(1))
+    expect(mockUnlinkProjectItem).toHaveBeenCalledWith({
+      projectId: 'p1',
+      itemType: 'calendar_event',
+      itemId: 'evt-1'
+    })
+  })
+
+  it('shows no chips when the event has a single project', async () => {
+    mockListForItem.mockResolvedValue([{ id: 'p1', name: 'Launch', color: '#ff0000', icon: null }])
+
+    render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', 'p1')
+    )
+    expect(screen.queryByRole('button', { name: /^Remove from/ })).not.toBeInTheDocument()
+  })
 })

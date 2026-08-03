@@ -5,6 +5,7 @@ import { useT } from '@memry/i18n/renderer'
 import { ProjectPicker } from '@/components/tasks/project-picker'
 import { useTasksOptional } from '@/contexts/tasks'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { X } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
 import { onProjectUpdated, tasksService, type ProjectRef } from '@/services/tasks-service'
 
@@ -74,6 +75,21 @@ export function EventProjectField({
 
   useEffect(() => onProjectUpdated(() => void load()), [load])
 
+  // Shared by `handleSelect` and `handleRemoveExtra`: both are writes on the
+  // same `project_links` rows and must hold `pendingRef` for their duration,
+  // then unconditionally reload (which clears `pendingRef` in its own
+  // `finally`) so the UI reflects the actual DB state whether the write
+  // succeeded or failed.
+  const runLinkWrite = async (write: () => Promise<void>): Promise<void> => {
+    pendingRef.current = true
+    try {
+      await write()
+    } catch (error) {
+      toast.error(extractErrorMessage(error, t('form.project-update-failed')))
+    }
+    await load()
+  }
+
   const handleSelect = async (nextId: string | null): Promise<void> => {
     if (!isEdit || !eventId) {
       onChange(nextId)
@@ -86,8 +102,7 @@ export function EventProjectField({
     const previousId = links[0]?.id ?? null
     if (previousId === nextId) return
 
-    pendingRef.current = true
-    try {
+    await runLinkWrite(async () => {
       if (previousId) {
         const removed = await tasksService.unlinkProjectItem({
           projectId: previousId,
@@ -104,12 +119,24 @@ export function EventProjectField({
         })
         if (!added.success) throw new Error(added.error)
       }
-    } catch (error) {
-      toast.error(extractErrorMessage(error, t('form.project-update-failed')))
-    }
-    // Runs regardless of outcome above; also clears `pendingRef` (in its own
-    // `finally`), reflecting the actual DB state either way.
-    await load()
+    })
+  }
+
+  const handleRemoveExtra = async (projectId: string): Promise<void> => {
+    if (!eventId) return
+    // Same guard as `handleSelect`: a remove is a write on the same
+    // `project_links` rows and must not run while another write or load is
+    // in flight.
+    if (disabled || pendingRef.current) return
+
+    await runLinkWrite(async () => {
+      const removed = await tasksService.unlinkProjectItem({
+        projectId,
+        itemType: 'calendar_event',
+        itemId: eventId
+      })
+      if (!removed.success) throw new Error(removed.error)
+    })
   }
 
   // Edit mode before the event is saved (canvas cards mount the form without an
@@ -117,6 +144,10 @@ export function EventProjectField({
   if (isEdit && !eventId) return null
 
   const selectedId = isEdit ? (links[0]?.id ?? null) : value
+  // Single-select UI over a many-to-many table: an event linked to several
+  // projects (possible via the chip context menu) keeps every link visible and
+  // individually removable. Nothing is dropped that the user did not remove.
+  const extraLinks = isEdit ? links.slice(1) : []
 
   return (
     <label className="flex flex-col gap-1 text-sm">
@@ -132,6 +163,27 @@ export function EventProjectField({
           allowCreate={false}
           className="min-w-[160px]"
         />
+        {extraLinks.map((project) => (
+          <span
+            key={project.id}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-xs"
+          >
+            <span
+              className="size-2 shrink-0 rounded-full"
+              style={{ backgroundColor: project.color }}
+              aria-hidden="true"
+            />
+            <span className="max-w-32 truncate">{project.name}</span>
+            <button
+              type="button"
+              aria-label={t('form.remove-from-project', { project: project.name })}
+              onClick={() => void handleRemoveExtra(project.id)}
+              className="text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <X className="size-3" />
+            </button>
+          </span>
+        ))}
       </div>
     </label>
   )
