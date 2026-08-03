@@ -2397,7 +2397,7 @@ export function useAgentMcpCanvasWriteResponder({
 }
 ```
 
-> **Known simplification, keep it:** the headless path re-reads the canvas after computing the mutation so the `expectedUpdatedAt` it sends is the one it read for the _write_, and the store compares it inside the transaction. The double `canvas.get` is deliberate and cheap; do not "optimize" it into a single read that widens the race.
+> **Corrected after review (PR #927):** an earlier draft of this plan told the implementer to re-read the canvas right before writing and guard on _that_ `updatedAt`. That is wrong and defeats the guard: `mutation.elements` derives from the FIRST read, so a change landing between the two reads satisfies the check while the write silently discards it. The headless path must read **once** and pass that read's `updatedAt` as `expectedUpdatedAt`, so anything newer is rejected. Covered by "guards on the read the mutation came from, not a fresher one" in `canvas-write-handler.test.tsx`.
 
 - [ ] **Step 5: Run tests**
 

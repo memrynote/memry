@@ -127,6 +127,32 @@ describe('useAgentMcpCanvasWriteResponder', () => {
     expect(result).toMatchObject({ ok: true, path: 'headless', updatedAt: 43 })
   })
 
+  it('guards on the read the mutation came from, not a fresher one', async () => {
+    // Regression: an earlier version re-read the canvas immediately before
+    // writing and guarded on THAT updatedAt. A change landing between the two
+    // reads would then satisfy the guard while the elements being written were
+    // still derived from the stale scene — silently discarding it. The write
+    // must guard on the read it actually computed from, so anything newer
+    // rejects.
+    canvasGet
+      .mockResolvedValueOnce({
+        id: 'c1',
+        updatedAt: 42,
+        scene: JSON.stringify({ type: 'excalidraw', elements: [] })
+      })
+      .mockResolvedValue({
+        id: 'c1',
+        updatedAt: 99,
+        scene: JSON.stringify({ type: 'excalidraw', elements: [cardElement('other')] })
+      })
+    canvasUpdate.mockResolvedValue({ id: 'c1', updatedAt: 100, tooLarge: false })
+
+    await send({ canvasId: 'c1', op: 'add', items: [{ entityType: 'note', entityId: 'n1' }] })
+
+    expect(canvasGet).toHaveBeenCalledTimes(1)
+    expect(canvasUpdate).toHaveBeenCalledWith(expect.objectContaining({ expectedUpdatedAt: 42 }))
+  })
+
   it('re-derives entityRefs from the mutated scene rather than the request', async () => {
     canvasGet.mockResolvedValue({
       id: 'c1',

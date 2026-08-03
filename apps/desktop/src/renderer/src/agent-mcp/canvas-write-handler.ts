@@ -159,14 +159,19 @@ export function useAgentMcpCanvasWriteResponder({
           live.updateScene(mutation.elements)
           await live.flush()
           updatedAt = Date.now()
-        } else {
-          const fresh = await readStoredScene(canvasId)
+        } else if (stored) {
+          // expectedUpdatedAt MUST come from the same read `mutation.elements`
+          // was computed from. Re-reading here to get a "fresher" value is what
+          // defeats the guard: the check would pass against a row that changed
+          // after we read it, and this write would then silently discard that
+          // change. Guarding on the original read means anything that landed in
+          // between is rejected, which is the entire point.
           const result = await window.api.canvas.update({
             id: canvasId,
-            scene: JSON.stringify({ ...fresh.scene, elements: mutation.elements }),
+            scene: JSON.stringify({ ...stored.scene, elements: mutation.elements }),
             // Never trust the caller's view of what is on the canvas.
             entityRefs: extractEntityRefs(mutation.elements),
-            expectedUpdatedAt: fresh.updatedAt
+            expectedUpdatedAt: stored.updatedAt
           })
           updatedAt = result.updatedAt
           tooLarge = result.tooLarge

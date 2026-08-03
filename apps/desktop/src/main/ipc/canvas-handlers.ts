@@ -51,6 +51,9 @@ function emitCanvasEvent(
   })
 }
 
+/** Windows already carrying a 'closed' listener for live-canvas cleanup. */
+const windowsHookedForClose = new Set<number>()
+
 // Binary payload validation is app-side, not contracts (A3): the renderer
 // serializes ArrayBuffer to number[] over the invoke bridge, so accept both.
 const UploadCanvasAssetSchema = z.object({
@@ -245,7 +248,19 @@ export function registerCanvasHandlers(): void {
     const win = BrowserWindow.fromWebContents(event.sender)
     if (!win || typeof canvasId !== 'string' || !canvasId) return { ok: false }
     markCanvasOpen(canvasId, win.id)
-    win.once('closed', () => forgetWindow(win.id))
+    // One 'closed' listener per WINDOW, not per canvas open: a user switching
+    // between canvases in the same window reports open on every mount, which
+    // would otherwise stack a listener each time (and trip Electron's
+    // max-listeners warning). The id is captured now because `win.id` is not
+    // safe to read once the window is destroyed.
+    const windowId = win.id
+    if (!windowsHookedForClose.has(windowId)) {
+      windowsHookedForClose.add(windowId)
+      win.once('closed', () => {
+        windowsHookedForClose.delete(windowId)
+        forgetWindow(windowId)
+      })
+    }
     return { ok: true }
   })
   ipcMain.handle(CanvasChannels.invoke.LIVE_CLOSED, (event, canvasId: string) => {
@@ -269,5 +284,6 @@ export function unregisterCanvasHandlers(): void {
   ipcMain.removeHandler(CanvasChannels.invoke.LIBRARY_SAVE)
   ipcMain.removeHandler(CanvasChannels.invoke.LIVE_OPENED)
   ipcMain.removeHandler(CanvasChannels.invoke.LIVE_CLOSED)
+  windowsHookedForClose.clear()
   disposeCanvasVaultKey()
 }
