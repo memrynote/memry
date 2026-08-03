@@ -53,6 +53,18 @@ export const FilterSyncPayloadSchema = z.object({
   createdAt: z.string().optional()
 })
 
+export const TemplateSyncPayloadSchema = z.object({
+  name: z.string().optional(),
+  description: z.string().nullable().optional(),
+  icon: z.string().nullable().optional(),
+  tags: z.array(z.string()).optional(),
+  properties: z.unknown().optional(),
+  content: z.string().optional(),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional(),
+  modifiedAt: z.string().optional()
+})
+
 export const BookmarkSyncPayloadSchema = z.object({
   itemType: z.string().optional(),
   itemId: z.string().optional(),
@@ -420,6 +432,7 @@ export type CalendarExternalEventSyncPayload = z.infer<
 export type TaskSyncPayload = z.infer<typeof TaskSyncPayloadSchema>
 export type InboxSyncPayload = z.infer<typeof InboxSyncPayloadSchema>
 export type FilterSyncPayload = z.infer<typeof FilterSyncPayloadSchema>
+export type TemplateSyncPayload = z.infer<typeof TemplateSyncPayloadSchema>
 export type BookmarkSyncPayload = z.infer<typeof BookmarkSyncPayloadSchema>
 export type ReminderSyncPayload = z.infer<typeof ReminderSyncPayloadSchema>
 export type CanvasSyncPayload = z.infer<typeof CanvasSyncPayloadSchema>
