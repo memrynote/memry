@@ -352,9 +352,9 @@ The hub's link layer is reachable through the desktop bridge. Reads, via `vault_
 
 | Operation                   | Args                 | Answers                                          |
 | --------------------------- | -------------------- | ------------------------------------------------ |
-| `tasks.listProjectContents` | `[projectId]`        | Which notes, files, and events a project holds    |
-| `tasks.listProjectLinks`    | `[projectId]`        | The raw link rows, including pin state            |
-| `tasks.listForItem`         | `[itemType, itemId]` | Which projects a note, file, or event belongs to  |
+| `tasks.listProjectContents` | `[projectId]`        | Which notes, files, and events a project holds   |
+| `tasks.listProjectLinks`    | `[projectId]`        | The raw link rows, including pin state           |
+| `tasks.listForItem`         | `[itemType, itemId]` | Which projects a note, file, or event belongs to |
 
 `itemType` is one of `note`, `file`, or `calendar_event`.
 
