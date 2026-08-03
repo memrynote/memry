@@ -100,6 +100,48 @@ export interface CurrentNoteSnapshot {
   tags: string[]
 }
 
+export type CanvasEntityKind = 'note' | 'task' | 'calendar_event'
+
+/**
+ * One entity sitting on a canvas. `missing` marks a card whose entity no longer
+ * exists — reported rather than dropped, so an agent can surface a stale card
+ * instead of silently under-reporting what is on the canvas.
+ */
+export interface CanvasItemSummary {
+  entity_type: CanvasEntityKind
+  entity_id: string
+  title: string | null
+  missing: boolean
+}
+
+export interface CanvasListEntry {
+  id: string
+  title: string | null
+  updated_at: number
+  item_count: number
+}
+
+/** A canvas as an agent sees it: what is ON it, never the geometry that draws it. */
+export interface CanvasDetail {
+  id: string
+  title: string | null
+  created_at: number
+  updated_at: number
+  items: CanvasItemSummary[]
+  texts: string[]
+  element_count: number
+  texts_truncated: boolean
+}
+
+export interface CanvasWriteOutcome {
+  canvas_id: string
+  applied: { entity_type: string; entity_id: string }[]
+  skipped: { entity_type: string; entity_id: string; reason: string }[]
+  updated_at: number
+  /** Saved locally but too large to sync (canvas spec §5.6). */
+  too_large: boolean
+}
+
 export interface VaultServiceHandles {
   notes: {
     search(input: {
@@ -284,6 +326,18 @@ export interface VaultServiceHandles {
   }
   tags: {
     listAll(): Promise<TagCount[]>
+  }
+  canvas: {
+    list(): Promise<CanvasListEntry[]>
+    read(id: string): Promise<CanvasDetail | null>
+    addItems(
+      input: { canvasId: string; items: { entityType: CanvasEntityKind; entityId: string }[] },
+      windowId: string | null
+    ): Promise<CanvasWriteOutcome>
+    removeItem(
+      input: { canvasId: string; item: { entityType: CanvasEntityKind; entityId: string } },
+      windowId: string | null
+    ): Promise<CanvasWriteOutcome>
   }
   desktop: {
     read(

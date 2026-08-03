@@ -23,12 +23,12 @@ import {
   type CanvasTooLargeEvent,
   type CanvasUploadAssetResponse,
   type CanvasGetAssetResponse,
-  type CanvasListAssetsResponse
+  type CanvasListAssetsResponse,
+  type CanvasUpdateResponse
 } from '@memry/contracts/canvas-api'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
-import { requireDatabase, type DataDb } from '../database'
-import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
-import { getOrInitializeLocalVaultKey, secureCleanup } from '../crypto'
+import { getCanvasContext, disposeCanvasVaultKey } from '../canvas/vault-key'
+import { forgetWindow, markCanvasClosed, markCanvasOpen } from '../canvas/live-registry'
 import { createCanvas, deleteCanvas, getCanvas, listCanvases, updateCanvas } from '../canvas/store'
 import { listCanvasLibraryItems, saveCanvasLibraryItems } from '../canvas/library-store'
 import { syncCanvasCreate, syncCanvasUpdate, syncCanvasDelete } from '../canvas/sync-bridge'
@@ -51,13 +51,8 @@ function emitCanvasEvent(
   })
 }
 
-// Resolved once per process, like agent bootstrap (main/agent/bootstrap.ts):
-// getOrInitializeLocalVaultKey consults the OS keychain, and under
-// NODE_ENV=test the keychain degrades to not-found (400ms timeout in
-// crypto/keychain.ts) — so only the first call in a process can initialize;
-// every later call would throw "verifier exists but master key is missing".
-// A failed resolution is not cached so a transient keychain error can retry.
-let vaultKeyPromise: Promise<Uint8Array> | null = null
+/** Windows already carrying a 'closed' listener for live-canvas cleanup. */
+const windowsHookedForClose = new Set<number>()
 
 // Binary payload validation is app-side, not contracts (A3): the renderer
 // serializes ArrayBuffer to number[] over the invoke bridge, so accept both.
@@ -67,27 +62,6 @@ const UploadCanvasAssetSchema = z.object({
   mimeType: z.string().min(1),
   data: z.instanceof(ArrayBuffer).or(z.array(z.number()))
 })
-
-function getVaultKeyOnce(db: DataDb, vaultId: string): Promise<Uint8Array> {
-  if (!vaultKeyPromise) {
-    vaultKeyPromise = getOrInitializeLocalVaultKey(db, vaultId).catch((error: unknown) => {
-      vaultKeyPromise = null
-      throw error
-    })
-  }
-  return vaultKeyPromise
-}
-
-async function getCanvasContext(): Promise<{
-  db: DataDb
-  vaultId: string
-  vaultKey: Uint8Array
-}> {
-  const db = requireDatabase()
-  const vaultId = getOrCreateVaultUuid(db)
-  const vaultKey = await getVaultKeyOnce(db, vaultId)
-  return { db, vaultId, vaultKey }
-}
 
 export function registerCanvasHandlers(): void {
   // canvas:create - Create a new canvas (optionally with an initial scene)
@@ -148,10 +122,15 @@ export function registerCanvasHandlers(): void {
           ? injectSceneAssetSidecar(assetCtx, input.id, input.scene)
           : input.scene
 
-      const summary = updateCanvas(db, vaultKey, input.id, { ...input, scene: sceneToPersist })
-      if (!summary) {
-        throw new Error('Canvas not found')
+      const result = updateCanvas(db, vaultKey, input.id, { ...input, scene: sceneToPersist })
+      if (!result.ok) {
+        throw new Error(
+          result.reason === 'conflict'
+            ? 'Canvas was modified by someone else since it was read'
+            : 'Canvas not found'
+        )
       }
+      const summary = result.summary
       const synced = syncCanvasUpdate(input.id, sceneToPersist)
       emitCanvasEvent(CanvasChannels.events.UPDATED, { canvas: summary })
       if (!synced) {
@@ -164,7 +143,9 @@ export function registerCanvasHandlers(): void {
       if (assetCtx && input.scene !== undefined) {
         await reconcileCanvasAssets(assetCtx, input.id, sceneToPersist ?? '')
       }
-      return summary
+      // tooLarge mirrors the TOO_LARGE event for callers with no subscription
+      // (agent MCP writes); the event stays for the renderer's toast.
+      return { ...summary, tooLarge: !synced } satisfies CanvasUpdateResponse
     })
   )
 
@@ -260,6 +241,34 @@ export function registerCanvasHandlers(): void {
       }
     )
   )
+
+  // Live-canvas ownership. Raw ipcMain.handle rather than a validate.ts helper
+  // because the payload we actually care about is the SENDER's window id.
+  ipcMain.handle(CanvasChannels.invoke.LIVE_OPENED, (event, canvasId: string) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win || typeof canvasId !== 'string' || !canvasId) return { ok: false }
+    markCanvasOpen(canvasId, win.id)
+    // One 'closed' listener per WINDOW, not per canvas open: a user switching
+    // between canvases in the same window reports open on every mount, which
+    // would otherwise stack a listener each time (and trip Electron's
+    // max-listeners warning). The id is captured now because `win.id` is not
+    // safe to read once the window is destroyed.
+    const windowId = win.id
+    if (!windowsHookedForClose.has(windowId)) {
+      windowsHookedForClose.add(windowId)
+      win.once('closed', () => {
+        windowsHookedForClose.delete(windowId)
+        forgetWindow(windowId)
+      })
+    }
+    return { ok: true }
+  })
+  ipcMain.handle(CanvasChannels.invoke.LIVE_CLOSED, (event, canvasId: string) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win || typeof canvasId !== 'string' || !canvasId) return { ok: false }
+    markCanvasClosed(canvasId, win.id)
+    return { ok: true }
+  })
 }
 
 export function unregisterCanvasHandlers(): void {
@@ -273,8 +282,8 @@ export function unregisterCanvasHandlers(): void {
   ipcMain.removeHandler(CanvasChannels.invoke.LIST_ASSETS)
   ipcMain.removeHandler(CanvasChannels.invoke.LIBRARY_LIST)
   ipcMain.removeHandler(CanvasChannels.invoke.LIBRARY_SAVE)
-  if (vaultKeyPromise) {
-    void vaultKeyPromise.then((key) => secureCleanup(key)).catch(() => {})
-    vaultKeyPromise = null
-  }
+  ipcMain.removeHandler(CanvasChannels.invoke.LIVE_OPENED)
+  ipcMain.removeHandler(CanvasChannels.invoke.LIVE_CLOSED)
+  windowsHookedForClose.clear()
+  disposeCanvasVaultKey()
 }

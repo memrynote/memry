@@ -172,6 +172,25 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
       inputSchema: TOOL_SCHEMAS.vault_get_tags.input,
       handler: async () => handles.tags.listAll()
     },
+    vault_list_canvases: {
+      name: 'vault_list_canvases',
+      description: TOOL_SCHEMAS.vault_list_canvases.description,
+      inputSchema: TOOL_SCHEMAS.vault_list_canvases.input,
+      handler: async () => handles.canvas.list()
+    },
+    vault_read_canvas: {
+      name: 'vault_read_canvas',
+      description: TOOL_SCHEMAS.vault_read_canvas.description,
+      inputSchema: TOOL_SCHEMAS.vault_read_canvas.input,
+      handler: async (input) => {
+        const a = parse<{ id: string }>(TOOL_SCHEMAS.vault_read_canvas.input, input)
+        const canvas = await handles.canvas.read(a.id)
+        if (!canvas) {
+          throw new AgentToolError('NOT_FOUND', `Canvas ${a.id} not found`, { id: a.id })
+        }
+        return canvas
+      }
+    },
     vault_desktop_read: {
       name: 'vault_desktop_read',
       description: TOOL_SCHEMAS.vault_desktop_read.description,

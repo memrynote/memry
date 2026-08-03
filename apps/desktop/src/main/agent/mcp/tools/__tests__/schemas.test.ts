@@ -18,6 +18,8 @@ describe('Vault MCP tool schemas', () => {
       'vault_list_inbox_items',
       'vault_get_inbox_item',
       'vault_get_tags',
+      'vault_list_canvases',
+      'vault_read_canvas',
       'vault_desktop_read',
       'vault_create_note',
       'vault_rename_note',
@@ -61,6 +63,8 @@ describe('Vault MCP tool schemas', () => {
       'vault_add_tag',
       'vault_remove_tag',
       'vault_move_to_folder',
+      'vault_add_canvas_item',
+      'vault_remove_canvas_item',
       'vault_desktop_write'
     ])
   })

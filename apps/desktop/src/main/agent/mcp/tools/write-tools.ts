@@ -612,6 +612,48 @@ export function buildWriteTools(
         return { id: args.id }
       }
     },
+    vault_add_canvas_item: {
+      name: 'vault_add_canvas_item',
+      description: TOOL_SCHEMAS.vault_add_canvas_item.description,
+      inputSchema: TOOL_SCHEMAS.vault_add_canvas_item.input,
+      handler: async (input, ctx) => {
+        const parsed = parse<{
+          canvas_id: string
+          items: { entity_type: 'note' | 'task' | 'calendar_event'; entity_id: string }[]
+        }>(TOOL_SCHEMAS.vault_add_canvas_item.input, input)
+        const args = await approvedArgs(gate, 'vault_add_canvas_item', parsed, ctx)
+        return handles.canvas.addItems(
+          {
+            canvasId: args.canvas_id,
+            items: args.items.map((item) => ({
+              entityType: item.entity_type,
+              entityId: item.entity_id
+            }))
+          },
+          ctx.windowId
+        )
+      }
+    },
+    vault_remove_canvas_item: {
+      name: 'vault_remove_canvas_item',
+      description: TOOL_SCHEMAS.vault_remove_canvas_item.description,
+      inputSchema: TOOL_SCHEMAS.vault_remove_canvas_item.input,
+      handler: async (input, ctx) => {
+        const parsed = parse<{
+          canvas_id: string
+          entity_type: 'note' | 'task' | 'calendar_event'
+          entity_id: string
+        }>(TOOL_SCHEMAS.vault_remove_canvas_item.input, input)
+        const args = await approvedArgs(gate, 'vault_remove_canvas_item', parsed, ctx)
+        return handles.canvas.removeItem(
+          {
+            canvasId: args.canvas_id,
+            item: { entityType: args.entity_type, entityId: args.entity_id }
+          },
+          ctx.windowId
+        )
+      }
+    },
     vault_desktop_write: {
       name: 'vault_desktop_write',
       description: TOOL_SCHEMAS.vault_desktop_write.description,

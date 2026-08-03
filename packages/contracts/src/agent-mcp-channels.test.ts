@@ -119,3 +119,40 @@ describe('agent MCP desktop operation allowlists', () => {
     }
   })
 })
+
+// Canvas coverage (#916). The excluded operations are excluded on purpose —
+// see docs/superpowers/specs/2026-08-03-mcp-canvas-coverage-design.md §3.2.
+describe('canvas operations', () => {
+  it('allowlists the safe canvas reads', () => {
+    for (const operation of [
+      'canvas.list',
+      'canvas.getAsset',
+      'canvas.listAssets',
+      'canvas.libraryList'
+    ]) {
+      expect(AgentMcpDesktopReadOperations).toContain(operation)
+    }
+  })
+
+  it('allowlists whole-canvas create and delete', () => {
+    expect(AgentMcpDesktopWriteOperations).toContain('canvas.create')
+    expect(AgentMcpDesktopWriteOperations).toContain('canvas.delete')
+  })
+
+  it('never exposes canvas.get — it dumps raw scene geometry; use vault_read_canvas', () => {
+    expect(AgentMcpDesktopReadOperations).not.toContain('canvas.get')
+    expect(AgentMcpDesktopWriteOperations).not.toContain('canvas.get')
+  })
+
+  it('never exposes canvas.update — blind whole-scene replacement clobbers an open editor', () => {
+    expect(AgentMcpDesktopWriteOperations).not.toContain('canvas.update')
+  })
+
+  it('never exposes canvas.librarySave — a partial list deletes the shape library', () => {
+    expect(AgentMcpDesktopWriteOperations).not.toContain('canvas.librarySave')
+  })
+
+  it('never exposes canvas.uploadAsset — binary payload, no agent path in v1', () => {
+    expect(AgentMcpDesktopWriteOperations).not.toContain('canvas.uploadAsset')
+  })
+})

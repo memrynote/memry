@@ -8,6 +8,7 @@ import {
   type CanvasLibraryListResponse,
   type CanvasLibrarySaveResponse,
   type CanvasSummary,
+  type CanvasUpdateResponse,
   type CanvasEntityRef,
   type CanvasListResponse,
   type CanvasDeleteResponse,
@@ -33,6 +34,7 @@ export type CanvasUpdateInput = z.input<typeof CanvasUpdateSchema>
 export type {
   Canvas,
   CanvasSummary,
+  CanvasUpdateResponse,
   CanvasEntityRef,
   CanvasListResponse,
   CanvasDeleteResponse,
@@ -57,7 +59,7 @@ export const canvasRpc = defineDomain({
       channel: CanvasChannels.invoke.GET,
       params: ['id']
     }),
-    update: defineMethod<(input: CanvasUpdateInput) => Promise<CanvasSummary>>({
+    update: defineMethod<(input: CanvasUpdateInput) => Promise<CanvasUpdateResponse>>({
       channel: CanvasChannels.invoke.UPDATE,
       params: ['input']
     }),
@@ -107,6 +109,17 @@ export const canvasRpc = defineDomain({
       channel: CanvasChannels.invoke.LIBRARY_SAVE,
       params: ['libraryItems'],
       invokeArgs: ['{ libraryItems }']
+    }),
+    // Live-canvas ownership: the editor reports the canvas it has mounted so an
+    // agent write can be routed to that instance instead of a headless
+    // read-modify-write the next autosave would overwrite (#916).
+    liveOpened: defineMethod<(canvasId: string) => Promise<{ ok: boolean }>>({
+      channel: CanvasChannels.invoke.LIVE_OPENED,
+      params: ['canvasId']
+    }),
+    liveClosed: defineMethod<(canvasId: string) => Promise<{ ok: boolean }>>({
+      channel: CanvasChannels.invoke.LIVE_CLOSED,
+      params: ['canvasId']
     })
   },
   events: {

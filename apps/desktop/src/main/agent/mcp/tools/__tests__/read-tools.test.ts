@@ -138,6 +138,36 @@ function fake(): VaultServiceHandles {
     tags: {
       listAll: async () => [{ name: 'todo', count: 3 }]
     },
+    canvas: {
+      list: async () => [{ id: 'c1', title: 'Roadmap', updated_at: 5, item_count: 2 }],
+      read: async (id) =>
+        id === 'c1'
+          ? {
+              id: 'c1',
+              title: 'Roadmap',
+              created_at: 1,
+              updated_at: 5,
+              items: [{ entity_type: 'note', entity_id: 'n1', title: 'Spec', missing: false }],
+              texts: ['Q3'],
+              element_count: 4,
+              texts_truncated: false
+            }
+          : null,
+      addItems: async ({ canvasId }) => ({
+        canvas_id: canvasId,
+        applied: [],
+        skipped: [],
+        updated_at: 0,
+        too_large: false
+      }),
+      removeItem: async ({ canvasId }) => ({
+        canvas_id: canvasId,
+        applied: [],
+        skipped: [],
+        updated_at: 0,
+        too_large: false
+      })
+    },
     desktop: {
       read: async ({ operation, args }, windowId) => ({ operation, args, windowId }),
       write: async () => ({ ok: true })
@@ -203,6 +233,34 @@ describe('Read tools', () => {
       .find((t) => t.name === 'vault_read_note')!
       .handler({ id: 'n1' }, { conversationId: null, windowId: null })
     expect(out).toMatchObject({ id: 'n1', title: 'Hit', content_markdown: '# Hit' })
+  })
+
+  it('vault_list_canvases returns canvases with item counts', async () => {
+    const out = await tools
+      .find((t) => t.name === 'vault_list_canvases')!
+      .handler({}, { conversationId: null, windowId: null })
+    expect(out).toEqual([{ id: 'c1', title: 'Roadmap', updated_at: 5, item_count: 2 }])
+  })
+
+  it('vault_read_canvas returns entities and text but never the raw scene', async () => {
+    const out = await tools
+      .find((t) => t.name === 'vault_read_canvas')!
+      .handler({ id: 'c1' }, { conversationId: null, windowId: null })
+
+    expect(out).toMatchObject({
+      id: 'c1',
+      items: [{ entity_type: 'note', entity_id: 'n1', title: 'Spec', missing: false }],
+      texts: ['Q3']
+    })
+    expect(JSON.stringify(out)).not.toContain('"scene"')
+  })
+
+  it('vault_read_canvas throws NOT_FOUND for a missing canvas', async () => {
+    await expect(
+      tools
+        .find((t) => t.name === 'vault_read_canvas')!
+        .handler({ id: 'nope' }, { conversationId: null, windowId: null })
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
   })
 
   it('vault_list_folder returns mixed entries', async () => {

@@ -73,6 +73,7 @@ import { useTaskUiStore } from '@/features/tasks/use-task-ui-store'
 import { getFilteredTasks } from '@/lib/task-utils'
 import { useAgentMcpCurrentNoteResponder } from '@/agent-mcp/current-note-handler'
 import { useAgentMcpDesktopApiResponder } from '@/agent-mcp/desktop-api-handler'
+import { useAgentMcpCanvasWriteResponder } from '@/agent-mcp/canvas-write-handler'
 import { AgentFeatureProvider } from '@/agent-chat/agent-feature-provider'
 import { AgentTabTitleSync } from '@/agent-chat/agent-tab-title-sync'
 
@@ -155,6 +156,7 @@ const AppContent = (): React.JSX.Element => {
   const { enabled: aiEnabled } = useAISettingsContext()
   useAgentMcpCurrentNoteResponder({ enabled: aiEnabled })
   useAgentMcpDesktopApiResponder({ enabled: aiEnabled })
+  useAgentMcpCanvasWriteResponder({ enabled: aiEnabled })
   const lastTrackedTabTypeRef = useRef<TabType | null>(null)
   useEffect(() => {
     if (!activeTab) return

@@ -174,6 +174,8 @@ Read tools are available to Agent Chat and external MCP clients:
 - `vault_list_inbox_items`
 - `vault_get_inbox_item`
 - `vault_get_tags`
+- `vault_list_canvases`
+- `vault_read_canvas`
 - `vault_desktop_read`
 
 ### Notes and filed files
@@ -239,7 +241,44 @@ auto-accepted or shown for inline approval depending on the Agent Permissions se
 - `vault_add_tag`
 - `vault_remove_tag`
 - `vault_move_to_folder`
+- `vault_add_canvas_item`
+- `vault_remove_canvas_item`
 - `vault_desktop_write`
+
+### Canvas
+
+| Tool                       | What it does                                                                      |
+| -------------------------- | --------------------------------------------------------------------------------- |
+| `vault_list_canvases`      | Every canvas, with how many items sit on each                                     |
+| `vault_read_canvas`        | One canvas: the notes/tasks/events on it (with titles) and any text written on it |
+| `vault_add_canvas_item`    | Put existing notes/tasks/events on a canvas as cards                              |
+| `vault_remove_canvas_item` | Take a card off a canvas                                                          |
+
+Canvas tools need the **Spatial Canvas** feature turned on (Settings → Features). With it off they
+return a message saying so rather than failing silently.
+
+Reading a canvas never returns the drawing itself. An agent gets what is _on_ the canvas, not the
+geometry that draws it — a scene is mostly coordinates and style properties, and dumping it into an
+agent's context crowds out everything useful. Long canvases cap the amount of text returned and say
+so with `texts_truncated`.
+
+Adding an item applies to the open editor when you have that canvas open, so the card appears while
+you watch instead of being overwritten by the next autosave. A canvas nobody has open is updated
+directly, and the write is rejected if it changed in the meantime. If the result is too large to
+sync, the tool response says so.
+
+Some canvas operations are deliberately unavailable through `vault_desktop_read` /
+`vault_desktop_write`:
+
+- `canvas.get` — returns the whole scene; use `vault_read_canvas`
+- `canvas.update` — replaces the entire scene with no version check, which would overwrite whatever
+  you have open; use the item tools
+- `canvas.librarySave` — saves the shape library as one whole list, so a partial one deletes shapes
+- `canvas.uploadAsset` — binary image upload, no agent path yet
+
+Agents cannot draw arrows between cards. An arrow on a canvas is a picture, not a stored
+relationship, so an agent drawing one would look like it created a link when it did not. Use wiki
+links between notes when you want a real connection.
 
 `vault_desktop_read` and `vault_desktop_write` cover the remaining desktop CRUD surface through an
 allowlisted desktop API operation name plus an `args` array. They are used for desktop domains such
