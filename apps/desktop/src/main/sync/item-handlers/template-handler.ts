@@ -7,10 +7,32 @@ import { utcNow } from '@memry/shared/utc'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { createLogger } from '../../lib/logger'
+import { BUILT_IN_IDS } from '../../vault/built-in-templates'
 import { BaseItemHandler } from './base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 
 const log = createLogger('TemplateHandler')
+
+/**
+ * The renderer<->main contract for these channels (preload/api/content.ts)
+ * declares CREATED as `{ template }` and UPDATED as `{ id, template }`. Local
+ * mutations in vault/templates.ts send exactly that, so the sync path has to
+ * as well — otherwise one contract channel carries two incompatible shapes.
+ */
+function toEventTemplate(row: typeof templates.$inferSelect): Record<string, unknown> {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description ?? undefined,
+    icon: row.icon,
+    isBuiltIn: false,
+    tags: Array.isArray(row.tags) ? row.tags : [],
+    properties: Array.isArray(row.properties) ? row.properties : [],
+    content: row.content,
+    createdAt: row.createdAt,
+    modifiedAt: row.modifiedAt
+  }
+}
 
 class TemplateHandler extends BaseItemHandler<TemplateSyncPayload> {
   readonly type = 'template' as const
@@ -23,6 +45,15 @@ class TemplateHandler extends BaseItemHandler<TemplateSyncPayload> {
     clock: VectorClock
   ): ApplyResult {
     return ctx.db.transaction((tx): ApplyResult => {
+      // Built-ins are code constants with fixed ids and are never stored. A row
+      // carrying one would shadow the constant in getTemplate while still
+      // rendering in the gallery, and assertNotBuiltIn would refuse to delete
+      // it — an undeletable ghost. The legacy import guards this already.
+      if (BUILT_IN_IDS.has(itemId)) {
+        log.warn('Ignoring remote template that collides with a built-in id', { itemId })
+        return 'skipped'
+      }
+
       const existing = tx.select().from(templates).where(eq(templates.id, itemId)).get()
       const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
       const now = utcNow()
@@ -52,14 +83,27 @@ class TemplateHandler extends BaseItemHandler<TemplateSyncPayload> {
           .where(eq(templates.id, itemId))
           .run()
 
-        ctx.emit(TemplatesChannels.events.UPDATED, { id: itemId })
+        const updated = tx.select().from(templates).where(eq(templates.id, itemId)).get()
+        ctx.emit(TemplatesChannels.events.UPDATED, {
+          id: itemId,
+          template: updated ? toEventTemplate(updated) : undefined
+        })
         return resolution.action === 'merge' ? 'conflict' : 'applied'
+      }
+
+      // Every payload field is optional, so `{}` parses. Without this guard a
+      // frozen-payload push (pull-coordinator enqueues '{}' on conflict) would
+      // materialise a permanent ghost row named "Untitled Template" whose empty
+      // clock makes every later legitimate version compare as stale.
+      if (!data.name) {
+        log.warn('Skipping remote template insert, payload has no name', { itemId })
+        return 'skipped'
       }
 
       tx.insert(templates)
         .values({
           id: itemId,
-          name: data.name ?? 'Untitled Template',
+          name: data.name,
           description: data.description ?? null,
           icon: data.icon ?? null,
           tags: data.tags ?? [],
@@ -72,7 +116,11 @@ class TemplateHandler extends BaseItemHandler<TemplateSyncPayload> {
         })
         .run()
 
-      ctx.emit(TemplatesChannels.events.CREATED, { id: itemId })
+      const created = tx.select().from(templates).where(eq(templates.id, itemId)).get()
+      ctx.emit(TemplatesChannels.events.CREATED, {
+        id: itemId,
+        template: created ? toEventTemplate(created) : undefined
+      })
       return 'applied'
     })
   }

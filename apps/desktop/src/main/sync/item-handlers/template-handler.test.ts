@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { TemplatesChannels } from '@memry/contracts/ipc-channels'
 import { templates } from '@memry/db-schema/schema/templates'
 import { createTestDataDb, asSyncDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { makeCtx } from '@tests/utils/fixtures/sync-item-handlers'
 import { SyncQueueManager } from '../queue'
 import { templateHandler } from './template-handler'
 import type { ApplyContext, DrizzleDb } from './types'
@@ -10,10 +11,6 @@ import type { ApplyContext, DrizzleDb } from './types'
 vi.mock('../../lib/logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })
 }))
-
-function makeCtx(testDb: TestDatabaseResult): ApplyContext {
-  return { db: testDb.db as unknown as DrizzleDb, emit: vi.fn() }
-}
 
 describe('templateHandler', () => {
   let testDb: TestDatabaseResult
@@ -52,7 +49,27 @@ describe('templateHandler', () => {
         clock: { 'device-b': 1 }
       }
     )
-    expect(ctx.emit).toHaveBeenCalledWith(TemplatesChannels.events.CREATED, { id: 'tpl-1' })
+    // Payload must match the preload contract for this channel
+    // ({ template }), which is also what a local create emits.
+    expect(ctx.emit).toHaveBeenCalledWith(
+      TemplatesChannels.events.CREATED,
+      expect.objectContaining({
+        template: expect.objectContaining({ id: 'tpl-1', name: 'Standup' })
+      })
+    )
+  })
+
+  it('skips a payload with no name instead of inventing an Untitled Template', () => {
+    expect(templateHandler.applyUpsert(ctx, 'ghost', {}, { 'device-b': 1 })).toBe('skipped')
+    expect(testDb.db.select().from(templates).all()).toEqual([])
+    expect(ctx.emit).not.toHaveBeenCalled()
+  })
+
+  it('refuses a remote row that collides with a built-in id', () => {
+    expect(templateHandler.applyUpsert(ctx, 'blank', { name: 'Impostor' }, { 'device-b': 1 })).toBe(
+      'skipped'
+    )
+    expect(testDb.db.select().from(templates).all()).toEqual([])
   })
 
   it('updates on newer clock, skips stale, reports concurrent as conflict', () => {
@@ -78,7 +95,13 @@ describe('templateHandler', () => {
         content: 'v2'
       }
     )
-    expect(ctx.emit).toHaveBeenCalledWith(TemplatesChannels.events.UPDATED, { id: 'tpl-1' })
+    expect(ctx.emit).toHaveBeenCalledWith(
+      TemplatesChannels.events.UPDATED,
+      expect.objectContaining({
+        id: 'tpl-1',
+        template: expect.objectContaining({ id: 'tpl-1', content: 'v2' })
+      })
+    )
 
     expect(templateHandler.applyUpsert(ctx, 'tpl-1', { content: 'stale' }, { 'device-a': 1 })).toBe(
       'skipped'

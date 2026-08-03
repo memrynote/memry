@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { FieldClocksSchema, VectorClockSchema } from './sync-api'
 import { ViewConfigSchema } from './folder-view-api'
+import { TemplatePropertySchema } from './templates-api'
 
 export const TaskSyncPayloadSchema = z.object({
   title: z.string().optional(),
@@ -58,7 +59,11 @@ export const TemplateSyncPayloadSchema = z.object({
   description: z.string().nullable().optional(),
   icon: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),
-  properties: z.unknown().optional(),
+  // Must stay an array: applyTemplate iterates this, so a non-array from a
+  // differently-versioned peer would be stored verbatim and then throw
+  // "not iterable" at note-creation time. Matches the IPC-side
+  // TemplateCreateSchema/TemplateUpdateSchema, which already validate it.
+  properties: z.array(TemplatePropertySchema).optional(),
   content: z.string().optional(),
   clock: VectorClockSchema.optional(),
   createdAt: z.string().optional(),
