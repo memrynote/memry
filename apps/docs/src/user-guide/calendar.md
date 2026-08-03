@@ -54,6 +54,20 @@ Click an empty time slot (day / week views) or a date cell (month) to create an 
 
 Click an event to open the popover. Edit title, time, and description in place. The popover has a "Open in tab" action for full editing.
 
+### Assigning a Project
+
+The event form (opened from **+** in the toolbar, or from an existing event) has a **Project**
+row, defaulting to **No project**. Pick a project to link the event to it; pick **No project** to
+clear the link. When creating a new event, the choice is saved once you save the event; when
+editing an existing one, picking a project links or unlinks it immediately — the same write the
+event chip's **Add to project** context-menu action makes.
+
+An event can end up linked to more than one project — for example if it was also added to a
+second project from the chip's context menu. The form still shows one project in the picker, and
+lists any additional links as small chips beside it, each with an **×** to remove just that link.
+Quick Create (dragging on the grid) stays title-only and has no Project row; add a project after
+saving, from the full event form.
+
 ## Scheduling Tasks by Drag
 
 Tasks can be scheduled and rescheduled by dragging, from two places:
