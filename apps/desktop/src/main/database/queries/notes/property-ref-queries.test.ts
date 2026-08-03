@@ -89,4 +89,31 @@ describe('property refs', () => {
     )
     expect(getPropertyRefsForNote(db, 'nte_source')).toHaveLength(1)
   })
+
+  it('clears refs through setNoteProperties when properties become empty', () => {
+    insertTestNote(db, 'nte_source')
+    const getType = (name: string, value: unknown) => inferPropertyType(name, value)
+
+    setNoteProperties(db, 'nte_source', { father: ['memry://note/nte_dad'] }, getType)
+    expect(getPropertyRefsForNote(db, 'nte_source')).toHaveLength(1)
+
+    setNoteProperties(db, 'nte_source', {}, getType)
+    expect(getPropertyRefsForNote(db, 'nte_source')).toHaveLength(0)
+  })
+
+  it('de-duplicates a repeated URI within one property', () => {
+    insertTestNote(db, 'nte_source')
+    setPropertyRefs(db, 'nte_source', {
+      attendees: ['memry://task/tsk_1', 'memry://task/tsk_1']
+    })
+
+    const rows = getPropertyRefsForNote(db, 'nte_source')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toEqual({
+      sourceNoteId: 'nte_source',
+      propertyName: 'attendees',
+      targetType: 'task',
+      targetId: 'tsk_1'
+    })
+  })
 })

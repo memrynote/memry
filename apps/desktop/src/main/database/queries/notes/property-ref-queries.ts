@@ -14,9 +14,16 @@ export function setPropertyRefs(
 ): void {
   db.delete(propertyRefs).where(eq(propertyRefs.sourceNoteId, noteId)).run()
 
+  // De-duplicate on the remaining primary-key columns (sourceNoteId is fixed
+  // for this call): a repeated URI within one property's value would
+  // otherwise produce two identical rows and violate the primary key.
+  const seen = new Set<string>()
   const rows: NewPropertyRefRow[] = []
   for (const [propertyName, value] of Object.entries(properties)) {
     for (const ref of parseRelationValue(value)) {
+      const key = JSON.stringify([propertyName, ref.kind, ref.id])
+      if (seen.has(key)) continue
+      seen.add(key)
       rows.push({ sourceNoteId: noteId, propertyName, targetType: ref.kind, targetId: ref.id })
     }
   }
