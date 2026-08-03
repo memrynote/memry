@@ -83,7 +83,8 @@ export type ImportPhase = 'scanning' | 'importing' | 'done'
 export interface ImportProgressEvent {
   importId: string
   phase: ImportPhase
-  status: string
+  /** Plain strings stay accepted so a payload from an older build keeps rendering. */
+  status: string | ImportMessage
   imported: number
   attachments: number
   skipped: number

@@ -17,7 +17,7 @@ import {
   type InboxItemPlan,
   type RaindropImportPlan
 } from '@memry/importers/raindrop'
-import { IMPORT_MESSAGE_CODES, toImportMessage } from '@memry/importers/messages'
+import { IMPORT_MESSAGE_CODES, IMPORT_STATUS, toImportMessage } from '@memry/importers/messages'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportPreview } from '../types'
 
@@ -172,7 +172,7 @@ export const raindropImporter: Importer = {
     buildRaindropPreview(input.sourcePaths, new Date().toISOString(), signal),
   run: async (input, ctx) => {
     ctx.setPhase('importing')
-    ctx.status('Importing Raindrop bookmarks…')
+    ctx.status(IMPORT_STATUS.raindropImporting)
     const deps = await defaultDeps()
     await runRaindropImport(input.sourcePaths, deps, ctx, new Date().toISOString())
     return ctx.toSummary()

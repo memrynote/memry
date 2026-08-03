@@ -11,7 +11,12 @@
 import { readFile } from 'fs/promises'
 import { basename } from 'path'
 import { parseCsv, mapRows } from '@memry/importers/csv'
-import { IMPORT_MESSAGE_CODES, toImportMessage } from '@memry/importers/messages'
+import {
+  IMPORT_MESSAGE_CODES,
+  IMPORT_STATUS,
+  importingItemStatus,
+  toImportMessage
+} from '@memry/importers/messages'
 import { createNote } from '../../vault/notes-crud'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportPreview, ImportSummary } from '../types'
@@ -76,7 +81,7 @@ async function preview(input: ImportInput, signal: AbortSignal): Promise<ImportP
 /** Import each CSV file, creating notes under CSV/. */
 async function run(input: ImportInput, ctx: ImportContext): Promise<ImportSummary> {
   ctx.setPhase('importing')
-  ctx.status('Importing CSV notes…')
+  ctx.status(IMPORT_STATUS.csvImporting)
 
   // Parse all files upfront so we know the total row count.
   const plans: { fileName: string; plan?: ReturnType<typeof mapRows>; error?: string }[] = []
@@ -106,7 +111,7 @@ async function run(input: ImportInput, ctx: ImportContext): Promise<ImportSummar
       if (ctx.isCancelled()) return ctx.toSummary()
 
       try {
-        ctx.status(`Importing ${note.title}`)
+        ctx.status(importingItemStatus(note.title))
         await createNote({
           title: note.title,
           content: note.content,

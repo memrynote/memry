@@ -11,7 +11,7 @@
 
 import { getI18n } from 'react-i18next'
 import type { ImportPreviewMessage } from '@memry/contracts/import-channels'
-import type { ImportMessageCode } from '@memry/importers/messages'
+import type { ImportMessageCode, ImportStatusCode } from '@memry/importers/messages'
 
 /**
  * Importer message code → key in the `settings` namespace.
@@ -48,13 +48,39 @@ const IMPORT_MESSAGE_KEYS: Record<ImportMessageCode, string> = {
   'todoist.subtaskNoParent': 'import.messages.todoist.subtaskNoParent'
 }
 
+/**
+ * Importer progress-line code → key in the `settings` namespace.
+ *
+ * Kept as its own exhaustive map (typed against `ImportStatusCode`) so a status
+ * added in `@memry/importers` without a key here fails typecheck instead of
+ * leaving one English line in an otherwise translated dialog.
+ */
+const IMPORT_STATUS_KEYS: Record<ImportStatusCode, string> = {
+  'status.scanningFiles': 'import.status.scanningFiles',
+  'status.scanningExport': 'import.status.scanningExport',
+  'status.importingItem': 'import.status.importingItem',
+
+  'status.appleNotes.copyingDatabase': 'import.status.appleNotes.copyingDatabase',
+  'status.bear.scanning': 'import.status.bear.scanning',
+  'status.csv.importing': 'import.status.csv.importing',
+  'status.evernote.scanning': 'import.status.evernote.scanning',
+  'status.html.scanning': 'import.status.html.scanning',
+  'status.raindrop.importing': 'import.status.raindrop.importing',
+  'status.roam.reading': 'import.status.roam.reading',
+  'status.ticktick.importing': 'import.status.ticktick.importing',
+  'status.todoist.importing': 'import.status.todoist.importing'
+}
+
 /** Resolve an importer warning/error to display text in the active locale. */
 export function formatImportMessage(message: ImportPreviewMessage): string {
   if (typeof message === 'string') return message
 
   // `code` crosses IPC as a plain string, so a code this build does not know
   // about must resolve to `undefined` rather than throw.
-  const keys: Record<string, string | undefined> = IMPORT_MESSAGE_KEYS
+  const keys: Record<string, string | undefined> = {
+    ...IMPORT_MESSAGE_KEYS,
+    ...IMPORT_STATUS_KEYS
+  }
   const key = message.code ? keys[message.code] : undefined
   if (!key) return message.message
 

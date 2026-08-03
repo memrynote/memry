@@ -12,7 +12,7 @@
 import { readFile } from 'fs/promises'
 import { basename } from 'path'
 import { parseTickTickCsv, mapRows, type ImportPlan } from '@memry/importers/ticktick'
-import { IMPORT_MESSAGE_CODES, toImportMessage } from '@memry/importers/messages'
+import { IMPORT_MESSAGE_CODES, IMPORT_STATUS, toImportMessage } from '@memry/importers/messages'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportPreview } from '../types'
 import { applyPlan, type ApplyDeps } from './apply-plan'
@@ -132,7 +132,7 @@ export const ticktickImporter: Importer = {
     buildTickTickPreview(input.sourcePaths, new Date().toISOString(), signal),
   run: async (input, ctx) => {
     ctx.setPhase('importing')
-    ctx.status('Importing TickTick tasks…')
+    ctx.status(IMPORT_STATUS.ticktickImporting)
     const deps = await defaultDeps()
     await runTickTickImport(input.sourcePaths, deps, ctx, new Date().toISOString())
     return ctx.toSummary()

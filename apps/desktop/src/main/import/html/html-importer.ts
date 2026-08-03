@@ -10,6 +10,7 @@ import type { Importer, ImportContext, ImportInput, ImportSummary } from '../typ
 import { htmlToMarkdown, percentDecodeRef } from '../_shared/html-to-markdown'
 import { classifyRef, exceedsMaxSize, interFileWikilink, mapFiles } from '@memry/importers/html'
 import type { HtmlFileDescriptor } from '@memry/importers/html'
+import { IMPORT_STATUS, importingItemStatus } from '@memry/importers/messages'
 
 const logger = createLogger('HtmlImport')
 
@@ -83,7 +84,7 @@ export const htmlImporter: Importer = {
   async run(input: ImportInput, ctx: ImportContext): Promise<ImportSummary> {
     // ---- Phase 1: scan — parse titles to build inter-file link map ----
     ctx.setPhase('scanning')
-    ctx.status('Scanning HTML files…')
+    ctx.status(IMPORT_STATUS.htmlScanning)
 
     const descriptors: HtmlFileDescriptor[] = []
 
@@ -121,7 +122,7 @@ export const htmlImporter: Importer = {
       if (ctx.isCancelled()) return ctx.toSummary()
 
       try {
-        ctx.status(`Importing ${notePlan.title}`)
+        ctx.status(importingItemStatus(notePlan.title))
 
         const html = await fs.readFile(notePlan.absPath, 'utf8')
         const doc = new JSDOM(html).window.document

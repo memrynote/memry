@@ -1,4 +1,4 @@
-import type { ImportPreview } from '@memry/contracts/import-channels'
+import type { ImportMessage, ImportPreview } from '@memry/contracts/import-channels'
 
 export interface ImportFileSpec {
   label: string
@@ -21,7 +21,8 @@ export interface ImportFileSpec {
 export interface ImportProgress {
   importId: string
   phase: 'scanning' | 'importing' | 'done'
-  status: string
+  /** Plain strings stay accepted so a payload from an older build keeps rendering. */
+  status: string | ImportMessage
   imported: number
   attachments: number
   skipped: number
@@ -40,7 +41,7 @@ export interface ImportSummary {
 }
 
 export interface ImportContext {
-  status(message: string): void
+  status(message: string | ImportMessage): void
   setPhase(phase: ImportProgress['phase']): void
   reportProgress(completed: number, total: number): void
   reportImported(): void

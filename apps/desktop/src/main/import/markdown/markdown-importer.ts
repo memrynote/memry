@@ -8,6 +8,7 @@ import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
 import { parseFrontmatter, extractAssetRefs, mapFiles } from '@memry/importers/markdown'
 import type { FileDescriptor } from '@memry/importers/markdown'
+import { IMPORT_STATUS, importingItemStatus } from '@memry/importers/messages'
 import { percentDecodeRef } from '../_shared/html-to-markdown'
 
 const logger = createLogger('MarkdownImport')
@@ -91,7 +92,7 @@ export const markdownImporter: Importer = {
   async run(input: ImportInput, ctx: ImportContext): Promise<ImportSummary> {
     // ---- Phase 1: scan ----
     ctx.setPhase('scanning')
-    ctx.status('Scanning files…')
+    ctx.status(IMPORT_STATUS.scanningFiles)
 
     const descriptors: FileDescriptor[] = []
 
@@ -138,7 +139,7 @@ export const markdownImporter: Importer = {
       if (ctx.isCancelled()) return ctx.toSummary()
 
       try {
-        ctx.status(`Importing ${notePlan.title}`)
+        ctx.status(importingItemStatus(notePlan.title))
 
         const raw = await fs.readFile(notePlan.absPath, 'utf8')
         const fileStat = await fs.stat(notePlan.absPath)

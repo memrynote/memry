@@ -5,6 +5,7 @@ import { createNote } from '../../vault/notes-crud'
 import { createLogger } from '../../lib/logger'
 import { htmlToMarkdown } from '../_shared/html-to-markdown'
 import { parseJournalDate, mapEntry } from '@memry/importers/apple-journal'
+import { importingItemStatus } from '@memry/importers/messages'
 import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
 
 const logger = createLogger('AppleJournalImport')
@@ -59,7 +60,7 @@ export const appleJournalImporter: Importer = {
       }
 
       try {
-        ctx.status(`Importing ${basename}`)
+        ctx.status(importingItemStatus(basename))
         const html = await readFile(filePath, 'utf8')
         const doc = new JSDOM(html).window.document
 

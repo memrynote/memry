@@ -22,6 +22,7 @@ import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
 import { indexBlocks, mapPages } from '@memry/importers/roam'
 import type { BlockIndex, NotePlan, RoamPage } from '@memry/importers/roam'
+import { IMPORT_STATUS, importingItemStatus } from '@memry/importers/messages'
 
 const logger = createLogger('RoamImport')
 
@@ -52,7 +53,7 @@ export const roamImporter: Importer = {
   async run(input: ImportInput, ctx: ImportContext): Promise<ImportSummary> {
     // ---- Pass 1: read + parse each JSON file, collect pages ----
     ctx.setPhase('scanning')
-    ctx.status('Reading Roam export…')
+    ctx.status(IMPORT_STATUS.roamReading)
 
     const pages: RoamPage[] = []
     for (const sourcePath of input.sourcePaths) {
@@ -96,7 +97,7 @@ export const roamImporter: Importer = {
 
 async function writeNote(note: NotePlan, ctx: ImportContext): Promise<void> {
   try {
-    ctx.status(`Importing ${note.title}`)
+    ctx.status(importingItemStatus(note.title))
     await createNote({
       title: note.title,
       content: note.body,
