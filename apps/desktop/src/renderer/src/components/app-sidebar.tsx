@@ -561,7 +561,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           <SidebarBookmarkList maxVisible={6} onBookmarkClick={handleBookmarkClick} />
         </SidebarSection>
 
-        {/* CANVASES Section (hidden-phase spatialCanvas flag) */}
+        {/* CANVASES Section (gated by the spatialCanvas flag, default on) */}
         {isEnabled('spatialCanvas') && (
           <SidebarSection
             id="canvases"

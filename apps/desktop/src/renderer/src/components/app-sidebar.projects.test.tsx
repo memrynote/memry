@@ -88,6 +88,13 @@ vi.mock('@/components/sidebar/sidebar-tag-list', () => ({
   SidebarTagList: () => <div>Tag list</div>
 }))
 
+// Heavy child, and the only one that subscribes to canvas IPC events. The
+// spatialCanvas flag defaults on, so this list now mounts in every sidebar
+// test; its own behavior is covered by sidebar-canvas-list.test.tsx.
+vi.mock('@/components/sidebar/sidebar-canvas-list', () => ({
+  SidebarCanvasList: () => <div>Canvas list</div>
+}))
+
 vi.mock('@/components/sidebar/sidebar-bookmark-list', () => ({
   SidebarBookmarkList: () => <div>Bookmark list</div>
 }))

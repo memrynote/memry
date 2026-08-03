@@ -229,8 +229,9 @@ export const FeaturesSettingsSchema = z.object({
   tasks: z.boolean(),
   calendar: z.boolean(),
   graph: z.boolean(),
-  // Opt-in Settings toggle (in FEATURE_KEYS), default OFF: spatial canvas
-  // surface. Local-only for now — cross-device sync (M4) is not wired yet.
+  // Settings toggle (in FEATURE_KEYS), default ON since the M7 rollout: spatial
+  // canvas surface. An install that stored `false` keeps it off — the stored
+  // value wins over the default.
   spatialCanvas: z.boolean()
 })
 
@@ -243,7 +244,7 @@ export const FEATURES_SETTINGS_DEFAULTS: FeaturesSettings = {
   tasks: true,
   calendar: true,
   graph: true,
-  spatialCanvas: false
+  spatialCanvas: true
 }
 
 // ============================================================================
