@@ -74,7 +74,8 @@
     "primary-suffix": "primary",
     "project": "Project",
     "no-project": "No project",
-    "remove-from-project": "Remove from {project}"
+    "remove-from-project": "Remove from {project}",
+    "project-update-failed": "Could not update the event's project"
   },
   "delete-dialog": {
     "title": "Delete event?",
