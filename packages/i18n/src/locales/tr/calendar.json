@@ -61,7 +61,11 @@
     "use-default-calendar": "Varsayılan takvimi kullan",
     "use-default-calendar-with-name": "Varsayılanı kullan ({calendar})",
     "use-memry-calendar-default": "memrynote takvimini kullan (varsayılan)",
-    "primary-suffix": "birincil"
+    "primary-suffix": "birincil",
+    "project": "Proje",
+    "no-project": "Proje yok",
+    "remove-from-project": "{project} projesinden çıkar",
+    "project-update-failed": "Etkinliğin projesi güncellenemedi"
   },
   "delete-dialog": {
     "title": "Etkinlik silinsin mi?",

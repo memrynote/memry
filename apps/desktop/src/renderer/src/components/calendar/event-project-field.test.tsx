@@ -77,10 +77,23 @@ vi.mock('@/components/tasks/project-picker', () => ({
   )
 }))
 
+// `mockReset`, not `vi.clearAllMocks`: the latter clears recorded calls but
+// leaves a `mockResolvedValueOnce` queue intact, and a `mockResolvedValue`
+// fallback never takes precedence over a queued `once`. A test whose queue is
+// sized to the current reload count would then leak its leftover into the next
+// test's mount load and fail it for the wrong reason.
+const resetTaskMocks = (): void => {
+  mockListForItem.mockReset()
+  mockLinkProjectItem.mockReset()
+  mockUnlinkProjectItem.mockReset()
+  mockOnProjectUpdated.mockReset()
+  mockToastError.mockReset()
+  mockOnProjectUpdated.mockImplementation(() => () => {})
+}
+
 describe('EventProjectField · create mode', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockOnProjectUpdated.mockReturnValue(() => {})
+    resetTaskMocks()
   })
 
   it('renders the picker with the draft value and no IPC call', () => {
@@ -110,12 +123,23 @@ describe('EventProjectField · create mode', () => {
 
     expect(onChange).toHaveBeenCalledWith(null)
   })
+
+  it('drops picks while the form is saving', () => {
+    // `handlePopoverSave` has already captured the draft by then, so a pick
+    // accepted here would be written into a `popoverState` the in-flight save
+    // can no longer see — silently lost.
+    const onChange = vi.fn()
+    render(<EventProjectField mode="create" value={null} onChange={onChange} disabled />)
+
+    fireEvent.click(screen.getByText('pick-Launch'))
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
 })
 
 describe('EventProjectField · edit mode', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockOnProjectUpdated.mockReturnValue(() => {})
+    resetTaskMocks()
     mockListForItem.mockResolvedValue([])
     mockLinkProjectItem.mockResolvedValue({ success: true })
     mockUnlinkProjectItem.mockResolvedValue({ success: true })
@@ -288,6 +312,37 @@ describe('EventProjectField · edit mode', () => {
     )
     // The click during the load window was dropped, not queued.
     expect(mockLinkProjectItem).not.toHaveBeenCalled()
+  })
+
+  it('stops blocking picks when a load never answers', async () => {
+    // `listForItem` is a bare `ipcRenderer.invoke` with no timeout, so a wedged
+    // main process would otherwise leave the field inert forever — no spinner,
+    // no toast, and no way back short of closing and reopening the popover.
+    vi.useFakeTimers()
+    try {
+      mockListForItem.mockReturnValue(new Promise(() => {}))
+
+      render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1)
+      })
+
+      // Still inside the guard window: the pick is dropped, as designed.
+      fireEvent.click(screen.getByText('pick-Launch'))
+      expect(mockLinkProjectItem).not.toHaveBeenCalled()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000)
+      })
+
+      fireEvent.click(screen.getByText('pick-Launch'))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1)
+      })
+      expect(mockLinkProjectItem).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('ignores a second selection while the first write is still in flight', async () => {
@@ -474,26 +529,25 @@ describe('EventProjectField · edit mode', () => {
     expect(mockUnlinkProjectItem).not.toHaveBeenCalled()
   })
 
-  it('keeps the write guard closed when a project update reloads mid-swap', async () => {
-    // `unlinkItemFromProject` publishes `projectUpdated` BEFORE it resolves,
-    // so a reload lands between the unlink and the link of one swap and sees
-    // the intermediate (empty) DB state. Sharing one flag between load and
-    // write let that reload's `finally` reopen the guard with stale-empty
-    // `links`, and the next click would link a third project without
-    // unlinking anything.
+  it('ignores the projectUpdated broadcast its own swap publishes', async () => {
+    // `linkItemToProject` / `unlinkItemFromProject` publish `projectUpdated`
+    // BEFORE they resolve, so a broadcast lands mid-swap while the DB is only
+    // half written. Reloading on it would fetch that intermediate state — a
+    // visible "No project" flash — and could reopen the write guard with
+    // stale-empty `links`, letting the next click link a third project without
+    // unlinking anything. The trailing reload after the whole write covers it.
     mockListForItem
       .mockResolvedValueOnce([{ id: 'p1', name: 'Launch', color: '#ff0000', icon: null }])
-      .mockResolvedValueOnce([])
       .mockResolvedValue([{ id: 'p2', name: 'Finance', color: '#00ff00', icon: null }])
     let updateHandler: (() => void) | undefined
     mockOnProjectUpdated.mockImplementation((cb: () => void) => {
       updateHandler = cb
       return () => {}
     })
-    let resolveUnlink: ((value: { success: boolean }) => void) | undefined
-    mockUnlinkProjectItem.mockReturnValue(
+    let resolveLink: ((value: { success: boolean }) => void) | undefined
+    mockLinkProjectItem.mockReturnValue(
       new Promise((resolve) => {
-        resolveUnlink = resolve
+        resolveLink = resolve
       })
     )
 
@@ -501,35 +555,132 @@ describe('EventProjectField · edit mode', () => {
     await waitFor(() =>
       expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', 'p1')
     )
+    expect(mockListForItem).toHaveBeenCalledTimes(1)
 
     fireEvent.click(screen.getByText('pick-Finance'))
-    await waitFor(() => expect(mockUnlinkProjectItem).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(mockLinkProjectItem).toHaveBeenCalledTimes(1))
 
-    // The broadcast the in-flight unlink itself publishes.
+    // The broadcast the in-flight link itself publishes.
     updateHandler?.()
-    await waitFor(() => expect(mockListForItem).toHaveBeenCalledTimes(2))
-    // That reload has resolved and committed the intermediate empty state.
-    await waitFor(() =>
-      expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', '')
-    )
+    await act(async () => {})
+    // No mid-swap reload, so no intermediate state on screen either.
+    expect(mockListForItem).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', 'p1')
 
     // A click landing in exactly that window, on a THIRD project so it cannot
     // be absorbed by the "same id, no-op" short-circuit.
     fireEvent.click(screen.getByText('pick-Marketing'))
 
-    resolveUnlink?.({ success: true })
-    await waitFor(() =>
-      expect(mockLinkProjectItem).toHaveBeenCalledWith({
-        projectId: 'p2',
-        itemType: 'calendar_event',
-        itemId: 'evt-1'
-      })
-    )
+    resolveLink?.({ success: true })
+    await waitFor(() => expect(mockUnlinkProjectItem).toHaveBeenCalledTimes(1))
     expect(mockLinkProjectItem).toHaveBeenCalledTimes(1)
     expect(mockLinkProjectItem).not.toHaveBeenCalledWith(
       expect.objectContaining({ projectId: 'p3' })
     )
+    // Exactly one reload for the whole swap, not one per IPC call.
+    await waitFor(() => expect(mockListForItem).toHaveBeenCalledTimes(2))
+  })
+
+  it('keeps a pickable link in the picker when an unpickable link is stored first', async () => {
+    // `getProjectsForItem` has no ORDER BY, so the archived link can come back
+    // first. Reading `links[0]` here would render "No project" while the live
+    // p1 link exists, and the pick below would then link p2 as a THIRD link
+    // instead of replacing p1.
+    mockListForItem.mockResolvedValue([
+      { id: 'p4', name: 'Retired', color: '#999999', icon: null },
+      { id: 'p1', name: 'Launch', color: '#ff0000', icon: null }
+    ])
+
+    render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
+    await waitFor(() =>
+      expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', 'p1')
+    )
+    expect(screen.getByRole('button', { name: 'Remove from Retired' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('pick-Finance'))
+
+    await waitFor(() =>
+      expect(mockUnlinkProjectItem).toHaveBeenCalledWith({
+        projectId: 'p1',
+        itemType: 'calendar_event',
+        itemId: 'evt-1'
+      })
+    )
     expect(mockUnlinkProjectItem).toHaveBeenCalledTimes(1)
+  })
+
+  it('links the new project before unlinking the old one', async () => {
+    // Two non-transactional IPC calls: whichever runs second can fail after the
+    // first landed. Linking first makes that failure leave one link too many —
+    // visible and removable as a chip — instead of destroying the assignment
+    // the user asked to *change*.
+    mockListForItem.mockResolvedValue([{ id: 'p1', name: 'Launch', color: '#ff0000', icon: null }])
+    mockUnlinkProjectItem.mockResolvedValue({ success: false, error: 'unlink failed' })
+
+    render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
+    await waitFor(() =>
+      expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', 'p1')
+    )
+
+    fireEvent.click(screen.getByText('pick-Finance'))
+
+    await waitFor(() => expect(mockToastError).toHaveBeenCalled())
+    expect(mockLinkProjectItem).toHaveBeenCalledWith({
+      projectId: 'p2',
+      itemType: 'calendar_event',
+      itemId: 'evt-1'
+    })
+    expect(mockLinkProjectItem.mock.invocationCallOrder[0]).toBeLessThan(
+      mockUnlinkProjectItem.mock.invocationCallOrder[0]
+    )
+  })
+
+  it('does not carry one event’s links over to another', async () => {
+    // The popover is re-rendered, not remounted, when the form moves to another
+    // event, so unkeyed `links` would let evt-1's project become evt-2's
+    // implicit unlink target.
+    mockListForItem.mockImplementation(async (_type: string, id: string) =>
+      id === 'evt-1' ? [{ id: 'p1', name: 'Launch', color: '#ff0000', icon: null }] : []
+    )
+
+    const { rerender } = render(
+      <EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />
+    )
+    await waitFor(() =>
+      expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', 'p1')
+    )
+
+    rerender(<EventProjectField mode="edit" eventId="evt-2" value={null} onChange={vi.fn()} />)
+
+    expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', '')
+    await waitFor(() => expect(mockListForItem).toHaveBeenCalledWith('calendar_event', 'evt-2'))
+    await act(async () => {})
+
+    fireEvent.click(screen.getByText('pick-Finance'))
+
+    await waitFor(() => expect(mockLinkProjectItem).toHaveBeenCalledTimes(1))
+    expect(mockUnlinkProjectItem).not.toHaveBeenCalled()
+  })
+
+  it('writes nothing while the form is saving', async () => {
+    mockListForItem.mockResolvedValue([
+      { id: 'p1', name: 'Launch', color: '#ff0000', icon: null },
+      { id: 'p2', name: 'Finance', color: '#00ff00', icon: null }
+    ])
+
+    render(
+      <EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} disabled />
+    )
+    await waitFor(() =>
+      expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', 'p1')
+    )
+
+    fireEvent.click(screen.getByText('pick-Marketing'))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from Finance' }))
+    await act(async () => {})
+
+    expect(mockLinkProjectItem).not.toHaveBeenCalled()
+    expect(mockUnlinkProjectItem).not.toHaveBeenCalled()
   })
 
   it('shows no chips when the event has a single project', async () => {

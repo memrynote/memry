@@ -67,7 +67,8 @@ the form and pick **No project** (or the previous project) to change it back. On
 for **Save**.
 
 An event can end up linked to more than one project — for example if it was also added to a
-second project from the chip's context menu. The form still shows one project in the picker, and
+second project from the chip's context menu, or if a swap only half-succeeded and reported an
+error. The form still shows one project in the picker, and
 lists any additional links as small chips beside it, each with an **×** to remove just that link.
 A link to an archived project also shows as a chip, since the picker only lists active projects;
 it stays until you remove it with its **×**.

@@ -104,7 +104,16 @@ describe('CalendarPage · create with a project selected', () => {
     await openCreatePopover(user)
 
     await user.type(screen.getByPlaceholderText('New Event'), 'Kickoff')
+    expect(screen.getByText('stub-pick-project')).toHaveAttribute('data-value', '')
+
     await user.click(screen.getByText('stub-pick-project'))
+
+    // The draft owns the create-mode selection, so it has to come back down as
+    // `value` — otherwise the picker keeps reading "No project" after a pick.
+    await waitFor(() =>
+      expect(screen.getByText('stub-pick-project')).toHaveAttribute('data-value', 'p1')
+    )
+
     await user.click(screen.getByTestId('event-edit-save'))
 
     await waitFor(() => expect(mockCreateEvent).toHaveBeenCalledTimes(1))

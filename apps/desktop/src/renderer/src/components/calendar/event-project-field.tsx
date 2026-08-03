@@ -7,9 +7,22 @@ import { useTasksOptional } from '@/contexts/tasks'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { X } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
+import type { Project } from '@/data/tasks-data'
 import { onProjectUpdated, tasksService, type ProjectRef } from '@/services/tasks-service'
 
 const log = createLogger('EventProjectField')
+
+// `listForItem` is a plain `ipcRenderer.invoke` with no timeout of its own, so a
+// wedged main process leaves it pending forever. A load that has not answered by
+// then stops blocking picks: an inert picker with no spinner and no way back
+// short of reopening the popover is worse than a pick computed from links this
+// old. Never reached on a healthy round trip, which takes milliseconds.
+const LOAD_GUARD_TIMEOUT_MS = 10_000
+
+// Stable identities: `ProjectPicker` memoizes its list on the `projects`
+// reference, and the popover form re-renders on every keystroke.
+const NO_PROJECTS: Project[] = []
+const NO_LINKS: ProjectRef[] = []
 
 export interface EventProjectFieldProps {
   mode: 'create' | 'edit'
@@ -37,47 +50,65 @@ export function EventProjectField({
   disabled
 }: EventProjectFieldProps): React.JSX.Element | null {
   const { t } = useT('calendar')
-  const projects = useTasksOptional()?.projects ?? []
-  const [links, setLinks] = useState<ProjectRef[]>([])
-  // The project this field last picked, keyed by the event it was picked for.
-  // `getProjectsForItem` has no ORDER BY, so a reload after a swap can hand
-  // back the new link in any position; without this, an event that also
-  // carries a legacy second link would show that older link in the picker and
-  // demote the just-picked one to a chip. Keying by event id (rather than
-  // resetting from an effect) drops the pick as soon as the form switches
-  // events, since a different event has a different link set.
+  const projects = useTasksOptional()?.projects ?? NO_PROJECTS
+  const isEdit = mode === 'edit'
+  const currentEventId = eventId ?? null
+
+  // Both the loaded links and the last pick are keyed by the event they belong
+  // to. The popover is re-rendered rather than remounted when the form moves to
+  // another event, so unkeyed state would let one event's links choose the
+  // unlink target for another. Keying also drops a stale pick for free.
+  //
+  // The pick has to be remembered at all because `getProjectsForItem` has no
+  // ORDER BY: a reload after a swap can hand back the new link in any position,
+  // and without this an event that also carries a legacy second link would show
+  // that older link in the picker and demote the just-picked one to a chip.
+  const [linkState, setLinkState] = useState<{ eventId: string | null; links: ProjectRef[] }>({
+    eventId: currentEventId,
+    links: NO_LINKS
+  })
   const [chosen, setChosen] = useState<{ eventId: string | null; projectId: string | null }>({
-    eventId: eventId ?? null,
+    eventId: currentEventId,
     projectId: null
   })
-  const chosenId = chosen.eventId === (eventId ?? null) ? chosen.projectId : null
-  const isEdit = mode === 'edit'
+  const links = linkState.eventId === currentEventId ? linkState.links : NO_LINKS
+  const chosenId = chosen.eventId === currentEventId ? chosen.projectId : null
 
-  // Two separate flags, both gating writes. A single shared flag was
-  // reopenable mid-swap: `linkItemToProject`/`unlinkItemFromProject` publish
-  // `projectUpdated` before they resolve, so a reload lands between the
-  // unlink and the link, and its `finally` would clear the one flag while
-  // `links` momentarily reads empty — a click in that window would compute
-  // `previousId` as null and link a second project without unlinking. Refs
-  // (not state) so the guard is visible synchronously to a call in the same
+  // Both gate writes. `pendingLoads` is a counter, not a flag: the mount load,
+  // the `projectUpdated` reload and the trailing reload can overlap, and a
+  // boolean would report idle as soon as the *first* of them settled — long
+  // enough for a click to compute its unlink target from links a later response
+  // is about to replace. `loadToken` drops a response a newer load superseded.
+  // Refs (not state) so the guard is visible synchronously to a call in the same
   // tick, before React re-renders.
-  const isLoadingRef = useRef(false)
+  const pendingLoadsRef = useRef(0)
+  const loadTokenRef = useRef(0)
   const isWritingRef = useRef(false)
-  const isBusy = (): boolean => isLoadingRef.current || isWritingRef.current
+  const isBusy = (): boolean => pendingLoadsRef.current > 0 || isWritingRef.current
 
   const load = useCallback(async (): Promise<void> => {
     if (!isEdit || !eventId) return
-    isLoadingRef.current = true
+    const token = ++loadTokenRef.current
+    pendingLoadsRef.current += 1
+    let released = false
+    const release = (): void => {
+      if (released) return
+      released = true
+      pendingLoadsRef.current -= 1
+    }
+    const guardTimer = setTimeout(release, LOAD_GUARD_TIMEOUT_MS)
     try {
       const result = await tasksService.listForItem('calendar_event', eventId)
       // `listForItem` runs through the main-side `withDb` wrapper: on a DB
       // error it resolves `{ success: false, error }` instead of rejecting.
-      setLinks(Array.isArray(result) ? result : [])
+      if (loadTokenRef.current !== token) return
+      setLinkState({ eventId, links: Array.isArray(result) ? result : NO_LINKS })
     } catch (error) {
       log.error('Failed to load event projects', extractErrorMessage(error))
-      setLinks([])
+      if (loadTokenRef.current === token) setLinkState({ eventId, links: NO_LINKS })
     } finally {
-      isLoadingRef.current = false
+      clearTimeout(guardTimer)
+      release()
     }
   }, [isEdit, eventId])
 
@@ -85,13 +116,27 @@ export function EventProjectField({
     void load()
   }, [load])
 
-  useEffect(() => onProjectUpdated(() => void load()), [load])
+  useEffect(() => {
+    // Nothing to reload for an unsaved event, and the canvas mounts one form
+    // per event card — subscribing there would buy a listener per idle card
+    // whose callback can only ever no-op.
+    if (!isEdit || !eventId) return
+    return onProjectUpdated(() => {
+      // `linkItemToProject` / `unlinkItemFromProject` publish `projectUpdated`
+      // *before* they resolve, so reloading on our own writes would fetch the
+      // half-written state between the two calls of a swap — a visible "No
+      // project" flash — and cost two extra round-trips. `runLinkWrite`
+      // reloads once the whole write is done.
+      if (isWritingRef.current) return
+      void load()
+    })
+  }, [isEdit, eventId, load])
 
   // Shared by `handleSelect` and `handleRemoveExtra`: both are writes on the
-  // same `project_links` rows. `isWritingRef` is held across the write *and*
-  // its trailing reload, so no interleaved `load()` can open the guard
-  // mid-swap. The reload is unconditional so the UI reflects the actual DB
-  // state whether the write succeeded or failed.
+  // same `project_links` rows. The reload is unconditional so the UI reflects
+  // the actual DB state whether the write succeeded or failed, and it starts in
+  // the same tick the write flag drops — `load` bumps `pendingLoads` before its
+  // first await — so the guard never opens in between.
   const runLinkWrite = async (write: () => Promise<void>): Promise<void> => {
     isWritingRef.current = true
     try {
@@ -103,9 +148,9 @@ export function EventProjectField({
       })
       toast.error(extractErrorMessage(error, t('form.project-update-failed')))
     } finally {
-      await load()
       isWritingRef.current = false
     }
+    await load()
   }
 
   // `ProjectPicker` filters archived projects out of its list and resolves its
@@ -116,7 +161,13 @@ export function EventProjectField({
   const isPickable = (projectId: string): boolean =>
     projects.some((project) => project.id === projectId && !project.isArchived)
 
-  const primaryLink = links.find((link) => link.id === chosenId) ?? links[0]
+  // The last pick when it survived the reload, else the first link the picker
+  // can actually render. Falling through to `links[0]` instead would let a
+  // single unpickable link hide a perfectly pickable sibling: the row would
+  // read "No project" while a live link exists, and the next pick would add a
+  // third link rather than replace the second.
+  const primaryLink =
+    links.find((link) => link.id === chosenId) ?? links.find((link) => isPickable(link.id))
   const primaryId = primaryLink && isPickable(primaryLink.id) ? primaryLink.id : null
   const selectedId = isEdit ? primaryId : value
   // Single-select UI over a many-to-many table: every link the picker is not
@@ -125,13 +176,14 @@ export function EventProjectField({
   const extraLinks = isEdit ? links.filter((link) => link.id !== primaryId) : []
 
   const handleSelect = async (nextId: string | null): Promise<void> => {
+    // External `disabled` gates both modes; the in-flight guard only applies
+    // where there is a write to guard.
+    if (disabled) return
     if (!isEdit || !eventId) {
       onChange(nextId)
       return
     }
-    // External `disabled` (Task 4) and the internal in-flight guard compose
-    // here rather than one replacing the other.
-    if (disabled || isBusy()) return
+    if (isBusy()) return
 
     // Only the link the picker is actually showing can be replaced by a pick.
     const previousId = primaryId
@@ -139,14 +191,12 @@ export function EventProjectField({
 
     setChosen({ eventId, projectId: nextId })
     await runLinkWrite(async () => {
-      if (previousId) {
-        const removed = await tasksService.unlinkProjectItem({
-          projectId: previousId,
-          itemType: 'calendar_event',
-          itemId: eventId
-        })
-        if (!removed.success) throw new Error(removed.error)
-      }
+      // Link before unlink. These are two independent IPC calls with no
+      // transaction, so one of them can fail after the other landed; ending up
+      // with one link too many leaves a removable chip on screen, while ending
+      // up with none silently destroys an assignment the user asked to
+      // *change*. `project_links` is unique per (project, item type, item), so
+      // holding both links for the width of the swap is legal.
       if (nextId) {
         const added = await tasksService.linkProjectItem({
           projectId: nextId,
@@ -154,6 +204,14 @@ export function EventProjectField({
           itemId: eventId
         })
         if (!added.success) throw new Error(added.error)
+      }
+      if (previousId) {
+        const removed = await tasksService.unlinkProjectItem({
+          projectId: previousId,
+          itemType: 'calendar_event',
+          itemId: eventId
+        })
+        if (!removed.success) throw new Error(removed.error)
       }
     })
   }
@@ -180,7 +238,11 @@ export function EventProjectField({
   if (isEdit && !eventId) return null
 
   return (
-    <label className="flex flex-col gap-1 text-sm">
+    // A plain <div>, not a <label>: a label forwards clicks on its
+    // non-interactive descendants to its first labelable control, so wrapping
+    // the chips alongside the picker would pop the dropdown open whenever the
+    // user clicked a chip's name.
+    <div className="flex flex-col gap-1 text-sm">
       <span className="text-xs font-medium text-muted-foreground">{t('form.project')}</span>
       <div className="flex flex-wrap items-center gap-1.5">
         <ProjectPicker
@@ -191,6 +253,7 @@ export function EventProjectField({
           allOptionLabel={t('form.no-project')}
           searchable
           allowCreate={false}
+          disabled={disabled}
           className="min-w-[160px]"
         />
         {extraLinks.map((project) => (
@@ -208,14 +271,15 @@ export function EventProjectField({
               type="button"
               aria-label={t('form.remove-from-project', { project: project.name })}
               onClick={() => void handleRemoveExtra(project.id)}
-              className="text-muted-foreground transition-colors hover:text-foreground"
+              disabled={disabled}
+              className="text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
             >
               <X className="size-3" />
             </button>
           </span>
         ))}
       </div>
-    </label>
+    </div>
   )
 }
 

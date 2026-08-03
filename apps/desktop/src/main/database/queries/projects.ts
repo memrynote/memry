@@ -806,6 +806,11 @@ export function updateProjectHomeNote(db: DataDb, projectId: string, noteId: str
 
 /**
  * List the projects a given item (note, calendar event, or file) belongs to.
+ *
+ * Ordered oldest link first, same as `getProjectLinks`. Consumers that render a
+ * single-select control over this many-to-many table treat the first row as the
+ * item's project, so an unordered result would let an unrelated write reshuffle
+ * what the UI calls "the" project.
  */
 export function getProjectsForItem(db: DataDb, itemType: string, itemId: string) {
   return db
@@ -818,6 +823,7 @@ export function getProjectsForItem(db: DataDb, itemType: string, itemId: string)
     .from(projectLinks)
     .innerJoin(projects, eq(projectLinks.projectId, projects.id))
     .where(and(eq(projectLinks.itemType, itemType), eq(projectLinks.itemId, itemId)))
+    .orderBy(asc(projectLinks.createdAt), asc(projectLinks.id))
     .all()
 }
 
