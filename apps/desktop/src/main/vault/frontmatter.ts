@@ -14,6 +14,7 @@ import {
   type Eol
 } from '@memry/app-core/markdown'
 import { generateNoteId, isValidNoteId } from '../lib/id'
+import { isRelationValue } from '@memry/contracts/relation-uri'
 
 // ============================================================================
 // Types
@@ -395,6 +396,11 @@ export function inferPropertyType(_name: string, value: unknown): PropertyType {
   // Number with contextual hints
   if (typeof value === 'number') {
     return 'number'
+  }
+
+  // Array of memry:// URIs -> relation (must precede the array->text fallback)
+  if (isRelationValue(value)) {
+    return 'relation'
   }
 
   // Array -> text (arrays no longer supported, convert to JSON string)

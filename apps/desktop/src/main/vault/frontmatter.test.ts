@@ -255,6 +255,24 @@ describe('properties helpers', () => {
     expect(inferPropertyType('misc', { value: 1 })).toBe('text')
   })
 
+  it('infers relation for an all-URI array', () => {
+    expect(inferPropertyType('father', ['memry://note/nte_1'])).toBe('relation')
+    expect(inferPropertyType('attendees', ['memry://task/tsk_1', 'memry://event/evt_2'])).toBe(
+      'relation'
+    )
+  })
+
+  it('leaves non-relation arrays as text', () => {
+    expect(inferPropertyType('tags', [])).toBe('text')
+    expect(inferPropertyType('tags', ['a', 'b'])).toBe('text')
+    expect(inferPropertyType('mixed', ['memry://note/nte_1', 'plain'])).toBe('text')
+    expect(inferPropertyType('bad', ['memry://project/prj_1'])).toBe('text')
+  })
+
+  it('does not treat a bare URI string as relation', () => {
+    expect(inferPropertyType('father', 'memry://note/nte_1')).toBe('text')
+  })
+
   it('serializes and deserializes property values', () => {
     expect(serializePropertyValue(null)).toBeNull()
     expect(serializePropertyValue('text')).toBe('text')
