@@ -3,7 +3,7 @@
     "tabs": {
       "inbox": "Εισερχόμενα",
       "archived": "Αρχειοθετήθηκε",
-      "insights": "Insights",
+      "insights": "Πληροφορίες",
       "ariaLabel": "Επιλογή προβολής εισερχομένων"
     },
     "triageButton": "Διαλογή",
@@ -51,7 +51,7 @@
   },
   "empty": {
     "successAria": "Επιτυχία, τα εισερχόμενα είναι άδεια",
-    "title": "Inbox Zero",
+    "title": "Μηδέν εισερχόμενα",
     "body": "Όλα είναι επεξεργασμένα. Καταγράψτε κάτι νέο με την παραπάνω εισαγωγή ή επικολλήστε έναν σύνδεσμο για να ξεκινήσετε.",
     "filedThisWeek": "{count, plural, one {Το # κατατέθηκε αυτήν την εβδομάδα} other {Το # κατατέθηκε αυτήν την εβδομάδα}}",
     "dayStreak": "{count, plural, one {# σερί ημέρας} other {# σερί ημέρας}}",
@@ -270,7 +270,50 @@
     "panelEmpty": "Δεν υπάρχουν επερχόμενες υπενθυμίσεις.",
     "panelPast": "Παρελθόντα",
     "panelUpcoming": "Επερχόμενα",
-    "taskFallback": "Εργασία"
+    "taskFallback": "Εργασία",
+    "dateTime": {
+      "dateAt": "{date} στις {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Σήμερα στις {time}",
+      "todayCompact": "Σήμερα, {time}",
+      "tomorrowAt": "Αύριο στις {time}",
+      "tomorrowCompact": "Αύριο, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Υπενθύμιση επετείου",
+      "inHours": {
+        "label": "Σε {count, plural, one {# ώρα} other {# ώρες}}"
+      },
+      "inMinutes": {
+        "label": "Σε {count, plural, one {# λεπτό} other {# λεπτά}}"
+      },
+      "inMonths": {
+        "label": "Σε {count, plural, one {# μήνα} other {# μήνες}}"
+      },
+      "inWeeks": {
+        "label": "Σε {count, plural, one {# εβδομάδα} other {# εβδομάδες}}"
+      },
+      "inYears": {
+        "label": "Σε {count, plural, one {# χρόνο} other {# χρόνια}}"
+      },
+      "laterToday": {
+        "description": "Σε {count, plural, one {# ώρα} other {# ώρες}}",
+        "label": "Αργότερα σήμερα"
+      },
+      "monthlyReflection": "Μηνιαίος απολογισμός",
+      "nextWeek": {
+        "description": "Δευτέρα στις 9 π.μ.",
+        "label": "Την επόμενη εβδομάδα"
+      },
+      "quarterlyReflection": "Τριμηνιαίος απολογισμός",
+      "reviewInAWeek": "Ανασκόπηση σε μία εβδομάδα",
+      "sameDayNextMonth": "Ίδια μέρα τον επόμενο μήνα",
+      "tomorrow": {
+        "description": "Αύριο στις 9 π.μ.",
+        "label": "Αύριο"
+      },
+      "tomorrowMorning": "Αύριο το πρωί"
+    }
   },
   "insights": {
     "captureActivity": "Λήψη δραστηριότητας",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Επισύναψη αρχείου (Εικόνες, Ήχος, Βίντεο, PDF)",
       "recordVoiceMemo": "Ηχογράφηση φωνητικής σημείωσης",
       "recordVoiceMemo2": "Ηχογράφηση φωνητικής σημείωσης",
-      "alreadyCaptured": "Έχει ήδη καταγραφεί: \"",
-      "rdquo": "rdquo;",
       "captureAnyway": "Λήψη Τέλος πάντων",
       "focusShortcut": "Εστίαση στο πεδίο καταγραφής",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Καταγραφή συνδέσμου",
+      "captureNote": "Καταγραφή σημείωσης",
+      "placeholder": "Γρήγορη καταγραφή — επικολλήστε έναν σύνδεσμο, σημειώστε μια σκέψη…",
+      "duplicateNotice": "Έχει ήδη καταγραφεί: «{title}»"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Επιλέξτε φάκελο",
@@ -414,10 +459,9 @@
       "captured": "συλληφθεί",
       "dismissError": "Παράβλεψη σφάλματος",
       "alreadyCaptured": "Ήδη συλληφθεί",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; · ",
       "captureAnyway": "Λήψη Τέλος πάντων",
-      "close": "Κλείσιμο"
+      "close": "Κλείσιμο",
+      "duplicateMeta": "«{title}» · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Απόθεση για λήψη",
@@ -466,7 +510,12 @@
       "cancelRecording": "Ακύρωση εγγραφής",
       "cancel": "Ακύρωση",
       "stopRecording": "Διακοπή εγγραφής",
-      "stop": "Σταμάτα"
+      "stop": "Σταμάτα",
+      "enableMicInSettings": "Ενεργοποιήστε την πρόσβαση στο μικρόφωνο από τις ρυθμίσεις του συστήματος και δοκιμάστε ξανά.",
+      "failedToStart": "Η έναρξη της ηχογράφησης απέτυχε",
+      "microphoneAccessDenied": "Η πρόσβαση στο μικρόφωνο απορρίφθηκε",
+      "noMicrophoneFound": "Δεν βρέθηκε μικρόφωνο",
+      "recordingError": "Παρουσιάστηκε σφάλμα ηχογράφησης"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Αποτυχία λήψης αρχείου",
       "fileCaptureFailed": "Η λήψη αρχείου απέτυχε",
       "failedToCaptureAudio": "Αποτυχία λήψης ήχου",
-      "failedToCaptureVoice": "Αποτυχία λήψης φωνής"
+      "failedToCaptureVoice": "Αποτυχία λήψης φωνής",
+      "failedToLoadInboxPreferences": "Η φόρτωση των προτιμήσεων εισερχομένων απέτυχε",
+      "failedToUpdateInboxPreferences": "Η ενημέρωση των προτιμήσεων εισερχομένων απέτυχε"
     },
     "toasts": {
       "inboxRefreshed": "Τα Εισερχόμενα ανανεώθηκαν"
@@ -516,5 +567,10 @@
     "task": "Εργασία",
     "time": "Ώρα",
     "title": "Μετατροπή"
+  },
+  "reviewNudge": {
+    "action": "Άνοιγμα εισερχομένων",
+    "description": "Τακτοποιήστε τις σημερινές καταγραφές σε ένα ήρεμο πέρασμα.",
+    "title": "{count, plural, one {# στοιχείο περιμένει ανασκόπηση} other {# στοιχεία περιμένουν ανασκόπηση}}"
   }
 }

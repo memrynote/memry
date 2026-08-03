@@ -34,7 +34,15 @@
     "createAnother": "Crie outro",
     "delete": "Excluir tarefa",
     "created": "Criado {date}",
-    "reminder": "Lembrete"
+    "reminder": "Lembrete",
+    "tags": "Etiquetas",
+    "priorityLabels": {
+      "high": "Alta",
+      "low": "Baixa",
+      "medium": "Média",
+      "none": "Sem prioridade",
+      "urgent": "Urgente"
+    }
   },
   "filters": {
     "filter": "Filtro",
@@ -43,11 +51,32 @@
     "groupBy": "Agrupar por",
     "groupByOptions": "Agrupar por opções",
     "sortAscending": "Classificar em ordem crescente",
-    "sortDescending": "Classificar em ordem decrescente"
+    "sortDescending": "Classificar em ordem decrescente",
+    "dueDate": {
+      "any": "Qualquer data de vencimento",
+      "custom": "Intervalo personalizado...",
+      "nextWeek": "Próxima semana",
+      "none": "Sem data de vencimento",
+      "overdue": "Atrasadas",
+      "thisMonth": "Este mês",
+      "thisWeek": "Esta semana",
+      "today": "Hoje",
+      "tomorrow": "Amanhã"
+    },
+    "quickPresets": {
+      "dueThisWeek": "Vencem esta semana",
+      "highPriority": "Prioridade alta",
+      "noDueDate": "Sem data de vencimento",
+      "overdue": "Atrasadas",
+      "repeating": "Repetitivas"
+    },
+    "repeatTypeOneTime": "Únicas",
+    "repeatTypeRepeating": "Repetitivas"
   },
   "quickAdd": {
     "label": "Tarefa de adição rápida",
-    "focusDescription": "Concentre-se na entrada de adição rápida"
+    "focusDescription": "Concentre-se na entrada de adição rápida",
+    "placeholder": "Adicionar uma tarefa…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Fechar detalhes da tarefa",
@@ -75,7 +104,21 @@
     "searchRelated": "Pesquisar relacionado…"
   },
   "kanban": {
-    "board": "Quadro Kanban"
+    "board": "Quadro Kanban",
+    "empty": {
+      "default": {
+        "subtitle": "Arraste tarefas para aqui ou clique em + para adicionar",
+        "title": "Sem tarefas"
+      },
+      "done": {
+        "subtitle": "Conclua tarefas para as ver aqui",
+        "title": "Sem tarefas concluídas"
+      },
+      "schedule": {
+        "subtitle": "Arraste tarefas para aqui para as reagendar",
+        "title": "Nada agendado"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "Projeto atualizado",
@@ -98,7 +141,53 @@
     "noCompletedSelected": "Nenhuma tarefa concluída selecionada",
     "completeFailed": "Falha ao concluir tarefas",
     "deleteFailed": "Falha ao excluir tarefas",
-    "moveFailed": "Falha ao mover tarefas"
+    "moveFailed": "Falha ao mover tarefas",
+    "bulk": {
+      "archived": "{count, plural, one {# tarefa arquivada} many {# tarefas arquivadas} other {# tarefas arquivadas}}",
+      "completed": "{count, plural, one {# tarefa concluída} many {# tarefas concluídas} other {# tarefas concluídas}}",
+      "deleted": "{count, plural, one {# tarefa eliminada} many {# tarefas eliminadas} other {# tarefas eliminadas}}",
+      "deletedDescription": "Esta ação pode ser desfeita durante um curto período.",
+      "dueDateRemoved": "{count, plural, one {Data de vencimento removida de # tarefa} many {Data de vencimento removida de # tarefas} other {Data de vencimento removida de # tarefas}}",
+      "dueDateSet": "{count, plural, one {Data de vencimento definida para # tarefa} many {Data de vencimento definida para # tarefas} other {Data de vencimento definida para # tarefas}}",
+      "movedToProject": "{count, plural, one {# tarefa movida para {project}} many {# tarefas movidas para {project}} other {# tarefas movidas para {project}}}",
+      "movedToStatus": "{count, plural, one {# tarefa movida para {status}} many {# tarefas movidas para {status}} other {# tarefas movidas para {status}}}",
+      "priorityRemoved": "{count, plural, one {Prioridade removida de # tarefa} many {Prioridade removida de # tarefas} other {Prioridade removida de # tarefas}}",
+      "prioritySet": "{count, plural, one {Prioridade definida como {priority} em # tarefa} many {Prioridade definida como {priority} em # tarefas} other {Prioridade definida como {priority} em # tarefas}}",
+      "restored": "{count, plural, one {# tarefa restaurada} many {# tarefas restauradas} other {# tarefas restauradas}}",
+      "undoArchive": "{count, plural, one {Arquivar # tarefa} many {Arquivar # tarefas} other {Arquivar # tarefas}}",
+      "undoComplete": "{count, plural, one {Concluir # tarefa} many {Concluir # tarefas} other {Concluir # tarefas}}",
+      "undoDelete": "{count, plural, one {Eliminar # tarefa} many {Eliminar # tarefas} other {Eliminar # tarefas}}",
+      "undoDueDate": "{count, plural, one {Data de vencimento alterada em # tarefa} many {Data de vencimento alterada em # tarefas} other {Data de vencimento alterada em # tarefas}}",
+      "undoMove": "{count, plural, one {Mover # tarefa} many {Mover # tarefas} other {Mover # tarefas}}",
+      "undoStatus": "{count, plural, one {Estado → {status} em # tarefa} many {Estado → {status} em # tarefas} other {Estado → {status} em # tarefas}}",
+      "undoUncomplete": "{count, plural, one {Marcar # tarefa como não concluída} many {Marcar # tarefas como não concluídas} other {Marcar # tarefas como não concluídas}}"
+    },
+    "drag": {
+      "archived": "{count, plural, one {Tarefa arquivada} many {# tarefas arquivadas} other {# tarefas arquivadas}}",
+      "deleted": "{count, plural, one {Tarefa eliminada} many {# tarefas eliminadas} other {# tarefas eliminadas}}",
+      "moved": "{count, plural, one {Movida para {target}} many {# tarefas movidas para {target}} other {# tarefas movidas para {target}}}",
+      "movedTo": "Movida para {target}",
+      "prioritySet": "{count, plural, one {Prioridade definida como {priority}} many {# tarefas definidas como {priority}} other {# tarefas definidas como {priority}}}",
+      "prioritySetTo": "Prioridade definida como {priority}",
+      "rescheduled": "{count, plural, one {Reagendada para {target}} many {# tarefas reagendadas para {target}} other {# tarefas reagendadas para {target}}}",
+      "rescheduledTo": "Reagendada para {target}",
+      "undoArchive": "{count, plural, one {# tarefa arquivada} many {# tarefas arquivadas} other {# tarefas arquivadas}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, one {# subtarefa adicionada} many {# subtarefas adicionadas} other {# subtarefas adicionadas}}",
+      "completed": "{count, plural, one {# subtarefa concluída} many {# subtarefas concluídas} other {# subtarefas concluídas}}",
+      "deleted": "{count, plural, one {# subtarefa eliminada} many {# subtarefas eliminadas} other {# subtarefas eliminadas}}",
+      "deletedDescription": "A subtarefa foi removida",
+      "dueDateCleared": "{count, plural, one {Data de vencimento limpa em # subtarefa} many {Data de vencimento limpa em # subtarefas} other {Data de vencimento limpa em # subtarefas}}",
+      "dueDateSet": "{count, plural, one {Data de vencimento definida para # subtarefa} many {Data de vencimento definida para # subtarefas} other {Data de vencimento definida para # subtarefas}}",
+      "markedIncomplete": "{count, plural, one {# subtarefa marcada como não concluída} many {# subtarefas marcadas como não concluídas} other {# subtarefas marcadas como não concluídas}}",
+      "movedUnder": "Movida para “{title}”",
+      "parentAndSubtasksCompleted": "Tarefa e subtarefas concluídas",
+      "parentDeletedKeepSubtasks": "Tarefa eliminada, subtarefas convertidas em tarefas",
+      "parentDeletedWithSubtasks": "Tarefa e subtarefas eliminadas",
+      "prioritySet": "{count, plural, one {Prioridade definida em # subtarefa} many {Prioridade definida em # subtarefas} other {Prioridade definida em # subtarefas}}",
+      "promoted": "“{title}” promovida a tarefa"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -179,7 +268,8 @@
       "nextMonth": "No próximo mês",
       "goToToday": "Vá para hoje",
       "today": "Hoje",
-      "w": "W"
+      "w": "W",
+      "weekNumber": "Semana {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Remover data",
@@ -197,44 +287,39 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Este projeto não possui tarefas e será excluído permanentemente.",
       "thisActionCannotBeUndone": "Esta ação não pode ser desfeita.",
       "cancel": "Cancelar",
-      "deleteProject": "Excluir projeto"
+      "deleteProject": "Excluir projeto",
+      "notesEventsAndFilesStayNotice": "As tarefas deste projeto são eliminadas. As suas notas, eventos e ficheiros ficam no seu cofre."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Excluir tarefa?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; será excluído permanentemente. Esta ação não pode ser desfeita.",
-      "deleteTask2": "Excluir tarefa"
+      "deleteTask2": "Excluir tarefa",
+      "deleteConfirmBody": "“{title}” será excluído permanentemente. Esta ação não pode ser desfeita."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Todas as subtarefas concluídas!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; tem tudo ",
-      "subtask": "subtarefa",
-      "done": "feito.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Gostaria de marcar a tarefa pai como concluída também?",
       "keepTaskOpen": "Mantenha a tarefa aberta",
-      "completeTask": "Conclua a tarefa ✓"
+      "completeTask": "Conclua a tarefa ✓",
+      "allSubtasksDoneBody": "“{title}” {count, plural, one {tem # subtarefa concluída} many {tem todas as # subtarefas concluídas} other {tem todas as # subtarefas concluídas}}."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Defina a data de vencimento para todas as subtarefas",
       "setDueDateFor": "Definir data de vencimento para ",
-      "subtask": "subtarefa",
-      "in": "em “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Também se aplica a subtarefas concluídas (",
       "clearDate": "Limpar data",
       "cancel": "Cancelar",
-      "apply": "Aplicar"
+      "apply": "Aplicar",
+      "alsoApplyToCompletedSubtasksCount": "Aplicar também às subtarefas concluídas ({count})",
+      "setDueDateForSubtasksIn": "Definir data de vencimento para {count, plural, one {# subtarefa} many {# subtarefas} other {# subtarefas}} em “{title}”"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Defina prioridade para todas as subtarefas",
       "setPriorityFor": "Definir prioridade para ",
-      "subtask": "subtarefa",
-      "in": "em “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Também se aplica a subtarefas concluídas (",
       "cancel": "Cancelar",
-      "apply": "Aplicar"
+      "apply": "Aplicar",
+      "alsoApplyToCompletedSubtasksCount": "Aplicar também às subtarefas concluídas ({count})",
+      "setPriorityForSubtasksIn": "Definir prioridade para {count, plural, one {# subtarefa} many {# subtarefas} other {# subtarefas}} em “{title}”"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Concluir tarefa com subtarefas incompletas?",
@@ -252,13 +337,10 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Excluir todas as subtarefas?",
-      "thisWillDelete": "Isso irá excluir ",
-      "subtask": "subtarefa",
-      "from": "de “",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "Esta ação não pode ser desfeita.",
       "cancel": "Cancelar",
-      "deleteAll": "Excluir tudo"
+      "deleteAll": "Excluir tudo",
+      "deleteSubtasksConfirmation": "Isso excluirá {count, plural, one {# subtarefa} many {# subtarefas} other {# subtarefas}} de “{title}”."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Excluir tarefa com subtarefas?",
@@ -275,10 +357,13 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Tarefa duplicada",
       "createACopyOf": "Crie uma cópia de “",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Também duplique subtarefas (",
       "cancel": "Cancelar",
-      "duplicate": "Duplicar "
+      "duplicate": "Duplicar ",
+      "alsoDuplicateSubtasksCount": "Duplicar também as subtarefas ({count})",
+      "createACopyOfTitle": "Criar uma cópia de “{title}”",
+      "duplicateTaskOnly": "Duplicar tarefa",
+      "duplicateWithItems": "Duplicar ({count, plural, one {# item} many {# itens} other {# itens}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Faça uma subtarefa de...",
@@ -324,7 +409,11 @@
       "addTime": "Adicionar tempo",
       "time": "Hora",
       "clearDate": "Limpar data",
-      "backToOptions": "Voltar para opções"
+      "backToOptions": "Voltar para opções",
+      "nextWeek": "Próxima semana",
+      "thisWeekend": "Este fim de semana",
+      "today": "Hoje",
+      "tomorrow": "Amanhã"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "Editar tarefa repetida",
@@ -357,7 +446,9 @@
       "due": "Devido",
       "dueDate": "data de vencimento",
       "search": "pesquisar",
-      "clearAll": "Limpar tudo"
+      "clearAll": "Limpar tudo",
+      "tags": "etiquetas",
+      "tagsIs": "As etiquetas são"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Filtrar por data de vencimento",
@@ -421,7 +512,17 @@
       "currentFilters": "Filtros atuais:",
       "noFiltersApplied": "Nenhum filtro aplicado",
       "cancel": "Cancelar",
-      "saveFilter2": "Salvar filtro"
+      "saveFilter2": "Salvar filtro",
+      "nameRequired": "Introduza um nome para este filtro",
+      "summaryDue": "Vencimento: {value}",
+      "summaryDueRange": "Vencimento: {start} - {end}",
+      "summaryPriorities": "Prioridade: {names}",
+      "summaryProjects": "Projeto: {names}",
+      "summaryRepeatOneTime": "Repetição: apenas únicas",
+      "summaryRepeatRepeating": "Repetição: apenas repetitivas",
+      "summarySearch": "Pesquisa: “{query}”",
+      "summaryTimeWith": "Hora: com hora",
+      "summaryTimeWithout": "Hora: sem hora"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Filtros salvos",
@@ -553,7 +654,16 @@
       "d": "d"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "Adicionar tarefa"
+      "addTask": "Adicionar tarefa",
+      "allDescription": "Crie a sua primeira tarefa para começar",
+      "allTitle": "Ainda não há tarefas",
+      "completedDescription": "As tarefas concluídas aparecem aqui",
+      "completedTitle": "Sem tarefas concluídas",
+      "projectDescription": "Adicione uma tarefa para começar",
+      "projectTitle": "Sem tarefas neste projeto",
+      "projectTitleNamed": "Sem tarefas em {name}",
+      "todayDescription": "Está tudo em dia!",
+      "todayTitle": "Nada para hoje"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "sem prioridade"
@@ -589,6 +699,12 @@
       "noUpcomingTasks": "Nenhuma tarefa futura",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "As tarefas com vencimento nos próximos 7 dias aparecerão aqui. Planeje sua semana adicionando algumas tarefas.",
       "addTask2": "Adicionar tarefa"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "são",
+      "search": "Pesquisar...",
+      "selected": "selecionadas",
+      "tags": "Etiquetas"
     }
   },
   "phaseI": {
@@ -638,5 +754,147 @@
       "updateFailed": "Falha ao atualizar lembrete",
       "updated": "Lembrete atualizado"
     }
+  },
+  "addToProject": {
+    "dialogTitle": "Adicionar ao projeto",
+    "loading": "A carregar projetos…",
+    "menuLabel": "Adicionar ao projeto",
+    "noProjects": "Ainda não há projetos",
+    "toastError": "Falha ao adicionar ao projeto",
+    "toastSuccess": "Adicionado a {name}"
+  },
+  "itemProjects": {
+    "openProject": "Abrir projeto {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Escolha um projeto na barra lateral para abrir a respetiva página inicial.",
+    "emptyTitle": "Nenhum projeto selecionado",
+    "loadError": "Não foi possível carregar os detalhes do projeto",
+    "overview": {
+      "clear": "Limpar visão geral",
+      "clearError": "Não foi possível limpar a nota de visão geral",
+      "create": "Criar nota de visão geral",
+      "createError": "Não foi possível criar a nota de visão geral",
+      "defaultTitle": "Visão geral",
+      "loadError": "Não foi possível carregar a nota de visão geral",
+      "placeholder": "Escreva uma visão geral deste projeto…",
+      "saveError": "Não foi possível guardar a nota de visão geral",
+      "sectionTitle": "Visão geral"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Anexar ficheiros",
+      "fileError": "Não foi possível associar {name}",
+      "fileErrorGeneric": "Não foi possível importar os ficheiros",
+      "filesAdded": "{count, plural, one {# ficheiro adicionado ao projeto} many {# ficheiros adicionados ao projeto} other {# ficheiros adicionados ao projeto}}",
+      "label": "Adicionar a {name}",
+      "linkAdded": "Link adicionado ao projeto",
+      "linkError": "Não foi possível guardar o link",
+      "placeholder": "Adicionar a {name} — escreva uma tarefa, tome uma nota ou cole um link…"
+    },
+    "groups": {
+      "older": "Mais antigos",
+      "past": "Passados",
+      "today": "Hoje",
+      "tomorrow": "Amanhã",
+      "upcoming": "Próximos",
+      "yesterday": "Ontem"
+    },
+    "header": {
+      "archiveProject": "Arquivar projeto",
+      "editProject": "Editar projeto",
+      "menu": "Ações do projeto",
+      "toggleRail": "Mostrar/ocultar detalhes do projeto"
+    },
+    "rail": {
+      "addNote": "Adicionar nota",
+      "created": "Criado",
+      "details": "Detalhes",
+      "doneOf": "{done} de {total} concluídas",
+      "linked": "Associados",
+      "linkedSummary": "{notes, plural, one {# nota} many {# notas} other {# notas}} · {files, plural, one {# ficheiro} many {# ficheiros} other {# ficheiros}} · {events, plural, one {# evento} many {# eventos} other {# eventos}}",
+      "overdue": "Em atraso",
+      "overview": "Visão geral",
+      "pinError": "Não foi possível adicionar a nota à visão geral",
+      "progress": "Progresso",
+      "unpinError": "Não foi possível remover a nota da visão geral",
+      "unpinNote": "Remover {title} da visão geral",
+      "updated": "Atualizado"
+    },
+    "rows": {
+      "openEvent": "Abrir evento {title}",
+      "openFile": "Abrir ficheiro {title}",
+      "openNote": "Abrir nota {title}",
+      "openTask": "Abrir tarefa {title}",
+      "setNoteIcon": "Definir ícone para {title}"
+    },
+    "sections": {
+      "add": "Adicionar a {title}",
+      "emptyEvents": "Ainda não há eventos associados.",
+      "emptyFiles": "Ainda não há ficheiros associados.",
+      "emptyNotes": "Ainda não há notas associadas.",
+      "emptyTasks": "Ainda não há tarefas.",
+      "newNoteError": "Não foi possível adicionar a nota",
+      "newNoteTitle": "Nota sem título",
+      "viewAll": "Ver tudo"
+    },
+    "tabs": {
+      "events": "Eventos",
+      "files": "Ficheiros",
+      "label": "Vistas do projeto",
+      "notes": "Notas",
+      "overview": "Visão geral",
+      "tasks": "Tarefas"
+    }
+  },
+  "priorityInline": {
+    "high": "alta",
+    "low": "baixa",
+    "medium": "média",
+    "urgent": "urgente"
+  },
+  "priorityLabels": {
+    "high": "Alta",
+    "low": "Baixa",
+    "medium": "Média",
+    "none": "Sem prioridade",
+    "urgent": "Urgente"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "Concluído",
+      "inProgress": "Em curso",
+      "todo": "Por fazer"
+    },
+    "validation": {
+      "minStatuses": "Os projetos precisam de pelo menos 2 estados",
+      "nameRequired": "O nome do projeto é obrigatório",
+      "nameTooLong": "O nome do projeto não pode ter mais de 50 caracteres",
+      "needsDoneStatus": "Os projetos precisam de pelo menos um estado 'Concluído'",
+      "needsDoneStatusForCompletedTasks": "Os projetos precisam de pelo menos um estado 'Concluído' para as tarefas concluídas",
+      "needsTodoStatus": "Os projetos precisam de pelo menos um estado 'Por fazer'",
+      "needsTodoStatusForNewTasks": "Os projetos precisam de pelo menos um estado 'Por fazer' para as novas tarefas",
+      "statusNameRequired": "Todos os estados têm de ter um nome",
+      "statusNamesUnique": "Os nomes dos estados têm de ser únicos",
+      "statusNotFound": "Estado não encontrado"
+    }
+  },
+  "statusLabels": {
+    "done": "Concluído",
+    "inProgress": "Em curso",
+    "todo": "Por fazer"
+  },
+  "colors": {
+    "blue": "Azul",
+    "gray": "Cinza",
+    "green": "Verde",
+    "indigo": "Índigo",
+    "orange": "Laranja",
+    "pink": "Rosa",
+    "purple": "Roxo",
+    "red": "Vermelho",
+    "teal": "Turquesa",
+    "yellow": "Amarelo"
   }
 }

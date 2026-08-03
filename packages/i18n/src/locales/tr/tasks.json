@@ -34,7 +34,15 @@
     "createAnother": "Başka bir tane oluştur",
     "delete": "Görevi sil",
     "created": "Oluşturuldu {date}",
-    "reminder": "Hatırlatıcı"
+    "reminder": "Hatırlatıcı",
+    "tags": "Etiketler",
+    "priorityLabels": {
+      "high": "Yüksek",
+      "low": "Düşük",
+      "medium": "Orta",
+      "none": "Öncelik Yok",
+      "urgent": "Acil"
+    }
   },
   "filters": {
     "filter": "Filtre",
@@ -43,11 +51,32 @@
     "groupBy": "Gruplandırma ölçütü",
     "groupByOptions": "Seçeneklere göre gruplandır",
     "sortAscending": "Artan şekilde sırala",
-    "sortDescending": "Azalan sıralama"
+    "sortDescending": "Azalan sıralama",
+    "dueDate": {
+      "any": "Herhangi bir son tarih",
+      "custom": "Özel aralık...",
+      "nextWeek": "Gelecek hafta",
+      "none": "Son tarih yok",
+      "overdue": "Vadesi geçmiş",
+      "thisMonth": "Bu ay",
+      "thisWeek": "Bu hafta",
+      "today": "Bugün",
+      "tomorrow": "Yarın"
+    },
+    "quickPresets": {
+      "dueThisWeek": "Bu Hafta Bitecek",
+      "highPriority": "Yüksek Öncelik",
+      "noDueDate": "Son Tarih Yok",
+      "overdue": "Vadesi Geçmiş",
+      "repeating": "Tekrarlayan"
+    },
+    "repeatTypeOneTime": "Tek seferlik",
+    "repeatTypeRepeating": "Tekrarlayan"
   },
   "quickAdd": {
     "label": "Hızlı ekleme görevi",
-    "focusDescription": "Hızlı ekleme girişine odaklanın"
+    "focusDescription": "Hızlı ekleme girişine odaklanın",
+    "placeholder": "Görev ekle…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Görev ayrıntılarını kapat",
@@ -75,7 +104,21 @@
     "searchRelated": "İlgili ara…"
   },
   "kanban": {
-    "board": "Kanban panosu"
+    "board": "Kanban panosu",
+    "empty": {
+      "default": {
+        "subtitle": "Görevleri buraya sürükleyin veya eklemek için + simgesine tıklayın",
+        "title": "Görev yok"
+      },
+      "done": {
+        "subtitle": "Burada görmek için görevleri tamamlayın",
+        "title": "Tamamlanmış görev yok"
+      },
+      "schedule": {
+        "subtitle": "Yeniden planlamak için görevleri buraya sürükleyin",
+        "title": "Planlanmış bir şey yok"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "Proje güncellendi",
@@ -98,7 +141,53 @@
     "noCompletedSelected": "Tamamlanmış görev seçilmedi",
     "completeFailed": "Görevler tamamlanamadı",
     "deleteFailed": "Görevler silinemedi",
-    "moveFailed": "Görevler taşınamadı"
+    "moveFailed": "Görevler taşınamadı",
+    "bulk": {
+      "archived": "{count, plural, one {# görev arşivlendi} other {# görev arşivlendi}}",
+      "completed": "{count, plural, one {# görev tamamlandı} other {# görev tamamlandı}}",
+      "deleted": "{count, plural, one {# görev silindi} other {# görev silindi}}",
+      "deletedDescription": "Bu işlem kısa bir süre için geri alınabilir.",
+      "dueDateRemoved": "{count, plural, one {# görevden son tarih kaldırıldı} other {# görevden son tarih kaldırıldı}}",
+      "dueDateSet": "{count, plural, one {# görev için son tarih ayarlandı} other {# görev için son tarih ayarlandı}}",
+      "movedToProject": "{count, plural, one {# görev {project} projesine taşındı} other {# görev {project} projesine taşındı}}",
+      "movedToStatus": "{count, plural, one {# görev {status} durumuna taşındı} other {# görev {status} durumuna taşındı}}",
+      "priorityRemoved": "{count, plural, one {# görevden öncelik kaldırıldı} other {# görevden öncelik kaldırıldı}}",
+      "prioritySet": "{count, plural, one {# görev için öncelik {priority} olarak ayarlandı} other {# görev için öncelik {priority} olarak ayarlandı}}",
+      "restored": "{count, plural, one {# görev geri yüklendi} other {# görev geri yüklendi}}",
+      "undoArchive": "{count, plural, one {# görevi arşivle} other {# görevi arşivle}}",
+      "undoComplete": "{count, plural, one {# görevi tamamla} other {# görevi tamamla}}",
+      "undoDelete": "{count, plural, one {# görevi sil} other {# görevi sil}}",
+      "undoDueDate": "{count, plural, one {# görev için son tarih değiştirildi} other {# görev için son tarih değiştirildi}}",
+      "undoMove": "{count, plural, one {# görevi taşı} other {# görevi taşı}}",
+      "undoStatus": "{count, plural, one {# görev için durum → {status}} other {# görev için durum → {status}}}",
+      "undoUncomplete": "{count, plural, one {# görevi tamamlanmadı olarak işaretle} other {# görevi tamamlanmadı olarak işaretle}}"
+    },
+    "drag": {
+      "archived": "{count, plural, one {Görev arşivlendi} other {# görev arşivlendi}}",
+      "deleted": "{count, plural, one {Görev silindi} other {# görev silindi}}",
+      "moved": "{count, plural, one {Şuraya taşındı: {target}} other {# görev şuraya taşındı: {target}}}",
+      "movedTo": "Şuraya taşındı: {target}",
+      "prioritySet": "{count, plural, one {Öncelik {priority} olarak ayarlandı} other {# görev {priority} olarak ayarlandı}}",
+      "prioritySetTo": "Öncelik {priority} olarak ayarlandı",
+      "rescheduled": "{count, plural, one {Şuraya yeniden planlandı: {target}} other {# görev şuraya yeniden planlandı: {target}}}",
+      "rescheduledTo": "Şuraya yeniden planlandı: {target}",
+      "undoArchive": "{count, plural, one {# görev arşivlendi} other {# görev arşivlendi}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, one {# alt görev eklendi} other {# alt görev eklendi}}",
+      "completed": "{count, plural, one {# alt görev tamamlandı} other {# alt görev tamamlandı}}",
+      "deleted": "{count, plural, one {# alt görev silindi} other {# alt görev silindi}}",
+      "deletedDescription": "Alt görev kaldırıldı",
+      "dueDateCleared": "{count, plural, one {# alt görev için son tarih temizlendi} other {# alt görev için son tarih temizlendi}}",
+      "dueDateSet": "{count, plural, one {# alt görev için son tarih ayarlandı} other {# alt görev için son tarih ayarlandı}}",
+      "markedIncomplete": "{count, plural, one {# alt görev tamamlanmadı olarak işaretlendi} other {# alt görev tamamlanmadı olarak işaretlendi}}",
+      "movedUnder": "\"{title}\" altına taşındı",
+      "parentAndSubtasksCompleted": "Görev ve alt görevler tamamlandı",
+      "parentDeletedKeepSubtasks": "Görev silindi, alt görevler göreve dönüştürüldü",
+      "parentDeletedWithSubtasks": "Görev ve alt görevler silindi",
+      "prioritySet": "{count, plural, one {# alt görev için öncelik ayarlandı} other {# alt görev için öncelik ayarlandı}}",
+      "promoted": "\"{title}\" göreve yükseltildi"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -154,7 +243,7 @@
       "repeatOn": "Tekrarla",
       "day": "Gün",
       "ofTheMonth": "ayın",
-      "the": "The",
+      "the": "Ayın",
       "ofTheMonth2": "ayın",
       "ends": "biter",
       "never": "Asla",
@@ -179,7 +268,8 @@
       "nextMonth": "Gelecek ay",
       "goToToday": "Bugüne git",
       "today": "Bugün",
-      "w": "W"
+      "w": "W",
+      "weekNumber": "{number}. hafta"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Tarihi kaldır",
@@ -197,44 +287,39 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Bu projenin hiçbir görevi yok ve kalıcı olarak silinecek.",
       "thisActionCannotBeUndone": "Bu eylem geri alınamaz.",
       "cancel": "İptal",
-      "deleteProject": "Projeyi Sil"
+      "deleteProject": "Projeyi Sil",
+      "notesEventsAndFilesStayNotice": "Bu projedeki görevler silinir. Notlarınız, etkinlikleriniz ve dosyalarınız kasanızda kalır."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Görev silinsin mi?",
-      "ldquo": "Ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; kalıcı olarak silinecek. Bu eylem geri alınamaz.",
-      "deleteTask2": "Görevi Sil"
+      "deleteTask2": "Görevi Sil",
+      "deleteConfirmBody": "“{title}” kalıcı olarak silinecek. Bu eylem geri alınamaz."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Tüm alt görevler tamamlandı!",
-      "ldquo": "Ldquo;",
-      "rdquoHasAll": "rdquo; içinde toplam ",
-      "subtask": "alt görev",
-      "done": "bitti.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Ana görevi de tamamlandı olarak işaretlemek ister misiniz?",
       "keepTaskOpen": "Görevi açık tut",
-      "completeTask": "Görevi tamamla ✓"
+      "completeTask": "Görevi tamamla ✓",
+      "allSubtasksDoneBody": "“{title}” görevinin {count, plural, one {tek alt görevi} other {# alt görevinin tümü}} tamamlandı."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Tüm alt görevler için bitiş tarihini ayarlayın",
       "setDueDateFor": "Şunun için son tarihi ayarla: ",
-      "subtask": "alt görev",
-      "in": "“ içinde",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Ayrıca tamamlanan alt görevlere de uygula (",
       "clearDate": "Tarihi temizle",
       "cancel": "İptal",
-      "apply": "Uygula"
+      "apply": "Uygula",
+      "alsoApplyToCompletedSubtasksCount": "Tamamlanan alt görevlere de uygula ({count})",
+      "setDueDateForSubtasksIn": "“{title}” görevindeki {count, plural, one {# alt görev} other {# alt görev}} için son tarihi ayarlayın"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Tüm alt görevler için önceliği ayarlayın",
       "setPriorityFor": "Şunun için öncelik ayarla: ",
-      "subtask": "alt görev",
-      "in": "“ içinde",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Ayrıca tamamlanan alt görevlere de uygula (",
       "cancel": "İptal",
-      "apply": "Uygula"
+      "apply": "Uygula",
+      "alsoApplyToCompletedSubtasksCount": "Tamamlanan alt görevlere de uygula ({count})",
+      "setPriorityForSubtasksIn": "“{title}” görevindeki {count, plural, one {# alt görev} other {# alt görev}} için önceliği ayarlayın"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Tamamlanmamış alt görevlerle görev tamamlansın mı?",
@@ -252,13 +337,10 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Tüm alt görevler silinsin mi?",
-      "thisWillDelete": "Bu silinecek ",
-      "subtask": "alt görev",
-      "from": "“dan",
-      "rdquo": "rdquo;",
       "thisActionCannotBeUndone": "Bu eylem geri alınamaz.",
       "cancel": "İptal",
-      "deleteAll": "Tümünü Sil"
+      "deleteAll": "Tümünü Sil",
+      "deleteSubtasksConfirmation": "Bu işlem, “{title}” görevindeki {count, plural, one {# alt görevi} other {# alt görevi}} silecek."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Alt görevleri içeren görev silinsin mi?",
@@ -275,10 +357,13 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Yinelenen görev",
       "createACopyOf": "Şunun bir kopyasını oluştur: “",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Ayrıca alt görevleri çoğaltın (",
       "cancel": "İptal",
-      "duplicate": "Çoğalt "
+      "duplicate": "Çoğalt ",
+      "alsoDuplicateSubtasksCount": "Alt görevleri de çoğalt ({count})",
+      "createACopyOfTitle": "“{title}” görevinin bir kopyasını oluşturun",
+      "duplicateTaskOnly": "Görevi çoğalt",
+      "duplicateWithItems": "Çoğalt ({count, plural, one {# öğe} other {# öğe}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Alt görevi yap...",
@@ -324,7 +409,11 @@
       "addTime": "Zaman ekle",
       "time": "Zaman",
       "clearDate": "Tarihi temizle",
-      "backToOptions": "Seçeneklere geri dön"
+      "backToOptions": "Seçeneklere geri dön",
+      "nextWeek": "Gelecek Hafta",
+      "thisWeekend": "Bu Hafta Sonu",
+      "today": "Bugün",
+      "tomorrow": "Yarın"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "Tekrarlanan Görevi Düzenle",
@@ -357,7 +446,9 @@
       "due": "Vadesi gelmiş",
       "dueDate": "vade tarihi",
       "search": "arama",
-      "clearAll": "Tümünü temizle"
+      "clearAll": "Tümünü temizle",
+      "tags": "etiketler",
+      "tagsIs": "Etiketler:"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Son tarihe göre filtrele",
@@ -421,7 +512,17 @@
       "currentFilters": "Mevcut filtreler:",
       "noFiltersApplied": "Hiçbir filtre uygulanmadı",
       "cancel": "İptal",
-      "saveFilter2": "Filtreyi Kaydet"
+      "saveFilter2": "Filtreyi Kaydet",
+      "nameRequired": "Lütfen bu filtre için bir ad girin",
+      "summaryDue": "Son tarih: {value}",
+      "summaryDueRange": "Son tarih: {start} - {end}",
+      "summaryPriorities": "Öncelik: {names}",
+      "summaryProjects": "Proje: {names}",
+      "summaryRepeatOneTime": "Tekrar: Yalnızca tek seferlik",
+      "summaryRepeatRepeating": "Tekrar: Yalnızca tekrarlayanlar",
+      "summarySearch": "Arama: \"{query}\"",
+      "summaryTimeWith": "Saat: Saatli",
+      "summaryTimeWithout": "Saat: Saatsiz"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Kayıtlı filtreler",
@@ -553,7 +654,16 @@
       "d": "d"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "Görev Ekle"
+      "addTask": "Görev Ekle",
+      "allDescription": "Başlamak için ilk görevinizi oluşturun",
+      "allTitle": "Henüz görev yok",
+      "completedDescription": "Tamamlanan görevler burada görünecek",
+      "completedTitle": "Tamamlanmış görev yok",
+      "projectDescription": "Başlamak için bir görev ekleyin",
+      "projectTitle": "Bu projede görev yok",
+      "projectTitleNamed": "{name} içinde görev yok",
+      "todayDescription": "Her şey tamam!",
+      "todayTitle": "Bugün bitecek görev yok"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "öncelik yok"
@@ -589,6 +699,12 @@
       "noUpcomingTasks": "Yaklaşan görev yok",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Önümüzdeki 7 gün içinde teslim edilmesi gereken görevler burada görünecek. Bazı görevler ekleyerek haftanızı planlayın.",
       "addTask2": "Görev ekle"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "eşittir",
+      "search": "Ara...",
+      "selected": "seçilmiş",
+      "tags": "Etiketler"
     }
   },
   "phaseI": {
@@ -638,5 +754,147 @@
       "updateFailed": "Hatırlatıcı güncellenemedi",
       "updated": "Hatırlatıcı güncellendi"
     }
+  },
+  "addToProject": {
+    "dialogTitle": "Projeye ekle",
+    "loading": "Projeler yükleniyor…",
+    "menuLabel": "Projeye ekle",
+    "noProjects": "Henüz proje yok",
+    "toastError": "Projeye eklenemedi",
+    "toastSuccess": "{name} projesine eklendi"
+  },
+  "itemProjects": {
+    "openProject": "{name} projesini aç"
+  },
+  "projectHome": {
+    "emptyBody": "Ana sayfasını açmak için kenar çubuğundan bir proje seçin.",
+    "emptyTitle": "Hiçbir proje seçilmedi",
+    "loadError": "Proje ayrıntıları yüklenemedi",
+    "overview": {
+      "clear": "Genel bakışı temizle",
+      "clearError": "Genel bakış notu temizlenemedi",
+      "create": "Genel bakış notu oluştur",
+      "createError": "Genel bakış notu oluşturulamadı",
+      "defaultTitle": "Genel Bakış",
+      "loadError": "Genel bakış notu yüklenemedi",
+      "placeholder": "Bu proje için bir genel bakış yazın…",
+      "saveError": "Genel bakış notu kaydedilemedi",
+      "sectionTitle": "Genel Bakış"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Dosya ekle",
+      "fileError": "{name} bağlanamadı",
+      "fileErrorGeneric": "Dosyalar içe aktarılamadı",
+      "filesAdded": "{count, plural, one {# dosya projeye eklendi} other {# dosya projeye eklendi}}",
+      "label": "{name} projesine ekle",
+      "linkAdded": "Bağlantı projeye eklendi",
+      "linkError": "Bağlantı kaydedilemedi",
+      "placeholder": "{name} projesine ekleyin — bir görev yazın, not alın veya bağlantı yapıştırın…"
+    },
+    "groups": {
+      "older": "Daha eski",
+      "past": "Geçmiş",
+      "today": "Bugün",
+      "tomorrow": "Yarın",
+      "upcoming": "Yaklaşan",
+      "yesterday": "Dün"
+    },
+    "header": {
+      "archiveProject": "Projeyi arşivle",
+      "editProject": "Projeyi düzenle",
+      "menu": "Proje işlemleri",
+      "toggleRail": "Proje ayrıntılarını aç/kapat"
+    },
+    "rail": {
+      "addNote": "Not ekle",
+      "created": "Oluşturuldu",
+      "details": "Ayrıntılar",
+      "doneOf": "{done} / {total} tamamlandı",
+      "linked": "Bağlantılı",
+      "linkedSummary": "{notes, plural, one {# not} other {# not}} · {files, plural, one {# dosya} other {# dosya}} · {events, plural, one {# etkinlik} other {# etkinlik}}",
+      "overdue": "Gecikmiş",
+      "overview": "Genel Bakış",
+      "pinError": "Not genel bakışa eklenemedi",
+      "progress": "İlerleme",
+      "unpinError": "Not genel bakıştan kaldırılamadı",
+      "unpinNote": "{title} notunu genel bakıştan kaldır",
+      "updated": "Güncellendi"
+    },
+    "rows": {
+      "openEvent": "{title} etkinliğini aç",
+      "openFile": "{title} dosyasını aç",
+      "openNote": "{title} notunu aç",
+      "openTask": "{title} görevini aç",
+      "setNoteIcon": "{title} için simge ayarla"
+    },
+    "sections": {
+      "add": "{title} bölümüne ekle",
+      "emptyEvents": "Henüz bağlantılı etkinlik yok.",
+      "emptyFiles": "Henüz bağlantılı dosya yok.",
+      "emptyNotes": "Henüz bağlantılı not yok.",
+      "emptyTasks": "Henüz görev yok.",
+      "newNoteError": "Not eklenemedi",
+      "newNoteTitle": "Başlıksız not",
+      "viewAll": "Tümünü görüntüle"
+    },
+    "tabs": {
+      "events": "Etkinlikler",
+      "files": "Dosyalar",
+      "label": "Proje görünümleri",
+      "notes": "Notlar",
+      "overview": "Genel Bakış",
+      "tasks": "Görevler"
+    }
+  },
+  "priorityInline": {
+    "high": "yüksek",
+    "low": "düşük",
+    "medium": "orta",
+    "urgent": "acil"
+  },
+  "priorityLabels": {
+    "high": "Yüksek",
+    "low": "Düşük",
+    "medium": "Orta",
+    "none": "Öncelik Yok",
+    "urgent": "Acil"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "Tamamlandı",
+      "inProgress": "Devam Ediyor",
+      "todo": "Yapılacak"
+    },
+    "validation": {
+      "minStatuses": "Projeler en az 2 durum gerektirir",
+      "nameRequired": "Proje adı gerekli",
+      "nameTooLong": "Proje adı en fazla 50 karakter olmalıdır",
+      "needsDoneStatus": "Projeler en az bir 'Tamamlandı' durumu gerektirir",
+      "needsDoneStatusForCompletedTasks": "Tamamlanan görevler için projeler en az bir 'Tamamlandı' durumu gerektirir",
+      "needsTodoStatus": "Projeler en az bir 'Yapılacak' durumu gerektirir",
+      "needsTodoStatusForNewTasks": "Yeni görevler için projeler en az bir 'Yapılacak' durumu gerektirir",
+      "statusNameRequired": "Tüm durumların bir adı olmalıdır",
+      "statusNamesUnique": "Durum adları benzersiz olmalıdır",
+      "statusNotFound": "Durum bulunamadı"
+    }
+  },
+  "statusLabels": {
+    "done": "Tamamlandı",
+    "inProgress": "Devam Ediyor",
+    "todo": "Yapılacak"
+  },
+  "colors": {
+    "blue": "Mavi",
+    "gray": "Gri",
+    "green": "Yeşil",
+    "indigo": "Çivit mavisi",
+    "orange": "Turuncu",
+    "pink": "Pembe",
+    "purple": "Mor",
+    "red": "Kırmızı",
+    "teal": "Turkuaz",
+    "yellow": "Sarı"
   }
 }

@@ -125,6 +125,32 @@ export function useFirstRunTour(): void {
       }
     ]
 
+    // driver.js's progress counter is a template written in driver.js's OWN
+    // placeholder syntax — double braces, substituted by a plain string replace
+    // inside the library. That is NOT i18next/ICU syntax: IntlMessageFormat
+    // cannot parse `{{`, and IcuFormatter swallows the parse error and returns
+    // the raw template, so double braces in a locale message fail *silently*.
+    // Instead the message uses ordinary ICU single-brace placeholders and we
+    // hand the driver.js tokens in as literal *values*: ICU only ever parses
+    // `{current} of {total}` and emits `{{current}} of {{total}}`, which driver.js
+    // then fills in. Translators can still reorder the two placeholders.
+    const localizedProgress = t('onboarding.tour.progress', {
+      current: '{{current}}',
+      total: '{{total}}'
+    })
+
+    // driver.js substitutes with a non-global, literal `.replace()` per token, so
+    // each one has to survive translation exactly once. A locale that drops a
+    // token loses that number; one that repeats it prints a raw `{{current}}`;
+    // one that quotes it away (ICU reads a lone apostrophe as a quote, so
+    // `d'{total}` eats the placeholder) does both. Fall back to a language-neutral
+    // counter rather than showing a raw template to the user.
+    const appearsOnce = (value: string, token: string): boolean => value.split(token).length === 2
+    const progressText =
+      appearsOnce(localizedProgress, '{{current}}') && appearsOnce(localizedProgress, '{{total}}')
+        ? localizedProgress
+        : '{{current}} / {{total}}'
+
     // Defer one frame so the just-opened Day Panel has mounted before we test
     // for each step's target element.
     requestAnimationFrame(() => {
@@ -134,9 +160,19 @@ export function useFirstRunTour(): void {
 
       const tour = driver({
         showProgress: true,
+        progressText,
+        nextBtnText: t('onboarding.tour.next'),
+        prevBtnText: t('onboarding.tour.previous'),
+        doneBtnText: t('button.done'),
         animate: !prefersReducedMotion,
         allowClose: true,
         steps: visibleSteps,
+        // driver.js builds its ✕ button with a hardcoded English aria-label, and
+        // that button is the tour's only dismiss affordance. This typed hook runs
+        // once the popover DOM exists, which is the sole place to localize it.
+        onPopoverRender: (popover) => {
+          popover.closeButton.setAttribute('aria-label', t('button.close'))
+        },
         onDestroyed: () => {
           // ponytail: localStorage, app-wide once; move to a per-vault setting if we ever need to re-show per vault
           localStorage.setItem(TOUR_KEY, '1')

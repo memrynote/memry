@@ -67,14 +67,16 @@
     "title": "Eliminare l'evento?",
     "local-description": "\"{title}\" verrà eliminato definitivamente. Questa azione non può essere annullata.",
     "google-bound-description": "\"{title}\" verrà rimosso da memrynote e Google Calendar. Questa azione non può essere annullata.",
-    "context-menu-delete-label": "Elimina evento"
+    "context-menu-delete-label": "Elimina evento",
+    "context-menu-add-to-project": "Aggiungi al progetto"
   },
   "promote-dialog": {
     "aria": "Modifica evento del calendario esterno",
     "title": "Modificare questo evento in memrynote?",
     "body": "La modifica di questo evento creerà una copia collegata in memrynote in modo che le modifiche vengano sincronizzate in entrambe le direzioni. Continuare?",
     "do-not-ask-again": "Non chiedermelo più",
-    "confirm-label": "Modifica in memrynote"
+    "confirm-label": "Modifica in memrynote",
+    "agent-notice": "L'agente AI può leggere questa copia, anche se l'accesso dell'AI a Google Calendar è disattivato. L'evento Google originale resta nascosto all'agente."
   },
   "onboarding-dialog": {
     "aria": "Scegli il tuo calendario Google predefinito",
@@ -181,6 +183,16 @@
     "placeholder": "Cerca eventi, attività, promemoria…"
   },
   "undo": {
-    "moveEvent": "Sposta evento"
+    "moveEvent": "Sposta evento",
+    "moveTask": "Riprogramma attività"
+  },
+  "agent-access-dialog": {
+    "allow": "Consenti",
+    "aria": "Scegli se l'AI può leggere i tuoi eventi di Google Calendar",
+    "body": "In entrambi i casi vedrai comunque i tuoi eventi Google in memrynote. Questa scelta stabilisce soltanto se l'agente AI può leggerli quando gli chiedi della tua agenda.",
+    "deny": "Non consentire",
+    "footnote": "Puoi cambiare questa impostazione in qualsiasi momento in Impostazioni → Integrazioni → Google Calendar.",
+    "save-error": "Impossibile salvare la tua scelta",
+    "title": "Consentire all'AI di leggere i tuoi eventi di Google Calendar?"
   }
 }

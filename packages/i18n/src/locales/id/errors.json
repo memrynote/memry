@@ -22,7 +22,19 @@
     "writeFailed": "Gagal menyimpan catatan ini. Periksa ruang disk dan izin.",
     "readFailed": "Gagal membaca catatan ini. File mungkin terkunci atau rusak.",
     "deleteFailed": "Gagal menghapus catatan ini. Periksa izin file.",
-    "invalidPath": "Jalur catatan tidak valid."
+    "invalidPath": "Jalur catatan tidak valid.",
+    "applyTemplateFailed": "Gagal menerapkan templat",
+    "createFailed": "Gagal membuat catatan",
+    "deleteVersionFailed": "Gagal menghapus versi",
+    "exportHtmlFailed": "Gagal mengekspor HTML",
+    "exportPdfFailed": "Gagal mengekspor PDF",
+    "importFilesFailed": "Gagal mengimpor file",
+    "moveFailed": "Gagal memindahkan catatan",
+    "renameFailed": "Gagal mengganti nama catatan",
+    "reorderFailed": "Gagal menyusun ulang catatan",
+    "restoreVersionFailed": "Gagal memulihkan versi",
+    "setLocalOnlyFailed": "Gagal menyetel mode lokal saja",
+    "updateFailed": "Gagal memperbarui catatan"
   },
   "database": {
     "connectionFailed": "Tidak dapat terhubung ke database lokal. Coba mulai ulang aplikasi.",
@@ -41,7 +53,14 @@
     "fileTooLarge": "File ini terlalu besar untuk dilampirkan.",
     "unsupportedType": "Jenis file ini tidak didukung.",
     "writeFailed": "Gagal menyimpan lampiran. Periksa ruang disk.",
-    "deleteFailed": "Gagal menghapus lampiran."
+    "deleteFailed": "Gagal menghapus lampiran.",
+    "downloadFailed": "Unduhan lampiran gagal",
+    "downloadProgressFailed": "Gagal mengambil progres unduhan",
+    "uploadFailed": "Unggahan lampiran gagal",
+    "uploadProgressFailed": "Gagal mengambil progres unggahan",
+    "emptyFile": "Tidak dapat mengunggah file kosong",
+    "exceedsMaxSize": "File terlalu besar: {size} melebihi batas {limit}",
+    "exceedsPlanLimit": "File lebih besar dari yang diizinkan paket Anda: {size} melebihi {limit}"
   },
   "encryption": {
     "failed": "Gagal mengenkripsi data. Kunci Anda mungkin perlu dibuat ulang.",
@@ -74,6 +93,188 @@
     "securityQuarantinePermanent": "Item sinkronisasi tidak dapat diverifikasi dan telah dikarantina demi keamanan.",
     "securityQuarantineRetry": "Item sinkronisasi gagal dalam verifikasi tanda tangan dan akan dicoba lagi.",
     "certificatePinPaused": "Sambungan aman ke server sinkronisasi tidak dapat diverifikasi. Sinkronisasi telah dijeda demi perlindungan Anda.",
-    "paymentRequired": "Paket Sync berbayar diperlukan untuk menggunakan sinkronisasi terenkripsi yang dihosting."
+    "paymentRequired": "Paket Sync berbayar diperlukan untuk menggunakan sinkronisasi terenkripsi yang dihosting.",
+    "attachmentUploadFailed": "Tidak dapat menyinkronkan lampiran \"{filename}\". Lampiran tetap di perangkat ini.",
+    "fileTooLarge": "File ini lebih besar dari yang diizinkan paket Anda. Tingkatkan paket Anda untuk menyinkronkan file yang lebih besar.",
+    "vaultRecovered": "Kunci brankas dipulihkan. Sinkronisasi akan dilanjutkan.",
+    "historyFetchFailed": "Gagal mengambil riwayat sinkronisasi",
+    "keyPersistenceFailed": "Gagal menyimpan kunci enkripsi dengan aman. Pendaftaran perangkat telah dibatalkan. Silakan coba lagi.",
+    "serverUnreachable": "Tidak dapat terhubung ke server sinkronisasi. Periksa koneksi internet Anda.",
+    "updateSyncedSettingFailed": "Gagal memperbarui pengaturan tersinkron",
+    "requestTimedOut": "Permintaan sinkronisasi kehabisan waktu. Periksa koneksi internet Anda."
+  },
+  "agent": {
+    "conversationBusy": "Percakapan sedang sibuk",
+    "runtimeStarting": "Runtime agen sedang dimulai. Coba lagi."
+  },
+  "ai": {
+    "inlineDisabled": "Penyuntingan sebaris AI dinonaktifkan",
+    "listOllamaModelsFailed": "Gagal menampilkan daftar model Ollama"
+  },
+  "auth": {
+    "approveLinkingFailed": "Gagal menyetujui penautan",
+    "cannotRemoveCurrentDevice": "Tidak dapat menghapus perangkat saat ini",
+    "completeLinkingFailed": "Gagal menyelesaikan penautan",
+    "confirmRecoveryPhraseFailed": "Gagal mengonfirmasi frasa pemulihan",
+    "fetchSasCodeFailed": "Gagal mengambil kode SAS",
+    "finalizeVaultChoiceFailed": "Gagal menyelesaikan pilihan brankas",
+    "initiateOAuthFailed": "Gagal memulai OAuth",
+    "invalidRecoveryPhraseFormat": "Format frasa pemulihan tidak valid",
+    "linkDeviceQrFailed": "Gagal menautkan perangkat melalui QR",
+    "linkRecoveryPhraseFailed": "Gagal menautkan melalui frasa pemulihan",
+    "notAuthenticated": "Belum terautentikasi",
+    "pickFolderFailed": "Gagal memilih folder",
+    "recoveryPhraseMismatch": "Frasa pemulihan tidak cocok. Silakan coba lagi.",
+    "removeDeviceFailed": "Gagal menghapus perangkat",
+    "renameDeviceFailed": "Gagal mengganti nama perangkat",
+    "requestOtpFailed": "Gagal meminta OTP",
+    "resendOtpFailed": "Gagal mengirim ulang OTP",
+    "sessionExpired": "Sesi telah berakhir. Silakan masuk lagi.",
+    "setupFirstDeviceOAuthFailed": "Gagal menyiapkan perangkat pertama melalui OAuth",
+    "verifyOtpFailed": "Gagal memverifikasi OTP"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "Item sudah ada di bookmark",
+    "notFound": "Bookmark tidak ditemukan"
+  },
+  "calendar": {
+    "connectProviderFailed": "Gagal menghubungkan penyedia kalender",
+    "createEventFailed": "Gagal membuat acara kalender",
+    "deleteEventFailed": "Gagal menghapus acara kalender",
+    "disconnectProviderFailed": "Gagal memutuskan penyedia kalender",
+    "eventNotFound": "Acara kalender tidak ditemukan",
+    "googleNotConnected": "Google Calendar tidak terhubung di perangkat ini",
+    "listGoogleCalendarsFailed": "Gagal menampilkan daftar kalender Google",
+    "onlyGoogleSourcesRetryable": "Hanya sumber kalender Google yang dapat dicoba lagi",
+    "onlySourcesSelectable": "Hanya sumber kalender yang dapat dipilih",
+    "promoteExternalEventFailed": "Gagal mempromosikan acara kalender eksternal",
+    "refreshProviderFailed": "Gagal menyegarkan penyedia kalender",
+    "retryGoogleSourceSyncFailed": "Gagal mencoba ulang sinkronisasi sumber Google Calendar",
+    "setDefaultGoogleCalendarFailed": "Gagal menetapkan kalender Google bawaan",
+    "signInBeforeRefresh": "Masuk ke memrynote sebelum menyegarkan Google Calendar",
+    "sourceNotFound": "Sumber kalender tidak ditemukan",
+    "syncFailed": "Sinkronisasi gagal",
+    "updateEventFailed": "Gagal memperbarui acara kalender",
+    "updateSourceSelectionFailed": "Gagal memperbarui pilihan sumber kalender"
+  },
+  "folder": {
+    "createFailed": "Gagal membuat folder",
+    "deleteFailed": "Gagal menghapus folder",
+    "renameFailed": "Gagal mengganti nama folder",
+    "setConfigFailed": "Gagal menyetel konfigurasi folder"
+  },
+  "folderView": {
+    "deleteViewFailed": "Gagal menghapus tampilan",
+    "setConfigFailed": "Gagal menyetel konfigurasi",
+    "setViewFailed": "Gagal menyetel tampilan"
+  },
+  "googleCalendar": {
+    "accessDenied": "Akses Google Calendar ditolak. Anda dapat menghubungkannya lagi kapan pun Anda siap.",
+    "connectFailed": "Tidak dapat terhubung ke Google Calendar. Silakan coba lagi sebentar lagi.",
+    "misconfigured": "Google Calendar tidak dikonfigurasi dengan benar. Hubungi dukungan jika ini terus terjadi.",
+    "reconnectNeeded": "Koneksi Google Calendar Anda telah kedaluwarsa. Putuskan lalu hubungkan kembali.",
+    "scopeMissing": "Kami tidak dapat mengakses Google Calendar Anda karena izin Calendar tidak diberikan. Coba lagi dan pastikan kotak centang Calendar tetap tercentang di layar persetujuan Google.",
+    "temporarilyUnavailable": "Google Calendar sedang tidak tersedia untuk sementara. Silakan coba lagi sebentar lagi."
+  },
+  "importer": {
+    "cancelFailed": "Pembatalan gagal",
+    "fileSelectionFailed": "Pemilihan file gagal",
+    "importFailed": "Impor gagal",
+    "listFailed": "Gagal menampilkan daftar pengimpor",
+    "previewFailed": "Pratinjau gagal"
+  },
+  "project": {
+    "archiveFailed": "Gagal mengarsipkan proyek",
+    "captureLinkFailed": "Gagal menangkap tautan",
+    "createFailed": "Gagal membuat proyek",
+    "deleteFailed": "Gagal menghapus proyek",
+    "importFilesFailed": "Gagal mengimpor file",
+    "linkItemFailed": "Gagal menautkan item",
+    "listForItemFailed": "Gagal menampilkan daftar proyek untuk item ini",
+    "reorderFailed": "Gagal menyusun ulang proyek",
+    "setHomeNoteFailed": "Gagal menyetel catatan beranda",
+    "unlinkItemFailed": "Gagal melepas tautan item",
+    "updateFailed": "Gagal memperbarui proyek",
+    "updatePinnedFailed": "Gagal memperbarui status sematan"
+  },
+  "property": {
+    "alreadyExists": "Properti \"{name}\" sudah ada",
+    "createDefinitionFailed": "Gagal membuat definisi properti",
+    "entityNotFound": "Entitas tidak ditemukan",
+    "notFound": "Properti \"{name}\" tidak ditemukan",
+    "renameFailed": "Gagal mengganti nama properti",
+    "setCalendarVisibilityFailed": "Gagal menyetel visibilitas properti kalender",
+    "setFailed": "Gagal menyetel properti",
+    "updateDefinitionFailed": "Gagal memperbarui definisi properti"
+  },
+  "reminder": {
+    "createFailed": "Gagal membuat pengingat",
+    "dismissAllFailed": "Gagal menutup pengingat",
+    "dismissFailed": "Gagal menutup pengingat",
+    "notFound": "Pengingat tidak ditemukan",
+    "snoozeFailed": "Gagal menunda pengingat",
+    "updateFailed": "Gagal memperbarui pengingat"
+  },
+  "savedFilter": {
+    "notFound": "Filter tersimpan tidak ditemukan"
+  },
+  "search": {
+    "rebuildFailed": "Pembangunan ulang gagal"
+  },
+  "settings": {
+    "modelAlreadyLoading": "Model sedang dimuat",
+    "modelLoadFailed": "Gagal memuat model",
+    "shortcutInUse": "Pintasan {shortcut} sudah digunakan",
+    "terminalCommandInstallFailed": "Gagal memasang perintah terminal",
+    "terminalCommandUninstallFailed": "Gagal mencopot perintah terminal",
+    "unknownVault": "Brankas tidak dikenal",
+    "voiceModelDownloadFailed": "Gagal mengunduh model suara"
+  },
+  "tag": {
+    "categoryNameRequired": "Nama kategori wajib diisi",
+    "createCategoryFailed": "Gagal membuat kategori tag",
+    "deleteCategoryFailed": "Gagal menghapus kategori tag",
+    "deleteFailed": "Gagal menghapus tag",
+    "listCategoriesFailed": "Gagal menampilkan daftar kategori tag",
+    "mergeFailed": "Gagal menggabungkan tag",
+    "mergeSameTag": "Tag sumber dan tag tujuan sama",
+    "pinNoteFailed": "Gagal menyematkan catatan",
+    "removeFromNoteFailed": "Gagal menghapus tag dari catatan",
+    "renameCategoryFailed": "Gagal mengganti nama kategori tag",
+    "renameFailed": "Gagal mengganti nama tag",
+    "reorderFailed": "Gagal menyusun ulang tag",
+    "unpinNoteFailed": "Gagal melepas sematan catatan",
+    "updateColorFailed": "Gagal memperbarui warna tag",
+    "updateIconFailed": "Gagal memperbarui ikon tag"
+  },
+  "task": {
+    "archiveFailed": "Gagal mengarsipkan tugas",
+    "archiveManyFailed": "Gagal mengarsipkan tugas",
+    "completeFailed": "Gagal menyelesaikan tugas",
+    "completeManyFailed": "Gagal menyelesaikan tugas",
+    "convertToSubtaskFailed": "Gagal mengubah menjadi subtugas",
+    "convertToTaskFailed": "Gagal mengubah menjadi tugas",
+    "createFailed": "Gagal membuat tugas",
+    "deleteFailed": "Gagal menghapus tugas",
+    "deleteManyFailed": "Gagal menghapus tugas",
+    "duplicateFailed": "Gagal menduplikat tugas",
+    "moveFailed": "Gagal memindahkan tugas",
+    "moveManyFailed": "Gagal memindahkan tugas",
+    "reorderFailed": "Gagal menyusun ulang tugas",
+    "unarchiveFailed": "Gagal mengeluarkan tugas dari arsip",
+    "uncompleteFailed": "Gagal membatalkan penyelesaian tugas",
+    "updateFailed": "Gagal memperbarui tugas"
+  },
+  "taskStatus": {
+    "createFailed": "Gagal membuat status",
+    "deleteFailed": "Gagal menghapus status",
+    "reorderFailed": "Gagal menyusun ulang status",
+    "updateFailed": "Gagal memperbarui status"
+  },
+  "template": {
+    "createFailed": "Gagal membuat templat",
+    "deleteFailed": "Gagal menghapus templat",
+    "duplicateFailed": "Gagal menduplikat templat",
+    "updateFailed": "Gagal memperbarui templat"
   }
 }

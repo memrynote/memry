@@ -16,9 +16,27 @@
       "willSync": "Η σημείωση θα συγχρονιστεί με το cloud",
       "renameFailed": "Η μετονομασία της σημείωσης απέτυχε",
       "toggleLocalOnlyFailed": "Απέτυχε η εναλλαγή μόνο τοπικών",
-      "toggleFullWidthFailed": "Αποτυχία εναλλαγής πλήρους πλάτους"
+      "toggleFullWidthFailed": "Αποτυχία εναλλαγής πλήρους πλάτους",
+      "copyPathFailed": "Η αντιγραφή της διαδρομής απέτυχε",
+      "deleteFailed": "Η διαγραφή της σημείωσης απέτυχε",
+      "moveFailed": "Η μετακίνηση της σημείωσης απέτυχε",
+      "moved": "Η σημείωση μετακινήθηκε",
+      "openExternalFailed": "Το άνοιγμα της σημείωσης απέτυχε",
+      "pathCopied": "Η διαδρομή αντιγράφηκε",
+      "revealFailed": "Η εμφάνιση της σημείωσης απέτυχε"
     },
-    "deleteDialogTitle": "{count, plural, one {Διαγραφή Σημείωσης} other {Διαγραφή σημειώσεων #}}"
+    "deleteDialogTitle": "{count, plural, one {Διαγραφή Σημείωσης} other {Διαγραφή σημειώσεων #}}",
+    "deleteConfirm": {
+      "cancel": "Ακύρωση",
+      "confirm": "Διαγραφή",
+      "deleting": "Διαγραφή...",
+      "description": "Σίγουρα θέλετε να διαγράψετε το \"{title}\"; Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.",
+      "title": "Διαγραφή σημείωσης"
+    },
+    "itemsCount": "{count, plural, one {# στοιχείο} other {# στοιχεία}}",
+    "itemsCountFiltered": "{shown} από {total, plural, one {# στοιχείο} other {# στοιχεία}}",
+    "renameViewUnavailableForTags": "Η μετονομασία αποθηκευμένων προβολών δεν είναι ακόμη διαθέσιμη για ετικέτες",
+    "tagFilterLabel": "ετικέτα = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "Διαγραφή σημειώσεων {count}",
       "deleteSelectedItems": "Διαγραφή στοιχείων {count}",
       "bookmark": "Σελιδοδείκτης",
-      "removeFromBookmarks": "Αφαίρεση από σελιδοδείκτες"
+      "removeFromBookmarks": "Αφαίρεση από σελιδοδείκτες",
+      "applyTemplate": "Εφαρμογή προτύπου"
     },
     "deleteDialog": {
       "noteTitle": "Διαγραφή Σημείωσης",
@@ -83,7 +102,17 @@
       "export": "Εξαγωγή",
       "fullWidth": "Πλήρες πλάτος",
       "disableLocalOnly": "Απενεργοποιήστε μόνο τοπικά",
-      "setLocalOnly": "Ρυθμίστε μόνο τοπικά"
+      "setLocalOnly": "Ρυθμίστε μόνο τοπικά",
+      "applyTemplate": "Εφαρμογή προτύπου",
+      "copyPath": "Αντιγραφή διαδρομής",
+      "delete": "Διαγραφή σημείωσης",
+      "find": "Εύρεση…",
+      "moreActions": "Περισσότερες ενέργειες",
+      "moveToFolder": "Μετακίνηση σε φάκελο…",
+      "openInDefaultApp": "Άνοιγμα στην προεπιλεγμένη εφαρμογή",
+      "rename": "Μετονομασία…",
+      "revealInFinder": "Εμφάνιση στο Finder",
+      "revealInSidebar": "Εμφάνιση στην πλοήγηση"
     },
     "breadcrumb": {
       "locationAria": "Σημείωση τοποθεσίας",
@@ -223,7 +252,12 @@
       "multiselect": "Πολλαπλή επιλογή"
     },
     "showOnCalendar": "Εμφάνιση στο ημερολόγιο",
-    "showingOnCalendar": "Εμφανίζεται στο ημερολόγιο"
+    "showingOnCalendar": "Εμφανίζεται στο ημερολόγιο",
+    "statusCategories": {
+      "done": "Ολοκληρώθηκε",
+      "inProgress": "Σε εξέλιξη",
+      "todo": "Προς εκτέλεση"
+    }
   },
   "templateSelector": {
     "title": "Επιλέξτε τον καμβά σας",
@@ -235,7 +269,10 @@
     "essentials": "Βασικά",
     "setFolderDefault": "Ορισμός ως προεπιλογή φακέλου",
     "useTemplate": "Χρησιμοποιήστε το πρότυπο",
-    "createNote": "Δημιουργία Σημείωσης"
+    "createNote": "Δημιουργία Σημείωσης",
+    "applyDescription": "Αντικαταστήστε το περιεχόμενο αυτής της σημείωσης με ένα πρότυπο",
+    "applyTitle": "Εφαρμογή προτύπου",
+    "applyToNote": "Εφαρμογή προτύπου"
   },
   "exportDialog": {
     "title": "Σημείωση εξαγωγής",
@@ -324,8 +361,6 @@
       "noFormulasDefined": "Δεν έχουν καθοριστεί τύποι",
       "addFormula": "Προσθήκη τύπου",
       "deleteFormula": "Διαγραφή τύπου",
-      "areYouSureYouWantToDeleteTheFormula": "Είστε βέβαιοι ότι θέλετε να διαγράψετε τον τύπο \"",
-      "quotThisActionCannotBeUndone": "quot;? Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.",
       "cancel": "Ακύρωση",
       "delete": "Διαγραφή",
       "none": "Κανένα",
@@ -333,7 +368,8 @@
       "delete2": "Διαγραφή",
       "columnBorders": "Περιγράμματα στηλών",
       "display": "Εμφάνιση",
-      "showSummaries": "Εμφάνιση συνόψεων"
+      "showSummaries": "Εμφάνιση συνόψεων",
+      "deleteFormulaBody": "Είστε βέβαιοι ότι θέλετε να διαγράψετε τον τύπο «{name}»; Αυτή η ενέργεια δεν μπορεί να αναιρεθεί."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Φίλτρο",
@@ -352,7 +388,8 @@
       "addCondition": "Προσθήκη συνθήκης",
       "addFilter": "Προσθήκη φίλτρου",
       "addGroup": "Προσθήκη ομάδας",
-      "removeGroup": "Αφαίρεση ομάδας"
+      "removeGroup": "Αφαίρεση ομάδας",
+      "lockedConditionHint": "Αυτή η συνθήκη ορίζει την τρέχουσα προβολή και δεν μπορεί να αφαιρεθεί από εδώ."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Ενσωματωμένο",
@@ -365,7 +402,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Πίνακας σημειώσεων",
       "selectAll": "Επιλογή όλων των σημειώσεων",
-      "selectRow": "Επιλογή σημείωσης"
+      "selectRow": "Επιλογή σημείωσης",
+      "kind": {
+        "Inbox": "Εισερχόμενα",
+        "Note": "Σημείωση",
+        "Task": "Εργασία"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Αναζήτηση σημειώσεων...",
@@ -379,10 +421,10 @@
       "preview": "Προεπισκόπηση",
       "fixExpressionErrorsToSeePreview": "Διορθώστε τα σφάλματα έκφρασης για να δείτε την προεπισκόπηση",
       "usingNote": "Χρήση σημείωσης: \"",
-      "quot": "quot;",
       "cancel": "Ακύρωση",
       "namePlaceholder": "ημέρες_μέχρι_λήγει",
-      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
+      "usingNoteTitle": "Χρήση σημείωσης: «{title}»"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Σαφής ομαδοποίηση",
@@ -408,12 +450,12 @@
       "bestMatch": "Καλύτερος αγώνας",
       "current": "τρέχον)",
       "allFolders": "ΟΛΟΙ ΟΙ ΦΑΚΕΛΟΙ",
-      "current2": "τρέχον)",
       "noFoldersMatch": "Δεν ταιριάζουν φάκελοι \"",
-      "quot": "quot;",
       "create": "Δημιουργία \"",
-      "quot2": "quot;",
-      "cancel": "Ακύρωση"
+      "cancel": "Ακύρωση",
+      "createFolderNamed": "Δημιουργία «{name}»",
+      "currentFolderBadge": "(τρέχων)",
+      "noFoldersMatchQuery": "Κανένας φάκελος δεν ταιριάζει με «{query}»"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Διαγραφή ",
@@ -468,7 +510,13 @@
       "failedToLoadPdf": "Αποτυχία φόρτωσης PDF: ",
       "download": "Λήψη",
       "download2": "Λήψη",
-      "noFileAttached": "Δεν επισυνάπτεται αρχείο"
+      "noFileAttached": "Δεν επισυνάπτεται αρχείο",
+      "alignCenter": "Στοίχιση στο κέντρο",
+      "alignLeft": "Στοίχιση αριστερά",
+      "alignRight": "Στοίχιση δεξιά",
+      "nextPage": "Επόμενη σελίδα",
+      "previousPage": "Προηγούμενη σελίδα",
+      "resizePdf": "Αλλαγή μεγέθους PDF"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Άνοιγμα στον πίνακα εργασιών",
@@ -530,7 +578,8 @@
       "failedToLoadTags": "Αποτυχία φόρτωσης ετικετών",
       "noTagsYet": "Δεν υπάρχουν ακόμη ετικέτες",
       "filterTags": "Φιλτράρισμα ετικετών...",
-      "noMatchingTags": "Δεν υπάρχουν αντίστοιχες ετικέτες"
+      "noMatchingTags": "Δεν υπάρχουν αντίστοιχες ετικέτες",
+      "Uncategorized": "Χωρίς κατηγορία"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Πέτα εδώ",
@@ -560,7 +609,8 @@
       "deleteTag": "Διαγραφή ετικέτας",
       "recent": "Πρόσφατα",
       "created": "Δημιουργήθηκε",
-      "alphabetical": "Αλφαβητικά"
+      "alphabetical": "Αλφαβητικά",
+      "tasks": "ΕΡΓΑΣΙΕΣ"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Μετονομασία ετικέτας",
@@ -733,7 +783,9 @@
     "replyPlaceholder": "Απάντηση...",
     "resolve": "Επίλυση",
     "sendAria": "Αποστολή σχολίου",
-    "toolbarComment": "Σχόλιο"
+    "toolbarComment": "Σχόλιο",
+    "openAttachmentAria": "Άνοιγμα συνημμένου {name}",
+    "openImageAria": "Άνοιγμα εικόνας {name}"
   },
   "dateMention": {
     "clear": "Εκκαθάριση",
@@ -743,5 +795,79 @@
     "remind": "Υπενθύμιση",
     "time": "Ώρα",
     "timeFormat": "Μορφή ώρας"
+  },
+  "applyTemplateConfirm": {
+    "body": "Αντικατάσταση μόνο του περιεχομένου",
+    "cancel": "Ακύρωση",
+    "description": "Η εφαρμογή του \"{name}\" θα αντικαταστήσει το τρέχον περιεχόμενο αυτής της σημείωσης. Αυτό δεν μπορεί να αναιρεθεί.",
+    "failed": "Η εφαρμογή του προτύπου απέτυχε",
+    "full": "Αντικατάσταση περιεχομένου και προσθήκη στοιχείων προτύπου",
+    "success": "Το πρότυπο εφαρμόστηκε",
+    "title": "Αντικατάσταση περιεχομένου σημείωσης;"
+  },
+  "tagView": {
+    "moreActions": "Περισσότερες ενέργειες",
+    "pin": {
+      "action": "Καρφίτσωμα {count, plural, one {# σημείωσης} other {# σημειώσεων}} στην ετικέτα",
+      "failed": "Το καρφίτσωμα της σημείωσης στην ετικέτα απέτυχε",
+      "success": "{count, plural, one {Καρφιτσώθηκε # σημείωση} other {Καρφιτσώθηκαν # σημειώσεις}} στην ετικέτα"
+    }
+  },
+  "tags": {
+    "hubTitle": "Ετικέτες",
+    "openHub": "Άνοιγμα κέντρου ετικετών"
+  },
+  "tagsHub": {
+    "cancelCreate": "Ακύρωση",
+    "category": {
+      "delete": "Διαγραφή κατηγορίας",
+      "deleteBody": "Οι ετικέτες θα μετακινηθούν στο «Χωρίς κατηγορία». Δεν θα διαγραφούν.",
+      "deleteCancel": "Ακύρωση",
+      "deleteConfirm": "Διαγραφή",
+      "deleteTitle": "Διαγραφή του {name};",
+      "dragHandle": "Σύρετε για αναδιάταξη της κατηγορίας",
+      "emptyHint": "Σύρετε μια ετικέτα εδώ",
+      "more": "Επιλογές κατηγορίας",
+      "rename": "Μετονομασία κατηγορίας"
+    },
+    "categoryNamePlaceholder": "Όνομα κατηγορίας",
+    "errors": {
+      "createCategoryFailed": "Η δημιουργία της κατηγορίας απέτυχε",
+      "createTagCategorizeFailed": "Η ετικέτα δημιουργήθηκε, αλλά δεν ήταν δυνατή η προσθήκη της στην κατηγορία",
+      "createTagFailed": "Η δημιουργία της ετικέτας απέτυχε",
+      "deleteCategoryFailed": "Η διαγραφή της κατηγορίας απέτυχε",
+      "loadFailed": "Η φόρτωση των κατηγοριών ετικετών απέτυχε",
+      "renameCategoryFailed": "Η μετονομασία της κατηγορίας απέτυχε",
+      "reorderFailed": "Η αναδιάταξη των ετικετών απέτυχε"
+    },
+    "loading": "Φόρτωση ετικετών...",
+    "newCategory": "Νέα κατηγορία",
+    "newTag": "Νέα ετικέτα",
+    "search": {
+      "empty": "Καμία κατηγορία ή ετικέτα δεν ταιριάζει με την αναζήτησή σας",
+      "placeholder": "Αναζήτηση κατηγοριών και ετικετών"
+    },
+    "tagNamePlaceholder": "Όνομα ετικέτας",
+    "uncategorized": "Χωρίς κατηγορία"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (διπλό κλικ για επεξεργασία)",
+      "dragToReorder": "Σύρετε για αναδιάταξη της στήλης: {name}"
+    },
+    "columns": {
+      "created": "Δημιουργήθηκε",
+      "folder": "Φάκελος",
+      "kind": "Είδος",
+      "modified": "Τροποποιήθηκε",
+      "tags": "Ετικέτες",
+      "title": "Τίτλος",
+      "wordCount": "Αριθμός λέξεων"
+    },
+    "defaultViewName": "Προεπιλογή",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# σημείωση} other {# σημειώσεις}}"
+    },
+    "selectView": "Επιλογή προβολής"
   }
 }

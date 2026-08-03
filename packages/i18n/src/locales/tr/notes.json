@@ -16,9 +16,27 @@
       "willSync": "Not bulutla senkronize edilecek",
       "renameFailed": "Not yeniden adlandırılamadı",
       "toggleLocalOnlyFailed": "Yalnızca yerele geçiş yapılamadı",
-      "toggleFullWidthFailed": "Tam genişliğe geçiş yapılamadı"
+      "toggleFullWidthFailed": "Tam genişliğe geçiş yapılamadı",
+      "copyPathFailed": "Yol kopyalanamadı",
+      "deleteFailed": "Not silinemedi",
+      "moveFailed": "Not taşınamadı",
+      "moved": "Not taşındı",
+      "openExternalFailed": "Not açılamadı",
+      "pathCopied": "Yol kopyalandı",
+      "revealFailed": "Not gösterilemedi"
     },
-    "deleteDialogTitle": "{count, plural, one {Notu Sil} other {# Notu Sil}}"
+    "deleteDialogTitle": "{count, plural, one {Notu Sil} other {# Notu Sil}}",
+    "deleteConfirm": {
+      "cancel": "İptal",
+      "confirm": "Sil",
+      "deleting": "Siliniyor...",
+      "description": "\"{title}\" notunu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+      "title": "Notu sil"
+    },
+    "itemsCount": "{count, plural, one {# öğe} other {# öğe}}",
+    "itemsCountFiltered": "{total, plural, one {# öğeden} other {# öğeden}} {shown} tanesi",
+    "renameViewUnavailableForTags": "Etiketlerde kayıtlı görünümler henüz yeniden adlandırılamıyor",
+    "tagFilterLabel": "etiket = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "Sil {count} Notlar",
       "deleteSelectedItems": "Sil {count} öğeler",
       "bookmark": "Yer imi ekle",
-      "removeFromBookmarks": "Yer imlerinden Kaldır"
+      "removeFromBookmarks": "Yer imlerinden Kaldır",
+      "applyTemplate": "Şablon Uygula"
     },
     "deleteDialog": {
       "noteTitle": "Notu Sil",
@@ -83,7 +102,17 @@
       "export": "İhracat",
       "fullWidth": "Tam genişlik",
       "disableLocalOnly": "Yalnızca yereli devre dışı bırak",
-      "setLocalOnly": "Yalnızca yerel olarak ayarla"
+      "setLocalOnly": "Yalnızca yerel olarak ayarla",
+      "applyTemplate": "Şablon uygula",
+      "copyPath": "Yolu kopyala",
+      "delete": "Notu sil",
+      "find": "Bul…",
+      "moreActions": "Daha fazla işlem",
+      "moveToFolder": "Klasöre taşı…",
+      "openInDefaultApp": "Varsayılan uygulamada aç",
+      "rename": "Yeniden adlandır…",
+      "revealInFinder": "Finder'da Göster",
+      "revealInSidebar": "Kenar çubuğunda göster"
     },
     "breadcrumb": {
       "locationAria": "Not konumu",
@@ -223,7 +252,12 @@
       "multiselect": "Çoklu seçim"
     },
     "showOnCalendar": "Takvimde göster",
-    "showingOnCalendar": "Takvimde gösteriliyor"
+    "showingOnCalendar": "Takvimde gösteriliyor",
+    "statusCategories": {
+      "done": "Tamamlandı",
+      "inProgress": "Devam ediyor",
+      "todo": "Yapılacak"
+    }
   },
   "templateSelector": {
     "title": "Kanvasınızı Seçin",
@@ -235,7 +269,10 @@
     "essentials": "Temel bilgiler",
     "setFolderDefault": "Klasör varsayılanı olarak ayarla",
     "useTemplate": "Şablonu Kullan",
-    "createNote": "Not Oluştur"
+    "createNote": "Not Oluştur",
+    "applyDescription": "Bu notun içeriğini bir şablonla değiştirin",
+    "applyTitle": "Şablon Uygula",
+    "applyToNote": "Şablon Uygula"
   },
   "exportDialog": {
     "title": "İhracat Notu",
@@ -324,8 +361,6 @@
       "noFormulasDefined": "Tanımlanmış formül yok",
       "addFormula": "Formül Ekle",
       "deleteFormula": "Formülü Sil",
-      "areYouSureYouWantToDeleteTheFormula": "Formülü silmek istediğinizden emin misiniz: \"",
-      "quotThisActionCannotBeUndone": "\"? Bu eylem geri alınamaz.",
       "cancel": "İptal",
       "delete": "Sil",
       "none": "Yok",
@@ -333,7 +368,8 @@
       "delete2": "Sil",
       "columnBorders": "Sütun kenarlıkları",
       "display": "Görünüm",
-      "showSummaries": "Özetleri göster"
+      "showSummaries": "Özetleri göster",
+      "deleteFormulaBody": "“{name}” formülünü silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtre",
@@ -352,7 +388,8 @@
       "addCondition": "Koşul ekle",
       "addFilter": "Filtre ekle",
       "addGroup": "Grup ekle",
-      "removeGroup": "Grubu kaldır"
+      "removeGroup": "Grubu kaldır",
+      "lockedConditionHint": "Bu koşul mevcut görünümü tanımlar ve buradan kaldırılamaz."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Yerleşik",
@@ -365,7 +402,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Not tablosu",
       "selectAll": "Tüm notları seç",
-      "selectRow": "Notu seç"
+      "selectRow": "Notu seç",
+      "kind": {
+        "Inbox": "Gelen Kutusu",
+        "Note": "Not",
+        "Task": "Görev"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Notlarda ara...",
@@ -379,10 +421,10 @@
       "preview": "Önizleme",
       "fixExpressionErrorsToSeePreview": "Önizlemeyi görmek için ifade hatalarını düzeltin",
       "usingNote": "Not kullanılıyor: \"",
-      "quot": "alıntı;",
       "cancel": "İptal",
       "namePlaceholder": "Formül adı",
-      "expressionPlaceholder": "Formül ifadesi girin"
+      "expressionPlaceholder": "Formül ifadesi girin",
+      "usingNoteTitle": "Not kullanılıyor: “{title}”"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Gruplandırmayı temizle",
@@ -408,12 +450,12 @@
       "bestMatch": "En iyi eşleşme",
       "current": "akım)",
       "allFolders": "TÜM KLASÖRLER",
-      "current2": "akım)",
       "noFoldersMatch": "Eşleşen klasör yok \"",
-      "quot": "alıntı;",
       "create": "Oluştur \"",
-      "quot2": "alıntı;",
-      "cancel": "İptal"
+      "cancel": "İptal",
+      "createFolderNamed": "“{name}” oluştur",
+      "currentFolderBadge": "(geçerli)",
+      "noFoldersMatchQuery": "“{query}” ile eşleşen klasör yok"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Sil ",
@@ -468,7 +510,13 @@
       "failedToLoadPdf": "PDF yüklenemedi: ",
       "download": "İndir",
       "download2": "İndir",
-      "noFileAttached": "Dosya eklenmedi"
+      "noFileAttached": "Dosya eklenmedi",
+      "alignCenter": "Ortaya hizala",
+      "alignLeft": "Sola hizala",
+      "alignRight": "Sağa hizala",
+      "nextPage": "Sonraki sayfa",
+      "previousPage": "Önceki sayfa",
+      "resizePdf": "PDF'yi yeniden boyutlandır"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Görev panelinde aç",
@@ -530,7 +578,8 @@
       "failedToLoadTags": "Etiketler yüklenemedi",
       "noTagsYet": "Henüz etiket yok",
       "filterTags": "Etiketleri filtrele...",
-      "noMatchingTags": "Eşleşen etiket yok"
+      "noMatchingTags": "Eşleşen etiket yok",
+      "Uncategorized": "Kategorisiz"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Buraya bırak",
@@ -560,7 +609,8 @@
       "deleteTag": "Etiketi sil",
       "recent": "Son",
       "created": "Oluşturuldu",
-      "alphabetical": "alfabetik"
+      "alphabetical": "alfabetik",
+      "tasks": "GÖREVLER"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Etiketi yeniden adlandır",
@@ -733,7 +783,9 @@
     "replyPlaceholder": "Yanıtla...",
     "resolve": "Çöz",
     "sendAria": "Yorumu gönder",
-    "toolbarComment": "Yorum"
+    "toolbarComment": "Yorum",
+    "openAttachmentAria": "{name} ekini aç",
+    "openImageAria": "{name} görselini aç"
   },
   "dateMention": {
     "clear": "Temizle",
@@ -743,5 +795,79 @@
     "remind": "Hatırlat",
     "time": "Saat",
     "timeFormat": "Saat biçimi"
+  },
+  "applyTemplateConfirm": {
+    "body": "Yalnızca içeriği değiştir",
+    "cancel": "İptal",
+    "description": "\"{name}\" uygulandığında bu notun mevcut içeriği değiştirilir. Bu işlem geri alınamaz.",
+    "failed": "Şablon uygulanamadı",
+    "full": "İçeriği değiştir ve şablon ayrıntılarını ekle",
+    "success": "Şablon uygulandı",
+    "title": "Not içeriği değiştirilsin mi?"
+  },
+  "tagView": {
+    "moreActions": "Daha fazla işlem",
+    "pin": {
+      "action": "{count, plural, one {# notu} other {# notu}} etikete sabitle",
+      "failed": "Not etikete sabitlenemedi",
+      "success": "{count, plural, one {# not} other {# not}} etikete sabitlendi"
+    }
+  },
+  "tags": {
+    "hubTitle": "Etiketler",
+    "openHub": "Etiket merkezini aç"
+  },
+  "tagsHub": {
+    "cancelCreate": "İptal",
+    "category": {
+      "delete": "Kategoriyi sil",
+      "deleteBody": "Etiketler Kategorisiz'e taşınacak. Silinmeyecekler.",
+      "deleteCancel": "İptal",
+      "deleteConfirm": "Sil",
+      "deleteTitle": "{name} silinsin mi?",
+      "dragHandle": "Kategoriyi yeniden sıralamak için sürükleyin",
+      "emptyHint": "Buraya bir etiket sürükleyin",
+      "more": "Kategori seçenekleri",
+      "rename": "Kategoriyi yeniden adlandır"
+    },
+    "categoryNamePlaceholder": "Kategori adı",
+    "errors": {
+      "createCategoryFailed": "Kategori oluşturulamadı",
+      "createTagCategorizeFailed": "Etiket oluşturuldu ancak kategoriye eklenemedi",
+      "createTagFailed": "Etiket oluşturulamadı",
+      "deleteCategoryFailed": "Kategori silinemedi",
+      "loadFailed": "Etiket kategorileri yüklenemedi",
+      "renameCategoryFailed": "Kategori yeniden adlandırılamadı",
+      "reorderFailed": "Etiketler yeniden sıralanamadı"
+    },
+    "loading": "Etiketler yükleniyor...",
+    "newCategory": "Yeni kategori",
+    "newTag": "Yeni etiket",
+    "search": {
+      "empty": "Aramanızla eşleşen kategori veya etiket yok",
+      "placeholder": "Kategori ve etiketlerde ara"
+    },
+    "tagNamePlaceholder": "Etiket adı",
+    "uncategorized": "Kategorisiz"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (düzenlemek için çift tıklayın)",
+      "dragToReorder": "Sütunu yeniden sıralamak için sürükleyin: {name}"
+    },
+    "columns": {
+      "created": "Oluşturuldu",
+      "folder": "Klasör",
+      "kind": "Tür",
+      "modified": "Değiştirildi",
+      "tags": "Etiketler",
+      "title": "Başlık",
+      "wordCount": "Kelime sayısı"
+    },
+    "defaultViewName": "Varsayılan",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# not} other {# not}}"
+    },
+    "selectView": "Görünüm Seç"
   }
 }

@@ -30,6 +30,7 @@ import {
   COLOR_NAMES
 } from '@/components/note/tags-row/tag-colors'
 import { cn } from '@/lib/utils'
+import { getStatusCategoryLabel } from '@/lib/contract-display-names'
 import { SettingsHeader } from '@/components/settings/settings-primitives'
 import { PROPERTY_TYPE_CONFIG } from '@/components/note/info-section/types'
 import { useT } from '@memry/i18n/renderer'
@@ -328,7 +329,7 @@ function PropertyManager() {
                           <div key={catKey} className="mb-2">
                             <div className="flex items-center justify-between py-1">
                               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                                {cat.label}
+                                {getStatusCategoryLabel(catKey, cat.label)}
                               </span>
                               <button
                                 type="button"

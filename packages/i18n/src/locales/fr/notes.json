@@ -16,9 +16,27 @@
       "willSync": "La note sera synchronisée avec le cloud",
       "renameFailed": "Échec du renommage de la note",
       "toggleLocalOnlyFailed": "Échec de l'activation du mode local uniquement",
-      "toggleFullWidthFailed": "Échec de l'activation de la pleine largeur"
+      "toggleFullWidthFailed": "Échec de l'activation de la pleine largeur",
+      "copyPathFailed": "Échec de la copie du chemin",
+      "deleteFailed": "Échec de la suppression de la note",
+      "moveFailed": "Échec du déplacement de la note",
+      "moved": "Note déplacée",
+      "openExternalFailed": "Échec de l'ouverture de la note",
+      "pathCopied": "Chemin copié",
+      "revealFailed": "Impossible de révéler la note"
     },
-    "deleteDialogTitle": "{count, plural, one {Supprimer la note} other {Supprimer les notes #}}"
+    "deleteDialogTitle": "{count, plural, one {Supprimer la note} other {Supprimer les notes #}}",
+    "deleteConfirm": {
+      "cancel": "Annuler",
+      "confirm": "Supprimer",
+      "deleting": "Suppression...",
+      "description": "Êtes-vous sûr de vouloir supprimer « {title} » ? Cette action ne peut pas être annulée.",
+      "title": "Supprimer la note"
+    },
+    "itemsCount": "{count, plural, one {# élément} many {# éléments} other {# éléments}}",
+    "itemsCountFiltered": "{shown} sur {total, plural, one {# élément} many {# éléments} other {# éléments}}",
+    "renameViewUnavailableForTags": "Le renommage des vues enregistrées n'est pas encore disponible pour les balises",
+    "tagFilterLabel": "balise = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "Supprimer les notes {count}",
       "deleteSelectedItems": "Supprimer les éléments {count}",
       "bookmark": "Ajouter aux favoris",
-      "removeFromBookmarks": "Retirer des favoris"
+      "removeFromBookmarks": "Retirer des favoris",
+      "applyTemplate": "Appliquer un modèle"
     },
     "deleteDialog": {
       "noteTitle": "Supprimer la note",
@@ -83,7 +102,17 @@
       "export": "Exporter",
       "fullWidth": "Pleine largeur",
       "disableLocalOnly": "Désactiver le local uniquement",
-      "setLocalOnly": "Définir en local uniquement"
+      "setLocalOnly": "Définir en local uniquement",
+      "applyTemplate": "Appliquer un modèle",
+      "copyPath": "Copier le chemin",
+      "delete": "Supprimer la note",
+      "find": "Rechercher…",
+      "moreActions": "Plus d'actions",
+      "moveToFolder": "Déplacer vers un dossier…",
+      "openInDefaultApp": "Ouvrir dans l'application par défaut",
+      "rename": "Renommer…",
+      "revealInFinder": "Révéler dans le Finder",
+      "revealInSidebar": "Révéler dans la navigation"
     },
     "breadcrumb": {
       "locationAria": "Notez l'emplacement",
@@ -223,7 +252,12 @@
       "multiselect": "Sélection multiple"
     },
     "showOnCalendar": "Afficher sur le calendrier",
-    "showingOnCalendar": "Affiché sur le calendrier"
+    "showingOnCalendar": "Affiché sur le calendrier",
+    "statusCategories": {
+      "done": "Terminé",
+      "inProgress": "En cours",
+      "todo": "À faire"
+    }
   },
   "templateSelector": {
     "title": "Choisissez votre toile",
@@ -235,7 +269,10 @@
     "essentials": "Essentiels",
     "setFolderDefault": "Définir comme dossier par défaut",
     "useTemplate": "Utiliser le modèle",
-    "createNote": "Créer une note"
+    "createNote": "Créer une note",
+    "applyDescription": "Remplacer le contenu de cette note par un modèle",
+    "applyTitle": "Appliquer un modèle",
+    "applyToNote": "Appliquer le modèle"
   },
   "exportDialog": {
     "title": "Remarque sur l'exportation",
@@ -324,8 +361,6 @@
       "noFormulasDefined": "Aucune formule définie",
       "addFormula": "Ajouter une formule",
       "deleteFormula": "Supprimer la formule",
-      "areYouSureYouWantToDeleteTheFormula": "Etes-vous sûr de vouloir supprimer la formule \"",
-      "quotThisActionCannotBeUndone": "\" ? Cette action ne peut pas être annulée.",
       "cancel": "Annuler",
       "delete": "Supprimer",
       "none": "Aucun",
@@ -333,7 +368,8 @@
       "delete2": "Supprimer",
       "columnBorders": "Bordures de colonne",
       "display": "Affichage",
-      "showSummaries": "Afficher les résumés"
+      "showSummaries": "Afficher les résumés",
+      "deleteFormulaBody": "Voulez-vous vraiment supprimer la formule « {name} » ? Cette action ne peut pas être annulée."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtrer",
@@ -352,7 +388,8 @@
       "addCondition": "Ajouter une condition",
       "addFilter": "Ajouter un filtre",
       "addGroup": "Ajouter un groupe",
-      "removeGroup": "Supprimer le groupe"
+      "removeGroup": "Supprimer le groupe",
+      "lockedConditionHint": "Cette condition définit la vue actuelle et ne peut pas être supprimée ici."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Intégré",
@@ -365,7 +402,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Tableau des remarques",
       "selectAll": "Sélectionner toutes les notes",
-      "selectRow": "Sélectionner la note"
+      "selectRow": "Sélectionner la note",
+      "kind": {
+        "Inbox": "Boîte de réception",
+        "Note": "Note",
+        "Task": "Tâche"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Notes de recherche...",
@@ -379,10 +421,10 @@
       "preview": "Aperçu",
       "fixExpressionErrorsToSeePreview": "Corrigez les erreurs d’expression pour voir l’aperçu",
       "usingNote": "Remarque d'utilisation : \"",
-      "quot": "\"",
       "cancel": "Annuler",
       "namePlaceholder": "jours_jusqu'à_échéance",
-      "expressionPlaceholder": "dateDiff(due_date, aujourd'hui(), \"jours\")"
+      "expressionPlaceholder": "dateDiff(due_date, aujourd'hui(), \"jours\")",
+      "usingNoteTitle": "Note utilisée : « {title} »"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Regroupement clair",
@@ -408,12 +450,12 @@
       "bestMatch": "Meilleure correspondance",
       "current": "courant)",
       "allFolders": "TOUS LES DOSSIERS",
-      "current2": "courant)",
       "noFoldersMatch": "Aucun dossier ne correspond à \"",
-      "quot": "\"",
       "create": "Créer \"",
-      "quot2": "\"",
-      "cancel": "Annuler"
+      "cancel": "Annuler",
+      "createFolderNamed": "Créer « {name} »",
+      "currentFolderBadge": "(actuel)",
+      "noFoldersMatchQuery": "Aucun dossier ne correspond à « {query} »"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Supprimer ",
@@ -468,7 +510,13 @@
       "failedToLoadPdf": "Échec du chargement du PDF : ",
       "download": "Télécharger",
       "download2": "Télécharger",
-      "noFileAttached": "Aucun fichier joint"
+      "noFileAttached": "Aucun fichier joint",
+      "alignCenter": "Aligner au centre",
+      "alignLeft": "Aligner à gauche",
+      "alignRight": "Aligner à droite",
+      "nextPage": "Page suivante",
+      "previousPage": "Page précédente",
+      "resizePdf": "Redimensionner le PDF"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Ouvrir dans le panneau des tâches",
@@ -530,7 +578,8 @@
       "failedToLoadTags": "Échec du chargement des balises",
       "noTagsYet": "Pas encore de balises",
       "filterTags": "Filtrer les balises...",
-      "noMatchingTags": "Aucune balise correspondante"
+      "noMatchingTags": "Aucune balise correspondante",
+      "Uncategorized": "Sans catégorie"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Déposez ici",
@@ -560,7 +609,8 @@
       "deleteTag": "Supprimer la balise",
       "recent": "Récent",
       "created": "Créé",
-      "alphabetical": "Alphabétique"
+      "alphabetical": "Alphabétique",
+      "tasks": "TÂCHES"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Renommer la balise",
@@ -733,7 +783,9 @@
     "replyPlaceholder": "Répondre...",
     "resolve": "Résoudre",
     "sendAria": "Envoyer le commentaire",
-    "toolbarComment": "Commenter"
+    "toolbarComment": "Commenter",
+    "openAttachmentAria": "Ouvrir la pièce jointe {name}",
+    "openImageAria": "Ouvrir l'image {name}"
   },
   "dateMention": {
     "clear": "Effacer",
@@ -743,5 +795,79 @@
     "remind": "Rappeler",
     "time": "Heure",
     "timeFormat": "Format de l'heure"
+  },
+  "applyTemplateConfirm": {
+    "body": "Remplacer uniquement le contenu",
+    "cancel": "Annuler",
+    "description": "L'application de « {name} » remplacera le contenu actuel de cette note. Cette action ne peut pas être annulée.",
+    "failed": "Échec de l'application du modèle",
+    "full": "Remplacer le contenu et ajouter les détails du modèle",
+    "success": "Modèle appliqué",
+    "title": "Remplacer le contenu de la note ?"
+  },
+  "tagView": {
+    "moreActions": "Plus d'actions",
+    "pin": {
+      "action": "Épingler {count, plural, one {# note} many {# notes} other {# notes}} à la balise",
+      "failed": "Échec de l'épinglage de la note à la balise",
+      "success": "{count, plural, one {# note épinglée} many {# notes épinglées} other {# notes épinglées}} à la balise"
+    }
+  },
+  "tags": {
+    "hubTitle": "Balises",
+    "openHub": "Ouvrir le centre des balises"
+  },
+  "tagsHub": {
+    "cancelCreate": "Annuler",
+    "category": {
+      "delete": "Supprimer la catégorie",
+      "deleteBody": "Les balises seront déplacées vers Sans catégorie. Elles ne seront pas supprimées.",
+      "deleteCancel": "Annuler",
+      "deleteConfirm": "Supprimer",
+      "deleteTitle": "Supprimer {name} ?",
+      "dragHandle": "Faire glisser pour réorganiser la catégorie",
+      "emptyHint": "Faites glisser une balise ici",
+      "more": "Options de la catégorie",
+      "rename": "Renommer la catégorie"
+    },
+    "categoryNamePlaceholder": "Nom de la catégorie",
+    "errors": {
+      "createCategoryFailed": "Échec de la création de la catégorie",
+      "createTagCategorizeFailed": "Balise créée, mais elle n'a pas pu être ajoutée à la catégorie",
+      "createTagFailed": "Échec de la création de la balise",
+      "deleteCategoryFailed": "Échec de la suppression de la catégorie",
+      "loadFailed": "Échec du chargement des catégories de balises",
+      "renameCategoryFailed": "Échec du renommage de la catégorie",
+      "reorderFailed": "Échec de la réorganisation des balises"
+    },
+    "loading": "Chargement des balises...",
+    "newCategory": "Nouvelle catégorie",
+    "newTag": "Nouvelle balise",
+    "search": {
+      "empty": "Aucune catégorie ni balise ne correspond à votre recherche",
+      "placeholder": "Rechercher des catégories et des balises"
+    },
+    "tagNamePlaceholder": "Nom de la balise",
+    "uncategorized": "Sans catégorie"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (double-cliquez pour modifier)",
+      "dragToReorder": "Faites glisser pour réorganiser la colonne : {name}"
+    },
+    "columns": {
+      "created": "Créé le",
+      "folder": "Dossier",
+      "kind": "Type",
+      "modified": "Modifié le",
+      "tags": "Balises",
+      "title": "Titre",
+      "wordCount": "Nombre de mots"
+    },
+    "defaultViewName": "Par défaut",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# note} many {# notes} other {# notes}}"
+    },
+    "selectView": "Sélectionner une vue"
   }
 }

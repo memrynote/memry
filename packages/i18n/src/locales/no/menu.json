@@ -1,11 +1,16 @@
 {
   "app": {
     "quit": "Avslutt",
-    "preferences": "Innstillinger…"
+    "preferences": "Innstillinger…",
+    "exit": "Avslutt",
+    "hide": "Skjul MemryNote",
+    "hideOthers": "Skjul andre",
+    "services": "Tjenester",
+    "unhide": "Vis alle"
   },
   "file": {
     "label": "Fil",
-    "newNote": "Ny merknad",
+    "newNote": "Nytt notat",
     "close": "Lukk vinduet",
     "closeTab": "Lukk fane",
     "exportPdf": "Eksporter til PDF…",
@@ -18,26 +23,33 @@
   "edit": {
     "label": "Rediger",
     "undo": "Angre",
-    "redo": "Gjenta",
-    "cut": "Kutt",
+    "redo": "Gjør om",
+    "cut": "Klipp ut",
     "copy": "Kopier",
     "paste": "Lim inn",
-    "selectAll": "Velg alle",
+    "selectAll": "Marker alt",
     "find": "Finn",
-    "speech": "Tale"
+    "speech": "Tale",
+    "delete": "Slett",
+    "pasteAndMatchStyle": "Lim inn og tilpass stil",
+    "startSpeaking": "Start opplesing",
+    "stopSpeaking": "Stopp opplesing"
   },
   "view": {
     "label": "Visning",
     "reload": "Last inn på nytt",
     "toggleDevTools": "Slå av/på utviklerverktøy",
-    "toggleFullscreen": "Slå på fullskjerm",
+    "toggleFullscreen": "Slå av/på fullskjerm",
     "theme": "Tema",
     "themeDark": "Mørkt",
     "themeLight": "Lyst",
     "themeSystem": "System",
     "themeWhite": "Papir",
     "toggleDayPanel": "Veksle dagpanel",
-    "toggleSidebar": "Veksle sidefelt"
+    "toggleSidebar": "Veksle sidefelt",
+    "actualSize": "Faktisk størrelse",
+    "zoomIn": "Zoom inn",
+    "zoomOut": "Zoom ut"
   },
   "format": {
     "body": "Brødtekst",
@@ -55,7 +67,8 @@
     "about": "Om MemryNote",
     "documentation": "Dokumentasjon",
     "label": "Hjelp",
-    "shortcuts": "Hurtigtaster"
+    "shortcuts": "Hurtigtaster",
+    "aboutVersion": "Versjon {version}"
   },
   "insert": {
     "attachment": "Sett inn vedlegg…",
@@ -67,6 +80,10 @@
     "taskList": "Oppgaveliste"
   },
   "window": {
-    "label": "Vindu"
+    "label": "Vindu",
+    "close": "Lukk",
+    "front": "Flytt alle forrest",
+    "minimize": "Minimer",
+    "zoom": "Zoom"
   }
 }

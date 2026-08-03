@@ -22,7 +22,19 @@
     "writeFailed": "Gagal menyimpan nota ini. Semak ruang cakera dan kebenaran.",
     "readFailed": "Gagal membaca nota ini. Fail mungkin dikunci atau rosak.",
     "deleteFailed": "Gagal memadamkan nota ini. Semak kebenaran fail.",
-    "invalidPath": "Laluan nota tidak sah."
+    "invalidPath": "Laluan nota tidak sah.",
+    "applyTemplateFailed": "Gagal menggunakan templat",
+    "createFailed": "Gagal mencipta nota",
+    "deleteVersionFailed": "Gagal memadamkan versi",
+    "exportHtmlFailed": "Gagal mengeksport HTML",
+    "exportPdfFailed": "Gagal mengeksport PDF",
+    "importFilesFailed": "Gagal mengimport fail",
+    "moveFailed": "Gagal mengalihkan nota",
+    "renameFailed": "Gagal menamakan semula nota",
+    "reorderFailed": "Gagal menyusun semula nota",
+    "restoreVersionFailed": "Gagal memulihkan versi",
+    "setLocalOnlyFailed": "Gagal menetapkan tempatan sahaja",
+    "updateFailed": "Gagal mengemas kini nota"
   },
   "database": {
     "connectionFailed": "Tidak dapat menyambung ke pangkalan data tempatan. Cuba mulakan semula apl.",
@@ -41,7 +53,14 @@
     "fileTooLarge": "Fail ini terlalu besar untuk dilampirkan.",
     "unsupportedType": "Jenis fail ini tidak disokong.",
     "writeFailed": "Gagal menyimpan lampiran. Semak ruang cakera.",
-    "deleteFailed": "Gagal memadamkan lampiran."
+    "deleteFailed": "Gagal memadamkan lampiran.",
+    "downloadFailed": "Muat turun lampiran gagal",
+    "downloadProgressFailed": "Gagal mengambil kemajuan muat turun",
+    "uploadFailed": "Muat naik lampiran gagal",
+    "uploadProgressFailed": "Gagal mengambil kemajuan muat naik",
+    "emptyFile": "Tidak dapat memuat naik fail kosong",
+    "exceedsMaxSize": "Fail terlalu besar: {size} melebihi had {limit}",
+    "exceedsPlanLimit": "Fail lebih besar daripada yang dibenarkan oleh pelan anda: {size} melebihi {limit}"
   },
   "encryption": {
     "failed": "Gagal menyulitkan data. Kunci anda mungkin perlu dijana semula.",
@@ -74,6 +93,188 @@
     "securityQuarantinePermanent": "Item penyegerakan tidak dapat disahkan dan telah dikuarantin untuk keselamatan.",
     "securityQuarantineRetry": "Item penyegerakan gagal pengesahan tandatangan dan akan dicuba semula.",
     "certificatePinPaused": "Sambungan selamat ke pelayan penyegerakan tidak dapat disahkan. Penyegerakan telah dijeda untuk perlindungan anda.",
-    "paymentRequired": "Pelan Sync berbayar diperlukan untuk menggunakan penyegerakan disulitkan terhos."
+    "paymentRequired": "Pelan Sync berbayar diperlukan untuk menggunakan penyegerakan disulitkan terhos.",
+    "attachmentUploadFailed": "Lampiran \"{filename}\" tidak dapat disegerakkan. Ia kekal pada peranti ini.",
+    "fileTooLarge": "Fail ini lebih besar daripada yang dibenarkan oleh pelan anda. Tingkatkan pelan anda untuk menyegerakkan fail yang lebih besar.",
+    "vaultRecovered": "Kunci peti besi telah dipulihkan. Penyegerakan akan disambung semula.",
+    "historyFetchFailed": "Gagal mengambil sejarah penyegerakan",
+    "keyPersistenceFailed": "Gagal menyimpan kunci penyulitan dengan selamat. Pendaftaran peranti telah ditarik balik. Sila cuba lagi.",
+    "serverUnreachable": "Tidak dapat menyambung ke pelayan penyegerakan. Sila semak sambungan internet anda.",
+    "updateSyncedSettingFailed": "Gagal mengemas kini tetapan yang disegerakkan",
+    "requestTimedOut": "Permintaan penyegerakan tamat masa. Sila semak sambungan internet anda."
+  },
+  "agent": {
+    "conversationBusy": "Perbualan sedang sibuk",
+    "runtimeStarting": "Masa jalan ejen sedang bermula. Cuba lagi."
+  },
+  "ai": {
+    "inlineDisabled": "Penyuntingan AI dalam baris dilumpuhkan",
+    "listOllamaModelsFailed": "Gagal menyenaraikan model Ollama"
+  },
+  "auth": {
+    "approveLinkingFailed": "Gagal meluluskan pemautan",
+    "cannotRemoveCurrentDevice": "Peranti semasa tidak boleh dialih keluar",
+    "completeLinkingFailed": "Gagal melengkapkan pemautan",
+    "confirmRecoveryPhraseFailed": "Gagal mengesahkan frasa pemulihan",
+    "fetchSasCodeFailed": "Gagal mengambil kod SAS",
+    "finalizeVaultChoiceFailed": "Gagal memuktamadkan pilihan peti besi",
+    "initiateOAuthFailed": "Gagal memulakan OAuth",
+    "invalidRecoveryPhraseFormat": "Format frasa pemulihan tidak sah",
+    "linkDeviceQrFailed": "Gagal memautkan peranti melalui QR",
+    "linkRecoveryPhraseFailed": "Gagal memaut melalui frasa pemulihan",
+    "notAuthenticated": "Tidak disahkan",
+    "pickFolderFailed": "Gagal memilih folder",
+    "recoveryPhraseMismatch": "Frasa pemulihan tidak sepadan. Sila cuba lagi.",
+    "removeDeviceFailed": "Gagal mengalih keluar peranti",
+    "renameDeviceFailed": "Gagal menamakan semula peranti",
+    "requestOtpFailed": "Gagal meminta OTP",
+    "resendOtpFailed": "Gagal menghantar semula OTP",
+    "sessionExpired": "Sesi telah tamat tempoh. Sila log masuk semula.",
+    "setupFirstDeviceOAuthFailed": "Gagal menyediakan peranti pertama melalui OAuth",
+    "verifyOtpFailed": "Gagal mengesahkan OTP"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "Item sudah ditanda buku",
+    "notFound": "Penanda buku tidak ditemui"
+  },
+  "calendar": {
+    "connectProviderFailed": "Gagal menyambungkan penyedia kalendar",
+    "createEventFailed": "Gagal mencipta acara kalendar",
+    "deleteEventFailed": "Gagal memadamkan acara kalendar",
+    "disconnectProviderFailed": "Gagal memutuskan sambungan penyedia kalendar",
+    "eventNotFound": "Acara kalendar tidak ditemui",
+    "googleNotConnected": "Google Calendar tidak disambungkan pada peranti ini",
+    "listGoogleCalendarsFailed": "Gagal menyenaraikan kalendar Google",
+    "onlyGoogleSourcesRetryable": "Hanya sumber kalendar Google boleh dicuba semula",
+    "onlySourcesSelectable": "Hanya sumber kalendar boleh dipilih",
+    "promoteExternalEventFailed": "Gagal menaikkan taraf acara kalendar luaran",
+    "refreshProviderFailed": "Gagal memuat semula penyedia kalendar",
+    "retryGoogleSourceSyncFailed": "Gagal mencuba semula penyegerakan sumber Google Calendar",
+    "setDefaultGoogleCalendarFailed": "Gagal menetapkan kalendar Google lalai",
+    "signInBeforeRefresh": "Log masuk ke memrynote sebelum memuat semula Google Calendar",
+    "sourceNotFound": "Sumber kalendar tidak ditemui",
+    "syncFailed": "Penyegerakan gagal",
+    "updateEventFailed": "Gagal mengemas kini acara kalendar",
+    "updateSourceSelectionFailed": "Gagal mengemas kini pemilihan sumber kalendar"
+  },
+  "folder": {
+    "createFailed": "Gagal mencipta folder",
+    "deleteFailed": "Gagal memadamkan folder",
+    "renameFailed": "Gagal menamakan semula folder",
+    "setConfigFailed": "Gagal menetapkan konfigurasi folder"
+  },
+  "folderView": {
+    "deleteViewFailed": "Gagal memadamkan paparan",
+    "setConfigFailed": "Gagal menetapkan konfigurasi",
+    "setViewFailed": "Gagal menetapkan paparan"
+  },
+  "googleCalendar": {
+    "accessDenied": "Akses Google Calendar telah ditolak. Anda boleh menyambung semula bila-bila masa anda bersedia.",
+    "connectFailed": "Tidak dapat menyambung ke Google Calendar. Sila cuba lagi sebentar.",
+    "misconfigured": "Google Calendar tidak dikonfigurasikan dengan betul. Sila hubungi sokongan jika ini berterusan.",
+    "reconnectNeeded": "Sambungan Google Calendar anda telah tamat tempoh. Sila putuskan sambungan dan sambung semula.",
+    "scopeMissing": "Kami tidak dapat mengakses Google Calendar anda kerana kebenaran Calendar tidak diberikan. Sila cuba lagi dan pastikan kotak semak Calendar kekal ditanda pada skrin kebenaran Google.",
+    "temporarilyUnavailable": "Google Calendar tidak tersedia buat sementara waktu. Sila cuba lagi sebentar."
+  },
+  "importer": {
+    "cancelFailed": "Pembatalan gagal",
+    "fileSelectionFailed": "Pemilihan fail gagal",
+    "importFailed": "Import gagal",
+    "listFailed": "Gagal menyenaraikan pengimport",
+    "previewFailed": "Pratonton gagal"
+  },
+  "project": {
+    "archiveFailed": "Gagal mengarkibkan projek",
+    "captureLinkFailed": "Gagal menangkap pautan",
+    "createFailed": "Gagal mencipta projek",
+    "deleteFailed": "Gagal memadamkan projek",
+    "importFilesFailed": "Gagal mengimport fail",
+    "linkItemFailed": "Gagal memautkan item",
+    "listForItemFailed": "Gagal menyenaraikan projek untuk item",
+    "reorderFailed": "Gagal menyusun semula projek",
+    "setHomeNoteFailed": "Gagal menetapkan nota utama",
+    "unlinkItemFailed": "Gagal menyahpaut item",
+    "updateFailed": "Gagal mengemas kini projek",
+    "updatePinnedFailed": "Gagal mengemas kini keadaan sematan"
+  },
+  "property": {
+    "alreadyExists": "Sifat \"{name}\" sudah wujud",
+    "createDefinitionFailed": "Gagal mencipta takrifan sifat",
+    "entityNotFound": "Entiti tidak ditemui",
+    "notFound": "Sifat \"{name}\" tidak ditemui",
+    "renameFailed": "Gagal menamakan semula sifat",
+    "setCalendarVisibilityFailed": "Gagal menetapkan keterlihatan sifat kalendar",
+    "setFailed": "Gagal menetapkan sifat",
+    "updateDefinitionFailed": "Gagal mengemas kini takrifan sifat"
+  },
+  "reminder": {
+    "createFailed": "Gagal mencipta peringatan",
+    "dismissAllFailed": "Gagal mengetepikan peringatan",
+    "dismissFailed": "Gagal mengetepikan peringatan",
+    "notFound": "Peringatan tidak ditemui",
+    "snoozeFailed": "Gagal menunda peringatan",
+    "updateFailed": "Gagal mengemas kini peringatan"
+  },
+  "savedFilter": {
+    "notFound": "Penapis yang disimpan tidak ditemui"
+  },
+  "search": {
+    "rebuildFailed": "Pembinaan semula gagal"
+  },
+  "settings": {
+    "modelAlreadyLoading": "Model sedang dimuatkan",
+    "modelLoadFailed": "Gagal memuatkan model",
+    "shortcutInUse": "Pintasan {shortcut} sudah digunakan",
+    "terminalCommandInstallFailed": "Gagal memasang arahan terminal",
+    "terminalCommandUninstallFailed": "Gagal menyahpasang arahan terminal",
+    "unknownVault": "Peti besi tidak diketahui",
+    "voiceModelDownloadFailed": "Gagal memuat turun model suara"
+  },
+  "tag": {
+    "categoryNameRequired": "Nama kategori diperlukan",
+    "createCategoryFailed": "Gagal mencipta kategori tag",
+    "deleteCategoryFailed": "Gagal memadamkan kategori tag",
+    "deleteFailed": "Gagal memadamkan tag",
+    "listCategoriesFailed": "Gagal menyenaraikan kategori tag",
+    "mergeFailed": "Gagal menggabungkan tag",
+    "mergeSameTag": "Tag sumber dan tag sasaran adalah sama",
+    "pinNoteFailed": "Gagal menyemat nota",
+    "removeFromNoteFailed": "Gagal mengalih keluar tag daripada nota",
+    "renameCategoryFailed": "Gagal menamakan semula kategori tag",
+    "renameFailed": "Gagal menamakan semula tag",
+    "reorderFailed": "Gagal menyusun semula tag",
+    "unpinNoteFailed": "Gagal menyahsemat nota",
+    "updateColorFailed": "Gagal mengemas kini warna tag",
+    "updateIconFailed": "Gagal mengemas kini ikon tag"
+  },
+  "task": {
+    "archiveFailed": "Gagal mengarkibkan tugasan",
+    "archiveManyFailed": "Gagal mengarkibkan tugasan yang dipilih",
+    "completeFailed": "Gagal menyelesaikan tugasan",
+    "completeManyFailed": "Gagal menyelesaikan tugasan yang dipilih",
+    "convertToSubtaskFailed": "Gagal menukar kepada subtugas",
+    "convertToTaskFailed": "Gagal menukar kepada tugasan",
+    "createFailed": "Gagal mencipta tugasan",
+    "deleteFailed": "Gagal memadamkan tugasan",
+    "deleteManyFailed": "Gagal memadamkan tugasan yang dipilih",
+    "duplicateFailed": "Gagal menggandakan tugasan",
+    "moveFailed": "Gagal mengalihkan tugasan",
+    "moveManyFailed": "Gagal mengalihkan tugasan yang dipilih",
+    "reorderFailed": "Gagal menyusun semula tugasan",
+    "unarchiveFailed": "Gagal menyaharkibkan tugasan",
+    "uncompleteFailed": "Gagal menyahselesaikan tugasan",
+    "updateFailed": "Gagal mengemas kini tugasan"
+  },
+  "taskStatus": {
+    "createFailed": "Gagal mencipta status",
+    "deleteFailed": "Gagal memadamkan status",
+    "reorderFailed": "Gagal menyusun semula status",
+    "updateFailed": "Gagal mengemas kini status"
+  },
+  "template": {
+    "createFailed": "Gagal mencipta templat",
+    "deleteFailed": "Gagal memadamkan templat",
+    "duplicateFailed": "Gagal menggandakan templat",
+    "updateFailed": "Gagal mengemas kini templat"
   }
 }

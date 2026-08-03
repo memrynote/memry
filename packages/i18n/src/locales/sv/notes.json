@@ -16,9 +16,27 @@
       "willSync": "Anteckning kommer att synkroniseras till molnet",
       "renameFailed": "Misslyckades med att byta namn på anteckning",
       "toggleLocalOnlyFailed": "Misslyckades med att växla endast lokal",
-      "toggleFullWidthFailed": "Misslyckades med att växla full bredd"
+      "toggleFullWidthFailed": "Misslyckades med att växla full bredd",
+      "copyPathFailed": "Misslyckades med att kopiera sökvägen",
+      "deleteFailed": "Misslyckades med att ta bort anteckningen",
+      "moveFailed": "Misslyckades med att flytta anteckningen",
+      "moved": "Anteckningen flyttad",
+      "openExternalFailed": "Misslyckades med att öppna anteckningen",
+      "pathCopied": "Sökväg kopierad",
+      "revealFailed": "Misslyckades med att visa anteckningen"
     },
-    "deleteDialogTitle": "{count, plural, one {Radera anteckning} other {Radera # Anteckningar}}"
+    "deleteDialogTitle": "{count, plural, one {Radera anteckning} other {Radera # Anteckningar}}",
+    "deleteConfirm": {
+      "cancel": "Avbryt",
+      "confirm": "Ta bort",
+      "deleting": "Tar bort...",
+      "description": "Är du säker på att du vill ta bort \"{title}\"? Den här åtgärden kan inte ångras.",
+      "title": "Ta bort anteckning"
+    },
+    "itemsCount": "{count, plural, one {# objekt} other {# objekt}}",
+    "itemsCountFiltered": "{shown} av {total, plural, one {# objekt} other {# objekt}}",
+    "renameViewUnavailableForTags": "Det går ännu inte att byta namn på sparade vyer för taggar",
+    "tagFilterLabel": "tagg = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "Radera {count} Anteckningar",
       "deleteSelectedItems": "Ta bort {count} objekt",
       "bookmark": "Bokmärk",
-      "removeFromBookmarks": "Ta bort från bokmärken"
+      "removeFromBookmarks": "Ta bort från bokmärken",
+      "applyTemplate": "Använd mall"
     },
     "deleteDialog": {
       "noteTitle": "Radera anteckning",
@@ -61,7 +80,7 @@
   },
   "editor": {
     "title": {
-      "untitled": "Untitled",
+      "untitled": "Namnlös",
       "aria": "Anteckningstitel"
     },
     "content": {
@@ -83,7 +102,17 @@
       "export": "Exportera",
       "fullWidth": "Helskärmsläge",
       "disableLocalOnly": "Inaktivera endast lokalt",
-      "setLocalOnly": "Ange endast lokalt"
+      "setLocalOnly": "Ange endast lokalt",
+      "applyTemplate": "Använd mall",
+      "copyPath": "Kopiera sökväg",
+      "delete": "Ta bort anteckning",
+      "find": "Sök…",
+      "moreActions": "Fler åtgärder",
+      "moveToFolder": "Flytta till mapp…",
+      "openInDefaultApp": "Öppna i standardappen",
+      "rename": "Byt namn…",
+      "revealInFinder": "Visa i Finder",
+      "revealInSidebar": "Visa i navigeringen"
     },
     "breadcrumb": {
       "locationAria": "Notera plats",
@@ -223,7 +252,12 @@
       "multiselect": "Flerval"
     },
     "showOnCalendar": "Visa i kalender",
-    "showingOnCalendar": "Visas i kalender"
+    "showingOnCalendar": "Visas i kalender",
+    "statusCategories": {
+      "done": "Klar",
+      "inProgress": "Pågår",
+      "todo": "Att göra"
+    }
   },
   "templateSelector": {
     "title": "Välj din duk",
@@ -235,7 +269,10 @@
     "essentials": "Grundläggande",
     "setFolderDefault": "Ange som mappstandard",
     "useTemplate": "Använd mall",
-    "createNote": "Skapa anteckning"
+    "createNote": "Skapa anteckning",
+    "applyDescription": "Ersätt anteckningens innehåll med en mall",
+    "applyTitle": "Använd en mall",
+    "applyToNote": "Använd mall"
   },
   "exportDialog": {
     "title": "Exportera anteckning",
@@ -324,8 +361,6 @@
       "noFormulasDefined": "Inga definierade formler",
       "addFormula": "Lägg till formel",
       "deleteFormula": "Ta bort formel",
-      "areYouSureYouWantToDeleteTheFormula": "Är du säker på att du vill ta bort formeln \"",
-      "quotThisActionCannotBeUndone": "\"? Denna åtgärd kan inte ångras.",
       "cancel": "Avbryt",
       "delete": "Ta bort",
       "none": "Inga",
@@ -333,7 +368,8 @@
       "delete2": "Ta bort",
       "columnBorders": "Kolumnkanter",
       "display": "Visning",
-      "showSummaries": "Visa sammanfattningar"
+      "showSummaries": "Visa sammanfattningar",
+      "deleteFormulaBody": "Är du säker på att du vill ta bort formeln ”{name}”? Den här åtgärden kan inte ångras."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filter",
@@ -352,7 +388,8 @@
       "addCondition": "Lägg till villkor",
       "addFilter": "Lägg till filter",
       "addGroup": "Lägg till grupp",
-      "removeGroup": "Ta bort grupp"
+      "removeGroup": "Ta bort grupp",
+      "lockedConditionHint": "Det här villkoret definierar den aktuella vyn och kan inte tas bort här."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Inbyggd",
@@ -365,7 +402,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Nottabell",
       "selectAll": "Markera alla anteckningar",
-      "selectRow": "Markera anteckning"
+      "selectRow": "Markera anteckning",
+      "kind": {
+        "Inbox": "Inkorg",
+        "Note": "Anteckning",
+        "Task": "Uppgift"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Sökanteckningar...",
@@ -379,10 +421,10 @@
       "preview": "Förhandsvisning",
       "fixExpressionErrorsToSeePreview": "Åtgärda uttrycksfel för att se förhandsgranskning",
       "usingNote": "Använder not: \"",
-      "quot": "quot;",
       "cancel": "Avbryt",
       "namePlaceholder": "days_until_due",
-      "expressionPlaceholder": "dateDiff(due_date, idag(), \"dagar\")"
+      "expressionPlaceholder": "dateDiff(due_date, idag(), \"dagar\")",
+      "usingNoteTitle": "Använder anteckning: ”{title}”"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Tydlig gruppering",
@@ -408,12 +450,12 @@
       "bestMatch": "Bästa matchning",
       "current": "nuvarande)",
       "allFolders": "ALLA MAPPAR",
-      "current2": "nuvarande)",
       "noFoldersMatch": "Inga mappar matchar",
-      "quot": "quot;",
       "create": "Skapa ",
-      "quot2": "quot;",
-      "cancel": "Avbryt"
+      "cancel": "Avbryt",
+      "createFolderNamed": "Skapa ”{name}”",
+      "currentFolderBadge": "(nuvarande)",
+      "noFoldersMatchQuery": "Inga mappar matchar ”{query}”"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Radera ",
@@ -468,7 +510,13 @@
       "failedToLoadPdf": "Misslyckades med att ladda PDF: ",
       "download": "Ladda ner",
       "download2": "Ladda ner",
-      "noFileAttached": "Ingen fil bifogad"
+      "noFileAttached": "Ingen fil bifogad",
+      "alignCenter": "Centrera",
+      "alignLeft": "Vänsterjustera",
+      "alignRight": "Högerjustera",
+      "nextPage": "Nästa sida",
+      "previousPage": "Föregående sida",
+      "resizePdf": "Ändra storlek på PDF"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Öppna i uppgiftspanel",
@@ -530,7 +578,8 @@
       "failedToLoadTags": "Misslyckades med att ladda taggar",
       "noTagsYet": "Inga taggar än",
       "filterTags": "Filtrera taggar...",
-      "noMatchingTags": "Inga matchande taggar"
+      "noMatchingTags": "Inga matchande taggar",
+      "Uncategorized": "Okategoriserade"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Släpp här",
@@ -560,7 +609,8 @@
       "deleteTag": "Ta bort tagg",
       "recent": "Senaste",
       "created": "Skapad",
-      "alphabetical": "Alfabetiskt"
+      "alphabetical": "Alfabetiskt",
+      "tasks": "UPPGIFTER"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Byt namn på tagg",
@@ -733,7 +783,9 @@
     "replyPlaceholder": "Svara...",
     "resolve": "Lös",
     "sendAria": "Skicka kommentar",
-    "toolbarComment": "Kommentera"
+    "toolbarComment": "Kommentera",
+    "openAttachmentAria": "Öppna bilagan {name}",
+    "openImageAria": "Öppna bilden {name}"
   },
   "dateMention": {
     "clear": "Rensa",
@@ -743,5 +795,79 @@
     "remind": "Påminn",
     "time": "Tid",
     "timeFormat": "Tidsformat"
+  },
+  "applyTemplateConfirm": {
+    "body": "Ersätt bara innehållet",
+    "cancel": "Avbryt",
+    "description": "Att använda \"{name}\" ersätter anteckningens nuvarande innehåll. Det kan inte ångras.",
+    "failed": "Misslyckades med att använda mallen",
+    "full": "Ersätt innehållet och lägg till mallens detaljer",
+    "success": "Mall använd",
+    "title": "Ersätt anteckningens innehåll?"
+  },
+  "tagView": {
+    "moreActions": "Fler åtgärder",
+    "pin": {
+      "action": "Fäst {count, plural, one {# anteckning} other {# anteckningar}} på taggen",
+      "failed": "Misslyckades med att fästa anteckningen på taggen",
+      "success": "{count, plural, one {# anteckning fäst} other {# anteckningar fästa}} på taggen"
+    }
+  },
+  "tags": {
+    "hubTitle": "Taggar",
+    "openHub": "Öppna taggöversikten"
+  },
+  "tagsHub": {
+    "cancelCreate": "Avbryt",
+    "category": {
+      "delete": "Ta bort kategori",
+      "deleteBody": "Taggarna flyttas till Okategoriserade. De tas inte bort.",
+      "deleteCancel": "Avbryt",
+      "deleteConfirm": "Ta bort",
+      "deleteTitle": "Ta bort {name}?",
+      "dragHandle": "Dra för att ändra ordning på kategorin",
+      "emptyHint": "Dra hit en tagg",
+      "more": "Kategorialternativ",
+      "rename": "Byt namn på kategori"
+    },
+    "categoryNamePlaceholder": "Kategorinamn",
+    "errors": {
+      "createCategoryFailed": "Misslyckades med att skapa kategorin",
+      "createTagCategorizeFailed": "Taggen skapades men kunde inte läggas till i kategorin",
+      "createTagFailed": "Misslyckades med att skapa taggen",
+      "deleteCategoryFailed": "Misslyckades med att ta bort kategorin",
+      "loadFailed": "Misslyckades med att ladda taggkategorier",
+      "renameCategoryFailed": "Misslyckades med att byta namn på kategorin",
+      "reorderFailed": "Misslyckades med att ändra ordning på taggarna"
+    },
+    "loading": "Laddar taggar...",
+    "newCategory": "Ny kategori",
+    "newTag": "Ny tagg",
+    "search": {
+      "empty": "Inga kategorier eller taggar matchar din sökning",
+      "placeholder": "Sök kategorier och taggar"
+    },
+    "tagNamePlaceholder": "Taggnamn",
+    "uncategorized": "Okategoriserade"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (dubbelklicka för att redigera)",
+      "dragToReorder": "Dra för att ändra kolumnordning: {name}"
+    },
+    "columns": {
+      "created": "Skapad",
+      "folder": "Mapp",
+      "kind": "Typ",
+      "modified": "Ändrad",
+      "tags": "Taggar",
+      "title": "Titel",
+      "wordCount": "Antal ord"
+    },
+    "defaultViewName": "Standard",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# anteckning} other {# anteckningar}}"
+    },
+    "selectView": "Välj vy"
   }
 }

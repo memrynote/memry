@@ -3,15 +3,22 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 import { Picker } from '@/components/ui/picker'
 import { priorityConfig, type Priority } from '@/data/task-model'
+import { useT } from '@memry/i18n/renderer'
 import type { PriorityBadgeVariant } from './task-badges'
 import { PriorityIcon } from './task-icons'
 
-const PRIORITY_OPTIONS: { value: Priority; label: string; shortcut: string }[] = [
-  { value: 'urgent', label: priorityConfig.urgent.label ?? 'Urgent', shortcut: '1' },
-  { value: 'high', label: priorityConfig.high.label ?? 'High', shortcut: '2' },
-  { value: 'medium', label: priorityConfig.medium.label ?? 'Medium', shortcut: '3' },
-  { value: 'low', label: priorityConfig.low.label ?? 'Low', shortcut: '4' },
-  { value: 'none', label: priorityConfig.none.label ?? 'None', shortcut: '5' }
+/**
+ * Values + shortcuts only. Labels are resolved during render: this module is
+ * imported from `main.tsx` before `createRendererI18n` runs, so reading
+ * `priorityConfig[...].label` out here would freeze the English fallback for
+ * the whole session.
+ */
+const PRIORITY_ORDER: { value: Priority; shortcut: string }[] = [
+  { value: 'urgent', shortcut: '1' },
+  { value: 'high', shortcut: '2' },
+  { value: 'medium', shortcut: '3' },
+  { value: 'low', shortcut: '4' },
+  { value: 'none', shortcut: '5' }
 ]
 
 const COMPACT_LABELS: Record<Priority, string> = {
@@ -41,12 +48,20 @@ export const InteractivePriorityBadge = ({
   fixedWidth = false,
   className
 }: InteractivePriorityBadgeProps): React.JSX.Element => {
+  // Subscribe to the active language so the lazy `priorityConfig` labels below
+  // re-resolve when the locale changes (this component renders no other copy).
+  useT('tasks')
   const config = priorityConfig[priority]
   const displayLabel = compact ? COMPACT_LABELS[priority] : config.label || 'None'
+  const priorityOptions = PRIORITY_ORDER.map(({ value, shortcut }) => ({
+    value,
+    shortcut,
+    label: priorityConfig[value].label ?? value
+  }))
 
   const handleKeyDown = React.useCallback(
     (e: React.KeyboardEvent) => {
-      const option = PRIORITY_OPTIONS.find((o) => o.shortcut === e.key)
+      const option = PRIORITY_ORDER.find((o) => o.shortcut === e.key)
       if (option) {
         e.preventDefault()
         onPriorityChange(option.value)
@@ -80,7 +95,7 @@ export const InteractivePriorityBadge = ({
       </Picker.Trigger>
       <Picker.Content width="auto" align="start" sideOffset={4} onKeyDown={handleKeyDown}>
         <Picker.List>
-          {PRIORITY_OPTIONS.map((option) => {
+          {priorityOptions.map((option) => {
             const isNone = option.value === 'none'
             const pc = priorityConfig[option.value]
             return (

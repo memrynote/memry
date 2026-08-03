@@ -131,7 +131,7 @@ describe('AI inline IPC handlers', () => {
     })
     await expect(invoke(AIInlineChannels.invoke.SET_SETTINGS, { enabled: true })).resolves.toEqual({
       success: false,
-      error: 'No vault open'
+      error: 'No vault is open. Please open a vault first.'
     })
   })
 
@@ -241,7 +241,7 @@ describe('Ollama listing telemetry: suppress "not running", report real faults',
     expect(isExpectedConditionError(dnsFailure)).toBe(false)
     expect(mocks.trackMainError).toHaveBeenCalledWith(
       'ipc',
-      'Failed to list Ollama models',
+      'errors:ai.listOllamaModelsFailed',
       dnsFailure
     )
     fetchSpy.mockRestore()

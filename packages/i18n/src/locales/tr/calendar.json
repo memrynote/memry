@@ -67,7 +67,8 @@
     "title": "Etkinlik silinsin mi?",
     "local-description": "\"{title}\" kalıcı olarak silinecek. Bu işlem geri alınamaz.",
     "google-bound-description": "\"{title}\" memrynote ve Google Calendar'dan kaldırılacak. Bu eylem geri alınamaz.",
-    "context-menu-delete-label": "Etkinliği sil"
+    "context-menu-delete-label": "Etkinliği sil",
+    "context-menu-add-to-project": "Projeye ekle"
   },
   "agent-access-dialog": {
     "aria": "Yapay zekanın Google Calendar etkinliklerinizi okuyup okuyamayacağını seçin",
@@ -191,6 +192,7 @@
     "placeholder": "Etkinlik, görev, hatırlatıcı ara…"
   },
   "undo": {
-    "moveEvent": "Etkinliği taşı"
+    "moveEvent": "Etkinliği taşı",
+    "moveTask": "Görevi yeniden planla"
   }
 }

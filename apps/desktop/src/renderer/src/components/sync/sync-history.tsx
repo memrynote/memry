@@ -17,6 +17,7 @@ import {
 } from '@/hooks/use-sync-history'
 import type { SyncHistoryEntry } from '@memry/contracts/ipc-sync-ops'
 import { useT } from '@memry/i18n/renderer'
+import type { TFunction } from 'i18next'
 
 function formatDuration(ms: number | undefined): string | null {
   if (ms == null) return null
@@ -24,11 +25,12 @@ function formatDuration(ms: number | undefined): string | null {
   return `${(ms / 1000).toFixed(1)}s`
 }
 
-function entrySummary(entry: SyncHistoryEntry): string {
-  const n = entry.itemCount
-  if (entry.type === 'error') return 'Sync failed'
-  const verb = entry.type === 'push' ? 'pushed' : 'pulled'
-  return `${n} ${n === 1 ? 'item' : 'items'} ${verb}`
+function entrySummary(entry: SyncHistoryEntry, t: TFunction<'settings'>): string {
+  if (entry.type === 'error') return t('phaseF.componentsSyncSyncHistory.summaryFailed')
+  const count = entry.itemCount
+  return entry.type === 'push'
+    ? t('phaseF.componentsSyncSyncHistory.summaryPushed', { count })
+    : t('phaseF.componentsSyncSyncHistory.summaryPulled', { count })
 }
 
 function errorMessage(entry: SyncHistoryEntry): string | null {
@@ -52,6 +54,7 @@ function HistoryRow({ entry }: { entry: SyncHistoryEntry }): React.JSX.Element {
   const duration = formatDuration(entry.durationMs)
   const error = errorMessage(entry)
   const isError = entry.type === 'error'
+  const summary = entrySummary(entry, tPhaseF)
 
   const row = (
     <div className="flex items-start gap-3 py-2.5 px-1 hover:bg-muted/50 rounded-md transition-colors">
@@ -59,13 +62,10 @@ function HistoryRow({ entry }: { entry: SyncHistoryEntry }): React.JSX.Element {
         className={`w-4 h-4 mt-0.5 shrink-0 ${isError ? 'text-destructive' : 'text-muted-foreground'}`}
       />
       <div className="flex-1 min-w-0">
-        <span className={`text-sm ${isError ? 'text-destructive' : ''}`}>
-          {entrySummary(entry)}
-        </span>
+        <span className={`text-sm ${isError ? 'text-destructive' : ''}`}>{summary}</span>
         {duration && (
           <span className="text-xs text-muted-foreground ms-1.5">
-            &{tPhaseF('phaseF.componentsSyncSyncHistory.middot')}
-            {duration}
+            {tPhaseF('phaseF.componentsSyncSyncHistory.duration', { duration })}
           </span>
         )}
       </div>
@@ -88,7 +88,7 @@ function HistoryRow({ entry }: { entry: SyncHistoryEntry }): React.JSX.Element {
         asChild
         className="w-full cursor-pointer"
         aria-expanded={open}
-        aria-label={`${entrySummary(entry)}, show error details`}
+        aria-label={tPhaseF('phaseF.componentsSyncSyncHistory.showErrorDetailsAria', { summary })}
       >
         {row}
       </CollapsibleTrigger>

@@ -5,11 +5,39 @@ import type { ReactNode } from 'react'
 
 import { DueDatePicker } from './due-date-picker'
 
-vi.mock('@memry/i18n/renderer', () => ({
-  useT: () => ({
-    t: (key: string) => key.split('.').at(-1) ?? key
-  })
-}))
+// `prefix` stands in for the active language: react-i18next hands the component
+// a fresh `t` on `languageChanged`, so flipping this and re-rendering models a
+// mid-session language switch.
+const i18nState = vi.hoisted(() => ({ prefix: '' }))
+
+// Keys resolve against the real English bundle (and throw when they don't), so
+// the assertions below check user-visible copy and a mistyped key fails here
+// instead of shipping a raw key path to the user.
+vi.mock('@memry/i18n/renderer', async () => {
+  const { EN_BUNDLE } = await import('@memry/i18n/locales/en-bundle')
+
+  return {
+    useT: (namespace: keyof typeof EN_BUNDLE) => ({
+      t: (key: string) => {
+        const value = key
+          .split('.')
+          .reduce<unknown>(
+            (node, part) =>
+              typeof node === 'object' && node !== null
+                ? (node as Record<string, unknown>)[part]
+                : undefined,
+            EN_BUNDLE[namespace]
+          )
+
+        if (typeof value !== 'string') {
+          throw new Error(`missing English translation for ${namespace}:${key}`)
+        }
+
+        return `${i18nState.prefix}${value}`
+      }
+    })
+  }
+})
 
 vi.mock('@/components/ui/popover', () => ({
   Popover: ({
@@ -92,6 +120,7 @@ describe('DueDatePicker', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(2026, 4, 11, 9, 0, 0))
+    i18nState.prefix = ''
   })
 
   afterEach(() => {
@@ -110,7 +139,9 @@ describe('DueDatePicker', () => {
       />
     )
 
-    expect(screen.getByRole('combobox', { name: 'selectDueDate' })).toHaveTextContent('setDueDate')
+    expect(screen.getByRole('combobox', { name: 'Select due date' })).toHaveTextContent(
+      'Set due date'
+    )
 
     rerender(
       <DueDatePicker
@@ -120,8 +151,8 @@ describe('DueDatePicker', () => {
         onTimeChange={onTimeChange}
       />
     )
-    expect(screen.getByRole('combobox', { name: 'selectDueDate' })).toHaveTextContent('Today')
-    expect(screen.getByRole('combobox', { name: 'selectDueDate' })).toHaveTextContent('9:15 AM')
+    expect(screen.getByRole('combobox', { name: 'Select due date' })).toHaveTextContent('Today')
+    expect(screen.getByRole('combobox', { name: 'Select due date' })).toHaveTextContent('9:15 AM')
 
     rerender(
       <DueDatePicker
@@ -131,7 +162,7 @@ describe('DueDatePicker', () => {
         onTimeChange={onTimeChange}
       />
     )
-    expect(screen.getByRole('combobox', { name: 'selectDueDate' })).toHaveTextContent('Tomorrow')
+    expect(screen.getByRole('combobox', { name: 'Select due date' })).toHaveTextContent('Tomorrow')
 
     rerender(
       <DueDatePicker
@@ -141,7 +172,7 @@ describe('DueDatePicker', () => {
         onTimeChange={onTimeChange}
       />
     )
-    expect(screen.getByRole('combobox', { name: 'selectDueDate' })).toHaveTextContent('Thursday')
+    expect(screen.getByRole('combobox', { name: 'Select due date' })).toHaveTextContent('Thursday')
 
     rerender(
       <DueDatePicker
@@ -151,7 +182,7 @@ describe('DueDatePicker', () => {
         onTimeChange={onTimeChange}
       />
     )
-    expect(screen.getByRole('combobox', { name: 'selectDueDate' })).toHaveTextContent('overdue')
+    expect(screen.getByRole('combobox', { name: 'Select due date' })).toHaveTextContent('Overdue')
 
     rerender(
       <DueDatePicker
@@ -161,7 +192,7 @@ describe('DueDatePicker', () => {
         onTimeChange={onTimeChange}
       />
     )
-    expect(screen.getByRole('combobox', { name: 'selectDueDate' })).toHaveTextContent('Jun 11')
+    expect(screen.getByRole('combobox', { name: 'Select due date' })).toHaveTextContent('Jun 11')
   })
 
   it('selects quick dates, natural dates, calendar dates, and clears selected dates', async () => {
@@ -181,21 +212,45 @@ describe('DueDatePicker', () => {
     await user.click(screen.getByRole('button', { name: 'This WeekendSat, May 163' }))
     expect(onDateChange.mock.calls.at(-1)?.[0].toDateString()).toBe('Sat May 16 2026')
 
-    await user.click(screen.getByRole('button', { name: 'addTime' }))
+    await user.click(screen.getByRole('button', { name: 'Add time' }))
     expect(onTimeChange).toHaveBeenCalledWith('09:00')
 
-    await user.click(screen.getByRole('button', { name: 'clearDate0' }))
+    await user.click(screen.getByRole('button', { name: 'Clear date0' }))
     expect(onDateChange).toHaveBeenLastCalledWith(null)
     expect(onTimeChange).toHaveBeenLastCalledWith(null)
 
-    await user.click(screen.getByRole('button', { name: 'pickADate' }))
-    expect(screen.getByRole('button', { name: /backToOptions/ })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Pick a date...' }))
+    expect(screen.getByRole('button', { name: /Back to options/ })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'select calendar date' }))
     expect(onDateChange.mock.calls.at(-1)?.[0].toDateString()).toBe('Wed May 20 2026')
 
     await user.click(screen.getByRole('button', { name: 'select natural date' }))
     expect(onDateChange.mock.calls.at(-1)?.[0].toDateString()).toBe('Thu May 14 2026')
     expect(onTimeChange).toHaveBeenLastCalledWith('14:30')
+  })
+
+  it('re-resolves quick options and the trigger label after a mid-session language switch', () => {
+    const onDateChange = vi.fn()
+    const onTimeChange = vi.fn()
+    const props = {
+      date: new Date(2026, 4, 11),
+      time: null,
+      onDateChange,
+      onTimeChange
+    }
+
+    const { rerender } = render(<DueDatePicker {...props} />)
+
+    expect(screen.getByRole('combobox', { name: 'Select due date' })).toHaveTextContent('Today')
+    expect(screen.getByRole('button', { name: /^This Weekend/ })).toBeInTheDocument()
+
+    i18nState.prefix = 'xx:'
+    rerender(<DueDatePicker {...props} />)
+
+    expect(screen.getByRole('combobox', { name: 'xx:Select due date' })).toHaveTextContent(
+      'xx:Today'
+    )
+    expect(screen.getByRole('button', { name: /^xx:This Weekend/ })).toBeInTheDocument()
   })
 
   it('handles open-state keyboard shortcuts and hides number hints while typing', async () => {
@@ -213,7 +268,7 @@ describe('DueDatePicker', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'toggle due popover' }))
-    expect(screen.getByRole('combobox', { name: 'selectDueDate' })).toHaveAttribute(
+    expect(screen.getByRole('combobox', { name: 'Select due date' })).toHaveAttribute(
       'aria-expanded',
       'true'
     )
@@ -233,7 +288,7 @@ describe('DueDatePicker', () => {
 
     await user.click(screen.getByRole('button', { name: 'toggle due popover' }))
     fireEvent.keyDown(document, { key: 'Escape' })
-    expect(screen.getByRole('combobox', { name: 'selectDueDate' })).toHaveAttribute(
+    expect(screen.getByRole('combobox', { name: 'Select due date' })).toHaveAttribute(
       'aria-expanded',
       'false'
     )

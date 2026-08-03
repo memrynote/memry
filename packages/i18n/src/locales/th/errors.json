@@ -22,7 +22,19 @@
     "writeFailed": "ไม่สามารถบันทึกหมายเหตุนี้ได้ ตรวจสอบพื้นที่ดิสก์และสิทธิ์การใช้งาน.",
     "readFailed": "ไม่สามารถอ่านหมายเหตุนี้ได้ ไฟล์อาจถูกล็อคหรือเสียหาย.",
     "deleteFailed": "ไม่สามารถลบหมายเหตุนี้ได้ ตรวจสอบสิทธิ์การใช้งานไฟล์.",
-    "invalidPath": "เส้นทางของหมายเหตุไม่ถูกต้อง."
+    "invalidPath": "เส้นทางของหมายเหตุไม่ถูกต้อง.",
+    "applyTemplateFailed": "ไม่สามารถใช้เทมเพลตได้",
+    "createFailed": "ไม่สามารถสร้างโน้ตได้",
+    "deleteVersionFailed": "ไม่สามารถลบเวอร์ชันได้",
+    "exportHtmlFailed": "ไม่สามารถส่งออก HTML ได้",
+    "exportPdfFailed": "ไม่สามารถส่งออก PDF ได้",
+    "importFilesFailed": "ไม่สามารถนำเข้าไฟล์ได้",
+    "moveFailed": "ไม่สามารถย้ายโน้ตได้",
+    "renameFailed": "ไม่สามารถเปลี่ยนชื่อโน้ตได้",
+    "reorderFailed": "ไม่สามารถจัดลำดับโน้ตใหม่ได้",
+    "restoreVersionFailed": "ไม่สามารถกู้คืนเวอร์ชันได้",
+    "setLocalOnlyFailed": "ไม่สามารถตั้งค่าให้เก็บเฉพาะในเครื่องได้",
+    "updateFailed": "ไม่สามารถอัปเดตโน้ตได้"
   },
   "database": {
     "connectionFailed": "ไม่สามารถเชื่อมต่อกับฐานข้อมูลภายในเครื่องได้ ลองรีสตาร์ทแอป.",
@@ -41,7 +53,14 @@
     "fileTooLarge": "ไฟล์นี้มีขนาดใหญ่เกินไปที่จะแนบ",
     "unsupportedType": "ไม่รองรับชนิดไฟล์นี้",
     "writeFailed": "ไม่สามารถบันทึกไฟล์แนบได้ ตรวจสอบพื้นที่ดิสก์",
-    "deleteFailed": "ไม่สามารถลบไฟล์แนบได้"
+    "deleteFailed": "ไม่สามารถลบไฟล์แนบได้",
+    "downloadFailed": "การดาวน์โหลดไฟล์แนบล้มเหลว",
+    "downloadProgressFailed": "ไม่สามารถดึงความคืบหน้าการดาวน์โหลดได้",
+    "uploadFailed": "การอัปโหลดไฟล์แนบล้มเหลว",
+    "uploadProgressFailed": "ไม่สามารถดึงความคืบหน้าการอัปโหลดได้",
+    "emptyFile": "ไม่สามารถอัปโหลดไฟล์ว่างได้",
+    "exceedsMaxSize": "ไฟล์ใหญ่เกินไป: {size} เกินขีดจำกัด {limit}",
+    "exceedsPlanLimit": "ไฟล์ใหญ่เกินกว่าที่แผนของคุณอนุญาต: {size} เกิน {limit}"
   },
   "encryption": {
     "failed": "ไม่สามารถเข้ารหัสข้อมูลได้ อาจต้องสร้างคีย์ใหม่",
@@ -74,6 +93,188 @@
     "securityQuarantinePermanent": "ไม่สามารถตรวจสอบรายการซิงค์ได้และถูกกักกันเพื่อความปลอดภัย",
     "securityQuarantineRetry": "รายการซิงค์ล้มเหลวในการตรวจสอบลายเซ็นและจะถูกลองใหม่",
     "certificatePinPaused": "ไม่สามารถตรวจสอบการเชื่อมต่อที่ปลอดภัยกับเซิร์ฟเวอร์ซิงค์ได้ การซิงค์ถูกหยุดชั่วคราวเพื่อความปลอดภัยของคุณ",
-    "paymentRequired": "ต้องใช้แผน Sync แบบชำระเงินเพื่อใช้การซิงค์แบบเข้ารหัสที่โฮสต์"
+    "paymentRequired": "ต้องใช้แผน Sync แบบชำระเงินเพื่อใช้การซิงค์แบบเข้ารหัสที่โฮสต์",
+    "attachmentUploadFailed": "ไม่สามารถซิงค์ไฟล์แนบ \"{filename}\" ได้ ไฟล์จะยังคงอยู่บนอุปกรณ์นี้",
+    "fileTooLarge": "ไฟล์นี้ใหญ่เกินกว่าที่แผนของคุณอนุญาต อัปเกรดแผนเพื่อซิงค์ไฟล์ที่ใหญ่ขึ้น",
+    "vaultRecovered": "กู้คืนคีย์ของคลังแล้ว การซิงค์จะดำเนินการต่อ",
+    "historyFetchFailed": "ไม่สามารถดึงประวัติการซิงค์ได้",
+    "keyPersistenceFailed": "ไม่สามารถบันทึกคีย์การเข้ารหัสอย่างปลอดภัยได้ การลงทะเบียนอุปกรณ์ถูกย้อนกลับแล้ว โปรดลองอีกครั้ง",
+    "serverUnreachable": "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ซิงค์ได้ โปรดตรวจสอบการเชื่อมต่ออินเทอร์เน็ตของคุณ",
+    "updateSyncedSettingFailed": "ไม่สามารถอัปเดตการตั้งค่าที่ซิงค์ได้",
+    "requestTimedOut": "คำขอซิงค์หมดเวลา โปรดตรวจสอบการเชื่อมต่ออินเทอร์เน็ตของคุณ"
+  },
+  "agent": {
+    "conversationBusy": "การสนทนากำลังทำงานอยู่",
+    "runtimeStarting": "รันไทม์ของเอเจนต์กำลังเริ่มทำงาน ลองอีกครั้ง"
+  },
+  "ai": {
+    "inlineDisabled": "การแก้ไขในบรรทัดด้วย AI ถูกปิดใช้งาน",
+    "listOllamaModelsFailed": "ไม่สามารถแสดงรายการโมเดล Ollama ได้"
+  },
+  "auth": {
+    "approveLinkingFailed": "ไม่สามารถอนุมัติการเชื่อมโยงได้",
+    "cannotRemoveCurrentDevice": "ไม่สามารถลบอุปกรณ์ปัจจุบันได้",
+    "completeLinkingFailed": "ไม่สามารถทำการเชื่อมโยงให้เสร็จสมบูรณ์ได้",
+    "confirmRecoveryPhraseFailed": "ไม่สามารถยืนยันวลีกู้คืนได้",
+    "fetchSasCodeFailed": "ไม่สามารถดึงรหัส SAS ได้",
+    "finalizeVaultChoiceFailed": "ไม่สามารถสรุปการเลือกตู้เก็บได้",
+    "initiateOAuthFailed": "ไม่สามารถเริ่ม OAuth ได้",
+    "invalidRecoveryPhraseFormat": "รูปแบบวลีกู้คืนไม่ถูกต้อง",
+    "linkDeviceQrFailed": "ไม่สามารถเชื่อมโยงอุปกรณ์ผ่าน QR ได้",
+    "linkRecoveryPhraseFailed": "ไม่สามารถเชื่อมโยงด้วยวลีกู้คืนได้",
+    "notAuthenticated": "ยังไม่ได้ลงชื่อเข้าใช้",
+    "pickFolderFailed": "ไม่สามารถเลือกโฟลเดอร์ได้",
+    "recoveryPhraseMismatch": "วลีกู้คืนไม่ตรงกัน โปรดลองอีกครั้ง",
+    "removeDeviceFailed": "ไม่สามารถลบอุปกรณ์ได้",
+    "renameDeviceFailed": "ไม่สามารถเปลี่ยนชื่ออุปกรณ์ได้",
+    "requestOtpFailed": "ไม่สามารถขอรหัส OTP ได้",
+    "resendOtpFailed": "ไม่สามารถส่งรหัส OTP ใหม่ได้",
+    "sessionExpired": "เซสชันหมดอายุแล้ว โปรดลงชื่อเข้าใช้อีกครั้ง",
+    "setupFirstDeviceOAuthFailed": "ไม่สามารถตั้งค่าอุปกรณ์เครื่องแรกผ่าน OAuth ได้",
+    "verifyOtpFailed": "ไม่สามารถยืนยันรหัส OTP ได้"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "รายการนี้ถูกบุ๊กมาร์กไว้แล้ว",
+    "notFound": "ไม่พบบุ๊กมาร์ก"
+  },
+  "calendar": {
+    "connectProviderFailed": "ไม่สามารถเชื่อมต่อผู้ให้บริการปฏิทินได้",
+    "createEventFailed": "ไม่สามารถสร้างกิจกรรมในปฏิทินได้",
+    "deleteEventFailed": "ไม่สามารถลบกิจกรรมในปฏิทินได้",
+    "disconnectProviderFailed": "ไม่สามารถยกเลิกการเชื่อมต่อผู้ให้บริการปฏิทินได้",
+    "eventNotFound": "ไม่พบกิจกรรมในปฏิทิน",
+    "googleNotConnected": "ยังไม่ได้เชื่อมต่อ Google Calendar บนอุปกรณ์นี้",
+    "listGoogleCalendarsFailed": "ไม่สามารถแสดงรายการปฏิทินของ Google ได้",
+    "onlyGoogleSourcesRetryable": "ลองใหม่ได้เฉพาะแหล่งปฏิทินของ Google เท่านั้น",
+    "onlySourcesSelectable": "เลือกได้เฉพาะแหล่งปฏิทินเท่านั้น",
+    "promoteExternalEventFailed": "ไม่สามารถเลื่อนระดับกิจกรรมปฏิทินภายนอกได้",
+    "refreshProviderFailed": "ไม่สามารถรีเฟรชผู้ให้บริการปฏิทินได้",
+    "retryGoogleSourceSyncFailed": "ไม่สามารถลองซิงค์แหล่ง Google Calendar อีกครั้งได้",
+    "setDefaultGoogleCalendarFailed": "ไม่สามารถตั้งปฏิทินเริ่มต้นของ Google ได้",
+    "signInBeforeRefresh": "ลงชื่อเข้าใช้ memrynote ก่อนรีเฟรช Google Calendar",
+    "sourceNotFound": "ไม่พบแหล่งปฏิทิน",
+    "syncFailed": "การซิงค์ล้มเหลว",
+    "updateEventFailed": "ไม่สามารถอัปเดตกิจกรรมในปฏิทินได้",
+    "updateSourceSelectionFailed": "ไม่สามารถอัปเดตการเลือกแหล่งปฏิทินได้"
+  },
+  "folder": {
+    "createFailed": "ไม่สามารถสร้างโฟลเดอร์ได้",
+    "deleteFailed": "ไม่สามารถลบโฟลเดอร์ได้",
+    "renameFailed": "ไม่สามารถเปลี่ยนชื่อโฟลเดอร์ได้",
+    "setConfigFailed": "ไม่สามารถตั้งค่าคอนฟิกของโฟลเดอร์ได้"
+  },
+  "folderView": {
+    "deleteViewFailed": "ไม่สามารถลบมุมมองได้",
+    "setConfigFailed": "ไม่สามารถตั้งค่าคอนฟิกได้",
+    "setViewFailed": "ไม่สามารถตั้งค่ามุมมองได้"
+  },
+  "googleCalendar": {
+    "accessDenied": "การเข้าถึง Google Calendar ถูกปฏิเสธ คุณเชื่อมต่ออีกครั้งได้เมื่อพร้อม",
+    "connectFailed": "ไม่สามารถเชื่อมต่อกับ Google Calendar ได้ โปรดลองอีกครั้งในอีกสักครู่",
+    "misconfigured": "Google Calendar ตั้งค่าไม่ถูกต้อง โปรดติดต่อฝ่ายสนับสนุนหากยังเกิดขึ้นอีก",
+    "reconnectNeeded": "การเชื่อมต่อ Google Calendar ของคุณหมดอายุแล้ว โปรดยกเลิกการเชื่อมต่อแล้วเชื่อมต่อใหม่",
+    "scopeMissing": "เราเข้าถึง Google Calendar ของคุณไม่ได้เพราะยังไม่ได้ให้สิทธิ์ปฏิทิน โปรดลองอีกครั้งและตรวจสอบว่าช่องปฏิทินยังถูกเลือกอยู่บนหน้าจอขอความยินยอมของ Google",
+    "temporarilyUnavailable": "Google Calendar ใช้งานไม่ได้ชั่วคราว โปรดลองอีกครั้งในไม่ช้า"
+  },
+  "importer": {
+    "cancelFailed": "การยกเลิกล้มเหลว",
+    "fileSelectionFailed": "การเลือกไฟล์ล้มเหลว",
+    "importFailed": "การนำเข้าล้มเหลว",
+    "listFailed": "ไม่สามารถแสดงรายการตัวนำเข้าได้",
+    "previewFailed": "การแสดงตัวอย่างล้มเหลว"
+  },
+  "project": {
+    "archiveFailed": "ไม่สามารถเก็บถาวรโครงการได้",
+    "captureLinkFailed": "ไม่สามารถบันทึกลิงก์ได้",
+    "createFailed": "ไม่สามารถสร้างโครงการได้",
+    "deleteFailed": "ไม่สามารถลบโครงการได้",
+    "importFilesFailed": "ไม่สามารถนำเข้าไฟล์ได้",
+    "linkItemFailed": "ไม่สามารถเชื่อมโยงรายการได้",
+    "listForItemFailed": "ไม่สามารถแสดงรายการโครงการของรายการนี้ได้",
+    "reorderFailed": "ไม่สามารถจัดลำดับโครงการใหม่ได้",
+    "setHomeNoteFailed": "ไม่สามารถตั้งค่าโน้ตหลักได้",
+    "unlinkItemFailed": "ไม่สามารถยกเลิกการเชื่อมโยงรายการได้",
+    "updateFailed": "ไม่สามารถอัปเดตโครงการได้",
+    "updatePinnedFailed": "ไม่สามารถอัปเดตสถานะการปักหมุดได้"
+  },
+  "property": {
+    "alreadyExists": "คุณสมบัติ \"{name}\" มีอยู่แล้ว",
+    "createDefinitionFailed": "ไม่สามารถสร้างคำจำกัดความของคุณสมบัติได้",
+    "entityNotFound": "ไม่พบเอนทิตี",
+    "notFound": "ไม่พบคุณสมบัติ \"{name}\"",
+    "renameFailed": "ไม่สามารถเปลี่ยนชื่อคุณสมบัติได้",
+    "setCalendarVisibilityFailed": "ไม่สามารถตั้งค่าการแสดงคุณสมบัติในปฏิทินได้",
+    "setFailed": "ไม่สามารถตั้งค่าคุณสมบัติได้",
+    "updateDefinitionFailed": "ไม่สามารถอัปเดตคำจำกัดความของคุณสมบัติได้"
+  },
+  "reminder": {
+    "createFailed": "ไม่สามารถสร้างการเตือนได้",
+    "dismissAllFailed": "ไม่สามารถปิดการเตือนทั้งหมดได้",
+    "dismissFailed": "ไม่สามารถปิดการเตือนได้",
+    "notFound": "ไม่พบการเตือน",
+    "snoozeFailed": "ไม่สามารถเลื่อนการเตือนได้",
+    "updateFailed": "ไม่สามารถอัปเดตการเตือนได้"
+  },
+  "savedFilter": {
+    "notFound": "ไม่พบตัวกรองที่บันทึกไว้"
+  },
+  "search": {
+    "rebuildFailed": "การสร้างดัชนีใหม่ล้มเหลว"
+  },
+  "settings": {
+    "modelAlreadyLoading": "โมเดลกำลังโหลดอยู่แล้ว",
+    "modelLoadFailed": "ไม่สามารถโหลดโมเดลได้",
+    "shortcutInUse": "แป้นพิมพ์ลัด {shortcut} ถูกใช้งานอยู่แล้ว",
+    "terminalCommandInstallFailed": "ไม่สามารถติดตั้งคำสั่งเทอร์มินัลได้",
+    "terminalCommandUninstallFailed": "ไม่สามารถถอนการติดตั้งคำสั่งเทอร์มินัลได้",
+    "unknownVault": "ไม่รู้จักตู้เก็บนี้",
+    "voiceModelDownloadFailed": "ไม่สามารถดาวน์โหลดโมเดลเสียงได้"
+  },
+  "tag": {
+    "categoryNameRequired": "ต้องระบุชื่อหมวดหมู่",
+    "createCategoryFailed": "ไม่สามารถสร้างหมวดหมู่แท็กได้",
+    "deleteCategoryFailed": "ไม่สามารถลบหมวดหมู่แท็กได้",
+    "deleteFailed": "ไม่สามารถลบแท็กได้",
+    "listCategoriesFailed": "ไม่สามารถแสดงรายการหมวดหมู่แท็กได้",
+    "mergeFailed": "ไม่สามารถรวมแท็กได้",
+    "mergeSameTag": "แท็กต้นทางและแท็กปลายทางเป็นแท็กเดียวกัน",
+    "pinNoteFailed": "ไม่สามารถปักหมุดโน้ตได้",
+    "removeFromNoteFailed": "ไม่สามารถลบแท็กออกจากโน้ตได้",
+    "renameCategoryFailed": "ไม่สามารถเปลี่ยนชื่อหมวดหมู่แท็กได้",
+    "renameFailed": "ไม่สามารถเปลี่ยนชื่อแท็กได้",
+    "reorderFailed": "ไม่สามารถจัดลำดับแท็กใหม่ได้",
+    "unpinNoteFailed": "ไม่สามารถเลิกปักหมุดโน้ตได้",
+    "updateColorFailed": "ไม่สามารถอัปเดตสีของแท็กได้",
+    "updateIconFailed": "ไม่สามารถอัปเดตไอคอนของแท็กได้"
+  },
+  "task": {
+    "archiveFailed": "ไม่สามารถเก็บถาวรงานได้",
+    "archiveManyFailed": "ไม่สามารถเก็บถาวรงานหลายรายการได้",
+    "completeFailed": "ไม่สามารถทำงานให้เสร็จได้",
+    "completeManyFailed": "ไม่สามารถทำงานหลายรายการให้เสร็จได้",
+    "convertToSubtaskFailed": "ไม่สามารถแปลงเป็นงานย่อยได้",
+    "convertToTaskFailed": "ไม่สามารถแปลงเป็นงานได้",
+    "createFailed": "ไม่สามารถสร้างงานได้",
+    "deleteFailed": "ไม่สามารถลบงานได้",
+    "deleteManyFailed": "ไม่สามารถลบงานหลายรายการได้",
+    "duplicateFailed": "ไม่สามารถทำสำเนางานได้",
+    "moveFailed": "ไม่สามารถย้ายงานได้",
+    "moveManyFailed": "ไม่สามารถย้ายงานหลายรายการได้",
+    "reorderFailed": "ไม่สามารถจัดลำดับงานใหม่ได้",
+    "unarchiveFailed": "ไม่สามารถนำงานออกจากคลังเก็บถาวรได้",
+    "uncompleteFailed": "ไม่สามารถยกเลิกสถานะเสร็จของงานได้",
+    "updateFailed": "ไม่สามารถอัปเดตงานได้"
+  },
+  "taskStatus": {
+    "createFailed": "ไม่สามารถสร้างสถานะได้",
+    "deleteFailed": "ไม่สามารถลบสถานะได้",
+    "reorderFailed": "ไม่สามารถจัดลำดับสถานะใหม่ได้",
+    "updateFailed": "ไม่สามารถอัปเดตสถานะได้"
+  },
+  "template": {
+    "createFailed": "ไม่สามารถสร้างเทมเพลตได้",
+    "deleteFailed": "ไม่สามารถลบเทมเพลตได้",
+    "duplicateFailed": "ไม่สามารถทำสำเนาเทมเพลตได้",
+    "updateFailed": "ไม่สามารถอัปเดตเทมเพลตได้"
   }
 }

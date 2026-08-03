@@ -27,7 +27,7 @@
     "imported-event": "Importeret begivenhed",
     "task": "Opgave",
     "reminder": "Påmindelse",
-    "snooze": "Snooze",
+    "snooze": "Udsættelse",
     "note": "Note",
     "note-date": "Datopåmindelse"
   },
@@ -67,14 +67,16 @@
     "title": "Vil du slette begivenheden?",
     "local-description": "\"{title}\" slettes permanent. Denne handling kan ikke fortrydes.",
     "google-bound-description": "\"{title}\" vil blive fjernet fra memrynote og Google Kalender. Denne handling kan ikke fortrydes.",
-    "context-menu-delete-label": "Slet begivenhed"
+    "context-menu-delete-label": "Slet begivenhed",
+    "context-menu-add-to-project": "Føj til projekt"
   },
   "promote-dialog": {
     "aria": "Rediger ekstern kalenderbegivenhed",
     "title": "Vil du redigere denne begivenhed i memrynote?",
     "body": "Redigering af denne begivenhed vil oprette en linket kopi i memrynote, så ændringer synkroniseres begge veje. Vil du fortsætte?",
     "do-not-ask-again": "Spørg ikke igen",
-    "confirm-label": "Rediger i memrynote"
+    "confirm-label": "Rediger i memrynote",
+    "agent-notice": "AI-agenten kan læse denne kopi, selvom AI-adgang til Google Calendar er slået fra. Din oprindelige Google-begivenhed forbliver skjult for den."
   },
   "onboarding-dialog": {
     "aria": "Vælg din standard Google-kalender",
@@ -181,6 +183,16 @@
     "placeholder": "Søg i begivenheder, opgaver, påmindelser…"
   },
   "undo": {
-    "moveEvent": "Flyt begivenhed"
+    "moveEvent": "Flyt begivenhed",
+    "moveTask": "Omplanlæg opgave"
+  },
+  "agent-access-dialog": {
+    "allow": "Tillad",
+    "aria": "Vælg, om AI må læse dine begivenheder i Google Calendar",
+    "body": "Du ser stadig dine Google-begivenheder i memrynote uanset hvad. Det her afgør kun, om AI-agenten må læse dem, når du spørger den om din kalender.",
+    "deny": "Tillad ikke",
+    "footnote": "Du kan altid ændre det under Indstillinger → Integrationer → Google Calendar.",
+    "save-error": "Dit valg kunne ikke gemmes",
+    "title": "Vil du lade AI læse dine begivenheder i Google Calendar?"
   }
 }

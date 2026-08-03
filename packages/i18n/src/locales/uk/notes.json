@@ -16,9 +16,27 @@
       "willSync": "Нотатка синхронізується з хмарою",
       "renameFailed": "Не вдалося перейменувати нотатку",
       "toggleLocalOnlyFailed": "Не вдалося перемкнути локальний режим",
-      "toggleFullWidthFailed": "Не вдалося перемкнути повну ширину"
+      "toggleFullWidthFailed": "Не вдалося перемкнути повну ширину",
+      "copyPathFailed": "Не вдалося скопіювати шлях",
+      "deleteFailed": "Не вдалося видалити нотатку",
+      "moveFailed": "Не вдалося перемістити нотатку",
+      "moved": "Нотатку переміщено",
+      "openExternalFailed": "Не вдалося відкрити нотатку",
+      "pathCopied": "Шлях скопійовано",
+      "revealFailed": "Не вдалося показати нотатку"
     },
-    "deleteDialogTitle": "{count, plural, one {Видалити нотатку} other {Видалити нотатки #}}"
+    "deleteDialogTitle": "{count, plural, one {Видалити нотатку} other {Видалити нотатки #}}",
+    "deleteConfirm": {
+      "cancel": "Скасувати",
+      "confirm": "Видалити",
+      "deleting": "Видалення...",
+      "description": "Ви впевнені, що хочете видалити «{title}»? Цю дію неможливо скасувати.",
+      "title": "Видалити нотатку"
+    },
+    "itemsCount": "{count, plural, one {# елемент} few {# елементи} many {# елементів} other {# елемента}}",
+    "itemsCountFiltered": "{shown} з {total, plural, one {# елемента} few {# елементів} many {# елементів} other {# елемента}}",
+    "renameViewUnavailableForTags": "Перейменування збережених переглядів поки що недоступне для тегів",
+    "tagFilterLabel": "тег = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "Видалити нотатки {count}",
       "deleteSelectedItems": "Видалити {count} елементи",
       "bookmark": "Закладка",
-      "removeFromBookmarks": "Прибрати із закладок"
+      "removeFromBookmarks": "Прибрати із закладок",
+      "applyTemplate": "Застосувати шаблон"
     },
     "deleteDialog": {
       "noteTitle": "Видалити нотатку",
@@ -83,7 +102,17 @@
       "export": "Експорт",
       "fullWidth": "Повна ширина",
       "disableLocalOnly": "Вимкнути лише локально",
-      "setLocalOnly": "Встановити лише локально"
+      "setLocalOnly": "Встановити лише локально",
+      "applyTemplate": "Застосувати шаблон",
+      "copyPath": "Копіювати шлях",
+      "delete": "Видалити нотатку",
+      "find": "Знайти…",
+      "moreActions": "Більше дій",
+      "moveToFolder": "Перемістити до папки…",
+      "openInDefaultApp": "Відкрити у стандартному додатку",
+      "rename": "Перейменувати…",
+      "revealInFinder": "Показати у Finder",
+      "revealInSidebar": "Показати в навігації"
     },
     "breadcrumb": {
       "locationAria": "Розташування нотатки",
@@ -162,7 +191,7 @@
   },
   "backlinks": {
     "sortRecent": "Недавні",
-    "sortAlpha": "A-Z",
+    "sortAlpha": "А-Я",
     "sortMentions": "Найбільше згадок",
     "sortBy": "Сортувати зворотні посилання за {sort}",
     "summary": "Нотатки {notes} · посилання {references}",
@@ -223,7 +252,12 @@
       "multiselect": "Мультивибір"
     },
     "showOnCalendar": "Показувати в календарі",
-    "showingOnCalendar": "Показується в календарі"
+    "showingOnCalendar": "Показується в календарі",
+    "statusCategories": {
+      "done": "Завершено",
+      "inProgress": "У процесі",
+      "todo": "До виконання"
+    }
   },
   "templateSelector": {
     "title": "Виберіть вашу канву",
@@ -235,7 +269,10 @@
     "essentials": "Основні",
     "setFolderDefault": "Встановити як шаблон за замовчуванням для папки",
     "useTemplate": "Використати шаблон",
-    "createNote": "Створити нотатку"
+    "createNote": "Створити нотатку",
+    "applyDescription": "Замінити вміст цієї нотатки шаблоном",
+    "applyTitle": "Застосувати шаблон",
+    "applyToNote": "Застосувати шаблон"
   },
   "exportDialog": {
     "title": "Експортувати нотатку",
@@ -324,8 +361,6 @@
       "noFormulasDefined": "Формули не визначені",
       "addFormula": "Додати формулу",
       "deleteFormula": "Видалити формулу",
-      "areYouSureYouWantToDeleteTheFormula": "Ви впевнені, що хочете видалити формулу ",
-      "quotThisActionCannotBeUndone": "\"? Цю дію не можна скасувати.",
       "cancel": "Скасувати",
       "delete": "Видалити",
       "none": "Немає",
@@ -333,7 +368,8 @@
       "delete2": "Видалити",
       "columnBorders": "Межі стовпців",
       "display": "Відображення",
-      "showSummaries": "Показувати підсумки"
+      "showSummaries": "Показувати підсумки",
+      "deleteFormulaBody": "Ви впевнені, що хочете видалити формулу «{name}»? Цю дію неможливо скасувати."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Фільтр",
@@ -352,7 +388,8 @@
       "addCondition": "Додай умову",
       "addFilter": "Додати фільтр",
       "addGroup": "Додати групу",
-      "removeGroup": "Прибрати групу"
+      "removeGroup": "Прибрати групу",
+      "lockedConditionHint": "Ця умова визначає поточний перегляд, тому прибрати її тут не можна."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Вбудовані",
@@ -365,7 +402,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Таблиця нотаток",
       "selectAll": "Вибрати всі нотатки",
-      "selectRow": "Вибрати нотатку"
+      "selectRow": "Вибрати нотатку",
+      "kind": {
+        "Inbox": "Вхідні",
+        "Note": "Нотатка",
+        "Task": "Завдання"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Пошукові нотатки...",
@@ -379,10 +421,10 @@
       "preview": "Анонс",
       "fixExpressionErrorsToSeePreview": "Виправте помилки виразів, щоб побачити попередній перегляд",
       "usingNote": "Використовуючи нотатку: \"",
-      "quot": "\";",
       "cancel": "Скасувати",
       "namePlaceholder": "days_until_due",
-      "expressionPlaceholder": "dateDiff(due_date, today(), «days»)"
+      "expressionPlaceholder": "dateDiff(due_date, today(), «days»)",
+      "usingNoteTitle": "Використовується нотатка: «{title}»"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Чітке групування",
@@ -408,12 +450,12 @@
       "bestMatch": "Найкраще співпадіння",
       "current": "поточний)",
       "allFolders": "УСІ ПАПКИ",
-      "current2": "поточний)",
       "noFoldersMatch": "Немає відповідних папок",
-      "quot": "\";",
       "create": "Створити ",
-      "quot2": "\";",
-      "cancel": "Скасувати"
+      "cancel": "Скасувати",
+      "createFolderNamed": "Створити «{name}»",
+      "currentFolderBadge": "(поточна)",
+      "noFoldersMatchQuery": "Немає папок, що відповідають «{query}»"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Видалити ",
@@ -468,7 +510,13 @@
       "failedToLoadPdf": "Не вдалося завантажити PDF:",
       "download": "Завантажити",
       "download2": "Завантажити",
-      "noFileAttached": "Файл не прикріплено"
+      "noFileAttached": "Файл не прикріплено",
+      "alignCenter": "Вирівняти по центру",
+      "alignLeft": "Вирівняти ліворуч",
+      "alignRight": "Вирівняти праворуч",
+      "nextPage": "Наступна сторінка",
+      "previousPage": "Попередня сторінка",
+      "resizePdf": "Змінити розмір PDF"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Відкрити в панелі завдань",
@@ -530,7 +578,8 @@
       "failedToLoadTags": "Не вдалося завантажити теги",
       "noTagsYet": "Поки що немає тегів",
       "filterTags": "Фільтрувати теги...",
-      "noMatchingTags": "Співпадінь тегів не знайдено"
+      "noMatchingTags": "Співпадінь тегів не знайдено",
+      "Uncategorized": "Без категорії"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Перетягніть сюди",
@@ -560,7 +609,8 @@
       "deleteTag": "Видалити тег",
       "recent": "Недавні",
       "created": "Створено",
-      "alphabetical": "За алфавітом"
+      "alphabetical": "За алфавітом",
+      "tasks": "ЗАВДАННЯ"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Перейменувати тег",
@@ -733,7 +783,9 @@
     "replyPlaceholder": "Відповісти...",
     "resolve": "Вирішити",
     "sendAria": "Надіслати коментар",
-    "toolbarComment": "Коментар"
+    "toolbarComment": "Коментар",
+    "openAttachmentAria": "Відкрити вкладення {name}",
+    "openImageAria": "Відкрити зображення {name}"
   },
   "dateMention": {
     "clear": "Очистити",
@@ -743,5 +795,79 @@
     "remind": "Нагадати",
     "time": "Час",
     "timeFormat": "Формат часу"
+  },
+  "applyTemplateConfirm": {
+    "body": "Замінити лише вміст",
+    "cancel": "Скасувати",
+    "description": "Застосування «{name}» замінить поточний вміст цієї нотатки. Цю дію неможливо скасувати.",
+    "failed": "Не вдалося застосувати шаблон",
+    "full": "Замінити вміст і додати деталі шаблону",
+    "success": "Шаблон застосовано",
+    "title": "Замінити вміст нотатки?"
+  },
+  "tagView": {
+    "moreActions": "Більше дій",
+    "pin": {
+      "action": "Закріпити {count, plural, one {# нотатку} few {# нотатки} many {# нотаток} other {# нотатки}} до тегу",
+      "failed": "Не вдалося закріпити нотатку до тегу",
+      "success": "Закріплено {count, plural, one {# нотатку} few {# нотатки} many {# нотаток} other {# нотатки}} до тегу"
+    }
+  },
+  "tags": {
+    "hubTitle": "Теги",
+    "openHub": "Відкрити центр тегів"
+  },
+  "tagsHub": {
+    "cancelCreate": "Скасувати",
+    "category": {
+      "delete": "Видалити категорію",
+      "deleteBody": "Теги перемістяться до «Без категорії». Їх не буде видалено.",
+      "deleteCancel": "Скасувати",
+      "deleteConfirm": "Видалити",
+      "deleteTitle": "Видалити {name}?",
+      "dragHandle": "Перетягніть, щоб змінити порядок категорій",
+      "emptyHint": "Перетягніть тег сюди",
+      "more": "Параметри категорії",
+      "rename": "Перейменувати категорію"
+    },
+    "categoryNamePlaceholder": "Назва категорії",
+    "errors": {
+      "createCategoryFailed": "Не вдалося створити категорію",
+      "createTagCategorizeFailed": "Тег створено, але не вдалося додати його до категорії",
+      "createTagFailed": "Не вдалося створити тег",
+      "deleteCategoryFailed": "Не вдалося видалити категорію",
+      "loadFailed": "Не вдалося завантажити категорії тегів",
+      "renameCategoryFailed": "Не вдалося перейменувати категорію",
+      "reorderFailed": "Не вдалося змінити порядок тегів"
+    },
+    "loading": "Завантаження тегів...",
+    "newCategory": "Нова категорія",
+    "newTag": "Новий тег",
+    "search": {
+      "empty": "Жодна категорія чи тег не відповідає вашому запиту",
+      "placeholder": "Пошук категорій і тегів"
+    },
+    "tagNamePlaceholder": "Назва тегу",
+    "uncategorized": "Без категорії"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (двічі клацніть, щоб редагувати)",
+      "dragToReorder": "Перетягніть, щоб змінити порядок стовпця: {name}"
+    },
+    "columns": {
+      "created": "Створено",
+      "folder": "Папка",
+      "kind": "Тип",
+      "modified": "Змінено",
+      "tags": "Теги",
+      "title": "Назва",
+      "wordCount": "Кількість слів"
+    },
+    "defaultViewName": "Типовий",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# нотатка} few {# нотатки} many {# нотаток} other {# нотатки}}"
+    },
+    "selectView": "Вибрати перегляд"
   }
 }

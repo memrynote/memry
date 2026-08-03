@@ -1,3 +1,5 @@
+import type { ImportMessage } from '../messages'
+
 export interface TickTickRow {
   folderName: string
   listName: string
@@ -87,8 +89,7 @@ export interface TaskPlan {
   reminders: ReminderPlan[]
 }
 
-export interface ImportWarning {
-  message: string
+export interface ImportWarning extends ImportMessage {
   row?: number
 }
 

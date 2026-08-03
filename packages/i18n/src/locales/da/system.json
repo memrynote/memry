@@ -21,13 +21,20 @@
       "availableTitle": "Opdatering tilgængelig",
       "availableMessage": "memrynote {version} er tilgængelig.",
       "availableDetailFallback": "Vil du downloade opdateringen nu?",
-      "buttonDownload": "Download",
+      "buttonDownload": "Hent",
       "buttonLater": "Senere",
       "readyTitle": "Opdatering klar",
       "readyMessage": "memrynote {version} er blevet downloadet.",
       "readyDetailFallback": "Genstart memrynote for at afslutte installationen af opdateringen.",
       "buttonRestartNow": "Genstart nu",
       "releaseNotesLabel": "Udgivelsesbemærkninger:"
+    },
+    "pair": {
+      "buttonAllow": "Tillad",
+      "buttonDeny": "Afvis",
+      "buttonPair": "Forbind",
+      "message": "Vil du tillade, at Memry-browserudvidelsen sender opsamlinger til denne app?",
+      "title": "Forbind browserudvidelse"
     }
   },
   "notification": {
@@ -38,6 +45,11 @@
       "fallback": "Påmindelse forfalder",
       "default": "Påmindelse",
       "task": "Opgavepåmindelse"
+    },
+    "inboxReview": {
+      "body": "Du har {count, plural, one {# element} other {# elementer}} at gennemgå.",
+      "testBody": "Dette er en test — dine daglige påmindelser om gennemgang vil se sådan ud.",
+      "title": "Tid til at gennemgå din indbakke"
     }
   },
   "error": {
@@ -45,5 +57,15 @@
     "definitionNotFound": "Definition ikke fundet",
     "noteNotFound": "Bemærk ikke fundet",
     "updateFailed": "Opdatering mislykkedes"
+  },
+  "startup": {
+    "failed": {
+      "body": "Det kan ske, når der er meget lidt ledig plads på disken, eller ved ældre grafikdrivere. Prøv at frigøre noget diskplads, og åbn så MemryNote igen. Hvis det bliver ved, plejer en geninstallation at løse det.",
+      "title": "MemryNote kunne ikke starte helt op"
+    },
+    "installingUpdate": {
+      "subtitle": "MemryNote åbner igen automatisk.",
+      "title": "Installerer opdatering…"
+    }
   }
 }

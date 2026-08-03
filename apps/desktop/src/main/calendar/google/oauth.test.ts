@@ -39,6 +39,16 @@ vi.mock('../repositories/calendar-sources-repository', () => ({
   listCalendarSources: (...args: unknown[]) => mockListCalendarSources(...args)
 }))
 
+// oauth-errors resolves its copy through the main-process i18n singleton, which
+// only exists after setMainI18n() during app boot. Echo the key back so the
+// assertions below pin the chosen message, not one locale's wording.
+vi.mock('../../lib/main-i18n', () => ({
+  getMainI18n: () => ({
+    t: (key: string) => key,
+    getFixedT: () => (key: string) => key
+  })
+}))
+
 import {
   GOOGLE_CALENDAR_SCOPE,
   buildGoogleCalendarAuthUrl,
@@ -295,11 +305,12 @@ describe('google calendar oauth', () => {
       caught = err as Error
     }
 
-    // #then — user-facing message is friendly and actionable, not technical
+    // #then — user-facing message is the friendly, actionable localized copy
+    // (asserted by key), never the technical provider detail
     expect(caught).not.toBeNull()
     expect(caught?.message).not.toMatch(/\b400\b/)
     expect(caught?.message).not.toContain('invalid_grant')
-    expect(caught?.message.toLowerCase()).toMatch(/connect(ion)?.*(again|expired)/)
+    expect(caught?.message).toBe('googleCalendar.reconnectNeeded')
 
     // #then — technical detail is preserved in the log for developers
     expect(loggerMock.error).toHaveBeenCalledWith(
@@ -409,7 +420,7 @@ describe('google calendar oauth', () => {
       }, 0)
     })
 
-    await expect(connectGoogleCalendar()).rejects.toThrow(/Calendar permission/)
+    await expect(connectGoogleCalendar()).rejects.toThrow('googleCalendar.scopeMissing')
 
     fetchMock
       .mockResolvedValueOnce(
@@ -475,7 +486,7 @@ describe('google calendar oauth', () => {
       }, 0)
     })
 
-    await expect(connectGoogleCalendar()).rejects.toThrow(/Google Calendar/)
+    await expect(connectGoogleCalendar()).rejects.toThrow('googleCalendar.scopeMissing')
     expect(loggerMock.error).toHaveBeenCalledWith(
       'Failed to fetch Google userinfo',
       expect.objectContaining({ status: 403, apiStatus: 'PERMISSION_DENIED' })
@@ -696,7 +707,7 @@ describe('google calendar oauth', () => {
       }, 0)
     })
 
-    await expect(connectGoogleCalendar()).rejects.toThrow(/Google Calendar/)
+    await expect(connectGoogleCalendar()).rejects.toThrow('googleCalendar.temporarilyUnavailable')
 
     expect(loggerMock.error).toHaveBeenCalledWith(
       'Google Calendar token exchange failed',
@@ -739,7 +750,7 @@ describe('google calendar oauth', () => {
       }, 0)
     })
 
-    await expect(connectGoogleCalendar()).rejects.toThrow(/Google Calendar/)
+    await expect(connectGoogleCalendar()).rejects.toThrow('googleCalendar.temporarilyUnavailable')
 
     expect(loggerMock.error).toHaveBeenCalledWith(
       'Failed to fetch Google Calendar metadata',

@@ -16,9 +16,27 @@
       "willSync": "Notiz wird mit der Cloud synchronisiert",
       "renameFailed": "Notiz konnte nicht umbenannt werden",
       "toggleLocalOnlyFailed": "Nur lokal umschalten fehlgeschlagen",
-      "toggleFullWidthFailed": "Das Umschalten auf die volle Breite ist fehlgeschlagen"
+      "toggleFullWidthFailed": "Das Umschalten auf die volle Breite ist fehlgeschlagen",
+      "copyPathFailed": "Der Pfad konnte nicht kopiert werden",
+      "deleteFailed": "Notiz konnte nicht gelöscht werden",
+      "moveFailed": "Notiz konnte nicht verschoben werden",
+      "moved": "Notiz verschoben",
+      "openExternalFailed": "Notiz konnte nicht geöffnet werden",
+      "pathCopied": "Pfad kopiert",
+      "revealFailed": "Notiz konnte nicht angezeigt werden"
     },
-    "deleteDialogTitle": "{count, plural, one {Notiz löschen} other {Löschen Sie #-Notizen}}"
+    "deleteDialogTitle": "{count, plural, one {Notiz löschen} other {Löschen Sie #-Notizen}}",
+    "deleteConfirm": {
+      "cancel": "Abbrechen",
+      "confirm": "Löschen",
+      "deleting": "Wird gelöscht...",
+      "description": "Möchtest du „{title}“ wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "title": "Notiz löschen"
+    },
+    "itemsCount": "{count, plural, one {# Element} other {# Elemente}}",
+    "itemsCountFiltered": "{shown} von {total, plural, one {# Element} other {# Elemente}}",
+    "renameViewUnavailableForTags": "Gespeicherte Ansichten lassen sich für Tags noch nicht umbenennen",
+    "tagFilterLabel": "Tag = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "Löschen Sie {count}-Notizen",
       "deleteSelectedItems": "Löschen Sie {count}-Elemente",
       "bookmark": "Lesezeichen",
-      "removeFromBookmarks": "Aus Lesezeichen entfernen"
+      "removeFromBookmarks": "Aus Lesezeichen entfernen",
+      "applyTemplate": "Vorlage anwenden"
     },
     "deleteDialog": {
       "noteTitle": "Notiz löschen",
@@ -83,7 +102,17 @@
       "export": "Exportieren",
       "fullWidth": "Volle Breite",
       "disableLocalOnly": "Nur lokal deaktivieren",
-      "setLocalOnly": "Nur lokal einstellen"
+      "setLocalOnly": "Nur lokal einstellen",
+      "applyTemplate": "Vorlage anwenden",
+      "copyPath": "Pfad kopieren",
+      "delete": "Notiz löschen",
+      "find": "Suchen…",
+      "moreActions": "Weitere Aktionen",
+      "moveToFolder": "In Ordner verschieben…",
+      "openInDefaultApp": "In der Standard-App öffnen",
+      "rename": "Umbenennen…",
+      "revealInFinder": "Im Finder anzeigen",
+      "revealInSidebar": "In der Navigation anzeigen"
     },
     "breadcrumb": {
       "locationAria": "Standort notieren",
@@ -223,7 +252,12 @@
       "multiselect": "Mehrfachauswahl"
     },
     "showOnCalendar": "Im Kalender anzeigen",
-    "showingOnCalendar": "Wird im Kalender angezeigt"
+    "showingOnCalendar": "Wird im Kalender angezeigt",
+    "statusCategories": {
+      "done": "Abgeschlossen",
+      "inProgress": "In Bearbeitung",
+      "todo": "Zu erledigen"
+    }
   },
   "templateSelector": {
     "title": "Wählen Sie Ihre Leinwand",
@@ -235,7 +269,10 @@
     "essentials": "Wesentliches",
     "setFolderDefault": "Als Standardordner festlegen",
     "useTemplate": "Vorlage verwenden",
-    "createNote": "Notiz erstellen"
+    "createNote": "Notiz erstellen",
+    "applyDescription": "Den Inhalt dieser Notiz durch eine Vorlage ersetzen",
+    "applyTitle": "Vorlage anwenden",
+    "applyToNote": "Vorlage anwenden"
   },
   "exportDialog": {
     "title": "Notiz exportieren",
@@ -324,8 +361,6 @@
       "noFormulasDefined": "Keine Formeln definiert",
       "addFormula": "Formel hinzufügen",
       "deleteFormula": "Formel löschen",
-      "areYouSureYouWantToDeleteTheFormula": "Sind Sie sicher, dass Sie die Formel löschen möchten?",
-      "quotThisActionCannotBeUndone": "quot;? Diese Aktion kann nicht rückgängig gemacht werden.",
       "cancel": "Abbrechen",
       "delete": "Löschen",
       "none": "Keine",
@@ -333,7 +368,8 @@
       "delete2": "Löschen",
       "columnBorders": "Spaltenrahmen",
       "display": "Anzeige",
-      "showSummaries": "Zusammenfassungen anzeigen"
+      "showSummaries": "Zusammenfassungen anzeigen",
+      "deleteFormulaBody": "Möchten Sie die Formel „{name}“ wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtern",
@@ -352,7 +388,8 @@
       "addCondition": "Bedingung hinzufügen",
       "addFilter": "Filter hinzufügen",
       "addGroup": "Gruppe hinzufügen",
-      "removeGroup": "Gruppe entfernen"
+      "removeGroup": "Gruppe entfernen",
+      "lockedConditionHint": "Diese Bedingung definiert die aktuelle Ansicht und kann hier nicht entfernt werden."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Eingebaut",
@@ -365,7 +402,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Notizentabelle",
       "selectAll": "Alle Notizen auswählen",
-      "selectRow": "Notiz auswählen"
+      "selectRow": "Notiz auswählen",
+      "kind": {
+        "Inbox": "Posteingang",
+        "Note": "Notiz",
+        "Task": "Aufgabe"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Notizen durchsuchen...",
@@ -379,10 +421,10 @@
       "preview": "Vorschau",
       "fixExpressionErrorsToSeePreview": "Beheben Sie Ausdrucksfehler, um eine Vorschau anzuzeigen",
       "usingNote": "Verwendungshinweis: „",
-      "quot": "quot;",
       "cancel": "Abbrechen",
       "namePlaceholder": "Tage_bis_fällig",
-      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
+      "usingNoteTitle": "Verwendete Notiz: „{title}“"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Klare Gruppierung",
@@ -408,12 +450,12 @@
       "bestMatch": "Beste Übereinstimmung",
       "current": "aktuell)",
       "allFolders": "ALLE ORDNER",
-      "current2": "aktuell)",
       "noFoldersMatch": "Keine Ordner passen zu „",
-      "quot": "quot;",
       "create": "Erstellen \"",
-      "quot2": "quot;",
-      "cancel": "Abbrechen"
+      "cancel": "Abbrechen",
+      "createFolderNamed": "„{name}“ erstellen",
+      "currentFolderBadge": "(aktuell)",
+      "noFoldersMatchQuery": "Keine Ordner passen zu „{query}“"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Löschen ",
@@ -468,7 +510,13 @@
       "failedToLoadPdf": "PDF konnte nicht geladen werden: ",
       "download": "Herunterladen",
       "download2": "Herunterladen",
-      "noFileAttached": "Keine Datei angehängt"
+      "noFileAttached": "Keine Datei angehängt",
+      "alignCenter": "Zentriert ausrichten",
+      "alignLeft": "Linksbündig ausrichten",
+      "alignRight": "Rechtsbündig ausrichten",
+      "nextPage": "Nächste Seite",
+      "previousPage": "Vorherige Seite",
+      "resizePdf": "PDF-Größe ändern"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Im Aufgabenbereich öffnen",
@@ -530,7 +578,8 @@
       "failedToLoadTags": "Tags konnten nicht geladen werden",
       "noTagsYet": "Noch keine Tags",
       "filterTags": "Tags filtern...",
-      "noMatchingTags": "Keine passenden Tags"
+      "noMatchingTags": "Keine passenden Tags",
+      "Uncategorized": "Ohne Kategorie"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Kommen Sie hier vorbei",
@@ -553,14 +602,15 @@
       "unpinFromTag": "Vom Tag lösen",
       "unpin": "Lösen",
       "pinToTag": "An Tag anpinnen",
-      "pin": "Pin",
+      "pin": "Anpinnen",
       "tagActions": "Markieren Sie Aktionen",
       "editTagName": "Bearbeiten Sie den Tag-Namen",
       "changeColor": "Farbe ändern",
       "deleteTag": "Tag löschen",
       "recent": "Neu",
       "created": "Erstellt",
-      "alphabetical": "Alphabetisch"
+      "alphabetical": "Alphabetisch",
+      "tasks": "AUFGABEN"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Tag umbenennen",
@@ -733,7 +783,9 @@
     "replyPlaceholder": "Antworten...",
     "resolve": "Auflösen",
     "sendAria": "Kommentar senden",
-    "toolbarComment": "Kommentieren"
+    "toolbarComment": "Kommentieren",
+    "openAttachmentAria": "Anhang {name} öffnen",
+    "openImageAria": "Bild {name} öffnen"
   },
   "dateMention": {
     "clear": "Löschen",
@@ -743,5 +795,79 @@
     "remind": "Erinnern",
     "time": "Zeit",
     "timeFormat": "Zeitformat"
+  },
+  "applyTemplateConfirm": {
+    "body": "Nur Inhalt ersetzen",
+    "cancel": "Abbrechen",
+    "description": "Mit „{name}“ wird der aktuelle Inhalt dieser Notiz ersetzt. Das lässt sich nicht rückgängig machen.",
+    "failed": "Vorlage konnte nicht angewendet werden",
+    "full": "Inhalt ersetzen & Vorlagendetails hinzufügen",
+    "success": "Vorlage angewendet",
+    "title": "Notizinhalt ersetzen?"
+  },
+  "tagView": {
+    "moreActions": "Weitere Aktionen",
+    "pin": {
+      "action": "{count, plural, one {# Notiz} other {# Notizen}} an das Tag anheften",
+      "failed": "Die Notiz konnte nicht an das Tag angeheftet werden",
+      "success": "{count, plural, one {# Notiz} other {# Notizen}} an das Tag angeheftet"
+    }
+  },
+  "tags": {
+    "hubTitle": "Schlagworte",
+    "openHub": "Tag-Übersicht öffnen"
+  },
+  "tagsHub": {
+    "cancelCreate": "Abbrechen",
+    "category": {
+      "delete": "Kategorie löschen",
+      "deleteBody": "Die Tags werden nach „Ohne Kategorie“ verschoben. Gelöscht werden sie nicht.",
+      "deleteCancel": "Abbrechen",
+      "deleteConfirm": "Löschen",
+      "deleteTitle": "{name} löschen?",
+      "dragHandle": "Ziehen, um die Kategorie neu anzuordnen",
+      "emptyHint": "Zieh ein Tag hierher",
+      "more": "Kategorieoptionen",
+      "rename": "Kategorie umbenennen"
+    },
+    "categoryNamePlaceholder": "Kategoriename",
+    "errors": {
+      "createCategoryFailed": "Kategorie konnte nicht erstellt werden",
+      "createTagCategorizeFailed": "Tag erstellt, konnte aber nicht zur Kategorie hinzugefügt werden",
+      "createTagFailed": "Tag konnte nicht erstellt werden",
+      "deleteCategoryFailed": "Kategorie konnte nicht gelöscht werden",
+      "loadFailed": "Tag-Kategorien konnten nicht geladen werden",
+      "renameCategoryFailed": "Kategorie konnte nicht umbenannt werden",
+      "reorderFailed": "Tags konnten nicht neu angeordnet werden"
+    },
+    "loading": "Tags werden geladen...",
+    "newCategory": "Neue Kategorie",
+    "newTag": "Neues Tag",
+    "search": {
+      "empty": "Keine Kategorien oder Tags passen zu deiner Suche",
+      "placeholder": "Kategorien und Tags durchsuchen"
+    },
+    "tagNamePlaceholder": "Tag-Name",
+    "uncategorized": "Ohne Kategorie"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (Doppelklick zum Bearbeiten)",
+      "dragToReorder": "Ziehen, um die Spalte neu anzuordnen: {name}"
+    },
+    "columns": {
+      "created": "Erstellt",
+      "folder": "Ordner",
+      "kind": "Art",
+      "modified": "Geändert",
+      "tags": "Schlagworte",
+      "title": "Titel",
+      "wordCount": "Wortanzahl"
+    },
+    "defaultViewName": "Standard",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# Notiz} other {# Notizen}}"
+    },
+    "selectView": "Ansicht auswählen"
   }
 }

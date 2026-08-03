@@ -16,9 +16,27 @@
       "willSync": "ستتم مزامنة الملاحظة مع السحابة",
       "renameFailed": "فشلت إعادة تسمية الملاحظة",
       "toggleLocalOnlyFailed": "فشل التبديل المحلي فقط",
-      "toggleFullWidthFailed": "فشل تبديل العرض الكامل"
+      "toggleFullWidthFailed": "فشل تبديل العرض الكامل",
+      "copyPathFailed": "فشل نسخ المسار",
+      "deleteFailed": "فشل حذف الملاحظة",
+      "moveFailed": "فشل نقل الملاحظة",
+      "moved": "تم نقل الملاحظة",
+      "openExternalFailed": "فشل فتح الملاحظة",
+      "pathCopied": "تم نسخ المسار",
+      "revealFailed": "فشل إظهار الملاحظة"
     },
-    "deleteDialogTitle": "{count, plural, one {حذف الملاحظة} other {حذف ملاحظات #}}"
+    "deleteDialogTitle": "{count, plural, one {حذف الملاحظة} other {حذف ملاحظات #}}",
+    "deleteConfirm": {
+      "cancel": "إلغاء",
+      "confirm": "حذف",
+      "deleting": "جارٍ الحذف...",
+      "description": "هل أنت متأكد أنك تريد حذف \"{title}\"؟ لا يمكن التراجع عن هذا الإجراء.",
+      "title": "حذف الملاحظة"
+    },
+    "itemsCount": "{count, plural, zero {لا توجد عناصر} one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصراً} other {# عنصر}}",
+    "itemsCountFiltered": "{shown} من {total, plural, zero {# عنصر} one {عنصر واحد} two {عنصرين} few {# عناصر} many {# عنصراً} other {# عنصر}}",
+    "renameViewUnavailableForTags": "إعادة تسمية العروض المحفوظة غير متاحة للعلامات بعد",
+    "tagFilterLabel": "العلامة = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "حذف ملاحظات {count}",
       "deleteSelectedItems": "حذف عناصر {count}",
       "bookmark": "إشارة مرجعية",
-      "removeFromBookmarks": "إزالة من الإشارات المرجعية"
+      "removeFromBookmarks": "إزالة من الإشارات المرجعية",
+      "applyTemplate": "تطبيق قالب"
     },
     "deleteDialog": {
       "noteTitle": "حذف الملاحظة",
@@ -83,7 +102,17 @@
       "export": "تصدير",
       "fullWidth": "العرض الكامل",
       "disableLocalOnly": "تعطيل المحلية فقط",
-      "setLocalOnly": "تعيين محلي فقط"
+      "setLocalOnly": "تعيين محلي فقط",
+      "applyTemplate": "تطبيق قالب",
+      "copyPath": "نسخ المسار",
+      "delete": "حذف الملاحظة",
+      "find": "بحث…",
+      "moreActions": "المزيد من الإجراءات",
+      "moveToFolder": "نقل إلى مجلد…",
+      "openInDefaultApp": "فتح في التطبيق الافتراضي",
+      "rename": "إعادة تسمية…",
+      "revealInFinder": "إظهار في Finder",
+      "revealInSidebar": "إظهار في شريط التنقل"
     },
     "breadcrumb": {
       "locationAria": "ملاحظة الموقع",
@@ -223,7 +252,12 @@
       "multiselect": "تحديد متعدد"
     },
     "showOnCalendar": "إظهار في التقويم",
-    "showingOnCalendar": "يظهر في التقويم"
+    "showingOnCalendar": "يظهر في التقويم",
+    "statusCategories": {
+      "done": "مكتمل",
+      "inProgress": "قيد التنفيذ",
+      "todo": "قيد الانتظار"
+    }
   },
   "templateSelector": {
     "title": "اختر قماشك",
@@ -235,7 +269,10 @@
     "essentials": "أساسيات",
     "setFolderDefault": "تعيين كمجلد افتراضي",
     "useTemplate": "استخدم القالب",
-    "createNote": "إنشاء ملاحظة"
+    "createNote": "إنشاء ملاحظة",
+    "applyDescription": "استبدال محتوى هذه الملاحظة بقالب",
+    "applyTitle": "تطبيق قالب",
+    "applyToNote": "تطبيق القالب"
   },
   "exportDialog": {
     "title": "ملاحظة التصدير",
@@ -324,8 +361,6 @@
       "noFormulasDefined": "لم يتم تحديد أي صيغ",
       "addFormula": "إضافة صيغة",
       "deleteFormula": "حذف الصيغة",
-      "areYouSureYouWantToDeleteTheFormula": "هل أنت متأكد أنك تريد حذف الصيغة \"",
-      "quotThisActionCannotBeUndone": "مثل ؛؟ لا يمكن التراجع عن هذا الإجراء.",
       "cancel": "إلغاء",
       "delete": "حذف",
       "none": "لا شيء",
@@ -333,7 +368,8 @@
       "delete2": "حذف",
       "columnBorders": "حدود الأعمدة",
       "display": "العرض",
-      "showSummaries": "إظهار الملخصات"
+      "showSummaries": "إظهار الملخصات",
+      "deleteFormulaBody": "هل أنت متأكد أنك تريد حذف الصيغة \"{name}\"؟ لا يمكن التراجع عن هذا الإجراء."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "تصفية",
@@ -352,7 +388,8 @@
       "addCondition": "إضافة شرط",
       "addFilter": "إضافة مرشح",
       "addGroup": "أضف مجموعة",
-      "removeGroup": "إزالة المجموعة"
+      "removeGroup": "إزالة المجموعة",
+      "lockedConditionHint": "يحدّد هذا الشرط العرض الحالي ولا يمكن إزالته من هنا."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "مدمج",
@@ -365,7 +402,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "جدول الملاحظات",
       "selectAll": "تحديد كل الملاحظات",
-      "selectRow": "تحديد الملاحظة"
+      "selectRow": "تحديد الملاحظة",
+      "kind": {
+        "Inbox": "البريد الوارد",
+        "Note": "ملاحظة",
+        "Task": "مهمة"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "ملاحظات البحث...",
@@ -379,10 +421,10 @@
       "preview": "معاينة",
       "fixExpressionErrorsToSeePreview": "إصلاح أخطاء التعبير لرؤية المعاينة",
       "usingNote": "باستخدام الملاحظة: \"",
-      "quot": "مثل؛",
       "cancel": "إلغاء",
       "namePlaceholder": "days_until_due",
-      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
+      "usingNoteTitle": "باستخدام الملاحظة: \"{title}\""
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "مسح التجميع",
@@ -408,12 +450,12 @@
       "bestMatch": "أفضل مباراة",
       "current": "الحالي)",
       "allFolders": "كافة المجلدات",
-      "current2": "الحالي)",
       "noFoldersMatch": "لا توجد مجلدات متطابقة \"",
-      "quot": "مثل؛",
       "create": "إنشاء \"",
-      "quot2": "مثل؛",
-      "cancel": "إلغاء"
+      "cancel": "إلغاء",
+      "createFolderNamed": "إنشاء \"{name}\"",
+      "currentFolderBadge": "(الحالي)",
+      "noFoldersMatchQuery": "لا توجد مجلدات تطابق \"{query}\""
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "حذف ",
@@ -431,7 +473,7 @@
       "editColumnName": "تحرير اسم العمود"
     },
     "componentsFolderViewViewSwitcher": {
-      "default": "default",
+      "default": "افتراضي",
       "rename": "إعادة تسمية",
       "duplicate": "مكررة",
       "setAsDefault": "تعيين كافتراضي",
@@ -468,7 +510,13 @@
       "failedToLoadPdf": "فشل تحميل ملف PDF: ",
       "download": "تحميل",
       "download2": "تحميل",
-      "noFileAttached": "لا يوجد ملف مرفق"
+      "noFileAttached": "لا يوجد ملف مرفق",
+      "alignCenter": "محاذاة للوسط",
+      "alignLeft": "محاذاة لليسار",
+      "alignRight": "محاذاة لليمين",
+      "nextPage": "الصفحة التالية",
+      "previousPage": "الصفحة السابقة",
+      "resizePdf": "تغيير حجم PDF"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "فتح في لوحة المهام",
@@ -530,7 +578,8 @@
       "failedToLoadTags": "فشل تحميل العلامات",
       "noTagsYet": "لا توجد علامات حتى الآن",
       "filterTags": "تصفية العلامات...",
-      "noMatchingTags": "لا توجد علامات مطابقة"
+      "noMatchingTags": "لا توجد علامات مطابقة",
+      "Uncategorized": "غير مصنّفة"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "أسقط هنا",
@@ -560,7 +609,8 @@
       "deleteTag": "حذف العلامة",
       "recent": "الأخيرة",
       "created": "تم إنشاؤها",
-      "alphabetical": "أبجديا"
+      "alphabetical": "أبجديا",
+      "tasks": "المهام"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "إعادة تسمية العلامة",
@@ -733,7 +783,9 @@
     "replyPlaceholder": "رد...",
     "resolve": "حل",
     "sendAria": "إرسال التعليق",
-    "toolbarComment": "تعليق"
+    "toolbarComment": "تعليق",
+    "openAttachmentAria": "فتح المرفق {name}",
+    "openImageAria": "فتح الصورة {name}"
   },
   "dateMention": {
     "clear": "مسح",
@@ -743,5 +795,79 @@
     "remind": "تذكير",
     "time": "الوقت",
     "timeFormat": "تنسيق الوقت"
+  },
+  "applyTemplateConfirm": {
+    "body": "استبدال المحتوى فقط",
+    "cancel": "إلغاء",
+    "description": "سيؤدي تطبيق \"{name}\" إلى استبدال المحتوى الحالي لهذه الملاحظة. لا يمكن التراجع عن هذا.",
+    "failed": "فشل تطبيق القالب",
+    "full": "استبدال المحتوى وإضافة تفاصيل القالب",
+    "success": "تم تطبيق القالب",
+    "title": "استبدال محتوى الملاحظة؟"
+  },
+  "tagView": {
+    "moreActions": "المزيد من الإجراءات",
+    "pin": {
+      "action": "تثبيت {count, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}} على العلامة",
+      "failed": "فشل تثبيت الملاحظة على العلامة",
+      "success": "تم تثبيت {count, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}} على العلامة"
+    }
+  },
+  "tags": {
+    "hubTitle": "العلامات",
+    "openHub": "فتح مركز العلامات"
+  },
+  "tagsHub": {
+    "cancelCreate": "إلغاء",
+    "category": {
+      "delete": "حذف الفئة",
+      "deleteBody": "ستنتقل العلامات إلى “غير مصنّفة”، ولن تُحذف.",
+      "deleteCancel": "إلغاء",
+      "deleteConfirm": "حذف",
+      "deleteTitle": "حذف {name}؟",
+      "dragHandle": "اسحب لإعادة ترتيب الفئة",
+      "emptyHint": "اسحب علامة إلى هنا",
+      "more": "خيارات الفئة",
+      "rename": "إعادة تسمية الفئة"
+    },
+    "categoryNamePlaceholder": "اسم الفئة",
+    "errors": {
+      "createCategoryFailed": "فشل إنشاء الفئة",
+      "createTagCategorizeFailed": "تم إنشاء العلامة، لكن تعذّرت إضافتها إلى الفئة",
+      "createTagFailed": "فشل إنشاء العلامة",
+      "deleteCategoryFailed": "فشل حذف الفئة",
+      "loadFailed": "فشل تحميل فئات العلامات",
+      "renameCategoryFailed": "فشلت إعادة تسمية الفئة",
+      "reorderFailed": "فشلت إعادة ترتيب العلامات"
+    },
+    "loading": "جارٍ تحميل العلامات...",
+    "newCategory": "فئة جديدة",
+    "newTag": "علامة جديدة",
+    "search": {
+      "empty": "لا توجد فئات أو علامات تطابق بحثك",
+      "placeholder": "ابحث في الفئات والعلامات"
+    },
+    "tagNamePlaceholder": "اسم العلامة",
+    "uncategorized": "غير مصنّفة"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (انقر نقرًا مزدوجًا للتحرير)",
+      "dragToReorder": "اسحب لإعادة ترتيب العمود: {name}"
+    },
+    "columns": {
+      "created": "تاريخ الإنشاء",
+      "folder": "المجلد",
+      "kind": "النوع",
+      "modified": "تاريخ التعديل",
+      "tags": "العلامات",
+      "title": "العنوان",
+      "wordCount": "عدد الكلمات"
+    },
+    "defaultViewName": "افتراضي",
+    "groupHeader": {
+      "noteCount": "{count, plural, zero {لا توجد ملاحظات} one {ملاحظة واحدة} two {ملاحظتان} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}"
+    },
+    "selectView": "تحديد العرض"
   }
 }

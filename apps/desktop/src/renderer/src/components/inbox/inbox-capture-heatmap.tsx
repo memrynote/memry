@@ -1,12 +1,23 @@
 import type { InboxCapturePattern } from '@memry/rpc/inbox'
 import { useT } from '@memry/i18n/renderer'
+import { getActiveLocale } from '@/lib/active-locale'
 
 export interface InboxCaptureHeatmapProps {
   patterns: InboxCapturePattern | undefined
 }
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
+/** Column index 0 is Monday, matching the row order the heatmap data uses. */
+const DAY_COUNT = 7
+// 2024-01-01 is a Monday, so adding the column index walks Mon → Sun.
+const MONDAY_REFERENCE = Date.UTC(2024, 0, 1)
 const HEATMAP_HOURS = [6, 8, 10, 12, 14, 16, 18, 20, 22] as const
+
+function getDayLabels(locale: string): string[] {
+  const format = new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' })
+  return Array.from({ length: DAY_COUNT }, (_, index) =>
+    format.format(new Date(MONDAY_REFERENCE + index * 86_400_000))
+  )
+}
 
 function intensityToAlpha(intensity: number): string {
   if (intensity <= 0) return '0D'
@@ -24,6 +35,10 @@ function intensityToAlpha(intensity: number): string {
 
 export function InboxCaptureHeatmap({ patterns }: InboxCaptureHeatmapProps): React.JSX.Element {
   const { t: tPhaseF } = useT('inbox')
+  // Recomputed per render (not memoized on mount): `useT` re-renders on
+  // `languageChanged`, so the labels follow a mid-session language switch the
+  // same way the twin heatmap in `pages/inbox/inbox-health-view.tsx` does.
+  const dayLabels = getDayLabels(getActiveLocale())
   const heatmap = patterns?.timeHeatmap
 
   let maxCount = 0
@@ -43,9 +58,9 @@ export function InboxCaptureHeatmap({ patterns }: InboxCaptureHeatmapProps): Rea
       </div>
       <div className="[font-synthesis:none] flex gap-1.5 text-xs/4">
         <div className="flex flex-col pt-4 gap-0.75">
-          {DAYS.map((day) => (
+          {dayLabels.map((day, dayIdx) => (
             <div
-              key={day}
+              key={dayIdx}
               className="h-3 inline-block text-[#50505A] font-sans shrink-0 text-[9px]/3"
             >
               {day}
@@ -63,7 +78,7 @@ export function InboxCaptureHeatmap({ patterns }: InboxCaptureHeatmapProps): Rea
               </div>
             ))}
           </div>
-          {DAYS.map((_, dayIdx) => (
+          {dayLabels.map((_, dayIdx) => (
             <div key={dayIdx} className="flex gap-0.75">
               {HEATMAP_HOURS.map((hour) => {
                 const val = (heatmap?.[hour]?.[dayIdx] ?? 0) + (heatmap?.[hour + 1]?.[dayIdx] ?? 0)
@@ -73,7 +88,7 @@ export function InboxCaptureHeatmap({ patterns }: InboxCaptureHeatmapProps): Rea
                     key={hour}
                     className="rounded-xs shrink-0 size-3"
                     style={{ backgroundColor: `#E8A44A${intensityToAlpha(intensity)}` }}
-                    title={`${val} captures`}
+                    title={tPhaseF('insights.captures', { count: val })}
                   />
                 )
               })}

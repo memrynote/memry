@@ -63,13 +63,10 @@ export const AllSubtasksCompleteDialog = ({
           <AlertDialogDescription asChild>
             <div className="space-y-2">
               <p>
-                &{tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.ldquo')}
-                {parentTitle}&
-                {tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.rdquoHasAll')}
-                {subtaskCount}{' '}
-                {tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.subtask')}
-                {subtaskCount !== 1 ? 's' : ''}{' '}
-                {tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.done')}
+                {tPhaseF(
+                  'phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.allSubtasksDoneBody',
+                  { title: parentTitle, count: subtaskCount }
+                )}
               </p>
               <p className="text-muted-foreground">
                 {tPhaseF(

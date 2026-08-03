@@ -16,7 +16,7 @@
         "general": "Allmänt",
         "templates": "Mallar",
         "editor": "Redigerare",
-        "journal": "Journal",
+        "journal": "Dagbok",
         "tasks": "Uppgifter",
         "calendar": "Kalender",
         "appearance": "Utseende",
@@ -28,7 +28,8 @@
         "properties": "Egenskaper",
         "commandLine": "Kommandorad",
         "features": "Funktioner",
-        "import": "Importera"
+        "import": "Importera",
+        "inbox": "Inkorg"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Laddar ner {percent}%",
         "downloaded": "Starta om för att installera",
         "idle": "Sök efter uppdateringar"
+      },
+      "autoCheck": {
+        "description": "Sök efter nya versioner vid start och regelbundet medan appen är öppen.",
+        "error": "Misslyckades med att uppdatera inställningen för automatisk kontroll",
+        "label": "Sök efter uppdateringar automatiskt"
+      },
+      "autoDownload": {
+        "description": "Ladda ner och installera nya versioner i bakgrunden utan att fråga.",
+        "error": "Misslyckades med att uppdatera inställningen för automatisk nedladdning",
+        "label": "Ladda ner uppdateringar automatiskt"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Dela anonym användningsstatistik",
         "description": "Det är endast anonym statistik — inga anteckningsinnehåll, sökfrågor, filvägar, e-post eller råa ID:n skickas någonsin.",
         "error": "Misslyckades med att uppdatera telemetriinställning"
+      },
+      "diagnostics": {
+        "building": "Förbereder rapport…",
+        "consent": "Skicka en engångsrapport med diagnostik? Den innehåller bara maskerade tekniska loggar — inget anteckningsinnehåll.",
+        "error": "Misslyckades med att skicka diagnostikrapporten",
+        "notNow": "Inte nu",
+        "previewError": "Det gick inte att förbereda diagnostikrapporten",
+        "previewLabel": "Förhandsgranska rapportens innehåll",
+        "send": "Skicka",
+        "sendReport": {
+          "button": "Skicka diagnostikrapport",
+          "description": "Skicka en engångsrapport med maskerade tekniska loggar så att vi kan felsöka problemet du stötte på.",
+          "label": "Diagnostikrapport"
+        },
+        "sending": "Skickar…",
+        "sent": "Rapporten är skickad — referens {incidentId}",
+        "snapshotLabel": "Ögonblicksbild av enheten",
+        "title": "Skicka en diagnostikrapport?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Layout",
-      "toolbar": "Verktygsfält"
+      "toolbar": "Verktygsfält",
+      "spelling": "Stavning"
     },
     "width": {
       "label": "Redigerarens bredd",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Smalt",
         "medium": "Medium",
-        "wide": "Brett"
+        "wide": "Brett",
+        "full": "Full bredd",
+        "normal": "Normal"
       },
       "error": "Kunde inte uppdatera redigerarens bredd"
     },
@@ -229,6 +261,11 @@
       "label": "Klistrigt formateringsverktygsfält",
       "description": "Visa alltid verktygsfält ovanför redigeraren",
       "error": "Kunde inte uppdatera verktygsfältsläge"
+    },
+    "spellCheck": {
+      "description": "Stryk under felstavade ord i anteckningar och dagböcker",
+      "error": "Misslyckades med att uppdatera stavningskontrollen",
+      "label": "Kontrollera stavning"
     }
   },
   "templates": {
@@ -276,7 +313,7 @@
   },
   "journal": {
     "header": {
-      "title": "Journal",
+      "title": "Dagbok",
       "subtitle": "Journalinställningar och preferenser",
       "loading": "Läser in inställningar..."
     },
@@ -640,7 +677,7 @@
       "vaultPickerFolderLabel": "Lagra valv i mapp",
       "vaultPickerPrimaryHint": "Öppnas nu",
       "vaultPickerTitle": "Välj vad som ska hämtas",
-      "vaultRow": "Valv — {{count}} objekt · {{date}}"
+      "vaultRow": "Valv — {count} objekt · {date}"
     }
   },
   "devices": {
@@ -673,7 +710,8 @@
       "removeFailed": "Misslyckades med att ta bort enhet",
       "renamed": "Bytt namn till \"{name}\"",
       "renameFailed": "Misslyckades med att byta namn på enhet"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Länka ny enhet",
@@ -855,6 +893,11 @@
         "description": "Stäng av för enkelriktad synk — du ser fortfarande dina Google-händelser i memrynote, men memrynote-händelser visas inte i Google.",
         "error": "Det gick inte att uppdatera synkriktning",
         "label": "Visa memrynote-händelser i Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Avstängd som standard. Slå på så kan AI-agenten läsa dina Google-händelser; stäng av så får den inget tillbaka när den tillfrågas om dem. Du ser dem fortfarande i memrynote oavsett vad.",
+        "error": "Det gick inte att uppdatera AI-åtkomst",
+        "label": "Låt AI läsa händelser i Google Calendar"
       }
     },
     "sourcePicker": {
@@ -898,7 +941,8 @@
     },
     "groups": {
       "storageUsage": "Lagringsanvändning",
-      "location": "Plats"
+      "location": "Plats",
+      "accountVaults": "Valv på ditt konto"
     },
     "loadingStorage": "Laddar lagringsinformation...",
     "signInStorage": "Logga in för att visa lagringsanvändning",
@@ -919,6 +963,17 @@
       },
       "warningTitle": "Lagringen nästan full",
       "warningDescription": "Frigör utrymme eller uppgradera din plan för att undvika synkroniseringsproblem."
+    },
+    "accountVaults": {
+      "activeHint": "Byt till ett annat valv för att ta bort det här.",
+      "cloudOnly": "Inte på den här enheten",
+      "delete": "Ta bort",
+      "deleteBody": "Detta tar permanent bort all synkad data för det här valvet från Memrys servrar och kan inte ångras. Dina filer på disken tas inte bort.",
+      "deleteConfirm": "Ta bort från kontot",
+      "deleteFailed": "Det gick inte att ta bort valvet",
+      "deleteTitle": "Ta bort “{name}” från ditt konto?",
+      "empty": "Inga valv är synkade till ditt konto än.",
+      "itemsCount": "{count} objekt"
     }
   },
   "tags": {
@@ -1137,16 +1192,12 @@
       "press": "Tryck",
       "toToggleThisDialog": "för att växla denna dialog"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middot;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Denna enhet har tagits bort",
       "exporting": "Exporterar...",
       "signOut": "Logga ut"
     },
     "componentsSyncSyncHistory": {
-      "middot": "middot; ",
       "activity": "Aktivitet",
       "filterBySyncType": "Filtrera efter synkroniseringstyp",
       "allTypes": "Alla typer",
@@ -1160,7 +1211,12 @@
       "last30Days": "Senaste 30 dagarna",
       "loadingSyncHistory": "Laddar synkroniseringshistorik",
       "noSyncActivityYet": "Ingen synkprimeringsaktivitet än",
-      "loadMore": "Ladda mer"
+      "loadMore": "Ladda mer",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, visa felinformation",
+      "summaryFailed": "Synkroniseringen misslyckades",
+      "summaryPulled": "{count, plural, one {# objekt hämtat} other {# objekt hämtade}}",
+      "summaryPushed": "{count, plural, one {# objekt skickat} other {# objekt skickade}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Senast synkroniserad",
@@ -1208,102 +1264,103 @@
       "failedToCloseVault": "Misslyckades med att stänga valvet",
       "failedToSwitchVault": "Misslyckades med att byta valv",
       "failedToUpdateConfig": "Misslyckades med att uppdatera konfigurationen",
-      "failedToReindex": "Misslyckades med att omindexera"
+      "failedToReindex": "Misslyckades med att omindexera",
+      "failedToLoadTasks": "Misslyckades med att ladda uppgifter"
     }
   },
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Lokal serveråtkomst för externa MCP-klienter."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Anslutning",
+      "access": "Åtkomst"
     },
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Använd den här localhost-slutpunkten från Cursor, Claude Desktop eller Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Bearer-token",
+        "description": "Autentiseringsuppgift i minnet för den här appstarten."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Rotera token",
+        "description": "Ogiltigförklara befintliga sessioner för externa klienter."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "Kopiera {label}",
+    "notRunning": "Körs inte",
+    "toolsBadge": "{count, plural, one {# verktyg} other {# verktyg}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Agentbehörigheter",
+      "subtitle": "Välj standardåtkomst, bekräftelser och lokala leverantörer för Agent-chatt."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Lokal OpenAI-kompatibel leverantör",
+      "actions": "Anslutningskontroller"
     },
     "presets": {
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Anpassad"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Förinställning"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "Bas-URL",
+        "description": "OpenAI-kompatibel /v1-slutpunkt."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Tillåt slutpunkt utanför loopback",
+        "description": "Data skickas till den konfigurerade slutpunkten."
       },
       "model": {
-        "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "label": "Modell",
+        "description": "Välj en modell från listan eller ange en manuellt."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "API-nyckel",
+        "description": "Valfri autentiseringsuppgift som lagras i operativsystemets nyckelring.",
+        "configured": "En API-nyckel är redan sparad i operativsystemets nyckelring."
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "save": "Spara",
+      "models": "Modeller",
+      "test": "Testa anslutning",
+      "probe": "Undersök verktyg"
     },
     "status": {
-      "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "disconnected": "Frånkopplad",
+      "toolsDisabled": "Verktyg inaktiverade",
+      "fullTools": "Alla verktyg aktiverade",
       "checking": "Kontrollerar…",
       "connected": "Ansluten",
       "label": "Anslutning"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Agentbehörigheter",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Standardåtkomst",
+        "description": "Anger vilket åtkomstläge nya agentturer startar i.",
+        "vaultOnly": "Endast valv",
+        "computerAccess": "Datoråtkomst"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Bekräfta åtgärder",
+        "description": "Välj om verktygsanrop körs automatiskt eller väntar på godkännande i chatten.",
+        "alwaysAllow": "Tillåt alltid",
+        "askBeforeChanges": "Fråga före ändringar"
       }
     }
   },
@@ -1368,6 +1425,10 @@
       "tasks": {
         "description": "Att-göra och förfallodatum",
         "label": "Uppgifter"
+      },
+      "spatialCanvas": {
+        "description": "Fria ytor för att ordna och länka anteckningar",
+        "label": "Canvas"
       }
     }
   },
@@ -1393,7 +1454,10 @@
         "skipped": "{count} överhoppade",
         "title": "Import klar"
       },
-      "title": "Importera från {name}"
+      "title": "Importera från {name}",
+      "chooseDirectory": "Välj mapp…",
+      "folderKeepsAssets": "Välj mappen när bilderna ligger utanför anteckningarnas egen mapp — exporter lägger ofta media i en gemensam mapp.",
+      "previewError": "Förhandsgranskningen misslyckades"
     },
     "header": {
       "subtitle": "Ta in dina anteckningar och uppgifter från andra appar",
@@ -1432,6 +1496,99 @@
       "tasks": "{count, plural, one {# uppgift} other {# uppgifter}}",
       "withDueDate": "{count} daterade",
       "withTags": "{count} taggade"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Kolumner: {columns}",
+        "emptyTitle": "Hoppade över rad med tom titel (kolumnen ”{column}”)",
+        "noHeaders": "CSV-filen saknar rubriker",
+        "titleColumn": "Titel från ”{column}”; övriga kolumner sparas som egenskaper"
+      },
+      "raindrop": {
+        "csvEmpty": "Raindrop-CSV:n är tom",
+        "headerNotFound": "Raindrop-CSV:ns rubrikrad (kolumnen ”url”) hittades inte",
+        "rowNoUrl": "Rad {row} hoppades över: ingen URL"
+      },
+      "readFileFailed": "Misslyckades med att läsa filen",
+      "ticktick": {
+        "foldersDropped": "TickTick-mappar har ingen motsvarighet i Memry och togs bort",
+        "headerNotFound": "TickTick-CSV:ns rubrikrad (”Folder Name”) hittades inte",
+        "reminderNoAnchor": "Påminnelsen ”{reminder}” hoppades över (inget datumankare)",
+        "subtaskParentMissing": "Överordnad uppgift till deluppgiften ”{title}” hittades inte; importerad på översta nivån",
+        "unknownPriority": "Okänd TickTick-prioritet {priority} → ingen",
+        "unsupportedRepeat": "Upprepningsregeln ”{rule}” stöds inte och hoppades över"
+      },
+      "todoist": {
+        "emptyTitle": "Uppgift med tomt innehåll importerades som (utan titel)",
+        "headerNotFound": "Inte en Todoist-CSV: rubrikraden TYPE saknas",
+        "orphanComment": "Kommentar utan föregående uppgift hoppades över",
+        "sectionFlattened": "Avsnittet ”{section}” plattades ut",
+        "subtaskNoParent": "Deluppgiften ”{title}” saknar överordnad uppgift på indrag {indent}; importerad på översta nivån",
+        "unknownPriority": "Okänd prioritet {priority} → ingen",
+        "unparsedDate": "Kunde inte tolka datumet ”{date}”"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Kopierar Apple Notes-databasen…"
+      },
+      "bear": {
+        "scanning": "Skannar Bear-exporten…"
+      },
+      "csv": {
+        "importing": "Importerar CSV-anteckningar…"
+      },
+      "evernote": {
+        "scanning": "Skannar .enex-filer…"
+      },
+      "html": {
+        "scanning": "Skannar HTML-filer…"
+      },
+      "importingItem": "Importerar {title}",
+      "raindrop": {
+        "importing": "Importerar Raindrop-bokmärken…"
+      },
+      "roam": {
+        "reading": "Läser Roam-exporten…"
+      },
+      "scanningExport": "Skannar exporten…",
+      "scanningFiles": "Skannar filer…",
+      "ticktick": {
+        "importing": "Importerar TickTick-uppgifter…"
+      },
+      "todoist": {
+        "importing": "Importerar Todoist-uppgifter…"
+      }
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Laddar…",
+      "subtitle": "Daglig påminnelse om genomgång och inkorgsinställningar.",
+      "title": "Inkorg"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "En vänlig påminnelse varje dag när det ligger något i inkorgen.",
+        "label": "Påminn mig om att gå igenom inkorgen"
+      },
+      "error": "Det gick inte att uppdatera påminnelsen.",
+      "group": "Daglig påminnelse om genomgång",
+      "test": {
+        "button": "Skicka test",
+        "description": "Skicka påminnelsen nu för att kontrollera systemets aviseringar.",
+        "label": "Testavisering",
+        "sent": "Testaviseringen är skickad.",
+        "sentHint": "Om inget visas, tillåt aviseringar för MemryNote i dina systeminställningar.",
+        "unsupported": "Den här enheten kan inte visa skrivbordsaviseringar."
+      },
+      "time": {
+        "description": "Lokal tid, på varje enhet.",
+        "hourLabel": "Timme",
+        "label": "Påminnelsetid",
+        "minuteLabel": "Minut",
+        "periodLabel": "AM eller PM"
+      }
     }
   }
 }

@@ -65,6 +65,7 @@ export function CaptureDuplicate({
     month: 'short',
     day: 'numeric'
   })
+  const displayTitle = title.length > 60 ? `${title.slice(0, 60)}...` : title
 
   return (
     <div className="flex flex-col gap-2.5 px-4 py-3.5">
@@ -75,11 +76,10 @@ export function CaptureDuplicate({
         </span>
       </div>
       <p className="text-xs text-muted-foreground truncate">
-        &{tPhaseF('phaseF.componentsQuickCaptureStates.ldquo')}
-        {title.slice(0, 60)}
-        {title.length > 60 ? '...' : ''}&
-        {tPhaseF('phaseF.componentsQuickCaptureStates.rdquoMiddot')}
-        {dateStr}
+        {tPhaseF('phaseF.componentsQuickCaptureStates.duplicateMeta', {
+          title: displayTitle,
+          date: dateStr
+        })}
       </p>
       <div className="flex gap-2">
         <button

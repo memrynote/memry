@@ -25,7 +25,8 @@
     "expand": "ขยาย",
     "collapse": "ย่อ",
     "showMore": "+{count, plural, one {# เพิ่มเติม} other {# เพิ่มเติม}}",
-    "showLess": "แสดงน้อยลง"
+    "showLess": "แสดงน้อยลง",
+    "undo": "เลิกทำ"
   },
   "tabs": {
     "pin": "ปักหมุดแท็บ",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "วันนี้",
     "yesterday": "เมื่อวาน",
-    "daysAgo": "{count, plural, one {# วันที่แล้ว} other {# วันก่อน}}"
+    "daysAgo": "{count, plural, one {# วันที่แล้ว} other {# วันก่อน}}",
+    "daysLate": "{count, plural, other {สาย # วัน}}",
+    "daysOverdue": "{count, plural, other {เลยกำหนด # วัน}}",
+    "tomorrow": "พรุ่งนี้"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {ทุกวัน} other {ทุก # วัน}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {ทุกเดือนในวันที่ {day}{suffix}} other {ทุก # เดือนในวันที่ {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {ทุกเดือนใน {week} {day}} other {ทุก # เดือน ใน {week} {day}}}",
     "everyNYears": "{count, plural, one {ทุกปี} other {ทุก # ปี}}",
-    "repeats": "ทำซ้ำ"
+    "repeats": "ทำซ้ำ",
+    "ordinal": {
+      "first": "ที่หนึ่ง",
+      "fourth": "ที่สี่",
+      "last": "สุดท้าย",
+      "second": "ที่สอง",
+      "third": "ที่สาม"
+    },
+    "preset": {
+      "everyWeekday": "ทุกวันธรรมดา (จ.-ศ.)",
+      "everyYearOnDate": "ทุกปีในวันที่ {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -102,7 +117,15 @@
       "updateDownloadingPercent": "กำลังดาวน์โหลด {percent}%",
       "updateInstallingSubtitle": "MemryNote จะรีสตาร์ทโดยอัตโนมัติ",
       "updateInstallingTitle": "กำลังติดตั้งอัปเดต",
-      "updateRestart": "รีสตาร์ท"
+      "updateRestart": "รีสตาร์ท",
+      "feedbackPrivacyEmailOptional": "อีเมลของคุณ — เฉพาะเมื่อคุณกรอกไว้ และเพื่อให้เราตอบกลับได้เท่านั้น",
+      "feedbackPrivacyEmailSignedIn": "อีเมลบัญชีของคุณ ({email}) เพื่อให้เราตอบกลับได้",
+      "feedbackPrivacyMessage": "ข้อความของคุณ ตามที่คุณเขียนไว้ทุกประการ",
+      "feedbackPrivacyNote": "ไม่มีอะไรอื่นอีก โน้ตของคุณยังอยู่บนอุปกรณ์ของคุณ",
+      "feedbackPrivacyPlan": "แผนของคุณ (free, Plus, Pro หรือ Believer)",
+      "feedbackPrivacyTitle": "ข้อมูลที่จะส่ง",
+      "feedbackPrivacyVersion": "เวอร์ชันแอปและระบบปฏิบัติการ",
+      "projects": "โครงการ"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "ปรับขนาดแผงวัน",
@@ -180,8 +203,9 @@
       "search": "ค้นหา",
       "searchNotesTasksJournalInbox": "ค้นหาบันทึก งาน วารสาร กล่องข้อความ...",
       "noResultsFor": "ไม่พบผลลัพธ์สำหรับ “",
-      "rdquo": "rdquo;",
-      "result": "ผลลัพธ์"
+      "result": "ผลลัพธ์",
+      "noResultsForQuery": "ไม่พบผลลัพธ์สำหรับ “{query}”",
+      "resultCount": "{count, plural, other {ผลลัพธ์ # รายการ}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "ค้นหาและคลิกที่รายการเพื่อสร้างเส้นทางของคุณ",
@@ -231,7 +255,8 @@
       "journal": "วารสาร",
       "calendar": "ปฏิทิน",
       "inboxCapture": "การจับภาพกล่องจดหมาย",
-      "tasks": "งาน"
+      "tasks": "งาน",
+      "tags": "แท็ก"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
@@ -261,15 +286,15 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "มีบางอย่างผิดพลาด",
       "anErrorOccurredWhileRenderingThisTabContent": "เกิดข้อผิดพลาดขณะแสดงเนื้อหาแท็บนี้",
-      "tryAgain": "ลองอีกครั้ง"
+      "tryAgain": "ลองอีกครั้ง",
+      "sendReport": "ส่งรายงานการวินิจฉัย"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "ไอคอนหมายเหตุ"
     },
     "componentsTabsUnsavedChangesDialog": {
       "unsavedChanges": "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
-      "quot": "อ้าง;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "อ้าง; มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก คุณต้องการทําอะไร"
+      "unsavedChangesBody": "“{title}” มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก คุณต้องการทำอย่างไร?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "พื้นที่ทํางานใหม่",
@@ -341,7 +366,6 @@
       "logOut": "ออกจากระบบ",
       "signInToSync": "เข้าสู่ระบบเพื่อซิงค์",
       "remove": "ลบ ",
-      "rdquoFromList": "rdquo; จากรายการ?  ",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "  \nคลังเก็บนี้จะถูกลบออกจากแอป แต่ไฟล์ของคุณจะยังคงอยู่บนดิสก์ คุณสามารถเพิ่มกลับได้ตลอดเวลาในภายหลัง  ",
       "cancel": "ยกเลิก",
       "remove2": "ลบออก",
@@ -352,7 +376,13 @@
       "downloadLocation": "ตำแหน่ง",
       "changeLocation": "เปลี่ยน…",
       "download": "ดาวน์โหลด",
-      "downloadFailed": "ไม่สามารถดาวน์โหลดห้องนิรภัยได้"
+      "downloadFailed": "ไม่สามารถดาวน์โหลดห้องนิรภัยได้",
+      "deleteFromAccount": "ลบออกจากบัญชี",
+      "deleteVaultBody": "การทำเช่นนี้จะลบข้อมูลที่ซิงค์ไว้ทั้งหมดของคลังนี้ออกจากเซิร์ฟเวอร์ของ Memry อย่างถาวร และไม่สามารถย้อนกลับได้ ไฟล์บนดิสก์ของคุณจะไม่ถูกลบ",
+      "deleteVaultConfirm": "ลบออกจากบัญชี",
+      "deleteVaultFailed": "ไม่สามารถลบคลังได้",
+      "deleteVaultTitle": "ลบ “{name}” ออกจากบัญชีของคุณ?",
+      "removeVaultTitle": "นำ “{name}” ออกจากรายการ?"
     },
     "componentsWindowControls": {
       "searchK": "  \nค้นหา (⌘K)  ",
@@ -425,7 +455,7 @@
       },
       "models": {
         "default": "ค่าเริ่มต้น",
-        "label": "Model"
+        "label": "โมเดล"
       },
       "settings": {
         "reasoning": "การใช้เหตุผล"
@@ -450,21 +480,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "เฉพาะคลัง",
+        "computerAccess": "เข้าถึงคอมพิวเตอร์"
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
-        "label": "Web search"
+        "off": "ปิด",
+        "label": "ค้นหาเว็บ"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "สิทธิ์ของ Agent: {access}, ค้นหาเว็บ {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "สิทธิ์",
+        "access": "การเข้าถึง",
+        "tools": "เครื่องมือ"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "การตั้งค่าโมเดลของ Agent: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "ไม่มีการแข่งขัน"
@@ -479,7 +509,7 @@
     "sidebar": {
       "label": "แถบด้านข้างขวา",
       "day": "วัน",
-      "agent": "Agent",
+      "agent": "เอเจนต์",
       "pendingApproval": "{count, plural, one {# อยู่ระหว่างการอนุมัติ} other {# รอการอนุมัติ}}",
       "inProgress": "Agent กำลังดำเนินการเทิร์น",
       "close": "ปิดเอเจนต์"
@@ -575,7 +605,7 @@
       "remove": "นำออก",
       "removeAria": "นำวิดเจ็ตออก",
       "resize": "ขนาด",
-      "resizeAria": "ปรับขนาดเป็น {{size}}",
+      "resizeAria": "ปรับขนาดเป็น {size}",
       "savedFilterDefault": "วันนี้",
       "savedFilterHint": "ติดดาวตัวกรองในหน้างานเพื่อใช้ที่นี่",
       "savedFilterLabel": "ตัวกรองที่บันทึกไว้",
@@ -624,6 +654,11 @@
     "welcome": {
       "body": "บ้านส่วนตัวแบบออฟไลน์ก่อนของคุณ โน้ตถูกเข้ารหัสแบบครบวงจร — จะไม่ออกจากอุปกรณ์ของคุณโดยไม่เข้ารหัส",
       "title": "ยินดีต้อนรับสู่ MemryNote"
+    },
+    "tour": {
+      "next": "ถัดไป",
+      "previous": "ก่อนหน้า",
+      "progress": "{current} จาก {total}"
     }
   },
   "updatePrompt": {
@@ -640,6 +675,165 @@
     "skip": "ข้ามเวอร์ชันนี้"
   },
   "capture": {
-    "focusShortcut": "โฟกัสช่องบันทึก"
+    "focusShortcut": "โฟกัสช่องบันทึก",
+    "detailHint": "รายละเอียด",
+    "focusHint": "Q",
+    "submit": "บันทึก"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "เพิ่มการ์ด",
+      "addCreateNote": "สร้างโน้ต \"{query}\"",
+      "addCreateNoteEmpty": "สร้างโน้ตใหม่",
+      "addCreatedAt": "สร้างเมื่อ {date}",
+      "addEmpty": "ไม่พบผลลัพธ์",
+      "addGroupEvents": "กิจกรรม",
+      "addGroupNotes": "โน้ต",
+      "addGroupTasks": "งาน",
+      "addOnCanvas": "อยู่บนแคนวาส",
+      "addPlaceholder": "ค้นหาโน้ต งาน และกิจกรรม…",
+      "allDay": "ตลอดวัน",
+      "createNoteFailed": "ไม่สามารถสร้างโน้ตได้",
+      "deleted": "ลบรายการแล้ว",
+      "loading": "กำลังโหลด…",
+      "open": "เปิดในแท็บ",
+      "openToEdit": "เปิดในแท็บเพื่อแก้ไข",
+      "untitled": "ไม่มีชื่อ"
+    },
+    "corruptScene": "อ่านแคนวาสนี้ไม่ได้ ระบบปิดการแก้ไขไว้เพื่อไม่ให้ข้อมูลสูญหาย",
+    "createFailed": "ไม่สามารถสร้างแคนวาสได้",
+    "disabledBody": "แท็บนี้เป็นของฟีเจอร์ที่ยังไม่ได้เปิดใช้งานบนอุปกรณ์นี้",
+    "disabledTitle": "แคนวาสยังไม่ได้เปิดใช้งาน",
+    "empty": "ยังไม่มีแคนวาส",
+    "libraryStoreFailed": "ไม่สามารถบันทึกคลังรูปทรงของคุณได้ การเปลี่ยนแปลงล่าสุดอาจสูญหาย",
+    "loadFailed": "ไม่สามารถโหลดแคนวาสได้",
+    "loading": "กำลังโหลดแคนวาส…",
+    "newCanvas": "แคนวาสใหม่",
+    "notFound": "ไม่พบแคนวาสนี้",
+    "openFailed": "ไม่สามารถเปิดแคนวาสได้",
+    "savedToVault": "ระบบบันทึกการเปลี่ยนแปลงทั้งหมดลงคลังของคุณโดยอัตโนมัติ",
+    "sectionLabel": "แคนวาส",
+    "tooLargeToSync": "แคนวาสนี้ใหญ่เกินกว่าจะซิงค์ได้ ระบบบันทึกไว้บนอุปกรณ์นี้แล้ว แต่จะยังไม่ไปถึงอุปกรณ์อื่นจนกว่าจะมีขนาดเล็กลง",
+    "untitled": "แคนวาสไม่มีชื่อ"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "คลิกแถว",
+      "reset": "รีเซ็ต",
+      "shortcutsTab": "แท็บแป้นพิมพ์ลัด"
+    },
+    "description": "ทางลัดสำหรับการเคลื่อนที่ใน memrynote บันทึกความคิด และจัดการงาน",
+    "groups": {
+      "general": {
+        "description": "การนำทางและความช่วยเหลือทั่วทั้งแอป",
+        "title": "ทั่วไป"
+      },
+      "inbox": {
+        "description": "จัดการรายการที่บันทึกไว้อย่างรวดเร็ว",
+        "title": "กล่องขาเข้า"
+      },
+      "journal": {
+        "description": "นำทางมุมมองวารสารและโฟกัสพื้นที่เขียน",
+        "title": "วารสาร"
+      },
+      "notes": {
+        "description": "เขียน จัดรูปแบบ และค้นหาโน้ต",
+        "title": "โน้ต / ตัวแก้ไข"
+      },
+      "settings": {
+        "description": "เปิดการตั้งค่าและปรับแต่งแป้นพิมพ์ลัด",
+        "title": "การตั้งค่า"
+      },
+      "tabs": {
+        "description": "สลับระหว่างแท็บและบานหน้าต่าง",
+        "title": "แท็บและการแบ่งหน้าจอ"
+      },
+      "tasks": {
+        "description": "กรอง เลือก และทำงานให้เสร็จ",
+        "title": "งาน"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "สร้างโน้ต",
+        "keyboardShortcuts": "เปิดแป้นพิมพ์ลัด",
+        "openSettings": "เปิดการตั้งค่า",
+        "quickSearch": "เปิดการค้นหาด่วน",
+        "sidebarSection": "ไปยังส่วนในแถบด้านข้าง",
+        "toggleSidebar": "สลับแถบด้านข้าง",
+        "undoTaskAction": "เลิกทำการกระทำกับงานล่าสุด"
+      },
+      "inbox": {
+        "archiveItem": "เก็บถาวรรายการที่เลือก",
+        "chooseQuickFileResult": "เลือกผลลัพธ์การจัดเก็บด่วน",
+        "clearSelection": "ล้างการเลือกหรือปิดการจัดเก็บด่วน",
+        "confirmFiling": "ยืนยันแผงการจัดเก็บ",
+        "firstOrLastItem": "รายการแรกหรือรายการสุดท้าย",
+        "jumpByPage": "ข้ามทีละหน้า",
+        "nextItem": "รายการถัดไป",
+        "openOriginal": "เปิดลิงก์ต้นฉบับ",
+        "openQuickFile": "เปิดการจัดเก็บด่วน",
+        "previousItem": "รายการก่อนหน้า",
+        "refresh": "รีเฟรชกล่องขาเข้า",
+        "selectAllVisible": "เลือกรายการที่มองเห็นทั้งหมด",
+        "selectItem": "เลือกรายการ",
+        "togglePreview": "สลับแผงตัวอย่าง"
+      },
+      "journal": {
+        "bold": "ทำข้อความที่เลือกเป็นตัวหนา",
+        "find": "ค้นหาในวารสาร",
+        "italic": "ทำข้อความที่เลือกเป็นตัวเอียง",
+        "link": "เพิ่มหรือแก้ไขลิงก์",
+        "returnFromOverview": "กลับจากมุมมองเดือนหรือปี",
+        "toggleFullWidth": "สลับวารสารแบบเต็มความกว้าง",
+        "underline": "ขีดเส้นใต้ข้อความที่เลือก"
+      },
+      "notes": {
+        "bold": "ตัวหนา",
+        "closeOverlays": "ปิดหน้าต่างซ้อนของตัวแก้ไข",
+        "commandMenu": "เปิดเมนูคำสั่งของตัวแก้ไข",
+        "createNote": "สร้างโน้ต",
+        "find": "ค้นหาในโน้ต",
+        "italic": "ตัวเอียง",
+        "link": "เพิ่มหรือแก้ไขลิงก์",
+        "saveNote": "บันทึกโน้ตปัจจุบัน",
+        "underline": "ขีดเส้นใต้"
+      },
+      "settings": {
+        "cancelRecording": "ยกเลิกการบันทึกแป้นพิมพ์ลัด",
+        "customizeShortcuts": "ปรับแต่งแป้นพิมพ์ลัด",
+        "openSettings": "เปิดการตั้งค่า",
+        "recordShortcut": "บันทึกแป้นพิมพ์ลัดใหม่",
+        "resetShortcut": "คืนค่าแป้นพิมพ์ลัดเริ่มต้น"
+      },
+      "tabs": {
+        "closeAllInPane": "ปิดแท็บทั้งหมดในบานหน้าต่าง",
+        "closeSplitPane": "ปิดบานหน้าต่างที่แบ่งไว้",
+        "closeTab": "ปิดแท็บ",
+        "duplicateTab": "ทำสำเนาแท็บ",
+        "focusPane": "โฟกัสบานหน้าต่างอื่น",
+        "maximizePane": "ขยายบานหน้าต่างปัจจุบัน",
+        "moveTabToPane": "ย้ายแท็บไปยังบานหน้าต่าง",
+        "newTabMenu": "เปิดเมนูแท็บใหม่",
+        "nextTab": "แท็บถัดไป",
+        "pinTab": "ปักหมุดหรือเลิกปักหมุดแท็บ",
+        "previousTab": "แท็บก่อนหน้า",
+        "reopenClosedTab": "เปิดแท็บที่ปิดไปแล้วอีกครั้ง",
+        "splitDown": "แยกลง",
+        "splitRight": "แยกด้านขวา"
+      },
+      "tasks": {
+        "clearFilters": "ล้างตัวกรองที่แสดงอยู่",
+        "clearSelection": "ล้างการเลือกงาน",
+        "completeSelected": "ทำงานที่เลือกให้เสร็จ",
+        "configureRepeat": "ตั้งค่าการทำซ้ำของงานที่โฟกัสอยู่",
+        "deleteSelected": "ลบงานที่เลือก",
+        "selectAllVisible": "เลือกงานที่มองเห็นทั้งหมด",
+        "skipOccurrence": "ข้ามรอบการทำซ้ำ",
+        "stopRepeating": "หยุดการทำซ้ำของงาน"
+      }
+    },
+    "or": "หรือ",
+    "then": "จากนั้น"
   }
 }

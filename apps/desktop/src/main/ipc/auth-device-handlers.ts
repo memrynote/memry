@@ -44,6 +44,7 @@ import {
 import { getValidAccessToken, retrieveToken, storeToken } from '../sync/token-manager'
 import { createLogger } from '../lib/logger'
 import { registerCommand } from './lib/register-command'
+import { getMainI18n } from '../lib/main-i18n'
 
 const logger = createLogger('IPC:Sync:Device')
 
@@ -239,7 +240,7 @@ export function registerAuthDeviceHandlers(): void {
       startOtpClipboardDetection()
       return postToServer('/auth/otp/request', { email: input.email })
     },
-    'Failed to request OTP'
+    'errors:auth.requestOtpFailed'
   )
 
   registerCommand(
@@ -267,13 +268,13 @@ export function registerAuthDeviceHandlers(): void {
         needsRecoveryInput: !(serverResponse.needsSetup ?? false)
       }
     },
-    'Failed to verify OTP'
+    'errors:auth.verifyOtpFailed'
   )
 
   ipcMain.handle(SYNC_CHANNELS.SETUP_NEW_ACCOUNT, async () => {
     const setupToken = await retrieveToken(KEYCHAIN_ENTRIES.SETUP_TOKEN)
     if (!setupToken) {
-      return { success: false, error: 'Session expired. Please sign in again.' }
+      return { success: false, error: getMainI18n().t('errors:auth.sessionExpired') }
     }
 
     const { deviceId } = await performFirstDeviceSetup(setupToken)
@@ -287,14 +288,14 @@ export function registerAuthDeviceHandlers(): void {
       startOtpClipboardDetection()
       return postToServer('/auth/otp/resend', { email: input.email })
     },
-    'Failed to resend OTP'
+    'errors:auth.resendOtpFailed'
   )
 
   // --- Device Linking Handlers ---
 
   ipcMain.handle(SYNC_CHANNELS.GENERATE_LINKING_QR, async () => {
     const accessToken = await getValidAccessToken()
-    if (!accessToken) throw new Error('Not authenticated')
+    if (!accessToken) throw new Error(getMainI18n().t('errors:auth.notAuthenticated'))
     return initiateDeviceLinking(accessToken)
   })
 
@@ -306,7 +307,7 @@ export function registerAuthDeviceHandlers(): void {
       if (!token) throw new Error('No auth token available for device linking')
       return linkViaQr(input.qrData, token)
     },
-    'Failed to link device via QR'
+    'errors:auth.linkDeviceQrFailed'
   )
 
   registerCommand(
@@ -315,14 +316,14 @@ export function registerAuthDeviceHandlers(): void {
     async (input) => {
       return completeLinkingQr(input.sessionId)
     },
-    'Failed to complete linking'
+    'errors:auth.completeLinkingFailed'
   )
 
   registerCommand(
     SYNC_CHANNELS.FINALIZE_VAULT_CHOICE,
     FinalizeVaultChoiceSchema,
     async (input) => finalizeVaultChoice(input),
-    'Failed to finalize vault choice'
+    'errors:auth.finalizeVaultChoiceFailed'
   )
 
   registerCommand(
@@ -332,7 +333,7 @@ export function registerAuthDeviceHandlers(): void {
       const { pickVaultFolder } = await import('../vault')
       return { path: await pickVaultFolder() }
     },
-    'Failed to pick folder'
+    'errors:auth.pickFolderFailed'
   )
 
   registerCommand(
@@ -340,12 +341,12 @@ export function registerAuthDeviceHandlers(): void {
     LinkViaRecoverySchema,
     async (input) => {
       if (!validateRecoveryPhrase(input.recoveryPhrase)) {
-        return { success: false, error: 'Invalid recovery phrase format' }
+        return { success: false, error: getMainI18n().t('errors:auth.invalidRecoveryPhraseFormat') }
       }
 
       const setupToken = await retrieveToken(KEYCHAIN_ENTRIES.SETUP_TOKEN)
       if (!setupToken) {
-        return { success: false, error: 'Session expired. Please sign in again.' }
+        return { success: false, error: getMainI18n().t('errors:auth.sessionExpired') }
       }
 
       const rawRecovery = await getFromServer<unknown>('/auth/recovery-info', setupToken)
@@ -357,7 +358,7 @@ export function registerAuthDeviceHandlers(): void {
 
       try {
         if (!validateKeyVerifier(derived.keyVerifier, recoveryInfo.keyVerifier)) {
-          return { success: false, error: 'Recovery phrase does not match. Please try again.' }
+          return { success: false, error: getMainI18n().t('errors:auth.recoveryPhraseMismatch') }
         }
 
         const keyPair = await getOrCreateSigningKeyPair()
@@ -378,7 +379,7 @@ export function registerAuthDeviceHandlers(): void {
         if (signingSecretKey) secureCleanup(signingSecretKey)
       }
     },
-    'Failed to link via recovery phrase'
+    'errors:auth.linkRecoveryPhraseFailed'
   )
 
   registerCommand(
@@ -386,10 +387,10 @@ export function registerAuthDeviceHandlers(): void {
     ApproveLinkingSchema,
     async (input) => {
       const accessToken = await getValidAccessToken()
-      if (!accessToken) throw new Error('Not authenticated')
+      if (!accessToken) throw new Error(getMainI18n().t('errors:auth.notAuthenticated'))
       return approveDeviceLinking(input.sessionId, accessToken)
     },
-    'Failed to approve linking'
+    'errors:auth.approveLinkingFailed'
   )
 
   registerCommand(
@@ -397,10 +398,10 @@ export function registerAuthDeviceHandlers(): void {
     GetLinkingSasSchema,
     async (input) => {
       const accessToken = await getValidAccessToken()
-      if (!accessToken) throw new Error('Not authenticated')
+      if (!accessToken) throw new Error(getMainI18n().t('errors:auth.notAuthenticated'))
       return getLinkingVerificationCode(input.sessionId, accessToken)
     },
-    'Failed to fetch SAS code'
+    'errors:auth.fetchSasCodeFailed'
   )
 
   // --- Device Management Handlers ---
@@ -457,12 +458,13 @@ export function registerAuthDeviceHandlers(): void {
           .where(eq(syncDevices.isCurrentDevice, true))
           .get()
         if (current && current.id === input.deviceId) {
-          return { success: false, error: 'Cannot remove the current device' }
+          return { success: false, error: getMainI18n().t('errors:auth.cannotRemoveCurrentDevice') }
         }
       }
 
       const accessToken = await getValidAccessToken()
-      if (!accessToken) return { success: false, error: 'Not authenticated' }
+      if (!accessToken)
+        return { success: false, error: getMainI18n().t('errors:auth.notAuthenticated') }
 
       try {
         await deleteFromServer(`/devices/${input.deviceId}`, accessToken)
@@ -482,7 +484,7 @@ export function registerAuthDeviceHandlers(): void {
       logger.info(`Device removed: ${input.deviceId}`)
       return { success: true }
     },
-    'Failed to remove device'
+    'errors:auth.removeDeviceFailed'
   )
 
   registerCommand(
@@ -490,7 +492,8 @@ export function registerAuthDeviceHandlers(): void {
     RenameDeviceSchema,
     async (input) => {
       const accessToken = await getValidAccessToken()
-      if (!accessToken) return { success: false, error: 'Not authenticated' }
+      if (!accessToken)
+        return { success: false, error: getMainI18n().t('errors:auth.notAuthenticated') }
 
       try {
         await patchToServer(`/devices/${input.deviceId}`, { name: input.newName }, accessToken)
@@ -517,7 +520,7 @@ export function registerAuthDeviceHandlers(): void {
       logger.info(`Device renamed: ${input.deviceId} → ${input.newName}`)
       return { success: true }
     },
-    'Failed to rename device'
+    'errors:auth.renameDeviceFailed'
   )
 
   logger.debug('Auth/Device handlers registered')

@@ -22,6 +22,7 @@ import {
 import { getStoredDeviceId, setStoredDeviceId } from '../store'
 import { getDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
+import { getMainI18n } from '../lib/main-i18n'
 import { deleteFromServer, postToServer } from './http-client'
 import {
   clearKeyMaterialActivity,
@@ -172,9 +173,7 @@ export const persistKeysAndRegisterDevice = async (
     await deleteKey(KEYCHAIN_ENTRIES.REFRESH_TOKEN).catch(() => {})
     await deleteKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY).catch(() => {})
 
-    throw new Error(
-      'Failed to save encryption key securely. Device registration has been rolled back. Please try again.'
-    )
+    throw new Error(getMainI18n().t('errors:sync.keyPersistenceFailed'))
   }
 
   const pubKey = getDevicePublicKey(signingSecretKey)

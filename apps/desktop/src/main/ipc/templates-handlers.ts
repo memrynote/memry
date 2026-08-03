@@ -57,7 +57,7 @@ export function registerTemplatesHandlers(): void {
       withErrorHandler(async (input) => {
         const template = await createTemplate(input)
         return { success: true, template }
-      }, 'Failed to create template')
+      }, 'errors:template.createFailed')
     )
   )
 
@@ -69,7 +69,7 @@ export function registerTemplatesHandlers(): void {
       withErrorHandler(async (input) => {
         const template = await updateTemplate(input)
         return { success: true, template }
-      }, 'Failed to update template')
+      }, 'errors:template.updateFailed')
     )
   )
 
@@ -80,7 +80,7 @@ export function registerTemplatesHandlers(): void {
       withErrorHandler(async (id) => {
         await deleteTemplate(id)
         return { success: true }
-      }, 'Failed to delete template')
+      }, 'errors:template.deleteFailed')
     )
   )
 
@@ -92,7 +92,7 @@ export function registerTemplatesHandlers(): void {
       withErrorHandler(async (input) => {
         const template = await duplicateTemplate(input.id, input.newName)
         return { success: true, template }
-      }, 'Failed to duplicate template')
+      }, 'errors:template.duplicateFailed')
     )
   )
 }

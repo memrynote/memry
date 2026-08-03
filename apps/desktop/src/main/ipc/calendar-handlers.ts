@@ -85,6 +85,7 @@ import {
   syncCalendarSourceDelete,
   syncCalendarSourceUpdate
 } from '../calendar/runtime-effects'
+import { getMainI18n } from '../lib/main-i18n'
 
 const log = createLogger('IPC:Calendar')
 
@@ -404,7 +405,7 @@ export function registerCalendarHandlers(): void {
         emitCalendarChanged({ entityType: 'calendar_event', id })
         trackCalendar('calendar_event_created', 'created', 'calendar_page')
         return { success: true, event: mapCalendarEvent(created) }
-      }, 'Failed to create calendar event')
+      }, 'errors:calendar.createEventFailed')
     )
   )
 
@@ -432,7 +433,11 @@ export function registerCalendarHandlers(): void {
           .where(eq(calendarEvents.id, input.id))
           .get()
         if (!existing) {
-          return { success: false, event: null, error: 'Calendar event not found' }
+          return {
+            success: false,
+            event: null,
+            error: getMainI18n().t('errors:calendar.eventNotFound')
+          }
         }
 
         const changes: Partial<typeof calendarEvents.$inferInsert> = {
@@ -483,7 +488,7 @@ export function registerCalendarHandlers(): void {
           itemCount: changedFields.length
         })
         return { success: true, event: mapCalendarEvent(updated) }
-      }, 'Failed to update calendar event')
+      }, 'errors:calendar.updateEventFailed')
     )
   )
 
@@ -493,14 +498,14 @@ export function registerCalendarHandlers(): void {
       withDb((db, id): CalendarDeleteResponse => {
         const existing = db.select().from(calendarEvents).where(eq(calendarEvents.id, id)).get()
         if (!existing) {
-          return { success: false, error: 'Calendar event not found' }
+          return { success: false, error: getMainI18n().t('errors:calendar.eventNotFound') }
         }
 
         db.delete(calendarEvents).where(eq(calendarEvents.id, id)).run()
         syncCalendarEventDelete(id, JSON.stringify(existing))
         emitCalendarChanged({ entityType: 'calendar_event', id })
         return { success: true }
-      }, 'Failed to delete calendar event')
+      }, 'errors:calendar.deleteEventFailed')
     )
   )
 
@@ -560,14 +565,18 @@ export function registerCalendarHandlers(): void {
       withDb((db, input): CalendarSourceMutationResponse => {
         const existing = getCalendarSourceById(db, input.id)
         if (!existing) {
-          return { success: false, source: null, error: 'Calendar source not found' }
+          return {
+            success: false,
+            source: null,
+            error: getMainI18n().t('errors:calendar.sourceNotFound')
+          }
         }
 
         if (existing.kind !== 'calendar') {
           return {
             success: false,
             source: null,
-            error: 'Only calendar sources can be selected'
+            error: getMainI18n().t('errors:calendar.onlySourcesSelectable')
           }
         }
 
@@ -593,7 +602,7 @@ export function registerCalendarHandlers(): void {
         }
 
         return { success: true, source: updated }
-      }, 'Failed to update calendar source selection')
+      }, 'errors:calendar.updateSourceSelectionFailed')
     )
   )
 
@@ -670,7 +679,7 @@ export function registerCalendarHandlers(): void {
           success: true,
           status: await buildProviderStatus(db, input.provider)
         }
-      }, 'Failed to connect calendar provider')
+      }, 'errors:calendar.connectProviderFailed')
     )
   )
 
@@ -766,7 +775,7 @@ export function registerCalendarHandlers(): void {
           success: true,
           status: await buildProviderStatus(db, input.provider)
         }
-      }, 'Failed to disconnect calendar provider')
+      }, 'errors:calendar.disconnectProviderFailed')
     )
   )
 
@@ -787,7 +796,7 @@ export function registerCalendarHandlers(): void {
           return {
             success: false,
             status: await buildProviderStatus(db, input.provider),
-            error: 'Sign in to memrynote before refreshing Google Calendar'
+            error: getMainI18n().t('errors:calendar.signInBeforeRefresh')
           }
         }
 
@@ -795,7 +804,7 @@ export function registerCalendarHandlers(): void {
           return {
             success: false,
             status: await buildProviderStatus(db, input.provider),
-            error: 'Google Calendar is not connected on this device'
+            error: getMainI18n().t('errors:calendar.googleNotConnected')
           }
         }
 
@@ -808,7 +817,7 @@ export function registerCalendarHandlers(): void {
           success: true,
           status: await buildProviderStatus(db, input.provider)
         }
-      }, 'Failed to refresh calendar provider')
+      }, 'errors:calendar.refreshProviderFailed')
     )
   )
 
@@ -822,7 +831,7 @@ export function registerCalendarHandlers(): void {
           return { calendars: [], primary: null, currentDefaultId: null }
         }
         return await listGoogleCalendars(db, createGoogleCalendarClient({ accountId }))
-      }, 'Failed to list Google calendars')
+      }, 'errors:calendar.listGoogleCalendarsFailed')
     )
   )
 
@@ -832,7 +841,7 @@ export function registerCalendarHandlers(): void {
       SetDefaultGoogleCalendarSchema,
       withDb((db, input): SetDefaultGoogleCalendarResponse => {
         return setDefaultGoogleCalendar(db, input)
-      }, 'Failed to set default Google calendar')
+      }, 'errors:calendar.setDefaultGoogleCalendarFailed')
     )
   )
 
@@ -843,13 +852,17 @@ export function registerCalendarHandlers(): void {
       withDb(async (db, input): Promise<RetryCalendarSourceSyncResponse> => {
         const source = getCalendarSourceById(db, input.sourceId)
         if (!source) {
-          return { success: false, source: null, error: 'Calendar source not found' }
+          return {
+            success: false,
+            source: null,
+            error: getMainI18n().t('errors:calendar.sourceNotFound')
+          }
         }
         if (source.provider !== 'google' || source.kind !== 'calendar') {
           return {
             success: false,
             source: null,
-            error: 'Only Google calendar sources can be retried'
+            error: getMainI18n().t('errors:calendar.onlyGoogleSourcesRetryable')
           }
         }
         try {
@@ -859,7 +872,8 @@ export function registerCalendarHandlers(): void {
           return {
             success: false,
             source: updated ? mapCalendarSource(updated) : null,
-            error: err instanceof Error ? err.message : 'Sync failed'
+            error:
+              err instanceof Error ? err.message : getMainI18n().t('errors:calendar.syncFailed')
           }
         }
         const refreshed = getCalendarSourceById(db, source.id)
@@ -867,7 +881,7 @@ export function registerCalendarHandlers(): void {
           success: true,
           source: refreshed ? mapCalendarSource(refreshed) : null
         }
-      }, 'Failed to retry Google Calendar source sync')
+      }, 'errors:calendar.retryGoogleSourceSyncFailed')
     )
   )
 
@@ -887,7 +901,7 @@ export function registerCalendarHandlers(): void {
           }
           throw err
         }
-      }, 'Failed to promote external calendar event')
+      }, 'errors:calendar.promoteExternalEventFailed')
     )
   )
 }

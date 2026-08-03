@@ -25,7 +25,8 @@
     "expand": "Rozšíriť",
     "collapse": "Kolaps",
     "showMore": "+{count, plural, one {# viac} other {# viac}}",
-    "showLess": "Zobraziť menej"
+    "showLess": "Zobraziť menej",
+    "undo": "Späť"
   },
   "tabs": {
     "pin": "Pripnúť kartu",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "Dnes",
     "yesterday": "Včera",
-    "daysAgo": "{count, plural, one {Pred # dňom} other {Pred # dňami}}"
+    "daysAgo": "{count, plural, one {Pred # dňom} other {Pred # dňami}}",
+    "daysLate": "{count, plural, one {# d po termíne} few {# d po termíne} many {# d po termíne} other {# d po termíne}}",
+    "daysOverdue": "{count, plural, one {# deň po termíne} few {# dni po termíne} many {# dňa po termíne} other {# dní po termíne}}",
+    "tomorrow": "Zajtra"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Každý deň} other {Každých # dní}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Každý mesiac dňa {day}{suffix}} other {Každých # mesiacov dňa {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Každý mesiac dňa {week} {day}} other {Každých # mesiacov v {week} {day}}}",
     "everyNYears": "{count, plural, one {Každý rok} other {Každých # rokov}}",
-    "repeats": "Opakuje sa"
+    "repeats": "Opakuje sa",
+    "ordinal": {
+      "first": "prvý",
+      "fourth": "štvrtý",
+      "last": "posledný",
+      "second": "druhý",
+      "third": "tretí"
+    },
+    "preset": {
+      "everyWeekday": "Každý pracovný deň (po-pi)",
+      "everyYearOnDate": "Každý rok dňa {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -102,7 +117,15 @@
       "updateDownloadingPercent": "Sťahuje sa {percent} %",
       "updateInstallingSubtitle": "MemryNote sa automaticky reštartuje.",
       "updateInstallingTitle": "Inštaluje sa aktualizácia",
-      "updateRestart": "Reštartovať"
+      "updateRestart": "Reštartovať",
+      "feedbackPrivacyEmailOptional": "Váš e-mail — iba ak ho uvediete a len preto, aby sme mohli odpovedať",
+      "feedbackPrivacyEmailSignedIn": "E-mail vášho účtu ({email}), aby sme mohli odpovedať",
+      "feedbackPrivacyMessage": "Vaša správa presne tak, ako ste ju napísali",
+      "feedbackPrivacyNote": "Nič iné. Poznámky zostávajú na vašom zariadení.",
+      "feedbackPrivacyPlan": "Váš plán (free, Plus, Pro alebo Believer)",
+      "feedbackPrivacyTitle": "Čo sa odosiela",
+      "feedbackPrivacyVersion": "Verzia aplikácie a operačný systém",
+      "projects": "Projekty"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Zmeniť veľkosť panelu dňa",
@@ -180,8 +203,9 @@
       "search": "Vyhľadávanie",
       "searchNotesTasksJournalInbox": "Hľadať poznámky, úlohy, denník, doručenú poštu...",
       "noResultsFor": "Žiadne výsledky pre “",
-      "rdquo": "rdquo;",
-      "result": "výsledok"
+      "result": "výsledok",
+      "noResultsForQuery": "Žiadne výsledky pre „{query}“",
+      "resultCount": "{count, plural, one {# výsledok} few {# výsledky} many {# výsledku} other {# výsledkov}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Hľadajte a klikajte na položky, aby ste vytvorili svoju stopu",
@@ -231,7 +255,8 @@
       "journal": "Denník",
       "calendar": "Kalendár",
       "inboxCapture": "Schránka Doručená pošta",
-      "tasks": "Úlohy"
+      "tasks": "Úlohy",
+      "tags": "Tagy"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Neuložené zmeny",
@@ -261,15 +286,15 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Niečo sa pokazilo",
       "anErrorOccurredWhileRenderingThisTabContent": "Pri vykresľovaní obsahu tejto záložky došlo k chybe.",
-      "tryAgain": "Skúsiť znova"
+      "tryAgain": "Skúsiť znova",
+      "sendReport": "Odoslať diagnostickú správu"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Ikona poznámky"
     },
     "componentsTabsUnsavedChangesDialog": {
       "unsavedChanges": "Neuložené zmeny",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; má neuložené zmeny. Čo chcete urobiť?"
+      "unsavedChangesBody": "Karta „{title}“ má neuložené zmeny. Čo chcete urobiť?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Nový pracovný priestor",
@@ -341,7 +366,6 @@
       "logOut": "Odhlásiť sa",
       "signInToSync": "Prihláste sa na synchronizáciu",
       "remove": "Odstrániť",
-      "rdquoFromList": "rdquo; zo zoznamu?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Tento trezor bude odstránený z aplikácie, ale vaše súbory zostanú na disku. Vždy ho môžete neskôr znova pridať.",
       "cancel": "Zrušiť",
       "remove2": "Odstrániť",
@@ -352,7 +376,13 @@
       "downloadLocation": "Umiestnenie",
       "changeLocation": "Zmeniť…",
       "download": "Stiahnuť",
-      "downloadFailed": "Trezor sa nepodarilo stiahnuť"
+      "downloadFailed": "Trezor sa nepodarilo stiahnuť",
+      "deleteFromAccount": "Odstrániť z účtu",
+      "deleteVaultBody": "Týmto sa natrvalo odstránia všetky synchronizované dáta tohto trezora zo serverov Memry a nedá sa to vrátiť späť. Vaše súbory na disku sa nevymažú.",
+      "deleteVaultConfirm": "Odstrániť z účtu",
+      "deleteVaultFailed": "Trezor sa nepodarilo odstrániť",
+      "deleteVaultTitle": "Odstrániť „{name}“ z vášho účtu?",
+      "removeVaultTitle": "Odstrániť „{name}“ zo zoznamu?"
     },
     "componentsWindowControls": {
       "searchK": "Vyhľadávanie (⌘K)",
@@ -379,7 +409,7 @@
     "newConversation": "Nová konverzácia",
     "history": "História konverzácií",
     "openInTab": "Otvoriť konverzáciu na karte",
-    "stop": "Stop",
+    "stop": "Zastaviť",
     "thinking": "Agent premýšľa",
     "enable": {
       "title": "Povoliť memrynote Agent",
@@ -437,7 +467,7 @@
           "high": "Vysoká",
           "extraHigh": "Extra vysoká",
           "extraHighDefault": "Extra vysoká (predvolené)",
-          "max": "Max"
+          "max": "Maximálna"
         }
       },
       "codexSettings": {
@@ -450,21 +480,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Iba trezor",
+        "computerAccess": "Prístup k počítaču"
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
-        "label": "Web search"
+        "off": "Vypnuté",
+        "label": "Webové vyhľadávanie"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Povolenia agenta: {access}, webové vyhľadávanie {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Povolenia",
+        "access": "Prístup",
+        "tools": "Nástroje"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Nastavenia modelu agenta: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Žiadne zhody"
@@ -575,7 +605,7 @@
       "remove": "Odstrániť",
       "removeAria": "Odstrániť widget",
       "resize": "Veľkosť",
-      "resizeAria": "Zmeniť veľkosť na {{size}}",
+      "resizeAria": "Zmeniť veľkosť na {size}",
       "savedFilterDefault": "Dnes",
       "savedFilterHint": "Označte filtre hviezdičkou na stránke Úlohy, aby ste ich mohli použiť tu",
       "savedFilterLabel": "Uložený filter",
@@ -624,6 +654,11 @@
     "welcome": {
       "body": "Váš súkromný domov s prioritou offline. Poznámky sú šifrované end-to-end — vaše zariadenie nikdy neopustia nezašifrované.",
       "title": "Vitajte v MemryNote"
+    },
+    "tour": {
+      "next": "Ďalej",
+      "previous": "Späť",
+      "progress": "{current} z {total}"
     }
   },
   "updatePrompt": {
@@ -640,6 +675,165 @@
     "skip": "Preskočiť túto verziu"
   },
   "capture": {
-    "focusShortcut": "Zamerať pole zachytávania"
+    "focusShortcut": "Zamerať pole zachytávania",
+    "detailHint": "detail",
+    "focusHint": "Q",
+    "submit": "Zachytiť"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Pridať kartu",
+      "addCreateNote": "Vytvoriť poznámku „{query}“",
+      "addCreateNoteEmpty": "Vytvoriť novú poznámku",
+      "addCreatedAt": "Vytvorené {date}",
+      "addEmpty": "Nič sa nenašlo",
+      "addGroupEvents": "Udalosti",
+      "addGroupNotes": "Poznámky",
+      "addGroupTasks": "Úlohy",
+      "addOnCanvas": "Na plátne",
+      "addPlaceholder": "Hľadať poznámky, úlohy a udalosti…",
+      "allDay": "Celý deň",
+      "createNoteFailed": "Poznámku sa nepodarilo vytvoriť",
+      "deleted": "Položka odstránená",
+      "loading": "Načítava sa…",
+      "open": "Otvoriť v karte",
+      "openToEdit": "Otvoriť v karte a upraviť",
+      "untitled": "Bez názvu"
+    },
+    "corruptScene": "Toto plátno sa nepodarilo prečítať. Úpravy sú vypnuté, aby ste neprišli o dáta.",
+    "createFailed": "Plátno sa nepodarilo vytvoriť",
+    "disabledBody": "Táto karta patrí funkcii, ktorá nie je na tomto zariadení zapnutá.",
+    "disabledTitle": "Plátno nie je zapnuté",
+    "empty": "Zatiaľ žiadne plátna",
+    "libraryStoreFailed": "Vašu knižnicu tvarov sa nepodarilo uložiť. Posledné zmeny v nej sa môžu stratiť.",
+    "loadFailed": "Plátna sa nepodarilo načítať",
+    "loading": "Načítavajú sa plátna…",
+    "newCanvas": "Nové plátno",
+    "notFound": "Toto plátno sa nenašlo",
+    "openFailed": "Plátno sa nepodarilo otvoriť",
+    "savedToVault": "Všetky zmeny sa automaticky ukladajú do vášho trezora",
+    "sectionLabel": "Plátna",
+    "tooLargeToSync": "Toto plátno je príliš veľké na synchronizáciu. Je uložené na tomto zariadení, ale kým sa nezmenší, nedostane sa do vašich ostatných zariadení.",
+    "untitled": "Plátno bez názvu"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Kliknúť na riadok",
+      "reset": "Obnoviť",
+      "shortcutsTab": "Karta Skratky"
+    },
+    "description": "Rýchle cesty na pohyb v memrynote, zachytávanie myšlienok a spracovanie práce.",
+    "groups": {
+      "general": {
+        "description": "Navigácia a pomoc v celej aplikácii.",
+        "title": "Všeobecné"
+      },
+      "inbox": {
+        "description": "Rýchlo spracujte zachytené položky.",
+        "title": "Schránka"
+      },
+      "journal": {
+        "description": "Prechádzajte zobrazenia denníka a zamerajte sa na písanie.",
+        "title": "Denník"
+      },
+      "notes": {
+        "description": "Píšte, formátujte a hľadajte v poznámkach.",
+        "title": "Poznámky / Editor"
+      },
+      "settings": {
+        "description": "Otvorte nastavenia a prispôsobte si skratky.",
+        "title": "Nastavenia"
+      },
+      "tabs": {
+        "description": "Presúvajte sa medzi kartami a panelmi.",
+        "title": "Karty a rozdelenia"
+      },
+      "tasks": {
+        "description": "Filtrujte, vyberajte a dokončujte úlohy.",
+        "title": "Úlohy"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Vytvoriť poznámku",
+        "keyboardShortcuts": "Otvoriť klávesové skratky",
+        "openSettings": "Otvoriť nastavenia",
+        "quickSearch": "Otvoriť rýchle vyhľadávanie",
+        "sidebarSection": "Prejsť na sekciu bočného panela",
+        "toggleSidebar": "Prepnúť bočný panel",
+        "undoTaskAction": "Vrátiť poslednú akciu úlohy"
+      },
+      "inbox": {
+        "archiveItem": "Archivovať vybranú položku",
+        "chooseQuickFileResult": "Vybrať výsledok rýchleho zaradenia",
+        "clearSelection": "Zrušiť výber alebo zavrieť rýchle zaradenie",
+        "confirmFiling": "Potvrdiť panel zaraďovania",
+        "firstOrLastItem": "Prvá alebo posledná položka",
+        "jumpByPage": "Skočiť o stranu",
+        "nextItem": "Ďalšia položka",
+        "openOriginal": "Otvoriť pôvodný odkaz",
+        "openQuickFile": "Otvoriť rýchle zaradenie",
+        "previousItem": "Predchádzajúca položka",
+        "refresh": "Obnoviť schránku",
+        "selectAllVisible": "Vybrať všetky viditeľné položky",
+        "selectItem": "Vybrať položku",
+        "togglePreview": "Prepnúť panel náhľadu"
+      },
+      "journal": {
+        "bold": "Tučné písmo pre vybraný text",
+        "find": "Hľadať v denníku",
+        "italic": "Kurzíva pre vybraný text",
+        "link": "Pridať alebo upraviť odkaz",
+        "returnFromOverview": "Návrat z mesačného alebo ročného zobrazenia",
+        "toggleFullWidth": "Prepnúť denník na celú šírku",
+        "underline": "Podčiarknutie pre vybraný text"
+      },
+      "notes": {
+        "bold": "Tučné",
+        "closeOverlays": "Zavrieť prekrytia editora",
+        "commandMenu": "Otvoriť príkazovú ponuku editora",
+        "createNote": "Vytvoriť poznámku",
+        "find": "Hľadať v poznámke",
+        "italic": "Kurzíva",
+        "link": "Pridať alebo upraviť odkaz",
+        "saveNote": "Uložiť aktuálnu poznámku",
+        "underline": "Podčiarknuté"
+      },
+      "settings": {
+        "cancelRecording": "Zrušiť nahrávanie skratky",
+        "customizeShortcuts": "Prispôsobiť klávesové skratky",
+        "openSettings": "Otvoriť nastavenia",
+        "recordShortcut": "Nahrať novú skratku",
+        "resetShortcut": "Obnoviť predvolenú skratku"
+      },
+      "tabs": {
+        "closeAllInPane": "Zavrieť všetky karty v paneli",
+        "closeSplitPane": "Zavrieť rozdelený panel",
+        "closeTab": "Zavrieť kartu",
+        "duplicateTab": "Duplikovať kartu",
+        "focusPane": "Zamerať iný panel",
+        "maximizePane": "Maximalizovať aktuálny panel",
+        "moveTabToPane": "Presunúť kartu do panela",
+        "newTabMenu": "Otvoriť ponuku novej karty",
+        "nextTab": "Ďalšia karta",
+        "pinTab": "Pripnúť alebo odopnúť kartu",
+        "previousTab": "Predchádzajúca karta",
+        "reopenClosedTab": "Znova otvoriť zatvorenú kartu",
+        "splitDown": "Rozdeliť nadol",
+        "splitRight": "Rozdeliť napravo"
+      },
+      "tasks": {
+        "clearFilters": "Vymazať viditeľné filtre",
+        "clearSelection": "Zrušiť výber úloh",
+        "completeSelected": "Dokončiť vybrané úlohy",
+        "configureRepeat": "Nastaviť opakovanie zameranej úlohy",
+        "deleteSelected": "Odstrániť vybrané úlohy",
+        "selectAllVisible": "Vybrať všetky viditeľné úlohy",
+        "skipOccurrence": "Preskočiť výskyt opakovania",
+        "stopRepeating": "Zastaviť opakovanie úlohy"
+      }
+    },
+    "or": "alebo",
+    "then": "potom"
   }
 }

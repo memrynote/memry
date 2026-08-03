@@ -18,13 +18,13 @@
   "entity": {
     "note": "anteckning",
     "notes": "anteckningar",
-    "journal": "journal",
+    "journal": "dagbok",
     "journals": "dagböcker",
     "task": "uppgift",
     "tasks": "uppgifter",
     "project": "projekt",
     "projects": "projekt",
-    "tag": "tag",
+    "tag": "tagg",
     "tags": "taggar",
     "orphan": "föräldralös",
     "orphans": "föräldralösa",
@@ -58,7 +58,7 @@
     "clear": "Rensa graf-sökning"
   },
   "context-menu": {
-    "untitled": "Untitled",
+    "untitled": "Namnlös",
     "focus-node": "Fokusera på denna nod",
     "open-new-tab": "Öppna i ny flik",
     "create-note": "Skapa anteckning",

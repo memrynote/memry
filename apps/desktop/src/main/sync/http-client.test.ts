@@ -22,6 +22,16 @@ vi.mock('../agent/storage/vault-id', () => ({
   getOrCreateVaultUuid: (...args: unknown[]) => mockGetOrCreateVaultUuid(...args)
 }))
 
+// NetworkError copy resolves through the main-process i18n singleton, which only
+// exists after setMainI18n() during app boot. Echo the key back so the assertion
+// pins the chosen message, not one locale's wording.
+vi.mock('../lib/main-i18n', () => ({
+  getMainI18n: () => ({
+    t: (key: string) => key,
+    getFixedT: () => (key: string) => key
+  })
+}))
+
 import {
   syncFetch,
   postToServer,
@@ -164,9 +174,7 @@ describe('http-client', () => {
 
       // #when / #then
       await expect(syncFetch('GET', '/api/test')).rejects.toThrow(NetworkError)
-      await expect(syncFetch('GET', '/api/test')).rejects.toThrow(
-        'Unable to connect to sync server'
-      )
+      await expect(syncFetch('GET', '/api/test')).rejects.toThrow('errors:sync.serverUnreachable')
     })
 
     it('throws RateLimitError on 429 response', async () => {
@@ -243,7 +251,9 @@ describe('http-client', () => {
         syncFetch('GET', '/sync/changes', undefined, undefined, undefined, 25)
       ).rejects.toMatchObject({
         name: 'NetworkError',
-        message: expect.stringContaining('timed out')
+        // The i18n mock above echoes keys, so this pins the timeout branch to
+        // its own message rather than the generic unreachable one.
+        message: 'errors:sync.requestTimedOut'
       })
     })
   })

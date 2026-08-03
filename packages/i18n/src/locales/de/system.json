@@ -28,6 +28,13 @@
       "readyDetailFallback": "Starten Sie memrynote neu, um die Installation des Updates abzuschließen.",
       "buttonRestartNow": "Starten Sie jetzt neu",
       "releaseNotesLabel": "Versionshinweise:"
+    },
+    "pair": {
+      "buttonAllow": "Erlauben",
+      "buttonDeny": "Ablehnen",
+      "buttonPair": "Koppeln",
+      "message": "Der Memry-Browsererweiterung erlauben, Erfasstes an diese App zu senden?",
+      "title": "Browsererweiterung koppeln"
     }
   },
   "notification": {
@@ -38,6 +45,11 @@
       "fallback": "Mahnung fällig",
       "default": "Erinnerung",
       "task": "Aufgabenerinnerung"
+    },
+    "inboxReview": {
+      "body": "Du hast {count, plural, one {# Element} other {# Elemente}} zum Durchsehen.",
+      "testBody": "Das ist ein Test — so sehen deine täglichen Erinnerungen aus.",
+      "title": "Zeit, deinen Posteingang durchzusehen"
     }
   },
   "error": {
@@ -45,5 +57,15 @@
     "definitionNotFound": "Definition nicht gefunden",
     "noteNotFound": "Notiz nicht gefunden",
     "updateFailed": "Update fehlgeschlagen"
+  },
+  "startup": {
+    "failed": {
+      "body": "Das kann passieren, wenn der freie Speicherplatz sehr knapp ist oder bei älteren Grafiktreibern. Geben Sie etwas Speicherplatz frei und öffnen Sie MemryNote dann erneut. Wenn es weiterhin auftritt, hilft in der Regel eine Neuinstallation.",
+      "title": "MemryNote konnte den Start nicht abschließen"
+    },
+    "installingUpdate": {
+      "subtitle": "MemryNote wird automatisch neu geöffnet.",
+      "title": "Update wird installiert…"
+    }
   }
 }

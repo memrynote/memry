@@ -1,7 +1,12 @@
 {
   "app": {
-    "quit": "dejar de fumar",
-    "preferences": "Ajustes…"
+    "quit": "Salir de MemryNote",
+    "preferences": "Ajustes…",
+    "exit": "Salir",
+    "hide": "Ocultar MemryNote",
+    "hideOthers": "Ocultar otros",
+    "services": "Servicios",
+    "unhide": "Mostrar todo"
   },
   "file": {
     "label": "Archivo",
@@ -19,16 +24,20 @@
     "label": "Editar",
     "undo": "Deshacer",
     "redo": "Rehacer",
-    "cut": "cortar",
+    "cut": "Cortar",
     "copy": "Copiar",
     "paste": "Pegar",
     "selectAll": "Seleccionar todo",
     "find": "Buscar",
-    "speech": "Voz"
+    "speech": "Habla",
+    "delete": "Eliminar",
+    "pasteAndMatchStyle": "Pegar y ajustar estilo",
+    "startSpeaking": "Iniciar locución",
+    "stopSpeaking": "Detener locución"
   },
   "view": {
     "label": "Ver",
-    "reload": "recargar",
+    "reload": "Recargar",
     "toggleDevTools": "Alternar herramientas de desarrollador",
     "toggleFullscreen": "Alternar pantalla completa",
     "theme": "Tema",
@@ -37,7 +46,10 @@
     "themeSystem": "Sistema",
     "themeWhite": "Papel",
     "toggleDayPanel": "Alternar panel del día",
-    "toggleSidebar": "Alternar barra lateral"
+    "toggleSidebar": "Alternar barra lateral",
+    "actualSize": "Tamaño real",
+    "zoomIn": "Aumentar zoom",
+    "zoomOut": "Reducir zoom"
   },
   "format": {
     "body": "Cuerpo",
@@ -55,7 +67,8 @@
     "about": "Acerca de MemryNote",
     "documentation": "Documentación",
     "label": "Ayuda",
-    "shortcuts": "Atajos de teclado"
+    "shortcuts": "Atajos de teclado",
+    "aboutVersion": "Versión {version}"
   },
   "insert": {
     "attachment": "Insertar archivo adjunto…",
@@ -67,6 +80,10 @@
     "taskList": "Lista de tareas"
   },
   "window": {
-    "label": "Ventana"
+    "label": "Ventana",
+    "close": "Cerrar",
+    "front": "Traer todo al frente",
+    "minimize": "Minimizar",
+    "zoom": "Zoom"
   }
 }

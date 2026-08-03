@@ -13,7 +13,10 @@ import { DuplicateWithSubtasksDialog } from './duplicate-with-subtasks-dialog'
 import { ParentPickerDialog } from './parent-picker-dialog'
 
 vi.mock('@memry/i18n/renderer', () => ({
-  useT: () => ({ t: (key: string) => key })
+  useT: () => ({
+    t: (key: string, values?: Record<string, unknown>) =>
+      values ? `${key}:${JSON.stringify(values)}` : key
+  })
 }))
 
 const makeTask = (overrides: Partial<Task> = {}): Task => ({
@@ -155,8 +158,28 @@ describe('task dialogs', () => {
       />
     )
 
+    // One ICU message carries both the count and the parent title.
+    expect(
+      screen.getByText(
+        'phaseF.componentsTasksDialogsBulkPriorityDialog.setPriorityForSubtasksIn:{"count":2,"title":"Parent task"}'
+      )
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'phaseF.componentsTasksDialogsBulkPriorityDialog.alsoApplyToCompletedSubtasksCount:{"count":1}'
+      )
+    ).toBeInTheDocument()
+
     fireEvent.click(screen.getByLabelText('High'))
     fireEvent.click(screen.getByRole('checkbox'))
+
+    // Including completed subtasks moves the count inside the same message.
+    expect(
+      screen.getByText(
+        'phaseF.componentsTasksDialogsBulkPriorityDialog.setPriorityForSubtasksIn:{"count":3,"title":"Parent task"}'
+      )
+    ).toBeInTheDocument()
+
     fireEvent.click(screen.getByRole('button', { name: /apply/ }))
 
     expect(onApply).toHaveBeenCalledWith('high', true)
@@ -176,6 +199,17 @@ describe('task dialogs', () => {
         onApply={onApply}
       />
     )
+
+    expect(
+      screen.getByText(
+        'phaseF.componentsTasksDialogsBulkDueDateDialog.setDueDateForSubtasksIn:{"count":1,"title":"Parent task"}'
+      )
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'phaseF.componentsTasksDialogsBulkDueDateDialog.alsoApplyToCompletedSubtasksCount:{"count":1}'
+      )
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('checkbox'))
     fireEvent.click(screen.getByRole('button', { name: /clearDate/ }))
@@ -209,8 +243,29 @@ describe('task dialogs', () => {
       />
     )
 
+    expect(
+      screen.getByText(
+        'phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.createACopyOfTitle:{"title":"Parent task"}'
+      )
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.alsoDuplicateSubtasksCount:{"count":2}'
+      )
+    ).toBeInTheDocument()
+    // Parent + 2 subtasks = 3 items, counted inside one ICU plural message.
+    expect(
+      screen.getByRole('button', {
+        name: 'phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.duplicateWithItems:{"count":3}'
+      })
+    ).toBeInTheDocument()
+
     fireEvent.click(screen.getByRole('checkbox'))
-    fireEvent.click(screen.getByRole('button', { name: /duplicatetask/ }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.duplicateTaskOnly'
+      })
+    )
     expect(onDuplicate).toHaveBeenCalledWith(false)
     expect(onClose).toHaveBeenCalledTimes(1)
   })
@@ -230,6 +285,12 @@ describe('task dialogs', () => {
       />
     )
 
+    expect(
+      screen.getByText(
+        'phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.allSubtasksDoneBody:{"title":"Parent task","count":2}'
+      )
+    ).toBeInTheDocument()
+
     fireEvent.click(screen.getByRole('button', { name: /keepTaskOpen/ }))
     expect(onKeepOpen).toHaveBeenCalledTimes(1)
     expect(onClose).toHaveBeenCalledTimes(1)
@@ -244,6 +305,12 @@ describe('task dialogs', () => {
         onCompleteParent={onCompleteParent}
       />
     )
+    expect(
+      screen.getByText(
+        'phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.allSubtasksDoneBody:{"title":"Parent task","count":1}'
+      )
+    ).toBeInTheDocument()
+
     fireEvent.click(screen.getByRole('button', { name: /completeTask/ }))
     expect(onCompleteParent).toHaveBeenCalledTimes(1)
   })
@@ -251,7 +318,7 @@ describe('task dialogs', () => {
   it('confirms deleting all subtasks after listing completed status', () => {
     const onClose = vi.fn()
     const onConfirm = vi.fn()
-    render(
+    const { rerender } = render(
       <DeleteAllSubtasksDialog
         isOpen
         parentTitle="Parent task"
@@ -266,6 +333,31 @@ describe('task dialogs', () => {
 
     expect(screen.getByText('Open subtask')).toBeInTheDocument()
     expect(screen.getByText('Done subtask')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'phaseF.componentsTasksDialogsDeleteAllSubtasksDialog.deleteSubtasksConfirmation:' +
+          JSON.stringify({ count: 2, title: 'Parent task' })
+      )
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/rdquo|ldquo/)).not.toBeInTheDocument()
+
+    // Singular goes through the same ICU message — no JS ternary picking the "s".
+    rerender(
+      <DeleteAllSubtasksDialog
+        isOpen
+        parentTitle="Parent task"
+        subtasks={[makeTask({ id: 'sub-1', title: 'Open subtask' })]}
+        onClose={onClose}
+        onConfirm={onConfirm}
+      />
+    )
+    expect(
+      screen.getByText(
+        'phaseF.componentsTasksDialogsDeleteAllSubtasksDialog.deleteSubtasksConfirmation:' +
+          JSON.stringify({ count: 1, title: 'Parent task' })
+      )
+    ).toBeInTheDocument()
+
     fireEvent.click(screen.getByRole('button', { name: /deleteAll/ }))
     expect(onConfirm).toHaveBeenCalledTimes(1)
     expect(onClose).toHaveBeenCalledTimes(1)

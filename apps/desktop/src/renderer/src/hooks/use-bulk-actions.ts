@@ -126,16 +126,16 @@ export const useBulkActions = ({
     }
 
     const count = tasksToComplete.length
-    const desc = `Complete ${count} task${count !== 1 ? 's' : ''}`
+    const desc = t('toasts.bulk.undoComplete', { count })
 
     if (registerUndo) {
       registerUndo(desc, undoRestore)
     }
 
-    toast.success(`${count} task${count !== 1 ? 's' : ''} completed`, {
+    toast.success(t('toasts.bulk.completed', { count }), {
       duration: 10000,
       action: {
-        label: 'Undo',
+        label: getI18n().getFixedT(null, 'common')('action.undo'),
         onClick: () => {
           undoRestore()
           toast.success(getI18n().getFixedT(null, 'tasks')('phaseI.toasts.changesUndone'))
@@ -182,7 +182,7 @@ export const useBulkActions = ({
     const count = tasksToUncomplete.length
 
     if (registerUndo) {
-      registerUndo(`Uncomplete ${count} task${count !== 1 ? 's' : ''}`, () => {
+      registerUndo(t('toasts.bulk.undoUncomplete', { count }), () => {
         originalStates.forEach((state) => {
           onUpdateTask(state.id, {
             statusId: state.statusId,
@@ -192,7 +192,7 @@ export const useBulkActions = ({
       })
     }
 
-    toast.success(`${count} task${count !== 1 ? 's' : ''} restored`)
+    toast.success(t('toasts.bulk.restored', { count }))
     onComplete()
   }, [getSelectedTasks, projects, onUpdateTask, onComplete, registerUndo, t])
 
@@ -210,20 +210,23 @@ export const useBulkActions = ({
         onUpdateTask(taskId, { priority })
       })
 
+      const priorityMessage =
+        priority === 'none'
+          ? t('toasts.bulk.priorityRemoved', { count })
+          : t('toasts.bulk.prioritySet', { count, priority: t(`priorityInline.${priority}`) })
+
       if (registerUndo) {
-        const label = priority === 'none' ? 'removed' : `set to ${priority}`
-        registerUndo(`Priority ${label} for ${count} task${count !== 1 ? 's' : ''}`, () => {
+        registerUndo(priorityMessage, () => {
           originalPriorities.forEach((snap) => {
             onUpdateTask(snap.id, { priority: snap.priority })
           })
         })
       }
 
-      const priorityLabel = priority === 'none' ? 'removed' : `set to ${priority}`
-      toast.success(`Priority ${priorityLabel} for ${count} task${count !== 1 ? 's' : ''}`)
+      toast.success(priorityMessage)
       onComplete()
     },
-    [selectedIds, tasks, onUpdateTask, onComplete, registerUndo]
+    [selectedIds, tasks, onUpdateTask, onComplete, registerUndo, t]
   )
 
   const bulkChangeDueDate = useCallback(
@@ -241,7 +244,7 @@ export const useBulkActions = ({
       })
 
       if (registerUndo) {
-        registerUndo(`Due date changed for ${count} task${count !== 1 ? 's' : ''}`, () => {
+        registerUndo(t('toasts.bulk.undoDueDate', { count }), () => {
           originalDates.forEach((snap) => {
             onUpdateTask(snap.id, { dueDate: snap.dueDate })
           })
@@ -249,13 +252,13 @@ export const useBulkActions = ({
       }
 
       const message = dueDate
-        ? `Due date set for ${count} task${count !== 1 ? 's' : ''}`
-        : `Due date removed from ${count} task${count !== 1 ? 's' : ''}`
+        ? t('toasts.bulk.dueDateSet', { count })
+        : t('toasts.bulk.dueDateRemoved', { count })
 
       toast.success(message)
       onComplete()
     },
-    [selectedIds, tasks, onUpdateTask, onComplete, registerUndo]
+    [selectedIds, tasks, onUpdateTask, onComplete, registerUndo, t]
   )
 
   const bulkMoveToProject = useCallback(
@@ -323,7 +326,7 @@ export const useBulkActions = ({
       }
 
       if (registerUndo) {
-        registerUndo(`Move ${count} task${count !== 1 ? 's' : ''}`, () => {
+        registerUndo(t('toasts.bulk.undoMove', { count }), () => {
           originalMoveStates.forEach((snap) => {
             onUpdateTask(snap.id, {
               projectId: snap.projectId,
@@ -334,7 +337,7 @@ export const useBulkActions = ({
         })
       }
 
-      toast.success(`${count} task${count !== 1 ? 's' : ''} moved to ${targetProject.name}`)
+      toast.success(t('toasts.bulk.movedToProject', { count, project: targetProject.name }))
       onComplete()
     },
     [selectedIds, tasks, projects, onUpdateTask, onComplete, isVaultOpen, registerUndo, t]
@@ -382,7 +385,7 @@ export const useBulkActions = ({
       })
 
       if (registerUndo) {
-        registerUndo(`Status → ${statusName} for ${count} task${count !== 1 ? 's' : ''}`, () => {
+        registerUndo(t('toasts.bulk.undoStatus', { count, status: statusName }), () => {
           originalStatusStates.forEach((snap) => {
             onUpdateTask(snap.id, {
               statusId: snap.statusId,
@@ -392,10 +395,10 @@ export const useBulkActions = ({
         })
       }
 
-      toast.success(`${count} task${count !== 1 ? 's' : ''} moved to ${statusName}`)
+      toast.success(t('toasts.bulk.movedToStatus', { count, status: statusName }))
       onComplete()
     },
-    [selectedIds, tasks, projects, onUpdateTask, onComplete, registerUndo]
+    [selectedIds, tasks, projects, onUpdateTask, onComplete, registerUndo, t]
   )
 
   const bulkArchive = useCallback(async (): Promise<void> => {
@@ -434,16 +437,16 @@ export const useBulkActions = ({
       })
     }
 
-    const desc = `Archive ${count} task${count !== 1 ? 's' : ''}`
+    const desc = t('toasts.bulk.undoArchive', { count })
 
     if (registerUndo) {
       registerUndo(desc, undoRestore)
     }
 
-    toast.success(`${count} task${count !== 1 ? 's' : ''} archived`, {
+    toast.success(t('toasts.bulk.archived', { count }), {
       duration: 10000,
       action: {
-        label: 'Undo',
+        label: getI18n().getFixedT(null, 'common')('action.undo'),
         onClick: () => {
           undoRestore()
           toast.success(
@@ -454,7 +457,7 @@ export const useBulkActions = ({
     })
 
     onComplete()
-  }, [selectedIds, onUpdateTask, onComplete, isVaultOpen, registerUndo])
+  }, [selectedIds, onUpdateTask, onComplete, isVaultOpen, registerUndo, t])
 
   const bulkDelete = useCallback(async (): Promise<void> => {
     const count = selectedIds.length
@@ -486,15 +489,15 @@ export const useBulkActions = ({
     }
 
     if (registerUndo && onAddTask && deletedSnapshots.length > 0) {
-      registerUndo(`Delete ${count} task${count !== 1 ? 's' : ''}`, () => {
+      registerUndo(t('toasts.bulk.undoDelete', { count }), () => {
         deletedSnapshots.forEach((snapshot) => {
           onAddTask(snapshot)
         })
       })
     }
 
-    toast.success(`${count} task${count !== 1 ? 's' : ''} deleted`, {
-      description: 'This action can be undone for a short time.'
+    toast.success(t('toasts.bulk.deleted', { count }), {
+      description: t('toasts.bulk.deletedDescription')
     })
 
     onComplete()

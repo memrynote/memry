@@ -28,7 +28,8 @@
         "properties": "属性",
         "commandLine": "命令行",
         "features": "功能",
-        "import": "导入"
+        "import": "导入",
+        "inbox": "收件箱"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "正在下载 {percent}%",
         "downloaded": "重新启动以安装",
         "idle": "检查更新"
+      },
+      "autoCheck": {
+        "description": "在启动时以及应用打开期间定期检查新版本。",
+        "error": "更新自动检查设置失败",
+        "label": "自动检查更新"
+      },
+      "autoDownload": {
+        "description": "在后台下载并安装新版本，无需提示。",
+        "error": "更新自动下载设置失败",
+        "label": "自动下载更新"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "共享匿名使用数据",
         "description": "仅共享匿名数据——不会发送笔记内容、搜索查询、文件路径、电子邮件或原始ID。",
         "error": "更新遥测设置失败"
+      },
+      "diagnostics": {
+        "building": "正在准备报告…",
+        "consent": "发送一次性诊断报告？其中仅包含已脱敏的技术日志——不含任何笔记内容。",
+        "error": "发送诊断报告失败",
+        "notNow": "暂不发送",
+        "previewError": "无法准备诊断报告",
+        "previewLabel": "预览报告内容",
+        "send": "发送",
+        "sendReport": {
+          "button": "发送诊断报告",
+          "description": "一次性发送一份脱敏的技术日志报告，帮助我们排查你遇到的问题。",
+          "label": "诊断报告"
+        },
+        "sending": "发送中…",
+        "sent": "报告已发送——编号 {incidentId}",
+        "snapshotLabel": "设备快照",
+        "title": "发送诊断报告？"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "布局",
-      "toolbar": "工具栏"
+      "toolbar": "工具栏",
+      "spelling": "拼写"
     },
     "width": {
       "label": "编辑器宽度",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "窄",
         "medium": "中",
-        "wide": "宽"
+        "wide": "宽",
+        "full": "全宽",
+        "normal": "标准"
       },
       "error": "更新编辑器宽度失败"
     },
@@ -229,6 +261,11 @@
       "label": "固定格式工具栏",
       "description": "始终在编辑器上方显示工具栏",
       "error": "更新工具栏模式失败"
+    },
+    "spellCheck": {
+      "description": "为笔记和日记中拼写错误的单词加下划线",
+      "error": "更新拼写检查失败",
+      "label": "拼写检查"
     }
   },
   "templates": {
@@ -640,7 +677,7 @@
       "vaultPickerFolderLabel": "将保险库存储在文件夹",
       "vaultPickerPrimaryHint": "立即打开",
       "vaultPickerTitle": "选择要拉取的内容",
-      "vaultRow": "保险库 — {{count}} 项 · {{date}}"
+      "vaultRow": "保险库 — {count} 项 · {date}"
     }
   },
   "devices": {
@@ -673,7 +710,8 @@
       "removeFailed": "移除设备失败",
       "renamed": "已重命名为 \"{name}\"",
       "renameFailed": "重命名设备失败"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "连接新设备",
@@ -855,6 +893,11 @@
         "description": "关闭以进行单向同步——你仍会在 memrynote 中看到你的 Google 事件，但 memrynote 事件不会出现在 Google 中。",
         "error": "更新同步方向失败",
         "label": "在 Google Calendar 中显示 memrynote 事件"
+      },
+      "agentAccess": {
+        "description": "默认关闭。开启后，AI 助手可以读取你的 Google 事件；关闭时，即使向它询问这些事件，它也得不到任何内容。无论哪种设置，你都会继续在 memrynote 中看到它们。",
+        "error": "更新 AI 访问权限失败",
+        "label": "允许 AI 读取 Google Calendar 事件"
       }
     },
     "sourcePicker": {
@@ -898,7 +941,8 @@
     },
     "groups": {
       "storageUsage": "存储使用情况",
-      "location": "位置"
+      "location": "位置",
+      "accountVaults": "你账户中的保险库"
     },
     "loadingStorage": "正在加载存储信息...",
     "signInStorage": "登录以查看存储使用情况",
@@ -919,6 +963,17 @@
       },
       "warningTitle": "存储空间几乎已满",
       "warningDescription": "释放空间或升级您的计划以避免同步问题。"
+    },
+    "accountVaults": {
+      "activeHint": "切换到其他保险库后才能删除这个保险库。",
+      "cloudOnly": "不在此设备上",
+      "delete": "删除",
+      "deleteBody": "这会从 Memry 的服务器上永久删除此保险库的所有已同步数据，且无法撤销。你磁盘上的文件不会被删除。",
+      "deleteConfirm": "从账户中删除",
+      "deleteFailed": "无法删除保险库",
+      "deleteTitle": "从你的账户中删除“{name}”？",
+      "empty": "还没有保险库同步到你的账户。",
+      "itemsCount": "{count} 个项目"
     }
   },
   "tags": {
@@ -1137,16 +1192,12 @@
       "press": "按",
       "toToggleThisDialog": "切换此对话框"
     },
-    "componentsSyncDeviceList": {
-      "middot": "·"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "此设备已被移除",
       "exporting": "正在导出...",
       "signOut": "登出"
     },
     "componentsSyncSyncHistory": {
-      "middot": "中点·",
       "activity": "活动",
       "filterBySyncType": "按同步类型筛选",
       "allTypes": "所有类型",
@@ -1160,7 +1211,12 @@
       "last30Days": "最近30天",
       "loadingSyncHistory": "正在加载同步历史",
       "noSyncActivityYet": "尚无同步活动",
-      "loadMore": "加载更多"
+      "loadMore": "加载更多",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}，显示错误详情",
+      "summaryFailed": "同步失败",
+      "summaryPulled": "{count, plural, other {已拉取 # 个项目}}",
+      "summaryPushed": "{count, plural, other {已推送 # 个项目}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "上次同步",
@@ -1208,102 +1264,103 @@
       "failedToCloseVault": "无法关闭保险库",
       "failedToSwitchVault": "无法切换保险库",
       "failedToUpdateConfig": "无法更新配置",
-      "failedToReindex": "无法重新索引"
+      "failedToReindex": "无法重新索引",
+      "failedToLoadTasks": "加载任务失败"
     }
   },
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "供外部 MCP 客户端访问的本地服务器。"
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "连接",
+      "access": "访问权限"
     },
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "在 Cursor、Claude Desktop 或 Zed 中使用此 localhost 地址。"
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Bearer 令牌",
+        "description": "仅在本次应用启动期间有效的内存凭据。"
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "轮换令牌",
+        "description": "使现有的外部客户端会话失效。"
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "复制 {label}",
+    "notRunning": "未运行",
+    "toolsBadge": "{count, plural, one {# 个工具} other {# 个工具}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Agent 权限",
+      "subtitle": "为 Agent 聊天选择默认访问权限、确认方式和本地提供商。"
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "本地 OpenAI 兼容提供商",
+      "actions": "连接检查"
     },
     "presets": {
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "自定义"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "预设"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "基础 URL",
+        "description": "OpenAI 兼容的 /v1 接口地址。"
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "允许非回环地址",
+        "description": "数据会发送到所配置的地址。"
       },
       "model": {
-        "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "label": "模型",
+        "description": "选择返回的模型，或手动输入一个。"
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "API 密钥",
+        "description": "可选凭据，保存在系统钥匙串中。",
+        "configured": "系统钥匙串中已保存了一个 API 密钥。"
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "save": "保存",
+      "models": "获取模型",
+      "test": "测试连接",
+      "probe": "探测工具"
     },
     "status": {
-      "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "disconnected": "未连接",
+      "toolsDisabled": "工具已禁用",
+      "fullTools": "已启用全部工具",
       "checking": "检查中…",
       "connected": "已连接",
       "label": "连接"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Agent 权限",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "默认访问权限",
+        "description": "设置新 Agent 对话轮次的初始访问模式。",
+        "vaultOnly": "仅保险库",
+        "computerAccess": "计算机访问"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "确认操作",
+        "description": "选择工具调用是自动运行，还是在聊天中等待批准。",
+        "alwaysAllow": "始终允许",
+        "askBeforeChanges": "更改前询问"
       }
     }
   },
@@ -1368,6 +1425,10 @@
       "tasks": {
         "description": "待办事项和截止日期",
         "label": "任务"
+      },
+      "spatialCanvas": {
+        "description": "用于排布和连接笔记的空间画布",
+        "label": "画布"
       }
     }
   },
@@ -1393,7 +1454,10 @@
         "skipped": "{count} 个已跳过",
         "title": "导入完成"
       },
-      "title": "从 {name} 导入"
+      "title": "从 {name} 导入",
+      "chooseDirectory": "选择文件夹…",
+      "folderKeepsAssets": "当图片不在笔记所在的文件夹里时，请选择文件夹——导出内容常把媒体文件放在一个共享文件夹中。",
+      "previewError": "预览失败"
     },
     "header": {
       "subtitle": "从其他应用导入你的笔记和任务",
@@ -1432,6 +1496,99 @@
       "tasks": "{count, plural, other {# 个任务}}",
       "withDueDate": "{count} 个带日期",
       "withTags": "{count} 个带标签"
+    },
+    "messages": {
+      "csv": {
+        "columns": "列：{columns}",
+        "emptyTitle": "已跳过标题为空的行（列“{column}”）",
+        "noHeaders": "CSV 文件没有表头",
+        "titleColumn": "标题取自“{column}”；其余列保存为属性"
+      },
+      "raindrop": {
+        "csvEmpty": "Raindrop CSV 为空",
+        "headerNotFound": "未找到 Raindrop CSV 的表头行（“url”列）",
+        "rowNoUrl": "第 {row} 行已跳过：没有 URL"
+      },
+      "readFileFailed": "读取文件失败",
+      "ticktick": {
+        "foldersDropped": "TickTick 文件夹在 Memry 中没有对应项，已被舍弃",
+        "headerNotFound": "未找到 TickTick CSV 的表头行（“Folder Name”）",
+        "reminderNoAnchor": "已跳过提醒“{reminder}”（没有日期锚点）",
+        "subtaskParentMissing": "未找到子任务“{title}”的父任务；已作为顶级任务导入",
+        "unknownPriority": "未知的 TickTick 优先级 {priority} → 无",
+        "unsupportedRepeat": "已跳过不支持的重复规则“{rule}”"
+      },
+      "todoist": {
+        "emptyTitle": "内容为空的任务已导入为（无标题）",
+        "headerNotFound": "这不是 Todoist CSV：缺少 TYPE 表头行",
+        "orphanComment": "已跳过前面没有任务的评论",
+        "sectionFlattened": "分区“{section}”已展平",
+        "subtaskNoParent": "子任务“{title}”在缩进 {indent} 处没有父任务；已作为顶级任务导入",
+        "unknownPriority": "未知优先级 {priority} → 无",
+        "unparsedDate": "无法解析日期“{date}”"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "正在复制 Apple Notes 数据库…"
+      },
+      "bear": {
+        "scanning": "正在扫描 Bear 导出文件…"
+      },
+      "csv": {
+        "importing": "正在导入 CSV 笔记…"
+      },
+      "evernote": {
+        "scanning": "正在扫描 .enex 文件…"
+      },
+      "html": {
+        "scanning": "正在扫描 HTML 文件…"
+      },
+      "importingItem": "正在导入 {title}",
+      "raindrop": {
+        "importing": "正在导入 Raindrop 书签…"
+      },
+      "roam": {
+        "reading": "正在读取 Roam 导出文件…"
+      },
+      "scanningExport": "正在扫描导出文件…",
+      "scanningFiles": "正在扫描文件…",
+      "ticktick": {
+        "importing": "正在导入 TickTick 任务…"
+      },
+      "todoist": {
+        "importing": "正在导入 Todoist 任务…"
+      }
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "加载中…",
+      "subtitle": "每日回顾提醒和收件箱偏好设置。",
+      "title": "收件箱"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "当收件箱里有内容时，每天温和地提醒你一次。",
+        "label": "提醒我回顾收件箱"
+      },
+      "error": "无法更新提醒。",
+      "group": "每日回顾提醒",
+      "test": {
+        "button": "发送测试",
+        "description": "立即触发提醒，检查你的系统通知。",
+        "label": "测试通知",
+        "sent": "测试通知已发送。",
+        "sentHint": "如果没有出现，请在系统设置中允许 MemryNote 发送通知。",
+        "unsupported": "此设备无法显示桌面通知。"
+      },
+      "time": {
+        "description": "每台设备上的本地时间。",
+        "hourLabel": "小时",
+        "label": "提醒时间",
+        "minuteLabel": "分钟",
+        "periodLabel": "AM 或 PM"
+      }
     }
   }
 }

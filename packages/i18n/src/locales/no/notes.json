@@ -16,9 +16,27 @@
       "willSync": "Note vil synkroniseres til skyen",
       "renameFailed": "Kunne ikke endre navn på notatet",
       "toggleLocalOnlyFailed": "Kunne ikke bytte bare lokalt",
-      "toggleFullWidthFailed": "Kunne ikke bytte full bredde"
+      "toggleFullWidthFailed": "Kunne ikke bytte full bredde",
+      "copyPathFailed": "Kunne ikke kopiere banen",
+      "deleteFailed": "Kunne ikke slette notatet",
+      "moveFailed": "Kunne ikke flytte notatet",
+      "moved": "Notatet er flyttet",
+      "openExternalFailed": "Kunne ikke åpne notatet",
+      "pathCopied": "Banen er kopiert",
+      "revealFailed": "Kunne ikke vise notatet"
     },
-    "deleteDialogTitle": "{count, plural, one {Slett notat} other {Slett #-notater}}"
+    "deleteDialogTitle": "{count, plural, one {Slett notat} other {Slett #-notater}}",
+    "deleteConfirm": {
+      "cancel": "Avbryt",
+      "confirm": "Slett",
+      "deleting": "Sletter...",
+      "description": "Er du sikker på at du vil slette «{title}»? Denne handlingen kan ikke angres.",
+      "title": "Slett notat"
+    },
+    "itemsCount": "{count, plural, one {# element} other {# elementer}}",
+    "itemsCountFiltered": "{shown} av {total, plural, one {# element} other {# elementer}}",
+    "renameViewUnavailableForTags": "Du kan ikke gi lagrede visninger for tagger nytt navn ennå",
+    "tagFilterLabel": "tagg = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "Slett {count}-notater",
       "deleteSelectedItems": "Slett {count}-elementer",
       "bookmark": "Bokmerke",
-      "removeFromBookmarks": "Fjern fra bokmerker"
+      "removeFromBookmarks": "Fjern fra bokmerker",
+      "applyTemplate": "Bruk mal"
     },
     "deleteDialog": {
       "noteTitle": "Slett notat",
@@ -67,7 +86,7 @@
     "content": {
       "placeholder": "Begynn å skrive, eller trykk '/' for kommandoer...",
       "regionAria": "Notat editor",
-      "richTextAria": "Rich text editor",
+      "richTextAria": "Rikteksteditor",
       "headingPlaceholder": "Overskrift",
       "listPlaceholder": "Listeelement",
       "todoPlaceholder": "Gjøremål"
@@ -83,7 +102,17 @@
       "export": "Eksporter",
       "fullWidth": "Full bredde",
       "disableLocalOnly": "Deaktiver kun lokalt",
-      "setLocalOnly": "Sett kun lokalt"
+      "setLocalOnly": "Sett kun lokalt",
+      "applyTemplate": "Bruk mal",
+      "copyPath": "Kopier bane",
+      "delete": "Slett notat",
+      "find": "Finn…",
+      "moreActions": "Flere handlinger",
+      "moveToFolder": "Flytt til mappe…",
+      "openInDefaultApp": "Åpne i standardappen",
+      "rename": "Gi nytt navn…",
+      "revealInFinder": "Vis i Finder",
+      "revealInSidebar": "Vis i navigasjonen"
     },
     "breadcrumb": {
       "locationAria": "Legg merke til plassering",
@@ -94,7 +123,7 @@
       "body": "Redaktøren oppdaget en feil. Notatinnholdet ditt er trygt.",
       "technicalDetails": "Tekniske detaljer",
       "reloadAria": "Last inn editor på nytt",
-      "reload": "Reload Editor"
+      "reload": "Last inn editor på nytt"
     },
     "callout": {
       "title": "Bildetekst",
@@ -220,10 +249,15 @@
       "url": "URL",
       "status": "Status",
       "select": "Velg",
-      "multiselect": "Multiselect"
+      "multiselect": "Flervalg"
     },
     "showOnCalendar": "Vis i kalender",
-    "showingOnCalendar": "Vises i kalender"
+    "showingOnCalendar": "Vises i kalender",
+    "statusCategories": {
+      "done": "Fullført",
+      "inProgress": "Pågår",
+      "todo": "Å gjøre"
+    }
   },
   "templateSelector": {
     "title": "Velg ditt lerret",
@@ -235,7 +269,10 @@
     "essentials": "Essensielle",
     "setFolderDefault": "Angi som mappestandard",
     "useTemplate": "Bruk mal",
-    "createNote": "Opprett notat"
+    "createNote": "Opprett notat",
+    "applyDescription": "Erstatt innholdet i dette notatet med en mal",
+    "applyTitle": "Bruk en mal",
+    "applyToNote": "Bruk mal"
   },
   "exportDialog": {
     "title": "Eksporter merknad",
@@ -324,8 +361,6 @@
       "noFormulasDefined": "Ingen formler definert",
       "addFormula": "Legg til formel",
       "deleteFormula": "Slett formel",
-      "areYouSureYouWantToDeleteTheFormula": "Er du sikker på at du vil slette formelen \"",
-      "quotThisActionCannotBeUndone": "quot;? Denne handlingen kan ikke angres.",
       "cancel": "Avbryt",
       "delete": "Slett",
       "none": "Ingen",
@@ -333,7 +368,8 @@
       "delete2": "Slett",
       "columnBorders": "Kolonnekanter",
       "display": "Visning",
-      "showSummaries": "Vis sammendrag"
+      "showSummaries": "Vis sammendrag",
+      "deleteFormulaBody": "Er du sikker på at du vil slette formelen «{name}»? Denne handlingen kan ikke angres."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filter",
@@ -341,18 +377,19 @@
       "clearAll": "Fjern alle",
       "noFiltersApplied": "Ingen filtre er brukt",
       "addFiltersToNarrowDownYourNotes": "Legg til filtre for å begrense notatene dine",
-      "match": "Match",
+      "match": "Samsvar",
       "allAnd": "Alle (OG)",
       "anyOr": "Hvilken som helst (ELLER)",
       "ofTheFollowing": "av følgende:",
-      "match2": "Match",
+      "match2": "Samsvar",
       "all": "Alle",
       "any": "Hvilken som helst",
       "of": "av:",
       "addCondition": "Legg til betingelse",
       "addFilter": "Legg til filter",
       "addGroup": "Legg til gruppe",
-      "removeGroup": "Fjern gruppe"
+      "removeGroup": "Fjern gruppe",
+      "lockedConditionHint": "Dette vilkåret definerer den gjeldende visningen og kan ikke fjernes her."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Innebygd",
@@ -365,7 +402,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Notattabell",
       "selectAll": "Merk alle notater",
-      "selectRow": "Merk notat"
+      "selectRow": "Merk notat",
+      "kind": {
+        "Inbox": "Innboks",
+        "Note": "Notat",
+        "Task": "Oppgave"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Søk i notater...",
@@ -379,10 +421,10 @@
       "preview": "Forhåndsvisning",
       "fixExpressionErrorsToSeePreview": "Rett opp uttrykksfeil for å se forhåndsvisning",
       "usingNote": "Bruker notat: \"",
-      "quot": "quot;",
       "cancel": "Avbryt",
       "namePlaceholder": "dager_til_forfall",
-      "expressionPlaceholder": "dateDiff(forfallsdato, i dag(), \"dager\")"
+      "expressionPlaceholder": "dateDiff(forfallsdato, i dag(), \"dager\")",
+      "usingNoteTitle": "Bruker notat: «{title}»"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Tydelig gruppering",
@@ -408,12 +450,12 @@
       "bestMatch": "Beste match",
       "current": "nåværende)",
       "allFolders": "ALLE MAPPER",
-      "current2": "nåværende)",
       "noFoldersMatch": "Ingen mapper samsvarer \"",
-      "quot": "quot;",
       "create": "Opprett \"",
-      "quot2": "quot;",
-      "cancel": "Avbryt"
+      "cancel": "Avbryt",
+      "createFolderNamed": "Opprett «{name}»",
+      "currentFolderBadge": "(nåværende)",
+      "noFoldersMatchQuery": "Ingen mapper samsvarer med «{query}»"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Slett ",
@@ -456,7 +498,7 @@
       "cancel3": "Avbryt",
       "createView": "Opprett visning",
       "gallery": "Galleri",
-      "layout": "Layout",
+      "layout": "Oppsett",
       "list": "Liste",
       "name": "Navn",
       "newView": "Ny visning",
@@ -468,7 +510,13 @@
       "failedToLoadPdf": "Kunne ikke laste inn PDF: ",
       "download": "Last ned",
       "download2": "Last ned",
-      "noFileAttached": "Ingen fil vedlagt"
+      "noFileAttached": "Ingen fil vedlagt",
+      "alignCenter": "Midtstill",
+      "alignLeft": "Venstrejuster",
+      "alignRight": "Høyrejuster",
+      "nextPage": "Neste side",
+      "previousPage": "Forrige side",
+      "resizePdf": "Endre størrelse på PDF-en"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Åpne i oppgavepanelet",
@@ -530,7 +578,8 @@
       "failedToLoadTags": "Kunne ikke laste inn tagger",
       "noTagsYet": "Ingen tagger ennå",
       "filterTags": "Filtrer tagger...",
-      "noMatchingTags": "Ingen samsvarende tagger"
+      "noMatchingTags": "Ingen samsvarende tagger",
+      "Uncategorized": "Uten kategori"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Slipp her",
@@ -553,14 +602,15 @@
       "unpinFromTag": "Løsne fra tag",
       "unpin": "Løsne",
       "pinToTag": "Fest for å merke",
-      "pin": "Pin",
+      "pin": "Fest",
       "tagActions": "Merk handlinger",
       "editTagName": "Rediger tagnavn",
       "changeColor": "Bytt farge",
       "deleteTag": "Slett tag",
       "recent": "Nylig",
       "created": "Opprettet",
-      "alphabetical": "Alfabetisk"
+      "alphabetical": "Alfabetisk",
+      "tasks": "OPPGAVER"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Gi nytt navn til taggen",
@@ -733,7 +783,9 @@
     "replyPlaceholder": "Svar...",
     "resolve": "Løs",
     "sendAria": "Send kommentar",
-    "toolbarComment": "Kommenter"
+    "toolbarComment": "Kommenter",
+    "openAttachmentAria": "Åpne vedlegget {name}",
+    "openImageAria": "Åpne bildet {name}"
   },
   "dateMention": {
     "clear": "Tøm",
@@ -743,5 +795,79 @@
     "remind": "Minn",
     "time": "Tid",
     "timeFormat": "Tidsformat"
+  },
+  "applyTemplateConfirm": {
+    "body": "Erstatt bare innholdet",
+    "cancel": "Avbryt",
+    "description": "Hvis du bruker «{name}», erstattes det nåværende innholdet i notatet. Dette kan ikke angres.",
+    "failed": "Kunne ikke bruke malen",
+    "full": "Erstatt innholdet og legg til maldetaljer",
+    "success": "Malen er brukt",
+    "title": "Erstatte innholdet i notatet?"
+  },
+  "tagView": {
+    "moreActions": "Flere handlinger",
+    "pin": {
+      "action": "Fest {count, plural, one {# notat} other {# notater}} til taggen",
+      "failed": "Kunne ikke feste notatet til taggen",
+      "success": "Festet {count, plural, one {# notat} other {# notater}} til taggen"
+    }
+  },
+  "tags": {
+    "hubTitle": "Tagger",
+    "openHub": "Åpne taggoversikten"
+  },
+  "tagsHub": {
+    "cancelCreate": "Avbryt",
+    "category": {
+      "delete": "Slett kategori",
+      "deleteBody": "Taggene flyttes til Uten kategori. De blir ikke slettet.",
+      "deleteCancel": "Avbryt",
+      "deleteConfirm": "Slett",
+      "deleteTitle": "Slette {name}?",
+      "dragHandle": "Dra for å endre rekkefølgen på kategoriene",
+      "emptyHint": "Dra en tagg hit",
+      "more": "Alternativer for kategorien",
+      "rename": "Gi kategorien nytt navn"
+    },
+    "categoryNamePlaceholder": "Kategorinavn",
+    "errors": {
+      "createCategoryFailed": "Kunne ikke opprette kategorien",
+      "createTagCategorizeFailed": "Taggen ble opprettet, men kunne ikke legges til i kategorien",
+      "createTagFailed": "Kunne ikke opprette taggen",
+      "deleteCategoryFailed": "Kunne ikke slette kategorien",
+      "loadFailed": "Kunne ikke laste inn taggkategoriene",
+      "renameCategoryFailed": "Kunne ikke gi kategorien nytt navn",
+      "reorderFailed": "Kunne ikke endre rekkefølgen på taggene"
+    },
+    "loading": "Laster inn tagger...",
+    "newCategory": "Ny kategori",
+    "newTag": "Ny tagg",
+    "search": {
+      "empty": "Ingen kategorier eller tagger samsvarer med søket",
+      "placeholder": "Søk i kategorier og tagger"
+    },
+    "tagNamePlaceholder": "Taggnavn",
+    "uncategorized": "Uten kategori"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (dobbeltklikk for å redigere)",
+      "dragToReorder": "Dra for å omorganisere kolonnen: {name}"
+    },
+    "columns": {
+      "created": "Opprettet",
+      "folder": "Mappe",
+      "kind": "Type",
+      "modified": "Endret",
+      "tags": "Etiketter",
+      "title": "Tittel",
+      "wordCount": "Antall ord"
+    },
+    "defaultViewName": "Standard",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# notat} other {# notater}}"
+    },
+    "selectView": "Velg visning"
   }
 }

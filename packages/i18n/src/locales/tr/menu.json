@@ -1,7 +1,12 @@
 {
   "app": {
     "quit": "Çık",
-    "preferences": "Ayarlar…"
+    "preferences": "Ayarlar…",
+    "exit": "Çıkış",
+    "hide": "MemryNote'u Gizle",
+    "hideOthers": "Diğerlerini Gizle",
+    "services": "Hizmetler",
+    "unhide": "Tümünü Göster"
   },
   "file": {
     "label": "Dosya",
@@ -16,19 +21,23 @@
     "forward": "İleri"
   },
   "edit": {
-    "label": "Düzenle",
-    "undo": "Geri al",
+    "label": "Düzen",
+    "undo": "Geri Al",
     "redo": "Yinele",
     "cut": "Kes",
     "copy": "Kopyala",
     "paste": "Yapıştır",
-    "selectAll": "Tümünü seç",
+    "selectAll": "Tümünü Seç",
     "find": "Bul",
-    "speech": "Konuşma"
+    "speech": "Konuşma",
+    "delete": "Sil",
+    "pasteAndMatchStyle": "Yapıştır ve Stili Eşle",
+    "startSpeaking": "Konuşmayı Başlat",
+    "stopSpeaking": "Konuşmayı Durdur"
   },
   "view": {
     "label": "Görünüm",
-    "reload": "Yeniden yükle",
+    "reload": "Yeniden Yükle",
     "toggleDevTools": "Geliştirici Araçlarını Aç/Kapat",
     "toggleFullscreen": "Tam Ekrana Geçiş Yap",
     "theme": "Tema",
@@ -37,7 +46,10 @@
     "themeSystem": "Sistem",
     "themeWhite": "Kağıt",
     "toggleDayPanel": "Gün Panelini Aç/Kapat",
-    "toggleSidebar": "Kenar Çubuğunu Aç/Kapat"
+    "toggleSidebar": "Kenar Çubuğunu Aç/Kapat",
+    "actualSize": "Gerçek Boyut",
+    "zoomIn": "Yakınlaştır",
+    "zoomOut": "Uzaklaştır"
   },
   "format": {
     "body": "Gövde",
@@ -55,7 +67,8 @@
     "about": "MemryNote Hakkında",
     "documentation": "Belgeler",
     "label": "Yardım",
-    "shortcuts": "Klavye Kısayolları"
+    "shortcuts": "Klavye Kısayolları",
+    "aboutVersion": "Sürüm {version}"
   },
   "insert": {
     "attachment": "Ek Ekle…",
@@ -67,6 +80,10 @@
     "taskList": "Görev Listesi"
   },
   "window": {
-    "label": "Pencere"
+    "label": "Pencere",
+    "close": "Kapat",
+    "front": "Tümünü Öne Getir",
+    "minimize": "Küçült",
+    "zoom": "Yakınlaştır"
   }
 }

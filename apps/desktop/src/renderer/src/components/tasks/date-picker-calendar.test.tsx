@@ -39,18 +39,22 @@ describe('DatePickerCalendar', () => {
       expect(screen.getByLabelText('Next month')).toBeInTheDocument()
     })
 
+    // Headers come from Intl for the active locale (English in tests), so they
+    // are the locale's short weekday names rather than hardcoded 2-letter stubs.
     it('renders weekday headers starting Monday by default', () => {
       renderCalendar()
-      const headers = screen.getAllByText(/^(Mo|Tu|We|Th|Fr|Sa|Su)$/)
-      expect(headers[0]).toHaveTextContent('Mo')
-      expect(headers[6]).toHaveTextContent('Su')
+      const headers = screen.getAllByText(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)$/)
+      expect(headers).toHaveLength(7)
+      expect(headers[0]).toHaveTextContent('Mon')
+      expect(headers[6]).toHaveTextContent('Sun')
     })
 
     it('renders weekday headers starting Sunday when weekStartsOn=0', () => {
       renderCalendar({ weekStartsOn: 0 })
-      const headers = screen.getAllByText(/^(Mo|Tu|We|Th|Fr|Sa|Su)$/)
-      expect(headers[0]).toHaveTextContent('Su')
-      expect(headers[6]).toHaveTextContent('Sa')
+      const headers = screen.getAllByText(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)$/)
+      expect(headers).toHaveLength(7)
+      expect(headers[0]).toHaveTextContent('Sun')
+      expect(headers[6]).toHaveTextContent('Sat')
     })
   })
 

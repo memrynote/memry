@@ -190,7 +190,7 @@ export function registerNotesHandlers(): void {
       })
       return { success: true as const, note }
     },
-    'Failed to create note'
+    'errors:note.createFailed'
   )
 
   // notes:get - Get a note by ID
@@ -286,7 +286,7 @@ export function registerNotesHandlers(): void {
       }
       return { success: true as const, note }
     },
-    'Failed to update note'
+    'errors:note.updateFailed'
   )
 
   // notes:apply-template - Apply a template to an existing note
@@ -297,7 +297,7 @@ export function registerNotesHandlers(): void {
       const note = await applyTemplateToNote(input)
       return { success: true as const, note }
     },
-    'Failed to apply template'
+    'errors:note.applyTemplateFailed'
   )
 
   // notes:rename - Rename a note
@@ -308,7 +308,7 @@ export function registerNotesHandlers(): void {
       const note = await renameNoteCommand(input.id, input.newTitle)
       return { success: true as const, note }
     },
-    'Failed to rename note'
+    'errors:note.renameFailed'
   )
 
   // notes:move - Move note to different folder
@@ -319,7 +319,7 @@ export function registerNotesHandlers(): void {
       const note = await moveNoteCommand(input.id, input.newFolder)
       return { success: true as const, note }
     },
-    'Failed to move note'
+    'errors:note.moveFailed'
   )
 
   // notes:delete - Delete a note
@@ -335,7 +335,7 @@ export function registerNotesHandlers(): void {
           result: 'success'
         })
         return { success: true }
-      }, 'Failed to delete note')
+      }, 'errors:note.deleteFailed')
     )
   )
 
@@ -378,7 +378,7 @@ export function registerNotesHandlers(): void {
       withErrorHandler(async (path) => {
         await createFolder(path)
         return { success: true }
-      }, 'Failed to create folder')
+      }, 'errors:folder.createFailed')
     )
   )
 
@@ -391,7 +391,7 @@ export function registerNotesHandlers(): void {
       syncFolderConfigRename(input.oldPath, input.newPath)
       return { success: true as const }
     },
-    'Failed to rename folder'
+    'errors:folder.renameFailed'
   )
 
   // notes:delete-folder - Delete a folder and all its contents
@@ -402,7 +402,7 @@ export function registerNotesHandlers(): void {
         await deleteFolder(folderPath)
         syncFolderConfigDelete(folderPath)
         return { success: true }
-      }, 'Failed to delete folder')
+      }, 'errors:folder.deleteFailed')
     )
   )
 
@@ -474,7 +474,7 @@ export function registerNotesHandlers(): void {
       })
       return { success: true as const, definition }
     },
-    'Failed to create property definition'
+    'errors:property.createDefinitionFailed'
   )
 
   // notes:update-property-definition - Update a property definition
@@ -518,7 +518,7 @@ export function registerNotesHandlers(): void {
       })
       return { success: true as const, definition }
     },
-    'Failed to update property definition'
+    'errors:property.updateDefinitionFailed'
   )
 
   // notes:set-calendar-property-visibility - Toggle a date property's calendar visibility
@@ -530,7 +530,7 @@ export function registerNotesHandlers(): void {
       await PropertyDefinitionsService.get().setShowOnCalendar(input.name, input.showOnCalendar)
       return { success: true as const }
     },
-    'Failed to set calendar property visibility'
+    'errors:property.setCalendarVisibilityFailed'
   )
 
   // notes:get-calendar-property-names - List property names enabled to show on the calendar
@@ -723,7 +723,7 @@ export function registerNotesHandlers(): void {
       await deleteAttachment(input.noteId, input.filename)
       return { success: true as const }
     },
-    'Failed to delete attachment'
+    'errors:attachment.deleteFailed'
   )
 
   // =========================================================================
@@ -760,7 +760,7 @@ export function registerNotesHandlers(): void {
       syncFolderConfigSet(input.folderPath, icon)
       return { success: true as const }
     },
-    'Failed to set folder config'
+    'errors:folder.setConfigFailed'
   )
 
   // notes:get-folder-template - Get resolved folder template (with inheritance)
@@ -847,7 +847,7 @@ export function registerNotesHandlers(): void {
 
       return { success: true as const, path: targetPath }
     },
-    'Failed to export PDF'
+    'errors:note.exportPdfFailed'
   )
 
   // =========================================================================
@@ -896,7 +896,7 @@ export function registerNotesHandlers(): void {
 
       return { success: true as const, path: targetPath }
     },
-    'Failed to export HTML'
+    'errors:note.exportHtmlFailed'
   )
 
   // =========================================================================
@@ -926,7 +926,7 @@ export function registerNotesHandlers(): void {
       withErrorHandler(async (snapshotId) => {
         const note = await restoreVersion(snapshotId)
         return { success: true, note }
-      }, 'Failed to restore version')
+      }, 'errors:note.restoreVersionFailed')
     )
   )
 
@@ -938,7 +938,7 @@ export function registerNotesHandlers(): void {
         const db = getIndexDatabase()
         deleteNoteSnapshot(db, snapshotId)
         return { success: true }
-      }, 'Failed to delete version')
+      }, 'errors:note.deleteVersionFailed')
     )
   )
 
@@ -976,7 +976,7 @@ export function registerNotesHandlers(): void {
       reorderNotesInFolder(db, input.folderPath, input.notePaths)
       return { success: true as const }
     },
-    'Failed to reorder notes'
+    'errors:note.reorderFailed'
   )
 
   // notes:import-files - Import files from external paths into the vault
@@ -995,7 +995,7 @@ export function registerNotesHandlers(): void {
       }
       return result
     },
-    'Failed to import files'
+    'errors:note.importFilesFailed'
   )
 
   // notes:show-import-dialog - Open a file dialog to select files for import
@@ -1028,7 +1028,7 @@ export function registerNotesHandlers(): void {
       const note = await setNoteLocalOnlyCommand(input)
       return { success: true as const, note }
     },
-    'Failed to set local-only'
+    'errors:note.setLocalOnlyFailed'
   )
 
   // notes:get-local-only-count — Count of local-only notes

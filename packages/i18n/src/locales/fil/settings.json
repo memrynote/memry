@@ -6,10 +6,10 @@
     "title": "Mga setting",
     "nav": {
       "groups": {
-        "workspace": "Workspace",
+        "workspace": "Lugar ng Trabaho",
         "preferences": "Mga Kagustuhan",
         "services": "Mga serbisyo",
-        "data": "Data"
+        "data": "Datos"
       },
       "items": {
         "account": "Account",
@@ -21,14 +21,15 @@
         "calendar": "Kalendaryo",
         "appearance": "Hitsura",
         "shortcuts": "Mga shortcut",
-        "ai": "AI Assistant",
+        "ai": "Katulong na AI",
         "integrations": "Mga pagsasama",
         "vault": "Vault",
         "tags": "Mga tag",
         "properties": "Mga Katangian",
-        "commandLine": "Command Line",
+        "commandLine": "Linya ng Command",
         "features": "Mga Feature",
-        "import": "Pag-import"
+        "import": "Pag-import",
+        "inbox": "Inbox"
       }
     }
   },
@@ -39,7 +40,7 @@
       "loading": "Nilo-load ang mga setting..."
     },
     "groups": {
-      "startup": "Startup",
+      "startup": "Pagsisimula",
       "updates": "Mga update",
       "languageRegion": "Wika at Rehiyon",
       "tabBehavior": "Gawi ng Tab",
@@ -75,6 +76,16 @@
         "downloadingPercent": "Dina-download ang {percent}%",
         "downloaded": "I-restart upang I-install",
         "idle": "Tingnan ang Mga Update"
+      },
+      "autoCheck": {
+        "description": "Tingnan kung may mga bagong release kapag binuksan ang app at pana-panahon habang bukas ito.",
+        "error": "Nabigong i-update ang setting ng awtomatikong pagsuri",
+        "label": "Awtomatikong maghanap ng mga update"
+      },
+      "autoDownload": {
+        "description": "I-download at i-install ang mga bagong release sa background nang hindi nagtatanong.",
+        "error": "Nabigong i-update ang setting ng awtomatikong pag-download",
+        "label": "Awtomatikong i-download ang mga update"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Ibahagi ang Anonymous na Sukatan sa Paggamit",
         "description": "Anon metrics lang ito — walang ipinapadalang nilalaman ng tala, mga query sa paghahanap, path ng file, email, o raw ID.",
         "error": "Nabigong i-update ang setting ng telemetry"
+      },
+      "diagnostics": {
+        "building": "Inihahanda ang ulat…",
+        "consent": "Magpadala ng isang beses na diagnostic report? Naglalaman ito ng mga na-redact na teknikal na log lamang — walang nilalaman ng tala.",
+        "error": "Nabigong ipadala ang diagnostic report",
+        "notNow": "Hindi ngayon",
+        "previewError": "Hindi maihanda ang diagnostic report",
+        "previewLabel": "I-preview ang nilalaman ng ulat",
+        "send": "Ipadala",
+        "sendReport": {
+          "button": "Magpadala ng diagnostic report",
+          "description": "Magpadala ng isang beses na ulat ng mga na-redact na teknikal na log para matulungan kaming ayusin ang problemang naranasan mo.",
+          "label": "Ulat ng Diagnostic"
+        },
+        "sending": "Ipinapadala…",
+        "sent": "Naipadala ang ulat — sanggunian {incidentId}",
+        "snapshotLabel": "Snapshot ng device",
+        "title": "Magpadala ng diagnostic report?"
       }
     },
     "dateFormat": {
@@ -147,7 +176,7 @@
     "groups": {
       "theme": "Tema",
       "accentColor": "Kulay ng Accent",
-      "typography": "Typography"
+      "typography": "Tipograpiya"
     },
     "theme": {
       "colorMode": {
@@ -172,11 +201,11 @@
       },
       "presets": {
         "indigo": "Indigo",
-        "amber": "Amber",
-        "emerald": "Emerald",
+        "amber": "Ambar",
+        "emerald": "Esmeralda",
         "red": "Pula",
-        "violet": "Violet",
-        "cyan": "Cyan",
+        "violet": "Violeta",
+        "cyan": "Sian",
         "pink": "Rosas",
         "orange": "Kahel"
       },
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Layout",
-      "toolbar": "Toolbar"
+      "toolbar": "Toolbar",
+      "spelling": "Pagbaybay"
     },
     "width": {
       "label": "Lapad ng Editor",
@@ -221,14 +251,21 @@
       "options": {
         "narrow": "Makitid",
         "medium": "Katamtaman",
-        "wide": "Malapad"
+        "wide": "Malapad",
+        "full": "Buong lapad",
+        "normal": "Karaniwan"
       },
       "error": "Nabigong i-update ang lapad ng editor"
     },
     "toolbarMode": {
-      "label": "Sticky Formatting Toolbar",
+      "label": "Nakadikit na Toolbar sa Pag-format",
       "description": "Palaging ipakita ang toolbar sa itaas ng editor",
       "error": "Nabigong i-update ang toolbar mode"
+    },
+    "spellCheck": {
+      "description": "Salungguhitan ang mga maling baybay na salita sa mga tala at journal",
+      "error": "Nabigong i-update ang spell check",
+      "label": "Suriin ang Pagbaybay"
     }
   },
   "templates": {
@@ -239,11 +276,11 @@
     "actions": {
       "new": "Bagong Template",
       "edit": "I-edit",
-      "duplicate": "Duplicate",
+      "duplicate": "I-duplicate",
       "delete": "Tanggalin"
     },
     "groups": {
-      "builtIn": "Built-in",
+      "builtIn": "Nakapaloob",
       "myTemplates": "Aking Mga Template"
     },
     "loading": "Naglo-load ng mga template...",
@@ -282,7 +319,7 @@
     },
     "groups": {
       "defaultTemplate": "Default na Template",
-      "sidebarVisibility": "Sidebar Visibility",
+      "sidebarVisibility": "Pagpapakita ng Sidebar",
       "footer": "Footer",
       "location": "Lokasyon at Format"
     },
@@ -326,7 +363,7 @@
     },
     "preview": {
       "description": "Path ng file ng journal ngayong araw",
-      "label": "Preview"
+      "label": "Silipin"
     }
   },
   "tasks": {
@@ -377,7 +414,7 @@
       "error": "Nabigong i-update ang default na view"
     },
     "staleInbox": {
-      "label": "Stale Inbox Threshold",
+      "label": "Threshold ng Lipas na Inbox",
       "description": "Ang mga gawaing mas matanda pa rito ay naka-highlight bilang lipas",
       "unit": "araw",
       "error": "Nabigong i-update ang lipas na threshold ng inbox"
@@ -499,15 +536,15 @@
       "labels": {
         "history": "Kasaysayan",
         "maxFile": "Max na file",
-        "storage": "Storage",
+        "storage": "Imbakan",
         "vaults": "Mga Vault"
       },
       "planStatus": "Status ng plano",
       "plans": {
-        "believer": "Believer plan",
+        "believer": "Believer na plano",
         "free": "Libreng plano",
-        "plus": "Plus plan",
-        "pro": "Pro plan"
+        "plus": "Plus na plano",
+        "pro": "Pro na plano"
       },
       "statuses": {
         "active": "Aktibo",
@@ -538,7 +575,7 @@
     "steps": {
       "signIn": "Mag-sign In",
       "verify": "I-verify",
-      "link": "Link"
+      "link": "I-link"
     },
     "progress": "Hakbang {current} ng {total}: {label}",
     "signIn": {
@@ -553,7 +590,7 @@
       "seePlans": "Tingnan ang mga plano"
     },
     "email": {
-      "label": "Email address",
+      "label": "Address ng email",
       "placeholder": "Ilagay ang iyong email address...",
       "invalid": "Mangyaring magpasok ng wastong email address",
       "sending": "Nagpapadala ng code..."
@@ -631,7 +668,7 @@
       "goBack": "Bumalik ka",
       "waitingTitle": "Naghihintay ng pag-apruba",
       "waitingDescription": "Buksan ang memrynote sa iyong iba pang device at aprubahan ang kahilingan sa pag-link.",
-      "verificationCode": "Verification code",
+      "verificationCode": "Code ng beripikasyon",
       "confirmCode": "Kumpirmahin na tumutugma ito sa code sa iyong iba pang device",
       "vaultPickerChooseFolder": "Pumili ng folder",
       "vaultPickerConfirm": "Kunin ang napili",
@@ -640,7 +677,7 @@
       "vaultPickerFolderLabel": "Iimbak ang mga vault sa folder",
       "vaultPickerPrimaryHint": "Bubukas ngayon",
       "vaultPickerTitle": "Piliin ang kukunin",
-      "vaultRow": "Vault — {{count}} item · {{date}}"
+      "vaultRow": "Vault — {count} item · {date}"
     }
   },
   "devices": {
@@ -673,7 +710,8 @@
       "removeFailed": "Nabigong alisin ang device",
       "renamed": "Pinalitan ng pangalan sa \"{name}\"",
       "renameFailed": "Nabigong palitan ang pangalan ng device"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "I-link ang bagong device",
@@ -699,7 +737,7 @@
     "description": "Ang isang device ay humihiling ng access sa iyong naka-encrypt na data. Aprubahan lang kung sinimulan mo ang kahilingang ito.",
     "unknownDevice": "Hindi kilalang device",
     "unknownPlatform": "Hindi kilalang platform",
-    "verificationCode": "Verification code",
+    "verificationCode": "Code ng beripikasyon",
     "computing": "Nagko-compute...",
     "unavailable": "Hindi magagamit",
     "confirmCode": "Kumpirmahin na tumutugma ang code na ito sa ipinapakita sa bagong device",
@@ -711,7 +749,7 @@
   },
   "ai": {
     "header": {
-      "title": "AI Assistant",
+      "title": "Katulong na AI",
       "subtitle": "Ang mga pag-embed ay tumatakbo nang lokal. Maaaring gamitin ng mga voice memo ang Whisper Small o ang iyong OpenAI key.",
       "loading": "Nilo-load ang mga setting..."
     },
@@ -730,7 +768,7 @@
       "inline": "Inline na Pag-edit ng AI"
     },
     "voice": {
-      "provider": "Provider",
+      "provider": "Tagapagbigay",
       "providerDescription": "Speech-to-text provider para sa mga voice memo",
       "providers": {
         "local": "Lokal (default)",
@@ -762,7 +800,7 @@
       "memoNameModeDescription": "Kung paano pinapangalanan ang mga voice memo pagkatapos ng transkripsyon",
       "naming": {
         "none": "Huwag palitan ang pangalan",
-        "timestamp": "Timestamp",
+        "timestamp": "Petsa at Oras",
         "transcript": "Pamagat ng transkripsyon"
       },
       "namingError": "Nabigong i-update ang pagpapangalan ng voice memo"
@@ -794,7 +832,7 @@
       "enableDescription": "Ipakita ang AI menu kapag nag-e-edit ng mga tala",
       "enabled": "Naka-enable ang inline na pag-edit ng AI",
       "disabled": "Na-disable ang inline na pag-edit ng AI",
-      "provider": "Provider",
+      "provider": "Tagapagbigay",
       "providerDescription": "Serbisyo ng AI para sa mga pagpapatakbo ng text",
       "providers": {
         "ollama": "Ollama (Lokal)",
@@ -855,6 +893,11 @@
         "description": "I-off para sa one-way na sync — makikita mo pa rin ang iyong mga kaganapan sa Google sa memrynote, ngunit hindi lalabas sa Google ang mga kaganapan ng memrynote.",
         "error": "Nabigong i-update ang direksyon ng sync",
         "label": "Ipakita ang mga kaganapan ng memrynote sa Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Naka-off bilang default. Kapag na-on, mababasa ng ahente ng AI ang iyong mga kaganapan sa Google; kapag naka-off, wala itong maibabalik kapag tinanong tungkol sa mga ito. Makikita mo pa rin ang mga ito sa memrynote alinman ang piliin mo.",
+        "error": "Nabigong i-update ang access ng AI",
+        "label": "Payagan ang AI na basahin ang mga kaganapan sa Google Calendar"
       }
     },
     "sourcePicker": {
@@ -863,7 +906,7 @@
         "synced": "Naka-sync",
         "error": "Error",
         "pending": "Nakabinbin",
-        "idle": "Idle"
+        "idle": "Nakatigil"
       },
       "retrying": "Sinusubukang muli…",
       "retryNow": "Subukan muli ngayon"
@@ -898,11 +941,12 @@
     },
     "groups": {
       "storageUsage": "Paggamit ng Imbakan",
-      "location": "Lokasyon"
+      "location": "Lokasyon",
+      "accountVaults": "Mga vault sa iyong account"
     },
     "loadingStorage": "Nilo-load ang impormasyon ng storage...",
     "signInStorage": "Mag-sign in para tingnan ang paggamit ng storage",
-    "vaultPath": "Vault Path",
+    "vaultPath": "Path ng Vault",
     "reveal": "Ibunyag",
     "storage": {
       "title": "Imbakan",
@@ -919,6 +963,17 @@
       },
       "warningTitle": "Halos puno na ang storage",
       "warningDescription": "Magbakante ng espasyo o i-upgrade ang iyong plano para maiwasan ang mga isyu sa pag-sync."
+    },
+    "accountVaults": {
+      "activeHint": "Lumipat sa ibang vault para matanggal ito.",
+      "cloudOnly": "Wala sa device na ito",
+      "delete": "Tanggalin",
+      "deleteBody": "Permanenteng inaalis nito ang lahat ng naka-sync na data ng vault na ito mula sa mga server ng Memry at hindi na ito maibabalik. Hindi tinatanggal ang iyong mga file sa disk.",
+      "deleteConfirm": "Tanggalin sa account",
+      "deleteFailed": "Hindi matanggal ang vault",
+      "deleteTitle": "Tanggalin ang “{name}” sa iyong account?",
+      "empty": "Wala pang vault na naka-sync sa iyong account.",
+      "itemsCount": "{count} na item"
     }
   },
   "tags": {
@@ -981,8 +1036,8 @@
     "types": {
       "status": "Katayuan",
       "select": "Pumili",
-      "multiselect": "Multiselect",
-      "text": "Text",
+      "multiselect": "Maramihang Pagpili",
+      "text": "Teksto",
       "number": "Numero",
       "date": "Petsa",
       "checkbox": "Checkbox",
@@ -1012,7 +1067,7 @@
     },
     "searchPlaceholder": "Maghanap ng mga shortcut...",
     "resetAll": "I-reset Lahat",
-    "custom": "Custom",
+    "custom": "Pasadya",
     "pressShortcut": "Pindutin ang shortcut...",
     "cancelTitle": "Kanselahin",
     "rebindTitle": "I-click para i-rebind",
@@ -1022,7 +1077,7 @@
     "noMatch": "Walang mga shortcut na tumutugma sa iyong paghahanap",
     "conflict": "Mga salungatan sa: {labels}",
     "globalCapture": {
-      "title": "Global Capture",
+      "title": "Pandaigdigang Pagkuha",
       "description": "Kumuha ng tala mula sa kahit saan",
       "permissionNeeded": "Kailangan ng pahintulot",
       "active": "Aktibo",
@@ -1108,7 +1163,7 @@
           "description": "I-toggle ang bold na pag-format"
         },
         "italic": {
-          "label": "Italic",
+          "label": "Italiko",
           "description": "I-toggle ang italic na pag-format"
         },
         "underline": {
@@ -1137,16 +1192,12 @@
       "press": "Pindutin ",
       "toToggleThisDialog": "upang i-toggle ang dialog na ito"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middot;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Inalis na ang device na ito",
       "exporting": "Ini-export...",
       "signOut": "Mag-sign Out"
     },
     "componentsSyncSyncHistory": {
-      "middot": "middot; ",
       "activity": "Aktibidad",
       "filterBySyncType": "I-filter ayon sa uri ng pag-sync",
       "allTypes": "Lahat ng uri",
@@ -1160,7 +1211,12 @@
       "last30Days": "Huling 30 araw",
       "loadingSyncHistory": "Nilo-load ang kasaysayan ng pag-sync",
       "noSyncActivityYet": "Wala pang aktibidad sa pag-sync",
-      "loadMore": "Mag-load pa"
+      "loadMore": "Mag-load pa",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, ipakita ang mga detalye ng error",
+      "summaryFailed": "Nabigo ang pag-sync",
+      "summaryPulled": "{count, plural, one {# item ang hinila} other {# item ang hinila}}",
+      "summaryPushed": "{count, plural, one {# item ang itinulak} other {# item ang itinulak}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Huling na-sync ",
@@ -1208,102 +1264,103 @@
       "failedToCloseVault": "Nabigong isara ang vault",
       "failedToSwitchVault": "Nabigong lumipat ng vault",
       "failedToUpdateConfig": "Nabigong i-update ang config",
-      "failedToReindex": "Nabigong muling i-index"
+      "failedToReindex": "Nabigong muling i-index",
+      "failedToLoadTasks": "Nabigong i-load ang mga gawain"
     }
   },
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Lokal na access sa server para sa mga panlabas na MCP client."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Koneksyon",
+      "access": "Pag-access"
     },
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Gamitin ang localhost endpoint na ito mula sa Cursor, Claude Desktop, o Zed."
       },
       "bearer": {
         "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "description": "Kredensyal na nasa memory lang para sa paglulunsad na ito ng app."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "I-rotate ang token",
+        "description": "Pawalang-bisa ang mga kasalukuyang session ng panlabas na client."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "Kopyahin ang {label}",
+    "notRunning": "Hindi tumatakbo",
+    "toolsBadge": "{count, plural, one {# tool} other {# na tool}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Mga Pahintulot ng Agent",
+      "subtitle": "Piliin ang default na access, mga kumpirmasyon, at mga lokal na provider para sa Agent Chat."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Lokal na provider na tugma sa OpenAI",
+      "actions": "Mga pagsusuri sa koneksyon"
     },
     "presets": {
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Pasadya"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Paunang Takda"
       },
       "baseUrl": {
         "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "description": "Endpoint na /v1 na tugma sa OpenAI."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Payagan ang non-loopback na endpoint",
+        "description": "Ipinapadala ang data sa naka-configure na endpoint."
       },
       "model": {
-        "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "label": "Modelo",
+        "description": "Pumili ng ibinalik na modelo o maglagay nang manu-mano."
       },
       "apiKey": {
         "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "description": "Opsyonal na kredensyal na nakaimbak sa OS keychain.",
+        "configured": "May nakaimbak nang API key sa OS keychain."
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "save": "I-save",
+      "models": "Mga Modelo",
+      "test": "Subukan ang koneksyon",
+      "probe": "Suriin ang mga tool"
     },
     "status": {
-      "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "disconnected": "Hindi Nakakonekta",
+      "toolsDisabled": "Hindi pinagana ang mga tool",
+      "fullTools": "Pinagana ang lahat ng tool",
       "checking": "Sinusuri…",
       "connected": "Nakakonekta",
       "label": "Koneksyon"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Mga pahintulot ng agent",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Default na access",
+        "description": "Itinatakda ang panimulang access mode para sa mga bagong turn ng Agent.",
+        "vaultOnly": "Vault lang",
+        "computerAccess": "Access sa computer"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Kumpirmahin ang mga aksyon",
+        "description": "Piliin kung awtomatikong tatakbo ang mga tool call o maghihintay ng pag-apruba sa chat.",
+        "alwaysAllow": "Palaging payagan",
+        "askBeforeChanges": "Magtanong bago magbago"
       }
     }
   },
@@ -1329,7 +1386,7 @@
     },
     "header": {
       "subtitle": "I-set up ang memrynote command para sa iyong terminal",
-      "title": "Command Line"
+      "title": "Linya ng Command"
     },
     "status": {
       "defaultVaultUpdatedToast": "Na-update ang default na CLI vault",
@@ -1368,6 +1425,10 @@
       "tasks": {
         "description": "Mga to-do at takdang petsa",
         "label": "Mga Gawain"
+      },
+      "spatialCanvas": {
+        "description": "Mga spatial board para ayusin at iugnay ang mga tala",
+        "label": "Canvas"
       }
     }
   },
@@ -1393,7 +1454,10 @@
         "skipped": "{count} nilaktawan",
         "title": "Kumpleto na ang pag-import"
       },
-      "title": "Mag-import mula sa {name}"
+      "title": "Mag-import mula sa {name}",
+      "chooseDirectory": "Pumili ng folder…",
+      "folderKeepsAssets": "Piliin ang folder kapag nasa labas ng sariling folder ng mga tala ang mga larawan — madalas na iniipon ng mga export ang media sa iisang folder.",
+      "previewError": "Nabigo ang preview"
     },
     "header": {
       "subtitle": "Ilipat ang iyong mga tala at gawain mula sa ibang app",
@@ -1432,6 +1496,99 @@
       "tasks": "{count, plural, one {# gawain} other {# gawain}}",
       "withDueDate": "{count} may petsa",
       "withTags": "{count} na-tag"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Mga column: {columns}",
+        "emptyTitle": "Nilaktawan ang row na walang pamagat (column na \"{column}\")",
+        "noHeaders": "Walang header ang CSV file",
+        "titleColumn": "Pamagat mula sa \"{column}\"; ang iba pang column ay nai-save bilang mga property"
+      },
+      "raindrop": {
+        "csvEmpty": "Walang laman ang Raindrop CSV",
+        "headerNotFound": "Hindi natagpuan ang header row ng Raindrop CSV (column na \"url\")",
+        "rowNoUrl": "Nilaktawan ang row {row}: walang URL"
+      },
+      "readFileFailed": "Nabigong basahin ang file",
+      "ticktick": {
+        "foldersDropped": "Walang katumbas sa Memry ang mga folder ng TickTick kaya inalis ang mga ito",
+        "headerNotFound": "Hindi natagpuan ang header row ng TickTick CSV (\"Folder Name\")",
+        "reminderNoAnchor": "Nilaktawan ang paalalang \"{reminder}\" (walang anchor na petsa)",
+        "subtaskParentMissing": "Hindi natagpuan ang magulang ng subtask na \"{title}\"; na-import bilang top-level",
+        "unknownPriority": "Hindi kilalang priyoridad ng TickTick na {priority} → wala",
+        "unsupportedRepeat": "Nilaktawan ang hindi suportadong repeat rule na \"{rule}\""
+      },
+      "todoist": {
+        "emptyTitle": "Ang gawaing walang nilalaman ay na-import bilang (walang pamagat)",
+        "headerNotFound": "Hindi ito Todoist CSV: nawawala ang TYPE header row",
+        "orphanComment": "Nilaktawan ang komentong walang naunang gawain",
+        "sectionFlattened": "Pinatag ang seksyong \"{section}\"",
+        "subtaskNoParent": "Walang magulang ang sub-task na \"{title}\" sa indent {indent}; na-import bilang top-level",
+        "unknownPriority": "Hindi kilalang priyoridad na {priority} → wala",
+        "unparsedDate": "Hindi ma-parse ang petsang \"{date}\""
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Kinokopya ang database ng Apple Notes…"
+      },
+      "bear": {
+        "scanning": "Ini-scan ang export ng Bear…"
+      },
+      "csv": {
+        "importing": "Ini-import ang mga tala mula sa CSV…"
+      },
+      "evernote": {
+        "scanning": "Ini-scan ang mga .enex file…"
+      },
+      "html": {
+        "scanning": "Ini-scan ang mga HTML file…"
+      },
+      "importingItem": "Ini-import ang {title}",
+      "raindrop": {
+        "importing": "Ini-import ang mga bookmark ng Raindrop…"
+      },
+      "roam": {
+        "reading": "Binabasa ang export ng Roam…"
+      },
+      "scanningExport": "Ini-scan ang export…",
+      "scanningFiles": "Ini-scan ang mga file…",
+      "ticktick": {
+        "importing": "Ini-import ang mga gawain mula sa TickTick…"
+      },
+      "todoist": {
+        "importing": "Ini-import ang mga gawain mula sa Todoist…"
+      }
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Naglo-load…",
+      "subtitle": "Pang-araw-araw na paalala sa pagsusuri at mga kagustuhan sa inbox.",
+      "title": "Inbox"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Isang banayad na pang-araw-araw na paalala kapag may laman ang iyong inbox.",
+        "label": "Paalalahanan akong suriin ang inbox ko"
+      },
+      "error": "Hindi ma-update ang paalala.",
+      "group": "Pang-araw-araw na paalala sa pagsusuri",
+      "test": {
+        "button": "Subukan",
+        "description": "Ipadala ang paalala ngayon para masubukan ang mga abiso ng iyong system.",
+        "label": "Pagsubok na abiso",
+        "sent": "Naipadala ang pagsubok na abiso.",
+        "sentHint": "Kung walang lumabas, payagan ang mga abiso para sa MemryNote sa mga setting ng iyong system.",
+        "unsupported": "Hindi sinusuportahan ng device na ito ang mga desktop notification."
+      },
+      "time": {
+        "description": "Lokal na oras, sa bawat device.",
+        "hourLabel": "Oras",
+        "label": "Oras ng paalala",
+        "minuteLabel": "Minuto",
+        "periodLabel": "AM o PM"
+      }
     }
   }
 }

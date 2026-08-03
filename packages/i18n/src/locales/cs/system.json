@@ -28,6 +28,13 @@
       "readyDetailFallback": "Pro dokončení instalace aktualizace restartujte memrynote.",
       "buttonRestartNow": "Restartujte nyní",
       "releaseNotesLabel": "Poznámky k vydání:"
+    },
+    "pair": {
+      "buttonAllow": "Povolit",
+      "buttonDeny": "Odmítnout",
+      "buttonPair": "Spárovat",
+      "message": "Povolit rozšíření prohlížeče Memry odesílat zachycené položky do této aplikace?",
+      "title": "Spárovat rozšíření prohlížeče"
     }
   },
   "notification": {
@@ -38,6 +45,11 @@
       "fallback": "Připomenutí je splatné",
       "default": "Připomenutí",
       "task": "Připomenutí úkolu"
+    },
+    "inboxReview": {
+      "body": "Máte {count, plural, one {# položku} few {# položky} many {# položky} other {# položek}} ke zpracování.",
+      "testBody": "Toto je test — takto budou vypadat vaše denní připomenutí.",
+      "title": "Čas projít doručenou poštu"
     }
   },
   "error": {
@@ -45,5 +57,15 @@
     "definitionNotFound": "Definice nenalezena",
     "noteNotFound": "Poznámka nenalezena",
     "updateFailed": "Aktualizace se nezdařila"
+  },
+  "startup": {
+    "failed": {
+      "body": "K tomu může dojít, když je na disku velmi málo volného místa nebo když máte starší grafické ovladače. Zkuste uvolnit místo na disku a poté MemryNote znovu otevřít. Pokud se to bude opakovat, obvykle pomůže přeinstalace.",
+      "title": "MemryNote se nepodařilo dokončit spuštění"
+    },
+    "installingUpdate": {
+      "subtitle": "MemryNote se automaticky znovu otevře.",
+      "title": "Instaluje se aktualizace…"
+    }
   }
 }

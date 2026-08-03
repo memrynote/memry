@@ -22,7 +22,19 @@
     "writeFailed": "이 메모를 저장하지 못했습니다. 디스크 공간과 권한을 확인하세요.",
     "readFailed": "이 메모를 읽지 못했습니다. 파일이 잠겨 있거나 손상되었을 수 있습니다.",
     "deleteFailed": "이 메모를 삭제하지 못했습니다. 파일 권한을 확인하세요.",
-    "invalidPath": "메모 경로가 잘못되었습니다."
+    "invalidPath": "메모 경로가 잘못되었습니다.",
+    "applyTemplateFailed": "템플릿을 적용하지 못했습니다.",
+    "createFailed": "메모를 만들지 못했습니다.",
+    "deleteVersionFailed": "버전을 삭제하지 못했습니다.",
+    "exportHtmlFailed": "HTML로 내보내지 못했습니다.",
+    "exportPdfFailed": "PDF로 내보내지 못했습니다.",
+    "importFilesFailed": "파일을 가져오지 못했습니다.",
+    "moveFailed": "메모를 이동하지 못했습니다.",
+    "renameFailed": "메모 이름을 변경하지 못했습니다.",
+    "reorderFailed": "메모 순서를 변경하지 못했습니다.",
+    "restoreVersionFailed": "버전을 복원하지 못했습니다.",
+    "setLocalOnlyFailed": "로컬 전용 설정을 적용하지 못했습니다.",
+    "updateFailed": "메모를 업데이트하지 못했습니다."
   },
   "database": {
     "connectionFailed": "로컬 데이터베이스에 연결할 수 없습니다. 앱을 다시 시작해 보세요.",
@@ -41,7 +53,14 @@
     "fileTooLarge": "파일이 너무 커서 첨부할 수 없습니다.",
     "unsupportedType": "이 파일 형식은 지원되지 않습니다.",
     "writeFailed": "첨부파일을 저장하지 못했습니다. 디스크 공간을 확인하세요.",
-    "deleteFailed": "첨부파일을 삭제하지 못했습니다."
+    "deleteFailed": "첨부파일을 삭제하지 못했습니다.",
+    "downloadFailed": "첨부파일을 다운로드하지 못했습니다.",
+    "downloadProgressFailed": "다운로드 진행 상황을 가져오지 못했습니다.",
+    "uploadFailed": "첨부파일을 업로드하지 못했습니다.",
+    "uploadProgressFailed": "업로드 진행 상황을 가져오지 못했습니다.",
+    "emptyFile": "빈 파일은 업로드할 수 없습니다.",
+    "exceedsMaxSize": "파일이 너무 큽니다. 크기 {size}, 최대 허용 크기 {limit}.",
+    "exceedsPlanLimit": "파일이 현재 요금제에서 허용하는 크기를 초과합니다. 크기 {size}, 허용 한도 {limit}."
   },
   "encryption": {
     "failed": "데이터를 암호화하지 못했습니다. 키를 다시 생성해야 할 수도 있습니다.",
@@ -74,6 +93,188 @@
     "securityQuarantinePermanent": "동기화 항목을 확인할 수 없어 보안을 위해 격리되었습니다.",
     "securityQuarantineRetry": "동기화 항목이 서명 확인에 실패하여 다시 시도됩니다.",
     "certificatePinPaused": "동기화 서버에 대한 보안 연결을 확인할 수 없습니다. 보호를 위해 동기화가 일시중지되었습니다.",
-    "paymentRequired": "호스팅 암호화 동기화를 사용하려면 유료 동기화 요금제가 필요합니다."
+    "paymentRequired": "호스팅 암호화 동기화를 사용하려면 유료 동기화 요금제가 필요합니다.",
+    "attachmentUploadFailed": "\"{filename}\" 첨부파일을 동기화하지 못했습니다. 이 기기에만 남아 있습니다.",
+    "fileTooLarge": "이 파일은 현재 요금제에서 허용하는 크기를 초과합니다. 더 큰 파일을 동기화하려면 요금제를 업그레이드하세요.",
+    "vaultRecovered": "보관함 키가 복구되었습니다. 동기화가 다시 시작됩니다.",
+    "historyFetchFailed": "동기화 기록을 가져오지 못했습니다.",
+    "keyPersistenceFailed": "암호화 키를 안전하게 저장하지 못했습니다. 기기 등록이 취소되었습니다. 다시 시도해 주세요.",
+    "serverUnreachable": "동기화 서버에 연결할 수 없습니다. 인터넷 연결을 확인해 주세요.",
+    "updateSyncedSettingFailed": "동기화된 설정을 업데이트하지 못했습니다.",
+    "requestTimedOut": "동기화 요청 시간이 초과되었습니다. 인터넷 연결을 확인해 주세요."
+  },
+  "agent": {
+    "conversationBusy": "대화가 처리 중입니다.",
+    "runtimeStarting": "에이전트 런타임이 시작되는 중입니다. 다시 시도해 주세요."
+  },
+  "ai": {
+    "inlineDisabled": "AI 인라인 편집이 비활성화되어 있습니다.",
+    "listOllamaModelsFailed": "Ollama 모델 목록을 가져오지 못했습니다."
+  },
+  "auth": {
+    "approveLinkingFailed": "연결을 승인하지 못했습니다.",
+    "cannotRemoveCurrentDevice": "현재 기기는 제거할 수 없습니다.",
+    "completeLinkingFailed": "연결을 완료하지 못했습니다.",
+    "confirmRecoveryPhraseFailed": "복구 문구를 확인하지 못했습니다.",
+    "fetchSasCodeFailed": "SAS 코드를 가져오지 못했습니다.",
+    "finalizeVaultChoiceFailed": "Vault 선택을 완료하지 못했습니다.",
+    "initiateOAuthFailed": "OAuth를 시작하지 못했습니다.",
+    "invalidRecoveryPhraseFormat": "복구 문구 형식이 올바르지 않습니다.",
+    "linkDeviceQrFailed": "QR 코드로 기기를 연결하지 못했습니다.",
+    "linkRecoveryPhraseFailed": "복구 문구로 연결하지 못했습니다.",
+    "notAuthenticated": "인증되지 않았습니다.",
+    "pickFolderFailed": "폴더를 선택하지 못했습니다.",
+    "recoveryPhraseMismatch": "복구 문구가 일치하지 않습니다. 다시 시도해 주세요.",
+    "removeDeviceFailed": "기기를 제거하지 못했습니다.",
+    "renameDeviceFailed": "기기 이름을 변경하지 못했습니다.",
+    "requestOtpFailed": "OTP를 요청하지 못했습니다.",
+    "resendOtpFailed": "OTP를 다시 보내지 못했습니다.",
+    "sessionExpired": "세션이 만료되었습니다. 다시 로그인해 주세요.",
+    "setupFirstDeviceOAuthFailed": "OAuth로 첫 기기를 설정하지 못했습니다.",
+    "verifyOtpFailed": "OTP를 확인하지 못했습니다."
+  },
+  "bookmark": {
+    "alreadyBookmarked": "이미 북마크된 항목입니다.",
+    "notFound": "북마크를 찾을 수 없습니다."
+  },
+  "calendar": {
+    "connectProviderFailed": "캘린더 제공업체에 연결하지 못했습니다.",
+    "createEventFailed": "캘린더 일정을 만들지 못했습니다.",
+    "deleteEventFailed": "캘린더 일정을 삭제하지 못했습니다.",
+    "disconnectProviderFailed": "캘린더 제공업체 연결을 해제하지 못했습니다.",
+    "eventNotFound": "캘린더 일정을 찾을 수 없습니다.",
+    "googleNotConnected": "이 기기에는 Google Calendar가 연결되어 있지 않습니다.",
+    "listGoogleCalendarsFailed": "Google 캘린더 목록을 가져오지 못했습니다.",
+    "onlyGoogleSourcesRetryable": "Google 캘린더 소스만 다시 시도할 수 있습니다.",
+    "onlySourcesSelectable": "캘린더 소스만 선택할 수 있습니다.",
+    "promoteExternalEventFailed": "외부 캘린더 일정을 승격하지 못했습니다.",
+    "refreshProviderFailed": "캘린더 제공업체를 새로고침하지 못했습니다.",
+    "retryGoogleSourceSyncFailed": "Google Calendar 소스 동기화를 다시 시도하지 못했습니다.",
+    "setDefaultGoogleCalendarFailed": "기본 Google 캘린더를 설정하지 못했습니다.",
+    "signInBeforeRefresh": "Google Calendar를 새로고침하려면 먼저 memrynote에 로그인하세요.",
+    "sourceNotFound": "캘린더 소스를 찾을 수 없습니다.",
+    "syncFailed": "동기화에 실패했습니다.",
+    "updateEventFailed": "캘린더 일정을 업데이트하지 못했습니다.",
+    "updateSourceSelectionFailed": "캘린더 소스 선택을 업데이트하지 못했습니다."
+  },
+  "folder": {
+    "createFailed": "폴더를 만들지 못했습니다.",
+    "deleteFailed": "폴더를 삭제하지 못했습니다.",
+    "renameFailed": "폴더 이름을 변경하지 못했습니다.",
+    "setConfigFailed": "폴더 설정을 저장하지 못했습니다."
+  },
+  "folderView": {
+    "deleteViewFailed": "보기를 삭제하지 못했습니다.",
+    "setConfigFailed": "설정을 저장하지 못했습니다.",
+    "setViewFailed": "보기를 설정하지 못했습니다."
+  },
+  "googleCalendar": {
+    "accessDenied": "Google Calendar 접근이 거부되었습니다. 준비되면 언제든지 다시 연결할 수 있습니다.",
+    "connectFailed": "Google Calendar에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    "misconfigured": "Google Calendar가 올바르게 구성되어 있지 않습니다. 문제가 계속되면 지원팀에 문의해 주세요.",
+    "reconnectNeeded": "Google Calendar 연결이 만료되었습니다. 연결을 해제한 뒤 다시 연결해 주세요.",
+    "scopeMissing": "캘린더 권한이 허용되지 않아 Google Calendar에 접근할 수 없었습니다. 다시 시도하면서 Google 동의 화면에서 캘린더 체크박스를 선택된 상태로 유지해 주세요.",
+    "temporarilyUnavailable": "Google Calendar를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해 주세요."
+  },
+  "importer": {
+    "cancelFailed": "취소하지 못했습니다.",
+    "fileSelectionFailed": "파일을 선택하지 못했습니다.",
+    "importFailed": "가져오기에 실패했습니다.",
+    "listFailed": "가져오기 도구 목록을 불러오지 못했습니다.",
+    "previewFailed": "미리보기에 실패했습니다."
+  },
+  "project": {
+    "archiveFailed": "프로젝트를 보관하지 못했습니다.",
+    "captureLinkFailed": "링크를 수집하지 못했습니다.",
+    "createFailed": "프로젝트를 만들지 못했습니다.",
+    "deleteFailed": "프로젝트를 삭제하지 못했습니다.",
+    "importFilesFailed": "파일을 가져오지 못했습니다.",
+    "linkItemFailed": "항목을 연결하지 못했습니다.",
+    "listForItemFailed": "항목의 프로젝트 목록을 가져오지 못했습니다.",
+    "reorderFailed": "프로젝트 순서를 변경하지 못했습니다.",
+    "setHomeNoteFailed": "홈 메모를 설정하지 못했습니다.",
+    "unlinkItemFailed": "항목 연결을 해제하지 못했습니다.",
+    "updateFailed": "프로젝트를 업데이트하지 못했습니다.",
+    "updatePinnedFailed": "고정 상태를 업데이트하지 못했습니다."
+  },
+  "property": {
+    "alreadyExists": "\"{name}\" 속성이 이미 있습니다.",
+    "createDefinitionFailed": "속성 정의를 만들지 못했습니다.",
+    "entityNotFound": "항목을 찾을 수 없습니다.",
+    "notFound": "\"{name}\" 속성을 찾을 수 없습니다.",
+    "renameFailed": "속성 이름을 변경하지 못했습니다.",
+    "setCalendarVisibilityFailed": "캘린더 속성 표시 여부를 설정하지 못했습니다.",
+    "setFailed": "속성을 설정하지 못했습니다.",
+    "updateDefinitionFailed": "속성 정의를 업데이트하지 못했습니다."
+  },
+  "reminder": {
+    "createFailed": "리마인더를 만들지 못했습니다.",
+    "dismissAllFailed": "리마인더를 모두 해제하지 못했습니다.",
+    "dismissFailed": "리마인더를 해제하지 못했습니다.",
+    "notFound": "리마인더를 찾을 수 없습니다.",
+    "snoozeFailed": "리마인더를 스누즈하지 못했습니다.",
+    "updateFailed": "리마인더를 업데이트하지 못했습니다."
+  },
+  "savedFilter": {
+    "notFound": "저장된 필터를 찾을 수 없습니다."
+  },
+  "search": {
+    "rebuildFailed": "재구축에 실패했습니다."
+  },
+  "settings": {
+    "modelAlreadyLoading": "모델을 이미 불러오는 중입니다.",
+    "modelLoadFailed": "모델을 불러오지 못했습니다.",
+    "shortcutInUse": "{shortcut} 단축키는 이미 사용 중입니다.",
+    "terminalCommandInstallFailed": "터미널 명령을 설치하지 못했습니다.",
+    "terminalCommandUninstallFailed": "터미널 명령을 제거하지 못했습니다.",
+    "unknownVault": "알 수 없는 Vault입니다.",
+    "voiceModelDownloadFailed": "음성 모델을 다운로드하지 못했습니다."
+  },
+  "tag": {
+    "categoryNameRequired": "카테고리 이름을 입력해 주세요.",
+    "createCategoryFailed": "태그 카테고리를 만들지 못했습니다.",
+    "deleteCategoryFailed": "태그 카테고리를 삭제하지 못했습니다.",
+    "deleteFailed": "태그를 삭제하지 못했습니다.",
+    "listCategoriesFailed": "태그 카테고리 목록을 가져오지 못했습니다.",
+    "mergeFailed": "태그를 병합하지 못했습니다.",
+    "mergeSameTag": "원본 태그와 대상 태그가 같습니다.",
+    "pinNoteFailed": "메모를 고정하지 못했습니다.",
+    "removeFromNoteFailed": "메모에서 태그를 제거하지 못했습니다.",
+    "renameCategoryFailed": "태그 카테고리 이름을 변경하지 못했습니다.",
+    "renameFailed": "태그 이름을 변경하지 못했습니다.",
+    "reorderFailed": "태그 순서를 변경하지 못했습니다.",
+    "unpinNoteFailed": "메모 고정을 해제하지 못했습니다.",
+    "updateColorFailed": "태그 색상을 변경하지 못했습니다.",
+    "updateIconFailed": "태그 아이콘을 변경하지 못했습니다."
+  },
+  "task": {
+    "archiveFailed": "작업을 보관하지 못했습니다.",
+    "archiveManyFailed": "여러 작업을 보관하지 못했습니다.",
+    "completeFailed": "작업을 완료하지 못했습니다.",
+    "completeManyFailed": "여러 작업을 완료하지 못했습니다.",
+    "convertToSubtaskFailed": "하위 작업으로 변환하지 못했습니다.",
+    "convertToTaskFailed": "작업으로 변환하지 못했습니다.",
+    "createFailed": "작업을 만들지 못했습니다.",
+    "deleteFailed": "작업을 삭제하지 못했습니다.",
+    "deleteManyFailed": "여러 작업을 삭제하지 못했습니다.",
+    "duplicateFailed": "작업을 복제하지 못했습니다.",
+    "moveFailed": "작업을 이동하지 못했습니다.",
+    "moveManyFailed": "여러 작업을 이동하지 못했습니다.",
+    "reorderFailed": "작업 순서를 변경하지 못했습니다.",
+    "unarchiveFailed": "작업 보관을 해제하지 못했습니다.",
+    "uncompleteFailed": "작업 완료를 취소하지 못했습니다.",
+    "updateFailed": "작업을 업데이트하지 못했습니다."
+  },
+  "taskStatus": {
+    "createFailed": "상태를 만들지 못했습니다.",
+    "deleteFailed": "상태를 삭제하지 못했습니다.",
+    "reorderFailed": "상태 순서를 변경하지 못했습니다.",
+    "updateFailed": "상태를 업데이트하지 못했습니다."
+  },
+  "template": {
+    "createFailed": "템플릿을 만들지 못했습니다.",
+    "deleteFailed": "템플릿을 삭제하지 못했습니다.",
+    "duplicateFailed": "템플릿을 복제하지 못했습니다.",
+    "updateFailed": "템플릿을 업데이트하지 못했습니다."
   }
 }

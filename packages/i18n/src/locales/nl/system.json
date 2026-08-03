@@ -28,6 +28,13 @@
       "readyDetailFallback": "Start memrynote opnieuw om de installatie van de update te voltooien.",
       "buttonRestartNow": "Start nu opnieuw op",
       "releaseNotesLabel": "Release-opmerkingen:"
+    },
+    "pair": {
+      "buttonAllow": "Sta toe",
+      "buttonDeny": "Weiger",
+      "buttonPair": "Koppel",
+      "message": "De Memry-browserextensie toestaan om vastgelegde items naar deze app te sturen?",
+      "title": "Browserextensie koppelen"
     }
   },
   "notification": {
@@ -38,6 +45,11 @@
       "fallback": "Herinnering verschuldigd",
       "default": "Herinnering",
       "task": "Taakherinnering"
+    },
+    "inboxReview": {
+      "body": "Je hebt {count, plural, one {# item} other {# items}} om door te nemen.",
+      "testBody": "Dit is een test — zo zien je dagelijkse herinneringen eruit.",
+      "title": "Tijd om je inbox door te nemen"
     }
   },
   "error": {
@@ -45,5 +57,15 @@
     "definitionNotFound": "Definitie niet gevonden",
     "noteNotFound": "Opmerking niet gevonden",
     "updateFailed": "Update mislukt"
+  },
+  "startup": {
+    "failed": {
+      "body": "Dit kan gebeuren als er heel weinig vrije schijfruimte is, of bij oudere grafische stuurprogramma's. Maak wat schijfruimte vrij en open MemryNote opnieuw. Als het blijft gebeuren, helpt opnieuw installeren meestal.",
+      "title": "MemryNote kon niet volledig opstarten"
+    },
+    "installingUpdate": {
+      "subtitle": "MemryNote wordt automatisch opnieuw geopend.",
+      "title": "Update installeren…"
+    }
   }
 }

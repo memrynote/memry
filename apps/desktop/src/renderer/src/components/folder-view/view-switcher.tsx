@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { getViewDisplayName } from '@/lib/contract-display-names'
 import { DEFAULT_COLUMNS } from '@memry/contracts/folder-view-api'
 import type { ViewConfig } from '@/hooks/use-folder-view'
 import { createLogger } from '@/lib/logger'
@@ -291,7 +292,9 @@ export function ViewSwitcher({
       <Popover open={isOpen} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <Button variant="ghost" size="sm" className={cn('gap-2 h-8', className)}>
-            <span className="max-w-[150px] truncate">{activeView?.name ?? 'Select View'}</span>
+            <span className="max-w-[150px] truncate">
+              {activeView ? getViewDisplayName(activeView.name) : tPhaseF('folderView.selectView')}
+            </span>
             <ChevronDown className="h-4 w-4 opacity-50" />
           </Button>
         </PopoverTrigger>
@@ -324,7 +327,7 @@ export function ViewSwitcher({
                         <span className="w-3.5 flex-shrink-0" />
                       )}
                       <span className="truncate text-[13px] font-medium text-foreground">
-                        {view.name}
+                        {getViewDisplayName(view.name)}
                       </span>
                       {isDefault && (
                         <span className="flex-shrink-0 rounded-sm bg-[var(--tint)]/15 px-1.5 py-px text-[9.5px] font-semibold uppercase tracking-wide text-[var(--tint)]">

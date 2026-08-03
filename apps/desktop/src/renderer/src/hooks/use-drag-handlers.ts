@@ -315,16 +315,12 @@ export const useDragHandlers = ({
           taskIds,
           previousDates
         },
-        `Rescheduled to ${sectionLabel}`
+        t('toasts.drag.rescheduledTo', { target: sectionLabel })
       )
 
-      toast.success(
-        taskIds.length === 1
-          ? `Rescheduled to ${sectionLabel}`
-          : `${taskIds.length} tasks rescheduled to ${sectionLabel}`
-      )
+      toast.success(t('toasts.drag.rescheduled', { count: taskIds.length, target: sectionLabel }))
     },
-    [tasks, onUpdateTask, recordAction]
+    [tasks, onUpdateTask, recordAction, t]
   )
 
   // Handle dropping on a Kanban column (status change)
@@ -364,17 +360,13 @@ export const useDragHandlers = ({
             taskIds,
             previousStatusId
           },
-          `Moved to ${targetStatus.name}`
+          t('toasts.drag.movedTo', { target: targetStatus.name })
         )
       }
 
-      toast.success(
-        taskIds.length === 1
-          ? `Moved to ${targetStatus.name}`
-          : `${taskIds.length} tasks moved to ${targetStatus.name}`
-      )
+      toast.success(t('toasts.drag.moved', { count: taskIds.length, target: targetStatus.name }))
     },
-    [tasks, onUpdateTask, recordAction]
+    [tasks, onUpdateTask, recordAction, t]
   )
 
   // Handle dropping on a priority column
@@ -390,12 +382,11 @@ export const useDragHandlers = ({
         onUpdateTask(id, { priority })
       })
 
-      const label =
-        priority === 'none' ? 'No Priority' : priority.charAt(0).toUpperCase() + priority.slice(1)
+      const label = t(`priorityLabels.${priority}`)
 
       recordAction(
         { type: 'change-priority', taskIds, previousPriorities },
-        `Priority set to ${label}`
+        t('toasts.drag.prioritySetTo', { priority: label })
       )
 
       const newDropped = new Map<string, Priority>()
@@ -405,13 +396,9 @@ export const useDragHandlers = ({
       if (priorityTimerRef.current) clearTimeout(priorityTimerRef.current)
       priorityTimerRef.current = setTimeout(() => setDroppedPriorities(new Map()), 2500)
 
-      toast.success(
-        taskIds.length === 1
-          ? `Priority set to ${label}`
-          : `${taskIds.length} tasks set to ${label}`
-      )
+      toast.success(t('toasts.drag.prioritySet', { count: taskIds.length, priority: label }))
     },
-    [tasks, onUpdateTask, recordAction]
+    [tasks, onUpdateTask, recordAction, t]
   )
 
   // Handle dropping on a canonical status column (todo/in_progress/done without project context)
@@ -443,19 +430,20 @@ export const useDragHandlers = ({
       })
 
       const statusLabels: Record<string, string> = {
-        todo: 'To Do',
-        in_progress: 'In Progress',
-        done: 'Done'
+        todo: t('statusLabels.todo'),
+        in_progress: t('statusLabels.inProgress'),
+        done: t('statusLabels.done')
       }
       const label = statusLabels[statusType]
 
-      recordAction({ type: 'change-status', taskIds, previousStatusIds }, `Moved to ${label}`)
-
-      toast.success(
-        taskIds.length === 1 ? `Moved to ${label}` : `${taskIds.length} tasks moved to ${label}`
+      recordAction(
+        { type: 'change-status', taskIds, previousStatusIds },
+        t('toasts.drag.movedTo', { target: label })
       )
+
+      toast.success(t('toasts.drag.moved', { count: taskIds.length, target: label }))
     },
-    [tasks, projects, onUpdateTask, recordAction]
+    [tasks, projects, onUpdateTask, recordAction, t]
   )
 
   // Handle dropping on a date cell (calendar)
@@ -498,16 +486,17 @@ export const useDragHandlers = ({
           previousDates,
           ...(changesTime ? { previousTimes } : {})
         },
-        `Rescheduled to ${formatDateShort(targetDate)}`
+        t('toasts.drag.rescheduledTo', { target: formatDateShort(targetDate) })
       )
 
       toast.success(
-        taskIds.length === 1
-          ? `Rescheduled to ${formatDateShort(targetDate)}`
-          : `${taskIds.length} tasks rescheduled to ${formatDateShort(targetDate)}`
+        t('toasts.drag.rescheduled', {
+          count: taskIds.length,
+          target: formatDateShort(targetDate)
+        })
       )
     },
-    [tasks, onUpdateTask, recordAction]
+    [tasks, onUpdateTask, recordAction, t]
   )
 
   // Handle dropping on a project (change project)
@@ -550,17 +539,13 @@ export const useDragHandlers = ({
             taskIds,
             previousProjectId
           },
-          `Moved to ${targetProject.name}`
+          t('toasts.drag.movedTo', { target: targetProject.name })
         )
       }
 
-      toast.success(
-        taskIds.length === 1
-          ? `Moved to ${targetProject.name}`
-          : `${taskIds.length} tasks moved to ${targetProject.name}`
-      )
+      toast.success(t('toasts.drag.moved', { count: taskIds.length, target: targetProject.name }))
     },
-    [tasks, projects, onUpdateTask, recordAction]
+    [tasks, projects, onUpdateTask, recordAction, t]
   )
 
   const handleCrossSectionListDrop = useCallback(
@@ -601,13 +586,13 @@ export const useDragHandlers = ({
           previousTaskState.set(id, { priority: task.priority })
           onUpdateTask(id, { priority: resolvedColumnDrop.priority })
           droppedPriority = resolvedColumnDrop.priority
-          const priorityLabel =
-            resolvedColumnDrop.priority === 'none'
-              ? 'No Priority'
-              : `${resolvedColumnDrop.priority.charAt(0).toUpperCase()}${resolvedColumnDrop.priority.slice(1)}`
+          const priorityLabel = t(`priorityLabels.${resolvedColumnDrop.priority}`)
           message = {
-            single: `Priority set to ${priorityLabel}`,
-            multiple: `${taskIds.length} tasks set to ${priorityLabel}`
+            single: t('toasts.drag.prioritySetTo', { priority: priorityLabel }),
+            multiple: t('toasts.drag.prioritySet', {
+              count: taskIds.length,
+              priority: priorityLabel
+            })
           }
           return
         }
@@ -616,8 +601,11 @@ export const useDragHandlers = ({
           previousTaskState.set(id, { dueDate: task.dueDate })
           onUpdateTask(id, { dueDate: resolvedColumnDrop.dueDate })
           message = {
-            single: `Rescheduled to ${resolvedColumnDrop.bucketLabel}`,
-            multiple: `${taskIds.length} tasks rescheduled to ${resolvedColumnDrop.bucketLabel}`
+            single: t('toasts.drag.rescheduledTo', { target: resolvedColumnDrop.bucketLabel }),
+            multiple: t('toasts.drag.rescheduled', {
+              count: taskIds.length,
+              target: resolvedColumnDrop.bucketLabel
+            })
           }
           return
         }
@@ -643,8 +631,11 @@ export const useDragHandlers = ({
             statusId: newStatus?.id || targetProject.statuses[0]?.id
           })
           message = {
-            single: `Moved to ${targetProject.name}`,
-            multiple: `${taskIds.length} tasks moved to ${targetProject.name}`
+            single: t('toasts.drag.movedTo', { target: targetProject.name }),
+            multiple: t('toasts.drag.moved', {
+              count: taskIds.length,
+              target: targetProject.name
+            })
           }
           return
         }
@@ -667,14 +658,14 @@ export const useDragHandlers = ({
           onUpdateTask(id, updates)
 
           const statusLabels: Record<'todo' | 'in_progress' | 'done', string> = {
-            todo: 'To Do',
-            in_progress: 'In Progress',
-            done: 'Done'
+            todo: t('statusLabels.todo'),
+            in_progress: t('statusLabels.inProgress'),
+            done: t('statusLabels.done')
           }
           const label = statusLabels[resolvedColumnDrop.statusType]
           message = {
-            single: `Moved to ${label}`,
-            multiple: `${taskIds.length} tasks moved to ${label}`
+            single: t('toasts.drag.movedTo', { target: label }),
+            multiple: t('toasts.drag.moved', { count: taskIds.length, target: label })
           }
           return
         }
@@ -695,8 +686,11 @@ export const useDragHandlers = ({
           previousTaskState.set(id, { statusId: task.statusId, completedAt: task.completedAt })
           onUpdateTask(id, updates)
           message = {
-            single: `Moved to ${targetStatus.name}`,
-            multiple: `${taskIds.length} tasks moved to ${targetStatus.name}`
+            single: t('toasts.drag.movedTo', { target: targetStatus.name }),
+            multiple: t('toasts.drag.moved', {
+              count: taskIds.length,
+              target: targetStatus.name
+            })
           }
           return
         }
@@ -706,8 +700,8 @@ export const useDragHandlers = ({
           onUpdateTask(id, { dueDate: overTask.dueDate })
           const label = formatDateShort(overTask.dueDate)
           message = {
-            single: `Rescheduled to ${label}`,
-            multiple: `${taskIds.length} tasks rescheduled to ${label}`
+            single: t('toasts.drag.rescheduledTo', { target: label }),
+            multiple: t('toasts.drag.rescheduled', { count: taskIds.length, target: label })
           }
         }
       })
@@ -760,7 +754,7 @@ export const useDragHandlers = ({
 
       return true
     },
-    [tasks, projects, onUpdateTask, onReorder, getOrder, recordAction]
+    [tasks, projects, onUpdateTask, onReorder, getOrder, recordAction, t]
   )
 
   // Handle dropping on trash (delete)
@@ -772,19 +766,16 @@ export const useDragHandlers = ({
         onDeleteTask(id)
       })
 
-      toast.success(
-        taskIds.length === 1 ? t('toasts.deleted') : `${taskIds.length} tasks deleted`,
-        {
-          action: {
-            label: 'Undo',
-            onClick: () => {
-              // Note: This is a simplified undo - actual implementation would
-              // need to re-create the tasks
-              toast.info(t('toasts.undoNotAvailableForDelete'))
-            }
+      toast.success(t('toasts.drag.deleted', { count: taskIds.length }), {
+        action: {
+          label: getI18n().getFixedT(null, 'common')('action.undo'),
+          onClick: () => {
+            // Note: This is a simplified undo - actual implementation would
+            // need to re-create the tasks
+            toast.info(t('toasts.undoNotAvailableForDelete'))
           }
         }
-      )
+      })
     },
     [tasks, onDeleteTask, t]
   )
@@ -802,19 +793,16 @@ export const useDragHandlers = ({
           type: 'archive',
           taskIds
         },
-        `Archived ${taskIds.length} task${taskIds.length !== 1 ? 's' : ''}`
+        t('toasts.drag.undoArchive', { count: taskIds.length })
       )
 
-      toast.success(
-        taskIds.length === 1 ? t('toasts.archived') : `${taskIds.length} tasks archived`,
-        {
-          duration: 10000, // T052: 10-second timeout for undo per spec
-          action: {
-            label: 'Undo',
-            onClick: () => void undo()
-          }
+      toast.success(t('toasts.drag.archived', { count: taskIds.length }), {
+        duration: 10000, // T052: 10-second timeout for undo per spec
+        action: {
+          label: getI18n().getFixedT(null, 'common')('action.undo'),
+          onClick: () => void undo()
         }
-      )
+      })
     },
     [onUpdateTask, recordAction, undo, t]
   )

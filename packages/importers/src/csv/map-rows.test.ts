@@ -99,7 +99,7 @@ describe('mapRows', () => {
   it('returns empty plan for empty headers', () => {
     const result = mapRows(parsed([], []))
     expect(result.notes).toEqual([])
-    expect(result.warnings).toContain('CSV file has no headers')
+    expect(result.warnings.map((w) => w.message)).toContain('CSV file has no headers')
   })
 
   it('respects explicit titleColumn option', () => {

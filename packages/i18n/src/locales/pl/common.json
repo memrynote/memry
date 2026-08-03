@@ -25,7 +25,8 @@
     "expand": "Rozwiń",
     "collapse": "Zwiń",
     "showMore": "+{count, plural, one {# więcej} other {# więcej}}",
-    "showLess": "Pokaż mniej"
+    "showLess": "Pokaż mniej",
+    "undo": "Cofnij"
   },
   "tabs": {
     "pin": "Zakładka Przypnij",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "Dzisiaj",
     "yesterday": "Wczoraj",
-    "daysAgo": "{count, plural, one {# dzień temu} other {# dni temu}}"
+    "daysAgo": "{count, plural, one {# dzień temu} other {# dni temu}}",
+    "daysLate": "{count, plural, one {#d po terminie} few {#d po terminie} many {#d po terminie} other {#d po terminie}}",
+    "daysOverdue": "{count, plural, one {# dzień po terminie} few {# dni po terminie} many {# dni po terminie} other {# dnia po terminie}}",
+    "tomorrow": "Jutro"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Każdego dnia} other {Co # dni}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Co miesiąc na {day}{suffix}} other {Co # miesięcy na {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Co miesiąc na {week} {day}} other {Co # miesięcy na {week} {day}}}",
     "everyNYears": "{count, plural, one {Co roku} other {Co # lat}}",
-    "repeats": "Powtarza"
+    "repeats": "Powtarza",
+    "ordinal": {
+      "first": "pierwszy",
+      "fourth": "czwarty",
+      "last": "ostatni",
+      "second": "drugi",
+      "third": "trzeci"
+    },
+    "preset": {
+      "everyWeekday": "W każdy dzień powszedni (pon.-pt.)",
+      "everyYearOnDate": "Co roku {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -102,7 +117,15 @@
       "updateDownloadingPercent": "Pobieranie {percent}%",
       "updateInstallingSubtitle": "MemryNote uruchomi się ponownie automatycznie.",
       "updateInstallingTitle": "Instalowanie aktualizacji",
-      "updateRestart": "Uruchom ponownie"
+      "updateRestart": "Uruchom ponownie",
+      "feedbackPrivacyEmailOptional": "Twój e-mail — tylko jeśli go podasz i tylko po to, żebyśmy mogli odpowiedzieć",
+      "feedbackPrivacyEmailSignedIn": "E-mail Twojego konta ({email}), żebyśmy mogli odpowiedzieć",
+      "feedbackPrivacyMessage": "Twoja wiadomość — dokładnie tak, jak ją napisano",
+      "feedbackPrivacyNote": "Nic więcej. Twoje notatki zostają na Twoim urządzeniu.",
+      "feedbackPrivacyPlan": "Twój plan (free, Plus, Pro lub Believer)",
+      "feedbackPrivacyTitle": "Co jest wysyłane",
+      "feedbackPrivacyVersion": "Wersja aplikacji i system operacyjny",
+      "projects": "Projekty"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Zmień rozmiar panelu dnia",
@@ -180,8 +203,9 @@
       "search": "Szukaj",
       "searchNotesTasksJournalInbox": "Przeszukuj notatki, zadania, dziennik, skrzynkę odbiorczą...",
       "noResultsFor": "Brak wyników dla „",
-      "rdquo": "nieważne;",
-      "result": "wynik"
+      "result": "wynik",
+      "noResultsForQuery": "Brak wyników dla „{query}”",
+      "resultCount": "{count, plural, one {# wynik} few {# wyniki} many {# wyników} other {# wyniku}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Wyszukaj i kliknij elementy, aby zbudować swój szlak",
@@ -231,7 +255,8 @@
       "journal": "Dziennik",
       "calendar": "Kalendarz",
       "inboxCapture": "Przechwytywanie skrzynki odbiorczej",
-      "tasks": "Zadania"
+      "tasks": "Zadania",
+      "tags": "Tagi"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Niezapisane zmiany",
@@ -261,15 +286,15 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Coś poszło nie tak",
       "anErrorOccurredWhileRenderingThisTabContent": "Wystąpił błąd podczas renderowania zawartości tej karty.",
-      "tryAgain": "Spróbuj ponownie"
+      "tryAgain": "Spróbuj ponownie",
+      "sendReport": "Wyślij raport diagnostyczny"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Ikona notatki"
     },
     "componentsTabsUnsavedChangesDialog": {
       "unsavedChanges": "Niezapisane zmiany",
-      "quot": "cytat;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "cytat; zawiera niezapisane zmiany. Co chciałbyś zrobić?"
+      "unsavedChangesBody": "„{title}” ma niezapisane zmiany. Co chcesz zrobić?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Nowy obszar roboczy",
@@ -341,7 +366,6 @@
       "logOut": "Wyloguj się",
       "signInToSync": "Zaloguj się, aby przeprowadzić synchronizację",
       "remove": "Usuń „",
-      "rdquoFromList": "nieważne; z listy?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Ten skarbiec zostanie usunięty z aplikacji, ale Twoje pliki pozostaną na dysku. Zawsze możesz dodać go ponownie później.",
       "cancel": "Anuluj",
       "remove2": "Usuń",
@@ -352,7 +376,13 @@
       "downloadLocation": "Lokalizacja",
       "changeLocation": "Zmień…",
       "download": "Pobierz",
-      "downloadFailed": "Nie udało się pobrać sejfu"
+      "downloadFailed": "Nie udało się pobrać sejfu",
+      "deleteFromAccount": "Usuń z konta",
+      "deleteVaultBody": "Spowoduje to trwałe usunięcie z serwerów Memry wszystkich zsynchronizowanych danych tego skarbca. Tej akcji nie można cofnąć. Twoje pliki na dysku nie zostaną usunięte.",
+      "deleteVaultConfirm": "Usuń z konta",
+      "deleteVaultFailed": "Nie udało się usunąć skarbca",
+      "deleteVaultTitle": "Usunąć „{name}” z Twojego konta?",
+      "removeVaultTitle": "Usunąć „{name}” z listy?"
     },
     "componentsWindowControls": {
       "searchK": "Szukaj (⌘K)",
@@ -450,21 +480,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Tylko skarbiec",
+        "computerAccess": "Dostęp do komputera"
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
-        "label": "Web search"
+        "off": "Wyłączone",
+        "label": "Wyszukiwanie w sieci"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Uprawnienia agenta: {access}, wyszukiwanie w sieci {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Uprawnienia",
+        "access": "Dostęp",
+        "tools": "Narzędzia"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Ustawienia modelu agenta: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Brak dopasowań"
@@ -575,7 +605,7 @@
       "remove": "Usuń",
       "removeAria": "Usuń widżet",
       "resize": "Rozmiar",
-      "resizeAria": "Zmień rozmiar na {{size}}",
+      "resizeAria": "Zmień rozmiar na {size}",
       "savedFilterDefault": "Dziś",
       "savedFilterHint": "Oznacz filtry gwiazdką na stronie Zadań, aby użyć ich tutaj",
       "savedFilterLabel": "Zapisany filtr",
@@ -624,6 +654,11 @@
     "welcome": {
       "body": "Twój prywatny, działający offline dom. Notatki są szyfrowane end-to-end — nigdy nie opuszczają Twojego urządzenia niezaszyfrowane.",
       "title": "Witaj w MemryNote"
+    },
+    "tour": {
+      "next": "Dalej",
+      "previous": "Wstecz",
+      "progress": "{current} z {total}"
     }
   },
   "updatePrompt": {
@@ -640,6 +675,165 @@
     "skip": "Pomiń tę wersję"
   },
   "capture": {
-    "focusShortcut": "Ustaw fokus na polu zapisu"
+    "focusShortcut": "Ustaw fokus na polu zapisu",
+    "detailHint": "szczegóły",
+    "focusHint": "Q",
+    "submit": "Zapisz"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Dodaj kartę",
+      "addCreateNote": "Utwórz notatkę „{query}”",
+      "addCreateNoteEmpty": "Utwórz nową notatkę",
+      "addCreatedAt": "Utworzono {date}",
+      "addEmpty": "Nic nie znaleziono",
+      "addGroupEvents": "Wydarzenia",
+      "addGroupNotes": "Notatki",
+      "addGroupTasks": "Zadania",
+      "addOnCanvas": "Na kanwie",
+      "addPlaceholder": "Szukaj notatek, zadań i wydarzeń…",
+      "allDay": "Cały dzień",
+      "createNoteFailed": "Nie udało się utworzyć notatki",
+      "deleted": "Element usunięty",
+      "loading": "Ładowanie…",
+      "open": "Otwórz w karcie",
+      "openToEdit": "Otwórz w karcie, aby edytować",
+      "untitled": "Bez tytułu"
+    },
+    "corruptScene": "Nie udało się odczytać tej kanwy. Edycja jest wyłączona, aby nie stracić danych.",
+    "createFailed": "Nie udało się utworzyć kanwy",
+    "disabledBody": "Ta karta należy do funkcji, która nie jest włączona na tym urządzeniu.",
+    "disabledTitle": "Kanwa nie jest włączona",
+    "empty": "Nie ma jeszcze żadnych kanw",
+    "libraryStoreFailed": "Nie udało się zapisać Twojej biblioteki kształtów. Ostatnie zmiany mogą zostać utracone.",
+    "loadFailed": "Nie udało się załadować kanw",
+    "loading": "Ładowanie kanw…",
+    "newCanvas": "Nowa kanwa",
+    "notFound": "Nie udało się znaleźć tej kanwy",
+    "openFailed": "Nie udało się otworzyć kanwy",
+    "savedToVault": "Wszystkie zmiany są automatycznie zapisywane w Twoim skarbcu",
+    "sectionLabel": "Kanwy",
+    "tooLargeToSync": "Ta kanwa jest zbyt duża, aby ją zsynchronizować. Jest zapisana na tym urządzeniu, ale nie trafi na Twoje pozostałe urządzenia, dopóki nie będzie mniejsza.",
+    "untitled": "Kanwa bez tytułu"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Kliknij wiersz",
+      "reset": "Resetuj",
+      "shortcutsTab": "Karta Skróty"
+    },
+    "description": "Szybkie ścieżki do poruszania się po memrynote, zapisywania myśli i przetwarzania pracy.",
+    "groups": {
+      "general": {
+        "description": "Nawigacja w całej aplikacji i pomoc.",
+        "title": "Ogólne"
+      },
+      "inbox": {
+        "description": "Szybko przetwarzaj przechwycone elementy.",
+        "title": "Skrzynka odbiorcza"
+      },
+      "journal": {
+        "description": "Poruszaj się po widokach dziennika i przechodź do obszaru pisania.",
+        "title": "Dziennik"
+      },
+      "notes": {
+        "description": "Pisz, formatuj i przeszukuj notatki.",
+        "title": "Notatki / Edytor"
+      },
+      "settings": {
+        "description": "Otwieraj ustawienia i dostosowuj skróty.",
+        "title": "Ustawienia"
+      },
+      "tabs": {
+        "description": "Przechodź między kartami i okienkami.",
+        "title": "Karty i podziały"
+      },
+      "tasks": {
+        "description": "Filtruj, zaznaczaj i kończ zadania.",
+        "title": "Zadania"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Utwórz notatkę",
+        "keyboardShortcuts": "Otwórz skróty klawiszowe",
+        "openSettings": "Otwórz ustawienia",
+        "quickSearch": "Otwórz szybkie wyszukiwanie",
+        "sidebarSection": "Przejdź do sekcji paska bocznego",
+        "toggleSidebar": "Przełącz pasek boczny",
+        "undoTaskAction": "Cofnij ostatnią akcję zadania"
+      },
+      "inbox": {
+        "archiveItem": "Zarchiwizuj zaznaczony element",
+        "chooseQuickFileResult": "Wybierz wynik szybkiego katalogowania",
+        "clearSelection": "Wyczyść zaznaczenie lub zamknij szybkie katalogowanie",
+        "confirmFiling": "Zatwierdź panel katalogowania",
+        "firstOrLastItem": "Pierwszy lub ostatni element",
+        "jumpByPage": "Przeskocz o stronę",
+        "nextItem": "Następny element",
+        "openOriginal": "Otwórz oryginalny link",
+        "openQuickFile": "Otwórz szybkie katalogowanie",
+        "previousItem": "Poprzedni element",
+        "refresh": "Odśwież skrzynkę odbiorczą",
+        "selectAllVisible": "Zaznacz wszystkie widoczne elementy",
+        "selectItem": "Zaznacz element",
+        "togglePreview": "Przełącz panel podglądu"
+      },
+      "journal": {
+        "bold": "Pogrub zaznaczony tekst",
+        "find": "Znajdź w dzienniku",
+        "italic": "Zaznaczony tekst kursywą",
+        "link": "Dodaj lub edytuj link",
+        "returnFromOverview": "Wróć z widoku miesiąca lub roku",
+        "toggleFullWidth": "Przełącz dziennik na pełną szerokość",
+        "underline": "Podkreśl zaznaczony tekst"
+      },
+      "notes": {
+        "bold": "Pogrubienie",
+        "closeOverlays": "Zamknij nakładki edytora",
+        "commandMenu": "Otwórz menu poleceń edytora",
+        "createNote": "Utwórz notatkę",
+        "find": "Znajdź w notatce",
+        "italic": "Kursywa",
+        "link": "Dodaj lub edytuj link",
+        "saveNote": "Zapisz bieżącą notatkę",
+        "underline": "Podkreślenie"
+      },
+      "settings": {
+        "cancelRecording": "Anuluj nagrywanie skrótu",
+        "customizeShortcuts": "Dostosuj skróty klawiszowe",
+        "openSettings": "Otwórz ustawienia",
+        "recordShortcut": "Nagraj nowy skrót",
+        "resetShortcut": "Przywróć domyślny skrót"
+      },
+      "tabs": {
+        "closeAllInPane": "Zamknij wszystkie karty w okienku",
+        "closeSplitPane": "Zamknij podzielone okienko",
+        "closeTab": "Zamknij kartę",
+        "duplicateTab": "Duplikuj kartę",
+        "focusPane": "Przejdź do innego okienka",
+        "maximizePane": "Maksymalizuj bieżące okienko",
+        "moveTabToPane": "Przenieś kartę do okienka",
+        "newTabMenu": "Otwórz menu nowej karty",
+        "nextTab": "Następna karta",
+        "pinTab": "Przypnij lub odepnij kartę",
+        "previousTab": "Poprzednia karta",
+        "reopenClosedTab": "Otwórz ponownie zamkniętą kartę",
+        "splitDown": "Podziel w dół",
+        "splitRight": "Podziel w prawo"
+      },
+      "tasks": {
+        "clearFilters": "Wyczyść widoczne filtry",
+        "clearSelection": "Wyczyść zaznaczenie zadań",
+        "completeSelected": "Ukończ zaznaczone zadania",
+        "configureRepeat": "Skonfiguruj powtarzanie wybranego zadania",
+        "deleteSelected": "Usuń zaznaczone zadania",
+        "selectAllVisible": "Zaznacz wszystkie widoczne zadania",
+        "skipOccurrence": "Pomiń powtórzenie",
+        "stopRepeating": "Zatrzymaj powtarzanie zadania"
+      }
+    },
+    "or": "lub",
+    "then": "potem"
   }
 }

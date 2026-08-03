@@ -270,7 +270,50 @@
     "panelEmpty": "沒有即將到來的提醒。",
     "panelPast": "過去",
     "panelUpcoming": "即將到來",
-    "taskFallback": "任務"
+    "taskFallback": "任務",
+    "dateTime": {
+      "dateAt": "{date} {time}",
+      "dateCompact": "{date}，{time}",
+      "todayAt": "今天 {time}",
+      "todayCompact": "今天，{time}",
+      "tomorrowAt": "明天 {time}",
+      "tomorrowCompact": "明天，{time}"
+    },
+    "presets": {
+      "anniversaryReminder": "週年提醒",
+      "inHours": {
+        "label": "{count, plural, other {# 小時後}}"
+      },
+      "inMinutes": {
+        "label": "{count, plural, other {# 分鐘後}}"
+      },
+      "inMonths": {
+        "label": "{count, plural, other {# 個月後}}"
+      },
+      "inWeeks": {
+        "label": "{count, plural, other {# 週後}}"
+      },
+      "inYears": {
+        "label": "{count, plural, other {# 年後}}"
+      },
+      "laterToday": {
+        "description": "{count, plural, other {# 小時後}}",
+        "label": "今天稍晚"
+      },
+      "monthlyReflection": "每月回顧",
+      "nextWeek": {
+        "description": "週一上午 9 點",
+        "label": "下週"
+      },
+      "quarterlyReflection": "每季回顧",
+      "reviewInAWeek": "一週後回顧",
+      "sameDayNextMonth": "下個月同一天",
+      "tomorrow": {
+        "description": "明天上午 9 點",
+        "label": "明天"
+      },
+      "tomorrowMorning": "明天早上"
+    }
   },
   "insights": {
     "captureActivity": "捕獲活動",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "  \n附加檔案（圖片、音訊、影片、PDF）",
       "recordVoiceMemo": "錄音備忘錄",
       "recordVoiceMemo2": "錄音備忘錄",
-      "alreadyCaptured": "已捕捉：「",
-      "rdquo": "rdquo;",
       "captureAnyway": "仍要捕捉",
       "focusShortcut": "聚焦擷取輸入欄",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "擷取連結",
+      "captureNote": "擷取筆記",
+      "placeholder": "快速擷取——貼上連結，或隨手記下想法…",
+      "duplicateNotice": "已捕捉：「{title}」"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "選擇資料夾",
@@ -414,10 +459,9 @@
       "captured": "被俘",
       "dismissError": "忽略錯誤",
       "alreadyCaptured": "已捕捉",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; &middot; ",
       "captureAnyway": "仍要捕捉",
-      "close": "關閉"
+      "close": "關閉",
+      "duplicateMeta": "「{title}」 · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "拖放以捕捉",
@@ -466,7 +510,12 @@
       "cancelRecording": "取消錄製",
       "cancel": "取消",
       "stopRecording": "停止錄製",
-      "stop": "停止"
+      "stop": "停止",
+      "enableMicInSettings": "請在系統設定中允許使用麥克風，然後再試一次。",
+      "failedToStart": "無法開始錄音",
+      "microphoneAccessDenied": "麥克風存取被拒",
+      "noMicrophoneFound": "找不到麥克風",
+      "recordingError": "錄音時發生錯誤"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "擷取檔案失敗",
       "fileCaptureFailed": "檔案擷取失敗",
       "failedToCaptureAudio": "擷取音訊失敗",
-      "failedToCaptureVoice": "擷取語音失敗"
+      "failedToCaptureVoice": "擷取語音失敗",
+      "failedToLoadInboxPreferences": "載入收件匣偏好設定失敗",
+      "failedToUpdateInboxPreferences": "更新收件匣偏好設定失敗"
     },
     "toasts": {
       "inboxRefreshed": "收件箱已刷新"
@@ -516,5 +567,10 @@
     "task": "任務",
     "time": "時間",
     "title": "轉換"
+  },
+  "reviewNudge": {
+    "action": "開啟收件匣",
+    "description": "靜下心來，一次處理完今天擷取的內容。",
+    "title": "{count, plural, other {該回顧 # 個項目了}}"
   }
 }

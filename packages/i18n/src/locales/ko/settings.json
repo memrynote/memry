@@ -28,7 +28,8 @@
         "properties": "속성",
         "commandLine": "명령줄",
         "features": "기능",
-        "import": "가져오기"
+        "import": "가져오기",
+        "inbox": "받은함"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "{percent}% 다운로드 중",
         "downloaded": "다시 시작하여 설치",
         "idle": "업데이트 확인"
+      },
+      "autoCheck": {
+        "description": "앱을 실행할 때, 그리고 앱이 열려 있는 동안 주기적으로 새 릴리스를 확인합니다.",
+        "error": "자동 확인 설정을 업데이트하지 못했습니다",
+        "label": "업데이트 자동 확인"
+      },
+      "autoDownload": {
+        "description": "묻지 않고 백그라운드에서 새 릴리스를 다운로드하고 설치합니다.",
+        "error": "자동 다운로드 설정을 업데이트하지 못했습니다",
+        "label": "업데이트 자동 다운로드"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "익명 사용 측정항목 공유",
         "description": "이는 익명 측정항목일 뿐입니다. 노트 내용, 검색어, 파일 경로, 이메일 또는 원시 ID가 전송되지 않습니다.",
         "error": "원격 분석 설정을 업데이트하지 못했습니다."
+      },
+      "diagnostics": {
+        "building": "보고서 준비 중…",
+        "consent": "일회성 진단 보고서를 보내시겠습니까? 민감한 정보를 가린 기술 로그만 담깁니다 — 메모 내용은 포함되지 않습니다.",
+        "error": "진단 보고서를 보내지 못했습니다",
+        "notNow": "나중에",
+        "previewError": "진단 보고서를 준비하지 못했습니다",
+        "previewLabel": "보고서 내용 미리보기",
+        "send": "보내기",
+        "sendReport": {
+          "button": "진단 보고서 보내기",
+          "description": "겪으신 문제를 파악할 수 있도록 민감 정보를 가린 기술 로그를 일회성 보고서로 보냅니다.",
+          "label": "진단 보고서"
+        },
+        "sending": "보내는 중…",
+        "sent": "보고서를 보냈습니다 — 참조 번호 {incidentId}",
+        "snapshotLabel": "기기 정보 요약",
+        "title": "진단 보고서를 보내시겠습니까?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "레이아웃",
-      "toolbar": "툴바"
+      "toolbar": "툴바",
+      "spelling": "맞춤법"
     },
     "width": {
       "label": "편집기 너비",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "좁다",
         "medium": "중간",
-        "wide": "와이드"
+        "wide": "와이드",
+        "full": "전체 너비",
+        "normal": "보통"
       },
       "error": "편집기 너비를 업데이트하지 못했습니다."
     },
@@ -229,6 +261,11 @@
       "label": "고정 서식 도구 모음",
       "description": "항상 편집기 위에 도구 모음 표시",
       "error": "도구 모음 모드를 업데이트하지 못했습니다."
+    },
+    "spellCheck": {
+      "description": "메모와 저널에서 맞춤법이 틀린 단어에 밑줄 표시",
+      "error": "맞춤법 검사 설정을 업데이트하지 못했습니다",
+      "label": "맞춤법 검사"
     }
   },
   "templates": {
@@ -640,7 +677,7 @@
       "vaultPickerFolderLabel": "볼트를 저장할 폴더",
       "vaultPickerPrimaryHint": "지금 열림",
       "vaultPickerTitle": "가져올 항목 선택",
-      "vaultRow": "볼트 — {{count}}개 항목 · {{date}}"
+      "vaultRow": "볼트 — {count}개 항목 · {date}"
     }
   },
   "devices": {
@@ -673,7 +710,8 @@
       "removeFailed": "장치를 제거하지 못했습니다.",
       "renamed": "\"{name}\"로 이름이 변경되었습니다.",
       "renameFailed": "장치 이름을 바꾸지 못했습니다."
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "새 기기 연결",
@@ -855,6 +893,11 @@
         "description": "단방향 동기화를 원하면 끄세요 — memrynote에서 Google 일정은 계속 보이지만 memrynote 일정은 Google에 표시되지 않습니다.",
         "error": "동기화 방향을 업데이트하지 못했습니다",
         "label": "Google Calendar에 memrynote 일정 표시"
+      },
+      "agentAccess": {
+        "description": "기본값은 꺼짐입니다. 켜면 AI 에이전트가 Google 일정을 읽을 수 있고, 끄면 일정에 대해 물어봐도 아무것도 받지 못합니다. 어느 쪽이든 memrynote에서는 계속 볼 수 있습니다.",
+        "error": "AI 접근을 업데이트하지 못했습니다",
+        "label": "AI가 Google Calendar 일정을 읽도록 허용"
       }
     },
     "sourcePicker": {
@@ -898,7 +941,8 @@
     },
     "groups": {
       "storageUsage": "스토리지 사용량",
-      "location": "위치"
+      "location": "위치",
+      "accountVaults": "내 계정의 보관함"
     },
     "loadingStorage": "저장용량 정보 로드 중...",
     "signInStorage": "저장용량 사용량을 보려면 로그인하세요.",
@@ -919,6 +963,17 @@
       },
       "warningTitle": "저장용량이 거의 가득 참",
       "warningDescription": "동기화 문제를 방지하려면 공간을 확보하거나 요금제를 업그레이드하세요."
+    },
+    "accountVaults": {
+      "activeHint": "이 보관함을 삭제하려면 다른 보관함으로 전환하세요.",
+      "cloudOnly": "이 기기에 없음",
+      "delete": "삭제",
+      "deleteBody": "이 보관함의 동기화된 데이터가 Memry 서버에서 영구적으로 삭제되며 되돌릴 수 없습니다. 디스크에 있는 파일은 삭제되지 않습니다.",
+      "deleteConfirm": "계정에서 삭제",
+      "deleteFailed": "보관함을 삭제할 수 없습니다",
+      "deleteTitle": "계정에서 “{name}” 보관함을 삭제하시겠습니까?",
+      "empty": "아직 계정에 동기화된 보관함이 없습니다.",
+      "itemsCount": "{count}개 항목"
     }
   },
   "tags": {
@@ -1137,16 +1192,12 @@
       "press": "언론 ",
       "toToggleThisDialog": "이 대화상자를 전환하려면"
     },
-    "componentsSyncDeviceList": {
-      "middot": "중간점;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "이 장치는 제거되었습니다",
       "exporting": "내보내는 중...",
       "signOut": "로그아웃"
     },
     "componentsSyncSyncHistory": {
-      "middot": "중간점; ",
       "activity": "활동",
       "filterBySyncType": "동기화 유형별로 필터링",
       "allTypes": "모든 유형",
@@ -1160,7 +1211,12 @@
       "last30Days": "지난 30일",
       "loadingSyncHistory": "동기화 기록 로드 중",
       "noSyncActivityYet": "아직 동기화 활동이 없습니다.",
-      "loadMore": "더 로드하기"
+      "loadMore": "더 로드하기",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, 오류 세부 정보 보기",
+      "summaryFailed": "동기화 실패",
+      "summaryPulled": "{count, plural, other {항목 #개 가져옴}}",
+      "summaryPushed": "{count, plural, other {항목 #개 보냄}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "마지막 동기화 ",
@@ -1208,102 +1264,103 @@
       "failedToCloseVault": "저장소를 닫지 못했습니다.",
       "failedToSwitchVault": "Vault를 전환하지 못했습니다.",
       "failedToUpdateConfig": "구성을 업데이트하지 못했습니다.",
-      "failedToReindex": "색인을 다시 생성하지 못했습니다."
+      "failedToReindex": "색인을 다시 생성하지 못했습니다.",
+      "failedToLoadTasks": "작업을 로드하지 못했습니다"
     }
   },
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "외부 MCP 클라이언트를 위한 로컬 서버 액세스입니다."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "연결",
+      "access": "액세스"
     },
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Cursor, Claude Desktop 또는 Zed에서 이 localhost 엔드포인트를 사용하세요."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Bearer 토큰",
+        "description": "이번 앱 실행 동안에만 메모리에 유지되는 자격 증명입니다."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "토큰 교체",
+        "description": "기존 외부 클라이언트 세션을 무효화합니다."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "{label} 복사",
+    "notRunning": "실행 중이 아님",
+    "toolsBadge": "{count, plural, other {도구 #개}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Agent 권한",
+      "subtitle": "Agent 채팅의 기본 액세스, 확인 방식, 로컬 공급자를 선택하세요."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "로컬 OpenAI 호환 공급자",
+      "actions": "연결 확인"
     },
     "presets": {
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "사용자 지정"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "사전 설정"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "기본 URL",
+        "description": "OpenAI 호환 /v1 엔드포인트입니다."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "루프백이 아닌 엔드포인트 허용",
+        "description": "데이터가 설정된 엔드포인트로 전송됩니다."
       },
       "model": {
-        "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "label": "모델",
+        "description": "반환된 모델을 선택하거나 직접 입력하세요."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "API 키",
+        "description": "OS 키체인에 저장되는 선택적 자격 증명입니다.",
+        "configured": "API 키가 이미 OS 키체인에 저장되어 있습니다."
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "save": "저장",
+      "models": "모델 목록",
+      "test": "연결 테스트",
+      "probe": "도구 검사"
     },
     "status": {
-      "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "disconnected": "연결 끊김",
+      "toolsDisabled": "도구 비활성화됨",
+      "fullTools": "전체 도구 활성화됨",
       "checking": "확인 중…",
       "connected": "연결됨",
       "label": "연결"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Agent 권한",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "기본 액세스",
+        "description": "새 Agent 차례가 시작될 때의 액세스 모드를 설정합니다.",
+        "vaultOnly": "볼트만",
+        "computerAccess": "컴퓨터 액세스"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "작업 확인",
+        "description": "도구 호출을 자동으로 실행할지, 채팅에서 승인을 기다릴지 선택하세요.",
+        "alwaysAllow": "항상 허용",
+        "askBeforeChanges": "변경 전 확인"
       }
     }
   },
@@ -1368,6 +1425,10 @@
       "tasks": {
         "description": "할 일 및 마감일",
         "label": "작업"
+      },
+      "spatialCanvas": {
+        "description": "메모를 배치하고 연결하는 공간형 보드",
+        "label": "캔버스"
       }
     }
   },
@@ -1393,7 +1454,10 @@
         "skipped": "{count}개 건너뜀",
         "title": "가져오기 완료"
       },
-      "title": "{name}에서 가져오기"
+      "title": "{name}에서 가져오기",
+      "chooseDirectory": "폴더 선택…",
+      "folderKeepsAssets": "이미지가 메모 폴더 바깥에 있다면 폴더를 선택하세요 — 내보낸 파일은 미디어를 공용 폴더에 모아 두는 경우가 많습니다.",
+      "previewError": "미리보기에 실패했습니다."
     },
     "header": {
       "subtitle": "다른 앱에서 노트와 작업을 가져오세요",
@@ -1432,6 +1496,99 @@
       "tasks": "{count, plural, other {작업 #개}}",
       "withDueDate": "{count}개 날짜 지정됨",
       "withTags": "{count}개 태그됨"
+    },
+    "messages": {
+      "csv": {
+        "columns": "열: {columns}",
+        "emptyTitle": "제목이 비어 있는 행을 건너뛰었습니다(\"{column}\" 열).",
+        "noHeaders": "CSV 파일에 헤더가 없습니다.",
+        "titleColumn": "\"{column}\"에서 제목을 가져왔습니다. 나머지 열은 속성으로 저장했습니다."
+      },
+      "raindrop": {
+        "csvEmpty": "Raindrop CSV가 비어 있습니다.",
+        "headerNotFound": "Raindrop CSV의 헤더 행(\"url\" 열)을 찾을 수 없습니다.",
+        "rowNoUrl": "{row}번째 행을 건너뛰었습니다: URL 없음"
+      },
+      "readFileFailed": "파일을 읽지 못했습니다.",
+      "ticktick": {
+        "foldersDropped": "TickTick 폴더는 Memry에 대응하는 항목이 없어 제외했습니다.",
+        "headerNotFound": "TickTick CSV의 헤더 행(\"Folder Name\")을 찾을 수 없습니다.",
+        "reminderNoAnchor": "\"{reminder}\" 리마인더를 건너뛰었습니다(기준 날짜 없음).",
+        "subtaskParentMissing": "\"{title}\" 하위 작업의 상위 항목을 찾을 수 없어 최상위로 가져왔습니다.",
+        "unknownPriority": "알 수 없는 TickTick 우선순위 {priority} → 없음",
+        "unsupportedRepeat": "지원하지 않는 반복 규칙 \"{rule}\"을 건너뛰었습니다."
+      },
+      "todoist": {
+        "emptyTitle": "내용이 비어 있는 작업을 (제목 없음)으로 가져왔습니다.",
+        "headerNotFound": "Todoist CSV가 아닙니다: TYPE 헤더 행이 없습니다.",
+        "orphanComment": "앞선 작업이 없는 댓글을 건너뛰었습니다.",
+        "sectionFlattened": "\"{section}\" 섹션을 평면화했습니다.",
+        "subtaskNoParent": "\"{title}\" 하위 작업은 들여쓰기 {indent} 위치에 상위 항목이 없어 최상위로 가져왔습니다.",
+        "unknownPriority": "알 수 없는 우선순위 {priority} → 없음",
+        "unparsedDate": "\"{date}\" 날짜를 해석할 수 없습니다."
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Apple Notes 데이터베이스 복사 중…"
+      },
+      "bear": {
+        "scanning": "Bear 내보내기 스캔 중…"
+      },
+      "csv": {
+        "importing": "CSV 노트 가져오는 중…"
+      },
+      "evernote": {
+        "scanning": ".enex 파일 스캔 중…"
+      },
+      "html": {
+        "scanning": "HTML 파일 스캔 중…"
+      },
+      "importingItem": "{title} 가져오는 중",
+      "raindrop": {
+        "importing": "Raindrop 북마크 가져오는 중…"
+      },
+      "roam": {
+        "reading": "Roam 내보내기 읽는 중…"
+      },
+      "scanningExport": "내보내기 스캔 중…",
+      "scanningFiles": "파일 스캔 중…",
+      "ticktick": {
+        "importing": "TickTick 작업 가져오는 중…"
+      },
+      "todoist": {
+        "importing": "Todoist 작업 가져오는 중…"
+      }
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "로드 중…",
+      "subtitle": "매일 검토 알림과 받은함 환경설정입니다.",
+      "title": "받은함"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "받은함에 항목이 있을 때 하루 한 번 가볍게 알려드립니다.",
+        "label": "받은함 검토 알림 받기"
+      },
+      "error": "알림을 업데이트할 수 없습니다.",
+      "group": "매일 검토 알림",
+      "test": {
+        "button": "테스트 보내기",
+        "description": "지금 알림을 보내 시스템 알림이 잘 오는지 확인하세요.",
+        "label": "테스트 알림",
+        "sent": "테스트 알림을 보냈습니다.",
+        "sentHint": "아무것도 보이지 않으면 시스템 설정에서 MemryNote 알림을 허용하세요.",
+        "unsupported": "이 기기는 데스크톱 알림을 표시할 수 없습니다."
+      },
+      "time": {
+        "description": "각 기기의 현지 시간 기준입니다.",
+        "hourLabel": "시",
+        "label": "알림 시각",
+        "minuteLabel": "분",
+        "periodLabel": "AM 또는 PM"
+      }
     }
   }
 }

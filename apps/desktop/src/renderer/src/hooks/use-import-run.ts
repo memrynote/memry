@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { getI18n } from 'react-i18next'
 import type {
   ImportPreview,
   ImportProgressEvent,
   ImportSummaryResult
 } from '@memry/contracts/import-channels'
+
+const previewFailed = (): string =>
+  getI18n().getFixedT(null, 'settings')('import.dialog.previewError')
+const importFailed = (): string => getI18n().getFixedT(null, 'settings')('import.dialog.error')
 
 export interface UseImportRun {
   importId: string | null
@@ -63,9 +68,9 @@ export function useImportRun(): UseImportRun {
       try {
         const res = await window.api.import.preview({ importId: id, importerId, sourcePaths })
         if (res.success) setPreview(res.preview)
-        else setError(res.error ?? 'Preview failed')
+        else setError(res.error ?? previewFailed())
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Preview failed')
+        setError(err instanceof Error ? err.message : previewFailed())
       } finally {
         setIsPreviewing(false)
       }
@@ -93,9 +98,9 @@ export function useImportRun(): UseImportRun {
       // (it does not reject), so a thrown importer surfaces here, not in catch.
       const result = await window.api.import.start({ importId: id, importerId, sourcePaths })
       if (result.success) setSummary(result.summary)
-      else setError(result.error ?? 'Import failed')
+      else setError(result.error ?? importFailed())
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Import failed')
+      setError(err instanceof Error ? err.message : importFailed())
     } finally {
       setIsRunning(false)
       unsubscribeRef.current?.()

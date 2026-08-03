@@ -22,7 +22,19 @@
     "writeFailed": "Misslyckades med att spara denna anteckning. Kontrollera diskutrymme och behörigheter.",
     "readFailed": "Misslyckades med att läsa denna anteckning. Filen kan vara låst eller korrupt.",
     "deleteFailed": "Misslyckades med att radera denna anteckning. Kontrollera filbehörigheter.",
-    "invalidPath": "Anteckningsvägen är ogiltig."
+    "invalidPath": "Anteckningsvägen är ogiltig.",
+    "applyTemplateFailed": "Misslyckades med att använda mallen",
+    "createFailed": "Misslyckades med att skapa anteckningen",
+    "deleteVersionFailed": "Misslyckades med att ta bort versionen",
+    "exportHtmlFailed": "Misslyckades med att exportera HTML",
+    "exportPdfFailed": "Misslyckades med att exportera PDF",
+    "importFilesFailed": "Misslyckades med att importera filer",
+    "moveFailed": "Misslyckades med att flytta anteckningen",
+    "renameFailed": "Misslyckades med att byta namn på anteckningen",
+    "reorderFailed": "Misslyckades med att ordna om anteckningarna",
+    "restoreVersionFailed": "Misslyckades med att återställa versionen",
+    "setLocalOnlyFailed": "Misslyckades med att ställa in endast lokalt",
+    "updateFailed": "Misslyckades med att uppdatera anteckningen"
   },
   "database": {
     "connectionFailed": "Kunde inte ansluta till den lokala databasen. Försök att starta om appen.",
@@ -41,7 +53,14 @@
     "fileTooLarge": "Denna fil är för stor för att bifoga.",
     "unsupportedType": "Denna filtyp stöds inte.",
     "writeFailed": "Misslyckades med att spara bilagan. Kontrollera diskutrymme.",
-    "deleteFailed": "Misslyckades med att ta bort bilagan."
+    "deleteFailed": "Misslyckades med att ta bort bilagan.",
+    "downloadFailed": "Nedladdningen av bilagan misslyckades",
+    "downloadProgressFailed": "Misslyckades med att hämta nedladdningsförloppet",
+    "uploadFailed": "Uppladdningen av bilagan misslyckades",
+    "uploadProgressFailed": "Misslyckades med att hämta uppladdningsförloppet",
+    "emptyFile": "Det går inte att ladda upp en tom fil",
+    "exceedsMaxSize": "Filen är för stor: {size} överskrider gränsen på {limit}",
+    "exceedsPlanLimit": "Filen är större än din plan tillåter: {size} överskrider {limit}"
   },
   "encryption": {
     "failed": "Misslyckades med att kryptera data. Dina nycklar kan behöva regenereras.",
@@ -74,6 +93,188 @@
     "securityQuarantinePermanent": "Ett synkroniseringsobjekt kunde inte verifieras och har satts i karantän av säkerhetsskäl.",
     "securityQuarantineRetry": "Ett synkroniseringsobjekt misslyckades med signaturverifiering och kommer att försöka igen.",
     "certificatePinPaused": "Säker anslutning till synkroniseringsserver kunde inte verifieras. Synkronisering har pausats för din säkerhet.",
-    "paymentRequired": "En betald synkplan krävs för att använda värdbaserad krypterad synk."
+    "paymentRequired": "En betald synkplan krävs för att använda värdbaserad krypterad synk.",
+    "attachmentUploadFailed": "Det gick inte att synkronisera bilagan \"{filename}\". Den stannar på den här enheten.",
+    "fileTooLarge": "Den här filen är större än din plan tillåter. Uppgradera din plan för att synkronisera större filer.",
+    "vaultRecovered": "Valvnyckeln är återställd. Synkroniseringen återupptas.",
+    "historyFetchFailed": "Misslyckades med att hämta synkroniseringshistoriken",
+    "keyPersistenceFailed": "Misslyckades med att spara krypteringsnyckeln säkert. Enhetsregistreringen har återställts. Försök igen.",
+    "serverUnreachable": "Kan inte ansluta till synkroniseringsservern. Kontrollera din internetanslutning.",
+    "updateSyncedSettingFailed": "Misslyckades med att uppdatera den synkade inställningen",
+    "requestTimedOut": "Synkroniseringsförfrågan tog för lång tid. Kontrollera din internetanslutning."
+  },
+  "agent": {
+    "conversationBusy": "Konversationen är upptagen",
+    "runtimeStarting": "Agentens körmiljö startar. Försök igen."
+  },
+  "ai": {
+    "inlineDisabled": "AI-redigering direkt i texten är avstängd",
+    "listOllamaModelsFailed": "Misslyckades med att lista Ollama-modeller"
+  },
+  "auth": {
+    "approveLinkingFailed": "Misslyckades med att godkänna länkningen",
+    "cannotRemoveCurrentDevice": "Den aktuella enheten kan inte tas bort",
+    "completeLinkingFailed": "Misslyckades med att slutföra länkningen",
+    "confirmRecoveryPhraseFailed": "Misslyckades med att bekräfta återställningsfrasen",
+    "fetchSasCodeFailed": "Misslyckades med att hämta SAS-koden",
+    "finalizeVaultChoiceFailed": "Misslyckades med att slutföra valvvalet",
+    "initiateOAuthFailed": "Misslyckades med att starta OAuth",
+    "invalidRecoveryPhraseFormat": "Ogiltigt format på återställningsfrasen",
+    "linkDeviceQrFailed": "Misslyckades med att länka enheten via QR",
+    "linkRecoveryPhraseFailed": "Misslyckades med att länka via återställningsfras",
+    "notAuthenticated": "Inte inloggad",
+    "pickFolderFailed": "Misslyckades med att välja mapp",
+    "recoveryPhraseMismatch": "Återställningsfrasen stämmer inte. Försök igen.",
+    "removeDeviceFailed": "Misslyckades med att ta bort enheten",
+    "renameDeviceFailed": "Misslyckades med att byta namn på enheten",
+    "requestOtpFailed": "Misslyckades med att begära engångskod",
+    "resendOtpFailed": "Misslyckades med att skicka engångskoden igen",
+    "sessionExpired": "Sessionen har gått ut. Logga in igen.",
+    "setupFirstDeviceOAuthFailed": "Misslyckades med att konfigurera den första enheten via OAuth",
+    "verifyOtpFailed": "Misslyckades med att verifiera engångskoden"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "Objektet är redan bokmärkt",
+    "notFound": "Bokmärket hittades inte"
+  },
+  "calendar": {
+    "connectProviderFailed": "Misslyckades med att ansluta kalenderleverantören",
+    "createEventFailed": "Misslyckades med att skapa kalenderhändelsen",
+    "deleteEventFailed": "Misslyckades med att ta bort kalenderhändelsen",
+    "disconnectProviderFailed": "Misslyckades med att koppla från kalenderleverantören",
+    "eventNotFound": "Kalenderhändelsen hittades inte",
+    "googleNotConnected": "Google Calendar är inte anslutet på den här enheten",
+    "listGoogleCalendarsFailed": "Misslyckades med att lista Google-kalendrar",
+    "onlyGoogleSourcesRetryable": "Endast Google-kalenderkällor kan försökas igen",
+    "onlySourcesSelectable": "Endast kalenderkällor kan väljas",
+    "promoteExternalEventFailed": "Misslyckades med att befordra den externa kalenderhändelsen",
+    "refreshProviderFailed": "Misslyckades med att uppdatera kalenderleverantören",
+    "retryGoogleSourceSyncFailed": "Misslyckades med att försöka synkronisera Google Calendar-källan igen",
+    "setDefaultGoogleCalendarFailed": "Misslyckades med att ange standardkalender i Google",
+    "signInBeforeRefresh": "Logga in på memrynote innan du uppdaterar Google Calendar",
+    "sourceNotFound": "Kalenderkällan hittades inte",
+    "syncFailed": "Synkroniseringen misslyckades",
+    "updateEventFailed": "Misslyckades med att uppdatera kalenderhändelsen",
+    "updateSourceSelectionFailed": "Misslyckades med att uppdatera valet av kalenderkällor"
+  },
+  "folder": {
+    "createFailed": "Misslyckades med att skapa mappen",
+    "deleteFailed": "Misslyckades med att ta bort mappen",
+    "renameFailed": "Misslyckades med att byta namn på mappen",
+    "setConfigFailed": "Misslyckades med att spara mappinställningarna"
+  },
+  "folderView": {
+    "deleteViewFailed": "Misslyckades med att ta bort vyn",
+    "setConfigFailed": "Misslyckades med att spara inställningarna",
+    "setViewFailed": "Misslyckades med att ställa in vyn"
+  },
+  "googleCalendar": {
+    "accessDenied": "Åtkomsten till Google Calendar nekades. Du kan ansluta igen när du känner dig redo.",
+    "connectFailed": "Det gick inte att ansluta till Google Calendar. Försök igen om en liten stund.",
+    "misconfigured": "Google Calendar är inte korrekt konfigurerat. Kontakta supporten om det fortsätter hända.",
+    "reconnectNeeded": "Din anslutning till Google Calendar har gått ut. Koppla från och anslut igen.",
+    "scopeMissing": "Vi kunde inte komma åt din Google Calendar eftersom kalenderbehörighet inte gavs. Försök igen och se till att kryssrutan för Kalender förblir ikryssad på Googles samtyckesskärm.",
+    "temporarilyUnavailable": "Google Calendar är tillfälligt otillgängligt. Försök igen om en liten stund."
+  },
+  "importer": {
+    "cancelFailed": "Avbrytningen misslyckades",
+    "fileSelectionFailed": "Filvalet misslyckades",
+    "importFailed": "Importen misslyckades",
+    "listFailed": "Misslyckades med att lista importörer",
+    "previewFailed": "Förhandsgranskningen misslyckades"
+  },
+  "project": {
+    "archiveFailed": "Misslyckades med att arkivera projektet",
+    "captureLinkFailed": "Misslyckades med att fånga länken",
+    "createFailed": "Misslyckades med att skapa projektet",
+    "deleteFailed": "Misslyckades med att ta bort projektet",
+    "importFilesFailed": "Misslyckades med att importera filer",
+    "linkItemFailed": "Misslyckades med att länka objektet",
+    "listForItemFailed": "Misslyckades med att lista projekt för objektet",
+    "reorderFailed": "Misslyckades med att ordna om projekten",
+    "setHomeNoteFailed": "Misslyckades med att ange startanteckning",
+    "unlinkItemFailed": "Misslyckades med att ta bort länken till objektet",
+    "updateFailed": "Misslyckades med att uppdatera projektet",
+    "updatePinnedFailed": "Misslyckades med att uppdatera fäststatusen"
+  },
+  "property": {
+    "alreadyExists": "Egenskapen ”{name}” finns redan",
+    "createDefinitionFailed": "Misslyckades med att skapa egenskapsdefinitionen",
+    "entityNotFound": "Objektet hittades inte",
+    "notFound": "Egenskapen ”{name}” hittades inte",
+    "renameFailed": "Misslyckades med att byta namn på egenskapen",
+    "setCalendarVisibilityFailed": "Misslyckades med att ställa in egenskapens synlighet i kalendern",
+    "setFailed": "Misslyckades med att spara egenskaperna",
+    "updateDefinitionFailed": "Misslyckades med att uppdatera egenskapsdefinitionen"
+  },
+  "reminder": {
+    "createFailed": "Misslyckades med att skapa påminnelsen",
+    "dismissAllFailed": "Misslyckades med att avfärda påminnelserna",
+    "dismissFailed": "Misslyckades med att avfärda påminnelsen",
+    "notFound": "Påminnelsen hittades inte",
+    "snoozeFailed": "Misslyckades med att snooza påminnelsen",
+    "updateFailed": "Misslyckades med att uppdatera påminnelsen"
+  },
+  "savedFilter": {
+    "notFound": "Det sparade filtret hittades inte"
+  },
+  "search": {
+    "rebuildFailed": "Ombyggnaden misslyckades"
+  },
+  "settings": {
+    "modelAlreadyLoading": "Modellen laddas redan",
+    "modelLoadFailed": "Misslyckades med att ladda modellen",
+    "shortcutInUse": "Kortkommandot {shortcut} används redan",
+    "terminalCommandInstallFailed": "Misslyckades med att installera terminalkommandot",
+    "terminalCommandUninstallFailed": "Misslyckades med att avinstallera terminalkommandot",
+    "unknownVault": "Okänt valv",
+    "voiceModelDownloadFailed": "Misslyckades med att ladda ner röstmodellen"
+  },
+  "tag": {
+    "categoryNameRequired": "Kategorinamn krävs",
+    "createCategoryFailed": "Misslyckades med att skapa taggkategorin",
+    "deleteCategoryFailed": "Misslyckades med att ta bort taggkategorin",
+    "deleteFailed": "Misslyckades med att ta bort taggen",
+    "listCategoriesFailed": "Misslyckades med att lista taggkategorier",
+    "mergeFailed": "Misslyckades med att slå ihop taggarna",
+    "mergeSameTag": "Käll- och måltaggen är samma",
+    "pinNoteFailed": "Misslyckades med att fästa anteckningen",
+    "removeFromNoteFailed": "Misslyckades med att ta bort taggen från anteckningen",
+    "renameCategoryFailed": "Misslyckades med att byta namn på taggkategorin",
+    "renameFailed": "Misslyckades med att byta namn på taggen",
+    "reorderFailed": "Misslyckades med att ordna om taggarna",
+    "unpinNoteFailed": "Misslyckades med att lossa anteckningen",
+    "updateColorFailed": "Misslyckades med att uppdatera taggfärgen",
+    "updateIconFailed": "Misslyckades med att uppdatera taggikonen"
+  },
+  "task": {
+    "archiveFailed": "Misslyckades med att arkivera uppgiften",
+    "archiveManyFailed": "Misslyckades med att arkivera uppgifterna",
+    "completeFailed": "Misslyckades med att slutföra uppgiften",
+    "completeManyFailed": "Misslyckades med att slutföra uppgifterna",
+    "convertToSubtaskFailed": "Misslyckades med att omvandla till deluppgift",
+    "convertToTaskFailed": "Misslyckades med att omvandla till uppgift",
+    "createFailed": "Misslyckades med att skapa uppgiften",
+    "deleteFailed": "Misslyckades med att ta bort uppgiften",
+    "deleteManyFailed": "Misslyckades med att ta bort uppgifterna",
+    "duplicateFailed": "Misslyckades med att duplicera uppgiften",
+    "moveFailed": "Misslyckades med att flytta uppgiften",
+    "moveManyFailed": "Misslyckades med att flytta uppgifterna",
+    "reorderFailed": "Misslyckades med att ordna om uppgifterna",
+    "unarchiveFailed": "Misslyckades med att ta uppgiften ur arkivet",
+    "uncompleteFailed": "Misslyckades med att återöppna uppgiften",
+    "updateFailed": "Misslyckades med att uppdatera uppgiften"
+  },
+  "taskStatus": {
+    "createFailed": "Misslyckades med att skapa statusen",
+    "deleteFailed": "Misslyckades med att ta bort statusen",
+    "reorderFailed": "Misslyckades med att ordna om statusarna",
+    "updateFailed": "Misslyckades med att uppdatera statusen"
+  },
+  "template": {
+    "createFailed": "Misslyckades med att skapa mallen",
+    "deleteFailed": "Misslyckades med att ta bort mallen",
+    "duplicateFailed": "Misslyckades med att duplicera mallen",
+    "updateFailed": "Misslyckades med att uppdatera mallen"
   }
 }

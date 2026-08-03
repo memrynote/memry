@@ -85,11 +85,10 @@ export const BulkPriorityDialog = ({
             </DialogTitle>
           </div>
           <DialogDescription>
-            {tPhaseF('phaseF.componentsTasksDialogsBulkPriorityDialog.setPriorityFor')}
-            {affectedCount} {tPhaseF('phaseF.componentsTasksDialogsBulkPriorityDialog.subtask')}
-            {affectedCount !== 1 ? 's' : ''}{' '}
-            {tPhaseF('phaseF.componentsTasksDialogsBulkPriorityDialog.in')}
-            {parentTitle}&{tPhaseF('phaseF.componentsTasksDialogsBulkPriorityDialog.rdquo')}
+            {tPhaseF('phaseF.componentsTasksDialogsBulkPriorityDialog.setPriorityForSubtasksIn', {
+              count: affectedCount,
+              title: parentTitle
+            })}
           </DialogDescription>
         </DialogHeader>
 
@@ -137,9 +136,9 @@ export const BulkPriorityDialog = ({
                 className="text-sm text-muted-foreground cursor-pointer"
               >
                 {tPhaseF(
-                  'phaseF.componentsTasksDialogsBulkPriorityDialog.alsoApplyToCompletedSubtasks'
+                  'phaseF.componentsTasksDialogsBulkPriorityDialog.alsoApplyToCompletedSubtasksCount',
+                  { count: completedCount }
                 )}
-                {completedCount})
               </Label>
             </div>
           )}

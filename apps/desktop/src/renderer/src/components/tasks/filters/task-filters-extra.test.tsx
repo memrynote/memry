@@ -10,8 +10,14 @@ import { QuickFilters } from './quick-filters'
 import { SaveFilterDialog } from './save-filter-dialog'
 import { SearchInput } from './search-input'
 
+// Returns the key, plus any interpolated values appended, so assertions can
+// still verify the user data that reaches an ICU message (search text, project
+// and priority names, formatted dates) and not just that a key rendered.
 vi.mock('@memry/i18n/renderer', () => ({
-  useT: () => ({ t: (key: string) => key })
+  useT: () => ({
+    t: (key: string, params?: Record<string, unknown>) =>
+      params ? [key, ...Object.values(params)].join(' ') : key
+  })
 }))
 
 vi.mock('@/hooks/use-notes-query', () => ({
@@ -157,17 +163,21 @@ describe('task filter surfaces', () => {
       />
     )
 
-    expect(screen.getByText(/Search: "launch"/)).toBeInTheDocument()
-    expect(screen.getByText(/Project: Work/)).toBeInTheDocument()
-    expect(screen.getByText(/Priority: Urgent, High/)).toBeInTheDocument()
-    expect(screen.getByText(/Due: May 1 - May 3/)).toBeInTheDocument()
+    // The summary clauses are now one ICU message each; the values interpolated
+    // into them are what these assertions guard.
+    expect(screen.getByText(/summarySearch launch$/)).toBeInTheDocument()
+    expect(screen.getByText(/summaryProjects Work$/)).toBeInTheDocument()
+    expect(screen.getByText(/summaryPriorities Urgent, High$/)).toBeInTheDocument()
+    expect(screen.getByText(/summaryDueRange May 1 May 3$/)).toBeInTheDocument()
 
     fireEvent.click(
       screen.getByRole('button', {
         name: 'phaseF.componentsTasksFiltersSaveFilterDialog.saveFilter2'
       })
     )
-    expect(screen.getByText('Please enter a name for this filter')).toBeInTheDocument()
+    expect(
+      screen.getByText('phaseF.componentsTasksFiltersSaveFilterDialog.nameRequired')
+    ).toBeInTheDocument()
 
     fireEvent.change(
       screen.getByLabelText('phaseF.componentsTasksFiltersSaveFilterDialog.filterName'),

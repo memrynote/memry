@@ -1,7 +1,12 @@
 {
   "app": {
-    "quit": "Κλείσε",
-    "preferences": "Ρυθμίσεις…"
+    "quit": "Τερματισμός",
+    "preferences": "Ρυθμίσεις…",
+    "exit": "Έξοδος",
+    "hide": "Απόκρυψη MemryNote",
+    "hideOthers": "Απόκρυψη άλλων",
+    "services": "Υπηρεσίες",
+    "unhide": "Εμφάνιση όλων"
   },
   "file": {
     "label": "Αρχείο",
@@ -19,12 +24,16 @@
     "label": "Επεξεργασία",
     "undo": "Αναίρεση",
     "redo": "Επανάληψη",
-    "cut": "Κόψτε",
+    "cut": "Αποκοπή",
     "copy": "Αντιγραφή",
     "paste": "Επικόλληση",
     "selectAll": "Επιλογή όλων",
     "find": "Εύρεση",
-    "speech": "Ομιλία"
+    "speech": "Ομιλία",
+    "delete": "Διαγραφή",
+    "pasteAndMatchStyle": "Επικόλληση και αντιστοίχιση στιλ",
+    "startSpeaking": "Έναρξη εκφώνησης",
+    "stopSpeaking": "Διακοπή εκφώνησης"
   },
   "view": {
     "label": "Προβολή",
@@ -37,7 +46,10 @@
     "themeSystem": "Σύστημα",
     "themeWhite": "Χαρτί",
     "toggleDayPanel": "Εναλλαγή πάνελ ημέρας",
-    "toggleSidebar": "Εναλλαγή πλαϊνής μπάρας"
+    "toggleSidebar": "Εναλλαγή πλαϊνής στήλης",
+    "actualSize": "Πραγματικό μέγεθος",
+    "zoomIn": "Μεγέθυνση",
+    "zoomOut": "Σμίκρυνση"
   },
   "format": {
     "body": "Σώμα κειμένου",
@@ -49,13 +61,14 @@
     "highlight": "Επισήμανση",
     "italic": "Πλάγια",
     "label": "Μορφή",
-    "strikethrough": "Διαγράμμιση"
+    "strikethrough": "Διακριτή διαγραφή"
   },
   "help": {
     "about": "Σχετικά με το MemryNote",
     "documentation": "Τεκμηρίωση",
     "label": "Βοήθεια",
-    "shortcuts": "Συντομεύσεις πληκτρολογίου"
+    "shortcuts": "Συντομεύσεις πληκτρολογίου",
+    "aboutVersion": "Έκδοση {version}"
   },
   "insert": {
     "attachment": "Εισαγωγή συνημμένου…",
@@ -67,6 +80,10 @@
     "taskList": "Λίστα εργασιών"
   },
   "window": {
-    "label": "Παράθυρο"
+    "label": "Παράθυρο",
+    "close": "Κλείσιμο",
+    "front": "Μεταφορά όλων μπροστά",
+    "minimize": "Ελαχιστοποίηση",
+    "zoom": "Ζουμ"
   }
 }

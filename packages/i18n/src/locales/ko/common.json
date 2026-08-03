@@ -25,7 +25,8 @@
     "expand": "펼치기",
     "collapse": "접기",
     "showMore": "+{count, plural, one {# 더 보기} other {# 더 보기}}",
-    "showLess": "간략히 보기"
+    "showLess": "간략히 보기",
+    "undo": "실행 취소"
   },
   "tabs": {
     "pin": "핀 탭",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "오늘",
     "yesterday": "어제",
-    "daysAgo": "{count, plural, one {#일 전} other {#일 전}}"
+    "daysAgo": "{count, plural, one {#일 전} other {#일 전}}",
+    "daysLate": "{count, plural, other {#일 지연}}",
+    "daysOverdue": "{count, plural, other {기한 #일 지남}}",
+    "tomorrow": "내일"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {매일} other {#일마다}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {매달 {day}{suffix}에서} other {{day}{suffix}에서 #개월마다}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {매달 {week} {day}에서} other {{week} {day}에서 #개월마다}}",
     "everyNYears": "{count, plural, one {매년} other {#년마다}}",
-    "repeats": "반복"
+    "repeats": "반복",
+    "ordinal": {
+      "first": "첫째 주",
+      "fourth": "넷째 주",
+      "last": "마지막 주",
+      "second": "둘째 주",
+      "third": "셋째 주"
+    },
+    "preset": {
+      "everyWeekday": "평일마다 (월~금)",
+      "everyYearOnDate": "매년 {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -102,7 +117,15 @@
       "updateDownloadingPercent": "{percent}% 다운로드 중",
       "updateInstallingSubtitle": "MemryNote가 자동으로 다시 시작됩니다.",
       "updateInstallingTitle": "업데이트 설치 중",
-      "updateRestart": "다시 시작"
+      "updateRestart": "다시 시작",
+      "feedbackPrivacyEmailOptional": "이메일 — 직접 입력한 경우에만 보내며, 답장하는 데만 사용합니다",
+      "feedbackPrivacyEmailSignedIn": "계정 이메일({email}) — 답장하는 데 사용합니다",
+      "feedbackPrivacyMessage": "작성하신 메시지 그대로",
+      "feedbackPrivacyNote": "그 외에는 없습니다. 메모는 기기에 그대로 남습니다.",
+      "feedbackPrivacyPlan": "요금제(free, Plus, Pro 또는 Believer)",
+      "feedbackPrivacyTitle": "보내는 항목",
+      "feedbackPrivacyVersion": "앱 버전과 운영체제",
+      "projects": "프로젝트"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "일 패널 크기 조정",
@@ -180,8 +203,9 @@
       "search": "검색",
       "searchNotesTasksJournalInbox": "메모, 작업, 일지, 받은 편지함 검색...",
       "noResultsFor": "“에 대한 검색결과가 없습니다.",
-      "rdquo": "rdquo;",
-      "result": "결과"
+      "result": "결과",
+      "noResultsForQuery": "“{query}”에 대한 검색 결과가 없습니다",
+      "resultCount": "{count, plural, other {결과 #개}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "항목을 검색하고 클릭하여 트레일을 구축하세요.",
@@ -231,7 +255,8 @@
       "journal": "저널",
       "calendar": "달력",
       "inboxCapture": "받은 편지함 캡처",
-      "tasks": "작업"
+      "tasks": "작업",
+      "tags": "태그"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "저장되지 않은 변경사항",
@@ -261,15 +286,15 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "문제가 발생했습니다.",
       "anErrorOccurredWhileRenderingThisTabContent": "이 탭 콘텐츠를 렌더링하는 동안 오류가 발생했습니다.",
-      "tryAgain": "다시 시도"
+      "tryAgain": "다시 시도",
+      "sendReport": "진단 보고서 보내기"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "메모 아이콘"
     },
     "componentsTabsUnsavedChangesDialog": {
       "unsavedChanges": "저장되지 않은 변경사항",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; 저장되지 않은 변경사항이 있습니다. 무엇을 하고 싶나요?"
+      "unsavedChangesBody": "“{title}”에 저장되지 않은 변경사항이 있습니다. 어떻게 할까요?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "새로운 작업공간",
@@ -320,7 +345,7 @@
       "recentVaults": "최근 금고",
       "notesLastOpened": "메모 · 마지막 열림",
       "brandName": "Memrynote",
-      "preRelease": "Beta",
+      "preRelease": "베타",
       "createNewVault": "새 보관함 만들기",
       "createNewVaultDesc": "원하는 폴더에 새 보관함을 시작하세요.",
       "openExistingVault": "기존 보관함 열기",
@@ -341,7 +366,6 @@
       "logOut": "로그아웃",
       "signInToSync": "동기화하려면 로그인하세요.",
       "remove": "'제거",
-      "rdquoFromList": "rdquo; 목록에서?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "이 저장소는 앱에서 제거되지만 파일은 디스크에 남아 있습니다. 나중에 언제든지 다시 추가할 수 있습니다.",
       "cancel": "취소",
       "remove2": "제거",
@@ -352,7 +376,13 @@
       "downloadLocation": "위치",
       "changeLocation": "변경…",
       "download": "다운로드",
-      "downloadFailed": "보관함을 다운로드하지 못했습니다"
+      "downloadFailed": "보관함을 다운로드하지 못했습니다",
+      "deleteFromAccount": "계정에서 삭제",
+      "deleteVaultBody": "이 보관함의 동기화된 데이터가 Memry 서버에서 영구적으로 삭제되며 되돌릴 수 없습니다. 디스크에 있는 파일은 삭제되지 않습니다.",
+      "deleteVaultConfirm": "계정에서 삭제",
+      "deleteVaultFailed": "보관함을 삭제할 수 없습니다",
+      "deleteVaultTitle": "계정에서 “{name}” 보관함을 삭제하시겠습니까?",
+      "removeVaultTitle": "목록에서 “{name}” 보관함을 제거하시겠습니까?"
     },
     "componentsWindowControls": {
       "searchK": "검색(⌘K)",
@@ -425,7 +455,7 @@
       },
       "models": {
         "default": "기본값",
-        "label": "Model"
+        "label": "모델"
       },
       "settings": {
         "reasoning": "추론"
@@ -450,21 +480,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "볼트만",
+        "computerAccess": "컴퓨터 액세스"
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
-        "label": "Web search"
+        "off": "꺼짐",
+        "label": "웹 검색"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Agent 권한: {access}, 웹 검색 {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "권한",
+        "access": "액세스",
+        "tools": "도구"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Agent 모델 설정: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "일치하는 항목이 없습니다."
@@ -479,7 +509,7 @@
     "sidebar": {
       "label": "오른쪽 사이드바",
       "day": "일",
-      "agent": "Agent",
+      "agent": "에이전트",
       "pendingApproval": "{count, plural, one {# 승인 대기 중} other {# 승인 보류 중}}",
       "inProgress": "Agent 회전 진행 중",
       "close": "에이전트 닫기"
@@ -575,7 +605,7 @@
       "remove": "제거",
       "removeAria": "위젯 제거",
       "resize": "크기",
-      "resizeAria": "{{size}}(으)로 크기 조정",
+      "resizeAria": "{size}(으)로 크기 조정",
       "savedFilterDefault": "오늘",
       "savedFilterHint": "작업 페이지에서 필터에 별표를 표시하면 여기에서 사용할 수 있습니다",
       "savedFilterLabel": "저장된 필터",
@@ -624,6 +654,11 @@
     "welcome": {
       "body": "당신만의 비공개, 오프라인 우선 홈입니다. 노트는 종단 간 암호화되어 암호화되지 않은 채로 기기를 떠나지 않습니다.",
       "title": "MemryNote에 오신 것을 환영합니다"
+    },
+    "tour": {
+      "next": "다음",
+      "previous": "이전",
+      "progress": "{total} 중 {current}"
     }
   },
   "updatePrompt": {
@@ -640,6 +675,165 @@
     "skip": "이 버전 건너뛰기"
   },
   "capture": {
-    "focusShortcut": "수집 입력에 포커스"
+    "focusShortcut": "수집 입력에 포커스",
+    "detailHint": "자세히",
+    "focusHint": "Q",
+    "submit": "캡처"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "카드 추가",
+      "addCreateNote": "\"{query}\" 메모 만들기",
+      "addCreateNoteEmpty": "새 메모 만들기",
+      "addCreatedAt": "{date}에 생성됨",
+      "addEmpty": "결과 없음",
+      "addGroupEvents": "일정",
+      "addGroupNotes": "메모",
+      "addGroupTasks": "작업",
+      "addOnCanvas": "캔버스에 있음",
+      "addPlaceholder": "메모, 작업, 일정 검색…",
+      "allDay": "하루 종일",
+      "createNoteFailed": "메모를 만들 수 없습니다",
+      "deleted": "항목이 삭제되었습니다",
+      "loading": "로드 중…",
+      "open": "탭에서 열기",
+      "openToEdit": "편집하려면 탭에서 여세요",
+      "untitled": "제목 없음"
+    },
+    "corruptScene": "이 캔버스를 읽을 수 없습니다. 데이터 손실을 막기 위해 편집이 비활성화되었습니다.",
+    "createFailed": "캔버스를 만들 수 없습니다",
+    "disabledBody": "이 탭은 이 기기에서 켜져 있지 않은 기능에 속합니다.",
+    "disabledTitle": "캔버스가 켜져 있지 않습니다",
+    "empty": "아직 캔버스가 없습니다",
+    "libraryStoreFailed": "도형 라이브러리를 저장할 수 없습니다. 최근 변경 사항이 사라질 수 있습니다.",
+    "loadFailed": "캔버스를 불러올 수 없습니다",
+    "loading": "캔버스 로드 중…",
+    "newCanvas": "새 캔버스",
+    "notFound": "이 캔버스를 찾을 수 없습니다",
+    "openFailed": "캔버스를 열 수 없습니다",
+    "savedToVault": "모든 변경 사항은 보관함에 자동으로 저장됩니다",
+    "sectionLabel": "캔버스",
+    "tooLargeToSync": "이 캔버스는 너무 커서 동기화할 수 없습니다. 이 기기에는 저장되지만, 크기가 줄어들기 전까지는 다른 기기로 전달되지 않습니다.",
+    "untitled": "제목 없는 캔버스"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "행 클릭",
+      "reset": "재설정",
+      "shortcutsTab": "단축키 탭"
+    },
+    "description": "memrynote를 빠르게 오가고, 떠오른 생각을 담고, 할 일을 처리하는 지름길입니다.",
+    "groups": {
+      "general": {
+        "description": "앱 전체 탐색과 도움말.",
+        "title": "일반"
+      },
+      "inbox": {
+        "description": "수집한 항목을 빠르게 처리합니다.",
+        "title": "받은함"
+      },
+      "journal": {
+        "description": "저널 보기를 이동하고 작성 영역에 포커스합니다.",
+        "title": "저널"
+      },
+      "notes": {
+        "description": "메모를 작성하고, 서식을 지정하고, 검색합니다.",
+        "title": "메모 / 편집기"
+      },
+      "settings": {
+        "description": "설정을 열고 단축키를 사용자화합니다.",
+        "title": "설정"
+      },
+      "tabs": {
+        "description": "탭과 패널 사이를 이동합니다.",
+        "title": "탭 및 분할"
+      },
+      "tasks": {
+        "description": "작업을 필터링하고, 선택하고, 완료합니다.",
+        "title": "작업"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "메모 만들기",
+        "keyboardShortcuts": "키보드 단축키 열기",
+        "openSettings": "설정 열기",
+        "quickSearch": "빠른 검색 열기",
+        "sidebarSection": "사이드바 섹션으로 이동",
+        "toggleSidebar": "사이드바 전환",
+        "undoTaskAction": "마지막 작업 동작 실행 취소"
+      },
+      "inbox": {
+        "archiveItem": "선택한 항목 보관",
+        "chooseQuickFileResult": "빠른 정리 결과 선택",
+        "clearSelection": "선택 해제 또는 빠른 정리 닫기",
+        "confirmFiling": "정리 패널 확인",
+        "firstOrLastItem": "첫 항목 또는 마지막 항목",
+        "jumpByPage": "페이지 단위로 이동",
+        "nextItem": "다음 항목",
+        "openOriginal": "원본 링크 열기",
+        "openQuickFile": "빠른 정리 열기",
+        "previousItem": "이전 항목",
+        "refresh": "받은함 새로고침",
+        "selectAllVisible": "보이는 항목 모두 선택",
+        "selectItem": "항목 선택",
+        "togglePreview": "미리보기 패널 전환"
+      },
+      "journal": {
+        "bold": "선택한 텍스트 굵게",
+        "find": "저널에서 찾기",
+        "italic": "선택한 텍스트 기울임",
+        "link": "링크 추가 또는 편집",
+        "returnFromOverview": "월 또는 연 보기에서 돌아가기",
+        "toggleFullWidth": "저널 전체 너비 전환",
+        "underline": "선택한 텍스트 밑줄"
+      },
+      "notes": {
+        "bold": "굵게",
+        "closeOverlays": "편집기 오버레이 닫기",
+        "commandMenu": "편집기 명령 메뉴 열기",
+        "createNote": "메모 만들기",
+        "find": "메모에서 찾기",
+        "italic": "기울임",
+        "link": "링크 추가 또는 편집",
+        "saveNote": "현재 메모 저장",
+        "underline": "밑줄"
+      },
+      "settings": {
+        "cancelRecording": "단축키 기록 취소",
+        "customizeShortcuts": "키보드 단축키 사용자화",
+        "openSettings": "설정 열기",
+        "recordShortcut": "새 단축키 기록",
+        "resetShortcut": "단축키 기본값 복원"
+      },
+      "tabs": {
+        "closeAllInPane": "패널의 모든 탭 닫기",
+        "closeSplitPane": "분할 패널 닫기",
+        "closeTab": "탭 닫기",
+        "duplicateTab": "탭 복제",
+        "focusPane": "다른 패널로 포커스 이동",
+        "maximizePane": "현재 패널 최대화",
+        "moveTabToPane": "탭을 패널로 이동",
+        "newTabMenu": "새 탭 메뉴 열기",
+        "nextTab": "다음 탭",
+        "pinTab": "탭 고정 또는 고정 해제",
+        "previousTab": "이전 탭",
+        "reopenClosedTab": "닫은 탭 다시 열기",
+        "splitDown": "아래로 분할",
+        "splitRight": "오른쪽으로 분할"
+      },
+      "tasks": {
+        "clearFilters": "표시된 필터 지우기",
+        "clearSelection": "작업 선택 해제",
+        "completeSelected": "선택한 작업 완료",
+        "configureRepeat": "포커스된 작업의 반복 설정",
+        "deleteSelected": "선택한 작업 삭제",
+        "selectAllVisible": "보이는 작업 모두 선택",
+        "skipOccurrence": "반복 항목 건너뛰기",
+        "stopRepeating": "작업 반복 중지"
+      }
+    },
+    "or": "또는",
+    "then": "그다음"
   }
 }

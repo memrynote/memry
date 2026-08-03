@@ -28,7 +28,8 @@
         "properties": "Eigenschaften",
         "commandLine": "Befehlszeile",
         "features": "Funktionen",
-        "import": "Import"
+        "import": "Import",
+        "inbox": "Posteingang"
       }
     }
   },
@@ -39,7 +40,7 @@
       "loading": "Einstellungen werden geladen..."
     },
     "groups": {
-      "startup": "Startup",
+      "startup": "Anwendungsstart",
       "updates": "Aktualisierungen",
       "languageRegion": "Sprache und Region",
       "tabBehavior": "Tab-Verhalten",
@@ -75,6 +76,16 @@
         "downloadingPercent": "{percent}% wird heruntergeladen",
         "downloaded": "Starten Sie die Installation neu",
         "idle": "Suchen Sie nach Updates"
+      },
+      "autoCheck": {
+        "description": "Beim Start und regelmäßig während der Nutzung nach neuen Versionen suchen.",
+        "error": "Die Einstellung für die automatische Prüfung konnte nicht aktualisiert werden",
+        "label": "Automatisch nach Updates suchen"
+      },
+      "autoDownload": {
+        "description": "Neue Versionen im Hintergrund herunterladen und ohne Nachfrage installieren.",
+        "error": "Die Einstellung für den automatischen Download konnte nicht aktualisiert werden",
+        "label": "Updates automatisch herunterladen"
       }
     },
     "language": {
@@ -116,7 +127,7 @@
       "defaultNoteFolder": {
         "description": "Leer = Vault-Stammverzeichnis",
         "label": "Standardspeicherort für neue Notizen",
-        "placeholder": "notes"
+        "placeholder": "notizen"
       }
     },
     "privacy": {
@@ -124,6 +135,24 @@
         "label": "Teilen Sie anonyme Nutzungsmetriken",
         "description": "Es handelt sich lediglich um anonyme Messwerte – es werden niemals Notizinhalte, Suchanfragen, Dateipfade, E-Mails oder Roh-IDs gesendet.",
         "error": "Die Telemetrieeinstellung konnte nicht aktualisiert werden"
+      },
+      "diagnostics": {
+        "building": "Bericht wird vorbereitet…",
+        "consent": "Einmalig einen Diagnosebericht senden? Er enthält nur bereinigte technische Protokolle — keine Notizinhalte.",
+        "error": "Der Diagnosebericht konnte nicht gesendet werden",
+        "notNow": "Nicht jetzt",
+        "previewError": "Der Diagnosebericht konnte nicht vorbereitet werden",
+        "previewLabel": "Berichtsinhalt ansehen",
+        "send": "Senden",
+        "sendReport": {
+          "button": "Diagnosebericht senden",
+          "description": "Sende einmalig einen Bericht mit bereinigten technischen Protokollen, damit wir ein Problem nachvollziehen können, das bei dir aufgetreten ist.",
+          "label": "Diagnosebericht"
+        },
+        "sending": "Wird gesendet…",
+        "sent": "Bericht gesendet — Referenz {incidentId}",
+        "snapshotLabel": "Geräteinformationen",
+        "title": "Diagnosebericht senden?"
       }
     },
     "dateFormat": {
@@ -198,7 +227,7 @@
           "gelasio": "Gelasio",
           "geist": "Geist",
           "inter": "Inter",
-          "monospace": "Monospace"
+          "monospace": "Nichtproportional"
         }
       },
       "fontSizeError": "Die Schriftgröße konnte nicht aktualisiert werden",
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Layout",
-      "toolbar": "Symbolleiste"
+      "toolbar": "Symbolleiste",
+      "spelling": "Rechtschreibung"
     },
     "width": {
       "label": "Editorbreite",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Schmal",
         "medium": "Mittel",
-        "wide": "Breit"
+        "wide": "Breit",
+        "full": "Volle Breite",
+        "normal": "Normal"
       },
       "error": "Die Editorbreite konnte nicht aktualisiert werden"
     },
@@ -229,6 +261,11 @@
       "label": "Sticky-Formatierungssymbolleiste",
       "description": "Symbolleiste immer über dem Editor anzeigen",
       "error": "Der Symbolleistenmodus konnte nicht aktualisiert werden"
+    },
+    "spellCheck": {
+      "description": "Falsch geschriebene Wörter in Notizen und Journalen unterstreichen",
+      "error": "Die Rechtschreibprüfung konnte nicht aktualisiert werden",
+      "label": "Rechtschreibung prüfen"
     }
   },
   "templates": {
@@ -322,7 +359,7 @@
     "folder": {
       "description": "Ordner, in dem tägliche Notizen gespeichert werden",
       "label": "Journal-Ordner",
-      "placeholder": "journal"
+      "placeholder": "tagebuch"
     },
     "preview": {
       "description": "Pfad der heutigen Journaldatei",
@@ -500,7 +537,7 @@
         "history": "Verlauf",
         "maxFile": "Max. Datei",
         "storage": "Speicher",
-        "vaults": "Vaults"
+        "vaults": "Tresore"
       },
       "planStatus": "Tarifstatus",
       "plans": {
@@ -538,7 +575,7 @@
     "steps": {
       "signIn": "Anmelden",
       "verify": "Überprüfen",
-      "link": "Link"
+      "link": "Verknüpfen"
     },
     "progress": "Schritt {current} von {total}: {label}",
     "signIn": {
@@ -640,7 +677,7 @@
       "vaultPickerFolderLabel": "Vaults in Ordner speichern",
       "vaultPickerPrimaryHint": "Öffnet sich jetzt",
       "vaultPickerTitle": "Wähle, was abgerufen werden soll",
-      "vaultRow": "Vault — {{count}} Elemente · {{date}}"
+      "vaultRow": "Vault — {count} Elemente · {date}"
     }
   },
   "devices": {
@@ -673,7 +710,8 @@
       "removeFailed": "Gerät konnte nicht entfernt werden",
       "renamed": "Umbenannt in „{name}“",
       "renameFailed": "Gerät konnte nicht umbenannt werden"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Neues Gerät verknüpfen",
@@ -855,6 +893,11 @@
         "description": "Deaktivieren für Ein-Wege-Synchronisierung — du siehst weiterhin deine Google-Termine in memrynote, aber memrynote-Termine erscheinen nicht in Google.",
         "error": "Synchronisierungsrichtung konnte nicht aktualisiert werden",
         "label": "memrynote-Termine in Google Calendar anzeigen"
+      },
+      "agentAccess": {
+        "description": "Standardmäßig deaktiviert. Ist die Option aktiviert, kann der KI-Agent Ihre Google-Termine lesen; ist sie deaktiviert, erhält er bei Fragen dazu nichts zurück. In memrynote sehen Sie Ihre Termine in jedem Fall weiterhin.",
+        "error": "Der KI-Zugriff konnte nicht aktualisiert werden",
+        "label": "KI Termine aus Google Calendar lesen lassen"
       }
     },
     "sourcePicker": {
@@ -898,7 +941,8 @@
     },
     "groups": {
       "storageUsage": "Speichernutzung",
-      "location": "Standort"
+      "location": "Standort",
+      "accountVaults": "Tresore in deinem Konto"
     },
     "loadingStorage": "Speicherinformationen werden geladen...",
     "signInStorage": "Melden Sie sich an, um die Speichernutzung anzuzeigen",
@@ -919,6 +963,17 @@
       },
       "warningTitle": "Speicher fast voll",
       "warningDescription": "Geben Sie Speicherplatz frei oder aktualisieren Sie Ihren Plan, um Synchronisierungsprobleme zu vermeiden."
+    },
+    "accountVaults": {
+      "activeHint": "Wechsle zu einem anderen Tresor, um diesen zu löschen.",
+      "cloudOnly": "Nicht auf diesem Gerät",
+      "delete": "Löschen",
+      "deleteBody": "Damit werden alle synchronisierten Daten dieses Tresors dauerhaft von den Memry-Servern entfernt. Das lässt sich nicht rückgängig machen. Deine Dateien auf der Festplatte bleiben erhalten.",
+      "deleteConfirm": "Aus Konto löschen",
+      "deleteFailed": "Der Tresor konnte nicht gelöscht werden",
+      "deleteTitle": "„{name}“ aus deinem Konto löschen?",
+      "empty": "Noch keine Tresore mit deinem Konto synchronisiert.",
+      "itemsCount": "{count, plural, one {# Element} other {# Elemente}}"
     }
   },
   "tags": {
@@ -1137,16 +1192,12 @@
       "press": "Drücken Sie ",
       "toToggleThisDialog": "um diesen Dialog umzuschalten"
     },
-    "componentsSyncDeviceList": {
-      "middot": "Mittelpunkt;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Dieses Gerät wurde entfernt",
       "exporting": "Exportieren...",
       "signOut": "Abmelden"
     },
     "componentsSyncSyncHistory": {
-      "middot": "Mittelpunkt; ",
       "activity": "Aktivität",
       "filterBySyncType": "Nach Synchronisierungstyp filtern",
       "allTypes": "Alle Arten",
@@ -1160,7 +1211,12 @@
       "last30Days": "Letzte 30 Tage",
       "loadingSyncHistory": "Synchronisierungsverlauf wird geladen",
       "noSyncActivityYet": "Noch keine Synchronisierungsaktivität",
-      "loadMore": "Mehr laden"
+      "loadMore": "Mehr laden",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, Fehlerdetails anzeigen",
+      "summaryFailed": "Synchronisierung fehlgeschlagen",
+      "summaryPulled": "{count, plural, one {# Element empfangen} other {# Elemente empfangen}}",
+      "summaryPushed": "{count, plural, one {# Element gesendet} other {# Elemente gesendet}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Zuletzt synchronisiert ",
@@ -1208,102 +1264,103 @@
       "failedToCloseVault": "Der Tresor konnte nicht geschlossen werden",
       "failedToSwitchVault": "Der Tresor konnte nicht gewechselt werden",
       "failedToUpdateConfig": "Konfiguration konnte nicht aktualisiert werden",
-      "failedToReindex": "Neuindizierung fehlgeschlagen"
+      "failedToReindex": "Neuindizierung fehlgeschlagen",
+      "failedToLoadTasks": "Aufgaben konnten nicht geladen werden"
     }
   },
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Lokaler Serverzugriff für externe MCP-Clients."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Verbindung",
+      "access": "Zugriff"
     },
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Verwenden Sie diesen localhost-Endpunkt in Cursor, Claude Desktop oder Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Bearer-Token",
+        "description": "Zugangsdaten nur im Arbeitsspeicher, gültig für diesen App-Start."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Token erneuern",
+        "description": "Macht bestehende Sitzungen externer Clients ungültig."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "{label} kopieren",
+    "notRunning": "Läuft nicht",
+    "toolsBadge": "{count, plural, one {# Tool} other {# Tools}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Agent-Berechtigungen",
+      "subtitle": "Wählen Sie Standardzugriff, Bestätigungen und lokale Anbieter für den Agent-Chat."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Lokaler OpenAI-kompatibler Anbieter",
+      "actions": "Verbindungsprüfungen"
     },
     "presets": {
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Benutzerdefiniert"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Voreinstellung"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "Basis-URL",
+        "description": "OpenAI-kompatibler /v1-Endpunkt."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Endpunkt außerhalb von Loopback zulassen",
+        "description": "Daten werden an den konfigurierten Endpunkt gesendet."
       },
       "model": {
-        "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "label": "Modell",
+        "description": "Wählen Sie ein gefundenes Modell oder geben Sie eines manuell ein."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "API-Schlüssel",
+        "description": "Optionale Zugangsdaten, gespeichert im Schlüsselbund des Betriebssystems.",
+        "configured": "Im Schlüsselbund des Betriebssystems ist bereits ein API-Schlüssel gespeichert."
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "save": "Speichern",
+      "models": "Modelle",
+      "test": "Verbindung testen",
+      "probe": "Tools prüfen"
     },
     "status": {
-      "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "disconnected": "Getrennt",
+      "toolsDisabled": "Tools deaktiviert",
+      "fullTools": "Alle Tools aktiviert",
       "checking": "Wird geprüft…",
       "connected": "Verbunden",
       "label": "Verbindung"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Agent-Berechtigungen",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Standardzugriff",
+        "description": "Legt den anfänglichen Zugriffsmodus für neue Agent-Turns fest.",
+        "vaultOnly": "Nur Tresor",
+        "computerAccess": "Computerzugriff"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Aktionen bestätigen",
+        "description": "Legen Sie fest, ob Tool-Aufrufe automatisch ausgeführt werden oder im Chat auf Genehmigung warten.",
+        "alwaysAllow": "Immer zulassen",
+        "askBeforeChanges": "Vor Änderungen fragen"
       }
     }
   },
@@ -1359,15 +1416,19 @@
       },
       "inbox": {
         "description": "Schnelles Erfassen und Sortieren",
-        "label": "Inbox"
+        "label": "Posteingang"
       },
       "journal": {
         "description": "Tägliche Notizen",
-        "label": "Journal"
+        "label": "Tagebuch"
       },
       "tasks": {
         "description": "To-dos und Fälligkeitsdaten",
         "label": "Aufgaben"
+      },
+      "spatialCanvas": {
+        "description": "Räumliche Boards, um Notizen anzuordnen und zu verknüpfen",
+        "label": "Canvas"
       }
     }
   },
@@ -1393,7 +1454,10 @@
         "skipped": "{count} übersprungen",
         "title": "Import abgeschlossen"
       },
-      "title": "Aus {name} importieren"
+      "title": "Aus {name} importieren",
+      "chooseDirectory": "Ordner wählen…",
+      "folderKeepsAssets": "Wähle den Ordner, wenn die Bilder außerhalb des Notizordners liegen — Exporte legen Medien oft in einem gemeinsamen Ordner ab.",
+      "previewError": "Vorschau fehlgeschlagen"
     },
     "header": {
       "subtitle": "Bring deine Notizen und Aufgaben aus anderen Apps herein",
@@ -1432,6 +1496,99 @@
       "tasks": "{count, plural, one {# Aufgabe} other {# Aufgaben}}",
       "withDueDate": "{count} datiert",
       "withTags": "{count} getaggt"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Spalten: {columns}",
+        "emptyTitle": "Zeile mit leerem Titel übersprungen (Spalte „{column}“)",
+        "noHeaders": "Die CSV-Datei hat keine Kopfzeile",
+        "titleColumn": "Titel aus „{column}“; weitere Spalten als Eigenschaften gespeichert"
+      },
+      "raindrop": {
+        "csvEmpty": "Die Raindrop-CSV ist leer",
+        "headerNotFound": "Die Kopfzeile der Raindrop-CSV (Spalte „url“) wurde nicht gefunden",
+        "rowNoUrl": "Zeile {row} übersprungen: keine URL"
+      },
+      "readFileFailed": "Die Datei konnte nicht gelesen werden",
+      "ticktick": {
+        "foldersDropped": "TickTick-Ordner haben keine Entsprechung in Memry und wurden verworfen",
+        "headerNotFound": "Die Kopfzeile der TickTick-CSV („Folder Name“) wurde nicht gefunden",
+        "reminderNoAnchor": "Erinnerung „{reminder}“ übersprungen (kein Datumsbezug)",
+        "subtaskParentMissing": "Übergeordnete Aufgabe von Teilaufgabe „{title}“ nicht gefunden; auf oberster Ebene importiert",
+        "unknownPriority": "Unbekannte TickTick-Priorität {priority} → keine",
+        "unsupportedRepeat": "Nicht unterstützte Wiederholungsregel „{rule}“ übersprungen"
+      },
+      "todoist": {
+        "emptyTitle": "Aufgabe mit leerem Inhalt als (ohne Titel) importiert",
+        "headerNotFound": "Keine Todoist-CSV: Die TYPE-Kopfzeile fehlt",
+        "orphanComment": "Kommentar ohne vorangehende Aufgabe übersprungen",
+        "sectionFlattened": "Abschnitt „{section}“ eingeebnet",
+        "subtaskNoParent": "Teilaufgabe „{title}“ hat bei Einrückung {indent} keine übergeordnete Aufgabe; auf oberster Ebene importiert",
+        "unknownPriority": "Unbekannte Priorität {priority} → keine",
+        "unparsedDate": "Das Datum „{date}“ konnte nicht gelesen werden"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Apple-Notizen-Datenbank wird kopiert…"
+      },
+      "bear": {
+        "scanning": "Bear-Export wird durchsucht…"
+      },
+      "csv": {
+        "importing": "CSV-Notizen werden importiert…"
+      },
+      "evernote": {
+        "scanning": ".enex-Dateien werden durchsucht…"
+      },
+      "html": {
+        "scanning": "HTML-Dateien werden durchsucht…"
+      },
+      "importingItem": "{title} wird importiert",
+      "raindrop": {
+        "importing": "Raindrop-Lesezeichen werden importiert…"
+      },
+      "roam": {
+        "reading": "Roam-Export wird gelesen…"
+      },
+      "scanningExport": "Export wird durchsucht…",
+      "scanningFiles": "Dateien werden durchsucht…",
+      "ticktick": {
+        "importing": "TickTick-Aufgaben werden importiert…"
+      },
+      "todoist": {
+        "importing": "Todoist-Aufgaben werden importiert…"
+      }
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Wird geladen…",
+      "subtitle": "Tägliche Erinnerung zum Durchsehen und Einstellungen für den Posteingang.",
+      "title": "Posteingang"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Ein sanfter täglicher Hinweis, wenn dein Posteingang Elemente enthält.",
+        "label": "Mich erinnern, meinen Posteingang durchzusehen"
+      },
+      "error": "Die Erinnerung konnte nicht aktualisiert werden.",
+      "group": "Tägliche Erinnerung zum Durchsehen",
+      "test": {
+        "button": "Test senden",
+        "description": "Die Erinnerung jetzt auslösen, um deine Systembenachrichtigungen zu prüfen.",
+        "label": "Testbenachrichtigung",
+        "sent": "Testbenachrichtigung gesendet.",
+        "sentHint": "Wenn nichts erscheint, erlaube Benachrichtigungen für MemryNote in deinen Systemeinstellungen.",
+        "unsupported": "Dieses Gerät kann keine Desktop-Benachrichtigungen anzeigen."
+      },
+      "time": {
+        "description": "Ortszeit, auf jedem Gerät.",
+        "hourLabel": "Stunde",
+        "label": "Erinnerungszeit",
+        "minuteLabel": "Minute",
+        "periodLabel": "AM oder PM"
+      }
     }
   }
 }

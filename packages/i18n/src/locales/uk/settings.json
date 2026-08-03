@@ -28,7 +28,8 @@
         "properties": "Властивості",
         "commandLine": "Командний рядок",
         "features": "Функції",
-        "import": "Імпорт"
+        "import": "Імпорт",
+        "inbox": "Вхідні"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Завантаження {percent}%",
         "downloaded": "Перезапустіть для встановлення",
         "idle": "Перевірити наявність оновлень"
+      },
+      "autoCheck": {
+        "description": "Перевіряти нові випуски під час запуску та періодично, поки застосунок відкритий.",
+        "error": "Не вдалося оновити налаштування автоперевірки",
+        "label": "Автоматично перевіряти оновлення"
+      },
+      "autoDownload": {
+        "description": "Завантажувати та встановлювати нові випуски у фоні, без запитів.",
+        "error": "Не вдалося оновити налаштування автозавантаження",
+        "label": "Автоматично завантажувати оновлення"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Ділитися анонімними метриками використання",
         "description": "Це лише анонімні метрики — вміст нотаток, пошукові запити, шляхи файлів, електронні адреси або сирі ідентифікатори ніколи не відправляються.",
         "error": "Не вдалося оновити налаштування телеметрії"
+      },
+      "diagnostics": {
+        "building": "Підготовка звіту…",
+        "consent": "Надіслати одноразовий діагностичний звіт? Він містить лише знеособлені технічні журнали — жодного вмісту нотаток.",
+        "error": "Не вдалося надіслати діагностичний звіт",
+        "notNow": "Не зараз",
+        "previewError": "Не вдалося підготувати діагностичний звіт",
+        "previewLabel": "Переглянути вміст звіту",
+        "send": "Надіслати",
+        "sendReport": {
+          "button": "Надіслати діагностичний звіт",
+          "description": "Надішліть одноразовий звіт зі знеособленими технічними журналами, щоб допомогти нам розібратися з проблемою, з якою ви зіткнулися.",
+          "label": "Діагностичний звіт"
+        },
+        "sending": "Надсилання…",
+        "sent": "Звіт надіслано — номер {incidentId}",
+        "snapshotLabel": "Знімок пристрою",
+        "title": "Надіслати діагностичний звіт?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Макет",
-      "toolbar": "Панель інструментів"
+      "toolbar": "Панель інструментів",
+      "spelling": "Правопис"
     },
     "width": {
       "label": "Ширина редактора",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Вузько",
         "medium": "Середній",
-        "wide": "Широко"
+        "wide": "Широко",
+        "full": "Повна ширина",
+        "normal": "Звичайна"
       },
       "error": "Не вдалося оновити ширину редактора"
     },
@@ -229,6 +261,11 @@
       "label": "Прикріплена панель форматування",
       "description": "Завжди показувати панель інструментів над редактором",
       "error": "Не вдалося оновити режим панелі інструментів"
+    },
+    "spellCheck": {
+      "description": "Підкреслювати слова з помилками в нотатках і щоденниках",
+      "error": "Не вдалося оновити перевірку правопису",
+      "label": "Перевіряти правопис"
     }
   },
   "templates": {
@@ -640,7 +677,7 @@
       "vaultPickerFolderLabel": "Зберігати сховища в папці",
       "vaultPickerPrimaryHint": "Відкривається зараз",
       "vaultPickerTitle": "Виберіть, що завантажити",
-      "vaultRow": "Сховище — {{count}} елементів · {{date}}"
+      "vaultRow": "Сховище — {count} елементів · {date}"
     }
   },
   "devices": {
@@ -673,7 +710,8 @@
       "removeFailed": "Не вдалося видалити пристрій",
       "renamed": "Перейменовано на \"{name}\"",
       "renameFailed": "Не вдалося перейменувати пристрій"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Підключити новий пристрій",
@@ -855,6 +893,11 @@
         "description": "Вимкніть для односторонньої синхронізації — ви все ще бачитимете події Google у memrynote, але події memrynote не з’являтимуться в Google.",
         "error": "Не вдалося оновити напрямок синхронізації",
         "label": "Показувати події memrynote в Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Вимкнено за замовчуванням. Якщо увімкнути, агент ШІ зможе читати ваші події Google; якщо вимкнути, він нічого не отримає у відповідь на запитання про них. Ви в будь-якому разі бачитимете їх у memrynote.",
+        "error": "Не вдалося оновити доступ ШІ",
+        "label": "Дозволити ШІ читати події Google Calendar"
       }
     },
     "sourcePicker": {
@@ -898,7 +941,8 @@
     },
     "groups": {
       "storageUsage": "Використання сховища",
-      "location": "Розташування"
+      "location": "Розташування",
+      "accountVaults": "Сховища у вашому обліковому записі"
     },
     "loadingStorage": "Завантаження інформації про сховище...",
     "signInStorage": "Увійдіть, щоб переглянути використання сховища",
@@ -919,6 +963,17 @@
       },
       "warningTitle": "Сховище майже повне",
       "warningDescription": "Звільніть місце або оновіть свій план, щоб уникнути проблем з синхронізацією."
+    },
+    "accountVaults": {
+      "activeHint": "Перейдіть до іншого сховища, щоб видалити це.",
+      "cloudOnly": "Немає на цьому пристрої",
+      "delete": "Видалити",
+      "deleteBody": "Це назавжди видалить усі синхронізовані дані цього сховища із серверів Memry, і цю дію неможливо скасувати. Ваші файли на диску не видаляються.",
+      "deleteConfirm": "Видалити з облікового запису",
+      "deleteFailed": "Не вдалося видалити сховище",
+      "deleteTitle": "Видалити «{name}» з вашого облікового запису?",
+      "empty": "До вашого облікового запису ще не синхронізовано жодного сховища.",
+      "itemsCount": "{count, plural, one {# елемент} few {# елементи} many {# елементів} other {# елемента}}"
     }
   },
   "tags": {
@@ -1137,16 +1192,12 @@
       "press": "Натисніть",
       "toToggleThisDialog": "щоб переключити цей діалог"
     },
-    "componentsSyncDeviceList": {
-      "middot": "середня точка;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Цей пристрій було видалено",
       "exporting": "Експорт...",
       "signOut": "Вийти"
     },
     "componentsSyncSyncHistory": {
-      "middot": "середня точка; ",
       "activity": "Активність",
       "filterBySyncType": "Фільтрувати за типом синхронізації",
       "allTypes": "Усі типи",
@@ -1160,7 +1211,12 @@
       "last30Days": "Останні 30 днів",
       "loadingSyncHistory": "Завантаження історії синхронізації",
       "noSyncActivityYet": "Ще немає активності синхронізації",
-      "loadMore": "Завантажити ще"
+      "loadMore": "Завантажити ще",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, показати деталі помилки",
+      "summaryFailed": "Синхронізація не вдалася",
+      "summaryPulled": "{count, plural, one {# елемент отримано} few {# елементи отримано} many {# елементів отримано} other {# елемента отримано}}",
+      "summaryPushed": "{count, plural, one {# елемент відправлено} few {# елементи відправлено} many {# елементів відправлено} other {# елемента відправлено}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Остання синхронізація ",
@@ -1208,102 +1264,103 @@
       "failedToCloseVault": "Не вдалося закрити сейф",
       "failedToSwitchVault": "Не вдалося переключити сейф",
       "failedToUpdateConfig": "Не вдалося оновити конфігурацію",
-      "failedToReindex": "Не вдалося переіндексувати"
+      "failedToReindex": "Не вдалося переіндексувати",
+      "failedToLoadTasks": "Не вдалося завантажити завдання"
     }
   },
   "agentMcp": {
     "header": {
-      "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "title": "MCP агента",
+      "subtitle": "Доступ до локального сервера для зовнішніх клієнтів MCP."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "З'єднання",
+      "access": "Доступ"
     },
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Використовуйте цю кінцеву точку localhost у Cursor, Claude Desktop або Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Токен Bearer",
+        "description": "Тимчасові облікові дані в пам'яті на час цього запуску застосунку."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Оновити токен",
+        "description": "Скасовує наявні сеанси зовнішніх клієнтів."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "Скопіювати {label}",
+    "notRunning": "Не запущено",
+    "toolsBadge": "{count, plural, one {# інструмент} few {# інструменти} many {# інструментів} other {# інструмента}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Дозволи агента",
+      "subtitle": "Виберіть доступ за замовчуванням, підтвердження та локальних постачальників для чату з агентом."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Локальний постачальник, сумісний з OpenAI",
+      "actions": "Перевірки з'єднання"
     },
     "presets": {
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Власний"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Пресет"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "Базовий URL",
+        "description": "Кінцева точка /v1, сумісна з OpenAI."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Дозволити нелокальну кінцеву точку",
+        "description": "Дані надсилаються до вказаної кінцевої точки."
       },
       "model": {
-        "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "label": "Модель",
+        "description": "Виберіть одну з отриманих моделей або введіть назву вручну."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "API ключ",
+        "description": "Необов'язкові облікові дані, збережені в системному сховищі ключів.",
+        "configured": "API ключ уже збережено в системному сховищі ключів."
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "save": "Зберегти",
+      "models": "Моделі",
+      "test": "Перевірити з'єднання",
+      "probe": "Опитати інструменти"
     },
     "status": {
-      "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "disconnected": "Не підключено",
+      "toolsDisabled": "Інструменти вимкнено",
+      "fullTools": "Увімкнено всі інструменти",
       "checking": "Перевірка…",
       "connected": "Підключено",
       "label": "З’єднання"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Дозволи агента",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Доступ за замовчуванням",
+        "description": "Визначає початковий режим доступу для нових запитів до агента.",
+        "vaultOnly": "Лише сховище",
+        "computerAccess": "Доступ до комп'ютера"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Підтверджувати дії",
+        "description": "Виберіть, чи виклики інструментів виконуються автоматично, чи очікують на схвалення в чаті.",
+        "alwaysAllow": "Завжди дозволяти",
+        "askBeforeChanges": "Запитувати перед змінами"
       }
     }
   },
@@ -1368,6 +1425,10 @@
       "tasks": {
         "description": "Справи та терміни",
         "label": "Завдання"
+      },
+      "spatialCanvas": {
+        "description": "Просторові дошки для впорядкування та зв’язування нотаток",
+        "label": "Полотно"
       }
     }
   },
@@ -1393,7 +1454,10 @@
         "skipped": "{count} пропущено",
         "title": "Імпорт завершено"
       },
-      "title": "Імпорт з {name}"
+      "title": "Імпорт з {name}",
+      "chooseDirectory": "Вибрати папку…",
+      "folderKeepsAssets": "Вибирайте папку, коли зображення лежать поза папкою самих нотаток — в експортах медіа часто зберігається в одній спільній папці.",
+      "previewError": "Попередній перегляд не вдався"
     },
     "header": {
       "subtitle": "Перенесіть свої нотатки та завдання з інших застосунків",
@@ -1432,6 +1496,99 @@
       "tasks": "{count, plural, one {# завдання} few {# завдання} many {# завдань} other {# завдання}}",
       "withDueDate": "{count} з датою",
       "withTags": "{count} з тегами"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Стовпці: {columns}",
+        "emptyTitle": "Пропущено рядок із порожньою назвою (стовпець «{column}»)",
+        "noHeaders": "Файл CSV не має заголовків",
+        "titleColumn": "Назву взято зі стовпця «{column}»; інші стовпці збережено як властивості"
+      },
+      "raindrop": {
+        "csvEmpty": "Файл CSV Raindrop порожній",
+        "headerNotFound": "Рядок заголовків CSV Raindrop (стовпець «url») не знайдено",
+        "rowNoUrl": "Рядок {row} пропущено: немає URL"
+      },
+      "readFileFailed": "Не вдалося прочитати файл",
+      "ticktick": {
+        "foldersDropped": "Папки TickTick не мають відповідника в Memry, тому їх пропущено",
+        "headerNotFound": "Рядок заголовків CSV TickTick («Folder Name») не знайдено",
+        "reminderNoAnchor": "Нагадування «{reminder}» пропущено (немає прив’язки до дати)",
+        "subtaskParentMissing": "Батьківське завдання для підзавдання «{title}» не знайдено; імпортовано на верхньому рівні",
+        "unknownPriority": "Невідомий пріоритет TickTick {priority} → немає",
+        "unsupportedRepeat": "Непідтримуване правило повторення «{rule}» пропущено"
+      },
+      "todoist": {
+        "emptyTitle": "Завдання з порожнім вмістом імпортовано як (без назви)",
+        "headerNotFound": "Це не CSV Todoist: немає рядка заголовків TYPE",
+        "orphanComment": "Коментар без попереднього завдання пропущено",
+        "sectionFlattened": "Розділ «{section}» зведено до плоскої структури",
+        "subtaskNoParent": "Підзавдання «{title}» не має батьківського на відступі {indent}; імпортовано на верхньому рівні",
+        "unknownPriority": "Невідомий пріоритет {priority} → немає",
+        "unparsedDate": "Не вдалося розібрати дату «{date}»"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Копіювання бази даних Apple Notes…"
+      },
+      "bear": {
+        "scanning": "Сканування експорту Bear…"
+      },
+      "csv": {
+        "importing": "Імпортування нотаток із CSV…"
+      },
+      "evernote": {
+        "scanning": "Сканування файлів .enex…"
+      },
+      "html": {
+        "scanning": "Сканування файлів HTML…"
+      },
+      "importingItem": "Імпортування {title}",
+      "raindrop": {
+        "importing": "Імпортування закладок Raindrop…"
+      },
+      "roam": {
+        "reading": "Читання експорту Roam…"
+      },
+      "scanningExport": "Сканування експорту…",
+      "scanningFiles": "Сканування файлів…",
+      "ticktick": {
+        "importing": "Імпортування завдань TickTick…"
+      },
+      "todoist": {
+        "importing": "Імпортування завдань Todoist…"
+      }
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Завантаження…",
+      "subtitle": "Нагадування про щоденний перегляд і налаштування вхідних.",
+      "title": "Вхідні"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Делікатне щоденне нагадування, коли у ваших вхідних є елементи.",
+        "label": "Нагадувати мені переглядати вхідні"
+      },
+      "error": "Не вдалося оновити нагадування.",
+      "group": "Нагадування про щоденний перегляд",
+      "test": {
+        "button": "Надіслати тест",
+        "description": "Надішліть нагадування зараз, щоб перевірити системні сповіщення.",
+        "label": "Тестове сповіщення",
+        "sent": "Тестове сповіщення надіслано.",
+        "sentHint": "Якщо нічого не з’явилося, дозвольте сповіщення для MemryNote в системних налаштуваннях.",
+        "unsupported": "Цей пристрій не може показувати сповіщення на робочому столі."
+      },
+      "time": {
+        "description": "Місцевий час, на кожному пристрої.",
+        "hourLabel": "Година",
+        "label": "Час нагадування",
+        "minuteLabel": "Хвилина",
+        "periodLabel": "AM або PM"
+      }
     }
   }
 }

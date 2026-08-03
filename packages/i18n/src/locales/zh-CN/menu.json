@@ -1,11 +1,16 @@
 {
   "app": {
     "quit": "退出",
-    "preferences": "设置…"
+    "preferences": "设置…",
+    "exit": "退出",
+    "hide": "隐藏 MemryNote",
+    "hideOthers": "隐藏其他",
+    "services": "服务",
+    "unhide": "全部显示"
   },
   "file": {
     "label": "文件",
-    "newNote": "新笔记",
+    "newNote": "新建笔记",
     "close": "关闭窗口",
     "closeTab": "关闭标签页",
     "exportPdf": "导出为 PDF…",
@@ -24,7 +29,11 @@
     "paste": "粘贴",
     "selectAll": "全选",
     "find": "查找",
-    "speech": "语音"
+    "speech": "语音",
+    "delete": "删除",
+    "pasteAndMatchStyle": "粘贴并匹配样式",
+    "startSpeaking": "开始朗读",
+    "stopSpeaking": "停止朗读"
   },
   "view": {
     "label": "视图",
@@ -37,7 +46,10 @@
     "themeSystem": "跟随系统",
     "themeWhite": "纸张",
     "toggleDayPanel": "切换日程面板",
-    "toggleSidebar": "切换侧边栏"
+    "toggleSidebar": "切换侧边栏",
+    "actualSize": "实际大小",
+    "zoomIn": "放大",
+    "zoomOut": "缩小"
   },
   "format": {
     "body": "正文",
@@ -55,7 +67,8 @@
     "about": "关于 MemryNote",
     "documentation": "文档",
     "label": "帮助",
-    "shortcuts": "键盘快捷键"
+    "shortcuts": "键盘快捷键",
+    "aboutVersion": "版本 {version}"
   },
   "insert": {
     "attachment": "插入附件…",
@@ -67,6 +80,10 @@
     "taskList": "任务列表"
   },
   "window": {
-    "label": "窗口"
+    "label": "窗口",
+    "close": "关闭",
+    "front": "前置全部窗口",
+    "minimize": "最小化",
+    "zoom": "缩放"
   }
 }

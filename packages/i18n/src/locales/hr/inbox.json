@@ -1,7 +1,7 @@
 {
   "view": {
     "tabs": {
-      "inbox": "Inbox",
+      "inbox": "Pristigla pošta",
       "archived": "Arhivirano",
       "insights": "Uvidi",
       "ariaLabel": "Odabir prikaza pristigle pošte"
@@ -18,7 +18,7 @@
       "hide": "Sakrij odgođene stavke"
     },
     "filter": {
-      "button": "Filter",
+      "button": "Filtar",
       "byType": "Filtriraj po vrsti",
       "active": "{count, plural, one {Filtriranje prema vrsti #} other {Filtriranje po vrstama #}}",
       "clearAll": "Obriši sve"
@@ -33,7 +33,7 @@
     }
   },
   "type": {
-    "link": "Link",
+    "link": "Poveznica",
     "links": "Linkovi",
     "note": "Napomena",
     "notes": "Bilješke",
@@ -51,7 +51,7 @@
   },
   "empty": {
     "successAria": "Uspjeh, inbox je prazan",
-    "title": "Inbox Zero",
+    "title": "Prazan inbox",
     "body": "Sve je obrađeno. Snimite nešto novo s gornjim unosom ili zalijepite vezu da biste započeli.",
     "filedThisWeek": "{count, plural, one {# podnio ovaj tjedan} other {# podnio ovaj tjedan}}",
     "dayStreak": "{count, plural, one {# dnevni niz} other {# dnevni niz}}",
@@ -146,7 +146,7 @@
     "selected": "{count} odabran",
     "deselectAll": "Poništi odabir svih",
     "ariaLabel": "Skupne akcije za {count} odabrane stavke",
-    "file": "File",
+    "file": "Razvrstaj",
     "tag": "Oznaka",
     "snooze": "Odgoditi",
     "archive": "Arhiva",
@@ -194,7 +194,7 @@
     "delete": "Izbriši",
     "deletePermanently": "Izbriši trajno",
     "archive": "Arhiva",
-    "file": "File",
+    "file": "Razvrstaj",
     "keyboardHint": "{modifier}⏎ datoteka · 1-5 mapa · Esc zatvori",
     "voiceTitlePlaceholder": "Imenuj ovaj glasovni zapis...",
     "fileTo": "Datoteka u",
@@ -270,7 +270,50 @@
     "panelEmpty": "Nema nadolazećih podsjetnika.",
     "panelPast": "Prošlo",
     "panelUpcoming": "Nadolazeće",
-    "taskFallback": "Zadatak"
+    "taskFallback": "Zadatak",
+    "dateTime": {
+      "dateAt": "{date} u {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Danas u {time}",
+      "todayCompact": "Danas, {time}",
+      "tomorrowAt": "Sutra u {time}",
+      "tomorrowCompact": "Sutra, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Podsjetnik na godišnjicu",
+      "inHours": {
+        "label": "Za {count, plural, one {# sat} few {# sata} other {# sati}}"
+      },
+      "inMinutes": {
+        "label": "Za {count, plural, one {# minutu} few {# minute} other {# minuta}}"
+      },
+      "inMonths": {
+        "label": "Za {count, plural, one {# mjesec} few {# mjeseca} other {# mjeseci}}"
+      },
+      "inWeeks": {
+        "label": "Za {count, plural, one {# tjedan} few {# tjedna} other {# tjedana}}"
+      },
+      "inYears": {
+        "label": "Za {count, plural, one {# godinu} few {# godine} other {# godina}}"
+      },
+      "laterToday": {
+        "description": "Za {count, plural, one {# sat} few {# sata} other {# sati}}",
+        "label": "Kasnije danas"
+      },
+      "monthlyReflection": "Mjesečno promišljanje",
+      "nextWeek": {
+        "description": "Ponedjeljak u 9:00",
+        "label": "Sljedeći tjedan"
+      },
+      "quarterlyReflection": "Tromjesečno promišljanje",
+      "reviewInAWeek": "Pregled za tjedan dana",
+      "sameDayNextMonth": "Isti dan sljedeći mjesec",
+      "tomorrow": {
+        "description": "Sutra u 9:00",
+        "label": "Sutra"
+      },
+      "tomorrowMorning": "Sutra ujutro"
+    }
   },
   "insights": {
     "captureActivity": "Snimi aktivnost",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Priloži datoteku (slike, audio, video, PDF)",
       "recordVoiceMemo": "Snimite glasovni zapis",
       "recordVoiceMemo2": "Snimite glasovni zapis",
-      "alreadyCaptured": "Već snimljeno: “",
-      "rdquo": "rdquo;",
       "captureAnyway": "Svejedno uhvati",
       "focusShortcut": "Fokusiraj polje za snimanje",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Zabilježi poveznicu",
+      "captureNote": "Zabilježi bilješku",
+      "placeholder": "Brzo bilježenje — zalijepite poveznicu, zapišite misao…",
+      "duplicateNotice": "Već zabilježeno: „{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Odaberite mapu",
@@ -408,16 +453,15 @@
       "attachFile": "Priloži datoteku"
     },
     "componentsQuickCaptureLinkPreview": {
-      "link": "LINK"
+      "link": "VEZA"
     },
     "componentsQuickCaptureStates": {
       "captured": "Zarobljen",
       "dismissError": "Odbaci pogrešku",
       "alreadyCaptured": "Već zarobljen",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; · ",
       "captureAnyway": "Svejedno uhvati",
-      "close": "Zatvori"
+      "close": "Zatvori",
+      "duplicateMeta": "„{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Ispustite za snimanje",
@@ -466,7 +510,12 @@
       "cancelRecording": "Otkaži snimanje",
       "cancel": "Odustani",
       "stopRecording": "Zaustavi snimanje",
-      "stop": "Stani"
+      "stop": "Stani",
+      "enableMicInSettings": "Omogućite pristup mikrofonu u postavkama sustava pa pokušajte ponovno.",
+      "failedToStart": "Pokretanje snimanja nije uspjelo",
+      "microphoneAccessDenied": "Pristup mikrofonu je odbijen",
+      "noMicrophoneFound": "Mikrofon nije pronađen",
+      "recordingError": "Došlo je do pogreške pri snimanju"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Nije uspjelo snimanje datoteke",
       "fileCaptureFailed": "Snimanje datoteke nije uspjelo",
       "failedToCaptureAudio": "Snimanje zvuka nije uspjelo",
-      "failedToCaptureVoice": "Snimanje glasa nije uspjelo"
+      "failedToCaptureVoice": "Snimanje glasa nije uspjelo",
+      "failedToLoadInboxPreferences": "Učitavanje postavki pristigle pošte nije uspjelo",
+      "failedToUpdateInboxPreferences": "Ažuriranje postavki pristigle pošte nije uspjelo"
     },
     "toasts": {
       "inboxRefreshed": "Inbox osvježen"
@@ -516,5 +567,10 @@
     "task": "Zadatak",
     "time": "Vrijeme",
     "title": "Pretvori"
+  },
+  "reviewNudge": {
+    "action": "Otvori pristiglu poštu",
+    "description": "Obradite današnje zabilješke odjednom, na miru.",
+    "title": "Vrijeme je da pregledate {count, plural, one {# stavku} few {# stavke} other {# stavki}}"
   }
 }

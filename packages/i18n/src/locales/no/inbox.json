@@ -33,7 +33,7 @@
     }
   },
   "type": {
-    "link": "Link",
+    "link": "Lenke",
     "links": "Lenker",
     "note": "Merk",
     "notes": "Notater",
@@ -147,14 +147,14 @@
     "deselectAll": "Fjern markeringen av alle",
     "ariaLabel": "Massehandlinger for {count} valgte elementer",
     "file": "Fil",
-    "tag": "Tag",
+    "tag": "Tagg",
     "snooze": "Slumre",
     "archive": "Arkiv",
     "add": "Legg til",
     "dismissSuggestion": "Avvis forslaget",
     "hint": {
       "file": "fil",
-      "tag": "tag",
+      "tag": "tagg",
       "snooze": "slumre",
       "archive": "arkiv",
       "deselect": "fjern merket"
@@ -270,7 +270,50 @@
     "panelEmpty": "Ingen kommende påminnelser.",
     "panelPast": "Tidligere",
     "panelUpcoming": "Kommende",
-    "taskFallback": "Oppgave"
+    "taskFallback": "Oppgave",
+    "dateTime": {
+      "dateAt": "{date} kl. {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "I dag kl. {time}",
+      "todayCompact": "I dag, {time}",
+      "tomorrowAt": "I morgen kl. {time}",
+      "tomorrowCompact": "I morgen, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Årsdagspåminnelse",
+      "inHours": {
+        "label": "Om {count, plural, one {# time} other {# timer}}"
+      },
+      "inMinutes": {
+        "label": "Om {count, plural, one {# minutt} other {# minutter}}"
+      },
+      "inMonths": {
+        "label": "Om {count, plural, one {# måned} other {# måneder}}"
+      },
+      "inWeeks": {
+        "label": "Om {count, plural, one {# uke} other {# uker}}"
+      },
+      "inYears": {
+        "label": "Om {count, plural, one {# år} other {# år}}"
+      },
+      "laterToday": {
+        "description": "Om {count, plural, one {# time} other {# timer}}",
+        "label": "Senere i dag"
+      },
+      "monthlyReflection": "Månedlig refleksjon",
+      "nextWeek": {
+        "description": "Mandag kl. 09.00",
+        "label": "Neste uke"
+      },
+      "quarterlyReflection": "Kvartalsvis refleksjon",
+      "reviewInAWeek": "Gå gjennom om en uke",
+      "sameDayNextMonth": "Samme dag neste måned",
+      "tomorrow": {
+        "description": "I morgen kl. 09.00",
+        "label": "I morgen"
+      },
+      "tomorrowMorning": "I morgen tidlig"
+    }
   },
   "insights": {
     "captureActivity": "Ta opp aktivitet",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Legg ved fil (bilder, lyd, video, PDF)",
       "recordVoiceMemo": "Ta opp talememo",
       "recordVoiceMemo2": "Ta opp talememo",
-      "alreadyCaptured": "Allerede fanget: \"",
-      "rdquo": "rdquo;",
       "captureAnyway": "Fang uansett",
       "focusShortcut": "Fokuser fangstfelt",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Fang inn lenke",
+      "captureNote": "Fang inn notat",
+      "placeholder": "Rask fangst — lim inn en lenke, noter en tanke…",
+      "duplicateNotice": "Allerede fanget inn: «{title}»"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Velg mappe",
@@ -408,16 +453,15 @@
       "attachFile": "Legg ved fil"
     },
     "componentsQuickCaptureLinkPreview": {
-      "link": "LINK"
+      "link": "LENKE"
     },
     "componentsQuickCaptureStates": {
       "captured": "Fanget",
       "dismissError": "Avvis feil",
       "alreadyCaptured": "Allerede tatt",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; · ",
       "captureAnyway": "Fang uansett",
-      "close": "Lukk"
+      "close": "Lukk",
+      "duplicateMeta": "«{title}» · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Slipp for å fange",
@@ -466,7 +510,12 @@
       "cancelRecording": "Avbryt opptaket",
       "cancel": "Avbryt",
       "stopRecording": "Stopp opptaket",
-      "stop": "Stopp"
+      "stop": "Stopp",
+      "enableMicInSettings": "Gi tilgang til mikrofonen i systeminnstillingene, og prøv på nytt.",
+      "failedToStart": "Kunne ikke starte opptaket",
+      "microphoneAccessDenied": "Ingen tilgang til mikrofonen",
+      "noMicrophoneFound": "Fant ingen mikrofon",
+      "recordingError": "Det oppsto en feil under opptaket"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Kunne ikke fange filen",
       "fileCaptureFailed": "Filfangst mislyktes",
       "failedToCaptureAudio": "Kunne ikke fange opp lyd",
-      "failedToCaptureVoice": "Kunne ikke fange stemmen"
+      "failedToCaptureVoice": "Kunne ikke fange stemmen",
+      "failedToLoadInboxPreferences": "Kunne ikke laste inn innboksinnstillingene",
+      "failedToUpdateInboxPreferences": "Kunne ikke oppdatere innboksinnstillingene"
     },
     "toasts": {
       "inboxRefreshed": "Innboksen er oppdatert"
@@ -516,5 +567,10 @@
     "task": "Oppgave",
     "time": "Tid",
     "title": "Konverter"
+  },
+  "reviewNudge": {
+    "action": "Åpne innboks",
+    "description": "Ta unna det du har fanget inn i dag, i én rolig runde.",
+    "title": "{count, plural, one {På tide å gå gjennom # element} other {På tide å gå gjennom # elementer}}"
   }
 }

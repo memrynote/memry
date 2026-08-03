@@ -15,6 +15,15 @@ interface ColorPickerProps {
   className?: string
 }
 
+/**
+ * The built-in palette ships English `label`s, so its swatches get a localized
+ * name instead. A caller that passes its own palette keeps its own labels —
+ * matching on id *and* value keeps a custom entry that reuses one of our ids
+ * (but a different hex) on the caller's label.
+ */
+const isProjectPaletteColor = (id: string, value: string): boolean =>
+  projectColors.some((c) => c.id === id && c.value === value)
+
 // ============================================================================
 // COLOR PICKER COMPONENT
 // ============================================================================
@@ -26,7 +35,20 @@ export const ColorPicker = ({
   size = 'md',
   className
 }: ColorPickerProps): React.JSX.Element => {
-  const { t: tPhaseF } = useT('tasks')
+  const { t } = useT('tasks')
+
+  const projectColorNames: Record<string, string> = {
+    gray: t('colors.gray'),
+    red: t('colors.red'),
+    orange: t('colors.orange'),
+    yellow: t('colors.yellow'),
+    green: t('colors.green'),
+    teal: t('colors.teal'),
+    blue: t('colors.blue'),
+    indigo: t('colors.indigo'),
+    purple: t('colors.purple'),
+    pink: t('colors.pink')
+  }
   const handleColorClick = (color: string) => (): void => {
     onChange(color)
   }
@@ -47,17 +69,20 @@ export const ColorPicker = ({
     <div
       className={cn('flex flex-wrap gap-2', className)}
       role="radiogroup"
-      aria-label={tPhaseF('phaseF.componentsTasksColorPicker.selectColor')}
+      aria-label={t('phaseF.componentsTasksColorPicker.selectColor')}
     >
       {colors.map((color) => {
         const isSelected = value === color.value
+        const localizedName = isProjectPaletteColor(color.id, color.value)
+          ? projectColorNames[color.id]
+          : undefined
         return (
           <button
             key={color.id}
             type="button"
             role="radio"
             aria-checked={isSelected}
-            aria-label={color.label || color.id}
+            aria-label={localizedName || color.label || color.id}
             onClick={handleColorClick(color.value)}
             onKeyDown={handleKeyDown(color.value)}
             tabIndex={0}

@@ -17,7 +17,18 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
-  useT: () => ({ t: (key: string) => key.split('.').at(-1) || key })
+  useT: () => ({
+    t: (key: string, values?: Record<string, unknown>) => {
+      const leaf = key.split('.').at(-1) || key
+      // Echo the placeholder names too, so a call site that stops matching the
+      // {placeholder} in the English string fails here instead of shipping raw.
+      return values
+        ? `${leaf}:${Object.entries(values)
+            .map(([name, value]) => `${name}=${String(value)}`)
+            .join('/')}`
+        : leaf
+    }
+  })
 }))
 
 vi.mock('@/hooks/use-inbox', () => ({
@@ -121,7 +132,8 @@ describe('CaptureInput', () => {
         source: 'inline'
       })
     )
-    expect(screen.getByText(/Existing captured thought/)).toBeInTheDocument()
+    // One ICU message carries the title — no split HTML entity, no fragments.
+    expect(screen.getByText('duplicateNotice:title=Existing captured thought')).toBeInTheDocument()
     // The duplicate is unresolved, so the text has to survive in the field.
     expect(screen.getByLabelText('captureInput')).toHaveValue('First line\nsecond line')
 

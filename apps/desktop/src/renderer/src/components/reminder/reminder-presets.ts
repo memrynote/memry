@@ -7,6 +7,9 @@
  * @module components/reminder/reminder-presets
  */
 
+import { getI18n } from 'react-i18next'
+
+import { getActiveLocale } from '@/lib/active-locale'
 import type { ClockFormat } from '@/lib/time-format'
 import { formatTimeOfDay } from '@/lib/time-format'
 
@@ -131,32 +134,53 @@ export function getLaterToday(): Date {
 // Standard Presets
 // ============================================================================
 
+// Labels and descriptions are read lazily (via getters) so they follow the
+// active language instead of freezing whatever locale was loaded at import time.
+
 /**
  * Standard reminder presets for general use
  */
 export const standardPresets: ReminderPreset[] = [
   {
     id: 'later-today',
-    label: 'Later Today',
-    description: 'In 4 hours',
+    get label() {
+      return getI18n().getFixedT(null, 'inbox')('reminder.presets.laterToday.label')
+    },
+    get description() {
+      return getI18n().getFixedT(null, 'inbox')('reminder.presets.laterToday.description', {
+        count: 4
+      })
+    },
     getDate: getLaterToday
   },
   {
     id: 'tomorrow',
-    label: 'Tomorrow',
-    description: 'Tomorrow at 9 AM',
+    get label() {
+      return getI18n().getFixedT(null, 'inbox')('reminder.presets.tomorrow.label')
+    },
+    get description() {
+      return getI18n().getFixedT(null, 'inbox')('reminder.presets.tomorrow.description')
+    },
     getDate: () => getTomorrow(9)
   },
   {
     id: 'next-week',
-    label: 'Next Week',
-    description: 'Monday at 9 AM',
+    get label() {
+      return getI18n().getFixedT(null, 'inbox')('reminder.presets.nextWeek.label')
+    },
+    get description() {
+      return getI18n().getFixedT(null, 'inbox')('reminder.presets.nextWeek.description')
+    },
     getDate: () => getNextMonday(9)
   },
   {
     id: 'in-one-month',
-    label: 'In 1 Month',
-    description: 'Same day next month',
+    get label() {
+      return getI18n().getFixedT(null, 'inbox')('reminder.presets.inMonths.label', { count: 1 })
+    },
+    get description() {
+      return getI18n().getFixedT(null, 'inbox')('reminder.presets.sameDayNextMonth')
+    },
     getDate: () => getInMonths(1, 9)
   }
 ]
@@ -167,26 +191,42 @@ export const standardPresets: ReminderPreset[] = [
 export const journalPresets: ReminderPreset[] = [
   {
     id: 'in-one-week',
-    label: 'In 1 Week',
-    description: 'Review in a week',
+    get label() {
+      return getI18n().getFixedT(null, 'inbox')('reminder.presets.inWeeks.label', { count: 1 })
+    },
+    get description() {
+      return getI18n().getFixedT(null, 'inbox')('reminder.presets.reviewInAWeek')
+    },
     getDate: () => getInWeeks(1, 9)
   },
   {
     id: 'in-one-month',
-    label: 'In 1 Month',
-    description: 'Monthly reflection',
+    get label() {
+      return getI18n().getFixedT(null, 'inbox')('reminder.presets.inMonths.label', { count: 1 })
+    },
+    get description() {
+      return getI18n().getFixedT(null, 'inbox')('reminder.presets.monthlyReflection')
+    },
     getDate: () => getInMonths(1, 9)
   },
   {
     id: 'in-three-months',
-    label: 'In 3 Months',
-    description: 'Quarterly reflection',
+    get label() {
+      return getI18n().getFixedT(null, 'inbox')('reminder.presets.inMonths.label', { count: 3 })
+    },
+    get description() {
+      return getI18n().getFixedT(null, 'inbox')('reminder.presets.quarterlyReflection')
+    },
     getDate: () => getInMonths(3, 9)
   },
   {
     id: 'in-one-year',
-    label: 'In 1 Year',
-    description: 'Anniversary reminder',
+    get label() {
+      return getI18n().getFixedT(null, 'inbox')('reminder.presets.inYears.label', { count: 1 })
+    },
+    get description() {
+      return getI18n().getFixedT(null, 'inbox')('reminder.presets.anniversaryReminder')
+    },
     getDate: () => getInMonths(12, 9)
   }
 ]
@@ -197,7 +237,9 @@ export const journalPresets: ReminderPreset[] = [
 export const snoozePresets: ReminderPreset[] = [
   {
     id: 'in-15-min',
-    label: 'In 15 Minutes',
+    get label() {
+      return getI18n().getFixedT(null, 'inbox')('reminder.presets.inMinutes.label', { count: 15 })
+    },
     getDate: () => {
       const date = new Date()
       date.setMinutes(date.getMinutes() + 15)
@@ -206,7 +248,9 @@ export const snoozePresets: ReminderPreset[] = [
   },
   {
     id: 'in-1-hour',
-    label: 'In 1 Hour',
+    get label() {
+      return getI18n().getFixedT(null, 'inbox')('reminder.presets.inHours.label', { count: 1 })
+    },
     getDate: () => {
       const date = new Date()
       date.setHours(date.getHours() + 1)
@@ -215,7 +259,9 @@ export const snoozePresets: ReminderPreset[] = [
   },
   {
     id: 'in-3-hours',
-    label: 'In 3 Hours',
+    get label() {
+      return getI18n().getFixedT(null, 'inbox')('reminder.presets.inHours.label', { count: 3 })
+    },
     getDate: () => {
       const date = new Date()
       date.setHours(date.getHours() + 3)
@@ -224,7 +270,9 @@ export const snoozePresets: ReminderPreset[] = [
   },
   {
     id: 'tomorrow-morning',
-    label: 'Tomorrow Morning',
+    get label() {
+      return getI18n().getFixedT(null, 'inbox')('reminder.presets.tomorrowMorning')
+    },
     getDate: () => getTomorrow(9)
   }
 ]
@@ -248,34 +296,38 @@ export function formatReminderDate(
   const isToday = date.toDateString() === now.toDateString()
   const isTomorrow = date.toDateString() === tomorrow.toDateString()
 
+  // Runs outside React (plain helper), so it reaches i18next directly.
+  const t = getI18n().getFixedT(null, 'inbox')
   const timeStr = formatTimeOfDay(date, clockFormat)
+
   // Compact form drops the "at" separator and shortens the weekday, for tight
   // surfaces like the task drawer badge where the verbose form wraps to two lines.
-  const sep = compact ? ', ' : ' at '
-
   if (isToday) {
-    return `Today${sep}${timeStr}`
+    return compact
+      ? t('reminder.dateTime.todayCompact', { time: timeStr })
+      : t('reminder.dateTime.todayAt', { time: timeStr })
   }
 
   if (isTomorrow) {
-    return `Tomorrow${sep}${timeStr}`
+    return compact
+      ? t('reminder.dateTime.tomorrowCompact', { time: timeStr })
+      : t('reminder.dateTime.tomorrowAt', { time: timeStr })
   }
 
   // Check if within this week
   const daysUntil = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-  if (daysUntil < 7) {
-    const dayName = date.toLocaleDateString('en-US', { weekday: compact ? 'short' : 'long' })
-    return `${dayName}${sep}${timeStr}`
-  }
+  const dateStr =
+    daysUntil < 7
+      ? date.toLocaleDateString(getActiveLocale(), { weekday: compact ? 'short' : 'long' })
+      : date.toLocaleDateString(getActiveLocale(), {
+          month: 'short',
+          day: 'numeric',
+          year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+        })
 
-  // Otherwise, use full date
-  const dateStr = date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-  })
-
-  return `${dateStr}${sep}${timeStr}`
+  return compact
+    ? t('reminder.dateTime.dateCompact', { date: dateStr, time: timeStr })
+    : t('reminder.dateTime.dateAt', { date: dateStr, time: timeStr })
 }
 
 /**

@@ -23,12 +23,13 @@
         "shortcuts": "Zkratky",
         "ai": "Asistent AI",
         "integrations": "Integrace",
-        "vault": "Vault",
+        "vault": "Trezor",
         "tags": "Tagy",
         "properties": "Vlastnosti",
         "commandLine": "Příkazový řádek",
         "features": "Funkce",
-        "import": "Import"
+        "import": "Import",
+        "inbox": "Doručená pošta"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Stahování {percent} %",
         "downloaded": "Restartujte k instalaci",
         "idle": "Zkontrolujte aktualizace"
+      },
+      "autoCheck": {
+        "description": "Kontrolovat nová vydání při spuštění a průběžně, dokud je aplikace otevřená.",
+        "error": "Nastavení automatické kontroly se nepodařilo aktualizovat",
+        "label": "Automaticky kontrolovat aktualizace"
+      },
+      "autoDownload": {
+        "description": "Stahovat a instalovat nová vydání na pozadí bez dotazu.",
+        "error": "Nastavení automatického stahování se nepodařilo aktualizovat",
+        "label": "Automaticky stahovat aktualizace"
       }
     },
     "language": {
@@ -116,7 +127,7 @@
       "defaultNoteFolder": {
         "description": "Prázdné = kořen trezoru",
         "label": "Výchozí umístění nových poznámek",
-        "placeholder": "notes"
+        "placeholder": "poznámky"
       }
     },
     "privacy": {
@@ -124,6 +135,24 @@
         "label": "Sdílejte anonymní metriky používání",
         "description": "Jsou to pouze anonové metriky – nikdy se neodesílají žádné poznámky, vyhledávací dotazy, cesty k souborům, e-maily ani nezpracovaná ID.",
         "error": "Nastavení telemetrie se nepodařilo aktualizovat"
+      },
+      "diagnostics": {
+        "building": "Příprava zprávy…",
+        "consent": "Odeslat jednorázovou diagnostickou zprávu? Obsahuje pouze anonymizované technické záznamy — žádný obsah poznámek.",
+        "error": "Diagnostickou zprávu se nepodařilo odeslat",
+        "notNow": "Teď ne",
+        "previewError": "Diagnostickou zprávu se nepodařilo připravit",
+        "previewLabel": "Náhled obsahu zprávy",
+        "send": "Odeslat",
+        "sendReport": {
+          "button": "Odeslat diagnostickou zprávu",
+          "description": "Odešlete jednorázovou zprávu s anonymizovanými technickými záznamy, abychom mohli vyřešit problém, na který jste narazili.",
+          "label": "Diagnostická zpráva"
+        },
+        "sending": "Odesílání…",
+        "sent": "Zpráva odeslána — referenční číslo {incidentId}",
+        "snapshotLabel": "Snímek zařízení",
+        "title": "Odeslat diagnostickou zprávu?"
       }
     },
     "dateFormat": {
@@ -171,9 +200,9 @@
         "placeholder": "#000000"
       },
       "presets": {
-        "indigo": "Indigo",
-        "amber": "Amber",
-        "emerald": "Emerald",
+        "indigo": "Indigová",
+        "amber": "Jantarová",
+        "emerald": "Smaragdová",
         "red": "Červená",
         "violet": "Fialová",
         "cyan": "azurová",
@@ -194,7 +223,7 @@
         "options": {
           "system": "Výchozí nastavení systému",
           "sansSerif": "Bezpatkové",
-          "serif": "Serif (Crimson Pro)",
+          "serif": "Patkové (Crimson Pro)",
           "gelasio": "Gelasio",
           "geist": "Geist",
           "inter": "Inter",
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Rozložení",
-      "toolbar": "Panel nástrojů"
+      "toolbar": "Panel nástrojů",
+      "spelling": "Pravopis"
     },
     "width": {
       "label": "Šířka editoru",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Úzký",
         "medium": "Střední",
-        "wide": "Široký"
+        "wide": "Široký",
+        "full": "Plná šířka",
+        "normal": "Normální"
       },
       "error": "Aktualizace šířky editoru se nezdařila"
     },
@@ -229,6 +261,11 @@
       "label": "Sticky Formating Toolbar",
       "description": "Vždy zobrazovat panel nástrojů nad editorem",
       "error": "Aktualizace režimu panelu nástrojů se nezdařila"
+    },
+    "spellCheck": {
+      "description": "Podtrhávat chybně napsaná slova v poznámkách a denících",
+      "error": "Kontrolu pravopisu se nepodařilo aktualizovat",
+      "label": "Kontrolovat pravopis"
     }
   },
   "templates": {
@@ -322,7 +359,7 @@
     "folder": {
       "description": "Složka, kde jsou uloženy denní poznámky",
       "label": "Složka deníku",
-      "placeholder": "journal"
+      "placeholder": "deník"
     },
     "preview": {
       "description": "Cesta k dnešnímu souboru deníku",
@@ -640,7 +677,7 @@
       "vaultPickerFolderLabel": "Ukládat trezory do složky",
       "vaultPickerPrimaryHint": "Otevře se nyní",
       "vaultPickerTitle": "Vyberte, co stáhnout",
-      "vaultRow": "Trezor — {{count}} položek · {{date}}"
+      "vaultRow": "Trezor — {count} položek · {date}"
     }
   },
   "devices": {
@@ -673,7 +710,8 @@
       "removeFailed": "Zařízení se nepodařilo odebrat",
       "renamed": "Přejmenováno na \"{name}\"",
       "renameFailed": "Přejmenování zařízení se nezdařilo"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Připojte nové zařízení",
@@ -812,7 +850,7 @@
       "connection": "Připojení",
       "activePort": "Aktivní na portu {port}",
       "notConnected": "Nepřipojeno",
-      "test": "Test",
+      "test": "Otestovat",
       "stopFailed": "Stávající server se nepodařilo zastavit",
       "connected": "Připojeno! Server běží na portu {port}",
       "connectFailed": "Připojení se nezdařilo",
@@ -855,6 +893,11 @@
         "description": "Vypněte pro jednosměrnou synchronizaci — své události Google budete v memrynote stále vidět, ale události memrynote se v Google nezobrazí.",
         "error": "Nepodařilo se aktualizovat směr synchronizace",
         "label": "Zobrazit události memrynote v Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Ve výchozím nastavení vypnuto. Po zapnutí může agent AI číst vaše události Google; po vypnutí se o nich na dotaz nic nedozví. Vy je v memrynote uvidíte tak jako tak.",
+        "error": "Nepodařilo se aktualizovat přístup AI",
+        "label": "Umožnit AI číst události v Google Calendar"
       }
     },
     "sourcePicker": {
@@ -893,12 +936,13 @@
   },
   "vault": {
     "header": {
-      "title": "Vault",
+      "title": "Trezor",
       "subtitle": "Konfigurace a úložiště trezoru"
     },
     "groups": {
       "storageUsage": "Využití úložiště",
-      "location": "Umístění"
+      "location": "Umístění",
+      "accountVaults": "Trezory ve vašem účtu"
     },
     "loadingStorage": "Načítání informací o úložišti...",
     "signInStorage": "Chcete-li zobrazit využití úložiště, přihlaste se",
@@ -919,6 +963,17 @@
       },
       "warningTitle": "Úložiště téměř plné",
       "warningDescription": "Uvolněte místo nebo upgradujte svůj plán, abyste se vyhnuli problémům se synchronizací."
+    },
+    "accountVaults": {
+      "activeHint": "Chcete-li tento trezor smazat, přepněte na jiný.",
+      "cloudOnly": "Není na tomto zařízení",
+      "delete": "Smazat",
+      "deleteBody": "Tím se ze serverů Memry trvale odstraní všechna synchronizovaná data tohoto trezoru. Tuto akci nelze vrátit zpět. Soubory na disku zůstanou zachovány.",
+      "deleteConfirm": "Smazat z účtu",
+      "deleteFailed": "Trezor se nepodařilo smazat",
+      "deleteTitle": "Smazat „{name}“ z vašeho účtu?",
+      "empty": "K vašemu účtu zatím není synchronizovaný žádný trezor.",
+      "itemsCount": "{count} položek"
     }
   },
   "tags": {
@@ -1137,16 +1192,12 @@
       "press": "Stiskněte ",
       "toToggleThisDialog": "pro přepnutí tohoto dialogu"
     },
-    "componentsSyncDeviceList": {
-      "middot": "střední tečka;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Toto zařízení bylo odstraněno",
       "exporting": "Exportování...",
       "signOut": "Odhlásit se"
     },
     "componentsSyncSyncHistory": {
-      "middot": "střední tečka; ",
       "activity": "Aktivita",
       "filterBySyncType": "Filtrujte podle typu synchronizace",
       "allTypes": "Všechny typy",
@@ -1160,7 +1211,12 @@
       "last30Days": "Posledních 30 dní",
       "loadingSyncHistory": "Načítání historie synchronizace",
       "noSyncActivityYet": "Zatím žádná synchronizační aktivita",
-      "loadMore": "Načíst více"
+      "loadMore": "Načíst více",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, zobrazit podrobnosti chyby",
+      "summaryFailed": "Synchronizace selhala",
+      "summaryPulled": "{count, plural, one {# položka stažena} few {# položky staženy} many {# položky staženo} other {# položek staženo}}",
+      "summaryPushed": "{count, plural, one {# položka odeslána} few {# položky odeslány} many {# položky odesláno} other {# položek odesláno}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Poslední synchronizace ",
@@ -1208,102 +1264,103 @@
       "failedToCloseVault": "Trezor se nepodařilo zavřít",
       "failedToSwitchVault": "Přepnutí trezoru se nezdařilo",
       "failedToUpdateConfig": "Aktualizace konfigurace se nezdařila",
-      "failedToReindex": "Přeindexování se nezdařilo"
+      "failedToReindex": "Přeindexování se nezdařilo",
+      "failedToLoadTasks": "Úkoly se nepodařilo načíst"
     }
   },
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Přístup k místnímu serveru pro externí klienty MCP."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Připojení",
+      "access": "Přístup"
     },
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Použijte tento koncový bod localhost v aplikacích Cursor, Claude Desktop nebo Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Token Bearer",
+        "description": "Přihlašovací údaj v paměti platný pro toto spuštění aplikace."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Obnovit token",
+        "description": "Zneplatní stávající relace externích klientů."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "Kopírovat {label}",
+    "notRunning": "Neběží",
+    "toolsBadge": "{count, plural, one {# nástroj} few {# nástroje} many {# nástroje} other {# nástrojů}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Oprávnění agenta",
+      "subtitle": "Zvolte výchozí přístup, potvrzování a místní poskytovatele pro Chat Agent."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Místní poskytovatel kompatibilní s OpenAI",
+      "actions": "Kontroly připojení"
     },
     "presets": {
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Vlastní"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Předvolba"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "Základní URL",
+        "description": "Koncový bod /v1 kompatibilní s OpenAI."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Povolit koncový bod mimo loopback",
+        "description": "Data se odesílají na nastavený koncový bod."
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "Vyberte vrácený model nebo jej zadejte ručně."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "Klíč API",
+        "description": "Volitelný přihlašovací údaj uložený v klíčence OS.",
+        "configured": "V klíčence OS je již uložen klíč API."
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "save": "Uložit",
+      "models": "Modely",
+      "test": "Otestovat připojení",
+      "probe": "Prověřit nástroje"
     },
     "status": {
-      "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "disconnected": "Odpojeno",
+      "toolsDisabled": "Nástroje vypnuty",
+      "fullTools": "Všechny nástroje povoleny",
       "checking": "Kontrola…",
       "connected": "Připojeno",
       "label": "Připojení"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Oprávnění agenta",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Výchozí přístup",
+        "description": "Nastaví počáteční režim přístupu pro nová kola agenta.",
+        "vaultOnly": "Pouze trezor",
+        "computerAccess": "Přístup k počítači"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Potvrzovat akce",
+        "description": "Zvolte, zda se volání nástrojů spouštějí automaticky, nebo čekají na schválení v chatu.",
+        "alwaysAllow": "Vždy povolit",
+        "askBeforeChanges": "Zeptat se před změnami"
       }
     }
   },
@@ -1368,6 +1425,10 @@
       "tasks": {
         "description": "Úkoly a termíny splnění",
         "label": "Úkoly"
+      },
+      "spatialCanvas": {
+        "description": "Prostorové nástěnky pro uspořádání a propojení poznámek",
+        "label": "Plátno"
       }
     }
   },
@@ -1393,7 +1454,10 @@
         "skipped": "{count} přeskočeno",
         "title": "Import dokončen"
       },
-      "title": "Importovat z {name}"
+      "title": "Importovat z {name}",
+      "chooseDirectory": "Vyberte složku…",
+      "folderKeepsAssets": "Vyberte složku, když obrázky leží mimo složku s poznámkami — exporty často ukládají média do jedné sdílené složky.",
+      "previewError": "Náhled se nezdařil"
     },
     "header": {
       "subtitle": "Přeneste své poznámky a úkoly z jiných aplikací",
@@ -1432,6 +1496,99 @@
       "tasks": "{count, plural, one {# úkol} few {# úkoly} other {# úkolů}}",
       "withDueDate": "{count} s datem",
       "withTags": "{count} označeno"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Sloupce: {columns}",
+        "emptyTitle": "Přeskočen řádek s prázdným názvem (sloupec „{column}“)",
+        "noHeaders": "Soubor CSV nemá záhlaví",
+        "titleColumn": "Název ze sloupce „{column}“; ostatní sloupce uloženy jako vlastnosti"
+      },
+      "raindrop": {
+        "csvEmpty": "Soubor CSV z Raindrop je prázdný",
+        "headerNotFound": "Nenalezen řádek záhlaví v CSV z Raindrop (sloupec „url“)",
+        "rowNoUrl": "Řádek {row} přeskočen: chybí URL"
+      },
+      "readFileFailed": "Nepodařilo se přečíst soubor",
+      "ticktick": {
+        "foldersDropped": "Složky z TickTick nemají v Memry obdobu a byly vynechány",
+        "headerNotFound": "Nenalezen řádek záhlaví v CSV z TickTick („Folder Name“)",
+        "reminderNoAnchor": "Připomenutí „{reminder}“ přeskočeno (chybí ukotvení k datu)",
+        "subtaskParentMissing": "Nadřazený úkol dílčího úkolu „{title}“ nenalezen; importován na nejvyšší úrovni",
+        "unknownPriority": "Neznámá priorita {priority} z TickTick → žádná",
+        "unsupportedRepeat": "Nepodporované pravidlo opakování „{rule}“ přeskočeno"
+      },
+      "todoist": {
+        "emptyTitle": "Úkol s prázdným obsahem importován jako (bez názvu)",
+        "headerNotFound": "Nejde o CSV z Todoist: chybí řádek záhlaví TYPE",
+        "orphanComment": "Komentář bez předcházejícího úkolu přeskočen",
+        "sectionFlattened": "Sekce „{section}“ zploštěna",
+        "subtaskNoParent": "Dílčí úkol „{title}“ nemá nadřazený úkol na odsazení {indent}; importován na nejvyšší úrovni",
+        "unknownPriority": "Neznámá priorita {priority} → žádná",
+        "unparsedDate": "Nepodařilo se zpracovat datum „{date}“"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Kopírování databáze Apple Notes…"
+      },
+      "bear": {
+        "scanning": "Prohledávání exportu z Bearu…"
+      },
+      "csv": {
+        "importing": "Import poznámek z CSV…"
+      },
+      "evernote": {
+        "scanning": "Prohledávání souborů .enex…"
+      },
+      "html": {
+        "scanning": "Prohledávání souborů HTML…"
+      },
+      "importingItem": "Importuje se {title}",
+      "raindrop": {
+        "importing": "Import záložek z Raindropu…"
+      },
+      "roam": {
+        "reading": "Čtení exportu z Roamu…"
+      },
+      "scanningExport": "Prohledávání exportu…",
+      "scanningFiles": "Prohledávání souborů…",
+      "ticktick": {
+        "importing": "Import úkolů z TickTicku…"
+      },
+      "todoist": {
+        "importing": "Import úkolů z Todoistu…"
+      }
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Načítání…",
+      "subtitle": "Denní připomenutí a předvolby doručené pošty.",
+      "title": "Doručená pošta"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Jemné denní připomenutí, když máte v doručené poště položky.",
+        "label": "Připomínat mi, že mám projít doručenou poštu"
+      },
+      "error": "Připomenutí se nepodařilo aktualizovat.",
+      "group": "Denní připomenutí",
+      "test": {
+        "button": "Odeslat test",
+        "description": "Spusťte připomenutí hned a ověřte si systémová oznámení.",
+        "label": "Testovací oznámení",
+        "sent": "Testovací oznámení odesláno.",
+        "sentHint": "Pokud se nic neobjeví, povolte oznámení pro MemryNote v nastavení systému.",
+        "unsupported": "Toto zařízení neumí zobrazovat oznámení na ploše."
+      },
+      "time": {
+        "description": "Místní čas, na každém zařízení.",
+        "hourLabel": "Hodina",
+        "label": "Čas připomenutí",
+        "minuteLabel": "Minuta",
+        "periodLabel": "AM nebo PM"
+      }
     }
   }
 }

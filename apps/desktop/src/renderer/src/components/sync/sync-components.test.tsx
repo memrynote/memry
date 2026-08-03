@@ -386,6 +386,15 @@ describe('sync components coverage', () => {
     await waitFor(() => expect(screen.getByText('This Mac')).toBeInTheDocument())
     expect(screen.queryByText('Tablet')).not.toBeInTheDocument()
 
+    expect(
+      screen.getByText(
+        `devices.platformMeta${JSON.stringify({
+          platform: 'macOS',
+          detail: `devices.linked${JSON.stringify({ time: 'less than a minute' })}`
+        })}`
+      )
+    ).toBeInTheDocument()
+
     fireEvent.click(screen.getByRole('button', { name: /devices.showMoreAria/ }))
     expect(screen.getByText('Tablet')).toBeInTheDocument()
 
@@ -478,7 +487,17 @@ describe('sync components coverage', () => {
 
     render(<SyncHistoryPanel />)
 
-    expect(screen.getByText('1 item pushed')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        `phaseF.componentsSyncSyncHistory.summaryPushed${JSON.stringify({ count: 1 })}`
+      )
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        `phaseF.componentsSyncSyncHistory.duration${JSON.stringify({ duration: '500ms' })}`
+      )
+    ).toBeInTheDocument()
+    expect(screen.getByText('phaseF.componentsSyncSyncHistory.summaryFailed')).toBeInTheDocument()
     expect(screen.getByText('token expired')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'phaseF.componentsSyncSyncHistory.pushed' }))
     expect(mocks.syncHistory.setFilter).toHaveBeenCalled()

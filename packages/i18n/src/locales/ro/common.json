@@ -25,7 +25,8 @@
     "expand": "Extindeți",
     "collapse": "Colaps",
     "showMore": "+{count, plural, one {# mai mult} other {# mai mult}}",
-    "showLess": "Arată mai puțin"
+    "showLess": "Arată mai puțin",
+    "undo": "Anulează"
   },
   "tabs": {
     "pin": "Fila Pin",
@@ -37,7 +38,7 @@
       "closeAll": "Închideți totul",
       "duplicate": "Duplicați fila",
       "splitRight": "Split dreapta",
-      "splitDown": "Split Down",
+      "splitDown": "Split jos",
       "copyPath": "Copiați calea",
       "revealInSidebar": "Dezvăluie în bara laterală"
     }
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "Astăzi",
     "yesterday": "Ieri",
-    "daysAgo": "{count, plural, one {# zi în urmă} other {# zile în urmă}}"
+    "daysAgo": "{count, plural, one {# zi în urmă} other {# zile în urmă}}",
+    "daysLate": "{count, plural, one {# z întârziere} few {# z întârziere} other {# z întârziere}}",
+    "daysOverdue": "{count, plural, one {# zi întârziere} few {# zile întârziere} other {# de zile întârziere}}",
+    "tomorrow": "Mâine"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {În fiecare zi} other {La fiecare # zile}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {În fiecare lună pe {day}{suffix}} other {La fiecare # luni pe {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {În fiecare lună pe {week} {day}} other {La fiecare # luni pe {week} {day}}}",
     "everyNYears": "{count, plural, one {În fiecare an} other {La fiecare # ani}}",
-    "repeats": "Se repetă"
+    "repeats": "Se repetă",
+    "ordinal": {
+      "first": "prima",
+      "fourth": "a patra",
+      "last": "ultima",
+      "second": "a doua",
+      "third": "a treia"
+    },
+    "preset": {
+      "everyWeekday": "În fiecare zi lucrătoare (Lun-Vin)",
+      "everyYearOnDate": "În fiecare an pe {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -102,7 +117,15 @@
       "updateDownloadingPercent": "Se descarcă {percent}%",
       "updateInstallingSubtitle": "MemryNote va reporni automat.",
       "updateInstallingTitle": "Se instalează actualizarea",
-      "updateRestart": "Repornește"
+      "updateRestart": "Repornește",
+      "feedbackPrivacyEmailOptional": "Emailul tău — doar dacă îl adaugi și doar ca să îți putem răspunde",
+      "feedbackPrivacyEmailSignedIn": "Emailul contului tău ({email}), ca să îți putem răspunde",
+      "feedbackPrivacyMessage": "Mesajul tău, exact așa cum l-ai scris",
+      "feedbackPrivacyNote": "Nimic altceva. Notele tale rămân pe dispozitivul tău.",
+      "feedbackPrivacyPlan": "Planul tău (free, Plus, Pro sau Believer)",
+      "feedbackPrivacyTitle": "Ce se trimite",
+      "feedbackPrivacyVersion": "Versiunea aplicației și sistemul de operare",
+      "projects": "Proiecte"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Redimensionați panoul de zi",
@@ -180,8 +203,9 @@
       "search": "Caută",
       "searchNotesTasksJournalInbox": "Căutați note, sarcini, jurnal, inbox...",
       "noResultsFor": "Nu există rezultate pentru „",
-      "rdquo": "rdquo;",
-      "result": "rezultat"
+      "result": "rezultat",
+      "noResultsForQuery": "Niciun rezultat pentru „{query}”",
+      "resultCount": "{count, plural, one {# rezultat} few {# rezultate} other {# de rezultate}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Căutați și faceți clic pe elemente pentru a vă construi traseul",
@@ -231,7 +255,8 @@
       "journal": "Jurnal",
       "calendar": "Calendar",
       "inboxCapture": "Captură inbox",
-      "tasks": "Sarcini"
+      "tasks": "Sarcini",
+      "tags": "Etichete"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Modificări nesalvate",
@@ -261,15 +286,15 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Ceva a mers prost",
       "anErrorOccurredWhileRenderingThisTabContent": "A apărut o eroare la redarea conținutului acestei file.",
-      "tryAgain": "Încercați din nou"
+      "tryAgain": "Încercați din nou",
+      "sendReport": "Trimite raport de diagnosticare"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Pictograma notă"
     },
     "componentsTabsUnsavedChangesDialog": {
       "unsavedChanges": "Modificări nesalvate",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; are modificări nesalvate. Ce ai vrea sa faci?"
+      "unsavedChangesBody": "„{title}” are modificări nesalvate. Ce doriți să faceți?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Nou spațiu de lucru",
@@ -341,7 +366,6 @@
       "logOut": "Deconectați-vă",
       "signInToSync": "Conectați-vă pentru sincronizare",
       "remove": "Eliminați „",
-      "rdquoFromList": "rdquo; din lista?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Acest seif va fi eliminat din aplicație, dar fișierele dvs. vor rămâne pe disc. Îl poți adăuga oricând din nou mai târziu.",
       "cancel": "Anulează",
       "remove2": "Eliminați",
@@ -352,7 +376,13 @@
       "downloadLocation": "Locație",
       "changeLocation": "Schimbă…",
       "download": "Descarcă",
-      "downloadFailed": "Seiful nu a putut fi descărcat"
+      "downloadFailed": "Seiful nu a putut fi descărcat",
+      "deleteFromAccount": "Șterge din cont",
+      "deleteVaultBody": "Această acțiune elimină definitiv toate datele sincronizate ale acestui seif de pe serverele Memry și nu poate fi anulată. Fișierele tale de pe disc nu sunt șterse.",
+      "deleteVaultConfirm": "Șterge din cont",
+      "deleteVaultFailed": "Nu s-a putut șterge seiful",
+      "deleteVaultTitle": "Ștergi „{name}” din contul tău?",
+      "removeVaultTitle": "Elimini „{name}” din listă?"
     },
     "componentsWindowControls": {
       "searchK": "Căutați (⌘K)",
@@ -437,7 +467,7 @@
           "high": "Mare",
           "extraHigh": "Extra ridicat",
           "extraHighDefault": "Extra mare (implicit)",
-          "max": "Max"
+          "max": "Maxim"
         }
       },
       "codexSettings": {
@@ -450,21 +480,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Doar seiful",
+        "computerAccess": "Acces la computer"
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
-        "label": "Web search"
+        "off": "Oprit",
+        "label": "Căutare web"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Permisiuni agent: {access}, căutare web {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Permisiuni",
+        "access": "Acces",
+        "tools": "Instrumente"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Setări model agent: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Nicio potrivire"
@@ -575,7 +605,7 @@
       "remove": "Elimină",
       "removeAria": "Elimină widgetul",
       "resize": "Dimensiune",
-      "resizeAria": "Redimensionează la {{size}}",
+      "resizeAria": "Redimensionează la {size}",
       "savedFilterDefault": "Astăzi",
       "savedFilterHint": "Marchează filtrele cu stea pe pagina Sarcini pentru a le folosi aici",
       "savedFilterLabel": "Filtru salvat",
@@ -624,6 +654,11 @@
     "welcome": {
       "body": "Casa ta privată, offline-first. Notițele sunt criptate integral — nu îți părăsesc niciodată dispozitivul necriptate.",
       "title": "Bine ai venit la MemryNote"
+    },
+    "tour": {
+      "next": "Următor",
+      "previous": "Anterior",
+      "progress": "{current} din {total}"
     }
   },
   "updatePrompt": {
@@ -640,6 +675,165 @@
     "skip": "Omite această versiune"
   },
   "capture": {
-    "focusShortcut": "Focalizează câmpul de captură"
+    "focusShortcut": "Focalizează câmpul de captură",
+    "detailHint": "detalii",
+    "focusHint": "Q",
+    "submit": "Capturează"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Adaugă card",
+      "addCreateNote": "Creează nota „{query}”",
+      "addCreateNoteEmpty": "Creează o notă nouă",
+      "addCreatedAt": "Creat {date}",
+      "addEmpty": "Nu s-a găsit nimic",
+      "addGroupEvents": "Evenimente",
+      "addGroupNotes": "Note",
+      "addGroupTasks": "Sarcini",
+      "addOnCanvas": "Pe canvas",
+      "addPlaceholder": "Caută note, sarcini și evenimente…",
+      "allDay": "Toată ziua",
+      "createNoteFailed": "Nu s-a putut crea nota",
+      "deleted": "Element șters",
+      "loading": "Se încarcă…",
+      "open": "Deschide în filă",
+      "openToEdit": "Deschide în filă pentru a edita",
+      "untitled": "Fără titlu"
+    },
+    "corruptScene": "Acest canvas nu a putut fi citit. Editarea este dezactivată pentru a nu pierde date.",
+    "createFailed": "Nu s-a putut crea canvasul",
+    "disabledBody": "Această filă aparține unei funcții care nu este activată pe acest dispozitiv.",
+    "disabledTitle": "Canvasul nu este activat",
+    "empty": "Niciun canvas încă",
+    "libraryStoreFailed": "Nu s-a putut salva biblioteca ta de forme. Modificările recente se pot pierde.",
+    "loadFailed": "Nu s-au putut încărca canvasurile",
+    "loading": "Se încarcă canvasurile…",
+    "newCanvas": "Canvas nou",
+    "notFound": "Acest canvas nu a putut fi găsit",
+    "openFailed": "Nu s-a putut deschide canvasul",
+    "savedToVault": "Toate modificările se salvează automat în seiful tău",
+    "sectionLabel": "Canvasuri",
+    "tooLargeToSync": "Acest canvas este prea mare pentru sincronizare. Este salvat pe acest dispozitiv, dar nu va ajunge pe celelalte dispozitive până nu devine mai mic.",
+    "untitled": "Canvas fără titlu"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Clic pe rând",
+      "reset": "Resetare",
+      "shortcutsTab": "Fila Comenzi rapide"
+    },
+    "description": "Căi rapide pentru a naviga prin memrynote, a-ți captura gândurile și a-ți procesa munca.",
+    "groups": {
+      "general": {
+        "description": "Navigare și ajutor în toată aplicația.",
+        "title": "General"
+      },
+      "inbox": {
+        "description": "Procesează rapid elementele capturate.",
+        "title": "Inbox"
+      },
+      "journal": {
+        "description": "Navighează prin vizualizările jurnalului și focalizează zona de scriere.",
+        "title": "Jurnal"
+      },
+      "notes": {
+        "description": "Scrie, formatează și caută note.",
+        "title": "Note / Editor"
+      },
+      "settings": {
+        "description": "Deschide setările și personalizează comenzile rapide.",
+        "title": "Setări"
+      },
+      "tabs": {
+        "description": "Mută-te între file și panouri.",
+        "title": "File și panouri"
+      },
+      "tasks": {
+        "description": "Filtrează, selectează și finalizează sarcini.",
+        "title": "Sarcini"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Creează o notă",
+        "keyboardShortcuts": "Deschide comenzile rapide de la tastatură",
+        "openSettings": "Deschide setările",
+        "quickSearch": "Deschide căutarea rapidă",
+        "sidebarSection": "Mergi la o secțiune din bara laterală",
+        "toggleSidebar": "Comută bara laterală",
+        "undoTaskAction": "Anulează ultima acțiune pe sarcini"
+      },
+      "inbox": {
+        "archiveItem": "Arhivează elementul selectat",
+        "chooseQuickFileResult": "Alege un rezultat din clasarea rapidă",
+        "clearSelection": "Șterge selecția sau închide clasarea rapidă",
+        "confirmFiling": "Confirmă panoul de clasare",
+        "firstOrLastItem": "Primul sau ultimul element",
+        "jumpByPage": "Sari cu o pagină",
+        "nextItem": "Elementul următor",
+        "openOriginal": "Deschide linkul original",
+        "openQuickFile": "Deschide clasarea rapidă",
+        "previousItem": "Elementul anterior",
+        "refresh": "Reîmprospătează inboxul",
+        "selectAllVisible": "Selectează toate elementele vizibile",
+        "selectItem": "Selectează elementul",
+        "togglePreview": "Comută panoul de previzualizare"
+      },
+      "journal": {
+        "bold": "Îngroașă textul selectat",
+        "find": "Caută în jurnal",
+        "italic": "Înclină textul selectat",
+        "link": "Adaugă sau editează un link",
+        "returnFromOverview": "Revino din vizualizarea pe lună sau an",
+        "toggleFullWidth": "Comută jurnalul pe lățime completă",
+        "underline": "Subliniază textul selectat"
+      },
+      "notes": {
+        "bold": "Aldin",
+        "closeOverlays": "Închide suprapunerile editorului",
+        "commandMenu": "Deschide meniul de comenzi al editorului",
+        "createNote": "Creează o notă",
+        "find": "Caută în notă",
+        "italic": "Cursiv",
+        "link": "Adaugă sau editează un link",
+        "saveNote": "Salvează nota curentă",
+        "underline": "Subliniat"
+      },
+      "settings": {
+        "cancelRecording": "Anulează înregistrarea comenzii rapide",
+        "customizeShortcuts": "Personalizează comenzile rapide de la tastatură",
+        "openSettings": "Deschide setările",
+        "recordShortcut": "Înregistrează o comandă rapidă nouă",
+        "resetShortcut": "Restaurează valoarea implicită a unei comenzi rapide"
+      },
+      "tabs": {
+        "closeAllInPane": "Închide toate filele din panou",
+        "closeSplitPane": "Închide panoul divizat",
+        "closeTab": "Închide fila",
+        "duplicateTab": "Duplică fila",
+        "focusPane": "Focalizează alt panou",
+        "maximizePane": "Maximizează panoul curent",
+        "moveTabToPane": "Mută fila în panou",
+        "newTabMenu": "Deschide meniul pentru filă nouă",
+        "nextTab": "Fila următoare",
+        "pinTab": "Fixează sau anulează fixarea filei",
+        "previousTab": "Fila anterioară",
+        "reopenClosedTab": "Redeschide fila închisă",
+        "splitDown": "Divizează în jos",
+        "splitRight": "Divizează la dreapta"
+      },
+      "tasks": {
+        "clearFilters": "Șterge filtrele vizibile",
+        "clearSelection": "Șterge selecția de sarcini",
+        "completeSelected": "Finalizează sarcinile selectate",
+        "configureRepeat": "Configurează repetarea pentru sarcina focalizată",
+        "deleteSelected": "Șterge sarcinile selectate",
+        "selectAllVisible": "Selectează toate sarcinile vizibile",
+        "skipOccurrence": "Omite o repetare",
+        "stopRepeating": "Oprește repetarea sarcinii"
+      }
+    },
+    "or": "sau",
+    "then": "apoi"
   }
 }

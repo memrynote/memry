@@ -25,7 +25,8 @@
     "expand": "Розгорнути",
     "collapse": "Згорнути",
     "showMore": "+{count, plural, one {# більше} other {# більше}}",
-    "showLess": "Показати менше"
+    "showLess": "Показати менше",
+    "undo": "Скасувати"
   },
   "tabs": {
     "pin": "Закріпити вкладку",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "Сьогодні",
     "yesterday": "Вчора",
-    "daysAgo": "{count, plural, one {# день тому} other {# днів тому}}"
+    "daysAgo": "{count, plural, one {# день тому} other {# днів тому}}",
+    "daysLate": "{count, plural, one {прострочено #д} few {прострочено #д} many {прострочено #д} other {прострочено #д}}",
+    "daysOverdue": "{count, plural, one {прострочено на # день} few {прострочено на # дні} many {прострочено на # днів} other {прострочено на # дня}}",
+    "tomorrow": "Завтра"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Щодня} other {Кожні # дні}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Щомісяця на {day}{suffix}} other {Кожні # місяці на {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Щомісяця на {week} {day}} other {Що # місяці в {week} {day}}}",
     "everyNYears": "{count, plural, one {Щороку} other {Що # років}}",
-    "repeats": "Повторюється"
+    "repeats": "Повторюється",
+    "ordinal": {
+      "first": "перший",
+      "fourth": "четвертий",
+      "last": "останній",
+      "second": "другий",
+      "third": "третій"
+    },
+    "preset": {
+      "everyWeekday": "Щодня у будні (Пн-Пт)",
+      "everyYearOnDate": "Щороку {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -102,7 +117,15 @@
       "updateDownloadingPercent": "Завантаження {percent}%",
       "updateInstallingSubtitle": "MemryNote перезапуститься автоматично.",
       "updateInstallingTitle": "Встановлення оновлення",
-      "updateRestart": "Перезапустити"
+      "updateRestart": "Перезапустити",
+      "feedbackPrivacyEmailOptional": "Ваша електронна пошта — лише якщо ви її додасте, і лише щоб ми могли відповісти",
+      "feedbackPrivacyEmailSignedIn": "Пошта вашого облікового запису ({email}), щоб ми могли відповісти",
+      "feedbackPrivacyMessage": "Ваше повідомлення, точно таким, як ви його написали",
+      "feedbackPrivacyNote": "Більше нічого. Ваші нотатки залишаються на вашому пристрої.",
+      "feedbackPrivacyPlan": "Ваш план (free, Plus, Pro або Believer)",
+      "feedbackPrivacyTitle": "Що надсилається",
+      "feedbackPrivacyVersion": "Версія застосунку та операційна система",
+      "projects": "Проєкти"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Змінити розмір панелі дня",
@@ -180,8 +203,9 @@
       "search": "Пошук",
       "searchNotesTasksJournalInbox": "Шукати нотатки, завдання, журнал, вхідні...",
       "noResultsFor": "Немає результатів для “",
-      "rdquo": "rdquo;",
-      "result": "результат"
+      "result": "результат",
+      "noResultsForQuery": "Немає результатів для «{query}»",
+      "resultCount": "{count, plural, one {# результат} few {# результати} many {# результатів} other {# результату}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Шукайте та натискайте елементи, щоб будувати свій шлях",
@@ -231,7 +255,8 @@
       "journal": "Щоденник",
       "calendar": "Календар",
       "inboxCapture": "Вхідні",
-      "tasks": "Завдання"
+      "tasks": "Завдання",
+      "tags": "Теги"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Незбережені зміни",
@@ -261,15 +286,15 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Щось пішло не так",
       "anErrorOccurredWhileRenderingThisTabContent": "Сталася помилка під час відображення вмісту цієї вкладки.",
-      "tryAgain": "Спробувати ще раз"
+      "tryAgain": "Спробувати ще раз",
+      "sendReport": "Надіслати діагностичний звіт"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Іконка нотатки"
     },
     "componentsTabsUnsavedChangesDialog": {
       "unsavedChanges": "Незбережені зміни",
-      "quot": "\";",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "\" має незбережені зміни. Що ви хочете зробити?"
+      "unsavedChangesBody": "У «{title}» є незбережені зміни. Що ви хочете зробити?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Новий робочий простір",
@@ -341,7 +366,6 @@
       "logOut": "Вийти",
       "signInToSync": "Увійдіть для синхронізації",
       "remove": "Видалити ",
-      "rdquoFromList": "rdquo; зі списку?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Цей сховище буде видалено з додатку, але ваші файли залишаться на диску. Ви завжди можете додати його пізніше.",
       "cancel": "Скасувати",
       "remove2": "Видалити",
@@ -352,7 +376,13 @@
       "downloadLocation": "Розташування",
       "changeLocation": "Змінити…",
       "download": "Завантажити",
-      "downloadFailed": "Не вдалося завантажити сховище"
+      "downloadFailed": "Не вдалося завантажити сховище",
+      "deleteFromAccount": "Видалити з облікового запису",
+      "deleteVaultBody": "Це назавжди видалить усі синхронізовані дані цього сховища із серверів Memry, і цю дію неможливо скасувати. Ваші файли на диску не видаляються.",
+      "deleteVaultConfirm": "Видалити з облікового запису",
+      "deleteVaultFailed": "Не вдалося видалити сховище",
+      "deleteVaultTitle": "Видалити «{name}» з вашого облікового запису?",
+      "removeVaultTitle": "Вилучити «{name}» зі списку?"
     },
     "componentsWindowControls": {
       "searchK": "Пошук (⌘K)",
@@ -425,7 +455,7 @@
       },
       "models": {
         "default": "За замовчуванням",
-        "label": "Model"
+        "label": "Модель"
       },
       "settings": {
         "reasoning": "Міркування"
@@ -450,21 +480,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Лише сховище",
+        "computerAccess": "Доступ до комп'ютера"
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
-        "label": "Web search"
+        "off": "Вимкнено",
+        "label": "Пошук в Інтернеті"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Дозволи агента: {access}, пошук в Інтернеті {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Дозволи",
+        "access": "Доступ",
+        "tools": "Інструменти"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Налаштування моделі агента: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Немає збігів"
@@ -479,7 +509,7 @@
     "sidebar": {
       "label": "Права бічна панель",
       "day": "День",
-      "agent": "Agent",
+      "agent": "Агент",
       "pendingApproval": "{count, plural, one {# очікує на затвердження} other {# очікують схвалення}}",
       "inProgress": "Триває поворот Agent",
       "close": "Закрити агента"
@@ -575,7 +605,7 @@
       "remove": "Прибрати",
       "removeAria": "Прибрати віджет",
       "resize": "Розмір",
-      "resizeAria": "Змінити розмір до {{size}}",
+      "resizeAria": "Змінити розмір до {size}",
       "savedFilterDefault": "Сьогодні",
       "savedFilterHint": "Додайте фільтри в зірочки на сторінці Завдання, щоб використовувати їх тут",
       "savedFilterLabel": "Збережений фільтр",
@@ -624,6 +654,11 @@
     "welcome": {
       "body": "Ваш приватний офлайн-дім. Нотатки зашифровано наскрізно — вони ніколи не залишають ваш пристрій незашифрованими.",
       "title": "Ласкаво просимо до MemryNote"
+    },
+    "tour": {
+      "next": "Далі",
+      "previous": "Назад",
+      "progress": "{current} з {total}"
     }
   },
   "updatePrompt": {
@@ -640,6 +675,165 @@
     "skip": "Пропустити цю версію"
   },
   "capture": {
-    "focusShortcut": "Фокус на полі захоплення"
+    "focusShortcut": "Фокус на полі захоплення",
+    "detailHint": "деталі",
+    "focusHint": "Q",
+    "submit": "Захопити"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Додати картку",
+      "addCreateNote": "Створити нотатку «{query}»",
+      "addCreateNoteEmpty": "Створити нову нотатку",
+      "addCreatedAt": "Створено {date}",
+      "addEmpty": "Нічого не знайдено",
+      "addGroupEvents": "Події",
+      "addGroupNotes": "Нотатки",
+      "addGroupTasks": "Завдання",
+      "addOnCanvas": "На полотні",
+      "addPlaceholder": "Пошук нотаток, завдань і подій…",
+      "allDay": "Цілий день",
+      "createNoteFailed": "Не вдалося створити нотатку",
+      "deleted": "Елемент видалено",
+      "loading": "Завантаження…",
+      "open": "Відкрити у вкладці",
+      "openToEdit": "Відкрийте у вкладці, щоб редагувати",
+      "untitled": "Без назви"
+    },
+    "corruptScene": "Не вдалося прочитати це полотно. Редагування вимкнено, щоб не втратити дані.",
+    "createFailed": "Не вдалося створити полотно",
+    "disabledBody": "Ця вкладка належить до функції, яку не увімкнено на цьому пристрої.",
+    "disabledTitle": "Полотно не увімкнено",
+    "empty": "Полотен ще немає",
+    "libraryStoreFailed": "Не вдалося зберегти вашу бібліотеку фігур. Останні зміни в ній можуть бути втрачені.",
+    "loadFailed": "Не вдалося завантажити полотна",
+    "loading": "Завантаження полотен…",
+    "newCanvas": "Нове полотно",
+    "notFound": "Не вдалося знайти це полотно",
+    "openFailed": "Не вдалося відкрити полотно",
+    "savedToVault": "Усі зміни автоматично зберігаються у вашому сховищі",
+    "sectionLabel": "Полотна",
+    "tooLargeToSync": "Це полотно завелике для синхронізації. Воно збережене на цьому пристрої, але не потрапить на інші ваші пристрої, доки не стане меншим.",
+    "untitled": "Полотно без назви"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Клік по рядку",
+      "reset": "Скинути",
+      "shortcutsTab": "Вкладка скорочень"
+    },
+    "description": "Швидкі шляхи, щоб пересуватися memrynote, занотовувати думки й опрацьовувати роботу.",
+    "groups": {
+      "general": {
+        "description": "Навігація застосунком і довідка.",
+        "title": "Загальні"
+      },
+      "inbox": {
+        "description": "Швидко опрацьовуйте захоплені елементи.",
+        "title": "Вхідні"
+      },
+      "journal": {
+        "description": "Переходьте між виглядами журналу й фокусуйтеся на полі письма.",
+        "title": "Журнал"
+      },
+      "notes": {
+        "description": "Пишіть, форматуйте та шукайте нотатки.",
+        "title": "Нотатки / Редактор"
+      },
+      "settings": {
+        "description": "Відкривайте налаштування й змінюйте комбінації клавіш.",
+        "title": "Налаштування"
+      },
+      "tabs": {
+        "description": "Переміщуйтеся між вкладками та панелями.",
+        "title": "Вкладки та панелі"
+      },
+      "tasks": {
+        "description": "Фільтруйте, вибирайте та виконуйте завдання.",
+        "title": "Завдання"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Створити нотатку",
+        "keyboardShortcuts": "Відкрити комбінації клавіш",
+        "openSettings": "Відкрити налаштування",
+        "quickSearch": "Відкрити швидкий пошук",
+        "sidebarSection": "Перейти до розділу бічної панелі",
+        "toggleSidebar": "Перемкнути бічну панель",
+        "undoTaskAction": "Скасувати останню дію із завданням"
+      },
+      "inbox": {
+        "archiveItem": "Архівувати вибраний елемент",
+        "chooseQuickFileResult": "Вибрати результат швидкого сортування",
+        "clearSelection": "Зняти вибір або закрити швидке сортування",
+        "confirmFiling": "Підтвердити панель сортування",
+        "firstOrLastItem": "Перший або останній елемент",
+        "jumpByPage": "Перехід посторінково",
+        "nextItem": "Наступний елемент",
+        "openOriginal": "Відкрити оригінальне посилання",
+        "openQuickFile": "Відкрити швидке сортування",
+        "previousItem": "Попередній елемент",
+        "refresh": "Оновити вхідні",
+        "selectAllVisible": "Вибрати всі видимі елементи",
+        "selectItem": "Вибрати елемент",
+        "togglePreview": "Перемкнути панель попереднього перегляду"
+      },
+      "journal": {
+        "bold": "Зробити виділений текст жирним",
+        "find": "Знайти в журналі",
+        "italic": "Зробити виділений текст курсивом",
+        "link": "Додати або змінити посилання",
+        "returnFromOverview": "Повернутися з вигляду місяця або року",
+        "toggleFullWidth": "Перемкнути журнал на всю ширину",
+        "underline": "Підкреслити виділений текст"
+      },
+      "notes": {
+        "bold": "Жирний",
+        "closeOverlays": "Закрити накладки редактора",
+        "commandMenu": "Відкрити меню команд редактора",
+        "createNote": "Створити нотатку",
+        "find": "Знайти в нотатці",
+        "italic": "Курсив",
+        "link": "Додати або змінити посилання",
+        "saveNote": "Зберегти поточну нотатку",
+        "underline": "Підкреслений"
+      },
+      "settings": {
+        "cancelRecording": "Скасувати запис комбінації",
+        "customizeShortcuts": "Налаштувати комбінації клавіш",
+        "openSettings": "Відкрити налаштування",
+        "recordShortcut": "Записати нову комбінацію",
+        "resetShortcut": "Відновити типову комбінацію"
+      },
+      "tabs": {
+        "closeAllInPane": "Закрити всі вкладки на панелі",
+        "closeSplitPane": "Закрити розділену панель",
+        "closeTab": "Закрити вкладку",
+        "duplicateTab": "Дублювати вкладку",
+        "focusPane": "Перейти до іншої панелі",
+        "maximizePane": "Розгорнути поточну панель",
+        "moveTabToPane": "Перемістити вкладку на панель",
+        "newTabMenu": "Відкрити меню нової вкладки",
+        "nextTab": "Наступна вкладка",
+        "pinTab": "Закріпити або відкріпити вкладку",
+        "previousTab": "Попередня вкладка",
+        "reopenClosedTab": "Знову відкрити закриту вкладку",
+        "splitDown": "Розділити вниз",
+        "splitRight": "Розділити праворуч"
+      },
+      "tasks": {
+        "clearFilters": "Очистити видимі фільтри",
+        "clearSelection": "Зняти вибір завдань",
+        "completeSelected": "Виконати вибрані завдання",
+        "configureRepeat": "Налаштувати повторення активного завдання",
+        "deleteSelected": "Видалити вибрані завдання",
+        "selectAllVisible": "Вибрати всі видимі завдання",
+        "skipOccurrence": "Пропустити повторення",
+        "stopRepeating": "Припинити повторення завдання"
+      }
+    },
+    "or": "або",
+    "then": "потім"
   }
 }

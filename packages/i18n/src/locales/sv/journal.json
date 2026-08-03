@@ -1,7 +1,7 @@
 {
-  "title": "Journal",
+  "title": "Dagbok",
   "section": {
-    "journal": "Journal",
+    "journal": "Dagbok",
     "aiConnections": "AI-anslutningar",
     "todaysNotes": "Dagens anteckningar",
     "todaysSchedule": "Dagens schema",
@@ -250,7 +250,7 @@
     "errorPrefix": "Fel:"
   },
   "export": {
-    "noteTitle": "Journal - {month} {day}, {year}"
+    "noteTitle": "Journal – {day} {month} {year}"
   },
   "note": {
     "generatedTitle": "Anteckning - {date}",

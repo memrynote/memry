@@ -10,7 +10,13 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
-  useT: () => ({ t: (key: string) => key.split('.').at(-1) ?? key })
+  useT: () => ({
+    t: (key: string, values?: Record<string, unknown>) => {
+      const leaf = key.split('.').at(-1) ?? key
+      const interpolated = Object.values(values ?? {})
+      return interpolated.length > 0 ? `${leaf}:${interpolated.join(',')}` : leaf
+    }
+  })
 }))
 
 vi.mock('sonner', () => ({
@@ -106,6 +112,7 @@ describe('FormulaEditorModal', () => {
 
     fireEvent.change(expression, { target: { value: 'wordCount' } })
     expect(screen.getByText('42')).toBeInTheDocument()
+    expect(screen.getByText('usingNoteTitle:Roadmap')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Create' }))
 

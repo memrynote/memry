@@ -147,14 +147,14 @@
     "deselectAll": "Zrušte výběr všech",
     "ariaLabel": "Hromadné akce pro vybrané položky {count}",
     "file": "Soubor",
-    "tag": "Tag",
+    "tag": "Označit",
     "snooze": "Odložit",
     "archive": "Archiv",
     "add": "Přidat",
     "dismissSuggestion": "Odmítnout návrh",
     "hint": {
       "file": "soubor",
-      "tag": "tag",
+      "tag": "označit",
       "snooze": "odložit",
       "archive": "archiv",
       "deselect": "zrušit výběr"
@@ -270,7 +270,50 @@
     "panelEmpty": "Žádná nadcházející připomenutí.",
     "panelPast": "Minulé",
     "panelUpcoming": "Nadcházející",
-    "taskFallback": "Úkol"
+    "taskFallback": "Úkol",
+    "dateTime": {
+      "dateAt": "{date} v {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Dnes v {time}",
+      "todayCompact": "Dnes, {time}",
+      "tomorrowAt": "Zítra v {time}",
+      "tomorrowCompact": "Zítra, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Připomenutí výročí",
+      "inHours": {
+        "label": "Za {count, plural, one {# hodinu} few {# hodiny} many {# hodiny} other {# hodin}}"
+      },
+      "inMinutes": {
+        "label": "Za {count, plural, one {# minutu} few {# minuty} many {# minuty} other {# minut}}"
+      },
+      "inMonths": {
+        "label": "Za {count, plural, one {# měsíc} few {# měsíce} many {# měsíce} other {# měsíců}}"
+      },
+      "inWeeks": {
+        "label": "Za {count, plural, one {# týden} few {# týdny} many {# týdne} other {# týdnů}}"
+      },
+      "inYears": {
+        "label": "Za {count, plural, one {# rok} few {# roky} many {# roku} other {# let}}"
+      },
+      "laterToday": {
+        "description": "Za {count, plural, one {# hodinu} few {# hodiny} many {# hodiny} other {# hodin}}",
+        "label": "Později dnes"
+      },
+      "monthlyReflection": "Měsíční reflexe",
+      "nextWeek": {
+        "description": "V pondělí v 9:00",
+        "label": "Příští týden"
+      },
+      "quarterlyReflection": "Čtvrtletní reflexe",
+      "reviewInAWeek": "Projít za týden",
+      "sameDayNextMonth": "Stejný den příští měsíc",
+      "tomorrow": {
+        "description": "Zítra v 9:00",
+        "label": "Zítra"
+      },
+      "tomorrowMorning": "Zítra ráno"
+    }
   },
   "insights": {
     "captureActivity": "Aktivita zachycení",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Připojit soubor (obrázky, zvuk, video, PDF)",
       "recordVoiceMemo": "Nahrajte hlasovou poznámku",
       "recordVoiceMemo2": "Nahrajte hlasovou poznámku",
-      "alreadyCaptured": "Již zachyceno: “",
-      "rdquo": "rdquo;",
       "captureAnyway": "Každopádně zachytit",
       "focusShortcut": "Zaměřit pole pro zachycení",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Zachytit odkaz",
+      "captureNote": "Zachytit poznámku",
+      "placeholder": "Rychlé zachycení — vložte odkaz, zapište myšlenku…",
+      "duplicateNotice": "Již zachyceno: „{title}“"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Vyberte složku",
@@ -414,10 +459,9 @@
       "captured": "Zajato",
       "dismissError": "Odmítnout chybu",
       "alreadyCaptured": "Již zachyceno",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; · ",
       "captureAnyway": "Každopádně zachytit",
-      "close": "Zavřít"
+      "close": "Zavřít",
+      "duplicateMeta": "„{title}“ · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Zachyťte pádem",
@@ -466,7 +510,12 @@
       "cancelRecording": "Zrušit nahrávání",
       "cancel": "Zrušit",
       "stopRecording": "Zastavit nahrávání",
-      "stop": "Přestaň"
+      "stop": "Přestaň",
+      "enableMicInSettings": "Povolte přístup k mikrofonu v nastavení systému a zkuste to znovu.",
+      "failedToStart": "Nahrávání se nepodařilo spustit",
+      "microphoneAccessDenied": "Přístup k mikrofonu byl odepřen",
+      "noMicrophoneFound": "Nebyl nalezen žádný mikrofon",
+      "recordingError": "Při nahrávání došlo k chybě"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Nepodařilo se zachytit soubor",
       "fileCaptureFailed": "Snímání souboru se nezdařilo",
       "failedToCaptureAudio": "Nepodařilo se zachytit zvuk",
-      "failedToCaptureVoice": "Nepodařilo se zachytit hlas"
+      "failedToCaptureVoice": "Nepodařilo se zachytit hlas",
+      "failedToLoadInboxPreferences": "Předvolby doručené pošty se nepodařilo načíst",
+      "failedToUpdateInboxPreferences": "Předvolby doručené pošty se nepodařilo aktualizovat"
     },
     "toasts": {
       "inboxRefreshed": "Doručená pošta byla obnovena"
@@ -516,5 +567,10 @@
     "task": "Úkol",
     "time": "Čas",
     "title": "Převést"
+  },
+  "reviewNudge": {
+    "action": "Otevřít doručenou poštu",
+    "description": "Zpracujte dnešní zachycené položky v jednom klidném průchodu.",
+    "title": "{count, plural, one {Čas projít # položku} few {Čas projít # položky} many {Čas projít # položky} other {Čas projít # položek}}"
   }
 }

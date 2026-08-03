@@ -16,9 +16,27 @@
       "willSync": "Catatan akan disinkronkan ke cloud",
       "renameFailed": "Gagal mengganti nama catatan",
       "toggleLocalOnlyFailed": "Gagal beralih ke lokal saja",
-      "toggleFullWidthFailed": "Gagal mengubah lebar penuh"
+      "toggleFullWidthFailed": "Gagal mengubah lebar penuh",
+      "copyPathFailed": "Gagal menyalin jalur",
+      "deleteFailed": "Gagal menghapus catatan",
+      "moveFailed": "Gagal memindahkan catatan",
+      "moved": "Catatan dipindahkan",
+      "openExternalFailed": "Gagal membuka catatan",
+      "pathCopied": "Jalur disalin",
+      "revealFailed": "Gagal menampilkan catatan"
     },
-    "deleteDialogTitle": "{count, plural, one {Hapus Catatan} other {Hapus Catatan #}}"
+    "deleteDialogTitle": "{count, plural, one {Hapus Catatan} other {Hapus Catatan #}}",
+    "deleteConfirm": {
+      "cancel": "Batalkan",
+      "confirm": "Hapus",
+      "deleting": "Menghapus...",
+      "description": "Apakah Anda yakin ingin menghapus \"{title}\"? Tindakan ini tidak dapat dibatalkan.",
+      "title": "Hapus catatan"
+    },
+    "itemsCount": "{count, plural, other {# item}}",
+    "itemsCountFiltered": "{shown} dari {total, plural, other {# item}}",
+    "renameViewUnavailableForTags": "Mengganti nama tampilan tersimpan belum tersedia untuk tag",
+    "tagFilterLabel": "tag = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "Hapus Catatan {count}",
       "deleteSelectedItems": "Hapus item {count}",
       "bookmark": "Bookmark",
-      "removeFromBookmarks": "Hapus dari Bookmark"
+      "removeFromBookmarks": "Hapus dari Bookmark",
+      "applyTemplate": "Terapkan Templat"
     },
     "deleteDialog": {
       "noteTitle": "Hapus Catatan",
@@ -83,7 +102,17 @@
       "export": "Ekspor",
       "fullWidth": "Lebar penuh",
       "disableLocalOnly": "Nonaktifkan hanya lokal",
-      "setLocalOnly": "Tetapkan hanya lokal"
+      "setLocalOnly": "Tetapkan hanya lokal",
+      "applyTemplate": "Terapkan Templat",
+      "copyPath": "Salin jalur",
+      "delete": "Hapus catatan",
+      "find": "Cari…",
+      "moreActions": "Tindakan lainnya",
+      "moveToFolder": "Pindahkan ke folder…",
+      "openInDefaultApp": "Buka di aplikasi default",
+      "rename": "Ganti nama…",
+      "revealInFinder": "Buka di Finder",
+      "revealInSidebar": "Tampilkan di navigasi"
     },
     "breadcrumb": {
       "locationAria": "Catat lokasinya",
@@ -223,7 +252,12 @@
       "multiselect": "Pilih banyak"
     },
     "showOnCalendar": "Tampilkan di kalender",
-    "showingOnCalendar": "Menampilkan di kalender"
+    "showingOnCalendar": "Menampilkan di kalender",
+    "statusCategories": {
+      "done": "Selesai",
+      "inProgress": "Sedang berjalan",
+      "todo": "Perlu dikerjakan"
+    }
   },
   "templateSelector": {
     "title": "Pilih Kanvas Anda",
@@ -235,7 +269,10 @@
     "essentials": "Penting",
     "setFolderDefault": "Tetapkan sebagai folder default",
     "useTemplate": "Gunakan Templat",
-    "createNote": "Buat Catatan"
+    "createNote": "Buat Catatan",
+    "applyDescription": "Ganti konten catatan ini dengan templat",
+    "applyTitle": "Terapkan Templat",
+    "applyToNote": "Terapkan Templat"
   },
   "exportDialog": {
     "title": "Ekspor Catatan",
@@ -324,8 +361,6 @@
       "noFormulasDefined": "Tidak ada rumus yang ditentukan",
       "addFormula": "Tambahkan Rumus",
       "deleteFormula": "Hapus Rumus",
-      "areYouSureYouWantToDeleteTheFormula": "Apakah Anda yakin ingin menghapus rumus \"",
-      "quotThisActionCannotBeUndone": "kutipan;? Tindakan ini tidak dapat dibatalkan.",
       "cancel": "Batalkan",
       "delete": "Hapus",
       "none": "Tidak ada",
@@ -333,7 +368,8 @@
       "delete2": "Hapus",
       "columnBorders": "Batas kolom",
       "display": "Tampilan",
-      "showSummaries": "Tampilkan ringkasan"
+      "showSummaries": "Tampilkan ringkasan",
+      "deleteFormulaBody": "Apakah Anda yakin ingin menghapus rumus “{name}”? Tindakan ini tidak dapat dibatalkan."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Menyaring",
@@ -352,7 +388,8 @@
       "addCondition": "Tambahkan kondisi",
       "addFilter": "Tambahkan penyaring",
       "addGroup": "Tambahkan grup",
-      "removeGroup": "Hapus grup"
+      "removeGroup": "Hapus grup",
+      "lockedConditionHint": "Kondisi ini menentukan tampilan saat ini dan tidak dapat dihapus di sini."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Bawaan",
@@ -365,7 +402,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Tabel catatan",
       "selectAll": "Pilih semua catatan",
-      "selectRow": "Pilih catatan"
+      "selectRow": "Pilih catatan",
+      "kind": {
+        "Inbox": "Kotak masuk",
+        "Note": "Catatan",
+        "Task": "Tugas"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Telusuri catatan...",
@@ -379,10 +421,10 @@
       "preview": "Pratinjau",
       "fixExpressionErrorsToSeePreview": "Perbaiki kesalahan ekspresi untuk melihat pratinjau",
       "usingNote": "Menggunakan catatan: \"",
-      "quot": "quot;",
       "cancel": "Batalkan",
       "namePlaceholder": "hari_sampai_jatuh tempo",
-      "expressionPlaceholder": "dateDiff(tanggal jatuh tempo, hari ini(), \"hari\")"
+      "expressionPlaceholder": "dateDiff(tanggal jatuh tempo, hari ini(), \"hari\")",
+      "usingNoteTitle": "Menggunakan catatan: “{title}”"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Pengelompokan yang jelas",
@@ -408,12 +450,12 @@
       "bestMatch": "Pertandingan terbaik",
       "current": "saat ini)",
       "allFolders": "SEMUA FOLDER",
-      "current2": "saat ini)",
       "noFoldersMatch": "Tidak ada folder yang cocok \"",
-      "quot": "quot;",
       "create": "Buat \"",
-      "quot2": "quot;",
-      "cancel": "Batalkan"
+      "cancel": "Batalkan",
+      "createFolderNamed": "Buat “{name}”",
+      "currentFolderBadge": "(saat ini)",
+      "noFoldersMatchQuery": "Tidak ada folder yang cocok dengan “{query}”"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Hapus ",
@@ -468,7 +510,13 @@
       "failedToLoadPdf": "Gagal memuat PDF: ",
       "download": "Unduh",
       "download2": "Unduh",
-      "noFileAttached": "Tidak ada file yang dilampirkan"
+      "noFileAttached": "Tidak ada file yang dilampirkan",
+      "alignCenter": "Rata tengah",
+      "alignLeft": "Rata kiri",
+      "alignRight": "Rata kanan",
+      "nextPage": "Halaman berikutnya",
+      "previousPage": "Halaman sebelumnya",
+      "resizePdf": "Ubah ukuran PDF"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Buka di panel tugas",
@@ -530,7 +578,8 @@
       "failedToLoadTags": "Gagal memuat tag",
       "noTagsYet": "Belum ada tag",
       "filterTags": "Filter tag...",
-      "noMatchingTags": "Tidak ada tag yang cocok"
+      "noMatchingTags": "Tidak ada tag yang cocok",
+      "Uncategorized": "Tanpa kategori"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Jatuhkan di sini",
@@ -560,7 +609,8 @@
       "deleteTag": "Hapus tanda",
       "recent": "Baru-baru ini",
       "created": "Dibuat",
-      "alphabetical": "Sesuai abjad"
+      "alphabetical": "Sesuai abjad",
+      "tasks": "TUGAS"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Ganti nama tag",
@@ -733,7 +783,9 @@
     "replyPlaceholder": "Balas...",
     "resolve": "Selesaikan",
     "sendAria": "Kirim komentar",
-    "toolbarComment": "Komentar"
+    "toolbarComment": "Komentar",
+    "openAttachmentAria": "Buka lampiran {name}",
+    "openImageAria": "Buka gambar {name}"
   },
   "dateMention": {
     "clear": "Hapus",
@@ -743,5 +795,79 @@
     "remind": "Ingatkan",
     "time": "Waktu",
     "timeFormat": "Format waktu"
+  },
+  "applyTemplateConfirm": {
+    "body": "Ganti konten saja",
+    "cancel": "Batalkan",
+    "description": "Menerapkan \"{name}\" akan mengganti konten catatan ini. Tindakan ini tidak dapat dibatalkan.",
+    "failed": "Gagal menerapkan templat",
+    "full": "Ganti konten & tambahkan detail templat",
+    "success": "Templat diterapkan",
+    "title": "Ganti konten catatan?"
+  },
+  "tagView": {
+    "moreActions": "Tindakan lainnya",
+    "pin": {
+      "action": "Sematkan {count, plural, other {# catatan}} ke tag",
+      "failed": "Gagal menyematkan catatan ke tag",
+      "success": "{count, plural, other {# catatan}} disematkan ke tag"
+    }
+  },
+  "tags": {
+    "hubTitle": "Tag",
+    "openHub": "Buka pusat tag"
+  },
+  "tagsHub": {
+    "cancelCreate": "Batalkan",
+    "category": {
+      "delete": "Hapus kategori",
+      "deleteBody": "Tag akan dipindahkan ke Tanpa kategori. Tag tidak akan dihapus.",
+      "deleteCancel": "Batalkan",
+      "deleteConfirm": "Hapus",
+      "deleteTitle": "Hapus {name}?",
+      "dragHandle": "Seret untuk menyusun ulang kategori",
+      "emptyHint": "Seret tag ke sini",
+      "more": "Opsi kategori",
+      "rename": "Ganti nama kategori"
+    },
+    "categoryNamePlaceholder": "Nama kategori",
+    "errors": {
+      "createCategoryFailed": "Gagal membuat kategori",
+      "createTagCategorizeFailed": "Tag dibuat, tetapi tidak dapat ditambahkan ke kategori",
+      "createTagFailed": "Gagal membuat tag",
+      "deleteCategoryFailed": "Gagal menghapus kategori",
+      "loadFailed": "Gagal memuat kategori tag",
+      "renameCategoryFailed": "Gagal mengganti nama kategori",
+      "reorderFailed": "Gagal menyusun ulang tag"
+    },
+    "loading": "Memuat tag...",
+    "newCategory": "Kategori baru",
+    "newTag": "Tag baru",
+    "search": {
+      "empty": "Tidak ada kategori atau tag yang cocok dengan pencarian Anda",
+      "placeholder": "Cari kategori dan tag"
+    },
+    "tagNamePlaceholder": "Nama tag",
+    "uncategorized": "Tanpa kategori"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (klik dua kali untuk menyunting)",
+      "dragToReorder": "Tarik untuk menyusun ulang kolom: {name}"
+    },
+    "columns": {
+      "created": "Dibuat",
+      "folder": "Folder",
+      "kind": "Jenis",
+      "modified": "Diubah",
+      "tags": "Tag",
+      "title": "Judul",
+      "wordCount": "Jumlah kata"
+    },
+    "defaultViewName": "Bawaan",
+    "groupHeader": {
+      "noteCount": "{count, plural, other {# catatan}}"
+    },
+    "selectView": "Pilih Tampilan"
   }
 }

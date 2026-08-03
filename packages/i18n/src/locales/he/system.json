@@ -28,6 +28,13 @@
       "readyDetailFallback": "הפעל מחדש את memrynote כדי לסיים את התקנת העדכון.",
       "buttonRestartNow": "הפעל מחדש עכשיו",
       "releaseNotesLabel": "הערות שחרור:"
+    },
+    "pair": {
+      "buttonAllow": "אפשר",
+      "buttonDeny": "אל תאפשר",
+      "buttonPair": "צמד",
+      "message": "לאפשר לתוסף הדפדפן של Memry לשלוח לכידות ליישום הזה?",
+      "title": "צימוד תוסף הדפדפן"
     }
   },
   "notification": {
@@ -38,6 +45,11 @@
       "fallback": "תזכורת בשל",
       "default": "תזכורת",
       "task": "תזכורת משימה"
+    },
+    "inboxReview": {
+      "body": "{count, plural, one {יש לך # פריט לעבור עליו.} two {יש לך # פריטים לעבור עליהם.} other {יש לך # פריטים לעבור עליהם.}}",
+      "testBody": "זו בדיקה — כך ייראו תזכורות הסקירה היומיות שלך.",
+      "title": "הגיע הזמן לעבור על תיבת הדואר הנכנס"
     }
   },
   "error": {
@@ -45,5 +57,15 @@
     "definitionNotFound": "ההגדרה לא נמצאה",
     "noteNotFound": "הערה לא נמצאה",
     "updateFailed": "העדכון נכשל"
+  },
+  "startup": {
+    "failed": {
+      "body": "זה יכול לקרות כשנשאר מעט מאוד מקום פנוי בדיסק, או עם מנהלי התקן גרפיים ישנים. נסה לפנות מקום בדיסק ואז לפתוח מחדש את MemryNote. אם זה ממשיך לקרות, התקנה מחדש בדרך כלל פותרת את זה.",
+      "title": "MemryNote לא הצליח לסיים את ההפעלה"
+    },
+    "installingUpdate": {
+      "subtitle": "MemryNote ייפתח מחדש אוטומטית.",
+      "title": "מתקין עדכון…"
+    }
   }
 }

@@ -126,8 +126,9 @@ describe('csvImporter (integration)', () => {
     expect(group.sampleTitles).toContain('Buy milk, eggs')
 
     // warnings should mention columns
-    expect(group.warnings?.some((w) => w.startsWith('Columns:'))).toBe(true)
-    expect(group.warnings?.some((w) => w.includes('Title from'))).toBe(true)
+    const warningText = (group.warnings ?? []).map((w) => (typeof w === 'string' ? w : w.message))
+    expect(warningText.some((w) => w.startsWith('Columns:'))).toBe(true)
+    expect(warningText.some((w) => w.includes('Title from'))).toBe(true)
   })
 
   it('parses quoted field with embedded newline correctly', async () => {

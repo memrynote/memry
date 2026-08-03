@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useImportRun } from '@/hooks/use-import-run'
 import { notesKeys } from '@/hooks/use-notes-query'
+import { formatImportMessage } from '@/lib/import-message'
 import type { ImporterItem } from '@/hooks/use-importers'
 
 interface ImportDialogProps {
@@ -75,6 +76,9 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
 
   const summary = run.summary
   const showProgress = (run.isRunning || Boolean(run.progress)) && !run.error
+  // Progress lines carry a code since 2026.8; older payloads send plain English
+  // strings, which `formatImportMessage` passes through untouched.
+  const statusText = run.progress ? formatImportMessage(run.progress.status) : ''
   const needsPreview = Boolean(item?.supportsPreview)
 
   return (
@@ -134,7 +138,7 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
                   <div key={gi} className="rounded-md border border-border p-3 text-xs/4">
                     <div className="font-medium text-[13px]/4 text-foreground">{g.label}</div>
                     {g.error ? (
-                      <div className="mt-1 text-destructive">{g.error}</div>
+                      <div className="mt-1 text-destructive">{formatImportMessage(g.error)}</div>
                     ) : (
                       <>
                         <div className="mt-1 text-muted-foreground">
@@ -152,7 +156,7 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
                             </summary>
                             <ul className="mt-1 ps-4 list-disc">
                               {g.warnings.map((w, i) => (
-                                <li key={i}>{w}</li>
+                                <li key={i}>{formatImportMessage(w)}</li>
                               ))}
                             </ul>
                           </details>
@@ -168,9 +172,7 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
               <div className="flex flex-col gap-2 rounded-md border border-border bg-surface-active p-3">
                 <div className="flex items-center gap-2 text-[13px]/4 text-foreground">
                   {run.isRunning && <Spinner />}
-                  <span className="truncate">
-                    {run.progress?.status || t('import.dialog.running')}
-                  </span>
+                  <span className="truncate">{statusText || t('import.dialog.running')}</span>
                 </div>
                 {run.progress && run.progress.total > 0 && (
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus, Trash2 } from '@/lib/icons'
 import { Picker } from '@/components/ui/picker'
 import { getTagColors, COLOR_NAMES } from '../../tags-row/tag-colors'
+import { getStatusCategoryLabel } from '@/lib/contract-display-names'
 import { SelectChip } from './SelectChip'
 import type {
   StatusCategories,
@@ -75,7 +76,10 @@ export function StatusEditor({
           {CATEGORY_ORDER.map((categoryKey) => {
             const category = categories[categoryKey]
             return (
-              <Picker.Section key={categoryKey} label={category.label}>
+              <Picker.Section
+                key={categoryKey}
+                label={getStatusCategoryLabel(categoryKey, category.label)}
+              >
                 {category.options.map((opt) => (
                   <Picker.Item
                     key={opt.value}

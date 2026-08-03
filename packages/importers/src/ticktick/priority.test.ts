@@ -11,6 +11,6 @@ describe('mapPriority', () => {
   it('falls back to 0 with a warning for unknown values', () => {
     const r = mapPriority(9)
     expect(r.priority).toBe(0)
-    expect(r.warning).toMatch(/priority/i)
+    expect(r.warning?.message).toMatch(/priority/i)
   })
 })

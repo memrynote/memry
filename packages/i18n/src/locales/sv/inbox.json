@@ -74,7 +74,7 @@
     },
     "selectItem": "Välj {title}",
     "itemAria": "{type}: {title}",
-    "untitled": "Untitled",
+    "untitled": "Namnlös",
     "untitledItem": "Objekt utan titel",
     "transcribing": "Transkriberar...",
     "transcriptionFailed": "Transkribering misslyckades",
@@ -154,7 +154,7 @@
     "dismissSuggestion": "Avvisa förslag",
     "hint": {
       "file": "fil",
-      "tag": "tag",
+      "tag": "tagga",
       "snooze": "snooza",
       "archive": "arkivera",
       "deselect": "avmarkera"
@@ -256,7 +256,7 @@
     "source": "Källa",
     "journalTitle": "Journal — {date}",
     "noteFallback": "Anteckning",
-    "journalFallback": "Journal",
+    "journalFallback": "Dagbok",
     "highlighted": "Markerad: \"{text}\"",
     "viewed": "Visad",
     "markViewed": "Markera som visad",
@@ -270,7 +270,50 @@
     "panelEmpty": "Inga kommande påminnelser.",
     "panelPast": "Tidigare",
     "panelUpcoming": "Kommande",
-    "taskFallback": "Uppgift"
+    "taskFallback": "Uppgift",
+    "dateTime": {
+      "dateAt": "{date} kl. {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Idag kl. {time}",
+      "todayCompact": "Idag, {time}",
+      "tomorrowAt": "Imorgon kl. {time}",
+      "tomorrowCompact": "Imorgon, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Årsdagspåminnelse",
+      "inHours": {
+        "label": "Om {count, plural, one {# timme} other {# timmar}}"
+      },
+      "inMinutes": {
+        "label": "Om {count, plural, one {# minut} other {# minuter}}"
+      },
+      "inMonths": {
+        "label": "Om {count, plural, one {# månad} other {# månader}}"
+      },
+      "inWeeks": {
+        "label": "Om {count, plural, one {# vecka} other {# veckor}}"
+      },
+      "inYears": {
+        "label": "Om {count, plural, one {# år} other {# år}}"
+      },
+      "laterToday": {
+        "description": "Om {count, plural, one {# timme} other {# timmar}}",
+        "label": "Senare idag"
+      },
+      "monthlyReflection": "Månadsreflektion",
+      "nextWeek": {
+        "description": "Måndag kl. 09:00",
+        "label": "Nästa vecka"
+      },
+      "quarterlyReflection": "Kvartalsreflektion",
+      "reviewInAWeek": "Gå igenom om en vecka",
+      "sameDayNextMonth": "Samma dag nästa månad",
+      "tomorrow": {
+        "description": "Imorgon kl. 09:00",
+        "label": "Imorgon"
+      },
+      "tomorrowMorning": "Imorgon bitti"
+    }
   },
   "insights": {
     "captureActivity": "Fånga aktivitet",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Bifoga fil (Bilder, Ljud, Video, PDF)",
       "recordVoiceMemo": "Spela in röstmemo",
       "recordVoiceMemo2": "Spela in röstmemo",
-      "alreadyCaptured": "Redan inspelat: “",
-      "rdquo": "rdquo;",
       "captureAnyway": "Spela in ändå",
       "focusShortcut": "Fokusera insamlingsfält",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Fånga länk",
+      "captureNote": "Fånga anteckning",
+      "placeholder": "Snabbfångst — klistra in en länk, skriv ner en tanke…",
+      "duplicateNotice": "Redan fångad: ”{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Välj mapp",
@@ -414,10 +459,9 @@
       "captured": "Fångad",
       "dismissError": "Avvisa fel",
       "alreadyCaptured": "Redan fångad",
-      "ldquo": "„",
-      "rdquoMiddot": "” &middot;",
       "captureAnyway": "Spela in ändå",
-      "close": "Stäng"
+      "close": "Stäng",
+      "duplicateMeta": "”{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Släpp för att fånga",
@@ -466,7 +510,12 @@
       "cancelRecording": "Avbryt inspelning",
       "cancel": "Avbryt",
       "stopRecording": "Stoppa inspelning",
-      "stop": "Stopp"
+      "stop": "Stopp",
+      "enableMicInSettings": "Tillåt mikrofonåtkomst i dina systeminställningar och försök igen.",
+      "failedToStart": "Misslyckades med att starta inspelningen",
+      "microphoneAccessDenied": "Mikrofonåtkomst nekad",
+      "noMicrophoneFound": "Ingen mikrofon hittades",
+      "recordingError": "Ett inspelningsfel uppstod"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Misslyckades med att fånga fil",
       "fileCaptureFailed": "Filfångst misslyckades",
       "failedToCaptureAudio": "Misslyckades med att fånga ljud",
-      "failedToCaptureVoice": "Misslyckades med att fånga röst"
+      "failedToCaptureVoice": "Misslyckades med att fånga röst",
+      "failedToLoadInboxPreferences": "Misslyckades med att ladda inkorgsinställningar",
+      "failedToUpdateInboxPreferences": "Misslyckades med att uppdatera inkorgsinställningar"
     },
     "toasts": {
       "inboxRefreshed": "Inkorgen uppdaterad"
@@ -516,5 +567,10 @@
     "task": "Uppgift",
     "time": "Tid",
     "title": "Konvertera"
+  },
+  "reviewNudge": {
+    "action": "Öppna inkorg",
+    "description": "Gå igenom dagens fångster i ett lugnt svep.",
+    "title": "{count, plural, one {Dags att gå igenom # objekt} other {Dags att gå igenom # objekt}}"
   }
 }

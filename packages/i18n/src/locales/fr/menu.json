@@ -1,11 +1,16 @@
 {
   "app": {
     "quit": "Quitter",
-    "preferences": "Paramètres…"
+    "preferences": "Paramètres…",
+    "exit": "Quitter",
+    "hide": "Masquer MemryNote",
+    "hideOthers": "Masquer les autres",
+    "services": "Services",
+    "unhide": "Tout afficher"
   },
   "file": {
     "label": "Fichier",
-    "newNote": "Nouvelle remarque",
+    "newNote": "Nouvelle note",
     "close": "Fermer la fenêtre",
     "closeTab": "Fermer l'onglet",
     "exportPdf": "Exporter en PDF…",
@@ -13,23 +18,27 @@
   },
   "navigation": {
     "back": "Retour",
-    "forward": "En avant"
+    "forward": "Avancer"
   },
   "edit": {
-    "label": "Modifier",
+    "label": "Édition",
     "undo": "Annuler",
-    "redo": "Refaire",
+    "redo": "Rétablir",
     "cut": "Couper",
     "copy": "Copier",
     "paste": "Coller",
     "selectAll": "Tout sélectionner",
     "find": "Rechercher",
-    "speech": "Parole"
+    "speech": "Parole",
+    "delete": "Supprimer",
+    "pasteAndMatchStyle": "Coller et adapter le style",
+    "startSpeaking": "Commencer la lecture",
+    "stopSpeaking": "Arrêter la lecture"
   },
   "view": {
-    "label": "Voir",
+    "label": "Affichage",
     "reload": "Recharger",
-    "toggleDevTools": "Toggle Outils de développement",
+    "toggleDevTools": "Afficher/Masquer les outils de développement",
     "toggleFullscreen": "Basculer en plein écran",
     "theme": "Thème",
     "themeDark": "Sombre",
@@ -37,7 +46,10 @@
     "themeSystem": "Système",
     "themeWhite": "Papier",
     "toggleDayPanel": "Basculer le panneau du jour",
-    "toggleSidebar": "Basculer la barre latérale"
+    "toggleSidebar": "Basculer la barre latérale",
+    "actualSize": "Taille réelle",
+    "zoomIn": "Zoom avant",
+    "zoomOut": "Zoom arrière"
   },
   "format": {
     "body": "Corps",
@@ -55,7 +67,8 @@
     "about": "À propos de MemryNote",
     "documentation": "Documentation",
     "label": "Aide",
-    "shortcuts": "Raccourcis clavier"
+    "shortcuts": "Raccourcis clavier",
+    "aboutVersion": "Version {version}"
   },
   "insert": {
     "attachment": "Insérer une pièce jointe…",
@@ -67,6 +80,10 @@
     "taskList": "Liste de tâches"
   },
   "window": {
-    "label": "Fenêtre"
+    "label": "Fenêtre",
+    "close": "Fermer",
+    "front": "Tout ramener au premier plan",
+    "minimize": "Réduire",
+    "zoom": "Zoom"
   }
 }

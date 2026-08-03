@@ -11,6 +11,7 @@
 import { readFile } from 'fs/promises'
 import { basename } from 'path'
 import { parseTodoistCsv, mapRows, type ImportPlan } from '@memry/importers/todoist'
+import { IMPORT_MESSAGE_CODES, IMPORT_STATUS, toImportMessage } from '@memry/importers/messages'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportPreview } from '../types'
 
@@ -77,13 +78,16 @@ export async function buildTodoistPreview(
           { labelKey: 'import.stats.skipped', value: plan.stats.skipped }
         ],
         sampleTitles: plan.sampleTitles,
-        warnings: plan.warnings.map((w) => w.message)
+        warnings: plan.warnings
       })
     } catch (err) {
       groups.push({
         label: basename(fp),
         counts: [],
-        error: errorMessage(err, 'Failed to read file')
+        error: toImportMessage(err, {
+          code: IMPORT_MESSAGE_CODES.readFileFailed,
+          message: 'Failed to read file'
+        })
       })
     }
   }
@@ -156,7 +160,7 @@ export const todoistImporter: Importer = {
   preview: (input, signal) => buildTodoistPreview(input.sourcePaths, new Date(), signal),
   run: async (input, ctx) => {
     ctx.setPhase('importing')
-    ctx.status('Importing Todoist tasks…')
+    ctx.status(IMPORT_STATUS.todoistImporting)
     const domain = await defaultDomain()
     await applyTodoistImport(input.sourcePaths, domain, ctx, new Date())
     return ctx.toSummary()

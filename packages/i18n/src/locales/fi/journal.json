@@ -1,7 +1,7 @@
 {
-  "title": "Journal",
+  "title": "Päiväkirja",
   "section": {
-    "journal": "Journal",
+    "journal": "Päiväkirja",
     "aiConnections": "AI-yhteydet",
     "todaysNotes": "Päivän muistiinpanot",
     "todaysSchedule": "Tämän päivän aikataulu",
@@ -58,7 +58,7 @@
       "heading1": "Otsikko 1",
       "heading2": "Otsikko 2",
       "heading3": "Otsikko 3",
-      "bulletList": "Bullet List",
+      "bulletList": "Luettelomerkit",
       "numberedList": "Numeroitu luettelo",
       "checklist": "Tarkistuslista",
       "quote": "Lainaus",
@@ -90,7 +90,7 @@
       "saturday": "lauantai"
     },
     "weekdayShort": {
-      "sunday": "Sun",
+      "sunday": "su",
       "monday": "ma",
       "tuesday": "ti",
       "wednesday": "ke",

@@ -320,8 +320,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
           >
             {hasQuery && !loading && !hasResults && !error && (
               <Command.Empty className="py-12 text-center text-sm text-text-tertiary">
-                {tPhaseF('phaseF.componentsSearchCommandPalette.noResultsFor')}
-                {query}&{tPhaseF('phaseF.componentsSearchCommandPalette.rdquo')}
+                {tPhaseF('phaseF.componentsSearchCommandPalette.noResultsForQuery', { query })}
               </Command.Empty>
             )}
 
@@ -349,8 +348,9 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
 
             {hasQuery && hasResults && (
               <div className="px-3 py-2 text-xs text-text-tertiary text-end tabular-nums border-t border-border mt-1">
-                {totalCount} {tPhaseF('phaseF.componentsSearchCommandPalette.result')}
-                {totalCount !== 1 ? 's' : ''}
+                {tPhaseF('phaseF.componentsSearchCommandPalette.resultCount', {
+                  count: totalCount
+                })}
               </div>
             )}
           </Command.List>

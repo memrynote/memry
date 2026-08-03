@@ -28,6 +28,13 @@
       "readyDetailFallback": "Restart memrynote to finish installing the update.",
       "buttonRestartNow": "Restart now",
       "releaseNotesLabel": "Release notes:"
+    },
+    "pair": {
+      "title": "Pair browser extension",
+      "message": "Allow the Memry browser extension to send captures to this app?",
+      "buttonAllow": "Allow",
+      "buttonDeny": "Deny",
+      "buttonPair": "Pair"
     }
   },
   "notification": {
@@ -50,5 +57,15 @@
     "definitionNotFound": "Definition not found",
     "noteNotFound": "Note not found",
     "updateFailed": "Update failed"
+  },
+  "startup": {
+    "installingUpdate": {
+      "title": "Installing update…",
+      "subtitle": "MemryNote will reopen automatically."
+    },
+    "failed": {
+      "title": "MemryNote couldn't finish starting",
+      "body": "This can happen when the disk is very low on free space, or with older graphics drivers. Try freeing up some disk space, then reopen MemryNote. If it keeps happening, reinstalling usually clears it."
+    }
   }
 }

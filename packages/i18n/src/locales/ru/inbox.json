@@ -270,7 +270,50 @@
     "panelEmpty": "Нет предстоящих напоминаний.",
     "panelPast": "Прошедшие",
     "panelUpcoming": "Предстоящие",
-    "taskFallback": "Задача"
+    "taskFallback": "Задача",
+    "dateTime": {
+      "dateAt": "{date} в {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Сегодня в {time}",
+      "todayCompact": "Сегодня, {time}",
+      "tomorrowAt": "Завтра в {time}",
+      "tomorrowCompact": "Завтра, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Напоминание о годовщине",
+      "inHours": {
+        "label": "Через {count, plural, one {# час} few {# часа} many {# часов} other {# часа}}"
+      },
+      "inMinutes": {
+        "label": "Через {count, plural, one {# минуту} few {# минуты} many {# минут} other {# минуты}}"
+      },
+      "inMonths": {
+        "label": "Через {count, plural, one {# месяц} few {# месяца} many {# месяцев} other {# месяца}}"
+      },
+      "inWeeks": {
+        "label": "Через {count, plural, one {# неделю} few {# недели} many {# недель} other {# недели}}"
+      },
+      "inYears": {
+        "label": "Через {count, plural, one {# год} few {# года} many {# лет} other {# года}}"
+      },
+      "laterToday": {
+        "description": "Через {count, plural, one {# час} few {# часа} many {# часов} other {# часа}}",
+        "label": "Позже сегодня"
+      },
+      "monthlyReflection": "Ежемесячная рефлексия",
+      "nextWeek": {
+        "description": "В понедельник в 9:00",
+        "label": "Следующая неделя"
+      },
+      "quarterlyReflection": "Ежеквартальная рефлексия",
+      "reviewInAWeek": "Пересмотреть через неделю",
+      "sameDayNextMonth": "Тот же день в следующем месяце",
+      "tomorrow": {
+        "description": "Завтра в 9:00",
+        "label": "Завтра"
+      },
+      "tomorrowMorning": "Завтра утром"
+    }
   },
   "insights": {
     "captureActivity": "Захват активности",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Прикрепить файл (изображения, аудио, видео, PDF)",
       "recordVoiceMemo": "Запись голосовой заметки",
       "recordVoiceMemo2": "Запись голосовой заметки",
-      "alreadyCaptured": "Уже схвачено: «",
-      "rdquo": "рдкво;",
       "captureAnyway": "Все равно захватить",
       "focusShortcut": "Фокус на поле захвата",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Захватить ссылку",
+      "captureNote": "Захватить заметку",
+      "placeholder": "Быстрый захват — вставьте ссылку, запишите мысль…",
+      "duplicateNotice": "Уже захвачено: «{title}»"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Выбрать папку",
@@ -414,10 +459,9 @@
       "captured": "Захваченный",
       "dismissError": "Ошибка закрытия",
       "alreadyCaptured": "Уже захвачено",
-      "ldquo": "«Дкво»;",
-      "rdquoMiddot": "рдкво; · ",
       "captureAnyway": "Все равно захватить",
-      "close": "Закрыть"
+      "close": "Закрыть",
+      "duplicateMeta": "«{title}» · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Отбросьте, чтобы захватить",
@@ -466,7 +510,12 @@
       "cancelRecording": "Отменить запись",
       "cancel": "Отмена",
       "stopRecording": "Остановить запись",
-      "stop": "Стоп"
+      "stop": "Стоп",
+      "enableMicInSettings": "Разрешите доступ к микрофону в системных настройках и попробуйте снова.",
+      "failedToStart": "Не удалось начать запись",
+      "microphoneAccessDenied": "Доступ к микрофону запрещён",
+      "noMicrophoneFound": "Микрофон не найден",
+      "recordingError": "Произошла ошибка записи"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Не удалось захватить файл",
       "fileCaptureFailed": "Захватить файл не удалось",
       "failedToCaptureAudio": "Не удалось записать звук",
-      "failedToCaptureVoice": "Не удалось записать голос"
+      "failedToCaptureVoice": "Не удалось записать голос",
+      "failedToLoadInboxPreferences": "Не удалось загрузить настройки входящих",
+      "failedToUpdateInboxPreferences": "Не удалось обновить настройки входящих"
     },
     "toasts": {
       "inboxRefreshed": "Входящие обновлены"
@@ -516,5 +567,10 @@
     "task": "Задача",
     "time": "Время",
     "title": "Преобразовать"
+  },
+  "reviewNudge": {
+    "action": "Открыть входящие",
+    "description": "Спокойно разберите сегодняшние захваты за один раз.",
+    "title": "Пора разобрать {count, plural, one {# элемент} few {# элемента} many {# элементов} other {# элемента}}"
   }
 }

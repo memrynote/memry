@@ -54,6 +54,7 @@ import { getNetworkMonitor } from '../sync/runtime'
 import { resolveSyncServerUrl } from '../sync/sync-server-url'
 import { getValidAccessToken } from '../sync/token-manager'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
+import { getMainI18n } from '../lib/main-i18n'
 
 const logger = createLogger('IPC:Sync:Attachments')
 
@@ -179,10 +180,11 @@ export function registerAttachmentHandlers(): void {
     UploadAttachmentSchema,
     async (input) => {
       const token = await getValidAccessToken()
-      if (!token) return { success: false, error: 'Not authenticated' }
+      if (!token) return { success: false, error: getMainI18n().t('errors:auth.notAuthenticated') }
 
       const queue = getOrCreateUploadQueue()
-      if (!queue) return { success: false, error: 'Sync not initialized' }
+      if (!queue)
+        return { success: false, error: getMainI18n().t('errors:sync.engineNotInitialized') }
 
       try {
         const result = await queue.enqueue(input.noteId, input.filePath, broadcastUploadProgress)
@@ -192,7 +194,7 @@ export function registerAttachmentHandlers(): void {
         return { success: false, error: err instanceof Error ? err.message : String(err) }
       }
     },
-    'Attachment upload failed'
+    'errors:attachment.uploadFailed'
   )
 
   registerCommand(
@@ -213,7 +215,7 @@ export function registerAttachmentHandlers(): void {
         status: 'uploading' as const
       }
     },
-    'Failed to fetch upload progress'
+    'errors:attachment.uploadProgressFailed'
   )
 
   registerCommand(
@@ -221,10 +223,11 @@ export function registerAttachmentHandlers(): void {
     DownloadAttachmentSchema,
     async (input) => {
       const token = await getValidAccessToken()
-      if (!token) return { success: false, error: 'Not authenticated' }
+      if (!token) return { success: false, error: getMainI18n().t('errors:auth.notAuthenticated') }
 
       const service = getOrCreateAttachmentService()
-      if (!service) return { success: false, error: 'Sync not initialized' }
+      if (!service)
+        return { success: false, error: getMainI18n().t('errors:sync.engineNotInitialized') }
 
       service.setProgressCallback((progress) => {
         const percent =
@@ -265,7 +268,7 @@ export function registerAttachmentHandlers(): void {
         service.setProgressCallback(null)
       }
     },
-    'Attachment download failed'
+    'errors:attachment.downloadFailed'
   )
 
   registerCommand(
@@ -286,7 +289,7 @@ export function registerAttachmentHandlers(): void {
         status: 'downloading' as const
       }
     },
-    'Failed to fetch download progress'
+    'errors:attachment.downloadProgressFailed'
   )
 
   registerOutboxUploader(
