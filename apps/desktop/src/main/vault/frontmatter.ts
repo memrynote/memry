@@ -318,7 +318,7 @@ export function generateContentHash(content: string): string {
 // Properties Extraction (T007, T008)
 // ============================================================================
 
-import type { PropertyType } from '@memry/contracts/property-types'
+import { PROJECT_PROPERTY_KEY, type PropertyType } from '@memry/contracts/property-types'
 
 /**
  * Reserved frontmatter keys that are NOT properties — only the two keys with
@@ -382,11 +382,17 @@ function isURL(value: string): boolean {
  * T008: Used when syncing externally-edited properties that don't have
  * a pre-existing type definition.
  *
- * @param _name - Property name (unused, kept for API compatibility)
+ * @param name - Property name (checked against reserved keys, e.g. `project`)
  * @param value - Property value to infer type from
  * @returns Inferred property type
  */
-export function inferPropertyType(_name: string, value: unknown): PropertyType {
+export function inferPropertyType(name: string, value: unknown): PropertyType {
+  // Reserved: `project` carries an array of project names. Inference would fall
+  // through to the array branch below and flatten it to text.
+  if (name === PROJECT_PROPERTY_KEY) {
+    return 'project'
+  }
+
   // Boolean -> checkbox
   if (typeof value === 'boolean') {
     return 'checkbox'
