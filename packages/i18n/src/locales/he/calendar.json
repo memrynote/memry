@@ -75,7 +75,8 @@
     "title": "לערוך את האירוע הזה ב-memrynote?",
     "body": "עריכת אירוע זה תיצור עותק מקושר ב-memrynote כך שהשינויים יסונכרנו לשני הכיוונים. להמשיך?",
     "do-not-ask-again": "אל תשאל שוב",
-    "confirm-label": "ערוך ב-memrynote"
+    "confirm-label": "ערוך ב-memrynote",
+    "agent-notice": "סוכן ה-AI יכול לקרוא את העותק הזה, גם כאשר גישת ה-AI ל-Google Calendar כבויה. אירוע ה-Google המקורי שלך נשאר מוסתר ממנו."
   },
   "onboarding-dialog": {
     "aria": "בחר את יומן ברירת המחדל שלך ב-Google",
@@ -184,5 +185,14 @@
   "undo": {
     "moveEvent": "העברת אירוע",
     "moveTask": "תזמון משימה מחדש"
+  },
+  "agent-access-dialog": {
+    "allow": "אפשר",
+    "aria": "בחר אם ה-AI יוכל לקרוא את האירועים שלך ב-Google Calendar",
+    "body": "כך או כך תמשיך לראות את אירועי Google שלך ב-memrynote. הבחירה הזו קובעת רק אם סוכן ה-AI יוכל לקרוא אותם כשתשאל אותו על לוח הזמנים שלך.",
+    "deny": "אל תאפשר",
+    "footnote": "אפשר לשנות זאת בכל עת בהגדרות ← אינטגרציות ← Google Calendar.",
+    "save-error": "שמירת הבחירה שלך נכשלה",
+    "title": "לאפשר ל-AI לקרוא את האירועים שלך ב-Google Calendar?"
   }
 }

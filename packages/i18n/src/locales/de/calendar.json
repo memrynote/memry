@@ -75,7 +75,8 @@
     "title": "Dieses Ereignis in memrynote bearbeiten?",
     "body": "Durch die Bearbeitung dieses Ereignisses wird eine verknüpfte Kopie in memrynote erstellt, sodass Änderungen in beide Richtungen synchronisiert werden. Weitermachen?",
     "do-not-ask-again": "Fragen Sie nicht noch einmal",
-    "confirm-label": "Bearbeiten in memrynote"
+    "confirm-label": "Bearbeiten in memrynote",
+    "agent-notice": "Der KI-Agent kann diese Kopie lesen, auch wenn der KI-Zugriff auf Google Calendar deaktiviert ist. Ihr ursprünglicher Google-Termin bleibt für ihn verborgen."
   },
   "onboarding-dialog": {
     "aria": "Wählen Sie Ihren Standard-Google-Kalender",
@@ -184,5 +185,14 @@
   "undo": {
     "moveEvent": "Termin verschieben",
     "moveTask": "Aufgabe neu planen"
+  },
+  "agent-access-dialog": {
+    "allow": "Erlauben",
+    "aria": "Wählen Sie, ob die KI Ihre Termine aus Google Calendar lesen darf",
+    "body": "Ihre Google-Termine sehen Sie in memrynote in jedem Fall weiterhin. Hier legen Sie nur fest, ob der KI-Agent sie lesen darf, wenn Sie ihn nach Ihrem Terminplan fragen.",
+    "deny": "Nicht erlauben",
+    "footnote": "Sie können dies jederzeit unter Einstellungen → Integrationen → Google Calendar ändern.",
+    "save-error": "Ihre Auswahl konnte nicht gespeichert werden",
+    "title": "Soll die KI Ihre Termine aus Google Calendar lesen dürfen?"
   }
 }

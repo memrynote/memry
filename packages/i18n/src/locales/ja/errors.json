@@ -100,7 +100,8 @@
     "historyFetchFailed": "同期履歴の取得に失敗しました",
     "keyPersistenceFailed": "暗号化キーを安全に保存できませんでした。デバイスの登録は取り消されました。もう一度お試しください。",
     "serverUnreachable": "同期サーバーに接続できません。インターネット接続を確認してください。",
-    "updateSyncedSettingFailed": "同期設定の更新に失敗しました"
+    "updateSyncedSettingFailed": "同期設定の更新に失敗しました",
+    "requestTimedOut": "同期リクエストがタイムアウトしました。インターネット接続を確認してください。"
   },
   "agent": {
     "conversationBusy": "会話は処理中です",

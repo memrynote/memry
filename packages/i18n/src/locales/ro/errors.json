@@ -100,7 +100,8 @@
     "historyFetchFailed": "Nu s-a putut prelua istoricul sincronizării",
     "keyPersistenceFailed": "Cheia de criptare nu a putut fi salvată în siguranță. Înregistrarea dispozitivului a fost anulată. Vă rugăm să încercați din nou.",
     "serverUnreachable": "Nu se poate stabili conexiunea cu serverul de sincronizare. Vă rugăm să verificați conexiunea la internet.",
-    "updateSyncedSettingFailed": "Nu s-a putut actualiza setarea sincronizată"
+    "updateSyncedSettingFailed": "Nu s-a putut actualiza setarea sincronizată",
+    "requestTimedOut": "Cererea de sincronizare a expirat. Verificați conexiunea la internet."
   },
   "agent": {
     "conversationBusy": "Conversație ocupată",

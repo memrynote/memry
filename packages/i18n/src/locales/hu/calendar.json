@@ -75,7 +75,8 @@
     "title": "Szerkeszti ezt az eseményt az memrynote fájlban?",
     "body": "Az esemény szerkesztésével egy csatolt másolat jön létre az memrynote fájlban, így a változások mindkét irányban szinkronizálódnak. Folytatja?",
     "do-not-ask-again": "Ne kérdezd újra",
-    "confirm-label": "Szerkesztés az memrynote-ben"
+    "confirm-label": "Szerkesztés az memrynote-ben",
+    "agent-notice": "Ezt a másolatot az AI-ügynök elolvashatja, még akkor is, ha az AI Google Calendar-hozzáférése ki van kapcsolva. Az eredeti Google-eseményed rejtve marad előle."
   },
   "onboarding-dialog": {
     "aria": "Válassza ki alapértelmezett Google-naptárát",
@@ -184,5 +185,14 @@
   "undo": {
     "moveEvent": "Esemény áthelyezése",
     "moveTask": "Feladat átütemezése"
+  },
+  "agent-access-dialog": {
+    "allow": "Engedélyezés",
+    "aria": "Döntsd el, hogy az AI olvashatja-e a Google Calendar eseményeidet",
+    "body": "A Google-eseményeidet így is, úgy is látni fogod a memrynote-ban. Ez csak azt dönti el, hogy az AI-ügynök elolvashatja-e őket, amikor az időbeosztásodról kérdezed.",
+    "deny": "Ne engedélyezze",
+    "footnote": "Ezt bármikor megváltoztathatod a Beállítások → Integrációk → Google Calendar menüpontban.",
+    "save-error": "Nem sikerült menteni a választásodat",
+    "title": "Olvashatja az AI a Google Calendar eseményeidet?"
   }
 }

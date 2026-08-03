@@ -100,7 +100,8 @@
     "historyFetchFailed": "Falha ao obter o histórico de sincronização",
     "keyPersistenceFailed": "Falha ao guardar a chave de encriptação em segurança. O registo do dispositivo foi revertido. Tente novamente.",
     "serverUnreachable": "Não foi possível ligar ao servidor de sincronização. Verifique a sua ligação à Internet.",
-    "updateSyncedSettingFailed": "Falha ao atualizar a definição sincronizada"
+    "updateSyncedSettingFailed": "Falha ao atualizar a definição sincronizada",
+    "requestTimedOut": "O pedido de sincronização excedeu o tempo limite. Verifique a sua ligação à Internet."
   },
   "agent": {
     "conversationBusy": "Conversa ocupada",

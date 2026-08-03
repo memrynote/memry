@@ -893,6 +893,11 @@
         "description": "Kapcsold ki az egyirányú szinkronizáláshoz — a Google-eseményeidet továbbra is látod a memrynote-ban, de a memrynote eseményei nem jelennek meg a Google-ban.",
         "error": "Nem sikerült frissíteni a szinkronizálás irányát",
         "label": "memrynote események megjelenítése a Google Calendarban"
+      },
+      "agentAccess": {
+        "description": "Alapértelmezés szerint ki van kapcsolva. Bekapcsolva az AI-ügynök elolvashatja a Google-eseményeidet; kikapcsolva semmit nem kap vissza, ha rájuk kérdezel. A memrynote-ban így is, úgy is látod őket.",
+        "error": "Nem sikerült frissíteni az AI-hozzáférést",
+        "label": "Az AI olvashatja a Google Calendar eseményeket"
       }
     },
     "sourcePicker": {

@@ -893,6 +893,11 @@
         "description": "I-off para sa one-way na sync — makikita mo pa rin ang iyong mga kaganapan sa Google sa memrynote, ngunit hindi lalabas sa Google ang mga kaganapan ng memrynote.",
         "error": "Nabigong i-update ang direksyon ng sync",
         "label": "Ipakita ang mga kaganapan ng memrynote sa Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Naka-off bilang default. Kapag na-on, mababasa ng ahente ng AI ang iyong mga kaganapan sa Google; kapag naka-off, wala itong maibabalik kapag tinanong tungkol sa mga ito. Makikita mo pa rin ang mga ito sa memrynote alinman ang piliin mo.",
+        "error": "Nabigong i-update ang access ng AI",
+        "label": "Payagan ang AI na basahin ang mga kaganapan sa Google Calendar"
       }
     },
     "sourcePicker": {

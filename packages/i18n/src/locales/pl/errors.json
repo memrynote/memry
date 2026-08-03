@@ -100,7 +100,8 @@
     "historyFetchFailed": "Nie udało się pobrać historii synchronizacji",
     "keyPersistenceFailed": "Nie udało się bezpiecznie zapisać klucza szyfrowania. Rejestracja urządzenia została wycofana. Spróbuj ponownie.",
     "serverUnreachable": "Nie można połączyć się z serwerem synchronizacji. Sprawdź połączenie internetowe.",
-    "updateSyncedSettingFailed": "Nie udało się zaktualizować synchronizowanego ustawienia"
+    "updateSyncedSettingFailed": "Nie udało się zaktualizować synchronizowanego ustawienia",
+    "requestTimedOut": "Upłynął limit czasu żądania synchronizacji. Sprawdź połączenie internetowe."
   },
   "agent": {
     "conversationBusy": "Rozmowa jest zajęta",

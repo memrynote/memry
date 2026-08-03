@@ -100,7 +100,8 @@
     "historyFetchFailed": "Kan de synchronisatiegeschiedenis niet ophalen",
     "keyPersistenceFailed": "Kan de encryptiesleutel niet veilig opslaan. De apparaatregistratie is teruggedraaid. Probeer het opnieuw.",
     "serverUnreachable": "Kan geen verbinding maken met de synchronisatieserver. Controleer je internetverbinding.",
-    "updateSyncedSettingFailed": "Kan de gesynchroniseerde instelling niet bijwerken"
+    "updateSyncedSettingFailed": "Kan de gesynchroniseerde instelling niet bijwerken",
+    "requestTimedOut": "Het synchronisatieverzoek duurde te lang. Controleer je internetverbinding."
   },
   "agent": {
     "conversationBusy": "Gesprek is bezig",

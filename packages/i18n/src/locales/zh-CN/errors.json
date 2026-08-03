@@ -100,7 +100,8 @@
     "historyFetchFailed": "获取同步历史失败",
     "keyPersistenceFailed": "无法安全保存加密密钥。设备注册已回滚，请重试。",
     "serverUnreachable": "无法连接到同步服务器，请检查你的网络连接。",
-    "updateSyncedSettingFailed": "更新同步设置失败"
+    "updateSyncedSettingFailed": "更新同步设置失败",
+    "requestTimedOut": "同步请求超时，请检查你的网络连接。"
   },
   "agent": {
     "conversationBusy": "对话正忙",

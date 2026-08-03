@@ -893,6 +893,11 @@
         "description": "Slå fra for envejssynkronisering — du ser stadig dine Google-begivenheder i memrynote, men memrynote-begivenheder vises ikke i Google.",
         "error": "Kunne ikke opdatere synkroniseringsretning",
         "label": "Vis memrynote-begivenheder i Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Slået fra som standard. Slå til, og AI-agenten kan læse dine Google-begivenheder; slå fra, og den får intet tilbage, når den bliver spurgt om dem. Du ser dem stadig i memrynote uanset hvad.",
+        "error": "Kunne ikke opdatere AI-adgang",
+        "label": "Lad AI læse begivenheder i Google Calendar"
       }
     },
     "sourcePicker": {

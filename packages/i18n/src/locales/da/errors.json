@@ -100,7 +100,8 @@
     "historyFetchFailed": "Kunne ikke hente synkroniseringshistorikken",
     "keyPersistenceFailed": "Krypteringsnøglen kunne ikke gemmes sikkert. Registreringen af enheden er rullet tilbage. Prøv venligst igen.",
     "serverUnreachable": "Der kunne ikke oprettes forbindelse til synkroniseringsserveren. Tjek din internetforbindelse.",
-    "updateSyncedSettingFailed": "Kunne ikke opdatere den synkroniserede indstilling"
+    "updateSyncedSettingFailed": "Kunne ikke opdatere den synkroniserede indstilling",
+    "requestTimedOut": "Synkroniseringsanmodningen tog for lang tid. Tjek din internetforbindelse."
   },
   "agent": {
     "conversationBusy": "Samtalen er optaget",

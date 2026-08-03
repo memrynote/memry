@@ -75,7 +75,8 @@
     "title": "memrynote에서 이 이벤트를 편집하시겠습니까?",
     "body": "이 이벤트를 편집하면 memrynote에 연결된 복사본이 생성되므로 변경 사항이 양방향으로 동기화됩니다. 계속하시겠습니까?",
     "do-not-ask-again": "다시 묻지 마세요",
-    "confirm-label": "memrynote에서 편집"
+    "confirm-label": "memrynote에서 편집",
+    "agent-notice": "Google Calendar에 대한 AI 접근이 꺼져 있어도 AI 에이전트는 이 복사본을 읽을 수 있습니다. 원본 Google 일정은 계속 AI에게 보이지 않습니다."
   },
   "onboarding-dialog": {
     "aria": "기본 Google 캘린더를 선택하세요.",
@@ -184,5 +185,14 @@
   "undo": {
     "moveEvent": "일정 이동",
     "moveTask": "작업 일정 변경"
+  },
+  "agent-access-dialog": {
+    "allow": "허용",
+    "aria": "AI가 Google Calendar 일정을 읽도록 허용할지 선택하세요",
+    "body": "어느 쪽을 선택하든 memrynote에서 Google 일정은 계속 보입니다. 이 선택은 일정에 대해 물어볼 때 AI 에이전트가 그 일정을 읽을 수 있는지만 결정합니다.",
+    "deny": "허용 안 함",
+    "footnote": "설정 → 통합 → Google Calendar에서 언제든지 변경할 수 있습니다.",
+    "save-error": "선택을 저장하지 못했습니다",
+    "title": "AI가 Google Calendar 일정을 읽도록 허용하시겠습니까?"
   }
 }

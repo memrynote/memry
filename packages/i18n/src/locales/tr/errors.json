@@ -100,7 +100,8 @@
     "historyFetchFailed": "Senkronizasyon geçmişi getirilemedi",
     "keyPersistenceFailed": "Şifreleme anahtarı güvenli şekilde kaydedilemedi. Cihaz kaydı geri alındı. Lütfen tekrar deneyin.",
     "serverUnreachable": "Senkronizasyon sunucusuna bağlanılamıyor. Lütfen internet bağlantınızı kontrol edin.",
-    "updateSyncedSettingFailed": "Senkronize edilen ayar güncellenemedi"
+    "updateSyncedSettingFailed": "Senkronize edilen ayar güncellenemedi",
+    "requestTimedOut": "Senkronizasyon isteği zaman aşımına uğradı. Lütfen internet bağlantınızı kontrol edin."
   },
   "agent": {
     "conversationBusy": "Konuşma meşgul",

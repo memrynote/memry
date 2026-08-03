@@ -893,6 +893,11 @@
         "description": "כבה לסנכרון חד-כיווני — עדיין תראה את אירועי Google שלך ב-memrynote, אך אירועי memrynote לא יופיעו ב-Google.",
         "error": "עדכון כיוון הסנכרון נכשל",
         "label": "הצג אירועי memrynote ב-Google Calendar"
+      },
+      "agentAccess": {
+        "description": "כבוי כברירת מחדל. כשההגדרה מופעלת סוכן ה-AI יכול לקרוא את אירועי Google שלך; כשהיא כבויה הוא לא מקבל דבר כששואלים אותו עליהם. כך או כך תמשיך לראות אותם ב-memrynote.",
+        "error": "עדכון גישת ה-AI נכשל",
+        "label": "אפשר ל-AI לקרוא אירועי Google Calendar"
       }
     },
     "sourcePicker": {

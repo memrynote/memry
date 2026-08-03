@@ -100,7 +100,8 @@
     "historyFetchFailed": "אחזור היסטוריית הסנכרון נכשל",
     "keyPersistenceFailed": "שמירת מפתח ההצפנה באופן מאובטח נכשלה. רישום המכשיר בוטל. אנא נסה שוב.",
     "serverUnreachable": "לא ניתן להתחבר לשרת הסנכרון. אנא בדוק את חיבור האינטרנט שלך.",
-    "updateSyncedSettingFailed": "עדכון ההגדרה המסונכרנת נכשל"
+    "updateSyncedSettingFailed": "עדכון ההגדרה המסונכרנת נכשל",
+    "requestTimedOut": "תם הזמן שהוקצב לבקשת הסנכרון. אנא בדוק את חיבור האינטרנט שלך."
   },
   "agent": {
     "conversationBusy": "השיחה עסוקה",

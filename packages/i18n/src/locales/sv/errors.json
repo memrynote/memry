@@ -100,7 +100,8 @@
     "historyFetchFailed": "Misslyckades med att hämta synkroniseringshistoriken",
     "keyPersistenceFailed": "Misslyckades med att spara krypteringsnyckeln säkert. Enhetsregistreringen har återställts. Försök igen.",
     "serverUnreachable": "Kan inte ansluta till synkroniseringsservern. Kontrollera din internetanslutning.",
-    "updateSyncedSettingFailed": "Misslyckades med att uppdatera den synkade inställningen"
+    "updateSyncedSettingFailed": "Misslyckades med att uppdatera den synkade inställningen",
+    "requestTimedOut": "Synkroniseringsförfrågan tog för lång tid. Kontrollera din internetanslutning."
   },
   "agent": {
     "conversationBusy": "Konversationen är upptagen",

@@ -100,7 +100,8 @@
     "historyFetchFailed": "取得同步紀錄失敗",
     "keyPersistenceFailed": "無法安全地儲存加密金鑰，裝置註冊已復原。請再試一次。",
     "serverUnreachable": "無法連線到同步伺服器，請檢查您的網路連線。",
-    "updateSyncedSettingFailed": "更新已同步的設定失敗"
+    "updateSyncedSettingFailed": "更新已同步的設定失敗",
+    "requestTimedOut": "同步請求逾時，請檢查您的網路連線。"
   },
   "agent": {
     "conversationBusy": "對話忙碌中",

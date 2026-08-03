@@ -893,6 +893,11 @@
         "description": "Wyłącz dla synchronizacji jednokierunkowej — nadal będziesz widzieć wydarzenia Google w memrynote, ale wydarzenia memrynote nie pojawią się w Google.",
         "error": "Nie udało się zaktualizować kierunku synchronizacji",
         "label": "Pokazuj wydarzenia memrynote w Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Domyślnie wyłączone. Po włączeniu agent AI może czytać Twoje wydarzenia Google; po wyłączeniu nie otrzyma o nich żadnych informacji. Tak czy inaczej nadal będziesz je widzieć w memrynote.",
+        "error": "Nie udało się zaktualizować dostępu AI",
+        "label": "Zezwalaj AI na czytanie wydarzeń z Google Calendar"
       }
     },
     "sourcePicker": {

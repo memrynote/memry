@@ -893,6 +893,11 @@
         "description": "Dezactivează pentru sincronizare într-un singur sens — vei vedea în continuare evenimentele Google în memrynote, dar evenimentele memrynote nu vor apărea în Google.",
         "error": "Actualizarea direcției de sincronizare a eșuat",
         "label": "Arată evenimentele memrynote în Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Dezactivat implicit. Când e activat, agentul AI poate citi evenimentele tale Google; când e dezactivat, nu primește nimic dacă este întrebat despre ele. Oricum le vei vedea în continuare în memrynote.",
+        "error": "Actualizarea accesului AI a eșuat",
+        "label": "Permite AI-ului să citească evenimentele din Google Calendar"
       }
     },
     "sourcePicker": {

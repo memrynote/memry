@@ -893,6 +893,11 @@
         "description": "Isključite za jednosmjernu sinkronizaciju — i dalje ćete vidjeti Google događaje u memrynote, ali memrynote događaji neće se pojaviti u Googleu.",
         "error": "Neuspješno ažuriranje smjera sinkronizacije",
         "label": "Prikaži memrynote događaje u Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Prema zadanim postavkama isključeno. Kada je uključeno, AI agent može čitati vaše Google događaje; kada je isključeno, ne dobiva ništa kada ga se pita o njima. Vi ih u memrynote vidite u oba slučaja.",
+        "error": "Ažuriranje AI pristupa nije uspjelo",
+        "label": "Dopusti da AI čita događaje iz Google Calendara"
       }
     },
     "sourcePicker": {

@@ -75,7 +75,8 @@
     "title": "Edytować to wydarzenie w memrynote?",
     "body": "Edycja tego zdarzenia spowoduje utworzenie połączonej kopii w memrynote, więc zmiany będą synchronizowane w obie strony. Kontynuować?",
     "do-not-ask-again": "Nie pytaj ponownie",
-    "confirm-label": "Edytuj w memrynote"
+    "confirm-label": "Edytuj w memrynote",
+    "agent-notice": "Agent AI może czytać tę kopię, mimo że dostęp AI do Google Calendar jest wyłączony. Twoje oryginalne wydarzenie Google pozostaje dla niego ukryte."
   },
   "onboarding-dialog": {
     "aria": "Wybierz domyślny kalendarz Google",
@@ -184,5 +185,14 @@
   "undo": {
     "moveEvent": "Przenieś wydarzenie",
     "moveTask": "Zmień termin zadania"
+  },
+  "agent-access-dialog": {
+    "allow": "Zezwól",
+    "aria": "Wybierz, czy AI może czytać Twoje wydarzenia z Google Calendar",
+    "body": "Tak czy inaczej nadal będziesz widzieć swoje wydarzenia Google w memrynote. To ustawienie decyduje tylko o tym, czy agent AI może je czytać, gdy zapytasz go o swój harmonogram.",
+    "deny": "Nie zezwalaj",
+    "footnote": "Możesz to zmienić w dowolnej chwili w sekcji Ustawienia → Integracje → Google Calendar.",
+    "save-error": "Nie udało się zapisać Twojego wyboru",
+    "title": "Zezwolić AI na czytanie Twoich wydarzeń z Google Calendar?"
   }
 }

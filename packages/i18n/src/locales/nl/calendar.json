@@ -75,7 +75,8 @@
     "title": "Deze gebeurtenis bewerken in memrynote?",
     "body": "Als u deze gebeurtenis bewerkt, wordt er een gekoppelde kopie gemaakt in memrynote, zodat wijzigingen in beide richtingen worden gesynchroniseerd. Doorgaan?",
     "do-not-ask-again": "Vraag het niet opnieuw",
-    "confirm-label": "Bewerken in memrynote"
+    "confirm-label": "Bewerken in memrynote",
+    "agent-notice": "De AI-agent kan deze kopie lezen, ook al staat AI-toegang tot Google Calendar uit. Je oorspronkelijke Google-gebeurtenis blijft voor hem verborgen."
   },
   "onboarding-dialog": {
     "aria": "Kies uw standaard Google-agenda",
@@ -184,5 +185,14 @@
   "undo": {
     "moveEvent": "Gebeurtenis verplaatsen",
     "moveTask": "Taak opnieuw plannen"
+  },
+  "agent-access-dialog": {
+    "allow": "Sta toe",
+    "aria": "Kies of AI je Google Calendar-gebeurtenissen mag lezen",
+    "body": "Je blijft je Google-gebeurtenissen hoe dan ook in memrynote zien. Dit bepaalt alleen of de AI-agent ze kan lezen wanneer je hem iets over je planning vraagt.",
+    "deny": "Sta niet toe",
+    "footnote": "Je kunt dit altijd wijzigen in Instellingen → Integraties → Google Calendar.",
+    "save-error": "Kan je keuze niet opslaan",
+    "title": "Mag AI je Google Calendar-gebeurtenissen lezen?"
   }
 }

@@ -100,7 +100,8 @@
     "historyFetchFailed": "Nem sikerült lekérni a szinkronizálási előzményeket",
     "keyPersistenceFailed": "Nem sikerült biztonságosan menteni a titkosítási kulcsot. Az eszköz regisztrációját visszavontuk. Próbáld újra.",
     "serverUnreachable": "Nem sikerült csatlakozni a szinkronizáló szerverhez. Ellenőrizd az internetkapcsolatodat.",
-    "updateSyncedSettingFailed": "Nem sikerült frissíteni a szinkronizált beállítást"
+    "updateSyncedSettingFailed": "Nem sikerült frissíteni a szinkronizált beállítást",
+    "requestTimedOut": "A szinkronizálási kérés túllépte az időkorlátot. Ellenőrizd az internetkapcsolatodat."
   },
   "agent": {
     "conversationBusy": "A beszélgetés foglalt",

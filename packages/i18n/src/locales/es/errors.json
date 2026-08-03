@@ -100,7 +100,8 @@
     "historyFetchFailed": "No se pudo obtener el historial de sincronización",
     "keyPersistenceFailed": "No se pudo guardar la clave de cifrado de forma segura. Se ha revertido el registro del dispositivo. Inténtalo de nuevo.",
     "serverUnreachable": "No se puede conectar con el servidor de sincronización. Comprueba tu conexión a internet.",
-    "updateSyncedSettingFailed": "No se pudo actualizar el ajuste sincronizado"
+    "updateSyncedSettingFailed": "No se pudo actualizar el ajuste sincronizado",
+    "requestTimedOut": "La solicitud de sincronización tardó demasiado. Comprueba tu conexión a internet."
   },
   "agent": {
     "conversationBusy": "La conversación está ocupada",

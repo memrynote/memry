@@ -100,7 +100,8 @@
     "historyFetchFailed": "Dohvaćanje povijesti sinkronizacije nije uspjelo",
     "keyPersistenceFailed": "Sigurno spremanje ključa za šifriranje nije uspjelo. Registracija uređaja je poništena. Pokušajte ponovno.",
     "serverUnreachable": "Nije moguće povezati se s poslužiteljem za sinkronizaciju. Provjerite internetsku vezu.",
-    "updateSyncedSettingFailed": "Ažuriranje sinkronizirane postavke nije uspjelo"
+    "updateSyncedSettingFailed": "Ažuriranje sinkronizirane postavke nije uspjelo",
+    "requestTimedOut": "Zahtjev za sinkronizaciju je istekao. Provjerite internetsku vezu."
   },
   "agent": {
     "conversationBusy": "Razgovor je zauzet",

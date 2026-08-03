@@ -893,6 +893,11 @@
         "description": "Desactívalo para una sincronización unidireccional: seguirás viendo tus eventos de Google en memrynote, pero los eventos de memrynote no aparecerán en Google.",
         "error": "No se pudo actualizar la dirección de la sincronización",
         "label": "Mostrar los eventos de memrynote en Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Desactivado de forma predeterminada. Actívalo y el agente de IA podrá leer tus eventos de Google; desactívalo y no obtendrá nada cuando se le pregunte por ellos. De cualquier forma, seguirás viéndolos en memrynote.",
+        "error": "No se pudo actualizar el acceso de la IA",
+        "label": "Permitir que la IA lea los eventos de Google Calendar"
       }
     },
     "sourcePicker": {

@@ -100,7 +100,8 @@
     "historyFetchFailed": "Impossibile recuperare la cronologia di sincronizzazione",
     "keyPersistenceFailed": "Impossibile salvare in modo sicuro la chiave di crittografia. La registrazione del dispositivo è stata annullata. Riprova.",
     "serverUnreachable": "Impossibile connettersi al server di sincronizzazione. Controlla la tua connessione a internet.",
-    "updateSyncedSettingFailed": "Impossibile aggiornare l'impostazione sincronizzata"
+    "updateSyncedSettingFailed": "Impossibile aggiornare l'impostazione sincronizzata",
+    "requestTimedOut": "La richiesta di sincronizzazione è scaduta. Controlla la tua connessione a internet."
   },
   "agent": {
     "conversationBusy": "Conversazione occupata",

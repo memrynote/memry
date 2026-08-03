@@ -100,7 +100,8 @@
     "historyFetchFailed": "Gagal mengambil sejarah penyegerakan",
     "keyPersistenceFailed": "Gagal menyimpan kunci penyulitan dengan selamat. Pendaftaran peranti telah ditarik balik. Sila cuba lagi.",
     "serverUnreachable": "Tidak dapat menyambung ke pelayan penyegerakan. Sila semak sambungan internet anda.",
-    "updateSyncedSettingFailed": "Gagal mengemas kini tetapan yang disegerakkan"
+    "updateSyncedSettingFailed": "Gagal mengemas kini tetapan yang disegerakkan",
+    "requestTimedOut": "Permintaan penyegerakan tamat masa. Sila semak sambungan internet anda."
   },
   "agent": {
     "conversationBusy": "Perbualan sedang sibuk",

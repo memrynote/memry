@@ -893,6 +893,11 @@
         "description": "Vypněte pro jednosměrnou synchronizaci — své události Google budete v memrynote stále vidět, ale události memrynote se v Google nezobrazí.",
         "error": "Nepodařilo se aktualizovat směr synchronizace",
         "label": "Zobrazit události memrynote v Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Ve výchozím nastavení vypnuto. Po zapnutí může agent AI číst vaše události Google; po vypnutí se o nich na dotaz nic nedozví. Vy je v memrynote uvidíte tak jako tak.",
+        "error": "Nepodařilo se aktualizovat přístup AI",
+        "label": "Umožnit AI číst události v Google Calendar"
       }
     },
     "sourcePicker": {

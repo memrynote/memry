@@ -893,6 +893,11 @@
         "description": "關閉以進行單向同步——您仍會在 memrynote 中看到您的 Google 活動，但 memrynote 活動不會出現在 Google 中。",
         "error": "更新同步方向失敗",
         "label": "在 Google Calendar 中顯示 memrynote 活動"
+      },
+      "agentAccess": {
+        "description": "預設為關閉。開啟後，AI 代理可以讀取您的 Google 活動；關閉時，即使詢問也不會取得任何內容。不論開啟或關閉，您都仍會在 memrynote 中看到這些活動。",
+        "error": "更新 AI 存取權失敗",
+        "label": "讓 AI 讀取 Google Calendar 活動"
       }
     },
     "sourcePicker": {

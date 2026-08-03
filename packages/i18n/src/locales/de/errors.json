@@ -100,7 +100,8 @@
     "historyFetchFailed": "Der Synchronisierungsverlauf konnte nicht abgerufen werden",
     "keyPersistenceFailed": "Der Verschlüsselungsschlüssel konnte nicht sicher gespeichert werden. Die Geräteregistrierung wurde zurückgenommen. Bitte versuchen Sie es erneut.",
     "serverUnreachable": "Der Synchronisierungsserver ist nicht erreichbar. Bitte überprüfen Sie Ihre Internetverbindung.",
-    "updateSyncedSettingFailed": "Die synchronisierte Einstellung konnte nicht aktualisiert werden"
+    "updateSyncedSettingFailed": "Die synchronisierte Einstellung konnte nicht aktualisiert werden",
+    "requestTimedOut": "Die Synchronisierungsanfrage hat das Zeitlimit überschritten. Bitte überprüfen Sie Ihre Internetverbindung."
   },
   "agent": {
     "conversationBusy": "Konversation ist beschäftigt",

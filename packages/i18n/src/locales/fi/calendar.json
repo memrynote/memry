@@ -75,7 +75,8 @@
     "title": "Muokkaa tätä tapahtumaa memrynote:ssä?",
     "body": "Tämän tapahtuman muokkaaminen luo linkitetyn kopion memrynote:ssä, joten muutokset synkronoidaan molempiin suuntiin. Jatketaanko?",
     "do-not-ask-again": "Älä kysy uudelleen",
-    "confirm-label": "Muokkaa memrynote:ssä"
+    "confirm-label": "Muokkaa memrynote:ssä",
+    "agent-notice": "Tekoälyagentti voi lukea tämän kopion, vaikka tekoälyn pääsy Google Calendariin on pois käytöstä. Alkuperäinen Google-tapahtumasi pysyy siltä piilossa."
   },
   "onboarding-dialog": {
     "aria": "Valitse oletusarvoinen Google-kalenteri",
@@ -184,5 +185,14 @@
   "undo": {
     "moveEvent": "Siirrä tapahtuma",
     "moveTask": "Ajoita tehtävä uudelleen"
+  },
+  "agent-access-dialog": {
+    "allow": "Salli",
+    "aria": "Valitse, saako tekoäly lukea Google Calendar -tapahtumiasi",
+    "body": "Näet Google-tapahtumasi memrynote:ssä joka tapauksessa. Tämä ratkaisee vain sen, saako tekoälyagentti lukea niitä, kun kysyt siltä aikataulustasi.",
+    "deny": "Älä salli",
+    "footnote": "Voit muuttaa tätä milloin tahansa kohdassa Asetukset → Integraatiot → Google Calendar.",
+    "save-error": "Valintasi tallentaminen epäonnistui",
+    "title": "Saako tekoäly lukea Google Calendar -tapahtumiasi?"
   }
 }

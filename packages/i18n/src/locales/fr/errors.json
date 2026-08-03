@@ -100,7 +100,8 @@
     "historyFetchFailed": "Échec de la récupération de l'historique de synchronisation",
     "keyPersistenceFailed": "Échec de l'enregistrement sécurisé de la clé de chiffrement. L'enregistrement de l'appareil a été annulé. Veuillez réessayer.",
     "serverUnreachable": "Impossible de se connecter au serveur de synchronisation. Vérifiez votre connexion Internet.",
-    "updateSyncedSettingFailed": "Échec de la mise à jour du paramètre synchronisé"
+    "updateSyncedSettingFailed": "Échec de la mise à jour du paramètre synchronisé",
+    "requestTimedOut": "La requête de synchronisation a expiré. Vérifiez votre connexion Internet."
   },
   "agent": {
     "conversationBusy": "Conversation occupée",

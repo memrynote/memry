@@ -100,7 +100,8 @@
     "historyFetchFailed": "Synkronointihistorian haku epäonnistui",
     "keyPersistenceFailed": "Salausavaimen turvallinen tallennus epäonnistui. Laitteen rekisteröinti on peruttu. Yritä uudelleen.",
     "serverUnreachable": "Synkronointipalvelimeen ei saada yhteyttä. Tarkista internetyhteytesi.",
-    "updateSyncedSettingFailed": "Synkronoidun asetuksen päivitys epäonnistui"
+    "updateSyncedSettingFailed": "Synkronoidun asetuksen päivitys epäonnistui",
+    "requestTimedOut": "Synkronointipyyntö aikakatkaistiin. Tarkista internetyhteytesi."
   },
   "agent": {
     "conversationBusy": "Keskustelu on varattu",

@@ -893,6 +893,11 @@
         "description": "Poista käytöstä yksisuuntaista synkronointia varten — näet edelleen Google-tapahtumasi memrynotessa, mutta memrynote-tapahtumat eivät näy Googlessa.",
         "error": "Synkronointisuunnan päivitys epäonnistui",
         "label": "Näytä memrynote-tapahtumat Google Calendarissa"
+      },
+      "agentAccess": {
+        "description": "Pois käytöstä oletuksena. Kun otat tämän käyttöön, tekoälyagentti voi lukea Google-tapahtumasi; kun poistat sen käytöstä, se ei saa niistä mitään tietoa, vaikka niistä kysyttäisiin. Näet ne memrynotessa joka tapauksessa.",
+        "error": "Tekoälyn pääsyn päivittäminen epäonnistui",
+        "label": "Salli tekoälyn lukea Google Calendar -tapahtumia"
       }
     },
     "sourcePicker": {

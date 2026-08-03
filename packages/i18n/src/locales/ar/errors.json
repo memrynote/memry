@@ -100,7 +100,8 @@
     "historyFetchFailed": "فشل جلب سجل المزامنة",
     "keyPersistenceFailed": "فشل حفظ مفتاح التشفير بأمان. تم التراجع عن تسجيل الجهاز. يرجى المحاولة مرة أخرى.",
     "serverUnreachable": "تعذّر الاتصال بخادم المزامنة. يرجى التحقق من اتصالك بالإنترنت.",
-    "updateSyncedSettingFailed": "فشل تحديث الإعداد المتزامن"
+    "updateSyncedSettingFailed": "فشل تحديث الإعداد المتزامن",
+    "requestTimedOut": "انتهت مهلة طلب المزامنة. يرجى التحقق من اتصالك بالإنترنت."
   },
   "agent": {
     "conversationBusy": "المحادثة مشغولة",

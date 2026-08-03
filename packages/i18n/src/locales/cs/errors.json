@@ -100,7 +100,8 @@
     "historyFetchFailed": "Nepodařilo se načíst historii synchronizace",
     "keyPersistenceFailed": "Šifrovací klíč se nepodařilo bezpečně uložit. Registrace zařízení byla vrácena zpět. Zkuste to prosím znovu.",
     "serverUnreachable": "Nelze se připojit k synchronizačnímu serveru. Zkontrolujte prosím připojení k internetu.",
-    "updateSyncedSettingFailed": "Nepodařilo se aktualizovat synchronizované nastavení"
+    "updateSyncedSettingFailed": "Nepodařilo se aktualizovat synchronizované nastavení",
+    "requestTimedOut": "Časový limit požadavku na synchronizaci vypršel. Zkontrolujte prosím připojení k internetu."
   },
   "agent": {
     "conversationBusy": "Konverzace je zaneprázdněná",

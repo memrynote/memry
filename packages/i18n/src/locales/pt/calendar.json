@@ -75,7 +75,8 @@
     "title": "Editar este evento em memrynote?",
     "body": "A edição deste evento criará uma cópia vinculada em memrynote para que as alterações sejam sincronizadas nos dois sentidos. Continuar?",
     "do-not-ask-again": "Não pergunte novamente",
-    "confirm-label": "Editar em memrynote"
+    "confirm-label": "Editar em memrynote",
+    "agent-notice": "O agente de IA pode ler esta cópia, mesmo com o acesso da IA ao Google Calendar desativado. O seu evento original do Google permanece oculto para ele."
   },
   "onboarding-dialog": {
     "aria": "Escolha sua agenda padrão do Google",
@@ -184,5 +185,14 @@
   "undo": {
     "moveEvent": "Mover evento",
     "moveTask": "Reagendar tarefa"
+  },
+  "agent-access-dialog": {
+    "allow": "Permitir",
+    "aria": "Escolha se a IA pode ler os seus eventos do Google Calendar",
+    "body": "Continuará a ver os seus eventos Google no memrynote de qualquer forma. Isto só determina se o agente de IA os pode ler quando lhe perguntar sobre a sua agenda.",
+    "deny": "Não permitir",
+    "footnote": "Pode alterar isto a qualquer momento em Configurações → Integrações → Google Calendar.",
+    "save-error": "Não foi possível guardar a sua escolha",
+    "title": "Permitir que a IA leia os seus eventos do Google Calendar?"
   }
 }

@@ -75,7 +75,8 @@
     "title": "Edit acara ini di memrynote?",
     "body": "Mengedit acara ini akan membuat salinan tertaut di memrynote sehingga perubahan disinkronkan ke dua arah. Lanjutkan?",
     "do-not-ask-again": "Jangan bertanya lagi",
-    "confirm-label": "Edit di memrynote"
+    "confirm-label": "Edit di memrynote",
+    "agent-notice": "Agen AI dapat membaca salinan ini, meskipun akses AI ke Google Calendar dinonaktifkan. Acara Google asli Anda tetap tersembunyi darinya."
   },
   "onboarding-dialog": {
     "aria": "Pilih kalender Google default Anda",
@@ -184,5 +185,14 @@
   "undo": {
     "moveEvent": "Pindahkan acara",
     "moveTask": "Jadwalkan ulang tugas"
+  },
+  "agent-access-dialog": {
+    "allow": "Izinkan",
+    "aria": "Pilih apakah AI boleh membaca acara Google Calendar Anda",
+    "body": "Anda tetap melihat acara Google Anda di memrynote, apa pun pilihan Anda. Ini hanya menentukan apakah agen AI boleh membacanya saat Anda bertanya tentang jadwal Anda.",
+    "deny": "Jangan Izinkan",
+    "footnote": "Anda dapat mengubahnya kapan saja di Pengaturan → Integrasi → Google Calendar.",
+    "save-error": "Gagal menyimpan pilihan Anda",
+    "title": "Izinkan AI membaca acara Google Calendar Anda?"
   }
 }

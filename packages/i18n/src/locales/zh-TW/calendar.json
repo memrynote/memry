@@ -75,7 +75,8 @@
     "title": "  \n要在 memrynote 中編輯此事件嗎？  ",
     "body": "  \n編輯此事件將在 memrynote 中創建一個連結副本，使更改雙向同步。要繼續嗎？  ",
     "do-not-ask-again": "  \n不要再詢問  ",
-    "confirm-label": "  \n在 memrynote 中編輯  "
+    "confirm-label": "  \n在 memrynote 中編輯  ",
+    "agent-notice": "即使 AI 對 Google Calendar 的存取已關閉，AI 代理仍可讀取這份副本。您原本的 Google 活動仍對它隱藏。"
   },
   "onboarding-dialog": {
     "aria": "  \n選擇您的預設 Google 日曆  ",
@@ -184,5 +185,14 @@
   "undo": {
     "moveEvent": "移動活動",
     "moveTask": "重新安排任務"
+  },
+  "agent-access-dialog": {
+    "allow": "允許",
+    "aria": "選擇是否讓 AI 讀取您的 Google Calendar 活動",
+    "body": "不論您如何選擇，您仍會在 memrynote 中看到您的 Google 活動。這只決定當您詢問行程時，AI 代理能不能讀取這些活動。",
+    "deny": "不允許",
+    "footnote": "您隨時可以在設定 → 整合 → Google Calendar 中變更此選項。",
+    "save-error": "儲存您的選擇失敗",
+    "title": "要讓 AI 讀取您的 Google Calendar 活動嗎？"
   }
 }

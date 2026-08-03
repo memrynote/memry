@@ -893,6 +893,11 @@
         "description": "Matikan untuk penyegerakan sehala — anda masih akan melihat acara Google anda dalam memrynote, tetapi acara memrynote tidak akan muncul dalam Google.",
         "error": "Gagal mengemas kini arah penyegerakan",
         "label": "Tunjukkan acara memrynote dalam Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Dimatikan secara lalai. Hidupkan dan ejen AI boleh membaca acara Google anda; matikan dan ia tidak mendapat apa-apa apabila ditanya tentangnya. Anda tetap melihatnya dalam memrynote, walau apa pun pilihan anda.",
+        "error": "Gagal mengemas kini akses AI",
+        "label": "Benarkan AI membaca acara Google Calendar"
       }
     },
     "sourcePicker": {

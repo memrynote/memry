@@ -893,6 +893,11 @@
         "description": "Deaktivieren für Ein-Wege-Synchronisierung — du siehst weiterhin deine Google-Termine in memrynote, aber memrynote-Termine erscheinen nicht in Google.",
         "error": "Synchronisierungsrichtung konnte nicht aktualisiert werden",
         "label": "memrynote-Termine in Google Calendar anzeigen"
+      },
+      "agentAccess": {
+        "description": "Standardmäßig deaktiviert. Ist die Option aktiviert, kann der KI-Agent Ihre Google-Termine lesen; ist sie deaktiviert, erhält er bei Fragen dazu nichts zurück. In memrynote sehen Sie Ihre Termine in jedem Fall weiterhin.",
+        "error": "Der KI-Zugriff konnte nicht aktualisiert werden",
+        "label": "KI Termine aus Google Calendar lesen lassen"
       }
     },
     "sourcePicker": {

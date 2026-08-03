@@ -100,7 +100,8 @@
     "historyFetchFailed": "Gagal mengambil riwayat sinkronisasi",
     "keyPersistenceFailed": "Gagal menyimpan kunci enkripsi dengan aman. Pendaftaran perangkat telah dibatalkan. Silakan coba lagi.",
     "serverUnreachable": "Tidak dapat terhubung ke server sinkronisasi. Periksa koneksi internet Anda.",
-    "updateSyncedSettingFailed": "Gagal memperbarui pengaturan tersinkron"
+    "updateSyncedSettingFailed": "Gagal memperbarui pengaturan tersinkron",
+    "requestTimedOut": "Permintaan sinkronisasi kehabisan waktu. Periksa koneksi internet Anda."
   },
   "agent": {
     "conversationBusy": "Percakapan sedang sibuk",

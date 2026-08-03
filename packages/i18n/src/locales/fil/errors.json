@@ -100,7 +100,8 @@
     "historyFetchFailed": "Nabigong makuha ang kasaysayan ng pag-sync",
     "keyPersistenceFailed": "Nabigong ligtas na i-save ang encryption key. Naibalik sa dati ang pagpaparehistro ng device. Pakisubukang muli.",
     "serverUnreachable": "Hindi makakonekta sa sync server. Pakisuri ang iyong koneksyon sa internet.",
-    "updateSyncedSettingFailed": "Nabigong i-update ang naka-sync na setting"
+    "updateSyncedSettingFailed": "Nabigong i-update ang naka-sync na setting",
+    "requestTimedOut": "Nag-time out ang kahilingan sa pag-sync. Pakisuri ang iyong koneksyon sa internet."
   },
   "agent": {
     "conversationBusy": "Abala ang usapan",

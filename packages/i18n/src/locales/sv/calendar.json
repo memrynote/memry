@@ -75,7 +75,8 @@
     "title": "Redigera denna händelse i memrynote?",
     "body": "Att redigera denna händelse skapar en länkad kopia i memrynote så att ändringar synkroniseras åt båda hållen. Fortsätta?",
     "do-not-ask-again": "Fråga inte igen",
-    "confirm-label": "Redigera i memrynote"
+    "confirm-label": "Redigera i memrynote",
+    "agent-notice": "AI-agenten kan läsa den här kopian, även om AI-åtkomst till Google Calendar är avstängd. Din ursprungliga Google-händelse förblir dold för den."
   },
   "onboarding-dialog": {
     "aria": "Välj din standard Google-kalender",
@@ -184,5 +185,14 @@
   "undo": {
     "moveEvent": "Flytta händelse",
     "moveTask": "Schemalägg om uppgift"
+  },
+  "agent-access-dialog": {
+    "allow": "Tillåt",
+    "aria": "Välj om AI ska få läsa dina händelser i Google Calendar",
+    "body": "Du ser fortfarande dina Google-händelser i memrynote oavsett vad du väljer. Det här avgör bara om AI-agenten får läsa dem när du frågar den om ditt schema.",
+    "deny": "Tillåt inte",
+    "footnote": "Du kan ändra det här när som helst under Inställningar → Integrationer → Google Calendar.",
+    "save-error": "Det gick inte att spara ditt val",
+    "title": "Ska AI få läsa dina händelser i Google Calendar?"
   }
 }
