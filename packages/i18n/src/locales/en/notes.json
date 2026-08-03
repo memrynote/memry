@@ -290,9 +290,7 @@
     "projectPlaceholder": "No project",
     "projectSearch": "Search projects",
     "projectEmpty": "No projects",
-    "projectRemove": "Remove from {name}",
-    "projectAdd": "Add to project",
-    "projectUnknown": "{name} (not found)"
+    "projectRemove": "Remove from {name}"
   },
   "templateSelector": {
     "title": "Choose Your Canvas",
