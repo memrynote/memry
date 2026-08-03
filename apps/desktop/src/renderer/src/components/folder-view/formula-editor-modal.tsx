@@ -515,8 +515,9 @@ export function FormulaEditorModal({
             </div>
             {sampleNote && (
               <p className="text-xs text-muted-foreground">
-                {tPhaseF('phaseF.componentsFolderViewFormulaEditorModal.usingNote')}
-                {sampleNote.title}&{tPhaseF('phaseF.componentsFolderViewFormulaEditorModal.quot')}
+                {tPhaseF('phaseF.componentsFolderViewFormulaEditorModal.usingNoteTitle', {
+                  title: sampleNote.title
+                })}
               </p>
             )}
           </div>

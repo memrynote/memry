@@ -47,11 +47,9 @@ export const DeleteTaskDialog = ({
             {tPhaseF('phaseF.componentsTasksDeleteTaskDialog.deleteTask')}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            &{tPhaseF('phaseF.componentsTasksDeleteTaskDialog.ldquo')}
-            {taskTitle}&
-            {tPhaseF(
-              'phaseF.componentsTasksDeleteTaskDialog.rdquoWillBePermanentlyDeletedThisActionCannotBeUndone'
-            )}
+            {tPhaseF('phaseF.componentsTasksDeleteTaskDialog.deleteConfirmBody', {
+              title: taskTitle
+            })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

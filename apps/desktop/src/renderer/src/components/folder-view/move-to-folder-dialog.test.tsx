@@ -8,7 +8,13 @@ import { MoveToFolderDialog } from './move-to-folder-dialog'
 import { notesService } from '@/services/notes-service'
 
 vi.mock('@memry/i18n/renderer', () => ({
-  useT: () => ({ t: (key: string) => key.split('.').at(-1) || key })
+  useT: () => ({
+    t: (key: string, values?: Record<string, unknown>) => {
+      const leaf = key.split('.').at(-1) || key
+      const interpolated = Object.values(values ?? {})
+      return interpolated.length > 0 ? `${leaf}:${interpolated.join(',')}` : leaf
+    }
+  })
 }))
 
 vi.mock('@/components/ui/dialog', () => ({
@@ -129,7 +135,7 @@ describe('MoveToFolderDialog', () => {
     expect(screen.getByRole('heading', { name: 'Move 2 Notes' })).toBeInTheDocument()
 
     await user.type(await screen.findByPlaceholderText('searchFolders'), 'Research/New')
-    await user.click(screen.getByRole('button', { name: /createResearch\/New/ }))
+    await user.click(screen.getByRole('button', { name: 'createFolderNamed:Research/New' }))
 
     await waitFor(() => expect(notesService.createFolder).toHaveBeenCalledWith('Research/New'))
     expect(onMove).toHaveBeenCalledWith('Research/New')

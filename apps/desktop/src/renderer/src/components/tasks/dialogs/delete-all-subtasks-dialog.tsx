@@ -57,13 +57,10 @@ export const DeleteAllSubtasksDialog = ({
           <AlertDialogDescription asChild>
             <div className="space-y-3">
               <p>
-                {tPhaseF('phaseF.componentsTasksDialogsDeleteAllSubtasksDialog.thisWillDelete')}
-                {subtasks.length}{' '}
-                {tPhaseF('phaseF.componentsTasksDialogsDeleteAllSubtasksDialog.subtask')}
-                {subtasks.length !== 1 ? 's' : ''}{' '}
-                {tPhaseF('phaseF.componentsTasksDialogsDeleteAllSubtasksDialog.from')}
-                {parentTitle}&
-                {tPhaseF('phaseF.componentsTasksDialogsDeleteAllSubtasksDialog.rdquo')}
+                {tPhaseF(
+                  'phaseF.componentsTasksDialogsDeleteAllSubtasksDialog.deleteSubtasksConfirmation',
+                  { count: subtasks.length, title: parentTitle }
+                )}
               </p>
 
               {/* Subtask list */}

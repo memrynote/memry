@@ -10,7 +10,12 @@ import { CaptureDuplicate, CaptureError, CaptureSuccess } from './quick-capture-
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
-    t: (key: string) => key
+    t: (key: string, values?: Record<string, unknown>) =>
+      values
+        ? `${key}(${Object.entries(values)
+            .map(([name, value]) => `${name}=${String(value)}`)
+            .join(', ')})`
+        : key
   })
 }))
 
@@ -133,6 +138,15 @@ describe('quick capture child components', () => {
         onClose={onClose}
       />
     )
+    const expectedDate = new Date('2026-05-10T12:00:00Z').toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric'
+    })
+    expect(
+      screen.getByText(
+        `phaseF.componentsQuickCaptureStates.duplicateMeta(title=A title that is long enough to be truncated when rendered in..., date=${expectedDate})`
+      )
+    ).toBeInTheDocument()
     fireEvent.click(screen.getByText('phaseF.componentsQuickCaptureStates.captureAnyway'))
     fireEvent.click(screen.getByText('phaseF.componentsQuickCaptureStates.close'))
     expect(onForce).toHaveBeenCalledTimes(1)

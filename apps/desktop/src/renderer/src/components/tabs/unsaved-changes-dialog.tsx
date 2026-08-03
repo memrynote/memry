@@ -124,11 +124,9 @@ export const UnsavedChangesDialog = ({
             {tPhaseF('phaseF.componentsTabsUnsavedChangesDialog.unsavedChanges')}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            &{tPhaseF('phaseF.componentsTabsUnsavedChangesDialog.quot')}
-            {tabTitle}&
-            {tPhaseF(
-              'phaseF.componentsTabsUnsavedChangesDialog.quotHasUnsavedChangesWhatWouldYouLikeToDo'
-            )}
+            {tPhaseF('phaseF.componentsTabsUnsavedChangesDialog.unsavedChangesBody', {
+              title: tabTitle
+            })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
