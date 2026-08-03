@@ -7,6 +7,10 @@
  * @module services/properties-service
  */
 
+import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
+
+export type { ResolvedRelationRef }
+
 export interface PropertyValue {
   name: string
   value: unknown
@@ -57,5 +61,15 @@ export const propertiesService = {
    */
   rename: (entityId: string, oldName: string, newName: string): Promise<RenamePropertyResponse> => {
     return window.api.properties.rename(entityId, oldName, newName)
+  },
+
+  /**
+   * Resolve relation property URIs (memry://<kind>/<id>) to display data.
+   * Preserves the input array's order and length; never throws.
+   * @param uris - Relation URIs to resolve
+   * @returns Resolved refs, 1:1 with the input array
+   */
+  resolveRefs: (uris: string[]): Promise<ResolvedRelationRef[]> => {
+    return window.api.properties.resolveRefs(uris)
   }
 }

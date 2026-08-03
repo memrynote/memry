@@ -201,6 +201,20 @@ vi.mock('./editors', () => ({
         remove-status
       </button>
     </div>
+  ),
+  RelationEditor: ({
+    value,
+    onChange
+  }: {
+    value: string[]
+    onChange: (value: string[]) => void
+  }) => (
+    <div>
+      <span>relation-editor:{value.join(',')}</span>
+      <button type="button" onClick={() => onChange([])}>
+        clear-relation
+      </button>
+    </div>
   )
 }))
 
@@ -350,6 +364,34 @@ describe('PropertyRow', () => {
       })
       expect(mocks.refresh).toHaveBeenCalled()
     })
+  })
+
+  it('dispatches relation properties to RelationEditor with a normalized array value', () => {
+    const onValueChange = vi.fn()
+
+    const { rerender } = render(
+      <PropertyRow
+        property={property({
+          name: 'Related',
+          type: 'relation',
+          value: ['memry://note/nte_1']
+        })}
+        onValueChange={onValueChange}
+      />
+    )
+    expect(screen.getByText('relation-editor:memry://note/nte_1')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('clear-relation'))
+    expect(onValueChange).toHaveBeenCalledWith([])
+
+    // Non-array stored value (e.g. null on a freshly-added property) is
+    // normalized to an empty array rather than passed through raw.
+    rerender(
+      <PropertyRow
+        property={property({ name: 'Related', type: 'relation', value: null })}
+        onValueChange={onValueChange}
+      />
+    )
+    expect(screen.getByText('relation-editor:')).toBeInTheDocument()
   })
 
   it('shows calendar toggle trigger only for date properties', () => {

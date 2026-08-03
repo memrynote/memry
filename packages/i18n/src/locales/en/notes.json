@@ -275,6 +275,10 @@
     "openUrlAria": "Open URL",
     "showOnCalendar": "Show on calendar",
     "showingOnCalendar": "Showing on calendar",
+    "relation": {
+      "deleted": "Deleted",
+      "removeAria": "Remove {title}"
+    },
     "types": {
       "text": "Text",
       "number": "Number",
