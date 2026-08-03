@@ -118,6 +118,25 @@ describe('agent MCP desktop operation allowlists', () => {
       expect(allOperations.has(operation)).toBe(false)
     }
   })
+
+  it('exposes tag category reads', () => {
+    expect(AgentMcpDesktopReadOperations).toContain('tags.listCategories')
+  })
+
+  it('keeps tag category writes in the write allowlist only', () => {
+    const writes = [
+      'tags.createCategory',
+      'tags.renameCategory',
+      'tags.deleteCategory',
+      'tags.reorder'
+    ]
+    const readOperations = new Set<string>(AgentMcpDesktopReadOperations)
+
+    for (const operation of writes) {
+      expect(AgentMcpDesktopWriteOperations).toContain(operation)
+      expect(readOperations.has(operation)).toBe(false)
+    }
+  })
 })
 
 // Canvas coverage (#916). The excluded operations are excluded on purpose —

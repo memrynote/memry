@@ -300,6 +300,20 @@ calendar, graph, and spatial canvas — so an agent can tell whether an action i
 before suggesting it, and `settings.setFeaturesSettings` toggles them. `settings.getInboxSettings`
 and `settings.setInboxSettings` cover the daily inbox review reminder.
 
+Tag categories are reachable through the same bridge. `tags.listCategories` is a read operation that
+returns `{"success": true, "categories": [...]}`, where each entry carries its id, name, sort order,
+and tag count. `tags.createCategory`, `tags.renameCategory`, `tags.deleteCategory`, and
+`tags.reorder` are write operations behind the usual approval flow; `tags.createCategory` returns
+`{"success": true, "category": {...}}` and the other three return `{"success": true}`. Like the rest
+of the desktop bridge, these operations report their own failures as `{"success": false, "error":
+"..."}` rather than raising an MCP error, so check `success` before reading the payload.
+`tags.reorder` applies a drag result — tag-to-category assignments, category ordering, or both in one
+transaction — and is the only way to move a tag into a category. Deleting a category keeps its tags
+and makes them uncategorized.
+
+`vault_get_tags` returns each tag with its `color`, `icon`, `sort_order`, `category_id`, and
+`category_name`. Both category fields are `null` for an uncategorized tag.
+
 Calendar desktop reads accept the same single-object shape as the renderer bridge. For example:
 `calendar.listEvents` accepts `args: [{}]`, and `calendar.getRange` accepts either
 `args: ["2026-05-14", "2026-06-14"]` or
@@ -338,9 +352,9 @@ The hub's link layer is reachable through the desktop bridge. Reads, via `vault_
 
 | Operation                   | Args                 | Answers                                          |
 | --------------------------- | -------------------- | ------------------------------------------------ |
-| `tasks.listProjectContents` | `[projectId]`        | Which notes, files, and events a project holds    |
-| `tasks.listProjectLinks`    | `[projectId]`        | The raw link rows, including pin state            |
-| `tasks.listForItem`         | `[itemType, itemId]` | Which projects a note, file, or event belongs to  |
+| `tasks.listProjectContents` | `[projectId]`        | Which notes, files, and events a project holds   |
+| `tasks.listProjectLinks`    | `[projectId]`        | The raw link rows, including pin state           |
+| `tasks.listForItem`         | `[itemType, itemId]` | Which projects a note, file, or event belongs to |
 
 `itemType` is one of `note`, `file`, or `calendar_event`.
 

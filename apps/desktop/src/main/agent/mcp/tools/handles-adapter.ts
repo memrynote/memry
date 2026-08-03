@@ -24,7 +24,7 @@ import {
   renameFolder
 } from '../../../vault/notes'
 import { getConfig } from '../../../vault'
-import { getAllTagsWithCounts } from '../../../tags/store'
+import { getAllTagsWithCounts, listTagCategories } from '../../../tags/store'
 import { generateId } from '../../../lib/id'
 import {
   syncFolderConfigDelete,
@@ -741,9 +741,15 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
     },
     tags: {
       async listAll() {
+        const categoryNames = new Map(listTagCategories(dataDb).map((c) => [c.id, c.name]))
         return getAllTagsWithCounts(indexDb, dataDb).map((tag) => ({
           name: tag.name,
-          count: tag.count
+          count: tag.count,
+          color: tag.color ?? null,
+          icon: tag.icon ?? null,
+          category_id: tag.categoryId ?? null,
+          category_name: tag.categoryId ? (categoryNames.get(tag.categoryId) ?? null) : null,
+          sort_order: tag.sortOrder ?? 0
         }))
       }
     },
