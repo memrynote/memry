@@ -115,7 +115,8 @@ function createDraftFromAnchor(anchorDate: string): CalendarEventDraft {
     isAllDay: false,
     startAt: `${anchorDate}T09:00`,
     endAt: `${anchorDate}T10:00`,
-    targetCalendarId: null
+    targetCalendarId: null,
+    projectId: null
   }
 }
 
@@ -132,7 +133,8 @@ function createDraftFromItem(item: CalendarProjectionItem): CalendarEventDraft {
         ? toLocalDateInputValue(item.endAt)
         : toLocalDateTimeInputValue(item.endAt)
       : '',
-    targetCalendarId: item.binding?.remoteCalendarId ?? null
+    targetCalendarId: item.binding?.remoteCalendarId ?? null,
+    projectId: null
   }
 }
 
@@ -423,7 +425,8 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
               ? toLocalDateInputValue(record.endAt)
               : toLocalDateTimeInputValue(record.endAt)
             : '',
-          targetCalendarId: record.targetCalendarId
+          targetCalendarId: record.targetCalendarId,
+          projectId: null
         } satisfies CalendarEventDraft)
       : createDraftFromItem(source)
 

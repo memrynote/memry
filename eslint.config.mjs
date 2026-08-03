@@ -255,6 +255,7 @@ export default defineConfig(
       'apps/desktop/src/renderer/src/pages/note.tsx',
       'apps/desktop/src/renderer/src/pages/journal.tsx',
       'apps/desktop/src/renderer/src/pages/folder-view.tsx',
+      'apps/desktop/src/renderer/src/pages/calendar.tsx',
       'apps/desktop/src/renderer/src/pages/inbox/inbox-list-view.tsx',
       'apps/desktop/src/renderer/src/components/folder-view/grouped-table.tsx',
       'apps/desktop/src/renderer/src/components/folder-view/folder-table-view.tsx',

@@ -47,7 +47,8 @@ export function toDraft(event: CalendarEventRecord): CalendarEventDraft {
         ? toLocalDateInputValue(event.endAt)
         : toLocalDateTimeInputValue(event.endAt)
       : '',
-    targetCalendarId: event.targetCalendarId
+    targetCalendarId: event.targetCalendarId,
+    projectId: null
   }
 }
 
