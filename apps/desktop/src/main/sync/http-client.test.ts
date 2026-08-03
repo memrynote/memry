@@ -214,6 +214,38 @@ describe('http-client', () => {
         serverError: 'AUTH_DEVICE_REVOKED: Device has been revoked'
       })
     })
+
+    it('passes an abort signal to fetch', async () => {
+      // #given
+      mockFetch.mockResolvedValue(createJsonResponse({ ok: true }))
+
+      // #when
+      await syncFetch('GET', '/sync/changes')
+
+      // #then
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/sync/changes'),
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
+      )
+    })
+
+    it('aborts a hung request after the timeout and throws a timed-out NetworkError', async () => {
+      // #given a request that never resolves on its own
+      mockFetch.mockImplementation(
+        (_url: string, init: { signal: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            init.signal.addEventListener('abort', () => reject(init.signal.reason), { once: true })
+          })
+      )
+
+      // #when / #then
+      await expect(
+        syncFetch('GET', '/sync/changes', undefined, undefined, undefined, 25)
+      ).rejects.toMatchObject({
+        name: 'NetworkError',
+        message: expect.stringContaining('timed out')
+      })
+    })
   })
 
   describe('convenience functions', () => {
