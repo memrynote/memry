@@ -261,6 +261,10 @@ export type TabAction =
   | { type: 'SET_TAB_MODIFIED'; payload: { tabId: string; groupId: string; isModified: boolean } }
   | { type: 'SET_TAB_DELETED'; payload: { tabId: string; groupId: string; isDeleted: boolean } }
   | { type: 'UPDATE_TAB_TITLE'; payload: { tabId: string; groupId: string; title: string } }
+  | {
+      type: 'SET_TAB_ENTITY'
+      payload: { tabId: string; groupId: string; entityId: string; path: string }
+    }
 
   // Tab reordering
   | {

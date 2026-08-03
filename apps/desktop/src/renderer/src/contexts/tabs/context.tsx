@@ -165,6 +165,11 @@ interface TabContextType {
   updateTabTitleByEntityId: (entityId: string, title: string) => void
 
   /**
+   * Attach an entity id + path to an existing tab (draft → saved transition)
+   */
+  setTabEntity: (tabId: string, entityId: string, path: string, groupId?: string) => void
+
+  /**
    * Reorder tabs within a group
    */
   reorderTabs: (fromIndex: number, toIndex: number, groupId?: string) => void
@@ -523,6 +528,17 @@ export const TabProvider = ({
     }
   }, [])
 
+  const setTabEntity = useCallback(
+    (tabId: string, entityId: string, path: string, groupId?: string) => {
+      const actualGroupId = groupId ?? activeGroupIdRef.current
+      dispatch({
+        type: 'SET_TAB_ENTITY',
+        payload: { tabId, groupId: actualGroupId, entityId, path }
+      })
+    },
+    []
+  )
+
   const reorderTabs = useCallback((fromIndex: number, toIndex: number, groupId?: string) => {
     const actualGroupId = groupId ?? activeGroupIdRef.current
     dispatch({
@@ -672,6 +688,7 @@ export const TabProvider = ({
       setTabDeleted,
       updateTabTitle,
       updateTabTitleByEntityId,
+      setTabEntity,
       reorderTabs,
       moveTabToGroup,
       saveTabState,
@@ -714,6 +731,7 @@ export const TabProvider = ({
       setTabDeleted,
       updateTabTitle,
       updateTabTitleByEntityId,
+      setTabEntity,
       reorderTabs,
       moveTabToGroup,
       saveTabState,
