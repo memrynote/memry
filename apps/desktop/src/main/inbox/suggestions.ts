@@ -8,8 +8,8 @@
  * @module inbox/suggestions
  */
 
-import { BrowserWindow } from 'electron'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getDatabase, requireDatabase, getIndexDatabase, getRawIndexDatabase } from '../database'
 import {
   inboxItems,
@@ -122,12 +122,10 @@ function isAIEnabled(): boolean {
  * Emit progress event to all windows
  */
 function emitProgress(current: number, total: number, phase: string): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(SettingsChannels.events.EMBEDDING_PROGRESS, {
-      current,
-      total,
-      phase
-    })
+  broadcastToAllWindows(SettingsChannels.events.EMBEDDING_PROGRESS, {
+    current,
+    total,
+    phase
   })
 }
 

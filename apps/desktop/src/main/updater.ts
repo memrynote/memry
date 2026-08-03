@@ -1,8 +1,9 @@
-import { app, BrowserWindow } from 'electron'
+import { app } from 'electron'
 import { autoUpdater, type UpdateInfo } from 'electron-updater'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import { UpdaterChannels } from '@memry/contracts/ipc-updater'
 import { createLogger } from './lib/logger'
+import { broadcastToAllWindows } from './lib/window-broadcast'
 import { getMainI18n } from './lib/main-i18n'
 import { formatAppVersionForDisplay } from './lib/app-version-display'
 import { htmlToPlainText } from './lib/html-to-plain-text'
@@ -487,9 +488,7 @@ function isUpdateSupported(): boolean {
 
 function broadcastState(): void {
   const snapshot = getUpdateState()
-  BrowserWindow.getAllWindows().forEach((window) => {
-    window.webContents.send(UpdaterChannels.events.STATE_CHANGED, snapshot)
-  })
+  broadcastToAllWindows(UpdaterChannels.events.STATE_CHANGED, snapshot)
 }
 
 function stripDeveloperChangelog(text: string): string {

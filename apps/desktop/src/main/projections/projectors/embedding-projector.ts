@@ -1,6 +1,5 @@
 import fs from 'fs/promises'
 import path from 'path'
-import { BrowserWindow } from 'electron'
 import { sql } from 'drizzle-orm'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import { getDatabase, getIndexDatabase, getRawIndexDatabase } from '../../database'
@@ -13,6 +12,7 @@ import {
 } from '../../lib/embeddings'
 import { buildEmbeddingInput, EMBEDDING_INPUT_VERSION } from '../../lib/embedding-input'
 import { createLogger } from '../../lib/logger'
+import { broadcastToAllWindows } from '../../lib/window-broadcast'
 import type { ProjectionEvent, ProjectionProjector } from '../types'
 
 const logger = createLogger('Projections:Embeddings')
@@ -22,12 +22,10 @@ const EMBEDDING_VERSION_KEY = 'ai.embeddingInputVersion'
 const MIN_CONTENT_LENGTH = 10
 
 function emitProgress(current: number, total: number, phase: string): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(SettingsChannels.events.EMBEDDING_PROGRESS, {
-      current,
-      total,
-      phase
-    })
+  broadcastToAllWindows(SettingsChannels.events.EMBEDDING_PROGRESS, {
+    current,
+    total,
+    phase
   })
 }
 

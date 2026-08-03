@@ -30,6 +30,7 @@ import {
 } from '@memry/contracts/reminders-api'
 import { InboxChannels, type ReminderMetadata } from '@memry/contracts/inbox-api'
 import { createLogger } from './logger'
+import { broadcastToAllWindows } from './window-broadcast'
 import { getMainI18n } from './main-i18n'
 import { publishProjectionEvent } from '../projections'
 import { emitCalendarProjectionChanged } from '../calendar/change-events'
@@ -143,12 +144,7 @@ function toReminderWithTarget(row: ReminderRow, indexDb: IndexDb): ReminderWithT
  * Emit an event to all windows
  */
 function emitEvent(channel: string, data: unknown): void {
-  const windows = BrowserWindow.getAllWindows()
-  for (const win of windows) {
-    if (!win.isDestroyed()) {
-      win.webContents.send(channel, data)
-    }
-  }
+  broadcastToAllWindows(channel, data)
 }
 
 /**

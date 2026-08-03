@@ -20,7 +20,9 @@ describe('fts rebuild recovery', () => {
     vi.clearAllMocks()
     getAllWindows.mockReturnValue([
       {
+        isDestroyed: () => false,
         webContents: {
+          isDestroyed: () => false,
           send: vi.fn()
         }
       }

@@ -1,4 +1,3 @@
-import { BrowserWindow } from 'electron'
 import { and, asc, eq, inArray, lte, or, type SQL } from 'drizzle-orm'
 import { inboxJobs, inboxItems } from '@memry/db-schema/schema/inbox'
 import type {
@@ -11,6 +10,7 @@ import { InboxChannels } from '@memry/contracts/ipc-channels'
 
 import { requireDatabase, type DataDb } from '../database'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { generateId } from '../lib/id'
 import { getItemAttachmentsDir } from './attachments'
 import { isBotPageTitle, titleFromUrl } from './metadata-utils'
@@ -38,9 +38,7 @@ interface QueueInboxJobInput {
 }
 
 function emitInboxEvent(channel: string, data: unknown): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, data)
-  })
+  broadcastToAllWindows(channel, data)
 }
 
 function toInboxJob(row: JobRow): InboxJobContract {

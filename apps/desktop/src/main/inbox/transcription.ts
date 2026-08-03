@@ -10,8 +10,8 @@
 import { readFile } from 'fs/promises'
 import { existsSync } from 'fs'
 import path from 'path'
-import { BrowserWindow } from 'electron'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import OpenAI from 'openai'
 import { toFile } from 'openai/uploads'
 import { eq } from 'drizzle-orm'
@@ -67,17 +67,13 @@ function emitTranscriptionEvent(
   channel: string,
   data: { id: string; transcription?: string; error?: string }
 ): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, data)
-  })
+  broadcastToAllWindows(channel, data)
 }
 
 function emitInboxUpdated(itemId: string, changes: Record<string, unknown>): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(InboxChannels.events.UPDATED, {
-      id: itemId,
-      changes
-    })
+  broadcastToAllWindows(InboxChannels.events.UPDATED, {
+    id: itemId,
+    changes
   })
 
   publishProjectionEvent({

@@ -1,6 +1,5 @@
 import fs from 'fs/promises'
 import path from 'path'
-import { BrowserWindow } from 'electron'
 import { sql } from 'drizzle-orm'
 import { SearchChannels } from '@memry/contracts/ipc-channels'
 import { getDatabase, getIndexDatabase } from '../../database'
@@ -13,6 +12,7 @@ import {
 } from '../../database/fts-inbox'
 import { parseNote } from '../../vault/frontmatter'
 import { createLogger } from '../../lib/logger'
+import { broadcastToAllWindows } from '../../lib/window-broadcast'
 import type { ProjectionEvent, ProjectionProjector } from '../types'
 
 const logger = createLogger('Projections:Search')
@@ -24,9 +24,7 @@ interface RebuildProgress {
 }
 
 function broadcast(channel: string, data: unknown): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, data)
-  })
+  broadcastToAllWindows(channel, data)
 }
 
 function getTaskTags(taskId: string): string[] {

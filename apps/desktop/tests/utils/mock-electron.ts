@@ -109,6 +109,8 @@ export class MockWebContents {
   send = vi.fn()
   postMessage = vi.fn()
 
+  isDestroyed = vi.fn(() => false)
+
   executeJavaScript = vi.fn().mockResolvedValue(undefined)
   insertCSS = vi.fn().mockResolvedValue('')
 
