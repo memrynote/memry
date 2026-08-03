@@ -589,6 +589,8 @@ describe('CalendarPage', () => {
     await waitFor(() => expect(mockUnsnooze).toHaveBeenCalledWith('snooze-1'))
   })
 
+  // Skipping the confirmation also requires agent access to Google events to be on;
+  // otherwise promotion would silently widen what the agent can read.
   it('promotes external events directly when the confirmation is dismissed', async () => {
     const user = userEvent.setup()
     const api = window.api as typeof window.api & {
@@ -597,7 +599,10 @@ describe('CalendarPage', () => {
         setCalendarGoogleSettings: ReturnType<typeof vi.fn>
       }
     }
-    api.settings.getCalendarGoogleSettings.mockResolvedValue({ promoteConfirmDismissed: true })
+    api.settings.getCalendarGoogleSettings.mockResolvedValue({
+      promoteConfirmDismissed: true,
+      agentReadEventsConsent: true
+    })
     mockPromoteExternal.mockResolvedValue({ success: true, eventId: 'event-promoted' })
     mockGetEvent.mockResolvedValue({
       id: 'event-promoted',

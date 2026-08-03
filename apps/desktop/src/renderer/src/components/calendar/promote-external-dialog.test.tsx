@@ -44,6 +44,16 @@ describe('PromoteExternalDialog (M2)', () => {
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled()
   })
 
+  it('#given agentAccessOff #when rendered #then warns that the copy becomes agent-readable', () => {
+    render(<PromoteExternalDialog open onOpenChange={vi.fn()} onConfirm={vi.fn()} agentAccessOff />)
+    expect(screen.getByText(/AI agent can read this copy/)).toBeInTheDocument()
+  })
+
+  it('#given agent access is already on #when rendered #then omits the warning', () => {
+    render(<PromoteExternalDialog open onOpenChange={vi.fn()} onConfirm={vi.fn()} />)
+    expect(screen.queryByText(/AI agent can read this copy/)).not.toBeInTheDocument()
+  })
+
   it('#given errorMessage #when rendered #then surfaces it via role=alert', () => {
     render(
       <PromoteExternalDialog

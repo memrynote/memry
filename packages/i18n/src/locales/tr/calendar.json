@@ -83,7 +83,8 @@
     "title": "Bu etkinlik memrynote'te düzenlensin mi?",
     "body": "Bu etkinliği düzenlemek memrynote'de bağlantılı bir kopya oluşturur; değişiklikler iki yönde de senkronize edilir. Devam edilsin mi?",
     "do-not-ask-again": "Bir daha sorma",
-    "confirm-label": "memrynote'de düzenle"
+    "confirm-label": "memrynote'de düzenle",
+    "agent-notice": "Yapay zeka ajanı bu kopyayı okuyabilir; Google Takvim için yapay zeka erişimi kapalı olsa bile. Google’daki asıl etkinliğiniz ona kapalı kalır."
   },
   "onboarding-dialog": {
     "aria": "Varsayılan Google takviminizi seçin",
