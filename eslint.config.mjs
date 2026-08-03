@@ -212,6 +212,7 @@ export default defineConfig(
       'apps/desktop/src/renderer/src/components/tasks/projects/add-file-to-project-dialog.tsx',
       'apps/desktop/src/renderer/src/components/tasks/projects/add-note-to-project-dialog.tsx',
       'apps/desktop/src/renderer/src/components/tasks/projects/project-overview-note.tsx',
+      'apps/desktop/src/renderer/src/components/note/info-section/editors/use-relation-search.ts',
       'apps/desktop/src/renderer/src/pages/canvas/canvas-add-card-dialog.tsx',
       'apps/desktop/src/renderer/src/pages/canvas/use-canvas-add-search.ts',
       'apps/desktop/src/renderer/src/pages/canvas/use-canvas-entities.ts',

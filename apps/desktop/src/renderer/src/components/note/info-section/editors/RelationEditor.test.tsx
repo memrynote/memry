@@ -8,7 +8,9 @@ import { RelationEditor } from './RelationEditor'
 import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
 
 const mocks = vi.hoisted(() => ({
-  resolveRefs: vi.fn()
+  resolveRefs: vi.fn(),
+  quick: vi.fn(),
+  searchEvents: vi.fn()
 }))
 
 vi.mock('@/services/properties-service', () => ({
@@ -16,6 +18,39 @@ vi.mock('@/services/properties-service', () => ({
     resolveRefs: mocks.resolveRefs
   }
 }))
+
+vi.mock('@/services/search-service', () => ({
+  searchService: { quick: (...args: unknown[]) => mocks.quick(...args) }
+}))
+vi.mock('@/services/calendar-service', () => ({
+  calendarService: { searchEvents: (input: unknown) => mocks.searchEvents(input) }
+}))
+
+// The real Radix Popover does not open on click in jsdom. Stub the wrapper so
+// the trigger click flips `onOpenChange(true)` and the content renders only
+// when open — same convention as icon-picker-button.test.tsx.
+vi.mock('@/components/ui/popover', async () => {
+  const React = await import('react')
+  return {
+    Popover: ({ open, onOpenChange, children }: any) =>
+      React.createElement(
+        React.Fragment,
+        null,
+        React.Children.map(children, (child: any) =>
+          React.isValidElement(child) ? React.cloneElement(child, { open, onOpenChange }) : child
+        )
+      ),
+    PopoverTrigger: ({ children, onOpenChange }: any) =>
+      React.cloneElement(children, {
+        onClick: (e: any) => {
+          children.props.onClick?.(e)
+          onOpenChange?.(true)
+        }
+      }),
+    PopoverContent: ({ children, open }: any) =>
+      open ? React.createElement('div', null, children) : null
+  }
+})
 
 let i18nEn: I18nInstance
 
@@ -128,5 +163,55 @@ describe('RelationEditor', () => {
       </I18nextProvider>
     )
     expect(await screen.findByText('Call')).toBeInTheDocument()
+  })
+
+  it('renders an add trigger even for an empty value', () => {
+    renderWithI18n(<RelationEditor value={[]} onChange={vi.fn()} />)
+    expect(screen.getByLabelText('Add relation')).toBeInTheDocument()
+  })
+
+  it('does not add a duplicate URI', async () => {
+    mockResolveRefs([
+      {
+        uri: 'memry://note/nte_1',
+        targetType: 'note',
+        targetId: 'nte_1',
+        title: 'Richard Doe',
+        exists: true
+      }
+    ])
+    mocks.quick.mockResolvedValue({
+      results: [
+        {
+          id: 'nte_1',
+          type: 'note',
+          title: 'Richard Doe',
+          snippet: '',
+          score: 1,
+          normalizedScore: 1,
+          matchType: 'fuzzy',
+          modifiedAt: '2026-01-01T00:00:00.000Z',
+          metadata: { type: 'note', path: '/nte_1.md', tags: [] }
+        }
+      ],
+      queryTimeMs: 1
+    })
+    mocks.searchEvents.mockResolvedValue({ events: [] })
+
+    const onChange = vi.fn()
+    renderWithI18n(<RelationEditor value={['memry://note/nte_1']} onChange={onChange} />)
+    expect(await screen.findByText('Richard Doe')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByLabelText('Add relation'))
+    await userEvent.type(screen.getByRole('textbox'), 'rich')
+    // "Richard Doe" is now on screen twice: the resolved chip and the picker
+    // result row. Wait for the result row specifically — it is the only one
+    // with role="option" — rather than the first text match, which would be
+    // the pre-existing chip and would resolve before the debounced search
+    // ever lands.
+    const resultOption = await screen.findByRole('option', { name: 'Richard Doe' })
+    await userEvent.click(resultOption)
+
+    expect(onChange).not.toHaveBeenCalled()
   })
 })

@@ -277,7 +277,13 @@
     "showingOnCalendar": "Showing on calendar",
     "relation": {
       "deleted": "Deleted",
-      "removeAria": "Remove {title}"
+      "removeAria": "Remove {title}",
+      "addAria": "Add relation",
+      "searchPlaceholder": "Search notes, tasks and events…",
+      "groupNotes": "Notes & Files",
+      "groupTasks": "Tasks",
+      "groupEvents": "Events",
+      "empty": "No results"
     },
     "types": {
       "text": "Text",
