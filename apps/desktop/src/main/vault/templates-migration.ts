@@ -13,7 +13,7 @@ import { getSetting, setSetting } from '../database/queries/settings'
 import type { DataDb } from '../database/types'
 import { createLogger } from '../lib/logger'
 import { getMemryDir } from './init'
-import { BUILT_IN_TEMPLATES } from './templates'
+import { BUILT_IN_TEMPLATES } from './built-in-templates'
 
 const log = createLogger('TemplatesMigration')
 
