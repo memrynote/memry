@@ -10,7 +10,7 @@
   },
   "file": {
     "label": "Tiedosto",
-    "newNote": "Uusi huomautus",
+    "newNote": "Uusi muistiinpano",
     "close": "Sulje ikkuna",
     "closeTab": "Sulje välilehti",
     "exportPdf": "Vie PDF:ksi…",
@@ -23,7 +23,7 @@
   "edit": {
     "label": "Muokkaa",
     "undo": "Kumoa",
-    "redo": "Toista",
+    "redo": "Tee uudelleen",
     "cut": "Leikkaa",
     "copy": "Kopioi",
     "paste": "Liitä",
@@ -38,7 +38,7 @@
   "view": {
     "label": "Näytä",
     "reload": "Lataa uudelleen",
-    "toggleDevTools": "Vaihda Kehittäjätyökalut",
+    "toggleDevTools": "Näytä/piilota kehittäjätyökalut",
     "toggleFullscreen": "Koko näyttö päälle/pois",
     "theme": "Teema",
     "themeDark": "Tumma",

@@ -1,6 +1,6 @@
 {
   "app": {
-    "quit": "quit",
+    "quit": "I-quit",
     "preferences": "Mga Setting…",
     "exit": "Lumabas",
     "hide": "Itago ang MemryNote",
@@ -9,7 +9,7 @@
     "unhide": "Ipakita Lahat"
   },
   "file": {
-    "label": "file",
+    "label": "File",
     "newNote": "Bagong Tala",
     "close": "Isara ang Window",
     "closeTab": "Isara ang Tab",
@@ -23,15 +23,15 @@
   "edit": {
     "label": "I-edit",
     "undo": "I-undo",
-    "redo": "Gawin muli",
-    "cut": "Putulin",
+    "redo": "I-redo",
+    "cut": "Gupitin",
     "copy": "Kopyahin",
-    "paste": "Idikit",
+    "paste": "I-paste",
     "selectAll": "Piliin lahat",
     "find": "Hanapin",
     "speech": "Pagsasalita",
     "delete": "Tanggalin",
-    "pasteAndMatchStyle": "Idikit at Itugma ang Estilo",
+    "pasteAndMatchStyle": "I-paste at Itugma ang Estilo",
     "startSpeaking": "Simulan ang Pagsasalita",
     "stopSpeaking": "Ihinto ang Pagsasalita"
   },

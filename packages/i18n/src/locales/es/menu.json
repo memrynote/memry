@@ -1,6 +1,6 @@
 {
   "app": {
-    "quit": "dejar de fumar",
+    "quit": "Salir de MemryNote",
     "preferences": "Ajustes…",
     "exit": "Salir",
     "hide": "Ocultar MemryNote",
@@ -24,12 +24,12 @@
     "label": "Editar",
     "undo": "Deshacer",
     "redo": "Rehacer",
-    "cut": "cortar",
+    "cut": "Cortar",
     "copy": "Copiar",
     "paste": "Pegar",
     "selectAll": "Seleccionar todo",
     "find": "Buscar",
-    "speech": "Voz",
+    "speech": "Habla",
     "delete": "Eliminar",
     "pasteAndMatchStyle": "Pegar y ajustar estilo",
     "startSpeaking": "Iniciar locución",
@@ -37,7 +37,7 @@
   },
   "view": {
     "label": "Ver",
-    "reload": "recargar",
+    "reload": "Recargar",
     "toggleDevTools": "Alternar herramientas de desarrollador",
     "toggleFullscreen": "Alternar pantalla completa",
     "theme": "Tema",

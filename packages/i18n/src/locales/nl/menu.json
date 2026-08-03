@@ -36,10 +36,10 @@
     "stopSpeaking": "Stop voorlezen"
   },
   "view": {
-    "label": "Bekijk",
+    "label": "Weergave",
     "reload": "Herladen",
-    "toggleDevTools": "Schakel ontwikkelaarstools in",
-    "toggleFullscreen": "Schakel Volledig scherm in",
+    "toggleDevTools": "Ontwikkelaarstools in-/uitschakelen",
+    "toggleFullscreen": "Volledig scherm in-/uitschakelen",
     "theme": "Thema",
     "themeDark": "Donker",
     "themeLight": "Licht",

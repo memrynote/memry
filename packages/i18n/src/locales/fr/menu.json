@@ -10,7 +10,7 @@
   },
   "file": {
     "label": "Fichier",
-    "newNote": "Nouvelle remarque",
+    "newNote": "Nouvelle note",
     "close": "Fermer la fenêtre",
     "closeTab": "Fermer l'onglet",
     "exportPdf": "Exporter en PDF…",
@@ -18,12 +18,12 @@
   },
   "navigation": {
     "back": "Retour",
-    "forward": "En avant"
+    "forward": "Avancer"
   },
   "edit": {
-    "label": "Modifier",
+    "label": "Édition",
     "undo": "Annuler",
-    "redo": "Refaire",
+    "redo": "Rétablir",
     "cut": "Couper",
     "copy": "Copier",
     "paste": "Coller",
@@ -36,9 +36,9 @@
     "stopSpeaking": "Arrêter la lecture"
   },
   "view": {
-    "label": "Voir",
+    "label": "Affichage",
     "reload": "Recharger",
-    "toggleDevTools": "Toggle Outils de développement",
+    "toggleDevTools": "Afficher/Masquer les outils de développement",
     "toggleFullscreen": "Basculer en plein écran",
     "theme": "Thème",
     "themeDark": "Sombre",

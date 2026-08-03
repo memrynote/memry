@@ -1,6 +1,6 @@
 {
   "app": {
-    "quit": "やめる",
+    "quit": "終了",
     "preferences": "設定…",
     "exit": "終了",
     "hide": "MemryNote を隠す",
@@ -36,8 +36,8 @@
     "stopSpeaking": "読み上げを停止"
   },
   "view": {
-    "label": "見る",
-    "reload": "リロード",
+    "label": "表示",
+    "reload": "再読み込み",
     "toggleDevTools": "開発者ツールの切り替え",
     "toggleFullscreen": "全画面表示の切り替え",
     "theme": "テーマ",

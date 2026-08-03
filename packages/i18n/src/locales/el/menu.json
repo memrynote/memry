@@ -1,6 +1,6 @@
 {
   "app": {
-    "quit": "Κλείσε",
+    "quit": "Τερματισμός",
     "preferences": "Ρυθμίσεις…",
     "exit": "Έξοδος",
     "hide": "Απόκρυψη MemryNote",
@@ -24,7 +24,7 @@
     "label": "Επεξεργασία",
     "undo": "Αναίρεση",
     "redo": "Επανάληψη",
-    "cut": "Κόψτε",
+    "cut": "Αποκοπή",
     "copy": "Αντιγραφή",
     "paste": "Επικόλληση",
     "selectAll": "Επιλογή όλων",
@@ -46,7 +46,7 @@
     "themeSystem": "Σύστημα",
     "themeWhite": "Χαρτί",
     "toggleDayPanel": "Εναλλαγή πάνελ ημέρας",
-    "toggleSidebar": "Εναλλαγή πλαϊνής μπάρας",
+    "toggleSidebar": "Εναλλαγή πλαϊνής στήλης",
     "actualSize": "Πραγματικό μέγεθος",
     "zoomIn": "Μεγέθυνση",
     "zoomOut": "Σμίκρυνση"
@@ -61,7 +61,7 @@
     "highlight": "Επισήμανση",
     "italic": "Πλάγια",
     "label": "Μορφή",
-    "strikethrough": "Διαγράμμιση"
+    "strikethrough": "Διακριτή διαγραφή"
   },
   "help": {
     "about": "Σχετικά με το MemryNote",

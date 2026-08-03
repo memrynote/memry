@@ -9,7 +9,7 @@
     "unhide": "แสดงทั้งหมด"
   },
   "file": {
-    "label": "แฟ้ม",
+    "label": "ไฟล์",
     "newNote": "โน้ตใหม่",
     "close": "ปิดหน้าต่าง",
     "closeTab": "ปิดแท็บ",
@@ -18,7 +18,7 @@
   },
   "navigation": {
     "back": "ย้อนกลับ",
-    "forward": "  \nไปข้างหน้า  "
+    "forward": "ไปข้างหน้า"
   },
   "edit": {
     "label": "แก้ไข",
@@ -66,13 +66,13 @@
   "help": {
     "about": "เกี่ยวกับ MemryNote",
     "documentation": "เอกสาร",
-    "label": "ช่วยเหลือ",
+    "label": "ความช่วยเหลือ",
     "shortcuts": "แป้นพิมพ์ลัด",
     "aboutVersion": "เวอร์ชัน {version}"
   },
   "insert": {
     "attachment": "แทรกไฟล์แนบ…",
-    "bulletList": "รายการหัวข้อ",
+    "bulletList": "รายการหัวข้อย่อย",
     "codeBlock": "บล็อกโค้ด",
     "label": "แทรก",
     "numberedList": "รายการลำดับเลข",

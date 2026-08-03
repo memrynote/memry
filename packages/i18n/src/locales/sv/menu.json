@@ -4,12 +4,12 @@
     "preferences": "Inställningar…",
     "exit": "Avsluta",
     "hide": "Göm MemryNote",
-    "hideOthers": "Göm andra",
+    "hideOthers": "Göm övriga",
     "services": "Tjänster",
     "unhide": "Visa alla"
   },
   "file": {
-    "label": "Fil",
+    "label": "Arkiv",
     "newNote": "Ny anteckning",
     "close": "Stäng fönster",
     "closeTab": "Stäng flik",
@@ -27,7 +27,7 @@
     "cut": "Klipp ut",
     "copy": "Kopiera",
     "paste": "Klistra in",
-    "selectAll": "Markera alla",
+    "selectAll": "Markera allt",
     "find": "Sök",
     "speech": "Tal",
     "delete": "Radera",
@@ -39,7 +39,7 @@
     "label": "Visa",
     "reload": "Ladda om",
     "toggleDevTools": "Växla utvecklarverktyg",
-    "toggleFullscreen": "Växla fullskärm",
+    "toggleFullscreen": "Växla helskärm",
     "theme": "Tema",
     "themeDark": "Mörkt",
     "themeLight": "Ljust",
@@ -58,7 +58,7 @@
     "heading1": "Rubrik 1",
     "heading2": "Rubrik 2",
     "heading3": "Rubrik 3",
-    "highlight": "Markering",
+    "highlight": "Överstrykning",
     "italic": "Kursiv",
     "label": "Format",
     "strikethrough": "Genomstruken"
@@ -82,7 +82,7 @@
   "window": {
     "label": "Fönster",
     "close": "Stäng",
-    "front": "Lägg alla överst",
+    "front": "Placera alla överst",
     "minimize": "Minimera",
     "zoom": "Zooma"
   }

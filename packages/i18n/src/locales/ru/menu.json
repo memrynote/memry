@@ -1,6 +1,6 @@
 {
   "app": {
-    "quit": "Выйти",
+    "quit": "Завершить",
     "preferences": "Настройки…",
     "exit": "Выход",
     "hide": "Скрыть MemryNote",
@@ -21,7 +21,7 @@
     "forward": "Вперед"
   },
   "edit": {
-    "label": "Редактировать",
+    "label": "Правка",
     "undo": "Отменить",
     "redo": "Повторить",
     "cut": "Вырезать",
@@ -36,7 +36,7 @@
     "stopSpeaking": "Остановить речь"
   },
   "view": {
-    "label": "Посмотреть",
+    "label": "Вид",
     "reload": "Перезагрузить",
     "toggleDevTools": "Переключить инструменты разработчика",
     "toggleFullscreen": "Переключить полноэкранный режим",
@@ -64,7 +64,7 @@
     "strikethrough": "Зачёркнутый"
   },
   "help": {
-    "about": "О MemryNote",
+    "about": "О программе MemryNote",
     "documentation": "Документация",
     "label": "Справка",
     "shortcuts": "Горячие клавиши",

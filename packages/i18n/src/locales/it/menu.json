@@ -9,7 +9,7 @@
     "unhide": "Mostra tutte"
   },
   "file": {
-    "label": "Archivio",
+    "label": "File",
     "newNote": "Nuova nota",
     "close": "Chiudi finestra",
     "closeTab": "Chiudi scheda",
@@ -23,7 +23,7 @@
   "edit": {
     "label": "Modifica",
     "undo": "Annulla",
-    "redo": "Rifare",
+    "redo": "Ripristina",
     "cut": "Taglia",
     "copy": "Copia",
     "paste": "Incolla",

@@ -1,6 +1,6 @@
 {
   "app": {
-    "quit": "Odustati",
+    "quit": "Izađi",
     "preferences": "Postavke…",
     "exit": "Izlaz",
     "hide": "Sakrij MemryNote",
@@ -9,7 +9,7 @@
     "unhide": "Prikaži sve"
   },
   "file": {
-    "label": "File",
+    "label": "Datoteka",
     "newNote": "Nova bilješka",
     "close": "Zatvori prozor",
     "closeTab": "Zatvori karticu",
@@ -17,16 +17,16 @@
     "openQuickly": "Brzo otvori…"
   },
   "navigation": {
-    "back": "natrag",
+    "back": "Natrag",
     "forward": "Naprijed"
   },
   "edit": {
     "label": "Uredi",
     "undo": "Poništi",
     "redo": "Ponovi",
-    "cut": "rezati",
+    "cut": "Izreži",
     "copy": "Kopiraj",
-    "paste": "Zalijepite",
+    "paste": "Zalijepi",
     "selectAll": "Odaberi sve",
     "find": "Pronađi",
     "speech": "Govor",
@@ -36,7 +36,7 @@
     "stopSpeaking": "Prestani govoriti"
   },
   "view": {
-    "label": "pogled",
+    "label": "Prikaz",
     "reload": "Ponovno učitaj",
     "toggleDevTools": "Uključi/isključi alate za razvojne programere",
     "toggleFullscreen": "Uključi/isključi cijeli zaslon",

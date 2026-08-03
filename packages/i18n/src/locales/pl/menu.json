@@ -1,8 +1,8 @@
 {
   "app": {
-    "quit": "Przestań",
+    "quit": "Zakończ",
     "preferences": "Ustawienia…",
-    "exit": "Zakończ",
+    "exit": "Wyjdź",
     "hide": "Ukryj MemryNote",
     "hideOthers": "Ukryj pozostałe",
     "services": "Usługi",
@@ -17,14 +17,14 @@
     "openQuickly": "Otwórz szybko…"
   },
   "navigation": {
-    "back": "Powrót",
-    "forward": "Naprzód"
+    "back": "Wstecz",
+    "forward": "Dalej"
   },
   "edit": {
-    "label": "Edytuj",
+    "label": "Edycja",
     "undo": "Cofnij",
-    "redo": "Powtórz",
-    "cut": "Cięcie",
+    "redo": "Ponów",
+    "cut": "Wytnij",
     "copy": "Kopiuj",
     "paste": "Wklej",
     "selectAll": "Zaznacz wszystko",
@@ -36,7 +36,7 @@
     "stopSpeaking": "Przestań mówić"
   },
   "view": {
-    "label": "Zobacz",
+    "label": "Widok",
     "reload": "Załaduj ponownie",
     "toggleDevTools": "Przełącz Narzędzia programistyczne",
     "toggleFullscreen": "Przełącz pełny ekran",

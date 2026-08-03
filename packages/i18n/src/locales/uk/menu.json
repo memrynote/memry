@@ -1,12 +1,12 @@
 {
   "app": {
-    "quit": "Вийти",
+    "quit": "Завершити",
     "preferences": "Налаштування…",
     "exit": "Вихід",
     "hide": "Сховати MemryNote",
     "hideOthers": "Сховати інші",
     "services": "Служби",
-    "unhide": "Показати все"
+    "unhide": "Показати всі"
   },
   "file": {
     "label": "Файл",
@@ -36,7 +36,7 @@
     "stopSpeaking": "Зупинити мовлення"
   },
   "view": {
-    "label": "Перегляд",
+    "label": "Вигляд",
     "reload": "Перезавантажити",
     "toggleDevTools": "Перемкнути інструменти розробника",
     "toggleFullscreen": "Перемкнути повноекранний режим",
@@ -64,7 +64,7 @@
     "strikethrough": "Закреслений"
   },
   "help": {
-    "about": "Про MemryNote",
+    "about": "Про програму MemryNote",
     "documentation": "Документація",
     "label": "Довідка",
     "shortcuts": "Комбінації клавіш",

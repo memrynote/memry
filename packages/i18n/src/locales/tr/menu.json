@@ -3,9 +3,9 @@
     "quit": "Çık",
     "preferences": "Ayarlar…",
     "exit": "Çıkış",
-    "hide": "MemryNote'yi Gizle",
+    "hide": "MemryNote'u Gizle",
     "hideOthers": "Diğerlerini Gizle",
-    "services": "Servisler",
+    "services": "Hizmetler",
     "unhide": "Tümünü Göster"
   },
   "file": {
@@ -21,13 +21,13 @@
     "forward": "İleri"
   },
   "edit": {
-    "label": "Düzenle",
-    "undo": "Geri al",
+    "label": "Düzen",
+    "undo": "Geri Al",
     "redo": "Yinele",
     "cut": "Kes",
     "copy": "Kopyala",
     "paste": "Yapıştır",
-    "selectAll": "Tümünü seç",
+    "selectAll": "Tümünü Seç",
     "find": "Bul",
     "speech": "Konuşma",
     "delete": "Sil",
@@ -37,7 +37,7 @@
   },
   "view": {
     "label": "Görünüm",
-    "reload": "Yeniden yükle",
+    "reload": "Yeniden Yükle",
     "toggleDevTools": "Geliştirici Araçlarını Aç/Kapat",
     "toggleFullscreen": "Tam Ekrana Geçiş Yap",
     "theme": "Tema",
@@ -84,6 +84,6 @@
     "close": "Kapat",
     "front": "Tümünü Öne Getir",
     "minimize": "Küçült",
-    "zoom": "Yakınlaştır/Uzaklaştır"
+    "zoom": "Yakınlaştır"
   }
 }

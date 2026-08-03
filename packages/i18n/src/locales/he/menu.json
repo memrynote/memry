@@ -1,6 +1,6 @@
 {
   "app": {
-    "quit": "עזוב",
+    "quit": "צא",
     "preferences": "הגדרות…",
     "exit": "יציאה",
     "hide": "הסתר את MemryNote",
@@ -21,7 +21,7 @@
     "forward": "קדימה"
   },
   "edit": {
-    "label": "ערוך",
+    "label": "עריכה",
     "undo": "בטל",
     "redo": "בצע מחדש",
     "cut": "גזור",
@@ -36,23 +36,23 @@
     "stopSpeaking": "הפסק לדבר"
   },
   "view": {
-    "label": "הצג",
+    "label": "תצוגה",
     "reload": "טען מחדש",
-    "toggleDevTools": "החלף את כלי המפתחים",
-    "toggleFullscreen": "החלף מסך מלא",
+    "toggleDevTools": "הצג/הסתר כלים למפתחים",
+    "toggleFullscreen": "החלף מצב מסך מלא",
     "theme": "ערכת נושא",
     "themeDark": "כהה",
     "themeLight": "בהיר",
     "themeSystem": "מערכת",
     "themeWhite": "נייר",
-    "toggleDayPanel": "החלף לוח יום",
-    "toggleSidebar": "החלף סרגל צד",
+    "toggleDayPanel": "הצג/הסתר לוח יום",
+    "toggleSidebar": "הצג/הסתר סרגל צד",
     "actualSize": "גודל ממשי",
     "zoomIn": "הגדל",
     "zoomOut": "הקטן"
   },
   "format": {
-    "body": "גוף",
+    "body": "גוף הטקסט",
     "bold": "מודגש",
     "code": "קוד",
     "heading1": "כותרת 1",

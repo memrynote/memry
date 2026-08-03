@@ -17,15 +17,15 @@
     "openQuickly": "Buka Pantas…"
   },
   "navigation": {
-    "back": "belakang",
-    "forward": "ke hadapan"
+    "back": "Kembali",
+    "forward": "Ke Hadapan"
   },
   "edit": {
     "label": "Sunting",
     "undo": "Buat asal",
     "redo": "Buat semula",
-    "cut": "potong",
-    "copy": "salin",
+    "cut": "Potong",
+    "copy": "Salin",
     "paste": "Tampal",
     "selectAll": "Pilih semua",
     "find": "Cari",
@@ -33,7 +33,7 @@
     "delete": "Padam",
     "pasteAndMatchStyle": "Tampal dan Padankan Gaya",
     "startSpeaking": "Mula Bertutur",
-    "stopSpeaking": "Henti Bertutur"
+    "stopSpeaking": "Berhenti Bertutur"
   },
   "view": {
     "label": "Lihat",
@@ -52,7 +52,7 @@
     "zoomOut": "Zum Keluar"
   },
   "format": {
-    "body": "Badan",
+    "body": "Teks Isi",
     "bold": "Tebal",
     "code": "Kod",
     "heading1": "Tajuk 1",

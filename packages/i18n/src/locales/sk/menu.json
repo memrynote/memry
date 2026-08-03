@@ -21,16 +21,16 @@
     "forward": "Dopredu"
   },
   "edit": {
-    "label": "Edit",
+    "label": "Upraviť",
     "undo": "Späť",
     "redo": "Znovu",
     "cut": "Vystrihnúť",
-    "copy": "Rozumiem",
-    "paste": "Pasta",
+    "copy": "Kopírovať",
+    "paste": "Prilepiť",
     "selectAll": "Vybrať všetko",
     "find": "Hľadať",
     "speech": "Reč",
-    "delete": "Vymazať",
+    "delete": "Odstrániť",
     "pasteAndMatchStyle": "Prilepiť a prispôsobiť štýl",
     "startSpeaking": "Spustiť čítanie",
     "stopSpeaking": "Zastaviť čítanie"
@@ -38,8 +38,8 @@
   "view": {
     "label": "Zobraziť",
     "reload": "Obnoviť",
-    "toggleDevTools": "Prepínať nástroje vývojára",
-    "toggleFullscreen": "Prepínať režim celej obrazovky",
+    "toggleDevTools": "Prepnúť nástroje pre vývojárov",
+    "toggleFullscreen": "Prepnúť režim celej obrazovky",
     "theme": "Motív",
     "themeDark": "Tmavý",
     "themeLight": "Svetlý",
@@ -82,7 +82,7 @@
   "window": {
     "label": "Okno",
     "close": "Zavrieť",
-    "front": "Preniesť všetko dopredu",
+    "front": "Preniesť všetko do popredia",
     "minimize": "Minimalizovať",
     "zoom": "Zväčšiť"
   }

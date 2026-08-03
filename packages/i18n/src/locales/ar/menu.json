@@ -1,10 +1,10 @@
 {
   "app": {
-    "quit": "استقال",
+    "quit": "إنهاء",
     "preferences": "الإعدادات…",
-    "exit": "إنهاء",
+    "exit": "خروج",
     "hide": "إخفاء MemryNote",
-    "hideOthers": "إخفاء الآخرين",
+    "hideOthers": "إخفاء الأخرى",
     "services": "الخدمات",
     "unhide": "إظهار الكل"
   },
@@ -18,13 +18,13 @@
   },
   "navigation": {
     "back": "رجوع",
-    "forward": "تقدم"
+    "forward": "إلى الأمام"
   },
   "edit": {
     "label": "تحرير",
     "undo": "تراجع",
     "redo": "إعادة",
-    "cut": "قطع",
+    "cut": "قص",
     "copy": "نسخ",
     "paste": "لصق",
     "selectAll": "تحديد الكل",

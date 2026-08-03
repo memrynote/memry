@@ -1,8 +1,8 @@
 {
   "app": {
-    "quit": "Konec",
+    "quit": "Ukončit",
     "preferences": "Nastavení…",
-    "exit": "Ukončit",
+    "exit": "Konec",
     "hide": "Skrýt MemryNote",
     "hideOthers": "Skrýt ostatní",
     "services": "Služby",
@@ -21,10 +21,10 @@
     "forward": "Vpřed"
   },
   "edit": {
-    "label": "Upravit",
+    "label": "Úpravy",
     "undo": "Vrátit zpět",
     "redo": "Znovu",
-    "cut": "Řez",
+    "cut": "Vyjmout",
     "copy": "Kopírovat",
     "paste": "Vložit",
     "selectAll": "Vybrat vše",
@@ -36,9 +36,9 @@
     "stopSpeaking": "Zastavit předčítání"
   },
   "view": {
-    "label": "Zobrazit",
+    "label": "Zobrazení",
     "reload": "Znovu načíst",
-    "toggleDevTools": "Přepnout Vývojářské nástroje",
+    "toggleDevTools": "Přepnout nástroje pro vývojáře",
     "toggleFullscreen": "Přepnout na celou obrazovku",
     "theme": "Motiv",
     "themeDark": "Tmavý",
@@ -74,7 +74,7 @@
     "attachment": "Vložit přílohu…",
     "bulletList": "Odrážkový seznam",
     "codeBlock": "Blok kódu",
-    "label": "Vložit",
+    "label": "Vložení",
     "numberedList": "Číslovaný seznam",
     "table": "Tabulka",
     "taskList": "Seznam úkolů"

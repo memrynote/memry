@@ -1,6 +1,6 @@
 {
   "app": {
-    "quit": "Kilép",
+    "quit": "Kilépés a MemryNote-ból",
     "preferences": "Beállítások…",
     "exit": "Kilépés",
     "hide": "MemryNote elrejtése",
@@ -10,8 +10,8 @@
   },
   "file": {
     "label": "Fájl",
-    "newNote": "Új megjegyzés",
-    "close": "Zárja be az ablakot",
+    "newNote": "Új jegyzet",
+    "close": "Ablak bezárása",
     "closeTab": "Lap bezárása",
     "exportPdf": "Exportálás PDF-be…",
     "openQuickly": "Gyors megnyitás…"
@@ -24,7 +24,7 @@
     "label": "Szerkesztés",
     "undo": "Visszavonás",
     "redo": "Újra",
-    "cut": "Vágás",
+    "cut": "Kivágás",
     "copy": "Másolás",
     "paste": "Beillesztés",
     "selectAll": "Összes kijelölése",
@@ -36,10 +36,10 @@
     "stopSpeaking": "Beszéd leállítása"
   },
   "view": {
-    "label": "Megtekintés",
+    "label": "Nézet",
     "reload": "Újratöltés",
-    "toggleDevTools": "Kapcsolja be a Fejlesztői eszközöket",
-    "toggleFullscreen": "Teljes képernyő váltás",
+    "toggleDevTools": "Fejlesztői eszközök be/ki",
+    "toggleFullscreen": "Teljes képernyő be/ki",
     "theme": "Téma",
     "themeDark": "Sötét",
     "themeLight": "Világos",

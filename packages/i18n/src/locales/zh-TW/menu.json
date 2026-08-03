@@ -1,8 +1,8 @@
 {
   "app": {
-    "quit": "退出",
+    "quit": "結束",
     "preferences": "設定…",
-    "exit": "結束",
+    "exit": "離開",
     "hide": "隱藏 MemryNote",
     "hideOthers": "隱藏其他",
     "services": "服務",

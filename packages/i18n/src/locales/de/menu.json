@@ -1,6 +1,6 @@
 {
   "app": {
-    "quit": "Hör auf",
+    "quit": "MemryNote beenden",
     "preferences": "Einstellungen…",
     "exit": "Beenden",
     "hide": "MemryNote ausblenden",
@@ -24,12 +24,12 @@
     "label": "Bearbeiten",
     "undo": "Rückgängig machen",
     "redo": "Wiederholen",
-    "cut": "Schneiden",
+    "cut": "Ausschneiden",
     "copy": "Kopieren",
     "paste": "Einfügen",
     "selectAll": "Alles auswählen",
     "find": "Suchen",
-    "speech": "Sprache",
+    "speech": "Sprachausgabe",
     "delete": "Löschen",
     "pasteAndMatchStyle": "Einfügen und Stil anpassen",
     "startSpeaking": "Sprachausgabe starten",

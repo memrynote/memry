@@ -10,7 +10,7 @@
   },
   "file": {
     "label": "文件",
-    "newNote": "新笔记",
+    "newNote": "新建笔记",
     "close": "关闭窗口",
     "closeTab": "关闭标签页",
     "exportPdf": "导出为 PDF…",

@@ -1,6 +1,6 @@
 {
   "app": {
-    "quit": "Berhenti",
+    "quit": "Keluar dari MemryNote",
     "preferences": "Pengaturan…",
     "exit": "Keluar",
     "hide": "Sembunyikan MemryNote",
@@ -9,7 +9,7 @@
     "unhide": "Tampilkan Semua"
   },
   "file": {
-    "label": "Mengajukan",
+    "label": "Berkas",
     "newNote": "Catatan Baru",
     "close": "Tutup Jendela",
     "closeTab": "Tutup Tab",
@@ -22,22 +22,22 @@
   },
   "edit": {
     "label": "Sunting",
-    "undo": "Membatalkan",
+    "undo": "Urungkan",
     "redo": "Ulangi",
     "cut": "Potong",
     "copy": "Salin",
     "paste": "Tempel",
-    "selectAll": "Pilih semua",
-    "find": "Temukan",
+    "selectAll": "Pilih Semua",
+    "find": "Cari",
     "speech": "Ucapan",
     "delete": "Hapus",
     "pasteAndMatchStyle": "Tempel dan Cocokkan Gaya",
     "startSpeaking": "Mulai Berbicara",
-    "stopSpeaking": "Hentikan Berbicara"
+    "stopSpeaking": "Berhenti Berbicara"
   },
   "view": {
-    "label": "Lihat",
-    "reload": "Muat ulang",
+    "label": "Tampilan",
+    "reload": "Muat Ulang",
     "toggleDevTools": "Alihkan Alat Pengembang",
     "toggleFullscreen": "Alihkan Layar Penuh",
     "theme": "Tema",
@@ -83,7 +83,7 @@
     "label": "Jendela",
     "close": "Tutup",
     "front": "Bawa Semua ke Depan",
-    "minimize": "Perkecil",
+    "minimize": "Minimalkan",
     "zoom": "Zoom"
   }
 }

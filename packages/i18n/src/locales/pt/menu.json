@@ -1,6 +1,6 @@
 {
   "app": {
-    "quit": "Sair",
+    "quit": "Encerrar",
     "preferences": "Definições…",
     "exit": "Sair",
     "hide": "Ocultar MemryNote",
@@ -9,7 +9,7 @@
     "unhide": "Mostrar tudo"
   },
   "file": {
-    "label": "Arquivo",
+    "label": "Ficheiro",
     "newNote": "Nova nota",
     "close": "Fechar janela",
     "closeTab": "Fechar separador",
@@ -38,8 +38,8 @@
   "view": {
     "label": "Ver",
     "reload": "Recarregar",
-    "toggleDevTools": "Alternar ferramentas de desenvolvedor",
-    "toggleFullscreen": "Alternar tela inteira",
+    "toggleDevTools": "Alternar ferramentas do programador",
+    "toggleFullscreen": "Alternar ecrã completo",
     "theme": "Tema",
     "themeDark": "Escuro",
     "themeLight": "Claro",
