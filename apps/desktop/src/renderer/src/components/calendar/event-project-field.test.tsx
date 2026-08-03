@@ -30,11 +30,14 @@ vi.mock('sonner', () => ({
 }))
 
 // Projects come from the app-wide TasksProvider, same as calendar-task-popover.
+// A third project (p3) exists so a stale-state race test can pick a project
+// that is neither the current link nor the first race click's target.
 vi.mock('@/contexts/tasks', () => ({
   useTasksOptional: () => ({
     projects: [
       { id: 'p1', name: 'Launch', color: '#ff0000', icon: null, isArchived: false },
-      { id: 'p2', name: 'Finance', color: '#00ff00', icon: null, isArchived: false }
+      { id: 'p2', name: 'Finance', color: '#00ff00', icon: null, isArchived: false },
+      { id: 'p3', name: 'Marketing', color: '#0000ff', icon: null, isArchived: false }
     ]
   })
 }))
@@ -297,9 +300,13 @@ describe('EventProjectField · edit mode', () => {
     fireEvent.click(screen.getByText('pick-Finance'))
     await waitFor(() => expect(mockUnlinkProjectItem).toHaveBeenCalledTimes(1))
 
-    // Fired before the first selection's unlink settles — `links` still
-    // says `p1` is current, so this would issue a second, stale unlink.
-    fireEvent.click(screen.getByText('pick-Launch'))
+    // Fired before the first selection's unlink settles — `links` still says
+    // `p1` is current. Picking a THIRD project (neither the stale `p1` nor
+    // the first click's `p2`) means a stale read of `previousId` ('p1')
+    // would differ from `nextId` ('p3') and NOT hit the pre-existing
+    // "same id, no-op" short-circuit — only the in-flight guard can produce
+    // the no-op this test expects.
+    fireEvent.click(screen.getByText('pick-Marketing'))
 
     resolveUnlink?.({ success: true })
     await waitFor(() =>
@@ -309,8 +316,13 @@ describe('EventProjectField · edit mode', () => {
         itemId: 'evt-1'
       })
     )
+    // The second click's selection (p3) was dropped entirely: only the first
+    // click's unlink(p1)+link(p2) pair ever went out.
     expect(mockUnlinkProjectItem).toHaveBeenCalledTimes(1)
     expect(mockLinkProjectItem).toHaveBeenCalledTimes(1)
+    expect(mockLinkProjectItem).not.toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: 'p3' })
+    )
   })
 
   it('reloads when a project update event fires', async () => {
