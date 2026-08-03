@@ -24,6 +24,7 @@ export type PropertyType =
   | 'status'
   | 'select'
   | 'multiselect'
+  | 'project'
 
 /**
  * Property value interface.
@@ -69,6 +70,7 @@ export function getDefaultValueForType(type: PropertyType): unknown {
     case 'date':
       return new Date().toISOString()
     case 'multiselect':
+    case 'project':
       return []
     case 'status':
     case 'select':
@@ -106,7 +108,8 @@ export function mapPropertyType(backendType: string): PropertyType {
     url: 'url',
     status: 'status',
     select: 'select',
-    multiselect: 'multiselect'
+    multiselect: 'multiselect',
+    project: 'project'
   }
   return typeMap[backendType] ?? 'text'
 }

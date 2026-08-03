@@ -208,7 +208,11 @@ export const InfoSection = memo(function InfoSection({
 
           {showAddBtn && (
             <div className="pt-2 pb-2.5">
-              <AddPropertyPopup onAdd={handleAddProperty} disabled={disabled}>
+              <AddPropertyPopup
+                onAdd={handleAddProperty}
+                disabled={disabled}
+                existingNames={properties.map((p) => p.name)}
+              >
                 <button
                   type="button"
                   disabled={disabled}

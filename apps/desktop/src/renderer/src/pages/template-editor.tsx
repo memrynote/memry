@@ -70,7 +70,8 @@ function mapToTemplatePropertyType(type: PropertyType): TemplateProperty['type']
     url: 'url',
     status: 'select',
     select: 'select',
-    multiselect: 'multiselect'
+    multiselect: 'multiselect',
+    project: 'text'
   }
   return typeMap[type] ?? 'text'
 }
