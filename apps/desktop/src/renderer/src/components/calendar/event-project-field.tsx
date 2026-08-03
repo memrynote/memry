@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 
@@ -32,15 +32,29 @@ export function EventProjectField({
   mode,
   eventId,
   value,
-  onChange
+  onChange,
+  disabled
 }: EventProjectFieldProps): React.JSX.Element | null {
   const { t } = useT('calendar')
   const projects = useTasksOptional()?.projects ?? []
   const [links, setLinks] = useState<ProjectRef[]>([])
   const isEdit = mode === 'edit'
 
+  // Guards two races around the single "current link" truth held in `links`:
+  // a selection fired before the initial `load()` resolves would read
+  // `previousId` from the still-empty state and skip the unlink it owes; a
+  // second selection fired before the first write's trailing `load()`
+  // resolves would read that same stale state and skip its unlink too. Both
+  // would leave the event linked to two projects behind a UI that shows only
+  // one. A ref (not state) is required so the guard is visible synchronously
+  // to a call in the same tick, before React re-renders. `load()` holds this
+  // flag for its own duration too, so the initial mount load and any
+  // `onProjectUpdated`-triggered reload gate selections the same way.
+  const pendingRef = useRef(false)
+
   const load = useCallback(async (): Promise<void> => {
     if (!isEdit || !eventId) return
+    pendingRef.current = true
     try {
       const result = await tasksService.listForItem('calendar_event', eventId)
       // `listForItem` runs through the main-side `withDb` wrapper: on a DB
@@ -49,6 +63,8 @@ export function EventProjectField({
     } catch (error) {
       log.error('Failed to load event projects', extractErrorMessage(error))
       setLinks([])
+    } finally {
+      pendingRef.current = false
     }
   }, [isEdit, eventId])
 
@@ -63,9 +79,14 @@ export function EventProjectField({
       onChange(nextId)
       return
     }
+    // External `disabled` (Task 4) and the internal in-flight guard compose
+    // here rather than one replacing the other.
+    if (disabled || pendingRef.current) return
+
     const previousId = links[0]?.id ?? null
     if (previousId === nextId) return
 
+    pendingRef.current = true
     try {
       if (previousId) {
         const removed = await tasksService.unlinkProjectItem({
@@ -86,6 +107,8 @@ export function EventProjectField({
     } catch (error) {
       toast.error(extractErrorMessage(error, t('form.project-update-failed')))
     }
+    // Runs regardless of outcome above; also clears `pendingRef` (in its own
+    // `finally`), reflecting the actual DB state either way.
     await load()
   }
 

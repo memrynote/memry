@@ -231,6 +231,18 @@ export default defineConfig(
     }
   },
   {
+    files: ['apps/desktop/src/renderer/src/components/calendar/event-project-field.tsx'],
+    rules: {
+      // The mount-time load and the `onProjectUpdated` reload both call a
+      // `load()` callback that toggles a `pendingRef` guard closing a
+      // stale-state race on `project_links` writes (see the file's inline
+      // comment). The plugin's ref-tracing through that callback misreads
+      // the ref/prop combination as forwarding a ref to a parent; no ref is
+      // exposed outside this component.
+      'react-you-might-not-need-an-effect/no-pass-ref-to-parent': 'off'
+    }
+  },
+  {
     files: ['packages/contracts/src/ipc-channels.ts', 'packages/contracts/src/inbox-api.ts'],
     rules: {
       // TODO(phase-4): drop these overrides once contract modules are split by domain

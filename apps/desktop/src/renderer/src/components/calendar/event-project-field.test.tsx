@@ -201,10 +201,31 @@ describe('EventProjectField · edit mode', () => {
   })
 
   it('treats an IPC error envelope from listForItem as no links', async () => {
-    mockListForItem.mockResolvedValue({ success: false, error: 'db error' })
+    // Shaped so `links[0]` would resolve to a *real-looking* project if the
+    // `Array.isArray` guard were removed and this raw envelope were stored as
+    // `links` directly — discriminates the guard instead of merely relying
+    // on `links[0]` being safely `undefined` for any non-array object (which
+    // it would be regardless of the guard, giving no regression coverage).
+    mockListForItem.mockResolvedValue({
+      success: false,
+      error: 'db error',
+      0: { id: 'ghost', name: 'Ghost', color: '#000000', icon: null }
+    })
 
     render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
 
+    await waitFor(() => expect(mockListForItem).toHaveBeenCalled())
+    await waitFor(() =>
+      expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', '')
+    )
+  })
+
+  it('falls back to no links when listForItem rejects', async () => {
+    mockListForItem.mockRejectedValue(new Error('network error'))
+
+    render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
+
+    await waitFor(() => expect(mockListForItem).toHaveBeenCalled())
     await waitFor(() =>
       expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', '')
     )
@@ -221,6 +242,75 @@ describe('EventProjectField · edit mode', () => {
 
     await waitFor(() => expect(mockToastError).toHaveBeenCalled())
     await waitFor(() => expect(mockListForItem).toHaveBeenCalledTimes(2))
+  })
+
+  it('shows a toast when a link write rejects outright', async () => {
+    mockListForItem.mockResolvedValue([])
+    mockLinkProjectItem.mockRejectedValue(new Error('link failed'))
+
+    render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
+    await waitFor(() => expect(mockListForItem).toHaveBeenCalledTimes(1))
+
+    fireEvent.click(screen.getByText('pick-Launch'))
+
+    await waitFor(() => expect(mockToastError).toHaveBeenCalled())
+  })
+
+  it('ignores a selection made before the initial load resolves', async () => {
+    let resolveList: ((value: unknown) => void) | undefined
+    mockListForItem.mockReturnValue(
+      new Promise((resolve) => {
+        resolveList = resolve
+      })
+    )
+
+    render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
+    await waitFor(() => expect(mockListForItem).toHaveBeenCalled())
+
+    // Clicked while the initial load is still in flight — `links` is still
+    // `[]`, so a naive read of `previousId` here would be wrong.
+    fireEvent.click(screen.getByText('pick-Launch'))
+    expect(mockLinkProjectItem).not.toHaveBeenCalled()
+
+    resolveList?.([])
+    await waitFor(() =>
+      expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', '')
+    )
+    // The click during the load window was dropped, not queued.
+    expect(mockLinkProjectItem).not.toHaveBeenCalled()
+  })
+
+  it('ignores a second selection while the first write is still in flight', async () => {
+    mockListForItem.mockResolvedValue([{ id: 'p1', name: 'Launch', color: '#ff0000', icon: null }])
+    let resolveUnlink: ((value: { success: boolean }) => void) | undefined
+    mockUnlinkProjectItem.mockReturnValue(
+      new Promise((resolve) => {
+        resolveUnlink = resolve
+      })
+    )
+
+    render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
+    await waitFor(() =>
+      expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', 'p1')
+    )
+
+    fireEvent.click(screen.getByText('pick-Finance'))
+    await waitFor(() => expect(mockUnlinkProjectItem).toHaveBeenCalledTimes(1))
+
+    // Fired before the first selection's unlink settles — `links` still
+    // says `p1` is current, so this would issue a second, stale unlink.
+    fireEvent.click(screen.getByText('pick-Launch'))
+
+    resolveUnlink?.({ success: true })
+    await waitFor(() =>
+      expect(mockLinkProjectItem).toHaveBeenCalledWith({
+        projectId: 'p2',
+        itemType: 'calendar_event',
+        itemId: 'evt-1'
+      })
+    )
+    expect(mockUnlinkProjectItem).toHaveBeenCalledTimes(1)
+    expect(mockLinkProjectItem).toHaveBeenCalledTimes(1)
   })
 
   it('reloads when a project update event fires', async () => {
