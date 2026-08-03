@@ -3,10 +3,12 @@ import { eq } from 'drizzle-orm'
 import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { bookmarks } from '@memry/db-schema/schema/bookmarks'
 import { reminders } from '@memry/db-schema/schema/reminders'
+import { templates } from '@memry/db-schema/schema/templates'
 import {
   OFFLINE_DEVICE_KEY,
   incrementBookmarkClockOffline,
-  incrementReminderClockOffline
+  incrementReminderClockOffline,
+  incrementTemplateClockOffline
 } from './offline-clock'
 
 const TEST_BOOKMARK = {
@@ -37,6 +39,38 @@ describe('offline clock helpers', () => {
 
   afterEach(() => {
     testDb.close()
+  })
+
+  describe('incrementTemplateClockOffline', () => {
+    it('#given an unclocked template #then seeds the clock under the offline device key', () => {
+      testDb.db.insert(templates).values({ id: 'tpl-1', name: 'Standup' }).run()
+
+      incrementTemplateClockOffline(asClientDb(testDb.db), 'tpl-1')
+
+      const row = testDb.db.select().from(templates).where(eq(templates.id, 'tpl-1')).get()
+      expect(row?.clock).toEqual({ [OFFLINE_DEVICE_KEY]: 1 })
+    })
+
+    it('#given an existing clock #then increments from the persisted value', () => {
+      testDb.db
+        .insert(templates)
+        .values({
+          id: 'tpl-1',
+          name: 'Standup',
+          clock: { [OFFLINE_DEVICE_KEY]: 2, 'device-A': 5 }
+        })
+        .run()
+
+      incrementTemplateClockOffline(asClientDb(testDb.db), 'tpl-1')
+
+      const row = testDb.db.select().from(templates).where(eq(templates.id, 'tpl-1')).get()
+      expect(row?.clock).toEqual({ [OFFLINE_DEVICE_KEY]: 3, 'device-A': 5 })
+    })
+
+    it('#given the template does not exist #then no-ops without throwing', () => {
+      expect(() => incrementTemplateClockOffline(asClientDb(testDb.db), 'missing')).not.toThrow()
+      expect(testDb.db.select().from(templates).all()).toHaveLength(0)
+    })
   })
 
   describe('incrementBookmarkClockOffline', () => {
