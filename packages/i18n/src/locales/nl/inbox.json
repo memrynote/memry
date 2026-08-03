@@ -353,8 +353,6 @@
       "attachFileImagesAudioVideoPdf": "Bestand bijvoegen (afbeeldingen, audio, video, pdf)",
       "recordVoiceMemo": "Spraakmemo opnemen",
       "recordVoiceMemo2": "Spraakmemo opnemen",
-      "alreadyCaptured": "Al vastgelegd: “",
-      "rdquo": "rdquo;",
       "captureAnyway": "Hoe dan ook vastleggen",
       "focusShortcut": "Vastlegveld focussen",
       "q": "Q",
@@ -460,8 +458,6 @@
       "captured": "Gevangen",
       "dismissError": "Fout afwijzen",
       "alreadyCaptured": "Al vastgelegd",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; · ",
       "captureAnyway": "Hoe dan ook vastleggen",
       "close": "Sluiten"
     },

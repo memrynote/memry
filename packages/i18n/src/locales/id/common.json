@@ -203,7 +203,6 @@
       "search": "Cari",
       "searchNotesTasksJournalInbox": "Cari catatan, tugas, jurnal, kotak masuk...",
       "noResultsFor": "Tidak ada hasil untuk “",
-      "rdquo": "benar;",
       "result": "hasil"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Ikon catatan"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Perubahan yang Belum Disimpan",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; memiliki perubahan yang belum disimpan. Apa yang ingin kamu lakukan?"
+      "unsavedChanges": "Perubahan yang Belum Disimpan"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Ruang kerja baru",
@@ -366,7 +363,6 @@
       "logOut": "Keluar",
       "signInToSync": "Masuk untuk menyinkronkan",
       "remove": "Hapus “",
-      "rdquoFromList": "benar; dari daftar?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Vault ini akan dihapus dari aplikasi, namun file Anda akan tetap ada di disk. Anda selalu dapat menambahkannya kembali nanti.",
       "cancel": "Batalkan",
       "remove2": "Hapus",

@@ -1186,16 +1186,12 @@
       "press": "Tekan ",
       "toToggleThisDialog": "untuk mengaktifkan dialog ini"
     },
-    "componentsSyncDeviceList": {
-      "middot": "titik tengah;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Perangkat ini telah dihapus",
       "exporting": "Mengekspor...",
       "signOut": "Keluar"
     },
     "componentsSyncSyncHistory": {
-      "middot": "titik tengah; ",
       "activity": "Aktivitas",
       "filterBySyncType": "Filter menurut jenis sinkronisasi",
       "allTypes": "Semua tipe",

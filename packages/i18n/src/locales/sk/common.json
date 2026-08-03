@@ -203,7 +203,6 @@
       "search": "Vyhľadávanie",
       "searchNotesTasksJournalInbox": "Hľadať poznámky, úlohy, denník, doručenú poštu...",
       "noResultsFor": "Žiadne výsledky pre “",
-      "rdquo": "rdquo;",
       "result": "výsledok"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Ikona poznámky"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Neuložené zmeny",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; má neuložené zmeny. Čo chcete urobiť?"
+      "unsavedChanges": "Neuložené zmeny"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Nový pracovný priestor",
@@ -366,7 +363,6 @@
       "logOut": "Odhlásiť sa",
       "signInToSync": "Prihláste sa na synchronizáciu",
       "remove": "Odstrániť",
-      "rdquoFromList": "rdquo; zo zoznamu?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Tento trezor bude odstránený z aplikácie, ale vaše súbory zostanú na disku. Vždy ho môžete neskôr znova pridať.",
       "cancel": "Zrušiť",
       "remove2": "Odstrániť",

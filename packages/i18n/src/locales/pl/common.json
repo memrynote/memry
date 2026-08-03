@@ -203,7 +203,6 @@
       "search": "Szukaj",
       "searchNotesTasksJournalInbox": "Przeszukuj notatki, zadania, dziennik, skrzynkę odbiorczą...",
       "noResultsFor": "Brak wyników dla „",
-      "rdquo": "nieważne;",
       "result": "wynik"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Ikona notatki"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Niezapisane zmiany",
-      "quot": "cytat;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "cytat; zawiera niezapisane zmiany. Co chciałbyś zrobić?"
+      "unsavedChanges": "Niezapisane zmiany"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Nowy obszar roboczy",
@@ -366,7 +363,6 @@
       "logOut": "Wyloguj się",
       "signInToSync": "Zaloguj się, aby przeprowadzić synchronizację",
       "remove": "Usuń „",
-      "rdquoFromList": "nieważne; z listy?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Ten skarbiec zostanie usunięty z aplikacji, ale Twoje pliki pozostaną na dysku. Zawsze możesz dodać go ponownie później.",
       "cancel": "Anuluj",
       "remove2": "Usuń",

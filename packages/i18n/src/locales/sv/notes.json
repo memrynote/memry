@@ -361,8 +361,6 @@
       "noFormulasDefined": "Inga definierade formler",
       "addFormula": "Lägg till formel",
       "deleteFormula": "Ta bort formel",
-      "areYouSureYouWantToDeleteTheFormula": "Är du säker på att du vill ta bort formeln \"",
-      "quotThisActionCannotBeUndone": "\"? Denna åtgärd kan inte ångras.",
       "cancel": "Avbryt",
       "delete": "Ta bort",
       "none": "Inga",
@@ -422,7 +420,6 @@
       "preview": "Förhandsvisning",
       "fixExpressionErrorsToSeePreview": "Åtgärda uttrycksfel för att se förhandsgranskning",
       "usingNote": "Använder not: \"",
-      "quot": "quot;",
       "cancel": "Avbryt",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, idag(), \"dagar\")"
@@ -451,11 +448,8 @@
       "bestMatch": "Bästa matchning",
       "current": "nuvarande)",
       "allFolders": "ALLA MAPPAR",
-      "current2": "nuvarande)",
       "noFoldersMatch": "Inga mappar matchar",
-      "quot": "quot;",
       "create": "Skapa ",
-      "quot2": "quot;",
       "cancel": "Avbryt"
     },
     "componentsFolderViewRowContextMenu": {

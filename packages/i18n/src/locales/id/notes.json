@@ -361,8 +361,6 @@
       "noFormulasDefined": "Tidak ada rumus yang ditentukan",
       "addFormula": "Tambahkan Rumus",
       "deleteFormula": "Hapus Rumus",
-      "areYouSureYouWantToDeleteTheFormula": "Apakah Anda yakin ingin menghapus rumus \"",
-      "quotThisActionCannotBeUndone": "kutipan;? Tindakan ini tidak dapat dibatalkan.",
       "cancel": "Batalkan",
       "delete": "Hapus",
       "none": "Tidak ada",
@@ -422,7 +420,6 @@
       "preview": "Pratinjau",
       "fixExpressionErrorsToSeePreview": "Perbaiki kesalahan ekspresi untuk melihat pratinjau",
       "usingNote": "Menggunakan catatan: \"",
-      "quot": "quot;",
       "cancel": "Batalkan",
       "namePlaceholder": "hari_sampai_jatuh tempo",
       "expressionPlaceholder": "dateDiff(tanggal jatuh tempo, hari ini(), \"hari\")"
@@ -451,11 +448,8 @@
       "bestMatch": "Pertandingan terbaik",
       "current": "saat ini)",
       "allFolders": "SEMUA FOLDER",
-      "current2": "saat ini)",
       "noFoldersMatch": "Tidak ada folder yang cocok \"",
-      "quot": "quot;",
       "create": "Buat \"",
-      "quot2": "quot;",
       "cancel": "Batalkan"
     },
     "componentsFolderViewRowContextMenu": {

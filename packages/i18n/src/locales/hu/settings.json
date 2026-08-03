@@ -1186,16 +1186,12 @@
       "press": "Nyomja meg ",
       "toToggleThisDialog": "a párbeszédpanel váltásához"
     },
-    "componentsSyncDeviceList": {
-      "middot": "középpont;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Ezt az eszközt eltávolították",
       "exporting": "Exportálás...",
       "signOut": "Jelentkezzen ki"
     },
     "componentsSyncSyncHistory": {
-      "middot": "középpont; ",
       "activity": "Tevékenység",
       "filterBySyncType": "Szűrés szinkronizálási típus szerint",
       "allTypes": "Minden típus",

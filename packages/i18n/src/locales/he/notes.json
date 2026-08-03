@@ -361,8 +361,6 @@
       "noFormulasDefined": "לא הוגדרו נוסחאות",
       "addFormula": "הוסף נוסחה",
       "deleteFormula": "מחק את הנוסחה",
-      "areYouSureYouWantToDeleteTheFormula": "האם אתה בטוח שברצונך למחוק את הנוסחה \"",
-      "quotThisActionCannotBeUndone": "quot;? לא ניתן לבטל פעולה זו.",
       "cancel": "בטל",
       "delete": "מחק",
       "none": "אין",
@@ -422,7 +420,6 @@
       "preview": "תצוגה מקדימה",
       "fixExpressionErrorsToSeePreview": "תקן שגיאות ביטוי כדי לראות תצוגה מקדימה",
       "usingNote": "שימוש בהערה: \"",
-      "quot": "quot;",
       "cancel": "בטל",
       "namePlaceholder": "ימים_עד_מועד",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"ימים\")"
@@ -451,11 +448,8 @@
       "bestMatch": "ההתאמה הטובה ביותר",
       "current": "נוכחי)",
       "allFolders": "כל התיקיות",
-      "current2": "נוכחי)",
       "noFoldersMatch": "אין תיקיות תואמות \"",
-      "quot": "quot;",
       "create": "צור \"",
-      "quot2": "quot;",
       "cancel": "בטל"
     },
     "componentsFolderViewRowContextMenu": {

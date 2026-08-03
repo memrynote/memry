@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Eliminare l'attività?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; verranno eliminati definitivamente. Questa azione non può essere annullata.",
       "deleteTask2": "Elimina attività"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Tutte le attività secondarie sono state completate!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; ha tutto ",
-      "subtask": "attività secondaria",
-      "done": "fatto.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Desideri contrassegnare anche l'attività principale come completata?",
       "keepTaskOpen": "Mantieni l'attività aperta",
       "completeTask": "Completa l'attività ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Imposta la data di scadenza per tutte le attività secondarie",
       "setDueDateFor": "Imposta la data di scadenza per ",
-      "subtask": "attività secondaria",
-      "in": "in “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Si applica anche alle attività secondarie completate (",
       "clearDate": "Data chiara",
       "cancel": "Annulla",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Imposta la priorità per tutte le attività secondarie",
       "setPriorityFor": "Imposta la priorità per ",
-      "subtask": "attività secondaria",
-      "in": "in “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Si applica anche alle attività secondarie completate (",
       "cancel": "Annulla",
       "apply": "Applicare"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Eliminare tutte le attività secondarie?",
-      "thisWillDelete": "Questo eliminerà ",
-      "subtask": "attività secondaria",
-      "from": "da “",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "Questa azione non può essere annullata.",
       "cancel": "Annulla",
       "deleteAll": "Elimina tutto"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Compito duplicato",
       "createACopyOf": "Crea una copia di \"",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Duplica anche le attività secondarie (",
       "cancel": "Annulla",
       "duplicate": "Duplicato "

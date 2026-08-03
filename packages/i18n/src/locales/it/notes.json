@@ -361,8 +361,6 @@
       "noFormulasDefined": "Nessuna formula definita",
       "addFormula": "Aggiungi formula",
       "deleteFormula": "Elimina formula",
-      "areYouSureYouWantToDeleteTheFormula": "Sei sicuro di voler eliminare la formula \"",
-      "quotThisActionCannotBeUndone": "quot;? Questa azione non può essere annullata.",
       "cancel": "Annulla",
       "delete": "Elimina",
       "none": "Nessuno",
@@ -422,7 +420,6 @@
       "preview": "Anteprima",
       "fixExpressionErrorsToSeePreview": "Correggi gli errori di espressione per vedere l'anteprima",
       "usingNote": "Usando la nota: \"",
-      "quot": "quot;",
       "cancel": "Annulla",
       "namePlaceholder": "giorni_fino_alla_scadenza",
       "expressionPlaceholder": "dateDiff(data_scadenza, oggi(), \"giorni\")"
@@ -451,11 +448,8 @@
       "bestMatch": "Migliore abbinamento",
       "current": "corrente)",
       "allFolders": "TUTTE LE CARTELLE",
-      "current2": "corrente)",
       "noFoldersMatch": "Nessuna cartella corrisponde a \"",
-      "quot": "quot;",
       "create": "Crea\"",
-      "quot2": "quot;",
       "cancel": "Annulla"
     },
     "componentsFolderViewRowContextMenu": {

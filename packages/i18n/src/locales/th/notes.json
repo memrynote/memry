@@ -361,8 +361,6 @@
       "noFormulasDefined": "ยังไม่ได้กำหนดสูตร",
       "addFormula": "เพิ่มสูตร",
       "deleteFormula": "ลบสูตร",
-      "areYouSureYouWantToDeleteTheFormula": "คุณแน่ใจหรือไม่ว่าต้องการลบสูตร \" ",
-      "quotThisActionCannotBeUndone": "\"? การกระทำนี้ไม่สามารถย้อนกลับได้.",
       "cancel": "ยกเลิก",
       "delete": "ลบ",
       "none": "ไม่มี",
@@ -422,7 +420,6 @@
       "preview": "ตัวอย่าง",
       "fixExpressionErrorsToSeePreview": "แก้ไขข้อผิดพลาดในสมการเพื่อดูตัวอย่าง",
       "usingNote": "ใช้บันทึก:",
-      "quot": "อ้าง;",
       "cancel": "ยกเลิก",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
@@ -451,11 +448,8 @@
       "bestMatch": "การจับคู่ที่ดีที่สุด",
       "current": "ปัจจุบัน)",
       "allFolders": "โฟลเดอร์ทั้งหมด",
-      "current2": "ปัจจุบัน)",
       "noFoldersMatch": "ไม่มีโฟลเดอร์ที่ตรงกัน",
-      "quot": "อ้าง;",
       "create": "สร้าง",
-      "quot2": "อ้าง;",
       "cancel": "ยกเลิก"
     },
     "componentsFolderViewRowContextMenu": {

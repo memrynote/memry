@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Ștergeți sarcina?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; vor fi șterse definitiv. Această acțiune nu poate fi anulată.",
       "deleteTask2": "Ștergeți sarcina"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Toate subsarcinile finalizate!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; are toate ",
-      "subtask": "subsarcină",
-      "done": "gata.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Doriți să marcați și sarcina părinte ca finalizată?",
       "keepTaskOpen": "Păstrați sarcina deschisă",
       "completeTask": "Finalizați sarcina ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Setați data limită pentru toate sarcinile secundare",
       "setDueDateFor": "Stabiliți data scadentă pentru ",
-      "subtask": "subsarcină",
-      "in": "în „",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Se aplică și subsarcinilor finalizate (",
       "clearDate": "Data clară",
       "cancel": "Anulează",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Setați prioritate pentru toate sarcinile secundare",
       "setPriorityFor": "Setați prioritate pentru ",
-      "subtask": "subsarcină",
-      "in": "în „",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Se aplică și subsarcinilor finalizate (",
       "cancel": "Anulează",
       "apply": "Aplicați"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Ștergeți toate sarcinile secundare?",
-      "thisWillDelete": "Aceasta se va șterge ",
-      "subtask": "subsarcină",
-      "from": "de la „",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "Această acțiune nu poate fi anulată.",
       "cancel": "Anulează",
       "deleteAll": "Ștergeți toate"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Sarcină duplicată",
       "createACopyOf": "Creați o copie a „",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "De asemenea, duplicați subsarcini (",
       "cancel": "Anulează",
       "duplicate": "Duplicat "

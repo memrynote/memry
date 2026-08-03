@@ -203,7 +203,6 @@
       "search": "Zoeken",
       "searchNotesTasksJournalInbox": "Zoek naar notities, taken, dagboek, inbox...",
       "noResultsFor": "Geen resultaat voor “",
-      "rdquo": "rdquo;",
       "result": "resultaat"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Notitiepictogram"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Niet-opgeslagen wijzigingen",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; bevat niet-opgeslagen wijzigingen. Wat zou je graag willen doen?"
+      "unsavedChanges": "Niet-opgeslagen wijzigingen"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Nieuwe werkruimte",
@@ -366,7 +363,6 @@
       "logOut": "Uitloggen",
       "signInToSync": "Log in om te synchroniseren",
       "remove": "Verwijder “",
-      "rdquoFromList": "rdquo; uit de lijst?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Deze kluis wordt uit de app verwijderd, maar uw bestanden blijven op schijf staan. Je kunt het later altijd opnieuw toevoegen.",
       "cancel": "Annuleer",
       "remove2": "Verwijderen",

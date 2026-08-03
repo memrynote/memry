@@ -1186,16 +1186,12 @@
       "press": "Naciśnij ",
       "toToggleThisDialog": "aby przełączyć to okno dialogowe"
     },
-    "componentsSyncDeviceList": {
-      "middot": "kropka środkowa;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "To urządzenie zostało usunięte",
       "exporting": "Eksportowanie...",
       "signOut": "Wyloguj się"
     },
     "componentsSyncSyncHistory": {
-      "middot": "kropka środkowa; ",
       "activity": "Aktywność",
       "filterBySyncType": "Filtruj według typu synchronizacji",
       "allTypes": "Wszystkie typy",

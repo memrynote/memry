@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Padamkan tugasan?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; akan dipadamkan secara kekal. Tindakan ini tidak boleh dibuat asal.",
       "deleteTask2": "Padamkan Tugas"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Semua subtugas selesai!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; mempunyai semua ",
-      "subtask": "subtugas",
-      "done": "selesai.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Adakah anda ingin menandai tugas ibu bapa sebagai selesai juga?",
       "keepTaskOpen": "Pastikan tugasan terbuka",
       "completeTask": "Selesaikan tugas ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Tetapkan tarikh akhir untuk semua subtugas",
       "setDueDateFor": "Tetapkan tarikh akhir untuk ",
-      "subtask": "subtugas",
-      "in": "dalam \"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Juga digunakan untuk subtugas yang telah selesai (",
       "clearDate": "Kosongkan tarikh",
       "cancel": "Batal",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Tetapkan keutamaan untuk semua subtugas",
       "setPriorityFor": "Tetapkan keutamaan untuk ",
-      "subtask": "subtugas",
-      "in": "dalam \"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Juga digunakan untuk subtugas yang telah selesai (",
       "cancel": "Batal",
       "apply": "Mohon"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Padamkan semua subtugas?",
-      "thisWillDelete": "Ini akan memadam ",
-      "subtask": "subtugas",
-      "from": "daripada “",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "Tindakan ini tidak boleh dibuat asal.",
       "cancel": "Batal",
       "deleteAll": "Padam Semua"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Tugasan pendua",
       "createACopyOf": "Buat salinan \"",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Juga salin subtugasan (",
       "cancel": "Batal",
       "duplicate": "Pendua "

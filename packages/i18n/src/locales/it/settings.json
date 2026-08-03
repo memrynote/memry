@@ -1186,16 +1186,12 @@
       "press": "Premere ",
       "toToggleThisDialog": "per attivare/disattivare questa finestra di dialogo"
     },
-    "componentsSyncDeviceList": {
-      "middot": "punto medio;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Questo dispositivo è stato rimosso",
       "exporting": "Esportazione...",
       "signOut": "Esci"
     },
     "componentsSyncSyncHistory": {
-      "middot": "punto medio; ",
       "activity": "Attività",
       "filterBySyncType": "Filtra per tipo di sincronizzazione",
       "allTypes": "Tutti i tipi",

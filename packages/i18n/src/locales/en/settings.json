@@ -763,7 +763,8 @@
       "removeFailed": "Failed to remove device",
       "renamed": "Renamed to \"{name}\"",
       "renameFailed": "Failed to rename device"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Link new device",
@@ -1004,6 +1005,38 @@
         "unknownPriority": "Unknown priority {priority} → none",
         "unparsedDate": "Could not parse date \"{date}\"",
         "subtaskNoParent": "Sub-task \"{title}\" has no parent at indent {indent}; imported top-level"
+      }
+    },
+    "status": {
+      "scanningFiles": "Scanning files…",
+      "scanningExport": "Scanning export…",
+      "importingItem": "Importing {title}",
+      "appleNotes": {
+        "copyingDatabase": "Copying Apple Notes database…"
+      },
+      "bear": {
+        "scanning": "Scanning Bear export…"
+      },
+      "csv": {
+        "importing": "Importing CSV notes…"
+      },
+      "evernote": {
+        "scanning": "Scanning .enex files…"
+      },
+      "html": {
+        "scanning": "Scanning HTML files…"
+      },
+      "raindrop": {
+        "importing": "Importing Raindrop bookmarks…"
+      },
+      "roam": {
+        "reading": "Reading Roam export…"
+      },
+      "ticktick": {
+        "importing": "Importing TickTick tasks…"
+      },
+      "todoist": {
+        "importing": "Importing Todoist tasks…"
       }
     }
   },
@@ -1368,16 +1401,12 @@
       "press": "Press ",
       "toToggleThisDialog": "to toggle this dialog"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middot;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "This device has been removed",
       "exporting": "Exporting...",
       "signOut": "Sign Out"
     },
     "componentsSyncSyncHistory": {
-      "middot": "middot; ",
       "activity": "Activity",
       "filterBySyncType": "Filter by sync type",
       "allTypes": "All types",
@@ -1391,7 +1420,12 @@
       "last30Days": "Last 30 days",
       "loadingSyncHistory": "Loading sync history",
       "noSyncActivityYet": "No sync activity yet",
-      "loadMore": "Load more"
+      "loadMore": "Load more",
+      "duration": "· {duration}",
+      "summaryFailed": "Sync failed",
+      "summaryPushed": "{count, plural, one {# item pushed} other {# items pushed}}",
+      "summaryPulled": "{count, plural, one {# item pulled} other {# items pulled}}",
+      "showErrorDetailsAria": "{summary}, show error details"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Last synced ",

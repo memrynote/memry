@@ -203,7 +203,6 @@
       "search": "Пошук",
       "searchNotesTasksJournalInbox": "Шукати нотатки, завдання, журнал, вхідні...",
       "noResultsFor": "Немає результатів для “",
-      "rdquo": "rdquo;",
       "result": "результат"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Іконка нотатки"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Незбережені зміни",
-      "quot": "\";",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "\" має незбережені зміни. Що ви хочете зробити?"
+      "unsavedChanges": "Незбережені зміни"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Новий робочий простір",
@@ -366,7 +363,6 @@
       "logOut": "Вийти",
       "signInToSync": "Увійдіть для синхронізації",
       "remove": "Видалити ",
-      "rdquoFromList": "rdquo; зі списку?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Цей сховище буде видалено з додатку, але ваші файли залишаться на диску. Ви завжди можете додати його пізніше.",
       "cancel": "Скасувати",
       "remove2": "Видалити",

@@ -353,8 +353,6 @@
       "attachFileImagesAudioVideoPdf": "  \nแนบไฟล์ (รูปภาพ, เสียง, วิดีโอ, PDF)",
       "recordVoiceMemo": "บันทึกข้อความเสียง",
       "recordVoiceMemo2": "บันทึกข้อความเสียง",
-      "alreadyCaptured": "จับภาพแล้ว: “",
-      "rdquo": "rdquo;",
       "captureAnyway": "จับภาพต่อ",
       "focusShortcut": "โฟกัสช่องบันทึก",
       "q": "Q",
@@ -460,8 +458,6 @@
       "captured": "จับแล้ว",
       "dismissError": "ปิดข้อผิดพลาด",
       "alreadyCaptured": "จับภาพแล้ว",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; &middot; ",
       "captureAnyway": "จับภาพต่อ",
       "close": "ปิด"
     },

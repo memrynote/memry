@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Удалить задачу?",
-      "ldquo": "«Дкво»;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "рдкво; будут удалены навсегда. Это действие невозможно отменить.",
       "deleteTask2": "Удалить задачу"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Все подзадачи выполнены!",
-      "ldquo": "«Дкво»;",
-      "rdquoHasAll": "рдкво; есть все ",
-      "subtask": "подзадача",
-      "done": "сделано.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Хотите также пометить родительскую задачу как выполненную?",
       "keepTaskOpen": "Оставить задачу открытой",
       "completeTask": "Выполнить задание ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Установите срок выполнения для всех подзадач",
       "setDueDateFor": "Установите срок выполнения ",
-      "subtask": "подзадача",
-      "in": "в «",
-      "rdquo": "рдкво;",
       "alsoApplyToCompletedSubtasks": "Также применяется к завершенным подзадачам (",
       "clearDate": "Очистить дату",
       "cancel": "Отмена",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Установить приоритет для всех подзадач",
       "setPriorityFor": "Установить приоритет для ",
-      "subtask": "подзадача",
-      "in": "в «",
-      "rdquo": "рдкво;",
       "alsoApplyToCompletedSubtasks": "Также применяется к завершенным подзадачам (",
       "cancel": "Отмена",
       "apply": "Применить"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Удалить все подзадачи?",
-      "thisWillDelete": "Это удалит ",
-      "subtask": "подзадача",
-      "from": "из «",
-      "rdquo": "рдкво;.",
       "thisActionCannotBeUndone": "Это действие невозможно отменить.",
       "cancel": "Отмена",
       "deleteAll": "Удалить все"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Повторяющаяся задача",
       "createACopyOf": "Создайте копию «",
-      "rdquo": "рдкво;",
       "alsoDuplicateSubtasks": "Также дублируйте подзадачи (",
       "cancel": "Отмена",
       "duplicate": "Дублировать "

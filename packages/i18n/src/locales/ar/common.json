@@ -203,7 +203,6 @@
       "search": "بحث",
       "searchNotesTasksJournalInbox": "البحث في الملاحظات والمهام والمجلة والبريد الوارد...",
       "noResultsFor": "لا توجد نتائج ل \"\"",
-      "rdquo": "ردقوو]؛",
       "result": "نتيجة"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "أيقونة الملاحظة"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "التغييرات غير المحفوظة",
-      "quot": "مثل؛",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "مثل؛ به تغييرات غير محفوظة. ماذا تريد أن تفعل؟"
+      "unsavedChanges": "التغييرات غير المحفوظة"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "مساحة عمل جديدة",
@@ -366,7 +363,6 @@
       "logOut": "تسجيل الخروج",
       "signInToSync": "قم بتسجيل الدخول للمزامنة",
       "remove": "إزالة \"",
-      "rdquoFromList": "ردقوو]؛ من القائمة؟",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "ستتم إزالة هذا المخزن من التطبيق، لكن ملفاتك ستبقى على القرص. ويمكنك دائمًا إعادة إضافته لاحقًا.",
       "cancel": "إلغاء",
       "remove2": "إزالة",

@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Aufgabe löschen?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
       "deleteTask2": "Aufgabe löschen"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Alle Teilaufgaben erledigt!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; hat alles ",
-      "subtask": "Teilaufgabe",
-      "done": "erledigt.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Möchten Sie die übergeordnete Aufgabe auch als erledigt markieren?",
       "keepTaskOpen": "Aufgabe offen lassen",
       "completeTask": "Aufgabe abschließen ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Legen Sie das Fälligkeitsdatum für alle Unteraufgaben fest",
       "setDueDateFor": "Legen Sie das Fälligkeitsdatum fest ",
-      "subtask": "Teilaufgabe",
-      "in": "in „",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Gilt auch für abgeschlossene Teilaufgaben (",
       "clearDate": "Klares Datum",
       "cancel": "Abbrechen",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Legen Sie die Priorität für alle Unteraufgaben fest",
       "setPriorityFor": "Priorität festlegen für ",
-      "subtask": "Teilaufgabe",
-      "in": "in „",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Gilt auch für abgeschlossene Teilaufgaben (",
       "cancel": "Abbrechen",
       "apply": "Bewerben"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Alle Unteraufgaben löschen?",
-      "thisWillDelete": "Dies wird gelöscht ",
-      "subtask": "Teilaufgabe",
-      "from": "von „",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "Diese Aktion kann nicht rückgängig gemacht werden.",
       "cancel": "Abbrechen",
       "deleteAll": "Alle löschen"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Doppelte Aufgabe",
       "createACopyOf": "Erstellen Sie eine Kopie von „",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Auch doppelte Unteraufgaben (",
       "cancel": "Abbrechen",
       "duplicate": "Duplizieren "

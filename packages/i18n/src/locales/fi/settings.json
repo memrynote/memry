@@ -1186,16 +1186,12 @@
       "press": "Paina ",
       "toToggleThisDialog": "vaihtaaksesi tämän valintaikkunan"
     },
-    "componentsSyncDeviceList": {
-      "middot": "keskipiste;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Tämä laite on poistettu",
       "exporting": "Viedään...",
       "signOut": "Kirjaudu ulos"
     },
     "componentsSyncSyncHistory": {
-      "middot": "keskipiste; ",
       "activity": "Toiminta",
       "filterBySyncType": "Suodata synkronointityypin mukaan",
       "allTypes": "Kaikki tyypit",

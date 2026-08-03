@@ -1186,16 +1186,12 @@
       "press": "プレス ",
       "toToggleThisDialog": "このダイアログを切り替えるには"
     },
-    "componentsSyncDeviceList": {
-      "middot": "ミッドドット;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "このデバイスは削除されました",
       "exporting": "エクスポート中...",
       "signOut": "サインアウト"
     },
     "componentsSyncSyncHistory": {
-      "middot": "ミッドドット; ",
       "activity": "アクティビティ",
       "filterBySyncType": "同期タイプでフィルタリングする",
       "allTypes": "全種類",

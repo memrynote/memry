@@ -1186,16 +1186,12 @@
       "press": "Basın ",
       "toToggleThisDialog": "bu iletişim kutusunu açıp kapatmak için"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middot;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Bu cihaz kaldırıldı",
       "exporting": "Dışa aktarılıyor...",
       "signOut": "Oturumu Kapat"
     },
     "componentsSyncSyncHistory": {
-      "middot": "middot; ",
       "activity": "Etkinlik",
       "filterBySyncType": "Senkronizasyon türüne göre filtrele",
       "allTypes": "Tüm türler",

@@ -391,8 +391,9 @@
       "search": "Search",
       "searchNotesTasksJournalInbox": "Search notes, tasks, journal, inbox...",
       "noResultsFor": "No results for “",
-      "rdquo": "rdquo;",
-      "result": "result"
+      "result": "result",
+      "noResultsForQuery": "No results for “{query}”",
+      "resultCount": "{count, plural, one {# result} other {# results}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Search and click items to build your trail",
@@ -481,8 +482,7 @@
     },
     "componentsTabsUnsavedChangesDialog": {
       "unsavedChanges": "Unsaved Changes",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; has unsaved changes. What would you like to do?"
+      "unsavedChangesBody": "\"{title}\" has unsaved changes. What would you like to do?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "New workspace",
@@ -554,7 +554,6 @@
       "logOut": "Log out",
       "signInToSync": "Sign in to sync",
       "remove": "Remove “",
-      "rdquoFromList": "rdquo; from list?",
       "removeVaultTitle": "Remove “{name}” from list?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "This vault will be removed from the app, but your files will remain on disk. You can always re-add it later.",
       "cancel": "Cancel",

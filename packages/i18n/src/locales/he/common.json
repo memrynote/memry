@@ -203,7 +203,6 @@
       "search": "חפש",
       "searchNotesTasksJournalInbox": "חפש בהערות, משימות, יומן, תיבת דואר נכנס...",
       "noResultsFor": "אין תוצאות עבור \"",
-      "rdquo": "rdquo;",
       "result": "תוצאה"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "סמל הערה"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "שינויים שלא נשמרו",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; יש שינויים שלא נשמרו. מה היית רוצה לעשות?"
+      "unsavedChanges": "שינויים שלא נשמרו"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "חלל עבודה חדש",
@@ -366,7 +363,6 @@
       "logOut": "התנתק",
       "signInToSync": "היכנס כדי לסנכרן",
       "remove": "הסר \"",
-      "rdquoFromList": "rdquo; מהרשימה?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "כספת זו תוסר מהאפליקציה, אך הקבצים שלך יישארו בדיסק. תמיד תוכל להוסיף אותו מחדש מאוחר יותר.",
       "cancel": "בטל",
       "remove2": "הסר",

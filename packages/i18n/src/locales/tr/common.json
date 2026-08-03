@@ -203,7 +203,6 @@
       "search": "Ara",
       "searchNotesTasksJournalInbox": "Notlarda, görevlerde, günlükte, gelen kutusunda arama yapın...",
       "noResultsFor": "Sonuç bulunamadı: “",
-      "rdquo": "rdquo;",
       "result": "sonuç"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Not simgesi"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Kaydedilmemiş Değişiklikler",
-      "quot": "alıntı;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "alıntı; kaydedilmemiş değişiklikler var. Ne yapmak istersin?"
+      "unsavedChanges": "Kaydedilmemiş Değişiklikler"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Yeni çalışma alanı",
@@ -366,7 +363,6 @@
       "logOut": "Oturumu kapat",
       "signInToSync": "Senkronizasyon için oturum açın",
       "remove": "Kaldır “",
-      "rdquoFromList": "rdquo; listeden kaldırılsın mı?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Bu kasa uygulamadan kaldırılacak ancak dosyalarınız diskte kalacak. Daha sonra istediğiniz zaman yeniden ekleyebilirsiniz.",
       "cancel": "İptal",
       "remove2": "Kaldır",

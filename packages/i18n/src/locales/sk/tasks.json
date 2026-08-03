@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Vymazať úlohu?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "„rdquo; bude trvalo vymazaná. Túto akciu nie je možné vrátiť späť.",
       "deleteTask2": "Vymazať úlohu"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Všetky podúlohy dokončené!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "„rdquo; má všetky",
-      "subtask": "podúlohu",
-      "done": "hotové.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Chcete tiež označiť nadradenú úlohu ako dokončenú?",
       "keepTaskOpen": "Nechajte úlohu otvorenú",
       "completeTask": "Dokončiť úlohu ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Nastaviť lehotu pre všetky podúlohy",
       "setDueDateFor": "Nastaviť dátum splatnosti pre ",
-      "subtask": "podúlohu",
-      "in": "v „",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Použiť aj na dokončené podúlohy (",
       "clearDate": "Vymazať dátum",
       "cancel": "Zrušiť",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Nastaviť prioritu pre všetky podúlohy",
       "setPriorityFor": "Nastaviť prioritu pre",
-      "subtask": "podúlohu",
-      "in": "v „",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Použiť aj na dokončené podúlohy (",
       "cancel": "Zrušiť",
       "apply": "Prihláste sa"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Odstrániť všetky podúlohy?",
-      "thisWillDelete": "Týmto sa odstráni ",
-      "subtask": "podúlohu",
-      "from": "z „",
-      "rdquo": "“.",
       "thisActionCannotBeUndone": "Túto akciu nie je možné vrátiť späť.",
       "cancel": "Zrušiť",
       "deleteAll": "Odstrániť všetko"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Duplikovať úlohu",
       "createACopyOf": "Vytvoriť kópiu „",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Duplikovať aj podúlohy (",
       "cancel": "Zrušiť",
       "duplicate": "Duplikovať "

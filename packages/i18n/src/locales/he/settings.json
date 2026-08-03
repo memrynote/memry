@@ -1186,16 +1186,12 @@
       "press": "לחץ ",
       "toToggleThisDialog": "כדי להחליף את הדו-שיח הזה"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middot;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "מכשיר זה הוסר",
       "exporting": "מייצא...",
       "signOut": "צא"
     },
     "componentsSyncSyncHistory": {
-      "middot": "middot; ",
       "activity": "פעילות",
       "filterBySyncType": "סנן לפי סוג סנכרון",
       "allTypes": "כל הסוגים",

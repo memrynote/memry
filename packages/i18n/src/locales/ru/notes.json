@@ -361,8 +361,6 @@
       "noFormulasDefined": "Формулы не определены",
       "addFormula": "Добавить формулу",
       "deleteFormula": "Удалить формулу",
-      "areYouSureYouWantToDeleteTheFormula": "Вы уверены, что хотите удалить формулу \"",
-      "quotThisActionCannotBeUndone": "quot;? Это действие невозможно отменить.",
       "cancel": "Отмена",
       "delete": "Удалить",
       "none": "Нет",
@@ -422,7 +420,6 @@
       "preview": "Предварительный просмотр",
       "fixExpressionErrorsToSeePreview": "Исправьте ошибки выражения, чтобы увидеть предварительный просмотр",
       "usingNote": "Используя примечание: \"",
-      "quot": "quot;",
       "cancel": "Отмена",
       "namePlaceholder": "дней_до_даты",
       "expressionPlaceholder": "dateDiff(due_date, Today(), \"дни\")"
@@ -451,11 +448,8 @@
       "bestMatch": "Лучший матч",
       "current": "текущий)",
       "allFolders": "ВСЕ ПАПКИ",
-      "current2": "текущий)",
       "noFoldersMatch": "Ни одна папка не соответствует \"",
-      "quot": "quot;",
       "create": "Создать \"",
-      "quot2": "quot;",
       "cancel": "Отмена"
     },
     "componentsFolderViewRowContextMenu": {

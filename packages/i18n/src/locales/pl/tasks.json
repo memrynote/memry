@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Usunąć zadanie?",
-      "ldquo": "bdquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "nieważne; zostaną trwale usunięte. Tej akcji nie można cofnąć.",
       "deleteTask2": "Usuń zadanie"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Wszystkie podzadania ukończone!",
-      "ldquo": "bdquo;",
-      "rdquoHasAll": "nieważne; ma wszystko ",
-      "subtask": "podzadanie",
-      "done": "zrobione.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Czy chcesz oznaczyć zadanie nadrzędne również jako ukończone?",
       "keepTaskOpen": "Pozostaw zadanie otwarte",
       "completeTask": "Wykonaj zadanie ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Ustaw terminy wszystkich podzadań",
       "setDueDateFor": "Ustaw termin dla ",
-      "subtask": "podzadanie",
-      "in": "w „",
-      "rdquo": "nieważne;",
       "alsoApplyToCompletedSubtasks": "Dotyczy również ukończonych podzadań (",
       "clearDate": "Wyczyść datę",
       "cancel": "Anuluj",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Ustaw priorytet dla wszystkich podzadań",
       "setPriorityFor": "Ustaw priorytet dla ",
-      "subtask": "podzadanie",
-      "in": "w „",
-      "rdquo": "nieważne;",
       "alsoApplyToCompletedSubtasks": "Dotyczy również ukończonych podzadań (",
       "cancel": "Anuluj",
       "apply": "Zastosuj"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Usunąć wszystkie podzadania?",
-      "thisWillDelete": "To zostanie usunięte ",
-      "subtask": "podzadanie",
-      "from": "z „",
-      "rdquo": "nieprawda;.",
       "thisActionCannotBeUndone": "Tej akcji nie można cofnąć.",
       "cancel": "Anuluj",
       "deleteAll": "Usuń wszystko"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Zduplikowane zadanie",
       "createACopyOf": "Utwórz kopię „",
-      "rdquo": "nieważne;",
       "alsoDuplicateSubtasks": "Zduplikuj także podzadania (",
       "cancel": "Anuluj",
       "duplicate": "Duplikat "

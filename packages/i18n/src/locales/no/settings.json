@@ -1186,16 +1186,12 @@
       "press": "Trykk på ",
       "toToggleThisDialog": "for å veksle mellom denne dialogen"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middot;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Denne enheten er fjernet",
       "exporting": "Eksporterer...",
       "signOut": "Logg ut"
     },
     "componentsSyncSyncHistory": {
-      "middot": "middot; ",
       "activity": "Aktivitet",
       "filterBySyncType": "Filtrer etter synkroniseringstype",
       "allTypes": "Alle typer",

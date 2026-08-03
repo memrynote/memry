@@ -203,7 +203,6 @@
       "search": "Rechercher",
       "searchNotesTasksJournalInbox": "Rechercher des notes, des tâches, un journal, une boîte de réception...",
       "noResultsFor": "Aucun résultat pour “",
-      "rdquo": "rdquo ;",
       "result": "résultat"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Icône de remarque"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Modifications non enregistrées",
-      "quot": "\"",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "\" a des modifications non enregistrées. Qu'aimeriez-vous faire ?"
+      "unsavedChanges": "Modifications non enregistrées"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Nouvel espace de travail",
@@ -366,7 +363,6 @@
       "logOut": "Se déconnecter",
       "signInToSync": "Connectez-vous pour synchroniser",
       "remove": "Supprimer \"",
-      "rdquoFromList": "rdquo ; de la liste ?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Ce coffre-fort sera supprimé de l'application, mais vos fichiers resteront sur le disque. Vous pourrez toujours le rajouter plus tard.",
       "cancel": "Annuler",
       "remove2": "Supprimer",

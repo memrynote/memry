@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Tanggalin ang gawain?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; ay permanenteng tatanggalin. Ang pagkilos na ito ay hindi maaaring i-undo.",
       "deleteTask2": "Tanggalin ang Gawain"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Kumpleto na ang lahat ng subtasks!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; meron lahat ",
-      "subtask": "subtask",
-      "done": "tapos na.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Gusto mo bang markahan ang gawain ng magulang bilang kumpleto na rin?",
       "keepTaskOpen": "Panatilihing bukas ang gawain",
       "completeTask": "Kumpletuhin ang gawain ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Itakda ang takdang petsa para sa lahat ng mga subtask",
       "setDueDateFor": "Itakda ang takdang petsa para sa ",
-      "subtask": "subtask",
-      "in": "sa \"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Ilapat din sa mga nakumpletong subtask (",
       "clearDate": "I-clear ang petsa",
       "cancel": "Kanselahin",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Magtakda ng priyoridad para sa lahat ng mga subtask",
       "setPriorityFor": "Magtakda ng priyoridad para sa ",
-      "subtask": "subtask",
-      "in": "sa \"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Ilapat din sa mga nakumpletong subtask (",
       "cancel": "Kanselahin",
       "apply": "Mag-apply"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "I-delete ang lahat ng subtasks?",
-      "thisWillDelete": "Tatanggalin nito ",
-      "subtask": "subtask",
-      "from": "mula sa \"",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "Ang pagkilos na ito ay hindi maaaring i-undo.",
       "cancel": "Kanselahin",
       "deleteAll": "Tanggalin Lahat"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Dobleng gawain",
       "createACopyOf": "Gumawa ng kopya ng “",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Doblehin din ang mga subtask (",
       "cancel": "Kanselahin",
       "duplicate": "I-duplicate "

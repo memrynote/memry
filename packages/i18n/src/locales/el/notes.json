@@ -361,8 +361,6 @@
       "noFormulasDefined": "Δεν έχουν καθοριστεί τύποι",
       "addFormula": "Προσθήκη τύπου",
       "deleteFormula": "Διαγραφή τύπου",
-      "areYouSureYouWantToDeleteTheFormula": "Είστε βέβαιοι ότι θέλετε να διαγράψετε τον τύπο \"",
-      "quotThisActionCannotBeUndone": "quot;? Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.",
       "cancel": "Ακύρωση",
       "delete": "Διαγραφή",
       "none": "Κανένα",
@@ -422,7 +420,6 @@
       "preview": "Προεπισκόπηση",
       "fixExpressionErrorsToSeePreview": "Διορθώστε τα σφάλματα έκφρασης για να δείτε την προεπισκόπηση",
       "usingNote": "Χρήση σημείωσης: \"",
-      "quot": "quot;",
       "cancel": "Ακύρωση",
       "namePlaceholder": "ημέρες_μέχρι_λήγει",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
@@ -451,11 +448,8 @@
       "bestMatch": "Καλύτερος αγώνας",
       "current": "τρέχον)",
       "allFolders": "ΟΛΟΙ ΟΙ ΦΑΚΕΛΟΙ",
-      "current2": "τρέχον)",
       "noFoldersMatch": "Δεν ταιριάζουν φάκελοι \"",
-      "quot": "quot;",
       "create": "Δημιουργία \"",
-      "quot2": "quot;",
       "cancel": "Ακύρωση"
     },
     "componentsFolderViewRowContextMenu": {

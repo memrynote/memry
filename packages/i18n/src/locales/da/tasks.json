@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Vil du slette opgaven?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; slettes permanent. Denne handling kan ikke fortrydes.",
       "deleteTask2": "Slet opgave"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Alle delopgaver afsluttet!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; har alt ",
-      "subtask": "delopgave",
-      "done": "gjort.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Vil du også markere forældreopgaven som fuldført?",
       "keepTaskOpen": "Hold opgaven åben",
       "completeTask": "Fuldfør opgave ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Indstil forfaldsdato for alle delopgaver",
       "setDueDateFor": "Sæt forfaldsdato for ",
-      "subtask": "delopgave",
-      "in": "i \"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Gælder også for gennemførte delopgaver (",
       "clearDate": "Klar dato",
       "cancel": "Annuller",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Sæt prioritet for alle underopgaver",
       "setPriorityFor": "Sæt prioritet for ",
-      "subtask": "delopgave",
-      "in": "i \"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Gælder også for gennemførte delopgaver (",
       "cancel": "Annuller",
       "apply": "Ansøg"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Vil du slette alle underopgaver?",
-      "thisWillDelete": "Dette vil slette ",
-      "subtask": "delopgave",
-      "from": "fra \"",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "Denne handling kan ikke fortrydes.",
       "cancel": "Annuller",
       "deleteAll": "Slet alle"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Dubleret opgave",
       "createACopyOf": "Opret en kopi af \"",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Dupliker også underopgaver (",
       "cancel": "Annuller",
       "duplicate": "Dublet "

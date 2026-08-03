@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "ต้องการลบงานหรือไม่?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; จะถูกลบอย่างถาวร การกระทำนี้ไม่สามารถยกเลิกได้",
       "deleteTask2": "ลบงาน"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "งานย่อยทั้งหมดเสร็จสมบูรณ์!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; มีทั้งหมด ",
-      "subtask": "งานย่อย",
-      "done": "เสร็จแล้ว",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "คุณต้องการทำเครื่องหมายงานหลักว่าเสร็จสมบูรณ์ด้วยหรือไม่?",
       "keepTaskOpen": "เก็บงานให้อยู่ในสถานะเปิด",
       "completeTask": "ทำงานให้เสร็จ ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "กำหนดวันที่ครบกำหนดสำหรับงานย่อยทั้งหมด",
       "setDueDateFor": "ตั้งวันกำหนดส่งสำหรับ",
-      "subtask": "งานย่อย",
-      "in": "ใน “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "ใช้กับงานย่อยที่เสร็จสมบูรณ์ด้วย (",
       "clearDate": "ล้างวันที่",
       "cancel": "ยกเลิก",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "ตั้งค่าลำดับความสำคัญสำหรับงานย่อยทั้งหมด",
       "setPriorityFor": "ตั้งค่าลำดับความสำคัญสำหรับ ",
-      "subtask": "งานย่อย",
-      "in": "ใน “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "ใช้กับงานย่อยที่เสร็จสมบูรณ์ด้วย (",
       "cancel": "ยกเลิก",
       "apply": "ใช้"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "ลบงานย่อยทั้งหมดหรือไม่?  ",
-      "thisWillDelete": "สิ่งนี้จะลบ  ",
-      "subtask": "งานย่อย",
-      "from": "จาก “  ",
-      "rdquo": "rdquo;  ",
       "thisActionCannotBeUndone": "การกระทำนี้ไม่สามารถยกเลิกได้",
       "cancel": "ยกเลิก",
       "deleteAll": "ลบทั้งหมด  "
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "ทำสำเนางาน  ",
       "createACopyOf": "สร้างสำเนาของ “  ",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "ก็ทำสำเนางานย่อยด้วย (  ",
       "cancel": "ยกเลิก",
       "duplicate": "ทำสำเนา  "

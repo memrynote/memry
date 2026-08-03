@@ -203,7 +203,6 @@
       "search": "Søk",
       "searchNotesTasksJournalInbox": "Søk i notater, oppgaver, journal, innboks...",
       "noResultsFor": "Ingen resultater for \"",
-      "rdquo": "rdquo;",
       "result": "resultat"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Merknadsikon"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Ulagrede endringer",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; har ulagrede endringer. Hva vil du gjøre?"
+      "unsavedChanges": "Ulagrede endringer"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Ny arbeidsplass",
@@ -366,7 +363,6 @@
       "logOut": "Logg ut",
       "signInToSync": "Logg på for å synkronisere",
       "remove": "Fjern \"",
-      "rdquoFromList": "rdquo; fra listen?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Dette hvelvet vil bli fjernet fra appen, men filene dine forblir på disken. Du kan alltid legge den til på nytt senere.",
       "cancel": "Avbryt",
       "remove2": "Fjern",

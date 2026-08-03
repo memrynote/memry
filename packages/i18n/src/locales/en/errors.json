@@ -57,7 +57,10 @@
     "uploadFailed": "Attachment upload failed",
     "uploadProgressFailed": "Failed to fetch upload progress",
     "downloadFailed": "Attachment download failed",
-    "downloadProgressFailed": "Failed to fetch download progress"
+    "downloadProgressFailed": "Failed to fetch download progress",
+    "exceedsMaxSize": "File too large: {size} exceeds {limit} limit",
+    "exceedsPlanLimit": "File is larger than your plan allows: {size} exceeds {limit}",
+    "emptyFile": "Cannot upload empty file"
   },
   "encryption": {
     "failed": "Failed to encrypt data. Your keys may need to be regenerated.",

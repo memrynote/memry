@@ -361,8 +361,6 @@
       "noFormulasDefined": "Chưa có công thức nào được định nghĩa",
       "addFormula": "Thêm công thức",
       "deleteFormula": "Xóa công thức",
-      "areYouSureYouWantToDeleteTheFormula": "Bạn có chắc muốn xóa công thức \"",
-      "quotThisActionCannotBeUndone": "\" không? Hành động này không thể hoàn tác.",
       "cancel": "Hủy",
       "delete": "Xóa",
       "none": "Không có",
@@ -422,7 +420,6 @@
       "preview": "Xem trước",
       "fixExpressionErrorsToSeePreview": "Sửa lỗi biểu thức để xem trước",
       "usingNote": "Sử dụng ghi chú:",
-      "quot": "quot;",
       "cancel": "Hủy",
       "namePlaceholder": "ngày_đến_hạn",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
@@ -451,11 +448,8 @@
       "bestMatch": "Phù hợp nhất",
       "current": "hiện tại)",
       "allFolders": "TẤT CẢ THƯ MỤC",
-      "current2": "hiện tại)",
       "noFoldersMatch": "Không có thư mục nào phù hợp",
-      "quot": "quot;",
       "create": "Tạo",
-      "quot2": "quot;",
       "cancel": "Hủy"
     },
     "componentsFolderViewRowContextMenu": {

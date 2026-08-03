@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Izbrisati zadatak?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; bit će trajno izbrisani. Ova se radnja ne može poništiti.",
       "deleteTask2": "Izbriši zadatak"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Svi podzadaci dovršeni!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; ima sve ",
-      "subtask": "podzadatak",
-      "done": "učinjeno.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Želite li i nadređeni zadatak označiti kao dovršen?",
       "keepTaskOpen": "Držite zadatak otvorenim",
       "completeTask": "Izvršite zadatak ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Postavite rok za sve podzadatke",
       "setDueDateFor": "Postavite rok za ",
-      "subtask": "podzadatak",
-      "in": "u \"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Primijeni i na dovršene podzadatke (",
       "clearDate": "Jasan datum",
       "cancel": "Odustani",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Postavite prioritet za sve podzadatke",
       "setPriorityFor": "Postavite prioritet za ",
-      "subtask": "podzadatak",
-      "in": "u \"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Primijeni i na dovršene podzadatke (",
       "cancel": "Odustani",
       "apply": "primijeniti"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Izbrisati sve podzadatke?",
-      "thisWillDelete": "Ovo će izbrisati ",
-      "subtask": "podzadatak",
-      "from": "od “",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "Ova se radnja ne može poništiti.",
       "cancel": "Odustani",
       "deleteAll": "Izbriši sve"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Duplicirani zadatak",
       "createACopyOf": "Napravite kopiju \"",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Također duplicirati podzadatke (",
       "cancel": "Odustani",
       "duplicate": "Duplikat "

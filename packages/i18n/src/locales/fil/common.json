@@ -203,7 +203,6 @@
       "search": "Maghanap",
       "searchNotesTasksJournalInbox": "Maghanap ng mga tala, gawain, journal, inbox...",
       "noResultsFor": "Walang mga resulta para sa \"",
-      "rdquo": "rdquo;",
       "result": "resulta"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Icon ng tala"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Mga Hindi Na-save na Pagbabago",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; ay may mga hindi na-save na pagbabago. Ano ang gusto mong gawin?"
+      "unsavedChanges": "Mga Hindi Na-save na Pagbabago"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Bagong workspace",
@@ -366,7 +363,6 @@
       "logOut": "Mag-log out",
       "signInToSync": "Mag-sign in para mag-sync",
       "remove": "Tanggalin \"",
-      "rdquoFromList": "rdquo; mula sa listahan?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Aalisin ang vault na ito sa app, ngunit mananatili ang iyong mga file sa disk. Maaari mo itong muling idagdag sa ibang pagkakataon.",
       "cancel": "Kanselahin",
       "remove2": "Alisin",

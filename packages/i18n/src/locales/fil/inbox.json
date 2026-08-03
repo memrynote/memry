@@ -353,8 +353,6 @@
       "attachFileImagesAudioVideoPdf": "Mag-attach ng file (Mga Larawan, Audio, Video, PDF)",
       "recordVoiceMemo": "Mag-record ng voice memo",
       "recordVoiceMemo2": "Mag-record ng voice memo",
-      "alreadyCaptured": "Nahuli na: “",
-      "rdquo": "rdquo;",
       "captureAnyway": "Kunin Anyway",
       "focusShortcut": "I-focus ang capture input",
       "q": "Q",
@@ -460,8 +458,6 @@
       "captured": "Nakunan",
       "dismissError": "I-dismiss ang error",
       "alreadyCaptured": "Nakunan na",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; · ",
       "captureAnyway": "Kunin Anyway",
       "close": "Isara"
     },

@@ -1186,16 +1186,12 @@
       "press": "Presse ",
       "toToggleThisDialog": "pour basculer cette boîte de dialogue"
     },
-    "componentsSyncDeviceList": {
-      "middot": "point médian ;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Cet appareil a été supprimé",
       "exporting": "Exportation...",
       "signOut": "Se déconnecter"
     },
     "componentsSyncSyncHistory": {
-      "middot": "point médian ; ",
       "activity": "Activité",
       "filterBySyncType": "Filtrer par type de synchronisation",
       "allTypes": "Tous types",

@@ -396,13 +396,12 @@
       "noFormulasDefined": "No formulas defined",
       "addFormula": "Add Formula",
       "deleteFormula": "Delete Formula",
-      "areYouSureYouWantToDeleteTheFormula": "Are you sure you want to delete the formula \"",
-      "quotThisActionCannotBeUndone": "quot;? This action cannot be undone.",
       "cancel": "Cancel",
       "delete": "Delete",
       "none": "None",
       "edit": "Edit",
-      "delete2": "Delete"
+      "delete2": "Delete",
+      "deleteFormulaBody": "Are you sure you want to delete the formula \"{name}\"? This action cannot be undone."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filter",
@@ -454,10 +453,10 @@
       "preview": "Preview",
       "fixExpressionErrorsToSeePreview": "Fix expression errors to see preview",
       "usingNote": "Using note: \"",
-      "quot": "quot;",
       "cancel": "Cancel",
       "namePlaceholder": "days_until_due",
-      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
+      "usingNoteTitle": "Using note: \"{title}\""
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Clear grouping",
@@ -483,12 +482,12 @@
       "bestMatch": "Best match",
       "current": "current)",
       "allFolders": "ALL FOLDERS",
-      "current2": "current)",
       "noFoldersMatch": "No folders match \"",
-      "quot": "quot;",
       "create": "Create \"",
-      "quot2": "quot;",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "currentFolderBadge": "(current)",
+      "noFoldersMatchQuery": "No folders match \"{query}\"",
+      "createFolderNamed": "Create \"{name}\""
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Delete ",
@@ -864,7 +863,8 @@
     "defaultViewName": "Default",
     "selectView": "Select View",
     "columnHeader": {
-      "doubleClickToEdit": "{name} (double-click to edit)"
+      "doubleClickToEdit": "{name} (double-click to edit)",
+      "dragToReorder": "Drag to reorder column: {name}"
     },
     "groupHeader": {
       "noteCount": "{count, plural, one {# note} other {# notes}}"

@@ -203,7 +203,6 @@
       "search": "Traži",
       "searchNotesTasksJournalInbox": "Pretražite bilješke, zadatke, dnevnik, inbox...",
       "noResultsFor": "Nema rezultata za \"",
-      "rdquo": "rdquo;",
       "result": "rezultat"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Ikona bilješke"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Nespremljene promjene",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; ima nespremljenih promjena. Što biste htjeli raditi?"
+      "unsavedChanges": "Nespremljene promjene"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Novi radni prostor",
@@ -366,7 +363,6 @@
       "logOut": "Odjavi se",
       "signInToSync": "Prijavite se za sinkronizaciju",
       "remove": "Ukloni \"",
-      "rdquoFromList": "rdquo; s popisa?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Ovaj će trezor biti uklonjen iz aplikacije, ali će vaše datoteke ostati na disku. Uvijek ga možete ponovno dodati kasnije.",
       "cancel": "Odustani",
       "remove2": "Ukloniti",

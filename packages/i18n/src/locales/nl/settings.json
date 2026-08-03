@@ -1186,16 +1186,12 @@
       "press": "Druk op ",
       "toToggleThisDialog": "om dit dialoogvenster in of uit te schakelen"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middenpunt;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Dit apparaat is verwijderd",
       "exporting": "Exporteren...",
       "signOut": "Uitloggen"
     },
     "componentsSyncSyncHistory": {
-      "middot": "middenpunt; ",
       "activity": "Activiteit",
       "filterBySyncType": "Filter op synchronisatietype",
       "allTypes": "Alle soorten",

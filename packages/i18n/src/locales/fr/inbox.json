@@ -353,8 +353,6 @@
       "attachFileImagesAudioVideoPdf": "Joindre un fichier (images, audio, vidéo, PDF)",
       "recordVoiceMemo": "Enregistrer un mémo vocal",
       "recordVoiceMemo2": "Enregistrer un mémo vocal",
-      "alreadyCaptured": "Déjà capturé : «",
-      "rdquo": "rdquo ;",
       "captureAnyway": "Capturez quand même",
       "focusShortcut": "Activer le champ de capture",
       "q": "Q",
@@ -460,8 +458,6 @@
       "captured": "Capturé",
       "dismissError": "Ignorer l'erreur",
       "alreadyCaptured": "Déjà capturé",
-      "ldquo": "ldquo ;",
-      "rdquoMiddot": "rdquo ; · ",
       "captureAnyway": "Capturez quand même",
       "close": "Fermer"
     },

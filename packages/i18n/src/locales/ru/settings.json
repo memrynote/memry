@@ -1186,16 +1186,12 @@
       "press": "Пресса ",
       "toToggleThisDialog": "чтобы переключить это диалоговое окно"
     },
-    "componentsSyncDeviceList": {
-      "middot": "миддот;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Это устройство было удалено",
       "exporting": "Экспорт...",
       "signOut": "Выйти"
     },
     "componentsSyncSyncHistory": {
-      "middot": "миддот; ",
       "activity": "Деятельность",
       "filterBySyncType": "Фильтровать по типу синхронизации",
       "allTypes": "Все типы",

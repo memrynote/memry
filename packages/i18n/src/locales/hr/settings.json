@@ -1186,16 +1186,12 @@
       "press": "Pritisnite ",
       "toToggleThisDialog": "za prebacivanje ovog dijaloga"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middot;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Ovaj uređaj je uklonjen",
       "exporting": "Izvoz...",
       "signOut": "Odjavi se"
     },
     "componentsSyncSyncHistory": {
-      "middot": "middot; ",
       "activity": "aktivnost",
       "filterBySyncType": "Filtrirajte prema vrsti sinkronizacije",
       "allTypes": "Sve vrste",

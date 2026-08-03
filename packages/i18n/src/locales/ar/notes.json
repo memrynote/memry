@@ -361,8 +361,6 @@
       "noFormulasDefined": "لم يتم تحديد أي صيغ",
       "addFormula": "إضافة صيغة",
       "deleteFormula": "حذف الصيغة",
-      "areYouSureYouWantToDeleteTheFormula": "هل أنت متأكد أنك تريد حذف الصيغة \"",
-      "quotThisActionCannotBeUndone": "مثل ؛؟ لا يمكن التراجع عن هذا الإجراء.",
       "cancel": "إلغاء",
       "delete": "حذف",
       "none": "لا شيء",
@@ -422,7 +420,6 @@
       "preview": "معاينة",
       "fixExpressionErrorsToSeePreview": "إصلاح أخطاء التعبير لرؤية المعاينة",
       "usingNote": "باستخدام الملاحظة: \"",
-      "quot": "مثل؛",
       "cancel": "إلغاء",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
@@ -451,11 +448,8 @@
       "bestMatch": "أفضل مباراة",
       "current": "الحالي)",
       "allFolders": "كافة المجلدات",
-      "current2": "الحالي)",
       "noFoldersMatch": "لا توجد مجلدات متطابقة \"",
-      "quot": "مثل؛",
       "create": "إنشاء \"",
-      "quot2": "مثل؛",
       "cancel": "إلغاء"
     },
     "componentsFolderViewRowContextMenu": {

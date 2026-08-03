@@ -361,8 +361,6 @@
       "noFormulasDefined": "Nie sú definované žiadne formulky",
       "addFormula": "Pridať formulku",
       "deleteFormula": "Vymazať formulku",
-      "areYouSureYouWantToDeleteTheFormula": "Naozaj chcete vymazať formulku \"",
-      "quotThisActionCannotBeUndone": "\"? Túto akciu nie je možné vrátiť späť.",
       "cancel": "Zrušiť",
       "delete": "Vymazať",
       "none": "Žiadna",
@@ -422,7 +420,6 @@
       "preview": "Ukážka",
       "fixExpressionErrorsToSeePreview": "Opravte chyby výrazu, aby ste videli náhľad",
       "usingNote": "Používajúca poznámka: \"",
-      "quot": "quot;",
       "cancel": "Zrušiť",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
@@ -451,11 +448,8 @@
       "bestMatch": "Najlepšia zhoda",
       "current": "aktuálny)",
       "allFolders": "VŠETKY PRIEČINKY",
-      "current2": "aktuálny)",
       "noFoldersMatch": "Žiadne zložky sa nezhodujú.\"",
-      "quot": "quot;",
       "create": "Vytvoriť ",
-      "quot2": "quot;",
       "cancel": "Zrušiť"
     },
     "componentsFolderViewRowContextMenu": {

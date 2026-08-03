@@ -361,8 +361,6 @@
       "noFormulasDefined": "Nincsenek meghatározott képletek",
       "addFormula": "Képlet hozzáadása",
       "deleteFormula": "Képlet törlése",
-      "areYouSureYouWantToDeleteTheFormula": "Biztosan törli a képletet \"",
-      "quotThisActionCannotBeUndone": "quot;? Ez a művelet nem vonható vissza.",
       "cancel": "Mégsem",
       "delete": "Törölje",
       "none": "Egyik sem",
@@ -422,7 +420,6 @@
       "preview": "Előnézet",
       "fixExpressionErrorsToSeePreview": "Az előnézet megtekintéséhez javítsa ki a kifejezési hibákat",
       "usingNote": "Megjegyzés használatával: \"",
-      "quot": "quot;",
       "cancel": "Mégsem",
       "namePlaceholder": "napok_esedékességig",
       "expressionPlaceholder": "dateDiff(esedékes_dátum, mai(), \"napok\")"
@@ -451,11 +448,8 @@
       "bestMatch": "Legjobb meccs",
       "current": "jelenlegi)",
       "allFolders": "MINDEN MAPPA",
-      "current2": "jelenlegi)",
       "noFoldersMatch": "Egyik mappa sem egyezik",
-      "quot": "quot;",
       "create": "Létrehoz",
-      "quot2": "quot;",
       "cancel": "Mégsem"
     },
     "componentsFolderViewRowContextMenu": {

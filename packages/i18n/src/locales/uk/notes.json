@@ -361,8 +361,6 @@
       "noFormulasDefined": "Формули не визначені",
       "addFormula": "Додати формулу",
       "deleteFormula": "Видалити формулу",
-      "areYouSureYouWantToDeleteTheFormula": "Ви впевнені, що хочете видалити формулу ",
-      "quotThisActionCannotBeUndone": "\"? Цю дію не можна скасувати.",
       "cancel": "Скасувати",
       "delete": "Видалити",
       "none": "Немає",
@@ -422,7 +420,6 @@
       "preview": "Анонс",
       "fixExpressionErrorsToSeePreview": "Виправте помилки виразів, щоб побачити попередній перегляд",
       "usingNote": "Використовуючи нотатку: \"",
-      "quot": "\";",
       "cancel": "Скасувати",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), «days»)"
@@ -451,11 +448,8 @@
       "bestMatch": "Найкраще співпадіння",
       "current": "поточний)",
       "allFolders": "УСІ ПАПКИ",
-      "current2": "поточний)",
       "noFoldersMatch": "Немає відповідних папок",
-      "quot": "\";",
       "create": "Створити ",
-      "quot2": "\";",
       "cancel": "Скасувати"
     },
     "componentsFolderViewRowContextMenu": {

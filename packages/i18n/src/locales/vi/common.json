@@ -203,7 +203,6 @@
       "search": "Tìm kiếm",
       "searchNotesTasksJournalInbox": "Tìm kiếm ghi chú, công việc, nhật ký, hộp thư đến...",
       "noResultsFor": "Không có kết quả cho “",
-      "rdquo": "rdquo;",
       "result": "kết quả"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Biểu tượng ghi chú"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Thay đổi Chưa lưu",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; có thay đổi chưa lưu. Bạn muốn làm gì?"
+      "unsavedChanges": "Thay đổi Chưa lưu"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Không gian làm việc mới",
@@ -366,7 +363,6 @@
       "logOut": "Đăng xuất",
       "signInToSync": "Đăng nhập để đồng bộ",
       "remove": "Xóa “",
-      "rdquoFromList": "rdquo; từ danh sách?  ",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "  \nKho lưu trữ này sẽ bị xóa khỏi ứng dụng, nhưng các tệp của bạn sẽ vẫn còn trên ổ đĩa. Bạn luôn có thể thêm lại sau.  ",
       "cancel": "Hủy",
       "remove2": "Gỡ bỏ",

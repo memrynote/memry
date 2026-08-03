@@ -83,7 +83,9 @@
       "dueThisWeek": "Due This Week",
       "repeating": "Repeating",
       "noDueDate": "No Due Date"
-    }
+    },
+    "repeatTypeRepeating": "Repeating",
+    "repeatTypeOneTime": "One-time"
   },
   "quickAdd": {
     "label": "Quick add task",
@@ -303,40 +305,34 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Delete task?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; will be permanently deleted. This action cannot be undone.",
-      "deleteTask2": "Delete Task"
+      "deleteTask2": "Delete Task",
+      "deleteConfirmBody": "“{title}” will be permanently deleted. This action cannot be undone."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "All subtasks complete!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; has all ",
-      "subtask": "subtask",
-      "done": "done.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Would you like to mark the parent task as complete too?",
       "keepTaskOpen": "Keep task open",
-      "completeTask": "Complete task ✓"
+      "completeTask": "Complete task ✓",
+      "allSubtasksDoneBody": "“{title}” has all {count, plural, one {# subtask} other {# subtasks}} done."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Set due date for all subtasks",
       "setDueDateFor": "Set due date for ",
-      "subtask": "subtask",
-      "in": "in “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Also apply to completed subtasks (",
       "clearDate": "Clear date",
       "cancel": "Cancel",
-      "apply": "Apply"
+      "apply": "Apply",
+      "setDueDateForSubtasksIn": "Set due date for {count, plural, one {# subtask} other {# subtasks}} in “{title}”",
+      "alsoApplyToCompletedSubtasksCount": "Also apply to completed subtasks ({count})"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Set priority for all subtasks",
       "setPriorityFor": "Set priority for ",
-      "subtask": "subtask",
-      "in": "in “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Also apply to completed subtasks (",
       "cancel": "Cancel",
-      "apply": "Apply"
+      "apply": "Apply",
+      "setPriorityForSubtasksIn": "Set priority for {count, plural, one {# subtask} other {# subtasks}} in “{title}”",
+      "alsoApplyToCompletedSubtasksCount": "Also apply to completed subtasks ({count})"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Complete task with incomplete subtasks?",
@@ -354,13 +350,10 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Delete all subtasks?",
-      "thisWillDelete": "This will delete ",
-      "subtask": "subtask",
-      "from": "from “",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "This action cannot be undone.",
       "cancel": "Cancel",
-      "deleteAll": "Delete All"
+      "deleteAll": "Delete All",
+      "deleteSubtasksConfirmation": "This will delete {count, plural, one {# subtask} other {# subtasks}} from “{title}”."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Delete task with subtasks?",
@@ -377,10 +370,13 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Duplicate task",
       "createACopyOf": "Create a copy of “",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Also duplicate subtasks (",
       "cancel": "Cancel",
-      "duplicate": "Duplicate "
+      "duplicate": "Duplicate ",
+      "createACopyOfTitle": "Create a copy of “{title}”",
+      "alsoDuplicateSubtasksCount": "Also duplicate subtasks ({count})",
+      "duplicateWithItems": "Duplicate ({count, plural, one {# item} other {# items}})",
+      "duplicateTaskOnly": "Duplicate task"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Make subtask of...",
@@ -883,5 +879,17 @@
     "todo": "To Do",
     "inProgress": "In Progress",
     "done": "Done"
+  },
+  "colors": {
+    "gray": "Gray",
+    "red": "Red",
+    "orange": "Orange",
+    "yellow": "Yellow",
+    "green": "Green",
+    "teal": "Teal",
+    "blue": "Blue",
+    "indigo": "Indigo",
+    "purple": "Purple",
+    "pink": "Pink"
   }
 }

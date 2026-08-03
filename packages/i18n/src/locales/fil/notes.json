@@ -361,8 +361,6 @@
       "noFormulasDefined": "Walang tinukoy na mga formula",
       "addFormula": "Magdagdag ng Formula",
       "deleteFormula": "Tanggalin ang Formula",
-      "areYouSureYouWantToDeleteTheFormula": "Sigurado ka bang gusto mong tanggalin ang formula \"",
-      "quotThisActionCannotBeUndone": "quot;? Ang pagkilos na ito ay hindi maaaring i-undo.",
       "cancel": "Kanselahin",
       "delete": "Tanggalin",
       "none": "wala",
@@ -422,7 +420,6 @@
       "preview": "Silipin",
       "fixExpressionErrorsToSeePreview": "Ayusin ang mga error sa expression upang makita ang preview",
       "usingNote": "Gamit ang tala: \"",
-      "quot": "quot;",
       "cancel": "Kanselahin",
       "namePlaceholder": "araw_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
@@ -451,11 +448,8 @@
       "bestMatch": "Pinakamahusay na tugma",
       "current": "kasalukuyang)",
       "allFolders": "LAHAT NG FOLDERS",
-      "current2": "kasalukuyang)",
       "noFoldersMatch": "Walang mga folder na tumutugma \"",
-      "quot": "quot;",
       "create": "Lumikha\"",
-      "quot2": "quot;",
       "cancel": "Kanselahin"
     },
     "componentsFolderViewRowContextMenu": {

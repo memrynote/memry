@@ -1186,16 +1186,12 @@
       "press": "Nhấn",
       "toToggleThisDialog": "để chuyển đổi hộp thoại này"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middot;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Thiết bị này đã bị gỡ",
       "exporting": "Đang xuất...",
       "signOut": "Đăng xuất"
     },
     "componentsSyncSyncHistory": {
-      "middot": "middot;",
       "activity": "Hoạt động",
       "filterBySyncType": "Lọc theo loại đồng bộ",
       "allTypes": "Tất cả loại",

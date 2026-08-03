@@ -1186,16 +1186,12 @@
       "press": "Stiskněte ",
       "toToggleThisDialog": "pro přepnutí tohoto dialogu"
     },
-    "componentsSyncDeviceList": {
-      "middot": "střední tečka;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Toto zařízení bylo odstraněno",
       "exporting": "Exportování...",
       "signOut": "Odhlásit se"
     },
     "componentsSyncSyncHistory": {
-      "middot": "střední tečka; ",
       "activity": "Aktivita",
       "filterBySyncType": "Filtrujte podle typu synchronizace",
       "allTypes": "Všechny typy",

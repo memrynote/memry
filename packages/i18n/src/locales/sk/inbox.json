@@ -353,8 +353,6 @@
       "attachFileImagesAudioVideoPdf": "Priložiť súbor (Obrázky, Audio, Video, PDF)",
       "recordVoiceMemo": "Nahrávať hlasovú poznámku",
       "recordVoiceMemo2": "Nahrávať hlasovú poznámku",
-      "alreadyCaptured": "Už zachytené: “",
-      "rdquo": "rdquo;",
       "captureAnyway": "Zachytiť aj tak",
       "focusShortcut": "Zamerať pole zachytávania",
       "q": "Q",
@@ -460,8 +458,6 @@
       "captured": "Zaznamenané",
       "dismissError": "Chyba pri zrušení",
       "alreadyCaptured": "Už zajatý",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; &middot; ",
       "captureAnyway": "Zachytiť aj tak",
       "close": "Koniec"
     },

@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Vil du slette oppgaven?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; vil bli slettet permanent. Denne handlingen kan ikke angres.",
       "deleteTask2": "Slett oppgave"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Alle deloppgaver fullført!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; har alt ",
-      "subtask": "deloppgave",
-      "done": "ferdig.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Vil du også markere overordnet oppgave som fullført?",
       "keepTaskOpen": "Hold oppgaven åpen",
       "completeTask": "Fullfør oppgaven ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Angi forfallsdato for alle deloppgaver",
       "setDueDateFor": "Sett forfallsdato for ",
-      "subtask": "deloppgave",
-      "in": "i \"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Gjelder også fullførte deloppgaver (",
       "clearDate": "Klar dato",
       "cancel": "Avbryt",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Angi prioritet for alle deloppgaver",
       "setPriorityFor": "Sett prioritet for ",
-      "subtask": "deloppgave",
-      "in": "i \"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Gjelder også fullførte deloppgaver (",
       "cancel": "Avbryt",
       "apply": "Søk"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Vil du slette alle deloppgavene?",
-      "thisWillDelete": "Dette vil slette ",
-      "subtask": "deloppgave",
-      "from": "fra \"",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "Denne handlingen kan ikke angres.",
       "cancel": "Avbryt",
       "deleteAll": "Slett alle"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Duplikatoppgave",
       "createACopyOf": "Lag en kopi av \"",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Dupliser også underoppgaver (",
       "cancel": "Avbryt",
       "duplicate": "Duplikat "

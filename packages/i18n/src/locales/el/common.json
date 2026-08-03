@@ -203,7 +203,6 @@
       "search": "Αναζήτηση",
       "searchNotesTasksJournalInbox": "Αναζήτηση σημειώσεων, εργασιών, ημερολογίου, εισερχομένων...",
       "noResultsFor": "Δεν υπάρχουν αποτελέσματα για \"",
-      "rdquo": "rdquo;",
       "result": "αποτέλεσμα"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Σημείωση εικονίδιο"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Μη αποθηκευμένες αλλαγές",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; έχει μη αποθηκευμένες αλλαγές. Τι θα ήθελες να κάνεις;"
+      "unsavedChanges": "Μη αποθηκευμένες αλλαγές"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Νέος χώρος εργασίας",
@@ -366,7 +363,6 @@
       "logOut": "Αποσυνδεθείτε",
       "signInToSync": "Συνδεθείτε για συγχρονισμό",
       "remove": "Αφαίρεση \"",
-      "rdquoFromList": "rdquo; από τη λίστα;",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Αυτό το θησαυροφυλάκιο θα αφαιρεθεί από την εφαρμογή, αλλά τα αρχεία σας θα παραμείνουν στο δίσκο. Μπορείτε πάντα να το προσθέσετε ξανά αργότερα.",
       "cancel": "Ακύρωση",
       "remove2": "Αφαίρεση",

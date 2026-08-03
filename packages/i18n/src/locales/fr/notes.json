@@ -361,8 +361,6 @@
       "noFormulasDefined": "Aucune formule définie",
       "addFormula": "Ajouter une formule",
       "deleteFormula": "Supprimer la formule",
-      "areYouSureYouWantToDeleteTheFormula": "Etes-vous sûr de vouloir supprimer la formule \"",
-      "quotThisActionCannotBeUndone": "\" ? Cette action ne peut pas être annulée.",
       "cancel": "Annuler",
       "delete": "Supprimer",
       "none": "Aucun",
@@ -422,7 +420,6 @@
       "preview": "Aperçu",
       "fixExpressionErrorsToSeePreview": "Corrigez les erreurs d’expression pour voir l’aperçu",
       "usingNote": "Remarque d'utilisation : \"",
-      "quot": "\"",
       "cancel": "Annuler",
       "namePlaceholder": "jours_jusqu'à_échéance",
       "expressionPlaceholder": "dateDiff(due_date, aujourd'hui(), \"jours\")"
@@ -451,11 +448,8 @@
       "bestMatch": "Meilleure correspondance",
       "current": "courant)",
       "allFolders": "TOUS LES DOSSIERS",
-      "current2": "courant)",
       "noFoldersMatch": "Aucun dossier ne correspond à \"",
-      "quot": "\"",
       "create": "Créer \"",
-      "quot2": "\"",
       "cancel": "Annuler"
     },
     "componentsFolderViewRowContextMenu": {

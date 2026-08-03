@@ -353,8 +353,6 @@
       "attachFileImagesAudioVideoPdf": "  \n附加檔案（圖片、音訊、影片、PDF）",
       "recordVoiceMemo": "錄音備忘錄",
       "recordVoiceMemo2": "錄音備忘錄",
-      "alreadyCaptured": "已捕捉：「",
-      "rdquo": "rdquo;",
       "captureAnyway": "仍要捕捉",
       "focusShortcut": "聚焦擷取輸入欄",
       "q": "Q",
@@ -460,8 +458,6 @@
       "captured": "被俘",
       "dismissError": "忽略錯誤",
       "alreadyCaptured": "已捕捉",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; &middot; ",
       "captureAnyway": "仍要捕捉",
       "close": "關閉"
     },

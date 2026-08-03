@@ -203,7 +203,6 @@
       "search": "検索",
       "searchNotesTasksJournalInbox": "メモ、タスク、日記、受信トレイを検索...",
       "noResultsFor": "「」の結果はありません",
-      "rdquo": "rdquo;",
       "result": "結果"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "注記アイコン"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "未保存の変更",
-      "quot": "引用;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "引用;未保存の変更があります。何をしたいですか?"
+      "unsavedChanges": "未保存の変更"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "新しいワークスペース",
@@ -366,7 +363,6 @@
       "logOut": "ログアウト",
       "signInToSync": "サインインして同期する",
       "remove": "「」を削除します",
-      "rdquoFromList": "rdquo;リストから?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "このボールトはアプリから削除されますが、ファイルはディスク上に残ります。後でいつでも再追加できます。",
       "cancel": "キャンセル",
       "remove2": "削除",

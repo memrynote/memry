@@ -361,8 +361,6 @@
       "noFormulasDefined": "Tanımlanmış formül yok",
       "addFormula": "Formül Ekle",
       "deleteFormula": "Formülü Sil",
-      "areYouSureYouWantToDeleteTheFormula": "Formülü silmek istediğinizden emin misiniz: \"",
-      "quotThisActionCannotBeUndone": "\"? Bu eylem geri alınamaz.",
       "cancel": "İptal",
       "delete": "Sil",
       "none": "Yok",
@@ -422,7 +420,6 @@
       "preview": "Önizleme",
       "fixExpressionErrorsToSeePreview": "Önizlemeyi görmek için ifade hatalarını düzeltin",
       "usingNote": "Not kullanılıyor: \"",
-      "quot": "alıntı;",
       "cancel": "İptal",
       "namePlaceholder": "Formül adı",
       "expressionPlaceholder": "Formül ifadesi girin"
@@ -451,11 +448,8 @@
       "bestMatch": "En iyi eşleşme",
       "current": "akım)",
       "allFolders": "TÜM KLASÖRLER",
-      "current2": "akım)",
       "noFoldersMatch": "Eşleşen klasör yok \"",
-      "quot": "alıntı;",
       "create": "Oluştur \"",
-      "quot2": "alıntı;",
       "cancel": "İptal"
     },
     "componentsFolderViewRowContextMenu": {

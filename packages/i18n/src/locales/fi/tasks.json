@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Poistetaanko tehtävä?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; poistetaan pysyvästi. Tätä toimintoa ei voi kumota.",
       "deleteTask2": "Poista tehtävä"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Kaikki osatehtävät suoritettu!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; on kaikki ",
-      "subtask": "osatehtävä",
-      "done": "tehty.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Haluatko merkitä myös vanhemman tehtävän suoritetuksi?",
       "keepTaskOpen": "Pidä tehtävä avoinna",
       "completeTask": "Suorita tehtävä ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Aseta eräpäivä kaikille alatehtäville",
       "setDueDateFor": "Aseta eräpäivä ",
-      "subtask": "osatehtävä",
-      "in": "in \"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Käytä myös suoritettuja osatehtäviä (",
       "clearDate": "Selkeä päivämäärä",
       "cancel": "Peruuta",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Aseta prioriteetti kaikille alitehtäville",
       "setPriorityFor": "Aseta prioriteetti kohteelle ",
-      "subtask": "osatehtävä",
-      "in": "in \"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Käytä myös suoritettuja osatehtäviä (",
       "cancel": "Peruuta",
       "apply": "Käytä"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Poistetaanko kaikki alitehtävät?",
-      "thisWillDelete": "Tämä poistaa ",
-      "subtask": "osatehtävä",
-      "from": "alkaen \"",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "Tätä toimintoa ei voi kumota.",
       "cancel": "Peruuta",
       "deleteAll": "Poista kaikki"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Päällekkäinen tehtävä",
       "createACopyOf": "Luo kopio \"",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Myös päällekkäisiä alitehtäviä (",
       "cancel": "Peruuta",
       "duplicate": "Kopioi "

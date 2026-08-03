@@ -1186,16 +1186,12 @@
       "press": "按下",
       "toToggleThisDialog": "切換此對話框"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middot;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "此裝置已被移除",
       "exporting": "正在匯出...",
       "signOut": "登出"
     },
     "componentsSyncSyncHistory": {
-      "middot": "·",
       "activity": "活動",
       "filterBySyncType": "依同步類型篩選",
       "allTypes": "所有類型",

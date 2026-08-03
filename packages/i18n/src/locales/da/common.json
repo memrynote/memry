@@ -203,7 +203,6 @@
       "search": "Søg",
       "searchNotesTasksJournalInbox": "Søg i noter, opgaver, journal, indbakke...",
       "noResultsFor": "Ingen resultater for \"",
-      "rdquo": "rdquo;",
       "result": "resultat"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Bemærk ikon"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Ikke-gemte ændringer",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; har ikke-gemte ændringer. Hvad vil du gerne lave?"
+      "unsavedChanges": "Ikke-gemte ændringer"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Nyt arbejdsrum",
@@ -366,7 +363,6 @@
       "logOut": "Log ud",
       "signInToSync": "Log ind for at synkronisere",
       "remove": "Fjern \"",
-      "rdquoFromList": "rdquo; fra listen?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Denne boks vil blive fjernet fra appen, men dine filer forbliver på disken. Du kan altid tilføje det igen senere.",
       "cancel": "Annuller",
       "remove2": "Fjern",

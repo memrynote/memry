@@ -203,7 +203,6 @@
       "search": "ค้นหา",
       "searchNotesTasksJournalInbox": "ค้นหาบันทึก งาน วารสาร กล่องข้อความ...",
       "noResultsFor": "ไม่พบผลลัพธ์สำหรับ “",
-      "rdquo": "rdquo;",
       "result": "ผลลัพธ์"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "ไอคอนหมายเหตุ"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
-      "quot": "อ้าง;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "อ้าง; มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก คุณต้องการทําอะไร"
+      "unsavedChanges": "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "พื้นที่ทํางานใหม่",
@@ -366,7 +363,6 @@
       "logOut": "ออกจากระบบ",
       "signInToSync": "เข้าสู่ระบบเพื่อซิงค์",
       "remove": "ลบ ",
-      "rdquoFromList": "rdquo; จากรายการ?  ",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "  \nคลังเก็บนี้จะถูกลบออกจากแอป แต่ไฟล์ของคุณจะยังคงอยู่บนดิสก์ คุณสามารถเพิ่มกลับได้ตลอดเวลาในภายหลัง  ",
       "cancel": "ยกเลิก",
       "remove2": "ลบออก",

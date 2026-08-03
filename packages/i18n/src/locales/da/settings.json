@@ -1186,16 +1186,12 @@
       "press": "Tryk på ",
       "toToggleThisDialog": "for at skifte denne dialog"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middot;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Denne enhed er blevet fjernet",
       "exporting": "Eksporterer...",
       "signOut": "Log ud"
     },
     "componentsSyncSyncHistory": {
-      "middot": "middot; ",
       "activity": "Aktivitet",
       "filterBySyncType": "Filtrer efter synkroniseringstype",
       "allTypes": "Alle typer",

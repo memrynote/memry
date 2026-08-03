@@ -361,8 +361,6 @@
       "noFormulasDefined": "Nejsou definovány žádné vzorce",
       "addFormula": "Přidejte vzorec",
       "deleteFormula": "Smazat vzorec",
-      "areYouSureYouWantToDeleteTheFormula": "Opravdu chcete smazat vzorec \"",
-      "quotThisActionCannotBeUndone": "quot;? Tuto akci nelze vrátit zpět.",
       "cancel": "Zrušit",
       "delete": "Smazat",
       "none": "žádný",
@@ -422,7 +420,6 @@
       "preview": "Náhled",
       "fixExpressionErrorsToSeePreview": "Chcete-li zobrazit náhled, opravte chyby výrazu",
       "usingNote": "Použití poznámky: \"",
-      "quot": "quot;",
       "cancel": "Zrušit",
       "namePlaceholder": "dnů_do_splatnosti",
       "expressionPlaceholder": "dateDiff(datum_splatnosti, dnes(), \"dny\")"
@@ -451,11 +448,8 @@
       "bestMatch": "Nejlepší zápas",
       "current": "aktuální)",
       "allFolders": "VŠECHNY SLOŽKY",
-      "current2": "aktuální)",
       "noFoldersMatch": "Žádné složky neodpovídají \"",
-      "quot": "quot;",
       "create": "Vytvořit \"",
-      "quot2": "quot;",
       "cancel": "Zrušit"
     },
     "componentsFolderViewRowContextMenu": {

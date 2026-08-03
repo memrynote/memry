@@ -203,7 +203,6 @@
       "search": "搜索",
       "searchNotesTasksJournalInbox": "搜索笔记、任务、日记、收件箱...",
       "noResultsFor": "“ 未找到结果",
-      "rdquo": "rdquo;",
       "result": "结果"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "笔记图标"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "未保存的更改",
-      "quot": "“",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "“有未保存的更改。您想怎么做？"
+      "unsavedChanges": "未保存的更改"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "新工作区",
@@ -366,7 +363,6 @@
       "logOut": "登出",
       "signInToSync": "登录以同步",
       "remove": "移除",
-      "rdquoFromList": "从列表中删除？",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "此保险库将从应用中移除，但您的文件仍会保存在磁盘上。您以后可以随时重新添加。",
       "cancel": "取消",
       "remove2": "移除",

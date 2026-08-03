@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Διαγραφή εργασίας;",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; θα διαγραφεί οριστικά. Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.",
       "deleteTask2": "Διαγραφή Εργασίας"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Όλες οι δευτερεύουσες εργασίες ολοκληρώθηκαν!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; τα έχει όλα ",
-      "subtask": "υποεργασία",
-      "done": "έγινε.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Θέλετε να επισημάνετε και τη γονική εργασία ως ολοκληρωμένη;",
       "keepTaskOpen": "Κρατήστε την εργασία ανοιχτή",
       "completeTask": "Ολοκληρώστε την εργασία ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Ορίστε ημερομηνία λήξης για όλες τις δευτερεύουσες εργασίες",
       "setDueDateFor": "Ορίστε ημερομηνία λήξης για ",
-      "subtask": "υποεργασία",
-      "in": "σε \"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Εφαρμόστε επίσης σε ολοκληρωμένες δευτερεύουσες εργασίες (",
       "clearDate": "Καθαρή ημερομηνία",
       "cancel": "Ακύρωση",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Ορίστε προτεραιότητα για όλες τις δευτερεύουσες εργασίες",
       "setPriorityFor": "Ορίστε προτεραιότητα για ",
-      "subtask": "υποεργασία",
-      "in": "σε \"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Εφαρμόστε επίσης σε ολοκληρωμένες δευτερεύουσες εργασίες (",
       "cancel": "Ακύρωση",
       "apply": "Εφαρμογή"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Διαγραφή όλων των δευτερευουσών εργασιών;",
-      "thisWillDelete": "Αυτό θα διαγράψει ",
-      "subtask": "υποεργασία",
-      "from": "από \"",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.",
       "cancel": "Ακύρωση",
       "deleteAll": "Διαγραφή όλων"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Διπλότυπη εργασία",
       "createACopyOf": "Δημιουργήστε ένα αντίγραφο του \"",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Επίσης διπλότυπες δευτερεύουσες εργασίες (",
       "cancel": "Ακύρωση",
       "duplicate": "Διπλότυπο "

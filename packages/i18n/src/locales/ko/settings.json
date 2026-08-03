@@ -1186,16 +1186,12 @@
       "press": "언론 ",
       "toToggleThisDialog": "이 대화상자를 전환하려면"
     },
-    "componentsSyncDeviceList": {
-      "middot": "중간점;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "이 장치는 제거되었습니다",
       "exporting": "내보내는 중...",
       "signOut": "로그아웃"
     },
     "componentsSyncSyncHistory": {
-      "middot": "중간점; ",
       "activity": "활동",
       "filterBySyncType": "동기화 유형별로 필터링",
       "allTypes": "모든 유형",

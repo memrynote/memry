@@ -361,8 +361,6 @@
       "noFormulasDefined": "数式が定義されていません",
       "addFormula": "数式を追加",
       "deleteFormula": "数式の削除",
-      "areYouSureYouWantToDeleteTheFormula": "数式を削除してもよろしいですか?",
-      "quotThisActionCannotBeUndone": "引用;?この操作は元に戻すことができません。",
       "cancel": "キャンセル",
       "delete": "削除",
       "none": "なし",
@@ -422,7 +420,6 @@
       "preview": "プレビュー",
       "fixExpressionErrorsToSeePreview": "プレビューを表示するには式のエラーを修正してください",
       "usingNote": "メモの使用: \"",
-      "quot": "引用;",
       "cancel": "キャンセル",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"日\")"
@@ -451,11 +448,8 @@
       "bestMatch": "ベストマッチ",
       "current": "現在)",
       "allFolders": "すべてのフォルダー",
-      "current2": "現在)",
       "noFoldersMatch": "一致するフォルダーはありません。」",
-      "quot": "引用;",
       "create": "「」を作成します。",
-      "quot2": "引用;",
       "cancel": "キャンセル"
     },
     "componentsFolderViewRowContextMenu": {

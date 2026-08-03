@@ -203,7 +203,6 @@
       "search": "Keresés",
       "searchNotesTasksJournalInbox": "Jegyzetek, feladatok, napló, beérkező levelek keresése...",
       "noResultsFor": "Nincs találat a következőre",
-      "rdquo": "rdquo;",
       "result": "eredményt"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Megjegyzés ikonra"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Nem mentett módosítások",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; nem mentett módosításokat tartalmaz. mit szeretnél csinálni?"
+      "unsavedChanges": "Nem mentett módosítások"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Új munkaterület",
@@ -366,7 +363,6 @@
       "logOut": "Jelentkezzen ki",
       "signInToSync": "Jelentkezzen be a szinkronizáláshoz",
       "remove": "Eltávolítás",
-      "rdquoFromList": "rdquo; listából?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Ezt a tárolót eltávolítjuk az alkalmazásból, de a fájlok a lemezen maradnak. Később bármikor újra hozzáadhatja.",
       "cancel": "Mégsem",
       "remove2": "Távolítsa el",

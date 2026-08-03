@@ -203,7 +203,6 @@
       "search": "搜尋",
       "searchNotesTasksJournalInbox": "搜尋筆記、任務、日誌、收件箱...",
       "noResultsFor": "未找到“",
-      "rdquo": "rdquo;",
       "result": "結果"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "筆記圖示"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "未儲存的變更",
-      "quot": "「」",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "「」有未儲存的變更。你想做什麼？"
+      "unsavedChanges": "未儲存的變更"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "新工作空間",
@@ -366,7 +363,6 @@
       "logOut": "登出",
       "signInToSync": "登入以同步",
       "remove": "移除 “",
-      "rdquoFromList": "從列表中移除？",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "此保險庫將從應用程式中移除，但您的檔案仍會保留在磁碟上。您隨時可以重新添加。",
       "cancel": "取消",
       "remove2": "移除",

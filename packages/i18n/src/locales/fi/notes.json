@@ -361,8 +361,6 @@
       "noFormulasDefined": "Ei määriteltyjä kaavoja",
       "addFormula": "Lisää kaava",
       "deleteFormula": "Poista kaava",
-      "areYouSureYouWantToDeleteTheFormula": "Haluatko varmasti poistaa kaavan \"",
-      "quotThisActionCannotBeUndone": "quot;? Tätä toimintoa ei voi kumota.",
       "cancel": "Peruuta",
       "delete": "Poista",
       "none": "Ei mitään",
@@ -422,7 +420,6 @@
       "preview": "Esikatselu",
       "fixExpressionErrorsToSeePreview": "Korjaa lausekevirheet nähdäksesi esikatselun",
       "usingNote": "Käytä huomautusta: \"",
-      "quot": "quot;",
       "cancel": "Peruuta",
       "namePlaceholder": "päivää_erään_päivään",
       "expressionPlaceholder": "dateDiff(eräpäivä, tänään(), \"päivät\")"
@@ -451,11 +448,8 @@
       "bestMatch": "Paras ottelu",
       "current": "nykyinen)",
       "allFolders": "KAIKKI KANSIOT",
-      "current2": "nykyinen)",
       "noFoldersMatch": "Yksikään kansio ei vastaa \"",
-      "quot": "quot;",
       "create": "Luo \"",
-      "quot2": "quot;",
       "cancel": "Peruuta"
     },
     "componentsFolderViewRowContextMenu": {

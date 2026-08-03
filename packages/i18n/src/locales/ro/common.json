@@ -203,7 +203,6 @@
       "search": "Caută",
       "searchNotesTasksJournalInbox": "Căutați note, sarcini, jurnal, inbox...",
       "noResultsFor": "Nu există rezultate pentru „",
-      "rdquo": "rdquo;",
       "result": "rezultat"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Pictograma notă"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Modificări nesalvate",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; are modificări nesalvate. Ce ai vrea sa faci?"
+      "unsavedChanges": "Modificări nesalvate"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Nou spațiu de lucru",
@@ -366,7 +363,6 @@
       "logOut": "Deconectați-vă",
       "signInToSync": "Conectați-vă pentru sincronizare",
       "remove": "Eliminați „",
-      "rdquoFromList": "rdquo; din lista?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Acest seif va fi eliminat din aplicație, dar fișierele dvs. vor rămâne pe disc. Îl poți adăuga oricând din nou mai târziu.",
       "cancel": "Anulează",
       "remove2": "Eliminați",

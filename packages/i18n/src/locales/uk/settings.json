@@ -1186,16 +1186,12 @@
       "press": "Натисніть",
       "toToggleThisDialog": "щоб переключити цей діалог"
     },
-    "componentsSyncDeviceList": {
-      "middot": "середня точка;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Цей пристрій було видалено",
       "exporting": "Експорт...",
       "signOut": "Вийти"
     },
     "componentsSyncSyncHistory": {
-      "middot": "середня точка; ",
       "activity": "Активність",
       "filterBySyncType": "Фільтрувати за типом синхронізації",
       "allTypes": "Усі типи",

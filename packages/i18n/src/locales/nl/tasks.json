@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Taak verwijderen?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; wordt definitief verwijderd. Deze actie kan niet ongedaan worden gemaakt.",
       "deleteTask2": "Taak verwijderen"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Alle subtaken voltooid!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; heeft alles ",
-      "subtask": "subtaak",
-      "done": "gedaan.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Wilt u de bovenliggende taak ook als voltooid markeren?",
       "keepTaskOpen": "Houd de taak open",
       "completeTask": "Voltooi taak ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Stel de vervaldatum in voor alle subtaken",
       "setDueDateFor": "Stel de vervaldatum in voor ",
-      "subtask": "subtaak",
-      "in": "in “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Ook van toepassing op voltooide subtaken (",
       "clearDate": "Duidelijke datum",
       "cancel": "Annuleer",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Stel prioriteit in voor alle subtaken",
       "setPriorityFor": "Prioriteit instellen voor ",
-      "subtask": "subtaak",
-      "in": "in “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Ook van toepassing op voltooide subtaken (",
       "cancel": "Annuleer",
       "apply": "Toepassen"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Alle subtaken verwijderen?",
-      "thisWillDelete": "Dit wordt verwijderd ",
-      "subtask": "subtaak",
-      "from": "van “",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "Deze actie kan niet ongedaan worden gemaakt.",
       "cancel": "Annuleer",
       "deleteAll": "Alles verwijderen"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Dubbele taak",
       "createACopyOf": "Maak een kopie van “",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Dupliceer ook subtaken (",
       "cancel": "Annuleer",
       "duplicate": "Duplicaat "

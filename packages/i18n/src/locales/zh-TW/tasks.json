@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "刪除任務？",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; 將被永久刪除。此操作無法撤銷。",
       "deleteTask2": "刪除任務"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "所有子任務已完成！",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; 擁有所有",
-      "subtask": "子任務",
-      "done": "完成。",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "你也想將父任務標記為完成嗎？",
       "keepTaskOpen": "保持任務未完成",
       "completeTask": "完成任務 ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "為所有子任務設定到期日",
       "setDueDateFor": "設置截止日期於",
-      "subtask": "子任務",
-      "in": "在「",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "也適用於已完成的子任務（",
       "clearDate": "清除日期",
       "cancel": "取消",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "設定所有子任務的優先順序",
       "setPriorityFor": "設定優先順序",
-      "subtask": "子任務",
-      "in": "在「",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "也適用於已完成的子任務（",
       "cancel": "取消",
       "apply": "應用"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "刪除所有子任務？",
-      "thisWillDelete": "這將刪除",
-      "subtask": "子任務",
-      "from": "從「",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "此操作無法還原。",
       "cancel": "取消",
       "deleteAll": "全部刪除"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "重複任務",
       "createACopyOf": "建立「的副本",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "也複製子任務（",
       "cancel": "取消",
       "duplicate": "重複"

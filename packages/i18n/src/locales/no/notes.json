@@ -361,8 +361,6 @@
       "noFormulasDefined": "Ingen formler definert",
       "addFormula": "Legg til formel",
       "deleteFormula": "Slett formel",
-      "areYouSureYouWantToDeleteTheFormula": "Er du sikker på at du vil slette formelen \"",
-      "quotThisActionCannotBeUndone": "quot;? Denne handlingen kan ikke angres.",
       "cancel": "Avbryt",
       "delete": "Slett",
       "none": "Ingen",
@@ -422,7 +420,6 @@
       "preview": "Forhåndsvisning",
       "fixExpressionErrorsToSeePreview": "Rett opp uttrykksfeil for å se forhåndsvisning",
       "usingNote": "Bruker notat: \"",
-      "quot": "quot;",
       "cancel": "Avbryt",
       "namePlaceholder": "dager_til_forfall",
       "expressionPlaceholder": "dateDiff(forfallsdato, i dag(), \"dager\")"
@@ -451,11 +448,8 @@
       "bestMatch": "Beste match",
       "current": "nåværende)",
       "allFolders": "ALLE MAPPER",
-      "current2": "nåværende)",
       "noFoldersMatch": "Ingen mapper samsvarer \"",
-      "quot": "quot;",
       "create": "Opprett \"",
-      "quot2": "quot;",
       "cancel": "Avbryt"
     },
     "componentsFolderViewRowContextMenu": {

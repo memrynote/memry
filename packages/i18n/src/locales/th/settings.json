@@ -1186,16 +1186,12 @@
       "press": "กด",
       "toToggleThisDialog": "สลับการแสดงกล่องโต้ตอบนี้"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middot;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "อุปกรณ์นี้ถูกลบแล้ว",
       "exporting": "กำลังส่งออก...",
       "signOut": "ออกจากระบบ"
     },
     "componentsSyncSyncHistory": {
-      "middot": "middot;",
       "activity": "กิจกรรม",
       "filterBySyncType": "กรองตามประเภทการซิงค์",
       "allTypes": "ทุกประเภท",

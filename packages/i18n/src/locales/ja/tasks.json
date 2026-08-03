@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "タスクを削除しますか?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo;完全に削除されます。この操作は元に戻すことができません。",
       "deleteTask2": "タスクの削除"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "すべてのサブタスクが完了しました。",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo;全部持ってる ",
-      "subtask": "サブタスク",
-      "done": "完了しました。",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "親タスクも完了としてマークしますか?",
       "keepTaskOpen": "タスクを開いたままにしておく",
       "completeTask": "タスクを完了する ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "すべてのサブタスクの期限を設定する",
       "setDueDateFor": "期日を設定する ",
-      "subtask": "サブタスク",
-      "in": "「」で",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "完了したサブタスクにも適用されます (",
       "clearDate": "クリア日付",
       "cancel": "キャンセル",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "すべてのサブタスクの優先度を設定する",
       "setPriorityFor": "優先順位を設定する ",
-      "subtask": "サブタスク",
-      "in": "「」で",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "完了したサブタスクにも適用されます (",
       "cancel": "キャンセル",
       "apply": "申し込む"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "すべてのサブタスクを削除しますか?",
-      "thisWillDelete": "これにより削除されます ",
-      "subtask": "サブタスク",
-      "from": "「から」",
-      "rdquo": "rdquo;。",
       "thisActionCannotBeUndone": "この操作は元に戻すことができません。",
       "cancel": "キャンセル",
       "deleteAll": "すべて削除"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "タスクの重複",
       "createACopyOf": "「」のコピーを作成します。",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "サブタスクも重複します (",
       "cancel": "キャンセル",
       "duplicate": "重複 "

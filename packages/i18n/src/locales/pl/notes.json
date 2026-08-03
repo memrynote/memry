@@ -361,8 +361,6 @@
       "noFormulasDefined": "Nie zdefiniowano żadnych formuł",
       "addFormula": "Dodaj formułę",
       "deleteFormula": "Usuń formułę",
-      "areYouSureYouWantToDeleteTheFormula": "Czy na pewno chcesz usunąć formułę \"",
-      "quotThisActionCannotBeUndone": "cyt.? Tej akcji nie można cofnąć.",
       "cancel": "Anuluj",
       "delete": "Usuń",
       "none": "Żadne",
@@ -422,7 +420,6 @@
       "preview": "Podgląd",
       "fixExpressionErrorsToSeePreview": "Napraw błędy wyrażeń, aby zobaczyć podgląd",
       "usingNote": "Korzystanie z notatki: „",
-      "quot": "cytat;",
       "cancel": "Anuluj",
       "namePlaceholder": "dni_do_terminu",
       "expressionPlaceholder": "dateDiff(data_terminu, dzisiaj(), \"dni\")"
@@ -451,11 +448,8 @@
       "bestMatch": "Najlepszy mecz",
       "current": "prąd)",
       "allFolders": "WSZYSTKIE FOLDERY",
-      "current2": "prąd)",
       "noFoldersMatch": "Żadne foldery nie pasują \"",
-      "quot": "cytat;",
       "create": "Utwórz „",
-      "quot2": "cytat;",
       "cancel": "Anuluj"
     },
     "componentsFolderViewRowContextMenu": {

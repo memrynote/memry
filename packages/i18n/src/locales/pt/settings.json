@@ -1186,16 +1186,12 @@
       "press": "Pressione ",
       "toToggleThisDialog": "para alternar esta caixa de diálogo"
     },
-    "componentsSyncDeviceList": {
-      "middot": "ponto médio;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Este dispositivo foi removido",
       "exporting": "Exportando...",
       "signOut": "Sair"
     },
     "componentsSyncSyncHistory": {
-      "middot": "ponto médio; ",
       "activity": "Atividade",
       "filterBySyncType": "Filtrar por tipo de sincronização",
       "allTypes": "Todos os tipos",

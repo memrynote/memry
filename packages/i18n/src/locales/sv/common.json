@@ -203,7 +203,6 @@
       "search": "Sök",
       "searchNotesTasksJournalInbox": "Sök anteckningar, uppgifter, dagbok, inkorg...",
       "noResultsFor": "Inga resultat för “",
-      "rdquo": "rdquo;",
       "result": "resultat"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Anteckningsikon"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Osparade ändringar",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; har osparade ändringar. Vad vill du göra?"
+      "unsavedChanges": "Osparade ändringar"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Nytt arbetsområde",
@@ -366,7 +363,6 @@
       "logOut": "Logga ut",
       "signInToSync": "Logga in för att synkronisera",
       "remove": "Ta bort “",
-      "rdquoFromList": "rdquo; från listan?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Detta valv kommer att tas bort från appen, men dina filer kommer att finnas kvar på disken. Du kan alltid lägga till det igen senare.",
       "cancel": "Avbryt",
       "remove2": "Ta bort",

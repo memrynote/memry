@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "هل تريد حذف المهمة؟",
-      "ldquo": "دقوو]؛",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "ردقوو]؛ سيتم حذفه نهائيًا. لا يمكن التراجع عن هذا الإجراء.",
       "deleteTask2": "حذف المهمة"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "جميع المهام الفرعية كاملة!",
-      "ldquo": "دقوو]؛",
-      "rdquoHasAll": "ردقوو]؛ لديه كل شيء ",
-      "subtask": "مهمة فرعية",
-      "done": "تم.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "هل ترغب في وضع علامة على المهمة الرئيسية كمكتملة أيضًا؟",
       "keepTaskOpen": "أبقِ المهمة مفتوحة",
       "completeTask": "إكمال المهمة ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "تحديد تاريخ الاستحقاق لجميع المهام الفرعية",
       "setDueDateFor": "تحديد موعد ل ",
-      "subtask": "مهمة فرعية",
-      "in": "في \"",
-      "rdquo": "ردقوو]؛",
       "alsoApplyToCompletedSubtasks": "ينطبق أيضًا على المهام الفرعية المكتملة (",
       "clearDate": "تاريخ واضح",
       "cancel": "إلغاء",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "تحديد الأولوية لجميع المهام الفرعية",
       "setPriorityFor": "تحديد الأولوية ل ",
-      "subtask": "مهمة فرعية",
-      "in": "في \"",
-      "rdquo": "ردقوو]؛",
       "alsoApplyToCompletedSubtasks": "ينطبق أيضًا على المهام الفرعية المكتملة (",
       "cancel": "إلغاء",
       "apply": "تطبيق"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "هل تريد حذف كافة المهام الفرعية؟",
-      "thisWillDelete": "سيتم حذف هذا ",
-      "subtask": "مهمة فرعية",
-      "from": "من \"",
-      "rdquo": "ردقوو]؛.",
       "thisActionCannotBeUndone": "لا يمكن التراجع عن هذا الإجراء.",
       "cancel": "إلغاء",
       "deleteAll": "حذف الكل"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "مهمة مكررة",
       "createACopyOf": "إنشاء نسخة من \"",
-      "rdquo": "ردقوو]؛",
       "alsoDuplicateSubtasks": "مهام فرعية مكررة أيضًا (",
       "cancel": "إلغاء",
       "duplicate": "مكررة "

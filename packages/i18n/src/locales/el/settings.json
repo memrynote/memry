@@ -1186,16 +1186,12 @@
       "press": "Πατήστε ",
       "toToggleThisDialog": "για εναλλαγή αυτού του διαλόγου"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middot?"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Αυτή η συσκευή έχει αφαιρεθεί",
       "exporting": "Εξαγωγή...",
       "signOut": "Αποσύνδεση"
     },
     "componentsSyncSyncHistory": {
-      "middot": "middot? ",
       "activity": "Δραστηριότητα",
       "filterBySyncType": "Φιλτράρισμα κατά τύπο συγχρονισμού",
       "allTypes": "Όλοι οι τύποι",

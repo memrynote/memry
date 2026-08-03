@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Xóa nhiệm vụ?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "” sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.",
       "deleteTask2": "Xóa nhiệm vụ"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Tất cả các nhiệm vụ con đã hoàn thành!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "” có tất cả ",
-      "subtask": "nhiệm vụ con",
-      "done": "đã xong.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Bạn có muốn đánh dấu nhiệm vụ chính là đã hoàn thành không?",
       "keepTaskOpen": "Giữ nhiệm vụ mở",
       "completeTask": "Hoàn thành nhiệm vụ ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Đặt ngày hoàn thành cho tất cả nhiệm vụ con",
       "setDueDateFor": "Đặt ngày đến hạn cho",
-      "subtask": "nhiệm vụ con",
-      "in": "trong “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Áp dụng cả cho các nhiệm vụ con đã hoàn thành (",
       "clearDate": "Xóa ngày",
       "cancel": "Hủy",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Đặt mức ưu tiên cho tất cả nhiệm vụ con",
       "setPriorityFor": "Đặt mức ưu tiên cho ",
-      "subtask": "nhiệm vụ con",
-      "in": "trong “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Áp dụng cả cho các nhiệm vụ con đã hoàn thành (",
       "cancel": "Hủy",
       "apply": "Áp dụng"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Xóa tất cả các công việc phụ?",
-      "thisWillDelete": "Điều này sẽ xóa ",
-      "subtask": "nhiệm vụ con",
-      "from": "từ “",
-      "rdquo": "rdquo”.",
       "thisActionCannotBeUndone": "  \nHành động này không thể hoàn tác.  ",
       "cancel": "Hủy",
       "deleteAll": "Xóa tất cả"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Nhân bản công việc",
       "createACopyOf": "Tạo một bản sao của “",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Cũng nhân bản các công việc phụ (",
       "cancel": "Hủy",
       "duplicate": "Nhân bản "

@@ -361,8 +361,6 @@
       "noFormulasDefined": "Nema definiranih formula",
       "addFormula": "Dodaj formulu",
       "deleteFormula": "Brisanje formule",
-      "areYouSureYouWantToDeleteTheFormula": "Jeste li sigurni da želite izbrisati formulu \"",
-      "quotThisActionCannotBeUndone": "quot;? Ova se radnja ne može poništiti.",
       "cancel": "Odustani",
       "delete": "Izbriši",
       "none": "Nijedan",
@@ -422,7 +420,6 @@
       "preview": "Pregled",
       "fixExpressionErrorsToSeePreview": "Ispravite pogreške izraza da biste vidjeli pregled",
       "usingNote": "Korištenje napomene: \"",
-      "quot": "quot;",
       "cancel": "Odustani",
       "namePlaceholder": "dana_do_roka",
       "expressionPlaceholder": "dateDiff(datum_roka, danas(), \"dani\")"
@@ -451,11 +448,8 @@
       "bestMatch": "Najbolji spoj",
       "current": "trenutno)",
       "allFolders": "SVE MAPE",
-      "current2": "trenutno)",
       "noFoldersMatch": "Nijedna mapa ne odgovara \"",
-      "quot": "quot;",
       "create": "Stvori \"",
-      "quot2": "quot;",
       "cancel": "Odustani"
     },
     "componentsFolderViewRowContextMenu": {

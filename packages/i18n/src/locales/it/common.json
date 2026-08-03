@@ -203,7 +203,6 @@
       "search": "Cerca",
       "searchNotesTasksJournalInbox": "Cerca note, attività, diario, posta in arrivo...",
       "noResultsFor": "Nessun risultato per “",
-      "rdquo": "rdquo;",
       "result": "risultato"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Icona della nota"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Modifiche non salvate",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; presenta modifiche non salvate. Cosa ti piacerebbe fare?"
+      "unsavedChanges": "Modifiche non salvate"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Nuovo spazio di lavoro",
@@ -366,7 +363,6 @@
       "logOut": "Esci",
       "signInToSync": "Accedi per sincronizzare",
       "remove": "Rimuovi “",
-      "rdquoFromList": "rdquo; dalla lista?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Questo deposito verrà rimosso dall'app, ma i tuoi file rimarranno sul disco. Puoi sempre aggiungerlo nuovamente in seguito.",
       "cancel": "Annulla",
       "remove2": "Rimuovi",

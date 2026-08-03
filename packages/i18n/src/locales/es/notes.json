@@ -361,8 +361,6 @@
       "noFormulasDefined": "No hay fórmulas definidas",
       "addFormula": "Agregar fórmula",
       "deleteFormula": "Eliminar fórmula",
-      "areYouSureYouWantToDeleteTheFormula": "¿Está seguro de que desea eliminar la fórmula?",
-      "quotThisActionCannotBeUndone": "\"? Esta acción no se puede deshacer.",
       "cancel": "Cancelar",
       "delete": "Eliminar",
       "none": "Ninguno",
@@ -422,7 +420,6 @@
       "preview": "Vista previa",
       "fixExpressionErrorsToSeePreview": "Corregir errores de expresión para ver la vista previa",
       "usingNote": "Nota de uso: \"",
-      "quot": "\"",
       "cancel": "Cancelar",
       "namePlaceholder": "días_hasta_vencimiento",
       "expressionPlaceholder": "dateDiff(fecha_vencimiento, hoy(), \"días\")"
@@ -451,11 +448,8 @@
       "bestMatch": "mejor partido",
       "current": "actual)",
       "allFolders": "TODAS LAS CARPETAS",
-      "current2": "actual)",
       "noFoldersMatch": "Ninguna carpeta coincide \"",
-      "quot": "\"",
       "create": "Crear \"",
-      "quot2": "\"",
       "cancel": "Cancelar"
     },
     "componentsFolderViewRowContextMenu": {

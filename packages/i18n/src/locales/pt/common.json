@@ -203,7 +203,6 @@
       "search": "Pesquisar",
       "searchNotesTasksJournalInbox": "Pesquise notas, tarefas, diário, caixa de entrada...",
       "noResultsFor": "Nenhum resultado para “",
-      "rdquo": "rdquo;",
       "result": "resultado"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Ícone de nota"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Alterações não salvas",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; tem alterações não salvas. O que você gostaria de fazer?"
+      "unsavedChanges": "Alterações não salvas"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Novo espaço de trabalho",
@@ -366,7 +363,6 @@
       "logOut": "Sair",
       "signInToSync": "Faça login para sincronizar",
       "remove": "Remover “",
-      "rdquoFromList": "rdquo; da lista?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Este cofre será removido do aplicativo, mas seus arquivos permanecerão no disco. Você sempre pode adicioná-lo novamente mais tarde.",
       "cancel": "Cancelar",
       "remove2": "Remover",

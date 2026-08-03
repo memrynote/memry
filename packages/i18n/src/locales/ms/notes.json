@@ -361,8 +361,6 @@
       "noFormulasDefined": "Tiada formula ditakrifkan",
       "addFormula": "Tambah Formula",
       "deleteFormula": "Padamkan Formula",
-      "areYouSureYouWantToDeleteTheFormula": "Adakah anda pasti mahu memadamkan formula \"",
-      "quotThisActionCannotBeUndone": "quot;? Tindakan ini tidak boleh dibuat asal.",
       "cancel": "Batal",
       "delete": "Padam",
       "none": "tiada",
@@ -422,7 +420,6 @@
       "preview": "Pratonton",
       "fixExpressionErrorsToSeePreview": "Betulkan ralat ungkapan untuk melihat pratonton",
       "usingNote": "Menggunakan nota: \"",
-      "quot": "quot;",
       "cancel": "Batal",
       "namePlaceholder": "hari_hingga_tamat",
       "expressionPlaceholder": "dateDiff(tarikh_masa, hari ini(), \"hari\")"
@@ -451,11 +448,8 @@
       "bestMatch": "Perlawanan terbaik",
       "current": "semasa)",
       "allFolders": "SEMUA FOLDER",
-      "current2": "semasa)",
       "noFoldersMatch": "Tiada folder yang sepadan \"",
-      "quot": "quot;",
       "create": "Buat \"",
-      "quot2": "quot;",
       "cancel": "Batal"
     },
     "componentsFolderViewRowContextMenu": {

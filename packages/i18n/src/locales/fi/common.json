@@ -203,7 +203,6 @@
       "search": "Etsi",
       "searchNotesTasksJournalInbox": "Hae muistiinpanoja, tehtäviä, päiväkirjaa, postilaatikkoa...",
       "noResultsFor": "Ei tuloksia haulle \"",
-      "rdquo": "rdquo;",
       "result": "tulos"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Huomautus-kuvake"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Tallentamattomat muutokset",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; sisältää tallentamattomia muutoksia. Mitä haluaisit tehdä?"
+      "unsavedChanges": "Tallentamattomat muutokset"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Uusi työtila",
@@ -366,7 +363,6 @@
       "logOut": "Kirjaudu ulos",
       "signInToSync": "Kirjaudu sisään synkronoidaksesi",
       "remove": "Poista \"",
-      "rdquoFromList": "rdquo; listalta?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Tämä holvi poistetaan sovelluksesta, mutta tiedostosi säilyvät levyllä. Voit aina lisätä sen myöhemmin uudelleen.",
       "cancel": "Peruuta",
       "remove2": "Poista",

@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "¿Eliminar tarea?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; será eliminado permanentemente. Esta acción no se puede deshacer.",
       "deleteTask2": "Eliminar tarea"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "¡Todas las subtareas completadas!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; tiene todo ",
-      "subtask": "subtarea",
-      "done": "hecho.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "¿Le gustaría marcar la tarea principal como completa también?",
       "keepTaskOpen": "Mantener la tarea abierta",
       "completeTask": "Completar tarea ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Establecer fecha de vencimiento para todas las subtareas",
       "setDueDateFor": "Establecer fecha de vencimiento para ",
-      "subtask": "subtarea",
-      "in": "en “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "También se aplica a las subtareas completadas (",
       "clearDate": "Borrar fecha",
       "cancel": "Cancelar",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Establecer prioridad para todas las subtareas",
       "setPriorityFor": "Establecer prioridad para ",
-      "subtask": "subtarea",
-      "in": "en “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "También se aplica a las subtareas completadas (",
       "cancel": "Cancelar",
       "apply": "Aplicar"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "¿Eliminar todas las subtareas?",
-      "thisWillDelete": "Esto eliminará ",
-      "subtask": "subtarea",
-      "from": "de “",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "Esta acción no se puede deshacer.",
       "cancel": "Cancelar",
       "deleteAll": "Eliminar todo"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Tarea duplicada",
       "createACopyOf": "Crea una copia de “",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "También duplicar subtareas (",
       "cancel": "Cancelar",
       "duplicate": "Duplicar "

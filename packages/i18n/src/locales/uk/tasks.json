@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Видалити завдання?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; буде видалено назавжди. Цю дію не можна скасувати.",
       "deleteTask2": "Видалити завдання"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Усі підзавдання виконано!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; має всі ",
-      "subtask": "підзавдання",
-      "done": "завершені.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Ви хочете відзначити батьківське завдання як виконане також?",
       "keepTaskOpen": "Залишити завдання відкритим",
       "completeTask": "Виконати завдання ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Встановити термін для всіх підзавдань",
       "setDueDateFor": "Встановити дату виконання для ",
-      "subtask": "підзавдання",
-      "in": "в “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Також застосувати до виконаних підзавдань (",
       "clearDate": "Очистити дату",
       "cancel": "Скасувати",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Встановити пріоритет для всіх підзавдань",
       "setPriorityFor": "Встановити пріоритет для ",
-      "subtask": "підзавдання",
-      "in": "в “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Також застосувати до виконаних підзавдань (",
       "cancel": "Скасувати",
       "apply": "Застосувати"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Видалити всі підзавдання?",
-      "thisWillDelete": "Це видалить ",
-      "subtask": "підзавдання",
-      "from": "з „",
-      "rdquo": "rdquo“.",
       "thisActionCannotBeUndone": "Цю дію неможливо скасувати.",
       "cancel": "Скасувати",
       "deleteAll": "Видалити все"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Дублювати завдання",
       "createACopyOf": "Створити копію „",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Також дублювати підзавдання (",
       "cancel": "Скасувати",
       "duplicate": "Дублювати "

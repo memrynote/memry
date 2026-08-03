@@ -361,8 +361,6 @@
       "noFormulasDefined": "未定義公式",
       "addFormula": "新增公式",
       "deleteFormula": "刪除公式",
-      "areYouSureYouWantToDeleteTheFormula": "您確定要刪除公式「",
-      "quotThisActionCannotBeUndone": "」嗎？此操作無法復原。",
       "cancel": "取消",
       "delete": "刪除",
       "none": "無",
@@ -422,7 +420,6 @@
       "preview": "預覽",
       "fixExpressionErrorsToSeePreview": "修正公式錯誤以查看預覽",
       "usingNote": "使用筆記：",
-      "quot": "「」",
       "cancel": "取消",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
@@ -451,11 +448,8 @@
       "bestMatch": "最佳匹配",
       "current": "目前)",
       "allFolders": "所有資料夾",
-      "current2": "目前)",
       "noFoldersMatch": "沒有符合的資料夾",
-      "quot": "「」",
       "create": "建立",
-      "quot2": "「」",
       "cancel": "取消"
     },
     "componentsFolderViewRowContextMenu": {

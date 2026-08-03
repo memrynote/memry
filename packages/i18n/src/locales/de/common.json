@@ -203,7 +203,6 @@
       "search": "Suchen",
       "searchNotesTasksJournalInbox": "Durchsuchen Sie Notizen, Aufgaben, Tagebuch, Posteingang ...",
       "noResultsFor": "Keine Ergebnisse für „",
-      "rdquo": "rdquo;",
       "result": "Ergebnis"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Notizsymbol"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Nicht gespeicherte Änderungen",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; hat nicht gespeicherte Änderungen. Was möchten Sie tun?"
+      "unsavedChanges": "Nicht gespeicherte Änderungen"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Neuer Arbeitsbereich",
@@ -366,7 +363,6 @@
       "logOut": "Abmelden",
       "signInToSync": "Melden Sie sich zum Synchronisieren an",
       "remove": "Entfernen „",
-      "rdquoFromList": "rdquo; aus der Liste?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Dieser Tresor wird aus der App entfernt, Ihre Dateien bleiben jedoch auf der Festplatte. Sie können es später jederzeit erneut hinzufügen.",
       "cancel": "Abbrechen",
       "remove2": "Entfernen",

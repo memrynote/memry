@@ -203,7 +203,6 @@
       "search": "Поиск",
       "searchNotesTasksJournalInbox": "Поиск заметок, задач, журнала, почтового ящика...",
       "noResultsFor": "Нет результатов по запросу «",
-      "rdquo": "рдкво;",
       "result": "результат"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Значок заметки"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Несохраненные изменения",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; имеет несохраненные изменения. Что бы вы хотели сделать?"
+      "unsavedChanges": "Несохраненные изменения"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Новое рабочее пространство",
@@ -366,7 +363,6 @@
       "logOut": "Выйти",
       "signInToSync": "Войдите для синхронизации",
       "remove": "Удалить »",
-      "rdquoFromList": "рдкво; из списка?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Это хранилище будет удалено из приложения, но ваши файлы останутся на диске. Вы всегда можете добавить его позже.",
       "cancel": "Отмена",
       "remove2": "Удалить",

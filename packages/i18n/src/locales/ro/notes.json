@@ -361,8 +361,6 @@
       "noFormulasDefined": "Nu au fost definite formule",
       "addFormula": "Adăugați o formulă",
       "deleteFormula": "Ștergeți formula",
-      "areYouSureYouWantToDeleteTheFormula": "Sigur doriți să ștergeți formula \"",
-      "quotThisActionCannotBeUndone": "quot;? Această acțiune nu poate fi anulată.",
       "cancel": "Anulează",
       "delete": "Ștergeți",
       "none": "Niciuna",
@@ -422,7 +420,6 @@
       "preview": "Previzualizare",
       "fixExpressionErrorsToSeePreview": "Remediați erorile de expresie pentru a vedea previzualizarea",
       "usingNote": "Folosind nota: \"",
-      "quot": "quot;",
       "cancel": "Anulează",
       "namePlaceholder": "zile_până_la_scadenţă",
       "expressionPlaceholder": "dateDiff(due_date, today(), „zile”)"
@@ -451,11 +448,8 @@
       "bestMatch": "Cel mai bun meci",
       "current": "curent)",
       "allFolders": "TOATE DOSARELE",
-      "current2": "curent)",
       "noFoldersMatch": "Niciun folder nu se potrivește cu \"",
-      "quot": "quot;",
       "create": "Creați \"",
-      "quot2": "quot;",
       "cancel": "Anulează"
     },
     "componentsFolderViewRowContextMenu": {

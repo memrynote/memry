@@ -1186,16 +1186,12 @@
       "press": "اضغط ",
       "toToggleThisDialog": "لتبديل مربع الحوار هذا"
     },
-    "componentsSyncDeviceList": {
-      "middot": "ميدوت;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "تمت إزالة هذا الجهاز",
       "exporting": "جارٍ التصدير...",
       "signOut": "تسجيل الخروج"
     },
     "componentsSyncSyncHistory": {
-      "middot": "ميدوت; ",
       "activity": "النشاط",
       "filterBySyncType": "التصفية حسب نوع المزامنة",
       "allTypes": "جميع الأنواع",

@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Görev silinsin mi?",
-      "ldquo": "Ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; kalıcı olarak silinecek. Bu eylem geri alınamaz.",
       "deleteTask2": "Görevi Sil"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Tüm alt görevler tamamlandı!",
-      "ldquo": "Ldquo;",
-      "rdquoHasAll": "rdquo; içinde toplam ",
-      "subtask": "alt görev",
-      "done": "bitti.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Ana görevi de tamamlandı olarak işaretlemek ister misiniz?",
       "keepTaskOpen": "Görevi açık tut",
       "completeTask": "Görevi tamamla ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Tüm alt görevler için bitiş tarihini ayarlayın",
       "setDueDateFor": "Şunun için son tarihi ayarla: ",
-      "subtask": "alt görev",
-      "in": "“ içinde",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Ayrıca tamamlanan alt görevlere de uygula (",
       "clearDate": "Tarihi temizle",
       "cancel": "İptal",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Tüm alt görevler için önceliği ayarlayın",
       "setPriorityFor": "Şunun için öncelik ayarla: ",
-      "subtask": "alt görev",
-      "in": "“ içinde",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Ayrıca tamamlanan alt görevlere de uygula (",
       "cancel": "İptal",
       "apply": "Uygula"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Tüm alt görevler silinsin mi?",
-      "thisWillDelete": "Bu silinecek ",
-      "subtask": "alt görev",
-      "from": "“dan",
-      "rdquo": "rdquo;",
       "thisActionCannotBeUndone": "Bu eylem geri alınamaz.",
       "cancel": "İptal",
       "deleteAll": "Tümünü Sil"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Yinelenen görev",
       "createACopyOf": "Şunun bir kopyasını oluştur: “",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Ayrıca alt görevleri çoğaltın (",
       "cancel": "İptal",
       "duplicate": "Çoğalt "

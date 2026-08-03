@@ -1186,16 +1186,12 @@
       "press": "Pindutin ",
       "toToggleThisDialog": "upang i-toggle ang dialog na ito"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middot;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Inalis na ang device na ito",
       "exporting": "Ini-export...",
       "signOut": "Mag-sign Out"
     },
     "componentsSyncSyncHistory": {
-      "middot": "middot; ",
       "activity": "Aktibidad",
       "filterBySyncType": "I-filter ayon sa uri ng pag-sync",
       "allTypes": "Lahat ng uri",

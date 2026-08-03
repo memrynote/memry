@@ -1186,16 +1186,12 @@
       "press": "Apăsați ",
       "toToggleThisDialog": "pentru a comuta acest dialog"
     },
-    "componentsSyncDeviceList": {
-      "middot": "punct mijlociu;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Acest dispozitiv a fost eliminat",
       "exporting": "Se exportă...",
       "signOut": "Deconectați-vă"
     },
     "componentsSyncSyncHistory": {
-      "middot": "punct mijlociu; ",
       "activity": "Activitate",
       "filterBySyncType": "Filtrați după tipul de sincronizare",
       "allTypes": "Toate tipurile",

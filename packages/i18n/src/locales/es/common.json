@@ -203,7 +203,6 @@
       "search": "Buscar",
       "searchNotesTasksJournalInbox": "Busca notas, tareas, diario, bandeja de entrada...",
       "noResultsFor": "Sin resultados para “",
-      "rdquo": "rdquo;",
       "result": "resultado"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Icono de nota"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Cambios no guardados",
-      "quot": "\"",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "\" tiene cambios no guardados. ¿Qué te gustaría hacer?"
+      "unsavedChanges": "Cambios no guardados"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Nuevo espacio de trabajo",
@@ -366,7 +363,6 @@
       "logOut": "Cerrar sesión",
       "signInToSync": "Inicia sesión para sincronizar",
       "remove": "Quitar “",
-      "rdquoFromList": "rdquo; de la lista?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Esta bóveda se eliminará de la aplicación, pero sus archivos permanecerán en el disco. Siempre puedes volver a agregarlo más tarde.",
       "cancel": "Cancelar",
       "remove2": "Quitar",

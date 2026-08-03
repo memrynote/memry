@@ -361,8 +361,6 @@
       "noFormulasDefined": "Geen formules gedefinieerd",
       "addFormula": "Formule toevoegen",
       "deleteFormula": "Formule verwijderen",
-      "areYouSureYouWantToDeleteTheFormula": "Weet u zeker dat u de formule wilt verwijderen \"",
-      "quotThisActionCannotBeUndone": "quot;? Deze actie kan niet ongedaan worden gemaakt.",
       "cancel": "Annuleer",
       "delete": "Verwijderen",
       "none": "Geen",
@@ -422,7 +420,6 @@
       "preview": "Voorbeeld",
       "fixExpressionErrorsToSeePreview": "Repareer expressiefouten om een voorbeeld te zien",
       "usingNote": "Opmerking gebruiken: \"",
-      "quot": "quot;",
       "cancel": "Annuleer",
       "namePlaceholder": "dagen_tot_due",
       "expressionPlaceholder": "dateDiff(due_date, vandaag(), \"dagen\")"
@@ -451,11 +448,8 @@
       "bestMatch": "Beste wedstrijd",
       "current": "huidig)",
       "allFolders": "ALLE MAPPEN",
-      "current2": "huidig)",
       "noFoldersMatch": "Er komen geen mappen overeen \"",
-      "quot": "quot;",
       "create": "Creëer \"",
-      "quot2": "quot;",
       "cancel": "Annuleer"
     },
     "componentsFolderViewRowContextMenu": {

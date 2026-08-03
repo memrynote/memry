@@ -361,8 +361,6 @@
       "noFormulasDefined": "未定义任何公式",
       "addFormula": "添加公式",
       "deleteFormula": "删除公式",
-      "areYouSureYouWantToDeleteTheFormula": "您确定要删除公式“",
-      "quotThisActionCannotBeUndone": "”吗？此操作无法撤销。",
       "cancel": "取消",
       "delete": "删除",
       "none": "无",
@@ -422,7 +420,6 @@
       "preview": "预览",
       "fixExpressionErrorsToSeePreview": "修复表达式错误以查看预览",
       "usingNote": "使用笔记:",
-      "quot": "“",
       "cancel": "取消",
       "namePlaceholder": "距到期天数",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
@@ -451,11 +448,8 @@
       "bestMatch": "最佳匹配",
       "current": "当前)",
       "allFolders": "所有文件夹",
-      "current2": "当前)",
       "noFoldersMatch": "没有匹配的文件夹",
-      "quot": "“",
       "create": "创建",
-      "quot2": "“",
       "cancel": "取消"
     },
     "componentsFolderViewRowContextMenu": {

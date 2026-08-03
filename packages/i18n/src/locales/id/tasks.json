@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Hapus tugas?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "benar; akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.",
       "deleteTask2": "Hapus Tugas"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Semua subtugas selesai!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "benar; memiliki semuanya ",
-      "subtask": "subtugas",
-      "done": "selesai.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Apakah Anda ingin menandai tugas orang tua sebagai selesai juga?",
       "keepTaskOpen": "Biarkan tugas tetap terbuka",
       "completeTask": "Selesaikan tugas ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Tetapkan tanggal jatuh tempo untuk semua subtugas",
       "setDueDateFor": "Tetapkan tanggal jatuh tempo untuk ",
-      "subtask": "subtugas",
-      "in": "di “",
-      "rdquo": "benar;",
       "alsoApplyToCompletedSubtasks": "Juga berlaku untuk subtugas yang diselesaikan (",
       "clearDate": "Hapus tanggal",
       "cancel": "Batalkan",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Tetapkan prioritas untuk semua subtugas",
       "setPriorityFor": "Tetapkan prioritas untuk ",
-      "subtask": "subtugas",
-      "in": "di “",
-      "rdquo": "benar;",
       "alsoApplyToCompletedSubtasks": "Juga berlaku untuk subtugas yang diselesaikan (",
       "cancel": "Batalkan",
       "apply": "Terapkan"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Hapus semua subtugas?",
-      "thisWillDelete": "Ini akan menghapus ",
-      "subtask": "subtugas",
-      "from": "dari “",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "Tindakan ini tidak dapat dibatalkan.",
       "cancel": "Batalkan",
       "deleteAll": "Hapus Semua"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Tugas duplikat",
       "createACopyOf": "Buat salinan “",
-      "rdquo": "benar;",
       "alsoDuplicateSubtasks": "Juga duplikat subtugas (",
       "cancel": "Batalkan",
       "duplicate": "Duplikat "

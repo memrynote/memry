@@ -1186,16 +1186,12 @@
       "press": "Stlačiť",
       "toToggleThisDialog": "pre prepnutie tohto dialógu"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middot;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Toto zariadenie bolo odstránené",
       "exporting": "Exportovanie...",
       "signOut": "Odhlásiť sa"
     },
     "componentsSyncSyncHistory": {
-      "middot": "middot; ",
       "activity": "Aktivita",
       "filterBySyncType": "Filtrovať podľa typu synchronizácie",
       "allTypes": "Všetky typy",

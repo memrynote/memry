@@ -203,7 +203,6 @@
       "search": "Cari",
       "searchNotesTasksJournalInbox": "Cari nota, tugasan, jurnal, peti masuk...",
       "noResultsFor": "Tiada hasil untuk “",
-      "rdquo": "rdquo;",
       "result": "hasil"
     },
     "componentsSearchRecentReasons": {
@@ -292,9 +291,7 @@
       "noteIcon": "Ikon nota"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Perubahan Tidak Disimpan",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; mempunyai perubahan yang belum disimpan. Apa yang anda ingin lakukan?"
+      "unsavedChanges": "Perubahan Tidak Disimpan"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Ruang kerja baharu",
@@ -366,7 +363,6 @@
       "logOut": "Log keluar",
       "signInToSync": "Log masuk untuk menyegerak",
       "remove": "Alih keluar \"",
-      "rdquoFromList": "rdquo; dari senarai?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Bilik kebal ini akan dialih keluar daripada apl, tetapi fail anda akan kekal pada cakera. Anda sentiasa boleh menambahkannya semula kemudian.",
       "cancel": "Batal",
       "remove2": "Alih keluar",

@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Ta bort uppgift?",
-      "ldquo": "„",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; kommer att tas bort permanent. Denna åtgärd kan inte ångras.",
       "deleteTask2": "Ta bort uppgift"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Alla deluppgifter kompletta!",
-      "ldquo": "„",
-      "rdquoHasAll": "rdquo; har alla ",
-      "subtask": "deluppgifter",
-      "done": "klara.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Vill du även markera huvuduppgiften som klar?",
       "keepTaskOpen": "Behåll uppgiften öppen",
       "completeTask": "Slutför uppgift ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Ange förfallodatum för alla deluppgifter",
       "setDueDateFor": "Ställ in förfallodatum för ",
-      "subtask": "deluppgifter",
-      "in": "i “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Tillämpa även på slutförda deluppgifter (",
       "clearDate": "Rensa datum",
       "cancel": "Avbryt",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Ange prioritet för alla deluppgifter",
       "setPriorityFor": "Ange prioritet för ",
-      "subtask": "deluppgifter",
-      "in": "i “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Tillämpa även på slutförda deluppgifter (",
       "cancel": "Avbryt",
       "apply": "Tillämpa"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Radera alla deluppgifter?",
-      "thisWillDelete": "Detta kommer att radera",
-      "subtask": "deluppgifter",
-      "from": "från “",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "Den här åtgärden kan inte ångras.",
       "cancel": "Avbryt",
       "deleteAll": "Radera allt"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Duplicera uppgift",
       "createACopyOf": "Skapa en kopia av “",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Duplicera även deluppgifter (",
       "cancel": "Avbryt",
       "duplicate": "Duplicera"

@@ -361,8 +361,6 @@
       "noFormulasDefined": "Keine Formeln definiert",
       "addFormula": "Formel hinzufügen",
       "deleteFormula": "Formel löschen",
-      "areYouSureYouWantToDeleteTheFormula": "Sind Sie sicher, dass Sie die Formel löschen möchten?",
-      "quotThisActionCannotBeUndone": "quot;? Diese Aktion kann nicht rückgängig gemacht werden.",
       "cancel": "Abbrechen",
       "delete": "Löschen",
       "none": "Keine",
@@ -422,7 +420,6 @@
       "preview": "Vorschau",
       "fixExpressionErrorsToSeePreview": "Beheben Sie Ausdrucksfehler, um eine Vorschau anzuzeigen",
       "usingNote": "Verwendungshinweis: „",
-      "quot": "quot;",
       "cancel": "Abbrechen",
       "namePlaceholder": "Tage_bis_fällig",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
@@ -451,11 +448,8 @@
       "bestMatch": "Beste Übereinstimmung",
       "current": "aktuell)",
       "allFolders": "ALLE ORDNER",
-      "current2": "aktuell)",
       "noFoldersMatch": "Keine Ordner passen zu „",
-      "quot": "quot;",
       "create": "Erstellen \"",
-      "quot2": "quot;",
       "cancel": "Abbrechen"
     },
     "componentsFolderViewRowContextMenu": {

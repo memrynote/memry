@@ -361,8 +361,6 @@
       "noFormulasDefined": "정의된 수식이 없습니다.",
       "addFormula": "수식 추가",
       "deleteFormula": "수식 삭제",
-      "areYouSureYouWantToDeleteTheFormula": "정말로 수식을 삭제하시겠습니까?",
-      "quotThisActionCannotBeUndone": "quot;? 이 작업은 취소할 수 없습니다.",
       "cancel": "취소",
       "delete": "삭제",
       "none": "없음",
@@ -422,7 +420,6 @@
       "preview": "미리보기",
       "fixExpressionErrorsToSeePreview": "미리보기를 보려면 표현식 오류를 수정하세요.",
       "usingNote": "메모 사용: \"",
-      "quot": "quot;",
       "cancel": "취소",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"일\")"
@@ -451,11 +448,8 @@
       "bestMatch": "최고의 일치",
       "current": "현재)",
       "allFolders": "모든 폴더",
-      "current2": "현재)",
       "noFoldersMatch": "\"와(과) 일치하는 폴더가 없습니다.",
-      "quot": "quot;",
       "create": "\" 만들기",
-      "quot2": "quot;",
       "cancel": "취소"
     },
     "componentsFolderViewRowContextMenu": {

@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "למחוק משימה?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; יימחק לצמיתות. לא ניתן לבטל פעולה זו.",
       "deleteTask2": "מחק את המשימה"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "כל המשימות המשימות הושלמו!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; יש הכל ",
-      "subtask": "תת משימה",
-      "done": "נעשה.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "האם תרצה לסמן גם את משימת האב כהשלמה?",
       "keepTaskOpen": "השאר את המשימה פתוחה",
       "completeTask": "השלם משימה ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "הגדר תאריך יעד עבור כל המשימות משנה",
       "setDueDateFor": "קבע תאריך יעד עבור ",
-      "subtask": "תת משימה",
-      "in": "ב\"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "חל גם על משימות משנה שהושלמו (",
       "clearDate": "תאריך ברור",
       "cancel": "בטל",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "הגדר עדיפות לכל המשימות משנה",
       "setPriorityFor": "הגדר עדיפות עבור ",
-      "subtask": "תת משימה",
-      "in": "ב\"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "חל גם על משימות משנה שהושלמו (",
       "cancel": "בטל",
       "apply": "החל"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "למחוק את כל המשימות משנה?",
-      "thisWillDelete": "זה ימחק ",
-      "subtask": "תת משימה",
-      "from": "מ\"",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "לא ניתן לבטל פעולה זו.",
       "cancel": "בטל",
       "deleteAll": "מחק הכל"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "משימה כפולה",
       "createACopyOf": "צור עותק של \"",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "שכפל גם משימות משנה (",
       "cancel": "בטל",
       "duplicate": "שכפול "

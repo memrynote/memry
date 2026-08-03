@@ -290,16 +290,10 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Törli a feladatot?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; véglegesen törlésre kerül. Ez a művelet nem vonható vissza.",
       "deleteTask2": "Feladat törlése"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Minden részfeladat kész!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; minden megvan ",
-      "subtask": "részfeladat",
-      "done": "kész.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "A szülői feladatot is készként szeretné megjelölni?",
       "keepTaskOpen": "Tartsa nyitva a feladatot",
       "completeTask": "Fejezd be a feladatot ✓"
@@ -307,9 +301,6 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Állítsa be az összes részfeladat határidejét",
       "setDueDateFor": "Állítsa be a határidőt ",
-      "subtask": "részfeladat",
-      "in": "a \"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Alkalmas az elvégzett részfeladatokra is (",
       "clearDate": "Tiszta dátum",
       "cancel": "Mégsem",
@@ -318,9 +309,6 @@
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Állítsa be az összes részfeladat prioritását",
       "setPriorityFor": "Állítsa be a prioritást ",
-      "subtask": "részfeladat",
-      "in": "a \"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Alkalmas az elvégzett részfeladatokra is (",
       "cancel": "Mégsem",
       "apply": "Alkalmazni"
@@ -341,10 +329,6 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Törli az összes részfeladatot?",
-      "thisWillDelete": "Ez törli ",
-      "subtask": "részfeladat",
-      "from": "innen: \"",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "Ez a művelet nem vonható vissza.",
       "cancel": "Mégsem",
       "deleteAll": "Összes törlése"
@@ -364,7 +348,6 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Ismétlődő feladat",
       "createACopyOf": "Hozzon létre egy másolatot a \"",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "A részfeladatok megkettőzése is (",
       "cancel": "Mégsem",
       "duplicate": "Megkettőzés "

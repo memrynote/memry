@@ -352,12 +352,11 @@
       "attachFileImagesAudioVideoPdf": "Attach file (Images, Audio, Video, PDF)",
       "recordVoiceMemo": "Record voice memo",
       "recordVoiceMemo2": "Record voice memo",
-      "alreadyCaptured": "Already captured: “",
-      "rdquo": "rdquo;",
       "captureAnyway": "Capture Anyway",
       "placeholder": "Quick capture — paste a link, jot a thought…",
       "captureLink": "Capture link",
-      "captureNote": "Capture note"
+      "captureNote": "Capture note",
+      "duplicateNotice": "Already captured: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Choose folder",
@@ -451,10 +450,9 @@
       "captured": "Captured",
       "dismissError": "Dismiss error",
       "alreadyCaptured": "Already captured",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; &middot; ",
       "captureAnyway": "Capture Anyway",
-      "close": "Close"
+      "close": "Close",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Drop to capture",
