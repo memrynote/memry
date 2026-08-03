@@ -4,6 +4,7 @@ import {
   Calendar,
   CheckSquare,
   Link,
+  Link2,
   ListChecks,
   List,
   Layers,
@@ -19,6 +20,7 @@ export type PropertyType =
   | 'status'
   | 'select'
   | 'multiselect'
+  | 'relation'
 
 export interface Property {
   id: string
@@ -54,7 +56,8 @@ export const PROPERTY_TYPE_CONFIG: Record<PropertyType, PropertyTypeConfig> = {
   url: { label: 'URL', icon: Link },
   status: { label: 'Status', icon: ListChecks },
   select: { label: 'Select', icon: List },
-  multiselect: { label: 'Multiselect', icon: Layers }
+  multiselect: { label: 'Multiselect', icon: Layers },
+  relation: { label: 'Relation', icon: Link2 }
 }
 
 export const PROPERTY_TYPES = Object.keys(PROPERTY_TYPE_CONFIG) as PropertyType[]

@@ -60,7 +60,9 @@ function getDefaultValueForType(type: PropertyType): unknown {
 }
 
 // Map PropertyType to TemplatePropertyType
-// Note: Templates support more property types than the unified properties system
+// Note: Templates support more property types than the unified properties system.
+// relation has no template storage support yet, so it falls back to 'text' —
+// same as any other unsupported type (see mapFromTemplatePropertyType below).
 function mapToTemplatePropertyType(type: PropertyType): TemplateProperty['type'] {
   const typeMap: Record<PropertyType, TemplateProperty['type']> = {
     text: 'text',
@@ -70,7 +72,8 @@ function mapToTemplatePropertyType(type: PropertyType): TemplateProperty['type']
     url: 'url',
     status: 'select',
     select: 'select',
-    multiselect: 'multiselect'
+    multiselect: 'multiselect',
+    relation: 'text'
   }
   return typeMap[type] ?? 'text'
 }

@@ -8,7 +8,8 @@ export const PropertyTypes = {
   URL: 'url',
   STATUS: 'status',
   SELECT: 'select',
-  MULTISELECT: 'multiselect'
+  MULTISELECT: 'multiselect',
+  RELATION: 'relation'
 } as const
 
 export type PropertyType = (typeof PropertyTypes)[keyof typeof PropertyTypes]

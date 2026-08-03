@@ -59,7 +59,8 @@ export function AddPropertyPopup({
     url: t('properties.types.url'),
     status: t('properties.types.status'),
     select: t('properties.types.select'),
-    multiselect: t('properties.types.multiselect')
+    multiselect: t('properties.types.multiselect'),
+    relation: t('properties.types.relation')
   }
 
   return (

@@ -90,7 +90,10 @@ type PropertyType =
   | 'url'
   | 'rating'
 
-type EditablePropertyType = CanonicalPropertyType
+// 'relation' is registered as a canonical property type but has no value
+// handling, UI, or storage support yet (later tasks own that surface), so it
+// is excluded from the types creatable/editable via the property-definition API.
+type EditablePropertyType = Exclude<CanonicalPropertyType, 'relation'>
 type EnsurablePropertyType = Extract<CanonicalPropertyType, 'select' | 'multiselect' | 'status'>
 
 export interface PropertyDefinition {

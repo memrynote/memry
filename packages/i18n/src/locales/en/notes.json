@@ -283,7 +283,8 @@
       "url": "URL",
       "status": "Status",
       "select": "Select",
-      "multiselect": "Multiselect"
+      "multiselect": "Multiselect",
+      "relation": "Relation"
     }
   },
   "templateSelector": {

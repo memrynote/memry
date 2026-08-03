@@ -12,6 +12,7 @@ import type { i18n as I18nInstance } from 'i18next'
 import { createRendererI18n } from '@memry/i18n/renderer'
 import { InfoSection } from './InfoSection'
 import type { Property, PropertyTemplate } from './types'
+import { PROPERTY_TYPE_CONFIG, PROPERTY_TYPES } from './types'
 
 let i18nEn: I18nInstance
 let i18nTr: I18nInstance
@@ -381,5 +382,12 @@ describe('InfoSection - accessibility', () => {
 
     const header = screen.getByRole('button', { name: /^properties/i })
     expect(header).toHaveAttribute('aria-expanded', 'true')
+  })
+})
+
+describe('relation property type registration', () => {
+  it('exposes relation in the type registry', () => {
+    expect(PROPERTY_TYPES).toContain('relation')
+    expect(PROPERTY_TYPE_CONFIG.relation.label).toBe('Relation')
   })
 })
