@@ -178,6 +178,36 @@ function fake(): VaultServiceHandles {
         too_large: false
       })
     },
+    canvas: {
+      list: async () => [{ id: 'c1', title: 'Roadmap', updated_at: 5, item_count: 2 }],
+      read: async (id) =>
+        id === 'c1'
+          ? {
+              id: 'c1',
+              title: 'Roadmap',
+              created_at: 1,
+              updated_at: 5,
+              items: [{ entity_type: 'note', entity_id: 'n1', title: 'Spec', missing: false }],
+              texts: ['Q3'],
+              element_count: 4,
+              texts_truncated: false
+            }
+          : null,
+      addItems: async ({ canvasId }) => ({
+        canvas_id: canvasId,
+        applied: [],
+        skipped: [],
+        updated_at: 0,
+        too_large: false
+      }),
+      removeItem: async ({ canvasId }) => ({
+        canvas_id: canvasId,
+        applied: [],
+        skipped: [],
+        updated_at: 0,
+        too_large: false
+      })
+    },
     desktop: {
       read: async ({ operation, args }, windowId) => ({ operation, args, windowId }),
       write: async () => ({ ok: true })
