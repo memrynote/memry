@@ -20,7 +20,9 @@ import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import { createRendererI18n, I18nProvider, applyLocaleToDocument } from '@memry/i18n/renderer'
+import { type Locale } from '@memry/i18n/shared'
 import App from './App'
+import { setActiveLocale } from './lib/active-locale'
 import QuickCapture from './components/quick-capture'
 import { AuthProvider } from './contexts/auth-context'
 import { SyncProvider } from './contexts/sync-context'
@@ -83,6 +85,14 @@ async function boot(): Promise<void> {
   const initialLocale = await window.api.locale.get()
   const i18n = await createRendererI18n({ locale: initialLocale })
   applyLocaleToDocument(initialLocale)
+
+  // Keep the module-scoped locale that pure Intl helpers read in sync. Hooked to
+  // i18next itself rather than to each caller, so every changeLanguage path
+  // (settings, onboarding, sync from another device) is covered.
+  setActiveLocale(initialLocale)
+  i18n.on('languageChanged', (locale) => {
+    setActiveLocale(locale as Locale)
+  })
 
   window.api.onLocaleChanged((locale) => {
     void (async () => {
