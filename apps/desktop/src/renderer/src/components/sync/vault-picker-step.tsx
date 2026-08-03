@@ -33,6 +33,10 @@ export function VaultPickerStep({
     vaults.length > 0 ? [vaults[0].vaultUuid] : []
   )
   const [submitting, setSubmitting] = useState(false)
+  // The wizard only renders `wizardError` on the sign-in/OTP/recovery steps, so
+  // this step keeps its own copy — otherwise a failed pull looks like a dead
+  // button (the error reached onError and was never shown).
+  const [error, setError] = useState<string | null>(null)
 
   const orderedSelection = vaults
     .map((vault) => vault.vaultUuid)
@@ -59,6 +63,7 @@ export function VaultPickerStep({
       .filter((vaultUuid) => selected.includes(vaultUuid))
     if (!folderPath || ordered.length === 0 || submitting) return
     setSubmitting(true)
+    setError(null)
     try {
       const result = await window.api.syncLinking.finalizeVaultChoice({
         sessionId,
@@ -67,12 +72,16 @@ export function VaultPickerStep({
         primaryVaultUuid: ordered[0]
       })
       if (!result.success) {
+        const message = result.error ?? t('setup.linking.deviceFailed')
         setSubmitting(false)
-        onError(result.error ?? t('setup.linking.deviceFailed'))
+        setError(message)
+        onError(message)
       }
     } catch (err) {
+      const message = extractErrorMessage(err, t('setup.linking.deviceFailed'))
       setSubmitting(false)
-      onError(extractErrorMessage(err, t('setup.linking.deviceFailed')))
+      setError(message)
+      onError(message)
     }
   }, [folderPath, selected, vaults, submitting, sessionId, onError, t])
 
@@ -144,6 +153,12 @@ export function VaultPickerStep({
           )
         })}
       </ul>
+
+      {error && (
+        <p className="text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      )}
 
       <Button
         className="w-full"

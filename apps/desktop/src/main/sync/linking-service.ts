@@ -568,13 +568,14 @@ export async function finalizeVaultChoice(input: {
     return { success: false, error: 'Primary vault must be among the selected vaults' }
   }
 
-  const { masterKey, setupToken, importedProviderAuth, initialWarning } = pendingVaultChoice
-  // Ownership of masterKey moves to finalizeLinking on the happy path; only the
-  // pre-finalizeLinking catch below cleans it up.
+  const choice = pendingVaultChoice
+  const { masterKey, setupToken, importedProviderAuth, initialWarning } = choice
+  // Consume synchronously so a second click cannot start a concurrent finalize
+  // (which would register the device twice). Provisioning failures put it back.
   pendingVaultChoice = null
 
   try {
-    const { dormantVaultFolderName } = await import('./vault-provisioning')
+    const { createDormantVault, dormantVaultFolderName } = await import('./vault-provisioning')
     const path = await import('path')
     const { selectVault } = await import('../vault')
 
@@ -586,27 +587,40 @@ export async function finalizeVaultChoice(input: {
     // Only the primary vault is provisioned here. The remaining account vaults
     // surface in the switcher's "In your account" section (vault directory)
     // and download on demand.
+    //
+    // The primary folder does not exist yet on a fresh device, and selectVault
+    // validates the directory BEFORE openVault would initialize it — so it must
+    // be created first. Provisioning (rather than a bare mkdir) also adopts the
+    // server vault uuid into data.db before selectVault stamps the vault
+    // registry, which keeps this folder matched to its account vault instead of
+    // a freshly minted local uuid.
+    createDormantVault(primaryFolder, input.primaryVaultUuid)
 
     const selected = await selectVault({ path: primaryFolder })
     if (!selected.success) {
       throw new Error(selected.error ?? 'Failed to open the primary vault')
     }
-
-    await finalizeLinking(
-      masterKey,
-      setupToken,
-      input.primaryVaultUuid,
-      importedProviderAuth,
-      initialWarning
-    )
-    return { success: true }
   } catch (err) {
+    // Recoverable: nothing was registered yet. Restore the choice (master key
+    // included — it is wiped by clearPendingVaultChoice on expiry) so the user
+    // can retry from the picker, e.g. with a different parent folder, instead
+    // of being stranded on a dead button until the whole link is redone.
+    pendingVaultChoice = choice
     log.error('finalizeVaultChoice failed', err)
-    secureCleanup(masterKey)
     const message = err instanceof Error ? err.message : 'Vault selection failed'
-    emitLinkingFinalized({ error: message })
     return { success: false, error: message }
   }
+
+  // Ownership of masterKey moves to finalizeLinking, which reports its own
+  // outcome through the linking-finalized event and never throws.
+  await finalizeLinking(
+    masterKey,
+    setupToken,
+    input.primaryVaultUuid,
+    importedProviderAuth,
+    initialWarning
+  )
+  return { success: true }
 }
 
 // ============================================================================

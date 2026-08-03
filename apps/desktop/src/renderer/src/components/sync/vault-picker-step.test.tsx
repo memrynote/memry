@@ -62,4 +62,19 @@ describe('VaultPickerStep', () => {
 
     await waitFor(() => expect(onError).toHaveBeenCalledWith('boom'))
   })
+
+  it('shows the finalize failure in the step itself', async () => {
+    window.api.syncLinking.finalizeVaultChoice = vi
+      .fn()
+      .mockResolvedValue({ success: false, error: 'boom' })
+    render(<VaultPickerStep sessionId="sess-1" vaults={vaults} onError={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'setup.linking.vaultPickerChooseFolder' }))
+    await screen.findByRole('button', { name: '/tmp/parent' })
+    fireEvent.click(screen.getByRole('button', { name: 'setup.linking.vaultPickerConfirm' }))
+
+    // The wizard renders `wizardError` only on the sign-in/OTP/recovery steps,
+    // so without this the failure is invisible and the button looks dead.
+    expect(await screen.findByRole('alert')).toHaveTextContent('boom')
+  })
 })
