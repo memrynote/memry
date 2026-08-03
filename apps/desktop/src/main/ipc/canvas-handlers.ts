@@ -27,6 +27,7 @@ import {
   type CanvasUpdateResponse
 } from '@memry/contracts/canvas-api'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getCanvasContext, disposeCanvasVaultKey } from '../canvas/vault-key'
 import { forgetWindow, markCanvasClosed, markCanvasOpen } from '../canvas/live-registry'
 import { createCanvas, deleteCanvas, getCanvas, listCanvases, updateCanvas } from '../canvas/store'
@@ -46,9 +47,7 @@ function emitCanvasEvent(
   channel: string,
   data: CanvasCreatedEvent | CanvasUpdatedEvent | CanvasDeletedEvent | CanvasTooLargeEvent
 ): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, data)
-  })
+  broadcastToAllWindows(channel, data)
 }
 
 /** Windows already carrying a 'closed' listener for live-canvas cleanup. */

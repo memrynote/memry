@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const hoisted = vi.hoisted(() => ({
-  windows: [] as Array<{ webContents: { send: ReturnType<typeof vi.fn> } }>,
+  windows: [] as Array<{
+    isDestroyed: () => boolean
+    webContents: { isDestroyed: () => boolean; send: ReturnType<typeof vi.fn> }
+  }>,
   getDatabase: vi.fn(() => ({})),
   getSetting: vi.fn(() => null),
   setSetting: vi.fn(),
@@ -73,7 +76,9 @@ describe('locale handler', () => {
     const send = vi.fn()
     const mockI18n = { changeLanguage: vi.fn(), language: 'en' } as any
     const rebuildMenu = vi.fn()
-    hoisted.windows = [{ webContents: { send } }]
+    hoisted.windows = [
+      { isDestroyed: () => false, webContents: { isDestroyed: () => false, send } }
+    ]
     hoisted.getSetting.mockReturnValue(JSON.stringify({ theme: 'dark', language: 'en' }))
 
     registerLocaleHandlers(mockI18n, rebuildMenu)
@@ -105,7 +110,9 @@ describe('locale handler', () => {
     const send = vi.fn()
     const mockI18n = { changeLanguage: vi.fn(), language: 'en' } as any
     const rebuildMenu = vi.fn()
-    hoisted.windows = [{ webContents: { send } }]
+    hoisted.windows = [
+      { isDestroyed: () => false, webContents: { isDestroyed: () => false, send } }
+    ]
     hoisted.getCurrentVaultPath.mockReturnValue(null)
     hoisted.getDatabase.mockImplementation(() => {
       throw new Error('Database not initialized')

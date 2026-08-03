@@ -1,4 +1,3 @@
-import { BrowserWindow } from 'electron'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import { SettingsSyncPayloadSchema } from '@memry/contracts/settings-sync'
 import type { SettingsSyncPayload, SyncedSettings } from '@memry/contracts/settings-sync'
@@ -13,6 +12,7 @@ import { getDatabase } from '../../database'
 import { getSetting, setSetting, deleteSetting } from '../../database/queries/settings'
 import { INBOX_REVIEW_LAST_NOTIFIED_KEY } from '../../inbox/review-reminder-constants'
 import { createLogger } from '../../lib/logger'
+import { broadcastToAllWindows } from '../../lib/window-broadcast'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
 
 const log = createLogger('SettingsHandler')
@@ -135,38 +135,26 @@ function propagateMergedSettings(merged: SyncedSettings): void {
 }
 
 function broadcastSettingsChanged(merged: SyncedSettings): void {
-  let windows: Electron.BrowserWindow[]
   try {
-    windows = BrowserWindow.getAllWindows()
-  } catch {
-    return
-  }
-  if (windows.length === 0) return
-
-  if (merged.general) {
-    for (const win of windows) {
-      win.webContents.send(SettingsChannels.events.CHANGED, {
+    if (merged.general) {
+      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
         key: 'general',
         value: merged.general
       })
     }
-  }
-
-  if (merged.editor) {
-    for (const win of windows) {
-      win.webContents.send(SettingsChannels.events.CHANGED, {
+    if (merged.editor) {
+      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
         key: 'editor',
         value: merged.editor
       })
     }
-  }
-
-  if (merged.inbox) {
-    for (const win of windows) {
-      win.webContents.send(SettingsChannels.events.CHANGED, {
+    if (merged.inbox) {
+      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
         key: 'inbox',
         value: merged.inbox
       })
     }
+  } catch {
+    return
   }
 }

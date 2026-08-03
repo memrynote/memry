@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const windowSendMock = vi.fn()
-const browserWindows = [{ webContents: { send: windowSendMock } }]
+const browserWindows = [
+  { isDestroyed: () => false, webContents: { isDestroyed: () => false, send: windowSendMock } }
+]
 const storeGetMock = vi.fn(() => ({ existing: true }))
 const storeSetMock = vi.fn()
 const persistKeysAndRegisterDeviceMock = vi.fn(async () => 'device-1')

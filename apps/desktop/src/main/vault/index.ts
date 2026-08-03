@@ -1,4 +1,4 @@
-import { dialog, BrowserWindow } from 'electron'
+import { dialog } from 'electron'
 import type {
   VaultInfo,
   VaultStatus,
@@ -46,6 +46,7 @@ import {
 import { ensureDefaultTaskProject } from '../database/defaults'
 import { VaultChannels } from '@memry/contracts/ipc-channels'
 import { VaultError, VaultErrorCode } from '../lib/errors'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { startWatcher, stopWatcher } from './watcher'
 import { indexVault, rebuildIndex } from './indexer'
 import { createLogger } from '../lib/logger'
@@ -188,9 +189,7 @@ function emitStatusChanged(): void {
   // nothing should react to it while the app is quitting/installing.
   if (isShuttingDown) return
   statusListeners.forEach((listener) => listener(currentStatus))
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send('vault:status-changed', currentStatus)
-  })
+  broadcastToAllWindows('vault:status-changed', currentStatus)
 }
 
 /**
@@ -198,9 +197,7 @@ function emitStatusChanged(): void {
  */
 export function emitIndexProgress(progress: number): void {
   updateStatus({ indexProgress: progress })
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send('vault:index-progress', progress)
-  })
+  broadcastToAllWindows('vault:index-progress', progress)
 }
 
 /**
@@ -208,9 +205,7 @@ export function emitIndexProgress(progress: number): void {
  */
 export function emitVaultError(error: string): void {
   updateStatus({ error })
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send('vault:error', error)
-  })
+  broadcastToAllWindows('vault:error', error)
 }
 
 /**
@@ -227,9 +222,7 @@ export interface IndexRecoveredEvent {
  * Sent after automatic recovery from corrupt or missing index.
  */
 export function emitIndexRecovered(event: IndexRecoveredEvent): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(VaultChannels.events.INDEX_RECOVERED, event)
-  })
+  broadcastToAllWindows(VaultChannels.events.INDEX_RECOVERED, event)
 }
 
 /**

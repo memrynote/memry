@@ -26,7 +26,11 @@ import { createNoteDerivedStateProjector } from '../../projections/projectors/no
 vi.mock('electron', () => {
   const send = vi.fn()
   return {
-    BrowserWindow: { getAllWindows: vi.fn(() => [{ webContents: { send } }]) },
+    BrowserWindow: {
+      getAllWindows: vi.fn(() => [
+        { isDestroyed: () => false, webContents: { isDestroyed: () => false, send } }
+      ])
+    },
     shell: { openPath: vi.fn(() => Promise.resolve('')), showItemInFolder: vi.fn() }
   }
 })

@@ -5,7 +5,7 @@
  * @module ipc/journal-handlers
  */
 
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain } from 'electron'
 import { JournalChannels } from '@memry/contracts/ipc-channels'
 import {
   GetEntryInputSchema,
@@ -24,6 +24,7 @@ import {
   type GetAllTagsOutput
 } from '@memry/contracts/journal-api'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { createValidatedHandler, createHandler } from './validate'
 import {
   readJournalEntry,
@@ -69,9 +70,7 @@ const logger = createLogger('IPC:Journal')
  * Emit journal event to all windows.
  */
 function emitJournalEvent(channel: string, payload: unknown): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, payload)
-  })
+  broadcastToAllWindows(channel, payload)
 }
 
 // ============================================================================

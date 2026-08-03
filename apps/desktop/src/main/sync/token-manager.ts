@@ -1,4 +1,3 @@
-import { BrowserWindow } from 'electron'
 import { decodeJwt } from 'jose'
 
 import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
@@ -8,6 +7,7 @@ import { RefreshTokenResponseSchema } from '@memry/contracts/auth-api'
 import { storeKey, retrieveKey } from '../crypto'
 import { postToServer, SyncServerError } from './http-client'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 
 const log = createLogger('TokenManager')
 
@@ -104,10 +104,7 @@ export const cancelTokenRefresh = (): void => {
 
 export const emitSessionExpired = (reason: SessionExpiredReason = 'token_expired'): void => {
   cancelTokenRefresh()
-  const windows = BrowserWindow.getAllWindows()
-  for (const win of windows) {
-    win.webContents.send(SYNC_EVENTS.SESSION_EXPIRED, { reason })
-  }
+  broadcastToAllWindows(SYNC_EVENTS.SESSION_EXPIRED, { reason })
 }
 
 const clearRefreshRejections = (): void => {

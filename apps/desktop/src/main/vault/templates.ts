@@ -8,7 +8,6 @@
 import path from 'path'
 import fs from 'fs/promises'
 import { existsSync, mkdirSync } from 'fs'
-import { BrowserWindow } from 'electron'
 import matter from 'gray-matter'
 import { getStatus } from './index'
 import { getMemryDir } from './init'
@@ -23,6 +22,7 @@ import type {
   TemplateProperty
 } from '@memry/contracts/templates-api'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 
 const logger = createLogger('Templates')
 
@@ -330,9 +330,7 @@ async function seedBuiltInTemplates(): Promise<void> {
  * Emit template event to all windows.
  */
 function emitTemplateEvent(channel: string, payload: unknown): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, payload)
-  })
+  broadcastToAllWindows(channel, payload)
 }
 
 /**

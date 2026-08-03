@@ -1,6 +1,5 @@
 import os from 'os'
 import sodium from 'libsodium-wrappers-sumo'
-import { BrowserWindow } from 'electron'
 
 import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
 import type {
@@ -35,6 +34,7 @@ import {
   persistImportedGoogleProviderAuth
 } from '../calendar/google/provider-auth-transfer'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 
 import { getFromServer, postToServer, RateLimitError, SyncServerError } from './http-client'
 import { withRetry } from './retry'
@@ -542,9 +542,7 @@ function emitLinkingFinalized(payload: {
   error?: string
   warning?: string
 }): void {
-  for (const win of BrowserWindow.getAllWindows()) {
-    win.webContents.send('sync:linking-finalized', payload)
-  }
+  broadcastToAllWindows('sync:linking-finalized', payload)
 }
 
 // ============================================================================

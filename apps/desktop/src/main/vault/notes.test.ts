@@ -21,8 +21,8 @@ import * as projections from '../projections'
 
 // Mock electron (must be at module level)
 vi.mock('electron', () => {
-  const mockWebContents = { send: vi.fn() }
-  const mockWindow = { webContents: mockWebContents }
+  const mockWebContents = { isDestroyed: () => false, send: vi.fn() }
+  const mockWindow = { isDestroyed: () => false, webContents: mockWebContents }
 
   return {
     BrowserWindow: {
@@ -238,7 +238,10 @@ describe('notes operations', () => {
       const { BrowserWindow } = await import('electron')
       const mockSend = vi.fn()
       vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
-        { webContents: { send: mockSend } } as never
+        {
+          isDestroyed: () => false,
+          webContents: { isDestroyed: () => false, send: mockSend }
+        } as never
       ])
 
       await notes.createNote({
@@ -523,7 +526,10 @@ describe('notes operations', () => {
       const { BrowserWindow } = await import('electron')
       const mockSend = vi.fn()
       vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
-        { webContents: { send: mockSend } } as never
+        {
+          isDestroyed: () => false,
+          webContents: { isDestroyed: () => false, send: mockSend }
+        } as never
       ])
 
       const created = await notes.createNote({
@@ -726,7 +732,10 @@ describe('notes operations', () => {
       const { BrowserWindow } = await import('electron')
       const mockSend = vi.fn()
       vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
-        { webContents: { send: mockSend } } as never
+        {
+          isDestroyed: () => false,
+          webContents: { isDestroyed: () => false, send: mockSend }
+        } as never
       ])
 
       const created = await notes.createNote({
@@ -879,7 +888,10 @@ describe('notes operations', () => {
       const { BrowserWindow } = await import('electron')
       const mockSend = vi.fn()
       vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
-        { webContents: { send: mockSend } } as never
+        {
+          isDestroyed: () => false,
+          webContents: { isDestroyed: () => false, send: mockSend }
+        } as never
       ])
 
       const created = await notes.createNote({
@@ -982,7 +994,10 @@ describe('notes operations', () => {
       const { BrowserWindow } = await import('electron')
       const mockSend = vi.fn()
       vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
-        { webContents: { send: mockSend } } as never
+        {
+          isDestroyed: () => false,
+          webContents: { isDestroyed: () => false, send: mockSend }
+        } as never
       ])
 
       const created = await notes.createNote({

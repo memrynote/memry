@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => {
     BrowserWindow: {
       getAllWindows: vi.fn()
     },
-    webContents: { send: vi.fn() },
+    webContents: { isDestroyed: () => false, send: vi.fn() },
     startChatServer: vi.fn(),
     stopChatServer: vi.fn(),
     getServerPort: vi.fn(),
@@ -74,7 +74,9 @@ describe('AI inline IPC handlers', () => {
     mocks.getSetting.mockReturnValue(
       JSON.stringify({ enabled: true, provider: 'openai', apiKey: 'sk-real', model: 'gpt-4o-mini' })
     )
-    mocks.BrowserWindow.getAllWindows.mockReturnValue([{ webContents: mocks.webContents }])
+    mocks.BrowserWindow.getAllWindows.mockReturnValue([
+      { isDestroyed: () => false, webContents: mocks.webContents }
+    ])
     mocks.getServerPort.mockReturnValue(3434)
     mocks.startChatServer.mockResolvedValue(4545)
     mocks.stopChatServer.mockResolvedValue(undefined)
