@@ -21,7 +21,7 @@
       "availableTitle": "Opdatering tilgængelig",
       "availableMessage": "memrynote {version} er tilgængelig.",
       "availableDetailFallback": "Vil du downloade opdateringen nu?",
-      "buttonDownload": "Download",
+      "buttonDownload": "Hent",
       "buttonLater": "Senere",
       "readyTitle": "Opdatering klar",
       "readyMessage": "memrynote {version} er blevet downloadet.",

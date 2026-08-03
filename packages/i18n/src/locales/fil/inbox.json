@@ -149,14 +149,14 @@
     "file": "file",
     "tag": "Tag",
     "snooze": "I-snooze",
-    "archive": "Archive",
+    "archive": "I-archive",
     "add": "Idagdag",
     "dismissSuggestion": "I-dismiss ang mungkahi",
     "hint": {
-      "file": "file",
-      "tag": "tag",
+      "file": "i-file",
+      "tag": "i-tag",
       "snooze": "i-snooze",
-      "archive": "archive",
+      "archive": "i-archive",
       "deselect": "alisin sa pagkakapili"
     },
     "archiveDialog": {
@@ -183,7 +183,7 @@
   "quickActions": {
     "groupAria": "Mabilis na pagkilos",
     "archiveItem": "I-archive ang item",
-    "archive": "Archive"
+    "archive": "I-archive"
   },
   "detail": {
     "ariaLabel": "Mga detalye ng item",
@@ -193,7 +193,7 @@
     "restoreToInbox": "Ibalik sa inbox",
     "delete": "Tanggalin",
     "deletePermanently": "I-delete nang permanente",
-    "archive": "Archive",
+    "archive": "I-archive",
     "file": "file",
     "keyboardHint": "{modifier}⏎ i-file · 1-5 folder · Esc isara",
     "voiceTitlePlaceholder": "Pangalanan ang voice memo na ito...",

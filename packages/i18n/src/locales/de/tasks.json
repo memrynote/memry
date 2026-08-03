@@ -35,7 +35,7 @@
     "delete": "Aufgabe löschen",
     "created": "{date} erstellt",
     "reminder": "Erinnerung",
-    "tags": "Tags",
+    "tags": "Schlagworte",
     "priorityLabels": {
       "high": "Hoch",
       "low": "Niedrig",
@@ -708,7 +708,7 @@
       "is": "sind",
       "search": "Suchen...",
       "selected": "ausgewählt",
-      "tags": "Tags"
+      "tags": "Schlagworte"
     }
   },
   "phaseI": {

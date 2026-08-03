@@ -148,14 +148,14 @@
     "ariaLabel": "Massehandlinger for {count} valgte elementer",
     "file": "Fil",
     "tag": "Tag",
-    "snooze": "Snooze",
+    "snooze": "Udsæt",
     "archive": "Arkiv",
     "add": "Tilføj",
     "dismissSuggestion": "Afvis forslaget",
     "hint": {
       "file": "fil",
       "tag": "tag",
-      "snooze": "snooze",
+      "snooze": "udsæt",
       "archive": "arkiv",
       "deselect": "fravælg"
     },
@@ -261,7 +261,7 @@
     "viewed": "Set",
     "markViewed": "Markér som vist",
     "notYetViewed": "Ikke set endnu",
-    "snooze": "Snooze",
+    "snooze": "Udsæt",
     "presetInOneHour": "1 time",
     "presetTomorrow": "I morgen",
     "presetNextWeek": "Næste uge",
@@ -488,14 +488,14 @@
       "set": "Angiv"
     },
     "componentsSnoozeSnoozePicker": {
-      "snooze": "Snooze",
-      "snooze2": "Snooze",
+      "snooze": "Udsæt",
+      "snooze2": "Udsæt",
       "pickDateTime": "Vælg dato og tid",
       "pickDateTime2": "Vælg dato og tid",
       "selectWhenToBeRemindedAboutThisItem": "Vælg, hvornår du vil blive mindet om denne vare",
-      "snooze3": "Snooze",
-      "snooze4": "Snooze",
-      "snooze5": "Snooze"
+      "snooze3": "Udsæt",
+      "snooze4": "Udsæt",
+      "snooze5": "Udsæt"
     },
     "componentsSocialCard": {
       "loadingPost": "Indlæser indlæg...",

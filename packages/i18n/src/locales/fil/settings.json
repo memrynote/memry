@@ -6,10 +6,10 @@
     "title": "Mga setting",
     "nav": {
       "groups": {
-        "workspace": "Workspace",
+        "workspace": "Lugar ng Trabaho",
         "preferences": "Mga Kagustuhan",
         "services": "Mga serbisyo",
-        "data": "Data"
+        "data": "Datos"
       },
       "items": {
         "account": "Account",
@@ -40,7 +40,7 @@
       "loading": "Nilo-load ang mga setting..."
     },
     "groups": {
-      "startup": "Startup",
+      "startup": "Pagsisimula",
       "updates": "Mga update",
       "languageRegion": "Wika at Rehiyon",
       "tabBehavior": "Gawi ng Tab",
@@ -176,7 +176,7 @@
     "groups": {
       "theme": "Tema",
       "accentColor": "Kulay ng Accent",
-      "typography": "Typography"
+      "typography": "Tipograpiya"
     },
     "theme": {
       "colorMode": {
@@ -201,11 +201,11 @@
       },
       "presets": {
         "indigo": "Indigo",
-        "amber": "Amber",
-        "emerald": "Emerald",
+        "amber": "Ambar",
+        "emerald": "Esmeralda",
         "red": "Pula",
-        "violet": "Violet",
-        "cyan": "Cyan",
+        "violet": "Violeta",
+        "cyan": "Sian",
         "pink": "Rosas",
         "orange": "Kahel"
       },
@@ -276,11 +276,11 @@
     "actions": {
       "new": "Bagong Template",
       "edit": "I-edit",
-      "duplicate": "Duplicate",
+      "duplicate": "I-duplicate",
       "delete": "Tanggalin"
     },
     "groups": {
-      "builtIn": "Built-in",
+      "builtIn": "Nakapaloob",
       "myTemplates": "Aking Mga Template"
     },
     "loading": "Naglo-load ng mga template...",
@@ -363,7 +363,7 @@
     },
     "preview": {
       "description": "Path ng file ng journal ngayong araw",
-      "label": "Preview"
+      "label": "Silipin"
     }
   },
   "tasks": {
@@ -536,7 +536,7 @@
       "labels": {
         "history": "Kasaysayan",
         "maxFile": "Max na file",
-        "storage": "Storage",
+        "storage": "Imbakan",
         "vaults": "Mga Vault"
       },
       "planStatus": "Status ng plano",
@@ -575,7 +575,7 @@
     "steps": {
       "signIn": "Mag-sign In",
       "verify": "I-verify",
-      "link": "Link"
+      "link": "I-link"
     },
     "progress": "Hakbang {current} ng {total}: {label}",
     "signIn": {
@@ -767,7 +767,7 @@
       "inline": "Inline na Pag-edit ng AI"
     },
     "voice": {
-      "provider": "Provider",
+      "provider": "Tagapagbigay",
       "providerDescription": "Speech-to-text provider para sa mga voice memo",
       "providers": {
         "local": "Lokal (default)",
@@ -799,7 +799,7 @@
       "memoNameModeDescription": "Kung paano pinapangalanan ang mga voice memo pagkatapos ng transkripsyon",
       "naming": {
         "none": "Huwag palitan ang pangalan",
-        "timestamp": "Timestamp",
+        "timestamp": "Petsa at Oras",
         "transcript": "Pamagat ng transkripsyon"
       },
       "namingError": "Nabigong i-update ang pagpapangalan ng voice memo"
@@ -831,7 +831,7 @@
       "enableDescription": "Ipakita ang AI menu kapag nag-e-edit ng mga tala",
       "enabled": "Naka-enable ang inline na pag-edit ng AI",
       "disabled": "Na-disable ang inline na pag-edit ng AI",
-      "provider": "Provider",
+      "provider": "Tagapagbigay",
       "providerDescription": "Serbisyo ng AI para sa mga pagpapatakbo ng text",
       "providers": {
         "ollama": "Ollama (Lokal)",
@@ -900,7 +900,7 @@
         "synced": "Naka-sync",
         "error": "Error",
         "pending": "Nakabinbin",
-        "idle": "Idle"
+        "idle": "Nakatigil"
       },
       "retrying": "Sinusubukang muli…",
       "retryNow": "Subukan muli ngayon"
@@ -1030,8 +1030,8 @@
     "types": {
       "status": "Katayuan",
       "select": "Pumili",
-      "multiselect": "Multiselect",
-      "text": "Text",
+      "multiselect": "Maramihang Pagpili",
+      "text": "Teksto",
       "number": "Numero",
       "date": "Petsa",
       "checkbox": "Checkbox",
@@ -1061,7 +1061,7 @@
     },
     "searchPlaceholder": "Maghanap ng mga shortcut...",
     "resetAll": "I-reset Lahat",
-    "custom": "Custom",
+    "custom": "Pasadya",
     "pressShortcut": "Pindutin ang shortcut...",
     "cancelTitle": "Kanselahin",
     "rebindTitle": "I-click para i-rebind",
@@ -1157,7 +1157,7 @@
           "description": "I-toggle ang bold na pag-format"
         },
         "italic": {
-          "label": "Italic",
+          "label": "Italiko",
           "description": "I-toggle ang italic na pag-format"
         },
         "underline": {
@@ -1267,8 +1267,8 @@
       "subtitle": "Lokal na access sa server para sa mga panlabas na MCP client."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Koneksyon",
+      "access": "Pag-access"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Pasadya"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Paunang Takda"
       },
       "baseUrl": {
         "label": "Base URL",
@@ -1318,7 +1318,7 @@
         "description": "Ipinapadala ang data sa naka-configure na endpoint."
       },
       "model": {
-        "label": "Model",
+        "label": "Modelo",
         "description": "Pumili ng ibinalik na modelo o maglagay nang manu-mano."
       },
       "apiKey": {
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "I-save",
+      "models": "Mga Modelo",
       "test": "Subukan ang koneksyon",
       "probe": "Suriin ang mga tool"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Hindi Nakakonekta",
       "toolsDisabled": "Hindi pinagana ang mga tool",
       "fullTools": "Pinagana ang lahat ng tool",
       "checking": "Sinusuri…",

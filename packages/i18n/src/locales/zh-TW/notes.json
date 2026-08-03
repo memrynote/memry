@@ -191,7 +191,7 @@
   },
   "backlinks": {
     "sortRecent": "最近使用",
-    "sortAlpha": "A-Z",
+    "sortAlpha": "名稱",
     "sortMentions": "最多引用",
     "sortBy": "按 {sort} 排序反向連結",
     "summary": "{notes} 筆記 · {references} 參考",

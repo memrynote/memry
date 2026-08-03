@@ -1267,8 +1267,8 @@
       "subtitle": "Lokale servertoegang voor externe MCP-clients."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Verbinding",
+      "access": "Toegang"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Aangepast"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Voorinstelling"
       },
       "baseUrl": {
         "label": "Basis-URL",
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "Opslaan",
+      "models": "Modellen",
       "test": "Verbinding testen",
       "probe": "Tools controleren"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Niet verbonden",
       "toolsDisabled": "Tools uitgeschakeld",
       "fullTools": "Alle tools ingeschakeld",
       "checking": "Controleren…",

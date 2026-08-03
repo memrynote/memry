@@ -251,7 +251,7 @@
       "newTab": "Ny flik",
       "newTab2": "Ny flik",
       "newNote": "Ny anteckning",
-      "journal": "Journal",
+      "journal": "Dagbok",
       "calendar": "Kalender",
       "inboxCapture": "Inkorgfångst",
       "tasks": "Uppgifter",
@@ -456,7 +456,7 @@
       },
       "models": {
         "default": "Standard",
-        "label": "Model"
+        "label": "Modell"
       },
       "settings": {
         "reasoning": "Resonemang"
@@ -464,7 +464,7 @@
       "claudeSettings": {
         "reasoning": {
           "low": "Låg",
-          "medium": "Medium",
+          "medium": "Medel",
           "high": "Hög",
           "extraHigh": "Extra hög",
           "extraHighDefault": "Extra hög (standard)",
@@ -474,7 +474,7 @@
       "codexSettings": {
         "reasoning": {
           "low": "Låg",
-          "medium": "Medium",
+          "medium": "Medel",
           "mediumDefault": "Medium (standard)",
           "high": "Hög",
           "extraHigh": "Extra hög"
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Av",
         "label": "Webbsökning"
       },
       "permissionsLabel": "Agentbehörigheter: {access}, webbsökning {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Behörigheter",
+        "access": "Åtkomst",
+        "tools": "Verktyg"
       },
       "modelSettingsLabel": "Agentens modellinställningar: {model}, {settings}"
     },
@@ -735,7 +735,7 @@
       },
       "journal": {
         "description": "Navigera i journalvyer och fokusera skrivytan.",
-        "title": "Journal"
+        "title": "Dagbok"
       },
       "notes": {
         "description": "Skriv, formatera och sök i anteckningar.",

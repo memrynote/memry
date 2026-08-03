@@ -468,7 +468,7 @@
           "high": "Vysoká",
           "extraHigh": "Extra vysoká",
           "extraHighDefault": "Extra vysoká (výchozí)",
-          "max": "Max"
+          "max": "Maximální"
         }
       },
       "codexSettings": {
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Vypnuto",
         "label": "Vyhledávání na webu"
       },
       "permissionsLabel": "Oprávnění agenta: {access}, vyhledávání na webu {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Oprávnění",
+        "access": "Přístup",
+        "tools": "Nástroje"
       },
       "modelSettingsLabel": "Nastavení modelu agenta: {model}, {settings}"
     },
@@ -677,7 +677,7 @@
   },
   "capture": {
     "focusShortcut": "Zaměřit pole pro zachycení",
-    "detailHint": "detail",
+    "detailHint": "podrobnosti",
     "focusHint": "Q",
     "submit": "Zachytit"
   },
@@ -720,7 +720,7 @@
   "shortcuts": {
     "combos": {
       "clickRow": "Kliknutí na řádek",
-      "reset": "Reset",
+      "reset": "Obnovit",
       "shortcutsTab": "Karta Zkratky"
     },
     "description": "Rychlé cesty pro pohyb v memrynote, zachycení myšlenek a zpracování práce.",

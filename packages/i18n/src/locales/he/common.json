@@ -456,7 +456,7 @@
       },
       "models": {
         "default": "ברירת מחדל",
-        "label": "Model"
+        "label": "מודל"
       },
       "settings": {
         "reasoning": "נימוק"
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "כבוי",
         "label": "חיפוש באינטרנט"
       },
       "permissionsLabel": "הרשאות Agent: {access}, חיפוש באינטרנט {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "הרשאות",
+        "access": "גישה",
+        "tools": "כלים"
       },
       "modelSettingsLabel": "הגדרות מודל של Agent: {model}, {settings}"
     },
@@ -510,7 +510,7 @@
     "sidebar": {
       "label": "סרגל צד ימין",
       "day": "יום",
-      "agent": "Agent",
+      "agent": "סוכן",
       "pendingApproval": "{count, plural, one {# ממתין לאישור} other {# אישורים ממתינים}}",
       "inProgress": "תור Agent מתבצע",
       "close": "סגור סוכן"

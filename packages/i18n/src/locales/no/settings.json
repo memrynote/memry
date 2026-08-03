@@ -201,7 +201,7 @@
       },
       "presets": {
         "indigo": "Indigo",
-        "amber": "Amber",
+        "amber": "Rav",
         "emerald": "Smaragd",
         "red": "Rødt",
         "violet": "Fiolett",
@@ -575,7 +575,7 @@
     "steps": {
       "signIn": "Logg på",
       "verify": "Bekreft",
-      "link": "Link"
+      "link": "Koble til"
     },
     "progress": "Trinn {current} av {total}: {label}",
     "signIn": {
@@ -1030,7 +1030,7 @@
     "types": {
       "status": "Status",
       "select": "Velg",
-      "multiselect": "Multiselect",
+      "multiselect": "Flervalg",
       "text": "Tekst",
       "number": "Nummer",
       "date": "Dato",
@@ -1267,8 +1267,8 @@
       "subtitle": "Lokal servertilgang for eksterne MCP-klienter."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Tilkobling",
+      "access": "Tilgang"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Egendefinert"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Forhåndsinnstilling"
       },
       "baseUrl": {
         "label": "Basis-URL",
@@ -1318,7 +1318,7 @@
         "description": "Data sendes til det konfigurerte endepunktet."
       },
       "model": {
-        "label": "Model",
+        "label": "Modell",
         "description": "Velg en av modellene som returneres, eller skriv inn en manuelt."
       },
       "apiKey": {
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "Lagre",
+      "models": "Modeller",
       "test": "Test tilkobling",
       "probe": "Undersøk verktøy"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Frakoblet",
       "toolsDisabled": "Verktøy deaktivert",
       "fullTools": "Alle verktøy aktivert",
       "checking": "Sjekker…",

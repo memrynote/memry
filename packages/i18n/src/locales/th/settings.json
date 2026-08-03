@@ -1267,8 +1267,8 @@
       "subtitle": "การเข้าถึงเซิร์ฟเวอร์ในเครื่องสำหรับไคลเอนต์ MCP ภายนอก"
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "การเชื่อมต่อ",
+      "access": "การเข้าถึง"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "กำหนดเอง"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "ค่าที่ตั้งไว้ล่วงหน้า"
       },
       "baseUrl": {
         "label": "URL หลัก",
@@ -1318,7 +1318,7 @@
         "description": "ข้อมูลจะถูกส่งไปยังจุดเชื่อมต่อที่ตั้งค่าไว้"
       },
       "model": {
-        "label": "Model",
+        "label": "โมเดล",
         "description": "เลือกโมเดลที่ระบบดึงมา หรือพิมพ์ชื่อโมเดลเอง"
       },
       "apiKey": {
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "บันทึก",
+      "models": "รายการโมเดล",
       "test": "ทดสอบการเชื่อมต่อ",
       "probe": "ตรวจหาเครื่องมือ"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "ไม่ได้เชื่อมต่อ",
       "toolsDisabled": "ปิดใช้งานเครื่องมือ",
       "fullTools": "เปิดใช้งานเครื่องมือทั้งหมด",
       "checking": "กำลังตรวจสอบ…",

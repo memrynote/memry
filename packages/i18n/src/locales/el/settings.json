@@ -200,7 +200,7 @@
         "placeholder": "#000000"
       },
       "presets": {
-        "indigo": "Indigo",
+        "indigo": "Λουλακί",
         "amber": "Κεχριμπάρι",
         "emerald": "Σμαράγδι",
         "red": "Κόκκινο",
@@ -222,7 +222,7 @@
         "description": "Κύρια γραμματοσειρά για τη διεπαφή",
         "options": {
           "system": "Προεπιλογή συστήματος",
-          "sansSerif": "Sans-serif",
+          "sansSerif": "Χωρίς πατούρες",
           "serif": "Serif (Crimson Pro)",
           "gelasio": "Γελάσιο",
           "geist": "Geist",
@@ -1267,8 +1267,8 @@
       "subtitle": "Τοπική πρόσβαση διακομιστή για εξωτερικά προγράμματα-πελάτες MCP."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Σύνδεση",
+      "access": "Πρόσβαση"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Προσαρμοσμένη"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Προρύθμιση"
       },
       "baseUrl": {
         "label": "Βασική διεύθυνση URL",
@@ -1318,7 +1318,7 @@
         "description": "Τα δεδομένα αποστέλλονται στο τελικό σημείο που έχει οριστεί."
       },
       "model": {
-        "label": "Model",
+        "label": "Μοντέλο",
         "description": "Επιλέξτε ένα μοντέλο από τη λίστα ή εισαγάγετε ένα χειροκίνητα."
       },
       "apiKey": {
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "Αποθήκευση",
+      "models": "Μοντέλα",
       "test": "Δοκιμή σύνδεσης",
       "probe": "Ανίχνευση εργαλείων"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Αποσυνδεδεμένο",
       "toolsDisabled": "Εργαλεία απενεργοποιημένα",
       "fullTools": "Πλήρη εργαλεία ενεργοποιημένα",
       "checking": "Έλεγχος…",

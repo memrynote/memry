@@ -49,9 +49,9 @@
     "toolbar": {
       "ariaLabel": "Pag-format ng teksto",
       "bold": "Matapang",
-      "italic": "Italic",
+      "italic": "Italiko",
       "underline": "Salungguhitan",
-      "strikethrough": "Strikethrough",
+      "strikethrough": "Guhit-pantawid",
       "link": "Link",
       "image": "Imahe",
       "moreOptions": "Higit pang mga pagpipilian",
@@ -60,9 +60,9 @@
       "heading3": "Pamagat 3",
       "bulletList": "Listahan ng Bullet",
       "numberedList": "Listahan ng Numero",
-      "checklist": "Checklist",
-      "quote": "Quote",
-      "divider": "Divider",
+      "checklist": "Listahan ng Tsek",
+      "quote": "Sipi",
+      "divider": "Panghati",
       "codeBlock": "Bloke ng Code"
     },
     "prompt": {
@@ -91,9 +91,9 @@
     },
     "weekdayShort": {
       "sunday": "Araw",
-      "monday": "Mon",
-      "tuesday": "Tue",
-      "wednesday": "Wed",
+      "monday": "Lun",
+      "tuesday": "Mar",
+      "wednesday": "Miy",
       "thursday": "Huwebes",
       "friday": "Biyernes",
       "saturday": "Sab"
@@ -103,7 +103,7 @@
       "february": "Pebrero",
       "march": "Marso",
       "april": "Abril",
-      "may": "May",
+      "may": "Mayo",
       "june": "Hunyo",
       "july": "Hulyo",
       "august": "Agosto",
@@ -113,18 +113,18 @@
       "december": "Disyembre"
     },
     "monthShort": {
-      "january": "Jan",
-      "february": "Feb",
+      "january": "Ene",
+      "february": "Peb",
       "march": "Mar",
-      "april": "Apr",
+      "april": "Abr",
       "may": "May",
       "june": "Si Jun",
       "july": "Hul",
-      "august": "Aug",
-      "september": "Sep",
-      "october": "Oct",
+      "august": "Ago",
+      "september": "Set",
+      "october": "Okt",
       "november": "Nob",
-      "december": "Dec"
+      "december": "Dis"
     },
     "greeting": {
       "morning": "Magandang umaga po",

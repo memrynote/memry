@@ -187,7 +187,7 @@
       "options": {
         "light": "Teplo",
         "white": "Biela",
-        "dark": "Dark",
+        "dark": "Tmavá",
         "system": "Systém"
       },
       "error": "Nepodarilo sa aktualizovať tému"
@@ -200,14 +200,14 @@
         "placeholder": "#000000"
       },
       "presets": {
-        "indigo": "Indigo",
+        "indigo": "Indigová",
         "amber": "Jantar",
-        "emerald": "Emerald",
+        "emerald": "Smaragdová",
         "red": "Červená",
-        "violet": "Violet",
-        "cyan": "Cyan",
+        "violet": "Fialová",
+        "cyan": "Azúrová",
         "pink": "Ružová",
-        "orange": "Orange"
+        "orange": "Oranžová"
       },
       "error": "Nepodarilo sa aktualizovať akcentovú farbu"
     },
@@ -227,7 +227,7 @@
           "gelasio": "Gelasio",
           "geist": "Geist",
           "inter": "Inter",
-          "monospace": "Monospace"
+          "monospace": "Neproporcionálne"
         }
       },
       "fontSizeError": "Nepodarilo sa aktualizovať veľkosť písma",
@@ -275,7 +275,7 @@
     },
     "actions": {
       "new": "Nová šablóna",
-      "edit": "Edit",
+      "edit": "Upraviť",
       "duplicate": "Duplikovať",
       "delete": "Vymazať"
     },
@@ -849,7 +849,7 @@
       "connection": "Pripojenie",
       "activePort": "Aktívne na porte {port}",
       "notConnected": "Nie je pripojené",
-      "test": "Test",
+      "test": "Otestovať",
       "stopFailed": "Nepodarilo sa zastaviť existujúci server",
       "connected": "Pripojené! Server beží na porte {port}",
       "connectFailed": "Nepodarilo sa pripojiť",
@@ -1267,8 +1267,8 @@
       "subtitle": "Prístup k lokálnemu serveru pre externých klientov MCP."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Pripojenie",
+      "access": "Prístup"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Vlastné"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Predvoľba"
       },
       "baseUrl": {
         "label": "Base URL",
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "Uložiť",
+      "models": "Modely",
       "test": "Otestovať pripojenie",
       "probe": "Preskúmať nástroje"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Odpojené",
       "toolsDisabled": "Nástroje zakázané",
       "fullTools": "Všetky nástroje povolené",
       "checking": "Kontroluje sa…",

@@ -99,7 +99,7 @@
       "hideLocalGraph": "Skryť lokálny graf",
       "showLocalGraph": "Zobraziť lokálny graf",
       "versionHistory": "História verzií",
-      "export": "Export",
+      "export": "Exportovať",
       "fullWidth": "Celá šírka",
       "disableLocalOnly": "Zakázať iba lokálne",
       "setLocalOnly": "Nastaviť iba lokálne",
@@ -131,7 +131,7 @@
       "subtext": "Zvýrazniť dôležité informácie",
       "changeType": "Zmeniť typ výstrahy",
       "menuLabel": "Typ výstrahy",
-      "info": "Info",
+      "info": "Informácia",
       "warning": "Varovanie",
       "error": "Chyba",
       "success": "Úspech"
@@ -286,7 +286,7 @@
     "includeMetadata": "Zahrnúť metadata (značky, dátumy)",
     "exporting": "Exportovanie...",
     "exported": "Exportované!",
-    "export": "Export",
+    "export": "Exportovať",
     "toast": {
       "failed": "Export zlyhal"
     }
@@ -366,7 +366,7 @@
       "cancel": "Zrušiť",
       "delete": "Vymazať",
       "none": "Žiadna",
-      "edit": "Edit",
+      "edit": "Upraviť",
       "delete2": "Vymazať",
       "columnBorders": "Okraje stĺpcov",
       "display": "Zobrazenie",
@@ -474,7 +474,7 @@
       "editColumnName": "Upraviť názov stĺpca"
     },
     "componentsFolderViewViewSwitcher": {
-      "default": "default",
+      "default": "predvolené",
       "rename": "Premenovať",
       "duplicate": "Duplikovať",
       "setAsDefault": "Nastaviť ako predvolené",
@@ -570,7 +570,7 @@
       "open": "Otvorené",
       "openToTheSide": "Otvoriť do strany",
       "pinToTabs": "Pripnúť na karty",
-      "edit": "Edit",
+      "edit": "Upraviť",
       "delete": "Vymazať",
       "copyLink": "Kopírovať odkaz"
     },

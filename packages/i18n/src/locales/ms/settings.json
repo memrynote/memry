@@ -201,11 +201,11 @@
       },
       "presets": {
         "indigo": "nila",
-        "amber": "Amber",
+        "amber": "Ambar",
         "emerald": "Zamrud",
         "red": "merah",
-        "violet": "Violet",
-        "cyan": "Cyan",
+        "violet": "Ungu",
+        "cyan": "Sian",
         "pink": "Merah jambu",
         "orange": "Jingga"
       },
@@ -809,7 +809,7 @@
       "loading": "Memuatkan",
       "cacheHint": "~23MB · Dicache secara setempat · Semua pada peranti",
       "dimensions": "Dimensi",
-      "embeddings": "Embeddings",
+      "embeddings": "Pembenaman",
       "downloadLoad": "Muat turun & Muatkan Model",
       "downloadingModel": "Memuat turun model...",
       "loadingModel": "Memuatkan model...",
@@ -1157,7 +1157,7 @@
           "description": "Togol pemformatan tebal"
         },
         "italic": {
-          "label": "Italic",
+          "label": "Condong",
           "description": "Togol pemformatan condong"
         },
         "underline": {
@@ -1267,8 +1267,8 @@
       "subtitle": "Akses pelayan tempatan untuk klien MCP luaran."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Sambungan",
+      "access": "Akses"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Tersuai"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Pratetap"
       },
       "baseUrl": {
         "label": "URL Asas",
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "Simpan",
+      "models": "Senarai model",
       "test": "Uji sambungan",
       "probe": "Siasat alat"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Terputus",
       "toolsDisabled": "Alat dilumpuhkan",
       "fullTools": "Alat penuh didayakan",
       "checking": "Menyemak…",

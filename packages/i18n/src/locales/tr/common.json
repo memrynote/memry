@@ -158,7 +158,7 @@
       "setFolderIcon": "Klasör simgesini ayarla"
     },
     "componentsHintOverlayHintIndicator": {
-      "hint": "HINT"
+      "hint": "İPUCU"
     },
     "componentsIconPicker": {
       "iconPicker": "Simge seçici",
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Kapalı",
         "label": "Web araması"
       },
       "permissionsLabel": "Agent izinleri: {access}, web araması {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "İzinler",
+        "access": "Erişim",
+        "tools": "Araçlar"
       },
       "modelSettingsLabel": "Agent model ayarları: {model}, {settings}"
     },
@@ -510,7 +510,7 @@
     "sidebar": {
       "label": "Sağ kenar çubuğu",
       "day": "Gün",
-      "agent": "Agent",
+      "agent": "Ajan",
       "pendingApproval": "{count, plural, one {# onay bekleniyor} other {# bekleyen onaylar}}",
       "inProgress": "Agent dönüşü devam ediyor",
       "close": "Ajanı kapat"

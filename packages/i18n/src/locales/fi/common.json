@@ -251,7 +251,7 @@
       "newTab": "Uusi välilehti",
       "newTab2": "Uusi välilehti",
       "newNote": "Uusi huomautus",
-      "journal": "Journal",
+      "journal": "Päiväkirja",
       "calendar": "Kalenteri",
       "inboxCapture": "Saapuneet-kansion sieppaus",
       "tasks": "Tehtävät",
@@ -456,7 +456,7 @@
       },
       "models": {
         "default": "Oletus",
-        "label": "Model"
+        "label": "Malli"
       },
       "settings": {
         "reasoning": "Päättely"
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Pois",
         "label": "Verkkohaku"
       },
       "permissionsLabel": "Agentin käyttöoikeudet: {access}, verkkohaku {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Käyttöoikeudet",
+        "access": "Käyttöoikeus",
+        "tools": "Työkalut"
       },
       "modelSettingsLabel": "Agentin malliasetukset: {model}, {settings}"
     },
@@ -510,7 +510,7 @@
     "sidebar": {
       "label": "Oikea sivupalkki",
       "day": "Päivä",
-      "agent": "Agent",
+      "agent": "Agentti",
       "pendingApproval": "{count, plural, one {# odottaa hyväksyntää} other {# odottavaa hyväksyntää}}",
       "inProgress": "Agent käännös käynnissä",
       "close": "Sulje agentti"

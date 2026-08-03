@@ -376,7 +376,7 @@
       "downloadVaultTitle": "Download “{name}”",
       "downloadLocation": "Placering",
       "changeLocation": "Skift…",
-      "download": "Download",
+      "download": "Hent",
       "downloadFailed": "Boksen kunne ikke downloades",
       "deleteFromAccount": "Slet fra konto",
       "deleteVaultBody": "Alle synkroniserede data for denne boks fjernes permanent fra Memrys servere. Denne handling kan ikke fortrydes. Dine filer på disken bliver ikke slettet.",
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Fra",
         "label": "Websøgning"
       },
       "permissionsLabel": "Agenttilladelser: {access}, websøgning {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Tilladelser",
+        "access": "Adgang",
+        "tools": "Værktøjer"
       },
       "modelSettingsLabel": "Agentens modelindstillinger: {model}, {settings}"
     },

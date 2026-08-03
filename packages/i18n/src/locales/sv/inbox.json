@@ -74,7 +74,7 @@
     },
     "selectItem": "Välj {title}",
     "itemAria": "{type}: {title}",
-    "untitled": "Untitled",
+    "untitled": "Namnlös",
     "untitledItem": "Objekt utan titel",
     "transcribing": "Transkriberar...",
     "transcriptionFailed": "Transkribering misslyckades",
@@ -154,7 +154,7 @@
     "dismissSuggestion": "Avvisa förslag",
     "hint": {
       "file": "fil",
-      "tag": "tag",
+      "tag": "tagga",
       "snooze": "snooza",
       "archive": "arkivera",
       "deselect": "avmarkera"
@@ -256,7 +256,7 @@
     "source": "Källa",
     "journalTitle": "Journal — {date}",
     "noteFallback": "Anteckning",
-    "journalFallback": "Journal",
+    "journalFallback": "Dagbok",
     "highlighted": "Markerad: \"{text}\"",
     "viewed": "Visad",
     "markViewed": "Markera som visad",

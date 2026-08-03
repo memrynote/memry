@@ -147,14 +147,14 @@
     "deselectAll": "Nyahpilih semua",
     "ariaLabel": "Tindakan pukal untuk {count} item yang dipilih",
     "file": "Fail",
-    "tag": "Tag",
+    "tag": "Teg",
     "snooze": "Tunda",
     "archive": "Arkib",
     "add": "Tambah",
     "dismissSuggestion": "Tolak cadangan",
     "hint": {
       "file": "fail",
-      "tag": "tag",
+      "tag": "teg",
       "snooze": "tidur sebentar",
       "archive": "arkib",
       "deselect": "nyahpilih"

@@ -410,7 +410,7 @@
     "newConversation": "Nová konverzácia",
     "history": "História konverzácií",
     "openInTab": "Otvoriť konverzáciu na karte",
-    "stop": "Stop",
+    "stop": "Zastaviť",
     "thinking": "Agent premýšľa",
     "enable": {
       "title": "Povoliť memrynote Agent",
@@ -468,7 +468,7 @@
           "high": "Vysoká",
           "extraHigh": "Extra vysoká",
           "extraHighDefault": "Extra vysoká (predvolené)",
-          "max": "Max"
+          "max": "Maximálna"
         }
       },
       "codexSettings": {
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Vypnuté",
         "label": "Webové vyhľadávanie"
       },
       "permissionsLabel": "Povolenia agenta: {access}, webové vyhľadávanie {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Povolenia",
+        "access": "Prístup",
+        "tools": "Nástroje"
       },
       "modelSettingsLabel": "Nastavenia modelu agenta: {model}, {settings}"
     },

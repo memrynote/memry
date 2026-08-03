@@ -153,10 +153,10 @@
     "add": "أضف",
     "dismissSuggestion": "رفض الاقتراح",
     "hint": {
-      "file": "file",
+      "file": "حفظ",
       "tag": "علامة",
       "snooze": "قيلولة بعد الظهر",
-      "archive": "archive",
+      "archive": "أرشفة",
       "deselect": "قم بإلغاء التحديد"
     },
     "archiveDialog": {

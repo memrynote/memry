@@ -87,7 +87,7 @@
       "placeholder": "Magsimulang magsulat, o pindutin ang '/' para sa mga utos...",
       "regionAria": "Editor ng tala",
       "richTextAria": "Editor ng rich text",
-      "headingPlaceholder": "Heading",
+      "headingPlaceholder": "Pamagat",
       "listPlaceholder": "Listahan ng item",
       "todoPlaceholder": "Item na gagawin"
     },
@@ -239,17 +239,17 @@
     "noOptions": "Wala pang pagpipilian",
     "optionName": "Pangalan ng opsyon",
     "newOption": "Bagong opsyon",
-    "ratingAria": "Rating",
+    "ratingAria": "Marka",
     "openUrlAria": "Buksan ang URL",
     "types": {
-      "text": "Text",
+      "text": "Teksto",
       "number": "Numero",
       "date": "Petsa",
       "checkbox": "Checkbox",
       "url": "URL",
       "status": "Katayuan",
       "select": "Pumili",
-      "multiselect": "Multiselect"
+      "multiselect": "Maramihang Pagpili"
     },
     "showOnCalendar": "Ipakita sa kalendaryo",
     "showingOnCalendar": "Ipinapakita sa kalendaryo",
@@ -266,7 +266,7 @@
     "loading": "Naglo-load ng mga template...",
     "empty": "Walang nakitang mga template",
     "myTemplates": "Aking Mga Template",
-    "essentials": "Essentials",
+    "essentials": "Mga Pangunahin",
     "setFolderDefault": "Itakda bilang default ng folder",
     "useTemplate": "Gumamit ng Template",
     "createNote": "Lumikha ng Tala",
@@ -369,7 +369,7 @@
       "edit": "I-edit",
       "delete2": "Tanggalin",
       "columnBorders": "Mga hangganan ng column",
-      "display": "Display",
+      "display": "Pagpapakita",
       "showSummaries": "Ipakita ang mga buod"
     },
     "componentsFolderViewFilterBuilder": {
@@ -393,7 +393,7 @@
       "lockedConditionHint": "Tinutukoy ng kundisyong ito ang kasalukuyang view kaya hindi ito maaalis dito."
     },
     "componentsFolderViewFilterRow": {
-      "builtIn": "Built-in",
+      "builtIn": "Nakapaloob",
       "properties": "Mga Katangian",
       "placeholderProperty": "Ari-arian",
       "placeholderOperator": "Operator",
@@ -430,7 +430,7 @@
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "I-clear ang pagpapangkat",
       "searchProperties": "Maghanap ng mga katangian...",
-      "builtIn": "Built-in",
+      "builtIn": "Nakapaloob",
       "properties": "Mga Katangian",
       "noGroupablePropertiesFound": "Walang nakitang napapangkat na mga katangian",
       "sortDirection": "Pagbukud-bukurin ang direksyon",
@@ -474,9 +474,9 @@
       "editColumnName": "I-edit ang pangalan ng column"
     },
     "componentsFolderViewViewSwitcher": {
-      "default": "default",
+      "default": "paunang setting",
       "rename": "Palitan ang pangalan",
-      "duplicate": "Duplicate",
+      "duplicate": "I-duplicate",
       "setAsDefault": "Itakda bilang Default",
       "delete": "Tanggalin",
       "createNewView": "Lumikha ng Bagong View",
@@ -498,7 +498,7 @@
       "thisActionCannotBeUndone": "Ang pagkilos na ito ay hindi maaaring i-undo.",
       "cancel3": "Kanselahin",
       "createView": "Lumikha ng view",
-      "gallery": "Gallery",
+      "gallery": "Galerya",
       "layout": "Layout",
       "list": "Listahan",
       "name": "Pangalan",
@@ -597,20 +597,20 @@
       "loadingNotes": "Nilo-load ang mga tala...",
       "noNotesWithThisTag": "Walang mga tala na may tag na ito",
       "addThisTagToANoteToSeeItHere": "Idagdag ang tag na ito sa isang tala para makita ito dito",
-      "pinned": "PINNED",
+      "pinned": "NAKA-PIN",
       "allNotes": "LAHAT NG NOTA",
       "allNotesArePinned": "Ang lahat ng mga tala ay naka-pin",
       "unpinFromTag": "I-unpin mula sa tag",
       "unpin": "I-unpin",
       "pinToTag": "I-pin para i-tag",
-      "pin": "Pin",
+      "pin": "I-pin",
       "tagActions": "Mga pagkilos sa tag",
       "editTagName": "I-edit ang pangalan ng tag",
       "changeColor": "Baguhin ang kulay",
       "deleteTag": "Tanggalin ang tag",
       "recent": "Kamakailan",
       "created": "Nilikha",
-      "alphabetical": "Alphabetical",
+      "alphabetical": "Alpabetikal",
       "tasks": "MGA GAWAIN"
     },
     "componentsSidebarTagRenameDialog": {
@@ -663,7 +663,7 @@
       "viewSettings": "Tingnan ang mga setting",
       "displayDensity": "Densidad ng Display",
       "comfortable": "Komportable",
-      "compact": "Compact",
+      "compact": "Siksik",
       "showSummaries": "Ipakita ang mga buod",
       "cancel": "Kanselahin"
     },
@@ -685,20 +685,20 @@
       "curatedStructuresForYourNotes": "Mga na-curate na istruktura para sa iyong mga tala.",
       "newTemplate": "Bagong Template",
       "myTemplates": "Aking Mga Template",
-      "builtIn": "Built-in",
+      "builtIn": "Nakapaloob",
       "deleteTemplate": "Tanggalin ang Template",
       "areYouSureYouWantToDelete": "Sigurado ka bang gusto mong tanggalin\"",
       "notesCreatedFromThisTemplateWillNotBeAffected": "Ang mga tala na ginawa mula sa template na ito ay hindi maaapektuhan.",
       "cancel": "Kanselahin",
-      "builtIn2": "Built-in",
-      "duplicate": "Duplicate",
+      "builtIn2": "Nakapaloob",
+      "duplicate": "I-duplicate",
       "delete": "Tanggalin",
       "startYourCollection": "Simulan ang Iyong Koleksyon",
       "templatesHelpYouCreateNotesWithConsistentStructure": "Tinutulungan ka ng mga template na lumikha ng mga tala na may pare-parehong istraktura.",
       "createTemplate": "Lumikha ng Template"
     },
     "componentsFolderViewSortSelector": {
-      "builtIn": "Built-in",
+      "builtIn": "Nakapaloob",
       "clearSort": "I-clear ang pag-uuri",
       "noSortablePropertiesFound": "Walang nakitang property na maaaring pagbukud-bukurin",
       "properties": "Mga Property",
@@ -864,7 +864,7 @@
       "title": "Pamagat",
       "wordCount": "Bilang ng salita"
     },
-    "defaultViewName": "Default",
+    "defaultViewName": "Paunang Setting",
     "groupHeader": {
       "noteCount": "{count, plural, one {# tala} other {# tala}}"
     },

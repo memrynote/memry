@@ -23,7 +23,7 @@
         "shortcuts": "Zkratky",
         "ai": "Asistent AI",
         "integrations": "Integrace",
-        "vault": "Vault",
+        "vault": "Trezor",
         "tags": "Tagy",
         "properties": "Vlastnosti",
         "commandLine": "Příkazový řádek",
@@ -127,7 +127,7 @@
       "defaultNoteFolder": {
         "description": "Prázdné = kořen trezoru",
         "label": "Výchozí umístění nových poznámek",
-        "placeholder": "notes"
+        "placeholder": "poznámky"
       }
     },
     "privacy": {
@@ -200,9 +200,9 @@
         "placeholder": "#000000"
       },
       "presets": {
-        "indigo": "Indigo",
-        "amber": "Amber",
-        "emerald": "Emerald",
+        "indigo": "Indigová",
+        "amber": "Jantarová",
+        "emerald": "Smaragdová",
         "red": "Červená",
         "violet": "Fialová",
         "cyan": "azurová",
@@ -359,7 +359,7 @@
     "folder": {
       "description": "Složka, kde jsou uloženy denní poznámky",
       "label": "Složka deníku",
-      "placeholder": "journal"
+      "placeholder": "deník"
     },
     "preview": {
       "description": "Cesta k dnešnímu souboru deníku",
@@ -849,7 +849,7 @@
       "connection": "Připojení",
       "activePort": "Aktivní na portu {port}",
       "notConnected": "Nepřipojeno",
-      "test": "Test",
+      "test": "Otestovat",
       "stopFailed": "Stávající server se nepodařilo zastavit",
       "connected": "Připojeno! Server běží na portu {port}",
       "connectFailed": "Připojení se nezdařilo",
@@ -930,7 +930,7 @@
   },
   "vault": {
     "header": {
-      "title": "Vault",
+      "title": "Trezor",
       "subtitle": "Konfigurace a úložiště trezoru"
     },
     "groups": {
@@ -1267,8 +1267,8 @@
       "subtitle": "Přístup k místnímu serveru pro externí klienty MCP."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Připojení",
+      "access": "Přístup"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Vlastní"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Předvolba"
       },
       "baseUrl": {
         "label": "Základní URL",
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "Uložit",
+      "models": "Modely",
       "test": "Otestovat připojení",
       "probe": "Prověřit nástroje"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Odpojeno",
       "toolsDisabled": "Nástroje vypnuty",
       "fullTools": "Všechny nástroje povoleny",
       "checking": "Kontrola…",

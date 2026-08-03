@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Nonaktif",
         "label": "Pencarian web"
       },
       "permissionsLabel": "Izin Agent: {access}, pencarian web {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Izin",
+        "access": "Akses",
+        "tools": "Alat"
       },
       "modelSettingsLabel": "Pengaturan model Agent: {model}, {settings}"
     },
@@ -510,7 +510,7 @@
     "sidebar": {
       "label": "Bilah sisi kanan",
       "day": "Hari",
-      "agent": "Agent",
+      "agent": "Agen",
       "pendingApproval": "{count, plural, one {# menunggu persetujuan} other {# menunggu persetujuan}}",
       "inProgress": "Putaran Agent sedang berlangsung",
       "close": "Tutup agen"

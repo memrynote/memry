@@ -205,7 +205,7 @@
         "emerald": "Smarald",
         "red": "roșu",
         "violet": "violet",
-        "cyan": "Cyan",
+        "cyan": "Cian",
         "pink": "roz",
         "orange": "Portocaliu"
       },
@@ -575,7 +575,7 @@
     "steps": {
       "signIn": "Conectați-vă",
       "verify": "Verificați",
-      "link": "Link"
+      "link": "Asociați"
     },
     "progress": "Pasul {current} din {total}: {label}",
     "signIn": {
@@ -984,7 +984,7 @@
       "rename": "Redenumiți",
       "changeColor": "Schimbați culoarea",
       "mergeInto": "Fuzionați în...",
-      "merge": "Merge",
+      "merge": "Fuzionați",
       "delete": "Ștergeți",
       "changeIcon": "Schimbă pictograma"
     },
@@ -1030,7 +1030,7 @@
     "types": {
       "status": "Stare",
       "select": "Selectați",
-      "multiselect": "Multiselect",
+      "multiselect": "Selecție multiplă",
       "text": "Text",
       "number": "Număr",
       "date": "Data",
@@ -1267,8 +1267,8 @@
       "subtitle": "Acces la serverul local pentru clienții MCP externi."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Conexiune",
+      "access": "Acces"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Personalizat"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Presetare"
       },
       "baseUrl": {
         "label": "URL de bază",
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "Salvați",
+      "models": "Modele",
       "test": "Testează conexiunea",
       "probe": "Detectează instrumentele"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Deconectat",
       "toolsDisabled": "Instrumente dezactivate",
       "fullTools": "Toate instrumentele activate",
       "checking": "Se verifică…",

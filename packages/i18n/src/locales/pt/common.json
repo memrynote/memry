@@ -456,7 +456,7 @@
       },
       "models": {
         "default": "Padrão",
-        "label": "Model"
+        "label": "Modelo"
       },
       "settings": {
         "reasoning": "Raciocínio"
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Desativado",
         "label": "Pesquisa na web"
       },
       "permissionsLabel": "Permissões do Agent: {access}, pesquisa na web {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Permissões",
+        "access": "Acesso",
+        "tools": "Ferramentas"
       },
       "modelSettingsLabel": "Configurações do modelo do Agent: {model}, {settings}"
     },
@@ -510,7 +510,7 @@
     "sidebar": {
       "label": "Barra lateral direita",
       "day": "Dia",
-      "agent": "Agent",
+      "agent": "Agente",
       "pendingApproval": "{count, plural, one {# aprovação pendente} other {# aprovações pendentes}}",
       "inProgress": "Turno Agent em andamento",
       "close": "Fechar agente"

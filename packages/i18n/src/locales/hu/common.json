@@ -251,7 +251,7 @@
       "newTab": "Új lap",
       "newTab2": "Új lap",
       "newNote": "Új megjegyzés",
-      "journal": "Journal",
+      "journal": "Napló",
       "calendar": "Naptár",
       "inboxCapture": "Beérkezett üzenetek rögzítése",
       "tasks": "Feladatok",
@@ -456,7 +456,7 @@
       },
       "models": {
         "default": "Alapértelmezett",
-        "label": "Model"
+        "label": "Modell"
       },
       "settings": {
         "reasoning": "Indoklás"
@@ -468,7 +468,7 @@
           "high": "Magas",
           "extraHigh": "Extra magas",
           "extraHighDefault": "Extra magas (alapértelmezett)",
-          "max": "Max"
+          "max": "Maximális"
         }
       },
       "codexSettings": {
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Ki",
         "label": "Webes keresés"
       },
       "permissionsLabel": "Agent jogosultságok: {access}, webes keresés {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Jogosultságok",
+        "access": "Hozzáférés",
+        "tools": "Eszközök"
       },
       "modelSettingsLabel": "Agent modellbeállítások: {model}, {settings}"
     },
@@ -510,7 +510,7 @@
     "sidebar": {
       "label": "Jobb oldalsáv",
       "day": "nap",
-      "agent": "Agent",
+      "agent": "Ügynök",
       "pendingApproval": "{count, plural, one {# jóváhagyásra vár} other {# jóváhagyás függőben}}",
       "inProgress": "Agent fordulat folyamatban",
       "close": "Ügynök bezárása"

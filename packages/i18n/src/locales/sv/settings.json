@@ -16,7 +16,7 @@
         "general": "Allmänt",
         "templates": "Mallar",
         "editor": "Redigerare",
-        "journal": "Journal",
+        "journal": "Dagbok",
         "tasks": "Uppgifter",
         "calendar": "Kalender",
         "appearance": "Utseende",
@@ -313,7 +313,7 @@
   },
   "journal": {
     "header": {
-      "title": "Journal",
+      "title": "Dagbok",
       "subtitle": "Journalinställningar och preferenser",
       "loading": "Läser in inställningar..."
     },
@@ -1267,8 +1267,8 @@
       "subtitle": "Lokal serveråtkomst för externa MCP-klienter."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Anslutning",
+      "access": "Åtkomst"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Anpassad"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Förinställning"
       },
       "baseUrl": {
         "label": "Bas-URL",
@@ -1318,7 +1318,7 @@
         "description": "Data skickas till den konfigurerade slutpunkten."
       },
       "model": {
-        "label": "Model",
+        "label": "Modell",
         "description": "Välj en modell från listan eller ange en manuellt."
       },
       "apiKey": {
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "Spara",
+      "models": "Modeller",
       "test": "Testa anslutning",
       "probe": "Undersök verktyg"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Frånkopplad",
       "toolsDisabled": "Verktyg inaktiverade",
       "fullTools": "Alla verktyg aktiverade",
       "checking": "Kontrollerar…",

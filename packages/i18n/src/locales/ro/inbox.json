@@ -33,7 +33,7 @@
     }
   },
   "type": {
-    "link": "Link",
+    "link": "Legătură",
     "links": "Legături",
     "note": "Notă",
     "notes": "Note",
@@ -454,7 +454,7 @@
       "attachFile": "Atașați fișierul"
     },
     "componentsQuickCaptureLinkPreview": {
-      "link": "LINK"
+      "link": "LEGĂTURĂ"
     },
     "componentsQuickCaptureStates": {
       "captured": "Capturat",

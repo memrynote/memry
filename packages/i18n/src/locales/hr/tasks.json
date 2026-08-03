@@ -45,7 +45,7 @@
     }
   },
   "filters": {
-    "filter": "Filter",
+    "filter": "Filtar",
     "emptyTitle": "Nijedan zadatak ne odgovara vašim filtrima",
     "emptyHelp": "Pokušajte prilagoditi svoje filtre ili",
     "groupBy": "Grupiraj po",
@@ -241,7 +241,7 @@
       "repeatOn": "Ponovi dalje",
       "day": "dan",
       "ofTheMonth": "mjeseca",
-      "the": "The",
+      "the": "Svaki",
       "ofTheMonth2": "mjeseca",
       "ends": "Završava",
       "never": "nikada",

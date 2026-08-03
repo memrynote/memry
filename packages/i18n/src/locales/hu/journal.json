@@ -1,7 +1,7 @@
 {
-  "title": "Journal",
+  "title": "Napló",
   "section": {
-    "journal": "Journal",
+    "journal": "Napló",
     "aiConnections": "AI kapcsolatok",
     "todaysNotes": "Mai jegyzetek",
     "todaysSchedule": "A mai menetrend",
@@ -52,7 +52,7 @@
       "italic": "Dőlt",
       "underline": "Aláhúzás",
       "strikethrough": "Áthúzott",
-      "link": "Link",
+      "link": "Hivatkozás",
       "image": "Kép",
       "moreOptions": "További lehetőségek",
       "heading1": "1. címsor",
@@ -120,7 +120,7 @@
       "may": "május",
       "june": "jún",
       "july": "júl",
-      "august": "Aug",
+      "august": "aug",
       "september": "szept",
       "october": "okt",
       "november": "nov",

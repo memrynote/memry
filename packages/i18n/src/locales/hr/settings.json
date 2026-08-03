@@ -202,7 +202,7 @@
       "presets": {
         "indigo": "Indigo",
         "amber": "Jantar",
-        "emerald": "Emerald",
+        "emerald": "Smaragdna",
         "red": "crvena",
         "violet": "ljubičica",
         "cyan": "cijan",
@@ -375,7 +375,7 @@
     "groups": {
       "defaults": "Zadane postavke",
       "calendar": "Kalendar",
-      "inbox": "Inbox"
+      "inbox": "Pristigla pošta"
     },
     "defaultProject": {
       "label": "Zadani projekt",
@@ -575,7 +575,7 @@
     "steps": {
       "signIn": "Prijavite se",
       "verify": "Potvrdi",
-      "link": "Link"
+      "link": "Poveži"
     },
     "progress": "Korak {current} od {total}: {label}",
     "signIn": {
@@ -1061,7 +1061,7 @@
     },
     "searchPlaceholder": "Prečaci za pretraživanje...",
     "resetAll": "Resetiraj sve",
-    "custom": "Custom",
+    "custom": "Prilagođeno",
     "pressShortcut": "Pritisnite prečicu…",
     "cancelTitle": "Odustani",
     "rebindTitle": "Kliknite za ponovno uvezivanje",
@@ -1267,8 +1267,8 @@
       "subtitle": "Pristup lokalnom poslužitelju za vanjske MCP klijente."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Veza",
+      "access": "Pristup"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Prilagođeno"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Predložak"
       },
       "baseUrl": {
         "label": "Osnovni URL",
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "Spremi",
+      "models": "Modeli",
       "test": "Testiraj vezu",
       "probe": "Ispitaj alate"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Nije povezano",
       "toolsDisabled": "Alati onemogućeni",
       "fullTools": "Svi alati omogućeni",
       "checking": "Provjera…",

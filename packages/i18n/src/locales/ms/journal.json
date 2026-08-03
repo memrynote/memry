@@ -49,9 +49,9 @@
     "toolbar": {
       "ariaLabel": "Pemformatan teks",
       "bold": "berani",
-      "italic": "Italic",
+      "italic": "Condong",
       "underline": "Garis bawah",
-      "strikethrough": "Strikethrough",
+      "strikethrough": "Coret",
       "link": "Pautan",
       "image": "Imej",
       "moreOptions": "Lebih banyak pilihan",
@@ -92,7 +92,7 @@
     "weekdayShort": {
       "sunday": "Matahari",
       "monday": "isn",
-      "tuesday": "Tue",
+      "tuesday": "Sel",
       "wednesday": "Rabu",
       "thursday": "Kha",
       "friday": "Jum",

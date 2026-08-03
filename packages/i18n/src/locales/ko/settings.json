@@ -1267,8 +1267,8 @@
       "subtitle": "외부 MCP 클라이언트를 위한 로컬 서버 액세스입니다."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "연결",
+      "access": "액세스"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "사용자 지정"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "사전 설정"
       },
       "baseUrl": {
         "label": "기본 URL",
@@ -1318,7 +1318,7 @@
         "description": "데이터가 설정된 엔드포인트로 전송됩니다."
       },
       "model": {
-        "label": "Model",
+        "label": "모델",
         "description": "반환된 모델을 선택하거나 직접 입력하세요."
       },
       "apiKey": {
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "저장",
+      "models": "모델 목록",
       "test": "연결 테스트",
       "probe": "도구 검사"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "연결 끊김",
       "toolsDisabled": "도구 비활성화됨",
       "fullTools": "전체 도구 활성화됨",
       "checking": "확인 중…",

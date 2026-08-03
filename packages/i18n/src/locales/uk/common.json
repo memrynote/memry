@@ -456,7 +456,7 @@
       },
       "models": {
         "default": "За замовчуванням",
-        "label": "Model"
+        "label": "Модель"
       },
       "settings": {
         "reasoning": "Міркування"
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Вимкнено",
         "label": "Пошук в Інтернеті"
       },
       "permissionsLabel": "Дозволи агента: {access}, пошук в Інтернеті {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Дозволи",
+        "access": "Доступ",
+        "tools": "Інструменти"
       },
       "modelSettingsLabel": "Налаштування моделі агента: {model}, {settings}"
     },
@@ -510,7 +510,7 @@
     "sidebar": {
       "label": "Права бічна панель",
       "day": "День",
-      "agent": "Agent",
+      "agent": "Агент",
       "pendingApproval": "{count, plural, one {# очікує на затвердження} other {# очікують схвалення}}",
       "inProgress": "Триває поворот Agent",
       "close": "Закрити агента"

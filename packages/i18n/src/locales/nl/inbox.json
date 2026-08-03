@@ -454,7 +454,7 @@
       "attachFile": "Bestand bijvoegen"
     },
     "componentsQuickCaptureLinkPreview": {
-      "link": "LINK"
+      "link": "KOPPELING"
     },
     "componentsQuickCaptureStates": {
       "captured": "Gevangen",
@@ -564,7 +564,7 @@
     "remindAt": "Herinner me om",
     "reminder": "Herinnering",
     "setReminder": "Herinnering instellen",
-    "start": "Start",
+    "start": "Begin",
     "success": "Geconverteerd naar {target}",
     "task": "Taak",
     "time": "Tijd",

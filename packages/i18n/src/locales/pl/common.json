@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Wyłączone",
         "label": "Wyszukiwanie w sieci"
       },
       "permissionsLabel": "Uprawnienia agenta: {access}, wyszukiwanie w sieci {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Uprawnienia",
+        "access": "Dostęp",
+        "tools": "Narzędzia"
       },
       "modelSettingsLabel": "Ustawienia modelu agenta: {model}, {settings}"
     },

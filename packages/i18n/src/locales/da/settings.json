@@ -23,7 +23,7 @@
         "shortcuts": "Genveje",
         "ai": "AI assistent",
         "integrations": "Integrationer",
-        "vault": "Vault",
+        "vault": "Boks",
         "tags": "Tags",
         "properties": "Egenskaber",
         "commandLine": "Kommandolinje",
@@ -201,7 +201,7 @@
       },
       "presets": {
         "indigo": "Indigo",
-        "amber": "Amber",
+        "amber": "Rav",
         "emerald": "Smaragd",
         "red": "Rød",
         "violet": "Violet",
@@ -575,7 +575,7 @@
     "steps": {
       "signIn": "Log ind",
       "verify": "Bekræft",
-      "link": "Link"
+      "link": "Tilknyt"
     },
     "progress": "Trin {current} af {total}: {label}",
     "signIn": {
@@ -930,7 +930,7 @@
   },
   "vault": {
     "header": {
-      "title": "Vault",
+      "title": "Boks",
       "subtitle": "Vault-konfiguration og -lagring"
     },
     "groups": {
@@ -1030,7 +1030,7 @@
     "types": {
       "status": "Status",
       "select": "Vælg",
-      "multiselect": "Multiselect",
+      "multiselect": "Flervalg",
       "text": "Tekst",
       "number": "Nummer",
       "date": "Dato",
@@ -1267,8 +1267,8 @@
       "subtitle": "Lokal serveradgang for eksterne MCP-klienter."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Forbindelse",
+      "access": "Adgang"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Brugerdefineret"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Forudindstilling"
       },
       "baseUrl": {
         "label": "Basis-URL",
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "Gem",
+      "models": "Modeller",
       "test": "Test forbindelsen",
       "probe": "Afprøv værktøjer"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Ikke forbundet",
       "toolsDisabled": "Værktøjer deaktiveret",
       "fullTools": "Alle værktøjer aktiveret",
       "checking": "Kontrollerer…",

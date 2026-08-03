@@ -241,7 +241,7 @@
       "repeatOn": "Opakovať v",
       "day": "Deň",
       "ofTheMonth": "v mesiaci",
-      "the": "The",
+      "the": "Každý",
       "ofTheMonth2": "v mesiaci",
       "ends": "Končí",
       "never": "Nikdy",
@@ -675,8 +675,8 @@
     "componentsTasksTaskRepeatSection": {
       "repeat": "Opakovať",
       "addRepeat": "Pridať opakovanie",
-      "edit": "Edit",
-      "edit2": "Edit",
+      "edit": "Upraviť",
+      "edit2": "Upraviť",
       "stopRepeating": "Zastaviť opakovanie",
       "stopRepeating2": "Zastaviť opakovanie"
     },

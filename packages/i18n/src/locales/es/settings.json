@@ -1267,8 +1267,8 @@
       "subtitle": "Acceso al servidor local para clientes MCP externos."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Conexión",
+      "access": "Acceso"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Personalizado"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Preajuste"
       },
       "baseUrl": {
         "label": "URL base",
@@ -1318,7 +1318,7 @@
         "description": "Los datos se envían al endpoint configurado."
       },
       "model": {
-        "label": "Model",
+        "label": "Modelo",
         "description": "Elige uno de los modelos devueltos o escribe uno manualmente."
       },
       "apiKey": {
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "Guardar",
+      "models": "Modelos",
       "test": "Probar conexión",
       "probe": "Detectar herramientas"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Desconectado",
       "toolsDisabled": "Herramientas desactivadas",
       "fullTools": "Herramientas completas activadas",
       "checking": "Comprobando…",

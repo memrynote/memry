@@ -1267,8 +1267,8 @@
       "subtitle": "Harici MCP istemcileri için yerel sunucu erişimi."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Bağlantı",
+      "access": "Erişim"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Özel"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Ön ayar"
       },
       "baseUrl": {
         "label": "Temel URL",
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "Kaydet",
+      "models": "Modeller",
       "test": "Bağlantıyı test et",
       "probe": "Araçları yokla"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Bağlı değil",
       "toolsDisabled": "Araçlar devre dışı",
       "fullTools": "Tüm araçlar etkin",
       "checking": "Kontrol ediliyor…",

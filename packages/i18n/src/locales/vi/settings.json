@@ -1267,8 +1267,8 @@
       "subtitle": "Truy cập máy chủ cục bộ cho các ứng dụng khách MCP bên ngoài."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Kết nối",
+      "access": "Quyền truy cập"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Tùy chỉnh"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Cấu hình sẵn"
       },
       "baseUrl": {
         "label": "URL cơ sở",
@@ -1318,7 +1318,7 @@
         "description": "Dữ liệu sẽ được gửi tới endpoint đã cấu hình."
       },
       "model": {
-        "label": "Model",
+        "label": "Mô hình",
         "description": "Chọn một mô hình được trả về hoặc nhập thủ công."
       },
       "apiKey": {
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "Lưu",
+      "models": "Tải mô hình",
       "test": "Kiểm tra kết nối",
       "probe": "Dò tìm công cụ"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Đã ngắt kết nối",
       "toolsDisabled": "Công cụ đã tắt",
       "fullTools": "Đã bật đầy đủ công cụ",
       "checking": "Đang kiểm tra…",

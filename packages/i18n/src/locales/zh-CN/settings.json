@@ -1267,8 +1267,8 @@
       "subtitle": "供外部 MCP 客户端访问的本地服务器。"
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "连接",
+      "access": "访问权限"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "自定义"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "预设"
       },
       "baseUrl": {
         "label": "基础 URL",
@@ -1318,7 +1318,7 @@
         "description": "数据会发送到所配置的地址。"
       },
       "model": {
-        "label": "Model",
+        "label": "模型",
         "description": "选择返回的模型，或手动输入一个。"
       },
       "apiKey": {
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "保存",
+      "models": "获取模型",
       "test": "测试连接",
       "probe": "探测工具"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "未连接",
       "toolsDisabled": "工具已禁用",
       "fullTools": "已启用全部工具",
       "checking": "检查中…",

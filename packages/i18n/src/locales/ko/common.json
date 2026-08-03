@@ -345,7 +345,7 @@
       "recentVaults": "최근 금고",
       "notesLastOpened": "메모 · 마지막 열림",
       "brandName": "Memrynote",
-      "preRelease": "Beta",
+      "preRelease": "베타",
       "createNewVault": "새 보관함 만들기",
       "createNewVaultDesc": "원하는 폴더에 새 보관함을 시작하세요.",
       "openExistingVault": "기존 보관함 열기",
@@ -456,7 +456,7 @@
       },
       "models": {
         "default": "기본값",
-        "label": "Model"
+        "label": "모델"
       },
       "settings": {
         "reasoning": "추론"
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "꺼짐",
         "label": "웹 검색"
       },
       "permissionsLabel": "Agent 권한: {access}, 웹 검색 {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "권한",
+        "access": "액세스",
+        "tools": "도구"
       },
       "modelSettingsLabel": "Agent 모델 설정: {model}, {settings}"
     },
@@ -510,7 +510,7 @@
     "sidebar": {
       "label": "오른쪽 사이드바",
       "day": "일",
-      "agent": "Agent",
+      "agent": "에이전트",
       "pendingApproval": "{count, plural, one {# 승인 대기 중} other {# 승인 보류 중}}",
       "inProgress": "Agent 회전 진행 중",
       "close": "에이전트 닫기"

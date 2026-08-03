@@ -1,7 +1,7 @@
 {
   "view": {
     "tabs": {
-      "inbox": "Inbox",
+      "inbox": "Pristigla pošta",
       "archived": "Arhivirano",
       "insights": "Uvidi",
       "ariaLabel": "Odabir prikaza pristigle pošte"
@@ -18,7 +18,7 @@
       "hide": "Sakrij odgođene stavke"
     },
     "filter": {
-      "button": "Filter",
+      "button": "Filtar",
       "byType": "Filtriraj po vrsti",
       "active": "{count, plural, one {Filtriranje prema vrsti #} other {Filtriranje po vrstama #}}",
       "clearAll": "Obriši sve"
@@ -33,7 +33,7 @@
     }
   },
   "type": {
-    "link": "Link",
+    "link": "Poveznica",
     "links": "Linkovi",
     "note": "Napomena",
     "notes": "Bilješke",
@@ -146,7 +146,7 @@
     "selected": "{count} odabran",
     "deselectAll": "Poništi odabir svih",
     "ariaLabel": "Skupne akcije za {count} odabrane stavke",
-    "file": "File",
+    "file": "Razvrstaj",
     "tag": "Oznaka",
     "snooze": "Odgoditi",
     "archive": "Arhiva",
@@ -194,7 +194,7 @@
     "delete": "Izbriši",
     "deletePermanently": "Izbriši trajno",
     "archive": "Arhiva",
-    "file": "File",
+    "file": "Razvrstaj",
     "keyboardHint": "{modifier}⏎ datoteka · 1-5 mapa · Esc zatvori",
     "voiceTitlePlaceholder": "Imenuj ovaj glasovni zapis...",
     "fileTo": "Datoteka u",
@@ -454,7 +454,7 @@
       "attachFile": "Priloži datoteku"
     },
     "componentsQuickCaptureLinkPreview": {
-      "link": "LINK"
+      "link": "VEZA"
     },
     "componentsQuickCaptureStates": {
       "captured": "Zarobljen",

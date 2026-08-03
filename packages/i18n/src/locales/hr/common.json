@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Isključeno",
         "label": "Pretraživanje weba"
       },
       "permissionsLabel": "Dopuštenja agenta: {access}, pretraživanje weba {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Dopuštenja",
+        "access": "Pristup",
+        "tools": "Alati"
       },
       "modelSettingsLabel": "Postavke modela agenta: {model}, {settings}"
     },

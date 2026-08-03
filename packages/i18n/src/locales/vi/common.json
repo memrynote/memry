@@ -456,7 +456,7 @@
       },
       "models": {
         "default": "Mặc định",
-        "label": "Model"
+        "label": "Mô hình"
       },
       "settings": {
         "reasoning": "Lý luận"
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Tắt",
         "label": "Tìm kiếm web"
       },
       "permissionsLabel": "Quyền của Agent: {access}, tìm kiếm web {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Quyền",
+        "access": "Quyền truy cập",
+        "tools": "Công cụ"
       },
       "modelSettingsLabel": "Cài đặt mô hình Agent: {model}, {settings}"
     },
@@ -510,7 +510,7 @@
     "sidebar": {
       "label": "Thanh bên phải",
       "day": "Ngày",
-      "agent": "Agent",
+      "agent": "Trợ lý",
       "pendingApproval": "{count, plural, one {# đang chờ phê duyệt} other {# đang chờ phê duyệt}}",
       "inProgress": "Đang tiến hành lượt Agent",
       "close": "Đóng agent"

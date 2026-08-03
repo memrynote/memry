@@ -72,7 +72,7 @@
       "noteBody": "Sigur doriți să ștergeți „{name}”? Această acțiune nu poate fi anulată.",
       "folderBody": "Sigur doriți să ștergeți „{name}” și toate notele din interiorul acestuia? Această acțiune nu poate fi anulată.",
       "itemsBody": "Sigur doriți să ștergeți elementele {count}? Această acțiune nu poate fi anulată.",
-      "folderSuffix": "folder",
+      "folderSuffix": "dosar",
       "moreItems": "...și {count} mai mult",
       "deleting": "Se șterge...",
       "deleteCount": "Ștergeți {count}"
@@ -131,7 +131,7 @@
       "subtext": "Evidențiați informațiile importante",
       "changeType": "Schimbați tipul înștiințării",
       "menuLabel": "Tip înștiințare",
-      "info": "Info",
+      "info": "Informație",
       "warning": "Avertisment",
       "error": "Eroare",
       "success": "Succes"
@@ -249,7 +249,7 @@
       "url": "URL",
       "status": "Stare",
       "select": "Selectați",
-      "multiselect": "Multiselect"
+      "multiselect": "Selecție multiplă"
     },
     "showOnCalendar": "Arată în calendar",
     "showingOnCalendar": "Se afișează în calendar",
@@ -603,7 +603,7 @@
       "unpinFromTag": "Anulați fixarea din etichetă",
       "unpin": "Anulați fixarea",
       "pinToTag": "Fixați pentru a eticheta",
-      "pin": "Pin",
+      "pin": "Fixați",
       "tagActions": "Etichetați acțiunile",
       "editTagName": "Editați numele etichetei",
       "changeColor": "Schimbați culoarea",

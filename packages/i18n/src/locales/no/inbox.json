@@ -33,7 +33,7 @@
     }
   },
   "type": {
-    "link": "Link",
+    "link": "Lenke",
     "links": "Lenker",
     "note": "Merk",
     "notes": "Notater",
@@ -147,14 +147,14 @@
     "deselectAll": "Fjern markeringen av alle",
     "ariaLabel": "Massehandlinger for {count} valgte elementer",
     "file": "Fil",
-    "tag": "Tag",
+    "tag": "Tagg",
     "snooze": "Slumre",
     "archive": "Arkiv",
     "add": "Legg til",
     "dismissSuggestion": "Avvis forslaget",
     "hint": {
       "file": "fil",
-      "tag": "tag",
+      "tag": "tagg",
       "snooze": "slumre",
       "archive": "arkiv",
       "deselect": "fjern merket"
@@ -454,7 +454,7 @@
       "attachFile": "Legg ved fil"
     },
     "componentsQuickCaptureLinkPreview": {
-      "link": "LINK"
+      "link": "LENKE"
     },
     "componentsQuickCaptureStates": {
       "captured": "Fanget",

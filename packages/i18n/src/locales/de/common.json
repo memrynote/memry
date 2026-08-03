@@ -255,7 +255,7 @@
       "calendar": "Kalender",
       "inboxCapture": "Posteingangserfassung",
       "tasks": "Aufgaben",
-      "tags": "Tags"
+      "tags": "Schlagworte"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Nicht gespeicherte Änderungen",
@@ -456,7 +456,7 @@
       },
       "models": {
         "default": "Standard",
-        "label": "Model"
+        "label": "Modell"
       },
       "settings": {
         "reasoning": "Begründung"
@@ -468,7 +468,7 @@
           "high": "Hoch",
           "extraHigh": "Extra hoch",
           "extraHighDefault": "Extrahoch (Standard)",
-          "max": "Max"
+          "max": "Maximal"
         }
       },
       "codexSettings": {
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Aus",
         "label": "Websuche"
       },
       "permissionsLabel": "Agent-Berechtigungen: {access}, Websuche {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Berechtigungen",
+        "access": "Zugriff",
+        "tools": "Werkzeuge"
       },
       "modelSettingsLabel": "Agent-Modelleinstellungen: {model}, {settings}"
     },
@@ -510,7 +510,7 @@
     "sidebar": {
       "label": "Rechte Seitenleiste",
       "day": "Tag",
-      "agent": "Agent",
+      "agent": "KI-Agent",
       "pendingApproval": "{count, plural, one {# Genehmigung ausstehend} other {# ausstehende Genehmigungen}}",
       "inProgress": "Agent Runde läuft",
       "close": "Agent schließen"
@@ -587,11 +587,11 @@
       "folderViewSelect": "Ansicht",
       "folderView_gallery": "Galerie",
       "folderView_list": "Liste",
-      "inbox": "Inbox",
+      "inbox": "Posteingang",
       "inboxAllTypes": "Alle Typen",
       "inboxOlder": "{count, plural, one {# älteres} other {# ältere}}",
       "inboxOldest": "ältestes {count, plural, one {# Tag} other {# Tage}}",
-      "journal": "Journal",
+      "journal": "Tagebuch",
       "journalStreak": "{count, plural, one {#-Tage-Serie} other {#-Tage-Serie}}",
       "journalToday": "Heute",
       "journalYesterday": "Gestern",

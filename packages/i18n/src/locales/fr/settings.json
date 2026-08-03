@@ -227,7 +227,7 @@
           "gelasio": "Gelasio",
           "geist": "Geist",
           "inter": "Inter",
-          "monospace": "Monospace"
+          "monospace": "Chasse fixe"
         }
       },
       "fontSizeError": "Échec de la mise à jour de la taille de la police",
@@ -1267,8 +1267,8 @@
       "subtitle": "Accès au serveur local pour les clients MCP externes."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Connexion",
+      "access": "Accès"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Personnalisé"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Préréglage"
       },
       "baseUrl": {
         "label": "URL de base",
@@ -1318,7 +1318,7 @@
         "description": "Les données sont envoyées au point de terminaison configuré."
       },
       "model": {
-        "label": "Model",
+        "label": "Modèle",
         "description": "Choisissez un modèle proposé ou saisissez-en un manuellement."
       },
       "apiKey": {
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "Enregistrer",
+      "models": "Modèles",
       "test": "Tester la connexion",
       "probe": "Sonder les outils"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Déconnecté",
       "toolsDisabled": "Outils désactivés",
       "fullTools": "Tous les outils activés",
       "checking": "Vérification…",

@@ -603,7 +603,7 @@
       "unpinFromTag": "Vom Tag lösen",
       "unpin": "Lösen",
       "pinToTag": "An Tag anpinnen",
-      "pin": "Pin",
+      "pin": "Anpinnen",
       "tagActions": "Markieren Sie Aktionen",
       "editTagName": "Bearbeiten Sie den Tag-Namen",
       "changeColor": "Farbe ändern",
@@ -815,7 +815,7 @@
     }
   },
   "tags": {
-    "hubTitle": "Tags",
+    "hubTitle": "Schlagworte",
     "openHub": "Tag-Übersicht öffnen"
   },
   "tagsHub": {
@@ -860,7 +860,7 @@
       "folder": "Ordner",
       "kind": "Art",
       "modified": "Geändert",
-      "tags": "Tags",
+      "tags": "Schlagworte",
       "title": "Titel",
       "wordCount": "Wortanzahl"
     },

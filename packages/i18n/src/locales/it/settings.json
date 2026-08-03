@@ -222,7 +222,7 @@
         "description": "Carattere tipografico primario per l'interfaccia",
         "options": {
           "system": "Predefinito del sistema",
-          "sansSerif": "Sans-serif",
+          "sansSerif": "Senza grazie",
           "serif": "Serif (Cremisi Pro)",
           "gelasio": "Gelasio",
           "geist": "Geist",
@@ -1267,8 +1267,8 @@
       "subtitle": "Accesso al server locale per i client MCP esterni."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Connessione",
+      "access": "Accesso"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Personalizzato"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Preimpostazione"
       },
       "baseUrl": {
         "label": "URL di base",
@@ -1318,7 +1318,7 @@
         "description": "I dati vengono inviati all'endpoint configurato."
       },
       "model": {
-        "label": "Model",
+        "label": "Modello",
         "description": "Scegli un modello tra quelli restituiti oppure inseriscine uno manualmente."
       },
       "apiKey": {
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "Salva",
+      "models": "Modelli",
       "test": "Verifica connessione",
       "probe": "Rileva strumenti"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Disconnesso",
       "toolsDisabled": "Strumenti disattivati",
       "fullTools": "Strumenti completi attivi",
       "checking": "Verifica…",

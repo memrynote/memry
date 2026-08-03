@@ -456,7 +456,7 @@
       },
       "models": {
         "default": "ค่าเริ่มต้น",
-        "label": "Model"
+        "label": "โมเดล"
       },
       "settings": {
         "reasoning": "การใช้เหตุผล"
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "ปิด",
         "label": "ค้นหาเว็บ"
       },
       "permissionsLabel": "สิทธิ์ของ Agent: {access}, ค้นหาเว็บ {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "สิทธิ์",
+        "access": "การเข้าถึง",
+        "tools": "เครื่องมือ"
       },
       "modelSettingsLabel": "การตั้งค่าโมเดลของ Agent: {model}, {settings}"
     },
@@ -510,7 +510,7 @@
     "sidebar": {
       "label": "แถบด้านข้างขวา",
       "day": "วัน",
-      "agent": "Agent",
+      "agent": "เอเจนต์",
       "pendingApproval": "{count, plural, one {# อยู่ระหว่างการอนุมัติ} other {# รอการอนุมัติ}}",
       "inProgress": "Agent กำลังดำเนินการเทิร์น",
       "close": "ปิดเอเจนต์"

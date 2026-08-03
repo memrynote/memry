@@ -127,7 +127,7 @@
       "defaultNoteFolder": {
         "description": "فارغ = جذر الخزنة",
         "label": "الموقع الافتراضي للملاحظات الجديدة",
-        "placeholder": "notes"
+        "placeholder": "ملاحظات"
       }
     },
     "privacy": {
@@ -359,7 +359,7 @@
     "folder": {
       "description": "المجلد الذي تُخزَّن فيه الملاحظات اليومية",
       "label": "مجلد اليوميات",
-      "placeholder": "journal"
+      "placeholder": "يوميات"
     },
     "preview": {
       "description": "مسار ملف يوميات اليوم",
@@ -1267,8 +1267,8 @@
       "subtitle": "وصول الخادم المحلي لعملاء MCP الخارجيين."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "الاتصال",
+      "access": "الوصول"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "مخصص"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "الإعداد المسبق"
       },
       "baseUrl": {
         "label": "عنوان URL الأساسي",
@@ -1318,7 +1318,7 @@
         "description": "تُرسل البيانات إلى نقطة النهاية المُعدّة."
       },
       "model": {
-        "label": "Model",
+        "label": "النموذج",
         "description": "اختر نموذجًا من النماذج المُعادة أو أدخل واحدًا يدويًا."
       },
       "apiKey": {
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "حفظ",
+      "models": "النماذج",
       "test": "اختبار الاتصال",
       "probe": "فحص الأدوات"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "غير متصل",
       "toolsDisabled": "الأدوات معطّلة",
       "fullTools": "الأدوات الكاملة مفعّلة",
       "checking": "جارٍ التحقق…",

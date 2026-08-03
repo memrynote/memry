@@ -456,7 +456,7 @@
       },
       "models": {
         "default": "デフォルト",
-        "label": "Model"
+        "label": "モデル"
       },
       "settings": {
         "reasoning": "推論"
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "オフ",
         "label": "Web 検索"
       },
       "permissionsLabel": "Agent の権限: {access}、Web 検索 {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "権限",
+        "access": "アクセス",
+        "tools": "ツール"
       },
       "modelSettingsLabel": "Agent のモデル設定: {model}、{settings}"
     },
@@ -510,7 +510,7 @@
     "sidebar": {
       "label": "右サイドバー",
       "day": "日",
-      "agent": "Agent",
+      "agent": "エージェント",
       "pendingApproval": "{count, plural, one {# 承認待ち} other {# 保留中の承認}}",
       "inProgress": "Agent ターン進行中",
       "close": "エージェントを閉じる"

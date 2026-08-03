@@ -40,7 +40,7 @@
       "loading": "Einstellungen werden geladen..."
     },
     "groups": {
-      "startup": "Startup",
+      "startup": "Anwendungsstart",
       "updates": "Aktualisierungen",
       "languageRegion": "Sprache und Region",
       "tabBehavior": "Tab-Verhalten",
@@ -127,7 +127,7 @@
       "defaultNoteFolder": {
         "description": "Leer = Vault-Stammverzeichnis",
         "label": "Standardspeicherort für neue Notizen",
-        "placeholder": "notes"
+        "placeholder": "notizen"
       }
     },
     "privacy": {
@@ -227,7 +227,7 @@
           "gelasio": "Gelasio",
           "geist": "Geist",
           "inter": "Inter",
-          "monospace": "Monospace"
+          "monospace": "Nichtproportional"
         }
       },
       "fontSizeError": "Die Schriftgröße konnte nicht aktualisiert werden",
@@ -359,7 +359,7 @@
     "folder": {
       "description": "Ordner, in dem tägliche Notizen gespeichert werden",
       "label": "Journal-Ordner",
-      "placeholder": "journal"
+      "placeholder": "tagebuch"
     },
     "preview": {
       "description": "Pfad der heutigen Journaldatei",
@@ -537,7 +537,7 @@
         "history": "Verlauf",
         "maxFile": "Max. Datei",
         "storage": "Speicher",
-        "vaults": "Vaults"
+        "vaults": "Tresore"
       },
       "planStatus": "Tarifstatus",
       "plans": {
@@ -575,7 +575,7 @@
     "steps": {
       "signIn": "Anmelden",
       "verify": "Überprüfen",
-      "link": "Link"
+      "link": "Verknüpfen"
     },
     "progress": "Schritt {current} von {total}: {label}",
     "signIn": {
@@ -1267,8 +1267,8 @@
       "subtitle": "Lokaler Serverzugriff für externe MCP-Clients."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Verbindung",
+      "access": "Zugriff"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Benutzerdefiniert"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Voreinstellung"
       },
       "baseUrl": {
         "label": "Basis-URL",
@@ -1318,7 +1318,7 @@
         "description": "Daten werden an den konfigurierten Endpunkt gesendet."
       },
       "model": {
-        "label": "Model",
+        "label": "Modell",
         "description": "Wählen Sie ein gefundenes Modell oder geben Sie eines manuell ein."
       },
       "apiKey": {
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "Speichern",
+      "models": "Modelle",
       "test": "Verbindung testen",
       "probe": "Tools prüfen"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Getrennt",
       "toolsDisabled": "Tools deaktiviert",
       "fullTools": "Alle Tools aktiviert",
       "checking": "Wird geprüft…",
@@ -1409,11 +1409,11 @@
       },
       "inbox": {
         "description": "Schnelles Erfassen und Sortieren",
-        "label": "Inbox"
+        "label": "Posteingang"
       },
       "journal": {
         "description": "Tägliche Notizen",
-        "label": "Journal"
+        "label": "Tagebuch"
       },
       "tasks": {
         "description": "To-dos und Fälligkeitsdaten",

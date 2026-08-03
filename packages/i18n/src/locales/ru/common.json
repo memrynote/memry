@@ -345,7 +345,7 @@
       "recentVaults": "Недавние хранилища",
       "notesLastOpened": "заметки · Последнее открытие",
       "brandName": "Memrynote",
-      "preRelease": "Beta",
+      "preRelease": "Бета",
       "createNewVault": "Создать новое хранилище",
       "createNewVaultDesc": "Начните новое хранилище в выбранной папке.",
       "openExistingVault": "Открыть существующее хранилище",
@@ -456,7 +456,7 @@
       },
       "models": {
         "default": "По умолчанию",
-        "label": "Model"
+        "label": "Модель"
       },
       "settings": {
         "reasoning": "Рассуждение"
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Выкл.",
         "label": "Веб-поиск"
       },
       "permissionsLabel": "Разрешения Agent: {access}, веб-поиск {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Разрешения",
+        "access": "Доступ",
+        "tools": "Инструменты"
       },
       "modelSettingsLabel": "Настройки модели Agent: {model}, {settings}"
     },
@@ -510,7 +510,7 @@
     "sidebar": {
       "label": "Правая боковая панель",
       "day": "День",
-      "agent": "Agent",
+      "agent": "Агент",
       "pendingApproval": "{count, plural, one {# ожидает одобрения} other {# ожидающих одобрения}}",
       "inProgress": "Agent идет ход",
       "close": "Закрыть агента"

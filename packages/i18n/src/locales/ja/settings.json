@@ -1267,8 +1267,8 @@
       "subtitle": "外部の MCP クライアント向けのローカルサーバーアクセス。"
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "接続",
+      "access": "アクセス"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "カスタム"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "プリセット"
       },
       "baseUrl": {
         "label": "ベース URL",
@@ -1318,7 +1318,7 @@
         "description": "設定したエンドポイントにデータが送信されます。"
       },
       "model": {
-        "label": "Model",
+        "label": "モデル",
         "description": "返されたモデルから選ぶか、手動で入力します。"
       },
       "apiKey": {
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "保存",
+      "models": "モデルを取得",
       "test": "接続をテスト",
       "probe": "ツールを検出"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "未接続",
       "toolsDisabled": "ツールは無効",
       "fullTools": "すべてのツールが有効",
       "checking": "確認中…",

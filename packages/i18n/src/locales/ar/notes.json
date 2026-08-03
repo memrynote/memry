@@ -474,7 +474,7 @@
       "editColumnName": "تحرير اسم العمود"
     },
     "componentsFolderViewViewSwitcher": {
-      "default": "default",
+      "default": "افتراضي",
       "rename": "إعادة تسمية",
       "duplicate": "مكررة",
       "setAsDefault": "تعيين كافتراضي",

@@ -1267,8 +1267,8 @@
       "subtitle": "Akses server lokal untuk klien MCP eksternal."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Koneksi",
+      "access": "Akses"
     },
     "fields": {
       "url": {
@@ -1303,7 +1303,7 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Kustom"
     },
     "fields": {
       "preset": {
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "Simpan",
+      "models": "Daftar model",
       "test": "Uji koneksi",
       "probe": "Periksa alat"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Terputus",
       "toolsDisabled": "Alat dinonaktifkan",
       "fullTools": "Semua alat aktif",
       "checking": "Memeriksa…",

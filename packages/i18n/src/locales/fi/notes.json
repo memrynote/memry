@@ -180,7 +180,7 @@
     }
   },
   "outline": {
-    "title": "Outline",
+    "title": "Sisällys",
     "aria": "Asiakirjan ääriviivat",
     "empty": "Ei otsikoita",
     "emptyYet": "Ei vielä otsikoita",
@@ -266,7 +266,7 @@
     "loading": "Ladataan malleja...",
     "empty": "Malleja ei löytynyt",
     "myTemplates": "Omat mallit",
-    "essentials": "Essentials",
+    "essentials": "Perusmallit",
     "setFolderDefault": "Aseta kansion oletusarvoksi",
     "useTemplate": "Käytä mallia",
     "createNote": "Luo muistiinpano",
@@ -603,7 +603,7 @@
       "unpinFromTag": "Irrota tagista",
       "unpin": "Irrota kiinnitys",
       "pinToTag": "Kiinnitä tunnisteeseen",
-      "pin": "Pin",
+      "pin": "Kiinnitä",
       "tagActions": "Tunnistetoiminnot",
       "editTagName": "Muokkaa tunnisteen nimeä",
       "changeColor": "Vaihda väriä",

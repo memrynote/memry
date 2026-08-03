@@ -7,7 +7,7 @@
     "nav": {
       "groups": {
         "workspace": "Munkaterület",
-        "preferences": "Preferences",
+        "preferences": "Preferenciák",
         "services": "Szolgáltatások",
         "data": "Adatok"
       },
@@ -16,14 +16,14 @@
         "general": "tábornok",
         "templates": "Sablonok",
         "editor": "Szerkesztő",
-        "journal": "Journal",
+        "journal": "Napló",
         "tasks": "Feladatok",
         "calendar": "Naptár",
         "appearance": "Megjelenés",
         "shortcuts": "Parancsikonok",
         "ai": "AI-asszisztens",
         "integrations": "Integrációk",
-        "vault": "Vault",
+        "vault": "Széf",
         "tags": "Címkék",
         "properties": "Tulajdonságok",
         "commandLine": "Parancssor",
@@ -201,10 +201,10 @@
       },
       "presets": {
         "indigo": "Indigó",
-        "amber": "Amber",
+        "amber": "Borostyán",
         "emerald": "Smaragd",
         "red": "Piros",
-        "violet": "Violet",
+        "violet": "Ibolyakék",
         "cyan": "Cián",
         "pink": "Rózsaszín",
         "orange": "narancssárga"
@@ -313,7 +313,7 @@
   },
   "journal": {
     "header": {
-      "title": "Journal",
+      "title": "Napló",
       "subtitle": "Naplóbeállítások és preferenciák",
       "loading": "Beállítások betöltése..."
     },
@@ -575,7 +575,7 @@
     "steps": {
       "signIn": "Jelentkezzen be",
       "verify": "Ellenőrizze",
-      "link": "Link"
+      "link": "Kapcsolja össze"
     },
     "progress": "{total}/{current} lépés: {label}",
     "signIn": {
@@ -930,7 +930,7 @@
   },
   "vault": {
     "header": {
-      "title": "Vault",
+      "title": "Széf",
       "subtitle": "Vault konfiguráció és tárolás"
     },
     "groups": {
@@ -1086,7 +1086,7 @@
     },
     "categories": {
       "navigation": "Navigáció",
-      "tabs": "Tabs",
+      "tabs": "Lapok",
       "editor": "Szerkesztő",
       "view": "Megtekintés"
     },
@@ -1267,8 +1267,8 @@
       "subtitle": "Helyi szerverhozzáférés külső MCP-kliensek számára."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Kapcsolat",
+      "access": "Hozzáférés"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Egyéni"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Előbeállítás"
       },
       "baseUrl": {
         "label": "Alap URL",
@@ -1318,7 +1318,7 @@
         "description": "Az adatok a beállított végpontra kerülnek."
       },
       "model": {
-        "label": "Model",
+        "label": "Modell",
         "description": "Válasszon a visszaadott modellek közül, vagy adjon meg egyet kézzel."
       },
       "apiKey": {
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "Mentés",
+      "models": "Modellek",
       "test": "Kapcsolat tesztelése",
       "probe": "Eszközök vizsgálata"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Nincs csatlakozva",
       "toolsDisabled": "Eszközök letiltva",
       "fullTools": "Teljes eszközkészlet engedélyezve",
       "checking": "Ellenőrzés…",

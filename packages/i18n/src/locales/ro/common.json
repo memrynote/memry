@@ -468,7 +468,7 @@
           "high": "Mare",
           "extraHigh": "Extra ridicat",
           "extraHighDefault": "Extra mare (implicit)",
-          "max": "Max"
+          "max": "Maxim"
         }
       },
       "codexSettings": {
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Oprit",
         "label": "Căutare web"
       },
       "permissionsLabel": "Permisiuni agent: {access}, căutare web {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Permisiuni",
+        "access": "Acces",
+        "tools": "Instrumente"
       },
       "modelSettingsLabel": "Setări model agent: {model}, {settings}"
     },

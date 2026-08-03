@@ -456,7 +456,7 @@
       },
       "models": {
         "default": "默认",
-        "label": "Model"
+        "label": "模型"
       },
       "settings": {
         "reasoning": "推理"
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "关闭",
         "label": "联网搜索"
       },
       "permissionsLabel": "Agent 权限：{access}，联网搜索 {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "权限",
+        "access": "访问权限",
+        "tools": "工具"
       },
       "modelSettingsLabel": "Agent 模型设置：{model}，{settings}"
     },
@@ -510,7 +510,7 @@
     "sidebar": {
       "label": "右侧边栏",
       "day": "日",
-      "agent": "Agent",
+      "agent": "智能助手",
       "pendingApproval": "{count, plural, one {# 待批准} other {# 待批准}}",
       "inProgress": "Agent 正在转弯",
       "close": "关闭智能助手"

@@ -456,7 +456,7 @@
       },
       "models": {
         "default": "Standard",
-        "label": "Model"
+        "label": "Modell"
       },
       "settings": {
         "reasoning": "Begrunnelse"
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Av",
         "label": "Nettsøk"
       },
       "permissionsLabel": "Agenttillatelser: {access}, nettsøk {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Tillatelser",
+        "access": "Tilgang",
+        "tools": "Verktøy"
       },
       "modelSettingsLabel": "Agentens modellinnstillinger: {model}, {settings}"
     },

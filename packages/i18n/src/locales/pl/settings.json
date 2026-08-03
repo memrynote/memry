@@ -575,7 +575,7 @@
     "steps": {
       "signIn": "Zaloguj się",
       "verify": "Zweryfikuj",
-      "link": "Link"
+      "link": "Połącz"
     },
     "progress": "Krok {current} z {total}: {label}",
     "signIn": {
@@ -1267,8 +1267,8 @@
       "subtitle": "Lokalny dostęp do serwera dla zewnętrznych klientów MCP."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Połączenie",
+      "access": "Dostęp"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Niestandardowe"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Ustawienie wstępne"
       },
       "baseUrl": {
         "label": "Bazowy adres URL",
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "Zapisz",
+      "models": "Modele",
       "test": "Testuj połączenie",
       "probe": "Sprawdź narzędzia"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Rozłączono",
       "toolsDisabled": "Narzędzia wyłączone",
       "fullTools": "Wszystkie narzędzia włączone",
       "checking": "Sprawdzanie…",

@@ -1267,8 +1267,8 @@
       "subtitle": "Доступ к локальному серверу для внешних MCP-клиентов."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Подключение",
+      "access": "Доступ"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Пользовательский"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Предустановка"
       },
       "baseUrl": {
         "label": "Базовый URL",
@@ -1318,7 +1318,7 @@
         "description": "Данные отправляются на указанную конечную точку."
       },
       "model": {
-        "label": "Model",
+        "label": "Модель",
         "description": "Выберите одну из полученных моделей или введите её вручную."
       },
       "apiKey": {
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "Сохранить",
+      "models": "Модели",
       "test": "Проверить соединение",
       "probe": "Проверить инструменты"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Отключено",
       "toolsDisabled": "Инструменты отключены",
       "fullTools": "Все инструменты включены",
       "checking": "Проверка…",

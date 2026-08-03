@@ -131,7 +131,7 @@
       "subtext": "Istaknite važne informacije",
       "changeType": "Promjena vrste oblačića",
       "menuLabel": "Vrsta oblačića",
-      "info": "Info",
+      "info": "Informacija",
       "warning": "Upozorenje",
       "error": "Greška",
       "success": "Uspjeh"
@@ -191,7 +191,7 @@
   },
   "backlinks": {
     "sortRecent": "Nedavno",
-    "sortAlpha": "A-Z",
+    "sortAlpha": "A-Ž",
     "sortMentions": "Većina spominjanja",
     "sortBy": "Poredaj povratne veze prema {sort}",
     "summary": "{notes} bilješke · {references} reference",
@@ -373,7 +373,7 @@
       "showSummaries": "Prikaži sažetke"
     },
     "componentsFolderViewFilterBuilder": {
-      "filter": "Filter",
+      "filter": "Filtar",
       "filters": "Filteri",
       "clearAll": "Obriši sve",
       "noFiltersApplied": "Nema primijenjenih filtara",
@@ -603,7 +603,7 @@
       "unpinFromTag": "Otkvači s oznake",
       "unpin": "Otkvači",
       "pinToTag": "Prikvači za oznaku",
-      "pin": "Pin",
+      "pin": "Prikvači",
       "tagActions": "Radnje oznaka",
       "editTagName": "Uredi naziv oznake",
       "changeColor": "Promjena boje",

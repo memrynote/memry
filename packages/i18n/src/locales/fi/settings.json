@@ -9,14 +9,14 @@
         "workspace": "Työtila",
         "preferences": "Asetukset",
         "services": "Palvelut",
-        "data": "Data"
+        "data": "Tiedot"
       },
       "items": {
         "account": "Tili",
         "general": "Kenraali",
         "templates": "Mallit",
         "editor": "Toimittaja",
-        "journal": "Journal",
+        "journal": "Päiväkirja",
         "tasks": "Tehtävät",
         "calendar": "Kalenteri",
         "appearance": "Ulkonäkö",
@@ -201,7 +201,7 @@
       },
       "presets": {
         "indigo": "Indigo",
-        "amber": "Amber",
+        "amber": "Meripihka",
         "emerald": "Smaragdi",
         "red": "Punainen",
         "violet": "Violetti",
@@ -222,12 +222,12 @@
         "description": "Käyttöliittymän ensisijainen kirjasintyyppi",
         "options": {
           "system": "Järjestelmän oletusarvo",
-          "sansSerif": "Sans-serif",
+          "sansSerif": "Päätteetön",
           "serif": "Serif (Crimson Pro)",
           "gelasio": "Gelasio",
           "geist": "Geist",
           "inter": "Inter",
-          "monospace": "Monospace"
+          "monospace": "Tasalevyinen"
         }
       },
       "fontSizeError": "Kirjasinkoon päivittäminen epäonnistui",
@@ -313,7 +313,7 @@
   },
   "journal": {
     "header": {
-      "title": "Journal",
+      "title": "Päiväkirja",
       "subtitle": "Päiväkirjan asetukset ja asetukset",
       "loading": "Ladataan asetuksia..."
     },
@@ -1267,8 +1267,8 @@
       "subtitle": "Paikallinen palvelinyhteys ulkoisille MCP-asiakkaille."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Yhteys",
+      "access": "Käyttöoikeus"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Mukautettu"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Esiasetus"
       },
       "baseUrl": {
         "label": "Perus-URL",
@@ -1318,7 +1318,7 @@
         "description": "Tiedot lähetetään määritettyyn päätepisteeseen."
       },
       "model": {
-        "label": "Model",
+        "label": "Malli",
         "description": "Valitse palautettu malli tai syötä malli manuaalisesti."
       },
       "apiKey": {
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "Tallenna",
+      "models": "Mallit",
       "test": "Testaa yhteys",
       "probe": "Tarkista työkalut"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "Ei yhteyttä",
       "toolsDisabled": "Työkalut pois käytöstä",
       "fullTools": "Kaikki työkalut käytössä",
       "checking": "Tarkistetaan…",

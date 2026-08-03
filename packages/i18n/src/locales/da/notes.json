@@ -191,7 +191,7 @@
   },
   "backlinks": {
     "sortRecent": "Seneste",
-    "sortAlpha": "A-Z",
+    "sortAlpha": "A-Å",
     "sortMentions": "Flest omtaler",
     "sortBy": "Sorter backlinks efter {sort}",
     "summary": "{notes} noter · {references} referencer",
@@ -249,7 +249,7 @@
       "url": "URL",
       "status": "Status",
       "select": "Vælg",
-      "multiselect": "Multiselect"
+      "multiselect": "Flervalg"
     },
     "showOnCalendar": "Vis på kalender",
     "showingOnCalendar": "Vises på kalender",
@@ -266,7 +266,7 @@
     "loading": "Indlæser skabeloner...",
     "empty": "Ingen skabeloner fundet",
     "myTemplates": "Mine skabeloner",
-    "essentials": "Essentials",
+    "essentials": "Grundlæggende",
     "setFolderDefault": "Indstil som mappestandard",
     "useTemplate": "Brug skabelon",
     "createNote": "Opret note",
@@ -509,8 +509,8 @@
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Kunne ikke indlæse PDF: ",
-      "download": "Download",
-      "download2": "Download",
+      "download": "Hent",
+      "download2": "Hent",
       "noFileAttached": "Ingen fil vedhæftet",
       "alignCenter": "Justér til midten",
       "alignLeft": "Justér til venstre",
@@ -603,7 +603,7 @@
       "unpinFromTag": "Frigør fra tag",
       "unpin": "Frigør",
       "pinToTag": "Fastgør til tag",
-      "pin": "Pin",
+      "pin": "Fastgør",
       "tagActions": "Tag handlinger",
       "editTagName": "Rediger tagnavn",
       "changeColor": "Skift farve",

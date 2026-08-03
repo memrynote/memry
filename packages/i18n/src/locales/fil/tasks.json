@@ -205,7 +205,7 @@
       "dueDate": "Takdang Petsa",
       "moveTo": "Ilipat sa",
       "status": "Katayuan",
-      "archive": "Archive",
+      "archive": "I-archive",
       "delete": "Tanggalin",
       "cancelSelection": "Kanselahin ang pagpili",
       "cancel": "Kanselahin"
@@ -367,7 +367,7 @@
       "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Doblehin din ang mga subtask (",
       "cancel": "Kanselahin",
-      "duplicate": "Duplicate "
+      "duplicate": "I-duplicate "
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Gumawa ng subtask ng...",
@@ -442,7 +442,7 @@
     },
     "componentsTasksFiltersActiveFiltersBar": {
       "priorityIs": "Ang priyoridad ay",
-      "priority": "priority",
+      "priority": "priyoridad",
       "statusIs": "Ang katayuan ay",
       "status": "katayuan",
       "projectIs": "Ang proyekto ay",
@@ -653,7 +653,7 @@
       "clickTo": "Mag-click sa "
     },
     "componentsTasksTaskBadges": {
-      "priority": "priority",
+      "priority": "priyoridad",
       "repeatingTask": "Paulit-ulit na gawain",
       "d": "d"
     },
@@ -818,7 +818,7 @@
       "doneOf": "Tapos na ang {done} sa {total}",
       "linked": "Naka-link",
       "linkedSummary": "{notes, plural, one {# tala} other {# na tala}} · {files, plural, one {# file} other {# na file}} · {events, plural, one {# kaganapan} other {# na kaganapan}}",
-      "overdue": "Overdue",
+      "overdue": "Lampas na sa Takda",
       "overview": "Buod",
       "pinError": "Hindi maidagdag ang tala sa buod",
       "progress": "Progreso",

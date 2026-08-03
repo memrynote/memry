@@ -456,7 +456,7 @@
       },
       "models": {
         "default": "Par défaut",
-        "label": "Model"
+        "label": "Modèle"
       },
       "settings": {
         "reasoning": "Raisonnement"
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Désactivée",
         "label": "Recherche web"
       },
       "permissionsLabel": "Autorisations de l'agent : {access}, recherche web {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Autorisations",
+        "access": "Accès",
+        "tools": "Outils"
       },
       "modelSettingsLabel": "Paramètres du modèle de l'agent : {model}, {settings}"
     },

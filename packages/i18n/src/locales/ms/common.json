@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Mati",
         "label": "Carian web"
       },
       "permissionsLabel": "Kebenaran Agent: {access}, carian web {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Kebenaran",
+        "access": "Akses",
+        "tools": "Alat"
       },
       "modelSettingsLabel": "Tetapan model Agent: {model}, {settings}"
     },
@@ -510,7 +510,7 @@
     "sidebar": {
       "label": "Bar sisi kanan",
       "day": "Hari",
-      "agent": "Agent",
+      "agent": "Ejen",
       "pendingApproval": "{count, plural, one {# menunggu kelulusan} other {# kelulusan belum selesai}}",
       "inProgress": "Agent giliran sedang berjalan",
       "close": "Tutup ejen"
@@ -547,7 +547,7 @@
       "hint": "Tiada apa terbuka. Mulakan nota."
     },
     "done": "Selesai",
-    "edit": "Edit",
+    "edit": "Sunting",
     "empty": {
       "body": "Widget menyatukan nota, tugasan dan penanda buku anda di satu tempat yang tenang.",
       "cta": "Tambah widget pertama anda",

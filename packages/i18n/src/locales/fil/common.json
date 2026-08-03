@@ -158,7 +158,7 @@
       "setFolderIcon": "Itakda ang icon ng folder"
     },
     "componentsHintOverlayHintIndicator": {
-      "hint": "HINT"
+      "hint": "PAHIWATIG"
     },
     "componentsIconPicker": {
       "iconPicker": "Tagapili ng icon",
@@ -456,7 +456,7 @@
       },
       "models": {
         "default": "Paunang setting",
-        "label": "Model"
+        "label": "Modelo"
       },
       "settings": {
         "reasoning": "Pangangatwiran"
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Naka-off",
         "label": "Paghahanap sa web"
       },
       "permissionsLabel": "Mga pahintulot ng agent: {access}, paghahanap sa web {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Mga Pahintulot",
+        "access": "Pag-access",
+        "tools": "Mga Tool"
       },
       "modelSettingsLabel": "Mga setting ng modelo ng agent: {model}, {settings}"
     },
@@ -510,7 +510,7 @@
     "sidebar": {
       "label": "Kanang sidebar",
       "day": "Araw",
-      "agent": "Agent",
+      "agent": "Ahente",
       "pendingApproval": "{count, plural, one {# nakabinbing pag-apruba} other {# nakabinbing pag-apruba}}",
       "inProgress": "Agent turn sa progreso",
       "close": "Isara ang agent"
@@ -584,8 +584,8 @@
       "folderEmpty": "Wala pang folder",
       "folderNoSelection": "Walang napiling folder",
       "folderPickPrompt": "Pumili ng folder",
-      "folderViewSelect": "View",
-      "folderView_gallery": "Gallery",
+      "folderViewSelect": "Tingnan",
+      "folderView_gallery": "Galerya",
       "folderView_list": "Listahan",
       "inbox": "Inbox",
       "inboxAllTypes": "Lahat ng uri",

@@ -345,7 +345,7 @@
       "recentVaults": "الخزائن الأخيرة",
       "notesLastOpened": "ملاحظات · آخر فتح",
       "brandName": "Memrynote",
-      "preRelease": "Beta",
+      "preRelease": "تجريبي",
       "createNewVault": "إنشاء خزانة جديدة",
       "createNewVaultDesc": "ابدأ خزانة جديدة في مجلد تختاره.",
       "openExistingVault": "فتح خزانة موجودة",
@@ -456,7 +456,7 @@
       },
       "models": {
         "default": "الافتراضي",
-        "label": "Model"
+        "label": "النموذج"
       },
       "settings": {
         "reasoning": "الاستدلال"
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "إيقاف",
         "label": "البحث في الويب"
       },
       "permissionsLabel": "أذونات الوكيل: {access}، البحث في الويب {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "الأذونات",
+        "access": "الوصول",
+        "tools": "الأدوات"
       },
       "modelSettingsLabel": "إعدادات نموذج الوكيل: {model}، {settings}"
     },
@@ -510,7 +510,7 @@
     "sidebar": {
       "label": "الشريط الجانبي الأيمن",
       "day": "اليوم",
-      "agent": "Agent",
+      "agent": "الوكيل",
       "pendingApproval": "{count, plural, one {# في انتظار الموافقة} other {# الموافقات المعلقة}}",
       "inProgress": "جارٍ تشغيل Agent",
       "close": "إغلاق الوكيل"

@@ -147,14 +147,14 @@
     "deselectAll": "Zrušte výběr všech",
     "ariaLabel": "Hromadné akce pro vybrané položky {count}",
     "file": "Soubor",
-    "tag": "Tag",
+    "tag": "Označit",
     "snooze": "Odložit",
     "archive": "Archiv",
     "add": "Přidat",
     "dismissSuggestion": "Odmítnout návrh",
     "hint": {
       "file": "soubor",
-      "tag": "tag",
+      "tag": "označit",
       "snooze": "odložit",
       "archive": "archiv",
       "deselect": "zrušit výběr"

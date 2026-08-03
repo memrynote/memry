@@ -3,7 +3,7 @@
     "tabs": {
       "inbox": "Beérkezett üzenetek",
       "archived": "Archivált",
-      "insights": "Insights",
+      "insights": "Elemzések",
       "ariaLabel": "Beérkezett üzenetek nézet kiválasztása"
     },
     "triageButton": "Triage",
@@ -256,7 +256,7 @@
     "source": "Forrás",
     "journalTitle": "Napló — {date}",
     "noteFallback": "Megjegyzés",
-    "journalFallback": "Journal",
+    "journalFallback": "Napló",
     "highlighted": "Kiemelve: \"{text}\"",
     "viewed": "Megtekintve",
     "markViewed": "Megjelölés megtekintettként",

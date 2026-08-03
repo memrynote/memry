@@ -468,7 +468,7 @@
           "high": "Hoog",
           "extraHigh": "Extra hoog",
           "extraHighDefault": "Extra hoog (standaard)",
-          "max": "Max"
+          "max": "Maximaal"
         }
       },
       "codexSettings": {
@@ -486,13 +486,13 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Uit",
         "label": "Zoeken op het web"
       },
       "permissionsLabel": "Agentmachtigingen: {access}, zoeken op het web {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
+        "label": "Machtigingen",
+        "access": "Toegang",
         "tools": "Tools"
       },
       "modelSettingsLabel": "Modelinstellingen van de agent: {model}, {settings}"
@@ -677,7 +677,7 @@
   },
   "capture": {
     "focusShortcut": "Vastlegveld focussen",
-    "detailHint": "detail",
+    "detailHint": "details",
     "focusHint": "Q",
     "submit": "Vastleggen"
   },

@@ -1267,8 +1267,8 @@
       "subtitle": "גישת שרת מקומי עבור לקוחות MCP חיצוניים."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "חיבור",
+      "access": "גישה"
     },
     "fields": {
       "url": {
@@ -1303,11 +1303,11 @@
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "מותאם אישית"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "הגדרה קבועה מראש"
       },
       "baseUrl": {
         "label": "כתובת בסיס",
@@ -1318,7 +1318,7 @@
         "description": "הנתונים נשלחים לנקודת הקצה שהוגדרה."
       },
       "model": {
-        "label": "Model",
+        "label": "מודל",
         "description": "בחר מודל מהתוצאות או הזן אחד ידנית."
       },
       "apiKey": {
@@ -1328,13 +1328,13 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
+      "save": "שמור",
+      "models": "מודלים",
       "test": "בדוק חיבור",
       "probe": "בדוק כלים"
     },
     "status": {
-      "disconnected": "Disconnected",
+      "disconnected": "מנותק",
       "toolsDisabled": "כלים מושבתים",
       "fullTools": "כל הכלים מופעלים",
       "checking": "בודק…",

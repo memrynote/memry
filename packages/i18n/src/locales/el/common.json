@@ -456,7 +456,7 @@
       },
       "models": {
         "default": "Προεπιλογή",
-        "label": "Model"
+        "label": "Μοντέλο"
       },
       "settings": {
         "reasoning": "Συλλογισμός"
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "Ανενεργή",
         "label": "Αναζήτηση στον ιστό"
       },
       "permissionsLabel": "Δικαιώματα Agent: {access}, αναζήτηση στον ιστό {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Δικαιώματα",
+        "access": "Πρόσβαση",
+        "tools": "Εργαλεία"
       },
       "modelSettingsLabel": "Ρυθμίσεις μοντέλου Agent: {model}, {settings}"
     },
@@ -510,7 +510,7 @@
     "sidebar": {
       "label": "Δεξιά πλαϊνή γραμμή",
       "day": "Ημέρα",
-      "agent": "Agent",
+      "agent": "Πράκτορας",
       "pendingApproval": "{count, plural, one {# εκκρεμεί έγκριση} other {# εγκρίσεις σε εκκρεμότητα}}",
       "inProgress": "Agent στροφή σε εξέλιξη",
       "close": "Κλείσιμο πράκτορα"

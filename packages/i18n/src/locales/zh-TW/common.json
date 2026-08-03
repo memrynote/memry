@@ -456,7 +456,7 @@
       },
       "models": {
         "default": "預設",
-        "label": "Model"
+        "label": "模型"
       },
       "settings": {
         "reasoning": "推理"
@@ -486,14 +486,14 @@
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
+        "off": "關閉",
         "label": "網頁搜尋"
       },
       "permissionsLabel": "Agent 權限：{access}，網頁搜尋 {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "權限",
+        "access": "存取權",
+        "tools": "工具"
       },
       "modelSettingsLabel": "Agent 模型設定：{model}，{settings}"
     },
@@ -510,7 +510,7 @@
     "sidebar": {
       "label": "右側邊欄",
       "day": "日",
-      "agent": "Agent",
+      "agent": "代理",
       "pendingApproval": "{count, plural, one {# 待批准} other {# 待批准}}",
       "inProgress": "Agent 正在轉彎",
       "close": "關閉代理"

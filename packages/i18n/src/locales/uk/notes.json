@@ -191,7 +191,7 @@
   },
   "backlinks": {
     "sortRecent": "Недавні",
-    "sortAlpha": "A-Z",
+    "sortAlpha": "А-Я",
     "sortMentions": "Найбільше згадок",
     "sortBy": "Сортувати зворотні посилання за {sort}",
     "summary": "Нотатки {notes} · посилання {references}",
