@@ -1,4 +1,5 @@
 import type { ImportPlan, ImportWarning, TaskPlan, TodoistRow } from './types.ts'
+import { IMPORT_MESSAGE_CODES } from '../messages.ts'
 import { todoistPriorityToMemry } from './priority.ts'
 import { resolveDueDate } from './dates.ts'
 import { commentToMarkdown } from './attachments.ts'
@@ -27,7 +28,12 @@ export function mapRows(rows: TodoistRow[], projectName: string, { now }: MapOpt
 
     if (row.type === 'section') {
       sectionsFlattened++
-      warnings.push({ row: row.rowNumber, message: `Section "${row.content.trim()}" flattened` })
+      warnings.push({
+        row: row.rowNumber,
+        code: IMPORT_MESSAGE_CODES.todoistSectionFlattened,
+        message: `Section "${row.content.trim()}" flattened`,
+        params: { section: row.content.trim() }
+      })
       lastTask = null
       stack.length = 0
       continue
@@ -36,7 +42,11 @@ export function mapRows(rows: TodoistRow[], projectName: string, { now }: MapOpt
     if (row.type === 'note') {
       if (!lastTask) {
         skipped++
-        warnings.push({ row: row.rowNumber, message: 'Comment with no preceding task skipped' })
+        warnings.push({
+          row: row.rowNumber,
+          code: IMPORT_MESSAGE_CODES.todoistOrphanComment,
+          message: 'Comment with no preceding task skipped'
+        })
         continue
       }
       const md = commentToMarkdown(row.content)
@@ -55,13 +65,19 @@ export function mapRows(rows: TodoistRow[], projectName: string, { now }: MapOpt
       title = '(untitled)'
       warnings.push({
         row: row.rowNumber,
+        code: IMPORT_MESSAGE_CODES.todoistEmptyTitle,
         message: 'Task with empty content imported as (untitled)'
       })
     }
 
     // priority
     if (row.priority < 1 || row.priority > 4) {
-      warnings.push({ row: row.rowNumber, message: `Unknown priority ${row.priority} → none` })
+      warnings.push({
+        row: row.rowNumber,
+        code: IMPORT_MESSAGE_CODES.todoistUnknownPriority,
+        message: `Unknown priority ${row.priority} → none`,
+        params: { priority: row.priority }
+      })
     }
     const priority = todoistPriorityToMemry(row.priority)
 
@@ -74,7 +90,12 @@ export function mapRows(rows: TodoistRow[], projectName: string, { now }: MapOpt
         dueDate = r.date
         dueTime = r.time
       } else {
-        warnings.push({ row: row.rowNumber, message: `Could not parse date "${row.date.trim()}"` })
+        warnings.push({
+          row: row.rowNumber,
+          code: IMPORT_MESSAGE_CODES.todoistUnparsedDate,
+          message: `Could not parse date "${row.date.trim()}"`,
+          params: { date: row.date.trim() }
+        })
       }
     }
     if (!dueDate && row.deadline.trim()) {
@@ -95,7 +116,9 @@ export function mapRows(rows: TodoistRow[], projectName: string, { now }: MapOpt
       else
         warnings.push({
           row: row.rowNumber,
-          message: `Sub-task "${title}" has no parent at indent ${indent - 1}; imported top-level`
+          code: IMPORT_MESSAGE_CODES.todoistSubtaskNoParent,
+          message: `Sub-task "${title}" has no parent at indent ${indent - 1}; imported top-level`,
+          params: { title, indent: indent - 1 }
         })
     }
 

@@ -4,6 +4,8 @@
  * Pure data shapes — no electron / fs / db dependencies.
  */
 
+import type { ImportMessage } from '../messages.ts'
+
 /** One CSV data row, typed from the 15 Todoist columns. */
 export interface TodoistRow {
   type: 'task' | 'note' | 'section' | 'meta' | ''
@@ -34,9 +36,8 @@ export interface ProjectPlan {
   name: string
 }
 
-export interface ImportWarning {
+export interface ImportWarning extends ImportMessage {
   row?: number
-  message: string
 }
 
 export interface ImportStats {

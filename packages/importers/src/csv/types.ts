@@ -1,3 +1,5 @@
+import type { ImportMessage } from '../messages.ts'
+
 export interface ParsedCsv {
   headers: string[]
   rows: Record<string, string>[]
@@ -19,7 +21,7 @@ export interface CsvImportPlan {
   notes: CsvImportNote[]
   stats: CsvImportStats
   sampleTitles: string[]
-  warnings: string[]
+  warnings: ImportMessage[]
   columns: string[]
   titleColumn: string
 }

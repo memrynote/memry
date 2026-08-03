@@ -1,4 +1,5 @@
 import type { TodoistRow } from './types.ts'
+import { IMPORT_MESSAGE_CODES, ImporterError } from '../messages.ts'
 
 /** RFC-4180 tokenizer: handles quoted fields, embedded commas/quotes/newlines, "" escapes, CRLF. */
 export function parseCsv(text: string): string[][] {
@@ -69,7 +70,12 @@ export function parseTodoistCsv(text: string): TodoistRow[] {
   const clean = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text
   const grid = parseCsv(clean)
   const headerIdx = grid.findIndex((r) => (r[0] ?? '').trim().toUpperCase() === 'TYPE')
-  if (headerIdx === -1) throw new Error('Not a Todoist CSV: missing TYPE header row')
+  if (headerIdx === -1) {
+    throw new ImporterError(
+      IMPORT_MESSAGE_CODES.todoistHeaderNotFound,
+      'Not a Todoist CSV: missing TYPE header row'
+    )
+  }
 
   const header = grid[headerIdx].map((h) => h.trim().toUpperCase())
   const col = (name: string) => header.indexOf(name)

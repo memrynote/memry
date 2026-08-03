@@ -131,15 +131,31 @@ export interface ImporterMeta {
 // be imported before the user commits.
 // ============================================================================
 
+/**
+ * A warning/error described by an importer. `@memry/importers` cannot depend on
+ * the i18n runtime, so it emits a stable `code` (plus the values it
+ * interpolates) and keeps the English text in `message`. The renderer maps
+ * `code` → i18n key at display time and renders `message` verbatim when the
+ * code is absent or unknown.
+ */
+export interface ImportMessage {
+  code?: string
+  message: string
+  params?: Record<string, string | number>
+}
+
+/** Plain strings stay accepted so untranslated producers keep rendering. */
+export type ImportPreviewMessage = string | ImportMessage
+
 export interface ImportPreviewGroup {
   /** File name / project name the group represents. */
   label: string
   /** Labeled counts; the renderer resolves each labelKey via i18n. */
   counts: { labelKey: string; value: number }[]
   sampleTitles?: string[]
-  warnings?: string[]
+  warnings?: ImportPreviewMessage[]
   /** Set when this group could not be parsed; other groups still preview. */
-  error?: string
+  error?: ImportPreviewMessage
 }
 
 export interface ImportPreview {
