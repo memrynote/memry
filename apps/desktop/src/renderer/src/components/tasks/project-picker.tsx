@@ -36,6 +36,8 @@ export interface ProjectPickerProps {
   contentWidth?: 'auto' | 'trigger' | number
   /** Trigger text when nothing selected (button variant). */
   placeholder?: string
+  /** Greys out the trigger and stops it opening, e.g. while a form is saving. */
+  disabled?: boolean
   className?: string
 }
 
@@ -147,6 +149,7 @@ export const ProjectPicker = ({
   triggerVariant = 'button',
   contentWidth,
   placeholder,
+  disabled,
   className
 }: ProjectPickerProps): React.JSX.Element => {
   const { t: tTasks } = useT('tasks')
@@ -188,6 +191,7 @@ export const ProjectPicker = ({
               )}
               style={{ backgroundColor: `${badgeColor}14` }}
               onClick={(e) => e.stopPropagation()}
+              disabled={disabled}
               aria-label={`Project: ${badgeName}. Click to change.`}
             >
               <div className="rounded-xs shrink-0 size-2" style={{ backgroundColor: badgeColor }} />
@@ -201,6 +205,7 @@ export const ProjectPicker = ({
             variant="button"
             chevron
             className={className}
+            disabled={disabled}
             aria-label={tTasks('phaseF.componentsTasksProjectsProjectSelector.selectProject')}
           >
             {currentProject ? (

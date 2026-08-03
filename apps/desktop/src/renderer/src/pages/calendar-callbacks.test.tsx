@@ -105,7 +105,8 @@ vi.mock('@/components/calendar', () => ({
       isAllDay: false,
       startAt: '2026-05-10T09:00',
       endAt: '2026-05-10T10:00',
-      targetCalendarId: 'google-work'
+      targetCalendarId: 'google-work',
+      projectId: null
     }
     return (
       <div>

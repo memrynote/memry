@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils'
 import { toLocalDateString } from './date-utils'
 import { CalendarPicker } from './calendar-picker'
 import { CalendarEventMetadata } from './calendar-event-metadata'
-import { ItemProjectChips } from '@/components/tasks/projects/item-project-chips'
+import { EventProjectField } from './event-project-field'
 import { useGoogleCalendars } from '@/hooks/use-google-calendars'
 import type { CalendarEventDraft } from './types'
 import type { CalendarEventReadOnlyMetadata } from './calendar-event-popover'
@@ -219,9 +219,13 @@ export function CalendarEventForm({
         disabled={isSaving}
       />
 
-      {mode === 'edit' && eventId && (
-        <ItemProjectChips itemType="calendar_event" itemId={eventId} />
-      )}
+      <EventProjectField
+        mode={mode}
+        eventId={eventId}
+        value={draft.projectId}
+        onChange={(projectId) => onDraftChange({ ...draft, projectId })}
+        disabled={isSaving}
+      />
 
       <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
         <span className="flex items-center gap-2 text-muted-foreground">
