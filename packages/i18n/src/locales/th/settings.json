@@ -1449,7 +1449,8 @@
       },
       "title": "นำเข้าจาก {name}",
       "chooseDirectory": "เลือกโฟลเดอร์…",
-      "folderKeepsAssets": "เลือกโฟลเดอร์เมื่อรูปภาพอยู่นอกโฟลเดอร์ของโน้ตเอง — ไฟล์ส่งออกมักเก็บสื่อไว้ในโฟลเดอร์ที่ใช้ร่วมกัน"
+      "folderKeepsAssets": "เลือกโฟลเดอร์เมื่อรูปภาพอยู่นอกโฟลเดอร์ของโน้ตเอง — ไฟล์ส่งออกมักเก็บสื่อไว้ในโฟลเดอร์ที่ใช้ร่วมกัน",
+      "previewError": "การแสดงตัวอย่างล้มเหลว"
     },
     "header": {
       "subtitle": "นำโน้ตและงานของคุณเข้ามาจากแอปอื่น",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, other {# งาน}}",
       "withDueDate": "ระบุวันที่ {count} รายการ",
       "withTags": "ติดแท็ก {count} รายการ"
+    },
+    "messages": {
+      "csv": {
+        "columns": "คอลัมน์: {columns}",
+        "emptyTitle": "ข้ามแถวที่ไม่มีหัวข้อ (คอลัมน์ \"{column}\")",
+        "noHeaders": "ไฟล์ CSV ไม่มีแถวหัวคอลัมน์",
+        "titleColumn": "หัวข้อมาจาก \"{column}\"; คอลัมน์อื่นถูกบันทึกเป็นคุณสมบัติ"
+      },
+      "raindrop": {
+        "csvEmpty": "ไฟล์ CSV ของ Raindrop ว่างเปล่า",
+        "headerNotFound": "ไม่พบแถวหัวคอลัมน์ของไฟล์ CSV จาก Raindrop (คอลัมน์ \"url\")",
+        "rowNoUrl": "ข้ามแถว {row}: ไม่มี URL"
+      },
+      "readFileFailed": "ไม่สามารถอ่านไฟล์ได้",
+      "ticktick": {
+        "foldersDropped": "โฟลเดอร์ของ TickTick ไม่มีสิ่งที่เทียบเท่าใน Memry จึงถูกตัดออก",
+        "headerNotFound": "ไม่พบแถวหัวคอลัมน์ของไฟล์ CSV จาก TickTick (\"Folder Name\")",
+        "reminderNoAnchor": "ข้ามการเตือน \"{reminder}\" (ไม่มีวันที่อ้างอิง)",
+        "subtaskParentMissing": "ไม่พบงานหลักของงานย่อย \"{title}\" จึงนำเข้าเป็นงานระดับบนสุด",
+        "unknownPriority": "ลำดับความสำคัญ {priority} ของ TickTick ไม่รู้จัก → ไม่มี",
+        "unsupportedRepeat": "ข้ามกฎการทำซ้ำที่ไม่รองรับ \"{rule}\""
+      },
+      "todoist": {
+        "emptyTitle": "งานที่ไม่มีเนื้อหาถูกนำเข้าเป็น (ไม่มีชื่อ)",
+        "headerNotFound": "ไม่ใช่ไฟล์ CSV ของ Todoist: ไม่มีแถวหัวคอลัมน์ TYPE",
+        "orphanComment": "ข้ามความคิดเห็นที่ไม่มีงานนำหน้า",
+        "sectionFlattened": "ส่วน \"{section}\" ถูกยุบรวม",
+        "subtaskNoParent": "งานย่อย \"{title}\" ไม่มีงานหลักที่ระดับเยื้อง {indent} จึงนำเข้าเป็นงานระดับบนสุด",
+        "unknownPriority": "ลำดับความสำคัญ {priority} ไม่รู้จัก → ไม่มี",
+        "unparsedDate": "ไม่สามารถแปลงค่าวันที่ \"{date}\" ได้"
+      }
     }
   },
   "inbox": {

@@ -270,7 +270,50 @@
     "panelEmpty": "Không có nhắc nhở sắp tới.",
     "panelPast": "Đã qua",
     "panelUpcoming": "Sắp tới",
-    "taskFallback": "Công việc"
+    "taskFallback": "Công việc",
+    "dateTime": {
+      "dateAt": "{date} lúc {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Hôm nay lúc {time}",
+      "todayCompact": "Hôm nay, {time}",
+      "tomorrowAt": "Ngày mai lúc {time}",
+      "tomorrowCompact": "Ngày mai, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Nhắc kỷ niệm",
+      "inHours": {
+        "label": "{count, plural, other {Sau # Giờ}}"
+      },
+      "inMinutes": {
+        "label": "{count, plural, other {Sau # Phút}}"
+      },
+      "inMonths": {
+        "label": "{count, plural, other {Sau # Tháng}}"
+      },
+      "inWeeks": {
+        "label": "{count, plural, other {Sau # Tuần}}"
+      },
+      "inYears": {
+        "label": "{count, plural, other {Sau # Năm}}"
+      },
+      "laterToday": {
+        "description": "{count, plural, other {Sau # giờ}}",
+        "label": "Cuối Ngày Hôm nay"
+      },
+      "monthlyReflection": "Chiêm nghiệm hằng tháng",
+      "nextWeek": {
+        "description": "Thứ Hai lúc 9 giờ sáng",
+        "label": "Tuần Tới"
+      },
+      "quarterlyReflection": "Chiêm nghiệm hằng quý",
+      "reviewInAWeek": "Xem lại sau một tuần",
+      "sameDayNextMonth": "Cùng ngày tháng sau",
+      "tomorrow": {
+        "description": "Ngày mai lúc 9 giờ sáng",
+        "label": "Ngày Mai"
+      },
+      "tomorrowMorning": "Sáng Mai"
+    }
   },
   "insights": {
     "captureActivity": "Hoạt động đã ghi lại",

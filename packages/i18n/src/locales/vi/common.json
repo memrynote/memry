@@ -25,7 +25,8 @@
     "expand": "Mở rộng",
     "collapse": "Thu gọn",
     "showMore": "+{count, plural, one {# hơn} other {# hơn}}",
-    "showLess": "Hiển thị ít hơn"
+    "showLess": "Hiển thị ít hơn",
+    "undo": "Hoàn tác"
   },
   "tabs": {
     "pin": "Ghim Tab",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "Hôm nay",
     "yesterday": "Hôm qua",
-    "daysAgo": "{count, plural, one {Cách đây # ngày} other {Cách đây # ngày}}"
+    "daysAgo": "{count, plural, one {Cách đây # ngày} other {Cách đây # ngày}}",
+    "daysLate": "{count, plural, other {trễ # ngày}}",
+    "daysOverdue": "{count, plural, other {quá hạn # ngày}}",
+    "tomorrow": "Ngày mai"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Mỗi ngày} other {Mỗi # ngày}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Mỗi tháng vào ngày {day}{suffix}} other {Mỗi # tháng vào ngày {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Mỗi tháng vào {week} {day}} other {Mỗi # tháng vào {week} {day}}}",
     "everyNYears": "{count, plural, one {Hàng năm} other {Mỗi # năm}}",
-    "repeats": "Lặp lại"
+    "repeats": "Lặp lại",
+    "ordinal": {
+      "first": "thứ nhất",
+      "fourth": "thứ tư",
+      "last": "cuối cùng",
+      "second": "thứ hai",
+      "third": "thứ ba"
+    },
+    "preset": {
+      "everyWeekday": "Mỗi ngày trong tuần (T2-T6)",
+      "everyYearOnDate": "Hàng năm vào {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -640,6 +655,11 @@
     "welcome": {
       "body": "Không gian riêng tư, ưu tiên ngoại tuyến của bạn. Ghi chú được mã hóa đầu-cuối — chúng không bao giờ rời thiết bị của bạn ở dạng chưa mã hóa.",
       "title": "Chào mừng đến với MemryNote"
+    },
+    "tour": {
+      "next": "Tiếp theo",
+      "previous": "Trước",
+      "progress": "{current} trên {total}"
     }
   },
   "updatePrompt": {
@@ -696,5 +716,125 @@
     "sectionLabel": "Bảng vẽ",
     "tooLargeToSync": "Bảng vẽ này quá lớn để đồng bộ. Nó vẫn được lưu trên thiết bị này, nhưng sẽ chưa xuất hiện trên các thiết bị khác cho đến khi nhỏ hơn.",
     "untitled": "Bảng vẽ chưa đặt tên"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Nhấp vào hàng",
+      "reset": "Đặt lại",
+      "shortcutsTab": "Tab Phím tắt"
+    },
+    "description": "Lối tắt để di chuyển trong memrynote, ghi lại suy nghĩ và xử lý công việc.",
+    "groups": {
+      "general": {
+        "description": "Điều hướng và trợ giúp toàn ứng dụng.",
+        "title": "Chung"
+      },
+      "inbox": {
+        "description": "Xử lý nhanh các mục đã thu thập.",
+        "title": "Hộp thư đến"
+      },
+      "journal": {
+        "description": "Điều hướng các chế độ xem nhật ký và tập trung vào vùng viết.",
+        "title": "Nhật ký"
+      },
+      "notes": {
+        "description": "Viết, định dạng và tìm kiếm ghi chú.",
+        "title": "Ghi chú / Trình soạn thảo"
+      },
+      "settings": {
+        "description": "Mở cài đặt và tùy chỉnh phím tắt.",
+        "title": "Cài đặt"
+      },
+      "tabs": {
+        "description": "Di chuyển giữa các tab và ngăn.",
+        "title": "Tab & Chia ngăn"
+      },
+      "tasks": {
+        "description": "Lọc, chọn và hoàn thành công việc.",
+        "title": "Công việc"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Tạo một ghi chú",
+        "keyboardShortcuts": "Mở phím tắt bàn phím",
+        "openSettings": "Mở cài đặt",
+        "quickSearch": "Mở tìm kiếm nhanh",
+        "sidebarSection": "Đi tới mục trên thanh bên",
+        "toggleSidebar": "Bật/tắt thanh bên",
+        "undoTaskAction": "Hoàn tác thao tác công việc gần nhất"
+      },
+      "inbox": {
+        "archiveItem": "Lưu trữ mục đã chọn",
+        "chooseQuickFileResult": "Chọn một kết quả sắp xếp nhanh",
+        "clearSelection": "Bỏ chọn hoặc đóng sắp xếp nhanh",
+        "confirmFiling": "Xác nhận bảng sắp xếp",
+        "firstOrLastItem": "Mục đầu hoặc mục cuối",
+        "jumpByPage": "Nhảy theo trang",
+        "nextItem": "Mục tiếp theo",
+        "openOriginal": "Mở liên kết gốc",
+        "openQuickFile": "Mở sắp xếp nhanh",
+        "previousItem": "Mục trước",
+        "refresh": "Làm mới hộp thư đến",
+        "selectAllVisible": "Chọn tất cả mục đang hiển thị",
+        "selectItem": "Chọn mục",
+        "togglePreview": "Bật/tắt bảng xem trước"
+      },
+      "journal": {
+        "bold": "In đậm văn bản đã chọn",
+        "find": "Tìm trong nhật ký",
+        "italic": "In nghiêng văn bản đã chọn",
+        "link": "Thêm hoặc sửa liên kết",
+        "returnFromOverview": "Quay lại từ chế độ xem tháng hoặc năm",
+        "toggleFullWidth": "Bật/tắt nhật ký toàn chiều rộng",
+        "underline": "Gạch chân văn bản đã chọn"
+      },
+      "notes": {
+        "bold": "Đậm",
+        "closeOverlays": "Đóng các lớp phủ của trình soạn thảo",
+        "commandMenu": "Mở menu lệnh của trình soạn thảo",
+        "createNote": "Tạo một ghi chú",
+        "find": "Tìm trong ghi chú",
+        "italic": "Nghiêng",
+        "link": "Thêm hoặc sửa liên kết",
+        "saveNote": "Lưu ghi chú hiện tại",
+        "underline": "Gạch chân"
+      },
+      "settings": {
+        "cancelRecording": "Hủy ghi phím tắt",
+        "customizeShortcuts": "Tùy chỉnh phím tắt bàn phím",
+        "openSettings": "Mở cài đặt",
+        "recordShortcut": "Ghi một phím tắt mới",
+        "resetShortcut": "Khôi phục phím tắt mặc định"
+      },
+      "tabs": {
+        "closeAllInPane": "Đóng tất cả tab trong ngăn",
+        "closeSplitPane": "Đóng ngăn chia",
+        "closeTab": "Đóng tab",
+        "duplicateTab": "Nhân bản tab",
+        "focusPane": "Chuyển sang ngăn khác",
+        "maximizePane": "Phóng to ngăn hiện tại",
+        "moveTabToPane": "Chuyển tab sang ngăn",
+        "newTabMenu": "Mở menu tab mới",
+        "nextTab": "Tab tiếp theo",
+        "pinTab": "Ghim hoặc bỏ ghim tab",
+        "previousTab": "Tab trước",
+        "reopenClosedTab": "Mở lại tab đã đóng",
+        "splitDown": "Chia xuống",
+        "splitRight": "Chia sang phải"
+      },
+      "tasks": {
+        "clearFilters": "Xóa các bộ lọc đang hiển thị",
+        "clearSelection": "Bỏ chọn công việc",
+        "completeSelected": "Hoàn thành các công việc đã chọn",
+        "configureRepeat": "Thiết lập lặp lại cho công việc đang chọn",
+        "deleteSelected": "Xóa các công việc đã chọn",
+        "selectAllVisible": "Chọn tất cả công việc đang hiển thị",
+        "skipOccurrence": "Bỏ qua lần lặp này",
+        "stopRepeating": "Ngừng lặp lại công việc"
+      }
+    },
+    "or": "hoặc",
+    "then": "rồi"
   }
 }

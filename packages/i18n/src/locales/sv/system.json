@@ -28,6 +28,13 @@
       "readyDetailFallback": "Starta om memrynote för att slutföra installationen av uppdateringen.",
       "buttonRestartNow": "Starta om nu",
       "releaseNotesLabel": "Versionsinformation:"
+    },
+    "pair": {
+      "buttonAllow": "Tillåt",
+      "buttonDeny": "Neka",
+      "buttonPair": "Parkoppla",
+      "message": "Tillåt att webbläsartillägget Memry skickar insamlingar till den här appen?",
+      "title": "Parkoppla webbläsartillägg"
     }
   },
   "notification": {
@@ -50,5 +57,15 @@
     "definitionNotFound": "Definition hittades inte",
     "noteNotFound": "Anteckning hittades inte",
     "updateFailed": "Uppdateringen misslyckades"
+  },
+  "startup": {
+    "failed": {
+      "body": "Det här kan hända när disken har mycket lite ledigt utrymme, eller med äldre grafikdrivrutiner. Försök frigöra diskutrymme och öppna sedan MemryNote igen. Om det fortsätter hända brukar en ominstallation lösa det.",
+      "title": "MemryNote kunde inte starta klart"
+    },
+    "installingUpdate": {
+      "subtitle": "MemryNote startar om automatiskt.",
+      "title": "Installerar uppdatering…"
+    }
   }
 }

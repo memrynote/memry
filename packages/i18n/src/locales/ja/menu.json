@@ -1,7 +1,12 @@
 {
   "app": {
     "quit": "やめる",
-    "preferences": "設定…"
+    "preferences": "設定…",
+    "exit": "終了",
+    "hide": "MemryNote を隠す",
+    "hideOthers": "ほかを隠す",
+    "services": "サービス",
+    "unhide": "すべてを表示"
   },
   "file": {
     "label": "ファイル",
@@ -24,7 +29,11 @@
     "paste": "ペースト",
     "selectAll": "すべて選択",
     "find": "検索",
-    "speech": "読み上げ"
+    "speech": "読み上げ",
+    "delete": "削除",
+    "pasteAndMatchStyle": "ペーストしてスタイルを合わせる",
+    "startSpeaking": "読み上げを開始",
+    "stopSpeaking": "読み上げを停止"
   },
   "view": {
     "label": "見る",
@@ -37,7 +46,10 @@
     "themeSystem": "システム",
     "themeWhite": "ペーパー",
     "toggleDayPanel": "デイパネルを切り替え",
-    "toggleSidebar": "サイドバーを切り替え"
+    "toggleSidebar": "サイドバーを切り替え",
+    "actualSize": "実際のサイズ",
+    "zoomIn": "拡大",
+    "zoomOut": "縮小"
   },
   "format": {
     "body": "本文",
@@ -55,7 +67,8 @@
     "about": "MemryNote について",
     "documentation": "ドキュメント",
     "label": "ヘルプ",
-    "shortcuts": "キーボードショートカット"
+    "shortcuts": "キーボードショートカット",
+    "aboutVersion": "バージョン {version}"
   },
   "insert": {
     "attachment": "添付ファイルを挿入…",
@@ -67,6 +80,10 @@
     "taskList": "タスクリスト"
   },
   "window": {
-    "label": "ウィンドウ"
+    "label": "ウィンドウ",
+    "close": "閉じる",
+    "front": "すべてを手前に移動",
+    "minimize": "しまう",
+    "zoom": "拡大/縮小"
   }
 }

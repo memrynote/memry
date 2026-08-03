@@ -1449,7 +1449,8 @@
       },
       "title": "Tuo lähteestä {name}",
       "chooseDirectory": "Valitse kansio…",
-      "folderKeepsAssets": "Valitse kansio, kun kuvat ovat muistiinpanojen oman kansion ulkopuolella — vienneissä mediatiedostot ovat usein yhteisessä kansiossa."
+      "folderKeepsAssets": "Valitse kansio, kun kuvat ovat muistiinpanojen oman kansion ulkopuolella — vienneissä mediatiedostot ovat usein yhteisessä kansiossa.",
+      "previewError": "Esikatselu epäonnistui"
     },
     "header": {
       "subtitle": "Tuo muistiinpanosi ja tehtäväsi muista sovelluksista",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, one {# tehtävä} other {# tehtävää}}",
       "withDueDate": "{count} päivätty",
       "withTags": "{count} merkitty"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Sarakkeet: {columns}",
+        "emptyTitle": "Ohitettiin rivi, jonka otsikko oli tyhjä (sarake \"{column}\")",
+        "noHeaders": "CSV-tiedostossa ei ole otsikkoriviä",
+        "titleColumn": "Otsikko sarakkeesta \"{column}\"; muut sarakkeet tallennettiin ominaisuuksiksi"
+      },
+      "raindrop": {
+        "csvEmpty": "Raindrop-CSV on tyhjä",
+        "headerNotFound": "Raindrop-CSV:n otsikkoriviä (\"url\"-saraketta) ei löytynyt",
+        "rowNoUrl": "Rivi {row} ohitettiin: ei URL-osoitetta"
+      },
+      "readFileFailed": "Tiedoston lukeminen epäonnistui",
+      "ticktick": {
+        "foldersDropped": "TickTick-kansioille ei ole vastinetta Memryssä, joten ne jätettiin pois",
+        "headerNotFound": "TickTick-CSV:n otsikkoriviä (\"Folder Name\") ei löytynyt",
+        "reminderNoAnchor": "Muistutus \"{reminder}\" ohitettiin (ei päivämääräankkuria)",
+        "subtaskParentMissing": "Osatehtävän \"{title}\" ylätehtävää ei löytynyt; tuotiin ylimmälle tasolle",
+        "unknownPriority": "Tuntematon TickTick-prioriteetti {priority} → ei mitään",
+        "unsupportedRepeat": "Toistosääntöä \"{rule}\" ei tueta, se ohitettiin"
+      },
+      "todoist": {
+        "emptyTitle": "Tehtävä, jonka sisältö oli tyhjä, tuotiin nimellä (nimetön)",
+        "headerNotFound": "Ei Todoist-CSV: TYPE-otsikkorivi puuttuu",
+        "orphanComment": "Kommentti, jota ei edeltänyt tehtävä, ohitettiin",
+        "sectionFlattened": "Osio \"{section}\" litistettiin",
+        "subtaskNoParent": "Osatehtävällä \"{title}\" ei ole ylätehtävää sisennystasolla {indent}; tuotiin ylimmälle tasolle",
+        "unknownPriority": "Tuntematon prioriteetti {priority} → ei mitään",
+        "unparsedDate": "Päivämäärää \"{date}\" ei voitu tulkita"
+      }
     }
   },
   "inbox": {

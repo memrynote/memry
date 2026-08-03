@@ -252,7 +252,12 @@
       "multiselect": "Többszörös kijelölés"
     },
     "showOnCalendar": "Megjelenítés a naptárban",
-    "showingOnCalendar": "Megjelenik a naptárban"
+    "showingOnCalendar": "Megjelenik a naptárban",
+    "statusCategories": {
+      "done": "Kész",
+      "inProgress": "Folyamatban",
+      "todo": "Teendő"
+    }
   },
   "templateSelector": {
     "title": "Válassza ki a vásznat",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "Címke neve",
     "uncategorized": "Besorolatlan"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (dupla kattintás a szerkesztéshez)"
+    },
+    "columns": {
+      "created": "Létrehozva",
+      "folder": "Mappa",
+      "kind": "Típus",
+      "modified": "Módosítva",
+      "tags": "Címkék",
+      "title": "Cím",
+      "wordCount": "Szavak száma"
+    },
+    "defaultViewName": "Alapértelmezett",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# jegyzet} other {# jegyzet}}"
+    },
+    "selectView": "Nézet kiválasztása"
   }
 }

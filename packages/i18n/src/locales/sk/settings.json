@@ -1449,7 +1449,8 @@
       },
       "title": "Importovať z {name}",
       "chooseDirectory": "Vybrať priečinok…",
-      "folderKeepsAssets": "Priečinok vyberte vtedy, keď sú obrázky mimo priečinka so samotnými poznámkami — exporty ich často ukladajú do spoločného priečinka."
+      "folderKeepsAssets": "Priečinok vyberte vtedy, keď sú obrázky mimo priečinka so samotnými poznámkami — exporty ich často ukladajú do spoločného priečinka.",
+      "previewError": "Náhľad zlyhal"
     },
     "header": {
       "subtitle": "Preneste svoje poznámky a úlohy z iných aplikácií",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, one {# úloha} few {# úlohy} other {# úloh}}",
       "withDueDate": "{count} datovaných",
       "withTags": "{count} označených"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Stĺpce: {columns}",
+        "emptyTitle": "Preskočený riadok s prázdnym názvom (stĺpec „{column}“)",
+        "noHeaders": "Súbor CSV nemá hlavičky",
+        "titleColumn": "Názov zo stĺpca „{column}“; ostatné stĺpce uložené ako vlastnosti"
+      },
+      "raindrop": {
+        "csvEmpty": "Súbor CSV z Raindrop je prázdny",
+        "headerNotFound": "Riadok hlavičky CSV z Raindrop (stĺpec „url“) sa nenašiel",
+        "rowNoUrl": "Riadok {row} preskočený: bez URL"
+      },
+      "readFileFailed": "Nepodarilo sa prečítať súbor",
+      "ticktick": {
+        "foldersDropped": "Priečinky TickTick nemajú v Memry ekvivalent a boli vynechané",
+        "headerNotFound": "Riadok hlavičky CSV z TickTick („Folder Name“) sa nenašiel",
+        "reminderNoAnchor": "Pripomienka „{reminder}“ preskočená (bez ukotvenia na dátum)",
+        "subtaskParentMissing": "Nadradená úloha podúlohy „{title}“ sa nenašla; importovaná na najvyššej úrovni",
+        "unknownPriority": "Neznáma priorita TickTick {priority} → žiadna",
+        "unsupportedRepeat": "Nepodporované pravidlo opakovania „{rule}“ preskočené"
+      },
+      "todoist": {
+        "emptyTitle": "Úloha s prázdnym obsahom importovaná ako (bez názvu)",
+        "headerNotFound": "Nejde o CSV z Todoist: chýba riadok hlavičky TYPE",
+        "orphanComment": "Komentár bez predchádzajúcej úlohy preskočený",
+        "sectionFlattened": "Sekcia „{section}“ zarovnaná do jednej úrovne",
+        "subtaskNoParent": "Podúloha „{title}“ nemá nadradenú úlohu na odsadení {indent}; importovaná na najvyššej úrovni",
+        "unknownPriority": "Neznáma priorita {priority} → žiadna",
+        "unparsedDate": "Nepodarilo sa spracovať dátum „{date}“"
+      }
     }
   },
   "inbox": {

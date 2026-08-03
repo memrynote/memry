@@ -1449,7 +1449,8 @@
       },
       "title": "{name} からインポート",
       "chooseDirectory": "フォルダを選択…",
-      "folderKeepsAssets": "画像がメモと同じフォルダの外にある場合は、ファイルではなくフォルダを選んでください。エクスポートでは、メディアが共有フォルダにまとめられていることがよくあります。"
+      "folderKeepsAssets": "画像がメモと同じフォルダの外にある場合は、ファイルではなくフォルダを選んでください。エクスポートでは、メディアが共有フォルダにまとめられていることがよくあります。",
+      "previewError": "プレビューに失敗しました"
     },
     "header": {
       "subtitle": "他のアプリからノートやタスクを取り込みます",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, other {#件のタスク}}",
       "withDueDate": "{count} 件日付付き",
       "withTags": "{count} 件タグ付き"
+    },
+    "messages": {
+      "csv": {
+        "columns": "列: {columns}",
+        "emptyTitle": "タイトルが空の行をスキップしました（列「{column}」）",
+        "noHeaders": "CSV ファイルにヘッダーがありません",
+        "titleColumn": "タイトルは「{column}」から取得し、他の列はプロパティとして保存します"
+      },
+      "raindrop": {
+        "csvEmpty": "Raindrop の CSV が空です",
+        "headerNotFound": "Raindrop の CSV にヘッダー行（「url」列）が見つかりません",
+        "rowNoUrl": "{row} 行目をスキップしました: URL がありません"
+      },
+      "readFileFailed": "ファイルを読み取れませんでした",
+      "ticktick": {
+        "foldersDropped": "TickTick のフォルダに対応するものが Memry にないため、取り込まれませんでした",
+        "headerNotFound": "TickTick の CSV にヘッダー行（「Folder Name」）が見つかりません",
+        "reminderNoAnchor": "リマインダー「{reminder}」をスキップしました（基準となる日付がありません）",
+        "subtaskParentMissing": "サブタスク「{title}」の親が見つからないため、トップレベルとしてインポートしました",
+        "unknownPriority": "不明な TickTick の優先度 {priority} → なし",
+        "unsupportedRepeat": "未対応の繰り返しルール「{rule}」をスキップしました"
+      },
+      "todoist": {
+        "emptyTitle": "内容が空のタスクを (untitled) としてインポートしました",
+        "headerNotFound": "Todoist の CSV ではありません: TYPE ヘッダー行がありません",
+        "orphanComment": "対応するタスクがないコメントをスキップしました",
+        "sectionFlattened": "セクション「{section}」をフラット化しました",
+        "subtaskNoParent": "サブタスク「{title}」にはインデント {indent} の親がないため、トップレベルとしてインポートしました",
+        "unknownPriority": "不明な優先度 {priority} → なし",
+        "unparsedDate": "日付「{date}」を解析できませんでした"
+      }
     }
   },
   "inbox": {

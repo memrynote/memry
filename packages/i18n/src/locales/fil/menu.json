@@ -1,7 +1,12 @@
 {
   "app": {
     "quit": "quit",
-    "preferences": "Mga Setting…"
+    "preferences": "Mga Setting…",
+    "exit": "Lumabas",
+    "hide": "Itago ang MemryNote",
+    "hideOthers": "Itago ang Iba",
+    "services": "Mga Serbisyo",
+    "unhide": "Ipakita Lahat"
   },
   "file": {
     "label": "file",
@@ -24,7 +29,11 @@
     "paste": "Idikit",
     "selectAll": "Piliin lahat",
     "find": "Hanapin",
-    "speech": "Pagsasalita"
+    "speech": "Pagsasalita",
+    "delete": "Tanggalin",
+    "pasteAndMatchStyle": "Idikit at Itugma ang Estilo",
+    "startSpeaking": "Simulan ang Pagsasalita",
+    "stopSpeaking": "Ihinto ang Pagsasalita"
   },
   "view": {
     "label": "Tingnan",
@@ -37,7 +46,10 @@
     "themeSystem": "System",
     "themeWhite": "Papel",
     "toggleDayPanel": "I-toggle ang Day Panel",
-    "toggleSidebar": "I-toggle ang Sidebar"
+    "toggleSidebar": "I-toggle ang Sidebar",
+    "actualSize": "Aktwal na Laki",
+    "zoomIn": "Palakihin",
+    "zoomOut": "Paliitin"
   },
   "format": {
     "body": "Teksto",
@@ -55,7 +67,8 @@
     "about": "Tungkol sa MemryNote",
     "documentation": "Dokumentasyon",
     "label": "Tulong",
-    "shortcuts": "Mga Keyboard Shortcut"
+    "shortcuts": "Mga Keyboard Shortcut",
+    "aboutVersion": "Bersyon {version}"
   },
   "insert": {
     "attachment": "Magpasok ng Attachment…",
@@ -67,6 +80,10 @@
     "taskList": "Listahan ng Gawain"
   },
   "window": {
-    "label": "Window"
+    "label": "Window",
+    "close": "Isara",
+    "front": "Iharap Lahat",
+    "minimize": "I-minimize",
+    "zoom": "I-zoom"
   }
 }

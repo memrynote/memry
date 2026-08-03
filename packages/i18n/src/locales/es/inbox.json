@@ -270,7 +270,50 @@
     "panelEmpty": "No hay recordatorios próximos.",
     "panelPast": "Pasados",
     "panelUpcoming": "Próximos",
-    "taskFallback": "Tarea"
+    "taskFallback": "Tarea",
+    "dateTime": {
+      "dateAt": "{date} a las {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Hoy a las {time}",
+      "todayCompact": "Hoy, {time}",
+      "tomorrowAt": "Mañana a las {time}",
+      "tomorrowCompact": "Mañana, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Recordatorio de aniversario",
+      "inHours": {
+        "label": "Dentro de {count, plural, one {# hora} many {# horas} other {# horas}}"
+      },
+      "inMinutes": {
+        "label": "Dentro de {count, plural, one {# minuto} many {# minutos} other {# minutos}}"
+      },
+      "inMonths": {
+        "label": "Dentro de {count, plural, one {# mes} many {# meses} other {# meses}}"
+      },
+      "inWeeks": {
+        "label": "Dentro de {count, plural, one {# semana} many {# semanas} other {# semanas}}"
+      },
+      "inYears": {
+        "label": "Dentro de {count, plural, one {# año} many {# años} other {# años}}"
+      },
+      "laterToday": {
+        "description": "Dentro de {count, plural, one {# hora} many {# horas} other {# horas}}",
+        "label": "Más tarde hoy"
+      },
+      "monthlyReflection": "Reflexión mensual",
+      "nextWeek": {
+        "description": "El lunes a las 9:00",
+        "label": "La próxima semana"
+      },
+      "quarterlyReflection": "Reflexión trimestral",
+      "reviewInAWeek": "Revisar en una semana",
+      "sameDayNextMonth": "El mismo día del mes que viene",
+      "tomorrow": {
+        "description": "Mañana a las 9:00",
+        "label": "Mañana"
+      },
+      "tomorrowMorning": "Mañana por la mañana"
+    }
   },
   "insights": {
     "captureActivity": "Capturar actividad",

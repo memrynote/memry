@@ -35,7 +35,14 @@
     "delete": "Xóa công việc",
     "created": "Được tạo {date}",
     "reminder": "Nhắc nhở",
-    "tags": "Thẻ"
+    "tags": "Thẻ",
+    "priorityLabels": {
+      "high": "Cao",
+      "low": "Thấp",
+      "medium": "Trung bình",
+      "none": "Không Ưu tiên",
+      "urgent": "Khẩn cấp"
+    }
   },
   "filters": {
     "filter": "  \nBộ lọc  ",
@@ -44,7 +51,25 @@
     "groupBy": "Nhóm theo",
     "groupByOptions": "Tùy chọn nhóm",
     "sortAscending": "Sắp xếp theo thứ tự tăng dần",
-    "sortDescending": "Sắp xếp theo thứ tự giảm dần"
+    "sortDescending": "Sắp xếp theo thứ tự giảm dần",
+    "dueDate": {
+      "any": "Mọi ngày đến hạn",
+      "custom": "Khoảng tùy chỉnh...",
+      "nextWeek": "Tuần tới",
+      "none": "Không có ngày đến hạn",
+      "overdue": "Quá hạn",
+      "thisMonth": "Tháng này",
+      "thisWeek": "Tuần này",
+      "today": "Hôm nay",
+      "tomorrow": "Ngày mai"
+    },
+    "quickPresets": {
+      "dueThisWeek": "Đến Hạn Tuần Này",
+      "highPriority": "Ưu Tiên Cao",
+      "noDueDate": "Không Có Ngày Đến Hạn",
+      "overdue": "Quá Hạn",
+      "repeating": "Lặp Lại"
+    }
   },
   "quickAdd": {
     "label": "Thêm nhiệm vụ nhanh",
@@ -77,7 +102,21 @@
     "searchRelated": "Tìm mục liên quan…"
   },
   "kanban": {
-    "board": "Bảng Kanban"
+    "board": "Bảng Kanban",
+    "empty": {
+      "default": {
+        "subtitle": "Kéo công việc vào đây hoặc nhấn + để thêm",
+        "title": "Không có công việc"
+      },
+      "done": {
+        "subtitle": "Hoàn thành công việc để thấy chúng ở đây",
+        "title": "Chưa có công việc hoàn thành"
+      },
+      "schedule": {
+        "subtitle": "Kéo công việc vào đây để lên lịch lại",
+        "title": "Chưa có gì được lên lịch"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "Dự án đã được cập nhật",
@@ -100,7 +139,53 @@
     "noCompletedSelected": "Không có nhiệm vụ hoàn thành nào được chọn",
     "completeFailed": "Không thể hoàn thành các nhiệm vụ",
     "deleteFailed": "Không thể xóa các nhiệm vụ",
-    "moveFailed": "Không thể di chuyển các nhiệm vụ"
+    "moveFailed": "Không thể di chuyển các nhiệm vụ",
+    "bulk": {
+      "archived": "{count, plural, other {Đã lưu trữ # công việc}}",
+      "completed": "{count, plural, other {Đã hoàn thành # công việc}}",
+      "deleted": "{count, plural, other {Đã xóa # công việc}}",
+      "deletedDescription": "Có thể hoàn tác thao tác này trong thời gian ngắn.",
+      "dueDateRemoved": "{count, plural, other {Đã xóa ngày đến hạn của # công việc}}",
+      "dueDateSet": "{count, plural, other {Đã đặt ngày đến hạn cho # công việc}}",
+      "movedToProject": "{count, plural, other {Đã chuyển # công việc sang {project}}}",
+      "movedToStatus": "{count, plural, other {Đã chuyển # công việc sang {status}}}",
+      "priorityRemoved": "{count, plural, other {Đã xóa mức ưu tiên của # công việc}}",
+      "prioritySet": "{count, plural, other {Đã đặt mức ưu tiên {priority} cho # công việc}}",
+      "restored": "{count, plural, other {Đã khôi phục # công việc}}",
+      "undoArchive": "{count, plural, other {Lưu trữ # công việc}}",
+      "undoComplete": "{count, plural, other {Hoàn thành # công việc}}",
+      "undoDelete": "{count, plural, other {Xóa # công việc}}",
+      "undoDueDate": "{count, plural, other {Đã đổi ngày đến hạn cho # công việc}}",
+      "undoMove": "{count, plural, other {Di chuyển # công việc}}",
+      "undoStatus": "{count, plural, other {Trạng thái → {status} cho # công việc}}",
+      "undoUncomplete": "{count, plural, other {Bỏ hoàn thành # công việc}}"
+    },
+    "drag": {
+      "archived": "{count, plural, other {Đã lưu trữ # công việc}}",
+      "deleted": "{count, plural, other {Đã xóa # công việc}}",
+      "moved": "{count, plural, other {Đã chuyển # công việc tới {target}}}",
+      "movedTo": "Đã chuyển tới {target}",
+      "prioritySet": "{count, plural, other {Đã đặt mức ưu tiên {priority} cho # công việc}}",
+      "prioritySetTo": "Đã đặt mức ưu tiên {priority}",
+      "rescheduled": "{count, plural, other {Đã lên lịch lại # công việc tới {target}}}",
+      "rescheduledTo": "Đã lên lịch lại tới {target}",
+      "undoArchive": "{count, plural, other {Đã lưu trữ # công việc}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, other {Đã thêm # công việc con}}",
+      "completed": "{count, plural, other {Đã hoàn thành # công việc con}}",
+      "deleted": "{count, plural, other {Đã xóa # công việc con}}",
+      "deletedDescription": "Công việc con đã được gỡ bỏ",
+      "dueDateCleared": "{count, plural, other {Đã xóa ngày đến hạn của # công việc con}}",
+      "dueDateSet": "{count, plural, other {Đã đặt ngày đến hạn cho # công việc con}}",
+      "markedIncomplete": "{count, plural, other {Đã đánh dấu # công việc con là chưa hoàn thành}}",
+      "movedUnder": "Đã chuyển vào “{title}”",
+      "parentAndSubtasksCompleted": "Đã hoàn thành công việc và các công việc con",
+      "parentDeletedKeepSubtasks": "Đã xóa công việc, các công việc con được chuyển thành công việc",
+      "parentDeletedWithSubtasks": "Đã xóa công việc và các công việc con",
+      "prioritySet": "{count, plural, other {Đã đặt mức ưu tiên cho # công việc con}}",
+      "promoted": "Đã nâng “{title}” thành công việc"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -181,7 +266,8 @@
       "nextMonth": "Tháng sau",
       "goToToday": "Đi đến hôm nay",
       "today": "Hôm nay",
-      "w": "W"
+      "w": "W",
+      "weekNumber": "Tuần {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Xóa ngày",
@@ -327,7 +413,11 @@
       "addTime": "Thêm giờ",
       "time": "Thời gian",
       "clearDate": "Xóa ngày",
-      "backToOptions": "Quay lại tùy chọn"
+      "backToOptions": "Quay lại tùy chọn",
+      "nextWeek": "Tuần Tới",
+      "thisWeekend": "Cuối Tuần Này",
+      "today": "Hôm nay",
+      "tomorrow": "Ngày mai"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "Chỉnh sửa Nhiệm vụ Lặp lại",
@@ -426,7 +516,17 @@
       "currentFilters": "Bộ lọc hiện tại:",
       "noFiltersApplied": "Chưa áp dụng bộ lọc nào",
       "cancel": "Hủy",
-      "saveFilter2": "Lưu bộ lọc"
+      "saveFilter2": "Lưu bộ lọc",
+      "nameRequired": "Vui lòng nhập tên cho bộ lọc này",
+      "summaryDue": "Đến hạn: {value}",
+      "summaryDueRange": "Đến hạn: {start} - {end}",
+      "summaryPriorities": "Mức ưu tiên: {names}",
+      "summaryProjects": "Dự án: {names}",
+      "summaryRepeatOneTime": "Lặp lại: Chỉ một lần",
+      "summaryRepeatRepeating": "Lặp lại: Chỉ công việc lặp lại",
+      "summarySearch": "Tìm kiếm: “{query}”",
+      "summaryTimeWith": "Thời gian: Có giờ",
+      "summaryTimeWithout": "Thời gian: Không có giờ"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Bộ lọc đã lưu",
@@ -558,7 +658,16 @@
       "d": "d"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": " Thêm Nhiệm vụ "
+      "addTask": " Thêm Nhiệm vụ ",
+      "allDescription": "Tạo công việc đầu tiên của bạn để bắt đầu",
+      "allTitle": "Chưa có công việc nào",
+      "completedDescription": "Các công việc đã hoàn thành sẽ xuất hiện ở đây",
+      "completedTitle": "Chưa có công việc hoàn thành",
+      "projectDescription": "Thêm một công việc để bắt đầu",
+      "projectTitle": "Chưa có công việc nào trong dự án này",
+      "projectTitleNamed": "Chưa có công việc nào trong {name}",
+      "todayDescription": "Bạn đã xong hết rồi!",
+      "todayTitle": "Không có gì đến hạn hôm nay"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "Không ưu tiên"
@@ -742,5 +851,42 @@
       "overview": "Tổng quan",
       "tasks": "Công việc"
     }
+  },
+  "priorityInline": {
+    "high": "cao",
+    "low": "thấp",
+    "medium": "trung bình",
+    "urgent": "khẩn cấp"
+  },
+  "priorityLabels": {
+    "high": "Cao",
+    "low": "Thấp",
+    "medium": "Trung bình",
+    "none": "Không Ưu tiên",
+    "urgent": "Khẩn cấp"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "Xong",
+      "inProgress": "Đang Thực hiện",
+      "todo": "Cần Làm"
+    },
+    "validation": {
+      "minStatuses": "Dự án cần ít nhất 2 trạng thái",
+      "nameRequired": "Cần có tên dự án",
+      "nameTooLong": "Tên dự án phải có tối đa 50 ký tự",
+      "needsDoneStatus": "Dự án cần ít nhất một trạng thái 'Xong'",
+      "needsDoneStatusForCompletedTasks": "Dự án cần ít nhất một trạng thái 'Xong' cho các công việc đã hoàn thành",
+      "needsTodoStatus": "Dự án cần ít nhất một trạng thái 'Cần Làm'",
+      "needsTodoStatusForNewTasks": "Dự án cần ít nhất một trạng thái 'Cần Làm' cho công việc mới",
+      "statusNameRequired": "Mọi trạng thái đều phải có tên",
+      "statusNamesUnique": "Tên trạng thái phải là duy nhất",
+      "statusNotFound": "Không tìm thấy trạng thái"
+    }
+  },
+  "statusLabels": {
+    "done": "Xong",
+    "inProgress": "Đang Thực hiện",
+    "todo": "Cần Làm"
   }
 }

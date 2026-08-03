@@ -1,7 +1,12 @@
 {
   "app": {
     "quit": "Renunță",
-    "preferences": "Setări…"
+    "preferences": "Setări…",
+    "exit": "Ieșire",
+    "hide": "Ascunde MemryNote",
+    "hideOthers": "Ascunde celelalte",
+    "services": "Servicii",
+    "unhide": "Afișează toate"
   },
   "file": {
     "label": "Fișier",
@@ -24,7 +29,11 @@
     "paste": "Lipiți",
     "selectAll": "Selectează tot",
     "find": "Găsește",
-    "speech": "Vorbire"
+    "speech": "Vorbire",
+    "delete": "Ștergeți",
+    "pasteAndMatchStyle": "Lipiți și potriviți stilul",
+    "startSpeaking": "Începeți vorbirea",
+    "stopSpeaking": "Opriți vorbirea"
   },
   "view": {
     "label": "Vedeți",
@@ -37,7 +46,10 @@
     "themeSystem": "Sistem",
     "themeWhite": "Hârtie",
     "toggleDayPanel": "Comută Panoul zilei",
-    "toggleSidebar": "Comută bara laterală"
+    "toggleSidebar": "Comută bara laterală",
+    "actualSize": "Dimensiune reală",
+    "zoomIn": "Mărire",
+    "zoomOut": "Micșorare"
   },
   "format": {
     "body": "Corp de text",
@@ -55,7 +67,8 @@
     "about": "Despre MemryNote",
     "documentation": "Documentație",
     "label": "Ajutor",
-    "shortcuts": "Scurtături de tastatură"
+    "shortcuts": "Scurtături de tastatură",
+    "aboutVersion": "Versiunea {version}"
   },
   "insert": {
     "attachment": "Inserează atașament…",
@@ -67,6 +80,10 @@
     "taskList": "Listă de sarcini"
   },
   "window": {
-    "label": "Fereastră"
+    "label": "Fereastră",
+    "close": "Închide",
+    "front": "Adu toate în prim-plan",
+    "minimize": "Minimizare",
+    "zoom": "Zoom"
   }
 }

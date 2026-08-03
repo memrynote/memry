@@ -270,7 +270,50 @@
     "panelEmpty": "Nema nadolazećih podsjetnika.",
     "panelPast": "Prošlo",
     "panelUpcoming": "Nadolazeće",
-    "taskFallback": "Zadatak"
+    "taskFallback": "Zadatak",
+    "dateTime": {
+      "dateAt": "{date} u {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Danas u {time}",
+      "todayCompact": "Danas, {time}",
+      "tomorrowAt": "Sutra u {time}",
+      "tomorrowCompact": "Sutra, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Podsjetnik na godišnjicu",
+      "inHours": {
+        "label": "Za {count, plural, one {# sat} few {# sata} other {# sati}}"
+      },
+      "inMinutes": {
+        "label": "Za {count, plural, one {# minutu} few {# minute} other {# minuta}}"
+      },
+      "inMonths": {
+        "label": "Za {count, plural, one {# mjesec} few {# mjeseca} other {# mjeseci}}"
+      },
+      "inWeeks": {
+        "label": "Za {count, plural, one {# tjedan} few {# tjedna} other {# tjedana}}"
+      },
+      "inYears": {
+        "label": "Za {count, plural, one {# godinu} few {# godine} other {# godina}}"
+      },
+      "laterToday": {
+        "description": "Za {count, plural, one {# sat} few {# sata} other {# sati}}",
+        "label": "Kasnije danas"
+      },
+      "monthlyReflection": "Mjesečno promišljanje",
+      "nextWeek": {
+        "description": "Ponedjeljak u 9:00",
+        "label": "Sljedeći tjedan"
+      },
+      "quarterlyReflection": "Tromjesečno promišljanje",
+      "reviewInAWeek": "Pregled za tjedan dana",
+      "sameDayNextMonth": "Isti dan sljedeći mjesec",
+      "tomorrow": {
+        "description": "Sutra u 9:00",
+        "label": "Sutra"
+      },
+      "tomorrowMorning": "Sutra ujutro"
+    }
   },
   "insights": {
     "captureActivity": "Snimi aktivnost",

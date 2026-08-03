@@ -252,7 +252,12 @@
       "multiselect": "多选"
     },
     "showOnCalendar": "在日历上显示",
-    "showingOnCalendar": "正在日历上显示"
+    "showingOnCalendar": "正在日历上显示",
+    "statusCategories": {
+      "done": "已完成",
+      "inProgress": "进行中",
+      "todo": "待办"
+    }
   },
   "templateSelector": {
     "title": "选择你的画布",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "标签名称",
     "uncategorized": "未分类"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name}（双击以编辑）"
+    },
+    "columns": {
+      "created": "创建时间",
+      "folder": "文件夹",
+      "kind": "类型",
+      "modified": "修改时间",
+      "tags": "标签",
+      "title": "标题",
+      "wordCount": "字数"
+    },
+    "defaultViewName": "默认",
+    "groupHeader": {
+      "noteCount": "{count, plural, other {# 篇笔记}}"
+    },
+    "selectView": "选择视图"
   }
 }

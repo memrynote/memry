@@ -270,7 +270,50 @@
     "panelEmpty": "Nessun promemoria in arrivo.",
     "panelPast": "Passati",
     "panelUpcoming": "In arrivo",
-    "taskFallback": "Attività"
+    "taskFallback": "Attività",
+    "dateTime": {
+      "dateAt": "{date} alle {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Oggi alle {time}",
+      "todayCompact": "Oggi, {time}",
+      "tomorrowAt": "Domani alle {time}",
+      "tomorrowCompact": "Domani, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Promemoria anniversario",
+      "inHours": {
+        "label": "Tra {count, plural, one {# ora} many {# ore} other {# ore}}"
+      },
+      "inMinutes": {
+        "label": "Tra {count, plural, one {# minuto} many {# minuti} other {# minuti}}"
+      },
+      "inMonths": {
+        "label": "Tra {count, plural, one {# mese} many {# mesi} other {# mesi}}"
+      },
+      "inWeeks": {
+        "label": "Tra {count, plural, one {# settimana} many {# settimane} other {# settimane}}"
+      },
+      "inYears": {
+        "label": "Tra {count, plural, one {# anno} many {# anni} other {# anni}}"
+      },
+      "laterToday": {
+        "description": "Tra {count, plural, one {# ora} many {# ore} other {# ore}}",
+        "label": "Più tardi oggi"
+      },
+      "monthlyReflection": "Riflessione mensile",
+      "nextWeek": {
+        "description": "Lunedì alle 9:00",
+        "label": "La prossima settimana"
+      },
+      "quarterlyReflection": "Riflessione trimestrale",
+      "reviewInAWeek": "Rivedi tra una settimana",
+      "sameDayNextMonth": "Stesso giorno il mese prossimo",
+      "tomorrow": {
+        "description": "Domani alle 9:00",
+        "label": "Domani"
+      },
+      "tomorrowMorning": "Domani mattina"
+    }
   },
   "insights": {
     "captureActivity": "Cattura attività",

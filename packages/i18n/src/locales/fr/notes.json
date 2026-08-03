@@ -252,7 +252,12 @@
       "multiselect": "Sélection multiple"
     },
     "showOnCalendar": "Afficher sur le calendrier",
-    "showingOnCalendar": "Affiché sur le calendrier"
+    "showingOnCalendar": "Affiché sur le calendrier",
+    "statusCategories": {
+      "done": "Terminé",
+      "inProgress": "En cours",
+      "todo": "À faire"
+    }
   },
   "templateSelector": {
     "title": "Choisissez votre toile",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "Nom de la balise",
     "uncategorized": "Sans catégorie"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (double-cliquez pour modifier)"
+    },
+    "columns": {
+      "created": "Créé le",
+      "folder": "Dossier",
+      "kind": "Type",
+      "modified": "Modifié le",
+      "tags": "Balises",
+      "title": "Titre",
+      "wordCount": "Nombre de mots"
+    },
+    "defaultViewName": "Par défaut",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# note} many {# notes} other {# notes}}"
+    },
+    "selectView": "Sélectionner une vue"
   }
 }

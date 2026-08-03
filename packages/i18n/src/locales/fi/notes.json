@@ -252,7 +252,12 @@
       "multiselect": "Monivalinta"
     },
     "showOnCalendar": "Näytä kalenterissa",
-    "showingOnCalendar": "Näytetään kalenterissa"
+    "showingOnCalendar": "Näytetään kalenterissa",
+    "statusCategories": {
+      "done": "Valmis",
+      "inProgress": "Kesken",
+      "todo": "Tekemättä"
+    }
   },
   "templateSelector": {
     "title": "Valitse oma kangas",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "Tunnisteen nimi",
     "uncategorized": "Luokittelemattomat"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (muokkaa kaksoisnapsauttamalla)"
+    },
+    "columns": {
+      "created": "Luotu",
+      "folder": "Kansio",
+      "kind": "Tyyppi",
+      "modified": "Muokattu",
+      "tags": "Tunnisteet",
+      "title": "Otsikko",
+      "wordCount": "Sanamäärä"
+    },
+    "defaultViewName": "Oletus",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# muistiinpano} other {# muistiinpanoa}}"
+    },
+    "selectView": "Valitse näkymä"
   }
 }

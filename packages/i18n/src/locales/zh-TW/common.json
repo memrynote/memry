@@ -25,7 +25,8 @@
     "expand": "展開",
     "collapse": "收合",
     "showMore": "+{count, plural, one {# 更多} other {# 更多}}",
-    "showLess": "顯示較少"
+    "showLess": "顯示較少",
+    "undo": "復原"
   },
   "tabs": {
     "pin": "固定標籤",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "今天",
     "yesterday": "昨天",
-    "daysAgo": "{count, plural, one {# 天前} other {# 天前}}"
+    "daysAgo": "{count, plural, one {# 天前} other {# 天前}}",
+    "daysLate": "{count, plural, other {逾期 # 天}}",
+    "daysOverdue": "{count, plural, other {已逾期 # 天}}",
+    "tomorrow": "明天"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {每天} other {每 # 天}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {每月在 {day}{suffix}} other {每 # 個月在 {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {每月在 {week} {day}} other {每隔 # 個月在 {week} {day}}}",
     "everyNYears": "{count, plural, one {每年} other {每 # 年}}",
-    "repeats": "重複"
+    "repeats": "重複",
+    "ordinal": {
+      "first": "第一個",
+      "fourth": "第四個",
+      "last": "最後一個",
+      "second": "第二個",
+      "third": "第三個"
+    },
+    "preset": {
+      "everyWeekday": "每個工作日（週一至週五）",
+      "everyYearOnDate": "每年的 {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -640,6 +655,11 @@
     "welcome": {
       "body": "您私密、離線優先的家。筆記採端對端加密——未加密時絕不離開您的裝置。",
       "title": "歡迎使用 MemryNote"
+    },
+    "tour": {
+      "next": "下一步",
+      "previous": "上一步",
+      "progress": "{current} / {total}"
     }
   },
   "updatePrompt": {
@@ -696,5 +716,125 @@
     "sectionLabel": "畫布",
     "tooLargeToSync": "這個畫布太大，無法同步。它已儲存在此裝置上，但要等到變小之後才會傳到您的其他裝置。",
     "untitled": "未命名畫布"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "點擊列",
+      "reset": "重設",
+      "shortcutsTab": "「快速鍵」分頁"
+    },
+    "description": "在 memrynote 中快速移動、擷取想法與處理工作的捷徑。",
+    "groups": {
+      "general": {
+        "description": "全應用程式的導覽與說明。",
+        "title": "一般"
+      },
+      "inbox": {
+        "description": "快速處理已擷取的項目。",
+        "title": "收件匣"
+      },
+      "journal": {
+        "description": "瀏覽日誌檢視並聚焦於書寫區域。",
+        "title": "日誌"
+      },
+      "notes": {
+        "description": "撰寫、格式化與搜尋筆記。",
+        "title": "筆記／編輯器"
+      },
+      "settings": {
+        "description": "開啟設定並自訂快速鍵。",
+        "title": "設定"
+      },
+      "tabs": {
+        "description": "在分頁與窗格之間移動。",
+        "title": "分頁與拆分"
+      },
+      "tasks": {
+        "description": "篩選、選取與完成任務。",
+        "title": "任務"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "建立筆記",
+        "keyboardShortcuts": "開啟鍵盤快速鍵",
+        "openSettings": "開啟設定",
+        "quickSearch": "開啟快速搜尋",
+        "sidebarSection": "前往側邊欄區段",
+        "toggleSidebar": "切換側邊欄",
+        "undoTaskAction": "復原上一個任務操作"
+      },
+      "inbox": {
+        "archiveItem": "封存選取的項目",
+        "chooseQuickFileResult": "選擇快速歸檔結果",
+        "clearSelection": "清除選取或關閉快速歸檔",
+        "confirmFiling": "確認歸檔面板",
+        "firstOrLastItem": "第一個或最後一個項目",
+        "jumpByPage": "逐頁跳轉",
+        "nextItem": "下一個項目",
+        "openOriginal": "開啟原始連結",
+        "openQuickFile": "開啟快速歸檔",
+        "previousItem": "上一個項目",
+        "refresh": "重新整理收件匣",
+        "selectAllVisible": "選取所有可見項目",
+        "selectItem": "選取項目",
+        "togglePreview": "切換預覽面板"
+      },
+      "journal": {
+        "bold": "將選取文字設為粗體",
+        "find": "在日誌中尋找",
+        "italic": "將選取文字設為斜體",
+        "link": "新增或編輯連結",
+        "returnFromOverview": "從月檢視或年檢視返回",
+        "toggleFullWidth": "切換全寬日誌",
+        "underline": "為選取文字加底線"
+      },
+      "notes": {
+        "bold": "粗體",
+        "closeOverlays": "關閉編輯器浮層",
+        "commandMenu": "開啟編輯器指令選單",
+        "createNote": "建立筆記",
+        "find": "在筆記中尋找",
+        "italic": "斜體",
+        "link": "新增或編輯連結",
+        "saveNote": "儲存目前筆記",
+        "underline": "底線"
+      },
+      "settings": {
+        "cancelRecording": "取消快速鍵錄製",
+        "customizeShortcuts": "自訂鍵盤快速鍵",
+        "openSettings": "開啟設定",
+        "recordShortcut": "錄製新的快速鍵",
+        "resetShortcut": "還原快速鍵預設值"
+      },
+      "tabs": {
+        "closeAllInPane": "關閉窗格中的所有分頁",
+        "closeSplitPane": "關閉拆分窗格",
+        "closeTab": "關閉分頁",
+        "duplicateTab": "複製分頁",
+        "focusPane": "聚焦其他窗格",
+        "maximizePane": "最大化目前窗格",
+        "moveTabToPane": "將分頁移至窗格",
+        "newTabMenu": "開啟新分頁選單",
+        "nextTab": "下一個分頁",
+        "pinTab": "固定或取消固定分頁",
+        "previousTab": "上一個分頁",
+        "reopenClosedTab": "重新開啟已關閉的分頁",
+        "splitDown": "向下拆分",
+        "splitRight": "向右拆分"
+      },
+      "tasks": {
+        "clearFilters": "清除可見的篩選條件",
+        "clearSelection": "清除任務選取",
+        "completeSelected": "完成選取的任務",
+        "configureRepeat": "設定聚焦任務的重複規則",
+        "deleteSelected": "刪除選取的任務",
+        "selectAllVisible": "選取所有可見任務",
+        "skipOccurrence": "略過這次重複",
+        "stopRepeating": "停止重複任務"
+      }
+    },
+    "or": "或",
+    "then": "接著"
   }
 }

@@ -1449,7 +1449,8 @@
       },
       "title": "Nhập từ {name}",
       "chooseDirectory": "Chọn thư mục…",
-      "folderKeepsAssets": "Hãy chọn thư mục khi ảnh nằm ngoài thư mục chứa ghi chú — các bản xuất thường để tệp phương tiện trong một thư mục dùng chung."
+      "folderKeepsAssets": "Hãy chọn thư mục khi ảnh nằm ngoài thư mục chứa ghi chú — các bản xuất thường để tệp phương tiện trong một thư mục dùng chung.",
+      "previewError": "Xem trước thất bại"
     },
     "header": {
       "subtitle": "Đưa ghi chú và công việc từ ứng dụng khác vào",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, other {# công việc}}",
       "withDueDate": "{count} có ngày",
       "withTags": "{count} đã gắn thẻ"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Cột: {columns}",
+        "emptyTitle": "Đã bỏ qua hàng có tiêu đề trống (cột “{column}”)",
+        "noHeaders": "Tệp CSV không có dòng tiêu đề",
+        "titleColumn": "Tiêu đề lấy từ “{column}”; các cột khác được lưu thành thuộc tính"
+      },
+      "raindrop": {
+        "csvEmpty": "Tệp CSV Raindrop trống",
+        "headerNotFound": "Không tìm thấy dòng tiêu đề của CSV Raindrop (cột “url”)",
+        "rowNoUrl": "Đã bỏ qua hàng {row}: không có URL"
+      },
+      "readFileFailed": "Không thể đọc tệp",
+      "ticktick": {
+        "foldersDropped": "Thư mục TickTick không có tương đương trong Memry nên đã bị bỏ qua",
+        "headerNotFound": "Không tìm thấy dòng tiêu đề của CSV TickTick (“Folder Name”)",
+        "reminderNoAnchor": "Đã bỏ qua nhắc nhở “{reminder}” (không có mốc ngày)",
+        "subtaskParentMissing": "Không tìm thấy công việc cha của “{title}”; đã nhập ở cấp cao nhất",
+        "unknownPriority": "Mức ưu tiên TickTick không xác định {priority} → không có",
+        "unsupportedRepeat": "Đã bỏ qua quy tắc lặp không được hỗ trợ “{rule}”"
+      },
+      "todoist": {
+        "emptyTitle": "Công việc có nội dung trống được nhập thành (không có tiêu đề)",
+        "headerNotFound": "Không phải CSV Todoist: thiếu dòng tiêu đề TYPE",
+        "orphanComment": "Đã bỏ qua bình luận không có công việc đứng trước",
+        "sectionFlattened": "Đã làm phẳng phần “{section}”",
+        "subtaskNoParent": "Công việc con “{title}” không có công việc cha ở mức thụt lề {indent}; đã nhập ở cấp cao nhất",
+        "unknownPriority": "Mức ưu tiên không xác định {priority} → không có",
+        "unparsedDate": "Không thể phân tích ngày “{date}”"
+      }
     }
   },
   "inbox": {

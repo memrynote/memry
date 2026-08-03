@@ -25,7 +25,8 @@
     "expand": "Udvid",
     "collapse": "Kollaps",
     "showMore": "+{count, plural, one {# mere} other {# mere}}",
-    "showLess": "Vis mindre"
+    "showLess": "Vis mindre",
+    "undo": "Fortryd"
   },
   "tabs": {
     "pin": "Pin fane",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "I dag",
     "yesterday": "I går",
-    "daysAgo": "{count, plural, one {# dag siden} other {# dage siden}}"
+    "daysAgo": "{count, plural, one {# dag siden} other {# dage siden}}",
+    "daysLate": "{count, plural, one {#d forsinket} other {#d forsinket}}",
+    "daysOverdue": "{count, plural, one {# dag forsinket} other {# dage forsinket}}",
+    "tomorrow": "I morgen"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Hver dag} other {Hver # dag}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Hver måned på {day}{suffix}} other {Hver # måned på {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Hver måned på {week} {day}} other {Hver # måned på {week} {day}}}",
     "everyNYears": "{count, plural, one {Hvert år} other {Hvert # år}}",
-    "repeats": "Gentager"
+    "repeats": "Gentager",
+    "ordinal": {
+      "first": "første",
+      "fourth": "fjerde",
+      "last": "sidste",
+      "second": "anden",
+      "third": "tredje"
+    },
+    "preset": {
+      "everyWeekday": "Hver hverdag (man.-fre.)",
+      "everyYearOnDate": "Hvert år den {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -640,6 +655,11 @@
     "welcome": {
       "body": "Dit private, offline-first hjem. Noter er ende-til-ende-krypterede — de forlader aldrig din enhed ukrypteret.",
       "title": "Velkommen til MemryNote"
+    },
+    "tour": {
+      "next": "Næste",
+      "previous": "Forrige",
+      "progress": "{current} af {total}"
     }
   },
   "updatePrompt": {
@@ -696,5 +716,125 @@
     "sectionLabel": "Canvas",
     "tooLargeToSync": "Dette canvas er for stort til at synkronisere. Det er gemt på denne enhed, men bliver ikke sendt til dine andre enheder, før det fylder mindre.",
     "untitled": "Canvas uden titel"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Klik på række",
+      "reset": "Nulstil",
+      "shortcutsTab": "Genveje-fanen"
+    },
+    "description": "Hurtige veje til at bevæge dig rundt i memrynote, fange tanker og få arbejdet fra hånden.",
+    "groups": {
+      "general": {
+        "description": "Navigation og hjælp i hele appen.",
+        "title": "Generelt"
+      },
+      "inbox": {
+        "description": "Behandl opsamlede elementer hurtigt.",
+        "title": "Indbakke"
+      },
+      "journal": {
+        "description": "Naviger i journalvisninger, og fokusér skrivefeltet.",
+        "title": "Journal"
+      },
+      "notes": {
+        "description": "Skriv, formatér og søg i noter.",
+        "title": "Noter / Editor"
+      },
+      "settings": {
+        "description": "Åbn indstillinger, og tilpas genveje.",
+        "title": "Indstillinger"
+      },
+      "tabs": {
+        "description": "Bevæg dig mellem faneblade og ruder.",
+        "title": "Faneblade og opdelinger"
+      },
+      "tasks": {
+        "description": "Filtrér, vælg og fuldfør opgaver.",
+        "title": "Opgaver"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Opret en note",
+        "keyboardShortcuts": "Åbn tastaturgenveje",
+        "openSettings": "Åbn indstillinger",
+        "quickSearch": "Åbn hurtig søgning",
+        "sidebarSection": "Gå til sektion i sidebjælken",
+        "toggleSidebar": "Vis eller skjul sidebjælken",
+        "undoTaskAction": "Fortryd seneste opgavehandling"
+      },
+      "inbox": {
+        "archiveItem": "Arkivér det valgte element",
+        "chooseQuickFileResult": "Vælg et resultat i hurtig arkivering",
+        "clearSelection": "Ryd markering, eller luk hurtig arkivering",
+        "confirmFiling": "Bekræft arkiveringspanelet",
+        "firstOrLastItem": "Første eller sidste element",
+        "jumpByPage": "Spring en side ad gangen",
+        "nextItem": "Næste element",
+        "openOriginal": "Åbn det oprindelige link",
+        "openQuickFile": "Åbn hurtig arkivering",
+        "previousItem": "Forrige element",
+        "refresh": "Opdater indbakken",
+        "selectAllVisible": "Vælg alle synlige elementer",
+        "selectItem": "Vælg element",
+        "togglePreview": "Vis eller skjul forhåndsvisningen"
+      },
+      "journal": {
+        "bold": "Gør den markerede tekst fed",
+        "find": "Find i journalen",
+        "italic": "Gør den markerede tekst kursiv",
+        "link": "Tilføj eller redigér link",
+        "returnFromOverview": "Vend tilbage fra måneds- eller årsvisning",
+        "toggleFullWidth": "Vis journalen i fuld bredde",
+        "underline": "Understreg den markerede tekst"
+      },
+      "notes": {
+        "bold": "Fed",
+        "closeOverlays": "Luk editorens overlejringer",
+        "commandMenu": "Åbn editorens kommandomenu",
+        "createNote": "Opret en note",
+        "find": "Find i noten",
+        "italic": "Kursiv",
+        "link": "Tilføj eller redigér link",
+        "saveNote": "Gem den aktuelle note",
+        "underline": "Understreg"
+      },
+      "settings": {
+        "cancelRecording": "Annullér optagelse af genvej",
+        "customizeShortcuts": "Tilpas tastaturgenveje",
+        "openSettings": "Åbn indstillinger",
+        "recordShortcut": "Optag en ny genvej",
+        "resetShortcut": "Gendan en genvejs standard"
+      },
+      "tabs": {
+        "closeAllInPane": "Luk alle faneblade i ruden",
+        "closeSplitPane": "Luk den opdelte rude",
+        "closeTab": "Luk faneblad",
+        "duplicateTab": "Dublér faneblad",
+        "focusPane": "Fokusér en anden rude",
+        "maximizePane": "Maksimér den aktuelle rude",
+        "moveTabToPane": "Flyt faneblad til rude",
+        "newTabMenu": "Åbn menuen for nyt faneblad",
+        "nextTab": "Næste faneblad",
+        "pinTab": "Fastgør eller frigør faneblad",
+        "previousTab": "Forrige faneblad",
+        "reopenClosedTab": "Genåbn lukket faneblad",
+        "splitDown": "Opdel nedad",
+        "splitRight": "Opdel til højre"
+      },
+      "tasks": {
+        "clearFilters": "Ryd de synlige filtre",
+        "clearSelection": "Ryd opgavemarkeringen",
+        "completeSelected": "Fuldfør de valgte opgaver",
+        "configureRepeat": "Indstil gentagelse på den fokuserede opgave",
+        "deleteSelected": "Slet de valgte opgaver",
+        "selectAllVisible": "Vælg alle synlige opgaver",
+        "skipOccurrence": "Spring gentagelsen over",
+        "stopRepeating": "Stop med at gentage opgaven"
+      }
+    },
+    "or": "eller",
+    "then": "derefter"
   }
 }

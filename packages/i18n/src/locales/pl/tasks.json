@@ -35,7 +35,14 @@
     "delete": "Usuń zadanie",
     "created": "Utworzono {date}",
     "reminder": "Przypomnienie",
-    "tags": "Tagi"
+    "tags": "Tagi",
+    "priorityLabels": {
+      "high": "Wysoki",
+      "low": "Niski",
+      "medium": "Średni",
+      "none": "Brak priorytetu",
+      "urgent": "Pilny"
+    }
   },
   "filters": {
     "filter": "Filtruj",
@@ -44,7 +51,25 @@
     "groupBy": "Grupuj według",
     "groupByOptions": "Grupuj według opcji",
     "sortAscending": "Sortuj rosnąco",
-    "sortDescending": "Sortuj malejąco"
+    "sortDescending": "Sortuj malejąco",
+    "dueDate": {
+      "any": "Dowolny termin",
+      "custom": "Zakres niestandardowy...",
+      "nextWeek": "Następny tydzień",
+      "none": "Bez terminu",
+      "overdue": "Zaległe",
+      "thisMonth": "Ten miesiąc",
+      "thisWeek": "Ten tydzień",
+      "today": "Dzisiaj",
+      "tomorrow": "Jutro"
+    },
+    "quickPresets": {
+      "dueThisWeek": "Termin w tym tygodniu",
+      "highPriority": "Wysoki priorytet",
+      "noDueDate": "Bez terminu",
+      "overdue": "Zaległe",
+      "repeating": "Powtarzające się"
+    }
   },
   "quickAdd": {
     "label": "Szybkie dodawanie zadania",
@@ -77,7 +102,21 @@
     "searchRelated": "Szukaj powiązanych…"
   },
   "kanban": {
-    "board": "Tablica Kanbana"
+    "board": "Tablica Kanbana",
+    "empty": {
+      "default": {
+        "subtitle": "Przeciągnij tu zadania lub kliknij +, aby dodać",
+        "title": "Brak zadań"
+      },
+      "done": {
+        "subtitle": "Ukończ zadania, aby zobaczyć je tutaj",
+        "title": "Brak ukończonych zadań"
+      },
+      "schedule": {
+        "subtitle": "Przeciągnij tu zadania, aby zmienić ich termin",
+        "title": "Nic zaplanowanego"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "Projekt zaktualizowany",
@@ -100,7 +139,53 @@
     "noCompletedSelected": "Nie wybrano ukończonych zadań",
     "completeFailed": "Nie udało się ukończyć zadań",
     "deleteFailed": "Nie udało się usunąć zadań",
-    "moveFailed": "Nie udało się przenieść zadań"
+    "moveFailed": "Nie udało się przenieść zadań",
+    "bulk": {
+      "archived": "{count, plural, one {Zarchiwizowano # zadanie} few {Zarchiwizowano # zadania} many {Zarchiwizowano # zadań} other {Zarchiwizowano # zadania}}",
+      "completed": "{count, plural, one {Ukończono # zadanie} few {Ukończono # zadania} many {Ukończono # zadań} other {Ukończono # zadania}}",
+      "deleted": "{count, plural, one {Usunięto # zadanie} few {Usunięto # zadania} many {Usunięto # zadań} other {Usunięto # zadania}}",
+      "deletedDescription": "Tę akcję można cofnąć przez krótki czas.",
+      "dueDateRemoved": "{count, plural, one {Usunięto termin z # zadania} few {Usunięto termin z # zadań} many {Usunięto termin z # zadań} other {Usunięto termin z # zadania}}",
+      "dueDateSet": "{count, plural, one {Ustawiono termin dla # zadania} few {Ustawiono termin dla # zadań} many {Ustawiono termin dla # zadań} other {Ustawiono termin dla # zadania}}",
+      "movedToProject": "{count, plural, one {Przeniesiono # zadanie do {project}} few {Przeniesiono # zadania do {project}} many {Przeniesiono # zadań do {project}} other {Przeniesiono # zadania do {project}}}",
+      "movedToStatus": "{count, plural, one {Przeniesiono # zadanie do {status}} few {Przeniesiono # zadania do {status}} many {Przeniesiono # zadań do {status}} other {Przeniesiono # zadania do {status}}}",
+      "priorityRemoved": "{count, plural, one {Usunięto priorytet z # zadania} few {Usunięto priorytet z # zadań} many {Usunięto priorytet z # zadań} other {Usunięto priorytet z # zadania}}",
+      "prioritySet": "{count, plural, one {Ustawiono priorytet {priority} dla # zadania} few {Ustawiono priorytet {priority} dla # zadań} many {Ustawiono priorytet {priority} dla # zadań} other {Ustawiono priorytet {priority} dla # zadania}}",
+      "restored": "{count, plural, one {Przywrócono # zadanie} few {Przywrócono # zadania} many {Przywrócono # zadań} other {Przywrócono # zadania}}",
+      "undoArchive": "{count, plural, one {Zarchiwizuj # zadanie} few {Zarchiwizuj # zadania} many {Zarchiwizuj # zadań} other {Zarchiwizuj # zadania}}",
+      "undoComplete": "{count, plural, one {Ukończ # zadanie} few {Ukończ # zadania} many {Ukończ # zadań} other {Ukończ # zadania}}",
+      "undoDelete": "{count, plural, one {Usuń # zadanie} few {Usuń # zadania} many {Usuń # zadań} other {Usuń # zadania}}",
+      "undoDueDate": "{count, plural, one {Zmieniono termin dla # zadania} few {Zmieniono termin dla # zadań} many {Zmieniono termin dla # zadań} other {Zmieniono termin dla # zadania}}",
+      "undoMove": "{count, plural, one {Przenieś # zadanie} few {Przenieś # zadania} many {Przenieś # zadań} other {Przenieś # zadania}}",
+      "undoStatus": "{count, plural, one {Status → {status} dla # zadania} few {Status → {status} dla # zadań} many {Status → {status} dla # zadań} other {Status → {status} dla # zadania}}",
+      "undoUncomplete": "{count, plural, one {Cofnij ukończenie # zadania} few {Cofnij ukończenie # zadań} many {Cofnij ukończenie # zadań} other {Cofnij ukończenie # zadania}}"
+    },
+    "drag": {
+      "archived": "{count, plural, one {Zarchiwizowano zadanie} few {Zarchiwizowano # zadania} many {Zarchiwizowano # zadań} other {Zarchiwizowano # zadania}}",
+      "deleted": "{count, plural, one {Usunięto zadanie} few {Usunięto # zadania} many {Usunięto # zadań} other {Usunięto # zadania}}",
+      "moved": "{count, plural, one {Przeniesiono do {target}} few {Przeniesiono # zadania do {target}} many {Przeniesiono # zadań do {target}} other {Przeniesiono # zadania do {target}}}",
+      "movedTo": "Przeniesiono do {target}",
+      "prioritySet": "{count, plural, one {Ustawiono priorytet {priority}} few {Ustawiono priorytet {priority} dla # zadań} many {Ustawiono priorytet {priority} dla # zadań} other {Ustawiono priorytet {priority} dla # zadania}}",
+      "prioritySetTo": "Ustawiono priorytet {priority}",
+      "rescheduled": "{count, plural, one {Zmieniono termin na {target}} few {Zmieniono termin # zadań na {target}} many {Zmieniono termin # zadań na {target}} other {Zmieniono termin # zadania na {target}}}",
+      "rescheduledTo": "Zmieniono termin na {target}",
+      "undoArchive": "{count, plural, one {Zarchiwizowano # zadanie} few {Zarchiwizowano # zadania} many {Zarchiwizowano # zadań} other {Zarchiwizowano # zadania}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, one {Dodano # podzadanie} few {Dodano # podzadania} many {Dodano # podzadań} other {Dodano # podzadania}}",
+      "completed": "{count, plural, one {Ukończono # podzadanie} few {Ukończono # podzadania} many {Ukończono # podzadań} other {Ukończono # podzadania}}",
+      "deleted": "{count, plural, one {Usunięto # podzadanie} few {Usunięto # podzadania} many {Usunięto # podzadań} other {Usunięto # podzadania}}",
+      "deletedDescription": "Podzadanie zostało usunięte",
+      "dueDateCleared": "{count, plural, one {Wyczyszczono termin dla # podzadania} few {Wyczyszczono termin dla # podzadań} many {Wyczyszczono termin dla # podzadań} other {Wyczyszczono termin dla # podzadania}}",
+      "dueDateSet": "{count, plural, one {Ustawiono termin dla # podzadania} few {Ustawiono termin dla # podzadań} many {Ustawiono termin dla # podzadań} other {Ustawiono termin dla # podzadania}}",
+      "markedIncomplete": "{count, plural, one {Oznaczono # podzadanie jako nieukończone} few {Oznaczono # podzadania jako nieukończone} many {Oznaczono # podzadań jako nieukończone} other {Oznaczono # podzadania jako nieukończone}}",
+      "movedUnder": "Przeniesiono pod „{title}”",
+      "parentAndSubtasksCompleted": "Ukończono zadanie i podzadania",
+      "parentDeletedKeepSubtasks": "Usunięto zadanie, podzadania zamieniono na zadania",
+      "parentDeletedWithSubtasks": "Usunięto zadanie i podzadania",
+      "prioritySet": "{count, plural, one {Ustawiono priorytet dla # podzadania} few {Ustawiono priorytet dla # podzadań} many {Ustawiono priorytet dla # podzadań} other {Ustawiono priorytet dla # podzadania}}",
+      "promoted": "„{title}” przekształcono w zadanie"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -181,7 +266,8 @@
       "nextMonth": "Następny miesiąc",
       "goToToday": "Przejdź do dzisiaj",
       "today": "Dzisiaj",
-      "w": "W"
+      "w": "W",
+      "weekNumber": "Tydzień {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Usuń datę",
@@ -327,7 +413,11 @@
       "addTime": "Dodaj czas",
       "time": "Czas",
       "clearDate": "Wyczyść datę",
-      "backToOptions": "Powrót do opcji"
+      "backToOptions": "Powrót do opcji",
+      "nextWeek": "Następny tydzień",
+      "thisWeekend": "Ten weekend",
+      "today": "Dzisiaj",
+      "tomorrow": "Jutro"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "Edytuj powtarzające się zadanie",
@@ -426,7 +516,17 @@
       "currentFilters": "Aktualne filtry:",
       "noFiltersApplied": "Nie zastosowano żadnych filtrów",
       "cancel": "Anuluj",
-      "saveFilter2": "Zapisz filtr"
+      "saveFilter2": "Zapisz filtr",
+      "nameRequired": "Wpisz nazwę tego filtra",
+      "summaryDue": "Termin: {value}",
+      "summaryDueRange": "Termin: {start} - {end}",
+      "summaryPriorities": "Priorytet: {names}",
+      "summaryProjects": "Projekt: {names}",
+      "summaryRepeatOneTime": "Powtarzanie: tylko jednorazowe",
+      "summaryRepeatRepeating": "Powtarzanie: tylko powtarzające się",
+      "summarySearch": "Szukaj: „{query}”",
+      "summaryTimeWith": "Czas: z godziną",
+      "summaryTimeWithout": "Czas: bez godziny"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Zapisane filtry",
@@ -558,7 +658,16 @@
       "d": "d"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "Dodaj zadanie"
+      "addTask": "Dodaj zadanie",
+      "allDescription": "Utwórz pierwsze zadanie, aby zacząć",
+      "allTitle": "Jeszcze brak zadań",
+      "completedDescription": "Ukończone zadania pojawią się tutaj",
+      "completedTitle": "Brak ukończonych zadań",
+      "projectDescription": "Dodaj zadanie, aby zacząć",
+      "projectTitle": "Brak zadań w tym projekcie",
+      "projectTitleNamed": "Brak zadań w {name}",
+      "todayDescription": "Wszystko na bieżąco!",
+      "todayTitle": "Nic na dzisiaj"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "bez priorytetu"
@@ -742,5 +851,42 @@
       "overview": "Przegląd",
       "tasks": "Zadania"
     }
+  },
+  "priorityInline": {
+    "high": "wysoki",
+    "low": "niski",
+    "medium": "średni",
+    "urgent": "pilny"
+  },
+  "priorityLabels": {
+    "high": "Wysoki",
+    "low": "Niski",
+    "medium": "Średni",
+    "none": "Brak priorytetu",
+    "urgent": "Pilny"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "Gotowe",
+      "inProgress": "W trakcie",
+      "todo": "Do zrobienia"
+    },
+    "validation": {
+      "minStatuses": "Projekty wymagają co najmniej 2 statusów",
+      "nameRequired": "Nazwa projektu jest wymagana",
+      "nameTooLong": "Nazwa projektu może mieć najwyżej 50 znaków",
+      "needsDoneStatus": "Projekty wymagają co najmniej jednego statusu „Gotowe”",
+      "needsDoneStatusForCompletedTasks": "Projekty wymagają co najmniej jednego statusu „Gotowe” dla ukończonych zadań",
+      "needsTodoStatus": "Projekty wymagają co najmniej jednego statusu „Do zrobienia”",
+      "needsTodoStatusForNewTasks": "Projekty wymagają co najmniej jednego statusu „Do zrobienia” dla nowych zadań",
+      "statusNameRequired": "Wszystkie statusy muszą mieć nazwę",
+      "statusNamesUnique": "Nazwy statusów muszą być unikalne",
+      "statusNotFound": "Nie znaleziono statusu"
+    }
+  },
+  "statusLabels": {
+    "done": "Gotowe",
+    "inProgress": "W trakcie",
+    "todo": "Do zrobienia"
   }
 }

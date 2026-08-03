@@ -1449,7 +1449,8 @@
       },
       "title": "Импорт из {name}",
       "chooseDirectory": "Выбрать папку…",
-      "folderKeepsAssets": "Выберите папку, если изображения лежат вне папки самих заметок — при экспорте медиафайлы часто хранят в общей папке."
+      "folderKeepsAssets": "Выберите папку, если изображения лежат вне папки самих заметок — при экспорте медиафайлы часто хранят в общей папке.",
+      "previewError": "Не удалось создать предпросмотр"
     },
     "header": {
       "subtitle": "Перенесите заметки и задачи из других приложений",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, one {# задача} few {# задачи} many {# задач} other {# задачи}}",
       "withDueDate": "{count} с датой",
       "withTags": "{count} с тегами"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Столбцы: {columns}",
+        "emptyTitle": "Строка с пустым заголовком пропущена (столбец «{column}»)",
+        "noHeaders": "В CSV-файле нет заголовков",
+        "titleColumn": "Заголовок из «{column}»; остальные столбцы сохранены как свойства"
+      },
+      "raindrop": {
+        "csvEmpty": "CSV-файл Raindrop пуст",
+        "headerNotFound": "Строка заголовков CSV Raindrop (столбец «url») не найдена",
+        "rowNoUrl": "Строка {row} пропущена: нет URL"
+      },
+      "readFileFailed": "Не удалось прочитать файл",
+      "ticktick": {
+        "foldersDropped": "У папок TickTick нет аналога в Memry, поэтому они не перенесены",
+        "headerNotFound": "Строка заголовков CSV TickTick («Folder Name») не найдена",
+        "reminderNoAnchor": "Напоминание «{reminder}» пропущено (нет опорной даты)",
+        "subtaskParentMissing": "Родитель подзадачи «{title}» не найден; импортирована на верхний уровень",
+        "unknownPriority": "Неизвестный приоритет TickTick {priority} → без приоритета",
+        "unsupportedRepeat": "Неподдерживаемое правило повтора «{rule}» пропущено"
+      },
+      "todoist": {
+        "emptyTitle": "Задача с пустым содержимым импортирована как (без названия)",
+        "headerNotFound": "Это не CSV Todoist: отсутствует строка заголовков TYPE",
+        "orphanComment": "Комментарий без предшествующей задачи пропущен",
+        "sectionFlattened": "Раздел «{section}» преобразован в плоский список",
+        "subtaskNoParent": "У подзадачи «{title}» нет родителя на отступе {indent}; импортирована на верхний уровень",
+        "unknownPriority": "Неизвестный приоритет {priority} → без приоритета",
+        "unparsedDate": "Не удалось разобрать дату «{date}»"
+      }
     }
   },
   "inbox": {

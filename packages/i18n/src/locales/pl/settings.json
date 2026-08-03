@@ -1449,7 +1449,8 @@
       },
       "title": "Importuj z {name}",
       "chooseDirectory": "Wybierz folder…",
-      "folderKeepsAssets": "Wybierz folder, gdy obrazy znajdują się poza folderem z notatkami — eksporty często przechowują multimedia we wspólnym folderze."
+      "folderKeepsAssets": "Wybierz folder, gdy obrazy znajdują się poza folderem z notatkami — eksporty często przechowują multimedia we wspólnym folderze.",
+      "previewError": "Podgląd nie powiódł się"
     },
     "header": {
       "subtitle": "Przenieś swoje notatki i zadania z innych aplikacji",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, one {# zadanie} few {# zadania} many {# zadań} other {# zadania}}",
       "withDueDate": "{count} z datą",
       "withTags": "{count} otagowanych"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Kolumny: {columns}",
+        "emptyTitle": "Pominięto wiersz z pustym tytułem (kolumna „{column}”)",
+        "noHeaders": "Plik CSV nie ma nagłówków",
+        "titleColumn": "Tytuł z „{column}”; pozostałe kolumny zapisano jako właściwości"
+      },
+      "raindrop": {
+        "csvEmpty": "Plik CSV Raindrop jest pusty",
+        "headerNotFound": "Nie znaleziono wiersza nagłówka CSV Raindrop (kolumna „url”)",
+        "rowNoUrl": "Pominięto wiersz {row}: brak adresu URL"
+      },
+      "readFileFailed": "Nie udało się odczytać pliku",
+      "ticktick": {
+        "foldersDropped": "Foldery TickTick nie mają odpowiednika w Memry i zostały pominięte",
+        "headerNotFound": "Nie znaleziono wiersza nagłówka CSV TickTick („Folder Name”)",
+        "reminderNoAnchor": "Pominięto przypomnienie „{reminder}” (brak daty odniesienia)",
+        "subtaskParentMissing": "Nie znaleziono zadania nadrzędnego dla podzadania „{title}”; zaimportowano na najwyższym poziomie",
+        "unknownPriority": "Nieznany priorytet TickTick {priority} → brak",
+        "unsupportedRepeat": "Pominięto nieobsługiwaną regułę powtarzania „{rule}”"
+      },
+      "todoist": {
+        "emptyTitle": "Zadanie z pustą treścią zaimportowano jako (bez tytułu)",
+        "headerNotFound": "To nie jest plik CSV Todoist: brak wiersza nagłówka TYPE",
+        "orphanComment": "Pominięto komentarz bez poprzedzającego zadania",
+        "sectionFlattened": "Spłaszczono sekcję „{section}”",
+        "subtaskNoParent": "Podzadanie „{title}” nie ma zadania nadrzędnego przy wcięciu {indent}; zaimportowano na najwyższym poziomie",
+        "unknownPriority": "Nieznany priorytet {priority} → brak",
+        "unparsedDate": "Nie udało się odczytać daty „{date}”"
+      }
     }
   },
   "inbox": {

@@ -1449,7 +1449,8 @@
       },
       "title": "Імпорт з {name}",
       "chooseDirectory": "Вибрати папку…",
-      "folderKeepsAssets": "Вибирайте папку, коли зображення лежать поза папкою самих нотаток — в експортах медіа часто зберігається в одній спільній папці."
+      "folderKeepsAssets": "Вибирайте папку, коли зображення лежать поза папкою самих нотаток — в експортах медіа часто зберігається в одній спільній папці.",
+      "previewError": "Попередній перегляд не вдався"
     },
     "header": {
       "subtitle": "Перенесіть свої нотатки та завдання з інших застосунків",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, one {# завдання} few {# завдання} many {# завдань} other {# завдання}}",
       "withDueDate": "{count} з датою",
       "withTags": "{count} з тегами"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Стовпці: {columns}",
+        "emptyTitle": "Пропущено рядок із порожньою назвою (стовпець «{column}»)",
+        "noHeaders": "Файл CSV не має заголовків",
+        "titleColumn": "Назву взято зі стовпця «{column}»; інші стовпці збережено як властивості"
+      },
+      "raindrop": {
+        "csvEmpty": "Файл CSV Raindrop порожній",
+        "headerNotFound": "Рядок заголовків CSV Raindrop (стовпець «url») не знайдено",
+        "rowNoUrl": "Рядок {row} пропущено: немає URL"
+      },
+      "readFileFailed": "Не вдалося прочитати файл",
+      "ticktick": {
+        "foldersDropped": "Папки TickTick не мають відповідника в Memry, тому їх пропущено",
+        "headerNotFound": "Рядок заголовків CSV TickTick («Folder Name») не знайдено",
+        "reminderNoAnchor": "Нагадування «{reminder}» пропущено (немає прив’язки до дати)",
+        "subtaskParentMissing": "Батьківське завдання для підзавдання «{title}» не знайдено; імпортовано на верхньому рівні",
+        "unknownPriority": "Невідомий пріоритет TickTick {priority} → немає",
+        "unsupportedRepeat": "Непідтримуване правило повторення «{rule}» пропущено"
+      },
+      "todoist": {
+        "emptyTitle": "Завдання з порожнім вмістом імпортовано як (без назви)",
+        "headerNotFound": "Це не CSV Todoist: немає рядка заголовків TYPE",
+        "orphanComment": "Коментар без попереднього завдання пропущено",
+        "sectionFlattened": "Розділ «{section}» зведено до плоскої структури",
+        "subtaskNoParent": "Підзавдання «{title}» не має батьківського на відступі {indent}; імпортовано на верхньому рівні",
+        "unknownPriority": "Невідомий пріоритет {priority} → немає",
+        "unparsedDate": "Не вдалося розібрати дату «{date}»"
+      }
     }
   },
   "inbox": {

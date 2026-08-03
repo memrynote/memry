@@ -252,7 +252,12 @@
       "multiselect": "Wybór wielokrotny"
     },
     "showOnCalendar": "Pokaż w kalendarzu",
-    "showingOnCalendar": "Widoczne w kalendarzu"
+    "showingOnCalendar": "Widoczne w kalendarzu",
+    "statusCategories": {
+      "done": "Ukończone",
+      "inProgress": "W trakcie",
+      "todo": "Do zrobienia"
+    }
   },
   "templateSelector": {
     "title": "Wybierz swoje płótno",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "Nazwa tagu",
     "uncategorized": "Bez kategorii"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (kliknij dwukrotnie, aby edytować)"
+    },
+    "columns": {
+      "created": "Utworzono",
+      "folder": "Folder",
+      "kind": "Rodzaj",
+      "modified": "Zmodyfikowano",
+      "tags": "Tagi",
+      "title": "Tytuł",
+      "wordCount": "Liczba słów"
+    },
+    "defaultViewName": "Domyślny",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# notatka} few {# notatki} many {# notatek} other {# notatki}}"
+    },
+    "selectView": "Wybierz widok"
   }
 }

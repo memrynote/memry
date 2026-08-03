@@ -270,7 +270,50 @@
     "panelEmpty": "Ei tulevia muistutuksia.",
     "panelPast": "Menneet",
     "panelUpcoming": "Tulossa",
-    "taskFallback": "Tehtävä"
+    "taskFallback": "Tehtävä",
+    "dateTime": {
+      "dateAt": "{date} klo {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Tänään klo {time}",
+      "todayCompact": "Tänään, {time}",
+      "tomorrowAt": "Huomenna klo {time}",
+      "tomorrowCompact": "Huomenna, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Vuosipäivämuistutus",
+      "inHours": {
+        "label": "{count, plural, one {# tunnin kuluttua} other {# tunnin kuluttua}}"
+      },
+      "inMinutes": {
+        "label": "{count, plural, one {# minuutin kuluttua} other {# minuutin kuluttua}}"
+      },
+      "inMonths": {
+        "label": "{count, plural, one {# kuukauden kuluttua} other {# kuukauden kuluttua}}"
+      },
+      "inWeeks": {
+        "label": "{count, plural, one {# viikon kuluttua} other {# viikon kuluttua}}"
+      },
+      "inYears": {
+        "label": "{count, plural, one {# vuoden kuluttua} other {# vuoden kuluttua}}"
+      },
+      "laterToday": {
+        "description": "{count, plural, one {# tunnin kuluttua} other {# tunnin kuluttua}}",
+        "label": "Myöhemmin tänään"
+      },
+      "monthlyReflection": "Kuukausittainen katsaus",
+      "nextWeek": {
+        "description": "Maanantaina klo 9.00",
+        "label": "Ensi viikolla"
+      },
+      "quarterlyReflection": "Neljännesvuosikatsaus",
+      "reviewInAWeek": "Katso uudelleen viikon kuluttua",
+      "sameDayNextMonth": "Sama päivä ensi kuussa",
+      "tomorrow": {
+        "description": "Huomenna klo 9.00",
+        "label": "Huomenna"
+      },
+      "tomorrowMorning": "Huomisaamuna"
+    }
   },
   "insights": {
     "captureActivity": "Sieppausaktiivisuus",

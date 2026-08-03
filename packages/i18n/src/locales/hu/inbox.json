@@ -270,7 +270,50 @@
     "panelEmpty": "Nincsenek közelgő emlékeztetők.",
     "panelPast": "Korábbi",
     "panelUpcoming": "Közelgő",
-    "taskFallback": "Feladat"
+    "taskFallback": "Feladat",
+    "dateTime": {
+      "dateAt": "{date} {time}-kor",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Ma {time}-kor",
+      "todayCompact": "Ma, {time}",
+      "tomorrowAt": "Holnap {time}-kor",
+      "tomorrowCompact": "Holnap, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Évfordulós emlékeztető",
+      "inHours": {
+        "label": "{count, plural, one {# óra múlva} other {# óra múlva}}"
+      },
+      "inMinutes": {
+        "label": "{count, plural, one {# perc múlva} other {# perc múlva}}"
+      },
+      "inMonths": {
+        "label": "{count, plural, one {# hónap múlva} other {# hónap múlva}}"
+      },
+      "inWeeks": {
+        "label": "{count, plural, one {# hét múlva} other {# hét múlva}}"
+      },
+      "inYears": {
+        "label": "{count, plural, one {# év múlva} other {# év múlva}}"
+      },
+      "laterToday": {
+        "description": "{count, plural, one {# óra múlva} other {# óra múlva}}",
+        "label": "Ma később"
+      },
+      "monthlyReflection": "Havi visszatekintés",
+      "nextWeek": {
+        "description": "Hétfőn 9:00-kor",
+        "label": "Jövő héten"
+      },
+      "quarterlyReflection": "Negyedéves visszatekintés",
+      "reviewInAWeek": "Átnézés egy hét múlva",
+      "sameDayNextMonth": "Jövő hónapban ugyanezen a napon",
+      "tomorrow": {
+        "description": "Holnap 9:00-kor",
+        "label": "Holnap"
+      },
+      "tomorrowMorning": "Holnap reggel"
+    }
   },
   "insights": {
     "captureActivity": "Rögzítési tevékenység",

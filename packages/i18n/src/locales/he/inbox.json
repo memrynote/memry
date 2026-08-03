@@ -270,7 +270,50 @@
     "panelEmpty": "אין תזכורות קרובות.",
     "panelPast": "עברו",
     "panelUpcoming": "קרובות",
-    "taskFallback": "משימה"
+    "taskFallback": "משימה",
+    "dateTime": {
+      "dateAt": "{date} בשעה {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "היום בשעה {time}",
+      "todayCompact": "היום, {time}",
+      "tomorrowAt": "מחר בשעה {time}",
+      "tomorrowCompact": "מחר, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "תזכורת ליום השנה",
+      "inHours": {
+        "label": "{count, plural, one {בעוד שעה} two {בעוד שעתיים} other {בעוד # שעות}}"
+      },
+      "inMinutes": {
+        "label": "{count, plural, one {בעוד דקה} two {בעוד שתי דקות} other {בעוד # דקות}}"
+      },
+      "inMonths": {
+        "label": "{count, plural, one {בעוד חודש} two {בעוד חודשיים} other {בעוד # חודשים}}"
+      },
+      "inWeeks": {
+        "label": "{count, plural, one {בעוד שבוע} two {בעוד שבועיים} other {בעוד # שבועות}}"
+      },
+      "inYears": {
+        "label": "{count, plural, one {בעוד שנה} two {בעוד שנתיים} other {בעוד # שנים}}"
+      },
+      "laterToday": {
+        "description": "{count, plural, one {בעוד שעה} two {בעוד שעתיים} other {בעוד # שעות}}",
+        "label": "מאוחר יותר היום"
+      },
+      "monthlyReflection": "התבוננות חודשית",
+      "nextWeek": {
+        "description": "יום שני ב-9:00",
+        "label": "בשבוע הבא"
+      },
+      "quarterlyReflection": "התבוננות רבעונית",
+      "reviewInAWeek": "סקירה בעוד שבוע",
+      "sameDayNextMonth": "אותו יום בחודש הבא",
+      "tomorrow": {
+        "description": "מחר ב-9:00",
+        "label": "מחר"
+      },
+      "tomorrowMorning": "מחר בבוקר"
+    }
   },
   "insights": {
     "captureActivity": "פעילות לכידה",

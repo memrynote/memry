@@ -35,7 +35,14 @@
     "delete": "Видалити завдання",
     "created": "Створено {date}",
     "reminder": "Нагадування",
-    "tags": "Теги"
+    "tags": "Теги",
+    "priorityLabels": {
+      "high": "Високий",
+      "low": "Низький",
+      "medium": "Середній",
+      "none": "Без пріоритету",
+      "urgent": "Терміновий"
+    }
   },
   "filters": {
     "filter": "Фільтр",
@@ -44,7 +51,25 @@
     "groupBy": "Групувати за",
     "groupByOptions": "Опції групування",
     "sortAscending": "Сортувати за зростанням",
-    "sortDescending": "Сортувати за спаданням"
+    "sortDescending": "Сортувати за спаданням",
+    "dueDate": {
+      "any": "Будь-який термін",
+      "custom": "Власний діапазон...",
+      "nextWeek": "Наступного тижня",
+      "none": "Без терміну",
+      "overdue": "Прострочені",
+      "thisMonth": "Цього місяця",
+      "thisWeek": "Цього тижня",
+      "today": "Сьогодні",
+      "tomorrow": "Завтра"
+    },
+    "quickPresets": {
+      "dueThisWeek": "Термін цього тижня",
+      "highPriority": "Високий пріоритет",
+      "noDueDate": "Без терміну",
+      "overdue": "Прострочені",
+      "repeating": "Повторювані"
+    }
   },
   "quickAdd": {
     "label": "Швидко додати завдання",
@@ -77,7 +102,21 @@
     "searchRelated": "Пошук пов’язаного…"
   },
   "kanban": {
-    "board": "Дошка Канбан"
+    "board": "Дошка Канбан",
+    "empty": {
+      "default": {
+        "subtitle": "Перетягніть завдання сюди або натисніть +, щоб додати",
+        "title": "Немає завдань"
+      },
+      "done": {
+        "subtitle": "Виконуйте завдання, щоб побачити їх тут",
+        "title": "Немає виконаних завдань"
+      },
+      "schedule": {
+        "subtitle": "Перетягніть завдання сюди, щоб перепланувати",
+        "title": "Нічого не заплановано"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "Проєкт оновлено",
@@ -100,7 +139,53 @@
     "noCompletedSelected": "Жодне виконане завдання не вибрано",
     "completeFailed": "Не вдалося виконати завдання",
     "deleteFailed": "Не вдалося видалити завдання",
-    "moveFailed": "Не вдалося перемістити завдання"
+    "moveFailed": "Не вдалося перемістити завдання",
+    "bulk": {
+      "archived": "{count, plural, one {# завдання заархівовано} few {# завдання заархівовано} many {# завдань заархівовано} other {# завдання заархівовано}}",
+      "completed": "{count, plural, one {# завдання виконано} few {# завдання виконано} many {# завдань виконано} other {# завдання виконано}}",
+      "deleted": "{count, plural, one {# завдання видалено} few {# завдання видалено} many {# завдань видалено} other {# завдання видалено}}",
+      "deletedDescription": "Цю дію можна скасувати протягом короткого часу.",
+      "dueDateRemoved": "{count, plural, one {Термін прибрано для # завдання} few {Термін прибрано для # завдань} many {Термін прибрано для # завдань} other {Термін прибрано для # завдання}}",
+      "dueDateSet": "{count, plural, one {Термін встановлено для # завдання} few {Термін встановлено для # завдань} many {Термін встановлено для # завдань} other {Термін встановлено для # завдання}}",
+      "movedToProject": "{count, plural, one {# завдання переміщено до {project}} few {# завдання переміщено до {project}} many {# завдань переміщено до {project}} other {# завдання переміщено до {project}}}",
+      "movedToStatus": "{count, plural, one {# завдання переміщено до {status}} few {# завдання переміщено до {status}} many {# завдань переміщено до {status}} other {# завдання переміщено до {status}}}",
+      "priorityRemoved": "{count, plural, one {Пріоритет прибрано для # завдання} few {Пріоритет прибрано для # завдань} many {Пріоритет прибрано для # завдань} other {Пріоритет прибрано для # завдання}}",
+      "prioritySet": "{count, plural, one {Пріоритет {priority} встановлено для # завдання} few {Пріоритет {priority} встановлено для # завдань} many {Пріоритет {priority} встановлено для # завдань} other {Пріоритет {priority} встановлено для # завдання}}",
+      "restored": "{count, plural, one {# завдання відновлено} few {# завдання відновлено} many {# завдань відновлено} other {# завдання відновлено}}",
+      "undoArchive": "{count, plural, one {Заархівувати # завдання} few {Заархівувати # завдання} many {Заархівувати # завдань} other {Заархівувати # завдання}}",
+      "undoComplete": "{count, plural, one {Виконати # завдання} few {Виконати # завдання} many {Виконати # завдань} other {Виконати # завдання}}",
+      "undoDelete": "{count, plural, one {Видалити # завдання} few {Видалити # завдання} many {Видалити # завдань} other {Видалити # завдання}}",
+      "undoDueDate": "{count, plural, one {Термін змінено для # завдання} few {Термін змінено для # завдань} many {Термін змінено для # завдань} other {Термін змінено для # завдання}}",
+      "undoMove": "{count, plural, one {Перемістити # завдання} few {Перемістити # завдання} many {Перемістити # завдань} other {Перемістити # завдання}}",
+      "undoStatus": "{count, plural, one {Статус → {status} для # завдання} few {Статус → {status} для # завдань} many {Статус → {status} для # завдань} other {Статус → {status} для # завдання}}",
+      "undoUncomplete": "{count, plural, one {Скасувати виконання # завдання} few {Скасувати виконання # завдань} many {Скасувати виконання # завдань} other {Скасувати виконання # завдання}}"
+    },
+    "drag": {
+      "archived": "{count, plural, one {Завдання заархівовано} few {# завдання заархівовано} many {# завдань заархівовано} other {# завдання заархівовано}}",
+      "deleted": "{count, plural, one {Завдання видалено} few {# завдання видалено} many {# завдань видалено} other {# завдання видалено}}",
+      "moved": "{count, plural, one {Переміщено до {target}} few {# завдання переміщено до {target}} many {# завдань переміщено до {target}} other {# завдання переміщено до {target}}}",
+      "movedTo": "Переміщено до {target}",
+      "prioritySet": "{count, plural, one {Пріоритет {priority} встановлено} few {Пріоритет {priority} встановлено для # завдань} many {Пріоритет {priority} встановлено для # завдань} other {Пріоритет {priority} встановлено для # завдання}}",
+      "prioritySetTo": "Пріоритет {priority} встановлено",
+      "rescheduled": "{count, plural, one {Перенесено на {target}} few {# завдання перенесено на {target}} many {# завдань перенесено на {target}} other {# завдання перенесено на {target}}}",
+      "rescheduledTo": "Перенесено на {target}",
+      "undoArchive": "{count, plural, one {Заархівовано # завдання} few {Заархівовано # завдання} many {Заархівовано # завдань} other {Заархівовано # завдання}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, one {# підзавдання додано} few {# підзавдання додано} many {# підзавдань додано} other {# підзавдання додано}}",
+      "completed": "{count, plural, one {# підзавдання виконано} few {# підзавдання виконано} many {# підзавдань виконано} other {# підзавдання виконано}}",
+      "deleted": "{count, plural, one {# підзавдання видалено} few {# підзавдання видалено} many {# підзавдань видалено} other {# підзавдання видалено}}",
+      "deletedDescription": "Підзавдання прибрано",
+      "dueDateCleared": "{count, plural, one {Термін очищено для # підзавдання} few {Термін очищено для # підзавдань} many {Термін очищено для # підзавдань} other {Термін очищено для # підзавдання}}",
+      "dueDateSet": "{count, plural, one {Термін встановлено для # підзавдання} few {Термін встановлено для # підзавдань} many {Термін встановлено для # підзавдань} other {Термін встановлено для # підзавдання}}",
+      "markedIncomplete": "{count, plural, one {# підзавдання позначено як невиконане} few {# підзавдання позначено як невиконані} many {# підзавдань позначено як невиконані} other {# підзавдання позначено як невиконані}}",
+      "movedUnder": "Переміщено під «{title}»",
+      "parentAndSubtasksCompleted": "Завдання та підзавдання виконано",
+      "parentDeletedKeepSubtasks": "Завдання видалено, підзавдання перетворено на завдання",
+      "parentDeletedWithSubtasks": "Завдання та підзавдання видалено",
+      "prioritySet": "{count, plural, one {Пріоритет встановлено для # підзавдання} few {Пріоритет встановлено для # підзавдань} many {Пріоритет встановлено для # підзавдань} other {Пріоритет встановлено для # підзавдання}}",
+      "promoted": "«{title}» підвищено до завдання"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -181,7 +266,8 @@
       "nextMonth": "Наступний місяць",
       "goToToday": "Перейти до сьогодні",
       "today": "Сьогодні",
-      "w": "С"
+      "w": "С",
+      "weekNumber": "Тиждень {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Видалити дату",
@@ -327,7 +413,11 @@
       "addTime": "Додати час",
       "time": "Час",
       "clearDate": "Очистити дату",
-      "backToOptions": "Повернутися до опцій"
+      "backToOptions": "Повернутися до опцій",
+      "nextWeek": "Наступного тижня",
+      "thisWeekend": "Ці вихідні",
+      "today": "Сьогодні",
+      "tomorrow": "Завтра"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "Редагувати повторюване завдання",
@@ -426,7 +516,17 @@
       "currentFilters": "Поточні фільтри:",
       "noFiltersApplied": "Фільтрів не застосовують",
       "cancel": "Скасувати",
-      "saveFilter2": "Зберегти фільтр"
+      "saveFilter2": "Зберегти фільтр",
+      "nameRequired": "Будь ласка, введіть назву для цього фільтра",
+      "summaryDue": "Термін: {value}",
+      "summaryDueRange": "Термін: {start} - {end}",
+      "summaryPriorities": "Пріоритет: {names}",
+      "summaryProjects": "Проєкт: {names}",
+      "summaryRepeatOneTime": "Повторення: лише одноразові",
+      "summaryRepeatRepeating": "Повторення: лише повторювані",
+      "summarySearch": "Пошук: «{query}»",
+      "summaryTimeWith": "Час: із часом",
+      "summaryTimeWithout": "Час: без часу"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Збережені фільтри",
@@ -558,7 +658,16 @@
       "d": "d"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "Додати завдання"
+      "addTask": "Додати завдання",
+      "allDescription": "Створіть перше завдання, щоб почати",
+      "allTitle": "Ще немає завдань",
+      "completedDescription": "Виконані завдання з’являться тут",
+      "completedTitle": "Немає виконаних завдань",
+      "projectDescription": "Додайте завдання, щоб почати",
+      "projectTitle": "У цьому проєкті немає завдань",
+      "projectTitleNamed": "Немає завдань у {name}",
+      "todayDescription": "Ви все встигли!",
+      "todayTitle": "Сьогодні нічого не заплановано"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "немає пріоритету"
@@ -742,5 +851,42 @@
       "overview": "Огляд",
       "tasks": "Завдання"
     }
+  },
+  "priorityInline": {
+    "high": "високий",
+    "low": "низький",
+    "medium": "середній",
+    "urgent": "терміновий"
+  },
+  "priorityLabels": {
+    "high": "Високий",
+    "low": "Низький",
+    "medium": "Середній",
+    "none": "Без пріоритету",
+    "urgent": "Терміновий"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "Виконано",
+      "inProgress": "У процесі",
+      "todo": "До виконання"
+    },
+    "validation": {
+      "minStatuses": "Проєктам потрібно щонайменше 2 статуси",
+      "nameRequired": "Потрібна назва проєкту",
+      "nameTooLong": "Назва проєкту має містити не більше 50 символів",
+      "needsDoneStatus": "Проєктам потрібен щонайменше один статус «Виконано»",
+      "needsDoneStatusForCompletedTasks": "Проєктам потрібен щонайменше один статус «Виконано» для виконаних завдань",
+      "needsTodoStatus": "Проєктам потрібен щонайменше один статус «До виконання»",
+      "needsTodoStatusForNewTasks": "Проєктам потрібен щонайменше один статус «До виконання» для нових завдань",
+      "statusNameRequired": "Усі статуси повинні мати назву",
+      "statusNamesUnique": "Назви статусів мають бути унікальними",
+      "statusNotFound": "Статус не знайдено"
+    }
+  },
+  "statusLabels": {
+    "done": "Виконано",
+    "inProgress": "У процесі",
+    "todo": "До виконання"
   }
 }

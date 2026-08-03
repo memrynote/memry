@@ -1449,7 +1449,8 @@
       },
       "title": "Impor dari {name}",
       "chooseDirectory": "Pilih folder…",
-      "folderKeepsAssets": "Pilih folder jika gambar berada di luar folder catatannya sendiri — hasil ekspor sering menyimpan media di satu folder bersama."
+      "folderKeepsAssets": "Pilih folder jika gambar berada di luar folder catatannya sendiri — hasil ekspor sering menyimpan media di satu folder bersama.",
+      "previewError": "Pratinjau gagal"
     },
     "header": {
       "subtitle": "Bawa catatan dan tugas Anda dari aplikasi lain",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, one {# tugas} other {# tugas}}",
       "withDueDate": "{count} bertanggal",
       "withTags": "{count} bertag"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Kolom: {columns}",
+        "emptyTitle": "Baris dilewati karena judul kosong (kolom \"{column}\")",
+        "noHeaders": "File CSV tidak memiliki baris header",
+        "titleColumn": "Judul diambil dari \"{column}\"; kolom lain disimpan sebagai properti"
+      },
+      "raindrop": {
+        "csvEmpty": "CSV Raindrop kosong",
+        "headerNotFound": "Baris header CSV Raindrop (kolom \"url\") tidak ditemukan",
+        "rowNoUrl": "Baris {row} dilewati: tidak ada URL"
+      },
+      "readFileFailed": "Gagal membaca file",
+      "ticktick": {
+        "foldersDropped": "Folder TickTick tidak memiliki padanan di Memry dan dihilangkan",
+        "headerNotFound": "Baris header CSV TickTick (\"Folder Name\") tidak ditemukan",
+        "reminderNoAnchor": "Pengingat \"{reminder}\" dilewati (tidak ada patokan tanggal)",
+        "subtaskParentMissing": "Induk subtugas \"{title}\" tidak ditemukan; diimpor sebagai tugas tingkat atas",
+        "unknownPriority": "Prioritas TickTick {priority} tidak dikenal → tidak ada",
+        "unsupportedRepeat": "Aturan pengulangan \"{rule}\" tidak didukung dan dilewati"
+      },
+      "todoist": {
+        "emptyTitle": "Tugas dengan konten kosong diimpor sebagai (tanpa judul)",
+        "headerNotFound": "Bukan CSV Todoist: baris header TYPE tidak ada",
+        "orphanComment": "Komentar tanpa tugas sebelumnya dilewati",
+        "sectionFlattened": "Bagian \"{section}\" diratakan",
+        "subtaskNoParent": "Subtugas \"{title}\" tidak memiliki induk pada indentasi {indent}; diimpor sebagai tugas tingkat atas",
+        "unknownPriority": "Prioritas {priority} tidak dikenal → tidak ada",
+        "unparsedDate": "Tidak dapat membaca tanggal \"{date}\""
+      }
     }
   },
   "inbox": {

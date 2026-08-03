@@ -1449,7 +1449,8 @@
       },
       "title": "Importar de {name}",
       "chooseDirectory": "Escolher pasta…",
-      "folderKeepsAssets": "Escolha a pasta quando as imagens estiverem fora da pasta das próprias notas — as exportações costumam guardar os ficheiros multimédia numa pasta partilhada."
+      "folderKeepsAssets": "Escolha a pasta quando as imagens estiverem fora da pasta das próprias notas — as exportações costumam guardar os ficheiros multimédia numa pasta partilhada.",
+      "previewError": "Falha na pré-visualização"
     },
     "header": {
       "subtitle": "Traga as suas notas e tarefas de outras aplicações",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, one {# tarefa} other {# tarefas}}",
       "withDueDate": "{count} datados",
       "withTags": "{count} etiquetados"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Colunas: {columns}",
+        "emptyTitle": "Linha ignorada por ter o título vazio (coluna “{column}”)",
+        "noHeaders": "O ficheiro CSV não tem cabeçalhos",
+        "titleColumn": "Título a partir de “{column}”; as restantes colunas foram guardadas como propriedades"
+      },
+      "raindrop": {
+        "csvEmpty": "O CSV do Raindrop está vazio",
+        "headerNotFound": "Linha de cabeçalho do CSV do Raindrop (coluna “url”) não encontrada",
+        "rowNoUrl": "Linha {row} ignorada: sem URL"
+      },
+      "readFileFailed": "Falha ao ler o ficheiro",
+      "ticktick": {
+        "foldersDropped": "As pastas do TickTick não têm equivalente no Memry e foram descartadas",
+        "headerNotFound": "Linha de cabeçalho do CSV do TickTick (“Folder Name”) não encontrada",
+        "reminderNoAnchor": "Lembrete “{reminder}” ignorado (sem data de referência)",
+        "subtaskParentMissing": "Não foi encontrada a tarefa principal da subtarefa “{title}”; importada ao nível superior",
+        "unknownPriority": "Prioridade {priority} do TickTick desconhecida → nenhuma",
+        "unsupportedRepeat": "Regra de repetição “{rule}” não suportada e ignorada"
+      },
+      "todoist": {
+        "emptyTitle": "Tarefa com conteúdo vazio importada como (sem título)",
+        "headerNotFound": "Não é um CSV do Todoist: falta a linha de cabeçalho TYPE",
+        "orphanComment": "Comentário sem tarefa anterior ignorado",
+        "sectionFlattened": "Secção “{section}” achatada",
+        "subtaskNoParent": "A subtarefa “{title}” não tem tarefa principal na indentação {indent}; importada ao nível superior",
+        "unknownPriority": "Prioridade {priority} desconhecida → nenhuma",
+        "unparsedDate": "Não foi possível interpretar a data “{date}”"
+      }
     }
   },
   "inbox": {

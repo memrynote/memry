@@ -25,7 +25,8 @@
     "expand": "Laajenna",
     "collapse": "Kutista",
     "showMore": "+{count, plural, one {# enemmän} other {# enemmän}}",
-    "showLess": "Näytä vähemmän"
+    "showLess": "Näytä vähemmän",
+    "undo": "Kumoa"
   },
   "tabs": {
     "pin": "Kiinnitä välilehti",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "Tänään",
     "yesterday": "eilen",
-    "daysAgo": "{count, plural, one {# päivä sitten} other {# päivää sitten}}"
+    "daysAgo": "{count, plural, one {# päivä sitten} other {# päivää sitten}}",
+    "daysLate": "{count, plural, one {# pv myöhässä} other {# pv myöhässä}}",
+    "daysOverdue": "{count, plural, one {# päivä myöhässä} other {# päivää myöhässä}}",
+    "tomorrow": "Huomenna"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Joka päivä} other {Joka # päivä}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Joka kuukausi {day}{suffix}} other {Joka # kuukausi {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Joka kuukausi {week} {day}} other {Joka # kuukausi {week} {day}}}",
     "everyNYears": "{count, plural, one {Joka vuosi} other {Joka # vuosi}}",
-    "repeats": "Toistaa"
+    "repeats": "Toistaa",
+    "ordinal": {
+      "first": "ensimmäinen",
+      "fourth": "neljäs",
+      "last": "viimeinen",
+      "second": "toinen",
+      "third": "kolmas"
+    },
+    "preset": {
+      "everyWeekday": "Joka arkipäivä (ma–pe)",
+      "everyYearOnDate": "Joka vuosi {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -640,6 +655,11 @@
     "welcome": {
       "body": "Yksityinen, ensisijaisesti offline-tilassa toimiva kotisi. Muistiinpanot ovat päästä päähän salattuja — ne eivät koskaan poistu laitteeltasi salaamattomina.",
       "title": "Tervetuloa MemryNoteen"
+    },
+    "tour": {
+      "next": "Seuraava",
+      "previous": "Edellinen",
+      "progress": "{current} / {total}"
     }
   },
   "updatePrompt": {
@@ -696,5 +716,125 @@
     "sectionLabel": "Taulut",
     "tooLargeToSync": "Tämä taulu on liian suuri synkronoitavaksi. Se on tallennettu tälle laitteelle, mutta se ei siirry muille laitteillesi ennen kuin se pienenee.",
     "untitled": "Nimetön taulu"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Napsauta riviä",
+      "reset": "Nollaa",
+      "shortcutsTab": "Pikanäppäimet-välilehti"
+    },
+    "description": "Nopeat reitit memrynote-sovelluksessa liikkumiseen, ajatusten tallentamiseen ja työn käsittelyyn.",
+    "groups": {
+      "general": {
+        "description": "Koko sovelluksen navigointi ja ohje.",
+        "title": "Yleiset"
+      },
+      "inbox": {
+        "description": "Käsittele tallennetut kohteet nopeasti.",
+        "title": "Saapuneet"
+      },
+      "journal": {
+        "description": "Liiku päiväkirjanäkymissä ja kohdista kirjoitusalueeseen.",
+        "title": "Päiväkirja"
+      },
+      "notes": {
+        "description": "Kirjoita, muotoile ja hae muistiinpanoja.",
+        "title": "Muistiinpanot / Editori"
+      },
+      "settings": {
+        "description": "Avaa asetukset ja mukauta pikanäppäimiä.",
+        "title": "Asetukset"
+      },
+      "tabs": {
+        "description": "Siirry välilehtien ja ruutujen välillä.",
+        "title": "Välilehdet ja jaot"
+      },
+      "tasks": {
+        "description": "Suodata, valitse ja merkitse tehtäviä valmiiksi.",
+        "title": "Tehtävät"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Luo muistiinpano",
+        "keyboardShortcuts": "Avaa pikanäppäimet",
+        "openSettings": "Avaa asetukset",
+        "quickSearch": "Avaa pikahaku",
+        "sidebarSection": "Siirry sivupalkin osioon",
+        "toggleSidebar": "Näytä tai piilota sivupalkki",
+        "undoTaskAction": "Kumoa viimeisin tehtävätoiminto"
+      },
+      "inbox": {
+        "archiveItem": "Arkistoi valittu kohde",
+        "chooseQuickFileResult": "Valitse pika-arkistoinnin tulos",
+        "clearSelection": "Tyhjennä valinta tai sulje pika-arkistointi",
+        "confirmFiling": "Vahvista arkistointipaneeli",
+        "firstOrLastItem": "Ensimmäinen tai viimeinen kohde",
+        "jumpByPage": "Siirry sivu kerrallaan",
+        "nextItem": "Seuraava kohde",
+        "openOriginal": "Avaa alkuperäinen linkki",
+        "openQuickFile": "Avaa pika-arkistointi",
+        "previousItem": "Edellinen kohde",
+        "refresh": "Päivitä Saapuneet",
+        "selectAllVisible": "Valitse kaikki näkyvät kohteet",
+        "selectItem": "Valitse kohde",
+        "togglePreview": "Näytä tai piilota esikatselupaneeli"
+      },
+      "journal": {
+        "bold": "Lihavoi valittu teksti",
+        "find": "Etsi päiväkirjasta",
+        "italic": "Kursivoi valittu teksti",
+        "link": "Lisää tai muokkaa linkkiä",
+        "returnFromOverview": "Palaa kuukausi- tai vuosinäkymästä",
+        "toggleFullWidth": "Näytä päiväkirja täysleveänä",
+        "underline": "Alleviivaa valittu teksti"
+      },
+      "notes": {
+        "bold": "Lihavointi",
+        "closeOverlays": "Sulje editorin peittonäkymät",
+        "commandMenu": "Avaa editorin komentovalikko",
+        "createNote": "Luo muistiinpano",
+        "find": "Etsi muistiinpanosta",
+        "italic": "Kursivointi",
+        "link": "Lisää tai muokkaa linkkiä",
+        "saveNote": "Tallenna nykyinen muistiinpano",
+        "underline": "Alleviivaus"
+      },
+      "settings": {
+        "cancelRecording": "Peruuta pikanäppäimen tallennus",
+        "customizeShortcuts": "Mukauta pikanäppäimiä",
+        "openSettings": "Avaa asetukset",
+        "recordShortcut": "Tallenna uusi pikanäppäin",
+        "resetShortcut": "Palauta pikanäppäimen oletus"
+      },
+      "tabs": {
+        "closeAllInPane": "Sulje ruudun kaikki välilehdet",
+        "closeSplitPane": "Sulje jaettu ruutu",
+        "closeTab": "Sulje välilehti",
+        "duplicateTab": "Monista välilehti",
+        "focusPane": "Kohdista toiseen ruutuun",
+        "maximizePane": "Suurenna nykyinen ruutu",
+        "moveTabToPane": "Siirrä välilehti ruutuun",
+        "newTabMenu": "Avaa uuden välilehden valikko",
+        "nextTab": "Seuraava välilehti",
+        "pinTab": "Kiinnitä tai irrota välilehti",
+        "previousTab": "Edellinen välilehti",
+        "reopenClosedTab": "Avaa suljettu välilehti uudelleen",
+        "splitDown": "Jaa alaspäin",
+        "splitRight": "Jaa oikealle"
+      },
+      "tasks": {
+        "clearFilters": "Tyhjennä näkyvät suodattimet",
+        "clearSelection": "Tyhjennä tehtävävalinta",
+        "completeSelected": "Merkitse valitut tehtävät valmiiksi",
+        "configureRepeat": "Määritä toisto kohdistetulle tehtävälle",
+        "deleteSelected": "Poista valitut tehtävät",
+        "selectAllVisible": "Valitse kaikki näkyvät tehtävät",
+        "skipOccurrence": "Ohita toistokerta",
+        "stopRepeating": "Lopeta tehtävän toistaminen"
+      }
+    },
+    "or": "tai",
+    "then": "sitten"
   }
 }

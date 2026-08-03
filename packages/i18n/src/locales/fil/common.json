@@ -25,7 +25,8 @@
     "expand": "Palawakin",
     "collapse": "I-collapse",
     "showMore": "+{count, plural, one {# pa} other {# pa}}",
-    "showLess": "Magpakita ng mas kaunti"
+    "showLess": "Magpakita ng mas kaunti",
+    "undo": "I-undo"
   },
   "tabs": {
     "pin": "I-pin ang Tab",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "Ngayong araw",
     "yesterday": "Kahapon",
-    "daysAgo": "{count, plural, one {# araw ang nakalipas} other {# araw ang nakalipas}}"
+    "daysAgo": "{count, plural, one {# araw ang nakalipas} other {# araw ang nakalipas}}",
+    "daysLate": "{count, plural, one {# araw huli} other {# araw huli}}",
+    "daysOverdue": "{count, plural, one {# araw nang lampas} other {# araw nang lampas}}",
+    "tomorrow": "Bukas"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Araw-araw} other {Tuwing # araw}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Bawat buwan sa {day}{suffix}} other {Tuwing # na buwan sa {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Bawat buwan sa {week} {day}} other {Tuwing # na buwan sa {week} {day}}}",
     "everyNYears": "{count, plural, one {Bawat taon} other {Bawat # taon}}",
-    "repeats": "Inuulit"
+    "repeats": "Inuulit",
+    "ordinal": {
+      "first": "una",
+      "fourth": "ikaapat",
+      "last": "huli",
+      "second": "ikalawa",
+      "third": "ikatlo"
+    },
+    "preset": {
+      "everyWeekday": "Tuwing weekday (Lun-Biy)",
+      "everyYearOnDate": "Bawat taon sa {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -640,6 +655,11 @@
     "welcome": {
       "body": "Ang iyong pribado, offline-first na tahanan. Ang mga tala ay end-to-end na naka-encrypt — hindi kailanman aalis sa iyong device nang hindi naka-encrypt.",
       "title": "Maligayang pagdating sa MemryNote"
+    },
+    "tour": {
+      "next": "Susunod",
+      "previous": "Nakaraan",
+      "progress": "{current} sa {total}"
     }
   },
   "updatePrompt": {
@@ -696,5 +716,125 @@
     "sectionLabel": "Mga canvas",
     "tooLargeToSync": "Masyadong malaki ang canvas na ito para mag-sync. Naka-save ito sa device na ito, ngunit hindi ito makakarating sa iyong ibang mga device hanggang sa lumiit ito.",
     "untitled": "Walang pamagat na canvas"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Mag-click sa row",
+      "reset": "I-reset",
+      "shortcutsTab": "Tab ng Mga Shortcut"
+    },
+    "description": "Mga mabilisang paraan para maglibot sa memrynote, kumuha ng mga ideya, at magproseso ng trabaho.",
+    "groups": {
+      "general": {
+        "description": "Nabigasyon at tulong sa buong app.",
+        "title": "Pangkalahatan"
+      },
+      "inbox": {
+        "description": "Mabilis na iproseso ang mga nakuhang item.",
+        "title": "Inbox"
+      },
+      "journal": {
+        "description": "Maglibot sa mga view ng journal at tumutok sa lugar ng pagsulat.",
+        "title": "Journal"
+      },
+      "notes": {
+        "description": "Magsulat, mag-format, at maghanap ng mga tala.",
+        "title": "Mga Tala / Editor"
+      },
+      "settings": {
+        "description": "Buksan ang mga setting at i-customize ang mga shortcut.",
+        "title": "Mga Setting"
+      },
+      "tabs": {
+        "description": "Lumipat sa pagitan ng mga tab at pane.",
+        "title": "Mga Tab at Split"
+      },
+      "tasks": {
+        "description": "Salain, piliin, at kumpletuhin ang mga gawain.",
+        "title": "Mga Gawain"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Lumikha ng tala",
+        "keyboardShortcuts": "Buksan ang mga keyboard shortcut",
+        "openSettings": "Buksan ang mga setting",
+        "quickSearch": "Buksan ang mabilisang paghahanap",
+        "sidebarSection": "Pumunta sa seksyon ng sidebar",
+        "toggleSidebar": "I-toggle ang sidebar",
+        "undoTaskAction": "I-undo ang huling aksyon sa gawain"
+      },
+      "inbox": {
+        "archiveItem": "I-archive ang napiling item",
+        "chooseQuickFileResult": "Pumili ng resulta ng quick file",
+        "clearSelection": "I-clear ang pinili o isara ang quick file",
+        "confirmFiling": "Kumpirmahin ang filing panel",
+        "firstOrLastItem": "Una o huling item",
+        "jumpByPage": "Lumundag ayon sa pahina",
+        "nextItem": "Susunod na item",
+        "openOriginal": "Buksan ang orihinal na link",
+        "openQuickFile": "Buksan ang quick file",
+        "previousItem": "Nakaraang item",
+        "refresh": "I-refresh ang inbox",
+        "selectAllVisible": "Piliin ang lahat ng nakikitang item",
+        "selectItem": "Piliin ang item",
+        "togglePreview": "I-toggle ang preview panel"
+      },
+      "journal": {
+        "bold": "Gawing makapal ang napiling teksto",
+        "find": "Maghanap sa journal",
+        "italic": "Gawing italiko ang napiling teksto",
+        "link": "Magdagdag o mag-edit ng link",
+        "returnFromOverview": "Bumalik mula sa buwan o taon na view",
+        "toggleFullWidth": "I-toggle ang buong-lapad na journal",
+        "underline": "Salungguhitan ang napiling teksto"
+      },
+      "notes": {
+        "bold": "Makapal",
+        "closeOverlays": "Isara ang mga overlay ng editor",
+        "commandMenu": "Buksan ang command menu ng editor",
+        "createNote": "Lumikha ng tala",
+        "find": "Maghanap sa tala",
+        "italic": "Italiko",
+        "link": "Magdagdag o mag-edit ng link",
+        "saveNote": "I-save ang kasalukuyang tala",
+        "underline": "Salungguhit"
+      },
+      "settings": {
+        "cancelRecording": "Kanselahin ang pagre-record ng shortcut",
+        "customizeShortcuts": "I-customize ang mga keyboard shortcut",
+        "openSettings": "Buksan ang mga setting",
+        "recordShortcut": "Mag-record ng bagong shortcut",
+        "resetShortcut": "Ibalik ang default ng shortcut"
+      },
+      "tabs": {
+        "closeAllInPane": "Isara ang lahat ng tab sa pane",
+        "closeSplitPane": "Isara ang split pane",
+        "closeTab": "Isara ang tab",
+        "duplicateTab": "I-duplicate ang tab",
+        "focusPane": "Tumutok sa ibang pane",
+        "maximizePane": "I-maximize ang kasalukuyang pane",
+        "moveTabToPane": "Ilipat ang tab sa pane",
+        "newTabMenu": "Buksan ang menu ng bagong tab",
+        "nextTab": "Susunod na tab",
+        "pinTab": "I-pin o i-unpin ang tab",
+        "previousTab": "Nakaraang tab",
+        "reopenClosedTab": "Buksang muli ang saradong tab",
+        "splitDown": "Hatiin pababa",
+        "splitRight": "Hatiin pakanan"
+      },
+      "tasks": {
+        "clearFilters": "I-clear ang mga nakikitang filter",
+        "clearSelection": "I-clear ang pinili sa mga gawain",
+        "completeSelected": "Kumpletuhin ang mga napiling gawain",
+        "configureRepeat": "I-configure ang pag-ulit sa naka-focus na gawain",
+        "deleteSelected": "Tanggalin ang mga napiling gawain",
+        "selectAllVisible": "Piliin ang lahat ng nakikitang gawain",
+        "skipOccurrence": "Laktawan ang pag-ulit na ito",
+        "stopRepeating": "Ihinto ang pag-ulit ng gawain"
+      }
+    },
+    "or": "o",
+    "then": "tapos"
   }
 }

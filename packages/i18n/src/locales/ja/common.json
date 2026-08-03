@@ -25,7 +25,8 @@
     "expand": "拡大する",
     "collapse": "崩壊する",
     "showMore": "+{count, plural, one {# もっと見る} other {# もっと見る}}",
-    "showLess": "表示を少なくする"
+    "showLess": "表示を少なくする",
+    "undo": "元に戻す"
   },
   "tabs": {
     "pin": "ピンタブ",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "今日",
     "yesterday": "昨日",
-    "daysAgo": "{count, plural, one {# 日前} other {# 日前}}"
+    "daysAgo": "{count, plural, one {# 日前} other {# 日前}}",
+    "daysLate": "{count, plural, other {# 日遅れ}}",
+    "daysOverdue": "{count, plural, other {# 日超過}}",
+    "tomorrow": "明日"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {毎日} other {# 日ごと}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {毎月 {day}{suffix}} other {{day}{suffix} の # か月ごと}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {毎月 {week} {day}} other {{week} {day} で # か月ごと}}",
     "everyNYears": "{count, plural, one {毎年} other {# 年ごと}}",
-    "repeats": "繰り返し"
+    "repeats": "繰り返し",
+    "ordinal": {
+      "first": "第1",
+      "fourth": "第4",
+      "last": "最終",
+      "second": "第2",
+      "third": "第3"
+    },
+    "preset": {
+      "everyWeekday": "毎週平日（月〜金）",
+      "everyYearOnDate": "毎年 {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -640,6 +655,11 @@
     "welcome": {
       "body": "あなた専用の、オフラインファーストなホーム。ノートはエンドツーエンドで暗号化され、暗号化されないままデバイスの外に出ることはありません。",
       "title": "MemryNote へようこそ"
+    },
+    "tour": {
+      "next": "次へ",
+      "previous": "戻る",
+      "progress": "{total} 件中 {current} 件目"
     }
   },
   "updatePrompt": {
@@ -696,5 +716,125 @@
     "sectionLabel": "キャンバス",
     "tooLargeToSync": "このキャンバスは大きすぎて同期できません。このデバイスには保存されていますが、サイズが小さくなるまで他のデバイスには届きません。",
     "untitled": "無題のキャンバス"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "行をクリック",
+      "reset": "リセット",
+      "shortcutsTab": "ショートカットタブ"
+    },
+    "description": "memrynote 内の移動、思いつきの記録、作業の処理を素早く行うための近道です。",
+    "groups": {
+      "general": {
+        "description": "アプリ全体のナビゲーションとヘルプ。",
+        "title": "一般"
+      },
+      "inbox": {
+        "description": "キャプチャしたアイテムを素早く処理します。",
+        "title": "受信箱"
+      },
+      "journal": {
+        "description": "ジャーナルの表示を切り替え、書く場所にフォーカスします。",
+        "title": "ジャーナル"
+      },
+      "notes": {
+        "description": "メモを書き、書式を整え、検索します。",
+        "title": "メモ / エディタ"
+      },
+      "settings": {
+        "description": "設定を開き、ショートカットをカスタマイズします。",
+        "title": "設定"
+      },
+      "tabs": {
+        "description": "タブとペインの間を移動します。",
+        "title": "タブと分割"
+      },
+      "tasks": {
+        "description": "タスクを絞り込み、選択し、完了します。",
+        "title": "タスク"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "メモを作成",
+        "keyboardShortcuts": "キーボードショートカットを開く",
+        "openSettings": "設定を開く",
+        "quickSearch": "クイック検索を開く",
+        "sidebarSection": "サイドバーのセクションへ移動",
+        "toggleSidebar": "サイドバーを切り替え",
+        "undoTaskAction": "直前のタスク操作を元に戻す"
+      },
+      "inbox": {
+        "archiveItem": "選択したアイテムをアーカイブ",
+        "chooseQuickFileResult": "クイック整理の候補を選ぶ",
+        "clearSelection": "選択を解除、またはクイック整理を閉じる",
+        "confirmFiling": "整理パネルを確定",
+        "firstOrLastItem": "先頭または末尾のアイテム",
+        "jumpByPage": "ページ単位で移動",
+        "nextItem": "次のアイテム",
+        "openOriginal": "元のリンクを開く",
+        "openQuickFile": "クイック整理を開く",
+        "previousItem": "前のアイテム",
+        "refresh": "受信箱を更新",
+        "selectAllVisible": "表示中のアイテムをすべて選択",
+        "selectItem": "アイテムを選択",
+        "togglePreview": "プレビューパネルを切り替え"
+      },
+      "journal": {
+        "bold": "選択したテキストを太字にする",
+        "find": "ジャーナル内を検索",
+        "italic": "選択したテキストを斜体にする",
+        "link": "リンクを追加または編集",
+        "returnFromOverview": "月表示・年表示から戻る",
+        "toggleFullWidth": "ジャーナルの全幅表示を切り替え",
+        "underline": "選択したテキストに下線を引く"
+      },
+      "notes": {
+        "bold": "太字",
+        "closeOverlays": "エディタのオーバーレイを閉じる",
+        "commandMenu": "エディタのコマンドメニューを開く",
+        "createNote": "メモを作成",
+        "find": "メモ内を検索",
+        "italic": "斜体",
+        "link": "リンクを追加または編集",
+        "saveNote": "現在のメモを保存",
+        "underline": "下線"
+      },
+      "settings": {
+        "cancelRecording": "ショートカットの記録をキャンセル",
+        "customizeShortcuts": "キーボードショートカットをカスタマイズ",
+        "openSettings": "設定を開く",
+        "recordShortcut": "新しいショートカットを記録",
+        "resetShortcut": "ショートカットを初期設定に戻す"
+      },
+      "tabs": {
+        "closeAllInPane": "ペイン内のすべてのタブを閉じる",
+        "closeSplitPane": "分割ペインを閉じる",
+        "closeTab": "タブを閉じる",
+        "duplicateTab": "タブを複製",
+        "focusPane": "別のペインにフォーカス",
+        "maximizePane": "現在のペインを最大化",
+        "moveTabToPane": "タブをペインへ移動",
+        "newTabMenu": "新規タブメニューを開く",
+        "nextTab": "次のタブ",
+        "pinTab": "タブをピン留め / 解除",
+        "previousTab": "前のタブ",
+        "reopenClosedTab": "閉じたタブを開き直す",
+        "splitDown": "下に分割",
+        "splitRight": "右に分割"
+      },
+      "tasks": {
+        "clearFilters": "表示中のフィルターをクリア",
+        "clearSelection": "タスクの選択を解除",
+        "completeSelected": "選択したタスクを完了",
+        "configureRepeat": "フォーカス中のタスクの繰り返しを設定",
+        "deleteSelected": "選択したタスクを削除",
+        "selectAllVisible": "表示中のタスクをすべて選択",
+        "skipOccurrence": "今回の繰り返しをスキップ",
+        "stopRepeating": "タスクの繰り返しを停止"
+      }
+    },
+    "or": "または",
+    "then": "その後"
   }
 }

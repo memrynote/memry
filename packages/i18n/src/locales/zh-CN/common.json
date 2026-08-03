@@ -25,7 +25,8 @@
     "expand": "展开",
     "collapse": "收起",
     "showMore": "+{count, plural, one {# 更多} other {# 更多}}",
-    "showLess": "显示较少"
+    "showLess": "显示较少",
+    "undo": "撤销"
   },
   "tabs": {
     "pin": "固定标签页",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "今天",
     "yesterday": "昨天",
-    "daysAgo": "{count, plural, one {# 天前} other {# 天前}}"
+    "daysAgo": "{count, plural, one {# 天前} other {# 天前}}",
+    "daysLate": "{count, plural, other {迟 # 天}}",
+    "daysOverdue": "{count, plural, other {逾期 # 天}}",
+    "tomorrow": "明天"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {每天} other {每 # 天}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {每月的 {day}{suffix}} other {每 # 月的 {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {每月的 {week} {day}} other {每 # 个月在 {week} {day}}}",
     "everyNYears": "{count, plural, one {每年} other {每 # 年}}",
-    "repeats": "重复"
+    "repeats": "重复",
+    "ordinal": {
+      "first": "第一个",
+      "fourth": "第四个",
+      "last": "最后一个",
+      "second": "第二个",
+      "third": "第三个"
+    },
+    "preset": {
+      "everyWeekday": "每个工作日（周一至周五）",
+      "everyYearOnDate": "每年 {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -640,6 +655,11 @@
     "welcome": {
       "body": "你私密的、离线优先的家园。笔记采用端到端加密——它们绝不会以未加密形式离开你的设备。",
       "title": "欢迎使用 MemryNote"
+    },
+    "tour": {
+      "next": "下一步",
+      "previous": "上一步",
+      "progress": "{current} / {total}"
     }
   },
   "updatePrompt": {
@@ -696,5 +716,125 @@
     "sectionLabel": "画布",
     "tooLargeToSync": "此画布太大，无法同步。它已保存在此设备上，但在体积变小之前不会同步到你的其他设备。",
     "untitled": "未命名画布"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "点击行",
+      "reset": "重置",
+      "shortcutsTab": "快捷键标签页"
+    },
+    "description": "在 memrynote 中快速穿行、捕捉想法、处理事务的捷径。",
+    "groups": {
+      "general": {
+        "description": "全局导航与帮助。",
+        "title": "通用"
+      },
+      "inbox": {
+        "description": "快速处理已捕获的项目。",
+        "title": "收件箱"
+      },
+      "journal": {
+        "description": "在日记视图之间切换，并聚焦书写区域。",
+        "title": "日记"
+      },
+      "notes": {
+        "description": "撰写、排版和搜索笔记。",
+        "title": "笔记 / 编辑器"
+      },
+      "settings": {
+        "description": "打开设置并自定义快捷键。",
+        "title": "设置"
+      },
+      "tabs": {
+        "description": "在标签页和面板之间移动。",
+        "title": "标签页与分屏"
+      },
+      "tasks": {
+        "description": "筛选、选择并完成任务。",
+        "title": "任务"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "新建笔记",
+        "keyboardShortcuts": "打开键盘快捷键",
+        "openSettings": "打开设置",
+        "quickSearch": "打开快速搜索",
+        "sidebarSection": "跳转到侧边栏分区",
+        "toggleSidebar": "切换侧边栏",
+        "undoTaskAction": "撤销上一次任务操作"
+      },
+      "inbox": {
+        "archiveItem": "归档选中的项目",
+        "chooseQuickFileResult": "选择一个快速归档结果",
+        "clearSelection": "清除选择或关闭快速归档",
+        "confirmFiling": "确认归档面板",
+        "firstOrLastItem": "第一个或最后一个项目",
+        "jumpByPage": "按页跳转",
+        "nextItem": "下一个项目",
+        "openOriginal": "打开原始链接",
+        "openQuickFile": "打开快速归档",
+        "previousItem": "上一个项目",
+        "refresh": "刷新收件箱",
+        "selectAllVisible": "选择所有可见项目",
+        "selectItem": "选择项目",
+        "togglePreview": "切换预览面板"
+      },
+      "journal": {
+        "bold": "将选中文本加粗",
+        "find": "在日记中查找",
+        "italic": "将选中文本设为斜体",
+        "link": "添加或编辑链接",
+        "returnFromOverview": "从月视图或年视图返回",
+        "toggleFullWidth": "切换整宽日记",
+        "underline": "为选中文本加下划线"
+      },
+      "notes": {
+        "bold": "粗体",
+        "closeOverlays": "关闭编辑器浮层",
+        "commandMenu": "打开编辑器命令菜单",
+        "createNote": "新建笔记",
+        "find": "在笔记中查找",
+        "italic": "斜体",
+        "link": "添加或编辑链接",
+        "saveNote": "保存当前笔记",
+        "underline": "下划线"
+      },
+      "settings": {
+        "cancelRecording": "取消快捷键录制",
+        "customizeShortcuts": "自定义键盘快捷键",
+        "openSettings": "打开设置",
+        "recordShortcut": "录制新的快捷键",
+        "resetShortcut": "恢复快捷键默认值"
+      },
+      "tabs": {
+        "closeAllInPane": "关闭面板中的所有标签页",
+        "closeSplitPane": "关闭分屏面板",
+        "closeTab": "关闭标签页",
+        "duplicateTab": "复制标签页",
+        "focusPane": "聚焦另一个面板",
+        "maximizePane": "最大化当前面板",
+        "moveTabToPane": "将标签页移到面板",
+        "newTabMenu": "打开新建标签页菜单",
+        "nextTab": "下一个标签页",
+        "pinTab": "固定或取消固定标签页",
+        "previousTab": "上一个标签页",
+        "reopenClosedTab": "重新打开已关闭的标签页",
+        "splitDown": "向下拆分",
+        "splitRight": "向右拆分"
+      },
+      "tasks": {
+        "clearFilters": "清除可见的筛选条件",
+        "clearSelection": "清除任务选择",
+        "completeSelected": "完成选中的任务",
+        "configureRepeat": "为聚焦的任务设置重复",
+        "deleteSelected": "删除选中的任务",
+        "selectAllVisible": "选择所有可见任务",
+        "skipOccurrence": "跳过本次重复",
+        "stopRepeating": "停止任务重复"
+      }
+    },
+    "or": "或",
+    "then": "然后"
   }
 }

@@ -1,7 +1,12 @@
 {
   "app": {
     "quit": "Stoppen",
-    "preferences": "Instellingen…"
+    "preferences": "Instellingen…",
+    "exit": "Afsluiten",
+    "hide": "Verberg MemryNote",
+    "hideOthers": "Verberg andere",
+    "services": "Diensten",
+    "unhide": "Toon alles"
   },
   "file": {
     "label": "Bestand",
@@ -24,7 +29,11 @@
     "paste": "Plakken",
     "selectAll": "Alles selecteren",
     "find": "Zoeken",
-    "speech": "Spraak"
+    "speech": "Spraak",
+    "delete": "Verwijder",
+    "pasteAndMatchStyle": "Plak en pas stijl aan",
+    "startSpeaking": "Start voorlezen",
+    "stopSpeaking": "Stop voorlezen"
   },
   "view": {
     "label": "Bekijk",
@@ -37,7 +46,10 @@
     "themeSystem": "Systeem",
     "themeWhite": "Papier",
     "toggleDayPanel": "Dagpaneel in-/uitschakelen",
-    "toggleSidebar": "Zijbalk in-/uitschakelen"
+    "toggleSidebar": "Zijbalk in-/uitschakelen",
+    "actualSize": "Werkelijke grootte",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom uit"
   },
   "format": {
     "body": "Hoofdtekst",
@@ -55,7 +67,8 @@
     "about": "Over MemryNote",
     "documentation": "Documentatie",
     "label": "Help",
-    "shortcuts": "Sneltoetsen"
+    "shortcuts": "Sneltoetsen",
+    "aboutVersion": "Versie {version}"
   },
   "insert": {
     "attachment": "Bijlage invoegen…",
@@ -67,6 +80,10 @@
     "taskList": "Takenlijst"
   },
   "window": {
-    "label": "Venster"
+    "label": "Venster",
+    "close": "Sluiten",
+    "front": "Breng alles naar voren",
+    "minimize": "Minimaliseer",
+    "zoom": "Zoom"
   }
 }

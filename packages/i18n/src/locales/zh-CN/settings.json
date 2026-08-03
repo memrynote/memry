@@ -1449,7 +1449,8 @@
       },
       "title": "从 {name} 导入",
       "chooseDirectory": "选择文件夹…",
-      "folderKeepsAssets": "当图片不在笔记所在的文件夹里时，请选择文件夹——导出内容常把媒体文件放在一个共享文件夹中。"
+      "folderKeepsAssets": "当图片不在笔记所在的文件夹里时，请选择文件夹——导出内容常把媒体文件放在一个共享文件夹中。",
+      "previewError": "预览失败"
     },
     "header": {
       "subtitle": "从其他应用导入你的笔记和任务",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, other {# 个任务}}",
       "withDueDate": "{count} 个带日期",
       "withTags": "{count} 个带标签"
+    },
+    "messages": {
+      "csv": {
+        "columns": "列：{columns}",
+        "emptyTitle": "已跳过标题为空的行（列“{column}”）",
+        "noHeaders": "CSV 文件没有表头",
+        "titleColumn": "标题取自“{column}”；其余列保存为属性"
+      },
+      "raindrop": {
+        "csvEmpty": "Raindrop CSV 为空",
+        "headerNotFound": "未找到 Raindrop CSV 的表头行（“url”列）",
+        "rowNoUrl": "第 {row} 行已跳过：没有 URL"
+      },
+      "readFileFailed": "读取文件失败",
+      "ticktick": {
+        "foldersDropped": "TickTick 文件夹在 Memry 中没有对应项，已被舍弃",
+        "headerNotFound": "未找到 TickTick CSV 的表头行（“Folder Name”）",
+        "reminderNoAnchor": "已跳过提醒“{reminder}”（没有日期锚点）",
+        "subtaskParentMissing": "未找到子任务“{title}”的父任务；已作为顶级任务导入",
+        "unknownPriority": "未知的 TickTick 优先级 {priority} → 无",
+        "unsupportedRepeat": "已跳过不支持的重复规则“{rule}”"
+      },
+      "todoist": {
+        "emptyTitle": "内容为空的任务已导入为（无标题）",
+        "headerNotFound": "这不是 Todoist CSV：缺少 TYPE 表头行",
+        "orphanComment": "已跳过前面没有任务的评论",
+        "sectionFlattened": "分区“{section}”已展平",
+        "subtaskNoParent": "子任务“{title}”在缩进 {indent} 处没有父任务；已作为顶级任务导入",
+        "unknownPriority": "未知优先级 {priority} → 无",
+        "unparsedDate": "无法解析日期“{date}”"
+      }
     }
   },
   "inbox": {

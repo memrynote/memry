@@ -270,7 +270,50 @@
     "panelEmpty": "Нет предстоящих напоминаний.",
     "panelPast": "Прошедшие",
     "panelUpcoming": "Предстоящие",
-    "taskFallback": "Задача"
+    "taskFallback": "Задача",
+    "dateTime": {
+      "dateAt": "{date} в {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Сегодня в {time}",
+      "todayCompact": "Сегодня, {time}",
+      "tomorrowAt": "Завтра в {time}",
+      "tomorrowCompact": "Завтра, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Напоминание о годовщине",
+      "inHours": {
+        "label": "Через {count, plural, one {# час} few {# часа} many {# часов} other {# часа}}"
+      },
+      "inMinutes": {
+        "label": "Через {count, plural, one {# минуту} few {# минуты} many {# минут} other {# минуты}}"
+      },
+      "inMonths": {
+        "label": "Через {count, plural, one {# месяц} few {# месяца} many {# месяцев} other {# месяца}}"
+      },
+      "inWeeks": {
+        "label": "Через {count, plural, one {# неделю} few {# недели} many {# недель} other {# недели}}"
+      },
+      "inYears": {
+        "label": "Через {count, plural, one {# год} few {# года} many {# лет} other {# года}}"
+      },
+      "laterToday": {
+        "description": "Через {count, plural, one {# час} few {# часа} many {# часов} other {# часа}}",
+        "label": "Позже сегодня"
+      },
+      "monthlyReflection": "Ежемесячная рефлексия",
+      "nextWeek": {
+        "description": "В понедельник в 9:00",
+        "label": "Следующая неделя"
+      },
+      "quarterlyReflection": "Ежеквартальная рефлексия",
+      "reviewInAWeek": "Пересмотреть через неделю",
+      "sameDayNextMonth": "Тот же день в следующем месяце",
+      "tomorrow": {
+        "description": "Завтра в 9:00",
+        "label": "Завтра"
+      },
+      "tomorrowMorning": "Завтра утром"
+    }
   },
   "insights": {
     "captureActivity": "Захват активности",

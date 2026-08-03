@@ -1449,7 +1449,8 @@
       },
       "title": "Aus {name} importieren",
       "chooseDirectory": "Ordner wählen…",
-      "folderKeepsAssets": "Wähle den Ordner, wenn die Bilder außerhalb des Notizordners liegen — Exporte legen Medien oft in einem gemeinsamen Ordner ab."
+      "folderKeepsAssets": "Wähle den Ordner, wenn die Bilder außerhalb des Notizordners liegen — Exporte legen Medien oft in einem gemeinsamen Ordner ab.",
+      "previewError": "Vorschau fehlgeschlagen"
     },
     "header": {
       "subtitle": "Bring deine Notizen und Aufgaben aus anderen Apps herein",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, one {# Aufgabe} other {# Aufgaben}}",
       "withDueDate": "{count} datiert",
       "withTags": "{count} getaggt"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Spalten: {columns}",
+        "emptyTitle": "Zeile mit leerem Titel übersprungen (Spalte „{column}“)",
+        "noHeaders": "Die CSV-Datei hat keine Kopfzeile",
+        "titleColumn": "Titel aus „{column}“; weitere Spalten als Eigenschaften gespeichert"
+      },
+      "raindrop": {
+        "csvEmpty": "Die Raindrop-CSV ist leer",
+        "headerNotFound": "Die Kopfzeile der Raindrop-CSV (Spalte „url“) wurde nicht gefunden",
+        "rowNoUrl": "Zeile {row} übersprungen: keine URL"
+      },
+      "readFileFailed": "Die Datei konnte nicht gelesen werden",
+      "ticktick": {
+        "foldersDropped": "TickTick-Ordner haben keine Entsprechung in Memry und wurden verworfen",
+        "headerNotFound": "Die Kopfzeile der TickTick-CSV („Folder Name“) wurde nicht gefunden",
+        "reminderNoAnchor": "Erinnerung „{reminder}“ übersprungen (kein Datumsbezug)",
+        "subtaskParentMissing": "Übergeordnete Aufgabe von Teilaufgabe „{title}“ nicht gefunden; auf oberster Ebene importiert",
+        "unknownPriority": "Unbekannte TickTick-Priorität {priority} → keine",
+        "unsupportedRepeat": "Nicht unterstützte Wiederholungsregel „{rule}“ übersprungen"
+      },
+      "todoist": {
+        "emptyTitle": "Aufgabe mit leerem Inhalt als (ohne Titel) importiert",
+        "headerNotFound": "Keine Todoist-CSV: Die TYPE-Kopfzeile fehlt",
+        "orphanComment": "Kommentar ohne vorangehende Aufgabe übersprungen",
+        "sectionFlattened": "Abschnitt „{section}“ eingeebnet",
+        "subtaskNoParent": "Teilaufgabe „{title}“ hat bei Einrückung {indent} keine übergeordnete Aufgabe; auf oberster Ebene importiert",
+        "unknownPriority": "Unbekannte Priorität {priority} → keine",
+        "unparsedDate": "Das Datum „{date}“ konnte nicht gelesen werden"
+      }
     }
   },
   "inbox": {

@@ -1,7 +1,12 @@
 {
   "app": {
     "quit": "Avslutt",
-    "preferences": "Innstillinger…"
+    "preferences": "Innstillinger…",
+    "exit": "Avslutt",
+    "hide": "Skjul MemryNote",
+    "hideOthers": "Skjul andre",
+    "services": "Tjenester",
+    "unhide": "Vis alle"
   },
   "file": {
     "label": "Fil",
@@ -24,7 +29,11 @@
     "paste": "Lim inn",
     "selectAll": "Velg alle",
     "find": "Finn",
-    "speech": "Tale"
+    "speech": "Tale",
+    "delete": "Slett",
+    "pasteAndMatchStyle": "Lim inn og tilpass stil",
+    "startSpeaking": "Start opplesing",
+    "stopSpeaking": "Stopp opplesing"
   },
   "view": {
     "label": "Visning",
@@ -37,7 +46,10 @@
     "themeSystem": "System",
     "themeWhite": "Papir",
     "toggleDayPanel": "Veksle dagpanel",
-    "toggleSidebar": "Veksle sidefelt"
+    "toggleSidebar": "Veksle sidefelt",
+    "actualSize": "Virkelig størrelse",
+    "zoomIn": "Zoom inn",
+    "zoomOut": "Zoom ut"
   },
   "format": {
     "body": "Brødtekst",
@@ -55,7 +67,8 @@
     "about": "Om MemryNote",
     "documentation": "Dokumentasjon",
     "label": "Hjelp",
-    "shortcuts": "Hurtigtaster"
+    "shortcuts": "Hurtigtaster",
+    "aboutVersion": "Versjon {version}"
   },
   "insert": {
     "attachment": "Sett inn vedlegg…",
@@ -67,6 +80,10 @@
     "taskList": "Oppgaveliste"
   },
   "window": {
-    "label": "Vindu"
+    "label": "Vindu",
+    "close": "Lukk",
+    "front": "Flytt alle forrest",
+    "minimize": "Minimer",
+    "zoom": "Zoom"
   }
 }

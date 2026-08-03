@@ -1449,7 +1449,8 @@
       },
       "title": "Import dari {name}",
       "chooseDirectory": "Pilih folder…",
-      "folderKeepsAssets": "Pilih folder apabila imej berada di luar folder nota itu sendiri — eksport selalunya menyimpan media dalam satu folder yang dikongsi."
+      "folderKeepsAssets": "Pilih folder apabila imej berada di luar folder nota itu sendiri — eksport selalunya menyimpan media dalam satu folder yang dikongsi.",
+      "previewError": "Pratonton gagal"
     },
     "header": {
       "subtitle": "Bawa masuk nota dan tugasan anda dari apl lain",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, other {# tugasan}}",
       "withDueDate": "{count} bertarikh",
       "withTags": "{count} ditag"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Lajur: {columns}",
+        "emptyTitle": "Baris dengan tajuk kosong dilangkau (lajur \"{column}\")",
+        "noHeaders": "Fail CSV tiada baris pengepala",
+        "titleColumn": "Tajuk daripada \"{column}\"; lajur lain disimpan sebagai sifat"
+      },
+      "raindrop": {
+        "csvEmpty": "CSV Raindrop kosong",
+        "headerNotFound": "Baris pengepala CSV Raindrop (lajur \"url\") tidak ditemui",
+        "rowNoUrl": "Baris {row} dilangkau: tiada URL"
+      },
+      "readFileFailed": "Gagal membaca fail",
+      "ticktick": {
+        "foldersDropped": "Folder TickTick tiada padanan dalam Memry dan telah digugurkan",
+        "headerNotFound": "Baris pengepala CSV TickTick (\"Folder Name\") tidak ditemui",
+        "reminderNoAnchor": "Peringatan \"{reminder}\" dilangkau (tiada sauh tarikh)",
+        "subtaskParentMissing": "Induk bagi subtugas \"{title}\" tidak ditemui; diimport pada aras atas",
+        "unknownPriority": "Keutamaan TickTick {priority} tidak diketahui → tiada",
+        "unsupportedRepeat": "Peraturan ulangan \"{rule}\" tidak disokong dan dilangkau"
+      },
+      "todoist": {
+        "emptyTitle": "Tugasan dengan kandungan kosong diimport sebagai (tanpa tajuk)",
+        "headerNotFound": "Bukan CSV Todoist: baris pengepala TYPE tiada",
+        "orphanComment": "Komen tanpa tugasan sebelumnya dilangkau",
+        "sectionFlattened": "Bahagian \"{section}\" diratakan",
+        "subtaskNoParent": "Subtugas \"{title}\" tiada induk pada inden {indent}; diimport pada aras atas",
+        "unknownPriority": "Keutamaan {priority} tidak diketahui → tiada",
+        "unparsedDate": "Tidak dapat menghuraikan tarikh \"{date}\""
+      }
     }
   },
   "inbox": {

@@ -270,7 +270,50 @@
     "panelEmpty": "Δεν υπάρχουν επερχόμενες υπενθυμίσεις.",
     "panelPast": "Παρελθόντα",
     "panelUpcoming": "Επερχόμενα",
-    "taskFallback": "Εργασία"
+    "taskFallback": "Εργασία",
+    "dateTime": {
+      "dateAt": "{date} στις {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Σήμερα στις {time}",
+      "todayCompact": "Σήμερα, {time}",
+      "tomorrowAt": "Αύριο στις {time}",
+      "tomorrowCompact": "Αύριο, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Υπενθύμιση επετείου",
+      "inHours": {
+        "label": "Σε {count, plural, one {# ώρα} other {# ώρες}}"
+      },
+      "inMinutes": {
+        "label": "Σε {count, plural, one {# λεπτό} other {# λεπτά}}"
+      },
+      "inMonths": {
+        "label": "Σε {count, plural, one {# μήνα} other {# μήνες}}"
+      },
+      "inWeeks": {
+        "label": "Σε {count, plural, one {# εβδομάδα} other {# εβδομάδες}}"
+      },
+      "inYears": {
+        "label": "Σε {count, plural, one {# χρόνο} other {# χρόνια}}"
+      },
+      "laterToday": {
+        "description": "Σε {count, plural, one {# ώρα} other {# ώρες}}",
+        "label": "Αργότερα σήμερα"
+      },
+      "monthlyReflection": "Μηνιαίος απολογισμός",
+      "nextWeek": {
+        "description": "Δευτέρα στις 9 π.μ.",
+        "label": "Την επόμενη εβδομάδα"
+      },
+      "quarterlyReflection": "Τριμηνιαίος απολογισμός",
+      "reviewInAWeek": "Ανασκόπηση σε μία εβδομάδα",
+      "sameDayNextMonth": "Ίδια μέρα τον επόμενο μήνα",
+      "tomorrow": {
+        "description": "Αύριο στις 9 π.μ.",
+        "label": "Αύριο"
+      },
+      "tomorrowMorning": "Αύριο το πρωί"
+    }
   },
   "insights": {
     "captureActivity": "Λήψη δραστηριότητας",

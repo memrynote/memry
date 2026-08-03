@@ -1449,7 +1449,8 @@
       },
       "title": "Importar desde {name}",
       "chooseDirectory": "Elegir carpeta…",
-      "folderKeepsAssets": "Elige la carpeta cuando las imágenes estén fuera de la carpeta de las propias notas — las exportaciones suelen guardar los archivos multimedia en una carpeta común."
+      "folderKeepsAssets": "Elige la carpeta cuando las imágenes estén fuera de la carpeta de las propias notas — las exportaciones suelen guardar los archivos multimedia en una carpeta común.",
+      "previewError": "La vista previa falló"
     },
     "header": {
       "subtitle": "Trae tus notas y tareas desde otras aplicaciones",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, one {# tarea} other {# tareas}}",
       "withDueDate": "{count} con fecha",
       "withTags": "{count} etiquetados"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Columnas: {columns}",
+        "emptyTitle": "Se omitió una fila con el título vacío (columna \"{column}\")",
+        "noHeaders": "El archivo CSV no tiene encabezados",
+        "titleColumn": "Título tomado de \"{column}\"; las demás columnas se guardan como propiedades"
+      },
+      "raindrop": {
+        "csvEmpty": "El CSV de Raindrop está vacío",
+        "headerNotFound": "No se encontró la fila de encabezado del CSV de Raindrop (columna \"url\")",
+        "rowNoUrl": "Fila {row} omitida: sin URL"
+      },
+      "readFileFailed": "No se pudo leer el archivo",
+      "ticktick": {
+        "foldersDropped": "Las carpetas de TickTick no tienen equivalente en Memry y se descartaron",
+        "headerNotFound": "No se encontró la fila de encabezado del CSV de TickTick (\"Folder Name\")",
+        "reminderNoAnchor": "Se omitió el recordatorio \"{reminder}\" (sin fecha de referencia)",
+        "subtaskParentMissing": "No se encontró la tarea principal de la subtarea \"{title}\"; se importó al nivel superior",
+        "unknownPriority": "Prioridad de TickTick desconocida {priority} → ninguna",
+        "unsupportedRepeat": "Se omitió la regla de repetición no compatible \"{rule}\""
+      },
+      "todoist": {
+        "emptyTitle": "La tarea sin contenido se importó como (sin título)",
+        "headerNotFound": "No es un CSV de Todoist: falta la fila de encabezado TYPE",
+        "orphanComment": "Se omitió un comentario sin tarea previa",
+        "sectionFlattened": "Se aplanó la sección \"{section}\"",
+        "subtaskNoParent": "La subtarea \"{title}\" no tiene tarea principal en la sangría {indent}; se importó al nivel superior",
+        "unknownPriority": "Prioridad desconocida {priority} → ninguna",
+        "unparsedDate": "No se pudo interpretar la fecha \"{date}\""
+      }
     }
   },
   "inbox": {

@@ -1449,7 +1449,8 @@
       },
       "title": "Uvezi iz {name}",
       "chooseDirectory": "Odaberi mapu…",
-      "folderKeepsAssets": "Odaberite mapu kada se slike nalaze izvan mape sa samim bilješkama — pri izvozu se mediji često spremaju u zajedničku mapu."
+      "folderKeepsAssets": "Odaberite mapu kada se slike nalaze izvan mape sa samim bilješkama — pri izvozu se mediji često spremaju u zajedničku mapu.",
+      "previewError": "Pretpregled nije uspio"
     },
     "header": {
       "subtitle": "Uvezite bilješke i zadatke iz drugih aplikacija",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, one {# zadatak} few {# zadatka} other {# zadataka}}",
       "withDueDate": "{count} datirano",
       "withTags": "{count} označeno"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Stupci: {columns}",
+        "emptyTitle": "Preskočen redak s praznim naslovom (stupac „{column}”)",
+        "noHeaders": "CSV datoteka nema zaglavlja",
+        "titleColumn": "Naslov iz „{column}”; ostali stupci spremljeni kao svojstva"
+      },
+      "raindrop": {
+        "csvEmpty": "Raindrop CSV je prazan",
+        "headerNotFound": "Redak zaglavlja Raindrop CSV-a (stupac „url”) nije pronađen",
+        "rowNoUrl": "Redak {row} preskočen: nema URL-a"
+      },
+      "readFileFailed": "Čitanje datoteke nije uspjelo",
+      "ticktick": {
+        "foldersDropped": "TickTick mape nemaju ekvivalent u Memryju pa su izostavljene",
+        "headerNotFound": "Redak zaglavlja TickTick CSV-a („Folder Name”) nije pronađen",
+        "reminderNoAnchor": "Podsjetnik „{reminder}” preskočen (nema datumskog sidra)",
+        "subtaskParentMissing": "Nadređeni zadatak podzadatka „{title}” nije pronađen; uvezen na najvišu razinu",
+        "unknownPriority": "Nepoznat TickTick prioritet {priority} → nijedan",
+        "unsupportedRepeat": "Nepodržano pravilo ponavljanja „{rule}” preskočeno"
+      },
+      "todoist": {
+        "emptyTitle": "Zadatak s praznim sadržajem uvezen kao (bez naslova)",
+        "headerNotFound": "Nije Todoist CSV: nedostaje redak zaglavlja TYPE",
+        "orphanComment": "Komentar bez prethodnog zadatka preskočen",
+        "sectionFlattened": "Odjeljak „{section}” izravnan",
+        "subtaskNoParent": "Podzadatak „{title}” nema nadređeni zadatak na uvlaci {indent}; uvezen na najvišu razinu",
+        "unknownPriority": "Nepoznat prioritet {priority} → nijedan",
+        "unparsedDate": "Nije moguće raščlaniti datum „{date}”"
+      }
     }
   },
   "inbox": {

@@ -270,7 +270,50 @@
     "panelEmpty": "Niciun memento în curând.",
     "panelPast": "Trecute",
     "panelUpcoming": "În curând",
-    "taskFallback": "Sarcină"
+    "taskFallback": "Sarcină",
+    "dateTime": {
+      "dateAt": "{date} la {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Astăzi la {time}",
+      "todayCompact": "Astăzi, {time}",
+      "tomorrowAt": "Mâine la {time}",
+      "tomorrowCompact": "Mâine, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Memento aniversar",
+      "inHours": {
+        "label": "Peste {count, plural, one {# oră} few {# ore} other {# de ore}}"
+      },
+      "inMinutes": {
+        "label": "Peste {count, plural, one {# minut} few {# minute} other {# de minute}}"
+      },
+      "inMonths": {
+        "label": "Peste {count, plural, one {# lună} few {# luni} other {# de luni}}"
+      },
+      "inWeeks": {
+        "label": "Peste {count, plural, one {# săptămână} few {# săptămâni} other {# de săptămâni}}"
+      },
+      "inYears": {
+        "label": "Peste {count, plural, one {# an} few {# ani} other {# de ani}}"
+      },
+      "laterToday": {
+        "description": "Peste {count, plural, one {# oră} few {# ore} other {# de ore}}",
+        "label": "Mai târziu astăzi"
+      },
+      "monthlyReflection": "Reflecție lunară",
+      "nextWeek": {
+        "description": "Luni la ora 9:00",
+        "label": "Săptămâna viitoare"
+      },
+      "quarterlyReflection": "Reflecție trimestrială",
+      "reviewInAWeek": "Revizuire într-o săptămână",
+      "sameDayNextMonth": "Aceeași zi luna viitoare",
+      "tomorrow": {
+        "description": "Mâine la ora 9:00",
+        "label": "Mâine"
+      },
+      "tomorrowMorning": "Mâine dimineață"
+    }
   },
   "insights": {
     "captureActivity": "Captură activitate",

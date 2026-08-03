@@ -28,6 +28,13 @@
       "readyDetailFallback": "Redémarrez memrynote pour terminer l'installation de la mise à jour.",
       "buttonRestartNow": "Redémarrez maintenant",
       "releaseNotesLabel": "Notes de version :"
+    },
+    "pair": {
+      "buttonAllow": "Autoriser",
+      "buttonDeny": "Refuser",
+      "buttonPair": "Jumeler",
+      "message": "Autoriser l'extension de navigateur Memry à envoyer des captures à cette application ?",
+      "title": "Jumeler l'extension de navigateur"
     }
   },
   "notification": {
@@ -50,5 +57,15 @@
     "definitionNotFound": "Définition introuvable",
     "noteNotFound": "Remarque introuvable",
     "updateFailed": "La mise à jour a échoué"
+  },
+  "startup": {
+    "failed": {
+      "body": "Cela peut arriver lorsqu'il reste très peu d'espace disque, ou avec d'anciens pilotes graphiques. Essayez de libérer de l'espace disque, puis rouvrez MemryNote. Si le problème persiste, une réinstallation suffit généralement à le résoudre.",
+      "title": "MemryNote n'a pas pu terminer son démarrage"
+    },
+    "installingUpdate": {
+      "subtitle": "MemryNote se rouvrira automatiquement.",
+      "title": "Installation de la mise à jour…"
+    }
   }
 }

@@ -270,7 +270,50 @@
     "panelEmpty": "لا توجد تذكيرات قادمة.",
     "panelPast": "السابقة",
     "panelUpcoming": "القادمة",
-    "taskFallback": "مهمة"
+    "taskFallback": "مهمة",
+    "dateTime": {
+      "dateAt": "{date} في {time}",
+      "dateCompact": "{date}، {time}",
+      "todayAt": "اليوم في {time}",
+      "todayCompact": "اليوم، {time}",
+      "tomorrowAt": "غدًا في {time}",
+      "tomorrowCompact": "غدًا، {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "تذكير بالذكرى السنوية",
+      "inHours": {
+        "label": "خلال {count, plural, zero {# ساعة} one {ساعة واحدة} two {ساعتين} few {# ساعات} many {# ساعة} other {# ساعة}}"
+      },
+      "inMinutes": {
+        "label": "خلال {count, plural, zero {# دقيقة} one {دقيقة واحدة} two {دقيقتين} few {# دقائق} many {# دقيقة} other {# دقيقة}}"
+      },
+      "inMonths": {
+        "label": "خلال {count, plural, zero {# شهر} one {شهر واحد} two {شهرين} few {# أشهر} many {# شهرًا} other {# شهر}}"
+      },
+      "inWeeks": {
+        "label": "خلال {count, plural, zero {# أسبوع} one {أسبوع واحد} two {أسبوعين} few {# أسابيع} many {# أسبوعًا} other {# أسبوع}}"
+      },
+      "inYears": {
+        "label": "خلال {count, plural, zero {# سنة} one {سنة واحدة} two {سنتين} few {# سنوات} many {# سنة} other {# سنة}}"
+      },
+      "laterToday": {
+        "description": "خلال {count, plural, zero {# ساعة} one {ساعة واحدة} two {ساعتين} few {# ساعات} many {# ساعة} other {# ساعة}}",
+        "label": "لاحقًا اليوم"
+      },
+      "monthlyReflection": "تأمل شهري",
+      "nextWeek": {
+        "description": "الاثنين في 9 صباحًا",
+        "label": "الأسبوع القادم"
+      },
+      "quarterlyReflection": "تأمل ربع سنوي",
+      "reviewInAWeek": "مراجعة بعد أسبوع",
+      "sameDayNextMonth": "اليوم نفسه من الشهر القادم",
+      "tomorrow": {
+        "description": "غدًا في 9 صباحًا",
+        "label": "غدًا"
+      },
+      "tomorrowMorning": "صباح الغد"
+    }
   },
   "insights": {
     "captureActivity": "التقاط النشاط",

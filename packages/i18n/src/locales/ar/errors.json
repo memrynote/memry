@@ -22,7 +22,19 @@
     "writeFailed": "فشل حفظ هذه الملاحظة. تحقق من مساحة القرص والأذونات.",
     "readFailed": "فشل في قراءة هذه المذكرة. قد يكون الملف مقفلاً أو تالفًا.",
     "deleteFailed": "فشل حذف هذه الملاحظة. تحقق من أذونات الملف.",
-    "invalidPath": "مسار الملاحظة غير صالح."
+    "invalidPath": "مسار الملاحظة غير صالح.",
+    "applyTemplateFailed": "فشل تطبيق القالب",
+    "createFailed": "فشل إنشاء الملاحظة",
+    "deleteVersionFailed": "فشل حذف الإصدار",
+    "exportHtmlFailed": "فشل التصدير إلى HTML",
+    "exportPdfFailed": "فشل التصدير إلى PDF",
+    "importFilesFailed": "فشل استيراد الملفات",
+    "moveFailed": "فشل نقل الملاحظة",
+    "renameFailed": "فشلت إعادة تسمية الملاحظة",
+    "reorderFailed": "فشلت إعادة ترتيب الملاحظات",
+    "restoreVersionFailed": "فشلت استعادة الإصدار",
+    "setLocalOnlyFailed": "فشل التعيين كمحلي فقط",
+    "updateFailed": "فشل تحديث الملاحظة"
   },
   "database": {
     "connectionFailed": "لا يمكن الاتصال بقاعدة البيانات المحلية. حاول إعادة تشغيل التطبيق.",
@@ -41,7 +53,11 @@
     "fileTooLarge": "هذا الملف كبير جدًا بحيث لا يمكن إرفاقه.",
     "unsupportedType": "نوع الملف هذا غير مدعوم.",
     "writeFailed": "فشل حفظ المرفق. تحقق من مساحة القرص.",
-    "deleteFailed": "فشل في حذف المرفق."
+    "deleteFailed": "فشل في حذف المرفق.",
+    "downloadFailed": "فشل تنزيل المرفق",
+    "downloadProgressFailed": "فشل جلب تقدّم التنزيل",
+    "uploadFailed": "فشل رفع المرفق",
+    "uploadProgressFailed": "فشل جلب تقدّم الرفع"
   },
   "encryption": {
     "failed": "فشل في تشفير البيانات. قد تحتاج المفاتيح الخاصة بك إلى التجديد.",
@@ -77,6 +93,184 @@
     "paymentRequired": "يلزم اشتراك مزامنة مدفوع لاستخدام المزامنة المشفّرة المستضافة.",
     "attachmentUploadFailed": "تعذّرت مزامنة المرفق \"{filename}\". سيبقى على هذا الجهاز.",
     "fileTooLarge": "هذا الملف أكبر مما تسمح به خطتك. قم بترقية خطتك لمزامنة ملفات أكبر.",
-    "vaultRecovered": "تمت استعادة مفتاح الخزنة. ستُستأنف المزامنة."
+    "vaultRecovered": "تمت استعادة مفتاح الخزنة. ستُستأنف المزامنة.",
+    "historyFetchFailed": "فشل جلب سجل المزامنة",
+    "keyPersistenceFailed": "فشل حفظ مفتاح التشفير بأمان. تم التراجع عن تسجيل الجهاز. يرجى المحاولة مرة أخرى.",
+    "serverUnreachable": "تعذّر الاتصال بخادم المزامنة. يرجى التحقق من اتصالك بالإنترنت.",
+    "updateSyncedSettingFailed": "فشل تحديث الإعداد المتزامن"
+  },
+  "agent": {
+    "conversationBusy": "المحادثة مشغولة",
+    "runtimeStarting": "بيئة تشغيل الوكيل قيد البدء. حاول مرة أخرى."
+  },
+  "ai": {
+    "inlineDisabled": "التحرير المضمّن بالذكاء الاصطناعي معطّل",
+    "listOllamaModelsFailed": "فشل سرد نماذج Ollama"
+  },
+  "auth": {
+    "approveLinkingFailed": "فشلت الموافقة على الربط",
+    "cannotRemoveCurrentDevice": "لا يمكن إزالة الجهاز الحالي",
+    "completeLinkingFailed": "فشل إكمال الربط",
+    "confirmRecoveryPhraseFailed": "فشل تأكيد عبارة الاسترداد",
+    "fetchSasCodeFailed": "فشل جلب رمز SAS",
+    "finalizeVaultChoiceFailed": "فشل إنهاء اختيار القبو",
+    "initiateOAuthFailed": "فشل بدء OAuth",
+    "invalidRecoveryPhraseFormat": "تنسيق عبارة الاسترداد غير صالح",
+    "linkDeviceQrFailed": "فشل ربط الجهاز عبر رمز QR",
+    "linkRecoveryPhraseFailed": "فشل الربط عبر عبارة الاسترداد",
+    "notAuthenticated": "لم تتم المصادقة",
+    "pickFolderFailed": "فشل اختيار المجلد",
+    "recoveryPhraseMismatch": "عبارة الاسترداد غير مطابقة. يرجى المحاولة مرة أخرى.",
+    "removeDeviceFailed": "فشلت إزالة الجهاز",
+    "renameDeviceFailed": "فشلت إعادة تسمية الجهاز",
+    "requestOtpFailed": "فشل طلب رمز التحقق",
+    "resendOtpFailed": "فشلت إعادة إرسال رمز التحقق",
+    "sessionExpired": "انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى.",
+    "setupFirstDeviceOAuthFailed": "فشل إعداد الجهاز الأول عبر OAuth",
+    "verifyOtpFailed": "فشل التحقق من رمز التحقق"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "العنصر مضاف بالفعل إلى الإشارات المرجعية",
+    "notFound": "لم يتم العثور على الإشارة المرجعية"
+  },
+  "calendar": {
+    "connectProviderFailed": "فشل توصيل مزوّد التقويم",
+    "createEventFailed": "فشل إنشاء حدث التقويم",
+    "deleteEventFailed": "فشل حذف حدث التقويم",
+    "disconnectProviderFailed": "فشل فصل مزوّد التقويم",
+    "eventNotFound": "لم يتم العثور على حدث التقويم",
+    "googleNotConnected": "Google Calendar غير متصل على هذا الجهاز",
+    "listGoogleCalendarsFailed": "فشل سرد تقويمات Google",
+    "onlyGoogleSourcesRetryable": "يمكن إعادة المحاولة لمصادر تقويم Google فقط",
+    "onlySourcesSelectable": "يمكن تحديد مصادر التقويم فقط",
+    "promoteExternalEventFailed": "فشلت ترقية حدث التقويم الخارجي",
+    "refreshProviderFailed": "فشل تحديث مزوّد التقويم",
+    "retryGoogleSourceSyncFailed": "فشلت إعادة محاولة مزامنة مصدر Google Calendar",
+    "setDefaultGoogleCalendarFailed": "فشل تعيين تقويم Google الافتراضي",
+    "signInBeforeRefresh": "سجّل الدخول إلى memrynote قبل تحديث Google Calendar",
+    "sourceNotFound": "لم يتم العثور على مصدر التقويم",
+    "syncFailed": "فشلت المزامنة",
+    "updateEventFailed": "فشل تحديث حدث التقويم",
+    "updateSourceSelectionFailed": "فشل تحديث تحديد مصادر التقويم"
+  },
+  "folder": {
+    "createFailed": "فشل إنشاء المجلد",
+    "deleteFailed": "فشل حذف المجلد",
+    "renameFailed": "فشلت إعادة تسمية المجلد",
+    "setConfigFailed": "فشل ضبط إعدادات المجلد"
+  },
+  "folderView": {
+    "deleteViewFailed": "فشل حذف العرض",
+    "setConfigFailed": "فشل ضبط الإعدادات",
+    "setViewFailed": "فشل ضبط العرض"
+  },
+  "googleCalendar": {
+    "accessDenied": "تم رفض الوصول إلى Google Calendar. يمكنك الاتصال مرة أخرى متى كنت مستعدًا.",
+    "connectFailed": "تعذّر الاتصال بـ Google Calendar. يرجى المحاولة مرة أخرى بعد قليل.",
+    "misconfigured": "لم تتم تهيئة Google Calendar بشكل صحيح. يرجى التواصل مع الدعم إذا استمر هذا.",
+    "reconnectNeeded": "انتهت صلاحية اتصالك بـ Google Calendar. يرجى فصله ثم الاتصال مرة أخرى.",
+    "scopeMissing": "تعذّر الوصول إلى Google Calendar لأنه لم يُمنح إذن التقويم. يرجى المحاولة مرة أخرى مع التأكد من بقاء خانة التقويم محددة في شاشة موافقة Google.",
+    "temporarilyUnavailable": "Google Calendar غير متاح مؤقتًا. يرجى المحاولة مرة أخرى بعد قليل."
+  },
+  "importer": {
+    "cancelFailed": "فشل الإلغاء",
+    "fileSelectionFailed": "فشل تحديد الملف",
+    "importFailed": "فشل الاستيراد",
+    "listFailed": "فشل سرد أدوات الاستيراد",
+    "previewFailed": "فشلت المعاينة"
+  },
+  "project": {
+    "archiveFailed": "فشلت أرشفة المشروع",
+    "captureLinkFailed": "فشل التقاط الرابط",
+    "createFailed": "فشل إنشاء المشروع",
+    "deleteFailed": "فشل حذف المشروع",
+    "importFilesFailed": "فشل استيراد الملفات",
+    "linkItemFailed": "فشل ربط العنصر",
+    "listForItemFailed": "فشل سرد المشاريع لهذا العنصر",
+    "reorderFailed": "فشلت إعادة ترتيب المشاريع",
+    "setHomeNoteFailed": "فشل تعيين الملاحظة الرئيسية",
+    "unlinkItemFailed": "فشل إلغاء ربط العنصر",
+    "updateFailed": "فشل تحديث المشروع",
+    "updatePinnedFailed": "فشل تحديث حالة التثبيت"
+  },
+  "property": {
+    "alreadyExists": "الخاصية \"{name}\" موجودة بالفعل",
+    "createDefinitionFailed": "فشل إنشاء تعريف الخاصية",
+    "entityNotFound": "لم يتم العثور على العنصر",
+    "notFound": "لم يتم العثور على الخاصية \"{name}\"",
+    "renameFailed": "فشلت إعادة تسمية الخاصية",
+    "setCalendarVisibilityFailed": "فشل ضبط ظهور خاصية التقويم",
+    "setFailed": "فشل ضبط الخصائص",
+    "updateDefinitionFailed": "فشل تحديث تعريف الخاصية"
+  },
+  "reminder": {
+    "createFailed": "فشل إنشاء التذكير",
+    "dismissAllFailed": "فشل تجاهل التذكيرات",
+    "dismissFailed": "فشل تجاهل التذكير",
+    "notFound": "لم يتم العثور على التذكير",
+    "snoozeFailed": "فشل تأجيل التذكير",
+    "updateFailed": "فشل تحديث التذكير"
+  },
+  "savedFilter": {
+    "notFound": "لم يتم العثور على عامل التصفية المحفوظ"
+  },
+  "search": {
+    "rebuildFailed": "فشلت إعادة البناء"
+  },
+  "settings": {
+    "modelAlreadyLoading": "النموذج قيد التحميل بالفعل",
+    "modelLoadFailed": "فشل تحميل النموذج",
+    "shortcutInUse": "الاختصار {shortcut} مستخدم بالفعل",
+    "terminalCommandInstallFailed": "فشل تثبيت أمر الطرفية",
+    "terminalCommandUninstallFailed": "فشل إلغاء تثبيت أمر الطرفية",
+    "unknownVault": "قبو غير معروف",
+    "voiceModelDownloadFailed": "فشل تنزيل النموذج الصوتي"
+  },
+  "tag": {
+    "categoryNameRequired": "اسم الفئة مطلوب",
+    "createCategoryFailed": "فشل إنشاء فئة العلامات",
+    "deleteCategoryFailed": "فشل حذف فئة العلامات",
+    "deleteFailed": "فشل حذف العلامة",
+    "listCategoriesFailed": "فشل سرد فئات العلامات",
+    "mergeFailed": "فشل دمج العلامات",
+    "mergeSameTag": "العلامة المصدر والعلامة الهدف متطابقتان",
+    "pinNoteFailed": "فشل تثبيت الملاحظة",
+    "removeFromNoteFailed": "فشلت إزالة العلامة من الملاحظة",
+    "renameCategoryFailed": "فشلت إعادة تسمية فئة العلامات",
+    "renameFailed": "فشلت إعادة تسمية العلامة",
+    "reorderFailed": "فشلت إعادة ترتيب العلامات",
+    "unpinNoteFailed": "فشل إلغاء تثبيت الملاحظة",
+    "updateColorFailed": "فشل تحديث لون العلامة",
+    "updateIconFailed": "فشل تحديث أيقونة العلامة"
+  },
+  "task": {
+    "archiveFailed": "فشلت أرشفة المهمة",
+    "archiveManyFailed": "فشلت أرشفة المهام",
+    "completeFailed": "فشل إكمال المهمة",
+    "completeManyFailed": "فشل إكمال المهام",
+    "convertToSubtaskFailed": "فشل التحويل إلى مهمة فرعية",
+    "convertToTaskFailed": "فشل التحويل إلى مهمة",
+    "createFailed": "فشل إنشاء المهمة",
+    "deleteFailed": "فشل حذف المهمة",
+    "deleteManyFailed": "فشل حذف المهام",
+    "duplicateFailed": "فشل تكرار المهمة",
+    "moveFailed": "فشل نقل المهمة",
+    "moveManyFailed": "فشل نقل المهام",
+    "reorderFailed": "فشلت إعادة ترتيب المهام",
+    "unarchiveFailed": "فشل إلغاء أرشفة المهمة",
+    "uncompleteFailed": "فشل إلغاء إكمال المهمة",
+    "updateFailed": "فشل تحديث المهمة"
+  },
+  "taskStatus": {
+    "createFailed": "فشل إنشاء الحالة",
+    "deleteFailed": "فشل حذف الحالة",
+    "reorderFailed": "فشلت إعادة ترتيب الحالات",
+    "updateFailed": "فشل تحديث الحالة"
+  },
+  "template": {
+    "createFailed": "فشل إنشاء القالب",
+    "deleteFailed": "فشل حذف القالب",
+    "duplicateFailed": "فشل تكرار القالب",
+    "updateFailed": "فشل تحديث القالب"
   }
 }

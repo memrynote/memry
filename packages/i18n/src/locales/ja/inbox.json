@@ -270,7 +270,50 @@
     "panelEmpty": "今後のリマインダーはありません。",
     "panelPast": "過去",
     "panelUpcoming": "今後の予定",
-    "taskFallback": "タスク"
+    "taskFallback": "タスク",
+    "dateTime": {
+      "dateAt": "{date} {time}",
+      "dateCompact": "{date}、{time}",
+      "todayAt": "今日 {time}",
+      "todayCompact": "今日、{time}",
+      "tomorrowAt": "明日 {time}",
+      "tomorrowCompact": "明日、{time}"
+    },
+    "presets": {
+      "anniversaryReminder": "記念日のリマインダー",
+      "inHours": {
+        "label": "{count, plural, other {# 時間後}}"
+      },
+      "inMinutes": {
+        "label": "{count, plural, other {# 分後}}"
+      },
+      "inMonths": {
+        "label": "{count, plural, other {# か月後}}"
+      },
+      "inWeeks": {
+        "label": "{count, plural, other {# 週間後}}"
+      },
+      "inYears": {
+        "label": "{count, plural, other {# 年後}}"
+      },
+      "laterToday": {
+        "description": "{count, plural, other {# 時間後}}",
+        "label": "今日のあとで"
+      },
+      "monthlyReflection": "月次の振り返り",
+      "nextWeek": {
+        "description": "月曜日の午前 9 時",
+        "label": "来週"
+      },
+      "quarterlyReflection": "四半期の振り返り",
+      "reviewInAWeek": "1 週間後に見直す",
+      "sameDayNextMonth": "翌月の同じ日",
+      "tomorrow": {
+        "description": "明日の午前 9 時",
+        "label": "明日"
+      },
+      "tomorrowMorning": "明日の朝"
+    }
   },
   "insights": {
     "captureActivity": "キャプチャアクティビティ",

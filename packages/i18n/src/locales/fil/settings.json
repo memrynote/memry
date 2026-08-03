@@ -1449,7 +1449,8 @@
       },
       "title": "Mag-import mula sa {name}",
       "chooseDirectory": "Pumili ng folder…",
-      "folderKeepsAssets": "Piliin ang folder kapag nasa labas ng sariling folder ng mga tala ang mga larawan — madalas na iniipon ng mga export ang media sa iisang folder."
+      "folderKeepsAssets": "Piliin ang folder kapag nasa labas ng sariling folder ng mga tala ang mga larawan — madalas na iniipon ng mga export ang media sa iisang folder.",
+      "previewError": "Nabigo ang preview"
     },
     "header": {
       "subtitle": "Ilipat ang iyong mga tala at gawain mula sa ibang app",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, one {# gawain} other {# gawain}}",
       "withDueDate": "{count} may petsa",
       "withTags": "{count} na-tag"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Mga column: {columns}",
+        "emptyTitle": "Nilaktawan ang row na walang pamagat (column na \"{column}\")",
+        "noHeaders": "Walang header ang CSV file",
+        "titleColumn": "Pamagat mula sa \"{column}\"; ang iba pang column ay nai-save bilang mga property"
+      },
+      "raindrop": {
+        "csvEmpty": "Walang laman ang Raindrop CSV",
+        "headerNotFound": "Hindi natagpuan ang header row ng Raindrop CSV (column na \"url\")",
+        "rowNoUrl": "Nilaktawan ang row {row}: walang URL"
+      },
+      "readFileFailed": "Nabigong basahin ang file",
+      "ticktick": {
+        "foldersDropped": "Walang katumbas sa Memry ang mga folder ng TickTick kaya inalis ang mga ito",
+        "headerNotFound": "Hindi natagpuan ang header row ng TickTick CSV (\"Folder Name\")",
+        "reminderNoAnchor": "Nilaktawan ang paalalang \"{reminder}\" (walang anchor na petsa)",
+        "subtaskParentMissing": "Hindi natagpuan ang magulang ng subtask na \"{title}\"; na-import bilang top-level",
+        "unknownPriority": "Hindi kilalang priyoridad ng TickTick na {priority} → wala",
+        "unsupportedRepeat": "Nilaktawan ang hindi suportadong repeat rule na \"{rule}\""
+      },
+      "todoist": {
+        "emptyTitle": "Ang gawaing walang nilalaman ay na-import bilang (walang pamagat)",
+        "headerNotFound": "Hindi ito Todoist CSV: nawawala ang TYPE header row",
+        "orphanComment": "Nilaktawan ang komentong walang naunang gawain",
+        "sectionFlattened": "Pinatag ang seksyong \"{section}\"",
+        "subtaskNoParent": "Walang magulang ang sub-task na \"{title}\" sa indent {indent}; na-import bilang top-level",
+        "unknownPriority": "Hindi kilalang priyoridad na {priority} → wala",
+        "unparsedDate": "Hindi ma-parse ang petsang \"{date}\""
+      }
     }
   },
   "inbox": {

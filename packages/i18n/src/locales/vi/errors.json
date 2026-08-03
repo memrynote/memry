@@ -22,7 +22,19 @@
     "writeFailed": "Không thể lưu ghi chú này. Kiểm tra dung lượng đĩa và quyền truy cập.",
     "readFailed": "Không thể đọc ghi chú này. Tệp có thể bị khóa hoặc bị hỏng.",
     "deleteFailed": "Không thể xóa ghi chú này. Kiểm tra quyền của tệp.",
-    "invalidPath": "Đường dẫn ghi chú không hợp lệ."
+    "invalidPath": "Đường dẫn ghi chú không hợp lệ.",
+    "applyTemplateFailed": "Không thể áp dụng mẫu",
+    "createFailed": "Không thể tạo ghi chú",
+    "deleteVersionFailed": "Không thể xóa phiên bản",
+    "exportHtmlFailed": "Không thể xuất HTML",
+    "exportPdfFailed": "Không thể xuất PDF",
+    "importFilesFailed": "Không thể nhập tệp",
+    "moveFailed": "Không thể di chuyển ghi chú",
+    "renameFailed": "Không thể đổi tên ghi chú",
+    "reorderFailed": "Không thể sắp xếp lại ghi chú",
+    "restoreVersionFailed": "Không thể khôi phục phiên bản",
+    "setLocalOnlyFailed": "Không thể đặt chế độ chỉ lưu cục bộ",
+    "updateFailed": "Không thể cập nhật ghi chú"
   },
   "database": {
     "connectionFailed": "Không thể kết nối với cơ sở dữ liệu cục bộ. Thử khởi động lại ứng dụng.",
@@ -41,7 +53,11 @@
     "fileTooLarge": "Tệp này quá lớn để đính kèm.",
     "unsupportedType": "Loại tệp này không được hỗ trợ.",
     "writeFailed": "Không lưu được tệp đính kèm. Kiểm tra dung lượng ổ đĩa.",
-    "deleteFailed": "Không xóa được tệp đính kèm."
+    "deleteFailed": "Không xóa được tệp đính kèm.",
+    "downloadFailed": "Tải tệp đính kèm xuống thất bại",
+    "downloadProgressFailed": "Không thể lấy tiến trình tải xuống",
+    "uploadFailed": "Tải tệp đính kèm lên thất bại",
+    "uploadProgressFailed": "Không thể lấy tiến trình tải lên"
   },
   "encryption": {
     "failed": "Không mã hóa được dữ liệu. Có thể cần tạo lại khóa.",
@@ -77,6 +93,184 @@
     "paymentRequired": "Cần gói Đồng bộ trả phí để dùng đồng bộ mã hóa được lưu trữ.",
     "attachmentUploadFailed": "Không thể đồng bộ tệp đính kèm \"{filename}\". Tệp vẫn ở lại trên thiết bị này.",
     "fileTooLarge": "Tệp này lớn hơn mức gói của bạn cho phép. Nâng cấp gói để đồng bộ các tệp lớn hơn.",
-    "vaultRecovered": "Đã khôi phục khóa kho. Đồng bộ sẽ tiếp tục."
+    "vaultRecovered": "Đã khôi phục khóa kho. Đồng bộ sẽ tiếp tục.",
+    "historyFetchFailed": "Không thể lấy lịch sử đồng bộ",
+    "keyPersistenceFailed": "Không thể lưu khóa mã hóa một cách an toàn. Việc đăng ký thiết bị đã được hoàn tác. Vui lòng thử lại.",
+    "serverUnreachable": "Không thể kết nối tới máy chủ đồng bộ. Vui lòng kiểm tra kết nối internet của bạn.",
+    "updateSyncedSettingFailed": "Không thể cập nhật cài đặt đã đồng bộ"
+  },
+  "agent": {
+    "conversationBusy": "Cuộc trò chuyện đang bận",
+    "runtimeStarting": "Môi trường chạy tác nhân đang khởi động. Thử lại."
+  },
+  "ai": {
+    "inlineDisabled": "Chỉnh sửa AI nội dòng đã bị tắt",
+    "listOllamaModelsFailed": "Không thể liệt kê các mô hình Ollama"
+  },
+  "auth": {
+    "approveLinkingFailed": "Không thể phê duyệt liên kết",
+    "cannotRemoveCurrentDevice": "Không thể xóa thiết bị hiện tại",
+    "completeLinkingFailed": "Không thể hoàn tất liên kết",
+    "confirmRecoveryPhraseFailed": "Không thể xác nhận cụm từ khôi phục",
+    "fetchSasCodeFailed": "Không thể lấy mã SAS",
+    "finalizeVaultChoiceFailed": "Không thể hoàn tất lựa chọn kho",
+    "initiateOAuthFailed": "Không thể bắt đầu OAuth",
+    "invalidRecoveryPhraseFormat": "Định dạng cụm từ khôi phục không hợp lệ",
+    "linkDeviceQrFailed": "Không thể liên kết thiết bị qua mã QR",
+    "linkRecoveryPhraseFailed": "Không thể liên kết bằng cụm từ khôi phục",
+    "notAuthenticated": "Chưa xác thực",
+    "pickFolderFailed": "Không thể chọn thư mục",
+    "recoveryPhraseMismatch": "Cụm từ khôi phục không khớp. Vui lòng thử lại.",
+    "removeDeviceFailed": "Không thể xóa thiết bị",
+    "renameDeviceFailed": "Không thể đổi tên thiết bị",
+    "requestOtpFailed": "Không thể yêu cầu mã OTP",
+    "resendOtpFailed": "Không thể gửi lại mã OTP",
+    "sessionExpired": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+    "setupFirstDeviceOAuthFailed": "Không thể thiết lập thiết bị đầu tiên qua OAuth",
+    "verifyOtpFailed": "Không thể xác minh mã OTP"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "Mục này đã được đánh dấu",
+    "notFound": "Không tìm thấy dấu trang"
+  },
+  "calendar": {
+    "connectProviderFailed": "Không thể kết nối nhà cung cấp lịch",
+    "createEventFailed": "Không thể tạo sự kiện lịch",
+    "deleteEventFailed": "Không thể xóa sự kiện lịch",
+    "disconnectProviderFailed": "Không thể ngắt kết nối nhà cung cấp lịch",
+    "eventNotFound": "Không tìm thấy sự kiện lịch",
+    "googleNotConnected": "Google Calendar chưa được kết nối trên thiết bị này",
+    "listGoogleCalendarsFailed": "Không thể liệt kê các lịch Google",
+    "onlyGoogleSourcesRetryable": "Chỉ có thể thử lại các nguồn lịch Google",
+    "onlySourcesSelectable": "Chỉ có thể chọn các nguồn lịch",
+    "promoteExternalEventFailed": "Không thể chuyển sự kiện lịch bên ngoài",
+    "refreshProviderFailed": "Không thể làm mới nhà cung cấp lịch",
+    "retryGoogleSourceSyncFailed": "Không thể thử lại đồng bộ nguồn Google Calendar",
+    "setDefaultGoogleCalendarFailed": "Không thể đặt lịch Google mặc định",
+    "signInBeforeRefresh": "Đăng nhập vào memrynote trước khi làm mới Google Calendar",
+    "sourceNotFound": "Không tìm thấy nguồn lịch",
+    "syncFailed": "Đồng bộ thất bại",
+    "updateEventFailed": "Không thể cập nhật sự kiện lịch",
+    "updateSourceSelectionFailed": "Không thể cập nhật lựa chọn nguồn lịch"
+  },
+  "folder": {
+    "createFailed": "Không thể tạo thư mục",
+    "deleteFailed": "Không thể xóa thư mục",
+    "renameFailed": "Không thể đổi tên thư mục",
+    "setConfigFailed": "Không thể đặt cấu hình thư mục"
+  },
+  "folderView": {
+    "deleteViewFailed": "Không thể xóa chế độ xem",
+    "setConfigFailed": "Không thể đặt cấu hình",
+    "setViewFailed": "Không thể đặt chế độ xem"
+  },
+  "googleCalendar": {
+    "accessDenied": "Quyền truy cập Google Calendar đã bị từ chối. Bạn có thể kết nối lại bất cứ khi nào sẵn sàng.",
+    "connectFailed": "Không kết nối được với Google Calendar. Vui lòng thử lại sau giây lát.",
+    "misconfigured": "Google Calendar chưa được cấu hình đúng. Vui lòng liên hệ hỗ trợ nếu việc này tiếp diễn.",
+    "reconnectNeeded": "Kết nối Google Calendar của bạn đã hết hạn. Vui lòng ngắt kết nối rồi kết nối lại.",
+    "scopeMissing": "Chúng tôi không truy cập được Google Calendar của bạn vì quyền Calendar chưa được cấp. Vui lòng thử lại và đảm bảo ô Calendar vẫn được chọn trên màn hình cấp quyền của Google.",
+    "temporarilyUnavailable": "Google Calendar tạm thời không khả dụng. Vui lòng thử lại sau ít phút."
+  },
+  "importer": {
+    "cancelFailed": "Hủy thất bại",
+    "fileSelectionFailed": "Chọn tệp thất bại",
+    "importFailed": "Nhập thất bại",
+    "listFailed": "Không thể liệt kê các trình nhập",
+    "previewFailed": "Xem trước thất bại"
+  },
+  "project": {
+    "archiveFailed": "Không thể lưu trữ dự án",
+    "captureLinkFailed": "Không thể thu thập liên kết",
+    "createFailed": "Không thể tạo dự án",
+    "deleteFailed": "Không thể xóa dự án",
+    "importFilesFailed": "Không thể nhập tệp",
+    "linkItemFailed": "Không thể liên kết mục",
+    "listForItemFailed": "Không thể liệt kê các dự án cho mục này",
+    "reorderFailed": "Không thể sắp xếp lại dự án",
+    "setHomeNoteFailed": "Không thể đặt ghi chú chính",
+    "unlinkItemFailed": "Không thể bỏ liên kết mục",
+    "updateFailed": "Không thể cập nhật dự án",
+    "updatePinnedFailed": "Không thể cập nhật trạng thái ghim"
+  },
+  "property": {
+    "alreadyExists": "Thuộc tính “{name}” đã tồn tại",
+    "createDefinitionFailed": "Không thể tạo định nghĩa thuộc tính",
+    "entityNotFound": "Không tìm thấy đối tượng",
+    "notFound": "Không tìm thấy thuộc tính “{name}”",
+    "renameFailed": "Không thể đổi tên thuộc tính",
+    "setCalendarVisibilityFailed": "Không thể đặt hiển thị thuộc tính lịch",
+    "setFailed": "Không thể đặt thuộc tính",
+    "updateDefinitionFailed": "Không thể cập nhật định nghĩa thuộc tính"
+  },
+  "reminder": {
+    "createFailed": "Không thể tạo nhắc nhở",
+    "dismissAllFailed": "Không thể bỏ qua các nhắc nhở",
+    "dismissFailed": "Không thể bỏ qua nhắc nhở",
+    "notFound": "Không tìm thấy nhắc nhở",
+    "snoozeFailed": "Không thể hoãn nhắc nhở",
+    "updateFailed": "Không thể cập nhật nhắc nhở"
+  },
+  "savedFilter": {
+    "notFound": "Không tìm thấy bộ lọc đã lưu"
+  },
+  "search": {
+    "rebuildFailed": "Dựng lại thất bại"
+  },
+  "settings": {
+    "modelAlreadyLoading": "Mô hình đang được tải",
+    "modelLoadFailed": "Không thể tải mô hình",
+    "shortcutInUse": "Phím tắt {shortcut} đang được sử dụng",
+    "terminalCommandInstallFailed": "Không thể cài đặt lệnh terminal",
+    "terminalCommandUninstallFailed": "Không thể gỡ lệnh terminal",
+    "unknownVault": "Kho không xác định",
+    "voiceModelDownloadFailed": "Không thể tải mô hình giọng nói"
+  },
+  "tag": {
+    "categoryNameRequired": "Cần có tên danh mục",
+    "createCategoryFailed": "Không thể tạo danh mục thẻ",
+    "deleteCategoryFailed": "Không thể xóa danh mục thẻ",
+    "deleteFailed": "Không thể xóa thẻ",
+    "listCategoriesFailed": "Không thể liệt kê danh mục thẻ",
+    "mergeFailed": "Không thể gộp thẻ",
+    "mergeSameTag": "Thẻ nguồn và thẻ đích giống nhau",
+    "pinNoteFailed": "Không thể ghim ghi chú",
+    "removeFromNoteFailed": "Không thể gỡ thẻ khỏi ghi chú",
+    "renameCategoryFailed": "Không thể đổi tên danh mục thẻ",
+    "renameFailed": "Không thể đổi tên thẻ",
+    "reorderFailed": "Không thể sắp xếp lại thẻ",
+    "unpinNoteFailed": "Không thể bỏ ghim ghi chú",
+    "updateColorFailed": "Không thể cập nhật màu thẻ",
+    "updateIconFailed": "Không thể cập nhật biểu tượng thẻ"
+  },
+  "task": {
+    "archiveFailed": "Không thể lưu trữ công việc",
+    "archiveManyFailed": "Không thể lưu trữ các công việc",
+    "completeFailed": "Không thể hoàn thành công việc",
+    "completeManyFailed": "Không thể hoàn thành các công việc",
+    "convertToSubtaskFailed": "Không thể chuyển thành công việc con",
+    "convertToTaskFailed": "Không thể chuyển thành công việc",
+    "createFailed": "Không thể tạo công việc",
+    "deleteFailed": "Không thể xóa công việc",
+    "deleteManyFailed": "Không thể xóa các công việc",
+    "duplicateFailed": "Không thể nhân bản công việc",
+    "moveFailed": "Không thể di chuyển công việc",
+    "moveManyFailed": "Không thể di chuyển các công việc",
+    "reorderFailed": "Không thể sắp xếp lại công việc",
+    "unarchiveFailed": "Không thể bỏ lưu trữ công việc",
+    "uncompleteFailed": "Không thể bỏ đánh dấu hoàn thành công việc",
+    "updateFailed": "Không thể cập nhật công việc"
+  },
+  "taskStatus": {
+    "createFailed": "Không thể tạo trạng thái",
+    "deleteFailed": "Không thể xóa trạng thái",
+    "reorderFailed": "Không thể sắp xếp lại trạng thái",
+    "updateFailed": "Không thể cập nhật trạng thái"
+  },
+  "template": {
+    "createFailed": "Không thể tạo mẫu",
+    "deleteFailed": "Không thể xóa mẫu",
+    "duplicateFailed": "Không thể nhân bản mẫu",
+    "updateFailed": "Không thể cập nhật mẫu"
   }
 }

@@ -252,7 +252,12 @@
       "multiselect": "Multiselect"
     },
     "showOnCalendar": "Ipakita sa kalendaryo",
-    "showingOnCalendar": "Ipinapakita sa kalendaryo"
+    "showingOnCalendar": "Ipinapakita sa kalendaryo",
+    "statusCategories": {
+      "done": "Kumpleto",
+      "inProgress": "Isinasagawa",
+      "todo": "Gagawin"
+    }
   },
   "templateSelector": {
     "title": "Piliin ang Iyong Canvas",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "Pangalan ng tag",
     "uncategorized": "Walang kategorya"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (i-double-click para i-edit)"
+    },
+    "columns": {
+      "created": "Nilikha",
+      "folder": "Folder",
+      "kind": "Uri",
+      "modified": "Binago",
+      "tags": "Mga tag",
+      "title": "Pamagat",
+      "wordCount": "Bilang ng salita"
+    },
+    "defaultViewName": "Default",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# tala} other {# tala}}"
+    },
+    "selectView": "Pumili ng View"
   }
 }

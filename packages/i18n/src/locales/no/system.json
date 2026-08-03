@@ -28,6 +28,13 @@
       "readyDetailFallback": "Start memrynote på nytt for å fullføre installasjonen av oppdateringen.",
       "buttonRestartNow": "Start på nytt nå",
       "releaseNotesLabel": "Utgivelsesnotater:"
+    },
+    "pair": {
+      "buttonAllow": "Tillat",
+      "buttonDeny": "Avslå",
+      "buttonPair": "Koble til",
+      "message": "Vil du la Memry-nettleserutvidelsen sende innfangede elementer til denne appen?",
+      "title": "Koble til nettleserutvidelse"
     }
   },
   "notification": {
@@ -50,5 +57,15 @@
     "definitionNotFound": "Finner ikke definisjonen",
     "noteNotFound": "Notat ikke funnet",
     "updateFailed": "Oppdatering mislyktes"
+  },
+  "startup": {
+    "failed": {
+      "body": "Dette kan skje når disken har svært lite ledig plass, eller med eldre grafikkdrivere. Prøv å frigjøre litt diskplass, og åpne MemryNote på nytt. Hvis det fortsetter, hjelper det som regel å installere på nytt.",
+      "title": "MemryNote kunne ikke fullføre oppstarten"
+    },
+    "installingUpdate": {
+      "subtitle": "MemryNote åpnes automatisk igjen.",
+      "title": "Installerer oppdatering…"
+    }
   }
 }

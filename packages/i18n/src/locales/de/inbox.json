@@ -270,7 +270,50 @@
     "panelEmpty": "Keine anstehenden Erinnerungen.",
     "panelPast": "Vergangen",
     "panelUpcoming": "Anstehend",
-    "taskFallback": "Aufgabe"
+    "taskFallback": "Aufgabe",
+    "dateTime": {
+      "dateAt": "{date} um {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Heute um {time}",
+      "todayCompact": "Heute, {time}",
+      "tomorrowAt": "Morgen um {time}",
+      "tomorrowCompact": "Morgen, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Jahrestag-Erinnerung",
+      "inHours": {
+        "label": "In {count, plural, one {# Stunde} other {# Stunden}}"
+      },
+      "inMinutes": {
+        "label": "In {count, plural, one {# Minute} other {# Minuten}}"
+      },
+      "inMonths": {
+        "label": "In {count, plural, one {# Monat} other {# Monaten}}"
+      },
+      "inWeeks": {
+        "label": "In {count, plural, one {# Woche} other {# Wochen}}"
+      },
+      "inYears": {
+        "label": "In {count, plural, one {# Jahr} other {# Jahren}}"
+      },
+      "laterToday": {
+        "description": "In {count, plural, one {# Stunde} other {# Stunden}}",
+        "label": "Später heute"
+      },
+      "monthlyReflection": "Monatlicher Rückblick",
+      "nextWeek": {
+        "description": "Montag um 9 Uhr",
+        "label": "Nächste Woche"
+      },
+      "quarterlyReflection": "Vierteljährlicher Rückblick",
+      "reviewInAWeek": "In einer Woche durchsehen",
+      "sameDayNextMonth": "Gleicher Tag im nächsten Monat",
+      "tomorrow": {
+        "description": "Morgen um 9 Uhr",
+        "label": "Morgen"
+      },
+      "tomorrowMorning": "Morgen früh"
+    }
   },
   "insights": {
     "captureActivity": "Aktivität erfassen",

@@ -25,7 +25,8 @@
     "expand": "Genişlet",
     "collapse": "Daralt",
     "showMore": "+{count, plural, one {# tane daha} other {# tane daha}}",
-    "showLess": "Daha az göster"
+    "showLess": "Daha az göster",
+    "undo": "Geri al"
   },
   "tabs": {
     "pin": "Sekmeyi sabitle",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "Bugün",
     "yesterday": "Dün",
-    "daysAgo": "{count, plural, one {# gün önce} other {# gün önce}}"
+    "daysAgo": "{count, plural, one {# gün önce} other {# gün önce}}",
+    "daysLate": "{count, plural, one {#g gecikme} other {#g gecikme}}",
+    "daysOverdue": "{count, plural, one {# gün gecikmiş} other {# gün gecikmiş}}",
+    "tomorrow": "Yarın"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Her gün} other {Her # günde bir}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Her ay {day}{suffix}} other {Her # ayda bir {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Her ay {week} {day}} other {Her # ayda bir {week} {day}}}",
     "everyNYears": "{count, plural, one {Her yıl} other {Her # yılda bir}}",
-    "repeats": "Tekrarlar"
+    "repeats": "Tekrarlar",
+    "ordinal": {
+      "first": "ilk",
+      "fourth": "dördüncü",
+      "last": "son",
+      "second": "ikinci",
+      "third": "üçüncü"
+    },
+    "preset": {
+      "everyWeekday": "Her hafta içi (Pzt-Cum)",
+      "everyYearOnDate": "Her yıl {date} tarihinde"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -640,6 +655,11 @@
     "welcome": {
       "body": "Özel, çevrimdışı öncelikli eviniz. Notlar uçtan uca şifrelidir — cihazınızdan şifrelenmemiş olarak asla ayrılmaz.",
       "title": "MemryNote'a hoş geldiniz"
+    },
+    "tour": {
+      "next": "İleri",
+      "previous": "Geri",
+      "progress": "{current} / {total}"
     }
   },
   "updatePrompt": {
@@ -696,5 +716,125 @@
     "sectionLabel": "Tuvaller",
     "tooLargeToSync": "Bu tuval senkronize edilemeyecek kadar büyük. Bu cihazda kayıtlı, ancak küçülene kadar diğer cihazlarınıza ulaşmayacak.",
     "untitled": "Başlıksız tuval"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Satıra tıkla",
+      "reset": "Sıfırla",
+      "shortcutsTab": "Kısayollar sekmesi"
+    },
+    "description": "memrynote içinde gezinmek, düşünceleri yakalamak ve işleri işlemek için hızlı yollar.",
+    "groups": {
+      "general": {
+        "description": "Uygulama genelinde gezinme ve yardım.",
+        "title": "Genel"
+      },
+      "inbox": {
+        "description": "Yakalanan öğeleri hızlıca işleyin.",
+        "title": "Gelen Kutusu"
+      },
+      "journal": {
+        "description": "Günlük görünümlerinde gezinin ve yazma alanına odaklanın.",
+        "title": "Günlük"
+      },
+      "notes": {
+        "description": "Not yazın, biçimlendirin ve arayın.",
+        "title": "Notlar / Düzenleyici"
+      },
+      "settings": {
+        "description": "Ayarları açın ve kısayolları özelleştirin.",
+        "title": "Ayarlar"
+      },
+      "tabs": {
+        "description": "Sekmeler ve bölmeler arasında geçiş yapın.",
+        "title": "Sekmeler ve Bölmeler"
+      },
+      "tasks": {
+        "description": "Görevleri filtreleyin, seçin ve tamamlayın.",
+        "title": "Görevler"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Not oluştur",
+        "keyboardShortcuts": "Klavye kısayollarını aç",
+        "openSettings": "Ayarları aç",
+        "quickSearch": "Hızlı aramayı aç",
+        "sidebarSection": "Kenar çubuğu bölümüne git",
+        "toggleSidebar": "Kenar çubuğunu aç/kapat",
+        "undoTaskAction": "Son görev işlemini geri al"
+      },
+      "inbox": {
+        "archiveItem": "Seçili öğeyi arşivle",
+        "chooseQuickFileResult": "Hızlı dosyalama sonucunu seç",
+        "clearSelection": "Seçimi temizle veya hızlı dosyalamayı kapat",
+        "confirmFiling": "Dosyalama panelini onayla",
+        "firstOrLastItem": "İlk veya son öğe",
+        "jumpByPage": "Sayfa sayfa atla",
+        "nextItem": "Sonraki öğe",
+        "openOriginal": "Orijinal bağlantıyı aç",
+        "openQuickFile": "Hızlı dosyalamayı aç",
+        "previousItem": "Önceki öğe",
+        "refresh": "Gelen kutusunu yenile",
+        "selectAllVisible": "Görünen tüm öğeleri seç",
+        "selectItem": "Öğeyi seç",
+        "togglePreview": "Önizleme panelini aç/kapat"
+      },
+      "journal": {
+        "bold": "Seçili metni kalın yap",
+        "find": "Günlükte bul",
+        "italic": "Seçili metni italik yap",
+        "link": "Bağlantı ekle veya düzenle",
+        "returnFromOverview": "Ay veya yıl görünümünden dön",
+        "toggleFullWidth": "Tam genişlikte günlüğü aç/kapat",
+        "underline": "Seçili metnin altını çiz"
+      },
+      "notes": {
+        "bold": "Kalın",
+        "closeOverlays": "Düzenleyici katmanlarını kapat",
+        "commandMenu": "Düzenleyici komut menüsünü aç",
+        "createNote": "Not oluştur",
+        "find": "Notta bul",
+        "italic": "İtalik",
+        "link": "Bağlantı ekle veya düzenle",
+        "saveNote": "Geçerli notu kaydet",
+        "underline": "Altı çizili"
+      },
+      "settings": {
+        "cancelRecording": "Kısayol kaydını iptal et",
+        "customizeShortcuts": "Klavye kısayollarını özelleştir",
+        "openSettings": "Ayarları aç",
+        "recordShortcut": "Yeni bir kısayol kaydet",
+        "resetShortcut": "Bir kısayolu varsayılana döndür"
+      },
+      "tabs": {
+        "closeAllInPane": "Bölmedeki tüm sekmeleri kapat",
+        "closeSplitPane": "Bölünmüş bölmeyi kapat",
+        "closeTab": "Sekmeyi kapat",
+        "duplicateTab": "Sekmeyi çoğalt",
+        "focusPane": "Başka bir bölmeye odaklan",
+        "maximizePane": "Geçerli bölmeyi büyüt",
+        "moveTabToPane": "Sekmeyi bölmeye taşı",
+        "newTabMenu": "Yeni sekme menüsünü aç",
+        "nextTab": "Sonraki sekme",
+        "pinTab": "Sekmeyi sabitle veya sabitlemeyi kaldır",
+        "previousTab": "Önceki sekme",
+        "reopenClosedTab": "Kapatılan sekmeyi yeniden aç",
+        "splitDown": "Aşağı böl",
+        "splitRight": "Sağa böl"
+      },
+      "tasks": {
+        "clearFilters": "Görünen filtreleri temizle",
+        "clearSelection": "Görev seçimini temizle",
+        "completeSelected": "Seçili görevleri tamamla",
+        "configureRepeat": "Odaklanılan görevde tekrarı yapılandır",
+        "deleteSelected": "Seçili görevleri sil",
+        "selectAllVisible": "Görünen tüm görevleri seç",
+        "skipOccurrence": "Tekrar örneğini atla",
+        "stopRepeating": "Görev tekrarını durdur"
+      }
+    },
+    "or": "veya",
+    "then": "sonra"
   }
 }

@@ -252,7 +252,12 @@
       "multiselect": "Мультивибір"
     },
     "showOnCalendar": "Показувати в календарі",
-    "showingOnCalendar": "Показується в календарі"
+    "showingOnCalendar": "Показується в календарі",
+    "statusCategories": {
+      "done": "Завершено",
+      "inProgress": "У процесі",
+      "todo": "До виконання"
+    }
   },
   "templateSelector": {
     "title": "Виберіть вашу канву",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "Назва тегу",
     "uncategorized": "Без категорії"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (двічі клацніть, щоб редагувати)"
+    },
+    "columns": {
+      "created": "Створено",
+      "folder": "Папка",
+      "kind": "Тип",
+      "modified": "Змінено",
+      "tags": "Теги",
+      "title": "Назва",
+      "wordCount": "Кількість слів"
+    },
+    "defaultViewName": "Типовий",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# нотатка} few {# нотатки} many {# нотаток} other {# нотатки}}"
+    },
+    "selectView": "Вибрати перегляд"
   }
 }

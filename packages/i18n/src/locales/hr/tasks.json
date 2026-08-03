@@ -35,7 +35,14 @@
     "delete": "Izbriši zadatak",
     "created": "Kreiran {date}",
     "reminder": "Podsjetnik",
-    "tags": "Oznake"
+    "tags": "Oznake",
+    "priorityLabels": {
+      "high": "Visok",
+      "low": "Nizak",
+      "medium": "Srednji",
+      "none": "Bez prioriteta",
+      "urgent": "Hitno"
+    }
   },
   "filters": {
     "filter": "Filter",
@@ -44,7 +51,25 @@
     "groupBy": "Grupiraj po",
     "groupByOptions": "Grupirajte po opcijama",
     "sortAscending": "Poredaj uzlazno",
-    "sortDescending": "Poredaj silazno"
+    "sortDescending": "Poredaj silazno",
+    "dueDate": {
+      "any": "Bilo koji rok",
+      "custom": "Prilagođeni raspon...",
+      "nextWeek": "Sljedeći tjedan",
+      "none": "Bez roka",
+      "overdue": "Zakašnjelo",
+      "thisMonth": "Ovaj mjesec",
+      "thisWeek": "Ovaj tjedan",
+      "today": "Danas",
+      "tomorrow": "Sutra"
+    },
+    "quickPresets": {
+      "dueThisWeek": "Rok ovaj tjedan",
+      "highPriority": "Visoki prioritet",
+      "noDueDate": "Bez roka",
+      "overdue": "Zakašnjelo",
+      "repeating": "Ponavljajući"
+    }
   },
   "quickAdd": {
     "label": "Brzo dodavanje zadatka",
@@ -77,7 +102,21 @@
     "searchRelated": "Pretraži povezano…"
   },
   "kanban": {
-    "board": "Kanban ploča"
+    "board": "Kanban ploča",
+    "empty": {
+      "default": {
+        "subtitle": "Povucite zadatke ovamo ili kliknite + za dodavanje",
+        "title": "Nema zadataka"
+      },
+      "done": {
+        "subtitle": "Dovršite zadatke da se pojave ovdje",
+        "title": "Nema dovršenih zadataka"
+      },
+      "schedule": {
+        "subtitle": "Povucite zadatke ovamo za promjenu rasporeda",
+        "title": "Ništa nije planirano"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "Projekt ažuriran",
@@ -100,7 +139,53 @@
     "noCompletedSelected": "Nema odabranih dovršenih zadataka",
     "completeFailed": "Zadaci nisu uspjeli dovršiti",
     "deleteFailed": "Brisanje zadataka nije uspjelo",
-    "moveFailed": "Premještanje zadataka nije uspjelo"
+    "moveFailed": "Premještanje zadataka nije uspjelo",
+    "bulk": {
+      "archived": "{count, plural, one {# zadatak arhiviran} few {# zadatka arhivirana} other {# zadataka arhivirano}}",
+      "completed": "{count, plural, one {# zadatak dovršen} few {# zadatka dovršena} other {# zadataka dovršeno}}",
+      "deleted": "{count, plural, one {# zadatak izbrisan} few {# zadatka izbrisana} other {# zadataka izbrisano}}",
+      "deletedDescription": "Ovu je radnju moguće poništiti još kratko vrijeme.",
+      "dueDateRemoved": "{count, plural, one {Rok uklonjen za # zadatak} few {Rok uklonjen za # zadatka} other {Rok uklonjen za # zadataka}}",
+      "dueDateSet": "{count, plural, one {Rok postavljen za # zadatak} few {Rok postavljen za # zadatka} other {Rok postavljen za # zadataka}}",
+      "movedToProject": "{count, plural, one {# zadatak premješten u {project}} few {# zadatka premještena u {project}} other {# zadataka premješteno u {project}}}",
+      "movedToStatus": "{count, plural, one {# zadatak premješten u {status}} few {# zadatka premještena u {status}} other {# zadataka premješteno u {status}}}",
+      "priorityRemoved": "{count, plural, one {Prioritet uklonjen za # zadatak} few {Prioritet uklonjen za # zadatka} other {Prioritet uklonjen za # zadataka}}",
+      "prioritySet": "{count, plural, one {Prioritet postavljen na {priority} za # zadatak} few {Prioritet postavljen na {priority} za # zadatka} other {Prioritet postavljen na {priority} za # zadataka}}",
+      "restored": "{count, plural, one {# zadatak vraćen} few {# zadatka vraćena} other {# zadataka vraćeno}}",
+      "undoArchive": "{count, plural, one {Arhiviraj # zadatak} few {Arhiviraj # zadatka} other {Arhiviraj # zadataka}}",
+      "undoComplete": "{count, plural, one {Dovrši # zadatak} few {Dovrši # zadatka} other {Dovrši # zadataka}}",
+      "undoDelete": "{count, plural, one {Izbriši # zadatak} few {Izbriši # zadatka} other {Izbriši # zadataka}}",
+      "undoDueDate": "{count, plural, one {Rok promijenjen za # zadatak} few {Rok promijenjen za # zadatka} other {Rok promijenjen za # zadataka}}",
+      "undoMove": "{count, plural, one {Premjesti # zadatak} few {Premjesti # zadatka} other {Premjesti # zadataka}}",
+      "undoStatus": "{count, plural, one {Status → {status} za # zadatak} few {Status → {status} za # zadatka} other {Status → {status} za # zadataka}}",
+      "undoUncomplete": "{count, plural, one {Označi # zadatak kao nedovršen} few {Označi # zadatka kao nedovršena} other {Označi # zadataka kao nedovršeno}}"
+    },
+    "drag": {
+      "archived": "{count, plural, one {Zadatak arhiviran} few {# zadatka arhivirana} other {# zadataka arhivirano}}",
+      "deleted": "{count, plural, one {Zadatak izbrisan} few {# zadatka izbrisana} other {# zadataka izbrisano}}",
+      "moved": "{count, plural, one {Premješteno u {target}} few {# zadatka premještena u {target}} other {# zadataka premješteno u {target}}}",
+      "movedTo": "Premješteno u {target}",
+      "prioritySet": "{count, plural, one {Prioritet postavljen na {priority}} few {# zadatka postavljena na {priority}} other {# zadataka postavljeno na {priority}}}",
+      "prioritySetTo": "Prioritet postavljen na {priority}",
+      "rescheduled": "{count, plural, one {Ponovno zakazano za {target}} few {# zadatka ponovno zakazana za {target}} other {# zadataka ponovno zakazano za {target}}}",
+      "rescheduledTo": "Ponovno zakazano za {target}",
+      "undoArchive": "{count, plural, one {Arhiviran # zadatak} few {Arhivirana # zadatka} other {Arhivirano # zadataka}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, one {# podzadatak dodan} few {# podzadatka dodana} other {# podzadataka dodano}}",
+      "completed": "{count, plural, one {# podzadatak dovršen} few {# podzadatka dovršena} other {# podzadataka dovršeno}}",
+      "deleted": "{count, plural, one {# podzadatak izbrisan} few {# podzadatka izbrisana} other {# podzadataka izbrisano}}",
+      "deletedDescription": "Podzadatak je uklonjen",
+      "dueDateCleared": "{count, plural, one {Rok uklonjen za # podzadatak} few {Rok uklonjen za # podzadatka} other {Rok uklonjen za # podzadataka}}",
+      "dueDateSet": "{count, plural, one {Rok postavljen za # podzadatak} few {Rok postavljen za # podzadatka} other {Rok postavljen za # podzadataka}}",
+      "markedIncomplete": "{count, plural, one {# podzadatak označen kao nedovršen} few {# podzadatka označena kao nedovršena} other {# podzadataka označeno kao nedovršeno}}",
+      "movedUnder": "Premješteno pod „{title}”",
+      "parentAndSubtasksCompleted": "Zadatak i podzadaci dovršeni",
+      "parentDeletedKeepSubtasks": "Zadatak izbrisan, podzadaci pretvoreni u zadatke",
+      "parentDeletedWithSubtasks": "Zadatak i podzadaci izbrisani",
+      "prioritySet": "{count, plural, one {Prioritet postavljen za # podzadatak} few {Prioritet postavljen za # podzadatka} other {Prioritet postavljen za # podzadataka}}",
+      "promoted": "„{title}” promaknut u zadatak"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -181,7 +266,8 @@
       "nextMonth": "Sljedeći mjesec",
       "goToToday": "Idi na danas",
       "today": "Danas",
-      "w": "W"
+      "w": "W",
+      "weekNumber": "Tjedan {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Ukloni datum",
@@ -327,7 +413,11 @@
       "addTime": "Dodajte vrijeme",
       "time": "Vrijeme",
       "clearDate": "Jasan datum",
-      "backToOptions": "Povratak na opcije"
+      "backToOptions": "Povratak na opcije",
+      "nextWeek": "Sljedeći tjedan",
+      "thisWeekend": "Ovaj vikend",
+      "today": "Danas",
+      "tomorrow": "Sutra"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "Uredi ponavljajući zadatak",
@@ -426,7 +516,17 @@
       "currentFilters": "Trenutačni filtri:",
       "noFiltersApplied": "Nema primijenjenih filtara",
       "cancel": "Odustani",
-      "saveFilter2": "Spremi filtar"
+      "saveFilter2": "Spremi filtar",
+      "nameRequired": "Unesite naziv za ovaj filtar",
+      "summaryDue": "Rok: {value}",
+      "summaryDueRange": "Rok: {start} - {end}",
+      "summaryPriorities": "Prioritet: {names}",
+      "summaryProjects": "Projekt: {names}",
+      "summaryRepeatOneTime": "Ponavljanje: samo jednokratni",
+      "summaryRepeatRepeating": "Ponavljanje: samo ponavljajući",
+      "summarySearch": "Pretraga: „{query}”",
+      "summaryTimeWith": "Vrijeme: s vremenom",
+      "summaryTimeWithout": "Vrijeme: bez vremena"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Spremljeni filtri",
@@ -558,7 +658,16 @@
       "d": "d"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "Dodaj zadatak"
+      "addTask": "Dodaj zadatak",
+      "allDescription": "Stvorite svoj prvi zadatak da započnete",
+      "allTitle": "Još nema zadataka",
+      "completedDescription": "Dovršeni zadaci pojavit će se ovdje",
+      "completedTitle": "Nema dovršenih zadataka",
+      "projectDescription": "Dodajte zadatak da započnete",
+      "projectTitle": "Nema zadataka u ovom projektu",
+      "projectTitleNamed": "Nema zadataka u {name}",
+      "todayDescription": "Sve ste odradili!",
+      "todayTitle": "Danas nema rokova"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "bez prioriteta"
@@ -742,5 +851,42 @@
       "overview": "Pregled",
       "tasks": "Zadaci"
     }
+  },
+  "priorityInline": {
+    "high": "visok",
+    "low": "nizak",
+    "medium": "srednji",
+    "urgent": "hitan"
+  },
+  "priorityLabels": {
+    "high": "Visok",
+    "low": "Nizak",
+    "medium": "Srednji",
+    "none": "Bez prioriteta",
+    "urgent": "Hitno"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "Gotovo",
+      "inProgress": "U tijeku",
+      "todo": "Za napraviti"
+    },
+    "validation": {
+      "minStatuses": "Projekti trebaju najmanje 2 statusa",
+      "nameRequired": "Naziv projekta je obavezan",
+      "nameTooLong": "Naziv projekta smije imati najviše 50 znakova",
+      "needsDoneStatus": "Projekti trebaju barem jedan status „Gotovo”",
+      "needsDoneStatusForCompletedTasks": "Projekti trebaju barem jedan status „Gotovo” za dovršene zadatke",
+      "needsTodoStatus": "Projekti trebaju barem jedan status „Za napraviti”",
+      "needsTodoStatusForNewTasks": "Projekti trebaju barem jedan status „Za napraviti” za nove zadatke",
+      "statusNameRequired": "Svi statusi moraju imati naziv",
+      "statusNamesUnique": "Nazivi statusa moraju biti jedinstveni",
+      "statusNotFound": "Status nije pronađen"
+    }
+  },
+  "statusLabels": {
+    "done": "Gotovo",
+    "inProgress": "U tijeku",
+    "todo": "Za napraviti"
   }
 }

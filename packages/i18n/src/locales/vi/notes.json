@@ -252,7 +252,12 @@
       "multiselect": "Chọn nhiều"
     },
     "showOnCalendar": "Hiện trên lịch",
-    "showingOnCalendar": "Đang hiện trên lịch"
+    "showingOnCalendar": "Đang hiện trên lịch",
+    "statusCategories": {
+      "done": "Hoàn thành",
+      "inProgress": "Đang thực hiện",
+      "todo": "Cần làm"
+    }
   },
   "templateSelector": {
     "title": "Chọn Bảng vẽ của bạn",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "Tên thẻ",
     "uncategorized": "Chưa phân loại"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (nhấp đúp để chỉnh sửa)"
+    },
+    "columns": {
+      "created": "Ngày tạo",
+      "folder": "Thư mục",
+      "kind": "Loại",
+      "modified": "Ngày sửa",
+      "tags": "Thẻ",
+      "title": "Tiêu đề",
+      "wordCount": "Số từ"
+    },
+    "defaultViewName": "Mặc định",
+    "groupHeader": {
+      "noteCount": "{count, plural, other {# ghi chú}}"
+    },
+    "selectView": "Chọn Chế độ xem"
   }
 }

@@ -270,7 +270,50 @@
     "panelEmpty": "예정된 리마인더가 없습니다.",
     "panelPast": "지난 항목",
     "panelUpcoming": "예정",
-    "taskFallback": "작업"
+    "taskFallback": "작업",
+    "dateTime": {
+      "dateAt": "{date} {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "오늘 {time}",
+      "todayCompact": "오늘, {time}",
+      "tomorrowAt": "내일 {time}",
+      "tomorrowCompact": "내일, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "기념일 리마인더",
+      "inHours": {
+        "label": "{count, plural, other {#시간 후}}"
+      },
+      "inMinutes": {
+        "label": "{count, plural, other {#분 후}}"
+      },
+      "inMonths": {
+        "label": "{count, plural, other {#개월 후}}"
+      },
+      "inWeeks": {
+        "label": "{count, plural, other {#주 후}}"
+      },
+      "inYears": {
+        "label": "{count, plural, other {#년 후}}"
+      },
+      "laterToday": {
+        "description": "{count, plural, other {#시간 후}}",
+        "label": "오늘 늦게"
+      },
+      "monthlyReflection": "월간 회고",
+      "nextWeek": {
+        "description": "월요일 오전 9시",
+        "label": "다음 주"
+      },
+      "quarterlyReflection": "분기 회고",
+      "reviewInAWeek": "일주일 뒤 검토",
+      "sameDayNextMonth": "다음 달 같은 날",
+      "tomorrow": {
+        "description": "내일 오전 9시",
+        "label": "내일"
+      },
+      "tomorrowMorning": "내일 아침"
+    }
   },
   "insights": {
     "captureActivity": "활동 캡처",

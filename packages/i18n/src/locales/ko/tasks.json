@@ -35,7 +35,14 @@
     "delete": "할 일 삭제",
     "created": "{date}를 생성했습니다.",
     "reminder": "리마인더",
-    "tags": "태그"
+    "tags": "태그",
+    "priorityLabels": {
+      "high": "높음",
+      "low": "낮음",
+      "medium": "보통",
+      "none": "우선순위 없음",
+      "urgent": "긴급"
+    }
   },
   "filters": {
     "filter": "필터",
@@ -44,7 +51,25 @@
     "groupBy": "그룹화 기준",
     "groupByOptions": "옵션별로 그룹화",
     "sortAscending": "오름차순 정렬",
-    "sortDescending": "내림차순 정렬"
+    "sortDescending": "내림차순 정렬",
+    "dueDate": {
+      "any": "모든 마감일",
+      "custom": "맞춤 범위...",
+      "nextWeek": "다음 주",
+      "none": "마감일 없음",
+      "overdue": "기한 지남",
+      "thisMonth": "이번 달",
+      "thisWeek": "이번 주",
+      "today": "오늘",
+      "tomorrow": "내일"
+    },
+    "quickPresets": {
+      "dueThisWeek": "이번 주 마감",
+      "highPriority": "높은 우선순위",
+      "noDueDate": "마감일 없음",
+      "overdue": "기한 지남",
+      "repeating": "반복"
+    }
   },
   "quickAdd": {
     "label": "빠른 추가 작업",
@@ -77,7 +102,21 @@
     "searchRelated": "관련 항목 검색…"
   },
   "kanban": {
-    "board": "칸반보드"
+    "board": "칸반보드",
+    "empty": {
+      "default": {
+        "subtitle": "여기로 작업을 끌어오거나 +를 눌러 추가하세요",
+        "title": "작업 없음"
+      },
+      "done": {
+        "subtitle": "작업을 완료하면 여기에 표시됩니다",
+        "title": "완료된 작업 없음"
+      },
+      "schedule": {
+        "subtitle": "여기로 작업을 끌어와 일정을 변경하세요",
+        "title": "예정된 작업 없음"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "프로젝트가 업데이트되었습니다.",
@@ -100,7 +139,53 @@
     "noCompletedSelected": "완료된 작업을 선택하지 않았습니다.",
     "completeFailed": "작업을 완료하지 못했습니다.",
     "deleteFailed": "작업을 삭제하지 못했습니다.",
-    "moveFailed": "작업을 이동하지 못했습니다."
+    "moveFailed": "작업을 이동하지 못했습니다.",
+    "bulk": {
+      "archived": "{count, plural, other {작업 #개를 보관했습니다}}",
+      "completed": "{count, plural, other {작업 #개를 완료했습니다}}",
+      "deleted": "{count, plural, other {작업 #개를 삭제했습니다}}",
+      "deletedDescription": "이 동작은 잠시 동안 실행 취소할 수 있습니다.",
+      "dueDateRemoved": "{count, plural, other {작업 #개의 마감일을 지웠습니다}}",
+      "dueDateSet": "{count, plural, other {작업 #개의 마감일을 설정했습니다}}",
+      "movedToProject": "{count, plural, other {작업 #개를 {project}(으)로 이동했습니다}}",
+      "movedToStatus": "{count, plural, other {작업 #개를 {status}(으)로 이동했습니다}}",
+      "priorityRemoved": "{count, plural, other {작업 #개의 우선순위를 지웠습니다}}",
+      "prioritySet": "{count, plural, other {작업 #개의 우선순위를 {priority}(으)로 설정했습니다}}",
+      "restored": "{count, plural, other {작업 #개를 복원했습니다}}",
+      "undoArchive": "{count, plural, other {작업 #개 보관}}",
+      "undoComplete": "{count, plural, other {작업 #개 완료}}",
+      "undoDelete": "{count, plural, other {작업 #개 삭제}}",
+      "undoDueDate": "{count, plural, other {작업 #개의 마감일 변경}}",
+      "undoMove": "{count, plural, other {작업 #개 이동}}",
+      "undoStatus": "{count, plural, other {작업 #개 상태 → {status}}}",
+      "undoUncomplete": "{count, plural, other {작업 #개 완료 취소}}"
+    },
+    "drag": {
+      "archived": "{count, plural, other {작업 #개를 보관했습니다}}",
+      "deleted": "{count, plural, other {작업 #개를 삭제했습니다}}",
+      "moved": "{count, plural, other {작업 #개를 {target}(으)로 이동했습니다}}",
+      "movedTo": "{target}(으)로 이동했습니다",
+      "prioritySet": "{count, plural, other {작업 #개의 우선순위를 {priority}(으)로 설정했습니다}}",
+      "prioritySetTo": "우선순위를 {priority}(으)로 설정했습니다",
+      "rescheduled": "{count, plural, other {작업 #개를 {target}(으)로 일정 변경했습니다}}",
+      "rescheduledTo": "{target}(으)로 일정을 변경했습니다",
+      "undoArchive": "{count, plural, other {작업 #개 보관됨}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, other {하위 작업 #개를 추가했습니다}}",
+      "completed": "{count, plural, other {하위 작업 #개를 완료했습니다}}",
+      "deleted": "{count, plural, other {하위 작업 #개를 삭제했습니다}}",
+      "deletedDescription": "하위 작업이 삭제되었습니다",
+      "dueDateCleared": "{count, plural, other {하위 작업 #개의 마감일을 지웠습니다}}",
+      "dueDateSet": "{count, plural, other {하위 작업 #개의 마감일을 설정했습니다}}",
+      "markedIncomplete": "{count, plural, other {하위 작업 #개를 미완료로 표시했습니다}}",
+      "movedUnder": "\"{title}\" 아래로 이동했습니다",
+      "parentAndSubtasksCompleted": "작업과 하위 작업을 완료했습니다",
+      "parentDeletedKeepSubtasks": "작업을 삭제하고 하위 작업은 작업으로 전환했습니다",
+      "parentDeletedWithSubtasks": "작업과 하위 작업을 삭제했습니다",
+      "prioritySet": "{count, plural, other {하위 작업 #개의 우선순위를 설정했습니다}}",
+      "promoted": "\"{title}\"을(를) 작업으로 승격했습니다"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -181,7 +266,8 @@
       "nextMonth": "다음 달",
       "goToToday": "오늘로 이동",
       "today": "오늘",
-      "w": "여"
+      "w": "여",
+      "weekNumber": "{number}주차"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "날짜 삭제",
@@ -327,7 +413,11 @@
       "addTime": "시간 추가",
       "time": "시간",
       "clearDate": "날짜 지우기",
-      "backToOptions": "옵션으로 돌아가기"
+      "backToOptions": "옵션으로 돌아가기",
+      "nextWeek": "다음 주",
+      "thisWeekend": "이번 주말",
+      "today": "오늘",
+      "tomorrow": "내일"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "반복되는 작업 편집",
@@ -426,7 +516,17 @@
       "currentFilters": "현재 필터:",
       "noFiltersApplied": "필터가 적용되지 않았습니다.",
       "cancel": "취소",
-      "saveFilter2": "필터 저장"
+      "saveFilter2": "필터 저장",
+      "nameRequired": "이 필터의 이름을 입력해 주세요",
+      "summaryDue": "마감: {value}",
+      "summaryDueRange": "마감: {start} - {end}",
+      "summaryPriorities": "우선순위: {names}",
+      "summaryProjects": "프로젝트: {names}",
+      "summaryRepeatOneTime": "반복: 일회성만",
+      "summaryRepeatRepeating": "반복: 반복 항목만",
+      "summarySearch": "검색: \"{query}\"",
+      "summaryTimeWith": "시간: 시간 있음",
+      "summaryTimeWithout": "시간: 시간 없음"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "저장된 필터",
@@ -558,7 +658,16 @@
       "d": "디"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "작업 추가"
+      "addTask": "작업 추가",
+      "allDescription": "첫 작업을 만들어 시작해 보세요",
+      "allTitle": "아직 작업이 없습니다",
+      "completedDescription": "완료한 작업이 여기에 표시됩니다",
+      "completedTitle": "완료된 작업 없음",
+      "projectDescription": "작업을 추가해 시작해 보세요",
+      "projectTitle": "이 프로젝트에 작업이 없습니다",
+      "projectTitleNamed": "{name}에 작업이 없습니다",
+      "todayDescription": "모두 처리했습니다!",
+      "todayTitle": "오늘 마감인 작업이 없습니다"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "우선순위 없음"
@@ -742,5 +851,42 @@
       "overview": "개요",
       "tasks": "작업"
     }
+  },
+  "priorityInline": {
+    "high": "높음",
+    "low": "낮음",
+    "medium": "보통",
+    "urgent": "긴급"
+  },
+  "priorityLabels": {
+    "high": "높음",
+    "low": "낮음",
+    "medium": "보통",
+    "none": "우선순위 없음",
+    "urgent": "긴급"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "완료",
+      "inProgress": "진행 중",
+      "todo": "할 일"
+    },
+    "validation": {
+      "minStatuses": "프로젝트에는 상태가 2개 이상 필요합니다",
+      "nameRequired": "프로젝트 이름을 입력해 주세요",
+      "nameTooLong": "프로젝트 이름은 50자 이하여야 합니다",
+      "needsDoneStatus": "프로젝트에는 '완료' 상태가 하나 이상 필요합니다",
+      "needsDoneStatusForCompletedTasks": "완료된 작업을 위해 프로젝트에 '완료' 상태가 하나 이상 필요합니다",
+      "needsTodoStatus": "프로젝트에는 '할 일' 상태가 하나 이상 필요합니다",
+      "needsTodoStatusForNewTasks": "새 작업을 위해 프로젝트에 '할 일' 상태가 하나 이상 필요합니다",
+      "statusNameRequired": "모든 상태에는 이름이 있어야 합니다",
+      "statusNamesUnique": "상태 이름은 서로 달라야 합니다",
+      "statusNotFound": "상태를 찾을 수 없습니다"
+    }
+  },
+  "statusLabels": {
+    "done": "완료",
+    "inProgress": "진행 중",
+    "todo": "할 일"
   }
 }

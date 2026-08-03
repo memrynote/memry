@@ -1449,7 +1449,8 @@
       },
       "title": "Importera från {name}",
       "chooseDirectory": "Välj mapp…",
-      "folderKeepsAssets": "Välj mappen när bilderna ligger utanför anteckningarnas egen mapp — exporter lägger ofta media i en gemensam mapp."
+      "folderKeepsAssets": "Välj mappen när bilderna ligger utanför anteckningarnas egen mapp — exporter lägger ofta media i en gemensam mapp.",
+      "previewError": "Förhandsgranskningen misslyckades"
     },
     "header": {
       "subtitle": "Ta in dina anteckningar och uppgifter från andra appar",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, one {# uppgift} other {# uppgifter}}",
       "withDueDate": "{count} daterade",
       "withTags": "{count} taggade"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Kolumner: {columns}",
+        "emptyTitle": "Hoppade över rad med tom titel (kolumnen ”{column}”)",
+        "noHeaders": "CSV-filen saknar rubriker",
+        "titleColumn": "Titel från ”{column}”; övriga kolumner sparas som egenskaper"
+      },
+      "raindrop": {
+        "csvEmpty": "Raindrop-CSV:n är tom",
+        "headerNotFound": "Raindrop-CSV:ns rubrikrad (kolumnen ”url”) hittades inte",
+        "rowNoUrl": "Rad {row} hoppades över: ingen URL"
+      },
+      "readFileFailed": "Misslyckades med att läsa filen",
+      "ticktick": {
+        "foldersDropped": "TickTick-mappar har ingen motsvarighet i Memry och togs bort",
+        "headerNotFound": "TickTick-CSV:ns rubrikrad (”Folder Name”) hittades inte",
+        "reminderNoAnchor": "Påminnelsen ”{reminder}” hoppades över (inget datumankare)",
+        "subtaskParentMissing": "Överordnad uppgift till deluppgiften ”{title}” hittades inte; importerad på översta nivån",
+        "unknownPriority": "Okänd TickTick-prioritet {priority} → ingen",
+        "unsupportedRepeat": "Upprepningsregeln ”{rule}” stöds inte och hoppades över"
+      },
+      "todoist": {
+        "emptyTitle": "Uppgift med tomt innehåll importerades som (utan titel)",
+        "headerNotFound": "Inte en Todoist-CSV: rubrikraden TYPE saknas",
+        "orphanComment": "Kommentar utan föregående uppgift hoppades över",
+        "sectionFlattened": "Avsnittet ”{section}” plattades ut",
+        "subtaskNoParent": "Deluppgiften ”{title}” saknar överordnad uppgift på indrag {indent}; importerad på översta nivån",
+        "unknownPriority": "Okänd prioritet {priority} → ingen",
+        "unparsedDate": "Kunde inte tolka datumet ”{date}”"
+      }
     }
   },
   "inbox": {

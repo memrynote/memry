@@ -35,7 +35,14 @@
     "delete": "Supprimer la tâche",
     "created": "Créé {date}",
     "reminder": "Rappel",
-    "tags": "Balises"
+    "tags": "Balises",
+    "priorityLabels": {
+      "high": "Élevée",
+      "low": "Faible",
+      "medium": "Moyenne",
+      "none": "Aucune priorité",
+      "urgent": "Urgente"
+    }
   },
   "filters": {
     "filter": "Filtrer",
@@ -44,7 +51,25 @@
     "groupBy": "Regrouper par",
     "groupByOptions": "Regrouper par options",
     "sortAscending": "Trier par ordre croissant",
-    "sortDescending": "Trier par ordre décroissant"
+    "sortDescending": "Trier par ordre décroissant",
+    "dueDate": {
+      "any": "Toute date d'échéance",
+      "custom": "Plage personnalisée...",
+      "nextWeek": "La semaine prochaine",
+      "none": "Aucune date d'échéance",
+      "overdue": "En retard",
+      "thisMonth": "Ce mois-ci",
+      "thisWeek": "Cette semaine",
+      "today": "Aujourd'hui",
+      "tomorrow": "Demain"
+    },
+    "quickPresets": {
+      "dueThisWeek": "Échéance cette semaine",
+      "highPriority": "Priorité élevée",
+      "noDueDate": "Sans date d'échéance",
+      "overdue": "En retard",
+      "repeating": "Récurrentes"
+    }
   },
   "quickAdd": {
     "label": "Tâche d'ajout rapide",
@@ -77,7 +102,21 @@
     "searchRelated": "Rechercher des éléments liés…"
   },
   "kanban": {
-    "board": "Tableau Kanban"
+    "board": "Tableau Kanban",
+    "empty": {
+      "default": {
+        "subtitle": "Faites glisser des tâches ici ou cliquez sur + pour en ajouter",
+        "title": "Aucune tâche"
+      },
+      "done": {
+        "subtitle": "Terminez des tâches pour les voir ici",
+        "title": "Aucune tâche terminée"
+      },
+      "schedule": {
+        "subtitle": "Faites glisser des tâches ici pour les replanifier",
+        "title": "Rien de prévu"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "Projet mis à jour",
@@ -100,7 +139,53 @@
     "noCompletedSelected": "Aucune tâche terminée sélectionnée",
     "completeFailed": "Échec de la réalisation des tâches",
     "deleteFailed": "Échec de la suppression des tâches",
-    "moveFailed": "Échec du déplacement des tâches"
+    "moveFailed": "Échec du déplacement des tâches",
+    "bulk": {
+      "archived": "{count, plural, one {# tâche archivée} many {# tâches archivées} other {# tâches archivées}}",
+      "completed": "{count, plural, one {# tâche terminée} many {# tâches terminées} other {# tâches terminées}}",
+      "deleted": "{count, plural, one {# tâche supprimée} many {# tâches supprimées} other {# tâches supprimées}}",
+      "deletedDescription": "Cette action peut être annulée pendant un court instant.",
+      "dueDateRemoved": "{count, plural, one {Date d'échéance retirée de # tâche} many {Date d'échéance retirée de # tâches} other {Date d'échéance retirée de # tâches}}",
+      "dueDateSet": "{count, plural, one {Date d'échéance définie pour # tâche} many {Date d'échéance définie pour # tâches} other {Date d'échéance définie pour # tâches}}",
+      "movedToProject": "{count, plural, one {# tâche déplacée vers {project}} many {# tâches déplacées vers {project}} other {# tâches déplacées vers {project}}}",
+      "movedToStatus": "{count, plural, one {# tâche déplacée vers {status}} many {# tâches déplacées vers {status}} other {# tâches déplacées vers {status}}}",
+      "priorityRemoved": "{count, plural, one {Priorité retirée de # tâche} many {Priorité retirée de # tâches} other {Priorité retirée de # tâches}}",
+      "prioritySet": "{count, plural, one {Priorité définie sur {priority} pour # tâche} many {Priorité définie sur {priority} pour # tâches} other {Priorité définie sur {priority} pour # tâches}}",
+      "restored": "{count, plural, one {# tâche restaurée} many {# tâches restaurées} other {# tâches restaurées}}",
+      "undoArchive": "{count, plural, one {Archiver # tâche} many {Archiver # tâches} other {Archiver # tâches}}",
+      "undoComplete": "{count, plural, one {Terminer # tâche} many {Terminer # tâches} other {Terminer # tâches}}",
+      "undoDelete": "{count, plural, one {Supprimer # tâche} many {Supprimer # tâches} other {Supprimer # tâches}}",
+      "undoDueDate": "{count, plural, one {Date d'échéance modifiée pour # tâche} many {Date d'échéance modifiée pour # tâches} other {Date d'échéance modifiée pour # tâches}}",
+      "undoMove": "{count, plural, one {Déplacer # tâche} many {Déplacer # tâches} other {Déplacer # tâches}}",
+      "undoStatus": "{count, plural, one {Statut → {status} pour # tâche} many {Statut → {status} pour # tâches} other {Statut → {status} pour # tâches}}",
+      "undoUncomplete": "{count, plural, one {Rouvrir # tâche} many {Rouvrir # tâches} other {Rouvrir # tâches}}"
+    },
+    "drag": {
+      "archived": "{count, plural, one {Tâche archivée} many {# tâches archivées} other {# tâches archivées}}",
+      "deleted": "{count, plural, one {Tâche supprimée} many {# tâches supprimées} other {# tâches supprimées}}",
+      "moved": "{count, plural, one {Déplacée vers {target}} many {# tâches déplacées vers {target}} other {# tâches déplacées vers {target}}}",
+      "movedTo": "Déplacée vers {target}",
+      "prioritySet": "{count, plural, one {Priorité définie sur {priority}} many {# tâches définies sur {priority}} other {# tâches définies sur {priority}}}",
+      "prioritySetTo": "Priorité définie sur {priority}",
+      "rescheduled": "{count, plural, one {Replanifiée pour {target}} many {# tâches replanifiées pour {target}} other {# tâches replanifiées pour {target}}}",
+      "rescheduledTo": "Replanifiée pour {target}",
+      "undoArchive": "{count, plural, one {# tâche archivée} many {# tâches archivées} other {# tâches archivées}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, one {# sous-tâche ajoutée} many {# sous-tâches ajoutées} other {# sous-tâches ajoutées}}",
+      "completed": "{count, plural, one {# sous-tâche terminée} many {# sous-tâches terminées} other {# sous-tâches terminées}}",
+      "deleted": "{count, plural, one {# sous-tâche supprimée} many {# sous-tâches supprimées} other {# sous-tâches supprimées}}",
+      "deletedDescription": "La sous-tâche a été supprimée",
+      "dueDateCleared": "{count, plural, one {Date d'échéance effacée pour # sous-tâche} many {Date d'échéance effacée pour # sous-tâches} other {Date d'échéance effacée pour # sous-tâches}}",
+      "dueDateSet": "{count, plural, one {Date d'échéance définie pour # sous-tâche} many {Date d'échéance définie pour # sous-tâches} other {Date d'échéance définie pour # sous-tâches}}",
+      "markedIncomplete": "{count, plural, one {# sous-tâche marquée comme non terminée} many {# sous-tâches marquées comme non terminées} other {# sous-tâches marquées comme non terminées}}",
+      "movedUnder": "Déplacée sous « {title} »",
+      "parentAndSubtasksCompleted": "Tâche et sous-tâches terminées",
+      "parentDeletedKeepSubtasks": "Tâche supprimée, sous-tâches converties en tâches",
+      "parentDeletedWithSubtasks": "Tâche et sous-tâches supprimées",
+      "prioritySet": "{count, plural, one {Priorité définie pour # sous-tâche} many {Priorité définie pour # sous-tâches} other {Priorité définie pour # sous-tâches}}",
+      "promoted": "« {title} » promue en tâche"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -181,7 +266,8 @@
       "nextMonth": "Le mois prochain",
       "goToToday": "Allez à aujourd'hui",
       "today": "Aujourd'hui",
-      "w": "W"
+      "w": "W",
+      "weekNumber": "Semaine {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Supprimer la date",
@@ -327,7 +413,11 @@
       "addTime": "Ajouter du temps",
       "time": "Temps",
       "clearDate": "Effacer la date",
-      "backToOptions": "Retour aux options"
+      "backToOptions": "Retour aux options",
+      "nextWeek": "La semaine prochaine",
+      "thisWeekend": "Ce week-end",
+      "today": "Aujourd'hui",
+      "tomorrow": "Demain"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "Modifier une tâche répétitive",
@@ -426,7 +516,17 @@
       "currentFilters": "Filtres actuels :",
       "noFiltersApplied": "Aucun filtre appliqué",
       "cancel": "Annuler",
-      "saveFilter2": "Enregistrer le filtre"
+      "saveFilter2": "Enregistrer le filtre",
+      "nameRequired": "Veuillez saisir un nom pour ce filtre",
+      "summaryDue": "Échéance : {value}",
+      "summaryDueRange": "Échéance : {start} - {end}",
+      "summaryPriorities": "Priorité : {names}",
+      "summaryProjects": "Projet : {names}",
+      "summaryRepeatOneTime": "Répétition : ponctuelles uniquement",
+      "summaryRepeatRepeating": "Répétition : récurrentes uniquement",
+      "summarySearch": "Recherche : « {query} »",
+      "summaryTimeWith": "Heure : avec heure",
+      "summaryTimeWithout": "Heure : sans heure"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Filtres enregistrés",
@@ -558,7 +658,16 @@
       "d": "ré"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "Ajouter une tâche"
+      "addTask": "Ajouter une tâche",
+      "allDescription": "Créez votre première tâche pour commencer",
+      "allTitle": "Aucune tâche pour l'instant",
+      "completedDescription": "Les tâches terminées apparaîtront ici",
+      "completedTitle": "Aucune tâche terminée",
+      "projectDescription": "Ajoutez une tâche pour commencer",
+      "projectTitle": "Aucune tâche dans ce projet",
+      "projectTitleNamed": "Aucune tâche dans {name}",
+      "todayDescription": "Vous êtes à jour !",
+      "todayTitle": "Rien à faire aujourd'hui"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "pas de priorité"
@@ -742,5 +851,42 @@
       "overview": "Vue d'ensemble",
       "tasks": "Tâches"
     }
+  },
+  "priorityInline": {
+    "high": "élevée",
+    "low": "faible",
+    "medium": "moyenne",
+    "urgent": "urgente"
+  },
+  "priorityLabels": {
+    "high": "Élevée",
+    "low": "Faible",
+    "medium": "Moyenne",
+    "none": "Aucune priorité",
+    "urgent": "Urgente"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "Terminé",
+      "inProgress": "En cours",
+      "todo": "À faire"
+    },
+    "validation": {
+      "minStatuses": "Les projets doivent avoir au moins 2 statuts",
+      "nameRequired": "Le nom du projet est obligatoire",
+      "nameTooLong": "Le nom du projet ne doit pas dépasser 50 caractères",
+      "needsDoneStatus": "Les projets doivent avoir au moins un statut « Terminé »",
+      "needsDoneStatusForCompletedTasks": "Les projets doivent avoir au moins un statut « Terminé » pour les tâches terminées",
+      "needsTodoStatus": "Les projets doivent avoir au moins un statut « À faire »",
+      "needsTodoStatusForNewTasks": "Les projets doivent avoir au moins un statut « À faire » pour les nouvelles tâches",
+      "statusNameRequired": "Tous les statuts doivent avoir un nom",
+      "statusNamesUnique": "Les noms de statut doivent être uniques",
+      "statusNotFound": "Statut introuvable"
+    }
+  },
+  "statusLabels": {
+    "done": "Terminé",
+    "inProgress": "En cours",
+    "todo": "À faire"
   }
 }

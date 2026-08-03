@@ -252,7 +252,12 @@
       "multiselect": "Seleção múltipla"
     },
     "showOnCalendar": "Mostrar no calendário",
-    "showingOnCalendar": "A mostrar no calendário"
+    "showingOnCalendar": "A mostrar no calendário",
+    "statusCategories": {
+      "done": "Concluído",
+      "inProgress": "Em curso",
+      "todo": "Por fazer"
+    }
   },
   "templateSelector": {
     "title": "Escolha sua tela",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "Nome da etiqueta",
     "uncategorized": "Sem categoria"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (clique duas vezes para editar)"
+    },
+    "columns": {
+      "created": "Criado",
+      "folder": "Pasta",
+      "kind": "Tipo",
+      "modified": "Modificado",
+      "tags": "Etiquetas",
+      "title": "Título",
+      "wordCount": "Número de palavras"
+    },
+    "defaultViewName": "Predefinida",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# nota} many {# notas} other {# notas}}"
+    },
+    "selectView": "Selecionar vista"
   }
 }

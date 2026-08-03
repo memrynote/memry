@@ -25,7 +25,8 @@
     "expand": "Розгорнути",
     "collapse": "Згорнути",
     "showMore": "+{count, plural, one {# більше} other {# більше}}",
-    "showLess": "Показати менше"
+    "showLess": "Показати менше",
+    "undo": "Скасувати"
   },
   "tabs": {
     "pin": "Закріпити вкладку",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "Сьогодні",
     "yesterday": "Вчора",
-    "daysAgo": "{count, plural, one {# день тому} other {# днів тому}}"
+    "daysAgo": "{count, plural, one {# день тому} other {# днів тому}}",
+    "daysLate": "{count, plural, one {прострочено #д} few {прострочено #д} many {прострочено #д} other {прострочено #д}}",
+    "daysOverdue": "{count, plural, one {прострочено на # день} few {прострочено на # дні} many {прострочено на # днів} other {прострочено на # дня}}",
+    "tomorrow": "Завтра"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Щодня} other {Кожні # дні}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Щомісяця на {day}{suffix}} other {Кожні # місяці на {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Щомісяця на {week} {day}} other {Що # місяці в {week} {day}}}",
     "everyNYears": "{count, plural, one {Щороку} other {Що # років}}",
-    "repeats": "Повторюється"
+    "repeats": "Повторюється",
+    "ordinal": {
+      "first": "перший",
+      "fourth": "четвертий",
+      "last": "останній",
+      "second": "другий",
+      "third": "третій"
+    },
+    "preset": {
+      "everyWeekday": "Щодня у будні (Пн-Пт)",
+      "everyYearOnDate": "Щороку {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -640,6 +655,11 @@
     "welcome": {
       "body": "Ваш приватний офлайн-дім. Нотатки зашифровано наскрізно — вони ніколи не залишають ваш пристрій незашифрованими.",
       "title": "Ласкаво просимо до MemryNote"
+    },
+    "tour": {
+      "next": "Далі",
+      "previous": "Назад",
+      "progress": "{current} з {total}"
     }
   },
   "updatePrompt": {
@@ -696,5 +716,125 @@
     "sectionLabel": "Полотна",
     "tooLargeToSync": "Це полотно завелике для синхронізації. Воно збережене на цьому пристрої, але не потрапить на інші ваші пристрої, доки не стане меншим.",
     "untitled": "Полотно без назви"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Клік по рядку",
+      "reset": "Скинути",
+      "shortcutsTab": "Вкладка скорочень"
+    },
+    "description": "Швидкі шляхи, щоб пересуватися memrynote, занотовувати думки й опрацьовувати роботу.",
+    "groups": {
+      "general": {
+        "description": "Навігація застосунком і довідка.",
+        "title": "Загальні"
+      },
+      "inbox": {
+        "description": "Швидко опрацьовуйте захоплені елементи.",
+        "title": "Вхідні"
+      },
+      "journal": {
+        "description": "Переходьте між виглядами журналу й фокусуйтеся на полі письма.",
+        "title": "Журнал"
+      },
+      "notes": {
+        "description": "Пишіть, форматуйте та шукайте нотатки.",
+        "title": "Нотатки / Редактор"
+      },
+      "settings": {
+        "description": "Відкривайте налаштування й змінюйте комбінації клавіш.",
+        "title": "Налаштування"
+      },
+      "tabs": {
+        "description": "Переміщуйтеся між вкладками та панелями.",
+        "title": "Вкладки та панелі"
+      },
+      "tasks": {
+        "description": "Фільтруйте, вибирайте та виконуйте завдання.",
+        "title": "Завдання"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Створити нотатку",
+        "keyboardShortcuts": "Відкрити комбінації клавіш",
+        "openSettings": "Відкрити налаштування",
+        "quickSearch": "Відкрити швидкий пошук",
+        "sidebarSection": "Перейти до розділу бічної панелі",
+        "toggleSidebar": "Перемкнути бічну панель",
+        "undoTaskAction": "Скасувати останню дію із завданням"
+      },
+      "inbox": {
+        "archiveItem": "Архівувати вибраний елемент",
+        "chooseQuickFileResult": "Вибрати результат швидкого сортування",
+        "clearSelection": "Зняти вибір або закрити швидке сортування",
+        "confirmFiling": "Підтвердити панель сортування",
+        "firstOrLastItem": "Перший або останній елемент",
+        "jumpByPage": "Перехід посторінково",
+        "nextItem": "Наступний елемент",
+        "openOriginal": "Відкрити оригінальне посилання",
+        "openQuickFile": "Відкрити швидке сортування",
+        "previousItem": "Попередній елемент",
+        "refresh": "Оновити вхідні",
+        "selectAllVisible": "Вибрати всі видимі елементи",
+        "selectItem": "Вибрати елемент",
+        "togglePreview": "Перемкнути панель попереднього перегляду"
+      },
+      "journal": {
+        "bold": "Зробити виділений текст жирним",
+        "find": "Знайти в журналі",
+        "italic": "Зробити виділений текст курсивом",
+        "link": "Додати або змінити посилання",
+        "returnFromOverview": "Повернутися з вигляду місяця або року",
+        "toggleFullWidth": "Перемкнути журнал на всю ширину",
+        "underline": "Підкреслити виділений текст"
+      },
+      "notes": {
+        "bold": "Жирний",
+        "closeOverlays": "Закрити накладки редактора",
+        "commandMenu": "Відкрити меню команд редактора",
+        "createNote": "Створити нотатку",
+        "find": "Знайти в нотатці",
+        "italic": "Курсив",
+        "link": "Додати або змінити посилання",
+        "saveNote": "Зберегти поточну нотатку",
+        "underline": "Підкреслений"
+      },
+      "settings": {
+        "cancelRecording": "Скасувати запис комбінації",
+        "customizeShortcuts": "Налаштувати комбінації клавіш",
+        "openSettings": "Відкрити налаштування",
+        "recordShortcut": "Записати нову комбінацію",
+        "resetShortcut": "Відновити типову комбінацію"
+      },
+      "tabs": {
+        "closeAllInPane": "Закрити всі вкладки на панелі",
+        "closeSplitPane": "Закрити розділену панель",
+        "closeTab": "Закрити вкладку",
+        "duplicateTab": "Дублювати вкладку",
+        "focusPane": "Перейти до іншої панелі",
+        "maximizePane": "Розгорнути поточну панель",
+        "moveTabToPane": "Перемістити вкладку на панель",
+        "newTabMenu": "Відкрити меню нової вкладки",
+        "nextTab": "Наступна вкладка",
+        "pinTab": "Закріпити або відкріпити вкладку",
+        "previousTab": "Попередня вкладка",
+        "reopenClosedTab": "Знову відкрити закриту вкладку",
+        "splitDown": "Розділити вниз",
+        "splitRight": "Розділити праворуч"
+      },
+      "tasks": {
+        "clearFilters": "Очистити видимі фільтри",
+        "clearSelection": "Зняти вибір завдань",
+        "completeSelected": "Виконати вибрані завдання",
+        "configureRepeat": "Налаштувати повторення активного завдання",
+        "deleteSelected": "Видалити вибрані завдання",
+        "selectAllVisible": "Вибрати всі видимі завдання",
+        "skipOccurrence": "Пропустити повторення",
+        "stopRepeating": "Припинити повторення завдання"
+      }
+    },
+    "or": "або",
+    "then": "потім"
   }
 }

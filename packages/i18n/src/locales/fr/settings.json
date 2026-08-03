@@ -1449,7 +1449,8 @@
       },
       "title": "Importer depuis {name}",
       "chooseDirectory": "Choisir un dossier…",
-      "folderKeepsAssets": "Choisissez le dossier lorsque les images se trouvent en dehors du dossier des notes — les exports regroupent souvent les médias dans un dossier partagé."
+      "folderKeepsAssets": "Choisissez le dossier lorsque les images se trouvent en dehors du dossier des notes — les exports regroupent souvent les médias dans un dossier partagé.",
+      "previewError": "L'aperçu a échoué"
     },
     "header": {
       "subtitle": "Importez vos notes et tâches depuis d'autres applications",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, one {# tâche} other {# tâches}}",
       "withDueDate": "{count} datés",
       "withTags": "{count} étiquetés"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Colonnes : {columns}",
+        "emptyTitle": "Ligne ignorée : titre vide (colonne « {column} »)",
+        "noHeaders": "Le fichier CSV n'a pas d'en-têtes",
+        "titleColumn": "Titre issu de « {column} » ; les autres colonnes sont enregistrées comme propriétés"
+      },
+      "raindrop": {
+        "csvEmpty": "Le CSV Raindrop est vide",
+        "headerNotFound": "Ligne d'en-tête du CSV Raindrop (colonne « url ») introuvable",
+        "rowNoUrl": "Ligne {row} ignorée : aucune URL"
+      },
+      "readFileFailed": "Échec de la lecture du fichier",
+      "ticktick": {
+        "foldersDropped": "Les dossiers TickTick n'ont pas d'équivalent dans Memry et ont été ignorés",
+        "headerNotFound": "Ligne d'en-tête du CSV TickTick (« Folder Name ») introuvable",
+        "reminderNoAnchor": "Rappel « {reminder} » ignoré (aucune date de référence)",
+        "subtaskParentMissing": "Parent de la sous-tâche « {title} » introuvable ; importée au niveau supérieur",
+        "unknownPriority": "Priorité TickTick inconnue {priority} → aucune",
+        "unsupportedRepeat": "Règle de répétition non prise en charge « {rule} » ignorée"
+      },
+      "todoist": {
+        "emptyTitle": "Tâche au contenu vide importée sous (sans titre)",
+        "headerNotFound": "Ce n'est pas un CSV Todoist : ligne d'en-tête TYPE manquante",
+        "orphanComment": "Commentaire sans tâche précédente ignoré",
+        "sectionFlattened": "Section « {section} » aplatie",
+        "subtaskNoParent": "La sous-tâche « {title} » n'a pas de parent à l'indentation {indent} ; importée au niveau supérieur",
+        "unknownPriority": "Priorité inconnue {priority} → aucune",
+        "unparsedDate": "Impossible d'analyser la date « {date} »"
+      }
     }
   },
   "inbox": {

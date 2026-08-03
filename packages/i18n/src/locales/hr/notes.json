@@ -252,7 +252,12 @@
       "multiselect": "Višestruki odabir"
     },
     "showOnCalendar": "Prikaži u kalendaru",
-    "showingOnCalendar": "Prikazuje se u kalendaru"
+    "showingOnCalendar": "Prikazuje se u kalendaru",
+    "statusCategories": {
+      "done": "Dovršeno",
+      "inProgress": "U tijeku",
+      "todo": "Za napraviti"
+    }
   },
   "templateSelector": {
     "title": "Odaberite svoje platno",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "Naziv oznake",
     "uncategorized": "Nekategorizirano"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (dvoklik za uređivanje)"
+    },
+    "columns": {
+      "created": "Stvoreno",
+      "folder": "Mapa",
+      "kind": "Vrsta",
+      "modified": "Izmijenjeno",
+      "tags": "Oznake",
+      "title": "Naslov",
+      "wordCount": "Broj riječi"
+    },
+    "defaultViewName": "Zadano",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}"
+    },
+    "selectView": "Odaberi prikaz"
   }
 }

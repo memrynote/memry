@@ -252,7 +252,12 @@
       "multiselect": "Pilih banyak"
     },
     "showOnCalendar": "Tampilkan di kalender",
-    "showingOnCalendar": "Menampilkan di kalender"
+    "showingOnCalendar": "Menampilkan di kalender",
+    "statusCategories": {
+      "done": "Selesai",
+      "inProgress": "Sedang berjalan",
+      "todo": "Perlu dikerjakan"
+    }
   },
   "templateSelector": {
     "title": "Pilih Kanvas Anda",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "Nama tag",
     "uncategorized": "Tanpa kategori"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (klik dua kali untuk menyunting)"
+    },
+    "columns": {
+      "created": "Dibuat",
+      "folder": "Folder",
+      "kind": "Jenis",
+      "modified": "Diubah",
+      "tags": "Tag",
+      "title": "Judul",
+      "wordCount": "Jumlah kata"
+    },
+    "defaultViewName": "Bawaan",
+    "groupHeader": {
+      "noteCount": "{count, plural, other {# catatan}}"
+    },
+    "selectView": "Pilih Tampilan"
   }
 }

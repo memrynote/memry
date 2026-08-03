@@ -25,7 +25,8 @@
     "expand": "Perluas",
     "collapse": "Runtuh",
     "showMore": "+{count, plural, one {# lebih banyak} other {# lebih banyak}}",
-    "showLess": "Tampilkan lebih sedikit"
+    "showLess": "Tampilkan lebih sedikit",
+    "undo": "Urungkan"
   },
   "tabs": {
     "pin": "Sematkan Tab",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "Hari ini",
     "yesterday": "Kemarin",
-    "daysAgo": "{count, plural, one {# hari yang lalu} other {# hari yang lalu}}"
+    "daysAgo": "{count, plural, one {# hari yang lalu} other {# hari yang lalu}}",
+    "daysLate": "{count, plural, other {telat #h}}",
+    "daysOverdue": "{count, plural, other {terlambat # hari}}",
+    "tomorrow": "Besok"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Setiap hari} other {Setiap # hari}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Setiap bulan di {day}{suffix}} other {Setiap # bulan di {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Setiap bulan di {week} {day}} other {Setiap # bulan di {week} {day}}}",
     "everyNYears": "{count, plural, one {Setiap tahun} other {Setiap # tahun}}",
-    "repeats": "Berulang"
+    "repeats": "Berulang",
+    "ordinal": {
+      "first": "pertama",
+      "fourth": "keempat",
+      "last": "terakhir",
+      "second": "kedua",
+      "third": "ketiga"
+    },
+    "preset": {
+      "everyWeekday": "Setiap hari kerja (Sen-Jum)",
+      "everyYearOnDate": "Setiap tahun pada {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -640,6 +655,11 @@
     "welcome": {
       "body": "Rumah privat dan offline-first Anda. Catatan terenkripsi ujung ke ujung — tidak pernah meninggalkan perangkat Anda tanpa terenkripsi.",
       "title": "Selamat datang di MemryNote"
+    },
+    "tour": {
+      "next": "Berikutnya",
+      "previous": "Sebelumnya",
+      "progress": "{current} dari {total}"
     }
   },
   "updatePrompt": {
@@ -696,5 +716,125 @@
     "sectionLabel": "Kanvas",
     "tooLargeToSync": "Kanvas ini terlalu besar untuk disinkronkan. Kanvas tersimpan di perangkat ini, tetapi tidak akan sampai ke perangkat lain Anda sebelum ukurannya lebih kecil.",
     "untitled": "Kanvas tanpa judul"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Klik baris",
+      "reset": "Atur ulang",
+      "shortcutsTab": "Tab Pintasan"
+    },
+    "description": "Jalur cepat untuk menjelajahi memrynote, menangkap pemikiran, dan memproses pekerjaan.",
+    "groups": {
+      "general": {
+        "description": "Navigasi dan bantuan di seluruh aplikasi.",
+        "title": "Umum"
+      },
+      "inbox": {
+        "description": "Proses item yang ditangkap dengan cepat.",
+        "title": "Kotak Masuk"
+      },
+      "journal": {
+        "description": "Jelajahi tampilan jurnal dan fokuskan area menulis.",
+        "title": "Jurnal"
+      },
+      "notes": {
+        "description": "Menulis, memformat, dan mencari catatan.",
+        "title": "Catatan / Editor"
+      },
+      "settings": {
+        "description": "Buka pengaturan dan sesuaikan pintasan.",
+        "title": "Pengaturan"
+      },
+      "tabs": {
+        "description": "Berpindah antar tab dan panel.",
+        "title": "Tab & Panel Terbagi"
+      },
+      "tasks": {
+        "description": "Saring, pilih, dan selesaikan tugas.",
+        "title": "Tugas"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Buat catatan",
+        "keyboardShortcuts": "Buka pintasan keyboard",
+        "openSettings": "Buka pengaturan",
+        "quickSearch": "Buka pencarian cepat",
+        "sidebarSection": "Ke bagian bilah samping",
+        "toggleSidebar": "Alihkan bilah samping",
+        "undoTaskAction": "Urungkan tindakan tugas terakhir"
+      },
+      "inbox": {
+        "archiveItem": "Arsipkan item terpilih",
+        "chooseQuickFileResult": "Pilih hasil file cepat",
+        "clearSelection": "Hapus pilihan atau tutup file cepat",
+        "confirmFiling": "Konfirmasi panel pengarsipan",
+        "firstOrLastItem": "Item pertama atau terakhir",
+        "jumpByPage": "Lompat per halaman",
+        "nextItem": "Item berikutnya",
+        "openOriginal": "Buka tautan asli",
+        "openQuickFile": "Buka file cepat",
+        "previousItem": "Item sebelumnya",
+        "refresh": "Segarkan kotak masuk",
+        "selectAllVisible": "Pilih semua item yang terlihat",
+        "selectItem": "Pilih item",
+        "togglePreview": "Alihkan panel pratinjau"
+      },
+      "journal": {
+        "bold": "Tebalkan teks terpilih",
+        "find": "Cari di jurnal",
+        "italic": "Miringkan teks terpilih",
+        "link": "Tambah atau sunting tautan",
+        "returnFromOverview": "Kembali dari tampilan bulan atau tahun",
+        "toggleFullWidth": "Alihkan jurnal lebar penuh",
+        "underline": "Garis bawahi teks terpilih"
+      },
+      "notes": {
+        "bold": "Tebal",
+        "closeOverlays": "Tutup lapisan editor",
+        "commandMenu": "Buka menu perintah editor",
+        "createNote": "Buat catatan",
+        "find": "Cari di catatan",
+        "italic": "Miring",
+        "link": "Tambah atau sunting tautan",
+        "saveNote": "Simpan catatan saat ini",
+        "underline": "Garis bawah"
+      },
+      "settings": {
+        "cancelRecording": "Batalkan perekaman pintasan",
+        "customizeShortcuts": "Sesuaikan pintasan keyboard",
+        "openSettings": "Buka pengaturan",
+        "recordShortcut": "Rekam pintasan baru",
+        "resetShortcut": "Pulihkan pintasan bawaan"
+      },
+      "tabs": {
+        "closeAllInPane": "Tutup semua tab di panel",
+        "closeSplitPane": "Tutup panel terbagi",
+        "closeTab": "Tutup tab",
+        "duplicateTab": "Duplikat tab",
+        "focusPane": "Fokus ke panel lain",
+        "maximizePane": "Maksimalkan panel saat ini",
+        "moveTabToPane": "Pindahkan tab ke panel",
+        "newTabMenu": "Buka menu tab baru",
+        "nextTab": "Tab berikutnya",
+        "pinTab": "Sematkan atau lepas sematan tab",
+        "previousTab": "Tab sebelumnya",
+        "reopenClosedTab": "Buka kembali tab yang ditutup",
+        "splitDown": "Bagi ke bawah",
+        "splitRight": "Bagi ke kanan"
+      },
+      "tasks": {
+        "clearFilters": "Hapus filter yang terlihat",
+        "clearSelection": "Hapus pilihan tugas",
+        "completeSelected": "Selesaikan tugas terpilih",
+        "configureRepeat": "Atur pengulangan pada tugas terfokus",
+        "deleteSelected": "Hapus tugas terpilih",
+        "selectAllVisible": "Pilih semua tugas yang terlihat",
+        "skipOccurrence": "Lewati kejadian berulang",
+        "stopRepeating": "Hentikan pengulangan tugas"
+      }
+    },
+    "or": "atau",
+    "then": "lalu"
   }
 }

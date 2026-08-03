@@ -270,7 +270,50 @@
     "panelEmpty": "Tidak ada pengingat mendatang.",
     "panelPast": "Lampau",
     "panelUpcoming": "Mendatang",
-    "taskFallback": "Tugas"
+    "taskFallback": "Tugas",
+    "dateTime": {
+      "dateAt": "{date} pukul {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Hari ini pukul {time}",
+      "todayCompact": "Hari ini, {time}",
+      "tomorrowAt": "Besok pukul {time}",
+      "tomorrowCompact": "Besok, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Pengingat peringatan",
+      "inHours": {
+        "label": "Dalam {count, plural, other {# Jam}}"
+      },
+      "inMinutes": {
+        "label": "Dalam {count, plural, other {# Menit}}"
+      },
+      "inMonths": {
+        "label": "Dalam {count, plural, other {# Bulan}}"
+      },
+      "inWeeks": {
+        "label": "Dalam {count, plural, other {# Minggu}}"
+      },
+      "inYears": {
+        "label": "Dalam {count, plural, other {# Tahun}}"
+      },
+      "laterToday": {
+        "description": "Dalam {count, plural, other {# jam}}",
+        "label": "Nanti Hari Ini"
+      },
+      "monthlyReflection": "Refleksi bulanan",
+      "nextWeek": {
+        "description": "Senin pukul 09.00",
+        "label": "Minggu Depan"
+      },
+      "quarterlyReflection": "Refleksi triwulanan",
+      "reviewInAWeek": "Tinjau dalam seminggu",
+      "sameDayNextMonth": "Hari yang sama bulan depan",
+      "tomorrow": {
+        "description": "Besok pukul 09.00",
+        "label": "Besok"
+      },
+      "tomorrowMorning": "Besok Pagi"
+    }
   },
   "insights": {
     "captureActivity": "Aktivitas Tangkap",

@@ -35,7 +35,14 @@
     "delete": "Διαγραφή εργασίας",
     "created": "Δημιουργήθηκε το {date}",
     "reminder": "Υπενθύμιση",
-    "tags": "Ετικέτες"
+    "tags": "Ετικέτες",
+    "priorityLabels": {
+      "high": "Υψηλή",
+      "low": "Χαμηλή",
+      "medium": "Μεσαία",
+      "none": "Χωρίς προτεραιότητα",
+      "urgent": "Επείγουσα"
+    }
   },
   "filters": {
     "filter": "Φίλτρο",
@@ -44,7 +51,25 @@
     "groupBy": "Ομάδα κατά",
     "groupByOptions": "Ομαδοποίηση κατά επιλογές",
     "sortAscending": "Ταξινόμηση αύξουσα",
-    "sortDescending": "Ταξινόμηση φθίνουσα"
+    "sortDescending": "Ταξινόμηση φθίνουσα",
+    "dueDate": {
+      "any": "Οποιαδήποτε ημερομηνία λήξης",
+      "custom": "Προσαρμοσμένο εύρος...",
+      "nextWeek": "Την επόμενη εβδομάδα",
+      "none": "Χωρίς ημερομηνία λήξης",
+      "overdue": "Εκπρόθεσμα",
+      "thisMonth": "Αυτόν τον μήνα",
+      "thisWeek": "Αυτή την εβδομάδα",
+      "today": "Σήμερα",
+      "tomorrow": "Αύριο"
+    },
+    "quickPresets": {
+      "dueThisWeek": "Λήγουν αυτή την εβδομάδα",
+      "highPriority": "Υψηλή προτεραιότητα",
+      "noDueDate": "Χωρίς ημερομηνία λήξης",
+      "overdue": "Εκπρόθεσμα",
+      "repeating": "Επαναλαμβανόμενα"
+    }
   },
   "quickAdd": {
     "label": "Γρήγορη προσθήκη εργασίας",
@@ -77,7 +102,21 @@
     "searchRelated": "Αναζήτηση σχετικών…"
   },
   "kanban": {
-    "board": "Πίνακας Kanban"
+    "board": "Πίνακας Kanban",
+    "empty": {
+      "default": {
+        "subtitle": "Σύρετε εργασίες εδώ ή κάντε κλικ στο + για προσθήκη",
+        "title": "Καμία εργασία"
+      },
+      "done": {
+        "subtitle": "Ολοκληρώστε εργασίες για να εμφανιστούν εδώ",
+        "title": "Καμία ολοκληρωμένη εργασία"
+      },
+      "schedule": {
+        "subtitle": "Σύρετε εργασίες εδώ για επαναπρογραμματισμό",
+        "title": "Τίποτα προγραμματισμένο"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "Το έργο ενημερώθηκε",
@@ -100,7 +139,53 @@
     "noCompletedSelected": "Δεν επιλέχθηκαν ολοκληρωμένες εργασίες",
     "completeFailed": "Αποτυχία ολοκλήρωσης εργασιών",
     "deleteFailed": "Αποτυχία διαγραφής εργασιών",
-    "moveFailed": "Αποτυχία μετακίνησης εργασιών"
+    "moveFailed": "Αποτυχία μετακίνησης εργασιών",
+    "bulk": {
+      "archived": "{count, plural, one {# εργασία αρχειοθετήθηκε} other {# εργασίες αρχειοθετήθηκαν}}",
+      "completed": "{count, plural, one {# εργασία ολοκληρώθηκε} other {# εργασίες ολοκληρώθηκαν}}",
+      "deleted": "{count, plural, one {# εργασία διαγράφηκε} other {# εργασίες διαγράφηκαν}}",
+      "deletedDescription": "Αυτή η ενέργεια μπορεί να αναιρεθεί για λίγη ώρα.",
+      "dueDateRemoved": "{count, plural, one {Η ημερομηνία λήξης αφαιρέθηκε από # εργασία} other {Η ημερομηνία λήξης αφαιρέθηκε από # εργασίες}}",
+      "dueDateSet": "{count, plural, one {Ορίστηκε ημερομηνία λήξης για # εργασία} other {Ορίστηκε ημερομηνία λήξης για # εργασίες}}",
+      "movedToProject": "{count, plural, one {# εργασία μετακινήθηκε στο {project}} other {# εργασίες μετακινήθηκαν στο {project}}}",
+      "movedToStatus": "{count, plural, one {# εργασία μετακινήθηκε σε {status}} other {# εργασίες μετακινήθηκαν σε {status}}}",
+      "priorityRemoved": "{count, plural, one {Η προτεραιότητα αφαιρέθηκε από # εργασία} other {Η προτεραιότητα αφαιρέθηκε από # εργασίες}}",
+      "prioritySet": "{count, plural, one {Η προτεραιότητα ορίστηκε σε {priority} για # εργασία} other {Η προτεραιότητα ορίστηκε σε {priority} για # εργασίες}}",
+      "restored": "{count, plural, one {# εργασία αποκαταστάθηκε} other {# εργασίες αποκαταστάθηκαν}}",
+      "undoArchive": "{count, plural, one {Αρχειοθέτηση # εργασίας} other {Αρχειοθέτηση # εργασιών}}",
+      "undoComplete": "{count, plural, one {Ολοκλήρωση # εργασίας} other {Ολοκλήρωση # εργασιών}}",
+      "undoDelete": "{count, plural, one {Διαγραφή # εργασίας} other {Διαγραφή # εργασιών}}",
+      "undoDueDate": "{count, plural, one {Η ημερομηνία λήξης άλλαξε για # εργασία} other {Η ημερομηνία λήξης άλλαξε για # εργασίες}}",
+      "undoMove": "{count, plural, one {Μετακίνηση # εργασίας} other {Μετακίνηση # εργασιών}}",
+      "undoStatus": "{count, plural, one {Κατάσταση → {status} για # εργασία} other {Κατάσταση → {status} για # εργασίες}}",
+      "undoUncomplete": "{count, plural, one {Αναίρεση ολοκλήρωσης # εργασίας} other {Αναίρεση ολοκλήρωσης # εργασιών}}"
+    },
+    "drag": {
+      "archived": "{count, plural, one {Η εργασία αρχειοθετήθηκε} other {# εργασίες αρχειοθετήθηκαν}}",
+      "deleted": "{count, plural, one {Η εργασία διαγράφηκε} other {# εργασίες διαγράφηκαν}}",
+      "moved": "{count, plural, one {Μετακινήθηκε σε {target}} other {# εργασίες μετακινήθηκαν σε {target}}}",
+      "movedTo": "Μετακινήθηκε σε {target}",
+      "prioritySet": "{count, plural, one {Η προτεραιότητα ορίστηκε σε {priority}} other {# εργασίες ορίστηκαν σε {priority}}}",
+      "prioritySetTo": "Η προτεραιότητα ορίστηκε σε {priority}",
+      "rescheduled": "{count, plural, one {Επαναπρογραμματίστηκε για {target}} other {# εργασίες επαναπρογραμματίστηκαν για {target}}}",
+      "rescheduledTo": "Επαναπρογραμματίστηκε για {target}",
+      "undoArchive": "{count, plural, one {Αρχειοθετήθηκε # εργασία} other {Αρχειοθετήθηκαν # εργασίες}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, one {# υποεργασία προστέθηκε} other {# υποεργασίες προστέθηκαν}}",
+      "completed": "{count, plural, one {# υποεργασία ολοκληρώθηκε} other {# υποεργασίες ολοκληρώθηκαν}}",
+      "deleted": "{count, plural, one {# υποεργασία διαγράφηκε} other {# υποεργασίες διαγράφηκαν}}",
+      "deletedDescription": "Η υποεργασία αφαιρέθηκε",
+      "dueDateCleared": "{count, plural, one {Η ημερομηνία λήξης εκκαθαρίστηκε για # υποεργασία} other {Η ημερομηνία λήξης εκκαθαρίστηκε για # υποεργασίες}}",
+      "dueDateSet": "{count, plural, one {Ορίστηκε ημερομηνία λήξης για # υποεργασία} other {Ορίστηκε ημερομηνία λήξης για # υποεργασίες}}",
+      "markedIncomplete": "{count, plural, one {# υποεργασία επισημάνθηκε ως ημιτελής} other {# υποεργασίες επισημάνθηκαν ως ημιτελείς}}",
+      "movedUnder": "Μετακινήθηκε κάτω από τη \"{title}\"",
+      "parentAndSubtasksCompleted": "Η εργασία και οι υποεργασίες ολοκληρώθηκαν",
+      "parentDeletedKeepSubtasks": "Η εργασία διαγράφηκε, οι υποεργασίες μετατράπηκαν σε εργασίες",
+      "parentDeletedWithSubtasks": "Η εργασία και οι υποεργασίες διαγράφηκαν",
+      "prioritySet": "{count, plural, one {Ορίστηκε προτεραιότητα για # υποεργασία} other {Ορίστηκε προτεραιότητα για # υποεργασίες}}",
+      "promoted": "Η \"{title}\" προήχθη σε εργασία"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -181,7 +266,8 @@
       "nextMonth": "Τον επόμενο μήνα",
       "goToToday": "Πηγαίνετε στο σήμερα",
       "today": "Σήμερα",
-      "w": "W"
+      "w": "W",
+      "weekNumber": "Εβδομάδα {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Αφαίρεση ημερομηνίας",
@@ -327,7 +413,11 @@
       "addTime": "Προσθέστε χρόνο",
       "time": "Χρόνος",
       "clearDate": "Καθαρή ημερομηνία",
-      "backToOptions": "Επιστροφή στις επιλογές"
+      "backToOptions": "Επιστροφή στις επιλογές",
+      "nextWeek": "Την επόμενη εβδομάδα",
+      "thisWeekend": "Αυτό το Σαββατοκύριακο",
+      "today": "Σήμερα",
+      "tomorrow": "Αύριο"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "Επεξεργασία Επαναλαμβανόμενης Εργασίας",
@@ -426,7 +516,17 @@
       "currentFilters": "Τρέχοντα φίλτρα:",
       "noFiltersApplied": "Δεν εφαρμόστηκαν φίλτρα",
       "cancel": "Ακύρωση",
-      "saveFilter2": "Αποθήκευση φίλτρου"
+      "saveFilter2": "Αποθήκευση φίλτρου",
+      "nameRequired": "Εισαγάγετε ένα όνομα για αυτό το φίλτρο",
+      "summaryDue": "Λήξη: {value}",
+      "summaryDueRange": "Λήξη: {start} - {end}",
+      "summaryPriorities": "Προτεραιότητα: {names}",
+      "summaryProjects": "Έργο: {names}",
+      "summaryRepeatOneTime": "Επανάληψη: Μόνο εφάπαξ",
+      "summaryRepeatRepeating": "Επανάληψη: Μόνο επαναλαμβανόμενα",
+      "summarySearch": "Αναζήτηση: \"{query}\"",
+      "summaryTimeWith": "Ώρα: Με ώρα",
+      "summaryTimeWithout": "Ώρα: Χωρίς ώρα"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Αποθηκευμένα φίλτρα",
@@ -558,7 +658,16 @@
       "d": "δ"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "Προσθήκη Εργασίας"
+      "addTask": "Προσθήκη Εργασίας",
+      "allDescription": "Δημιουργήστε την πρώτη σας εργασία για να ξεκινήσετε",
+      "allTitle": "Καμία εργασία ακόμη",
+      "completedDescription": "Οι ολοκληρωμένες εργασίες θα εμφανίζονται εδώ",
+      "completedTitle": "Καμία ολοκληρωμένη εργασία",
+      "projectDescription": "Προσθέστε μια εργασία για να ξεκινήσετε",
+      "projectTitle": "Καμία εργασία σε αυτό το έργο",
+      "projectTitleNamed": "Καμία εργασία στο {name}",
+      "todayDescription": "Τα προλάβατε όλα!",
+      "todayTitle": "Τίποτα δεν λήγει σήμερα"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "χωρίς προτεραιότητα"
@@ -742,5 +851,42 @@
       "overview": "Επισκόπηση",
       "tasks": "Εργασίες"
     }
+  },
+  "priorityInline": {
+    "high": "υψηλή",
+    "low": "χαμηλή",
+    "medium": "μεσαία",
+    "urgent": "επείγουσα"
+  },
+  "priorityLabels": {
+    "high": "Υψηλή",
+    "low": "Χαμηλή",
+    "medium": "Μεσαία",
+    "none": "Χωρίς προτεραιότητα",
+    "urgent": "Επείγουσα"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "Ολοκληρώθηκε",
+      "inProgress": "Σε εξέλιξη",
+      "todo": "Προς εκτέλεση"
+    },
+    "validation": {
+      "minStatuses": "Τα έργα χρειάζονται τουλάχιστον 2 καταστάσεις",
+      "nameRequired": "Το όνομα του έργου είναι υποχρεωτικό",
+      "nameTooLong": "Το όνομα του έργου πρέπει να έχει 50 χαρακτήρες ή λιγότερους",
+      "needsDoneStatus": "Τα έργα χρειάζονται τουλάχιστον μία κατάσταση «Ολοκληρώθηκε»",
+      "needsDoneStatusForCompletedTasks": "Τα έργα χρειάζονται τουλάχιστον μία κατάσταση «Ολοκληρώθηκε» για τις ολοκληρωμένες εργασίες",
+      "needsTodoStatus": "Τα έργα χρειάζονται τουλάχιστον μία κατάσταση «Προς εκτέλεση»",
+      "needsTodoStatusForNewTasks": "Τα έργα χρειάζονται τουλάχιστον μία κατάσταση «Προς εκτέλεση» για τις νέες εργασίες",
+      "statusNameRequired": "Όλες οι καταστάσεις πρέπει να έχουν όνομα",
+      "statusNamesUnique": "Τα ονόματα των καταστάσεων πρέπει να είναι μοναδικά",
+      "statusNotFound": "Η κατάσταση δεν βρέθηκε"
+    }
+  },
+  "statusLabels": {
+    "done": "Ολοκληρώθηκε",
+    "inProgress": "Σε εξέλιξη",
+    "todo": "Προς εκτέλεση"
   }
 }

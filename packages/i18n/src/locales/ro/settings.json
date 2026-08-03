@@ -1449,7 +1449,8 @@
       },
       "title": "Importă din {name}",
       "chooseDirectory": "Alege dosarul…",
-      "folderKeepsAssets": "Alege dosarul când imaginile se află în afara dosarului propriu al notelor — exporturile păstrează adesea fișierele media într-unul comun."
+      "folderKeepsAssets": "Alege dosarul când imaginile se află în afara dosarului propriu al notelor — exporturile păstrează adesea fișierele media într-unul comun.",
+      "previewError": "Previzualizarea a eșuat"
     },
     "header": {
       "subtitle": "Adu-ți notițele și sarcinile din alte aplicații",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, one {# sarcină} few {# sarcini} other {# de sarcini}}",
       "withDueDate": "{count} cu dată",
       "withTags": "{count} etichetate"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Coloane: {columns}",
+        "emptyTitle": "Rând omis, cu titlu gol (coloana „{column}”)",
+        "noHeaders": "Fișierul CSV nu are rând de antet",
+        "titleColumn": "Titlul din „{column}”; celelalte coloane sunt salvate ca proprietăți"
+      },
+      "raindrop": {
+        "csvEmpty": "Fișierul CSV Raindrop este gol",
+        "headerNotFound": "Rândul de antet din CSV-ul Raindrop (coloana „url”) nu a fost găsit",
+        "rowNoUrl": "Rândul {row} a fost omis: fără URL"
+      },
+      "readFileFailed": "Nu s-a putut citi fișierul",
+      "ticktick": {
+        "foldersDropped": "Dosarele TickTick nu au echivalent în Memry și au fost eliminate",
+        "headerNotFound": "Rândul de antet din CSV-ul TickTick („Folder Name”) nu a fost găsit",
+        "reminderNoAnchor": "Mementoul „{reminder}” a fost omis (fără dată de referință)",
+        "subtaskParentMissing": "Părintele subsarcinii „{title}” nu a fost găsit; a fost importată la nivelul principal",
+        "unknownPriority": "Prioritate TickTick necunoscută {priority} → niciuna",
+        "unsupportedRepeat": "Regula de repetare „{rule}” nu este acceptată și a fost omisă"
+      },
+      "todoist": {
+        "emptyTitle": "Sarcina cu conținut gol a fost importată ca (fără titlu)",
+        "headerNotFound": "Nu este un CSV Todoist: lipsește rândul de antet TYPE",
+        "orphanComment": "Comentariu fără sarcină precedentă, omis",
+        "sectionFlattened": "Secțiunea „{section}” a fost aplatizată",
+        "subtaskNoParent": "Subsarcina „{title}” nu are părinte la indentarea {indent}; a fost importată la nivelul principal",
+        "unknownPriority": "Prioritate necunoscută {priority} → niciuna",
+        "unparsedDate": "Data „{date}” nu a putut fi interpretată"
+      }
     }
   },
   "inbox": {

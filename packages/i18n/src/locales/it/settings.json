@@ -1449,7 +1449,8 @@
       },
       "title": "Importa da {name}",
       "chooseDirectory": "Scegli cartella…",
-      "folderKeepsAssets": "Scegli la cartella quando le immagini si trovano fuori dalla cartella delle note — spesso le esportazioni salvano i media in una cartella condivisa."
+      "folderKeepsAssets": "Scegli la cartella quando le immagini si trovano fuori dalla cartella delle note — spesso le esportazioni salvano i media in una cartella condivisa.",
+      "previewError": "Anteprima non riuscita"
     },
     "header": {
       "subtitle": "Porta le tue note e attività da altre app",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, one {# attività} other {# attività}}",
       "withDueDate": "{count} datate",
       "withTags": "{count} con tag"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Colonne: {columns}",
+        "emptyTitle": "Riga saltata con titolo vuoto (colonna \"{column}\")",
+        "noHeaders": "Il file CSV non ha intestazioni",
+        "titleColumn": "Titolo da \"{column}\"; le altre colonne sono salvate come proprietà"
+      },
+      "raindrop": {
+        "csvEmpty": "Il CSV di Raindrop è vuoto",
+        "headerNotFound": "Riga di intestazione del CSV di Raindrop (colonna \"url\") non trovata",
+        "rowNoUrl": "Riga {row} saltata: nessun URL"
+      },
+      "readFileFailed": "Impossibile leggere il file",
+      "ticktick": {
+        "foldersDropped": "Le cartelle di TickTick non hanno un equivalente in Memry e sono state ignorate",
+        "headerNotFound": "Riga di intestazione del CSV di TickTick (\"Folder Name\") non trovata",
+        "reminderNoAnchor": "Promemoria \"{reminder}\" saltato (nessuna data di riferimento)",
+        "subtaskParentMissing": "Attività principale di \"{title}\" non trovata; importata al livello superiore",
+        "unknownPriority": "Priorità TickTick sconosciuta {priority} → nessuna",
+        "unsupportedRepeat": "Regola di ripetizione non supportata \"{rule}\" saltata"
+      },
+      "todoist": {
+        "emptyTitle": "Attività con contenuto vuoto importata come (senza titolo)",
+        "headerNotFound": "Non è un CSV di Todoist: manca la riga di intestazione TYPE",
+        "orphanComment": "Commento senza attività precedente saltato",
+        "sectionFlattened": "Sezione \"{section}\" appiattita",
+        "subtaskNoParent": "L'attività secondaria \"{title}\" non ha un'attività principale al rientro {indent}; importata al livello superiore",
+        "unknownPriority": "Priorità sconosciuta {priority} → nessuna",
+        "unparsedDate": "Impossibile interpretare la data \"{date}\""
+      }
     }
   },
   "inbox": {

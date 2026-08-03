@@ -252,7 +252,12 @@
       "multiselect": "Viacnásobný výber"
     },
     "showOnCalendar": "Zobraziť v kalendári",
-    "showingOnCalendar": "Zobrazuje sa v kalendári"
+    "showingOnCalendar": "Zobrazuje sa v kalendári",
+    "statusCategories": {
+      "done": "Dokončené",
+      "inProgress": "Prebieha",
+      "todo": "Na urobenie"
+    }
   },
   "templateSelector": {
     "title": "Vyberte svoje plátno",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "Názov značky",
     "uncategorized": "Nezaradené"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (dvojklikom upravíte)"
+    },
+    "columns": {
+      "created": "Vytvorené",
+      "folder": "Priečinok",
+      "kind": "Druh",
+      "modified": "Upravené",
+      "tags": "Značky",
+      "title": "Názov",
+      "wordCount": "Počet slov"
+    },
+    "defaultViewName": "Predvolené",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# poznámka} few {# poznámky} many {# poznámky} other {# poznámok}}"
+    },
+    "selectView": "Vybrať zobrazenie"
   }
 }

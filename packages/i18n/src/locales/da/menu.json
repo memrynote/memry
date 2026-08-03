@@ -1,7 +1,12 @@
 {
   "app": {
     "quit": "Afslut",
-    "preferences": "Indstillinger…"
+    "preferences": "Indstillinger…",
+    "exit": "Afslut",
+    "hide": "Skjul MemryNote",
+    "hideOthers": "Skjul andre",
+    "services": "Tjenester",
+    "unhide": "Vis alle"
   },
   "file": {
     "label": "Fil",
@@ -24,7 +29,11 @@
     "paste": "Indsæt",
     "selectAll": "Vælg alle",
     "find": "Find",
-    "speech": "Tale"
+    "speech": "Tale",
+    "delete": "Slet",
+    "pasteAndMatchStyle": "Indsæt og tilpas stil",
+    "startSpeaking": "Start tale",
+    "stopSpeaking": "Stop tale"
   },
   "view": {
     "label": "Visning",
@@ -37,7 +46,10 @@
     "themeSystem": "System",
     "themeWhite": "Papir",
     "toggleDayPanel": "Skift dagpanel",
-    "toggleSidebar": "Skift sidebjælke"
+    "toggleSidebar": "Skift sidebjælke",
+    "actualSize": "Faktisk størrelse",
+    "zoomIn": "Zoom ind",
+    "zoomOut": "Zoom ud"
   },
   "format": {
     "body": "Brødtekst",
@@ -55,7 +67,8 @@
     "about": "Om MemryNote",
     "documentation": "Dokumentation",
     "label": "Hjælp",
-    "shortcuts": "Tastaturgenveje"
+    "shortcuts": "Tastaturgenveje",
+    "aboutVersion": "Version {version}"
   },
   "insert": {
     "attachment": "Indsæt vedhæftning…",
@@ -67,6 +80,10 @@
     "taskList": "Opgaveliste"
   },
   "window": {
-    "label": "Vindue"
+    "label": "Vindue",
+    "close": "Luk",
+    "front": "Placer alle forrest",
+    "minimize": "Minimer",
+    "zoom": "Zoom"
   }
 }

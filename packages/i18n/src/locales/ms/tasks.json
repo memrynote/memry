@@ -35,7 +35,14 @@
     "delete": "Padam tugasan",
     "created": "Mencipta {date}",
     "reminder": "Peringatan",
-    "tags": "Tag"
+    "tags": "Tag",
+    "priorityLabels": {
+      "high": "Tinggi",
+      "low": "Rendah",
+      "medium": "Sederhana",
+      "none": "Tiada Keutamaan",
+      "urgent": "Mendesak"
+    }
   },
   "filters": {
     "filter": "Penapis",
@@ -44,7 +51,25 @@
     "groupBy": "Kumpulan mengikut",
     "groupByOptions": "Kumpulan mengikut pilihan",
     "sortAscending": "Isih menaik",
-    "sortDescending": "Isih menurun"
+    "sortDescending": "Isih menurun",
+    "dueDate": {
+      "any": "Sebarang tarikh akhir",
+      "custom": "Julat tersuai...",
+      "nextWeek": "Minggu depan",
+      "none": "Tiada tarikh akhir",
+      "overdue": "Lewat tempoh",
+      "thisMonth": "Bulan ini",
+      "thisWeek": "Minggu ini",
+      "today": "Hari ini",
+      "tomorrow": "Esok"
+    },
+    "quickPresets": {
+      "dueThisWeek": "Perlu Siap Minggu Ini",
+      "highPriority": "Keutamaan Tinggi",
+      "noDueDate": "Tiada Tarikh Akhir",
+      "overdue": "Lewat Tempoh",
+      "repeating": "Berulang"
+    }
   },
   "quickAdd": {
     "label": "Tambah tugasan cepat",
@@ -77,7 +102,21 @@
     "searchRelated": "Cari berkaitan…"
   },
   "kanban": {
-    "board": "papan Kanban"
+    "board": "papan Kanban",
+    "empty": {
+      "default": {
+        "subtitle": "Seret tugasan ke sini atau klik + untuk menambah",
+        "title": "Tiada tugasan"
+      },
+      "done": {
+        "subtitle": "Selesaikan tugasan untuk melihatnya di sini",
+        "title": "Tiada tugasan selesai"
+      },
+      "schedule": {
+        "subtitle": "Seret tugasan ke sini untuk menjadualkan semula",
+        "title": "Tiada apa-apa dijadualkan"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "Projek dikemas kini",
@@ -100,7 +139,53 @@
     "noCompletedSelected": "Tiada tugasan selesai dipilih",
     "completeFailed": "Gagal menyelesaikan tugasan",
     "deleteFailed": "Gagal memadamkan tugasan",
-    "moveFailed": "Gagal mengalihkan tugas"
+    "moveFailed": "Gagal mengalihkan tugas",
+    "bulk": {
+      "archived": "{count, plural, other {# tugasan diarkibkan}}",
+      "completed": "{count, plural, other {# tugasan diselesaikan}}",
+      "deleted": "{count, plural, other {# tugasan dipadamkan}}",
+      "deletedDescription": "Tindakan ini boleh dibuat asal untuk seketika.",
+      "dueDateRemoved": "{count, plural, other {Tarikh akhir dialih keluar daripada # tugasan}}",
+      "dueDateSet": "{count, plural, other {Tarikh akhir ditetapkan untuk # tugasan}}",
+      "movedToProject": "{count, plural, other {# tugasan dialihkan ke {project}}}",
+      "movedToStatus": "{count, plural, other {# tugasan dialihkan ke {status}}}",
+      "priorityRemoved": "{count, plural, other {Keutamaan dialih keluar untuk # tugasan}}",
+      "prioritySet": "{count, plural, other {Keutamaan ditetapkan kepada {priority} untuk # tugasan}}",
+      "restored": "{count, plural, other {# tugasan dipulihkan}}",
+      "undoArchive": "{count, plural, other {Arkibkan # tugasan}}",
+      "undoComplete": "{count, plural, other {Selesaikan # tugasan}}",
+      "undoDelete": "{count, plural, other {Padam # tugasan}}",
+      "undoDueDate": "{count, plural, other {Tarikh akhir ditukar untuk # tugasan}}",
+      "undoMove": "{count, plural, other {Alihkan # tugasan}}",
+      "undoStatus": "{count, plural, other {Status → {status} untuk # tugasan}}",
+      "undoUncomplete": "{count, plural, other {Nyahselesaikan # tugasan}}"
+    },
+    "drag": {
+      "archived": "{count, plural, other {# tugasan diarkibkan}}",
+      "deleted": "{count, plural, other {# tugasan dipadamkan}}",
+      "moved": "{count, plural, other {# tugasan dialihkan ke {target}}}",
+      "movedTo": "Dialihkan ke {target}",
+      "prioritySet": "{count, plural, other {# tugasan ditetapkan kepada keutamaan {priority}}}",
+      "prioritySetTo": "Keutamaan ditetapkan kepada {priority}",
+      "rescheduled": "{count, plural, other {# tugasan dijadualkan semula ke {target}}}",
+      "rescheduledTo": "Dijadualkan semula ke {target}",
+      "undoArchive": "{count, plural, other {# tugasan diarkibkan}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, other {# subtugas ditambah}}",
+      "completed": "{count, plural, other {# subtugas diselesaikan}}",
+      "deleted": "{count, plural, other {# subtugas dipadamkan}}",
+      "deletedDescription": "Subtugas telah dialih keluar",
+      "dueDateCleared": "{count, plural, other {Tarikh akhir dikosongkan untuk # subtugas}}",
+      "dueDateSet": "{count, plural, other {Tarikh akhir ditetapkan untuk # subtugas}}",
+      "markedIncomplete": "{count, plural, other {# subtugas ditanda belum selesai}}",
+      "movedUnder": "Dialihkan di bawah \"{title}\"",
+      "parentAndSubtasksCompleted": "Tugasan dan subtugas selesai",
+      "parentDeletedKeepSubtasks": "Tugasan dipadamkan, subtugas ditukar kepada tugasan",
+      "parentDeletedWithSubtasks": "Tugasan dan subtugas dipadamkan",
+      "prioritySet": "{count, plural, other {Keutamaan ditetapkan untuk # subtugas}}",
+      "promoted": "\"{title}\" dinaikkan menjadi tugasan"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -181,7 +266,8 @@
       "nextMonth": "Bulan depan",
       "goToToday": "Pergi ke hari ini",
       "today": "Hari ini",
-      "w": "W"
+      "w": "W",
+      "weekNumber": "Minggu {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Alih keluar tarikh",
@@ -327,7 +413,11 @@
       "addTime": "Tambah masa",
       "time": "Masa",
       "clearDate": "Kosongkan tarikh",
-      "backToOptions": "Kembali ke pilihan"
+      "backToOptions": "Kembali ke pilihan",
+      "nextWeek": "Minggu Depan",
+      "thisWeekend": "Hujung Minggu Ini",
+      "today": "Hari Ini",
+      "tomorrow": "Esok"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "Edit Tugasan Berulang",
@@ -426,7 +516,17 @@
       "currentFilters": "Penapis semasa:",
       "noFiltersApplied": "Tiada penapis digunakan",
       "cancel": "Batal",
-      "saveFilter2": "Simpan Penapis"
+      "saveFilter2": "Simpan Penapis",
+      "nameRequired": "Sila masukkan nama untuk penapis ini",
+      "summaryDue": "Tarikh akhir: {value}",
+      "summaryDueRange": "Tarikh akhir: {start} - {end}",
+      "summaryPriorities": "Keutamaan: {names}",
+      "summaryProjects": "Projek: {names}",
+      "summaryRepeatOneTime": "Ulangan: Sekali sahaja",
+      "summaryRepeatRepeating": "Ulangan: Berulang sahaja",
+      "summarySearch": "Carian: \"{query}\"",
+      "summaryTimeWith": "Masa: Dengan masa",
+      "summaryTimeWithout": "Masa: Tanpa masa"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Penapis disimpan",
@@ -558,7 +658,16 @@
       "d": "d"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "Tambah Tugas"
+      "addTask": "Tambah Tugas",
+      "allDescription": "Cipta tugasan pertama anda untuk bermula",
+      "allTitle": "Belum ada tugasan",
+      "completedDescription": "Tugasan yang selesai akan muncul di sini",
+      "completedTitle": "Tiada tugasan selesai",
+      "projectDescription": "Tambah tugasan untuk bermula",
+      "projectTitle": "Tiada tugasan dalam projek ini",
+      "projectTitleNamed": "Tiada tugasan dalam {name}",
+      "todayDescription": "Anda sudah selesai semuanya!",
+      "todayTitle": "Tiada apa-apa perlu siap hari ini"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "tiada keutamaan"
@@ -742,5 +851,42 @@
       "overview": "Gambaran keseluruhan",
       "tasks": "Tugasan"
     }
+  },
+  "priorityInline": {
+    "high": "tinggi",
+    "low": "rendah",
+    "medium": "sederhana",
+    "urgent": "mendesak"
+  },
+  "priorityLabels": {
+    "high": "Tinggi",
+    "low": "Rendah",
+    "medium": "Sederhana",
+    "none": "Tiada Keutamaan",
+    "urgent": "Mendesak"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "Selesai",
+      "inProgress": "Sedang Berjalan",
+      "todo": "Untuk Dilakukan"
+    },
+    "validation": {
+      "minStatuses": "Projek memerlukan sekurang-kurangnya 2 status",
+      "nameRequired": "Nama projek diperlukan",
+      "nameTooLong": "Nama projek mestilah 50 aksara atau kurang",
+      "needsDoneStatus": "Projek memerlukan sekurang-kurangnya satu status 'Selesai'",
+      "needsDoneStatusForCompletedTasks": "Projek memerlukan sekurang-kurangnya satu status 'Selesai' untuk tugasan yang selesai",
+      "needsTodoStatus": "Projek memerlukan sekurang-kurangnya satu status 'Untuk Dilakukan'",
+      "needsTodoStatusForNewTasks": "Projek memerlukan sekurang-kurangnya satu status 'Untuk Dilakukan' untuk tugasan baharu",
+      "statusNameRequired": "Semua status mesti mempunyai nama",
+      "statusNamesUnique": "Nama status mestilah unik",
+      "statusNotFound": "Status tidak ditemui"
+    }
+  },
+  "statusLabels": {
+    "done": "Selesai",
+    "inProgress": "Sedang Berjalan",
+    "todo": "Untuk Dilakukan"
   }
 }

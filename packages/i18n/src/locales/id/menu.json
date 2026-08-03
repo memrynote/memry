@@ -1,7 +1,12 @@
 {
   "app": {
     "quit": "Berhenti",
-    "preferences": "Pengaturan…"
+    "preferences": "Pengaturan…",
+    "exit": "Keluar",
+    "hide": "Sembunyikan MemryNote",
+    "hideOthers": "Sembunyikan Lainnya",
+    "services": "Layanan",
+    "unhide": "Tampilkan Semua"
   },
   "file": {
     "label": "Mengajukan",
@@ -24,7 +29,11 @@
     "paste": "Tempel",
     "selectAll": "Pilih semua",
     "find": "Temukan",
-    "speech": "Ucapan"
+    "speech": "Ucapan",
+    "delete": "Hapus",
+    "pasteAndMatchStyle": "Tempel dan Cocokkan Gaya",
+    "startSpeaking": "Mulai Berbicara",
+    "stopSpeaking": "Hentikan Berbicara"
   },
   "view": {
     "label": "Lihat",
@@ -37,7 +46,10 @@
     "themeSystem": "Sistem",
     "themeWhite": "Kertas",
     "toggleDayPanel": "Alihkan Panel Hari",
-    "toggleSidebar": "Alihkan Bilah Samping"
+    "toggleSidebar": "Alihkan Bilah Samping",
+    "actualSize": "Ukuran Sebenarnya",
+    "zoomIn": "Perbesar",
+    "zoomOut": "Perkecil"
   },
   "format": {
     "body": "Isi",
@@ -55,7 +67,8 @@
     "about": "Tentang MemryNote",
     "documentation": "Dokumentasi",
     "label": "Bantuan",
-    "shortcuts": "Pintasan Keyboard"
+    "shortcuts": "Pintasan Keyboard",
+    "aboutVersion": "Versi {version}"
   },
   "insert": {
     "attachment": "Sisipkan Lampiran…",
@@ -67,6 +80,10 @@
     "taskList": "Daftar Tugas"
   },
   "window": {
-    "label": "Jendela"
+    "label": "Jendela",
+    "close": "Tutup",
+    "front": "Bawa Semua ke Depan",
+    "minimize": "Perkecil",
+    "zoom": "Zoom"
   }
 }

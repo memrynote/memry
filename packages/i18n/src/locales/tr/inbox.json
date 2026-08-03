@@ -270,7 +270,50 @@
     "panelEmpty": "Yaklaşan hatırlatıcı yok.",
     "panelPast": "Geçmiş",
     "panelUpcoming": "Yaklaşan",
-    "taskFallback": "Görev"
+    "taskFallback": "Görev",
+    "dateTime": {
+      "dateAt": "{date} saat {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Bugün saat {time}",
+      "todayCompact": "Bugün, {time}",
+      "tomorrowAt": "Yarın saat {time}",
+      "tomorrowCompact": "Yarın, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Yıl dönümü hatırlatıcısı",
+      "inHours": {
+        "label": "{count, plural, one {# Saat Sonra} other {# Saat Sonra}}"
+      },
+      "inMinutes": {
+        "label": "{count, plural, one {# Dakika Sonra} other {# Dakika Sonra}}"
+      },
+      "inMonths": {
+        "label": "{count, plural, one {# Ay Sonra} other {# Ay Sonra}}"
+      },
+      "inWeeks": {
+        "label": "{count, plural, one {# Hafta Sonra} other {# Hafta Sonra}}"
+      },
+      "inYears": {
+        "label": "{count, plural, one {# Yıl Sonra} other {# Yıl Sonra}}"
+      },
+      "laterToday": {
+        "description": "{count, plural, one {# saat sonra} other {# saat sonra}}",
+        "label": "Bugün İlerleyen Saatlerde"
+      },
+      "monthlyReflection": "Aylık değerlendirme",
+      "nextWeek": {
+        "description": "Pazartesi 09.00",
+        "label": "Gelecek Hafta"
+      },
+      "quarterlyReflection": "Üç aylık değerlendirme",
+      "reviewInAWeek": "Bir hafta sonra gözden geçir",
+      "sameDayNextMonth": "Gelecek ay aynı gün",
+      "tomorrow": {
+        "description": "Yarın 09.00",
+        "label": "Yarın"
+      },
+      "tomorrowMorning": "Yarın Sabah"
+    }
   },
   "insights": {
     "captureActivity": "Etkinliği Yakala",

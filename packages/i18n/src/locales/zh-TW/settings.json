@@ -1449,7 +1449,8 @@
       },
       "title": "從 {name} 匯入",
       "chooseDirectory": "選擇資料夾…",
-      "folderKeepsAssets": "若圖片不在筆記本身的資料夾裡，請選擇資料夾——匯出的內容常把媒體集中放在共用資料夾。"
+      "folderKeepsAssets": "若圖片不在筆記本身的資料夾裡，請選擇資料夾——匯出的內容常把媒體集中放在共用資料夾。",
+      "previewError": "預覽失敗"
     },
     "header": {
       "subtitle": "從其他應用程式匯入您的筆記與任務",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, other {# 項任務}}",
       "withDueDate": "{count} 個已設日期",
       "withTags": "{count} 個已加標籤"
+    },
+    "messages": {
+      "csv": {
+        "columns": "欄位：{columns}",
+        "emptyTitle": "已略過標題為空的資料列（欄位「{column}」）",
+        "noHeaders": "CSV 檔案沒有標頭列",
+        "titleColumn": "標題取自「{column}」；其他欄位會儲存為屬性"
+      },
+      "raindrop": {
+        "csvEmpty": "Raindrop CSV 是空的",
+        "headerNotFound": "找不到 Raindrop CSV 的標頭列（「url」欄位）",
+        "rowNoUrl": "已略過第 {row} 列：沒有網址"
+      },
+      "readFileFailed": "讀取檔案失敗",
+      "ticktick": {
+        "foldersDropped": "TickTick 資料夾在 Memry 中沒有對應項目，已略過",
+        "headerNotFound": "找不到 TickTick CSV 的標頭列（「Folder Name」）",
+        "reminderNoAnchor": "已略過提醒「{reminder}」（沒有日期基準）",
+        "subtaskParentMissing": "找不到子任務「{title}」的上層任務；已匯入為頂層任務",
+        "unknownPriority": "未知的 TickTick 優先順序 {priority} → 無",
+        "unsupportedRepeat": "已略過不支援的重複規則「{rule}」"
+      },
+      "todoist": {
+        "emptyTitle": "內容為空的任務已匯入為（未命名）",
+        "headerNotFound": "這不是 Todoist CSV：缺少 TYPE 標頭列",
+        "orphanComment": "已略過前方沒有任務的註解",
+        "sectionFlattened": "區段「{section}」已扁平化",
+        "subtaskNoParent": "子任務「{title}」在縮排層級 {indent} 沒有上層任務；已匯入為頂層任務",
+        "unknownPriority": "未知的優先順序 {priority} → 無",
+        "unparsedDate": "無法解析日期「{date}」"
+      }
     }
   },
   "inbox": {

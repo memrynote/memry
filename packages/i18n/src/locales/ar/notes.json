@@ -252,7 +252,12 @@
       "multiselect": "تحديد متعدد"
     },
     "showOnCalendar": "إظهار في التقويم",
-    "showingOnCalendar": "يظهر في التقويم"
+    "showingOnCalendar": "يظهر في التقويم",
+    "statusCategories": {
+      "done": "مكتمل",
+      "inProgress": "قيد التنفيذ",
+      "todo": "قيد الانتظار"
+    }
   },
   "templateSelector": {
     "title": "اختر قماشك",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "اسم العلامة",
     "uncategorized": "غير مصنّفة"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (انقر نقرًا مزدوجًا للتحرير)"
+    },
+    "columns": {
+      "created": "تاريخ الإنشاء",
+      "folder": "المجلد",
+      "kind": "النوع",
+      "modified": "تاريخ التعديل",
+      "tags": "العلامات",
+      "title": "العنوان",
+      "wordCount": "عدد الكلمات"
+    },
+    "defaultViewName": "افتراضي",
+    "groupHeader": {
+      "noteCount": "{count, plural, zero {لا توجد ملاحظات} one {ملاحظة واحدة} two {ملاحظتان} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}"
+    },
+    "selectView": "تحديد العرض"
   }
 }

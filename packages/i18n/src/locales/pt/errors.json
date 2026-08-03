@@ -22,7 +22,19 @@
     "writeFailed": "Falha ao salvar esta nota. Verifique o espaço em disco e as permissões.",
     "readFailed": "Falha ao ler esta nota. O arquivo pode estar bloqueado ou corrompido.",
     "deleteFailed": "Falha ao excluir esta nota. Verifique as permissões do arquivo.",
-    "invalidPath": "O caminho da nota é inválido."
+    "invalidPath": "O caminho da nota é inválido.",
+    "applyTemplateFailed": "Falha ao aplicar o modelo",
+    "createFailed": "Falha ao criar a nota",
+    "deleteVersionFailed": "Falha ao eliminar a versão",
+    "exportHtmlFailed": "Falha ao exportar o HTML",
+    "exportPdfFailed": "Falha ao exportar o PDF",
+    "importFilesFailed": "Falha ao importar os ficheiros",
+    "moveFailed": "Falha ao mover a nota",
+    "renameFailed": "Falha ao mudar o nome da nota",
+    "reorderFailed": "Falha ao reordenar as notas",
+    "restoreVersionFailed": "Falha ao restaurar a versão",
+    "setLocalOnlyFailed": "Falha ao definir como apenas local",
+    "updateFailed": "Falha ao atualizar a nota"
   },
   "database": {
     "connectionFailed": "Não foi possível conectar-se ao banco de dados local. Tente reiniciar o aplicativo.",
@@ -41,7 +53,11 @@
     "fileTooLarge": "Este arquivo é muito grande para ser anexado.",
     "unsupportedType": "Este tipo de arquivo não é compatível.",
     "writeFailed": "Falha ao salvar o anexo. Verifique o espaço em disco.",
-    "deleteFailed": "Falha ao excluir o anexo."
+    "deleteFailed": "Falha ao excluir o anexo.",
+    "downloadFailed": "Falha ao transferir o anexo",
+    "downloadProgressFailed": "Falha ao obter o progresso da transferência",
+    "uploadFailed": "Falha ao carregar o anexo",
+    "uploadProgressFailed": "Falha ao obter o progresso do carregamento"
   },
   "encryption": {
     "failed": "Falha ao criptografar dados. Talvez suas chaves precisem ser regeneradas.",
@@ -77,6 +93,184 @@
     "paymentRequired": "É necessário um plano de Sincronização pago para usar a sincronização encriptada alojada.",
     "attachmentUploadFailed": "Não foi possível sincronizar o anexo \"{filename}\". Fica neste dispositivo.",
     "fileTooLarge": "Este ficheiro é maior do que o seu plano permite. Atualize o seu plano para sincronizar ficheiros maiores.",
-    "vaultRecovered": "Chave do cofre restaurada. A sincronização será retomada."
+    "vaultRecovered": "Chave do cofre restaurada. A sincronização será retomada.",
+    "historyFetchFailed": "Falha ao obter o histórico de sincronização",
+    "keyPersistenceFailed": "Falha ao guardar a chave de encriptação em segurança. O registo do dispositivo foi revertido. Tente novamente.",
+    "serverUnreachable": "Não foi possível ligar ao servidor de sincronização. Verifique a sua ligação à Internet.",
+    "updateSyncedSettingFailed": "Falha ao atualizar a definição sincronizada"
+  },
+  "agent": {
+    "conversationBusy": "Conversa ocupada",
+    "runtimeStarting": "O runtime do agente está a iniciar. Tente novamente."
+  },
+  "ai": {
+    "inlineDisabled": "A edição inline com IA está desativada",
+    "listOllamaModelsFailed": "Falha ao listar os modelos do Ollama"
+  },
+  "auth": {
+    "approveLinkingFailed": "Falha ao aprovar a associação",
+    "cannotRemoveCurrentDevice": "Não é possível remover o dispositivo atual",
+    "completeLinkingFailed": "Falha ao concluir a associação",
+    "confirmRecoveryPhraseFailed": "Falha ao confirmar a frase de recuperação",
+    "fetchSasCodeFailed": "Falha ao obter o código SAS",
+    "finalizeVaultChoiceFailed": "Falha ao finalizar a escolha do cofre",
+    "initiateOAuthFailed": "Falha ao iniciar o OAuth",
+    "invalidRecoveryPhraseFormat": "Formato de frase de recuperação inválido",
+    "linkDeviceQrFailed": "Falha ao associar o dispositivo por QR",
+    "linkRecoveryPhraseFailed": "Falha ao associar através da frase de recuperação",
+    "notAuthenticated": "Não autenticado",
+    "pickFolderFailed": "Falha ao escolher a pasta",
+    "recoveryPhraseMismatch": "A frase de recuperação não corresponde. Tente novamente.",
+    "removeDeviceFailed": "Falha ao remover o dispositivo",
+    "renameDeviceFailed": "Falha ao mudar o nome do dispositivo",
+    "requestOtpFailed": "Falha ao pedir o código OTP",
+    "resendOtpFailed": "Falha ao reenviar o código OTP",
+    "sessionExpired": "A sessão expirou. Inicie sessão novamente.",
+    "setupFirstDeviceOAuthFailed": "Falha ao configurar o primeiro dispositivo através do OAuth",
+    "verifyOtpFailed": "Falha ao verificar o código OTP"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "O item já está nos marcadores",
+    "notFound": "Marcador não encontrado"
+  },
+  "calendar": {
+    "connectProviderFailed": "Falha ao ligar o fornecedor de calendário",
+    "createEventFailed": "Falha ao criar o evento de calendário",
+    "deleteEventFailed": "Falha ao eliminar o evento de calendário",
+    "disconnectProviderFailed": "Falha ao desligar o fornecedor de calendário",
+    "eventNotFound": "Evento de calendário não encontrado",
+    "googleNotConnected": "O Google Calendar não está ligado neste dispositivo",
+    "listGoogleCalendarsFailed": "Falha ao listar os calendários do Google",
+    "onlyGoogleSourcesRetryable": "Só é possível repetir fontes do Google Calendar",
+    "onlySourcesSelectable": "Só é possível selecionar fontes de calendário",
+    "promoteExternalEventFailed": "Falha ao promover o evento de calendário externo",
+    "refreshProviderFailed": "Falha ao atualizar o fornecedor de calendário",
+    "retryGoogleSourceSyncFailed": "Falha ao repetir a sincronização da fonte do Google Calendar",
+    "setDefaultGoogleCalendarFailed": "Falha ao definir o calendário predefinido do Google",
+    "signInBeforeRefresh": "Inicie sessão no memrynote antes de atualizar o Google Calendar",
+    "sourceNotFound": "Fonte de calendário não encontrada",
+    "syncFailed": "Falha na sincronização",
+    "updateEventFailed": "Falha ao atualizar o evento de calendário",
+    "updateSourceSelectionFailed": "Falha ao atualizar a seleção de fontes de calendário"
+  },
+  "folder": {
+    "createFailed": "Falha ao criar a pasta",
+    "deleteFailed": "Falha ao eliminar a pasta",
+    "renameFailed": "Falha ao mudar o nome da pasta",
+    "setConfigFailed": "Falha ao definir a configuração da pasta"
+  },
+  "folderView": {
+    "deleteViewFailed": "Falha ao eliminar a vista",
+    "setConfigFailed": "Falha ao definir a configuração",
+    "setViewFailed": "Falha ao definir a vista"
+  },
+  "googleCalendar": {
+    "accessDenied": "O acesso ao Google Calendar foi recusado. Pode voltar a ligar quando quiser.",
+    "connectFailed": "Não foi possível ligar ao Google Calendar. Tente novamente dentro de momentos.",
+    "misconfigured": "O Google Calendar não está configurado corretamente. Contacte o suporte se isto continuar a acontecer.",
+    "reconnectNeeded": "A sua ligação ao Google Calendar expirou. Desligue e volte a ligar.",
+    "scopeMissing": "Não foi possível aceder ao seu Google Calendar porque a permissão de Calendário não foi concedida. Tente novamente e certifique-se de que a caixa Calendário fica assinalada no ecrã de consentimento da Google.",
+    "temporarilyUnavailable": "O Google Calendar está temporariamente indisponível. Tente novamente dentro de instantes."
+  },
+  "importer": {
+    "cancelFailed": "Falha ao cancelar",
+    "fileSelectionFailed": "Falha na seleção de ficheiros",
+    "importFailed": "A importação falhou",
+    "listFailed": "Falha ao listar os importadores",
+    "previewFailed": "Falha na pré-visualização"
+  },
+  "project": {
+    "archiveFailed": "Falha ao arquivar o projeto",
+    "captureLinkFailed": "Falha ao capturar a ligação",
+    "createFailed": "Falha ao criar o projeto",
+    "deleteFailed": "Falha ao eliminar o projeto",
+    "importFilesFailed": "Falha ao importar os ficheiros",
+    "linkItemFailed": "Falha ao associar o item",
+    "listForItemFailed": "Falha ao listar os projetos do item",
+    "reorderFailed": "Falha ao reordenar os projetos",
+    "setHomeNoteFailed": "Falha ao definir a nota principal",
+    "unlinkItemFailed": "Falha ao desassociar o item",
+    "updateFailed": "Falha ao atualizar o projeto",
+    "updatePinnedFailed": "Falha ao atualizar o estado de fixação"
+  },
+  "property": {
+    "alreadyExists": "A propriedade “{name}” já existe",
+    "createDefinitionFailed": "Falha ao criar a definição de propriedade",
+    "entityNotFound": "Entidade não encontrada",
+    "notFound": "Propriedade “{name}” não encontrada",
+    "renameFailed": "Falha ao mudar o nome da propriedade",
+    "setCalendarVisibilityFailed": "Falha ao definir a visibilidade da propriedade no calendário",
+    "setFailed": "Falha ao definir as propriedades",
+    "updateDefinitionFailed": "Falha ao atualizar a definição de propriedade"
+  },
+  "reminder": {
+    "createFailed": "Falha ao criar o lembrete",
+    "dismissAllFailed": "Falha ao dispensar os lembretes",
+    "dismissFailed": "Falha ao dispensar o lembrete",
+    "notFound": "Lembrete não encontrado",
+    "snoozeFailed": "Falha ao adiar o lembrete",
+    "updateFailed": "Falha ao atualizar o lembrete"
+  },
+  "savedFilter": {
+    "notFound": "Filtro guardado não encontrado"
+  },
+  "search": {
+    "rebuildFailed": "Falha na reconstrução"
+  },
+  "settings": {
+    "modelAlreadyLoading": "O modelo já está a carregar",
+    "modelLoadFailed": "Falha ao carregar o modelo",
+    "shortcutInUse": "O atalho {shortcut} já está a ser utilizado",
+    "terminalCommandInstallFailed": "Falha ao instalar o comando de terminal",
+    "terminalCommandUninstallFailed": "Falha ao desinstalar o comando de terminal",
+    "unknownVault": "Cofre desconhecido",
+    "voiceModelDownloadFailed": "Falha ao transferir o modelo de voz"
+  },
+  "tag": {
+    "categoryNameRequired": "O nome da categoria é obrigatório",
+    "createCategoryFailed": "Falha ao criar a categoria de etiquetas",
+    "deleteCategoryFailed": "Falha ao eliminar a categoria de etiquetas",
+    "deleteFailed": "Falha ao eliminar a etiqueta",
+    "listCategoriesFailed": "Falha ao listar as categorias de etiquetas",
+    "mergeFailed": "Falha ao unir as etiquetas",
+    "mergeSameTag": "A etiqueta de origem e a de destino são a mesma",
+    "pinNoteFailed": "Falha ao fixar a nota",
+    "removeFromNoteFailed": "Falha ao remover a etiqueta da nota",
+    "renameCategoryFailed": "Falha ao mudar o nome da categoria de etiquetas",
+    "renameFailed": "Falha ao mudar o nome da etiqueta",
+    "reorderFailed": "Falha ao reordenar as etiquetas",
+    "unpinNoteFailed": "Falha ao libertar a nota",
+    "updateColorFailed": "Falha ao atualizar a cor da etiqueta",
+    "updateIconFailed": "Falha ao atualizar o ícone da etiqueta"
+  },
+  "task": {
+    "archiveFailed": "Falha ao arquivar a tarefa",
+    "archiveManyFailed": "Falha ao arquivar as tarefas",
+    "completeFailed": "Falha ao concluir a tarefa",
+    "completeManyFailed": "Falha ao concluir as tarefas",
+    "convertToSubtaskFailed": "Falha ao converter em subtarefa",
+    "convertToTaskFailed": "Falha ao converter em tarefa",
+    "createFailed": "Falha ao criar a tarefa",
+    "deleteFailed": "Falha ao eliminar a tarefa",
+    "deleteManyFailed": "Falha ao eliminar as tarefas",
+    "duplicateFailed": "Falha ao duplicar a tarefa",
+    "moveFailed": "Falha ao mover a tarefa",
+    "moveManyFailed": "Falha ao mover as tarefas",
+    "reorderFailed": "Falha ao reordenar as tarefas",
+    "unarchiveFailed": "Falha ao desarquivar a tarefa",
+    "uncompleteFailed": "Falha ao marcar a tarefa como não concluída",
+    "updateFailed": "Falha ao atualizar a tarefa"
+  },
+  "taskStatus": {
+    "createFailed": "Falha ao criar o estado",
+    "deleteFailed": "Falha ao eliminar o estado",
+    "reorderFailed": "Falha ao reordenar os estados",
+    "updateFailed": "Falha ao atualizar o estado"
+  },
+  "template": {
+    "createFailed": "Falha ao criar o modelo",
+    "deleteFailed": "Falha ao eliminar o modelo",
+    "duplicateFailed": "Falha ao duplicar o modelo",
+    "updateFailed": "Falha ao atualizar o modelo"
   }
 }

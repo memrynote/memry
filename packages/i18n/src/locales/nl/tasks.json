@@ -35,7 +35,14 @@
     "delete": "Taak verwijderen",
     "created": "{date} gemaakt",
     "reminder": "Herinnering",
-    "tags": "Tags"
+    "tags": "Tags",
+    "priorityLabels": {
+      "high": "Hoog",
+      "low": "Laag",
+      "medium": "Gemiddeld",
+      "none": "Geen prioriteit",
+      "urgent": "Urgent"
+    }
   },
   "filters": {
     "filter": "Filteren",
@@ -44,7 +51,25 @@
     "groupBy": "Groepeer op",
     "groupByOptions": "Groeperen op opties",
     "sortAscending": "Sorteer oplopend",
-    "sortDescending": "Sorteer aflopend"
+    "sortDescending": "Sorteer aflopend",
+    "dueDate": {
+      "any": "Elke vervaldatum",
+      "custom": "Aangepast bereik...",
+      "nextWeek": "Volgende week",
+      "none": "Geen vervaldatum",
+      "overdue": "Te laat",
+      "thisMonth": "Deze maand",
+      "thisWeek": "Deze week",
+      "today": "Vandaag",
+      "tomorrow": "Morgen"
+    },
+    "quickPresets": {
+      "dueThisWeek": "Vervalt deze week",
+      "highPriority": "Hoge prioriteit",
+      "noDueDate": "Geen vervaldatum",
+      "overdue": "Te laat",
+      "repeating": "Herhalend"
+    }
   },
   "quickAdd": {
     "label": "Snel taak toevoegen",
@@ -77,7 +102,21 @@
     "searchRelated": "Gerelateerde zoeken…"
   },
   "kanban": {
-    "board": "Kanban-bord"
+    "board": "Kanban-bord",
+    "empty": {
+      "default": {
+        "subtitle": "Sleep taken hierheen of klik op + om er een toe te voegen",
+        "title": "Geen taken"
+      },
+      "done": {
+        "subtitle": "Voltooi taken om ze hier te zien",
+        "title": "Geen voltooide taken"
+      },
+      "schedule": {
+        "subtitle": "Sleep taken hierheen om ze opnieuw in te plannen",
+        "title": "Niets gepland"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "Project bijgewerkt",
@@ -100,7 +139,53 @@
     "noCompletedSelected": "Geen voltooide taken geselecteerd",
     "completeFailed": "Kan taken niet voltooien",
     "deleteFailed": "Kan taken niet verwijderen",
-    "moveFailed": "Kan taken niet verplaatsen"
+    "moveFailed": "Kan taken niet verplaatsen",
+    "bulk": {
+      "archived": "{count, plural, one {# taak gearchiveerd} other {# taken gearchiveerd}}",
+      "completed": "{count, plural, one {# taak voltooid} other {# taken voltooid}}",
+      "deleted": "{count, plural, one {# taak verwijderd} other {# taken verwijderd}}",
+      "deletedDescription": "Deze actie kan korte tijd ongedaan worden gemaakt.",
+      "dueDateRemoved": "{count, plural, one {Vervaldatum verwijderd van # taak} other {Vervaldatum verwijderd van # taken}}",
+      "dueDateSet": "{count, plural, one {Vervaldatum ingesteld voor # taak} other {Vervaldatum ingesteld voor # taken}}",
+      "movedToProject": "{count, plural, one {# taak verplaatst naar {project}} other {# taken verplaatst naar {project}}}",
+      "movedToStatus": "{count, plural, one {# taak verplaatst naar {status}} other {# taken verplaatst naar {status}}}",
+      "priorityRemoved": "{count, plural, one {Prioriteit verwijderd voor # taak} other {Prioriteit verwijderd voor # taken}}",
+      "prioritySet": "{count, plural, one {Prioriteit ingesteld op {priority} voor # taak} other {Prioriteit ingesteld op {priority} voor # taken}}",
+      "restored": "{count, plural, one {# taak hersteld} other {# taken hersteld}}",
+      "undoArchive": "{count, plural, one {# taak archiveren} other {# taken archiveren}}",
+      "undoComplete": "{count, plural, one {# taak voltooien} other {# taken voltooien}}",
+      "undoDelete": "{count, plural, one {# taak verwijderen} other {# taken verwijderen}}",
+      "undoDueDate": "{count, plural, one {Vervaldatum gewijzigd voor # taak} other {Vervaldatum gewijzigd voor # taken}}",
+      "undoMove": "{count, plural, one {# taak verplaatsen} other {# taken verplaatsen}}",
+      "undoStatus": "{count, plural, one {Status → {status} voor # taak} other {Status → {status} voor # taken}}",
+      "undoUncomplete": "{count, plural, one {# taak op onvoltooid zetten} other {# taken op onvoltooid zetten}}"
+    },
+    "drag": {
+      "archived": "{count, plural, one {Taak gearchiveerd} other {# taken gearchiveerd}}",
+      "deleted": "{count, plural, one {Taak verwijderd} other {# taken verwijderd}}",
+      "moved": "{count, plural, one {Verplaatst naar {target}} other {# taken verplaatst naar {target}}}",
+      "movedTo": "Verplaatst naar {target}",
+      "prioritySet": "{count, plural, one {Prioriteit ingesteld op {priority}} other {# taken ingesteld op {priority}}}",
+      "prioritySetTo": "Prioriteit ingesteld op {priority}",
+      "rescheduled": "{count, plural, one {Opnieuw gepland naar {target}} other {# taken opnieuw gepland naar {target}}}",
+      "rescheduledTo": "Opnieuw gepland naar {target}",
+      "undoArchive": "{count, plural, one {# taak gearchiveerd} other {# taken gearchiveerd}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, one {# subtaak toegevoegd} other {# subtaken toegevoegd}}",
+      "completed": "{count, plural, one {# subtaak voltooid} other {# subtaken voltooid}}",
+      "deleted": "{count, plural, one {# subtaak verwijderd} other {# subtaken verwijderd}}",
+      "deletedDescription": "De subtaak is verwijderd",
+      "dueDateCleared": "{count, plural, one {Vervaldatum gewist voor # subtaak} other {Vervaldatum gewist voor # subtaken}}",
+      "dueDateSet": "{count, plural, one {Vervaldatum ingesteld voor # subtaak} other {Vervaldatum ingesteld voor # subtaken}}",
+      "markedIncomplete": "{count, plural, one {# subtaak op onvoltooid gezet} other {# subtaken op onvoltooid gezet}}",
+      "movedUnder": "Verplaatst onder “{title}”",
+      "parentAndSubtasksCompleted": "Taak en subtaken voltooid",
+      "parentDeletedKeepSubtasks": "Taak verwijderd, subtaken omgezet naar taken",
+      "parentDeletedWithSubtasks": "Taak en subtaken verwijderd",
+      "prioritySet": "{count, plural, one {Prioriteit ingesteld voor # subtaak} other {Prioriteit ingesteld voor # subtaken}}",
+      "promoted": "“{title}” gepromoveerd tot taak"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -181,7 +266,8 @@
       "nextMonth": "Volgende maand",
       "goToToday": "Ga naar vandaag",
       "today": "Vandaag",
-      "w": "W"
+      "w": "W",
+      "weekNumber": "Week {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Datum verwijderen",
@@ -327,7 +413,11 @@
       "addTime": "Voeg tijd toe",
       "time": "Tijd",
       "clearDate": "Duidelijke datum",
-      "backToOptions": "Terug naar opties"
+      "backToOptions": "Terug naar opties",
+      "nextWeek": "Volgende week",
+      "thisWeekend": "Dit weekend",
+      "today": "Vandaag",
+      "tomorrow": "Morgen"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "Herhalende taak bewerken",
@@ -426,7 +516,17 @@
       "currentFilters": "Huidige filters:",
       "noFiltersApplied": "Geen filters toegepast",
       "cancel": "Annuleer",
-      "saveFilter2": "Filter opslaan"
+      "saveFilter2": "Filter opslaan",
+      "nameRequired": "Voer een naam in voor dit filter",
+      "summaryDue": "Vervaldatum: {value}",
+      "summaryDueRange": "Vervaldatum: {start} - {end}",
+      "summaryPriorities": "Prioriteit: {names}",
+      "summaryProjects": "Project: {names}",
+      "summaryRepeatOneTime": "Herhaling: alleen eenmalig",
+      "summaryRepeatRepeating": "Herhaling: alleen herhalend",
+      "summarySearch": "Zoeken: “{query}”",
+      "summaryTimeWith": "Tijd: met tijdstip",
+      "summaryTimeWithout": "Tijd: zonder tijdstip"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Opgeslagen filters",
@@ -558,7 +658,16 @@
       "d": "d"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "Taak toevoegen"
+      "addTask": "Taak toevoegen",
+      "allDescription": "Maak je eerste taak om te beginnen",
+      "allTitle": "Nog geen taken",
+      "completedDescription": "Voltooide taken verschijnen hier",
+      "completedTitle": "Geen voltooide taken",
+      "projectDescription": "Voeg een taak toe om te beginnen",
+      "projectTitle": "Geen taken in dit project",
+      "projectTitleNamed": "Geen taken in {name}",
+      "todayDescription": "Je bent helemaal bij!",
+      "todayTitle": "Vandaag niets te doen"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "geen prioriteit"
@@ -742,5 +851,42 @@
       "overview": "Overzicht",
       "tasks": "Taken"
     }
+  },
+  "priorityInline": {
+    "high": "hoog",
+    "low": "laag",
+    "medium": "gemiddeld",
+    "urgent": "urgent"
+  },
+  "priorityLabels": {
+    "high": "Hoog",
+    "low": "Laag",
+    "medium": "Gemiddeld",
+    "none": "Geen prioriteit",
+    "urgent": "Urgent"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "Klaar",
+      "inProgress": "In uitvoering",
+      "todo": "Te doen"
+    },
+    "validation": {
+      "minStatuses": "Projecten hebben minstens 2 statussen nodig",
+      "nameRequired": "Projectnaam is vereist",
+      "nameTooLong": "De projectnaam mag maximaal 50 tekens bevatten",
+      "needsDoneStatus": "Projecten hebben minstens één status 'Klaar' nodig",
+      "needsDoneStatusForCompletedTasks": "Projecten hebben minstens één status 'Klaar' nodig voor voltooide taken",
+      "needsTodoStatus": "Projecten hebben minstens één status 'Te doen' nodig",
+      "needsTodoStatusForNewTasks": "Projecten hebben minstens één status 'Te doen' nodig voor nieuwe taken",
+      "statusNameRequired": "Alle statussen moeten een naam hebben",
+      "statusNamesUnique": "Statusnamen moeten uniek zijn",
+      "statusNotFound": "Status niet gevonden"
+    }
+  },
+  "statusLabels": {
+    "done": "Klaar",
+    "inProgress": "In uitvoering",
+    "todo": "Te doen"
   }
 }

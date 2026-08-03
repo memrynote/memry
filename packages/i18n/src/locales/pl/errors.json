@@ -22,7 +22,19 @@
     "writeFailed": "Nie udało się zapisać tej notatki. Sprawdź miejsce na dysku i uprawnienia.",
     "readFailed": "Nie udało się odczytać tej notatki. Plik może być zablokowany lub uszkodzony.",
     "deleteFailed": "Nie udało się usunąć tej notatki. Sprawdź uprawnienia do plików.",
-    "invalidPath": "Ścieżka notatki jest nieprawidłowa."
+    "invalidPath": "Ścieżka notatki jest nieprawidłowa.",
+    "applyTemplateFailed": "Nie udało się zastosować szablonu",
+    "createFailed": "Nie udało się utworzyć notatki",
+    "deleteVersionFailed": "Nie udało się usunąć wersji",
+    "exportHtmlFailed": "Nie udało się wyeksportować HTML",
+    "exportPdfFailed": "Nie udało się wyeksportować PDF",
+    "importFilesFailed": "Nie udało się zaimportować plików",
+    "moveFailed": "Nie udało się przenieść notatki",
+    "renameFailed": "Nie udało się zmienić nazwy notatki",
+    "reorderFailed": "Nie udało się zmienić kolejności notatek",
+    "restoreVersionFailed": "Nie udało się przywrócić wersji",
+    "setLocalOnlyFailed": "Nie udało się ustawić trybu tylko lokalnego",
+    "updateFailed": "Nie udało się zaktualizować notatki"
   },
   "database": {
     "connectionFailed": "Nie można połączyć się z lokalną bazą danych. Spróbuj ponownie uruchomić aplikację.",
@@ -41,7 +53,11 @@
     "fileTooLarge": "Ten plik jest zbyt duży, aby go załączyć.",
     "unsupportedType": "Ten typ pliku nie jest obsługiwany.",
     "writeFailed": "Nie udało się zapisać załącznika. Sprawdź miejsce na dysku.",
-    "deleteFailed": "Nie udało się usunąć załącznika."
+    "deleteFailed": "Nie udało się usunąć załącznika.",
+    "downloadFailed": "Pobieranie załącznika nie powiodło się",
+    "downloadProgressFailed": "Nie udało się pobrać postępu pobierania",
+    "uploadFailed": "Przesyłanie załącznika nie powiodło się",
+    "uploadProgressFailed": "Nie udało się pobrać postępu przesyłania"
   },
   "encryption": {
     "failed": "Nie udało się zaszyfrować danych. Twoje klucze mogą wymagać regeneracji.",
@@ -77,6 +93,184 @@
     "paymentRequired": "Do korzystania z hostowanej szyfrowanej synchronizacji wymagany jest płatny plan Sync.",
     "attachmentUploadFailed": "Nie udało się zsynchronizować załącznika „{filename}”. Pozostaje na tym urządzeniu.",
     "fileTooLarge": "Ten plik przekracza limit Twojego planu. Uaktualnij plan, aby synchronizować większe pliki.",
-    "vaultRecovered": "Klucz skarbca został przywrócony. Synchronizacja zostanie wznowiona."
+    "vaultRecovered": "Klucz skarbca został przywrócony. Synchronizacja zostanie wznowiona.",
+    "historyFetchFailed": "Nie udało się pobrać historii synchronizacji",
+    "keyPersistenceFailed": "Nie udało się bezpiecznie zapisać klucza szyfrowania. Rejestracja urządzenia została wycofana. Spróbuj ponownie.",
+    "serverUnreachable": "Nie można połączyć się z serwerem synchronizacji. Sprawdź połączenie internetowe.",
+    "updateSyncedSettingFailed": "Nie udało się zaktualizować synchronizowanego ustawienia"
+  },
+  "agent": {
+    "conversationBusy": "Rozmowa jest zajęta",
+    "runtimeStarting": "Środowisko agenta się uruchamia. Spróbuj ponownie."
+  },
+  "ai": {
+    "inlineDisabled": "Edycja AI w tekście jest wyłączona",
+    "listOllamaModelsFailed": "Nie udało się pobrać listy modeli Ollama"
+  },
+  "auth": {
+    "approveLinkingFailed": "Nie udało się zatwierdzić łączenia",
+    "cannotRemoveCurrentDevice": "Nie można usunąć bieżącego urządzenia",
+    "completeLinkingFailed": "Nie udało się zakończyć łączenia",
+    "confirmRecoveryPhraseFailed": "Nie udało się potwierdzić frazy odzyskiwania",
+    "fetchSasCodeFailed": "Nie udało się pobrać kodu SAS",
+    "finalizeVaultChoiceFailed": "Nie udało się sfinalizować wyboru skarbca",
+    "initiateOAuthFailed": "Nie udało się rozpocząć OAuth",
+    "invalidRecoveryPhraseFormat": "Nieprawidłowy format frazy odzyskiwania",
+    "linkDeviceQrFailed": "Nie udało się połączyć urządzenia przez kod QR",
+    "linkRecoveryPhraseFailed": "Nie udało się połączyć za pomocą frazy odzyskiwania",
+    "notAuthenticated": "Brak uwierzytelnienia",
+    "pickFolderFailed": "Nie udało się wybrać folderu",
+    "recoveryPhraseMismatch": "Fraza odzyskiwania nie pasuje. Spróbuj ponownie.",
+    "removeDeviceFailed": "Nie udało się usunąć urządzenia",
+    "renameDeviceFailed": "Nie udało się zmienić nazwy urządzenia",
+    "requestOtpFailed": "Nie udało się poprosić o kod OTP",
+    "resendOtpFailed": "Nie udało się ponownie wysłać kodu OTP",
+    "sessionExpired": "Sesja wygasła. Zaloguj się ponownie.",
+    "setupFirstDeviceOAuthFailed": "Nie udało się skonfigurować pierwszego urządzenia przez OAuth",
+    "verifyOtpFailed": "Nie udało się zweryfikować kodu OTP"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "Element jest już w zakładkach",
+    "notFound": "Nie znaleziono zakładki"
+  },
+  "calendar": {
+    "connectProviderFailed": "Nie udało się połączyć dostawcy kalendarza",
+    "createEventFailed": "Nie udało się utworzyć wydarzenia w kalendarzu",
+    "deleteEventFailed": "Nie udało się usunąć wydarzenia z kalendarza",
+    "disconnectProviderFailed": "Nie udało się rozłączyć dostawcy kalendarza",
+    "eventNotFound": "Nie znaleziono wydarzenia w kalendarzu",
+    "googleNotConnected": "Google Calendar nie jest połączony na tym urządzeniu",
+    "listGoogleCalendarsFailed": "Nie udało się pobrać listy kalendarzy Google",
+    "onlyGoogleSourcesRetryable": "Tylko źródła kalendarza Google można ponowić",
+    "onlySourcesSelectable": "Można wybrać tylko źródła kalendarza",
+    "promoteExternalEventFailed": "Nie udało się przekształcić zewnętrznego wydarzenia kalendarza",
+    "refreshProviderFailed": "Nie udało się odświeżyć dostawcy kalendarza",
+    "retryGoogleSourceSyncFailed": "Nie udało się ponowić synchronizacji źródła Google Calendar",
+    "setDefaultGoogleCalendarFailed": "Nie udało się ustawić domyślnego kalendarza Google",
+    "signInBeforeRefresh": "Zaloguj się do memrynote przed odświeżeniem Google Calendar",
+    "sourceNotFound": "Nie znaleziono źródła kalendarza",
+    "syncFailed": "Synchronizacja nie powiodła się",
+    "updateEventFailed": "Nie udało się zaktualizować wydarzenia w kalendarzu",
+    "updateSourceSelectionFailed": "Nie udało się zaktualizować wyboru źródeł kalendarza"
+  },
+  "folder": {
+    "createFailed": "Nie udało się utworzyć folderu",
+    "deleteFailed": "Nie udało się usunąć folderu",
+    "renameFailed": "Nie udało się zmienić nazwy folderu",
+    "setConfigFailed": "Nie udało się zapisać konfiguracji folderu"
+  },
+  "folderView": {
+    "deleteViewFailed": "Nie udało się usunąć widoku",
+    "setConfigFailed": "Nie udało się zapisać konfiguracji",
+    "setViewFailed": "Nie udało się ustawić widoku"
+  },
+  "googleCalendar": {
+    "accessDenied": "Dostęp do Google Calendar został odrzucony. Możesz połączyć się ponownie, kiedy tylko zechcesz.",
+    "connectFailed": "Nie udało się połączyć z Google Calendar. Spróbuj ponownie za chwilę.",
+    "misconfigured": "Google Calendar nie jest poprawnie skonfigurowany. Jeśli to się powtarza, skontaktuj się z pomocą techniczną.",
+    "reconnectNeeded": "Połączenie z Google Calendar wygasło. Rozłącz je i połącz ponownie.",
+    "scopeMissing": "Nie udało się uzyskać dostępu do Google Calendar, ponieważ nie przyznano uprawnienia do kalendarza. Spróbuj ponownie i upewnij się, że pole wyboru Kalendarz pozostaje zaznaczone na ekranie zgody Google.",
+    "temporarilyUnavailable": "Google Calendar jest chwilowo niedostępny. Spróbuj ponownie za chwilę."
+  },
+  "importer": {
+    "cancelFailed": "Anulowanie nie powiodło się",
+    "fileSelectionFailed": "Wybór pliku nie powiódł się",
+    "importFailed": "Import nie powiódł się",
+    "listFailed": "Nie udało się pobrać listy importerów",
+    "previewFailed": "Podgląd nie powiódł się"
+  },
+  "project": {
+    "archiveFailed": "Nie udało się zarchiwizować projektu",
+    "captureLinkFailed": "Nie udało się przechwycić linku",
+    "createFailed": "Nie udało się utworzyć projektu",
+    "deleteFailed": "Nie udało się usunąć projektu",
+    "importFilesFailed": "Nie udało się zaimportować plików",
+    "linkItemFailed": "Nie udało się powiązać elementu",
+    "listForItemFailed": "Nie udało się pobrać listy projektów dla elementu",
+    "reorderFailed": "Nie udało się zmienić kolejności projektów",
+    "setHomeNoteFailed": "Nie udało się ustawić notatki głównej",
+    "unlinkItemFailed": "Nie udało się usunąć powiązania elementu",
+    "updateFailed": "Nie udało się zaktualizować projektu",
+    "updatePinnedFailed": "Nie udało się zaktualizować przypięcia"
+  },
+  "property": {
+    "alreadyExists": "Właściwość „{name}” już istnieje",
+    "createDefinitionFailed": "Nie udało się utworzyć definicji właściwości",
+    "entityNotFound": "Nie znaleziono elementu",
+    "notFound": "Nie znaleziono właściwości „{name}”",
+    "renameFailed": "Nie udało się zmienić nazwy właściwości",
+    "setCalendarVisibilityFailed": "Nie udało się ustawić widoczności właściwości w kalendarzu",
+    "setFailed": "Nie udało się ustawić właściwości",
+    "updateDefinitionFailed": "Nie udało się zaktualizować definicji właściwości"
+  },
+  "reminder": {
+    "createFailed": "Nie udało się utworzyć przypomnienia",
+    "dismissAllFailed": "Nie udało się odrzucić przypomnień",
+    "dismissFailed": "Nie udało się odrzucić przypomnienia",
+    "notFound": "Nie znaleziono przypomnienia",
+    "snoozeFailed": "Nie udało się odłożyć przypomnienia",
+    "updateFailed": "Nie udało się zaktualizować przypomnienia"
+  },
+  "savedFilter": {
+    "notFound": "Nie znaleziono zapisanego filtra"
+  },
+  "search": {
+    "rebuildFailed": "Przebudowa nie powiodła się"
+  },
+  "settings": {
+    "modelAlreadyLoading": "Model już się wczytuje",
+    "modelLoadFailed": "Nie udało się wczytać modelu",
+    "shortcutInUse": "Skrót {shortcut} jest już używany",
+    "terminalCommandInstallFailed": "Nie udało się zainstalować polecenia terminala",
+    "terminalCommandUninstallFailed": "Nie udało się odinstalować polecenia terminala",
+    "unknownVault": "Nieznany skarbiec",
+    "voiceModelDownloadFailed": "Nie udało się pobrać modelu głosu"
+  },
+  "tag": {
+    "categoryNameRequired": "Nazwa kategorii jest wymagana",
+    "createCategoryFailed": "Nie udało się utworzyć kategorii tagów",
+    "deleteCategoryFailed": "Nie udało się usunąć kategorii tagów",
+    "deleteFailed": "Nie udało się usunąć tagu",
+    "listCategoriesFailed": "Nie udało się pobrać listy kategorii tagów",
+    "mergeFailed": "Nie udało się scalić tagów",
+    "mergeSameTag": "Tag źródłowy i docelowy są takie same",
+    "pinNoteFailed": "Nie udało się przypiąć notatki",
+    "removeFromNoteFailed": "Nie udało się usunąć tagu z notatki",
+    "renameCategoryFailed": "Nie udało się zmienić nazwy kategorii tagów",
+    "renameFailed": "Nie udało się zmienić nazwy tagu",
+    "reorderFailed": "Nie udało się zmienić kolejności tagów",
+    "unpinNoteFailed": "Nie udało się odpiąć notatki",
+    "updateColorFailed": "Nie udało się zaktualizować koloru tagu",
+    "updateIconFailed": "Nie udało się zaktualizować ikony tagu"
+  },
+  "task": {
+    "archiveFailed": "Nie udało się zarchiwizować zadania",
+    "archiveManyFailed": "Nie udało się zarchiwizować zadań",
+    "completeFailed": "Nie udało się ukończyć zadania",
+    "completeManyFailed": "Nie udało się ukończyć zadań",
+    "convertToSubtaskFailed": "Nie udało się zamienić na podzadanie",
+    "convertToTaskFailed": "Nie udało się zamienić na zadanie",
+    "createFailed": "Nie udało się utworzyć zadania",
+    "deleteFailed": "Nie udało się usunąć zadania",
+    "deleteManyFailed": "Nie udało się usunąć zadań",
+    "duplicateFailed": "Nie udało się zduplikować zadania",
+    "moveFailed": "Nie udało się przenieść zadania",
+    "moveManyFailed": "Nie udało się przenieść zadań",
+    "reorderFailed": "Nie udało się zmienić kolejności zadań",
+    "unarchiveFailed": "Nie udało się przywrócić zadania z archiwum",
+    "uncompleteFailed": "Nie udało się cofnąć ukończenia zadania",
+    "updateFailed": "Nie udało się zaktualizować zadania"
+  },
+  "taskStatus": {
+    "createFailed": "Nie udało się utworzyć statusu",
+    "deleteFailed": "Nie udało się usunąć statusu",
+    "reorderFailed": "Nie udało się zmienić kolejności statusów",
+    "updateFailed": "Nie udało się zaktualizować statusu"
+  },
+  "template": {
+    "createFailed": "Nie udało się utworzyć szablonu",
+    "deleteFailed": "Nie udało się usunąć szablonu",
+    "duplicateFailed": "Nie udało się zduplikować szablonu",
+    "updateFailed": "Nie udało się zaktualizować szablonu"
   }
 }

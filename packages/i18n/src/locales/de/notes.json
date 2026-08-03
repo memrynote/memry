@@ -252,7 +252,12 @@
       "multiselect": "Mehrfachauswahl"
     },
     "showOnCalendar": "Im Kalender anzeigen",
-    "showingOnCalendar": "Wird im Kalender angezeigt"
+    "showingOnCalendar": "Wird im Kalender angezeigt",
+    "statusCategories": {
+      "done": "Abgeschlossen",
+      "inProgress": "In Bearbeitung",
+      "todo": "Zu erledigen"
+    }
   },
   "templateSelector": {
     "title": "Wählen Sie Ihre Leinwand",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "Tag-Name",
     "uncategorized": "Ohne Kategorie"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (Doppelklick zum Bearbeiten)"
+    },
+    "columns": {
+      "created": "Erstellt",
+      "folder": "Ordner",
+      "kind": "Art",
+      "modified": "Geändert",
+      "tags": "Tags",
+      "title": "Titel",
+      "wordCount": "Wortanzahl"
+    },
+    "defaultViewName": "Standard",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# Notiz} other {# Notizen}}"
+    },
+    "selectView": "Ansicht auswählen"
   }
 }

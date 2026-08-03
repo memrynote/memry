@@ -25,7 +25,8 @@
     "expand": "Expandir",
     "collapse": "Colapso",
     "showMore": "+{count, plural, one {# más} other {# más}}",
-    "showLess": "Mostrar menos"
+    "showLess": "Mostrar menos",
+    "undo": "Deshacer"
   },
   "tabs": {
     "pin": "Pestaña Fijar",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "hoy",
     "yesterday": "ayer",
-    "daysAgo": "{count, plural, one {# hace un día} other {# hace días}}"
+    "daysAgo": "{count, plural, one {# hace un día} other {# hace días}}",
+    "daysLate": "{count, plural, one {#d de retraso} many {#d de retraso} other {#d de retraso}}",
+    "daysOverdue": "{count, plural, one {# día de retraso} many {# días de retraso} other {# días de retraso}}",
+    "tomorrow": "mañana"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {todos los dias} other {Cada # días}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Cada mes en el {day}{suffix}} other {Cada # meses en {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Cada mes en el {week} {day}} other {Cada # meses en {week} {day}}}",
     "everyNYears": "{count, plural, one {Cada año} other {Cada # años}}",
-    "repeats": "Se repite"
+    "repeats": "Se repite",
+    "ordinal": {
+      "first": "primer",
+      "fourth": "cuarto",
+      "last": "último",
+      "second": "segundo",
+      "third": "tercer"
+    },
+    "preset": {
+      "everyWeekday": "Todos los días laborables (lun-vie)",
+      "everyYearOnDate": "Cada año el {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -640,6 +655,11 @@
     "welcome": {
       "body": "Tu hogar privado y con prioridad sin conexión. Las notas están cifradas de extremo a extremo: nunca salen de tu dispositivo sin cifrar.",
       "title": "Te damos la bienvenida a MemryNote"
+    },
+    "tour": {
+      "next": "Siguiente",
+      "previous": "Anterior",
+      "progress": "{current} de {total}"
     }
   },
   "updatePrompt": {
@@ -696,5 +716,125 @@
     "sectionLabel": "Lienzos",
     "tooLargeToSync": "Este lienzo es demasiado grande para sincronizarlo. Está guardado en este dispositivo, pero no llegará a los demás hasta que ocupe menos.",
     "untitled": "Lienzo sin título"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Clic en la fila",
+      "reset": "Restablecer",
+      "shortcutsTab": "Pestaña Atajos"
+    },
+    "description": "Rutas rápidas para moverte por memrynote, capturar ideas y procesar tu trabajo.",
+    "groups": {
+      "general": {
+        "description": "Navegación y ayuda en toda la app.",
+        "title": "General"
+      },
+      "inbox": {
+        "description": "Procesa rápidamente los elementos capturados.",
+        "title": "Bandeja de entrada"
+      },
+      "journal": {
+        "description": "Navega por las vistas del diario y enfoca el área de escritura.",
+        "title": "Diario"
+      },
+      "notes": {
+        "description": "Escribe, da formato y busca notas.",
+        "title": "Notas / Editor"
+      },
+      "settings": {
+        "description": "Abre los ajustes y personaliza los atajos.",
+        "title": "Ajustes"
+      },
+      "tabs": {
+        "description": "Muévete entre pestañas y paneles.",
+        "title": "Pestañas y divisiones"
+      },
+      "tasks": {
+        "description": "Filtra, selecciona y completa tareas.",
+        "title": "Tareas"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Crear una nota",
+        "keyboardShortcuts": "Abrir los atajos de teclado",
+        "openSettings": "Abrir los ajustes",
+        "quickSearch": "Abrir la búsqueda rápida",
+        "sidebarSection": "Ir a una sección de la barra lateral",
+        "toggleSidebar": "Alternar la barra lateral",
+        "undoTaskAction": "Deshacer la última acción de tarea"
+      },
+      "inbox": {
+        "archiveItem": "Archivar el elemento seleccionado",
+        "chooseQuickFileResult": "Elegir un resultado de archivado rápido",
+        "clearSelection": "Borrar la selección o cerrar el archivado rápido",
+        "confirmFiling": "Confirmar el panel de archivado",
+        "firstOrLastItem": "Primer o último elemento",
+        "jumpByPage": "Saltar de página en página",
+        "nextItem": "Elemento siguiente",
+        "openOriginal": "Abrir el enlace original",
+        "openQuickFile": "Abrir el archivado rápido",
+        "previousItem": "Elemento anterior",
+        "refresh": "Actualizar la bandeja de entrada",
+        "selectAllVisible": "Seleccionar todos los elementos visibles",
+        "selectItem": "Seleccionar elemento",
+        "togglePreview": "Alternar el panel de vista previa"
+      },
+      "journal": {
+        "bold": "Poner en negrita el texto seleccionado",
+        "find": "Buscar en el diario",
+        "italic": "Poner en cursiva el texto seleccionado",
+        "link": "Añadir o editar un enlace",
+        "returnFromOverview": "Volver desde la vista de mes o de año",
+        "toggleFullWidth": "Alternar el diario a ancho completo",
+        "underline": "Subrayar el texto seleccionado"
+      },
+      "notes": {
+        "bold": "Negrita",
+        "closeOverlays": "Cerrar las capas del editor",
+        "commandMenu": "Abrir el menú de comandos del editor",
+        "createNote": "Crear una nota",
+        "find": "Buscar en la nota",
+        "italic": "Cursiva",
+        "link": "Añadir o editar un enlace",
+        "saveNote": "Guardar la nota actual",
+        "underline": "Subrayado"
+      },
+      "settings": {
+        "cancelRecording": "Cancelar la grabación del atajo",
+        "customizeShortcuts": "Personalizar los atajos de teclado",
+        "openSettings": "Abrir los ajustes",
+        "recordShortcut": "Grabar un atajo nuevo",
+        "resetShortcut": "Restaurar un atajo predeterminado"
+      },
+      "tabs": {
+        "closeAllInPane": "Cerrar todas las pestañas del panel",
+        "closeSplitPane": "Cerrar el panel dividido",
+        "closeTab": "Cerrar la pestaña",
+        "duplicateTab": "Duplicar la pestaña",
+        "focusPane": "Enfocar otro panel",
+        "maximizePane": "Maximizar el panel actual",
+        "moveTabToPane": "Mover la pestaña a otro panel",
+        "newTabMenu": "Abrir el menú de nueva pestaña",
+        "nextTab": "Pestaña siguiente",
+        "pinTab": "Fijar o dejar de fijar la pestaña",
+        "previousTab": "Pestaña anterior",
+        "reopenClosedTab": "Reabrir la pestaña cerrada",
+        "splitDown": "Dividir hacia abajo",
+        "splitRight": "Dividir a la derecha"
+      },
+      "tasks": {
+        "clearFilters": "Borrar los filtros visibles",
+        "clearSelection": "Borrar la selección de tareas",
+        "completeSelected": "Completar las tareas seleccionadas",
+        "configureRepeat": "Configurar la repetición de la tarea enfocada",
+        "deleteSelected": "Eliminar las tareas seleccionadas",
+        "selectAllVisible": "Seleccionar todas las tareas visibles",
+        "skipOccurrence": "Omitir esta repetición",
+        "stopRepeating": "Dejar de repetir la tarea"
+      }
+    },
+    "or": "o",
+    "then": "luego"
   }
 }

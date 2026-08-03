@@ -28,6 +28,13 @@
       "readyDetailFallback": "Riavvia memrynote per completare l'installazione dell'aggiornamento.",
       "buttonRestartNow": "Ricomincia adesso",
       "releaseNotesLabel": "Note sulla versione:"
+    },
+    "pair": {
+      "buttonAllow": "Consenti",
+      "buttonDeny": "Nega",
+      "buttonPair": "Abbina",
+      "message": "Consentire all'estensione browser di Memry di inviare catture a questa app?",
+      "title": "Abbina l'estensione del browser"
     }
   },
   "notification": {
@@ -50,5 +57,15 @@
     "definitionNotFound": "Definizione non trovata",
     "noteNotFound": "Nota non trovata",
     "updateFailed": "Aggiornamento non riuscito"
+  },
+  "startup": {
+    "failed": {
+      "body": "Può succedere quando lo spazio libero su disco è molto ridotto o con driver grafici datati. Prova a liberare spazio su disco, poi riapri MemryNote. Se continua a succedere, di solito basta reinstallare.",
+      "title": "MemryNote non ha completato l'avvio"
+    },
+    "installingUpdate": {
+      "subtitle": "MemryNote si riaprirà automaticamente.",
+      "title": "Installazione dell'aggiornamento…"
+    }
   }
 }

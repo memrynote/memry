@@ -252,7 +252,12 @@
       "multiselect": "다중 선택"
     },
     "showOnCalendar": "캘린더에 표시",
-    "showingOnCalendar": "캘린더에 표시 중"
+    "showingOnCalendar": "캘린더에 표시 중",
+    "statusCategories": {
+      "done": "완료",
+      "inProgress": "진행 중",
+      "todo": "할 일"
+    }
   },
   "templateSelector": {
     "title": "캔버스를 선택하세요",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "태그 이름",
     "uncategorized": "미분류"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (더블 클릭하여 편집)"
+    },
+    "columns": {
+      "created": "만든 날짜",
+      "folder": "폴더",
+      "kind": "종류",
+      "modified": "수정한 날짜",
+      "tags": "태그",
+      "title": "제목",
+      "wordCount": "단어 수"
+    },
+    "defaultViewName": "기본값",
+    "groupHeader": {
+      "noteCount": "{count, plural, other {메모 #개}}"
+    },
+    "selectView": "보기 선택"
   }
 }

@@ -25,7 +25,8 @@
     "expand": "הרחב",
     "collapse": "התמוטט",
     "showMore": "+{count, plural, one {# יותר} other {# יותר}}",
-    "showLess": "הצג פחות"
+    "showLess": "הצג פחות",
+    "undo": "בטל"
   },
   "tabs": {
     "pin": "הצמד כרטיסייה",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "היום",
     "yesterday": "אתמול",
-    "daysAgo": "{count, plural, one {# לפני יום} other {# לפני ימים}}"
+    "daysAgo": "{count, plural, one {# לפני יום} other {# לפני ימים}}",
+    "daysLate": "{count, plural, one {באיחור של # יום} two {באיחור של # ימים} other {באיחור של # ימים}}",
+    "daysOverdue": "{count, plural, one {# יום באיחור} two {# ימים באיחור} other {# ימים באיחור}}",
+    "tomorrow": "מחר"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {כל יום} other {כל # ימים}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {כל חודש ב-{day}{suffix}} other {כל # חודשים ב-{day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {כל חודש ב-{week} {day}} other {כל # חודשים ב-{week} {day}}}",
     "everyNYears": "{count, plural, one {כל שנה} other {כל # שנים}}",
-    "repeats": "חוזר"
+    "repeats": "חוזר",
+    "ordinal": {
+      "first": "ראשון",
+      "fourth": "רביעי",
+      "last": "אחרון",
+      "second": "שני",
+      "third": "שלישי"
+    },
+    "preset": {
+      "everyWeekday": "בכל יום חול (שני-שישי)",
+      "everyYearOnDate": "כל שנה ב-{date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -640,6 +655,11 @@
     "welcome": {
       "body": "הבית הפרטי שלך, שמתחיל במצב לא מקוון. פתקים מוצפנים מקצה לקצה — הם אף פעם לא עוזבים את המכשיר שלך ללא הצפנה.",
       "title": "ברוך הבא ל-MemryNote"
+    },
+    "tour": {
+      "next": "הבא",
+      "previous": "הקודם",
+      "progress": "{current} מתוך {total}"
     }
   },
   "updatePrompt": {
@@ -696,5 +716,125 @@
     "sectionLabel": "קנבסים",
     "tooLargeToSync": "הקנבס הזה גדול מכדי להסתנכרן. הוא נשמר במכשיר הזה, אך לא יגיע למכשירים האחרים שלך עד שיקטן.",
     "untitled": "קנבס ללא כותרת"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "לחיצה על שורה",
+      "reset": "איפוס",
+      "shortcutsTab": "כרטיסיית הקיצורים"
+    },
+    "description": "דרכים מהירות לנווט ב-memrynote, ללכוד מחשבות ולעבד עבודה.",
+    "groups": {
+      "general": {
+        "description": "ניווט ועזרה בכל האפליקציה.",
+        "title": "כללי"
+      },
+      "inbox": {
+        "description": "עבד במהירות פריטים שנלכדו.",
+        "title": "תיבת דואר נכנס"
+      },
+      "journal": {
+        "description": "נווט בתצוגות היומן והתמקד באזור הכתיבה.",
+        "title": "יומן"
+      },
+      "notes": {
+        "description": "כתוב, עצב וחפש הערות.",
+        "title": "הערות / עורך"
+      },
+      "settings": {
+        "description": "פתח את ההגדרות והתאם קיצורים אישית.",
+        "title": "הגדרות"
+      },
+      "tabs": {
+        "description": "עבור בין כרטיסיות וחלוניות.",
+        "title": "כרטיסיות ופיצולים"
+      },
+      "tasks": {
+        "description": "סנן, בחר והשלם משימות.",
+        "title": "משימות"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "צור הערה",
+        "keyboardShortcuts": "פתח את קיצורי המקלדת",
+        "openSettings": "פתח את ההגדרות",
+        "quickSearch": "פתח חיפוש מהיר",
+        "sidebarSection": "עבור לקטע בסרגל הצד",
+        "toggleSidebar": "החלף את סרגל הצד",
+        "undoTaskAction": "בטל את פעולת המשימה האחרונה"
+      },
+      "inbox": {
+        "archiveItem": "העבר לארכיון את הפריט הנבחר",
+        "chooseQuickFileResult": "בחר תוצאת תיוק מהיר",
+        "clearSelection": "נקה בחירה או סגור תיוק מהיר",
+        "confirmFiling": "אשר את חלונית התיוק",
+        "firstOrLastItem": "פריט ראשון או אחרון",
+        "jumpByPage": "דלג עמוד שלם",
+        "nextItem": "הפריט הבא",
+        "openOriginal": "פתח את הקישור המקורי",
+        "openQuickFile": "פתח תיוק מהיר",
+        "previousItem": "הפריט הקודם",
+        "refresh": "רענן את תיבת הדואר הנכנס",
+        "selectAllVisible": "בחר את כל הפריטים הגלויים",
+        "selectItem": "בחר פריט",
+        "togglePreview": "החלף את חלונית התצוגה המקדימה"
+      },
+      "journal": {
+        "bold": "הדגש את הטקסט הנבחר",
+        "find": "חפש ביומן",
+        "italic": "הטה את הטקסט הנבחר",
+        "link": "הוסף או ערוך קישור",
+        "returnFromOverview": "חזור מתצוגת חודש או שנה",
+        "toggleFullWidth": "החלף יומן ברוחב מלא",
+        "underline": "הוסף קו תחתון לטקסט הנבחר"
+      },
+      "notes": {
+        "bold": "מודגש",
+        "closeOverlays": "סגור את שכבות העורך",
+        "commandMenu": "פתח את תפריט הפקודות של העורך",
+        "createNote": "צור הערה",
+        "find": "חפש בהערה",
+        "italic": "נטוי",
+        "link": "הוסף או ערוך קישור",
+        "saveNote": "שמור את ההערה הנוכחית",
+        "underline": "קו תחתון"
+      },
+      "settings": {
+        "cancelRecording": "בטל את הקלטת הקיצור",
+        "customizeShortcuts": "התאם אישית קיצורי מקלדת",
+        "openSettings": "פתח את ההגדרות",
+        "recordShortcut": "הקלט קיצור חדש",
+        "resetShortcut": "שחזר קיצור לברירת המחדל"
+      },
+      "tabs": {
+        "closeAllInPane": "סגור את כל הכרטיסיות בחלונית",
+        "closeSplitPane": "סגור את החלונית המפוצלת",
+        "closeTab": "סגור כרטיסייה",
+        "duplicateTab": "שכפל כרטיסייה",
+        "focusPane": "התמקד בחלונית אחרת",
+        "maximizePane": "הגדל את החלונית הנוכחית",
+        "moveTabToPane": "העבר כרטיסייה לחלונית",
+        "newTabMenu": "פתח את תפריט הכרטיסייה החדשה",
+        "nextTab": "הכרטיסייה הבאה",
+        "pinTab": "הצמד או בטל הצמדה של כרטיסייה",
+        "previousTab": "הכרטיסייה הקודמת",
+        "reopenClosedTab": "פתח מחדש כרטיסייה שנסגרה",
+        "splitDown": "פצל למטה",
+        "splitRight": "פצל ימינה"
+      },
+      "tasks": {
+        "clearFilters": "נקה את המסננים הגלויים",
+        "clearSelection": "נקה את בחירת המשימות",
+        "completeSelected": "השלם את המשימות הנבחרות",
+        "configureRepeat": "הגדר חזרה למשימה שבמיקוד",
+        "deleteSelected": "מחק את המשימות הנבחרות",
+        "selectAllVisible": "בחר את כל המשימות הגלויות",
+        "skipOccurrence": "דלג על מופע החזרה",
+        "stopRepeating": "הפסק את חזרת המשימה"
+      }
+    },
+    "or": "או",
+    "then": "ואז"
   }
 }

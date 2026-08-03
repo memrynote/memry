@@ -35,7 +35,14 @@
     "delete": "ลบภารกิจ",
     "created": "สร้างเมื่อ {date}",
     "reminder": "การเตือน",
-    "tags": "แท็ก"
+    "tags": "แท็ก",
+    "priorityLabels": {
+      "high": "สูง",
+      "low": "ต่ำ",
+      "medium": "ปานกลาง",
+      "none": "ไม่มีลำดับความสำคัญ",
+      "urgent": "ด่วน"
+    }
   },
   "filters": {
     "filter": "  \nกรอง  ",
@@ -44,7 +51,25 @@
     "groupBy": "จัดกลุ่มตาม",
     "groupByOptions": "ตัวเลือกการจัดกลุ่ม",
     "sortAscending": "เรียงลำดับจากน้อยไปมาก",
-    "sortDescending": "เรียงลำดับจากมากไปน้อย"
+    "sortDescending": "เรียงลำดับจากมากไปน้อย",
+    "dueDate": {
+      "any": "วันครบกำหนดใดก็ได้",
+      "custom": "ช่วงที่กำหนดเอง...",
+      "nextWeek": "สัปดาห์หน้า",
+      "none": "ไม่มีวันครบกำหนด",
+      "overdue": "เลยกำหนด",
+      "thisMonth": "เดือนนี้",
+      "thisWeek": "สัปดาห์นี้",
+      "today": "วันนี้",
+      "tomorrow": "พรุ่งนี้"
+    },
+    "quickPresets": {
+      "dueThisWeek": "ครบกำหนดสัปดาห์นี้",
+      "highPriority": "ลำดับความสำคัญสูง",
+      "noDueDate": "ไม่มีวันครบกำหนด",
+      "overdue": "เลยกำหนด",
+      "repeating": "ทำซ้ำ"
+    }
   },
   "quickAdd": {
     "label": "เพิ่มงานอย่างรวดเร็ว",
@@ -77,7 +102,21 @@
     "searchRelated": "ค้นหาที่เกี่ยวข้อง…"
   },
   "kanban": {
-    "board": "บอร์ดคานบัน"
+    "board": "บอร์ดคานบัน",
+    "empty": {
+      "default": {
+        "subtitle": "ลากงานมาที่นี่หรือคลิก + เพื่อเพิ่ม",
+        "title": "ไม่มีงาน"
+      },
+      "done": {
+        "subtitle": "ทำงานให้เสร็จเพื่อดูที่นี่",
+        "title": "ไม่มีงานที่เสร็จแล้ว"
+      },
+      "schedule": {
+        "subtitle": "ลากงานมาที่นี่เพื่อจัดตารางใหม่",
+        "title": "ยังไม่มีสิ่งที่จัดตารางไว้"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "ปรับปรุงโครงการแล้ว",
@@ -100,7 +139,53 @@
     "noCompletedSelected": "ไม่มีงานที่เสร็จสมบูรณ์ถูกเลือก",
     "completeFailed": "ไม่สามารถทำงานให้เสร็จสมบูรณ์ได้",
     "deleteFailed": "ไม่สามารถลบงานได้",
-    "moveFailed": "ไม่สามารถย้ายงานได้"
+    "moveFailed": "ไม่สามารถย้ายงานได้",
+    "bulk": {
+      "archived": "{count, plural, other {เก็บถาวร # งานแล้ว}}",
+      "completed": "{count, plural, other {ทำ # งานเสร็จแล้ว}}",
+      "deleted": "{count, plural, other {ลบ # งานแล้ว}}",
+      "deletedDescription": "การกระทำนี้สามารถเลิกทำได้ในช่วงเวลาสั้น ๆ",
+      "dueDateRemoved": "{count, plural, other {ลบวันครบกำหนดออกจาก # งานแล้ว}}",
+      "dueDateSet": "{count, plural, other {ตั้งวันครบกำหนดให้ # งานแล้ว}}",
+      "movedToProject": "{count, plural, other {ย้าย # งานไปยัง {project} แล้ว}}",
+      "movedToStatus": "{count, plural, other {ย้าย # งานไปยัง {status} แล้ว}}",
+      "priorityRemoved": "{count, plural, other {ลบลำดับความสำคัญของ # งานแล้ว}}",
+      "prioritySet": "{count, plural, other {ตั้งลำดับความสำคัญเป็น {priority} ให้ # งานแล้ว}}",
+      "restored": "{count, plural, other {กู้คืน # งานแล้ว}}",
+      "undoArchive": "{count, plural, other {เก็บถาวร # งาน}}",
+      "undoComplete": "{count, plural, other {ทำ # งานให้เสร็จ}}",
+      "undoDelete": "{count, plural, other {ลบ # งาน}}",
+      "undoDueDate": "{count, plural, other {เปลี่ยนวันครบกำหนดของ # งาน}}",
+      "undoMove": "{count, plural, other {ย้าย # งาน}}",
+      "undoStatus": "{count, plural, other {สถานะ → {status} สำหรับ # งาน}}",
+      "undoUncomplete": "{count, plural, other {ยกเลิกสถานะเสร็จของ # งาน}}"
+    },
+    "drag": {
+      "archived": "{count, plural, other {เก็บถาวร # งานแล้ว}}",
+      "deleted": "{count, plural, other {ลบ # งานแล้ว}}",
+      "moved": "{count, plural, other {ย้าย # งานไปยัง {target} แล้ว}}",
+      "movedTo": "ย้ายไปยัง {target} แล้ว",
+      "prioritySet": "{count, plural, other {ตั้งลำดับความสำคัญของ # งานเป็น {priority}}}",
+      "prioritySetTo": "ตั้งลำดับความสำคัญเป็น {priority} แล้ว",
+      "rescheduled": "{count, plural, other {จัดตาราง # งานใหม่ไปยัง {target}}}",
+      "rescheduledTo": "จัดตารางใหม่ไปยัง {target} แล้ว",
+      "undoArchive": "{count, plural, other {เก็บถาวร # งานแล้ว}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, other {เพิ่ม # งานย่อยแล้ว}}",
+      "completed": "{count, plural, other {ทำ # งานย่อยเสร็จแล้ว}}",
+      "deleted": "{count, plural, other {ลบ # งานย่อยแล้ว}}",
+      "deletedDescription": "งานย่อยถูกลบออกแล้ว",
+      "dueDateCleared": "{count, plural, other {ล้างวันครบกำหนดของ # งานย่อยแล้ว}}",
+      "dueDateSet": "{count, plural, other {ตั้งวันครบกำหนดให้ # งานย่อยแล้ว}}",
+      "markedIncomplete": "{count, plural, other {ทำเครื่องหมาย # งานย่อยว่ายังไม่เสร็จ}}",
+      "movedUnder": "ย้ายไปอยู่ใต้ \"{title}\" แล้ว",
+      "parentAndSubtasksCompleted": "งานและงานย่อยเสร็จสมบูรณ์แล้ว",
+      "parentDeletedKeepSubtasks": "ลบงานแล้ว งานย่อยถูกแปลงเป็นงาน",
+      "parentDeletedWithSubtasks": "ลบงานและงานย่อยแล้ว",
+      "prioritySet": "{count, plural, other {ตั้งลำดับความสำคัญให้ # งานย่อยแล้ว}}",
+      "promoted": "เลื่อนระดับ \"{title}\" เป็นงานแล้ว"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -181,7 +266,8 @@
       "nextMonth": "เดือนถัดไป",
       "goToToday": "ไปยังวันนี้",
       "today": "วันนี้",
-      "w": "พ"
+      "w": "พ",
+      "weekNumber": "สัปดาห์ที่ {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "ลบวันที่",
@@ -327,7 +413,11 @@
       "addTime": "เพิ่มเวลา",
       "time": "เวลา",
       "clearDate": "ล้างวันที่",
-      "backToOptions": "  \nกลับไปที่ตัวเลือก  "
+      "backToOptions": "  \nกลับไปที่ตัวเลือก  ",
+      "nextWeek": "สัปดาห์หน้า",
+      "thisWeekend": "สุดสัปดาห์นี้",
+      "today": "วันนี้",
+      "tomorrow": "พรุ่งนี้"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "  \nแก้ไขงานที่ทำซ้ำ  ",
@@ -426,7 +516,17 @@
       "currentFilters": "ตัวกรองปัจจุบัน:",
       "noFiltersApplied": "ยังไม่มีตัวกรองที่ถูกนำมาใช้",
       "cancel": "ยกเลิก",
-      "saveFilter2": "บันทึกตัวกรอง"
+      "saveFilter2": "บันทึกตัวกรอง",
+      "nameRequired": "โปรดใส่ชื่อสำหรับตัวกรองนี้",
+      "summaryDue": "ครบกำหนด: {value}",
+      "summaryDueRange": "ครบกำหนด: {start} - {end}",
+      "summaryPriorities": "ลำดับความสำคัญ: {names}",
+      "summaryProjects": "โครงการ: {names}",
+      "summaryRepeatOneTime": "การทำซ้ำ: เฉพาะงานครั้งเดียว",
+      "summaryRepeatRepeating": "การทำซ้ำ: เฉพาะงานที่ทำซ้ำ",
+      "summarySearch": "ค้นหา: \"{query}\"",
+      "summaryTimeWith": "เวลา: มีเวลา",
+      "summaryTimeWithout": "เวลา: ไม่มีเวลา"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "ตัวกรองที่บันทึก",
@@ -558,7 +658,16 @@
       "d": "d"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "เพิ่มงาน"
+      "addTask": "เพิ่มงาน",
+      "allDescription": "สร้างงานแรกของคุณเพื่อเริ่มต้น",
+      "allTitle": "ยังไม่มีงาน",
+      "completedDescription": "งานที่เสร็จแล้วจะปรากฏที่นี่",
+      "completedTitle": "ไม่มีงานที่เสร็จแล้ว",
+      "projectDescription": "เพิ่มงานเพื่อเริ่มต้น",
+      "projectTitle": "ไม่มีงานในโครงการนี้",
+      "projectTitleNamed": "ไม่มีงานใน {name}",
+      "todayDescription": "คุณจัดการทุกอย่างเรียบร้อยแล้ว!",
+      "todayTitle": "ไม่มีงานครบกำหนดวันนี้"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "ไม่มีลำดับความสำคัญ"
@@ -742,5 +851,42 @@
       "overview": "ภาพรวม",
       "tasks": "งาน"
     }
+  },
+  "priorityInline": {
+    "high": "สูง",
+    "low": "ต่ำ",
+    "medium": "ปานกลาง",
+    "urgent": "ด่วน"
+  },
+  "priorityLabels": {
+    "high": "สูง",
+    "low": "ต่ำ",
+    "medium": "ปานกลาง",
+    "none": "ไม่มีลำดับความสำคัญ",
+    "urgent": "ด่วน"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "เสร็จแล้ว",
+      "inProgress": "กำลังดำเนินการ",
+      "todo": "ที่ต้องทำ"
+    },
+    "validation": {
+      "minStatuses": "โครงการต้องมีสถานะอย่างน้อย 2 สถานะ",
+      "nameRequired": "ต้องระบุชื่อโครงการ",
+      "nameTooLong": "ชื่อโครงการต้องยาวไม่เกิน 50 ตัวอักษร",
+      "needsDoneStatus": "โครงการต้องมีสถานะ 'เสร็จแล้ว' อย่างน้อยหนึ่งสถานะ",
+      "needsDoneStatusForCompletedTasks": "โครงการต้องมีสถานะ 'เสร็จแล้ว' อย่างน้อยหนึ่งสถานะสำหรับงานที่เสร็จสมบูรณ์",
+      "needsTodoStatus": "โครงการต้องมีสถานะ 'ที่ต้องทำ' อย่างน้อยหนึ่งสถานะ",
+      "needsTodoStatusForNewTasks": "โครงการต้องมีสถานะ 'ที่ต้องทำ' อย่างน้อยหนึ่งสถานะสำหรับงานใหม่",
+      "statusNameRequired": "ทุกสถานะต้องมีชื่อ",
+      "statusNamesUnique": "ชื่อสถานะต้องไม่ซ้ำกัน",
+      "statusNotFound": "ไม่พบสถานะ"
+    }
+  },
+  "statusLabels": {
+    "done": "เสร็จแล้ว",
+    "inProgress": "กำลังดำเนินการ",
+    "todo": "ที่ต้องทำ"
   }
 }

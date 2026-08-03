@@ -28,6 +28,13 @@
       "readyDetailFallback": "Reinicie memrynote para concluir a instalação da atualização.",
       "buttonRestartNow": "Reinicie agora",
       "releaseNotesLabel": "Notas de lançamento:"
+    },
+    "pair": {
+      "buttonAllow": "Permitir",
+      "buttonDeny": "Recusar",
+      "buttonPair": "Emparelhar",
+      "message": "Permitir que a extensão de navegador Memry envie capturas para esta aplicação?",
+      "title": "Emparelhar extensão de navegador"
     }
   },
   "notification": {
@@ -50,5 +57,15 @@
     "definitionNotFound": "Definição não encontrada",
     "noteNotFound": "Nota não encontrada",
     "updateFailed": "Falha na atualização"
+  },
+  "startup": {
+    "failed": {
+      "body": "Isto pode acontecer quando o disco tem muito pouco espaço livre ou com controladores gráficos antigos. Tente libertar algum espaço em disco e volte a abrir o MemryNote. Se continuar a acontecer, reinstalar costuma resolver.",
+      "title": "O MemryNote não conseguiu concluir o arranque"
+    },
+    "installingUpdate": {
+      "subtitle": "O MemryNote irá reabrir automaticamente.",
+      "title": "A instalar atualização…"
+    }
   }
 }

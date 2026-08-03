@@ -28,6 +28,13 @@
       "readyDetailFallback": "Viimeistele päivityksen asennus käynnistämällä memrynote uudelleen.",
       "buttonRestartNow": "Käynnistä nyt uudelleen",
       "releaseNotesLabel": "Julkaisutiedot:"
+    },
+    "pair": {
+      "buttonAllow": "Salli",
+      "buttonDeny": "Kiellä",
+      "buttonPair": "Muodosta pari",
+      "message": "Sallitaanko Memryn selainlaajennuksen lähettää tallennuksia tähän sovellukseen?",
+      "title": "Muodosta pari selainlaajennuksen kanssa"
     }
   },
   "notification": {
@@ -50,5 +57,15 @@
     "definitionNotFound": "Määritelmää ei löydy",
     "noteNotFound": "Huomautusta ei löydy",
     "updateFailed": "Päivitys epäonnistui"
+  },
+  "startup": {
+    "failed": {
+      "body": "Näin voi käydä, kun levyllä on hyvin vähän vapaata tilaa tai kun näytönohjaimen ajurit ovat vanhat. Vapauta levytilaa ja avaa MemryNote uudelleen. Jos ongelma toistuu, uudelleenasennus yleensä auttaa.",
+      "title": "MemryNote ei saanut käynnistystä valmiiksi"
+    },
+    "installingUpdate": {
+      "subtitle": "MemryNote avautuu automaattisesti uudelleen.",
+      "title": "Asennetaan päivitystä…"
+    }
   }
 }

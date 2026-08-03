@@ -22,7 +22,19 @@
     "writeFailed": "Nem sikerült menteni a jegyzetet. Ellenőrizze a lemezterületet és az engedélyeket.",
     "readFailed": "Nem sikerült elolvasni ezt a jegyzetet. Lehet, hogy a fájl zárolva van vagy sérült.",
     "deleteFailed": "Nem sikerült törölni ezt a jegyzetet. Ellenőrizze a fájl engedélyeit.",
-    "invalidPath": "A jegyzet elérési útja érvénytelen."
+    "invalidPath": "A jegyzet elérési útja érvénytelen.",
+    "applyTemplateFailed": "Nem sikerült alkalmazni a sablont",
+    "createFailed": "Nem sikerült létrehozni a jegyzetet",
+    "deleteVersionFailed": "Nem sikerült törölni a verziót",
+    "exportHtmlFailed": "Nem sikerült exportálni HTML-be",
+    "exportPdfFailed": "Nem sikerült exportálni PDF-be",
+    "importFilesFailed": "Nem sikerült importálni a fájlokat",
+    "moveFailed": "Nem sikerült áthelyezni a jegyzetet",
+    "renameFailed": "Nem sikerült átnevezni a jegyzetet",
+    "reorderFailed": "Nem sikerült átrendezni a jegyzeteket",
+    "restoreVersionFailed": "Nem sikerült visszaállítani a verziót",
+    "setLocalOnlyFailed": "Nem sikerült beállítani a csak helyi módot",
+    "updateFailed": "Nem sikerült frissíteni a jegyzetet"
   },
   "database": {
     "connectionFailed": "Nem sikerült csatlakozni a helyi adatbázishoz. Próbálja újraindítani az alkalmazást.",
@@ -41,7 +53,11 @@
     "fileTooLarge": "Ez a fájl túl nagy a csatoláshoz.",
     "unsupportedType": "Ez a fájltípus nem támogatott.",
     "writeFailed": "Nem sikerült menteni a mellékletet. Ellenőrizze a lemezterületet.",
-    "deleteFailed": "Nem sikerült törölni a mellékletet."
+    "deleteFailed": "Nem sikerült törölni a mellékletet.",
+    "downloadFailed": "A melléklet letöltése nem sikerült",
+    "downloadProgressFailed": "Nem sikerült lekérni a letöltés állapotát",
+    "uploadFailed": "A melléklet feltöltése nem sikerült",
+    "uploadProgressFailed": "Nem sikerült lekérni a feltöltés állapotát"
   },
   "encryption": {
     "failed": "Nem sikerült titkosítani az adatokat. Lehet, hogy a kulcsokat újra kell generálni.",
@@ -77,6 +93,184 @@
     "paymentRequired": "A hosztolt titkosított szinkronizáláshoz fizetős Szinkron csomag szükséges.",
     "attachmentUploadFailed": "Nem sikerült szinkronizálni a(z) „{filename}” mellékletet. Ezen az eszközön marad.",
     "fileTooLarge": "Ez a fájl nagyobb, mint amit a csomagod megenged. Nagyobb fájlok szinkronizálásához válts nagyobb csomagra.",
-    "vaultRecovered": "A tár kulcsa helyreállt. A szinkronizálás folytatódik."
+    "vaultRecovered": "A tár kulcsa helyreállt. A szinkronizálás folytatódik.",
+    "historyFetchFailed": "Nem sikerült lekérni a szinkronizálási előzményeket",
+    "keyPersistenceFailed": "Nem sikerült biztonságosan menteni a titkosítási kulcsot. Az eszköz regisztrációját visszavontuk. Próbáld újra.",
+    "serverUnreachable": "Nem sikerült csatlakozni a szinkronizáló szerverhez. Ellenőrizd az internetkapcsolatodat.",
+    "updateSyncedSettingFailed": "Nem sikerült frissíteni a szinkronizált beállítást"
+  },
+  "agent": {
+    "conversationBusy": "A beszélgetés foglalt",
+    "runtimeStarting": "Az ügynök futtatókörnyezete még indul. Próbáld újra."
+  },
+  "ai": {
+    "inlineDisabled": "A beépített AI-szerkesztés ki van kapcsolva",
+    "listOllamaModelsFailed": "Nem sikerült listázni az Ollama modelleket"
+  },
+  "auth": {
+    "approveLinkingFailed": "Nem sikerült jóváhagyni az összekapcsolást",
+    "cannotRemoveCurrentDevice": "A jelenlegi eszköz nem távolítható el",
+    "completeLinkingFailed": "Nem sikerült befejezni az összekapcsolást",
+    "confirmRecoveryPhraseFailed": "Nem sikerült megerősíteni a helyreállítási kifejezést",
+    "fetchSasCodeFailed": "Nem sikerült lekérni a SAS-kódot",
+    "finalizeVaultChoiceFailed": "Nem sikerült véglegesíteni a tár kiválasztását",
+    "initiateOAuthFailed": "Nem sikerült elindítani az OAuth-folyamatot",
+    "invalidRecoveryPhraseFormat": "A helyreállítási kifejezés formátuma érvénytelen",
+    "linkDeviceQrFailed": "Nem sikerült összekapcsolni az eszközt QR-kóddal",
+    "linkRecoveryPhraseFailed": "Nem sikerült összekapcsolni helyreállítási kifejezéssel",
+    "notAuthenticated": "Nem vagy bejelentkezve",
+    "pickFolderFailed": "Nem sikerült kiválasztani a mappát",
+    "recoveryPhraseMismatch": "A helyreállítási kifejezés nem egyezik. Próbáld újra.",
+    "removeDeviceFailed": "Nem sikerült eltávolítani az eszközt",
+    "renameDeviceFailed": "Nem sikerült átnevezni az eszközt",
+    "requestOtpFailed": "Nem sikerült egyszeri kódot kérni",
+    "resendOtpFailed": "Nem sikerült újraküldeni az egyszeri kódot",
+    "sessionExpired": "A munkamenet lejárt. Jelentkezz be újra.",
+    "setupFirstDeviceOAuthFailed": "Nem sikerült beállítani az első eszközt OAuth-tal",
+    "verifyOtpFailed": "Nem sikerült ellenőrizni az egyszeri kódot"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "Az elem már a könyvjelzők között van",
+    "notFound": "A könyvjelző nem található"
+  },
+  "calendar": {
+    "connectProviderFailed": "Nem sikerült csatlakozni a naptárszolgáltatóhoz",
+    "createEventFailed": "Nem sikerült létrehozni a naptáreseményt",
+    "deleteEventFailed": "Nem sikerült törölni a naptáreseményt",
+    "disconnectProviderFailed": "Nem sikerült leválasztani a naptárszolgáltatót",
+    "eventNotFound": "A naptáresemény nem található",
+    "googleNotConnected": "A Google Calendar nincs csatlakoztatva ezen az eszközön",
+    "listGoogleCalendarsFailed": "Nem sikerült listázni a Google-naptárakat",
+    "onlyGoogleSourcesRetryable": "Csak a Google-naptárforrások próbálhatók újra",
+    "onlySourcesSelectable": "Csak naptárforrások választhatók ki",
+    "promoteExternalEventFailed": "Nem sikerült átvenni a külső naptáreseményt",
+    "refreshProviderFailed": "Nem sikerült frissíteni a naptárszolgáltatót",
+    "retryGoogleSourceSyncFailed": "Nem sikerült újra megpróbálni a Google Calendar forrás szinkronizálását",
+    "setDefaultGoogleCalendarFailed": "Nem sikerült beállítani az alapértelmezett Google-naptárat",
+    "signInBeforeRefresh": "Jelentkezz be a memrynote-ba a Google Calendar frissítése előtt",
+    "sourceNotFound": "A naptárforrás nem található",
+    "syncFailed": "A szinkronizálás nem sikerült",
+    "updateEventFailed": "Nem sikerült frissíteni a naptáreseményt",
+    "updateSourceSelectionFailed": "Nem sikerült frissíteni a naptárforrások kiválasztását"
+  },
+  "folder": {
+    "createFailed": "Nem sikerült létrehozni a mappát",
+    "deleteFailed": "Nem sikerült törölni a mappát",
+    "renameFailed": "Nem sikerült átnevezni a mappát",
+    "setConfigFailed": "Nem sikerült menteni a mappa beállításait"
+  },
+  "folderView": {
+    "deleteViewFailed": "Nem sikerült törölni a nézetet",
+    "setConfigFailed": "Nem sikerült menteni a beállításokat",
+    "setViewFailed": "Nem sikerült beállítani a nézetet"
+  },
+  "googleCalendar": {
+    "accessDenied": "A Google Calendar hozzáférést elutasítottad. Bármikor újra csatlakozhatsz, amikor készen állsz.",
+    "connectFailed": "Nem sikerült csatlakozni a Google Calendarhoz. Próbáld újra egy pillanat múlva.",
+    "misconfigured": "A Google Calendar nincs helyesen beállítva. Ha ez továbbra is előfordul, fordulj az ügyfélszolgálathoz.",
+    "reconnectNeeded": "A Google Calendar kapcsolatod lejárt. Válaszd le, majd csatlakoztasd újra.",
+    "scopeMissing": "Nem sikerült hozzáférni a Google Calendarodhoz, mert nem adtad meg a Naptár engedélyt. Próbáld újra, és ügyelj rá, hogy a Naptár jelölőnégyzet bepipálva maradjon a Google hozzájárulási képernyőjén.",
+    "temporarilyUnavailable": "A Google Calendar átmenetileg nem érhető el. Próbáld újra hamarosan."
+  },
+  "importer": {
+    "cancelFailed": "A megszakítás nem sikerült",
+    "fileSelectionFailed": "A fájl kiválasztása nem sikerült",
+    "importFailed": "Az importálás nem sikerült",
+    "listFailed": "Nem sikerült listázni az importálókat",
+    "previewFailed": "Az előnézet nem sikerült"
+  },
+  "project": {
+    "archiveFailed": "Nem sikerült archiválni a projektet",
+    "captureLinkFailed": "Nem sikerült rögzíteni a hivatkozást",
+    "createFailed": "Nem sikerült létrehozni a projektet",
+    "deleteFailed": "Nem sikerült törölni a projektet",
+    "importFilesFailed": "Nem sikerült importálni a fájlokat",
+    "linkItemFailed": "Nem sikerült összekapcsolni az elemet",
+    "listForItemFailed": "Nem sikerült listázni az elemhez tartozó projekteket",
+    "reorderFailed": "Nem sikerült átrendezni a projekteket",
+    "setHomeNoteFailed": "Nem sikerült beállítani a kezdőjegyzetet",
+    "unlinkItemFailed": "Nem sikerült leválasztani az elemet",
+    "updateFailed": "Nem sikerült frissíteni a projektet",
+    "updatePinnedFailed": "Nem sikerült frissíteni a kitűzött állapotot"
+  },
+  "property": {
+    "alreadyExists": "A(z) „{name}” tulajdonság már létezik",
+    "createDefinitionFailed": "Nem sikerült létrehozni a tulajdonságdefiníciót",
+    "entityNotFound": "Az elem nem található",
+    "notFound": "A(z) „{name}” tulajdonság nem található",
+    "renameFailed": "Nem sikerült átnevezni a tulajdonságot",
+    "setCalendarVisibilityFailed": "Nem sikerült beállítani a naptártulajdonság láthatóságát",
+    "setFailed": "Nem sikerült beállítani a tulajdonságokat",
+    "updateDefinitionFailed": "Nem sikerült frissíteni a tulajdonságdefiníciót"
+  },
+  "reminder": {
+    "createFailed": "Nem sikerült létrehozni az emlékeztetőt",
+    "dismissAllFailed": "Nem sikerült elvetni az emlékeztetőket",
+    "dismissFailed": "Nem sikerült elvetni az emlékeztetőt",
+    "notFound": "Az emlékeztető nem található",
+    "snoozeFailed": "Nem sikerült elhalasztani az emlékeztetőt",
+    "updateFailed": "Nem sikerült frissíteni az emlékeztetőt"
+  },
+  "savedFilter": {
+    "notFound": "A mentett szűrő nem található"
+  },
+  "search": {
+    "rebuildFailed": "Az újraépítés nem sikerült"
+  },
+  "settings": {
+    "modelAlreadyLoading": "A modell már betöltés alatt van",
+    "modelLoadFailed": "Nem sikerült betölteni a modellt",
+    "shortcutInUse": "A(z) {shortcut} billentyűparancs már használatban van",
+    "terminalCommandInstallFailed": "Nem sikerült telepíteni a terminálparancsot",
+    "terminalCommandUninstallFailed": "Nem sikerült eltávolítani a terminálparancsot",
+    "unknownVault": "Ismeretlen tár",
+    "voiceModelDownloadFailed": "Nem sikerült letölteni a hangmodellt"
+  },
+  "tag": {
+    "categoryNameRequired": "A kategória neve kötelező",
+    "createCategoryFailed": "Nem sikerült létrehozni a címkekategóriát",
+    "deleteCategoryFailed": "Nem sikerült törölni a címkekategóriát",
+    "deleteFailed": "Nem sikerült törölni a címkét",
+    "listCategoriesFailed": "Nem sikerült listázni a címkekategóriákat",
+    "mergeFailed": "Nem sikerült összevonni a címkéket",
+    "mergeSameTag": "A forrás- és a célcímke azonos",
+    "pinNoteFailed": "Nem sikerült kitűzni a jegyzetet",
+    "removeFromNoteFailed": "Nem sikerült eltávolítani a címkét a jegyzetről",
+    "renameCategoryFailed": "Nem sikerült átnevezni a címkekategóriát",
+    "renameFailed": "Nem sikerült átnevezni a címkét",
+    "reorderFailed": "Nem sikerült átrendezni a címkéket",
+    "unpinNoteFailed": "Nem sikerült feloldani a jegyzet kitűzését",
+    "updateColorFailed": "Nem sikerült frissíteni a címke színét",
+    "updateIconFailed": "Nem sikerült frissíteni a címke ikonját"
+  },
+  "task": {
+    "archiveFailed": "Nem sikerült archiválni a feladatot",
+    "archiveManyFailed": "Nem sikerült archiválni a feladatokat",
+    "completeFailed": "Nem sikerült elvégezni a feladatot",
+    "completeManyFailed": "Nem sikerült elvégezni a feladatokat",
+    "convertToSubtaskFailed": "Nem sikerült részfeladattá alakítani",
+    "convertToTaskFailed": "Nem sikerült feladattá alakítani",
+    "createFailed": "Nem sikerült létrehozni a feladatot",
+    "deleteFailed": "Nem sikerült törölni a feladatot",
+    "deleteManyFailed": "Nem sikerült törölni a feladatokat",
+    "duplicateFailed": "Nem sikerült megkettőzni a feladatot",
+    "moveFailed": "Nem sikerült áthelyezni a feladatot",
+    "moveManyFailed": "Nem sikerült áthelyezni a feladatokat",
+    "reorderFailed": "Nem sikerült átrendezni a feladatokat",
+    "unarchiveFailed": "Nem sikerült visszaállítani a feladatot az archívumból",
+    "uncompleteFailed": "Nem sikerült befejezetlenre állítani a feladatot",
+    "updateFailed": "Nem sikerült frissíteni a feladatot"
+  },
+  "taskStatus": {
+    "createFailed": "Nem sikerült létrehozni az állapotot",
+    "deleteFailed": "Nem sikerült törölni az állapotot",
+    "reorderFailed": "Nem sikerült átrendezni az állapotokat",
+    "updateFailed": "Nem sikerült frissíteni az állapotot"
+  },
+  "template": {
+    "createFailed": "Nem sikerült létrehozni a sablont",
+    "deleteFailed": "Nem sikerült törölni a sablont",
+    "duplicateFailed": "Nem sikerült megkettőzni a sablont",
+    "updateFailed": "Nem sikerült frissíteni a sablont"
   }
 }

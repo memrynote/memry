@@ -1449,7 +1449,8 @@
       },
       "title": "الاستيراد من {name}",
       "chooseDirectory": "اختر مجلدًا…",
-      "folderKeepsAssets": "اختر المجلد عندما تكون الصور خارج مجلد الملاحظات نفسه — غالبًا ما تحتفظ عمليات التصدير بالوسائط في مجلد مشترك."
+      "folderKeepsAssets": "اختر المجلد عندما تكون الصور خارج مجلد الملاحظات نفسه — غالبًا ما تحتفظ عمليات التصدير بالوسائط في مجلد مشترك.",
+      "previewError": "فشلت المعاينة"
     },
     "header": {
       "subtitle": "أحضر ملاحظاتك ومهامك من تطبيقات أخرى",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, zero {لا مهام} one {مهمة واحدة} two {مهمتان} few {# مهام} many {# مهمة} other {# مهمة}}",
       "withDueDate": "{count} مؤرّخ",
       "withTags": "{count} موسوم"
+    },
+    "messages": {
+      "csv": {
+        "columns": "الأعمدة: {columns}",
+        "emptyTitle": "تم تخطي صف بعنوان فارغ (العمود \"{column}\")",
+        "noHeaders": "ملف CSV لا يحتوي على صف رؤوس",
+        "titleColumn": "العنوان مأخوذ من \"{column}\"؛ حُفظت الأعمدة الأخرى كخصائص"
+      },
+      "raindrop": {
+        "csvEmpty": "ملف Raindrop CSV فارغ",
+        "headerNotFound": "لم يُعثر على صف رؤوس Raindrop CSV (العمود \"url\")",
+        "rowNoUrl": "تم تخطي الصف {row}: لا يوجد عنوان URL"
+      },
+      "readFileFailed": "فشلت قراءة الملف",
+      "ticktick": {
+        "foldersDropped": "لا يوجد ما يقابل مجلدات TickTick في Memry، لذا تم تجاهلها",
+        "headerNotFound": "لم يُعثر على صف رؤوس TickTick CSV (\"Folder Name\")",
+        "reminderNoAnchor": "تم تخطي التذكير \"{reminder}\" (لا يوجد تاريخ مرجعي)",
+        "subtaskParentMissing": "لم يُعثر على المهمة الأصل للمهمة الفرعية \"{title}\"؛ تم استيرادها في المستوى الأعلى",
+        "unknownPriority": "أولوية TickTick غير معروفة {priority} ← بلا",
+        "unsupportedRepeat": "تم تخطي قاعدة التكرار غير المدعومة \"{rule}\""
+      },
+      "todoist": {
+        "emptyTitle": "تم استيراد مهمة بمحتوى فارغ باسم (بلا عنوان)",
+        "headerNotFound": "ليس ملف Todoist CSV: صف الرؤوس TYPE مفقود",
+        "orphanComment": "تم تخطي تعليق لا تسبقه مهمة",
+        "sectionFlattened": "تم تسطيح القسم \"{section}\"",
+        "subtaskNoParent": "المهمة الفرعية \"{title}\" ليس لها مهمة أصل عند المستوى {indent}؛ تم استيرادها في المستوى الأعلى",
+        "unknownPriority": "أولوية غير معروفة {priority} ← بلا",
+        "unparsedDate": "تعذّر تحليل التاريخ \"{date}\""
+      }
     }
   },
   "inbox": {

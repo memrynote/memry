@@ -1449,7 +1449,8 @@
       },
       "title": "ייבא מ-{name}",
       "chooseDirectory": "בחר תיקייה…",
-      "folderKeepsAssets": "בחר את התיקייה כשהתמונות נמצאות מחוץ לתיקייה של ההערות עצמן — בייצוא, המדיה נשמרת לרוב בתיקייה משותפת."
+      "folderKeepsAssets": "בחר את התיקייה כשהתמונות נמצאות מחוץ לתיקייה של ההערות עצמן — בייצוא, המדיה נשמרת לרוב בתיקייה משותפת.",
+      "previewError": "התצוגה המקדימה נכשלה"
     },
     "header": {
       "subtitle": "הבא את הפתקים והמשימות שלך מאפליקציות אחרות",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, one {# משימה} other {# משימות}}",
       "withDueDate": "{count} מתוארכים",
       "withTags": "{count} מתויגים"
+    },
+    "messages": {
+      "csv": {
+        "columns": "עמודות: {columns}",
+        "emptyTitle": "שורה עם כותרת ריקה דולגה (עמודה \"{column}\")",
+        "noHeaders": "לקובץ ה-CSV אין שורת כותרות",
+        "titleColumn": "הכותרת נלקחה מ-\"{column}\"; שאר העמודות נשמרו כמאפיינים"
+      },
+      "raindrop": {
+        "csvEmpty": "קובץ ה-CSV של Raindrop ריק",
+        "headerNotFound": "שורת הכותרות של קובץ ה-CSV מ-Raindrop (עמודת \"url\") לא נמצאה",
+        "rowNoUrl": "שורה {row} דולגה: אין כתובת URL"
+      },
+      "readFileFailed": "קריאת הקובץ נכשלה",
+      "ticktick": {
+        "foldersDropped": "לתיקיות של TickTick אין מקבילה ב-Memry והן הושמטו",
+        "headerNotFound": "שורת הכותרות של קובץ ה-CSV מ-TickTick (\"Folder Name\") לא נמצאה",
+        "reminderNoAnchor": "התזכורת \"{reminder}\" דולגה (אין תאריך עוגן)",
+        "subtaskParentMissing": "משימת האב של \"{title}\" לא נמצאה; יובאה כמשימה ראשית",
+        "unknownPriority": "עדיפות לא מוכרת של TickTick {priority} ← ללא",
+        "unsupportedRepeat": "כלל חזרה לא נתמך \"{rule}\" דולג"
+      },
+      "todoist": {
+        "emptyTitle": "משימה עם תוכן ריק יובאה כ-(ללא כותרת)",
+        "headerNotFound": "זה אינו קובץ CSV של Todoist: חסרה שורת הכותרת TYPE",
+        "orphanComment": "תגובה שאין לפניה משימה דולגה",
+        "sectionFlattened": "המקטע \"{section}\" שוטח",
+        "subtaskNoParent": "לתת-המשימה \"{title}\" אין משימת אב בהזחה {indent}; יובאה כמשימה ראשית",
+        "unknownPriority": "עדיפות לא מוכרת {priority} ← ללא",
+        "unparsedDate": "לא ניתן היה לפענח את התאריך \"{date}\""
+      }
     }
   },
   "inbox": {

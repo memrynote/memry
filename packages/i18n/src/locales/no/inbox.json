@@ -270,7 +270,50 @@
     "panelEmpty": "Ingen kommende påminnelser.",
     "panelPast": "Tidligere",
     "panelUpcoming": "Kommende",
-    "taskFallback": "Oppgave"
+    "taskFallback": "Oppgave",
+    "dateTime": {
+      "dateAt": "{date} kl. {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "I dag kl. {time}",
+      "todayCompact": "I dag, {time}",
+      "tomorrowAt": "I morgen kl. {time}",
+      "tomorrowCompact": "I morgen, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Årsdagspåminnelse",
+      "inHours": {
+        "label": "Om {count, plural, one {# time} other {# timer}}"
+      },
+      "inMinutes": {
+        "label": "Om {count, plural, one {# minutt} other {# minutter}}"
+      },
+      "inMonths": {
+        "label": "Om {count, plural, one {# måned} other {# måneder}}"
+      },
+      "inWeeks": {
+        "label": "Om {count, plural, one {# uke} other {# uker}}"
+      },
+      "inYears": {
+        "label": "Om {count, plural, one {# år} other {# år}}"
+      },
+      "laterToday": {
+        "description": "Om {count, plural, one {# time} other {# timer}}",
+        "label": "Senere i dag"
+      },
+      "monthlyReflection": "Månedlig refleksjon",
+      "nextWeek": {
+        "description": "Mandag kl. 09.00",
+        "label": "Neste uke"
+      },
+      "quarterlyReflection": "Kvartalsvis refleksjon",
+      "reviewInAWeek": "Gå gjennom om en uke",
+      "sameDayNextMonth": "Samme dag neste måned",
+      "tomorrow": {
+        "description": "I morgen kl. 09.00",
+        "label": "I morgen"
+      },
+      "tomorrowMorning": "I morgen tidlig"
+    }
   },
   "insights": {
     "captureActivity": "Ta opp aktivitet",

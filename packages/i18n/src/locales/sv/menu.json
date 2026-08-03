@@ -1,7 +1,12 @@
 {
   "app": {
     "quit": "Avsluta",
-    "preferences": "Inställningar…"
+    "preferences": "Inställningar…",
+    "exit": "Avsluta",
+    "hide": "Göm MemryNote",
+    "hideOthers": "Göm andra",
+    "services": "Tjänster",
+    "unhide": "Visa alla"
   },
   "file": {
     "label": "Fil",
@@ -24,7 +29,11 @@
     "paste": "Klistra in",
     "selectAll": "Markera alla",
     "find": "Sök",
-    "speech": "Tal"
+    "speech": "Tal",
+    "delete": "Radera",
+    "pasteAndMatchStyle": "Klistra in och matcha stil",
+    "startSpeaking": "Börja tala",
+    "stopSpeaking": "Sluta tala"
   },
   "view": {
     "label": "Visa",
@@ -37,7 +46,10 @@
     "themeSystem": "System",
     "themeWhite": "Papper",
     "toggleDayPanel": "Växla dagpanel",
-    "toggleSidebar": "Växla sidofält"
+    "toggleSidebar": "Växla sidofält",
+    "actualSize": "Verklig storlek",
+    "zoomIn": "Zooma in",
+    "zoomOut": "Zooma ut"
   },
   "format": {
     "body": "Brödtext",
@@ -55,7 +67,8 @@
     "about": "Om MemryNote",
     "documentation": "Dokumentation",
     "label": "Hjälp",
-    "shortcuts": "Kortkommandon"
+    "shortcuts": "Kortkommandon",
+    "aboutVersion": "Version {version}"
   },
   "insert": {
     "attachment": "Infoga bilaga…",
@@ -67,6 +80,10 @@
     "taskList": "Uppgiftslista"
   },
   "window": {
-    "label": "Fönster"
+    "label": "Fönster",
+    "close": "Stäng",
+    "front": "Lägg alla överst",
+    "minimize": "Minimera",
+    "zoom": "Zooma"
   }
 }

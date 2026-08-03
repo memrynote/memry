@@ -35,7 +35,14 @@
     "delete": "Slet opgave",
     "created": "Oprettet {date}",
     "reminder": "Påmindelse",
-    "tags": "Tags"
+    "tags": "Tags",
+    "priorityLabels": {
+      "high": "Høj",
+      "low": "Lav",
+      "medium": "Mellem",
+      "none": "Ingen prioritet",
+      "urgent": "Haster"
+    }
   },
   "filters": {
     "filter": "Filter",
@@ -44,7 +51,25 @@
     "groupBy": "Grupper efter",
     "groupByOptions": "Gruppér efter muligheder",
     "sortAscending": "Sorter stigende",
-    "sortDescending": "Sorter faldende"
+    "sortDescending": "Sorter faldende",
+    "dueDate": {
+      "any": "Enhver forfaldsdato",
+      "custom": "Brugerdefineret interval...",
+      "nextWeek": "Næste uge",
+      "none": "Ingen forfaldsdato",
+      "overdue": "Forfalden",
+      "thisMonth": "Denne måned",
+      "thisWeek": "Denne uge",
+      "today": "I dag",
+      "tomorrow": "I morgen"
+    },
+    "quickPresets": {
+      "dueThisWeek": "Forfalder i denne uge",
+      "highPriority": "Høj prioritet",
+      "noDueDate": "Ingen forfaldsdato",
+      "overdue": "Forfalden",
+      "repeating": "Gentagende"
+    }
   },
   "quickAdd": {
     "label": "Hurtig tilføjelsesopgave",
@@ -77,7 +102,21 @@
     "searchRelated": "Søg relateret…"
   },
   "kanban": {
-    "board": "Kanban bord"
+    "board": "Kanban bord",
+    "empty": {
+      "default": {
+        "subtitle": "Træk opgaver hertil, eller klik på + for at tilføje",
+        "title": "Ingen opgaver"
+      },
+      "done": {
+        "subtitle": "Fuldfør opgaver for at se dem her",
+        "title": "Ingen fuldførte opgaver"
+      },
+      "schedule": {
+        "subtitle": "Træk opgaver hertil for at omlægge dem",
+        "title": "Intet planlagt"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "Projekt opdateret",
@@ -100,7 +139,53 @@
     "noCompletedSelected": "Ingen udførte opgaver er valgt",
     "completeFailed": "Kunne ikke fuldføre opgaver",
     "deleteFailed": "Kunne ikke slette opgaver",
-    "moveFailed": "Kunne ikke flytte opgaver"
+    "moveFailed": "Kunne ikke flytte opgaver",
+    "bulk": {
+      "archived": "{count, plural, one {# opgave arkiveret} other {# opgaver arkiveret}}",
+      "completed": "{count, plural, one {# opgave fuldført} other {# opgaver fuldført}}",
+      "deleted": "{count, plural, one {# opgave slettet} other {# opgaver slettet}}",
+      "deletedDescription": "Denne handling kan fortrydes i kort tid.",
+      "dueDateRemoved": "{count, plural, one {Forfaldsdato fjernet fra # opgave} other {Forfaldsdato fjernet fra # opgaver}}",
+      "dueDateSet": "{count, plural, one {Forfaldsdato angivet for # opgave} other {Forfaldsdato angivet for # opgaver}}",
+      "movedToProject": "{count, plural, one {# opgave flyttet til {project}} other {# opgaver flyttet til {project}}}",
+      "movedToStatus": "{count, plural, one {# opgave flyttet til {status}} other {# opgaver flyttet til {status}}}",
+      "priorityRemoved": "{count, plural, one {Prioritet fjernet for # opgave} other {Prioritet fjernet for # opgaver}}",
+      "prioritySet": "{count, plural, one {Prioritet sat til {priority} for # opgave} other {Prioritet sat til {priority} for # opgaver}}",
+      "restored": "{count, plural, one {# opgave gendannet} other {# opgaver gendannet}}",
+      "undoArchive": "{count, plural, one {Arkivér # opgave} other {Arkivér # opgaver}}",
+      "undoComplete": "{count, plural, one {Fuldfør # opgave} other {Fuldfør # opgaver}}",
+      "undoDelete": "{count, plural, one {Slet # opgave} other {Slet # opgaver}}",
+      "undoDueDate": "{count, plural, one {Forfaldsdato ændret for # opgave} other {Forfaldsdato ændret for # opgaver}}",
+      "undoMove": "{count, plural, one {Flyt # opgave} other {Flyt # opgaver}}",
+      "undoStatus": "{count, plural, one {Status → {status} for # opgave} other {Status → {status} for # opgaver}}",
+      "undoUncomplete": "{count, plural, one {Genåbn # opgave} other {Genåbn # opgaver}}"
+    },
+    "drag": {
+      "archived": "{count, plural, one {Opgave arkiveret} other {# opgaver arkiveret}}",
+      "deleted": "{count, plural, one {Opgave slettet} other {# opgaver slettet}}",
+      "moved": "{count, plural, one {Flyttet til {target}} other {# opgaver flyttet til {target}}}",
+      "movedTo": "Flyttet til {target}",
+      "prioritySet": "{count, plural, one {Prioritet sat til {priority}} other {# opgaver sat til {priority}}}",
+      "prioritySetTo": "Prioritet sat til {priority}",
+      "rescheduled": "{count, plural, one {Omlagt til {target}} other {# opgaver omlagt til {target}}}",
+      "rescheduledTo": "Omlagt til {target}",
+      "undoArchive": "{count, plural, one {Arkiverede # opgave} other {Arkiverede # opgaver}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, one {# delopgave tilføjet} other {# delopgaver tilføjet}}",
+      "completed": "{count, plural, one {# delopgave fuldført} other {# delopgaver fuldført}}",
+      "deleted": "{count, plural, one {# delopgave slettet} other {# delopgaver slettet}}",
+      "deletedDescription": "Delopgaven er fjernet",
+      "dueDateCleared": "{count, plural, one {Forfaldsdato ryddet for # delopgave} other {Forfaldsdato ryddet for # delopgaver}}",
+      "dueDateSet": "{count, plural, one {Forfaldsdato angivet for # delopgave} other {Forfaldsdato angivet for # delopgaver}}",
+      "markedIncomplete": "{count, plural, one {# delopgave markeret som ufuldført} other {# delopgaver markeret som ufuldførte}}",
+      "movedUnder": "Flyttet ind under “{title}”",
+      "parentAndSubtasksCompleted": "Opgave og delopgaver fuldført",
+      "parentDeletedKeepSubtasks": "Opgave slettet, delopgaver konverteret til opgaver",
+      "parentDeletedWithSubtasks": "Opgave og delopgaver slettet",
+      "prioritySet": "{count, plural, one {Prioritet angivet for # delopgave} other {Prioritet angivet for # delopgaver}}",
+      "promoted": "“{title}” forfremmet til opgave"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -181,7 +266,8 @@
       "nextMonth": "Næste måned",
       "goToToday": "Gå til i dag",
       "today": "I dag",
-      "w": "W"
+      "w": "W",
+      "weekNumber": "Uge {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Fjern dato",
@@ -327,7 +413,11 @@
       "addTime": "Tilføj tid",
       "time": "Tid",
       "clearDate": "Klar dato",
-      "backToOptions": "Tilbage til muligheder"
+      "backToOptions": "Tilbage til muligheder",
+      "nextWeek": "Næste uge",
+      "thisWeekend": "Denne weekend",
+      "today": "I dag",
+      "tomorrow": "I morgen"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "Rediger gentagende opgave",
@@ -426,7 +516,17 @@
       "currentFilters": "Nuværende filtre:",
       "noFiltersApplied": "Ingen filtre anvendt",
       "cancel": "Annuller",
-      "saveFilter2": "Gem filter"
+      "saveFilter2": "Gem filter",
+      "nameRequired": "Indtast et navn til dette filter",
+      "summaryDue": "Forfalder: {value}",
+      "summaryDueRange": "Forfalder: {start} - {end}",
+      "summaryPriorities": "Prioritet: {names}",
+      "summaryProjects": "Projekt: {names}",
+      "summaryRepeatOneTime": "Gentagelse: Kun engangsopgaver",
+      "summaryRepeatRepeating": "Gentagelse: Kun gentagende",
+      "summarySearch": "Søgning: “{query}”",
+      "summaryTimeWith": "Tid: Med klokkeslæt",
+      "summaryTimeWithout": "Tid: Uden klokkeslæt"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Gemte filtre",
@@ -558,7 +658,16 @@
       "d": "d"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "Tilføj opgave"
+      "addTask": "Tilføj opgave",
+      "allDescription": "Opret din første opgave for at komme i gang",
+      "allTitle": "Ingen opgaver endnu",
+      "completedDescription": "Fuldførte opgaver vises her",
+      "completedTitle": "Ingen fuldførte opgaver",
+      "projectDescription": "Tilføj en opgave for at komme i gang",
+      "projectTitle": "Ingen opgaver i dette projekt",
+      "projectTitleNamed": "Ingen opgaver i {name}",
+      "todayDescription": "Du er helt ajour!",
+      "todayTitle": "Intet forfalder i dag"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "ingen prioritet"
@@ -742,5 +851,42 @@
       "overview": "Oversigt",
       "tasks": "Opgaver"
     }
+  },
+  "priorityInline": {
+    "high": "høj",
+    "low": "lav",
+    "medium": "mellem",
+    "urgent": "haster"
+  },
+  "priorityLabels": {
+    "high": "Høj",
+    "low": "Lav",
+    "medium": "Mellem",
+    "none": "Ingen prioritet",
+    "urgent": "Haster"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "Færdig",
+      "inProgress": "I gang",
+      "todo": "At gøre"
+    },
+    "validation": {
+      "minStatuses": "Projekter skal have mindst 2 statusser",
+      "nameRequired": "Projektnavn er påkrævet",
+      "nameTooLong": "Projektnavnet må højst være på 50 tegn",
+      "needsDoneStatus": "Projekter skal have mindst én 'Færdig'-status",
+      "needsDoneStatusForCompletedTasks": "Projekter skal have mindst én 'Færdig'-status til fuldførte opgaver",
+      "needsTodoStatus": "Projekter skal have mindst én 'At gøre'-status",
+      "needsTodoStatusForNewTasks": "Projekter skal have mindst én 'At gøre'-status til nye opgaver",
+      "statusNameRequired": "Alle statusser skal have et navn",
+      "statusNamesUnique": "Statusnavne skal være unikke",
+      "statusNotFound": "Status blev ikke fundet"
+    }
+  },
+  "statusLabels": {
+    "done": "Færdig",
+    "inProgress": "I gang",
+    "todo": "At gøre"
   }
 }

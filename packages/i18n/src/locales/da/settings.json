@@ -1449,7 +1449,8 @@
       },
       "title": "Importér fra {name}",
       "chooseDirectory": "Vælg mappe…",
-      "folderKeepsAssets": "Vælg mappen, når billederne ligger uden for noternes egen mappe — ved eksport ligger medier ofte i én fælles mappe."
+      "folderKeepsAssets": "Vælg mappen, når billederne ligger uden for noternes egen mappe — ved eksport ligger medier ofte i én fælles mappe.",
+      "previewError": "Forhåndsvisningen mislykkedes"
     },
     "header": {
       "subtitle": "Hent dine noter og opgaver ind fra andre apps",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, one {# opgave} other {# opgaver}}",
       "withDueDate": "{count} dateret",
       "withTags": "{count} tagget"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Kolonner: {columns}",
+        "emptyTitle": "Sprang række med tom titel over (kolonnen “{column}”)",
+        "noHeaders": "CSV-filen har ingen overskrifter",
+        "titleColumn": "Titel fra “{column}”; øvrige kolonner er gemt som egenskaber"
+      },
+      "raindrop": {
+        "csvEmpty": "Raindrop-CSV-filen er tom",
+        "headerNotFound": "Overskriftsrækken i Raindrop-CSV-filen (kolonnen “url”) blev ikke fundet",
+        "rowNoUrl": "Række {row} sprunget over: ingen URL"
+      },
+      "readFileFailed": "Kunne ikke læse filen",
+      "ticktick": {
+        "foldersDropped": "TickTick-mapper har ingen tilsvarende i Memry og blev udeladt",
+        "headerNotFound": "Overskriftsrækken i TickTick-CSV-filen (“Folder Name”) blev ikke fundet",
+        "reminderNoAnchor": "Påmindelsen “{reminder}” blev sprunget over (intet datoanker)",
+        "subtaskParentMissing": "Den overordnede opgave til delopgaven “{title}” blev ikke fundet; importeret på øverste niveau",
+        "unknownPriority": "Ukendt TickTick-prioritet {priority} → ingen",
+        "unsupportedRepeat": "Gentagelsesreglen “{rule}” understøttes ikke og blev sprunget over"
+      },
+      "todoist": {
+        "emptyTitle": "Opgave med tomt indhold importeret som (uden titel)",
+        "headerNotFound": "Ikke en Todoist-CSV: TYPE-overskriftsrækken mangler",
+        "orphanComment": "Kommentar uden foregående opgave blev sprunget over",
+        "sectionFlattened": "Sektionen “{section}” blev fladet ud",
+        "subtaskNoParent": "Delopgaven “{title}” har ingen overordnet opgave ved indrykning {indent}; importeret på øverste niveau",
+        "unknownPriority": "Ukendt prioritet {priority} → ingen",
+        "unparsedDate": "Datoen “{date}” kunne ikke tolkes"
+      }
     }
   },
   "inbox": {

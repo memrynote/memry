@@ -1449,7 +1449,8 @@
       },
       "title": "{name} kaynağından içe aktar",
       "chooseDirectory": "Klasör seç…",
-      "folderKeepsAssets": "Görseller notların kendi klasörünün dışındaysa klasörü seçin — dışa aktarmalar medyayı genellikle ortak bir klasörde tutar."
+      "folderKeepsAssets": "Görseller notların kendi klasörünün dışındaysa klasörü seçin — dışa aktarmalar medyayı genellikle ortak bir klasörde tutar.",
+      "previewError": "Önizleme başarısız oldu"
     },
     "header": {
       "subtitle": "Notlarınızı ve görevlerinizi diğer uygulamalardan getirin",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, one {# görev} other {# görev}}",
       "withDueDate": "{count} tarihli",
       "withTags": "{count} etiketli"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Sütunlar: {columns}",
+        "emptyTitle": "Başlığı boş olan satır atlandı (\"{column}\" sütunu)",
+        "noHeaders": "CSV dosyasında başlık satırı yok",
+        "titleColumn": "Başlık \"{column}\" sütunundan alındı; diğer sütunlar özellik olarak kaydedildi"
+      },
+      "raindrop": {
+        "csvEmpty": "Raindrop CSV dosyası boş",
+        "headerNotFound": "Raindrop CSV başlık satırı (\"url\" sütunu) bulunamadı",
+        "rowNoUrl": "{row}. satır atlandı: URL yok"
+      },
+      "readFileFailed": "Dosya okunamadı",
+      "ticktick": {
+        "foldersDropped": "TickTick klasörlerinin Memry'de karşılığı olmadığı için atlandı",
+        "headerNotFound": "TickTick CSV başlık satırı (\"Folder Name\") bulunamadı",
+        "reminderNoAnchor": "\"{reminder}\" hatırlatıcısı atlandı (tarih bağlantısı yok)",
+        "subtaskParentMissing": "\"{title}\" alt görevinin üst görevi bulunamadı; üst düzey olarak içe aktarıldı",
+        "unknownPriority": "Bilinmeyen TickTick önceliği {priority} → yok",
+        "unsupportedRepeat": "Desteklenmeyen tekrar kuralı \"{rule}\" atlandı"
+      },
+      "todoist": {
+        "emptyTitle": "İçeriği boş olan görev (başlıksız) olarak içe aktarıldı",
+        "headerNotFound": "Todoist CSV dosyası değil: TYPE başlık satırı yok",
+        "orphanComment": "Öncesinde görev bulunmayan yorum atlandı",
+        "sectionFlattened": "\"{section}\" bölümü düzleştirildi",
+        "subtaskNoParent": "\"{title}\" alt görevinin {indent} girinti düzeyinde üst görevi yok; üst düzey olarak içe aktarıldı",
+        "unknownPriority": "Bilinmeyen öncelik {priority} → yok",
+        "unparsedDate": "\"{date}\" tarihi çözümlenemedi"
+      }
     }
   },
   "inbox": {

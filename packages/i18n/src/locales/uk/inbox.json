@@ -270,7 +270,50 @@
     "panelEmpty": "Немає майбутніх нагадувань.",
     "panelPast": "Минулі",
     "panelUpcoming": "Майбутні",
-    "taskFallback": "Завдання"
+    "taskFallback": "Завдання",
+    "dateTime": {
+      "dateAt": "{date} о {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Сьогодні о {time}",
+      "todayCompact": "Сьогодні, {time}",
+      "tomorrowAt": "Завтра о {time}",
+      "tomorrowCompact": "Завтра, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Нагадування про річницю",
+      "inHours": {
+        "label": "Через {count, plural, one {# годину} few {# години} many {# годин} other {# години}}"
+      },
+      "inMinutes": {
+        "label": "Через {count, plural, one {# хвилину} few {# хвилини} many {# хвилин} other {# хвилини}}"
+      },
+      "inMonths": {
+        "label": "Через {count, plural, one {# місяць} few {# місяці} many {# місяців} other {# місяця}}"
+      },
+      "inWeeks": {
+        "label": "Через {count, plural, one {# тиждень} few {# тижні} many {# тижнів} other {# тижня}}"
+      },
+      "inYears": {
+        "label": "Через {count, plural, one {# рік} few {# роки} many {# років} other {# року}}"
+      },
+      "laterToday": {
+        "description": "Через {count, plural, one {# годину} few {# години} many {# годин} other {# години}}",
+        "label": "Пізніше сьогодні"
+      },
+      "monthlyReflection": "Щомісячна рефлексія",
+      "nextWeek": {
+        "description": "Понеділок о 9:00",
+        "label": "Наступного тижня"
+      },
+      "quarterlyReflection": "Квартальна рефлексія",
+      "reviewInAWeek": "Переглянути через тиждень",
+      "sameDayNextMonth": "Той самий день наступного місяця",
+      "tomorrow": {
+        "description": "Завтра о 9:00",
+        "label": "Завтра"
+      },
+      "tomorrowMorning": "Завтра вранці"
+    }
   },
   "insights": {
     "captureActivity": "Фіксувати активність",

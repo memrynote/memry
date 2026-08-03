@@ -270,7 +270,50 @@
     "panelEmpty": "Žiadne nadchádzajúce pripomienky.",
     "panelPast": "Minulé",
     "panelUpcoming": "Nadchádzajúce",
-    "taskFallback": "Úloha"
+    "taskFallback": "Úloha",
+    "dateTime": {
+      "dateAt": "{date} o {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Dnes o {time}",
+      "todayCompact": "Dnes, {time}",
+      "tomorrowAt": "Zajtra o {time}",
+      "tomorrowCompact": "Zajtra, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Pripomienka výročia",
+      "inHours": {
+        "label": "O {count, plural, one {# hodinu} few {# hodiny} many {# hodiny} other {# hodín}}"
+      },
+      "inMinutes": {
+        "label": "O {count, plural, one {# minútu} few {# minúty} many {# minúty} other {# minút}}"
+      },
+      "inMonths": {
+        "label": "O {count, plural, one {# mesiac} few {# mesiace} many {# mesiaca} other {# mesiacov}}"
+      },
+      "inWeeks": {
+        "label": "O {count, plural, one {# týždeň} few {# týždne} many {# týždňa} other {# týždňov}}"
+      },
+      "inYears": {
+        "label": "O {count, plural, one {# rok} few {# roky} many {# roka} other {# rokov}}"
+      },
+      "laterToday": {
+        "description": "O {count, plural, one {# hodinu} few {# hodiny} many {# hodiny} other {# hodín}}",
+        "label": "Neskôr dnes"
+      },
+      "monthlyReflection": "Mesačná reflexia",
+      "nextWeek": {
+        "description": "V pondelok o 9:00",
+        "label": "Budúci týždeň"
+      },
+      "quarterlyReflection": "Štvrťročná reflexia",
+      "reviewInAWeek": "Prejsť si o týždeň",
+      "sameDayNextMonth": "Rovnaký deň budúci mesiac",
+      "tomorrow": {
+        "description": "Zajtra o 9:00",
+        "label": "Zajtra"
+      },
+      "tomorrowMorning": "Zajtra ráno"
+    }
   },
   "insights": {
     "captureActivity": "Zaznamenať aktivitu",

@@ -22,7 +22,19 @@
     "writeFailed": "Не вдалося зберегти цю нотатку. Перевірте місце на диску та дозволи.",
     "readFailed": "Не вдалося прочитати цю нотатку. Файл може бути заблокований або пошкоджений.",
     "deleteFailed": "Не вдалося видалити цю нотатку. Перевірте дозволи файлу.",
-    "invalidPath": "Шлях до нотатки недійсний."
+    "invalidPath": "Шлях до нотатки недійсний.",
+    "applyTemplateFailed": "Не вдалося застосувати шаблон",
+    "createFailed": "Не вдалося створити нотатку",
+    "deleteVersionFailed": "Не вдалося видалити версію",
+    "exportHtmlFailed": "Не вдалося експортувати HTML",
+    "exportPdfFailed": "Не вдалося експортувати PDF",
+    "importFilesFailed": "Не вдалося імпортувати файли",
+    "moveFailed": "Не вдалося перемістити нотатку",
+    "renameFailed": "Не вдалося перейменувати нотатку",
+    "reorderFailed": "Не вдалося змінити порядок нотаток",
+    "restoreVersionFailed": "Не вдалося відновити версію",
+    "setLocalOnlyFailed": "Не вдалося позначити як лише локальну",
+    "updateFailed": "Не вдалося оновити нотатку"
   },
   "database": {
     "connectionFailed": "Не вдалося підключитися до локальної бази даних. Спробуйте перезапустити додаток.",
@@ -41,7 +53,11 @@
     "fileTooLarge": "Цей файл занадто великий для вкладення.",
     "unsupportedType": "Цей тип файлу не підтримується.",
     "writeFailed": "Не вдалося зберегти вкладення. Перевірте наявність вільного місця на диску.",
-    "deleteFailed": "Не вдалося видалити вкладення."
+    "deleteFailed": "Не вдалося видалити вкладення.",
+    "downloadFailed": "Не вдалося завантажити вкладення",
+    "downloadProgressFailed": "Не вдалося отримати поступ завантаження",
+    "uploadFailed": "Не вдалося вивантажити вкладення",
+    "uploadProgressFailed": "Не вдалося отримати поступ вивантаження"
   },
   "encryption": {
     "failed": "Не вдалося зашифрувати дані. Можливо, ваші ключі потребують відновлення.",
@@ -77,6 +93,184 @@
     "paymentRequired": "Для використання розміщеної зашифрованої синхронізації потрібен платний план Sync.",
     "attachmentUploadFailed": "Не вдалося синхронізувати вкладення «{filename}». Воно залишається на цьому пристрої.",
     "fileTooLarge": "Цей файл більший, ніж дозволяє ваш план. Оновіть план, щоб синхронізувати більші файли.",
-    "vaultRecovered": "Ключ сховища відновлено. Синхронізація продовжиться."
+    "vaultRecovered": "Ключ сховища відновлено. Синхронізація продовжиться.",
+    "historyFetchFailed": "Не вдалося отримати історію синхронізації",
+    "keyPersistenceFailed": "Не вдалося надійно зберегти ключ шифрування. Реєстрацію пристрою скасовано. Будь ласка, спробуйте ще раз.",
+    "serverUnreachable": "Не вдається підключитися до сервера синхронізації. Перевірте підключення до інтернету.",
+    "updateSyncedSettingFailed": "Не вдалося оновити синхронізоване налаштування"
+  },
+  "agent": {
+    "conversationBusy": "Розмова зайнята",
+    "runtimeStarting": "Середовище агента запускається. Спробуйте ще раз."
+  },
+  "ai": {
+    "inlineDisabled": "Вбудоване AI-редагування вимкнено",
+    "listOllamaModelsFailed": "Не вдалося отримати список моделей Ollama"
+  },
+  "auth": {
+    "approveLinkingFailed": "Не вдалося схвалити прив’язування",
+    "cannotRemoveCurrentDevice": "Неможливо видалити поточний пристрій",
+    "completeLinkingFailed": "Не вдалося завершити прив’язування",
+    "confirmRecoveryPhraseFailed": "Не вдалося підтвердити фразу відновлення",
+    "fetchSasCodeFailed": "Не вдалося отримати код SAS",
+    "finalizeVaultChoiceFailed": "Не вдалося завершити вибір сховища",
+    "initiateOAuthFailed": "Не вдалося розпочати OAuth",
+    "invalidRecoveryPhraseFormat": "Недійсний формат фрази відновлення",
+    "linkDeviceQrFailed": "Не вдалося прив’язати пристрій через QR",
+    "linkRecoveryPhraseFailed": "Не вдалося прив’язати через фразу відновлення",
+    "notAuthenticated": "Не автентифіковано",
+    "pickFolderFailed": "Не вдалося вибрати папку",
+    "recoveryPhraseMismatch": "Фраза відновлення не збігається. Будь ласка, спробуйте ще раз.",
+    "removeDeviceFailed": "Не вдалося видалити пристрій",
+    "renameDeviceFailed": "Не вдалося перейменувати пристрій",
+    "requestOtpFailed": "Не вдалося запитати одноразовий код",
+    "resendOtpFailed": "Не вдалося надіслати одноразовий код повторно",
+    "sessionExpired": "Сесія завершилася. Будь ласка, увійдіть знову.",
+    "setupFirstDeviceOAuthFailed": "Не вдалося налаштувати перший пристрій через OAuth",
+    "verifyOtpFailed": "Не вдалося перевірити одноразовий код"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "Елемент уже в закладках",
+    "notFound": "Закладку не знайдено"
+  },
+  "calendar": {
+    "connectProviderFailed": "Не вдалося підключити постачальника календаря",
+    "createEventFailed": "Не вдалося створити подію календаря",
+    "deleteEventFailed": "Не вдалося видалити подію календаря",
+    "disconnectProviderFailed": "Не вдалося відключити постачальника календаря",
+    "eventNotFound": "Подію календаря не знайдено",
+    "googleNotConnected": "Google Calendar не підключено на цьому пристрої",
+    "listGoogleCalendarsFailed": "Не вдалося отримати список календарів Google",
+    "onlyGoogleSourcesRetryable": "Повторити можна лише джерела Google Calendar",
+    "onlySourcesSelectable": "Вибрати можна лише джерела календаря",
+    "promoteExternalEventFailed": "Не вдалося перенести зовнішню подію календаря",
+    "refreshProviderFailed": "Не вдалося оновити постачальника календаря",
+    "retryGoogleSourceSyncFailed": "Не вдалося повторити синхронізацію джерела Google Calendar",
+    "setDefaultGoogleCalendarFailed": "Не вдалося встановити типовий календар Google",
+    "signInBeforeRefresh": "Увійдіть у memrynote, перш ніж оновлювати Google Calendar",
+    "sourceNotFound": "Джерело календаря не знайдено",
+    "syncFailed": "Синхронізація не вдалася",
+    "updateEventFailed": "Не вдалося оновити подію календаря",
+    "updateSourceSelectionFailed": "Не вдалося оновити вибір джерел календаря"
+  },
+  "folder": {
+    "createFailed": "Не вдалося створити папку",
+    "deleteFailed": "Не вдалося видалити папку",
+    "renameFailed": "Не вдалося перейменувати папку",
+    "setConfigFailed": "Не вдалося зберегти конфігурацію папки"
+  },
+  "folderView": {
+    "deleteViewFailed": "Не вдалося видалити перегляд",
+    "setConfigFailed": "Не вдалося зберегти конфігурацію",
+    "setViewFailed": "Не вдалося встановити перегляд"
+  },
+  "googleCalendar": {
+    "accessDenied": "Доступ до Google Calendar відхилено. Ви можете підключитися знову, коли будете готові.",
+    "connectFailed": "Не вдалося підключитися до Google Calendar. Будь ласка, спробуйте ще раз за хвилину.",
+    "misconfigured": "Google Calendar налаштовано неправильно. Зверніться до підтримки, якщо це повторюється.",
+    "reconnectNeeded": "Ваше підключення до Google Calendar застаріло. Відключіться та підключіться знову.",
+    "scopeMissing": "Нам не вдалося отримати доступ до вашого Google Calendar, бо дозвіл на Календар не було надано. Спробуйте ще раз і переконайтеся, що прапорець «Календар» залишається позначеним на екрані згоди Google.",
+    "temporarilyUnavailable": "Google Calendar тимчасово недоступний. Будь ласка, спробуйте ще раз незабаром."
+  },
+  "importer": {
+    "cancelFailed": "Скасування не вдалося",
+    "fileSelectionFailed": "Не вдалося вибрати файли",
+    "importFailed": "Імпорт не вдався",
+    "listFailed": "Не вдалося отримати список імпортерів",
+    "previewFailed": "Попередній перегляд не вдався"
+  },
+  "project": {
+    "archiveFailed": "Не вдалося заархівувати проєкт",
+    "captureLinkFailed": "Не вдалося захопити посилання",
+    "createFailed": "Не вдалося створити проєкт",
+    "deleteFailed": "Не вдалося видалити проєкт",
+    "importFilesFailed": "Не вдалося імпортувати файли",
+    "linkItemFailed": "Не вдалося пов’язати елемент",
+    "listForItemFailed": "Не вдалося отримати список проєктів для елемента",
+    "reorderFailed": "Не вдалося змінити порядок проєктів",
+    "setHomeNoteFailed": "Не вдалося встановити головну нотатку",
+    "unlinkItemFailed": "Не вдалося відв’язати елемент",
+    "updateFailed": "Не вдалося оновити проєкт",
+    "updatePinnedFailed": "Не вдалося оновити стан закріплення"
+  },
+  "property": {
+    "alreadyExists": "Властивість «{name}» вже існує",
+    "createDefinitionFailed": "Не вдалося створити визначення властивості",
+    "entityNotFound": "Сутність не знайдено",
+    "notFound": "Властивість «{name}» не знайдено",
+    "renameFailed": "Не вдалося перейменувати властивість",
+    "setCalendarVisibilityFailed": "Не вдалося налаштувати видимість властивості в календарі",
+    "setFailed": "Не вдалося зберегти властивості",
+    "updateDefinitionFailed": "Не вдалося оновити визначення властивості"
+  },
+  "reminder": {
+    "createFailed": "Не вдалося створити нагадування",
+    "dismissAllFailed": "Не вдалося відхилити нагадування",
+    "dismissFailed": "Не вдалося відхилити нагадування",
+    "notFound": "Нагадування не знайдено",
+    "snoozeFailed": "Не вдалося відкласти нагадування",
+    "updateFailed": "Не вдалося оновити нагадування"
+  },
+  "savedFilter": {
+    "notFound": "Збережений фільтр не знайдено"
+  },
+  "search": {
+    "rebuildFailed": "Перебудова не вдалася"
+  },
+  "settings": {
+    "modelAlreadyLoading": "Модель уже завантажується",
+    "modelLoadFailed": "Не вдалося завантажити модель",
+    "shortcutInUse": "Комбінація {shortcut} вже використовується",
+    "terminalCommandInstallFailed": "Не вдалося встановити термінальну команду",
+    "terminalCommandUninstallFailed": "Не вдалося видалити термінальну команду",
+    "unknownVault": "Невідоме сховище",
+    "voiceModelDownloadFailed": "Не вдалося завантажити голосову модель"
+  },
+  "tag": {
+    "categoryNameRequired": "Потрібна назва категорії",
+    "createCategoryFailed": "Не вдалося створити категорію тегів",
+    "deleteCategoryFailed": "Не вдалося видалити категорію тегів",
+    "deleteFailed": "Не вдалося видалити тег",
+    "listCategoriesFailed": "Не вдалося отримати список категорій тегів",
+    "mergeFailed": "Не вдалося об’єднати теги",
+    "mergeSameTag": "Початковий і цільовий теги однакові",
+    "pinNoteFailed": "Не вдалося закріпити нотатку",
+    "removeFromNoteFailed": "Не вдалося прибрати тег із нотатки",
+    "renameCategoryFailed": "Не вдалося перейменувати категорію тегів",
+    "renameFailed": "Не вдалося перейменувати тег",
+    "reorderFailed": "Не вдалося змінити порядок тегів",
+    "unpinNoteFailed": "Не вдалося відкріпити нотатку",
+    "updateColorFailed": "Не вдалося оновити колір тега",
+    "updateIconFailed": "Не вдалося оновити піктограму тега"
+  },
+  "task": {
+    "archiveFailed": "Не вдалося заархівувати завдання",
+    "archiveManyFailed": "Не вдалося заархівувати завдання",
+    "completeFailed": "Не вдалося виконати завдання",
+    "completeManyFailed": "Не вдалося виконати завдання",
+    "convertToSubtaskFailed": "Не вдалося перетворити на підзавдання",
+    "convertToTaskFailed": "Не вдалося перетворити на завдання",
+    "createFailed": "Не вдалося створити завдання",
+    "deleteFailed": "Не вдалося видалити завдання",
+    "deleteManyFailed": "Не вдалося видалити завдання",
+    "duplicateFailed": "Не вдалося дублювати завдання",
+    "moveFailed": "Не вдалося перемістити завдання",
+    "moveManyFailed": "Не вдалося перемістити завдання",
+    "reorderFailed": "Не вдалося змінити порядок завдань",
+    "unarchiveFailed": "Не вдалося розархівувати завдання",
+    "uncompleteFailed": "Не вдалося скасувати виконання завдання",
+    "updateFailed": "Не вдалося оновити завдання"
+  },
+  "taskStatus": {
+    "createFailed": "Не вдалося створити статус",
+    "deleteFailed": "Не вдалося видалити статус",
+    "reorderFailed": "Не вдалося змінити порядок статусів",
+    "updateFailed": "Не вдалося оновити статус"
+  },
+  "template": {
+    "createFailed": "Не вдалося створити шаблон",
+    "deleteFailed": "Не вдалося видалити шаблон",
+    "duplicateFailed": "Не вдалося дублювати шаблон",
+    "updateFailed": "Не вдалося оновити шаблон"
   }
 }

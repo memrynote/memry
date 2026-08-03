@@ -25,7 +25,8 @@
     "expand": "Proširi",
     "collapse": "Sažimanje",
     "showMore": "+{count, plural, one {# više} other {# više}}",
-    "showLess": "Prikaži manje"
+    "showLess": "Prikaži manje",
+    "undo": "Poništi"
   },
   "tabs": {
     "pin": "Prikvači karticu",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "Danas",
     "yesterday": "jučer",
-    "daysAgo": "{count, plural, one {# prije dan} other {# prije dana}}"
+    "daysAgo": "{count, plural, one {# prije dan} other {# prije dana}}",
+    "daysLate": "{count, plural, one {kasni #d} few {kasni #d} other {kasni #d}}",
+    "daysOverdue": "{count, plural, one {# dan zakašnjenja} few {# dana zakašnjenja} other {# dana zakašnjenja}}",
+    "tomorrow": "Sutra"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Svaki dan} other {Svakih # dana}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Svaki mjesec na {day}{suffix}} other {Svakih # mjeseci na {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Svaki mjesec na {week} {day}} other {Svakih # mjeseci na {week} {day}}}",
     "everyNYears": "{count, plural, one {Svake godine} other {Svakih # godina}}",
-    "repeats": "Ponavlja se"
+    "repeats": "Ponavlja se",
+    "ordinal": {
+      "first": "prvi",
+      "fourth": "četvrti",
+      "last": "posljednji",
+      "second": "drugi",
+      "third": "treći"
+    },
+    "preset": {
+      "everyWeekday": "Svaki radni dan (pon-pet)",
+      "everyYearOnDate": "Svake godine {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -640,6 +655,11 @@
     "welcome": {
       "body": "Vaš privatni, offline-first dom. Bilješke su šifrirane s kraja na kraj — nikad ne napuštaju vaš uređaj nešifrirane.",
       "title": "Dobro došli u MemryNote"
+    },
+    "tour": {
+      "next": "Dalje",
+      "previous": "Natrag",
+      "progress": "{current} od {total}"
     }
   },
   "updatePrompt": {
@@ -696,5 +716,125 @@
     "sectionLabel": "Platna",
     "tooLargeToSync": "Ovo je platno preveliko za sinkronizaciju. Spremljeno je na ovom uređaju, ali neće stići na vaše druge uređaje dok se ne smanji.",
     "untitled": "Platno bez naslova"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Klik na redak",
+      "reset": "Vrati zadano",
+      "shortcutsTab": "Kartica Prečaci"
+    },
+    "description": "Brzi putovi za kretanje kroz memrynote, bilježenje misli i obradu posla.",
+    "groups": {
+      "general": {
+        "description": "Navigacija i pomoć u cijeloj aplikaciji.",
+        "title": "Općenito"
+      },
+      "inbox": {
+        "description": "Brzo obradite zabilježene stavke.",
+        "title": "Pristigla pošta"
+      },
+      "journal": {
+        "description": "Krećite se prikazima dnevnika i fokusirajte prostor za pisanje.",
+        "title": "Dnevnik"
+      },
+      "notes": {
+        "description": "Pišite, oblikujte i pretražujte bilješke.",
+        "title": "Bilješke / Uređivač"
+      },
+      "settings": {
+        "description": "Otvorite postavke i prilagodite prečace.",
+        "title": "Postavke"
+      },
+      "tabs": {
+        "description": "Krećite se između kartica i okana.",
+        "title": "Kartice i podjele"
+      },
+      "tasks": {
+        "description": "Filtrirajte, odaberite i dovršite zadatke.",
+        "title": "Zadaci"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Stvori bilješku",
+        "keyboardShortcuts": "Otvori tipkovničke prečace",
+        "openSettings": "Otvori postavke",
+        "quickSearch": "Otvori brzu pretragu",
+        "sidebarSection": "Idi na odjeljak bočne trake",
+        "toggleSidebar": "Uključi/isključi bočnu traku",
+        "undoTaskAction": "Poništi posljednju radnju sa zadatkom"
+      },
+      "inbox": {
+        "archiveItem": "Arhiviraj odabranu stavku",
+        "chooseQuickFileResult": "Odaberi rezultat brzog razvrstavanja",
+        "clearSelection": "Poništi odabir ili zatvori brzo razvrstavanje",
+        "confirmFiling": "Potvrdi ploču razvrstavanja",
+        "firstOrLastItem": "Prva ili posljednja stavka",
+        "jumpByPage": "Skoči za stranicu",
+        "nextItem": "Sljedeća stavka",
+        "openOriginal": "Otvori izvornu poveznicu",
+        "openQuickFile": "Otvori brzo razvrstavanje",
+        "previousItem": "Prethodna stavka",
+        "refresh": "Osvježi pristiglu poštu",
+        "selectAllVisible": "Odaberi sve vidljive stavke",
+        "selectItem": "Odaberi stavku",
+        "togglePreview": "Uključi/isključi ploču pretpregleda"
+      },
+      "journal": {
+        "bold": "Podebljaj odabrani tekst",
+        "find": "Pronađi u dnevniku",
+        "italic": "Ukosi odabrani tekst",
+        "link": "Dodaj ili uredi poveznicu",
+        "returnFromOverview": "Vrati se s mjesečnog ili godišnjeg prikaza",
+        "toggleFullWidth": "Uključi/isključi dnevnik pune širine",
+        "underline": "Podcrtaj odabrani tekst"
+      },
+      "notes": {
+        "bold": "Podebljano",
+        "closeOverlays": "Zatvori slojeve uređivača",
+        "commandMenu": "Otvori naredbeni izbornik uređivača",
+        "createNote": "Stvori bilješku",
+        "find": "Pronađi u bilješci",
+        "italic": "Kurziv",
+        "link": "Dodaj ili uredi poveznicu",
+        "saveNote": "Spremi trenutnu bilješku",
+        "underline": "Podcrtano"
+      },
+      "settings": {
+        "cancelRecording": "Odustani od snimanja prečaca",
+        "customizeShortcuts": "Prilagodi tipkovničke prečace",
+        "openSettings": "Otvori postavke",
+        "recordShortcut": "Snimi novi prečac",
+        "resetShortcut": "Vrati zadani prečac"
+      },
+      "tabs": {
+        "closeAllInPane": "Zatvori sve kartice u oknu",
+        "closeSplitPane": "Zatvori podijeljeno okno",
+        "closeTab": "Zatvori karticu",
+        "duplicateTab": "Dupliciraj karticu",
+        "focusPane": "Fokusiraj drugo okno",
+        "maximizePane": "Maksimiziraj trenutno okno",
+        "moveTabToPane": "Premjesti karticu u okno",
+        "newTabMenu": "Otvori izbornik nove kartice",
+        "nextTab": "Sljedeća kartica",
+        "pinTab": "Prikvači ili otkvači karticu",
+        "previousTab": "Prethodna kartica",
+        "reopenClosedTab": "Ponovno otvori zatvorenu karticu",
+        "splitDown": "Podijeli prema dolje",
+        "splitRight": "Podijeli udesno"
+      },
+      "tasks": {
+        "clearFilters": "Očisti vidljive filtre",
+        "clearSelection": "Poništi odabir zadataka",
+        "completeSelected": "Dovrši odabrane zadatke",
+        "configureRepeat": "Postavi ponavljanje za fokusirani zadatak",
+        "deleteSelected": "Izbriši odabrane zadatke",
+        "selectAllVisible": "Odaberi sve vidljive zadatke",
+        "skipOccurrence": "Preskoči pojavljivanje ponavljanja",
+        "stopRepeating": "Zaustavi ponavljanje zadatka"
+      }
+    },
+    "or": "ili",
+    "then": "zatim"
   }
 }

@@ -252,7 +252,12 @@
       "multiselect": "Multiselect"
     },
     "showOnCalendar": "Vis på kalender",
-    "showingOnCalendar": "Vises på kalender"
+    "showingOnCalendar": "Vises på kalender",
+    "statusCategories": {
+      "done": "Fuldført",
+      "inProgress": "I gang",
+      "todo": "At gøre"
+    }
   },
   "templateSelector": {
     "title": "Vælg dit lærred",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "Tagnavn",
     "uncategorized": "Ukategoriseret"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (dobbeltklik for at redigere)"
+    },
+    "columns": {
+      "created": "Oprettet",
+      "folder": "Mappe",
+      "kind": "Type",
+      "modified": "Ændret",
+      "tags": "Tags",
+      "title": "Titel",
+      "wordCount": "Antal ord"
+    },
+    "defaultViewName": "Standard",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# note} other {# noter}}"
+    },
+    "selectView": "Vælg visning"
   }
 }

@@ -252,7 +252,12 @@
       "multiselect": "หลายตัวเลือก"
     },
     "showOnCalendar": "แสดงบนปฏิทิน",
-    "showingOnCalendar": "กำลังแสดงบนปฏิทิน"
+    "showingOnCalendar": "กำลังแสดงบนปฏิทิน",
+    "statusCategories": {
+      "done": "เสร็จสมบูรณ์",
+      "inProgress": "กำลังดำเนินการ",
+      "todo": "ที่ต้องทำ"
+    }
   },
   "templateSelector": {
     "title": "เลือกผืนผ้าใบของคุณ",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "ชื่อแท็ก",
     "uncategorized": "ไม่มีหมวดหมู่"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (ดับเบิลคลิกเพื่อแก้ไข)"
+    },
+    "columns": {
+      "created": "สร้างเมื่อ",
+      "folder": "โฟลเดอร์",
+      "kind": "ประเภท",
+      "modified": "แก้ไขเมื่อ",
+      "tags": "แท็ก",
+      "title": "หัวข้อ",
+      "wordCount": "จำนวนคำ"
+    },
+    "defaultViewName": "ค่าเริ่มต้น",
+    "groupHeader": {
+      "noteCount": "{count, plural, other {# โน้ต}}"
+    },
+    "selectView": "เลือกมุมมอง"
   }
 }

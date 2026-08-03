@@ -1449,7 +1449,8 @@
       },
       "title": "Importeren uit {name}",
       "chooseDirectory": "Map kiezen…",
-      "folderKeepsAssets": "Kies de map wanneer afbeeldingen buiten de eigen map van de notities staan — exports bewaren media vaak in een gedeelde map."
+      "folderKeepsAssets": "Kies de map wanneer afbeeldingen buiten de eigen map van de notities staan — exports bewaren media vaak in een gedeelde map.",
+      "previewError": "Voorbeeld mislukt"
     },
     "header": {
       "subtitle": "Haal je notities en taken uit andere apps",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, one {# taak} other {# taken}}",
       "withDueDate": "{count} met datum",
       "withTags": "{count} getagd"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Kolommen: {columns}",
+        "emptyTitle": "Rij met lege titel overgeslagen (kolom “{column}”)",
+        "noHeaders": "Het CSV-bestand heeft geen kopregel",
+        "titleColumn": "Titel uit “{column}”; overige kolommen zijn als eigenschappen opgeslagen"
+      },
+      "raindrop": {
+        "csvEmpty": "De Raindrop-CSV is leeg",
+        "headerNotFound": "Kopregel van de Raindrop-CSV (kolom “url”) niet gevonden",
+        "rowNoUrl": "Rij {row} overgeslagen: geen URL"
+      },
+      "readFileFailed": "Kan het bestand niet lezen",
+      "ticktick": {
+        "foldersDropped": "TickTick-mappen hebben geen equivalent in Memry en zijn weggelaten",
+        "headerNotFound": "Kopregel van de TickTick-CSV (“Folder Name”) niet gevonden",
+        "reminderNoAnchor": "Herinnering “{reminder}” overgeslagen (geen datumanker)",
+        "subtaskParentMissing": "Bovenliggende taak van subtaak “{title}” niet gevonden; geïmporteerd op hoofdniveau",
+        "unknownPriority": "Onbekende TickTick-prioriteit {priority} → geen",
+        "unsupportedRepeat": "Niet-ondersteunde herhaalregel “{rule}” overgeslagen"
+      },
+      "todoist": {
+        "emptyTitle": "Taak met lege inhoud geïmporteerd als (zonder titel)",
+        "headerNotFound": "Geen Todoist-CSV: de kopregel TYPE ontbreekt",
+        "orphanComment": "Opmerking zonder voorafgaande taak overgeslagen",
+        "sectionFlattened": "Sectie “{section}” afgevlakt",
+        "subtaskNoParent": "Subtaak “{title}” heeft geen bovenliggende taak op inspringniveau {indent}; geïmporteerd op hoofdniveau",
+        "unknownPriority": "Onbekende prioriteit {priority} → geen",
+        "unparsedDate": "Kan de datum “{date}” niet lezen"
+      }
     }
   },
   "inbox": {

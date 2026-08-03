@@ -1,7 +1,12 @@
 {
   "app": {
     "quit": "Hör auf",
-    "preferences": "Einstellungen…"
+    "preferences": "Einstellungen…",
+    "exit": "Beenden",
+    "hide": "MemryNote ausblenden",
+    "hideOthers": "Andere ausblenden",
+    "services": "Dienste",
+    "unhide": "Alle einblenden"
   },
   "file": {
     "label": "Datei",
@@ -24,7 +29,11 @@
     "paste": "Einfügen",
     "selectAll": "Alles auswählen",
     "find": "Suchen",
-    "speech": "Sprache"
+    "speech": "Sprache",
+    "delete": "Löschen",
+    "pasteAndMatchStyle": "Einfügen und Stil anpassen",
+    "startSpeaking": "Sprachausgabe starten",
+    "stopSpeaking": "Sprachausgabe stoppen"
   },
   "view": {
     "label": "Ansicht",
@@ -37,7 +46,10 @@
     "themeSystem": "System",
     "themeWhite": "Papier",
     "toggleDayPanel": "Tagespanel umschalten",
-    "toggleSidebar": "Seitenleiste umschalten"
+    "toggleSidebar": "Seitenleiste umschalten",
+    "actualSize": "Originalgröße",
+    "zoomIn": "Vergrößern",
+    "zoomOut": "Verkleinern"
   },
   "format": {
     "body": "Fließtext",
@@ -55,7 +67,8 @@
     "about": "Über MemryNote",
     "documentation": "Dokumentation",
     "label": "Hilfe",
-    "shortcuts": "Tastenkürzel"
+    "shortcuts": "Tastenkürzel",
+    "aboutVersion": "Version {version}"
   },
   "insert": {
     "attachment": "Anhang einfügen…",
@@ -67,6 +80,10 @@
     "taskList": "Aufgabenliste"
   },
   "window": {
-    "label": "Fenster"
+    "label": "Fenster",
+    "close": "Schließen",
+    "front": "Alle nach vorne bringen",
+    "minimize": "Minimieren",
+    "zoom": "Zoomen"
   }
 }

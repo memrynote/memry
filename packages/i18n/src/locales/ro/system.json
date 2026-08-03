@@ -28,6 +28,13 @@
       "readyDetailFallback": "Reporniți memrynote pentru a finaliza instalarea actualizării.",
       "buttonRestartNow": "Reporniți acum",
       "releaseNotesLabel": "Note de lansare:"
+    },
+    "pair": {
+      "buttonAllow": "Permite",
+      "buttonDeny": "Refuză",
+      "buttonPair": "Asociază",
+      "message": "Permiteți extensiei de browser Memry să trimită capturi către această aplicație?",
+      "title": "Asociați extensia de browser"
     }
   },
   "notification": {
@@ -50,5 +57,15 @@
     "definitionNotFound": "Definiția nu a fost găsită",
     "noteNotFound": "Nota nu a fost găsită",
     "updateFailed": "Actualizarea a eșuat"
+  },
+  "startup": {
+    "failed": {
+      "body": "Acest lucru se poate întâmpla când discul are foarte puțin spațiu liber sau când driverele grafice sunt vechi. Încercați să eliberați spațiu pe disc, apoi redeschideți MemryNote. Dacă se repetă, reinstalarea rezolvă de obicei problema.",
+      "title": "MemryNote nu a putut porni complet"
+    },
+    "installingUpdate": {
+      "subtitle": "MemryNote va reporni automat.",
+      "title": "Se instalează actualizarea…"
+    }
   }
 }

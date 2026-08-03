@@ -25,7 +25,8 @@
     "expand": "Utvid",
     "collapse": "Kollaps",
     "showMore": "+{count, plural, one {# mer} other {# mer}}",
-    "showLess": "Vis mindre"
+    "showLess": "Vis mindre",
+    "undo": "Angre"
   },
   "tabs": {
     "pin": "Fest fane",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "I dag",
     "yesterday": "I går",
-    "daysAgo": "{count, plural, one {# dag siden} other {# dager siden}}"
+    "daysAgo": "{count, plural, one {# dag siden} other {# dager siden}}",
+    "daysLate": "{count, plural, one {#d forsinket} other {#d forsinket}}",
+    "daysOverdue": "{count, plural, one {# dag forsinket} other {# dager forsinket}}",
+    "tomorrow": "I morgen"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Hver dag} other {Hver # dag}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Hver måned på {day}{suffix}} other {Hver # måned på {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Hver måned på {week} {day}} other {Hver # måned på {week} {day}}}",
     "everyNYears": "{count, plural, one {Hvert år} other {Hvert # år}}",
-    "repeats": "Gjentas"
+    "repeats": "Gjentas",
+    "ordinal": {
+      "first": "første",
+      "fourth": "fjerde",
+      "last": "siste",
+      "second": "andre",
+      "third": "tredje"
+    },
+    "preset": {
+      "everyWeekday": "Hver ukedag (man-fre)",
+      "everyYearOnDate": "Hvert år den {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -640,6 +655,11 @@
     "welcome": {
       "body": "Ditt private, offline-først hjem. Notater er ende-til-ende-kryptert — de forlater aldri enheten din ukryptert.",
       "title": "Velkommen til MemryNote"
+    },
+    "tour": {
+      "next": "Neste",
+      "previous": "Forrige",
+      "progress": "{current} av {total}"
     }
   },
   "updatePrompt": {
@@ -696,5 +716,125 @@
     "sectionLabel": "Lerreter",
     "tooLargeToSync": "Dette lerretet er for stort til å synkroniseres. Det er lagret på denne enheten, men når ikke fram til de andre enhetene dine før det blir mindre.",
     "untitled": "Lerret uten tittel"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Klikk på rad",
+      "reset": "Tilbakestill",
+      "shortcutsTab": "Hurtigtaster-fanen"
+    },
+    "description": "Raske veier for å bevege deg rundt i memrynote, fange tanker og behandle arbeid.",
+    "groups": {
+      "general": {
+        "description": "Navigasjon og hjelp i hele appen.",
+        "title": "Generelt"
+      },
+      "inbox": {
+        "description": "Behandle innfangede elementer raskt.",
+        "title": "Innboks"
+      },
+      "journal": {
+        "description": "Naviger i journalvisninger og fokuser skrivefeltet.",
+        "title": "Journal"
+      },
+      "notes": {
+        "description": "Skriv, formater og søk i notater.",
+        "title": "Notater / editor"
+      },
+      "settings": {
+        "description": "Åpne innstillinger og tilpass hurtigtaster.",
+        "title": "Innstillinger"
+      },
+      "tabs": {
+        "description": "Flytt mellom faner og ruter.",
+        "title": "Faner og delte ruter"
+      },
+      "tasks": {
+        "description": "Filtrer, velg og fullfør oppgaver.",
+        "title": "Oppgaver"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Opprett et notat",
+        "keyboardShortcuts": "Åpne hurtigtaster",
+        "openSettings": "Åpne innstillinger",
+        "quickSearch": "Åpne hurtigsøk",
+        "sidebarSection": "Gå til seksjon i sidefeltet",
+        "toggleSidebar": "Vis eller skjul sidefeltet",
+        "undoTaskAction": "Angre siste oppgavehandling"
+      },
+      "inbox": {
+        "archiveItem": "Arkiver valgt element",
+        "chooseQuickFileResult": "Velg et resultat i hurtigarkivering",
+        "clearSelection": "Tøm utvalget eller lukk hurtigarkivering",
+        "confirmFiling": "Bekreft arkiveringspanelet",
+        "firstOrLastItem": "Første eller siste element",
+        "jumpByPage": "Hopp en side om gangen",
+        "nextItem": "Neste element",
+        "openOriginal": "Åpne opprinnelig lenke",
+        "openQuickFile": "Åpne hurtigarkivering",
+        "previousItem": "Forrige element",
+        "refresh": "Oppdater innboksen",
+        "selectAllVisible": "Velg alle synlige elementer",
+        "selectItem": "Velg element",
+        "togglePreview": "Vis eller skjul forhåndsvisningen"
+      },
+      "journal": {
+        "bold": "Sett merket tekst i fet",
+        "find": "Finn i journalen",
+        "italic": "Sett merket tekst i kursiv",
+        "link": "Legg til eller rediger lenke",
+        "returnFromOverview": "Gå tilbake fra måneds- eller årsvisning",
+        "toggleFullWidth": "Slå av eller på journal i full bredde",
+        "underline": "Understrek merket tekst"
+      },
+      "notes": {
+        "bold": "Fet",
+        "closeOverlays": "Lukk overlegg i editoren",
+        "commandMenu": "Åpne kommandomenyen i editoren",
+        "createNote": "Opprett et notat",
+        "find": "Finn i notatet",
+        "italic": "Kursiv",
+        "link": "Legg til eller rediger lenke",
+        "saveNote": "Lagre gjeldende notat",
+        "underline": "Understreking"
+      },
+      "settings": {
+        "cancelRecording": "Avbryt opptak av hurtigtast",
+        "customizeShortcuts": "Tilpass hurtigtaster",
+        "openSettings": "Åpne innstillinger",
+        "recordShortcut": "Ta opp en ny hurtigtast",
+        "resetShortcut": "Gjenopprett standard for en hurtigtast"
+      },
+      "tabs": {
+        "closeAllInPane": "Lukk alle faner i ruten",
+        "closeSplitPane": "Lukk den delte ruten",
+        "closeTab": "Lukk fane",
+        "duplicateTab": "Dupliser fane",
+        "focusPane": "Fokuser en annen rute",
+        "maximizePane": "Maksimer gjeldende rute",
+        "moveTabToPane": "Flytt fane til rute",
+        "newTabMenu": "Åpne menyen for ny fane",
+        "nextTab": "Neste fane",
+        "pinTab": "Fest eller løsne fane",
+        "previousTab": "Forrige fane",
+        "reopenClosedTab": "Åpne lukket fane på nytt",
+        "splitDown": "Del nedover",
+        "splitRight": "Del mot høyre"
+      },
+      "tasks": {
+        "clearFilters": "Tøm synlige filtre",
+        "clearSelection": "Tøm oppgaveutvalget",
+        "completeSelected": "Fullfør valgte oppgaver",
+        "configureRepeat": "Still inn gjentakelse på oppgaven i fokus",
+        "deleteSelected": "Slett valgte oppgaver",
+        "selectAllVisible": "Velg alle synlige oppgaver",
+        "skipOccurrence": "Hopp over én gjentakelse",
+        "stopRepeating": "Slutt å gjenta oppgaven"
+      }
+    },
+    "or": "eller",
+    "then": "deretter"
   }
 }

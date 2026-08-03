@@ -25,7 +25,8 @@
     "expand": "Expandir",
     "collapse": "Recolher",
     "showMore": "+{count, plural, one {# mais} other {# mais}}",
-    "showLess": "Mostrar menos"
+    "showLess": "Mostrar menos",
+    "undo": "Desfazer"
   },
   "tabs": {
     "pin": "Guia Fixar",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "Hoje",
     "yesterday": "Ontem",
-    "daysAgo": "{count, plural, one {# dia atrás} other {# dias atrás}}"
+    "daysAgo": "{count, plural, one {# dia atrás} other {# dias atrás}}",
+    "daysLate": "{count, plural, one {#d de atraso} many {#d de atraso} other {#d de atraso}}",
+    "daysOverdue": "{count, plural, one {# dia de atraso} many {# dias de atraso} other {# dias de atraso}}",
+    "tomorrow": "Amanhã"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Todos os dias} other {A cada # dias}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Todo mês no {day}{suffix}} other {A cada mês # no {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Todos os meses no {week} {day}} other {A cada mês # no {week} {day}}}",
     "everyNYears": "{count, plural, one {Todos os anos} other {A cada # anos}}",
-    "repeats": "Repete"
+    "repeats": "Repete",
+    "ordinal": {
+      "first": "primeiro",
+      "fourth": "quarto",
+      "last": "último",
+      "second": "segundo",
+      "third": "terceiro"
+    },
+    "preset": {
+      "everyWeekday": "Todos os dias úteis (seg-sex)",
+      "everyYearOnDate": "Todos os anos em {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -640,6 +655,11 @@
     "welcome": {
       "body": "O seu espaço privado, offline em primeiro lugar. As notas são encriptadas de ponta a ponta — nunca saem do seu dispositivo sem encriptação.",
       "title": "Bem-vindo ao MemryNote"
+    },
+    "tour": {
+      "next": "Seguinte",
+      "previous": "Anterior",
+      "progress": "{current} de {total}"
     }
   },
   "updatePrompt": {
@@ -696,5 +716,125 @@
     "sectionLabel": "Telas",
     "tooLargeToSync": "Esta tela é demasiado grande para sincronizar. Fica guardada neste dispositivo, mas só chegará aos seus outros dispositivos quando ficar mais pequena.",
     "untitled": "Tela sem título"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Clicar na linha",
+      "reset": "Repor",
+      "shortcutsTab": "Separador Atalhos"
+    },
+    "description": "Caminhos rápidos para circular pelo memrynote, capturar ideias e processar trabalho.",
+    "groups": {
+      "general": {
+        "description": "Navegação e ajuda em toda a aplicação.",
+        "title": "Geral"
+      },
+      "inbox": {
+        "description": "Processe rapidamente os itens capturados.",
+        "title": "Caixa de entrada"
+      },
+      "journal": {
+        "description": "Navegue pelas vistas do diário e foque a área de escrita.",
+        "title": "Diário"
+      },
+      "notes": {
+        "description": "Escreva, formate e pesquise notas.",
+        "title": "Notas / Editor"
+      },
+      "settings": {
+        "description": "Abra as definições e personalize os atalhos.",
+        "title": "Definições"
+      },
+      "tabs": {
+        "description": "Mova-se entre separadores e painéis.",
+        "title": "Separadores e divisões"
+      },
+      "tasks": {
+        "description": "Filtre, selecione e conclua tarefas.",
+        "title": "Tarefas"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Criar uma nota",
+        "keyboardShortcuts": "Abrir os atalhos de teclado",
+        "openSettings": "Abrir as definições",
+        "quickSearch": "Abrir a pesquisa rápida",
+        "sidebarSection": "Ir para uma secção da barra lateral",
+        "toggleSidebar": "Alternar a barra lateral",
+        "undoTaskAction": "Desfazer a última ação de tarefa"
+      },
+      "inbox": {
+        "archiveItem": "Arquivar o item selecionado",
+        "chooseQuickFileResult": "Escolher um resultado do arquivo rápido",
+        "clearSelection": "Limpar a seleção ou fechar o arquivo rápido",
+        "confirmFiling": "Confirmar o painel de arquivo",
+        "firstOrLastItem": "Primeiro ou último item",
+        "jumpByPage": "Saltar de página em página",
+        "nextItem": "Item seguinte",
+        "openOriginal": "Abrir a ligação original",
+        "openQuickFile": "Abrir o arquivo rápido",
+        "previousItem": "Item anterior",
+        "refresh": "Atualizar a caixa de entrada",
+        "selectAllVisible": "Selecionar todos os itens visíveis",
+        "selectItem": "Selecionar item",
+        "togglePreview": "Alternar o painel de pré-visualização"
+      },
+      "journal": {
+        "bold": "Colocar o texto selecionado a negrito",
+        "find": "Localizar no diário",
+        "italic": "Colocar o texto selecionado em itálico",
+        "link": "Adicionar ou editar ligação",
+        "returnFromOverview": "Voltar da vista de mês ou ano",
+        "toggleFullWidth": "Alternar o diário em largura total",
+        "underline": "Sublinhar o texto selecionado"
+      },
+      "notes": {
+        "bold": "Negrito",
+        "closeOverlays": "Fechar as sobreposições do editor",
+        "commandMenu": "Abrir o menu de comandos do editor",
+        "createNote": "Criar uma nota",
+        "find": "Localizar na nota",
+        "italic": "Itálico",
+        "link": "Adicionar ou editar ligação",
+        "saveNote": "Guardar a nota atual",
+        "underline": "Sublinhado"
+      },
+      "settings": {
+        "cancelRecording": "Cancelar a gravação do atalho",
+        "customizeShortcuts": "Personalizar os atalhos de teclado",
+        "openSettings": "Abrir as definições",
+        "recordShortcut": "Gravar um novo atalho",
+        "resetShortcut": "Repor a predefinição de um atalho"
+      },
+      "tabs": {
+        "closeAllInPane": "Fechar todos os separadores do painel",
+        "closeSplitPane": "Fechar o painel dividido",
+        "closeTab": "Fechar separador",
+        "duplicateTab": "Duplicar separador",
+        "focusPane": "Focar outro painel",
+        "maximizePane": "Maximizar o painel atual",
+        "moveTabToPane": "Mover o separador para outro painel",
+        "newTabMenu": "Abrir o menu de novo separador",
+        "nextTab": "Separador seguinte",
+        "pinTab": "Fixar ou libertar separador",
+        "previousTab": "Separador anterior",
+        "reopenClosedTab": "Reabrir separador fechado",
+        "splitDown": "Dividir para baixo",
+        "splitRight": "Dividir para a direita"
+      },
+      "tasks": {
+        "clearFilters": "Limpar os filtros visíveis",
+        "clearSelection": "Limpar a seleção de tarefas",
+        "completeSelected": "Concluir as tarefas selecionadas",
+        "configureRepeat": "Configurar a repetição da tarefa em foco",
+        "deleteSelected": "Eliminar as tarefas selecionadas",
+        "selectAllVisible": "Selecionar todas as tarefas visíveis",
+        "skipOccurrence": "Ignorar a ocorrência da repetição",
+        "stopRepeating": "Parar de repetir a tarefa"
+      }
+    },
+    "or": "ou",
+    "then": "depois"
   }
 }

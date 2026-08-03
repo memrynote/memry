@@ -35,7 +35,14 @@
     "delete": "Slett oppgave",
     "created": "Opprettet {date}",
     "reminder": "Påminnelse",
-    "tags": "Tagger"
+    "tags": "Tagger",
+    "priorityLabels": {
+      "high": "Høy",
+      "low": "Lav",
+      "medium": "Middels",
+      "none": "Ingen prioritet",
+      "urgent": "Haster"
+    }
   },
   "filters": {
     "filter": "Filter",
@@ -44,7 +51,25 @@
     "groupBy": "Grupper etter",
     "groupByOptions": "Grupper etter alternativer",
     "sortAscending": "Sorter stigende",
-    "sortDescending": "Sorter synkende"
+    "sortDescending": "Sorter synkende",
+    "dueDate": {
+      "any": "Alle forfallsdatoer",
+      "custom": "Egendefinert periode...",
+      "nextWeek": "Neste uke",
+      "none": "Ingen forfallsdato",
+      "overdue": "Forfalt",
+      "thisMonth": "Denne måneden",
+      "thisWeek": "Denne uken",
+      "today": "I dag",
+      "tomorrow": "I morgen"
+    },
+    "quickPresets": {
+      "dueThisWeek": "Forfaller denne uken",
+      "highPriority": "Høy prioritet",
+      "noDueDate": "Ingen forfallsdato",
+      "overdue": "Forfalt",
+      "repeating": "Gjentakende"
+    }
   },
   "quickAdd": {
     "label": "Rask legge til oppgave",
@@ -77,7 +102,21 @@
     "searchRelated": "Søk i relaterte…"
   },
   "kanban": {
-    "board": "Kanban-tavle"
+    "board": "Kanban-tavle",
+    "empty": {
+      "default": {
+        "subtitle": "Dra oppgaver hit, eller klikk + for å legge til",
+        "title": "Ingen oppgaver"
+      },
+      "done": {
+        "subtitle": "Fullfør oppgaver for å se dem her",
+        "title": "Ingen fullførte oppgaver"
+      },
+      "schedule": {
+        "subtitle": "Dra oppgaver hit for å endre tidspunkt",
+        "title": "Ingenting planlagt"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "Prosjekt oppdatert",
@@ -100,7 +139,53 @@
     "noCompletedSelected": "Ingen fullførte oppgaver er valgt",
     "completeFailed": "Kunne ikke fullføre oppgaver",
     "deleteFailed": "Kunne ikke slette oppgaver",
-    "moveFailed": "Kunne ikke flytte oppgaver"
+    "moveFailed": "Kunne ikke flytte oppgaver",
+    "bulk": {
+      "archived": "{count, plural, one {# oppgave arkivert} other {# oppgaver arkivert}}",
+      "completed": "{count, plural, one {# oppgave fullført} other {# oppgaver fullført}}",
+      "deleted": "{count, plural, one {# oppgave slettet} other {# oppgaver slettet}}",
+      "deletedDescription": "Denne handlingen kan angres en kort stund.",
+      "dueDateRemoved": "{count, plural, one {Forfallsdato fjernet fra # oppgave} other {Forfallsdato fjernet fra # oppgaver}}",
+      "dueDateSet": "{count, plural, one {Forfallsdato satt for # oppgave} other {Forfallsdato satt for # oppgaver}}",
+      "movedToProject": "{count, plural, one {# oppgave flyttet til {project}} other {# oppgaver flyttet til {project}}}",
+      "movedToStatus": "{count, plural, one {# oppgave flyttet til {status}} other {# oppgaver flyttet til {status}}}",
+      "priorityRemoved": "{count, plural, one {Prioritet fjernet for # oppgave} other {Prioritet fjernet for # oppgaver}}",
+      "prioritySet": "{count, plural, one {Prioritet satt til {priority} for # oppgave} other {Prioritet satt til {priority} for # oppgaver}}",
+      "restored": "{count, plural, one {# oppgave gjenopprettet} other {# oppgaver gjenopprettet}}",
+      "undoArchive": "{count, plural, one {Arkiver # oppgave} other {Arkiver # oppgaver}}",
+      "undoComplete": "{count, plural, one {Fullfør # oppgave} other {Fullfør # oppgaver}}",
+      "undoDelete": "{count, plural, one {Slett # oppgave} other {Slett # oppgaver}}",
+      "undoDueDate": "{count, plural, one {Forfallsdato endret for # oppgave} other {Forfallsdato endret for # oppgaver}}",
+      "undoMove": "{count, plural, one {Flytt # oppgave} other {Flytt # oppgaver}}",
+      "undoStatus": "{count, plural, one {Status → {status} for # oppgave} other {Status → {status} for # oppgaver}}",
+      "undoUncomplete": "{count, plural, one {Merk # oppgave som ikke fullført} other {Merk # oppgaver som ikke fullført}}"
+    },
+    "drag": {
+      "archived": "{count, plural, one {Oppgaven er arkivert} other {# oppgaver arkivert}}",
+      "deleted": "{count, plural, one {Oppgaven er slettet} other {# oppgaver slettet}}",
+      "moved": "{count, plural, one {Flyttet til {target}} other {# oppgaver flyttet til {target}}}",
+      "movedTo": "Flyttet til {target}",
+      "prioritySet": "{count, plural, one {Prioritet satt til {priority}} other {# oppgaver satt til {priority}}}",
+      "prioritySetTo": "Prioritet satt til {priority}",
+      "rescheduled": "{count, plural, one {Omplanlagt til {target}} other {# oppgaver omplanlagt til {target}}}",
+      "rescheduledTo": "Omplanlagt til {target}",
+      "undoArchive": "{count, plural, one {Arkiverte # oppgave} other {Arkiverte # oppgaver}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, one {# deloppgave lagt til} other {# deloppgaver lagt til}}",
+      "completed": "{count, plural, one {# deloppgave fullført} other {# deloppgaver fullført}}",
+      "deleted": "{count, plural, one {# deloppgave slettet} other {# deloppgaver slettet}}",
+      "deletedDescription": "Deloppgaven er fjernet",
+      "dueDateCleared": "{count, plural, one {Forfallsdato tømt for # deloppgave} other {Forfallsdato tømt for # deloppgaver}}",
+      "dueDateSet": "{count, plural, one {Forfallsdato satt for # deloppgave} other {Forfallsdato satt for # deloppgaver}}",
+      "markedIncomplete": "{count, plural, one {# deloppgave merket som ikke fullført} other {# deloppgaver merket som ikke fullført}}",
+      "movedUnder": "Flyttet under «{title}»",
+      "parentAndSubtasksCompleted": "Oppgaven og deloppgavene er fullført",
+      "parentDeletedKeepSubtasks": "Oppgaven er slettet, deloppgavene er gjort om til oppgaver",
+      "parentDeletedWithSubtasks": "Oppgaven og deloppgavene er slettet",
+      "prioritySet": "{count, plural, one {Prioritet satt for # deloppgave} other {Prioritet satt for # deloppgaver}}",
+      "promoted": "«{title}» er forfremmet til oppgave"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -181,7 +266,8 @@
       "nextMonth": "Neste måned",
       "goToToday": "Gå til i dag",
       "today": "I dag",
-      "w": "W"
+      "w": "W",
+      "weekNumber": "Uke {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Fjern dato",
@@ -327,7 +413,11 @@
       "addTime": "Legg til tid",
       "time": "Tid",
       "clearDate": "Klar dato",
-      "backToOptions": "Tilbake til alternativer"
+      "backToOptions": "Tilbake til alternativer",
+      "nextWeek": "Neste uke",
+      "thisWeekend": "Denne helgen",
+      "today": "I dag",
+      "tomorrow": "I morgen"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "Rediger gjentatt oppgave",
@@ -426,7 +516,17 @@
       "currentFilters": "Gjeldende filtre:",
       "noFiltersApplied": "Ingen filtre er brukt",
       "cancel": "Avbryt",
-      "saveFilter2": "Lagre filter"
+      "saveFilter2": "Lagre filter",
+      "nameRequired": "Skriv inn et navn for dette filteret",
+      "summaryDue": "Forfaller: {value}",
+      "summaryDueRange": "Forfaller: {start} - {end}",
+      "summaryPriorities": "Prioritet: {names}",
+      "summaryProjects": "Prosjekt: {names}",
+      "summaryRepeatOneTime": "Gjentakelse: Bare engangs",
+      "summaryRepeatRepeating": "Gjentakelse: Bare gjentakende",
+      "summarySearch": "Søk: «{query}»",
+      "summaryTimeWith": "Tid: Med klokkeslett",
+      "summaryTimeWithout": "Tid: Uten klokkeslett"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Lagrede filtre",
@@ -558,7 +658,16 @@
       "d": "d"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "Legg til oppgave"
+      "addTask": "Legg til oppgave",
+      "allDescription": "Opprett din første oppgave for å komme i gang",
+      "allTitle": "Ingen oppgaver ennå",
+      "completedDescription": "Fullførte oppgaver dukker opp her",
+      "completedTitle": "Ingen fullførte oppgaver",
+      "projectDescription": "Legg til en oppgave for å komme i gang",
+      "projectTitle": "Ingen oppgaver i dette prosjektet",
+      "projectTitleNamed": "Ingen oppgaver i {name}",
+      "todayDescription": "Du er helt à jour!",
+      "todayTitle": "Ingenting forfaller i dag"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "ingen prioritet"
@@ -742,5 +851,42 @@
       "overview": "Oversikt",
       "tasks": "Oppgaver"
     }
+  },
+  "priorityInline": {
+    "high": "høy",
+    "low": "lav",
+    "medium": "middels",
+    "urgent": "haster"
+  },
+  "priorityLabels": {
+    "high": "Høy",
+    "low": "Lav",
+    "medium": "Middels",
+    "none": "Ingen prioritet",
+    "urgent": "Haster"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "Ferdig",
+      "inProgress": "Pågår",
+      "todo": "Å gjøre"
+    },
+    "validation": {
+      "minStatuses": "Prosjekter trenger minst 2 statuser",
+      "nameRequired": "Prosjektnavn er påkrevd",
+      "nameTooLong": "Prosjektnavnet kan ikke være lengre enn 50 tegn",
+      "needsDoneStatus": "Prosjekter trenger minst én «Ferdig»-status",
+      "needsDoneStatusForCompletedTasks": "Prosjekter trenger minst én «Ferdig»-status for fullførte oppgaver",
+      "needsTodoStatus": "Prosjekter trenger minst én «Å gjøre»-status",
+      "needsTodoStatusForNewTasks": "Prosjekter trenger minst én «Å gjøre»-status for nye oppgaver",
+      "statusNameRequired": "Alle statuser må ha et navn",
+      "statusNamesUnique": "Statusnavn må være unike",
+      "statusNotFound": "Finner ikke statusen"
+    }
+  },
+  "statusLabels": {
+    "done": "Ferdig",
+    "inProgress": "Pågår",
+    "todo": "Å gjøre"
   }
 }

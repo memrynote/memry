@@ -252,7 +252,12 @@
       "multiselect": "Flerval"
     },
     "showOnCalendar": "Visa i kalender",
-    "showingOnCalendar": "Visas i kalender"
+    "showingOnCalendar": "Visas i kalender",
+    "statusCategories": {
+      "done": "Klar",
+      "inProgress": "Pågår",
+      "todo": "Att göra"
+    }
   },
   "templateSelector": {
     "title": "Välj din duk",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "Taggnamn",
     "uncategorized": "Okategoriserade"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (dubbelklicka för att redigera)"
+    },
+    "columns": {
+      "created": "Skapad",
+      "folder": "Mapp",
+      "kind": "Typ",
+      "modified": "Ändrad",
+      "tags": "Taggar",
+      "title": "Titel",
+      "wordCount": "Antal ord"
+    },
+    "defaultViewName": "Standard",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# anteckning} other {# anteckningar}}"
+    },
+    "selectView": "Välj vy"
   }
 }

@@ -270,7 +270,50 @@
     "panelEmpty": "Brak nadchodzących przypomnień.",
     "panelPast": "Minione",
     "panelUpcoming": "Nadchodzące",
-    "taskFallback": "Zadanie"
+    "taskFallback": "Zadanie",
+    "dateTime": {
+      "dateAt": "{date} o {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Dzisiaj o {time}",
+      "todayCompact": "Dzisiaj, {time}",
+      "tomorrowAt": "Jutro o {time}",
+      "tomorrowCompact": "Jutro, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Przypomnienie o rocznicy",
+      "inHours": {
+        "label": "Za {count, plural, one {# godzinę} few {# godziny} many {# godzin} other {# godziny}}"
+      },
+      "inMinutes": {
+        "label": "Za {count, plural, one {# minutę} few {# minuty} many {# minut} other {# minuty}}"
+      },
+      "inMonths": {
+        "label": "Za {count, plural, one {# miesiąc} few {# miesiące} many {# miesięcy} other {# miesiąca}}"
+      },
+      "inWeeks": {
+        "label": "Za {count, plural, one {# tydzień} few {# tygodnie} many {# tygodni} other {# tygodnia}}"
+      },
+      "inYears": {
+        "label": "Za {count, plural, one {# rok} few {# lata} many {# lat} other {# roku}}"
+      },
+      "laterToday": {
+        "description": "Za {count, plural, one {# godzinę} few {# godziny} many {# godzin} other {# godziny}}",
+        "label": "Później dzisiaj"
+      },
+      "monthlyReflection": "Miesięczna refleksja",
+      "nextWeek": {
+        "description": "Poniedziałek o 9:00",
+        "label": "Następny tydzień"
+      },
+      "quarterlyReflection": "Kwartalna refleksja",
+      "reviewInAWeek": "Przejrzyj za tydzień",
+      "sameDayNextMonth": "Ten sam dzień w przyszłym miesiącu",
+      "tomorrow": {
+        "description": "Jutro o 9:00",
+        "label": "Jutro"
+      },
+      "tomorrowMorning": "Jutro rano"
+    }
   },
   "insights": {
     "captureActivity": "Przechwytuj aktywność",

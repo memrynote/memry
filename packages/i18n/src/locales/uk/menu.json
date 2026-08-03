@@ -1,7 +1,12 @@
 {
   "app": {
     "quit": "Вийти",
-    "preferences": "Налаштування…"
+    "preferences": "Налаштування…",
+    "exit": "Вихід",
+    "hide": "Сховати MemryNote",
+    "hideOthers": "Сховати інші",
+    "services": "Служби",
+    "unhide": "Показати все"
   },
   "file": {
     "label": "Файл",
@@ -24,7 +29,11 @@
     "paste": "Вставити",
     "selectAll": "Вибрати все",
     "find": "Знайти",
-    "speech": "Мовлення"
+    "speech": "Мовлення",
+    "delete": "Видалити",
+    "pasteAndMatchStyle": "Вставити та узгодити стиль",
+    "startSpeaking": "Почати мовлення",
+    "stopSpeaking": "Зупинити мовлення"
   },
   "view": {
     "label": "Перегляд",
@@ -37,7 +46,10 @@
     "themeSystem": "Системна",
     "themeWhite": "Паперова",
     "toggleDayPanel": "Перемкнути панель дня",
-    "toggleSidebar": "Перемкнути бічну панель"
+    "toggleSidebar": "Перемкнути бічну панель",
+    "actualSize": "Фактичний розмір",
+    "zoomIn": "Збільшити",
+    "zoomOut": "Зменшити"
   },
   "format": {
     "body": "Основний текст",
@@ -55,7 +67,8 @@
     "about": "Про MemryNote",
     "documentation": "Документація",
     "label": "Довідка",
-    "shortcuts": "Комбінації клавіш"
+    "shortcuts": "Комбінації клавіш",
+    "aboutVersion": "Версія {version}"
   },
   "insert": {
     "attachment": "Вставити вкладення…",
@@ -67,6 +80,10 @@
     "taskList": "Список завдань"
   },
   "window": {
-    "label": "Вікно"
+    "label": "Вікно",
+    "close": "Закрити",
+    "front": "Перемістити все на передній план",
+    "minimize": "Згорнути",
+    "zoom": "Масштабувати"
   }
 }

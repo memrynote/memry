@@ -270,7 +270,50 @@
     "panelEmpty": "没有即将到来的提醒。",
     "panelPast": "已过去",
     "panelUpcoming": "即将到来",
-    "taskFallback": "任务"
+    "taskFallback": "任务",
+    "dateTime": {
+      "dateAt": "{date} {time}",
+      "dateCompact": "{date}，{time}",
+      "todayAt": "今天 {time}",
+      "todayCompact": "今天，{time}",
+      "tomorrowAt": "明天 {time}",
+      "tomorrowCompact": "明天，{time}"
+    },
+    "presets": {
+      "anniversaryReminder": "周年提醒",
+      "inHours": {
+        "label": "{count, plural, other {# 小时后}}"
+      },
+      "inMinutes": {
+        "label": "{count, plural, other {# 分钟后}}"
+      },
+      "inMonths": {
+        "label": "{count, plural, other {# 个月后}}"
+      },
+      "inWeeks": {
+        "label": "{count, plural, other {# 周后}}"
+      },
+      "inYears": {
+        "label": "{count, plural, other {# 年后}}"
+      },
+      "laterToday": {
+        "description": "{count, plural, other {# 小时后}}",
+        "label": "今天晚些时候"
+      },
+      "monthlyReflection": "每月回顾",
+      "nextWeek": {
+        "description": "周一上午 9:00",
+        "label": "下周"
+      },
+      "quarterlyReflection": "季度回顾",
+      "reviewInAWeek": "一周后回顾",
+      "sameDayNextMonth": "下个月的同一天",
+      "tomorrow": {
+        "description": "明天上午 9:00",
+        "label": "明天"
+      },
+      "tomorrowMorning": "明天早上"
+    }
   },
   "insights": {
     "captureActivity": "捕获活动",

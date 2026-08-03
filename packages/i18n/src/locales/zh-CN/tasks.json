@@ -35,7 +35,14 @@
     "delete": "删除任务",
     "created": "创建于 {date}",
     "reminder": "提醒",
-    "tags": "标签"
+    "tags": "标签",
+    "priorityLabels": {
+      "high": "高",
+      "low": "低",
+      "medium": "中",
+      "none": "无优先级",
+      "urgent": "紧急"
+    }
   },
   "filters": {
     "filter": "筛选",
@@ -44,7 +51,25 @@
     "groupBy": "分组方式",
     "groupByOptions": "分组选项",
     "sortAscending": "升序排列",
-    "sortDescending": "降序排列"
+    "sortDescending": "降序排列",
+    "dueDate": {
+      "any": "任意截止日期",
+      "custom": "自定义范围...",
+      "nextWeek": "下周",
+      "none": "无截止日期",
+      "overdue": "已逾期",
+      "thisMonth": "本月",
+      "thisWeek": "本周",
+      "today": "今天",
+      "tomorrow": "明天"
+    },
+    "quickPresets": {
+      "dueThisWeek": "本周到期",
+      "highPriority": "高优先级",
+      "noDueDate": "无截止日期",
+      "overdue": "已逾期",
+      "repeating": "重复任务"
+    }
   },
   "quickAdd": {
     "label": "快速添加任务",
@@ -77,7 +102,21 @@
     "searchRelated": "搜索相关…"
   },
   "kanban": {
-    "board": "看板"
+    "board": "看板",
+    "empty": {
+      "default": {
+        "subtitle": "将任务拖到这里，或点击 + 添加",
+        "title": "暂无任务"
+      },
+      "done": {
+        "subtitle": "完成任务后会显示在这里",
+        "title": "暂无已完成的任务"
+      },
+      "schedule": {
+        "subtitle": "将任务拖到这里以重新安排",
+        "title": "未安排任何任务"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "项目已更新",
@@ -100,7 +139,53 @@
     "noCompletedSelected": "未选择完成的任务",
     "completeFailed": "完成任务失败",
     "deleteFailed": "删除任务失败",
-    "moveFailed": "移动任务失败"
+    "moveFailed": "移动任务失败",
+    "bulk": {
+      "archived": "{count, plural, other {已归档 # 个任务}}",
+      "completed": "{count, plural, other {已完成 # 个任务}}",
+      "deleted": "{count, plural, other {已删除 # 个任务}}",
+      "deletedDescription": "此操作在短时间内可以撤销。",
+      "dueDateRemoved": "{count, plural, other {已移除 # 个任务的截止日期}}",
+      "dueDateSet": "{count, plural, other {已为 # 个任务设置截止日期}}",
+      "movedToProject": "{count, plural, other {已将 # 个任务移至 {project}}}",
+      "movedToStatus": "{count, plural, other {已将 # 个任务移至 {status}}}",
+      "priorityRemoved": "{count, plural, other {已移除 # 个任务的优先级}}",
+      "prioritySet": "{count, plural, other {已将 # 个任务的优先级设为 {priority}}}",
+      "restored": "{count, plural, other {已恢复 # 个任务}}",
+      "undoArchive": "{count, plural, other {归档 # 个任务}}",
+      "undoComplete": "{count, plural, other {完成 # 个任务}}",
+      "undoDelete": "{count, plural, other {删除 # 个任务}}",
+      "undoDueDate": "{count, plural, other {更改 # 个任务的截止日期}}",
+      "undoMove": "{count, plural, other {移动 # 个任务}}",
+      "undoStatus": "{count, plural, other {# 个任务的状态 → {status}}}",
+      "undoUncomplete": "{count, plural, other {取消完成 # 个任务}}"
+    },
+    "drag": {
+      "archived": "{count, plural, other {已归档 # 个任务}}",
+      "deleted": "{count, plural, other {已删除 # 个任务}}",
+      "moved": "{count, plural, other {已将 # 个任务移至 {target}}}",
+      "movedTo": "已移至 {target}",
+      "prioritySet": "{count, plural, other {已将 # 个任务的优先级设为 {priority}}}",
+      "prioritySetTo": "优先级已设为 {priority}",
+      "rescheduled": "{count, plural, other {已将 # 个任务重新安排到 {target}}}",
+      "rescheduledTo": "已重新安排到 {target}",
+      "undoArchive": "{count, plural, other {已归档 # 个任务}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, other {已添加 # 个子任务}}",
+      "completed": "{count, plural, other {已完成 # 个子任务}}",
+      "deleted": "{count, plural, other {已删除 # 个子任务}}",
+      "deletedDescription": "该子任务已被移除",
+      "dueDateCleared": "{count, plural, other {已清除 # 个子任务的截止日期}}",
+      "dueDateSet": "{count, plural, other {已为 # 个子任务设置截止日期}}",
+      "markedIncomplete": "{count, plural, other {已将 # 个子任务标记为未完成}}",
+      "movedUnder": "已移到“{title}”下",
+      "parentAndSubtasksCompleted": "任务及其子任务均已完成",
+      "parentDeletedKeepSubtasks": "任务已删除，子任务已转为任务",
+      "parentDeletedWithSubtasks": "任务及其子任务均已删除",
+      "prioritySet": "{count, plural, other {已为 # 个子任务设置优先级}}",
+      "promoted": "“{title}”已提升为任务"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -181,7 +266,8 @@
       "nextMonth": "下个月",
       "goToToday": "前往今天",
       "today": "今天",
-      "w": "周三"
+      "w": "周三",
+      "weekNumber": "第 {number} 周"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "移除日期",
@@ -327,7 +413,11 @@
       "addTime": "添加时间",
       "time": "时间",
       "clearDate": "清除日期",
-      "backToOptions": "返回选项"
+      "backToOptions": "返回选项",
+      "nextWeek": "下周",
+      "thisWeekend": "本周末",
+      "today": "今天",
+      "tomorrow": "明天"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "编辑重复任务",
@@ -426,7 +516,17 @@
       "currentFilters": "当前筛选器：",
       "noFiltersApplied": "未应用筛选器",
       "cancel": "取消",
-      "saveFilter2": "保存筛选"
+      "saveFilter2": "保存筛选",
+      "nameRequired": "请为此筛选器输入一个名称",
+      "summaryDue": "截止：{value}",
+      "summaryDueRange": "截止：{start} - {end}",
+      "summaryPriorities": "优先级：{names}",
+      "summaryProjects": "项目：{names}",
+      "summaryRepeatOneTime": "重复：仅一次性任务",
+      "summaryRepeatRepeating": "重复：仅重复任务",
+      "summarySearch": "搜索：“{query}”",
+      "summaryTimeWith": "时间：有具体时间",
+      "summaryTimeWithout": "时间：无具体时间"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "已保存的筛选器",
@@ -558,7 +658,16 @@
       "d": "天"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "添加任务"
+      "addTask": "添加任务",
+      "allDescription": "创建你的第一个任务，就此开始",
+      "allTitle": "还没有任务",
+      "completedDescription": "已完成的任务会显示在这里",
+      "completedTitle": "暂无已完成的任务",
+      "projectDescription": "添加一个任务，就此开始",
+      "projectTitle": "此项目中还没有任务",
+      "projectTitleNamed": "{name} 中还没有任务",
+      "todayDescription": "今天的事都做完了！",
+      "todayTitle": "今天没有到期的任务"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "无优先级"
@@ -742,5 +851,42 @@
       "overview": "概览",
       "tasks": "任务"
     }
+  },
+  "priorityInline": {
+    "high": "高",
+    "low": "低",
+    "medium": "中",
+    "urgent": "紧急"
+  },
+  "priorityLabels": {
+    "high": "高",
+    "low": "低",
+    "medium": "中",
+    "none": "无优先级",
+    "urgent": "紧急"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "已完成",
+      "inProgress": "进行中",
+      "todo": "待办"
+    },
+    "validation": {
+      "minStatuses": "项目至少需要 2 个状态",
+      "nameRequired": "项目名称为必填",
+      "nameTooLong": "项目名称不能超过 50 个字符",
+      "needsDoneStatus": "项目至少需要一个“已完成”状态",
+      "needsDoneStatusForCompletedTasks": "已完成的任务需要项目至少有一个“已完成”状态",
+      "needsTodoStatus": "项目至少需要一个“待办”状态",
+      "needsTodoStatusForNewTasks": "新任务需要项目至少有一个“待办”状态",
+      "statusNameRequired": "所有状态都必须有名称",
+      "statusNamesUnique": "状态名称必须唯一",
+      "statusNotFound": "未找到状态"
+    }
+  },
+  "statusLabels": {
+    "done": "已完成",
+    "inProgress": "进行中",
+    "todo": "待办"
   }
 }

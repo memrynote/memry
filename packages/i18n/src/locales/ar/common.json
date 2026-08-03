@@ -25,7 +25,8 @@
     "expand": "توسيع",
     "collapse": "طي",
     "showMore": "+{count, plural, one {# أكثر} other {# أكثر}}",
-    "showLess": "عرض أقل"
+    "showLess": "عرض أقل",
+    "undo": "تراجع"
   },
   "tabs": {
     "pin": "تثبيت علامة التبويب",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "اليوم",
     "yesterday": "أمس",
-    "daysAgo": "{count, plural, zero {اليوم} one {منذ يوم واحد} two {منذ يومين} few {منذ # أيام} many {منذ # يوماً} other {منذ # يوم}}"
+    "daysAgo": "{count, plural, zero {اليوم} one {منذ يوم واحد} two {منذ يومين} few {منذ # أيام} many {منذ # يوماً} other {منذ # يوم}}",
+    "daysLate": "{count, plural, zero {تأخّر # يوم} one {تأخّر يوم واحد} two {تأخّر يومان} few {تأخّر # أيام} many {تأخّر # يومًا} other {تأخّر # يوم}}",
+    "daysOverdue": "{count, plural, zero {متأخّرة بـ# يوم} one {متأخّرة بيوم واحد} two {متأخّرة بيومين} few {متأخّرة بـ# أيام} many {متأخّرة بـ# يومًا} other {متأخّرة بـ# يوم}}",
+    "tomorrow": "غدًا"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {كل يوم} other {كل # أيام}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {كل شهر على {day}{suffix}} other {كل # أشهر على {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {كل شهر على {week} {day}} other {كل # أشهر على {week} {day}}}",
     "everyNYears": "{count, plural, one {كل عام} other {كل # سنة}}",
-    "repeats": "يكرر"
+    "repeats": "يكرر",
+    "ordinal": {
+      "first": "الأول",
+      "fourth": "الرابع",
+      "last": "الأخير",
+      "second": "الثاني",
+      "third": "الثالث"
+    },
+    "preset": {
+      "everyWeekday": "كل يوم عمل (الاثنين - الجمعة)",
+      "everyYearOnDate": "كل عام في {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -640,6 +655,11 @@
     "welcome": {
       "body": "مساحتك الخاصة التي تعمل دون اتصال أولاً. الملاحظات مشفّرة تمامًا من طرف إلى طرف — ولا تغادر جهازك أبدًا بدون تشفير.",
       "title": "مرحبًا بك في MemryNote"
+    },
+    "tour": {
+      "next": "التالي",
+      "previous": "السابق",
+      "progress": "{current} من {total}"
     }
   },
   "updatePrompt": {
@@ -696,5 +716,125 @@
     "sectionLabel": "اللوحات",
     "tooLargeToSync": "هذه اللوحة أكبر من أن تُزامَن. ستبقى محفوظة على هذا الجهاز، لكنها لن تصل إلى أجهزتك الأخرى حتى يصغر حجمها.",
     "untitled": "لوحة بدون عنوان"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "انقر على الصف",
+      "reset": "إعادة تعيين",
+      "shortcutsTab": "علامة تبويب الاختصارات"
+    },
+    "description": "طرق سريعة للتنقل في memrynote والتقاط الأفكار ومعالجة العمل.",
+    "groups": {
+      "general": {
+        "description": "التنقل والمساعدة على مستوى التطبيق.",
+        "title": "عام"
+      },
+      "inbox": {
+        "description": "عالج العناصر الملتقطة بسرعة.",
+        "title": "البريد الوارد"
+      },
+      "journal": {
+        "description": "تنقّل بين عروض اليوميات وركّز على منطقة الكتابة.",
+        "title": "اليوميات"
+      },
+      "notes": {
+        "description": "اكتب الملاحظات ونسّقها وابحث فيها.",
+        "title": "الملاحظات / المحرر"
+      },
+      "settings": {
+        "description": "افتح الإعدادات وخصّص الاختصارات.",
+        "title": "الإعدادات"
+      },
+      "tabs": {
+        "description": "انتقل بين علامات التبويب والأجزاء.",
+        "title": "علامات التبويب والتقسيمات"
+      },
+      "tasks": {
+        "description": "صفِّ المهام وحدّدها وأكملها.",
+        "title": "المهام"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "إنشاء ملاحظة",
+        "keyboardShortcuts": "فتح اختصارات لوحة المفاتيح",
+        "openSettings": "فتح الإعدادات",
+        "quickSearch": "فتح البحث السريع",
+        "sidebarSection": "الانتقال إلى قسم في الشريط الجانبي",
+        "toggleSidebar": "تبديل الشريط الجانبي",
+        "undoTaskAction": "التراجع عن آخر إجراء على المهام"
+      },
+      "inbox": {
+        "archiveItem": "أرشفة العنصر المحدد",
+        "chooseQuickFileResult": "اختيار نتيجة الإيداع السريع",
+        "clearSelection": "مسح التحديد أو إغلاق الإيداع السريع",
+        "confirmFiling": "تأكيد لوحة الإيداع",
+        "firstOrLastItem": "العنصر الأول أو الأخير",
+        "jumpByPage": "الانتقال صفحة بصفحة",
+        "nextItem": "العنصر التالي",
+        "openOriginal": "فتح الرابط الأصلي",
+        "openQuickFile": "فتح الإيداع السريع",
+        "previousItem": "العنصر السابق",
+        "refresh": "تحديث البريد الوارد",
+        "selectAllVisible": "تحديد كل العناصر الظاهرة",
+        "selectItem": "تحديد العنصر",
+        "togglePreview": "تبديل لوحة المعاينة"
+      },
+      "journal": {
+        "bold": "تغميق النص المحدد",
+        "find": "البحث في اليوميات",
+        "italic": "إمالة النص المحدد",
+        "link": "إضافة رابط أو تعديله",
+        "returnFromOverview": "العودة من عرض الشهر أو السنة",
+        "toggleFullWidth": "تبديل اليوميات بالعرض الكامل",
+        "underline": "تسطير النص المحدد"
+      },
+      "notes": {
+        "bold": "غامق",
+        "closeOverlays": "إغلاق طبقات المحرر",
+        "commandMenu": "فتح قائمة أوامر المحرر",
+        "createNote": "إنشاء ملاحظة",
+        "find": "البحث في الملاحظة",
+        "italic": "مائل",
+        "link": "إضافة رابط أو تعديله",
+        "saveNote": "حفظ الملاحظة الحالية",
+        "underline": "تسطير"
+      },
+      "settings": {
+        "cancelRecording": "إلغاء تسجيل الاختصار",
+        "customizeShortcuts": "تخصيص اختصارات لوحة المفاتيح",
+        "openSettings": "فتح الإعدادات",
+        "recordShortcut": "تسجيل اختصار جديد",
+        "resetShortcut": "استعادة الاختصار الافتراضي"
+      },
+      "tabs": {
+        "closeAllInPane": "إغلاق كل علامات التبويب في الجزء",
+        "closeSplitPane": "إغلاق الجزء المقسوم",
+        "closeTab": "إغلاق علامة التبويب",
+        "duplicateTab": "تكرار علامة التبويب",
+        "focusPane": "التركيز على جزء آخر",
+        "maximizePane": "تكبير الجزء الحالي",
+        "moveTabToPane": "نقل علامة التبويب إلى جزء",
+        "newTabMenu": "فتح قائمة علامة التبويب الجديدة",
+        "nextTab": "علامة التبويب التالية",
+        "pinTab": "تثبيت علامة التبويب أو إلغاء تثبيتها",
+        "previousTab": "علامة التبويب السابقة",
+        "reopenClosedTab": "إعادة فتح علامة تبويب مغلقة",
+        "splitDown": "تقسيم إلى الأسفل",
+        "splitRight": "تقسيم إلى اليمين"
+      },
+      "tasks": {
+        "clearFilters": "مسح عوامل التصفية الظاهرة",
+        "clearSelection": "مسح تحديد المهام",
+        "completeSelected": "إكمال المهام المحددة",
+        "configureRepeat": "ضبط التكرار للمهمة المُحدّدة",
+        "deleteSelected": "حذف المهام المحددة",
+        "selectAllVisible": "تحديد كل المهام الظاهرة",
+        "skipOccurrence": "تخطي التكرار الحالي",
+        "stopRepeating": "إيقاف تكرار المهمة"
+      }
+    },
+    "or": "أو",
+    "then": "ثم"
   }
 }

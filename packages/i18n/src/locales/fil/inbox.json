@@ -270,7 +270,50 @@
     "panelEmpty": "Walang paparating na paalala.",
     "panelPast": "Nakaraan",
     "panelUpcoming": "Paparating",
-    "taskFallback": "Gawain"
+    "taskFallback": "Gawain",
+    "dateTime": {
+      "dateAt": "{date} nang {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Ngayong araw nang {time}",
+      "todayCompact": "Ngayong araw, {time}",
+      "tomorrowAt": "Bukas nang {time}",
+      "tomorrowCompact": "Bukas, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Paalala sa anibersaryo",
+      "inHours": {
+        "label": "Sa loob ng {count, plural, one {# Oras} other {# Oras}}"
+      },
+      "inMinutes": {
+        "label": "Sa loob ng {count, plural, one {# Minuto} other {# Minuto}}"
+      },
+      "inMonths": {
+        "label": "Sa loob ng {count, plural, one {# Buwan} other {# Buwan}}"
+      },
+      "inWeeks": {
+        "label": "Sa loob ng {count, plural, one {# Linggo} other {# Linggo}}"
+      },
+      "inYears": {
+        "label": "Sa loob ng {count, plural, one {# Taon} other {# Taon}}"
+      },
+      "laterToday": {
+        "description": "Sa loob ng {count, plural, one {# oras} other {# oras}}",
+        "label": "Mamaya Ngayong Araw"
+      },
+      "monthlyReflection": "Buwanang pagninilay",
+      "nextWeek": {
+        "description": "Lunes nang 9 AM",
+        "label": "Sa Susunod na Linggo"
+      },
+      "quarterlyReflection": "Pagninilay kada quarter",
+      "reviewInAWeek": "Suriin sa loob ng isang linggo",
+      "sameDayNextMonth": "Parehong araw sa susunod na buwan",
+      "tomorrow": {
+        "description": "Bukas nang 9 AM",
+        "label": "Bukas"
+      },
+      "tomorrowMorning": "Bukas ng Umaga"
+    }
   },
   "insights": {
     "captureActivity": "Aktibidad sa Pagkuha",

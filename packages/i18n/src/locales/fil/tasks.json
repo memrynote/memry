@@ -35,7 +35,14 @@
     "delete": "Tanggalin ang gawain",
     "created": "Nilikha ang {date}",
     "reminder": "Paalala",
-    "tags": "Mga tag"
+    "tags": "Mga tag",
+    "priorityLabels": {
+      "high": "Mataas",
+      "low": "Mababa",
+      "medium": "Katamtaman",
+      "none": "Walang Priyoridad",
+      "urgent": "Kagyat"
+    }
   },
   "filters": {
     "filter": "Salain",
@@ -44,7 +51,25 @@
     "groupBy": "Pangkatin ayon sa",
     "groupByOptions": "Igrupo ayon sa mga opsyon",
     "sortAscending": "Pagbukud-bukurin pataas",
-    "sortDescending": "Pagbukud-bukurin pababa"
+    "sortDescending": "Pagbukud-bukurin pababa",
+    "dueDate": {
+      "any": "Anumang takdang petsa",
+      "custom": "Custom na saklaw...",
+      "nextWeek": "Sa susunod na linggo",
+      "none": "Walang takdang petsa",
+      "overdue": "Lampas na sa takda",
+      "thisMonth": "Ngayong buwan",
+      "thisWeek": "Ngayong linggo",
+      "today": "Ngayong araw",
+      "tomorrow": "Bukas"
+    },
+    "quickPresets": {
+      "dueThisWeek": "Takda Ngayong Linggo",
+      "highPriority": "Mataas na Priyoridad",
+      "noDueDate": "Walang Takdang Petsa",
+      "overdue": "Lampas na sa Takda",
+      "repeating": "Umuulit"
+    }
   },
   "quickAdd": {
     "label": "Mabilis na magdagdag ng gawain",
@@ -77,7 +102,21 @@
     "searchRelated": "Maghanap ng kaugnay…"
   },
   "kanban": {
-    "board": "Board ng Kanban"
+    "board": "Board ng Kanban",
+    "empty": {
+      "default": {
+        "subtitle": "I-drag dito ang mga gawain o i-click ang + para magdagdag",
+        "title": "Walang gawain"
+      },
+      "done": {
+        "subtitle": "Kumpletuhin ang mga gawain para makita ang mga ito dito",
+        "title": "Walang nakumpletong gawain"
+      },
+      "schedule": {
+        "subtitle": "I-drag dito ang mga gawain para muling iiskedyul",
+        "title": "Walang nakaiskedyul"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "Na-update ang proyekto",
@@ -100,7 +139,53 @@
     "noCompletedSelected": "Walang napiling mga natapos na gawain",
     "completeFailed": "Nabigong makumpleto ang mga gawain",
     "deleteFailed": "Nabigong tanggalin ang mga gawain",
-    "moveFailed": "Nabigong ilipat ang mga gawain"
+    "moveFailed": "Nabigong ilipat ang mga gawain",
+    "bulk": {
+      "archived": "{count, plural, one {# gawain ang na-archive} other {# gawain ang na-archive}}",
+      "completed": "{count, plural, one {# gawain ang nakumpleto} other {# gawain ang nakumpleto}}",
+      "deleted": "{count, plural, one {# gawain ang tinanggal} other {# gawain ang tinanggal}}",
+      "deletedDescription": "Maaaring i-undo ang pagkilos na ito sa loob ng maikling panahon.",
+      "dueDateRemoved": "{count, plural, one {Inalis ang takdang petsa sa # gawain} other {Inalis ang takdang petsa sa # gawain}}",
+      "dueDateSet": "{count, plural, one {Itinakda ang takdang petsa para sa # gawain} other {Itinakda ang takdang petsa para sa # gawain}}",
+      "movedToProject": "{count, plural, one {# gawain ang inilipat sa {project}} other {# gawain ang inilipat sa {project}}}",
+      "movedToStatus": "{count, plural, one {# gawain ang inilipat sa {status}} other {# gawain ang inilipat sa {status}}}",
+      "priorityRemoved": "{count, plural, one {Inalis ang priyoridad sa # gawain} other {Inalis ang priyoridad sa # gawain}}",
+      "prioritySet": "{count, plural, one {Itinakda sa {priority} ang priyoridad ng # gawain} other {Itinakda sa {priority} ang priyoridad ng # gawain}}",
+      "restored": "{count, plural, one {# gawain ang naibalik} other {# gawain ang naibalik}}",
+      "undoArchive": "{count, plural, one {I-archive ang # gawain} other {I-archive ang # gawain}}",
+      "undoComplete": "{count, plural, one {Kumpletuhin ang # gawain} other {Kumpletuhin ang # gawain}}",
+      "undoDelete": "{count, plural, one {Tanggalin ang # gawain} other {Tanggalin ang # gawain}}",
+      "undoDueDate": "{count, plural, one {Binago ang takdang petsa ng # gawain} other {Binago ang takdang petsa ng # gawain}}",
+      "undoMove": "{count, plural, one {Ilipat ang # gawain} other {Ilipat ang # gawain}}",
+      "undoStatus": "{count, plural, one {Katayuan → {status} para sa # gawain} other {Katayuan → {status} para sa # gawain}}",
+      "undoUncomplete": "{count, plural, one {Alisin ang pagkakumpleto ng # gawain} other {Alisin ang pagkakumpleto ng # gawain}}"
+    },
+    "drag": {
+      "archived": "{count, plural, one {Na-archive ang gawain} other {# gawain ang na-archive}}",
+      "deleted": "{count, plural, one {Tinanggal ang gawain} other {# gawain ang tinanggal}}",
+      "moved": "{count, plural, one {Inilipat sa {target}} other {# gawain ang inilipat sa {target}}}",
+      "movedTo": "Inilipat sa {target}",
+      "prioritySet": "{count, plural, one {Itinakda ang priyoridad sa {priority}} other {# gawain ang itinakda sa {priority}}}",
+      "prioritySetTo": "Itinakda ang priyoridad sa {priority}",
+      "rescheduled": "{count, plural, one {Muling iniskedyul sa {target}} other {# gawain ang muling iniskedyul sa {target}}}",
+      "rescheduledTo": "Muling iniskedyul sa {target}",
+      "undoArchive": "{count, plural, one {Na-archive ang # gawain} other {Na-archive ang # gawain}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, one {# subtask ang naidagdag} other {# subtask ang naidagdag}}",
+      "completed": "{count, plural, one {# subtask ang nakumpleto} other {# subtask ang nakumpleto}}",
+      "deleted": "{count, plural, one {# subtask ang tinanggal} other {# subtask ang tinanggal}}",
+      "deletedDescription": "Naalis na ang subtask",
+      "dueDateCleared": "{count, plural, one {Na-clear ang takdang petsa ng # subtask} other {Na-clear ang takdang petsa ng # subtask}}",
+      "dueDateSet": "{count, plural, one {Itinakda ang takdang petsa para sa # subtask} other {Itinakda ang takdang petsa para sa # subtask}}",
+      "markedIncomplete": "{count, plural, one {# subtask ang minarkahang hindi kumpleto} other {# subtask ang minarkahang hindi kumpleto}}",
+      "movedUnder": "Inilipat sa ilalim ng \"{title}\"",
+      "parentAndSubtasksCompleted": "Nakumpleto ang gawain at mga subtask",
+      "parentDeletedKeepSubtasks": "Tinanggal ang gawain, ginawang mga gawain ang mga subtask",
+      "parentDeletedWithSubtasks": "Tinanggal ang gawain at mga subtask",
+      "prioritySet": "{count, plural, one {Itinakda ang priyoridad ng # subtask} other {Itinakda ang priyoridad ng # subtask}}",
+      "promoted": "\"{title}\" ay itinaas bilang gawain"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -181,7 +266,8 @@
       "nextMonth": "Sa susunod na buwan",
       "goToToday": "Pumunta sa ngayon",
       "today": "Ngayong araw",
-      "w": "W"
+      "w": "W",
+      "weekNumber": "Linggo {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Tanggalin ang petsa",
@@ -327,7 +413,11 @@
       "addTime": "Magdagdag ng oras",
       "time": "Oras",
       "clearDate": "I-clear ang petsa",
-      "backToOptions": "Bumalik sa mga pagpipilian"
+      "backToOptions": "Bumalik sa mga pagpipilian",
+      "nextWeek": "Sa Susunod na Linggo",
+      "thisWeekend": "Ngayong Katapusan ng Linggo",
+      "today": "Ngayong Araw",
+      "tomorrow": "Bukas"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "I-edit ang Paulit-ulit na Gawain",
@@ -426,7 +516,17 @@
       "currentFilters": "Mga kasalukuyang filter:",
       "noFiltersApplied": "Walang inilapat na mga filter",
       "cancel": "Kanselahin",
-      "saveFilter2": "I-save ang Filter"
+      "saveFilter2": "I-save ang Filter",
+      "nameRequired": "Maglagay ng pangalan para sa filter na ito",
+      "summaryDue": "Takda: {value}",
+      "summaryDueRange": "Takda: {start} - {end}",
+      "summaryPriorities": "Priyoridad: {names}",
+      "summaryProjects": "Proyekto: {names}",
+      "summaryRepeatOneTime": "Pag-ulit: Isahan lamang",
+      "summaryRepeatRepeating": "Pag-ulit: Umuulit lamang",
+      "summarySearch": "Paghahanap: \"{query}\"",
+      "summaryTimeWith": "Oras: May oras",
+      "summaryTimeWithout": "Oras: Walang oras"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Naka-save na mga filter",
@@ -558,7 +658,16 @@
       "d": "d"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "Magdagdag ng Gawain"
+      "addTask": "Magdagdag ng Gawain",
+      "allDescription": "Gumawa ng iyong unang gawain para makapagsimula",
+      "allTitle": "Wala pang gawain",
+      "completedDescription": "Lilitaw dito ang mga nakumpletong gawain",
+      "completedTitle": "Walang nakumpletong gawain",
+      "projectDescription": "Magdagdag ng gawain para makapagsimula",
+      "projectTitle": "Walang gawain sa proyektong ito",
+      "projectTitleNamed": "Walang gawain sa {name}",
+      "todayDescription": "Tapos na ang lahat!",
+      "todayTitle": "Walang takda ngayong araw"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "walang priority"
@@ -742,5 +851,42 @@
       "overview": "Buod",
       "tasks": "Mga gawain"
     }
+  },
+  "priorityInline": {
+    "high": "mataas",
+    "low": "mababa",
+    "medium": "katamtaman",
+    "urgent": "kagyat"
+  },
+  "priorityLabels": {
+    "high": "Mataas",
+    "low": "Mababa",
+    "medium": "Katamtaman",
+    "none": "Walang Priyoridad",
+    "urgent": "Kagyat"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "Tapos",
+      "inProgress": "Isinasagawa",
+      "todo": "Gagawin"
+    },
+    "validation": {
+      "minStatuses": "Kailangan ng mga proyekto ng hindi bababa sa 2 katayuan",
+      "nameRequired": "Kailangan ang pangalan ng proyekto",
+      "nameTooLong": "Ang pangalan ng proyekto ay dapat 50 karakter o mas kaunti",
+      "needsDoneStatus": "Kailangan ng mga proyekto ng kahit isang katayuang 'Tapos'",
+      "needsDoneStatusForCompletedTasks": "Kailangan ng mga proyekto ng kahit isang katayuang 'Tapos' para sa mga nakumpletong gawain",
+      "needsTodoStatus": "Kailangan ng mga proyekto ng kahit isang katayuang 'Gagawin'",
+      "needsTodoStatusForNewTasks": "Kailangan ng mga proyekto ng kahit isang katayuang 'Gagawin' para sa mga bagong gawain",
+      "statusNameRequired": "Dapat may pangalan ang lahat ng katayuan",
+      "statusNamesUnique": "Dapat natatangi ang mga pangalan ng katayuan",
+      "statusNotFound": "Hindi nahanap ang katayuan"
+    }
+  },
+  "statusLabels": {
+    "done": "Tapos",
+    "inProgress": "Isinasagawa",
+    "todo": "Gagawin"
   }
 }

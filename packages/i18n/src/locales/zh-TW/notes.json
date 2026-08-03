@@ -252,7 +252,12 @@
       "multiselect": "多選"
     },
     "showOnCalendar": "顯示於行事曆",
-    "showingOnCalendar": "顯示於行事曆中"
+    "showingOnCalendar": "顯示於行事曆中",
+    "statusCategories": {
+      "done": "已完成",
+      "inProgress": "進行中",
+      "todo": "待辦"
+    }
   },
   "templateSelector": {
     "title": "選擇你的畫布",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "標籤名稱",
     "uncategorized": "未分類"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name}（雙擊以編輯）"
+    },
+    "columns": {
+      "created": "建立時間",
+      "folder": "資料夾",
+      "kind": "類型",
+      "modified": "修改時間",
+      "tags": "標籤",
+      "title": "標題",
+      "wordCount": "字數"
+    },
+    "defaultViewName": "預設",
+    "groupHeader": {
+      "noteCount": "{count, plural, other {# 則筆記}}"
+    },
+    "selectView": "選擇檢視"
   }
 }

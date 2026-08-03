@@ -22,7 +22,19 @@
     "writeFailed": "Tämän muistiinpanon tallentaminen epäonnistui. Tarkista levytila ​​ja käyttöoikeudet.",
     "readFailed": "Tämän huomautuksen lukeminen epäonnistui. Tiedosto voi olla lukittu tai vioittunut.",
     "deleteFailed": "Tämän muistiinpanon poistaminen epäonnistui. Tarkista tiedostojen käyttöoikeudet.",
-    "invalidPath": "Huomautuspolku on virheellinen."
+    "invalidPath": "Huomautuspolku on virheellinen.",
+    "applyTemplateFailed": "Mallin käyttöönotto epäonnistui",
+    "createFailed": "Muistiinpanon luonti epäonnistui",
+    "deleteVersionFailed": "Version poisto epäonnistui",
+    "exportHtmlFailed": "HTML-vienti epäonnistui",
+    "exportPdfFailed": "PDF-vienti epäonnistui",
+    "importFilesFailed": "Tiedostojen tuonti epäonnistui",
+    "moveFailed": "Muistiinpanon siirto epäonnistui",
+    "renameFailed": "Muistiinpanon nimeäminen epäonnistui",
+    "reorderFailed": "Muistiinpanojen järjestäminen epäonnistui",
+    "restoreVersionFailed": "Version palautus epäonnistui",
+    "setLocalOnlyFailed": "Vain paikallinen -asetuksen tallennus epäonnistui",
+    "updateFailed": "Muistiinpanon päivitys epäonnistui"
   },
   "database": {
     "connectionFailed": "Yhteyttä paikalliseen tietokantaan ei voitu muodostaa. Yritä käynnistää sovellus uudelleen.",
@@ -41,7 +53,11 @@
     "fileTooLarge": "Tämä tiedosto on liian suuri liitettäväksi.",
     "unsupportedType": "Tätä tiedostotyyppiä ei tueta.",
     "writeFailed": "Liitteen tallentaminen epäonnistui. Tarkista levytila.",
-    "deleteFailed": "Liitteen poistaminen epäonnistui."
+    "deleteFailed": "Liitteen poistaminen epäonnistui.",
+    "downloadFailed": "Liitteen lataus epäonnistui",
+    "downloadProgressFailed": "Latauksen edistymisen haku epäonnistui",
+    "uploadFailed": "Liitteen lähetys epäonnistui",
+    "uploadProgressFailed": "Lähetyksen edistymisen haku epäonnistui"
   },
   "encryption": {
     "failed": "Tietojen salaus epäonnistui. Avaimesi on ehkä luotava uudelleen.",
@@ -77,6 +93,184 @@
     "paymentRequired": "Maksullinen Sync-tilaus vaaditaan isännöidyn salatun synkronoinnin käyttöön.",
     "attachmentUploadFailed": "Liitteen \"{filename}\" synkronointi epäonnistui. Se jää tälle laitteelle.",
     "fileTooLarge": "Tämä tiedosto on suurempi kuin tilauksesi sallii. Päivitä tilaustasi, niin voit synkronoida suurempia tiedostoja.",
-    "vaultRecovered": "Holvin avain palautettu. Synkronointi jatkuu."
+    "vaultRecovered": "Holvin avain palautettu. Synkronointi jatkuu.",
+    "historyFetchFailed": "Synkronointihistorian haku epäonnistui",
+    "keyPersistenceFailed": "Salausavaimen turvallinen tallennus epäonnistui. Laitteen rekisteröinti on peruttu. Yritä uudelleen.",
+    "serverUnreachable": "Synkronointipalvelimeen ei saada yhteyttä. Tarkista internetyhteytesi.",
+    "updateSyncedSettingFailed": "Synkronoidun asetuksen päivitys epäonnistui"
+  },
+  "agent": {
+    "conversationBusy": "Keskustelu on varattu",
+    "runtimeStarting": "Agentin suoritusympäristö käynnistyy. Yritä uudelleen."
+  },
+  "ai": {
+    "inlineDisabled": "Tekoälyn tekstinsisäinen muokkaus on poistettu käytöstä",
+    "listOllamaModelsFailed": "Ollama-mallien listaus epäonnistui"
+  },
+  "auth": {
+    "approveLinkingFailed": "Linkityksen hyväksyminen epäonnistui",
+    "cannotRemoveCurrentDevice": "Nykyistä laitetta ei voi poistaa",
+    "completeLinkingFailed": "Linkityksen viimeistely epäonnistui",
+    "confirmRecoveryPhraseFailed": "Palautuslauseen vahvistaminen epäonnistui",
+    "fetchSasCodeFailed": "SAS-koodin haku epäonnistui",
+    "finalizeVaultChoiceFailed": "Holvivalinnan viimeistely epäonnistui",
+    "initiateOAuthFailed": "OAuth-kirjautumisen aloitus epäonnistui",
+    "invalidRecoveryPhraseFormat": "Palautuslauseen muoto on virheellinen",
+    "linkDeviceQrFailed": "Laitteen linkitys QR-koodilla epäonnistui",
+    "linkRecoveryPhraseFailed": "Linkitys palautuslauseella epäonnistui",
+    "notAuthenticated": "Et ole kirjautunut sisään",
+    "pickFolderFailed": "Kansion valinta epäonnistui",
+    "recoveryPhraseMismatch": "Palautuslause ei täsmää. Yritä uudelleen.",
+    "removeDeviceFailed": "Laitteen poisto epäonnistui",
+    "renameDeviceFailed": "Laitteen nimeäminen epäonnistui",
+    "requestOtpFailed": "Kertakäyttökoodin pyytäminen epäonnistui",
+    "resendOtpFailed": "Kertakäyttökoodin uudelleenlähetys epäonnistui",
+    "sessionExpired": "Istunto on vanhentunut. Kirjaudu uudelleen sisään.",
+    "setupFirstDeviceOAuthFailed": "Ensimmäisen laitteen määritys OAuth-kirjautumisella epäonnistui",
+    "verifyOtpFailed": "Kertakäyttökoodin vahvistus epäonnistui"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "Kohde on jo kirjanmerkeissä",
+    "notFound": "Kirjanmerkkiä ei löytynyt"
+  },
+  "calendar": {
+    "connectProviderFailed": "Kalenteripalvelun yhdistäminen epäonnistui",
+    "createEventFailed": "Kalenteritapahtuman luonti epäonnistui",
+    "deleteEventFailed": "Kalenteritapahtuman poisto epäonnistui",
+    "disconnectProviderFailed": "Kalenteripalvelun yhteyden katkaisu epäonnistui",
+    "eventNotFound": "Kalenteritapahtumaa ei löytynyt",
+    "googleNotConnected": "Google Calendar ei ole yhdistettynä tällä laitteella",
+    "listGoogleCalendarsFailed": "Google-kalenterien listaus epäonnistui",
+    "onlyGoogleSourcesRetryable": "Vain Google-kalenterilähteitä voi yrittää uudelleen",
+    "onlySourcesSelectable": "Vain kalenterilähteitä voi valita",
+    "promoteExternalEventFailed": "Ulkoisen kalenteritapahtuman ylentäminen epäonnistui",
+    "refreshProviderFailed": "Kalenteripalvelun päivitys epäonnistui",
+    "retryGoogleSourceSyncFailed": "Google Calendar -lähteen synkronoinnin uudelleenyritys epäonnistui",
+    "setDefaultGoogleCalendarFailed": "Oletusarvoisen Google-kalenterin asettaminen epäonnistui",
+    "signInBeforeRefresh": "Kirjaudu sisään memrynote-sovellukseen ennen Google Calendarin päivittämistä",
+    "sourceNotFound": "Kalenterilähdettä ei löytynyt",
+    "syncFailed": "Synkronointi epäonnistui",
+    "updateEventFailed": "Kalenteritapahtuman päivitys epäonnistui",
+    "updateSourceSelectionFailed": "Kalenterilähteiden valinnan päivitys epäonnistui"
+  },
+  "folder": {
+    "createFailed": "Kansion luonti epäonnistui",
+    "deleteFailed": "Kansion poisto epäonnistui",
+    "renameFailed": "Kansion nimeäminen epäonnistui",
+    "setConfigFailed": "Kansion asetusten tallennus epäonnistui"
+  },
+  "folderView": {
+    "deleteViewFailed": "Näkymän poisto epäonnistui",
+    "setConfigFailed": "Asetusten tallennus epäonnistui",
+    "setViewFailed": "Näkymän asettaminen epäonnistui"
+  },
+  "googleCalendar": {
+    "accessDenied": "Google Calendarin käyttöoikeus evättiin. Voit yhdistää uudelleen milloin tahansa.",
+    "connectFailed": "Google Calendariin ei saatu yhteyttä. Yritä hetken kuluttua uudelleen.",
+    "misconfigured": "Google Calendaria ei ole määritetty oikein. Ota yhteyttä tukeen, jos tämä toistuu.",
+    "reconnectNeeded": "Google Calendar -yhteytesi on vanhentunut. Katkaise yhteys ja yhdistä uudelleen.",
+    "scopeMissing": "Google Calendariisi ei saatu yhteyttä, koska kalenterioikeutta ei myönnetty. Yritä uudelleen ja varmista, että kalenterin valintaruutu pysyy valittuna Googlen suostumusnäytöllä.",
+    "temporarilyUnavailable": "Google Calendar ei ole tilapäisesti käytettävissä. Yritä pian uudelleen."
+  },
+  "importer": {
+    "cancelFailed": "Peruutus epäonnistui",
+    "fileSelectionFailed": "Tiedoston valinta epäonnistui",
+    "importFailed": "Tuonti epäonnistui",
+    "listFailed": "Tuontityökalujen listaus epäonnistui",
+    "previewFailed": "Esikatselu epäonnistui"
+  },
+  "project": {
+    "archiveFailed": "Projektin arkistointi epäonnistui",
+    "captureLinkFailed": "Linkin tallennus epäonnistui",
+    "createFailed": "Projektin luonti epäonnistui",
+    "deleteFailed": "Projektin poisto epäonnistui",
+    "importFilesFailed": "Tiedostojen tuonti epäonnistui",
+    "linkItemFailed": "Kohteen linkitys epäonnistui",
+    "listForItemFailed": "Kohteen projektien listaus epäonnistui",
+    "reorderFailed": "Projektien järjestäminen epäonnistui",
+    "setHomeNoteFailed": "Kotimuistiinpanon asettaminen epäonnistui",
+    "unlinkItemFailed": "Kohteen linkityksen poisto epäonnistui",
+    "updateFailed": "Projektin päivitys epäonnistui",
+    "updatePinnedFailed": "Kiinnitystilan päivitys epäonnistui"
+  },
+  "property": {
+    "alreadyExists": "Ominaisuus \"{name}\" on jo olemassa",
+    "createDefinitionFailed": "Ominaisuusmäärityksen luonti epäonnistui",
+    "entityNotFound": "Kohdetta ei löytynyt",
+    "notFound": "Ominaisuutta \"{name}\" ei löytynyt",
+    "renameFailed": "Ominaisuuden nimeäminen epäonnistui",
+    "setCalendarVisibilityFailed": "Kalenteriominaisuuden näkyvyyden asettaminen epäonnistui",
+    "setFailed": "Ominaisuuksien tallennus epäonnistui",
+    "updateDefinitionFailed": "Ominaisuusmäärityksen päivitys epäonnistui"
+  },
+  "reminder": {
+    "createFailed": "Muistutuksen luonti epäonnistui",
+    "dismissAllFailed": "Muistutusten hylkääminen epäonnistui",
+    "dismissFailed": "Muistutuksen hylkääminen epäonnistui",
+    "notFound": "Muistutusta ei löytynyt",
+    "snoozeFailed": "Muistutuksen torkuttaminen epäonnistui",
+    "updateFailed": "Muistutuksen päivitys epäonnistui"
+  },
+  "savedFilter": {
+    "notFound": "Tallennettua suodatinta ei löytynyt"
+  },
+  "search": {
+    "rebuildFailed": "Uudelleenrakennus epäonnistui"
+  },
+  "settings": {
+    "modelAlreadyLoading": "Malli latautuu jo",
+    "modelLoadFailed": "Mallin lataus epäonnistui",
+    "shortcutInUse": "Pikanäppäin {shortcut} on jo käytössä",
+    "terminalCommandInstallFailed": "Terminaalikomennon asennus epäonnistui",
+    "terminalCommandUninstallFailed": "Terminaalikomennon poisto epäonnistui",
+    "unknownVault": "Tuntematon holvi",
+    "voiceModelDownloadFailed": "Puhemallin lataus epäonnistui"
+  },
+  "tag": {
+    "categoryNameRequired": "Kategorian nimi vaaditaan",
+    "createCategoryFailed": "Tunnistekategorian luonti epäonnistui",
+    "deleteCategoryFailed": "Tunnistekategorian poisto epäonnistui",
+    "deleteFailed": "Tunnisteen poisto epäonnistui",
+    "listCategoriesFailed": "Tunnistekategorioiden listaus epäonnistui",
+    "mergeFailed": "Tunnisteiden yhdistäminen epäonnistui",
+    "mergeSameTag": "Lähde- ja kohdetunniste ovat samat",
+    "pinNoteFailed": "Muistiinpanon kiinnitys epäonnistui",
+    "removeFromNoteFailed": "Tunnisteen poisto muistiinpanosta epäonnistui",
+    "renameCategoryFailed": "Tunnistekategorian nimeäminen epäonnistui",
+    "renameFailed": "Tunnisteen nimeäminen epäonnistui",
+    "reorderFailed": "Tunnisteiden järjestäminen epäonnistui",
+    "unpinNoteFailed": "Muistiinpanon kiinnityksen poisto epäonnistui",
+    "updateColorFailed": "Tunnisteen värin päivitys epäonnistui",
+    "updateIconFailed": "Tunnisteen kuvakkeen päivitys epäonnistui"
+  },
+  "task": {
+    "archiveFailed": "Tehtävän arkistointi epäonnistui",
+    "archiveManyFailed": "Tehtävien arkistointi epäonnistui",
+    "completeFailed": "Tehtävän merkitseminen valmiiksi epäonnistui",
+    "completeManyFailed": "Tehtävien merkitseminen valmiiksi epäonnistui",
+    "convertToSubtaskFailed": "Muunto osatehtäväksi epäonnistui",
+    "convertToTaskFailed": "Muunto tehtäväksi epäonnistui",
+    "createFailed": "Tehtävän luonti epäonnistui",
+    "deleteFailed": "Tehtävän poisto epäonnistui",
+    "deleteManyFailed": "Tehtävien poisto epäonnistui",
+    "duplicateFailed": "Tehtävän monistaminen epäonnistui",
+    "moveFailed": "Tehtävän siirto epäonnistui",
+    "moveManyFailed": "Tehtävien siirto epäonnistui",
+    "reorderFailed": "Tehtävien järjestäminen epäonnistui",
+    "unarchiveFailed": "Tehtävän palautus arkistosta epäonnistui",
+    "uncompleteFailed": "Tehtävän merkitseminen keskeneräiseksi epäonnistui",
+    "updateFailed": "Tehtävän päivitys epäonnistui"
+  },
+  "taskStatus": {
+    "createFailed": "Tilan luonti epäonnistui",
+    "deleteFailed": "Tilan poisto epäonnistui",
+    "reorderFailed": "Tilojen järjestäminen epäonnistui",
+    "updateFailed": "Tilan päivitys epäonnistui"
+  },
+  "template": {
+    "createFailed": "Mallin luonti epäonnistui",
+    "deleteFailed": "Mallin poisto epäonnistui",
+    "duplicateFailed": "Mallin monistaminen epäonnistui",
+    "updateFailed": "Mallin päivitys epäonnistui"
   }
 }

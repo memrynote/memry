@@ -1,7 +1,12 @@
 {
   "app": {
     "quit": "استقال",
-    "preferences": "الإعدادات…"
+    "preferences": "الإعدادات…",
+    "exit": "إنهاء",
+    "hide": "إخفاء MemryNote",
+    "hideOthers": "إخفاء الآخرين",
+    "services": "الخدمات",
+    "unhide": "إظهار الكل"
   },
   "file": {
     "label": "ملف",
@@ -24,7 +29,11 @@
     "paste": "لصق",
     "selectAll": "تحديد الكل",
     "find": "بحث",
-    "speech": "النطق"
+    "speech": "النطق",
+    "delete": "حذف",
+    "pasteAndMatchStyle": "لصق ومطابقة النمط",
+    "startSpeaking": "بدء النطق",
+    "stopSpeaking": "إيقاف النطق"
   },
   "view": {
     "label": "عرض",
@@ -37,7 +46,10 @@
     "themeSystem": "النظام",
     "themeWhite": "ورقي",
     "toggleDayPanel": "تبديل لوحة اليوم",
-    "toggleSidebar": "تبديل الشريط الجانبي"
+    "toggleSidebar": "تبديل الشريط الجانبي",
+    "actualSize": "الحجم الفعلي",
+    "zoomIn": "تكبير",
+    "zoomOut": "تصغير"
   },
   "format": {
     "body": "النص الأساسي",
@@ -55,7 +67,8 @@
     "about": "حول MemryNote",
     "documentation": "التوثيق",
     "label": "مساعدة",
-    "shortcuts": "اختصارات لوحة المفاتيح"
+    "shortcuts": "اختصارات لوحة المفاتيح",
+    "aboutVersion": "الإصدار {version}"
   },
   "insert": {
     "attachment": "إدراج مرفق…",
@@ -67,6 +80,10 @@
     "taskList": "قائمة مهام"
   },
   "window": {
-    "label": "نافذة"
+    "label": "نافذة",
+    "close": "إغلاق",
+    "front": "إحضار الكل إلى الأمام",
+    "minimize": "تصغير",
+    "zoom": "تكبير/تصغير"
   }
 }

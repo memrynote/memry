@@ -22,7 +22,19 @@
     "writeFailed": "無法儲存此筆記。請檢查磁碟空間和權限。",
     "readFailed": "無法讀取此筆記。檔案可能被鎖定或已損壞。",
     "deleteFailed": "無法刪除此筆記。請檢查檔案權限。",
-    "invalidPath": "筆記路徑無效。"
+    "invalidPath": "筆記路徑無效。",
+    "applyTemplateFailed": "套用範本失敗",
+    "createFailed": "建立筆記失敗",
+    "deleteVersionFailed": "刪除版本失敗",
+    "exportHtmlFailed": "匯出 HTML 失敗",
+    "exportPdfFailed": "匯出 PDF 失敗",
+    "importFilesFailed": "匯入檔案失敗",
+    "moveFailed": "移動筆記失敗",
+    "renameFailed": "重新命名筆記失敗",
+    "reorderFailed": "重新排序筆記失敗",
+    "restoreVersionFailed": "還原版本失敗",
+    "setLocalOnlyFailed": "設定為僅限本機失敗",
+    "updateFailed": "更新筆記失敗"
   },
   "database": {
     "connectionFailed": "無法連接到本地資料庫。請嘗試重新啟動應用程式。",
@@ -41,7 +53,11 @@
     "fileTooLarge": "此檔案過大，無法附加。",
     "unsupportedType": "不支援此檔案類型。",
     "writeFailed": "儲存附件失敗。請檢查磁碟空間。",
-    "deleteFailed": "刪除附件失敗。"
+    "deleteFailed": "刪除附件失敗。",
+    "downloadFailed": "附件下載失敗",
+    "downloadProgressFailed": "取得下載進度失敗",
+    "uploadFailed": "附件上傳失敗",
+    "uploadProgressFailed": "取得上傳進度失敗"
   },
   "encryption": {
     "failed": "加密資料失敗。您的金鑰可能需要重新生成。",
@@ -77,6 +93,184 @@
     "paymentRequired": "使用託管加密同步需要付費的同步方案。",
     "attachmentUploadFailed": "無法同步附件「{filename}」，它會留在此裝置上。",
     "fileTooLarge": "此檔案超過您方案允許的大小。升級方案即可同步更大的檔案。",
-    "vaultRecovered": "保險庫金鑰已還原，同步將會繼續。"
+    "vaultRecovered": "保險庫金鑰已還原，同步將會繼續。",
+    "historyFetchFailed": "取得同步紀錄失敗",
+    "keyPersistenceFailed": "無法安全地儲存加密金鑰，裝置註冊已復原。請再試一次。",
+    "serverUnreachable": "無法連線到同步伺服器，請檢查您的網路連線。",
+    "updateSyncedSettingFailed": "更新已同步的設定失敗"
+  },
+  "agent": {
+    "conversationBusy": "對話忙碌中",
+    "runtimeStarting": "Agent 執行環境正在啟動，請再試一次。"
+  },
+  "ai": {
+    "inlineDisabled": "AI 行內編輯已停用",
+    "listOllamaModelsFailed": "列出 Ollama 模型失敗"
+  },
+  "auth": {
+    "approveLinkingFailed": "核准裝置連結失敗",
+    "cannotRemoveCurrentDevice": "無法移除目前的裝置",
+    "completeLinkingFailed": "完成裝置連結失敗",
+    "confirmRecoveryPhraseFailed": "確認復原片語失敗",
+    "fetchSasCodeFailed": "取得 SAS 驗證碼失敗",
+    "finalizeVaultChoiceFailed": "完成保險庫選擇失敗",
+    "initiateOAuthFailed": "啟動 OAuth 失敗",
+    "invalidRecoveryPhraseFormat": "復原片語格式無效",
+    "linkDeviceQrFailed": "透過 QR 碼連結裝置失敗",
+    "linkRecoveryPhraseFailed": "透過復原片語連結失敗",
+    "notAuthenticated": "尚未驗證身分",
+    "pickFolderFailed": "選擇資料夾失敗",
+    "recoveryPhraseMismatch": "復原片語不相符，請再試一次。",
+    "removeDeviceFailed": "移除裝置失敗",
+    "renameDeviceFailed": "重新命名裝置失敗",
+    "requestOtpFailed": "要求一次性驗證碼失敗",
+    "resendOtpFailed": "重新傳送一次性驗證碼失敗",
+    "sessionExpired": "工作階段已過期，請重新登入。",
+    "setupFirstDeviceOAuthFailed": "透過 OAuth 設定第一部裝置失敗",
+    "verifyOtpFailed": "驗證一次性驗證碼失敗"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "此項目已加入書籤",
+    "notFound": "找不到書籤"
+  },
+  "calendar": {
+    "connectProviderFailed": "連接行事曆提供者失敗",
+    "createEventFailed": "建立行事曆活動失敗",
+    "deleteEventFailed": "刪除行事曆活動失敗",
+    "disconnectProviderFailed": "中斷行事曆提供者連線失敗",
+    "eventNotFound": "找不到行事曆活動",
+    "googleNotConnected": "這部裝置尚未連接 Google Calendar",
+    "listGoogleCalendarsFailed": "列出 Google 行事曆失敗",
+    "onlyGoogleSourcesRetryable": "只有 Google 行事曆來源可以重試",
+    "onlySourcesSelectable": "只能選取行事曆來源",
+    "promoteExternalEventFailed": "轉換外部行事曆活動失敗",
+    "refreshProviderFailed": "重新整理行事曆提供者失敗",
+    "retryGoogleSourceSyncFailed": "重試 Google Calendar 來源同步失敗",
+    "setDefaultGoogleCalendarFailed": "設定預設 Google 行事曆失敗",
+    "signInBeforeRefresh": "請先登入 memrynote，再重新整理 Google Calendar",
+    "sourceNotFound": "找不到行事曆來源",
+    "syncFailed": "同步失敗",
+    "updateEventFailed": "更新行事曆活動失敗",
+    "updateSourceSelectionFailed": "更新行事曆來源選取失敗"
+  },
+  "folder": {
+    "createFailed": "建立資料夾失敗",
+    "deleteFailed": "刪除資料夾失敗",
+    "renameFailed": "重新命名資料夾失敗",
+    "setConfigFailed": "設定資料夾組態失敗"
+  },
+  "folderView": {
+    "deleteViewFailed": "刪除檢視失敗",
+    "setConfigFailed": "設定組態失敗",
+    "setViewFailed": "設定檢視失敗"
+  },
+  "googleCalendar": {
+    "accessDenied": "Google Calendar 的存取權已被拒絕。您隨時可以重新連接。",
+    "connectFailed": "無法連接 Google Calendar，請稍後再試一次。",
+    "misconfigured": "Google Calendar 的設定不正確。若持續發生，請聯絡支援團隊。",
+    "reconnectNeeded": "您的 Google Calendar 連線已過期，請中斷連線後重新連接。",
+    "scopeMissing": "由於未授予行事曆權限，我們無法存取您的 Google Calendar。請再試一次，並確認 Google 同意畫面上的行事曆核取方塊保持勾選。",
+    "temporarilyUnavailable": "Google Calendar 暫時無法使用，請稍後再試一次。"
+  },
+  "importer": {
+    "cancelFailed": "取消失敗",
+    "fileSelectionFailed": "選擇檔案失敗",
+    "importFailed": "匯入失敗",
+    "listFailed": "列出匯入工具失敗",
+    "previewFailed": "預覽失敗"
+  },
+  "project": {
+    "archiveFailed": "封存專案失敗",
+    "captureLinkFailed": "擷取連結失敗",
+    "createFailed": "建立專案失敗",
+    "deleteFailed": "刪除專案失敗",
+    "importFilesFailed": "匯入檔案失敗",
+    "linkItemFailed": "連結項目失敗",
+    "listForItemFailed": "列出此項目的專案失敗",
+    "reorderFailed": "重新排序專案失敗",
+    "setHomeNoteFailed": "設定首頁筆記失敗",
+    "unlinkItemFailed": "取消連結項目失敗",
+    "updateFailed": "更新專案失敗",
+    "updatePinnedFailed": "更新釘選狀態失敗"
+  },
+  "property": {
+    "alreadyExists": "屬性「{name}」已存在",
+    "createDefinitionFailed": "建立屬性定義失敗",
+    "entityNotFound": "找不到項目",
+    "notFound": "找不到屬性「{name}」",
+    "renameFailed": "重新命名屬性失敗",
+    "setCalendarVisibilityFailed": "設定行事曆屬性顯示狀態失敗",
+    "setFailed": "設定屬性失敗",
+    "updateDefinitionFailed": "更新屬性定義失敗"
+  },
+  "reminder": {
+    "createFailed": "建立提醒失敗",
+    "dismissAllFailed": "忽略提醒失敗",
+    "dismissFailed": "忽略提醒失敗",
+    "notFound": "找不到提醒",
+    "snoozeFailed": "延後提醒失敗",
+    "updateFailed": "更新提醒失敗"
+  },
+  "savedFilter": {
+    "notFound": "找不到已儲存的篩選器"
+  },
+  "search": {
+    "rebuildFailed": "重建失敗"
+  },
+  "settings": {
+    "modelAlreadyLoading": "模型已在載入中",
+    "modelLoadFailed": "載入模型失敗",
+    "shortcutInUse": "快速鍵 {shortcut} 已被使用",
+    "terminalCommandInstallFailed": "安裝終端機指令失敗",
+    "terminalCommandUninstallFailed": "解除安裝終端機指令失敗",
+    "unknownVault": "未知的保險庫",
+    "voiceModelDownloadFailed": "下載語音模型失敗"
+  },
+  "tag": {
+    "categoryNameRequired": "請輸入分類名稱",
+    "createCategoryFailed": "建立標籤分類失敗",
+    "deleteCategoryFailed": "刪除標籤分類失敗",
+    "deleteFailed": "刪除標籤失敗",
+    "listCategoriesFailed": "列出標籤分類失敗",
+    "mergeFailed": "合併標籤失敗",
+    "mergeSameTag": "來源標籤與目標標籤相同",
+    "pinNoteFailed": "釘選筆記失敗",
+    "removeFromNoteFailed": "從筆記移除標籤失敗",
+    "renameCategoryFailed": "重新命名標籤分類失敗",
+    "renameFailed": "重新命名標籤失敗",
+    "reorderFailed": "重新排序標籤失敗",
+    "unpinNoteFailed": "取消釘選筆記失敗",
+    "updateColorFailed": "更新標籤顏色失敗",
+    "updateIconFailed": "更新標籤圖示失敗"
+  },
+  "task": {
+    "archiveFailed": "封存任務失敗",
+    "archiveManyFailed": "封存多項任務失敗",
+    "completeFailed": "完成任務失敗",
+    "completeManyFailed": "完成多項任務失敗",
+    "convertToSubtaskFailed": "轉換為子任務失敗",
+    "convertToTaskFailed": "轉換為任務失敗",
+    "createFailed": "建立任務失敗",
+    "deleteFailed": "刪除任務失敗",
+    "deleteManyFailed": "刪除多項任務失敗",
+    "duplicateFailed": "複製任務失敗",
+    "moveFailed": "移動任務失敗",
+    "moveManyFailed": "移動多項任務失敗",
+    "reorderFailed": "重新排序任務失敗",
+    "unarchiveFailed": "取消封存任務失敗",
+    "uncompleteFailed": "將任務標記為未完成失敗",
+    "updateFailed": "更新任務失敗"
+  },
+  "taskStatus": {
+    "createFailed": "建立狀態失敗",
+    "deleteFailed": "刪除狀態失敗",
+    "reorderFailed": "重新排序狀態失敗",
+    "updateFailed": "更新狀態失敗"
+  },
+  "template": {
+    "createFailed": "建立範本失敗",
+    "deleteFailed": "刪除範本失敗",
+    "duplicateFailed": "複製範本失敗",
+    "updateFailed": "更新範本失敗"
   }
 }

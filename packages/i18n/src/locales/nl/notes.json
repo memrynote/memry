@@ -252,7 +252,12 @@
       "multiselect": "Multiselecteren"
     },
     "showOnCalendar": "Tonen in agenda",
-    "showingOnCalendar": "Wordt getoond in agenda"
+    "showingOnCalendar": "Wordt getoond in agenda",
+    "statusCategories": {
+      "done": "Voltooid",
+      "inProgress": "In uitvoering",
+      "todo": "Te doen"
+    }
   },
   "templateSelector": {
     "title": "Kies uw canvas",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "Tagnaam",
     "uncategorized": "Zonder categorie"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (dubbelklik om te bewerken)"
+    },
+    "columns": {
+      "created": "Aangemaakt",
+      "folder": "Map",
+      "kind": "Soort",
+      "modified": "Gewijzigd",
+      "tags": "Tags",
+      "title": "Titel",
+      "wordCount": "Aantal woorden"
+    },
+    "defaultViewName": "Standaard",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# notitie} other {# notities}}"
+    },
+    "selectView": "Weergave selecteren"
   }
 }

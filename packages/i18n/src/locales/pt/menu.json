@@ -1,7 +1,12 @@
 {
   "app": {
     "quit": "Sair",
-    "preferences": "Definições…"
+    "preferences": "Definições…",
+    "exit": "Sair",
+    "hide": "Ocultar MemryNote",
+    "hideOthers": "Ocultar outros",
+    "services": "Serviços",
+    "unhide": "Mostrar tudo"
   },
   "file": {
     "label": "Arquivo",
@@ -24,7 +29,11 @@
     "paste": "Colar",
     "selectAll": "Selecionar tudo",
     "find": "Localizar",
-    "speech": "Voz"
+    "speech": "Voz",
+    "delete": "Apagar",
+    "pasteAndMatchStyle": "Colar e adaptar estilo",
+    "startSpeaking": "Iniciar locução",
+    "stopSpeaking": "Parar locução"
   },
   "view": {
     "label": "Ver",
@@ -37,7 +46,10 @@
     "themeSystem": "Sistema",
     "themeWhite": "Papel",
     "toggleDayPanel": "Alternar painel do dia",
-    "toggleSidebar": "Alternar barra lateral"
+    "toggleSidebar": "Alternar barra lateral",
+    "actualSize": "Tamanho real",
+    "zoomIn": "Ampliar",
+    "zoomOut": "Reduzir"
   },
   "format": {
     "body": "Corpo",
@@ -55,7 +67,8 @@
     "about": "Acerca do MemryNote",
     "documentation": "Documentação",
     "label": "Ajuda",
-    "shortcuts": "Atalhos de teclado"
+    "shortcuts": "Atalhos de teclado",
+    "aboutVersion": "Versão {version}"
   },
   "insert": {
     "attachment": "Inserir anexo…",
@@ -67,6 +80,10 @@
     "taskList": "Lista de tarefas"
   },
   "window": {
-    "label": "Janela"
+    "label": "Janela",
+    "close": "Fechar",
+    "front": "Trazer tudo para a frente",
+    "minimize": "Minimizar",
+    "zoom": "Zoom"
   }
 }

@@ -1,7 +1,12 @@
 {
   "app": {
     "quit": "Ukončiť",
-    "preferences": "Nastavenia…"
+    "preferences": "Nastavenia…",
+    "exit": "Ukončiť",
+    "hide": "Skryť MemryNote",
+    "hideOthers": "Skryť ostatné",
+    "services": "Služby",
+    "unhide": "Zobraziť všetko"
   },
   "file": {
     "label": "Súbor",
@@ -24,7 +29,11 @@
     "paste": "Pasta",
     "selectAll": "Vybrať všetko",
     "find": "Hľadať",
-    "speech": "Reč"
+    "speech": "Reč",
+    "delete": "Vymazať",
+    "pasteAndMatchStyle": "Prilepiť a prispôsobiť štýl",
+    "startSpeaking": "Spustiť čítanie",
+    "stopSpeaking": "Zastaviť čítanie"
   },
   "view": {
     "label": "Zobraziť",
@@ -37,7 +46,10 @@
     "themeSystem": "Systémový",
     "themeWhite": "Papier",
     "toggleDayPanel": "Prepnúť panel dňa",
-    "toggleSidebar": "Prepnúť bočný panel"
+    "toggleSidebar": "Prepnúť bočný panel",
+    "actualSize": "Skutočná veľkosť",
+    "zoomIn": "Priblížiť",
+    "zoomOut": "Oddialiť"
   },
   "format": {
     "body": "Text",
@@ -55,7 +67,8 @@
     "about": "O aplikácii MemryNote",
     "documentation": "Dokumentácia",
     "label": "Pomocník",
-    "shortcuts": "Klávesové skratky"
+    "shortcuts": "Klávesové skratky",
+    "aboutVersion": "Verzia {version}"
   },
   "insert": {
     "attachment": "Vložiť prílohu…",
@@ -67,6 +80,10 @@
     "taskList": "Zoznam úloh"
   },
   "window": {
-    "label": "Okno"
+    "label": "Okno",
+    "close": "Zavrieť",
+    "front": "Preniesť všetko dopredu",
+    "minimize": "Minimalizovať",
+    "zoom": "Zväčšiť"
   }
 }

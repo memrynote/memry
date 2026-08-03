@@ -252,7 +252,12 @@
       "multiselect": "Çoklu seçim"
     },
     "showOnCalendar": "Takvimde göster",
-    "showingOnCalendar": "Takvimde gösteriliyor"
+    "showingOnCalendar": "Takvimde gösteriliyor",
+    "statusCategories": {
+      "done": "Tamamlandı",
+      "inProgress": "Devam ediyor",
+      "todo": "Yapılacak"
+    }
   },
   "templateSelector": {
     "title": "Kanvasınızı Seçin",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "Etiket adı",
     "uncategorized": "Kategorisiz"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (düzenlemek için çift tıklayın)"
+    },
+    "columns": {
+      "created": "Oluşturuldu",
+      "folder": "Klasör",
+      "kind": "Tür",
+      "modified": "Değiştirildi",
+      "tags": "Etiketler",
+      "title": "Başlık",
+      "wordCount": "Kelime sayısı"
+    },
+    "defaultViewName": "Varsayılan",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# not} other {# not}}"
+    },
+    "selectView": "Görünüm Seç"
   }
 }

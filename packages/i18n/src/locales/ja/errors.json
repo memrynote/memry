@@ -22,7 +22,19 @@
     "writeFailed": "このメモを保存できませんでした。ディスク容量と権限を確認してください。",
     "readFailed": "このメモを読み取れませんでした。ファイルがロックされているか破損している可能性があります。",
     "deleteFailed": "このメモを削除できませんでした。ファイルの権限を確認してください。",
-    "invalidPath": "メモのパスが無効です。"
+    "invalidPath": "メモのパスが無効です。",
+    "applyTemplateFailed": "テンプレートの適用に失敗しました",
+    "createFailed": "メモの作成に失敗しました",
+    "deleteVersionFailed": "バージョンの削除に失敗しました",
+    "exportHtmlFailed": "HTML のエクスポートに失敗しました",
+    "exportPdfFailed": "PDF のエクスポートに失敗しました",
+    "importFilesFailed": "ファイルのインポートに失敗しました",
+    "moveFailed": "メモの移動に失敗しました",
+    "renameFailed": "メモ名の変更に失敗しました",
+    "reorderFailed": "メモの並べ替えに失敗しました",
+    "restoreVersionFailed": "バージョンの復元に失敗しました",
+    "setLocalOnlyFailed": "ローカル限定の設定に失敗しました",
+    "updateFailed": "メモの更新に失敗しました"
   },
   "database": {
     "connectionFailed": "ローカルデータベースに接続できませんでした。アプリを再起動してみてください。",
@@ -41,7 +53,11 @@
     "fileTooLarge": "このファイルは大きすぎて添付できません。",
     "unsupportedType": "このファイル形式はサポートされていません。",
     "writeFailed": "添付ファイルの保存に失敗しました。ディスク容量を確認してください。",
-    "deleteFailed": "添付ファイルの削除に失敗しました。"
+    "deleteFailed": "添付ファイルの削除に失敗しました。",
+    "downloadFailed": "添付ファイルのダウンロードに失敗しました",
+    "downloadProgressFailed": "ダウンロードの進捗を取得できませんでした",
+    "uploadFailed": "添付ファイルのアップロードに失敗しました",
+    "uploadProgressFailed": "アップロードの進捗を取得できませんでした"
   },
   "encryption": {
     "failed": "データの暗号化に失敗しました。キーの再生成が必要になる場合があります。",
@@ -77,6 +93,184 @@
     "paymentRequired": "ホスト型の暗号化同期を利用するには有料の同期プランが必要です。",
     "attachmentUploadFailed": "添付ファイル「{filename}」を同期できませんでした。ファイルはこのデバイスに残ります。",
     "fileTooLarge": "このファイルはプランの上限を超えています。大きなファイルを同期するにはプランをアップグレードしてください。",
-    "vaultRecovered": "保管庫のキーを復元しました。同期を再開します。"
+    "vaultRecovered": "保管庫のキーを復元しました。同期を再開します。",
+    "historyFetchFailed": "同期履歴の取得に失敗しました",
+    "keyPersistenceFailed": "暗号化キーを安全に保存できませんでした。デバイスの登録は取り消されました。もう一度お試しください。",
+    "serverUnreachable": "同期サーバーに接続できません。インターネット接続を確認してください。",
+    "updateSyncedSettingFailed": "同期設定の更新に失敗しました"
+  },
+  "agent": {
+    "conversationBusy": "会話は処理中です",
+    "runtimeStarting": "エージェントのランタイムを起動中です。もう一度お試しください。"
+  },
+  "ai": {
+    "inlineDisabled": "AI のインライン編集は無効になっています",
+    "listOllamaModelsFailed": "Ollama のモデル一覧を取得できませんでした"
+  },
+  "auth": {
+    "approveLinkingFailed": "リンクの承認に失敗しました",
+    "cannotRemoveCurrentDevice": "現在のデバイスは削除できません",
+    "completeLinkingFailed": "リンクを完了できませんでした",
+    "confirmRecoveryPhraseFailed": "リカバリーフレーズの確認に失敗しました",
+    "fetchSasCodeFailed": "SAS コードの取得に失敗しました",
+    "finalizeVaultChoiceFailed": "保管庫の選択を確定できませんでした",
+    "initiateOAuthFailed": "OAuth を開始できませんでした",
+    "invalidRecoveryPhraseFormat": "リカバリーフレーズの形式が正しくありません",
+    "linkDeviceQrFailed": "QR コードでのデバイスのリンクに失敗しました",
+    "linkRecoveryPhraseFailed": "リカバリーフレーズでのリンクに失敗しました",
+    "notAuthenticated": "認証されていません",
+    "pickFolderFailed": "フォルダを選択できませんでした",
+    "recoveryPhraseMismatch": "リカバリーフレーズが一致しません。もう一度お試しください。",
+    "removeDeviceFailed": "デバイスの削除に失敗しました",
+    "renameDeviceFailed": "デバイス名の変更に失敗しました",
+    "requestOtpFailed": "確認コードをリクエストできませんでした",
+    "resendOtpFailed": "確認コードを再送信できませんでした",
+    "sessionExpired": "セッションの有効期限が切れました。もう一度サインインしてください。",
+    "setupFirstDeviceOAuthFailed": "OAuth で最初のデバイスを設定できませんでした",
+    "verifyOtpFailed": "確認コードを検証できませんでした"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "このアイテムはすでにブックマークされています",
+    "notFound": "ブックマークが見つかりません"
+  },
+  "calendar": {
+    "connectProviderFailed": "カレンダープロバイダーへの接続に失敗しました",
+    "createEventFailed": "カレンダーの予定を作成できませんでした",
+    "deleteEventFailed": "カレンダーの予定を削除できませんでした",
+    "disconnectProviderFailed": "カレンダープロバイダーの接続解除に失敗しました",
+    "eventNotFound": "カレンダーの予定が見つかりません",
+    "googleNotConnected": "このデバイスでは Google Calendar が接続されていません",
+    "listGoogleCalendarsFailed": "Google のカレンダー一覧を取得できませんでした",
+    "onlyGoogleSourcesRetryable": "再試行できるのは Google のカレンダーソースのみです",
+    "onlySourcesSelectable": "選択できるのはカレンダーソースのみです",
+    "promoteExternalEventFailed": "外部カレンダーの予定を取り込めませんでした",
+    "refreshProviderFailed": "カレンダープロバイダーの更新に失敗しました",
+    "retryGoogleSourceSyncFailed": "Google Calendar ソースの同期を再試行できませんでした",
+    "setDefaultGoogleCalendarFailed": "既定の Google カレンダーを設定できませんでした",
+    "signInBeforeRefresh": "Google Calendar を更新する前に memrynote にサインインしてください",
+    "sourceNotFound": "カレンダーソースが見つかりません",
+    "syncFailed": "同期に失敗しました",
+    "updateEventFailed": "カレンダーの予定を更新できませんでした",
+    "updateSourceSelectionFailed": "カレンダーソースの選択を更新できませんでした"
+  },
+  "folder": {
+    "createFailed": "フォルダの作成に失敗しました",
+    "deleteFailed": "フォルダの削除に失敗しました",
+    "renameFailed": "フォルダ名の変更に失敗しました",
+    "setConfigFailed": "フォルダの設定を保存できませんでした"
+  },
+  "folderView": {
+    "deleteViewFailed": "ビューの削除に失敗しました",
+    "setConfigFailed": "設定を保存できませんでした",
+    "setViewFailed": "ビューを設定できませんでした"
+  },
+  "googleCalendar": {
+    "accessDenied": "Google Calendar へのアクセスが拒否されました。準備ができたら、いつでも接続し直せます。",
+    "connectFailed": "Google Calendar に接続できませんでした。少し時間をおいてもう一度お試しください。",
+    "misconfigured": "Google Calendar が正しく設定されていません。繰り返し発生する場合はサポートにご連絡ください。",
+    "reconnectNeeded": "Google Calendar の接続の有効期限が切れました。接続を解除してから、もう一度接続してください。",
+    "scopeMissing": "カレンダーの権限が許可されなかったため、Google Calendar にアクセスできませんでした。もう一度お試しのうえ、Google の同意画面でカレンダーのチェックボックスをオンのままにしてください。",
+    "temporarilyUnavailable": "Google Calendar は一時的に利用できません。しばらくしてからもう一度お試しください。"
+  },
+  "importer": {
+    "cancelFailed": "キャンセルに失敗しました",
+    "fileSelectionFailed": "ファイルの選択に失敗しました",
+    "importFailed": "インポートに失敗しました",
+    "listFailed": "インポーターの一覧を取得できませんでした",
+    "previewFailed": "プレビューに失敗しました"
+  },
+  "project": {
+    "archiveFailed": "プロジェクトのアーカイブに失敗しました",
+    "captureLinkFailed": "リンクのキャプチャに失敗しました",
+    "createFailed": "プロジェクトの作成に失敗しました",
+    "deleteFailed": "プロジェクトの削除に失敗しました",
+    "importFilesFailed": "ファイルのインポートに失敗しました",
+    "linkItemFailed": "アイテムのリンクに失敗しました",
+    "listForItemFailed": "アイテムのプロジェクト一覧を取得できませんでした",
+    "reorderFailed": "プロジェクトの並べ替えに失敗しました",
+    "setHomeNoteFailed": "ホームメモの設定に失敗しました",
+    "unlinkItemFailed": "アイテムのリンク解除に失敗しました",
+    "updateFailed": "プロジェクトの更新に失敗しました",
+    "updatePinnedFailed": "ピン留めの状態を更新できませんでした"
+  },
+  "property": {
+    "alreadyExists": "プロパティ「{name}」はすでに存在します",
+    "createDefinitionFailed": "プロパティ定義の作成に失敗しました",
+    "entityNotFound": "エンティティが見つかりません",
+    "notFound": "プロパティ「{name}」が見つかりません",
+    "renameFailed": "プロパティ名の変更に失敗しました",
+    "setCalendarVisibilityFailed": "カレンダーでのプロパティの表示設定に失敗しました",
+    "setFailed": "プロパティの設定に失敗しました",
+    "updateDefinitionFailed": "プロパティ定義の更新に失敗しました"
+  },
+  "reminder": {
+    "createFailed": "リマインダーの作成に失敗しました",
+    "dismissAllFailed": "リマインダーを閉じられませんでした",
+    "dismissFailed": "リマインダーを閉じられませんでした",
+    "notFound": "リマインダーが見つかりません",
+    "snoozeFailed": "リマインダーのスヌーズに失敗しました",
+    "updateFailed": "リマインダーの更新に失敗しました"
+  },
+  "savedFilter": {
+    "notFound": "保存済みフィルターが見つかりません"
+  },
+  "search": {
+    "rebuildFailed": "再構築に失敗しました"
+  },
+  "settings": {
+    "modelAlreadyLoading": "モデルはすでに読み込み中です",
+    "modelLoadFailed": "モデルの読み込みに失敗しました",
+    "shortcutInUse": "ショートカット {shortcut} はすでに使用されています",
+    "terminalCommandInstallFailed": "ターミナルコマンドのインストールに失敗しました",
+    "terminalCommandUninstallFailed": "ターミナルコマンドのアンインストールに失敗しました",
+    "unknownVault": "不明な保管庫",
+    "voiceModelDownloadFailed": "音声モデルのダウンロードに失敗しました"
+  },
+  "tag": {
+    "categoryNameRequired": "カテゴリ名を入力してください",
+    "createCategoryFailed": "タグカテゴリの作成に失敗しました",
+    "deleteCategoryFailed": "タグカテゴリの削除に失敗しました",
+    "deleteFailed": "タグの削除に失敗しました",
+    "listCategoriesFailed": "タグカテゴリの一覧を取得できませんでした",
+    "mergeFailed": "タグの結合に失敗しました",
+    "mergeSameTag": "結合元と結合先のタグが同じです",
+    "pinNoteFailed": "メモのピン留めに失敗しました",
+    "removeFromNoteFailed": "メモからタグを削除できませんでした",
+    "renameCategoryFailed": "タグカテゴリ名の変更に失敗しました",
+    "renameFailed": "タグ名の変更に失敗しました",
+    "reorderFailed": "タグの並べ替えに失敗しました",
+    "unpinNoteFailed": "メモのピン留めを解除できませんでした",
+    "updateColorFailed": "タグの色を更新できませんでした",
+    "updateIconFailed": "タグのアイコンを更新できませんでした"
+  },
+  "task": {
+    "archiveFailed": "タスクのアーカイブに失敗しました",
+    "archiveManyFailed": "タスクのアーカイブに失敗しました",
+    "completeFailed": "タスクを完了できませんでした",
+    "completeManyFailed": "タスクを完了できませんでした",
+    "convertToSubtaskFailed": "サブタスクへの変換に失敗しました",
+    "convertToTaskFailed": "タスクへの変換に失敗しました",
+    "createFailed": "タスクの作成に失敗しました",
+    "deleteFailed": "タスクの削除に失敗しました",
+    "deleteManyFailed": "タスクの削除に失敗しました",
+    "duplicateFailed": "タスクの複製に失敗しました",
+    "moveFailed": "タスクの移動に失敗しました",
+    "moveManyFailed": "タスクの移動に失敗しました",
+    "reorderFailed": "タスクの並べ替えに失敗しました",
+    "unarchiveFailed": "タスクのアーカイブ解除に失敗しました",
+    "uncompleteFailed": "タスクの完了を取り消せませんでした",
+    "updateFailed": "タスクの更新に失敗しました"
+  },
+  "taskStatus": {
+    "createFailed": "ステータスの作成に失敗しました",
+    "deleteFailed": "ステータスの削除に失敗しました",
+    "reorderFailed": "ステータスの並べ替えに失敗しました",
+    "updateFailed": "ステータスの更新に失敗しました"
+  },
+  "template": {
+    "createFailed": "テンプレートの作成に失敗しました",
+    "deleteFailed": "テンプレートの削除に失敗しました",
+    "duplicateFailed": "テンプレートの複製に失敗しました",
+    "updateFailed": "テンプレートの更新に失敗しました"
   }
 }

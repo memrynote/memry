@@ -25,7 +25,8 @@
     "expand": "Rozbalit",
     "collapse": "kolaps",
     "showMore": "+{count, plural, one {# více} other {# více}}",
-    "showLess": "Ukažte méně"
+    "showLess": "Ukažte méně",
+    "undo": "Vrátit zpět"
   },
   "tabs": {
     "pin": "Připnout kartu",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "dnes",
     "yesterday": "včera",
-    "daysAgo": "{count, plural, one {Před # dnem} other {Před # dny}}"
+    "daysAgo": "{count, plural, one {Před # dnem} other {Před # dny}}",
+    "daysLate": "{count, plural, one {# d po termínu} few {# d po termínu} many {# d po termínu} other {# d po termínu}}",
+    "daysOverdue": "{count, plural, one {# den po termínu} few {# dny po termínu} many {# dne po termínu} other {# dní po termínu}}",
+    "tomorrow": "zítra"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Každý den} other {Každých # dní}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Každý měsíc na {day}{suffix}} other {Každých # měsíců na {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Každý měsíc na {week} {day}} other {Každých # měsíců na {week} {day}}}",
     "everyNYears": "{count, plural, one {Každý rok} other {Každých # let}}",
-    "repeats": "Opakuje se"
+    "repeats": "Opakuje se",
+    "ordinal": {
+      "first": "první",
+      "fourth": "čtvrtý",
+      "last": "poslední",
+      "second": "druhý",
+      "third": "třetí"
+    },
+    "preset": {
+      "everyWeekday": "Každý všední den (po–pá)",
+      "everyYearOnDate": "Každý rok {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -640,6 +655,11 @@
     "welcome": {
       "body": "Váš soukromý domov fungující offline. Poznámky jsou koncově šifrované — vaše zařízení nikdy neopustí nešifrované.",
       "title": "Vítejte v MemryNote"
+    },
+    "tour": {
+      "next": "Další",
+      "previous": "Předchozí",
+      "progress": "{current} z {total}"
     }
   },
   "updatePrompt": {
@@ -696,5 +716,125 @@
     "sectionLabel": "Plátna",
     "tooLargeToSync": "Toto plátno je příliš velké na synchronizaci. Je uložené na tomto zařízení, ale na vaše ostatní zařízení se nedostane, dokud nebude menší.",
     "untitled": "Plátno bez názvu"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Kliknutí na řádek",
+      "reset": "Reset",
+      "shortcutsTab": "Karta Zkratky"
+    },
+    "description": "Rychlé cesty pro pohyb v memrynote, zachycení myšlenek a zpracování práce.",
+    "groups": {
+      "general": {
+        "description": "Navigace a nápověda v celé aplikaci.",
+        "title": "Obecné"
+      },
+      "inbox": {
+        "description": "Rychlé zpracování zachycených položek.",
+        "title": "Doručená pošta"
+      },
+      "journal": {
+        "description": "Procházení zobrazení deníku a přechod do psací plochy.",
+        "title": "Deník"
+      },
+      "notes": {
+        "description": "Psaní, formátování a hledání v poznámkách.",
+        "title": "Poznámky / Editor"
+      },
+      "settings": {
+        "description": "Otevření nastavení a úprava zkratek.",
+        "title": "Nastavení"
+      },
+      "tabs": {
+        "description": "Přechod mezi kartami a panely.",
+        "title": "Karty a rozdělení"
+      },
+      "tasks": {
+        "description": "Filtrování, výběr a dokončování úkolů.",
+        "title": "Úkoly"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Vytvořit poznámku",
+        "keyboardShortcuts": "Otevřít klávesové zkratky",
+        "openSettings": "Otevřít nastavení",
+        "quickSearch": "Otevřít rychlé hledání",
+        "sidebarSection": "Přejít na sekci postranního panelu",
+        "toggleSidebar": "Přepnout postranní panel",
+        "undoTaskAction": "Vrátit zpět poslední akci s úkolem"
+      },
+      "inbox": {
+        "archiveItem": "Archivovat vybranou položku",
+        "chooseQuickFileResult": "Vybrat výsledek rychlého zařazení",
+        "clearSelection": "Zrušit výběr nebo zavřít rychlé zařazení",
+        "confirmFiling": "Potvrdit panel zařazení",
+        "firstOrLastItem": "První nebo poslední položka",
+        "jumpByPage": "Přeskočit o stránku",
+        "nextItem": "Další položka",
+        "openOriginal": "Otevřít původní odkaz",
+        "openQuickFile": "Otevřít rychlé zařazení",
+        "previousItem": "Předchozí položka",
+        "refresh": "Obnovit doručenou poštu",
+        "selectAllVisible": "Vybrat všechny viditelné položky",
+        "selectItem": "Vybrat položku",
+        "togglePreview": "Přepnout panel náhledu"
+      },
+      "journal": {
+        "bold": "Ztučnit vybraný text",
+        "find": "Najít v deníku",
+        "italic": "Nastavit kurzívu vybraného textu",
+        "link": "Přidat nebo upravit odkaz",
+        "returnFromOverview": "Návrat ze zobrazení měsíce nebo roku",
+        "toggleFullWidth": "Přepnout deník na plnou šířku",
+        "underline": "Podtrhnout vybraný text"
+      },
+      "notes": {
+        "bold": "Tučné",
+        "closeOverlays": "Zavřít překryvná okna editoru",
+        "commandMenu": "Otevřít nabídku příkazů editoru",
+        "createNote": "Vytvořit poznámku",
+        "find": "Najít v poznámce",
+        "italic": "Kurzíva",
+        "link": "Přidat nebo upravit odkaz",
+        "saveNote": "Uložit aktuální poznámku",
+        "underline": "Podtržení"
+      },
+      "settings": {
+        "cancelRecording": "Zrušit nahrávání zkratky",
+        "customizeShortcuts": "Přizpůsobit klávesové zkratky",
+        "openSettings": "Otevřít nastavení",
+        "recordShortcut": "Nahrát novou zkratku",
+        "resetShortcut": "Obnovit výchozí zkratku"
+      },
+      "tabs": {
+        "closeAllInPane": "Zavřít všechny karty v panelu",
+        "closeSplitPane": "Zavřít rozdělený panel",
+        "closeTab": "Zavřít kartu",
+        "duplicateTab": "Duplikovat kartu",
+        "focusPane": "Přepnout na jiný panel",
+        "maximizePane": "Maximalizovat aktuální panel",
+        "moveTabToPane": "Přesunout kartu do panelu",
+        "newTabMenu": "Otevřít nabídku nové karty",
+        "nextTab": "Další karta",
+        "pinTab": "Připnout nebo odepnout kartu",
+        "previousTab": "Předchozí karta",
+        "reopenClosedTab": "Znovu otevřít zavřenou kartu",
+        "splitDown": "Rozdělit dolů",
+        "splitRight": "Rozdělit doprava"
+      },
+      "tasks": {
+        "clearFilters": "Vymazat viditelné filtry",
+        "clearSelection": "Zrušit výběr úkolů",
+        "completeSelected": "Dokončit vybrané úkoly",
+        "configureRepeat": "Nastavit opakování u zaměřeného úkolu",
+        "deleteSelected": "Smazat vybrané úkoly",
+        "selectAllVisible": "Vybrat všechny viditelné úkoly",
+        "skipOccurrence": "Přeskočit výskyt opakování",
+        "stopRepeating": "Zastavit opakování úkolu"
+      }
+    },
+    "or": "nebo",
+    "then": "poté"
   }
 }

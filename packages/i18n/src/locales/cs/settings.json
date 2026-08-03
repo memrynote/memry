@@ -1449,7 +1449,8 @@
       },
       "title": "Importovat z {name}",
       "chooseDirectory": "Vyberte složku…",
-      "folderKeepsAssets": "Vyberte složku, když obrázky leží mimo složku s poznámkami — exporty často ukládají média do jedné sdílené složky."
+      "folderKeepsAssets": "Vyberte složku, když obrázky leží mimo složku s poznámkami — exporty často ukládají média do jedné sdílené složky.",
+      "previewError": "Náhled se nezdařil"
     },
     "header": {
       "subtitle": "Přeneste své poznámky a úkoly z jiných aplikací",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, one {# úkol} few {# úkoly} other {# úkolů}}",
       "withDueDate": "{count} s datem",
       "withTags": "{count} označeno"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Sloupce: {columns}",
+        "emptyTitle": "Přeskočen řádek s prázdným názvem (sloupec „{column}“)",
+        "noHeaders": "Soubor CSV nemá záhlaví",
+        "titleColumn": "Název ze sloupce „{column}“; ostatní sloupce uloženy jako vlastnosti"
+      },
+      "raindrop": {
+        "csvEmpty": "Soubor CSV z Raindrop je prázdný",
+        "headerNotFound": "Nenalezen řádek záhlaví v CSV z Raindrop (sloupec „url“)",
+        "rowNoUrl": "Řádek {row} přeskočen: chybí URL"
+      },
+      "readFileFailed": "Nepodařilo se přečíst soubor",
+      "ticktick": {
+        "foldersDropped": "Složky z TickTick nemají v Memry obdobu a byly vynechány",
+        "headerNotFound": "Nenalezen řádek záhlaví v CSV z TickTick („Folder Name“)",
+        "reminderNoAnchor": "Připomenutí „{reminder}“ přeskočeno (chybí ukotvení k datu)",
+        "subtaskParentMissing": "Nadřazený úkol dílčího úkolu „{title}“ nenalezen; importován na nejvyšší úrovni",
+        "unknownPriority": "Neznámá priorita {priority} z TickTick → žádná",
+        "unsupportedRepeat": "Nepodporované pravidlo opakování „{rule}“ přeskočeno"
+      },
+      "todoist": {
+        "emptyTitle": "Úkol s prázdným obsahem importován jako (bez názvu)",
+        "headerNotFound": "Nejde o CSV z Todoist: chybí řádek záhlaví TYPE",
+        "orphanComment": "Komentář bez předcházejícího úkolu přeskočen",
+        "sectionFlattened": "Sekce „{section}“ zploštěna",
+        "subtaskNoParent": "Dílčí úkol „{title}“ nemá nadřazený úkol na odsazení {indent}; importován na nejvyšší úrovni",
+        "unknownPriority": "Neznámá priorita {priority} → žádná",
+        "unparsedDate": "Nepodařilo se zpracovat datum „{date}“"
+      }
     }
   },
   "inbox": {

@@ -252,7 +252,12 @@
       "multiselect": "בחירה מרובה"
     },
     "showOnCalendar": "הצג בלוח השנה",
-    "showingOnCalendar": "מוצג בלוח השנה"
+    "showingOnCalendar": "מוצג בלוח השנה",
+    "statusCategories": {
+      "done": "הושלם",
+      "inProgress": "בתהליך",
+      "todo": "לביצוע"
+    }
   },
   "templateSelector": {
     "title": "בחר את הקנבס שלך",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "שם התג",
     "uncategorized": "ללא קטגוריה"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (לחיצה כפולה לעריכה)"
+    },
+    "columns": {
+      "created": "נוצר",
+      "folder": "תיקייה",
+      "kind": "סוג",
+      "modified": "שונה",
+      "tags": "תגיות",
+      "title": "כותרת",
+      "wordCount": "מספר מילים"
+    },
+    "defaultViewName": "ברירת מחדל",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {הערה אחת} two {# הערות} other {# הערות}}"
+    },
+    "selectView": "בחר תצוגה"
   }
 }

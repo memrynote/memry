@@ -1,7 +1,12 @@
 {
   "app": {
     "quit": "Thoát",
-    "preferences": "Cài đặt…"
+    "preferences": "Cài đặt…",
+    "exit": "Thoát",
+    "hide": "Ẩn MemryNote",
+    "hideOthers": "Ẩn ứng dụng khác",
+    "services": "Dịch vụ",
+    "unhide": "Hiện tất cả"
   },
   "file": {
     "label": "Tập tin",
@@ -24,7 +29,11 @@
     "paste": "Dán",
     "selectAll": "Chọn tất cả",
     "find": "Tìm",
-    "speech": "Giọng nói"
+    "speech": "Giọng nói",
+    "delete": "Xóa",
+    "pasteAndMatchStyle": "Dán và Khớp Kiểu",
+    "startSpeaking": "Bắt đầu Nói",
+    "stopSpeaking": "Dừng Nói"
   },
   "view": {
     "label": "Xem",
@@ -37,7 +46,10 @@
     "themeSystem": "Hệ thống",
     "themeWhite": "Giấy",
     "toggleDayPanel": "Bật/tắt Bảng Ngày",
-    "toggleSidebar": "Bật/tắt Thanh bên"
+    "toggleSidebar": "Bật/tắt Thanh bên",
+    "actualSize": "Kích thước Thực",
+    "zoomIn": "Phóng to",
+    "zoomOut": "Thu nhỏ"
   },
   "format": {
     "body": "Nội dung",
@@ -55,7 +67,8 @@
     "about": "Giới thiệu MemryNote",
     "documentation": "Tài liệu",
     "label": "Trợ giúp",
-    "shortcuts": "Phím tắt"
+    "shortcuts": "Phím tắt",
+    "aboutVersion": "Phiên bản {version}"
   },
   "insert": {
     "attachment": "Chèn tệp đính kèm…",
@@ -67,6 +80,10 @@
     "taskList": "Danh sách công việc"
   },
   "window": {
-    "label": "Cửa sổ"
+    "label": "Cửa sổ",
+    "close": "Đóng",
+    "front": "Đưa Tất cả lên Trước",
+    "minimize": "Thu nhỏ",
+    "zoom": "Thu phóng"
   }
 }

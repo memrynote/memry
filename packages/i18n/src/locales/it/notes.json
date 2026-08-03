@@ -252,7 +252,12 @@
       "multiselect": "Selezione multipla"
     },
     "showOnCalendar": "Mostra sul calendario",
-    "showingOnCalendar": "Visibile sul calendario"
+    "showingOnCalendar": "Visibile sul calendario",
+    "statusCategories": {
+      "done": "Completato",
+      "inProgress": "In corso",
+      "todo": "Da fare"
+    }
   },
   "templateSelector": {
     "title": "Scegli la tua tela",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "Nome tag",
     "uncategorized": "Senza categoria"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (doppio clic per modificare)"
+    },
+    "columns": {
+      "created": "Creata",
+      "folder": "Cartella",
+      "kind": "Tipo",
+      "modified": "Modificata",
+      "tags": "Tag",
+      "title": "Titolo",
+      "wordCount": "Numero di parole"
+    },
+    "defaultViewName": "Predefinita",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# nota} many {# note} other {# note}}"
+    },
+    "selectView": "Seleziona vista"
   }
 }

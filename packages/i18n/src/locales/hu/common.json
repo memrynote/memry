@@ -25,7 +25,8 @@
     "expand": "Bontsa ki",
     "collapse": "Összeomlás",
     "showMore": "+{count, plural, one {# több} other {# több}}",
-    "showLess": "Mutass kevesebbet"
+    "showLess": "Mutass kevesebbet",
+    "undo": "Visszavonás"
   },
   "tabs": {
     "pin": "Lap rögzítése",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "Ma",
     "yesterday": "tegnap",
-    "daysAgo": "{count, plural, one {# napja} other {# napja}}"
+    "daysAgo": "{count, plural, one {# napja} other {# napja}}",
+    "daysLate": "{count, plural, one {# napos késés} other {# napos késés}}",
+    "daysOverdue": "{count, plural, one {# napja lejárt} other {# napja lejárt}}",
+    "tomorrow": "Holnap"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Minden nap} other {Minden # napon}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Minden hónapban az {day}{suffix}} other {Minden # havonta az {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Minden hónapban az {week} {day}} other {Minden # havonta az {week} {day}}}",
     "everyNYears": "{count, plural, one {Minden évben} other {# évente}}",
-    "repeats": "Ismétlődik"
+    "repeats": "Ismétlődik",
+    "ordinal": {
+      "first": "első",
+      "fourth": "negyedik",
+      "last": "utolsó",
+      "second": "második",
+      "third": "harmadik"
+    },
+    "preset": {
+      "everyWeekday": "Minden hétköznap (H-P)",
+      "everyYearOnDate": "Minden évben ekkor: {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -640,6 +655,11 @@
     "welcome": {
       "body": "A privát, offline-first otthonod. A jegyzetek végponttól végpontig titkosítva vannak — soha nem hagyják el az eszközöd titkosítatlanul.",
       "title": "Üdvözöl a MemryNote"
+    },
+    "tour": {
+      "next": "Tovább",
+      "previous": "Vissza",
+      "progress": "{current} / {total}"
     }
   },
   "updatePrompt": {
@@ -696,5 +716,125 @@
     "sectionLabel": "Vásznak",
     "tooLargeToSync": "Ez a vászon túl nagy a szinkronizáláshoz. Ezen az eszközön mentve van, de a többi eszközödre csak akkor jut el, ha kisebb lesz.",
     "untitled": "Névtelen vászon"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Kattintás a soron",
+      "reset": "Visszaállítás",
+      "shortcutsTab": "Billentyűparancsok lap"
+    },
+    "description": "Gyors utak a memrynote-ban való mozgáshoz, a gondolatok rögzítéséhez és a munka feldolgozásához.",
+    "groups": {
+      "general": {
+        "description": "Alkalmazásszintű navigáció és súgó.",
+        "title": "Általános"
+      },
+      "inbox": {
+        "description": "A rögzített elemek gyors feldolgozása.",
+        "title": "Beérkezők"
+      },
+      "journal": {
+        "description": "Navigálás a naplónézetek között és az írófelület fókuszálása.",
+        "title": "Napló"
+      },
+      "notes": {
+        "description": "Jegyzetek írása, formázása és keresése.",
+        "title": "Jegyzetek / Szerkesztő"
+      },
+      "settings": {
+        "description": "A beállítások megnyitása és a billentyűparancsok testreszabása.",
+        "title": "Beállítások"
+      },
+      "tabs": {
+        "description": "Váltás a lapok és a panelek között.",
+        "title": "Lapok és felosztás"
+      },
+      "tasks": {
+        "description": "Feladatok szűrése, kijelölése és elvégzése.",
+        "title": "Feladatok"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Jegyzet létrehozása",
+        "keyboardShortcuts": "Billentyűparancsok megnyitása",
+        "openSettings": "Beállítások megnyitása",
+        "quickSearch": "Gyorskeresés megnyitása",
+        "sidebarSection": "Ugrás egy oldalsáv-szakaszra",
+        "toggleSidebar": "Oldalsáv be- és kikapcsolása",
+        "undoTaskAction": "Az utolsó feladatművelet visszavonása"
+      },
+      "inbox": {
+        "archiveItem": "A kijelölt elem archiválása",
+        "chooseQuickFileResult": "Gyors iktatási találat választása",
+        "clearSelection": "Kijelölés törlése vagy a gyors iktatás bezárása",
+        "confirmFiling": "Az iktatópanel megerősítése",
+        "firstOrLastItem": "Első vagy utolsó elem",
+        "jumpByPage": "Ugrás oldalanként",
+        "nextItem": "Következő elem",
+        "openOriginal": "Az eredeti hivatkozás megnyitása",
+        "openQuickFile": "Gyors iktatás megnyitása",
+        "previousItem": "Előző elem",
+        "refresh": "A Beérkezők frissítése",
+        "selectAllVisible": "Minden látható elem kijelölése",
+        "selectItem": "Elem kijelölése",
+        "togglePreview": "Előnézeti panel be- és kikapcsolása"
+      },
+      "journal": {
+        "bold": "A kijelölt szöveg félkövérré tétele",
+        "find": "Keresés a naplóban",
+        "italic": "A kijelölt szöveg dőltté tétele",
+        "link": "Hivatkozás hozzáadása vagy szerkesztése",
+        "returnFromOverview": "Visszatérés a havi vagy éves nézetből",
+        "toggleFullWidth": "Teljes szélességű napló be- és kikapcsolása",
+        "underline": "A kijelölt szöveg aláhúzása"
+      },
+      "notes": {
+        "bold": "Félkövér",
+        "closeOverlays": "A szerkesztő felugró paneljeinek bezárása",
+        "commandMenu": "A szerkesztő parancsmenüjének megnyitása",
+        "createNote": "Jegyzet létrehozása",
+        "find": "Keresés a jegyzetben",
+        "italic": "Dőlt",
+        "link": "Hivatkozás hozzáadása vagy szerkesztése",
+        "saveNote": "Az aktuális jegyzet mentése",
+        "underline": "Aláhúzott"
+      },
+      "settings": {
+        "cancelRecording": "A billentyűparancs rögzítésének megszakítása",
+        "customizeShortcuts": "Billentyűparancsok testreszabása",
+        "openSettings": "Beállítások megnyitása",
+        "recordShortcut": "Új billentyűparancs rögzítése",
+        "resetShortcut": "Billentyűparancs alapértelmezettjének visszaállítása"
+      },
+      "tabs": {
+        "closeAllInPane": "A panel összes lapjának bezárása",
+        "closeSplitPane": "Az osztott panel bezárása",
+        "closeTab": "Lap bezárása",
+        "duplicateTab": "Lap megkettőzése",
+        "focusPane": "Másik panel fókuszálása",
+        "maximizePane": "Az aktuális panel teljes méretre nagyítása",
+        "moveTabToPane": "Lap áthelyezése másik panelre",
+        "newTabMenu": "Az új lap menü megnyitása",
+        "nextTab": "Következő lap",
+        "pinTab": "Lap rögzítése vagy feloldása",
+        "previousTab": "Előző lap",
+        "reopenClosedTab": "Bezárt lap újranyitása",
+        "splitDown": "Felosztás lefelé",
+        "splitRight": "Felosztás jobbra"
+      },
+      "tasks": {
+        "clearFilters": "A látható szűrők törlése",
+        "clearSelection": "A feladatkijelölés törlése",
+        "completeSelected": "A kijelölt feladatok elvégzése",
+        "configureRepeat": "Ismétlés beállítása a fókuszált feladaton",
+        "deleteSelected": "A kijelölt feladatok törlése",
+        "selectAllVisible": "Minden látható feladat kijelölése",
+        "skipOccurrence": "Ismétlődés kihagyása",
+        "stopRepeating": "A feladat ismétlésének leállítása"
+      }
+    },
+    "or": "vagy",
+    "then": "majd"
   }
 }

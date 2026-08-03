@@ -270,7 +270,50 @@
     "panelEmpty": "Geen komende herinneringen.",
     "panelPast": "Verleden",
     "panelUpcoming": "Binnenkort",
-    "taskFallback": "Taak"
+    "taskFallback": "Taak",
+    "dateTime": {
+      "dateAt": "{date} om {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Vandaag om {time}",
+      "todayCompact": "Vandaag, {time}",
+      "tomorrowAt": "Morgen om {time}",
+      "tomorrowCompact": "Morgen, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Jaarlijkse herinnering",
+      "inHours": {
+        "label": "Over {count, plural, one {# uur} other {# uur}}"
+      },
+      "inMinutes": {
+        "label": "Over {count, plural, one {# minuut} other {# minuten}}"
+      },
+      "inMonths": {
+        "label": "Over {count, plural, one {# maand} other {# maanden}}"
+      },
+      "inWeeks": {
+        "label": "Over {count, plural, one {# week} other {# weken}}"
+      },
+      "inYears": {
+        "label": "Over {count, plural, one {# jaar} other {# jaar}}"
+      },
+      "laterToday": {
+        "description": "Over {count, plural, one {# uur} other {# uur}}",
+        "label": "Later vandaag"
+      },
+      "monthlyReflection": "Maandelijkse reflectie",
+      "nextWeek": {
+        "description": "Maandag om 9:00",
+        "label": "Volgende week"
+      },
+      "quarterlyReflection": "Kwartaalreflectie",
+      "reviewInAWeek": "Over een week bekijken",
+      "sameDayNextMonth": "Zelfde dag volgende maand",
+      "tomorrow": {
+        "description": "Morgen om 9:00",
+        "label": "Morgen"
+      },
+      "tomorrowMorning": "Morgenochtend"
+    }
   },
   "insights": {
     "captureActivity": "Activiteit vastleggen",

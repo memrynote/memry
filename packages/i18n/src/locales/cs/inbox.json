@@ -270,7 +270,50 @@
     "panelEmpty": "Žádná nadcházející připomenutí.",
     "panelPast": "Minulé",
     "panelUpcoming": "Nadcházející",
-    "taskFallback": "Úkol"
+    "taskFallback": "Úkol",
+    "dateTime": {
+      "dateAt": "{date} v {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Dnes v {time}",
+      "todayCompact": "Dnes, {time}",
+      "tomorrowAt": "Zítra v {time}",
+      "tomorrowCompact": "Zítra, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Připomenutí výročí",
+      "inHours": {
+        "label": "Za {count, plural, one {# hodinu} few {# hodiny} many {# hodiny} other {# hodin}}"
+      },
+      "inMinutes": {
+        "label": "Za {count, plural, one {# minutu} few {# minuty} many {# minuty} other {# minut}}"
+      },
+      "inMonths": {
+        "label": "Za {count, plural, one {# měsíc} few {# měsíce} many {# měsíce} other {# měsíců}}"
+      },
+      "inWeeks": {
+        "label": "Za {count, plural, one {# týden} few {# týdny} many {# týdne} other {# týdnů}}"
+      },
+      "inYears": {
+        "label": "Za {count, plural, one {# rok} few {# roky} many {# roku} other {# let}}"
+      },
+      "laterToday": {
+        "description": "Za {count, plural, one {# hodinu} few {# hodiny} many {# hodiny} other {# hodin}}",
+        "label": "Později dnes"
+      },
+      "monthlyReflection": "Měsíční reflexe",
+      "nextWeek": {
+        "description": "V pondělí v 9:00",
+        "label": "Příští týden"
+      },
+      "quarterlyReflection": "Čtvrtletní reflexe",
+      "reviewInAWeek": "Projít za týden",
+      "sameDayNextMonth": "Stejný den příští měsíc",
+      "tomorrow": {
+        "description": "Zítra v 9:00",
+        "label": "Zítra"
+      },
+      "tomorrowMorning": "Zítra ráno"
+    }
   },
   "insights": {
     "captureActivity": "Aktivita zachycení",

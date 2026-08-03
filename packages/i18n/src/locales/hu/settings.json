@@ -1449,7 +1449,8 @@
       },
       "title": "Importálás innen: {name}",
       "chooseDirectory": "Mappa kiválasztása…",
-      "folderKeepsAssets": "Válaszd a mappát, ha a képek a jegyzetek saját mappáján kívül vannak — az exportok gyakran közös mappában tartják a médiát."
+      "folderKeepsAssets": "Válaszd a mappát, ha a képek a jegyzetek saját mappáján kívül vannak — az exportok gyakran közös mappában tartják a médiát.",
+      "previewError": "Az előnézet nem sikerült"
     },
     "header": {
       "subtitle": "Hozd be a jegyzeteidet és feladataidat más alkalmazásokból",
@@ -1488,6 +1489,37 @@
       "tasks": "{count, plural, one {# feladat} other {# feladat}}",
       "withDueDate": "{count} dátumozva",
       "withTags": "{count} címkézve"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Oszlopok: {columns}",
+        "emptyTitle": "Üres címet tartalmazó sor kihagyva („{column}” oszlop)",
+        "noHeaders": "A CSV-fájlnak nincs fejlécsora",
+        "titleColumn": "A cím a(z) „{column}” oszlopból; a többi oszlop tulajdonságként mentve"
+      },
+      "raindrop": {
+        "csvEmpty": "A Raindrop CSV üres",
+        "headerNotFound": "A Raindrop CSV fejlécsora („url” oszlop) nem található",
+        "rowNoUrl": "{row}. sor kihagyva: nincs URL"
+      },
+      "readFileFailed": "Nem sikerült beolvasni a fájlt",
+      "ticktick": {
+        "foldersDropped": "A TickTick mappáinak nincs Memry-megfelelője, ezért kimaradtak",
+        "headerNotFound": "A TickTick CSV fejlécsora („Folder Name”) nem található",
+        "reminderNoAnchor": "A(z) „{reminder}” emlékeztető kihagyva (nincs dátumhorgony)",
+        "subtaskParentMissing": "A(z) „{title}” részfeladat szülője nem található; legfelső szintre importálva",
+        "unknownPriority": "Ismeretlen TickTick prioritás: {priority} → nincs",
+        "unsupportedRepeat": "A nem támogatott „{rule}” ismétlési szabály kihagyva"
+      },
+      "todoist": {
+        "emptyTitle": "Az üres tartalmú feladat (névtelen) néven lett importálva",
+        "headerNotFound": "Nem Todoist CSV: hiányzik a TYPE fejlécsor",
+        "orphanComment": "A megjegyzés kihagyva, mert nem előzi meg feladat",
+        "sectionFlattened": "A(z) „{section}” szakasz kilapítva",
+        "subtaskNoParent": "A(z) „{title}” részfeladatnak nincs szülője a(z) {indent} behúzási szinten; legfelső szintre importálva",
+        "unknownPriority": "Ismeretlen prioritás: {priority} → nincs",
+        "unparsedDate": "Nem sikerült értelmezni a(z) „{date}” dátumot"
+      }
     }
   },
   "inbox": {

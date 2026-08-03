@@ -270,7 +270,50 @@
     "panelEmpty": "Inga kommande påminnelser.",
     "panelPast": "Tidigare",
     "panelUpcoming": "Kommande",
-    "taskFallback": "Uppgift"
+    "taskFallback": "Uppgift",
+    "dateTime": {
+      "dateAt": "{date} kl. {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Idag kl. {time}",
+      "todayCompact": "Idag, {time}",
+      "tomorrowAt": "Imorgon kl. {time}",
+      "tomorrowCompact": "Imorgon, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Årsdagspåminnelse",
+      "inHours": {
+        "label": "Om {count, plural, one {# timme} other {# timmar}}"
+      },
+      "inMinutes": {
+        "label": "Om {count, plural, one {# minut} other {# minuter}}"
+      },
+      "inMonths": {
+        "label": "Om {count, plural, one {# månad} other {# månader}}"
+      },
+      "inWeeks": {
+        "label": "Om {count, plural, one {# vecka} other {# veckor}}"
+      },
+      "inYears": {
+        "label": "Om {count, plural, one {# år} other {# år}}"
+      },
+      "laterToday": {
+        "description": "Om {count, plural, one {# timme} other {# timmar}}",
+        "label": "Senare idag"
+      },
+      "monthlyReflection": "Månadsreflektion",
+      "nextWeek": {
+        "description": "Måndag kl. 09:00",
+        "label": "Nästa vecka"
+      },
+      "quarterlyReflection": "Kvartalsreflektion",
+      "reviewInAWeek": "Gå igenom om en vecka",
+      "sameDayNextMonth": "Samma dag nästa månad",
+      "tomorrow": {
+        "description": "Imorgon kl. 09:00",
+        "label": "Imorgon"
+      },
+      "tomorrowMorning": "Imorgon bitti"
+    }
   },
   "insights": {
     "captureActivity": "Fånga aktivitet",

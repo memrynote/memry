@@ -252,7 +252,12 @@
       "multiselect": "複数選択"
     },
     "showOnCalendar": "カレンダーに表示",
-    "showingOnCalendar": "カレンダーに表示中"
+    "showingOnCalendar": "カレンダーに表示中",
+    "statusCategories": {
+      "done": "完了",
+      "inProgress": "進行中",
+      "todo": "未着手"
+    }
   },
   "templateSelector": {
     "title": "キャンバスを選択してください",
@@ -845,5 +850,24 @@
     },
     "tagNamePlaceholder": "タグ名",
     "uncategorized": "未分類"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name}（ダブルクリックで編集）"
+    },
+    "columns": {
+      "created": "作成日",
+      "folder": "フォルダ",
+      "kind": "種類",
+      "modified": "更新日",
+      "tags": "タグ",
+      "title": "タイトル",
+      "wordCount": "単語数"
+    },
+    "defaultViewName": "デフォルト",
+    "groupHeader": {
+      "noteCount": "{count, plural, other {# 件のメモ}}"
+    },
+    "selectView": "ビューを選択"
   }
 }
