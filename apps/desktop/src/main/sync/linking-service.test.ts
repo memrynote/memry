@@ -1,3 +1,7 @@
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
+
 import sodium from 'libsodium-wrappers-sumo'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -778,11 +782,71 @@ describe('linking-service multi-vault choice', () => {
     expect(result).toEqual({ success: true })
     // Non-primary vaults are no longer provisioned eagerly — they appear in the
     // switcher's "In your account" section via the vault directory instead.
-    expect(mockCreateDormantVault).not.toHaveBeenCalled()
+    expect(mockCreateDormantVault).toHaveBeenCalledTimes(1)
+    expect(mockCreateDormantVault).toHaveBeenCalledWith(expect.stringContaining('v-a'), 'v-a')
     expect(mockSelectVault).toHaveBeenCalledWith({ path: expect.stringContaining('v-a') })
     expect(mockSelectVault.mock.invocationCallOrder[0]).toBeLessThan(
       mockPersistKeysAndRegisterDevice.mock.invocationCallOrder[0]
     )
+  })
+
+  it('provisions the primary vault folder on disk before opening it', async () => {
+    const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-vault-choice-'))
+    // Mirror the real selectVault: it validates the directory BEFORE openVault
+    // would initialize it, so an unprovisioned folder fails the whole finalize.
+    mockSelectVault.mockImplementation(async ({ path: vaultPath }: { path: string }) =>
+      fs.existsSync(vaultPath)
+        ? { success: true }
+        : { success: false, error: 'Selected path is not a valid directory' }
+    )
+    // Mirror createDormantVault: initVault() creates the folder on disk.
+    mockCreateDormantVault.mockImplementation((folder: string) =>
+      fs.mkdirSync(folder, { recursive: true })
+    )
+
+    try {
+      await linkViaQr(qrData, 'setup-token')
+      await completeLinkingQr('session-1')
+
+      const result = await finalizeVaultChoice({
+        sessionId: 'session-1',
+        parentFolderPath: parent,
+        selectedVaultUuids: ['v-a', 'v-b'],
+        primaryVaultUuid: 'v-a'
+      })
+
+      expect(result).toEqual({ success: true })
+      expect(fs.existsSync(path.join(parent, 'memry-vault-v-a'))).toBe(true)
+    } finally {
+      fs.rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
+  it('keeps the choice retryable when opening the primary vault fails', async () => {
+    await linkViaQr(qrData, 'setup-token')
+    await completeLinkingQr('session-1')
+
+    mockSelectVault.mockResolvedValueOnce({
+      success: false,
+      error: 'Selected path is not a valid directory'
+    })
+
+    const input = {
+      sessionId: 'session-1',
+      parentFolderPath: '/tmp/parent',
+      selectedVaultUuids: ['v-a', 'v-b'],
+      primaryVaultUuid: 'v-a'
+    }
+
+    expect(await finalizeVaultChoice(input)).toEqual({
+      success: false,
+      error: 'Selected path is not a valid directory'
+    })
+
+    // The master key must survive a failed attempt: the user retries from the
+    // same picker (e.g. after choosing a writable folder) without re-linking.
+    expect(await finalizeVaultChoice(input)).toEqual({ success: true })
+    expect(mockPersistKeysAndRegisterDevice).toHaveBeenCalledTimes(1)
   })
 
   it('rejects a finalize for a session without a pending vault choice', async () => {
