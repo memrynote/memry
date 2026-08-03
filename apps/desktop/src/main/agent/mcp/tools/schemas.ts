@@ -170,18 +170,6 @@ export const TOOL_SCHEMAS = {
       'Read one canvas: title, the entities on it (with titles), and any text written on it. ' +
       'Returns no scene geometry — use vault_add_canvas_item to change what is on it.'
   },
-  vault_list_canvases: {
-    input: z.object({}).default({}),
-    description:
-      'List spatial canvases with how many notes/tasks/events sit on each. ' +
-      'Never returns scene geometry.'
-  },
-  vault_read_canvas: {
-    input: z.object({ id: idSchema }),
-    description:
-      'Read one canvas: title, the entities on it (with titles), and any text written on it. ' +
-      'Returns no scene geometry — use vault_add_canvas_item to change what is on it.'
-  },
   vault_desktop_read: {
     input: desktopReadSchema,
     description:
