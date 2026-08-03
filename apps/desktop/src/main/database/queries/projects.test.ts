@@ -32,9 +32,12 @@ import {
   getProjectContents,
   getProjectLinkCounts,
   insertProjectLink,
+  deleteProjectLink,
   getProjectLink,
   setProjectLinkPinned,
-  updateProjectHomeNote
+  updateProjectHomeNote,
+  listProjectsByNames,
+  listNoteProjectLinkIds
 } from './projects'
 import { insertTask } from './tasks'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
@@ -582,6 +585,70 @@ describe('projects queries', () => {
       const link = getProjectLink(db, 'p-hub', 'note', 'n1')
       expect(link).toBeDefined()
       expect(link?.pinned).toBe(0)
+    })
+  })
+
+  describe('listProjectsByNames', () => {
+    it('resolves names case-insensitively against a real query', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      insertProject(db, { id: 'p2', name: 'Beta', color: '#000', position: 1, isInbox: false })
+
+      const rows = listProjectsByNames(db, ['alpha', 'BETA', 'ghost'])
+
+      expect(rows.map((r) => r.id).sort()).toEqual(['p1', 'p2'])
+    })
+
+    it('orders duplicate-named projects oldest-first', () => {
+      insertProject(db, {
+        id: 'old',
+        name: 'Alpha',
+        color: '#000',
+        position: 0,
+        isInbox: false,
+        createdAt: '2026-01-01T00:00:00.000Z'
+      })
+      insertProject(db, {
+        id: 'new',
+        name: 'alpha',
+        color: '#000',
+        position: 1,
+        isInbox: false,
+        createdAt: '2026-05-01T00:00:00.000Z'
+      })
+
+      const rows = listProjectsByNames(db, ['Alpha'])
+
+      expect(rows.map((r) => r.id)).toEqual(['old', 'new'])
+    })
+
+    it('returns nothing for an empty name list without querying', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      expect(listProjectsByNames(db, [])).toEqual([])
+    })
+  })
+
+  describe('listNoteProjectLinkIds', () => {
+    it('lists only note-type links for the given note, ignoring other items and notes', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      insertProject(db, { id: 'p2', name: 'Beta', color: '#000', position: 1, isInbox: false })
+      insertProjectLink(db, { id: 'l1', projectId: 'p1', itemType: 'note', itemId: 'n1' })
+      insertProjectLink(db, { id: 'l2', projectId: 'p2', itemType: 'note', itemId: 'n1' })
+      insertProjectLink(db, { id: 'l3', projectId: 'p1', itemType: 'note', itemId: 'other-note' })
+      insertProjectLink(db, { id: 'l4', projectId: 'p1', itemType: 'file', itemId: 'n1' })
+
+      const rows = listNoteProjectLinkIds(db, 'n1')
+
+      expect(rows.map((r) => r.projectId).sort()).toEqual(['p1', 'p2'])
+      expect(rows.every((r) => typeof r.id === 'string')).toBe(true)
+    })
+
+    it('reflects a delete performed through the existing deleteProjectLink', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      insertProjectLink(db, { id: 'l1', projectId: 'p1', itemType: 'note', itemId: 'n1' })
+
+      deleteProjectLink(db, 'p1', 'note', 'n1')
+
+      expect(listNoteProjectLinkIds(db, 'n1')).toEqual([])
     })
   })
 })

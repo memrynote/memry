@@ -848,6 +848,39 @@ export function deleteProjectLinksForItem(db: DataDb, itemType: string, itemId: 
 }
 
 /**
+ * Resolve project names case-insensitively, oldest-first. Names are not
+ * unique and the column carries no NOCASE collation, so the case-fold has to
+ * be explicit in the query rather than left to SQLite's default comparison.
+ * Ordering oldest-first is load-bearing: callers resolve a duplicate name to
+ * the first row they see for it.
+ */
+export function listProjectsByNames(
+  db: DataDb,
+  names: string[]
+): { id: string; name: string; createdAt: string }[] {
+  if (names.length === 0) return []
+  const lowered = names.map((n) => n.toLowerCase())
+  return db
+    .select({ id: projects.id, name: projects.name, createdAt: projects.createdAt })
+    .from(projects)
+    .where(sql`lower(${projects.name}) IN ${lowered}`)
+    .orderBy(asc(projects.createdAt))
+    .all()
+}
+
+/** Every project link pointing at one note, for the frontmatter reconciler. */
+export function listNoteProjectLinkIds(
+  db: DataDb,
+  noteId: string
+): { id: string; projectId: string }[] {
+  return db
+    .select({ id: projectLinks.id, projectId: projectLinks.projectId })
+    .from(projectLinks)
+    .where(and(eq(projectLinks.itemType, 'note'), eq(projectLinks.itemId, noteId)))
+    .all()
+}
+
+/**
  * Clear home_note_id on any project that points at the given note, bumping
  * modifiedAt. Returns the project ids that were changed, so callers can
  * re-enqueue those projects for sync.
