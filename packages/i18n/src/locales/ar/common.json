@@ -591,7 +591,7 @@
       "remove": "إزالة",
       "removeAria": "إزالة الأداة",
       "resize": "الحجم",
-      "resizeAria": "تغيير الحجم إلى {{size}}",
+      "resizeAria": "تغيير الحجم إلى {size}",
       "savedFilterDefault": "اليوم",
       "savedFilterHint": "ضع نجمة على عوامل التصفية في صفحة المهام لاستخدامها هنا",
       "savedFilterLabel": "عامل تصفية محفوظ",

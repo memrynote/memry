@@ -591,7 +591,7 @@
       "remove": "Quitar",
       "removeAria": "Quitar widget",
       "resize": "Tamaño",
-      "resizeAria": "Redimensionar a {{size}}",
+      "resizeAria": "Redimensionar a {size}",
       "savedFilterDefault": "Hoy",
       "savedFilterHint": "Marca filtros con estrella en la página de Tareas para usarlos aquí",
       "savedFilterLabel": "Filtro guardado",

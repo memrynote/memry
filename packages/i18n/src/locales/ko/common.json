@@ -591,7 +591,7 @@
       "remove": "제거",
       "removeAria": "위젯 제거",
       "resize": "크기",
-      "resizeAria": "{{size}}(으)로 크기 조정",
+      "resizeAria": "{size}(으)로 크기 조정",
       "savedFilterDefault": "오늘",
       "savedFilterHint": "작업 페이지에서 필터에 별표를 표시하면 여기에서 사용할 수 있습니다",
       "savedFilterLabel": "저장된 필터",

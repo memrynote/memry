@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Αποθήκευση θησαυροφυλακίων στον φάκελο",
       "vaultPickerPrimaryHint": "Ανοίγει τώρα",
       "vaultPickerTitle": "Επιλέξτε τι θα ληφθεί",
-      "vaultRow": "Θησαυροφυλάκιο — {{count}} στοιχεία · {{date}}"
+      "vaultRow": "Θησαυροφυλάκιο — {count} στοιχεία · {date}"
     }
   },
   "devices": {

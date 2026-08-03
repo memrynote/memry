@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Iimbak ang mga vault sa folder",
       "vaultPickerPrimaryHint": "Bubukas ngayon",
       "vaultPickerTitle": "Piliin ang kukunin",
-      "vaultRow": "Vault — {{count}} item · {{date}}"
+      "vaultRow": "Vault — {count} item · {date}"
     }
   },
   "devices": {

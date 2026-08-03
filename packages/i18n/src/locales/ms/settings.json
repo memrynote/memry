@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Simpan bilik kebal dalam folder",
       "vaultPickerPrimaryHint": "Buka sekarang",
       "vaultPickerTitle": "Pilih apa untuk ditarik",
-      "vaultRow": "Bilik Kebal — {{count}} item · {{date}}"
+      "vaultRow": "Bilik Kebal — {count} item · {date}"
     }
   },
   "devices": {

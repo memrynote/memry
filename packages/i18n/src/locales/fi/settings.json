@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Tallenna holvit kansioon",
       "vaultPickerPrimaryHint": "Avautuu nyt",
       "vaultPickerTitle": "Valitse, mitä vastaanottaa",
-      "vaultRow": "Holvi — {{count}} kohdetta · {{date}}"
+      "vaultRow": "Holvi — {count} kohdetta · {date}"
     }
   },
   "devices": {

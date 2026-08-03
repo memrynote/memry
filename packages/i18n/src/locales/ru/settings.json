@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Хранить хранилища в папке",
       "vaultPickerPrimaryHint": "Открывается сейчас",
       "vaultPickerTitle": "Выберите, что загрузить",
-      "vaultRow": "Хранилище — {{count}} элементов · {{date}}"
+      "vaultRow": "Хранилище — {count} элементов · {date}"
     }
   },
   "devices": {

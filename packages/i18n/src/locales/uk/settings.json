@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Зберігати сховища в папці",
       "vaultPickerPrimaryHint": "Відкривається зараз",
       "vaultPickerTitle": "Виберіть, що завантажити",
-      "vaultRow": "Сховище — {{count}} елементів · {{date}}"
+      "vaultRow": "Сховище — {count} елементів · {date}"
     }
   },
   "devices": {

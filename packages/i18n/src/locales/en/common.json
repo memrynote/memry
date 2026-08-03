@@ -581,7 +581,7 @@
       "removeAria": "Remove widget",
       "dragAria": "Drag widget",
       "configAria": "Configure widget",
-      "resizeAria": "Resize to {{size}}",
+      "resizeAria": "Resize to {size}",
       "menuAria": "Widget options",
       "resize": "Size",
       "configure": "Configure",

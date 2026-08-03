@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Pohrani trezore u mapu",
       "vaultPickerPrimaryHint": "Otvara se sada",
       "vaultPickerTitle": "Odaberite što preuzeti",
-      "vaultRow": "Trezor — {{count}} stavki · {{date}}"
+      "vaultRow": "Trezor — {count} stavki · {date}"
     }
   },
   "devices": {

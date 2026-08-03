@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Archivia i vault nella cartella",
       "vaultPickerPrimaryHint": "Si apre ora",
       "vaultPickerTitle": "Scegli cosa recuperare",
-      "vaultRow": "Vault — {{count}} elementi · {{date}}"
+      "vaultRow": "Vault — {count} elementi · {date}"
     }
   },
   "devices": {

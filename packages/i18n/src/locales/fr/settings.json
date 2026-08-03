@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Stocker les coffres dans le dossier",
       "vaultPickerPrimaryHint": "S'ouvre maintenant",
       "vaultPickerTitle": "Choisissez ce que vous voulez récupérer",
-      "vaultRow": "Coffre — {{count}} éléments · {{date}}"
+      "vaultRow": "Coffre — {count} éléments · {date}"
     }
   },
   "devices": {

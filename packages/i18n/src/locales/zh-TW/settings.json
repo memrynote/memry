@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "將保管庫儲存於資料夾",
       "vaultPickerPrimaryHint": "立即開啟",
       "vaultPickerTitle": "選擇要拉取的內容",
-      "vaultRow": "保管庫 — {{count}} 個項目 · {{date}}"
+      "vaultRow": "保管庫 — {count} 個項目 · {date}"
     }
   },
   "devices": {

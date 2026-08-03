@@ -591,7 +591,7 @@
       "remove": "Odstrániť",
       "removeAria": "Odstrániť widget",
       "resize": "Veľkosť",
-      "resizeAria": "Zmeniť veľkosť na {{size}}",
+      "resizeAria": "Zmeniť veľkosť na {size}",
       "savedFilterDefault": "Dnes",
       "savedFilterHint": "Označte filtre hviezdičkou na stránke Úlohy, aby ste ich mohli použiť tu",
       "savedFilterLabel": "Uložený filter",

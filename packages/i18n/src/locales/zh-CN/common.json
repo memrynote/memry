@@ -591,7 +591,7 @@
       "remove": "移除",
       "removeAria": "移除小组件",
       "resize": "大小",
-      "resizeAria": "调整为 {{size}}",
+      "resizeAria": "调整为 {size}",
       "savedFilterDefault": "今天",
       "savedFilterHint": "在任务页面为筛选器加星标即可在此使用",
       "savedFilterLabel": "已保存的筛选器",

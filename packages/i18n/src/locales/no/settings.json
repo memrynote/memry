@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Lagre hvelv i mappe",
       "vaultPickerPrimaryHint": "Åpnes nå",
       "vaultPickerTitle": "Velg hva du vil hente",
-      "vaultRow": "Hvelv — {{count}} elementer · {{date}}"
+      "vaultRow": "Hvelv — {count} elementer · {date}"
     }
   },
   "devices": {

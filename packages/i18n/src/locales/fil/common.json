@@ -591,7 +591,7 @@
       "remove": "Alisin",
       "removeAria": "Alisin ang widget",
       "resize": "Laki",
-      "resizeAria": "I-resize sa {{size}}",
+      "resizeAria": "I-resize sa {size}",
       "savedFilterDefault": "Ngayon",
       "savedFilterHint": "I-star ang mga filter sa pahina ng Mga Gawain para magamit dito",
       "savedFilterLabel": "Naka-save na filter",

@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Przechowuj sejfy w folderze",
       "vaultPickerPrimaryHint": "Otwiera się teraz",
       "vaultPickerTitle": "Wybierz, co pobrać",
-      "vaultRow": "Sejf — {{count}} elementów · {{date}}"
+      "vaultRow": "Sejf — {count} elementów · {date}"
     }
   },
   "devices": {

@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "เก็บ vault ไว้ในโฟลเดอร์",
       "vaultPickerPrimaryHint": "เปิดตอนนี้",
       "vaultPickerTitle": "เลือกสิ่งที่จะดึง",
-      "vaultRow": "Vault — {{count}} รายการ · {{date}}"
+      "vaultRow": "Vault — {count} รายการ · {date}"
     }
   },
   "devices": {

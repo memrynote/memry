@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "볼트를 저장할 폴더",
       "vaultPickerPrimaryHint": "지금 열림",
       "vaultPickerTitle": "가져올 항목 선택",
-      "vaultRow": "볼트 — {{count}}개 항목 · {{date}}"
+      "vaultRow": "볼트 — {count}개 항목 · {date}"
     }
   },
   "devices": {

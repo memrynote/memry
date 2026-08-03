@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "将保险库存储在文件夹",
       "vaultPickerPrimaryHint": "立即打开",
       "vaultPickerTitle": "选择要拉取的内容",
-      "vaultRow": "保险库 — {{count}} 项 · {{date}}"
+      "vaultRow": "保险库 — {count} 项 · {date}"
     }
   },
   "devices": {

@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Stochează seifurile în dosarul",
       "vaultPickerPrimaryHint": "Se deschide acum",
       "vaultPickerTitle": "Alege ce să preiei",
-      "vaultRow": "Seif — {{count}} elemente · {{date}}"
+      "vaultRow": "Seif — {count} elemente · {date}"
     }
   },
   "devices": {

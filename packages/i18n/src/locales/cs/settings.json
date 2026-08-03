@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Ukládat trezory do složky",
       "vaultPickerPrimaryHint": "Otevře se nyní",
       "vaultPickerTitle": "Vyberte, co stáhnout",
-      "vaultRow": "Trezor — {{count}} položek · {{date}}"
+      "vaultRow": "Trezor — {count} položek · {date}"
     }
   },
   "devices": {

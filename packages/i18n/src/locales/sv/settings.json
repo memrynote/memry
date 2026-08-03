@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Lagra valv i mapp",
       "vaultPickerPrimaryHint": "Öppnas nu",
       "vaultPickerTitle": "Välj vad som ska hämtas",
-      "vaultRow": "Valv — {{count}} objekt · {{date}}"
+      "vaultRow": "Valv — {count} objekt · {date}"
     }
   },
   "devices": {

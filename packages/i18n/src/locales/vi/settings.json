@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Lưu kho trong thư mục",
       "vaultPickerPrimaryHint": "Mở ngay bây giờ",
       "vaultPickerTitle": "Chọn nội dung để kéo về",
-      "vaultRow": "Kho — {{count}} mục · {{date}}"
+      "vaultRow": "Kho — {count} mục · {date}"
     }
   },
   "devices": {

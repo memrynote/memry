@@ -39,12 +39,30 @@
       "subtitle": "Turn parts of the app on or off. Off = ghosted in the sidebar and disabled everywhere."
     },
     "items": {
-      "home": { "label": "Home", "description": "Landing dashboard" },
-      "inbox": { "label": "Inbox", "description": "Quick capture and triage" },
-      "journal": { "label": "Journal", "description": "Daily notes" },
-      "tasks": { "label": "Tasks", "description": "To-dos and due dates" },
-      "calendar": { "label": "Calendar", "description": "Events and schedule" },
-      "graph": { "label": "Graph", "description": "Note connections" },
+      "home": {
+        "label": "Home",
+        "description": "Landing dashboard"
+      },
+      "inbox": {
+        "label": "Inbox",
+        "description": "Quick capture and triage"
+      },
+      "journal": {
+        "label": "Journal",
+        "description": "Daily notes"
+      },
+      "tasks": {
+        "label": "Tasks",
+        "description": "To-dos and due dates"
+      },
+      "calendar": {
+        "label": "Calendar",
+        "description": "Events and schedule"
+      },
+      "graph": {
+        "label": "Graph",
+        "description": "Note connections"
+      },
       "spatialCanvas": {
         "label": "Canvas",
         "description": "Spatial boards to arrange and link notes"
@@ -709,7 +727,7 @@
       "vaultPickerDescription": "This account has multiple vaults. Pick a folder and the vault(s) to add to this device.",
       "vaultPickerFolderLabel": "Store vaults in folder",
       "vaultPickerChooseFolder": "Choose folder",
-      "vaultRow": "Vault — {{count}} items · {{date}}",
+      "vaultRow": "Vault — {count} items · {date}",
       "vaultPickerPrimaryHint": "Opens now",
       "vaultPickerDormantHint": "Added, opens when you switch to it",
       "vaultPickerConfirm": "Pull selected"

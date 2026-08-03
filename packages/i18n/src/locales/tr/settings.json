@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Kasaları şu klasörde sakla",
       "vaultPickerPrimaryHint": "Şimdi açılır",
       "vaultPickerTitle": "Neyi çekeceğinizi seçin",
-      "vaultRow": "Kasa — {{count}} öğe · {{date}}"
+      "vaultRow": "Kasa — {count} öğe · {date}"
     }
   },
   "devices": {

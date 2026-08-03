@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Guardar cofres na pasta",
       "vaultPickerPrimaryHint": "Abre agora",
       "vaultPickerTitle": "Escolha o que obter",
-      "vaultRow": "Cofre — {{count}} itens · {{date}}"
+      "vaultRow": "Cofre — {count} itens · {date}"
     }
   },
   "devices": {

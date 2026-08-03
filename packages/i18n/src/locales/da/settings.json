@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Gem bokse i mappe",
       "vaultPickerPrimaryHint": "Åbner nu",
       "vaultPickerTitle": "Vælg, hvad der skal hentes",
-      "vaultRow": "Boks — {{count}} elementer · {{date}}"
+      "vaultRow": "Boks — {count} elementer · {date}"
     }
   },
   "devices": {

@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Simpan vault di folder",
       "vaultPickerPrimaryHint": "Buka sekarang",
       "vaultPickerTitle": "Pilih apa yang akan ditarik",
-      "vaultRow": "Vault — {{count}} item · {{date}}"
+      "vaultRow": "Vault — {count} item · {date}"
     }
   },
   "devices": {

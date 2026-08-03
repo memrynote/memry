@@ -591,7 +591,7 @@
       "remove": "Usuń",
       "removeAria": "Usuń widżet",
       "resize": "Rozmiar",
-      "resizeAria": "Zmień rozmiar na {{size}}",
+      "resizeAria": "Zmień rozmiar na {size}",
       "savedFilterDefault": "Dziś",
       "savedFilterHint": "Oznacz filtry gwiazdką na stronie Zadań, aby użyć ich tutaj",
       "savedFilterLabel": "Zapisany filtr",

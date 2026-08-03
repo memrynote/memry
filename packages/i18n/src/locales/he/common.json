@@ -591,11 +591,11 @@
       "remove": "הסר",
       "removeAria": "הסר יישומון",
       "resize": "גודל",
-      "resizeAria": "שנה גודל ל-{{size}}",
+      "resizeAria": "שנה גודל ל-{size}",
       "savedFilterDefault": "היום",
       "savedFilterHint": "סמן מסננים בכוכב בדף המשימות כדי להשתמש בהם כאן",
       "savedFilterLabel": "מסנן שמור",
-      "startsIn": "מתחיל בעוד {count, plural, one {# דק'} other {# דק'}}",
+      "startsIn": "מתחיל בעוד {count, plural, one {# דק׳} other {# דק׳}}",
       "tasks": "משימות",
       "unknown": "יישומון לא ידוע",
       "untitled": "ללא כותרת"

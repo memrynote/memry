@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { IntlMessageFormat } from 'intl-messageformat'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -12,12 +13,11 @@ const LOCALES_DIR = fileURLToPath(new URL('.', import.meta.url))
  * catches the parse failure and returns the raw template — so a mistake ships
  * silently and users see `{{count}}` verbatim in the UI.
  *
- * Two keys predate this guard and are still broken. They are listed rather
- * than fixed so the guard can land without widening its blast radius; fixing
- * them means editing all ~33 locales.
+ * Double braces are only the most common way to hit that silent failure, so the
+ * second test compiles every string with the same parser the formatter uses.
+ * That catches the rest of the class too — an unescaped ICU apostrophe, for
+ * instance, quotes away the closing brace of a plural block.
  */
-const KNOWN_BROKEN = ['setup.linking.vaultRow', 'resizeAria']
-
 const DOUBLE_BRACE = /\{\{\s*\w+\s*\}\}/
 
 type Offender = { file: string; key: string; value: string }
@@ -25,16 +25,25 @@ type Offender = { file: string; key: string; value: string }
 function collect(value: unknown, file: string, path: string[], out: Offender[]): void {
   if (typeof value === 'string') {
     if (DOUBLE_BRACE.test(value)) {
-      const key = path.join('.')
-      if (!KNOWN_BROKEN.some((known) => key === known || key.endsWith(`.${known}`))) {
-        out.push({ file, key, value })
-      }
+      out.push({ file, key: path.join('.'), value })
     }
     return
   }
   if (value && typeof value === 'object') {
     for (const [childKey, child] of Object.entries(value)) {
       collect(child, file, [...path, childKey], out)
+    }
+  }
+}
+
+function collectAll(value: unknown, file: string, path: string[], out: Offender[]): void {
+  if (typeof value === 'string') {
+    out.push({ file, key: path.join('.'), value })
+    return
+  }
+  if (value && typeof value === 'object') {
+    for (const [childKey, child] of Object.entries(value)) {
+      collectAll(child, file, [...path, childKey], out)
     }
   }
 }
@@ -62,5 +71,33 @@ describe('locale brace style', () => {
     expect(
       offenders.map((offender) => `${offender.file} → ${offender.key}: ${offender.value}`)
     ).toEqual([])
+  })
+
+  it('compiles every locale string with the ICU parser the formatter uses', () => {
+    const failures: string[] = []
+
+    for (const locale of localeDirs) {
+      const dir = join(LOCALES_DIR, locale)
+      for (const file of readdirSync(dir).filter((name) => name.endsWith('.json'))) {
+        const strings: Offender[] = []
+        collectAll(
+          JSON.parse(readFileSync(join(dir, file), 'utf8')),
+          `${locale}/${file}`,
+          [],
+          strings
+        )
+
+        for (const entry of strings) {
+          try {
+            new IntlMessageFormat(entry.value, locale)
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error)
+            failures.push(`${entry.file} → ${entry.key}: ${message} (${entry.value})`)
+          }
+        }
+      }
+    }
+
+    expect(failures).toEqual([])
   })
 })

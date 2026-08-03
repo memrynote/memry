@@ -591,7 +591,7 @@
       "remove": "นำออก",
       "removeAria": "นำวิดเจ็ตออก",
       "resize": "ขนาด",
-      "resizeAria": "ปรับขนาดเป็น {{size}}",
+      "resizeAria": "ปรับขนาดเป็น {size}",
       "savedFilterDefault": "วันนี้",
       "savedFilterHint": "ติดดาวตัวกรองในหน้างานเพื่อใช้ที่นี่",
       "savedFilterLabel": "ตัวกรองที่บันทึกไว้",

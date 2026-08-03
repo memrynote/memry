@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Vaults in Ordner speichern",
       "vaultPickerPrimaryHint": "Öffnet sich jetzt",
       "vaultPickerTitle": "Wähle, was abgerufen werden soll",
-      "vaultRow": "Vault — {{count}} Elemente · {{date}}"
+      "vaultRow": "Vault — {count} Elemente · {date}"
     }
   },
   "devices": {

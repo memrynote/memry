@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Kluizen opslaan in map",
       "vaultPickerPrimaryHint": "Opent nu",
       "vaultPickerTitle": "Kies wat je wilt ophalen",
-      "vaultRow": "Kluis — {{count}} items · {{date}}"
+      "vaultRow": "Kluis — {count} items · {date}"
     }
   },
   "devices": {

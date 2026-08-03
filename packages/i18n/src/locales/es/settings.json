@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Guardar las bóvedas en la carpeta",
       "vaultPickerPrimaryHint": "Se abre ahora",
       "vaultPickerTitle": "Elige qué descargar",
-      "vaultRow": "Bóveda — {{count}} elementos · {{date}}"
+      "vaultRow": "Bóveda — {count} elementos · {date}"
     }
   },
   "devices": {

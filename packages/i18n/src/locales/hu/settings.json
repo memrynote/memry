@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "Széfek tárolása ebben a mappában",
       "vaultPickerPrimaryHint": "Most nyílik meg",
       "vaultPickerTitle": "Válaszd ki, mit szeretnél letölteni",
-      "vaultRow": "Széf — {{count}} elem · {{date}}"
+      "vaultRow": "Széf — {count} elem · {date}"
     }
   },
   "devices": {

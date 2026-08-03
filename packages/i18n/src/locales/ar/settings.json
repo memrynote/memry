@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "تخزين الخزائن في مجلد",
       "vaultPickerPrimaryHint": "تُفتح الآن",
       "vaultPickerTitle": "اختر ما تريد سحبه",
-      "vaultRow": "خزنة — {{count}} عنصر · {{date}}"
+      "vaultRow": "خزنة — {count} عنصر · {date}"
     }
   },
   "devices": {

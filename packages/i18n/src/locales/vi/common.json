@@ -591,7 +591,7 @@
       "remove": "Xóa",
       "removeAria": "Xóa tiện ích",
       "resize": "Kích thước",
-      "resizeAria": "Đổi kích thước thành {{size}}",
+      "resizeAria": "Đổi kích thước thành {size}",
       "savedFilterDefault": "Hôm nay",
       "savedFilterHint": "Gắn sao bộ lọc trên trang Công việc để dùng ở đây",
       "savedFilterLabel": "Bộ lọc đã lưu",

@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "ボールトを保存するフォルダ",
       "vaultPickerPrimaryHint": "今すぐ開く",
       "vaultPickerTitle": "取得する内容を選択",
-      "vaultRow": "ボールト — {{count}} 件の項目 · {{date}}"
+      "vaultRow": "ボールト — {count} 件の項目 · {date}"
     }
   },
   "devices": {

@@ -677,7 +677,7 @@
       "vaultPickerFolderLabel": "אחסן כספות בתיקייה",
       "vaultPickerPrimaryHint": "נפתח עכשיו",
       "vaultPickerTitle": "בחר מה למשוך",
-      "vaultRow": "כספת — {{count}} פריטים · {{date}}"
+      "vaultRow": "כספת — {count} פריטים · {date}"
     }
   },
   "devices": {
