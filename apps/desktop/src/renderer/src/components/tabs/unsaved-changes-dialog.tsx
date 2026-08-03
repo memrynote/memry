@@ -1,10 +1,8 @@
 /**
- * Unsaved Changes Guard
- * Hook and dialog for handling unsaved changes on tab close
+ * Unsaved Changes Dialog
+ * Confirmation dialog for closing a tab with unsaved changes
  */
 
-import { useState, useCallback } from 'react'
-import { useTabs } from '@/contexts/tabs'
 import { useT } from '@memry/i18n/renderer'
 import {
   AlertDialog,
@@ -16,76 +14,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
-
-// =============================================================================
-// TYPES
-// =============================================================================
-
-interface PendingClose {
-  tabId: string
-  groupId: string
-  tabTitle: string
-}
-
-interface UseUnsavedChangesGuardResult {
-  /** Request to close a tab (returns true if OK to close immediately) */
-  requestClose: (tabId: string, groupId: string) => boolean
-  /** Pending close info */
-  pendingClose: PendingClose | null
-  /** Clear pending close */
-  clearPendingClose: () => void
-  /** Confirm close (discard changes) */
-  confirmClose: () => void
-}
-
-// =============================================================================
-// HOOK
-// =============================================================================
-
-/**
- * Hook to guard against closing tabs with unsaved changes
- */
-export const useUnsavedChangesGuard = (): UseUnsavedChangesGuardResult => {
-  const { state, closeTab } = useTabs()
-  const [pendingClose, setPendingClose] = useState<PendingClose | null>(null)
-
-  const requestClose = useCallback(
-    (tabId: string, groupId: string): boolean => {
-      const group = state.tabGroups[groupId]
-      const tab = group?.tabs.find((t) => t.id === tabId)
-
-      if (tab?.isModified) {
-        setPendingClose({
-          tabId,
-          groupId,
-          tabTitle: tab.title
-        })
-        return false // Don't close yet
-      }
-
-      return true // OK to close
-    },
-    [state.tabGroups]
-  )
-
-  const clearPendingClose = useCallback(() => {
-    setPendingClose(null)
-  }, [])
-
-  const confirmClose = useCallback(() => {
-    if (pendingClose) {
-      closeTab(pendingClose.tabId, pendingClose.groupId)
-      setPendingClose(null)
-    }
-  }, [pendingClose, closeTab])
-
-  return {
-    requestClose,
-    pendingClose,
-    clearPendingClose,
-    confirmClose
-  }
-}
 
 // =============================================================================
 // DIALOG COMPONENT

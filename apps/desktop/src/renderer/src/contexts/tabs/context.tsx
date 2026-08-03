@@ -26,6 +26,8 @@ import type {
 } from './types'
 import { tabReducer } from './reducer'
 import { createInitialState, createTabFromSidebarItem } from './helpers'
+import { useCloseGuardRegistry, type TabCloseGuard } from './close-guard'
+import { UnsavedChangesDialog } from '@/components/tabs/unsaved-changes-dialog'
 
 // =============================================================================
 // CONTEXT TYPE
@@ -58,6 +60,12 @@ interface TabContextType {
    * Close a tab
    */
   closeTab: (tabId: string, groupId?: string) => void
+
+  /**
+   * Register a veto for this tab's close while it holds unsaved work.
+   * Returns an unregister function.
+   */
+  registerCloseGuard: (tabId: string, guard: TabCloseGuard) => () => void
 
   /**
    * Close other tabs in the same group
@@ -296,12 +304,16 @@ export const TabProvider = ({
   // This prevents cascade re-renders when activeGroupId/tabGroups change
   const activeGroupIdRef = useRef(state.activeGroupId)
   const tabGroupsRef = useRef(state.tabGroups)
+  const stateRef = useRef(state)
+  stateRef.current = state
 
   // Keep refs in sync with state (must be in useEffect per React rules)
   useEffect(() => {
     activeGroupIdRef.current = state.activeGroupId
     tabGroupsRef.current = state.tabGroups
   })
+
+  const closeGuards = useCloseGuardRegistry()
 
   // Listen for settings changes from the database (other windows, settings page)
   useEffect(() => {
@@ -357,37 +369,61 @@ export const TabProvider = ({
     []
   )
 
-  const closeTab = useCallback((tabId: string, groupId?: string) => {
-    const actualGroupId = groupId ?? activeGroupIdRef.current
-    dispatch({
-      type: 'CLOSE_TAB',
-      payload: { tabId, groupId: actualGroupId }
-    })
-  }, [])
+  const closeTab = useCallback(
+    (tabId: string, groupId?: string) => {
+      const actualGroupId = groupId ?? activeGroupIdRef.current
+      closeGuards.requestClose([tabId], () => {
+        dispatch({ type: 'CLOSE_TAB', payload: { tabId, groupId: actualGroupId } })
+      })
+    },
+    [closeGuards]
+  )
 
-  const closeOtherTabs = useCallback((tabId: string, groupId?: string) => {
-    const actualGroupId = groupId ?? activeGroupIdRef.current
-    dispatch({
-      type: 'CLOSE_OTHER_TABS',
-      payload: { tabId, groupId: actualGroupId }
-    })
-  }, [])
+  const closeOtherTabs = useCallback(
+    (tabId: string, groupId?: string) => {
+      const actualGroupId = groupId ?? activeGroupIdRef.current
+      const group = stateRef.current.tabGroups[actualGroupId]
+      const targets = (group?.tabs ?? [])
+        .filter((t) => t.id !== tabId && !t.isPinned)
+        .map((t) => t.id)
+      closeGuards.requestClose(targets, () => {
+        dispatch({ type: 'CLOSE_OTHER_TABS', payload: { tabId, groupId: actualGroupId } })
+      })
+    },
+    [closeGuards]
+  )
 
-  const closeTabsToRight = useCallback((tabId: string, groupId?: string) => {
-    const actualGroupId = groupId ?? activeGroupIdRef.current
-    dispatch({
-      type: 'CLOSE_TABS_TO_RIGHT',
-      payload: { tabId, groupId: actualGroupId }
-    })
-  }, [])
+  const closeTabsToRight = useCallback(
+    (tabId: string, groupId?: string) => {
+      const actualGroupId = groupId ?? activeGroupIdRef.current
+      const tabs = stateRef.current.tabGroups[actualGroupId]?.tabs ?? []
+      const index = tabs.findIndex((t) => t.id === tabId)
+      const targets =
+        index === -1
+          ? []
+          : tabs
+              .slice(index + 1)
+              .filter((t) => !t.isPinned)
+              .map((t) => t.id)
+      closeGuards.requestClose(targets, () => {
+        dispatch({ type: 'CLOSE_TABS_TO_RIGHT', payload: { tabId, groupId: actualGroupId } })
+      })
+    },
+    [closeGuards]
+  )
 
-  const closeAllTabs = useCallback((groupId?: string) => {
-    const actualGroupId = groupId ?? activeGroupIdRef.current
-    dispatch({
-      type: 'CLOSE_ALL_TABS',
-      payload: { groupId: actualGroupId }
-    })
-  }, [])
+  const closeAllTabs = useCallback(
+    (groupId?: string) => {
+      const actualGroupId = groupId ?? activeGroupIdRef.current
+      const targets = (stateRef.current.tabGroups[actualGroupId]?.tabs ?? [])
+        .filter((t) => !t.isPinned)
+        .map((t) => t.id)
+      closeGuards.requestClose(targets, () => {
+        dispatch({ type: 'CLOSE_ALL_TABS', payload: { groupId: actualGroupId } })
+      })
+    },
+    [closeGuards]
+  )
 
   const setActiveTab = useCallback((tabId: string, groupId?: string) => {
     const actualGroupId = groupId ?? activeGroupIdRef.current
@@ -667,6 +703,7 @@ export const TabProvider = ({
       openTab,
       openFromSidebar,
       closeTab,
+      registerCloseGuard: closeGuards.registerCloseGuard,
       closeOtherTabs,
       closeTabsToRight,
       closeAllTabs,
@@ -710,6 +747,7 @@ export const TabProvider = ({
       openTab,
       openFromSidebar,
       closeTab,
+      closeGuards,
       closeOtherTabs,
       closeTabsToRight,
       closeAllTabs,
@@ -749,7 +787,24 @@ export const TabProvider = ({
     ]
   )
 
-  return <TabContext.Provider value={value}>{children}</TabContext.Provider>
+  const pendingTabTitle = closeGuards.pending
+    ? (Object.values(state.tabGroups)
+        .flatMap((g) => g.tabs)
+        .find((t) => t.id === closeGuards.pending?.tabId)?.title ?? '')
+    : ''
+
+  return (
+    <TabContext.Provider value={value}>
+      {children}
+      <UnsavedChangesDialog
+        isOpen={closeGuards.pending !== null}
+        tabTitle={pendingTabTitle}
+        onSave={() => void closeGuards.resolvePending('save')}
+        onDiscard={() => void closeGuards.resolvePending('discard')}
+        onCancel={() => void closeGuards.resolvePending('cancel')}
+      />
+    </TabContext.Provider>
+  )
 }
 
 // =============================================================================

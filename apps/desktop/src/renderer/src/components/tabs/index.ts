@@ -30,7 +30,7 @@ export { LiveAnnouncer } from './live-announcer'
 export { SkipToContent } from './skip-to-content'
 
 // Edge cases & polish
-export { UnsavedChangesDialog, useUnsavedChangesGuard } from './unsaved-changes-dialog'
+export { UnsavedChangesDialog } from './unsaved-changes-dialog'
 export { TabErrorBoundary } from './tab-error-boundary'
 
 // Animations
