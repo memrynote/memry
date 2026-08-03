@@ -280,17 +280,20 @@ vi.mock('@/components/calendar/promote-external-dialog', () => ({
   PromoteExternalDialog: ({
     open,
     errorMessage,
+    agentAccessOff,
     onConfirm,
     onOpenChange
   }: {
     open: boolean
     errorMessage: string | null
+    agentAccessOff?: boolean
     onConfirm: (dontAskAgain: boolean) => void
     onOpenChange: (open: boolean) => void
   }) =>
     open ? (
       <div>
         {errorMessage && <div role="alert">{errorMessage}</div>}
+        {agentAccessOff && <div>promote agent warning</div>}
         <button type="button" onClick={() => onConfirm(false)}>
           promote once
         </button>
@@ -557,6 +560,48 @@ describe('CalendarPage callback coverage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Promote denied')
     fireEvent.click(screen.getByText('close promote'))
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  // Promotion copies a Google event into native storage, which makes it agent-readable
+  // regardless of the Google-events consent gate. "Don't ask again" must not be allowed
+  // to make that happen silently while the user has AI access switched off.
+  it.each([
+    ['explicitly denied', false],
+    ['never answered', null]
+  ])(
+    'given "don\'t ask again" and agent access %s, still confirms before promoting',
+    async (_label, agentReadEventsConsent) => {
+      mocks.getSettings.mockResolvedValue({
+        promoteConfirmDismissed: true,
+        agentReadEventsConsent
+      })
+      renderPage()
+
+      fireEvent.click(screen.getByText('select external'))
+
+      expect(await screen.findByText('promote agent warning')).toBeInTheDocument()
+      expect(mocks.promoteExternal).not.toHaveBeenCalled()
+
+      fireEvent.click(screen.getByText('promote once'))
+      await waitFor(() =>
+        expect(mocks.promoteExternal).toHaveBeenCalledWith({ externalEventId: 'external-1' })
+      )
+    }
+  )
+
+  it('given "don\'t ask again" and agent access granted, promotes without the dialog', async () => {
+    mocks.getSettings.mockResolvedValue({
+      promoteConfirmDismissed: true,
+      agentReadEventsConsent: true
+    })
+    renderPage()
+
+    fireEvent.click(screen.getByText('select external'))
+
+    await waitFor(() =>
+      expect(mocks.promoteExternal).toHaveBeenCalledWith({ externalEventId: 'external-1' })
+    )
+    expect(screen.queryByText('promote agent warning')).not.toBeInTheDocument()
   })
 
   it('routes a dragged task chip through tasksService.update, not calendarService.updateEvent', async () => {
