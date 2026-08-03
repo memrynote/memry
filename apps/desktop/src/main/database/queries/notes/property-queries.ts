@@ -9,9 +9,9 @@ import {
   type NewPropertyDefinition,
   type PropertyType
 } from '@memry/db-schema/schema/notes-cache'
-import { PROJECT_PROPERTY_KEY } from '@memry/contracts/property-types'
 import type { IndexDb } from '../../types'
 import { serializeValue, deserializeValue } from './query-helpers'
+import { resolvePropertyType } from '@main/vault/frontmatter'
 
 // ============================================================================
 // Property Value Operations
@@ -191,15 +191,6 @@ export function getPropertyType(
   value: unknown,
   inferFn: (name: string, value: unknown) => PropertyType
 ): PropertyType {
-  // Ahead of the definition lookup: a stale `text` definition written before this
-  // type existed must not win over the reserved key.
-  if (name === PROJECT_PROPERTY_KEY) {
-    return 'project'
-  }
-
   const definition = getPropertyDefinition(db, name)
-  if (definition) {
-    return definition.type as PropertyType
-  }
-  return inferFn(name, value)
+  return resolvePropertyType(name, value, definition?.type as PropertyType | undefined, inferFn)
 }

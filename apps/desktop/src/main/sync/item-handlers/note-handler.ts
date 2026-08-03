@@ -30,8 +30,10 @@ import {
   serializeNote,
   serializeParsedNote,
   inferPropertyType,
+  resolvePropertyType,
   type NoteFrontmatter
 } from '../../vault/frontmatter'
+import type { PropertyType } from '@memry/contracts/property-types'
 import { syncNoteToCache, syncFileToCache, deleteNoteFromCache } from '../../vault/note-sync'
 import { cleanupProjectLinksForDeletedNote } from '../../notes/runtime-effects'
 import { flushProjectionEvents } from '../../projections'
@@ -385,11 +387,13 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
 
       if (propertiesPresent) {
         const getType = (name: string, value: unknown) => {
-          const type =
-            (getCanonicalPropertyDefinition(ctx.db, name)?.type as
-              | ReturnType<typeof inferPropertyType>
-              | null
-              | undefined) ?? inferPropertyType(name, value)
+          const existing = getCanonicalPropertyDefinition(ctx.db, name)
+          const type = resolvePropertyType(
+            name,
+            value,
+            existing?.type as PropertyType | undefined,
+            inferPropertyType
+          )
           saveCanonicalPropertyDefinition(ctx.db, { name, type })
           return type
         }

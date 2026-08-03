@@ -426,6 +426,38 @@ export function inferPropertyType(name: string, value: unknown): PropertyType {
 }
 
 /**
+ * Resolve a property's type, honouring the reserved `project` key ahead of any
+ * stored definition. Both the index DB and the canonical (data) DB persist a
+ * `property_definitions.type` row per name; a stale `{ name: 'project', type:
+ * 'text' }` row — written before this feature existed, e.g. a vault imported
+ * from Obsidian — must not override the reserved key. Callers pass in whatever
+ * stored definition type they already looked up (index or canonical) so this
+ * stays storage-agnostic.
+ *
+ * @param name - Property name (checked against reserved keys, e.g. `project`)
+ * @param value - Property value, passed to inferFn when there's no stored type
+ * @param definitionType - Type from a stored property definition, if any
+ * @param inferFn - Fallback inference when there's no reserved key or definition
+ * @returns Resolved property type
+ */
+export function resolvePropertyType(
+  name: string,
+  value: unknown,
+  definitionType: PropertyType | undefined,
+  inferFn: (name: string, value: unknown) => PropertyType
+): PropertyType {
+  if (name === PROJECT_PROPERTY_KEY) {
+    return 'project'
+  }
+
+  if (definitionType) {
+    return definitionType
+  }
+
+  return inferFn(name, value)
+}
+
+/**
  * Serialize a property value for database storage.
  * Arrays and objects are JSON-encoded.
  *

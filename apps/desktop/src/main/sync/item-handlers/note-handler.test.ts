@@ -25,7 +25,15 @@ vi.mock('../../vault/frontmatter', () => ({
   })),
   serializeNote: vi.fn(() => '---\n---\ncontent'),
   serializeParsedNote: vi.fn(() => '---\n---\ncontent'),
-  inferPropertyType: vi.fn(() => 'number')
+  inferPropertyType: vi.fn(() => 'number'),
+  resolvePropertyType: vi.fn(
+    (
+      name: string,
+      value: unknown,
+      definitionType: string | undefined,
+      inferFn: (name: string, value: unknown) => string
+    ) => (name === 'project' ? 'project' : (definitionType ?? inferFn(name, value)))
+  )
 }))
 
 vi.mock('../../vault/note-sync', () => ({

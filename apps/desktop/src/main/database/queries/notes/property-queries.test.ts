@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { TestDatabaseResult, TestDb } from '@tests/utils/test-db'
 import { createTestIndexDb } from '@tests/utils/test-db'
-import { setNoteProperties, getNoteProperties, getPropertyType } from './property-queries'
+import {
+  setNoteProperties,
+  getNoteProperties,
+  getPropertyType,
+  insertPropertyDefinition
+} from './property-queries'
 import { insertNoteCache } from './note-crud'
 import { inferPropertyType } from '../../../vault/frontmatter'
 
@@ -68,5 +73,28 @@ describe('project property typing', () => {
     )
 
     expect(getNoteProperties(db, 'note-4')[0].type).toBe('text')
+  })
+
+  it('overrides a stale text definition already stored for the reserved project key', () => {
+    // Simulates a vault indexed before this feature existed (e.g. imported from
+    // Obsidian): a `project` definition row already exists with the old `text`
+    // type. getPropertyType must resolve the reserved key first, not read this
+    // stale row.
+    insertPropertyDefinition(db, {
+      name: 'project',
+      type: 'text',
+      options: null,
+      defaultValue: null,
+      color: null
+    })
+    createNote('note-5')
+
+    setNoteProperties(db, 'note-5', { project: ['Alpha'] }, (name, value) =>
+      getPropertyType(db, name, value, inferPropertyType)
+    )
+
+    expect(getNoteProperties(db, 'note-5')).toEqual([
+      { name: 'project', type: 'project', value: ['Alpha'] }
+    ])
   })
 })
