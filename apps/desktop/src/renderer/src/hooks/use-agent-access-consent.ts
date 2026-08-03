@@ -55,7 +55,9 @@ export function useAgentAccessConsent(hasImportedSources: boolean): AgentAccessC
       const result = await window.api.settings.setCalendarGoogleSettings({
         agentReadEventsConsent: granted
       })
-      if (!result.success) throw new Error(result.error ?? undefined)
+      // No message when the IPC gave no reason: extractErrorMessage falls back to
+      // the translated string rather than surfacing an empty or raw error.
+      if (!result.success) throw new Error(result.error)
       setIsPromptOpen(false)
     } catch (cause) {
       const t = getI18n().getFixedT(null, 'calendar')

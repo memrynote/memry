@@ -355,6 +355,25 @@ describe('CalendarPage', () => {
       )
     })
 
+    it('#given the save fails with no reason #then the prompt stays open with the translated fallback', async () => {
+      const user = userEvent.setup()
+      mockConsent(null)
+      vi.mocked(window.api.settings.setCalendarGoogleSettings).mockResolvedValue({ success: false })
+
+      renderWithProviders(<CalendarPage />)
+
+      await waitFor(() =>
+        expect(screen.getByRole('heading', { name: PROMPT_TITLE })).toBeInTheDocument()
+      )
+      await user.click(screen.getByRole('button', { name: 'Allow' }))
+
+      // Never an empty string or a raw "undefined" leaking to the user.
+      await waitFor(() =>
+        expect(screen.getByRole('alert')).toHaveTextContent('Failed to save your choice')
+      )
+      expect(screen.getByRole('heading', { name: PROMPT_TITLE })).toBeInTheDocument()
+    })
+
     it('#when the user declines #then consent is stored as denied so we stop asking', async () => {
       const user = userEvent.setup()
       mockConsent(null)
