@@ -28,6 +28,10 @@ vi.mock('./reminder-sync', () => ({
   getReminderSyncService: vi.fn()
 }))
 
+vi.mock('./template-sync', () => ({
+  getTemplateSyncService: vi.fn()
+}))
+
 vi.mock('./note-sync', () => ({
   getNoteSyncService: vi.fn()
 }))
@@ -74,7 +78,8 @@ vi.mock('./offline-clock', () => ({
   incrementInboxClockOffline: vi.fn(),
   incrementFilterClockOffline: vi.fn(),
   incrementBookmarkClockOffline: vi.fn(),
-  incrementReminderClockOffline: vi.fn()
+  incrementReminderClockOffline: vi.fn(),
+  incrementTemplateClockOffline: vi.fn()
 }))
 
 import { getDatabase } from '../database'
@@ -91,10 +96,12 @@ import {
   incrementInboxClockOffline,
   incrementProjectClocksOffline,
   incrementReminderClockOffline,
-  incrementTaskClocksOffline
+  incrementTaskClocksOffline,
+  incrementTemplateClockOffline
 } from './offline-clock'
 import { getBookmarkSyncService } from './bookmark-sync'
 import { getReminderSyncService } from './reminder-sync'
+import { getTemplateSyncService } from './template-sync'
 import { getProjectSyncService } from './project-sync'
 import { getNoteSyncService } from './note-sync'
 import { getSettingsSyncManager } from './settings-sync'
@@ -129,7 +136,8 @@ describe('local-mutations', () => {
       getCalendarBindingSyncService,
       getCalendarExternalEventSyncService,
       getBookmarkSyncService,
-      getReminderSyncService
+      getReminderSyncService,
+      getTemplateSyncService
     ]) {
       ;(getter as Mock).mockReset().mockReturnValue(null)
     }
@@ -152,6 +160,12 @@ describe('local-mutations', () => {
       getService: getReminderSyncService,
       offlineBump: incrementReminderClockOffline,
       itemId: 'rem-1'
+    },
+    {
+      type: 'template' as const,
+      getService: getTemplateSyncService,
+      offlineBump: incrementTemplateClockOffline,
+      itemId: 'tpl-1'
     }
   ])('$type local mutations', ({ type, getService, offlineBump, itemId }) => {
     it('routes creates to the live service', () => {
