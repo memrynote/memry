@@ -26,9 +26,10 @@ function ProjectDot({ color }: { color: string }): React.JSX.Element {
 
 /**
  * The `project` property's value: one chip per project name in the note's
- * frontmatter. A name with no matching (non-archived) project — a typo, or a
- * project that was archived — still renders, muted, rather than being
- * silently dropped. Resolution is by name, never by id.
+ * frontmatter. Resolution is by name, never by id, and includes archived
+ * projects — those chips still show their real color/icon, they are just
+ * excluded from the picker of addable projects. A name matching no project
+ * at all (a typo) still renders, muted, rather than being silently dropped.
  */
 export function ProjectEditor({
   value,
@@ -39,8 +40,13 @@ export function ProjectEditor({
   const [isOpen, setIsOpen] = useState(defaultOpen ?? false)
   const { projects } = useProjectsList()
 
+  // Chips resolve against every project, including archived ones — a note
+  // that already belongs to an archived project should still show its real
+  // color/icon, not be mistaken for a typo. Only the addable picker list
+  // below excludes archived projects.
   const byName = new Map(projects.map((project) => [project.name.toLowerCase(), project]))
   const chips = value.map((name) => ({ name, project: byName.get(name.toLowerCase()) ?? null }))
+  const pickableProjects = projects.filter((project) => project.archivedAt == null)
 
   const handleToggle = (name: string): void => {
     const next = value.some((v) => v.toLowerCase() === name.toLowerCase())
@@ -109,8 +115,8 @@ export function ProjectEditor({
       <Picker.Content width={220} align="start">
         <Picker.Search placeholder={t('properties.projectSearch')} />
         <Picker.List>
-          {projects.length === 0 && <Picker.Empty message={t('properties.projectEmpty')} />}
-          {projects.map((project: ProjectWithStats) => (
+          {pickableProjects.length === 0 && <Picker.Empty message={t('properties.projectEmpty')} />}
+          {pickableProjects.map((project: ProjectWithStats) => (
             <Picker.Item
               key={project.id}
               value={project.name}

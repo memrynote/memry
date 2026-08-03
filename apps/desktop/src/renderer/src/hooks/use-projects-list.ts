@@ -11,9 +11,10 @@ export interface UseProjectsListReturn {
 }
 
 /**
- * All non-archived projects, refreshed whenever a project changes. Archived
- * projects are excluded from the picker but a note already naming one still
- * renders it — resolution happens by name in the editor, not here.
+ * All projects (including archived), refreshed whenever a project changes.
+ * Archived projects are kept here so a note already naming one can still
+ * resolve it by name to its real color/icon — callers that populate a
+ * picker of addable projects must filter `archivedAt == null` themselves.
  */
 export function useProjectsList(): UseProjectsListReturn {
   const [projects, setProjects] = useState<ProjectWithStats[]>([])
@@ -22,7 +23,7 @@ export function useProjectsList(): UseProjectsListReturn {
   const load = useCallback(async (): Promise<void> => {
     try {
       const result = await tasksService.listProjects()
-      setProjects(result.projects.filter((project) => project.archivedAt == null))
+      setProjects(result.projects)
     } catch (error) {
       log.error('Failed to list projects', extractErrorMessage(error))
       setProjects([])

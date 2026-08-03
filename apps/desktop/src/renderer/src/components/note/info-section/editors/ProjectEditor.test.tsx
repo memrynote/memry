@@ -13,7 +13,7 @@ vi.mock('@/services/tasks-service', () => ({
 const PROJECTS = [
   { id: 'p1', name: 'Alpha', color: '#ff0000', icon: '🚀', archivedAt: null },
   { id: 'p2', name: 'Beta', color: '#00ff00', icon: null, archivedAt: null },
-  { id: 'p3', name: 'Old', color: '#0000ff', icon: null, archivedAt: '2026-01-01' }
+  { id: 'p3', name: 'Old', color: '#0000ff', icon: '📦', archivedAt: '2026-01-01' }
 ]
 
 describe('ProjectEditor', () => {
@@ -64,10 +64,14 @@ describe('ProjectEditor', () => {
     expect(await screen.findByText(/ghost/i)).toBeInTheDocument()
   })
 
-  it('renders an archived project already on the note but omits it from the picker', async () => {
+  it('renders an archived project with its real icon, but omits it from the picker', async () => {
     render(<ProjectEditor value={['Old']} defaultOpen onChange={vi.fn()} />)
 
     expect(await screen.findByText('Old')).toBeInTheDocument()
+    // Real appearance, not the muted "unknown" treatment — proves the chip
+    // resolved against the archived project rather than falling through to
+    // the not-found branch.
+    expect(screen.getByText('📦')).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /^old$/i })).not.toBeInTheDocument()
   })
 })
