@@ -1,19 +1,21 @@
 /**
  * Template CRUD operations.
- * Templates are stored as markdown files in vault/.memry/templates/
+ *
+ * Custom templates are rows in the data DB `templates` table and sync across
+ * devices with whole-row LWW. Built-in templates are the code constants below —
+ * they have fixed ids, are identical on every device and immutable, so they are
+ * never stored and never synced.
+ *
+ * Legacy installs kept custom templates as markdown files in
+ * vault/.memry/templates/. They are imported once on vault open (see
+ * ./templates-migration) and the files are left on disk as a downgrade path.
  *
  * @module vault/templates
  */
 
-import path from 'path'
-import fs from 'fs/promises'
-import { existsSync, mkdirSync } from 'fs'
+import { eq } from 'drizzle-orm'
 import { BrowserWindow } from 'electron'
-import matter from 'gray-matter'
-import { getStatus } from './index'
-import { getMemryDir } from './init'
-import { VaultError, VaultErrorCode } from '../lib/errors'
-import { generateNoteId } from '../lib/id'
+import { templates as templatesTable, type TemplateRow } from '@memry/db-schema/schema/templates'
 import { TemplatesChannels } from '@memry/contracts/ipc-channels'
 import type {
   Template,
@@ -22,21 +24,29 @@ import type {
   TemplateUpdateInput,
   TemplateProperty
 } from '@memry/contracts/templates-api'
+import { getDatabase } from '../database'
+import { VaultError, VaultErrorCode } from '../lib/errors'
+import { generateNoteId } from '../lib/id'
 import { createLogger } from '../lib/logger'
+import {
+  enqueueLocalSyncCreate,
+  enqueueLocalSyncUpdate,
+  enqueueLocalSyncDelete
+} from '../sync/local-mutations'
 
 const logger = createLogger('Templates')
 
-// ============================================================================
-// Constants
-// ============================================================================
-
-const TEMPLATES_DIR = 'templates'
+/**
+ * Built-ins are immutable, so a stable timestamp keeps them from looking
+ * "modified" every launch.
+ */
+const BUILT_IN_TIMESTAMP = '2025-01-01T00:00:00.000Z'
 
 // ============================================================================
 // Built-in Templates
 // ============================================================================
 
-const BUILT_IN_TEMPLATES: Omit<Template, 'createdAt' | 'modifiedAt'>[] = [
+export const BUILT_IN_TEMPLATES: Omit<Template, 'createdAt' | 'modifiedAt'>[] = [
   {
     id: 'blank',
     name: 'Blank Note',
@@ -267,64 +277,11 @@ How do I feel about this week overall?
   }
 ]
 
+const BUILT_IN_IDS = new Set(BUILT_IN_TEMPLATES.map((t) => t.id))
+
 // ============================================================================
 // Helpers
 // ============================================================================
-
-/**
- * Get the vault path, throwing if no vault is open.
- */
-function getVaultPath(): string {
-  const status = getStatus()
-  if (!status.path) {
-    throw new VaultError('No vault is currently open', VaultErrorCode.NOT_INITIALIZED)
-  }
-  return status.path
-}
-
-/**
- * Get the templates directory path.
- */
-export function getTemplatesDir(): string {
-  const vaultPath = getVaultPath()
-  return path.join(getMemryDir(vaultPath), TEMPLATES_DIR)
-}
-
-/**
- * Ensure the templates directory exists and seed built-in templates.
- */
-export async function ensureTemplatesDir(): Promise<void> {
-  const templatesDir = getTemplatesDir()
-
-  if (!existsSync(templatesDir)) {
-    mkdirSync(templatesDir, { recursive: true })
-  }
-
-  // Seed built-in templates if they don't exist
-  await seedBuiltInTemplates()
-}
-
-/**
- * Seed built-in templates to the templates directory.
- */
-async function seedBuiltInTemplates(): Promise<void> {
-  const templatesDir = getTemplatesDir()
-  const now = new Date().toISOString()
-
-  for (const template of BUILT_IN_TEMPLATES) {
-    const filePath = path.join(templatesDir, `${template.id}.md`)
-
-    // Only create if doesn't exist
-    if (!existsSync(filePath)) {
-      const fullTemplate: Template = {
-        ...template,
-        createdAt: now,
-        modifiedAt: now
-      }
-      await writeTemplate(filePath, fullTemplate)
-    }
-  }
-}
 
 /**
  * Emit template event to all windows.
@@ -335,90 +292,37 @@ function emitTemplateEvent(channel: string, payload: unknown): void {
   })
 }
 
-/**
- * Frontmatter data structure for template files.
- */
-interface TemplateFrontmatter {
-  id?: string
-  name?: string
-  description?: string
-  icon?: string | null
-  isBuiltIn?: boolean
-  tags?: string[]
-  properties?: TemplateProperty[]
-  createdAt?: string
-  modifiedAt?: string
-}
-
-/**
- * Parse a template file.
- */
-function parseTemplate(content: string, filePath: string): Template {
-  const { data, content: body } = matter(content)
-  const frontmatter = data as TemplateFrontmatter
-
-  // Extract id from filename if not in frontmatter
-  const id = frontmatter.id ?? path.basename(filePath, '.md')
-
+function toBuiltInTemplate(template: Omit<Template, 'createdAt' | 'modifiedAt'>): Template {
   return {
-    id,
-    name: frontmatter.name ?? id,
-    description: frontmatter.description,
-    icon: frontmatter.icon ?? null,
-    isBuiltIn: frontmatter.isBuiltIn === true,
-    tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
-    properties: Array.isArray(frontmatter.properties) ? frontmatter.properties : [],
-    content: body.trim(),
-    createdAt: frontmatter.createdAt ?? new Date().toISOString(),
-    modifiedAt: frontmatter.modifiedAt ?? new Date().toISOString()
+    ...template,
+    createdAt: BUILT_IN_TIMESTAMP,
+    modifiedAt: BUILT_IN_TIMESTAMP
   }
 }
 
-/**
- * Serialize a template to file content.
- */
-function serializeTemplate(template: Template): string {
-  const frontmatter: Record<string, unknown> = {
-    id: template.id,
-    name: template.name,
-    isBuiltIn: template.isBuiltIn,
-    createdAt: template.createdAt,
-    modifiedAt: template.modifiedAt
+function rowToTemplate(row: TemplateRow): Template {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description ?? undefined,
+    icon: row.icon ?? null,
+    isBuiltIn: false,
+    tags: row.tags ?? [],
+    properties: (row.properties ?? []) as TemplateProperty[],
+    content: row.content,
+    createdAt: row.createdAt,
+    modifiedAt: row.modifiedAt
   }
-
-  if (template.description) {
-    frontmatter.description = template.description
-  }
-
-  if (template.icon) {
-    frontmatter.icon = template.icon
-  }
-
-  if (template.tags.length > 0) {
-    frontmatter.tags = template.tags
-  }
-
-  if (template.properties.length > 0) {
-    frontmatter.properties = template.properties
-  }
-
-  return matter.stringify(template.content, frontmatter)
 }
 
-/**
- * Write a template to file.
- */
-async function writeTemplate(filePath: string, template: Template): Promise<void> {
-  const content = serializeTemplate(template)
-  await fs.writeFile(filePath, content, 'utf-8')
+function getRow(id: string): TemplateRow | undefined {
+  return getDatabase().select().from(templatesTable).where(eq(templatesTable.id, id)).get()
 }
 
-/**
- * Get template file path by ID.
- */
-function getTemplatePath(id: string): string {
-  const templatesDir = getTemplatesDir()
-  return path.join(templatesDir, `${id}.md`)
+function assertNotBuiltIn(id: string, action: 'modify' | 'delete'): void {
+  if (BUILT_IN_IDS.has(id)) {
+    throw new VaultError(`Cannot ${action} built-in templates`, VaultErrorCode.PERMISSION_DENIED)
+  }
 }
 
 // ============================================================================
@@ -426,72 +330,57 @@ function getTemplatePath(id: string): string {
 // ============================================================================
 
 /**
- * List all templates.
+ * List all templates: built-ins from code, custom ones from the DB.
  */
 export async function listTemplates(): Promise<TemplateListItem[]> {
-  await ensureTemplatesDir()
-  const templatesDir = getTemplatesDir()
+  const items: TemplateListItem[] = BUILT_IN_TEMPLATES.map((t) => ({
+    id: t.id,
+    name: t.name,
+    description: t.description,
+    icon: t.icon,
+    isBuiltIn: true
+  }))
 
   try {
-    const files = await fs.readdir(templatesDir)
-    const templates: TemplateListItem[] = []
-
-    for (const file of files) {
-      if (!file.endsWith('.md')) continue
-
-      const filePath = path.join(templatesDir, file)
-      try {
-        const content = await fs.readFile(filePath, 'utf-8')
-        const template = parseTemplate(content, filePath)
-        templates.push({
-          id: template.id,
-          name: template.name,
-          description: template.description,
-          icon: template.icon,
-          isBuiltIn: template.isBuiltIn
-        })
-      } catch {
-        // Skip files that can't be parsed
-        logger.warn(`Failed to parse template: ${file}`)
-      }
+    for (const row of getDatabase().select().from(templatesTable).all()) {
+      items.push({
+        id: row.id,
+        name: row.name,
+        description: row.description ?? undefined,
+        icon: row.icon,
+        isBuiltIn: false
+      })
     }
-
-    // Sort: built-in first, then by name
-    templates.sort((a, b) => {
-      if (a.isBuiltIn !== b.isBuiltIn) {
-        return a.isBuiltIn ? -1 : 1
-      }
-      return a.name.localeCompare(b.name)
-    })
-
-    return templates
   } catch (error) {
-    logger.error('Failed to list templates:', error)
-    return []
+    logger.error('Failed to list custom templates:', error)
   }
+
+  // Sort: built-in first, then by name
+  items.sort((a, b) => {
+    if (a.isBuiltIn !== b.isBuiltIn) {
+      return a.isBuiltIn ? -1 : 1
+    }
+    return a.name.localeCompare(b.name)
+  })
+
+  return items
 }
 
 /**
  * Get a template by ID.
  */
 export async function getTemplate(id: string): Promise<Template | null> {
-  await ensureTemplatesDir()
-  const filePath = getTemplatePath(id)
+  const builtIn = BUILT_IN_TEMPLATES.find((t) => t.id === id)
+  if (builtIn) return toBuiltInTemplate(builtIn)
 
-  try {
-    const content = await fs.readFile(filePath, 'utf-8')
-    return parseTemplate(content, filePath)
-  } catch {
-    return null
-  }
+  const row = getRow(id)
+  return row ? rowToTemplate(row) : null
 }
 
 /**
- * Create a new template.
+ * Create a new custom template.
  */
 export async function createTemplate(input: TemplateCreateInput): Promise<Template> {
-  await ensureTemplatesDir()
-
   const id = generateNoteId()
   const now = new Date().toISOString()
 
@@ -508,29 +397,42 @@ export async function createTemplate(input: TemplateCreateInput): Promise<Templa
     modifiedAt: now
   }
 
-  const filePath = getTemplatePath(id)
-  await writeTemplate(filePath, template)
+  getDatabase()
+    .insert(templatesTable)
+    .values({
+      id,
+      name: template.name,
+      description: template.description ?? null,
+      icon: template.icon,
+      tags: template.tags,
+      properties: template.properties,
+      content: template.content,
+      createdAt: now,
+      modifiedAt: now
+    })
+    .run()
 
-  // Emit event
+  // Registry wiring alone does nothing — a mutation that skips this enqueue
+  // writes the row, seeds once via seedUnclocked, then never syncs again.
+  enqueueLocalSyncCreate('template', id)
+
   emitTemplateEvent(TemplatesChannels.events.CREATED, { template })
 
   return template
 }
 
 /**
- * Update an existing template.
+ * Update an existing custom template.
  */
 export async function updateTemplate(input: TemplateUpdateInput): Promise<Template> {
-  const existing = await getTemplate(input.id)
-  if (!existing) {
+  assertNotBuiltIn(input.id, 'modify')
+
+  const row = getRow(input.id)
+  if (!row) {
     throw new VaultError(`Template not found: ${input.id}`, VaultErrorCode.NOT_FOUND)
   }
 
-  // Prevent modifying built-in templates
-  if (existing.isBuiltIn) {
-    throw new VaultError('Cannot modify built-in templates', VaultErrorCode.PERMISSION_DENIED)
-  }
-
+  const existing = rowToTemplate(row)
   const now = new Date().toISOString()
 
   const updated: Template = {
@@ -547,38 +449,51 @@ export async function updateTemplate(input: TemplateUpdateInput): Promise<Templa
     modifiedAt: now
   }
 
-  const filePath = getTemplatePath(input.id)
-  await writeTemplate(filePath, updated)
+  getDatabase()
+    .update(templatesTable)
+    .set({
+      name: updated.name,
+      description: updated.description ?? null,
+      icon: updated.icon,
+      tags: updated.tags,
+      properties: updated.properties,
+      content: updated.content,
+      modifiedAt: now
+    })
+    .where(eq(templatesTable.id, input.id))
+    .run()
 
-  // Emit event
+  enqueueLocalSyncUpdate('template', input.id)
+
   emitTemplateEvent(TemplatesChannels.events.UPDATED, { id: input.id, template: updated })
 
   return updated
 }
 
 /**
- * Delete a template.
+ * Delete a custom template.
  */
 export async function deleteTemplate(id: string): Promise<void> {
-  const existing = await getTemplate(id)
-  if (!existing) {
+  assertNotBuiltIn(id, 'delete')
+
+  const row = getRow(id)
+  if (!row) {
     throw new VaultError(`Template not found: ${id}`, VaultErrorCode.NOT_FOUND)
   }
 
-  // Prevent deleting built-in templates
-  if (existing.isBuiltIn) {
-    throw new VaultError('Cannot delete built-in templates', VaultErrorCode.PERMISSION_DENIED)
-  }
+  // Snapshot before the delete: enqueueDelete returns early without a payload
+  // and the tombstone would never reach the other devices.
+  const snapshot = JSON.stringify(row)
 
-  const filePath = getTemplatePath(id)
-  await fs.unlink(filePath)
+  getDatabase().delete(templatesTable).where(eq(templatesTable.id, id)).run()
 
-  // Emit event
+  enqueueLocalSyncDelete('template', id, snapshot)
+
   emitTemplateEvent(TemplatesChannels.events.DELETED, { id })
 }
 
 /**
- * Duplicate a template.
+ * Duplicate a template. Duplicating a built-in produces a custom template.
  */
 export async function duplicateTemplate(id: string, newName: string): Promise<Template> {
   const existing = await getTemplate(id)
@@ -586,7 +501,6 @@ export async function duplicateTemplate(id: string, newName: string): Promise<Te
     throw new VaultError(`Template not found: ${id}`, VaultErrorCode.NOT_FOUND)
   }
 
-  // Create a new template based on the existing one
   return createTemplate({
     name: newName,
     description: existing.description,
