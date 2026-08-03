@@ -43,6 +43,7 @@ const mocks = vi.hoisted(() => ({
   reloadPropertyDefinitions: vi.fn(),
   destroyPropertyDefinitions: vi.fn(),
   migrateSettingsToConfig: vi.fn(),
+  migrateTemplateFilesToDb: vi.fn(() => 0),
   startSyncRuntime: vi.fn(),
   stopSyncRuntime: vi.fn(),
   startProjectionRuntime: vi.fn(),
@@ -197,6 +198,10 @@ vi.mock('./property-definitions', () => ({
 
 vi.mock('./settings-cache', () => ({
   migrateSettingsToConfig: (...args: unknown[]) => mocks.migrateSettingsToConfig(...args)
+}))
+
+vi.mock('./templates-migration', () => ({
+  migrateTemplateFilesToDb: (...args: unknown[]) => mocks.migrateTemplateFilesToDb(...args)
 }))
 
 vi.mock('../agent/mcp/lifecycle', () => ({
