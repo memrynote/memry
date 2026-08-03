@@ -7,6 +7,7 @@ import {
   type CalendarWorkspaceView
 } from '@/components/calendar'
 import { VISUAL_TYPE_ORDER } from '@/components/calendar/visual-type-meta'
+import { AgentAccessConsentDialog } from '@/components/calendar/agent-access-consent-dialog'
 import { PromoteExternalDialog } from '@/components/calendar/promote-external-dialog'
 import { CalendarTaskPopover } from '@/components/calendar/calendar-task-popover'
 import {
@@ -761,6 +762,8 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
 
   return (
     <>
+      <AgentAccessConsentDialog hasImportedSources={importedSources.length > 0} />
+
       <PromoteExternalDialog
         open={pendingPromote !== null}
         isWorking={isPromoting}

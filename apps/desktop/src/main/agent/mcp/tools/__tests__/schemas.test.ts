@@ -87,6 +87,27 @@ describe('Vault MCP tool schemas', () => {
     expect(r.success).toBe(false)
   })
 
+  it('accepts a file_types filter for search', () => {
+    const parsed = TOOL_SCHEMAS.vault_search_notes.input.parse({
+      query: 'invoice',
+      file_types: ['markdown', 'pdf']
+    })
+    expect(parsed).toEqual({ query: 'invoice', file_types: ['markdown', 'pdf'] })
+  })
+
+  it('rejects an unknown file_type for search', () => {
+    const r = TOOL_SCHEMAS.vault_search_notes.input.safeParse({
+      query: 'invoice',
+      file_types: ['spreadsheet']
+    })
+    expect(r.success).toBe(false)
+  })
+
+  it('rejects an empty file_types array for search', () => {
+    const r = TOOL_SCHEMAS.vault_search_notes.input.safeParse({ query: 'invoice', file_types: [] })
+    expect(r.success).toBe(false)
+  })
+
   it('rejects unknown update_note modes', () => {
     const r = TOOL_SCHEMAS.vault_update_note.input.safeParse({
       id: 'x',

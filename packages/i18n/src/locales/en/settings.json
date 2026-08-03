@@ -992,6 +992,11 @@
         "label": "Show memrynote events in Google Calendar",
         "description": "Turn off for one-way sync — you'll still see your Google events in memrynote, but memrynote events won't appear in Google.",
         "error": "Failed to update sync direction"
+      },
+      "agentAccess": {
+        "label": "Let AI read Google Calendar events",
+        "description": "Off by default. Turn on and the AI agent can read your Google events; turn off and it gets nothing back when asked about them. You keep seeing them in memrynote either way.",
+        "error": "Failed to update AI access"
       }
     },
     "sourcePicker": {

@@ -199,7 +199,13 @@ export const CalendarGoogleSettingsSchema = z.object({
   promoteConfirmDismissed: z.boolean(),
   // false = one-way (inbound-only): pull Google events into memrynote but never
   // push memrynote events out to Google.
-  pushEventsToGoogle: z.boolean()
+  pushEventsToGoogle: z.boolean(),
+  // Google Workspace Limited Use: whether the AI agent may read Google-synced
+  // calendar events. null = the user has not been asked yet; anything other
+  // than an explicit true keeps Google events out of every agent read.
+  // Defaulted, not required: settings written before this shipped have no such
+  // key, and those installs must land on "not asked" rather than fail to parse.
+  agentReadEventsConsent: z.boolean().nullable().default(null)
 })
 
 export type CalendarGoogleSettings = z.infer<typeof CalendarGoogleSettingsSchema>
@@ -208,7 +214,8 @@ export const CALENDAR_GOOGLE_SETTINGS_DEFAULTS: CalendarGoogleSettings = {
   defaultTargetCalendarId: null,
   onboardingCompleted: false,
   promoteConfirmDismissed: false,
-  pushEventsToGoogle: true
+  pushEventsToGoogle: true,
+  agentReadEventsConsent: null
 }
 
 // ============================================================================

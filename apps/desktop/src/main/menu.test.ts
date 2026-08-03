@@ -163,6 +163,38 @@ describe('buildAppMenu', () => {
     expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'edit.redo' })
   })
 
+  it('gives ⌘W to Close Tab and routes Close Window through the renderer', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+    const send = vi.fn()
+    vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue({
+      webContents: { isDestroyed: () => false, send }
+    } as unknown as Electron.BrowserWindow)
+
+    buildAppMenu(i18n)
+
+    const closeTab = findMenuItem('Close Tab')
+    const closeWindow = findMenuItem('Close Window')
+
+    expect(closeTab).toMatchObject({
+      id: 'file.closeTab',
+      accelerator: 'CmdOrCtrl+W',
+      registerAccelerator: false
+    })
+
+    // Regression: role 'close' defaults its accelerator to CmdOrCtrl+W, and
+    // registerAccelerator is Linux/Windows-only — so on macOS the role stole ⌘W
+    // from the tab system and closed the whole window instead of the tab.
+    expect(closeWindow?.role).toBeUndefined()
+    expect(closeWindow?.accelerator).toBeUndefined()
+
+    closeTab?.click?.()
+    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'file.closeTab' })
+    closeWindow?.click?.()
+    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, {
+      command: 'file.closeWindow'
+    })
+  })
+
   it('falls back to the sole visible window when no window reports focus', async () => {
     const i18n = await createMainI18n({ locale: 'en' })
     const send = vi.fn()

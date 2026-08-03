@@ -113,7 +113,20 @@ async function invokeWhenAgentReady<T>(fn: () => Promise<T>): Promise<T> {
   throw lastError
 }
 
-export function AgentProvider({ children }: { children: ReactNode }): React.JSX.Element {
+/**
+ * `active` gates the bootstrap and the exposed context without changing the
+ * tree shape. Callers keep this component mounted at all times and flip the
+ * prop instead, because adding or removing a tree level here remounts the whole
+ * app below it. While inactive the context stays `null`, so consumers see the
+ * same "no agent yet" state they saw when the provider was mounted lazily.
+ */
+export function AgentProvider({
+  active = true,
+  children
+}: {
+  active?: boolean
+  children: ReactNode
+}): React.JSX.Element {
   const { t } = useT('common')
   const [state, dispatch] = useReducer(agentReducer, initialAgentState)
 
@@ -271,6 +284,8 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
   }, [t])
 
   useEffect(() => {
+    if (!active) return
+
     const api = getAgentApi()
     let cancelled = false
 
@@ -329,7 +344,7 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
       cancelled = true
       unsubscribe()
     }
-  }, [t])
+  }, [t, active])
 
   const value = useMemo<AgentContextValue>(
     () => ({
@@ -359,7 +374,7 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
     ]
   )
 
-  return <AgentContext.Provider value={value}>{children}</AgentContext.Provider>
+  return <AgentContext.Provider value={active ? value : null}>{children}</AgentContext.Provider>
 }
 
 export function useAgent(): AgentContextValue {

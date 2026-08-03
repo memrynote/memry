@@ -69,6 +69,15 @@
     "google-bound-description": "\"{title}\" memrynote ve Google Calendar'dan kaldırılacak. Bu eylem geri alınamaz.",
     "context-menu-delete-label": "Etkinliği sil"
   },
+  "agent-access-dialog": {
+    "aria": "Yapay zekanın Google Calendar etkinliklerinizi okuyup okuyamayacağını seçin",
+    "title": "Yapay zeka Google Calendar etkinliklerinizi okusun mu?",
+    "body": "Google etkinliklerinizi her durumda memrynote'ta görmeye devam edersiniz. Bu seçim yalnızca, takviminizi sorduğunuzda yapay zeka asistanının bu etkinlikleri okuyup okuyamayacağını belirler.",
+    "footnote": "Bunu istediğiniz zaman Ayarlar → Entegrasyonlar → Google Calendar bölümünden değiştirebilirsiniz.",
+    "allow": "İzin ver",
+    "deny": "İzin verme",
+    "save-error": "Seçiminiz kaydedilemedi"
+  },
   "promote-dialog": {
     "aria": "Harici takvim etkinliğini düzenle",
     "title": "Bu etkinlik memrynote'te düzenlensin mi?",

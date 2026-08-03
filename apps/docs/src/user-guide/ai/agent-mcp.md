@@ -24,7 +24,10 @@ default Agent Chat access mode and action-confirmation behavior.
 ## Agent Chat
 
 Open the right sidebar, choose **Agent**, and pick a provider. The compact Day/Agent switch keeps
-the active view highlighted at the top of the right sidebar. The Agent header includes a
+the active view highlighted at the top of the right sidebar, and switching to Agent takes effect on
+the first click even when the sidebar opened on the Day view. The assistant backend still starts up
+on first use rather than at launch, so the panel can show a brief loading state while providers and
+conversation history are detected. The Agent header includes a
 new-conversation button, a history menu for switching back to recent conversations, and a pop-out
 button for moving the current conversation into a workspace tab. Popped-out conversations keep the
 generated conversation title as the tab name, use the same centered reading column as notes, and
@@ -175,6 +178,24 @@ Read tools are available to Agent Chat and external MCP clients:
 - `vault_read_canvas`
 - `vault_desktop_read`
 
+### Notes and filed files
+
+Filing a PDF, image, audio file, or video into the vault indexes it alongside your markdown notes,
+so it can turn up in `vault_search_notes`. Every search hit therefore carries a `file_type`:
+
+- `markdown` — a real note. `vault_read_note` returns its content.
+- `pdf`, `image`, `audio`, `video` — a filed file. There is no markdown to read, so
+  `vault_read_note` refuses it with a `VALIDATION` error naming the file type instead of returning
+  bytes for the client to treat as text. `vault_update_note` refuses it the same way, so an agent
+  cannot overwrite a filed document with markdown.
+
+Pass `file_types` to narrow the search up front — `["markdown"]` for notes only, or
+`["pdf", "image"]` to look for filed documents. The filter runs inside the search query, so `limit`
+counts only matching rows. Omit `file_types` to search every file type.
+
+Notes indexed by older memrynote versions have no recorded file type; those are always treated as
+markdown, so upgrading never hides existing notes.
+
 Create, update, delete, archive, move, and reorder tools require Agent Chat context. They can be
 auto-accepted or shown for inline approval depending on the Agent Permissions setting:
 
@@ -262,23 +283,39 @@ links between notes when you want a real connection.
 `vault_desktop_read` and `vault_desktop_write` cover the remaining desktop CRUD surface through an
 allowlisted desktop API operation name plus an `args` array. They are used for desktop domains such
 as templates, saved filters, bookmarks, reminders, calendar events, folder views, properties, tags,
-search reasons, and settings. The write bridge uses the same in-app approval flow as named write
-tools. Security-sensitive and system operations stay outside the allowlist, including account/auth
-flows, provider connect/disconnect/refresh actions, app updater actions, external open/reveal
-actions, and raw secret writes. Unsupported or unavailable desktop API operations return a structured
-MCP error instead of falling back to an arbitrary desktop call.
+search reasons, inbox conversions, and settings. The write bridge uses the same in-app approval flow
+as named write tools. Security-sensitive and system operations stay outside the allowlist, including
+account/auth flows, provider connect/disconnect/refresh actions, app updater actions, external
+open/reveal actions, import dialogs, OS settings panes, telemetry, feedback and diagnostics
+reporting, and raw secret writes. Unsupported or unavailable desktop API operations return a
+structured MCP error instead of falling back to an arbitrary desktop call.
+
+Inbox items convert through the bridge into any of the four targets the app itself offers:
+`inbox.convertToNote`, `inbox.convertToTask`, `inbox.convertToEvent`, and
+`inbox.convertToReminder`. `notes.applyTemplate` applies a template the agent can already read
+through `templates.get` to an existing note.
+
+`settings.getFeaturesSettings` reports which surfaces are turned on — home, inbox, journal, tasks,
+calendar, graph, and spatial canvas — so an agent can tell whether an action is even available
+before suggesting it, and `settings.setFeaturesSettings` toggles them. `settings.getInboxSettings`
+and `settings.setInboxSettings` cover the daily inbox review reminder.
 
 Calendar desktop reads accept the same single-object shape as the renderer bridge. For example:
 `calendar.listEvents` accepts `args: [{}]`, and `calendar.getRange` accepts either
 `args: ["2026-05-14", "2026-06-14"]` or
 `args: [{"startAt": "2026-05-14T00:00:00.000Z", "endAt": "2026-06-15T00:00:00.000Z"}]`.
 
-Agent calendar access covers native memrynote events only. Google-integration operations —
-calendar sources, provider status, Google calendar lists, promoting external events, and Google
-calendar settings — are excluded from the agent allowlists, and `calendar.getRange` always runs
-with Google-synced external events filtered out. Data obtained from Google APIs is never included
-in agent tool results or forwarded to any AI backend, in line with the Google API Services User
-Data Policy (Limited Use).
+Google-integration operations — calendar sources, provider status, Google calendar lists, promoting
+external events, and Google calendar settings — are excluded from the agent allowlists outright.
+
+Google-synced events themselves are gated on explicit user consent. `calendar.getRange` resolves
+`includeExternal` from the stored answer to the **Let AI read Google Calendar events** setting, never
+from the caller: an agent that passes `includeExternal: true` still gets native-only results unless
+the user granted access. Not asked yet, declined, or a settings read that failed all resolve to
+native-only. See [Calendar → Google Data and AI Features](/user-guide/calendar#google-data-and-ai-features).
+
+Google user data is never used to train or improve AI models, in line with the Google API Services
+User Data Policy (Limited Use).
 
 By default, Agent Chat accepts these tool calls automatically. The chat still shows each requested
 tool as compact, subdued text with a readable label such as `Reading note` or `Creating task`.

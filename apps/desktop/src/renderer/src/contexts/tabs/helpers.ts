@@ -69,6 +69,20 @@ export const findTabById = (state: TabSystemState, tabId: string): FoundTab | nu
   return null
 }
 
+/**
+ * Is this group the last one standing, holding nothing but the default Home tab?
+ *
+ * This is ⌘W's floor: every other tab closes normally (a lone non-Home tab closes
+ * too — the reducer puts a fresh Home in its place), and only once Home is all
+ * that's left does ⌘W close the window instead of the tab.
+ */
+export const isLastHomeTab = (state: TabSystemState, groupId: string): boolean => {
+  if (Object.keys(state.tabGroups).length !== 1) return false
+  const group = state.tabGroups[groupId]
+  if (!group || group.tabs.length !== 1) return false
+  return group.tabs[0].type === 'home'
+}
+
 // =============================================================================
 // NAVIGATION HISTORY
 // =============================================================================

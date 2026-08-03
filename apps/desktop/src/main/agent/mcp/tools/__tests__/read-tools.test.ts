@@ -3,24 +3,51 @@ import { buildReadTools } from '../read-tools'
 import type { VaultServiceHandles } from '../handles'
 import { AgentToolError } from '../../errors'
 
+let lastSearchInput: Parameters<VaultServiceHandles['notes']['search']>[0] | null = null
+
 function fake(): VaultServiceHandles {
   return {
     notes: {
-      search: async ({ query }) =>
-        query === 'hit'
-          ? [{ id: 'n1', title: 'Hit', snippet: 'hit me', folder_path: '/Inbox' }]
-          : [],
-      read: async (id) =>
-        id === 'n1'
-          ? {
-              id: 'n1',
-              title: 'Hit',
-              content_markdown: '# Hit',
-              tags: ['t'],
-              folder_path: '/Inbox',
-              frontmatter: { foo: 1 }
-            }
-          : null,
+      search: async (input) => {
+        lastSearchInput = input
+        return input.query === 'hit'
+          ? [
+              {
+                id: 'n1',
+                title: 'Hit',
+                snippet: 'hit me',
+                folder_path: '/Inbox',
+                file_type: 'markdown'
+              },
+              { id: 'f1', title: 'Scan', snippet: '', folder_path: '/Inbox', file_type: 'pdf' }
+            ]
+          : []
+      },
+      read: async (id) => {
+        if (id === 'n1') {
+          return {
+            id: 'n1',
+            title: 'Hit',
+            content_markdown: '# Hit',
+            tags: ['t'],
+            folder_path: '/Inbox',
+            frontmatter: { foo: 1 },
+            file_type: 'markdown'
+          }
+        }
+        if (id === 'f1') {
+          return {
+            id: 'f1',
+            title: 'Scan',
+            content_markdown: '',
+            tags: [],
+            folder_path: '/Inbox',
+            frontmatter: {},
+            file_type: 'pdf'
+          }
+        }
+        return null
+      },
       create: async () => ({ id: 'unused' }),
       rename: async ({ id }) => ({ id }),
       delete: async (id) => ({ id }),
@@ -148,13 +175,39 @@ describe('Read tools', () => {
   beforeEach(() => {
     handles = fake()
     tools = buildReadTools(handles)
+    lastSearchInput = null
   })
 
-  it('vault_search_notes returns hits', async () => {
+  it('vault_search_notes returns hits tagged with their file type', async () => {
     const out = await tools
       .find((t) => t.name === 'vault_search_notes')!
       .handler({ query: 'hit' }, { conversationId: null, windowId: null })
-    expect(out).toEqual([{ id: 'n1', title: 'Hit', snippet: 'hit me', folder_path: '/Inbox' }])
+    expect(out).toEqual([
+      { id: 'n1', title: 'Hit', snippet: 'hit me', folder_path: '/Inbox', file_type: 'markdown' },
+      { id: 'f1', title: 'Scan', snippet: '', folder_path: '/Inbox', file_type: 'pdf' }
+    ])
+  })
+
+  it('vault_search_notes forwards file_types to the search handle', async () => {
+    await tools
+      .find((t) => t.name === 'vault_search_notes')!
+      .handler({ query: 'hit', file_types: ['markdown'] }, { conversationId: null, windowId: null })
+    expect(lastSearchInput).toMatchObject({ query: 'hit', fileTypes: ['markdown'] })
+  })
+
+  it('vault_search_notes leaves fileTypes unset when no filter is given', async () => {
+    await tools
+      .find((t) => t.name === 'vault_search_notes')!
+      .handler({ query: 'hit' }, { conversationId: null, windowId: null })
+    expect(lastSearchInput?.fileTypes).toBeUndefined()
+  })
+
+  it('vault_read_note rejects a filed binary instead of returning it as markdown', async () => {
+    await expect(
+      tools
+        .find((t) => t.name === 'vault_read_note')!
+        .handler({ id: 'f1' }, { conversationId: null, windowId: null })
+    ).rejects.toMatchObject({ code: 'VALIDATION', details: { id: 'f1', file_type: 'pdf' } })
   })
 
   it('vault_read_note throws NOT_FOUND for missing note', async () => {

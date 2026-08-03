@@ -4,7 +4,7 @@
 - **Status:** Design approved, ready for implementation
 - **Issue:** [#916](https://github.com/memrynote/memry/issues/916) — MCP: Canvas has zero coverage
 - **Scope decision:** read + item add/remove, closing #916. Arrow authoring deferred with rationale (§8).
-- **Related:** `docs/superpowers/specs/2026-07-17-spatial-canvas-design.md` (canvas architecture), #917 (project link layer), #921 (`settings.getFeaturesSettings` not allowlisted)
+- **Related:** `docs/superpowers/specs/2026-07-17-spatial-canvas-design.md` (canvas architecture), #917 (project link layer), #921 / #922 (`settings.getFeaturesSettings` — unavailable when this was designed, allowlisted by #922)
 
 ---
 
@@ -231,15 +231,19 @@ flag at call time: the tool list is built once at `startAgentMcpLifecycle`, so g
 mean enabling the flag mid-session does nothing until an app restart. A call with the flag off returns
 an actionable error: `Spatial Canvas is disabled — enable it in Settings → Features`.
 
-The flag is read via a new `getFeaturesSettings()` exported from `settings-handlers.ts`, mirroring the
-existing `getCalendarSettings()` / `getInboxReviewSettings()` precedent for non-IPC callers.
+The flag is read via a new `main/settings/features.ts`. It deliberately does NOT reuse
+`ipc/settings-handlers.ts`: that module reaches the settings query through the `@main/*` path alias,
+which exists in `tsconfig.node.json` but not in the vitest resolver, so importing it makes the
+importing module unloadable from a unit test.
 
 The check lives in **two** places so there is no gap between surfaces: the canvas handles (dedicated
 tools) and `desktop.read` / `desktop.write` for any operation starting with `canvas.` (allowlist
 escape hatch). Without the second, an agent could reach `canvas.create` with the feature off.
 
-(#921 notes `settings.getFeaturesSettings` is itself not allowlisted, so an agent cannot pre-check the
-flag; that is why the error message has to be actionable rather than a bare refusal.)
+(When this was designed `settings.getFeaturesSettings` was not allowlisted, so an agent could not
+pre-check the flag — hence an actionable error rather than a bare refusal. #922 has since allowlisted
+it, so an agent _can_ now check first; the actionable message stays, because an agent that does not
+bother to check still deserves to be told what to do.)
 
 ---
 
@@ -297,7 +301,7 @@ Revisit if and when a canvas relation model lands.
 - `main/canvas/live-registry.ts` (new) + test — `canvasId → windowId`
 - `main/canvas/store.ts` — `expectedUpdatedAt` check inside the update transaction
 - `main/ipc/canvas-handlers.ts` — use the shared vault key; return `tooLarge`; live-registry IPC
-- `main/ipc/settings-handlers.ts` — export `getFeaturesSettings()`
+- `main/settings/features.ts` (new) — alias-free `getFeaturesSettings()` for non-IPC callers
 - `main/agent/mcp/tools/schemas.ts` — four tool schemas + name lists
 - `main/agent/mcp/tools/read-tools.ts`, `write-tools.ts` — registrations
 - `main/agent/mcp/tools/handles.ts`, `handles-adapter.ts` — `canvas` handle section, flag check on `canvas.*`

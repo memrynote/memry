@@ -134,6 +134,21 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     }
   })
 
+  const agentAccessMutation = useMutation({
+    mutationFn: async (agentReadEventsConsent: boolean) => {
+      const result = await window.api.settings.setCalendarGoogleSettings({
+        agentReadEventsConsent
+      })
+      if (!result.success) {
+        throw new Error(result.error ?? t('integrations.googleCalendar.agentAccess.error'))
+      }
+      return result
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: GOOGLE_SETTINGS_QUERY_KEY })
+    }
+  })
+
   // Re-open onboarding for users who connected before M2 shipped OR who
   // closed the dialog last time without picking a default. Single auto-open
   // per mount via the ref above; settings.onboardingCompleted flips to true
@@ -160,6 +175,8 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
   )
   const status = statusData
   const pushEventsToGoogle = googleSettingsData?.pushEventsToGoogle ?? true
+  // Only an explicit grant counts. Unanswered (null) and revoked both read as off.
+  const agentReadEventsConsent = googleSettingsData?.agentReadEventsConsent === true
   const reconnectRequired = Boolean(
     status?.accounts?.some((account) => account.status === 'reconnect_required')
   )
@@ -336,6 +353,23 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
               disabled={pushSettingMutation.isPending || googleSettingsIsLoading}
               onCheckedChange={(checked) => pushSettingMutation.mutate(checked)}
               aria-label={t('integrations.googleCalendar.pushToGoogle.label')}
+            />
+          </div>
+
+          <div className="mt-1 flex items-start justify-between gap-3 border-t border-border/60 pt-3">
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-[13px]/4 font-medium text-foreground">
+                {t('integrations.googleCalendar.agentAccess.label')}
+              </span>
+              <p className="text-xs/4 text-muted-foreground">
+                {t('integrations.googleCalendar.agentAccess.description')}
+              </p>
+            </div>
+            <Switch
+              checked={agentReadEventsConsent}
+              disabled={agentAccessMutation.isPending || googleSettingsIsLoading}
+              onCheckedChange={(checked) => agentAccessMutation.mutate(checked)}
+              aria-label={t('integrations.googleCalendar.agentAccess.label')}
             />
           </div>
         </div>

@@ -80,6 +80,15 @@
     "context-menu-delete-label": "Delete event",
     "context-menu-add-to-project": "Add to project"
   },
+  "agent-access-dialog": {
+    "aria": "Choose whether AI can read your Google Calendar events",
+    "title": "Let AI read your Google Calendar events?",
+    "body": "You'll keep seeing your Google events in memrynote either way. This only decides whether the AI agent can read them when you ask it about your schedule.",
+    "footnote": "You can change this any time in Settings → Integrations → Google Calendar.",
+    "allow": "Allow",
+    "deny": "Don't allow",
+    "save-error": "Failed to save your choice"
+  },
   "promote-dialog": {
     "aria": "Edit external calendar event",
     "title": "Edit this event in memrynote?",
