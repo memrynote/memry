@@ -391,3 +391,69 @@ describe('relation property type registration', () => {
     expect(PROPERTY_TYPE_CONFIG.relation.label).toBe('Relation')
   })
 })
+
+// ============================================================================
+// T8: Relation property type in add-property popup
+// ============================================================================
+
+describe('Task 8: Relation property in add-property popup', () => {
+  const defaultProps = {
+    properties: [],
+    isExpanded: true,
+    onToggleExpand: vi.fn(),
+    onPropertyChange: vi.fn(),
+    onAddProperty: vi.fn(),
+    onDeleteProperty: vi.fn()
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should offer Relation as a property type option', async () => {
+    const user = userEvent.setup()
+    renderWithI18n(<InfoSection {...defaultProps} />)
+
+    const addButton = screen.getByRole('button', { name: /add.*property/i })
+    await user.click(addButton)
+
+    // Check that Relation appears in the popup options
+    expect(screen.getByRole('option', { name: /relation/i })).toBeInTheDocument()
+  })
+
+  it('should call onAddProperty with type: relation when Relation is selected', async () => {
+    const user = userEvent.setup()
+    renderWithI18n(<InfoSection {...defaultProps} />)
+
+    const addButton = screen.getByRole('button', { name: /add.*property/i })
+    await user.click(addButton)
+
+    const relationOption = screen.getByRole('option', { name: /relation/i })
+    await user.click(relationOption)
+
+    expect(defaultProps.onAddProperty).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'relation',
+        name: expect.any(String)
+      })
+    )
+  })
+
+  it('should use Relation as the default name when no custom name provided', async () => {
+    const user = userEvent.setup()
+    renderWithI18n(<InfoSection {...defaultProps} />)
+
+    const addButton = screen.getByRole('button', { name: /add.*property/i })
+    await user.click(addButton)
+
+    const relationOption = screen.getByRole('option', { name: /relation/i })
+    await user.click(relationOption)
+
+    expect(defaultProps.onAddProperty).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'relation',
+        name: 'Relation'
+      })
+    )
+  })
+})
