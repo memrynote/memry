@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
+import { toast } from 'sonner'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
 import { CalendarPage } from '@/pages/calendar'
 import type { CalendarSourceRecord } from '@/services/calendar-service'
@@ -141,5 +142,7 @@ describe('CalendarPage · create with a project selected', () => {
     await waitFor(() => expect(mockLinkProjectItem).toHaveBeenCalled())
     // The popover closes on a successful create even though the link failed.
     await waitFor(() => expect(screen.queryByTestId('event-edit-popover')).not.toBeInTheDocument())
+    // The failure must not be swallowed silently — it has to surface to the user.
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('link failed'))
   })
 })
