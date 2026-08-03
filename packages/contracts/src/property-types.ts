@@ -8,10 +8,19 @@ export const PropertyTypes = {
   URL: 'url',
   STATUS: 'status',
   SELECT: 'select',
-  MULTISELECT: 'multiselect'
+  MULTISELECT: 'multiselect',
+  PROJECT: 'project'
 } as const
 
 export type PropertyType = (typeof PropertyTypes)[keyof typeof PropertyTypes]
+
+/**
+ * The one frontmatter key that carries project membership. Reserved: its type is
+ * always `project`, whatever the definition file or type inference would say.
+ * Inference would otherwise read `project: [Alpha]` as a plain array and store it
+ * as text, so a note written in Obsidian would render the wrong editor.
+ */
+export const PROJECT_PROPERTY_KEY = 'project'
 
 export interface SelectOption {
   value: string
@@ -95,11 +104,16 @@ const DatePropertySchema = z.object({
   showOnCalendar: z.boolean().optional()
 })
 
+const ProjectPropertySchema = z.object({
+  type: z.literal('project')
+})
+
 export const PropertyDefinitionSchema = z.discriminatedUnion('type', [
   StatusPropertySchema,
   SelectPropertySchema,
   MultiselectPropertySchema,
-  DatePropertySchema
+  DatePropertySchema,
+  ProjectPropertySchema
 ])
 
 export const PropertyDefinitionsFileSchema = z.object({

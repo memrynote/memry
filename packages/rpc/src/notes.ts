@@ -90,7 +90,9 @@ type PropertyType =
   | 'url'
   | 'rating'
 
-type EditablePropertyType = CanonicalPropertyType
+// 'project' is reserved and system-managed (see PROJECT_PROPERTY_KEY); it is never
+// created or edited through the generic property-definition CRUD IPC channels.
+type EditablePropertyType = Exclude<CanonicalPropertyType, 'project'>
 type EnsurablePropertyType = Extract<CanonicalPropertyType, 'select' | 'multiselect' | 'status'>
 
 export interface PropertyDefinition {

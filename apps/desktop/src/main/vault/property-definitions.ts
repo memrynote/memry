@@ -216,6 +216,8 @@ export class PropertyDefinitionsService {
         this.cache.set(name, { name, type: 'status', categories: def.categories })
       } else if (def.type === 'date') {
         this.cache.set(name, { name, type: 'date', showOnCalendar: def.showOnCalendar })
+      } else if (def.type === 'project') {
+        this.cache.set(name, { name, type: 'project' })
       } else {
         this.cache.set(name, { name, type: def.type, options: def.options })
       }
@@ -230,6 +232,8 @@ export class PropertyDefinitionsService {
         properties[name] = { type: 'status', categories: def.categories }
       } else if (def.type === 'date') {
         properties[name] = { type: 'date', showOnCalendar: def.showOnCalendar }
+      } else if (def.type === 'project') {
+        properties[name] = { type: 'project' }
       } else {
         properties[name] = { type: def.type, options: def.options }
       }
