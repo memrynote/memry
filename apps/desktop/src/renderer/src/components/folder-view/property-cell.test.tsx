@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
 import {
   EditablePropertyCell,
   FolderCell,
@@ -11,6 +12,25 @@ import {
   UrlCell,
   WordCountCell
 } from './property-cell'
+
+const mocks = vi.hoisted(() => ({
+  resolveRefs: vi.fn()
+}))
+
+vi.mock('@/services/properties-service', () => ({
+  propertiesService: {
+    resolveRefs: mocks.resolveRefs
+  }
+}))
+
+// Real i18n: tests/setup-dom.ts initializes the global i18next singleton with
+// English resources, so useT('notes') resolves real strings (e.g. "Deleted")
+// without a mock here. A blanket useT mock would also swallow TagChip's own
+// interpolated "Remove tag: {tag}" aria-label used by the pre-existing test
+// below.
+function mockResolveRefs(refs: ResolvedRelationRef[]): void {
+  mocks.resolveRefs.mockResolvedValue(refs)
+}
 
 vi.mock('@/components/note/info-section/editors', () => ({
   TextEditor: ({ value, onChange, onBlur }: any) => (
@@ -169,5 +189,124 @@ describe('folder-view property cells', () => {
     )
 
     expect(screen.getAllByText('—')).toHaveLength(3)
+  })
+})
+
+describe('relation property cells', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renders relation values as compact chips', async () => {
+    mockResolveRefs([
+      {
+        uri: 'memry://note/nte_1',
+        targetType: 'note',
+        targetId: 'nte_1',
+        title: 'Richard Doe',
+        exists: true
+      }
+    ])
+    render(<PropertyCell type="relation" value={['memry://note/nte_1']} />)
+    expect(await screen.findByText('Richard Doe')).toBeInTheDocument()
+  })
+
+  it('does not offer editing affordances', async () => {
+    mockResolveRefs([
+      {
+        uri: 'memry://note/nte_1',
+        targetType: 'note',
+        targetId: 'nte_1',
+        title: 'Richard Doe',
+        exists: true
+      }
+    ])
+    render(<PropertyCell type="relation" value={['memry://note/nte_1']} />)
+    expect(await screen.findByText('Richard Doe')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Add relation')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('does not offer editing affordances even when the cell is used editably', async () => {
+    mockResolveRefs([
+      {
+        uri: 'memry://note/nte_1',
+        targetType: 'note',
+        targetId: 'nte_1',
+        title: 'Richard Doe',
+        exists: true
+      }
+    ])
+    const onSave = vi.fn()
+    render(<EditablePropertyCell type="relation" value={['memry://note/nte_1']} onSave={onSave} />)
+    expect(await screen.findByText('Richard Doe')).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+
+    // There is nothing clickable to enter edit mode with, but assert the
+    // no-write guarantee directly: clicking the chip text must never call
+    // onSave.
+    fireEvent.click(screen.getByText('Richard Doe'))
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
+  it('renders dangling refs in a distinct muted state', async () => {
+    mockResolveRefs([
+      {
+        uri: 'memry://note/nte_gone',
+        targetType: 'note',
+        targetId: 'nte_gone',
+        title: '',
+        exists: false
+      }
+    ])
+    render(<PropertyCell type="relation" value={['memry://note/nte_gone']} />)
+    const chip = await screen.findByText('Deleted')
+    expect(chip.parentElement).toHaveClass('bg-muted', 'text-muted-foreground')
+  })
+
+  it('renders an em dash for an empty relation value without resolving', () => {
+    render(<PropertyCell type="relation" value={[]} />)
+    expect(screen.getByText('—')).toBeInTheDocument()
+    expect(mocks.resolveRefs).not.toHaveBeenCalled()
+  })
+
+  it('batches concurrent relation cells on the same page into one resolveRefs call', async () => {
+    mockResolveRefs([
+      {
+        uri: 'memry://note/nte_1',
+        targetType: 'note',
+        targetId: 'nte_1',
+        title: 'Richard Doe',
+        exists: true
+      },
+      {
+        uri: 'memry://task/tsk_2',
+        targetType: 'task',
+        targetId: 'tsk_2',
+        title: 'Call mom',
+        exists: true
+      }
+    ])
+
+    // Simulate a page of rows: many relation cells mounting in one commit,
+    // the way a virtualized folder table renders its visible rows.
+    render(
+      <div>
+        {Array.from({ length: 50 }, (_, i) => (
+          <PropertyCell
+            key={i}
+            type="relation"
+            value={[i % 2 === 0 ? 'memry://note/nte_1' : 'memry://task/tsk_2']}
+          />
+        ))}
+      </div>
+    )
+
+    expect((await screen.findAllByText('Richard Doe')).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText('Call mom')).length).toBeGreaterThan(0)
+    expect(mocks.resolveRefs).toHaveBeenCalledTimes(1)
+    expect(mocks.resolveRefs).toHaveBeenCalledWith(
+      expect.arrayContaining(['memry://note/nte_1', 'memry://task/tsk_2'])
+    )
   })
 })

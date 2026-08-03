@@ -57,6 +57,7 @@ import {
   Folder,
   Hash,
   Link,
+  Link2,
   List,
   Sigma,
   Star,
@@ -227,7 +228,8 @@ const PROPERTY_TYPE_ICONS: Record<PropertyType, AppIcon> = {
   select: List,
   multiselect: Tags,
   url: Link,
-  rating: Star
+  rating: Star,
+  relation: Link2
 }
 
 const BUILT_IN_COLUMN_ICONS: Record<string, AppIcon> = {

@@ -24,6 +24,7 @@ export {
   MultiSelectCell,
   UrlCell,
   RatingCell,
+  RelationCell,
   TitleCell,
   FolderCell,
   TagsCell,
