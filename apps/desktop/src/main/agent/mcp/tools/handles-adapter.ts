@@ -1,8 +1,8 @@
 import path from 'node:path'
 
 import { searchAll } from '../../../database/queries/search'
-import { listJournalEntriesInRange } from '../../../database/queries/notes'
-import { getInboxProject } from '../../../database/queries/projects'
+import { getNoteCacheById, listJournalEntriesInRange } from '../../../database/queries/notes'
+import { getInboxProject, getProjectLinkCounts } from '../../../database/queries/projects'
 import { createDesktopInboxDomain } from '../../../inbox/domain'
 import { createDesktopInboxCrudHandlers } from '../../../inbox/domain'
 import { deleteJournalEntryFile, readJournalEntry, writeJournalEntry } from '../../../vault/journal'
@@ -24,7 +24,7 @@ import {
   renameFolder
 } from '../../../vault/notes'
 import { getConfig } from '../../../vault'
-import { getAllTagsWithCounts } from '../../../tags/store'
+import { getAllTagsWithCounts, listTagCategories } from '../../../tags/store'
 import { generateId } from '../../../lib/id'
 import {
   syncFolderConfigDelete,
@@ -32,7 +32,10 @@ import {
 } from '../../../notes/folder-config-effects'
 import type { RepeatConfig } from '@memry/domain-tasks'
 import type { DataDb, IndexDb } from '../../../database'
+import { AgentToolError } from '../errors'
 import { snapshotCurrentNoteFromWindow } from './current-note'
+import { assertSpatialCanvasEnabled, isCanvasOperation } from './canvas-flag'
+import { createCanvasHandles } from './canvas-handles'
 import { invokeDesktopApiFromWindow } from './desktop-api'
 import type {
   FolderEntry,
@@ -175,7 +178,7 @@ function inboxVisualType(item: {
 export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): VaultServiceHandles {
   return {
     notes: {
-      async search({ query, limit = 10, folderId }) {
+      async search({ query, limit = 10, folderId, fileTypes }) {
         const result = searchAll(indexDb, dataDb, {
           text: query,
           types: ['note'],
@@ -184,7 +187,10 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           projectId: null,
           folderPath: folderId ? cacheFolderFromToolPath(folderId) : null,
           limit,
-          offset: 0
+          offset: 0,
+          // Filtering inside the FTS query keeps `limit` counting eligible rows
+          // only, so filed binaries can't starve markdown notes out (#874).
+          noteFileTypes: fileTypes
         })
         const notes = result.groups.find((group) => group.type === 'note')?.results ?? []
         return notes.map<NoteSummary>((note) => {
@@ -194,11 +200,32 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
             title: note.title,
             snippet: note.snippet ?? '',
             folder_path: metadata?.path ? folderPathFromNotePath(metadata.path) : null,
+            file_type: metadata?.fileType ?? 'markdown',
             ...(metadata?.emoji ? { icon: metadata.emoji } : {})
           }
         })
       },
       async read(id) {
+        const cached = getNoteCacheById(indexDb, id)
+        if (!cached) return null
+
+        const fileType = cached.fileType ?? 'markdown'
+        if (fileType !== 'markdown') {
+          // Filed binary (#800): reading it off disk would only hand `parseNote`
+          // bytes to mangle. Return identity + file type so the tool layer can
+          // refuse it — the empty body never reaches an agent (#919).
+          return {
+            id: cached.id,
+            title: cached.title,
+            content_markdown: '',
+            tags: [],
+            folder_path: folderPathFromNotePath(cached.path),
+            frontmatter: {},
+            file_type: fileType,
+            ...(cached.emoji ? { icon: cached.emoji } : {})
+          }
+        }
+
         const note = await getNoteById(id)
         if (!note) return null
         const icon =
@@ -214,6 +241,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           tags: note.tags,
           folder_path: folderPathFromNotePath(note.path),
           frontmatter: note.frontmatter,
+          file_type: 'markdown',
           ...(icon ? { icon } : {})
         }
       },
@@ -235,6 +263,19 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         return { id }
       },
       async update(input) {
+        // A filed pdf/image/audio/video indexes as a "note" row (#800), so an
+        // agent can reach one from search. Writing markdown over it would
+        // destroy the user's file — refuse before touching disk (#919).
+        const fileType = getNoteCacheById(indexDb, input.id)?.fileType ?? 'markdown'
+        if (fileType !== 'markdown') {
+          throw new AgentToolError(
+            'VALIDATION',
+            `Note ${input.id} is a filed ${fileType} file, not a markdown note. ` +
+              'Writing markdown to it would destroy the file.',
+            { id: input.id, file_type: fileType }
+          )
+        }
+
         const note = await getNoteById(input.id)
         if (!note) {
           throw new Error(`Note not found: ${input.id}`)
@@ -503,11 +544,17 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
     projects: {
       async list() {
         const result = createTaskDomain(dataDb).listProjects()
+        // One aggregate for the whole list: a per-project contents call would
+        // be an N+1 on a tool the model calls before most project writes.
+        const linkCounts = getProjectLinkCounts(dataDb)
         return result.projects.map<ProjectSummary>((project) => ({
           id: project.id,
           name: project.name,
           status: project.archivedAt ? 'archived' : 'active',
-          task_count: project.taskCount
+          task_count: project.taskCount,
+          icon: project.icon ?? null,
+          home_note_id: project.homeNoteId ?? null,
+          linked_counts: linkCounts.get(project.id) ?? { notes: 0, files: 0, events: 0 }
         }))
       },
       async get(id) {
@@ -694,17 +741,28 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
     },
     tags: {
       async listAll() {
+        const categoryNames = new Map(listTagCategories(dataDb).map((c) => [c.id, c.name]))
         return getAllTagsWithCounts(indexDb, dataDb).map((tag) => ({
           name: tag.name,
-          count: tag.count
+          count: tag.count,
+          color: tag.color ?? null,
+          icon: tag.icon ?? null,
+          category_id: tag.categoryId ?? null,
+          category_name: tag.categoryId ? (categoryNames.get(tag.categoryId) ?? null) : null,
+          sort_order: tag.sortOrder ?? 0
         }))
       }
     },
+    canvas: createCanvasHandles(dataDb),
     desktop: {
       async read(input, windowId) {
+        // The escape hatch must honour the same flag as the dedicated canvas
+        // tools, or an agent could reach canvas.* with the feature off.
+        if (isCanvasOperation(input.operation)) assertSpatialCanvasEnabled()
         return invokeDesktopApiFromWindow(windowId, input)
       },
       async write(input, windowId) {
+        if (isCanvasOperation(input.operation)) assertSpatialCanvasEnabled()
         return invokeDesktopApiFromWindow(windowId, input)
       }
     },

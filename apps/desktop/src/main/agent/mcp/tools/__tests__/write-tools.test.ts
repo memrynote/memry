@@ -75,6 +75,24 @@ const handles: VaultServiceHandles = {
     removeTag: async ({ id }) => ({ id })
   },
   tags: { listAll: async () => [] },
+  canvas: {
+    list: async () => [],
+    read: async () => null,
+    addItems: vi.fn(async ({ canvasId }) => ({
+      canvas_id: canvasId,
+      applied: [],
+      skipped: [],
+      updated_at: 0,
+      too_large: false
+    })),
+    removeItem: vi.fn(async ({ canvasId }) => ({
+      canvas_id: canvasId,
+      applied: [],
+      skipped: [],
+      updated_at: 0,
+      too_large: false
+    }))
+  },
   desktop: {
     read: async () => ({ ok: true }),
     write: async ({ operation, args }, windowId) => ({ operation, args, windowId })
@@ -148,6 +166,11 @@ describe('Write tools — P1 deny-by-default', () => {
       vault_add_tag: { id: 'x', kind: 'note', tag: 'a' },
       vault_remove_tag: { id: 'x', kind: 'note', tag: 'a' },
       vault_move_to_folder: { id: 'x', folder_path: '/Inbox' },
+      vault_add_canvas_item: {
+        canvas_id: 'c1',
+        items: [{ entity_type: 'note', entity_id: 'n1' }]
+      },
+      vault_remove_canvas_item: { canvas_id: 'c1', entity_type: 'note', entity_id: 'n1' },
       vault_desktop_write: { operation: 'templates.create', args: [{ name: 'Template' }] }
     }
     for (const t of tools) {
@@ -415,6 +438,19 @@ describe('Write tools — P1 deny-by-default', () => {
     await expect(
       run('vault_move_to_folder', { id: 'note-1', folder_path: '/Projects' })
     ).resolves.toEqual({ id: 'note-1' })
+    await expect(
+      run('vault_add_canvas_item', {
+        canvas_id: 'canvas-1',
+        items: [{ entity_type: 'note', entity_id: 'note-1' }]
+      })
+    ).resolves.toMatchObject({ canvas_id: 'canvas-1' })
+    await expect(
+      run('vault_remove_canvas_item', {
+        canvas_id: 'canvas-1',
+        entity_type: 'note',
+        entity_id: 'note-1'
+      })
+    ).resolves.toMatchObject({ canvas_id: 'canvas-1' })
     await expect(
       run('vault_desktop_write', { operation: 'templates.create', args: [{ name: 'Template' }] })
     ).resolves.toEqual({

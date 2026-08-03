@@ -5,6 +5,7 @@ import type { ToolRegistration } from '../server'
 import type { VaultServiceHandles } from './handles'
 import { TOOL_SCHEMAS, READ_TOOL_NAMES } from './schemas'
 import type { AgentMcpDesktopReadOperation } from '@memry/contracts/agent-mcp-channels'
+import type { NoteFileType } from '@memry/contracts/search-api'
 
 function parse<T>(schema: ZodTypeAny, input: unknown): T {
   const r = schema.safeParse(input)
@@ -21,11 +22,18 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
       description: TOOL_SCHEMAS.vault_search_notes.description,
       inputSchema: TOOL_SCHEMAS.vault_search_notes.input,
       handler: async (input) => {
-        const a = parse<{ query: string; limit?: number; folder_id?: string }>(
-          TOOL_SCHEMAS.vault_search_notes.input,
-          input
-        )
-        return handles.notes.search({ query: a.query, limit: a.limit, folderId: a.folder_id })
+        const a = parse<{
+          query: string
+          limit?: number
+          folder_id?: string
+          file_types?: NoteFileType[]
+        }>(TOOL_SCHEMAS.vault_search_notes.input, input)
+        return handles.notes.search({
+          query: a.query,
+          limit: a.limit,
+          folderId: a.folder_id,
+          fileTypes: a.file_types
+        })
       }
     },
     vault_read_note: {
@@ -36,6 +44,17 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
         const a = parse<{ id: string }>(TOOL_SCHEMAS.vault_read_note.input, input)
         const note = await handles.notes.read(a.id)
         if (!note) throw new AgentToolError('NOT_FOUND', `Note ${a.id} not found`, { id: a.id })
+        // A filed pdf/image/audio/video indexes as a "note" row (#800). Handing
+        // its body to an agent would be binary garbage dressed as markdown, so
+        // refuse loudly instead of letting it read or edit one. See #919.
+        if (note.file_type !== 'markdown') {
+          throw new AgentToolError(
+            'VALIDATION',
+            `Note ${a.id} is a filed ${note.file_type} file, not a markdown note. ` +
+              'vault_read_note returns markdown only.',
+            { id: a.id, file_type: note.file_type }
+          )
+        }
         return note
       }
     },
@@ -152,6 +171,25 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
       description: TOOL_SCHEMAS.vault_get_tags.description,
       inputSchema: TOOL_SCHEMAS.vault_get_tags.input,
       handler: async () => handles.tags.listAll()
+    },
+    vault_list_canvases: {
+      name: 'vault_list_canvases',
+      description: TOOL_SCHEMAS.vault_list_canvases.description,
+      inputSchema: TOOL_SCHEMAS.vault_list_canvases.input,
+      handler: async () => handles.canvas.list()
+    },
+    vault_read_canvas: {
+      name: 'vault_read_canvas',
+      description: TOOL_SCHEMAS.vault_read_canvas.description,
+      inputSchema: TOOL_SCHEMAS.vault_read_canvas.input,
+      handler: async (input) => {
+        const a = parse<{ id: string }>(TOOL_SCHEMAS.vault_read_canvas.input, input)
+        const canvas = await handles.canvas.read(a.id)
+        if (!canvas) {
+          throw new AgentToolError('NOT_FOUND', `Canvas ${a.id} not found`, { id: a.id })
+        }
+        return canvas
+      }
     },
     vault_desktop_read: {
       name: 'vault_desktop_read',

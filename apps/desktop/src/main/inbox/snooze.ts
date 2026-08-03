@@ -9,9 +9,9 @@
  * @module inbox/snooze
  */
 
-import { BrowserWindow } from 'electron'
 import { eq, and, isNotNull, lte, isNull } from 'drizzle-orm'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getDatabase, requireDatabase } from '../database'
 import { getStatus } from '../vault'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
@@ -75,9 +75,7 @@ let isSchedulerRunning = false
  * Emit snooze event to all windows
  */
 function emitSnoozeEvent(channel: string, data: unknown): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, data)
-  })
+  broadcastToAllWindows(channel, data)
 }
 
 /**

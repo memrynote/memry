@@ -100,7 +100,8 @@
     "serverUnreachable": "Unable to connect to sync server. Please check your internet connection.",
     "keyPersistenceFailed": "Failed to save encryption key securely. Device registration has been rolled back. Please try again.",
     "historyFetchFailed": "Failed to fetch sync history",
-    "updateSyncedSettingFailed": "Failed to update synced setting"
+    "updateSyncedSettingFailed": "Failed to update synced setting",
+    "requestTimedOut": "Sync request timed out. Please check your internet connection."
   },
   "googleCalendar": {
     "connectFailed": "Couldn't connect to Google Calendar. Please try again in a moment.",

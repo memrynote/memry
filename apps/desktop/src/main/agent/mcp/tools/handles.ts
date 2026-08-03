@@ -5,12 +5,20 @@ import type {
   AgentMcpDesktopReadOperation,
   AgentMcpDesktopWriteOperation
 } from '@memry/contracts/agent-mcp-channels'
+import type { NoteFileType } from '@memry/contracts/search-api'
 
+/**
+ * `file_type` is always populated: index rows written before filed binaries
+ * existed carry no file type, and those are always markdown (#800, #919). A
+ * binary value means the row is a filed file, not a note — `vault_read_note`
+ * rejects it rather than handing an agent bytes to read as markdown.
+ */
 export interface NoteSummary {
   id: string
   title: string
   snippet: string
   folder_path: string | null
+  file_type: NoteFileType
   icon?: string | null
 }
 
@@ -21,6 +29,7 @@ export interface NoteFull {
   tags: string[]
   folder_path: string | null
   frontmatter: Record<string, unknown>
+  file_type: NoteFileType
   icon?: string | null
 }
 
@@ -46,6 +55,15 @@ export interface ProjectSummary {
   name: string
   status: string | null
   task_count: number
+  icon: string | null
+  /** The project's overview note, if one is set. */
+  home_note_id: string | null
+  /**
+   * Notes, files and events linked to the project. Nonzero counts are the
+   * signal to follow up with `tasks.listProjectContents` — task_count alone
+   * says nothing about the hub's link layer.
+   */
+  linked_counts: { notes: number; files: number; events: number }
 }
 
 export interface JournalEntry {
@@ -73,6 +91,11 @@ export interface InboxSummary {
 export interface TagCount {
   name: string
   count: number
+  color: string | null
+  icon: string | null
+  category_id: string | null
+  category_name: string | null
+  sort_order: number
 }
 
 export interface CurrentNoteSnapshot {
@@ -82,9 +105,56 @@ export interface CurrentNoteSnapshot {
   tags: string[]
 }
 
+export type CanvasEntityKind = 'note' | 'task' | 'calendar_event'
+
+/**
+ * One entity sitting on a canvas. `missing` marks a card whose entity no longer
+ * exists — reported rather than dropped, so an agent can surface a stale card
+ * instead of silently under-reporting what is on the canvas.
+ */
+export interface CanvasItemSummary {
+  entity_type: CanvasEntityKind
+  entity_id: string
+  title: string | null
+  missing: boolean
+}
+
+export interface CanvasListEntry {
+  id: string
+  title: string | null
+  updated_at: number
+  item_count: number
+}
+
+/** A canvas as an agent sees it: what is ON it, never the geometry that draws it. */
+export interface CanvasDetail {
+  id: string
+  title: string | null
+  created_at: number
+  updated_at: number
+  items: CanvasItemSummary[]
+  texts: string[]
+  element_count: number
+  texts_truncated: boolean
+}
+
+export interface CanvasWriteOutcome {
+  canvas_id: string
+  applied: { entity_type: string; entity_id: string }[]
+  skipped: { entity_type: string; entity_id: string; reason: string }[]
+  updated_at: number
+  /** Saved locally but too large to sync (canvas spec §5.6). */
+  too_large: boolean
+}
+
 export interface VaultServiceHandles {
   notes: {
-    search(input: { query: string; limit?: number; folderId?: string }): Promise<NoteSummary[]>
+    search(input: {
+      query: string
+      limit?: number
+      folderId?: string
+      fileTypes?: NoteFileType[]
+    }): Promise<NoteSummary[]>
     read(id: string): Promise<NoteFull | null>
     create(input: {
       title: string
@@ -261,6 +331,18 @@ export interface VaultServiceHandles {
   }
   tags: {
     listAll(): Promise<TagCount[]>
+  }
+  canvas: {
+    list(): Promise<CanvasListEntry[]>
+    read(id: string): Promise<CanvasDetail | null>
+    addItems(
+      input: { canvasId: string; items: { entityType: CanvasEntityKind; entityId: string }[] },
+      windowId: string | null
+    ): Promise<CanvasWriteOutcome>
+    removeItem(
+      input: { canvasId: string; item: { entityType: CanvasEntityKind; entityId: string } },
+      windowId: string | null
+    ): Promise<CanvasWriteOutcome>
   }
   desktop: {
     read(

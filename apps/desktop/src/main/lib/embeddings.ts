@@ -8,7 +8,7 @@
  * @module main/lib/embeddings
  */
 
-import { app, BrowserWindow, utilityProcess } from 'electron'
+import { app, utilityProcess } from 'electron'
 import path from 'path'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import type {
@@ -19,6 +19,7 @@ import type {
 } from './embedding-model-protocol'
 import { EMBEDDING_DIMENSION } from './embeddings-constants'
 import { createLogger } from './logger'
+import { broadcastToAllWindows } from './window-broadcast'
 import { trackMainLog } from '../telemetry/diagnostics'
 import { getLogShip } from '../telemetry/log-ship'
 import { shouldEmitThrottled } from '../telemetry/throttle'
@@ -96,12 +97,10 @@ export function isInformationalWorkerStderr(output: string): boolean {
  * Emit model loading progress to all renderer windows
  */
 function emitProgress(phase: EmbeddingProgressPhase, progress: number, status: string): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(SettingsChannels.events.EMBEDDING_PROGRESS, {
-      phase,
-      progress,
-      status
-    })
+  broadcastToAllWindows(SettingsChannels.events.EMBEDDING_PROGRESS, {
+    phase,
+    progress,
+    status
   })
 }
 

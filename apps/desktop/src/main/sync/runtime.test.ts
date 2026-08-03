@@ -161,7 +161,12 @@ const runtimeMocks = vi.hoisted(() => {
 vi.mock('electron', () => ({
   app: { getVersion: vi.fn(() => '1.2.3') },
   BrowserWindow: {
-    getAllWindows: vi.fn(() => [{ webContents: { send: runtimeMocks.browserSend } }])
+    getAllWindows: vi.fn(() => [
+      {
+        isDestroyed: () => false,
+        webContents: { isDestroyed: () => false, send: runtimeMocks.browserSend }
+      }
+    ])
   }
 }))
 

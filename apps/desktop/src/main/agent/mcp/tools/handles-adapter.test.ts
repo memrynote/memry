@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   searchAll: vi.fn(),
   listJournalEntriesInRange: vi.fn(),
+  getNoteCacheById: vi.fn(),
   getInboxProject: vi.fn(),
+  getProjectLinkCounts: vi.fn(),
   createDesktopInboxDomain: vi.fn(),
   createDesktopInboxCrudHandlers: vi.fn(),
   deleteJournalEntryFile: vi.fn(),
@@ -26,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   syncFolderConfigRename: vi.fn(),
   getConfig: vi.fn(),
   getAllTagsWithCounts: vi.fn(),
+  listTagCategories: vi.fn(),
   generateId: vi.fn(),
   snapshotCurrentNoteFromWindow: vi.fn(),
   invokeDesktopApiFromWindow: vi.fn()
@@ -36,11 +39,13 @@ vi.mock('../../../database/queries/search', () => ({
 }))
 
 vi.mock('../../../database/queries/notes', () => ({
-  listJournalEntriesInRange: mocks.listJournalEntriesInRange
+  listJournalEntriesInRange: mocks.listJournalEntriesInRange,
+  getNoteCacheById: mocks.getNoteCacheById
 }))
 
 vi.mock('../../../database/queries/projects', () => ({
-  getInboxProject: mocks.getInboxProject
+  getInboxProject: mocks.getInboxProject,
+  getProjectLinkCounts: mocks.getProjectLinkCounts
 }))
 
 vi.mock('../../../inbox/domain', () => ({
@@ -89,7 +94,8 @@ vi.mock('../../../vault', () => ({
 }))
 
 vi.mock('../../../tags/store', () => ({
-  getAllTagsWithCounts: mocks.getAllTagsWithCounts
+  getAllTagsWithCounts: mocks.getAllTagsWithCounts,
+  listTagCategories: mocks.listTagCategories
 }))
 
 vi.mock('../../../lib/id', () => ({
@@ -212,6 +218,12 @@ describe('createVaultServiceHandles', () => {
               metadata: { type: 'note', path: 'notes/work/alpha.md', emoji: '🎬' }
             },
             {
+              id: 'file-1',
+              title: 'Scan',
+              snippet: 'scan snippet',
+              metadata: { type: 'note', path: 'notes/work/scan.pdf', fileType: 'pdf' }
+            },
+            {
               id: 'note-2',
               title: 'Loose',
               snippet: 'loose snippet',
@@ -225,15 +237,41 @@ describe('createVaultServiceHandles', () => {
     await expect(
       handles.notes.search({ query: 'alpha', folderId: '/work', limit: 5 })
     ).resolves.toEqual([
-      { id: 'note-1', title: 'Alpha', snippet: '', folder_path: '/work', icon: '🎬' },
-      { id: 'note-2', title: 'Loose', snippet: 'loose snippet', folder_path: null }
+      {
+        id: 'note-1',
+        title: 'Alpha',
+        snippet: '',
+        folder_path: '/work',
+        file_type: 'markdown',
+        icon: '🎬'
+      },
+      {
+        id: 'file-1',
+        title: 'Scan',
+        snippet: 'scan snippet',
+        folder_path: '/work',
+        file_type: 'pdf'
+      },
+      {
+        id: 'note-2',
+        title: 'Loose',
+        snippet: 'loose snippet',
+        folder_path: null,
+        file_type: 'markdown'
+      }
     ])
     expect(mocks.searchAll).toHaveBeenCalledWith(
       deps.indexDb,
       deps.dataDb,
-      expect.objectContaining({ folderPath: 'notes/work', limit: 5 })
+      expect.objectContaining({ folderPath: 'notes/work', limit: 5, noteFileTypes: undefined })
     )
 
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'note-1',
+      title: 'Alpha',
+      path: 'notes/work/alpha.md',
+      fileType: 'markdown'
+    })
     mocks.getNoteById.mockResolvedValue({
       id: 'note-1',
       title: 'Alpha',
@@ -250,6 +288,7 @@ describe('createVaultServiceHandles', () => {
       tags: ['Team'],
       folder_path: '/work',
       frontmatter: { owner: 'Kaan' },
+      file_type: 'markdown',
       icon: '📚'
     })
 
@@ -339,6 +378,88 @@ describe('createVaultServiceHandles', () => {
 
     await handles.notes.moveToFolder({ id: 'note-1', folder_path: '/' })
     expect(mocks.moveNoteCommand).toHaveBeenLastCalledWith('note-1', '')
+  })
+
+  it('pushes the note file type filter into the FTS query', async () => {
+    const handles = createVaultServiceHandles(deps)
+
+    await handles.notes.search({ query: 'invoice', fileTypes: ['markdown'] })
+
+    expect(mocks.searchAll).toHaveBeenCalledWith(
+      deps.indexDb,
+      deps.dataDb,
+      expect.objectContaining({ noteFileTypes: ['markdown'] })
+    )
+  })
+
+  it('reads a filed binary as its file type without parsing the bytes as markdown', async () => {
+    const handles = createVaultServiceHandles(deps)
+
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'file-1',
+      title: 'Scan',
+      path: 'notes/work/scan.pdf',
+      fileType: 'pdf'
+    })
+
+    await expect(handles.notes.read('file-1')).resolves.toMatchObject({
+      id: 'file-1',
+      title: 'Scan',
+      folder_path: '/work',
+      file_type: 'pdf'
+    })
+    expect(mocks.getNoteById).not.toHaveBeenCalled()
+  })
+
+  it('treats a note cache row with no file type as markdown', async () => {
+    const handles = createVaultServiceHandles(deps)
+
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'legacy-1',
+      title: 'Legacy',
+      path: 'notes/legacy.md',
+      fileType: null
+    })
+    mocks.getNoteById.mockResolvedValue({
+      id: 'legacy-1',
+      title: 'Legacy',
+      content: 'Body',
+      tags: [],
+      path: 'notes/legacy.md',
+      frontmatter: {},
+      emoji: null
+    })
+
+    await expect(handles.notes.read('legacy-1')).resolves.toMatchObject({
+      id: 'legacy-1',
+      content_markdown: 'Body',
+      file_type: 'markdown'
+    })
+  })
+
+  it('refuses to overwrite a filed binary with markdown', async () => {
+    const handles = createVaultServiceHandles(deps)
+
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'file-1',
+      title: 'Scan',
+      path: 'notes/work/scan.pdf',
+      fileType: 'pdf'
+    })
+
+    await expect(
+      handles.notes.update({ id: 'file-1', mode: 'replace', content_markdown: 'Body' })
+    ).rejects.toMatchObject({ code: 'VALIDATION', details: { id: 'file-1', file_type: 'pdf' } })
+    expect(mocks.updateNoteCommand).not.toHaveBeenCalled()
+  })
+
+  it('returns null when the note cache has no row for the id', async () => {
+    const handles = createVaultServiceHandles(deps)
+
+    mocks.getNoteCacheById.mockReturnValue(undefined)
+
+    await expect(handles.notes.read('missing')).resolves.toBeNull()
+    expect(mocks.getNoteById).not.toHaveBeenCalled()
   })
 
   it('lists direct and recursive folder entries using tool paths', async () => {
@@ -552,13 +673,40 @@ describe('createVaultServiceHandles', () => {
 
     taskDomain.listProjects.mockReturnValue({
       projects: [
-        { id: 'project-1', name: 'Active', archivedAt: null, taskCount: 2 },
+        {
+          id: 'project-1',
+          name: 'Active',
+          archivedAt: null,
+          taskCount: 2,
+          icon: '🚀',
+          homeNoteId: 'note-home'
+        },
         { id: 'project-2', name: 'Archived', archivedAt: '2026-05-11', taskCount: 0 }
       ]
     })
+    mocks.getProjectLinkCounts.mockReturnValue(
+      new Map([['project-1', { notes: 3, files: 1, events: 2 }]])
+    )
     await expect(handles.projects.list()).resolves.toEqual([
-      { id: 'project-1', name: 'Active', status: 'active', task_count: 2 },
-      { id: 'project-2', name: 'Archived', status: 'archived', task_count: 0 }
+      {
+        id: 'project-1',
+        name: 'Active',
+        status: 'active',
+        task_count: 2,
+        icon: '🚀',
+        home_note_id: 'note-home',
+        linked_counts: { notes: 3, files: 1, events: 2 }
+      },
+      {
+        id: 'project-2',
+        name: 'Archived',
+        status: 'archived',
+        task_count: 0,
+        icon: null,
+        home_note_id: null,
+        // A project with no links is absent from the counts map.
+        linked_counts: { notes: 0, files: 0, events: 0 }
+      }
     ])
 
     taskDomain.getTask.mockReturnValueOnce({ id: 'task-1' })
@@ -773,7 +921,18 @@ describe('createVaultServiceHandles', () => {
     ).rejects.toThrow('snooze failed')
 
     mocks.getAllTagsWithCounts.mockReturnValue([{ name: 'focus', count: 3 }])
-    await expect(handles.tags.listAll()).resolves.toEqual([{ name: 'focus', count: 3 }])
+    mocks.listTagCategories.mockReturnValue([])
+    await expect(handles.tags.listAll()).resolves.toEqual([
+      {
+        name: 'focus',
+        count: 3,
+        color: null,
+        icon: null,
+        category_id: null,
+        category_name: null,
+        sort_order: 0
+      }
+    ])
 
     mocks.snapshotCurrentNoteFromWindow.mockResolvedValue({ id: 'note-1' })
     await expect(handles.windows.snapshotCurrentNote('window-1')).resolves.toEqual({ id: 'note-1' })
@@ -800,5 +959,56 @@ describe('createVaultServiceHandles', () => {
       operation: 'templates.create',
       args: [{ name: 'Template' }]
     })
+  })
+
+  it('tags.listAll keeps category, color, icon and sort order', async () => {
+    const handles = createVaultServiceHandles(deps)
+
+    mocks.getAllTagsWithCounts.mockReturnValue([
+      {
+        name: 'Fiction',
+        count: 4,
+        color: '#ff671a',
+        icon: '📚',
+        categoryId: 'cat-1',
+        sortOrder: 2
+      },
+      { name: 'loose', count: 1, color: '#888888', icon: null, categoryId: null, sortOrder: 0 },
+      { name: 'orphan', count: 2, categoryId: 'cat-missing', sortOrder: 1 }
+    ])
+    mocks.listTagCategories.mockReturnValue([
+      { id: 'cat-1', name: 'Reading', sortOrder: 0, tagCount: 1 }
+    ])
+
+    await expect(handles.tags.listAll()).resolves.toEqual([
+      {
+        name: 'Fiction',
+        count: 4,
+        color: '#ff671a',
+        icon: '📚',
+        category_id: 'cat-1',
+        category_name: 'Reading',
+        sort_order: 2
+      },
+      {
+        name: 'loose',
+        count: 1,
+        color: '#888888',
+        icon: null,
+        category_id: null,
+        category_name: null,
+        sort_order: 0
+      },
+      {
+        name: 'orphan',
+        count: 2,
+        color: null,
+        icon: null,
+        category_id: 'cat-missing',
+        category_name: null,
+        sort_order: 1
+      }
+    ])
+    expect(mocks.listTagCategories).toHaveBeenCalledWith(deps.dataDb)
   })
 })

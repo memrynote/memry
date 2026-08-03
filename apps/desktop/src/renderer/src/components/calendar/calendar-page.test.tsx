@@ -294,6 +294,106 @@ describe('CalendarPage', () => {
     mockUseActiveTab.mockReturnValue(null)
   })
 
+  describe('AI access consent prompt', () => {
+    const PROMPT_TITLE = /Let AI read your Google Calendar events\?/i
+
+    function mockConsent(agentReadEventsConsent: boolean | null): void {
+      vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
+        defaultTargetCalendarId: null,
+        onboardingCompleted: true,
+        promoteConfirmDismissed: false,
+        pushEventsToGoogle: true,
+        agentReadEventsConsent
+      })
+    }
+
+    it('#given a Google connection and no answer yet #then the prompt opens on first calendar visit', async () => {
+      mockConsent(null)
+
+      renderWithProviders(<CalendarPage />)
+
+      await waitFor(() =>
+        expect(screen.getByRole('heading', { name: PROMPT_TITLE })).toBeInTheDocument()
+      )
+    })
+
+    it('#given no Google calendars imported #then the prompt stays closed', async () => {
+      mockConsent(null)
+      mockListSources.mockResolvedValue({ sources: [] })
+
+      renderWithProviders(<CalendarPage />)
+
+      await waitFor(() => expect(mockListSources).toHaveBeenCalled())
+      expect(screen.queryByRole('heading', { name: PROMPT_TITLE })).not.toBeInTheDocument()
+    })
+
+    it('#given the user already answered #then the prompt stays closed', async () => {
+      mockConsent(false)
+
+      renderWithProviders(<CalendarPage />)
+
+      await waitFor(() => expect(window.api.settings.getCalendarGoogleSettings).toHaveBeenCalled())
+      expect(screen.queryByRole('heading', { name: PROMPT_TITLE })).not.toBeInTheDocument()
+    })
+
+    it('#when the user allows #then consent is stored as granted and the prompt closes', async () => {
+      const user = userEvent.setup()
+      mockConsent(null)
+
+      renderWithProviders(<CalendarPage />)
+
+      await waitFor(() =>
+        expect(screen.getByRole('heading', { name: PROMPT_TITLE })).toBeInTheDocument()
+      )
+      await user.click(screen.getByRole('button', { name: 'Allow' }))
+
+      expect(window.api.settings.setCalendarGoogleSettings).toHaveBeenCalledWith({
+        agentReadEventsConsent: true
+      })
+      await waitFor(() =>
+        expect(screen.queryByRole('heading', { name: PROMPT_TITLE })).not.toBeInTheDocument()
+      )
+    })
+
+    it('#given the save fails with no reason #then the prompt stays open with the translated fallback', async () => {
+      const user = userEvent.setup()
+      mockConsent(null)
+      vi.mocked(window.api.settings.setCalendarGoogleSettings).mockResolvedValue({ success: false })
+
+      renderWithProviders(<CalendarPage />)
+
+      await waitFor(() =>
+        expect(screen.getByRole('heading', { name: PROMPT_TITLE })).toBeInTheDocument()
+      )
+      await user.click(screen.getByRole('button', { name: 'Allow' }))
+
+      // Never an empty string or a raw "undefined" leaking to the user.
+      await waitFor(() =>
+        expect(screen.getByRole('alert')).toHaveTextContent('Failed to save your choice')
+      )
+      expect(screen.getByRole('heading', { name: PROMPT_TITLE })).toBeInTheDocument()
+    })
+
+    it('#when the user declines #then consent is stored as denied so we stop asking', async () => {
+      const user = userEvent.setup()
+      mockConsent(null)
+
+      renderWithProviders(<CalendarPage />)
+
+      await waitFor(() =>
+        expect(screen.getByRole('heading', { name: PROMPT_TITLE })).toBeInTheDocument()
+      )
+      await user.click(screen.getByRole('button', { name: "Don't allow" }))
+
+      expect(window.api.settings.setCalendarGoogleSettings).toHaveBeenCalledWith({
+        agentReadEventsConsent: false
+      })
+      await waitFor(() =>
+        expect(screen.queryByRole('heading', { name: PROMPT_TITLE })).not.toBeInTheDocument()
+      )
+    })
+  })
+
   it('switches between day, week, month, and year views', async () => {
     const user = userEvent.setup()
     renderWithProviders(<CalendarPage />)
@@ -489,6 +589,8 @@ describe('CalendarPage', () => {
     await waitFor(() => expect(mockUnsnooze).toHaveBeenCalledWith('snooze-1'))
   })
 
+  // Skipping the confirmation also requires agent access to Google events to be on;
+  // otherwise promotion would silently widen what the agent can read.
   it('promotes external events directly when the confirmation is dismissed', async () => {
     const user = userEvent.setup()
     const api = window.api as typeof window.api & {
@@ -497,7 +599,10 @@ describe('CalendarPage', () => {
         setCalendarGoogleSettings: ReturnType<typeof vi.fn>
       }
     }
-    api.settings.getCalendarGoogleSettings.mockResolvedValue({ promoteConfirmDismissed: true })
+    api.settings.getCalendarGoogleSettings.mockResolvedValue({
+      promoteConfirmDismissed: true,
+      agentReadEventsConsent: true
+    })
     mockPromoteExternal.mockResolvedValue({ success: true, eventId: 'event-promoted' })
     mockGetEvent.mockResolvedValue({
       id: 'event-promoted',

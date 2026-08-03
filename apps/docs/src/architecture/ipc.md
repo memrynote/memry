@@ -80,3 +80,7 @@ log.info('created note', { id })
 - The main process owns SQLite, Yjs `Y.Doc`s, and the file system.
 - The renderer owns UI state, tabs, and the BlockNote editor.
 - CRDT updates flow renderer → main via the Yjs IPC provider; updates are tagged with `sourceWindowId` and Y.Doc origin parameters to prevent loops.
+
+## Main → Renderer Broadcasts
+
+Main-process code that fans an event out to every open window — sync status, task and calendar change events, inbox capture/filing/snooze/transcription events, search and embedding progress, updater state, reminders, agent events, and FTS rebuild progress — goes through `broadcastToAllWindows(channel, data)` in `src/main/lib/window-broadcast.ts`. The helper skips destroyed windows: short-lived windows (splash, quick capture, print/export) can still appear in `BrowserWindow.getAllWindows()` after destruction, and an unguarded `webContents.send()` throws — inside a sync item handler that throw escapes `ctx.emit` within the item's DB transaction and rolls it back. Use the helper instead of hand-rolling a `getAllWindows()` loop.

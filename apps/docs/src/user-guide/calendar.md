@@ -131,10 +131,30 @@ Right-click an external event → **Promote to vault** to copy it into your encr
 
 ### Google Data and AI Features
 
-Events synced from Google Calendar are never shared with AI features. The Agent Chat assistant can
-only read events you created in memrynote — Google-synced events, calendar lists, and connection
-details are excluded from what it can access, and Google user data is never used to train or
+AI access to your Google Calendar events is off until you turn it on. The first time you open the
+calendar with Google calendars imported, memrynote asks once: **Let AI read your Google Calendar
+events?** Both answers are recorded, so you are asked only that one time.
+
+- **Don't allow** (also the default until you answer) — the Agent Chat assistant reads only events
+  you created in memrynote. Ask it about a Google event and it gets nothing back.
+- **Allow** — the assistant can read events from your imported Google calendars.
+
+Change your answer any time at [Settings → Integrations](/user-guide/settings#integrations) →
+Google Calendar → **Let AI read Google Calendar events**. Turning it off takes effect on the next
+question you ask; turning it on likewise applies from that point forward.
+
+This setting covers events that live on your Google calendars. A [promoted](#promote-external-events)
+event is different: the copy sits in your vault as a memrynote event, so the assistant can read it
+like any other event you created. While AI access is off, memrynote confirms every promotion and
+says so in the dialog, and **Don't ask again** does not skip that confirmation. Your original Google
+event stays hidden from the assistant either way.
+
+Either way you keep seeing your Google events in the calendar, calendar lists and connection
+details stay out of what the assistant can access, and Google user data is never used to train or
 improve AI models.
+
+Note that promoting an external event (above) copies it into your vault as a memrynote event. From
+then on it is your own event, and the assistant can read it regardless of this setting.
 
 ## Day Cell Click Behavior
 

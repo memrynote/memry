@@ -3,24 +3,51 @@ import { buildReadTools } from '../read-tools'
 import type { VaultServiceHandles } from '../handles'
 import { AgentToolError } from '../../errors'
 
+let lastSearchInput: Parameters<VaultServiceHandles['notes']['search']>[0] | null = null
+
 function fake(): VaultServiceHandles {
   return {
     notes: {
-      search: async ({ query }) =>
-        query === 'hit'
-          ? [{ id: 'n1', title: 'Hit', snippet: 'hit me', folder_path: '/Inbox' }]
-          : [],
-      read: async (id) =>
-        id === 'n1'
-          ? {
-              id: 'n1',
-              title: 'Hit',
-              content_markdown: '# Hit',
-              tags: ['t'],
-              folder_path: '/Inbox',
-              frontmatter: { foo: 1 }
-            }
-          : null,
+      search: async (input) => {
+        lastSearchInput = input
+        return input.query === 'hit'
+          ? [
+              {
+                id: 'n1',
+                title: 'Hit',
+                snippet: 'hit me',
+                folder_path: '/Inbox',
+                file_type: 'markdown'
+              },
+              { id: 'f1', title: 'Scan', snippet: '', folder_path: '/Inbox', file_type: 'pdf' }
+            ]
+          : []
+      },
+      read: async (id) => {
+        if (id === 'n1') {
+          return {
+            id: 'n1',
+            title: 'Hit',
+            content_markdown: '# Hit',
+            tags: ['t'],
+            folder_path: '/Inbox',
+            frontmatter: { foo: 1 },
+            file_type: 'markdown'
+          }
+        }
+        if (id === 'f1') {
+          return {
+            id: 'f1',
+            title: 'Scan',
+            content_markdown: '',
+            tags: [],
+            folder_path: '/Inbox',
+            frontmatter: {},
+            file_type: 'pdf'
+          }
+        }
+        return null
+      },
       create: async () => ({ id: 'unused' }),
       rename: async ({ id }) => ({ id }),
       delete: async (id) => ({ id }),
@@ -62,7 +89,17 @@ function fake(): VaultServiceHandles {
       removeTag: async () => {}
     },
     projects: {
-      list: async () => [{ id: 'p1', name: 'memrynote', status: 'active', task_count: 5 }],
+      list: async () => [
+        {
+          id: 'p1',
+          name: 'memrynote',
+          status: 'active',
+          task_count: 5,
+          icon: null,
+          home_note_id: null,
+          linked_counts: { notes: 0, files: 0, events: 0 }
+        }
+      ],
       get: async (id) => (id === 'p1' ? { id, name: 'memrynote' } : null),
       create: async () => ({ id: 'unused' }),
       update: async ({ id }) => ({ id }),
@@ -99,7 +136,77 @@ function fake(): VaultServiceHandles {
       removeTag: async ({ id }) => ({ id })
     },
     tags: {
-      listAll: async () => [{ name: 'todo', count: 3 }]
+      listAll: async () => [
+        {
+          name: 'todo',
+          count: 3,
+          color: '#ff671a',
+          icon: null,
+          category_id: 'cat-1',
+          category_name: 'Workflow',
+          sort_order: 0
+        }
+      ]
+    },
+    canvas: {
+      list: async () => [{ id: 'c1', title: 'Roadmap', updated_at: 5, item_count: 2 }],
+      read: async (id) =>
+        id === 'c1'
+          ? {
+              id: 'c1',
+              title: 'Roadmap',
+              created_at: 1,
+              updated_at: 5,
+              items: [{ entity_type: 'note', entity_id: 'n1', title: 'Spec', missing: false }],
+              texts: ['Q3'],
+              element_count: 4,
+              texts_truncated: false
+            }
+          : null,
+      addItems: async ({ canvasId }) => ({
+        canvas_id: canvasId,
+        applied: [],
+        skipped: [],
+        updated_at: 0,
+        too_large: false
+      }),
+      removeItem: async ({ canvasId }) => ({
+        canvas_id: canvasId,
+        applied: [],
+        skipped: [],
+        updated_at: 0,
+        too_large: false
+      })
+    },
+    canvas: {
+      list: async () => [{ id: 'c1', title: 'Roadmap', updated_at: 5, item_count: 2 }],
+      read: async (id) =>
+        id === 'c1'
+          ? {
+              id: 'c1',
+              title: 'Roadmap',
+              created_at: 1,
+              updated_at: 5,
+              items: [{ entity_type: 'note', entity_id: 'n1', title: 'Spec', missing: false }],
+              texts: ['Q3'],
+              element_count: 4,
+              texts_truncated: false
+            }
+          : null,
+      addItems: async ({ canvasId }) => ({
+        canvas_id: canvasId,
+        applied: [],
+        skipped: [],
+        updated_at: 0,
+        too_large: false
+      }),
+      removeItem: async ({ canvasId }) => ({
+        canvas_id: canvasId,
+        applied: [],
+        skipped: [],
+        updated_at: 0,
+        too_large: false
+      })
     },
     desktop: {
       read: async ({ operation, args }, windowId) => ({ operation, args, windowId }),
@@ -118,13 +225,39 @@ describe('Read tools', () => {
   beforeEach(() => {
     handles = fake()
     tools = buildReadTools(handles)
+    lastSearchInput = null
   })
 
-  it('vault_search_notes returns hits', async () => {
+  it('vault_search_notes returns hits tagged with their file type', async () => {
     const out = await tools
       .find((t) => t.name === 'vault_search_notes')!
       .handler({ query: 'hit' }, { conversationId: null, windowId: null })
-    expect(out).toEqual([{ id: 'n1', title: 'Hit', snippet: 'hit me', folder_path: '/Inbox' }])
+    expect(out).toEqual([
+      { id: 'n1', title: 'Hit', snippet: 'hit me', folder_path: '/Inbox', file_type: 'markdown' },
+      { id: 'f1', title: 'Scan', snippet: '', folder_path: '/Inbox', file_type: 'pdf' }
+    ])
+  })
+
+  it('vault_search_notes forwards file_types to the search handle', async () => {
+    await tools
+      .find((t) => t.name === 'vault_search_notes')!
+      .handler({ query: 'hit', file_types: ['markdown'] }, { conversationId: null, windowId: null })
+    expect(lastSearchInput).toMatchObject({ query: 'hit', fileTypes: ['markdown'] })
+  })
+
+  it('vault_search_notes leaves fileTypes unset when no filter is given', async () => {
+    await tools
+      .find((t) => t.name === 'vault_search_notes')!
+      .handler({ query: 'hit' }, { conversationId: null, windowId: null })
+    expect(lastSearchInput?.fileTypes).toBeUndefined()
+  })
+
+  it('vault_read_note rejects a filed binary instead of returning it as markdown', async () => {
+    await expect(
+      tools
+        .find((t) => t.name === 'vault_read_note')!
+        .handler({ id: 'f1' }, { conversationId: null, windowId: null })
+    ).rejects.toMatchObject({ code: 'VALIDATION', details: { id: 'f1', file_type: 'pdf' } })
   })
 
   it('vault_read_note throws NOT_FOUND for missing note', async () => {
@@ -140,6 +273,34 @@ describe('Read tools', () => {
       .find((t) => t.name === 'vault_read_note')!
       .handler({ id: 'n1' }, { conversationId: null, windowId: null })
     expect(out).toMatchObject({ id: 'n1', title: 'Hit', content_markdown: '# Hit' })
+  })
+
+  it('vault_list_canvases returns canvases with item counts', async () => {
+    const out = await tools
+      .find((t) => t.name === 'vault_list_canvases')!
+      .handler({}, { conversationId: null, windowId: null })
+    expect(out).toEqual([{ id: 'c1', title: 'Roadmap', updated_at: 5, item_count: 2 }])
+  })
+
+  it('vault_read_canvas returns entities and text but never the raw scene', async () => {
+    const out = await tools
+      .find((t) => t.name === 'vault_read_canvas')!
+      .handler({ id: 'c1' }, { conversationId: null, windowId: null })
+
+    expect(out).toMatchObject({
+      id: 'c1',
+      items: [{ entity_type: 'note', entity_id: 'n1', title: 'Spec', missing: false }],
+      texts: ['Q3']
+    })
+    expect(JSON.stringify(out)).not.toContain('"scene"')
+  })
+
+  it('vault_read_canvas throws NOT_FOUND for a missing canvas', async () => {
+    await expect(
+      tools
+        .find((t) => t.name === 'vault_read_canvas')!
+        .handler({ id: 'nope' }, { conversationId: null, windowId: null })
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
   })
 
   it('vault_list_folder returns mixed entries', async () => {
@@ -225,11 +386,21 @@ describe('Read tools', () => {
     expect(out).toMatchObject({ id: 'i1', title: 'Cool' })
   })
 
-  it('vault_get_tags returns tag counts', async () => {
+  it('vault_get_tags returns tag counts with category metadata', async () => {
     const out = (await tools
       .find((t) => t.name === 'vault_get_tags')!
       .handler({}, { conversationId: null, windowId: null })) as unknown[]
-    expect(out).toEqual([{ name: 'todo', count: 3 }])
+    expect(out).toEqual([
+      {
+        name: 'todo',
+        count: 3,
+        color: '#ff671a',
+        icon: null,
+        category_id: 'cat-1',
+        category_name: 'Workflow',
+        sort_order: 0
+      }
+    ])
   })
 
   it('vault_desktop_read forwards allowlisted desktop read operations', async () => {

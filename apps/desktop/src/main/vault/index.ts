@@ -58,6 +58,7 @@ import { createEmbeddingProjector } from '../projections/projectors/embedding-pr
 import { createInboxStatsProjector } from '../projections/projectors/inbox-stats-projector'
 import { PropertyDefinitionsService } from './property-definitions'
 import { migrateSettingsToConfig } from './settings-cache'
+import { promoteSpatialCanvas } from '../settings/promote-spatial-canvas'
 import { configureLazyAgentServices } from '../agent/lazy-services'
 import { registerLazyAgentHandlers, unregisterLazyAgentHandlers } from '../ipc/agent-lazy-handlers'
 import type { AgentHandle } from '../agent/bootstrap'
@@ -260,6 +261,9 @@ async function openVault(vaultPath: string): Promise<void> {
 
   // Migrate settings: config.json ↔ SQLite cache
   migrateSettingsToConfig(dataDb, vaultPath)
+
+  // One-time: clear a collateral `spatialCanvas: false` left by pre-M7 writes.
+  promoteSpatialCanvas(dataDb)
 
   // Check index database health before proceeding
   const indexHealth: IndexHealth = checkIndexHealth(indexDbPath)

@@ -673,7 +673,7 @@ export type CalendarEventChannel =
   (typeof CalendarChannels.events)[keyof typeof CalendarChannels.events]
 
 // ============================================================================
-// Canvas Channels (spatial canvas — hidden behind the spatialCanvas flag)
+// Canvas Channels (spatial canvas — gated by the spatialCanvas flag)
 // ============================================================================
 
 export const CanvasChannels = {
@@ -688,7 +688,14 @@ export const CanvasChannels = {
     LIST_ASSETS: 'canvas:list-assets',
     /** Excalidraw library (shapes panel) — vault-global, not per canvas. */
     LIBRARY_LIST: 'canvas:library-list',
-    LIBRARY_SAVE: 'canvas:library-save'
+    LIBRARY_SAVE: 'canvas:library-save',
+    /**
+     * The renderer reports which canvas its editor has mounted, so an agent
+     * write can be routed to that live Excalidraw instance instead of a
+     * headless read-modify-write that the next autosave would overwrite.
+     */
+    LIVE_OPENED: 'canvas:live-opened',
+    LIVE_CLOSED: 'canvas:live-closed'
   },
   events: {
     CREATED: 'canvas:created',

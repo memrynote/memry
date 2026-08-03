@@ -7,11 +7,11 @@
  * @module inbox/filing
  */
 
-import { BrowserWindow } from 'electron'
 import path from 'path'
 import { rename, copyFile, unlink } from 'fs/promises'
 import { existsSync } from 'fs'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getDatabase, requireDatabase, getIndexDatabase } from '../database'
 import { createNote, getNoteById, updateNote, createFolder, getFolders } from '../vault/notes'
 import { setNoteTags } from '../database/queries/notes'
@@ -120,9 +120,7 @@ function getUniqueFilePath(filePath: string): string {
  * Emit inbox event to all windows
  */
 function emitInboxEvent(channel: string, data: unknown): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, data)
-  })
+  broadcastToAllWindows(channel, data)
 }
 
 /**
@@ -803,9 +801,7 @@ export async function convertToTask(
     recordFilingHistory(item.type, item.content, taskId, 'task', mergedTags)
 
     const enrichedTask = { ...task, linkedNoteIds: [] as string[] }
-    BrowserWindow.getAllWindows().forEach((win) => {
-      win.webContents.send(TasksChannels.events.CREATED, { task: enrichedTask })
-    })
+    broadcastToAllWindows(TasksChannels.events.CREATED, { task: enrichedTask })
 
     syncTaskCreate(taskId)
 
@@ -868,9 +864,7 @@ export async function convertToEvent(
     } catch (error) {
       log.warn('syncCalendarEventCreate failed; event persisted locally', error)
     }
-    BrowserWindow.getAllWindows().forEach((win) => {
-      win.webContents.send(CalendarChannels.events.CHANGED, { entityType: 'calendar_event', id })
-    })
+    broadcastToAllWindows(CalendarChannels.events.CHANGED, { entityType: 'calendar_event', id })
 
     markItemAsFiled(itemId, id, 'event')
     recordFilingHistory(item.type, item.content, id, 'event', mergedTags)

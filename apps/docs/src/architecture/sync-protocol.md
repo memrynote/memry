@@ -229,6 +229,20 @@ terminal status.
 
 `server_cursor_sequence` tracks per-device pull progress. Pull is incremental: fetch everything strictly after the cursor, advance, repeat.
 
+## Pull Scheduling and Hang Recovery
+
+A periodic pull fires every 60 seconds; WebSocket `changes_available` and `connected` messages
+schedule additional pulls in between. The interval is armed before the first full sync, and a
+failure in that first sync is logged rather than propagated, so one transient error at startup
+cannot leave a session without a pull cycle.
+
+Three guards keep a wedged sync from lasting until restart. Every sync HTTP request carries a
+60-second abort timeout, so a black-holed socket (suspend/resume, NAT teardown) surfaces as a
+retryable network error instead of pinning the sync lock forever. If the lock is still held after
+15 minutes anyway, a watchdog on the periodic tick force-releases it, aborts the in-flight run,
+and lets the next pull proceed. Skipped periodic pulls log `Periodic pull skipped` with the
+blocking flags, which is the first thing to look for when a device shows stale data.
+
 ## Manifest Integrity
 
 Desktop periodically compares `/sync/manifest` with local syncable records. Notes and journals are

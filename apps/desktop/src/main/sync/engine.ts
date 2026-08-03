@@ -37,6 +37,12 @@ export type { SyncEngineDeps, SyncEngineOptions }
 const log = createLogger('SyncEngine')
 const MAX_SYNC_ENGINE_LISTENERS = 50
 
+// A sync run legitimately spans many paged requests plus retry backoff, so
+// this sits far above SYNC_REQUEST_TIMEOUT_MS × the retry budget. A lock held
+// longer than this is leaked (a never-settling non-HTTP await): left alone it
+// makes periodicPull skip forever, and only an app restart recovers.
+export const SYNC_LOCK_STALE_MS = 15 * 60 * 1000
+
 const classifySyncErrorCode = (error: unknown): string => {
   try {
     const info = classifyError(error)
@@ -59,6 +65,8 @@ export class SyncEngine extends EventEmitter {
   private fullSyncRunner: FullSyncRunner
   private pullInterval: ReturnType<typeof setInterval> | null = null
   private networkReconnectAbortController: AbortController | null = null
+  private syncLockAcquiredAt: number | null = null
+  private activeLockRelease: (() => void) | null = null
 
   constructor(deps: SyncEngineDeps, options?: Partial<SyncEngineOptions>) {
     super()
@@ -170,10 +178,20 @@ export class SyncEngine extends EventEmitter {
       }
 
       await this.ctx.deps.ws.connect()
+      // Armed before the first full sync: if that sync fails, the 60s tick is
+      // what heals sync for the rest of the session.
+      this.armPeriodicPull()
       if (!this.stateManager.isPaused()) {
-        await this.fullSync()
+        try {
+          await this.fullSync()
+        } catch (error) {
+          // A throw here used to propagate out of start() and tear down the
+          // whole sync runtime, so one transient 429 or offline blip during
+          // the first sync left sync dead until restart. Revocation and auth
+          // failures still surface via WS events and the next pull cycle.
+          log.error('Initial full sync failed — periodic pull will retry', error)
+        }
       }
-      this.pullInterval = setInterval(() => this.pullCoordinator.periodicPull(), 60_000)
     } else {
       this.stateManager.setState('offline')
     }
@@ -483,6 +501,7 @@ export class SyncEngine extends EventEmitter {
   private async acquireSyncLock(): Promise<(() => void) | null> {
     if (this.ctx.syncing || this.stateManager.isPaused()) return null
     this.ctx.syncing = true
+    this.syncLockAcquiredAt = Date.now()
 
     let release!: () => void
     const prev = this.syncLock
@@ -490,12 +509,40 @@ export class SyncEngine extends EventEmitter {
       release = r
     })
     await prev
+    this.activeLockRelease = release
     return release
+  }
+
+  private armPeriodicPull(): void {
+    if (this.pullInterval) return
+    this.pullInterval = setInterval(() => {
+      this.recoverStaleSyncLock()
+      this.pullCoordinator.periodicPull()
+    }, 60_000)
+  }
+
+  // Last-resort watchdog. Request timeouts make a hung HTTP call settle on its
+  // own; this covers a lock leaked by any other never-settling await. Forcing
+  // the release risks a brief overlap if the zombie sync later resumes —
+  // accepted over sync staying dead until restart.
+  private recoverStaleSyncLock(): void {
+    if (!this.ctx.syncing || this.syncLockAcquiredAt === null) return
+    const heldForMs = Date.now() - this.syncLockAcquiredAt
+    if (heldForMs < SYNC_LOCK_STALE_MS) return
+
+    log.error('Sync lock held past stale threshold — force releasing', { heldForMs })
+    this.ctx.abortController?.abort()
+    this.ctx.fullSyncActive = false
+    this.ctx.inFlightSync = null
+    this.activeLockRelease?.()
+    this.releaseLock()
   }
 
   private releaseLock(): void {
     this.ctx.syncing = false
     this.ctx.abortController = null
+    this.syncLockAcquiredAt = null
+    this.activeLockRelease = null
     if (this.ctx.state === 'syncing') {
       this.stateManager.setState(this.ctx.deps.network.online ? 'idle' : 'offline')
     }
@@ -552,9 +599,7 @@ export class SyncEngine extends EventEmitter {
         this.stateManager.setState('idle')
         void this.ctx.deps.ws.connect()
 
-        if (!this.pullInterval) {
-          this.pullInterval = setInterval(() => this.pullCoordinator.periodicPull(), 60_000)
-        }
+        this.armPeriodicPull()
 
         if (!this.stateManager.isPaused()) {
           this.scheduleSync(() => this.reconnectSync(offlineDurationMs))

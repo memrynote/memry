@@ -30,9 +30,11 @@ import {
   getProjectWithStatuses,
   getProjectsWithStatuses,
   getProjectContents,
+  getProjectLinkCounts,
   insertProjectLink,
   getProjectLink,
-  setProjectLinkPinned
+  setProjectLinkPinned,
+  updateProjectHomeNote
 } from './projects'
 import { insertTask } from './tasks'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
@@ -522,6 +524,51 @@ describe('projects queries', () => {
         files: [],
         events: [],
         counts: { notes: 0, files: 0, events: 0 }
+      })
+    })
+
+    it('counts linked items for every project in one pass, skipping orphans', () => {
+      seedProjectWithLinks()
+      insertProject(db, {
+        id: 'p-other',
+        name: 'Other',
+        color: '#6366f1',
+        position: 1,
+        isInbox: false
+      })
+      insertProject(db, {
+        id: 'p-none',
+        name: 'None',
+        color: '#6366f1',
+        position: 2,
+        isInbox: false
+      })
+      seedNote('n2', 'Brief', 'markdown')
+      insertProjectLink(db, { id: 'l5', projectId: 'p-other', itemType: 'note', itemId: 'n2' })
+
+      const counts = getProjectLinkCounts(db)
+
+      expect(counts.get('p-hub')).toEqual({ notes: 1, files: 1, events: 1 })
+      expect(counts.get('p-other')).toEqual({ notes: 1, files: 0, events: 0 })
+      // A project with no links has no row at all — callers default to zero.
+      expect(counts.get('p-none')).toBeUndefined()
+    })
+
+    it('keeps the hub fields on the record read by id', () => {
+      insertProject(db, {
+        id: 'p-shape',
+        name: 'Shape',
+        color: '#6366f1',
+        position: 0,
+        isInbox: false,
+        icon: '🚀'
+      })
+      seedNote('n-home', 'Overview', 'markdown')
+      updateProjectHomeNote(db, 'p-shape', 'n-home')
+
+      expect(getProjectWithStatuses(db, 'p-shape')).toMatchObject({
+        icon: '🚀',
+        homeNoteId: 'n-home'
       })
     })
 

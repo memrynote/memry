@@ -893,6 +893,11 @@
         "description": "Tek yönlü eşitleme için kapatın — Google etkinliklerinizi yine memrynote'ta görürsünüz, ancak memrynote etkinlikleri Google'da görünmez.",
         "error": "Eşitleme yönü güncellenemedi",
         "label": "memrynote etkinliklerini Google Calendar'da göster"
+      },
+      "agentAccess": {
+        "description": "Varsayılan olarak kapalı. Açarsanız yapay zeka asistanı Google etkinliklerinizi okuyabilir; kapatırsanız onlara dair hiçbir yanıt alamaz. Her iki durumda da etkinlikleri memrynote'ta görmeye devam edersiniz.",
+        "error": "Yapay zeka erişimi güncellenemedi",
+        "label": "Yapay zeka Google Calendar etkinliklerini okuyabilsin"
       }
     },
     "sourcePicker": {

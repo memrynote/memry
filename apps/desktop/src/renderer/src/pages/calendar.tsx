@@ -7,6 +7,7 @@ import {
   type CalendarWorkspaceView
 } from '@/components/calendar'
 import { VISUAL_TYPE_ORDER } from '@/components/calendar/visual-type-meta'
+import { AgentAccessConsentDialog } from '@/components/calendar/agent-access-consent-dialog'
 import { PromoteExternalDialog } from '@/components/calendar/promote-external-dialog'
 import { CalendarTaskPopover } from '@/components/calendar/calendar-task-popover'
 import {
@@ -239,6 +240,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   const [pendingPromote, setPendingPromote] = useState<{
     item: CalendarProjectionItem
     anchorRect: AnchorRect
+    agentAccessOff: boolean
   } | null>(null)
   const [isPromoting, setIsPromoting] = useState(false)
   const [promoteError, setPromoteError] = useState<string | null>(null)
@@ -442,14 +444,13 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   }
 
   async function runPromote(
-    item: CalendarProjectionItem,
-    rect: AnchorRect,
+    target: { item: CalendarProjectionItem; anchorRect: AnchorRect },
     options: { dontAskAgain: boolean }
   ): Promise<void> {
     setIsPromoting(true)
     setPromoteError(null)
     try {
-      const result = await promoteExternalCalendarEvent({ externalEventId: item.sourceId })
+      const result = await promoteExternalCalendarEvent({ externalEventId: target.item.sourceId })
       if (!result.success || !result.eventId) {
         throw new Error(result.error ?? 'Could not edit this event.')
       }
@@ -457,7 +458,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         await window.api.settings.setCalendarGoogleSettings({ promoteConfirmDismissed: true })
       }
       await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
-      await openEditPopoverAfterPromote(result.eventId, item, rect)
+      await openEditPopoverAfterPromote(result.eventId, target.item, target.anchorRect)
       setPendingPromote(null)
     } catch (err) {
       setPromoteError(
@@ -522,12 +523,17 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
 
     setNotePopoverState(null)
     const settings = await window.api.settings.getCalendarGoogleSettings()
-    if (settings.promoteConfirmDismissed) {
-      await runPromote(item, rect, { dontAskAgain: false })
+    // Promotion copies the event into native storage, where the agent can read it
+    // regardless of the Google-events consent gate. While that consent is anything but
+    // a stored `true`, confirm every time — "don't ask again" must not silently widen
+    // what the agent can see.
+    const agentAccessOff = settings.agentReadEventsConsent !== true
+    if (settings.promoteConfirmDismissed && !agentAccessOff) {
+      await runPromote({ item, anchorRect: rect }, { dontAskAgain: false })
       return
     }
 
-    setPendingPromote({ item, anchorRect: rect })
+    setPendingPromote({ item, anchorRect: rect, agentAccessOff })
   }
 
   // Search jump: focus the item's day, then open its popover. The item is already
@@ -761,20 +767,21 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
 
   return (
     <>
+      <AgentAccessConsentDialog hasImportedSources={importedSources.length > 0} />
+
       <PromoteExternalDialog
         open={pendingPromote !== null}
         isWorking={isPromoting}
         errorMessage={promoteError}
+        agentAccessOff={pendingPromote?.agentAccessOff ?? false}
         onOpenChange={(open) => {
-          if (!open) {
-            setPendingPromote(null)
-            setPromoteError(null)
-          }
+          if (open) return
+          setPendingPromote(null)
+          setPromoteError(null)
         }}
         onConfirm={(dontAskAgain) => {
-          if (pendingPromote) {
-            void runPromote(pendingPromote.item, pendingPromote.anchorRect, { dontAskAgain })
-          }
+          if (!pendingPromote) return
+          void runPromote(pendingPromote, { dontAskAgain })
         }}
       />
       <CalendarShell

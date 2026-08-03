@@ -174,7 +174,27 @@ Read tools are available to Agent Chat and external MCP clients:
 - `vault_list_inbox_items`
 - `vault_get_inbox_item`
 - `vault_get_tags`
+- `vault_list_canvases`
+- `vault_read_canvas`
 - `vault_desktop_read`
+
+### Notes and filed files
+
+Filing a PDF, image, audio file, or video into the vault indexes it alongside your markdown notes,
+so it can turn up in `vault_search_notes`. Every search hit therefore carries a `file_type`:
+
+- `markdown` — a real note. `vault_read_note` returns its content.
+- `pdf`, `image`, `audio`, `video` — a filed file. There is no markdown to read, so
+  `vault_read_note` refuses it with a `VALIDATION` error naming the file type instead of returning
+  bytes for the client to treat as text. `vault_update_note` refuses it the same way, so an agent
+  cannot overwrite a filed document with markdown.
+
+Pass `file_types` to narrow the search up front — `["markdown"]` for notes only, or
+`["pdf", "image"]` to look for filed documents. The filter runs inside the search query, so `limit`
+counts only matching rows. Omit `file_types` to search every file type.
+
+Notes indexed by older memrynote versions have no recorded file type; those are always treated as
+markdown, so upgrading never hides existing notes.
 
 Create, update, delete, archive, move, and reorder tools require Agent Chat context. They can be
 auto-accepted or shown for inline approval depending on the Agent Permissions setting:
@@ -221,28 +241,95 @@ auto-accepted or shown for inline approval depending on the Agent Permissions se
 - `vault_add_tag`
 - `vault_remove_tag`
 - `vault_move_to_folder`
+- `vault_add_canvas_item`
+- `vault_remove_canvas_item`
 - `vault_desktop_write`
+
+### Canvas
+
+| Tool                       | What it does                                                                      |
+| -------------------------- | --------------------------------------------------------------------------------- |
+| `vault_list_canvases`      | Every canvas, with how many items sit on each                                     |
+| `vault_read_canvas`        | One canvas: the notes/tasks/events on it (with titles) and any text written on it |
+| `vault_add_canvas_item`    | Put existing notes/tasks/events on a canvas as cards                              |
+| `vault_remove_canvas_item` | Take a card off a canvas                                                          |
+
+Canvas tools need the **Spatial Canvas** feature turned on (Settings → Features). With it off they
+return a message saying so rather than failing silently.
+
+Reading a canvas never returns the drawing itself. An agent gets what is _on_ the canvas, not the
+geometry that draws it — a scene is mostly coordinates and style properties, and dumping it into an
+agent's context crowds out everything useful. Long canvases cap the amount of text returned and say
+so with `texts_truncated`.
+
+Adding an item applies to the open editor when you have that canvas open, so the card appears while
+you watch instead of being overwritten by the next autosave. A canvas nobody has open is updated
+directly, and the write is rejected if it changed in the meantime. If the result is too large to
+sync, the tool response says so.
+
+Some canvas operations are deliberately unavailable through `vault_desktop_read` /
+`vault_desktop_write`:
+
+- `canvas.get` — returns the whole scene; use `vault_read_canvas`
+- `canvas.update` — replaces the entire scene with no version check, which would overwrite whatever
+  you have open; use the item tools
+- `canvas.librarySave` — saves the shape library as one whole list, so a partial one deletes shapes
+- `canvas.uploadAsset` — binary image upload, no agent path yet
+
+Agents cannot draw arrows between cards. An arrow on a canvas is a picture, not a stored
+relationship, so an agent drawing one would look like it created a link when it did not. Use wiki
+links between notes when you want a real connection.
 
 `vault_desktop_read` and `vault_desktop_write` cover the remaining desktop CRUD surface through an
 allowlisted desktop API operation name plus an `args` array. They are used for desktop domains such
 as templates, saved filters, bookmarks, reminders, calendar events, folder views, properties, tags,
-search reasons, and settings. The write bridge uses the same in-app approval flow as named write
-tools. Security-sensitive and system operations stay outside the allowlist, including account/auth
-flows, provider connect/disconnect/refresh actions, app updater actions, external open/reveal
-actions, and raw secret writes. Unsupported or unavailable desktop API operations return a structured
-MCP error instead of falling back to an arbitrary desktop call.
+search reasons, inbox conversions, project links, and settings. The write bridge uses the same in-app
+approval flow as named write tools. Security-sensitive and system operations stay outside the
+allowlist, including account/auth flows, provider connect/disconnect/refresh actions, app updater
+actions, external open/reveal actions, import dialogs, OS settings panes, telemetry, feedback and
+diagnostics reporting, and raw secret writes. Unsupported or unavailable desktop API operations
+return a structured MCP error instead of falling back to an arbitrary desktop call.
+
+Inbox items convert through the bridge into any of the four targets the app itself offers:
+`inbox.convertToNote`, `inbox.convertToTask`, `inbox.convertToEvent`, and
+`inbox.convertToReminder`. `notes.applyTemplate` applies a template the agent can already read
+through `templates.get` to an existing note.
+
+`settings.getFeaturesSettings` reports which surfaces are turned on — home, inbox, journal, tasks,
+calendar, graph, and spatial canvas — so an agent can tell whether an action is even available
+before suggesting it, and `settings.setFeaturesSettings` toggles them. `settings.getInboxSettings`
+and `settings.setInboxSettings` cover the daily inbox review reminder.
+
+Tag categories are reachable through the same bridge. `tags.listCategories` is a read operation that
+returns `{"success": true, "categories": [...]}`, where each entry carries its id, name, sort order,
+and tag count. `tags.createCategory`, `tags.renameCategory`, `tags.deleteCategory`, and
+`tags.reorder` are write operations behind the usual approval flow; `tags.createCategory` returns
+`{"success": true, "category": {...}}` and the other three return `{"success": true}`. Like the rest
+of the desktop bridge, these operations report their own failures as `{"success": false, "error":
+"..."}` rather than raising an MCP error, so check `success` before reading the payload.
+`tags.reorder` applies a drag result — tag-to-category assignments, category ordering, or both in one
+transaction — and is the only way to move a tag into a category. Deleting a category keeps its tags
+and makes them uncategorized.
+
+`vault_get_tags` returns each tag with its `color`, `icon`, `sort_order`, `category_id`, and
+`category_name`. Both category fields are `null` for an uncategorized tag.
 
 Calendar desktop reads accept the same single-object shape as the renderer bridge. For example:
 `calendar.listEvents` accepts `args: [{}]`, and `calendar.getRange` accepts either
 `args: ["2026-05-14", "2026-06-14"]` or
 `args: [{"startAt": "2026-05-14T00:00:00.000Z", "endAt": "2026-06-15T00:00:00.000Z"}]`.
 
-Agent calendar access covers native memrynote events only. Google-integration operations —
-calendar sources, provider status, Google calendar lists, promoting external events, and Google
-calendar settings — are excluded from the agent allowlists, and `calendar.getRange` always runs
-with Google-synced external events filtered out. Data obtained from Google APIs is never included
-in agent tool results or forwarded to any AI backend, in line with the Google API Services User
-Data Policy (Limited Use).
+Google-integration operations — calendar sources, provider status, Google calendar lists, promoting
+external events, and Google calendar settings — are excluded from the agent allowlists outright.
+
+Google-synced events themselves are gated on explicit user consent. `calendar.getRange` resolves
+`includeExternal` from the stored answer to the **Let AI read Google Calendar events** setting, never
+from the caller: an agent that passes `includeExternal: true` still gets native-only results unless
+the user granted access. Not asked yet, declined, or a settings read that failed all resolve to
+native-only. See [Calendar → Google Data and AI Features](/user-guide/calendar#google-data-and-ai-features).
+
+Google user data is never used to train or improve AI models, in line with the Google API Services
+User Data Policy (Limited Use).
 
 By default, Agent Chat accepts these tool calls automatically. The chat still shows each requested
 tool as compact, subdued text with a readable label such as `Reading note` or `Creating task`.
@@ -254,6 +341,45 @@ approval controls inside the tool row. You can allow the request once, allow cre
 that conversation, deny it, or edit the arguments before allowing. Note updates load a before/after
 diff before the write is applied. Unauthenticated or context-free write requests continue to be
 denied.
+
+## Project Links
+
+`vault_list_projects` returns each project's `icon`, `home_note_id`, and `linked_counts` (notes,
+files, events) alongside `task_count`. Nonzero `linked_counts` are the signal that a project has a
+hub link layer worth reading; `task_count` alone says nothing about it.
+
+The hub's link layer is reachable through the desktop bridge. Reads, via `vault_desktop_read`:
+
+| Operation                   | Args                 | Answers                                          |
+| --------------------------- | -------------------- | ------------------------------------------------ |
+| `tasks.listProjectContents` | `[projectId]`        | Which notes, files, and events a project holds   |
+| `tasks.listProjectLinks`    | `[projectId]`        | The raw link rows, including pin state           |
+| `tasks.listForItem`         | `[itemType, itemId]` | Which projects a note, file, or event belongs to |
+
+`itemType` is one of `note`, `file`, or `calendar_event`.
+
+Writes, via `vault_desktop_write`, behind the same approval flow as other writes:
+
+| Operation                    | Args                                |
+| ---------------------------- | ----------------------------------- |
+| `tasks.linkProjectItem`      | `[{ projectId, itemType, itemId }]` |
+| `tasks.unlinkProjectItem`    | `[{ projectId, itemType, itemId }]` |
+| `tasks.setProjectLinkPinned` | `[{ projectId, itemId, pinned }]`   |
+| `tasks.setProjectHomeNote`   | `[{ projectId, noteId }]`           |
+| `tasks.captureUrlToProject`  | `[{ projectId, url }]`              |
+| `tasks.importFilesToProject` | `[{ projectId, sourcePaths }]`      |
+
+`setProjectHomeNote` takes `noteId: null` to clear the project's home note, the same way the hub's
+own overview rail does.
+
+`captureUrlToProject` fetches the page title over the network, and `importFilesToProject` copies
+files from paths you supply into the vault — both on caller-supplied input, like the already
+available `inbox.captureLink` and `notes.importFiles`. Operations that open native UI or hand an
+item to the OS stay out of the allowlist.
+
+`importFilesToProject` waits for the indexer to assign an id to each imported file, so importing
+several large files at once can exceed the bridge's ten-second window. The import still completes;
+the tool call reports a timeout. Import in smaller batches to see the result.
 
 ## Current Note
 

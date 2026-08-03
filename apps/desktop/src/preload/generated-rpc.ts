@@ -320,6 +320,8 @@ export function createGeneratedRpcApi({
       "listAssets": ((canvasId) => invoke("canvas:list-assets", { canvasId })) as GeneratedRpcApi["canvas"]["listAssets"],
       "libraryList": (() => invoke("canvas:library-list")) as GeneratedRpcApi["canvas"]["libraryList"],
       "librarySave": ((libraryItems) => invoke("canvas:library-save", { libraryItems })) as GeneratedRpcApi["canvas"]["librarySave"],
+      "liveOpened": ((canvasId) => invoke("canvas:live-opened", canvasId)) as GeneratedRpcApi["canvas"]["liveOpened"],
+      "liveClosed": ((canvasId) => invoke("canvas:live-closed", canvasId)) as GeneratedRpcApi["canvas"]["liveClosed"],
     },
     "telemetry": {
       "track": ((event) => invoke("telemetry:track", event)) as GeneratedRpcApi["telemetry"]["track"],

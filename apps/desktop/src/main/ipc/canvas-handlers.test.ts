@@ -20,7 +20,8 @@ vi.mock('electron', () => ({
     removeHandler: vi.fn()
   },
   BrowserWindow: {
-    getAllWindows: vi.fn(() => [])
+    getAllWindows: vi.fn(() => []),
+    fromWebContents: vi.fn()
   }
 }))
 
@@ -304,7 +305,10 @@ describe('canvas asset IPC handlers', () => {
       const fakeCtx = { marker: 'ctx' }
       vi.mocked(buildAssetServiceContext).mockReturnValue(fakeCtx as never)
       vi.mocked(injectSceneAssetSidecar).mockReturnValue('{"scene":"with-sidecar"}')
-      vi.mocked(updateCanvas).mockReturnValue({ id: 'canvas-1', title: null } as never)
+      vi.mocked(updateCanvas).mockReturnValue({
+        ok: true,
+        summary: { id: 'canvas-1', title: null, createdAt: 0, updatedAt: 1 }
+      } as never)
       const handlers = await registerAndGetHandlers()
 
       await handlers[CanvasChannels.invoke.UPDATE]({}, { id: 'canvas-1', scene: '{"scene":"raw"}' })
@@ -325,7 +329,10 @@ describe('canvas asset IPC handlers', () => {
     it('skips sidecar injection and GC when no vault is open (ctx is null)', async () => {
       await withWorkingCanvasContext()
       vi.mocked(buildAssetServiceContext).mockReturnValue(null)
-      vi.mocked(updateCanvas).mockReturnValue({ id: 'canvas-1', title: null } as never)
+      vi.mocked(updateCanvas).mockReturnValue({
+        ok: true,
+        summary: { id: 'canvas-1', title: null, createdAt: 0, updatedAt: 1 }
+      } as never)
       const handlers = await registerAndGetHandlers()
 
       await handlers[CanvasChannels.invoke.UPDATE]({}, { id: 'canvas-1', scene: '{"scene":"raw"}' })
@@ -333,6 +340,56 @@ describe('canvas asset IPC handlers', () => {
       expect(injectSceneAssetSidecar).not.toHaveBeenCalled()
       expect(vi.mocked(updateCanvas).mock.calls[0][3]).toMatchObject({ scene: '{"scene":"raw"}' })
       expect(reconcileCanvasAssets).not.toHaveBeenCalled()
+    })
+
+    it('reports tooLarge when the saved scene could not sync', async () => {
+      await withWorkingCanvasContext()
+      vi.mocked(buildAssetServiceContext).mockReturnValue(null)
+      vi.mocked(updateCanvas).mockReturnValue({
+        ok: true,
+        summary: { id: 'canvas-1', title: null, createdAt: 0, updatedAt: 1 }
+      } as never)
+      vi.mocked(syncCanvasUpdate).mockReturnValue(false)
+      const handlers = await registerAndGetHandlers()
+
+      const result = await handlers[CanvasChannels.invoke.UPDATE](
+        {},
+        { id: 'canvas-1', scene: 'x' }
+      )
+
+      expect(result).toMatchObject({ id: 'canvas-1', tooLarge: true })
+    })
+
+    it('reports tooLarge:false on a scene that synced', async () => {
+      await withWorkingCanvasContext()
+      vi.mocked(buildAssetServiceContext).mockReturnValue(null)
+      vi.mocked(updateCanvas).mockReturnValue({
+        ok: true,
+        summary: { id: 'canvas-1', title: null, createdAt: 0, updatedAt: 1 }
+      } as never)
+      vi.mocked(syncCanvasUpdate).mockReturnValue(true)
+      const handlers = await registerAndGetHandlers()
+
+      const result = await handlers[CanvasChannels.invoke.UPDATE](
+        {},
+        { id: 'canvas-1', scene: 'x' }
+      )
+
+      expect(result).toMatchObject({ id: 'canvas-1', tooLarge: false })
+    })
+
+    it('throws a distinguishable error when the optimistic guard rejects', async () => {
+      await withWorkingCanvasContext()
+      vi.mocked(buildAssetServiceContext).mockReturnValue(null)
+      vi.mocked(updateCanvas).mockReturnValue({ ok: false, reason: 'conflict' } as never)
+      const handlers = await registerAndGetHandlers()
+
+      await expect(
+        handlers[CanvasChannels.invoke.UPDATE](
+          {},
+          { id: 'canvas-1', scene: 'x', expectedUpdatedAt: 1 }
+        )
+      ).rejects.toThrow(/modified/i)
     })
   })
 
@@ -361,6 +418,81 @@ describe('canvas asset IPC handlers', () => {
 
       expect(reconcileCanvasAssets).not.toHaveBeenCalled()
     })
+  })
+})
+
+describe('canvas live-ownership handlers', () => {
+  afterEach(() => {
+    unregisterCanvasHandlers()
+    vi.clearAllMocks()
+  })
+
+  function fakeWindow(id: number) {
+    return { id, once: vi.fn(), webContents: {} }
+  }
+
+  it('hooks the window "closed" listener once, however many canvases it opens', async () => {
+    // Regression: registering once('closed') per live-opened stacks a listener
+    // for every canvas the user visits in that window, which leaks and trips
+    // Electron's max-listeners warning.
+    const { BrowserWindow } = await import('electron')
+    const win = fakeWindow(7)
+    vi.mocked(BrowserWindow.fromWebContents).mockReturnValue(win as never)
+    const handlers = await registerAndGetHandlers()
+
+    await handlers[CanvasChannels.invoke.LIVE_OPENED]({ sender: win.webContents }, 'canvas-1')
+    await handlers[CanvasChannels.invoke.LIVE_OPENED]({ sender: win.webContents }, 'canvas-2')
+    await handlers[CanvasChannels.invoke.LIVE_OPENED]({ sender: win.webContents }, 'canvas-3')
+
+    expect(win.once).toHaveBeenCalledTimes(1)
+    expect(win.once).toHaveBeenCalledWith('closed', expect.any(Function))
+  })
+
+  it('hooks each distinct window separately', async () => {
+    const { BrowserWindow } = await import('electron')
+    const first = fakeWindow(1)
+    const second = fakeWindow(2)
+    const handlers = await registerAndGetHandlers()
+
+    vi.mocked(BrowserWindow.fromWebContents).mockReturnValue(first as never)
+    await handlers[CanvasChannels.invoke.LIVE_OPENED]({ sender: first.webContents }, 'canvas-1')
+    vi.mocked(BrowserWindow.fromWebContents).mockReturnValue(second as never)
+    await handlers[CanvasChannels.invoke.LIVE_OPENED]({ sender: second.webContents }, 'canvas-1')
+
+    expect(first.once).toHaveBeenCalledTimes(1)
+    expect(second.once).toHaveBeenCalledTimes(1)
+  })
+
+  it('re-hooks a window id after its close listener fired', async () => {
+    const { BrowserWindow } = await import('electron')
+    const win = fakeWindow(3)
+    vi.mocked(BrowserWindow.fromWebContents).mockReturnValue(win as never)
+    const handlers = await registerAndGetHandlers()
+
+    await handlers[CanvasChannels.invoke.LIVE_OPENED]({ sender: win.webContents }, 'canvas-1')
+    // Fire the registered 'closed' callback, as Electron would.
+    const onClosed = win.once.mock.calls[0][1] as () => void
+    onClosed()
+    await handlers[CanvasChannels.invoke.LIVE_OPENED]({ sender: win.webContents }, 'canvas-1')
+
+    expect(win.once).toHaveBeenCalledTimes(2)
+  })
+
+  it('ignores a report with no resolvable window or a blank canvas id', async () => {
+    const { BrowserWindow } = await import('electron')
+    const handlers = await registerAndGetHandlers()
+
+    vi.mocked(BrowserWindow.fromWebContents).mockReturnValue(null as never)
+    expect(await handlers[CanvasChannels.invoke.LIVE_OPENED]({ sender: {} }, 'canvas-1')).toEqual({
+      ok: false
+    })
+
+    const win = fakeWindow(9)
+    vi.mocked(BrowserWindow.fromWebContents).mockReturnValue(win as never)
+    expect(
+      await handlers[CanvasChannels.invoke.LIVE_CLOSED]({ sender: win.webContents }, '')
+    ).toEqual({ ok: false })
+    expect(win.once).not.toHaveBeenCalled()
   })
 })
 

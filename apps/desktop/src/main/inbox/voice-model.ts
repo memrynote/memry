@@ -1,10 +1,11 @@
-import { app, BrowserWindow, utilityProcess } from 'electron'
+import { app, utilityProcess } from 'electron'
 import { existsSync } from 'fs'
 import path from 'path'
 
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getLogShip } from '../telemetry/log-ship'
 import type {
   VoiceModelMainToWorkerMessage,
@@ -44,12 +45,10 @@ function isVoiceModelDownloaded(): boolean {
 }
 
 function emitProgress(phase: VoiceModelProgressPhase, progress: number, status: string): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(SettingsChannels.events.VOICE_MODEL_PROGRESS, {
-      phase,
-      progress,
-      status
-    })
+  broadcastToAllWindows(SettingsChannels.events.VOICE_MODEL_PROGRESS, {
+    phase,
+    progress,
+    status
   })
 }
 

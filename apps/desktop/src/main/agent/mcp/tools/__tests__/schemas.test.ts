@@ -18,6 +18,8 @@ describe('Vault MCP tool schemas', () => {
       'vault_list_inbox_items',
       'vault_get_inbox_item',
       'vault_get_tags',
+      'vault_list_canvases',
+      'vault_read_canvas',
       'vault_desktop_read',
       'vault_create_note',
       'vault_rename_note',
@@ -61,6 +63,8 @@ describe('Vault MCP tool schemas', () => {
       'vault_add_tag',
       'vault_remove_tag',
       'vault_move_to_folder',
+      'vault_add_canvas_item',
+      'vault_remove_canvas_item',
       'vault_desktop_write'
     ])
   })
@@ -80,6 +84,27 @@ describe('Vault MCP tool schemas', () => {
 
   it('rejects an empty query for search', () => {
     const r = TOOL_SCHEMAS.vault_search_notes.input.safeParse({ query: '' })
+    expect(r.success).toBe(false)
+  })
+
+  it('accepts a file_types filter for search', () => {
+    const parsed = TOOL_SCHEMAS.vault_search_notes.input.parse({
+      query: 'invoice',
+      file_types: ['markdown', 'pdf']
+    })
+    expect(parsed).toEqual({ query: 'invoice', file_types: ['markdown', 'pdf'] })
+  })
+
+  it('rejects an unknown file_type for search', () => {
+    const r = TOOL_SCHEMAS.vault_search_notes.input.safeParse({
+      query: 'invoice',
+      file_types: ['spreadsheet']
+    })
+    expect(r.success).toBe(false)
+  })
+
+  it('rejects an empty file_types array for search', () => {
+    const r = TOOL_SCHEMAS.vault_search_notes.input.safeParse({ query: 'invoice', file_types: [] })
     expect(r.success).toBe(false)
   })
 

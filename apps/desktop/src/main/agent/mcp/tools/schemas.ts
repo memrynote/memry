@@ -3,6 +3,7 @@ import {
   AgentMcpDesktopReadOperations,
   AgentMcpDesktopWriteOperations
 } from '@memry/contracts/agent-mcp-channels'
+import { NoteFileTypeEnum } from '@memry/contracts/search-api'
 
 const idSchema = z.string().min(1)
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -79,13 +80,20 @@ export const TOOL_SCHEMAS = {
     input: z.object({
       query: z.string().min(1),
       limit: z.number().int().positive().max(50).optional(),
-      folder_id: idSchema.optional()
+      folder_id: idSchema.optional(),
+      file_types: z.array(NoteFileTypeEnum).min(1).optional()
     }),
-    description: 'Full-text search across notes; returns id, title, snippet, folder_path.'
+    description:
+      'Full-text search across notes and filed files; returns id, title, snippet, folder_path, ' +
+      'file_type. A file_type other than "markdown" (pdf/image/audio/video) is a filed file, not ' +
+      'a note — vault_read_note rejects those. Pass file_types to restrict the search, e.g. ' +
+      '["markdown"] for notes only; omitted returns every file type.'
   },
   vault_read_note: {
     input: z.object({ id: idSchema }),
-    description: 'Read a note by id; returns full markdown content + metadata.'
+    description:
+      'Read a markdown note by id; returns full markdown content + metadata. Errors with ' +
+      'VALIDATION when the id belongs to a filed pdf/image/audio/video file.'
   },
   vault_list_folder: {
     input: z.object({
@@ -115,7 +123,7 @@ export const TOOL_SCHEMAS = {
   },
   vault_list_projects: {
     input: z.object({}).default({}),
-    description: 'List all projects with task counts.'
+    description: 'List all projects with task counts and linked note/file/event counts.'
   },
   vault_get_project: {
     input: z.object({ id: idSchema }),
@@ -146,7 +154,21 @@ export const TOOL_SCHEMAS = {
   },
   vault_get_tags: {
     input: z.object({}).default({}),
-    description: 'List all tags with usage counts.'
+    description:
+      'List all tags with usage counts, color, icon, sort order, and the tag category they ' +
+      'belong to (category_id and category_name, both null when uncategorized).'
+  },
+  vault_list_canvases: {
+    input: z.object({}).default({}),
+    description:
+      'List spatial canvases with how many notes/tasks/events sit on each. ' +
+      'Never returns scene geometry.'
+  },
+  vault_read_canvas: {
+    input: z.object({ id: idSchema }),
+    description:
+      'Read one canvas: title, the entities on it (with titles), and any text written on it. ' +
+      'Returns no scene geometry — use vault_add_canvas_item to change what is on it.'
   },
   vault_desktop_read: {
     input: desktopReadSchema,
@@ -381,6 +403,33 @@ export const TOOL_SCHEMAS = {
     input: z.object({ id: idSchema, folder_path: z.string().min(1) }),
     description: 'Move a note to a folder. Requires user approval.'
   },
+  vault_add_canvas_item: {
+    input: z.object({
+      canvas_id: idSchema,
+      items: z
+        .array(
+          z.object({
+            entity_type: z.enum(['note', 'task', 'calendar_event']),
+            entity_id: idSchema
+          })
+        )
+        .min(1)
+        .max(20)
+    }),
+    description:
+      'Put existing notes/tasks/events on a canvas as cards. Applies to the open editor when ' +
+      'the user has that canvas open. Requires user approval.'
+  },
+  vault_remove_canvas_item: {
+    input: z.object({
+      canvas_id: idSchema,
+      entity_type: z.enum(['note', 'task', 'calendar_event']),
+      entity_id: idSchema
+    }),
+    description:
+      "Remove an entity's card from a canvas, clearing any arrows bound to it. " +
+      'The note/task/event itself is not deleted. Requires user approval.'
+  },
   vault_desktop_write: {
     input: desktopWriteSchema,
     description: 'Run an allowlisted desktop CRUD mutation. Requires user approval.'
@@ -404,6 +453,8 @@ export const READ_TOOL_NAMES = [
   'vault_list_inbox_items',
   'vault_get_inbox_item',
   'vault_get_tags',
+  'vault_list_canvases',
+  'vault_read_canvas',
   'vault_desktop_read'
 ] as const satisfies readonly ToolName[]
 
@@ -450,6 +501,8 @@ export const WRITE_TOOL_NAMES = [
   'vault_add_tag',
   'vault_remove_tag',
   'vault_move_to_folder',
+  'vault_add_canvas_item',
+  'vault_remove_canvas_item',
   'vault_desktop_write'
 ] as const satisfies readonly ToolName[]
 
@@ -499,6 +552,8 @@ export const UPDATE_TOOL_NAMES = [
   'vault_add_tag',
   'vault_remove_tag',
   'vault_move_to_folder',
+  'vault_add_canvas_item',
+  'vault_remove_canvas_item',
   'vault_desktop_write'
 ] as const satisfies readonly ToolName[]
 

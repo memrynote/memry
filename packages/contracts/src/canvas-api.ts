@@ -70,8 +70,19 @@ export const CanvasUpdateSchema = z.object({
   id: z.string().min(1),
   title: z.string().nullable().optional(),
   scene: z.string().optional(),
-  entityRefs: z.array(CanvasEntityRefSchema).optional()
+  entityRefs: z.array(CanvasEntityRefSchema).optional(),
+  /**
+   * Optimistic concurrency guard. When present the store compares it against
+   * the stored `updatedAt` INSIDE its update transaction and rejects a
+   * mismatch, so a writer that read the canvas earlier cannot clobber a change
+   * that landed in between. Omitted — as the renderer's autosave and every
+   * pre-existing caller do — means last-write-wins exactly as before.
+   */
+  expectedUpdatedAt: z.number().int().optional()
 })
+
+/** Why an update did not apply. */
+export type CanvasUpdateFailure = 'not-found' | 'conflict'
 
 /**
  * One Excalidraw LibraryItem. Only `id` is ours to reason about — it is the
@@ -109,6 +120,20 @@ export const CanvasListAssetsSchema = z.object({
 
 export interface CanvasListResponse {
   canvases: CanvasSummary[]
+}
+
+/** A canvas summary carrying how many entities sit on it (advisory refs). */
+export interface CanvasSummaryWithCount extends CanvasSummary {
+  itemCount: number
+}
+
+/**
+ * canvas:update response. `tooLarge` mirrors CanvasTooLargeEvent for callers
+ * with no event subscription (agent MCP writes): the scene was saved locally
+ * but is too large to sync.
+ */
+export interface CanvasUpdateResponse extends CanvasSummary {
+  tooLarge: boolean
 }
 
 /**

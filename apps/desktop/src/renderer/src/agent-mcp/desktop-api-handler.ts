@@ -30,14 +30,27 @@ function resolveDesktopApiOperation(operation: string): (...args: unknown[]) => 
   return target as (...args: unknown[]) => unknown
 }
 
-function normalizeDesktopApiArgs(operation: string, args: unknown[]): unknown[] {
+async function normalizeDesktopApiArgs(operation: string, args: unknown[]): Promise<unknown[]> {
   switch (operation) {
     case 'calendar.listEvents':
       return [normalizeCalendarListEventsInput(args)]
     case 'calendar.getRange':
-      return [normalizeCalendarRangeInput(args)]
+      return [await normalizeCalendarRangeInput(args)]
     default:
       return args
+  }
+}
+
+// Google Workspace Limited Use: Google-synced events are invisible to the agent
+// until the user explicitly opts in. Anything other than a stored `true` — not
+// asked yet, opted out, or a settings read that failed — stays native-only.
+async function hasAgentGoogleEventConsent(): Promise<boolean> {
+  try {
+    const settings = await window.api.settings.getCalendarGoogleSettings()
+    return settings.agentReadEventsConsent === true
+  } catch (error) {
+    log.warn('Calendar consent lookup failed; keeping agent reads native-only', error)
+    return false
   }
 }
 
@@ -45,7 +58,7 @@ function normalizeCalendarListEventsInput(args: unknown[]): JsonRecord {
   return objectArg(args[0]) ?? {}
 }
 
-function normalizeCalendarRangeInput(args: unknown[]): JsonRecord {
+async function normalizeCalendarRangeInput(args: unknown[]): Promise<JsonRecord> {
   const input =
     typeof args[0] === 'string' && typeof args[1] === 'string'
       ? { start: args[0], end: args[1] }
@@ -55,9 +68,9 @@ function normalizeCalendarRangeInput(args: unknown[]): JsonRecord {
   return {
     startAt: start ? normalizeCalendarRangeBound(start, 'start') : start,
     endAt: end ? normalizeCalendarRangeBound(end, 'end') : end,
-    // Google Workspace Limited Use: agent range reads must never include
-    // Google-synced external events, regardless of caller-supplied flags.
-    includeExternal: false
+    // Resolved from stored consent, never from the caller: an agent that asks
+    // for external events cannot talk its way past the user's answer.
+    includeExternal: await hasAgentGoogleEventConsent()
   }
 }
 
@@ -122,7 +135,8 @@ export function useAgentMcpDesktopApiResponder({
 
       try {
         const fn = resolveDesktopApiOperation(parsed.data.operation)
-        const data = await fn(...normalizeDesktopApiArgs(parsed.data.operation, parsed.data.args))
+        const args = await normalizeDesktopApiArgs(parsed.data.operation, parsed.data.args)
+        const data = await fn(...args)
         const response: AgentMcpDesktopApiResponse = { ok: true, data }
         window.api.respondToMainInvoke(requestId, response)
       } catch (error) {

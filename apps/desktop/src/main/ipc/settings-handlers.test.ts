@@ -1011,7 +1011,8 @@ describe('settings-handlers', () => {
         defaultTargetCalendarId: null,
         onboardingCompleted: false,
         promoteConfirmDismissed: false,
-        pushEventsToGoogle: true
+        pushEventsToGoogle: true,
+        agentReadEventsConsent: null
       })
     })
 
@@ -1035,7 +1036,8 @@ describe('settings-handlers', () => {
         defaultTargetCalendarId: 'primary@group.calendar.google.com',
         onboardingCompleted: true,
         promoteConfirmDismissed: false,
-        pushEventsToGoogle: true
+        pushEventsToGoogle: true,
+        agentReadEventsConsent: null
       })
     })
 
@@ -1056,7 +1058,8 @@ describe('settings-handlers', () => {
           defaultTargetCalendarId: 'work@group.calendar.google.com',
           onboardingCompleted: true,
           promoteConfirmDismissed: false,
-          pushEventsToGoogle: true
+          pushEventsToGoogle: true,
+          agentReadEventsConsent: null
         })
       )
     })

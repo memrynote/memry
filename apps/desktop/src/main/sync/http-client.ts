@@ -94,12 +94,19 @@ interface ServerErrorResponse {
   message?: string
 }
 
+// A socket that black-holes (suspend/resume, NAT teardown) would otherwise
+// keep this request pending forever — and with it the sync lock, which
+// silences every future periodic pull until the app restarts. The timeout is
+// per attempt; withRetry owns the retry budget on top of it.
+export const SYNC_REQUEST_TIMEOUT_MS = 60_000
+
 export const syncFetch = async <T>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
   path: string,
   body?: unknown,
   token?: string,
-  fetchFn?: FetchFn
+  fetchFn?: FetchFn,
+  timeoutMs: number = SYNC_REQUEST_TIMEOUT_MS
 ): Promise<T> => {
   const url = `${getSyncServerUrl()}${path}`
   const fetchImpl = fetchFn ?? ((...args: Parameters<typeof net.fetch>) => net.fetch(...args))
@@ -120,9 +127,13 @@ export const syncFetch = async <T>(
     response = await fetchImpl(url, {
       method,
       headers,
-      body: body != null ? JSON.stringify(body) : undefined
+      body: body != null ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(timeoutMs)
     })
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
+      throw new NetworkError(getMainI18n().t('errors:sync.requestTimedOut'))
+    }
     throw new NetworkError(getMainI18n().t('errors:sync.serverUnreachable'))
   }
 

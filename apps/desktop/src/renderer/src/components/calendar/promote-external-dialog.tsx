@@ -11,6 +11,12 @@ export interface PromoteExternalDialogProps {
   onConfirm: (dontAskAgain: boolean) => void | Promise<void>
   isWorking?: boolean
   errorMessage?: string | null
+  /**
+   * The promoted copy lives in native storage, which the agent may read even when
+   * Google-event access is off. Surface that so the user is not opted back in by a
+   * gesture that reads as "let me look at this event".
+   */
+  agentAccessOff?: boolean
 }
 
 export function PromoteExternalDialog({
@@ -18,7 +24,8 @@ export function PromoteExternalDialog({
   onOpenChange,
   onConfirm,
   isWorking = false,
-  errorMessage = null
+  errorMessage = null,
+  agentAccessOff = false
 }: PromoteExternalDialogProps): React.JSX.Element | null {
   const [dontAskAgain, setDontAskAgain] = useState(false)
   const { t } = useT('calendar')
@@ -34,7 +41,7 @@ export function PromoteExternalDialog({
           data-testid="promote-external-dialog"
           aria-label={t('promote-dialog.aria')}
           className={cn(
-            'fixed left-1/2 top-1/2 z-50 w-[420px] -translate-x-1/2 -translate-y-1/2',
+            'fixed start-1/2 top-1/2 z-50 w-[420px] -translate-x-1/2 -translate-y-1/2 rtl:translate-x-1/2',
             'rounded-md border bg-popover p-6 text-popover-foreground shadow-lg outline-none'
           )}
         >
@@ -44,6 +51,12 @@ export function PromoteExternalDialog({
           <DialogPrimitive.Description className="mb-4 text-sm text-muted-foreground">
             {t('promote-dialog.body')}
           </DialogPrimitive.Description>
+
+          {agentAccessOff && (
+            <p className="mb-4 rounded-md border border-border bg-muted/50 p-3 text-xs text-foreground">
+              {t('promote-dialog.agent-notice')}
+            </p>
+          )}
 
           <label className="flex items-center gap-2 text-sm">
             <Checkbox
