@@ -34,7 +34,8 @@
     "createAnother": "crear otro",
     "delete": "Eliminar tarea",
     "created": "Creado {date}",
-    "reminder": "Recordatorio"
+    "reminder": "Recordatorio",
+    "tags": "Etiquetas"
   },
   "filters": {
     "filter": "Filtrar",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Tarea de adición rápida",
-    "focusDescription": "Enfoque la entrada de adición rápida"
+    "focusDescription": "Enfoque la entrada de adición rápida",
+    "placeholder": "Añade una tarea…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Cerrar detalles de la tarea",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Este proyecto no tiene tareas y será eliminado permanentemente.",
       "thisActionCannotBeUndone": "Esta acción no se puede deshacer.",
       "cancel": "Cancelar",
-      "deleteProject": "Eliminar proyecto"
+      "deleteProject": "Eliminar proyecto",
+      "notesEventsAndFilesStayNotice": "Las tareas de este proyecto se eliminan. Tus notas, eventos y archivos se quedan en tu bóveda."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "¿Eliminar tarea?",
@@ -357,7 +360,9 @@
       "due": "debido",
       "dueDate": "fecha de vencimiento",
       "search": "buscar",
-      "clearAll": "Borrar todo"
+      "clearAll": "Borrar todo",
+      "tags": "etiquetas",
+      "tagsIs": "Las etiquetas son"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Filtrar por fecha de vencimiento",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "No hay tareas próximas",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Las tareas que vencen en los próximos 7 días aparecerán aquí. Planifica tu semana agregando algunas tareas.",
       "addTask2": "Agregar tarea"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "es",
+      "search": "Buscar...",
+      "selected": "seleccionadas",
+      "tags": "Etiquetas"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "No se pudo establecer el recordatorio",
       "updateFailed": "No se pudo actualizar el recordatorio",
       "updated": "Recordatorio actualizado"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Añadir al proyecto",
+    "loading": "Cargando proyectos…",
+    "menuLabel": "Añadir al proyecto",
+    "noProjects": "Aún no hay proyectos",
+    "toastError": "No se pudo añadir al proyecto",
+    "toastSuccess": "Se ha añadido a {name}"
+  },
+  "itemProjects": {
+    "openProject": "Abrir el proyecto {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Elige un proyecto en la barra lateral para abrir su página de inicio.",
+    "emptyTitle": "Ningún proyecto seleccionado",
+    "loadError": "No se pudieron cargar los detalles del proyecto",
+    "overview": {
+      "clear": "Quitar resumen",
+      "clearError": "No se pudo quitar la nota de resumen",
+      "create": "Crear nota de resumen",
+      "createError": "No se pudo crear la nota de resumen",
+      "defaultTitle": "Resumen",
+      "loadError": "No se pudo cargar la nota de resumen",
+      "placeholder": "Escribe un resumen de este proyecto…",
+      "saveError": "No se pudo guardar la nota de resumen",
+      "sectionTitle": "Resumen"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Adjuntar archivos",
+      "fileError": "No se pudo vincular {name}",
+      "fileErrorGeneric": "No se pudieron importar los archivos",
+      "filesAdded": "{count, plural, one {# archivo añadido al proyecto} many {# archivos añadidos al proyecto} other {# archivos añadidos al proyecto}}",
+      "label": "Añadir a {name}",
+      "linkAdded": "Enlace añadido al proyecto",
+      "linkError": "No se pudo guardar el enlace",
+      "placeholder": "Añadir a {name} — escribe una tarea, anota una idea o pega un enlace…"
+    },
+    "groups": {
+      "older": "Más antiguos",
+      "past": "Pasados",
+      "today": "Hoy",
+      "tomorrow": "Mañana",
+      "upcoming": "Próximos",
+      "yesterday": "Ayer"
+    },
+    "header": {
+      "archiveProject": "Archivar proyecto",
+      "editProject": "Editar proyecto",
+      "menu": "Acciones del proyecto",
+      "toggleRail": "Mostrar u ocultar los detalles del proyecto"
+    },
+    "rail": {
+      "addNote": "Añadir nota",
+      "created": "Creado",
+      "details": "Detalles",
+      "doneOf": "{done} de {total} hechas",
+      "linked": "Vinculados",
+      "linkedSummary": "{notes, plural, one {# nota} many {# notas} other {# notas}} · {files, plural, one {# archivo} many {# archivos} other {# archivos}} · {events, plural, one {# evento} many {# eventos} other {# eventos}}",
+      "overdue": "Vencidas",
+      "overview": "Resumen",
+      "pinError": "No se pudo añadir la nota al resumen",
+      "progress": "Progreso",
+      "unpinError": "No se pudo quitar la nota del resumen",
+      "unpinNote": "Quitar {title} del resumen",
+      "updated": "Actualizado"
+    },
+    "rows": {
+      "openEvent": "Abrir el evento {title}",
+      "openFile": "Abrir el archivo {title}",
+      "openNote": "Abrir la nota {title}",
+      "openTask": "Abrir la tarea {title}",
+      "setNoteIcon": "Establecer el icono de {title}"
+    },
+    "sections": {
+      "add": "Añadir a {title}",
+      "emptyEvents": "Aún no hay eventos vinculados.",
+      "emptyFiles": "Aún no hay archivos vinculados.",
+      "emptyNotes": "Aún no hay notas vinculadas.",
+      "emptyTasks": "Aún no hay tareas.",
+      "newNoteError": "No se pudo añadir la nota",
+      "newNoteTitle": "Nota sin título",
+      "viewAll": "Ver todo"
+    },
+    "tabs": {
+      "events": "Eventos",
+      "files": "Archivos",
+      "label": "Vistas del proyecto",
+      "notes": "Notas",
+      "overview": "Resumen",
+      "tasks": "Tareas"
     }
   }
 }

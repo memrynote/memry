@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "Ett synkroniseringsobjekt kunde inte verifieras och har satts i karantän av säkerhetsskäl.",
     "securityQuarantineRetry": "Ett synkroniseringsobjekt misslyckades med signaturverifiering och kommer att försöka igen.",
     "certificatePinPaused": "Säker anslutning till synkroniseringsserver kunde inte verifieras. Synkronisering har pausats för din säkerhet.",
-    "paymentRequired": "En betald synkplan krävs för att använda värdbaserad krypterad synk."
+    "paymentRequired": "En betald synkplan krävs för att använda värdbaserad krypterad synk.",
+    "attachmentUploadFailed": "Det gick inte att synkronisera bilagan \"{filename}\". Den stannar på den här enheten.",
+    "fileTooLarge": "Den här filen är större än din plan tillåter. Uppgradera din plan för att synkronisera större filer.",
+    "vaultRecovered": "Valvnyckeln är återställd. Synkroniseringen återupptas."
   }
 }

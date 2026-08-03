@@ -67,7 +67,8 @@
     "title": "Tanggalin ang kaganapan?",
     "local-description": "Ang \"{title}\" ay permanenteng tatanggalin. Ang pagkilos na ito ay hindi maaaring i-undo.",
     "google-bound-description": "Aalisin ang \"{title}\" sa memrynote at Google Calendar. Ang pagkilos na ito ay hindi maaaring i-undo.",
-    "context-menu-delete-label": "Tanggalin ang kaganapan"
+    "context-menu-delete-label": "Tanggalin ang kaganapan",
+    "context-menu-add-to-project": "Idagdag sa proyekto"
   },
   "promote-dialog": {
     "aria": "I-edit ang panlabas na kaganapan sa kalendaryo",
@@ -181,6 +182,7 @@
     "placeholder": "Maghanap ng kaganapan, gawain, paalala…"
   },
   "undo": {
-    "moveEvent": "Ilipat ang kaganapan"
+    "moveEvent": "Ilipat ang kaganapan",
+    "moveTask": "I-reschedule ang gawain"
   }
 }

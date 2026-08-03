@@ -314,7 +314,10 @@
       "rdquo": "rdquo;",
       "captureAnyway": "Tangkap Bagaimanapun",
       "focusShortcut": "Fokus input tangkapan",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Tangkap pautan",
+      "captureNote": "Tangkap nota",
+      "placeholder": "Tangkapan pantas — tampal pautan, catat idea…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Pilih folder",
@@ -466,7 +469,12 @@
       "cancelRecording": "Batalkan rakaman",
       "cancel": "Batal",
       "stopRecording": "Hentikan rakaman",
-      "stop": "Berhenti"
+      "stop": "Berhenti",
+      "enableMicInSettings": "Dayakan akses mikrofon dalam tetapan sistem anda, kemudian cuba lagi.",
+      "failedToStart": "Gagal memulakan rakaman",
+      "microphoneAccessDenied": "Akses mikrofon ditolak",
+      "noMicrophoneFound": "Tiada mikrofon ditemui",
+      "recordingError": "Ralat berlaku semasa merakam"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "Gagal menangkap fail",
       "fileCaptureFailed": "Tangkapan fail gagal",
       "failedToCaptureAudio": "Gagal menangkap audio",
-      "failedToCaptureVoice": "Gagal menangkap suara"
+      "failedToCaptureVoice": "Gagal menangkap suara",
+      "failedToLoadInboxPreferences": "Gagal memuatkan pilihan peti masuk",
+      "failedToUpdateInboxPreferences": "Gagal mengemas kini pilihan peti masuk"
     },
     "toasts": {
       "inboxRefreshed": "Peti masuk dimuat semula"
@@ -516,5 +526,10 @@
     "task": "Tugasan",
     "time": "Masa",
     "title": "Tukar"
+  },
+  "reviewNudge": {
+    "action": "Buka peti masuk",
+    "description": "Uruskan tangkapan hari ini dalam satu pusingan yang tenang.",
+    "title": "{count, plural, other {Masa untuk menyemak # item}}"
   }
 }

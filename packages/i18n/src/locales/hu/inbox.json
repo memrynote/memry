@@ -314,7 +314,10 @@
       "rdquo": "rdquo;",
       "captureAnyway": "Mindenképpen rögzítse",
       "focusShortcut": "Rögzítési mező fókuszálása",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Link rögzítése",
+      "captureNote": "Jegyzet rögzítése",
+      "placeholder": "Gyors rögzítés — illessz be egy linket, jegyezz fel egy gondolatot…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Válasszon mappát",
@@ -466,7 +469,12 @@
       "cancelRecording": "Felvétel megszakítása",
       "cancel": "Mégsem",
       "stopRecording": "Állítsa le a felvételt",
-      "stop": "Állj"
+      "stop": "Állj",
+      "enableMicInSettings": "Engedélyezd a mikrofon-hozzáférést a rendszerbeállításokban, majd próbáld újra.",
+      "failedToStart": "Nem sikerült elindítani a felvételt",
+      "microphoneAccessDenied": "A mikrofon-hozzáférés megtagadva",
+      "noMicrophoneFound": "Nem található mikrofon",
+      "recordingError": "Hiba történt a felvétel közben"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "Nem sikerült rögzíteni a fájlt",
       "fileCaptureFailed": "A fájl rögzítése nem sikerült",
       "failedToCaptureAudio": "Nem sikerült rögzíteni a hangot",
-      "failedToCaptureVoice": "Nem sikerült rögzíteni a hangot"
+      "failedToCaptureVoice": "Nem sikerült rögzíteni a hangot",
+      "failedToLoadInboxPreferences": "Nem sikerült betölteni a Beérkezők beállításait",
+      "failedToUpdateInboxPreferences": "Nem sikerült frissíteni a Beérkezők beállításait"
     },
     "toasts": {
       "inboxRefreshed": "Beérkező levelek frissítve"
@@ -516,5 +526,10 @@
     "task": "Feladat",
     "time": "Idő",
     "title": "Átalakítás"
+  },
+  "reviewNudge": {
+    "action": "Beérkezők megnyitása",
+    "description": "Nézd át a mai rögzítéseidet egyetlen nyugodt körben.",
+    "title": "{count, plural, one {Ideje átnézni # elemet} other {Ideje átnézni # elemet}}"
   }
 }

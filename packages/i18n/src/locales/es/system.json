@@ -38,6 +38,11 @@
       "fallback": "Recordatorio pendiente",
       "default": "Recordatorio",
       "task": "Recordatorio de tarea"
+    },
+    "inboxReview": {
+      "body": "Tienes {count, plural, one {# elemento} many {# elementos} other {# elementos}} por revisar.",
+      "testBody": "Esto es una prueba — así se verán tus recordatorios de revisión diaria.",
+      "title": "Es hora de revisar tu bandeja de entrada"
     }
   },
   "error": {

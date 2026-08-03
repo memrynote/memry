@@ -28,7 +28,8 @@
         "properties": "Mga Katangian",
         "commandLine": "Command Line",
         "features": "Mga Feature",
-        "import": "Pag-import"
+        "import": "Pag-import",
+        "inbox": "Inbox"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Dina-download ang {percent}%",
         "downloaded": "I-restart upang I-install",
         "idle": "Tingnan ang Mga Update"
+      },
+      "autoCheck": {
+        "description": "Tingnan kung may mga bagong release kapag binuksan ang app at pana-panahon habang bukas ito.",
+        "error": "Nabigong i-update ang setting ng awtomatikong pagsuri",
+        "label": "Awtomatikong maghanap ng mga update"
+      },
+      "autoDownload": {
+        "description": "I-download at i-install ang mga bagong release sa background nang hindi nagtatanong.",
+        "error": "Nabigong i-update ang setting ng awtomatikong pag-download",
+        "label": "Awtomatikong i-download ang mga update"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Ibahagi ang Anonymous na Sukatan sa Paggamit",
         "description": "Anon metrics lang ito — walang ipinapadalang nilalaman ng tala, mga query sa paghahanap, path ng file, email, o raw ID.",
         "error": "Nabigong i-update ang setting ng telemetry"
+      },
+      "diagnostics": {
+        "building": "Inihahanda ang ulat…",
+        "consent": "Magpadala ng isang beses na diagnostic report? Naglalaman ito ng mga na-redact na teknikal na log lamang — walang nilalaman ng tala.",
+        "error": "Nabigong ipadala ang diagnostic report",
+        "notNow": "Hindi ngayon",
+        "previewError": "Hindi maihanda ang diagnostic report",
+        "previewLabel": "I-preview ang nilalaman ng ulat",
+        "send": "Ipadala",
+        "sendReport": {
+          "button": "Magpadala ng diagnostic report",
+          "description": "Magpadala ng isang beses na ulat ng mga na-redact na teknikal na log para matulungan kaming ayusin ang problemang naranasan mo.",
+          "label": "Diagnostic Report"
+        },
+        "sending": "Ipinapadala…",
+        "sent": "Naipadala ang ulat — sanggunian {incidentId}",
+        "snapshotLabel": "Snapshot ng device",
+        "title": "Magpadala ng diagnostic report?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Layout",
-      "toolbar": "Toolbar"
+      "toolbar": "Toolbar",
+      "spelling": "Pagbaybay"
     },
     "width": {
       "label": "Lapad ng Editor",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Makitid",
         "medium": "Katamtaman",
-        "wide": "Malapad"
+        "wide": "Malapad",
+        "full": "Buong lapad",
+        "normal": "Karaniwan"
       },
       "error": "Nabigong i-update ang lapad ng editor"
     },
@@ -229,6 +261,11 @@
       "label": "Sticky Formatting Toolbar",
       "description": "Palaging ipakita ang toolbar sa itaas ng editor",
       "error": "Nabigong i-update ang toolbar mode"
+    },
+    "spellCheck": {
+      "description": "Salungguhitan ang mga maling baybay na salita sa mga tala at journal",
+      "error": "Nabigong i-update ang spell check",
+      "label": "Suriin ang Pagbaybay"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "Paggamit ng Imbakan",
-      "location": "Lokasyon"
+      "location": "Lokasyon",
+      "accountVaults": "Mga vault sa iyong account"
     },
     "loadingStorage": "Nilo-load ang impormasyon ng storage...",
     "signInStorage": "Mag-sign in para tingnan ang paggamit ng storage",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "Halos puno na ang storage",
       "warningDescription": "Magbakante ng espasyo o i-upgrade ang iyong plano para maiwasan ang mga isyu sa pag-sync."
+    },
+    "accountVaults": {
+      "activeHint": "Lumipat sa ibang vault para matanggal ito.",
+      "cloudOnly": "Wala sa device na ito",
+      "delete": "Tanggalin",
+      "deleteBody": "Permanenteng inaalis nito ang lahat ng naka-sync na data ng vault na ito mula sa mga server ng Memry at hindi na ito maibabalik. Hindi tinatanggal ang iyong mga file sa disk.",
+      "deleteConfirm": "Tanggalin sa account",
+      "deleteFailed": "Hindi matanggal ang vault",
+      "deleteTitle": "Tanggalin ang “{name}” sa iyong account?",
+      "empty": "Wala pang vault na naka-sync sa iyong account.",
+      "itemsCount": "{count} na item"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "Nabigong isara ang vault",
       "failedToSwitchVault": "Nabigong lumipat ng vault",
       "failedToUpdateConfig": "Nabigong i-update ang config",
-      "failedToReindex": "Nabigong muling i-index"
+      "failedToReindex": "Nabigong muling i-index",
+      "failedToLoadTasks": "Nabigong i-load ang mga gawain"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "Mga to-do at takdang petsa",
         "label": "Mga Gawain"
+      },
+      "spatialCanvas": {
+        "description": "Mga spatial board para ayusin at iugnay ang mga tala",
+        "label": "Canvas"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} nilaktawan",
         "title": "Kumpleto na ang pag-import"
       },
-      "title": "Mag-import mula sa {name}"
+      "title": "Mag-import mula sa {name}",
+      "chooseDirectory": "Pumili ng folder…",
+      "folderKeepsAssets": "Piliin ang folder kapag nasa labas ng sariling folder ng mga tala ang mga larawan — madalas na iniipon ng mga export ang media sa iisang folder."
     },
     "header": {
       "subtitle": "Ilipat ang iyong mga tala at gawain mula sa ibang app",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, one {# gawain} other {# gawain}}",
       "withDueDate": "{count} may petsa",
       "withTags": "{count} na-tag"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Naglo-load…",
+      "subtitle": "Pang-araw-araw na paalala sa pagsusuri at mga kagustuhan sa inbox.",
+      "title": "Inbox"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Isang banayad na pang-araw-araw na paalala kapag may laman ang iyong inbox.",
+        "label": "Paalalahanan akong suriin ang inbox ko"
+      },
+      "error": "Hindi ma-update ang paalala.",
+      "group": "Pang-araw-araw na paalala sa pagsusuri",
+      "test": {
+        "button": "Subukan",
+        "description": "Ipadala ang paalala ngayon para masubukan ang mga abiso ng iyong system.",
+        "label": "Pagsubok na abiso",
+        "sent": "Naipadala ang pagsubok na abiso.",
+        "sentHint": "Kung walang lumabas, payagan ang mga abiso para sa MemryNote sa mga setting ng iyong system.",
+        "unsupported": "Hindi sinusuportahan ng device na ito ang mga desktop notification."
+      },
+      "time": {
+        "description": "Lokal na oras, sa bawat device.",
+        "hourLabel": "Oras",
+        "label": "Oras ng paalala",
+        "minuteLabel": "Minuto",
+        "periodLabel": "AM o PM"
+      }
     }
   }
 }

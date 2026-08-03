@@ -28,7 +28,8 @@
         "properties": "Svojstva",
         "commandLine": "Naredbeni redak",
         "features": "Značajke",
-        "import": "Uvoz"
+        "import": "Uvoz",
+        "inbox": "Pristigla pošta"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Preuzimanje {percent}%",
         "downloaded": "Ponovno pokrenite za instalaciju",
         "idle": "Provjerite ima li ažuriranja"
+      },
+      "autoCheck": {
+        "description": "Provjeravaj nova izdanja pri pokretanju i povremeno dok je aplikacija otvorena.",
+        "error": "Ažuriranje postavke automatske provjere nije uspjelo",
+        "label": "Automatski provjeravaj ima li ažuriranja"
+      },
+      "autoDownload": {
+        "description": "Preuzmi i instaliraj nova izdanja u pozadini, bez upita.",
+        "error": "Ažuriranje postavke automatskog preuzimanja nije uspjelo",
+        "label": "Automatski preuzimaj ažuriranja"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Dijelite anonimne metrike korištenja",
         "description": "To su samo anonimne metrike — nikad se ne šalju sadržaj bilješke, upiti za pretraživanje, putanje datoteka, e-poruke ili neobrađeni ID-ovi.",
         "error": "Ažuriranje postavke telemetrije nije uspjelo"
+      },
+      "diagnostics": {
+        "building": "Priprema izvješća…",
+        "consent": "Poslati jednokratno dijagnostičko izvješće? Sadrži samo anonimizirane tehničke zapise — bez sadržaja bilješki.",
+        "error": "Slanje dijagnostičkog izvješća nije uspjelo",
+        "notNow": "Ne sada",
+        "previewError": "Nije moguće pripremiti dijagnostičko izvješće",
+        "previewLabel": "Pregledaj sadržaj izvješća",
+        "send": "Pošalji",
+        "sendReport": {
+          "button": "Pošalji dijagnostičko izvješće",
+          "description": "Pošaljite jednokratno izvješće s anonimiziranim tehničkim zapisima kako bismo lakše otklonili problem na koji ste naišli.",
+          "label": "Dijagnostičko izvješće"
+        },
+        "sending": "Slanje…",
+        "sent": "Izvješće je poslano — referenca {incidentId}",
+        "snapshotLabel": "Snimka uređaja",
+        "title": "Poslati dijagnostičko izvješće?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Izgled",
-      "toolbar": "Alatna traka"
+      "toolbar": "Alatna traka",
+      "spelling": "Pravopis"
     },
     "width": {
       "label": "Širina uređivača",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "usko",
         "medium": "srednje",
-        "wide": "Široko"
+        "wide": "Široko",
+        "full": "Puna širina",
+        "normal": "Normalna"
       },
       "error": "Nije uspjelo ažuriranje širine uređivača"
     },
@@ -229,6 +261,11 @@
       "label": "Alatna traka za ljepljivo oblikovanje",
       "description": "Uvijek prikaži alatnu traku iznad uređivača",
       "error": "Ažuriranje načina alatne trake nije uspjelo"
+    },
+    "spellCheck": {
+      "description": "Podcrtaj pogrešno napisane riječi u bilješkama i dnevnicima",
+      "error": "Ažuriranje provjere pravopisa nije uspjelo",
+      "label": "Provjera pravopisa"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "Korištenje pohrane",
-      "location": "Lokacija"
+      "location": "Lokacija",
+      "accountVaults": "Trezori na vašem računu"
     },
     "loadingStorage": "Učitavanje informacija o pohrani...",
     "signInStorage": "Prijavite se da vidite korištenje pohrane",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "Spremište je gotovo puno",
       "warningDescription": "Oslobodite prostor ili nadogradite svoj plan kako biste izbjegli probleme sa sinkronizacijom."
+    },
+    "accountVaults": {
+      "activeHint": "Prijeđite na drugi trezor da biste izbrisali ovaj.",
+      "cloudOnly": "Nije na ovom uređaju",
+      "delete": "Izbriši",
+      "deleteBody": "Ovime se svi sinkronizirani podaci ovog trezora trajno uklanjaju s Memryjevih poslužitelja i to se ne može poništiti. Vaše datoteke na disku neće biti izbrisane.",
+      "deleteConfirm": "Izbriši s računa",
+      "deleteFailed": "Nije moguće izbrisati trezor",
+      "deleteTitle": "Izbrisati „{name}” s vašeg računa?",
+      "empty": "Još nema trezora sinkroniziranih s vašim računom.",
+      "itemsCount": "{count, plural, one {# stavka} few {# stavke} other {# stavki}}"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "Zatvaranje trezora nije uspjelo",
       "failedToSwitchVault": "Promjena trezora nije uspjela",
       "failedToUpdateConfig": "Ažuriranje konfiguracije nije uspjelo",
-      "failedToReindex": "Ponovno indeksiranje nije uspjelo"
+      "failedToReindex": "Ponovno indeksiranje nije uspjelo",
+      "failedToLoadTasks": "Učitavanje zadataka nije uspjelo"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "Obveze i rokovi",
         "label": "Zadaci"
+      },
+      "spatialCanvas": {
+        "description": "Prostorne ploče za slaganje i povezivanje bilješki",
+        "label": "Platno"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} preskočeno",
         "title": "Uvoz dovršen"
       },
-      "title": "Uvezi iz {name}"
+      "title": "Uvezi iz {name}",
+      "chooseDirectory": "Odaberi mapu…",
+      "folderKeepsAssets": "Odaberite mapu kada se slike nalaze izvan mape sa samim bilješkama — pri izvozu se mediji često spremaju u zajedničku mapu."
     },
     "header": {
       "subtitle": "Uvezite bilješke i zadatke iz drugih aplikacija",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, one {# zadatak} few {# zadatka} other {# zadataka}}",
       "withDueDate": "{count} datirano",
       "withTags": "{count} označeno"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Učitavanje…",
+      "subtitle": "Podsjetnik na dnevni pregled i postavke pristigle pošte.",
+      "title": "Pristigla pošta"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Blagi dnevni podsjetnik kada u pristigloj pošti ima stavki.",
+        "label": "Podsjeti me da pregledam pristiglu poštu"
+      },
+      "error": "Nije moguće ažurirati podsjetnik.",
+      "group": "Podsjetnik na dnevni pregled",
+      "test": {
+        "button": "Pošalji test",
+        "description": "Odmah pokrenite podsjetnik i provjerite obavijesti sustava.",
+        "label": "Testna obavijest",
+        "sent": "Testna obavijest je poslana.",
+        "sentHint": "Ako se ništa ne pojavi, dopustite obavijesti za MemryNote u postavkama sustava.",
+        "unsupported": "Ovaj uređaj ne može prikazivati obavijesti na radnoj površini."
+      },
+      "time": {
+        "description": "Lokalno vrijeme, na svakom uređaju.",
+        "hourLabel": "Sat",
+        "label": "Vrijeme podsjetnika",
+        "minuteLabel": "Minuta",
+        "periodLabel": "AM ili PM"
+      }
     }
   }
 }

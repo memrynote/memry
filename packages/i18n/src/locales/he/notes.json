@@ -16,9 +16,27 @@
       "willSync": "הערה תסתנכרן לענן",
       "renameFailed": "שינוי שם ההערה נכשל",
       "toggleLocalOnlyFailed": "החלפת מקומית בלבד נכשלה",
-      "toggleFullWidthFailed": "החלפת הרוחב המלא נכשלה"
+      "toggleFullWidthFailed": "החלפת הרוחב המלא נכשלה",
+      "copyPathFailed": "העתקת הנתיב נכשלה",
+      "deleteFailed": "מחיקת ההערה נכשלה",
+      "moveFailed": "העברת ההערה נכשלה",
+      "moved": "ההערה הועברה",
+      "openExternalFailed": "פתיחת ההערה נכשלה",
+      "pathCopied": "הנתיב הועתק",
+      "revealFailed": "הצגת ההערה נכשלה"
     },
-    "deleteDialogTitle": "{count, plural, one {מחק הערה} other {מחק הערות #}}"
+    "deleteDialogTitle": "{count, plural, one {מחק הערה} other {מחק הערות #}}",
+    "deleteConfirm": {
+      "cancel": "בטל",
+      "confirm": "מחק",
+      "deleting": "מוחק...",
+      "description": "האם אתה בטוח שברצונך למחוק את \"{title}\"? לא ניתן לבטל פעולה זו.",
+      "title": "מחק הערה"
+    },
+    "itemsCount": "{count, plural, one {# פריט} two {# פריטים} other {# פריטים}}",
+    "itemsCountFiltered": "{shown} מתוך {total, plural, one {# פריט} two {# פריטים} other {# פריטים}}",
+    "renameViewUnavailableForTags": "עדיין לא ניתן לשנות שם של תצוגות שמורות עבור תגים",
+    "tagFilterLabel": "תג = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "מחק הערות {count}",
       "deleteSelectedItems": "מחק פריטי {count}",
       "bookmark": "סימנייה",
-      "removeFromBookmarks": "הסר מהסימניות"
+      "removeFromBookmarks": "הסר מהסימניות",
+      "applyTemplate": "החל תבנית"
     },
     "deleteDialog": {
       "noteTitle": "מחק הערה",
@@ -83,7 +102,17 @@
       "export": "ייצוא",
       "fullWidth": "רוחב מלא",
       "disableLocalOnly": "השבת מקומי בלבד",
-      "setLocalOnly": "הגדר מקומי בלבד"
+      "setLocalOnly": "הגדר מקומי בלבד",
+      "applyTemplate": "החל תבנית",
+      "copyPath": "העתק נתיב",
+      "delete": "מחק הערה",
+      "find": "מצא…",
+      "moreActions": "פעולות נוספות",
+      "moveToFolder": "העבר לתיקייה…",
+      "openInDefaultApp": "פתח באפליקציית ברירת המחדל",
+      "rename": "שנה שם…",
+      "revealInFinder": "הצג ב-Finder",
+      "revealInSidebar": "הצג בסרגל הניווט"
     },
     "breadcrumb": {
       "locationAria": "שימו לב למיקום",
@@ -235,7 +264,10 @@
     "essentials": "יסודות",
     "setFolderDefault": "הגדר כברירת מחדל של תיקיה",
     "useTemplate": "השתמש בתבנית",
-    "createNote": "צור הערה"
+    "createNote": "צור הערה",
+    "applyDescription": "החלף את תוכן ההערה הזו בתבנית",
+    "applyTitle": "החל תבנית",
+    "applyToNote": "החל תבנית"
   },
   "exportDialog": {
     "title": "ייצוא הערה",
@@ -352,7 +384,8 @@
       "addCondition": "הוסף תנאי",
       "addFilter": "הוסף מסנן",
       "addGroup": "הוסף קבוצה",
-      "removeGroup": "הסר קבוצה"
+      "removeGroup": "הסר קבוצה",
+      "lockedConditionHint": "התנאי הזה מגדיר את התצוגה הנוכחית ולא ניתן להסיר אותו כאן."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "מובנה",
@@ -365,7 +398,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "טבלת הערות",
       "selectAll": "בחר את כל הפתקים",
-      "selectRow": "בחר פתק"
+      "selectRow": "בחר פתק",
+      "kind": {
+        "Inbox": "תיבת דואר נכנס",
+        "Note": "הערה",
+        "Task": "משימה"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "חפש הערות...",
@@ -468,7 +506,13 @@
       "failedToLoadPdf": "טעינת PDF נכשלה: ",
       "download": "הורד",
       "download2": "הורד",
-      "noFileAttached": "לא מצורף קובץ"
+      "noFileAttached": "לא מצורף קובץ",
+      "alignCenter": "יישור למרכז",
+      "alignLeft": "יישור לשמאל",
+      "alignRight": "יישור לימין",
+      "nextPage": "העמוד הבא",
+      "previousPage": "העמוד הקודם",
+      "resizePdf": "שנה גודל PDF"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "פתח בלוח המשימות",
@@ -530,7 +574,8 @@
       "failedToLoadTags": "טעינת התגים נכשלה",
       "noTagsYet": "עדיין אין תגים",
       "filterTags": "סינון תגיות...",
-      "noMatchingTags": "אין תגים תואמים"
+      "noMatchingTags": "אין תגים תואמים",
+      "Uncategorized": "ללא קטגוריה"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "זרוק כאן",
@@ -560,7 +605,8 @@
       "deleteTag": "מחק תג",
       "recent": "לאחרונה",
       "created": "נוצר",
-      "alphabetical": "אלפביתי"
+      "alphabetical": "אלפביתי",
+      "tasks": "משימות"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "שנה שם תג",
@@ -733,7 +779,9 @@
     "replyPlaceholder": "השב...",
     "resolve": "פתור",
     "sendAria": "שלח תגובה",
-    "toolbarComment": "הערה"
+    "toolbarComment": "הערה",
+    "openAttachmentAria": "פתח את הקובץ המצורף {name}",
+    "openImageAria": "פתח את התמונה {name}"
   },
   "dateMention": {
     "clear": "נקה",
@@ -743,5 +791,59 @@
     "remind": "הזכר",
     "time": "שעה",
     "timeFormat": "פורמט שעה"
+  },
+  "applyTemplateConfirm": {
+    "body": "החלף תוכן בלבד",
+    "cancel": "בטל",
+    "description": "החלת \"{name}\" תחליף את התוכן הנוכחי של ההערה. לא ניתן לבטל פעולה זו.",
+    "failed": "החלת התבנית נכשלה",
+    "full": "החלף תוכן והוסף פרטי תבנית",
+    "success": "התבנית הוחלה",
+    "title": "להחליף את תוכן ההערה?"
+  },
+  "tagView": {
+    "moreActions": "פעולות נוספות",
+    "pin": {
+      "action": "הצמד {count, plural, one {# הערה} two {# הערות} other {# הערות}} לתג",
+      "failed": "הצמדת ההערה לתג נכשלה",
+      "success": "{count, plural, one {# הערה הוצמדה} two {# הערות הוצמדו} other {# הערות הוצמדו}} לתג"
+    }
+  },
+  "tags": {
+    "hubTitle": "תגים",
+    "openHub": "פתח את מרכז התגים"
+  },
+  "tagsHub": {
+    "cancelCreate": "בטל",
+    "category": {
+      "delete": "מחק קטגוריה",
+      "deleteBody": "התגים יעברו אל \"ללא קטגוריה\". הם לא יימחקו.",
+      "deleteCancel": "בטל",
+      "deleteConfirm": "מחק",
+      "deleteTitle": "למחוק את {name}?",
+      "dragHandle": "גרור כדי לשנות את סדר הקטגוריות",
+      "emptyHint": "גרור לכאן תג",
+      "more": "אפשרויות קטגוריה",
+      "rename": "שנה שם קטגוריה"
+    },
+    "categoryNamePlaceholder": "שם הקטגוריה",
+    "errors": {
+      "createCategoryFailed": "יצירת הקטגוריה נכשלה",
+      "createTagCategorizeFailed": "התג נוצר אך לא ניתן היה להוסיף אותו לקטגוריה",
+      "createTagFailed": "יצירת התג נכשלה",
+      "deleteCategoryFailed": "מחיקת הקטגוריה נכשלה",
+      "loadFailed": "טעינת קטגוריות התגים נכשלה",
+      "renameCategoryFailed": "שינוי שם הקטגוריה נכשל",
+      "reorderFailed": "שינוי סדר התגים נכשל"
+    },
+    "loading": "טוען תגים...",
+    "newCategory": "קטגוריה חדשה",
+    "newTag": "תג חדש",
+    "search": {
+      "empty": "לא נמצאו קטגוריות או תגים שתואמים לחיפוש",
+      "placeholder": "חפש קטגוריות ותגים"
+    },
+    "tagNamePlaceholder": "שם התג",
+    "uncategorized": "ללא קטגוריה"
   }
 }

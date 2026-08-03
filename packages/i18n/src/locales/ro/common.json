@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "Se descarcă {percent}%",
       "updateInstallingSubtitle": "MemryNote va reporni automat.",
       "updateInstallingTitle": "Se instalează actualizarea",
-      "updateRestart": "Repornește"
+      "updateRestart": "Repornește",
+      "feedbackPrivacyEmailOptional": "Emailul tău — doar dacă îl adaugi și doar ca să îți putem răspunde",
+      "feedbackPrivacyEmailSignedIn": "Emailul contului tău ({email}), ca să îți putem răspunde",
+      "feedbackPrivacyMessage": "Mesajul tău, exact așa cum l-ai scris",
+      "feedbackPrivacyNote": "Nimic altceva. Notele tale rămân pe dispozitivul tău.",
+      "feedbackPrivacyPlan": "Planul tău (free, Plus, Pro sau Believer)",
+      "feedbackPrivacyTitle": "Ce se trimite",
+      "feedbackPrivacyVersion": "Versiunea aplicației și sistemul de operare",
+      "projects": "Proiecte"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Redimensionați panoul de zi",
@@ -231,7 +239,8 @@
       "journal": "Jurnal",
       "calendar": "Calendar",
       "inboxCapture": "Captură inbox",
-      "tasks": "Sarcini"
+      "tasks": "Sarcini",
+      "tags": "Etichete"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Modificări nesalvate",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Ceva a mers prost",
       "anErrorOccurredWhileRenderingThisTabContent": "A apărut o eroare la redarea conținutului acestei file.",
-      "tryAgain": "Încercați din nou"
+      "tryAgain": "Încercați din nou",
+      "sendReport": "Trimite raport de diagnosticare"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Pictograma notă"
@@ -352,7 +362,13 @@
       "downloadLocation": "Locație",
       "changeLocation": "Schimbă…",
       "download": "Descarcă",
-      "downloadFailed": "Seiful nu a putut fi descărcat"
+      "downloadFailed": "Seiful nu a putut fi descărcat",
+      "deleteFromAccount": "Șterge din cont",
+      "deleteVaultBody": "Această acțiune elimină definitiv toate datele sincronizate ale acestui seif de pe serverele Memry și nu poate fi anulată. Fișierele tale de pe disc nu sunt șterse.",
+      "deleteVaultConfirm": "Șterge din cont",
+      "deleteVaultFailed": "Nu s-a putut șterge seiful",
+      "deleteVaultTitle": "Ștergi „{name}” din contul tău?",
+      "removeVaultTitle": "Elimini „{name}” din listă?"
     },
     "componentsWindowControls": {
       "searchK": "Căutați (⌘K)",
@@ -640,6 +656,45 @@
     "skip": "Omite această versiune"
   },
   "capture": {
-    "focusShortcut": "Focalizează câmpul de captură"
+    "focusShortcut": "Focalizează câmpul de captură",
+    "detailHint": "detalii",
+    "focusHint": "Q",
+    "submit": "Capturează"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Adaugă card",
+      "addCreateNote": "Creează nota „{query}”",
+      "addCreateNoteEmpty": "Creează o notă nouă",
+      "addCreatedAt": "Creat {date}",
+      "addEmpty": "Nu s-a găsit nimic",
+      "addGroupEvents": "Evenimente",
+      "addGroupNotes": "Note",
+      "addGroupTasks": "Sarcini",
+      "addOnCanvas": "Pe canvas",
+      "addPlaceholder": "Caută note, sarcini și evenimente…",
+      "allDay": "Toată ziua",
+      "createNoteFailed": "Nu s-a putut crea nota",
+      "deleted": "Element șters",
+      "loading": "Se încarcă…",
+      "open": "Deschide în filă",
+      "openToEdit": "Deschide în filă pentru a edita",
+      "untitled": "Fără titlu"
+    },
+    "corruptScene": "Acest canvas nu a putut fi citit. Editarea este dezactivată pentru a nu pierde date.",
+    "createFailed": "Nu s-a putut crea canvasul",
+    "disabledBody": "Această filă aparține unei funcții care nu este activată pe acest dispozitiv.",
+    "disabledTitle": "Canvasul nu este activat",
+    "empty": "Niciun canvas încă",
+    "libraryStoreFailed": "Nu s-a putut salva biblioteca ta de forme. Modificările recente se pot pierde.",
+    "loadFailed": "Nu s-au putut încărca canvasurile",
+    "loading": "Se încarcă canvasurile…",
+    "newCanvas": "Canvas nou",
+    "notFound": "Acest canvas nu a putut fi găsit",
+    "openFailed": "Nu s-a putut deschide canvasul",
+    "savedToVault": "Toate modificările se salvează automat în seiful tău",
+    "sectionLabel": "Canvasuri",
+    "tooLargeToSync": "Acest canvas este prea mare pentru sincronizare. Este salvat pe acest dispozitiv, dar nu va ajunge pe celelalte dispozitive până nu devine mai mic.",
+    "untitled": "Canvas fără titlu"
   }
 }

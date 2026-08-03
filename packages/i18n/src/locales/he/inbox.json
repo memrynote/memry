@@ -314,7 +314,10 @@
       "rdquo": "rdquo;",
       "captureAnyway": "ללכוד בכל מקרה",
       "focusShortcut": "מקד את קלט הלכידה",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "ללכוד קישור",
+      "captureNote": "ללכוד הערה",
+      "placeholder": "לכידה מהירה — הדבק קישור, רשום מחשבה…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "בחר תיקיה",
@@ -466,7 +469,12 @@
       "cancelRecording": "בטל הקלטה",
       "cancel": "בטל",
       "stopRecording": "תפסיק להקליט",
-      "stop": "עצור"
+      "stop": "עצור",
+      "enableMicInSettings": "אפשר גישה למיקרופון בהגדרות המערכת, ואז נסה שוב.",
+      "failedToStart": "התחלת ההקלטה נכשלה",
+      "microphoneAccessDenied": "הגישה למיקרופון נדחתה",
+      "noMicrophoneFound": "לא נמצא מיקרופון",
+      "recordingError": "אירעה שגיאת הקלטה"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "כשל בלכידת הקובץ",
       "fileCaptureFailed": "לכידת הקובץ נכשלה",
       "failedToCaptureAudio": "כשל בלכידת האודיו",
-      "failedToCaptureVoice": "לא הצליח ללכוד את הקול"
+      "failedToCaptureVoice": "לא הצליח ללכוד את הקול",
+      "failedToLoadInboxPreferences": "טעינת העדפות תיבת הדואר הנכנס נכשלה",
+      "failedToUpdateInboxPreferences": "עדכון העדפות תיבת הדואר הנכנס נכשל"
     },
     "toasts": {
       "inboxRefreshed": "דואר נכנס רענון"
@@ -516,5 +526,10 @@
     "task": "משימה",
     "time": "שעה",
     "title": "המר"
+  },
+  "reviewNudge": {
+    "action": "פתח את תיבת הדואר הנכנס",
+    "description": "עבור על מה שלכדת היום, במעבר רגוע אחד.",
+    "title": "{count, plural, one {הגיע הזמן לעבור על # פריט} two {הגיע הזמן לעבור על # פריטים} other {הגיע הזמן לעבור על # פריטים}}"
   }
 }

@@ -34,7 +34,8 @@
     "createAnother": "إنشاء آخر",
     "delete": "حذف المهمة",
     "created": "تم إنشاء {date}",
-    "reminder": "تذكير"
+    "reminder": "تذكير",
+    "tags": "العلامات"
   },
   "filters": {
     "filter": "تصفية",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "مهمة إضافة سريعة",
-    "focusDescription": "التركيز على إضافة مدخلات سريعة"
+    "focusDescription": "التركيز على إضافة مدخلات سريعة",
+    "placeholder": "أضف مهمة…    !today  !!high  #project"
   },
   "drawer": {
     "close": "إغلاق تفاصيل المهمة",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "لا يتضمن هذا المشروع أي مهام وسيتم حذفه نهائيًا.",
       "thisActionCannotBeUndone": "لا يمكن التراجع عن هذا الإجراء.",
       "cancel": "إلغاء",
-      "deleteProject": "حذف المشروع"
+      "deleteProject": "حذف المشروع",
+      "notesEventsAndFilesStayNotice": "تُحذف المهام الموجودة في هذا المشروع. أما ملاحظاتك وأحداثك وملفاتك فتبقى في خزنتك."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "هل تريد حذف المهمة؟",
@@ -357,7 +360,9 @@
       "due": "مستحق",
       "dueDate": "تاريخ الاستحقاق",
       "search": "بحث",
-      "clearAll": "مسح الكل"
+      "clearAll": "مسح الكل",
+      "tags": "العلامات",
+      "tagsIs": "العلامات هي"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "التصفية حسب تاريخ الاستحقاق",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "لا توجد مهام قادمة",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "ستظهر هنا المهام المستحقة خلال الأيام السبعة القادمة. خطط لأسبوعك بإضافة بعض المهام.",
       "addTask2": "أضف مهمة"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "هي",
+      "search": "بحث...",
+      "selected": "مختارة",
+      "tags": "العلامات"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "فشل تعيين التذكير",
       "updateFailed": "فشل تحديث التذكير",
       "updated": "تم تحديث التذكير"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "إضافة إلى مشروع",
+    "loading": "جارٍ تحميل المشاريع…",
+    "menuLabel": "إضافة إلى مشروع",
+    "noProjects": "لا توجد مشاريع بعد",
+    "toastError": "فشلت الإضافة إلى المشروع",
+    "toastSuccess": "تمت الإضافة إلى {name}"
+  },
+  "itemProjects": {
+    "openProject": "فتح المشروع {name}"
+  },
+  "projectHome": {
+    "emptyBody": "اختر مشروعًا من الشريط الجانبي لفتح صفحته الرئيسية.",
+    "emptyTitle": "لا يوجد مشروع محدد",
+    "loadError": "تعذّر تحميل تفاصيل المشروع",
+    "overview": {
+      "clear": "مسح النظرة العامة",
+      "clearError": "تعذّر مسح ملاحظة النظرة العامة",
+      "create": "إنشاء ملاحظة نظرة عامة",
+      "createError": "تعذّر إنشاء ملاحظة النظرة العامة",
+      "defaultTitle": "نظرة عامة",
+      "loadError": "تعذّر تحميل ملاحظة النظرة العامة",
+      "placeholder": "اكتب نظرة عامة عن هذا المشروع…",
+      "saveError": "تعذّر حفظ ملاحظة النظرة العامة",
+      "sectionTitle": "نظرة عامة"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "إرفاق ملفات",
+      "fileError": "تعذّر ربط {name}",
+      "fileErrorGeneric": "تعذّر استيراد الملفات",
+      "filesAdded": "{count, plural, zero {تمت إضافة # ملف إلى المشروع} one {تمت إضافة ملف واحد إلى المشروع} two {تمت إضافة ملفين إلى المشروع} few {تمت إضافة # ملفات إلى المشروع} many {تمت إضافة # ملفاً إلى المشروع} other {تمت إضافة # ملف إلى المشروع}}",
+      "label": "إضافة إلى {name}",
+      "linkAdded": "تمت إضافة الرابط إلى المشروع",
+      "linkError": "تعذّر حفظ الرابط",
+      "placeholder": "أضف إلى {name} — اكتب مهمة، أو دوّن ملاحظة، أو الصق رابطًا…"
+    },
+    "groups": {
+      "older": "أقدم",
+      "past": "الماضية",
+      "today": "اليوم",
+      "tomorrow": "غدًا",
+      "upcoming": "القادمة",
+      "yesterday": "أمس"
+    },
+    "header": {
+      "archiveProject": "أرشفة المشروع",
+      "editProject": "تحرير المشروع",
+      "menu": "إجراءات المشروع",
+      "toggleRail": "إظهار تفاصيل المشروع أو إخفاؤها"
+    },
+    "rail": {
+      "addNote": "إضافة ملاحظة",
+      "created": "تاريخ الإنشاء",
+      "details": "التفاصيل",
+      "doneOf": "{done} من {total} مكتملة",
+      "linked": "العناصر المرتبطة",
+      "linkedSummary": "{notes, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتان} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}} · {files, plural, zero {# ملف} one {ملف واحد} two {ملفان} few {# ملفات} many {# ملفاً} other {# ملف}} · {events, plural, zero {# حدث} one {حدث واحد} two {حدثان} few {# أحداث} many {# حدثاً} other {# حدث}}",
+      "overdue": "متأخرة",
+      "overview": "نظرة عامة",
+      "pinError": "تعذّرت إضافة الملاحظة إلى النظرة العامة",
+      "progress": "التقدّم",
+      "unpinError": "تعذّرت إزالة الملاحظة من النظرة العامة",
+      "unpinNote": "إزالة {title} من النظرة العامة",
+      "updated": "تاريخ التحديث"
+    },
+    "rows": {
+      "openEvent": "فتح الحدث {title}",
+      "openFile": "فتح الملف {title}",
+      "openNote": "فتح الملاحظة {title}",
+      "openTask": "فتح المهمة {title}",
+      "setNoteIcon": "تعيين أيقونة لـ {title}"
+    },
+    "sections": {
+      "add": "إضافة إلى {title}",
+      "emptyEvents": "لا توجد أحداث مرتبطة بعد.",
+      "emptyFiles": "لا توجد ملفات مرتبطة بعد.",
+      "emptyNotes": "لا توجد ملاحظات مرتبطة بعد.",
+      "emptyTasks": "لا توجد مهام بعد.",
+      "newNoteError": "تعذّرت إضافة الملاحظة",
+      "newNoteTitle": "ملاحظة بدون عنوان",
+      "viewAll": "عرض الكل"
+    },
+    "tabs": {
+      "events": "الأحداث",
+      "files": "الملفات",
+      "label": "عروض المشروع",
+      "notes": "الملاحظات",
+      "overview": "نظرة عامة",
+      "tasks": "المهام"
     }
   }
 }

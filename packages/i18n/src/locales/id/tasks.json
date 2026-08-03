@@ -34,7 +34,8 @@
     "createAnother": "Buat yang lain",
     "delete": "Hapus tugas",
     "created": "Membuat {date}",
-    "reminder": "Pengingat"
+    "reminder": "Pengingat",
+    "tags": "Tag"
   },
   "filters": {
     "filter": "Menyaring",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Tambahkan tugas dengan cepat",
-    "focusDescription": "Fokus cepat tambahkan masukan"
+    "focusDescription": "Fokus cepat tambahkan masukan",
+    "placeholder": "Tambahkan tugas…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Tutup detail tugas",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Proyek ini tidak memiliki tugas dan akan dihapus secara permanen.",
       "thisActionCannotBeUndone": "Tindakan ini tidak dapat dibatalkan.",
       "cancel": "Batalkan",
-      "deleteProject": "Hapus Proyek"
+      "deleteProject": "Hapus Proyek",
+      "notesEventsAndFilesStayNotice": "Tugas di proyek ini akan dihapus. Catatan, acara, dan file Anda tetap ada di brankas Anda."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Hapus tugas?",
@@ -357,7 +360,9 @@
       "due": "Jatuh tempo",
       "dueDate": "tanggal jatuh tempo",
       "search": "pencarian",
-      "clearAll": "Hapus semuanya"
+      "clearAll": "Hapus semuanya",
+      "tags": "tag",
+      "tagsIs": "Tag adalah"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Filter berdasarkan tanggal jatuh tempo",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "Tidak ada tugas yang akan datang",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Tugas yang harus diselesaikan dalam 7 hari ke depan akan muncul di sini. Rencanakan minggu Anda dengan menambahkan beberapa tugas.",
       "addTask2": "Tambahkan tugas"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "adalah",
+      "search": "Cari...",
+      "selected": "dipilih",
+      "tags": "Tag"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "Gagal mengatur pengingat",
       "updateFailed": "Gagal memperbarui pengingat",
       "updated": "Pengingat diperbarui"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Tambahkan ke proyek",
+    "loading": "Memuat proyek…",
+    "menuLabel": "Tambahkan ke proyek",
+    "noProjects": "Belum ada proyek",
+    "toastError": "Gagal menambahkan ke proyek",
+    "toastSuccess": "Ditambahkan ke {name}"
+  },
+  "itemProjects": {
+    "openProject": "Buka proyek {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Pilih proyek dari bilah samping untuk membuka berandanya.",
+    "emptyTitle": "Tidak ada proyek yang dipilih",
+    "loadError": "Tidak dapat memuat detail proyek",
+    "overview": {
+      "clear": "Hapus ikhtisar",
+      "clearError": "Tidak dapat menghapus catatan ikhtisar",
+      "create": "Buat catatan ikhtisar",
+      "createError": "Tidak dapat membuat catatan ikhtisar",
+      "defaultTitle": "Ikhtisar",
+      "loadError": "Tidak dapat memuat catatan ikhtisar",
+      "placeholder": "Tulis ikhtisar untuk proyek ini…",
+      "saveError": "Tidak dapat menyimpan catatan ikhtisar",
+      "sectionTitle": "Ikhtisar"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Lampirkan file",
+      "fileError": "Tidak dapat menautkan {name}",
+      "fileErrorGeneric": "Tidak dapat mengimpor file",
+      "filesAdded": "{count, plural, other {# file ditambahkan ke proyek}}",
+      "label": "Tambahkan ke {name}",
+      "linkAdded": "Tautan ditambahkan ke proyek",
+      "linkError": "Tidak dapat menyimpan tautan",
+      "placeholder": "Tambahkan ke {name} — ketik tugas, tulis catatan, atau tempel tautan…"
+    },
+    "groups": {
+      "older": "Lebih tua",
+      "past": "Lampau",
+      "today": "Hari ini",
+      "tomorrow": "Besok",
+      "upcoming": "Mendatang",
+      "yesterday": "Kemarin"
+    },
+    "header": {
+      "archiveProject": "Arsipkan proyek",
+      "editProject": "Sunting proyek",
+      "menu": "Tindakan proyek",
+      "toggleRail": "Alihkan detail proyek"
+    },
+    "rail": {
+      "addNote": "Tambah catatan",
+      "created": "Dibuat",
+      "details": "Detail",
+      "doneOf": "{done} dari {total} selesai",
+      "linked": "Tertaut",
+      "linkedSummary": "{notes, plural, other {# catatan}} · {files, plural, other {# file}} · {events, plural, other {# acara}}",
+      "overdue": "Terlambat",
+      "overview": "Ikhtisar",
+      "pinError": "Tidak dapat menambahkan catatan ke ikhtisar",
+      "progress": "Kemajuan",
+      "unpinError": "Tidak dapat menghapus catatan dari ikhtisar",
+      "unpinNote": "Hapus {title} dari ikhtisar",
+      "updated": "Diperbarui"
+    },
+    "rows": {
+      "openEvent": "Buka acara {title}",
+      "openFile": "Buka file {title}",
+      "openNote": "Buka catatan {title}",
+      "openTask": "Buka tugas {title}",
+      "setNoteIcon": "Atur ikon untuk {title}"
+    },
+    "sections": {
+      "add": "Tambahkan ke {title}",
+      "emptyEvents": "Belum ada acara yang ditautkan.",
+      "emptyFiles": "Belum ada file yang ditautkan.",
+      "emptyNotes": "Belum ada catatan yang ditautkan.",
+      "emptyTasks": "Belum ada tugas.",
+      "newNoteError": "Tidak dapat menambahkan catatan",
+      "newNoteTitle": "Catatan tanpa judul",
+      "viewAll": "Lihat semua"
+    },
+    "tabs": {
+      "events": "Acara",
+      "files": "File",
+      "label": "Tampilan proyek",
+      "notes": "Catatan",
+      "overview": "Ikhtisar",
+      "tasks": "Tugas"
     }
   }
 }

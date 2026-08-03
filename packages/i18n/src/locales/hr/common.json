@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "Preuzimanje {percent}%",
       "updateInstallingSubtitle": "MemryNote će se automatski ponovno pokrenuti.",
       "updateInstallingTitle": "Instaliranje ažuriranja",
-      "updateRestart": "Ponovno pokreni"
+      "updateRestart": "Ponovno pokreni",
+      "feedbackPrivacyEmailOptional": "Vaša e-adresa — samo ako je upišete i samo kako bismo mogli odgovoriti",
+      "feedbackPrivacyEmailSignedIn": "E-adresa vašeg računa ({email}), kako bismo mogli odgovoriti",
+      "feedbackPrivacyMessage": "Vaša poruka, točno onako kako ste je napisali",
+      "feedbackPrivacyNote": "Ništa drugo. Vaše bilješke ostaju na vašem uređaju.",
+      "feedbackPrivacyPlan": "Vaš plan (free, Plus, Pro ili Believer)",
+      "feedbackPrivacyTitle": "Što se šalje",
+      "feedbackPrivacyVersion": "Verzija aplikacije i operacijski sustav",
+      "projects": "Projekti"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Promjena veličine dnevne ploče",
@@ -231,7 +239,8 @@
       "journal": "časopis",
       "calendar": "Kalendar",
       "inboxCapture": "Snimanje pristigle pošte",
-      "tasks": "Zadaci"
+      "tasks": "Zadaci",
+      "tags": "Oznake"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Nespremljene promjene",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Nešto nije u redu",
       "anErrorOccurredWhileRenderingThisTabContent": "Došlo je do pogreške prilikom renderiranja sadržaja ove kartice.",
-      "tryAgain": "Pokušajte ponovno"
+      "tryAgain": "Pokušajte ponovno",
+      "sendReport": "Pošalji dijagnostičko izvješće"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Ikona bilješke"
@@ -352,7 +362,13 @@
       "downloadLocation": "Lokacija",
       "changeLocation": "Promijeni…",
       "download": "Preuzmi",
-      "downloadFailed": "Trezor nije bilo moguće preuzeti"
+      "downloadFailed": "Trezor nije bilo moguće preuzeti",
+      "deleteFromAccount": "Izbriši s računa",
+      "deleteVaultBody": "Ovime se svi sinkronizirani podaci ovog trezora trajno uklanjaju s Memryjevih poslužitelja i to se ne može poništiti. Vaše datoteke na disku neće biti izbrisane.",
+      "deleteVaultConfirm": "Izbriši s računa",
+      "deleteVaultFailed": "Nije moguće izbrisati trezor",
+      "deleteVaultTitle": "Izbrisati „{name}” s vašeg računa?",
+      "removeVaultTitle": "Ukloniti „{name}” s popisa?"
     },
     "componentsWindowControls": {
       "searchK": "Pretraživanje (⌘K)",
@@ -640,6 +656,45 @@
     "skip": "Preskoči ovu verziju"
   },
   "capture": {
-    "focusShortcut": "Fokusiraj polje za snimanje"
+    "focusShortcut": "Fokusiraj polje za snimanje",
+    "detailHint": "detalji",
+    "focusHint": "Q",
+    "submit": "Zabilježi"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Dodaj karticu",
+      "addCreateNote": "Stvori bilješku „{query}”",
+      "addCreateNoteEmpty": "Stvori novu bilješku",
+      "addCreatedAt": "Stvoreno {date}",
+      "addEmpty": "Ništa nije pronađeno",
+      "addGroupEvents": "Događaji",
+      "addGroupNotes": "Bilješke",
+      "addGroupTasks": "Zadaci",
+      "addOnCanvas": "Na platnu",
+      "addPlaceholder": "Pretraži bilješke, zadatke i događaje…",
+      "allDay": "Cijeli dan",
+      "createNoteFailed": "Nije moguće stvoriti bilješku",
+      "deleted": "Stavka je izbrisana",
+      "loading": "Učitavanje…",
+      "open": "Otvori u kartici",
+      "openToEdit": "Otvori u kartici za uređivanje",
+      "untitled": "Bez naslova"
+    },
+    "corruptScene": "Ovo platno nije moguće pročitati. Uređivanje je onemogućeno kako se podaci ne bi izgubili.",
+    "createFailed": "Nije moguće stvoriti platno",
+    "disabledBody": "Ova kartica pripada značajki koja nije uključena na ovom uređaju.",
+    "disabledTitle": "Platno nije uključeno",
+    "empty": "Još nema platna",
+    "libraryStoreFailed": "Nije moguće spremiti vašu knjižnicu oblika. Nedavne promjene u njoj mogle bi se izgubiti.",
+    "loadFailed": "Nije moguće učitati platna",
+    "loading": "Učitavanje platna…",
+    "newCanvas": "Novo platno",
+    "notFound": "Ovo platno nije pronađeno",
+    "openFailed": "Nije moguće otvoriti platno",
+    "savedToVault": "Sve se promjene automatski spremaju u vaš trezor",
+    "sectionLabel": "Platna",
+    "tooLargeToSync": "Ovo je platno preveliko za sinkronizaciju. Spremljeno je na ovom uređaju, ali neće stići na vaše druge uređaje dok se ne smanji.",
+    "untitled": "Platno bez naslova"
   }
 }

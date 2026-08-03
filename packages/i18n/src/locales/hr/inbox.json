@@ -314,7 +314,10 @@
       "rdquo": "rdquo;",
       "captureAnyway": "Svejedno uhvati",
       "focusShortcut": "Fokusiraj polje za snimanje",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Zabilježi poveznicu",
+      "captureNote": "Zabilježi bilješku",
+      "placeholder": "Brzo bilježenje — zalijepite poveznicu, zapišite misao…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Odaberite mapu",
@@ -466,7 +469,12 @@
       "cancelRecording": "Otkaži snimanje",
       "cancel": "Odustani",
       "stopRecording": "Zaustavi snimanje",
-      "stop": "Stani"
+      "stop": "Stani",
+      "enableMicInSettings": "Omogućite pristup mikrofonu u postavkama sustava pa pokušajte ponovno.",
+      "failedToStart": "Pokretanje snimanja nije uspjelo",
+      "microphoneAccessDenied": "Pristup mikrofonu je odbijen",
+      "noMicrophoneFound": "Mikrofon nije pronađen",
+      "recordingError": "Došlo je do pogreške pri snimanju"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "Nije uspjelo snimanje datoteke",
       "fileCaptureFailed": "Snimanje datoteke nije uspjelo",
       "failedToCaptureAudio": "Snimanje zvuka nije uspjelo",
-      "failedToCaptureVoice": "Snimanje glasa nije uspjelo"
+      "failedToCaptureVoice": "Snimanje glasa nije uspjelo",
+      "failedToLoadInboxPreferences": "Učitavanje postavki pristigle pošte nije uspjelo",
+      "failedToUpdateInboxPreferences": "Ažuriranje postavki pristigle pošte nije uspjelo"
     },
     "toasts": {
       "inboxRefreshed": "Inbox osvježen"
@@ -516,5 +526,10 @@
     "task": "Zadatak",
     "time": "Vrijeme",
     "title": "Pretvori"
+  },
+  "reviewNudge": {
+    "action": "Otvori pristiglu poštu",
+    "description": "Obradite današnje zabilješke odjednom, na miru.",
+    "title": "Vrijeme je da pregledate {count, plural, one {# stavku} few {# stavke} other {# stavki}}"
   }
 }

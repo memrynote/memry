@@ -314,7 +314,10 @@
       "rdquo": "rdquo;",
       "captureAnyway": "Capturar de qualquer maneira",
       "focusShortcut": "Focar campo de captura",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Capturar link",
+      "captureNote": "Capturar nota",
+      "placeholder": "Captura rápida — cole um link, anote uma ideia…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Escolha a pasta",
@@ -466,7 +469,12 @@
       "cancelRecording": "Cancelar gravação",
       "cancel": "Cancelar",
       "stopRecording": "Pare de gravar",
-      "stop": "Pare"
+      "stop": "Pare",
+      "enableMicInSettings": "Ative o acesso ao microfone nas definições do sistema e tente novamente.",
+      "failedToStart": "Não foi possível iniciar a gravação",
+      "microphoneAccessDenied": "Acesso ao microfone negado",
+      "noMicrophoneFound": "Nenhum microfone encontrado",
+      "recordingError": "Ocorreu um erro de gravação"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "Falha ao capturar o arquivo",
       "fileCaptureFailed": "Falha na captura de arquivo",
       "failedToCaptureAudio": "Falha ao capturar áudio",
-      "failedToCaptureVoice": "Falha ao capturar voz"
+      "failedToCaptureVoice": "Falha ao capturar voz",
+      "failedToLoadInboxPreferences": "Falha ao carregar as preferências da caixa de entrada",
+      "failedToUpdateInboxPreferences": "Falha ao atualizar as preferências da caixa de entrada"
     },
     "toasts": {
       "inboxRefreshed": "Caixa de entrada atualizada"
@@ -516,5 +526,10 @@
     "task": "Tarefa",
     "time": "Hora",
     "title": "Converter"
+  },
+  "reviewNudge": {
+    "action": "Abrir caixa de entrada",
+    "description": "Trate das capturas de hoje de uma só vez, com calma.",
+    "title": "{count, plural, one {Hora de rever # item} many {Hora de rever # itens} other {Hora de rever # itens}}"
   }
 }

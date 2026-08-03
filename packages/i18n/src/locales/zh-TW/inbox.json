@@ -314,7 +314,10 @@
       "rdquo": "rdquo;",
       "captureAnyway": "仍要捕捉",
       "focusShortcut": "聚焦擷取輸入欄",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "擷取連結",
+      "captureNote": "擷取筆記",
+      "placeholder": "快速擷取——貼上連結，或隨手記下想法…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "選擇資料夾",
@@ -466,7 +469,12 @@
       "cancelRecording": "取消錄製",
       "cancel": "取消",
       "stopRecording": "停止錄製",
-      "stop": "停止"
+      "stop": "停止",
+      "enableMicInSettings": "請在系統設定中允許使用麥克風，然後再試一次。",
+      "failedToStart": "無法開始錄音",
+      "microphoneAccessDenied": "麥克風存取被拒",
+      "noMicrophoneFound": "找不到麥克風",
+      "recordingError": "錄音時發生錯誤"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "擷取檔案失敗",
       "fileCaptureFailed": "檔案擷取失敗",
       "failedToCaptureAudio": "擷取音訊失敗",
-      "failedToCaptureVoice": "擷取語音失敗"
+      "failedToCaptureVoice": "擷取語音失敗",
+      "failedToLoadInboxPreferences": "載入收件匣偏好設定失敗",
+      "failedToUpdateInboxPreferences": "更新收件匣偏好設定失敗"
     },
     "toasts": {
       "inboxRefreshed": "收件箱已刷新"
@@ -516,5 +526,10 @@
     "task": "任務",
     "time": "時間",
     "title": "轉換"
+  },
+  "reviewNudge": {
+    "action": "開啟收件匣",
+    "description": "靜下心來，一次處理完今天擷取的內容。",
+    "title": "{count, plural, other {該回顧 # 個項目了}}"
   }
 }

@@ -67,7 +67,8 @@
     "title": "Evenement verwijderen?",
     "local-description": "\"{title}\" wordt permanent verwijderd. Deze actie kan niet ongedaan worden gemaakt.",
     "google-bound-description": "\"{title}\" wordt verwijderd uit memrynote en Google Agenda. Deze actie kan niet ongedaan worden gemaakt.",
-    "context-menu-delete-label": "Evenement verwijderen"
+    "context-menu-delete-label": "Evenement verwijderen",
+    "context-menu-add-to-project": "Toevoegen aan project"
   },
   "promote-dialog": {
     "aria": "Externe agendagebeurtenis bewerken",
@@ -181,6 +182,7 @@
     "placeholder": "Gebeurtenissen, taken, herinneringen zoeken…"
   },
   "undo": {
-    "moveEvent": "Gebeurtenis verplaatsen"
+    "moveEvent": "Gebeurtenis verplaatsen",
+    "moveTask": "Taak opnieuw plannen"
   }
 }

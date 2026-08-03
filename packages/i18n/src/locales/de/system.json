@@ -38,6 +38,11 @@
       "fallback": "Mahnung fällig",
       "default": "Erinnerung",
       "task": "Aufgabenerinnerung"
+    },
+    "inboxReview": {
+      "body": "Du hast {count, plural, one {# Element} other {# Elemente}} zum Durchsehen.",
+      "testBody": "Das ist ein Test — so sehen deine täglichen Erinnerungen aus.",
+      "title": "Zeit, deinen Posteingang durchzusehen"
     }
   },
   "error": {

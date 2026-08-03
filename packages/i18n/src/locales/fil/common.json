@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "Dina-download {percent}%",
       "updateInstallingSubtitle": "Awtomatikong magre-restart ang MemryNote.",
       "updateInstallingTitle": "Ini-install ang update",
-      "updateRestart": "I-restart"
+      "updateRestart": "I-restart",
+      "feedbackPrivacyEmailOptional": "Ang iyong email — kung idadagdag mo ito, at para lang makasagot kami",
+      "feedbackPrivacyEmailSignedIn": "Ang email ng iyong account ({email}), para makasagot kami",
+      "feedbackPrivacyMessage": "Ang iyong mensahe, tulad mismo ng pagkakasulat mo",
+      "feedbackPrivacyNote": "Wala nang iba. Nananatili sa iyong device ang mga tala mo.",
+      "feedbackPrivacyPlan": "Ang iyong plano (free, Plus, Pro o Believer)",
+      "feedbackPrivacyTitle": "Ano ang ipinapadala",
+      "feedbackPrivacyVersion": "Bersyon ng app at operating system",
+      "projects": "Mga proyekto"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Baguhin ang laki ng Day Panel",
@@ -231,7 +239,8 @@
       "journal": "Journal",
       "calendar": "Kalendaryo",
       "inboxCapture": "Pagkuha ng Inbox",
-      "tasks": "Mga gawain"
+      "tasks": "Mga gawain",
+      "tags": "Mga tag"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Mga hindi na-save na pagbabago",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Nagkaproblema",
       "anErrorOccurredWhileRenderingThisTabContent": "Nagkaroon ng error habang nire-render ang content ng tab na ito.",
-      "tryAgain": "Subukan Muli"
+      "tryAgain": "Subukan Muli",
+      "sendReport": "Magpadala ng diagnostic report"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Icon ng tala"
@@ -352,7 +362,13 @@
       "downloadLocation": "Lokasyon",
       "changeLocation": "Baguhin…",
       "download": "I-download",
-      "downloadFailed": "Hindi ma-download ang vault"
+      "downloadFailed": "Hindi ma-download ang vault",
+      "deleteFromAccount": "Tanggalin sa account",
+      "deleteVaultBody": "Permanenteng inaalis nito ang lahat ng naka-sync na data ng vault na ito mula sa mga server ng Memry at hindi na ito maibabalik. Hindi tinatanggal ang iyong mga file sa disk.",
+      "deleteVaultConfirm": "Tanggalin sa account",
+      "deleteVaultFailed": "Hindi matanggal ang vault",
+      "deleteVaultTitle": "Tanggalin ang “{name}” sa iyong account?",
+      "removeVaultTitle": "Alisin ang “{name}” sa listahan?"
     },
     "componentsWindowControls": {
       "searchK": "Maghanap (⌘K)",
@@ -640,6 +656,45 @@
     "skip": "Laktawan ang Bersyong Ito"
   },
   "capture": {
-    "focusShortcut": "I-focus ang capture input"
+    "focusShortcut": "I-focus ang capture input",
+    "detailHint": "detalye",
+    "focusHint": "Q",
+    "submit": "Kunin"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Magdagdag ng card",
+      "addCreateNote": "Lumikha ng tala \"{query}\"",
+      "addCreateNoteEmpty": "Lumikha ng bagong tala",
+      "addCreatedAt": "Nilikha noong {date}",
+      "addEmpty": "Walang nahanap",
+      "addGroupEvents": "Mga kaganapan",
+      "addGroupNotes": "Mga tala",
+      "addGroupTasks": "Mga gawain",
+      "addOnCanvas": "Nasa canvas",
+      "addPlaceholder": "Maghanap ng mga tala, gawain at kaganapan…",
+      "allDay": "Buong araw",
+      "createNoteFailed": "Hindi makalikha ng tala",
+      "deleted": "Tinanggal ang item",
+      "loading": "Naglo-load…",
+      "open": "Buksan sa tab",
+      "openToEdit": "Buksan sa tab para i-edit",
+      "untitled": "Walang pamagat"
+    },
+    "corruptScene": "Hindi mabasa ang canvas na ito. Naka-disable ang pag-edit para hindi mawala ang data.",
+    "createFailed": "Hindi makalikha ng canvas",
+    "disabledBody": "Kabilang ang tab na ito sa isang feature na hindi pinagana sa device na ito.",
+    "disabledTitle": "Hindi pinagana ang Canvas",
+    "empty": "Wala pang canvas",
+    "libraryStoreFailed": "Hindi ma-save ang iyong shape library. Maaaring mawala ang mga kamakailang pagbabago dito.",
+    "loadFailed": "Hindi ma-load ang mga canvas",
+    "loading": "Nilo-load ang mga canvas…",
+    "newCanvas": "Bagong canvas",
+    "notFound": "Hindi mahanap ang canvas na ito",
+    "openFailed": "Hindi mabuksan ang canvas",
+    "savedToVault": "Awtomatikong nase-save sa iyong vault ang lahat ng pagbabago",
+    "sectionLabel": "Mga canvas",
+    "tooLargeToSync": "Masyadong malaki ang canvas na ito para mag-sync. Naka-save ito sa device na ito, ngunit hindi ito makakarating sa iyong ibang mga device hanggang sa lumiit ito.",
+    "untitled": "Walang pamagat na canvas"
   }
 }

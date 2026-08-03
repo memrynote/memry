@@ -34,7 +34,8 @@
     "createAnother": "Создать еще один",
     "delete": "Удалить задачу",
     "created": "Создано {date}",
-    "reminder": "Напоминание"
+    "reminder": "Напоминание",
+    "tags": "Теги"
   },
   "filters": {
     "filter": "Фильтр",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Быстрое добавление задачи",
-    "focusDescription": "Фокус быстрого добавления ввода"
+    "focusDescription": "Фокус быстрого добавления ввода",
+    "placeholder": "Добавить задачу…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Закрыть детали задачи",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "В этом проекте нет задач, и он будет удален без возможности восстановления.",
       "thisActionCannotBeUndone": "Это действие невозможно отменить.",
       "cancel": "Отмена",
-      "deleteProject": "Удалить проект"
+      "deleteProject": "Удалить проект",
+      "notesEventsAndFilesStayNotice": "Задачи этого проекта будут удалены. Ваши заметки, события и файлы останутся в хранилище."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Удалить задачу?",
@@ -357,7 +360,9 @@
       "due": "Срок погашения",
       "dueDate": "срок платежа",
       "search": "поиск",
-      "clearAll": "Очистить все"
+      "clearAll": "Очистить все",
+      "tags": "теги",
+      "tagsIs": "Теги"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Фильтровать по дате сдачи",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "Нет предстоящих задач",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Здесь появятся задачи, которые необходимо выполнить в течение следующих 7 дней. Спланируйте свою неделю, добавив несколько задач.",
       "addTask2": "Добавить задачу"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "есть",
+      "search": "Искать...",
+      "selected": "выбрано",
+      "tags": "Теги"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "Не удалось задать напоминание",
       "updateFailed": "Не удалось обновить напоминание",
       "updated": "Напоминание обновлено"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Добавить в проект",
+    "loading": "Загрузка проектов…",
+    "menuLabel": "Добавить в проект",
+    "noProjects": "Пока нет проектов",
+    "toastError": "Не удалось добавить в проект",
+    "toastSuccess": "Добавлено в {name}"
+  },
+  "itemProjects": {
+    "openProject": "Открыть проект {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Выберите проект на боковой панели, чтобы открыть его главную страницу.",
+    "emptyTitle": "Проект не выбран",
+    "loadError": "Не удалось загрузить сведения о проекте",
+    "overview": {
+      "clear": "Очистить обзор",
+      "clearError": "Не удалось очистить обзорную заметку",
+      "create": "Создать обзорную заметку",
+      "createError": "Не удалось создать обзорную заметку",
+      "defaultTitle": "Обзор",
+      "loadError": "Не удалось загрузить обзорную заметку",
+      "placeholder": "Напишите обзор этого проекта…",
+      "saveError": "Не удалось сохранить обзорную заметку",
+      "sectionTitle": "Обзор"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Прикрепить файлы",
+      "fileError": "Не удалось связать {name}",
+      "fileErrorGeneric": "Не удалось импортировать файлы",
+      "filesAdded": "{count, plural, one {# файл добавлен} few {# файла добавлено} many {# файлов добавлено} other {# файла добавлено}} в проект",
+      "label": "Добавить в {name}",
+      "linkAdded": "Ссылка добавлена в проект",
+      "linkError": "Не удалось сохранить ссылку",
+      "placeholder": "Добавить в {name} — напишите задачу, запишите мысль или вставьте ссылку…"
+    },
+    "groups": {
+      "older": "Ранее",
+      "past": "Прошедшие",
+      "today": "Сегодня",
+      "tomorrow": "Завтра",
+      "upcoming": "Предстоящие",
+      "yesterday": "Вчера"
+    },
+    "header": {
+      "archiveProject": "Архивировать проект",
+      "editProject": "Редактировать проект",
+      "menu": "Действия с проектом",
+      "toggleRail": "Показать или скрыть сведения о проекте"
+    },
+    "rail": {
+      "addNote": "Добавить заметку",
+      "created": "Создано",
+      "details": "Сведения",
+      "doneOf": "Готово {done} из {total}",
+      "linked": "Связано",
+      "linkedSummary": "{notes, plural, one {# заметка} few {# заметки} many {# заметок} other {# заметки}} · {files, plural, one {# файл} few {# файла} many {# файлов} other {# файла}} · {events, plural, one {# событие} few {# события} many {# событий} other {# события}}",
+      "overdue": "Просрочено",
+      "overview": "Обзор",
+      "pinError": "Не удалось добавить заметку в обзор",
+      "progress": "Прогресс",
+      "unpinError": "Не удалось убрать заметку из обзора",
+      "unpinNote": "Убрать {title} из обзора",
+      "updated": "Обновлено"
+    },
+    "rows": {
+      "openEvent": "Открыть событие {title}",
+      "openFile": "Открыть файл {title}",
+      "openNote": "Открыть заметку {title}",
+      "openTask": "Открыть задачу {title}",
+      "setNoteIcon": "Установить значок для {title}"
+    },
+    "sections": {
+      "add": "Добавить в {title}",
+      "emptyEvents": "Пока нет связанных событий.",
+      "emptyFiles": "Пока нет связанных файлов.",
+      "emptyNotes": "Пока нет связанных заметок.",
+      "emptyTasks": "Задач пока нет.",
+      "newNoteError": "Не удалось добавить заметку",
+      "newNoteTitle": "Заметка без названия",
+      "viewAll": "Показать все"
+    },
+    "tabs": {
+      "events": "События",
+      "files": "Файлы",
+      "label": "Разделы проекта",
+      "notes": "Заметки",
+      "overview": "Обзор",
+      "tasks": "Задачи"
     }
   }
 }

@@ -28,7 +28,8 @@
         "properties": "Hartanah",
         "commandLine": "Baris Arahan",
         "features": "Ciri",
-        "import": "Import"
+        "import": "Import",
+        "inbox": "Peti Masuk"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Memuat turun {percent}%",
         "downloaded": "Mulakan semula untuk Memasang",
         "idle": "Semak Kemas Kini"
+      },
+      "autoCheck": {
+        "description": "Semak keluaran baharu apabila apl dimulakan dan secara berkala ketika apl dibuka.",
+        "error": "Gagal mengemas kini tetapan semakan automatik",
+        "label": "Semak kemas kini secara automatik"
+      },
+      "autoDownload": {
+        "description": "Muat turun dan pasang keluaran baharu di latar belakang tanpa bertanya.",
+        "error": "Gagal mengemas kini tetapan muat turun automatik",
+        "label": "Muat turun kemas kini secara automatik"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Kongsi Metrik Penggunaan Tanpa Nama",
         "description": "Ia hanya metrik anon — tiada kandungan nota, pertanyaan carian, laluan fail, e-mel atau ID mentah yang pernah dihantar.",
         "error": "Gagal mengemas kini tetapan telemetri"
+      },
+      "diagnostics": {
+        "building": "Menyediakan laporan…",
+        "consent": "Hantar laporan diagnostik sekali sahaja? Ia mengandungi log teknikal yang ditapis sahaja — tiada kandungan nota.",
+        "error": "Gagal menghantar laporan diagnostik",
+        "notNow": "Bukan sekarang",
+        "previewError": "Laporan diagnostik tidak dapat disediakan",
+        "previewLabel": "Pratonton kandungan laporan",
+        "send": "Hantar",
+        "sendReport": {
+          "button": "Hantar laporan diagnostik",
+          "description": "Hantar laporan sekali sahaja yang mengandungi log teknikal yang ditapis untuk membantu kami menyahpepijat masalah yang anda hadapi.",
+          "label": "Laporan Diagnostik"
+        },
+        "sending": "Menghantar…",
+        "sent": "Laporan dihantar — rujukan {incidentId}",
+        "snapshotLabel": "Gambaran peranti",
+        "title": "Hantar laporan diagnostik?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Susun atur",
-      "toolbar": "Bar alat"
+      "toolbar": "Bar alat",
+      "spelling": "Ejaan"
     },
     "width": {
       "label": "Lebar Editor",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Sempit",
         "medium": "Sederhana",
-        "wide": "lebar"
+        "wide": "lebar",
+        "full": "Lebar penuh",
+        "normal": "Biasa"
       },
       "error": "Gagal mengemas kini lebar editor"
     },
@@ -229,6 +261,11 @@
       "label": "Bar Alat Pemformatan Melekit",
       "description": "Sentiasa tunjukkan bar alat di atas editor",
       "error": "Gagal mengemas kini mod bar alat"
+    },
+    "spellCheck": {
+      "description": "Garis bawah perkataan yang salah eja dalam nota dan jurnal",
+      "error": "Gagal mengemas kini semakan ejaan",
+      "label": "Semak Ejaan"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "Penggunaan Storan",
-      "location": "Lokasi"
+      "location": "Lokasi",
+      "accountVaults": "Bilik kebal dalam akaun anda"
     },
     "loadingStorage": "Memuatkan maklumat storan...",
     "signInStorage": "Log masuk untuk melihat penggunaan storan",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "Storan hampir penuh",
       "warningDescription": "Kosongkan ruang atau tingkatkan pelan anda untuk mengelakkan masalah penyegerakan."
+    },
+    "accountVaults": {
+      "activeHint": "Tukar ke bilik kebal lain untuk memadamkan yang ini.",
+      "cloudOnly": "Tiada pada peranti ini",
+      "delete": "Padam",
+      "deleteBody": "Semua data yang disegerakkan untuk bilik kebal ini akan dialih keluar secara kekal daripada pelayan Memry dan tindakan ini tidak boleh dibuat asal. Fail anda pada cakera tidak dipadamkan.",
+      "deleteConfirm": "Padam daripada akaun",
+      "deleteFailed": "Bilik kebal tidak dapat dipadamkan",
+      "deleteTitle": "Padam “{name}” daripada akaun anda?",
+      "empty": "Tiada bilik kebal disegerakkan ke akaun anda lagi.",
+      "itemsCount": "{count} item"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "Gagal menutup bilik kebal",
       "failedToSwitchVault": "Gagal menukar bilik kebal",
       "failedToUpdateConfig": "Gagal mengemas kini konfigurasi",
-      "failedToReindex": "Gagal mengindeks semula"
+      "failedToReindex": "Gagal mengindeks semula",
+      "failedToLoadTasks": "Gagal memuatkan tugasan"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "Senarai tugas dan tarikh akhir",
         "label": "Tugasan"
+      },
+      "spatialCanvas": {
+        "description": "Papan ruang untuk menyusun dan memautkan nota",
+        "label": "Kanvas"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} dilangkau",
         "title": "Import selesai"
       },
-      "title": "Import dari {name}"
+      "title": "Import dari {name}",
+      "chooseDirectory": "Pilih folder…",
+      "folderKeepsAssets": "Pilih folder apabila imej berada di luar folder nota itu sendiri — eksport selalunya menyimpan media dalam satu folder yang dikongsi."
     },
     "header": {
       "subtitle": "Bawa masuk nota dan tugasan anda dari apl lain",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, other {# tugasan}}",
       "withDueDate": "{count} bertarikh",
       "withTags": "{count} ditag"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Memuatkan…",
+      "subtitle": "Peringatan semakan harian dan pilihan peti masuk.",
+      "title": "Peti masuk"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Peringatan lembut setiap hari apabila ada item dalam peti masuk anda.",
+        "label": "Ingatkan saya untuk menyemak peti masuk"
+      },
+      "error": "Peringatan tidak dapat dikemas kini.",
+      "group": "Peringatan semakan harian",
+      "test": {
+        "button": "Hantar ujian",
+        "description": "Cetuskan peringatan sekarang untuk menyemak pemberitahuan sistem anda.",
+        "label": "Pemberitahuan ujian",
+        "sent": "Pemberitahuan ujian dihantar.",
+        "sentHint": "Jika tiada apa-apa muncul, benarkan pemberitahuan untuk MemryNote dalam tetapan sistem anda.",
+        "unsupported": "Peranti ini tidak boleh memaparkan pemberitahuan desktop."
+      },
+      "time": {
+        "description": "Waktu tempatan, pada setiap peranti.",
+        "hourLabel": "Jam",
+        "label": "Masa peringatan",
+        "minuteLabel": "Minit",
+        "periodLabel": "AM atau PM"
+      }
     }
   }
 }

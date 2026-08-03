@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "Λήψη {percent}%",
       "updateInstallingSubtitle": "Το MemryNote θα επανεκκινήσει αυτόματα.",
       "updateInstallingTitle": "Εγκατάσταση ενημέρωσης",
-      "updateRestart": "Επανεκκίνηση"
+      "updateRestart": "Επανεκκίνηση",
+      "feedbackPrivacyEmailOptional": "Το email σας — μόνο αν το προσθέσετε, και μόνο για να μπορέσουμε να απαντήσουμε",
+      "feedbackPrivacyEmailSignedIn": "Το email του λογαριασμού σας ({email}), για να μπορέσουμε να απαντήσουμε",
+      "feedbackPrivacyMessage": "Το μήνυμά σας, ακριβώς όπως το γράψατε",
+      "feedbackPrivacyNote": "Τίποτα άλλο. Οι σημειώσεις σας μένουν στη συσκευή σας.",
+      "feedbackPrivacyPlan": "Το πρόγραμμά σας (free, Plus, Pro ή Believer)",
+      "feedbackPrivacyTitle": "Τι στέλνεται",
+      "feedbackPrivacyVersion": "Έκδοση εφαρμογής και λειτουργικό σύστημα",
+      "projects": "Έργα"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Αλλαγή μεγέθους πίνακα ημέρας",
@@ -231,7 +239,8 @@
       "journal": "Εφημερίδα",
       "calendar": "Ημερολόγιο",
       "inboxCapture": "Λήψη εισερχομένων",
-      "tasks": "Καθήκοντα"
+      "tasks": "Καθήκοντα",
+      "tags": "Ετικέτες"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Μη αποθηκευμένες αλλαγές",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Κάτι πήγε στραβά",
       "anErrorOccurredWhileRenderingThisTabContent": "Παρουσιάστηκε σφάλμα κατά την απόδοση του περιεχομένου αυτής της καρτέλας.",
-      "tryAgain": "Δοκιμάστε ξανά"
+      "tryAgain": "Δοκιμάστε ξανά",
+      "sendReport": "Αποστολή διαγνωστικής αναφοράς"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Σημείωση εικονίδιο"
@@ -352,7 +362,13 @@
       "downloadLocation": "Τοποθεσία",
       "changeLocation": "Αλλαγή…",
       "download": "Λήψη",
-      "downloadFailed": "Δεν ήταν δυνατή η λήψη του θησαυροφυλακίου"
+      "downloadFailed": "Δεν ήταν δυνατή η λήψη του θησαυροφυλακίου",
+      "deleteFromAccount": "Διαγραφή από τον λογαριασμό",
+      "deleteVaultBody": "Αυτό αφαιρεί οριστικά όλα τα συγχρονισμένα δεδομένα αυτού του θησαυροφυλακίου από τους διακομιστές του Memry και δεν μπορεί να αναιρεθεί. Τα αρχεία σας στον δίσκο δεν διαγράφονται.",
+      "deleteVaultConfirm": "Διαγραφή από τον λογαριασμό",
+      "deleteVaultFailed": "Δεν ήταν δυνατή η διαγραφή του θησαυροφυλακίου",
+      "deleteVaultTitle": "Διαγραφή του “{name}” από τον λογαριασμό σας;",
+      "removeVaultTitle": "Αφαίρεση του “{name}” από τη λίστα;"
     },
     "componentsWindowControls": {
       "searchK": "Αναζήτηση (⌘K)",
@@ -640,6 +656,45 @@
     "skip": "Παράλειψη αυτής της έκδοσης"
   },
   "capture": {
-    "focusShortcut": "Εστίαση στο πεδίο καταγραφής"
+    "focusShortcut": "Εστίαση στο πεδίο καταγραφής",
+    "detailHint": "λεπτομέρειες",
+    "focusHint": "Q",
+    "submit": "Καταγραφή"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Προσθήκη κάρτας",
+      "addCreateNote": "Δημιουργία σημείωσης \"{query}\"",
+      "addCreateNoteEmpty": "Δημιουργία νέας σημείωσης",
+      "addCreatedAt": "Δημιουργήθηκε {date}",
+      "addEmpty": "Δεν βρέθηκε τίποτα",
+      "addGroupEvents": "Εκδηλώσεις",
+      "addGroupNotes": "Σημειώσεις",
+      "addGroupTasks": "Εργασίες",
+      "addOnCanvas": "Στον καμβά",
+      "addPlaceholder": "Αναζήτηση σε σημειώσεις, εργασίες και εκδηλώσεις…",
+      "allDay": "Ολοήμερο",
+      "createNoteFailed": "Δεν ήταν δυνατή η δημιουργία της σημείωσης",
+      "deleted": "Το στοιχείο διαγράφηκε",
+      "loading": "Φόρτωση…",
+      "open": "Άνοιγμα σε καρτέλα",
+      "openToEdit": "Άνοιγμα σε καρτέλα για επεξεργασία",
+      "untitled": "Χωρίς τίτλο"
+    },
+    "corruptScene": "Δεν ήταν δυνατή η ανάγνωση αυτού του καμβά. Η επεξεργασία είναι απενεργοποιημένη για να μη χαθούν δεδομένα.",
+    "createFailed": "Δεν ήταν δυνατή η δημιουργία του καμβά",
+    "disabledBody": "Αυτή η καρτέλα ανήκει σε μια λειτουργία που δεν είναι ενεργοποιημένη σε αυτήν τη συσκευή.",
+    "disabledTitle": "Ο καμβάς δεν είναι ενεργοποιημένος",
+    "empty": "Δεν υπάρχουν ακόμη καμβάδες",
+    "libraryStoreFailed": "Δεν ήταν δυνατή η αποθήκευση της βιβλιοθήκης σχημάτων σας. Οι πρόσφατες αλλαγές σε αυτήν μπορεί να χαθούν.",
+    "loadFailed": "Δεν ήταν δυνατή η φόρτωση των καμβάδων",
+    "loading": "Φόρτωση καμβάδων…",
+    "newCanvas": "Νέος καμβάς",
+    "notFound": "Δεν ήταν δυνατή η εύρεση αυτού του καμβά",
+    "openFailed": "Δεν ήταν δυνατό το άνοιγμα του καμβά",
+    "savedToVault": "Όλες οι αλλαγές αποθηκεύονται αυτόματα στο θησαυροφυλάκιό σας",
+    "sectionLabel": "Καμβάδες",
+    "tooLargeToSync": "Αυτός ο καμβάς είναι πολύ μεγάλος για συγχρονισμό. Έχει αποθηκευτεί σε αυτήν τη συσκευή, αλλά δεν θα φτάσει στις άλλες συσκευές σας μέχρι να μικρύνει.",
+    "untitled": "Καμβάς χωρίς τίτλο"
   }
 }

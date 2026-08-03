@@ -34,7 +34,8 @@
     "createAnother": "Crie outro",
     "delete": "Excluir tarefa",
     "created": "Criado {date}",
-    "reminder": "Lembrete"
+    "reminder": "Lembrete",
+    "tags": "Etiquetas"
   },
   "filters": {
     "filter": "Filtro",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Tarefa de adição rápida",
-    "focusDescription": "Concentre-se na entrada de adição rápida"
+    "focusDescription": "Concentre-se na entrada de adição rápida",
+    "placeholder": "Adicionar uma tarefa…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Fechar detalhes da tarefa",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Este projeto não possui tarefas e será excluído permanentemente.",
       "thisActionCannotBeUndone": "Esta ação não pode ser desfeita.",
       "cancel": "Cancelar",
-      "deleteProject": "Excluir projeto"
+      "deleteProject": "Excluir projeto",
+      "notesEventsAndFilesStayNotice": "As tarefas deste projeto são eliminadas. As suas notas, eventos e ficheiros ficam no seu cofre."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Excluir tarefa?",
@@ -357,7 +360,9 @@
       "due": "Devido",
       "dueDate": "data de vencimento",
       "search": "pesquisar",
-      "clearAll": "Limpar tudo"
+      "clearAll": "Limpar tudo",
+      "tags": "etiquetas",
+      "tagsIs": "As etiquetas são"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Filtrar por data de vencimento",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "Nenhuma tarefa futura",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "As tarefas com vencimento nos próximos 7 dias aparecerão aqui. Planeje sua semana adicionando algumas tarefas.",
       "addTask2": "Adicionar tarefa"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "são",
+      "search": "Pesquisar...",
+      "selected": "selecionadas",
+      "tags": "Etiquetas"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "Falha ao definir lembrete",
       "updateFailed": "Falha ao atualizar lembrete",
       "updated": "Lembrete atualizado"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Adicionar ao projeto",
+    "loading": "A carregar projetos…",
+    "menuLabel": "Adicionar ao projeto",
+    "noProjects": "Ainda não há projetos",
+    "toastError": "Falha ao adicionar ao projeto",
+    "toastSuccess": "Adicionado a {name}"
+  },
+  "itemProjects": {
+    "openProject": "Abrir projeto {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Escolha um projeto na barra lateral para abrir a respetiva página inicial.",
+    "emptyTitle": "Nenhum projeto selecionado",
+    "loadError": "Não foi possível carregar os detalhes do projeto",
+    "overview": {
+      "clear": "Limpar visão geral",
+      "clearError": "Não foi possível limpar a nota de visão geral",
+      "create": "Criar nota de visão geral",
+      "createError": "Não foi possível criar a nota de visão geral",
+      "defaultTitle": "Visão geral",
+      "loadError": "Não foi possível carregar a nota de visão geral",
+      "placeholder": "Escreva uma visão geral deste projeto…",
+      "saveError": "Não foi possível guardar a nota de visão geral",
+      "sectionTitle": "Visão geral"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Anexar ficheiros",
+      "fileError": "Não foi possível associar {name}",
+      "fileErrorGeneric": "Não foi possível importar os ficheiros",
+      "filesAdded": "{count, plural, one {# ficheiro adicionado ao projeto} many {# ficheiros adicionados ao projeto} other {# ficheiros adicionados ao projeto}}",
+      "label": "Adicionar a {name}",
+      "linkAdded": "Link adicionado ao projeto",
+      "linkError": "Não foi possível guardar o link",
+      "placeholder": "Adicionar a {name} — escreva uma tarefa, tome uma nota ou cole um link…"
+    },
+    "groups": {
+      "older": "Mais antigos",
+      "past": "Passados",
+      "today": "Hoje",
+      "tomorrow": "Amanhã",
+      "upcoming": "Próximos",
+      "yesterday": "Ontem"
+    },
+    "header": {
+      "archiveProject": "Arquivar projeto",
+      "editProject": "Editar projeto",
+      "menu": "Ações do projeto",
+      "toggleRail": "Mostrar/ocultar detalhes do projeto"
+    },
+    "rail": {
+      "addNote": "Adicionar nota",
+      "created": "Criado",
+      "details": "Detalhes",
+      "doneOf": "{done} de {total} concluídas",
+      "linked": "Associados",
+      "linkedSummary": "{notes, plural, one {# nota} many {# notas} other {# notas}} · {files, plural, one {# ficheiro} many {# ficheiros} other {# ficheiros}} · {events, plural, one {# evento} many {# eventos} other {# eventos}}",
+      "overdue": "Em atraso",
+      "overview": "Visão geral",
+      "pinError": "Não foi possível adicionar a nota à visão geral",
+      "progress": "Progresso",
+      "unpinError": "Não foi possível remover a nota da visão geral",
+      "unpinNote": "Remover {title} da visão geral",
+      "updated": "Atualizado"
+    },
+    "rows": {
+      "openEvent": "Abrir evento {title}",
+      "openFile": "Abrir ficheiro {title}",
+      "openNote": "Abrir nota {title}",
+      "openTask": "Abrir tarefa {title}",
+      "setNoteIcon": "Definir ícone para {title}"
+    },
+    "sections": {
+      "add": "Adicionar a {title}",
+      "emptyEvents": "Ainda não há eventos associados.",
+      "emptyFiles": "Ainda não há ficheiros associados.",
+      "emptyNotes": "Ainda não há notas associadas.",
+      "emptyTasks": "Ainda não há tarefas.",
+      "newNoteError": "Não foi possível adicionar a nota",
+      "newNoteTitle": "Nota sem título",
+      "viewAll": "Ver tudo"
+    },
+    "tabs": {
+      "events": "Eventos",
+      "files": "Ficheiros",
+      "label": "Vistas do projeto",
+      "notes": "Notas",
+      "overview": "Visão geral",
+      "tasks": "Tarefas"
     }
   }
 }

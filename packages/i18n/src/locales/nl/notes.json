@@ -16,9 +16,27 @@
       "willSync": "De notitie wordt gesynchroniseerd met de cloud",
       "renameFailed": "Kan de naam van de notitie niet wijzigen",
       "toggleLocalOnlyFailed": "Kan alleen lokaal niet inschakelen",
-      "toggleFullWidthFailed": "Kan de volledige breedte niet wijzigen"
+      "toggleFullWidthFailed": "Kan de volledige breedte niet wijzigen",
+      "copyPathFailed": "Kan pad niet kopiëren",
+      "deleteFailed": "Kan notitie niet verwijderen",
+      "moveFailed": "Kan notitie niet verplaatsen",
+      "moved": "Notitie verplaatst",
+      "openExternalFailed": "Kan notitie niet openen",
+      "pathCopied": "Pad gekopieerd",
+      "revealFailed": "Kan notitie niet tonen"
     },
-    "deleteDialogTitle": "{count, plural, one {Notitie verwijderen} other {Verwijder #-notities}}"
+    "deleteDialogTitle": "{count, plural, one {Notitie verwijderen} other {Verwijder #-notities}}",
+    "deleteConfirm": {
+      "cancel": "Annuleren",
+      "confirm": "Verwijderen",
+      "deleting": "Verwijderen...",
+      "description": "Weet je zeker dat je \"{title}\" wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
+      "title": "Notitie verwijderen"
+    },
+    "itemsCount": "{count, plural, one {# item} other {# items}}",
+    "itemsCountFiltered": "{shown} van {total, plural, one {# item} other {# items}}",
+    "renameViewUnavailableForTags": "Opgeslagen weergaven hernoemen is nog niet mogelijk voor tags",
+    "tagFilterLabel": "tag = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "Verwijder {count}-notities",
       "deleteSelectedItems": "Verwijder {count}-items",
       "bookmark": "Bladwijzer",
-      "removeFromBookmarks": "Verwijderen uit bladwijzers"
+      "removeFromBookmarks": "Verwijderen uit bladwijzers",
+      "applyTemplate": "Sjabloon toepassen"
     },
     "deleteDialog": {
       "noteTitle": "Notitie verwijderen",
@@ -83,7 +102,17 @@
       "export": "Exporteren",
       "fullWidth": "Volledige breedte",
       "disableLocalOnly": "Schakel alleen lokaal uit",
-      "setLocalOnly": "Alleen lokaal instellen"
+      "setLocalOnly": "Alleen lokaal instellen",
+      "applyTemplate": "Sjabloon toepassen",
+      "copyPath": "Pad kopiëren",
+      "delete": "Notitie verwijderen",
+      "find": "Zoeken…",
+      "moreActions": "Meer acties",
+      "moveToFolder": "Verplaatsen naar map…",
+      "openInDefaultApp": "Openen in standaardapp",
+      "rename": "Hernoemen…",
+      "revealInFinder": "Toon in Finder",
+      "revealInSidebar": "Toon in navigatie"
     },
     "breadcrumb": {
       "locationAria": "Let op locatie",
@@ -235,7 +264,10 @@
     "essentials": "Essentiële zaken",
     "setFolderDefault": "Instellen als mapstandaard",
     "useTemplate": "Gebruik sjabloon",
-    "createNote": "Notitie maken"
+    "createNote": "Notitie maken",
+    "applyDescription": "Vervang de inhoud van deze notitie door een sjabloon",
+    "applyTitle": "Een sjabloon toepassen",
+    "applyToNote": "Sjabloon toepassen"
   },
   "exportDialog": {
     "title": "Notitie exporteren",
@@ -352,7 +384,8 @@
       "addCondition": "Voorwaarde toevoegen",
       "addFilter": "Filter toevoegen",
       "addGroup": "Groep toevoegen",
-      "removeGroup": "Groep verwijderen"
+      "removeGroup": "Groep verwijderen",
+      "lockedConditionHint": "Deze voorwaarde bepaalt de huidige weergave en kan hier niet worden verwijderd."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Ingebouwd",
@@ -365,7 +398,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Notitie tabel",
       "selectAll": "Alle notities selecteren",
-      "selectRow": "Notitie selecteren"
+      "selectRow": "Notitie selecteren",
+      "kind": {
+        "Inbox": "Inbox",
+        "Note": "Notitie",
+        "Task": "Taak"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Zoek notities...",
@@ -468,7 +506,13 @@
       "failedToLoadPdf": "Kan PDF niet laden: ",
       "download": "Downloaden",
       "download2": "Downloaden",
-      "noFileAttached": "Geen bestand bijgevoegd"
+      "noFileAttached": "Geen bestand bijgevoegd",
+      "alignCenter": "Centreren",
+      "alignLeft": "Links uitlijnen",
+      "alignRight": "Rechts uitlijnen",
+      "nextPage": "Volgende pagina",
+      "previousPage": "Vorige pagina",
+      "resizePdf": "Formaat van PDF wijzigen"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Openen in taakpaneel",
@@ -530,7 +574,8 @@
       "failedToLoadTags": "Kan tags niet laden",
       "noTagsYet": "Nog geen tags",
       "filterTags": "Labels filteren...",
-      "noMatchingTags": "Geen overeenkomende labels"
+      "noMatchingTags": "Geen overeenkomende labels",
+      "Uncategorized": "Zonder categorie"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Laat het hier vallen",
@@ -560,7 +605,8 @@
       "deleteTag": "Label verwijderen",
       "recent": "Recent",
       "created": "Gemaakt",
-      "alphabetical": "Alfabetisch"
+      "alphabetical": "Alfabetisch",
+      "tasks": "TAKEN"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Naam van tag wijzigen",
@@ -733,7 +779,9 @@
     "replyPlaceholder": "Antwoorden...",
     "resolve": "Oplossen",
     "sendAria": "Opmerking verzenden",
-    "toolbarComment": "Opmerking"
+    "toolbarComment": "Opmerking",
+    "openAttachmentAria": "Bijlage {name} openen",
+    "openImageAria": "Afbeelding {name} openen"
   },
   "dateMention": {
     "clear": "Wissen",
@@ -743,5 +791,59 @@
     "remind": "Herinneren",
     "time": "Tijd",
     "timeFormat": "Tijdnotatie"
+  },
+  "applyTemplateConfirm": {
+    "body": "Alleen inhoud vervangen",
+    "cancel": "Annuleren",
+    "description": "Als je \"{name}\" toepast, wordt de huidige inhoud van deze notitie vervangen. Dit kan niet ongedaan worden gemaakt.",
+    "failed": "Kan sjabloon niet toepassen",
+    "full": "Inhoud vervangen en sjabloondetails toevoegen",
+    "success": "Sjabloon toegepast",
+    "title": "Notitie-inhoud vervangen?"
+  },
+  "tagView": {
+    "moreActions": "Meer acties",
+    "pin": {
+      "action": "{count, plural, one {# notitie} other {# notities}} vastzetten aan tag",
+      "failed": "Kan notitie niet aan tag vastzetten",
+      "success": "{count, plural, one {# notitie} other {# notities}} vastgezet aan tag"
+    }
+  },
+  "tags": {
+    "hubTitle": "Tags",
+    "openHub": "Tagoverzicht openen"
+  },
+  "tagsHub": {
+    "cancelCreate": "Annuleren",
+    "category": {
+      "delete": "Categorie verwijderen",
+      "deleteBody": "Tags gaan naar Zonder categorie. Ze worden niet verwijderd.",
+      "deleteCancel": "Annuleren",
+      "deleteConfirm": "Verwijderen",
+      "deleteTitle": "{name} verwijderen?",
+      "dragHandle": "Sleep om de volgorde van categorieën te wijzigen",
+      "emptyHint": "Sleep hier een tag naartoe",
+      "more": "Categorieopties",
+      "rename": "Categorie hernoemen"
+    },
+    "categoryNamePlaceholder": "Categorienaam",
+    "errors": {
+      "createCategoryFailed": "Kan categorie niet maken",
+      "createTagCategorizeFailed": "Tag gemaakt, maar kon niet aan de categorie worden toegevoegd",
+      "createTagFailed": "Kan tag niet maken",
+      "deleteCategoryFailed": "Kan categorie niet verwijderen",
+      "loadFailed": "Kan tagcategorieën niet laden",
+      "renameCategoryFailed": "Kan categorie niet hernoemen",
+      "reorderFailed": "Kan de volgorde van tags niet wijzigen"
+    },
+    "loading": "Tags laden...",
+    "newCategory": "Nieuwe categorie",
+    "newTag": "Nieuwe tag",
+    "search": {
+      "empty": "Geen categorieën of tags gevonden voor je zoekopdracht",
+      "placeholder": "Zoek categorieën en tags"
+    },
+    "tagNamePlaceholder": "Tagnaam",
+    "uncategorized": "Zonder categorie"
   }
 }

@@ -67,7 +67,8 @@
     "title": "Vil du slette begivenheden?",
     "local-description": "\"{title}\" slettes permanent. Denne handling kan ikke fortrydes.",
     "google-bound-description": "\"{title}\" vil blive fjernet fra memrynote og Google Kalender. Denne handling kan ikke fortrydes.",
-    "context-menu-delete-label": "Slet begivenhed"
+    "context-menu-delete-label": "Slet begivenhed",
+    "context-menu-add-to-project": "Føj til projekt"
   },
   "promote-dialog": {
     "aria": "Rediger ekstern kalenderbegivenhed",
@@ -181,6 +182,7 @@
     "placeholder": "Søg i begivenheder, opgaver, påmindelser…"
   },
   "undo": {
-    "moveEvent": "Flyt begivenhed"
+    "moveEvent": "Flyt begivenhed",
+    "moveTask": "Omplanlæg opgave"
   }
 }

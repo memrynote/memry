@@ -67,7 +67,8 @@
     "title": "Ta bort händelse?",
     "local-description": "\"{title}\" kommer att tas bort permanent. Denna åtgärd kan inte ångras.",
     "google-bound-description": "\"{title}\" kommer att tas bort från memrynote och Google Kalender. Denna åtgärd kan inte ångras.",
-    "context-menu-delete-label": "Ta bort händelse"
+    "context-menu-delete-label": "Ta bort händelse",
+    "context-menu-add-to-project": "Lägg till i projekt"
   },
   "promote-dialog": {
     "aria": "Redigera extern kalenderhändelse",
@@ -181,6 +182,7 @@
     "placeholder": "Sök händelser, uppgifter, påminnelser…"
   },
   "undo": {
-    "moveEvent": "Flytta händelse"
+    "moveEvent": "Flytta händelse",
+    "moveTask": "Schemalägg om uppgift"
   }
 }

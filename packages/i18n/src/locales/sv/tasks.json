@@ -34,7 +34,8 @@
     "createAnother": "Skapa en till",
     "delete": "Radera uppgift",
     "created": "Skapad {date}",
-    "reminder": "Påminnelse"
+    "reminder": "Påminnelse",
+    "tags": "Taggar"
   },
   "filters": {
     "filter": "Filter",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Snabb tilläggsuppgift",
-    "focusDescription": "Fokusera snabb tilläggsinput"
+    "focusDescription": "Fokusera snabb tilläggsinput",
+    "placeholder": "Lägg till en uppgift…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Detaljer om slutuppgifter",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Detta projekt har inga uppgifter och kommer att tas bort permanent.",
       "thisActionCannotBeUndone": "Den här åtgärden kan inte ångras.",
       "cancel": "Avbryt",
-      "deleteProject": "Ta bort projekt"
+      "deleteProject": "Ta bort projekt",
+      "notesEventsAndFilesStayNotice": "Uppgifterna i det här projektet tas bort. Dina anteckningar, händelser och filer stannar i ditt valv."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Ta bort uppgift?",
@@ -357,7 +360,9 @@
       "due": "Förfallodatum",
       "dueDate": "förfallodatum",
       "search": "sök",
-      "clearAll": "Rensa allt"
+      "clearAll": "Rensa allt",
+      "tags": "taggar",
+      "tagsIs": "Taggar är"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Filtrera efter förfallodatum",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "Inga kommande uppgifter",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Uppgifter som förfaller inom de nästa 7 dagarna kommer att visas här. Planera din vecka genom att lägga till några uppgifter.",
       "addTask2": "Lägg till uppgift"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "är",
+      "search": "Sök...",
+      "selected": "valda",
+      "tags": "Taggar"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "Det gick inte att ange påminnelse",
       "updateFailed": "Det gick inte att uppdatera påminnelse",
       "updated": "Påminnelse uppdaterad"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Lägg till i projekt",
+    "loading": "Laddar projekt…",
+    "menuLabel": "Lägg till i projekt",
+    "noProjects": "Inga projekt än",
+    "toastError": "Misslyckades med att lägga till i projektet",
+    "toastSuccess": "Tillagd i {name}"
+  },
+  "itemProjects": {
+    "openProject": "Öppna projektet {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Välj ett projekt i sidofältet för att öppna dess startsida.",
+    "emptyTitle": "Inget projekt valt",
+    "loadError": "Det gick inte att ladda projektinformationen",
+    "overview": {
+      "clear": "Rensa översikten",
+      "clearError": "Det gick inte att rensa översiktsanteckningen",
+      "create": "Skapa översiktsanteckning",
+      "createError": "Det gick inte att skapa översiktsanteckningen",
+      "defaultTitle": "Översikt",
+      "loadError": "Det gick inte att ladda översiktsanteckningen",
+      "placeholder": "Skriv en översikt för det här projektet…",
+      "saveError": "Det gick inte att spara översiktsanteckningen",
+      "sectionTitle": "Översikt"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Bifoga filer",
+      "fileError": "Det gick inte att länka {name}",
+      "fileErrorGeneric": "Det gick inte att importera filerna",
+      "filesAdded": "{count, plural, one {# fil tillagd i projektet} other {# filer tillagda i projektet}}",
+      "label": "Lägg till i {name}",
+      "linkAdded": "Länken lades till i projektet",
+      "linkError": "Det gick inte att spara länken",
+      "placeholder": "Lägg till i {name} — skriv en uppgift, en anteckning eller klistra in en länk…"
+    },
+    "groups": {
+      "older": "Äldre",
+      "past": "Tidigare",
+      "today": "Idag",
+      "tomorrow": "Imorgon",
+      "upcoming": "Kommande",
+      "yesterday": "Igår"
+    },
+    "header": {
+      "archiveProject": "Arkivera projekt",
+      "editProject": "Redigera projekt",
+      "menu": "Projektåtgärder",
+      "toggleRail": "Växla projektdetaljer"
+    },
+    "rail": {
+      "addNote": "Lägg till anteckning",
+      "created": "Skapad",
+      "details": "Detaljer",
+      "doneOf": "{done} av {total} klara",
+      "linked": "Länkat",
+      "linkedSummary": "{notes, plural, one {# anteckning} other {# anteckningar}} · {files, plural, one {# fil} other {# filer}} · {events, plural, one {# händelse} other {# händelser}}",
+      "overdue": "Försenade",
+      "overview": "Översikt",
+      "pinError": "Det gick inte att lägga till anteckningen i översikten",
+      "progress": "Framsteg",
+      "unpinError": "Det gick inte att ta bort anteckningen från översikten",
+      "unpinNote": "Ta bort {title} från översikten",
+      "updated": "Uppdaterad"
+    },
+    "rows": {
+      "openEvent": "Öppna händelsen {title}",
+      "openFile": "Öppna filen {title}",
+      "openNote": "Öppna anteckningen {title}",
+      "openTask": "Öppna uppgiften {title}",
+      "setNoteIcon": "Ange ikon för {title}"
+    },
+    "sections": {
+      "add": "Lägg till i {title}",
+      "emptyEvents": "Inga händelser är länkade än.",
+      "emptyFiles": "Inga filer är länkade än.",
+      "emptyNotes": "Inga anteckningar är länkade än.",
+      "emptyTasks": "Inga uppgifter än.",
+      "newNoteError": "Det gick inte att lägga till anteckningen",
+      "newNoteTitle": "Namnlös anteckning",
+      "viewAll": "Visa alla"
+    },
+    "tabs": {
+      "events": "Händelser",
+      "files": "Filer",
+      "label": "Projektvyer",
+      "notes": "Anteckningar",
+      "overview": "Översikt",
+      "tasks": "Uppgifter"
     }
   }
 }

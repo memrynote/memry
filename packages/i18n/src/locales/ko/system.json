@@ -38,6 +38,11 @@
       "fallback": "알림 기한",
       "default": "알림",
       "task": "작업 리마인더"
+    },
+    "inboxReview": {
+      "body": "검토할 {count, plural, other {항목 #개}}가 있습니다.",
+      "testBody": "테스트입니다 — 매일 오는 검토 알림은 이렇게 표시됩니다.",
+      "title": "받은함을 검토할 시간입니다"
     }
   },
   "error": {

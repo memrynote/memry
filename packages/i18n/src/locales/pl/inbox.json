@@ -314,7 +314,10 @@
       "rdquo": "nieważne;",
       "captureAnyway": "Przechwytuj mimo to",
       "focusShortcut": "Ustaw fokus na polu zapisu",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Zapisz link",
+      "captureNote": "Zapisz notatkę",
+      "placeholder": "Szybki zapis — wklej link, zanotuj myśl…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Wybierz folder",
@@ -466,7 +469,12 @@
       "cancelRecording": "Anuluj nagrywanie",
       "cancel": "Anuluj",
       "stopRecording": "Zatrzymaj nagrywanie",
-      "stop": "Zatrzymaj się"
+      "stop": "Zatrzymaj się",
+      "enableMicInSettings": "Włącz dostęp do mikrofonu w ustawieniach systemu i spróbuj ponownie.",
+      "failedToStart": "Nie udało się rozpocząć nagrywania",
+      "microphoneAccessDenied": "Odmowa dostępu do mikrofonu",
+      "noMicrophoneFound": "Nie znaleziono mikrofonu",
+      "recordingError": "Wystąpił błąd nagrywania"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "Nie udało się przechwycić pliku",
       "fileCaptureFailed": "Przechwytywanie pliku nie powiodło się",
       "failedToCaptureAudio": "Nie udało się przechwycić dźwięku",
-      "failedToCaptureVoice": "Nie udało się przechwycić głosu"
+      "failedToCaptureVoice": "Nie udało się przechwycić głosu",
+      "failedToLoadInboxPreferences": "Nie udało się załadować preferencji skrzynki odbiorczej",
+      "failedToUpdateInboxPreferences": "Nie udało się zaktualizować preferencji skrzynki odbiorczej"
     },
     "toasts": {
       "inboxRefreshed": "Skrzynka odbiorcza odświeżona"
@@ -516,5 +526,10 @@
     "task": "Zadanie",
     "time": "Godzina",
     "title": "Konwertuj"
+  },
+  "reviewNudge": {
+    "action": "Otwórz skrzynkę odbiorczą",
+    "description": "Przejrzyj dzisiejsze zapiski za jednym spokojnym podejściem.",
+    "title": "{count, plural, one {Czas przejrzeć # element} few {Czas przejrzeć # elementy} many {Czas przejrzeć # elementów} other {Czas przejrzeć # elementu}}"
   }
 }

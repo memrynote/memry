@@ -28,7 +28,8 @@
         "properties": "Propriétés",
         "commandLine": "Ligne de commande",
         "features": "Fonctionnalités",
-        "import": "Importer"
+        "import": "Importer",
+        "inbox": "Boîte de réception"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Téléchargement de {percent}%",
         "downloaded": "Redémarrer pour installer",
         "idle": "Vérifier les mises à jour"
+      },
+      "autoCheck": {
+        "description": "Rechercher les nouvelles versions au démarrage, puis régulièrement tant que l'application est ouverte.",
+        "error": "Échec de la mise à jour du paramètre de vérification automatique",
+        "label": "Rechercher automatiquement les mises à jour"
+      },
+      "autoDownload": {
+        "description": "Télécharger et installer les nouvelles versions en arrière-plan, sans demander confirmation.",
+        "error": "Échec de la mise à jour du paramètre de téléchargement automatique",
+        "label": "Télécharger automatiquement les mises à jour"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Partager des métriques d'utilisation anonymes",
         "description": "Il ne s'agit que de mesures anonymes : aucun contenu de note, requête de recherche, chemin de fichier, e-mail ou identifiant brut n'est jamais envoyé.",
         "error": "Échec de la mise à jour des paramètres de télémétrie"
+      },
+      "diagnostics": {
+        "building": "Préparation du rapport…",
+        "consent": "Envoyer un rapport de diagnostic ponctuel ? Il ne contient que des journaux techniques expurgés — aucun contenu de note.",
+        "error": "Échec de l'envoi du rapport de diagnostic",
+        "notNow": "Pas maintenant",
+        "previewError": "Impossible de préparer le rapport de diagnostic",
+        "previewLabel": "Aperçu du contenu du rapport",
+        "send": "Envoyer",
+        "sendReport": {
+          "button": "Envoyer un rapport de diagnostic",
+          "description": "Envoyez un rapport ponctuel de journaux techniques expurgés pour nous aider à corriger un problème que vous avez rencontré.",
+          "label": "Rapport de diagnostic"
+        },
+        "sending": "Envoi…",
+        "sent": "Rapport envoyé — référence {incidentId}",
+        "snapshotLabel": "Instantané de l'appareil",
+        "title": "Envoyer un rapport de diagnostic ?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Disposition",
-      "toolbar": "Barre d'outils"
+      "toolbar": "Barre d'outils",
+      "spelling": "Orthographe"
     },
     "width": {
       "label": "Largeur de l'éditeur",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Étroit",
         "medium": "Moyen",
-        "wide": "Large"
+        "wide": "Large",
+        "full": "Pleine largeur",
+        "normal": "Normal"
       },
       "error": "Échec de la mise à jour de la largeur de l'éditeur"
     },
@@ -229,6 +261,11 @@
       "label": "Barre d'outils de formatage collante",
       "description": "Toujours afficher la barre d'outils au-dessus de l'éditeur",
       "error": "Échec de la mise à jour du mode barre d'outils"
+    },
+    "spellCheck": {
+      "description": "Souligner les mots mal orthographiés dans les notes et les journaux",
+      "error": "Échec de la mise à jour de la correction orthographique",
+      "label": "Vérifier l'orthographe"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "Utilisation du stockage",
-      "location": "Emplacement"
+      "location": "Emplacement",
+      "accountVaults": "Coffres de votre compte"
     },
     "loadingStorage": "Chargement des informations de stockage...",
     "signInStorage": "Connectez-vous pour afficher l'utilisation du stockage",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "Stockage presque plein",
       "warningDescription": "Libérez de l'espace ou mettez à niveau votre forfait pour éviter les problèmes de synchronisation."
+    },
+    "accountVaults": {
+      "activeHint": "Passez à un autre coffre pour supprimer celui-ci.",
+      "cloudOnly": "Pas sur cet appareil",
+      "delete": "Supprimer",
+      "deleteBody": "Cette action supprime définitivement des serveurs de Memry toutes les données synchronisées de ce coffre et ne peut pas être annulée. Vos fichiers sur le disque ne sont pas supprimés.",
+      "deleteConfirm": "Supprimer du compte",
+      "deleteFailed": "Impossible de supprimer le coffre",
+      "deleteTitle": "Supprimer « {name} » de votre compte ?",
+      "empty": "Aucun coffre synchronisé avec votre compte pour l'instant.",
+      "itemsCount": "{count} éléments"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "Échec de la fermeture du coffre-fort",
       "failedToSwitchVault": "Échec du changement de coffre-fort",
       "failedToUpdateConfig": "Échec de la mise à jour de la configuration",
-      "failedToReindex": "Échec de la réindexation"
+      "failedToReindex": "Échec de la réindexation",
+      "failedToLoadTasks": "Échec du chargement des tâches"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "Choses à faire et échéances",
         "label": "Tâches"
+      },
+      "spatialCanvas": {
+        "description": "Des tableaux spatiaux pour disposer et relier vos notes",
+        "label": "Canevas"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} ignorés",
         "title": "Import terminé"
       },
-      "title": "Importer depuis {name}"
+      "title": "Importer depuis {name}",
+      "chooseDirectory": "Choisir un dossier…",
+      "folderKeepsAssets": "Choisissez le dossier lorsque les images se trouvent en dehors du dossier des notes — les exports regroupent souvent les médias dans un dossier partagé."
     },
     "header": {
       "subtitle": "Importez vos notes et tâches depuis d'autres applications",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, one {# tâche} other {# tâches}}",
       "withDueDate": "{count} datés",
       "withTags": "{count} étiquetés"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Chargement…",
+      "subtitle": "Rappel de revue quotidienne et préférences de la boîte de réception.",
+      "title": "Boîte de réception"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Un rappel discret chaque jour lorsque votre boîte de réception contient des éléments.",
+        "label": "Me rappeler de passer en revue ma boîte de réception"
+      },
+      "error": "Impossible de mettre à jour le rappel.",
+      "group": "Rappel de revue quotidienne",
+      "test": {
+        "button": "Envoyer un test",
+        "description": "Déclenchez le rappel maintenant pour vérifier vos notifications système.",
+        "label": "Notification de test",
+        "sent": "Notification de test envoyée.",
+        "sentHint": "Si rien n'apparaît, autorisez les notifications pour MemryNote dans les paramètres de votre système.",
+        "unsupported": "Cet appareil ne peut pas afficher de notifications de bureau."
+      },
+      "time": {
+        "description": "Heure locale, sur chaque appareil.",
+        "hourLabel": "Heure",
+        "label": "Heure du rappel",
+        "minuteLabel": "Minute",
+        "periodLabel": "AM ou PM"
+      }
     }
   }
 }

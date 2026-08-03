@@ -67,7 +67,8 @@
     "title": "イベントを削除しますか?",
     "local-description": "「{title}」は完全に削除されます。この操作は元に戻すことができません。",
     "google-bound-description": "「{title}」はmemrynoteおよびGoogleカレンダーから削除されます。この操作は元に戻すことができません。",
-    "context-menu-delete-label": "イベントの削除"
+    "context-menu-delete-label": "イベントの削除",
+    "context-menu-add-to-project": "プロジェクトに追加"
   },
   "promote-dialog": {
     "aria": "外部カレンダーイベントを編集する",
@@ -181,6 +182,7 @@
     "placeholder": "予定・タスク・リマインダーを検索…"
   },
   "undo": {
-    "moveEvent": "予定を移動"
+    "moveEvent": "予定を移動",
+    "moveTask": "タスクを再スケジュール"
   }
 }

@@ -67,7 +67,8 @@
     "title": "Usunąć wydarzenie?",
     "local-description": "„{title}” zostanie trwale usunięty. Tej akcji nie można cofnąć.",
     "google-bound-description": "„{title}” zostanie usunięty z memrynote i Kalendarza Google. Tej akcji nie można cofnąć.",
-    "context-menu-delete-label": "Usuń wydarzenie"
+    "context-menu-delete-label": "Usuń wydarzenie",
+    "context-menu-add-to-project": "Dodaj do projektu"
   },
   "promote-dialog": {
     "aria": "Edytuj wydarzenie w kalendarzu zewnętrznym",
@@ -181,6 +182,7 @@
     "placeholder": "Szukaj wydarzeń, zadań, przypomnień…"
   },
   "undo": {
-    "moveEvent": "Przenieś wydarzenie"
+    "moveEvent": "Przenieś wydarzenie",
+    "moveTask": "Zmień termin zadania"
   }
 }

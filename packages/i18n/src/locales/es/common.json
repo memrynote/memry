@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "Descargando {percent}%",
       "updateInstallingSubtitle": "MemryNote se reiniciará automáticamente.",
       "updateInstallingTitle": "Instalando la actualización",
-      "updateRestart": "Reiniciar"
+      "updateRestart": "Reiniciar",
+      "feedbackPrivacyEmailOptional": "Tu correo — solo si lo añades, y solo para que podamos responderte",
+      "feedbackPrivacyEmailSignedIn": "El correo de tu cuenta ({email}), para que podamos responderte",
+      "feedbackPrivacyMessage": "Tu mensaje, tal y como lo has escrito",
+      "feedbackPrivacyNote": "Nada más. Tus notas se quedan en tu dispositivo.",
+      "feedbackPrivacyPlan": "Tu plan (free, Plus, Pro o Believer)",
+      "feedbackPrivacyTitle": "Qué se envía",
+      "feedbackPrivacyVersion": "Versión de la app y sistema operativo",
+      "projects": "Proyectos"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Cambiar tamaño del panel del día",
@@ -231,7 +239,8 @@
       "journal": "Diario",
       "calendar": "Calendario",
       "inboxCapture": "Captura de bandeja de entrada",
-      "tasks": "Tareas"
+      "tasks": "Tareas",
+      "tags": "Etiquetas"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Cambios no guardados",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "algo salió mal",
       "anErrorOccurredWhileRenderingThisTabContent": "Se produjo un error al representar el contenido de esta pestaña.",
-      "tryAgain": "Inténtalo de nuevo"
+      "tryAgain": "Inténtalo de nuevo",
+      "sendReport": "Enviar informe de diagnóstico"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Icono de nota"
@@ -352,7 +362,13 @@
       "downloadLocation": "Ubicación",
       "changeLocation": "Cambiar…",
       "download": "Descargar",
-      "downloadFailed": "No se pudo descargar la bóveda"
+      "downloadFailed": "No se pudo descargar la bóveda",
+      "deleteFromAccount": "Eliminar de la cuenta",
+      "deleteVaultBody": "Esto elimina de forma permanente todos los datos sincronizados de esta bóveda que hay en los servidores de Memry y no se puede deshacer. Los archivos de tu disco no se eliminan.",
+      "deleteVaultConfirm": "Eliminar de la cuenta",
+      "deleteVaultFailed": "No se pudo eliminar la bóveda",
+      "deleteVaultTitle": "¿Eliminar “{name}” de tu cuenta?",
+      "removeVaultTitle": "¿Quitar “{name}” de la lista?"
     },
     "componentsWindowControls": {
       "searchK": "Buscar (⌘K)",
@@ -640,6 +656,45 @@
     "skip": "Omitir esta versión"
   },
   "capture": {
-    "focusShortcut": "Enfocar el campo de captura"
+    "focusShortcut": "Enfocar el campo de captura",
+    "detailHint": "detalle",
+    "focusHint": "Q",
+    "submit": "Capturar"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Añadir tarjeta",
+      "addCreateNote": "Crear nota \"{query}\"",
+      "addCreateNoteEmpty": "Crear nota nueva",
+      "addCreatedAt": "Creado el {date}",
+      "addEmpty": "No se encontró nada",
+      "addGroupEvents": "Eventos",
+      "addGroupNotes": "Notas",
+      "addGroupTasks": "Tareas",
+      "addOnCanvas": "En el lienzo",
+      "addPlaceholder": "Buscar notas, tareas y eventos…",
+      "allDay": "Todo el día",
+      "createNoteFailed": "No se pudo crear la nota",
+      "deleted": "Elemento eliminado",
+      "loading": "Cargando…",
+      "open": "Abrir en pestaña",
+      "openToEdit": "Abrir en pestaña para editar",
+      "untitled": "Sin título"
+    },
+    "corruptScene": "No se pudo leer este lienzo. La edición está desactivada para no perder datos.",
+    "createFailed": "No se pudo crear el lienzo",
+    "disabledBody": "Esta pestaña pertenece a una función que no está activada en este dispositivo.",
+    "disabledTitle": "El lienzo no está activado",
+    "empty": "Aún no hay lienzos",
+    "libraryStoreFailed": "No se pudo guardar tu biblioteca de formas. Puede que se pierdan los cambios recientes.",
+    "loadFailed": "No se pudieron cargar los lienzos",
+    "loading": "Cargando lienzos…",
+    "newCanvas": "Nuevo lienzo",
+    "notFound": "No se pudo encontrar este lienzo",
+    "openFailed": "No se pudo abrir el lienzo",
+    "savedToVault": "Todos los cambios se guardan automáticamente en tu bóveda",
+    "sectionLabel": "Lienzos",
+    "tooLargeToSync": "Este lienzo es demasiado grande para sincronizarlo. Está guardado en este dispositivo, pero no llegará a los demás hasta que ocupe menos.",
+    "untitled": "Lienzo sin título"
   }
 }

@@ -28,7 +28,8 @@
         "properties": "Vlastnosti",
         "commandLine": "Příkazový řádek",
         "features": "Funkce",
-        "import": "Import"
+        "import": "Import",
+        "inbox": "Doručená pošta"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Stahování {percent} %",
         "downloaded": "Restartujte k instalaci",
         "idle": "Zkontrolujte aktualizace"
+      },
+      "autoCheck": {
+        "description": "Kontrolovat nová vydání při spuštění a průběžně, dokud je aplikace otevřená.",
+        "error": "Nastavení automatické kontroly se nepodařilo aktualizovat",
+        "label": "Automaticky kontrolovat aktualizace"
+      },
+      "autoDownload": {
+        "description": "Stahovat a instalovat nová vydání na pozadí bez dotazu.",
+        "error": "Nastavení automatického stahování se nepodařilo aktualizovat",
+        "label": "Automaticky stahovat aktualizace"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Sdílejte anonymní metriky používání",
         "description": "Jsou to pouze anonové metriky – nikdy se neodesílají žádné poznámky, vyhledávací dotazy, cesty k souborům, e-maily ani nezpracovaná ID.",
         "error": "Nastavení telemetrie se nepodařilo aktualizovat"
+      },
+      "diagnostics": {
+        "building": "Příprava zprávy…",
+        "consent": "Odeslat jednorázovou diagnostickou zprávu? Obsahuje pouze anonymizované technické záznamy — žádný obsah poznámek.",
+        "error": "Diagnostickou zprávu se nepodařilo odeslat",
+        "notNow": "Teď ne",
+        "previewError": "Diagnostickou zprávu se nepodařilo připravit",
+        "previewLabel": "Náhled obsahu zprávy",
+        "send": "Odeslat",
+        "sendReport": {
+          "button": "Odeslat diagnostickou zprávu",
+          "description": "Odešlete jednorázovou zprávu s anonymizovanými technickými záznamy, abychom mohli vyřešit problém, na který jste narazili.",
+          "label": "Diagnostická zpráva"
+        },
+        "sending": "Odesílání…",
+        "sent": "Zpráva odeslána — referenční číslo {incidentId}",
+        "snapshotLabel": "Snímek zařízení",
+        "title": "Odeslat diagnostickou zprávu?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Rozložení",
-      "toolbar": "Panel nástrojů"
+      "toolbar": "Panel nástrojů",
+      "spelling": "Pravopis"
     },
     "width": {
       "label": "Šířka editoru",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Úzký",
         "medium": "Střední",
-        "wide": "Široký"
+        "wide": "Široký",
+        "full": "Plná šířka",
+        "normal": "Normální"
       },
       "error": "Aktualizace šířky editoru se nezdařila"
     },
@@ -229,6 +261,11 @@
       "label": "Sticky Formating Toolbar",
       "description": "Vždy zobrazovat panel nástrojů nad editorem",
       "error": "Aktualizace režimu panelu nástrojů se nezdařila"
+    },
+    "spellCheck": {
+      "description": "Podtrhávat chybně napsaná slova v poznámkách a denících",
+      "error": "Kontrolu pravopisu se nepodařilo aktualizovat",
+      "label": "Kontrolovat pravopis"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "Využití úložiště",
-      "location": "Umístění"
+      "location": "Umístění",
+      "accountVaults": "Trezory ve vašem účtu"
     },
     "loadingStorage": "Načítání informací o úložišti...",
     "signInStorage": "Chcete-li zobrazit využití úložiště, přihlaste se",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "Úložiště téměř plné",
       "warningDescription": "Uvolněte místo nebo upgradujte svůj plán, abyste se vyhnuli problémům se synchronizací."
+    },
+    "accountVaults": {
+      "activeHint": "Chcete-li tento trezor smazat, přepněte na jiný.",
+      "cloudOnly": "Není na tomto zařízení",
+      "delete": "Smazat",
+      "deleteBody": "Tím se ze serverů Memry trvale odstraní všechna synchronizovaná data tohoto trezoru. Tuto akci nelze vrátit zpět. Soubory na disku zůstanou zachovány.",
+      "deleteConfirm": "Smazat z účtu",
+      "deleteFailed": "Trezor se nepodařilo smazat",
+      "deleteTitle": "Smazat „{name}“ z vašeho účtu?",
+      "empty": "K vašemu účtu zatím není synchronizovaný žádný trezor.",
+      "itemsCount": "{count} položek"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "Trezor se nepodařilo zavřít",
       "failedToSwitchVault": "Přepnutí trezoru se nezdařilo",
       "failedToUpdateConfig": "Aktualizace konfigurace se nezdařila",
-      "failedToReindex": "Přeindexování se nezdařilo"
+      "failedToReindex": "Přeindexování se nezdařilo",
+      "failedToLoadTasks": "Úkoly se nepodařilo načíst"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "Úkoly a termíny splnění",
         "label": "Úkoly"
+      },
+      "spatialCanvas": {
+        "description": "Prostorové nástěnky pro uspořádání a propojení poznámek",
+        "label": "Plátno"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} přeskočeno",
         "title": "Import dokončen"
       },
-      "title": "Importovat z {name}"
+      "title": "Importovat z {name}",
+      "chooseDirectory": "Vyberte složku…",
+      "folderKeepsAssets": "Vyberte složku, když obrázky leží mimo složku s poznámkami — exporty často ukládají média do jedné sdílené složky."
     },
     "header": {
       "subtitle": "Přeneste své poznámky a úkoly z jiných aplikací",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, one {# úkol} few {# úkoly} other {# úkolů}}",
       "withDueDate": "{count} s datem",
       "withTags": "{count} označeno"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Načítání…",
+      "subtitle": "Denní připomenutí a předvolby doručené pošty.",
+      "title": "Doručená pošta"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Jemné denní připomenutí, když máte v doručené poště položky.",
+        "label": "Připomínat mi, že mám projít doručenou poštu"
+      },
+      "error": "Připomenutí se nepodařilo aktualizovat.",
+      "group": "Denní připomenutí",
+      "test": {
+        "button": "Odeslat test",
+        "description": "Spusťte připomenutí hned a ověřte si systémová oznámení.",
+        "label": "Testovací oznámení",
+        "sent": "Testovací oznámení odesláno.",
+        "sentHint": "Pokud se nic neobjeví, povolte oznámení pro MemryNote v nastavení systému.",
+        "unsupported": "Toto zařízení neumí zobrazovat oznámení na ploše."
+      },
+      "time": {
+        "description": "Místní čas, na každém zařízení.",
+        "hourLabel": "Hodina",
+        "label": "Čas připomenutí",
+        "minuteLabel": "Minuta",
+        "periodLabel": "AM nebo PM"
+      }
     }
   }
 }

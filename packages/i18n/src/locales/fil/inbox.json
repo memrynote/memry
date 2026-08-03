@@ -314,7 +314,10 @@
       "rdquo": "rdquo;",
       "captureAnyway": "Kunin Anyway",
       "focusShortcut": "I-focus ang capture input",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Kunin ang link",
+      "captureNote": "Kunin ang tala",
+      "placeholder": "Mabilis na pagkuha — mag-paste ng link, magtala ng ideya…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Pumili ng folder",
@@ -466,7 +469,12 @@
       "cancelRecording": "Kanselahin ang pagre-record",
       "cancel": "Kanselahin",
       "stopRecording": "Itigil ang pagre-record",
-      "stop": "Tumigil ka"
+      "stop": "Tumigil ka",
+      "enableMicInSettings": "Paganahin ang access sa mikropono sa mga setting ng iyong system, pagkatapos ay subukan muli.",
+      "failedToStart": "Nabigong simulan ang pag-record",
+      "microphoneAccessDenied": "Tinanggihan ang access sa mikropono",
+      "noMicrophoneFound": "Walang nakitang mikropono",
+      "recordingError": "Nagkaroon ng error sa pag-record"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "Nabigong makuha ang file",
       "fileCaptureFailed": "Nabigo ang pagkuha ng file",
       "failedToCaptureAudio": "Nabigong makuha ang audio",
-      "failedToCaptureVoice": "Nabigong makuha ang boses"
+      "failedToCaptureVoice": "Nabigong makuha ang boses",
+      "failedToLoadInboxPreferences": "Nabigong i-load ang mga kagustuhan sa inbox",
+      "failedToUpdateInboxPreferences": "Nabigong i-update ang mga kagustuhan sa inbox"
     },
     "toasts": {
       "inboxRefreshed": "Na-refresh ang inbox"
@@ -516,5 +526,10 @@
     "task": "Gawain",
     "time": "Oras",
     "title": "I-convert"
+  },
+  "reviewNudge": {
+    "action": "Buksan ang inbox",
+    "description": "Iproseso ang mga nakuha mo ngayong araw sa isang panatag na pagsusuri.",
+    "title": "{count, plural, one {Oras na para suriin ang # item} other {Oras na para suriin ang # na item}}"
   }
 }

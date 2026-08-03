@@ -28,7 +28,8 @@
         "properties": "Egenskaper",
         "commandLine": "Kommandorad",
         "features": "Funktioner",
-        "import": "Importera"
+        "import": "Importera",
+        "inbox": "Inkorg"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Laddar ner {percent}%",
         "downloaded": "Starta om för att installera",
         "idle": "Sök efter uppdateringar"
+      },
+      "autoCheck": {
+        "description": "Sök efter nya versioner vid start och regelbundet medan appen är öppen.",
+        "error": "Misslyckades med att uppdatera inställningen för automatisk kontroll",
+        "label": "Sök efter uppdateringar automatiskt"
+      },
+      "autoDownload": {
+        "description": "Ladda ner och installera nya versioner i bakgrunden utan att fråga.",
+        "error": "Misslyckades med att uppdatera inställningen för automatisk nedladdning",
+        "label": "Ladda ner uppdateringar automatiskt"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Dela anonym användningsstatistik",
         "description": "Det är endast anonym statistik — inga anteckningsinnehåll, sökfrågor, filvägar, e-post eller råa ID:n skickas någonsin.",
         "error": "Misslyckades med att uppdatera telemetriinställning"
+      },
+      "diagnostics": {
+        "building": "Förbereder rapport…",
+        "consent": "Skicka en engångsrapport med diagnostik? Den innehåller bara maskerade tekniska loggar — inget anteckningsinnehåll.",
+        "error": "Misslyckades med att skicka diagnostikrapporten",
+        "notNow": "Inte nu",
+        "previewError": "Det gick inte att förbereda diagnostikrapporten",
+        "previewLabel": "Förhandsgranska rapportens innehåll",
+        "send": "Skicka",
+        "sendReport": {
+          "button": "Skicka diagnostikrapport",
+          "description": "Skicka en engångsrapport med maskerade tekniska loggar så att vi kan felsöka problemet du stötte på.",
+          "label": "Diagnostikrapport"
+        },
+        "sending": "Skickar…",
+        "sent": "Rapporten är skickad — referens {incidentId}",
+        "snapshotLabel": "Ögonblicksbild av enheten",
+        "title": "Skicka en diagnostikrapport?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Layout",
-      "toolbar": "Verktygsfält"
+      "toolbar": "Verktygsfält",
+      "spelling": "Stavning"
     },
     "width": {
       "label": "Redigerarens bredd",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Smalt",
         "medium": "Medium",
-        "wide": "Brett"
+        "wide": "Brett",
+        "full": "Full bredd",
+        "normal": "Normal"
       },
       "error": "Kunde inte uppdatera redigerarens bredd"
     },
@@ -229,6 +261,11 @@
       "label": "Klistrigt formateringsverktygsfält",
       "description": "Visa alltid verktygsfält ovanför redigeraren",
       "error": "Kunde inte uppdatera verktygsfältsläge"
+    },
+    "spellCheck": {
+      "description": "Stryk under felstavade ord i anteckningar och dagböcker",
+      "error": "Misslyckades med att uppdatera stavningskontrollen",
+      "label": "Kontrollera stavning"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "Lagringsanvändning",
-      "location": "Plats"
+      "location": "Plats",
+      "accountVaults": "Valv på ditt konto"
     },
     "loadingStorage": "Laddar lagringsinformation...",
     "signInStorage": "Logga in för att visa lagringsanvändning",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "Lagringen nästan full",
       "warningDescription": "Frigör utrymme eller uppgradera din plan för att undvika synkroniseringsproblem."
+    },
+    "accountVaults": {
+      "activeHint": "Byt till ett annat valv för att ta bort det här.",
+      "cloudOnly": "Inte på den här enheten",
+      "delete": "Ta bort",
+      "deleteBody": "Detta tar permanent bort all synkad data för det här valvet från Memrys servrar och kan inte ångras. Dina filer på disken tas inte bort.",
+      "deleteConfirm": "Ta bort från kontot",
+      "deleteFailed": "Det gick inte att ta bort valvet",
+      "deleteTitle": "Ta bort “{name}” från ditt konto?",
+      "empty": "Inga valv är synkade till ditt konto än.",
+      "itemsCount": "{count} objekt"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "Misslyckades med att stänga valvet",
       "failedToSwitchVault": "Misslyckades med att byta valv",
       "failedToUpdateConfig": "Misslyckades med att uppdatera konfigurationen",
-      "failedToReindex": "Misslyckades med att omindexera"
+      "failedToReindex": "Misslyckades med att omindexera",
+      "failedToLoadTasks": "Misslyckades med att ladda uppgifter"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "Att-göra och förfallodatum",
         "label": "Uppgifter"
+      },
+      "spatialCanvas": {
+        "description": "Fria ytor för att ordna och länka anteckningar",
+        "label": "Canvas"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} överhoppade",
         "title": "Import klar"
       },
-      "title": "Importera från {name}"
+      "title": "Importera från {name}",
+      "chooseDirectory": "Välj mapp…",
+      "folderKeepsAssets": "Välj mappen när bilderna ligger utanför anteckningarnas egen mapp — exporter lägger ofta media i en gemensam mapp."
     },
     "header": {
       "subtitle": "Ta in dina anteckningar och uppgifter från andra appar",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, one {# uppgift} other {# uppgifter}}",
       "withDueDate": "{count} daterade",
       "withTags": "{count} taggade"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Laddar…",
+      "subtitle": "Daglig påminnelse om genomgång och inkorgsinställningar.",
+      "title": "Inkorg"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "En vänlig påminnelse varje dag när det ligger något i inkorgen.",
+        "label": "Påminn mig om att gå igenom inkorgen"
+      },
+      "error": "Det gick inte att uppdatera påminnelsen.",
+      "group": "Daglig påminnelse om genomgång",
+      "test": {
+        "button": "Skicka test",
+        "description": "Skicka påminnelsen nu för att kontrollera systemets aviseringar.",
+        "label": "Testavisering",
+        "sent": "Testaviseringen är skickad.",
+        "sentHint": "Om inget visas, tillåt aviseringar för MemryNote i dina systeminställningar.",
+        "unsupported": "Den här enheten kan inte visa skrivbordsaviseringar."
+      },
+      "time": {
+        "description": "Lokal tid, på varje enhet.",
+        "hourLabel": "Timme",
+        "label": "Påminnelsetid",
+        "minuteLabel": "Minut",
+        "periodLabel": "AM eller PM"
+      }
     }
   }
 }

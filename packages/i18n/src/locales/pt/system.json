@@ -38,6 +38,11 @@
       "fallback": "Lembrete devido",
       "default": "Lembrete",
       "task": "Lembrete de tarefa"
+    },
+    "inboxReview": {
+      "body": "Tem {count, plural, one {# item} many {# itens} other {# itens}} para rever.",
+      "testBody": "Isto é um teste — os seus lembretes de revisão diária serão assim.",
+      "title": "Hora de rever a caixa de entrada"
     }
   },
   "error": {

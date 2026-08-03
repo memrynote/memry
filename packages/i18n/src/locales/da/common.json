@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "Henter {percent}%",
       "updateInstallingSubtitle": "MemryNote genstarter automatisk.",
       "updateInstallingTitle": "Installerer opdatering",
-      "updateRestart": "Genstart"
+      "updateRestart": "Genstart",
+      "feedbackPrivacyEmailOptional": "Din e-mail — kun hvis du tilføjer den, og kun så vi kan svare",
+      "feedbackPrivacyEmailSignedIn": "Din konto-e-mail ({email}), så vi kan svare",
+      "feedbackPrivacyMessage": "Din besked, præcis som du skrev den",
+      "feedbackPrivacyNote": "Intet andet. Dine noter bliver på din enhed.",
+      "feedbackPrivacyPlan": "Din plan (free, Plus, Pro eller Believer)",
+      "feedbackPrivacyTitle": "Hvad der sendes",
+      "feedbackPrivacyVersion": "Appversion og styresystem",
+      "projects": "Projekter"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Ændr størrelse på dagpanel",
@@ -231,7 +239,8 @@
       "journal": "Journal",
       "calendar": "Kalender",
       "inboxCapture": "Indbakke-optagelse",
-      "tasks": "Opgaver"
+      "tasks": "Opgaver",
+      "tags": "Tags"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Ikke-gemte ændringer",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Noget gik galt",
       "anErrorOccurredWhileRenderingThisTabContent": "Der opstod en fejl under gengivelsen af denne faneindhold.",
-      "tryAgain": "Prøv igen"
+      "tryAgain": "Prøv igen",
+      "sendReport": "Send diagnostikrapport"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Bemærk ikon"
@@ -352,7 +362,13 @@
       "downloadLocation": "Placering",
       "changeLocation": "Skift…",
       "download": "Download",
-      "downloadFailed": "Boksen kunne ikke downloades"
+      "downloadFailed": "Boksen kunne ikke downloades",
+      "deleteFromAccount": "Slet fra konto",
+      "deleteVaultBody": "Alle synkroniserede data for denne boks fjernes permanent fra Memrys servere. Denne handling kan ikke fortrydes. Dine filer på disken bliver ikke slettet.",
+      "deleteVaultConfirm": "Slet fra konto",
+      "deleteVaultFailed": "Boksen kunne ikke slettes",
+      "deleteVaultTitle": "Vil du slette “{name}” fra din konto?",
+      "removeVaultTitle": "Vil du fjerne “{name}” fra listen?"
     },
     "componentsWindowControls": {
       "searchK": "Søg (⌘K)",
@@ -640,6 +656,45 @@
     "skip": "Spring denne version over"
   },
   "capture": {
-    "focusShortcut": "Fokusér optagelsesfelt"
+    "focusShortcut": "Fokusér optagelsesfelt",
+    "detailHint": "detaljer",
+    "focusHint": "Q",
+    "submit": "Optag"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Tilføj kort",
+      "addCreateNote": "Opret note \"{query}\"",
+      "addCreateNoteEmpty": "Opret ny note",
+      "addCreatedAt": "Oprettet {date}",
+      "addEmpty": "Intet fundet",
+      "addGroupEvents": "Begivenheder",
+      "addGroupNotes": "Noter",
+      "addGroupTasks": "Opgaver",
+      "addOnCanvas": "På canvasset",
+      "addPlaceholder": "Søg i noter, opgaver og begivenheder…",
+      "allDay": "Hele dagen",
+      "createNoteFailed": "Noten kunne ikke oprettes",
+      "deleted": "Elementet er slettet",
+      "loading": "Indlæser…",
+      "open": "Åbn i fane",
+      "openToEdit": "Åbn i fane for at redigere",
+      "untitled": "Uden titel"
+    },
+    "corruptScene": "Dette canvas kunne ikke læses. Redigering er slået fra, så du ikke mister data.",
+    "createFailed": "Canvasset kunne ikke oprettes",
+    "disabledBody": "Denne fane hører til en funktion, der ikke er slået til på denne enhed.",
+    "disabledTitle": "Canvas er ikke slået til",
+    "empty": "Ingen canvas endnu",
+    "libraryStoreFailed": "Dit formbibliotek kunne ikke gemmes. De seneste ændringer i det kan gå tabt.",
+    "loadFailed": "Canvas kunne ikke indlæses",
+    "loading": "Indlæser canvas…",
+    "newCanvas": "Nyt canvas",
+    "notFound": "Dette canvas blev ikke fundet",
+    "openFailed": "Canvasset kunne ikke åbnes",
+    "savedToVault": "Alle ændringer gemmes automatisk i din boks",
+    "sectionLabel": "Canvas",
+    "tooLargeToSync": "Dette canvas er for stort til at synkronisere. Det er gemt på denne enhed, men bliver ikke sendt til dine andre enheder, før det fylder mindre.",
+    "untitled": "Canvas uden titel"
   }
 }

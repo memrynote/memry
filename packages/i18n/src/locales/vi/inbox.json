@@ -314,7 +314,10 @@
       "rdquo": "rdquo;",
       "captureAnyway": "Ghi lại dù sao",
       "focusShortcut": "Đưa con trỏ vào ô ghi nhanh",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Ghi lại liên kết",
+      "captureNote": "Ghi lại ghi chú",
+      "placeholder": "Ghi nhanh — dán một liên kết, ghi vội một suy nghĩ…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Chọn thư mục",
@@ -466,7 +469,12 @@
       "cancelRecording": "Hủy ghi âm",
       "cancel": "Hủy",
       "stopRecording": "Dừng ghi âm",
-      "stop": "Dừng"
+      "stop": "Dừng",
+      "enableMicInSettings": "Hãy bật quyền truy cập micro trong cài đặt hệ thống, rồi thử lại.",
+      "failedToStart": "Không thể bắt đầu ghi âm",
+      "microphoneAccessDenied": "Quyền truy cập micro bị từ chối",
+      "noMicrophoneFound": "Không tìm thấy micro",
+      "recordingError": "Đã xảy ra lỗi khi ghi âm"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "Không thể ghi lại tệp",
       "fileCaptureFailed": "Ghi lại tệp thất bại",
       "failedToCaptureAudio": "Không thể ghi lại âm thanh",
-      "failedToCaptureVoice": "Không thể ghi lại giọng nói"
+      "failedToCaptureVoice": "Không thể ghi lại giọng nói",
+      "failedToLoadInboxPreferences": "Không tải được tùy chọn hộp thư đến",
+      "failedToUpdateInboxPreferences": "Không cập nhật được tùy chọn hộp thư đến"
     },
     "toasts": {
       "inboxRefreshed": "Hộp thư đến đã được làm mới"
@@ -516,5 +526,10 @@
     "task": "Công việc",
     "time": "Giờ",
     "title": "Chuyển đổi"
+  },
+  "reviewNudge": {
+    "action": "Mở hộp thư đến",
+    "description": "Xử lý những gì bạn ghi lại hôm nay trong một lượt thong thả.",
+    "title": "{count, plural, other {Đã đến lúc xem lại # mục}}"
   }
 }

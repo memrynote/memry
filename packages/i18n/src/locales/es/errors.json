@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "No se pudo verificar un elemento de sincronización y se puso en cuarentena por motivos de seguridad.",
     "securityQuarantineRetry": "Un elemento de sincronización falló en la verificación de firma y se volverá a intentar.",
     "certificatePinPaused": "No se pudo verificar la conexión segura al servidor de sincronización. La sincronización se ha pausado para tu protección.",
-    "paymentRequired": "Se necesita un plan de Sincronización de pago para usar la sincronización cifrada alojada."
+    "paymentRequired": "Se necesita un plan de Sincronización de pago para usar la sincronización cifrada alojada.",
+    "attachmentUploadFailed": "No se pudo sincronizar el archivo adjunto \"{filename}\". Se queda en este dispositivo.",
+    "fileTooLarge": "Este archivo supera el límite de tu plan. Mejora tu plan para sincronizar archivos más grandes.",
+    "vaultRecovered": "Clave de la bóveda restaurada. La sincronización se reanudará."
   }
 }

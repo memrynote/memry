@@ -38,6 +38,11 @@
       "fallback": "Memento scadent",
       "default": "Memento",
       "task": "Memento sarcină"
+    },
+    "inboxReview": {
+      "body": "Ai {count, plural, one {# element} few {# elemente} other {# de elemente}} de revizuit.",
+      "testBody": "Acesta este un test — așa vor arăta mementourile tale zilnice de revizuire.",
+      "title": "E timpul să îți revizuiești inboxul"
     }
   },
   "error": {

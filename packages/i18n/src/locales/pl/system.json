@@ -38,6 +38,11 @@
       "fallback": "Termin przypomnienia",
       "default": "Przypomnienie",
       "task": "Przypomnienie o zadaniu"
+    },
+    "inboxReview": {
+      "body": "Masz do przejrzenia {count, plural, one {# element} few {# elementy} many {# elementów} other {# elementu}}.",
+      "testBody": "To jest test — tak będą wyglądać Twoje codzienne przypomnienia o przeglądzie.",
+      "title": "Czas przejrzeć skrzynkę odbiorczą"
     }
   },
   "error": {

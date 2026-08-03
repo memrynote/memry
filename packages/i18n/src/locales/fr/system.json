@@ -38,6 +38,11 @@
       "fallback": "Rappel dû",
       "default": "Rappel",
       "task": "Rappel de tâche"
+    },
+    "inboxReview": {
+      "body": "Vous avez {count, plural, one {# élément} many {# éléments} other {# éléments}} à passer en revue.",
+      "testBody": "Ceci est un test — vos rappels de revue quotidienne ressembleront à ceci.",
+      "title": "Il est temps de passer en revue votre boîte de réception"
     }
   },
   "error": {

@@ -314,7 +314,10 @@
       "rdquo": "rdquo;",
       "captureAnyway": "Spela in ändå",
       "focusShortcut": "Fokusera insamlingsfält",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Fånga länk",
+      "captureNote": "Fånga anteckning",
+      "placeholder": "Snabbfångst — klistra in en länk, skriv ner en tanke…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Välj mapp",
@@ -466,7 +469,12 @@
       "cancelRecording": "Avbryt inspelning",
       "cancel": "Avbryt",
       "stopRecording": "Stoppa inspelning",
-      "stop": "Stopp"
+      "stop": "Stopp",
+      "enableMicInSettings": "Tillåt mikrofonåtkomst i dina systeminställningar och försök igen.",
+      "failedToStart": "Misslyckades med att starta inspelningen",
+      "microphoneAccessDenied": "Mikrofonåtkomst nekad",
+      "noMicrophoneFound": "Ingen mikrofon hittades",
+      "recordingError": "Ett inspelningsfel uppstod"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "Misslyckades med att fånga fil",
       "fileCaptureFailed": "Filfångst misslyckades",
       "failedToCaptureAudio": "Misslyckades med att fånga ljud",
-      "failedToCaptureVoice": "Misslyckades med att fånga röst"
+      "failedToCaptureVoice": "Misslyckades med att fånga röst",
+      "failedToLoadInboxPreferences": "Misslyckades med att ladda inkorgsinställningar",
+      "failedToUpdateInboxPreferences": "Misslyckades med att uppdatera inkorgsinställningar"
     },
     "toasts": {
       "inboxRefreshed": "Inkorgen uppdaterad"
@@ -516,5 +526,10 @@
     "task": "Uppgift",
     "time": "Tid",
     "title": "Konvertera"
+  },
+  "reviewNudge": {
+    "action": "Öppna inkorg",
+    "description": "Gå igenom dagens fångster i ett lugnt svep.",
+    "title": "{count, plural, one {Dags att gå igenom # objekt} other {Dags att gå igenom # objekt}}"
   }
 }

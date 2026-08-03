@@ -38,6 +38,11 @@
       "fallback": "Nakatakdang paalala",
       "default": "Paalala",
       "task": "Paalala sa gawain"
+    },
+    "inboxReview": {
+      "body": "May {count, plural, one {# item} other {# na item}} kang dapat suriin.",
+      "testBody": "Isa itong pagsubok — ganito ang magiging hitsura ng iyong mga pang-araw-araw na paalala sa pagsusuri.",
+      "title": "Oras na para suriin ang iyong inbox"
     }
   },
   "error": {

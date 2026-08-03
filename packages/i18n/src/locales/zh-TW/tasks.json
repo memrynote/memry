@@ -34,7 +34,8 @@
     "createAnother": "創建另一個",
     "delete": "刪除任務",
     "created": "已創建 {date}",
-    "reminder": "提醒"
+    "reminder": "提醒",
+    "tags": "標籤"
   },
   "filters": {
     "filter": "篩選",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "快速新增任務",
-    "focusDescription": "聚焦快速新增輸入框"
+    "focusDescription": "聚焦快速新增輸入框",
+    "placeholder": "新增任務…    !today  !!high  #project"
   },
   "drawer": {
     "close": "關閉任務詳情",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "此專案沒有任何任務，將被永久刪除。",
       "thisActionCannotBeUndone": "此操作無法還原。",
       "cancel": "取消",
-      "deleteProject": "刪除專案"
+      "deleteProject": "刪除專案",
+      "notesEventsAndFilesStayNotice": "此專案中的任務會被刪除。您的筆記、活動與檔案會留在保險庫中。"
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "刪除任務？",
@@ -357,7 +360,9 @@
       "due": "截止日期",
       "dueDate": "截止日期",
       "search": "搜尋",
-      "clearAll": "清除全部"
+      "clearAll": "清除全部",
+      "tags": "標籤",
+      "tagsIs": "標籤為"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "依截止日期篩選",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "沒有即將到來的任務",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "未來七天到期的任務將顯示在這裡。透過新增任務來規劃你的一週。",
       "addTask2": "新增任務"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "是",
+      "search": "搜尋...",
+      "selected": "已選",
+      "tags": "標籤"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "設定提醒失敗",
       "updateFailed": "更新提醒失敗",
       "updated": "提醒已更新"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "加入專案",
+    "loading": "正在載入專案…",
+    "menuLabel": "加入專案",
+    "noProjects": "尚未有專案",
+    "toastError": "加入專案失敗",
+    "toastSuccess": "已加入 {name}"
+  },
+  "itemProjects": {
+    "openProject": "開啟專案 {name}"
+  },
+  "projectHome": {
+    "emptyBody": "從側邊欄挑選一個專案，開啟它的首頁。",
+    "emptyTitle": "未選擇任何專案",
+    "loadError": "無法載入專案詳細資料",
+    "overview": {
+      "clear": "清除總覽",
+      "clearError": "無法清除總覽筆記",
+      "create": "建立總覽筆記",
+      "createError": "無法建立總覽筆記",
+      "defaultTitle": "總覽",
+      "loadError": "無法載入總覽筆記",
+      "placeholder": "為這個專案寫一段總覽…",
+      "saveError": "無法儲存總覽筆記",
+      "sectionTitle": "總覽"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "附加檔案",
+      "fileError": "無法連結 {name}",
+      "fileErrorGeneric": "無法匯入這些檔案",
+      "filesAdded": "{count, plural, other {已將 # 個檔案加入專案}}",
+      "label": "加入 {name}",
+      "linkAdded": "連結已加入專案",
+      "linkError": "無法儲存連結",
+      "placeholder": "加入 {name}——輸入任務、寫下筆記，或貼上連結…"
+    },
+    "groups": {
+      "older": "較舊",
+      "past": "過去",
+      "today": "今天",
+      "tomorrow": "明天",
+      "upcoming": "即將到來",
+      "yesterday": "昨天"
+    },
+    "header": {
+      "archiveProject": "封存專案",
+      "editProject": "編輯專案",
+      "menu": "專案操作",
+      "toggleRail": "切換專案詳細資料"
+    },
+    "rail": {
+      "addNote": "新增筆記",
+      "created": "建立於",
+      "details": "詳細資料",
+      "doneOf": "已完成 {done}／{total}",
+      "linked": "已連結",
+      "linkedSummary": "{notes, plural, other {# 則筆記}} · {files, plural, other {# 個檔案}} · {events, plural, other {# 個活動}}",
+      "overdue": "已逾期",
+      "overview": "總覽",
+      "pinError": "無法將筆記加入總覽",
+      "progress": "進度",
+      "unpinError": "無法將筆記從總覽移除",
+      "unpinNote": "將 {title} 從總覽移除",
+      "updated": "更新於"
+    },
+    "rows": {
+      "openEvent": "開啟活動 {title}",
+      "openFile": "開啟檔案 {title}",
+      "openNote": "開啟筆記 {title}",
+      "openTask": "開啟任務 {title}",
+      "setNoteIcon": "為 {title} 設定圖示"
+    },
+    "sections": {
+      "add": "加入 {title}",
+      "emptyEvents": "尚未連結任何活動。",
+      "emptyFiles": "尚未連結任何檔案。",
+      "emptyNotes": "尚未連結任何筆記。",
+      "emptyTasks": "尚無任務。",
+      "newNoteError": "無法新增筆記",
+      "newNoteTitle": "未命名筆記",
+      "viewAll": "查看全部"
+    },
+    "tabs": {
+      "events": "活動",
+      "files": "檔案",
+      "label": "專案檢視",
+      "notes": "筆記",
+      "overview": "總覽",
+      "tasks": "任務"
     }
   }
 }

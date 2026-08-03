@@ -314,7 +314,10 @@
       "rdquo": "rdquo;",
       "captureAnyway": "จับภาพต่อ",
       "focusShortcut": "โฟกัสช่องบันทึก",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "บันทึกลิงก์",
+      "captureNote": "บันทึกโน้ต",
+      "placeholder": "บันทึกด่วน — วางลิงก์ หรือจดความคิด…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "เลือกโฟลเดอร์",
@@ -466,7 +469,12 @@
       "cancelRecording": "ยกเลิกการบันทึก",
       "cancel": "ยกเลิก",
       "stopRecording": "หยุดการบันทึก",
-      "stop": "หยุด"
+      "stop": "หยุด",
+      "enableMicInSettings": "เปิดสิทธิ์เข้าถึงไมโครโฟนในการตั้งค่าระบบ แล้วลองอีกครั้ง",
+      "failedToStart": "ไม่สามารถเริ่มบันทึกเสียงได้",
+      "microphoneAccessDenied": "การเข้าถึงไมโครโฟนถูกปฏิเสธ",
+      "noMicrophoneFound": "ไม่พบไมโครโฟน",
+      "recordingError": "เกิดข้อผิดพลาดในการบันทึกเสียง"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "ไม่สามารถจับไฟล์ได้",
       "fileCaptureFailed": "การจับไฟล์ล้มเหลว",
       "failedToCaptureAudio": "ไม่สามารถจับเสียงได้",
-      "failedToCaptureVoice": "ไม่สามารถจับเสียงได้"
+      "failedToCaptureVoice": "ไม่สามารถจับเสียงได้",
+      "failedToLoadInboxPreferences": "ไม่สามารถโหลดการตั้งค่ากล่องขาเข้าได้",
+      "failedToUpdateInboxPreferences": "ไม่สามารถอัปเดตการตั้งค่ากล่องขาเข้าได้"
     },
     "toasts": {
       "inboxRefreshed": "กล่องขาเข้าถูกรีเฟรช"
@@ -516,5 +526,10 @@
     "task": "งาน",
     "time": "เวลา",
     "title": "แปลง"
+  },
+  "reviewNudge": {
+    "action": "เปิดกล่องขาเข้า",
+    "description": "จัดการสิ่งที่บันทึกไว้วันนี้ให้จบในรอบเดียวอย่างใจเย็น",
+    "title": "{count, plural, other {ถึงเวลาทบทวน # รายการ}}"
   }
 }

@@ -67,7 +67,8 @@
     "title": "Odstrániť udalosť?",
     "local-description": "\"{title}\" bude trvalo odstránený. Túto akciu nie je možné vrátiť späť.",
     "google-bound-description": "\"{title}\" bude odstránený z memrynote a Google Kalendára. Túto akciu nie je možné vrátiť späť.  ",
-    "context-menu-delete-label": "  \nOdstrániť udalosť  "
+    "context-menu-delete-label": "  \nOdstrániť udalosť  ",
+    "context-menu-add-to-project": "Pridať do projektu"
   },
   "promote-dialog": {
     "aria": "  \nUpraviť udalosť v externom kalendári  ",
@@ -181,6 +182,7 @@
     "placeholder": "Hľadať udalosti, úlohy, pripomienky…"
   },
   "undo": {
-    "moveEvent": "Presunúť udalosť"
+    "moveEvent": "Presunúť udalosť",
+    "moveTask": "Preplánovať úlohu"
   }
 }

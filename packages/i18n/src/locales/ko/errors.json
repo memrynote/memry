@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "동기화 항목을 확인할 수 없어 보안을 위해 격리되었습니다.",
     "securityQuarantineRetry": "동기화 항목이 서명 확인에 실패하여 다시 시도됩니다.",
     "certificatePinPaused": "동기화 서버에 대한 보안 연결을 확인할 수 없습니다. 보호를 위해 동기화가 일시중지되었습니다.",
-    "paymentRequired": "호스팅 암호화 동기화를 사용하려면 유료 동기화 요금제가 필요합니다."
+    "paymentRequired": "호스팅 암호화 동기화를 사용하려면 유료 동기화 요금제가 필요합니다.",
+    "attachmentUploadFailed": "\"{filename}\" 첨부파일을 동기화하지 못했습니다. 이 기기에만 남아 있습니다.",
+    "fileTooLarge": "이 파일은 현재 요금제에서 허용하는 크기를 초과합니다. 더 큰 파일을 동기화하려면 요금제를 업그레이드하세요.",
+    "vaultRecovered": "보관함 키가 복구되었습니다. 동기화가 다시 시작됩니다."
   }
 }

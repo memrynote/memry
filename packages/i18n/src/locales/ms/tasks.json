@@ -34,7 +34,8 @@
     "createAnother": "Buat yang lain",
     "delete": "Padam tugasan",
     "created": "Mencipta {date}",
-    "reminder": "Peringatan"
+    "reminder": "Peringatan",
+    "tags": "Tag"
   },
   "filters": {
     "filter": "Penapis",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Tambah tugasan cepat",
-    "focusDescription": "Fokus tambah input dengan cepat"
+    "focusDescription": "Fokus tambah input dengan cepat",
+    "placeholder": "Tambah tugasan…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Tutup butiran tugas",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Projek ini tidak mempunyai tugasan dan akan dipadamkan secara kekal.",
       "thisActionCannotBeUndone": "Tindakan ini tidak boleh dibuat asal.",
       "cancel": "Batal",
-      "deleteProject": "Padamkan Projek"
+      "deleteProject": "Padamkan Projek",
+      "notesEventsAndFilesStayNotice": "Tugasan dalam projek ini dipadamkan. Nota, acara dan fail anda kekal dalam peti besi anda."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Padamkan tugasan?",
@@ -357,7 +360,9 @@
       "due": "kena bayar",
       "dueDate": "tarikh tamat tempoh",
       "search": "cari",
-      "clearAll": "Kosongkan semua"
+      "clearAll": "Kosongkan semua",
+      "tags": "tag",
+      "tagsIs": "Tag adalah"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Tapis mengikut tarikh akhir",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "Tiada tugasan yang akan datang",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Tugasan yang perlu dibayar dalam masa 7 hari akan datang akan dipaparkan di sini. Rancang minggu anda dengan menambah beberapa tugasan.",
       "addTask2": "Tambah tugasan"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "ialah",
+      "search": "Cari...",
+      "selected": "dipilih",
+      "tags": "Tag"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "Gagal menetapkan peringatan",
       "updateFailed": "Gagal mengemas kini peringatan",
       "updated": "Peringatan dikemas kini"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Tambah ke projek",
+    "loading": "Memuatkan projek…",
+    "menuLabel": "Tambah ke projek",
+    "noProjects": "Tiada projek lagi",
+    "toastError": "Gagal menambah ke projek",
+    "toastSuccess": "Ditambah ke {name}"
+  },
+  "itemProjects": {
+    "openProject": "Buka projek {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Pilih projek dari bar sisi untuk membuka laman utamanya.",
+    "emptyTitle": "Tiada projek dipilih",
+    "loadError": "Butiran projek tidak dapat dimuatkan",
+    "overview": {
+      "clear": "Kosongkan gambaran keseluruhan",
+      "clearError": "Nota gambaran keseluruhan tidak dapat dikosongkan",
+      "create": "Cipta nota gambaran keseluruhan",
+      "createError": "Nota gambaran keseluruhan tidak dapat dicipta",
+      "defaultTitle": "Gambaran Keseluruhan",
+      "loadError": "Nota gambaran keseluruhan tidak dapat dimuatkan",
+      "placeholder": "Tulis gambaran keseluruhan untuk projek ini…",
+      "saveError": "Nota gambaran keseluruhan tidak dapat disimpan",
+      "sectionTitle": "Gambaran keseluruhan"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Lampirkan fail",
+      "fileError": "{name} tidak dapat dipautkan",
+      "fileErrorGeneric": "Fail tidak dapat diimport",
+      "filesAdded": "{count, plural, other {# fail ditambah ke projek}}",
+      "label": "Tambah ke {name}",
+      "linkAdded": "Pautan ditambah ke projek",
+      "linkError": "Pautan tidak dapat disimpan",
+      "placeholder": "Tambah ke {name} — taip tugasan, catat nota, atau tampal pautan…"
+    },
+    "groups": {
+      "older": "Lebih lama",
+      "past": "Telah lepas",
+      "today": "Hari ini",
+      "tomorrow": "Esok",
+      "upcoming": "Akan datang",
+      "yesterday": "Semalam"
+    },
+    "header": {
+      "archiveProject": "Arkibkan projek",
+      "editProject": "Edit projek",
+      "menu": "Tindakan projek",
+      "toggleRail": "Togol butiran projek"
+    },
+    "rail": {
+      "addNote": "Tambah nota",
+      "created": "Dicipta",
+      "details": "Butiran",
+      "doneOf": "{done} daripada {total} selesai",
+      "linked": "Dipautkan",
+      "linkedSummary": "{notes, plural, other {# nota}} · {files, plural, other {# fail}} · {events, plural, other {# acara}}",
+      "overdue": "Tertunggak",
+      "overview": "Gambaran keseluruhan",
+      "pinError": "Nota tidak dapat ditambah ke gambaran keseluruhan",
+      "progress": "Kemajuan",
+      "unpinError": "Nota tidak dapat dialih keluar daripada gambaran keseluruhan",
+      "unpinNote": "Alih keluar {title} daripada gambaran keseluruhan",
+      "updated": "Dikemas kini"
+    },
+    "rows": {
+      "openEvent": "Buka acara {title}",
+      "openFile": "Buka fail {title}",
+      "openNote": "Buka nota {title}",
+      "openTask": "Buka tugasan {title}",
+      "setNoteIcon": "Tetapkan ikon untuk {title}"
+    },
+    "sections": {
+      "add": "Tambah ke {title}",
+      "emptyEvents": "Tiada acara dipautkan lagi.",
+      "emptyFiles": "Tiada fail dipautkan lagi.",
+      "emptyNotes": "Tiada nota dipautkan lagi.",
+      "emptyTasks": "Tiada tugasan lagi.",
+      "newNoteError": "Nota tidak dapat ditambah",
+      "newNoteTitle": "Nota tidak bertajuk",
+      "viewAll": "Lihat semua"
+    },
+    "tabs": {
+      "events": "Acara",
+      "files": "Fail",
+      "label": "Paparan projek",
+      "notes": "Nota",
+      "overview": "Gambaran keseluruhan",
+      "tasks": "Tugasan"
     }
   }
 }

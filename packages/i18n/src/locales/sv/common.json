@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "Hämtar {percent}%",
       "updateInstallingSubtitle": "MemryNote startar om automatiskt.",
       "updateInstallingTitle": "Installerar uppdatering",
-      "updateRestart": "Starta om"
+      "updateRestart": "Starta om",
+      "feedbackPrivacyEmailOptional": "Din e-postadress — bara om du anger den, och bara så att vi kan svara",
+      "feedbackPrivacyEmailSignedIn": "E-postadressen till ditt konto ({email}), så att vi kan svara",
+      "feedbackPrivacyMessage": "Ditt meddelande, precis som du skrev det",
+      "feedbackPrivacyNote": "Inget annat. Dina anteckningar stannar på din enhet.",
+      "feedbackPrivacyPlan": "Din plan (free, Plus, Pro eller Believer)",
+      "feedbackPrivacyTitle": "Det här skickas",
+      "feedbackPrivacyVersion": "Appversion och operativsystem",
+      "projects": "Projekt"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Ändra storlek på dagspanel",
@@ -231,7 +239,8 @@
       "journal": "Journal",
       "calendar": "Kalender",
       "inboxCapture": "Inkorgfångst",
-      "tasks": "Uppgifter"
+      "tasks": "Uppgifter",
+      "tags": "Taggar"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Osparade ändringar",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Något gick fel",
       "anErrorOccurredWhileRenderingThisTabContent": "Ett fel uppstod vid rendering av detta flikinnehåll.",
-      "tryAgain": "Försök igen"
+      "tryAgain": "Försök igen",
+      "sendReport": "Skicka diagnostikrapport"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Anteckningsikon"
@@ -352,7 +362,13 @@
       "downloadLocation": "Plats",
       "changeLocation": "Ändra…",
       "download": "Ladda ner",
-      "downloadFailed": "Valvet kunde inte laddas ner"
+      "downloadFailed": "Valvet kunde inte laddas ner",
+      "deleteFromAccount": "Ta bort från kontot",
+      "deleteVaultBody": "Detta tar permanent bort all synkad data för det här valvet från Memrys servrar och kan inte ångras. Dina filer på disken tas inte bort.",
+      "deleteVaultConfirm": "Ta bort från kontot",
+      "deleteVaultFailed": "Det gick inte att ta bort valvet",
+      "deleteVaultTitle": "Ta bort “{name}” från ditt konto?",
+      "removeVaultTitle": "Ta bort “{name}” från listan?"
     },
     "componentsWindowControls": {
       "searchK": "Sök (⌘K)",
@@ -640,6 +656,45 @@
     "skip": "Hoppa över denna version"
   },
   "capture": {
-    "focusShortcut": "Fokusera insamlingsfält"
+    "focusShortcut": "Fokusera insamlingsfält",
+    "detailHint": "detaljer",
+    "focusHint": "Q",
+    "submit": "Fånga"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Lägg till kort",
+      "addCreateNote": "Skapa anteckning \"{query}\"",
+      "addCreateNoteEmpty": "Skapa ny anteckning",
+      "addCreatedAt": "Skapad {date}",
+      "addEmpty": "Inget hittades",
+      "addGroupEvents": "Händelser",
+      "addGroupNotes": "Anteckningar",
+      "addGroupTasks": "Uppgifter",
+      "addOnCanvas": "På canvasen",
+      "addPlaceholder": "Sök anteckningar, uppgifter och händelser…",
+      "allDay": "Hela dagen",
+      "createNoteFailed": "Det gick inte att skapa anteckningen",
+      "deleted": "Objektet borttaget",
+      "loading": "Laddar…",
+      "open": "Öppna i flik",
+      "openToEdit": "Öppna i flik för att redigera",
+      "untitled": "Namnlös"
+    },
+    "corruptScene": "Den här canvasen kunde inte läsas. Redigering är avstängd för att inte förlora data.",
+    "createFailed": "Det gick inte att skapa canvasen",
+    "disabledBody": "Den här fliken hör till en funktion som inte är aktiverad på den här enheten.",
+    "disabledTitle": "Canvas är inte aktiverat",
+    "empty": "Inga canvasar än",
+    "libraryStoreFailed": "Det gick inte att spara ditt formbibliotek. De senaste ändringarna i det kan gå förlorade.",
+    "loadFailed": "Det gick inte att ladda canvasar",
+    "loading": "Laddar canvasar…",
+    "newCanvas": "Ny canvas",
+    "notFound": "Den här canvasen kunde inte hittas",
+    "openFailed": "Det gick inte att öppna canvasen",
+    "savedToVault": "Alla ändringar sparas automatiskt i ditt valv",
+    "sectionLabel": "Canvasar",
+    "tooLargeToSync": "Den här canvasen är för stor för att synkroniseras. Den är sparad på den här enheten men når inte dina andra enheter förrän den blir mindre.",
+    "untitled": "Namnlös canvas"
   }
 }

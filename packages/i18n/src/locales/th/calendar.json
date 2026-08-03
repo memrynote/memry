@@ -67,7 +67,8 @@
     "title": "ลบกิจกรรม?",
     "local-description": "\"{title}\" จะถูกลบอย่างถาวร การกระทำนี้ไม่สามารถย้อนกลับได้",
     "google-bound-description": "\"{title}\" จะถูกลบออกจาก memrynote และ Google Calendar การดำเนินการนี้ไม่สามารถย้อนกลับได้  ",
-    "context-menu-delete-label": "  \nลบกิจกรรม  "
+    "context-menu-delete-label": "  \nลบกิจกรรม  ",
+    "context-menu-add-to-project": "เพิ่มไปยังโครงการ"
   },
   "promote-dialog": {
     "aria": "  \nแก้ไขกิจกรรมในปฏิทินภายนอก  ",
@@ -181,6 +182,7 @@
     "placeholder": "ค้นหากิจกรรม งาน การเตือน…"
   },
   "undo": {
-    "moveEvent": "ย้ายกิจกรรม"
+    "moveEvent": "ย้ายกิจกรรม",
+    "moveTask": "เลื่อนกำหนดงาน"
   }
 }

@@ -314,7 +314,10 @@
       "rdquo": "rdquo;",
       "captureAnyway": "Každopádně zachytit",
       "focusShortcut": "Zaměřit pole pro zachycení",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Zachytit odkaz",
+      "captureNote": "Zachytit poznámku",
+      "placeholder": "Rychlé zachycení — vložte odkaz, zapište myšlenku…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Vyberte složku",
@@ -466,7 +469,12 @@
       "cancelRecording": "Zrušit nahrávání",
       "cancel": "Zrušit",
       "stopRecording": "Zastavit nahrávání",
-      "stop": "Přestaň"
+      "stop": "Přestaň",
+      "enableMicInSettings": "Povolte přístup k mikrofonu v nastavení systému a zkuste to znovu.",
+      "failedToStart": "Nahrávání se nepodařilo spustit",
+      "microphoneAccessDenied": "Přístup k mikrofonu byl odepřen",
+      "noMicrophoneFound": "Nebyl nalezen žádný mikrofon",
+      "recordingError": "Při nahrávání došlo k chybě"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "Nepodařilo se zachytit soubor",
       "fileCaptureFailed": "Snímání souboru se nezdařilo",
       "failedToCaptureAudio": "Nepodařilo se zachytit zvuk",
-      "failedToCaptureVoice": "Nepodařilo se zachytit hlas"
+      "failedToCaptureVoice": "Nepodařilo se zachytit hlas",
+      "failedToLoadInboxPreferences": "Předvolby doručené pošty se nepodařilo načíst",
+      "failedToUpdateInboxPreferences": "Předvolby doručené pošty se nepodařilo aktualizovat"
     },
     "toasts": {
       "inboxRefreshed": "Doručená pošta byla obnovena"
@@ -516,5 +526,10 @@
     "task": "Úkol",
     "time": "Čas",
     "title": "Převést"
+  },
+  "reviewNudge": {
+    "action": "Otevřít doručenou poštu",
+    "description": "Zpracujte dnešní zachycené položky v jednom klidném průchodu.",
+    "title": "{count, plural, one {Čas projít # položku} few {Čas projít # položky} many {Čas projít # položky} other {Čas projít # položek}}"
   }
 }

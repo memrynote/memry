@@ -67,7 +67,8 @@
     "title": "일정을 삭제하시겠습니까?",
     "local-description": "\"{title}\"가 영구적으로 삭제됩니다. 이 작업은 취소할 수 없습니다.",
     "google-bound-description": "\"{title}\"는 memrynote 및 Google 캘린더에서 제거됩니다. 이 작업은 취소할 수 없습니다.",
-    "context-menu-delete-label": "일정 삭제"
+    "context-menu-delete-label": "일정 삭제",
+    "context-menu-add-to-project": "프로젝트에 추가"
   },
   "promote-dialog": {
     "aria": "외부 캘린더 일정 수정",
@@ -181,6 +182,7 @@
     "placeholder": "일정, 작업, 리마인더 검색…"
   },
   "undo": {
-    "moveEvent": "일정 이동"
+    "moveEvent": "일정 이동",
+    "moveTask": "작업 일정 변경"
   }
 }

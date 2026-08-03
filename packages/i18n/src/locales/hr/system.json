@@ -38,6 +38,11 @@
       "fallback": "Rok za opomenu",
       "default": "Podsjetnik",
       "task": "Podsjetnik na zadatak"
+    },
+    "inboxReview": {
+      "body": "Imate {count, plural, one {# stavku} few {# stavke} other {# stavki}} za pregled.",
+      "testBody": "Ovo je test — vaši dnevni podsjetnici na pregled izgledat će ovako.",
+      "title": "Vrijeme je za pregled pristigle pošte"
     }
   },
   "error": {

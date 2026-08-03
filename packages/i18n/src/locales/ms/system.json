@@ -38,6 +38,11 @@
       "fallback": "Peringatan perlu dibayar",
       "default": "Peringatan",
       "task": "Peringatan tugasan"
+    },
+    "inboxReview": {
+      "body": "Anda mempunyai {count, plural, other {# item}} untuk disemak.",
+      "testBody": "Ini ujian — peringatan semakan harian anda akan kelihatan begini.",
+      "title": "Masa untuk menyemak peti masuk anda"
     }
   },
   "error": {

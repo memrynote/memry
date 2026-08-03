@@ -314,7 +314,10 @@
       "rdquo": "rdquo;",
       "captureAnyway": "Capturar de todos modos",
       "focusShortcut": "Enfocar el campo de captura",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Capturar enlace",
+      "captureNote": "Capturar nota",
+      "placeholder": "Captura rápida — pega un enlace, anota una idea…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Elige carpeta",
@@ -466,7 +469,12 @@
       "cancelRecording": "Cancelar grabación",
       "cancel": "Cancelar",
       "stopRecording": "dejar de grabar",
-      "stop": "Detener"
+      "stop": "Detener",
+      "enableMicInSettings": "Activa el acceso al micrófono en los ajustes del sistema y vuelve a intentarlo.",
+      "failedToStart": "No se pudo iniciar la grabación",
+      "microphoneAccessDenied": "Acceso al micrófono denegado",
+      "noMicrophoneFound": "No se encontró ningún micrófono",
+      "recordingError": "Se produjo un error de grabación"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "No se pudo capturar el archivo",
       "fileCaptureFailed": "Falló la captura del archivo",
       "failedToCaptureAudio": "No se pudo capturar el audio",
-      "failedToCaptureVoice": "No se pudo capturar la voz"
+      "failedToCaptureVoice": "No se pudo capturar la voz",
+      "failedToLoadInboxPreferences": "No se pudieron cargar las preferencias de la bandeja de entrada",
+      "failedToUpdateInboxPreferences": "No se pudieron actualizar las preferencias de la bandeja de entrada"
     },
     "toasts": {
       "inboxRefreshed": "Bandeja de entrada actualizada"
@@ -516,5 +526,10 @@
     "task": "Tarea",
     "time": "Hora",
     "title": "Convertir"
+  },
+  "reviewNudge": {
+    "action": "Abrir bandeja de entrada",
+    "description": "Revisa las capturas de hoy de una sola vez, con calma.",
+    "title": "{count, plural, one {Es hora de revisar # elemento} many {Es hora de revisar # elementos} other {Es hora de revisar # elementos}}"
   }
 }

@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "Một mục đồng bộ không thể được xác minh và đã bị cách ly vì lý do bảo mật.",
     "securityQuarantineRetry": "Một mục đồng bộ không vượt qua kiểm tra chữ ký và sẽ được thử lại.",
     "certificatePinPaused": "Kết nối bảo mật với máy chủ đồng bộ không thể xác minh. Việc đồng bộ đã tạm dừng để bảo vệ bạn.",
-    "paymentRequired": "Cần gói Đồng bộ trả phí để dùng đồng bộ mã hóa được lưu trữ."
+    "paymentRequired": "Cần gói Đồng bộ trả phí để dùng đồng bộ mã hóa được lưu trữ.",
+    "attachmentUploadFailed": "Không thể đồng bộ tệp đính kèm \"{filename}\". Tệp vẫn ở lại trên thiết bị này.",
+    "fileTooLarge": "Tệp này lớn hơn mức gói của bạn cho phép. Nâng cấp gói để đồng bộ các tệp lớn hơn.",
+    "vaultRecovered": "Đã khôi phục khóa kho. Đồng bộ sẽ tiếp tục."
   }
 }

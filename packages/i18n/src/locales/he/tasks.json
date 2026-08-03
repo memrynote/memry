@@ -34,7 +34,8 @@
     "createAnother": "צור אחר",
     "delete": "מחק משימה",
     "created": "יצר את {date}",
-    "reminder": "תזכורת"
+    "reminder": "תזכורת",
+    "tags": "תגים"
   },
   "filters": {
     "filter": "מסנן",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "משימת הוספה מהירה",
-    "focusDescription": "התמקד בקלט הוספה מהירה"
+    "focusDescription": "התמקד בקלט הוספה מהירה",
+    "placeholder": "הוסף משימה…    !today  !!high  #project"
   },
   "drawer": {
     "close": "סגור את פרטי המשימה",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "לפרויקט זה אין משימות והוא יימחק לצמיתות.",
       "thisActionCannotBeUndone": "לא ניתן לבטל פעולה זו.",
       "cancel": "בטל",
-      "deleteProject": "מחק את הפרויקט"
+      "deleteProject": "מחק את הפרויקט",
+      "notesEventsAndFilesStayNotice": "המשימות בפרויקט הזה יימחקו. ההערות, האירועים והקבצים שלך נשארים בכספת."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "למחוק משימה?",
@@ -357,7 +360,9 @@
       "due": "בשל",
       "dueDate": "תאריך יעד",
       "search": "לחפש",
-      "clearAll": "נקה הכל"
+      "clearAll": "נקה הכל",
+      "tags": "תגים",
+      "tagsIs": "תגים הם"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "סנן לפי תאריך יעד",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "אין משימות קרובות",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "משימות שאמורות להיעשות ב-7 הימים הקרובים יופיעו כאן. תכנן את השבוע שלך על ידי הוספת כמה משימות.",
       "addTask2": "הוסף משימה"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "הוא",
+      "search": "חפש...",
+      "selected": "נבחר",
+      "tags": "תגים"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "הגדרת התזכורת נכשלה",
       "updateFailed": "עדכון התזכורת נכשל",
       "updated": "התזכורת עודכנה"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "הוסף לפרויקט",
+    "loading": "טוען פרויקטים…",
+    "menuLabel": "הוסף לפרויקט",
+    "noProjects": "עדיין אין פרויקטים",
+    "toastError": "ההוספה לפרויקט נכשלה",
+    "toastSuccess": "נוסף ל-{name}"
+  },
+  "itemProjects": {
+    "openProject": "פתח את הפרויקט {name}"
+  },
+  "projectHome": {
+    "emptyBody": "בחר פרויקט מסרגל הצד כדי לפתוח את דף הבית שלו.",
+    "emptyTitle": "לא נבחר פרויקט",
+    "loadError": "לא ניתן היה לטעון את פרטי הפרויקט",
+    "overview": {
+      "clear": "נקה סקירה",
+      "clearError": "לא ניתן היה לנקות את הערת הסקירה",
+      "create": "צור הערת סקירה",
+      "createError": "לא ניתן היה ליצור את הערת הסקירה",
+      "defaultTitle": "סקירה",
+      "loadError": "לא ניתן היה לטעון את הערת הסקירה",
+      "placeholder": "כתוב סקירה לפרויקט הזה…",
+      "saveError": "לא ניתן היה לשמור את הערת הסקירה",
+      "sectionTitle": "סקירה"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "צרף קבצים",
+      "fileError": "לא ניתן היה לקשר את {name}",
+      "fileErrorGeneric": "לא ניתן היה לייבא את הקבצים",
+      "filesAdded": "{count, plural, one {# קובץ נוסף לפרויקט} two {# קבצים נוספו לפרויקט} other {# קבצים נוספו לפרויקט}}",
+      "label": "הוסף ל-{name}",
+      "linkAdded": "הקישור נוסף לפרויקט",
+      "linkError": "לא ניתן היה לשמור את הקישור",
+      "placeholder": "הוסף ל-{name} — הקלד משימה, רשום הערה או הדבק קישור…"
+    },
+    "groups": {
+      "older": "ישן יותר",
+      "past": "עבר",
+      "today": "היום",
+      "tomorrow": "מחר",
+      "upcoming": "בקרוב",
+      "yesterday": "אתמול"
+    },
+    "header": {
+      "archiveProject": "העבר את הפרויקט לארכיון",
+      "editProject": "ערוך פרויקט",
+      "menu": "פעולות פרויקט",
+      "toggleRail": "הצג או הסתר את פרטי הפרויקט"
+    },
+    "rail": {
+      "addNote": "הוסף הערה",
+      "created": "נוצר",
+      "details": "פרטים",
+      "doneOf": "{done} מתוך {total} בוצעו",
+      "linked": "מקושרים",
+      "linkedSummary": "{notes, plural, one {# הערה} two {# הערות} other {# הערות}} · {files, plural, one {# קובץ} two {# קבצים} other {# קבצים}} · {events, plural, one {# אירוע} two {# אירועים} other {# אירועים}}",
+      "overdue": "באיחור",
+      "overview": "סקירה",
+      "pinError": "לא ניתן היה להוסיף את ההערה לסקירה",
+      "progress": "התקדמות",
+      "unpinError": "לא ניתן היה להסיר את ההערה מהסקירה",
+      "unpinNote": "הסר את {title} מהסקירה",
+      "updated": "עודכן"
+    },
+    "rows": {
+      "openEvent": "פתח את האירוע {title}",
+      "openFile": "פתח את הקובץ {title}",
+      "openNote": "פתח את ההערה {title}",
+      "openTask": "פתח את המשימה {title}",
+      "setNoteIcon": "הגדר אייקון עבור {title}"
+    },
+    "sections": {
+      "add": "הוסף ל-{title}",
+      "emptyEvents": "עדיין לא קושרו אירועים.",
+      "emptyFiles": "עדיין לא קושרו קבצים.",
+      "emptyNotes": "עדיין לא קושרו הערות.",
+      "emptyTasks": "עדיין אין משימות.",
+      "newNoteError": "לא ניתן היה להוסיף את ההערה",
+      "newNoteTitle": "הערה ללא כותרת",
+      "viewAll": "הצג הכל"
+    },
+    "tabs": {
+      "events": "אירועים",
+      "files": "קבצים",
+      "label": "תצוגות פרויקט",
+      "notes": "הערות",
+      "overview": "סקירה",
+      "tasks": "משימות"
     }
   }
 }

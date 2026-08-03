@@ -38,6 +38,11 @@
       "fallback": "Emlékeztető esedékes",
       "default": "Emlékeztető",
       "task": "Feladat-emlékeztető"
+    },
+    "inboxReview": {
+      "body": "{count, plural, one {# elem} other {# elem}} vár átnézésre.",
+      "testBody": "Ez egy teszt — így fognak kinézni a napi átnézési emlékeztetőid.",
+      "title": "Ideje átnézni a Beérkezőket"
     }
   },
   "error": {

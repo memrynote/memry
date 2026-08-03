@@ -28,7 +28,8 @@
         "properties": "Özellikler",
         "commandLine": "Komut Satırı",
         "features": "Özellikler",
-        "import": "İçe Aktar"
+        "import": "İçe Aktar",
+        "inbox": "Gelen Kutusu"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "İndiriliyor {percent}%",
         "downloaded": "Kurulumu Yeniden Başlatın",
         "idle": "Güncellemeleri Kontrol Et"
+      },
+      "autoCheck": {
+        "description": "Başlangıçta ve uygulama açıkken düzenli aralıklarla yeni sürümleri kontrol et.",
+        "error": "Otomatik kontrol ayarı güncellenemedi",
+        "label": "Güncellemeleri otomatik kontrol et"
+      },
+      "autoDownload": {
+        "description": "Yeni sürümleri sormadan arka planda indir ve kur.",
+        "error": "Otomatik indirme ayarı güncellenemedi",
+        "label": "Güncellemeleri otomatik indir"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Anonim Kullanım Metriklerini Paylaş",
         "description": "Sadece anonim metrikler — hiçbir not içeriği, arama sorgusu, dosya yolu, e-posta veya ham kimlik gönderilmez.",
         "error": "Telemetri ayarı güncellenemedi"
+      },
+      "diagnostics": {
+        "building": "Rapor hazırlanıyor…",
+        "consent": "Tek seferlik bir tanılama raporu gönderilsin mi? Yalnızca maskelenmiş teknik günlükler içerir — not içeriği yoktur.",
+        "error": "Tanılama raporu gönderilemedi",
+        "notNow": "Şimdi değil",
+        "previewError": "Tanılama raporu hazırlanamadı",
+        "previewLabel": "Rapor içeriğini önizle",
+        "send": "Gönder",
+        "sendReport": {
+          "button": "Tanılama raporu gönder",
+          "description": "Karşılaştığınız sorunu çözmemize yardımcı olmak için maskelenmiş teknik günlüklerden oluşan tek seferlik bir rapor gönderin.",
+          "label": "Tanılama Raporu"
+        },
+        "sending": "Gönderiliyor…",
+        "sent": "Rapor gönderildi — referans {incidentId}",
+        "snapshotLabel": "Cihaz anlık görüntüsü",
+        "title": "Tanılama raporu gönderilsin mi?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Düzen",
-      "toolbar": "Araç Çubuğu"
+      "toolbar": "Araç Çubuğu",
+      "spelling": "Yazım"
     },
     "width": {
       "label": "Düzenleyici Genişliği",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Dar",
         "medium": "Orta",
-        "wide": "Geniş"
+        "wide": "Geniş",
+        "full": "Tam genişlik",
+        "normal": "Normal"
       },
       "error": "Düzenleyici genişliği güncellenemedi"
     },
@@ -229,6 +261,11 @@
       "label": "Yapışkan Biçimlendirme Araç Çubuğu",
       "description": "Araç çubuğunu her zaman düzenleyicinin üzerinde göster",
       "error": "Araç çubuğu modu güncellenemedi"
+    },
+    "spellCheck": {
+      "description": "Notlarda ve günlüklerde yanlış yazılan kelimelerin altını çiz",
+      "error": "Yazım denetimi güncellenemedi",
+      "label": "Yazımı Denetle"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "Depolama Kullanımı",
-      "location": "Konum"
+      "location": "Konum",
+      "accountVaults": "Hesabınızdaki kasalar"
     },
     "loadingStorage": "Depolama bilgisi yükleniyor...",
     "signInStorage": "Depolama kullanımını görüntülemek için oturum açın",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "Depolama alanı neredeyse dolu",
       "warningDescription": "Senkronizasyon sorunlarını önlemek için yer açın veya planınızı yükseltin."
+    },
+    "accountVaults": {
+      "activeHint": "Bu kasayı silmek için başka bir kasaya geçin.",
+      "cloudOnly": "Bu cihazda değil",
+      "delete": "Sil",
+      "deleteBody": "Bu işlem, bu kasaya ait senkronize edilmiş tüm verileri Memry sunucularından kalıcı olarak siler ve geri alınamaz. Diskteki dosyalarınız silinmez.",
+      "deleteConfirm": "Hesaptan sil",
+      "deleteFailed": "Kasa silinemedi",
+      "deleteTitle": "“{name}” hesabınızdan silinsin mi?",
+      "empty": "Hesabınıza henüz senkronize edilmiş kasa yok.",
+      "itemsCount": "{count} öğe"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "Kasa kapatılamadı",
       "failedToSwitchVault": "Kasa değiştirilemedi",
       "failedToUpdateConfig": "Yapılandırma güncellenemedi",
-      "failedToReindex": "Yeniden dizinleme başarısız oldu"
+      "failedToReindex": "Yeniden dizinleme başarısız oldu",
+      "failedToLoadTasks": "Görevler yüklenemedi"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "Yapılacaklar ve bitiş tarihleri",
         "label": "Görevler"
+      },
+      "spatialCanvas": {
+        "description": "Notları düzenlemek ve birbirine bağlamak için mekânsal panolar",
+        "label": "Tuval"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} atlandı",
         "title": "İçe aktarma tamamlandı"
       },
-      "title": "{name} kaynağından içe aktar"
+      "title": "{name} kaynağından içe aktar",
+      "chooseDirectory": "Klasör seç…",
+      "folderKeepsAssets": "Görseller notların kendi klasörünün dışındaysa klasörü seçin — dışa aktarmalar medyayı genellikle ortak bir klasörde tutar."
     },
     "header": {
       "subtitle": "Notlarınızı ve görevlerinizi diğer uygulamalardan getirin",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, one {# görev} other {# görev}}",
       "withDueDate": "{count} tarihli",
       "withTags": "{count} etiketli"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Yükleniyor…",
+      "subtitle": "Günlük gözden geçirme hatırlatıcısı ve gelen kutusu tercihleri.",
+      "title": "Gelen Kutusu"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Gelen kutunuzda öğe olduğunda nazik bir günlük hatırlatma.",
+        "label": "Gelen kutumu gözden geçirmemi hatırlat"
+      },
+      "error": "Hatırlatıcı güncellenemedi.",
+      "group": "Günlük gözden geçirme hatırlatıcısı",
+      "test": {
+        "button": "Test gönder",
+        "description": "Sistem bildirimlerinizi kontrol etmek için hatırlatıcıyı hemen gönderin.",
+        "label": "Test bildirimi",
+        "sent": "Test bildirimi gönderildi.",
+        "sentHint": "Hiçbir şey görünmezse sistem ayarlarınızdan MemryNote için bildirimlere izin verin.",
+        "unsupported": "Bu cihaz masaüstü bildirimleri gösteremiyor."
+      },
+      "time": {
+        "description": "Her cihazda yerel saat.",
+        "hourLabel": "Saat",
+        "label": "Hatırlatma saati",
+        "minuteLabel": "Dakika",
+        "periodLabel": "AM veya PM"
+      }
     }
   }
 }

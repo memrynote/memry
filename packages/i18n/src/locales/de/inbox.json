@@ -314,7 +314,10 @@
       "rdquo": "rdquo;",
       "captureAnyway": "Trotzdem erfassen",
       "focusShortcut": "Erfassungseingabe fokussieren",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Link erfassen",
+      "captureNote": "Notiz erfassen",
+      "placeholder": "Schnell erfassen — Link einfügen, Gedanken festhalten…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Ordner auswählen",
@@ -466,7 +469,12 @@
       "cancelRecording": "Aufnahme abbrechen",
       "cancel": "Abbrechen",
       "stopRecording": "Stoppen Sie die Aufnahme",
-      "stop": "Stopp"
+      "stop": "Stopp",
+      "enableMicInSettings": "Erlaube den Mikrofonzugriff in deinen Systemeinstellungen und versuche es erneut.",
+      "failedToStart": "Die Aufnahme konnte nicht gestartet werden",
+      "microphoneAccessDenied": "Mikrofonzugriff verweigert",
+      "noMicrophoneFound": "Kein Mikrofon gefunden",
+      "recordingError": "Bei der Aufnahme ist ein Fehler aufgetreten"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "Datei konnte nicht erfasst werden",
       "fileCaptureFailed": "Die Dateierfassung ist fehlgeschlagen",
       "failedToCaptureAudio": "Audio konnte nicht aufgenommen werden",
-      "failedToCaptureVoice": "Die Sprachaufnahme ist fehlgeschlagen"
+      "failedToCaptureVoice": "Die Sprachaufnahme ist fehlgeschlagen",
+      "failedToLoadInboxPreferences": "Die Posteingangseinstellungen konnten nicht geladen werden",
+      "failedToUpdateInboxPreferences": "Die Posteingangseinstellungen konnten nicht aktualisiert werden"
     },
     "toasts": {
       "inboxRefreshed": "Posteingang aktualisiert"
@@ -516,5 +526,10 @@
     "task": "Aufgabe",
     "time": "Zeit",
     "title": "Umwandeln"
+  },
+  "reviewNudge": {
+    "action": "Posteingang öffnen",
+    "description": "Geh die heutigen Erfassungen in einem ruhigen Durchgang durch.",
+    "title": "{count, plural, one {# Element zum Durchsehen} other {# Elemente zum Durchsehen}}"
   }
 }

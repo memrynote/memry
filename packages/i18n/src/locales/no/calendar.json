@@ -67,7 +67,8 @@
     "title": "Vil du slette arrangementet?",
     "local-description": "\"{title}\" vil bli permanent slettet. Denne handlingen kan ikke angres.",
     "google-bound-description": "«{title}» vil bli fjernet fra memrynote og Google Kalender. Denne handlingen kan ikke angres.",
-    "context-menu-delete-label": "Slett hendelsen"
+    "context-menu-delete-label": "Slett hendelsen",
+    "context-menu-add-to-project": "Legg til i prosjekt"
   },
   "promote-dialog": {
     "aria": "Rediger ekstern kalenderhendelse",
@@ -181,6 +182,7 @@
     "placeholder": "Søk i hendelser, oppgaver, påminnelser…"
   },
   "undo": {
-    "moveEvent": "Flytt hendelse"
+    "moveEvent": "Flytt hendelse",
+    "moveTask": "Flytt oppgave"
   }
 }

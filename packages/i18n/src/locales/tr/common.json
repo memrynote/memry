@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "İndiriliyor %{percent}",
       "updateInstallingSubtitle": "MemryNote otomatik olarak yeniden başlayacak.",
       "updateInstallingTitle": "Güncelleme kuruluyor",
-      "updateRestart": "Yeniden başlat"
+      "updateRestart": "Yeniden başlat",
+      "feedbackPrivacyEmailOptional": "E-postanız — yalnızca siz eklerseniz, yalnızca size yanıt verebilmemiz için",
+      "feedbackPrivacyEmailSignedIn": "Hesap e-postanız ({email}), yanıt verebilmemiz için",
+      "feedbackPrivacyMessage": "Mesajınız, tam olarak yazdığınız gibi",
+      "feedbackPrivacyNote": "Başka hiçbir şey. Notlarınız cihazınızda kalır.",
+      "feedbackPrivacyPlan": "Planınız (free, Plus, Pro veya Believer)",
+      "feedbackPrivacyTitle": "Neler gönderilir",
+      "feedbackPrivacyVersion": "Uygulama sürümü ve işletim sistemi",
+      "projects": "Projeler"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Gün Panelini Yeniden Boyutlandır",
@@ -231,7 +239,8 @@
       "journal": "Günlük",
       "calendar": "Takvim",
       "inboxCapture": "Gelen Kutusu Yakalama",
-      "tasks": "Görevler"
+      "tasks": "Görevler",
+      "tags": "Etiketler"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Kaydedilmemiş değişiklikler",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Bir şeyler ters gitti",
       "anErrorOccurredWhileRenderingThisTabContent": "Bu sekme içeriği oluşturulurken bir hata oluştu.",
-      "tryAgain": "Tekrar Deneyin"
+      "tryAgain": "Tekrar Deneyin",
+      "sendReport": "Tanılama raporu gönder"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Not simgesi"
@@ -352,7 +362,13 @@
       "downloadLocation": "Konum",
       "changeLocation": "Değiştir…",
       "download": "İndir",
-      "downloadFailed": "Kasa indirilemedi"
+      "downloadFailed": "Kasa indirilemedi",
+      "deleteFromAccount": "Hesaptan sil",
+      "deleteVaultBody": "Bu işlem, bu kasaya ait senkronize edilmiş tüm verileri Memry sunucularından kalıcı olarak siler ve geri alınamaz. Diskteki dosyalarınız silinmez.",
+      "deleteVaultConfirm": "Hesaptan sil",
+      "deleteVaultFailed": "Kasa silinemedi",
+      "deleteVaultTitle": "“{name}” hesabınızdan silinsin mi?",
+      "removeVaultTitle": "“{name}” listeden kaldırılsın mı?"
     },
     "componentsWindowControls": {
       "searchK": "Ara (⌘K)",
@@ -640,6 +656,45 @@
     "skip": "Bu Sürümü Atla"
   },
   "capture": {
-    "focusShortcut": "Yakalama girişine odaklan"
+    "focusShortcut": "Yakalama girişine odaklan",
+    "detailHint": "ayrıntı",
+    "focusHint": "Q",
+    "submit": "Yakala"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Kart ekle",
+      "addCreateNote": "Not oluştur: \"{query}\"",
+      "addCreateNoteEmpty": "Yeni not oluştur",
+      "addCreatedAt": "Oluşturuldu: {date}",
+      "addEmpty": "Sonuç bulunamadı",
+      "addGroupEvents": "Etkinlikler",
+      "addGroupNotes": "Notlar",
+      "addGroupTasks": "Görevler",
+      "addOnCanvas": "Tuvalde",
+      "addPlaceholder": "Not, görev ve etkinlik ara…",
+      "allDay": "Bütün gün",
+      "createNoteFailed": "Not oluşturulamadı",
+      "deleted": "Öğe silindi",
+      "loading": "Yükleniyor…",
+      "open": "Sekmede aç",
+      "openToEdit": "Düzenlemek için sekmede aç",
+      "untitled": "Başlıksız"
+    },
+    "corruptScene": "Bu tuval okunamadı. Veri kaybını önlemek için düzenleme devre dışı bırakıldı.",
+    "createFailed": "Tuval oluşturulamadı",
+    "disabledBody": "Bu sekme, bu cihazda etkin olmayan bir özelliğe ait.",
+    "disabledTitle": "Tuval etkin değil",
+    "empty": "Henüz tuval yok",
+    "libraryStoreFailed": "Şekil kitaplığınız kaydedilemedi. Kitaplıkta yaptığınız son değişiklikler kaybolabilir.",
+    "loadFailed": "Tuvaller yüklenemedi",
+    "loading": "Tuvaller yükleniyor…",
+    "newCanvas": "Yeni tuval",
+    "notFound": "Bu tuval bulunamadı",
+    "openFailed": "Tuval açılamadı",
+    "savedToVault": "Tüm değişiklikler kasanıza otomatik olarak kaydedilir",
+    "sectionLabel": "Tuvaller",
+    "tooLargeToSync": "Bu tuval senkronize edilemeyecek kadar büyük. Bu cihazda kayıtlı, ancak küçülene kadar diğer cihazlarınıza ulaşmayacak.",
+    "untitled": "Başlıksız tuval"
   }
 }

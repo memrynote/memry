@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "Een synchronisatie-item kan niet worden geverifieerd en is om veiligheidsredenen in quarantaine geplaatst.",
     "securityQuarantineRetry": "Een synchronisatie-item heeft de handtekeningverificatie niet doorstaan en zal opnieuw worden geprobeerd.",
     "certificatePinPaused": "De beveiligde verbinding met de synchronisatieserver kon niet worden geverifieerd. Voor uw veiligheid is de synchronisatie onderbroken.",
-    "paymentRequired": "Een betaald Sync-abonnement is vereist om gehoste versleutelde synchronisatie te gebruiken."
+    "paymentRequired": "Een betaald Sync-abonnement is vereist om gehoste versleutelde synchronisatie te gebruiken.",
+    "attachmentUploadFailed": "Kan bijlage \"{filename}\" niet synchroniseren. Deze blijft op dit apparaat.",
+    "fileTooLarge": "Dit bestand is groter dan je abonnement toestaat. Upgrade je abonnement om grotere bestanden te synchroniseren.",
+    "vaultRecovered": "Kluissleutel hersteld. Het synchroniseren wordt hervat."
   }
 }

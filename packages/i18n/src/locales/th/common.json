@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "กำลังดาวน์โหลด {percent}%",
       "updateInstallingSubtitle": "MemryNote จะรีสตาร์ทโดยอัตโนมัติ",
       "updateInstallingTitle": "กำลังติดตั้งอัปเดต",
-      "updateRestart": "รีสตาร์ท"
+      "updateRestart": "รีสตาร์ท",
+      "feedbackPrivacyEmailOptional": "อีเมลของคุณ — เฉพาะเมื่อคุณกรอกไว้ และเพื่อให้เราตอบกลับได้เท่านั้น",
+      "feedbackPrivacyEmailSignedIn": "อีเมลบัญชีของคุณ ({email}) เพื่อให้เราตอบกลับได้",
+      "feedbackPrivacyMessage": "ข้อความของคุณ ตามที่คุณเขียนไว้ทุกประการ",
+      "feedbackPrivacyNote": "ไม่มีอะไรอื่นอีก โน้ตของคุณยังอยู่บนอุปกรณ์ของคุณ",
+      "feedbackPrivacyPlan": "แผนของคุณ (free, Plus, Pro หรือ Believer)",
+      "feedbackPrivacyTitle": "ข้อมูลที่จะส่ง",
+      "feedbackPrivacyVersion": "เวอร์ชันแอปและระบบปฏิบัติการ",
+      "projects": "โครงการ"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "ปรับขนาดแผงวัน",
@@ -231,7 +239,8 @@
       "journal": "วารสาร",
       "calendar": "ปฏิทิน",
       "inboxCapture": "การจับภาพกล่องจดหมาย",
-      "tasks": "งาน"
+      "tasks": "งาน",
+      "tags": "แท็ก"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "มีบางอย่างผิดพลาด",
       "anErrorOccurredWhileRenderingThisTabContent": "เกิดข้อผิดพลาดขณะแสดงเนื้อหาแท็บนี้",
-      "tryAgain": "ลองอีกครั้ง"
+      "tryAgain": "ลองอีกครั้ง",
+      "sendReport": "ส่งรายงานการวินิจฉัย"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "ไอคอนหมายเหตุ"
@@ -352,7 +362,13 @@
       "downloadLocation": "ตำแหน่ง",
       "changeLocation": "เปลี่ยน…",
       "download": "ดาวน์โหลด",
-      "downloadFailed": "ไม่สามารถดาวน์โหลดห้องนิรภัยได้"
+      "downloadFailed": "ไม่สามารถดาวน์โหลดห้องนิรภัยได้",
+      "deleteFromAccount": "ลบออกจากบัญชี",
+      "deleteVaultBody": "การทำเช่นนี้จะลบข้อมูลที่ซิงค์ไว้ทั้งหมดของคลังนี้ออกจากเซิร์ฟเวอร์ของ Memry อย่างถาวร และไม่สามารถย้อนกลับได้ ไฟล์บนดิสก์ของคุณจะไม่ถูกลบ",
+      "deleteVaultConfirm": "ลบออกจากบัญชี",
+      "deleteVaultFailed": "ไม่สามารถลบคลังได้",
+      "deleteVaultTitle": "ลบ “{name}” ออกจากบัญชีของคุณ?",
+      "removeVaultTitle": "นำ “{name}” ออกจากรายการ?"
     },
     "componentsWindowControls": {
       "searchK": "  \nค้นหา (⌘K)  ",
@@ -640,6 +656,45 @@
     "skip": "ข้ามเวอร์ชันนี้"
   },
   "capture": {
-    "focusShortcut": "โฟกัสช่องบันทึก"
+    "focusShortcut": "โฟกัสช่องบันทึก",
+    "detailHint": "รายละเอียด",
+    "focusHint": "Q",
+    "submit": "บันทึก"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "เพิ่มการ์ด",
+      "addCreateNote": "สร้างโน้ต \"{query}\"",
+      "addCreateNoteEmpty": "สร้างโน้ตใหม่",
+      "addCreatedAt": "สร้างเมื่อ {date}",
+      "addEmpty": "ไม่พบผลลัพธ์",
+      "addGroupEvents": "กิจกรรม",
+      "addGroupNotes": "โน้ต",
+      "addGroupTasks": "งาน",
+      "addOnCanvas": "อยู่บนแคนวาส",
+      "addPlaceholder": "ค้นหาโน้ต งาน และกิจกรรม…",
+      "allDay": "ตลอดวัน",
+      "createNoteFailed": "ไม่สามารถสร้างโน้ตได้",
+      "deleted": "ลบรายการแล้ว",
+      "loading": "กำลังโหลด…",
+      "open": "เปิดในแท็บ",
+      "openToEdit": "เปิดในแท็บเพื่อแก้ไข",
+      "untitled": "ไม่มีชื่อ"
+    },
+    "corruptScene": "อ่านแคนวาสนี้ไม่ได้ ระบบปิดการแก้ไขไว้เพื่อไม่ให้ข้อมูลสูญหาย",
+    "createFailed": "ไม่สามารถสร้างแคนวาสได้",
+    "disabledBody": "แท็บนี้เป็นของฟีเจอร์ที่ยังไม่ได้เปิดใช้งานบนอุปกรณ์นี้",
+    "disabledTitle": "แคนวาสยังไม่ได้เปิดใช้งาน",
+    "empty": "ยังไม่มีแคนวาส",
+    "libraryStoreFailed": "ไม่สามารถบันทึกคลังรูปทรงของคุณได้ การเปลี่ยนแปลงล่าสุดอาจสูญหาย",
+    "loadFailed": "ไม่สามารถโหลดแคนวาสได้",
+    "loading": "กำลังโหลดแคนวาส…",
+    "newCanvas": "แคนวาสใหม่",
+    "notFound": "ไม่พบแคนวาสนี้",
+    "openFailed": "ไม่สามารถเปิดแคนวาสได้",
+    "savedToVault": "ระบบบันทึกการเปลี่ยนแปลงทั้งหมดลงคลังของคุณโดยอัตโนมัติ",
+    "sectionLabel": "แคนวาส",
+    "tooLargeToSync": "แคนวาสนี้ใหญ่เกินกว่าจะซิงค์ได้ ระบบบันทึกไว้บนอุปกรณ์นี้แล้ว แต่จะยังไม่ไปถึงอุปกรณ์อื่นจนกว่าจะมีขนาดเล็กลง",
+    "untitled": "แคนวาสไม่มีชื่อ"
   }
 }

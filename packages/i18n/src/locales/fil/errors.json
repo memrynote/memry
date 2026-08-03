@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "Hindi ma-verify ang isang item sa pag-sync at na-quarantine para sa seguridad.",
     "securityQuarantineRetry": "Nabigo ang isang item sa pag-sync sa pag-verify ng lagda at susubukang muli.",
     "certificatePinPaused": "Hindi ma-verify ang secure na koneksyon sa sync server. Na-pause ang pag-sync para sa iyong proteksyon.",
-    "paymentRequired": "Kailangan ng bayad na Sync plan para gamitin ang naka-host na naka-encrypt na sync."
+    "paymentRequired": "Kailangan ng bayad na Sync plan para gamitin ang naka-host na naka-encrypt na sync.",
+    "attachmentUploadFailed": "Hindi ma-sync ang attachment na \"{filename}\". Mananatili ito sa device na ito.",
+    "fileTooLarge": "Mas malaki ang file na ito kaysa sa pinapayagan ng iyong plano. I-upgrade ang iyong plano para makapag-sync ng mas malalaking file.",
+    "vaultRecovered": "Naibalik ang vault key. Magpapatuloy ang pag-sync."
   }
 }

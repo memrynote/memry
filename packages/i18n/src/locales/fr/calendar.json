@@ -67,7 +67,8 @@
     "title": "Supprimer l'événement ?",
     "local-description": "\"{title}\" sera définitivement supprimé. Cette action ne peut pas être annulée.",
     "google-bound-description": "\"{title}\" sera supprimé de memrynote et de Google Agenda. Cette action ne peut pas être annulée.",
-    "context-menu-delete-label": "Supprimer l'événement"
+    "context-menu-delete-label": "Supprimer l'événement",
+    "context-menu-add-to-project": "Ajouter au projet"
   },
   "promote-dialog": {
     "aria": "Modifier un événement de calendrier externe",
@@ -181,6 +182,7 @@
     "placeholder": "Rechercher événements, tâches, rappels…"
   },
   "undo": {
-    "moveEvent": "Déplacer l'événement"
+    "moveEvent": "Déplacer l'événement",
+    "moveTask": "Replanifier la tâche"
   }
 }

@@ -67,7 +67,8 @@
     "title": "刪除活動？",
     "local-description": "\"{title}\" 將被永久刪除。此操作無法復原。",
     "google-bound-description": "\"{title}\" 將從 memrynote 和 Google 日曆中移除。此操作無法撤銷。  ",
-    "context-menu-delete-label": "  \n刪除事件  "
+    "context-menu-delete-label": "  \n刪除事件  ",
+    "context-menu-add-to-project": "加入專案"
   },
   "promote-dialog": {
     "aria": "  \n編輯外部日曆事件  ",
@@ -181,6 +182,7 @@
     "placeholder": "搜尋活動、任務、提醒…"
   },
   "undo": {
-    "moveEvent": "移動活動"
+    "moveEvent": "移動活動",
+    "moveTask": "重新安排任務"
   }
 }

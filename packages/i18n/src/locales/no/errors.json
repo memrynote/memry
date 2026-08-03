@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "Et synkroniseringselement kunne ikke bekreftes og har blitt satt i karantene for sikkerhets skyld.",
     "securityQuarantineRetry": "Et synkroniseringselement mislyktes med signaturverifisering og vil bli forsøkt på nytt.",
     "certificatePinPaused": "Sikker tilkobling til synkroniseringsserver kunne ikke bekreftes. Synkroniseringen er satt på pause for å beskytte deg.",
-    "paymentRequired": "Et betalt Sync-abonnement kreves for å bruke vertsbasert kryptert synkronisering."
+    "paymentRequired": "Et betalt Sync-abonnement kreves for å bruke vertsbasert kryptert synkronisering.",
+    "attachmentUploadFailed": "Kunne ikke synkronisere vedlegget «{filename}». Det blir værende på denne enheten.",
+    "fileTooLarge": "Denne filen er større enn abonnementet ditt tillater. Oppgrader abonnementet for å synkronisere større filer.",
+    "vaultRecovered": "Hvelvnøkkelen er gjenopprettet. Synkroniseringen fortsetter."
   }
 }

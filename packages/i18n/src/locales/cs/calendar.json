@@ -67,7 +67,8 @@
     "title": "Smazat událost?",
     "local-description": "„{title}“ bude trvale smazáno. Tuto akci nelze vrátit zpět.",
     "google-bound-description": "„{title}“ bude odstraněn z memrynote a Kalendáře Google. Tuto akci nelze vrátit zpět.",
-    "context-menu-delete-label": "Smazat událost"
+    "context-menu-delete-label": "Smazat událost",
+    "context-menu-add-to-project": "Přidat do projektu"
   },
   "promote-dialog": {
     "aria": "Upravit událost externího kalendáře",
@@ -181,6 +182,7 @@
     "placeholder": "Hledat události, úkoly, připomenutí…"
   },
   "undo": {
-    "moveEvent": "Přesunout událost"
+    "moveEvent": "Přesunout událost",
+    "moveTask": "Přeplánovat úkol"
   }
 }

@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "Nie można zweryfikować elementu synchronizacji i ze względów bezpieczeństwa został on poddany kwarantannie.",
     "securityQuarantineRetry": "Weryfikacja podpisu elementu synchronizowanego nie powiodła się i zostanie ponowiona.",
     "certificatePinPaused": "Nie można zweryfikować bezpiecznego połączenia z serwerem synchronizacji. Ze względu na Twoje bezpieczeństwo synchronizacja została wstrzymana.",
-    "paymentRequired": "Do korzystania z hostowanej szyfrowanej synchronizacji wymagany jest płatny plan Sync."
+    "paymentRequired": "Do korzystania z hostowanej szyfrowanej synchronizacji wymagany jest płatny plan Sync.",
+    "attachmentUploadFailed": "Nie udało się zsynchronizować załącznika „{filename}”. Pozostaje na tym urządzeniu.",
+    "fileTooLarge": "Ten plik przekracza limit Twojego planu. Uaktualnij plan, aby synchronizować większe pliki.",
+    "vaultRecovered": "Klucz skarbca został przywrócony. Synchronizacja zostanie wznowiona."
   }
 }

@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "Ein Synchronisierungselement konnte nicht überprüft werden und wurde aus Sicherheitsgründen unter Quarantäne gestellt.",
     "securityQuarantineRetry": "Die Signaturüberprüfung eines Synchronisierungselements ist fehlgeschlagen und wird erneut versucht.",
     "certificatePinPaused": "Die sichere Verbindung zum Synchronisierungsserver konnte nicht überprüft werden. Die Synchronisierung wurde zu Ihrem Schutz angehalten.",
-    "paymentRequired": "Für die gehostete verschlüsselte Synchronisierung ist ein kostenpflichtiger Sync-Tarif erforderlich."
+    "paymentRequired": "Für die gehostete verschlüsselte Synchronisierung ist ein kostenpflichtiger Sync-Tarif erforderlich.",
+    "attachmentUploadFailed": "Anhang „{filename}“ konnte nicht synchronisiert werden. Er bleibt auf diesem Gerät.",
+    "fileTooLarge": "Diese Datei ist größer, als dein Tarif erlaubt. Wechsle zu einem höheren Tarif, um größere Dateien zu synchronisieren.",
+    "vaultRecovered": "Tresorschlüssel wiederhergestellt. Die Synchronisierung wird fortgesetzt."
   }
 }

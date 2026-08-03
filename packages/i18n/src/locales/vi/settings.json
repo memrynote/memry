@@ -28,7 +28,8 @@
         "properties": "Thuộc tính",
         "commandLine": "Dòng lệnh",
         "features": "Tính năng",
-        "import": "Nhập"
+        "import": "Nhập",
+        "inbox": "Hộp thư đến"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Đang tải {percent}%",
         "downloaded": "Khởi động lại để Cài đặt",
         "idle": "Kiểm tra Cập Nhật"
+      },
+      "autoCheck": {
+        "description": "Kiểm tra bản phát hành mới khi khởi động và định kỳ trong lúc ứng dụng đang mở.",
+        "error": "Không cập nhật được cài đặt tự động kiểm tra",
+        "label": "Tự động kiểm tra cập nhật"
+      },
+      "autoDownload": {
+        "description": "Tải xuống và cài đặt bản phát hành mới ở chế độ nền mà không cần hỏi.",
+        "error": "Không cập nhật được cài đặt tự động tải xuống",
+        "label": "Tự động tải xuống bản cập nhật"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Chia sẻ Số liệu Sử dụng Ẩn danh",
         "description": "Chỉ là số liệu ẩn danh — không bao giờ gửi nội dung ghi chú, truy vấn tìm kiếm, đường dẫn tập tin, email, hoặc ID gốc.",
         "error": "Cập nhật cài đặt dữ liệu từ xa thất bại"
+      },
+      "diagnostics": {
+        "building": "Đang chuẩn bị báo cáo…",
+        "consent": "Gửi báo cáo chẩn đoán một lần? Báo cáo chỉ gồm nhật ký kỹ thuật đã lược bỏ thông tin nhận dạng — không có nội dung ghi chú.",
+        "error": "Không gửi được báo cáo chẩn đoán",
+        "notNow": "Để sau",
+        "previewError": "Không thể chuẩn bị báo cáo chẩn đoán",
+        "previewLabel": "Xem trước nội dung báo cáo",
+        "send": "Gửi",
+        "sendReport": {
+          "button": "Gửi báo cáo chẩn đoán",
+          "description": "Gửi một lần báo cáo gồm nhật ký kỹ thuật đã lược bỏ thông tin nhận dạng, để giúp chúng tôi tìm ra nguyên nhân sự cố bạn gặp phải.",
+          "label": "Báo cáo chẩn đoán"
+        },
+        "sending": "Đang gửi…",
+        "sent": "Đã gửi báo cáo — mã tham chiếu {incidentId}",
+        "snapshotLabel": "Ảnh chụp trạng thái thiết bị",
+        "title": "Gửi báo cáo chẩn đoán?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Bố cục",
-      "toolbar": "Thanh công cụ"
+      "toolbar": "Thanh công cụ",
+      "spelling": "Chính tả"
     },
     "width": {
       "label": "Chiều rộng trình soạn thảo",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Hẹp",
         "medium": " Trung bình ",
-        "wide": "Rộng"
+        "wide": "Rộng",
+        "full": "Toàn bộ chiều rộng",
+        "normal": "Bình thường"
       },
       "error": "Không thể cập nhật chiều rộng trình soạn thảo"
     },
@@ -229,6 +261,11 @@
       "label": "Thanh công cụ định dạng cố định",
       "description": "Luôn hiển thị thanh công cụ phía trên trình soạn thảo",
       "error": "Không thể cập nhật chế độ thanh công cụ"
+    },
+    "spellCheck": {
+      "description": "Gạch chân các từ sai chính tả trong ghi chú và nhật ký",
+      "error": "Không cập nhật được kiểm tra chính tả",
+      "label": "Kiểm tra chính tả"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "Sử dụng lưu trữ",
-      "location": "Vị trí"
+      "location": "Vị trí",
+      "accountVaults": "Các kho trong tài khoản của bạn"
     },
     "loadingStorage": "Đang tải thông tin lưu trữ...",
     "signInStorage": "Đăng nhập để xem mức sử dụng lưu trữ",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "Lưu trữ gần đầy",
       "warningDescription": "Giải phóng bộ nhớ hoặc nâng cấp gói của bạn để tránh các sự cố đồng bộ."
+    },
+    "accountVaults": {
+      "activeHint": "Chuyển sang kho khác để xóa kho này.",
+      "cloudOnly": "Không có trên thiết bị này",
+      "delete": "Xóa",
+      "deleteBody": "Thao tác này xóa vĩnh viễn toàn bộ dữ liệu đã đồng bộ của kho này khỏi máy chủ Memry và không thể hoàn tác. Các tệp trên ổ đĩa của bạn không bị xóa.",
+      "deleteConfirm": "Xóa khỏi tài khoản",
+      "deleteFailed": "Không thể xóa kho",
+      "deleteTitle": "Xóa “{name}” khỏi tài khoản của bạn?",
+      "empty": "Chưa có kho nào được đồng bộ vào tài khoản của bạn.",
+      "itemsCount": "{count} mục"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "Không thể đóng kho",
       "failedToSwitchVault": "Không thể chuyển kho",
       "failedToUpdateConfig": "Không thể cập nhật cấu hình",
-      "failedToReindex": "Không thể lập chỉ mục lại"
+      "failedToReindex": "Không thể lập chỉ mục lại",
+      "failedToLoadTasks": "Không tải được công việc"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "Việc cần làm và hạn chót",
         "label": "Công việc"
+      },
+      "spatialCanvas": {
+        "description": "Bảng không gian để sắp xếp và liên kết ghi chú",
+        "label": "Bảng vẽ"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} đã bỏ qua",
         "title": "Nhập hoàn tất"
       },
-      "title": "Nhập từ {name}"
+      "title": "Nhập từ {name}",
+      "chooseDirectory": "Chọn thư mục…",
+      "folderKeepsAssets": "Hãy chọn thư mục khi ảnh nằm ngoài thư mục chứa ghi chú — các bản xuất thường để tệp phương tiện trong một thư mục dùng chung."
     },
     "header": {
       "subtitle": "Đưa ghi chú và công việc từ ứng dụng khác vào",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, other {# công việc}}",
       "withDueDate": "{count} có ngày",
       "withTags": "{count} đã gắn thẻ"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Đang tải…",
+      "subtitle": "Nhắc nhở xem lại hằng ngày và tùy chọn hộp thư đến.",
+      "title": "Hộp thư đến"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Một lời nhắc nhẹ nhàng mỗi ngày khi hộp thư đến của bạn chưa trống.",
+        "label": "Nhắc tôi xem lại hộp thư đến"
+      },
+      "error": "Không thể cập nhật lời nhắc.",
+      "group": "Nhắc nhở xem lại hằng ngày",
+      "test": {
+        "button": "Gửi thử",
+        "description": "Gửi lời nhắc ngay bây giờ để kiểm tra thông báo hệ thống của bạn.",
+        "label": "Thông báo thử",
+        "sent": "Đã gửi thông báo thử.",
+        "sentHint": "Nếu không thấy gì, hãy cho phép thông báo cho MemryNote trong cài đặt hệ thống của bạn.",
+        "unsupported": "Thiết bị này không hiển thị được thông báo trên máy tính."
+      },
+      "time": {
+        "description": "Giờ địa phương, trên từng thiết bị.",
+        "hourLabel": "Giờ",
+        "label": "Thời gian nhắc",
+        "minuteLabel": "Phút",
+        "periodLabel": "AM hoặc PM"
+      }
     }
   }
 }

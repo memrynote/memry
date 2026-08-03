@@ -16,9 +16,27 @@
       "willSync": "บันทึกจะซิงค์ไปยังคลาวด์",
       "renameFailed": "บันทึกล้มเหลวในการเปลี่ยนชื่อ",
       "toggleLocalOnlyFailed": "ล้มเหลวในการสลับเป็นสำหรับเครื่องนี้เท่านั้น",
-      "toggleFullWidthFailed": "ล้มเหลวในการสลับความกว้างเต็ม"
+      "toggleFullWidthFailed": "ล้มเหลวในการสลับความกว้างเต็ม",
+      "copyPathFailed": "คัดลอกเส้นทางไม่สำเร็จ",
+      "deleteFailed": "ลบโน้ตไม่สำเร็จ",
+      "moveFailed": "ย้ายโน้ตไม่สำเร็จ",
+      "moved": "ย้ายโน้ตแล้ว",
+      "openExternalFailed": "เปิดโน้ตไม่สำเร็จ",
+      "pathCopied": "คัดลอกเส้นทางแล้ว",
+      "revealFailed": "แสดงตำแหน่งโน้ตไม่สำเร็จ"
     },
-    "deleteDialogTitle": "{count, plural, one {ลบบันทึก} other {ลบ # บันทึก}}"
+    "deleteDialogTitle": "{count, plural, one {ลบบันทึก} other {ลบ # บันทึก}}",
+    "deleteConfirm": {
+      "cancel": "ยกเลิก",
+      "confirm": "ลบ",
+      "deleting": "กำลังลบ...",
+      "description": "คุณแน่ใจหรือไม่ว่าต้องการลบ \"{title}\"? การกระทำนี้ไม่สามารถย้อนกลับได้",
+      "title": "ลบโน้ต"
+    },
+    "itemsCount": "{count, plural, other {# รายการ}}",
+    "itemsCountFiltered": "{shown} จาก {total, plural, other {# รายการ}}",
+    "renameViewUnavailableForTags": "แท็กยังไม่รองรับการเปลี่ยนชื่อมุมมองที่บันทึกไว้",
+    "tagFilterLabel": "แท็ก = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "ลบ {count} บันทึก",
       "deleteSelectedItems": "ลบ {count} รายการ",
       "bookmark": "บุ๊กมาร์ก",
-      "removeFromBookmarks": "นำออกจากบุ๊กมาร์ก"
+      "removeFromBookmarks": "นำออกจากบุ๊กมาร์ก",
+      "applyTemplate": "ใช้เทมเพลต"
     },
     "deleteDialog": {
       "noteTitle": "ลบบันทึก",
@@ -83,7 +102,17 @@
       "export": "ส่งออก",
       "fullWidth": "ความกว้างเต็ม",
       "disableLocalOnly": "ปิดใช้งานเฉพาะเครื่อง",
-      "setLocalOnly": "ตั้งค่าเฉพาะเครื่อง"
+      "setLocalOnly": "ตั้งค่าเฉพาะเครื่อง",
+      "applyTemplate": "ใช้เทมเพลต",
+      "copyPath": "คัดลอกเส้นทาง",
+      "delete": "ลบโน้ต",
+      "find": "ค้นหา…",
+      "moreActions": "การดำเนินการเพิ่มเติม",
+      "moveToFolder": "ย้ายไปยังโฟลเดอร์…",
+      "openInDefaultApp": "เปิดในแอปพลิเคชันเริ่มต้น",
+      "rename": "เปลี่ยนชื่อ…",
+      "revealInFinder": "แสดงใน Finder",
+      "revealInSidebar": "แสดงในแถบนำทาง"
     },
     "breadcrumb": {
       "locationAria": "บันทึกตำแหน่ง",
@@ -235,7 +264,10 @@
     "essentials": "สิ่งจำเป็น",
     "setFolderDefault": "ตั้งค่าเป็นค่าเริ่มต้นของโฟลเดอร์",
     "useTemplate": "ใช้แม่แบบ",
-    "createNote": "สร้างบันทึก"
+    "createNote": "สร้างบันทึก",
+    "applyDescription": "แทนที่เนื้อหาของโน้ตนี้ด้วยแม่แบบ",
+    "applyTitle": "ใช้แม่แบบ",
+    "applyToNote": "ใช้แม่แบบ"
   },
   "exportDialog": {
     "title": "ส่งออกบันทึก",
@@ -352,7 +384,8 @@
       "addCondition": "เพิ่มเงื่อนไข",
       "addFilter": "เพิ่มตัวกรอง",
       "addGroup": "เพิ่มกลุ่ม",
-      "removeGroup": "นำกลุ่มออก"
+      "removeGroup": "นำกลุ่มออก",
+      "lockedConditionHint": "เงื่อนไขนี้กำหนดมุมมองปัจจุบัน จึงลบออกจากที่นี่ไม่ได้"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "ในตัว",
@@ -365,7 +398,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "ตารางบันทึก",
       "selectAll": "เลือกโน้ตทั้งหมด",
-      "selectRow": "เลือกโน้ต"
+      "selectRow": "เลือกโน้ต",
+      "kind": {
+        "Inbox": "กล่องขาเข้า",
+        "Note": "โน้ต",
+        "Task": "งาน"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "ค้นหาบันทึก...",
@@ -468,7 +506,13 @@
       "failedToLoadPdf": "ไม่สามารถโหลด PDF ได้: ",
       "download": "ดาวน์โหลด",
       "download2": "ดาวน์โหลด",
-      "noFileAttached": "ไม่มีไฟล์แนบ"
+      "noFileAttached": "ไม่มีไฟล์แนบ",
+      "alignCenter": "จัดกึ่งกลาง",
+      "alignLeft": "จัดชิดซ้าย",
+      "alignRight": "จัดชิดขวา",
+      "nextPage": "หน้าถัดไป",
+      "previousPage": "หน้าก่อนหน้า",
+      "resizePdf": "ปรับขนาด PDF"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "เปิดในแผงงาน",
@@ -530,7 +574,8 @@
       "failedToLoadTags": "ไม่สามารถโหลดแท็กได้",
       "noTagsYet": "ยังไม่มีแท็ก",
       "filterTags": "กรองแท็ก...",
-      "noMatchingTags": "ไม่มีแท็กที่ตรงกัน"
+      "noMatchingTags": "ไม่มีแท็กที่ตรงกัน",
+      "Uncategorized": "ไม่มีหมวดหมู่"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "วางที่นี่",
@@ -560,7 +605,8 @@
       "deleteTag": "ลบแท็ก",
       "recent": "ล่าสุด",
       "created": "สร้างเมื่อ",
-      "alphabetical": "ตามลำดับตัวอักษร"
+      "alphabetical": "ตามลำดับตัวอักษร",
+      "tasks": "งาน"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "เปลี่ยนชื่อแท็ก",
@@ -733,7 +779,9 @@
     "replyPlaceholder": "ตอบกลับ...",
     "resolve": "แก้ไขแล้ว",
     "sendAria": "ส่งความคิดเห็น",
-    "toolbarComment": "ความคิดเห็น"
+    "toolbarComment": "ความคิดเห็น",
+    "openAttachmentAria": "เปิดไฟล์แนบ {name}",
+    "openImageAria": "เปิดรูปภาพ {name}"
   },
   "dateMention": {
     "clear": "ล้าง",
@@ -743,5 +791,59 @@
     "remind": "เตือน",
     "time": "เวลา",
     "timeFormat": "รูปแบบเวลา"
+  },
+  "applyTemplateConfirm": {
+    "body": "แทนที่เฉพาะเนื้อหา",
+    "cancel": "ยกเลิก",
+    "description": "การใช้ \"{name}\" จะแทนที่เนื้อหาปัจจุบันของโน้ตนี้ การกระทำนี้ไม่สามารถย้อนกลับได้",
+    "failed": "ไม่สามารถใช้เทมเพลตได้",
+    "full": "แทนที่เนื้อหาและเพิ่มรายละเอียดของเทมเพลต",
+    "success": "ใช้เทมเพลตแล้ว",
+    "title": "แทนที่เนื้อหาโน้ต?"
+  },
+  "tagView": {
+    "moreActions": "การดำเนินการเพิ่มเติม",
+    "pin": {
+      "action": "ปักหมุด {count, plural, other {# โน้ต}} ไปยังแท็ก",
+      "failed": "ปักหมุดโน้ตไปยังแท็กไม่สำเร็จ",
+      "success": "ปักหมุด {count, plural, other {# โน้ต}} ไปยังแท็กแล้ว"
+    }
+  },
+  "tags": {
+    "hubTitle": "แท็ก",
+    "openHub": "เปิดศูนย์รวมแท็ก"
+  },
+  "tagsHub": {
+    "cancelCreate": "ยกเลิก",
+    "category": {
+      "delete": "ลบหมวดหมู่",
+      "deleteBody": "แท็กจะย้ายไปที่ “ไม่มีหมวดหมู่” และจะไม่ถูกลบ",
+      "deleteCancel": "ยกเลิก",
+      "deleteConfirm": "ลบ",
+      "deleteTitle": "ลบ {name}?",
+      "dragHandle": "ลากเพื่อจัดลำดับหมวดหมู่ใหม่",
+      "emptyHint": "ลากแท็กมาที่นี่",
+      "more": "ตัวเลือกหมวดหมู่",
+      "rename": "เปลี่ยนชื่อหมวดหมู่"
+    },
+    "categoryNamePlaceholder": "ชื่อหมวดหมู่",
+    "errors": {
+      "createCategoryFailed": "สร้างหมวดหมู่ไม่สำเร็จ",
+      "createTagCategorizeFailed": "สร้างแท็กแล้ว แต่ไม่สามารถเพิ่มเข้าหมวดหมู่ได้",
+      "createTagFailed": "สร้างแท็กไม่สำเร็จ",
+      "deleteCategoryFailed": "ลบหมวดหมู่ไม่สำเร็จ",
+      "loadFailed": "โหลดหมวดหมู่แท็กไม่สำเร็จ",
+      "renameCategoryFailed": "เปลี่ยนชื่อหมวดหมู่ไม่สำเร็จ",
+      "reorderFailed": "จัดลำดับแท็กใหม่ไม่สำเร็จ"
+    },
+    "loading": "กำลังโหลดแท็ก...",
+    "newCategory": "หมวดหมู่ใหม่",
+    "newTag": "แท็กใหม่",
+    "search": {
+      "empty": "ไม่มีหมวดหมู่หรือแท็กที่ตรงกับการค้นหาของคุณ",
+      "placeholder": "ค้นหาหมวดหมู่และแท็ก"
+    },
+    "tagNamePlaceholder": "ชื่อแท็ก",
+    "uncategorized": "ไม่มีหมวดหมู่"
   }
 }

@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "Downloaden {percent}%",
       "updateInstallingSubtitle": "MemryNote start automatisch opnieuw op.",
       "updateInstallingTitle": "Update installeren",
-      "updateRestart": "Opnieuw opstarten"
+      "updateRestart": "Opnieuw opstarten",
+      "feedbackPrivacyEmailOptional": "Je e-mailadres — alleen als je het invult, en alleen zodat we kunnen antwoorden",
+      "feedbackPrivacyEmailSignedIn": "Het e-mailadres van je account ({email}), zodat we kunnen antwoorden",
+      "feedbackPrivacyMessage": "Je bericht, precies zoals je het hebt geschreven",
+      "feedbackPrivacyNote": "Verder niets. Je notities blijven op je apparaat.",
+      "feedbackPrivacyPlan": "Je abonnement (free, Plus, Pro of Believer)",
+      "feedbackPrivacyTitle": "Wat er wordt verstuurd",
+      "feedbackPrivacyVersion": "App-versie en besturingssysteem",
+      "projects": "Projecten"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Formaat van dagpaneel wijzigen",
@@ -231,7 +239,8 @@
       "journal": "Journaal",
       "calendar": "Kalender",
       "inboxCapture": "Inbox vastleggen",
-      "tasks": "Taken"
+      "tasks": "Taken",
+      "tags": "Tags"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Niet-opgeslagen wijzigingen",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Er is iets misgegaan",
       "anErrorOccurredWhileRenderingThisTabContent": "Er is een fout opgetreden bij het weergeven van de inhoud van dit tabblad.",
-      "tryAgain": "Probeer het opnieuw"
+      "tryAgain": "Probeer het opnieuw",
+      "sendReport": "Diagnostisch rapport versturen"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Notitiepictogram"
@@ -352,7 +362,13 @@
       "downloadLocation": "Locatie",
       "changeLocation": "Wijzigen…",
       "download": "Downloaden",
-      "downloadFailed": "De kluis kon niet worden gedownload"
+      "downloadFailed": "De kluis kon niet worden gedownload",
+      "deleteFromAccount": "Verwijderen uit account",
+      "deleteVaultBody": "Hiermee worden alle gesynchroniseerde gegevens van deze kluis definitief van de servers van Memry verwijderd; dit kan niet ongedaan worden gemaakt. Je bestanden op schijf worden niet verwijderd.",
+      "deleteVaultConfirm": "Verwijderen uit account",
+      "deleteVaultFailed": "Kan kluis niet verwijderen",
+      "deleteVaultTitle": "“{name}” uit je account verwijderen?",
+      "removeVaultTitle": "“{name}” uit de lijst verwijderen?"
     },
     "componentsWindowControls": {
       "searchK": "Zoeken (⌘K)",
@@ -640,6 +656,45 @@
     "skip": "Deze versie overslaan"
   },
   "capture": {
-    "focusShortcut": "Vastlegveld focussen"
+    "focusShortcut": "Vastlegveld focussen",
+    "detailHint": "detail",
+    "focusHint": "Q",
+    "submit": "Vastleggen"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Kaart toevoegen",
+      "addCreateNote": "Notitie \"{query}\" maken",
+      "addCreateNoteEmpty": "Nieuwe notitie maken",
+      "addCreatedAt": "Gemaakt {date}",
+      "addEmpty": "Niets gevonden",
+      "addGroupEvents": "Evenementen",
+      "addGroupNotes": "Notities",
+      "addGroupTasks": "Taken",
+      "addOnCanvas": "Op canvas",
+      "addPlaceholder": "Zoek notities, taken en evenementen…",
+      "allDay": "De hele dag",
+      "createNoteFailed": "Kan notitie niet maken",
+      "deleted": "Item verwijderd",
+      "loading": "Laden…",
+      "open": "Openen in tabblad",
+      "openToEdit": "Open in tabblad om te bewerken",
+      "untitled": "Zonder titel"
+    },
+    "corruptScene": "Dit canvas kon niet worden gelezen. Bewerken is uitgeschakeld om gegevensverlies te voorkomen.",
+    "createFailed": "Kan canvas niet maken",
+    "disabledBody": "Dit tabblad hoort bij een functie die op dit apparaat niet is ingeschakeld.",
+    "disabledTitle": "Canvas is niet ingeschakeld",
+    "empty": "Nog geen canvassen",
+    "libraryStoreFailed": "Kan je vormenbibliotheek niet opslaan. Recente wijzigingen gaan mogelijk verloren.",
+    "loadFailed": "Kan canvassen niet laden",
+    "loading": "Canvassen laden…",
+    "newCanvas": "Nieuw canvas",
+    "notFound": "Dit canvas kon niet worden gevonden",
+    "openFailed": "Kan canvas niet openen",
+    "savedToVault": "Alle wijzigingen worden automatisch in je kluis opgeslagen",
+    "sectionLabel": "Canvassen",
+    "tooLargeToSync": "Dit canvas is te groot om te synchroniseren. Het is opgeslagen op dit apparaat, maar bereikt je andere apparaten pas als het kleiner is.",
+    "untitled": "Canvas zonder titel"
   }
 }

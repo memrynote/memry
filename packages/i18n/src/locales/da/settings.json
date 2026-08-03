@@ -28,7 +28,8 @@
         "properties": "Egenskaber",
         "commandLine": "Kommandolinje",
         "features": "Funktioner",
-        "import": "Import"
+        "import": "Import",
+        "inbox": "Indbakke"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Downloader {percent}%",
         "downloaded": "Genstart for at installere",
         "idle": "Se efter opdateringer"
+      },
+      "autoCheck": {
+        "description": "Søg efter nye versioner ved opstart og løbende, mens appen er åben.",
+        "error": "Indstillingen for automatisk søgning kunne ikke opdateres",
+        "label": "Søg automatisk efter opdateringer"
+      },
+      "autoDownload": {
+        "description": "Hent og installér nye versioner i baggrunden uden at spørge.",
+        "error": "Indstillingen for automatisk hentning kunne ikke opdateres",
+        "label": "Hent opdateringer automatisk"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Del anonyme brugsmålinger",
         "description": "Det er kun anon-metrikker - intet noteindhold, søgeforespørgsler, filstier, e-mails eller rå-id'er sendes nogensinde.",
         "error": "Telemetriindstillingen kunne ikke opdateres"
+      },
+      "diagnostics": {
+        "building": "Forbereder rapport…",
+        "consent": "Vil du sende en engangs-diagnostikrapport? Den indeholder kun maskerede tekniske logfiler — intet noteindhold.",
+        "error": "Diagnostikrapporten kunne ikke sendes",
+        "notNow": "Ikke nu",
+        "previewError": "Diagnostikrapporten kunne ikke forberedes",
+        "previewLabel": "Se rapportens indhold",
+        "send": "Send",
+        "sendReport": {
+          "button": "Send diagnostikrapport",
+          "description": "Send en engangsrapport med maskerede tekniske logfiler, så vi kan finde årsagen til det problem, du løb ind i.",
+          "label": "Diagnostikrapport"
+        },
+        "sending": "Sender…",
+        "sent": "Rapporten er sendt — reference {incidentId}",
+        "snapshotLabel": "Øjebliksbillede af enheden",
+        "title": "Vil du sende en diagnostikrapport?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Layout",
-      "toolbar": "Værktøjslinje"
+      "toolbar": "Værktøjslinje",
+      "spelling": "Stavning"
     },
     "width": {
       "label": "Redaktørbredde",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Smal",
         "medium": "Medium",
-        "wide": "Bred"
+        "wide": "Bred",
+        "full": "Fuld bredde",
+        "normal": "Normal"
       },
       "error": "Kunne ikke opdatere editorens bredde"
     },
@@ -229,6 +261,11 @@
       "label": "Sticky Formateringsværktøjslinje",
       "description": "Vis altid værktøjslinjen over editoren",
       "error": "Kunne ikke opdatere værktøjslinjetilstand"
+    },
+    "spellCheck": {
+      "description": "Understreg stavefejl i noter og journaler",
+      "error": "Stavekontrollen kunne ikke opdateres",
+      "label": "Kontrollér stavning"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "Opbevaringsbrug",
-      "location": "Beliggenhed"
+      "location": "Beliggenhed",
+      "accountVaults": "Bokse på din konto"
     },
     "loadingStorage": "Indlæser lageroplysninger...",
     "signInStorage": "Log ind for at se lagerforbrug",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "Lageret er næsten fyldt",
       "warningDescription": "Frigør plads eller opgrader din plan for at undgå synkroniseringsproblemer."
+    },
+    "accountVaults": {
+      "activeHint": "Skift til en anden boks for at slette denne.",
+      "cloudOnly": "Ikke på denne enhed",
+      "delete": "Slet",
+      "deleteBody": "Alle synkroniserede data for denne boks fjernes permanent fra Memrys servere. Denne handling kan ikke fortrydes. Dine filer på disken bliver ikke slettet.",
+      "deleteConfirm": "Slet fra konto",
+      "deleteFailed": "Boksen kunne ikke slettes",
+      "deleteTitle": "Vil du slette “{name}” fra din konto?",
+      "empty": "Ingen bokse er synkroniseret til din konto endnu.",
+      "itemsCount": "{count} elementer"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "Kunne ikke lukke boks",
       "failedToSwitchVault": "Kunne ikke skifte boks",
       "failedToUpdateConfig": "Konfigurationen kunne ikke opdateres",
-      "failedToReindex": "Kunne ikke genindeksere"
+      "failedToReindex": "Kunne ikke genindeksere",
+      "failedToLoadTasks": "Opgaverne kunne ikke indlæses"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "Gøremål og forfaldsdatoer",
         "label": "Opgaver"
+      },
+      "spatialCanvas": {
+        "description": "Rumlige tavler til at arrangere og forbinde noter",
+        "label": "Canvas"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} sprunget over",
         "title": "Import fuldført"
       },
-      "title": "Importér fra {name}"
+      "title": "Importér fra {name}",
+      "chooseDirectory": "Vælg mappe…",
+      "folderKeepsAssets": "Vælg mappen, når billederne ligger uden for noternes egen mappe — ved eksport ligger medier ofte i én fælles mappe."
     },
     "header": {
       "subtitle": "Hent dine noter og opgaver ind fra andre apps",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, one {# opgave} other {# opgaver}}",
       "withDueDate": "{count} dateret",
       "withTags": "{count} tagget"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Indlæser…",
+      "subtitle": "Daglig påmindelse om gennemgang og indstillinger for indbakken.",
+      "title": "Indbakke"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Et venligt dagligt puf, når der ligger noget i din indbakke.",
+        "label": "Påmind mig om at gennemgå min indbakke"
+      },
+      "error": "Påmindelsen kunne ikke opdateres.",
+      "group": "Daglig påmindelse om gennemgang",
+      "test": {
+        "button": "Send test",
+        "description": "Send påmindelsen nu for at tjekke dine systemnotifikationer.",
+        "label": "Testnotifikation",
+        "sent": "Testnotifikationen er sendt.",
+        "sentHint": "Hvis der ikke dukker noget op, skal du tillade notifikationer for MemryNote i dine systemindstillinger.",
+        "unsupported": "Denne enhed kan ikke vise skrivebordsnotifikationer."
+      },
+      "time": {
+        "description": "Lokal tid, på hver enhed.",
+        "hourLabel": "Time",
+        "label": "Tidspunkt for påmindelse",
+        "minuteLabel": "Minut",
+        "periodLabel": "AM eller PM"
+      }
     }
   }
 }

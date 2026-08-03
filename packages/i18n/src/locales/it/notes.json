@@ -16,9 +16,27 @@
       "willSync": "La nota verrà sincronizzata sul cloud",
       "renameFailed": "Impossibile rinominare la nota",
       "toggleLocalOnlyFailed": "Impossibile attivare/disattivare solo locale",
-      "toggleFullWidthFailed": "Impossibile attivare/disattivare la larghezza intera"
+      "toggleFullWidthFailed": "Impossibile attivare/disattivare la larghezza intera",
+      "copyPathFailed": "Impossibile copiare il percorso",
+      "deleteFailed": "Impossibile eliminare la nota",
+      "moveFailed": "Impossibile spostare la nota",
+      "moved": "Nota spostata",
+      "openExternalFailed": "Impossibile aprire la nota",
+      "pathCopied": "Percorso copiato",
+      "revealFailed": "Impossibile mostrare la nota"
     },
-    "deleteDialogTitle": "{count, plural, one {Elimina nota} other {Elimina le note #}}"
+    "deleteDialogTitle": "{count, plural, one {Elimina nota} other {Elimina le note #}}",
+    "deleteConfirm": {
+      "cancel": "Annulla",
+      "confirm": "Elimina",
+      "deleting": "Eliminazione...",
+      "description": "Vuoi davvero eliminare \"{title}\"? Questa azione non può essere annullata.",
+      "title": "Elimina nota"
+    },
+    "itemsCount": "{count, plural, one {# elemento} many {# elementi} other {# elementi}}",
+    "itemsCountFiltered": "{shown} di {total, plural, one {# elemento} many {# elementi} other {# elementi}}",
+    "renameViewUnavailableForTags": "La rinomina delle viste salvate non è ancora disponibile per i tag",
+    "tagFilterLabel": "tag = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "Elimina le note {count}",
       "deleteSelectedItems": "Elimina elementi {count}",
       "bookmark": "Segnalibro",
-      "removeFromBookmarks": "Rimuovi dai segnalibri"
+      "removeFromBookmarks": "Rimuovi dai segnalibri",
+      "applyTemplate": "Applica modello"
     },
     "deleteDialog": {
       "noteTitle": "Elimina nota",
@@ -83,7 +102,17 @@
       "export": "Esportazione",
       "fullWidth": "Tutta la larghezza",
       "disableLocalOnly": "Disabilita solo locale",
-      "setLocalOnly": "Imposta solo locale"
+      "setLocalOnly": "Imposta solo locale",
+      "applyTemplate": "Applica modello",
+      "copyPath": "Copia percorso",
+      "delete": "Elimina nota",
+      "find": "Trova…",
+      "moreActions": "Altre azioni",
+      "moveToFolder": "Sposta nella cartella…",
+      "openInDefaultApp": "Apri nell'app predefinita",
+      "rename": "Rinomina…",
+      "revealInFinder": "Mostra nel Finder",
+      "revealInSidebar": "Mostra nella navigazione"
     },
     "breadcrumb": {
       "locationAria": "Nota la posizione",
@@ -235,7 +264,10 @@
     "essentials": "Elementi essenziali",
     "setFolderDefault": "Imposta come cartella predefinita",
     "useTemplate": "Usa modello",
-    "createNote": "Crea nota"
+    "createNote": "Crea nota",
+    "applyDescription": "Sostituisci il contenuto di questa nota con un modello",
+    "applyTitle": "Applica un modello",
+    "applyToNote": "Applica modello"
   },
   "exportDialog": {
     "title": "Nota sull'esportazione",
@@ -352,7 +384,8 @@
       "addCondition": "Aggiungi condizione",
       "addFilter": "Aggiungi filtro",
       "addGroup": "Aggiungi gruppo",
-      "removeGroup": "Rimuovi gruppo"
+      "removeGroup": "Rimuovi gruppo",
+      "lockedConditionHint": "Questa condizione definisce la vista attuale e non può essere rimossa da qui."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Integrato",
@@ -365,7 +398,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Tabella delle note",
       "selectAll": "Seleziona tutte le note",
-      "selectRow": "Seleziona nota"
+      "selectRow": "Seleziona nota",
+      "kind": {
+        "Inbox": "Posta in arrivo",
+        "Note": "Nota",
+        "Task": "Attività"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Cerca note...",
@@ -468,7 +506,13 @@
       "failedToLoadPdf": "Impossibile caricare il PDF: ",
       "download": "Scarica",
       "download2": "Scarica",
-      "noFileAttached": "Nessun file allegato"
+      "noFileAttached": "Nessun file allegato",
+      "alignCenter": "Allinea al centro",
+      "alignLeft": "Allinea a sinistra",
+      "alignRight": "Allinea a destra",
+      "nextPage": "Pagina successiva",
+      "previousPage": "Pagina precedente",
+      "resizePdf": "Ridimensiona PDF"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Apri nel pannello delle attività",
@@ -530,7 +574,8 @@
       "failedToLoadTags": "Impossibile caricare i tag",
       "noTagsYet": "Nessun tag ancora",
       "filterTags": "Filtra tag...",
-      "noMatchingTags": "Nessun tag corrispondente"
+      "noMatchingTags": "Nessun tag corrispondente",
+      "Uncategorized": "Senza categoria"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Lasciami qui",
@@ -560,7 +605,8 @@
       "deleteTag": "Elimina etichetta",
       "recent": "Recente",
       "created": "Creato",
-      "alphabetical": "Alfabetico"
+      "alphabetical": "Alfabetico",
+      "tasks": "ATTIVITÀ"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Rinomina etichetta",
@@ -733,7 +779,9 @@
     "replyPlaceholder": "Rispondi...",
     "resolve": "Risolvi",
     "sendAria": "Invia commento",
-    "toolbarComment": "Commenta"
+    "toolbarComment": "Commenta",
+    "openAttachmentAria": "Apri l'allegato {name}",
+    "openImageAria": "Apri l'immagine {name}"
   },
   "dateMention": {
     "clear": "Cancella",
@@ -743,5 +791,59 @@
     "remind": "Ricorda",
     "time": "Ora",
     "timeFormat": "Formato ora"
+  },
+  "applyTemplateConfirm": {
+    "body": "Sostituisci solo il contenuto",
+    "cancel": "Annulla",
+    "description": "Applicando \"{name}\" il contenuto attuale di questa nota verrà sostituito. L'operazione non può essere annullata.",
+    "failed": "Impossibile applicare il modello",
+    "full": "Sostituisci contenuto e dettagli del modello",
+    "success": "Modello applicato",
+    "title": "Sostituire il contenuto della nota?"
+  },
+  "tagView": {
+    "moreActions": "Altre azioni",
+    "pin": {
+      "action": "Fissa {count, plural, one {# nota} many {# note} other {# note}} al tag",
+      "failed": "Impossibile fissare la nota al tag",
+      "success": "{count, plural, one {# nota fissata} many {# note fissate} other {# note fissate}} al tag"
+    }
+  },
+  "tags": {
+    "hubTitle": "Tag",
+    "openHub": "Apri l'hub dei tag"
+  },
+  "tagsHub": {
+    "cancelCreate": "Annulla",
+    "category": {
+      "delete": "Elimina categoria",
+      "deleteBody": "I tag passeranno a Senza categoria. Non verranno eliminati.",
+      "deleteCancel": "Annulla",
+      "deleteConfirm": "Elimina",
+      "deleteTitle": "Eliminare {name}?",
+      "dragHandle": "Trascina per riordinare la categoria",
+      "emptyHint": "Trascina qui un tag",
+      "more": "Opzioni della categoria",
+      "rename": "Rinomina categoria"
+    },
+    "categoryNamePlaceholder": "Nome della categoria",
+    "errors": {
+      "createCategoryFailed": "Impossibile creare la categoria",
+      "createTagCategorizeFailed": "Tag creato, ma non è stato possibile aggiungerlo alla categoria",
+      "createTagFailed": "Impossibile creare il tag",
+      "deleteCategoryFailed": "Impossibile eliminare la categoria",
+      "loadFailed": "Impossibile caricare le categorie dei tag",
+      "renameCategoryFailed": "Impossibile rinominare la categoria",
+      "reorderFailed": "Impossibile riordinare i tag"
+    },
+    "loading": "Caricamento tag...",
+    "newCategory": "Nuova categoria",
+    "newTag": "Nuovo tag",
+    "search": {
+      "empty": "Nessuna categoria o tag corrisponde alla ricerca",
+      "placeholder": "Cerca categorie e tag"
+    },
+    "tagNamePlaceholder": "Nome tag",
+    "uncategorized": "Senza categoria"
   }
 }

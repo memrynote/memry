@@ -34,7 +34,8 @@
     "createAnother": "Erstellen Sie ein anderes",
     "delete": "Aufgabe löschen",
     "created": "{date} erstellt",
-    "reminder": "Erinnerung"
+    "reminder": "Erinnerung",
+    "tags": "Tags"
   },
   "filters": {
     "filter": "Filtern",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Aufgabe schnell hinzufügen",
-    "focusDescription": "Fokus, schnelle Eingabe hinzufügen"
+    "focusDescription": "Fokus, schnelle Eingabe hinzufügen",
+    "placeholder": "Aufgabe hinzufügen…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Aufgabendetails schließen",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Dieses Projekt hat keine Aufgaben und wird dauerhaft gelöscht.",
       "thisActionCannotBeUndone": "Diese Aktion kann nicht rückgängig gemacht werden.",
       "cancel": "Abbrechen",
-      "deleteProject": "Projekt löschen"
+      "deleteProject": "Projekt löschen",
+      "notesEventsAndFilesStayNotice": "Aufgaben in diesem Projekt werden gelöscht. Deine Notizen, Termine und Dateien bleiben in deinem Tresor."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Aufgabe löschen?",
@@ -357,7 +360,9 @@
       "due": "Fällig",
       "dueDate": "Fälligkeitsdatum",
       "search": "suchen",
-      "clearAll": "Alles löschen"
+      "clearAll": "Alles löschen",
+      "tags": "Tags",
+      "tagsIs": "Tags sind"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Nach Fälligkeitsdatum filtern",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "Keine anstehenden Aufgaben",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Hier werden Aufgaben angezeigt, die in den nächsten 7 Tagen fällig sind. Planen Sie Ihre Woche, indem Sie einige Aufgaben hinzufügen.",
       "addTask2": "Aufgabe hinzufügen"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "sind",
+      "search": "Suchen...",
+      "selected": "ausgewählt",
+      "tags": "Tags"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "Erinnerung konnte nicht festgelegt werden",
       "updateFailed": "Erinnerung konnte nicht aktualisiert werden",
       "updated": "Erinnerung aktualisiert"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Zum Projekt hinzufügen",
+    "loading": "Projekte werden geladen…",
+    "menuLabel": "Zum Projekt hinzufügen",
+    "noProjects": "Noch keine Projekte",
+    "toastError": "Hinzufügen zum Projekt fehlgeschlagen",
+    "toastSuccess": "Zu {name} hinzugefügt"
+  },
+  "itemProjects": {
+    "openProject": "Projekt {name} öffnen"
+  },
+  "projectHome": {
+    "emptyBody": "Wähle in der Seitenleiste ein Projekt, um seine Startseite zu öffnen.",
+    "emptyTitle": "Kein Projekt ausgewählt",
+    "loadError": "Projektdetails konnten nicht geladen werden",
+    "overview": {
+      "clear": "Übersicht entfernen",
+      "clearError": "Die Übersichtsnotiz konnte nicht entfernt werden",
+      "create": "Übersichtsnotiz erstellen",
+      "createError": "Die Übersichtsnotiz konnte nicht erstellt werden",
+      "defaultTitle": "Übersicht",
+      "loadError": "Die Übersichtsnotiz konnte nicht geladen werden",
+      "placeholder": "Schreib eine Übersicht für dieses Projekt…",
+      "saveError": "Die Übersichtsnotiz konnte nicht gespeichert werden",
+      "sectionTitle": "Übersicht"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Dateien anhängen",
+      "fileError": "{name} konnte nicht verknüpft werden",
+      "fileErrorGeneric": "Die Dateien konnten nicht importiert werden",
+      "filesAdded": "{count, plural, one {# Datei zum Projekt hinzugefügt} other {# Dateien zum Projekt hinzugefügt}}",
+      "label": "Zu {name} hinzufügen",
+      "linkAdded": "Link zum Projekt hinzugefügt",
+      "linkError": "Der Link konnte nicht gespeichert werden",
+      "placeholder": "Zu {name} hinzufügen — Aufgabe tippen, Notiz festhalten oder Link einfügen…"
+    },
+    "groups": {
+      "older": "Älter",
+      "past": "Vergangen",
+      "today": "Heute",
+      "tomorrow": "Morgen",
+      "upcoming": "Anstehend",
+      "yesterday": "Gestern"
+    },
+    "header": {
+      "archiveProject": "Projekt archivieren",
+      "editProject": "Projekt bearbeiten",
+      "menu": "Projektaktionen",
+      "toggleRail": "Projektdetails ein- oder ausblenden"
+    },
+    "rail": {
+      "addNote": "Notiz hinzufügen",
+      "created": "Erstellt",
+      "details": "Details",
+      "doneOf": "{done} von {total} erledigt",
+      "linked": "Verknüpft",
+      "linkedSummary": "{notes, plural, one {# Notiz} other {# Notizen}} · {files, plural, one {# Datei} other {# Dateien}} · {events, plural, one {# Termin} other {# Termine}}",
+      "overdue": "Überfällig",
+      "overview": "Übersicht",
+      "pinError": "Die Notiz konnte nicht zur Übersicht hinzugefügt werden",
+      "progress": "Fortschritt",
+      "unpinError": "Die Notiz konnte nicht aus der Übersicht entfernt werden",
+      "unpinNote": "{title} aus der Übersicht entfernen",
+      "updated": "Aktualisiert"
+    },
+    "rows": {
+      "openEvent": "Termin {title} öffnen",
+      "openFile": "Datei {title} öffnen",
+      "openNote": "Notiz {title} öffnen",
+      "openTask": "Aufgabe {title} öffnen",
+      "setNoteIcon": "Symbol für {title} festlegen"
+    },
+    "sections": {
+      "add": "Zu {title} hinzufügen",
+      "emptyEvents": "Noch keine Termine verknüpft.",
+      "emptyFiles": "Noch keine Dateien verknüpft.",
+      "emptyNotes": "Noch keine Notizen verknüpft.",
+      "emptyTasks": "Noch keine Aufgaben.",
+      "newNoteError": "Die Notiz konnte nicht hinzugefügt werden",
+      "newNoteTitle": "Unbenannte Notiz",
+      "viewAll": "Alle anzeigen"
+    },
+    "tabs": {
+      "events": "Termine",
+      "files": "Dateien",
+      "label": "Projektansichten",
+      "notes": "Notizen",
+      "overview": "Übersicht",
+      "tasks": "Aufgaben"
     }
   }
 }

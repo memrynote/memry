@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "Et synkroniseringselement kunne ikke bekræftes og er blevet sat i karantæne af sikkerhedsmæssige årsager.",
     "securityQuarantineRetry": "Et synkroniseringselement mislykkedes signaturbekræftelsen og vil blive forsøgt igen.",
     "certificatePinPaused": "Sikker forbindelse til synkroniseringsserver kunne ikke bekræftes. Synkronisering er blevet sat på pause for din beskyttelse.",
-    "paymentRequired": "Et betalt Sync-abonnement kræves for at bruge hostet krypteret synkronisering."
+    "paymentRequired": "Et betalt Sync-abonnement kræves for at bruge hostet krypteret synkronisering.",
+    "attachmentUploadFailed": "Den vedhæftede fil \"{filename}\" kunne ikke synkroniseres. Den bliver på denne enhed.",
+    "fileTooLarge": "Denne fil er større, end din plan tillader. Opgrader din plan for at synkronisere større filer.",
+    "vaultRecovered": "Boksnøglen er gendannet. Synkroniseringen genoptages."
   }
 }

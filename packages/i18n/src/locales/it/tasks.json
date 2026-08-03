@@ -34,7 +34,8 @@
     "createAnother": "Creane un altro",
     "delete": "Elimina attività",
     "created": "Creato {date}",
-    "reminder": "Promemoria"
+    "reminder": "Promemoria",
+    "tags": "Tag"
   },
   "filters": {
     "filter": "Filtra",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Attività di aggiunta rapida",
-    "focusDescription": "Metti a fuoco l'aggiunta rapida di input"
+    "focusDescription": "Metti a fuoco l'aggiunta rapida di input",
+    "placeholder": "Aggiungi un'attività…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Chiudi i dettagli dell'attività",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Questo progetto non ha attività e verrà eliminato definitivamente.",
       "thisActionCannotBeUndone": "Questa azione non può essere annullata.",
       "cancel": "Annulla",
-      "deleteProject": "Elimina progetto"
+      "deleteProject": "Elimina progetto",
+      "notesEventsAndFilesStayNotice": "Le attività di questo progetto vengono eliminate. Le tue note, gli eventi e i file restano nel tuo vault."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Eliminare l'attività?",
@@ -357,7 +360,9 @@
       "due": "Dovuto",
       "dueDate": "data di scadenza",
       "search": "ricerca",
-      "clearAll": "Cancella tutto"
+      "clearAll": "Cancella tutto",
+      "tags": "tag",
+      "tagsIs": "I tag sono"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Filtra per data di scadenza",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "Nessuna attività imminente",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Le attività in scadenza nei prossimi 7 giorni verranno visualizzate qui. Pianifica la tua settimana aggiungendo alcune attività.",
       "addTask2": "Aggiungi attività"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "sono",
+      "search": "Cerca...",
+      "selected": "selezionati",
+      "tags": "Tag"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "Impossibile impostare il promemoria",
       "updateFailed": "Impossibile aggiornare il promemoria",
       "updated": "Promemoria aggiornato"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Aggiungi al progetto",
+    "loading": "Caricamento progetti…",
+    "menuLabel": "Aggiungi al progetto",
+    "noProjects": "Nessun progetto ancora",
+    "toastError": "Impossibile aggiungere al progetto",
+    "toastSuccess": "Aggiunto a {name}"
+  },
+  "itemProjects": {
+    "openProject": "Apri il progetto {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Scegli un progetto dalla barra laterale per aprirne la home.",
+    "emptyTitle": "Nessun progetto selezionato",
+    "loadError": "Impossibile caricare i dettagli del progetto",
+    "overview": {
+      "clear": "Rimuovi panoramica",
+      "clearError": "Impossibile rimuovere la nota di panoramica",
+      "create": "Crea nota di panoramica",
+      "createError": "Impossibile creare la nota di panoramica",
+      "defaultTitle": "Panoramica",
+      "loadError": "Impossibile caricare la nota di panoramica",
+      "placeholder": "Scrivi una panoramica di questo progetto…",
+      "saveError": "Impossibile salvare la nota di panoramica",
+      "sectionTitle": "Panoramica"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Allega file",
+      "fileError": "Impossibile collegare {name}",
+      "fileErrorGeneric": "Impossibile importare i file",
+      "filesAdded": "{count, plural, one {# file aggiunto al progetto} many {# file aggiunti al progetto} other {# file aggiunti al progetto}}",
+      "label": "Aggiungi a {name}",
+      "linkAdded": "Link aggiunto al progetto",
+      "linkError": "Impossibile salvare il link",
+      "placeholder": "Aggiungi a {name} — scrivi un'attività, annota un pensiero o incolla un link…"
+    },
+    "groups": {
+      "older": "Meno recenti",
+      "past": "Passati",
+      "today": "Oggi",
+      "tomorrow": "Domani",
+      "upcoming": "In arrivo",
+      "yesterday": "Ieri"
+    },
+    "header": {
+      "archiveProject": "Archivia progetto",
+      "editProject": "Modifica progetto",
+      "menu": "Azioni del progetto",
+      "toggleRail": "Mostra o nascondi i dettagli del progetto"
+    },
+    "rail": {
+      "addNote": "Aggiungi nota",
+      "created": "Creato",
+      "details": "Dettagli",
+      "doneOf": "{done} di {total} completate",
+      "linked": "Collegati",
+      "linkedSummary": "{notes, plural, one {# nota} many {# note} other {# note}} · {files, plural, one {# file} many {# file} other {# file}} · {events, plural, one {# evento} many {# eventi} other {# eventi}}",
+      "overdue": "In ritardo",
+      "overview": "Panoramica",
+      "pinError": "Impossibile aggiungere la nota alla panoramica",
+      "progress": "Avanzamento",
+      "unpinError": "Impossibile rimuovere la nota dalla panoramica",
+      "unpinNote": "Rimuovi {title} dalla panoramica",
+      "updated": "Aggiornato"
+    },
+    "rows": {
+      "openEvent": "Apri l'evento {title}",
+      "openFile": "Apri il file {title}",
+      "openNote": "Apri la nota {title}",
+      "openTask": "Apri l'attività {title}",
+      "setNoteIcon": "Imposta l'icona per {title}"
+    },
+    "sections": {
+      "add": "Aggiungi a {title}",
+      "emptyEvents": "Nessun evento ancora collegato.",
+      "emptyFiles": "Nessun file ancora collegato.",
+      "emptyNotes": "Nessuna nota ancora collegata.",
+      "emptyTasks": "Nessuna attività ancora.",
+      "newNoteError": "Impossibile aggiungere la nota",
+      "newNoteTitle": "Nota senza titolo",
+      "viewAll": "Visualizza tutto"
+    },
+    "tabs": {
+      "events": "Eventi",
+      "files": "File",
+      "label": "Viste del progetto",
+      "notes": "Note",
+      "overview": "Panoramica",
+      "tasks": "Attività"
     }
   }
 }

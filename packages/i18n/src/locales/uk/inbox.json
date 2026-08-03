@@ -314,7 +314,10 @@
       "rdquo": "rdquo;",
       "captureAnyway": "Захопити все одно",
       "focusShortcut": "Фокус на полі захоплення",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Захопити посилання",
+      "captureNote": "Захопити нотатку",
+      "placeholder": "Швидке захоплення — вставте посилання, занотуйте думку…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Вибрати папку",
@@ -466,7 +469,12 @@
       "cancelRecording": "Скасувати запис",
       "cancel": "Скасувати",
       "stopRecording": "Зупинити запис",
-      "stop": "Стоп"
+      "stop": "Стоп",
+      "enableMicInSettings": "Увімкніть доступ до мікрофона в системних налаштуваннях і спробуйте ще раз.",
+      "failedToStart": "Не вдалося почати запис",
+      "microphoneAccessDenied": "Доступ до мікрофона заборонено",
+      "noMicrophoneFound": "Мікрофон не знайдено",
+      "recordingError": "Сталася помилка запису"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "Не вдалося захопити файл",
       "fileCaptureFailed": "Не вдалося захопити файл",
       "failedToCaptureAudio": "Не вдалося захопити аудіо",
-      "failedToCaptureVoice": "Не вдалося захопити голос"
+      "failedToCaptureVoice": "Не вдалося захопити голос",
+      "failedToLoadInboxPreferences": "Не вдалося завантажити налаштування вхідних",
+      "failedToUpdateInboxPreferences": "Не вдалося оновити налаштування вхідних"
     },
     "toasts": {
       "inboxRefreshed": "Вхідні оновлено"
@@ -516,5 +526,10 @@
     "task": "Завдання",
     "time": "Час",
     "title": "Перетворити"
+  },
+  "reviewNudge": {
+    "action": "Відкрити вхідні",
+    "description": "Спокійно опрацюйте сьогоднішні захоплення за один раз.",
+    "title": "{count, plural, one {Час переглянути # елемент} few {Час переглянути # елементи} many {Час переглянути # елементів} other {Час переглянути # елемента}}"
   }
 }

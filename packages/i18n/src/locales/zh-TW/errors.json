@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "無法驗證同步項目，已為安全起見將其隔離。",
     "securityQuarantineRetry": "同步項目簽名驗證失敗，將重新嘗試。",
     "certificatePinPaused": "無法驗證與同步伺服器的安全連線。為了保護您，同步已暫停。",
-    "paymentRequired": "使用託管加密同步需要付費的同步方案。"
+    "paymentRequired": "使用託管加密同步需要付費的同步方案。",
+    "attachmentUploadFailed": "無法同步附件「{filename}」，它會留在此裝置上。",
+    "fileTooLarge": "此檔案超過您方案允許的大小。升級方案即可同步更大的檔案。",
+    "vaultRecovered": "保險庫金鑰已還原，同步將會繼續。"
   }
 }

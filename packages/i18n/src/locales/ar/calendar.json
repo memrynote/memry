@@ -67,7 +67,8 @@
     "title": "هل تريد حذف الحدث؟",
     "local-description": "سيتم حذف \"{title}\" نهائيًا. لا يمكن التراجع عن هذا الإجراء.",
     "google-bound-description": "ستتم إزالة \"{title}\" من memrynote وتقويم Google. لا يمكن التراجع عن هذا الإجراء.",
-    "context-menu-delete-label": "حذف الحدث"
+    "context-menu-delete-label": "حذف الحدث",
+    "context-menu-add-to-project": "إضافة إلى مشروع"
   },
   "promote-dialog": {
     "aria": "تحرير حدث التقويم الخارجي",
@@ -181,6 +182,7 @@
     "placeholder": "ابحث في الأحداث والمهام والتذكيرات…"
   },
   "undo": {
-    "moveEvent": "نقل الحدث"
+    "moveEvent": "نقل الحدث",
+    "moveTask": "إعادة جدولة المهمة"
   }
 }

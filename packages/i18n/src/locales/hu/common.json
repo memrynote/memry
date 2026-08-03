@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "Letöltés {percent}%",
       "updateInstallingSubtitle": "A memrynote automatikusan újraindul.",
       "updateInstallingTitle": "Frissítés telepítése",
-      "updateRestart": "Újraindítás"
+      "updateRestart": "Újraindítás",
+      "feedbackPrivacyEmailOptional": "Az e-mail-címed — csak ha megadod, és csak azért, hogy válaszolni tudjunk",
+      "feedbackPrivacyEmailSignedIn": "A fiókod e-mail-címe ({email}), hogy válaszolni tudjunk",
+      "feedbackPrivacyMessage": "Az üzeneted, pontosan úgy, ahogy megírtad",
+      "feedbackPrivacyNote": "Semmi más. A jegyzeteid az eszközödön maradnak.",
+      "feedbackPrivacyPlan": "A csomagod (free, Plus, Pro vagy Believer)",
+      "feedbackPrivacyTitle": "Mit küldünk el",
+      "feedbackPrivacyVersion": "Az alkalmazás verziója és az operációs rendszer",
+      "projects": "Projektek"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "A Nap panel átméretezése",
@@ -231,7 +239,8 @@
       "journal": "Journal",
       "calendar": "Naptár",
       "inboxCapture": "Beérkezett üzenetek rögzítése",
-      "tasks": "Feladatok"
+      "tasks": "Feladatok",
+      "tags": "Címkék"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Nem mentett módosítások",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Valami elromlott",
       "anErrorOccurredWhileRenderingThisTabContent": "Hiba történt a lap tartalmának megjelenítésekor.",
-      "tryAgain": "Próbáld újra"
+      "tryAgain": "Próbáld újra",
+      "sendReport": "Diagnosztikai jelentés küldése"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Megjegyzés ikonra"
@@ -352,7 +362,13 @@
       "downloadLocation": "Hely",
       "changeLocation": "Módosítás…",
       "download": "Letöltés",
-      "downloadFailed": "A széfet nem sikerült letölteni"
+      "downloadFailed": "A széfet nem sikerült letölteni",
+      "deleteFromAccount": "Törlés a fiókból",
+      "deleteVaultBody": "Ez véglegesen eltávolítja a tár összes szinkronizált adatát a Memry szervereiről, és nem vonható vissza. A lemezen lévő fájljaid megmaradnak.",
+      "deleteVaultConfirm": "Törlés a fiókból",
+      "deleteVaultFailed": "Nem sikerült törölni a tárat",
+      "deleteVaultTitle": "Törlöd a(z) „{name}” tárat a fiókodból?",
+      "removeVaultTitle": "Eltávolítod a(z) „{name}” tárat a listáról?"
     },
     "componentsWindowControls": {
       "searchK": "Keresés (⌘K)",
@@ -640,6 +656,45 @@
     "skip": "Verzió kihagyása"
   },
   "capture": {
-    "focusShortcut": "Rögzítési mező fókuszálása"
+    "focusShortcut": "Rögzítési mező fókuszálása",
+    "detailHint": "részletek",
+    "focusHint": "Q",
+    "submit": "Rögzítés"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Kártya hozzáadása",
+      "addCreateNote": "„{query}” jegyzet létrehozása",
+      "addCreateNoteEmpty": "Új jegyzet létrehozása",
+      "addCreatedAt": "Létrehozva: {date}",
+      "addEmpty": "Nincs találat",
+      "addGroupEvents": "Események",
+      "addGroupNotes": "Jegyzetek",
+      "addGroupTasks": "Feladatok",
+      "addOnCanvas": "A vásznon",
+      "addPlaceholder": "Jegyzetek, feladatok és események keresése…",
+      "allDay": "Egész nap",
+      "createNoteFailed": "Nem sikerült létrehozni a jegyzetet",
+      "deleted": "Az elem törölve",
+      "loading": "Betöltés…",
+      "open": "Megnyitás lapon",
+      "openToEdit": "Szerkesztéshez nyisd meg egy lapon",
+      "untitled": "Névtelen"
+    },
+    "corruptScene": "Ezt a vásznat nem sikerült beolvasni. A szerkesztés le van tiltva, hogy ne vesszen el adat.",
+    "createFailed": "Nem sikerült létrehozni a vásznat",
+    "disabledBody": "Ez a lap egy olyan funkcióhoz tartozik, amely nincs bekapcsolva ezen az eszközön.",
+    "disabledTitle": "A Vászon nincs bekapcsolva",
+    "empty": "Még nincsenek vásznak",
+    "libraryStoreFailed": "Nem sikerült elmenteni az alakzatkönyvtáradat. A legutóbbi módosítások elveszhetnek.",
+    "loadFailed": "Nem sikerült betölteni a vásznakat",
+    "loading": "Vásznak betöltése…",
+    "newCanvas": "Új vászon",
+    "notFound": "Ez a vászon nem található",
+    "openFailed": "Nem sikerült megnyitni a vásznat",
+    "savedToVault": "Minden módosítást automatikusan mentünk a tárba",
+    "sectionLabel": "Vásznak",
+    "tooLargeToSync": "Ez a vászon túl nagy a szinkronizáláshoz. Ezen az eszközön mentve van, de a többi eszközödre csak akkor jut el, ha kisebb lesz.",
+    "untitled": "Névtelen vászon"
   }
 }

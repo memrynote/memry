@@ -38,6 +38,11 @@
       "fallback": "Muistutus erääntyy",
       "default": "Muistutus",
       "task": "Tehtävämuistutus"
+    },
+    "inboxReview": {
+      "body": "Sinulla on {count, plural, one {# kohde} other {# kohdetta}} odottamassa läpikäyntiä.",
+      "testBody": "Tämä on testi — päivittäiset läpikäyntimuistutuksesi näyttävät tältä.",
+      "title": "Aika käydä saapuneet läpi"
     }
   },
   "error": {

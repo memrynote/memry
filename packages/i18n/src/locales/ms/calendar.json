@@ -67,7 +67,8 @@
     "title": "Padamkan acara?",
     "local-description": "\"{title}\" akan dipadamkan secara kekal. Tindakan ini tidak boleh dibuat asal.",
     "google-bound-description": "\"{title}\" akan dialih keluar daripada memrynote dan Kalendar Google. Tindakan ini tidak boleh dibuat asal.",
-    "context-menu-delete-label": "Padamkan acara"
+    "context-menu-delete-label": "Padamkan acara",
+    "context-menu-add-to-project": "Tambah ke projek"
   },
   "promote-dialog": {
     "aria": "Edit acara kalendar luaran",
@@ -181,6 +182,7 @@
     "placeholder": "Cari acara, tugasan, peringatan…"
   },
   "undo": {
-    "moveEvent": "Alih acara"
+    "moveEvent": "Alih acara",
+    "moveTask": "Jadual semula tugasan"
   }
 }

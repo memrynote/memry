@@ -314,7 +314,10 @@
       "rdquo": "rdquo;",
       "captureAnyway": "仍要捕获",
       "focusShortcut": "聚焦捕获输入框",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "捕获链接",
+      "captureNote": "捕获笔记",
+      "placeholder": "快速捕获——粘贴链接，记下想法…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "选择文件夹",
@@ -466,7 +469,12 @@
       "cancelRecording": "取消录制",
       "cancel": "取消",
       "stopRecording": "停止录制",
-      "stop": "停止"
+      "stop": "停止",
+      "enableMicInSettings": "请在系统设置中允许访问麦克风，然后重试。",
+      "failedToStart": "开始录音失败",
+      "microphoneAccessDenied": "麦克风访问被拒绝",
+      "noMicrophoneFound": "未找到麦克风",
+      "recordingError": "录音时出错"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "捕获文件失败",
       "fileCaptureFailed": "文件捕获失败",
       "failedToCaptureAudio": "捕获音频失败",
-      "failedToCaptureVoice": "捕获语音失败"
+      "failedToCaptureVoice": "捕获语音失败",
+      "failedToLoadInboxPreferences": "加载收件箱偏好设置失败",
+      "failedToUpdateInboxPreferences": "更新收件箱偏好设置失败"
     },
     "toasts": {
       "inboxRefreshed": "收件箱已刷新"
@@ -516,5 +526,10 @@
     "task": "任务",
     "time": "时间",
     "title": "转换"
+  },
+  "reviewNudge": {
+    "action": "打开收件箱",
+    "description": "静下心来，一次处理完今天捕获的内容。",
+    "title": "{count, plural, other {该回顾 # 项内容了}}"
   }
 }

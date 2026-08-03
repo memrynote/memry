@@ -28,7 +28,8 @@
         "properties": "Ominaisuudet",
         "commandLine": "Komentorivi",
         "features": "Ominaisuudet",
-        "import": "Tuo"
+        "import": "Tuo",
+        "inbox": "Saapuneet"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Ladataan {percent}%",
         "downloaded": "Käynnistä uudelleen asentaaksesi",
         "idle": "Tarkista päivitykset"
+      },
+      "autoCheck": {
+        "description": "Uudet julkaisut tarkistetaan käynnistyksen yhteydessä ja säännöllisesti sovelluksen ollessa auki.",
+        "error": "Automaattisen tarkistuksen asetuksen päivittäminen epäonnistui",
+        "label": "Tarkista päivitykset automaattisesti"
+      },
+      "autoDownload": {
+        "description": "Uudet julkaisut ladataan ja asennetaan taustalla ilman erillistä kysymistä.",
+        "error": "Automaattisen latauksen asetuksen päivittäminen epäonnistui",
+        "label": "Lataa päivitykset automaattisesti"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Jaa nimettömät käyttötiedot",
         "description": "Se on vain anon-mittareita – muistiinpanojen sisältöä, hakukyselyitä, tiedostopolkuja, sähköposteja tai raakatunnuksia ei lähetetä.",
         "error": "Telemetria-asetuksen päivittäminen epäonnistui"
+      },
+      "diagnostics": {
+        "building": "Valmistellaan raporttia…",
+        "consent": "Lähetetäänkö kertaluonteinen diagnostiikkaraportti? Se sisältää vain tekniset lokit, joista tunnistetiedot on poistettu — ei muistiinpanojen sisältöä.",
+        "error": "Diagnostiikkaraportin lähettäminen epäonnistui",
+        "notNow": "Ei nyt",
+        "previewError": "Diagnostiikkaraportin valmistelu epäonnistui",
+        "previewLabel": "Esikatsele raportin sisältöä",
+        "send": "Lähetä",
+        "sendReport": {
+          "button": "Lähetä diagnostiikkaraportti",
+          "description": "Lähetä kertaluonteinen raportti teknisistä lokeista, joista tunnistetiedot on poistettu, jotta voimme selvittää kohtaamasi ongelman.",
+          "label": "Diagnostiikkaraportti"
+        },
+        "sending": "Lähetetään…",
+        "sent": "Raportti lähetetty — viite {incidentId}",
+        "snapshotLabel": "Laitteen tilannekuva",
+        "title": "Lähetetäänkö diagnostiikkaraportti?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Asettelu",
-      "toolbar": "Työkalupalkki"
+      "toolbar": "Työkalupalkki",
+      "spelling": "Oikeinkirjoitus"
     },
     "width": {
       "label": "Editor Leveys",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "kapea",
         "medium": "Keskikokoinen",
-        "wide": "Leveä"
+        "wide": "Leveä",
+        "full": "Koko leveys",
+        "normal": "Normaali"
       },
       "error": "Editorin leveyden päivittäminen epäonnistui"
     },
@@ -229,6 +261,11 @@
       "label": "Sticky Formatting Toolbar",
       "description": "Näytä työkalupalkki aina editorin yläpuolella",
       "error": "Työkalupalkkitilan päivittäminen epäonnistui"
+    },
+    "spellCheck": {
+      "description": "Alleviivaa väärin kirjoitetut sanat muistiinpanoissa ja päiväkirjoissa",
+      "error": "Oikeinkirjoituksen tarkistuksen päivittäminen epäonnistui",
+      "label": "Tarkista oikeinkirjoitus"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "Varastoinnin käyttö",
-      "location": "Sijainti"
+      "location": "Sijainti",
+      "accountVaults": "Tilisi holvit"
     },
     "loadingStorage": "Ladataan tallennustilatietoja...",
     "signInStorage": "Kirjaudu sisään nähdäksesi tallennustilan käyttö",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "Varastointi melkein täynnä",
       "warningDescription": "Vapauta tilaa tai päivitä suunnitelmasi synkronointiongelmien välttämiseksi."
+    },
+    "accountVaults": {
+      "activeHint": "Vaihda ensin toiseen holviin, jotta voit poistaa tämän.",
+      "cloudOnly": "Ei tällä laitteella",
+      "delete": "Poista",
+      "deleteBody": "Tämä poistaa pysyvästi kaikki tämän holvin synkronoidut tiedot Memryn palvelimilta, eikä sitä voi kumota. Levyllä olevia tiedostojasi ei poisteta.",
+      "deleteConfirm": "Poista tililtä",
+      "deleteFailed": "Holvin poistaminen epäonnistui",
+      "deleteTitle": "Poistetaanko ”{name}” tililtäsi?",
+      "empty": "Tilillesi ei ole vielä synkronoitu holveja.",
+      "itemsCount": "{count} kohdetta"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "Holvin sulkeminen epäonnistui",
       "failedToSwitchVault": "Holvin vaihtaminen epäonnistui",
       "failedToUpdateConfig": "Konfiguroinnin päivitys epäonnistui",
-      "failedToReindex": "Uudelleenindeksointi epäonnistui"
+      "failedToReindex": "Uudelleenindeksointi epäonnistui",
+      "failedToLoadTasks": "Tehtävien lataaminen epäonnistui"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "Tehtävät ja eräpäivät",
         "label": "Tehtävät"
+      },
+      "spatialCanvas": {
+        "description": "Vapaamuotoiset taulut muistiinpanojen järjestämiseen ja linkittämiseen",
+        "label": "Taulu"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} ohitettu",
         "title": "Tuonti valmis"
       },
-      "title": "Tuo lähteestä {name}"
+      "title": "Tuo lähteestä {name}",
+      "chooseDirectory": "Valitse kansio…",
+      "folderKeepsAssets": "Valitse kansio, kun kuvat ovat muistiinpanojen oman kansion ulkopuolella — vienneissä mediatiedostot ovat usein yhteisessä kansiossa."
     },
     "header": {
       "subtitle": "Tuo muistiinpanosi ja tehtäväsi muista sovelluksista",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, one {# tehtävä} other {# tehtävää}}",
       "withDueDate": "{count} päivätty",
       "withTags": "{count} merkitty"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Ladataan…",
+      "subtitle": "Päivittäinen läpikäyntimuistutus ja Saapuneet-asetukset.",
+      "title": "Saapuneet"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Hienovarainen päivittäinen muistutus, kun saapuneissa on kohteita.",
+        "label": "Muistuta käymään saapuneet läpi"
+      },
+      "error": "Muistutuksen päivittäminen epäonnistui.",
+      "group": "Päivittäinen läpikäyntimuistutus",
+      "test": {
+        "button": "Lähetä testi",
+        "description": "Lähetä muistutus heti ja tarkista järjestelmäilmoituksesi.",
+        "label": "Testi-ilmoitus",
+        "sent": "Testi-ilmoitus lähetetty.",
+        "sentHint": "Jos mitään ei näy, salli MemryNoten ilmoitukset järjestelmäasetuksissa.",
+        "unsupported": "Tämä laite ei voi näyttää työpöytäilmoituksia."
+      },
+      "time": {
+        "description": "Paikallista aikaa, jokaisella laitteella.",
+        "hourLabel": "Tunti",
+        "label": "Muistutuksen aika",
+        "minuteLabel": "Minuutti",
+        "periodLabel": "AM tai PM"
+      }
     }
   }
 }

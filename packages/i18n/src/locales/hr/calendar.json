@@ -67,7 +67,8 @@
     "title": "Izbrisati događaj?",
     "local-description": "\"{title}\" bit će trajno izbrisan. Ova se radnja ne može poništiti.",
     "google-bound-description": "\"{title}\" bit će uklonjen iz memrynote i Google kalendara. Ova se radnja ne može poništiti.",
-    "context-menu-delete-label": "Izbriši događaj"
+    "context-menu-delete-label": "Izbriši događaj",
+    "context-menu-add-to-project": "Dodaj u projekt"
   },
   "promote-dialog": {
     "aria": "Uredite događaj vanjskog kalendara",
@@ -181,6 +182,7 @@
     "placeholder": "Pretraži događaje, zadatke, podsjetnike…"
   },
   "undo": {
-    "moveEvent": "Premjesti događaj"
+    "moveEvent": "Premjesti događaj",
+    "moveTask": "Promijeni raspored zadatka"
   }
 }

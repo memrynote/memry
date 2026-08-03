@@ -67,7 +67,8 @@
     "title": "למחוק את האירוע?",
     "local-description": "\"{title}\" יימחק לצמיתות. לא ניתן לבטל פעולה זו.",
     "google-bound-description": "\"{title}\" יוסר מ-memrynote ומיומן Google. לא ניתן לבטל פעולה זו.",
-    "context-menu-delete-label": "מחק את האירוע"
+    "context-menu-delete-label": "מחק את האירוע",
+    "context-menu-add-to-project": "הוסף לפרויקט"
   },
   "promote-dialog": {
     "aria": "ערוך אירוע יומן חיצוני",
@@ -181,6 +182,7 @@
     "placeholder": "חפש אירועים, משימות, תזכורות…"
   },
   "undo": {
-    "moveEvent": "העברת אירוע"
+    "moveEvent": "העברת אירוע",
+    "moveTask": "תזמון משימה מחדש"
   }
 }

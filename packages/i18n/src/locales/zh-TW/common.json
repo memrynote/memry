@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "下載中 {percent}%",
       "updateInstallingSubtitle": "MemryNote 將自動重新啟動。",
       "updateInstallingTitle": "正在安裝更新",
-      "updateRestart": "重新啟動"
+      "updateRestart": "重新啟動",
+      "feedbackPrivacyEmailOptional": "您的電子郵件——只有在您填寫時才會送出，而且只用來回覆您",
+      "feedbackPrivacyEmailSignedIn": "您的帳戶電子郵件（{email}），以便我們回覆",
+      "feedbackPrivacyMessage": "您的訊息，原封不動",
+      "feedbackPrivacyNote": "僅此而已。您的筆記會留在您的裝置上。",
+      "feedbackPrivacyPlan": "您的方案（free、Plus、Pro 或 Believer）",
+      "feedbackPrivacyTitle": "會送出哪些內容",
+      "feedbackPrivacyVersion": "應用程式版本與作業系統",
+      "projects": "專案"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "調整每日面板大小",
@@ -231,7 +239,8 @@
       "journal": "期刊",
       "calendar": "賽程表",
       "inboxCapture": "收件匣擷取",
-      "tasks": "任務"
+      "tasks": "任務",
+      "tags": "標籤"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "未儲存的變更",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "出了問題",
       "anErrorOccurredWhileRenderingThisTabContent": "在渲染這個分頁內容時發生了錯誤。",
-      "tryAgain": "再試一次"
+      "tryAgain": "再試一次",
+      "sendReport": "傳送診斷報告"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "筆記圖示"
@@ -352,7 +362,13 @@
       "downloadLocation": "位置",
       "changeLocation": "變更…",
       "download": "下載",
-      "downloadFailed": "無法下載保險庫"
+      "downloadFailed": "無法下載保險庫",
+      "deleteFromAccount": "從帳戶刪除",
+      "deleteVaultBody": "這會從 Memry 的伺服器永久移除此保險庫的所有同步資料，且無法復原。您磁碟上的檔案不會被刪除。",
+      "deleteVaultConfirm": "從帳戶刪除",
+      "deleteVaultFailed": "無法刪除保險庫",
+      "deleteVaultTitle": "要從您的帳戶刪除「{name}」嗎？",
+      "removeVaultTitle": "要將「{name}」從清單中移除嗎？"
     },
     "componentsWindowControls": {
       "searchK": "搜尋 (⌘K)",
@@ -640,6 +656,45 @@
     "skip": "略過此版本"
   },
   "capture": {
-    "focusShortcut": "聚焦擷取輸入欄"
+    "focusShortcut": "聚焦擷取輸入欄",
+    "detailHint": "詳情",
+    "focusHint": "Q",
+    "submit": "擷取"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "新增卡片",
+      "addCreateNote": "建立筆記「{query}」",
+      "addCreateNoteEmpty": "建立新筆記",
+      "addCreatedAt": "建立於 {date}",
+      "addEmpty": "找不到任何項目",
+      "addGroupEvents": "活動",
+      "addGroupNotes": "筆記",
+      "addGroupTasks": "任務",
+      "addOnCanvas": "已在畫布上",
+      "addPlaceholder": "搜尋筆記、任務與活動…",
+      "allDay": "全天",
+      "createNoteFailed": "無法建立筆記",
+      "deleted": "項目已刪除",
+      "loading": "載入中…",
+      "open": "在分頁中開啟",
+      "openToEdit": "在分頁中開啟以編輯",
+      "untitled": "未命名"
+    },
+    "corruptScene": "無法讀取這個畫布。為避免資料遺失，編輯功能已停用。",
+    "createFailed": "無法建立畫布",
+    "disabledBody": "這個分頁屬於尚未在此裝置上啟用的功能。",
+    "disabledTitle": "畫布尚未啟用",
+    "empty": "尚無畫布",
+    "libraryStoreFailed": "無法儲存您的圖形庫，最近的變更可能會遺失。",
+    "loadFailed": "無法載入畫布",
+    "loading": "正在載入畫布…",
+    "newCanvas": "新畫布",
+    "notFound": "找不到這個畫布",
+    "openFailed": "無法開啟畫布",
+    "savedToVault": "所有變更都會自動儲存到您的保險庫",
+    "sectionLabel": "畫布",
+    "tooLargeToSync": "這個畫布太大，無法同步。它已儲存在此裝置上，但要等到變小之後才會傳到您的其他裝置。",
+    "untitled": "未命名畫布"
   }
 }

@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "Item penyegerakan tidak dapat disahkan dan telah dikuarantin untuk keselamatan.",
     "securityQuarantineRetry": "Item penyegerakan gagal pengesahan tandatangan dan akan dicuba semula.",
     "certificatePinPaused": "Sambungan selamat ke pelayan penyegerakan tidak dapat disahkan. Penyegerakan telah dijeda untuk perlindungan anda.",
-    "paymentRequired": "Pelan Sync berbayar diperlukan untuk menggunakan penyegerakan disulitkan terhos."
+    "paymentRequired": "Pelan Sync berbayar diperlukan untuk menggunakan penyegerakan disulitkan terhos.",
+    "attachmentUploadFailed": "Lampiran \"{filename}\" tidak dapat disegerakkan. Ia kekal pada peranti ini.",
+    "fileTooLarge": "Fail ini lebih besar daripada yang dibenarkan oleh pelan anda. Tingkatkan pelan anda untuk menyegerakkan fail yang lebih besar.",
+    "vaultRecovered": "Kunci peti besi telah dipulihkan. Penyegerakan akan disambung semula."
   }
 }

@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "Mengunduh {percent}%",
       "updateInstallingSubtitle": "MemryNote akan mulai ulang otomatis.",
       "updateInstallingTitle": "Memasang pembaruan",
-      "updateRestart": "Mulai ulang"
+      "updateRestart": "Mulai ulang",
+      "feedbackPrivacyEmailOptional": "Email Anda — hanya jika Anda menambahkannya, dan hanya agar kami dapat membalas",
+      "feedbackPrivacyEmailSignedIn": "Email akun Anda ({email}), agar kami dapat membalas",
+      "feedbackPrivacyMessage": "Pesan Anda, persis seperti yang Anda tulis",
+      "feedbackPrivacyNote": "Tidak ada yang lain. Catatan Anda tetap di perangkat Anda.",
+      "feedbackPrivacyPlan": "Paket Anda (free, Plus, Pro atau Believer)",
+      "feedbackPrivacyTitle": "Apa yang dikirim",
+      "feedbackPrivacyVersion": "Versi aplikasi dan sistem operasi",
+      "projects": "Proyek"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Ubah Ukuran Panel Hari",
@@ -231,7 +239,8 @@
       "journal": "Jurnal",
       "calendar": "Kalender",
       "inboxCapture": "Pengambilan Kotak Masuk",
-      "tasks": "Tugas"
+      "tasks": "Tugas",
+      "tags": "Tag"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Perubahan yang belum disimpan",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Ada yang tidak beres",
       "anErrorOccurredWhileRenderingThisTabContent": "Terjadi kesalahan saat merender konten tab ini.",
-      "tryAgain": "Coba Lagi"
+      "tryAgain": "Coba Lagi",
+      "sendReport": "Kirim laporan diagnostik"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Ikon catatan"
@@ -352,7 +362,13 @@
       "downloadLocation": "Lokasi",
       "changeLocation": "Ubah…",
       "download": "Unduh",
-      "downloadFailed": "Brankas tidak dapat diunduh"
+      "downloadFailed": "Brankas tidak dapat diunduh",
+      "deleteFromAccount": "Hapus dari akun",
+      "deleteVaultBody": "Semua data brankas ini yang sudah disinkronkan akan dihapus permanen dari server Memry, dan tindakan ini tidak dapat dibatalkan. File Anda di disk tidak ikut terhapus.",
+      "deleteVaultConfirm": "Hapus dari akun",
+      "deleteVaultFailed": "Tidak dapat menghapus brankas",
+      "deleteVaultTitle": "Hapus “{name}” dari akun Anda?",
+      "removeVaultTitle": "Hapus “{name}” dari daftar?"
     },
     "componentsWindowControls": {
       "searchK": "Pencarian (⌘K)",
@@ -640,6 +656,45 @@
     "skip": "Lewati Versi Ini"
   },
   "capture": {
-    "focusShortcut": "Fokuskan input tangkapan"
+    "focusShortcut": "Fokuskan input tangkapan",
+    "detailHint": "detail",
+    "focusHint": "Q",
+    "submit": "Tangkap"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Tambah kartu",
+      "addCreateNote": "Buat catatan \"{query}\"",
+      "addCreateNoteEmpty": "Buat catatan baru",
+      "addCreatedAt": "Dibuat {date}",
+      "addEmpty": "Tidak ada hasil",
+      "addGroupEvents": "Acara",
+      "addGroupNotes": "Catatan",
+      "addGroupTasks": "Tugas",
+      "addOnCanvas": "Di kanvas",
+      "addPlaceholder": "Cari catatan, tugas, dan acara…",
+      "allDay": "Sepanjang hari",
+      "createNoteFailed": "Tidak dapat membuat catatan",
+      "deleted": "Item dihapus",
+      "loading": "Memuat…",
+      "open": "Buka di tab",
+      "openToEdit": "Buka di tab untuk mengedit",
+      "untitled": "Tanpa judul"
+    },
+    "corruptScene": "Kanvas ini tidak dapat dibaca. Pengeditan dinonaktifkan agar data tidak hilang.",
+    "createFailed": "Tidak dapat membuat kanvas",
+    "disabledBody": "Tab ini berasal dari fitur yang belum diaktifkan di perangkat ini.",
+    "disabledTitle": "Kanvas belum diaktifkan",
+    "empty": "Belum ada kanvas",
+    "libraryStoreFailed": "Tidak dapat menyimpan pustaka bentuk Anda. Perubahan terbaru pada pustaka mungkin hilang.",
+    "loadFailed": "Tidak dapat memuat kanvas",
+    "loading": "Memuat kanvas…",
+    "newCanvas": "Kanvas baru",
+    "notFound": "Kanvas ini tidak ditemukan",
+    "openFailed": "Tidak dapat membuka kanvas",
+    "savedToVault": "Semua perubahan disimpan otomatis ke brankas Anda",
+    "sectionLabel": "Kanvas",
+    "tooLargeToSync": "Kanvas ini terlalu besar untuk disinkronkan. Kanvas tersimpan di perangkat ini, tetapi tidak akan sampai ke perangkat lain Anda sebelum ukurannya lebih kecil.",
+    "untitled": "Kanvas tanpa judul"
   }
 }

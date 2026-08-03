@@ -314,7 +314,10 @@
       "rdquo": "rdquo;",
       "captureAnyway": "とにかくキャプチャする",
       "focusShortcut": "キャプチャ入力にフォーカス",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "リンクをキャプチャ",
+      "captureNote": "メモをキャプチャ",
+      "placeholder": "クイックキャプチャ — リンクを貼る、思いつきを書き留める…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "フォルダーを選択してください",
@@ -466,7 +469,12 @@
       "cancelRecording": "録音をキャンセルする",
       "cancel": "キャンセル",
       "stopRecording": "録音を停止する",
-      "stop": "停止"
+      "stop": "停止",
+      "enableMicInSettings": "システム設定でマイクへのアクセスを許可してから、もう一度お試しください。",
+      "failedToStart": "録音を開始できませんでした",
+      "microphoneAccessDenied": "マイクへのアクセスが拒否されました",
+      "noMicrophoneFound": "マイクが見つかりません",
+      "recordingError": "録音中にエラーが発生しました"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "ファイルのキャプチャに失敗しました",
       "fileCaptureFailed": "ファイルのキャプチャに失敗しました",
       "failedToCaptureAudio": "音声のキャプチャに失敗しました",
-      "failedToCaptureVoice": "音声のキャプチャに失敗しました"
+      "failedToCaptureVoice": "音声のキャプチャに失敗しました",
+      "failedToLoadInboxPreferences": "受信箱の設定を読み込めませんでした",
+      "failedToUpdateInboxPreferences": "受信箱の設定を更新できませんでした"
     },
     "toasts": {
       "inboxRefreshed": "受信トレイが更新されました"
@@ -516,5 +526,10 @@
     "task": "タスク",
     "time": "時刻",
     "title": "変換"
+  },
+  "reviewNudge": {
+    "action": "受信箱を開く",
+    "description": "今日のキャプチャを、落ち着いて一度に片づけましょう。",
+    "title": "{count, plural, other {#件のアイテムを見直しましょう}}"
   }
 }

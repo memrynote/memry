@@ -28,7 +28,8 @@
         "properties": "Właściwości",
         "commandLine": "Wiersz poleceń",
         "features": "Funkcje",
-        "import": "Importuj"
+        "import": "Importuj",
+        "inbox": "Skrzynka odbiorcza"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Pobieranie {percent}%",
         "downloaded": "Uruchom ponownie, aby zainstalować",
         "idle": "Sprawdź aktualizacje"
+      },
+      "autoCheck": {
+        "description": "Sprawdzaj nowe wersje przy uruchomieniu i co pewien czas, gdy aplikacja jest otwarta.",
+        "error": "Nie udało się zaktualizować ustawienia automatycznego sprawdzania",
+        "label": "Automatycznie sprawdzaj aktualizacje"
+      },
+      "autoDownload": {
+        "description": "Pobieraj i instaluj nowe wersje w tle, bez pytania.",
+        "error": "Nie udało się zaktualizować ustawienia automatycznego pobierania",
+        "label": "Automatycznie pobieraj aktualizacje"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Udostępniaj anonimowe wskaźniki użytkowania",
         "description": "To tylko dane anonimowe — nie są nigdy wysyłane żadne treści notatek, zapytania wyszukiwania, ścieżki plików, wiadomości e-mail ani surowe identyfikatory.",
         "error": "Nie udało się zaktualizować ustawień telemetrii"
+      },
+      "diagnostics": {
+        "building": "Przygotowywanie raportu…",
+        "consent": "Wysłać jednorazowy raport diagnostyczny? Zawiera wyłącznie zanonimizowane logi techniczne — bez treści notatek.",
+        "error": "Nie udało się wysłać raportu diagnostycznego",
+        "notNow": "Nie teraz",
+        "previewError": "Nie udało się przygotować raportu diagnostycznego",
+        "previewLabel": "Podejrzyj zawartość raportu",
+        "send": "Wyślij",
+        "sendReport": {
+          "button": "Wyślij raport diagnostyczny",
+          "description": "Wyślij jednorazowy raport z zanonimizowanymi logami technicznymi, aby pomóc nam zdiagnozować napotkany problem.",
+          "label": "Raport diagnostyczny"
+        },
+        "sending": "Wysyłanie…",
+        "sent": "Raport wysłany — numer referencyjny {incidentId}",
+        "snapshotLabel": "Migawka urządzenia",
+        "title": "Wysłać raport diagnostyczny?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Układ",
-      "toolbar": "Pasek narzędzi"
+      "toolbar": "Pasek narzędzi",
+      "spelling": "Pisownia"
     },
     "width": {
       "label": "Szerokość edytora",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Wąskie",
         "medium": "Średni",
-        "wide": "Szeroki"
+        "wide": "Szeroki",
+        "full": "Pełna szerokość",
+        "normal": "Normalna"
       },
       "error": "Nie udało się zaktualizować szerokości edytora"
     },
@@ -229,6 +261,11 @@
       "label": "Przyklejony pasek narzędzi formatowania",
       "description": "Zawsze pokazuj pasek narzędzi nad edytorem",
       "error": "Nie udało się zaktualizować trybu paska narzędzi"
+    },
+    "spellCheck": {
+      "description": "Podkreślaj błędnie napisane słowa w notatkach i dziennikach",
+      "error": "Nie udało się zaktualizować sprawdzania pisowni",
+      "label": "Sprawdzaj pisownię"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "Wykorzystanie pamięci",
-      "location": "Lokalizacja"
+      "location": "Lokalizacja",
+      "accountVaults": "Skarbce na Twoim koncie"
     },
     "loadingStorage": "Ładowanie informacji o pamięci...",
     "signInStorage": "Zaloguj się, aby zobaczyć wykorzystanie miejsca",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "Magazyn prawie pełny",
       "warningDescription": "Zwolnij miejsce lub uaktualnij swój plan, aby uniknąć problemów z synchronizacją."
+    },
+    "accountVaults": {
+      "activeHint": "Aby usunąć ten skarbiec, przełącz się najpierw na inny.",
+      "cloudOnly": "Brak na tym urządzeniu",
+      "delete": "Usuń",
+      "deleteBody": "Spowoduje to trwałe usunięcie z serwerów Memry wszystkich zsynchronizowanych danych tego skarbca. Tej akcji nie można cofnąć. Twoje pliki na dysku nie zostaną usunięte.",
+      "deleteConfirm": "Usuń z konta",
+      "deleteFailed": "Nie udało się usunąć skarbca",
+      "deleteTitle": "Usunąć „{name}” z Twojego konta?",
+      "empty": "Żaden skarbiec nie jest jeszcze zsynchronizowany z Twoim kontem.",
+      "itemsCount": "{count, plural, one {# element} few {# elementy} many {# elementów} other {# elementu}}"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "Nie udało się zamknąć skarbca",
       "failedToSwitchVault": "Nie udało się przełączyć skarbca",
       "failedToUpdateConfig": "Nie udało się zaktualizować konfiguracji",
-      "failedToReindex": "Nie udało się ponownie zaindeksować"
+      "failedToReindex": "Nie udało się ponownie zaindeksować",
+      "failedToLoadTasks": "Nie udało się załadować zadań"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "Sprawy do zrobienia i terminy",
         "label": "Zadania"
+      },
+      "spatialCanvas": {
+        "description": "Przestrzenne kanwy do układania i łączenia notatek",
+        "label": "Kanwa"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} pominiętych",
         "title": "Import zakończony"
       },
-      "title": "Importuj z {name}"
+      "title": "Importuj z {name}",
+      "chooseDirectory": "Wybierz folder…",
+      "folderKeepsAssets": "Wybierz folder, gdy obrazy znajdują się poza folderem z notatkami — eksporty często przechowują multimedia we wspólnym folderze."
     },
     "header": {
       "subtitle": "Przenieś swoje notatki i zadania z innych aplikacji",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, one {# zadanie} few {# zadania} many {# zadań} other {# zadania}}",
       "withDueDate": "{count} z datą",
       "withTags": "{count} otagowanych"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Ładowanie…",
+      "subtitle": "Codzienne przypomnienie o przeglądzie i ustawienia skrzynki odbiorczej.",
+      "title": "Skrzynka odbiorcza"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Delikatne, codzienne przypomnienie, gdy w skrzynce coś czeka.",
+        "label": "Przypominaj mi o przeglądzie skrzynki odbiorczej"
+      },
+      "error": "Nie udało się zaktualizować przypomnienia.",
+      "group": "Codzienne przypomnienie o przeglądzie",
+      "test": {
+        "button": "Wyślij test",
+        "description": "Wyślij przypomnienie teraz, aby sprawdzić powiadomienia systemowe.",
+        "label": "Powiadomienie testowe",
+        "sent": "Wysłano powiadomienie testowe.",
+        "sentHint": "Jeśli nic się nie pojawi, zezwól na powiadomienia dla MemryNote w ustawieniach systemu.",
+        "unsupported": "To urządzenie nie może wyświetlać powiadomień systemowych."
+      },
+      "time": {
+        "description": "Czas lokalny, na każdym urządzeniu.",
+        "hourLabel": "Godzina",
+        "label": "Godzina przypomnienia",
+        "minuteLabel": "Minuta",
+        "periodLabel": "AM lub PM"
+      }
     }
   }
 }

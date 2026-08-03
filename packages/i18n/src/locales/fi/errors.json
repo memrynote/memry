@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "Synkronointikohdetta ei voitu vahvistaa, ja se on asetettu karanteeniin turvallisuussyistä.",
     "securityQuarantineRetry": "Synkronointikohteen allekirjoituksen vahvistus epäonnistui, ja sitä yritetään uudelleen.",
     "certificatePinPaused": "Suojattua yhteyttä synkronointipalvelimeen ei voitu vahvistaa. Synkronointi on keskeytetty turvallisuutesi vuoksi.",
-    "paymentRequired": "Maksullinen Sync-tilaus vaaditaan isännöidyn salatun synkronoinnin käyttöön."
+    "paymentRequired": "Maksullinen Sync-tilaus vaaditaan isännöidyn salatun synkronoinnin käyttöön.",
+    "attachmentUploadFailed": "Liitteen \"{filename}\" synkronointi epäonnistui. Se jää tälle laitteelle.",
+    "fileTooLarge": "Tämä tiedosto on suurempi kuin tilauksesi sallii. Päivitä tilaustasi, niin voit synkronoida suurempia tiedostoja.",
+    "vaultRecovered": "Holvin avain palautettu. Synkronointi jatkuu."
   }
 }

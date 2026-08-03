@@ -28,7 +28,8 @@
         "properties": "Eigenschappen",
         "commandLine": "Opdrachtregel",
         "features": "Functies",
-        "import": "Importeren"
+        "import": "Importeren",
+        "inbox": "Inbox"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "{percent}% downloaden",
         "downloaded": "Start opnieuw om te installeren",
         "idle": "Controleer op updates"
+      },
+      "autoCheck": {
+        "description": "Controleer op nieuwe releases bij het starten en daarna regelmatig zolang de app open is.",
+        "error": "Kan de instelling voor automatisch controleren niet bijwerken",
+        "label": "Automatisch controleren op updates"
+      },
+      "autoDownload": {
+        "description": "Download en installeer nieuwe releases op de achtergrond, zonder te vragen.",
+        "error": "Kan de instelling voor automatisch downloaden niet bijwerken",
+        "label": "Updates automatisch downloaden"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Deel anonieme gebruiksstatistieken",
         "description": "Het zijn alleen anonieme statistieken: er worden nooit notitie-inhoud, zoekopdrachten, bestandspaden, e-mails of onbewerkte ID's verzonden.",
         "error": "Kan de telemetrie-instelling niet updaten"
+      },
+      "diagnostics": {
+        "building": "Rapport voorbereiden…",
+        "consent": "Eenmalig een diagnostisch rapport versturen? Het bevat alleen geanonimiseerde technische logs — geen notitie-inhoud.",
+        "error": "Kan het diagnostisch rapport niet versturen",
+        "notNow": "Niet nu",
+        "previewError": "Kan het diagnostisch rapport niet voorbereiden",
+        "previewLabel": "Inhoud van het rapport bekijken",
+        "send": "Versturen",
+        "sendReport": {
+          "button": "Diagnostisch rapport versturen",
+          "description": "Verstuur eenmalig een rapport met geanonimiseerde technische logs, zodat we het probleem dat je tegenkwam kunnen onderzoeken.",
+          "label": "Diagnostisch rapport"
+        },
+        "sending": "Versturen…",
+        "sent": "Rapport verstuurd — referentie {incidentId}",
+        "snapshotLabel": "Momentopname van apparaat",
+        "title": "Een diagnostisch rapport versturen?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Indeling",
-      "toolbar": "Werkbalk"
+      "toolbar": "Werkbalk",
+      "spelling": "Spelling"
     },
     "width": {
       "label": "Editorbreedte",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Smal",
         "medium": "Middelmatig",
-        "wide": "Breed"
+        "wide": "Breed",
+        "full": "Volledige breedte",
+        "normal": "Normaal"
       },
       "error": "Kan de breedte van de editor niet bijwerken"
     },
@@ -229,6 +261,11 @@
       "label": "Vaste opmaakwerkbalk",
       "description": "Toon altijd de werkbalk boven de editor",
       "error": "Kan de werkbalkmodus niet updaten"
+    },
+    "spellCheck": {
+      "description": "Onderstreep verkeerd gespelde woorden in notities en dagboeken",
+      "error": "Kan de spellingcontrole niet bijwerken",
+      "label": "Spelling controleren"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "Opslaggebruik",
-      "location": "Locatie"
+      "location": "Locatie",
+      "accountVaults": "Kluizen in je account"
     },
     "loadingStorage": "Opslaginformatie laden...",
     "signInStorage": "Meld u aan om het opslaggebruik te bekijken",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "Opslag bijna vol",
       "warningDescription": "Maak ruimte vrij of upgrade uw abonnement om synchronisatieproblemen te voorkomen."
+    },
+    "accountVaults": {
+      "activeHint": "Schakel over naar een andere kluis om deze te verwijderen.",
+      "cloudOnly": "Niet op dit apparaat",
+      "delete": "Verwijderen",
+      "deleteBody": "Hiermee worden alle gesynchroniseerde gegevens van deze kluis definitief van de servers van Memry verwijderd; dit kan niet ongedaan worden gemaakt. Je bestanden op schijf worden niet verwijderd.",
+      "deleteConfirm": "Verwijderen uit account",
+      "deleteFailed": "Kan kluis niet verwijderen",
+      "deleteTitle": "“{name}” uit je account verwijderen?",
+      "empty": "Nog geen kluizen gesynchroniseerd met je account.",
+      "itemsCount": "{count} items"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "Kan de kluis niet sluiten",
       "failedToSwitchVault": "Kan niet van kluis wisselen",
       "failedToUpdateConfig": "Kan configuratie niet updaten",
-      "failedToReindex": "Opnieuw indexeren is mislukt"
+      "failedToReindex": "Opnieuw indexeren is mislukt",
+      "failedToLoadTasks": "Kan taken niet laden"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "To-do's en vervaldatums",
         "label": "Taken"
+      },
+      "spatialCanvas": {
+        "description": "Ruimtelijke borden om notities te ordenen en te koppelen",
+        "label": "Canvas"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} overgeslagen",
         "title": "Import voltooid"
       },
-      "title": "Importeren uit {name}"
+      "title": "Importeren uit {name}",
+      "chooseDirectory": "Map kiezen…",
+      "folderKeepsAssets": "Kies de map wanneer afbeeldingen buiten de eigen map van de notities staan — exports bewaren media vaak in een gedeelde map."
     },
     "header": {
       "subtitle": "Haal je notities en taken uit andere apps",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, one {# taak} other {# taken}}",
       "withDueDate": "{count} met datum",
       "withTags": "{count} getagd"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Laden…",
+      "subtitle": "Dagelijkse herinnering en inboxvoorkeuren.",
+      "title": "Inbox"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Een vriendelijk dagelijks duwtje wanneer er iets in je inbox staat.",
+        "label": "Herinner me eraan mijn inbox door te nemen"
+      },
+      "error": "Kan de herinnering niet bijwerken.",
+      "group": "Dagelijkse inboxherinnering",
+      "test": {
+        "button": "Test versturen",
+        "description": "Stuur de herinnering nu om je systeemmeldingen te controleren.",
+        "label": "Testmelding",
+        "sent": "Testmelding verstuurd.",
+        "sentHint": "Verschijnt er niets? Sta meldingen voor MemryNote toe in je systeeminstellingen.",
+        "unsupported": "Dit apparaat kan geen bureaubladmeldingen tonen."
+      },
+      "time": {
+        "description": "Lokale tijd, op elk apparaat.",
+        "hourLabel": "Uur",
+        "label": "Tijdstip van de herinnering",
+        "minuteLabel": "Minuut",
+        "periodLabel": "AM of PM"
+      }
     }
   }
 }

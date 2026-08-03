@@ -28,7 +28,8 @@
         "properties": "Egenskaper",
         "commandLine": "Kommandolinje",
         "features": "Funksjoner",
-        "import": "Import"
+        "import": "Import",
+        "inbox": "Innboks"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Laster ned {percent}%",
         "downloaded": "Start på nytt for å installere",
         "idle": "Se etter oppdateringer"
+      },
+      "autoCheck": {
+        "description": "Se etter nye versjoner ved oppstart og med jevne mellomrom mens appen er åpen.",
+        "error": "Kunne ikke oppdatere innstillingen for automatisk sjekk",
+        "label": "Se etter oppdateringer automatisk"
+      },
+      "autoDownload": {
+        "description": "Last ned og installer nye versjoner i bakgrunnen uten å spørre.",
+        "error": "Kunne ikke oppdatere innstillingen for automatisk nedlasting",
+        "label": "Last ned oppdateringer automatisk"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Del anonyme bruksberegninger",
         "description": "Det er bare anon-beregninger – ingen notatinnhold, søk, filbaner, e-poster eller rå-ID-er blir noen gang sendt.",
         "error": "Kunne ikke oppdatere telemetriinnstillingen"
+      },
+      "diagnostics": {
+        "building": "Forbereder rapporten…",
+        "consent": "Vil du sende en diagnoserapport én gang? Den inneholder bare sladdede tekniske logger — ikke noe innhold fra notatene dine.",
+        "error": "Kunne ikke sende diagnoserapporten",
+        "notNow": "Ikke nå",
+        "previewError": "Kunne ikke forberede diagnoserapporten",
+        "previewLabel": "Forhåndsvis innholdet i rapporten",
+        "send": "Send",
+        "sendReport": {
+          "button": "Send diagnoserapport",
+          "description": "Send en engangsrapport med sladdede tekniske logger, så vi kan finne feilen du støtte på.",
+          "label": "Diagnoserapport"
+        },
+        "sending": "Sender…",
+        "sent": "Rapporten er sendt — referanse {incidentId}",
+        "snapshotLabel": "Øyeblikksbilde av enheten",
+        "title": "Vil du sende en diagnoserapport?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Oppsett",
-      "toolbar": "Verktøylinje"
+      "toolbar": "Verktøylinje",
+      "spelling": "Staving"
     },
     "width": {
       "label": "Redaktørbredde",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Smal",
         "medium": "Middels",
-        "wide": "Bred"
+        "wide": "Bred",
+        "full": "Full bredde",
+        "normal": "Normal"
       },
       "error": "Kunne ikke oppdatere redigeringsbredden"
     },
@@ -229,6 +261,11 @@
       "label": "Sticky formateringsverktøylinje",
       "description": "Vis alltid verktøylinjen over editoren",
       "error": "Kunne ikke oppdatere verktøylinjemodus"
+    },
+    "spellCheck": {
+      "description": "Understrek feilstavede ord i notater og journaler",
+      "error": "Kunne ikke oppdatere stavekontrollen",
+      "label": "Stavekontroll"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "Lagringsbruk",
-      "location": "Beliggenhet"
+      "location": "Beliggenhet",
+      "accountVaults": "Hvelv i kontoen din"
     },
     "loadingStorage": "Laster lagringsinformasjon ...",
     "signInStorage": "Logg på for å se lagringsbruk",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "Lagring nesten fullt",
       "warningDescription": "Frigjør plass eller oppgrader planen din for å unngå synkroniseringsproblemer."
+    },
+    "accountVaults": {
+      "activeHint": "Bytt til et annet hvelv for å slette dette.",
+      "cloudOnly": "Ikke på denne enheten",
+      "delete": "Slett",
+      "deleteBody": "Dette fjerner for godt alle synkroniserte data for dette hvelvet fra Memrys servere, og kan ikke angres. Filene dine på disken blir ikke slettet.",
+      "deleteConfirm": "Slett fra kontoen",
+      "deleteFailed": "Kunne ikke slette hvelvet",
+      "deleteTitle": "Slette «{name}» fra kontoen din?",
+      "empty": "Ingen hvelv er synkronisert til kontoen din ennå.",
+      "itemsCount": "{count} elementer"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "Kunne ikke lukke hvelvet",
       "failedToSwitchVault": "Kunne ikke bytte hvelv",
       "failedToUpdateConfig": "Kunne ikke oppdatere konfigurasjonen",
-      "failedToReindex": "Kunne ikke indeksere på nytt"
+      "failedToReindex": "Kunne ikke indeksere på nytt",
+      "failedToLoadTasks": "Kunne ikke laste inn oppgavene"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "Gjøremål og forfallsdatoer",
         "label": "Oppgaver"
+      },
+      "spatialCanvas": {
+        "description": "Lerreter der du kan ordne og koble sammen notater",
+        "label": "Lerret"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} hoppet over",
         "title": "Import fullført"
       },
-      "title": "Importer fra {name}"
+      "title": "Importer fra {name}",
+      "chooseDirectory": "Velg mappe…",
+      "folderKeepsAssets": "Velg mappen når bildene ligger utenfor notatenes egen mappe — eksporter samler ofte mediefiler i en felles mappe."
     },
     "header": {
       "subtitle": "Hent inn notatene og oppgavene dine fra andre apper",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, one {# oppgave} other {# oppgaver}}",
       "withDueDate": "{count} datert",
       "withTags": "{count} med etikett"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Laster inn…",
+      "subtitle": "Daglig påminnelse om gjennomgang og innstillinger for innboksen.",
+      "title": "Innboks"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Et vennlig daglig dytt når det ligger noe i innboksen.",
+        "label": "Minn meg på å gå gjennom innboksen"
+      },
+      "error": "Kunne ikke oppdatere påminnelsen.",
+      "group": "Daglig påminnelse om gjennomgang",
+      "test": {
+        "button": "Send test",
+        "description": "Utløs påminnelsen nå for å teste systemvarslene dine.",
+        "label": "Testvarsel",
+        "sent": "Testvarselet er sendt.",
+        "sentHint": "Hvis ingenting dukker opp, må du tillate varsler for MemryNote i systeminnstillingene.",
+        "unsupported": "Denne enheten kan ikke vise skrivebordsvarsler."
+      },
+      "time": {
+        "description": "Lokal tid, på hver enhet.",
+        "hourLabel": "Time",
+        "label": "Tidspunkt for påminnelse",
+        "minuteLabel": "Minutt",
+        "periodLabel": "AM eller PM"
+      }
     }
   }
 }

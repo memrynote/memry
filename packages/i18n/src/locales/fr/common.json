@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "Téléchargement {percent}%",
       "updateInstallingSubtitle": "MemryNote redémarrera automatiquement.",
       "updateInstallingTitle": "Installation de la mise à jour",
-      "updateRestart": "Redémarrer"
+      "updateRestart": "Redémarrer",
+      "feedbackPrivacyEmailOptional": "Votre e-mail — seulement si vous l'ajoutez, et uniquement pour pouvoir vous répondre",
+      "feedbackPrivacyEmailSignedIn": "L'e-mail de votre compte ({email}), pour pouvoir vous répondre",
+      "feedbackPrivacyMessage": "Votre message, exactement tel que vous l'avez écrit",
+      "feedbackPrivacyNote": "Rien d'autre. Vos notes restent sur votre appareil.",
+      "feedbackPrivacyPlan": "Votre forfait (free, Plus, Pro ou Believer)",
+      "feedbackPrivacyTitle": "Ce qui est envoyé",
+      "feedbackPrivacyVersion": "Version de l'application et système d'exploitation",
+      "projects": "Projets"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Redimensionner le panneau de jour",
@@ -231,7 +239,8 @@
       "journal": "Revue",
       "calendar": "Calendrier",
       "inboxCapture": "Capture de la boîte de réception",
-      "tasks": "Tâches"
+      "tasks": "Tâches",
+      "tags": "Balises"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Modifications non enregistrées",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Quelque chose s'est mal passé",
       "anErrorOccurredWhileRenderingThisTabContent": "Une erreur s'est produite lors du rendu du contenu de cet onglet.",
-      "tryAgain": "Réessayez"
+      "tryAgain": "Réessayez",
+      "sendReport": "Envoyer un rapport de diagnostic"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Icône de remarque"
@@ -352,7 +362,13 @@
       "downloadLocation": "Emplacement",
       "changeLocation": "Modifier…",
       "download": "Télécharger",
-      "downloadFailed": "Impossible de télécharger le coffre"
+      "downloadFailed": "Impossible de télécharger le coffre",
+      "deleteFromAccount": "Supprimer du compte",
+      "deleteVaultBody": "Cette action supprime définitivement des serveurs de Memry toutes les données synchronisées de ce coffre et ne peut pas être annulée. Vos fichiers sur le disque ne sont pas supprimés.",
+      "deleteVaultConfirm": "Supprimer du compte",
+      "deleteVaultFailed": "Impossible de supprimer le coffre",
+      "deleteVaultTitle": "Supprimer « {name} » de votre compte ?",
+      "removeVaultTitle": "Retirer « {name} » de la liste ?"
     },
     "componentsWindowControls": {
       "searchK": "Rechercher (⌘K)",
@@ -640,6 +656,45 @@
     "skip": "Ignorer cette version"
   },
   "capture": {
-    "focusShortcut": "Activer le champ de capture"
+    "focusShortcut": "Activer le champ de capture",
+    "detailHint": "détail",
+    "focusHint": "Q",
+    "submit": "Capturer"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Ajouter une carte",
+      "addCreateNote": "Créer la note « {query} »",
+      "addCreateNoteEmpty": "Créer une note",
+      "addCreatedAt": "Créé le {date}",
+      "addEmpty": "Aucun résultat",
+      "addGroupEvents": "Événements",
+      "addGroupNotes": "Notes",
+      "addGroupTasks": "Tâches",
+      "addOnCanvas": "Sur le canevas",
+      "addPlaceholder": "Rechercher des notes, des tâches et des événements…",
+      "allDay": "Toute la journée",
+      "createNoteFailed": "Impossible de créer la note",
+      "deleted": "Élément supprimé",
+      "loading": "Chargement…",
+      "open": "Ouvrir dans un onglet",
+      "openToEdit": "Ouvrir dans un onglet pour modifier",
+      "untitled": "Sans titre"
+    },
+    "corruptScene": "Ce canevas n'a pas pu être lu. La modification est désactivée pour éviter toute perte de données.",
+    "createFailed": "Impossible de créer le canevas",
+    "disabledBody": "Cet onglet appartient à une fonctionnalité qui n'est pas activée sur cet appareil.",
+    "disabledTitle": "Le canevas n'est pas activé",
+    "empty": "Aucun canevas pour l'instant",
+    "libraryStoreFailed": "Impossible d'enregistrer votre bibliothèque de formes. Les modifications récentes pourraient être perdues.",
+    "loadFailed": "Impossible de charger les canevas",
+    "loading": "Chargement des canevas…",
+    "newCanvas": "Nouveau canevas",
+    "notFound": "Ce canevas est introuvable",
+    "openFailed": "Impossible d'ouvrir le canevas",
+    "savedToVault": "Toutes les modifications sont enregistrées automatiquement dans votre coffre",
+    "sectionLabel": "Canevas",
+    "tooLargeToSync": "Ce canevas est trop volumineux pour être synchronisé. Il est enregistré sur cet appareil, mais il ne parviendra pas à vos autres appareils tant qu'il ne sera pas plus léger.",
+    "untitled": "Canevas sans titre"
   }
 }

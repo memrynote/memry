@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "Item sinkronisasi tidak dapat diverifikasi dan telah dikarantina demi keamanan.",
     "securityQuarantineRetry": "Item sinkronisasi gagal dalam verifikasi tanda tangan dan akan dicoba lagi.",
     "certificatePinPaused": "Sambungan aman ke server sinkronisasi tidak dapat diverifikasi. Sinkronisasi telah dijeda demi perlindungan Anda.",
-    "paymentRequired": "Paket Sync berbayar diperlukan untuk menggunakan sinkronisasi terenkripsi yang dihosting."
+    "paymentRequired": "Paket Sync berbayar diperlukan untuk menggunakan sinkronisasi terenkripsi yang dihosting.",
+    "attachmentUploadFailed": "Tidak dapat menyinkronkan lampiran \"{filename}\". Lampiran tetap di perangkat ini.",
+    "fileTooLarge": "File ini lebih besar dari yang diizinkan paket Anda. Tingkatkan paket Anda untuk menyinkronkan file yang lebih besar.",
+    "vaultRecovered": "Kunci brankas dipulihkan. Sinkronisasi akan dilanjutkan."
   }
 }

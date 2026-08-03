@@ -38,6 +38,11 @@
       "fallback": "Promemoria dovuto",
       "default": "Promemoria",
       "task": "Promemoria attività"
+    },
+    "inboxReview": {
+      "body": "Hai {count, plural, one {# elemento} many {# elementi} other {# elementi}} da rivedere.",
+      "testBody": "Questa è una prova — i tuoi promemoria di revisione quotidiana avranno questo aspetto.",
+      "title": "È ora di rivedere la posta in arrivo"
     }
   },
   "error": {

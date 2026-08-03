@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "Egy szinkronizálási elemet nem sikerült ellenőrizni, ezért biztonsági okokból karanténba helyeztük.",
     "securityQuarantineRetry": "Egy szinkronizálási elem aláírásának ellenőrzése sikertelen volt, ezért újra megpróbáljuk.",
     "certificatePinPaused": "Nem sikerült ellenőrizni a biztonságos kapcsolatot a szinkronizáló szerverrel. A szinkronizálást az Ön védelme érdekében szüneteltették.",
-    "paymentRequired": "A hosztolt titkosított szinkronizáláshoz fizetős Szinkron csomag szükséges."
+    "paymentRequired": "A hosztolt titkosított szinkronizáláshoz fizetős Szinkron csomag szükséges.",
+    "attachmentUploadFailed": "Nem sikerült szinkronizálni a(z) „{filename}” mellékletet. Ezen az eszközön marad.",
+    "fileTooLarge": "Ez a fájl nagyobb, mint amit a csomagod megenged. Nagyobb fájlok szinkronizálásához válts nagyobb csomagra.",
+    "vaultRecovered": "A tár kulcsa helyreállt. A szinkronizálás folytatódik."
   }
 }

@@ -34,7 +34,8 @@
     "createAnother": "Hozzon létre egy másikat",
     "delete": "Feladat törlése",
     "created": "Létrehozva: {date}",
-    "reminder": "Emlékeztető"
+    "reminder": "Emlékeztető",
+    "tags": "Címkék"
   },
   "filters": {
     "filter": "Szűrés",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Gyors hozzáadási feladat",
-    "focusDescription": "Fókuszálás a gyors hozzáadási bemenetre"
+    "focusDescription": "Fókuszálás a gyors hozzáadási bemenetre",
+    "placeholder": "Feladat hozzáadása…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Zárja be a feladat részleteit",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Ennek a projektnek nincsenek feladatai, ezért véglegesen töröljük.",
       "thisActionCannotBeUndone": "Ez a művelet nem vonható vissza.",
       "cancel": "Mégsem",
-      "deleteProject": "Projekt törlése"
+      "deleteProject": "Projekt törlése",
+      "notesEventsAndFilesStayNotice": "A projekt feladatai törlődnek. A jegyzeteid, eseményeid és fájljaid a tárban maradnak."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Törli a feladatot?",
@@ -357,7 +360,9 @@
       "due": "esedékes",
       "dueDate": "esedékessége",
       "search": "keresés",
-      "clearAll": "Minden törlése"
+      "clearAll": "Minden törlése",
+      "tags": "címkék",
+      "tagsIs": "A címkék:"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Szűrés határidő szerint",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "Nincsenek közelgő feladatok",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Itt jelennek meg a következő 7 napban esedékes feladatok. Tervezze meg hetét néhány feladat hozzáadásával.",
       "addTask2": "Feladat hozzáadása"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "van",
+      "search": "Keresés...",
+      "selected": "kiválasztott",
+      "tags": "Címkék"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "Nem sikerült beállítani az emlékeztetőt",
       "updateFailed": "Nem sikerült frissíteni az emlékeztetőt",
       "updated": "Emlékeztető frissítve"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Hozzáadás projekthez",
+    "loading": "Projektek betöltése…",
+    "menuLabel": "Hozzáadás projekthez",
+    "noProjects": "Még nincsenek projektek",
+    "toastError": "Nem sikerült hozzáadni a projekthez",
+    "toastSuccess": "Hozzáadva ehhez: {name}"
+  },
+  "itemProjects": {
+    "openProject": "{name} projekt megnyitása"
+  },
+  "projectHome": {
+    "emptyBody": "Válassz egy projektet az oldalsávból a kezdőlapja megnyitásához.",
+    "emptyTitle": "Nincs kiválasztott projekt",
+    "loadError": "Nem sikerült betölteni a projekt adatait",
+    "overview": {
+      "clear": "Áttekintés törlése",
+      "clearError": "Nem sikerült törölni az áttekintő jegyzetet",
+      "create": "Áttekintő jegyzet létrehozása",
+      "createError": "Nem sikerült létrehozni az áttekintő jegyzetet",
+      "defaultTitle": "Áttekintés",
+      "loadError": "Nem sikerült betölteni az áttekintő jegyzetet",
+      "placeholder": "Írj áttekintést ehhez a projekthez…",
+      "saveError": "Nem sikerült elmenteni az áttekintő jegyzetet",
+      "sectionTitle": "Áttekintés"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Fájlok csatolása",
+      "fileError": "Nem sikerült összekapcsolni: {name}",
+      "fileErrorGeneric": "Nem sikerült importálni a fájlokat",
+      "filesAdded": "{count, plural, one {# fájl hozzáadva a projekthez} other {# fájl hozzáadva a projekthez}}",
+      "label": "Hozzáadás ehhez: {name}",
+      "linkAdded": "A link hozzáadva a projekthez",
+      "linkError": "Nem sikerült elmenteni a linket",
+      "placeholder": "Hozzáadás ehhez: {name} — írj egy feladatot, jegyezz fel valamit, vagy illessz be egy linket…"
+    },
+    "groups": {
+      "older": "Régebbi",
+      "past": "Korábbi",
+      "today": "Ma",
+      "tomorrow": "Holnap",
+      "upcoming": "Közelgő",
+      "yesterday": "Tegnap"
+    },
+    "header": {
+      "archiveProject": "Projekt archiválása",
+      "editProject": "Projekt szerkesztése",
+      "menu": "Projektműveletek",
+      "toggleRail": "Projekt részleteinek megjelenítése vagy elrejtése"
+    },
+    "rail": {
+      "addNote": "Jegyzet hozzáadása",
+      "created": "Létrehozva",
+      "details": "Részletek",
+      "doneOf": "{done}/{total} kész",
+      "linked": "Kapcsolódó",
+      "linkedSummary": "{notes, plural, one {# jegyzet} other {# jegyzet}} · {files, plural, one {# fájl} other {# fájl}} · {events, plural, one {# esemény} other {# esemény}}",
+      "overdue": "Lejárt",
+      "overview": "Áttekintés",
+      "pinError": "Nem sikerült hozzáadni a jegyzetet az áttekintéshez",
+      "progress": "Haladás",
+      "unpinError": "Nem sikerült eltávolítani a jegyzetet az áttekintésből",
+      "unpinNote": "{title} eltávolítása az áttekintésből",
+      "updated": "Frissítve"
+    },
+    "rows": {
+      "openEvent": "{title} esemény megnyitása",
+      "openFile": "{title} fájl megnyitása",
+      "openNote": "{title} jegyzet megnyitása",
+      "openTask": "{title} feladat megnyitása",
+      "setNoteIcon": "{title} ikonjának beállítása"
+    },
+    "sections": {
+      "add": "Hozzáadás ehhez: {title}",
+      "emptyEvents": "Még nincs összekapcsolt esemény.",
+      "emptyFiles": "Még nincs összekapcsolt fájl.",
+      "emptyNotes": "Még nincs összekapcsolt jegyzet.",
+      "emptyTasks": "Még nincsenek feladatok.",
+      "newNoteError": "Nem sikerült hozzáadni a jegyzetet",
+      "newNoteTitle": "Névtelen jegyzet",
+      "viewAll": "Az összes megtekintése"
+    },
+    "tabs": {
+      "events": "Események",
+      "files": "Fájlok",
+      "label": "Projektnézetek",
+      "notes": "Jegyzetek",
+      "overview": "Áttekintés",
+      "tasks": "Feladatok"
     }
   }
 }

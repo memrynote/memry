@@ -314,7 +314,10 @@
       "rdquo": "rdquo;",
       "captureAnyway": "Kaappaa joka tapauksessa",
       "focusShortcut": "Kohdista tallennussyöttöön",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Tallenna linkki",
+      "captureNote": "Tallenna muistiinpano",
+      "placeholder": "Pikatallennus — liitä linkki tai kirjaa ajatus…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Valitse kansio",
@@ -466,7 +469,12 @@
       "cancelRecording": "Peruuta tallennus",
       "cancel": "Peruuta",
       "stopRecording": "Lopeta tallennus",
-      "stop": "Pysähdy"
+      "stop": "Pysähdy",
+      "enableMicInSettings": "Salli mikrofonin käyttö järjestelmäasetuksissa ja yritä uudelleen.",
+      "failedToStart": "Tallennuksen aloittaminen epäonnistui",
+      "microphoneAccessDenied": "Mikrofonin käyttö estetty",
+      "noMicrophoneFound": "Mikrofonia ei löytynyt",
+      "recordingError": "Tallennuksessa tapahtui virhe"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "Tiedoston sieppaus epäonnistui",
       "fileCaptureFailed": "Tiedoston sieppaus epäonnistui",
       "failedToCaptureAudio": "Äänen sieppaus epäonnistui",
-      "failedToCaptureVoice": "Äänen sieppaus epäonnistui"
+      "failedToCaptureVoice": "Äänen sieppaus epäonnistui",
+      "failedToLoadInboxPreferences": "Saapuneet-asetusten lataaminen epäonnistui",
+      "failedToUpdateInboxPreferences": "Saapuneet-asetusten päivittäminen epäonnistui"
     },
     "toasts": {
       "inboxRefreshed": "Postilaatikko päivitetty"
@@ -516,5 +526,10 @@
     "task": "Tehtävä",
     "time": "Aika",
     "title": "Muunna"
+  },
+  "reviewNudge": {
+    "action": "Avaa saapuneet",
+    "description": "Käy tämän päivän tallennukset läpi yhdellä rauhallisella kierroksella.",
+    "title": "{count, plural, one {Aika käydä läpi # kohde} other {Aika käydä läpi # kohdetta}}"
   }
 }

@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "无法验证同步项目，该项目已为安全起见被隔离。",
     "securityQuarantineRetry": "同步项目签名验证失败，将会重试。",
     "certificatePinPaused": "无法验证与同步服务器的安全连接。为保护您的安全，同步已暂停。",
-    "paymentRequired": "使用托管加密同步需要付费的同步套餐。"
+    "paymentRequired": "使用托管加密同步需要付费的同步套餐。",
+    "attachmentUploadFailed": "无法同步附件“{filename}”。该文件仍保留在此设备上。",
+    "fileTooLarge": "此文件超出了您的套餐允许的大小。升级套餐即可同步更大的文件。",
+    "vaultRecovered": "保险库密钥已恢复。同步将恢复。"
   }
 }

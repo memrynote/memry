@@ -38,6 +38,11 @@
       "fallback": "Připomenutí je splatné",
       "default": "Připomenutí",
       "task": "Připomenutí úkolu"
+    },
+    "inboxReview": {
+      "body": "Máte {count, plural, one {# položku} few {# položky} many {# položky} other {# položek}} ke zpracování.",
+      "testBody": "Toto je test — takto budou vypadat vaše denní připomenutí.",
+      "title": "Čas projít doručenou poštu"
     }
   },
   "error": {

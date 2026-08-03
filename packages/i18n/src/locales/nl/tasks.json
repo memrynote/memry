@@ -34,7 +34,8 @@
     "createAnother": "Maak er nog een",
     "delete": "Taak verwijderen",
     "created": "{date} gemaakt",
-    "reminder": "Herinnering"
+    "reminder": "Herinnering",
+    "tags": "Tags"
   },
   "filters": {
     "filter": "Filteren",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Snel taak toevoegen",
-    "focusDescription": "Focus snel invoer toevoegen"
+    "focusDescription": "Focus snel invoer toevoegen",
+    "placeholder": "Voeg een taak toe…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Sluit taakdetails",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Dit project heeft geen taken en wordt permanent verwijderd.",
       "thisActionCannotBeUndone": "Deze actie kan niet ongedaan worden gemaakt.",
       "cancel": "Annuleer",
-      "deleteProject": "Project verwijderen"
+      "deleteProject": "Project verwijderen",
+      "notesEventsAndFilesStayNotice": "Taken in dit project worden verwijderd. Je notities, evenementen en bestanden blijven in je kluis."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Taak verwijderen?",
@@ -357,7 +360,9 @@
       "due": "Verschuldigd",
       "dueDate": "vervaldatum",
       "search": "zoeken",
-      "clearAll": "Alles wissen"
+      "clearAll": "Alles wissen",
+      "tags": "tags",
+      "tagsIs": "Tags is"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Filter op vervaldatum",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "Geen toekomstige taken",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Taken die in de komende zeven dagen moeten worden uitgevoerd, worden hier weergegeven. Plan uw week door enkele taken toe te voegen.",
       "addTask2": "Taak toevoegen"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "is",
+      "search": "Zoeken...",
+      "selected": "geselecteerd",
+      "tags": "Tags"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "Kan herinnering niet instellen",
       "updateFailed": "Kan herinnering niet bijwerken",
       "updated": "Herinnering bijgewerkt"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Toevoegen aan project",
+    "loading": "Projecten laden…",
+    "menuLabel": "Toevoegen aan project",
+    "noProjects": "Nog geen projecten",
+    "toastError": "Toevoegen aan project mislukt",
+    "toastSuccess": "Toegevoegd aan {name}"
+  },
+  "itemProjects": {
+    "openProject": "Project {name} openen"
+  },
+  "projectHome": {
+    "emptyBody": "Kies een project in de zijbalk om de startpagina te openen.",
+    "emptyTitle": "Geen project geselecteerd",
+    "loadError": "Kan projectdetails niet laden",
+    "overview": {
+      "clear": "Overzicht wissen",
+      "clearError": "Kan de overzichtsnotitie niet wissen",
+      "create": "Overzichtsnotitie maken",
+      "createError": "Kan de overzichtsnotitie niet maken",
+      "defaultTitle": "Overzicht",
+      "loadError": "Kan de overzichtsnotitie niet laden",
+      "placeholder": "Schrijf een overzicht voor dit project…",
+      "saveError": "Kan de overzichtsnotitie niet opslaan",
+      "sectionTitle": "Overzicht"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Bestanden bijvoegen",
+      "fileError": "Kan {name} niet koppelen",
+      "fileErrorGeneric": "Kan de bestanden niet importeren",
+      "filesAdded": "{count, plural, one {# bestand toegevoegd aan het project} other {# bestanden toegevoegd aan het project}}",
+      "label": "Toevoegen aan {name}",
+      "linkAdded": "Link toegevoegd aan het project",
+      "linkError": "Kan de link niet opslaan",
+      "placeholder": "Toevoegen aan {name} — typ een taak, noteer iets of plak een link…"
+    },
+    "groups": {
+      "older": "Ouder",
+      "past": "Afgelopen",
+      "today": "Vandaag",
+      "tomorrow": "Morgen",
+      "upcoming": "Binnenkort",
+      "yesterday": "Gisteren"
+    },
+    "header": {
+      "archiveProject": "Project archiveren",
+      "editProject": "Project bewerken",
+      "menu": "Projectacties",
+      "toggleRail": "Projectdetails tonen of verbergen"
+    },
+    "rail": {
+      "addNote": "Notitie toevoegen",
+      "created": "Gemaakt",
+      "details": "Details",
+      "doneOf": "{done} van {total} klaar",
+      "linked": "Gekoppeld",
+      "linkedSummary": "{notes, plural, one {# notitie} other {# notities}} · {files, plural, one {# bestand} other {# bestanden}} · {events, plural, one {# evenement} other {# evenementen}}",
+      "overdue": "Te laat",
+      "overview": "Overzicht",
+      "pinError": "Kan de notitie niet aan het overzicht toevoegen",
+      "progress": "Voortgang",
+      "unpinError": "Kan de notitie niet uit het overzicht verwijderen",
+      "unpinNote": "{title} uit het overzicht verwijderen",
+      "updated": "Bijgewerkt"
+    },
+    "rows": {
+      "openEvent": "Evenement {title} openen",
+      "openFile": "Bestand {title} openen",
+      "openNote": "Notitie {title} openen",
+      "openTask": "Taak {title} openen",
+      "setNoteIcon": "Pictogram instellen voor {title}"
+    },
+    "sections": {
+      "add": "Toevoegen aan {title}",
+      "emptyEvents": "Nog geen evenementen gekoppeld.",
+      "emptyFiles": "Nog geen bestanden gekoppeld.",
+      "emptyNotes": "Nog geen notities gekoppeld.",
+      "emptyTasks": "Nog geen taken.",
+      "newNoteError": "Kan de notitie niet toevoegen",
+      "newNoteTitle": "Notitie zonder titel",
+      "viewAll": "Alles bekijken"
+    },
+    "tabs": {
+      "events": "Evenementen",
+      "files": "Bestanden",
+      "label": "Projectweergaven",
+      "notes": "Notities",
+      "overview": "Overzicht",
+      "tasks": "Taken"
     }
   }
 }

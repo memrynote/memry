@@ -314,7 +314,10 @@
       "rdquo": "rdquo;",
       "captureAnyway": "Zachytiť aj tak",
       "focusShortcut": "Zamerať pole zachytávania",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Zachytiť odkaz",
+      "captureNote": "Zachytiť poznámku",
+      "placeholder": "Rýchle zachytenie — vložte odkaz, zapíšte myšlienku…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Vybrať priečinok",
@@ -466,7 +469,12 @@
       "cancelRecording": "Zrušiť nahrávanie",
       "cancel": "Zrušiť",
       "stopRecording": "Zastaviť nahrávanie",
-      "stop": "Stop"
+      "stop": "Stop",
+      "enableMicInSettings": "Povoľte prístup k mikrofónu v nastaveniach systému a skúste to znova.",
+      "failedToStart": "Nahrávanie sa nepodarilo spustiť",
+      "microphoneAccessDenied": "Prístup k mikrofónu bol zamietnutý",
+      "noMicrophoneFound": "Nenašiel sa žiadny mikrofón",
+      "recordingError": "Pri nahrávaní nastala chyba"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "Nepodarilo sa zachytiť súbor",
       "fileCaptureFailed": "Zachytenie súboru zlyhalo",
       "failedToCaptureAudio": "Nepodarilo sa zachytiť audio",
-      "failedToCaptureVoice": "Nepodarilo sa zachytiť hlas"
+      "failedToCaptureVoice": "Nepodarilo sa zachytiť hlas",
+      "failedToLoadInboxPreferences": "Nepodarilo sa načítať nastavenia schránky",
+      "failedToUpdateInboxPreferences": "Nepodarilo sa aktualizovať nastavenia schránky"
     },
     "toasts": {
       "inboxRefreshed": "Doručená pošta obnovená"
@@ -516,5 +526,10 @@
     "task": "Úloha",
     "time": "Čas",
     "title": "Konvertovať"
+  },
+  "reviewNudge": {
+    "action": "Otvoriť schránku",
+    "description": "Spracujte dnešné zachytené položky v jednom pokojnom kole.",
+    "title": "{count, plural, one {Čas prejsť si # položku} few {Čas prejsť si # položky} many {Čas prejsť si # položky} other {Čas prejsť si # položiek}}"
   }
 }

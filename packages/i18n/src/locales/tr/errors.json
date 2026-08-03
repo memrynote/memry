@@ -74,6 +74,9 @@
     "settingsNotInitialized": "Ayarlar senkronizasyonu başlatılmadı",
     "securityQuarantinePermanent": "Bir senkronizasyon öğesi doğrulanamadı ve güvenlik nedeniyle karantinaya alındı.",
     "securityQuarantineRetry": "Bir senkronizasyon öğesi imza doğrulamasında başarısız oldu ve yeniden denenecek.",
-    "certificatePinPaused": "Senkronizasyon sunucusuna güvenli bağlantı doğrulanamadı. Güvenliğiniz için senkronizasyon duraklatıldı."
+    "certificatePinPaused": "Senkronizasyon sunucusuna güvenli bağlantı doğrulanamadı. Güvenliğiniz için senkronizasyon duraklatıldı.",
+    "attachmentUploadFailed": "\"{filename}\" eki senkronize edilemedi. Bu cihazda kalacak.",
+    "fileTooLarge": "Bu dosya planınızın izin verdiğinden büyük. Daha büyük dosyaları senkronize etmek için planınızı yükseltin.",
+    "vaultRecovered": "Kasa anahtarı geri yüklendi. Senkronizasyon devam edecek."
   }
 }

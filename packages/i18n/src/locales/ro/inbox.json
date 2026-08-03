@@ -314,7 +314,10 @@
       "rdquo": "rdquo;",
       "captureAnyway": "Captură oricum",
       "focusShortcut": "Focalizează câmpul de captură",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Capturează linkul",
+      "captureNote": "Capturează nota",
+      "placeholder": "Captură rapidă — lipește un link, notează un gând…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Alegeți folderul",
@@ -466,7 +469,12 @@
       "cancelRecording": "Anulați înregistrarea",
       "cancel": "Anulează",
       "stopRecording": "Opriți înregistrarea",
-      "stop": "Opreste-te"
+      "stop": "Opreste-te",
+      "enableMicInSettings": "Activează accesul la microfon în setările sistemului, apoi încearcă din nou.",
+      "failedToStart": "Nu s-a putut porni înregistrarea",
+      "microphoneAccessDenied": "Acces la microfon refuzat",
+      "noMicrophoneFound": "Nu s-a găsit niciun microfon",
+      "recordingError": "A apărut o eroare la înregistrare"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "Nu s-a putut captura fișierul",
       "fileCaptureFailed": "Captura fișierului a eșuat",
       "failedToCaptureAudio": "Nu s-a putut capta sunetul",
-      "failedToCaptureVoice": "Nu s-a putut capta vocea"
+      "failedToCaptureVoice": "Nu s-a putut capta vocea",
+      "failedToLoadInboxPreferences": "Nu s-au putut încărca preferințele pentru inbox",
+      "failedToUpdateInboxPreferences": "Nu s-au putut actualiza preferințele pentru inbox"
     },
     "toasts": {
       "inboxRefreshed": "Inbox a fost reîmprospătat"
@@ -516,5 +526,10 @@
     "task": "Sarcină",
     "time": "Ora",
     "title": "Convertește"
+  },
+  "reviewNudge": {
+    "action": "Deschide inbox",
+    "description": "Procesează capturile de azi într-o singură trecere calmă.",
+    "title": "{count, plural, one {E timpul să revizuiești # element} few {E timpul să revizuiești # elemente} other {E timpul să revizuiești # de elemente}}"
   }
 }

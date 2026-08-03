@@ -34,7 +34,8 @@
     "createAnother": "Lag en annen",
     "delete": "Slett oppgave",
     "created": "Opprettet {date}",
-    "reminder": "Påminnelse"
+    "reminder": "Påminnelse",
+    "tags": "Tagger"
   },
   "filters": {
     "filter": "Filter",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Rask legge til oppgave",
-    "focusDescription": "Fokuser raskt legge inn input"
+    "focusDescription": "Fokuser raskt legge inn input",
+    "placeholder": "Legg til en oppgave…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Lukk oppgavedetaljer",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Dette prosjektet har ingen oppgaver og vil bli permanent slettet.",
       "thisActionCannotBeUndone": "Denne handlingen kan ikke angres.",
       "cancel": "Avbryt",
-      "deleteProject": "Slett prosjekt"
+      "deleteProject": "Slett prosjekt",
+      "notesEventsAndFilesStayNotice": "Oppgavene i dette prosjektet slettes. Notatene, hendelsene og filene dine blir liggende i hvelvet."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Vil du slette oppgaven?",
@@ -357,7 +360,9 @@
       "due": "Forfaller",
       "dueDate": "forfallsdato",
       "search": "søk",
-      "clearAll": "Fjern alle"
+      "clearAll": "Fjern alle",
+      "tags": "tagger",
+      "tagsIs": "Tagger er"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Filtrer etter forfallsdato",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "Ingen kommende oppgaver",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Oppgaver som skal forfalle i løpet av de neste 7 dagene vil vises her. Planlegg uken ved å legge til noen oppgaver.",
       "addTask2": "Legg til oppgave"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "er",
+      "search": "Søk...",
+      "selected": "valgt",
+      "tags": "Tagger"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "Kunne ikke angi påminnelse",
       "updateFailed": "Kunne ikke oppdatere påminnelse",
       "updated": "Påminnelse oppdatert"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Legg til i prosjekt",
+    "loading": "Laster inn prosjekter…",
+    "menuLabel": "Legg til i prosjekt",
+    "noProjects": "Ingen prosjekter ennå",
+    "toastError": "Kunne ikke legge til i prosjektet",
+    "toastSuccess": "Lagt til i {name}"
+  },
+  "itemProjects": {
+    "openProject": "Åpne prosjektet {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Velg et prosjekt i sidepanelet for å åpne prosjektsiden.",
+    "emptyTitle": "Ingen prosjekt er valgt",
+    "loadError": "Kunne ikke laste inn prosjektdetaljene",
+    "overview": {
+      "clear": "Fjern oversikten",
+      "clearError": "Kunne ikke fjerne oversiktsnotatet",
+      "create": "Opprett oversiktsnotat",
+      "createError": "Kunne ikke opprette oversiktsnotatet",
+      "defaultTitle": "Oversikt",
+      "loadError": "Kunne ikke laste inn oversiktsnotatet",
+      "placeholder": "Skriv en oversikt for dette prosjektet…",
+      "saveError": "Kunne ikke lagre oversiktsnotatet",
+      "sectionTitle": "Oversikt"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Legg ved filer",
+      "fileError": "Kunne ikke koble {name} til prosjektet",
+      "fileErrorGeneric": "Kunne ikke importere filene",
+      "filesAdded": "{count, plural, one {# fil lagt til i prosjektet} other {# filer lagt til i prosjektet}}",
+      "label": "Legg til i {name}",
+      "linkAdded": "Lenken er lagt til i prosjektet",
+      "linkError": "Kunne ikke lagre lenken",
+      "placeholder": "Legg til i {name} — skriv en oppgave, noter en tanke eller lim inn en lenke…"
+    },
+    "groups": {
+      "older": "Eldre",
+      "past": "Tidligere",
+      "today": "I dag",
+      "tomorrow": "I morgen",
+      "upcoming": "Kommende",
+      "yesterday": "I går"
+    },
+    "header": {
+      "archiveProject": "Arkiver prosjekt",
+      "editProject": "Rediger prosjekt",
+      "menu": "Prosjekthandlinger",
+      "toggleRail": "Vis eller skjul prosjektdetaljer"
+    },
+    "rail": {
+      "addNote": "Legg til notat",
+      "created": "Opprettet",
+      "details": "Detaljer",
+      "doneOf": "{done} av {total} fullført",
+      "linked": "Koblet",
+      "linkedSummary": "{notes, plural, one {# notat} other {# notater}} · {files, plural, one {# fil} other {# filer}} · {events, plural, one {# hendelse} other {# hendelser}}",
+      "overdue": "Forfalt",
+      "overview": "Oversikt",
+      "pinError": "Kunne ikke legge notatet til i oversikten",
+      "progress": "Fremdrift",
+      "unpinError": "Kunne ikke fjerne notatet fra oversikten",
+      "unpinNote": "Fjern {title} fra oversikten",
+      "updated": "Oppdatert"
+    },
+    "rows": {
+      "openEvent": "Åpne hendelsen {title}",
+      "openFile": "Åpne filen {title}",
+      "openNote": "Åpne notatet {title}",
+      "openTask": "Åpne oppgaven {title}",
+      "setNoteIcon": "Angi ikon for {title}"
+    },
+    "sections": {
+      "add": "Legg til i {title}",
+      "emptyEvents": "Ingen hendelser er koblet til ennå.",
+      "emptyFiles": "Ingen filer er koblet til ennå.",
+      "emptyNotes": "Ingen notater er koblet til ennå.",
+      "emptyTasks": "Ingen oppgaver ennå.",
+      "newNoteError": "Kunne ikke legge til notatet",
+      "newNoteTitle": "Notat uten tittel",
+      "viewAll": "Vis alle"
+    },
+    "tabs": {
+      "events": "Hendelser",
+      "files": "Filer",
+      "label": "Prosjektvisninger",
+      "notes": "Notater",
+      "overview": "Oversikt",
+      "tasks": "Oppgaver"
     }
   }
 }

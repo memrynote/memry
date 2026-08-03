@@ -67,7 +67,8 @@
     "title": "Veranstaltung löschen?",
     "local-description": "„{title}“ wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
     "google-bound-description": "„{title}“ wird aus memrynote und Google Kalender entfernt. Diese Aktion kann nicht rückgängig gemacht werden.",
-    "context-menu-delete-label": "Veranstaltung löschen"
+    "context-menu-delete-label": "Veranstaltung löschen",
+    "context-menu-add-to-project": "Zum Projekt hinzufügen"
   },
   "promote-dialog": {
     "aria": "Externes Kalenderereignis bearbeiten",
@@ -181,6 +182,7 @@
     "placeholder": "Termine, Aufgaben, Erinnerungen suchen…"
   },
   "undo": {
-    "moveEvent": "Termin verschieben"
+    "moveEvent": "Termin verschieben",
+    "moveTask": "Aufgabe neu planen"
   }
 }

@@ -314,7 +314,10 @@
       "rdquo": "rdquo;",
       "captureAnyway": "Hoe dan ook vastleggen",
       "focusShortcut": "Vastlegveld focussen",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Link vastleggen",
+      "captureNote": "Notitie vastleggen",
+      "placeholder": "Snel vastleggen — plak een link, noteer een gedachte…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Kies map",
@@ -466,7 +469,12 @@
       "cancelRecording": "Annuleer de opname",
       "cancel": "Annuleer",
       "stopRecording": "Stop met opnemen",
-      "stop": "Stop"
+      "stop": "Stop",
+      "enableMicInSettings": "Sta microfoontoegang toe in je systeeminstellingen en probeer het opnieuw.",
+      "failedToStart": "Kan de opname niet starten",
+      "microphoneAccessDenied": "Microfoontoegang geweigerd",
+      "noMicrophoneFound": "Geen microfoon gevonden",
+      "recordingError": "Er is een opnamefout opgetreden"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "Kan bestand niet vastleggen",
       "fileCaptureFailed": "Het vastleggen van bestanden is mislukt",
       "failedToCaptureAudio": "Kan geen audio vastleggen",
-      "failedToCaptureVoice": "Kan stem niet vastleggen"
+      "failedToCaptureVoice": "Kan stem niet vastleggen",
+      "failedToLoadInboxPreferences": "Kan inboxvoorkeuren niet laden",
+      "failedToUpdateInboxPreferences": "Kan inboxvoorkeuren niet bijwerken"
     },
     "toasts": {
       "inboxRefreshed": "Postvak IN vernieuwd"
@@ -516,5 +526,10 @@
     "task": "Taak",
     "time": "Tijd",
     "title": "Converteren"
+  },
+  "reviewNudge": {
+    "action": "Inbox openen",
+    "description": "Verwerk wat je vandaag hebt vastgelegd in één rustige ronde.",
+    "title": "{count, plural, one {Tijd om # item door te nemen} other {Tijd om # items door te nemen}}"
   }
 }

@@ -314,7 +314,10 @@
       "rdquo": "rdquo ;",
       "captureAnyway": "Capturez quand même",
       "focusShortcut": "Activer le champ de capture",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Capturer le lien",
+      "captureNote": "Capturer la note",
+      "placeholder": "Capture rapide — collez un lien, notez une idée…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Choisir un dossier",
@@ -466,7 +469,12 @@
       "cancelRecording": "Annuler l'enregistrement",
       "cancel": "Annuler",
       "stopRecording": "Arrêter l'enregistrement",
-      "stop": "Arrêter"
+      "stop": "Arrêter",
+      "enableMicInSettings": "Autorisez l'accès au microphone dans les paramètres de votre système, puis réessayez.",
+      "failedToStart": "Échec du démarrage de l'enregistrement",
+      "microphoneAccessDenied": "Accès au microphone refusé",
+      "noMicrophoneFound": "Aucun microphone détecté",
+      "recordingError": "Une erreur d'enregistrement s'est produite"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "Échec de la capture du fichier",
       "fileCaptureFailed": "La capture du fichier a échoué",
       "failedToCaptureAudio": "Échec de la capture audio",
-      "failedToCaptureVoice": "Échec de la capture de la voix"
+      "failedToCaptureVoice": "Échec de la capture de la voix",
+      "failedToLoadInboxPreferences": "Échec du chargement des préférences de la boîte de réception",
+      "failedToUpdateInboxPreferences": "Échec de la mise à jour des préférences de la boîte de réception"
     },
     "toasts": {
       "inboxRefreshed": "Boîte de réception actualisée"
@@ -516,5 +526,10 @@
     "task": "Tâche",
     "time": "Heure",
     "title": "Convertir"
+  },
+  "reviewNudge": {
+    "action": "Ouvrir la boîte de réception",
+    "description": "Traitez les captures du jour en une seule passe tranquille.",
+    "title": "{count, plural, one {Il est temps de passer en revue # élément} many {Il est temps de passer en revue # éléments} other {Il est temps de passer en revue # éléments}}"
   }
 }

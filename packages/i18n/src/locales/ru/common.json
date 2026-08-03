@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "Загрузка {percent}%",
       "updateInstallingSubtitle": "MemryNote перезапустится автоматически.",
       "updateInstallingTitle": "Установка обновления",
-      "updateRestart": "Перезапустить"
+      "updateRestart": "Перезапустить",
+      "feedbackPrivacyEmailOptional": "Ваш email — только если вы его укажете, и только чтобы мы могли ответить",
+      "feedbackPrivacyEmailSignedIn": "Email вашего аккаунта ({email}), чтобы мы могли ответить",
+      "feedbackPrivacyMessage": "Ваше сообщение — ровно так, как вы его написали",
+      "feedbackPrivacyNote": "Больше ничего. Ваши заметки остаются на вашем устройстве.",
+      "feedbackPrivacyPlan": "Ваш тарифный план (free, Plus, Pro или Believer)",
+      "feedbackPrivacyTitle": "Что отправляется",
+      "feedbackPrivacyVersion": "Версия приложения и операционная система",
+      "projects": "Проекты"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Изменение размера панели «День»",
@@ -231,7 +239,8 @@
       "journal": "Журнал",
       "calendar": "Календарь",
       "inboxCapture": "Захват входящих сообщений",
-      "tasks": "Задачи"
+      "tasks": "Задачи",
+      "tags": "Теги"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Несохраненные изменения",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Что-то пошло не так",
       "anErrorOccurredWhileRenderingThisTabContent": "Произошла ошибка при отрисовке содержимого этой вкладки.",
-      "tryAgain": "Попробуйте еще раз"
+      "tryAgain": "Попробуйте еще раз",
+      "sendReport": "Отправить диагностический отчёт"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Значок заметки"
@@ -352,7 +362,13 @@
       "downloadLocation": "Расположение",
       "changeLocation": "Изменить…",
       "download": "Скачать",
-      "downloadFailed": "Не удалось скачать хранилище"
+      "downloadFailed": "Не удалось скачать хранилище",
+      "deleteFromAccount": "Удалить из аккаунта",
+      "deleteVaultBody": "Все синхронизированные данные этого хранилища будут навсегда удалены с серверов Memry. Это действие нельзя отменить. Ваши файлы останутся на диске.",
+      "deleteVaultConfirm": "Удалить из аккаунта",
+      "deleteVaultFailed": "Не удалось удалить хранилище",
+      "deleteVaultTitle": "Удалить «{name}» из вашего аккаунта?",
+      "removeVaultTitle": "Убрать «{name}» из списка?"
     },
     "componentsWindowControls": {
       "searchK": "Поиск (⌘К)",
@@ -640,6 +656,45 @@
     "skip": "Пропустить эту версию"
   },
   "capture": {
-    "focusShortcut": "Фокус на поле захвата"
+    "focusShortcut": "Фокус на поле захвата",
+    "detailHint": "подробнее",
+    "focusHint": "Q",
+    "submit": "Захватить"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Добавить карточку",
+      "addCreateNote": "Создать заметку «{query}»",
+      "addCreateNoteEmpty": "Создать новую заметку",
+      "addCreatedAt": "Создано {date}",
+      "addEmpty": "Ничего не найдено",
+      "addGroupEvents": "События",
+      "addGroupNotes": "Заметки",
+      "addGroupTasks": "Задачи",
+      "addOnCanvas": "На холсте",
+      "addPlaceholder": "Поиск заметок, задач и событий…",
+      "allDay": "Весь день",
+      "createNoteFailed": "Не удалось создать заметку",
+      "deleted": "Элемент удалён",
+      "loading": "Загрузка…",
+      "open": "Открыть во вкладке",
+      "openToEdit": "Откройте во вкладке, чтобы редактировать",
+      "untitled": "Без названия"
+    },
+    "corruptScene": "Не удалось прочитать этот холст. Редактирование отключено, чтобы не потерять данные.",
+    "createFailed": "Не удалось создать холст",
+    "disabledBody": "Эта вкладка относится к функции, которая не включена на этом устройстве.",
+    "disabledTitle": "Холст не включён",
+    "empty": "Холстов пока нет",
+    "libraryStoreFailed": "Не удалось сохранить вашу библиотеку фигур. Последние изменения в ней могут быть потеряны.",
+    "loadFailed": "Не удалось загрузить холсты",
+    "loading": "Загрузка холстов…",
+    "newCanvas": "Новый холст",
+    "notFound": "Этот холст не найден",
+    "openFailed": "Не удалось открыть холст",
+    "savedToVault": "Все изменения автоматически сохраняются в вашем хранилище",
+    "sectionLabel": "Холсты",
+    "tooLargeToSync": "Этот холст слишком большой для синхронизации. Он сохранён на этом устройстве, но не попадёт на другие, пока не станет меньше.",
+    "untitled": "Холст без названия"
   }
 }

@@ -67,7 +67,8 @@
     "title": "Xóa sự kiện?",
     "local-description": "\"{title}\" sẽ bị xóa vĩnh viễn. Hành động này không thể hồi phục.",
     "google-bound-description": "\"{title}\" sẽ bị xóa khỏi memrynote và Google Calendar. Hành động này không thể hoàn tác.",
-    "context-menu-delete-label": "Xóa sự kiện"
+    "context-menu-delete-label": "Xóa sự kiện",
+    "context-menu-add-to-project": "Thêm vào dự án"
   },
   "promote-dialog": {
     "aria": "Chỉnh sửa sự kiện trên lịch ngoài",
@@ -181,6 +182,7 @@
     "placeholder": "Tìm sự kiện, công việc, nhắc nhở…"
   },
   "undo": {
-    "moveEvent": "Di chuyển sự kiện"
+    "moveEvent": "Di chuyển sự kiện",
+    "moveTask": "Đổi lịch công việc"
   }
 }

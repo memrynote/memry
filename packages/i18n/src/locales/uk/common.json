@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "Завантаження {percent}%",
       "updateInstallingSubtitle": "MemryNote перезапуститься автоматично.",
       "updateInstallingTitle": "Встановлення оновлення",
-      "updateRestart": "Перезапустити"
+      "updateRestart": "Перезапустити",
+      "feedbackPrivacyEmailOptional": "Ваша електронна пошта — лише якщо ви її додасте, і лише щоб ми могли відповісти",
+      "feedbackPrivacyEmailSignedIn": "Пошта вашого облікового запису ({email}), щоб ми могли відповісти",
+      "feedbackPrivacyMessage": "Ваше повідомлення, точно таким, як ви його написали",
+      "feedbackPrivacyNote": "Більше нічого. Ваші нотатки залишаються на вашому пристрої.",
+      "feedbackPrivacyPlan": "Ваш план (free, Plus, Pro або Believer)",
+      "feedbackPrivacyTitle": "Що надсилається",
+      "feedbackPrivacyVersion": "Версія застосунку та операційна система",
+      "projects": "Проєкти"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Змінити розмір панелі дня",
@@ -231,7 +239,8 @@
       "journal": "Щоденник",
       "calendar": "Календар",
       "inboxCapture": "Вхідні",
-      "tasks": "Завдання"
+      "tasks": "Завдання",
+      "tags": "Теги"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Незбережені зміни",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Щось пішло не так",
       "anErrorOccurredWhileRenderingThisTabContent": "Сталася помилка під час відображення вмісту цієї вкладки.",
-      "tryAgain": "Спробувати ще раз"
+      "tryAgain": "Спробувати ще раз",
+      "sendReport": "Надіслати діагностичний звіт"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Іконка нотатки"
@@ -352,7 +362,13 @@
       "downloadLocation": "Розташування",
       "changeLocation": "Змінити…",
       "download": "Завантажити",
-      "downloadFailed": "Не вдалося завантажити сховище"
+      "downloadFailed": "Не вдалося завантажити сховище",
+      "deleteFromAccount": "Видалити з облікового запису",
+      "deleteVaultBody": "Це назавжди видалить усі синхронізовані дані цього сховища із серверів Memry, і цю дію неможливо скасувати. Ваші файли на диску не видаляються.",
+      "deleteVaultConfirm": "Видалити з облікового запису",
+      "deleteVaultFailed": "Не вдалося видалити сховище",
+      "deleteVaultTitle": "Видалити «{name}» з вашого облікового запису?",
+      "removeVaultTitle": "Вилучити «{name}» зі списку?"
     },
     "componentsWindowControls": {
       "searchK": "Пошук (⌘K)",
@@ -640,6 +656,45 @@
     "skip": "Пропустити цю версію"
   },
   "capture": {
-    "focusShortcut": "Фокус на полі захоплення"
+    "focusShortcut": "Фокус на полі захоплення",
+    "detailHint": "деталі",
+    "focusHint": "Q",
+    "submit": "Захопити"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Додати картку",
+      "addCreateNote": "Створити нотатку «{query}»",
+      "addCreateNoteEmpty": "Створити нову нотатку",
+      "addCreatedAt": "Створено {date}",
+      "addEmpty": "Нічого не знайдено",
+      "addGroupEvents": "Події",
+      "addGroupNotes": "Нотатки",
+      "addGroupTasks": "Завдання",
+      "addOnCanvas": "На полотні",
+      "addPlaceholder": "Пошук нотаток, завдань і подій…",
+      "allDay": "Цілий день",
+      "createNoteFailed": "Не вдалося створити нотатку",
+      "deleted": "Елемент видалено",
+      "loading": "Завантаження…",
+      "open": "Відкрити у вкладці",
+      "openToEdit": "Відкрийте у вкладці, щоб редагувати",
+      "untitled": "Без назви"
+    },
+    "corruptScene": "Не вдалося прочитати це полотно. Редагування вимкнено, щоб не втратити дані.",
+    "createFailed": "Не вдалося створити полотно",
+    "disabledBody": "Ця вкладка належить до функції, яку не увімкнено на цьому пристрої.",
+    "disabledTitle": "Полотно не увімкнено",
+    "empty": "Полотен ще немає",
+    "libraryStoreFailed": "Не вдалося зберегти вашу бібліотеку фігур. Останні зміни в ній можуть бути втрачені.",
+    "loadFailed": "Не вдалося завантажити полотна",
+    "loading": "Завантаження полотен…",
+    "newCanvas": "Нове полотно",
+    "notFound": "Не вдалося знайти це полотно",
+    "openFailed": "Не вдалося відкрити полотно",
+    "savedToVault": "Усі зміни автоматично зберігаються у вашому сховищі",
+    "sectionLabel": "Полотна",
+    "tooLargeToSync": "Це полотно завелике для синхронізації. Воно збережене на цьому пристрої, але не потрапить на інші ваші пристрої, доки не стане меншим.",
+    "untitled": "Полотно без назви"
   }
 }

@@ -16,9 +16,27 @@
       "willSync": "Nota se va sincroniza cu cloud",
       "renameFailed": "Nu s-a putut redenumi nota",
       "toggleLocalOnlyFailed": "Nu s-a putut comuta doar local",
-      "toggleFullWidthFailed": "Nu s-a putut comuta lățimea completă"
+      "toggleFullWidthFailed": "Nu s-a putut comuta lățimea completă",
+      "copyPathFailed": "Nu s-a putut copia calea",
+      "deleteFailed": "Nu s-a putut șterge nota",
+      "moveFailed": "Nu s-a putut muta nota",
+      "moved": "Nota a fost mutată",
+      "openExternalFailed": "Nu s-a putut deschide nota",
+      "pathCopied": "Calea a fost copiată",
+      "revealFailed": "Nu s-a putut afișa nota"
     },
-    "deleteDialogTitle": "{count, plural, one {Ștergeți nota} other {Ștergeți notele #}}"
+    "deleteDialogTitle": "{count, plural, one {Ștergeți nota} other {Ștergeți notele #}}",
+    "deleteConfirm": {
+      "cancel": "Anulează",
+      "confirm": "Șterge",
+      "deleting": "Se șterge...",
+      "description": "Sigur vrei să ștergi „{title}”? Această acțiune nu poate fi anulată.",
+      "title": "Șterge nota"
+    },
+    "itemsCount": "{count, plural, one {# element} few {# elemente} other {# de elemente}}",
+    "itemsCountFiltered": "{shown} din {total, plural, one {# element} few {# elemente} other {# de elemente}}",
+    "renameViewUnavailableForTags": "Redenumirea vizualizărilor salvate nu este încă disponibilă pentru etichete",
+    "tagFilterLabel": "etichetă = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "Ștergeți notele {count}",
       "deleteSelectedItems": "Ștergeți elementele {count}",
       "bookmark": "Marchează",
-      "removeFromBookmarks": "Elimină din marcaje"
+      "removeFromBookmarks": "Elimină din marcaje",
+      "applyTemplate": "Aplică șablonul"
     },
     "deleteDialog": {
       "noteTitle": "Ștergeți nota",
@@ -83,7 +102,17 @@
       "export": "Exportați",
       "fullWidth": "Latimea intreaga",
       "disableLocalOnly": "Dezactivați numai local",
-      "setLocalOnly": "Setați numai local"
+      "setLocalOnly": "Setați numai local",
+      "applyTemplate": "Aplică șablonul",
+      "copyPath": "Copiază calea",
+      "delete": "Șterge nota",
+      "find": "Caută…",
+      "moreActions": "Mai multe acțiuni",
+      "moveToFolder": "Mută în dosar…",
+      "openInDefaultApp": "Deschide în aplicația implicită",
+      "rename": "Redenumește…",
+      "revealInFinder": "Afișează în Finder",
+      "revealInSidebar": "Afișează în bara laterală"
     },
     "breadcrumb": {
       "locationAria": "Notați locația",
@@ -235,7 +264,10 @@
     "essentials": "Esențiale",
     "setFolderDefault": "Setați ca folder implicit",
     "useTemplate": "Utilizați șablon",
-    "createNote": "Creați o notă"
+    "createNote": "Creați o notă",
+    "applyDescription": "Înlocuiește conținutul acestei note cu un șablon",
+    "applyTitle": "Aplică un șablon",
+    "applyToNote": "Aplică șablonul"
   },
   "exportDialog": {
     "title": "Nota de export",
@@ -352,7 +384,8 @@
       "addCondition": "Adăugați o condiție",
       "addFilter": "Adăugați filtru",
       "addGroup": "Adăugați grup",
-      "removeGroup": "Elimină grupul"
+      "removeGroup": "Elimină grupul",
+      "lockedConditionHint": "Această condiție definește vizualizarea curentă și nu poate fi eliminată de aici."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Încorporat",
@@ -365,7 +398,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Tabel de note",
       "selectAll": "Selectează toate notițele",
-      "selectRow": "Selectează notița"
+      "selectRow": "Selectează notița",
+      "kind": {
+        "Inbox": "Inbox",
+        "Note": "Notă",
+        "Task": "Sarcină"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Căutați note...",
@@ -468,7 +506,13 @@
       "failedToLoadPdf": "Nu s-a încărcat PDF-ul: ",
       "download": "Descărcați",
       "download2": "Descărcați",
-      "noFileAttached": "Niciun fișier atașat"
+      "noFileAttached": "Niciun fișier atașat",
+      "alignCenter": "Aliniază la centru",
+      "alignLeft": "Aliniază la stânga",
+      "alignRight": "Aliniază la dreapta",
+      "nextPage": "Pagina următoare",
+      "previousPage": "Pagina anterioară",
+      "resizePdf": "Redimensionează PDF-ul"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Deschideți în panoul de activități",
@@ -530,7 +574,8 @@
       "failedToLoadTags": "Nu s-au încărcat etichetele",
       "noTagsYet": "Nicio etichetă încă",
       "filterTags": "Filtrați etichetele...",
-      "noMatchingTags": "Nu există etichete care se potrivesc"
+      "noMatchingTags": "Nu există etichete care se potrivesc",
+      "Uncategorized": "Fără categorie"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Aruncă aici",
@@ -560,7 +605,8 @@
       "deleteTag": "Ștergeți eticheta",
       "recent": "Recent",
       "created": "Creat",
-      "alphabetical": "Alfabetic"
+      "alphabetical": "Alfabetic",
+      "tasks": "SARCINI"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Redenumiți eticheta",
@@ -733,7 +779,9 @@
     "replyPlaceholder": "Răspunde...",
     "resolve": "Rezolvă",
     "sendAria": "Trimite comentariul",
-    "toolbarComment": "Comentează"
+    "toolbarComment": "Comentează",
+    "openAttachmentAria": "Deschide atașamentul {name}",
+    "openImageAria": "Deschide imaginea {name}"
   },
   "dateMention": {
     "clear": "Șterge",
@@ -743,5 +791,59 @@
     "remind": "Amintește",
     "time": "Ora",
     "timeFormat": "Format oră"
+  },
+  "applyTemplateConfirm": {
+    "body": "Înlocuiește doar conținutul",
+    "cancel": "Anulează",
+    "description": "Aplicarea șablonului „{name}” va înlocui conținutul actual al acestei note. Acțiunea nu poate fi anulată.",
+    "failed": "Nu s-a putut aplica șablonul",
+    "full": "Înlocuiește conținutul și adaugă detaliile șablonului",
+    "success": "Șablon aplicat",
+    "title": "Înlocuiești conținutul notei?"
+  },
+  "tagView": {
+    "moreActions": "Mai multe acțiuni",
+    "pin": {
+      "action": "Fixează {count, plural, one {# notă} few {# note} other {# de note}} la etichetă",
+      "failed": "Nu s-a putut fixa nota la etichetă",
+      "success": "{count, plural, one {# notă fixată} few {# note fixate} other {# de note fixate}} la etichetă"
+    }
+  },
+  "tags": {
+    "hubTitle": "Etichete",
+    "openHub": "Deschide centrul de etichete"
+  },
+  "tagsHub": {
+    "cancelCreate": "Anulează",
+    "category": {
+      "delete": "Șterge categoria",
+      "deleteBody": "Etichetele vor trece la Fără categorie. Nu vor fi șterse.",
+      "deleteCancel": "Anulează",
+      "deleteConfirm": "Șterge",
+      "deleteTitle": "Ștergi {name}?",
+      "dragHandle": "Trage pentru a reordona categoria",
+      "emptyHint": "Trage o etichetă aici",
+      "more": "Opțiuni pentru categorie",
+      "rename": "Redenumește categoria"
+    },
+    "categoryNamePlaceholder": "Numele categoriei",
+    "errors": {
+      "createCategoryFailed": "Nu s-a putut crea categoria",
+      "createTagCategorizeFailed": "Eticheta a fost creată, dar nu a putut fi adăugată la categorie",
+      "createTagFailed": "Nu s-a putut crea eticheta",
+      "deleteCategoryFailed": "Nu s-a putut șterge categoria",
+      "loadFailed": "Nu s-au putut încărca categoriile de etichete",
+      "renameCategoryFailed": "Nu s-a putut redenumi categoria",
+      "reorderFailed": "Nu s-au putut reordona etichetele"
+    },
+    "loading": "Se încarcă etichetele...",
+    "newCategory": "Categorie nouă",
+    "newTag": "Etichetă nouă",
+    "search": {
+      "empty": "Nicio categorie și nicio etichetă nu corespund căutării",
+      "placeholder": "Caută categorii și etichete"
+    },
+    "tagNamePlaceholder": "Numele etichetei",
+    "uncategorized": "Fără categorie"
   }
 }

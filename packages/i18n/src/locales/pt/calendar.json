@@ -67,7 +67,8 @@
     "title": "Excluir evento?",
     "local-description": "\"{title}\" será excluído permanentemente. Esta ação não pode ser desfeita.",
     "google-bound-description": "\"{title}\" será removido do memrynote e do Google Agenda. Esta ação não pode ser desfeita.",
-    "context-menu-delete-label": "Excluir evento"
+    "context-menu-delete-label": "Excluir evento",
+    "context-menu-add-to-project": "Adicionar ao projeto"
   },
   "promote-dialog": {
     "aria": "Editar evento de calendário externo",
@@ -181,6 +182,7 @@
     "placeholder": "Pesquisar eventos, tarefas, lembretes…"
   },
   "undo": {
-    "moveEvent": "Mover evento"
+    "moveEvent": "Mover evento",
+    "moveTask": "Reagendar tarefa"
   }
 }

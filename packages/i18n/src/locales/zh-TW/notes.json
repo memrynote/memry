@@ -16,9 +16,27 @@
       "willSync": "筆記將同步到雲端",
       "renameFailed": "重命名筆記失敗",
       "toggleLocalOnlyFailed": "切換僅本地失敗",
-      "toggleFullWidthFailed": "切換全寬失敗"
+      "toggleFullWidthFailed": "切換全寬失敗",
+      "copyPathFailed": "複製路徑失敗",
+      "deleteFailed": "刪除筆記失敗",
+      "moveFailed": "移動筆記失敗",
+      "moved": "筆記已移動",
+      "openExternalFailed": "開啟筆記失敗",
+      "pathCopied": "已複製路徑",
+      "revealFailed": "顯示筆記失敗"
     },
-    "deleteDialogTitle": "{count, plural, one {刪除筆記} other {刪除 # 筆記}}"
+    "deleteDialogTitle": "{count, plural, one {刪除筆記} other {刪除 # 筆記}}",
+    "deleteConfirm": {
+      "cancel": "取消",
+      "confirm": "刪除",
+      "deleting": "刪除中...",
+      "description": "確定要刪除「{title}」嗎？此操作無法復原。",
+      "title": "刪除筆記"
+    },
+    "itemsCount": "{count, plural, other {# 個項目}}",
+    "itemsCountFiltered": "{total, plural, other {# 個項目}}中的 {shown} 個",
+    "renameViewUnavailableForTags": "標籤尚不支援重新命名已儲存的檢視",
+    "tagFilterLabel": "標籤 = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "刪除 {count} 筆記",
       "deleteSelectedItems": "刪除 {count} 項目(複數)",
       "bookmark": "加入書籤",
-      "removeFromBookmarks": "從書籤移除"
+      "removeFromBookmarks": "從書籤移除",
+      "applyTemplate": "套用範本"
     },
     "deleteDialog": {
       "noteTitle": "刪除筆記",
@@ -83,7 +102,17 @@
       "export": "出口",
       "fullWidth": "全寬",
       "disableLocalOnly": "僅停用本地",
-      "setLocalOnly": "設為僅本地"
+      "setLocalOnly": "設為僅本地",
+      "applyTemplate": "套用範本",
+      "copyPath": "複製路徑",
+      "delete": "刪除筆記",
+      "find": "尋找…",
+      "moreActions": "更多操作",
+      "moveToFolder": "移動到資料夾…",
+      "openInDefaultApp": "在預設程式中開啟",
+      "rename": "重新命名…",
+      "revealInFinder": "在 Finder 中顯示",
+      "revealInSidebar": "在導覽中顯示"
     },
     "breadcrumb": {
       "locationAria": "注意位置",
@@ -235,7 +264,10 @@
     "essentials": "基本模板",
     "setFolderDefault": "設為資料夾默認",
     "useTemplate": "使用模板",
-    "createNote": "建立筆記"
+    "createNote": "建立筆記",
+    "applyDescription": "以範本取代這則筆記的內容",
+    "applyTitle": "套用範本",
+    "applyToNote": "套用範本"
   },
   "exportDialog": {
     "title": "匯出筆記",
@@ -352,7 +384,8 @@
       "addCondition": "新增條件",
       "addFilter": "新增篩選器",
       "addGroup": "新增群組",
-      "removeGroup": "移除群組"
+      "removeGroup": "移除群組",
+      "lockedConditionHint": "這個條件定義了目前的檢視，無法在此移除。"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "內建",
@@ -365,7 +398,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "筆記表格",
       "selectAll": "選取所有筆記",
-      "selectRow": "選取筆記"
+      "selectRow": "選取筆記",
+      "kind": {
+        "Inbox": "收件匣",
+        "Note": "筆記",
+        "Task": "任務"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "搜尋筆記...",
@@ -468,7 +506,13 @@
       "failedToLoadPdf": "無法載入 PDF：",
       "download": "下載",
       "download2": "下載",
-      "noFileAttached": "未附加檔案"
+      "noFileAttached": "未附加檔案",
+      "alignCenter": "置中對齊",
+      "alignLeft": "靠左對齊",
+      "alignRight": "靠右對齊",
+      "nextPage": "下一頁",
+      "previousPage": "上一頁",
+      "resizePdf": "調整 PDF 大小"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "在任務面板中打開",
@@ -530,7 +574,8 @@
       "failedToLoadTags": "標籤載入失敗",
       "noTagsYet": "尚無標籤",
       "filterTags": "篩選標籤...",
-      "noMatchingTags": "沒有符合的標籤"
+      "noMatchingTags": "沒有符合的標籤",
+      "Uncategorized": "未分類"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "拖放到此處",
@@ -560,7 +605,8 @@
       "deleteTag": "刪除標籤",
       "recent": "最近使用",
       "created": "建立於",
-      "alphabetical": "按字母順序"
+      "alphabetical": "按字母順序",
+      "tasks": "任務"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "重新命名標籤",
@@ -733,7 +779,9 @@
     "replyPlaceholder": "回覆…",
     "resolve": "解決",
     "sendAria": "傳送註解",
-    "toolbarComment": "註解"
+    "toolbarComment": "註解",
+    "openAttachmentAria": "開啟附件 {name}",
+    "openImageAria": "開啟圖片 {name}"
   },
   "dateMention": {
     "clear": "清除",
@@ -743,5 +791,59 @@
     "remind": "提醒",
     "time": "時間",
     "timeFormat": "時間格式"
+  },
+  "applyTemplateConfirm": {
+    "body": "僅取代內容",
+    "cancel": "取消",
+    "description": "套用「{name}」會取代這則筆記目前的內容，且無法復原。",
+    "failed": "套用範本失敗",
+    "full": "取代內容並加入範本詳細資料",
+    "success": "已套用範本",
+    "title": "要取代筆記內容嗎？"
+  },
+  "tagView": {
+    "moreActions": "更多操作",
+    "pin": {
+      "action": "將 {count, plural, other {# 則筆記}}固定到標籤",
+      "failed": "將筆記固定到標籤失敗",
+      "success": "已將 {count, plural, other {# 則筆記}}固定到標籤"
+    }
+  },
+  "tags": {
+    "hubTitle": "標籤",
+    "openHub": "開啟標籤中心"
+  },
+  "tagsHub": {
+    "cancelCreate": "取消",
+    "category": {
+      "delete": "刪除分類",
+      "deleteBody": "標籤會移到「未分類」，不會被刪除。",
+      "deleteCancel": "取消",
+      "deleteConfirm": "刪除",
+      "deleteTitle": "要刪除 {name} 嗎？",
+      "dragHandle": "拖曳以重新排序分類",
+      "emptyHint": "將標籤拖曳到這裡",
+      "more": "分類選項",
+      "rename": "重新命名分類"
+    },
+    "categoryNamePlaceholder": "分類名稱",
+    "errors": {
+      "createCategoryFailed": "建立分類失敗",
+      "createTagCategorizeFailed": "標籤已建立，但無法加入該分類",
+      "createTagFailed": "建立標籤失敗",
+      "deleteCategoryFailed": "刪除分類失敗",
+      "loadFailed": "載入標籤分類失敗",
+      "renameCategoryFailed": "重新命名分類失敗",
+      "reorderFailed": "重新排序標籤失敗"
+    },
+    "loading": "正在載入標籤...",
+    "newCategory": "新分類",
+    "newTag": "新標籤",
+    "search": {
+      "empty": "沒有符合搜尋的分類或標籤",
+      "placeholder": "搜尋分類與標籤"
+    },
+    "tagNamePlaceholder": "標籤名稱",
+    "uncategorized": "未分類"
   }
 }

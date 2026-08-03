@@ -28,7 +28,8 @@
         "properties": "プロパティ",
         "commandLine": "コマンドライン",
         "features": "機能",
-        "import": "インポート"
+        "import": "インポート",
+        "inbox": "受信箱"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "{percent}%をダウンロード中",
         "downloaded": "再起動してインストールする",
         "idle": "アップデートをチェックする"
+      },
+      "autoCheck": {
+        "description": "起動時と、アプリを開いている間は定期的に、新しいリリースを確認します。",
+        "error": "自動確認の設定を更新できませんでした",
+        "label": "アップデートを自動的に確認"
+      },
+      "autoDownload": {
+        "description": "確認なしで、新しいリリースをバックグラウンドでダウンロードしてインストールします。",
+        "error": "自動ダウンロードの設定を更新できませんでした",
+        "label": "アップデートを自動的にダウンロード"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "匿名使用状況メトリクスを共有する",
         "description": "これは単なるメトリクスであり、メモの内容、検索クエリ、ファイル パス、電子メール、または生の ID は送信されません。",
         "error": "テレメトリ設定の更新に失敗しました"
+      },
+      "diagnostics": {
+        "building": "レポートを準備しています…",
+        "consent": "診断レポートを 1 回だけ送信しますか？含まれるのは伏せ字処理された技術ログのみで、メモの内容は含まれません。",
+        "error": "診断レポートを送信できませんでした",
+        "notNow": "今はしない",
+        "previewError": "診断レポートを準備できませんでした",
+        "previewLabel": "レポートの内容をプレビュー",
+        "send": "送信",
+        "sendReport": {
+          "button": "診断レポートを送信",
+          "description": "発生した問題の調査に役立てるため、伏せ字処理された技術ログを 1 回だけ送信します。",
+          "label": "診断レポート"
+        },
+        "sending": "送信中…",
+        "sent": "レポートを送信しました — 参照番号 {incidentId}",
+        "snapshotLabel": "デバイスのスナップショット",
+        "title": "診断レポートを送信しますか？"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "レイアウト",
-      "toolbar": "ツールバー"
+      "toolbar": "ツールバー",
+      "spelling": "スペルチェック"
     },
     "width": {
       "label": "エディターの幅",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "狭い",
         "medium": "中",
-        "wide": "ワイド"
+        "wide": "ワイド",
+        "full": "全幅",
+        "normal": "標準"
       },
       "error": "エディターの幅を更新できませんでした"
     },
@@ -229,6 +261,11 @@
       "label": "スティッキー書式設定ツールバー",
       "description": "ツールバーを常にエディターの上に表示する",
       "error": "ツールバーモードの更新に失敗しました"
+    },
+    "spellCheck": {
+      "description": "メモや日記のスペルミスに下線を表示します",
+      "error": "スペルチェックの設定を更新できませんでした",
+      "label": "スペルチェックを行う"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "ストレージの使用量",
-      "location": "場所"
+      "location": "場所",
+      "accountVaults": "アカウント内の保管庫"
     },
     "loadingStorage": "ストレージ情報を読み込んでいます...",
     "signInStorage": "サインインしてストレージ使用量を表示する",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "ストレージがほぼ満杯",
       "warningDescription": "同期の問題を回避するには、スペースを解放するか、プランをアップグレードしてください。"
+    },
+    "accountVaults": {
+      "activeHint": "この保管庫を削除するには、別の保管庫に切り替えてください。",
+      "cloudOnly": "このデバイスにはありません",
+      "delete": "削除",
+      "deleteBody": "この保管庫の同期データを Memry のサーバーから完全に削除します。この操作は元に戻すことができません。ディスク上のファイルは削除されません。",
+      "deleteConfirm": "アカウントから削除",
+      "deleteFailed": "保管庫を削除できませんでした",
+      "deleteTitle": "「{name}」をアカウントから削除しますか？",
+      "empty": "アカウントに同期された保管庫はまだありません。",
+      "itemsCount": "{count} 件"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "ボールトを閉じることができませんでした",
       "failedToSwitchVault": "ボールトの切り替えに失敗しました",
       "failedToUpdateConfig": "構成の更新に失敗しました",
-      "failedToReindex": "インデックスの再作成に失敗しました"
+      "failedToReindex": "インデックスの再作成に失敗しました",
+      "failedToLoadTasks": "タスクを読み込めませんでした"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "やることと期日",
         "label": "タスク"
+      },
+      "spatialCanvas": {
+        "description": "メモを配置してつなげる空間ボード",
+        "label": "キャンバス"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} 件スキップ",
         "title": "インポート完了"
       },
-      "title": "{name} からインポート"
+      "title": "{name} からインポート",
+      "chooseDirectory": "フォルダを選択…",
+      "folderKeepsAssets": "画像がメモと同じフォルダの外にある場合は、ファイルではなくフォルダを選んでください。エクスポートでは、メディアが共有フォルダにまとめられていることがよくあります。"
     },
     "header": {
       "subtitle": "他のアプリからノートやタスクを取り込みます",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, other {#件のタスク}}",
       "withDueDate": "{count} 件日付付き",
       "withTags": "{count} 件タグ付き"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "読み込み中…",
+      "subtitle": "毎日の見直しリマインダーと受信箱の設定。",
+      "title": "受信箱"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "受信箱にアイテムがあるとき、毎日そっとお知らせします。",
+        "label": "受信箱の見直しをリマインドする"
+      },
+      "error": "リマインダーを更新できませんでした。",
+      "group": "毎日の見直しリマインダー",
+      "test": {
+        "button": "テスト送信",
+        "description": "今すぐリマインダーを送って、システム通知を確認します。",
+        "label": "通知のテスト",
+        "sent": "テスト通知を送信しました。",
+        "sentHint": "何も表示されない場合は、システム設定で MemryNote の通知を許可してください。",
+        "unsupported": "このデバイスではデスクトップ通知を表示できません。"
+      },
+      "time": {
+        "description": "各デバイスの現地時刻です。",
+        "hourLabel": "時",
+        "label": "リマインダーの時刻",
+        "minuteLabel": "分",
+        "periodLabel": "AM または PM"
+      }
     }
   }
 }

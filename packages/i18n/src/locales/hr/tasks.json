@@ -34,7 +34,8 @@
     "createAnother": "Stvorite drugu",
     "delete": "Izbriši zadatak",
     "created": "Kreiran {date}",
-    "reminder": "Podsjetnik"
+    "reminder": "Podsjetnik",
+    "tags": "Oznake"
   },
   "filters": {
     "filter": "Filter",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Brzo dodavanje zadatka",
-    "focusDescription": "Fokusirajte unos brzog dodavanja"
+    "focusDescription": "Fokusirajte unos brzog dodavanja",
+    "placeholder": "Dodaj zadatak…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Zatvori detalje zadatka",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Ovaj projekt nema zadataka i bit će trajno izbrisan.",
       "thisActionCannotBeUndone": "Ova se radnja ne može poništiti.",
       "cancel": "Odustani",
-      "deleteProject": "Izbriši projekt"
+      "deleteProject": "Izbriši projekt",
+      "notesEventsAndFilesStayNotice": "Zadaci u ovom projektu bit će izbrisani. Vaše bilješke, događaji i datoteke ostaju u trezoru."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Izbrisati zadatak?",
@@ -357,7 +360,9 @@
       "due": "Duge",
       "dueDate": "datum dospijeća",
       "search": "traženje",
-      "clearAll": "Obriši sve"
+      "clearAll": "Obriši sve",
+      "tags": "oznake",
+      "tagsIs": "Oznake su"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Filtrirajte prema roku",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "Nema nadolazećih zadataka",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Ovdje će se pojaviti zadaci koji se trebaju ispuniti u sljedećih 7 dana. Planirajte svoj tjedan dodavanjem nekih zadataka.",
       "addTask2": "Dodaj zadatak"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "su",
+      "search": "Traži...",
+      "selected": "odabrano",
+      "tags": "Oznake"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "Neuspješno postavljanje podsjetnika",
       "updateFailed": "Neuspješno ažuriranje podsjetnika",
       "updated": "Podsjetnik ažuriran"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Dodaj u projekt",
+    "loading": "Učitavanje projekata…",
+    "menuLabel": "Dodaj u projekt",
+    "noProjects": "Još nema projekata",
+    "toastError": "Dodavanje u projekt nije uspjelo",
+    "toastSuccess": "Dodano u {name}"
+  },
+  "itemProjects": {
+    "openProject": "Otvori projekt {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Odaberite projekt na bočnoj traci da biste otvorili njegovu početnu stranicu.",
+    "emptyTitle": "Nije odabran nijedan projekt",
+    "loadError": "Nije moguće učitati podatke o projektu",
+    "overview": {
+      "clear": "Ukloni pregled",
+      "clearError": "Nije moguće ukloniti bilješku pregleda",
+      "create": "Stvori bilješku pregleda",
+      "createError": "Nije moguće stvoriti bilješku pregleda",
+      "defaultTitle": "Pregled",
+      "loadError": "Nije moguće učitati bilješku pregleda",
+      "placeholder": "Napišite pregled ovog projekta…",
+      "saveError": "Nije moguće spremiti bilješku pregleda",
+      "sectionTitle": "Pregled"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Priloži datoteke",
+      "fileError": "Nije moguće povezati {name}",
+      "fileErrorGeneric": "Nije moguće uvesti datoteke",
+      "filesAdded": "{count, plural, one {# datoteka dodana u projekt} few {# datoteke dodane u projekt} other {# datoteka dodano u projekt}}",
+      "label": "Dodaj u {name}",
+      "linkAdded": "Poveznica je dodana u projekt",
+      "linkError": "Nije moguće spremiti poveznicu",
+      "placeholder": "Dodajte u {name} — upišite zadatak, zapišite bilješku ili zalijepite poveznicu…"
+    },
+    "groups": {
+      "older": "Starije",
+      "past": "Prošlo",
+      "today": "Danas",
+      "tomorrow": "Sutra",
+      "upcoming": "Nadolazeće",
+      "yesterday": "Jučer"
+    },
+    "header": {
+      "archiveProject": "Arhiviraj projekt",
+      "editProject": "Uredi projekt",
+      "menu": "Radnje projekta",
+      "toggleRail": "Prikaži ili sakrij detalje projekta"
+    },
+    "rail": {
+      "addNote": "Dodaj bilješku",
+      "created": "Stvoreno",
+      "details": "Detalji",
+      "doneOf": "{done} od {total} gotovo",
+      "linked": "Povezano",
+      "linkedSummary": "{notes, plural, one {# bilješka} few {# bilješke} other {# bilješki}} · {files, plural, one {# datoteka} few {# datoteke} other {# datoteka}} · {events, plural, one {# događaj} few {# događaja} other {# događaja}}",
+      "overdue": "Zakašnjelo",
+      "overview": "Pregled",
+      "pinError": "Nije moguće dodati bilješku u pregled",
+      "progress": "Napredak",
+      "unpinError": "Nije moguće ukloniti bilješku iz pregleda",
+      "unpinNote": "Ukloni {title} iz pregleda",
+      "updated": "Ažurirano"
+    },
+    "rows": {
+      "openEvent": "Otvori događaj {title}",
+      "openFile": "Otvori datoteku {title}",
+      "openNote": "Otvori bilješku {title}",
+      "openTask": "Otvori zadatak {title}",
+      "setNoteIcon": "Postavi ikonu za {title}"
+    },
+    "sections": {
+      "add": "Dodaj u {title}",
+      "emptyEvents": "Još nema povezanih događaja.",
+      "emptyFiles": "Još nema povezanih datoteka.",
+      "emptyNotes": "Još nema povezanih bilješki.",
+      "emptyTasks": "Još nema zadataka.",
+      "newNoteError": "Nije moguće dodati bilješku",
+      "newNoteTitle": "Bilješka bez naslova",
+      "viewAll": "Prikaži sve"
+    },
+    "tabs": {
+      "events": "Događaji",
+      "files": "Datoteke",
+      "label": "Prikazi projekta",
+      "notes": "Bilješke",
+      "overview": "Pregled",
+      "tasks": "Zadaci"
     }
   }
 }

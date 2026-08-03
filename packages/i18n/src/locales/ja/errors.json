@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "同期アイテムは検証できなかったため、セキュリティのために隔離されました。",
     "securityQuarantineRetry": "同期アイテムの署名検証が失敗したため、再試行されます。",
     "certificatePinPaused": "同期サーバーへの安全な接続を確認できませんでした。保護のため、同期は一時停止されました。",
-    "paymentRequired": "ホスト型の暗号化同期を利用するには有料の同期プランが必要です。"
+    "paymentRequired": "ホスト型の暗号化同期を利用するには有料の同期プランが必要です。",
+    "attachmentUploadFailed": "添付ファイル「{filename}」を同期できませんでした。ファイルはこのデバイスに残ります。",
+    "fileTooLarge": "このファイルはプランの上限を超えています。大きなファイルを同期するにはプランをアップグレードしてください。",
+    "vaultRecovered": "保管庫のキーを復元しました。同期を再開します。"
   }
 }

@@ -34,7 +34,8 @@
     "createAnother": "สร้างอีกอัน",
     "delete": "ลบภารกิจ",
     "created": "สร้างเมื่อ {date}",
-    "reminder": "การเตือน"
+    "reminder": "การเตือน",
+    "tags": "แท็ก"
   },
   "filters": {
     "filter": "  \nกรอง  ",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "เพิ่มงานอย่างรวดเร็ว",
-    "focusDescription": "เน้นที่การป้อนงานอย่างรวดเร็ว"
+    "focusDescription": "เน้นที่การป้อนงานอย่างรวดเร็ว",
+    "placeholder": "เพิ่มงาน…    !today  !!high  #project"
   },
   "drawer": {
     "close": "ปิดรายละเอียดงาน",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "โครงการนี้ไม่มีงานใด ๆ และจะถูกลบอย่างถาวร",
       "thisActionCannotBeUndone": "การกระทำนี้ไม่สามารถยกเลิกได้",
       "cancel": "ยกเลิก",
-      "deleteProject": "ลบโปรเจกต์"
+      "deleteProject": "ลบโปรเจกต์",
+      "notesEventsAndFilesStayNotice": "งานในโครงการนี้จะถูกลบ ส่วนโน้ต กิจกรรม และไฟล์ของคุณจะยังอยู่ในคลัง"
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "ต้องการลบงานหรือไม่?",
@@ -357,7 +360,9 @@
       "due": "ครบกำหนด",
       "dueDate": "วันครบกำหนด",
       "search": "ค้นหา",
-      "clearAll": "ล้างทั้งหมด"
+      "clearAll": "ล้างทั้งหมด",
+      "tags": "แท็ก",
+      "tagsIs": "แท็กคือ"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "กรองตามวันครบกำหนด",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "ไม่มีงานที่กำลังจะมาถึง",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "งานที่มีกำหนดในอีก 7 วันข้างหน้าจะแสดงที่นี่ วางแผนสัปดาห์ของคุณโดยการเพิ่มงานบางอย่าง",
       "addTask2": "เพิ่มงาน"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "คือ",
+      "search": "ค้นหา...",
+      "selected": "เลือกแล้ว",
+      "tags": "แท็ก"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "ตั้งการเตือนไม่สำเร็จ",
       "updateFailed": "อัปเดตการเตือนไม่สำเร็จ",
       "updated": "อัปเดตการเตือนแล้ว"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "เพิ่มไปยังโครงการ",
+    "loading": "กำลังโหลดโครงการ…",
+    "menuLabel": "เพิ่มไปยังโครงการ",
+    "noProjects": "ยังไม่มีโครงการ",
+    "toastError": "เพิ่มไปยังโครงการไม่สำเร็จ",
+    "toastSuccess": "เพิ่มไปยัง {name} แล้ว"
+  },
+  "itemProjects": {
+    "openProject": "เปิดโครงการ {name}"
+  },
+  "projectHome": {
+    "emptyBody": "เลือกโครงการจากแถบด้านข้างเพื่อเปิดหน้าแรกของโครงการ",
+    "emptyTitle": "ยังไม่ได้เลือกโครงการ",
+    "loadError": "ไม่สามารถโหลดรายละเอียดโครงการได้",
+    "overview": {
+      "clear": "ล้างภาพรวม",
+      "clearError": "ไม่สามารถล้างโน้ตภาพรวมได้",
+      "create": "สร้างโน้ตภาพรวม",
+      "createError": "ไม่สามารถสร้างโน้ตภาพรวมได้",
+      "defaultTitle": "ภาพรวม",
+      "loadError": "ไม่สามารถโหลดโน้ตภาพรวมได้",
+      "placeholder": "เขียนภาพรวมสำหรับโครงการนี้…",
+      "saveError": "ไม่สามารถบันทึกโน้ตภาพรวมได้",
+      "sectionTitle": "ภาพรวม"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "แนบไฟล์",
+      "fileError": "ไม่สามารถเชื่อมโยง {name} ได้",
+      "fileErrorGeneric": "ไม่สามารถนำเข้าไฟล์ได้",
+      "filesAdded": "{count, plural, other {เพิ่ม # ไฟล์ไปยังโครงการแล้ว}}",
+      "label": "เพิ่มไปยัง {name}",
+      "linkAdded": "เพิ่มลิงก์ไปยังโครงการแล้ว",
+      "linkError": "ไม่สามารถบันทึกลิงก์ได้",
+      "placeholder": "เพิ่มไปยัง {name} — พิมพ์ชื่องาน จดโน้ต หรือวางลิงก์…"
+    },
+    "groups": {
+      "older": "เก่า",
+      "past": "ที่ผ่านมา",
+      "today": "วันนี้",
+      "tomorrow": "พรุ่งนี้",
+      "upcoming": "กำลังจะถึง",
+      "yesterday": "เมื่อวาน"
+    },
+    "header": {
+      "archiveProject": "เก็บถาวรโครงการ",
+      "editProject": "แก้ไขโครงการ",
+      "menu": "การดำเนินการกับโครงการ",
+      "toggleRail": "สลับรายละเอียดโครงการ"
+    },
+    "rail": {
+      "addNote": "เพิ่มโน้ต",
+      "created": "สร้างเมื่อ",
+      "details": "รายละเอียด",
+      "doneOf": "เสร็จแล้ว {done} จาก {total}",
+      "linked": "เชื่อมโยงแล้ว",
+      "linkedSummary": "{notes, plural, other {# โน้ต}} · {files, plural, other {# ไฟล์}} · {events, plural, other {# กิจกรรม}}",
+      "overdue": "เลยกำหนด",
+      "overview": "ภาพรวม",
+      "pinError": "ไม่สามารถเพิ่มโน้ตลงในภาพรวมได้",
+      "progress": "ความคืบหน้า",
+      "unpinError": "ไม่สามารถนำโน้ตออกจากภาพรวมได้",
+      "unpinNote": "นำ {title} ออกจากภาพรวม",
+      "updated": "อัปเดตเมื่อ"
+    },
+    "rows": {
+      "openEvent": "เปิดกิจกรรม {title}",
+      "openFile": "เปิดไฟล์ {title}",
+      "openNote": "เปิดโน้ต {title}",
+      "openTask": "เปิดงาน {title}",
+      "setNoteIcon": "ตั้งค่าไอคอนให้ {title}"
+    },
+    "sections": {
+      "add": "เพิ่มไปยัง {title}",
+      "emptyEvents": "ยังไม่มีกิจกรรมที่เชื่อมโยง",
+      "emptyFiles": "ยังไม่มีไฟล์ที่เชื่อมโยง",
+      "emptyNotes": "ยังไม่มีโน้ตที่เชื่อมโยง",
+      "emptyTasks": "ยังไม่มีงาน",
+      "newNoteError": "ไม่สามารถเพิ่มโน้ตได้",
+      "newNoteTitle": "โน้ตไม่มีชื่อ",
+      "viewAll": "ดูทั้งหมด"
+    },
+    "tabs": {
+      "events": "กิจกรรม",
+      "files": "ไฟล์",
+      "label": "มุมมองโครงการ",
+      "notes": "โน้ต",
+      "overview": "ภาพรวม",
+      "tasks": "งาน"
     }
   }
 }

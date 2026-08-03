@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "Un element de sincronizare nu a putut fi verificat și a fost pus în carantină pentru securitate.",
     "securityQuarantineRetry": "Un element de sincronizare nu a reușit verificarea semnăturii și va fi reîncercat.",
     "certificatePinPaused": "Conexiunea securizată la serverul de sincronizare nu a putut fi verificată. Sincronizarea a fost întreruptă pentru a vă proteja.",
-    "paymentRequired": "Este necesar un plan Sync plătit pentru a folosi sincronizarea criptată găzduită."
+    "paymentRequired": "Este necesar un plan Sync plătit pentru a folosi sincronizarea criptată găzduită.",
+    "attachmentUploadFailed": "Nu s-a putut sincroniza atașamentul „{filename}”. Rămâne pe acest dispozitiv.",
+    "fileTooLarge": "Acest fișier este mai mare decât permite planul tău. Treci la un plan superior pentru a sincroniza fișiere mai mari.",
+    "vaultRecovered": "Cheia seifului a fost restaurată. Sincronizarea se va relua."
   }
 }

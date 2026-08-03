@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "Pobieranie {percent}%",
       "updateInstallingSubtitle": "MemryNote uruchomi się ponownie automatycznie.",
       "updateInstallingTitle": "Instalowanie aktualizacji",
-      "updateRestart": "Uruchom ponownie"
+      "updateRestart": "Uruchom ponownie",
+      "feedbackPrivacyEmailOptional": "Twój e-mail — tylko jeśli go podasz i tylko po to, żebyśmy mogli odpowiedzieć",
+      "feedbackPrivacyEmailSignedIn": "E-mail Twojego konta ({email}), żebyśmy mogli odpowiedzieć",
+      "feedbackPrivacyMessage": "Twoja wiadomość — dokładnie tak, jak ją napisano",
+      "feedbackPrivacyNote": "Nic więcej. Twoje notatki zostają na Twoim urządzeniu.",
+      "feedbackPrivacyPlan": "Twój plan (free, Plus, Pro lub Believer)",
+      "feedbackPrivacyTitle": "Co jest wysyłane",
+      "feedbackPrivacyVersion": "Wersja aplikacji i system operacyjny",
+      "projects": "Projekty"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Zmień rozmiar panelu dnia",
@@ -231,7 +239,8 @@
       "journal": "Dziennik",
       "calendar": "Kalendarz",
       "inboxCapture": "Przechwytywanie skrzynki odbiorczej",
-      "tasks": "Zadania"
+      "tasks": "Zadania",
+      "tags": "Tagi"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Niezapisane zmiany",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Coś poszło nie tak",
       "anErrorOccurredWhileRenderingThisTabContent": "Wystąpił błąd podczas renderowania zawartości tej karty.",
-      "tryAgain": "Spróbuj ponownie"
+      "tryAgain": "Spróbuj ponownie",
+      "sendReport": "Wyślij raport diagnostyczny"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Ikona notatki"
@@ -352,7 +362,13 @@
       "downloadLocation": "Lokalizacja",
       "changeLocation": "Zmień…",
       "download": "Pobierz",
-      "downloadFailed": "Nie udało się pobrać sejfu"
+      "downloadFailed": "Nie udało się pobrać sejfu",
+      "deleteFromAccount": "Usuń z konta",
+      "deleteVaultBody": "Spowoduje to trwałe usunięcie z serwerów Memry wszystkich zsynchronizowanych danych tego skarbca. Tej akcji nie można cofnąć. Twoje pliki na dysku nie zostaną usunięte.",
+      "deleteVaultConfirm": "Usuń z konta",
+      "deleteVaultFailed": "Nie udało się usunąć skarbca",
+      "deleteVaultTitle": "Usunąć „{name}” z Twojego konta?",
+      "removeVaultTitle": "Usunąć „{name}” z listy?"
     },
     "componentsWindowControls": {
       "searchK": "Szukaj (⌘K)",
@@ -640,6 +656,45 @@
     "skip": "Pomiń tę wersję"
   },
   "capture": {
-    "focusShortcut": "Ustaw fokus na polu zapisu"
+    "focusShortcut": "Ustaw fokus na polu zapisu",
+    "detailHint": "szczegóły",
+    "focusHint": "Q",
+    "submit": "Zapisz"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Dodaj kartę",
+      "addCreateNote": "Utwórz notatkę „{query}”",
+      "addCreateNoteEmpty": "Utwórz nową notatkę",
+      "addCreatedAt": "Utworzono {date}",
+      "addEmpty": "Nic nie znaleziono",
+      "addGroupEvents": "Wydarzenia",
+      "addGroupNotes": "Notatki",
+      "addGroupTasks": "Zadania",
+      "addOnCanvas": "Na kanwie",
+      "addPlaceholder": "Szukaj notatek, zadań i wydarzeń…",
+      "allDay": "Cały dzień",
+      "createNoteFailed": "Nie udało się utworzyć notatki",
+      "deleted": "Element usunięty",
+      "loading": "Ładowanie…",
+      "open": "Otwórz w karcie",
+      "openToEdit": "Otwórz w karcie, aby edytować",
+      "untitled": "Bez tytułu"
+    },
+    "corruptScene": "Nie udało się odczytać tej kanwy. Edycja jest wyłączona, aby nie stracić danych.",
+    "createFailed": "Nie udało się utworzyć kanwy",
+    "disabledBody": "Ta karta należy do funkcji, która nie jest włączona na tym urządzeniu.",
+    "disabledTitle": "Kanwa nie jest włączona",
+    "empty": "Nie ma jeszcze żadnych kanw",
+    "libraryStoreFailed": "Nie udało się zapisać Twojej biblioteki kształtów. Ostatnie zmiany mogą zostać utracone.",
+    "loadFailed": "Nie udało się załadować kanw",
+    "loading": "Ładowanie kanw…",
+    "newCanvas": "Nowa kanwa",
+    "notFound": "Nie udało się znaleźć tej kanwy",
+    "openFailed": "Nie udało się otworzyć kanwy",
+    "savedToVault": "Wszystkie zmiany są automatycznie zapisywane w Twoim skarbcu",
+    "sectionLabel": "Kanwy",
+    "tooLargeToSync": "Ta kanwa jest zbyt duża, aby ją zsynchronizować. Jest zapisana na tym urządzeniu, ale nie trafi na Twoje pozostałe urządzenia, dopóki nie będzie mniejsza.",
+    "untitled": "Kanwa bez tytułu"
   }
 }

@@ -38,6 +38,11 @@
       "task": "Görev hatırlatıcısı",
       "fallback": "Hatırlatma zamanı",
       "default": "Hatırlatma"
+    },
+    "inboxReview": {
+      "body": "Gözden geçirilecek {count, plural, one {# öğeniz} other {# öğeniz}} var.",
+      "testBody": "Bu bir testtir — günlük gözden geçirme hatırlatıcılarınız böyle görünecek.",
+      "title": "Gelen kutunuzu gözden geçirme zamanı"
     }
   },
   "error": {

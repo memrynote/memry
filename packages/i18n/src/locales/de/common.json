@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "Wird heruntergeladen {percent}%",
       "updateInstallingSubtitle": "MemryNote startet automatisch neu.",
       "updateInstallingTitle": "Update wird installiert",
-      "updateRestart": "Neu starten"
+      "updateRestart": "Neu starten",
+      "feedbackPrivacyEmailOptional": "Deine E-Mail-Adresse — nur wenn du sie angibst, und nur damit wir antworten können",
+      "feedbackPrivacyEmailSignedIn": "Die E-Mail-Adresse deines Kontos ({email}), damit wir antworten können",
+      "feedbackPrivacyMessage": "Deine Nachricht, genau so, wie du sie geschrieben hast",
+      "feedbackPrivacyNote": "Sonst nichts. Deine Notizen bleiben auf deinem Gerät.",
+      "feedbackPrivacyPlan": "Dein Tarif (free, Plus, Pro oder Believer)",
+      "feedbackPrivacyTitle": "Was gesendet wird",
+      "feedbackPrivacyVersion": "App-Version und Betriebssystem",
+      "projects": "Projekte"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Größe des Tagesfensters ändern",
@@ -231,7 +239,8 @@
       "journal": "Tagebuch",
       "calendar": "Kalender",
       "inboxCapture": "Posteingangserfassung",
-      "tasks": "Aufgaben"
+      "tasks": "Aufgaben",
+      "tags": "Tags"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Nicht gespeicherte Änderungen",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Etwas ist schief gelaufen",
       "anErrorOccurredWhileRenderingThisTabContent": "Beim Rendern dieses Tab-Inhalts ist ein Fehler aufgetreten.",
-      "tryAgain": "Versuchen Sie es erneut"
+      "tryAgain": "Versuchen Sie es erneut",
+      "sendReport": "Diagnosebericht senden"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Notizsymbol"
@@ -352,7 +362,13 @@
       "downloadLocation": "Speicherort",
       "changeLocation": "Ändern…",
       "download": "Herunterladen",
-      "downloadFailed": "Der Tresor konnte nicht heruntergeladen werden"
+      "downloadFailed": "Der Tresor konnte nicht heruntergeladen werden",
+      "deleteFromAccount": "Aus Konto löschen",
+      "deleteVaultBody": "Damit werden alle synchronisierten Daten dieses Tresors dauerhaft von den Memry-Servern entfernt. Das lässt sich nicht rückgängig machen. Deine Dateien auf der Festplatte bleiben erhalten.",
+      "deleteVaultConfirm": "Aus Konto löschen",
+      "deleteVaultFailed": "Der Tresor konnte nicht gelöscht werden",
+      "deleteVaultTitle": "„{name}“ aus deinem Konto löschen?",
+      "removeVaultTitle": "„{name}“ aus der Liste entfernen?"
     },
     "componentsWindowControls": {
       "searchK": "Suche (⌘K)",
@@ -640,6 +656,45 @@
     "skip": "Diese Version überspringen"
   },
   "capture": {
-    "focusShortcut": "Erfassungseingabe fokussieren"
+    "focusShortcut": "Erfassungseingabe fokussieren",
+    "detailHint": "Details",
+    "focusHint": "Q",
+    "submit": "Erfassen"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Karte hinzufügen",
+      "addCreateNote": "Notiz „{query}“ erstellen",
+      "addCreateNoteEmpty": "Neue Notiz erstellen",
+      "addCreatedAt": "Erstellt am {date}",
+      "addEmpty": "Nichts gefunden",
+      "addGroupEvents": "Termine",
+      "addGroupNotes": "Notizen",
+      "addGroupTasks": "Aufgaben",
+      "addOnCanvas": "Auf dem Canvas",
+      "addPlaceholder": "Notizen, Aufgaben und Termine durchsuchen…",
+      "allDay": "Ganztägig",
+      "createNoteFailed": "Notiz konnte nicht erstellt werden",
+      "deleted": "Element gelöscht",
+      "loading": "Wird geladen…",
+      "open": "In Tab öffnen",
+      "openToEdit": "Zum Bearbeiten in Tab öffnen",
+      "untitled": "Ohne Titel"
+    },
+    "corruptScene": "Dieses Canvas konnte nicht gelesen werden. Die Bearbeitung ist deaktiviert, damit keine Daten verloren gehen.",
+    "createFailed": "Canvas konnte nicht erstellt werden",
+    "disabledBody": "Dieser Tab gehört zu einer Funktion, die auf diesem Gerät nicht aktiviert ist.",
+    "disabledTitle": "Canvas ist nicht aktiviert",
+    "empty": "Noch keine Canvases",
+    "libraryStoreFailed": "Deine Formenbibliothek konnte nicht gespeichert werden. Die letzten Änderungen daran gehen möglicherweise verloren.",
+    "loadFailed": "Canvases konnten nicht geladen werden",
+    "loading": "Canvases werden geladen…",
+    "newCanvas": "Neues Canvas",
+    "notFound": "Dieses Canvas wurde nicht gefunden",
+    "openFailed": "Canvas konnte nicht geöffnet werden",
+    "savedToVault": "Alle Änderungen werden automatisch in deinem Tresor gespeichert",
+    "sectionLabel": "Canvases",
+    "tooLargeToSync": "Dieses Canvas ist zu groß für die Synchronisierung. Es ist auf diesem Gerät gespeichert, erreicht deine anderen Geräte aber erst, wenn es kleiner ist.",
+    "untitled": "Unbenanntes Canvas"
   }
 }

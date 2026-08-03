@@ -38,6 +38,11 @@
       "fallback": "提醒到期",
       "default": "提醒",
       "task": "任務提醒"
+    },
+    "inboxReview": {
+      "body": "您有 {count, plural, other {# 個項目}}待回顧。",
+      "testBody": "這是一則測試——您的每日檢閱提醒會像這樣顯示。",
+      "title": "該回顧收件匣了"
     }
   },
   "error": {

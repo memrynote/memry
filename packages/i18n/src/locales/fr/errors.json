@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "Un élément de synchronisation n'a pas pu être vérifié et a été mis en quarantaine pour des raisons de sécurité.",
     "securityQuarantineRetry": "Un élément de synchronisation a échoué à la vérification de la signature et sera réessayé.",
     "certificatePinPaused": "La connexion sécurisée au serveur de synchronisation n'a pas pu être vérifiée. La synchronisation a été suspendue pour votre protection.",
-    "paymentRequired": "Un forfait Sync payant est requis pour utiliser la synchronisation chiffrée hébergée."
+    "paymentRequired": "Un forfait Sync payant est requis pour utiliser la synchronisation chiffrée hébergée.",
+    "attachmentUploadFailed": "Impossible de synchroniser la pièce jointe « {filename} ». Elle reste sur cet appareil.",
+    "fileTooLarge": "Ce fichier dépasse la limite de votre forfait. Passez à un forfait supérieur pour synchroniser des fichiers plus volumineux.",
+    "vaultRecovered": "Clé du coffre restaurée. La synchronisation va reprendre."
   }
 }

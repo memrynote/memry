@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "Stahování {percent}%",
       "updateInstallingSubtitle": "MemryNote se automaticky restartuje.",
       "updateInstallingTitle": "Instalace aktualizace",
-      "updateRestart": "Restartovat"
+      "updateRestart": "Restartovat",
+      "feedbackPrivacyEmailOptional": "Váš e-mail — jen pokud ho uvedete, a jen abychom mohli odpovědět",
+      "feedbackPrivacyEmailSignedIn": "E-mail vašeho účtu ({email}), abychom mohli odpovědět",
+      "feedbackPrivacyMessage": "Vaše zpráva přesně tak, jak jste ji napsali",
+      "feedbackPrivacyNote": "Nic dalšího. Vaše poznámky zůstávají na vašem zařízení.",
+      "feedbackPrivacyPlan": "Váš plán (free, Plus, Pro nebo Believer)",
+      "feedbackPrivacyTitle": "Co se odesílá",
+      "feedbackPrivacyVersion": "Verze aplikace a operační systém",
+      "projects": "Projekty"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Změna velikosti denního panelu",
@@ -231,7 +239,8 @@
       "journal": "Deník",
       "calendar": "Kalendář",
       "inboxCapture": "Zachycení doručené pošty",
-      "tasks": "Úkoly"
+      "tasks": "Úkoly",
+      "tags": "Tagy"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Neuložené změny",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Něco se pokazilo",
       "anErrorOccurredWhileRenderingThisTabContent": "Při vykreslování obsahu této karty došlo k chybě.",
-      "tryAgain": "Zkuste to znovu"
+      "tryAgain": "Zkuste to znovu",
+      "sendReport": "Odeslat diagnostickou zprávu"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Ikona poznámky"
@@ -352,7 +362,13 @@
       "downloadLocation": "Umístění",
       "changeLocation": "Změnit…",
       "download": "Stáhnout",
-      "downloadFailed": "Trezor se nepodařilo stáhnout"
+      "downloadFailed": "Trezor se nepodařilo stáhnout",
+      "deleteFromAccount": "Smazat z účtu",
+      "deleteVaultBody": "Tím se ze serverů Memry trvale odstraní všechna synchronizovaná data tohoto trezoru. Tuto akci nelze vrátit zpět. Soubory na disku zůstanou zachovány.",
+      "deleteVaultConfirm": "Smazat z účtu",
+      "deleteVaultFailed": "Trezor se nepodařilo smazat",
+      "deleteVaultTitle": "Smazat „{name}“ z vašeho účtu?",
+      "removeVaultTitle": "Odebrat „{name}“ ze seznamu?"
     },
     "componentsWindowControls": {
       "searchK": "Hledat (⌘K)",
@@ -640,6 +656,45 @@
     "skip": "Přeskočit tuto verzi"
   },
   "capture": {
-    "focusShortcut": "Zaměřit pole pro zachycení"
+    "focusShortcut": "Zaměřit pole pro zachycení",
+    "detailHint": "detail",
+    "focusHint": "Q",
+    "submit": "Zachytit"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Přidat kartu",
+      "addCreateNote": "Vytvořit poznámku „{query}“",
+      "addCreateNoteEmpty": "Vytvořit novou poznámku",
+      "addCreatedAt": "Vytvořeno {date}",
+      "addEmpty": "Nic nenalezeno",
+      "addGroupEvents": "Události",
+      "addGroupNotes": "Poznámky",
+      "addGroupTasks": "Úkoly",
+      "addOnCanvas": "Na plátně",
+      "addPlaceholder": "Hledat poznámky, úkoly a události…",
+      "allDay": "Celý den",
+      "createNoteFailed": "Poznámku se nepodařilo vytvořit",
+      "deleted": "Položka smazána",
+      "loading": "Načítání…",
+      "open": "Otevřít na kartě",
+      "openToEdit": "Pro úpravy otevřete na kartě",
+      "untitled": "Bez názvu"
+    },
+    "corruptScene": "Toto plátno se nepodařilo přečíst. Úpravy jsou vypnuté, aby nedošlo ke ztrátě dat.",
+    "createFailed": "Plátno se nepodařilo vytvořit",
+    "disabledBody": "Tato karta patří k funkci, která na tomto zařízení není zapnutá.",
+    "disabledTitle": "Plátno není zapnuté",
+    "empty": "Zatím žádná plátna",
+    "libraryStoreFailed": "Knihovnu tvarů se nepodařilo uložit. Poslední změny v ní se mohou ztratit.",
+    "loadFailed": "Plátna se nepodařilo načíst",
+    "loading": "Načítání pláten…",
+    "newCanvas": "Nové plátno",
+    "notFound": "Toto plátno se nepodařilo najít",
+    "openFailed": "Plátno se nepodařilo otevřít",
+    "savedToVault": "Všechny změny se automaticky ukládají do vašeho trezoru",
+    "sectionLabel": "Plátna",
+    "tooLargeToSync": "Toto plátno je příliš velké na synchronizaci. Je uložené na tomto zařízení, ale na vaše ostatní zařízení se nedostane, dokud nebude menší.",
+    "untitled": "Plátno bez názvu"
   }
 }

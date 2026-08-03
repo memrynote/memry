@@ -67,7 +67,8 @@
     "title": "Hapus acara?",
     "local-description": "\"{title}\" akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.",
     "google-bound-description": "\"{title}\" akan dihapus dari memrynote dan Google Kalender. Tindakan ini tidak dapat dibatalkan.",
-    "context-menu-delete-label": "Hapus acara"
+    "context-menu-delete-label": "Hapus acara",
+    "context-menu-add-to-project": "Tambahkan ke proyek"
   },
   "promote-dialog": {
     "aria": "Edit acara kalender eksternal",
@@ -181,6 +182,7 @@
     "placeholder": "Cari acara, tugas, pengingat…"
   },
   "undo": {
-    "moveEvent": "Pindahkan acara"
+    "moveEvent": "Pindahkan acara",
+    "moveTask": "Jadwalkan ulang tugas"
   }
 }

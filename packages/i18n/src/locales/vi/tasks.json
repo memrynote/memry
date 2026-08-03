@@ -34,7 +34,8 @@
     "createAnother": "Tạo thêm",
     "delete": "Xóa công việc",
     "created": "Được tạo {date}",
-    "reminder": "Nhắc nhở"
+    "reminder": "Nhắc nhở",
+    "tags": "Thẻ"
   },
   "filters": {
     "filter": "  \nBộ lọc  ",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Thêm nhiệm vụ nhanh",
-    "focusDescription": "Tập trung vào ô thêm nhanh"
+    "focusDescription": "Tập trung vào ô thêm nhanh",
+    "placeholder": "Thêm công việc…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Đóng chi tiết nhiệm vụ",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Dự án này không có nhiệm vụ và sẽ bị xóa vĩnh viễn.",
       "thisActionCannotBeUndone": "  \nHành động này không thể hoàn tác.  ",
       "cancel": "Hủy",
-      "deleteProject": "Xóa Dự Án"
+      "deleteProject": "Xóa Dự Án",
+      "notesEventsAndFilesStayNotice": "Các công việc trong dự án này sẽ bị xóa. Ghi chú, sự kiện và tệp của bạn vẫn ở trong kho."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Xóa nhiệm vụ?",
@@ -357,7 +360,9 @@
       "due": "Hạn chót",
       "dueDate": "ngày đến hạn",
       "search": "tìm kiếm",
-      "clearAll": "Xóa tất cả"
+      "clearAll": "Xóa tất cả",
+      "tags": "thẻ",
+      "tagsIs": "Thẻ là"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Lọc theo ngày đến hạn",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "Không có nhiệm vụ sắp tới",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Các nhiệm vụ đến hạn trong 7 ngày tới sẽ xuất hiện ở đây. Lên kế hoạch tuần của bạn bằng cách thêm một số nhiệm vụ.",
       "addTask2": "Thêm nhiệm vụ"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "là",
+      "search": "Tìm kiếm...",
+      "selected": "đã chọn",
+      "tags": "Thẻ"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "Không đặt được nhắc nhở",
       "updateFailed": "Không cập nhật được nhắc nhở",
       "updated": "Đã cập nhật nhắc nhở"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Thêm vào dự án",
+    "loading": "Đang tải dự án…",
+    "menuLabel": "Thêm vào dự án",
+    "noProjects": "Chưa có dự án nào",
+    "toastError": "Không thêm được vào dự án",
+    "toastSuccess": "Đã thêm vào {name}"
+  },
+  "itemProjects": {
+    "openProject": "Mở dự án {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Chọn một dự án ở thanh bên để mở trang chính của dự án.",
+    "emptyTitle": "Chưa chọn dự án",
+    "loadError": "Không thể tải chi tiết dự án",
+    "overview": {
+      "clear": "Xóa tổng quan",
+      "clearError": "Không thể xóa ghi chú tổng quan",
+      "create": "Tạo ghi chú tổng quan",
+      "createError": "Không thể tạo ghi chú tổng quan",
+      "defaultTitle": "Tổng quan",
+      "loadError": "Không thể tải ghi chú tổng quan",
+      "placeholder": "Viết tổng quan cho dự án này…",
+      "saveError": "Không thể lưu ghi chú tổng quan",
+      "sectionTitle": "Tổng quan"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Đính kèm tệp",
+      "fileError": "Không thể liên kết {name}",
+      "fileErrorGeneric": "Không thể nhập các tệp",
+      "filesAdded": "{count, plural, other {Đã thêm # tệp vào dự án}}",
+      "label": "Thêm vào {name}",
+      "linkAdded": "Đã thêm liên kết vào dự án",
+      "linkError": "Không thể lưu liên kết",
+      "placeholder": "Thêm vào {name} — nhập một công việc, ghi một ý, hoặc dán một liên kết…"
+    },
+    "groups": {
+      "older": "Cũ hơn",
+      "past": "Đã qua",
+      "today": "Hôm nay",
+      "tomorrow": "Ngày mai",
+      "upcoming": "Sắp tới",
+      "yesterday": "Hôm qua"
+    },
+    "header": {
+      "archiveProject": "Lưu trữ dự án",
+      "editProject": "Chỉnh sửa dự án",
+      "menu": "Thao tác dự án",
+      "toggleRail": "Bật/tắt chi tiết dự án"
+    },
+    "rail": {
+      "addNote": "Thêm ghi chú",
+      "created": "Đã tạo",
+      "details": "Chi tiết",
+      "doneOf": "{done} trên {total} đã xong",
+      "linked": "Đã liên kết",
+      "linkedSummary": "{notes, plural, other {# ghi chú}} · {files, plural, other {# tệp}} · {events, plural, other {# sự kiện}}",
+      "overdue": "Quá hạn",
+      "overview": "Tổng quan",
+      "pinError": "Không thể thêm ghi chú vào tổng quan",
+      "progress": "Tiến độ",
+      "unpinError": "Không thể gỡ ghi chú khỏi tổng quan",
+      "unpinNote": "Gỡ {title} khỏi tổng quan",
+      "updated": "Đã cập nhật"
+    },
+    "rows": {
+      "openEvent": "Mở sự kiện {title}",
+      "openFile": "Mở tệp {title}",
+      "openNote": "Mở ghi chú {title}",
+      "openTask": "Mở công việc {title}",
+      "setNoteIcon": "Đặt biểu tượng cho {title}"
+    },
+    "sections": {
+      "add": "Thêm vào {title}",
+      "emptyEvents": "Chưa có sự kiện nào được liên kết.",
+      "emptyFiles": "Chưa có tệp nào được liên kết.",
+      "emptyNotes": "Chưa có ghi chú nào được liên kết.",
+      "emptyTasks": "Chưa có công việc nào.",
+      "newNoteError": "Không thể thêm ghi chú",
+      "newNoteTitle": "Ghi chú chưa có tiêu đề",
+      "viewAll": "Xem tất cả"
+    },
+    "tabs": {
+      "events": "Sự kiện",
+      "files": "Tệp",
+      "label": "Chế độ xem dự án",
+      "notes": "Ghi chú",
+      "overview": "Tổng quan",
+      "tasks": "Công việc"
     }
   }
 }

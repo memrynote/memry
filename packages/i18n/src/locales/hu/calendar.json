@@ -67,7 +67,8 @@
     "title": "Törli az eseményt?",
     "local-description": "Az \"{title}\" véglegesen törlődik. Ez a művelet nem vonható vissza.",
     "google-bound-description": "Az „{title}” el lesz távolítva az memrynote-ből és a Google Naptárból. Ez a művelet nem vonható vissza.",
-    "context-menu-delete-label": "Esemény törlése"
+    "context-menu-delete-label": "Esemény törlése",
+    "context-menu-add-to-project": "Hozzáadás projekthez"
   },
   "promote-dialog": {
     "aria": "Külső naptáresemény szerkesztése",
@@ -181,6 +182,7 @@
     "placeholder": "Események, feladatok, emlékeztetők keresése…"
   },
   "undo": {
-    "moveEvent": "Esemény áthelyezése"
+    "moveEvent": "Esemény áthelyezése",
+    "moveTask": "Feladat átütemezése"
   }
 }

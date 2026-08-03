@@ -38,6 +38,11 @@
       "fallback": "Pengingat jatuh tempo",
       "default": "Pengingat",
       "task": "Pengingat tugas"
+    },
+    "inboxReview": {
+      "body": "Anda memiliki {count, plural, other {# item}} untuk ditinjau.",
+      "testBody": "Ini uji coba — pengingat tinjauan harian Anda akan tampak seperti ini.",
+      "title": "Waktunya meninjau kotak masuk Anda"
     }
   },
   "error": {

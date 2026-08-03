@@ -67,7 +67,8 @@
     "title": "Видалити подію?",
     "local-description": "\"{title}\" буде видалено назавжди. Цю дію неможливо скасувати.",
     "google-bound-description": "\"{title}\" буде видалено з memrynote та Google Календаря. Цю дію неможливо скасувати.",
-    "context-menu-delete-label": "Видалити подію"
+    "context-menu-delete-label": "Видалити подію",
+    "context-menu-add-to-project": "Додати до проєкту"
   },
   "promote-dialog": {
     "aria": "Редагувати подію зовнішнього календаря",
@@ -181,6 +182,7 @@
     "placeholder": "Пошук подій, завдань, нагадувань…"
   },
   "undo": {
-    "moveEvent": "Перемістити подію"
+    "moveEvent": "Перемістити подію",
+    "moveTask": "Перенести завдання"
   }
 }

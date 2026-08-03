@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "A transferir {percent}%",
       "updateInstallingSubtitle": "O MemryNote irá reiniciar automaticamente.",
       "updateInstallingTitle": "A instalar atualização",
-      "updateRestart": "Reiniciar"
+      "updateRestart": "Reiniciar",
+      "feedbackPrivacyEmailOptional": "O seu email — apenas se o adicionar, e apenas para lhe podermos responder",
+      "feedbackPrivacyEmailSignedIn": "O email da sua conta ({email}), para lhe podermos responder",
+      "feedbackPrivacyMessage": "A sua mensagem, exatamente como a escreveu",
+      "feedbackPrivacyNote": "Mais nada. As suas notas ficam no seu dispositivo.",
+      "feedbackPrivacyPlan": "O seu plano (free, Plus, Pro ou Believer)",
+      "feedbackPrivacyTitle": "O que é enviado",
+      "feedbackPrivacyVersion": "Versão da aplicação e sistema operativo",
+      "projects": "Projetos"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Redimensionar painel do dia",
@@ -231,7 +239,8 @@
       "journal": "Diário",
       "calendar": "Calendário",
       "inboxCapture": "Captura de caixa de entrada",
-      "tasks": "Tarefas"
+      "tasks": "Tarefas",
+      "tags": "Etiquetas"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Alterações não salvas",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Algo deu errado",
       "anErrorOccurredWhileRenderingThisTabContent": "Ocorreu um erro ao renderizar o conteúdo desta guia.",
-      "tryAgain": "Tente novamente"
+      "tryAgain": "Tente novamente",
+      "sendReport": "Enviar relatório de diagnóstico"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Ícone de nota"
@@ -352,7 +362,13 @@
       "downloadLocation": "Localização",
       "changeLocation": "Alterar…",
       "download": "Transferir",
-      "downloadFailed": "Não foi possível transferir o cofre"
+      "downloadFailed": "Não foi possível transferir o cofre",
+      "deleteFromAccount": "Eliminar da conta",
+      "deleteVaultBody": "Isto remove permanentemente dos servidores da Memry todos os dados sincronizados deste cofre e não pode ser desfeito. Os seus ficheiros no disco não são eliminados.",
+      "deleteVaultConfirm": "Eliminar da conta",
+      "deleteVaultFailed": "Não foi possível eliminar o cofre",
+      "deleteVaultTitle": "Eliminar “{name}” da sua conta?",
+      "removeVaultTitle": "Remover “{name}” da lista?"
     },
     "componentsWindowControls": {
       "searchK": "Pesquisar (⌘K)",
@@ -640,6 +656,45 @@
     "skip": "Ignorar esta versão"
   },
   "capture": {
-    "focusShortcut": "Focar campo de captura"
+    "focusShortcut": "Focar campo de captura",
+    "detailHint": "detalhes",
+    "focusHint": "Q",
+    "submit": "Capturar"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Adicionar cartão",
+      "addCreateNote": "Criar nota \"{query}\"",
+      "addCreateNoteEmpty": "Criar nova nota",
+      "addCreatedAt": "Criado a {date}",
+      "addEmpty": "Nada encontrado",
+      "addGroupEvents": "Eventos",
+      "addGroupNotes": "Notas",
+      "addGroupTasks": "Tarefas",
+      "addOnCanvas": "Na tela",
+      "addPlaceholder": "Pesquisar notas, tarefas e eventos…",
+      "allDay": "Todo o dia",
+      "createNoteFailed": "Não foi possível criar a nota",
+      "deleted": "Item eliminado",
+      "loading": "A carregar…",
+      "open": "Abrir num separador",
+      "openToEdit": "Abrir num separador para editar",
+      "untitled": "Sem título"
+    },
+    "corruptScene": "Não foi possível ler esta tela. A edição está desativada para evitar a perda de dados.",
+    "createFailed": "Não foi possível criar a tela",
+    "disabledBody": "Este separador pertence a uma funcionalidade que não está ativada neste dispositivo.",
+    "disabledTitle": "A Tela não está ativada",
+    "empty": "Ainda não há telas",
+    "libraryStoreFailed": "Não foi possível guardar a sua biblioteca de formas. As alterações recentes podem perder-se.",
+    "loadFailed": "Não foi possível carregar as telas",
+    "loading": "A carregar telas…",
+    "newCanvas": "Nova tela",
+    "notFound": "Não foi possível encontrar esta tela",
+    "openFailed": "Não foi possível abrir a tela",
+    "savedToVault": "Todas as alterações são guardadas automaticamente no seu cofre",
+    "sectionLabel": "Telas",
+    "tooLargeToSync": "Esta tela é demasiado grande para sincronizar. Fica guardada neste dispositivo, mas só chegará aos seus outros dispositivos quando ficar mais pequena.",
+    "untitled": "Tela sem título"
   }
 }

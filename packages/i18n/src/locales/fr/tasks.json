@@ -34,7 +34,8 @@
     "createAnother": "Créer un autre",
     "delete": "Supprimer la tâche",
     "created": "Créé {date}",
-    "reminder": "Rappel"
+    "reminder": "Rappel",
+    "tags": "Balises"
   },
   "filters": {
     "filter": "Filtrer",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Tâche d'ajout rapide",
-    "focusDescription": "Concentrez-vous sur l'ajout rapide d'une entrée"
+    "focusDescription": "Concentrez-vous sur l'ajout rapide d'une entrée",
+    "placeholder": "Ajouter une tâche…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Fermer les détails de la tâche",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Ce projet n'a aucune tâche et sera définitivement supprimé.",
       "thisActionCannotBeUndone": "Cette action ne peut pas être annulée.",
       "cancel": "Annuler",
-      "deleteProject": "Supprimer le projet"
+      "deleteProject": "Supprimer le projet",
+      "notesEventsAndFilesStayNotice": "Les tâches de ce projet sont supprimées. Vos notes, événements et fichiers restent dans votre coffre."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Supprimer la tâche ?",
@@ -357,7 +360,9 @@
       "due": "Due",
       "dueDate": "date d'échéance",
       "search": "rechercher",
-      "clearAll": "Tout effacer"
+      "clearAll": "Tout effacer",
+      "tags": "balises",
+      "tagsIs": "Les balises sont"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Filtrer par date d'échéance",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "Aucune tâche à venir",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Les tâches dues dans les 7 prochains jours apparaîtront ici. Planifiez votre semaine en ajoutant quelques tâches.",
       "addTask2": "Ajouter une tâche"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "est",
+      "search": "Rechercher...",
+      "selected": "sélectionnées",
+      "tags": "Balises"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "Échec de la définition du rappel",
       "updateFailed": "Échec de la mise à jour du rappel",
       "updated": "Rappel mis à jour"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Ajouter au projet",
+    "loading": "Chargement des projets…",
+    "menuLabel": "Ajouter au projet",
+    "noProjects": "Aucun projet pour l'instant",
+    "toastError": "Échec de l'ajout au projet",
+    "toastSuccess": "Ajouté à {name}"
+  },
+  "itemProjects": {
+    "openProject": "Ouvrir le projet {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Choisissez un projet dans la barre latérale pour ouvrir sa page d'accueil.",
+    "emptyTitle": "Aucun projet sélectionné",
+    "loadError": "Impossible de charger les détails du projet",
+    "overview": {
+      "clear": "Effacer la vue d'ensemble",
+      "clearError": "Impossible d'effacer la note de vue d'ensemble",
+      "create": "Créer une note de vue d'ensemble",
+      "createError": "Impossible de créer la note de vue d'ensemble",
+      "defaultTitle": "Vue d'ensemble",
+      "loadError": "Impossible de charger la note de vue d'ensemble",
+      "placeholder": "Rédigez une vue d'ensemble de ce projet…",
+      "saveError": "Impossible d'enregistrer la note de vue d'ensemble",
+      "sectionTitle": "Vue d'ensemble"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Joindre des fichiers",
+      "fileError": "Impossible de lier {name}",
+      "fileErrorGeneric": "Impossible d'importer les fichiers",
+      "filesAdded": "{count, plural, one {# fichier ajouté au projet} many {# fichiers ajoutés au projet} other {# fichiers ajoutés au projet}}",
+      "label": "Ajouter à {name}",
+      "linkAdded": "Lien ajouté au projet",
+      "linkError": "Impossible d'enregistrer le lien",
+      "placeholder": "Ajouter à {name} — saisissez une tâche, notez une idée ou collez un lien…"
+    },
+    "groups": {
+      "older": "Plus anciens",
+      "past": "Passés",
+      "today": "Aujourd'hui",
+      "tomorrow": "Demain",
+      "upcoming": "À venir",
+      "yesterday": "Hier"
+    },
+    "header": {
+      "archiveProject": "Archiver le projet",
+      "editProject": "Modifier le projet",
+      "menu": "Actions du projet",
+      "toggleRail": "Afficher ou masquer les détails du projet"
+    },
+    "rail": {
+      "addNote": "Ajouter une note",
+      "created": "Créé",
+      "details": "Détails",
+      "doneOf": "{done} sur {total} terminées",
+      "linked": "Éléments liés",
+      "linkedSummary": "{notes, plural, one {# note} many {# notes} other {# notes}} · {files, plural, one {# fichier} many {# fichiers} other {# fichiers}} · {events, plural, one {# événement} many {# événements} other {# événements}}",
+      "overdue": "En retard",
+      "overview": "Vue d'ensemble",
+      "pinError": "Impossible d'ajouter la note à la vue d'ensemble",
+      "progress": "Progression",
+      "unpinError": "Impossible de retirer la note de la vue d'ensemble",
+      "unpinNote": "Retirer {title} de la vue d'ensemble",
+      "updated": "Mis à jour"
+    },
+    "rows": {
+      "openEvent": "Ouvrir l'événement {title}",
+      "openFile": "Ouvrir le fichier {title}",
+      "openNote": "Ouvrir la note {title}",
+      "openTask": "Ouvrir la tâche {title}",
+      "setNoteIcon": "Définir l'icône de {title}"
+    },
+    "sections": {
+      "add": "Ajouter à {title}",
+      "emptyEvents": "Aucun événement lié pour l'instant.",
+      "emptyFiles": "Aucun fichier lié pour l'instant.",
+      "emptyNotes": "Aucune note liée pour l'instant.",
+      "emptyTasks": "Aucune tâche pour l'instant.",
+      "newNoteError": "Impossible d'ajouter la note",
+      "newNoteTitle": "Note sans titre",
+      "viewAll": "Voir tout"
+    },
+    "tabs": {
+      "events": "Événements",
+      "files": "Fichiers",
+      "label": "Vues du projet",
+      "notes": "Notes",
+      "overview": "Vue d'ensemble",
+      "tasks": "Tâches"
     }
   }
 }

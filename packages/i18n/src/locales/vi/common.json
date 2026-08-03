@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "Đang tải xuống {percent}%",
       "updateInstallingSubtitle": "MemryNote sẽ tự khởi động lại.",
       "updateInstallingTitle": "Đang cài đặt bản cập nhật",
-      "updateRestart": "Khởi động lại"
+      "updateRestart": "Khởi động lại",
+      "feedbackPrivacyEmailOptional": "Email của bạn — chỉ khi bạn tự điền vào, và chỉ để chúng tôi trả lời",
+      "feedbackPrivacyEmailSignedIn": "Email tài khoản của bạn ({email}), để chúng tôi trả lời",
+      "feedbackPrivacyMessage": "Tin nhắn của bạn, đúng như bạn đã viết",
+      "feedbackPrivacyNote": "Không gì khác. Ghi chú của bạn vẫn nằm trên thiết bị.",
+      "feedbackPrivacyPlan": "Gói của bạn (free, Plus, Pro hoặc Believer)",
+      "feedbackPrivacyTitle": "Những gì được gửi đi",
+      "feedbackPrivacyVersion": "Phiên bản ứng dụng và hệ điều hành",
+      "projects": "Dự án"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Thay đổi kích thước Bảng Ngày",
@@ -231,7 +239,8 @@
       "journal": "Nhật ký",
       "calendar": "Lịch",
       "inboxCapture": "Thu thập Hộp thư đến",
-      "tasks": "Nhiệm vụ"
+      "tasks": "Nhiệm vụ",
+      "tags": "Thẻ"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Thay đổi chưa lưu",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Đã xảy ra sự cố",
       "anErrorOccurredWhileRenderingThisTabContent": "Đã xảy ra lỗi khi hiển thị nội dung tab này.",
-      "tryAgain": "Thử Lại"
+      "tryAgain": "Thử Lại",
+      "sendReport": "Gửi báo cáo chẩn đoán"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Biểu tượng ghi chú"
@@ -352,7 +362,13 @@
       "downloadLocation": "Vị trí",
       "changeLocation": "Thay đổi…",
       "download": "Tải xuống",
-      "downloadFailed": "Không thể tải xuống két"
+      "downloadFailed": "Không thể tải xuống két",
+      "deleteFromAccount": "Xóa khỏi tài khoản",
+      "deleteVaultBody": "Thao tác này xóa vĩnh viễn toàn bộ dữ liệu đã đồng bộ của kho này khỏi máy chủ Memry và không thể hoàn tác. Các tệp trên ổ đĩa của bạn không bị xóa.",
+      "deleteVaultConfirm": "Xóa khỏi tài khoản",
+      "deleteVaultFailed": "Không thể xóa kho",
+      "deleteVaultTitle": "Xóa “{name}” khỏi tài khoản của bạn?",
+      "removeVaultTitle": "Gỡ “{name}” khỏi danh sách?"
     },
     "componentsWindowControls": {
       "searchK": "  \nTìm kiếm (⌘K)  ",
@@ -640,6 +656,45 @@
     "skip": "Bỏ qua phiên bản này"
   },
   "capture": {
-    "focusShortcut": "Đưa con trỏ vào ô ghi nhanh"
+    "focusShortcut": "Đưa con trỏ vào ô ghi nhanh",
+    "detailHint": "chi tiết",
+    "focusHint": "Q",
+    "submit": "Ghi lại"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Thêm thẻ",
+      "addCreateNote": "Tạo ghi chú \"{query}\"",
+      "addCreateNoteEmpty": "Tạo ghi chú mới",
+      "addCreatedAt": "Đã tạo {date}",
+      "addEmpty": "Không tìm thấy gì",
+      "addGroupEvents": "Sự kiện",
+      "addGroupNotes": "Ghi chú",
+      "addGroupTasks": "Công việc",
+      "addOnCanvas": "Trên bảng vẽ",
+      "addPlaceholder": "Tìm ghi chú, công việc và sự kiện…",
+      "allDay": "Cả ngày",
+      "createNoteFailed": "Không thể tạo ghi chú",
+      "deleted": "Đã xóa mục",
+      "loading": "Đang tải…",
+      "open": "Mở trong tab",
+      "openToEdit": "Mở trong tab để chỉnh sửa",
+      "untitled": "Không có tiêu đề"
+    },
+    "corruptScene": "Không thể đọc bảng vẽ này. Chỉnh sửa đã bị tắt để tránh mất dữ liệu.",
+    "createFailed": "Không thể tạo bảng vẽ",
+    "disabledBody": "Tab này thuộc một tính năng chưa được bật trên thiết bị này.",
+    "disabledTitle": "Bảng vẽ chưa được bật",
+    "empty": "Chưa có bảng vẽ nào",
+    "libraryStoreFailed": "Không thể lưu thư viện hình của bạn. Các thay đổi gần đây có thể bị mất.",
+    "loadFailed": "Không thể tải bảng vẽ",
+    "loading": "Đang tải bảng vẽ…",
+    "newCanvas": "Bảng vẽ mới",
+    "notFound": "Không tìm thấy bảng vẽ này",
+    "openFailed": "Không thể mở bảng vẽ",
+    "savedToVault": "Mọi thay đổi được tự động lưu vào kho của bạn",
+    "sectionLabel": "Bảng vẽ",
+    "tooLargeToSync": "Bảng vẽ này quá lớn để đồng bộ. Nó vẫn được lưu trên thiết bị này, nhưng sẽ chưa xuất hiện trên các thiết bị khác cho đến khi nhỏ hơn.",
+    "untitled": "Bảng vẽ chưa đặt tên"
   }
 }

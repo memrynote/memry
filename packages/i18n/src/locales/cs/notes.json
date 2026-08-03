@@ -16,9 +16,27 @@
       "willSync": "Poznámka se synchronizuje do cloudu",
       "renameFailed": "Poznámku se nepodařilo přejmenovat",
       "toggleLocalOnlyFailed": "Nepodařilo se přepnout pouze místní",
-      "toggleFullWidthFailed": "Nepodařilo se přepnout na celou šířku"
+      "toggleFullWidthFailed": "Nepodařilo se přepnout na celou šířku",
+      "copyPathFailed": "Cestu se nepodařilo zkopírovat",
+      "deleteFailed": "Poznámku se nepodařilo smazat",
+      "moveFailed": "Poznámku se nepodařilo přesunout",
+      "moved": "Poznámka přesunuta",
+      "openExternalFailed": "Poznámku se nepodařilo otevřít",
+      "pathCopied": "Cesta zkopírována",
+      "revealFailed": "Poznámku se nepodařilo zobrazit"
     },
-    "deleteDialogTitle": "{count, plural, one {Smazat poznámku} other {Smazat poznámky #}}"
+    "deleteDialogTitle": "{count, plural, one {Smazat poznámku} other {Smazat poznámky #}}",
+    "deleteConfirm": {
+      "cancel": "Zrušit",
+      "confirm": "Smazat",
+      "deleting": "Mazání...",
+      "description": "Opravdu chcete smazat „{title}“? Tuto akci nelze vrátit zpět.",
+      "title": "Smazat poznámku"
+    },
+    "itemsCount": "{count, plural, one {# položka} few {# položky} many {# položky} other {# položek}}",
+    "itemsCountFiltered": "{shown} z {total, plural, one {# položky} few {# položek} many {# položky} other {# položek}}",
+    "renameViewUnavailableForTags": "Přejmenování uložených zobrazení zatím není pro značky dostupné",
+    "tagFilterLabel": "značka = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "Smazat poznámky {count}",
       "deleteSelectedItems": "Smazat položky {count}",
       "bookmark": "Přidat do záložek",
-      "removeFromBookmarks": "Odebrat ze záložek"
+      "removeFromBookmarks": "Odebrat ze záložek",
+      "applyTemplate": "Použít šablonu"
     },
     "deleteDialog": {
       "noteTitle": "Smazat poznámku",
@@ -83,7 +102,17 @@
       "export": "Exportovat",
       "fullWidth": "Plná šířka",
       "disableLocalOnly": "Zakázat pouze místní",
-      "setLocalOnly": "Nastavit pouze místní"
+      "setLocalOnly": "Nastavit pouze místní",
+      "applyTemplate": "Použít šablonu",
+      "copyPath": "Kopírovat cestu",
+      "delete": "Smazat poznámku",
+      "find": "Najít…",
+      "moreActions": "Další akce",
+      "moveToFolder": "Přesunout do složky…",
+      "openInDefaultApp": "Otevřít ve výchozí aplikaci",
+      "rename": "Přejmenovat…",
+      "revealInFinder": "Zobrazit ve Finderu",
+      "revealInSidebar": "Zobrazit v navigaci"
     },
     "breadcrumb": {
       "locationAria": "Umístění poznámky",
@@ -235,7 +264,10 @@
     "essentials": "Essentials",
     "setFolderDefault": "Nastavit jako výchozí složku",
     "useTemplate": "Použijte šablonu",
-    "createNote": "Vytvořit poznámku"
+    "createNote": "Vytvořit poznámku",
+    "applyDescription": "Nahradit obsah této poznámky šablonou",
+    "applyTitle": "Použít šablonu",
+    "applyToNote": "Použít šablonu"
   },
   "exportDialog": {
     "title": "Poznámka k exportu",
@@ -352,7 +384,8 @@
       "addCondition": "Přidat podmínku",
       "addFilter": "Přidat filtr",
       "addGroup": "Přidat skupinu",
-      "removeGroup": "Odebrat skupinu"
+      "removeGroup": "Odebrat skupinu",
+      "lockedConditionHint": "Tato podmínka definuje aktuální zobrazení a nelze ji zde odebrat."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Vestavěný",
@@ -365,7 +398,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Tabulka poznámek",
       "selectAll": "Vybrat všechny poznámky",
-      "selectRow": "Vybrat poznámku"
+      "selectRow": "Vybrat poznámku",
+      "kind": {
+        "Inbox": "Doručená pošta",
+        "Note": "Poznámka",
+        "Task": "Úkol"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Hledat poznámky...",
@@ -468,7 +506,13 @@
       "failedToLoadPdf": "Nepodařilo se načíst PDF: ",
       "download": "Stáhnout",
       "download2": "Stáhnout",
-      "noFileAttached": "Není připojen žádný soubor"
+      "noFileAttached": "Není připojen žádný soubor",
+      "alignCenter": "Zarovnat na střed",
+      "alignLeft": "Zarovnat doleva",
+      "alignRight": "Zarovnat doprava",
+      "nextPage": "Další stránka",
+      "previousPage": "Předchozí stránka",
+      "resizePdf": "Změnit velikost PDF"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Otevřít na panelu úloh",
@@ -530,7 +574,8 @@
       "failedToLoadTags": "Značky se nepodařilo načíst",
       "noTagsYet": "Zatím žádné značky",
       "filterTags": "Filtrovat značky...",
-      "noMatchingTags": "Žádné odpovídající značky"
+      "noMatchingTags": "Žádné odpovídající značky",
+      "Uncategorized": "Nezařazené"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Pusťte se sem",
@@ -560,7 +605,8 @@
       "deleteTag": "Smazat značku",
       "recent": "Nedávné",
       "created": "Vytvořeno",
-      "alphabetical": "Abecedně"
+      "alphabetical": "Abecedně",
+      "tasks": "ÚKOLY"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Přejmenovat značku",
@@ -733,7 +779,9 @@
     "replyPlaceholder": "Odpovědět...",
     "resolve": "Vyřešit",
     "sendAria": "Odeslat komentář",
-    "toolbarComment": "Komentář"
+    "toolbarComment": "Komentář",
+    "openAttachmentAria": "Otevřít přílohu {name}",
+    "openImageAria": "Otevřít obrázek {name}"
   },
   "dateMention": {
     "clear": "Vymazat",
@@ -743,5 +791,59 @@
     "remind": "Připomenout",
     "time": "Čas",
     "timeFormat": "Formát času"
+  },
+  "applyTemplateConfirm": {
+    "body": "Nahradit pouze obsah",
+    "cancel": "Zrušit",
+    "description": "Použití šablony „{name}“ nahradí současný obsah této poznámky. Tuto akci nelze vrátit zpět.",
+    "failed": "Šablonu se nepodařilo použít",
+    "full": "Nahradit obsah a přidat údaje ze šablony",
+    "success": "Šablona použita",
+    "title": "Nahradit obsah poznámky?"
+  },
+  "tagView": {
+    "moreActions": "Další akce",
+    "pin": {
+      "action": "Připnout {count, plural, one {# poznámku} few {# poznámky} many {# poznámky} other {# poznámek}} ke značce",
+      "failed": "Poznámku se nepodařilo připnout ke značce",
+      "success": "{count, plural, one {# poznámka připnuta ke značce} few {# poznámky připnuty ke značce} many {# poznámky připnuto ke značce} other {# poznámek připnuto ke značce}}"
+    }
+  },
+  "tags": {
+    "hubTitle": "Tagy",
+    "openHub": "Otevřít centrum tagů"
+  },
+  "tagsHub": {
+    "cancelCreate": "Zrušit",
+    "category": {
+      "delete": "Smazat kategorii",
+      "deleteBody": "Značky se přesunou do kategorie Nezařazené. Smazány nebudou.",
+      "deleteCancel": "Zrušit",
+      "deleteConfirm": "Smazat",
+      "deleteTitle": "Smazat {name}?",
+      "dragHandle": "Přetažením změníte pořadí kategorie",
+      "emptyHint": "Přetáhněte sem značku",
+      "more": "Možnosti kategorie",
+      "rename": "Přejmenovat kategorii"
+    },
+    "categoryNamePlaceholder": "Název kategorie",
+    "errors": {
+      "createCategoryFailed": "Kategorii se nepodařilo vytvořit",
+      "createTagCategorizeFailed": "Značka byla vytvořena, ale nepodařilo se ji přidat do kategorie",
+      "createTagFailed": "Značku se nepodařilo vytvořit",
+      "deleteCategoryFailed": "Kategorii se nepodařilo smazat",
+      "loadFailed": "Kategorie značek se nepodařilo načíst",
+      "renameCategoryFailed": "Kategorii se nepodařilo přejmenovat",
+      "reorderFailed": "Nepodařilo se změnit pořadí značek"
+    },
+    "loading": "Načítání značek...",
+    "newCategory": "Nová kategorie",
+    "newTag": "Nová značka",
+    "search": {
+      "empty": "Vašemu vyhledávání neodpovídají žádné kategorie ani značky",
+      "placeholder": "Hledat kategorie a značky"
+    },
+    "tagNamePlaceholder": "Název značky",
+    "uncategorized": "Nezařazené"
   }
 }

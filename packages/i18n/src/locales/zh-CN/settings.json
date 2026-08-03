@@ -28,7 +28,8 @@
         "properties": "属性",
         "commandLine": "命令行",
         "features": "功能",
-        "import": "导入"
+        "import": "导入",
+        "inbox": "收件箱"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "正在下载 {percent}%",
         "downloaded": "重新启动以安装",
         "idle": "检查更新"
+      },
+      "autoCheck": {
+        "description": "在启动时以及应用打开期间定期检查新版本。",
+        "error": "更新自动检查设置失败",
+        "label": "自动检查更新"
+      },
+      "autoDownload": {
+        "description": "在后台下载并安装新版本，无需提示。",
+        "error": "更新自动下载设置失败",
+        "label": "自动下载更新"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "共享匿名使用数据",
         "description": "仅共享匿名数据——不会发送笔记内容、搜索查询、文件路径、电子邮件或原始ID。",
         "error": "更新遥测设置失败"
+      },
+      "diagnostics": {
+        "building": "正在准备报告…",
+        "consent": "发送一次性诊断报告？其中仅包含已脱敏的技术日志——不含任何笔记内容。",
+        "error": "发送诊断报告失败",
+        "notNow": "暂不发送",
+        "previewError": "无法准备诊断报告",
+        "previewLabel": "预览报告内容",
+        "send": "发送",
+        "sendReport": {
+          "button": "发送诊断报告",
+          "description": "一次性发送一份脱敏的技术日志报告，帮助我们排查你遇到的问题。",
+          "label": "诊断报告"
+        },
+        "sending": "发送中…",
+        "sent": "报告已发送——编号 {incidentId}",
+        "snapshotLabel": "设备快照",
+        "title": "发送诊断报告？"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "布局",
-      "toolbar": "工具栏"
+      "toolbar": "工具栏",
+      "spelling": "拼写"
     },
     "width": {
       "label": "编辑器宽度",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "窄",
         "medium": "中",
-        "wide": "宽"
+        "wide": "宽",
+        "full": "全宽",
+        "normal": "标准"
       },
       "error": "更新编辑器宽度失败"
     },
@@ -229,6 +261,11 @@
       "label": "固定格式工具栏",
       "description": "始终在编辑器上方显示工具栏",
       "error": "更新工具栏模式失败"
+    },
+    "spellCheck": {
+      "description": "为笔记和日记中拼写错误的单词加下划线",
+      "error": "更新拼写检查失败",
+      "label": "拼写检查"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "存储使用情况",
-      "location": "位置"
+      "location": "位置",
+      "accountVaults": "你账户中的保险库"
     },
     "loadingStorage": "正在加载存储信息...",
     "signInStorage": "登录以查看存储使用情况",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "存储空间几乎已满",
       "warningDescription": "释放空间或升级您的计划以避免同步问题。"
+    },
+    "accountVaults": {
+      "activeHint": "切换到其他保险库后才能删除这个保险库。",
+      "cloudOnly": "不在此设备上",
+      "delete": "删除",
+      "deleteBody": "这会从 Memry 的服务器上永久删除此保险库的所有已同步数据，且无法撤销。你磁盘上的文件不会被删除。",
+      "deleteConfirm": "从账户中删除",
+      "deleteFailed": "无法删除保险库",
+      "deleteTitle": "从你的账户中删除“{name}”？",
+      "empty": "还没有保险库同步到你的账户。",
+      "itemsCount": "{count} 个项目"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "无法关闭保险库",
       "failedToSwitchVault": "无法切换保险库",
       "failedToUpdateConfig": "无法更新配置",
-      "failedToReindex": "无法重新索引"
+      "failedToReindex": "无法重新索引",
+      "failedToLoadTasks": "加载任务失败"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "待办事项和截止日期",
         "label": "任务"
+      },
+      "spatialCanvas": {
+        "description": "用于排布和连接笔记的空间画布",
+        "label": "画布"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} 个已跳过",
         "title": "导入完成"
       },
-      "title": "从 {name} 导入"
+      "title": "从 {name} 导入",
+      "chooseDirectory": "选择文件夹…",
+      "folderKeepsAssets": "当图片不在笔记所在的文件夹里时，请选择文件夹——导出内容常把媒体文件放在一个共享文件夹中。"
     },
     "header": {
       "subtitle": "从其他应用导入你的笔记和任务",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, other {# 个任务}}",
       "withDueDate": "{count} 个带日期",
       "withTags": "{count} 个带标签"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "加载中…",
+      "subtitle": "每日回顾提醒和收件箱偏好设置。",
+      "title": "收件箱"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "当收件箱里有内容时，每天温和地提醒你一次。",
+        "label": "提醒我回顾收件箱"
+      },
+      "error": "无法更新提醒。",
+      "group": "每日回顾提醒",
+      "test": {
+        "button": "发送测试",
+        "description": "立即触发提醒，检查你的系统通知。",
+        "label": "测试通知",
+        "sent": "测试通知已发送。",
+        "sentHint": "如果没有出现，请在系统设置中允许 MemryNote 发送通知。",
+        "unsupported": "此设备无法显示桌面通知。"
+      },
+      "time": {
+        "description": "每台设备上的本地时间。",
+        "hourLabel": "小时",
+        "label": "提醒时间",
+        "minuteLabel": "分钟",
+        "periodLabel": "AM 或 PM"
+      }
     }
   }
 }

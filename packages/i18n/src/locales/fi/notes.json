@@ -16,9 +16,27 @@
       "willSync": "Huomautus synkronoidaan pilveen",
       "renameFailed": "Muistiinpanon uudelleennimeäminen epäonnistui",
       "toggleLocalOnlyFailed": "Vain paikallisen vaihtaminen epäonnistui",
-      "toggleFullWidthFailed": "Täysleveyden vaihtaminen epäonnistui"
+      "toggleFullWidthFailed": "Täysleveyden vaihtaminen epäonnistui",
+      "copyPathFailed": "Polun kopiointi epäonnistui",
+      "deleteFailed": "Muistiinpanon poistaminen epäonnistui",
+      "moveFailed": "Muistiinpanon siirtäminen epäonnistui",
+      "moved": "Muistiinpano siirretty",
+      "openExternalFailed": "Muistiinpanon avaaminen epäonnistui",
+      "pathCopied": "Polku kopioitu",
+      "revealFailed": "Muistiinpanon näyttäminen epäonnistui"
     },
-    "deleteDialogTitle": "{count, plural, one {Poista huomautus} other {Poista #-muistiinpanot}}"
+    "deleteDialogTitle": "{count, plural, one {Poista huomautus} other {Poista #-muistiinpanot}}",
+    "deleteConfirm": {
+      "cancel": "Peruuta",
+      "confirm": "Poista",
+      "deleting": "Poistetaan...",
+      "description": "Haluatko varmasti poistaa kohteen \"{title}\"? Tätä toimintoa ei voi kumota.",
+      "title": "Poista muistiinpano"
+    },
+    "itemsCount": "{count, plural, one {# kohde} other {# kohdetta}}",
+    "itemsCountFiltered": "{shown} / {total, plural, one {# kohteesta} other {# kohteesta}}",
+    "renameViewUnavailableForTags": "Tallennettuja näkymiä ei voi vielä nimetä uudelleen tunnisteille",
+    "tagFilterLabel": "tunniste = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "Poista {count}-muistiinpanot",
       "deleteSelectedItems": "Poista {count} kohteet",
       "bookmark": "Kirjanmerkki",
-      "removeFromBookmarks": "Poista kirjanmerkeistä"
+      "removeFromBookmarks": "Poista kirjanmerkeistä",
+      "applyTemplate": "Käytä mallia"
     },
     "deleteDialog": {
       "noteTitle": "Poista huomautus",
@@ -83,7 +102,17 @@
       "export": "Vie",
       "fullWidth": "Täysleveä",
       "disableLocalOnly": "Poista vain paikallinen käytöstä",
-      "setLocalOnly": "Aseta vain paikallinen"
+      "setLocalOnly": "Aseta vain paikallinen",
+      "applyTemplate": "Käytä mallia",
+      "copyPath": "Kopioi polku",
+      "delete": "Poista muistiinpano",
+      "find": "Etsi…",
+      "moreActions": "Lisää toimintoja",
+      "moveToFolder": "Siirrä kansioon…",
+      "openInDefaultApp": "Avaa oletussovelluksessa",
+      "rename": "Nimeä uudelleen…",
+      "revealInFinder": "Näytä Finderissa",
+      "revealInSidebar": "Näytä sivupalkissa"
     },
     "breadcrumb": {
       "locationAria": "Huomaa sijainti",
@@ -235,7 +264,10 @@
     "essentials": "Essentials",
     "setFolderDefault": "Aseta kansion oletusarvoksi",
     "useTemplate": "Käytä mallia",
-    "createNote": "Luo muistiinpano"
+    "createNote": "Luo muistiinpano",
+    "applyDescription": "Korvaa tämän muistiinpanon sisältö mallilla",
+    "applyTitle": "Käytä mallia",
+    "applyToNote": "Käytä mallia"
   },
   "exportDialog": {
     "title": "Vie huomautus",
@@ -352,7 +384,8 @@
       "addCondition": "Lisää ehto",
       "addFilter": "Lisää suodatin",
       "addGroup": "Lisää ryhmä",
-      "removeGroup": "Poista ryhmä"
+      "removeGroup": "Poista ryhmä",
+      "lockedConditionHint": "Tämä ehto määrittää nykyisen näkymän, eikä sitä voi poistaa täältä."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Sisäänrakennettu",
@@ -365,7 +398,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Muistiinpanot taulukko",
       "selectAll": "Valitse kaikki muistiinpanot",
-      "selectRow": "Valitse muistiinpano"
+      "selectRow": "Valitse muistiinpano",
+      "kind": {
+        "Inbox": "Saapuneet",
+        "Note": "Muistiinpano",
+        "Task": "Tehtävä"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Hae muistiinpanoja...",
@@ -468,7 +506,13 @@
       "failedToLoadPdf": "PDF:n lataaminen epäonnistui: ",
       "download": "Lataa",
       "download2": "Lataa",
-      "noFileAttached": "Ei liitetiedostoa"
+      "noFileAttached": "Ei liitetiedostoa",
+      "alignCenter": "Keskitä",
+      "alignLeft": "Tasaa vasemmalle",
+      "alignRight": "Tasaa oikealle",
+      "nextPage": "Seuraava sivu",
+      "previousPage": "Edellinen sivu",
+      "resizePdf": "Muuta PDF:n kokoa"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Avaa tehtäväpaneelissa",
@@ -530,7 +574,8 @@
       "failedToLoadTags": "Tunnisteiden lataaminen epäonnistui",
       "noTagsYet": "Ei tunnisteita vielä",
       "filterTags": "Suodata tunnisteet...",
-      "noMatchingTags": "Ei vastaavia tunnisteita"
+      "noMatchingTags": "Ei vastaavia tunnisteita",
+      "Uncategorized": "Luokittelemattomat"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Pudota tänne",
@@ -560,7 +605,8 @@
       "deleteTag": "Poista tunniste",
       "recent": "Viimeaikaiset",
       "created": "Luotu",
-      "alphabetical": "Aakkosellinen"
+      "alphabetical": "Aakkosellinen",
+      "tasks": "TEHTÄVÄT"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Nimeä tunniste uudelleen",
@@ -733,7 +779,9 @@
     "replyPlaceholder": "Vastaa...",
     "resolve": "Ratkaise",
     "sendAria": "Lähetä kommentti",
-    "toolbarComment": "Kommentoi"
+    "toolbarComment": "Kommentoi",
+    "openAttachmentAria": "Avaa liite {name}",
+    "openImageAria": "Avaa kuva {name}"
   },
   "dateMention": {
     "clear": "Tyhjennä",
@@ -743,5 +791,59 @@
     "remind": "Muistuta",
     "time": "Aika",
     "timeFormat": "Aikamuoto"
+  },
+  "applyTemplateConfirm": {
+    "body": "Korvaa vain sisältö",
+    "cancel": "Peruuta",
+    "description": "Mallin \"{name}\" käyttäminen korvaa tämän muistiinpanon nykyisen sisällön. Tätä ei voi kumota.",
+    "failed": "Mallin käyttäminen epäonnistui",
+    "full": "Korvaa sisältö ja lisää mallin tiedot",
+    "success": "Malli otettu käyttöön",
+    "title": "Korvataanko muistiinpanon sisältö?"
+  },
+  "tagView": {
+    "moreActions": "Lisää toimintoja",
+    "pin": {
+      "action": "Kiinnitä {count, plural, one {# muistiinpano} other {# muistiinpanoa}} tunnisteeseen",
+      "failed": "Muistiinpanon kiinnittäminen tunnisteeseen epäonnistui",
+      "success": "{count, plural, one {# muistiinpano kiinnitetty} other {# muistiinpanoa kiinnitetty}} tunnisteeseen"
+    }
+  },
+  "tags": {
+    "hubTitle": "Tunnisteet",
+    "openHub": "Avaa tunnistekeskus"
+  },
+  "tagsHub": {
+    "cancelCreate": "Peruuta",
+    "category": {
+      "delete": "Poista luokka",
+      "deleteBody": "Tunnisteet siirtyvät kohtaan Luokittelemattomat. Niitä ei poisteta.",
+      "deleteCancel": "Peruuta",
+      "deleteConfirm": "Poista",
+      "deleteTitle": "Poistetaanko {name}?",
+      "dragHandle": "Järjestä luokka uudelleen vetämällä",
+      "emptyHint": "Vedä tunniste tähän",
+      "more": "Luokan toiminnot",
+      "rename": "Nimeä luokka uudelleen"
+    },
+    "categoryNamePlaceholder": "Luokan nimi",
+    "errors": {
+      "createCategoryFailed": "Luokan luominen epäonnistui",
+      "createTagCategorizeFailed": "Tunniste luotiin, mutta sitä ei voitu lisätä luokkaan",
+      "createTagFailed": "Tunnisteen luominen epäonnistui",
+      "deleteCategoryFailed": "Luokan poistaminen epäonnistui",
+      "loadFailed": "Tunnisteluokkien lataaminen epäonnistui",
+      "renameCategoryFailed": "Luokan nimeäminen epäonnistui",
+      "reorderFailed": "Tunnisteiden uudelleenjärjestäminen epäonnistui"
+    },
+    "loading": "Ladataan tunnisteita...",
+    "newCategory": "Uusi luokka",
+    "newTag": "Uusi tunniste",
+    "search": {
+      "empty": "Mikään luokka tai tunniste ei vastaa hakuasi",
+      "placeholder": "Hae luokkia ja tunnisteita"
+    },
+    "tagNamePlaceholder": "Tunnisteen nimi",
+    "uncategorized": "Luokittelemattomat"
   }
 }

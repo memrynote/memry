@@ -16,9 +16,27 @@
       "willSync": "메모가 클라우드에 동기화됩니다.",
       "renameFailed": "메모 이름을 바꾸지 못했습니다.",
       "toggleLocalOnlyFailed": "로컬로만 전환하지 못했습니다.",
-      "toggleFullWidthFailed": "전체 너비를 전환하지 못했습니다."
+      "toggleFullWidthFailed": "전체 너비를 전환하지 못했습니다.",
+      "copyPathFailed": "경로를 복사하지 못했습니다",
+      "deleteFailed": "메모를 삭제하지 못했습니다",
+      "moveFailed": "메모를 이동하지 못했습니다",
+      "moved": "메모를 이동했습니다",
+      "openExternalFailed": "메모를 열지 못했습니다",
+      "pathCopied": "경로를 복사했습니다",
+      "revealFailed": "메모 위치를 표시하지 못했습니다"
     },
-    "deleteDialogTitle": "{count, plural, one {메모 삭제} other {# 삭제 노트}}"
+    "deleteDialogTitle": "{count, plural, one {메모 삭제} other {# 삭제 노트}}",
+    "deleteConfirm": {
+      "cancel": "취소",
+      "confirm": "삭제",
+      "deleting": "삭제 중...",
+      "description": "\"{title}\" 메모를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+      "title": "메모 삭제"
+    },
+    "itemsCount": "{count, plural, other {항목 #개}}",
+    "itemsCountFiltered": "{total, plural, other {항목 #개}} 중 {shown}개",
+    "renameViewUnavailableForTags": "태그에서는 저장된 보기의 이름을 아직 바꿀 수 없습니다",
+    "tagFilterLabel": "태그 = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "{count} 삭제 노트",
       "deleteSelectedItems": "{count} 항목 삭제",
       "bookmark": "북마크",
-      "removeFromBookmarks": "북마크에서 제거"
+      "removeFromBookmarks": "북마크에서 제거",
+      "applyTemplate": "템플릿 적용"
     },
     "deleteDialog": {
       "noteTitle": "메모 삭제",
@@ -83,7 +102,17 @@
       "export": "수출",
       "fullWidth": "전폭",
       "disableLocalOnly": "로컬만 비활성화",
-      "setLocalOnly": "로컬만 설정"
+      "setLocalOnly": "로컬만 설정",
+      "applyTemplate": "템플릿 적용",
+      "copyPath": "경로 복사",
+      "delete": "메모 삭제",
+      "find": "찾기…",
+      "moreActions": "더 보기",
+      "moveToFolder": "폴더로 이동…",
+      "openInDefaultApp": "기본 앱에서 열기",
+      "rename": "이름 바꾸기…",
+      "revealInFinder": "Finder에서 보기",
+      "revealInSidebar": "사이드바에서 보기"
     },
     "breadcrumb": {
       "locationAria": "위치 참고",
@@ -235,7 +264,10 @@
     "essentials": "필수사항",
     "setFolderDefault": "폴더 기본값으로 설정",
     "useTemplate": "템플릿 사용",
-    "createNote": "메모 작성"
+    "createNote": "메모 작성",
+    "applyDescription": "이 메모의 내용을 템플릿으로 바꿉니다",
+    "applyTitle": "템플릿 적용",
+    "applyToNote": "템플릿 적용"
   },
   "exportDialog": {
     "title": "노트 내보내기",
@@ -352,7 +384,8 @@
       "addCondition": "조건 추가",
       "addFilter": "필터 추가",
       "addGroup": "그룹 추가",
-      "removeGroup": "그룹 제거"
+      "removeGroup": "그룹 제거",
+      "lockedConditionHint": "이 조건은 현재 보기를 정의하므로 여기서 제거할 수 없습니다."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "내장",
@@ -365,7 +398,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "메모 테이블",
       "selectAll": "모든 노트 선택",
-      "selectRow": "노트 선택"
+      "selectRow": "노트 선택",
+      "kind": {
+        "Inbox": "받은함",
+        "Note": "메모",
+        "Task": "작업"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "메모 검색...",
@@ -468,7 +506,13 @@
       "failedToLoadPdf": "PDF를 로드하지 못했습니다: ",
       "download": "다운로드",
       "download2": "다운로드",
-      "noFileAttached": "첨부된 파일 없음"
+      "noFileAttached": "첨부된 파일 없음",
+      "alignCenter": "가운데 정렬",
+      "alignLeft": "왼쪽 정렬",
+      "alignRight": "오른쪽 정렬",
+      "nextPage": "다음 페이지",
+      "previousPage": "이전 페이지",
+      "resizePdf": "PDF 크기 조정"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "작업 패널에서 열기",
@@ -530,7 +574,8 @@
       "failedToLoadTags": "태그를 로드하지 못했습니다.",
       "noTagsYet": "아직 태그가 없습니다.",
       "filterTags": "태그 필터링...",
-      "noMatchingTags": "일치하는 태그가 없습니다."
+      "noMatchingTags": "일치하는 태그가 없습니다.",
+      "Uncategorized": "미분류"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "여기에 드롭",
@@ -560,7 +605,8 @@
       "deleteTag": "태그 삭제",
       "recent": "최근",
       "created": "생성됨",
-      "alphabetical": "알파벳순"
+      "alphabetical": "알파벳순",
+      "tasks": "작업"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "태그 이름 바꾸기",
@@ -733,7 +779,9 @@
     "replyPlaceholder": "답글...",
     "resolve": "해결",
     "sendAria": "댓글 보내기",
-    "toolbarComment": "댓글"
+    "toolbarComment": "댓글",
+    "openAttachmentAria": "첨부파일 {name} 열기",
+    "openImageAria": "이미지 {name} 열기"
   },
   "dateMention": {
     "clear": "지우기",
@@ -743,5 +791,59 @@
     "remind": "알림",
     "time": "시간",
     "timeFormat": "시간 형식"
+  },
+  "applyTemplateConfirm": {
+    "body": "내용만 바꾸기",
+    "cancel": "취소",
+    "description": "\"{name}\" 템플릿을 적용하면 이 메모의 현재 내용이 바뀝니다. 되돌릴 수 없습니다.",
+    "failed": "템플릿을 적용하지 못했습니다",
+    "full": "내용 바꾸고 템플릿 세부정보 추가",
+    "success": "템플릿을 적용했습니다",
+    "title": "메모 내용을 바꾸시겠습니까?"
+  },
+  "tagView": {
+    "moreActions": "더 보기",
+    "pin": {
+      "action": "{count, plural, other {메모 #개}}를 태그에 고정",
+      "failed": "메모를 태그에 고정하지 못했습니다",
+      "success": "{count, plural, other {메모 #개}}를 태그에 고정했습니다"
+    }
+  },
+  "tags": {
+    "hubTitle": "태그",
+    "openHub": "태그 허브 열기"
+  },
+  "tagsHub": {
+    "cancelCreate": "취소",
+    "category": {
+      "delete": "카테고리 삭제",
+      "deleteBody": "태그는 미분류로 이동합니다. 삭제되지는 않습니다.",
+      "deleteCancel": "취소",
+      "deleteConfirm": "삭제",
+      "deleteTitle": "{name} 카테고리를 삭제하시겠습니까?",
+      "dragHandle": "드래그해 카테고리 순서 바꾸기",
+      "emptyHint": "여기로 태그를 드래그하세요",
+      "more": "카테고리 옵션",
+      "rename": "카테고리 이름 바꾸기"
+    },
+    "categoryNamePlaceholder": "카테고리 이름",
+    "errors": {
+      "createCategoryFailed": "카테고리를 만들지 못했습니다",
+      "createTagCategorizeFailed": "태그는 만들었지만 카테고리에 추가하지 못했습니다",
+      "createTagFailed": "태그를 만들지 못했습니다",
+      "deleteCategoryFailed": "카테고리를 삭제하지 못했습니다",
+      "loadFailed": "태그 카테고리를 로드하지 못했습니다",
+      "renameCategoryFailed": "카테고리 이름을 바꾸지 못했습니다",
+      "reorderFailed": "태그 순서를 바꾸지 못했습니다"
+    },
+    "loading": "태그 로드 중...",
+    "newCategory": "새 카테고리",
+    "newTag": "새 태그",
+    "search": {
+      "empty": "검색과 일치하는 카테고리나 태그가 없습니다",
+      "placeholder": "카테고리와 태그 검색"
+    },
+    "tagNamePlaceholder": "태그 이름",
+    "uncategorized": "미분류"
   }
 }

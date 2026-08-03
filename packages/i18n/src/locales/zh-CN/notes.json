@@ -16,9 +16,27 @@
       "willSync": "笔记将同步到云端",
       "renameFailed": "重命名笔记失败",
       "toggleLocalOnlyFailed": "切换为仅本地失败",
-      "toggleFullWidthFailed": "切换全宽失败"
+      "toggleFullWidthFailed": "切换全宽失败",
+      "copyPathFailed": "复制路径失败",
+      "deleteFailed": "删除笔记失败",
+      "moveFailed": "移动笔记失败",
+      "moved": "笔记已移动",
+      "openExternalFailed": "打开笔记失败",
+      "pathCopied": "路径已复制",
+      "revealFailed": "显示笔记失败"
     },
-    "deleteDialogTitle": "{count, plural, one {删除笔记} other {删除 # 笔记}}"
+    "deleteDialogTitle": "{count, plural, one {删除笔记} other {删除 # 笔记}}",
+    "deleteConfirm": {
+      "cancel": "取消",
+      "confirm": "删除",
+      "deleting": "正在删除...",
+      "description": "确定要删除“{title}”吗？此操作无法撤销。",
+      "title": "删除笔记"
+    },
+    "itemsCount": "{count, plural, other {# 项}}",
+    "itemsCountFiltered": "{shown} 项，共 {total, plural, other {# 项}}",
+    "renameViewUnavailableForTags": "标签暂不支持重命名已保存的视图",
+    "tagFilterLabel": "标签 = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "删除 {count} 笔记",
       "deleteSelectedItems": "删除 {count} 项目",
       "bookmark": "添加书签",
-      "removeFromBookmarks": "从书签中移除"
+      "removeFromBookmarks": "从书签中移除",
+      "applyTemplate": "应用模板"
     },
     "deleteDialog": {
       "noteTitle": "删除笔记",
@@ -83,7 +102,17 @@
       "export": "导出",
       "fullWidth": "全宽",
       "disableLocalOnly": "仅禁用本地",
-      "setLocalOnly": "仅设置本地"
+      "setLocalOnly": "仅设置本地",
+      "applyTemplate": "应用模板",
+      "copyPath": "复制路径",
+      "delete": "删除笔记",
+      "find": "查找…",
+      "moreActions": "更多操作",
+      "moveToFolder": "移动到文件夹…",
+      "openInDefaultApp": "在默认应用程序中打开",
+      "rename": "重命名…",
+      "revealInFinder": "在 Finder 中显示",
+      "revealInSidebar": "在导航中显示"
     },
     "breadcrumb": {
       "locationAria": "笔记位置",
@@ -235,7 +264,10 @@
     "essentials": "基础模板",
     "setFolderDefault": "设置为文件夹默认",
     "useTemplate": "使用模板",
-    "createNote": "创建笔记"
+    "createNote": "创建笔记",
+    "applyDescription": "用模板替换此笔记的内容",
+    "applyTitle": "应用模板",
+    "applyToNote": "应用模板"
   },
   "exportDialog": {
     "title": "导出笔记",
@@ -352,7 +384,8 @@
       "addCondition": "添加条件",
       "addFilter": "添加筛选器",
       "addGroup": "添加分组",
-      "removeGroup": "移除分组"
+      "removeGroup": "移除分组",
+      "lockedConditionHint": "此条件定义了当前视图，无法在这里移除。"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "内置",
@@ -365,7 +398,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "笔记表",
       "selectAll": "选择所有笔记",
-      "selectRow": "选择笔记"
+      "selectRow": "选择笔记",
+      "kind": {
+        "Inbox": "收件箱",
+        "Note": "笔记",
+        "Task": "任务"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "搜索笔记...",
@@ -468,7 +506,13 @@
       "failedToLoadPdf": "加载 PDF 失败：",
       "download": "下载",
       "download2": "下载",
-      "noFileAttached": "没有附加文件"
+      "noFileAttached": "没有附加文件",
+      "alignCenter": "居中对齐",
+      "alignLeft": "左对齐",
+      "alignRight": "右对齐",
+      "nextPage": "下一页",
+      "previousPage": "上一页",
+      "resizePdf": "调整 PDF 大小"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "在任务面板中打开",
@@ -530,7 +574,8 @@
       "failedToLoadTags": "加载标签失败",
       "noTagsYet": "尚无标签",
       "filterTags": "筛选标签...",
-      "noMatchingTags": "没有匹配的标签"
+      "noMatchingTags": "没有匹配的标签",
+      "Uncategorized": "未分类"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "拖到这里",
@@ -560,7 +605,8 @@
       "deleteTag": "删除标签",
       "recent": "最近",
       "created": "创建时间",
-      "alphabetical": "按字母顺序"
+      "alphabetical": "按字母顺序",
+      "tasks": "任务"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "重命名标签",
@@ -733,7 +779,9 @@
     "replyPlaceholder": "回复...",
     "resolve": "解决",
     "sendAria": "发送评论",
-    "toolbarComment": "评论"
+    "toolbarComment": "评论",
+    "openAttachmentAria": "打开附件 {name}",
+    "openImageAria": "打开图片 {name}"
   },
   "dateMention": {
     "clear": "清除",
@@ -743,5 +791,59 @@
     "remind": "提醒",
     "time": "时间",
     "timeFormat": "时间格式"
+  },
+  "applyTemplateConfirm": {
+    "body": "仅替换内容",
+    "cancel": "取消",
+    "description": "应用“{name}”将替换此笔记的当前内容。此操作无法撤销。",
+    "failed": "应用模板失败",
+    "full": "替换内容并添加模板详情",
+    "success": "模板已应用",
+    "title": "替换笔记内容？"
+  },
+  "tagView": {
+    "moreActions": "更多操作",
+    "pin": {
+      "action": "将 {count, plural, other {# 篇笔记}}固定到标签",
+      "failed": "将笔记固定到标签失败",
+      "success": "已将 {count, plural, other {# 篇笔记}}固定到标签"
+    }
+  },
+  "tags": {
+    "hubTitle": "标签",
+    "openHub": "打开标签中心"
+  },
+  "tagsHub": {
+    "cancelCreate": "取消",
+    "category": {
+      "delete": "删除分类",
+      "deleteBody": "标签将移到“未分类”。它们不会被删除。",
+      "deleteCancel": "取消",
+      "deleteConfirm": "删除",
+      "deleteTitle": "删除 {name}？",
+      "dragHandle": "拖动以重新排序分类",
+      "emptyHint": "将标签拖到这里",
+      "more": "分类选项",
+      "rename": "重命名分类"
+    },
+    "categoryNamePlaceholder": "分类名称",
+    "errors": {
+      "createCategoryFailed": "创建分类失败",
+      "createTagCategorizeFailed": "标签已创建，但无法添加到该分类",
+      "createTagFailed": "创建标签失败",
+      "deleteCategoryFailed": "删除分类失败",
+      "loadFailed": "加载标签分类失败",
+      "renameCategoryFailed": "重命名分类失败",
+      "reorderFailed": "重新排序标签失败"
+    },
+    "loading": "正在加载标签...",
+    "newCategory": "新建分类",
+    "newTag": "新建标签",
+    "search": {
+      "empty": "没有匹配的分类或标签",
+      "placeholder": "搜索分类和标签"
+    },
+    "tagNamePlaceholder": "标签名称",
+    "uncategorized": "未分类"
   }
 }

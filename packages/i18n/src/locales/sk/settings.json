@@ -28,7 +28,8 @@
         "properties": "Vlastnosti",
         "commandLine": "Príkazový riadok",
         "features": "Funkcie",
-        "import": "Import"
+        "import": "Import",
+        "inbox": "Schránka"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Sťahovanie {percent}%",
         "downloaded": "Reštartovať a nainštalovať",
         "idle": "Skontrolovať aktualizácie"
+      },
+      "autoCheck": {
+        "description": "Kontrolovať nové vydania pri spustení a priebežne, kým je aplikácia otvorená.",
+        "error": "Nepodarilo sa aktualizovať nastavenie automatickej kontroly",
+        "label": "Automaticky kontrolovať aktualizácie"
+      },
+      "autoDownload": {
+        "description": "Sťahovať a inštalovať nové vydania na pozadí bez opýtania.",
+        "error": "Nepodarilo sa aktualizovať nastavenie automatického sťahovania",
+        "label": "Automaticky sťahovať aktualizácie"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Zdieľať anonymné používanie metrík",
         "description": "Sú to len anonymné metriky — obsah poznámok, vyhľadávacie dotazy, cesty k súborom, e-maily ani surové ID sa nikdy neposielajú.",
         "error": "Nepodarilo sa aktualizovať nastavenie telemetrie"
+      },
+      "diagnostics": {
+        "building": "Pripravuje sa správa…",
+        "consent": "Odoslať jednorazovú diagnostickú správu? Obsahuje iba anonymizované technické záznamy — žiadny obsah poznámok.",
+        "error": "Nepodarilo sa odoslať diagnostickú správu",
+        "notNow": "Teraz nie",
+        "previewError": "Diagnostickú správu sa nepodarilo pripraviť",
+        "previewLabel": "Zobraziť obsah správy",
+        "send": "Odoslať",
+        "sendReport": {
+          "button": "Odoslať diagnostickú správu",
+          "description": "Odošlite jednorazovú správu s anonymizovanými technickými záznamami, aby sme mohli vyriešiť problém, na ktorý ste narazili.",
+          "label": "Diagnostická správa"
+        },
+        "sending": "Odosiela sa…",
+        "sent": "Správa odoslaná — referencia {incidentId}",
+        "snapshotLabel": "Snímka zariadenia",
+        "title": "Odoslať diagnostickú správu?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Rozloženie",
-      "toolbar": "Panel nástrojov"
+      "toolbar": "Panel nástrojov",
+      "spelling": "Pravopis"
     },
     "width": {
       "label": "Šírka editora",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Úzka",
         "medium": "Stredná",
-        "wide": "Široká"
+        "wide": "Široká",
+        "full": "Plná šírka",
+        "normal": "Normálna"
       },
       "error": "Nepodarilo sa aktualizovať šírku editora"
     },
@@ -229,6 +261,11 @@
       "label": "Pripevnený panel formátovania",
       "description": "Vždy zobraziť panel nad editorom",
       "error": "Nepodarilo sa aktualizovať režim panela nástrojov"
+    },
+    "spellCheck": {
+      "description": "Podčiarkovať nesprávne napísané slová v poznámkach a denníkoch",
+      "error": "Nepodarilo sa aktualizovať kontrolu pravopisu",
+      "label": "Kontrola pravopisu"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "Využitie úložiska",
-      "location": "Umiestnenie"
+      "location": "Umiestnenie",
+      "accountVaults": "Trezory vo vašom účte"
     },
     "loadingStorage": "Načítavam informácie o úložisku...",
     "signInStorage": "Prihláste sa na zobrazenie využitia úložiska",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "Úložisko takmer plné",
       "warningDescription": "Uvoľnite miesto alebo upgradujte plán, aby ste predišli problémom so synchronizáciou."
+    },
+    "accountVaults": {
+      "activeHint": "Ak chcete tento trezor odstrániť, prepnite sa na iný.",
+      "cloudOnly": "Nie je na tomto zariadení",
+      "delete": "Odstrániť",
+      "deleteBody": "Týmto sa natrvalo odstránia všetky synchronizované dáta tohto trezora zo serverov Memry a nedá sa to vrátiť späť. Vaše súbory na disku sa nevymažú.",
+      "deleteConfirm": "Odstrániť z účtu",
+      "deleteFailed": "Trezor sa nepodarilo odstrániť",
+      "deleteTitle": "Odstrániť „{name}“ z vášho účtu?",
+      "empty": "S vaším účtom zatiaľ nie sú synchronizované žiadne trezory.",
+      "itemsCount": "{count, plural, one {# položka} few {# položky} many {# položky} other {# položiek}}"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "Nepodarilo sa zavrieť trezor",
       "failedToSwitchVault": "Nepodarilo sa prepnúť trezor",
       "failedToUpdateConfig": "Nepodarilo sa aktualizovať konfiguráciu",
-      "failedToReindex": "Nepodarilo sa preindexovať"
+      "failedToReindex": "Nepodarilo sa preindexovať",
+      "failedToLoadTasks": "Nepodarilo sa načítať úlohy"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "Úlohy a termíny",
         "label": "Úlohy"
+      },
+      "spatialCanvas": {
+        "description": "Priestorové tabule na usporiadanie a prepájanie poznámok",
+        "label": "Plátno"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} preskočených",
         "title": "Import dokončený"
       },
-      "title": "Importovať z {name}"
+      "title": "Importovať z {name}",
+      "chooseDirectory": "Vybrať priečinok…",
+      "folderKeepsAssets": "Priečinok vyberte vtedy, keď sú obrázky mimo priečinka so samotnými poznámkami — exporty ich často ukladajú do spoločného priečinka."
     },
     "header": {
       "subtitle": "Preneste svoje poznámky a úlohy z iných aplikácií",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, one {# úloha} few {# úlohy} other {# úloh}}",
       "withDueDate": "{count} datovaných",
       "withTags": "{count} označených"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Načítava sa…",
+      "subtitle": "Denná pripomienka na prejdenie schránky a jej nastavenia.",
+      "title": "Schránka"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Jemné denné pripomenutie, keď máte v schránke položky.",
+        "label": "Pripomínať mi prejdenie schránky"
+      },
+      "error": "Pripomienku sa nepodarilo aktualizovať.",
+      "group": "Denná pripomienka na prejdenie schránky",
+      "test": {
+        "button": "Odoslať test",
+        "description": "Spustite pripomienku hneď teraz a overte si systémové upozornenia.",
+        "label": "Testovacie upozornenie",
+        "sent": "Testovacie upozornenie bolo odoslané.",
+        "sentHint": "Ak sa nič neobjaví, povoľte upozornenia pre MemryNote v nastaveniach systému.",
+        "unsupported": "Toto zariadenie nedokáže zobrazovať upozornenia na ploche."
+      },
+      "time": {
+        "description": "Miestny čas na každom zariadení.",
+        "hourLabel": "Hodina",
+        "label": "Čas pripomienky",
+        "minuteLabel": "Minúta",
+        "periodLabel": "AM alebo PM"
+      }
     }
   }
 }

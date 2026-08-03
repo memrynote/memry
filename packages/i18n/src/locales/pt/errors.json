@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "Não foi possível verificar um item de sincronização e ele foi colocado em quarentena por segurança.",
     "securityQuarantineRetry": "Um item de sincronização falhou na verificação de assinatura e será tentado novamente.",
     "certificatePinPaused": "Não foi possível verificar a conexão segura com o servidor de sincronização. A sincronização foi pausada para sua proteção.",
-    "paymentRequired": "É necessário um plano de Sincronização pago para usar a sincronização encriptada alojada."
+    "paymentRequired": "É necessário um plano de Sincronização pago para usar a sincronização encriptada alojada.",
+    "attachmentUploadFailed": "Não foi possível sincronizar o anexo \"{filename}\". Fica neste dispositivo.",
+    "fileTooLarge": "Este ficheiro é maior do que o seu plano permite. Atualize o seu plano para sincronizar ficheiros maiores.",
+    "vaultRecovered": "Chave do cofre restaurada. A sincronização será retomada."
   }
 }

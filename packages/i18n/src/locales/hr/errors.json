@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "Stavku sinkronizacije nije bilo moguće provjeriti i stavljena je u karantenu radi sigurnosti.",
     "securityQuarantineRetry": "Stavka sinkronizacije nije uspjela provjeru potpisa i pokušat će se ponovno.",
     "certificatePinPaused": "Nije moguće provjeriti sigurnu vezu s poslužiteljem za sinkronizaciju. Sinkronizacija je pauzirana radi vaše zaštite.",
-    "paymentRequired": "Za korištenje hostane šifrirane sinkronizacije potreban je plaćeni plan sinkronizacije."
+    "paymentRequired": "Za korištenje hostane šifrirane sinkronizacije potreban je plaćeni plan sinkronizacije.",
+    "attachmentUploadFailed": "Nije moguće sinkronizirati privitak „{filename}”. Ostaje na ovom uređaju.",
+    "fileTooLarge": "Ova je datoteka veća nego što vaš plan dopušta. Nadogradite plan za sinkronizaciju većih datoteka.",
+    "vaultRecovered": "Ključ trezora je vraćen. Sinkronizacija se nastavlja."
   }
 }

@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "Download {percent}%",
       "updateInstallingSubtitle": "MemryNote si riavvierà automaticamente.",
       "updateInstallingTitle": "Installazione dell'aggiornamento",
-      "updateRestart": "Riavvia"
+      "updateRestart": "Riavvia",
+      "feedbackPrivacyEmailOptional": "La tua email — solo se la aggiungi, e solo per poterti rispondere",
+      "feedbackPrivacyEmailSignedIn": "L'email del tuo account ({email}), per poterti rispondere",
+      "feedbackPrivacyMessage": "Il tuo messaggio, esattamente come l'hai scritto",
+      "feedbackPrivacyNote": "Nient'altro. Le tue note restano sul tuo dispositivo.",
+      "feedbackPrivacyPlan": "Il tuo piano (free, Plus, Pro o Believer)",
+      "feedbackPrivacyTitle": "Cosa viene inviato",
+      "feedbackPrivacyVersion": "Versione dell'app e sistema operativo",
+      "projects": "Progetti"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Ridimensiona il pannello del giorno",
@@ -231,7 +239,8 @@
       "journal": "Diario",
       "calendar": "Calendario",
       "inboxCapture": "Acquisizione della posta in arrivo",
-      "tasks": "Compiti"
+      "tasks": "Compiti",
+      "tags": "Tag"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Modifiche non salvate",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Qualcosa è andato storto",
       "anErrorOccurredWhileRenderingThisTabContent": "Si è verificato un errore durante il rendering del contenuto di questa scheda.",
-      "tryAgain": "Riprova"
+      "tryAgain": "Riprova",
+      "sendReport": "Invia report diagnostico"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Icona della nota"
@@ -352,7 +362,13 @@
       "downloadLocation": "Posizione",
       "changeLocation": "Cambia…",
       "download": "Scarica",
-      "downloadFailed": "Impossibile scaricare la cassaforte"
+      "downloadFailed": "Impossibile scaricare la cassaforte",
+      "deleteFromAccount": "Elimina dall'account",
+      "deleteVaultBody": "Questa operazione rimuove definitivamente dai server di Memry tutti i dati sincronizzati di questo vault e non può essere annullata. I file sul tuo disco non vengono eliminati.",
+      "deleteVaultConfirm": "Elimina dall'account",
+      "deleteVaultFailed": "Impossibile eliminare il vault",
+      "deleteVaultTitle": "Eliminare “{name}” dal tuo account?",
+      "removeVaultTitle": "Rimuovere “{name}” dalla lista?"
     },
     "componentsWindowControls": {
       "searchK": "Cerca (⌘K)",
@@ -640,6 +656,45 @@
     "skip": "Salta questa versione"
   },
   "capture": {
-    "focusShortcut": "Attiva campo di cattura"
+    "focusShortcut": "Attiva campo di cattura",
+    "detailHint": "dettaglio",
+    "focusHint": "Q",
+    "submit": "Cattura"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Aggiungi riquadro",
+      "addCreateNote": "Crea la nota \"{query}\"",
+      "addCreateNoteEmpty": "Crea una nuova nota",
+      "addCreatedAt": "Creato il {date}",
+      "addEmpty": "Nessun risultato",
+      "addGroupEvents": "Eventi",
+      "addGroupNotes": "Note",
+      "addGroupTasks": "Attività",
+      "addOnCanvas": "Sul canvas",
+      "addPlaceholder": "Cerca note, attività ed eventi…",
+      "allDay": "Tutto il giorno",
+      "createNoteFailed": "Impossibile creare la nota",
+      "deleted": "Elemento eliminato",
+      "loading": "Caricamento…",
+      "open": "Apri in una scheda",
+      "openToEdit": "Apri per modificare",
+      "untitled": "Senza titolo"
+    },
+    "corruptScene": "Impossibile leggere questo canvas. La modifica è disattivata per non perdere dati.",
+    "createFailed": "Impossibile creare il canvas",
+    "disabledBody": "Questa scheda appartiene a una funzionalità non attiva su questo dispositivo.",
+    "disabledTitle": "Canvas non è attivo",
+    "empty": "Nessun canvas ancora",
+    "libraryStoreFailed": "Impossibile salvare la tua libreria di forme. Le modifiche recenti potrebbero andare perse.",
+    "loadFailed": "Impossibile caricare i canvas",
+    "loading": "Caricamento canvas…",
+    "newCanvas": "Nuovo canvas",
+    "notFound": "Impossibile trovare questo canvas",
+    "openFailed": "Impossibile aprire il canvas",
+    "savedToVault": "Tutte le modifiche vengono salvate automaticamente nel tuo vault",
+    "sectionLabel": "Canvas",
+    "tooLargeToSync": "Questo canvas è troppo grande per la sincronizzazione. È salvato su questo dispositivo, ma non raggiungerà gli altri dispositivi finché non sarà più leggero.",
+    "untitled": "Canvas senza titolo"
   }
 }

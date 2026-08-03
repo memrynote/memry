@@ -28,7 +28,8 @@
         "properties": "Proprietà",
         "commandLine": "Riga di comando",
         "features": "Funzionalità",
-        "import": "Importa"
+        "import": "Importa",
+        "inbox": "Posta in arrivo"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Download di {percent}%",
         "downloaded": "Riavvia per installare",
         "idle": "Controlla gli aggiornamenti"
+      },
+      "autoCheck": {
+        "description": "Controlla la presenza di nuove versioni all'avvio e periodicamente mentre l'app è aperta.",
+        "error": "Impossibile aggiornare l'impostazione del controllo automatico",
+        "label": "Controlla automaticamente gli aggiornamenti"
+      },
+      "autoDownload": {
+        "description": "Scarica e installa le nuove versioni in background, senza chiedere conferma.",
+        "error": "Impossibile aggiornare l'impostazione del download automatico",
+        "label": "Scarica automaticamente gli aggiornamenti"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Condividi metriche di utilizzo anonime",
         "description": "Si tratta solo di metriche anonime: non vengono mai inviati contenuti di note, query di ricerca, percorsi di file, e-mail o ID grezzi.",
         "error": "Impossibile aggiornare l'impostazione della telemetria"
+      },
+      "diagnostics": {
+        "building": "Preparazione del report…",
+        "consent": "Vuoi inviare un report diagnostico una tantum? Contiene solo log tecnici oscurati — nessun contenuto delle note.",
+        "error": "Impossibile inviare il report diagnostico",
+        "notNow": "Non ora",
+        "previewError": "Impossibile preparare il report diagnostico",
+        "previewLabel": "Anteprima del contenuto del report",
+        "send": "Invia",
+        "sendReport": {
+          "button": "Invia report diagnostico",
+          "description": "Invia un report una tantum con log tecnici oscurati, per aiutarci a risolvere un problema che hai riscontrato.",
+          "label": "Report diagnostico"
+        },
+        "sending": "Invio…",
+        "sent": "Report inviato — riferimento {incidentId}",
+        "snapshotLabel": "Istantanea del dispositivo",
+        "title": "Inviare un report diagnostico?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Disposizione",
-      "toolbar": "Barra degli strumenti"
+      "toolbar": "Barra degli strumenti",
+      "spelling": "Ortografia"
     },
     "width": {
       "label": "Larghezza dell'editor",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Stretto",
         "medium": "Medio",
-        "wide": "Largo"
+        "wide": "Largo",
+        "full": "Tutta la larghezza",
+        "normal": "Normale"
       },
       "error": "Impossibile aggiornare la larghezza dell'editor"
     },
@@ -229,6 +261,11 @@
       "label": "Barra degli strumenti di formattazione fissa",
       "description": "Mostra sempre la barra degli strumenti sopra l'editor",
       "error": "Impossibile aggiornare la modalità della barra degli strumenti"
+    },
+    "spellCheck": {
+      "description": "Sottolinea le parole con errori di ortografia nelle note e nei diari",
+      "error": "Impossibile aggiornare il controllo ortografico",
+      "label": "Controllo ortografico"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "Utilizzo dello spazio di archiviazione",
-      "location": "Posizione"
+      "location": "Posizione",
+      "accountVaults": "Vault nel tuo account"
     },
     "loadingStorage": "Caricamento informazioni sullo spazio di archiviazione...",
     "signInStorage": "Accedi per visualizzare l'utilizzo dello spazio di archiviazione",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "Spazio di archiviazione quasi pieno",
       "warningDescription": "Libera spazio o aggiorna il tuo piano per evitare problemi di sincronizzazione."
+    },
+    "accountVaults": {
+      "activeHint": "Per eliminare questo vault, passa prima a un altro.",
+      "cloudOnly": "Non su questo dispositivo",
+      "delete": "Elimina",
+      "deleteBody": "Questa operazione rimuove definitivamente dai server di Memry tutti i dati sincronizzati di questo vault e non può essere annullata. I file sul tuo disco non vengono eliminati.",
+      "deleteConfirm": "Elimina dall'account",
+      "deleteFailed": "Impossibile eliminare il vault",
+      "deleteTitle": "Eliminare “{name}” dal tuo account?",
+      "empty": "Nessun vault ancora sincronizzato con il tuo account.",
+      "itemsCount": "{count} elementi"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "Impossibile chiudere il vault",
       "failedToSwitchVault": "Impossibile cambiare vault",
       "failedToUpdateConfig": "Impossibile aggiornare la configurazione",
-      "failedToReindex": "Impossibile reindicizzare"
+      "failedToReindex": "Impossibile reindicizzare",
+      "failedToLoadTasks": "Impossibile caricare le attività"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "Cose da fare e scadenze",
         "label": "Attività"
+      },
+      "spatialCanvas": {
+        "description": "Lavagne spaziali per disporre e collegare le note",
+        "label": "Canvas"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} saltati",
         "title": "Importazione completata"
       },
-      "title": "Importa da {name}"
+      "title": "Importa da {name}",
+      "chooseDirectory": "Scegli cartella…",
+      "folderKeepsAssets": "Scegli la cartella quando le immagini si trovano fuori dalla cartella delle note — spesso le esportazioni salvano i media in una cartella condivisa."
     },
     "header": {
       "subtitle": "Porta le tue note e attività da altre app",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, one {# attività} other {# attività}}",
       "withDueDate": "{count} datate",
       "withTags": "{count} con tag"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Caricamento…",
+      "subtitle": "Promemoria di revisione quotidiana e preferenze della posta in arrivo.",
+      "title": "Posta in arrivo"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Un promemoria discreto ogni giorno, quando la posta in arrivo non è vuota.",
+        "label": "Ricordami di rivedere la posta in arrivo"
+      },
+      "error": "Impossibile aggiornare il promemoria.",
+      "group": "Promemoria di revisione quotidiana",
+      "test": {
+        "button": "Invia prova",
+        "description": "Invia subito il promemoria per verificare le notifiche di sistema.",
+        "label": "Notifica di prova",
+        "sent": "Notifica di prova inviata.",
+        "sentHint": "Se non compare nulla, consenti le notifiche per MemryNote nelle impostazioni di sistema.",
+        "unsupported": "Questo dispositivo non può mostrare notifiche desktop."
+      },
+      "time": {
+        "description": "Ora locale, su ogni dispositivo.",
+        "hourLabel": "Ore",
+        "label": "Orario del promemoria",
+        "minuteLabel": "Minuti",
+        "periodLabel": "AM o PM"
+      }
     }
   }
 }

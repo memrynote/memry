@@ -34,7 +34,8 @@
     "createAnother": "Створити інше",
     "delete": "Видалити завдання",
     "created": "Створено {date}",
-    "reminder": "Нагадування"
+    "reminder": "Нагадування",
+    "tags": "Теги"
   },
   "filters": {
     "filter": "Фільтр",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Швидко додати завдання",
-    "focusDescription": "Фокус на швидкий ввід завдання"
+    "focusDescription": "Фокус на швидкий ввід завдання",
+    "placeholder": "Додати завдання…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Закрити деталі завдання",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Цей проект не має завдань і буде видалений назавжди.",
       "thisActionCannotBeUndone": "Цю дію неможливо скасувати.",
       "cancel": "Скасувати",
-      "deleteProject": "Видалити проект"
+      "deleteProject": "Видалити проект",
+      "notesEventsAndFilesStayNotice": "Завдання в цьому проєкті буде видалено. Ваші нотатки, події та файли залишаться у сховищі."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Видалити завдання?",
@@ -357,7 +360,9 @@
       "due": "Термін",
       "dueDate": "дата завершення",
       "search": "пошук",
-      "clearAll": "Очистити все"
+      "clearAll": "Очистити все",
+      "tags": "теги",
+      "tagsIs": "Теги:"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Фільтрувати за датою завершення",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "Немає майбутніх завдань",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Завдання, термін яких настане протягом наступних 7 днів, з’являться тут. Плануйте свій тиждень, додаючи кілька завдань.",
       "addTask2": "Додати завдання"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "є",
+      "search": "Пошук...",
+      "selected": "вибрано",
+      "tags": "Теги"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "Не вдалося встановити нагадування",
       "updateFailed": "Не вдалося оновити нагадування",
       "updated": "Нагадування оновлено"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Додати до проєкту",
+    "loading": "Завантаження проєктів…",
+    "menuLabel": "Додати до проєкту",
+    "noProjects": "Проєктів ще немає",
+    "toastError": "Не вдалося додати до проєкту",
+    "toastSuccess": "Додано до {name}"
+  },
+  "itemProjects": {
+    "openProject": "Відкрити проєкт {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Виберіть проєкт на бічній панелі, щоб відкрити його головну сторінку.",
+    "emptyTitle": "Проєкт не вибрано",
+    "loadError": "Не вдалося завантажити деталі проєкту",
+    "overview": {
+      "clear": "Очистити огляд",
+      "clearError": "Не вдалося очистити нотатку огляду",
+      "create": "Створити нотатку огляду",
+      "createError": "Не вдалося створити нотатку огляду",
+      "defaultTitle": "Огляд",
+      "loadError": "Не вдалося завантажити нотатку огляду",
+      "placeholder": "Напишіть огляд цього проєкту…",
+      "saveError": "Не вдалося зберегти нотатку огляду",
+      "sectionTitle": "Огляд"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Прикріпити файли",
+      "fileError": "Не вдалося пов’язати {name}",
+      "fileErrorGeneric": "Не вдалося імпортувати файли",
+      "filesAdded": "{count, plural, one {До проєкту додано # файл} few {До проєкту додано # файли} many {До проєкту додано # файлів} other {До проєкту додано # файлу}}",
+      "label": "Додати до {name}",
+      "linkAdded": "Посилання додано до проєкту",
+      "linkError": "Не вдалося зберегти посилання",
+      "placeholder": "Додати до {name} — введіть завдання, занотуйте думку або вставте посилання…"
+    },
+    "groups": {
+      "older": "Старіші",
+      "past": "Минулі",
+      "today": "Сьогодні",
+      "tomorrow": "Завтра",
+      "upcoming": "Майбутні",
+      "yesterday": "Вчора"
+    },
+    "header": {
+      "archiveProject": "Архівувати проєкт",
+      "editProject": "Редагувати проєкт",
+      "menu": "Дії проєкту",
+      "toggleRail": "Показати або приховати деталі проєкту"
+    },
+    "rail": {
+      "addNote": "Додати нотатку",
+      "created": "Створено",
+      "details": "Деталі",
+      "doneOf": "Виконано {done} з {total}",
+      "linked": "Пов’язано",
+      "linkedSummary": "{notes, plural, one {# нотатка} few {# нотатки} many {# нотаток} other {# нотатки}} · {files, plural, one {# файл} few {# файли} many {# файлів} other {# файлу}} · {events, plural, one {# подія} few {# події} many {# подій} other {# події}}",
+      "overdue": "Прострочені",
+      "overview": "Огляд",
+      "pinError": "Не вдалося додати нотатку до огляду",
+      "progress": "Прогрес",
+      "unpinError": "Не вдалося прибрати нотатку з огляду",
+      "unpinNote": "Прибрати {title} з огляду",
+      "updated": "Оновлено"
+    },
+    "rows": {
+      "openEvent": "Відкрити подію {title}",
+      "openFile": "Відкрити файл {title}",
+      "openNote": "Відкрити нотатку {title}",
+      "openTask": "Відкрити завдання {title}",
+      "setNoteIcon": "Встановити значок для {title}"
+    },
+    "sections": {
+      "add": "Додати до {title}",
+      "emptyEvents": "Пов’язаних подій ще немає.",
+      "emptyFiles": "Пов’язаних файлів ще немає.",
+      "emptyNotes": "Пов’язаних нотаток ще немає.",
+      "emptyTasks": "Завдань ще немає.",
+      "newNoteError": "Не вдалося додати нотатку",
+      "newNoteTitle": "Нотатка без назви",
+      "viewAll": "Переглянути всі"
+    },
+    "tabs": {
+      "events": "Події",
+      "files": "Файли",
+      "label": "Перегляди проєкту",
+      "notes": "Нотатки",
+      "overview": "Огляд",
+      "tasks": "Завдання"
     }
   }
 }

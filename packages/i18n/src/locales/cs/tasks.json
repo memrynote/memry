@@ -34,7 +34,8 @@
     "createAnother": "Vytvořte další",
     "delete": "Smazat úkol",
     "created": "Vytvořeno {date}",
-    "reminder": "Připomenutí"
+    "reminder": "Připomenutí",
+    "tags": "Tagy"
   },
   "filters": {
     "filter": "Filtr",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Rychlé přidání úkolu",
-    "focusDescription": "Zaměření rychlého přidání vstupu"
+    "focusDescription": "Zaměření rychlého přidání vstupu",
+    "placeholder": "Přidat úkol…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Zavřete podrobnosti úkolu",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Tento projekt nemá žádné úkoly a bude trvale smazán.",
       "thisActionCannotBeUndone": "Tuto akci nelze vrátit zpět.",
       "cancel": "Zrušit",
-      "deleteProject": "Smazat projekt"
+      "deleteProject": "Smazat projekt",
+      "notesEventsAndFilesStayNotice": "Úkoly v tomto projektu budou smazány. Vaše poznámky, události a soubory zůstanou v trezoru."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Smazat úkol?",
@@ -357,7 +360,9 @@
       "due": "Splatné",
       "dueDate": "datum splatnosti",
       "search": "hledat",
-      "clearAll": "Vymazat vše"
+      "clearAll": "Vymazat vše",
+      "tags": "tagy",
+      "tagsIs": "Tagy jsou"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Filtrujte podle data splatnosti",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "Žádné nadcházející úkoly",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Zde se zobrazí úkoly splatné v příštích 7 dnech. Naplánujte si týden přidáním několika úkolů.",
       "addTask2": "Přidat úkol"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "je",
+      "search": "Hledat...",
+      "selected": "vybrané",
+      "tags": "Tagy"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "Připomenutí se nepodařilo nastavit",
       "updateFailed": "Připomenutí se nepodařilo aktualizovat",
       "updated": "Připomenutí aktualizováno"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Přidat do projektu",
+    "loading": "Načítání projektů…",
+    "menuLabel": "Přidat do projektu",
+    "noProjects": "Zatím žádné projekty",
+    "toastError": "Přidání do projektu se nezdařilo",
+    "toastSuccess": "Přidáno do {name}"
+  },
+  "itemProjects": {
+    "openProject": "Otevřít projekt {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Vyberte projekt z postranního panelu a otevřete jeho domovskou stránku.",
+    "emptyTitle": "Není vybrán žádný projekt",
+    "loadError": "Podrobnosti projektu se nepodařilo načíst",
+    "overview": {
+      "clear": "Vymazat přehled",
+      "clearError": "Poznámku s přehledem se nepodařilo vymazat",
+      "create": "Vytvořit poznámku s přehledem",
+      "createError": "Poznámku s přehledem se nepodařilo vytvořit",
+      "defaultTitle": "Přehled",
+      "loadError": "Poznámku s přehledem se nepodařilo načíst",
+      "placeholder": "Napište přehled tohoto projektu…",
+      "saveError": "Poznámku s přehledem se nepodařilo uložit",
+      "sectionTitle": "Přehled"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Připojit soubory",
+      "fileError": "Nepodařilo se propojit {name}",
+      "fileErrorGeneric": "Soubory se nepodařilo importovat",
+      "filesAdded": "{count, plural, one {# soubor přidán do projektu} few {# soubory přidány do projektu} many {# souboru přidáno do projektu} other {# souborů přidáno do projektu}}",
+      "label": "Přidat do {name}",
+      "linkAdded": "Odkaz přidán do projektu",
+      "linkError": "Odkaz se nepodařilo uložit",
+      "placeholder": "Přidat do {name} — napište úkol, zapište poznámku nebo vložte odkaz…"
+    },
+    "groups": {
+      "older": "Starší",
+      "past": "Minulé",
+      "today": "Dnes",
+      "tomorrow": "Zítra",
+      "upcoming": "Nadcházející",
+      "yesterday": "Včera"
+    },
+    "header": {
+      "archiveProject": "Archivovat projekt",
+      "editProject": "Upravit projekt",
+      "menu": "Akce projektu",
+      "toggleRail": "Přepnout podrobnosti projektu"
+    },
+    "rail": {
+      "addNote": "Přidat poznámku",
+      "created": "Vytvořeno",
+      "details": "Podrobnosti",
+      "doneOf": "Hotovo {done} z {total}",
+      "linked": "Propojeno",
+      "linkedSummary": "{notes, plural, one {# poznámka} few {# poznámky} many {# poznámky} other {# poznámek}} · {files, plural, one {# soubor} few {# soubory} many {# souboru} other {# souborů}} · {events, plural, one {# událost} few {# události} many {# události} other {# událostí}}",
+      "overdue": "Po splatnosti",
+      "overview": "Přehled",
+      "pinError": "Poznámku se nepodařilo přidat do přehledu",
+      "progress": "Průběh",
+      "unpinError": "Poznámku se nepodařilo odebrat z přehledu",
+      "unpinNote": "Odebrat {title} z přehledu",
+      "updated": "Upraveno"
+    },
+    "rows": {
+      "openEvent": "Otevřít událost {title}",
+      "openFile": "Otevřít soubor {title}",
+      "openNote": "Otevřít poznámku {title}",
+      "openTask": "Otevřít úkol {title}",
+      "setNoteIcon": "Nastavit ikonu pro {title}"
+    },
+    "sections": {
+      "add": "Přidat do {title}",
+      "emptyEvents": "Zatím nejsou propojené žádné události.",
+      "emptyFiles": "Zatím nejsou propojené žádné soubory.",
+      "emptyNotes": "Zatím nejsou propojené žádné poznámky.",
+      "emptyTasks": "Zatím žádné úkoly.",
+      "newNoteError": "Poznámku se nepodařilo přidat",
+      "newNoteTitle": "Poznámka bez názvu",
+      "viewAll": "Zobrazit vše"
+    },
+    "tabs": {
+      "events": "Události",
+      "files": "Soubory",
+      "label": "Zobrazení projektu",
+      "notes": "Poznámky",
+      "overview": "Přehled",
+      "tasks": "Úkoly"
     }
   }
 }

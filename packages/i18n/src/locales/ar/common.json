@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "جارٍ التنزيل {percent}%",
       "updateInstallingSubtitle": "ستتم إعادة تشغيل MemryNote تلقائيًا.",
       "updateInstallingTitle": "جارٍ تثبيت التحديث",
-      "updateRestart": "إعادة التشغيل"
+      "updateRestart": "إعادة التشغيل",
+      "feedbackPrivacyEmailOptional": "بريدك الإلكتروني — فقط إن أضفته، ولا نستخدمه إلا للرد عليك",
+      "feedbackPrivacyEmailSignedIn": "بريد حسابك ({email})، للرد عليك",
+      "feedbackPrivacyMessage": "رسالتك، تمامًا كما كتبتها",
+      "feedbackPrivacyNote": "لا شيء غير ذلك. تبقى ملاحظاتك على جهازك.",
+      "feedbackPrivacyPlan": "خطتك (free أو Plus أو Pro أو Believer)",
+      "feedbackPrivacyTitle": "ما الذي يُرسَل",
+      "feedbackPrivacyVersion": "إصدار التطبيق ونظام التشغيل",
+      "projects": "المشاريع"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "تغيير حجم لوحة اليوم",
@@ -231,7 +239,8 @@
       "journal": "مجلة",
       "calendar": "التقويم",
       "inboxCapture": "التقاط البريد الوارد",
-      "tasks": "المهام"
+      "tasks": "المهام",
+      "tags": "العلامات"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "التغييرات غير المحفوظة",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "حدث خطأ ما",
       "anErrorOccurredWhileRenderingThisTabContent": "حدث خطأ أثناء عرض محتوى علامة التبويب هذه.",
-      "tryAgain": "حاول مرة أخرى"
+      "tryAgain": "حاول مرة أخرى",
+      "sendReport": "إرسال تقرير تشخيصي"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "أيقونة الملاحظة"
@@ -352,7 +362,13 @@
       "downloadLocation": "الموقع",
       "changeLocation": "تغيير…",
       "download": "تنزيل",
-      "downloadFailed": "تعذر تنزيل الخزنة"
+      "downloadFailed": "تعذر تنزيل الخزنة",
+      "deleteFromAccount": "حذف من الحساب",
+      "deleteVaultBody": "يزيل هذا نهائيًا كل البيانات المزامَنة لهذه الخزنة من خوادم Memry، ولا يمكن التراجع عنه. لن تُحذف ملفاتك الموجودة على القرص.",
+      "deleteVaultConfirm": "حذف من الحساب",
+      "deleteVaultFailed": "تعذّر حذف الخزنة",
+      "deleteVaultTitle": "حذف “{name}” من حسابك؟",
+      "removeVaultTitle": "إزالة “{name}” من القائمة؟"
     },
     "componentsWindowControls": {
       "searchK": "بحث (⌘K)",
@@ -640,6 +656,45 @@
     "skip": "تخطي هذا الإصدار"
   },
   "capture": {
-    "focusShortcut": "التركيز على حقل الالتقاط"
+    "focusShortcut": "التركيز على حقل الالتقاط",
+    "detailHint": "تفاصيل",
+    "focusHint": "Q",
+    "submit": "التقاط"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "إضافة بطاقة",
+      "addCreateNote": "إنشاء ملاحظة \"{query}\"",
+      "addCreateNoteEmpty": "إنشاء ملاحظة جديدة",
+      "addCreatedAt": "أُنشئت في {date}",
+      "addEmpty": "لا توجد نتائج",
+      "addGroupEvents": "الأحداث",
+      "addGroupNotes": "الملاحظات",
+      "addGroupTasks": "المهام",
+      "addOnCanvas": "على اللوحة",
+      "addPlaceholder": "ابحث في الملاحظات والمهام والأحداث…",
+      "allDay": "طوال اليوم",
+      "createNoteFailed": "تعذّر إنشاء الملاحظة",
+      "deleted": "تم حذف العنصر",
+      "loading": "جارٍ التحميل…",
+      "open": "فتح في علامة تبويب",
+      "openToEdit": "افتح في علامة تبويب للتحرير",
+      "untitled": "بدون عنوان"
+    },
+    "corruptScene": "تعذّرت قراءة هذه اللوحة. تم تعطيل التحرير لتفادي فقدان البيانات.",
+    "createFailed": "تعذّر إنشاء اللوحة",
+    "disabledBody": "تنتمي علامة التبويب هذه إلى ميزة غير مفعّلة على هذا الجهاز.",
+    "disabledTitle": "ميزة اللوحة غير مفعّلة",
+    "empty": "لا توجد لوحات بعد",
+    "libraryStoreFailed": "تعذّر حفظ مكتبة الأشكال. قد تُفقد التغييرات الأخيرة عليها.",
+    "loadFailed": "تعذّر تحميل اللوحات",
+    "loading": "جارٍ تحميل اللوحات…",
+    "newCanvas": "لوحة جديدة",
+    "notFound": "تعذّر العثور على هذه اللوحة",
+    "openFailed": "تعذّر فتح اللوحة",
+    "savedToVault": "تُحفظ كل التغييرات في خزنتك تلقائيًا",
+    "sectionLabel": "اللوحات",
+    "tooLargeToSync": "هذه اللوحة أكبر من أن تُزامَن. ستبقى محفوظة على هذا الجهاز، لكنها لن تصل إلى أجهزتك الأخرى حتى يصغر حجمها.",
+    "untitled": "لوحة بدون عنوان"
   }
 }

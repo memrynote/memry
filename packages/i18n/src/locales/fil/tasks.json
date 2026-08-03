@@ -34,7 +34,8 @@
     "createAnother": "Lumikha ng isa pa",
     "delete": "Tanggalin ang gawain",
     "created": "Nilikha ang {date}",
-    "reminder": "Paalala"
+    "reminder": "Paalala",
+    "tags": "Mga tag"
   },
   "filters": {
     "filter": "Salain",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Mabilis na magdagdag ng gawain",
-    "focusDescription": "Tumutok ng mabilis na magdagdag ng input"
+    "focusDescription": "Tumutok ng mabilis na magdagdag ng input",
+    "placeholder": "Magdagdag ng gawain…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Isara ang mga detalye ng gawain",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Ang proyektong ito ay walang mga gawain at permanenteng tatanggalin.",
       "thisActionCannotBeUndone": "Ang pagkilos na ito ay hindi maaaring i-undo.",
       "cancel": "Kanselahin",
-      "deleteProject": "Tanggalin ang Proyekto"
+      "deleteProject": "Tanggalin ang Proyekto",
+      "notesEventsAndFilesStayNotice": "Tinatanggal ang mga gawain sa proyektong ito. Nananatili sa iyong vault ang iyong mga tala, kaganapan, at file."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Tanggalin ang gawain?",
@@ -357,7 +360,9 @@
       "due": "Dahil",
       "dueDate": "takdang petsa",
       "search": "paghahanap",
-      "clearAll": "I-clear lahat"
+      "clearAll": "I-clear lahat",
+      "tags": "mga tag",
+      "tagsIs": "Ang mga tag ay"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "I-filter ayon sa takdang petsa",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "Walang paparating na gawain",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Lalabas dito ang mga gawaing dapat bayaran sa susunod na 7 araw. Planuhin ang iyong linggo sa pamamagitan ng pagdaragdag ng ilang gawain.",
       "addTask2": "Magdagdag ng gawain"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "ay",
+      "search": "Hanapin...",
+      "selected": "pinili",
+      "tags": "Mga tag"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "Nabigong magtakda ng paalala",
       "updateFailed": "Nabigong i-update ang paalala",
       "updated": "Na-update ang paalala"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Idagdag sa proyekto",
+    "loading": "Nilo-load ang mga proyekto…",
+    "menuLabel": "Idagdag sa proyekto",
+    "noProjects": "Wala pang proyekto",
+    "toastError": "Nabigong idagdag sa proyekto",
+    "toastSuccess": "Naidagdag sa {name}"
+  },
+  "itemProjects": {
+    "openProject": "Buksan ang proyektong {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Pumili ng proyekto mula sa sidebar para buksan ang home nito.",
+    "emptyTitle": "Walang napiling proyekto",
+    "loadError": "Hindi ma-load ang mga detalye ng proyekto",
+    "overview": {
+      "clear": "I-clear ang buod",
+      "clearError": "Hindi ma-clear ang talang buod",
+      "create": "Lumikha ng talang buod",
+      "createError": "Hindi makalikha ng talang buod",
+      "defaultTitle": "Buod",
+      "loadError": "Hindi ma-load ang talang buod",
+      "placeholder": "Magsulat ng buod para sa proyektong ito…",
+      "saveError": "Hindi ma-save ang talang buod",
+      "sectionTitle": "Buod"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Maglakip ng mga file",
+      "fileError": "Hindi ma-link ang {name}",
+      "fileErrorGeneric": "Hindi ma-import ang mga file",
+      "filesAdded": "{count, plural, one {# file ang naidagdag sa proyekto} other {# na file ang naidagdag sa proyekto}}",
+      "label": "Idagdag sa {name}",
+      "linkAdded": "Naidagdag ang link sa proyekto",
+      "linkError": "Hindi ma-save ang link",
+      "placeholder": "Idagdag sa {name} — mag-type ng gawain, magtala ng ideya, o mag-paste ng link…"
+    },
+    "groups": {
+      "older": "Mas luma",
+      "past": "Nakaraan",
+      "today": "Ngayong araw",
+      "tomorrow": "Bukas",
+      "upcoming": "Paparating",
+      "yesterday": "Kahapon"
+    },
+    "header": {
+      "archiveProject": "I-archive ang proyekto",
+      "editProject": "I-edit ang proyekto",
+      "menu": "Mga pagkilos sa proyekto",
+      "toggleRail": "I-toggle ang mga detalye ng proyekto"
+    },
+    "rail": {
+      "addNote": "Magdagdag ng tala",
+      "created": "Nilikha",
+      "details": "Mga detalye",
+      "doneOf": "Tapos na ang {done} sa {total}",
+      "linked": "Naka-link",
+      "linkedSummary": "{notes, plural, one {# tala} other {# na tala}} · {files, plural, one {# file} other {# na file}} · {events, plural, one {# kaganapan} other {# na kaganapan}}",
+      "overdue": "Overdue",
+      "overview": "Buod",
+      "pinError": "Hindi maidagdag ang tala sa buod",
+      "progress": "Progreso",
+      "unpinError": "Hindi maalis ang tala sa buod",
+      "unpinNote": "Alisin ang {title} sa buod",
+      "updated": "Na-update"
+    },
+    "rows": {
+      "openEvent": "Buksan ang kaganapang {title}",
+      "openFile": "Buksan ang file na {title}",
+      "openNote": "Buksan ang talang {title}",
+      "openTask": "Buksan ang gawaing {title}",
+      "setNoteIcon": "Itakda ang icon para sa {title}"
+    },
+    "sections": {
+      "add": "Idagdag sa {title}",
+      "emptyEvents": "Wala pang naka-link na kaganapan.",
+      "emptyFiles": "Wala pang naka-link na file.",
+      "emptyNotes": "Wala pang naka-link na tala.",
+      "emptyTasks": "Wala pang gawain.",
+      "newNoteError": "Hindi maidagdag ang tala",
+      "newNoteTitle": "Walang pamagat na tala",
+      "viewAll": "Tingnan lahat"
+    },
+    "tabs": {
+      "events": "Mga kaganapan",
+      "files": "Mga file",
+      "label": "Mga view ng proyekto",
+      "notes": "Mga tala",
+      "overview": "Buod",
+      "tasks": "Mga gawain"
     }
   }
 }

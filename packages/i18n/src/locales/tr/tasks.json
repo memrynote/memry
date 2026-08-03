@@ -34,7 +34,8 @@
     "createAnother": "Başka bir tane oluştur",
     "delete": "Görevi sil",
     "created": "Oluşturuldu {date}",
-    "reminder": "Hatırlatıcı"
+    "reminder": "Hatırlatıcı",
+    "tags": "Etiketler"
   },
   "filters": {
     "filter": "Filtre",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Hızlı ekleme görevi",
-    "focusDescription": "Hızlı ekleme girişine odaklanın"
+    "focusDescription": "Hızlı ekleme girişine odaklanın",
+    "placeholder": "Görev ekle…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Görev ayrıntılarını kapat",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Bu projenin hiçbir görevi yok ve kalıcı olarak silinecek.",
       "thisActionCannotBeUndone": "Bu eylem geri alınamaz.",
       "cancel": "İptal",
-      "deleteProject": "Projeyi Sil"
+      "deleteProject": "Projeyi Sil",
+      "notesEventsAndFilesStayNotice": "Bu projedeki görevler silinir. Notlarınız, etkinlikleriniz ve dosyalarınız kasanızda kalır."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Görev silinsin mi?",
@@ -357,7 +360,9 @@
       "due": "Vadesi gelmiş",
       "dueDate": "vade tarihi",
       "search": "arama",
-      "clearAll": "Tümünü temizle"
+      "clearAll": "Tümünü temizle",
+      "tags": "etiketler",
+      "tagsIs": "Etiketler:"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Son tarihe göre filtrele",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "Yaklaşan görev yok",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Önümüzdeki 7 gün içinde teslim edilmesi gereken görevler burada görünecek. Bazı görevler ekleyerek haftanızı planlayın.",
       "addTask2": "Görev ekle"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "eşittir",
+      "search": "Ara...",
+      "selected": "seçilmiş",
+      "tags": "Etiketler"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "Hatırlatıcı ayarlanamadı",
       "updateFailed": "Hatırlatıcı güncellenemedi",
       "updated": "Hatırlatıcı güncellendi"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Projeye ekle",
+    "loading": "Projeler yükleniyor…",
+    "menuLabel": "Projeye ekle",
+    "noProjects": "Henüz proje yok",
+    "toastError": "Projeye eklenemedi",
+    "toastSuccess": "{name} projesine eklendi"
+  },
+  "itemProjects": {
+    "openProject": "{name} projesini aç"
+  },
+  "projectHome": {
+    "emptyBody": "Ana sayfasını açmak için kenar çubuğundan bir proje seçin.",
+    "emptyTitle": "Hiçbir proje seçilmedi",
+    "loadError": "Proje ayrıntıları yüklenemedi",
+    "overview": {
+      "clear": "Genel bakışı temizle",
+      "clearError": "Genel bakış notu temizlenemedi",
+      "create": "Genel bakış notu oluştur",
+      "createError": "Genel bakış notu oluşturulamadı",
+      "defaultTitle": "Genel Bakış",
+      "loadError": "Genel bakış notu yüklenemedi",
+      "placeholder": "Bu proje için bir genel bakış yazın…",
+      "saveError": "Genel bakış notu kaydedilemedi",
+      "sectionTitle": "Genel Bakış"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Dosya ekle",
+      "fileError": "{name} bağlanamadı",
+      "fileErrorGeneric": "Dosyalar içe aktarılamadı",
+      "filesAdded": "{count, plural, one {# dosya projeye eklendi} other {# dosya projeye eklendi}}",
+      "label": "{name} projesine ekle",
+      "linkAdded": "Bağlantı projeye eklendi",
+      "linkError": "Bağlantı kaydedilemedi",
+      "placeholder": "{name} projesine ekleyin — bir görev yazın, not alın veya bağlantı yapıştırın…"
+    },
+    "groups": {
+      "older": "Daha eski",
+      "past": "Geçmiş",
+      "today": "Bugün",
+      "tomorrow": "Yarın",
+      "upcoming": "Yaklaşan",
+      "yesterday": "Dün"
+    },
+    "header": {
+      "archiveProject": "Projeyi arşivle",
+      "editProject": "Projeyi düzenle",
+      "menu": "Proje işlemleri",
+      "toggleRail": "Proje ayrıntılarını aç/kapat"
+    },
+    "rail": {
+      "addNote": "Not ekle",
+      "created": "Oluşturuldu",
+      "details": "Ayrıntılar",
+      "doneOf": "{done} / {total} tamamlandı",
+      "linked": "Bağlantılı",
+      "linkedSummary": "{notes, plural, one {# not} other {# not}} · {files, plural, one {# dosya} other {# dosya}} · {events, plural, one {# etkinlik} other {# etkinlik}}",
+      "overdue": "Gecikmiş",
+      "overview": "Genel Bakış",
+      "pinError": "Not genel bakışa eklenemedi",
+      "progress": "İlerleme",
+      "unpinError": "Not genel bakıştan kaldırılamadı",
+      "unpinNote": "{title} notunu genel bakıştan kaldır",
+      "updated": "Güncellendi"
+    },
+    "rows": {
+      "openEvent": "{title} etkinliğini aç",
+      "openFile": "{title} dosyasını aç",
+      "openNote": "{title} notunu aç",
+      "openTask": "{title} görevini aç",
+      "setNoteIcon": "{title} için simge ayarla"
+    },
+    "sections": {
+      "add": "{title} bölümüne ekle",
+      "emptyEvents": "Henüz bağlantılı etkinlik yok.",
+      "emptyFiles": "Henüz bağlantılı dosya yok.",
+      "emptyNotes": "Henüz bağlantılı not yok.",
+      "emptyTasks": "Henüz görev yok.",
+      "newNoteError": "Not eklenemedi",
+      "newNoteTitle": "Başlıksız not",
+      "viewAll": "Tümünü görüntüle"
+    },
+    "tabs": {
+      "events": "Etkinlikler",
+      "files": "Dosyalar",
+      "label": "Proje görünümleri",
+      "notes": "Notlar",
+      "overview": "Genel Bakış",
+      "tasks": "Görevler"
     }
   }
 }

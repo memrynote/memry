@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "Položku synchronizace nebylo možné ověřit a byla kvůli bezpečnosti umístěna do karantény.",
     "securityQuarantineRetry": "U položky synchronizace se nezdařilo ověření podpisu a pokus bude zopakován.",
     "certificatePinPaused": "Zabezpečené připojení k synchronizačnímu serveru se nepodařilo ověřit. Synchronizace byla z důvodu vaší ochrany pozastavena.",
-    "paymentRequired": "Pro použití hostované šifrované synchronizace je vyžadován placený plán Sync."
+    "paymentRequired": "Pro použití hostované šifrované synchronizace je vyžadován placený plán Sync.",
+    "attachmentUploadFailed": "Přílohu „{filename}“ se nepodařilo synchronizovat. Zůstává na tomto zařízení.",
+    "fileTooLarge": "Tento soubor je větší, než váš plán dovoluje. Chcete-li synchronizovat větší soubory, upgradujte svůj plán.",
+    "vaultRecovered": "Klíč trezoru byl obnoven. Synchronizace bude pokračovat."
   }
 }

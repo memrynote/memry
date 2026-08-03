@@ -314,7 +314,10 @@
       "rdquo": "ردقوو]؛",
       "captureAnyway": "التقط على أي حال",
       "focusShortcut": "التركيز على حقل الالتقاط",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "التقاط رابط",
+      "captureNote": "التقاط ملاحظة",
+      "placeholder": "التقاط سريع — الصق رابطًا، أو دوّن فكرة…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "اختر المجلد",
@@ -466,7 +469,12 @@
       "cancelRecording": "إلغاء التسجيل",
       "cancel": "إلغاء",
       "stopRecording": "توقف عن التسجيل",
-      "stop": "توقف"
+      "stop": "توقف",
+      "enableMicInSettings": "فعّل الوصول إلى الميكروفون في إعدادات النظام، ثم حاول مرة أخرى.",
+      "failedToStart": "فشل بدء التسجيل",
+      "microphoneAccessDenied": "تم رفض الوصول إلى الميكروفون",
+      "noMicrophoneFound": "لم يتم العثور على ميكروفون",
+      "recordingError": "حدث خطأ أثناء التسجيل"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "فشل في التقاط الملف",
       "fileCaptureFailed": "فشل التقاط الملف",
       "failedToCaptureAudio": "فشل في التقاط الصوت",
-      "failedToCaptureVoice": "فشل في التقاط الصوت"
+      "failedToCaptureVoice": "فشل في التقاط الصوت",
+      "failedToLoadInboxPreferences": "فشل تحميل تفضيلات البريد الوارد",
+      "failedToUpdateInboxPreferences": "فشل تحديث تفضيلات البريد الوارد"
     },
     "toasts": {
       "inboxRefreshed": "تم تحديث البريد الوارد"
@@ -516,5 +526,10 @@
     "task": "مهمة",
     "time": "الوقت",
     "title": "تحويل"
+  },
+  "reviewNudge": {
+    "action": "فتح البريد الوارد",
+    "description": "راجع ما التقطته اليوم في جلسة واحدة هادئة.",
+    "title": "{count, plural, zero {حان وقت مراجعة # عنصر} one {حان وقت مراجعة عنصر واحد} two {حان وقت مراجعة عنصرين} few {حان وقت مراجعة # عناصر} many {حان وقت مراجعة # عنصراً} other {حان وقت مراجعة # عنصر}}"
   }
 }

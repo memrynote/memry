@@ -16,9 +16,27 @@
       "willSync": "メモはクラウドに同期されます",
       "renameFailed": "メモの名前を変更できませんでした",
       "toggleLocalOnlyFailed": "ローカルのみの切り替えに失敗しました",
-      "toggleFullWidthFailed": "全幅の切り替えに失敗しました"
+      "toggleFullWidthFailed": "全幅の切り替えに失敗しました",
+      "copyPathFailed": "パスをコピーできませんでした",
+      "deleteFailed": "メモを削除できませんでした",
+      "moveFailed": "メモを移動できませんでした",
+      "moved": "メモを移動しました",
+      "openExternalFailed": "メモを開けませんでした",
+      "pathCopied": "パスをコピーしました",
+      "revealFailed": "メモを表示できませんでした"
     },
-    "deleteDialogTitle": "{count, plural, one {メモの削除} other {#メモの削除}}"
+    "deleteDialogTitle": "{count, plural, one {メモの削除} other {#メモの削除}}",
+    "deleteConfirm": {
+      "cancel": "キャンセル",
+      "confirm": "削除",
+      "deleting": "削除中...",
+      "description": "「{title}」を削除してもよろしいですか？この操作は元に戻すことができません。",
+      "title": "メモを削除"
+    },
+    "itemsCount": "{count, plural, other {#件のアイテム}}",
+    "itemsCountFiltered": "{total, plural, other {#件}}中{shown}件",
+    "renameViewUnavailableForTags": "保存したビューの名前変更は、タグではまだ利用できません",
+    "tagFilterLabel": "タグ = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "{count}メモの削除",
       "deleteSelectedItems": "{count} アイテムを削除する",
       "bookmark": "ブックマーク",
-      "removeFromBookmarks": "ブックマークから削除"
+      "removeFromBookmarks": "ブックマークから削除",
+      "applyTemplate": "テンプレートを適用"
     },
     "deleteDialog": {
       "noteTitle": "メモの削除",
@@ -83,7 +102,17 @@
       "export": "エクスポート",
       "fullWidth": "全幅",
       "disableLocalOnly": "ローカルのみを無効にする",
-      "setLocalOnly": "ローカルのみに設定"
+      "setLocalOnly": "ローカルのみに設定",
+      "applyTemplate": "テンプレートを適用",
+      "copyPath": "パスをコピー",
+      "delete": "メモを削除",
+      "find": "検索…",
+      "moreActions": "その他の操作",
+      "moveToFolder": "フォルダーに移動…",
+      "openInDefaultApp": "デフォルトのアプリで開く",
+      "rename": "名前を変更…",
+      "revealInFinder": "Finder で表示",
+      "revealInSidebar": "サイドバーに表示"
     },
     "breadcrumb": {
       "locationAria": "メモの場所",
@@ -235,7 +264,10 @@
     "essentials": "必需品",
     "setFolderDefault": "フォルダーのデフォルトとして設定",
     "useTemplate": "テンプレートを使用する",
-    "createNote": "メモの作成"
+    "createNote": "メモの作成",
+    "applyDescription": "このメモの内容をテンプレートで置き換えます",
+    "applyTitle": "テンプレートを適用",
+    "applyToNote": "テンプレートを適用"
   },
   "exportDialog": {
     "title": "エクスポートメモ",
@@ -352,7 +384,8 @@
       "addCondition": "条件の追加",
       "addFilter": "フィルターを追加",
       "addGroup": "グループを追加",
-      "removeGroup": "グループを削除"
+      "removeGroup": "グループを削除",
+      "lockedConditionHint": "この条件は現在のビューを定義しているため、ここでは削除できません。"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "内蔵",
@@ -365,7 +398,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "注記テーブル",
       "selectAll": "すべてのノートを選択",
-      "selectRow": "ノートを選択"
+      "selectRow": "ノートを選択",
+      "kind": {
+        "Inbox": "受信箱",
+        "Note": "メモ",
+        "Task": "タスク"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "メモを検索...",
@@ -468,7 +506,13 @@
       "failedToLoadPdf": "PDF のロードに失敗しました: ",
       "download": "ダウンロード",
       "download2": "ダウンロード",
-      "noFileAttached": "ファイルが添付されていません"
+      "noFileAttached": "ファイルが添付されていません",
+      "alignCenter": "中央揃え",
+      "alignLeft": "左揃え",
+      "alignRight": "右揃え",
+      "nextPage": "次のページ",
+      "previousPage": "前のページ",
+      "resizePdf": "PDF のサイズを変更"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "タスクパネルで開く",
@@ -530,7 +574,8 @@
       "failedToLoadTags": "タグの読み込みに失敗しました",
       "noTagsYet": "まだタグがありません",
       "filterTags": "タグをフィルタリング...",
-      "noMatchingTags": "一致するタグがありません"
+      "noMatchingTags": "一致するタグがありません",
+      "Uncategorized": "未分類"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "ここにドロップしてください",
@@ -560,7 +605,8 @@
       "deleteTag": "タグの削除",
       "recent": "最近の",
       "created": "作成されました",
-      "alphabetical": "アルファベット順"
+      "alphabetical": "アルファベット順",
+      "tasks": "タスク"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "タグ名の変更",
@@ -733,7 +779,9 @@
     "replyPlaceholder": "返信...",
     "resolve": "解決",
     "sendAria": "コメントを送信",
-    "toolbarComment": "コメント"
+    "toolbarComment": "コメント",
+    "openAttachmentAria": "添付ファイル {name} を開く",
+    "openImageAria": "画像 {name} を開く"
   },
   "dateMention": {
     "clear": "クリア",
@@ -743,5 +791,59 @@
     "remind": "通知",
     "time": "時刻",
     "timeFormat": "時刻の形式"
+  },
+  "applyTemplateConfirm": {
+    "body": "本文のみを置き換える",
+    "cancel": "キャンセル",
+    "description": "「{name}」を適用すると、このメモの現在の内容が置き換わります。この操作は元に戻すことができません。",
+    "failed": "テンプレートを適用できませんでした",
+    "full": "本文を置き換えてテンプレートの詳細も追加する",
+    "success": "テンプレートを適用しました",
+    "title": "メモの内容を置き換えますか？"
+  },
+  "tagView": {
+    "moreActions": "その他の操作",
+    "pin": {
+      "action": "{count, plural, other {#件のメモ}}をタグにピン留め",
+      "failed": "メモをタグにピン留めできませんでした",
+      "success": "{count, plural, other {#件のメモ}}をタグにピン留めしました"
+    }
+  },
+  "tags": {
+    "hubTitle": "タグ",
+    "openHub": "タグハブを開く"
+  },
+  "tagsHub": {
+    "cancelCreate": "キャンセル",
+    "category": {
+      "delete": "カテゴリを削除",
+      "deleteBody": "タグは「未分類」に移動します。削除されることはありません。",
+      "deleteCancel": "キャンセル",
+      "deleteConfirm": "削除",
+      "deleteTitle": "{name} を削除しますか？",
+      "dragHandle": "ドラッグしてカテゴリを並べ替え",
+      "emptyHint": "ここにタグをドラッグ",
+      "more": "カテゴリのオプション",
+      "rename": "カテゴリ名を変更"
+    },
+    "categoryNamePlaceholder": "カテゴリ名",
+    "errors": {
+      "createCategoryFailed": "カテゴリを作成できませんでした",
+      "createTagCategorizeFailed": "タグは作成されましたが、カテゴリに追加できませんでした",
+      "createTagFailed": "タグを作成できませんでした",
+      "deleteCategoryFailed": "カテゴリを削除できませんでした",
+      "loadFailed": "タグのカテゴリを読み込めませんでした",
+      "renameCategoryFailed": "カテゴリ名を変更できませんでした",
+      "reorderFailed": "タグを並べ替えられませんでした"
+    },
+    "loading": "タグを読み込んでいます...",
+    "newCategory": "新しいカテゴリ",
+    "newTag": "新しいタグ",
+    "search": {
+      "empty": "検索に一致するカテゴリやタグはありません",
+      "placeholder": "カテゴリとタグを検索"
+    },
+    "tagNamePlaceholder": "タグ名",
+    "uncategorized": "未分類"
   }
 }

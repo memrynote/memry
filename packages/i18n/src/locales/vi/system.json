@@ -38,6 +38,11 @@
       "fallback": "Đến hạn nhắc nhở",
       "default": "Nhắc nhở",
       "task": "Nhắc công việc"
+    },
+    "inboxReview": {
+      "body": "Bạn có {count, plural, other {# mục}} cần xem lại.",
+      "testBody": "Đây là bản thử — lời nhắc xem lại hằng ngày của bạn sẽ trông như thế này.",
+      "title": "Đã đến lúc xem lại hộp thư đến"
     }
   },
   "error": {

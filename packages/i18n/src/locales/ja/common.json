@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "ダウンロード中 {percent}%",
       "updateInstallingSubtitle": "MemryNote は自動的に再起動します。",
       "updateInstallingTitle": "更新をインストール中",
-      "updateRestart": "再起動"
+      "updateRestart": "再起動",
+      "feedbackPrivacyEmailOptional": "メールアドレス — 入力した場合のみ、返信のためだけに使います",
+      "feedbackPrivacyEmailSignedIn": "アカウントのメールアドレス（{email}）。返信のために使います",
+      "feedbackPrivacyMessage": "メッセージ本文（入力したそのまま）",
+      "feedbackPrivacyNote": "送信されるのはこれだけです。メモはデバイスの外に出ません。",
+      "feedbackPrivacyPlan": "ご利用のプラン（free、Plus、Pro、Believer）",
+      "feedbackPrivacyTitle": "送信される内容",
+      "feedbackPrivacyVersion": "アプリのバージョンと OS",
+      "projects": "プロジェクト"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "日パネルのサイズ変更",
@@ -231,7 +239,8 @@
       "journal": "日記",
       "calendar": "カレンダー",
       "inboxCapture": "受信箱のキャプチャ",
-      "tasks": "タスク"
+      "tasks": "タスク",
+      "tags": "タグ"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "未保存の変更",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "何か問題が発生しました",
       "anErrorOccurredWhileRenderingThisTabContent": "このタブのコンテンツをレンダリング中にエラーが発生しました。",
-      "tryAgain": "もう一度試してください"
+      "tryAgain": "もう一度試してください",
+      "sendReport": "診断レポートを送信"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "注記アイコン"
@@ -352,7 +362,13 @@
       "downloadLocation": "保存先",
       "changeLocation": "変更…",
       "download": "ダウンロード",
-      "downloadFailed": "保管庫をダウンロードできませんでした"
+      "downloadFailed": "保管庫をダウンロードできませんでした",
+      "deleteFromAccount": "アカウントから削除",
+      "deleteVaultBody": "この保管庫の同期データを Memry のサーバーから完全に削除します。この操作は元に戻すことができません。ディスク上のファイルは削除されません。",
+      "deleteVaultConfirm": "アカウントから削除",
+      "deleteVaultFailed": "保管庫を削除できませんでした",
+      "deleteVaultTitle": "「{name}」をアカウントから削除しますか？",
+      "removeVaultTitle": "「{name}」を一覧から削除しますか？"
     },
     "componentsWindowControls": {
       "searchK": "検索(⌘K)",
@@ -640,6 +656,45 @@
     "skip": "このバージョンをスキップ"
   },
   "capture": {
-    "focusShortcut": "キャプチャ入力にフォーカス"
+    "focusShortcut": "キャプチャ入力にフォーカス",
+    "detailHint": "詳細",
+    "focusHint": "Q",
+    "submit": "キャプチャ"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "カードを追加",
+      "addCreateNote": "「{query}」というメモを作成",
+      "addCreateNoteEmpty": "新しいメモを作成",
+      "addCreatedAt": "{date} に作成",
+      "addEmpty": "見つかりませんでした",
+      "addGroupEvents": "予定",
+      "addGroupNotes": "メモ",
+      "addGroupTasks": "タスク",
+      "addOnCanvas": "キャンバス上",
+      "addPlaceholder": "メモ・タスク・予定を検索…",
+      "allDay": "終日",
+      "createNoteFailed": "メモを作成できませんでした",
+      "deleted": "アイテムを削除しました",
+      "loading": "読み込み中…",
+      "open": "タブで開く",
+      "openToEdit": "タブで開いて編集",
+      "untitled": "無題"
+    },
+    "corruptScene": "このキャンバスを読み取れませんでした。データを失わないよう、編集を無効にしています。",
+    "createFailed": "キャンバスを作成できませんでした",
+    "disabledBody": "このタブの機能は、このデバイスでは有効になっていません。",
+    "disabledTitle": "キャンバスは有効になっていません",
+    "empty": "まだキャンバスはありません",
+    "libraryStoreFailed": "図形ライブラリを保存できませんでした。最近の変更が失われる可能性があります。",
+    "loadFailed": "キャンバスを読み込めませんでした",
+    "loading": "キャンバスを読み込んでいます…",
+    "newCanvas": "新しいキャンバス",
+    "notFound": "このキャンバスは見つかりませんでした",
+    "openFailed": "キャンバスを開けませんでした",
+    "savedToVault": "変更はすべて保管庫に自動で保存されます",
+    "sectionLabel": "キャンバス",
+    "tooLargeToSync": "このキャンバスは大きすぎて同期できません。このデバイスには保存されていますが、サイズが小さくなるまで他のデバイスには届きません。",
+    "untitled": "無題のキャンバス"
   }
 }

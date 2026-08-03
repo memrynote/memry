@@ -34,7 +34,8 @@
     "createAnother": "Opret en anden",
     "delete": "Slet opgave",
     "created": "Oprettet {date}",
-    "reminder": "Påmindelse"
+    "reminder": "Påmindelse",
+    "tags": "Tags"
   },
   "filters": {
     "filter": "Filter",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Hurtig tilføjelsesopgave",
-    "focusDescription": "Fokusér hurtigt tilføje input"
+    "focusDescription": "Fokusér hurtigt tilføje input",
+    "placeholder": "Tilføj en opgave…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Luk opgavedetaljer",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Dette projekt har ingen opgaver og vil blive slettet permanent.",
       "thisActionCannotBeUndone": "Denne handling kan ikke fortrydes.",
       "cancel": "Annuller",
-      "deleteProject": "Slet projekt"
+      "deleteProject": "Slet projekt",
+      "notesEventsAndFilesStayNotice": "Opgaverne i dette projekt slettes. Dine noter, begivenheder og filer bliver i din boks."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Vil du slette opgaven?",
@@ -357,7 +360,9 @@
       "due": "Forfalder",
       "dueDate": "forfaldsdato",
       "search": "søge",
-      "clearAll": "Ryd alle"
+      "clearAll": "Ryd alle",
+      "tags": "tags",
+      "tagsIs": "Tags er"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Filtrer efter forfaldsdato",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "Ingen kommende opgaver",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Opgaver, der skal betales inden for de næste 7 dage, vises her. Planlæg din uge ved at tilføje nogle opgaver.",
       "addTask2": "Tilføj opgave"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "er",
+      "search": "Søg...",
+      "selected": "valgt",
+      "tags": "Tags"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "Kunne ikke indstille påmindelse",
       "updateFailed": "Kunne ikke opdatere påmindelse",
       "updated": "Påmindelse opdateret"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Føj til projekt",
+    "loading": "Indlæser projekter…",
+    "menuLabel": "Føj til projekt",
+    "noProjects": "Ingen projekter endnu",
+    "toastError": "Kunne ikke føje til projektet",
+    "toastSuccess": "Føjet til {name}"
+  },
+  "itemProjects": {
+    "openProject": "Åbn projektet {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Vælg et projekt i sidebjælken for at åbne dets startside.",
+    "emptyTitle": "Intet projekt valgt",
+    "loadError": "Projektoplysningerne kunne ikke indlæses",
+    "overview": {
+      "clear": "Ryd oversigt",
+      "clearError": "Oversigtsnoten kunne ikke ryddes",
+      "create": "Opret oversigtsnote",
+      "createError": "Oversigtsnoten kunne ikke oprettes",
+      "defaultTitle": "Oversigt",
+      "loadError": "Oversigtsnoten kunne ikke indlæses",
+      "placeholder": "Skriv en oversigt over dette projekt…",
+      "saveError": "Oversigtsnoten kunne ikke gemmes",
+      "sectionTitle": "Oversigt"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Vedhæft filer",
+      "fileError": "{name} kunne ikke tilknyttes",
+      "fileErrorGeneric": "Filerne kunne ikke importeres",
+      "filesAdded": "{count, plural, one {# fil føjet til projektet} other {# filer føjet til projektet}}",
+      "label": "Føj til {name}",
+      "linkAdded": "Linket er føjet til projektet",
+      "linkError": "Linket kunne ikke gemmes",
+      "placeholder": "Føj til {name} — skriv en opgave, notér en tanke eller indsæt et link…"
+    },
+    "groups": {
+      "older": "Ældre",
+      "past": "Tidligere",
+      "today": "I dag",
+      "tomorrow": "I morgen",
+      "upcoming": "Kommende",
+      "yesterday": "I går"
+    },
+    "header": {
+      "archiveProject": "Arkivér projekt",
+      "editProject": "Redigér projekt",
+      "menu": "Projekthandlinger",
+      "toggleRail": "Vis/skjul projektdetaljer"
+    },
+    "rail": {
+      "addNote": "Tilføj note",
+      "created": "Oprettet",
+      "details": "Detaljer",
+      "doneOf": "{done} af {total} færdige",
+      "linked": "Tilknyttet",
+      "linkedSummary": "{notes, plural, one {# note} other {# noter}} · {files, plural, one {# fil} other {# filer}} · {events, plural, one {# begivenhed} other {# begivenheder}}",
+      "overdue": "Forfaldne",
+      "overview": "Oversigt",
+      "pinError": "Noten kunne ikke føjes til oversigten",
+      "progress": "Fremdrift",
+      "unpinError": "Noten kunne ikke fjernes fra oversigten",
+      "unpinNote": "Fjern {title} fra oversigten",
+      "updated": "Opdateret"
+    },
+    "rows": {
+      "openEvent": "Åbn begivenheden {title}",
+      "openFile": "Åbn filen {title}",
+      "openNote": "Åbn noten {title}",
+      "openTask": "Åbn opgaven {title}",
+      "setNoteIcon": "Indstil ikon for {title}"
+    },
+    "sections": {
+      "add": "Føj til {title}",
+      "emptyEvents": "Ingen begivenheder tilknyttet endnu.",
+      "emptyFiles": "Ingen filer tilknyttet endnu.",
+      "emptyNotes": "Ingen noter tilknyttet endnu.",
+      "emptyTasks": "Ingen opgaver endnu.",
+      "newNoteError": "Noten kunne ikke tilføjes",
+      "newNoteTitle": "Note uden titel",
+      "viewAll": "Se alle"
+    },
+    "tabs": {
+      "events": "Begivenheder",
+      "files": "Filer",
+      "label": "Projektvisninger",
+      "notes": "Noter",
+      "overview": "Oversigt",
+      "tasks": "Opgaver"
     }
   }
 }

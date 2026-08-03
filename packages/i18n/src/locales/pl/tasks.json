@@ -34,7 +34,8 @@
     "createAnother": "Utwórz kolejny",
     "delete": "Usuń zadanie",
     "created": "Utworzono {date}",
-    "reminder": "Przypomnienie"
+    "reminder": "Przypomnienie",
+    "tags": "Tagi"
   },
   "filters": {
     "filter": "Filtruj",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Szybkie dodawanie zadania",
-    "focusDescription": "Skoncentruj się na szybkim dodawaniu danych wejściowych"
+    "focusDescription": "Skoncentruj się na szybkim dodawaniu danych wejściowych",
+    "placeholder": "Dodaj zadanie…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Zamknij szczegóły zadania",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Ten projekt nie ma żadnych zadań i zostanie trwale usunięty.",
       "thisActionCannotBeUndone": "Tej akcji nie można cofnąć.",
       "cancel": "Anuluj",
-      "deleteProject": "Usuń projekt"
+      "deleteProject": "Usuń projekt",
+      "notesEventsAndFilesStayNotice": "Zadania w tym projekcie zostaną usunięte. Twoje notatki, wydarzenia i pliki pozostaną w skarbcu."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Usunąć zadanie?",
@@ -357,7 +360,9 @@
       "due": "Termin",
       "dueDate": "termin",
       "search": "szukaj",
-      "clearAll": "Wyczyść wszystko"
+      "clearAll": "Wyczyść wszystko",
+      "tags": "tagi",
+      "tagsIs": "Tagi to"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Filtruj według terminu",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "Brak nadchodzących zadań",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Tutaj pojawią się zadania z terminem realizacji w ciągu najbliższych 7 dni. Zaplanuj swój tydzień, dodając kilka zadań.",
       "addTask2": "Dodaj zadanie"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "jest",
+      "search": "Szukaj...",
+      "selected": "wybrane",
+      "tags": "Tagi"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "Nie udało się ustawić przypomnienia",
       "updateFailed": "Nie udało się zaktualizować przypomnienia",
       "updated": "Przypomnienie zaktualizowane"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Dodaj do projektu",
+    "loading": "Ładowanie projektów…",
+    "menuLabel": "Dodaj do projektu",
+    "noProjects": "Nie ma jeszcze żadnych projektów",
+    "toastError": "Nie udało się dodać do projektu",
+    "toastSuccess": "Dodano do {name}"
+  },
+  "itemProjects": {
+    "openProject": "Otwórz projekt {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Wybierz projekt na pasku bocznym, aby otworzyć jego stronę główną.",
+    "emptyTitle": "Nie wybrano projektu",
+    "loadError": "Nie udało się załadować szczegółów projektu",
+    "overview": {
+      "clear": "Wyczyść przegląd",
+      "clearError": "Nie udało się wyczyścić notatki przeglądowej",
+      "create": "Utwórz notatkę przeglądową",
+      "createError": "Nie udało się utworzyć notatki przeglądowej",
+      "defaultTitle": "Przegląd",
+      "loadError": "Nie udało się załadować notatki przeglądowej",
+      "placeholder": "Napisz przegląd tego projektu…",
+      "saveError": "Nie udało się zapisać notatki przeglądowej",
+      "sectionTitle": "Przegląd"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Załącz pliki",
+      "fileError": "Nie udało się powiązać {name}",
+      "fileErrorGeneric": "Nie udało się zaimportować plików",
+      "filesAdded": "{count, plural, one {Dodano # plik do projektu} few {Dodano # pliki do projektu} many {Dodano # plików do projektu} other {Dodano # pliku do projektu}}",
+      "label": "Dodaj do {name}",
+      "linkAdded": "Dodano link do projektu",
+      "linkError": "Nie udało się zapisać linku",
+      "placeholder": "Dodaj do {name} — wpisz zadanie, zanotuj myśl lub wklej link…"
+    },
+    "groups": {
+      "older": "Starsze",
+      "past": "Minione",
+      "today": "Dzisiaj",
+      "tomorrow": "Jutro",
+      "upcoming": "Nadchodzące",
+      "yesterday": "Wczoraj"
+    },
+    "header": {
+      "archiveProject": "Archiwizuj projekt",
+      "editProject": "Edytuj projekt",
+      "menu": "Akcje projektu",
+      "toggleRail": "Przełącz szczegóły projektu"
+    },
+    "rail": {
+      "addNote": "Dodaj notatkę",
+      "created": "Utworzono",
+      "details": "Szczegóły",
+      "doneOf": "Wykonano {done} z {total}",
+      "linked": "Powiązane",
+      "linkedSummary": "{notes, plural, one {# notatka} few {# notatki} many {# notatek} other {# notatki}} · {files, plural, one {# plik} few {# pliki} many {# plików} other {# pliku}} · {events, plural, one {# wydarzenie} few {# wydarzenia} many {# wydarzeń} other {# wydarzenia}}",
+      "overdue": "Zaległe",
+      "overview": "Przegląd",
+      "pinError": "Nie udało się dodać notatki do przeglądu",
+      "progress": "Postęp",
+      "unpinError": "Nie udało się usunąć notatki z przeglądu",
+      "unpinNote": "Usuń {title} z przeglądu",
+      "updated": "Zaktualizowano"
+    },
+    "rows": {
+      "openEvent": "Otwórz wydarzenie {title}",
+      "openFile": "Otwórz plik {title}",
+      "openNote": "Otwórz notatkę {title}",
+      "openTask": "Otwórz zadanie {title}",
+      "setNoteIcon": "Ustaw ikonę dla {title}"
+    },
+    "sections": {
+      "add": "Dodaj do {title}",
+      "emptyEvents": "Nie powiązano jeszcze żadnych wydarzeń.",
+      "emptyFiles": "Nie powiązano jeszcze żadnych plików.",
+      "emptyNotes": "Nie powiązano jeszcze żadnych notatek.",
+      "emptyTasks": "Nie ma jeszcze żadnych zadań.",
+      "newNoteError": "Nie udało się dodać notatki",
+      "newNoteTitle": "Notatka bez tytułu",
+      "viewAll": "Zobacz wszystkie"
+    },
+    "tabs": {
+      "events": "Wydarzenia",
+      "files": "Pliki",
+      "label": "Widoki projektu",
+      "notes": "Notatki",
+      "overview": "Przegląd",
+      "tasks": "Zadania"
     }
   }
 }

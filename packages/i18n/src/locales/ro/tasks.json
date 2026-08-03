@@ -34,7 +34,8 @@
     "createAnother": "Creați altul",
     "delete": "Ștergeți sarcina",
     "created": "S-a creat {date}",
-    "reminder": "Memento"
+    "reminder": "Memento",
+    "tags": "Etichete"
   },
   "filters": {
     "filter": "Filtru",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Sarcină de adăugare rapidă",
-    "focusDescription": "Concentrați intrarea de adăugare rapidă"
+    "focusDescription": "Concentrați intrarea de adăugare rapidă",
+    "placeholder": "Adaugă o sarcină…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Închideți detaliile sarcinii",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Acest proiect nu are sarcini și va fi șters definitiv.",
       "thisActionCannotBeUndone": "Această acțiune nu poate fi anulată.",
       "cancel": "Anulează",
-      "deleteProject": "Ștergeți proiectul"
+      "deleteProject": "Ștergeți proiectul",
+      "notesEventsAndFilesStayNotice": "Sarcinile din acest proiect sunt șterse. Notele, evenimentele și fișierele tale rămân în seif."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Ștergeți sarcina?",
@@ -357,7 +360,9 @@
       "due": "Datorită",
       "dueDate": "data scadentă",
       "search": "caută",
-      "clearAll": "Ștergeți totul"
+      "clearAll": "Ștergeți totul",
+      "tags": "etichete",
+      "tagsIs": "Etichetele sunt"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Filtrați după data scadenței",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "Fără sarcini viitoare",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Sarcinile datorate în următoarele 7 zile vor apărea aici. Planificați-vă săptămâna adăugând câteva sarcini.",
       "addTask2": "Adăugați sarcină"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "este",
+      "search": "Caută...",
+      "selected": "selectate",
+      "tags": "Etichete"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "Setarea mementoului a eșuat",
       "updateFailed": "Actualizarea mementoului a eșuat",
       "updated": "Memento actualizat"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Adaugă la proiect",
+    "loading": "Se încarcă proiectele…",
+    "menuLabel": "Adaugă la proiect",
+    "noProjects": "Niciun proiect încă",
+    "toastError": "Nu s-a putut adăuga la proiect",
+    "toastSuccess": "Adăugat la {name}"
+  },
+  "itemProjects": {
+    "openProject": "Deschide proiectul {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Alege un proiect din bara laterală pentru a-i deschide pagina principală.",
+    "emptyTitle": "Niciun proiect selectat",
+    "loadError": "Nu s-au putut încărca detaliile proiectului",
+    "overview": {
+      "clear": "Elimină prezentarea generală",
+      "clearError": "Nu s-a putut elimina nota de prezentare generală",
+      "create": "Creează nota de prezentare generală",
+      "createError": "Nu s-a putut crea nota de prezentare generală",
+      "defaultTitle": "Prezentare generală",
+      "loadError": "Nu s-a putut încărca nota de prezentare generală",
+      "placeholder": "Scrie o prezentare generală pentru acest proiect…",
+      "saveError": "Nu s-a putut salva nota de prezentare generală",
+      "sectionTitle": "Prezentare generală"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Atașează fișiere",
+      "fileError": "Nu s-a putut lega {name}",
+      "fileErrorGeneric": "Nu s-au putut importa fișierele",
+      "filesAdded": "{count, plural, one {# fișier adăugat la proiect} few {# fișiere adăugate la proiect} other {# de fișiere adăugate la proiect}}",
+      "label": "Adaugă la {name}",
+      "linkAdded": "Link adăugat la proiect",
+      "linkError": "Nu s-a putut salva linkul",
+      "placeholder": "Adaugă la {name} — scrie o sarcină, notează un gând sau lipește un link…"
+    },
+    "groups": {
+      "older": "Mai vechi",
+      "past": "Trecut",
+      "today": "Astăzi",
+      "tomorrow": "Mâine",
+      "upcoming": "Viitoare",
+      "yesterday": "Ieri"
+    },
+    "header": {
+      "archiveProject": "Arhivează proiectul",
+      "editProject": "Editează proiectul",
+      "menu": "Acțiuni proiect",
+      "toggleRail": "Afișează sau ascunde detaliile proiectului"
+    },
+    "rail": {
+      "addNote": "Adaugă o notă",
+      "created": "Creat",
+      "details": "Detalii",
+      "doneOf": "{done} din {total} finalizate",
+      "linked": "Elemente legate",
+      "linkedSummary": "{notes, plural, one {# notă} few {# note} other {# de note}} · {files, plural, one {# fișier} few {# fișiere} other {# de fișiere}} · {events, plural, one {# eveniment} few {# evenimente} other {# de evenimente}}",
+      "overdue": "Întârziate",
+      "overview": "Prezentare generală",
+      "pinError": "Nu s-a putut adăuga nota la prezentarea generală",
+      "progress": "Progres",
+      "unpinError": "Nu s-a putut elimina nota din prezentarea generală",
+      "unpinNote": "Elimină {title} din prezentarea generală",
+      "updated": "Actualizat"
+    },
+    "rows": {
+      "openEvent": "Deschide evenimentul {title}",
+      "openFile": "Deschide fișierul {title}",
+      "openNote": "Deschide nota {title}",
+      "openTask": "Deschide sarcina {title}",
+      "setNoteIcon": "Setează pictograma pentru {title}"
+    },
+    "sections": {
+      "add": "Adaugă la {title}",
+      "emptyEvents": "Niciun eveniment legat încă.",
+      "emptyFiles": "Niciun fișier legat încă.",
+      "emptyNotes": "Nicio notă legată încă.",
+      "emptyTasks": "Nicio sarcină încă.",
+      "newNoteError": "Nu s-a putut adăuga nota",
+      "newNoteTitle": "Notă fără titlu",
+      "viewAll": "Vezi toate"
+    },
+    "tabs": {
+      "events": "Evenimente",
+      "files": "Fișiere",
+      "label": "Vizualizările proiectului",
+      "notes": "Note",
+      "overview": "Prezentare generală",
+      "tasks": "Sarcini"
     }
   }
 }

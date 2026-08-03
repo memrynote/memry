@@ -67,7 +67,8 @@
     "title": "¿Eliminar evento?",
     "local-description": "\"{title}\" se eliminará permanentemente. Esta acción no se puede deshacer.",
     "google-bound-description": "\"{title}\" se eliminará de memrynote y Google Calendar. Esta acción no se puede deshacer.",
-    "context-menu-delete-label": "Eliminar evento"
+    "context-menu-delete-label": "Eliminar evento",
+    "context-menu-add-to-project": "Añadir al proyecto"
   },
   "promote-dialog": {
     "aria": "Editar evento del calendario externo",
@@ -181,6 +182,7 @@
     "placeholder": "Buscar eventos, tareas, recordatorios…"
   },
   "undo": {
-    "moveEvent": "Mover evento"
+    "moveEvent": "Mover evento",
+    "moveTask": "Reprogramar tarea"
   }
 }

@@ -28,7 +28,8 @@
         "properties": "Propiedades",
         "commandLine": "Línea de comandos",
         "features": "Funciones",
-        "import": "Importar"
+        "import": "Importar",
+        "inbox": "Bandeja de entrada"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Descargando {percent}%",
         "downloaded": "Reiniciar para instalar",
         "idle": "Buscar actualizaciones"
+      },
+      "autoCheck": {
+        "description": "Busca versiones nuevas al iniciar y cada cierto tiempo mientras la app está abierta.",
+        "error": "No se pudo actualizar la opción de búsqueda automática",
+        "label": "Buscar actualizaciones automáticamente"
+      },
+      "autoDownload": {
+        "description": "Descarga e instala las versiones nuevas en segundo plano, sin preguntar.",
+        "error": "No se pudo actualizar la opción de descarga automática",
+        "label": "Descargar actualizaciones automáticamente"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Compartir métricas de uso anónimo",
         "description": "Son solo métricas anónimas: nunca se envía contenido de notas, consultas de búsqueda, rutas de archivos, correos electrónicos o identificaciones sin procesar.",
         "error": "No se pudo actualizar la configuración de telemetría"
+      },
+      "diagnostics": {
+        "building": "Preparando el informe…",
+        "consent": "¿Enviar un informe de diagnóstico puntual? Solo contiene registros técnicos anonimizados — ningún contenido de tus notas.",
+        "error": "No se pudo enviar el informe de diagnóstico",
+        "notNow": "Ahora no",
+        "previewError": "No se pudo preparar el informe de diagnóstico",
+        "previewLabel": "Ver el contenido del informe",
+        "send": "Enviar",
+        "sendReport": {
+          "button": "Enviar informe de diagnóstico",
+          "description": "Envía un informe puntual con registros técnicos anonimizados para ayudarnos a resolver un problema que hayas encontrado.",
+          "label": "Informe de diagnóstico"
+        },
+        "sending": "Enviando…",
+        "sent": "Informe enviado — referencia {incidentId}",
+        "snapshotLabel": "Instantánea del dispositivo",
+        "title": "¿Enviar un informe de diagnóstico?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Diseño",
-      "toolbar": "Barra de herramientas"
+      "toolbar": "Barra de herramientas",
+      "spelling": "Ortografía"
     },
     "width": {
       "label": "Ancho del editor",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Estrecho",
         "medium": "Medio",
-        "wide": "ancho"
+        "wide": "ancho",
+        "full": "Ancho completo",
+        "normal": "Normal"
       },
       "error": "No se pudo actualizar el ancho del editor"
     },
@@ -229,6 +261,11 @@
       "label": "Barra de herramientas de formato fijo",
       "description": "Mostrar siempre la barra de herramientas encima del editor",
       "error": "No se pudo actualizar el modo de la barra de herramientas"
+    },
+    "spellCheck": {
+      "description": "Subraya las palabras mal escritas en las notas y los diarios",
+      "error": "No se pudo actualizar la corrección ortográfica",
+      "label": "Corrección ortográfica"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "Uso de almacenamiento",
-      "location": "Ubicación"
+      "location": "Ubicación",
+      "accountVaults": "Bóvedas de tu cuenta"
     },
     "loadingStorage": "Cargando información de almacenamiento...",
     "signInStorage": "Inicia sesión para ver el uso de almacenamiento",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "Almacenamiento casi lleno",
       "warningDescription": "Libera espacio o actualiza tu plan para evitar problemas de sincronización."
+    },
+    "accountVaults": {
+      "activeHint": "Cambia a otra bóveda para eliminar esta.",
+      "cloudOnly": "No está en este dispositivo",
+      "delete": "Eliminar",
+      "deleteBody": "Esto elimina de forma permanente todos los datos sincronizados de esta bóveda que hay en los servidores de Memry y no se puede deshacer. Los archivos de tu disco no se eliminan.",
+      "deleteConfirm": "Eliminar de la cuenta",
+      "deleteFailed": "No se pudo eliminar la bóveda",
+      "deleteTitle": "¿Eliminar “{name}” de tu cuenta?",
+      "empty": "Aún no hay bóvedas sincronizadas con tu cuenta.",
+      "itemsCount": "{count} elementos"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "No se pudo cerrar la bóveda",
       "failedToSwitchVault": "No se pudo cambiar la bóveda",
       "failedToUpdateConfig": "No se pudo actualizar la configuración",
-      "failedToReindex": "No se pudo reindexar"
+      "failedToReindex": "No se pudo reindexar",
+      "failedToLoadTasks": "No se pudieron cargar las tareas"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "Pendientes y fechas de vencimiento",
         "label": "Tareas"
+      },
+      "spatialCanvas": {
+        "description": "Tableros espaciales para organizar y vincular notas",
+        "label": "Lienzo"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} omitidos",
         "title": "Importación completada"
       },
-      "title": "Importar desde {name}"
+      "title": "Importar desde {name}",
+      "chooseDirectory": "Elegir carpeta…",
+      "folderKeepsAssets": "Elige la carpeta cuando las imágenes estén fuera de la carpeta de las propias notas — las exportaciones suelen guardar los archivos multimedia en una carpeta común."
     },
     "header": {
       "subtitle": "Trae tus notas y tareas desde otras aplicaciones",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, one {# tarea} other {# tareas}}",
       "withDueDate": "{count} con fecha",
       "withTags": "{count} etiquetados"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Cargando…",
+      "subtitle": "Recordatorio de revisión diaria y preferencias de la bandeja de entrada.",
+      "title": "Bandeja de entrada"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Un aviso suave cada día cuando haya elementos en tu bandeja de entrada.",
+        "label": "Recordarme que revise mi bandeja de entrada"
+      },
+      "error": "No se pudo actualizar el recordatorio.",
+      "group": "Recordatorio de revisión diaria",
+      "test": {
+        "button": "Enviar prueba",
+        "description": "Lanza el recordatorio ahora para comprobar las notificaciones del sistema.",
+        "label": "Notificación de prueba",
+        "sent": "Notificación de prueba enviada.",
+        "sentHint": "Si no aparece nada, permite las notificaciones de MemryNote en los ajustes del sistema.",
+        "unsupported": "Este dispositivo no puede mostrar notificaciones de escritorio."
+      },
+      "time": {
+        "description": "Hora local, en cada dispositivo.",
+        "hourLabel": "Hora",
+        "label": "Hora del recordatorio",
+        "minuteLabel": "Minuto",
+        "periodLabel": "AM o PM"
+      }
     }
   }
 }

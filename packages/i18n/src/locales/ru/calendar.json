@@ -67,7 +67,8 @@
     "title": "Удалить мероприятие?",
     "local-description": "«{title}» будет удален без возможности восстановления. Это действие невозможно отменить.",
     "google-bound-description": "«{title}» будет удален из memrynote и Календаря Google. Это действие невозможно отменить.",
-    "context-menu-delete-label": "Удалить мероприятие"
+    "context-menu-delete-label": "Удалить мероприятие",
+    "context-menu-add-to-project": "Добавить в проект"
   },
   "promote-dialog": {
     "aria": "Изменить событие внешнего календаря",
@@ -181,6 +182,7 @@
     "placeholder": "Поиск событий, задач, напоминаний…"
   },
   "undo": {
-    "moveEvent": "Переместить событие"
+    "moveEvent": "Переместить событие",
+    "moveTask": "Перенести задачу"
   }
 }

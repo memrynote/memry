@@ -74,6 +74,9 @@
     "securityQuarantinePermanent": "Non è stato possibile verificare un elemento sincronizzato ed è stato messo in quarantena per motivi di sicurezza.",
     "securityQuarantineRetry": "Un elemento di sincronizzazione non ha superato la verifica della firma e verrà ritentato.",
     "certificatePinPaused": "Impossibile verificare la connessione protetta al server di sincronizzazione. La sincronizzazione è stata sospesa per la tua protezione.",
-    "paymentRequired": "È necessario un piano Sync a pagamento per usare la sincronizzazione cifrata ospitata."
+    "paymentRequired": "È necessario un piano Sync a pagamento per usare la sincronizzazione cifrata ospitata.",
+    "attachmentUploadFailed": "Impossibile sincronizzare l'allegato \"{filename}\". Resta su questo dispositivo.",
+    "fileTooLarge": "Questo file supera il limite consentito dal tuo piano. Passa a un piano superiore per sincronizzare file più grandi.",
+    "vaultRecovered": "Chiave del vault ripristinata. La sincronizzazione riprenderà."
   }
 }

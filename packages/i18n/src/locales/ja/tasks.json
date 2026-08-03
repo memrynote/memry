@@ -34,7 +34,8 @@
     "createAnother": "別のを作成する",
     "delete": "タスクの削除",
     "created": "{date}を作成しました",
-    "reminder": "リマインダー"
+    "reminder": "リマインダー",
+    "tags": "タグ"
   },
   "filters": {
     "filter": "フィルター",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "タスクのクイック追加",
-    "focusDescription": "クイック追加入力に焦点を当てる"
+    "focusDescription": "クイック追加入力に焦点を当てる",
+    "placeholder": "タスクを追加…    !today  !!high  #project"
   },
   "drawer": {
     "close": "タスクの詳細を閉じる",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "このプロジェクトにはタスクがないため、完全に削除されます。",
       "thisActionCannotBeUndone": "この操作は元に戻すことができません。",
       "cancel": "キャンセル",
-      "deleteProject": "プロジェクトの削除"
+      "deleteProject": "プロジェクトの削除",
+      "notesEventsAndFilesStayNotice": "このプロジェクトのタスクは削除されます。メモ・予定・ファイルは保管庫に残ります。"
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "タスクを削除しますか?",
@@ -357,7 +360,9 @@
       "due": "期限",
       "dueDate": "期日",
       "search": "検索",
-      "clearAll": "すべてクリア"
+      "clearAll": "すべてクリア",
+      "tags": "タグ",
+      "tagsIs": "タグは"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "期日でフィルタリングする",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "今後のタスクはありません",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "今後 7 日以内に期限が切れるタスクがここに表示されます。いくつかのタスクを追加して、週の計画を立てます。",
       "addTask2": "タスクの追加"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "です",
+      "search": "検索...",
+      "selected": "選択中",
+      "tags": "タグ"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "リマインダーの設定に失敗しました",
       "updateFailed": "リマインダーの更新に失敗しました",
       "updated": "リマインダーを更新しました"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "プロジェクトに追加",
+    "loading": "プロジェクトを読み込んでいます…",
+    "menuLabel": "プロジェクトに追加",
+    "noProjects": "まだプロジェクトはありません",
+    "toastError": "プロジェクトに追加できませんでした",
+    "toastSuccess": "{name} に追加しました"
+  },
+  "itemProjects": {
+    "openProject": "プロジェクト {name} を開く"
+  },
+  "projectHome": {
+    "emptyBody": "サイドバーからプロジェクトを選ぶと、そのホームが開きます。",
+    "emptyTitle": "プロジェクトが選択されていません",
+    "loadError": "プロジェクトの詳細を読み込めませんでした",
+    "overview": {
+      "clear": "概要をクリア",
+      "clearError": "概要メモをクリアできませんでした",
+      "create": "概要メモを作成",
+      "createError": "概要メモを作成できませんでした",
+      "defaultTitle": "概要",
+      "loadError": "概要メモを読み込めませんでした",
+      "placeholder": "このプロジェクトの概要を書く…",
+      "saveError": "概要メモを保存できませんでした",
+      "sectionTitle": "概要"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "ファイルを添付",
+      "fileError": "{name} をリンクできませんでした",
+      "fileErrorGeneric": "ファイルをインポートできませんでした",
+      "filesAdded": "{count, plural, other {#件のファイルをプロジェクトに追加しました}}",
+      "label": "{name} に追加",
+      "linkAdded": "リンクをプロジェクトに追加しました",
+      "linkError": "リンクを保存できませんでした",
+      "placeholder": "{name} に追加 — タスクを入力、メモを書く、リンクを貼る…"
+    },
+    "groups": {
+      "older": "それ以前",
+      "past": "過去",
+      "today": "今日",
+      "tomorrow": "明日",
+      "upcoming": "今後",
+      "yesterday": "昨日"
+    },
+    "header": {
+      "archiveProject": "プロジェクトをアーカイブ",
+      "editProject": "プロジェクトを編集",
+      "menu": "プロジェクトの操作",
+      "toggleRail": "プロジェクトの詳細を切り替え"
+    },
+    "rail": {
+      "addNote": "メモを追加",
+      "created": "作成日",
+      "details": "詳細",
+      "doneOf": "{total} 件中 {done} 件完了",
+      "linked": "リンク済み",
+      "linkedSummary": "{notes, plural, other {#件のメモ}} · {files, plural, other {#件のファイル}} · {events, plural, other {#件の予定}}",
+      "overdue": "期限切れ",
+      "overview": "概要",
+      "pinError": "メモを概要に追加できませんでした",
+      "progress": "進捗",
+      "unpinError": "メモを概要から外せませんでした",
+      "unpinNote": "{title} を概要から外す",
+      "updated": "更新日"
+    },
+    "rows": {
+      "openEvent": "予定 {title} を開く",
+      "openFile": "ファイル {title} を開く",
+      "openNote": "メモ {title} を開く",
+      "openTask": "タスク {title} を開く",
+      "setNoteIcon": "{title} のアイコンを設定"
+    },
+    "sections": {
+      "add": "{title} に追加",
+      "emptyEvents": "リンクされた予定はまだありません。",
+      "emptyFiles": "リンクされたファイルはまだありません。",
+      "emptyNotes": "リンクされたメモはまだありません。",
+      "emptyTasks": "タスクはまだありません。",
+      "newNoteError": "メモを追加できませんでした",
+      "newNoteTitle": "無題のメモ",
+      "viewAll": "すべて見る"
+    },
+    "tabs": {
+      "events": "予定",
+      "files": "ファイル",
+      "label": "プロジェクトのビュー",
+      "notes": "メモ",
+      "overview": "概要",
+      "tasks": "タスク"
     }
   }
 }

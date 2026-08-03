@@ -34,7 +34,8 @@
     "createAnother": "Luo toinen",
     "delete": "Poista tehtävä",
     "created": "Luotu {date}",
-    "reminder": "Muistutus"
+    "reminder": "Muistutus",
+    "tags": "Tunnisteet"
   },
   "filters": {
     "filter": "Suodata",
@@ -47,7 +48,8 @@
   },
   "quickAdd": {
     "label": "Nopea lisätehtävä",
-    "focusDescription": "Keskity nopeaan lisäyssyöttöön"
+    "focusDescription": "Keskity nopeaan lisäyssyöttöön",
+    "placeholder": "Lisää tehtävä…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Sulje tehtävän tiedot",
@@ -197,7 +199,8 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Tällä projektilla ei ole tehtäviä, ja se poistetaan pysyvästi.",
       "thisActionCannotBeUndone": "Tätä toimintoa ei voi kumota.",
       "cancel": "Peruuta",
-      "deleteProject": "Poista projekti"
+      "deleteProject": "Poista projekti",
+      "notesEventsAndFilesStayNotice": "Tämän projektin tehtävät poistetaan. Muistiinpanosi, tapahtumasi ja tiedostosi säilyvät holvissasi."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Poistetaanko tehtävä?",
@@ -357,7 +360,9 @@
       "due": "Erääntynyt",
       "dueDate": "eräpäivä",
       "search": "haku",
-      "clearAll": "Tyhjennä kaikki"
+      "clearAll": "Tyhjennä kaikki",
+      "tags": "tunnisteet",
+      "tagsIs": "Tunnisteet ovat"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Suodata eräpäivän mukaan",
@@ -589,6 +594,12 @@
       "noUpcomingTasks": "Ei tulevia tehtäviä",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Seuraavan 7 päivän aikana erääntyvät tehtävät näkyvät täällä. Suunnittele viikkosi lisäämällä tehtäviä.",
       "addTask2": "Lisää tehtävä"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "on",
+      "search": "Hae...",
+      "selected": "valittu",
+      "tags": "Tunnisteet"
     }
   },
   "phaseI": {
@@ -637,6 +648,99 @@
       "setFailed": "Muistutuksen asetus epäonnistui",
       "updateFailed": "Muistutuksen päivitys epäonnistui",
       "updated": "Muistutus päivitetty"
+    }
+  },
+  "addToProject": {
+    "dialogTitle": "Lisää projektiin",
+    "loading": "Ladataan projekteja…",
+    "menuLabel": "Lisää projektiin",
+    "noProjects": "Ei vielä projekteja",
+    "toastError": "Projektiin lisääminen epäonnistui",
+    "toastSuccess": "Lisätty projektiin {name}"
+  },
+  "itemProjects": {
+    "openProject": "Avaa projekti {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Valitse projekti sivupalkista avataksesi sen etusivun.",
+    "emptyTitle": "Projektia ei ole valittu",
+    "loadError": "Projektin tietojen lataaminen epäonnistui",
+    "overview": {
+      "clear": "Tyhjennä yleiskatsaus",
+      "clearError": "Yleiskatsauksen tyhjentäminen epäonnistui",
+      "create": "Luo yleiskatsaus",
+      "createError": "Yleiskatsauksen luominen epäonnistui",
+      "defaultTitle": "Yleiskatsaus",
+      "loadError": "Yleiskatsauksen lataaminen epäonnistui",
+      "placeholder": "Kirjoita yleiskatsaus tästä projektista…",
+      "saveError": "Yleiskatsauksen tallentaminen epäonnistui",
+      "sectionTitle": "Yleiskatsaus"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Liitä tiedostoja",
+      "fileError": "Kohteen {name} linkittäminen epäonnistui",
+      "fileErrorGeneric": "Tiedostojen tuominen epäonnistui",
+      "filesAdded": "{count, plural, one {# tiedosto lisätty projektiin} other {# tiedostoa lisätty projektiin}}",
+      "label": "Lisää projektiin {name}",
+      "linkAdded": "Linkki lisätty projektiin",
+      "linkError": "Linkin tallentaminen epäonnistui",
+      "placeholder": "Lisää projektiin {name} — kirjoita tehtävä, kirjaa muistiinpano tai liitä linkki…"
+    },
+    "groups": {
+      "older": "Vanhemmat",
+      "past": "Menneet",
+      "today": "Tänään",
+      "tomorrow": "Huomenna",
+      "upcoming": "Tulevat",
+      "yesterday": "Eilen"
+    },
+    "header": {
+      "archiveProject": "Arkistoi projekti",
+      "editProject": "Muokkaa projektia",
+      "menu": "Projektin toiminnot",
+      "toggleRail": "Näytä tai piilota projektin tiedot"
+    },
+    "rail": {
+      "addNote": "Lisää muistiinpano",
+      "created": "Luotu",
+      "details": "Tiedot",
+      "doneOf": "{done}/{total} valmiina",
+      "linked": "Linkitetyt",
+      "linkedSummary": "{notes, plural, one {# muistiinpano} other {# muistiinpanoa}} · {files, plural, one {# tiedosto} other {# tiedostoa}} · {events, plural, one {# tapahtuma} other {# tapahtumaa}}",
+      "overdue": "Myöhässä",
+      "overview": "Yleiskatsaus",
+      "pinError": "Muistiinpanon lisääminen yleiskatsaukseen epäonnistui",
+      "progress": "Edistyminen",
+      "unpinError": "Muistiinpanon poistaminen yleiskatsauksesta epäonnistui",
+      "unpinNote": "Poista {title} yleiskatsauksesta",
+      "updated": "Päivitetty"
+    },
+    "rows": {
+      "openEvent": "Avaa tapahtuma {title}",
+      "openFile": "Avaa tiedosto {title}",
+      "openNote": "Avaa muistiinpano {title}",
+      "openTask": "Avaa tehtävä {title}",
+      "setNoteIcon": "Aseta kuvake kohteelle {title}"
+    },
+    "sections": {
+      "add": "Lisää kohtaan {title}",
+      "emptyEvents": "Ei vielä linkitettyjä tapahtumia.",
+      "emptyFiles": "Ei vielä linkitettyjä tiedostoja.",
+      "emptyNotes": "Ei vielä linkitettyjä muistiinpanoja.",
+      "emptyTasks": "Ei vielä tehtäviä.",
+      "newNoteError": "Muistiinpanon lisääminen epäonnistui",
+      "newNoteTitle": "Nimetön muistiinpano",
+      "viewAll": "Näytä kaikki"
+    },
+    "tabs": {
+      "events": "Tapahtumat",
+      "files": "Tiedostot",
+      "label": "Projektinäkymät",
+      "notes": "Muistiinpanot",
+      "overview": "Yleiskatsaus",
+      "tasks": "Tehtävät"
     }
   }
 }

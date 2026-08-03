@@ -314,7 +314,10 @@
       "rdquo": "rdquo;",
       "captureAnyway": "Fang alligevel",
       "focusShortcut": "Fokusér optagelsesfelt",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Optag link",
+      "captureNote": "Optag note",
+      "placeholder": "Hurtig optagelse — indsæt et link, notér en tanke…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Vælg mappe",
@@ -466,7 +469,12 @@
       "cancelRecording": "Annuller optagelsen",
       "cancel": "Annuller",
       "stopRecording": "Stop optagelsen",
-      "stop": "Stop"
+      "stop": "Stop",
+      "enableMicInSettings": "Giv adgang til mikrofonen i dine systemindstillinger, og prøv igen.",
+      "failedToStart": "Optagelsen kunne ikke startes",
+      "microphoneAccessDenied": "Adgang til mikrofonen blev nægtet",
+      "noMicrophoneFound": "Ingen mikrofon fundet",
+      "recordingError": "Der opstod en fejl under optagelsen"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "Filen kunne ikke fanges",
       "fileCaptureFailed": "Filoptagelse mislykkedes",
       "failedToCaptureAudio": "Lyden kunne ikke optages",
-      "failedToCaptureVoice": "Kunne ikke fange stemmen"
+      "failedToCaptureVoice": "Kunne ikke fange stemmen",
+      "failedToLoadInboxPreferences": "Indbakkeindstillingerne kunne ikke indlæses",
+      "failedToUpdateInboxPreferences": "Indbakkeindstillingerne kunne ikke opdateres"
     },
     "toasts": {
       "inboxRefreshed": "Indbakke opdateret"
@@ -516,5 +526,10 @@
     "task": "Opgave",
     "time": "Tid",
     "title": "Konvertér"
+  },
+  "reviewNudge": {
+    "action": "Åbn indbakke",
+    "description": "Gennemgå dagens optagelser i én rolig omgang.",
+    "title": "{count, plural, one {Tid til at gennemgå # element} other {Tid til at gennemgå # elementer}}"
   }
 }

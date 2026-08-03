@@ -38,6 +38,11 @@
       "fallback": "Påminnelse forfaller",
       "default": "Påminnelse",
       "task": "Oppgavepåminnelse"
+    },
+    "inboxReview": {
+      "body": "Du har {count, plural, one {# element} other {# elementer}} å gå gjennom.",
+      "testBody": "Dette er en test — slik vil de daglige påminnelsene om gjennomgang se ut.",
+      "title": "På tide å gå gjennom innboksen"
     }
   },
   "error": {

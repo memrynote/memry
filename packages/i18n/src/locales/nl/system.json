@@ -38,6 +38,11 @@
       "fallback": "Herinnering verschuldigd",
       "default": "Herinnering",
       "task": "Taakherinnering"
+    },
+    "inboxReview": {
+      "body": "Je hebt {count, plural, one {# item} other {# items}} om door te nemen.",
+      "testBody": "Dit is een test — zo zien je dagelijkse herinneringen eruit.",
+      "title": "Tijd om je inbox door te nemen"
     }
   },
   "error": {

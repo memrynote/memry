@@ -28,7 +28,8 @@
         "properties": "Proprietăți",
         "commandLine": "Linie de comandă",
         "features": "Funcții",
-        "import": "Import"
+        "import": "Import",
+        "inbox": "Inbox"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Se descarcă {percent}%",
         "downloaded": "Reporniți pentru a instala",
         "idle": "Verificați actualizările"
+      },
+      "autoCheck": {
+        "description": "Verifică versiunile noi la pornire și periodic, cât timp aplicația este deschisă.",
+        "error": "Nu s-a putut actualiza setarea de verificare automată",
+        "label": "Verifică automat actualizările"
+      },
+      "autoDownload": {
+        "description": "Descarcă și instalează versiunile noi în fundal, fără să te întrebe.",
+        "error": "Nu s-a putut actualiza setarea de descărcare automată",
+        "label": "Descarcă automat actualizările"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Partajați valori anonime de utilizare",
         "description": "Sunt doar valori anone – nu sunt trimise niciodată conținut de note, interogări de căutare, căi de fișiere, e-mailuri sau ID-uri brute.",
         "error": "Nu s-a putut actualiza setarea de telemetrie"
+      },
+      "diagnostics": {
+        "building": "Se pregătește raportul…",
+        "consent": "Trimiți o singură dată un raport de diagnosticare? Conține doar jurnale tehnice anonimizate — niciun conținut din note.",
+        "error": "Nu s-a putut trimite raportul de diagnosticare",
+        "notNow": "Nu acum",
+        "previewError": "Nu s-a putut pregăti raportul de diagnosticare",
+        "previewLabel": "Previzualizează conținutul raportului",
+        "send": "Trimite",
+        "sendReport": {
+          "button": "Trimite raport de diagnosticare",
+          "description": "Trimite o singură dată un raport cu jurnale tehnice anonimizate, ca să ne ajuți să rezolvăm o problemă pe care ai întâlnit-o.",
+          "label": "Raport de diagnosticare"
+        },
+        "sending": "Se trimite…",
+        "sent": "Raport trimis — referință {incidentId}",
+        "snapshotLabel": "Instantaneu al dispozitivului",
+        "title": "Trimiți un raport de diagnosticare?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Aspect",
-      "toolbar": "Bara de instrumente"
+      "toolbar": "Bara de instrumente",
+      "spelling": "Ortografie"
     },
     "width": {
       "label": "Lățimea editorului",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Îngustă",
         "medium": "Mediu",
-        "wide": "Lat"
+        "wide": "Lat",
+        "full": "Lățime completă",
+        "normal": "Normală"
       },
       "error": "Nu s-a putut actualiza lățimea editorului"
     },
@@ -229,6 +261,11 @@
       "label": "Bara de instrumente Sticky Formatting",
       "description": "Afișați întotdeauna bara de instrumente deasupra editorului",
       "error": "Nu s-a putut actualiza modul bară de instrumente"
+    },
+    "spellCheck": {
+      "description": "Subliniază cuvintele scrise greșit în note și jurnale",
+      "error": "Nu s-a putut actualiza verificarea ortografică",
+      "label": "Verifică ortografia"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "Utilizarea depozitării",
-      "location": "Locație"
+      "location": "Locație",
+      "accountVaults": "Seifurile din contul tău"
     },
     "loadingStorage": "Se încarcă informațiile de stocare...",
     "signInStorage": "Conectați-vă pentru a vedea utilizarea spațiului de stocare",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "Depozitare aproape plină",
       "warningDescription": "Eliberați spațiu sau actualizați-vă planul pentru a evita problemele de sincronizare."
+    },
+    "accountVaults": {
+      "activeHint": "Comută la alt seif pentru a-l șterge pe acesta.",
+      "cloudOnly": "Nu este pe acest dispozitiv",
+      "delete": "Șterge",
+      "deleteBody": "Această acțiune elimină definitiv toate datele sincronizate ale acestui seif de pe serverele Memry și nu poate fi anulată. Fișierele tale de pe disc nu sunt șterse.",
+      "deleteConfirm": "Șterge din cont",
+      "deleteFailed": "Nu s-a putut șterge seiful",
+      "deleteTitle": "Ștergi „{name}” din contul tău?",
+      "empty": "Încă niciun seif sincronizat în contul tău.",
+      "itemsCount": "{count, plural, one {# element} few {# elemente} other {# de elemente}}"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "Seiful nu a putut fi închis",
       "failedToSwitchVault": "Nu s-a putut schimba seiful",
       "failedToUpdateConfig": "Nu s-a putut actualiza configurația",
-      "failedToReindex": "Nu s-a reindexat"
+      "failedToReindex": "Nu s-a reindexat",
+      "failedToLoadTasks": "Nu s-au putut încărca sarcinile"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "Lucruri de făcut și date scadente",
         "label": "Sarcini"
+      },
+      "spatialCanvas": {
+        "description": "Panouri spațiale pentru a aranja și lega notele",
+        "label": "Canvas"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} omise",
         "title": "Import finalizat"
       },
-      "title": "Importă din {name}"
+      "title": "Importă din {name}",
+      "chooseDirectory": "Alege dosarul…",
+      "folderKeepsAssets": "Alege dosarul când imaginile se află în afara dosarului propriu al notelor — exporturile păstrează adesea fișierele media într-unul comun."
     },
     "header": {
       "subtitle": "Adu-ți notițele și sarcinile din alte aplicații",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, one {# sarcină} few {# sarcini} other {# de sarcini}}",
       "withDueDate": "{count} cu dată",
       "withTags": "{count} etichetate"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Se încarcă…",
+      "subtitle": "Memento zilnic de revizuire și preferințe pentru inbox.",
+      "title": "Inbox"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Un îndemn blând, zilnic, când ai elemente în inbox.",
+        "label": "Amintește-mi să îmi revizuiesc inboxul"
+      },
+      "error": "Nu s-a putut actualiza mementoul.",
+      "group": "Memento zilnic de revizuire",
+      "test": {
+        "button": "Trimite un test",
+        "description": "Declanșează mementoul acum pentru a verifica notificările sistemului.",
+        "label": "Notificare de test",
+        "sent": "Notificarea de test a fost trimisă.",
+        "sentHint": "Dacă nu apare nimic, permite notificările pentru MemryNote în setările sistemului.",
+        "unsupported": "Acest dispozitiv nu poate afișa notificări pe desktop."
+      },
+      "time": {
+        "description": "Ora locală, pe fiecare dispozitiv.",
+        "hourLabel": "Ora",
+        "label": "Ora mementoului",
+        "minuteLabel": "Minutul",
+        "periodLabel": "AM sau PM"
+      }
     }
   }
 }

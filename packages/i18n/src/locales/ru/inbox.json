@@ -314,7 +314,10 @@
       "rdquo": "рдкво;",
       "captureAnyway": "Все равно захватить",
       "focusShortcut": "Фокус на поле захвата",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Захватить ссылку",
+      "captureNote": "Захватить заметку",
+      "placeholder": "Быстрый захват — вставьте ссылку, запишите мысль…"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Выбрать папку",
@@ -466,7 +469,12 @@
       "cancelRecording": "Отменить запись",
       "cancel": "Отмена",
       "stopRecording": "Остановить запись",
-      "stop": "Стоп"
+      "stop": "Стоп",
+      "enableMicInSettings": "Разрешите доступ к микрофону в системных настройках и попробуйте снова.",
+      "failedToStart": "Не удалось начать запись",
+      "microphoneAccessDenied": "Доступ к микрофону запрещён",
+      "noMicrophoneFound": "Микрофон не найден",
+      "recordingError": "Произошла ошибка записи"
     }
   },
   "phaseI": {
@@ -479,7 +487,9 @@
       "failedToCaptureFile": "Не удалось захватить файл",
       "fileCaptureFailed": "Захватить файл не удалось",
       "failedToCaptureAudio": "Не удалось записать звук",
-      "failedToCaptureVoice": "Не удалось записать голос"
+      "failedToCaptureVoice": "Не удалось записать голос",
+      "failedToLoadInboxPreferences": "Не удалось загрузить настройки входящих",
+      "failedToUpdateInboxPreferences": "Не удалось обновить настройки входящих"
     },
     "toasts": {
       "inboxRefreshed": "Входящие обновлены"
@@ -516,5 +526,10 @@
     "task": "Задача",
     "time": "Время",
     "title": "Преобразовать"
+  },
+  "reviewNudge": {
+    "action": "Открыть входящие",
+    "description": "Спокойно разберите сегодняшние захваты за один раз.",
+    "title": "Пора разобрать {count, plural, one {# элемент} few {# элемента} many {# элементов} other {# элемента}}"
   }
 }

@@ -28,7 +28,8 @@
         "properties": "Propriedades",
         "commandLine": "Linha de comandos",
         "features": "Funcionalidades",
-        "import": "Importar"
+        "import": "Importar",
+        "inbox": "Caixa de entrada"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Baixando {percent}%",
         "downloaded": "Reinicie para instalar",
         "idle": "Verifique se há atualizações"
+      },
+      "autoCheck": {
+        "description": "Procurar novas versões ao iniciar e periodicamente enquanto a aplicação estiver aberta.",
+        "error": "Falha ao atualizar a definição de verificação automática",
+        "label": "Procurar atualizações automaticamente"
+      },
+      "autoDownload": {
+        "description": "Transferir e instalar novas versões em segundo plano, sem perguntar.",
+        "error": "Falha ao atualizar a definição de transferência automática",
+        "label": "Transferir atualizações automaticamente"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Compartilhe métricas de uso anônimas",
         "description": "São apenas métricas anônimas – nenhum conteúdo de nota, consultas de pesquisa, caminhos de arquivo, e-mails ou IDs brutos são enviados.",
         "error": "Falha ao atualizar a configuração de telemetria"
+      },
+      "diagnostics": {
+        "building": "A preparar o relatório…",
+        "consent": "Enviar um relatório de diagnóstico, só desta vez? Contém apenas registos técnicos anonimizados — nenhum conteúdo das notas.",
+        "error": "Falha ao enviar o relatório de diagnóstico",
+        "notNow": "Agora não",
+        "previewError": "Não foi possível preparar o relatório de diagnóstico",
+        "previewLabel": "Pré-visualizar o conteúdo do relatório",
+        "send": "Enviar",
+        "sendReport": {
+          "button": "Enviar relatório de diagnóstico",
+          "description": "Envie, só desta vez, um relatório de registos técnicos anonimizados para nos ajudar a resolver um problema que encontrou.",
+          "label": "Relatório de diagnóstico"
+        },
+        "sending": "A enviar…",
+        "sent": "Relatório enviado — referência {incidentId}",
+        "snapshotLabel": "Instantâneo do dispositivo",
+        "title": "Enviar um relatório de diagnóstico?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Disposição",
-      "toolbar": "Barra de ferramentas"
+      "toolbar": "Barra de ferramentas",
+      "spelling": "Ortografia"
     },
     "width": {
       "label": "Largura do editor",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Estreito",
         "medium": "Médio",
-        "wide": "Largo"
+        "wide": "Largo",
+        "full": "Largura total",
+        "normal": "Normal"
       },
       "error": "Falha ao atualizar a largura do editor"
     },
@@ -229,6 +261,11 @@
       "label": "Barra de ferramentas de formatação fixa",
       "description": "Sempre mostrar a barra de ferramentas acima do editor",
       "error": "Falha ao atualizar o modo da barra de ferramentas"
+    },
+    "spellCheck": {
+      "description": "Sublinhar palavras mal escritas nas notas e nos diários",
+      "error": "Falha ao atualizar a verificação ortográfica",
+      "label": "Verificar ortografia"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "Uso de armazenamento",
-      "location": "Localização"
+      "location": "Localização",
+      "accountVaults": "Cofres na sua conta"
     },
     "loadingStorage": "Carregando informações de armazenamento...",
     "signInStorage": "Faça login para ver o uso do armazenamento",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "Armazenamento quase cheio",
       "warningDescription": "Libere espaço ou atualize seu plano para evitar problemas de sincronização."
+    },
+    "accountVaults": {
+      "activeHint": "Mude para outro cofre para eliminar este.",
+      "cloudOnly": "Não está neste dispositivo",
+      "delete": "Eliminar",
+      "deleteBody": "Isto remove permanentemente dos servidores da Memry todos os dados sincronizados deste cofre e não pode ser desfeito. Os seus ficheiros no disco não são eliminados.",
+      "deleteConfirm": "Eliminar da conta",
+      "deleteFailed": "Não foi possível eliminar o cofre",
+      "deleteTitle": "Eliminar “{name}” da sua conta?",
+      "empty": "Ainda não há cofres sincronizados com a sua conta.",
+      "itemsCount": "{count} itens"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "Falha ao fechar o cofre",
       "failedToSwitchVault": "Falha ao trocar o cofre",
       "failedToUpdateConfig": "Falha ao atualizar a configuração",
-      "failedToReindex": "Falha ao reindexar"
+      "failedToReindex": "Falha ao reindexar",
+      "failedToLoadTasks": "Falha ao carregar as tarefas"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "Afazeres e datas de vencimento",
         "label": "Tarefas"
+      },
+      "spatialCanvas": {
+        "description": "Quadros espaciais para dispor e ligar notas",
+        "label": "Tela"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} ignorados",
         "title": "Importação concluída"
       },
-      "title": "Importar de {name}"
+      "title": "Importar de {name}",
+      "chooseDirectory": "Escolher pasta…",
+      "folderKeepsAssets": "Escolha a pasta quando as imagens estiverem fora da pasta das próprias notas — as exportações costumam guardar os ficheiros multimédia numa pasta partilhada."
     },
     "header": {
       "subtitle": "Traga as suas notas e tarefas de outras aplicações",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, one {# tarefa} other {# tarefas}}",
       "withDueDate": "{count} datados",
       "withTags": "{count} etiquetados"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "A carregar…",
+      "subtitle": "Lembrete de revisão diária e preferências da caixa de entrada.",
+      "title": "Caixa de entrada"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Um aviso diário discreto quando a sua caixa de entrada tiver itens.",
+        "label": "Lembrar-me de rever a caixa de entrada"
+      },
+      "error": "Não foi possível atualizar o lembrete.",
+      "group": "Lembrete de revisão diária",
+      "test": {
+        "button": "Enviar teste",
+        "description": "Envie o lembrete agora para verificar as notificações do sistema.",
+        "label": "Notificação de teste",
+        "sent": "Notificação de teste enviada.",
+        "sentHint": "Se não aparecer nada, permita as notificações do MemryNote nas definições do sistema.",
+        "unsupported": "Este dispositivo não consegue mostrar notificações no ambiente de trabalho."
+      },
+      "time": {
+        "description": "Hora local, em cada dispositivo.",
+        "hourLabel": "Hora",
+        "label": "Hora do lembrete",
+        "minuteLabel": "Minuto",
+        "periodLabel": "AM ou PM"
+      }
     }
   }
 }

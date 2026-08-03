@@ -28,7 +28,8 @@
         "properties": "Eigenschaften",
         "commandLine": "Befehlszeile",
         "features": "Funktionen",
-        "import": "Import"
+        "import": "Import",
+        "inbox": "Posteingang"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "{percent}% wird heruntergeladen",
         "downloaded": "Starten Sie die Installation neu",
         "idle": "Suchen Sie nach Updates"
+      },
+      "autoCheck": {
+        "description": "Beim Start und regelmäßig während der Nutzung nach neuen Versionen suchen.",
+        "error": "Die Einstellung für die automatische Prüfung konnte nicht aktualisiert werden",
+        "label": "Automatisch nach Updates suchen"
+      },
+      "autoDownload": {
+        "description": "Neue Versionen im Hintergrund herunterladen und ohne Nachfrage installieren.",
+        "error": "Die Einstellung für den automatischen Download konnte nicht aktualisiert werden",
+        "label": "Updates automatisch herunterladen"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Teilen Sie anonyme Nutzungsmetriken",
         "description": "Es handelt sich lediglich um anonyme Messwerte – es werden niemals Notizinhalte, Suchanfragen, Dateipfade, E-Mails oder Roh-IDs gesendet.",
         "error": "Die Telemetrieeinstellung konnte nicht aktualisiert werden"
+      },
+      "diagnostics": {
+        "building": "Bericht wird vorbereitet…",
+        "consent": "Einmalig einen Diagnosebericht senden? Er enthält nur bereinigte technische Protokolle — keine Notizinhalte.",
+        "error": "Der Diagnosebericht konnte nicht gesendet werden",
+        "notNow": "Nicht jetzt",
+        "previewError": "Der Diagnosebericht konnte nicht vorbereitet werden",
+        "previewLabel": "Berichtsinhalt ansehen",
+        "send": "Senden",
+        "sendReport": {
+          "button": "Diagnosebericht senden",
+          "description": "Sende einmalig einen Bericht mit bereinigten technischen Protokollen, damit wir ein Problem nachvollziehen können, das bei dir aufgetreten ist.",
+          "label": "Diagnosebericht"
+        },
+        "sending": "Wird gesendet…",
+        "sent": "Bericht gesendet — Referenz {incidentId}",
+        "snapshotLabel": "Geräteinformationen",
+        "title": "Diagnosebericht senden?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Layout",
-      "toolbar": "Symbolleiste"
+      "toolbar": "Symbolleiste",
+      "spelling": "Rechtschreibung"
     },
     "width": {
       "label": "Editorbreite",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Schmal",
         "medium": "Mittel",
-        "wide": "Breit"
+        "wide": "Breit",
+        "full": "Volle Breite",
+        "normal": "Normal"
       },
       "error": "Die Editorbreite konnte nicht aktualisiert werden"
     },
@@ -229,6 +261,11 @@
       "label": "Sticky-Formatierungssymbolleiste",
       "description": "Symbolleiste immer über dem Editor anzeigen",
       "error": "Der Symbolleistenmodus konnte nicht aktualisiert werden"
+    },
+    "spellCheck": {
+      "description": "Falsch geschriebene Wörter in Notizen und Journalen unterstreichen",
+      "error": "Die Rechtschreibprüfung konnte nicht aktualisiert werden",
+      "label": "Rechtschreibung prüfen"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "Speichernutzung",
-      "location": "Standort"
+      "location": "Standort",
+      "accountVaults": "Tresore in deinem Konto"
     },
     "loadingStorage": "Speicherinformationen werden geladen...",
     "signInStorage": "Melden Sie sich an, um die Speichernutzung anzuzeigen",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "Speicher fast voll",
       "warningDescription": "Geben Sie Speicherplatz frei oder aktualisieren Sie Ihren Plan, um Synchronisierungsprobleme zu vermeiden."
+    },
+    "accountVaults": {
+      "activeHint": "Wechsle zu einem anderen Tresor, um diesen zu löschen.",
+      "cloudOnly": "Nicht auf diesem Gerät",
+      "delete": "Löschen",
+      "deleteBody": "Damit werden alle synchronisierten Daten dieses Tresors dauerhaft von den Memry-Servern entfernt. Das lässt sich nicht rückgängig machen. Deine Dateien auf der Festplatte bleiben erhalten.",
+      "deleteConfirm": "Aus Konto löschen",
+      "deleteFailed": "Der Tresor konnte nicht gelöscht werden",
+      "deleteTitle": "„{name}“ aus deinem Konto löschen?",
+      "empty": "Noch keine Tresore mit deinem Konto synchronisiert.",
+      "itemsCount": "{count, plural, one {# Element} other {# Elemente}}"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "Der Tresor konnte nicht geschlossen werden",
       "failedToSwitchVault": "Der Tresor konnte nicht gewechselt werden",
       "failedToUpdateConfig": "Konfiguration konnte nicht aktualisiert werden",
-      "failedToReindex": "Neuindizierung fehlgeschlagen"
+      "failedToReindex": "Neuindizierung fehlgeschlagen",
+      "failedToLoadTasks": "Aufgaben konnten nicht geladen werden"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "To-dos und Fälligkeitsdaten",
         "label": "Aufgaben"
+      },
+      "spatialCanvas": {
+        "description": "Räumliche Boards, um Notizen anzuordnen und zu verknüpfen",
+        "label": "Canvas"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} übersprungen",
         "title": "Import abgeschlossen"
       },
-      "title": "Aus {name} importieren"
+      "title": "Aus {name} importieren",
+      "chooseDirectory": "Ordner wählen…",
+      "folderKeepsAssets": "Wähle den Ordner, wenn die Bilder außerhalb des Notizordners liegen — Exporte legen Medien oft in einem gemeinsamen Ordner ab."
     },
     "header": {
       "subtitle": "Bring deine Notizen und Aufgaben aus anderen Apps herein",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, one {# Aufgabe} other {# Aufgaben}}",
       "withDueDate": "{count} datiert",
       "withTags": "{count} getaggt"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Wird geladen…",
+      "subtitle": "Tägliche Erinnerung zum Durchsehen und Einstellungen für den Posteingang.",
+      "title": "Posteingang"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Ein sanfter täglicher Hinweis, wenn dein Posteingang Elemente enthält.",
+        "label": "Mich erinnern, meinen Posteingang durchzusehen"
+      },
+      "error": "Die Erinnerung konnte nicht aktualisiert werden.",
+      "group": "Tägliche Erinnerung zum Durchsehen",
+      "test": {
+        "button": "Test senden",
+        "description": "Die Erinnerung jetzt auslösen, um deine Systembenachrichtigungen zu prüfen.",
+        "label": "Testbenachrichtigung",
+        "sent": "Testbenachrichtigung gesendet.",
+        "sentHint": "Wenn nichts erscheint, erlaube Benachrichtigungen für MemryNote in deinen Systemeinstellungen.",
+        "unsupported": "Dieses Gerät kann keine Desktop-Benachrichtigungen anzeigen."
+      },
+      "time": {
+        "description": "Ortszeit, auf jedem Gerät.",
+        "hourLabel": "Stunde",
+        "label": "Erinnerungszeit",
+        "minuteLabel": "Minute",
+        "periodLabel": "AM oder PM"
+      }
     }
   }
 }

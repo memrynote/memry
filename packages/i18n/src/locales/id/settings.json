@@ -28,7 +28,8 @@
         "properties": "Properti",
         "commandLine": "Baris Perintah",
         "features": "Fitur",
-        "import": "Impor"
+        "import": "Impor",
+        "inbox": "Kotak masuk"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Mengunduh {percent}%",
         "downloaded": "Mulai ulang untuk Menginstal",
         "idle": "Periksa Pembaruan"
+      },
+      "autoCheck": {
+        "description": "Periksa rilis baru saat aplikasi dijalankan dan secara berkala selama aplikasi terbuka.",
+        "error": "Gagal memperbarui setelan pemeriksaan otomatis",
+        "label": "Periksa pembaruan secara otomatis"
+      },
+      "autoDownload": {
+        "description": "Unduh dan pasang rilis baru di latar belakang tanpa meminta konfirmasi.",
+        "error": "Gagal memperbarui setelan unduhan otomatis",
+        "label": "Unduh pembaruan secara otomatis"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Bagikan Metrik Penggunaan Anonim",
         "description": "Ini hanya metrik langsung — tidak ada konten catatan, permintaan pencarian, jalur file, email, atau ID mentah yang pernah dikirim.",
         "error": "Gagal memperbarui setelan telemetri"
+      },
+      "diagnostics": {
+        "building": "Menyiapkan laporan…",
+        "consent": "Kirim laporan diagnostik satu kali? Laporan hanya berisi log teknis yang sudah disamarkan — tanpa konten catatan.",
+        "error": "Gagal mengirim laporan diagnostik",
+        "notNow": "Nanti saja",
+        "previewError": "Tidak dapat menyiapkan laporan diagnostik",
+        "previewLabel": "Pratinjau isi laporan",
+        "send": "Kirim",
+        "sendReport": {
+          "button": "Kirim laporan diagnostik",
+          "description": "Kirim laporan satu kali berisi log teknis yang sudah disamarkan untuk membantu kami menelusuri masalah yang Anda alami.",
+          "label": "Laporan Diagnostik"
+        },
+        "sending": "Mengirim…",
+        "sent": "Laporan terkirim — referensi {incidentId}",
+        "snapshotLabel": "Cuplikan perangkat",
+        "title": "Kirim laporan diagnostik?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Tata Letak",
-      "toolbar": "Bilah Alat"
+      "toolbar": "Bilah Alat",
+      "spelling": "Ejaan"
     },
     "width": {
       "label": "Lebar Penyunting",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Sempit",
         "medium": "Sedang",
-        "wide": "Lebar"
+        "wide": "Lebar",
+        "full": "Lebar penuh",
+        "normal": "Normal"
       },
       "error": "Gagal memperbarui lebar editor"
     },
@@ -229,6 +261,11 @@
       "label": "Bilah Alat Pemformatan Lengket",
       "description": "Selalu tampilkan toolbar di atas editor",
       "error": "Gagal memperbarui mode bilah alat"
+    },
+    "spellCheck": {
+      "description": "Garis bawahi kata yang salah eja di catatan dan jurnal",
+      "error": "Gagal memperbarui pemeriksaan ejaan",
+      "label": "Periksa Ejaan"
     }
   },
   "templates": {
@@ -898,7 +935,8 @@
     },
     "groups": {
       "storageUsage": "Penggunaan Penyimpanan",
-      "location": "Lokasi"
+      "location": "Lokasi",
+      "accountVaults": "Brankas di akun Anda"
     },
     "loadingStorage": "Memuat info penyimpanan...",
     "signInStorage": "Masuk untuk melihat penggunaan penyimpanan",
@@ -919,6 +957,17 @@
       },
       "warningTitle": "Penyimpanan hampir penuh",
       "warningDescription": "Kosongkan ruang atau tingkatkan paket Anda untuk menghindari masalah sinkronisasi."
+    },
+    "accountVaults": {
+      "activeHint": "Beralih ke brankas lain untuk menghapus brankas ini.",
+      "cloudOnly": "Tidak ada di perangkat ini",
+      "delete": "Hapus",
+      "deleteBody": "Semua data brankas ini yang sudah disinkronkan akan dihapus permanen dari server Memry, dan tindakan ini tidak dapat dibatalkan. File Anda di disk tidak ikut terhapus.",
+      "deleteConfirm": "Hapus dari akun",
+      "deleteFailed": "Tidak dapat menghapus brankas",
+      "deleteTitle": "Hapus “{name}” dari akun Anda?",
+      "empty": "Belum ada brankas yang disinkronkan ke akun Anda.",
+      "itemsCount": "{count} item"
     }
   },
   "tags": {
@@ -1208,7 +1257,8 @@
       "failedToCloseVault": "Gagal menutup brankas",
       "failedToSwitchVault": "Gagal mengganti brankas",
       "failedToUpdateConfig": "Gagal memperbarui konfigurasi",
-      "failedToReindex": "Gagal mengindeks ulang"
+      "failedToReindex": "Gagal mengindeks ulang",
+      "failedToLoadTasks": "Gagal memuat tugas"
     }
   },
   "agentMcp": {
@@ -1368,6 +1418,10 @@
       "tasks": {
         "description": "Daftar tugas dan tanggal jatuh tempo",
         "label": "Tugas"
+      },
+      "spatialCanvas": {
+        "description": "Papan spasial untuk menata dan menautkan catatan",
+        "label": "Kanvas"
       }
     }
   },
@@ -1393,7 +1447,9 @@
         "skipped": "{count} dilewati",
         "title": "Impor selesai"
       },
-      "title": "Impor dari {name}"
+      "title": "Impor dari {name}",
+      "chooseDirectory": "Pilih folder…",
+      "folderKeepsAssets": "Pilih folder jika gambar berada di luar folder catatannya sendiri — hasil ekspor sering menyimpan media di satu folder bersama."
     },
     "header": {
       "subtitle": "Bawa catatan dan tugas Anda dari aplikasi lain",
@@ -1432,6 +1488,36 @@
       "tasks": "{count, plural, one {# tugas} other {# tugas}}",
       "withDueDate": "{count} bertanggal",
       "withTags": "{count} bertag"
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Memuat…",
+      "subtitle": "Pengingat tinjauan harian dan preferensi kotak masuk.",
+      "title": "Kotak masuk"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Pengingat lembut setiap hari saat kotak masuk Anda berisi item.",
+        "label": "Ingatkan saya untuk meninjau kotak masuk"
+      },
+      "error": "Tidak dapat memperbarui pengingat.",
+      "group": "Pengingat tinjauan harian",
+      "test": {
+        "button": "Kirim uji coba",
+        "description": "Kirim pengingat sekarang untuk memeriksa notifikasi sistem Anda.",
+        "label": "Notifikasi uji coba",
+        "sent": "Notifikasi uji coba terkirim.",
+        "sentHint": "Jika tidak ada yang muncul, izinkan notifikasi untuk MemryNote di pengaturan sistem Anda.",
+        "unsupported": "Perangkat ini tidak dapat menampilkan notifikasi desktop."
+      },
+      "time": {
+        "description": "Waktu lokal, di setiap perangkat.",
+        "hourLabel": "Jam",
+        "label": "Waktu pengingat",
+        "minuteLabel": "Menit",
+        "periodLabel": "AM atau PM"
+      }
     }
   }
 }

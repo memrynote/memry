@@ -102,7 +102,15 @@
       "updateDownloadingPercent": "מוריד {percent}%",
       "updateInstallingSubtitle": "MemryNote יופעל מחדש אוטומטית.",
       "updateInstallingTitle": "מתקין עדכון",
-      "updateRestart": "הפעל מחדש"
+      "updateRestart": "הפעל מחדש",
+      "feedbackPrivacyEmailOptional": "האימייל שלך — רק אם תוסיף אותו, ורק כדי שנוכל להשיב",
+      "feedbackPrivacyEmailSignedIn": "האימייל של החשבון שלך ({email}), כדי שנוכל להשיב",
+      "feedbackPrivacyMessage": "ההודעה שלך, בדיוק כפי שכתבת אותה",
+      "feedbackPrivacyNote": "שום דבר אחר. ההערות שלך נשארות במכשיר שלך.",
+      "feedbackPrivacyPlan": "התוכנית שלך (free, Plus, Pro או Believer)",
+      "feedbackPrivacyTitle": "מה נשלח",
+      "feedbackPrivacyVersion": "גרסת האפליקציה ומערכת ההפעלה",
+      "projects": "פרויקטים"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "שנה את גודל לוח יום",
@@ -231,7 +239,8 @@
       "journal": "יומן",
       "calendar": "לוח שנה",
       "inboxCapture": "לכידת תיבת דואר נכנס",
-      "tasks": "משימות"
+      "tasks": "משימות",
+      "tags": "תגים"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "שינויים שלא נשמרו",
@@ -261,7 +270,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "משהו השתבש",
       "anErrorOccurredWhileRenderingThisTabContent": "אירעה שגיאה בעת עיבוד תוכן הכרטיסייה הזו.",
-      "tryAgain": "נסה שוב"
+      "tryAgain": "נסה שוב",
+      "sendReport": "שלח דוח אבחון"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "סמל הערה"
@@ -352,7 +362,13 @@
       "downloadLocation": "מיקום",
       "changeLocation": "שינוי…",
       "download": "הורדה",
-      "downloadFailed": "לא ניתן היה להוריד את הכספת"
+      "downloadFailed": "לא ניתן היה להוריד את הכספת",
+      "deleteFromAccount": "מחק מהחשבון",
+      "deleteVaultBody": "פעולה זו מסירה לצמיתות את כל הנתונים המסונכרנים של הכספת הזו משרתי Memry, ולא ניתן לבטל אותה. הקבצים שלך בדיסק לא יימחקו.",
+      "deleteVaultConfirm": "מחק מהחשבון",
+      "deleteVaultFailed": "לא ניתן היה למחוק את הכספת",
+      "deleteVaultTitle": "למחוק את “{name}” מהחשבון שלך?",
+      "removeVaultTitle": "להסיר את “{name}” מהרשימה?"
     },
     "componentsWindowControls": {
       "searchK": "חפש (⌘K)",
@@ -640,6 +656,45 @@
     "skip": "דלג על גרסה זו"
   },
   "capture": {
-    "focusShortcut": "מקד את קלט הלכידה"
+    "focusShortcut": "מקד את קלט הלכידה",
+    "detailHint": "פרטים",
+    "focusHint": "Q",
+    "submit": "ללכוד"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "הוסף כרטיס",
+      "addCreateNote": "צור הערה \"{query}\"",
+      "addCreateNoteEmpty": "צור הערה חדשה",
+      "addCreatedAt": "נוצר {date}",
+      "addEmpty": "לא נמצאו תוצאות",
+      "addGroupEvents": "אירועים",
+      "addGroupNotes": "הערות",
+      "addGroupTasks": "משימות",
+      "addOnCanvas": "בקנבס",
+      "addPlaceholder": "חפש הערות, משימות ואירועים…",
+      "allDay": "כל היום",
+      "createNoteFailed": "לא ניתן היה ליצור הערה",
+      "deleted": "הפריט נמחק",
+      "loading": "טוען…",
+      "open": "פתח בכרטיסייה",
+      "openToEdit": "פתח בכרטיסייה כדי לערוך",
+      "untitled": "ללא כותרת"
+    },
+    "corruptScene": "לא ניתן היה לקרוא את הקנבס הזה. העריכה מושבתת כדי למנוע אובדן נתונים.",
+    "createFailed": "לא ניתן היה ליצור קנבס",
+    "disabledBody": "הכרטיסייה הזו שייכת לתכונה שאינה מופעלת במכשיר הזה.",
+    "disabledTitle": "הקנבס אינו מופעל",
+    "empty": "עדיין אין קנבסים",
+    "libraryStoreFailed": "לא ניתן היה לשמור את ספריית הצורות שלך. שינויים אחרונים בה עלולים ללכת לאיבוד.",
+    "loadFailed": "לא ניתן היה לטעון קנבסים",
+    "loading": "טוען קנבסים…",
+    "newCanvas": "קנבס חדש",
+    "notFound": "לא ניתן היה למצוא את הקנבס הזה",
+    "openFailed": "לא ניתן היה לפתוח את הקנבס",
+    "savedToVault": "כל השינויים נשמרים אוטומטית בכספת שלך",
+    "sectionLabel": "קנבסים",
+    "tooLargeToSync": "הקנבס הזה גדול מכדי להסתנכרן. הוא נשמר במכשיר הזה, אך לא יגיע למכשירים האחרים שלך עד שיקטן.",
+    "untitled": "קנבס ללא כותרת"
   }
 }

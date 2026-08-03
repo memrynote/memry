@@ -38,6 +38,11 @@
       "fallback": "Pripomienka splatná",
       "default": "Pripomienka",
       "task": "Pripomienka úlohy"
+    },
+    "inboxReview": {
+      "body": "Máte {count, plural, one {# položku} few {# položky} many {# položky} other {# položiek}} na prejdenie.",
+      "testBody": "Toto je test — vaše denné pripomienky na prehliadnutie budú vyzerať takto.",
+      "title": "Čas prejsť si schránku"
     }
   },
   "error": {
