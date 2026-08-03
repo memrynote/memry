@@ -22,10 +22,8 @@ export interface EventProjectFieldProps {
  * immediately, matching the calendar chip's "Add to project" context menu.
  */
 export function EventProjectField({
-  mode,
   value,
-  onChange,
-  disabled
+  onChange
 }: EventProjectFieldProps): React.JSX.Element | null {
   const { t } = useT('calendar')
   const projects = useTasksOptional()?.projects ?? []
