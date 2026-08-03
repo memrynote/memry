@@ -100,6 +100,28 @@ vi.mock('../vault/file-ops', () => ({
   atomicWrite: fileMocks.atomicWrite
 }))
 
+vi.mock('../lib/logger', () => {
+  const logger = () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    verbose: vi.fn()
+  })
+  return {
+    log: logger(),
+    createLogger: logger,
+    disableConsoleTransport: vi.fn(),
+    applyPackagedLogLevels: vi.fn(),
+    migrateLegacyLogDir: vi.fn()
+  }
+})
+
+// withErrorHandler reports every envelope error as telemetry; keep that off disk.
+vi.mock('../telemetry/diagnostics', () => ({
+  trackMainError: vi.fn()
+}))
+
 vi.mock('../tags/runtime-effects', () => ({
   syncMergedTagDefinitions: fileMocks.syncMergedTagDefinitions,
   syncTaggedNote: fileMocks.syncTaggedNote,
@@ -535,5 +557,453 @@ describe('tag category handlers', () => {
     expect(mockSend).toHaveBeenCalledWith(TagsChannels.events.CATEGORIES_CHANGED, expect.anything())
     expect(fileMocks.syncTagDefinitionUpdate).not.toHaveBeenCalled()
     expect(fileMocks.syncTagCategoryUpdate).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Failure envelopes — what the user is actually told when a tag operation
+// fails. getMainI18n() is not mocked here (see the passing English assertions
+// above): the main process falls back to the English catalogue, so asserting
+// the rendered copy pins BOTH the key each branch picks and its wording.
+// ---------------------------------------------------------------------------
+
+/** errors:ipc.noVaultOpen */
+const NO_VAULT_OPEN = 'No vault is open. Please open a vault first.'
+
+type Envelope = { success: boolean; error?: string; affectedNotes?: number; affectedItems?: number }
+
+/** Non-Error rejection: a failure that carries no `.message` for the envelope to reuse. */
+const NO_MESSAGE_FAILURE = { code: 'SQLITE_BUSY' }
+
+const resettableStoreMocks = (): Mock[] =>
+  [
+    notesQueries.findNotesWithTagInfo,
+    notesQueries.pinNoteToTag,
+    notesQueries.unpinNoteFromTag,
+    notesQueries.renameTag,
+    notesQueries.renameTagDefinition,
+    notesQueries.deleteTag,
+    notesQueries.deleteTagDefinition,
+    notesQueries.removeTagFromNote,
+    notesQueries.getOrCreateTag,
+    notesQueries.updateTagColor,
+    notesQueries.updateTagIcon,
+    notesQueries.getNoteTags,
+    notesQueries.getNoteCacheById,
+    tagQueries.getAllTagsWithCounts,
+    tagQueries.mergeTagInNotes,
+    tagQueries.mergeTagInTasks,
+    tagCategoryQueries.listTagCategories,
+    tagCategoryQueries.createTagCategory,
+    tagCategoryQueries.renameTagCategory,
+    tagCategoryQueries.deleteTagCategory,
+    tagCategoryQueries.reorderTags,
+    tagCategoryQueries.reorderCategories,
+    getIndexDatabase,
+    requireDatabase
+  ] as Mock[]
+
+describe('tags-handlers failure envelopes', () => {
+  beforeEach(() => {
+    resetIpcMocks()
+    vi.clearAllMocks()
+    // Per-test throwing implementations must not leak into the next test.
+    resettableStoreMocks().forEach((mock) => mock.mockReset())
+    mockSend.mockClear()
+    ;(getIndexDatabase as Mock).mockReturnValue(createDbMock())
+    ;(requireDatabase as Mock).mockReturnValue(createDbMock())
+    ;(notesQueries.getNoteCacheById as Mock).mockReturnValue(undefined)
+    fileMocks.readFile.mockResolvedValue('---\ntags: [old]\n---\nBody')
+    fileMocks.toAbsolutePath.mockImplementation((notePath: string) => `/vault/${notePath}`)
+    fileMocks.parseNote.mockReturnValue({ frontmatter: { tags: ['old'] }, content: 'Body' })
+    fileMocks.serializeParsedNote.mockReturnValue('serialized note')
+    fileMocks.atomicWrite.mockResolvedValue(undefined)
+    registerTagsHandlers()
+  })
+
+  it('tells the user no vault is open when the index database is missing', async () => {
+    // Mirrors the real getIndexDatabase(): its internal message must never reach the UI.
+    ;(getIndexDatabase as Mock).mockImplementation(() => {
+      throw new Error('Index database not initialized')
+    })
+
+    const indexBackedOperations: Array<[string, unknown]> = [
+      [TagsChannels.invoke.PIN_NOTE_TO_TAG, { noteId: 'note-1', tag: 'focus' }],
+      [TagsChannels.invoke.UNPIN_NOTE_FROM_TAG, { noteId: 'note-1', tag: 'focus' }],
+      [TagsChannels.invoke.RENAME_TAG, { oldName: 'old', newName: 'new' }],
+      [TagsChannels.invoke.DELETE_TAG, 'old'],
+      [TagsChannels.invoke.REMOVE_TAG_FROM_NOTE, { noteId: 'note-1', tag: 'focus' }],
+      [TagsChannels.invoke.MERGE_TAG, { source: 'source', target: 'target' }]
+    ]
+
+    for (const [channel, payload] of indexBackedOperations) {
+      const result = await invokeHandler<Envelope>(channel, payload)
+      expect(result, channel).toEqual({ success: false, error: NO_VAULT_OPEN })
+    }
+
+    // Read handlers are unwrapped: they reject instead of returning an envelope,
+    // but must still surface the translated reason rather than the raw one.
+    await expect(
+      invokeHandler(TagsChannels.invoke.GET_NOTES_BY_TAG, { tag: 'focus' })
+    ).rejects.toThrow(NO_VAULT_OPEN)
+    await expect(invokeHandler(TagsChannels.invoke.GET_ALL_WITH_COUNTS)).rejects.toThrow(
+      NO_VAULT_OPEN
+    )
+
+    expect(notesQueries.pinNoteToTag).not.toHaveBeenCalled()
+    expect(mockSend).not.toHaveBeenCalled()
+  })
+
+  it('tells the user no vault is open when the data database is missing', async () => {
+    // requireDatabase() throws exactly this message in src/main/database/client.ts.
+    ;(requireDatabase as Mock).mockImplementation(() => {
+      throw new Error(NO_VAULT_OPEN)
+    })
+
+    const dataBackedOperations: Array<[string, unknown]> = [
+      [TagsChannels.invoke.UPDATE_TAG_COLOR, { tag: 'focus', color: '#ff0000' }],
+      [TagsChannels.invoke.UPDATE_TAG_ICON, { tag: 'focus', icon: '📚' }],
+      [TagsChannels.invoke.LIST_CATEGORIES, undefined],
+      [TagsChannels.invoke.CREATE_CATEGORY, { name: 'Work' }],
+      [TagsChannels.invoke.RENAME_CATEGORY, { id: 'cat-1', name: 'Personal' }],
+      [TagsChannels.invoke.DELETE_CATEGORY, { id: 'cat-1' }],
+      [TagsChannels.invoke.REORDER, { tags: [{ tag: 'focus', categoryId: null, sortOrder: 0 }] }]
+    ]
+
+    for (const [channel, payload] of dataBackedOperations) {
+      const result = await invokeHandler<Envelope>(channel, payload)
+      expect(result, channel).toEqual({ success: false, error: NO_VAULT_OPEN })
+    }
+
+    expect(tagCategoryQueries.createTagCategory).not.toHaveBeenCalled()
+    expect(mockSend).not.toHaveBeenCalled()
+  })
+
+  it('names the failed operation when the failure carries no message', async () => {
+    // KNOWN DEFECT (validate.ts withErrorHandler): the fallback is handed to the
+    // renderer as the raw i18n key — nothing downstream translates it, so the
+    // user sees "errors:tag.pinNoteFailed". The keys are asserted here because
+    // each handler must still name ITS OWN operation: a shared fallback would
+    // tell the user the wrong thing while keeping line coverage green.
+    const cases: Array<[string, unknown, Mock, string]> = [
+      [
+        TagsChannels.invoke.PIN_NOTE_TO_TAG,
+        { noteId: 'note-1', tag: 'focus' },
+        notesQueries.pinNoteToTag as Mock,
+        'errors:tag.pinNoteFailed'
+      ],
+      [
+        TagsChannels.invoke.UNPIN_NOTE_FROM_TAG,
+        { noteId: 'note-1', tag: 'focus' },
+        notesQueries.unpinNoteFromTag as Mock,
+        'errors:tag.unpinNoteFailed'
+      ],
+      [
+        TagsChannels.invoke.RENAME_TAG,
+        { oldName: 'old', newName: 'new' },
+        notesQueries.renameTag as Mock,
+        'errors:tag.renameFailed'
+      ],
+      [
+        TagsChannels.invoke.UPDATE_TAG_COLOR,
+        { tag: 'focus', color: '#ff0000' },
+        notesQueries.updateTagColor as Mock,
+        'errors:tag.updateColorFailed'
+      ],
+      [
+        TagsChannels.invoke.UPDATE_TAG_ICON,
+        { tag: 'focus', icon: '📚' },
+        notesQueries.updateTagIcon as Mock,
+        'errors:tag.updateIconFailed'
+      ],
+      [
+        TagsChannels.invoke.DELETE_TAG,
+        'old',
+        notesQueries.deleteTag as Mock,
+        'errors:tag.deleteFailed'
+      ],
+      [
+        TagsChannels.invoke.REMOVE_TAG_FROM_NOTE,
+        { noteId: 'note-1', tag: 'focus' },
+        notesQueries.removeTagFromNote as Mock,
+        'errors:tag.removeFromNoteFailed'
+      ],
+      [
+        TagsChannels.invoke.MERGE_TAG,
+        { source: 'source', target: 'target' },
+        tagQueries.mergeTagInNotes as Mock,
+        'errors:tag.mergeFailed'
+      ]
+    ]
+
+    const reported: string[] = []
+    for (const [channel, payload, failing, expected] of cases) {
+      failing.mockImplementationOnce(() => {
+        throw NO_MESSAGE_FAILURE
+      })
+      const result = await invokeHandler<Envelope>(channel, payload)
+      expect(result.success, channel).toBe(false)
+      expect(result.error, channel).toBe(expected)
+      reported.push(result.error as string)
+    }
+
+    // Every operation must be distinguishable to the user.
+    expect(new Set(reported).size).toBe(cases.length)
+  })
+
+  it('translates each category fallback when the failure carries no message', async () => {
+    const cases: Array<[string, unknown, Mock, string]> = [
+      [
+        TagsChannels.invoke.LIST_CATEGORIES,
+        undefined,
+        tagCategoryQueries.listTagCategories as Mock,
+        'Failed to list tag categories' // errors:tag.listCategoriesFailed
+      ],
+      [
+        TagsChannels.invoke.CREATE_CATEGORY,
+        { name: 'Work' },
+        tagCategoryQueries.createTagCategory as Mock,
+        'Failed to create tag category' // errors:tag.createCategoryFailed
+      ],
+      [
+        TagsChannels.invoke.RENAME_CATEGORY,
+        { id: 'cat-1', name: 'Personal' },
+        tagCategoryQueries.renameTagCategory as Mock,
+        'Failed to rename tag category' // errors:tag.renameCategoryFailed
+      ],
+      [
+        TagsChannels.invoke.DELETE_CATEGORY,
+        { id: 'cat-1' },
+        tagCategoryQueries.deleteTagCategory as Mock,
+        'Failed to delete tag category' // errors:tag.deleteCategoryFailed
+      ],
+      [
+        TagsChannels.invoke.REORDER,
+        { categories: [{ id: 'cat-1', sortOrder: 0 }] },
+        tagCategoryQueries.reorderCategories as Mock,
+        'Failed to reorder tags' // errors:tag.reorderFailed
+      ]
+    ]
+
+    const reported: string[] = []
+    for (const [channel, payload, failing, expected] of cases) {
+      failing.mockImplementationOnce(() => {
+        throw NO_MESSAGE_FAILURE
+      })
+      const result = await invokeHandler<Envelope>(channel, payload)
+      expect(result, channel).toEqual({ success: false, error: expected })
+      reported.push(result.error as string)
+    }
+
+    expect(new Set(reported).size).toBe(cases.length)
+    expect(mockSend).not.toHaveBeenCalled()
+  })
+
+  it('surfaces the underlying reason instead of the generic category fallback', async () => {
+    ;(tagCategoryQueries.deleteTagCategory as Mock).mockImplementationOnce(() => {
+      throw new Error('Tag category not found')
+    })
+    await expect(
+      invokeHandler(TagsChannels.invoke.DELETE_CATEGORY, { id: 'missing' })
+    ).resolves.toEqual({ success: false, error: 'Tag category not found' })
+    ;(tagCategoryQueries.renameTagCategory as Mock).mockImplementationOnce(() => {
+      throw new Error('UNIQUE constraint failed: tag_categories.name')
+    })
+    await expect(
+      invokeHandler(TagsChannels.invoke.RENAME_CATEGORY, { id: 'cat-1', name: 'Work' })
+    ).resolves.toEqual({
+      success: false,
+      error: 'UNIQUE constraint failed: tag_categories.name'
+    })
+
+    // A failed category write must not announce a change the UI would refetch on.
+    expect(mockSend).not.toHaveBeenCalled()
+    expect(fileMocks.syncTagCategoryDelete).not.toHaveBeenCalled()
+    expect(fileMocks.syncTagCategoryUpdate).not.toHaveBeenCalled()
+  })
+
+  it('rejects a missing category name before touching the database', async () => {
+    // The renderer can send an absent name; `!name?.trim()` must catch it too.
+    await expect(invokeHandler(TagsChannels.invoke.CREATE_CATEGORY, {})).resolves.toEqual({
+      success: false,
+      error: 'Category name is required' // errors:tag.categoryNameRequired
+    })
+    await expect(
+      invokeHandler(TagsChannels.invoke.RENAME_CATEGORY, { id: 'cat-1' })
+    ).resolves.toEqual({ success: false, error: 'Category name is required' })
+
+    expect(requireDatabase).not.toHaveBeenCalled()
+    expect(tagCategoryQueries.createTagCategory).not.toHaveBeenCalled()
+    expect(tagCategoryQueries.renameTagCategory).not.toHaveBeenCalled()
+  })
+
+  it('refuses a same-tag merge without mutating anything', async () => {
+    const result = await invokeHandler<Envelope>(TagsChannels.invoke.MERGE_TAG, {
+      source: '  Focus ',
+      target: 'focus'
+    })
+
+    expect(result).toEqual({
+      success: false,
+      error: 'Source and target tags are the same' // errors:tag.mergeSameTag
+    })
+    expect(tagQueries.mergeTagInNotes).not.toHaveBeenCalled()
+    expect(tagQueries.mergeTagInTasks).not.toHaveBeenCalled()
+    expect(notesQueries.deleteTagDefinition).not.toHaveBeenCalled()
+    expect(fileMocks.syncMergedTagDefinitions).not.toHaveBeenCalled()
+    expect(mockSend).not.toHaveBeenCalled()
+  })
+
+  it('rejects invalid input before reaching the store', async () => {
+    await expect(
+      invokeHandler(TagsChannels.invoke.RENAME_TAG, { oldName: 'old', newName: 'n'.repeat(51) })
+    ).rejects.toThrow(/Validation failed/)
+    await expect(invokeHandler(TagsChannels.invoke.GET_NOTES_BY_TAG, { tag: '' })).rejects.toThrow(
+      /Validation failed/
+    )
+
+    expect(notesQueries.renameTag).not.toHaveBeenCalled()
+    expect(notesQueries.findNotesWithTagInfo).not.toHaveBeenCalled()
+  })
+})
+
+describe('tags-handlers vault-file edge cases', () => {
+  const indexDb = () => createDbMock({ allResult: [{ noteId: 'note-1' }] })
+
+  beforeEach(() => {
+    resetIpcMocks()
+    vi.clearAllMocks()
+    resettableStoreMocks().forEach((mock) => mock.mockReset())
+    mockSend.mockClear()
+    ;(getIndexDatabase as Mock).mockReturnValue(indexDb())
+    ;(requireDatabase as Mock).mockReturnValue(createDbMock())
+    ;(notesQueries.getNoteCacheById as Mock).mockReturnValue({ path: 'notes/a.md' })
+    fileMocks.toAbsolutePath.mockImplementation((notePath: string) => `/vault/${notePath}`)
+    fileMocks.readFile.mockResolvedValue('---\ntags: [old]\n---\nBody')
+    fileMocks.parseNote.mockReturnValue({ frontmatter: { tags: ['old'] }, content: 'Body' })
+    fileMocks.serializeParsedNote.mockReturnValue('serialized note')
+    fileMocks.atomicWrite.mockResolvedValue(undefined)
+    registerTagsHandlers()
+  })
+
+  it('keeps the tag operation successful when the note file cannot be rewritten', async () => {
+    // The index is already updated at this point; a missing/unreadable file on
+    // disk must not be reported to the user as a failed rename/delete/merge.
+    fileMocks.readFile.mockRejectedValue(new Error('ENOENT: no such file or directory'))
+    ;(notesQueries.renameTag as Mock).mockReturnValue(2)
+    ;(notesQueries.deleteTag as Mock).mockReturnValue(2)
+    ;(tagQueries.mergeTagInNotes as Mock).mockReturnValue({ affected: 1, noteIds: ['note-1'] })
+    ;(tagQueries.mergeTagInTasks as Mock).mockReturnValue({ affected: 0, taskIds: [] })
+
+    await expect(
+      invokeHandler(TagsChannels.invoke.RENAME_TAG, { oldName: 'old', newName: 'new' })
+    ).resolves.toEqual({ success: true, affectedNotes: 2 })
+    expect(mockSend).toHaveBeenCalledWith(
+      TagsChannels.events.RENAMED,
+      expect.objectContaining({ oldName: 'old', newName: 'new', affectedNotes: 2 })
+    )
+
+    await expect(invokeHandler(TagsChannels.invoke.DELETE_TAG, 'old')).resolves.toEqual({
+      success: true,
+      affectedNotes: 2
+    })
+
+    await expect(
+      invokeHandler(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE, { noteId: 'note-1', tag: 'old' })
+    ).resolves.toEqual({ success: true })
+
+    await expect(
+      invokeHandler(TagsChannels.invoke.MERGE_TAG, { source: 'old', target: 'new' })
+    ).resolves.toEqual({ success: true, affectedItems: 1 })
+
+    expect(fileMocks.atomicWrite).not.toHaveBeenCalled()
+    expect(fileMocks.syncTaggedNote).not.toHaveBeenCalled()
+  })
+
+  it('leaves a note untouched when its frontmatter has no tags list', async () => {
+    // Frontmatter `tags` may be absent or a bare string; neither is an array and
+    // neither may trigger a byte-changing rewrite of the user's file.
+    fileMocks.readFile.mockResolvedValue('RAW FILE')
+    fileMocks.parseNote.mockReturnValue({ frontmatter: { title: 'A' }, content: 'Body' })
+    fileMocks.serializeParsedNote.mockReturnValue('RAW FILE')
+
+    await expect(
+      invokeHandler(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE, { noteId: 'note-1', tag: 'old' })
+    ).resolves.toEqual({ success: true })
+
+    expect(fileMocks.serializeParsedNote).toHaveBeenCalledWith(
+      { frontmatter: { title: 'A' }, content: 'Body' },
+      'Body',
+      { frontmatterEdited: true }
+    )
+    expect(fileMocks.atomicWrite).not.toHaveBeenCalled()
+    expect(fileMocks.syncTaggedNote).toHaveBeenCalledWith('note-1')
+  })
+
+  it('strips only the removed tag from the note frontmatter, ignoring case and padding', async () => {
+    fileMocks.parseNote.mockReturnValue({
+      frontmatter: { tags: ['Old', 'keep'] },
+      content: 'Body'
+    })
+
+    await expect(
+      invokeHandler(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE, { noteId: 'note-1', tag: ' OLD ' })
+    ).resolves.toEqual({ success: true })
+
+    expect(fileMocks.serializeParsedNote).toHaveBeenCalledWith(
+      expect.objectContaining({ frontmatter: { tags: ['keep'] } }),
+      'Body',
+      { frontmatterEdited: true }
+    )
+    expect(fileMocks.atomicWrite).toHaveBeenCalledWith('/vault/notes/a.md', 'serialized note')
+    expect(fileMocks.syncTaggedNote).toHaveBeenCalledWith('note-1')
+  })
+
+  it('appends the target tag when the merged note does not already carry it', async () => {
+    ;(tagQueries.mergeTagInNotes as Mock).mockReturnValue({ affected: 1, noteIds: ['note-1'] })
+    ;(tagQueries.mergeTagInTasks as Mock).mockReturnValue({ affected: 2, taskIds: ['task-1'] })
+    fileMocks.parseNote.mockReturnValue({
+      frontmatter: { tags: ['source', 'other'] },
+      content: 'Body'
+    })
+
+    await expect(
+      invokeHandler(TagsChannels.invoke.MERGE_TAG, { source: ' Source ', target: ' Target ' })
+    ).resolves.toEqual({ success: true, affectedItems: 3 })
+
+    expect(fileMocks.serializeParsedNote).toHaveBeenCalledWith(
+      expect.objectContaining({ frontmatter: { tags: ['other', 'Target'] } }),
+      'Body',
+      { frontmatterEdited: true }
+    )
+    expect(fileMocks.atomicWrite).toHaveBeenCalledWith('/vault/notes/a.md', 'serialized note')
+  })
+
+  it('reports a note without a word count as zero words', async () => {
+    ;(notesQueries.getOrCreateTag as Mock).mockReturnValue({ name: 'focus', color: 'blue' })
+    ;(notesQueries.getNoteTags as Mock).mockReturnValue(['focus'])
+    ;(notesQueries.findNotesWithTagInfo as Mock).mockReturnValue([
+      {
+        id: 'note-1',
+        path: 'notes/a.md',
+        title: 'Note A',
+        createdAt: '2025-01-01',
+        modifiedAt: '2025-01-02',
+        wordCount: null,
+        isPinned: false,
+        pinnedAt: null,
+        emoji: '📌'
+      }
+    ])
+
+    const result = await invokeHandler<{ count: number; unpinnedNotes: unknown[] }>(
+      TagsChannels.invoke.GET_NOTES_BY_TAG,
+      { tag: 'focus' }
+    )
+
+    expect(result.count).toBe(1)
+    expect(result.unpinnedNotes).toEqual([
+      expect.objectContaining({ id: 'note-1', wordCount: 0, emoji: '📌', pinnedAt: null })
+    ])
   })
 })

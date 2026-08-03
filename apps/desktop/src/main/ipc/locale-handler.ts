@@ -93,7 +93,11 @@ export async function applyLocale(locale: Locale): Promise<void> {
   logger.info('Changing locale', { from: activeLocale, to: locale })
 
   try {
-    persistLocale(locale)
+    // Persist only once the runtime switch has actually succeeded. Writing
+    // first meant a rejected changeLanguage (a locale bundle that fails to
+    // load) left config.json and the store holding a language the app never
+    // switched to, and `activeLocale` disagreeing with both — the same drift
+    // this path exists to prevent, just on the error branch.
     await runtime.i18n.changeLanguage(locale)
     runtime.rebuildMenu(locale)
 
@@ -102,6 +106,7 @@ export async function applyLocale(locale: Locale): Promise<void> {
     }
 
     activeLocale = locale
+    persistLocale(locale)
     logger.info('Locale changed', { locale })
   } catch (err) {
     logger.error('Locale change failed', { locale, error: err })
