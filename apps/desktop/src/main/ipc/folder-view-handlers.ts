@@ -230,7 +230,7 @@ export function registerFolderViewHandlers(): void {
           ...input.config
         })
         return { success: true }
-      }, 'Failed to set config')
+      }, 'errors:folderView.setConfigFailed')
     )
   )
 
@@ -275,7 +275,7 @@ export function registerFolderViewHandlers(): void {
 
         await writeScopedViews(input.scope, views)
         return { success: true }
-      }, 'Failed to set view')
+      }, 'errors:folderView.setViewFailed')
     )
   )
 
@@ -299,7 +299,7 @@ export function registerFolderViewHandlers(): void {
         }
 
         return { success: true }
-      }, 'Failed to delete view')
+      }, 'errors:folderView.deleteViewFailed')
     )
   )
 

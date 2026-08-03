@@ -25,6 +25,7 @@ import {
 import { requireDatabase } from '../database'
 import * as remindersService from '../lib/reminders'
 import { z } from 'zod'
+import { getMainI18n } from '../lib/main-i18n'
 
 const logger = createLogger('IPC:Reminder')
 
@@ -51,7 +52,7 @@ export function registerReminderHandlers(): void {
         ensureDb()
         const reminder = remindersService.createReminder(input)
         return { success: true, reminder }
-      }, 'Failed to create reminder')
+      }, 'errors:reminder.createFailed')
     )
   )
 
@@ -64,10 +65,14 @@ export function registerReminderHandlers(): void {
         ensureDb()
         const reminder = remindersService.updateReminder(input)
         if (!reminder) {
-          return { success: false, reminder: null, error: 'Reminder not found' }
+          return {
+            success: false,
+            reminder: null,
+            error: getMainI18n().t('errors:reminder.notFound')
+          }
         }
         return { success: true, reminder }
-      }, 'Failed to update reminder')
+      }, 'errors:reminder.updateFailed')
     )
   )
 
@@ -79,7 +84,7 @@ export function registerReminderHandlers(): void {
 
       const deleted = remindersService.deleteReminder(id)
       if (!deleted) {
-        return { success: false, error: 'Reminder not found' }
+        return { success: false, error: getMainI18n().t('errors:reminder.notFound') }
       }
       return { success: true }
     })
@@ -157,10 +162,14 @@ export function registerReminderHandlers(): void {
         ensureDb()
         const reminder = remindersService.dismissReminder(id)
         if (!reminder) {
-          return { success: false, reminder: null, error: 'Reminder not found' }
+          return {
+            success: false,
+            reminder: null,
+            error: getMainI18n().t('errors:reminder.notFound')
+          }
         }
         return { success: true, reminder }
-      }, 'Failed to dismiss reminder')
+      }, 'errors:reminder.dismissFailed')
     )
   )
 
@@ -173,10 +182,14 @@ export function registerReminderHandlers(): void {
         ensureDb()
         const reminder = remindersService.snoozeReminder(input)
         if (!reminder) {
-          return { success: false, reminder: null, error: 'Reminder not found' }
+          return {
+            success: false,
+            reminder: null,
+            error: getMainI18n().t('errors:reminder.notFound')
+          }
         }
         return { success: true, reminder }
-      }, 'Failed to snooze reminder')
+      }, 'errors:reminder.snoozeFailed')
     )
   )
 
@@ -189,7 +202,7 @@ export function registerReminderHandlers(): void {
         ensureDb()
         const dismissedCount = remindersService.bulkDismissReminders(input.reminderIds)
         return { success: true, dismissedCount }
-      }, 'Failed to dismiss reminders')
+      }, 'errors:reminder.dismissAllFailed')
     )
   )
 }

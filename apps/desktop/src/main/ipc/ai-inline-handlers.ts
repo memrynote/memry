@@ -8,6 +8,7 @@ import { createLogger } from '../lib/logger'
 import { getSetting, setSetting } from '../settings/settings-store'
 import { isConnectionRefusedError, markExpectedCondition } from '../telemetry/expected-conditions'
 import { withErrorHandler } from './validate'
+import { getMainI18n } from '../lib/main-i18n'
 
 const logger = createLogger('IPC:AIInline')
 
@@ -50,7 +51,7 @@ export function registerAIInlineHandlers(): void {
     AIInlineChannels.invoke.SET_SETTINGS,
     (_event, updates: Partial<AIInlineSettings>) => {
       const db = getDbOrNull()
-      if (!db) return { success: false, error: 'No vault open' }
+      if (!db) return { success: false, error: getMainI18n().t('errors:ipc.noVaultOpen') }
 
       const current = readSettings()
 
@@ -81,11 +82,11 @@ export function registerAIInlineHandlers(): void {
     withErrorHandler(async () => {
       const settings = readSettings()
       if (!settings.enabled) {
-        return { success: false, error: 'AI inline editing is disabled' }
+        return { success: false, error: getMainI18n().t('errors:ai.inlineDisabled') }
       }
       const port = await startChatServer(settings)
       return { success: true, port }
-    }, 'Unknown error')
+    }, 'errors:generic.unknown')
   )
 
   ipcMain.handle(AIInlineChannels.invoke.STOP_SERVER, async () => {
@@ -113,7 +114,7 @@ export function registerAIInlineHandlers(): void {
       const json = (await res.json()) as { data?: Array<{ id?: string }> }
       const models = (json.data ?? []).map((m) => m.id).filter((id): id is string => Boolean(id))
       return { success: true, models }
-    }, 'Failed to list Ollama models')
+    }, 'errors:ai.listOllamaModelsFailed')
   )
 }
 

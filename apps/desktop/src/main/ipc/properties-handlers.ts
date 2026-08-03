@@ -32,6 +32,7 @@ import { getCanonicalJournalByDate } from '@memry/domain-notes'
 import { enqueueJournalUpdate } from '../journal/runtime-effects'
 import { syncNoteUpdate } from '../notes/runtime-effects'
 import { syncJournalCache } from '../vault/journal-cache-sync'
+import { getMainI18n } from '../lib/main-i18n'
 
 const logger = createLogger('IPC:Properties')
 
@@ -67,7 +68,7 @@ export function registerPropertiesHandlers(): void {
         const entity = getNoteCacheById(db, input.entityId)
 
         if (!entity) {
-          return { success: false, error: 'Entity not found' }
+          return { success: false, error: getMainI18n().t('errors:property.entityNotFound') }
         }
 
         logger.debug('properties:set', {
@@ -83,7 +84,7 @@ export function registerPropertiesHandlers(): void {
           syncNoteUpdate(input.entityId)
         }
         return { success: true }
-      }, 'Failed to set properties')
+      }, 'errors:property.setFailed')
     )
   )
 
@@ -99,18 +100,24 @@ export function registerPropertiesHandlers(): void {
         const entity = getNoteCacheById(db, input.entityId)
 
         if (!entity) {
-          return { success: false, error: 'Entity not found' }
+          return { success: false, error: getMainI18n().t('errors:property.entityNotFound') }
         }
 
         const existingProps = getNoteProperties(db, input.entityId)
         const propToRename = existingProps.find((p) => p.name === input.oldName)
 
         if (!propToRename) {
-          return { success: false, error: `Property "${input.oldName}" not found` }
+          return {
+            success: false,
+            error: getMainI18n().t('errors:property.notFound', { name: input.oldName })
+          }
         }
 
         if (existingProps.some((p) => p.name === input.newName)) {
-          return { success: false, error: `Property "${input.newName}" already exists` }
+          return {
+            success: false,
+            error: getMainI18n().t('errors:property.alreadyExists', { name: input.newName })
+          }
         }
 
         const newProperties: Record<string, unknown> = {}
@@ -131,7 +138,7 @@ export function registerPropertiesHandlers(): void {
         }
 
         return { success: true }
-      }, 'Failed to rename property')
+      }, 'errors:property.renameFailed')
     )
   )
 }

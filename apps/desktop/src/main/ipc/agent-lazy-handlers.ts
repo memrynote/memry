@@ -19,6 +19,7 @@ import { getAgentPreferences, setAgentPreferences } from '../agent/settings'
 import { getDisclosureState, acceptDisclosure } from '../agent/runtime/disclosure-state'
 import { ensureLazyAgentServicesStarted } from '../agent/lazy-services'
 import { createLogger } from '../lib/logger'
+import { getMainI18n } from '../lib/main-i18n'
 
 const logger = createLogger('IPC:AgentLazy')
 
@@ -43,6 +44,12 @@ const CLI_MODEL_OPTIONS: Record<'claude_cli' | 'codex_cli', AgentBackendModelLis
   }
 }
 
+// DO NOT localize the thrown 'Agent runtime is starting. Try again.' messages
+// below. The renderer's shouldRetryAgentBootstrap (agent-chat/agent-context.tsx)
+// substring-matches that exact English text to decide whether to retry the
+// bootstrap invoke; a translated (or key-shaped) message breaks the retry loop
+// and the agent panel fails to start for every non-English locale. Only the
+// SEND_TURN envelope below is safe to translate — it is displayed, never matched.
 export function registerLazyAgentHandlers(): void {
   unregisterLazyAgentHandlers()
 
@@ -74,7 +81,7 @@ export function registerLazyAgentHandlers(): void {
       _payload: unknown
     ): Promise<{ ok: boolean; error: string } | { ok: boolean; error?: undefined }> => {
       await ensureLazyAgentServicesStarted()
-      return { ok: false, error: 'Agent runtime is starting. Try again.' }
+      return { ok: false, error: getMainI18n().t('errors:agent.runtimeStarting') }
     }
   )
   ipcMain.handle(

@@ -23,6 +23,7 @@ import {
   syncFilterDelete,
   syncFilterUpdate
 } from '../settings/saved-filters-sync'
+import { getMainI18n } from '../lib/main-i18n'
 
 /**
  * Emit saved filter event to all windows
@@ -101,7 +102,11 @@ export function registerSavedFiltersHandlers(): void {
 
       // Check if filter exists
       if (!savedFiltersStore.savedFilterExists(db, input.id)) {
-        return { success: false, savedFilter: null, error: 'Saved filter not found' }
+        return {
+          success: false,
+          savedFilter: null,
+          error: getMainI18n().t('errors:savedFilter.notFound')
+        }
       }
 
       const updates: { name?: string; config?: unknown; position?: number } = {}
@@ -130,7 +135,7 @@ export function registerSavedFiltersHandlers(): void {
 
       const existing = savedFiltersStore.getSavedFilterById(db, input.id)
       if (!existing) {
-        return { success: false, error: 'Saved filter not found' }
+        return { success: false, error: getMainI18n().t('errors:savedFilter.notFound') }
       }
 
       const snapshot = JSON.stringify(existing)

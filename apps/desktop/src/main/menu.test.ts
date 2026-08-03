@@ -262,6 +262,34 @@ describe('buildAppMenu', () => {
     )
   })
 
+  it('labels the role items that would otherwise render Electron defaults', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+
+    buildAppMenu(i18n)
+
+    // Regression: a role without a label renders Electron's own English string
+    // ("Actual Size", "Minimize", …) right next to translated siblings. The role
+    // stays — it provides the behaviour — and the label only names it.
+    expect(findMenuItem('Paste and Match Style')).toMatchObject({ role: 'pasteAndMatchStyle' })
+    expect(findMenuItem('Delete')).toMatchObject({ role: 'delete' })
+    expect(findMenuItem('Actual Size')).toMatchObject({ role: 'resetZoom' })
+    expect(findMenuItem('Zoom In')).toMatchObject({ role: 'zoomIn' })
+    expect(findMenuItem('Zoom Out')).toMatchObject({ role: 'zoomOut' })
+
+    // macOS app menu only. Same app.name trap as About: the hide role's default
+    // label is `Hide ${app.name}`, which reads "Hide @memry/desktop" in production.
+    if (process.platform === 'darwin') {
+      expect(findMenuItem('Hide MemryNote')).toMatchObject({ role: 'hide' })
+    }
+
+    // The windowMenu role's children are Electron defaults too, so the submenu is
+    // spelled out with labelled items while the role itself is left intact.
+    const template = buildFromTemplate.mock.calls.at(-1)?.[0] as TemplateItem[]
+    expect(template.find((item) => item.label === 'Window')).toMatchObject({ role: 'windowMenu' })
+    expect(findMenuItem('Minimize')).toMatchObject({ role: 'minimize' })
+    expect(findMenuItem('Zoom')).toMatchObject({ role: 'zoom' })
+  })
+
   it('builds a native editable context menu from edit flags', async () => {
     const i18n = await createMainI18n({ locale: 'en' })
 

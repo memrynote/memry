@@ -69,6 +69,7 @@ import {
   type TerminalCommandOptions,
   type TerminalCommandStatus as BaseTerminalCommandStatus
 } from '../cli/terminal-command'
+import { getMainI18n } from '../lib/main-i18n'
 
 // ============================================================================
 // Settings Keys
@@ -310,7 +311,7 @@ function writeGroupSettings<T extends Record<string, unknown>>(
   updates: Partial<T>
 ): { success: boolean; error?: string } {
   const db = getDbOrNull()
-  if (!db) return { success: false, error: 'No vault open' }
+  if (!db) return { success: false, error: getMainI18n().t('errors:ipc.noVaultOpen') }
 
   const current = readGroupSettings(groupKey, defaults)
   const updated = { ...current, ...updates }
@@ -353,7 +354,7 @@ export function registerSettingsHandlers(): void {
     (_event, { key, value }: { key: string; value: string }) => {
       const db = getDbOrNull()
       if (!db) {
-        return { success: false, error: 'No vault open' }
+        return { success: false, error: getMainI18n().t('errors:ipc.noVaultOpen') }
       }
       setSetting(db, key, value)
 
@@ -408,7 +409,7 @@ export function registerSettingsHandlers(): void {
     (_event, settings: Partial<JournalSettings>) => {
       const db = getDbOrNull()
       if (!db) {
-        return { success: false, error: 'No vault open' }
+        return { success: false, error: getMainI18n().t('errors:ipc.noVaultOpen') }
       }
 
       if (settings.defaultTemplate !== undefined) {
@@ -478,7 +479,7 @@ export function registerSettingsHandlers(): void {
     (_event, settings: Partial<AISettings>) => {
       const db = getDbOrNull()
       if (!db) {
-        return { success: false, error: 'No vault open' }
+        return { success: false, error: getMainI18n().t('errors:ipc.noVaultOpen') }
       }
 
       if (settings.enabled !== undefined) {
@@ -529,9 +530,13 @@ export function registerSettingsHandlers(): void {
       }
 
       const status = getVoiceModelStatus()
-      return { success: false, error: status.error ?? 'Failed to download voice model' }
+      return {
+        success: false,
+        error: status.error ?? getMainI18n().t('errors:settings.voiceModelDownloadFailed')
+      }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
+      const message =
+        error instanceof Error ? error.message : getMainI18n().t('errors:generic.unknown')
       return { success: false, error: message }
     }
   })
@@ -552,7 +557,10 @@ export function registerSettingsHandlers(): void {
       } catch (error) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to install terminal command',
+          error:
+            error instanceof Error
+              ? error.message
+              : getMainI18n().t('errors:settings.terminalCommandInstallFailed'),
           status: await getTerminalStatusSafely()
         }
       }
@@ -571,7 +579,10 @@ export function registerSettingsHandlers(): void {
       } catch (error) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to uninstall terminal command',
+          error:
+            error instanceof Error
+              ? error.message
+              : getMainI18n().t('errors:settings.terminalCommandUninstallFailed'),
           status: await getTerminalStatusSafely()
         }
       }
@@ -585,7 +596,7 @@ export function registerSettingsHandlers(): void {
       if (!vault) {
         return {
           success: false,
-          error: 'Unknown vault',
+          error: getMainI18n().t('errors:settings.unknownVault'),
           status: await getTerminalStatusSafely()
         }
       }
@@ -631,7 +642,8 @@ export function registerSettingsHandlers(): void {
         await setVoiceTranscriptionOpenAIApiKey(apiKey)
         return { success: true }
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error'
+        const message =
+          error instanceof Error ? error.message : getMainI18n().t('errors:generic.unknown')
         return { success: false, error: message }
       }
     }
@@ -665,7 +677,7 @@ export function registerSettingsHandlers(): void {
       }
 
       if (isModelLoading()) {
-        return { success: false, error: 'Model is already loading' }
+        return { success: false, error: getMainI18n().t('errors:settings.modelAlreadyLoading') }
       }
 
       // Manual load is an explicit retry — clear the circuit breaker first (#803).
@@ -675,9 +687,12 @@ export function registerSettingsHandlers(): void {
         return { success: true }
       } else {
         const info = getModelInfo()
-        return { success: false, error: info.error || 'Failed to load model' }
+        return {
+          success: false,
+          error: info.error || getMainI18n().t('errors:settings.modelLoadFailed')
+        }
       }
-    }, 'Unknown error')
+    }, 'errors:generic.unknown')
   )
 
   // Reindex embeddings
@@ -693,7 +708,7 @@ export function registerSettingsHandlers(): void {
         skipped: number
         error?: string
       }
-    }, 'Unknown error')
+    }, 'errors:generic.unknown')
   )
 
   // Get tab settings
@@ -722,7 +737,7 @@ export function registerSettingsHandlers(): void {
     (_event, settings: Partial<TabSettings>) => {
       const db = getDbOrNull()
       if (!db) {
-        return { success: false, error: 'No vault open' }
+        return { success: false, error: getMainI18n().t('errors:ipc.noVaultOpen') }
       }
 
       if (settings.restoreSessionOnStart !== undefined) {
@@ -770,7 +785,7 @@ export function registerSettingsHandlers(): void {
     (_event, settings: Partial<NoteEditorSettings>) => {
       const db = getDbOrNull()
       if (!db) {
-        return { success: false, error: 'No vault open' }
+        return { success: false, error: getMainI18n().t('errors:ipc.noVaultOpen') }
       }
 
       if (settings.toolbarMode !== undefined) {
@@ -923,7 +938,7 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle(SettingsChannels.invoke.RESET_KEYBOARD_SETTINGS, () => {
     const db = getDbOrNull()
     if (!db) {
-      return { success: false, error: 'No vault open' }
+      return { success: false, error: getMainI18n().t('errors:ipc.noVaultOpen') }
     }
 
     deleteSetting(db, 'keyboard')
@@ -997,7 +1012,11 @@ export function applyGlobalCaptureShortcut(): GlobalCaptureResult {
 
   if (!registered) {
     logger.warn(`Global capture: failed to register ${accelerator} (may be in use)`)
-    return { success: false, registered: false, error: `Shortcut ${accelerator} is already in use` }
+    return {
+      success: false,
+      registered: false,
+      error: getMainI18n().t('errors:settings.shortcutInUse', { shortcut: accelerator })
+    }
   }
 
   logger.info(`Global capture: registered ${accelerator}`)

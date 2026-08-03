@@ -12,7 +12,7 @@ import {
   storeGoogleCalendarTokens
 } from './keychain'
 import {
-  CALENDAR_SCOPE_NOT_GRANTED_MESSAGE,
+  calendarScopeNotGrantedMessage,
   userMessageForCalendarApiError,
   userMessageForTokenEndpointError
 } from './oauth-errors'
@@ -444,7 +444,7 @@ export async function connectGoogleCalendar(): Promise<GoogleCalendarConnection>
       requestedScope: GOOGLE_CALENDAR_SCOPE,
       grantedScopes
     })
-    throw new Error(CALENDAR_SCOPE_NOT_GRANTED_MESSAGE)
+    throw new Error(calendarScopeNotGrantedMessage())
   }
 
   const userInfo = await fetchUserInfo(tokenResponse.access_token)

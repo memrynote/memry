@@ -12,6 +12,7 @@
 import { readFile } from 'fs/promises'
 import { basename } from 'path'
 import { parseTickTickCsv, mapRows, type ImportPlan } from '@memry/importers/ticktick'
+import { IMPORT_MESSAGE_CODES, toImportMessage } from '@memry/importers/messages'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportPreview } from '../types'
 import { applyPlan, type ApplyDeps } from './apply-plan'
@@ -70,13 +71,16 @@ export async function buildTickTickPreview(
           { labelKey: 'import.stats.reminders', value: plan.stats.reminders }
         ],
         sampleTitles: plan.tasks.slice(0, 5).map((t) => t.title),
-        warnings: plan.warnings.map((w) => w.message)
+        warnings: plan.warnings
       })
     } catch (err) {
       groups.push({
         label: basename(fp),
         counts: [],
-        error: errorMessage(err, 'Failed to read file')
+        error: toImportMessage(err, {
+          code: IMPORT_MESSAGE_CODES.readFileFailed,
+          message: 'Failed to read file'
+        })
       })
     }
   }

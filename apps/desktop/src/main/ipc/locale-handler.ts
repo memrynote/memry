@@ -62,7 +62,56 @@ function persistLocale(locale: Locale): void {
   }
 }
 
+let runtime: { i18n: I18nInstance; rebuildMenu: RebuildMenuFn } | null = null
+
+/**
+ * The one place a locale becomes live: persist it, swap the main-process i18n
+ * language, rebuild the native menu, notify every renderer, and update
+ * `activeLocale` so LocaleChannels.Get keeps agreeing with what is persisted.
+ *
+ * Used by the LocaleChannels.Set IPC (local switch) and by the settings sync
+ * handler (a language changed on another device). Deliberately free of any sync
+ * enqueue: SettingsSyncManager.updateField() is the only thing that ever pushes
+ * a settings item, and nothing reachable from here touches that manager — so
+ * applying an inbound locale cannot echo a new write back out.
+ *
+ * The flip side, and a real gap: a *local* switch does not push either. The
+ * language UI (settings/general-section.tsx, vault-onboarding.tsx) calls
+ * window.api.locale.set() and never SET_GENERAL_SETTINGS, so nothing in this
+ * build populates `general.language` in the synced settings payload. This
+ * function is the receiving half only; until the local path enqueues
+ * `general.language`, the sync handler's applySyncedLocale() never sees a value.
+ */
+export async function applyLocale(locale: Locale): Promise<void> {
+  if (locale === activeLocale) return
+
+  if (!runtime) {
+    logger.warn('Locale apply requested before handlers were registered', { locale })
+    return
+  }
+
+  logger.info('Changing locale', { from: activeLocale, to: locale })
+
+  try {
+    persistLocale(locale)
+    await runtime.i18n.changeLanguage(locale)
+    runtime.rebuildMenu(locale)
+
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send(LocaleChannels.Changed, locale)
+    }
+
+    activeLocale = locale
+    logger.info('Locale changed', { locale })
+  } catch (err) {
+    logger.error('Locale change failed', { locale, error: err })
+    throw err
+  }
+}
+
 export function registerLocaleHandlers(i18n: I18nInstance, rebuildMenu: RebuildMenuFn): void {
+  runtime = { i18n, rebuildMenu }
+
   const initialLocale = LocaleSchema.safeParse(i18n.language)
   activeLocale = initialLocale.success ? initialLocale.data : 'en'
 
@@ -71,25 +120,6 @@ export function registerLocaleHandlers(i18n: I18nInstance, rebuildMenu: RebuildM
   ipcMain.handle(LocaleChannels.List, () => SUPPORTED_LOCALES)
 
   ipcMain.handle(LocaleChannels.Set, async (_event, candidate: unknown): Promise<void> => {
-    const locale = LocaleSchema.parse(candidate)
-    if (locale === activeLocale) return
-
-    logger.info('Changing locale', { from: activeLocale, to: locale })
-
-    try {
-      persistLocale(locale)
-      await i18n.changeLanguage(locale)
-      rebuildMenu(locale)
-
-      for (const win of BrowserWindow.getAllWindows()) {
-        win.webContents.send(LocaleChannels.Changed, locale)
-      }
-
-      activeLocale = locale
-      logger.info('Locale changed', { locale })
-    } catch (err) {
-      logger.error('Locale change failed', { locale, error: err })
-      throw err
-    }
+    await applyLocale(LocaleSchema.parse(candidate))
   })
 }

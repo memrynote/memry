@@ -264,7 +264,7 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
         total: totalRow?.total ?? 0
       }
     },
-    'Failed to fetch sync history'
+    'errors:sync.historyFetchFailed'
   )
 
   ipcMain.handle(SYNC_CHANNELS.GET_QUEUE_SIZE, () => {
@@ -296,7 +296,7 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
       manager.updateField(input.fieldPath, input.value, 'local')
       return { success: true }
     },
-    'Failed to update synced setting'
+    'errors:sync.updateSyncedSettingFailed'
   )
 
   ipcMain.handle(SYNC_CHANNELS.GET_SYNCED_SETTINGS, () => {

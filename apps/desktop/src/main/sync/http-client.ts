@@ -1,5 +1,6 @@
 import { net } from 'electron'
 import { RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
+import { getMainI18n } from '../lib/main-i18n'
 import { withRetry } from './retry'
 
 // Declared to the server so it never sends this build an item type our
@@ -122,9 +123,7 @@ export const syncFetch = async <T>(
       body: body != null ? JSON.stringify(body) : undefined
     })
   } catch {
-    throw new NetworkError(
-      `Unable to connect to sync server. Please check your internet connection.`
-    )
+    throw new NetworkError(getMainI18n().t('errors:sync.serverUnreachable'))
   }
 
   if (response.status === 429) {

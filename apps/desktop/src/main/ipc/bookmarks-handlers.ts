@@ -30,6 +30,7 @@ import {
   enqueueBookmarkDelete,
   enqueueBookmarkUpdate
 } from '../bookmarks/runtime-effects'
+import { getMainI18n } from '../lib/main-i18n'
 
 /**
  * Emit bookmark event to all windows
@@ -171,7 +172,7 @@ export function registerBookmarksHandlers(): void {
         return {
           success: false,
           bookmark: null,
-          error: 'Item is already bookmarked'
+          error: getMainI18n().t('errors:bookmark.alreadyBookmarked')
         }
       }
 
@@ -201,7 +202,7 @@ export function registerBookmarksHandlers(): void {
 
       const bookmark = bookmarkQueries.getBookmarkById(db, id)
       if (!bookmark) {
-        return { success: false, error: 'Bookmark not found' }
+        return { success: false, error: getMainI18n().t('errors:bookmark.notFound') }
       }
 
       bookmarkQueries.deleteBookmark(db, id)

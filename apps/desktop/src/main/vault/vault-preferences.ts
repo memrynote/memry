@@ -6,6 +6,7 @@ import {
   GENERAL_SETTINGS_DEFAULTS,
   EDITOR_SETTINGS_DEFAULTS
 } from '@memry/contracts/settings-schemas'
+import { LocaleSchema } from '@memry/contracts/locale-api'
 
 const EditorPreferencesSchema = z.object({
   // Legacy widths (narrow/medium/wide) from older config.json coerce to 'normal'.
@@ -19,7 +20,12 @@ export const VaultPreferencesSchema = z.object({
   fontSize: z.enum(['small', 'medium', 'large']),
   fontFamily: z.enum(['system', 'serif', 'sans-serif', 'monospace', 'gelasio', 'geist', 'inter']),
   accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-  language: z.string().min(2).max(5),
+  // The supported-locale enum, not a loose length-bounded string. min(2).max(5)
+  // rejected nothing the app actually ships — every SUPPORTED_LOCALES entry is
+  // 2–5 characters ('fil', 'zh-CN') — while happily accepting values that are
+  // not locales at all ('xx', 'zzz', 'en-XX'). Declaration only — readPreferences
+  // below stays tolerant on purpose (see its comment).
+  language: LocaleSchema,
   createInSelectedFolder: z.boolean(),
   editor: EditorPreferencesSchema
 })
@@ -52,6 +58,12 @@ export const PORTABLE_GENERAL_FIELDS = [
   'createInSelectedFolder'
 ] as const satisfies readonly (keyof VaultPreferences)[]
 
+// Deliberately hand-rolled instead of VaultPreferencesSchema.parse(): config.json
+// is written by older (and newer) app versions, so an unrecognised value must
+// degrade to the default rather than throw, and an unknown-but-valid-looking
+// language must survive the read/merge/write round trip instead of being
+// clobbered back to 'en'. Both language consumers (main/index.ts and
+// settings-cache.writeCacheFromPreferences) re-validate with LocaleSchema.
 export function readPreferences(vaultPath: string): VaultPreferences {
   const configPath = getConfigPath(vaultPath)
 

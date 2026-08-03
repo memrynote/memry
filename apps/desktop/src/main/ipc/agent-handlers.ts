@@ -33,6 +33,7 @@ import type { MessageStore } from '../agent/storage/message-store'
 import type { Conversation, Message } from '../agent/storage/types'
 import { broadcastAgentEvent } from '../agent/runtime/event-bus'
 import { createLogger } from '../lib/logger'
+import { getMainI18n } from '../lib/main-i18n'
 
 const logger = createLogger('IPC:Agent')
 
@@ -131,7 +132,7 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
     } catch (error) {
       return {
         ok: false,
-        error: extractErrorMessage(error, 'Conversation busy')
+        error: extractErrorMessage(error, getMainI18n().t('errors:agent.conversationBusy'))
       }
     }
 

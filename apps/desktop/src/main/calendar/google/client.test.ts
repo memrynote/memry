@@ -28,6 +28,18 @@ vi.mock('../../lib/logger', () => ({
   createLogger: () => loggerMock
 }))
 
+// oauth-errors resolves its copy through the main-process i18n singleton, which
+// only exists after setMainI18n() during app boot. Without this, every mapped
+// API/token failure below throws 'main-process i18n not initialized' instead of
+// the mapped message — and throwCalendarApiFailure never attaches
+// error.status / error.apiStatus.
+vi.mock('../../lib/main-i18n', () => ({
+  getMainI18n: () => ({
+    t: (key: string) => key,
+    getFixedT: () => (key: string) => key
+  })
+}))
+
 import { createGoogleCalendarClient } from './client'
 import {
   LEGACY_DEFAULT_ACCOUNT_ID,

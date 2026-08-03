@@ -11,6 +11,7 @@
 import { readFile } from 'fs/promises'
 import { basename } from 'path'
 import { parseCsv, mapRows } from '@memry/importers/csv'
+import { IMPORT_MESSAGE_CODES, toImportMessage } from '@memry/importers/messages'
 import { createNote } from '../../vault/notes-crud'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportPreview, ImportSummary } from '../types'
@@ -37,8 +38,16 @@ async function previewFile(filePath: string): Promise<ImportPreview['groups'][nu
     sampleTitles: plan.sampleTitles,
     warnings: [
       ...plan.warnings,
-      `Columns: ${plan.columns.join(', ')}`,
-      `Title from "${plan.titleColumn}"; other columns saved as properties`
+      {
+        code: IMPORT_MESSAGE_CODES.csvColumns,
+        message: `Columns: ${plan.columns.join(', ')}`,
+        params: { columns: plan.columns.join(', ') }
+      },
+      {
+        code: IMPORT_MESSAGE_CODES.csvTitleColumn,
+        message: `Title from "${plan.titleColumn}"; other columns saved as properties`,
+        params: { column: plan.titleColumn }
+      }
     ]
   }
 }
@@ -51,7 +60,14 @@ async function preview(input: ImportInput, signal: AbortSignal): Promise<ImportP
     try {
       groups.push(await previewFile(fp))
     } catch (err) {
-      groups.push({ label: basename(fp), counts: [], error: errorMessage(err) })
+      groups.push({
+        label: basename(fp),
+        counts: [],
+        error: toImportMessage(err, {
+          code: IMPORT_MESSAGE_CODES.readFileFailed,
+          message: 'Failed to read file'
+        })
+      })
     }
   }
   return { groups }

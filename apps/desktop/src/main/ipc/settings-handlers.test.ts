@@ -290,7 +290,10 @@ describe('settings-handlers', () => {
       key: 'appearance.theme',
       value: 'dark'
     })
-    expect(result).toEqual({ success: false, error: 'No vault open' })
+    expect(result).toEqual({
+      success: false,
+      error: 'No vault is open. Please open a vault first.'
+    })
     expect(mockTrackMainEvent).not.toHaveBeenCalled()
   })
 
@@ -497,7 +500,7 @@ describe('settings-handlers', () => {
       invokeHandler(SettingsChannels.invoke.SET_VOICE_TRANSCRIPTION_OPENAI_KEY, {
         apiKey: 'sk-bad'
       })
-    ).resolves.toEqual({ success: false, error: 'Unknown error' })
+    ).resolves.toEqual({ success: false, error: 'An unknown error occurred' })
   })
 
   it('handles AI model status and load flows', async () => {
@@ -630,12 +633,18 @@ describe('settings-handlers', () => {
       key: 'settings.key',
       value: 'value'
     })
-    expect(setResult).toEqual({ success: false, error: 'No vault open' })
+    expect(setResult).toEqual({
+      success: false,
+      error: 'No vault is open. Please open a vault first.'
+    })
 
     const tabResult = await invokeHandler(SettingsChannels.invoke.SET_TAB_SETTINGS, {
       restoreSessionOnStart: true
     })
-    expect(tabResult).toEqual({ success: false, error: 'No vault open' })
+    expect(tabResult).toEqual({
+      success: false,
+      error: 'No vault is open. Please open a vault first.'
+    })
   })
 
   it('returns error when reindex embeddings fails', async () => {
@@ -688,7 +697,10 @@ describe('settings-handlers', () => {
     const result = await invokeHandler(SettingsChannels.invoke.SET_NOTE_EDITOR_SETTINGS, {
       toolbarMode: 'sticky'
     })
-    expect(result).toEqual({ success: false, error: 'No vault open' })
+    expect(result).toEqual({
+      success: false,
+      error: 'No vault is open. Please open a vault first.'
+    })
   })
 
   describe('cross-device settings sync', () => {
