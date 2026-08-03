@@ -31,6 +31,8 @@ const hoisted = vi.hoisted(() => ({
   unregisterFolderViewHandlers: vi.fn(),
   registerPropertiesHandlers: vi.fn(),
   unregisterPropertiesHandlers: vi.fn(),
+  registerRelationHandlers: vi.fn(),
+  unregisterRelationHandlers: vi.fn(),
   registerSyncHandlers: vi.fn(),
   unregisterSyncHandlers: vi.fn(),
   checkSyncIntegrity: vi.fn().mockResolvedValue(undefined),
@@ -120,6 +122,10 @@ vi.mock('./folder-view-handlers', () => ({
 vi.mock('./properties-handlers', () => ({
   registerPropertiesHandlers: hoisted.registerPropertiesHandlers,
   unregisterPropertiesHandlers: hoisted.unregisterPropertiesHandlers
+}))
+vi.mock('./relation-handlers', () => ({
+  registerRelationHandlers: hoisted.registerRelationHandlers,
+  unregisterRelationHandlers: hoisted.unregisterRelationHandlers
 }))
 vi.mock('./sync-core-handlers', () => ({
   registerSyncHandlers: hoisted.registerSyncHandlers,

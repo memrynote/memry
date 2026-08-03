@@ -224,6 +224,11 @@ describe('preload api wrappers', () => {
       oldName: 'Old',
       newName: 'New'
     })
+    await expectInvoke(
+      () => propertiesApi.resolveRefs(['memry://note/note-1']),
+      'properties:resolveRefs',
+      { uris: ['memry://note/note-1'] }
+    )
 
     await expectInvoke(() => templatesApi.list(), 'templates:list')
     await expectInvoke(() => templatesApi.get('template-1'), 'templates:get', 'template-1')

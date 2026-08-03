@@ -67,6 +67,7 @@ import type {
   FolderViewClientAPI as ContractFolderViewClientAPI,
   ConfigUpdatedEvent as FolderViewConfigUpdatedEvent
 } from '@memry/contracts/folder-view-api'
+import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
 
 // Vault types (mirrored from contracts for preload compatibility)
 export interface VaultInfo {
@@ -511,6 +512,11 @@ export interface PropertiesClientAPI {
     oldName: string,
     newName: string
   ): Promise<{ success: true } | { success: false; error: string }>
+  /**
+   * Resolve relation property URIs (memry://<kind>/<id>) to display data.
+   * Preserves the input array's order and length; never throws.
+   */
+  resolveRefs(uris: string[]): Promise<ResolvedRelationRef[]>
 }
 
 // Tasks client API interface

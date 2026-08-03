@@ -16,6 +16,7 @@ import { registerCalendarHandlers, unregisterCalendarHandlers } from './calendar
 import { registerCanvasHandlers, unregisterCanvasHandlers } from './canvas-handlers'
 import { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
 import { registerPropertiesHandlers, unregisterPropertiesHandlers } from './properties-handlers'
+import { registerRelationHandlers, unregisterRelationHandlers } from './relation-handlers'
 import {
   registerSyncHandlers,
   unregisterSyncHandlers,
@@ -118,6 +119,9 @@ export function registerAllHandlers(deps?: IpcDeps): void {
   // Register properties handlers (unified for notes + journal)
   registerPropertiesHandlers()
 
+  // Register relation property resolution handlers
+  registerRelationHandlers()
+
   // Register sync handlers
   registerSyncHandlers()
   checkSyncIntegrity().catch((err) => ipcLog.error('Sync integrity check failed', err))
@@ -188,6 +192,7 @@ export function unregisterAllHandlers(): void {
   unregisterCanvasHandlers()
   unregisterFolderViewHandlers()
   unregisterPropertiesHandlers()
+  unregisterRelationHandlers()
   unregisterSyncHandlers()
   unregisterCryptoHandlers()
   unregisterSearchHandlers()
@@ -232,6 +237,7 @@ export { registerCalendarHandlers, unregisterCalendarHandlers } from './calendar
 export { registerCanvasHandlers, unregisterCanvasHandlers } from './canvas-handlers'
 export { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
 export { registerPropertiesHandlers, unregisterPropertiesHandlers } from './properties-handlers'
+export { registerRelationHandlers, unregisterRelationHandlers } from './relation-handlers'
 export { registerSyncHandlers, unregisterSyncHandlers } from './sync-core-handlers'
 export { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handlers'
 export { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'

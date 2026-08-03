@@ -17,6 +17,10 @@ export { PropertiesChannels }
 import { PropertyTypes, type PropertyType } from './property-types'
 export { PropertyTypes, type PropertyType }
 
+// Import and re-export relation URI types for the resolveRefs response shape.
+import type { RelationKind } from './relation-uri'
+export type { RelationKind }
+
 // ============================================================================
 // Property Types
 // ============================================================================
@@ -59,6 +63,13 @@ export const RenamePropertySchema = z.object({
   newName: z.string().min(1, 'New property name is required')
 })
 
+/**
+ * Schema for resolving relation property URIs to display data.
+ */
+export const ResolveRefsSchema = z.object({
+  uris: z.array(z.string())
+})
+
 // ============================================================================
 // Response Types
 // ============================================================================
@@ -73,6 +84,21 @@ export type SetPropertiesResponse = { success: true } | { success: false; error:
  */
 export type RenamePropertyResponse = { success: true } | { success: false; error: string }
 
+/**
+ * A relation property URI resolved to display data for a chip: a title to
+ * render, and whether the target still exists. Order matches the input URI
+ * array 1:1 so callers can zip the two together.
+ */
+export interface ResolvedRelationRef {
+  uri: string
+  targetType: RelationKind
+  targetId: string
+  title: string
+  subtitle?: string
+  exists: boolean
+  fileType?: string
+}
+
 // ============================================================================
 // Inferred Types
 // ============================================================================
@@ -80,3 +106,4 @@ export type RenamePropertyResponse = { success: true } | { success: false; error
 export type GetPropertiesInput = z.infer<typeof GetPropertiesSchema>
 export type SetPropertiesInput = z.infer<typeof SetPropertiesSchema>
 export type RenamePropertyInput = z.infer<typeof RenamePropertySchema>
+export type ResolveRefsInput = z.infer<typeof ResolveRefsSchema>

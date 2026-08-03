@@ -226,6 +226,7 @@ export interface MainIpcInvokeHandlers {
   "notes:upload-attachment": (...args: [{ noteId: string; filename: string; data: ArrayBuffer | number[]; }]) => Awaited<Promise<import("../vault/attachments").AttachmentResult>>
   "properties:get": (...args: [{ entityId: string; }]) => Awaited<Promise<import("../database/queries/notes/property-queries").PropertyValue[]>>
   "properties:rename": (...args: [{ entityId: string; oldName: string; newName: string; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/properties-api").RenamePropertyResponse>>
+  "properties:resolveRefs": (...args: [{ uris: string[]; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/properties-api").ResolvedRelationRef[]>>
   "properties:set": (...args: [{ entityId: string; properties: Record<string, unknown>; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/properties-api").SetPropertiesResponse>>
   "quick-capture:get-clipboard": (...args: []) => Awaited<string>
   "reminder:bulk-dismiss": (...args: [{ reminderIds: string[]; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; dismissedCount: number; }>>
