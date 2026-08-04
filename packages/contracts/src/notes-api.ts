@@ -217,21 +217,32 @@ export interface NotesHandlers {
 // Event Payloads
 // ============================================================================
 
+/**
+ * Who produced a note event. `sync` is a remote pull or CRDT write-back
+ * landing on this device — it has always been emitted at runtime, the union
+ * just never admitted it.
+ */
+export type NoteEventSource = 'internal' | 'external' | 'sync'
+
 export interface NoteCreatedEvent {
   note: NoteListItem
-  source: 'internal' | 'external'
+  source: NoteEventSource
 }
 
 export interface NoteUpdatedEvent {
   id: string
+  /**
+   * The fields this event actually changed. Always present — subscribers read
+   * it without guarding, so an emitter that omits it throws in the renderer.
+   */
   changes: Partial<Note>
-  source: 'internal' | 'external'
+  source: NoteEventSource
 }
 
 export interface NoteDeletedEvent {
   id: string
   path: string
-  source: 'internal' | 'external'
+  source: NoteEventSource
 }
 
 export interface NoteRenamedEvent {

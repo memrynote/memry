@@ -30,7 +30,7 @@ import { createValidatedHandler, createHandler, createStringHandler } from './va
 import { getCanvasContext, disposeCanvasVaultKey } from '../canvas/vault-key'
 import { forgetWindow, markCanvasClosed, markCanvasOpen } from '../canvas/live-registry'
 import { createCanvas, deleteCanvas, getCanvas, listCanvases, updateCanvas } from '../canvas/store'
-import { listCanvasLibraryItems, saveCanvasLibraryItems } from '../canvas/library-store'
+import { readCanvasLibrary, writeCanvasLibrary } from '../canvas/library-file'
 import { syncCanvasCreate, syncCanvasUpdate, syncCanvasDelete } from '../canvas/sync-bridge'
 import {
   getCanvasAssetRef,
@@ -68,8 +68,8 @@ export function registerCanvasHandlers(): void {
   ipcMain.handle(
     CanvasChannels.invoke.CREATE,
     createValidatedHandler(CanvasCreateSchema, async (input) => {
-      const { db, vaultId, vaultKey } = await getCanvasContext()
-      const canvas = createCanvas(db, vaultKey, vaultId, input)
+      const { db, vaultId, vaultPath } = getCanvasContext()
+      const canvas = createCanvas(db, vaultPath, vaultId, input)
       trackMainEvent('canvas_created', {
         surface: 'canvas',
         action: 'created',
@@ -91,8 +91,8 @@ export function registerCanvasHandlers(): void {
   ipcMain.handle(
     CanvasChannels.invoke.GET,
     createStringHandler(async (id) => {
-      const { db, vaultKey } = await getCanvasContext()
-      const canvas = getCanvas(db, vaultKey, id)
+      const { db, vaultPath } = getCanvasContext()
+      const canvas = getCanvas(db, vaultPath, id)
       if (canvas) {
         // Fires per successful load, so a tab-switch remount counts again. That
         // is the intended meaning ("canvas loads"), documented in
@@ -112,7 +112,7 @@ export function registerCanvasHandlers(): void {
   ipcMain.handle(
     CanvasChannels.invoke.UPDATE,
     createValidatedHandler(CanvasUpdateSchema, async (input) => {
-      const { db, vaultKey } = await getCanvasContext()
+      const { db, vaultPath } = getCanvasContext()
 
       // Inject the memryAssets sidecar so the synced scene carries the asset
       // descriptors a receiving device needs to restore externalized images.
@@ -122,7 +122,7 @@ export function registerCanvasHandlers(): void {
           ? injectSceneAssetSidecar(assetCtx, input.id, input.scene)
           : input.scene
 
-      const result = updateCanvas(db, vaultKey, input.id, { ...input, scene: sceneToPersist })
+      const result = updateCanvas(db, vaultPath, input.id, { ...input, scene: sceneToPersist })
       if (!result.ok) {
         throw new Error(
           result.reason === 'conflict'
@@ -153,7 +153,7 @@ export function registerCanvasHandlers(): void {
   ipcMain.handle(
     CanvasChannels.invoke.DELETE,
     createStringHandler(async (id) => {
-      const { db } = await getCanvasContext()
+      const { db, vaultPath } = getCanvasContext()
 
       // GC this canvas's assets before the row is tombstoned (the other-canvas
       // union keeps assets shared with surviving canvases). Reads the
@@ -163,7 +163,7 @@ export function registerCanvasHandlers(): void {
         await reconcileCanvasAssets(assetCtx, id, '')
       }
 
-      const success = deleteCanvas(db, id)
+      const success = deleteCanvas(db, vaultPath, id)
       if (success) {
         syncCanvasDelete(id)
         emitCanvasEvent(CanvasChannels.events.DELETED, { id })
@@ -176,7 +176,7 @@ export function registerCanvasHandlers(): void {
   ipcMain.handle(
     CanvasChannels.invoke.LIST,
     createHandler(async () => {
-      const { db, vaultId } = await getCanvasContext()
+      const { db, vaultId } = getCanvasContext()
       return { canvases: listCanvases(db, vaultId) }
     })
   )
@@ -223,8 +223,8 @@ export function registerCanvasHandlers(): void {
   ipcMain.handle(
     CanvasChannels.invoke.LIBRARY_LIST,
     createHandler(async (): Promise<CanvasLibraryListResponse> => {
-      const { db, vaultId, vaultKey } = await getCanvasContext()
-      return { libraryItems: listCanvasLibraryItems(db, vaultKey, vaultId) }
+      const { vaultPath } = getCanvasContext()
+      return { libraryItems: readCanvasLibrary(vaultPath) }
     })
   )
 
@@ -236,8 +236,10 @@ export function registerCanvasHandlers(): void {
     createValidatedHandler(
       CanvasLibrarySaveSchema,
       async (input): Promise<CanvasLibrarySaveResponse> => {
-        const { db, vaultId, vaultKey } = await getCanvasContext()
-        return { changed: saveCanvasLibraryItems(db, vaultKey, vaultId, input.libraryItems) }
+        const { vaultPath } = getCanvasContext()
+        return {
+          changed: writeCanvasLibrary(vaultPath, input.libraryItems) ? input.libraryItems.length : 0
+        }
       }
     )
   )

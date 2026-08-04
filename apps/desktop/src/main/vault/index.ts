@@ -65,6 +65,7 @@ import {
 } from './backfill-project-frontmatter'
 import { promoteSpatialCanvas } from '../settings/promote-spatial-canvas'
 import { migrateTemplateFilesToDb } from './templates-migration'
+import { reconcileCanvasFiles } from '../canvas/reconcile'
 import { configureLazyAgentServices } from '../agent/lazy-services'
 import { registerLazyAgentHandlers, unregisterLazyAgentHandlers } from '../ipc/agent-lazy-handlers'
 import type { AgentHandle } from '../agent/bootstrap'
@@ -274,6 +275,14 @@ async function openVault(vaultPath: string): Promise<void> {
   // One-time import of pre-sync template files into the data DB. Settings
   // guarded, so deleted templates are never resurrected.
   migrateTemplateFilesToDb(dataDb, vaultPath)
+
+  // Canvases are `.excalidraw` files in the vault: migrate any pre-file
+  // encrypted snapshot, and adopt documents that arrived with the folder (USB,
+  // git, Dropbox). Never blocks the open — a canvas failure must not cost the
+  // user their notes.
+  void reconcileCanvasFiles(dataDb, vaultPath).catch((error) => {
+    logger.error('Canvas file reconcile failed:', error)
+  })
 
   // Snapshot pre-frontmatter project links BEFORE the projection runtime can
   // reconcile any of them away. Only data.db is needed to read them; the write

@@ -92,6 +92,22 @@ export const CanvasPage = ({ canvasId }: CanvasPageProps): React.JSX.Element => 
     return <div className="h-full" />
   }
 
+  // The index knows this canvas but its document is not readable here (a
+  // pre-file snapshot encrypted with a master key this device no longer has, or
+  // a file moved out of the vault). Refuse to mount the editor: an empty scene
+  // would autosave over ink that is still recoverable.
+  if (canvas.unreadable) {
+    return (
+      <div
+        className="h-full flex flex-col items-center justify-center p-8 text-center"
+        data-canvas-unreadable={canvas.id}
+      >
+        <h2 className="text-xl font-medium text-foreground mb-2">{t('canvas.unreadableTitle')}</h2>
+        <p className="text-sm text-text-tertiary max-w-md">{t('canvas.unreadableBody')}</p>
+      </div>
+    )
+  }
+
   return (
     <div className="h-full min-h-0" data-canvas-page={canvas.id}>
       <React.Suspense fallback={<div className="h-full" />}>

@@ -299,8 +299,12 @@ describe('noteHandler.applyUpsert — path collision', () => {
         propertyDefinitionNames: ['Rating']
       })
     )
+    // `changes` is not decoration: renderer subscribers dereference it without
+    // guarding, so an emit that omits it throws once per pulled note. `content`
+    // must stay out — this branch never rewrites the note body.
     expect(ctx.emit).toHaveBeenCalledWith(NotesChannels.events.UPDATED, {
       id: 'note-1',
+      changes: { title: 'a1', emoji: 'sparkles', tags: ['remote'] },
       source: 'sync'
     })
     expect(ctx.emit).toHaveBeenCalledWith('notes:tags-changed', {})
@@ -442,6 +446,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
     )
     expect(ctx.emit).toHaveBeenCalledWith(NotesChannels.events.UPDATED, {
       id: 'note-1',
+      changes: { title: 'a1', emoji: 'sparkles', tags: ['remote'] },
       source: 'sync'
     })
   })

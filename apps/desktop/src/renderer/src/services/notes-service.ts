@@ -84,7 +84,13 @@ export function onNoteCreated(callback: (event: NoteCreatedEvent) => void): () =
 }
 
 export function onNoteUpdated(callback: (event: NoteUpdatedEvent) => void): () => void {
-  return window.api.onNoteUpdated(callback)
+  // `changes` is required by the contract but the wire is untyped, and a main
+  // process from an older install can still send a payload without it. Every
+  // subscriber dereferences `changes`, so normalize once here rather than
+  // guarding at each call site — a throwing listener silently drops the event.
+  return window.api.onNoteUpdated((event) => {
+    callback(event.changes ? event : { ...event, changes: {} })
+  })
 }
 
 export function onNoteDeleted(callback: (event: NoteDeletedEvent) => void): () => void {

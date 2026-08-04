@@ -937,6 +937,25 @@ describe('NotePage', () => {
     expect(screen.getByTestId('editor-content')).toHaveTextContent('Agent edited body')
   })
 
+  // The CRDT write-back fires 500ms after any Y.Doc change — including local
+  // typing, ahead of the 1000ms save — and it now carries `content`. Remounting
+  // on it would destroy the editor mid-keystroke, and the IPC CRDT provider has
+  // already applied those bytes anyway.
+  it('does not remount the editor for CRDT write-back updates', async () => {
+    renderWithProviders(<NotePage noteId="note-1" />)
+    expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+
+    act(() => {
+      mocks.updatedHandler?.({
+        id: 'note-1',
+        source: 'sync',
+        changes: { content: 'Write-back body' }
+      })
+    })
+
+    expect(screen.getByTestId('editor-content')).toHaveTextContent('Original body')
+  })
+
   it('blocks mutations after the note is deleted', async () => {
     renderWithProviders(<NotePage noteId="note-1" />)
 

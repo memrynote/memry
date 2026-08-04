@@ -48,6 +48,16 @@ For tasks, projects, and agent conversations, handlers additionally invoke `merg
 Agent message sync is append-only. If a message id already exists locally, the handler treats the
 remote item as idempotent instead of overwriting a terminal message.
 
+## Canvas: the payload comes from a file
+
+`canvas-handler.ts` is the one handler whose content does not live in the data DB. A canvas scene
+is a `.excalidraw` file in the vault (see
+[Canvas Files](/architecture/local-storage#canvas-files)), so `buildPushPayload` reads the document
+off disk and `applyUpsert` writes it there — the row only carries `file_path`, title and clock. A
+row whose document is unreadable pushes nothing rather than an empty scene, and the conflict copy
+gets its own file next to the winner. None of this touches key material; transport encryption is
+unchanged.
+
 ## Atomicity
 
 All `applyUpsert` and `applyDelete` paths run inside `db.transaction()`:

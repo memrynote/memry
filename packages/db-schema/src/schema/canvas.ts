@@ -6,10 +6,20 @@ export const canvases = sqliteTable(
   {
     id: text('id').primaryKey(),
     vaultId: text('vault_id').notNull(),
-    // Plaintext title (matches the notes cache / home_pages precedent); the
-    // scene itself is always encrypted at rest in snapshotCiphertext.
+    // Plaintext title (matches the notes cache / home_pages precedent).
     title: text('title'),
-    // Vault-key-encrypted Excalidraw scene JSON (serializeAsJSON output).
+    /**
+     * Vault-relative path of the `.excalidraw` document that holds the ink
+     * (`canvases/<Title>.excalidraw`). The FILE is the source of truth; this
+     * table is the index that carries sync state. Null only for a legacy row
+     * whose encrypted snapshot could not be migrated (see canvas/reconcile.ts).
+     */
+    filePath: text('file_path'),
+    /**
+     * LEGACY: vault-key-encrypted scene JSON. Written by app versions before
+     * canvases became files; `''` once migrated. Kept (never dropped) so a user
+     * who restores an old keychain can still recover a row we could not decrypt.
+     */
     snapshotCiphertext: text('snapshot_ciphertext').notNull(),
     vectorClock: text('vector_clock', { mode: 'json' }).$type<VectorClock>().notNull(),
     createdAt: integer('created_at').notNull(),

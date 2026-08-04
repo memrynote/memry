@@ -507,6 +507,13 @@ export function NotePage({ noteId }: NotePageProps) {
 
       if (isSavingRef.current) return
 
+      // `sync` means the CRDT write-back rewrote the file from the Y.Doc. The
+      // IPC CRDT provider has already applied those bytes to this editor, so a
+      // remount here would add nothing — and write-back also fires for local
+      // typing (500ms debounce, ahead of the 1000ms save), where it would blow
+      // away the editor mid-keystroke.
+      if (event.source === 'sync') return
+
       // TanStack Query will handle the cache invalidation and refetch.
       // We just need to update lastSavedContent and force editor remount.
       if (typeof event.changes.content !== 'string') return

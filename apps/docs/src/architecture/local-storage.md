@@ -65,14 +65,53 @@ Inside the vault directory (chosen during [first run](/guide/first-run)):
 ├─ index.db          # derived database
 ├─ index.db-wal
 ├─ attachments/      # file payloads
+├─ canvases/         # one .excalidraw file per canvas + library.excalidrawlib
 └─ leveldb/          # y-leveldb store for Yjs CRDTs
 ```
+
+## Canvas Files
+
+A canvas is a plain `.excalidraw` document in `<vault>/canvases/`, the same way a note is a
+`.md` file: **the file is the source of truth, the `canvases` table is an index** that carries
+identity, title, timestamps and sync state (`file_path` points at the document).
+
+- **Nothing is encrypted at rest.** Canvas scenes used to live in an encrypted
+  `snapshot_ciphertext` column keyed by the vault key. That tied the ink to one machine's
+  master key, so it was lost whenever the key changed — a local-only user turning on sync gets
+  a brand-new account master key — or when the vault folder was copied to another machine,
+  since the key lives in the OS keychain, not in the folder. Everything else in the folder
+  (notes, journals, attachments) is already plaintext, so the encryption protected nothing.
+- **The file is self-describing.** A `memry` key (`{ id, createdAt, updatedAt }`) rides along
+  inside the document. Excalidraw ignores unknown top-level keys, so the file still opens in
+  excalidraw.com, and a single copied file keeps its identity.
+- **Canonical text.** Scenes are written with a fixed key order (unknown keys, including the
+  `memryAssets` image sidecar, are preserved and sorted). Two devices emit identical bytes for
+  identical ink, which is what the sync conflict-copy comparison relies on.
+- **Paths are portable.** `file_path` is always stored forward-slashed (`canvases/Plan.excalidraw`)
+  and re-joined natively at read time, the same convention `normalizeRelativePath` uses for notes —
+  a vault written on Windows has to open on macOS. Filenames avoid what only Windows rejects
+  (reserved device names like `CON`, trailing dots/spaces), and "same file?" comparisons are
+  case- and Unicode-insensitive (`canvasPathKey`), because macOS and Windows are case-insensitive
+  and macOS hands back decomposed (NFD) filenames for the composed names we write.
+- **Vault open reconciles.** `canvas/reconcile.ts` migrates any legacy encrypted snapshot to a
+  file once, and adopts documents that arrived with the folder (USB, git, Dropbox) — a file
+  with no index row becomes a canvas, and a file renamed outside the app re-points its row
+  instead of duplicating. Rows whose file is missing are reported, never tombstoned.
+- **Unreadable is explicit.** A legacy snapshot this device holds no key for keeps its
+  ciphertext and is served as `unreadable`; the editor refuses to mount rather than autosave an
+  empty scene over recoverable ink.
+- **Sync is unchanged on the wire.** Push reads the file, apply writes it; transport encryption
+  still wraps a per-item key under the vault key, so the server never sees plaintext.
+
+The shapes library is one `canvases/library.excalidrawlib` in Excalidraw's own format. It is
+not a sync type — the file is the only store.
 
 ## Schemas
 
 Drizzle schemas live in `packages/db-schema`. Tables of note:
 
 - `notes`, `journals`, `tasks`, `projects`, `inbox_items`, `templates`
+- `canvases` (index over the vault's `.excalidraw` files: `file_path`, title, clock)
 - `vault_metadata` (stable vault UUID singleton)
 - `agent_conversations`, `agent_messages` (encrypted agent chat history)
 - `tags`, `tag_links`, `note_links` (graph)

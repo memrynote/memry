@@ -42,6 +42,9 @@ vi.mock('../agent/storage/vault-id', () => ({
     throw new Error('db must not be touched at registration')
   })
 }))
+vi.mock('../canvas/vault-path', () => ({
+  getCanvasVaultPath: vi.fn(() => '/vaults/Memry')
+}))
 vi.mock('../canvas/store', () => ({
   createCanvas: vi.fn(),
   deleteCanvas: vi.fn(),
@@ -111,12 +114,11 @@ describe('canvas handlers registration', () => {
   })
 })
 
-describe('canvas vault key memoization', () => {
-  // The keychain may only be consulted once per process (agent bootstrap
-  // parity): under NODE_ENV=test the keychain degrades to not-found after the
-  // first call, so per-invoke resolution would throw "verifier exists but
-  // master key is missing" on every call after the first.
-  async function registerWithWorkingContext() {
+describe('canvas context', () => {
+  // File-backed canvases must never consult the keychain: that is exactly what
+  // breaks after a master-key change (free -> paid upgrade) and on a vault
+  // folder copied to another machine.
+  it('serves canvas:list without touching key material', async () => {
     const { ipcMain } = await import('electron')
     const { requireDatabase } = await import('../database')
     const { getOrCreateVaultUuid } = await import('../agent/storage/vault-id')
@@ -130,36 +132,14 @@ describe('canvas vault key memoization', () => {
     const handleMock = vi.mocked(ipcMain.handle)
     handleMock.mockClear()
     registerCanvasHandlers()
-    const listEntry = handleMock.mock.calls.find(
+    const listHandler = handleMock.mock.calls.find(
       ([channel]) => channel === CanvasChannels.invoke.LIST
-    )
-    const listHandler = listEntry?.[1] as (event: unknown) => Promise<unknown>
-    return { listHandler, initMock }
-  }
-
-  it('resolves the vault key once across multiple invokes', async () => {
-    const { listHandler, initMock } = await registerWithWorkingContext()
-    initMock.mockResolvedValue(new Uint8Array(32))
+    )?.[1] as (event: unknown) => Promise<unknown>
 
     await listHandler({})
     await listHandler({})
-    await listHandler({})
 
-    expect(initMock).toHaveBeenCalledTimes(1)
-    unregisterCanvasHandlers()
-  })
-
-  it('does not cache a failed resolution; the next invoke retries', async () => {
-    const { listHandler, initMock } = await registerWithWorkingContext()
-    initMock
-      .mockRejectedValueOnce(new Error('keychain hiccup'))
-      .mockResolvedValue(new Uint8Array(32))
-
-    await expect(listHandler({})).rejects.toThrow('keychain hiccup')
-    await listHandler({})
-    await listHandler({})
-
-    expect(initMock).toHaveBeenCalledTimes(2)
+    expect(initMock).not.toHaveBeenCalled()
     unregisterCanvasHandlers()
   })
 })
@@ -179,14 +159,12 @@ async function registerAndGetHandlers(): Promise<Record<string, Handler>> {
   return map
 }
 
-/** Set up requireDatabase/getOrCreateVaultUuid/getOrInitializeLocalVaultKey to resolve. */
+/** Set up requireDatabase/getOrCreateVaultUuid so the canvas context resolves. */
 async function withWorkingCanvasContext(): Promise<void> {
   const { requireDatabase } = await import('../database')
   const { getOrCreateVaultUuid } = await import('../agent/storage/vault-id')
-  const { getOrInitializeLocalVaultKey } = await import('../crypto')
   vi.mocked(requireDatabase).mockReturnValue({} as never)
   vi.mocked(getOrCreateVaultUuid).mockReturnValue('vault-1')
-  vi.mocked(getOrInitializeLocalVaultKey).mockReset().mockResolvedValue(new Uint8Array(32))
 }
 
 describe('canvas asset IPC handlers', () => {
