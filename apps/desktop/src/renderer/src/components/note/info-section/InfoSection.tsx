@@ -17,7 +17,7 @@ import {
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
 import { Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { Property, PropertyTemplate, NewProperty } from './types'
+import { Property, PropertyTemplate, NewProperty, PropertyType } from './types'
 import { InfoHeader } from './InfoHeader'
 import { PropertyRow } from './PropertyRow'
 import { AddPropertyPopup } from './AddPropertyPopup'
@@ -37,6 +37,8 @@ export interface InfoSectionProps {
   disabled?: boolean
   variant?: 'default' | 'embedded' | 'inline'
   hideAddButton?: boolean
+  /** Types this surface cannot store, and so must not offer when adding. */
+  excludeTypes?: PropertyType[]
 }
 
 export const InfoSection = memo(function InfoSection({
@@ -52,7 +54,8 @@ export const InfoSection = memo(function InfoSection({
   onDeleteProperty,
   disabled = false,
   variant = 'default',
-  hideAddButton = false
+  hideAddButton = false,
+  excludeTypes
 }: InfoSectionProps) {
   const { t } = useT('notes')
   const [internalNewlyAdded, setInternalNewlyAdded] = useState<{
@@ -208,7 +211,11 @@ export const InfoSection = memo(function InfoSection({
 
           {showAddBtn && (
             <div className="pt-2 pb-2.5">
-              <AddPropertyPopup onAdd={handleAddProperty} disabled={disabled}>
+              <AddPropertyPopup
+                onAdd={handleAddProperty}
+                disabled={disabled}
+                excludeTypes={excludeTypes}
+              >
                 <button
                   type="button"
                   disabled={disabled}

@@ -456,4 +456,19 @@ describe('Task 8: Relation property in add-property popup', () => {
       })
     )
   })
+
+  // The template editor has no storage for a relation and used to map it to
+  // 'text' after the fact, so a user who picked Relation got a text box with no
+  // indication anything had changed. Surfaces that cannot store a type do not
+  // offer it.
+  it('omits excluded types from the popup', async () => {
+    const user = userEvent.setup()
+    renderWithI18n(<InfoSection {...defaultProps} excludeTypes={['relation']} />)
+
+    const addButton = screen.getByRole('button', { name: /add.*property/i })
+    await user.click(addButton)
+
+    expect(screen.queryByRole('option', { name: /relation/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /^text$/i })).toBeInTheDocument()
+  })
 })

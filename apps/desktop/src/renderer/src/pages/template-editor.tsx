@@ -59,10 +59,15 @@ function getDefaultValueForType(type: PropertyType): unknown {
   }
 }
 
+// Template storage has no relation representation, and mapping one to 'text'
+// downgrades it silently — the user picks Relation and gets a text box. Until
+// templates can store relations, the type is not offered here at all. The
+// mapping below keeps its 'text' entry as the fallback for template files that
+// already contain one.
+const TEMPLATE_UNSUPPORTED_PROPERTY_TYPES: PropertyType[] = ['relation']
+
 // Map PropertyType to TemplatePropertyType
 // Note: Templates support more property types than the unified properties system.
-// relation has no template storage support yet, so it falls back to 'text' —
-// same as any other unsupported type (see mapFromTemplatePropertyType below).
 function mapToTemplatePropertyType(type: PropertyType): TemplateProperty['type'] {
   const typeMap: Record<PropertyType, TemplateProperty['type']> = {
     text: 'text',
@@ -522,6 +527,7 @@ function TemplateEditorForm({
                 onAddProperty={handleAddProperty}
                 onDeleteProperty={handleDeleteProperty}
                 disabled={isBuiltIn}
+                excludeTypes={TEMPLATE_UNSUPPORTED_PROPERTY_TYPES}
               />
             </div>
 

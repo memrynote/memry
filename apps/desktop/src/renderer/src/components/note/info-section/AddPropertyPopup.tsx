@@ -8,6 +8,8 @@ interface AddPropertyPopupProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   disabled?: boolean
+  /** Types this surface cannot store, and so must not offer. */
+  excludeTypes?: PropertyType[]
   children: React.ReactNode
 }
 
@@ -16,6 +18,7 @@ export function AddPropertyPopup({
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
   disabled = false,
+  excludeTypes,
   children
 }: AddPropertyPopupProps): React.JSX.Element {
   const { t } = useT('notes')
@@ -51,6 +54,10 @@ export function AddPropertyPopup({
     }
   }, [])
 
+  const offeredTypes = excludeTypes?.length
+    ? PROPERTY_TYPES.filter((type) => !excludeTypes.includes(type))
+    : PROPERTY_TYPES
+
   const propertyTypeLabels: Record<PropertyType, string> = {
     text: t('properties.types.text'),
     number: t('properties.types.number'),
@@ -85,7 +92,7 @@ export function AddPropertyPopup({
         </div>
         <Picker.Section label={t('properties.typeSection')}>
           <Picker.List>
-            {PROPERTY_TYPES.map((propType) => {
+            {offeredTypes.map((propType) => {
               const config = PROPERTY_TYPE_CONFIG[propType]
               const IconComponent = config.icon
               return (
