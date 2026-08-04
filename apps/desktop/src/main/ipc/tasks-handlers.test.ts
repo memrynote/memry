@@ -108,7 +108,14 @@ vi.mock('@main/database/queries/projects', () => ({
   getNextStatusPosition: vi.fn(),
   getStatusById: vi.fn(),
   getEquivalentStatus: vi.fn(),
-  createDefaultStatuses: vi.fn()
+  createDefaultStatuses: vi.fn(),
+  listMarkdownNoteIdsForProject: vi.fn()
+}))
+
+// Mock project name propagation (rename/delete → note frontmatter)
+vi.mock('../tasks/project-name-propagation', () => ({
+  propagateProjectRename: vi.fn(),
+  propagateProjectDelete: vi.fn()
 }))
 
 // Import after mocking
@@ -119,6 +126,7 @@ import * as taskQueries from '@main/database/queries/tasks'
 import * as projectQueries from '@main/database/queries/projects'
 import { getTaskSyncService } from '../sync/task-sync'
 import { incrementTaskClocksOffline } from '../sync/offline-clock'
+import { propagateProjectRename, propagateProjectDelete } from '../tasks/project-name-propagation'
 
 describe('tasks-handlers', () => {
   let mockDb: { run: Mock; get: Mock; all: Mock }
@@ -614,6 +622,81 @@ describe('tasks-handlers', () => {
           'project1'
         )
       })
+
+      it('propagates a rename to linked notes when the name actually changes', async () => {
+        ;(projectQueries.getProjectById as Mock).mockReturnValue({
+          id: 'project1',
+          name: 'Old Name'
+        })
+        ;(projectQueries.updateProject as Mock).mockReturnValue({
+          id: 'project1',
+          name: 'New Name'
+        })
+        ;(projectQueries.getProjectWithStatuses as Mock).mockReturnValue({
+          id: 'project1',
+          name: 'New Name',
+          statuses: []
+        })
+
+        const result = await invokeHandler(TasksChannels.invoke.PROJECT_UPDATE, {
+          id: 'project1',
+          name: 'New Name'
+        })
+
+        expect(result.success).toBe(true)
+        expect(propagateProjectRename).toHaveBeenCalledWith(
+          mockDb,
+          'project1',
+          'Old Name',
+          'New Name'
+        )
+      })
+
+      it('does not propagate when the update leaves the name untouched', async () => {
+        ;(projectQueries.getProjectById as Mock).mockReturnValue({
+          id: 'project1',
+          name: 'Same Name'
+        })
+        ;(projectQueries.updateProject as Mock).mockReturnValue({
+          id: 'project1',
+          name: 'Same Name'
+        })
+        ;(projectQueries.getProjectWithStatuses as Mock).mockReturnValue({
+          id: 'project1',
+          name: 'Same Name',
+          statuses: []
+        })
+
+        await invokeHandler(TasksChannels.invoke.PROJECT_UPDATE, {
+          id: 'project1',
+          color: '#ffffff'
+        })
+
+        expect(propagateProjectRename).not.toHaveBeenCalled()
+      })
+
+      it('does not propagate when the update sets the name to its current value', async () => {
+        ;(projectQueries.getProjectById as Mock).mockReturnValue({
+          id: 'project1',
+          name: 'Same Name'
+        })
+        ;(projectQueries.updateProject as Mock).mockReturnValue({
+          id: 'project1',
+          name: 'Same Name'
+        })
+        ;(projectQueries.getProjectWithStatuses as Mock).mockReturnValue({
+          id: 'project1',
+          name: 'Same Name',
+          statuses: []
+        })
+
+        await invokeHandler(TasksChannels.invoke.PROJECT_UPDATE, {
+          id: 'project1',
+          name: 'Same Name'
+        })
+
+        expect(propagateProjectRename).not.toHaveBeenCalled()
+      })
     })
 
     describe('PROJECT_DELETE handler', () => {
@@ -648,6 +731,51 @@ describe('tasks-handlers', () => {
             includeArchived: true
           })
         )
+      })
+
+      it('propagates the delete using note ids captured before the FK cascade removes the links', async () => {
+        ;(projectQueries.getProjectById as Mock).mockReturnValue({
+          id: 'project1',
+          name: 'Alpha'
+        })
+        // Simulates the real ordering trap: once the cascade has run, a lookup
+        // by project id would find nothing (the links are gone). If the
+        // handler captured ids AFTER the delete instead of before, this
+        // second call would hand propagateProjectDelete an empty list.
+        ;(projectQueries.listMarkdownNoteIdsForProject as Mock).mockImplementation(() => [
+          'n1',
+          'n2'
+        ])
+        ;(projectQueries.deleteProject as Mock).mockImplementation(() => {
+          ;(projectQueries.listMarkdownNoteIdsForProject as Mock).mockReturnValue([])
+        })
+        ;(taskQueries.listTasks as Mock).mockReturnValue([])
+
+        const result = await invokeHandler(TasksChannels.invoke.PROJECT_DELETE, 'project1')
+
+        expect(result.success).toBe(true)
+        expect(propagateProjectDelete).toHaveBeenCalledWith(mockDb, 'project1', 'Alpha', [
+          'n1',
+          'n2'
+        ])
+
+        // Proves the ids were actually collected before the cascade, not just
+        // that the mock happened to still return them.
+        const listOrder = (projectQueries.listMarkdownNoteIdsForProject as Mock).mock
+          .invocationCallOrder[0]
+        const deleteOrder = (projectQueries.deleteProject as Mock).mock.invocationCallOrder[0]
+        expect(listOrder).toBeLessThan(deleteOrder)
+      })
+
+      it('does not propagate when the project no longer exists', async () => {
+        ;(projectQueries.getProjectById as Mock).mockReturnValue(undefined)
+        ;(projectQueries.listMarkdownNoteIdsForProject as Mock).mockReturnValue([])
+        ;(projectQueries.deleteProject as Mock).mockReturnValue(undefined)
+        ;(taskQueries.listTasks as Mock).mockReturnValue([])
+
+        await invokeHandler(TasksChannels.invoke.PROJECT_DELETE, 'project1')
+
+        expect(propagateProjectDelete).not.toHaveBeenCalled()
       })
     })
 

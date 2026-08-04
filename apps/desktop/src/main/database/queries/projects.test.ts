@@ -38,6 +38,7 @@ import {
   updateProjectHomeNote,
   listProjectsByNames,
   listNoteProjectLinkIds,
+  listMarkdownNoteIdsForProject,
   isMarkdownNote
 } from './projects'
 import { insertTask } from './tasks'
@@ -650,6 +651,51 @@ describe('projects queries', () => {
       deleteProjectLink(db, 'p1', 'note', 'n1')
 
       expect(listNoteProjectLinkIds(db, 'n1')).toEqual([])
+    })
+  })
+
+  describe('listMarkdownNoteIdsForProject', () => {
+    it('lists only markdown notes linked to the project, excluding files and other projects', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      insertProject(db, { id: 'p2', name: 'Beta', color: '#000', position: 1, isInbox: false })
+      db.insert(noteMetadata)
+        .values([
+          {
+            id: 'n1',
+            path: 'notes/n1.md',
+            title: 'Note 1',
+            fileType: 'markdown',
+            createdAt: BASE_TIME.toISOString(),
+            modifiedAt: BASE_TIME.toISOString()
+          },
+          {
+            id: 'n2',
+            path: 'notes/n2.md',
+            title: 'Note 2',
+            fileType: 'markdown',
+            createdAt: BASE_TIME.toISOString(),
+            modifiedAt: BASE_TIME.toISOString()
+          },
+          {
+            id: 'f1',
+            path: 'notes/f1.png',
+            title: 'diagram.png',
+            fileType: 'image',
+            createdAt: BASE_TIME.toISOString(),
+            modifiedAt: BASE_TIME.toISOString()
+          }
+        ])
+        .run()
+      insertProjectLink(db, { id: 'l1', projectId: 'p1', itemType: 'note', itemId: 'n1' })
+      insertProjectLink(db, { id: 'l2', projectId: 'p1', itemType: 'file', itemId: 'f1' })
+      insertProjectLink(db, { id: 'l3', projectId: 'p2', itemType: 'note', itemId: 'n2' })
+
+      expect(listMarkdownNoteIdsForProject(db, 'p1')).toEqual(['n1'])
+    })
+
+    it('returns an empty list when the project has no linked notes', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      expect(listMarkdownNoteIdsForProject(db, 'p1')).toEqual([])
     })
   })
 

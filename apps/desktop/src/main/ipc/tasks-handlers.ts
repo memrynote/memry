@@ -32,6 +32,8 @@ import { createDesktopTasksDomain } from '../tasks/domain'
 import { captureUrlToProject } from '../tasks/capture-url'
 import { importFilesToProject } from '../tasks/import-files-to-project'
 import { linkProjectItem, unlinkProjectItem } from './project-item-links'
+import { getProjectById, listMarkdownNoteIdsForProject } from '../database/queries/projects'
+import { propagateProjectRename, propagateProjectDelete } from '../tasks/project-name-propagation'
 import { createNote, importFiles, getNoteByPath } from '../vault/notes-crud'
 import { fetchUrlMetadata } from '../inbox/metadata'
 import { createTasksPublisher } from '../tasks/publisher'
@@ -185,14 +187,40 @@ export function registerTasksHandlers(): void {
     TasksChannels.invoke.PROJECT_UPDATE,
     createValidatedHandler(
       ProjectUpdateSchema,
-      withDb((db, input) => createTaskDomain(db).updateProject(input), 'Failed to update project')
+      withDb(async (db, input) => {
+        // Read the previous name before the domain call overwrites it — a
+        // rename that is not propagated leaves linked notes' frontmatter
+        // naming a project that no longer matches.
+        const previous = getProjectById(db, input.id)
+        const result = await createTaskDomain(db).updateProject(input)
+        if (
+          result.success &&
+          previous &&
+          input.name !== undefined &&
+          input.name !== previous.name
+        ) {
+          await propagateProjectRename(db, input.id, previous.name, input.name)
+        }
+        return result
+      }, 'Failed to update project')
     )
   )
 
   ipcMain.handle(
     TasksChannels.invoke.PROJECT_DELETE,
     createStringHandler(
-      withDb((db, id) => createTaskDomain(db).deleteProject(id), 'Failed to delete project')
+      withDb(async (db, id) => {
+        // Collect the linked notes and the project's name before the domain
+        // call — project_links cascades away with the project, so after the
+        // delete there is nothing left to look up.
+        const project = getProjectById(db, id)
+        const noteIds = listMarkdownNoteIdsForProject(db, id)
+        const result = await createTaskDomain(db).deleteProject(id)
+        if (result.success && project) {
+          await propagateProjectDelete(db, id, project.name, noteIds)
+        }
+        return result
+      }, 'Failed to delete project')
     )
   )
 

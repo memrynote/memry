@@ -883,6 +883,20 @@ export function listProjectsByNames(
     .all()
 }
 
+/**
+ * Markdown notes linked to a project — the ones whose frontmatter names it,
+ * for rename/delete propagation into note files.
+ */
+export function listMarkdownNoteIdsForProject(db: DataDb, projectId: string): string[] {
+  return db
+    .select({ id: noteMetadata.id })
+    .from(projectLinks)
+    .innerJoin(noteMetadata, eq(noteMetadata.id, projectLinks.itemId))
+    .where(and(eq(projectLinks.projectId, projectId), eq(noteMetadata.fileType, 'markdown')))
+    .all()
+    .map((row) => row.id)
+}
+
 /** Every project link pointing at one note, for the frontmatter reconciler. */
 export function listNoteProjectLinkIds(
   db: DataDb,
