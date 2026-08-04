@@ -2,7 +2,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { TemplateEditorPage } from './template-editor'
+import {
+  TemplateEditorPage,
+  mapFromTemplatePropertyType,
+  mapToTemplatePropertyType
+} from './template-editor'
 
 const getTemplate = vi.fn()
 const createTemplate = vi.fn()
@@ -168,6 +172,14 @@ vi.mock('@/components/note/content-area', () => ({
     />
   )
 }))
+
+describe('property type maps', () => {
+  it('round-trips a project property as project, not text', () => {
+    const templateType = mapToTemplatePropertyType('project')
+    expect(templateType).toBe('project')
+    expect(mapFromTemplatePropertyType(templateType)).toBe('project')
+  })
+})
 
 describe('TemplateEditorPage', () => {
   beforeEach(() => {

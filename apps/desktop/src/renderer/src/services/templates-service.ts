@@ -14,6 +14,7 @@ type TemplatePropertyType =
   | 'multiselect'
   | 'url'
   | 'rating'
+  | 'project'
 
 interface TemplateProperty {
   name: string
