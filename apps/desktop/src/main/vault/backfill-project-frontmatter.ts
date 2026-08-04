@@ -55,9 +55,14 @@ type PendingBackfill = Record<string, string[]>
 /**
  * The base property record a note's rewrite is built from.
  *
- * `missing` — no index-cache row, so nothing can be written. Indexing has
- * already run by the time the apply phase executes, so an absent row means the
- * file is absent too; retrying on a later open would not change that.
+ * `missing` — no index-cache row, so nothing can be written **on this open**.
+ * It does NOT mean the file is gone. `rebuildIndex` initialises the index
+ * database before it populates it, so a throw in `initializeFts` or `indexVault`
+ * leaves an initialised-but-empty cache in which every note reads as `missing`;
+ * and `indexVault` honours `excludePatterns` and the attachments folder while
+ * `note_metadata` lives in data.db, so a previously indexed note that is now
+ * excluded reads as `missing` while sitting on disk untouched. Retained in the
+ * residual snapshot for exactly that reason.
  *
  * `unparseable` — the file's frontmatter block could not be parsed. `parseNote`
  * keeps such a block verbatim precisely so a writeback does not destroy it, but
@@ -108,12 +113,21 @@ async function readBaseProperties(noteId: string): Promise<BaseProperties> {
   // A strict subset check, not equality: the cached set also holds tags found
   // inline in the body, so it is legitimately a superset. Only a tag the cache
   // has never seen means the file moved on without us.
-  const cachedTags = new Set(getNoteTags(getIndexDatabase(), noteId).map((t) => t.toLowerCase()))
+  //
+  // Both sides are trimmed and blanks dropped, matching `extractTags` — the
+  // cache never holds a blank or an untrimmed tag, so comparing raw entries
+  // would read `tags: ['']` or `- " work "` as staleness and defer the note
+  // permanently instead of transiently.
+  const normalizeTag = (tag: string): string => tag.trim().toLowerCase()
+  const cachedTags = new Set(
+    getNoteTags(getIndexDatabase(), noteId).map(normalizeTag).filter(Boolean)
+  )
   const fileTags = Array.isArray(parsed.frontmatter.tags) ? parsed.frontmatter.tags : []
   for (const tag of fileTags) {
-    if (typeof tag === 'string' && !cachedTags.has(tag.toLowerCase())) {
-      return { kind: 'stale-tags' }
-    }
+    if (typeof tag !== 'string') continue
+    const normalized = normalizeTag(tag)
+    if (!normalized) continue
+    if (!cachedTags.has(normalized)) return { kind: 'stale-tags' }
   }
 
   return { kind: 'ok', properties: extractProperties(parsed.frontmatter) }
@@ -154,9 +168,11 @@ export function snapshotProjectFrontmatterBackfill(db: DataDb): void {
  * write the whole record back. Only ever adds names; a note that already carries
  * all of them is not rewritten.
  *
- * Notes whose write fails are kept in the snapshot rather than dropped, so a
- * failure never costs the vault its links — the marker is only set once nothing
- * is outstanding.
+ * A note only retires from the snapshot once it has been conclusively handled —
+ * written, or found to already name every project it is linked to. Anything
+ * else (unresolvable, unsafe to rewrite, or a failed write) is kept pending, so
+ * no single bad open can cost the vault its links. The marker is only set once
+ * nothing is outstanding.
  */
 export async function applyProjectFrontmatterBackfill(db: DataDb): Promise<void> {
   const raw = getSetting(db, PROJECT_FRONTMATTER_BACKFILL_KEY)
@@ -183,37 +199,33 @@ export async function applyProjectFrontmatterBackfill(db: DataDb): Promise<void>
     return
   }
 
+  // Only two outcomes retire a note from the snapshot: its file was written, or
+  // its file already named every project it is linked to. Everything else stays
+  // pending. That is what stops a bad open from discarding the work — an index
+  // rebuild that throws after `initIndexDatabase` leaves an initialised but
+  // EMPTY cache, in which every note reads as `missing`; dropping those would
+  // mark the vault done and lose its whole legacy-link population.
   const residual: PendingBackfill = {}
   let visited = 0
   let written = 0
-  let skipped = 0
-  let failed = 0
+  let unchanged = 0
   let deferred = 0
+  let failed = 0
 
   for (const [noteId, names] of Object.entries(pending)) {
     visited++
     try {
       const base = await readBaseProperties(noteId)
 
-      if (base.kind === 'missing') {
-        skipped += names.length
-        continue
-      }
-
-      if (base.kind === 'unparseable') {
-        skipped += names.length
-        logger.warn('Skipping a note whose frontmatter could not be parsed', { noteId })
-        continue
-      }
-
-      if (base.kind === 'stale-tags') {
-        // Keep it pending: once the note is reindexed the cache catches up and a
-        // later open can write it safely.
+      if (base.kind !== 'ok') {
         residual[noteId] = names
         deferred++
-        logger.warn('Deferring a note whose tags the index cache has not caught up with', {
-          noteId
-        })
+        if (base.kind !== 'missing') {
+          logger.warn('Deferring a note the backfill must not rewrite', {
+            noteId,
+            reason: base.kind
+          })
+        }
         continue
       }
 
@@ -222,8 +234,12 @@ export async function applyProjectFrontmatterBackfill(db: DataDb): Promise<void>
       for (const name of names) next = withProjectName(next, name)
 
       // `withProjectName` is case-insensitive, so equal length means the note
-      // already names every project it is linked to. Leave the file alone.
-      if (next.length === current.length) continue
+      // already names every project it is linked to. Leave the file alone —
+      // conclusively handled, so it retires from the snapshot.
+      if (next.length === current.length) {
+        unchanged++
+        continue
+      }
 
       const result = await setEntityProperties(noteId, {
         ...base.properties,
@@ -257,9 +273,9 @@ export async function applyProjectFrontmatterBackfill(db: DataDb): Promise<void>
   logger.info('Backfilled project links into note frontmatter', {
     visited,
     written,
-    skipped,
-    failed,
+    unchanged,
     deferred,
+    failed,
     outstanding
   })
 }

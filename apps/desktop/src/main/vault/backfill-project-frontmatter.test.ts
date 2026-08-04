@@ -31,6 +31,9 @@ vi.mock('../notes/entity-properties', () => ({
     writes.set(id, [...(writes.get(id) ?? []), properties])
     if (unwritable.has(id)) throw new Error('EACCES')
     if (rejecting.has(id)) return { success: false, error: 'Entity not found' }
+    // The real writer re-reads the file through `getNoteById` and throws
+    // NOT_FOUND when it is gone, so the fake must refuse a missing file too.
+    if (!diskFiles.has(`notes/${id}.md`)) throw new Error(`Note not found: ${id}`)
     cacheRecords.set(id, properties)
     return { success: true }
   }
@@ -226,7 +229,10 @@ describe('project frontmatter backfill', () => {
     expect(writeCount('n1')).toBe(0)
   })
 
-  it('falls back to the cached record when the file cannot be read', async () => {
+  // The cached-record fallback exists for an unreadable file, but the write
+  // itself is then refused by the writer (`getNoteById` hits the same ENOENT and
+  // throws), so the note stays pending rather than being written from stale data.
+  it('keeps a note pending when its file cannot be read', async () => {
     seedProject('p1', 'Alpha')
     seedNote('n1', 'markdown', { cached: { Status: 'Draft' }, onDisk: false })
     seedLink('l1', 'p1', 'note', 'n1')
@@ -234,12 +240,13 @@ describe('project frontmatter backfill', () => {
     await runBackfill()
 
     expect(written('n1')).toEqual({ Status: 'Draft', project: ['Alpha'] })
+    expect(marker()).toBe(JSON.stringify({ n1: ['Alpha'] }))
   })
 
   // `parseNote` keeps an unparseable block verbatim so a writeback cannot
   // destroy it, but `updateNote` re-stringifies from the parsed object — which
   // is empty here. Writing would replace the user's YAML with nothing.
-  it('skips a note whose frontmatter cannot be parsed', async () => {
+  it('refuses a note whose frontmatter cannot be parsed, and keeps it pending', async () => {
     seedProject('p1', 'Alpha')
     seedNote('n1', 'markdown', { file: '---\nbroken: [unclosed\n---\n\nBody\n' })
     seedLink('l1', 'p1', 'note', 'n1')
@@ -247,7 +254,7 @@ describe('project frontmatter backfill', () => {
     await runBackfill()
 
     expect(writeCount('n1')).toBe(0)
-    expect(marker()).toBe('done')
+    expect(marker()).toBe(JSON.stringify({ n1: ['Alpha'] }))
   })
 
   // `updateNote` takes tags from the index cache and never from the file, and
@@ -297,6 +304,30 @@ describe('project frontmatter backfill', () => {
     expect(written('n1')).toEqual({ project: ['Alpha'] })
   })
 
+  // `extractTags` trims and drops blanks, so the cache never holds either shape.
+  // Comparing raw entries would defer these notes permanently.
+  it('does not defer for a blank tag entry the cache cannot hold', async () => {
+    seedProject('p1', 'Alpha')
+    seedNote('n1', 'markdown', { file: memryFile({}, ['work', '', '   ']) })
+    cachedTags.set('n1', ['work'])
+    seedLink('l1', 'p1', 'note', 'n1')
+
+    await runBackfill()
+
+    expect(written('n1')).toEqual({ project: ['Alpha'] })
+  })
+
+  it('does not defer for a whitespace-padded tag the cache holds trimmed', async () => {
+    seedProject('p1', 'Alpha')
+    seedNote('n1', 'markdown', { file: memryFile({}, [' work ']) })
+    cachedTags.set('n1', ['work'])
+    seedLink('l1', 'p1', 'note', 'n1')
+
+    await runBackfill()
+
+    expect(written('n1')).toEqual({ project: ['Alpha'] })
+  })
+
   it('writes a note linked to several projects exactly once', async () => {
     seedProject('p1', 'Alpha', 0)
     seedProject('p2', 'Beta', 1)
@@ -338,10 +369,10 @@ describe('project frontmatter backfill', () => {
     expect(writeCount('n2')).toBe(0)
   })
 
-  // Indexing has already run by the time the apply phase executes, so a note the
-  // index cache does not know is a note that is not in the vault. Retrying it on
-  // every later open would never succeed.
-  it('drops a link whose note the index cache does not know, and still completes', async () => {
+  // A note the index cache does not know is NOT proof the file is gone: a note
+  // that has since been excluded reads the same way, and so does every note in a
+  // cache that was rebuilt but not repopulated. It stays pending.
+  it('keeps a link pending when the index cache does not know its note', async () => {
     seedProject('p1', 'Alpha')
     seedNote('n1', 'markdown')
     seedNote('n2', 'markdown')
@@ -353,6 +384,38 @@ describe('project frontmatter backfill', () => {
 
     expect(written('n1')).toEqual({ project: ['Alpha'] })
     expect(writeCount('n2')).toBe(0)
+    expect(marker()).toBe(JSON.stringify({ n2: ['Alpha'] }))
+  })
+
+  // `rebuildIndex` initialises the index database and only then populates it, so
+  // a throw in `initializeFts` or `indexVault` leaves an initialised-but-empty
+  // cache — past the `isIndexDatabaseInitialized` guard. Every note reads as
+  // missing; discarding them would lose the vault's whole legacy-link population.
+  it('leaves the snapshot intact when the index cache is empty', async () => {
+    seedProject('p1', 'Alpha')
+    seedNote('n1', 'markdown')
+    seedNote('n2', 'markdown')
+    seedLink('l1', 'p1', 'note', 'n1')
+    seedLink('l2', 'p1', 'note', 'n2')
+
+    snapshotProjectFrontmatterBackfill(asClientDb(db))
+    const snapshot = marker()
+
+    // The cache exists but holds nothing.
+    cacheRecords.clear()
+    await applyProjectFrontmatterBackfill(asClientDb(db))
+
+    expect(writes.size).toBe(0)
+    expect(marker()).not.toBe('done')
+    expect(marker()).toBe(snapshot)
+
+    // A later open, with the cache repopulated, completes the work.
+    cacheRecords.set('n1', {})
+    cacheRecords.set('n2', {})
+    await applyProjectFrontmatterBackfill(asClientDb(db))
+
+    expect(written('n1')).toEqual({ project: ['Alpha'] })
+    expect(written('n2')).toEqual({ project: ['Alpha'] })
     expect(marker()).toBe('done')
   })
 
