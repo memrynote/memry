@@ -42,17 +42,26 @@ export const SortableTab = ({ tab, groupId, isActive }: SortableTabProps): React
   }
 
   return (
-    <TabContextMenu tab={tab} groupId={groupId}>
+    <TabContextMenu
+      tab={tab}
+      groupId={groupId}
+      // This wrapper is the tab strip's flex item: it shares the strip evenly with
+      // its siblings, and is the container the tab's compression tiers query against.
+      className={cn(
+        'no-drag @container',
+        'flex-[1_1_var(--tab-w-max)] min-w-[var(--tab-w-min)] max-w-[var(--tab-w-max)]'
+      )}
+    >
       <div
         ref={setNodeRef}
         style={style}
         className={cn(
-          'relative',
+          'relative w-full min-w-0',
           // Smooth opacity transition when dragging
           'transition-opacity duration-150 ease-out',
           // Enhanced drop indicator with glow effect
           isOver && [
-            'before:absolute before:-left-0.5 before:top-2 before:bottom-2',
+            'before:absolute before:-start-0.5 before:top-2 before:bottom-2',
             'before:w-0.5 before:bg-sidebar-terracotta before:rounded-full'
           ]
         )}

@@ -23,7 +23,9 @@ export function TabHoverPreview({ tab, children }: TabHoverPreviewProps) {
   return (
     <HoverCard openDelay={OPEN_DELAY} closeDelay={CLOSE_DELAY}>
       <HoverCardTrigger asChild>
-        <div data-tab-hover-trigger="">{children}</div>
+        <div className="w-full min-w-0" data-tab-hover-trigger="">
+          {children}
+        </div>
       </HoverCardTrigger>
       <HoverCardContent
         side="bottom"

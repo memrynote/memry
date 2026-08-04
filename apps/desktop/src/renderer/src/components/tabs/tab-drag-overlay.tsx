@@ -21,7 +21,7 @@ export const TabDragOverlay = ({ tab }: TabDragOverlayProps): React.JSX.Element 
     <div
       className={cn(
         'flex items-center gap-2 h-9 px-4',
-        'min-w-[100px] max-w-[180px]',
+        'min-w-[var(--tab-w-min)] max-w-[var(--tab-w-max)]',
         'select-none pointer-events-none',
         'rounded',
         'bg-sidebar-terracotta/[0.07]',

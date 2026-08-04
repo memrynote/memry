@@ -15,15 +15,18 @@ interface TabContextMenuProps {
   groupId: string
   /** Children to wrap */
   children: React.ReactNode
+  /** Additional CSS classes for the wrapper element */
+  className?: string
 }
 
 /**
- * Context menu wrapper that shows a native OS context menu on right-click
+ * Context menu wrapper that shows a native OS context menu on secondary click
  */
 export const TabContextMenu = ({
   tab,
   groupId,
-  children
+  children,
+  className
 }: TabContextMenuProps): React.JSX.Element => {
   const { closeTab, closeOtherTabs, closeTabsToRight, closeAllTabs, dispatch, state } = useTabs()
   const { t } = useT('common')
@@ -121,7 +124,11 @@ export const TabContextMenu = ({
     ]
   )
 
-  return <div onContextMenu={(...args) => void handleContextMenu(...args)}>{children}</div>
+  return (
+    <div className={className} onContextMenu={(...args) => void handleContextMenu(...args)}>
+      {children}
+    </div>
+  )
 }
 
 export default TabContextMenu
