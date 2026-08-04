@@ -33,6 +33,7 @@ import { decryptCanvasLibraryItemForVault, decryptCanvasSceneForVault } from './
 import { readCanvasLibrary, writeCanvasLibrary } from './library-file'
 import {
   allocateCanvasPath,
+  canvasPathKey,
   ensureCanvasDir,
   listCanvasFiles,
   readCanvasFileSync,
@@ -198,10 +199,19 @@ export async function reconcileCanvasFiles(
   // ---- 3. adopt files this index has never seen ----------------------------
   const indexed = db.select({ id: canvases.id, filePath: canvases.filePath }).from(canvases).all()
   const knownIds = new Set(indexed.map((row) => row.id))
-  const knownPaths = new Set(indexed.map((row) => row.filePath).filter(Boolean) as string[])
+  // Keyed case- and Unicode-insensitively: macOS hands back decomposed (NFD)
+  // filenames for the composed (NFC) name we wrote, and both macOS and Windows
+  // are case-insensitive. Comparing raw strings would make every vault open
+  // rediscover the same documents as new.
+  const knownPaths = new Set(
+    indexed
+      .map((row) => row.filePath)
+      .filter(Boolean)
+      .map((filePath) => canvasPathKey(filePath!))
+  )
 
   for (const filePath of listCanvasFiles(vaultPath)) {
-    if (knownPaths.has(filePath)) continue
+    if (knownPaths.has(canvasPathKey(filePath))) continue
     const content = readCanvasFileSync(resolveCanvasFile(vaultPath, filePath))
     if (content === null) continue
 
@@ -211,7 +221,7 @@ export async function reconcileCanvasFiles(
       // Same canvas, moved or renamed outside the app — re-point the index
       // instead of minting a duplicate.
       db.update(canvases).set({ filePath }).where(eq(canvases.id, meta.id)).run()
-      knownPaths.add(filePath)
+      knownPaths.add(canvasPathKey(filePath))
       continue
     }
 
@@ -253,7 +263,7 @@ export async function reconcileCanvasFiles(
     }
 
     knownIds.add(id)
-    knownPaths.add(filePath)
+    knownPaths.add(canvasPathKey(filePath))
     result.adopted += 1
   }
 

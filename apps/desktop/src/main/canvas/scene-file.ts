@@ -103,6 +103,25 @@ function canvasRelativePath(filename: string): string {
 }
 
 /**
+ * Comparison key for "is this the same file?" — never for opening one.
+ *
+ * Two normalizations, both platform reality rather than taste:
+ * - **case**: macOS and Windows default to case-insensitive filesystems, so
+ *   `Plan` and `plan` are one file there.
+ * - **Unicode**: macOS stores filenames decomposed (NFD), so a canvas titled
+ *   `Yağmur` written by the app (NFC) comes back from `readdir` as different
+ *   bytes for the same name. Without this, every vault open would see a
+ *   "new" file and rewrite the row's path.
+ *
+ * The stored path always keeps the bytes as they exist on disk, because Linux
+ * filesystems are normalization-SENSITIVE: a path normalized to NFC would not
+ * open a file that arrived NFD from a Mac.
+ */
+export function canvasPathKey(relativePath: string): string {
+  return relativePath.normalize('NFC').toLowerCase()
+}
+
+/**
  * Embeds the memry sidecar into a serialized scene.
  *
  * A scene that is empty or unparseable still yields a valid Excalidraw
@@ -336,13 +355,13 @@ export function allocateCanvasPath(
   current: string | null = null
 ): string {
   const base = portableCanvasBase(title)
-  const claimed = new Set([...taken].map((entry) => entry.toLowerCase()))
-  const own = current?.toLowerCase() ?? null
+  const claimed = new Set([...taken].map(canvasPathKey))
+  const own = current ? canvasPathKey(current) : null
   let candidate = canvasRelativePath(`${base}${CANVAS_FILE_EXT}`)
   let counter = 1
   while (
-    candidate.toLowerCase() !== own &&
-    (claimed.has(candidate.toLowerCase()) || existsSync(resolveCanvasFile(vaultPath, candidate)))
+    canvasPathKey(candidate) !== own &&
+    (claimed.has(canvasPathKey(candidate)) || existsSync(resolveCanvasFile(vaultPath, candidate)))
   ) {
     counter += 1
     candidate = canvasRelativePath(`${base} ${counter}${CANVAS_FILE_EXT}`)

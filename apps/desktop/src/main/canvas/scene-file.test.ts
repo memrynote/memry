@@ -15,6 +15,7 @@ import {
   CANVAS_DIR,
   CANVAS_FILE_EXT,
   allocateCanvasPath,
+  canvasPathKey,
   deleteCanvasFileSync,
   listCanvasFiles,
   readCanvasFileSync,
@@ -290,6 +291,21 @@ describe('cross-platform paths and filenames', () => {
     // Its own file must not count as a collision, or the rename lands on "plan 2".
     expect(allocateCanvasPath(vault, 'plan', new Set(), `${CANVAS_DIR}/Plan.excalidraw`)).toBe(
       `${CANVAS_DIR}/plan.excalidraw`
+    )
+  })
+
+  it('treats NFC and NFD spellings of a name as the same file (macOS stores NFD)', () => {
+    const composed = 'Ya\u011fmur'.normalize('NFC')
+    const decomposed = 'Ya\u011fmur'.normalize('NFD')
+    expect(composed).not.toBe(decomposed)
+
+    // Same canvas, different bytes for the same on-disk name.
+    expect(canvasPathKey(`${CANVAS_DIR}/${composed}.excalidraw`)).toBe(
+      canvasPathKey(`${CANVAS_DIR}/${decomposed}.excalidraw`)
+    )
+    const taken = new Set([`${CANVAS_DIR}/${decomposed}.excalidraw`])
+    expect(allocateCanvasPath(vault, composed, taken)).toBe(
+      `${CANVAS_DIR}/${composed} 2.excalidraw`
     )
   })
 
