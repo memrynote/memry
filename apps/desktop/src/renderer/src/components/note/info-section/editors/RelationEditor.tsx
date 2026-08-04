@@ -7,6 +7,7 @@ import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import type { RelationKind } from '@memry/contracts/properties-api'
 import { useT } from '@memry/i18n/renderer'
+import { useRelationNavigation } from '@/hooks/use-relation-navigation'
 import { RelationPicker } from './RelationPicker'
 
 const log = createLogger('RelationEditor')
@@ -30,6 +31,7 @@ interface RelationEditorProps {
 // value; only an explicit remove click writes.
 export function RelationEditor({ value, onChange }: RelationEditorProps) {
   const { t } = useT('notes')
+  const navigate = useRelationNavigation()
   const [resolved, setResolved] = useState<ResolvedRelationRef[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
 
@@ -77,6 +79,16 @@ export function RelationEditor({ value, onChange }: RelationEditorProps) {
         const Icon = KIND_ICONS[ref.targetType]
         const label = ref.exists ? ref.title : t('properties.relation.deleted')
 
+        // A note's own emoji stands in for the generic kind icon. Only markdown
+        // notes carry one; files, tasks and events keep their kind icon.
+        const glyph = ref.emoji ? (
+          <span className="size-3 shrink-0 leading-none text-[11px]" aria-hidden>
+            {ref.emoji}
+          </span>
+        ) : (
+          <Icon className="size-3 shrink-0" aria-hidden />
+        )
+
         return (
           <span
             key={ref.uri}
@@ -89,8 +101,29 @@ export function RelationEditor({ value, onChange }: RelationEditorProps) {
               ref.exists ? 'bg-tint/10 text-tint' : 'bg-muted text-muted-foreground'
             )}
           >
-            <Icon className="size-3 shrink-0" aria-hidden />
-            <span className="truncate">{label}</span>
+            {/* A dangling ref has nothing to open, so it stays inert text.
+                The remove control is a sibling, never nested inside this
+                button — a button inside a button is invalid markup. */}
+            {ref.exists ? (
+              <button
+                type="button"
+                onClick={() => navigate(ref)}
+                title={ref.title}
+                className={cn(
+                  'inline-flex min-w-0 items-center gap-1 rounded-[8px]',
+                  'transition-opacity duration-150 hover:opacity-80',
+                  'focus:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+                )}
+              >
+                {glyph}
+                <span className="truncate">{label}</span>
+              </button>
+            ) : (
+              <>
+                {glyph}
+                <span className="truncate">{label}</span>
+              </>
+            )}
             <button
               type="button"
               onClick={() => handleRemove(ref.uri)}

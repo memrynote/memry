@@ -10,7 +10,12 @@ import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
 const mocks = vi.hoisted(() => ({
   resolveRefs: vi.fn(),
   quick: vi.fn(),
-  searchEvents: vi.fn()
+  searchEvents: vi.fn(),
+  openTab: vi.fn()
+}))
+
+vi.mock('@/contexts/tabs', () => ({
+  useTabs: () => ({ openTab: mocks.openTab })
 }))
 
 vi.mock('@/services/properties-service', () => ({
@@ -252,5 +257,134 @@ describe('RelationEditor', () => {
     await userEvent.click(resultOption)
 
     expect(onChange).not.toHaveBeenCalled()
+  })
+})
+
+describe('RelationEditor — emoji and navigation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  const ref = (over: Partial<ResolvedRelationRef>): ResolvedRelationRef => ({
+    uri: 'memry://note/nte_1',
+    targetType: 'note',
+    targetId: 'nte_1',
+    title: 'Richard Doe',
+    exists: true,
+    ...over
+  })
+
+  it("shows the note's own emoji instead of the kind icon", async () => {
+    mockResolveRefs([ref({ emoji: '👩' })])
+    renderWithI18n(<RelationEditor value={['memry://note/nte_1']} onChange={vi.fn()} />)
+    expect(await screen.findByText('👩')).toBeInTheDocument()
+  })
+
+  it('opens a note tab, carrying the emoji onto the tab', async () => {
+    mockResolveRefs([ref({ emoji: '👩' })])
+    renderWithI18n(<RelationEditor value={['memry://note/nte_1']} onChange={vi.fn()} />)
+    await userEvent.click(await screen.findByText('Richard Doe'))
+
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'note', entityId: 'nte_1', emoji: '👩' })
+    )
+  })
+
+  it('opens a file tab for a non-markdown target', async () => {
+    mockResolveRefs([
+      ref({
+        uri: 'memry://note/nte_pdf',
+        targetId: 'nte_pdf',
+        title: 'contract.pdf',
+        fileType: 'pdf'
+      })
+    ])
+    renderWithI18n(<RelationEditor value={['memry://note/nte_pdf']} onChange={vi.fn()} />)
+    await userEvent.click(await screen.findByText('contract.pdf'))
+
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'file', entityId: 'nte_pdf' })
+    )
+  })
+
+  it("opens the task's project scope and its detail drawer", async () => {
+    mockResolveRefs([
+      ref({
+        uri: 'memry://task/tsk_1',
+        targetType: 'task',
+        targetId: 'tsk_1',
+        title: 'Call Richard',
+        projectId: 'project-1'
+      })
+    ])
+    renderWithI18n(<RelationEditor value={['memry://task/tsk_1']} onChange={vi.fn()} />)
+    await userEvent.click(await screen.findByText('Call Richard'))
+
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'tasks',
+        viewState: { openTaskId: 'tsk_1', selectedProjectId: 'project-1' }
+      })
+    )
+  })
+
+  it('leaves the tasks list filter alone when the task has no project', async () => {
+    mockResolveRefs([
+      ref({
+        uri: 'memry://task/tsk_2',
+        targetType: 'task',
+        targetId: 'tsk_2',
+        title: 'Loose task'
+      })
+    ])
+    renderWithI18n(<RelationEditor value={['memry://task/tsk_2']} onChange={vi.fn()} />)
+    await userEvent.click(await screen.findByText('Loose task'))
+
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ viewState: { openTaskId: 'tsk_2' } })
+    )
+  })
+
+  it('sends the calendar the event date as well as the id, so it can move its range', async () => {
+    mockResolveRefs([
+      ref({
+        uri: 'memry://event/evt_1',
+        targetType: 'event',
+        targetId: 'evt_1',
+        title: 'Lunch',
+        startAt: '2026-08-30T12:00:00.000Z'
+      })
+    ])
+    renderWithI18n(<RelationEditor value={['memry://event/evt_1']} onChange={vi.fn()} />)
+    await userEvent.click(await screen.findByText('Lunch'))
+
+    const tab = mocks.openTab.mock.calls[0][0]
+    expect(tab.type).toBe('calendar')
+    expect(tab.viewState.focusCalendarEventId).toBe('evt_1')
+    expect(tab.viewState.focusDate).toBe('2026-08-30T12:00:00.000Z')
+    // Both calendar effects short-circuit on a consumed token, so a fresh one
+    // is what makes a repeat click work at all.
+    expect(typeof tab.viewState.focusedAt).toBe('number')
+  })
+
+  it('does not navigate from a deleted chip', async () => {
+    mockResolveRefs([
+      ref({ uri: 'memry://note/nte_gone', targetId: 'nte_gone', title: '', exists: false })
+    ])
+    renderWithI18n(<RelationEditor value={['memry://note/nte_gone']} onChange={vi.fn()} />)
+    const chip = await screen.findByTestId('relation-chip-deleted')
+    await userEvent.click(chip)
+
+    expect(mocks.openTab).not.toHaveBeenCalled()
+  })
+
+  it('removes without navigating when the × is clicked', async () => {
+    mockResolveRefs([ref({})])
+    const onChange = vi.fn()
+    renderWithI18n(<RelationEditor value={['memry://note/nte_1']} onChange={onChange} />)
+    await userEvent.click(await screen.findByLabelText('Remove Richard Doe'))
+
+    expect(onChange).toHaveBeenCalledWith([])
+    expect(mocks.openTab).not.toHaveBeenCalled()
   })
 })

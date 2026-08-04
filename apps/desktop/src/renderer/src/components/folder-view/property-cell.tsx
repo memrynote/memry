@@ -42,6 +42,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { propertiesService } from '@/services/properties-service'
 import type { RelationKind, ResolvedRelationRef } from '@memry/contracts/properties-api'
 import { useT } from '@memry/i18n/renderer'
+import { useRelationNavigation } from '@/hooks/use-relation-navigation'
 import { TagChip } from '@/components/note/tags-row/TagChip'
 import { toTagChip, type TagMeta, type TagMetaMap } from './note-card-pieces'
 
@@ -767,6 +768,7 @@ export const RelationCell = memo(function RelationCell({
   className?: string
 }): React.JSX.Element {
   const { t } = useT('notes')
+  const navigate = useRelationNavigation()
   const [resolved, setResolved] = useState<ResolvedRelationRef[]>([])
 
   // Derived from `value` (not created fresh from it) so `uris` keeps the
@@ -807,20 +809,54 @@ export const RelationCell = memo(function RelationCell({
         const Icon = RELATION_KIND_ICONS[ref.targetType]
         const label = ref.exists ? ref.title : t('properties.relation.deleted')
 
+        // A note's own emoji stands in for the generic kind icon.
+        const glyph = ref.emoji ? (
+          <span className="size-3 shrink-0 leading-none text-[11px]" aria-hidden>
+            {ref.emoji}
+          </span>
+        ) : (
+          <Icon className="size-3 shrink-0" aria-hidden />
+        )
+
+        const chipClass = cn(
+          '[font-synthesis:none] inline-flex items-center gap-1',
+          'rounded-[10px] ps-1.5 pe-1.5 py-0.5',
+          'text-[11px]/3.5 font-medium',
+          'shrink-0 select-none max-w-full',
+          ref.exists ? 'bg-tint/10 text-tint' : 'bg-muted text-muted-foreground'
+        )
+
+        // The cell is read-only for editing, but navigation is a read action.
+        // A dangling ref has nothing to open and stays inert.
+        if (!ref.exists) {
+          return (
+            <span key={ref.uri} className={chipClass}>
+              {glyph}
+              <span className="truncate">{label}</span>
+            </span>
+          )
+        }
+
         return (
-          <span
+          <button
             key={ref.uri}
+            type="button"
+            title={ref.title}
+            // The row around this cell has its own click behaviour; opening a
+            // chip must not also trigger it.
+            onClick={(event) => {
+              event.stopPropagation()
+              navigate(ref)
+            }}
             className={cn(
-              '[font-synthesis:none] inline-flex items-center gap-1',
-              'rounded-[10px] ps-1.5 pe-1.5 py-0.5',
-              'text-[11px]/3.5 font-medium',
-              'shrink-0 select-none max-w-full',
-              ref.exists ? 'bg-tint/10 text-tint' : 'bg-muted text-muted-foreground'
+              chipClass,
+              'transition-opacity duration-150 hover:opacity-80',
+              'focus:outline-none focus-visible:ring-1 focus-visible:ring-ring'
             )}
           >
-            <Icon className="size-3 shrink-0" aria-hidden />
+            {glyph}
             <span className="truncate">{label}</span>
-          </span>
+          </button>
         )
       })}
     </div>

@@ -14,13 +14,20 @@ import {
 } from './property-cell'
 
 const mocks = vi.hoisted(() => ({
-  resolveRefs: vi.fn()
+  resolveRefs: vi.fn(),
+  openTab: vi.fn()
 }))
 
 vi.mock('@/services/properties-service', () => ({
   propertiesService: {
     resolveRefs: mocks.resolveRefs
   }
+}))
+
+// RelationCell chips navigate through useRelationNavigation, which reads the
+// tabs context. There is no TabsProvider in these tests.
+vi.mock('@/contexts/tabs', () => ({
+  useTabs: () => ({ openTab: mocks.openTab })
 }))
 
 // Real i18n: tests/setup-dom.ts initializes the global i18next singleton with
@@ -223,8 +230,11 @@ describe('relation property cells', () => {
     ])
     render(<PropertyCell type="relation" value={['memry://note/nte_1']} />)
     expect(await screen.findByText('Richard Doe')).toBeInTheDocument()
+    // No write affordances: no picker to add a ref, no × to remove one. The
+    // chip itself IS a button — navigating to the target is a read action, not
+    // an edit — so "no buttons at all" is deliberately not the assertion here.
     expect(screen.queryByLabelText('Add relation')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/^Remove /)).not.toBeInTheDocument()
   })
 
   it('does not offer editing affordances even when the cell is used editably', async () => {
@@ -240,13 +250,53 @@ describe('relation property cells', () => {
     const onSave = vi.fn()
     render(<EditablePropertyCell type="relation" value={['memry://note/nte_1']} onSave={onSave} />)
     expect(await screen.findByText('Richard Doe')).toBeInTheDocument()
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/^Remove /)).not.toBeInTheDocument()
 
-    // There is nothing clickable to enter edit mode with, but assert the
-    // no-write guarantee directly: clicking the chip text must never call
-    // onSave.
+    // The chip is clickable now, but only to navigate. Clicking it must open
+    // the target and never enter edit mode or write a value.
     fireEvent.click(screen.getByText('Richard Doe'))
     expect(onSave).not.toHaveBeenCalled()
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'note', entityId: 'nte_1' })
+    )
+  })
+
+  it('navigates from a chip without letting the click reach the surrounding row', async () => {
+    mockResolveRefs([
+      {
+        uri: 'memry://event/evt_1',
+        targetType: 'event',
+        targetId: 'evt_1',
+        title: 'Lunch',
+        exists: true,
+        startAt: '2026-08-30T12:00:00.000Z'
+      }
+    ])
+    const onRowClick = vi.fn()
+    render(
+      <div onClick={onRowClick}>
+        <PropertyCell type="relation" value={['memry://event/evt_1']} />
+      </div>
+    )
+    fireEvent.click(await screen.findByText('Lunch'))
+
+    expect(mocks.openTab).toHaveBeenCalledWith(expect.objectContaining({ type: 'calendar' }))
+    expect(onRowClick).not.toHaveBeenCalled()
+  })
+
+  it("shows a note's own emoji in place of the kind icon", async () => {
+    mockResolveRefs([
+      {
+        uri: 'memry://note/nte_1',
+        targetType: 'note',
+        targetId: 'nte_1',
+        title: 'Jane Doe',
+        exists: true,
+        emoji: '👩'
+      }
+    ])
+    render(<PropertyCell type="relation" value={['memry://note/nte_1']} />)
+    expect(await screen.findByText('👩')).toBeInTheDocument()
   })
 
   it('renders dangling refs in a distinct muted state', async () => {
