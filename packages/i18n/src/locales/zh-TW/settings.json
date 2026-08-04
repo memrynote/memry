@@ -28,7 +28,8 @@
         "properties": "屬性",
         "commandLine": "命令列",
         "features": "功能",
-        "import": "匯入"
+        "import": "匯入",
+        "inbox": "收件匣"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "下載 {percent}%",
         "downloaded": "重新啟動以安裝",
         "idle": "檢查更新"
+      },
+      "autoCheck": {
+        "description": "在啟動時，以及應用程式開啟期間定期檢查新版本。",
+        "error": "更新自動檢查設定失敗",
+        "label": "自動檢查更新"
+      },
+      "autoDownload": {
+        "description": "在背景下載並安裝新版本，不另行詢問。",
+        "error": "更新自動下載設定失敗",
+        "label": "自動下載更新"
       }
     },
     "language": {
@@ -116,7 +127,7 @@
       "defaultNoteFolder": {
         "description": "空白＝保管庫根目錄",
         "label": "新筆記的預設位置",
-        "placeholder": "notes"
+        "placeholder": "筆記"
       }
     },
     "privacy": {
@@ -124,6 +135,24 @@
         "label": "分享匿名使用指標",
         "description": "這僅是匿名指標——永遠不會發送筆記內容、搜索查詢、檔案路徑、電子郵件或原始 ID。",
         "error": "更新遙測設定失敗"
+      },
+      "diagnostics": {
+        "building": "正在準備報告…",
+        "consent": "要傳送一次性的診斷報告嗎？其中只包含去識別化的技術記錄，不含任何筆記內容。",
+        "error": "傳送診斷報告失敗",
+        "notNow": "暫時不要",
+        "previewError": "無法準備診斷報告",
+        "previewLabel": "預覽報告內容",
+        "send": "傳送",
+        "sendReport": {
+          "button": "傳送診斷報告",
+          "description": "傳送一份一次性的報告，內含去識別化的技術記錄，協助我們找出您遇到的問題。",
+          "label": "診斷報告"
+        },
+        "sending": "傳送中…",
+        "sent": "報告已送出——參考編號 {incidentId}",
+        "snapshotLabel": "裝置快照",
+        "title": "要傳送診斷報告嗎？"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "版面配置",
-      "toolbar": "工具列"
+      "toolbar": "工具列",
+      "spelling": "拼字"
     },
     "width": {
       "label": "編輯器寬度",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "窄",
         "medium": "中",
-        "wide": "寬"
+        "wide": "寬",
+        "full": "全寬",
+        "normal": "標準"
       },
       "error": "更新編輯器寬度失敗"
     },
@@ -229,6 +261,11 @@
       "label": "固定格式工具列",
       "description": "總是在編輯器上方顯示工具列",
       "error": "更新工具列模式失敗"
+    },
+    "spellCheck": {
+      "description": "在筆記與日誌中為拼錯的字加上底線",
+      "error": "更新拼字檢查失敗",
+      "label": "檢查拼字"
     }
   },
   "templates": {
@@ -322,7 +359,7 @@
     "folder": {
       "description": "儲存每日筆記的資料夾",
       "label": "日誌資料夾",
-      "placeholder": "journal"
+      "placeholder": "日誌"
     },
     "preview": {
       "description": "今天的日誌檔案路徑",
@@ -640,7 +677,7 @@
       "vaultPickerFolderLabel": "將保管庫儲存於資料夾",
       "vaultPickerPrimaryHint": "立即開啟",
       "vaultPickerTitle": "選擇要拉取的內容",
-      "vaultRow": "保管庫 — {{count}} 個項目 · {{date}}"
+      "vaultRow": "保管庫 — {count} 個項目 · {date}"
     }
   },
   "devices": {
@@ -673,7 +710,8 @@
       "removeFailed": "移除裝置失敗",
       "renamed": "已重新命名為 \"{name}\"",
       "renameFailed": "重新命名裝置失敗"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "連接新裝置",
@@ -855,6 +893,11 @@
         "description": "關閉以進行單向同步——您仍會在 memrynote 中看到您的 Google 活動，但 memrynote 活動不會出現在 Google 中。",
         "error": "更新同步方向失敗",
         "label": "在 Google Calendar 中顯示 memrynote 活動"
+      },
+      "agentAccess": {
+        "description": "預設為關閉。開啟後，AI 代理可以讀取您的 Google 活動；關閉時，即使詢問也不會取得任何內容。不論開啟或關閉，您都仍會在 memrynote 中看到這些活動。",
+        "error": "更新 AI 存取權失敗",
+        "label": "讓 AI 讀取 Google Calendar 活動"
       }
     },
     "sourcePicker": {
@@ -898,7 +941,8 @@
     },
     "groups": {
       "storageUsage": "存儲使用情況",
-      "location": "位置"
+      "location": "位置",
+      "accountVaults": "您帳戶中的保險庫"
     },
     "loadingStorage": "正在加載存儲資訊...",
     "signInStorage": "登入以查看存儲使用情況",
@@ -919,6 +963,17 @@
       },
       "warningTitle": "存儲空間即將滿",
       "warningDescription": "釋放空間或升級方案以避免同步問題。"
+    },
+    "accountVaults": {
+      "activeHint": "切換到其他保險庫才能刪除這一個。",
+      "cloudOnly": "不在此裝置上",
+      "delete": "刪除",
+      "deleteBody": "這會從 Memry 的伺服器永久移除此保險庫的所有同步資料，且無法復原。您磁碟上的檔案不會被刪除。",
+      "deleteConfirm": "從帳戶刪除",
+      "deleteFailed": "無法刪除保險庫",
+      "deleteTitle": "要從您的帳戶刪除「{name}」嗎？",
+      "empty": "尚未有保險庫同步到您的帳戶。",
+      "itemsCount": "{count} 個項目"
     }
   },
   "tags": {
@@ -1137,16 +1192,12 @@
       "press": "按下",
       "toToggleThisDialog": "切換此對話框"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middot;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "此裝置已被移除",
       "exporting": "正在匯出...",
       "signOut": "登出"
     },
     "componentsSyncSyncHistory": {
-      "middot": "·",
       "activity": "活動",
       "filterBySyncType": "依同步類型篩選",
       "allTypes": "所有類型",
@@ -1160,7 +1211,12 @@
       "last30Days": "過去 30 天",
       "loadingSyncHistory": "正在加載同步歷史",
       "noSyncActivityYet": "尚無同步活動",
-      "loadMore": "加載更多"
+      "loadMore": "加載更多",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}，顯示錯誤詳細資料",
+      "summaryFailed": "同步失敗",
+      "summaryPulled": "{count, plural, other {已拉取 # 個項目}}",
+      "summaryPushed": "{count, plural, other {已推送 # 個項目}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "上次同步",
@@ -1208,102 +1264,103 @@
       "failedToCloseVault": "無法關閉保險庫",
       "failedToSwitchVault": "無法切換保險庫",
       "failedToUpdateConfig": "無法更新配置",
-      "failedToReindex": "無法重新索引"
+      "failedToReindex": "無法重新索引",
+      "failedToLoadTasks": "載入任務失敗"
     }
   },
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "供外部 MCP 用戶端存取的本地伺服器。"
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "連線",
+      "access": "存取權"
     },
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "在 Cursor、Claude Desktop 或 Zed 中使用這個 localhost 端點。"
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Bearer 權杖",
+        "description": "僅在本次啟動期間存於記憶體的憑證。"
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "輪替權杖",
+        "description": "使現有的外部用戶端工作階段失效。"
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "複製{label}",
+    "notRunning": "未執行",
+    "toolsBadge": "{count, plural, one {# 個工具} other {# 個工具}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Agent 權限",
+      "subtitle": "為 Agent 聊天選擇預設存取權、確認方式和本地提供者。"
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "本地 OpenAI 相容提供者",
+      "actions": "連線檢查"
     },
     "presets": {
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "自訂"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "預設集"
       },
       "baseUrl": {
         "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "description": "OpenAI 相容的 /v1 端點。"
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "允許非回送端點",
+        "description": "資料會傳送到所設定的端點。"
       },
       "model": {
-        "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "label": "模型",
+        "description": "選擇回傳的模型，或手動輸入一個。"
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "API 金鑰",
+        "description": "選填憑證，儲存在作業系統金鑰圈中。",
+        "configured": "作業系統金鑰圈中已儲存 API 金鑰。"
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "save": "儲存",
+      "models": "載入模型",
+      "test": "測試連線",
+      "probe": "偵測工具"
     },
     "status": {
-      "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "disconnected": "未連線",
+      "toolsDisabled": "工具已停用",
+      "fullTools": "已啟用完整工具",
       "checking": "檢查中…",
       "connected": "已連線",
       "label": "連線"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Agent 權限",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "預設存取權",
+        "description": "設定新 Agent 回合的起始存取模式。",
+        "vaultOnly": "僅限保險庫",
+        "computerAccess": "電腦存取"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "確認動作",
+        "description": "選擇工具呼叫要自動執行，還是在聊天中等待批准。",
+        "alwaysAllow": "永遠允許",
+        "askBeforeChanges": "變更前先詢問"
       }
     }
   },
@@ -1368,6 +1425,10 @@
       "tasks": {
         "description": "待辦事項與到期日",
         "label": "任務"
+      },
+      "spatialCanvas": {
+        "description": "排列與連結筆記的空間畫布",
+        "label": "畫布"
       }
     }
   },
@@ -1393,7 +1454,10 @@
         "skipped": "{count} 個已略過",
         "title": "匯入完成"
       },
-      "title": "從 {name} 匯入"
+      "title": "從 {name} 匯入",
+      "chooseDirectory": "選擇資料夾…",
+      "folderKeepsAssets": "若圖片不在筆記本身的資料夾裡，請選擇資料夾——匯出的內容常把媒體集中放在共用資料夾。",
+      "previewError": "預覽失敗"
     },
     "header": {
       "subtitle": "從其他應用程式匯入您的筆記與任務",
@@ -1432,6 +1496,99 @@
       "tasks": "{count, plural, other {# 項任務}}",
       "withDueDate": "{count} 個已設日期",
       "withTags": "{count} 個已加標籤"
+    },
+    "messages": {
+      "csv": {
+        "columns": "欄位：{columns}",
+        "emptyTitle": "已略過標題為空的資料列（欄位「{column}」）",
+        "noHeaders": "CSV 檔案沒有標頭列",
+        "titleColumn": "標題取自「{column}」；其他欄位會儲存為屬性"
+      },
+      "raindrop": {
+        "csvEmpty": "Raindrop CSV 是空的",
+        "headerNotFound": "找不到 Raindrop CSV 的標頭列（「url」欄位）",
+        "rowNoUrl": "已略過第 {row} 列：沒有網址"
+      },
+      "readFileFailed": "讀取檔案失敗",
+      "ticktick": {
+        "foldersDropped": "TickTick 資料夾在 Memry 中沒有對應項目，已略過",
+        "headerNotFound": "找不到 TickTick CSV 的標頭列（「Folder Name」）",
+        "reminderNoAnchor": "已略過提醒「{reminder}」（沒有日期基準）",
+        "subtaskParentMissing": "找不到子任務「{title}」的上層任務；已匯入為頂層任務",
+        "unknownPriority": "未知的 TickTick 優先順序 {priority} → 無",
+        "unsupportedRepeat": "已略過不支援的重複規則「{rule}」"
+      },
+      "todoist": {
+        "emptyTitle": "內容為空的任務已匯入為（未命名）",
+        "headerNotFound": "這不是 Todoist CSV：缺少 TYPE 標頭列",
+        "orphanComment": "已略過前方沒有任務的註解",
+        "sectionFlattened": "區段「{section}」已扁平化",
+        "subtaskNoParent": "子任務「{title}」在縮排層級 {indent} 沒有上層任務；已匯入為頂層任務",
+        "unknownPriority": "未知的優先順序 {priority} → 無",
+        "unparsedDate": "無法解析日期「{date}」"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "正在複製 Apple Notes 資料庫…"
+      },
+      "bear": {
+        "scanning": "正在掃描 Bear 匯出檔…"
+      },
+      "csv": {
+        "importing": "正在匯入 CSV 筆記…"
+      },
+      "evernote": {
+        "scanning": "正在掃描 .enex 檔案…"
+      },
+      "html": {
+        "scanning": "正在掃描 HTML 檔案…"
+      },
+      "importingItem": "正在匯入 {title}",
+      "raindrop": {
+        "importing": "正在匯入 Raindrop 書籤…"
+      },
+      "roam": {
+        "reading": "正在讀取 Roam 匯出檔…"
+      },
+      "scanningExport": "正在掃描匯出檔…",
+      "scanningFiles": "正在掃描檔案…",
+      "ticktick": {
+        "importing": "正在匯入 TickTick 任務…"
+      },
+      "todoist": {
+        "importing": "正在匯入 Todoist 任務…"
+      }
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "載入中…",
+      "subtitle": "每日回顧提醒與收件匣偏好設定。",
+      "title": "收件匣"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "當收件匣裡有項目時，每天輕輕提醒您一次。",
+        "label": "提醒我回顧收件匣"
+      },
+      "error": "無法更新提醒。",
+      "group": "每日回顧提醒",
+      "test": {
+        "button": "傳送測試",
+        "description": "立即發出提醒，確認系統通知是否正常。",
+        "label": "測試通知",
+        "sent": "測試通知已送出。",
+        "sentHint": "若沒有出現任何通知，請在系統設定中允許 MemryNote 傳送通知。",
+        "unsupported": "此裝置無法顯示桌面通知。"
+      },
+      "time": {
+        "description": "各裝置的本機時間。",
+        "hourLabel": "時",
+        "label": "提醒時間",
+        "minuteLabel": "分",
+        "periodLabel": "AM 或 PM"
+      }
     }
   }
 }

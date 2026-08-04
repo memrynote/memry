@@ -25,7 +25,8 @@
     "expand": "展开",
     "collapse": "收起",
     "showMore": "+{count, plural, one {# 更多} other {# 更多}}",
-    "showLess": "显示较少"
+    "showLess": "显示较少",
+    "undo": "撤销"
   },
   "tabs": {
     "pin": "固定标签页",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "今天",
     "yesterday": "昨天",
-    "daysAgo": "{count, plural, one {# 天前} other {# 天前}}"
+    "daysAgo": "{count, plural, one {# 天前} other {# 天前}}",
+    "daysLate": "{count, plural, other {迟 # 天}}",
+    "daysOverdue": "{count, plural, other {逾期 # 天}}",
+    "tomorrow": "明天"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {每天} other {每 # 天}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {每月的 {day}{suffix}} other {每 # 月的 {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {每月的 {week} {day}} other {每 # 个月在 {week} {day}}}",
     "everyNYears": "{count, plural, one {每年} other {每 # 年}}",
-    "repeats": "重复"
+    "repeats": "重复",
+    "ordinal": {
+      "first": "第一个",
+      "fourth": "第四个",
+      "last": "最后一个",
+      "second": "第二个",
+      "third": "第三个"
+    },
+    "preset": {
+      "everyWeekday": "每个工作日（周一至周五）",
+      "everyYearOnDate": "每年 {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -102,7 +117,15 @@
       "updateDownloadingPercent": "下载中 {percent}%",
       "updateInstallingSubtitle": "MemryNote 将自动重启。",
       "updateInstallingTitle": "正在安装更新",
-      "updateRestart": "重启"
+      "updateRestart": "重启",
+      "feedbackPrivacyEmailOptional": "你的邮箱——仅在你填写时发送，且只用于回复你",
+      "feedbackPrivacyEmailSignedIn": "你的账户邮箱（{email}），以便我们回复你",
+      "feedbackPrivacyMessage": "你的留言，与你写下的完全一致",
+      "feedbackPrivacyNote": "仅此而已。你的笔记始终留在你的设备上。",
+      "feedbackPrivacyPlan": "你的套餐（free、Plus、Pro 或 Believer）",
+      "feedbackPrivacyTitle": "会发送哪些内容",
+      "feedbackPrivacyVersion": "应用版本和操作系统",
+      "projects": "项目"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "调整日面板大小",
@@ -180,8 +203,9 @@
       "search": "搜索",
       "searchNotesTasksJournalInbox": "搜索笔记、任务、日记、收件箱...",
       "noResultsFor": "“ 未找到结果",
-      "rdquo": "rdquo;",
-      "result": "结果"
+      "result": "结果",
+      "noResultsForQuery": "未找到“{query}”的结果",
+      "resultCount": "{count, plural, other {# 条结果}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "搜索并点击项目以建立你的轨迹",
@@ -231,7 +255,8 @@
       "journal": "日记",
       "calendar": "日历",
       "inboxCapture": "收件箱捕获",
-      "tasks": "任务"
+      "tasks": "任务",
+      "tags": "标签"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "未保存的更改",
@@ -261,15 +286,15 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "发生错误",
       "anErrorOccurredWhileRenderingThisTabContent": "渲染此标签内容时发生错误。",
-      "tryAgain": "重试"
+      "tryAgain": "重试",
+      "sendReport": "发送诊断报告"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "笔记图标"
     },
     "componentsTabsUnsavedChangesDialog": {
       "unsavedChanges": "未保存的更改",
-      "quot": "“",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "“有未保存的更改。您想怎么做？"
+      "unsavedChangesBody": "“{title}”有未保存的更改。你想怎么做？"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "新工作区",
@@ -341,7 +366,6 @@
       "logOut": "登出",
       "signInToSync": "登录以同步",
       "remove": "移除",
-      "rdquoFromList": "从列表中删除？",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "此保险库将从应用中移除，但您的文件仍会保存在磁盘上。您以后可以随时重新添加。",
       "cancel": "取消",
       "remove2": "移除",
@@ -352,7 +376,13 @@
       "downloadLocation": "位置",
       "changeLocation": "更改…",
       "download": "下载",
-      "downloadFailed": "无法下载保险库"
+      "downloadFailed": "无法下载保险库",
+      "deleteFromAccount": "从账户中删除",
+      "deleteVaultBody": "这会从 Memry 的服务器上永久删除此保险库的所有已同步数据，且无法撤销。你磁盘上的文件不会被删除。",
+      "deleteVaultConfirm": "从账户中删除",
+      "deleteVaultFailed": "无法删除保险库",
+      "deleteVaultTitle": "从你的账户中删除“{name}”？",
+      "removeVaultTitle": "从列表中移除“{name}”？"
     },
     "componentsWindowControls": {
       "searchK": "搜索 (⌘K)",
@@ -425,7 +455,7 @@
       },
       "models": {
         "default": "默认",
-        "label": "Model"
+        "label": "模型"
       },
       "settings": {
         "reasoning": "推理"
@@ -450,21 +480,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "仅保险库",
+        "computerAccess": "计算机访问"
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
-        "label": "Web search"
+        "off": "关闭",
+        "label": "联网搜索"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Agent 权限：{access}，联网搜索 {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "权限",
+        "access": "访问权限",
+        "tools": "工具"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Agent 模型设置：{model}，{settings}"
     },
     "refPicker": {
       "noMatches": "没有匹配项"
@@ -479,7 +509,7 @@
     "sidebar": {
       "label": "右侧边栏",
       "day": "日",
-      "agent": "Agent",
+      "agent": "智能助手",
       "pendingApproval": "{count, plural, one {# 待批准} other {# 待批准}}",
       "inProgress": "Agent 正在转弯",
       "close": "关闭智能助手"
@@ -575,7 +605,7 @@
       "remove": "移除",
       "removeAria": "移除小组件",
       "resize": "大小",
-      "resizeAria": "调整为 {{size}}",
+      "resizeAria": "调整为 {size}",
       "savedFilterDefault": "今天",
       "savedFilterHint": "在任务页面为筛选器加星标即可在此使用",
       "savedFilterLabel": "已保存的筛选器",
@@ -624,6 +654,11 @@
     "welcome": {
       "body": "你私密的、离线优先的家园。笔记采用端到端加密——它们绝不会以未加密形式离开你的设备。",
       "title": "欢迎使用 MemryNote"
+    },
+    "tour": {
+      "next": "下一步",
+      "previous": "上一步",
+      "progress": "{current} / {total}"
     }
   },
   "updatePrompt": {
@@ -640,6 +675,165 @@
     "skip": "跳过此版本"
   },
   "capture": {
-    "focusShortcut": "聚焦捕获输入框"
+    "focusShortcut": "聚焦捕获输入框",
+    "detailHint": "详情",
+    "focusHint": "Q",
+    "submit": "捕获"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "添加卡片",
+      "addCreateNote": "创建笔记“{query}”",
+      "addCreateNoteEmpty": "新建笔记",
+      "addCreatedAt": "创建于 {date}",
+      "addEmpty": "未找到任何内容",
+      "addGroupEvents": "事件",
+      "addGroupNotes": "笔记",
+      "addGroupTasks": "任务",
+      "addOnCanvas": "已在画布上",
+      "addPlaceholder": "搜索笔记、任务和事件…",
+      "allDay": "全天",
+      "createNoteFailed": "无法创建笔记",
+      "deleted": "此项已删除",
+      "loading": "加载中…",
+      "open": "在标签页中打开",
+      "openToEdit": "在标签页中打开以编辑",
+      "untitled": "未命名"
+    },
+    "corruptScene": "无法读取此画布。为避免丢失数据，编辑已禁用。",
+    "createFailed": "无法创建画布",
+    "disabledBody": "此标签页所属的功能未在此设备上启用。",
+    "disabledTitle": "画布未启用",
+    "empty": "尚无画布",
+    "libraryStoreFailed": "无法保存你的图形库。最近的更改可能会丢失。",
+    "loadFailed": "无法加载画布",
+    "loading": "正在加载画布…",
+    "newCanvas": "新建画布",
+    "notFound": "找不到此画布",
+    "openFailed": "无法打开画布",
+    "savedToVault": "所有更改都会自动保存到你的保险库",
+    "sectionLabel": "画布",
+    "tooLargeToSync": "此画布太大，无法同步。它已保存在此设备上，但在体积变小之前不会同步到你的其他设备。",
+    "untitled": "未命名画布"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "点击行",
+      "reset": "重置",
+      "shortcutsTab": "快捷键标签页"
+    },
+    "description": "在 memrynote 中快速穿行、捕捉想法、处理事务的捷径。",
+    "groups": {
+      "general": {
+        "description": "全局导航与帮助。",
+        "title": "通用"
+      },
+      "inbox": {
+        "description": "快速处理已捕获的项目。",
+        "title": "收件箱"
+      },
+      "journal": {
+        "description": "在日记视图之间切换，并聚焦书写区域。",
+        "title": "日记"
+      },
+      "notes": {
+        "description": "撰写、排版和搜索笔记。",
+        "title": "笔记 / 编辑器"
+      },
+      "settings": {
+        "description": "打开设置并自定义快捷键。",
+        "title": "设置"
+      },
+      "tabs": {
+        "description": "在标签页和面板之间移动。",
+        "title": "标签页与分屏"
+      },
+      "tasks": {
+        "description": "筛选、选择并完成任务。",
+        "title": "任务"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "新建笔记",
+        "keyboardShortcuts": "打开键盘快捷键",
+        "openSettings": "打开设置",
+        "quickSearch": "打开快速搜索",
+        "sidebarSection": "跳转到侧边栏分区",
+        "toggleSidebar": "切换侧边栏",
+        "undoTaskAction": "撤销上一次任务操作"
+      },
+      "inbox": {
+        "archiveItem": "归档选中的项目",
+        "chooseQuickFileResult": "选择一个快速归档结果",
+        "clearSelection": "清除选择或关闭快速归档",
+        "confirmFiling": "确认归档面板",
+        "firstOrLastItem": "第一个或最后一个项目",
+        "jumpByPage": "按页跳转",
+        "nextItem": "下一个项目",
+        "openOriginal": "打开原始链接",
+        "openQuickFile": "打开快速归档",
+        "previousItem": "上一个项目",
+        "refresh": "刷新收件箱",
+        "selectAllVisible": "选择所有可见项目",
+        "selectItem": "选择项目",
+        "togglePreview": "切换预览面板"
+      },
+      "journal": {
+        "bold": "将选中文本加粗",
+        "find": "在日记中查找",
+        "italic": "将选中文本设为斜体",
+        "link": "添加或编辑链接",
+        "returnFromOverview": "从月视图或年视图返回",
+        "toggleFullWidth": "切换整宽日记",
+        "underline": "为选中文本加下划线"
+      },
+      "notes": {
+        "bold": "粗体",
+        "closeOverlays": "关闭编辑器浮层",
+        "commandMenu": "打开编辑器命令菜单",
+        "createNote": "新建笔记",
+        "find": "在笔记中查找",
+        "italic": "斜体",
+        "link": "添加或编辑链接",
+        "saveNote": "保存当前笔记",
+        "underline": "下划线"
+      },
+      "settings": {
+        "cancelRecording": "取消快捷键录制",
+        "customizeShortcuts": "自定义键盘快捷键",
+        "openSettings": "打开设置",
+        "recordShortcut": "录制新的快捷键",
+        "resetShortcut": "恢复快捷键默认值"
+      },
+      "tabs": {
+        "closeAllInPane": "关闭面板中的所有标签页",
+        "closeSplitPane": "关闭分屏面板",
+        "closeTab": "关闭标签页",
+        "duplicateTab": "复制标签页",
+        "focusPane": "聚焦另一个面板",
+        "maximizePane": "最大化当前面板",
+        "moveTabToPane": "将标签页移到面板",
+        "newTabMenu": "打开新建标签页菜单",
+        "nextTab": "下一个标签页",
+        "pinTab": "固定或取消固定标签页",
+        "previousTab": "上一个标签页",
+        "reopenClosedTab": "重新打开已关闭的标签页",
+        "splitDown": "向下拆分",
+        "splitRight": "向右拆分"
+      },
+      "tasks": {
+        "clearFilters": "清除可见的筛选条件",
+        "clearSelection": "清除任务选择",
+        "completeSelected": "完成选中的任务",
+        "configureRepeat": "为聚焦的任务设置重复",
+        "deleteSelected": "删除选中的任务",
+        "selectAllVisible": "选择所有可见任务",
+        "skipOccurrence": "跳过本次重复",
+        "stopRepeating": "停止任务重复"
+      }
+    },
+    "or": "或",
+    "then": "然后"
   }
 }

@@ -3,8 +3,13 @@ import { describe, expect, it, vi } from 'vitest'
 import { FolderTableView } from './folder-table-view'
 import { GroupedTable } from './grouped-table'
 
+// Renders `<key leaf> <param values…>` so assertions can still verify
+// interpolated values (counts, names) that ICU messages would render.
 vi.mock('@memry/i18n/renderer', () => ({
-  useT: () => ({ t: (key: string) => key.split('.').at(-1) ?? key })
+  useT: () => ({
+    t: (key: string, params?: Record<string, unknown>) =>
+      [key.split('.').at(-1) ?? key, ...Object.values(params ?? {})].join(' ')
+  })
 }))
 
 vi.mock('@tanstack/react-virtual', () => ({
@@ -211,7 +216,8 @@ describe('FolderTableView', () => {
 
     const alphaTag = screen.getByRole('option', { name: 'alpha' })
     fireEvent.mouseEnter(alphaTag)
-    fireEvent.click(screen.getByRole('button', { name: 'removeAria' }))
+    // The remove button's label interpolates the tag it targets ("alpha").
+    fireEvent.click(screen.getByRole('button', { name: 'removeAria alpha' }))
     expect(onTagRemove).toHaveBeenCalledWith('note-1', 'alpha')
 
     fireEvent.click(screen.getByRole('button', { name: 'Title' }))
@@ -608,7 +614,8 @@ describe('GroupedTable', () => {
 
     expect(screen.getAllByText('Status:')).toHaveLength(2)
     expect(screen.getByText('Open')).toBeInTheDocument()
-    expect(screen.getAllByText('1 note')).toHaveLength(2)
+    // Each group holds exactly one note — the interpolated count must render.
+    expect(screen.getAllByText('noteCount 1')).toHaveLength(2)
     expect(screen.getAllByText(/Score:/)).toHaveLength(2)
 
     fireEvent.click(screen.getByRole('button', { name: /Alpha plan/ }))

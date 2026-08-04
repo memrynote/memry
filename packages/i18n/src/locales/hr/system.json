@@ -28,6 +28,13 @@
       "readyDetailFallback": "Ponovno pokrenite memrynote kako biste dovršili instalaciju ažuriranja.",
       "buttonRestartNow": "Ponovno pokrenite sada",
       "releaseNotesLabel": "Napomene o izdanju:"
+    },
+    "pair": {
+      "buttonAllow": "Dopusti",
+      "buttonDeny": "Odbij",
+      "buttonPair": "Upari",
+      "message": "Dopustiti proširenju preglednika Memry da šalje zabilježene stavke ovoj aplikaciji?",
+      "title": "Uparivanje proširenja preglednika"
     }
   },
   "notification": {
@@ -38,6 +45,11 @@
       "fallback": "Rok za opomenu",
       "default": "Podsjetnik",
       "task": "Podsjetnik na zadatak"
+    },
+    "inboxReview": {
+      "body": "Imate {count, plural, one {# stavku} few {# stavke} other {# stavki}} za pregled.",
+      "testBody": "Ovo je test — vaši dnevni podsjetnici na pregled izgledat će ovako.",
+      "title": "Vrijeme je za pregled pristigle pošte"
     }
   },
   "error": {
@@ -45,5 +57,15 @@
     "definitionNotFound": "Definicija nije pronađena",
     "noteNotFound": "Napomena nije pronađena",
     "updateFailed": "Ažuriranje nije uspjelo"
+  },
+  "startup": {
+    "failed": {
+      "body": "To se može dogoditi kada na disku ima vrlo malo slobodnog prostora ili sa starijim grafičkim upravljačkim programima. Pokušajte osloboditi nešto prostora na disku, a zatim ponovno otvorite MemryNote. Ako se nastavi ponavljati, ponovna instalacija to obično riješi.",
+      "title": "MemryNote nije uspio dovršiti pokretanje"
+    },
+    "installingUpdate": {
+      "subtitle": "MemryNote će se automatski ponovno otvoriti.",
+      "title": "Instaliranje ažuriranja…"
+    }
   }
 }

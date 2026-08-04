@@ -270,7 +270,50 @@
     "panelEmpty": "No hay recordatorios próximos.",
     "panelPast": "Pasados",
     "panelUpcoming": "Próximos",
-    "taskFallback": "Tarea"
+    "taskFallback": "Tarea",
+    "dateTime": {
+      "dateAt": "{date} a las {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Hoy a las {time}",
+      "todayCompact": "Hoy, {time}",
+      "tomorrowAt": "Mañana a las {time}",
+      "tomorrowCompact": "Mañana, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Recordatorio de aniversario",
+      "inHours": {
+        "label": "Dentro de {count, plural, one {# hora} many {# horas} other {# horas}}"
+      },
+      "inMinutes": {
+        "label": "Dentro de {count, plural, one {# minuto} many {# minutos} other {# minutos}}"
+      },
+      "inMonths": {
+        "label": "Dentro de {count, plural, one {# mes} many {# meses} other {# meses}}"
+      },
+      "inWeeks": {
+        "label": "Dentro de {count, plural, one {# semana} many {# semanas} other {# semanas}}"
+      },
+      "inYears": {
+        "label": "Dentro de {count, plural, one {# año} many {# años} other {# años}}"
+      },
+      "laterToday": {
+        "description": "Dentro de {count, plural, one {# hora} many {# horas} other {# horas}}",
+        "label": "Más tarde hoy"
+      },
+      "monthlyReflection": "Reflexión mensual",
+      "nextWeek": {
+        "description": "El lunes a las 9:00",
+        "label": "La próxima semana"
+      },
+      "quarterlyReflection": "Reflexión trimestral",
+      "reviewInAWeek": "Revisar en una semana",
+      "sameDayNextMonth": "El mismo día del mes que viene",
+      "tomorrow": {
+        "description": "Mañana a las 9:00",
+        "label": "Mañana"
+      },
+      "tomorrowMorning": "Mañana por la mañana"
+    }
   },
   "insights": {
     "captureActivity": "Capturar actividad",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Adjuntar archivo (Imágenes, Audio, Vídeo, PDF)",
       "recordVoiceMemo": "Grabar nota de voz",
       "recordVoiceMemo2": "Grabar nota de voz",
-      "alreadyCaptured": "Ya capturado: “",
-      "rdquo": "rdquo;",
       "captureAnyway": "Capturar de todos modos",
       "focusShortcut": "Enfocar el campo de captura",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Capturar enlace",
+      "captureNote": "Capturar nota",
+      "placeholder": "Captura rápida — pega un enlace, anota una idea…",
+      "duplicateNotice": "Ya capturado: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Elige carpeta",
@@ -414,10 +459,9 @@
       "captured": "capturado",
       "dismissError": "Descartar error",
       "alreadyCaptured": "Ya capturado",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; · ",
       "captureAnyway": "Capturar de todos modos",
-      "close": "Cerrar"
+      "close": "Cerrar",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Soltar para capturar",
@@ -466,7 +510,12 @@
       "cancelRecording": "Cancelar grabación",
       "cancel": "Cancelar",
       "stopRecording": "dejar de grabar",
-      "stop": "Detener"
+      "stop": "Detener",
+      "enableMicInSettings": "Activa el acceso al micrófono en los ajustes del sistema y vuelve a intentarlo.",
+      "failedToStart": "No se pudo iniciar la grabación",
+      "microphoneAccessDenied": "Acceso al micrófono denegado",
+      "noMicrophoneFound": "No se encontró ningún micrófono",
+      "recordingError": "Se produjo un error de grabación"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "No se pudo capturar el archivo",
       "fileCaptureFailed": "Falló la captura del archivo",
       "failedToCaptureAudio": "No se pudo capturar el audio",
-      "failedToCaptureVoice": "No se pudo capturar la voz"
+      "failedToCaptureVoice": "No se pudo capturar la voz",
+      "failedToLoadInboxPreferences": "No se pudieron cargar las preferencias de la bandeja de entrada",
+      "failedToUpdateInboxPreferences": "No se pudieron actualizar las preferencias de la bandeja de entrada"
     },
     "toasts": {
       "inboxRefreshed": "Bandeja de entrada actualizada"
@@ -516,5 +567,10 @@
     "task": "Tarea",
     "time": "Hora",
     "title": "Convertir"
+  },
+  "reviewNudge": {
+    "action": "Abrir bandeja de entrada",
+    "description": "Revisa las capturas de hoy de una sola vez, con calma.",
+    "title": "{count, plural, one {Es hora de revisar # elemento} many {Es hora de revisar # elementos} other {Es hora de revisar # elementos}}"
   }
 }

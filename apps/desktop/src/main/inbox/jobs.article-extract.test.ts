@@ -57,7 +57,10 @@ import { processArticleExtractJob, teardownInboxJobScheduler } from './jobs'
 
 describe('processArticleExtractJob', () => {
   let testDb: TestDatabaseResult
-  let window: { webContents: { send: ReturnType<typeof vi.fn> } }
+  let window: {
+    isDestroyed: () => boolean
+    webContents: { isDestroyed: () => boolean; send: ReturnType<typeof vi.fn> }
+  }
 
   beforeEach(() => {
     vi.useFakeTimers()
@@ -67,7 +70,7 @@ describe('processArticleExtractJob', () => {
     vi.mocked(getDatabase).mockReturnValue(testDb.db)
     vi.mocked(requireDatabase).mockReturnValue(testDb.db)
 
-    window = { webContents: { send: vi.fn() } }
+    window = { isDestroyed: () => false, webContents: { isDestroyed: () => false, send: vi.fn() } }
     vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window] as never)
 
     mockFetchUrlHtml.mockReset().mockResolvedValue('<html><body>Article content</body></html>')

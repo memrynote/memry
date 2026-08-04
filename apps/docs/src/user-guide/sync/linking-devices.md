@@ -43,6 +43,24 @@ Compare the fingerprint with what the new device shows. If they match, approve. 
 
 If something looks wrong, **deny** and start over.
 
+## Choosing What to Pull
+
+If the account holds **two or more vaults**, the new device asks which ones to pull before it
+finishes linking:
+
+1. Pick a **parent folder** — each vault is created as its own folder inside it
+2. Check the vaults you want on this device
+3. Choose **Pull selected**
+
+The first checked vault is the **primary**: memrynote creates its folder, opens it, and starts
+syncing right away. The rest stay cloud-only and show up under **In your account** in the vault
+switcher, where you can download them on demand.
+
+If the pull fails — an unwritable folder, for example — the reason appears under the list and the
+choice stays available, so you can pick a different folder and try again without redoing the link.
+
+Accounts with a single vault skip this step entirely.
+
 ## Initial Sync Progress
 
 After approval, the new device shows a sync progress screen:

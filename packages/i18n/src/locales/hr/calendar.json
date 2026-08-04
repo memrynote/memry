@@ -54,7 +54,7 @@
     "event-editor-description": "Ažurirajte naslov, lokaciju, datum, vrijeme i bilješke za ovaj događaj.",
     "new-event-placeholder": "Novi događaj",
     "notes-url-placeholder": "Dodajte bilješke ili URL",
-    "start": "Start",
+    "start": "Početak",
     "end": "Kraj",
     "google-calendar": "Google kalendar",
     "target-calendar": "Ciljni kalendar",
@@ -67,14 +67,16 @@
     "title": "Izbrisati događaj?",
     "local-description": "\"{title}\" bit će trajno izbrisan. Ova se radnja ne može poništiti.",
     "google-bound-description": "\"{title}\" bit će uklonjen iz memrynote i Google kalendara. Ova se radnja ne može poništiti.",
-    "context-menu-delete-label": "Izbriši događaj"
+    "context-menu-delete-label": "Izbriši događaj",
+    "context-menu-add-to-project": "Dodaj u projekt"
   },
   "promote-dialog": {
     "aria": "Uredite događaj vanjskog kalendara",
     "title": "Urediti ovaj događaj u memrynote?",
     "body": "Uređivanjem ovog događaja stvorit će se povezana kopija u memrynote tako da se promjene sinkroniziraju u oba smjera. Nastaviti?",
     "do-not-ask-again": "Ne pitaj više",
-    "confirm-label": "Uredite u memrynote"
+    "confirm-label": "Uredite u memrynote",
+    "agent-notice": "AI agent može čitati ovu kopiju iako je AI pristup Google Calendaru isključen. Vaš izvorni Google događaj i dalje mu ostaje skriven."
   },
   "onboarding-dialog": {
     "aria": "Odaberite svoj zadani Google kalendar",
@@ -181,6 +183,16 @@
     "placeholder": "Pretraži događaje, zadatke, podsjetnike…"
   },
   "undo": {
-    "moveEvent": "Premjesti događaj"
+    "moveEvent": "Premjesti događaj",
+    "moveTask": "Promijeni raspored zadatka"
+  },
+  "agent-access-dialog": {
+    "allow": "Dopusti",
+    "aria": "Odaberite smije li AI čitati vaše događaje iz Google Calendara",
+    "body": "Svoje Google događaje i dalje ćete vidjeti u memrynote, bez obzira na odabir. Ovim se odlučuje samo smije li ih AI agent čitati kada ga pitate o svom rasporedu.",
+    "deny": "Nemoj dopustiti",
+    "footnote": "Ovo možete promijeniti u bilo kojem trenutku u odjeljku Postavke → Integracije → Google Calendar.",
+    "save-error": "Spremanje vašeg odabira nije uspjelo",
+    "title": "Dopustiti da AI čita vaše događaje iz Google Calendara?"
   }
 }

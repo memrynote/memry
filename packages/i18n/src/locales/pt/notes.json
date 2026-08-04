@@ -16,9 +16,27 @@
       "willSync": "A nota será sincronizada com a nuvem",
       "renameFailed": "Falha ao renomear nota",
       "toggleLocalOnlyFailed": "Falha ao alternar apenas local",
-      "toggleFullWidthFailed": "Falha ao alternar largura total"
+      "toggleFullWidthFailed": "Falha ao alternar largura total",
+      "copyPathFailed": "Falha ao copiar o caminho",
+      "deleteFailed": "Falha ao eliminar a nota",
+      "moveFailed": "Falha ao mover a nota",
+      "moved": "Nota movida",
+      "openExternalFailed": "Falha ao abrir a nota",
+      "pathCopied": "Caminho copiado",
+      "revealFailed": "Falha ao mostrar a nota"
     },
-    "deleteDialogTitle": "{count, plural, one {Excluir nota} other {Excluir notas #}}"
+    "deleteDialogTitle": "{count, plural, one {Excluir nota} other {Excluir notas #}}",
+    "deleteConfirm": {
+      "cancel": "Cancelar",
+      "confirm": "Eliminar",
+      "deleting": "A eliminar...",
+      "description": "Tem a certeza de que quer eliminar \"{title}\"? Esta ação não pode ser desfeita.",
+      "title": "Eliminar nota"
+    },
+    "itemsCount": "{count, plural, one {# item} many {# itens} other {# itens}}",
+    "itemsCountFiltered": "{shown} de {total, plural, one {# item} many {# itens} other {# itens}}",
+    "renameViewUnavailableForTags": "Ainda não é possível mudar o nome de vistas guardadas nas etiquetas",
+    "tagFilterLabel": "etiqueta = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "Excluir notas {count}",
       "deleteSelectedItems": "Excluir itens {count}",
       "bookmark": "Marcador",
-      "removeFromBookmarks": "Remover dos marcadores"
+      "removeFromBookmarks": "Remover dos marcadores",
+      "applyTemplate": "Aplicar modelo"
     },
     "deleteDialog": {
       "noteTitle": "Excluir nota",
@@ -83,7 +102,17 @@
       "export": "Exportar",
       "fullWidth": "Largura total",
       "disableLocalOnly": "Desativar apenas local",
-      "setLocalOnly": "Definir apenas local"
+      "setLocalOnly": "Definir apenas local",
+      "applyTemplate": "Aplicar modelo",
+      "copyPath": "Copiar caminho",
+      "delete": "Eliminar nota",
+      "find": "Localizar…",
+      "moreActions": "Mais ações",
+      "moveToFolder": "Mover para pasta…",
+      "openInDefaultApp": "Abrir na aplicação predefinida",
+      "rename": "Renomear…",
+      "revealInFinder": "Mostrar no Finder",
+      "revealInSidebar": "Mostrar na navegação"
     },
     "breadcrumb": {
       "locationAria": "Localização da nota",
@@ -223,7 +252,12 @@
       "multiselect": "Seleção múltipla"
     },
     "showOnCalendar": "Mostrar no calendário",
-    "showingOnCalendar": "A mostrar no calendário"
+    "showingOnCalendar": "A mostrar no calendário",
+    "statusCategories": {
+      "done": "Concluído",
+      "inProgress": "Em curso",
+      "todo": "Por fazer"
+    }
   },
   "templateSelector": {
     "title": "Escolha sua tela",
@@ -235,7 +269,10 @@
     "essentials": "Fundamentos",
     "setFolderDefault": "Definir como pasta padrão",
     "useTemplate": "Usar modelo",
-    "createNote": "Criar nota"
+    "createNote": "Criar nota",
+    "applyDescription": "Substituir o conteúdo desta nota por um modelo",
+    "applyTitle": "Aplicar um modelo",
+    "applyToNote": "Aplicar modelo"
   },
   "exportDialog": {
     "title": "Nota de exportação",
@@ -278,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Carregando modelo…",
+    "copySuffix": "{name} (Cópia)",
     "title": {
       "new": "Novo modelo",
-      "view": "Ver modelo",
-      "edit": "Editar modelo"
+      "placeholder": "Nome do modelo"
+    },
+    "icon": {
+      "label": "Ícone do modelo"
+    },
+    "content": {
+      "placeholder": "Conteúdo padrão para notas criadas a partir deste modelo. Use '{{'title'}}' para inserir o título da nota."
+    },
+    "actions": {
+      "create": "Criar modelo",
+      "update": "Atualizar",
+      "duplicateAndEdit": "Duplicar e editar",
+      "duplicate": "Duplicar",
+      "delete": "Excluir modelo",
+      "more": "Mais ações"
     },
     "toast": {
-      "nameRequired": "O nome do modelo é obrigatório",
-      "created": "Modelo criado",
       "createFailed": "Falha ao criar modelo",
-      "saved": "Modelo salvo",
-      "saveFailed": "Falha ao salvar o modelo",
-      "duplicateFailed": "Falha ao duplicar o modelo",
-      "deleteFailed": "Falha ao excluir modelo"
+      "saveFailed": "Falha ao salvar o modelo"
     }
   },
   "reminders": {
@@ -324,8 +371,6 @@
       "noFormulasDefined": "Nenhuma fórmula definida",
       "addFormula": "Adicionar fórmula",
       "deleteFormula": "Excluir fórmula",
-      "areYouSureYouWantToDeleteTheFormula": "Tem certeza de que deseja excluir a fórmula \"",
-      "quotThisActionCannotBeUndone": "quot;? Esta ação não pode ser desfeita.",
       "cancel": "Cancelar",
       "delete": "Excluir",
       "none": "Nenhum",
@@ -333,7 +378,8 @@
       "delete2": "Excluir",
       "columnBorders": "Limites das colunas",
       "display": "Apresentação",
-      "showSummaries": "Mostrar resumos"
+      "showSummaries": "Mostrar resumos",
+      "deleteFormulaBody": "Tem certeza de que deseja excluir a fórmula \"{name}\"? Esta ação não pode ser desfeita."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtro",
@@ -352,7 +398,8 @@
       "addCondition": "Adicionar condição",
       "addFilter": "Adicionar filtro",
       "addGroup": "Adicionar grupo",
-      "removeGroup": "Remover grupo"
+      "removeGroup": "Remover grupo",
+      "lockedConditionHint": "Esta condição define a vista atual e não pode ser removida aqui."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Integrado",
@@ -365,7 +412,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Tabela de notas",
       "selectAll": "Selecionar todas as notas",
-      "selectRow": "Selecionar nota"
+      "selectRow": "Selecionar nota",
+      "kind": {
+        "Inbox": "Caixa de entrada",
+        "Note": "Nota",
+        "Task": "Tarefa"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Pesquisar notas...",
@@ -379,10 +431,10 @@
       "preview": "Visualização",
       "fixExpressionErrorsToSeePreview": "Corrija erros de expressão para ver a visualização",
       "usingNote": "Usando nota: \"",
-      "quot": "quot;",
       "cancel": "Cancelar",
       "namePlaceholder": "dias_até_vencimento",
-      "expressionPlaceholder": "dateDiff(data_de vencimento, hoje(), \"dias\")"
+      "expressionPlaceholder": "dateDiff(data_de vencimento, hoje(), \"dias\")",
+      "usingNoteTitle": "Usando nota: \"{title}\""
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Limpar agrupamento",
@@ -408,12 +460,12 @@
       "bestMatch": "Melhor correspondência",
       "current": "atual)",
       "allFolders": "TODAS AS PASTAS",
-      "current2": "atual)",
       "noFoldersMatch": "Nenhuma pasta corresponde a \"",
-      "quot": "quot;",
       "create": "Criar \"",
-      "quot2": "quot;",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "createFolderNamed": "Criar \"{name}\"",
+      "currentFolderBadge": "(atual)",
+      "noFoldersMatchQuery": "Nenhuma pasta corresponde a \"{query}\""
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Excluir ",
@@ -468,7 +520,13 @@
       "failedToLoadPdf": "Falha ao carregar o PDF: ",
       "download": "Baixar",
       "download2": "Baixar",
-      "noFileAttached": "Nenhum arquivo anexado"
+      "noFileAttached": "Nenhum arquivo anexado",
+      "alignCenter": "Alinhar ao centro",
+      "alignLeft": "Alinhar à esquerda",
+      "alignRight": "Alinhar à direita",
+      "nextPage": "Página seguinte",
+      "previousPage": "Página anterior",
+      "resizePdf": "Redimensionar PDF"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Abrir no painel de tarefas",
@@ -530,7 +588,8 @@
       "failedToLoadTags": "Falha ao carregar tags",
       "noTagsYet": "Ainda não há tags",
       "filterTags": "Filtrar tags...",
-      "noMatchingTags": "Nenhuma tag correspondente"
+      "noMatchingTags": "Nenhuma tag correspondente",
+      "Uncategorized": "Sem categoria"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Solte aqui",
@@ -560,7 +619,8 @@
       "deleteTag": "Excluir etiqueta",
       "recent": "Recente",
       "created": "Criado",
-      "alphabetical": "Alfabético"
+      "alphabetical": "Alfabético",
+      "tasks": "TAREFAS"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Renomear etiqueta",
@@ -615,36 +675,6 @@
       "compact": "Compacto",
       "showSummaries": "Mostrar resumos",
       "cancel": "Cancelar"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Carregando modelo...",
-      "builtInTemplatesCannotBeModified": "Os modelos integrados não podem ser modificados",
-      "description": "Descrição",
-      "briefDescriptionOfThisTemplate": "Breve descrição deste modelo...",
-      "templateContent": "Conteúdo do modelo",
-      "use": "Usar ",
-      "toInsertTheNoteTitleWhenCreatingANote": "para inserir o título da nota ao criar uma nota.",
-      "templateName": "Nome do modelo",
-      "defaultContentForNotesCreatedFromThisTemplate": "Conteúdo padrão para notas criadas a partir deste modelo..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Carregando coleção...",
-      "templateCollection": "Coleção de modelos",
-      "templates": "Modelos",
-      "curatedStructuresForYourNotes": "Estruturas selecionadas para suas anotações.",
-      "newTemplate": "Novo modelo",
-      "myTemplates": "Meus modelos",
-      "builtIn": "Integrado",
-      "deleteTemplate": "Excluir modelo",
-      "areYouSureYouWantToDelete": "Tem certeza de que deseja excluir \"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "As notas criadas a partir deste modelo não serão afetadas.",
-      "cancel": "Cancelar",
-      "builtIn2": "Integrado",
-      "duplicate": "Duplicar",
-      "delete": "Excluir",
-      "startYourCollection": "Comece sua coleção",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Os modelos ajudam você a criar notas com estrutura consistente.",
-      "createTemplate": "Criar modelo"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Incorporado",
@@ -733,7 +763,9 @@
     "replyPlaceholder": "Responder...",
     "resolve": "Resolver",
     "sendAria": "Enviar comentário",
-    "toolbarComment": "Comentar"
+    "toolbarComment": "Comentar",
+    "openAttachmentAria": "Abrir anexo {name}",
+    "openImageAria": "Abrir imagem {name}"
   },
   "dateMention": {
     "clear": "Limpar",
@@ -743,5 +775,79 @@
     "remind": "Lembrar",
     "time": "Hora",
     "timeFormat": "Formato de hora"
+  },
+  "applyTemplateConfirm": {
+    "body": "Substituir apenas o conteúdo",
+    "cancel": "Cancelar",
+    "description": "Aplicar \"{name}\" substitui o conteúdo atual desta nota. Esta ação não pode ser desfeita.",
+    "failed": "Falha ao aplicar o modelo",
+    "full": "Substituir conteúdo e adicionar detalhes do modelo",
+    "success": "Modelo aplicado",
+    "title": "Substituir o conteúdo da nota?"
+  },
+  "tagView": {
+    "moreActions": "Mais ações",
+    "pin": {
+      "action": "Fixar {count, plural, one {# nota} many {# notas} other {# notas}} na etiqueta",
+      "failed": "Falha ao fixar a nota na etiqueta",
+      "success": "{count, plural, one {# nota fixada} many {# notas fixadas} other {# notas fixadas}} na etiqueta"
+    }
+  },
+  "tags": {
+    "hubTitle": "Etiquetas",
+    "openHub": "Abrir centro de etiquetas"
+  },
+  "tagsHub": {
+    "cancelCreate": "Cancelar",
+    "category": {
+      "delete": "Eliminar categoria",
+      "deleteBody": "As etiquetas passam para Sem categoria. Não serão eliminadas.",
+      "deleteCancel": "Cancelar",
+      "deleteConfirm": "Eliminar",
+      "deleteTitle": "Eliminar {name}?",
+      "dragHandle": "Arraste para reordenar a categoria",
+      "emptyHint": "Arraste uma etiqueta para aqui",
+      "more": "Opções da categoria",
+      "rename": "Renomear categoria"
+    },
+    "categoryNamePlaceholder": "Nome da categoria",
+    "errors": {
+      "createCategoryFailed": "Falha ao criar a categoria",
+      "createTagCategorizeFailed": "Etiqueta criada, mas não foi possível adicioná-la à categoria",
+      "createTagFailed": "Falha ao criar a etiqueta",
+      "deleteCategoryFailed": "Falha ao eliminar a categoria",
+      "loadFailed": "Falha ao carregar as categorias de etiquetas",
+      "renameCategoryFailed": "Falha ao renomear a categoria",
+      "reorderFailed": "Falha ao reordenar as etiquetas"
+    },
+    "loading": "A carregar etiquetas...",
+    "newCategory": "Nova categoria",
+    "newTag": "Nova etiqueta",
+    "search": {
+      "empty": "Nenhuma categoria ou etiqueta corresponde à sua pesquisa",
+      "placeholder": "Pesquisar categorias e etiquetas"
+    },
+    "tagNamePlaceholder": "Nome da etiqueta",
+    "uncategorized": "Sem categoria"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (clique duas vezes para editar)",
+      "dragToReorder": "Arraste para reordenar a coluna: {name}"
+    },
+    "columns": {
+      "created": "Criado",
+      "folder": "Pasta",
+      "kind": "Tipo",
+      "modified": "Modificado",
+      "tags": "Etiquetas",
+      "title": "Título",
+      "wordCount": "Número de palavras"
+    },
+    "defaultViewName": "Predefinida",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# nota} many {# notas} other {# notas}}"
+    },
+    "selectView": "Selecionar vista"
   }
 }

@@ -1,10 +1,15 @@
 {
   "app": {
-    "quit": "quit",
-    "preferences": "Mga Setting…"
+    "quit": "I-quit",
+    "preferences": "Mga Setting…",
+    "exit": "Lumabas",
+    "hide": "Itago ang MemryNote",
+    "hideOthers": "Itago ang Iba",
+    "services": "Mga Serbisyo",
+    "unhide": "Ipakita Lahat"
   },
   "file": {
-    "label": "file",
+    "label": "File",
     "newNote": "Bagong Tala",
     "close": "Isara ang Window",
     "closeTab": "Isara ang Tab",
@@ -18,13 +23,17 @@
   "edit": {
     "label": "I-edit",
     "undo": "I-undo",
-    "redo": "Gawin muli",
-    "cut": "Putulin",
+    "redo": "I-redo",
+    "cut": "Gupitin",
     "copy": "Kopyahin",
-    "paste": "Idikit",
+    "paste": "I-paste",
     "selectAll": "Piliin lahat",
     "find": "Hanapin",
-    "speech": "Pagsasalita"
+    "speech": "Pagsasalita",
+    "delete": "Tanggalin",
+    "pasteAndMatchStyle": "I-paste at Itugma ang Estilo",
+    "startSpeaking": "Simulan ang Pagsasalita",
+    "stopSpeaking": "Ihinto ang Pagsasalita"
   },
   "view": {
     "label": "Tingnan",
@@ -34,18 +43,21 @@
     "theme": "Tema",
     "themeDark": "Madilim",
     "themeLight": "Maliwanag",
-    "themeSystem": "System",
+    "themeSystem": "Sistema",
     "themeWhite": "Papel",
     "toggleDayPanel": "I-toggle ang Day Panel",
-    "toggleSidebar": "I-toggle ang Sidebar"
+    "toggleSidebar": "I-toggle ang Sidebar",
+    "actualSize": "Aktwal na Laki",
+    "zoomIn": "Palakihin",
+    "zoomOut": "Paliitin"
   },
   "format": {
     "body": "Teksto",
     "bold": "Makapal",
     "code": "Code",
-    "heading1": "Heading 1",
-    "heading2": "Heading 2",
-    "heading3": "Heading 3",
+    "heading1": "Pamagat 1",
+    "heading2": "Pamagat 2",
+    "heading3": "Pamagat 3",
     "highlight": "I-highlight",
     "italic": "Italiko",
     "label": "Format",
@@ -55,18 +67,23 @@
     "about": "Tungkol sa MemryNote",
     "documentation": "Dokumentasyon",
     "label": "Tulong",
-    "shortcuts": "Mga Keyboard Shortcut"
+    "shortcuts": "Mga Keyboard Shortcut",
+    "aboutVersion": "Bersyon {version}"
   },
   "insert": {
     "attachment": "Magpasok ng Attachment…",
     "bulletList": "Listahan ng Bullet",
-    "codeBlock": "Code Block",
+    "codeBlock": "Bloke ng Code",
     "label": "Ipasok",
     "numberedList": "May-numerong Listahan",
     "table": "Talahanayan",
     "taskList": "Listahan ng Gawain"
   },
   "window": {
-    "label": "Window"
+    "label": "Window",
+    "close": "Isara",
+    "front": "Iharap Lahat",
+    "minimize": "I-minimize",
+    "zoom": "I-zoom"
   }
 }

@@ -25,7 +25,8 @@
     "expand": "Развернуть",
     "collapse": "Свернуть",
     "showMore": "+{count, plural, one {# подробнее} other {# подробнее}}",
-    "showLess": "Показать меньше"
+    "showLess": "Показать меньше",
+    "undo": "Отменить"
   },
   "tabs": {
     "pin": "Вкладка «Закрепить»",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "Сегодня",
     "yesterday": "Вчера",
-    "daysAgo": "{count, plural, one {# день назад} other {# дней назад}}"
+    "daysAgo": "{count, plural, one {# день назад} other {# дней назад}}",
+    "daysLate": "{count, plural, one {# д. просрочки} few {# д. просрочки} many {# д. просрочки} other {# д. просрочки}}",
+    "daysOverdue": "{count, plural, one {# день просрочки} few {# дня просрочки} many {# дней просрочки} other {# дня просрочки}}",
+    "tomorrow": "Завтра"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Каждый день} other {Каждые # дней}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Каждый месяц на {day}{suffix}.} other {Каждые # месяцев на {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Каждый месяц на {week} {day}} other {Каждые # месяцев на {week} {day}}}",
     "everyNYears": "{count, plural, one {Каждый год} other {Каждые # лет}}",
-    "repeats": "Повторы"
+    "repeats": "Повторы",
+    "ordinal": {
+      "first": "первый",
+      "fourth": "четвёртый",
+      "last": "последний",
+      "second": "второй",
+      "third": "третий"
+    },
+    "preset": {
+      "everyWeekday": "Каждый будний день (Пн-Пт)",
+      "everyYearOnDate": "Каждый год {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -102,7 +117,15 @@
       "updateDownloadingPercent": "Загрузка {percent}%",
       "updateInstallingSubtitle": "MemryNote перезапустится автоматически.",
       "updateInstallingTitle": "Установка обновления",
-      "updateRestart": "Перезапустить"
+      "updateRestart": "Перезапустить",
+      "feedbackPrivacyEmailOptional": "Ваш email — только если вы его укажете, и только чтобы мы могли ответить",
+      "feedbackPrivacyEmailSignedIn": "Email вашего аккаунта ({email}), чтобы мы могли ответить",
+      "feedbackPrivacyMessage": "Ваше сообщение — ровно так, как вы его написали",
+      "feedbackPrivacyNote": "Больше ничего. Ваши заметки остаются на вашем устройстве.",
+      "feedbackPrivacyPlan": "Ваш тарифный план (free, Plus, Pro или Believer)",
+      "feedbackPrivacyTitle": "Что отправляется",
+      "feedbackPrivacyVersion": "Версия приложения и операционная система",
+      "projects": "Проекты"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Изменение размера панели «День»",
@@ -180,8 +203,9 @@
       "search": "Поиск",
       "searchNotesTasksJournalInbox": "Поиск заметок, задач, журнала, почтового ящика...",
       "noResultsFor": "Нет результатов по запросу «",
-      "rdquo": "рдкво;",
-      "result": "результат"
+      "result": "результат",
+      "noResultsForQuery": "Нет результатов по запросу «{query}»",
+      "resultCount": "{count, plural, one {# результат} few {# результата} many {# результатов} other {# результата}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Ищите и нажимайте на предметы, чтобы построить свой след",
@@ -231,7 +255,8 @@
       "journal": "Журнал",
       "calendar": "Календарь",
       "inboxCapture": "Захват входящих сообщений",
-      "tasks": "Задачи"
+      "tasks": "Задачи",
+      "tags": "Теги"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Несохраненные изменения",
@@ -261,15 +286,15 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Что-то пошло не так",
       "anErrorOccurredWhileRenderingThisTabContent": "Произошла ошибка при отрисовке содержимого этой вкладки.",
-      "tryAgain": "Попробуйте еще раз"
+      "tryAgain": "Попробуйте еще раз",
+      "sendReport": "Отправить диагностический отчёт"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Значок заметки"
     },
     "componentsTabsUnsavedChangesDialog": {
       "unsavedChanges": "Несохраненные изменения",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; имеет несохраненные изменения. Что бы вы хотели сделать?"
+      "unsavedChangesBody": "В «{title}» есть несохраненные изменения. Что вы хотите сделать?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Новое рабочее пространство",
@@ -320,7 +345,7 @@
       "recentVaults": "Недавние хранилища",
       "notesLastOpened": "заметки · Последнее открытие",
       "brandName": "Memrynote",
-      "preRelease": "Beta",
+      "preRelease": "Бета",
       "createNewVault": "Создать новое хранилище",
       "createNewVaultDesc": "Начните новое хранилище в выбранной папке.",
       "openExistingVault": "Открыть существующее хранилище",
@@ -341,7 +366,6 @@
       "logOut": "Выйти",
       "signInToSync": "Войдите для синхронизации",
       "remove": "Удалить »",
-      "rdquoFromList": "рдкво; из списка?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Это хранилище будет удалено из приложения, но ваши файлы останутся на диске. Вы всегда можете добавить его позже.",
       "cancel": "Отмена",
       "remove2": "Удалить",
@@ -352,7 +376,13 @@
       "downloadLocation": "Расположение",
       "changeLocation": "Изменить…",
       "download": "Скачать",
-      "downloadFailed": "Не удалось скачать хранилище"
+      "downloadFailed": "Не удалось скачать хранилище",
+      "deleteFromAccount": "Удалить из аккаунта",
+      "deleteVaultBody": "Все синхронизированные данные этого хранилища будут навсегда удалены с серверов Memry. Это действие нельзя отменить. Ваши файлы останутся на диске.",
+      "deleteVaultConfirm": "Удалить из аккаунта",
+      "deleteVaultFailed": "Не удалось удалить хранилище",
+      "deleteVaultTitle": "Удалить «{name}» из вашего аккаунта?",
+      "removeVaultTitle": "Убрать «{name}» из списка?"
     },
     "componentsWindowControls": {
       "searchK": "Поиск (⌘К)",
@@ -425,7 +455,7 @@
       },
       "models": {
         "default": "По умолчанию",
-        "label": "Model"
+        "label": "Модель"
       },
       "settings": {
         "reasoning": "Рассуждение"
@@ -450,21 +480,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Только хранилище",
+        "computerAccess": "Доступ к компьютеру"
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
-        "label": "Web search"
+        "off": "Выкл.",
+        "label": "Веб-поиск"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Разрешения Agent: {access}, веб-поиск {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Разрешения",
+        "access": "Доступ",
+        "tools": "Инструменты"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Настройки модели Agent: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Нет совпадений"
@@ -479,7 +509,7 @@
     "sidebar": {
       "label": "Правая боковая панель",
       "day": "День",
-      "agent": "Agent",
+      "agent": "Агент",
       "pendingApproval": "{count, plural, one {# ожидает одобрения} other {# ожидающих одобрения}}",
       "inProgress": "Agent идет ход",
       "close": "Закрыть агента"
@@ -575,7 +605,7 @@
       "remove": "Убрать",
       "removeAria": "Убрать виджет",
       "resize": "Размер",
-      "resizeAria": "Изменить размер до {{size}}",
+      "resizeAria": "Изменить размер до {size}",
       "savedFilterDefault": "Сегодня",
       "savedFilterHint": "Отметьте фильтры звёздочкой на странице «Задачи», чтобы использовать их здесь",
       "savedFilterLabel": "Сохранённый фильтр",
@@ -624,6 +654,11 @@
     "welcome": {
       "body": "Ваш приватный дом с приоритетом офлайна. Заметки зашифрованы сквозным шифрованием — они никогда не покидают устройство в незашифрованном виде.",
       "title": "Добро пожаловать в MemryNote"
+    },
+    "tour": {
+      "next": "Далее",
+      "previous": "Назад",
+      "progress": "{current} из {total}"
     }
   },
   "updatePrompt": {
@@ -640,6 +675,165 @@
     "skip": "Пропустить эту версию"
   },
   "capture": {
-    "focusShortcut": "Фокус на поле захвата"
+    "focusShortcut": "Фокус на поле захвата",
+    "detailHint": "подробнее",
+    "focusHint": "Q",
+    "submit": "Захватить"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Добавить карточку",
+      "addCreateNote": "Создать заметку «{query}»",
+      "addCreateNoteEmpty": "Создать новую заметку",
+      "addCreatedAt": "Создано {date}",
+      "addEmpty": "Ничего не найдено",
+      "addGroupEvents": "События",
+      "addGroupNotes": "Заметки",
+      "addGroupTasks": "Задачи",
+      "addOnCanvas": "На холсте",
+      "addPlaceholder": "Поиск заметок, задач и событий…",
+      "allDay": "Весь день",
+      "createNoteFailed": "Не удалось создать заметку",
+      "deleted": "Элемент удалён",
+      "loading": "Загрузка…",
+      "open": "Открыть во вкладке",
+      "openToEdit": "Откройте во вкладке, чтобы редактировать",
+      "untitled": "Без названия"
+    },
+    "corruptScene": "Не удалось прочитать этот холст. Редактирование отключено, чтобы не потерять данные.",
+    "createFailed": "Не удалось создать холст",
+    "disabledBody": "Эта вкладка относится к функции, которая не включена на этом устройстве.",
+    "disabledTitle": "Холст не включён",
+    "empty": "Холстов пока нет",
+    "libraryStoreFailed": "Не удалось сохранить вашу библиотеку фигур. Последние изменения в ней могут быть потеряны.",
+    "loadFailed": "Не удалось загрузить холсты",
+    "loading": "Загрузка холстов…",
+    "newCanvas": "Новый холст",
+    "notFound": "Этот холст не найден",
+    "openFailed": "Не удалось открыть холст",
+    "savedToVault": "Все изменения автоматически сохраняются в вашем хранилище",
+    "sectionLabel": "Холсты",
+    "tooLargeToSync": "Этот холст слишком большой для синхронизации. Он сохранён на этом устройстве, но не попадёт на другие, пока не станет меньше.",
+    "untitled": "Холст без названия"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Клик по строке",
+      "reset": "Сброс",
+      "shortcutsTab": "Вкладка «Горячие клавиши»"
+    },
+    "description": "Быстрые пути для перемещения по memrynote, захвата мыслей и разбора работы.",
+    "groups": {
+      "general": {
+        "description": "Навигация по приложению и справка.",
+        "title": "Общие"
+      },
+      "inbox": {
+        "description": "Быстрый разбор захваченных элементов.",
+        "title": "Входящие"
+      },
+      "journal": {
+        "description": "Перемещение по видам журнала и фокус на области письма.",
+        "title": "Журнал"
+      },
+      "notes": {
+        "description": "Написание, форматирование и поиск заметок.",
+        "title": "Заметки / Редактор"
+      },
+      "settings": {
+        "description": "Открытие настроек и настройка горячих клавиш.",
+        "title": "Настройки"
+      },
+      "tabs": {
+        "description": "Переход между вкладками и панелями.",
+        "title": "Вкладки и разделение"
+      },
+      "tasks": {
+        "description": "Фильтрация, выбор и выполнение задач.",
+        "title": "Задачи"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Создать заметку",
+        "keyboardShortcuts": "Открыть горячие клавиши",
+        "openSettings": "Открыть настройки",
+        "quickSearch": "Открыть быстрый поиск",
+        "sidebarSection": "Перейти к разделу боковой панели",
+        "toggleSidebar": "Переключить боковую панель",
+        "undoTaskAction": "Отменить последнее действие с задачей"
+      },
+      "inbox": {
+        "archiveItem": "Архивировать выбранный элемент",
+        "chooseQuickFileResult": "Выбрать результат быстрой подшивки",
+        "clearSelection": "Снять выделение или закрыть быструю подшивку",
+        "confirmFiling": "Подтвердить панель подшивки",
+        "firstOrLastItem": "Первый или последний элемент",
+        "jumpByPage": "Переход по страницам",
+        "nextItem": "Следующий элемент",
+        "openOriginal": "Открыть исходную ссылку",
+        "openQuickFile": "Открыть быструю подшивку",
+        "previousItem": "Предыдущий элемент",
+        "refresh": "Обновить входящие",
+        "selectAllVisible": "Выбрать все видимые элементы",
+        "selectItem": "Выбрать элемент",
+        "togglePreview": "Переключить панель предпросмотра"
+      },
+      "journal": {
+        "bold": "Сделать выделенный текст полужирным",
+        "find": "Найти в журнале",
+        "italic": "Сделать выделенный текст курсивом",
+        "link": "Добавить или изменить ссылку",
+        "returnFromOverview": "Вернуться из вида месяца или года",
+        "toggleFullWidth": "Переключить журнал на полную ширину",
+        "underline": "Подчеркнуть выделенный текст"
+      },
+      "notes": {
+        "bold": "Полужирный",
+        "closeOverlays": "Закрыть панели редактора",
+        "commandMenu": "Открыть меню команд редактора",
+        "createNote": "Создать заметку",
+        "find": "Найти в заметке",
+        "italic": "Курсив",
+        "link": "Добавить или изменить ссылку",
+        "saveNote": "Сохранить текущую заметку",
+        "underline": "Подчёркнутый"
+      },
+      "settings": {
+        "cancelRecording": "Отменить запись сочетания",
+        "customizeShortcuts": "Настроить горячие клавиши",
+        "openSettings": "Открыть настройки",
+        "recordShortcut": "Записать новое сочетание",
+        "resetShortcut": "Вернуть сочетание по умолчанию"
+      },
+      "tabs": {
+        "closeAllInPane": "Закрыть все вкладки в панели",
+        "closeSplitPane": "Закрыть разделённую панель",
+        "closeTab": "Закрыть вкладку",
+        "duplicateTab": "Дублировать вкладку",
+        "focusPane": "Перейти к другой панели",
+        "maximizePane": "Развернуть текущую панель",
+        "moveTabToPane": "Переместить вкладку в панель",
+        "newTabMenu": "Открыть меню новой вкладки",
+        "nextTab": "Следующая вкладка",
+        "pinTab": "Закрепить или открепить вкладку",
+        "previousTab": "Предыдущая вкладка",
+        "reopenClosedTab": "Снова открыть закрытую вкладку",
+        "splitDown": "Разделить вниз",
+        "splitRight": "Разделить вправо"
+      },
+      "tasks": {
+        "clearFilters": "Очистить видимые фильтры",
+        "clearSelection": "Снять выделение задач",
+        "completeSelected": "Выполнить выбранные задачи",
+        "configureRepeat": "Настроить повтор для активной задачи",
+        "deleteSelected": "Удалить выбранные задачи",
+        "selectAllVisible": "Выбрать все видимые задачи",
+        "skipOccurrence": "Пропустить повторение",
+        "stopRepeating": "Остановить повтор задачи"
+      }
+    },
+    "or": "или",
+    "then": "затем"
   }
 }

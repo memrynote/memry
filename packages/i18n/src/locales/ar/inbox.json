@@ -153,10 +153,10 @@
     "add": "أضف",
     "dismissSuggestion": "رفض الاقتراح",
     "hint": {
-      "file": "file",
+      "file": "حفظ",
       "tag": "علامة",
       "snooze": "قيلولة بعد الظهر",
-      "archive": "archive",
+      "archive": "أرشفة",
       "deselect": "قم بإلغاء التحديد"
     },
     "archiveDialog": {
@@ -270,7 +270,50 @@
     "panelEmpty": "لا توجد تذكيرات قادمة.",
     "panelPast": "السابقة",
     "panelUpcoming": "القادمة",
-    "taskFallback": "مهمة"
+    "taskFallback": "مهمة",
+    "dateTime": {
+      "dateAt": "{date} في {time}",
+      "dateCompact": "{date}، {time}",
+      "todayAt": "اليوم في {time}",
+      "todayCompact": "اليوم، {time}",
+      "tomorrowAt": "غدًا في {time}",
+      "tomorrowCompact": "غدًا، {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "تذكير بالذكرى السنوية",
+      "inHours": {
+        "label": "خلال {count, plural, zero {# ساعة} one {ساعة واحدة} two {ساعتين} few {# ساعات} many {# ساعة} other {# ساعة}}"
+      },
+      "inMinutes": {
+        "label": "خلال {count, plural, zero {# دقيقة} one {دقيقة واحدة} two {دقيقتين} few {# دقائق} many {# دقيقة} other {# دقيقة}}"
+      },
+      "inMonths": {
+        "label": "خلال {count, plural, zero {# شهر} one {شهر واحد} two {شهرين} few {# أشهر} many {# شهرًا} other {# شهر}}"
+      },
+      "inWeeks": {
+        "label": "خلال {count, plural, zero {# أسبوع} one {أسبوع واحد} two {أسبوعين} few {# أسابيع} many {# أسبوعًا} other {# أسبوع}}"
+      },
+      "inYears": {
+        "label": "خلال {count, plural, zero {# سنة} one {سنة واحدة} two {سنتين} few {# سنوات} many {# سنة} other {# سنة}}"
+      },
+      "laterToday": {
+        "description": "خلال {count, plural, zero {# ساعة} one {ساعة واحدة} two {ساعتين} few {# ساعات} many {# ساعة} other {# ساعة}}",
+        "label": "لاحقًا اليوم"
+      },
+      "monthlyReflection": "تأمل شهري",
+      "nextWeek": {
+        "description": "الاثنين في 9 صباحًا",
+        "label": "الأسبوع القادم"
+      },
+      "quarterlyReflection": "تأمل ربع سنوي",
+      "reviewInAWeek": "مراجعة بعد أسبوع",
+      "sameDayNextMonth": "اليوم نفسه من الشهر القادم",
+      "tomorrow": {
+        "description": "غدًا في 9 صباحًا",
+        "label": "غدًا"
+      },
+      "tomorrowMorning": "صباح الغد"
+    }
   },
   "insights": {
     "captureActivity": "التقاط النشاط",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "إرفاق ملف (صور، صوت، فيديو، PDF)",
       "recordVoiceMemo": "سجل مذكرة صوتية",
       "recordVoiceMemo2": "سجل مذكرة صوتية",
-      "alreadyCaptured": "تم التقاطها بالفعل: \"",
-      "rdquo": "ردقوو]؛",
       "captureAnyway": "التقط على أي حال",
       "focusShortcut": "التركيز على حقل الالتقاط",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "التقاط رابط",
+      "captureNote": "التقاط ملاحظة",
+      "placeholder": "التقاط سريع — الصق رابطًا، أو دوّن فكرة…",
+      "duplicateNotice": "تم التقاطه بالفعل: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "اختر المجلد",
@@ -414,10 +459,9 @@
       "captured": "تم التقاطها",
       "dismissError": "تجاهل الخطأ",
       "alreadyCaptured": "تم التقاطها بالفعل",
-      "ldquo": "دقوو]؛",
-      "rdquoMiddot": "ردقوو]؛ · ",
       "captureAnyway": "التقط على أي حال",
-      "close": "إغلاق"
+      "close": "إغلاق",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "إسقاط لالتقاط",
@@ -466,7 +510,12 @@
       "cancelRecording": "إلغاء التسجيل",
       "cancel": "إلغاء",
       "stopRecording": "توقف عن التسجيل",
-      "stop": "توقف"
+      "stop": "توقف",
+      "enableMicInSettings": "فعّل الوصول إلى الميكروفون في إعدادات النظام، ثم حاول مرة أخرى.",
+      "failedToStart": "فشل بدء التسجيل",
+      "microphoneAccessDenied": "تم رفض الوصول إلى الميكروفون",
+      "noMicrophoneFound": "لم يتم العثور على ميكروفون",
+      "recordingError": "حدث خطأ أثناء التسجيل"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "فشل في التقاط الملف",
       "fileCaptureFailed": "فشل التقاط الملف",
       "failedToCaptureAudio": "فشل في التقاط الصوت",
-      "failedToCaptureVoice": "فشل في التقاط الصوت"
+      "failedToCaptureVoice": "فشل في التقاط الصوت",
+      "failedToLoadInboxPreferences": "فشل تحميل تفضيلات البريد الوارد",
+      "failedToUpdateInboxPreferences": "فشل تحديث تفضيلات البريد الوارد"
     },
     "toasts": {
       "inboxRefreshed": "تم تحديث البريد الوارد"
@@ -516,5 +567,10 @@
     "task": "مهمة",
     "time": "الوقت",
     "title": "تحويل"
+  },
+  "reviewNudge": {
+    "action": "فتح البريد الوارد",
+    "description": "راجع ما التقطته اليوم في جلسة واحدة هادئة.",
+    "title": "{count, plural, zero {حان وقت مراجعة # عنصر} one {حان وقت مراجعة عنصر واحد} two {حان وقت مراجعة عنصرين} few {حان وقت مراجعة # عناصر} many {حان وقت مراجعة # عنصراً} other {حان وقت مراجعة # عنصر}}"
   }
 }

@@ -34,7 +34,15 @@
     "createAnother": "Creane un altro",
     "delete": "Elimina attività",
     "created": "Creato {date}",
-    "reminder": "Promemoria"
+    "reminder": "Promemoria",
+    "tags": "Tag",
+    "priorityLabels": {
+      "high": "Alta",
+      "low": "Bassa",
+      "medium": "Media",
+      "none": "Nessuna priorità",
+      "urgent": "Urgente"
+    }
   },
   "filters": {
     "filter": "Filtra",
@@ -43,11 +51,32 @@
     "groupBy": "Raggruppa per",
     "groupByOptions": "Raggruppa per opzioni",
     "sortAscending": "Ordinamento crescente",
-    "sortDescending": "Ordina discendente"
+    "sortDescending": "Ordina discendente",
+    "dueDate": {
+      "any": "Qualsiasi data di scadenza",
+      "custom": "Intervallo personalizzato...",
+      "nextWeek": "La prossima settimana",
+      "none": "Nessuna data di scadenza",
+      "overdue": "In ritardo",
+      "thisMonth": "Questo mese",
+      "thisWeek": "Questa settimana",
+      "today": "Oggi",
+      "tomorrow": "Domani"
+    },
+    "quickPresets": {
+      "dueThisWeek": "In scadenza questa settimana",
+      "highPriority": "Priorità alta",
+      "noDueDate": "Senza data di scadenza",
+      "overdue": "In ritardo",
+      "repeating": "Ricorrenti"
+    },
+    "repeatTypeOneTime": "Una tantum",
+    "repeatTypeRepeating": "Ricorrente"
   },
   "quickAdd": {
     "label": "Attività di aggiunta rapida",
-    "focusDescription": "Metti a fuoco l'aggiunta rapida di input"
+    "focusDescription": "Metti a fuoco l'aggiunta rapida di input",
+    "placeholder": "Aggiungi un'attività…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Chiudi i dettagli dell'attività",
@@ -75,7 +104,21 @@
     "searchRelated": "Cerca correlati…"
   },
   "kanban": {
-    "board": "Tabellone Kanban"
+    "board": "Tabellone Kanban",
+    "empty": {
+      "default": {
+        "subtitle": "Trascina qui le attività o clicca + per aggiungerne",
+        "title": "Nessuna attività"
+      },
+      "done": {
+        "subtitle": "Completa le attività per vederle qui",
+        "title": "Nessuna attività completata"
+      },
+      "schedule": {
+        "subtitle": "Trascina qui le attività per riprogrammarle",
+        "title": "Niente in programma"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "Progetto aggiornato",
@@ -98,7 +141,53 @@
     "noCompletedSelected": "Nessuna attività completata selezionata",
     "completeFailed": "Impossibile completare le attività",
     "deleteFailed": "Impossibile eliminare le attività",
-    "moveFailed": "Impossibile spostare le attività"
+    "moveFailed": "Impossibile spostare le attività",
+    "bulk": {
+      "archived": "{count, plural, one {# attività archiviata} many {# attività archiviate} other {# attività archiviate}}",
+      "completed": "{count, plural, one {# attività completata} many {# attività completate} other {# attività completate}}",
+      "deleted": "{count, plural, one {# attività eliminata} many {# attività eliminate} other {# attività eliminate}}",
+      "deletedDescription": "Questa azione può essere annullata per un breve periodo.",
+      "dueDateRemoved": "{count, plural, one {Data di scadenza rimossa da # attività} many {Data di scadenza rimossa da # attività} other {Data di scadenza rimossa da # attività}}",
+      "dueDateSet": "{count, plural, one {Data di scadenza impostata per # attività} many {Data di scadenza impostata per # attività} other {Data di scadenza impostata per # attività}}",
+      "movedToProject": "{count, plural, one {# attività spostata in {project}} many {# attività spostate in {project}} other {# attività spostate in {project}}}",
+      "movedToStatus": "{count, plural, one {# attività spostata in {status}} many {# attività spostate in {status}} other {# attività spostate in {status}}}",
+      "priorityRemoved": "{count, plural, one {Priorità rimossa da # attività} many {Priorità rimossa da # attività} other {Priorità rimossa da # attività}}",
+      "prioritySet": "{count, plural, one {Priorità impostata su {priority} per # attività} many {Priorità impostata su {priority} per # attività} other {Priorità impostata su {priority} per # attività}}",
+      "restored": "{count, plural, one {# attività ripristinata} many {# attività ripristinate} other {# attività ripristinate}}",
+      "undoArchive": "{count, plural, one {Archivia # attività} many {Archivia # attività} other {Archivia # attività}}",
+      "undoComplete": "{count, plural, one {Completa # attività} many {Completa # attività} other {Completa # attività}}",
+      "undoDelete": "{count, plural, one {Elimina # attività} many {Elimina # attività} other {Elimina # attività}}",
+      "undoDueDate": "{count, plural, one {Data di scadenza modificata per # attività} many {Data di scadenza modificata per # attività} other {Data di scadenza modificata per # attività}}",
+      "undoMove": "{count, plural, one {Sposta # attività} many {Sposta # attività} other {Sposta # attività}}",
+      "undoStatus": "{count, plural, one {Stato → {status} per # attività} many {Stato → {status} per # attività} other {Stato → {status} per # attività}}",
+      "undoUncomplete": "{count, plural, one {Annulla il completamento di # attività} many {Annulla il completamento di # attività} other {Annulla il completamento di # attività}}"
+    },
+    "drag": {
+      "archived": "{count, plural, one {Attività archiviata} many {# attività archiviate} other {# attività archiviate}}",
+      "deleted": "{count, plural, one {Attività eliminata} many {# attività eliminate} other {# attività eliminate}}",
+      "moved": "{count, plural, one {Spostata in {target}} many {# attività spostate in {target}} other {# attività spostate in {target}}}",
+      "movedTo": "Spostata in {target}",
+      "prioritySet": "{count, plural, one {Priorità impostata su {priority}} many {# attività impostate su {priority}} other {# attività impostate su {priority}}}",
+      "prioritySetTo": "Priorità impostata su {priority}",
+      "rescheduled": "{count, plural, one {Riprogrammata a {target}} many {# attività riprogrammate a {target}} other {# attività riprogrammate a {target}}}",
+      "rescheduledTo": "Riprogrammata a {target}",
+      "undoArchive": "{count, plural, one {# attività archiviata} many {# attività archiviate} other {# attività archiviate}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, one {# attività secondaria aggiunta} many {# attività secondarie aggiunte} other {# attività secondarie aggiunte}}",
+      "completed": "{count, plural, one {# attività secondaria completata} many {# attività secondarie completate} other {# attività secondarie completate}}",
+      "deleted": "{count, plural, one {# attività secondaria eliminata} many {# attività secondarie eliminate} other {# attività secondarie eliminate}}",
+      "deletedDescription": "L'attività secondaria è stata rimossa",
+      "dueDateCleared": "{count, plural, one {Data di scadenza rimossa da # attività secondaria} many {Data di scadenza rimossa da # attività secondarie} other {Data di scadenza rimossa da # attività secondarie}}",
+      "dueDateSet": "{count, plural, one {Data di scadenza impostata per # attività secondaria} many {Data di scadenza impostata per # attività secondarie} other {Data di scadenza impostata per # attività secondarie}}",
+      "markedIncomplete": "{count, plural, one {# attività secondaria segnata come non completata} many {# attività secondarie segnate come non completate} other {# attività secondarie segnate come non completate}}",
+      "movedUnder": "Spostata sotto \"{title}\"",
+      "parentAndSubtasksCompleted": "Attività e attività secondarie completate",
+      "parentDeletedKeepSubtasks": "Attività eliminata, attività secondarie convertite in attività",
+      "parentDeletedWithSubtasks": "Attività e attività secondarie eliminate",
+      "prioritySet": "{count, plural, one {Priorità impostata per # attività secondaria} many {Priorità impostata per # attività secondarie} other {Priorità impostata per # attività secondarie}}",
+      "promoted": "\"{title}\" promossa ad attività"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -179,7 +268,8 @@
       "nextMonth": "Il mese prossimo",
       "goToToday": "Vai a oggi",
       "today": "Oggi",
-      "w": "W"
+      "w": "W",
+      "weekNumber": "Settimana {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Rimuovi la data",
@@ -197,44 +287,39 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Questo progetto non ha attività e verrà eliminato definitivamente.",
       "thisActionCannotBeUndone": "Questa azione non può essere annullata.",
       "cancel": "Annulla",
-      "deleteProject": "Elimina progetto"
+      "deleteProject": "Elimina progetto",
+      "notesEventsAndFilesStayNotice": "Le attività di questo progetto vengono eliminate. Le tue note, gli eventi e i file restano nel tuo vault."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Eliminare l'attività?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; verranno eliminati definitivamente. Questa azione non può essere annullata.",
-      "deleteTask2": "Elimina attività"
+      "deleteTask2": "Elimina attività",
+      "deleteConfirmBody": "L'attività “{title}” verrà eliminata definitivamente. Questa azione non può essere annullata."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Tutte le attività secondarie sono state completate!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; ha tutto ",
-      "subtask": "attività secondaria",
-      "done": "fatto.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Desideri contrassegnare anche l'attività principale come completata?",
       "keepTaskOpen": "Mantieni l'attività aperta",
-      "completeTask": "Completa l'attività ✓"
+      "completeTask": "Completa l'attività ✓",
+      "allSubtasksDoneBody": "{count, plural, one {L'unica attività secondaria di “{title}” è completata.} many {Tutte le # attività secondarie di “{title}” sono completate.} other {Tutte le # attività secondarie di “{title}” sono completate.}}"
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Imposta la data di scadenza per tutte le attività secondarie",
       "setDueDateFor": "Imposta la data di scadenza per ",
-      "subtask": "attività secondaria",
-      "in": "in “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Si applica anche alle attività secondarie completate (",
       "clearDate": "Data chiara",
       "cancel": "Annulla",
-      "apply": "Applicare"
+      "apply": "Applicare",
+      "alsoApplyToCompletedSubtasksCount": "Applica anche alle attività secondarie completate ({count})",
+      "setDueDateForSubtasksIn": "Imposta la data di scadenza per {count, plural, one {# attività secondaria} many {# attività secondarie} other {# attività secondarie}} in “{title}”"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Imposta la priorità per tutte le attività secondarie",
       "setPriorityFor": "Imposta la priorità per ",
-      "subtask": "attività secondaria",
-      "in": "in “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Si applica anche alle attività secondarie completate (",
       "cancel": "Annulla",
-      "apply": "Applicare"
+      "apply": "Applicare",
+      "alsoApplyToCompletedSubtasksCount": "Applica anche alle attività secondarie completate ({count})",
+      "setPriorityForSubtasksIn": "Imposta la priorità per {count, plural, one {# attività secondaria} many {# attività secondarie} other {# attività secondarie}} in “{title}”"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Completare l'attività con sottoattività incomplete?",
@@ -252,13 +337,10 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Eliminare tutte le attività secondarie?",
-      "thisWillDelete": "Questo eliminerà ",
-      "subtask": "attività secondaria",
-      "from": "da “",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "Questa azione non può essere annullata.",
       "cancel": "Annulla",
-      "deleteAll": "Elimina tutto"
+      "deleteAll": "Elimina tutto",
+      "deleteSubtasksConfirmation": "{count, plural, one {Verrà eliminata # attività secondaria da “{title}”.} many {Verranno eliminate # attività secondarie da “{title}”.} other {Verranno eliminate # attività secondarie da “{title}”.}}"
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Eliminare l'attività con le sottoattività?",
@@ -275,10 +357,13 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Compito duplicato",
       "createACopyOf": "Crea una copia di \"",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Duplica anche le attività secondarie (",
       "cancel": "Annulla",
-      "duplicate": "Duplicato "
+      "duplicate": "Duplicato ",
+      "alsoDuplicateSubtasksCount": "Duplica anche le attività secondarie ({count})",
+      "createACopyOfTitle": "Crea una copia di “{title}”",
+      "duplicateTaskOnly": "Duplica attività",
+      "duplicateWithItems": "Duplica ({count, plural, one {# elemento} many {# elementi} other {# elementi}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Crea una sottoattività di...",
@@ -324,7 +409,11 @@
       "addTime": "Aggiungi tempo",
       "time": "Tempo",
       "clearDate": "Data chiara",
-      "backToOptions": "Torna alle opzioni"
+      "backToOptions": "Torna alle opzioni",
+      "nextWeek": "La prossima settimana",
+      "thisWeekend": "Questo fine settimana",
+      "today": "Oggi",
+      "tomorrow": "Domani"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "Modifica attività ricorrente",
@@ -357,7 +446,9 @@
       "due": "Dovuto",
       "dueDate": "data di scadenza",
       "search": "ricerca",
-      "clearAll": "Cancella tutto"
+      "clearAll": "Cancella tutto",
+      "tags": "tag",
+      "tagsIs": "I tag sono"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Filtra per data di scadenza",
@@ -421,7 +512,17 @@
       "currentFilters": "Filtri attuali:",
       "noFiltersApplied": "Nessun filtro applicato",
       "cancel": "Annulla",
-      "saveFilter2": "Salva filtro"
+      "saveFilter2": "Salva filtro",
+      "nameRequired": "Inserisci un nome per questo filtro",
+      "summaryDue": "Scadenza: {value}",
+      "summaryDueRange": "Scadenza: {start} - {end}",
+      "summaryPriorities": "Priorità: {names}",
+      "summaryProjects": "Progetto: {names}",
+      "summaryRepeatOneTime": "Ripetizione: solo una tantum",
+      "summaryRepeatRepeating": "Ripetizione: solo ricorrenti",
+      "summarySearch": "Ricerca: \"{query}\"",
+      "summaryTimeWith": "Ora: con orario",
+      "summaryTimeWithout": "Ora: senza orario"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Filtri salvati",
@@ -553,7 +654,16 @@
       "d": "d"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "Aggiungi attività"
+      "addTask": "Aggiungi attività",
+      "allDescription": "Crea la tua prima attività per iniziare",
+      "allTitle": "Ancora nessuna attività",
+      "completedDescription": "Le attività completate compariranno qui",
+      "completedTitle": "Nessuna attività completata",
+      "projectDescription": "Aggiungi un'attività per iniziare",
+      "projectTitle": "Nessuna attività in questo progetto",
+      "projectTitleNamed": "Nessuna attività in {name}",
+      "todayDescription": "Sei in pari!",
+      "todayTitle": "Niente in scadenza oggi"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "nessuna priorità"
@@ -589,6 +699,12 @@
       "noUpcomingTasks": "Nessuna attività imminente",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Le attività in scadenza nei prossimi 7 giorni verranno visualizzate qui. Pianifica la tua settimana aggiungendo alcune attività.",
       "addTask2": "Aggiungi attività"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "sono",
+      "search": "Cerca...",
+      "selected": "selezionati",
+      "tags": "Tag"
     }
   },
   "phaseI": {
@@ -638,5 +754,147 @@
       "updateFailed": "Impossibile aggiornare il promemoria",
       "updated": "Promemoria aggiornato"
     }
+  },
+  "addToProject": {
+    "dialogTitle": "Aggiungi al progetto",
+    "loading": "Caricamento progetti…",
+    "menuLabel": "Aggiungi al progetto",
+    "noProjects": "Nessun progetto ancora",
+    "toastError": "Impossibile aggiungere al progetto",
+    "toastSuccess": "Aggiunto a {name}"
+  },
+  "itemProjects": {
+    "openProject": "Apri il progetto {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Scegli un progetto dalla barra laterale per aprirne la home.",
+    "emptyTitle": "Nessun progetto selezionato",
+    "loadError": "Impossibile caricare i dettagli del progetto",
+    "overview": {
+      "clear": "Rimuovi panoramica",
+      "clearError": "Impossibile rimuovere la nota di panoramica",
+      "create": "Crea nota di panoramica",
+      "createError": "Impossibile creare la nota di panoramica",
+      "defaultTitle": "Panoramica",
+      "loadError": "Impossibile caricare la nota di panoramica",
+      "placeholder": "Scrivi una panoramica di questo progetto…",
+      "saveError": "Impossibile salvare la nota di panoramica",
+      "sectionTitle": "Panoramica"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Allega file",
+      "fileError": "Impossibile collegare {name}",
+      "fileErrorGeneric": "Impossibile importare i file",
+      "filesAdded": "{count, plural, one {# file aggiunto al progetto} many {# file aggiunti al progetto} other {# file aggiunti al progetto}}",
+      "label": "Aggiungi a {name}",
+      "linkAdded": "Link aggiunto al progetto",
+      "linkError": "Impossibile salvare il link",
+      "placeholder": "Aggiungi a {name} — scrivi un'attività, annota un pensiero o incolla un link…"
+    },
+    "groups": {
+      "older": "Meno recenti",
+      "past": "Passati",
+      "today": "Oggi",
+      "tomorrow": "Domani",
+      "upcoming": "In arrivo",
+      "yesterday": "Ieri"
+    },
+    "header": {
+      "archiveProject": "Archivia progetto",
+      "editProject": "Modifica progetto",
+      "menu": "Azioni del progetto",
+      "toggleRail": "Mostra o nascondi i dettagli del progetto"
+    },
+    "rail": {
+      "addNote": "Aggiungi nota",
+      "created": "Creato",
+      "details": "Dettagli",
+      "doneOf": "{done} di {total} completate",
+      "linked": "Collegati",
+      "linkedSummary": "{notes, plural, one {# nota} many {# note} other {# note}} · {files, plural, one {# file} many {# file} other {# file}} · {events, plural, one {# evento} many {# eventi} other {# eventi}}",
+      "overdue": "In ritardo",
+      "overview": "Panoramica",
+      "pinError": "Impossibile aggiungere la nota alla panoramica",
+      "progress": "Avanzamento",
+      "unpinError": "Impossibile rimuovere la nota dalla panoramica",
+      "unpinNote": "Rimuovi {title} dalla panoramica",
+      "updated": "Aggiornato"
+    },
+    "rows": {
+      "openEvent": "Apri l'evento {title}",
+      "openFile": "Apri il file {title}",
+      "openNote": "Apri la nota {title}",
+      "openTask": "Apri l'attività {title}",
+      "setNoteIcon": "Imposta l'icona per {title}"
+    },
+    "sections": {
+      "add": "Aggiungi a {title}",
+      "emptyEvents": "Nessun evento ancora collegato.",
+      "emptyFiles": "Nessun file ancora collegato.",
+      "emptyNotes": "Nessuna nota ancora collegata.",
+      "emptyTasks": "Nessuna attività ancora.",
+      "newNoteError": "Impossibile aggiungere la nota",
+      "newNoteTitle": "Nota senza titolo",
+      "viewAll": "Visualizza tutto"
+    },
+    "tabs": {
+      "events": "Eventi",
+      "files": "File",
+      "label": "Viste del progetto",
+      "notes": "Note",
+      "overview": "Panoramica",
+      "tasks": "Attività"
+    }
+  },
+  "priorityInline": {
+    "high": "alta",
+    "low": "bassa",
+    "medium": "media",
+    "urgent": "urgente"
+  },
+  "priorityLabels": {
+    "high": "Alta",
+    "low": "Bassa",
+    "medium": "Media",
+    "none": "Nessuna priorità",
+    "urgent": "Urgente"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "Fatto",
+      "inProgress": "In corso",
+      "todo": "Da fare"
+    },
+    "validation": {
+      "minStatuses": "I progetti richiedono almeno 2 stati",
+      "nameRequired": "Il nome del progetto è obbligatorio",
+      "nameTooLong": "Il nome del progetto deve avere al massimo 50 caratteri",
+      "needsDoneStatus": "I progetti richiedono almeno uno stato 'Fatto'",
+      "needsDoneStatusForCompletedTasks": "I progetti richiedono almeno uno stato 'Fatto' per le attività completate",
+      "needsTodoStatus": "I progetti richiedono almeno uno stato 'Da fare'",
+      "needsTodoStatusForNewTasks": "I progetti richiedono almeno uno stato 'Da fare' per le nuove attività",
+      "statusNameRequired": "Tutti gli stati devono avere un nome",
+      "statusNamesUnique": "I nomi degli stati devono essere univoci",
+      "statusNotFound": "Stato non trovato"
+    }
+  },
+  "statusLabels": {
+    "done": "Fatto",
+    "inProgress": "In corso",
+    "todo": "Da fare"
+  },
+  "colors": {
+    "blue": "Blu",
+    "gray": "Grigio",
+    "green": "Verde",
+    "indigo": "Indaco",
+    "orange": "Arancione",
+    "pink": "Rosa",
+    "purple": "Viola",
+    "red": "Rosso",
+    "teal": "Verde acqua",
+    "yellow": "Giallo"
   }
 }

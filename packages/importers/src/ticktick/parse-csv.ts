@@ -1,4 +1,5 @@
 import type { TickTickRow } from './types'
+import { IMPORT_MESSAGE_CODES, ImporterError } from '../messages'
 
 /** RFC-4180 tokenizer; strips a leading BOM. Handles quoted commas/newlines + "" escapes. */
 export function tokenizeCsv(input: string): string[][] {
@@ -70,7 +71,12 @@ function int(raw: string): number {
 export function parseTickTickCsv(input: string): TickTickRow[] {
   const records = tokenizeCsv(input)
   const headerIdx = records.findIndex((r) => (r[0] ?? '').trim() === HEADER_FIRST_CELL)
-  if (headerIdx === -1) throw new Error('TickTick CSV header row ("Folder Name") not found')
+  if (headerIdx === -1) {
+    throw new ImporterError(
+      IMPORT_MESSAGE_CODES.ticktickHeaderNotFound,
+      'TickTick CSV header row ("Folder Name") not found'
+    )
+  }
   const headers = records[headerIdx].map((h) => h.trim())
   const col = (cells: string[], name: string): string => {
     const idx = headers.indexOf(name)

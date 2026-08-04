@@ -78,11 +78,10 @@ export const BulkDueDateDialog = ({
             </DialogTitle>
           </div>
           <DialogDescription>
-            {tPhaseF('phaseF.componentsTasksDialogsBulkDueDateDialog.setDueDateFor')}
-            {affectedCount} {tPhaseF('phaseF.componentsTasksDialogsBulkDueDateDialog.subtask')}
-            {affectedCount !== 1 ? 's' : ''}{' '}
-            {tPhaseF('phaseF.componentsTasksDialogsBulkDueDateDialog.in')}
-            {parentTitle}&{tPhaseF('phaseF.componentsTasksDialogsBulkDueDateDialog.rdquo')}
+            {tPhaseF('phaseF.componentsTasksDialogsBulkDueDateDialog.setDueDateForSubtasksIn', {
+              count: affectedCount,
+              title: parentTitle
+            })}
           </DialogDescription>
         </DialogHeader>
 
@@ -105,9 +104,9 @@ export const BulkDueDateDialog = ({
                 className="text-sm text-muted-foreground cursor-pointer"
               >
                 {tPhaseF(
-                  'phaseF.componentsTasksDialogsBulkDueDateDialog.alsoApplyToCompletedSubtasks'
+                  'phaseF.componentsTasksDialogsBulkDueDateDialog.alsoApplyToCompletedSubtasksCount',
+                  { count: completedCount }
                 )}
-                {completedCount})
               </Label>
             </div>
           )}

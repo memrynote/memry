@@ -13,6 +13,7 @@ import {
 import { isMac } from '@/hooks/use-keyboard-shortcuts-base'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
+import type { TFunction } from 'i18next'
 
 interface ShortcutDefinition {
   combos: string[][]
@@ -33,12 +34,7 @@ interface KeyboardShortcutsDialogProps {
   onClose: () => void
 }
 
-const DIALOG_DESCRIPTION =
-  'Fast paths for moving around memrynote, capturing thoughts, and processing work.'
-const COMBO_OR_LABEL = 'or'
-const SEQUENCE_THEN_LABEL = 'then'
-
-const getShortcutGroups = (): ShortcutGroup[] => {
+const getShortcutGroups = (t: TFunction<'common'>): ShortcutGroup[] => {
   const mod = isMac ? '⌘' : 'Ctrl'
   const shift = isMac ? '⇧' : 'Shift'
   const alt = isMac ? '⌥' : 'Alt'
@@ -46,155 +42,184 @@ const getShortcutGroups = (): ShortcutGroup[] => {
 
   return [
     {
-      title: 'General',
-      description: 'App-wide navigation and help.',
+      title: t('shortcuts.groups.general.title'),
+      description: t('shortcuts.groups.general.description'),
       shortcuts: [
         {
           combos: [
             [mod, 'K'],
             [mod, 'P']
           ],
-          description: 'Open quick search'
+          description: t('shortcuts.items.general.quickSearch')
         },
-        { combos: [[mod, 'N']], description: 'Create a note' },
-        { combos: [[mod, ',']], description: 'Open settings' },
-        { combos: [['?'], [mod, '/']], description: 'Open keyboard shortcuts' },
-        { combos: [[mod, 'Z']], description: 'Undo last task action' },
-        { combos: [[mod, 'B']], description: 'Toggle the sidebar' },
-        { combos: [[mod, '1-6']], description: 'Go to sidebar section' }
+        { combos: [[mod, 'N']], description: t('shortcuts.items.general.createNote') },
+        { combos: [[mod, ',']], description: t('shortcuts.items.general.openSettings') },
+        {
+          combos: [['?'], [mod, '/']],
+          description: t('shortcuts.items.general.keyboardShortcuts')
+        },
+        { combos: [[mod, 'Z']], description: t('shortcuts.items.general.undoTaskAction') },
+        { combos: [[mod, 'B']], description: t('shortcuts.items.general.toggleSidebar') },
+        { combos: [[mod, '1-6']], description: t('shortcuts.items.general.sidebarSection') }
       ]
     },
     {
-      title: 'Tabs & Splits',
-      description: 'Move between tabs and panes.',
+      title: t('shortcuts.groups.tabs.title'),
+      description: t('shortcuts.groups.tabs.description'),
       shortcuts: [
-        { combos: [[mod, 'T']], description: 'Open the new tab menu' },
-        { combos: [[mod, 'W']], description: 'Close tab' },
-        { combos: [[mod, shift, 'W']], description: 'Close all tabs in pane' },
-        { combos: [[mod, shift, 'T']], description: 'Reopen closed tab' },
-        { combos: [['Ctrl', 'Tab']], description: 'Next tab' },
-        { combos: [['Ctrl', shift, 'Tab']], description: 'Previous tab' },
-        { combos: [[mod, shift, 'P']], description: 'Pin or unpin tab' },
-        { combos: [[mod, shift, 'D']], description: 'Duplicate tab' },
-        { combos: [[mod, '\\']], description: 'Split right' },
-        { combos: [[mod, shift, '\\']], description: 'Split down' },
-        { combos: [[mod, alt, 'W']], description: 'Close split pane' },
-        { combos: [[mod, 'K', 'then', mod, '←/→/↑/↓']], description: 'Focus another pane' },
-        { combos: [[mod, 'K', 'then', mod, shift, '←/→']], description: 'Move tab to pane' },
-        { combos: [[mod, 'K', 'then', 'M']], description: 'Maximize current pane' }
+        { combos: [[mod, 'T']], description: t('shortcuts.items.tabs.newTabMenu') },
+        { combos: [[mod, 'W']], description: t('shortcuts.items.tabs.closeTab') },
+        { combos: [[mod, shift, 'W']], description: t('shortcuts.items.tabs.closeAllInPane') },
+        { combos: [[mod, shift, 'T']], description: t('shortcuts.items.tabs.reopenClosedTab') },
+        { combos: [['Ctrl', 'Tab']], description: t('shortcuts.items.tabs.nextTab') },
+        { combos: [['Ctrl', shift, 'Tab']], description: t('shortcuts.items.tabs.previousTab') },
+        { combos: [[mod, shift, 'P']], description: t('shortcuts.items.tabs.pinTab') },
+        { combos: [[mod, shift, 'D']], description: t('shortcuts.items.tabs.duplicateTab') },
+        { combos: [[mod, '\\']], description: t('shortcuts.items.tabs.splitRight') },
+        { combos: [[mod, shift, '\\']], description: t('shortcuts.items.tabs.splitDown') },
+        { combos: [[mod, alt, 'W']], description: t('shortcuts.items.tabs.closeSplitPane') },
+        {
+          combos: [[mod, 'K', 'then', mod, '←/→/↑/↓']],
+          description: t('shortcuts.items.tabs.focusPane')
+        },
+        {
+          combos: [[mod, 'K', 'then', mod, shift, '←/→']],
+          description: t('shortcuts.items.tabs.moveTabToPane')
+        },
+        { combos: [[mod, 'K', 'then', 'M']], description: t('shortcuts.items.tabs.maximizePane') }
       ]
     },
     {
-      title: 'Inbox',
-      description: 'Process captured items quickly.',
+      title: t('shortcuts.groups.inbox.title'),
+      description: t('shortcuts.groups.inbox.description'),
       shortcuts: [
-        { combos: [['↓'], ['J']], description: 'Next item' },
-        { combos: [['↑'], ['K']], description: 'Previous item' },
-        { combos: [['Home'], ['End']], description: 'First or last item' },
-        { combos: [['PageUp'], ['PageDown']], description: 'Jump by page' },
-        { combos: [['Space']], description: 'Toggle preview panel' },
-        { combos: [['X']], description: 'Select item' },
-        { combos: [[mod, 'A']], description: 'Select all visible items' },
-        { combos: [['Esc']], description: 'Clear selection or close quick file' },
-        { combos: [['.'], ['F']], description: 'Open quick file' },
-        { combos: [['1-5']], description: 'Choose a quick-file result' },
-        { combos: [['Delete'], [backspace]], description: 'Archive selected item' },
-        { combos: [['O']], description: 'Open original link' },
-        { combos: [['R']], description: 'Refresh inbox' },
-        { combos: [[mod, 'Enter']], description: 'Confirm filing panel' }
+        { combos: [['↓'], ['J']], description: t('shortcuts.items.inbox.nextItem') },
+        { combos: [['↑'], ['K']], description: t('shortcuts.items.inbox.previousItem') },
+        { combos: [['Home'], ['End']], description: t('shortcuts.items.inbox.firstOrLastItem') },
+        { combos: [['PageUp'], ['PageDown']], description: t('shortcuts.items.inbox.jumpByPage') },
+        { combos: [['Space']], description: t('shortcuts.items.inbox.togglePreview') },
+        { combos: [['X']], description: t('shortcuts.items.inbox.selectItem') },
+        { combos: [[mod, 'A']], description: t('shortcuts.items.inbox.selectAllVisible') },
+        { combos: [['Esc']], description: t('shortcuts.items.inbox.clearSelection') },
+        { combos: [['.'], ['F']], description: t('shortcuts.items.inbox.openQuickFile') },
+        { combos: [['1-5']], description: t('shortcuts.items.inbox.chooseQuickFileResult') },
+        {
+          combos: [['Delete'], [backspace]],
+          description: t('shortcuts.items.inbox.archiveItem')
+        },
+        { combos: [['O']], description: t('shortcuts.items.inbox.openOriginal') },
+        { combos: [['R']], description: t('shortcuts.items.inbox.refresh') },
+        { combos: [[mod, 'Enter']], description: t('shortcuts.items.inbox.confirmFiling') }
       ]
     },
     {
-      title: 'Journal',
-      description: 'Navigate journal views and focus the writing area.',
+      title: t('shortcuts.groups.journal.title'),
+      description: t('shortcuts.groups.journal.description'),
       shortcuts: [
-        { combos: [['Esc']], description: 'Return from month or year view' },
-        { combos: [[mod, '\\']], description: 'Toggle full-width journal' },
-        { combos: [[mod, 'F']], description: 'Find in journal' },
-        { combos: [[mod, 'B']], description: 'Bold selected text' },
-        { combos: [[mod, 'I']], description: 'Italic selected text' },
-        { combos: [[mod, 'U']], description: 'Underline selected text' },
-        { combos: [[mod, 'K']], description: 'Add or edit link' }
+        { combos: [['Esc']], description: t('shortcuts.items.journal.returnFromOverview') },
+        { combos: [[mod, '\\']], description: t('shortcuts.items.journal.toggleFullWidth') },
+        { combos: [[mod, 'F']], description: t('shortcuts.items.journal.find') },
+        { combos: [[mod, 'B']], description: t('shortcuts.items.journal.bold') },
+        { combos: [[mod, 'I']], description: t('shortcuts.items.journal.italic') },
+        { combos: [[mod, 'U']], description: t('shortcuts.items.journal.underline') },
+        { combos: [[mod, 'K']], description: t('shortcuts.items.journal.link') }
       ]
     },
     {
-      title: 'Notes / Editor',
-      description: 'Write, format, and search notes.',
+      title: t('shortcuts.groups.notes.title'),
+      description: t('shortcuts.groups.notes.description'),
       shortcuts: [
-        { combos: [[mod, 'N']], description: 'Create a note' },
-        { combos: [[mod, 'S']], description: 'Save current note' },
-        { combos: [[mod, 'F']], description: 'Find in note' },
-        { combos: [[mod, 'B']], description: 'Bold' },
-        { combos: [[mod, 'I']], description: 'Italic' },
-        { combos: [[mod, 'U']], description: 'Underline' },
-        { combos: [[mod, 'K']], description: 'Add or edit link' },
-        { combos: [['/']], description: 'Open editor command menu' },
-        { combos: [['Esc']], description: 'Close editor overlays' }
+        { combos: [[mod, 'N']], description: t('shortcuts.items.notes.createNote') },
+        { combos: [[mod, 'S']], description: t('shortcuts.items.notes.saveNote') },
+        { combos: [[mod, 'F']], description: t('shortcuts.items.notes.find') },
+        { combos: [[mod, 'B']], description: t('shortcuts.items.notes.bold') },
+        { combos: [[mod, 'I']], description: t('shortcuts.items.notes.italic') },
+        { combos: [[mod, 'U']], description: t('shortcuts.items.notes.underline') },
+        { combos: [[mod, 'K']], description: t('shortcuts.items.notes.link') },
+        { combos: [['/']], description: t('shortcuts.items.notes.commandMenu') },
+        { combos: [['Esc']], description: t('shortcuts.items.notes.closeOverlays') }
       ]
     },
     {
-      title: 'Tasks',
-      description: 'Filter, select, and complete tasks.',
+      title: t('shortcuts.groups.tasks.title'),
+      description: t('shortcuts.groups.tasks.description'),
       shortcuts: [
-        { combos: [[shift, 'F']], description: 'Clear visible filters' },
-        { combos: [[mod, 'A']], description: 'Select all visible tasks' },
-        { combos: [['Esc']], description: 'Clear task selection' },
-        { combos: [[mod, 'Enter']], description: 'Complete selected tasks' },
-        { combos: [[mod, backspace]], description: 'Delete selected tasks' },
-        { combos: [['R']], description: 'Configure repeat on focused task' },
-        { combos: [[shift, 'S']], description: 'Skip repeat occurrence' },
-        { combos: [[shift, 'X']], description: 'Stop repeating task' }
+        { combos: [[shift, 'F']], description: t('shortcuts.items.tasks.clearFilters') },
+        { combos: [[mod, 'A']], description: t('shortcuts.items.tasks.selectAllVisible') },
+        { combos: [['Esc']], description: t('shortcuts.items.tasks.clearSelection') },
+        { combos: [[mod, 'Enter']], description: t('shortcuts.items.tasks.completeSelected') },
+        { combos: [[mod, backspace]], description: t('shortcuts.items.tasks.deleteSelected') },
+        { combos: [['R']], description: t('shortcuts.items.tasks.configureRepeat') },
+        { combos: [[shift, 'S']], description: t('shortcuts.items.tasks.skipOccurrence') },
+        { combos: [[shift, 'X']], description: t('shortcuts.items.tasks.stopRepeating') }
       ]
     },
     {
-      title: 'Settings',
-      description: 'Open settings and customize shortcuts.',
+      title: t('shortcuts.groups.settings.title'),
+      description: t('shortcuts.groups.settings.description'),
       shortcuts: [
-        { combos: [[mod, ',']], description: 'Open settings' },
-        { combos: [['Shortcuts tab']], description: 'Customize keyboard shortcuts' },
-        { combos: [['Click row']], description: 'Record a new shortcut' },
-        { combos: [['Esc']], description: 'Cancel shortcut recording' },
-        { combos: [['Reset']], description: 'Restore a shortcut default' }
+        { combos: [[mod, ',']], description: t('shortcuts.items.settings.openSettings') },
+        {
+          combos: [[t('shortcuts.combos.shortcutsTab')]],
+          description: t('shortcuts.items.settings.customizeShortcuts')
+        },
+        {
+          combos: [[t('shortcuts.combos.clickRow')]],
+          description: t('shortcuts.items.settings.recordShortcut')
+        },
+        { combos: [['Esc']], description: t('shortcuts.items.settings.cancelRecording') },
+        {
+          combos: [[t('shortcuts.combos.reset')]],
+          description: t('shortcuts.items.settings.resetShortcut')
+        }
       ]
     }
   ]
 }
 
-const ShortcutCombo = ({ keys }: { keys: string[] }): React.JSX.Element => (
-  <span className="inline-flex items-center gap-1">
-    {keys.map((key, index) =>
-      key === 'then' ? (
-        <span key={`${key}-${index}`} className="px-0.5 text-[11px] text-muted-foreground/70">
-          {SEQUENCE_THEN_LABEL}
-        </span>
-      ) : (
-        <kbd
-          key={`${key}-${index}`}
-          className={cn(
-            'inline-flex min-w-6 items-center justify-center rounded border border-border',
-            'bg-background px-1.5 py-0.5 font-mono text-[11px] font-medium leading-4',
-            'text-foreground shadow-[inset_0_-1px_0_rgba(0,0,0,0.08)]'
-          )}
-        >
-          {key}
-        </kbd>
-      )
-    )}
-  </span>
-)
+const ShortcutCombo = ({ keys }: { keys: string[] }): React.JSX.Element => {
+  const { t } = useT('common')
 
-const ShortcutCombos = ({ combos }: { combos: string[][] }): React.JSX.Element => (
-  <div className="flex flex-wrap items-center justify-end gap-1.5">
-    {combos.map((keys, index) => (
-      <span key={keys.join('-')} className="inline-flex items-center gap-1.5">
-        {index > 0 && (
-          <span className="text-[11px] text-muted-foreground/60">{COMBO_OR_LABEL}</span>
-        )}
-        <ShortcutCombo keys={keys} />
-      </span>
-    ))}
-  </div>
-)
+  return (
+    <span className="inline-flex items-center gap-1">
+      {keys.map((key, index) =>
+        key === 'then' ? (
+          <span key={`${key}-${index}`} className="px-0.5 text-[11px] text-muted-foreground/70">
+            {t('shortcuts.then')}
+          </span>
+        ) : (
+          <kbd
+            key={`${key}-${index}`}
+            className={cn(
+              'inline-flex min-w-6 items-center justify-center rounded border border-border',
+              'bg-background px-1.5 py-0.5 font-mono text-[11px] font-medium leading-4',
+              'text-foreground shadow-[inset_0_-1px_0_rgba(0,0,0,0.08)]'
+            )}
+          >
+            {key}
+          </kbd>
+        )
+      )}
+    </span>
+  )
+}
+
+const ShortcutCombos = ({ combos }: { combos: string[][] }): React.JSX.Element => {
+  const { t } = useT('common')
+
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-1.5">
+      {combos.map((keys, index) => (
+        <span key={keys.join('-')} className="inline-flex items-center gap-1.5">
+          {index > 0 && (
+            <span className="text-[11px] text-muted-foreground/60">{t('shortcuts.or')}</span>
+          )}
+          <ShortcutCombo keys={keys} />
+        </span>
+      ))}
+    </div>
+  )
+}
 
 /**
  * Dialog showing all keyboard shortcuts
@@ -204,7 +229,8 @@ export const KeyboardShortcutsDialog = ({
   onClose
 }: KeyboardShortcutsDialogProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('settings')
-  const shortcutGroups = getShortcutGroups()
+  const { t } = useT('common')
+  const shortcutGroups = getShortcutGroups(t)
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -213,14 +239,14 @@ export const KeyboardShortcutsDialog = ({
           <DialogTitle className="text-xl">
             {tPhaseF('phaseF.componentsKeyboardKeyboardShortcutsDialog.keyboardShortcuts')}
           </DialogTitle>
-          <DialogDescription>{DIALOG_DESCRIPTION}</DialogDescription>
+          <DialogDescription>{t('shortcuts.description')}</DialogDescription>
         </DialogHeader>
 
         <div className="max-h-[calc(86vh-8.75rem)] overflow-y-auto px-6 py-5">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {shortcutGroups.map((group) => (
+            {shortcutGroups.map((group, groupIndex) => (
               <section
-                key={group.title}
+                key={`${group.title}-${groupIndex}`}
                 className="rounded-lg border border-border bg-card/60 p-4 shadow-sm"
               >
                 <div className="mb-3">
@@ -230,9 +256,9 @@ export const KeyboardShortcutsDialog = ({
                   </p>
                 </div>
                 <div className="space-y-2">
-                  {group.shortcuts.map((shortcut) => (
+                  {group.shortcuts.map((shortcut, shortcutIndex) => (
                     <div
-                      key={shortcut.description}
+                      key={`${shortcut.description}-${shortcutIndex}`}
                       className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md px-2 py-1.5 hover:bg-muted/45"
                     >
                       <div className="min-w-0">

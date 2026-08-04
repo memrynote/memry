@@ -28,6 +28,13 @@
       "readyDetailFallback": "Mulai ulang memrynote untuk menyelesaikan instalasi pembaruan.",
       "buttonRestartNow": "Mulai ulang sekarang",
       "releaseNotesLabel": "Catatan rilis:"
+    },
+    "pair": {
+      "buttonAllow": "Izinkan",
+      "buttonDeny": "Tolak",
+      "buttonPair": "Pasangkan",
+      "message": "Izinkan ekstensi peramban Memry mengirim tangkapan ke aplikasi ini?",
+      "title": "Pasangkan ekstensi peramban"
     }
   },
   "notification": {
@@ -38,6 +45,11 @@
       "fallback": "Pengingat jatuh tempo",
       "default": "Pengingat",
       "task": "Pengingat tugas"
+    },
+    "inboxReview": {
+      "body": "Anda memiliki {count, plural, other {# item}} untuk ditinjau.",
+      "testBody": "Ini uji coba — pengingat tinjauan harian Anda akan tampak seperti ini.",
+      "title": "Waktunya meninjau kotak masuk Anda"
     }
   },
   "error": {
@@ -45,5 +57,15 @@
     "definitionNotFound": "Definisi tidak ditemukan",
     "noteNotFound": "Catatan tidak ditemukan",
     "updateFailed": "Pembaruan gagal"
+  },
+  "startup": {
+    "failed": {
+      "body": "Ini bisa terjadi saat ruang kosong disk sangat menipis, atau pada driver grafis versi lama. Coba kosongkan sebagian ruang disk, lalu buka kembali MemryNote. Jika terus terjadi, memasang ulang biasanya mengatasinya.",
+      "title": "MemryNote tidak dapat menyelesaikan proses mulai"
+    },
+    "installingUpdate": {
+      "subtitle": "MemryNote akan terbuka kembali secara otomatis.",
+      "title": "Memasang pembaruan…"
+    }
   }
 }

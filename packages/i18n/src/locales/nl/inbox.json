@@ -270,7 +270,50 @@
     "panelEmpty": "Geen komende herinneringen.",
     "panelPast": "Verleden",
     "panelUpcoming": "Binnenkort",
-    "taskFallback": "Taak"
+    "taskFallback": "Taak",
+    "dateTime": {
+      "dateAt": "{date} om {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Vandaag om {time}",
+      "todayCompact": "Vandaag, {time}",
+      "tomorrowAt": "Morgen om {time}",
+      "tomorrowCompact": "Morgen, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Jaarlijkse herinnering",
+      "inHours": {
+        "label": "Over {count, plural, one {# uur} other {# uur}}"
+      },
+      "inMinutes": {
+        "label": "Over {count, plural, one {# minuut} other {# minuten}}"
+      },
+      "inMonths": {
+        "label": "Over {count, plural, one {# maand} other {# maanden}}"
+      },
+      "inWeeks": {
+        "label": "Over {count, plural, one {# week} other {# weken}}"
+      },
+      "inYears": {
+        "label": "Over {count, plural, one {# jaar} other {# jaar}}"
+      },
+      "laterToday": {
+        "description": "Over {count, plural, one {# uur} other {# uur}}",
+        "label": "Later vandaag"
+      },
+      "monthlyReflection": "Maandelijkse reflectie",
+      "nextWeek": {
+        "description": "Maandag om 9:00",
+        "label": "Volgende week"
+      },
+      "quarterlyReflection": "Kwartaalreflectie",
+      "reviewInAWeek": "Over een week bekijken",
+      "sameDayNextMonth": "Zelfde dag volgende maand",
+      "tomorrow": {
+        "description": "Morgen om 9:00",
+        "label": "Morgen"
+      },
+      "tomorrowMorning": "Morgenochtend"
+    }
   },
   "insights": {
     "captureActivity": "Activiteit vastleggen",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Bestand bijvoegen (afbeeldingen, audio, video, pdf)",
       "recordVoiceMemo": "Spraakmemo opnemen",
       "recordVoiceMemo2": "Spraakmemo opnemen",
-      "alreadyCaptured": "Al vastgelegd: “",
-      "rdquo": "rdquo;",
       "captureAnyway": "Hoe dan ook vastleggen",
       "focusShortcut": "Vastlegveld focussen",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Link vastleggen",
+      "captureNote": "Notitie vastleggen",
+      "placeholder": "Snel vastleggen — plak een link, noteer een gedachte…",
+      "duplicateNotice": "Al vastgelegd: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Kies map",
@@ -408,16 +453,15 @@
       "attachFile": "Bestand bijvoegen"
     },
     "componentsQuickCaptureLinkPreview": {
-      "link": "LINK"
+      "link": "KOPPELING"
     },
     "componentsQuickCaptureStates": {
       "captured": "Gevangen",
       "dismissError": "Fout afwijzen",
       "alreadyCaptured": "Al vastgelegd",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; · ",
       "captureAnyway": "Hoe dan ook vastleggen",
-      "close": "Sluiten"
+      "close": "Sluiten",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Laat vallen om vast te leggen",
@@ -466,7 +510,12 @@
       "cancelRecording": "Annuleer de opname",
       "cancel": "Annuleer",
       "stopRecording": "Stop met opnemen",
-      "stop": "Stop"
+      "stop": "Stop",
+      "enableMicInSettings": "Sta microfoontoegang toe in je systeeminstellingen en probeer het opnieuw.",
+      "failedToStart": "Kan de opname niet starten",
+      "microphoneAccessDenied": "Microfoontoegang geweigerd",
+      "noMicrophoneFound": "Geen microfoon gevonden",
+      "recordingError": "Er is een opnamefout opgetreden"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Kan bestand niet vastleggen",
       "fileCaptureFailed": "Het vastleggen van bestanden is mislukt",
       "failedToCaptureAudio": "Kan geen audio vastleggen",
-      "failedToCaptureVoice": "Kan stem niet vastleggen"
+      "failedToCaptureVoice": "Kan stem niet vastleggen",
+      "failedToLoadInboxPreferences": "Kan inboxvoorkeuren niet laden",
+      "failedToUpdateInboxPreferences": "Kan inboxvoorkeuren niet bijwerken"
     },
     "toasts": {
       "inboxRefreshed": "Postvak IN vernieuwd"
@@ -511,10 +562,15 @@
     "remindAt": "Herinner me om",
     "reminder": "Herinnering",
     "setReminder": "Herinnering instellen",
-    "start": "Start",
+    "start": "Begin",
     "success": "Geconverteerd naar {target}",
     "task": "Taak",
     "time": "Tijd",
     "title": "Converteren"
+  },
+  "reviewNudge": {
+    "action": "Inbox openen",
+    "description": "Verwerk wat je vandaag hebt vastgelegd in één rustige ronde.",
+    "title": "{count, plural, one {Tijd om # item door te nemen} other {Tijd om # items door te nemen}}"
   }
 }

@@ -675,7 +675,7 @@ export type CalendarEventChannel =
   (typeof CalendarChannels.events)[keyof typeof CalendarChannels.events]
 
 // ============================================================================
-// Canvas Channels (spatial canvas — hidden behind the spatialCanvas flag)
+// Canvas Channels (spatial canvas — gated by the spatialCanvas flag)
 // ============================================================================
 
 export const CanvasChannels = {

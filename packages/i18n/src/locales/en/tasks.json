@@ -35,7 +35,14 @@
     "repeat": "Repeat",
     "createAnother": "Create another",
     "delete": "Delete task",
-    "created": "Created {date}"
+    "created": "Created {date}",
+    "priorityLabels": {
+      "none": "No Priority",
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "urgent": "Urgent"
+    }
   },
   "reminders": {
     "summary": "Reminder: {date}",
@@ -58,7 +65,27 @@
     "groupBy": "Group by",
     "groupByOptions": "Group by options",
     "sortAscending": "Sort ascending",
-    "sortDescending": "Sort descending"
+    "sortDescending": "Sort descending",
+    "dueDate": {
+      "any": "Any due date",
+      "none": "No due date",
+      "overdue": "Overdue",
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "thisWeek": "This week",
+      "nextWeek": "Next week",
+      "thisMonth": "This month",
+      "custom": "Custom range..."
+    },
+    "quickPresets": {
+      "overdue": "Overdue",
+      "highPriority": "High Priority",
+      "dueThisWeek": "Due This Week",
+      "repeating": "Repeating",
+      "noDueDate": "No Due Date"
+    },
+    "repeatTypeRepeating": "Repeating",
+    "repeatTypeOneTime": "One-time"
   },
   "quickAdd": {
     "label": "Quick add task",
@@ -90,7 +117,21 @@
     "relatedItemFallback": "item"
   },
   "kanban": {
-    "board": "Kanban board"
+    "board": "Kanban board",
+    "empty": {
+      "default": {
+        "title": "No tasks",
+        "subtitle": "Drag tasks here or click + to add"
+      },
+      "done": {
+        "title": "No completed tasks",
+        "subtitle": "Complete tasks to see them here"
+      },
+      "schedule": {
+        "title": "Nothing scheduled",
+        "subtitle": "Drag tasks here to reschedule"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "Project updated",
@@ -113,7 +154,53 @@
     "noCompletedSelected": "No completed tasks selected",
     "completeFailed": "Failed to complete tasks",
     "deleteFailed": "Failed to delete tasks",
-    "moveFailed": "Failed to move tasks"
+    "moveFailed": "Failed to move tasks",
+    "bulk": {
+      "completed": "{count, plural, one {# task completed} other {# tasks completed}}",
+      "undoComplete": "{count, plural, one {Complete # task} other {Complete # tasks}}",
+      "restored": "{count, plural, one {# task restored} other {# tasks restored}}",
+      "undoUncomplete": "{count, plural, one {Uncomplete # task} other {Uncomplete # tasks}}",
+      "priorityRemoved": "{count, plural, one {Priority removed for # task} other {Priority removed for # tasks}}",
+      "prioritySet": "{count, plural, one {Priority set to {priority} for # task} other {Priority set to {priority} for # tasks}}",
+      "undoDueDate": "{count, plural, one {Due date changed for # task} other {Due date changed for # tasks}}",
+      "dueDateSet": "{count, plural, one {Due date set for # task} other {Due date set for # tasks}}",
+      "dueDateRemoved": "{count, plural, one {Due date removed from # task} other {Due date removed from # tasks}}",
+      "undoMove": "{count, plural, one {Move # task} other {Move # tasks}}",
+      "movedToProject": "{count, plural, one {# task moved to {project}} other {# tasks moved to {project}}}",
+      "undoStatus": "{count, plural, one {Status → {status} for # task} other {Status → {status} for # tasks}}",
+      "movedToStatus": "{count, plural, one {# task moved to {status}} other {# tasks moved to {status}}}",
+      "undoArchive": "{count, plural, one {Archive # task} other {Archive # tasks}}",
+      "archived": "{count, plural, one {# task archived} other {# tasks archived}}",
+      "undoDelete": "{count, plural, one {Delete # task} other {Delete # tasks}}",
+      "deleted": "{count, plural, one {# task deleted} other {# tasks deleted}}",
+      "deletedDescription": "This action can be undone for a short time."
+    },
+    "drag": {
+      "rescheduledTo": "Rescheduled to {target}",
+      "rescheduled": "{count, plural, one {Rescheduled to {target}} other {# tasks rescheduled to {target}}}",
+      "movedTo": "Moved to {target}",
+      "moved": "{count, plural, one {Moved to {target}} other {# tasks moved to {target}}}",
+      "prioritySetTo": "Priority set to {priority}",
+      "prioritySet": "{count, plural, one {Priority set to {priority}} other {# tasks set to {priority}}}",
+      "deleted": "{count, plural, one {Task deleted} other {# tasks deleted}}",
+      "archived": "{count, plural, one {Task archived} other {# tasks archived}}",
+      "undoArchive": "{count, plural, one {Archived # task} other {Archived # tasks}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, one {# subtask added} other {# subtasks added}}",
+      "promoted": "\"{title}\" promoted to task",
+      "deletedDescription": "The subtask has been removed",
+      "parentDeletedKeepSubtasks": "Task deleted, subtasks converted to tasks",
+      "parentDeletedWithSubtasks": "Task and subtasks deleted",
+      "parentAndSubtasksCompleted": "Task and subtasks completed",
+      "movedUnder": "Moved under \"{title}\"",
+      "completed": "{count, plural, one {# subtask completed} other {# subtasks completed}}",
+      "markedIncomplete": "{count, plural, one {# subtask marked incomplete} other {# subtasks marked incomplete}}",
+      "dueDateSet": "{count, plural, one {Due date set for # subtask} other {Due date set for # subtasks}}",
+      "dueDateCleared": "{count, plural, one {Due date cleared for # subtask} other {Due date cleared for # subtasks}}",
+      "prioritySet": "{count, plural, one {Priority set for # subtask} other {Priority set for # subtasks}}",
+      "deleted": "{count, plural, one {# subtask deleted} other {# subtasks deleted}}"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -194,7 +281,8 @@
       "nextMonth": "Next month",
       "goToToday": "Go to today",
       "today": "Today",
-      "w": "W"
+      "w": "W",
+      "weekNumber": "Week {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Remove date",
@@ -217,40 +305,34 @@
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Delete task?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; will be permanently deleted. This action cannot be undone.",
-      "deleteTask2": "Delete Task"
+      "deleteTask2": "Delete Task",
+      "deleteConfirmBody": "“{title}” will be permanently deleted. This action cannot be undone."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "All subtasks complete!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; has all ",
-      "subtask": "subtask",
-      "done": "done.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Would you like to mark the parent task as complete too?",
       "keepTaskOpen": "Keep task open",
-      "completeTask": "Complete task ✓"
+      "completeTask": "Complete task ✓",
+      "allSubtasksDoneBody": "“{title}” has all {count, plural, one {# subtask} other {# subtasks}} done."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Set due date for all subtasks",
       "setDueDateFor": "Set due date for ",
-      "subtask": "subtask",
-      "in": "in “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Also apply to completed subtasks (",
       "clearDate": "Clear date",
       "cancel": "Cancel",
-      "apply": "Apply"
+      "apply": "Apply",
+      "setDueDateForSubtasksIn": "Set due date for {count, plural, one {# subtask} other {# subtasks}} in “{title}”",
+      "alsoApplyToCompletedSubtasksCount": "Also apply to completed subtasks ({count})"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Set priority for all subtasks",
       "setPriorityFor": "Set priority for ",
-      "subtask": "subtask",
-      "in": "in “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Also apply to completed subtasks (",
       "cancel": "Cancel",
-      "apply": "Apply"
+      "apply": "Apply",
+      "setPriorityForSubtasksIn": "Set priority for {count, plural, one {# subtask} other {# subtasks}} in “{title}”",
+      "alsoApplyToCompletedSubtasksCount": "Also apply to completed subtasks ({count})"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Complete task with incomplete subtasks?",
@@ -268,13 +350,10 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Delete all subtasks?",
-      "thisWillDelete": "This will delete ",
-      "subtask": "subtask",
-      "from": "from “",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "This action cannot be undone.",
       "cancel": "Cancel",
-      "deleteAll": "Delete All"
+      "deleteAll": "Delete All",
+      "deleteSubtasksConfirmation": "This will delete {count, plural, one {# subtask} other {# subtasks}} from “{title}”."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Delete task with subtasks?",
@@ -291,10 +370,13 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Duplicate task",
       "createACopyOf": "Create a copy of “",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Also duplicate subtasks (",
       "cancel": "Cancel",
-      "duplicate": "Duplicate "
+      "duplicate": "Duplicate ",
+      "createACopyOfTitle": "Create a copy of “{title}”",
+      "alsoDuplicateSubtasksCount": "Also duplicate subtasks ({count})",
+      "duplicateWithItems": "Duplicate ({count, plural, one {# item} other {# items}})",
+      "duplicateTaskOnly": "Duplicate task"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Make subtask of...",
@@ -340,7 +422,11 @@
       "addTime": "Add time",
       "time": "Time",
       "clearDate": "Clear date",
-      "backToOptions": "Back to options"
+      "backToOptions": "Back to options",
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "thisWeekend": "This Weekend",
+      "nextWeek": "Next Week"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "Edit Repeating Task",
@@ -445,7 +531,17 @@
       "currentFilters": "Current filters:",
       "noFiltersApplied": "No filters applied",
       "cancel": "Cancel",
-      "saveFilter2": "Save Filter"
+      "saveFilter2": "Save Filter",
+      "summarySearch": "Search: \"{query}\"",
+      "summaryProjects": "Project: {names}",
+      "summaryPriorities": "Priority: {names}",
+      "summaryDue": "Due: {value}",
+      "summaryDueRange": "Due: {start} - {end}",
+      "summaryRepeatRepeating": "Repeat: Repeating only",
+      "summaryRepeatOneTime": "Repeat: One-time only",
+      "summaryTimeWith": "Time: With time",
+      "summaryTimeWithout": "Time: Without time",
+      "nameRequired": "Please enter a name for this filter"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Saved filters",
@@ -573,7 +669,16 @@
       "d": "d"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "Add Task"
+      "addTask": "Add Task",
+      "allTitle": "No tasks yet",
+      "allDescription": "Create your first task to get started",
+      "todayTitle": "Nothing due today",
+      "todayDescription": "You're all caught up!",
+      "completedTitle": "No completed tasks",
+      "completedDescription": "Completed tasks will appear here",
+      "projectTitle": "No tasks in this project",
+      "projectDescription": "Add a task to get started",
+      "projectTitleNamed": "No tasks in {name}"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "no priority"
@@ -737,5 +842,54 @@
       "fileErrorGeneric": "Could not import the files",
       "label": "Add to {name}"
     }
+  },
+  "project": {
+    "validation": {
+      "nameRequired": "Project name is required",
+      "nameTooLong": "Project name must be 50 characters or less",
+      "minStatuses": "Projects need at least 2 statuses",
+      "needsTodoStatusForNewTasks": "Projects need at least one 'To Do' status for new tasks",
+      "needsDoneStatusForCompletedTasks": "Projects need at least one 'Done' status for completed tasks",
+      "statusNameRequired": "All statuses must have a name",
+      "statusNamesUnique": "Status names must be unique",
+      "needsTodoStatus": "Projects need at least one 'To Do' status",
+      "needsDoneStatus": "Projects need at least one 'Done' status",
+      "statusNotFound": "Status not found"
+    },
+    "statusTypes": {
+      "todo": "To Do",
+      "inProgress": "In Progress",
+      "done": "Done"
+    }
+  },
+  "priorityLabels": {
+    "none": "No Priority",
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "urgent": "Urgent"
+  },
+  "priorityInline": {
+    "low": "low",
+    "medium": "medium",
+    "high": "high",
+    "urgent": "urgent"
+  },
+  "statusLabels": {
+    "todo": "To Do",
+    "inProgress": "In Progress",
+    "done": "Done"
+  },
+  "colors": {
+    "gray": "Gray",
+    "red": "Red",
+    "orange": "Orange",
+    "yellow": "Yellow",
+    "green": "Green",
+    "teal": "Teal",
+    "blue": "Blue",
+    "indigo": "Indigo",
+    "purple": "Purple",
+    "pink": "Pink"
   }
 }

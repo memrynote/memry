@@ -410,7 +410,9 @@ describe('TaskDetailDrawer — editable properties', () => {
       await user.click(screen.getByRole('button', { name: /delete task/i }))
 
       expect(screen.getByText('Delete task?')).toBeInTheDocument()
-      expect(screen.getByText(/will be permanently deleted/)).toBeInTheDocument()
+      expect(
+        screen.getByText('“Test Task” will be permanently deleted. This action cannot be undone.')
+      ).toBeInTheDocument()
     })
 
     it('calls onDeleteTask with task id when deletion confirmed', async () => {

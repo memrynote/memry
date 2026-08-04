@@ -22,7 +22,19 @@
     "writeFailed": "Diese Notiz konnte nicht gespeichert werden. Überprüfen Sie den Speicherplatz und die Berechtigungen.",
     "readFailed": "Diese Notiz konnte nicht gelesen werden. Die Datei ist möglicherweise gesperrt oder beschädigt.",
     "deleteFailed": "Diese Notiz konnte nicht gelöscht werden. Überprüfen Sie die Dateiberechtigungen.",
-    "invalidPath": "Der Notizpfad ist ungültig."
+    "invalidPath": "Der Notizpfad ist ungültig.",
+    "applyTemplateFailed": "Die Vorlage konnte nicht angewendet werden",
+    "createFailed": "Die Notiz konnte nicht erstellt werden",
+    "deleteVersionFailed": "Die Version konnte nicht gelöscht werden",
+    "exportHtmlFailed": "Der HTML-Export ist fehlgeschlagen",
+    "exportPdfFailed": "Der PDF-Export ist fehlgeschlagen",
+    "importFilesFailed": "Die Dateien konnten nicht importiert werden",
+    "moveFailed": "Die Notiz konnte nicht verschoben werden",
+    "renameFailed": "Die Notiz konnte nicht umbenannt werden",
+    "reorderFailed": "Die Notizen konnten nicht neu angeordnet werden",
+    "restoreVersionFailed": "Die Version konnte nicht wiederhergestellt werden",
+    "setLocalOnlyFailed": "„Nur lokal“ konnte nicht festgelegt werden",
+    "updateFailed": "Die Notiz konnte nicht aktualisiert werden"
   },
   "database": {
     "connectionFailed": "Es konnte keine Verbindung zur lokalen Datenbank hergestellt werden. Versuchen Sie, die App neu zu starten.",
@@ -41,7 +53,14 @@
     "fileTooLarge": "Diese Datei ist zu groß zum Anhängen.",
     "unsupportedType": "Dieser Dateityp wird nicht unterstützt.",
     "writeFailed": "Der Anhang konnte nicht gespeichert werden. Überprüfen Sie den Speicherplatz.",
-    "deleteFailed": "Der Anhang konnte nicht gelöscht werden."
+    "deleteFailed": "Der Anhang konnte nicht gelöscht werden.",
+    "downloadFailed": "Der Anhang konnte nicht heruntergeladen werden",
+    "downloadProgressFailed": "Der Downloadfortschritt konnte nicht abgerufen werden",
+    "uploadFailed": "Der Anhang konnte nicht hochgeladen werden",
+    "uploadProgressFailed": "Der Uploadfortschritt konnte nicht abgerufen werden",
+    "emptyFile": "Leere Dateien können nicht hochgeladen werden",
+    "exceedsMaxSize": "Datei zu groß: {size} überschreitet das Limit von {limit}",
+    "exceedsPlanLimit": "Datei ist größer, als Ihr Tarif erlaubt: {size} überschreitet {limit}"
   },
   "encryption": {
     "failed": "Daten konnten nicht verschlüsselt werden. Möglicherweise müssen Ihre Schlüssel neu generiert werden.",
@@ -74,6 +93,188 @@
     "securityQuarantinePermanent": "Ein Synchronisierungselement konnte nicht überprüft werden und wurde aus Sicherheitsgründen unter Quarantäne gestellt.",
     "securityQuarantineRetry": "Die Signaturüberprüfung eines Synchronisierungselements ist fehlgeschlagen und wird erneut versucht.",
     "certificatePinPaused": "Die sichere Verbindung zum Synchronisierungsserver konnte nicht überprüft werden. Die Synchronisierung wurde zu Ihrem Schutz angehalten.",
-    "paymentRequired": "Für die gehostete verschlüsselte Synchronisierung ist ein kostenpflichtiger Sync-Tarif erforderlich."
+    "paymentRequired": "Für die gehostete verschlüsselte Synchronisierung ist ein kostenpflichtiger Sync-Tarif erforderlich.",
+    "attachmentUploadFailed": "Anhang „{filename}“ konnte nicht synchronisiert werden. Er bleibt auf diesem Gerät.",
+    "fileTooLarge": "Diese Datei ist größer, als dein Tarif erlaubt. Wechsle zu einem höheren Tarif, um größere Dateien zu synchronisieren.",
+    "vaultRecovered": "Tresorschlüssel wiederhergestellt. Die Synchronisierung wird fortgesetzt.",
+    "historyFetchFailed": "Der Synchronisierungsverlauf konnte nicht abgerufen werden",
+    "keyPersistenceFailed": "Der Verschlüsselungsschlüssel konnte nicht sicher gespeichert werden. Die Geräteregistrierung wurde zurückgenommen. Bitte versuchen Sie es erneut.",
+    "serverUnreachable": "Der Synchronisierungsserver ist nicht erreichbar. Bitte überprüfen Sie Ihre Internetverbindung.",
+    "updateSyncedSettingFailed": "Die synchronisierte Einstellung konnte nicht aktualisiert werden",
+    "requestTimedOut": "Die Synchronisierungsanfrage hat das Zeitlimit überschritten. Bitte überprüfen Sie Ihre Internetverbindung."
+  },
+  "agent": {
+    "conversationBusy": "Konversation ist beschäftigt",
+    "runtimeStarting": "Die Agent-Laufzeitumgebung startet gerade. Bitte erneut versuchen."
+  },
+  "ai": {
+    "inlineDisabled": "Die KI-Inline-Bearbeitung ist deaktiviert",
+    "listOllamaModelsFailed": "Die Ollama-Modelle konnten nicht aufgelistet werden"
+  },
+  "auth": {
+    "approveLinkingFailed": "Die Verknüpfung konnte nicht genehmigt werden",
+    "cannotRemoveCurrentDevice": "Das aktuelle Gerät kann nicht entfernt werden",
+    "completeLinkingFailed": "Die Verknüpfung konnte nicht abgeschlossen werden",
+    "confirmRecoveryPhraseFailed": "Die Wiederherstellungsphrase konnte nicht bestätigt werden",
+    "fetchSasCodeFailed": "Der SAS-Code konnte nicht abgerufen werden",
+    "finalizeVaultChoiceFailed": "Die Tresorauswahl konnte nicht abgeschlossen werden",
+    "initiateOAuthFailed": "OAuth konnte nicht gestartet werden",
+    "invalidRecoveryPhraseFormat": "Ungültiges Format der Wiederherstellungsphrase",
+    "linkDeviceQrFailed": "Das Gerät konnte nicht per QR-Code verknüpft werden",
+    "linkRecoveryPhraseFailed": "Die Verknüpfung über die Wiederherstellungsphrase ist fehlgeschlagen",
+    "notAuthenticated": "Nicht angemeldet",
+    "pickFolderFailed": "Der Ordner konnte nicht ausgewählt werden",
+    "recoveryPhraseMismatch": "Die Wiederherstellungsphrase stimmt nicht überein. Bitte versuchen Sie es erneut.",
+    "removeDeviceFailed": "Das Gerät konnte nicht entfernt werden",
+    "renameDeviceFailed": "Das Gerät konnte nicht umbenannt werden",
+    "requestOtpFailed": "Der Einmalcode konnte nicht angefordert werden",
+    "resendOtpFailed": "Der Einmalcode konnte nicht erneut gesendet werden",
+    "sessionExpired": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
+    "setupFirstDeviceOAuthFailed": "Das erste Gerät konnte nicht über OAuth eingerichtet werden",
+    "verifyOtpFailed": "Der Einmalcode konnte nicht überprüft werden"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "Das Element ist bereits als Lesezeichen gespeichert",
+    "notFound": "Lesezeichen nicht gefunden"
+  },
+  "calendar": {
+    "connectProviderFailed": "Der Kalenderanbieter konnte nicht verbunden werden",
+    "createEventFailed": "Der Kalendertermin konnte nicht erstellt werden",
+    "deleteEventFailed": "Der Kalendertermin konnte nicht gelöscht werden",
+    "disconnectProviderFailed": "Die Verbindung zum Kalenderanbieter konnte nicht getrennt werden",
+    "eventNotFound": "Kalendertermin nicht gefunden",
+    "googleNotConnected": "Google Calendar ist auf diesem Gerät nicht verbunden",
+    "listGoogleCalendarsFailed": "Die Google-Kalender konnten nicht aufgelistet werden",
+    "onlyGoogleSourcesRetryable": "Nur Google-Kalenderquellen können erneut versucht werden",
+    "onlySourcesSelectable": "Nur Kalenderquellen können ausgewählt werden",
+    "promoteExternalEventFailed": "Der externe Kalendertermin konnte nicht übernommen werden",
+    "refreshProviderFailed": "Der Kalenderanbieter konnte nicht aktualisiert werden",
+    "retryGoogleSourceSyncFailed": "Die Synchronisierung der Google-Calendar-Quelle konnte nicht erneut versucht werden",
+    "setDefaultGoogleCalendarFailed": "Der Standardkalender von Google konnte nicht festgelegt werden",
+    "signInBeforeRefresh": "Melden Sie sich bei memrynote an, bevor Sie Google Calendar aktualisieren",
+    "sourceNotFound": "Kalenderquelle nicht gefunden",
+    "syncFailed": "Die Synchronisierung ist fehlgeschlagen",
+    "updateEventFailed": "Der Kalendertermin konnte nicht aktualisiert werden",
+    "updateSourceSelectionFailed": "Die Auswahl der Kalenderquellen konnte nicht aktualisiert werden"
+  },
+  "folder": {
+    "createFailed": "Der Ordner konnte nicht erstellt werden",
+    "deleteFailed": "Der Ordner konnte nicht gelöscht werden",
+    "renameFailed": "Der Ordner konnte nicht umbenannt werden",
+    "setConfigFailed": "Die Ordnerkonfiguration konnte nicht gespeichert werden"
+  },
+  "folderView": {
+    "deleteViewFailed": "Die Ansicht konnte nicht gelöscht werden",
+    "setConfigFailed": "Die Konfiguration konnte nicht gespeichert werden",
+    "setViewFailed": "Die Ansicht konnte nicht festgelegt werden"
+  },
+  "googleCalendar": {
+    "accessDenied": "Der Zugriff auf Google Calendar wurde abgelehnt. Sie können jederzeit erneut eine Verbindung herstellen.",
+    "connectFailed": "Die Verbindung zu Google Calendar konnte nicht hergestellt werden. Bitte versuchen Sie es gleich noch einmal.",
+    "misconfigured": "Google Calendar ist nicht richtig konfiguriert. Bitte wenden Sie sich an den Support, falls das weiterhin auftritt.",
+    "reconnectNeeded": "Ihre Verbindung zu Google Calendar ist abgelaufen. Bitte trennen Sie sie und stellen Sie sie erneut her.",
+    "scopeMissing": "Wir konnten nicht auf Ihren Google Calendar zugreifen, weil die Kalenderberechtigung nicht erteilt wurde. Bitte versuchen Sie es erneut und lassen Sie das Kalender-Kontrollkästchen im Zustimmungsbildschirm von Google aktiviert.",
+    "temporarilyUnavailable": "Google Calendar ist vorübergehend nicht verfügbar. Bitte versuchen Sie es in Kürze erneut."
+  },
+  "importer": {
+    "cancelFailed": "Der Abbruch ist fehlgeschlagen",
+    "fileSelectionFailed": "Die Dateiauswahl ist fehlgeschlagen",
+    "importFailed": "Import fehlgeschlagen",
+    "listFailed": "Die Importer konnten nicht aufgelistet werden",
+    "previewFailed": "Vorschau fehlgeschlagen"
+  },
+  "project": {
+    "archiveFailed": "Das Projekt konnte nicht archiviert werden",
+    "captureLinkFailed": "Der Link konnte nicht erfasst werden",
+    "createFailed": "Das Projekt konnte nicht erstellt werden",
+    "deleteFailed": "Das Projekt konnte nicht gelöscht werden",
+    "importFilesFailed": "Die Dateien konnten nicht importiert werden",
+    "linkItemFailed": "Das Element konnte nicht verknüpft werden",
+    "listForItemFailed": "Die Projekte zu diesem Element konnten nicht aufgelistet werden",
+    "reorderFailed": "Die Projekte konnten nicht neu angeordnet werden",
+    "setHomeNoteFailed": "Die Startnotiz konnte nicht festgelegt werden",
+    "unlinkItemFailed": "Die Verknüpfung des Elements konnte nicht aufgehoben werden",
+    "updateFailed": "Das Projekt konnte nicht aktualisiert werden",
+    "updatePinnedFailed": "Der Anheftstatus konnte nicht aktualisiert werden"
+  },
+  "property": {
+    "alreadyExists": "Die Eigenschaft „{name}“ ist bereits vorhanden",
+    "createDefinitionFailed": "Die Eigenschaftsdefinition konnte nicht erstellt werden",
+    "entityNotFound": "Objekt nicht gefunden",
+    "notFound": "Die Eigenschaft „{name}“ wurde nicht gefunden",
+    "renameFailed": "Die Eigenschaft konnte nicht umbenannt werden",
+    "setCalendarVisibilityFailed": "Die Kalendersichtbarkeit der Eigenschaft konnte nicht festgelegt werden",
+    "setFailed": "Die Eigenschaften konnten nicht gespeichert werden",
+    "updateDefinitionFailed": "Die Eigenschaftsdefinition konnte nicht aktualisiert werden"
+  },
+  "reminder": {
+    "createFailed": "Die Erinnerung konnte nicht erstellt werden",
+    "dismissAllFailed": "Die Erinnerungen konnten nicht ausgeblendet werden",
+    "dismissFailed": "Die Erinnerung konnte nicht ausgeblendet werden",
+    "notFound": "Erinnerung nicht gefunden",
+    "snoozeFailed": "Die Erinnerung konnte nicht zurückgestellt werden",
+    "updateFailed": "Die Erinnerung konnte nicht aktualisiert werden"
+  },
+  "savedFilter": {
+    "notFound": "Gespeicherter Filter nicht gefunden"
+  },
+  "search": {
+    "rebuildFailed": "Der Neuaufbau ist fehlgeschlagen"
+  },
+  "settings": {
+    "modelAlreadyLoading": "Das Modell wird bereits geladen",
+    "modelLoadFailed": "Das Modell konnte nicht geladen werden",
+    "shortcutInUse": "Das Tastenkürzel {shortcut} wird bereits verwendet",
+    "terminalCommandInstallFailed": "Der Terminalbefehl konnte nicht installiert werden",
+    "terminalCommandUninstallFailed": "Der Terminalbefehl konnte nicht deinstalliert werden",
+    "unknownVault": "Unbekannter Tresor",
+    "voiceModelDownloadFailed": "Das Sprachmodell konnte nicht heruntergeladen werden"
+  },
+  "tag": {
+    "categoryNameRequired": "Ein Kategoriename ist erforderlich",
+    "createCategoryFailed": "Die Tag-Kategorie konnte nicht erstellt werden",
+    "deleteCategoryFailed": "Die Tag-Kategorie konnte nicht gelöscht werden",
+    "deleteFailed": "Der Tag konnte nicht gelöscht werden",
+    "listCategoriesFailed": "Die Tag-Kategorien konnten nicht aufgelistet werden",
+    "mergeFailed": "Die Tags konnten nicht zusammengeführt werden",
+    "mergeSameTag": "Quell- und Ziel-Tag sind identisch",
+    "pinNoteFailed": "Die Notiz konnte nicht angeheftet werden",
+    "removeFromNoteFailed": "Der Tag konnte nicht von der Notiz entfernt werden",
+    "renameCategoryFailed": "Die Tag-Kategorie konnte nicht umbenannt werden",
+    "renameFailed": "Der Tag konnte nicht umbenannt werden",
+    "reorderFailed": "Die Tags konnten nicht neu angeordnet werden",
+    "unpinNoteFailed": "Die Notiz konnte nicht gelöst werden",
+    "updateColorFailed": "Die Tag-Farbe konnte nicht aktualisiert werden",
+    "updateIconFailed": "Das Tag-Symbol konnte nicht aktualisiert werden"
+  },
+  "task": {
+    "archiveFailed": "Die Aufgabe konnte nicht archiviert werden",
+    "archiveManyFailed": "Die Aufgaben konnten nicht archiviert werden",
+    "completeFailed": "Die Aufgabe konnte nicht abgeschlossen werden",
+    "completeManyFailed": "Die Aufgaben konnten nicht abgeschlossen werden",
+    "convertToSubtaskFailed": "Die Umwandlung in eine Teilaufgabe ist fehlgeschlagen",
+    "convertToTaskFailed": "Die Umwandlung in eine Aufgabe ist fehlgeschlagen",
+    "createFailed": "Die Aufgabe konnte nicht erstellt werden",
+    "deleteFailed": "Die Aufgabe konnte nicht gelöscht werden",
+    "deleteManyFailed": "Die Aufgaben konnten nicht gelöscht werden",
+    "duplicateFailed": "Die Aufgabe konnte nicht dupliziert werden",
+    "moveFailed": "Die Aufgabe konnte nicht verschoben werden",
+    "moveManyFailed": "Die Aufgaben konnten nicht verschoben werden",
+    "reorderFailed": "Die Aufgaben konnten nicht neu angeordnet werden",
+    "unarchiveFailed": "Die Aufgabe konnte nicht aus dem Archiv geholt werden",
+    "uncompleteFailed": "Der Abschluss der Aufgabe konnte nicht aufgehoben werden",
+    "updateFailed": "Die Aufgabe konnte nicht aktualisiert werden"
+  },
+  "taskStatus": {
+    "createFailed": "Der Status konnte nicht erstellt werden",
+    "deleteFailed": "Der Status konnte nicht gelöscht werden",
+    "reorderFailed": "Die Status konnten nicht neu angeordnet werden",
+    "updateFailed": "Der Status konnte nicht aktualisiert werden"
+  },
+  "template": {
+    "createFailed": "Die Vorlage konnte nicht erstellt werden",
+    "deleteFailed": "Die Vorlage konnte nicht gelöscht werden",
+    "duplicateFailed": "Die Vorlage konnte nicht dupliziert werden",
+    "updateFailed": "Die Vorlage konnte nicht aktualisiert werden"
   }
 }

@@ -23,12 +23,13 @@
         "shortcuts": "Genveje",
         "ai": "AI assistent",
         "integrations": "Integrationer",
-        "vault": "Vault",
+        "vault": "Boks",
         "tags": "Tags",
         "properties": "Egenskaber",
         "commandLine": "Kommandolinje",
         "features": "Funktioner",
-        "import": "Import"
+        "import": "Import",
+        "inbox": "Indbakke"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Downloader {percent}%",
         "downloaded": "Genstart for at installere",
         "idle": "Se efter opdateringer"
+      },
+      "autoCheck": {
+        "description": "Søg efter nye versioner ved opstart og løbende, mens appen er åben.",
+        "error": "Indstillingen for automatisk søgning kunne ikke opdateres",
+        "label": "Søg automatisk efter opdateringer"
+      },
+      "autoDownload": {
+        "description": "Hent og installér nye versioner i baggrunden uden at spørge.",
+        "error": "Indstillingen for automatisk hentning kunne ikke opdateres",
+        "label": "Hent opdateringer automatisk"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Del anonyme brugsmålinger",
         "description": "Det er kun anon-metrikker - intet noteindhold, søgeforespørgsler, filstier, e-mails eller rå-id'er sendes nogensinde.",
         "error": "Telemetriindstillingen kunne ikke opdateres"
+      },
+      "diagnostics": {
+        "building": "Forbereder rapport…",
+        "consent": "Vil du sende en engangs-diagnostikrapport? Den indeholder kun maskerede tekniske logfiler — intet noteindhold.",
+        "error": "Diagnostikrapporten kunne ikke sendes",
+        "notNow": "Ikke nu",
+        "previewError": "Diagnostikrapporten kunne ikke forberedes",
+        "previewLabel": "Se rapportens indhold",
+        "send": "Send",
+        "sendReport": {
+          "button": "Send diagnostikrapport",
+          "description": "Send en engangsrapport med maskerede tekniske logfiler, så vi kan finde årsagen til det problem, du løb ind i.",
+          "label": "Diagnostikrapport"
+        },
+        "sending": "Sender…",
+        "sent": "Rapporten er sendt — reference {incidentId}",
+        "snapshotLabel": "Øjebliksbillede af enheden",
+        "title": "Vil du sende en diagnostikrapport?"
       }
     },
     "dateFormat": {
@@ -172,7 +201,7 @@
       },
       "presets": {
         "indigo": "Indigo",
-        "amber": "Amber",
+        "amber": "Rav",
         "emerald": "Smaragd",
         "red": "Rød",
         "violet": "Violet",
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Layout",
-      "toolbar": "Værktøjslinje"
+      "toolbar": "Værktøjslinje",
+      "spelling": "Stavning"
     },
     "width": {
       "label": "Redaktørbredde",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Smal",
         "medium": "Medium",
-        "wide": "Bred"
+        "wide": "Bred",
+        "full": "Fuld bredde",
+        "normal": "Normal"
       },
       "error": "Kunne ikke opdatere editorens bredde"
     },
@@ -229,6 +261,11 @@
       "label": "Sticky Formateringsværktøjslinje",
       "description": "Vis altid værktøjslinjen over editoren",
       "error": "Kunne ikke opdatere værktøjslinjetilstand"
+    },
+    "spellCheck": {
+      "description": "Understreg stavefejl i noter og journaler",
+      "error": "Stavekontrollen kunne ikke opdateres",
+      "label": "Kontrollér stavning"
     }
   },
   "templates": {
@@ -538,7 +575,7 @@
     "steps": {
       "signIn": "Log ind",
       "verify": "Bekræft",
-      "link": "Link"
+      "link": "Tilknyt"
     },
     "progress": "Trin {current} af {total}: {label}",
     "signIn": {
@@ -640,7 +677,7 @@
       "vaultPickerFolderLabel": "Gem bokse i mappe",
       "vaultPickerPrimaryHint": "Åbner nu",
       "vaultPickerTitle": "Vælg, hvad der skal hentes",
-      "vaultRow": "Boks — {{count}} elementer · {{date}}"
+      "vaultRow": "Boks — {count} elementer · {date}"
     }
   },
   "devices": {
@@ -673,7 +710,8 @@
       "removeFailed": "Enheden kunne ikke fjernes",
       "renamed": "Omdøbt til \"{name}\"",
       "renameFailed": "Kunne ikke omdøbe enheden"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Link ny enhed",
@@ -807,7 +845,7 @@
       "apiKey": "API nøgle",
       "apiKeyDescription": "Gemt lokalt, sendes kun til udbyderen",
       "apiKeyPlaceholder": "Indtast {provider} API-nøgle",
-      "ollamaUrl": "Ollama URL",
+      "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokal serveradresse",
       "connection": "Forbindelse",
       "activePort": "Aktiv på port {port}",
@@ -855,6 +893,11 @@
         "description": "Slå fra for envejssynkronisering — du ser stadig dine Google-begivenheder i memrynote, men memrynote-begivenheder vises ikke i Google.",
         "error": "Kunne ikke opdatere synkroniseringsretning",
         "label": "Vis memrynote-begivenheder i Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Slået fra som standard. Slå til, og AI-agenten kan læse dine Google-begivenheder; slå fra, og den får intet tilbage, når den bliver spurgt om dem. Du ser dem stadig i memrynote uanset hvad.",
+        "error": "Kunne ikke opdatere AI-adgang",
+        "label": "Lad AI læse begivenheder i Google Calendar"
       }
     },
     "sourcePicker": {
@@ -893,16 +936,17 @@
   },
   "vault": {
     "header": {
-      "title": "Vault",
+      "title": "Boks",
       "subtitle": "Vault-konfiguration og -lagring"
     },
     "groups": {
       "storageUsage": "Opbevaringsbrug",
-      "location": "Beliggenhed"
+      "location": "Beliggenhed",
+      "accountVaults": "Bokse på din konto"
     },
     "loadingStorage": "Indlæser lageroplysninger...",
     "signInStorage": "Log ind for at se lagerforbrug",
-    "vaultPath": "Vault Path",
+    "vaultPath": "Sti til boks",
     "reveal": "Afsløre",
     "storage": {
       "title": "Opbevaring",
@@ -919,6 +963,17 @@
       },
       "warningTitle": "Lageret er næsten fyldt",
       "warningDescription": "Frigør plads eller opgrader din plan for at undgå synkroniseringsproblemer."
+    },
+    "accountVaults": {
+      "activeHint": "Skift til en anden boks for at slette denne.",
+      "cloudOnly": "Ikke på denne enhed",
+      "delete": "Slet",
+      "deleteBody": "Alle synkroniserede data for denne boks fjernes permanent fra Memrys servere. Denne handling kan ikke fortrydes. Dine filer på disken bliver ikke slettet.",
+      "deleteConfirm": "Slet fra konto",
+      "deleteFailed": "Boksen kunne ikke slettes",
+      "deleteTitle": "Vil du slette “{name}” fra din konto?",
+      "empty": "Ingen bokse er synkroniseret til din konto endnu.",
+      "itemsCount": "{count} elementer"
     }
   },
   "tags": {
@@ -981,7 +1036,7 @@
     "types": {
       "status": "Status",
       "select": "Vælg",
-      "multiselect": "Multiselect",
+      "multiselect": "Flervalg",
       "text": "Tekst",
       "number": "Nummer",
       "date": "Dato",
@@ -1022,7 +1077,7 @@
     "noMatch": "Ingen genveje matcher din søgning",
     "conflict": "Konflikter med: {labels}",
     "globalCapture": {
-      "title": "Global Capture",
+      "title": "Global fangst",
       "description": "Fang en note fra hvor som helst",
       "permissionNeeded": "Tilladelse nødvendig",
       "active": "Aktiv",
@@ -1137,16 +1192,12 @@
       "press": "Tryk på ",
       "toToggleThisDialog": "for at skifte denne dialog"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middot;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Denne enhed er blevet fjernet",
       "exporting": "Eksporterer...",
       "signOut": "Log ud"
     },
     "componentsSyncSyncHistory": {
-      "middot": "middot; ",
       "activity": "Aktivitet",
       "filterBySyncType": "Filtrer efter synkroniseringstype",
       "allTypes": "Alle typer",
@@ -1160,7 +1211,12 @@
       "last30Days": "Sidste 30 dage",
       "loadingSyncHistory": "Indlæser synkroniseringshistorik",
       "noSyncActivityYet": "Ingen synkroniseringsaktivitet endnu",
-      "loadMore": "Indlæs mere"
+      "loadMore": "Indlæs mere",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, vis fejldetaljer",
+      "summaryFailed": "Synkronisering mislykkedes",
+      "summaryPulled": "{count, plural, one {# element hentet} other {# elementer hentet}}",
+      "summaryPushed": "{count, plural, one {# element sendt} other {# elementer sendt}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Sidst synkroniseret ",
@@ -1208,102 +1264,103 @@
       "failedToCloseVault": "Kunne ikke lukke boks",
       "failedToSwitchVault": "Kunne ikke skifte boks",
       "failedToUpdateConfig": "Konfigurationen kunne ikke opdateres",
-      "failedToReindex": "Kunne ikke genindeksere"
+      "failedToReindex": "Kunne ikke genindeksere",
+      "failedToLoadTasks": "Opgaverne kunne ikke indlæses"
     }
   },
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Lokal serveradgang for eksterne MCP-klienter."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Forbindelse",
+      "access": "Adgang"
     },
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Brug dette localhost-endpoint fra Cursor, Claude Desktop eller Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Bearer-token",
+        "description": "Nøgle i hukommelsen, der kun gælder denne opstart af appen."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Rotér token",
+        "description": "Ugyldiggør eksisterende sessioner for eksterne klienter."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "Kopiér {label}",
+    "notRunning": "Kører ikke",
+    "toolsBadge": "{count, plural, one {# værktøj} other {# værktøjer}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Agenttilladelser",
+      "subtitle": "Vælg standardadgang, bekræftelser og lokale udbydere til Agentchat."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Lokal OpenAI-kompatibel udbyder",
+      "actions": "Forbindelsestjek"
     },
     "presets": {
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Brugerdefineret"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Forudindstilling"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "Basis-URL",
+        "description": "OpenAI-kompatibelt /v1-endpoint."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Tillad endpoint uden for loopback",
+        "description": "Data sendes til det konfigurerede endpoint."
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "Vælg en af de returnerede modeller, eller indtast en manuelt."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "API-nøgle",
+        "description": "Valgfri nøgle, der gemmes i OS-nøgleringen.",
+        "configured": "Der er allerede gemt en API-nøgle i OS-nøgleringen."
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "save": "Gem",
+      "models": "Modeller",
+      "test": "Test forbindelsen",
+      "probe": "Afprøv værktøjer"
     },
     "status": {
-      "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "disconnected": "Ikke forbundet",
+      "toolsDisabled": "Værktøjer deaktiveret",
+      "fullTools": "Alle værktøjer aktiveret",
       "checking": "Kontrollerer…",
       "connected": "Forbundet",
       "label": "Forbindelse"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Agenttilladelser",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Standardadgang",
+        "description": "Angiver den adgangstilstand, som nye agentture starter i.",
+        "vaultOnly": "Kun boksen",
+        "computerAccess": "Computeradgang"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Bekræft handlinger",
+        "description": "Vælg, om værktøjskald skal køre automatisk eller vente på godkendelse i chatten.",
+        "alwaysAllow": "Tillad altid",
+        "askBeforeChanges": "Spørg før ændringer"
       }
     }
   },
@@ -1368,6 +1425,10 @@
       "tasks": {
         "description": "Gøremål og forfaldsdatoer",
         "label": "Opgaver"
+      },
+      "spatialCanvas": {
+        "description": "Rumlige tavler til at arrangere og forbinde noter",
+        "label": "Canvas"
       }
     }
   },
@@ -1385,7 +1446,7 @@
       "progress": "{completed} af {total}",
       "running": "Importerer…",
       "selected": "{count, plural, one {# fil valgt} other {# filer valgt}}",
-      "start": "Start import",
+      "start": "Start importen",
       "summary": {
         "attachments": "{count, plural, one {# vedhæftning kopieret} other {# vedhæftninger kopieret}}",
         "failed": "{count} mislykkedes",
@@ -1393,7 +1454,10 @@
         "skipped": "{count} sprunget over",
         "title": "Import fuldført"
       },
-      "title": "Importér fra {name}"
+      "title": "Importér fra {name}",
+      "chooseDirectory": "Vælg mappe…",
+      "folderKeepsAssets": "Vælg mappen, når billederne ligger uden for noternes egen mappe — ved eksport ligger medier ofte i én fælles mappe.",
+      "previewError": "Forhåndsvisningen mislykkedes"
     },
     "header": {
       "subtitle": "Hent dine noter og opgaver ind fra andre apps",
@@ -1432,6 +1496,99 @@
       "tasks": "{count, plural, one {# opgave} other {# opgaver}}",
       "withDueDate": "{count} dateret",
       "withTags": "{count} tagget"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Kolonner: {columns}",
+        "emptyTitle": "Sprang række med tom titel over (kolonnen “{column}”)",
+        "noHeaders": "CSV-filen har ingen overskrifter",
+        "titleColumn": "Titel fra “{column}”; øvrige kolonner er gemt som egenskaber"
+      },
+      "raindrop": {
+        "csvEmpty": "Raindrop-CSV-filen er tom",
+        "headerNotFound": "Overskriftsrækken i Raindrop-CSV-filen (kolonnen “url”) blev ikke fundet",
+        "rowNoUrl": "Række {row} sprunget over: ingen URL"
+      },
+      "readFileFailed": "Kunne ikke læse filen",
+      "ticktick": {
+        "foldersDropped": "TickTick-mapper har ingen tilsvarende i Memry og blev udeladt",
+        "headerNotFound": "Overskriftsrækken i TickTick-CSV-filen (“Folder Name”) blev ikke fundet",
+        "reminderNoAnchor": "Påmindelsen “{reminder}” blev sprunget over (intet datoanker)",
+        "subtaskParentMissing": "Den overordnede opgave til delopgaven “{title}” blev ikke fundet; importeret på øverste niveau",
+        "unknownPriority": "Ukendt TickTick-prioritet {priority} → ingen",
+        "unsupportedRepeat": "Gentagelsesreglen “{rule}” understøttes ikke og blev sprunget over"
+      },
+      "todoist": {
+        "emptyTitle": "Opgave med tomt indhold importeret som (uden titel)",
+        "headerNotFound": "Ikke en Todoist-CSV: TYPE-overskriftsrækken mangler",
+        "orphanComment": "Kommentar uden foregående opgave blev sprunget over",
+        "sectionFlattened": "Sektionen “{section}” blev fladet ud",
+        "subtaskNoParent": "Delopgaven “{title}” har ingen overordnet opgave ved indrykning {indent}; importeret på øverste niveau",
+        "unknownPriority": "Ukendt prioritet {priority} → ingen",
+        "unparsedDate": "Datoen “{date}” kunne ikke tolkes"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Kopierer Apple Notes-databasen…"
+      },
+      "bear": {
+        "scanning": "Scanner Bear-eksporten…"
+      },
+      "csv": {
+        "importing": "Importerer CSV-noter…"
+      },
+      "evernote": {
+        "scanning": "Scanner .enex-filer…"
+      },
+      "html": {
+        "scanning": "Scanner HTML-filer…"
+      },
+      "importingItem": "Importerer {title}",
+      "raindrop": {
+        "importing": "Importerer Raindrop-bogmærker…"
+      },
+      "roam": {
+        "reading": "Læser Roam-eksporten…"
+      },
+      "scanningExport": "Scanner eksporten…",
+      "scanningFiles": "Scanner filer…",
+      "ticktick": {
+        "importing": "Importerer TickTick-opgaver…"
+      },
+      "todoist": {
+        "importing": "Importerer Todoist-opgaver…"
+      }
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Indlæser…",
+      "subtitle": "Daglig påmindelse om gennemgang og indstillinger for indbakken.",
+      "title": "Indbakke"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Et venligt dagligt puf, når der ligger noget i din indbakke.",
+        "label": "Påmind mig om at gennemgå min indbakke"
+      },
+      "error": "Påmindelsen kunne ikke opdateres.",
+      "group": "Daglig påmindelse om gennemgang",
+      "test": {
+        "button": "Send testen",
+        "description": "Send påmindelsen nu for at tjekke dine systemnotifikationer.",
+        "label": "Testnotifikation",
+        "sent": "Testnotifikationen er sendt.",
+        "sentHint": "Hvis der ikke dukker noget op, skal du tillade notifikationer for MemryNote i dine systemindstillinger.",
+        "unsupported": "Denne enhed kan ikke vise skrivebordsnotifikationer."
+      },
+      "time": {
+        "description": "Lokal tid, på hver enhed.",
+        "hourLabel": "Time",
+        "label": "Tidspunkt for påmindelse",
+        "minuteLabel": "Minut",
+        "periodLabel": "AM eller PM"
+      }
     }
   }
 }

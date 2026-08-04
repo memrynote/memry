@@ -22,7 +22,19 @@
     "writeFailed": "Bu not kaydedilemedi. Disk alanını ve izinlerini kontrol edin.",
     "readFailed": "Bu not okunamadı. Dosya kilitli veya bozuk olabilir.",
     "deleteFailed": "Bu not silinemedi. Dosya izinlerini kontrol edin.",
-    "invalidPath": "Not yolu geçersiz."
+    "invalidPath": "Not yolu geçersiz.",
+    "applyTemplateFailed": "Şablon uygulanamadı",
+    "createFailed": "Not oluşturulamadı",
+    "deleteVersionFailed": "Sürüm silinemedi",
+    "exportHtmlFailed": "HTML olarak dışa aktarılamadı",
+    "exportPdfFailed": "PDF olarak dışa aktarılamadı",
+    "importFilesFailed": "Dosyalar içe aktarılamadı",
+    "moveFailed": "Not taşınamadı",
+    "renameFailed": "Not yeniden adlandırılamadı",
+    "reorderFailed": "Notlar yeniden sıralanamadı",
+    "restoreVersionFailed": "Sürüm geri yüklenemedi",
+    "setLocalOnlyFailed": "Yalnızca yerel ayarı yapılamadı",
+    "updateFailed": "Not güncellenemedi"
   },
   "database": {
     "connectionFailed": "Yerel veritabanına bağlanılamadı. Uygulamayı yeniden başlatmayı deneyin.",
@@ -41,7 +53,14 @@
     "fileTooLarge": "Bu dosya eklenemeyecek kadar büyük.",
     "unsupportedType": "Bu dosya türü desteklenmiyor.",
     "writeFailed": "Ek kaydedilemedi. Disk alanını kontrol edin.",
-    "deleteFailed": "Ek silinemedi."
+    "deleteFailed": "Ek silinemedi.",
+    "downloadFailed": "Ek indirilemedi",
+    "downloadProgressFailed": "İndirme ilerlemesi alınamadı",
+    "uploadFailed": "Ek yüklenemedi",
+    "uploadProgressFailed": "Yükleme ilerlemesi alınamadı",
+    "emptyFile": "Boş dosya yüklenemez",
+    "exceedsMaxSize": "Dosya çok büyük: {size}, {limit} sınırını aşıyor",
+    "exceedsPlanLimit": "Dosya, planınızın izin verdiğinden büyük: {size}, {limit} sınırını aşıyor"
   },
   "encryption": {
     "failed": "Veriler şifrelenemedi. Anahtarlarınızın yeniden oluşturulması gerekebilir.",
@@ -74,6 +93,188 @@
     "settingsNotInitialized": "Ayarlar senkronizasyonu başlatılmadı",
     "securityQuarantinePermanent": "Bir senkronizasyon öğesi doğrulanamadı ve güvenlik nedeniyle karantinaya alındı.",
     "securityQuarantineRetry": "Bir senkronizasyon öğesi imza doğrulamasında başarısız oldu ve yeniden denenecek.",
-    "certificatePinPaused": "Senkronizasyon sunucusuna güvenli bağlantı doğrulanamadı. Güvenliğiniz için senkronizasyon duraklatıldı."
+    "certificatePinPaused": "Senkronizasyon sunucusuna güvenli bağlantı doğrulanamadı. Güvenliğiniz için senkronizasyon duraklatıldı.",
+    "attachmentUploadFailed": "\"{filename}\" eki senkronize edilemedi. Bu cihazda kalacak.",
+    "fileTooLarge": "Bu dosya planınızın izin verdiğinden büyük. Daha büyük dosyaları senkronize etmek için planınızı yükseltin.",
+    "vaultRecovered": "Kasa anahtarı geri yüklendi. Senkronizasyon devam edecek.",
+    "historyFetchFailed": "Senkronizasyon geçmişi getirilemedi",
+    "keyPersistenceFailed": "Şifreleme anahtarı güvenli şekilde kaydedilemedi. Cihaz kaydı geri alındı. Lütfen tekrar deneyin.",
+    "serverUnreachable": "Senkronizasyon sunucusuna bağlanılamıyor. Lütfen internet bağlantınızı kontrol edin.",
+    "updateSyncedSettingFailed": "Senkronize edilen ayar güncellenemedi",
+    "requestTimedOut": "Senkronizasyon isteği zaman aşımına uğradı. Lütfen internet bağlantınızı kontrol edin."
+  },
+  "agent": {
+    "conversationBusy": "Konuşma meşgul",
+    "runtimeStarting": "Ajan çalışma zamanı başlatılıyor. Tekrar deneyin."
+  },
+  "ai": {
+    "inlineDisabled": "Yapay zeka ile satır içi düzenleme devre dışı",
+    "listOllamaModelsFailed": "Ollama modelleri listelenemedi"
+  },
+  "auth": {
+    "approveLinkingFailed": "Bağlama onaylanamadı",
+    "cannotRemoveCurrentDevice": "Geçerli cihaz kaldırılamaz",
+    "completeLinkingFailed": "Bağlama tamamlanamadı",
+    "confirmRecoveryPhraseFailed": "Kurtarma ifadesi onaylanamadı",
+    "fetchSasCodeFailed": "SAS kodu alınamadı",
+    "finalizeVaultChoiceFailed": "Kasa seçimi tamamlanamadı",
+    "initiateOAuthFailed": "OAuth başlatılamadı",
+    "invalidRecoveryPhraseFormat": "Geçersiz kurtarma ifadesi biçimi",
+    "linkDeviceQrFailed": "Cihaz QR ile bağlanamadı",
+    "linkRecoveryPhraseFailed": "Kurtarma ifadesiyle bağlanılamadı",
+    "notAuthenticated": "Kimlik doğrulanmadı",
+    "pickFolderFailed": "Klasör seçilemedi",
+    "recoveryPhraseMismatch": "Kurtarma ifadesi eşleşmiyor. Lütfen tekrar deneyin.",
+    "removeDeviceFailed": "Cihaz kaldırılamadı",
+    "renameDeviceFailed": "Cihaz yeniden adlandırılamadı",
+    "requestOtpFailed": "OTP istenemedi",
+    "resendOtpFailed": "OTP yeniden gönderilemedi",
+    "sessionExpired": "Oturumunuzun süresi doldu. Lütfen tekrar oturum açın.",
+    "setupFirstDeviceOAuthFailed": "İlk cihaz OAuth ile kurulamadı",
+    "verifyOtpFailed": "OTP doğrulanamadı"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "Öğe zaten yer imlerinde",
+    "notFound": "Yer imi bulunamadı"
+  },
+  "calendar": {
+    "connectProviderFailed": "Takvim sağlayıcısına bağlanılamadı",
+    "createEventFailed": "Takvim etkinliği oluşturulamadı",
+    "deleteEventFailed": "Takvim etkinliği silinemedi",
+    "disconnectProviderFailed": "Takvim sağlayıcısının bağlantısı kesilemedi",
+    "eventNotFound": "Takvim etkinliği bulunamadı",
+    "googleNotConnected": "Google Calendar bu cihazda bağlı değil",
+    "listGoogleCalendarsFailed": "Google takvimleri listelenemedi",
+    "onlyGoogleSourcesRetryable": "Yalnızca Google takvim kaynakları yeniden denenebilir",
+    "onlySourcesSelectable": "Yalnızca takvim kaynakları seçilebilir",
+    "promoteExternalEventFailed": "Harici takvim etkinliği yükseltilemedi",
+    "refreshProviderFailed": "Takvim sağlayıcısı yenilenemedi",
+    "retryGoogleSourceSyncFailed": "Google Calendar kaynak senkronizasyonu yeniden denenemedi",
+    "setDefaultGoogleCalendarFailed": "Varsayılan Google takvimi ayarlanamadı",
+    "signInBeforeRefresh": "Google Calendar'ı yenilemeden önce memrynote'ta oturum açın",
+    "sourceNotFound": "Takvim kaynağı bulunamadı",
+    "syncFailed": "Senkronizasyon başarısız oldu",
+    "updateEventFailed": "Takvim etkinliği güncellenemedi",
+    "updateSourceSelectionFailed": "Takvim kaynağı seçimi güncellenemedi"
+  },
+  "folder": {
+    "createFailed": "Klasör oluşturulamadı",
+    "deleteFailed": "Klasör silinemedi",
+    "renameFailed": "Klasör yeniden adlandırılamadı",
+    "setConfigFailed": "Klasör yapılandırması ayarlanamadı"
+  },
+  "folderView": {
+    "deleteViewFailed": "Görünüm silinemedi",
+    "setConfigFailed": "Yapılandırma ayarlanamadı",
+    "setViewFailed": "Görünüm ayarlanamadı"
+  },
+  "googleCalendar": {
+    "accessDenied": "Google Calendar erişimi reddedildi. Hazır olduğunuzda tekrar bağlanabilirsiniz.",
+    "connectFailed": "Google Calendar'a bağlanılamadı. Lütfen birazdan tekrar deneyin.",
+    "misconfigured": "Google Calendar doğru yapılandırılmamış. Bu durum devam ederse lütfen destek ekibiyle iletişime geçin.",
+    "reconnectNeeded": "Google Calendar bağlantınızın süresi doldu. Lütfen bağlantıyı kesip yeniden bağlanın.",
+    "scopeMissing": "Takvim izni verilmediği için Google Calendar'ınıza erişemedik. Lütfen tekrar deneyin ve Google onay ekranında Takvim kutusunun işaretli kaldığından emin olun.",
+    "temporarilyUnavailable": "Google Calendar geçici olarak kullanılamıyor. Lütfen kısa süre sonra tekrar deneyin."
+  },
+  "importer": {
+    "cancelFailed": "İptal başarısız oldu",
+    "fileSelectionFailed": "Dosya seçimi başarısız oldu",
+    "importFailed": "İçe aktarma başarısız oldu",
+    "listFailed": "İçe aktarıcılar listelenemedi",
+    "previewFailed": "Önizleme başarısız oldu"
+  },
+  "project": {
+    "archiveFailed": "Proje arşivlenemedi",
+    "captureLinkFailed": "Bağlantı yakalanamadı",
+    "createFailed": "Proje oluşturulamadı",
+    "deleteFailed": "Proje silinemedi",
+    "importFilesFailed": "Dosyalar içe aktarılamadı",
+    "linkItemFailed": "Öğe bağlanamadı",
+    "listForItemFailed": "Öğe için projeler listelenemedi",
+    "reorderFailed": "Projeler yeniden sıralanamadı",
+    "setHomeNoteFailed": "Ana not ayarlanamadı",
+    "unlinkItemFailed": "Öğe bağlantısı kaldırılamadı",
+    "updateFailed": "Proje güncellenemedi",
+    "updatePinnedFailed": "Sabitleme durumu güncellenemedi"
+  },
+  "property": {
+    "alreadyExists": "\"{name}\" özelliği zaten mevcut",
+    "createDefinitionFailed": "Özellik tanımı oluşturulamadı",
+    "entityNotFound": "Varlık bulunamadı",
+    "notFound": "\"{name}\" özelliği bulunamadı",
+    "renameFailed": "Özellik yeniden adlandırılamadı",
+    "setCalendarVisibilityFailed": "Takvim özelliği görünürlüğü ayarlanamadı",
+    "setFailed": "Özellikler ayarlanamadı",
+    "updateDefinitionFailed": "Özellik tanımı güncellenemedi"
+  },
+  "reminder": {
+    "createFailed": "Hatırlatıcı oluşturulamadı",
+    "dismissAllFailed": "Hatırlatıcılar kapatılamadı",
+    "dismissFailed": "Hatırlatıcı kapatılamadı",
+    "notFound": "Hatırlatıcı bulunamadı",
+    "snoozeFailed": "Hatırlatıcı ertelenemedi",
+    "updateFailed": "Hatırlatıcı güncellenemedi"
+  },
+  "savedFilter": {
+    "notFound": "Kayıtlı filtre bulunamadı"
+  },
+  "search": {
+    "rebuildFailed": "Yeniden oluşturma başarısız oldu"
+  },
+  "settings": {
+    "modelAlreadyLoading": "Model zaten yükleniyor",
+    "modelLoadFailed": "Model yüklenemedi",
+    "shortcutInUse": "{shortcut} kısayolu zaten kullanılıyor",
+    "terminalCommandInstallFailed": "Terminal komutu kurulamadı",
+    "terminalCommandUninstallFailed": "Terminal komutu kaldırılamadı",
+    "unknownVault": "Bilinmeyen kasa",
+    "voiceModelDownloadFailed": "Ses modeli indirilemedi"
+  },
+  "tag": {
+    "categoryNameRequired": "Kategori adı gerekli",
+    "createCategoryFailed": "Etiket kategorisi oluşturulamadı",
+    "deleteCategoryFailed": "Etiket kategorisi silinemedi",
+    "deleteFailed": "Etiket silinemedi",
+    "listCategoriesFailed": "Etiket kategorileri listelenemedi",
+    "mergeFailed": "Etiketler birleştirilemedi",
+    "mergeSameTag": "Kaynak ve hedef etiketler aynı",
+    "pinNoteFailed": "Not sabitlenemedi",
+    "removeFromNoteFailed": "Etiket nottan kaldırılamadı",
+    "renameCategoryFailed": "Etiket kategorisi yeniden adlandırılamadı",
+    "renameFailed": "Etiket yeniden adlandırılamadı",
+    "reorderFailed": "Etiketler yeniden sıralanamadı",
+    "unpinNoteFailed": "Not sabitlemesi kaldırılamadı",
+    "updateColorFailed": "Etiket rengi güncellenemedi",
+    "updateIconFailed": "Etiket simgesi güncellenemedi"
+  },
+  "task": {
+    "archiveFailed": "Görev arşivlenemedi",
+    "archiveManyFailed": "Görevler arşivlenemedi",
+    "completeFailed": "Görev tamamlanamadı",
+    "completeManyFailed": "Görevler tamamlanamadı",
+    "convertToSubtaskFailed": "Alt göreve dönüştürülemedi",
+    "convertToTaskFailed": "Göreve dönüştürülemedi",
+    "createFailed": "Görev oluşturulamadı",
+    "deleteFailed": "Görev silinemedi",
+    "deleteManyFailed": "Görevler silinemedi",
+    "duplicateFailed": "Görev çoğaltılamadı",
+    "moveFailed": "Görev taşınamadı",
+    "moveManyFailed": "Görevler taşınamadı",
+    "reorderFailed": "Görevler yeniden sıralanamadı",
+    "unarchiveFailed": "Görev arşivden çıkarılamadı",
+    "uncompleteFailed": "Görev tamamlanmadı olarak işaretlenemedi",
+    "updateFailed": "Görev güncellenemedi"
+  },
+  "taskStatus": {
+    "createFailed": "Durum oluşturulamadı",
+    "deleteFailed": "Durum silinemedi",
+    "reorderFailed": "Durumlar yeniden sıralanamadı",
+    "updateFailed": "Durum güncellenemedi"
+  },
+  "template": {
+    "createFailed": "Şablon oluşturulamadı",
+    "deleteFailed": "Şablon silinemedi",
+    "duplicateFailed": "Şablon çoğaltılamadı",
+    "updateFailed": "Şablon güncellenemedi"
   }
 }

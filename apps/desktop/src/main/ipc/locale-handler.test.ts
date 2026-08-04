@@ -129,4 +129,37 @@ describe('locale handler', () => {
     expect(send).toHaveBeenCalledWith('locale:changed', 'tr')
     expect(getHandler()).toBe('tr')
   })
+
+  it('persists nothing when the language switch itself fails', async () => {
+    // #given a locale bundle that fails to load
+    const send = vi.fn()
+    const mockI18n = {
+      changeLanguage: vi.fn().mockRejectedValue(new Error('bundle unavailable')),
+      language: 'en'
+    } as any
+    const rebuildMenu = vi.fn()
+    hoisted.windows = [{ webContents: { send } }]
+
+    registerLocaleHandlers(mockI18n, rebuildMenu)
+    const getHandler = (ipcMain.handle as any).mock.calls.find(
+      ([channel]: [string]) => channel === 'locale:get'
+    )[1]
+    const setHandler = (ipcMain.handle as any).mock.calls.find(
+      ([channel]: [string]) => channel === 'locale:set'
+    )[1]
+
+    // #when the switch is attempted
+    await expect(setHandler({}, 'tr')).rejects.toThrow('bundle unavailable')
+
+    // #then nothing is written, so config.json, the store and the DB cannot end
+    // up holding a language the app never actually switched to
+    expect(hoisted.setStoredLocale).not.toHaveBeenCalled()
+    expect(hoisted.writePreferences).not.toHaveBeenCalled()
+    expect(hoisted.setSetting).not.toHaveBeenCalled()
+
+    // #and the runtime stays on the old locale, in agreement with what is stored
+    expect(rebuildMenu).not.toHaveBeenCalled()
+    expect(send).not.toHaveBeenCalled()
+    expect(getHandler()).toBe('en')
+  })
 })

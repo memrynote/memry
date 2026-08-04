@@ -62,8 +62,10 @@ export const DuplicateWithSubtasksDialog = ({
             </DialogTitle>
           </div>
           <DialogDescription>
-            {tPhaseF('phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.createACopyOf')}
-            {taskTitle}&{tPhaseF('phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.rdquo')}
+            {tPhaseF(
+              'phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.createACopyOfTitle',
+              { title: taskTitle }
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -77,9 +79,9 @@ export const DuplicateWithSubtasksDialog = ({
             <div className="space-y-1">
               <Label htmlFor="include-subtasks" className="cursor-pointer font-medium">
                 {tPhaseF(
-                  'phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.alsoDuplicateSubtasks'
+                  'phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.alsoDuplicateSubtasksCount',
+                  { count: subtaskCount }
                 )}
-                {subtaskCount})
               </Label>
               <p className="text-sm text-muted-foreground">
                 {includeSubtasks
@@ -95,8 +97,14 @@ export const DuplicateWithSubtasksDialog = ({
             {tPhaseF('phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.cancel')}
           </Button>
           <Button onClick={handleDuplicate}>
-            {tPhaseF('phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.duplicate')}
-            {includeSubtasks ? `(${subtaskCount + 1} items)` : 'task'}
+            {includeSubtasks
+              ? tPhaseF(
+                  'phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.duplicateWithItems',
+                  { count: subtaskCount + 1 }
+                )
+              : tPhaseF(
+                  'phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.duplicateTaskOnly'
+                )}
           </Button>
         </DialogFooter>
       </DialogContent>

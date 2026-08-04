@@ -1,7 +1,12 @@
 {
   "app": {
-    "quit": "退出",
-    "preferences": "設定…"
+    "quit": "結束",
+    "preferences": "設定…",
+    "exit": "離開",
+    "hide": "隱藏 MemryNote",
+    "hideOthers": "隱藏其他",
+    "services": "服務",
+    "unhide": "顯示全部"
   },
   "file": {
     "label": "檔案",
@@ -24,7 +29,11 @@
     "paste": "貼上",
     "selectAll": "全選",
     "find": "尋找",
-    "speech": "語音"
+    "speech": "語音",
+    "delete": "刪除",
+    "pasteAndMatchStyle": "貼上並符合樣式",
+    "startSpeaking": "開始朗讀",
+    "stopSpeaking": "停止朗讀"
   },
   "view": {
     "label": "檢視",
@@ -37,7 +46,10 @@
     "themeSystem": "系統",
     "themeWhite": "紙張",
     "toggleDayPanel": "切換每日面板",
-    "toggleSidebar": "切換側邊欄"
+    "toggleSidebar": "切換側邊欄",
+    "actualSize": "實際大小",
+    "zoomIn": "放大",
+    "zoomOut": "縮小"
   },
   "format": {
     "body": "內文",
@@ -55,7 +67,8 @@
     "about": "關於 MemryNote",
     "documentation": "文件",
     "label": "說明",
-    "shortcuts": "鍵盤快速鍵"
+    "shortcuts": "鍵盤快速鍵",
+    "aboutVersion": "版本 {version}"
   },
   "insert": {
     "attachment": "插入附件…",
@@ -67,6 +80,10 @@
     "taskList": "任務清單"
   },
   "window": {
-    "label": "視窗"
+    "label": "視窗",
+    "close": "關閉",
+    "front": "將全部移到最前面",
+    "minimize": "縮到最小",
+    "zoom": "縮放"
   }
 }

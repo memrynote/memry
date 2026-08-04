@@ -34,7 +34,15 @@
     "createAnother": "Создать еще один",
     "delete": "Удалить задачу",
     "created": "Создано {date}",
-    "reminder": "Напоминание"
+    "reminder": "Напоминание",
+    "tags": "Теги",
+    "priorityLabels": {
+      "high": "Высокий",
+      "low": "Низкий",
+      "medium": "Средний",
+      "none": "Без приоритета",
+      "urgent": "Срочный"
+    }
   },
   "filters": {
     "filter": "Фильтр",
@@ -43,11 +51,32 @@
     "groupBy": "Группировать по",
     "groupByOptions": "Группировать по параметрам",
     "sortAscending": "Сортировать по возрастанию",
-    "sortDescending": "Сортировать по убыванию"
+    "sortDescending": "Сортировать по убыванию",
+    "dueDate": {
+      "any": "Любой срок",
+      "custom": "Свой диапазон...",
+      "nextWeek": "Следующая неделя",
+      "none": "Без срока",
+      "overdue": "Просрочено",
+      "thisMonth": "Этот месяц",
+      "thisWeek": "Эта неделя",
+      "today": "Сегодня",
+      "tomorrow": "Завтра"
+    },
+    "quickPresets": {
+      "dueThisWeek": "Срок на этой неделе",
+      "highPriority": "Высокий приоритет",
+      "noDueDate": "Без срока",
+      "overdue": "Просрочено",
+      "repeating": "Повторяющиеся"
+    },
+    "repeatTypeOneTime": "Разовые",
+    "repeatTypeRepeating": "Повторяющиеся"
   },
   "quickAdd": {
     "label": "Быстрое добавление задачи",
-    "focusDescription": "Фокус быстрого добавления ввода"
+    "focusDescription": "Фокус быстрого добавления ввода",
+    "placeholder": "Добавить задачу…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Закрыть детали задачи",
@@ -75,7 +104,21 @@
     "searchRelated": "Поиск связанного…"
   },
   "kanban": {
-    "board": "Канбан-доска"
+    "board": "Канбан-доска",
+    "empty": {
+      "default": {
+        "subtitle": "Перетащите сюда задачи или нажмите +, чтобы добавить",
+        "title": "Нет задач"
+      },
+      "done": {
+        "subtitle": "Выполняйте задачи, и они появятся здесь",
+        "title": "Нет выполненных задач"
+      },
+      "schedule": {
+        "subtitle": "Перетащите сюда задачи, чтобы перенести срок",
+        "title": "Ничего не запланировано"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "Проект обновлен",
@@ -98,7 +141,53 @@
     "noCompletedSelected": "Выполненных задач не выбрано",
     "completeFailed": "Не удалось выполнить задачи",
     "deleteFailed": "Не удалось удалить задачи.",
-    "moveFailed": "Не удалось переместить задачи."
+    "moveFailed": "Не удалось переместить задачи.",
+    "bulk": {
+      "archived": "{count, plural, one {# задача заархивирована} few {# задачи заархивированы} many {# задач заархивировано} other {# задачи заархивировано}}",
+      "completed": "{count, plural, one {# задача выполнена} few {# задачи выполнены} many {# задач выполнено} other {# задачи выполнено}}",
+      "deleted": "{count, plural, one {# задача удалена} few {# задачи удалены} many {# задач удалено} other {# задачи удалено}}",
+      "deletedDescription": "Это действие можно отменить в течение короткого времени.",
+      "dueDateRemoved": "{count, plural, one {Срок убран у # задачи} few {Срок убран у # задач} many {Срок убран у # задач} other {Срок убран у # задачи}}",
+      "dueDateSet": "{count, plural, one {Срок задан для # задачи} few {Срок задан для # задач} many {Срок задан для # задач} other {Срок задан для # задачи}}",
+      "movedToProject": "{count, plural, one {# задача перемещена в {project}} few {# задачи перемещены в {project}} many {# задач перемещено в {project}} other {# задачи перемещено в {project}}}",
+      "movedToStatus": "{count, plural, one {# задача переведена в {status}} few {# задачи переведены в {status}} many {# задач переведено в {status}} other {# задачи переведено в {status}}}",
+      "priorityRemoved": "{count, plural, one {Приоритет убран у # задачи} few {Приоритет убран у # задач} many {Приоритет убран у # задач} other {Приоритет убран у # задачи}}",
+      "prioritySet": "{count, plural, one {Приоритет {priority} задан для # задачи} few {Приоритет {priority} задан для # задач} many {Приоритет {priority} задан для # задач} other {Приоритет {priority} задан для # задачи}}",
+      "restored": "{count, plural, one {# задача восстановлена} few {# задачи восстановлены} many {# задач восстановлено} other {# задачи восстановлено}}",
+      "undoArchive": "{count, plural, one {Архивировать # задачу} few {Архивировать # задачи} many {Архивировать # задач} other {Архивировать # задачи}}",
+      "undoComplete": "{count, plural, one {Выполнить # задачу} few {Выполнить # задачи} many {Выполнить # задач} other {Выполнить # задачи}}",
+      "undoDelete": "{count, plural, one {Удалить # задачу} few {Удалить # задачи} many {Удалить # задач} other {Удалить # задачи}}",
+      "undoDueDate": "{count, plural, one {Срок изменён у # задачи} few {Срок изменён у # задач} many {Срок изменён у # задач} other {Срок изменён у # задачи}}",
+      "undoMove": "{count, plural, one {Переместить # задачу} few {Переместить # задачи} many {Переместить # задач} other {Переместить # задачи}}",
+      "undoStatus": "{count, plural, one {Статус → {status} для # задачи} few {Статус → {status} для # задач} many {Статус → {status} для # задач} other {Статус → {status} для # задачи}}",
+      "undoUncomplete": "{count, plural, one {Снять выполнение с # задачи} few {Снять выполнение с # задач} many {Снять выполнение с # задач} other {Снять выполнение с # задачи}}"
+    },
+    "drag": {
+      "archived": "{count, plural, one {Задача заархивирована} few {# задачи заархивированы} many {# задач заархивировано} other {# задачи заархивировано}}",
+      "deleted": "{count, plural, one {Задача удалена} few {# задачи удалены} many {# задач удалено} other {# задачи удалено}}",
+      "moved": "{count, plural, one {Перемещено в {target}} few {# задачи перемещены в {target}} many {# задач перемещено в {target}} other {# задачи перемещено в {target}}}",
+      "movedTo": "Перемещено в {target}",
+      "prioritySet": "{count, plural, one {Задан приоритет {priority}} few {# задачам задан приоритет {priority}} many {# задачам задан приоритет {priority}} other {# задачам задан приоритет {priority}}}",
+      "prioritySetTo": "Задан приоритет {priority}",
+      "rescheduled": "{count, plural, one {Перенесено на {target}} few {# задачи перенесены на {target}} many {# задач перенесено на {target}} other {# задачи перенесено на {target}}}",
+      "rescheduledTo": "Перенесено на {target}",
+      "undoArchive": "{count, plural, one {Заархивирована # задача} few {Заархивированы # задачи} many {Заархивировано # задач} other {Заархивировано # задачи}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, one {# подзадача добавлена} few {# подзадачи добавлены} many {# подзадач добавлено} other {# подзадачи добавлено}}",
+      "completed": "{count, plural, one {# подзадача выполнена} few {# подзадачи выполнены} many {# подзадач выполнено} other {# подзадачи выполнено}}",
+      "deleted": "{count, plural, one {# подзадача удалена} few {# подзадачи удалены} many {# подзадач удалено} other {# подзадачи удалено}}",
+      "deletedDescription": "Подзадача удалена",
+      "dueDateCleared": "{count, plural, one {Срок очищен у # подзадачи} few {Срок очищен у # подзадач} many {Срок очищен у # подзадач} other {Срок очищен у # подзадачи}}",
+      "dueDateSet": "{count, plural, one {Срок задан для # подзадачи} few {Срок задан для # подзадач} many {Срок задан для # подзадач} other {Срок задан для # подзадачи}}",
+      "markedIncomplete": "{count, plural, one {# подзадача отмечена как невыполненная} few {# подзадачи отмечены как невыполненные} many {# подзадач отмечено как невыполненные} other {# подзадачи отмечено как невыполненные}}",
+      "movedUnder": "Перемещено в «{title}»",
+      "parentAndSubtasksCompleted": "Задача и подзадачи выполнены",
+      "parentDeletedKeepSubtasks": "Задача удалена, подзадачи преобразованы в задачи",
+      "parentDeletedWithSubtasks": "Задача и подзадачи удалены",
+      "prioritySet": "{count, plural, one {Приоритет задан для # подзадачи} few {Приоритет задан для # подзадач} many {Приоритет задан для # подзадач} other {Приоритет задан для # подзадачи}}",
+      "promoted": "«{title}» повышена до задачи"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -179,7 +268,8 @@
       "nextMonth": "В следующем месяце",
       "goToToday": "Перейти к сегодняшнему дню",
       "today": "Сегодня",
-      "w": "Вт"
+      "w": "Вт",
+      "weekNumber": "Неделя {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Удалить дату",
@@ -197,44 +287,39 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "В этом проекте нет задач, и он будет удален без возможности восстановления.",
       "thisActionCannotBeUndone": "Это действие невозможно отменить.",
       "cancel": "Отмена",
-      "deleteProject": "Удалить проект"
+      "deleteProject": "Удалить проект",
+      "notesEventsAndFilesStayNotice": "Задачи этого проекта будут удалены. Ваши заметки, события и файлы останутся в хранилище."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Удалить задачу?",
-      "ldquo": "«Дкво»;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "рдкво; будут удалены навсегда. Это действие невозможно отменить.",
-      "deleteTask2": "Удалить задачу"
+      "deleteTask2": "Удалить задачу",
+      "deleteConfirmBody": "Задача «{title}» будет удалена без возможности восстановления. Это действие нельзя отменить."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Все подзадачи выполнены!",
-      "ldquo": "«Дкво»;",
-      "rdquoHasAll": "рдкво; есть все ",
-      "subtask": "подзадача",
-      "done": "сделано.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Хотите также пометить родительскую задачу как выполненную?",
       "keepTaskOpen": "Оставить задачу открытой",
-      "completeTask": "Выполнить задание ✓"
+      "completeTask": "Выполнить задание ✓",
+      "allSubtasksDoneBody": "В задаче «{title}» {count, plural, one {выполнена # подзадача} few {выполнены все # подзадачи} many {выполнены все # подзадач} other {выполнены все # подзадачи}}."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Установите срок выполнения для всех подзадач",
       "setDueDateFor": "Установите срок выполнения ",
-      "subtask": "подзадача",
-      "in": "в «",
-      "rdquo": "рдкво;",
       "alsoApplyToCompletedSubtasks": "Также применяется к завершенным подзадачам (",
       "clearDate": "Очистить дату",
       "cancel": "Отмена",
-      "apply": "Применить"
+      "apply": "Применить",
+      "alsoApplyToCompletedSubtasksCount": "Также применить к выполненным подзадачам ({count})",
+      "setDueDateForSubtasksIn": "Установить срок выполнения для {count, plural, one {# подзадачи} few {# подзадач} many {# подзадач} other {# подзадачи}} в задаче «{title}»"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Установить приоритет для всех подзадач",
       "setPriorityFor": "Установить приоритет для ",
-      "subtask": "подзадача",
-      "in": "в «",
-      "rdquo": "рдкво;",
       "alsoApplyToCompletedSubtasks": "Также применяется к завершенным подзадачам (",
       "cancel": "Отмена",
-      "apply": "Применить"
+      "apply": "Применить",
+      "alsoApplyToCompletedSubtasksCount": "Также применить к выполненным подзадачам ({count})",
+      "setPriorityForSubtasksIn": "Установить приоритет для {count, plural, one {# подзадачи} few {# подзадач} many {# подзадач} other {# подзадачи}} в задаче «{title}»"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Завершить задачу с невыполненными подзадачами?",
@@ -252,13 +337,10 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Удалить все подзадачи?",
-      "thisWillDelete": "Это удалит ",
-      "subtask": "подзадача",
-      "from": "из «",
-      "rdquo": "рдкво;.",
       "thisActionCannotBeUndone": "Это действие невозможно отменить.",
       "cancel": "Отмена",
-      "deleteAll": "Удалить все"
+      "deleteAll": "Удалить все",
+      "deleteSubtasksConfirmation": "Из задачи «{title}» {count, plural, one {будет удалена # подзадача} few {будут удалены # подзадачи} many {будет удалено # подзадач} other {будет удалено # подзадачи}}."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Удалить задачу с подзадачами?",
@@ -275,10 +357,13 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Повторяющаяся задача",
       "createACopyOf": "Создайте копию «",
-      "rdquo": "рдкво;",
       "alsoDuplicateSubtasks": "Также дублируйте подзадачи (",
       "cancel": "Отмена",
-      "duplicate": "Дублировать "
+      "duplicate": "Дублировать ",
+      "alsoDuplicateSubtasksCount": "Также дублировать подзадачи ({count})",
+      "createACopyOfTitle": "Создать копию «{title}»",
+      "duplicateTaskOnly": "Дублировать задачу",
+      "duplicateWithItems": "Дублировать ({count, plural, one {# элемент} few {# элемента} many {# элементов} other {# элемента}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Сделать подзадачу...",
@@ -324,7 +409,11 @@
       "addTime": "Добавить время",
       "time": "Время",
       "clearDate": "Очистить дату",
-      "backToOptions": "Вернуться к опциям"
+      "backToOptions": "Вернуться к опциям",
+      "nextWeek": "Следующая неделя",
+      "thisWeekend": "Эти выходные",
+      "today": "Сегодня",
+      "tomorrow": "Завтра"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "Редактировать повторяющуюся задачу",
@@ -357,7 +446,9 @@
       "due": "Срок погашения",
       "dueDate": "срок платежа",
       "search": "поиск",
-      "clearAll": "Очистить все"
+      "clearAll": "Очистить все",
+      "tags": "теги",
+      "tagsIs": "Теги"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Фильтровать по дате сдачи",
@@ -421,7 +512,17 @@
       "currentFilters": "Текущие фильтры:",
       "noFiltersApplied": "Фильтры не применены",
       "cancel": "Отмена",
-      "saveFilter2": "Сохранить фильтр"
+      "saveFilter2": "Сохранить фильтр",
+      "nameRequired": "Введите название для этого фильтра",
+      "summaryDue": "Срок: {value}",
+      "summaryDueRange": "Срок: {start} - {end}",
+      "summaryPriorities": "Приоритет: {names}",
+      "summaryProjects": "Проект: {names}",
+      "summaryRepeatOneTime": "Повтор: только разовые",
+      "summaryRepeatRepeating": "Повтор: только повторяющиеся",
+      "summarySearch": "Поиск: «{query}»",
+      "summaryTimeWith": "Время: со временем",
+      "summaryTimeWithout": "Время: без времени"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Сохраненные фильтры",
@@ -553,7 +654,16 @@
       "d": "д"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "Добавить задачу"
+      "addTask": "Добавить задачу",
+      "allDescription": "Создайте первую задачу, чтобы начать",
+      "allTitle": "Задач пока нет",
+      "completedDescription": "Выполненные задачи появятся здесь",
+      "completedTitle": "Нет выполненных задач",
+      "projectDescription": "Добавьте задачу, чтобы начать",
+      "projectTitle": "В этом проекте нет задач",
+      "projectTitleNamed": "Нет задач в {name}",
+      "todayDescription": "Вы всё разобрали!",
+      "todayTitle": "На сегодня сроков нет"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "нет приоритета"
@@ -589,6 +699,12 @@
       "noUpcomingTasks": "Нет предстоящих задач",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Здесь появятся задачи, которые необходимо выполнить в течение следующих 7 дней. Спланируйте свою неделю, добавив несколько задач.",
       "addTask2": "Добавить задачу"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "есть",
+      "search": "Искать...",
+      "selected": "выбрано",
+      "tags": "Теги"
     }
   },
   "phaseI": {
@@ -638,5 +754,147 @@
       "updateFailed": "Не удалось обновить напоминание",
       "updated": "Напоминание обновлено"
     }
+  },
+  "addToProject": {
+    "dialogTitle": "Добавить в проект",
+    "loading": "Загрузка проектов…",
+    "menuLabel": "Добавить в проект",
+    "noProjects": "Пока нет проектов",
+    "toastError": "Не удалось добавить в проект",
+    "toastSuccess": "Добавлено в {name}"
+  },
+  "itemProjects": {
+    "openProject": "Открыть проект {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Выберите проект на боковой панели, чтобы открыть его главную страницу.",
+    "emptyTitle": "Проект не выбран",
+    "loadError": "Не удалось загрузить сведения о проекте",
+    "overview": {
+      "clear": "Очистить обзор",
+      "clearError": "Не удалось очистить обзорную заметку",
+      "create": "Создать обзорную заметку",
+      "createError": "Не удалось создать обзорную заметку",
+      "defaultTitle": "Обзор",
+      "loadError": "Не удалось загрузить обзорную заметку",
+      "placeholder": "Напишите обзор этого проекта…",
+      "saveError": "Не удалось сохранить обзорную заметку",
+      "sectionTitle": "Обзор"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Прикрепить файлы",
+      "fileError": "Не удалось связать {name}",
+      "fileErrorGeneric": "Не удалось импортировать файлы",
+      "filesAdded": "{count, plural, one {# файл добавлен} few {# файла добавлено} many {# файлов добавлено} other {# файла добавлено}} в проект",
+      "label": "Добавить в {name}",
+      "linkAdded": "Ссылка добавлена в проект",
+      "linkError": "Не удалось сохранить ссылку",
+      "placeholder": "Добавить в {name} — напишите задачу, запишите мысль или вставьте ссылку…"
+    },
+    "groups": {
+      "older": "Ранее",
+      "past": "Прошедшие",
+      "today": "Сегодня",
+      "tomorrow": "Завтра",
+      "upcoming": "Предстоящие",
+      "yesterday": "Вчера"
+    },
+    "header": {
+      "archiveProject": "Архивировать проект",
+      "editProject": "Редактировать проект",
+      "menu": "Действия с проектом",
+      "toggleRail": "Показать или скрыть сведения о проекте"
+    },
+    "rail": {
+      "addNote": "Добавить заметку",
+      "created": "Создано",
+      "details": "Сведения",
+      "doneOf": "Готово {done} из {total}",
+      "linked": "Связано",
+      "linkedSummary": "{notes, plural, one {# заметка} few {# заметки} many {# заметок} other {# заметки}} · {files, plural, one {# файл} few {# файла} many {# файлов} other {# файла}} · {events, plural, one {# событие} few {# события} many {# событий} other {# события}}",
+      "overdue": "Просрочено",
+      "overview": "Обзор",
+      "pinError": "Не удалось добавить заметку в обзор",
+      "progress": "Прогресс",
+      "unpinError": "Не удалось убрать заметку из обзора",
+      "unpinNote": "Убрать {title} из обзора",
+      "updated": "Обновлено"
+    },
+    "rows": {
+      "openEvent": "Открыть событие {title}",
+      "openFile": "Открыть файл {title}",
+      "openNote": "Открыть заметку {title}",
+      "openTask": "Открыть задачу {title}",
+      "setNoteIcon": "Установить значок для {title}"
+    },
+    "sections": {
+      "add": "Добавить в {title}",
+      "emptyEvents": "Пока нет связанных событий.",
+      "emptyFiles": "Пока нет связанных файлов.",
+      "emptyNotes": "Пока нет связанных заметок.",
+      "emptyTasks": "Задач пока нет.",
+      "newNoteError": "Не удалось добавить заметку",
+      "newNoteTitle": "Заметка без названия",
+      "viewAll": "Показать все"
+    },
+    "tabs": {
+      "events": "События",
+      "files": "Файлы",
+      "label": "Разделы проекта",
+      "notes": "Заметки",
+      "overview": "Обзор",
+      "tasks": "Задачи"
+    }
+  },
+  "priorityInline": {
+    "high": "высокий",
+    "low": "низкий",
+    "medium": "средний",
+    "urgent": "срочный"
+  },
+  "priorityLabels": {
+    "high": "Высокий",
+    "low": "Низкий",
+    "medium": "Средний",
+    "none": "Без приоритета",
+    "urgent": "Срочный"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "Готово",
+      "inProgress": "В работе",
+      "todo": "К выполнению"
+    },
+    "validation": {
+      "minStatuses": "Проекту нужно минимум 2 статуса",
+      "nameRequired": "Укажите название проекта",
+      "nameTooLong": "Название проекта должно быть не длиннее 50 символов",
+      "needsDoneStatus": "Проекту нужен хотя бы один статус «Готово»",
+      "needsDoneStatusForCompletedTasks": "Проекту нужен хотя бы один статус «Готово» для выполненных задач",
+      "needsTodoStatus": "Проекту нужен хотя бы один статус «К выполнению»",
+      "needsTodoStatusForNewTasks": "Проекту нужен хотя бы один статус «К выполнению» для новых задач",
+      "statusNameRequired": "У всех статусов должно быть название",
+      "statusNamesUnique": "Названия статусов должны быть уникальными",
+      "statusNotFound": "Статус не найден"
+    }
+  },
+  "statusLabels": {
+    "done": "Готово",
+    "inProgress": "В работе",
+    "todo": "К выполнению"
+  },
+  "colors": {
+    "blue": "Синий",
+    "gray": "Серый",
+    "green": "Зелёный",
+    "indigo": "Индиго",
+    "orange": "Оранжевый",
+    "pink": "Розовый",
+    "purple": "Фиолетовый",
+    "red": "Красный",
+    "teal": "Бирюзовый",
+    "yellow": "Жёлтый"
   }
 }

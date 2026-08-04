@@ -24,7 +24,8 @@ export const SYNC_ITEM_TYPES = [
   'agent_message',
   'canvas',
   'bookmark',
-  'reminder'
+  'reminder',
+  'template'
 ] as const
 
 export const RECORD_SYNC_ITEM_TYPES = [
@@ -46,7 +47,8 @@ export const RECORD_SYNC_ITEM_TYPES = [
   'agent_message',
   'canvas',
   'bookmark',
-  'reminder'
+  'reminder',
+  'template'
 ] as const
 
 export const RECORD_CLOCK_REQUIRED_ITEM_TYPES = [
@@ -67,7 +69,8 @@ export const RECORD_CLOCK_REQUIRED_ITEM_TYPES = [
   'agent_message',
   'canvas',
   'bookmark',
-  'reminder'
+  'reminder',
+  'template'
 ] as const
 
 export const CRDT_SYNC_ITEM_TYPES = ['note'] as const
@@ -125,7 +128,8 @@ export const ENCRYPTABLE_ITEM_TYPES = [
   'agent_message',
   'canvas',
   'bookmark',
-  'reminder'
+  'reminder',
+  'template'
 ] as const
 export type EncryptableItemType = (typeof ENCRYPTABLE_ITEM_TYPES)[number]
 

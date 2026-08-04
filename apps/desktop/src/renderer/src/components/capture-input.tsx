@@ -295,10 +295,11 @@ export function CaptureInput({
             <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2">
               <Copy className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
               <p className="flex-1 text-xs text-muted-foreground">
-                {t('phaseF.componentsCaptureInput.alreadyCaptured')}
-                {duplicateMatch.title.slice(0, 50)}
-                {duplicateMatch.title.length > 50 ? '...' : ''}&
-                {t('phaseF.componentsCaptureInput.rdquo')}
+                {t('phaseF.componentsCaptureInput.duplicateNotice', {
+                  title:
+                    duplicateMatch.title.slice(0, 50) +
+                    (duplicateMatch.title.length > 50 ? '...' : '')
+                })}
               </p>
               <button
                 type="button"

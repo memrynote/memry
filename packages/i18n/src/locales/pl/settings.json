@@ -28,7 +28,8 @@
         "properties": "Właściwości",
         "commandLine": "Wiersz poleceń",
         "features": "Funkcje",
-        "import": "Importuj"
+        "import": "Importuj",
+        "inbox": "Skrzynka odbiorcza"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Pobieranie {percent}%",
         "downloaded": "Uruchom ponownie, aby zainstalować",
         "idle": "Sprawdź aktualizacje"
+      },
+      "autoCheck": {
+        "description": "Sprawdzaj nowe wersje przy uruchomieniu i co pewien czas, gdy aplikacja jest otwarta.",
+        "error": "Nie udało się zaktualizować ustawienia automatycznego sprawdzania",
+        "label": "Automatycznie sprawdzaj aktualizacje"
+      },
+      "autoDownload": {
+        "description": "Pobieraj i instaluj nowe wersje w tle, bez pytania.",
+        "error": "Nie udało się zaktualizować ustawienia automatycznego pobierania",
+        "label": "Automatycznie pobieraj aktualizacje"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Udostępniaj anonimowe wskaźniki użytkowania",
         "description": "To tylko dane anonimowe — nie są nigdy wysyłane żadne treści notatek, zapytania wyszukiwania, ścieżki plików, wiadomości e-mail ani surowe identyfikatory.",
         "error": "Nie udało się zaktualizować ustawień telemetrii"
+      },
+      "diagnostics": {
+        "building": "Przygotowywanie raportu…",
+        "consent": "Wysłać jednorazowy raport diagnostyczny? Zawiera wyłącznie zanonimizowane logi techniczne — bez treści notatek.",
+        "error": "Nie udało się wysłać raportu diagnostycznego",
+        "notNow": "Nie teraz",
+        "previewError": "Nie udało się przygotować raportu diagnostycznego",
+        "previewLabel": "Podejrzyj zawartość raportu",
+        "send": "Wyślij",
+        "sendReport": {
+          "button": "Wyślij raport diagnostyczny",
+          "description": "Wyślij jednorazowy raport z zanonimizowanymi logami technicznymi, aby pomóc nam zdiagnozować napotkany problem.",
+          "label": "Raport diagnostyczny"
+        },
+        "sending": "Wysyłanie…",
+        "sent": "Raport wysłany — numer referencyjny {incidentId}",
+        "snapshotLabel": "Migawka urządzenia",
+        "title": "Wysłać raport diagnostyczny?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Układ",
-      "toolbar": "Pasek narzędzi"
+      "toolbar": "Pasek narzędzi",
+      "spelling": "Pisownia"
     },
     "width": {
       "label": "Szerokość edytora",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Wąskie",
         "medium": "Średni",
-        "wide": "Szeroki"
+        "wide": "Szeroki",
+        "full": "Pełna szerokość",
+        "normal": "Normalna"
       },
       "error": "Nie udało się zaktualizować szerokości edytora"
     },
@@ -229,6 +261,11 @@
       "label": "Przyklejony pasek narzędzi formatowania",
       "description": "Zawsze pokazuj pasek narzędzi nad edytorem",
       "error": "Nie udało się zaktualizować trybu paska narzędzi"
+    },
+    "spellCheck": {
+      "description": "Podkreślaj błędnie napisane słowa w notatkach i dziennikach",
+      "error": "Nie udało się zaktualizować sprawdzania pisowni",
+      "label": "Sprawdzaj pisownię"
     }
   },
   "templates": {
@@ -538,7 +575,7 @@
     "steps": {
       "signIn": "Zaloguj się",
       "verify": "Zweryfikuj",
-      "link": "Link"
+      "link": "Połącz"
     },
     "progress": "Krok {current} z {total}: {label}",
     "signIn": {
@@ -640,7 +677,7 @@
       "vaultPickerFolderLabel": "Przechowuj sejfy w folderze",
       "vaultPickerPrimaryHint": "Otwiera się teraz",
       "vaultPickerTitle": "Wybierz, co pobrać",
-      "vaultRow": "Sejf — {{count}} elementów · {{date}}"
+      "vaultRow": "Sejf — {count} elementów · {date}"
     }
   },
   "devices": {
@@ -673,7 +710,8 @@
       "removeFailed": "Nie udało się usunąć urządzenia",
       "renamed": "Zmieniono nazwę na „{name}”",
       "renameFailed": "Nie udało się zmienić nazwy urządzenia"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Połącz nowe urządzenie",
@@ -855,6 +893,11 @@
         "description": "Wyłącz dla synchronizacji jednokierunkowej — nadal będziesz widzieć wydarzenia Google w memrynote, ale wydarzenia memrynote nie pojawią się w Google.",
         "error": "Nie udało się zaktualizować kierunku synchronizacji",
         "label": "Pokazuj wydarzenia memrynote w Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Domyślnie wyłączone. Po włączeniu agent AI może czytać Twoje wydarzenia Google; po wyłączeniu nie otrzyma o nich żadnych informacji. Tak czy inaczej nadal będziesz je widzieć w memrynote.",
+        "error": "Nie udało się zaktualizować dostępu AI",
+        "label": "Zezwalaj AI na czytanie wydarzeń z Google Calendar"
       }
     },
     "sourcePicker": {
@@ -898,7 +941,8 @@
     },
     "groups": {
       "storageUsage": "Wykorzystanie pamięci",
-      "location": "Lokalizacja"
+      "location": "Lokalizacja",
+      "accountVaults": "Skarbce na Twoim koncie"
     },
     "loadingStorage": "Ładowanie informacji o pamięci...",
     "signInStorage": "Zaloguj się, aby zobaczyć wykorzystanie miejsca",
@@ -919,6 +963,17 @@
       },
       "warningTitle": "Magazyn prawie pełny",
       "warningDescription": "Zwolnij miejsce lub uaktualnij swój plan, aby uniknąć problemów z synchronizacją."
+    },
+    "accountVaults": {
+      "activeHint": "Aby usunąć ten skarbiec, przełącz się najpierw na inny.",
+      "cloudOnly": "Brak na tym urządzeniu",
+      "delete": "Usuń",
+      "deleteBody": "Spowoduje to trwałe usunięcie z serwerów Memry wszystkich zsynchronizowanych danych tego skarbca. Tej akcji nie można cofnąć. Twoje pliki na dysku nie zostaną usunięte.",
+      "deleteConfirm": "Usuń z konta",
+      "deleteFailed": "Nie udało się usunąć skarbca",
+      "deleteTitle": "Usunąć „{name}” z Twojego konta?",
+      "empty": "Żaden skarbiec nie jest jeszcze zsynchronizowany z Twoim kontem.",
+      "itemsCount": "{count, plural, one {# element} few {# elementy} many {# elementów} other {# elementu}}"
     }
   },
   "tags": {
@@ -1137,16 +1192,12 @@
       "press": "Naciśnij ",
       "toToggleThisDialog": "aby przełączyć to okno dialogowe"
     },
-    "componentsSyncDeviceList": {
-      "middot": "kropka środkowa;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "To urządzenie zostało usunięte",
       "exporting": "Eksportowanie...",
       "signOut": "Wyloguj się"
     },
     "componentsSyncSyncHistory": {
-      "middot": "kropka środkowa; ",
       "activity": "Aktywność",
       "filterBySyncType": "Filtruj według typu synchronizacji",
       "allTypes": "Wszystkie typy",
@@ -1160,7 +1211,12 @@
       "last30Days": "Ostatnie 30 dni",
       "loadingSyncHistory": "Ładowanie historii synchronizacji",
       "noSyncActivityYet": "Brak aktywności związanej z synchronizacją",
-      "loadMore": "Załaduj więcej"
+      "loadMore": "Załaduj więcej",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, pokaż szczegóły błędu",
+      "summaryFailed": "Synchronizacja nie powiodła się",
+      "summaryPulled": "{count, plural, one {Pobrano # element} few {Pobrano # elementy} many {Pobrano # elementów} other {Pobrano # elementu}}",
+      "summaryPushed": "{count, plural, one {Wysłano # element} few {Wysłano # elementy} many {Wysłano # elementów} other {Wysłano # elementu}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Ostatnia synchronizacja ",
@@ -1208,102 +1264,103 @@
       "failedToCloseVault": "Nie udało się zamknąć skarbca",
       "failedToSwitchVault": "Nie udało się przełączyć skarbca",
       "failedToUpdateConfig": "Nie udało się zaktualizować konfiguracji",
-      "failedToReindex": "Nie udało się ponownie zaindeksować"
+      "failedToReindex": "Nie udało się ponownie zaindeksować",
+      "failedToLoadTasks": "Nie udało się załadować zadań"
     }
   },
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Lokalny dostęp do serwera dla zewnętrznych klientów MCP."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Połączenie",
+      "access": "Dostęp"
     },
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Użyj tego punktu końcowego localhost w Cursor, Claude Desktop lub Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Token Bearer",
+        "description": "Poświadczenie przechowywane w pamięci na czas tego uruchomienia aplikacji."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Wygeneruj nowy token",
+        "description": "Unieważnia istniejące sesje zewnętrznych klientów."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "Skopiuj {label}",
+    "notRunning": "Nie działa",
+    "toolsBadge": "{count, plural, one {# narzędzie} few {# narzędzia} many {# narzędzi} other {# narzędzia}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Uprawnienia agenta",
+      "subtitle": "Wybierz domyślny dostęp, potwierdzenia i lokalnych dostawców dla czatu Agent."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Lokalny dostawca zgodny z OpenAI",
+      "actions": "Testy połączenia"
     },
     "presets": {
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Niestandardowe"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Ustawienie wstępne"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "Bazowy adres URL",
+        "description": "Punkt końcowy /v1 zgodny z OpenAI."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Zezwól na punkt końcowy spoza pętli zwrotnej",
+        "description": "Dane są wysyłane do skonfigurowanego punktu końcowego."
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "Wybierz zwrócony model lub wpisz go ręcznie."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "Klucz API",
+        "description": "Opcjonalne poświadczenie przechowywane w pęku kluczy systemu operacyjnego.",
+        "configured": "Klucz API jest już przechowywany w pęku kluczy systemu operacyjnego."
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "save": "Zapisz",
+      "models": "Modele",
+      "test": "Testuj połączenie",
+      "probe": "Sprawdź narzędzia"
     },
     "status": {
-      "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "disconnected": "Rozłączono",
+      "toolsDisabled": "Narzędzia wyłączone",
+      "fullTools": "Wszystkie narzędzia włączone",
       "checking": "Sprawdzanie…",
       "connected": "Połączono",
       "label": "Połączenie"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Uprawnienia agenta",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Domyślny dostęp",
+        "description": "Ustawia początkowy tryb dostępu dla nowych tur agenta.",
+        "vaultOnly": "Tylko skarbiec",
+        "computerAccess": "Dostęp do komputera"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Potwierdzaj działania",
+        "description": "Wybierz, czy wywołania narzędzi mają działać automatycznie, czy czekać na zatwierdzenie w czacie.",
+        "alwaysAllow": "Zawsze zezwalaj",
+        "askBeforeChanges": "Pytaj przed zmianami"
       }
     }
   },
@@ -1368,6 +1425,10 @@
       "tasks": {
         "description": "Sprawy do zrobienia i terminy",
         "label": "Zadania"
+      },
+      "spatialCanvas": {
+        "description": "Przestrzenne kanwy do układania i łączenia notatek",
+        "label": "Kanwa"
       }
     }
   },
@@ -1393,7 +1454,10 @@
         "skipped": "{count} pominiętych",
         "title": "Import zakończony"
       },
-      "title": "Importuj z {name}"
+      "title": "Importuj z {name}",
+      "chooseDirectory": "Wybierz folder…",
+      "folderKeepsAssets": "Wybierz folder, gdy obrazy znajdują się poza folderem z notatkami — eksporty często przechowują multimedia we wspólnym folderze.",
+      "previewError": "Podgląd nie powiódł się"
     },
     "header": {
       "subtitle": "Przenieś swoje notatki i zadania z innych aplikacji",
@@ -1432,6 +1496,99 @@
       "tasks": "{count, plural, one {# zadanie} few {# zadania} many {# zadań} other {# zadania}}",
       "withDueDate": "{count} z datą",
       "withTags": "{count} otagowanych"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Kolumny: {columns}",
+        "emptyTitle": "Pominięto wiersz z pustym tytułem (kolumna „{column}”)",
+        "noHeaders": "Plik CSV nie ma nagłówków",
+        "titleColumn": "Tytuł z „{column}”; pozostałe kolumny zapisano jako właściwości"
+      },
+      "raindrop": {
+        "csvEmpty": "Plik CSV Raindrop jest pusty",
+        "headerNotFound": "Nie znaleziono wiersza nagłówka CSV Raindrop (kolumna „url”)",
+        "rowNoUrl": "Pominięto wiersz {row}: brak adresu URL"
+      },
+      "readFileFailed": "Nie udało się odczytać pliku",
+      "ticktick": {
+        "foldersDropped": "Foldery TickTick nie mają odpowiednika w Memry i zostały pominięte",
+        "headerNotFound": "Nie znaleziono wiersza nagłówka CSV TickTick („Folder Name”)",
+        "reminderNoAnchor": "Pominięto przypomnienie „{reminder}” (brak daty odniesienia)",
+        "subtaskParentMissing": "Nie znaleziono zadania nadrzędnego dla podzadania „{title}”; zaimportowano na najwyższym poziomie",
+        "unknownPriority": "Nieznany priorytet TickTick {priority} → brak",
+        "unsupportedRepeat": "Pominięto nieobsługiwaną regułę powtarzania „{rule}”"
+      },
+      "todoist": {
+        "emptyTitle": "Zadanie z pustą treścią zaimportowano jako (bez tytułu)",
+        "headerNotFound": "To nie jest plik CSV Todoist: brak wiersza nagłówka TYPE",
+        "orphanComment": "Pominięto komentarz bez poprzedzającego zadania",
+        "sectionFlattened": "Spłaszczono sekcję „{section}”",
+        "subtaskNoParent": "Podzadanie „{title}” nie ma zadania nadrzędnego przy wcięciu {indent}; zaimportowano na najwyższym poziomie",
+        "unknownPriority": "Nieznany priorytet {priority} → brak",
+        "unparsedDate": "Nie udało się odczytać daty „{date}”"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Kopiowanie bazy danych Apple Notes…"
+      },
+      "bear": {
+        "scanning": "Skanowanie eksportu Bear…"
+      },
+      "csv": {
+        "importing": "Importowanie notatek CSV…"
+      },
+      "evernote": {
+        "scanning": "Skanowanie plików .enex…"
+      },
+      "html": {
+        "scanning": "Skanowanie plików HTML…"
+      },
+      "importingItem": "Importowanie: {title}",
+      "raindrop": {
+        "importing": "Importowanie zakładek Raindrop…"
+      },
+      "roam": {
+        "reading": "Odczytywanie eksportu Roam…"
+      },
+      "scanningExport": "Skanowanie eksportu…",
+      "scanningFiles": "Skanowanie plików…",
+      "ticktick": {
+        "importing": "Importowanie zadań TickTick…"
+      },
+      "todoist": {
+        "importing": "Importowanie zadań Todoist…"
+      }
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Ładowanie…",
+      "subtitle": "Codzienne przypomnienie o przeglądzie i ustawienia skrzynki odbiorczej.",
+      "title": "Skrzynka odbiorcza"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Delikatne, codzienne przypomnienie, gdy w skrzynce coś czeka.",
+        "label": "Przypominaj mi o przeglądzie skrzynki odbiorczej"
+      },
+      "error": "Nie udało się zaktualizować przypomnienia.",
+      "group": "Codzienne przypomnienie o przeglądzie",
+      "test": {
+        "button": "Wyślij test",
+        "description": "Wyślij przypomnienie teraz, aby sprawdzić powiadomienia systemowe.",
+        "label": "Powiadomienie testowe",
+        "sent": "Wysłano powiadomienie testowe.",
+        "sentHint": "Jeśli nic się nie pojawi, zezwól na powiadomienia dla MemryNote w ustawieniach systemu.",
+        "unsupported": "To urządzenie nie może wyświetlać powiadomień systemowych."
+      },
+      "time": {
+        "description": "Czas lokalny, na każdym urządzeniu.",
+        "hourLabel": "Godzina",
+        "label": "Godzina przypomnienia",
+        "minuteLabel": "Minuta",
+        "periodLabel": "AM lub PM"
+      }
     }
   }
 }

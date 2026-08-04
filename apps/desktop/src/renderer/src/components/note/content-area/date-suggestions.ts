@@ -7,6 +7,7 @@
  */
 
 import { parseNaturalDate } from '@/lib/natural-date-parser'
+import { getActiveLocale } from '@/lib/active-locale'
 import { formatDateMentionLabel } from './date-mention'
 import type { DateMentionValue } from './date-mention-popover'
 
@@ -26,7 +27,7 @@ function friendlyTime(d: Date): string {
 }
 
 function longDate(d: Date): string {
-  const month = d.toLocaleDateString(undefined, { month: 'long' })
+  const month = d.toLocaleDateString(getActiveLocale(), { month: 'long' })
   return `${d.getDate()} ${month} ${d.getFullYear()}`
 }
 
@@ -38,7 +39,7 @@ function remindSubtitle(d: Date, withTime: boolean, bumped: boolean, now: Date):
 }
 
 export function buildDateSuggestions(query: string, now: Date = new Date()): DateSuggestion | null {
-  const parsed = parseNaturalDate(query.trim() || 'today')
+  const parsed = parseNaturalDate(toParserInput(query.trim() || 'today'))
   if (!parsed.success) return null
 
   const time = parsed.result.time
@@ -132,7 +133,13 @@ function looksDateish(query: string): boolean {
   const first = query.trim().toLowerCase().split(/\s+/)[0]
   if (!first) return false
   if (/^\d/.test(first)) return true
-  return DATE_KEYWORDS.some((kw) => kw.startsWith(first) || first.startsWith(kw))
+  // Locale weekday/month names count too, so a half-typed date in the app's
+  // language holds the menu open exactly like a half-typed English one.
+  const names = localeDateNames()
+  const keywords = [...DATE_KEYWORDS, ...names.weekdays, ...names.months].map((kw) =>
+    kw.toLowerCase()
+  )
+  return keywords.some((kw) => kw.startsWith(first) || first.startsWith(kw))
 }
 
 // Longest leading token-prefix that parses (so "today 12p" still resolves to
@@ -195,13 +202,104 @@ const MONTHS = [
 // not Tomorrow/Tuesday/Thursday).
 const RELATIVE = ['Today', 'Tomorrow', 'Yesterday']
 
+// ---------------------------------------------------------------------------
+// Locale weekday / month names
+// ---------------------------------------------------------------------------
+// The completion tables above are English. A user running the app in another
+// language types weekdays and months in THAT language, so the ghost also matches
+// the active locale's names — in the locale's own canonical casing, which Intl
+// already gives us (French "lundi" stays lowercase, Turkish "Pazartesi" does
+// not). English stays in the tables and is always tried first: English date
+// words are typed in non-English UIs all the time, and dropping them would be a
+// regression.
+
+/** 2023-01-01 is a Sunday, so index 0..6 walks Sunday → Saturday. */
+const SUNDAY_REFERENCE = Date.UTC(2023, 0, 1)
+const DAY_MS = 86_400_000
+
+interface LocaleDateNames {
+  /** Sunday-first, index-aligned with {@link WEEKDAYS}. */
+  weekdays: string[]
+  /** January-first, index-aligned with {@link MONTHS}. */
+  months: string[]
+}
+
+// predictDateCompletion runs on every keystroke, so the Intl formatting is
+// computed once per locale rather than per call.
+let localeNamesCache: { locale: string; names: LocaleDateNames } | null = null
+
+function localeDateNames(): LocaleDateNames {
+  const locale = getActiveLocale()
+  if (localeNamesCache?.locale === locale) return localeNamesCache.names
+
+  const weekdayFormat = new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' })
+  const monthFormat = new Intl.DateTimeFormat(locale, { month: 'long', timeZone: 'UTC' })
+  const names: LocaleDateNames = {
+    weekdays: Array.from({ length: 7 }, (_, i) =>
+      weekdayFormat.format(new Date(SUNDAY_REFERENCE + i * DAY_MS))
+    ),
+    months: Array.from({ length: 12 }, (_, i) => monthFormat.format(new Date(Date.UTC(2023, i, 1))))
+  }
+  localeNamesCache = { locale, names }
+  return names
+}
+
+/** English names first, then any locale name that is not already one of them. */
+function withLocaleNames(english: readonly string[], localized: readonly string[]): string[] {
+  const seen = new Set(english.map((name) => name.toLowerCase()))
+  return [...english, ...localized.filter((name) => !!name && !seen.has(name.toLowerCase()))]
+}
+
+function weekdayCandidates(): string[] {
+  return withLocaleNames(WEEKDAYS, localeDateNames().weekdays)
+}
+
+function monthCandidates(): string[] {
+  return withLocaleNames(MONTHS, localeDateNames().months)
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * Rewrites the active locale's weekday/month names to their English equivalents.
+ *
+ * `parseNaturalDate` only knows English day/month words, so without this a
+ * locale-language phrase — typed by hand or accepted from the ghost — would
+ * complete visually and then resolve to nothing. Whole words only, and a no-op
+ * whenever the locale's names already are the English ones (so English input,
+ * and every existing test, goes through byte-identical).
+ */
+function toParserInput(query: string): string {
+  const names = localeDateNames()
+  const pairs: Array<[string, string]> = [
+    ...names.weekdays.map((name, i): [string, string] => [name, WEEKDAYS[i]]),
+    ...names.months.map((name, i): [string, string] => [name, MONTHS[i]])
+  ]
+  // Longest first, so a locale whose names share a leading word (Vietnamese
+  // "Thứ Hai" / "Thứ Ba") cannot be half-replaced by the shorter one.
+  pairs.sort((a, b) => b[0].length - a[0].length)
+
+  let out = query
+  for (const [localized, english] of pairs) {
+    if (!localized || localized.toLowerCase() === english.toLowerCase()) continue
+    const pattern = new RegExp(
+      `(^|[^\\p{L}\\p{N}])${escapeRegExp(localized)}(?=$|[^\\p{L}\\p{N}])`,
+      'giu'
+    )
+    out = out.replace(pattern, (_match, lead: string) => `${lead}${english}`)
+  }
+  return out
+}
+
 function startsWithCI(candidate: string, query: string): boolean {
   return candidate.toLowerCase().startsWith(query.toLowerCase())
 }
 
 function matchWeekday(prefix: string): string | null {
   if (!prefix) return null
-  return WEEKDAYS.find((w) => w.toLowerCase().startsWith(prefix)) ?? null
+  return weekdayCandidates().find((w) => w.toLowerCase().startsWith(prefix)) ?? null
 }
 
 // Time-of-day completion for the inline ghost. Supports an optional "at"
@@ -228,7 +326,7 @@ export function predictTime(query: string): string | null {
   const dated = q.match(/^(.*?\S)\s+(?:at\s+)?(\d{1,2})(:?)$/i)
   if (dated) {
     const h = parseInt(dated[2], 10)
-    if (h >= 0 && h <= 23 && parseNaturalDate(dated[1]).success) {
+    if (h >= 0 && h <= 23 && parseNaturalDate(toParserInput(dated[1])).success) {
       return dated[3] ? `${q}00` : `${q}:00`
     }
   }
@@ -242,7 +340,7 @@ export function predictTime(query: string): string | null {
 export function isTimeInProgress(query: string): boolean {
   // "<date> at" — connector typed, before any time ("today at", "today at ").
   const connector = query.match(/^(.*\S)\s+at\s*$/i)
-  if (connector) return parseNaturalDate(connector[1]).success
+  if (connector) return parseNaturalDate(toParserInput(connector[1])).success
 
   const q = query.trimEnd()
 
@@ -250,7 +348,7 @@ export function isTimeInProgress(query: string): boolean {
   const dated = q.match(/^(.*?\S)\s+(?:at\s+)?(\d{1,2}):(\d)$/i)
   if (dated) {
     const h = parseInt(dated[2], 10)
-    return h >= 0 && h <= 23 && parseNaturalDate(dated[1]).success
+    return h >= 0 && h <= 23 && parseNaturalDate(toParserInput(dated[1])).success
   }
 
   // "<date> [at] H[:MM]" + a meridiem still being typed ("today 2p",
@@ -258,7 +356,7 @@ export function isTimeInProgress(query: string): boolean {
   const meridiem = q.match(/^(.*?\S)\s+(?:at\s+)?(\d{1,2})(?::\d{2})?\s*([ap]m?)$/i)
   if (meridiem) {
     const h = parseInt(meridiem[2], 10)
-    return h >= 0 && h <= 23 && parseNaturalDate(meridiem[1]).success
+    return h >= 0 && h <= 23 && parseNaturalDate(toParserInput(meridiem[1])).success
   }
 
   // Bare "H:M" with a single minute digit ("23:3").
@@ -296,7 +394,7 @@ export function predictDateCompletion(query: string, now: Date = new Date()): st
     }
   }
 
-  for (const candidate of [...RELATIVE, ...WEEKDAYS, ...MONTHS]) {
+  for (const candidate of [...RELATIVE, ...weekdayCandidates(), ...monthCandidates()]) {
     if (startsWithCI(candidate, query)) return candidate
   }
   return null

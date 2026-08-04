@@ -28,6 +28,13 @@
       "readyDetailFallback": "Mulakan semula memrynote untuk menyelesaikan pemasangan kemas kini.",
       "buttonRestartNow": "Mulakan semula sekarang",
       "releaseNotesLabel": "Nota keluaran:"
+    },
+    "pair": {
+      "buttonAllow": "Benarkan",
+      "buttonDeny": "Tolak",
+      "buttonPair": "Gandingkan",
+      "message": "Benarkan sambungan penyemak imbas Memry menghantar tangkapan ke apl ini?",
+      "title": "Gandingkan sambungan penyemak imbas"
     }
   },
   "notification": {
@@ -38,6 +45,11 @@
       "fallback": "Peringatan perlu dibayar",
       "default": "Peringatan",
       "task": "Peringatan tugasan"
+    },
+    "inboxReview": {
+      "body": "Anda mempunyai {count, plural, other {# item}} untuk disemak.",
+      "testBody": "Ini ujian — peringatan semakan harian anda akan kelihatan begini.",
+      "title": "Masa untuk menyemak peti masuk anda"
     }
   },
   "error": {
@@ -45,5 +57,15 @@
     "definitionNotFound": "Definisi tidak ditemui",
     "noteNotFound": "Nota tidak ditemui",
     "updateFailed": "Kemas kini gagal"
+  },
+  "startup": {
+    "failed": {
+      "body": "Ini boleh berlaku apabila cakera hampir kehabisan ruang kosong, atau dengan pemacu grafik yang lama. Cuba kosongkan sedikit ruang cakera, kemudian buka semula MemryNote. Jika ia berterusan, pemasangan semula biasanya menyelesaikannya.",
+      "title": "MemryNote tidak dapat menyelesaikan permulaan"
+    },
+    "installingUpdate": {
+      "subtitle": "MemryNote akan dibuka semula secara automatik.",
+      "title": "Memasang kemas kini…"
+    }
   }
 }

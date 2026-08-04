@@ -1,11 +1,16 @@
 {
   "app": {
     "quit": "Thoát",
-    "preferences": "Cài đặt…"
+    "preferences": "Cài đặt…",
+    "exit": "Thoát",
+    "hide": "Ẩn MemryNote",
+    "hideOthers": "Ẩn ứng dụng khác",
+    "services": "Dịch vụ",
+    "unhide": "Hiện tất cả"
   },
   "file": {
     "label": "Tập tin",
-    "newNote": "Ghi chú Mới",
+    "newNote": "Ghi chú mới",
     "close": "Đóng cửa sổ",
     "closeTab": "Đóng thẻ",
     "exportPdf": "Xuất ra PDF…",
@@ -13,7 +18,7 @@
   },
   "navigation": {
     "back": "Quay lại",
-    "forward": "  \nTiến lên  "
+    "forward": "Chuyển tiếp"
   },
   "edit": {
     "label": "Chỉnh sửa",
@@ -24,20 +29,27 @@
     "paste": "Dán",
     "selectAll": "Chọn tất cả",
     "find": "Tìm",
-    "speech": "Giọng nói"
+    "speech": "Giọng nói",
+    "delete": "Xóa",
+    "pasteAndMatchStyle": "Dán và khớp kiểu",
+    "startSpeaking": "Bắt đầu đọc",
+    "stopSpeaking": "Dừng đọc"
   },
   "view": {
     "label": "Xem",
     "reload": "Tải lại",
-    "toggleDevTools": "Chuyển đổi Công cụ Phát triển",
-    "toggleFullscreen": "Chuyển đổi Toàn màn hình",
+    "toggleDevTools": "Bật/tắt công cụ dành cho nhà phát triển",
+    "toggleFullscreen": "Bật/tắt toàn màn hình",
     "theme": "Giao diện",
     "themeDark": "Tối",
     "themeLight": "Sáng",
     "themeSystem": "Hệ thống",
     "themeWhite": "Giấy",
-    "toggleDayPanel": "Bật/tắt Bảng Ngày",
-    "toggleSidebar": "Bật/tắt Thanh bên"
+    "toggleDayPanel": "Bật/tắt bảng ngày",
+    "toggleSidebar": "Bật/tắt thanh bên",
+    "actualSize": "Kích thước thực",
+    "zoomIn": "Phóng to",
+    "zoomOut": "Thu nhỏ"
   },
   "format": {
     "body": "Nội dung",
@@ -55,7 +67,8 @@
     "about": "Giới thiệu MemryNote",
     "documentation": "Tài liệu",
     "label": "Trợ giúp",
-    "shortcuts": "Phím tắt"
+    "shortcuts": "Phím tắt",
+    "aboutVersion": "Phiên bản {version}"
   },
   "insert": {
     "attachment": "Chèn tệp đính kèm…",
@@ -67,6 +80,10 @@
     "taskList": "Danh sách công việc"
   },
   "window": {
-    "label": "Cửa sổ"
+    "label": "Cửa sổ",
+    "close": "Đóng",
+    "front": "Đưa tất cả lên trước",
+    "minimize": "Thu nhỏ",
+    "zoom": "Thu phóng"
   }
 }

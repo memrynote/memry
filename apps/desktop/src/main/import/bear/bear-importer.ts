@@ -6,6 +6,7 @@ import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
 import { forEachZipEntry } from '../_shared/zip'
 import { parseInfo, mapNote, rewriteBearLinks } from '@memry/importers/bear'
+import { IMPORT_STATUS, importingItemStatus } from '@memry/importers/messages'
 import type { ZipEntry } from '../_shared/zip'
 
 const logger = createLogger('BearImport')
@@ -54,7 +55,7 @@ export const bearImporter: Importer = {
   async run(input: ImportInput, ctx: ImportContext): Promise<ImportSummary> {
     // ---- Pass 1: scan zip, group by textbundle folder ----
     ctx.setPhase('scanning')
-    ctx.status('Scanning Bear export…')
+    ctx.status(IMPORT_STATUS.bearScanning)
 
     const noteMap = new Map<string, NoteStash>()
     const uidToTitle = new Map<string, string>()
@@ -158,7 +159,7 @@ export const bearImporter: Importer = {
       }
 
       try {
-        ctx.status(`Importing ${stash.folderName}`)
+        ctx.status(importingItemStatus(stash.folderName))
         const md = await stash.mdEntry.readText()
         const info = parseInfo(stash.infoRaw)
         const mapped = mapNote({ folderName: stash.folderName, md, info })

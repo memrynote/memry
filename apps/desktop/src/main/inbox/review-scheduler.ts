@@ -7,7 +7,7 @@
  * @module main/inbox/review-scheduler
  */
 
-import { BrowserWindow, powerMonitor } from 'electron'
+import { powerMonitor } from 'electron'
 import { getStatus } from '../vault'
 import { getDatabase } from '../database'
 import { getSetting, setSetting } from '../database/queries/settings'
@@ -17,6 +17,7 @@ import { showReviewNotification } from './review-notification'
 import { InboxChannels } from '@memry/contracts/inbox-channels'
 import { REVIEW_REMINDER_TIME_PATTERN } from '@memry/contracts/settings-schemas'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { INBOX_REVIEW_LAST_NOTIFIED_KEY } from './review-reminder-constants'
 
 export interface ReviewDecisionInput {
@@ -95,9 +96,7 @@ function writeLastNotifiedDate(date: string): boolean {
 }
 
 function emitReviewDue(count: number): void {
-  for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.isDestroyed()) win.webContents.send(InboxChannels.events.REVIEW_DUE, { count })
-  }
+  broadcastToAllWindows(InboxChannels.events.REVIEW_DUE, { count })
 }
 
 /** Run one scheduler tick. Exposed for the interval, startup, resume, and E2E. */

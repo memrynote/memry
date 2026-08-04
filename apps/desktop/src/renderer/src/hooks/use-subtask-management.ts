@@ -209,7 +209,9 @@ export const useSubtaskManagement = ({
         } else {
           onTasksChange(result.updatedTasks)
         }
-        toast.success(`${titles.length} subtask${titles.length > 1 ? 's' : ''} added`)
+        toast.success(
+          getI18n().getFixedT(null, 'tasks')('toasts.subtasks.added', { count: titles.length })
+        )
       } else {
         toast.error(
           extractErrorMessage(
@@ -268,7 +270,11 @@ export const useSubtaskManagement = ({
         } else {
           onTasksChange(result.updatedTasks)
         }
-        toast.success(`"${subtask?.title}" promoted to task`)
+        toast.success(
+          getI18n().getFixedT(null, 'tasks')('toasts.subtasks.promoted', {
+            title: subtask?.title ?? ''
+          })
+        )
       } else {
         toast.error(
           extractErrorMessage(
@@ -297,7 +303,7 @@ export const useSubtaskManagement = ({
           onTasksChange(result.updatedTasks)
         }
         toast.success(getI18n().getFixedT(null, 'tasks')('phaseI.toasts.subtaskDeleted'), {
-          description: 'The subtask has been removed'
+          description: getI18n().getFixedT(null, 'tasks')('toasts.subtasks.deletedDescription')
         })
       } else {
         toast.error(
@@ -335,8 +341,11 @@ export const useSubtaskManagement = ({
 
       if (result.success && result.updatedTasks) {
         onTasksChange(result.updatedTasks)
+        const translate = getI18n().getFixedT(null, 'tasks')
         toast.success(
-          keepSubtasks ? 'Task deleted, subtasks converted to tasks' : 'Task and subtasks deleted'
+          keepSubtasks
+            ? translate('toasts.subtasks.parentDeletedKeepSubtasks')
+            : translate('toasts.subtasks.parentDeletedWithSubtasks')
         )
       } else {
         toast.error(
@@ -380,7 +389,12 @@ export const useSubtaskManagement = ({
 
       if (result.success && result.updatedTasks) {
         onTasksChange(result.updatedTasks)
-        toast.success(completeSubtasks ? 'Task and subtasks completed' : 'Task completed')
+        const translate = getI18n().getFixedT(null, 'tasks')
+        toast.success(
+          completeSubtasks
+            ? translate('toasts.subtasks.parentAndSubtasksCompleted')
+            : translate('phaseI.toasts.taskCompleted')
+        )
       } else {
         toast.error(
           extractErrorMessage(
@@ -423,7 +437,11 @@ export const useSubtaskManagement = ({
         } else {
           onTasksChange(result.updatedTasks)
         }
-        toast.success(`Moved under "${parent?.title}"`)
+        toast.success(
+          getI18n().getFixedT(null, 'tasks')('toasts.subtasks.movedUnder', {
+            title: parent?.title ?? ''
+          })
+        )
       } else {
         toast.error(
           extractErrorMessage(
@@ -560,7 +578,7 @@ export const useSubtaskManagement = ({
                 {
                   duration: 10000, // T052: 10-second timeout for undo per spec
                   action: {
-                    label: 'Undo',
+                    label: getI18n().getFixedT(null, 'common')('action.undo'),
                     onClick: () => {
                       onUpdateTask(parentId, { completedAt: null })
                       toast.success(
@@ -654,7 +672,11 @@ export const useSubtaskManagement = ({
         } else {
           onTasksChange(updatedTasks)
         }
-        toast.success(`${affectedCount} subtask${affectedCount !== 1 ? 's' : ''} completed`)
+        toast.success(
+          getI18n().getFixedT(null, 'tasks')('toasts.subtasks.completed', {
+            count: affectedCount
+          })
+        )
 
         // Check if we should auto-complete parent (with delay for celebration)
         const allComplete = checkAllSubtasksComplete(parentId, updatedTasks)
@@ -704,7 +726,11 @@ export const useSubtaskManagement = ({
         } else {
           onTasksChange(result.updatedTasks)
         }
-        toast.success(`${affectedCount} subtask${affectedCount !== 1 ? 's' : ''} marked incomplete`)
+        toast.success(
+          getI18n().getFixedT(null, 'tasks')('toasts.subtasks.markedIncomplete', {
+            count: affectedCount
+          })
+        )
       } else {
         toast.error(
           extractErrorMessage(
@@ -753,10 +779,12 @@ export const useSubtaskManagement = ({
 
       if (result.success && result.updatedTasks) {
         onTasksChange(result.updatedTasks)
+        const translate = getI18n().getFixedT(null, 'tasks')
+        const count = result.affectedCount ?? 0
         toast.success(
           dueDate
-            ? `Due date set for ${result.affectedCount} subtask${result.affectedCount !== 1 ? 's' : ''}`
-            : `Due date cleared for ${result.affectedCount} subtask${result.affectedCount !== 1 ? 's' : ''}`
+            ? translate('toasts.subtasks.dueDateSet', { count })
+            : translate('toasts.subtasks.dueDateCleared', { count })
         )
       } else {
         toast.error(
@@ -809,7 +837,9 @@ export const useSubtaskManagement = ({
       if (result.success && result.updatedTasks) {
         onTasksChange(result.updatedTasks)
         toast.success(
-          `Priority set for ${result.affectedCount} subtask${result.affectedCount !== 1 ? 's' : ''}`
+          getI18n().getFixedT(null, 'tasks')('toasts.subtasks.prioritySet', {
+            count: result.affectedCount ?? 0
+          })
         )
       } else {
         toast.error(
@@ -856,7 +886,9 @@ export const useSubtaskManagement = ({
     if (result.success && result.updatedTasks) {
       onTasksChange(result.updatedTasks)
       toast.success(
-        `${result.affectedCount} subtask${result.affectedCount !== 1 ? 's' : ''} deleted`
+        getI18n().getFixedT(null, 'tasks')('toasts.subtasks.deleted', {
+          count: result.affectedCount ?? 0
+        })
       )
     } else {
       toast.error(

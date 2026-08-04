@@ -19,6 +19,7 @@ import { getAgentPreferences, setAgentPreferences } from '../agent/settings'
 import { getDisclosureState, acceptDisclosure } from '../agent/runtime/disclosure-state'
 import { ensureLazyAgentServicesStarted } from '../agent/lazy-services'
 import { createLogger } from '../lib/logger'
+import { getMainI18n } from '../lib/main-i18n'
 
 const logger = createLogger('IPC:AgentLazy')
 
@@ -43,6 +44,23 @@ const CLI_MODEL_OPTIONS: Record<'claude_cli' | 'codex_cli', AgentBackendModelLis
   }
 }
 
+/**
+ * Machine-readable marker for "the lazy agent runtime has not finished
+ * starting". The renderer's `shouldRetryAgentBootstrap`
+ * (agent-chat/agent-context.tsx) matches this raw string to decide whether to
+ * retry a bootstrap invoke, so it must never depend on display text.
+ *
+ * It travels as the thrown Error message because `ipcRenderer.invoke` rejects
+ * with `message` only — a `code` property on a typed error class is dropped at
+ * the boundary. Being the `errors:` i18n key at the same time means the
+ * renderer's `extractErrorMessage` translates it for display, so the user sees
+ * a localized sentence while the retry loop matches the stable key.
+ *
+ * The renderer keeps its own copy of this literal (main and renderer cannot
+ * share a module); the two must stay in sync.
+ */
+export const AGENT_RUNTIME_STARTING_CODE = 'errors:agent.runtimeStarting'
+
 export function registerLazyAgentHandlers(): void {
   unregisterLazyAgentHandlers()
 
@@ -54,7 +72,7 @@ export function registerLazyAgentHandlers(): void {
     AgentChannels.invoke.CREATE_CONVERSATION,
     async (_event, _payload: unknown): Promise<Conversation> => {
       await ensureLazyAgentServicesStarted()
-      throw new Error('Agent runtime is starting. Try again.')
+      throw new Error(AGENT_RUNTIME_STARTING_CODE)
     }
   )
   ipcMain.handle(
@@ -64,7 +82,7 @@ export function registerLazyAgentHandlers(): void {
       _payload: unknown
     ): Promise<{ conversation: Conversation | null; messages: Message[] }> => {
       await ensureLazyAgentServicesStarted()
-      throw new Error('Agent runtime is starting. Try again.')
+      throw new Error(AGENT_RUNTIME_STARTING_CODE)
     }
   )
   ipcMain.handle(
@@ -74,42 +92,44 @@ export function registerLazyAgentHandlers(): void {
       _payload: unknown
     ): Promise<{ ok: boolean; error: string } | { ok: boolean; error?: undefined }> => {
       await ensureLazyAgentServicesStarted()
-      return { ok: false, error: 'Agent runtime is starting. Try again.' }
+      // Envelope, not a rejection: the renderer displays `error` verbatim and
+      // never matches it, so this side stays pre-translated.
+      return { ok: false, error: getMainI18n().t(AGENT_RUNTIME_STARTING_CODE) }
     }
   )
   ipcMain.handle(
     AgentChannels.invoke.CANCEL_TURN,
     async (_event, _payload: unknown): Promise<{ ok: boolean }> => {
       await ensureLazyAgentServicesStarted()
-      throw new Error('Agent runtime is starting. Try again.')
+      throw new Error(AGENT_RUNTIME_STARTING_CODE)
     }
   )
   ipcMain.handle(
     AgentChannels.invoke.APPROVE_TOOL,
     async (_event, _payload: unknown): Promise<{ ok: boolean }> => {
       await ensureLazyAgentServicesStarted()
-      throw new Error('Agent runtime is starting. Try again.')
+      throw new Error(AGENT_RUNTIME_STARTING_CODE)
     }
   )
   ipcMain.handle(
     AgentChannels.invoke.PREVIEW_DIFF,
     async (_event, _payload: unknown): Promise<PreviewDiffResponse> => {
       await ensureLazyAgentServicesStarted()
-      throw new Error('Agent runtime is starting. Try again.')
+      throw new Error(AGENT_RUNTIME_STARTING_CODE)
     }
   )
   ipcMain.handle(
     AgentChannels.invoke.EDIT_TRUST_LIST,
     async (_event, _payload: unknown): Promise<Conversation | null> => {
       await ensureLazyAgentServicesStarted()
-      throw new Error('Agent runtime is starting. Try again.')
+      throw new Error(AGENT_RUNTIME_STARTING_CODE)
     }
   )
   ipcMain.handle(
     AgentChannels.invoke.GET_BACKEND_STATUSES,
     async (): Promise<BackendStatusesResponse> => {
       await ensureLazyAgentServicesStarted()
-      throw new Error('Agent runtime is starting. Try again.')
+      throw new Error(AGENT_RUNTIME_STARTING_CODE)
     }
   )
   ipcMain.handle(AgentChannels.invoke.LIST_BACKEND_MODELS, async (_event, payload: unknown) => {
@@ -135,20 +155,20 @@ export function registerLazyAgentHandlers(): void {
   })
   ipcMain.handle(AgentChannels.invoke.LIST_LOCAL_MODELS, async (): Promise<AgentLocalModelList> => {
     await ensureLazyAgentServicesStarted()
-    throw new Error('Agent runtime is starting. Try again.')
+    throw new Error(AGENT_RUNTIME_STARTING_CODE)
   })
   ipcMain.handle(
     AgentChannels.invoke.TEST_LOCAL_PROVIDER,
     async (): Promise<AgentLocalProviderProbeResult> => {
       await ensureLazyAgentServicesStarted()
-      throw new Error('Agent runtime is starting. Try again.')
+      throw new Error(AGENT_RUNTIME_STARTING_CODE)
     }
   )
   ipcMain.handle(
     AgentChannels.invoke.PROBE_LOCAL_PROVIDER,
     async (): Promise<AgentLocalProviderProbeResult> => {
       await ensureLazyAgentServicesStarted()
-      throw new Error('Agent runtime is starting. Try again.')
+      throw new Error(AGENT_RUNTIME_STARTING_CODE)
     }
   )
   ipcMain.handle(AgentChannels.invoke.GET_DISCLOSURE_STATE, () => getDisclosureState())

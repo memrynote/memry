@@ -1,12 +1,17 @@
 {
   "app": {
-    "quit": "Kilép",
-    "preferences": "Beállítások…"
+    "quit": "Kilépés a MemryNote-ból",
+    "preferences": "Beállítások…",
+    "exit": "Kilépés",
+    "hide": "MemryNote elrejtése",
+    "hideOthers": "Egyebek elrejtése",
+    "services": "Szolgáltatások",
+    "unhide": "Összes megjelenítése"
   },
   "file": {
     "label": "Fájl",
-    "newNote": "Új megjegyzés",
-    "close": "Zárja be az ablakot",
+    "newNote": "Új jegyzet",
+    "close": "Ablak bezárása",
     "closeTab": "Lap bezárása",
     "exportPdf": "Exportálás PDF-be…",
     "openQuickly": "Gyors megnyitás…"
@@ -19,25 +24,32 @@
     "label": "Szerkesztés",
     "undo": "Visszavonás",
     "redo": "Újra",
-    "cut": "Vágás",
+    "cut": "Kivágás",
     "copy": "Másolás",
     "paste": "Beillesztés",
     "selectAll": "Összes kijelölése",
     "find": "Keresés",
-    "speech": "Beszéd"
+    "speech": "Beszéd",
+    "delete": "Törlés",
+    "pasteAndMatchStyle": "Beillesztés és stílus egyeztetése",
+    "startSpeaking": "Beszéd indítása",
+    "stopSpeaking": "Beszéd leállítása"
   },
   "view": {
-    "label": "Megtekintés",
+    "label": "Nézet",
     "reload": "Újratöltés",
-    "toggleDevTools": "Kapcsolja be a Fejlesztői eszközöket",
-    "toggleFullscreen": "Teljes képernyő váltás",
+    "toggleDevTools": "Fejlesztői eszközök be/ki",
+    "toggleFullscreen": "Teljes képernyő be/ki",
     "theme": "Téma",
     "themeDark": "Sötét",
     "themeLight": "Világos",
     "themeSystem": "Rendszer",
     "themeWhite": "Papír",
     "toggleDayPanel": "Napi panel be/ki",
-    "toggleSidebar": "Oldalsáv be/ki"
+    "toggleSidebar": "Oldalsáv be/ki",
+    "actualSize": "Eredeti méret",
+    "zoomIn": "Nagyítás",
+    "zoomOut": "Kicsinyítés"
   },
   "format": {
     "body": "Törzsszöveg",
@@ -55,7 +67,8 @@
     "about": "A MemryNote névjegye",
     "documentation": "Dokumentáció",
     "label": "Súgó",
-    "shortcuts": "Billentyűparancsok"
+    "shortcuts": "Billentyűparancsok",
+    "aboutVersion": "{version} verzió"
   },
   "insert": {
     "attachment": "Melléklet beszúrása…",
@@ -67,6 +80,10 @@
     "taskList": "Feladatlista"
   },
   "window": {
-    "label": "Ablak"
+    "label": "Ablak",
+    "close": "Bezárás",
+    "front": "Összes előrehozása",
+    "minimize": "Kis méret",
+    "zoom": "Nagyítás"
   }
 }

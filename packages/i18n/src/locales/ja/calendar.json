@@ -67,14 +67,16 @@
     "title": "イベントを削除しますか?",
     "local-description": "「{title}」は完全に削除されます。この操作は元に戻すことができません。",
     "google-bound-description": "「{title}」はmemrynoteおよびGoogleカレンダーから削除されます。この操作は元に戻すことができません。",
-    "context-menu-delete-label": "イベントの削除"
+    "context-menu-delete-label": "イベントの削除",
+    "context-menu-add-to-project": "プロジェクトに追加"
   },
   "promote-dialog": {
     "aria": "外部カレンダーイベントを編集する",
     "title": "このイベントを memrynote で編集しますか?",
     "body": "このイベントを編集すると、memrynote にリンクされたコピーが作成されるため、変更は双方向で同期されます。続けますか？",
     "do-not-ask-again": "二度と聞かないでください",
-    "confirm-label": "memrynote で編集する"
+    "confirm-label": "memrynote で編集する",
+    "agent-notice": "Google Calendar への AI のアクセスがオフでも、AI エージェントはこのコピーを読み取れます。元の Google の予定は AI エージェントには見えないままです。"
   },
   "onboarding-dialog": {
     "aria": "デフォルトの Google カレンダーを選択してください",
@@ -181,6 +183,16 @@
     "placeholder": "予定・タスク・リマインダーを検索…"
   },
   "undo": {
-    "moveEvent": "予定を移動"
+    "moveEvent": "予定を移動",
+    "moveTask": "タスクを再スケジュール"
+  },
+  "agent-access-dialog": {
+    "allow": "許可",
+    "aria": "AI に Google Calendar の予定の読み取りを許可するかどうかを選択します",
+    "body": "どちらを選んでも、memrynote では引き続き Google の予定が表示されます。ここで決まるのは、予定について質問したときに AI エージェントがそれらを読み取れるかどうかだけです。",
+    "deny": "許可しない",
+    "footnote": "この設定は「設定 → 統合 → Google Calendar」でいつでも変更できます。",
+    "save-error": "選択内容の保存に失敗しました",
+    "title": "AI に Google Calendar の予定の読み取りを許可しますか?"
   }
 }

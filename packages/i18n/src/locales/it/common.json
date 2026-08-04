@@ -25,7 +25,8 @@
     "expand": "Espandi",
     "collapse": "Crollo",
     "showMore": "+{count, plural, one {# altro} other {# altro}}",
-    "showLess": "Mostra meno"
+    "showLess": "Mostra meno",
+    "undo": "Annulla"
   },
   "tabs": {
     "pin": "Scheda Perno",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "Oggi",
     "yesterday": "Ieri",
-    "daysAgo": "{count, plural, one {# giorno fa} other {# giorni fa}}"
+    "daysAgo": "{count, plural, one {# giorno fa} other {# giorni fa}}",
+    "daysLate": "{count, plural, one {#g di ritardo} many {#g di ritardo} other {#g di ritardo}}",
+    "daysOverdue": "{count, plural, one {# giorno di ritardo} many {# giorni di ritardo} other {# giorni di ritardo}}",
+    "tomorrow": "Domani"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Ogni giorno} other {Ogni # giorni}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Ogni mese su {day}{suffix}} other {Ogni mese # su {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Ogni mese su {week} {day}} other {Ogni mese # su {week} {day}}}",
     "everyNYears": "{count, plural, one {Ogni anno} other {Ogni # anni}}",
-    "repeats": "Si ripete"
+    "repeats": "Si ripete",
+    "ordinal": {
+      "first": "primo",
+      "fourth": "quarto",
+      "last": "ultimo",
+      "second": "secondo",
+      "third": "terzo"
+    },
+    "preset": {
+      "everyWeekday": "Ogni giorno feriale (lun-ven)",
+      "everyYearOnDate": "Ogni anno il {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -102,7 +117,15 @@
       "updateDownloadingPercent": "Download {percent}%",
       "updateInstallingSubtitle": "MemryNote si riavvierà automaticamente.",
       "updateInstallingTitle": "Installazione dell'aggiornamento",
-      "updateRestart": "Riavvia"
+      "updateRestart": "Riavvia",
+      "feedbackPrivacyEmailOptional": "La tua email — solo se la aggiungi, e solo per poterti rispondere",
+      "feedbackPrivacyEmailSignedIn": "L'email del tuo account ({email}), per poterti rispondere",
+      "feedbackPrivacyMessage": "Il tuo messaggio, esattamente come l'hai scritto",
+      "feedbackPrivacyNote": "Nient'altro. Le tue note restano sul tuo dispositivo.",
+      "feedbackPrivacyPlan": "Il tuo piano (free, Plus, Pro o Believer)",
+      "feedbackPrivacyTitle": "Cosa viene inviato",
+      "feedbackPrivacyVersion": "Versione dell'app e sistema operativo",
+      "projects": "Progetti"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Ridimensiona il pannello del giorno",
@@ -180,8 +203,9 @@
       "search": "Cerca",
       "searchNotesTasksJournalInbox": "Cerca note, attività, diario, posta in arrivo...",
       "noResultsFor": "Nessun risultato per “",
-      "rdquo": "rdquo;",
-      "result": "risultato"
+      "result": "risultato",
+      "noResultsForQuery": "Nessun risultato per “{query}”",
+      "resultCount": "{count, plural, one {# risultato} many {# risultati} other {# risultati}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Cerca e fai clic sugli elementi per creare il tuo percorso",
@@ -231,7 +255,8 @@
       "journal": "Diario",
       "calendar": "Calendario",
       "inboxCapture": "Acquisizione della posta in arrivo",
-      "tasks": "Compiti"
+      "tasks": "Compiti",
+      "tags": "Tag"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Modifiche non salvate",
@@ -261,15 +286,15 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Qualcosa è andato storto",
       "anErrorOccurredWhileRenderingThisTabContent": "Si è verificato un errore durante il rendering del contenuto di questa scheda.",
-      "tryAgain": "Riprova"
+      "tryAgain": "Riprova",
+      "sendReport": "Invia report diagnostico"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Icona della nota"
     },
     "componentsTabsUnsavedChangesDialog": {
       "unsavedChanges": "Modifiche non salvate",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; presenta modifiche non salvate. Cosa ti piacerebbe fare?"
+      "unsavedChangesBody": "\"{title}\" contiene modifiche non salvate. Cosa vuoi fare?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Nuovo spazio di lavoro",
@@ -341,7 +366,6 @@
       "logOut": "Esci",
       "signInToSync": "Accedi per sincronizzare",
       "remove": "Rimuovi “",
-      "rdquoFromList": "rdquo; dalla lista?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Questo deposito verrà rimosso dall'app, ma i tuoi file rimarranno sul disco. Puoi sempre aggiungerlo nuovamente in seguito.",
       "cancel": "Annulla",
       "remove2": "Rimuovi",
@@ -352,7 +376,13 @@
       "downloadLocation": "Posizione",
       "changeLocation": "Cambia…",
       "download": "Scarica",
-      "downloadFailed": "Impossibile scaricare la cassaforte"
+      "downloadFailed": "Impossibile scaricare la cassaforte",
+      "deleteFromAccount": "Elimina dall'account",
+      "deleteVaultBody": "Questa operazione rimuove definitivamente dai server di Memry tutti i dati sincronizzati di questo vault e non può essere annullata. I file sul tuo disco non vengono eliminati.",
+      "deleteVaultConfirm": "Elimina dall'account",
+      "deleteVaultFailed": "Impossibile eliminare il vault",
+      "deleteVaultTitle": "Eliminare “{name}” dal tuo account?",
+      "removeVaultTitle": "Rimuovere “{name}” dalla lista?"
     },
     "componentsWindowControls": {
       "searchK": "Cerca (⌘K)",
@@ -425,7 +455,7 @@
       },
       "models": {
         "default": "Predefinito",
-        "label": "Model"
+        "label": "Modello"
       },
       "settings": {
         "reasoning": "Ragionamento"
@@ -450,21 +480,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Solo vault",
+        "computerAccess": "Accesso al computer"
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
-        "label": "Web search"
+        "off": "Disattivata",
+        "label": "Ricerca web"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Autorizzazioni dell'agente: {access}, ricerca web {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Autorizzazioni",
+        "access": "Accesso",
+        "tools": "Strumenti"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Impostazioni del modello dell'agente: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Nessuna corrispondenza"
@@ -479,7 +509,7 @@
     "sidebar": {
       "label": "Barra laterale destra",
       "day": "Giorno",
-      "agent": "Agent",
+      "agent": "Agente",
       "pendingApproval": "{count, plural, one {# in attesa di approvazione} other {# approvazioni in attesa}}",
       "inProgress": "Agent turno in corso",
       "close": "Chiudi agente"
@@ -575,7 +605,7 @@
       "remove": "Rimuovi",
       "removeAria": "Rimuovi widget",
       "resize": "Dimensione",
-      "resizeAria": "Ridimensiona a {{size}}",
+      "resizeAria": "Ridimensiona a {size}",
       "savedFilterDefault": "Oggi",
       "savedFilterHint": "Metti una stella ai filtri nella pagina Attività per usarli qui",
       "savedFilterLabel": "Filtro salvato",
@@ -624,6 +654,11 @@
     "welcome": {
       "body": "La tua casa privata, offline-first. Le note sono cifrate end-to-end — non lasciano mai il tuo dispositivo senza cifratura.",
       "title": "Benvenuto in MemryNote"
+    },
+    "tour": {
+      "next": "Avanti",
+      "previous": "Indietro",
+      "progress": "{current} di {total}"
     }
   },
   "updatePrompt": {
@@ -640,6 +675,165 @@
     "skip": "Salta questa versione"
   },
   "capture": {
-    "focusShortcut": "Attiva campo di cattura"
+    "focusShortcut": "Attiva campo di cattura",
+    "detailHint": "dettaglio",
+    "focusHint": "Q",
+    "submit": "Cattura"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Aggiungi riquadro",
+      "addCreateNote": "Crea la nota \"{query}\"",
+      "addCreateNoteEmpty": "Crea una nuova nota",
+      "addCreatedAt": "Creato il {date}",
+      "addEmpty": "Nessun risultato",
+      "addGroupEvents": "Eventi",
+      "addGroupNotes": "Note",
+      "addGroupTasks": "Attività",
+      "addOnCanvas": "Sul canvas",
+      "addPlaceholder": "Cerca note, attività ed eventi…",
+      "allDay": "Tutto il giorno",
+      "createNoteFailed": "Impossibile creare la nota",
+      "deleted": "Elemento eliminato",
+      "loading": "Caricamento…",
+      "open": "Apri in una scheda",
+      "openToEdit": "Apri per modificare",
+      "untitled": "Senza titolo"
+    },
+    "corruptScene": "Impossibile leggere questo canvas. La modifica è disattivata per non perdere dati.",
+    "createFailed": "Impossibile creare il canvas",
+    "disabledBody": "Questa scheda appartiene a una funzionalità non attiva su questo dispositivo.",
+    "disabledTitle": "Canvas non è attivo",
+    "empty": "Nessun canvas ancora",
+    "libraryStoreFailed": "Impossibile salvare la tua libreria di forme. Le modifiche recenti potrebbero andare perse.",
+    "loadFailed": "Impossibile caricare i canvas",
+    "loading": "Caricamento canvas…",
+    "newCanvas": "Nuovo canvas",
+    "notFound": "Impossibile trovare questo canvas",
+    "openFailed": "Impossibile aprire il canvas",
+    "savedToVault": "Tutte le modifiche vengono salvate automaticamente nel tuo vault",
+    "sectionLabel": "Canvas",
+    "tooLargeToSync": "Questo canvas è troppo grande per la sincronizzazione. È salvato su questo dispositivo, ma non raggiungerà gli altri dispositivi finché non sarà più leggero.",
+    "untitled": "Canvas senza titolo"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Clic sulla riga",
+      "reset": "Ripristina",
+      "shortcutsTab": "Scheda Scorciatoie"
+    },
+    "description": "Percorsi rapidi per muoverti in memrynote, catturare pensieri ed elaborare il lavoro.",
+    "groups": {
+      "general": {
+        "description": "Navigazione e aiuto in tutta l'app.",
+        "title": "Generale"
+      },
+      "inbox": {
+        "description": "Elabora rapidamente gli elementi catturati.",
+        "title": "Posta in arrivo"
+      },
+      "journal": {
+        "description": "Naviga tra le viste del diario e metti a fuoco l'area di scrittura.",
+        "title": "Diario"
+      },
+      "notes": {
+        "description": "Scrivi, formatta e cerca le note.",
+        "title": "Note / Editor"
+      },
+      "settings": {
+        "description": "Apri le impostazioni e personalizza le scorciatoie.",
+        "title": "Impostazioni"
+      },
+      "tabs": {
+        "description": "Spostati tra schede e riquadri.",
+        "title": "Schede e riquadri"
+      },
+      "tasks": {
+        "description": "Filtra, seleziona e completa le attività.",
+        "title": "Attività"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Crea una nota",
+        "keyboardShortcuts": "Apri le scorciatoie da tastiera",
+        "openSettings": "Apri le impostazioni",
+        "quickSearch": "Apri la ricerca rapida",
+        "sidebarSection": "Vai a una sezione della barra laterale",
+        "toggleSidebar": "Mostra/nascondi la barra laterale",
+        "undoTaskAction": "Annulla l'ultima azione sulle attività"
+      },
+      "inbox": {
+        "archiveItem": "Archivia l'elemento selezionato",
+        "chooseQuickFileResult": "Scegli un risultato dell'archiviazione rapida",
+        "clearSelection": "Cancella la selezione o chiudi l'archiviazione rapida",
+        "confirmFiling": "Conferma il pannello di archiviazione",
+        "firstOrLastItem": "Primo o ultimo elemento",
+        "jumpByPage": "Salta di una pagina",
+        "nextItem": "Elemento successivo",
+        "openOriginal": "Apri il link originale",
+        "openQuickFile": "Apri l'archiviazione rapida",
+        "previousItem": "Elemento precedente",
+        "refresh": "Aggiorna la posta in arrivo",
+        "selectAllVisible": "Seleziona tutti gli elementi visibili",
+        "selectItem": "Seleziona l'elemento",
+        "togglePreview": "Mostra/nascondi il pannello di anteprima"
+      },
+      "journal": {
+        "bold": "Grassetto sul testo selezionato",
+        "find": "Trova nel diario",
+        "italic": "Corsivo sul testo selezionato",
+        "link": "Aggiungi o modifica un link",
+        "returnFromOverview": "Torna dalla vista mese o anno",
+        "toggleFullWidth": "Attiva/disattiva il diario a tutta larghezza",
+        "underline": "Sottolinea il testo selezionato"
+      },
+      "notes": {
+        "bold": "Grassetto",
+        "closeOverlays": "Chiudi i pannelli dell'editor",
+        "commandMenu": "Apri il menu comandi dell'editor",
+        "createNote": "Crea una nota",
+        "find": "Trova nella nota",
+        "italic": "Corsivo",
+        "link": "Aggiungi o modifica un link",
+        "saveNote": "Salva la nota corrente",
+        "underline": "Sottolineato"
+      },
+      "settings": {
+        "cancelRecording": "Annulla la registrazione della scorciatoia",
+        "customizeShortcuts": "Personalizza le scorciatoie da tastiera",
+        "openSettings": "Apri le impostazioni",
+        "recordShortcut": "Registra una nuova scorciatoia",
+        "resetShortcut": "Ripristina una scorciatoia predefinita"
+      },
+      "tabs": {
+        "closeAllInPane": "Chiudi tutte le schede del riquadro",
+        "closeSplitPane": "Chiudi il riquadro diviso",
+        "closeTab": "Chiudi la scheda",
+        "duplicateTab": "Duplica la scheda",
+        "focusPane": "Passa a un altro riquadro",
+        "maximizePane": "Ingrandisci il riquadro corrente",
+        "moveTabToPane": "Sposta la scheda in un riquadro",
+        "newTabMenu": "Apri il menu Nuova scheda",
+        "nextTab": "Scheda successiva",
+        "pinTab": "Fissa o sblocca la scheda",
+        "previousTab": "Scheda precedente",
+        "reopenClosedTab": "Riapri la scheda chiusa",
+        "splitDown": "Dividi in basso",
+        "splitRight": "Dividi a destra"
+      },
+      "tasks": {
+        "clearFilters": "Cancella i filtri visibili",
+        "clearSelection": "Cancella la selezione delle attività",
+        "completeSelected": "Completa le attività selezionate",
+        "configureRepeat": "Configura la ripetizione sull'attività attiva",
+        "deleteSelected": "Elimina le attività selezionate",
+        "selectAllVisible": "Seleziona tutte le attività visibili",
+        "skipOccurrence": "Salta l'occorrenza ripetuta",
+        "stopRepeating": "Interrompi la ripetizione dell'attività"
+      }
+    },
+    "or": "o",
+    "then": "poi"
   }
 }

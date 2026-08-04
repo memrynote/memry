@@ -34,7 +34,15 @@
     "createAnother": "Luo toinen",
     "delete": "Poista tehtävä",
     "created": "Luotu {date}",
-    "reminder": "Muistutus"
+    "reminder": "Muistutus",
+    "tags": "Tunnisteet",
+    "priorityLabels": {
+      "high": "Korkea",
+      "low": "Matala",
+      "medium": "Keskitaso",
+      "none": "Ei prioriteettia",
+      "urgent": "Kiireellinen"
+    }
   },
   "filters": {
     "filter": "Suodata",
@@ -43,11 +51,32 @@
     "groupBy": "Ryhmittelyperuste",
     "groupByOptions": "Ryhmittele vaihtoehtojen mukaan",
     "sortAscending": "Lajittele nousevasti",
-    "sortDescending": "Lajittele laskevasti"
+    "sortDescending": "Lajittele laskevasti",
+    "dueDate": {
+      "any": "Mikä tahansa eräpäivä",
+      "custom": "Mukautettu jakso...",
+      "nextWeek": "Ensi viikolla",
+      "none": "Ei eräpäivää",
+      "overdue": "Myöhässä",
+      "thisMonth": "Tässä kuussa",
+      "thisWeek": "Tällä viikolla",
+      "today": "Tänään",
+      "tomorrow": "Huomenna"
+    },
+    "quickPresets": {
+      "dueThisWeek": "Erääntyy tällä viikolla",
+      "highPriority": "Korkea prioriteetti",
+      "noDueDate": "Ei eräpäivää",
+      "overdue": "Myöhässä",
+      "repeating": "Toistuvat"
+    },
+    "repeatTypeOneTime": "Kertaluonteinen",
+    "repeatTypeRepeating": "Toistuva"
   },
   "quickAdd": {
     "label": "Nopea lisätehtävä",
-    "focusDescription": "Keskity nopeaan lisäyssyöttöön"
+    "focusDescription": "Keskity nopeaan lisäyssyöttöön",
+    "placeholder": "Lisää tehtävä…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Sulje tehtävän tiedot",
@@ -75,7 +104,21 @@
     "searchRelated": "Hae liittyviä…"
   },
   "kanban": {
-    "board": "Kanban-levy"
+    "board": "Kanban-levy",
+    "empty": {
+      "default": {
+        "subtitle": "Vedä tehtäviä tähän tai lisää painamalla +",
+        "title": "Ei tehtäviä"
+      },
+      "done": {
+        "subtitle": "Merkitse tehtäviä valmiiksi, niin ne näkyvät täällä",
+        "title": "Ei valmiita tehtäviä"
+      },
+      "schedule": {
+        "subtitle": "Vedä tehtäviä tähän ajoittaaksesi ne uudelleen",
+        "title": "Ei mitään ajoitettuna"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "Projekti päivitetty",
@@ -98,7 +141,53 @@
     "noCompletedSelected": "Valmiita tehtäviä ei ole valittu",
     "completeFailed": "Tehtävien suorittaminen epäonnistui",
     "deleteFailed": "Tehtävien poistaminen epäonnistui",
-    "moveFailed": "Tehtävien siirtäminen epäonnistui"
+    "moveFailed": "Tehtävien siirtäminen epäonnistui",
+    "bulk": {
+      "archived": "{count, plural, one {# tehtävä arkistoitu} other {# tehtävää arkistoitu}}",
+      "completed": "{count, plural, one {# tehtävä merkitty valmiiksi} other {# tehtävää merkitty valmiiksi}}",
+      "deleted": "{count, plural, one {# tehtävä poistettu} other {# tehtävää poistettu}}",
+      "deletedDescription": "Tämän toiminnon voi kumota vielä hetken ajan.",
+      "dueDateRemoved": "{count, plural, one {Eräpäivä poistettu # tehtävästä} other {Eräpäivä poistettu # tehtävästä}}",
+      "dueDateSet": "{count, plural, one {Eräpäivä asetettu # tehtävälle} other {Eräpäivä asetettu # tehtävälle}}",
+      "movedToProject": "{count, plural, one {# tehtävä siirretty kohteeseen {project}} other {# tehtävää siirretty kohteeseen {project}}}",
+      "movedToStatus": "{count, plural, one {# tehtävä siirretty tilaan {status}} other {# tehtävää siirretty tilaan {status}}}",
+      "priorityRemoved": "{count, plural, one {Prioriteetti poistettu # tehtävästä} other {Prioriteetti poistettu # tehtävästä}}",
+      "prioritySet": "{count, plural, one {Prioriteetti {priority} asetettu # tehtävälle} other {Prioriteetti {priority} asetettu # tehtävälle}}",
+      "restored": "{count, plural, one {# tehtävä palautettu} other {# tehtävää palautettu}}",
+      "undoArchive": "{count, plural, one {Arkistoi # tehtävä} other {Arkistoi # tehtävää}}",
+      "undoComplete": "{count, plural, one {Merkitse # tehtävä valmiiksi} other {Merkitse # tehtävää valmiiksi}}",
+      "undoDelete": "{count, plural, one {Poista # tehtävä} other {Poista # tehtävää}}",
+      "undoDueDate": "{count, plural, one {Eräpäivä muutettu # tehtävälle} other {Eräpäivä muutettu # tehtävälle}}",
+      "undoMove": "{count, plural, one {Siirrä # tehtävä} other {Siirrä # tehtävää}}",
+      "undoStatus": "{count, plural, one {Tila → {status} # tehtävälle} other {Tila → {status} # tehtävälle}}",
+      "undoUncomplete": "{count, plural, one {Merkitse # tehtävä keskeneräiseksi} other {Merkitse # tehtävää keskeneräiseksi}}"
+    },
+    "drag": {
+      "archived": "{count, plural, one {Tehtävä arkistoitu} other {# tehtävää arkistoitu}}",
+      "deleted": "{count, plural, one {Tehtävä poistettu} other {# tehtävää poistettu}}",
+      "moved": "{count, plural, one {Siirretty kohteeseen {target}} other {# tehtävää siirretty kohteeseen {target}}}",
+      "movedTo": "Siirretty kohteeseen {target}",
+      "prioritySet": "{count, plural, one {Prioriteetiksi asetettu {priority}} other {# tehtävän prioriteetiksi asetettu {priority}}}",
+      "prioritySetTo": "Prioriteetiksi asetettu {priority}",
+      "rescheduled": "{count, plural, one {Siirretty ajankohtaan {target}} other {# tehtävää siirretty ajankohtaan {target}}}",
+      "rescheduledTo": "Siirretty ajankohtaan {target}",
+      "undoArchive": "{count, plural, one {Arkistoitu # tehtävä} other {Arkistoitu # tehtävää}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, one {# osatehtävä lisätty} other {# osatehtävää lisätty}}",
+      "completed": "{count, plural, one {# osatehtävä merkitty valmiiksi} other {# osatehtävää merkitty valmiiksi}}",
+      "deleted": "{count, plural, one {# osatehtävä poistettu} other {# osatehtävää poistettu}}",
+      "deletedDescription": "Osatehtävä on poistettu",
+      "dueDateCleared": "{count, plural, one {Eräpäivä tyhjennetty # osatehtävästä} other {Eräpäivä tyhjennetty # osatehtävästä}}",
+      "dueDateSet": "{count, plural, one {Eräpäivä asetettu # osatehtävälle} other {Eräpäivä asetettu # osatehtävälle}}",
+      "markedIncomplete": "{count, plural, one {# osatehtävä merkitty keskeneräiseksi} other {# osatehtävää merkitty keskeneräiseksi}}",
+      "movedUnder": "Siirretty kohteen \"{title}\" alle",
+      "parentAndSubtasksCompleted": "Tehtävä ja osatehtävät merkitty valmiiksi",
+      "parentDeletedKeepSubtasks": "Tehtävä poistettu, osatehtävät muunnettu tehtäviksi",
+      "parentDeletedWithSubtasks": "Tehtävä ja osatehtävät poistettu",
+      "prioritySet": "{count, plural, one {Prioriteetti asetettu # osatehtävälle} other {Prioriteetti asetettu # osatehtävälle}}",
+      "promoted": "\"{title}\" ylennetty tehtäväksi"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -154,7 +243,7 @@
       "repeatOn": "Toista",
       "day": "päivä",
       "ofTheMonth": "kuukauden",
-      "the": "The",
+      "the": "Joka",
       "ofTheMonth2": "kuukauden",
       "ends": "Päättyy",
       "never": "Ei koskaan",
@@ -179,7 +268,8 @@
       "nextMonth": "Ensi kuussa",
       "goToToday": "Mene tähän päivään",
       "today": "Tänään",
-      "w": "W"
+      "w": "W",
+      "weekNumber": "Viikko {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Poista päivämäärä",
@@ -197,44 +287,39 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Tällä projektilla ei ole tehtäviä, ja se poistetaan pysyvästi.",
       "thisActionCannotBeUndone": "Tätä toimintoa ei voi kumota.",
       "cancel": "Peruuta",
-      "deleteProject": "Poista projekti"
+      "deleteProject": "Poista projekti",
+      "notesEventsAndFilesStayNotice": "Tämän projektin tehtävät poistetaan. Muistiinpanosi, tapahtumasi ja tiedostosi säilyvät holvissasi."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Poistetaanko tehtävä?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; poistetaan pysyvästi. Tätä toimintoa ei voi kumota.",
-      "deleteTask2": "Poista tehtävä"
+      "deleteTask2": "Poista tehtävä",
+      "deleteConfirmBody": "”{title}” poistetaan pysyvästi. Tätä toimintoa ei voi kumota."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Kaikki osatehtävät suoritettu!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; on kaikki ",
-      "subtask": "osatehtävä",
-      "done": "tehty.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Haluatko merkitä myös vanhemman tehtävän suoritetuksi?",
       "keepTaskOpen": "Pidä tehtävä avoinna",
-      "completeTask": "Suorita tehtävä ✓"
+      "completeTask": "Suorita tehtävä ✓",
+      "allSubtasksDoneBody": "Tehtävän ”{title}” {count, plural, one {# alitehtävä on valmis} other {kaikki # alitehtävää ovat valmiita}}."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Aseta eräpäivä kaikille alatehtäville",
       "setDueDateFor": "Aseta eräpäivä ",
-      "subtask": "osatehtävä",
-      "in": "in \"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Käytä myös suoritettuja osatehtäviä (",
       "clearDate": "Selkeä päivämäärä",
       "cancel": "Peruuta",
-      "apply": "Käytä"
+      "apply": "Käytä",
+      "alsoApplyToCompletedSubtasksCount": "Koskee myös valmiita alitehtäviä ({count})",
+      "setDueDateForSubtasksIn": "Aseta eräpäivä {count, plural, one {# alitehtävälle} other {# alitehtävälle}} tehtävässä ”{title}”"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Aseta prioriteetti kaikille alitehtäville",
       "setPriorityFor": "Aseta prioriteetti kohteelle ",
-      "subtask": "osatehtävä",
-      "in": "in \"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Käytä myös suoritettuja osatehtäviä (",
       "cancel": "Peruuta",
-      "apply": "Käytä"
+      "apply": "Käytä",
+      "alsoApplyToCompletedSubtasksCount": "Koskee myös valmiita alitehtäviä ({count})",
+      "setPriorityForSubtasksIn": "Aseta prioriteetti {count, plural, one {# alitehtävälle} other {# alitehtävälle}} tehtävässä ”{title}”"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Täydellinen tehtävä epätäydellisillä osatehtävillä?",
@@ -252,13 +337,10 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Poistetaanko kaikki alitehtävät?",
-      "thisWillDelete": "Tämä poistaa ",
-      "subtask": "osatehtävä",
-      "from": "alkaen \"",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "Tätä toimintoa ei voi kumota.",
       "cancel": "Peruuta",
-      "deleteAll": "Poista kaikki"
+      "deleteAll": "Poista kaikki",
+      "deleteSubtasksConfirmation": "Tämä poistaa tehtävästä ”{title}” {count, plural, one {# alitehtävän} other {# alitehtävää}}."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Poistetaanko tehtävä alitehtävineen?",
@@ -275,10 +357,13 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Päällekkäinen tehtävä",
       "createACopyOf": "Luo kopio \"",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Myös päällekkäisiä alitehtäviä (",
       "cancel": "Peruuta",
-      "duplicate": "Kopioi "
+      "duplicate": "Kopioi ",
+      "alsoDuplicateSubtasksCount": "Kopioi myös alitehtävät ({count})",
+      "createACopyOfTitle": "Luo kopio tehtävästä ”{title}”",
+      "duplicateTaskOnly": "Kopioi tehtävä",
+      "duplicateWithItems": "Kopioi ({count, plural, one {# kohde} other {# kohdetta}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Tee alatehtävä...",
@@ -324,7 +409,11 @@
       "addTime": "Lisää aikaa",
       "time": "Aika",
       "clearDate": "Selkeä päivämäärä",
-      "backToOptions": "Takaisin vaihtoehtoihin"
+      "backToOptions": "Takaisin vaihtoehtoihin",
+      "nextWeek": "Ensi viikolla",
+      "thisWeekend": "Tänä viikonloppuna",
+      "today": "Tänään",
+      "tomorrow": "Huomenna"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "Muokkaa toistuvaa tehtävää",
@@ -357,7 +446,9 @@
       "due": "Erääntynyt",
       "dueDate": "eräpäivä",
       "search": "haku",
-      "clearAll": "Tyhjennä kaikki"
+      "clearAll": "Tyhjennä kaikki",
+      "tags": "tunnisteet",
+      "tagsIs": "Tunnisteet ovat"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Suodata eräpäivän mukaan",
@@ -421,7 +512,17 @@
       "currentFilters": "Nykyiset suodattimet:",
       "noFiltersApplied": "Ei käytössä suodattimia",
       "cancel": "Peruuta",
-      "saveFilter2": "Tallenna suodatin"
+      "saveFilter2": "Tallenna suodatin",
+      "nameRequired": "Anna tälle suodattimelle nimi",
+      "summaryDue": "Erääntyy: {value}",
+      "summaryDueRange": "Erääntyy: {start} - {end}",
+      "summaryPriorities": "Prioriteetti: {names}",
+      "summaryProjects": "Projekti: {names}",
+      "summaryRepeatOneTime": "Toisto: Vain kertaluonteiset",
+      "summaryRepeatRepeating": "Toisto: Vain toistuvat",
+      "summarySearch": "Haku: \"{query}\"",
+      "summaryTimeWith": "Aika: Kellonajan kanssa",
+      "summaryTimeWithout": "Aika: Ilman kellonaikaa"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Tallennetut suodattimet",
@@ -553,7 +654,16 @@
       "d": "d"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "Lisää tehtävä"
+      "addTask": "Lisää tehtävä",
+      "allDescription": "Luo ensimmäinen tehtäväsi päästäksesi alkuun",
+      "allTitle": "Ei vielä tehtäviä",
+      "completedDescription": "Valmiit tehtävät näkyvät täällä",
+      "completedTitle": "Ei valmiita tehtäviä",
+      "projectDescription": "Lisää tehtävä päästäksesi alkuun",
+      "projectTitle": "Ei tehtäviä tässä projektissa",
+      "projectTitleNamed": "Ei tehtäviä projektissa {name}",
+      "todayDescription": "Olet hoitanut kaiken!",
+      "todayTitle": "Ei mitään erääntymässä tänään"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "ei prioriteettia"
@@ -589,6 +699,12 @@
       "noUpcomingTasks": "Ei tulevia tehtäviä",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Seuraavan 7 päivän aikana erääntyvät tehtävät näkyvät täällä. Suunnittele viikkosi lisäämällä tehtäviä.",
       "addTask2": "Lisää tehtävä"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "on",
+      "search": "Hae...",
+      "selected": "valittu",
+      "tags": "Tunnisteet"
     }
   },
   "phaseI": {
@@ -638,5 +754,147 @@
       "updateFailed": "Muistutuksen päivitys epäonnistui",
       "updated": "Muistutus päivitetty"
     }
+  },
+  "addToProject": {
+    "dialogTitle": "Lisää projektiin",
+    "loading": "Ladataan projekteja…",
+    "menuLabel": "Lisää projektiin",
+    "noProjects": "Ei vielä projekteja",
+    "toastError": "Projektiin lisääminen epäonnistui",
+    "toastSuccess": "Lisätty projektiin {name}"
+  },
+  "itemProjects": {
+    "openProject": "Avaa projekti {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Valitse projekti sivupalkista avataksesi sen etusivun.",
+    "emptyTitle": "Projektia ei ole valittu",
+    "loadError": "Projektin tietojen lataaminen epäonnistui",
+    "overview": {
+      "clear": "Tyhjennä yleiskatsaus",
+      "clearError": "Yleiskatsauksen tyhjentäminen epäonnistui",
+      "create": "Luo yleiskatsaus",
+      "createError": "Yleiskatsauksen luominen epäonnistui",
+      "defaultTitle": "Yleiskatsaus",
+      "loadError": "Yleiskatsauksen lataaminen epäonnistui",
+      "placeholder": "Kirjoita yleiskatsaus tästä projektista…",
+      "saveError": "Yleiskatsauksen tallentaminen epäonnistui",
+      "sectionTitle": "Yleiskatsaus"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Liitä tiedostoja",
+      "fileError": "Kohteen {name} linkittäminen epäonnistui",
+      "fileErrorGeneric": "Tiedostojen tuominen epäonnistui",
+      "filesAdded": "{count, plural, one {# tiedosto lisätty projektiin} other {# tiedostoa lisätty projektiin}}",
+      "label": "Lisää projektiin {name}",
+      "linkAdded": "Linkki lisätty projektiin",
+      "linkError": "Linkin tallentaminen epäonnistui",
+      "placeholder": "Lisää projektiin {name} — kirjoita tehtävä, kirjaa muistiinpano tai liitä linkki…"
+    },
+    "groups": {
+      "older": "Vanhemmat",
+      "past": "Menneet",
+      "today": "Tänään",
+      "tomorrow": "Huomenna",
+      "upcoming": "Tulevat",
+      "yesterday": "Eilen"
+    },
+    "header": {
+      "archiveProject": "Arkistoi projekti",
+      "editProject": "Muokkaa projektia",
+      "menu": "Projektin toiminnot",
+      "toggleRail": "Näytä tai piilota projektin tiedot"
+    },
+    "rail": {
+      "addNote": "Lisää muistiinpano",
+      "created": "Luotu",
+      "details": "Tiedot",
+      "doneOf": "{done}/{total} valmiina",
+      "linked": "Linkitetyt",
+      "linkedSummary": "{notes, plural, one {# muistiinpano} other {# muistiinpanoa}} · {files, plural, one {# tiedosto} other {# tiedostoa}} · {events, plural, one {# tapahtuma} other {# tapahtumaa}}",
+      "overdue": "Myöhässä",
+      "overview": "Yleiskatsaus",
+      "pinError": "Muistiinpanon lisääminen yleiskatsaukseen epäonnistui",
+      "progress": "Edistyminen",
+      "unpinError": "Muistiinpanon poistaminen yleiskatsauksesta epäonnistui",
+      "unpinNote": "Poista {title} yleiskatsauksesta",
+      "updated": "Päivitetty"
+    },
+    "rows": {
+      "openEvent": "Avaa tapahtuma {title}",
+      "openFile": "Avaa tiedosto {title}",
+      "openNote": "Avaa muistiinpano {title}",
+      "openTask": "Avaa tehtävä {title}",
+      "setNoteIcon": "Aseta kuvake kohteelle {title}"
+    },
+    "sections": {
+      "add": "Lisää kohtaan {title}",
+      "emptyEvents": "Ei vielä linkitettyjä tapahtumia.",
+      "emptyFiles": "Ei vielä linkitettyjä tiedostoja.",
+      "emptyNotes": "Ei vielä linkitettyjä muistiinpanoja.",
+      "emptyTasks": "Ei vielä tehtäviä.",
+      "newNoteError": "Muistiinpanon lisääminen epäonnistui",
+      "newNoteTitle": "Nimetön muistiinpano",
+      "viewAll": "Näytä kaikki"
+    },
+    "tabs": {
+      "events": "Tapahtumat",
+      "files": "Tiedostot",
+      "label": "Projektinäkymät",
+      "notes": "Muistiinpanot",
+      "overview": "Yleiskatsaus",
+      "tasks": "Tehtävät"
+    }
+  },
+  "priorityInline": {
+    "high": "korkea",
+    "low": "matala",
+    "medium": "keskitaso",
+    "urgent": "kiireellinen"
+  },
+  "priorityLabels": {
+    "high": "Korkea",
+    "low": "Matala",
+    "medium": "Keskitaso",
+    "none": "Ei prioriteettia",
+    "urgent": "Kiireellinen"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "Valmis",
+      "inProgress": "Kesken",
+      "todo": "Tekemättä"
+    },
+    "validation": {
+      "minStatuses": "Projekteissa on oltava vähintään 2 tilaa",
+      "nameRequired": "Projektin nimi vaaditaan",
+      "nameTooLong": "Projektin nimi saa olla enintään 50 merkkiä",
+      "needsDoneStatus": "Projekteissa on oltava vähintään yksi 'Valmis'-tila",
+      "needsDoneStatusForCompletedTasks": "Projekteissa on oltava vähintään yksi 'Valmis'-tila valmiita tehtäviä varten",
+      "needsTodoStatus": "Projekteissa on oltava vähintään yksi 'Tekemättä'-tila",
+      "needsTodoStatusForNewTasks": "Projekteissa on oltava vähintään yksi 'Tekemättä'-tila uusia tehtäviä varten",
+      "statusNameRequired": "Kaikilla tiloilla on oltava nimi",
+      "statusNamesUnique": "Tilojen nimien on oltava yksilöllisiä",
+      "statusNotFound": "Tilaa ei löytynyt"
+    }
+  },
+  "statusLabels": {
+    "done": "Valmis",
+    "inProgress": "Kesken",
+    "todo": "Tekemättä"
+  },
+  "colors": {
+    "blue": "Sininen",
+    "gray": "Harmaa",
+    "green": "Vihreä",
+    "indigo": "Indigonsininen",
+    "orange": "Oranssi",
+    "pink": "Vaaleanpunainen",
+    "purple": "Violetti",
+    "red": "Punainen",
+    "teal": "Sinivihreä",
+    "yellow": "Keltainen"
   }
 }

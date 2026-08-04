@@ -28,7 +28,8 @@
         "properties": "Proprietăți",
         "commandLine": "Linie de comandă",
         "features": "Funcții",
-        "import": "Import"
+        "import": "Import",
+        "inbox": "Inbox"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Se descarcă {percent}%",
         "downloaded": "Reporniți pentru a instala",
         "idle": "Verificați actualizările"
+      },
+      "autoCheck": {
+        "description": "Verifică versiunile noi la pornire și periodic, cât timp aplicația este deschisă.",
+        "error": "Nu s-a putut actualiza setarea de verificare automată",
+        "label": "Verifică automat actualizările"
+      },
+      "autoDownload": {
+        "description": "Descarcă și instalează versiunile noi în fundal, fără să te întrebe.",
+        "error": "Nu s-a putut actualiza setarea de descărcare automată",
+        "label": "Descarcă automat actualizările"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Partajați valori anonime de utilizare",
         "description": "Sunt doar valori anone – nu sunt trimise niciodată conținut de note, interogări de căutare, căi de fișiere, e-mailuri sau ID-uri brute.",
         "error": "Nu s-a putut actualiza setarea de telemetrie"
+      },
+      "diagnostics": {
+        "building": "Se pregătește raportul…",
+        "consent": "Trimiți o singură dată un raport de diagnosticare? Conține doar jurnale tehnice anonimizate — niciun conținut din note.",
+        "error": "Nu s-a putut trimite raportul de diagnosticare",
+        "notNow": "Nu acum",
+        "previewError": "Nu s-a putut pregăti raportul de diagnosticare",
+        "previewLabel": "Previzualizează conținutul raportului",
+        "send": "Trimite",
+        "sendReport": {
+          "button": "Trimite raport de diagnosticare",
+          "description": "Trimite o singură dată un raport cu jurnale tehnice anonimizate, ca să ne ajuți să rezolvăm o problemă pe care ai întâlnit-o.",
+          "label": "Raport de diagnosticare"
+        },
+        "sending": "Se trimite…",
+        "sent": "Raport trimis — referință {incidentId}",
+        "snapshotLabel": "Instantaneu al dispozitivului",
+        "title": "Trimiți un raport de diagnosticare?"
       }
     },
     "dateFormat": {
@@ -176,7 +205,7 @@
         "emerald": "Smarald",
         "red": "roșu",
         "violet": "violet",
-        "cyan": "Cyan",
+        "cyan": "Cian",
         "pink": "roz",
         "orange": "Portocaliu"
       },
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Aspect",
-      "toolbar": "Bara de instrumente"
+      "toolbar": "Bara de instrumente",
+      "spelling": "Ortografie"
     },
     "width": {
       "label": "Lățimea editorului",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Îngustă",
         "medium": "Mediu",
-        "wide": "Lat"
+        "wide": "Lat",
+        "full": "Lățime completă",
+        "normal": "Normală"
       },
       "error": "Nu s-a putut actualiza lățimea editorului"
     },
@@ -229,6 +261,11 @@
       "label": "Bara de instrumente Sticky Formatting",
       "description": "Afișați întotdeauna bara de instrumente deasupra editorului",
       "error": "Nu s-a putut actualiza modul bară de instrumente"
+    },
+    "spellCheck": {
+      "description": "Subliniază cuvintele scrise greșit în note și jurnale",
+      "error": "Nu s-a putut actualiza verificarea ortografică",
+      "label": "Verifică ortografia"
     }
   },
   "templates": {
@@ -538,7 +575,7 @@
     "steps": {
       "signIn": "Conectați-vă",
       "verify": "Verificați",
-      "link": "Link"
+      "link": "Asociați"
     },
     "progress": "Pasul {current} din {total}: {label}",
     "signIn": {
@@ -640,7 +677,7 @@
       "vaultPickerFolderLabel": "Stochează seifurile în dosarul",
       "vaultPickerPrimaryHint": "Se deschide acum",
       "vaultPickerTitle": "Alege ce să preiei",
-      "vaultRow": "Seif — {{count}} elemente · {{date}}"
+      "vaultRow": "Seif — {count} elemente · {date}"
     }
   },
   "devices": {
@@ -673,7 +710,8 @@
       "removeFailed": "Dispozitivul nu a fost eliminat",
       "renamed": "Redenumită în „{name}”",
       "renameFailed": "Nu s-a putut redenumi dispozitivul"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Conectați dispozitivul nou",
@@ -855,6 +893,11 @@
         "description": "Dezactivează pentru sincronizare într-un singur sens — vei vedea în continuare evenimentele Google în memrynote, dar evenimentele memrynote nu vor apărea în Google.",
         "error": "Actualizarea direcției de sincronizare a eșuat",
         "label": "Arată evenimentele memrynote în Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Dezactivat implicit. Când e activat, agentul AI poate citi evenimentele tale Google; când e dezactivat, nu primește nimic dacă este întrebat despre ele. Oricum le vei vedea în continuare în memrynote.",
+        "error": "Actualizarea accesului AI a eșuat",
+        "label": "Permite AI-ului să citească evenimentele din Google Calendar"
       }
     },
     "sourcePicker": {
@@ -898,7 +941,8 @@
     },
     "groups": {
       "storageUsage": "Utilizarea depozitării",
-      "location": "Locație"
+      "location": "Locație",
+      "accountVaults": "Seifurile din contul tău"
     },
     "loadingStorage": "Se încarcă informațiile de stocare...",
     "signInStorage": "Conectați-vă pentru a vedea utilizarea spațiului de stocare",
@@ -919,6 +963,17 @@
       },
       "warningTitle": "Depozitare aproape plină",
       "warningDescription": "Eliberați spațiu sau actualizați-vă planul pentru a evita problemele de sincronizare."
+    },
+    "accountVaults": {
+      "activeHint": "Comută la alt seif pentru a-l șterge pe acesta.",
+      "cloudOnly": "Nu este pe acest dispozitiv",
+      "delete": "Șterge",
+      "deleteBody": "Această acțiune elimină definitiv toate datele sincronizate ale acestui seif de pe serverele Memry și nu poate fi anulată. Fișierele tale de pe disc nu sunt șterse.",
+      "deleteConfirm": "Șterge din cont",
+      "deleteFailed": "Nu s-a putut șterge seiful",
+      "deleteTitle": "Ștergi „{name}” din contul tău?",
+      "empty": "Încă niciun seif sincronizat în contul tău.",
+      "itemsCount": "{count, plural, one {# element} few {# elemente} other {# de elemente}}"
     }
   },
   "tags": {
@@ -935,7 +990,7 @@
       "rename": "Redenumiți",
       "changeColor": "Schimbați culoarea",
       "mergeInto": "Fuzionați în...",
-      "merge": "Merge",
+      "merge": "Fuzionați",
       "delete": "Ștergeți",
       "changeIcon": "Schimbă pictograma"
     },
@@ -981,7 +1036,7 @@
     "types": {
       "status": "Stare",
       "select": "Selectați",
-      "multiselect": "Multiselect",
+      "multiselect": "Selecție multiplă",
       "text": "Text",
       "number": "Număr",
       "date": "Data",
@@ -1137,16 +1192,12 @@
       "press": "Apăsați ",
       "toToggleThisDialog": "pentru a comuta acest dialog"
     },
-    "componentsSyncDeviceList": {
-      "middot": "punct mijlociu;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Acest dispozitiv a fost eliminat",
       "exporting": "Se exportă...",
       "signOut": "Deconectați-vă"
     },
     "componentsSyncSyncHistory": {
-      "middot": "punct mijlociu; ",
       "activity": "Activitate",
       "filterBySyncType": "Filtrați după tipul de sincronizare",
       "allTypes": "Toate tipurile",
@@ -1160,7 +1211,12 @@
       "last30Days": "Ultimele 30 de zile",
       "loadingSyncHistory": "Se încarcă istoricul de sincronizare",
       "noSyncActivityYet": "Nicio activitate de sincronizare încă",
-      "loadMore": "Încărcați mai multe"
+      "loadMore": "Încărcați mai multe",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, afișați detaliile erorii",
+      "summaryFailed": "Sincronizarea a eșuat",
+      "summaryPulled": "{count, plural, one {# element primit} few {# elemente primite} other {# de elemente primite}}",
+      "summaryPushed": "{count, plural, one {# element trimis} few {# elemente trimise} other {# de elemente trimise}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Ultima sincronizare ",
@@ -1208,102 +1264,103 @@
       "failedToCloseVault": "Seiful nu a putut fi închis",
       "failedToSwitchVault": "Nu s-a putut schimba seiful",
       "failedToUpdateConfig": "Nu s-a putut actualiza configurația",
-      "failedToReindex": "Nu s-a reindexat"
+      "failedToReindex": "Nu s-a reindexat",
+      "failedToLoadTasks": "Nu s-au putut încărca sarcinile"
     }
   },
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Acces la serverul local pentru clienții MCP externi."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Conexiune",
+      "access": "Acces"
     },
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Folosește acest endpoint localhost din Cursor, Claude Desktop sau Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Token Bearer",
+        "description": "Credențială păstrată în memorie pentru această pornire a aplicației."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Rotește tokenul",
+        "description": "Invalidează sesiunile existente ale clienților externi."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "Copiază {label}",
+    "notRunning": "Nu rulează",
+    "toolsBadge": "{count, plural, one {# instrument} few {# instrumente} other {# de instrumente}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Permisiuni agent",
+      "subtitle": "Alege accesul implicit, confirmările și furnizorii locali pentru chatul Agent."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Furnizor local compatibil OpenAI",
+      "actions": "Verificări ale conexiunii"
     },
     "presets": {
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Personalizat"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Presetare"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "URL de bază",
+        "description": "Endpoint /v1 compatibil OpenAI."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Permite endpoint non-loopback",
+        "description": "Datele sunt trimise către endpointul configurat."
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "Alege un model returnat sau introdu unul manual."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "Cheie API",
+        "description": "Credențială opțională stocată în brelocul sistemului de operare.",
+        "configured": "O cheie API este deja stocată în brelocul sistemului de operare."
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "save": "Salvați",
+      "models": "Modele",
+      "test": "Testează conexiunea",
+      "probe": "Detectează instrumentele"
     },
     "status": {
-      "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "disconnected": "Deconectat",
+      "toolsDisabled": "Instrumente dezactivate",
+      "fullTools": "Toate instrumentele activate",
       "checking": "Se verifică…",
       "connected": "Conectat",
       "label": "Conexiune"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Permisiuni agent",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Acces implicit",
+        "description": "Stabilește modul de acces inițial pentru turele noi ale agentului.",
+        "vaultOnly": "Doar seiful",
+        "computerAccess": "Acces la computer"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Confirmă acțiunile",
+        "description": "Alege dacă apelurile instrumentelor rulează automat sau așteaptă aprobarea în chat.",
+        "alwaysAllow": "Permite întotdeauna",
+        "askBeforeChanges": "Întreabă înainte de modificări"
       }
     }
   },
@@ -1368,6 +1425,10 @@
       "tasks": {
         "description": "Lucruri de făcut și date scadente",
         "label": "Sarcini"
+      },
+      "spatialCanvas": {
+        "description": "Panouri spațiale pentru a aranja și lega notele",
+        "label": "Canvas"
       }
     }
   },
@@ -1393,7 +1454,10 @@
         "skipped": "{count} omise",
         "title": "Import finalizat"
       },
-      "title": "Importă din {name}"
+      "title": "Importă din {name}",
+      "chooseDirectory": "Alege dosarul…",
+      "folderKeepsAssets": "Alege dosarul când imaginile se află în afara dosarului propriu al notelor — exporturile păstrează adesea fișierele media într-unul comun.",
+      "previewError": "Previzualizarea a eșuat"
     },
     "header": {
       "subtitle": "Adu-ți notițele și sarcinile din alte aplicații",
@@ -1432,6 +1496,99 @@
       "tasks": "{count, plural, one {# sarcină} few {# sarcini} other {# de sarcini}}",
       "withDueDate": "{count} cu dată",
       "withTags": "{count} etichetate"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Coloane: {columns}",
+        "emptyTitle": "Rând omis, cu titlu gol (coloana „{column}”)",
+        "noHeaders": "Fișierul CSV nu are rând de antet",
+        "titleColumn": "Titlul din „{column}”; celelalte coloane sunt salvate ca proprietăți"
+      },
+      "raindrop": {
+        "csvEmpty": "Fișierul CSV Raindrop este gol",
+        "headerNotFound": "Rândul de antet din CSV-ul Raindrop (coloana „url”) nu a fost găsit",
+        "rowNoUrl": "Rândul {row} a fost omis: fără URL"
+      },
+      "readFileFailed": "Nu s-a putut citi fișierul",
+      "ticktick": {
+        "foldersDropped": "Dosarele TickTick nu au echivalent în Memry și au fost eliminate",
+        "headerNotFound": "Rândul de antet din CSV-ul TickTick („Folder Name”) nu a fost găsit",
+        "reminderNoAnchor": "Mementoul „{reminder}” a fost omis (fără dată de referință)",
+        "subtaskParentMissing": "Părintele subsarcinii „{title}” nu a fost găsit; a fost importată la nivelul principal",
+        "unknownPriority": "Prioritate TickTick necunoscută {priority} → niciuna",
+        "unsupportedRepeat": "Regula de repetare „{rule}” nu este acceptată și a fost omisă"
+      },
+      "todoist": {
+        "emptyTitle": "Sarcina cu conținut gol a fost importată ca (fără titlu)",
+        "headerNotFound": "Nu este un CSV Todoist: lipsește rândul de antet TYPE",
+        "orphanComment": "Comentariu fără sarcină precedentă, omis",
+        "sectionFlattened": "Secțiunea „{section}” a fost aplatizată",
+        "subtaskNoParent": "Subsarcina „{title}” nu are părinte la indentarea {indent}; a fost importată la nivelul principal",
+        "unknownPriority": "Prioritate necunoscută {priority} → niciuna",
+        "unparsedDate": "Data „{date}” nu a putut fi interpretată"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Se copiază baza de date Apple Notes…"
+      },
+      "bear": {
+        "scanning": "Se scanează exportul Bear…"
+      },
+      "csv": {
+        "importing": "Se importă notițele CSV…"
+      },
+      "evernote": {
+        "scanning": "Se scanează fișierele .enex…"
+      },
+      "html": {
+        "scanning": "Se scanează fișierele HTML…"
+      },
+      "importingItem": "Se importă {title}",
+      "raindrop": {
+        "importing": "Se importă marcajele Raindrop…"
+      },
+      "roam": {
+        "reading": "Se citește exportul Roam…"
+      },
+      "scanningExport": "Se scanează exportul…",
+      "scanningFiles": "Se scanează fișierele…",
+      "ticktick": {
+        "importing": "Se importă sarcinile TickTick…"
+      },
+      "todoist": {
+        "importing": "Se importă sarcinile Todoist…"
+      }
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Se încarcă…",
+      "subtitle": "Memento zilnic de revizuire și preferințe pentru inbox.",
+      "title": "Inbox"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Un îndemn blând, zilnic, când ai elemente în inbox.",
+        "label": "Amintește-mi să îmi revizuiesc inboxul"
+      },
+      "error": "Nu s-a putut actualiza mementoul.",
+      "group": "Memento zilnic de revizuire",
+      "test": {
+        "button": "Trimite un test",
+        "description": "Declanșează mementoul acum pentru a verifica notificările sistemului.",
+        "label": "Notificare de test",
+        "sent": "Notificarea de test a fost trimisă.",
+        "sentHint": "Dacă nu apare nimic, permite notificările pentru MemryNote în setările sistemului.",
+        "unsupported": "Acest dispozitiv nu poate afișa notificări pe desktop."
+      },
+      "time": {
+        "description": "Ora locală, pe fiecare dispozitiv.",
+        "hourLabel": "Ora",
+        "label": "Ora mementoului",
+        "minuteLabel": "Minutul",
+        "periodLabel": "AM sau PM"
+      }
     }
   }
 }

@@ -5,9 +5,14 @@ import { InboxCaptureHeatmap } from './inbox-capture-heatmap'
 import { InboxStatsCards } from './inbox-stats-cards'
 import { InboxTypeDistribution } from './inbox-type-distribution'
 
+// Stands in for the real bundle: the last key segment, prefixed with `count`
+// when the caller passes one (the heatmap cell titles are an ICU plural).
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
-    t: (key: string) => key.split('.').at(-1) ?? key
+    t: (key: string, options?: { count?: number }) => {
+      const label = key.split('.').at(-1) ?? key
+      return options?.count === undefined ? label : `${options.count} ${label}`
+    }
   })
 }))
 

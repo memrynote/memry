@@ -1,4 +1,3 @@
-import { BrowserWindow } from 'electron'
 import { eq } from 'drizzle-orm'
 import {
   createInboxCommands,
@@ -19,6 +18,7 @@ import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 import { getDatabase, requireDatabase } from '../database'
 import { generateId } from '../lib/id'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import {
   resolveAttachmentUrl,
   resolveInboxAttachmentFilePath,
@@ -60,9 +60,7 @@ import { publishInboxUpserted, syncInboxCreate, syncInboxUpdate } from './runtim
 const logger = createLogger('Inbox:Domain')
 
 function emitInboxEvent(channel: string, data: unknown): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, data)
-  })
+  broadcastToAllWindows(channel, data)
 }
 
 function getItemTags(db: ReturnType<typeof getDatabase>, itemId: string): string[] {

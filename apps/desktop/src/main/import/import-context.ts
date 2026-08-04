@@ -1,5 +1,6 @@
 import { BrowserWindow } from 'electron'
 import { ImportChannels } from '@memry/contracts/import-channels'
+import type { ImportMessage } from '@memry/contracts/import-channels'
 import { createLogger } from '../lib/logger'
 import type { ImportContext, ImportProgress, ImportSummary } from './types'
 
@@ -18,7 +19,7 @@ export function createImportContext(importId: string, signal: AbortSignal): Impo
   let completed = 0
   let total = 0
   let phase: ImportProgress['phase'] = 'scanning'
-  let status = ''
+  let status: string | ImportMessage = ''
   const failed: { item: string; error: string }[] = []
 
   const toSummary = (): ImportSummary => ({ imported, attachments, skipped, failed })

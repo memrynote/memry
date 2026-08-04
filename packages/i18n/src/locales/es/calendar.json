@@ -67,14 +67,16 @@
     "title": "¿Eliminar evento?",
     "local-description": "\"{title}\" se eliminará permanentemente. Esta acción no se puede deshacer.",
     "google-bound-description": "\"{title}\" se eliminará de memrynote y Google Calendar. Esta acción no se puede deshacer.",
-    "context-menu-delete-label": "Eliminar evento"
+    "context-menu-delete-label": "Eliminar evento",
+    "context-menu-add-to-project": "Añadir al proyecto"
   },
   "promote-dialog": {
     "aria": "Editar evento del calendario externo",
     "title": "¿Editar este evento en memrynote?",
     "body": "La edición de este evento creará una copia vinculada en memrynote para que los cambios se sincronicen en ambos sentidos. ¿Continuar?",
     "do-not-ask-again": "no vuelvas a preguntar",
-    "confirm-label": "Editar en memrynote"
+    "confirm-label": "Editar en memrynote",
+    "agent-notice": "El agente de IA puede leer esta copia, aunque el acceso de la IA a Google Calendar esté desactivado. Tu evento original de Google sigue oculto para él."
   },
   "onboarding-dialog": {
     "aria": "Elige tu calendario de Google predeterminado",
@@ -181,6 +183,16 @@
     "placeholder": "Buscar eventos, tareas, recordatorios…"
   },
   "undo": {
-    "moveEvent": "Mover evento"
+    "moveEvent": "Mover evento",
+    "moveTask": "Reprogramar tarea"
+  },
+  "agent-access-dialog": {
+    "allow": "Permitir",
+    "aria": "Elige si la IA puede leer tus eventos de Google Calendar",
+    "body": "De cualquier forma, seguirás viendo tus eventos de Google en memrynote. Esto solo decide si el agente de IA puede leerlos cuando le preguntes por tu agenda.",
+    "deny": "No permitir",
+    "footnote": "Puedes cambiarlo cuando quieras en Configuración → Integraciones → Google Calendar.",
+    "save-error": "No se pudo guardar tu elección",
+    "title": "¿Permitir que la IA lea tus eventos de Google Calendar?"
   }
 }

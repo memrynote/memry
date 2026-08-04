@@ -52,7 +52,7 @@
       "italic": "Kursiv",
       "underline": "Understrek",
       "strikethrough": "Gjennomstreking",
-      "link": "Link",
+      "link": "Lenke",
       "image": "Bilde",
       "moreOptions": "Flere alternativer",
       "heading1": "Overskrift 1",
@@ -113,9 +113,9 @@
       "december": "desember"
     },
     "monthShort": {
-      "january": "Jan",
+      "january": "jan",
       "february": "feb",
-      "march": "Mar",
+      "march": "mar",
       "april": "apr",
       "may": "mai",
       "june": "jun",
@@ -250,7 +250,7 @@
     "errorPrefix": "Feil:"
   },
   "export": {
-    "noteTitle": "Journal - {month} {day}, {year}"
+    "noteTitle": "Journal - {day}. {month} {year}"
   },
   "note": {
     "generatedTitle": "Merk - {date}",

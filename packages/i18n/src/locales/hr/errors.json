@@ -22,7 +22,19 @@
     "writeFailed": "Spremanje ove bilješke nije uspjelo. Provjerite prostor na disku i dopuštenja.",
     "readFailed": "Čitanje ove bilješke nije uspjelo. Datoteka je možda zaključana ili oštećena.",
     "deleteFailed": "Brisanje ove bilješke nije uspjelo. Provjerite dopuštenja datoteke.",
-    "invalidPath": "Put bilješke nije valjan."
+    "invalidPath": "Put bilješke nije valjan.",
+    "applyTemplateFailed": "Primjena predloška nije uspjela",
+    "createFailed": "Stvaranje bilješke nije uspjelo",
+    "deleteVersionFailed": "Brisanje verzije nije uspjelo",
+    "exportHtmlFailed": "Izvoz u HTML nije uspio",
+    "exportPdfFailed": "Izvoz u PDF nije uspio",
+    "importFilesFailed": "Uvoz datoteka nije uspio",
+    "moveFailed": "Premještanje bilješke nije uspjelo",
+    "renameFailed": "Preimenovanje bilješke nije uspjelo",
+    "reorderFailed": "Promjena redoslijeda bilješki nije uspjela",
+    "restoreVersionFailed": "Vraćanje verzije nije uspjelo",
+    "setLocalOnlyFailed": "Postavljanje opcije samo lokalno nije uspjelo",
+    "updateFailed": "Ažuriranje bilješke nije uspjelo"
   },
   "database": {
     "connectionFailed": "Nije moguće povezati se s lokalnom bazom podataka. Pokušajte ponovo pokrenuti aplikaciju.",
@@ -41,7 +53,14 @@
     "fileTooLarge": "Ova je datoteka prevelika za prilaganje.",
     "unsupportedType": "Ova vrsta datoteke nije podržana.",
     "writeFailed": "Spremanje privitka nije uspjelo. Provjerite prostor na disku.",
-    "deleteFailed": "Brisanje privitka nije uspjelo."
+    "deleteFailed": "Brisanje privitka nije uspjelo.",
+    "downloadFailed": "Preuzimanje privitka nije uspjelo",
+    "downloadProgressFailed": "Dohvaćanje napretka preuzimanja nije uspjelo",
+    "uploadFailed": "Prijenos privitka nije uspio",
+    "uploadProgressFailed": "Dohvaćanje napretka prijenosa nije uspjelo",
+    "emptyFile": "Nije moguće prenijeti praznu datoteku",
+    "exceedsMaxSize": "Datoteka je prevelika: {size} premašuje ograničenje od {limit}",
+    "exceedsPlanLimit": "Datoteka je veća nego što vaš plan dopušta: {size} premašuje {limit}"
   },
   "encryption": {
     "failed": "Šifriranje podataka nije uspjelo. Vaše ključeve će možda trebati regenerirati.",
@@ -74,6 +93,188 @@
     "securityQuarantinePermanent": "Stavku sinkronizacije nije bilo moguće provjeriti i stavljena je u karantenu radi sigurnosti.",
     "securityQuarantineRetry": "Stavka sinkronizacije nije uspjela provjeru potpisa i pokušat će se ponovno.",
     "certificatePinPaused": "Nije moguće provjeriti sigurnu vezu s poslužiteljem za sinkronizaciju. Sinkronizacija je pauzirana radi vaše zaštite.",
-    "paymentRequired": "Za korištenje hostane šifrirane sinkronizacije potreban je plaćeni plan sinkronizacije."
+    "paymentRequired": "Za korištenje hostane šifrirane sinkronizacije potreban je plaćeni plan sinkronizacije.",
+    "attachmentUploadFailed": "Nije moguće sinkronizirati privitak „{filename}”. Ostaje na ovom uređaju.",
+    "fileTooLarge": "Ova je datoteka veća nego što vaš plan dopušta. Nadogradite plan za sinkronizaciju većih datoteka.",
+    "vaultRecovered": "Ključ trezora je vraćen. Sinkronizacija se nastavlja.",
+    "historyFetchFailed": "Dohvaćanje povijesti sinkronizacije nije uspjelo",
+    "keyPersistenceFailed": "Sigurno spremanje ključa za šifriranje nije uspjelo. Registracija uređaja je poništena. Pokušajte ponovno.",
+    "serverUnreachable": "Nije moguće povezati se s poslužiteljem za sinkronizaciju. Provjerite internetsku vezu.",
+    "updateSyncedSettingFailed": "Ažuriranje sinkronizirane postavke nije uspjelo",
+    "requestTimedOut": "Zahtjev za sinkronizaciju je istekao. Provjerite internetsku vezu."
+  },
+  "agent": {
+    "conversationBusy": "Razgovor je zauzet",
+    "runtimeStarting": "Agent se pokreće. Pokušajte ponovno."
+  },
+  "ai": {
+    "inlineDisabled": "AI uređivanje u tekstu je onemogućeno",
+    "listOllamaModelsFailed": "Dohvaćanje Ollama modela nije uspjelo"
+  },
+  "auth": {
+    "approveLinkingFailed": "Odobravanje povezivanja nije uspjelo",
+    "cannotRemoveCurrentDevice": "Trenutni uređaj nije moguće ukloniti",
+    "completeLinkingFailed": "Dovršavanje povezivanja nije uspjelo",
+    "confirmRecoveryPhraseFailed": "Potvrda fraze za oporavak nije uspjela",
+    "fetchSasCodeFailed": "Dohvaćanje SAS koda nije uspjelo",
+    "finalizeVaultChoiceFailed": "Dovršavanje odabira trezora nije uspjelo",
+    "initiateOAuthFailed": "Pokretanje OAuth prijave nije uspjelo",
+    "invalidRecoveryPhraseFormat": "Neispravan format fraze za oporavak",
+    "linkDeviceQrFailed": "Povezivanje uređaja putem QR koda nije uspjelo",
+    "linkRecoveryPhraseFailed": "Povezivanje putem fraze za oporavak nije uspjelo",
+    "notAuthenticated": "Niste prijavljeni",
+    "pickFolderFailed": "Odabir mape nije uspio",
+    "recoveryPhraseMismatch": "Fraza za oporavak se ne podudara. Pokušajte ponovno.",
+    "removeDeviceFailed": "Uklanjanje uređaja nije uspjelo",
+    "renameDeviceFailed": "Preimenovanje uređaja nije uspjelo",
+    "requestOtpFailed": "Traženje OTP koda nije uspjelo",
+    "resendOtpFailed": "Ponovno slanje OTP koda nije uspjelo",
+    "sessionExpired": "Sesija je istekla. Prijavite se ponovno.",
+    "setupFirstDeviceOAuthFailed": "Postavljanje prvog uređaja putem OAuth-a nije uspjelo",
+    "verifyOtpFailed": "Provjera OTP koda nije uspjela"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "Stavka je već označena zabilješkom",
+    "notFound": "Zabilješka nije pronađena"
+  },
+  "calendar": {
+    "connectProviderFailed": "Povezivanje davatelja kalendara nije uspjelo",
+    "createEventFailed": "Stvaranje događaja u kalendaru nije uspjelo",
+    "deleteEventFailed": "Brisanje događaja iz kalendara nije uspjelo",
+    "disconnectProviderFailed": "Odspajanje davatelja kalendara nije uspjelo",
+    "eventNotFound": "Događaj u kalendaru nije pronađen",
+    "googleNotConnected": "Google Calendar nije povezan na ovom uređaju",
+    "listGoogleCalendarsFailed": "Dohvaćanje Google kalendara nije uspjelo",
+    "onlyGoogleSourcesRetryable": "Samo se Google izvori kalendara mogu ponovno pokušati",
+    "onlySourcesSelectable": "Mogu se odabrati samo izvori kalendara",
+    "promoteExternalEventFailed": "Promicanje vanjskog događaja kalendara nije uspjelo",
+    "refreshProviderFailed": "Osvježavanje davatelja kalendara nije uspjelo",
+    "retryGoogleSourceSyncFailed": "Ponovni pokušaj sinkronizacije Google Calendar izvora nije uspio",
+    "setDefaultGoogleCalendarFailed": "Postavljanje zadanog Google kalendara nije uspjelo",
+    "signInBeforeRefresh": "Prijavite se u memrynote prije osvježavanja Google Calendara",
+    "sourceNotFound": "Izvor kalendara nije pronađen",
+    "syncFailed": "Sinkronizacija nije uspjela",
+    "updateEventFailed": "Ažuriranje događaja u kalendaru nije uspjelo",
+    "updateSourceSelectionFailed": "Ažuriranje odabira izvora kalendara nije uspjelo"
+  },
+  "folder": {
+    "createFailed": "Stvaranje mape nije uspjelo",
+    "deleteFailed": "Brisanje mape nije uspjelo",
+    "renameFailed": "Preimenovanje mape nije uspjelo",
+    "setConfigFailed": "Postavljanje konfiguracije mape nije uspjelo"
+  },
+  "folderView": {
+    "deleteViewFailed": "Brisanje prikaza nije uspjelo",
+    "setConfigFailed": "Postavljanje konfiguracije nije uspjelo",
+    "setViewFailed": "Postavljanje prikaza nije uspjelo"
+  },
+  "googleCalendar": {
+    "accessDenied": "Pristup Google Calendaru je odbijen. Možete se ponovno povezati kad god budete spremni.",
+    "connectFailed": "Povezivanje s Google Calendarom nije uspjelo. Pokušajte ponovno za koji trenutak.",
+    "misconfigured": "Google Calendar nije ispravno konfiguriran. Obratite se podršci ako se ovo nastavi događati.",
+    "reconnectNeeded": "Vaša veza s Google Calendarom je istekla. Odspojite se i povežite ponovno.",
+    "scopeMissing": "Nismo mogli pristupiti vašem Google Calendaru jer dopuštenje za Kalendar nije odobreno. Pokušajte ponovno i pazite da potvrdni okvir Kalendar ostane označen na Google zaslonu za privolu.",
+    "temporarilyUnavailable": "Google Calendar je privremeno nedostupan. Pokušajte ponovno uskoro."
+  },
+  "importer": {
+    "cancelFailed": "Otkazivanje nije uspjelo",
+    "fileSelectionFailed": "Odabir datoteke nije uspio",
+    "importFailed": "Uvoz nije uspio",
+    "listFailed": "Dohvaćanje popisa uvoznika nije uspjelo",
+    "previewFailed": "Pretpregled nije uspio"
+  },
+  "project": {
+    "archiveFailed": "Arhiviranje projekta nije uspjelo",
+    "captureLinkFailed": "Bilježenje poveznice nije uspjelo",
+    "createFailed": "Stvaranje projekta nije uspjelo",
+    "deleteFailed": "Brisanje projekta nije uspjelo",
+    "importFilesFailed": "Uvoz datoteka nije uspio",
+    "linkItemFailed": "Povezivanje stavke nije uspjelo",
+    "listForItemFailed": "Dohvaćanje projekata za stavku nije uspjelo",
+    "reorderFailed": "Promjena redoslijeda projekata nije uspjela",
+    "setHomeNoteFailed": "Postavljanje početne bilješke nije uspjelo",
+    "unlinkItemFailed": "Uklanjanje veze sa stavkom nije uspjelo",
+    "updateFailed": "Ažuriranje projekta nije uspjelo",
+    "updatePinnedFailed": "Ažuriranje stanja prikvačenosti nije uspjelo"
+  },
+  "property": {
+    "alreadyExists": "Svojstvo „{name}” već postoji",
+    "createDefinitionFailed": "Stvaranje definicije svojstva nije uspjelo",
+    "entityNotFound": "Entitet nije pronađen",
+    "notFound": "Svojstvo „{name}” nije pronađeno",
+    "renameFailed": "Preimenovanje svojstva nije uspjelo",
+    "setCalendarVisibilityFailed": "Postavljanje vidljivosti svojstva u kalendaru nije uspjelo",
+    "setFailed": "Postavljanje svojstava nije uspjelo",
+    "updateDefinitionFailed": "Ažuriranje definicije svojstva nije uspjelo"
+  },
+  "reminder": {
+    "createFailed": "Stvaranje podsjetnika nije uspjelo",
+    "dismissAllFailed": "Odbacivanje podsjetnika nije uspjelo",
+    "dismissFailed": "Odbacivanje podsjetnika nije uspjelo",
+    "notFound": "Podsjetnik nije pronađen",
+    "snoozeFailed": "Odgoda podsjetnika nije uspjela",
+    "updateFailed": "Ažuriranje podsjetnika nije uspjelo"
+  },
+  "savedFilter": {
+    "notFound": "Spremljeni filtar nije pronađen"
+  },
+  "search": {
+    "rebuildFailed": "Ponovna izgradnja nije uspjela"
+  },
+  "settings": {
+    "modelAlreadyLoading": "Model se već učitava",
+    "modelLoadFailed": "Učitavanje modela nije uspjelo",
+    "shortcutInUse": "Prečac {shortcut} već je u upotrebi",
+    "terminalCommandInstallFailed": "Instalacija naredbe terminala nije uspjela",
+    "terminalCommandUninstallFailed": "Deinstalacija naredbe terminala nije uspjela",
+    "unknownVault": "Nepoznat trezor",
+    "voiceModelDownloadFailed": "Preuzimanje glasovnog modela nije uspjelo"
+  },
+  "tag": {
+    "categoryNameRequired": "Naziv kategorije je obavezan",
+    "createCategoryFailed": "Stvaranje kategorije oznaka nije uspjelo",
+    "deleteCategoryFailed": "Brisanje kategorije oznaka nije uspjelo",
+    "deleteFailed": "Brisanje oznake nije uspjelo",
+    "listCategoriesFailed": "Dohvaćanje kategorija oznaka nije uspjelo",
+    "mergeFailed": "Spajanje oznaka nije uspjelo",
+    "mergeSameTag": "Izvorna i odredišna oznaka su iste",
+    "pinNoteFailed": "Prikvačivanje bilješke nije uspjelo",
+    "removeFromNoteFailed": "Uklanjanje oznake s bilješke nije uspjelo",
+    "renameCategoryFailed": "Preimenovanje kategorije oznaka nije uspjelo",
+    "renameFailed": "Preimenovanje oznake nije uspjelo",
+    "reorderFailed": "Promjena redoslijeda oznaka nije uspjela",
+    "unpinNoteFailed": "Otkvačivanje bilješke nije uspjelo",
+    "updateColorFailed": "Ažuriranje boje oznake nije uspjelo",
+    "updateIconFailed": "Ažuriranje ikone oznake nije uspjelo"
+  },
+  "task": {
+    "archiveFailed": "Arhiviranje zadatka nije uspjelo",
+    "archiveManyFailed": "Arhiviranje zadataka nije uspjelo",
+    "completeFailed": "Dovršavanje zadatka nije uspjelo",
+    "completeManyFailed": "Dovršavanje zadataka nije uspjelo",
+    "convertToSubtaskFailed": "Pretvaranje u podzadatak nije uspjelo",
+    "convertToTaskFailed": "Pretvaranje u zadatak nije uspjelo",
+    "createFailed": "Stvaranje zadatka nije uspjelo",
+    "deleteFailed": "Brisanje zadatka nije uspjelo",
+    "deleteManyFailed": "Brisanje zadataka nije uspjelo",
+    "duplicateFailed": "Dupliciranje zadatka nije uspjelo",
+    "moveFailed": "Premještanje zadatka nije uspjelo",
+    "moveManyFailed": "Premještanje zadataka nije uspjelo",
+    "reorderFailed": "Promjena redoslijeda zadataka nije uspjela",
+    "unarchiveFailed": "Vraćanje zadatka iz arhive nije uspjelo",
+    "uncompleteFailed": "Označavanje zadatka kao nedovršenog nije uspjelo",
+    "updateFailed": "Ažuriranje zadatka nije uspjelo"
+  },
+  "taskStatus": {
+    "createFailed": "Stvaranje statusa nije uspjelo",
+    "deleteFailed": "Brisanje statusa nije uspjelo",
+    "reorderFailed": "Promjena redoslijeda statusa nije uspjela",
+    "updateFailed": "Ažuriranje statusa nije uspjelo"
+  },
+  "template": {
+    "createFailed": "Stvaranje predloška nije uspjelo",
+    "deleteFailed": "Brisanje predloška nije uspjelo",
+    "duplicateFailed": "Dupliciranje predloška nije uspjelo",
+    "updateFailed": "Ažuriranje predloška nije uspjelo"
   }
 }

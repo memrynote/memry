@@ -77,6 +77,7 @@ import {
   syncTagCategoryUpdate,
   syncTagCategoryDelete
 } from '../tags/runtime-effects'
+import { getMainI18n } from '../lib/main-i18n'
 
 const log = createLogger('TagsHandlers')
 
@@ -103,7 +104,7 @@ function requireIndexDatabase() {
   try {
     return getIndexDatabase()
   } catch {
-    throw new Error('No vault is open. Please open a vault first.')
+    throw new Error(getMainI18n().t('errors:ipc.noVaultOpen'))
   }
 }
 
@@ -241,7 +242,7 @@ export function registerTagsHandlers(): void {
         })
 
         return { success: true } as TagOperationResponse
-      }, 'Failed to pin note')
+      }, 'errors:tag.pinNoteFailed')
     )
   )
 
@@ -261,7 +262,7 @@ export function registerTagsHandlers(): void {
         })
 
         return { success: true } as TagOperationResponse
-      }, 'Failed to unpin note')
+      }, 'errors:tag.unpinNoteFailed')
     )
   )
 
@@ -306,7 +307,7 @@ export function registerTagsHandlers(): void {
         emitTagEvent('notes:tags-changed', {})
 
         return { success: true, affectedNotes } as RenameTagResponse
-      }, 'Failed to rename tag')
+      }, 'errors:tag.renameFailed')
     )
   )
 
@@ -329,7 +330,7 @@ export function registerTagsHandlers(): void {
         emitTagEvent('notes:tags-changed', {})
 
         return { success: true } as TagOperationResponse
-      }, 'Failed to update tag color')
+      }, 'errors:tag.updateColorFailed')
     )
   )
 
@@ -347,7 +348,7 @@ export function registerTagsHandlers(): void {
         emitTagEvent('notes:tags-changed', {})
 
         return { success: true } as TagOperationResponse
-      }, 'Failed to update tag icon')
+      }, 'errors:tag.updateIconFailed')
     )
   )
 
@@ -384,7 +385,7 @@ export function registerTagsHandlers(): void {
         emitTagEvent('notes:tags-changed', {})
 
         return { success: true, affectedNotes } as DeleteTagResponse
-      }, 'Failed to delete tag')
+      }, 'errors:tag.deleteFailed')
     )
   )
 
@@ -412,7 +413,7 @@ export function registerTagsHandlers(): void {
         emitTagEvent('notes:tags-changed', {})
 
         return { success: true } as TagOperationResponse
-      }, 'Failed to remove tag from note')
+      }, 'errors:tag.removeFromNoteFailed')
     )
   )
 
@@ -440,7 +441,7 @@ export function registerTagsHandlers(): void {
         const normalizedTarget = trimmedTarget.toLowerCase()
 
         if (normalizedSource === normalizedTarget) {
-          return { success: false, error: 'Source and target tags are the same' }
+          return { success: false, error: getMainI18n().t('errors:tag.mergeSameTag') }
         }
 
         const noteResult = mergeTagInNotes(indexDb, input.source, input.target)
@@ -481,7 +482,7 @@ export function registerTagsHandlers(): void {
           success: true,
           affectedItems: noteResult.affected + taskResult.affected
         }
-      }, 'Failed to merge tags')
+      }, 'errors:tag.mergeFailed')
     )
   )
 
@@ -491,21 +492,28 @@ export function registerTagsHandlers(): void {
       return { success: true, categories: listTagCategories(requireDatabase()) }
     } catch (error) {
       log.error('Failed to list tag categories', error)
-      return { success: false, error: extractErrorMessage(error, 'Failed to list tag categories') }
+      return {
+        success: false,
+        error: extractErrorMessage(error, getMainI18n().t('errors:tag.listCategoriesFailed'))
+      }
     }
   })
 
   // tags:create-category - Create a tag category
   ipcMain.handle(TagsChannels.invoke.CREATE_CATEGORY, (_e, { name }: { name: string }) => {
     try {
-      if (!name?.trim()) return { success: false, error: 'Category name is required' }
+      if (!name?.trim())
+        return { success: false, error: getMainI18n().t('errors:tag.categoryNameRequired') }
       const category = createTagCategory(requireDatabase(), name)
       syncTagCategoryCreate(category.id)
       emitTagEvent(TagsChannels.events.CATEGORIES_CHANGED, { categoryId: category.id })
       return { success: true, category }
     } catch (error) {
       log.error('Failed to create tag category', error)
-      return { success: false, error: extractErrorMessage(error, 'Failed to create tag category') }
+      return {
+        success: false,
+        error: extractErrorMessage(error, getMainI18n().t('errors:tag.createCategoryFailed'))
+      }
     }
   })
 
@@ -514,7 +522,8 @@ export function registerTagsHandlers(): void {
     TagsChannels.invoke.RENAME_CATEGORY,
     (_e, { id, name }: { id: string; name: string }) => {
       try {
-        if (!name?.trim()) return { success: false, error: 'Category name is required' }
+        if (!name?.trim())
+          return { success: false, error: getMainI18n().t('errors:tag.categoryNameRequired') }
         renameTagCategory(requireDatabase(), id, name)
         syncTagCategoryUpdate(id)
         emitTagEvent(TagsChannels.events.CATEGORIES_CHANGED, { categoryId: id })
@@ -523,7 +532,7 @@ export function registerTagsHandlers(): void {
         log.error('Failed to rename tag category', error)
         return {
           success: false,
-          error: extractErrorMessage(error, 'Failed to rename tag category')
+          error: extractErrorMessage(error, getMainI18n().t('errors:tag.renameCategoryFailed'))
         }
       }
     }
@@ -538,7 +547,10 @@ export function registerTagsHandlers(): void {
       return { success: true }
     } catch (error) {
       log.error('Failed to delete tag category', error)
-      return { success: false, error: extractErrorMessage(error, 'Failed to delete tag category') }
+      return {
+        success: false,
+        error: extractErrorMessage(error, getMainI18n().t('errors:tag.deleteCategoryFailed'))
+      }
     }
   })
 
@@ -573,7 +585,10 @@ export function registerTagsHandlers(): void {
         return { success: true }
       } catch (error) {
         log.error('Failed to reorder tag categories', error)
-        return { success: false, error: extractErrorMessage(error, 'Failed to reorder tags') }
+        return {
+          success: false,
+          error: extractErrorMessage(error, getMainI18n().t('errors:tag.reorderFailed'))
+        }
       }
     }
   )

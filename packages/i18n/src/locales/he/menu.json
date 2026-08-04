@@ -1,7 +1,12 @@
 {
   "app": {
-    "quit": "עזוב",
-    "preferences": "הגדרות…"
+    "quit": "צא",
+    "preferences": "הגדרות…",
+    "exit": "יציאה",
+    "hide": "הסתר את MemryNote",
+    "hideOthers": "הסתר אחרים",
+    "services": "שירותים",
+    "unhide": "הצג הכל"
   },
   "file": {
     "label": "קובץ",
@@ -16,7 +21,7 @@
     "forward": "קדימה"
   },
   "edit": {
-    "label": "ערוך",
+    "label": "עריכה",
     "undo": "בטל",
     "redo": "בצע מחדש",
     "cut": "גזור",
@@ -24,23 +29,30 @@
     "paste": "הדבק",
     "selectAll": "בחר הכל",
     "find": "מצא",
-    "speech": "דיבור"
+    "speech": "דיבור",
+    "delete": "מחק",
+    "pasteAndMatchStyle": "הדבק והתאם סגנון",
+    "startSpeaking": "התחל לדבר",
+    "stopSpeaking": "הפסק לדבר"
   },
   "view": {
-    "label": "הצג",
+    "label": "תצוגה",
     "reload": "טען מחדש",
-    "toggleDevTools": "החלף את כלי המפתחים",
-    "toggleFullscreen": "החלף מסך מלא",
+    "toggleDevTools": "הצג/הסתר כלים למפתחים",
+    "toggleFullscreen": "החלף מצב מסך מלא",
     "theme": "ערכת נושא",
     "themeDark": "כהה",
     "themeLight": "בהיר",
     "themeSystem": "מערכת",
     "themeWhite": "נייר",
-    "toggleDayPanel": "החלף לוח יום",
-    "toggleSidebar": "החלף סרגל צד"
+    "toggleDayPanel": "הצג/הסתר לוח יום",
+    "toggleSidebar": "הצג/הסתר סרגל צד",
+    "actualSize": "גודל ממשי",
+    "zoomIn": "הגדל",
+    "zoomOut": "הקטן"
   },
   "format": {
-    "body": "גוף",
+    "body": "גוף הטקסט",
     "bold": "מודגש",
     "code": "קוד",
     "heading1": "כותרת 1",
@@ -55,7 +67,8 @@
     "about": "אודות MemryNote",
     "documentation": "תיעוד",
     "label": "עזרה",
-    "shortcuts": "קיצורי מקלדת"
+    "shortcuts": "קיצורי מקלדת",
+    "aboutVersion": "גרסה {version}"
   },
   "insert": {
     "attachment": "הוסף קובץ מצורף…",
@@ -67,6 +80,10 @@
     "taskList": "רשימת משימות"
   },
   "window": {
-    "label": "חלון"
+    "label": "חלון",
+    "close": "סגור",
+    "front": "הבא הכל לחזית",
+    "minimize": "מזער",
+    "zoom": "זום"
   }
 }

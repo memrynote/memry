@@ -34,7 +34,15 @@
     "createAnother": "Skapa en till",
     "delete": "Radera uppgift",
     "created": "Skapad {date}",
-    "reminder": "Påminnelse"
+    "reminder": "Påminnelse",
+    "tags": "Taggar",
+    "priorityLabels": {
+      "high": "Hög",
+      "low": "Låg",
+      "medium": "Medel",
+      "none": "Ingen prioritet",
+      "urgent": "Brådskande"
+    }
   },
   "filters": {
     "filter": "Filter",
@@ -43,11 +51,32 @@
     "groupBy": "Grupp efter",
     "groupByOptions": "Grupp efter alternativ",
     "sortAscending": "Sortera stigande",
-    "sortDescending": "Sortering nedåtgående"
+    "sortDescending": "Sortering nedåtgående",
+    "dueDate": {
+      "any": "Valfritt förfallodatum",
+      "custom": "Anpassat intervall...",
+      "nextWeek": "Nästa vecka",
+      "none": "Inget förfallodatum",
+      "overdue": "Försenad",
+      "thisMonth": "Denna månad",
+      "thisWeek": "Denna vecka",
+      "today": "Idag",
+      "tomorrow": "Imorgon"
+    },
+    "quickPresets": {
+      "dueThisWeek": "Förfaller denna vecka",
+      "highPriority": "Hög prioritet",
+      "noDueDate": "Inget förfallodatum",
+      "overdue": "Försenade",
+      "repeating": "Upprepande"
+    },
+    "repeatTypeOneTime": "Enstaka",
+    "repeatTypeRepeating": "Återkommande"
   },
   "quickAdd": {
     "label": "Snabb tilläggsuppgift",
-    "focusDescription": "Fokusera snabb tilläggsinput"
+    "focusDescription": "Fokusera snabb tilläggsinput",
+    "placeholder": "Lägg till en uppgift…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Detaljer om slutuppgifter",
@@ -75,7 +104,21 @@
     "searchRelated": "Sök relaterat…"
   },
   "kanban": {
-    "board": "Kanban-brädet"
+    "board": "Kanban-brädet",
+    "empty": {
+      "default": {
+        "subtitle": "Dra uppgifter hit eller klicka på + för att lägga till",
+        "title": "Inga uppgifter"
+      },
+      "done": {
+        "subtitle": "Slutför uppgifter för att se dem här",
+        "title": "Inga slutförda uppgifter"
+      },
+      "schedule": {
+        "subtitle": "Dra uppgifter hit för att omplanera",
+        "title": "Inget planerat"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "Projekt uppdaterat",
@@ -98,7 +141,53 @@
     "noCompletedSelected": "Inga slutförda uppgifter valda",
     "completeFailed": "Misslyckades med att slutföra uppgifter",
     "deleteFailed": "Misslyckades med att radera uppgifter",
-    "moveFailed": "Misslyckades med att flytta uppgifter"
+    "moveFailed": "Misslyckades med att flytta uppgifter",
+    "bulk": {
+      "archived": "{count, plural, one {# uppgift arkiverad} other {# uppgifter arkiverade}}",
+      "completed": "{count, plural, one {# uppgift slutförd} other {# uppgifter slutförda}}",
+      "deleted": "{count, plural, one {# uppgift raderad} other {# uppgifter raderade}}",
+      "deletedDescription": "Den här åtgärden kan ångras under en kort stund.",
+      "dueDateRemoved": "{count, plural, one {Förfallodatum borttaget från # uppgift} other {Förfallodatum borttaget från # uppgifter}}",
+      "dueDateSet": "{count, plural, one {Förfallodatum satt för # uppgift} other {Förfallodatum satt för # uppgifter}}",
+      "movedToProject": "{count, plural, one {# uppgift flyttad till {project}} other {# uppgifter flyttade till {project}}}",
+      "movedToStatus": "{count, plural, one {# uppgift flyttad till {status}} other {# uppgifter flyttade till {status}}}",
+      "priorityRemoved": "{count, plural, one {Prioritet borttagen för # uppgift} other {Prioritet borttagen för # uppgifter}}",
+      "prioritySet": "{count, plural, one {Prioritet satt till {priority} för # uppgift} other {Prioritet satt till {priority} för # uppgifter}}",
+      "restored": "{count, plural, one {# uppgift återställd} other {# uppgifter återställda}}",
+      "undoArchive": "{count, plural, one {Arkivera # uppgift} other {Arkivera # uppgifter}}",
+      "undoComplete": "{count, plural, one {Slutför # uppgift} other {Slutför # uppgifter}}",
+      "undoDelete": "{count, plural, one {Radera # uppgift} other {Radera # uppgifter}}",
+      "undoDueDate": "{count, plural, one {Förfallodatum ändrat för # uppgift} other {Förfallodatum ändrat för # uppgifter}}",
+      "undoMove": "{count, plural, one {Flytta # uppgift} other {Flytta # uppgifter}}",
+      "undoStatus": "{count, plural, one {Status → {status} för # uppgift} other {Status → {status} för # uppgifter}}",
+      "undoUncomplete": "{count, plural, one {Återöppna # uppgift} other {Återöppna # uppgifter}}"
+    },
+    "drag": {
+      "archived": "{count, plural, one {Uppgift arkiverad} other {# uppgifter arkiverade}}",
+      "deleted": "{count, plural, one {Uppgift raderad} other {# uppgifter raderade}}",
+      "moved": "{count, plural, one {Flyttad till {target}} other {# uppgifter flyttade till {target}}}",
+      "movedTo": "Flyttad till {target}",
+      "prioritySet": "{count, plural, one {Prioritet satt till {priority}} other {# uppgifter satta till {priority}}}",
+      "prioritySetTo": "Prioritet satt till {priority}",
+      "rescheduled": "{count, plural, one {Omplanerad till {target}} other {# uppgifter omplanerade till {target}}}",
+      "rescheduledTo": "Omplanerad till {target}",
+      "undoArchive": "{count, plural, one {Arkiverade # uppgift} other {Arkiverade # uppgifter}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, one {# deluppgift tillagd} other {# deluppgifter tillagda}}",
+      "completed": "{count, plural, one {# deluppgift slutförd} other {# deluppgifter slutförda}}",
+      "deleted": "{count, plural, one {# deluppgift raderad} other {# deluppgifter raderade}}",
+      "deletedDescription": "Deluppgiften har tagits bort",
+      "dueDateCleared": "{count, plural, one {Förfallodatum rensat för # deluppgift} other {Förfallodatum rensat för # deluppgifter}}",
+      "dueDateSet": "{count, plural, one {Förfallodatum satt för # deluppgift} other {Förfallodatum satt för # deluppgifter}}",
+      "markedIncomplete": "{count, plural, one {# deluppgift markerad som ej klar} other {# deluppgifter markerade som ej klara}}",
+      "movedUnder": "Flyttad under ”{title}”",
+      "parentAndSubtasksCompleted": "Uppgift och deluppgifter slutförda",
+      "parentDeletedKeepSubtasks": "Uppgift raderad, deluppgifter omvandlade till uppgifter",
+      "parentDeletedWithSubtasks": "Uppgift och deluppgifter raderade",
+      "prioritySet": "{count, plural, one {Prioritet satt för # deluppgift} other {Prioritet satt för # deluppgifter}}",
+      "promoted": "”{title}” befordrad till uppgift"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -179,7 +268,8 @@
       "nextMonth": "Nästa månad",
       "goToToday": "Gå till idag",
       "today": "Idag",
-      "w": "O"
+      "w": "O",
+      "weekNumber": "Vecka {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Ta bort datum",
@@ -197,44 +287,39 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Detta projekt har inga uppgifter och kommer att tas bort permanent.",
       "thisActionCannotBeUndone": "Den här åtgärden kan inte ångras.",
       "cancel": "Avbryt",
-      "deleteProject": "Ta bort projekt"
+      "deleteProject": "Ta bort projekt",
+      "notesEventsAndFilesStayNotice": "Uppgifterna i det här projektet tas bort. Dina anteckningar, händelser och filer stannar i ditt valv."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Ta bort uppgift?",
-      "ldquo": "„",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; kommer att tas bort permanent. Denna åtgärd kan inte ångras.",
-      "deleteTask2": "Ta bort uppgift"
+      "deleteTask2": "Ta bort uppgift",
+      "deleteConfirmBody": "”{title}” tas bort permanent. Den här åtgärden kan inte ångras."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Alla deluppgifter kompletta!",
-      "ldquo": "„",
-      "rdquoHasAll": "rdquo; har alla ",
-      "subtask": "deluppgifter",
-      "done": "klara.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Vill du även markera huvuduppgiften som klar?",
       "keepTaskOpen": "Behåll uppgiften öppen",
-      "completeTask": "Slutför uppgift ✓"
+      "completeTask": "Slutför uppgift ✓",
+      "allSubtasksDoneBody": "{count, plural, one {Den enda deluppgiften i ”{title}” är klar.} other {Alla # deluppgifter i ”{title}” är klara.}}"
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Ange förfallodatum för alla deluppgifter",
       "setDueDateFor": "Ställ in förfallodatum för ",
-      "subtask": "deluppgifter",
-      "in": "i “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Tillämpa även på slutförda deluppgifter (",
       "clearDate": "Rensa datum",
       "cancel": "Avbryt",
-      "apply": "Tillämpa"
+      "apply": "Tillämpa",
+      "alsoApplyToCompletedSubtasksCount": "Tillämpa även på slutförda deluppgifter ({count})",
+      "setDueDateForSubtasksIn": "Ange förfallodatum för {count, plural, one {# deluppgift} other {# deluppgifter}} i ”{title}”"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Ange prioritet för alla deluppgifter",
       "setPriorityFor": "Ange prioritet för ",
-      "subtask": "deluppgifter",
-      "in": "i “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Tillämpa även på slutförda deluppgifter (",
       "cancel": "Avbryt",
-      "apply": "Tillämpa"
+      "apply": "Tillämpa",
+      "alsoApplyToCompletedSubtasksCount": "Tillämpa även på slutförda deluppgifter ({count})",
+      "setPriorityForSubtasksIn": "Ange prioritet för {count, plural, one {# deluppgift} other {# deluppgifter}} i ”{title}”"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Slutför uppgift med ofullständiga deluppgifter?",
@@ -252,13 +337,10 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Radera alla deluppgifter?",
-      "thisWillDelete": "Detta kommer att radera",
-      "subtask": "deluppgifter",
-      "from": "från “",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "Den här åtgärden kan inte ångras.",
       "cancel": "Avbryt",
-      "deleteAll": "Radera allt"
+      "deleteAll": "Radera allt",
+      "deleteSubtasksConfirmation": "Detta tar bort {count, plural, one {# deluppgift} other {# deluppgifter}} från ”{title}”."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Radera uppgift med deluppgifter?",
@@ -275,10 +357,13 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Duplicera uppgift",
       "createACopyOf": "Skapa en kopia av “",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "Duplicera även deluppgifter (",
       "cancel": "Avbryt",
-      "duplicate": "Duplicera"
+      "duplicate": "Duplicera",
+      "alsoDuplicateSubtasksCount": "Duplicera även deluppgifter ({count})",
+      "createACopyOfTitle": "Skapa en kopia av ”{title}”",
+      "duplicateTaskOnly": "Duplicera uppgift",
+      "duplicateWithItems": "Duplicera ({count, plural, one {# objekt} other {# objekt}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Gör till deluppgift av...",
@@ -324,7 +409,11 @@
       "addTime": "Lägg till tid",
       "time": "Tid",
       "clearDate": "Rensa datum",
-      "backToOptions": "Tillbaka till alternativ"
+      "backToOptions": "Tillbaka till alternativ",
+      "nextWeek": "Nästa vecka",
+      "thisWeekend": "Denna helg",
+      "today": "Idag",
+      "tomorrow": "Imorgon"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "Redigera upprepande uppgift",
@@ -357,7 +446,9 @@
       "due": "Förfallodatum",
       "dueDate": "förfallodatum",
       "search": "sök",
-      "clearAll": "Rensa allt"
+      "clearAll": "Rensa allt",
+      "tags": "taggar",
+      "tagsIs": "Taggar är"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Filtrera efter förfallodatum",
@@ -421,7 +512,17 @@
       "currentFilters": "Nuvarande filter:",
       "noFiltersApplied": "Inga filter applicerade",
       "cancel": "Avbryt",
-      "saveFilter2": "Spara filter"
+      "saveFilter2": "Spara filter",
+      "nameRequired": "Ange ett namn för det här filtret",
+      "summaryDue": "Förfaller: {value}",
+      "summaryDueRange": "Förfaller: {start} - {end}",
+      "summaryPriorities": "Prioritet: {names}",
+      "summaryProjects": "Projekt: {names}",
+      "summaryRepeatOneTime": "Upprepning: Endast engångs",
+      "summaryRepeatRepeating": "Upprepning: Endast upprepande",
+      "summarySearch": "Sök: ”{query}”",
+      "summaryTimeWith": "Tid: Med tid",
+      "summaryTimeWithout": "Tid: Utan tid"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Sparade filter",
@@ -553,7 +654,16 @@
       "d": "d"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "Lägg till uppgift"
+      "addTask": "Lägg till uppgift",
+      "allDescription": "Skapa din första uppgift för att komma igång",
+      "allTitle": "Inga uppgifter än",
+      "completedDescription": "Slutförda uppgifter visas här",
+      "completedTitle": "Inga slutförda uppgifter",
+      "projectDescription": "Lägg till en uppgift för att komma igång",
+      "projectTitle": "Inga uppgifter i det här projektet",
+      "projectTitleNamed": "Inga uppgifter i {name}",
+      "todayDescription": "Du är helt i fas!",
+      "todayTitle": "Inget förfaller idag"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "ingen prioritet"
@@ -589,6 +699,12 @@
       "noUpcomingTasks": "Inga kommande uppgifter",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Uppgifter som förfaller inom de nästa 7 dagarna kommer att visas här. Planera din vecka genom att lägga till några uppgifter.",
       "addTask2": "Lägg till uppgift"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "är",
+      "search": "Sök...",
+      "selected": "valda",
+      "tags": "Taggar"
     }
   },
   "phaseI": {
@@ -638,5 +754,147 @@
       "updateFailed": "Det gick inte att uppdatera påminnelse",
       "updated": "Påminnelse uppdaterad"
     }
+  },
+  "addToProject": {
+    "dialogTitle": "Lägg till i projekt",
+    "loading": "Laddar projekt…",
+    "menuLabel": "Lägg till i projekt",
+    "noProjects": "Inga projekt än",
+    "toastError": "Misslyckades med att lägga till i projektet",
+    "toastSuccess": "Tillagd i {name}"
+  },
+  "itemProjects": {
+    "openProject": "Öppna projektet {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Välj ett projekt i sidofältet för att öppna dess startsida.",
+    "emptyTitle": "Inget projekt valt",
+    "loadError": "Det gick inte att ladda projektinformationen",
+    "overview": {
+      "clear": "Rensa översikten",
+      "clearError": "Det gick inte att rensa översiktsanteckningen",
+      "create": "Skapa översiktsanteckning",
+      "createError": "Det gick inte att skapa översiktsanteckningen",
+      "defaultTitle": "Översikt",
+      "loadError": "Det gick inte att ladda översiktsanteckningen",
+      "placeholder": "Skriv en översikt för det här projektet…",
+      "saveError": "Det gick inte att spara översiktsanteckningen",
+      "sectionTitle": "Översikt"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Bifoga filer",
+      "fileError": "Det gick inte att länka {name}",
+      "fileErrorGeneric": "Det gick inte att importera filerna",
+      "filesAdded": "{count, plural, one {# fil tillagd i projektet} other {# filer tillagda i projektet}}",
+      "label": "Lägg till i {name}",
+      "linkAdded": "Länken lades till i projektet",
+      "linkError": "Det gick inte att spara länken",
+      "placeholder": "Lägg till i {name} — skriv en uppgift, en anteckning eller klistra in en länk…"
+    },
+    "groups": {
+      "older": "Äldre",
+      "past": "Tidigare",
+      "today": "Idag",
+      "tomorrow": "Imorgon",
+      "upcoming": "Kommande",
+      "yesterday": "Igår"
+    },
+    "header": {
+      "archiveProject": "Arkivera projekt",
+      "editProject": "Redigera projekt",
+      "menu": "Projektåtgärder",
+      "toggleRail": "Växla projektdetaljer"
+    },
+    "rail": {
+      "addNote": "Lägg till anteckning",
+      "created": "Skapad",
+      "details": "Detaljer",
+      "doneOf": "{done} av {total} klara",
+      "linked": "Länkat",
+      "linkedSummary": "{notes, plural, one {# anteckning} other {# anteckningar}} · {files, plural, one {# fil} other {# filer}} · {events, plural, one {# händelse} other {# händelser}}",
+      "overdue": "Försenade",
+      "overview": "Översikt",
+      "pinError": "Det gick inte att lägga till anteckningen i översikten",
+      "progress": "Framsteg",
+      "unpinError": "Det gick inte att ta bort anteckningen från översikten",
+      "unpinNote": "Ta bort {title} från översikten",
+      "updated": "Uppdaterad"
+    },
+    "rows": {
+      "openEvent": "Öppna händelsen {title}",
+      "openFile": "Öppna filen {title}",
+      "openNote": "Öppna anteckningen {title}",
+      "openTask": "Öppna uppgiften {title}",
+      "setNoteIcon": "Ange ikon för {title}"
+    },
+    "sections": {
+      "add": "Lägg till i {title}",
+      "emptyEvents": "Inga händelser är länkade än.",
+      "emptyFiles": "Inga filer är länkade än.",
+      "emptyNotes": "Inga anteckningar är länkade än.",
+      "emptyTasks": "Inga uppgifter än.",
+      "newNoteError": "Det gick inte att lägga till anteckningen",
+      "newNoteTitle": "Namnlös anteckning",
+      "viewAll": "Visa alla"
+    },
+    "tabs": {
+      "events": "Händelser",
+      "files": "Filer",
+      "label": "Projektvyer",
+      "notes": "Anteckningar",
+      "overview": "Översikt",
+      "tasks": "Uppgifter"
+    }
+  },
+  "priorityInline": {
+    "high": "hög",
+    "low": "låg",
+    "medium": "medel",
+    "urgent": "brådskande"
+  },
+  "priorityLabels": {
+    "high": "Hög",
+    "low": "Låg",
+    "medium": "Medel",
+    "none": "Ingen prioritet",
+    "urgent": "Brådskande"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "Klar",
+      "inProgress": "Pågår",
+      "todo": "Att göra"
+    },
+    "validation": {
+      "minStatuses": "Projekt behöver minst 2 statusar",
+      "nameRequired": "Projektnamn krävs",
+      "nameTooLong": "Projektnamnet får vara högst 50 tecken",
+      "needsDoneStatus": "Projekt behöver minst en status av typen ”Klar”",
+      "needsDoneStatusForCompletedTasks": "Projekt behöver minst en status av typen ”Klar” för slutförda uppgifter",
+      "needsTodoStatus": "Projekt behöver minst en status av typen ”Att göra”",
+      "needsTodoStatusForNewTasks": "Projekt behöver minst en status av typen ”Att göra” för nya uppgifter",
+      "statusNameRequired": "Alla statusar måste ha ett namn",
+      "statusNamesUnique": "Statusnamn måste vara unika",
+      "statusNotFound": "Statusen hittades inte"
+    }
+  },
+  "statusLabels": {
+    "done": "Klar",
+    "inProgress": "Pågår",
+    "todo": "Att göra"
+  },
+  "colors": {
+    "blue": "Blå",
+    "gray": "Grå",
+    "green": "Grön",
+    "indigo": "Indigo",
+    "orange": "Orange",
+    "pink": "Rosa",
+    "purple": "Lila",
+    "red": "Röd",
+    "teal": "Turkos",
+    "yellow": "Gul"
   }
 }

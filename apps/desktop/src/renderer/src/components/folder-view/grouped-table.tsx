@@ -66,6 +66,7 @@ import {
   type AppIcon
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { getColumnLabel } from '@/lib/contract-display-names'
 import { evaluateFormula } from '@/lib/expression-evaluator'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
 import {
@@ -271,15 +272,6 @@ function sortingStateToOrderConfig(sorting: SortingState): OrderConfig[] {
     property: s.id,
     direction: s.desc ? 'desc' : 'asc'
   }))
-}
-
-/**
- * Capitalize first letter of a string
- */
-function capitalizeFirst(str: string): string {
-  if (!str) return str
-  const spaced = str.replace(/([A-Z])/g, ' $1').trim()
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
 }
 
 /**
@@ -613,7 +605,7 @@ export function GroupedTable({
     const visibleColumns = columnConfig.map((col) => {
       const baseColumn = {
         id: col.id,
-        header: col.displayName ?? capitalizeFirst(col.id),
+        header: col.displayName ?? getColumnLabel(col.id),
         size: col.width ?? 150,
         minSize: 50,
         maxSize: 800
@@ -1423,13 +1415,13 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
 
         {/* Group property name and value */}
         <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-muted-foreground">
-          {capitalizeFirst(groupByProperty)}:
+          {getColumnLabel(groupByProperty)}:
         </span>
         <span className="font-medium">{getGroupDisplayValue(groupValue)}</span>
 
         {/* Count badge */}
         <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
-          {count} {count === 1 ? 'note' : 'notes'}
+          {tPhaseF('folderView.groupHeader.noteCount', { count })}
         </span>
 
         {/* Group summaries (if enabled) */}
@@ -1439,7 +1431,7 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
               .slice(0, 3)
               .map(([columnId, value]) => {
                 const column = columns.find((c) => c.id === columnId)
-                const label = column?.displayName ?? capitalizeFirst(columnId)
+                const label = column?.displayName ?? getColumnLabel(columnId)
                 return (
                   <span key={columnId} className="flex items-center gap-1">
                     <span className="opacity-60">{label}:</span>

@@ -16,9 +16,27 @@
       "willSync": "Notatka zostanie zsynchronizowana z chmurą",
       "renameFailed": "Nie udało się zmienić nazwy notatki",
       "toggleLocalOnlyFailed": "Nie udało się przełączyć tylko lokalnie",
-      "toggleFullWidthFailed": "Nie udało się przełączyć pełnej szerokości"
+      "toggleFullWidthFailed": "Nie udało się przełączyć pełnej szerokości",
+      "copyPathFailed": "Nie udało się skopiować ścieżki",
+      "deleteFailed": "Nie udało się usunąć notatki",
+      "moveFailed": "Nie udało się przenieść notatki",
+      "moved": "Notatka przeniesiona",
+      "openExternalFailed": "Nie udało się otworzyć notatki",
+      "pathCopied": "Ścieżka skopiowana",
+      "revealFailed": "Nie udało się pokazać notatki"
     },
-    "deleteDialogTitle": "{count, plural, one {Usuń notatkę} other {Usuń notatki #}}"
+    "deleteDialogTitle": "{count, plural, one {Usuń notatkę} other {Usuń notatki #}}",
+    "deleteConfirm": {
+      "cancel": "Anuluj",
+      "confirm": "Usuń",
+      "deleting": "Usuwanie...",
+      "description": "Czy na pewno chcesz usunąć „{title}”? Tej akcji nie można cofnąć.",
+      "title": "Usuń notatkę"
+    },
+    "itemsCount": "{count, plural, one {# element} few {# elementy} many {# elementów} other {# elementu}}",
+    "itemsCountFiltered": "{shown} z {total, plural, one {# elementu} few {# elementów} many {# elementów} other {# elementu}}",
+    "renameViewUnavailableForTags": "Zmiana nazwy zapisanych widoków nie jest jeszcze dostępna dla tagów",
+    "tagFilterLabel": "tag = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "Usuń notatki {count}",
       "deleteSelectedItems": "Usuń elementy {count}",
       "bookmark": "Zakładka",
-      "removeFromBookmarks": "Usuń z zakładek"
+      "removeFromBookmarks": "Usuń z zakładek",
+      "applyTemplate": "Zastosuj szablon"
     },
     "deleteDialog": {
       "noteTitle": "Usuń notatkę",
@@ -83,7 +102,17 @@
       "export": "Eksportuj",
       "fullWidth": "Pełna szerokość",
       "disableLocalOnly": "Wyłącz tylko lokalne",
-      "setLocalOnly": "Ustaw tylko lokalnie"
+      "setLocalOnly": "Ustaw tylko lokalnie",
+      "applyTemplate": "Zastosuj szablon",
+      "copyPath": "Skopiuj ścieżkę",
+      "delete": "Usuń notatkę",
+      "find": "Znajdź…",
+      "moreActions": "Więcej akcji",
+      "moveToFolder": "Przenieś do folderu…",
+      "openInDefaultApp": "Otwórz w domyślnej aplikacji",
+      "rename": "Zmień nazwę…",
+      "revealInFinder": "Pokaż w Finderze",
+      "revealInSidebar": "Pokaż w nawigacji"
     },
     "breadcrumb": {
       "locationAria": "Zanotuj lokalizację",
@@ -223,7 +252,12 @@
       "multiselect": "Wybór wielokrotny"
     },
     "showOnCalendar": "Pokaż w kalendarzu",
-    "showingOnCalendar": "Widoczne w kalendarzu"
+    "showingOnCalendar": "Widoczne w kalendarzu",
+    "statusCategories": {
+      "done": "Ukończone",
+      "inProgress": "W trakcie",
+      "todo": "Do zrobienia"
+    }
   },
   "templateSelector": {
     "title": "Wybierz swoje płótno",
@@ -235,7 +269,10 @@
     "essentials": "Niezbędne",
     "setFolderDefault": "Ustaw jako folder domyślny",
     "useTemplate": "Użyj szablonu",
-    "createNote": "Utwórz notatkę"
+    "createNote": "Utwórz notatkę",
+    "applyDescription": "Zastąp treść tej notatki szablonem",
+    "applyTitle": "Zastosuj szablon",
+    "applyToNote": "Zastosuj szablon"
   },
   "exportDialog": {
     "title": "Eksportuj notatkę",
@@ -278,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Wczytywanie szablonu…",
+    "copySuffix": "{name} (Kopia)",
     "title": {
       "new": "Nowy szablon",
-      "view": "Zobacz szablon",
-      "edit": "Edytuj szablon"
+      "placeholder": "Nazwa szablonu"
+    },
+    "icon": {
+      "label": "Ikona szablonu"
+    },
+    "content": {
+      "placeholder": "Domyślna treść notatek tworzonych z tego szablonu. Użyj '{{'title'}}', aby wstawić tytuł notatki."
+    },
+    "actions": {
+      "create": "Utwórz szablon",
+      "update": "Aktualizuj",
+      "duplicateAndEdit": "Duplikuj i edytuj",
+      "duplicate": "Duplikuj",
+      "delete": "Usuń szablon",
+      "more": "Więcej akcji"
     },
     "toast": {
-      "nameRequired": "Nazwa szablonu jest wymagana",
-      "created": "Szablon został utworzony",
       "createFailed": "Nie udało się utworzyć szablonu",
-      "saved": "Szablon został zapisany",
-      "saveFailed": "Nie udało się zapisać szablonu",
-      "duplicateFailed": "Nie udało się zduplikować szablonu",
-      "deleteFailed": "Nie udało się usunąć szablonu"
+      "saveFailed": "Nie udało się zapisać szablonu"
     }
   },
   "reminders": {
@@ -324,8 +371,6 @@
       "noFormulasDefined": "Nie zdefiniowano żadnych formuł",
       "addFormula": "Dodaj formułę",
       "deleteFormula": "Usuń formułę",
-      "areYouSureYouWantToDeleteTheFormula": "Czy na pewno chcesz usunąć formułę \"",
-      "quotThisActionCannotBeUndone": "cyt.? Tej akcji nie można cofnąć.",
       "cancel": "Anuluj",
       "delete": "Usuń",
       "none": "Żadne",
@@ -333,7 +378,8 @@
       "delete2": "Usuń",
       "columnBorders": "Obramowania kolumn",
       "display": "Wyświetlanie",
-      "showSummaries": "Pokaż podsumowania"
+      "showSummaries": "Pokaż podsumowania",
+      "deleteFormulaBody": "Czy na pewno chcesz usunąć formułę „{name}”? Tej akcji nie można cofnąć."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtruj",
@@ -352,7 +398,8 @@
       "addCondition": "Dodaj warunek",
       "addFilter": "Dodaj filtr",
       "addGroup": "Dodaj grupę",
-      "removeGroup": "Usuń grupę"
+      "removeGroup": "Usuń grupę",
+      "lockedConditionHint": "Ten warunek definiuje bieżący widok i nie można go tutaj usunąć."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Wbudowany",
@@ -365,7 +412,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Tabela notatek",
       "selectAll": "Zaznacz wszystkie notatki",
-      "selectRow": "Zaznacz notatkę"
+      "selectRow": "Zaznacz notatkę",
+      "kind": {
+        "Inbox": "Skrzynka",
+        "Note": "Notatka",
+        "Task": "Zadanie"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Przeszukaj notatki...",
@@ -379,10 +431,10 @@
       "preview": "Podgląd",
       "fixExpressionErrorsToSeePreview": "Napraw błędy wyrażeń, aby zobaczyć podgląd",
       "usingNote": "Korzystanie z notatki: „",
-      "quot": "cytat;",
       "cancel": "Anuluj",
       "namePlaceholder": "dni_do_terminu",
-      "expressionPlaceholder": "dateDiff(data_terminu, dzisiaj(), \"dni\")"
+      "expressionPlaceholder": "dateDiff(data_terminu, dzisiaj(), \"dni\")",
+      "usingNoteTitle": "Korzystanie z notatki: „{title}”"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Wyczyść grupowanie",
@@ -408,12 +460,12 @@
       "bestMatch": "Najlepszy mecz",
       "current": "prąd)",
       "allFolders": "WSZYSTKIE FOLDERY",
-      "current2": "prąd)",
       "noFoldersMatch": "Żadne foldery nie pasują \"",
-      "quot": "cytat;",
       "create": "Utwórz „",
-      "quot2": "cytat;",
-      "cancel": "Anuluj"
+      "cancel": "Anuluj",
+      "createFolderNamed": "Utwórz „{name}”",
+      "currentFolderBadge": "(bieżący)",
+      "noFoldersMatchQuery": "Żaden folder nie pasuje do „{query}”"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Usuń ",
@@ -468,7 +520,13 @@
       "failedToLoadPdf": "Nie udało się załadować pliku PDF: ",
       "download": "Pobierz",
       "download2": "Pobierz",
-      "noFileAttached": "Brak dołączonego pliku"
+      "noFileAttached": "Brak dołączonego pliku",
+      "alignCenter": "Wyrównaj do środka",
+      "alignLeft": "Wyrównaj do lewej",
+      "alignRight": "Wyrównaj do prawej",
+      "nextPage": "Następna strona",
+      "previousPage": "Poprzednia strona",
+      "resizePdf": "Zmień rozmiar PDF"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Otwórz w panelu zadań",
@@ -530,7 +588,8 @@
       "failedToLoadTags": "Nie udało się załadować tagów",
       "noTagsYet": "Nie ma jeszcze tagów",
       "filterTags": "Filtruj tagi...",
-      "noMatchingTags": "Brak pasujących tagów"
+      "noMatchingTags": "Brak pasujących tagów",
+      "Uncategorized": "Bez kategorii"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Upuść tutaj",
@@ -560,7 +619,8 @@
       "deleteTag": "Usuń tag",
       "recent": "Najnowsze",
       "created": "Utworzono",
-      "alphabetical": "Alfabetycznie"
+      "alphabetical": "Alfabetycznie",
+      "tasks": "ZADANIA"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Zmień nazwę tagu",
@@ -615,36 +675,6 @@
       "compact": "Kompaktowy",
       "showSummaries": "Pokaż podsumowania",
       "cancel": "Anuluj"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Ładowanie szablonu...",
-      "builtInTemplatesCannotBeModified": "Wbudowanych szablonów nie można modyfikować",
-      "description": "Opis",
-      "briefDescriptionOfThisTemplate": "Krótki opis tego szablonu...",
-      "templateContent": "Treść szablonu",
-      "use": "Użyj ",
-      "toInsertTheNoteTitleWhenCreatingANote": ", aby wstawić tytuł notatki podczas tworzenia notatki.",
-      "templateName": "Nazwa szablonu",
-      "defaultContentForNotesCreatedFromThisTemplate": "Domyślna treść notatek utworzonych na podstawie tego szablonu..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Ładowanie kolekcji...",
-      "templateCollection": "Kolekcja szablonów",
-      "templates": "Szablony",
-      "curatedStructuresForYourNotes": "Wyselekcjonowane struktury Twoich notatek.",
-      "newTemplate": "Nowy szablon",
-      "myTemplates": "Moje szablony",
-      "builtIn": "Wbudowany",
-      "deleteTemplate": "Usuń szablon",
-      "areYouSureYouWantToDelete": "Czy na pewno chcesz usunąć”",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Nie będzie to miało wpływu na notatki utworzone na podstawie tego szablonu.",
-      "cancel": "Anuluj",
-      "builtIn2": "Wbudowany",
-      "duplicate": "Duplikat",
-      "delete": "Usuń",
-      "startYourCollection": "Rozpocznij swoją kolekcję",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Szablony pomagają tworzyć notatki o spójnej strukturze.",
-      "createTemplate": "Utwórz szablon"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Wbudowane",
@@ -733,7 +763,9 @@
     "replyPlaceholder": "Odpowiedz...",
     "resolve": "Rozwiąż",
     "sendAria": "Wyślij komentarz",
-    "toolbarComment": "Komentarz"
+    "toolbarComment": "Komentarz",
+    "openAttachmentAria": "Otwórz załącznik {name}",
+    "openImageAria": "Otwórz obraz {name}"
   },
   "dateMention": {
     "clear": "Wyczyść",
@@ -743,5 +775,79 @@
     "remind": "Przypomnij",
     "time": "Godzina",
     "timeFormat": "Format godziny"
+  },
+  "applyTemplateConfirm": {
+    "body": "Zastąp tylko treść",
+    "cancel": "Anuluj",
+    "description": "Zastosowanie szablonu „{name}” zastąpi obecną treść tej notatki. Nie można tego cofnąć.",
+    "failed": "Nie udało się zastosować szablonu",
+    "full": "Zastąp treść i dodaj szczegóły szablonu",
+    "success": "Szablon zastosowany",
+    "title": "Zastąpić treść notatki?"
+  },
+  "tagView": {
+    "moreActions": "Więcej akcji",
+    "pin": {
+      "action": "Przypnij {count, plural, one {# notatkę} few {# notatki} many {# notatek} other {# notatki}} do tagu",
+      "failed": "Nie udało się przypiąć notatki do tagu",
+      "success": "Przypięto {count, plural, one {# notatkę} few {# notatki} many {# notatek} other {# notatki}} do tagu"
+    }
+  },
+  "tags": {
+    "hubTitle": "Tagi",
+    "openHub": "Otwórz centrum tagów"
+  },
+  "tagsHub": {
+    "cancelCreate": "Anuluj",
+    "category": {
+      "delete": "Usuń kategorię",
+      "deleteBody": "Tagi trafią do sekcji Bez kategorii. Nie zostaną usunięte.",
+      "deleteCancel": "Anuluj",
+      "deleteConfirm": "Usuń",
+      "deleteTitle": "Usunąć {name}?",
+      "dragHandle": "Przeciągnij, aby zmienić kolejność kategorii",
+      "emptyHint": "Przeciągnij tutaj tag",
+      "more": "Opcje kategorii",
+      "rename": "Zmień nazwę kategorii"
+    },
+    "categoryNamePlaceholder": "Nazwa kategorii",
+    "errors": {
+      "createCategoryFailed": "Nie udało się utworzyć kategorii",
+      "createTagCategorizeFailed": "Tag został utworzony, ale nie udało się dodać go do kategorii",
+      "createTagFailed": "Nie udało się utworzyć tagu",
+      "deleteCategoryFailed": "Nie udało się usunąć kategorii",
+      "loadFailed": "Nie udało się załadować kategorii tagów",
+      "renameCategoryFailed": "Nie udało się zmienić nazwy kategorii",
+      "reorderFailed": "Nie udało się zmienić kolejności tagów"
+    },
+    "loading": "Ładowanie tagów...",
+    "newCategory": "Nowa kategoria",
+    "newTag": "Nowy tag",
+    "search": {
+      "empty": "Żadna kategoria ani tag nie pasuje do wyszukiwania",
+      "placeholder": "Szukaj kategorii i tagów"
+    },
+    "tagNamePlaceholder": "Nazwa tagu",
+    "uncategorized": "Bez kategorii"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (kliknij dwukrotnie, aby edytować)",
+      "dragToReorder": "Przeciągnij, aby zmienić kolejność kolumny: {name}"
+    },
+    "columns": {
+      "created": "Utworzono",
+      "folder": "Folder",
+      "kind": "Rodzaj",
+      "modified": "Zmodyfikowano",
+      "tags": "Tagi",
+      "title": "Tytuł",
+      "wordCount": "Liczba słów"
+    },
+    "defaultViewName": "Domyślny",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# notatka} few {# notatki} many {# notatek} other {# notatki}}"
+    },
+    "selectView": "Wybierz widok"
   }
 }

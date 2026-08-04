@@ -67,14 +67,16 @@
     "title": "Padamkan acara?",
     "local-description": "\"{title}\" akan dipadamkan secara kekal. Tindakan ini tidak boleh dibuat asal.",
     "google-bound-description": "\"{title}\" akan dialih keluar daripada memrynote dan Kalendar Google. Tindakan ini tidak boleh dibuat asal.",
-    "context-menu-delete-label": "Padamkan acara"
+    "context-menu-delete-label": "Padamkan acara",
+    "context-menu-add-to-project": "Tambah ke projek"
   },
   "promote-dialog": {
     "aria": "Edit acara kalendar luaran",
     "title": "Edit acara ini dalam memrynote?",
     "body": "Mengedit acara ini akan membuat salinan terpaut dalam memrynote supaya perubahan menyegerakkan kedua-dua cara. teruskan?",
     "do-not-ask-again": "Jangan tanya lagi",
-    "confirm-label": "Edit dalam memrynote"
+    "confirm-label": "Edit dalam memrynote",
+    "agent-notice": "Ejen AI boleh membaca salinan ini, walaupun akses AI ke Google Calendar dimatikan. Acara Google asal anda kekal tersembunyi daripadanya."
   },
   "onboarding-dialog": {
     "aria": "Pilih kalendar Google lalai anda",
@@ -181,6 +183,16 @@
     "placeholder": "Cari acara, tugasan, peringatan…"
   },
   "undo": {
-    "moveEvent": "Alih acara"
+    "moveEvent": "Alih acara",
+    "moveTask": "Jadual semula tugasan"
+  },
+  "agent-access-dialog": {
+    "allow": "Benarkan",
+    "aria": "Pilih sama ada AI boleh membaca acara Google Calendar anda",
+    "body": "Anda tetap akan melihat acara Google anda dalam memrynote, walau apa pun pilihan anda. Ini hanya menentukan sama ada ejen AI boleh membacanya apabila anda bertanya kepadanya tentang jadual anda.",
+    "deny": "Jangan Benarkan",
+    "footnote": "Anda boleh menukarnya bila-bila masa dalam Tetapan → Integrasi → Google Calendar.",
+    "save-error": "Gagal menyimpan pilihan anda",
+    "title": "Benarkan AI membaca acara Google Calendar anda?"
   }
 }

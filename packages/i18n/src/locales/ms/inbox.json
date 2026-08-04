@@ -147,14 +147,14 @@
     "deselectAll": "Nyahpilih semua",
     "ariaLabel": "Tindakan pukal untuk {count} item yang dipilih",
     "file": "Fail",
-    "tag": "Tag",
+    "tag": "Teg",
     "snooze": "Tunda",
     "archive": "Arkib",
     "add": "Tambah",
     "dismissSuggestion": "Tolak cadangan",
     "hint": {
       "file": "fail",
-      "tag": "tag",
+      "tag": "teg",
       "snooze": "tidur sebentar",
       "archive": "arkib",
       "deselect": "nyahpilih"
@@ -270,7 +270,50 @@
     "panelEmpty": "Tiada peringatan akan datang.",
     "panelPast": "Lepas",
     "panelUpcoming": "Akan datang",
-    "taskFallback": "Tugasan"
+    "taskFallback": "Tugasan",
+    "dateTime": {
+      "dateAt": "{date} pada {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Hari ini pada {time}",
+      "todayCompact": "Hari ini, {time}",
+      "tomorrowAt": "Esok pada {time}",
+      "tomorrowCompact": "Esok, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Peringatan ulang tahun",
+      "inHours": {
+        "label": "Dalam {count, plural, other {# Jam}}"
+      },
+      "inMinutes": {
+        "label": "Dalam {count, plural, other {# Minit}}"
+      },
+      "inMonths": {
+        "label": "Dalam {count, plural, other {# Bulan}}"
+      },
+      "inWeeks": {
+        "label": "Dalam {count, plural, other {# Minggu}}"
+      },
+      "inYears": {
+        "label": "Dalam {count, plural, other {# Tahun}}"
+      },
+      "laterToday": {
+        "description": "Dalam {count, plural, other {# jam}}",
+        "label": "Lewat Hari Ini"
+      },
+      "monthlyReflection": "Refleksi bulanan",
+      "nextWeek": {
+        "description": "Isnin pada 9 pagi",
+        "label": "Minggu Depan"
+      },
+      "quarterlyReflection": "Refleksi suku tahunan",
+      "reviewInAWeek": "Semak dalam seminggu",
+      "sameDayNextMonth": "Hari yang sama bulan depan",
+      "tomorrow": {
+        "description": "Esok pada 9 pagi",
+        "label": "Esok"
+      },
+      "tomorrowMorning": "Esok Pagi"
+    }
   },
   "insights": {
     "captureActivity": "Aktiviti Tangkap",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Lampirkan fail (Imej, Audio, Video, PDF)",
       "recordVoiceMemo": "Rakam memo suara",
       "recordVoiceMemo2": "Rakam memo suara",
-      "alreadyCaptured": "Sudah ditangkap: “",
-      "rdquo": "rdquo;",
       "captureAnyway": "Tangkap Bagaimanapun",
       "focusShortcut": "Fokus input tangkapan",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Tangkap pautan",
+      "captureNote": "Tangkap nota",
+      "placeholder": "Tangkapan pantas — tampal pautan, catat idea…",
+      "duplicateNotice": "Sudah ditangkap: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Pilih folder",
@@ -414,10 +459,9 @@
       "captured": "Ditangkap",
       "dismissError": "Tolak ralat",
       "alreadyCaptured": "Sudah ditangkap",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; · ",
       "captureAnyway": "Tangkap Bagaimanapun",
-      "close": "tutup"
+      "close": "tutup",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Jatuhkan untuk menangkap",
@@ -466,7 +510,12 @@
       "cancelRecording": "Batalkan rakaman",
       "cancel": "Batal",
       "stopRecording": "Hentikan rakaman",
-      "stop": "Berhenti"
+      "stop": "Berhenti",
+      "enableMicInSettings": "Dayakan akses mikrofon dalam tetapan sistem anda, kemudian cuba lagi.",
+      "failedToStart": "Gagal memulakan rakaman",
+      "microphoneAccessDenied": "Akses mikrofon ditolak",
+      "noMicrophoneFound": "Tiada mikrofon ditemui",
+      "recordingError": "Ralat berlaku semasa merakam"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Gagal menangkap fail",
       "fileCaptureFailed": "Tangkapan fail gagal",
       "failedToCaptureAudio": "Gagal menangkap audio",
-      "failedToCaptureVoice": "Gagal menangkap suara"
+      "failedToCaptureVoice": "Gagal menangkap suara",
+      "failedToLoadInboxPreferences": "Gagal memuatkan pilihan peti masuk",
+      "failedToUpdateInboxPreferences": "Gagal mengemas kini pilihan peti masuk"
     },
     "toasts": {
       "inboxRefreshed": "Peti masuk dimuat semula"
@@ -516,5 +567,10 @@
     "task": "Tugasan",
     "time": "Masa",
     "title": "Tukar"
+  },
+  "reviewNudge": {
+    "action": "Buka peti masuk",
+    "description": "Uruskan tangkapan hari ini dalam satu pusingan yang tenang.",
+    "title": "{count, plural, other {Masa untuk menyemak # item}}"
   }
 }

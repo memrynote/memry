@@ -270,7 +270,50 @@
     "panelEmpty": "예정된 리마인더가 없습니다.",
     "panelPast": "지난 항목",
     "panelUpcoming": "예정",
-    "taskFallback": "작업"
+    "taskFallback": "작업",
+    "dateTime": {
+      "dateAt": "{date} {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "오늘 {time}",
+      "todayCompact": "오늘, {time}",
+      "tomorrowAt": "내일 {time}",
+      "tomorrowCompact": "내일, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "기념일 리마인더",
+      "inHours": {
+        "label": "{count, plural, other {#시간 후}}"
+      },
+      "inMinutes": {
+        "label": "{count, plural, other {#분 후}}"
+      },
+      "inMonths": {
+        "label": "{count, plural, other {#개월 후}}"
+      },
+      "inWeeks": {
+        "label": "{count, plural, other {#주 후}}"
+      },
+      "inYears": {
+        "label": "{count, plural, other {#년 후}}"
+      },
+      "laterToday": {
+        "description": "{count, plural, other {#시간 후}}",
+        "label": "오늘 늦게"
+      },
+      "monthlyReflection": "월간 회고",
+      "nextWeek": {
+        "description": "월요일 오전 9시",
+        "label": "다음 주"
+      },
+      "quarterlyReflection": "분기 회고",
+      "reviewInAWeek": "일주일 뒤 검토",
+      "sameDayNextMonth": "다음 달 같은 날",
+      "tomorrow": {
+        "description": "내일 오전 9시",
+        "label": "내일"
+      },
+      "tomorrowMorning": "내일 아침"
+    }
   },
   "insights": {
     "captureActivity": "활동 캡처",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "파일 첨부(이미지, 오디오, 비디오, PDF)",
       "recordVoiceMemo": "음성 메모 녹음",
       "recordVoiceMemo2": "음성 메모 녹음",
-      "alreadyCaptured": "이미 캡처되었습니다: “",
-      "rdquo": "rdquo;",
       "captureAnyway": "어쨌든 캡처",
       "focusShortcut": "수집 입력에 포커스",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "링크 캡처",
+      "captureNote": "메모 캡처",
+      "placeholder": "빠른 캡처 — 링크를 붙여넣거나 떠오른 생각을 적어보세요…",
+      "duplicateNotice": "이미 캡처함: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "폴더 선택",
@@ -414,10 +459,9 @@
       "captured": "캡처됨",
       "dismissError": "오류 무시",
       "alreadyCaptured": "이미 캡처됨",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; · ",
       "captureAnyway": "어쨌든 캡처",
-      "close": "닫기"
+      "close": "닫기",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "드롭하여 캡처",
@@ -466,7 +510,12 @@
       "cancelRecording": "녹음 취소",
       "cancel": "취소",
       "stopRecording": "녹음 중지",
-      "stop": "중지"
+      "stop": "중지",
+      "enableMicInSettings": "시스템 설정에서 마이크 접근을 허용한 뒤 다시 시도하세요.",
+      "failedToStart": "녹음을 시작하지 못했습니다",
+      "microphoneAccessDenied": "마이크 접근이 거부되었습니다",
+      "noMicrophoneFound": "마이크를 찾을 수 없습니다",
+      "recordingError": "녹음 중 오류가 발생했습니다"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "파일을 캡처하지 못했습니다.",
       "fileCaptureFailed": "파일 캡처 실패",
       "failedToCaptureAudio": "오디오를 캡처하지 못했습니다.",
-      "failedToCaptureVoice": "음성을 캡처하지 못했습니다."
+      "failedToCaptureVoice": "음성을 캡처하지 못했습니다.",
+      "failedToLoadInboxPreferences": "받은함 환경설정을 로드하지 못했습니다",
+      "failedToUpdateInboxPreferences": "받은함 환경설정을 업데이트하지 못했습니다"
     },
     "toasts": {
       "inboxRefreshed": "받은 편지함을 새로 고쳤습니다."
@@ -516,5 +567,10 @@
     "task": "작업",
     "time": "시간",
     "title": "변환"
+  },
+  "reviewNudge": {
+    "action": "받은함 열기",
+    "description": "오늘 캡처한 항목을 한 번에 차분히 정리하세요.",
+    "title": "{count, plural, other {항목 #개를 검토할 시간입니다}}"
   }
 }

@@ -1,6 +1,6 @@
 /**
  * Canvas IPC handlers (spatial canvas).
- * CRUD for encrypted canvas scene snapshots; hidden behind the spatialCanvas
+ * CRUD for encrypted canvas scene snapshots; gated by the spatialCanvas
  * feature flag in the renderer.
  *
  * @module ipc/canvas-handlers

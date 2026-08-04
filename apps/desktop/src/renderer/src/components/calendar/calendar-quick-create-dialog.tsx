@@ -83,7 +83,8 @@ export function CalendarQuickCreateDialog({
       isAllDay,
       startAt,
       endAt,
-      targetCalendarId: null
+      targetCalendarId: null,
+      projectId: null
     }
   }
 

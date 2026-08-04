@@ -1,3 +1,5 @@
+import { getI18n } from 'react-i18next'
+import { getActiveLocale } from '@/lib/active-locale'
 import { formatDate } from '@/lib/format-date'
 
 export type DueRelative = 'today' | 'tomorrow' | 'this-week' | 'absolute'
@@ -17,6 +19,7 @@ export interface FormatTaskDueResult {
 }
 
 export function formatTaskDue(input: FormatTaskDueInput): FormatTaskDueResult {
+  const t = getI18n().getFixedT(null, 'common')
   const now = input.now ?? new Date()
   const due = parseDateOnly(input.dueDate)
   const today = startOfDay(now)
@@ -29,7 +32,7 @@ export function formatTaskDue(input: FormatTaskDueInput): FormatTaskDueResult {
     const days = Math.abs(dayDelta)
     return {
       relative: 'absolute',
-      label: days === 1 ? '1 day overdue' : `${days} days overdue`,
+      label: t('dateRelative.daysOverdue', { count: days }),
       isOverdue: true
     }
   }
@@ -45,9 +48,9 @@ export function formatTaskDue(input: FormatTaskDueInput): FormatTaskDueResult {
 
   const datePart =
     relative === 'today'
-      ? 'Today'
+      ? t('dateRelative.today')
       : relative === 'tomorrow'
-        ? 'Tomorrow'
+        ? t('dateRelative.tomorrow')
         : relative === 'this-week'
           ? weekdayShort(due)
           : absoluteDate(due)
@@ -78,7 +81,7 @@ function diffInCalendarDays(a: Date, b: Date): number {
 }
 
 function weekdayShort(d: Date): string {
-  return d.toLocaleDateString('en-US', { weekday: 'short' })
+  return d.toLocaleDateString(getActiveLocale(), { weekday: 'short' })
 }
 
 function absoluteDate(d: Date): string {
@@ -89,9 +92,9 @@ function formatTime(hhmm: string): string {
   const [h, m] = hhmm.split(':').map(Number)
   const date = new Date()
   date.setHours(h, m, 0, 0)
-  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  return date.toLocaleTimeString(getActiveLocale(), { hour: 'numeric', minute: '2-digit' })
 }
 
 function formatTimeFromIso(iso: string): string {
-  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  return new Date(iso).toLocaleTimeString(getActiveLocale(), { hour: 'numeric', minute: '2-digit' })
 }

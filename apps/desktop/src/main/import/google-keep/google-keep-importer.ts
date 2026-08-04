@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { readFile } from 'node:fs/promises'
 import { parseKeepNote, mapKeepNote } from '@memry/importers/google-keep'
+import { IMPORT_STATUS, importingItemStatus } from '@memry/importers/messages'
 import { createNote } from '../../vault/notes-crud'
 import { saveAttachment } from '../../vault/attachments'
 import { attachmentMarkdown } from '../_shared/attachment-markdown'
@@ -36,7 +37,7 @@ async function processNote(
 
   try {
     const mapped = mapKeepNote(keepNote)
-    ctx.status(`Importing ${mapped.title}`)
+    ctx.status(importingItemStatus(mapped.title))
 
     // Pre-generate the note id so attachments can be saved under it before the
     // note exists. The note is then created once with the fully resolved body —
@@ -94,7 +95,7 @@ export const googleKeepImporter: Importer = {
 
   async run(input: ImportInput, ctx: ImportContext): Promise<ImportSummary> {
     ctx.setPhase('scanning')
-    ctx.status('Scanning export…')
+    ctx.status(IMPORT_STATUS.scanningExport)
 
     // Collected entries: notes (parsed JSON) + asset bytes keyed by basename.
     const pendingNotes: Array<{ raw: unknown; label: string }> = []

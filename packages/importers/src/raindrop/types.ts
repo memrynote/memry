@@ -1,3 +1,5 @@
+import type { ImportMessage } from '../messages'
+
 /** A single row of a Raindrop.io CSV bookmark export. */
 export interface RaindropRow {
   id: string
@@ -34,8 +36,7 @@ export interface InboxItemPlan {
   }
 }
 
-export interface ImportWarning {
-  message: string
+export interface ImportWarning extends ImportMessage {
   row?: number
 }
 

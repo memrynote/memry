@@ -6,6 +6,8 @@ export interface CalendarEventDraft {
   endAt: string
   /** M2: Google calendar this event should be pushed to. Null = fall through to default. */
   targetCalendarId: string | null
+  /** Create mode only: project to link the event to once it has an id. */
+  projectId: string | null
 }
 
 export interface AnchorRect {

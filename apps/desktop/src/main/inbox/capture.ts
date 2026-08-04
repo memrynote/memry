@@ -8,11 +8,11 @@
  * @module main/inbox/capture
  */
 
-import { BrowserWindow } from 'electron'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getDatabase, requireDatabase } from '../database'
 import { generateId } from '../lib/id'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
@@ -63,9 +63,7 @@ const CaptureVoiceStorageSchema = z.object({
  * Emit inbox event to all windows
  */
 function emitInboxEvent(channel: string, data: unknown): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, data)
-  })
+  broadcastToAllWindows(channel, data)
 }
 
 /**

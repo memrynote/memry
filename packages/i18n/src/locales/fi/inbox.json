@@ -147,7 +147,7 @@
     "deselectAll": "Poista kaikki valinnat",
     "ariaLabel": "Joukkotoiminnot {count} valituille kohteille",
     "file": "Tiedosto",
-    "tag": "Tag",
+    "tag": "Tunniste",
     "snooze": "Torkku",
     "archive": "Arkisto",
     "add": "Lisää",
@@ -256,7 +256,7 @@
     "source": "lähde",
     "journalTitle": "Päiväkirja — {date}",
     "noteFallback": "Huom",
-    "journalFallback": "Journal",
+    "journalFallback": "Päiväkirja",
     "highlighted": "Korostettu: \"{text}\"",
     "viewed": "Katsottu",
     "markViewed": "Merkitse katsotuksi",
@@ -270,10 +270,53 @@
     "panelEmpty": "Ei tulevia muistutuksia.",
     "panelPast": "Menneet",
     "panelUpcoming": "Tulossa",
-    "taskFallback": "Tehtävä"
+    "taskFallback": "Tehtävä",
+    "dateTime": {
+      "dateAt": "{date} klo {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Tänään klo {time}",
+      "todayCompact": "Tänään, {time}",
+      "tomorrowAt": "Huomenna klo {time}",
+      "tomorrowCompact": "Huomenna, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Vuosipäivämuistutus",
+      "inHours": {
+        "label": "{count, plural, one {# tunnin kuluttua} other {# tunnin kuluttua}}"
+      },
+      "inMinutes": {
+        "label": "{count, plural, one {# minuutin kuluttua} other {# minuutin kuluttua}}"
+      },
+      "inMonths": {
+        "label": "{count, plural, one {# kuukauden kuluttua} other {# kuukauden kuluttua}}"
+      },
+      "inWeeks": {
+        "label": "{count, plural, one {# viikon kuluttua} other {# viikon kuluttua}}"
+      },
+      "inYears": {
+        "label": "{count, plural, one {# vuoden kuluttua} other {# vuoden kuluttua}}"
+      },
+      "laterToday": {
+        "description": "{count, plural, one {# tunnin kuluttua} other {# tunnin kuluttua}}",
+        "label": "Myöhemmin tänään"
+      },
+      "monthlyReflection": "Kuukausittainen katsaus",
+      "nextWeek": {
+        "description": "Maanantaina klo 9.00",
+        "label": "Ensi viikolla"
+      },
+      "quarterlyReflection": "Neljännesvuosikatsaus",
+      "reviewInAWeek": "Katso uudelleen viikon kuluttua",
+      "sameDayNextMonth": "Sama päivä ensi kuussa",
+      "tomorrow": {
+        "description": "Huomenna klo 9.00",
+        "label": "Huomenna"
+      },
+      "tomorrowMorning": "Huomisaamuna"
+    }
   },
   "insights": {
-    "captureActivity": "Capture Activity",
+    "captureActivity": "Sieppausaktiivisuus",
     "byType": "Tyypin mukaan",
     "recentFilings": "Viimeaikaiset hakemukset",
     "captured": "Vangittu",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Liitä tiedosto (kuvat, ääni, video, PDF)",
       "recordVoiceMemo": "Nauhoita äänimuistio",
       "recordVoiceMemo2": "Nauhoita äänimuistio",
-      "alreadyCaptured": "Jo otettu: \"",
-      "rdquo": "rdquo;",
       "captureAnyway": "Kaappaa joka tapauksessa",
       "focusShortcut": "Kohdista tallennussyöttöön",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Tallenna linkki",
+      "captureNote": "Tallenna muistiinpano",
+      "placeholder": "Pikatallennus — liitä linkki tai kirjaa ajatus…",
+      "duplicateNotice": "Jo tallennettu: ”{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Valitse kansio",
@@ -355,7 +400,7 @@
       "suggested": "Ehdotettu"
     },
     "componentsInboxInboxCaptureHeatmap": {
-      "captureActivity": "Capture Activity"
+      "captureActivity": "Sieppausaktiivisuus"
     },
     "componentsInboxInboxFilingHistory": {
       "noItemsFiledYet": "Kohteita ei ole vielä tallennettu",
@@ -414,10 +459,9 @@
       "captured": "Vangittu",
       "dismissError": "Hylkää virhe",
       "alreadyCaptured": "Jo vangittu",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; · ",
       "captureAnyway": "Kaappaa joka tapauksessa",
-      "close": "Sulje"
+      "close": "Sulje",
+      "duplicateMeta": "”{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Kuvaa pudottamalla",
@@ -466,7 +510,12 @@
       "cancelRecording": "Peruuta tallennus",
       "cancel": "Peruuta",
       "stopRecording": "Lopeta tallennus",
-      "stop": "Pysähdy"
+      "stop": "Pysähdy",
+      "enableMicInSettings": "Salli mikrofonin käyttö järjestelmäasetuksissa ja yritä uudelleen.",
+      "failedToStart": "Tallennuksen aloittaminen epäonnistui",
+      "microphoneAccessDenied": "Mikrofonin käyttö estetty",
+      "noMicrophoneFound": "Mikrofonia ei löytynyt",
+      "recordingError": "Tallennuksessa tapahtui virhe"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Tiedoston sieppaus epäonnistui",
       "fileCaptureFailed": "Tiedoston sieppaus epäonnistui",
       "failedToCaptureAudio": "Äänen sieppaus epäonnistui",
-      "failedToCaptureVoice": "Äänen sieppaus epäonnistui"
+      "failedToCaptureVoice": "Äänen sieppaus epäonnistui",
+      "failedToLoadInboxPreferences": "Saapuneet-asetusten lataaminen epäonnistui",
+      "failedToUpdateInboxPreferences": "Saapuneet-asetusten päivittäminen epäonnistui"
     },
     "toasts": {
       "inboxRefreshed": "Postilaatikko päivitetty"
@@ -516,5 +567,10 @@
     "task": "Tehtävä",
     "time": "Aika",
     "title": "Muunna"
+  },
+  "reviewNudge": {
+    "action": "Avaa saapuneet",
+    "description": "Käy tämän päivän tallennukset läpi yhdellä rauhallisella kierroksella.",
+    "title": "{count, plural, one {Aika käydä läpi # kohde} other {Aika käydä läpi # kohdetta}}"
   }
 }

@@ -22,7 +22,19 @@
     "writeFailed": "Nepodarilo sa uložiť túto poznámku. Skontrolujte miesto na disku a oprávnenia.",
     "readFailed": "Nepodarilo sa prečítať túto poznámku. Súbor môže byť zamknutý alebo poškodený.",
     "deleteFailed": "Nepodarilo sa vymazať túto poznámku. Skontrolujte oprávnenia súboru.",
-    "invalidPath": "Cesta k poznámke je neplatná."
+    "invalidPath": "Cesta k poznámke je neplatná.",
+    "applyTemplateFailed": "Nepodarilo sa použiť šablónu",
+    "createFailed": "Nepodarilo sa vytvoriť poznámku",
+    "deleteVersionFailed": "Nepodarilo sa odstrániť verziu",
+    "exportHtmlFailed": "Nepodarilo sa exportovať HTML",
+    "exportPdfFailed": "Nepodarilo sa exportovať PDF",
+    "importFilesFailed": "Nepodarilo sa importovať súbory",
+    "moveFailed": "Nepodarilo sa presunúť poznámku",
+    "renameFailed": "Nepodarilo sa premenovať poznámku",
+    "reorderFailed": "Nepodarilo sa zmeniť poradie poznámok",
+    "restoreVersionFailed": "Nepodarilo sa obnoviť verziu",
+    "setLocalOnlyFailed": "Nepodarilo sa nastaviť režim len lokálne",
+    "updateFailed": "Nepodarilo sa aktualizovať poznámku"
   },
   "database": {
     "connectionFailed": "Nepodarilo sa pripojiť k lokálnej databáze. Skúste reštartovať aplikáciu.",
@@ -41,7 +53,14 @@
     "fileTooLarge": "Tento súbor je príliš veľký na priloženie.",
     "unsupportedType": "Tento typ súboru nie je podporovaný.",
     "writeFailed": "Nepodarilo sa uložiť prílohu. Skontrolujte miesto na disku.",
-    "deleteFailed": "Nepodarilo sa vymazať prílohu."
+    "deleteFailed": "Nepodarilo sa vymazať prílohu.",
+    "downloadFailed": "Sťahovanie prílohy zlyhalo",
+    "downloadProgressFailed": "Nepodarilo sa načítať priebeh sťahovania",
+    "uploadFailed": "Nahrávanie prílohy zlyhalo",
+    "uploadProgressFailed": "Nepodarilo sa načítať priebeh nahrávania",
+    "emptyFile": "Prázdny súbor sa nedá nahrať",
+    "exceedsMaxSize": "Súbor je príliš veľký: {size} prekračuje limit {limit}",
+    "exceedsPlanLimit": "Súbor je väčší, než umožňuje váš plán: {size} prekračuje {limit}"
   },
   "encryption": {
     "failed": "Nepodarilo sa zašifrovať dáta. Môže byť potrebné znovu vygenerovať vaše kľúče.",
@@ -74,6 +93,188 @@
     "securityQuarantinePermanent": "Synchronizačná položka nemohla byť overená a bola umiestnená do karantény z bezpečnostných dôvodov.",
     "securityQuarantineRetry": "Overenie podpisu synchronizačnej položky zlyhalo a bude sa skúšať znova.",
     "certificatePinPaused": "Bezpečné pripojenie k synchronizačnému serveru nemohlo byť overené. Synchronizácia bola zastavená na vašu ochranu.",
-    "paymentRequired": "Na používanie hostovanej šifrovanej synchronizácie sa vyžaduje platený plán Sync."
+    "paymentRequired": "Na používanie hostovanej šifrovanej synchronizácie sa vyžaduje platený plán Sync.",
+    "attachmentUploadFailed": "Prílohu „{filename}“ sa nepodarilo synchronizovať. Zostáva na tomto zariadení.",
+    "fileTooLarge": "Tento súbor je väčší, než umožňuje váš plán. Ak chcete synchronizovať väčšie súbory, prejdite na vyšší plán.",
+    "vaultRecovered": "Kľúč trezora bol obnovený. Synchronizácia bude pokračovať.",
+    "historyFetchFailed": "Nepodarilo sa načítať históriu synchronizácie",
+    "keyPersistenceFailed": "Nepodarilo sa bezpečne uložiť šifrovací kľúč. Registrácia zariadenia bola vrátená späť. Skúste to prosím znova.",
+    "serverUnreachable": "Nepodarilo sa pripojiť k synchronizačnému serveru. Skontrolujte prosím svoje internetové pripojenie.",
+    "updateSyncedSettingFailed": "Nepodarilo sa aktualizovať synchronizované nastavenie",
+    "requestTimedOut": "Požiadavka na synchronizáciu vypršala. Skontrolujte svoje internetové pripojenie."
+  },
+  "agent": {
+    "conversationBusy": "Konverzácia je zaneprázdnená",
+    "runtimeStarting": "Prostredie agenta sa spúšťa. Skúste to znova."
+  },
+  "ai": {
+    "inlineDisabled": "Vkladané úpravy pomocou AI sú vypnuté",
+    "listOllamaModelsFailed": "Nepodarilo sa načítať zoznam modelov Ollama"
+  },
+  "auth": {
+    "approveLinkingFailed": "Nepodarilo sa schváliť prepojenie",
+    "cannotRemoveCurrentDevice": "Aktuálne zariadenie sa nedá odstrániť",
+    "completeLinkingFailed": "Nepodarilo sa dokončiť prepojenie",
+    "confirmRecoveryPhraseFailed": "Nepodarilo sa potvrdiť obnovovaciu frázu",
+    "fetchSasCodeFailed": "Nepodarilo sa načítať kód SAS",
+    "finalizeVaultChoiceFailed": "Nepodarilo sa dokončiť výber trezora",
+    "initiateOAuthFailed": "Nepodarilo sa spustiť OAuth",
+    "invalidRecoveryPhraseFormat": "Neplatný formát obnovovacej frázy",
+    "linkDeviceQrFailed": "Nepodarilo sa prepojiť zariadenie cez QR",
+    "linkRecoveryPhraseFailed": "Nepodarilo sa prepojiť pomocou obnovovacej frázy",
+    "notAuthenticated": "Nie ste prihlásení",
+    "pickFolderFailed": "Nepodarilo sa vybrať priečinok",
+    "recoveryPhraseMismatch": "Obnovovacia fráza sa nezhoduje. Skúste to prosím znova.",
+    "removeDeviceFailed": "Nepodarilo sa odstrániť zariadenie",
+    "renameDeviceFailed": "Nepodarilo sa premenovať zariadenie",
+    "requestOtpFailed": "Nepodarilo sa vyžiadať jednorazový kód",
+    "resendOtpFailed": "Nepodarilo sa znova odoslať jednorazový kód",
+    "sessionExpired": "Relácia vypršala. Prihláste sa prosím znova.",
+    "setupFirstDeviceOAuthFailed": "Nepodarilo sa nastaviť prvé zariadenie cez OAuth",
+    "verifyOtpFailed": "Nepodarilo sa overiť jednorazový kód"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "Položka už je medzi záložkami",
+    "notFound": "Záložka sa nenašla"
+  },
+  "calendar": {
+    "connectProviderFailed": "Nepodarilo sa pripojiť poskytovateľa kalendára",
+    "createEventFailed": "Nepodarilo sa vytvoriť udalosť v kalendári",
+    "deleteEventFailed": "Nepodarilo sa odstrániť udalosť v kalendári",
+    "disconnectProviderFailed": "Nepodarilo sa odpojiť poskytovateľa kalendára",
+    "eventNotFound": "Udalosť v kalendári sa nenašla",
+    "googleNotConnected": "Google Calendar nie je na tomto zariadení pripojený",
+    "listGoogleCalendarsFailed": "Nepodarilo sa načítať zoznam kalendárov Google",
+    "onlyGoogleSourcesRetryable": "Zopakovať možno len zdroje z Google Calendar",
+    "onlySourcesSelectable": "Vybrať možno len zdroje kalendára",
+    "promoteExternalEventFailed": "Nepodarilo sa povýšiť externú udalosť kalendára",
+    "refreshProviderFailed": "Nepodarilo sa obnoviť poskytovateľa kalendára",
+    "retryGoogleSourceSyncFailed": "Nepodarilo sa zopakovať synchronizáciu zdroja Google Calendar",
+    "setDefaultGoogleCalendarFailed": "Nepodarilo sa nastaviť predvolený kalendár Google",
+    "signInBeforeRefresh": "Pred obnovením Google Calendar sa prihláste do memrynote",
+    "sourceNotFound": "Zdroj kalendára sa nenašiel",
+    "syncFailed": "Synchronizácia zlyhala",
+    "updateEventFailed": "Nepodarilo sa aktualizovať udalosť v kalendári",
+    "updateSourceSelectionFailed": "Nepodarilo sa aktualizovať výber zdrojov kalendára"
+  },
+  "folder": {
+    "createFailed": "Nepodarilo sa vytvoriť priečinok",
+    "deleteFailed": "Nepodarilo sa odstrániť priečinok",
+    "renameFailed": "Nepodarilo sa premenovať priečinok",
+    "setConfigFailed": "Nepodarilo sa nastaviť konfiguráciu priečinka"
+  },
+  "folderView": {
+    "deleteViewFailed": "Nepodarilo sa odstrániť zobrazenie",
+    "setConfigFailed": "Nepodarilo sa nastaviť konfiguráciu",
+    "setViewFailed": "Nepodarilo sa nastaviť zobrazenie"
+  },
+  "googleCalendar": {
+    "accessDenied": "Prístup ku Google Calendar bol zamietnutý. Pripojiť sa môžete znova, kedykoľvek budete chcieť.",
+    "connectFailed": "Ku Google Calendar sa nepodarilo pripojiť. Skúste to prosím o chvíľu znova.",
+    "misconfigured": "Google Calendar nie je správne nastavený. Ak sa to opakuje, kontaktujte prosím podporu.",
+    "reconnectNeeded": "Vaše pripojenie ku Google Calendar vypršalo. Odpojte ho prosím a pripojte znova.",
+    "scopeMissing": "Ku Google Calendar sme sa nedostali, pretože nebolo udelené povolenie pre Kalendár. Skúste to prosím znova a nechajte na obrazovke súhlasu Google zaškrtnuté políčko Kalendár.",
+    "temporarilyUnavailable": "Google Calendar je dočasne nedostupný. Skúste to prosím o chvíľu znova."
+  },
+  "importer": {
+    "cancelFailed": "Zrušenie zlyhalo",
+    "fileSelectionFailed": "Výber súboru zlyhal",
+    "importFailed": "Import zlyhal",
+    "listFailed": "Nepodarilo sa načítať zoznam importérov",
+    "previewFailed": "Náhľad zlyhal"
+  },
+  "project": {
+    "archiveFailed": "Nepodarilo sa archivovať projekt",
+    "captureLinkFailed": "Nepodarilo sa zachytiť odkaz",
+    "createFailed": "Nepodarilo sa vytvoriť projekt",
+    "deleteFailed": "Nepodarilo sa odstrániť projekt",
+    "importFilesFailed": "Nepodarilo sa importovať súbory",
+    "linkItemFailed": "Nepodarilo sa prepojiť položku",
+    "listForItemFailed": "Nepodarilo sa načítať projekty pre položku",
+    "reorderFailed": "Nepodarilo sa zmeniť poradie projektov",
+    "setHomeNoteFailed": "Nepodarilo sa nastaviť domovskú poznámku",
+    "unlinkItemFailed": "Nepodarilo sa zrušiť prepojenie položky",
+    "updateFailed": "Nepodarilo sa aktualizovať projekt",
+    "updatePinnedFailed": "Nepodarilo sa aktualizovať pripnutie"
+  },
+  "property": {
+    "alreadyExists": "Vlastnosť „{name}“ už existuje",
+    "createDefinitionFailed": "Nepodarilo sa vytvoriť definíciu vlastnosti",
+    "entityNotFound": "Entita sa nenašla",
+    "notFound": "Vlastnosť „{name}“ sa nenašla",
+    "renameFailed": "Nepodarilo sa premenovať vlastnosť",
+    "setCalendarVisibilityFailed": "Nepodarilo sa nastaviť viditeľnosť vlastnosti v kalendári",
+    "setFailed": "Nepodarilo sa nastaviť vlastnosti",
+    "updateDefinitionFailed": "Nepodarilo sa aktualizovať definíciu vlastnosti"
+  },
+  "reminder": {
+    "createFailed": "Nepodarilo sa vytvoriť pripomienku",
+    "dismissAllFailed": "Nepodarilo sa zavrieť pripomienky",
+    "dismissFailed": "Nepodarilo sa zavrieť pripomienku",
+    "notFound": "Pripomienka sa nenašla",
+    "snoozeFailed": "Nepodarilo sa odložiť pripomienku",
+    "updateFailed": "Nepodarilo sa aktualizovať pripomienku"
+  },
+  "savedFilter": {
+    "notFound": "Uložený filter sa nenašiel"
+  },
+  "search": {
+    "rebuildFailed": "Prestavba zlyhala"
+  },
+  "settings": {
+    "modelAlreadyLoading": "Model sa už načítava",
+    "modelLoadFailed": "Nepodarilo sa načítať model",
+    "shortcutInUse": "Skratka {shortcut} sa už používa",
+    "terminalCommandInstallFailed": "Nepodarilo sa nainštalovať terminálový príkaz",
+    "terminalCommandUninstallFailed": "Nepodarilo sa odinštalovať terminálový príkaz",
+    "unknownVault": "Neznámy trezor",
+    "voiceModelDownloadFailed": "Nepodarilo sa stiahnuť hlasový model"
+  },
+  "tag": {
+    "categoryNameRequired": "Názov kategórie je povinný",
+    "createCategoryFailed": "Nepodarilo sa vytvoriť kategóriu značiek",
+    "deleteCategoryFailed": "Nepodarilo sa odstrániť kategóriu značiek",
+    "deleteFailed": "Nepodarilo sa odstrániť značku",
+    "listCategoriesFailed": "Nepodarilo sa načítať kategórie značiek",
+    "mergeFailed": "Nepodarilo sa zlúčiť značky",
+    "mergeSameTag": "Zdrojová a cieľová značka sú rovnaké",
+    "pinNoteFailed": "Nepodarilo sa pripnúť poznámku",
+    "removeFromNoteFailed": "Nepodarilo sa odstrániť značku z poznámky",
+    "renameCategoryFailed": "Nepodarilo sa premenovať kategóriu značiek",
+    "renameFailed": "Nepodarilo sa premenovať značku",
+    "reorderFailed": "Nepodarilo sa zmeniť poradie značiek",
+    "unpinNoteFailed": "Nepodarilo sa odopnúť poznámku",
+    "updateColorFailed": "Nepodarilo sa aktualizovať farbu značky",
+    "updateIconFailed": "Nepodarilo sa aktualizovať ikonu značky"
+  },
+  "task": {
+    "archiveFailed": "Nepodarilo sa archivovať úlohu",
+    "archiveManyFailed": "Nepodarilo sa archivovať úlohy",
+    "completeFailed": "Nepodarilo sa dokončiť úlohu",
+    "completeManyFailed": "Nepodarilo sa dokončiť úlohy",
+    "convertToSubtaskFailed": "Nepodarilo sa previesť na podúlohu",
+    "convertToTaskFailed": "Nepodarilo sa previesť na úlohu",
+    "createFailed": "Nepodarilo sa vytvoriť úlohu",
+    "deleteFailed": "Nepodarilo sa odstrániť úlohu",
+    "deleteManyFailed": "Nepodarilo sa odstrániť úlohy",
+    "duplicateFailed": "Nepodarilo sa duplikovať úlohu",
+    "moveFailed": "Nepodarilo sa presunúť úlohu",
+    "moveManyFailed": "Nepodarilo sa presunúť úlohy",
+    "reorderFailed": "Nepodarilo sa zmeniť poradie úloh",
+    "unarchiveFailed": "Nepodarilo sa zrušiť archiváciu úlohy",
+    "uncompleteFailed": "Nepodarilo sa zrušiť dokončenie úlohy",
+    "updateFailed": "Nepodarilo sa aktualizovať úlohu"
+  },
+  "taskStatus": {
+    "createFailed": "Nepodarilo sa vytvoriť stav",
+    "deleteFailed": "Nepodarilo sa odstrániť stav",
+    "reorderFailed": "Nepodarilo sa zmeniť poradie stavov",
+    "updateFailed": "Nepodarilo sa aktualizovať stav"
+  },
+  "template": {
+    "createFailed": "Nepodarilo sa vytvoriť šablónu",
+    "deleteFailed": "Nepodarilo sa odstrániť šablónu",
+    "duplicateFailed": "Nepodarilo sa duplikovať šablónu",
+    "updateFailed": "Nepodarilo sa aktualizovať šablónu"
   }
 }

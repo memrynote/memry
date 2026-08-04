@@ -270,7 +270,50 @@
     "panelEmpty": "אין תזכורות קרובות.",
     "panelPast": "עברו",
     "panelUpcoming": "קרובות",
-    "taskFallback": "משימה"
+    "taskFallback": "משימה",
+    "dateTime": {
+      "dateAt": "{date} בשעה {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "היום בשעה {time}",
+      "todayCompact": "היום, {time}",
+      "tomorrowAt": "מחר בשעה {time}",
+      "tomorrowCompact": "מחר, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "תזכורת ליום השנה",
+      "inHours": {
+        "label": "{count, plural, one {בעוד שעה} two {בעוד שעתיים} other {בעוד # שעות}}"
+      },
+      "inMinutes": {
+        "label": "{count, plural, one {בעוד דקה} two {בעוד שתי דקות} other {בעוד # דקות}}"
+      },
+      "inMonths": {
+        "label": "{count, plural, one {בעוד חודש} two {בעוד חודשיים} other {בעוד # חודשים}}"
+      },
+      "inWeeks": {
+        "label": "{count, plural, one {בעוד שבוע} two {בעוד שבועיים} other {בעוד # שבועות}}"
+      },
+      "inYears": {
+        "label": "{count, plural, one {בעוד שנה} two {בעוד שנתיים} other {בעוד # שנים}}"
+      },
+      "laterToday": {
+        "description": "{count, plural, one {בעוד שעה} two {בעוד שעתיים} other {בעוד # שעות}}",
+        "label": "מאוחר יותר היום"
+      },
+      "monthlyReflection": "התבוננות חודשית",
+      "nextWeek": {
+        "description": "יום שני ב-9:00",
+        "label": "בשבוע הבא"
+      },
+      "quarterlyReflection": "התבוננות רבעונית",
+      "reviewInAWeek": "סקירה בעוד שבוע",
+      "sameDayNextMonth": "אותו יום בחודש הבא",
+      "tomorrow": {
+        "description": "מחר ב-9:00",
+        "label": "מחר"
+      },
+      "tomorrowMorning": "מחר בבוקר"
+    }
   },
   "insights": {
     "captureActivity": "פעילות לכידה",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "צרף קובץ (תמונות, אודיו, וידאו, PDF)",
       "recordVoiceMemo": "הקלט תזכיר קולי",
       "recordVoiceMemo2": "הקלט תזכיר קולי",
-      "alreadyCaptured": "כבר נלכד: \"",
-      "rdquo": "rdquo;",
       "captureAnyway": "ללכוד בכל מקרה",
       "focusShortcut": "מקד את קלט הלכידה",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "ללכוד קישור",
+      "captureNote": "ללכוד הערה",
+      "placeholder": "לכידה מהירה — הדבק קישור, רשום מחשבה…",
+      "duplicateNotice": "כבר נלכד: \"{title}\""
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "בחר תיקיה",
@@ -414,10 +459,9 @@
       "captured": "נלכד",
       "dismissError": "בטל שגיאה",
       "alreadyCaptured": "כבר נלכד",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; · ",
       "captureAnyway": "ללכוד בכל מקרה",
-      "close": "סגור"
+      "close": "סגור",
+      "duplicateMeta": "\"{title}\" · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "זרוק כדי ללכוד",
@@ -466,7 +510,12 @@
       "cancelRecording": "בטל הקלטה",
       "cancel": "בטל",
       "stopRecording": "תפסיק להקליט",
-      "stop": "עצור"
+      "stop": "עצור",
+      "enableMicInSettings": "אפשר גישה למיקרופון בהגדרות המערכת, ואז נסה שוב.",
+      "failedToStart": "התחלת ההקלטה נכשלה",
+      "microphoneAccessDenied": "הגישה למיקרופון נדחתה",
+      "noMicrophoneFound": "לא נמצא מיקרופון",
+      "recordingError": "אירעה שגיאת הקלטה"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "כשל בלכידת הקובץ",
       "fileCaptureFailed": "לכידת הקובץ נכשלה",
       "failedToCaptureAudio": "כשל בלכידת האודיו",
-      "failedToCaptureVoice": "לא הצליח ללכוד את הקול"
+      "failedToCaptureVoice": "לא הצליח ללכוד את הקול",
+      "failedToLoadInboxPreferences": "טעינת העדפות תיבת הדואר הנכנס נכשלה",
+      "failedToUpdateInboxPreferences": "עדכון העדפות תיבת הדואר הנכנס נכשל"
     },
     "toasts": {
       "inboxRefreshed": "דואר נכנס רענון"
@@ -516,5 +567,10 @@
     "task": "משימה",
     "time": "שעה",
     "title": "המר"
+  },
+  "reviewNudge": {
+    "action": "פתח את תיבת הדואר הנכנס",
+    "description": "עבור על מה שלכדת היום, במעבר רגוע אחד.",
+    "title": "{count, plural, one {הגיע הזמן לעבור על # פריט} two {הגיע הזמן לעבור על # פריטים} other {הגיע הזמן לעבור על # פריטים}}"
   }
 }

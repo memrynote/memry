@@ -22,7 +22,19 @@
     "writeFailed": "שמירת ההערה נכשלה. בדוק שטח דיסק והרשאות.",
     "readFailed": "נכשל לקרוא את ההערה הזו. ייתכן שהקובץ נעול או פגום.",
     "deleteFailed": "מחיקת הערה זו נכשלה. בדוק את הרשאות הקובץ.",
-    "invalidPath": "נתיב ההערה אינו חוקי."
+    "invalidPath": "נתיב ההערה אינו חוקי.",
+    "applyTemplateFailed": "החלת התבנית נכשלה",
+    "createFailed": "יצירת ההערה נכשלה",
+    "deleteVersionFailed": "מחיקת הגרסה נכשלה",
+    "exportHtmlFailed": "ייצוא ה-HTML נכשל",
+    "exportPdfFailed": "ייצוא ה-PDF נכשל",
+    "importFilesFailed": "ייבוא הקבצים נכשל",
+    "moveFailed": "העברת ההערה נכשלה",
+    "renameFailed": "שינוי שם ההערה נכשל",
+    "reorderFailed": "סידור ההערות מחדש נכשל",
+    "restoreVersionFailed": "שחזור הגרסה נכשל",
+    "setLocalOnlyFailed": "הגדרת ההערה כמקומית בלבד נכשלה",
+    "updateFailed": "עדכון ההערה נכשל"
   },
   "database": {
     "connectionFailed": "לא ניתן להתחבר למסד הנתונים המקומי. נסה להפעיל מחדש את האפליקציה.",
@@ -41,7 +53,14 @@
     "fileTooLarge": "קובץ זה גדול מכדי לצרף.",
     "unsupportedType": "סוג קובץ זה אינו נתמך.",
     "writeFailed": "שמירת הקובץ המצורף נכשלה. בדוק מקום בדיסק.",
-    "deleteFailed": "מחיקת הקובץ המצורף נכשלה."
+    "deleteFailed": "מחיקת הקובץ המצורף נכשלה.",
+    "downloadFailed": "הורדת הקובץ המצורף נכשלה",
+    "downloadProgressFailed": "אחזור התקדמות ההורדה נכשל",
+    "uploadFailed": "העלאת הקובץ המצורף נכשלה",
+    "uploadProgressFailed": "אחזור התקדמות ההעלאה נכשל",
+    "emptyFile": "לא ניתן להעלות קובץ ריק",
+    "exceedsMaxSize": "הקובץ גדול מדי: {size} חורג מהמגבלה של {limit}",
+    "exceedsPlanLimit": "הקובץ גדול ממה שהתוכנית שלך מתירה: {size} חורג מ-{limit}"
   },
   "encryption": {
     "failed": "הצפנת הנתונים נכשלה. ייתכן שיהיה צורך לשחזר את המפתחות שלך.",
@@ -74,6 +93,188 @@
     "securityQuarantinePermanent": "לא ניתן היה לאמת פריט סנכרון והוא הועבר להסגר לצורך אבטחה.",
     "securityQuarantineRetry": "פריט סנכרון נכשל באימות החתימה והוא ינוסה שוב.",
     "certificatePinPaused": "לא ניתן היה לאמת חיבור מאובטח לשרת הסנכרון. הסנכרון הושהה להגנתך.",
-    "paymentRequired": "נדרשת תוכנית Sync בתשלום כדי להשתמש בסנכרון מוצפן מתארח."
+    "paymentRequired": "נדרשת תוכנית Sync בתשלום כדי להשתמש בסנכרון מוצפן מתארח.",
+    "attachmentUploadFailed": "לא ניתן היה לסנכרן את הקובץ המצורף \"{filename}\". הוא נשאר במכשיר הזה.",
+    "fileTooLarge": "הקובץ הזה גדול ממה שהתוכנית שלך מאפשרת. שדרג את התוכנית שלך כדי לסנכרן קבצים גדולים יותר.",
+    "vaultRecovered": "מפתח הכספת שוחזר. הסנכרון יתחדש.",
+    "historyFetchFailed": "אחזור היסטוריית הסנכרון נכשל",
+    "keyPersistenceFailed": "שמירת מפתח ההצפנה באופן מאובטח נכשלה. רישום המכשיר בוטל. אנא נסה שוב.",
+    "serverUnreachable": "לא ניתן להתחבר לשרת הסנכרון. אנא בדוק את חיבור האינטרנט שלך.",
+    "updateSyncedSettingFailed": "עדכון ההגדרה המסונכרנת נכשל",
+    "requestTimedOut": "תם הזמן שהוקצב לבקשת הסנכרון. אנא בדוק את חיבור האינטרנט שלך."
+  },
+  "agent": {
+    "conversationBusy": "השיחה עסוקה",
+    "runtimeStarting": "סביבת הריצה של הסוכן עולה. נסה שוב."
+  },
+  "ai": {
+    "inlineDisabled": "עריכת AI בתוך הטקסט מושבתת",
+    "listOllamaModelsFailed": "טעינת רשימת המודלים של Ollama נכשלה"
+  },
+  "auth": {
+    "approveLinkingFailed": "אישור הקישור נכשל",
+    "cannotRemoveCurrentDevice": "לא ניתן להסיר את המכשיר הנוכחי",
+    "completeLinkingFailed": "השלמת הקישור נכשלה",
+    "confirmRecoveryPhraseFailed": "אישור ביטוי השחזור נכשל",
+    "fetchSasCodeFailed": "אחזור קוד ה-SAS נכשל",
+    "finalizeVaultChoiceFailed": "סיום בחירת הכספת נכשל",
+    "initiateOAuthFailed": "הפעלת OAuth נכשלה",
+    "invalidRecoveryPhraseFormat": "תבנית ביטוי השחזור אינה חוקית",
+    "linkDeviceQrFailed": "קישור המכשיר באמצעות QR נכשל",
+    "linkRecoveryPhraseFailed": "הקישור באמצעות ביטוי השחזור נכשל",
+    "notAuthenticated": "לא מחובר",
+    "pickFolderFailed": "בחירת התיקייה נכשלה",
+    "recoveryPhraseMismatch": "ביטוי השחזור אינו תואם. אנא נסה שוב.",
+    "removeDeviceFailed": "הסרת המכשיר נכשלה",
+    "renameDeviceFailed": "שינוי שם המכשיר נכשל",
+    "requestOtpFailed": "בקשת הקוד החד-פעמי נכשלה",
+    "resendOtpFailed": "שליחת הקוד החד-פעמי מחדש נכשלה",
+    "sessionExpired": "פג תוקף ההפעלה. אנא היכנס שוב.",
+    "setupFirstDeviceOAuthFailed": "הגדרת המכשיר הראשון באמצעות OAuth נכשלה",
+    "verifyOtpFailed": "אימות הקוד החד-פעמי נכשל"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "הפריט כבר שמור בסימניות",
+    "notFound": "הסימנייה לא נמצאה"
+  },
+  "calendar": {
+    "connectProviderFailed": "החיבור לספק לוח השנה נכשל",
+    "createEventFailed": "יצירת האירוע בלוח השנה נכשלה",
+    "deleteEventFailed": "מחיקת האירוע מלוח השנה נכשלה",
+    "disconnectProviderFailed": "הניתוק מספק לוח השנה נכשל",
+    "eventNotFound": "האירוע בלוח השנה לא נמצא",
+    "googleNotConnected": "Google Calendar אינו מחובר במכשיר הזה",
+    "listGoogleCalendarsFailed": "טעינת לוחות השנה של Google נכשלה",
+    "onlyGoogleSourcesRetryable": "רק מקורות לוח שנה של Google ניתנים לניסיון חוזר",
+    "onlySourcesSelectable": "רק מקורות לוח שנה ניתנים לבחירה",
+    "promoteExternalEventFailed": "קידום האירוע החיצוני מלוח השנה נכשל",
+    "refreshProviderFailed": "רענון ספק לוח השנה נכשל",
+    "retryGoogleSourceSyncFailed": "הניסיון החוזר לסנכרון מקור Google Calendar נכשל",
+    "setDefaultGoogleCalendarFailed": "הגדרת לוח השנה של Google כברירת מחדל נכשלה",
+    "signInBeforeRefresh": "היכנס ל-memrynote לפני רענון Google Calendar",
+    "sourceNotFound": "מקור לוח השנה לא נמצא",
+    "syncFailed": "הסנכרון נכשל",
+    "updateEventFailed": "עדכון האירוע בלוח השנה נכשל",
+    "updateSourceSelectionFailed": "עדכון בחירת מקורות לוח השנה נכשל"
+  },
+  "folder": {
+    "createFailed": "יצירת התיקייה נכשלה",
+    "deleteFailed": "מחיקת התיקייה נכשלה",
+    "renameFailed": "שינוי שם התיקייה נכשל",
+    "setConfigFailed": "הגדרת תצורת התיקייה נכשלה"
+  },
+  "folderView": {
+    "deleteViewFailed": "מחיקת התצוגה נכשלה",
+    "setConfigFailed": "הגדרת התצורה נכשלה",
+    "setViewFailed": "הגדרת התצוגה נכשלה"
+  },
+  "googleCalendar": {
+    "accessDenied": "הגישה ל-Google Calendar נדחתה. תוכל להתחבר שוב מתי שתרצה.",
+    "connectFailed": "לא ניתן היה להתחבר ל-Google Calendar. אנא נסה שוב בעוד רגע.",
+    "misconfigured": "Google Calendar אינו מוגדר כראוי. אנא פנה לתמיכה אם זה ממשיך לקרות.",
+    "reconnectNeeded": "פג תוקף החיבור שלך ל-Google Calendar. אנא נתק והתחבר מחדש.",
+    "scopeMissing": "לא הצלחנו לגשת ל-Google Calendar שלך מכיוון שהרשאת לוח השנה לא ניתנה. אנא נסה שוב וודא שתיבת הסימון של לוח השנה נשארת מסומנת במסך ההסכמה של Google.",
+    "temporarilyUnavailable": "Google Calendar אינו זמין באופן זמני. אנא נסה שוב בקרוב."
+  },
+  "importer": {
+    "cancelFailed": "הביטול נכשל",
+    "fileSelectionFailed": "בחירת הקובץ נכשלה",
+    "importFailed": "הייבוא נכשל",
+    "listFailed": "טעינת רשימת המייבאים נכשלה",
+    "previewFailed": "התצוגה המקדימה נכשלה"
+  },
+  "project": {
+    "archiveFailed": "העברת הפרויקט לארכיון נכשלה",
+    "captureLinkFailed": "לכידת הקישור נכשלה",
+    "createFailed": "יצירת הפרויקט נכשלה",
+    "deleteFailed": "מחיקת הפרויקט נכשלה",
+    "importFilesFailed": "ייבוא הקבצים נכשל",
+    "linkItemFailed": "קישור הפריט נכשל",
+    "listForItemFailed": "טעינת הפרויקטים של הפריט נכשלה",
+    "reorderFailed": "סידור הפרויקטים מחדש נכשל",
+    "setHomeNoteFailed": "הגדרת הערת הבית נכשלה",
+    "unlinkItemFailed": "ביטול קישור הפריט נכשל",
+    "updateFailed": "עדכון הפרויקט נכשל",
+    "updatePinnedFailed": "עדכון מצב ההצמדה נכשל"
+  },
+  "property": {
+    "alreadyExists": "המאפיין \"{name}\" כבר קיים",
+    "createDefinitionFailed": "יצירת הגדרת המאפיין נכשלה",
+    "entityNotFound": "הישות לא נמצאה",
+    "notFound": "המאפיין \"{name}\" לא נמצא",
+    "renameFailed": "שינוי שם המאפיין נכשל",
+    "setCalendarVisibilityFailed": "הגדרת נראות המאפיין בלוח השנה נכשלה",
+    "setFailed": "הגדרת המאפיינים נכשלה",
+    "updateDefinitionFailed": "עדכון הגדרת המאפיין נכשל"
+  },
+  "reminder": {
+    "createFailed": "יצירת התזכורת נכשלה",
+    "dismissAllFailed": "ביטול התזכורות נכשל",
+    "dismissFailed": "ביטול התזכורת נכשל",
+    "notFound": "התזכורת לא נמצאה",
+    "snoozeFailed": "השהיית התזכורת נכשלה",
+    "updateFailed": "עדכון התזכורת נכשל"
+  },
+  "savedFilter": {
+    "notFound": "המסנן השמור לא נמצא"
+  },
+  "search": {
+    "rebuildFailed": "הבנייה מחדש נכשלה"
+  },
+  "settings": {
+    "modelAlreadyLoading": "המודל כבר נטען",
+    "modelLoadFailed": "טעינת המודל נכשלה",
+    "shortcutInUse": "הקיצור {shortcut} כבר בשימוש",
+    "terminalCommandInstallFailed": "התקנת פקודת הטרמינל נכשלה",
+    "terminalCommandUninstallFailed": "הסרת פקודת הטרמינל נכשלה",
+    "unknownVault": "כספת לא מוכרת",
+    "voiceModelDownloadFailed": "הורדת מודל הקול נכשלה"
+  },
+  "tag": {
+    "categoryNameRequired": "נדרש שם לקטגוריה",
+    "createCategoryFailed": "יצירת קטגוריית התגיות נכשלה",
+    "deleteCategoryFailed": "מחיקת קטגוריית התגיות נכשלה",
+    "deleteFailed": "מחיקת התגית נכשלה",
+    "listCategoriesFailed": "טעינת קטגוריות התגיות נכשלה",
+    "mergeFailed": "מיזוג התגיות נכשל",
+    "mergeSameTag": "תגית המקור ותגית היעד זהות",
+    "pinNoteFailed": "הצמדת ההערה נכשלה",
+    "removeFromNoteFailed": "הסרת התגית מההערה נכשלה",
+    "renameCategoryFailed": "שינוי שם קטגוריית התגיות נכשל",
+    "renameFailed": "שינוי שם התגית נכשל",
+    "reorderFailed": "סידור התגיות מחדש נכשל",
+    "unpinNoteFailed": "ביטול הצמדת ההערה נכשל",
+    "updateColorFailed": "עדכון צבע התגית נכשל",
+    "updateIconFailed": "עדכון סמל התגית נכשל"
+  },
+  "task": {
+    "archiveFailed": "העברת המשימה לארכיון נכשלה",
+    "archiveManyFailed": "העברת המשימות לארכיון נכשלה",
+    "completeFailed": "השלמת המשימה נכשלה",
+    "completeManyFailed": "השלמת המשימות נכשלה",
+    "convertToSubtaskFailed": "ההמרה לתת-משימה נכשלה",
+    "convertToTaskFailed": "ההמרה למשימה נכשלה",
+    "createFailed": "יצירת המשימה נכשלה",
+    "deleteFailed": "מחיקת המשימה נכשלה",
+    "deleteManyFailed": "מחיקת המשימות נכשלה",
+    "duplicateFailed": "שכפול המשימה נכשל",
+    "moveFailed": "העברת המשימה נכשלה",
+    "moveManyFailed": "העברת המשימות נכשלה",
+    "reorderFailed": "סידור המשימות מחדש נכשל",
+    "unarchiveFailed": "החזרת המשימה מהארכיון נכשלה",
+    "uncompleteFailed": "ביטול השלמת המשימה נכשל",
+    "updateFailed": "עדכון המשימה נכשל"
+  },
+  "taskStatus": {
+    "createFailed": "יצירת הסטטוס נכשלה",
+    "deleteFailed": "מחיקת הסטטוס נכשלה",
+    "reorderFailed": "סידור הסטטוסים מחדש נכשל",
+    "updateFailed": "עדכון הסטטוס נכשל"
+  },
+  "template": {
+    "createFailed": "יצירת התבנית נכשלה",
+    "deleteFailed": "מחיקת התבנית נכשלה",
+    "duplicateFailed": "שכפול התבנית נכשל",
+    "updateFailed": "עדכון התבנית נכשל"
   }
 }

@@ -28,7 +28,8 @@
         "properties": "คุณสมบัติ",
         "commandLine": "บรรทัดคำสั่ง",
         "features": "ฟีเจอร์",
-        "import": "นำเข้า"
+        "import": "นำเข้า",
+        "inbox": "กล่องขาเข้า"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "กำลังดาวน์โหลด {percent}%",
         "downloaded": "รีสตาร์ทเพื่อติดตั้ง",
         "idle": "ตรวจสอบการอัปเดต"
+      },
+      "autoCheck": {
+        "description": "ตรวจหาเวอร์ชันใหม่เมื่อเปิดแอป และเป็นระยะขณะที่แอปเปิดอยู่",
+        "error": "ไม่สามารถอัปเดตการตั้งค่าตรวจหาอัตโนมัติได้",
+        "label": "ตรวจหาการอัปเดตโดยอัตโนมัติ"
+      },
+      "autoDownload": {
+        "description": "ดาวน์โหลดและติดตั้งเวอร์ชันใหม่ในเบื้องหลังโดยไม่ต้องถาม",
+        "error": "ไม่สามารถอัปเดตการตั้งค่าดาวน์โหลดอัตโนมัติได้",
+        "label": "ดาวน์โหลดการอัปเดตโดยอัตโนมัติ"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "แชร์สถิติการใช้งานแบบไม่ระบุชื่อ",
         "description": "เป็นเพียงสถิติแบบไม่ระบุชื่อ — ไม่มีเนื้อหาโน้ต, คำค้นหา, เส้นทางไฟล์, อีเมล, หรือรหัสดิบใด ๆ ถูกส่ง",
         "error": "ไม่สามารถอัปเดตการตั้งค่าเทเลเมทรีได้"
+      },
+      "diagnostics": {
+        "building": "กำลังเตรียมรายงาน…",
+        "consent": "ส่งรายงานการวินิจฉัยครั้งเดียวหรือไม่? รายงานมีเฉพาะล็อกทางเทคนิคที่ปกปิดข้อมูลแล้ว — ไม่มีเนื้อหาโน้ต",
+        "error": "ส่งรายงานการวินิจฉัยไม่สำเร็จ",
+        "notNow": "ไว้ทีหลัง",
+        "previewError": "ไม่สามารถเตรียมรายงานการวินิจฉัยได้",
+        "previewLabel": "ดูตัวอย่างเนื้อหารายงาน",
+        "send": "ส่ง",
+        "sendReport": {
+          "button": "ส่งรายงานการวินิจฉัย",
+          "description": "ส่งรายงานล็อกทางเทคนิคที่ปกปิดข้อมูลแล้วเพียงครั้งเดียว เพื่อช่วยให้เราแก้ปัญหาที่คุณพบ",
+          "label": "รายงานการวินิจฉัย"
+        },
+        "sending": "กำลังส่ง…",
+        "sent": "ส่งรายงานแล้ว — รหัสอ้างอิง {incidentId}",
+        "snapshotLabel": "ข้อมูลอุปกรณ์",
+        "title": "ส่งรายงานการวินิจฉัยหรือไม่?"
       }
     },
     "dateFormat": {
@@ -194,7 +223,7 @@
         "options": {
           "system": "ค่าเริ่มต้นของระบบ",
           "sansSerif": "ไม่ลงท้าย",
-          "serif": "Serif (Crimson Pro)",
+          "serif": "เซริฟ (Crimson Pro)",
           "gelasio": "Gelasio",
           "geist": "Geist",
           "inter": "Inter",
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "เค้าโครง",
-      "toolbar": "แถบเครื่องมือ"
+      "toolbar": "แถบเครื่องมือ",
+      "spelling": "การสะกดคำ"
     },
     "width": {
       "label": "ความกว้างของบรรณาธิการ",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "แคบ",
         "medium": "ปานกลาง",
-        "wide": "กว้าง"
+        "wide": "กว้าง",
+        "full": "ความกว้างเต็ม",
+        "normal": "ปกติ"
       },
       "error": "อัปเดตความกว้างของบรรณาธิการไม่สำเร็จ"
     },
@@ -229,6 +261,11 @@
       "label": "แถบเครื่องมือฟอร์แมตคงที่",
       "description": "แสดงแถบเครื่องมือเหนือบรรณาธิการเสมอ",
       "error": "อัปเดตโหมดแถบเครื่องมือไม่สำเร็จ"
+    },
+    "spellCheck": {
+      "description": "ขีดเส้นใต้คำที่สะกดผิดในโน้ตและบันทึกประจำวัน",
+      "error": "ไม่สามารถอัปเดตการตรวจสอบการสะกดคำได้",
+      "label": "ตรวจสอบการสะกดคำ"
     }
   },
   "templates": {
@@ -640,7 +677,7 @@
       "vaultPickerFolderLabel": "เก็บ vault ไว้ในโฟลเดอร์",
       "vaultPickerPrimaryHint": "เปิดตอนนี้",
       "vaultPickerTitle": "เลือกสิ่งที่จะดึง",
-      "vaultRow": "Vault — {{count}} รายการ · {{date}}"
+      "vaultRow": "Vault — {count} รายการ · {date}"
     }
   },
   "devices": {
@@ -673,7 +710,8 @@
       "removeFailed": "ลบอุปกรณ์ไม่สำเร็จ",
       "renamed": "เปลี่ยนชื่อเป็น \"{name}\" แล้ว",
       "renameFailed": "เปลี่ยนชื่ออุปกรณ์ไม่สำเร็จ"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "เชื่อมต่ออุปกรณ์ใหม่",
@@ -855,6 +893,11 @@
         "description": "ปิดเพื่อซิงค์ทางเดียว — คุณจะยังเห็นกิจกรรม Google ใน memrynote แต่กิจกรรม memrynote จะไม่ปรากฏใน Google",
         "error": "อัปเดตทิศทางการซิงค์ไม่สำเร็จ",
         "label": "แสดงกิจกรรม memrynote ใน Google Calendar"
+      },
+      "agentAccess": {
+        "description": "ปิดอยู่ตามค่าเริ่มต้น เปิดแล้วเอเจนต์ AI จะอ่านกิจกรรม Google ของคุณได้ ปิดแล้วจะไม่ได้ข้อมูลใดกลับไปเมื่อถามถึงกิจกรรมเหล่านั้น คุณจะยังเห็นกิจกรรมเหล่านั้นใน memrynote ไม่ว่าจะเลือกแบบใด",
+        "error": "อัปเดตการเข้าถึงของ AI ไม่สำเร็จ",
+        "label": "ให้ AI อ่านกิจกรรมใน Google Calendar"
       }
     },
     "sourcePicker": {
@@ -898,7 +941,8 @@
     },
     "groups": {
       "storageUsage": "การใช้งานพื้นที่จัดเก็บ",
-      "location": "ตำแหน่ง"
+      "location": "ตำแหน่ง",
+      "accountVaults": "คลังในบัญชีของคุณ"
     },
     "loadingStorage": "กำลังโหลดข้อมูลพื้นที่จัดเก็บ...",
     "signInStorage": "ลงชื่อเข้าใช้เพื่อดูการใช้งานพื้นที่จัดเก็บ",
@@ -919,6 +963,17 @@
       },
       "warningTitle": "พื้นที่จัดเก็บใกล้เต็ม",
       "warningDescription": "เพิ่มพื้นที่ว่างหรืออัปเกรดแผนของคุณเพื่อหลีกเลี่ยงปัญหาการซิงค์"
+    },
+    "accountVaults": {
+      "activeHint": "สลับไปยังคลังอื่นก่อนจึงจะลบคลังนี้ได้",
+      "cloudOnly": "ไม่มีบนอุปกรณ์นี้",
+      "delete": "ลบ",
+      "deleteBody": "การทำเช่นนี้จะลบข้อมูลที่ซิงค์ไว้ทั้งหมดของคลังนี้ออกจากเซิร์ฟเวอร์ของ Memry อย่างถาวร และไม่สามารถย้อนกลับได้ ไฟล์บนดิสก์ของคุณจะไม่ถูกลบ",
+      "deleteConfirm": "ลบออกจากบัญชี",
+      "deleteFailed": "ไม่สามารถลบคลังได้",
+      "deleteTitle": "ลบ “{name}” ออกจากบัญชีของคุณ?",
+      "empty": "ยังไม่มีคลังที่ซิงค์กับบัญชีของคุณ",
+      "itemsCount": "{count} รายการ"
     }
   },
   "tags": {
@@ -1137,16 +1192,12 @@
       "press": "กด",
       "toToggleThisDialog": "สลับการแสดงกล่องโต้ตอบนี้"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middot;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "อุปกรณ์นี้ถูกลบแล้ว",
       "exporting": "กำลังส่งออก...",
       "signOut": "ออกจากระบบ"
     },
     "componentsSyncSyncHistory": {
-      "middot": "middot;",
       "activity": "กิจกรรม",
       "filterBySyncType": "กรองตามประเภทการซิงค์",
       "allTypes": "ทุกประเภท",
@@ -1160,7 +1211,12 @@
       "last30Days": "30 วันที่ผ่านมา",
       "loadingSyncHistory": "กำลังโหลดประวัติการซิงค์",
       "noSyncActivityYet": "ยังไม่มีประวัติการซิงค์",
-      "loadMore": "โหลดเพิ่มเติม"
+      "loadMore": "โหลดเพิ่มเติม",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, แสดงรายละเอียดข้อผิดพลาด",
+      "summaryFailed": "การซิงค์ล้มเหลว",
+      "summaryPulled": "{count, plural, other {ดึงเข้า # รายการ}}",
+      "summaryPushed": "{count, plural, other {ส่งออก # รายการ}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "ซิงค์ล่าสุด",
@@ -1208,102 +1264,103 @@
       "failedToCloseVault": "ล้มเหลวในการปิดตู้เก็บ",
       "failedToSwitchVault": "ล้มเหลวในการสลับตู้เก็บ",
       "failedToUpdateConfig": "ล้มเหลวในการอัปเดตการตั้งค่า",
-      "failedToReindex": "ล้มเหลวในการทำดัชนีใหม่"
+      "failedToReindex": "ล้มเหลวในการทำดัชนีใหม่",
+      "failedToLoadTasks": "ไม่สามารถโหลดงานได้"
     }
   },
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "การเข้าถึงเซิร์ฟเวอร์ในเครื่องสำหรับไคลเอนต์ MCP ภายนอก"
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "การเชื่อมต่อ",
+      "access": "การเข้าถึง"
     },
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "ใช้จุดเชื่อมต่อ localhost นี้จาก Cursor, Claude Desktop หรือ Zed"
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "โทเคน Bearer",
+        "description": "ข้อมูลรับรองในหน่วยความจำสำหรับการเปิดแอปครั้งนี้"
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "หมุนเวียนโทเคน",
+        "description": "ยกเลิกเซสชันของไคลเอนต์ภายนอกที่มีอยู่"
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "คัดลอก {label}",
+    "notRunning": "ไม่ได้ทำงาน",
+    "toolsBadge": "{count, plural, other {เครื่องมือ # รายการ}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "สิทธิ์ของ Agent",
+      "subtitle": "เลือกการเข้าถึงเริ่มต้น การยืนยัน และผู้ให้บริการในเครื่องสำหรับ Agent Chat"
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "ผู้ให้บริการในเครื่องที่เข้ากันได้กับ OpenAI",
+      "actions": "การตรวจสอบการเชื่อมต่อ"
     },
     "presets": {
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "กำหนดเอง"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "ค่าที่ตั้งไว้ล่วงหน้า"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "URL หลัก",
+        "description": "จุดเชื่อมต่อ /v1 ที่เข้ากันได้กับ OpenAI"
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "อนุญาตจุดเชื่อมต่อที่ไม่ใช่ loopback",
+        "description": "ข้อมูลจะถูกส่งไปยังจุดเชื่อมต่อที่ตั้งค่าไว้"
       },
       "model": {
-        "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "label": "โมเดล",
+        "description": "เลือกโมเดลที่ระบบดึงมา หรือพิมพ์ชื่อโมเดลเอง"
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "คีย์ API",
+        "description": "ข้อมูลรับรองเสริม จัดเก็บไว้ในพวงกุญแจของระบบปฏิบัติการ",
+        "configured": "มีคีย์ API จัดเก็บไว้ในพวงกุญแจของระบบปฏิบัติการแล้ว"
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "save": "บันทึก",
+      "models": "รายการโมเดล",
+      "test": "ทดสอบการเชื่อมต่อ",
+      "probe": "ตรวจหาเครื่องมือ"
     },
     "status": {
-      "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "disconnected": "ไม่ได้เชื่อมต่อ",
+      "toolsDisabled": "ปิดใช้งานเครื่องมือ",
+      "fullTools": "เปิดใช้งานเครื่องมือทั้งหมด",
       "checking": "กำลังตรวจสอบ…",
       "connected": "เชื่อมต่อแล้ว",
       "label": "การเชื่อมต่อ"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "สิทธิ์ของ Agent",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "การเข้าถึงเริ่มต้น",
+        "description": "กำหนดโหมดการเข้าถึงตั้งต้นสำหรับรอบการทำงานใหม่ของ Agent",
+        "vaultOnly": "เฉพาะคลัง",
+        "computerAccess": "เข้าถึงคอมพิวเตอร์"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "ยืนยันการดำเนินการ",
+        "description": "เลือกว่าจะให้การเรียกใช้เครื่องมือทำงานโดยอัตโนมัติ หรือรอการอนุมัติในแชท",
+        "alwaysAllow": "อนุญาตเสมอ",
+        "askBeforeChanges": "ถามก่อนเปลี่ยนแปลง"
       }
     }
   },
@@ -1368,6 +1425,10 @@
       "tasks": {
         "description": "สิ่งที่ต้องทำและวันครบกำหนด",
         "label": "งาน"
+      },
+      "spatialCanvas": {
+        "description": "กระดานเชิงพื้นที่สำหรับจัดวางและเชื่อมโยงโน้ต",
+        "label": "แคนวาส"
       }
     }
   },
@@ -1393,7 +1454,10 @@
         "skipped": "ข้าม {count} รายการ",
         "title": "นำเข้าเสร็จสมบูรณ์"
       },
-      "title": "นำเข้าจาก {name}"
+      "title": "นำเข้าจาก {name}",
+      "chooseDirectory": "เลือกโฟลเดอร์…",
+      "folderKeepsAssets": "เลือกโฟลเดอร์เมื่อรูปภาพอยู่นอกโฟลเดอร์ของโน้ตเอง — ไฟล์ส่งออกมักเก็บสื่อไว้ในโฟลเดอร์ที่ใช้ร่วมกัน",
+      "previewError": "การแสดงตัวอย่างล้มเหลว"
     },
     "header": {
       "subtitle": "นำโน้ตและงานของคุณเข้ามาจากแอปอื่น",
@@ -1432,6 +1496,99 @@
       "tasks": "{count, plural, other {# งาน}}",
       "withDueDate": "ระบุวันที่ {count} รายการ",
       "withTags": "ติดแท็ก {count} รายการ"
+    },
+    "messages": {
+      "csv": {
+        "columns": "คอลัมน์: {columns}",
+        "emptyTitle": "ข้ามแถวที่ไม่มีหัวข้อ (คอลัมน์ \"{column}\")",
+        "noHeaders": "ไฟล์ CSV ไม่มีแถวหัวคอลัมน์",
+        "titleColumn": "หัวข้อมาจาก \"{column}\"; คอลัมน์อื่นถูกบันทึกเป็นคุณสมบัติ"
+      },
+      "raindrop": {
+        "csvEmpty": "ไฟล์ CSV ของ Raindrop ว่างเปล่า",
+        "headerNotFound": "ไม่พบแถวหัวคอลัมน์ของไฟล์ CSV จาก Raindrop (คอลัมน์ \"url\")",
+        "rowNoUrl": "ข้ามแถว {row}: ไม่มี URL"
+      },
+      "readFileFailed": "ไม่สามารถอ่านไฟล์ได้",
+      "ticktick": {
+        "foldersDropped": "โฟลเดอร์ของ TickTick ไม่มีสิ่งที่เทียบเท่าใน Memry จึงถูกตัดออก",
+        "headerNotFound": "ไม่พบแถวหัวคอลัมน์ของไฟล์ CSV จาก TickTick (\"Folder Name\")",
+        "reminderNoAnchor": "ข้ามการเตือน \"{reminder}\" (ไม่มีวันที่อ้างอิง)",
+        "subtaskParentMissing": "ไม่พบงานหลักของงานย่อย \"{title}\" จึงนำเข้าเป็นงานระดับบนสุด",
+        "unknownPriority": "ลำดับความสำคัญ {priority} ของ TickTick ไม่รู้จัก → ไม่มี",
+        "unsupportedRepeat": "ข้ามกฎการทำซ้ำที่ไม่รองรับ \"{rule}\""
+      },
+      "todoist": {
+        "emptyTitle": "งานที่ไม่มีเนื้อหาถูกนำเข้าเป็น (ไม่มีชื่อ)",
+        "headerNotFound": "ไม่ใช่ไฟล์ CSV ของ Todoist: ไม่มีแถวหัวคอลัมน์ TYPE",
+        "orphanComment": "ข้ามความคิดเห็นที่ไม่มีงานนำหน้า",
+        "sectionFlattened": "ส่วน \"{section}\" ถูกยุบรวม",
+        "subtaskNoParent": "งานย่อย \"{title}\" ไม่มีงานหลักที่ระดับเยื้อง {indent} จึงนำเข้าเป็นงานระดับบนสุด",
+        "unknownPriority": "ลำดับความสำคัญ {priority} ไม่รู้จัก → ไม่มี",
+        "unparsedDate": "ไม่สามารถแปลงค่าวันที่ \"{date}\" ได้"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "กำลังคัดลอกฐานข้อมูล Apple Notes…"
+      },
+      "bear": {
+        "scanning": "กำลังสแกนไฟล์ส่งออกจาก Bear…"
+      },
+      "csv": {
+        "importing": "กำลังนำเข้าโน้ตจาก CSV…"
+      },
+      "evernote": {
+        "scanning": "กำลังสแกนไฟล์ .enex…"
+      },
+      "html": {
+        "scanning": "กำลังสแกนไฟล์ HTML…"
+      },
+      "importingItem": "กำลังนำเข้า {title}",
+      "raindrop": {
+        "importing": "กำลังนำเข้าบุ๊กมาร์กจาก Raindrop…"
+      },
+      "roam": {
+        "reading": "กำลังอ่านไฟล์ส่งออกจาก Roam…"
+      },
+      "scanningExport": "กำลังสแกนไฟล์ส่งออก…",
+      "scanningFiles": "กำลังสแกนไฟล์…",
+      "ticktick": {
+        "importing": "กำลังนำเข้างานจาก TickTick…"
+      },
+      "todoist": {
+        "importing": "กำลังนำเข้างานจาก Todoist…"
+      }
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "กำลังโหลด…",
+      "subtitle": "การเตือนทบทวนประจำวันและการตั้งค่ากล่องขาเข้า",
+      "title": "กล่องขาเข้า"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "การเตือนเบา ๆ ประจำวันเมื่อกล่องขาเข้าของคุณมีรายการค้างอยู่",
+        "label": "เตือนให้ฉันทบทวนกล่องขาเข้า"
+      },
+      "error": "ไม่สามารถอัปเดตการเตือนได้",
+      "group": "การเตือนทบทวนประจำวัน",
+      "test": {
+        "button": "ส่งทดสอบ",
+        "description": "ส่งการเตือนทันทีเพื่อตรวจสอบการแจ้งเตือนของระบบ",
+        "label": "การแจ้งเตือนทดสอบ",
+        "sent": "ส่งการแจ้งเตือนทดสอบแล้ว",
+        "sentHint": "หากไม่มีอะไรปรากฏ ให้อนุญาตการแจ้งเตือนสำหรับ MemryNote ในการตั้งค่าระบบของคุณ",
+        "unsupported": "อุปกรณ์นี้ไม่รองรับการแจ้งเตือนบนเดสก์ท็อป"
+      },
+      "time": {
+        "description": "เวลาท้องถิ่นของแต่ละอุปกรณ์",
+        "hourLabel": "ชั่วโมง",
+        "label": "เวลาเตือน",
+        "minuteLabel": "นาที",
+        "periodLabel": "AM หรือ PM"
+      }
     }
   }
 }

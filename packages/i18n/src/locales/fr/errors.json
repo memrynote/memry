@@ -22,7 +22,19 @@
     "writeFailed": "Échec de l'enregistrement de cette note. Vérifiez l'espace disque et les autorisations.",
     "readFailed": "Échec de la lecture de cette note. Le fichier est peut-être verrouillé ou corrompu.",
     "deleteFailed": "Échec de la suppression de cette note. Vérifiez les autorisations des fichiers.",
-    "invalidPath": "Le chemin de la note n'est pas valide."
+    "invalidPath": "Le chemin de la note n'est pas valide.",
+    "applyTemplateFailed": "Échec de l'application du modèle",
+    "createFailed": "Échec de la création de la note",
+    "deleteVersionFailed": "Échec de la suppression de la version",
+    "exportHtmlFailed": "Échec de l'exportation en HTML",
+    "exportPdfFailed": "Échec de l'exportation en PDF",
+    "importFilesFailed": "Échec de l'importation des fichiers",
+    "moveFailed": "Échec du déplacement de la note",
+    "renameFailed": "Échec du renommage de la note",
+    "reorderFailed": "Échec de la réorganisation des notes",
+    "restoreVersionFailed": "Échec de la restauration de la version",
+    "setLocalOnlyFailed": "Échec du passage en mode local uniquement",
+    "updateFailed": "Échec de la mise à jour de la note"
   },
   "database": {
     "connectionFailed": "Impossible de se connecter à la base de données locale. Essayez de redémarrer l'application.",
@@ -41,7 +53,14 @@
     "fileTooLarge": "Ce fichier est trop volumineux pour être joint.",
     "unsupportedType": "Ce type de fichier n'est pas pris en charge.",
     "writeFailed": "Échec de l'enregistrement de la pièce jointe. Vérifiez l'espace disque.",
-    "deleteFailed": "Échec de la suppression de la pièce jointe."
+    "deleteFailed": "Échec de la suppression de la pièce jointe.",
+    "downloadFailed": "Échec du téléchargement de la pièce jointe",
+    "downloadProgressFailed": "Échec de la récupération de la progression du téléchargement",
+    "uploadFailed": "Échec de l'envoi de la pièce jointe",
+    "uploadProgressFailed": "Échec de la récupération de la progression de l'envoi",
+    "emptyFile": "Impossible d'envoyer un fichier vide",
+    "exceedsMaxSize": "Fichier trop volumineux : {size} dépasse la limite de {limit}",
+    "exceedsPlanLimit": "Fichier plus volumineux que ne l'autorise votre forfait : {size} dépasse {limit}"
   },
   "encryption": {
     "failed": "Échec du chiffrement des données. Vos clés devront peut-être être régénérées.",
@@ -74,6 +93,188 @@
     "securityQuarantinePermanent": "Un élément de synchronisation n'a pas pu être vérifié et a été mis en quarantaine pour des raisons de sécurité.",
     "securityQuarantineRetry": "Un élément de synchronisation a échoué à la vérification de la signature et sera réessayé.",
     "certificatePinPaused": "La connexion sécurisée au serveur de synchronisation n'a pas pu être vérifiée. La synchronisation a été suspendue pour votre protection.",
-    "paymentRequired": "Un forfait Sync payant est requis pour utiliser la synchronisation chiffrée hébergée."
+    "paymentRequired": "Un forfait Sync payant est requis pour utiliser la synchronisation chiffrée hébergée.",
+    "attachmentUploadFailed": "Impossible de synchroniser la pièce jointe « {filename} ». Elle reste sur cet appareil.",
+    "fileTooLarge": "Ce fichier dépasse la limite de votre forfait. Passez à un forfait supérieur pour synchroniser des fichiers plus volumineux.",
+    "vaultRecovered": "Clé du coffre restaurée. La synchronisation va reprendre.",
+    "historyFetchFailed": "Échec de la récupération de l'historique de synchronisation",
+    "keyPersistenceFailed": "Échec de l'enregistrement sécurisé de la clé de chiffrement. L'enregistrement de l'appareil a été annulé. Veuillez réessayer.",
+    "serverUnreachable": "Impossible de se connecter au serveur de synchronisation. Vérifiez votre connexion Internet.",
+    "updateSyncedSettingFailed": "Échec de la mise à jour du paramètre synchronisé",
+    "requestTimedOut": "La requête de synchronisation a expiré. Vérifiez votre connexion Internet."
+  },
+  "agent": {
+    "conversationBusy": "Conversation occupée",
+    "runtimeStarting": "L'agent est en cours de démarrage. Réessayez."
+  },
+  "ai": {
+    "inlineDisabled": "L'édition IA en ligne est désactivée",
+    "listOllamaModelsFailed": "Échec de la récupération des modèles Ollama"
+  },
+  "auth": {
+    "approveLinkingFailed": "Échec de l'approbation de la liaison",
+    "cannotRemoveCurrentDevice": "Impossible de supprimer l'appareil actuel",
+    "completeLinkingFailed": "Échec de la finalisation de la liaison",
+    "confirmRecoveryPhraseFailed": "Échec de la confirmation de la phrase de récupération",
+    "fetchSasCodeFailed": "Échec de la récupération du code SAS",
+    "finalizeVaultChoiceFailed": "Échec de la finalisation du choix du coffre",
+    "initiateOAuthFailed": "Échec du lancement d'OAuth",
+    "invalidRecoveryPhraseFormat": "Format de phrase de récupération non valide",
+    "linkDeviceQrFailed": "Échec de la liaison de l'appareil par QR",
+    "linkRecoveryPhraseFailed": "Échec de la liaison par phrase de récupération",
+    "notAuthenticated": "Non authentifié",
+    "pickFolderFailed": "Échec de la sélection du dossier",
+    "recoveryPhraseMismatch": "La phrase de récupération ne correspond pas. Veuillez réessayer.",
+    "removeDeviceFailed": "Échec de la suppression de l'appareil",
+    "renameDeviceFailed": "Échec du renommage de l'appareil",
+    "requestOtpFailed": "Échec de la demande du code à usage unique",
+    "resendOtpFailed": "Échec du renvoi du code à usage unique",
+    "sessionExpired": "Votre session a expiré. Veuillez vous reconnecter.",
+    "setupFirstDeviceOAuthFailed": "Échec de la configuration du premier appareil via OAuth",
+    "verifyOtpFailed": "Échec de la vérification du code à usage unique"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "Cet élément est déjà dans les signets",
+    "notFound": "Signet introuvable"
+  },
+  "calendar": {
+    "connectProviderFailed": "Échec de la connexion au fournisseur de calendrier",
+    "createEventFailed": "Échec de la création de l'événement de calendrier",
+    "deleteEventFailed": "Échec de la suppression de l'événement de calendrier",
+    "disconnectProviderFailed": "Échec de la déconnexion du fournisseur de calendrier",
+    "eventNotFound": "Événement de calendrier introuvable",
+    "googleNotConnected": "Google Calendar n'est pas connecté sur cet appareil",
+    "listGoogleCalendarsFailed": "Échec de la récupération des calendriers Google",
+    "onlyGoogleSourcesRetryable": "Seules les sources Google Calendar peuvent être réessayées",
+    "onlySourcesSelectable": "Seules les sources de calendrier peuvent être sélectionnées",
+    "promoteExternalEventFailed": "Échec de la promotion de l'événement de calendrier externe",
+    "refreshProviderFailed": "Échec de l'actualisation du fournisseur de calendrier",
+    "retryGoogleSourceSyncFailed": "Échec de la nouvelle tentative de synchronisation de la source Google Calendar",
+    "setDefaultGoogleCalendarFailed": "Échec de la définition du calendrier Google par défaut",
+    "signInBeforeRefresh": "Connectez-vous à memrynote avant d'actualiser Google Calendar",
+    "sourceNotFound": "Source de calendrier introuvable",
+    "syncFailed": "La synchronisation a échoué",
+    "updateEventFailed": "Échec de la mise à jour de l'événement de calendrier",
+    "updateSourceSelectionFailed": "Échec de la mise à jour de la sélection des sources de calendrier"
+  },
+  "folder": {
+    "createFailed": "Échec de la création du dossier",
+    "deleteFailed": "Échec de la suppression du dossier",
+    "renameFailed": "Échec du renommage du dossier",
+    "setConfigFailed": "Échec de l'enregistrement de la configuration du dossier"
+  },
+  "folderView": {
+    "deleteViewFailed": "Échec de la suppression de la vue",
+    "setConfigFailed": "Échec de l'enregistrement de la configuration",
+    "setViewFailed": "Échec de la définition de la vue"
+  },
+  "googleCalendar": {
+    "accessDenied": "L'accès à Google Calendar a été refusé. Vous pourrez vous connecter à nouveau quand vous le souhaiterez.",
+    "connectFailed": "Impossible de se connecter à Google Calendar. Veuillez réessayer dans un instant.",
+    "misconfigured": "Google Calendar n'est pas configuré correctement. Contactez l'assistance si cela se reproduit.",
+    "reconnectNeeded": "Votre connexion à Google Calendar a expiré. Veuillez la déconnecter puis vous reconnecter.",
+    "scopeMissing": "Nous n'avons pas pu accéder à votre Google Calendar car l'autorisation Calendar n'a pas été accordée. Réessayez en veillant à laisser la case Calendar cochée sur l'écran de consentement Google.",
+    "temporarilyUnavailable": "Google Calendar est temporairement indisponible. Veuillez réessayer sous peu."
+  },
+  "importer": {
+    "cancelFailed": "L'annulation a échoué",
+    "fileSelectionFailed": "La sélection du fichier a échoué",
+    "importFailed": "L'importation a échoué",
+    "listFailed": "Échec de la récupération des importateurs",
+    "previewFailed": "L'aperçu a échoué"
+  },
+  "project": {
+    "archiveFailed": "Échec de l'archivage du projet",
+    "captureLinkFailed": "Échec de la capture du lien",
+    "createFailed": "Échec de la création du projet",
+    "deleteFailed": "Échec de la suppression du projet",
+    "importFilesFailed": "Échec de l'importation des fichiers",
+    "linkItemFailed": "Échec de la liaison de l'élément",
+    "listForItemFailed": "Échec de la récupération des projets liés à cet élément",
+    "reorderFailed": "Échec de la réorganisation des projets",
+    "setHomeNoteFailed": "Échec de la définition de la note d'accueil",
+    "unlinkItemFailed": "Échec de la dissociation de l'élément",
+    "updateFailed": "Échec de la mise à jour du projet",
+    "updatePinnedFailed": "Échec de la mise à jour de l'épinglage"
+  },
+  "property": {
+    "alreadyExists": "La propriété « {name} » existe déjà",
+    "createDefinitionFailed": "Échec de la création de la définition de propriété",
+    "entityNotFound": "Entité introuvable",
+    "notFound": "Propriété « {name} » introuvable",
+    "renameFailed": "Échec du renommage de la propriété",
+    "setCalendarVisibilityFailed": "Échec de la définition de la visibilité de la propriété dans le calendrier",
+    "setFailed": "Échec de la définition des propriétés",
+    "updateDefinitionFailed": "Échec de la mise à jour de la définition de propriété"
+  },
+  "reminder": {
+    "createFailed": "Échec de la création du rappel",
+    "dismissAllFailed": "Échec du rejet des rappels",
+    "dismissFailed": "Échec du rejet du rappel",
+    "notFound": "Rappel introuvable",
+    "snoozeFailed": "Échec de la répétition du rappel",
+    "updateFailed": "Échec de la mise à jour du rappel"
+  },
+  "savedFilter": {
+    "notFound": "Filtre enregistré introuvable"
+  },
+  "search": {
+    "rebuildFailed": "La reconstruction a échoué"
+  },
+  "settings": {
+    "modelAlreadyLoading": "Le modèle est déjà en cours de chargement",
+    "modelLoadFailed": "Échec du chargement du modèle",
+    "shortcutInUse": "Le raccourci {shortcut} est déjà utilisé",
+    "terminalCommandInstallFailed": "Échec de l'installation de la commande de terminal",
+    "terminalCommandUninstallFailed": "Échec de la désinstallation de la commande de terminal",
+    "unknownVault": "Coffre inconnu",
+    "voiceModelDownloadFailed": "Échec du téléchargement du modèle vocal"
+  },
+  "tag": {
+    "categoryNameRequired": "Le nom de la catégorie est obligatoire",
+    "createCategoryFailed": "Échec de la création de la catégorie de balises",
+    "deleteCategoryFailed": "Échec de la suppression de la catégorie de balises",
+    "deleteFailed": "Échec de la suppression de la balise",
+    "listCategoriesFailed": "Échec de la récupération des catégories de balises",
+    "mergeFailed": "Échec de la fusion des balises",
+    "mergeSameTag": "La balise source et la balise cible sont identiques",
+    "pinNoteFailed": "Échec de l'épinglage de la note",
+    "removeFromNoteFailed": "Échec du retrait de la balise de la note",
+    "renameCategoryFailed": "Échec du renommage de la catégorie de balises",
+    "renameFailed": "Échec du renommage de la balise",
+    "reorderFailed": "Échec de la réorganisation des balises",
+    "unpinNoteFailed": "Échec du désépinglage de la note",
+    "updateColorFailed": "Échec de la mise à jour de la couleur de la balise",
+    "updateIconFailed": "Échec de la mise à jour de l'icône de la balise"
+  },
+  "task": {
+    "archiveFailed": "Échec de l'archivage de la tâche",
+    "archiveManyFailed": "Échec de l'archivage des tâches",
+    "completeFailed": "Échec de l'achèvement de la tâche",
+    "completeManyFailed": "Échec de l'achèvement des tâches",
+    "convertToSubtaskFailed": "Échec de la conversion en sous-tâche",
+    "convertToTaskFailed": "Échec de la conversion en tâche",
+    "createFailed": "Échec de la création de la tâche",
+    "deleteFailed": "Échec de la suppression de la tâche",
+    "deleteManyFailed": "Échec de la suppression des tâches",
+    "duplicateFailed": "Échec de la duplication de la tâche",
+    "moveFailed": "Échec du déplacement de la tâche",
+    "moveManyFailed": "Échec du déplacement des tâches",
+    "reorderFailed": "Échec de la réorganisation des tâches",
+    "unarchiveFailed": "Échec du désarchivage de la tâche",
+    "uncompleteFailed": "Échec de la réouverture de la tâche",
+    "updateFailed": "Échec de la mise à jour de la tâche"
+  },
+  "taskStatus": {
+    "createFailed": "Échec de la création du statut",
+    "deleteFailed": "Échec de la suppression du statut",
+    "reorderFailed": "Échec de la réorganisation des statuts",
+    "updateFailed": "Échec de la mise à jour du statut"
+  },
+  "template": {
+    "createFailed": "Échec de la création du modèle",
+    "deleteFailed": "Échec de la suppression du modèle",
+    "duplicateFailed": "Échec de la duplication du modèle",
+    "updateFailed": "Échec de la mise à jour du modèle"
   }
 }

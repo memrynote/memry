@@ -135,6 +135,16 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
+// The key-persistence rollback message resolves through the main-process i18n
+// singleton, which only exists after setMainI18n() during app boot. Echo the key
+// back so the assertions pin the chosen message, not one locale's wording.
+vi.mock('../lib/main-i18n', () => ({
+  getMainI18n: () => ({
+    t: (key: string) => key,
+    getFixedT: () => (key: string) => key
+  })
+}))
+
 function setupDb() {
   mocks.dbWhere.mockReturnValue({ run: mocks.dbRun })
   mocks.dbDelete.mockReturnValue({ where: mocks.dbWhere, run: mocks.dbRun })
@@ -271,7 +281,7 @@ describe('device registration', () => {
         true,
         true
       )
-    ).rejects.toThrow('Failed to save encryption key securely')
+    ).rejects.toThrow('errors:sync.keyPersistenceFailed')
 
     expect(mocks.deleteFromServer).toHaveBeenCalledWith('/auth/devices/device-1', 'access')
     expect(mocks.deleteKey).toHaveBeenCalledWith(keychainEntries.ACCESS_TOKEN)
@@ -295,7 +305,7 @@ describe('device registration', () => {
         true,
         true
       )
-    ).rejects.toThrow('Failed to save encryption key securely')
+    ).rejects.toThrow('errors:sync.keyPersistenceFailed')
 
     expect(mocks.storeKey).toHaveBeenCalledWith(keychainEntries.MASTER_KEY, new Uint8Array([5]))
     expect(mocks.deleteFromServer).toHaveBeenCalledWith('/auth/devices/device-1', 'access')

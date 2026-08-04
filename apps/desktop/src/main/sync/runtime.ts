@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app } from 'electron'
 import sodium from 'libsodium-wrappers-sumo'
 import { eq } from 'drizzle-orm'
 import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
@@ -7,6 +7,7 @@ import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { getDatabase, type DataDb } from '../database'
 import { isAppShuttingDown } from '../app-shutdown'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import {
   getDevicePublicKey as deriveDevicePublicKey,
   getOrInitializeLocalVaultKey,
@@ -24,6 +25,7 @@ import { initTaskSyncService, resetTaskSyncService } from './task-sync'
 import { initInboxSyncService, resetInboxSyncService } from './inbox-sync'
 import { initFilterSyncService, resetFilterSyncService } from './filter-sync'
 import { initBookmarkSyncService, resetBookmarkSyncService } from './bookmark-sync'
+import { initTemplateSyncService, resetTemplateSyncService } from './template-sync'
 import { initReminderSyncService, resetReminderSyncService } from './reminder-sync'
 import { initCanvasSyncService, resetCanvasSyncService } from './canvas-sync'
 import { initProjectSyncService, resetProjectSyncService } from './project-sync'
@@ -99,15 +101,11 @@ function getVerifiedVaultKey(db: DataDb): Promise<Uint8Array> {
 }
 
 function emitVaultRecoveryNeeded(event: VaultRecoveryNeededEvent): void {
-  for (const win of BrowserWindow.getAllWindows()) {
-    win.webContents.send(EVENT_CHANNELS.VAULT_RECOVERY_NEEDED, event)
-  }
+  broadcastToAllWindows(EVENT_CHANNELS.VAULT_RECOVERY_NEEDED, event)
 }
 
 function emitSyncStatus(event: SyncStatusChangedEvent): void {
-  for (const win of BrowserWindow.getAllWindows()) {
-    win.webContents.send(EVENT_CHANNELS.STATUS_CHANGED, event)
-  }
+  broadcastToAllWindows(EVENT_CHANNELS.STATUS_CHANGED, event)
 }
 
 function emitQuotaExceeded(): void {
@@ -157,6 +155,7 @@ function resetSyncServiceSingletons(): void {
   resetInboxSyncService()
   resetFilterSyncService()
   resetBookmarkSyncService()
+  resetTemplateSyncService()
   resetReminderSyncService()
   resetCanvasSyncService()
   resetProjectSyncService()
@@ -327,6 +326,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const inboxSync = initInboxSyncService({ queue, db: runtimeSyncDb, getDeviceId })
       const filterSync = initFilterSyncService({ queue, db: runtimeSyncDb, getDeviceId })
       const bookmarkSync = initBookmarkSyncService({ queue, db: runtimeSyncDb, getDeviceId })
+      const templateSync = initTemplateSyncService({ queue, db: runtimeSyncDb, getDeviceId })
       const reminderSync = initReminderSyncService({ queue, db: runtimeSyncDb, getDeviceId })
       const canvasSync = initCanvasSyncService({ queue, db: runtimeSyncDb, getDeviceId })
       const projectSync = initProjectSyncService({ queue, db: runtimeSyncDb, getDeviceId })
@@ -383,6 +383,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           kind: 'record',
           local: bookmarkSync,
           remote: getRemoteSyncAdapter('bookmark')
+        },
+        {
+          type: 'template',
+          kind: 'record',
+          local: templateSync,
+          remote: getRemoteSyncAdapter('template')
         },
         {
           type: 'reminder',
@@ -590,9 +596,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       await crdtProvider.init(crdtQueue, snapshotPushFn)
 
       const emitFn = (channel: string, data: unknown): void => {
-        for (const win of BrowserWindow.getAllWindows()) {
-          win.webContents.send(channel, data)
-        }
+        broadcastToAllWindows(channel, data)
       }
 
       const workerBridge = new SyncWorkerBridge()

@@ -1,5 +1,7 @@
 import type { TFunction } from 'i18next'
+import { getI18n } from 'react-i18next'
 import type { RepeatConfig, RepeatFrequency } from '@/data/task-model'
+import { getActiveLocale } from './active-locale'
 import {
   addDays,
   addWeeks,
@@ -22,17 +24,65 @@ export type RepeatLabelTranslator = TFunction<'common'>
 // CONSTANTS
 // ============================================================================
 
-export const DAY_NAMES = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday'
-]
-export const SHORT_DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-export const ORDINALS = ['', 'first', 'second', 'third', 'fourth', 'last']
+// January 7 2024 is a Sunday, so these seven UTC days spell out a full week in
+// the Sunday-first order the repeat pickers index by.
+const WEEK_REFERENCE_DAYS = Array.from(
+  { length: 7 },
+  (_, index) => new Date(Date.UTC(2024, 0, 7 + index))
+)
+
+/**
+ * Array-shaped label list whose entries are resolved on read. Building them once
+ * at import time would freeze them to the fallback locale, because
+ * `setActiveLocale` (and i18next itself) only run after the module graph has
+ * been evaluated. Kept array-shaped because callers index and `.map()` over
+ * these constants.
+ */
+const lazyLabels = (length: number, build: () => string[]): string[] => {
+  let builtFor: string | null = null
+  let built: string[] = []
+
+  const resolve = (): string[] => {
+    const locale = getActiveLocale()
+    if (locale !== builtFor) {
+      built = build()
+      builtFor = locale
+    }
+    return built
+  }
+
+  const labels = new Array<string>(length)
+  for (let index = 0; index < length; index++) {
+    Object.defineProperty(labels, index, {
+      get: () => resolve()[index],
+      enumerable: true,
+      configurable: true
+    })
+  }
+  return labels
+}
+
+const buildWeekdayNames = (style: 'long' | 'short'): string[] => {
+  const formatter = new Intl.DateTimeFormat(getActiveLocale(), {
+    weekday: style,
+    timeZone: 'UTC'
+  })
+  return WEEK_REFERENCE_DAYS.map((day) => formatter.format(day))
+}
+
+export const DAY_NAMES = lazyLabels(7, () => buildWeekdayNames('long'))
+export const SHORT_DAY_NAMES = lazyLabels(7, () => buildWeekdayNames('short'))
+export const ORDINALS = lazyLabels(6, () => {
+  const t = getI18n().getFixedT(null, 'common')
+  return [
+    '',
+    t('recurrence.ordinal.first'),
+    t('recurrence.ordinal.second'),
+    t('recurrence.ordinal.third'),
+    t('recurrence.ordinal.fourth'),
+    t('recurrence.ordinal.last')
+  ]
+})
 
 // ============================================================================
 // HELPER: GET ORDINAL SUFFIX
@@ -51,6 +101,16 @@ export const getOrdinalSuffix = (n: number): string => {
       return 'th'
   }
 }
+
+/**
+ * `recurrence.everyNMonthsOnDay` interpolates `{day}{suffix}`, and the suffix
+ * list above is English-only, so feeding it to a translated frame produced
+ * "Jeden Monat auf dem 10th". A bare day number is the closer fallback in every
+ * other language until that key is rewritten as an ICU `selectordinal`, which
+ * needs all 32 locales retranslated.
+ */
+const daySuffixForActiveLocale = (day: number): string =>
+  getActiveLocale() === 'en' ? getOrdinalSuffix(day) : ''
 
 // ============================================================================
 // HELPER: GET WEEK OF MONTH FOR DATE
@@ -293,7 +353,7 @@ export const getRepeatDisplayText = (config: RepeatConfig, t: RepeatLabelTransla
 
     case 'monthly':
       if (monthlyType === 'dayOfMonth' && dayOfMonth) {
-        const suffix = getOrdinalSuffix(dayOfMonth)
+        const suffix = daySuffixForActiveLocale(dayOfMonth)
         return t('recurrence.everyNMonthsOnDay', {
           count: interval,
           day: dayOfMonth,
@@ -329,6 +389,7 @@ export interface RepeatPreset {
 }
 
 export const getRepeatPresets = (dueDate: Date | null): RepeatPreset[] => {
+  const t = getI18n().getFixedT(null, 'common')
   const today = dueDate || new Date()
   const dayOfWeek = today.getDay()
   const dayOfMonth = today.getDate()
@@ -336,8 +397,11 @@ export const getRepeatPresets = (dueDate: Date | null): RepeatPreset[] => {
   const isLast = isLastWeekdayOfMonth(today)
 
   const dayName = DAY_NAMES[dayOfWeek]
-  const weekText = isLast ? 'last' : ORDINALS[weekOfMonth]
-  const monthName = today.toLocaleDateString('en-US', { month: 'long' })
+  const weekText = ORDINALS[isLast ? 5 : weekOfMonth]
+  const monthDay = new Intl.DateTimeFormat(getActiveLocale(), {
+    month: 'long',
+    day: 'numeric'
+  }).format(today)
 
   const baseConfig: Omit<RepeatConfig, 'frequency' | 'interval'> = {
     endType: 'never',
@@ -348,7 +412,7 @@ export const getRepeatPresets = (dueDate: Date | null): RepeatPreset[] => {
   return [
     {
       id: 'daily',
-      label: 'Every day',
+      label: t('recurrence.everyNDays', { count: 1 }),
       config: {
         ...baseConfig,
         frequency: 'daily',
@@ -357,7 +421,7 @@ export const getRepeatPresets = (dueDate: Date | null): RepeatPreset[] => {
     },
     {
       id: 'weekdays',
-      label: 'Every weekday (Mon-Fri)',
+      label: t('recurrence.preset.everyWeekday'),
       config: {
         ...baseConfig,
         frequency: 'weekly',
@@ -367,7 +431,7 @@ export const getRepeatPresets = (dueDate: Date | null): RepeatPreset[] => {
     },
     {
       id: 'weekly',
-      label: `Every week on ${dayName}`,
+      label: t('recurrence.everyNWeeksOnDays', { count: 1, days: dayName }),
       config: {
         ...baseConfig,
         frequency: 'weekly',
@@ -377,7 +441,7 @@ export const getRepeatPresets = (dueDate: Date | null): RepeatPreset[] => {
     },
     {
       id: 'biweekly',
-      label: `Every 2 weeks on ${dayName}`,
+      label: t('recurrence.everyNWeeksOnDays', { count: 2, days: dayName }),
       config: {
         ...baseConfig,
         frequency: 'weekly',
@@ -387,7 +451,11 @@ export const getRepeatPresets = (dueDate: Date | null): RepeatPreset[] => {
     },
     {
       id: 'monthly-day',
-      label: `Every month on the ${dayOfMonth}${getOrdinalSuffix(dayOfMonth)}`,
+      label: t('recurrence.everyNMonthsOnDay', {
+        count: 1,
+        day: dayOfMonth,
+        suffix: daySuffixForActiveLocale(dayOfMonth)
+      }),
       config: {
         ...baseConfig,
         frequency: 'monthly',
@@ -398,7 +466,11 @@ export const getRepeatPresets = (dueDate: Date | null): RepeatPreset[] => {
     },
     {
       id: 'monthly-week',
-      label: `Every month on the ${weekText} ${dayName}`,
+      label: t('recurrence.everyNMonthsOnWeekDay', {
+        count: 1,
+        week: weekText,
+        day: dayName
+      }),
       config: {
         ...baseConfig,
         frequency: 'monthly',
@@ -410,7 +482,7 @@ export const getRepeatPresets = (dueDate: Date | null): RepeatPreset[] => {
     },
     {
       id: 'yearly',
-      label: `Every year on ${monthName} ${dayOfMonth}`,
+      label: t('recurrence.preset.everyYearOnDate', { date: monthDay }),
       config: {
         ...baseConfig,
         frequency: 'yearly',

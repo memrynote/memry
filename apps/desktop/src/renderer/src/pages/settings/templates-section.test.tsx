@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -125,14 +125,6 @@ vi.mock('@/components/ui/alert-dialog', () => ({
   )
 }))
 
-vi.mock('./template-preview', () => ({
-  TemplatePreview: ({ templateId, onBack }: { templateId: string; onBack: () => void }) => (
-    <div data-testid="template-preview" data-template-id={templateId}>
-      <button onClick={onBack}>back</button>
-    </div>
-  )
-}))
-
 describe('TemplatesSettings', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -256,29 +248,36 @@ describe('TemplatesSettings', () => {
   })
 })
 
-describe('TemplatesSettings — drill-in preview', () => {
-  it('replaces the list with a preview when a row is clicked', () => {
+describe('TemplatesSettings — row click', () => {
+  it('opens the editor tab when a row is clicked', async () => {
+    const user = userEvent.setup()
     render(<TemplatesSettings />)
-    fireEvent.click(screen.getByText('Meeting Notes'))
-    const preview = screen.getByTestId('template-preview')
-    expect(preview).toHaveAttribute('data-template-id', 'custom')
-    expect(screen.queryByText('templates.actions.new')).not.toBeInTheDocument()
+
+    await user.click(await screen.findByRole('button', { name: 'Meeting Notes' }))
+
+    expect(openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'template-editor', entityId: 'custom' })
+    )
+    expect(closeSettings).toHaveBeenCalled()
   })
 
-  it('returns to the list from the preview via back', () => {
+  it('opens built-in templates in the same tab type', async () => {
+    const user = userEvent.setup()
     render(<TemplatesSettings />)
-    fireEvent.click(screen.getByText('Meeting Notes'))
-    fireEvent.click(screen.getByText('back'))
-    expect(screen.queryByTestId('template-preview')).not.toBeInTheDocument()
-    expect(screen.getByText('templates.actions.new')).toBeInTheDocument()
+
+    await user.click(await screen.findByRole('button', { name: 'Daily Journal' }))
+
+    expect(openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'template-editor', entityId: 'built-in' })
+    )
   })
 
-  it('clicking a dropdown menu item does not drill into preview', async () => {
+  it('clicking a dropdown menu item does not also open the row tab', async () => {
     const user = userEvent.setup()
     render(<TemplatesSettings />)
     // DropdownMenuContent's stopPropagation keeps the menu-item click from reaching
-    // the row's onSelect (matches production); clicking Duplicate must not drill in.
+    // the row's onSelect (matches production); Duplicate must not open a tab.
     await user.click(screen.getByRole('button', { name: /templates.actions.duplicate/ }))
-    expect(screen.queryByTestId('template-preview')).not.toBeInTheDocument()
+    expect(openTab).not.toHaveBeenCalled()
   })
 })

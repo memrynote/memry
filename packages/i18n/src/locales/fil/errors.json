@@ -22,7 +22,19 @@
     "writeFailed": "Nabigong i-save ang talang ito. Suriin ang espasyo sa disk at mga pahintulot.",
     "readFailed": "Nabigong basahin ang talang ito. Maaaring naka-lock o nasira ang file.",
     "deleteFailed": "Nabigong tanggalin ang talang ito. Suriin ang mga pahintulot ng file.",
-    "invalidPath": "Di-wasto ang path ng tala."
+    "invalidPath": "Di-wasto ang path ng tala.",
+    "applyTemplateFailed": "Nabigong ilapat ang template",
+    "createFailed": "Nabigong gumawa ng tala",
+    "deleteVersionFailed": "Nabigong tanggalin ang bersyon",
+    "exportHtmlFailed": "Nabigong i-export ang HTML",
+    "exportPdfFailed": "Nabigong i-export ang PDF",
+    "importFilesFailed": "Nabigong mag-import ng mga file",
+    "moveFailed": "Nabigong ilipat ang tala",
+    "renameFailed": "Nabigong palitan ang pangalan ng tala",
+    "reorderFailed": "Nabigong muling isaayos ang mga tala",
+    "restoreVersionFailed": "Nabigong ibalik ang bersyon",
+    "setLocalOnlyFailed": "Nabigong itakda bilang lokal lamang",
+    "updateFailed": "Nabigong i-update ang tala"
   },
   "database": {
     "connectionFailed": "Hindi makakonekta sa lokal na database. Subukang i-restart ang app.",
@@ -41,7 +53,14 @@
     "fileTooLarge": "Masyadong malaki ang file na ito para i-attach.",
     "unsupportedType": "Ang uri ng file na ito ay hindi suportado.",
     "writeFailed": "Nabigong i-save ang attachment. Suriin ang espasyo sa disk.",
-    "deleteFailed": "Nabigong tanggalin ang attachment."
+    "deleteFailed": "Nabigong tanggalin ang attachment.",
+    "downloadFailed": "Nabigo ang pag-download ng attachment",
+    "downloadProgressFailed": "Nabigong makuha ang progreso ng pag-download",
+    "uploadFailed": "Nabigo ang pag-upload ng attachment",
+    "uploadProgressFailed": "Nabigong makuha ang progreso ng pag-upload",
+    "emptyFile": "Hindi mai-upload ang walang lamang file",
+    "exceedsMaxSize": "Masyadong malaki ang file: lumalampas ang {size} sa limitasyong {limit}",
+    "exceedsPlanLimit": "Mas malaki ang file kaysa sa pinapayagan ng iyong plano: lumalampas ang {size} sa {limit}"
   },
   "encryption": {
     "failed": "Nabigong i-encrypt ang data. Maaaring kailanganin na muling buuin ang iyong mga susi.",
@@ -74,6 +93,188 @@
     "securityQuarantinePermanent": "Hindi ma-verify ang isang item sa pag-sync at na-quarantine para sa seguridad.",
     "securityQuarantineRetry": "Nabigo ang isang item sa pag-sync sa pag-verify ng lagda at susubukang muli.",
     "certificatePinPaused": "Hindi ma-verify ang secure na koneksyon sa sync server. Na-pause ang pag-sync para sa iyong proteksyon.",
-    "paymentRequired": "Kailangan ng bayad na Sync plan para gamitin ang naka-host na naka-encrypt na sync."
+    "paymentRequired": "Kailangan ng bayad na Sync plan para gamitin ang naka-host na naka-encrypt na sync.",
+    "attachmentUploadFailed": "Hindi ma-sync ang attachment na \"{filename}\". Mananatili ito sa device na ito.",
+    "fileTooLarge": "Mas malaki ang file na ito kaysa sa pinapayagan ng iyong plano. I-upgrade ang iyong plano para makapag-sync ng mas malalaking file.",
+    "vaultRecovered": "Naibalik ang vault key. Magpapatuloy ang pag-sync.",
+    "historyFetchFailed": "Nabigong makuha ang kasaysayan ng pag-sync",
+    "keyPersistenceFailed": "Nabigong ligtas na i-save ang encryption key. Naibalik sa dati ang pagpaparehistro ng device. Pakisubukang muli.",
+    "serverUnreachable": "Hindi makakonekta sa sync server. Pakisuri ang iyong koneksyon sa internet.",
+    "updateSyncedSettingFailed": "Nabigong i-update ang naka-sync na setting",
+    "requestTimedOut": "Nag-time out ang kahilingan sa pag-sync. Pakisuri ang iyong koneksyon sa internet."
+  },
+  "agent": {
+    "conversationBusy": "Abala ang usapan",
+    "runtimeStarting": "Nagsisimula pa ang agent runtime. Subukang muli."
+  },
+  "ai": {
+    "inlineDisabled": "Naka-disable ang AI inline editing",
+    "listOllamaModelsFailed": "Nabigong ilista ang mga modelo ng Ollama"
+  },
+  "auth": {
+    "approveLinkingFailed": "Nabigong aprubahan ang pag-link",
+    "cannotRemoveCurrentDevice": "Hindi maaaring alisin ang kasalukuyang device",
+    "completeLinkingFailed": "Nabigong tapusin ang pag-link",
+    "confirmRecoveryPhraseFailed": "Nabigong kumpirmahin ang recovery phrase",
+    "fetchSasCodeFailed": "Nabigong makuha ang SAS code",
+    "finalizeVaultChoiceFailed": "Nabigong tapusin ang pagpili ng vault",
+    "initiateOAuthFailed": "Nabigong simulan ang OAuth",
+    "invalidRecoveryPhraseFormat": "Di-wastong format ng recovery phrase",
+    "linkDeviceQrFailed": "Nabigong i-link ang device gamit ang QR",
+    "linkRecoveryPhraseFailed": "Nabigong mag-link gamit ang recovery phrase",
+    "notAuthenticated": "Hindi naka-authenticate",
+    "pickFolderFailed": "Nabigong pumili ng folder",
+    "recoveryPhraseMismatch": "Hindi tugma ang recovery phrase. Pakisubukang muli.",
+    "removeDeviceFailed": "Nabigong alisin ang device",
+    "renameDeviceFailed": "Nabigong palitan ang pangalan ng device",
+    "requestOtpFailed": "Nabigong humiling ng OTP",
+    "resendOtpFailed": "Nabigong muling ipadala ang OTP",
+    "sessionExpired": "Nag-expire na ang session. Mag-sign in muli.",
+    "setupFirstDeviceOAuthFailed": "Nabigong i-set up ang unang device gamit ang OAuth",
+    "verifyOtpFailed": "Nabigong i-verify ang OTP"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "Naka-bookmark na ang item",
+    "notFound": "Hindi nahanap ang bookmark"
+  },
+  "calendar": {
+    "connectProviderFailed": "Nabigong ikonekta ang calendar provider",
+    "createEventFailed": "Nabigong gumawa ng calendar event",
+    "deleteEventFailed": "Nabigong tanggalin ang calendar event",
+    "disconnectProviderFailed": "Nabigong idiskonekta ang calendar provider",
+    "eventNotFound": "Hindi nahanap ang calendar event",
+    "googleNotConnected": "Hindi nakakonekta ang Google Calendar sa device na ito",
+    "listGoogleCalendarsFailed": "Nabigong ilista ang mga Google calendar",
+    "onlyGoogleSourcesRetryable": "Mga Google calendar source lang ang maaaring subukang muli",
+    "onlySourcesSelectable": "Mga calendar source lang ang maaaring piliin",
+    "promoteExternalEventFailed": "Nabigong i-promote ang panlabas na calendar event",
+    "refreshProviderFailed": "Nabigong i-refresh ang calendar provider",
+    "retryGoogleSourceSyncFailed": "Nabigong subukang muli ang pag-sync ng Google Calendar source",
+    "setDefaultGoogleCalendarFailed": "Nabigong itakda ang default na Google calendar",
+    "signInBeforeRefresh": "Mag-sign in sa memrynote bago i-refresh ang Google Calendar",
+    "sourceNotFound": "Hindi nahanap ang calendar source",
+    "syncFailed": "Nabigo ang pag-sync",
+    "updateEventFailed": "Nabigong i-update ang calendar event",
+    "updateSourceSelectionFailed": "Nabigong i-update ang pagpili ng calendar source"
+  },
+  "folder": {
+    "createFailed": "Nabigong gumawa ng folder",
+    "deleteFailed": "Nabigong tanggalin ang folder",
+    "renameFailed": "Nabigong palitan ang pangalan ng folder",
+    "setConfigFailed": "Nabigong itakda ang config ng folder"
+  },
+  "folderView": {
+    "deleteViewFailed": "Nabigong tanggalin ang view",
+    "setConfigFailed": "Nabigong itakda ang config",
+    "setViewFailed": "Nabigong itakda ang view"
+  },
+  "googleCalendar": {
+    "accessDenied": "Tinanggihan ang access sa Google Calendar. Maaari kang kumonekta muli kahit kailan ka handa.",
+    "connectFailed": "Hindi makakonekta sa Google Calendar. Pakisubukang muli maya-maya.",
+    "misconfigured": "Hindi wastong naka-configure ang Google Calendar. Makipag-ugnayan sa support kung magpatuloy ito.",
+    "reconnectNeeded": "Nag-expire na ang iyong koneksyon sa Google Calendar. Idiskonekta at kumonekta muli.",
+    "scopeMissing": "Hindi namin ma-access ang iyong Google Calendar dahil hindi naibigay ang pahintulot sa Calendar. Pakisubukang muli at tiyaking nananatiling nakatsek ang checkbox ng Calendar sa consent screen ng Google.",
+    "temporarilyUnavailable": "Pansamantalang hindi available ang Google Calendar. Pakisubukang muli maya-maya."
+  },
+  "importer": {
+    "cancelFailed": "Nabigo ang pagkansela",
+    "fileSelectionFailed": "Nabigo ang pagpili ng file",
+    "importFailed": "Nabigo ang pag-import",
+    "listFailed": "Nabigong ilista ang mga importer",
+    "previewFailed": "Nabigo ang preview"
+  },
+  "project": {
+    "archiveFailed": "Nabigong i-archive ang proyekto",
+    "captureLinkFailed": "Nabigong makuha ang link",
+    "createFailed": "Nabigong gumawa ng proyekto",
+    "deleteFailed": "Nabigong tanggalin ang proyekto",
+    "importFilesFailed": "Nabigong mag-import ng mga file",
+    "linkItemFailed": "Nabigong i-link ang item",
+    "listForItemFailed": "Nabigong ilista ang mga proyekto para sa item",
+    "reorderFailed": "Nabigong muling isaayos ang mga proyekto",
+    "setHomeNoteFailed": "Nabigong itakda ang home note",
+    "unlinkItemFailed": "Nabigong i-unlink ang item",
+    "updateFailed": "Nabigong i-update ang proyekto",
+    "updatePinnedFailed": "Nabigong i-update ang naka-pin na estado"
+  },
+  "property": {
+    "alreadyExists": "Umiiral na ang property na \"{name}\"",
+    "createDefinitionFailed": "Nabigong gumawa ng property definition",
+    "entityNotFound": "Hindi nahanap ang entity",
+    "notFound": "Hindi nahanap ang property na \"{name}\"",
+    "renameFailed": "Nabigong palitan ang pangalan ng property",
+    "setCalendarVisibilityFailed": "Nabigong itakda ang visibility ng calendar property",
+    "setFailed": "Nabigong itakda ang mga property",
+    "updateDefinitionFailed": "Nabigong i-update ang property definition"
+  },
+  "reminder": {
+    "createFailed": "Nabigong gumawa ng paalala",
+    "dismissAllFailed": "Nabigong i-dismiss ang mga paalala",
+    "dismissFailed": "Nabigong i-dismiss ang paalala",
+    "notFound": "Hindi nahanap ang paalala",
+    "snoozeFailed": "Nabigong i-snooze ang paalala",
+    "updateFailed": "Nabigong i-update ang paalala"
+  },
+  "savedFilter": {
+    "notFound": "Hindi nahanap ang naka-save na filter"
+  },
+  "search": {
+    "rebuildFailed": "Nabigo ang pag-rebuild"
+  },
+  "settings": {
+    "modelAlreadyLoading": "Nilo-load na ang modelo",
+    "modelLoadFailed": "Nabigong i-load ang modelo",
+    "shortcutInUse": "Ginagamit na ang shortcut na {shortcut}",
+    "terminalCommandInstallFailed": "Nabigong i-install ang terminal command",
+    "terminalCommandUninstallFailed": "Nabigong i-uninstall ang terminal command",
+    "unknownVault": "Hindi kilalang vault",
+    "voiceModelDownloadFailed": "Nabigong i-download ang voice model"
+  },
+  "tag": {
+    "categoryNameRequired": "Kailangan ang pangalan ng kategorya",
+    "createCategoryFailed": "Nabigong gumawa ng kategorya ng tag",
+    "deleteCategoryFailed": "Nabigong tanggalin ang kategorya ng tag",
+    "deleteFailed": "Nabigong tanggalin ang tag",
+    "listCategoriesFailed": "Nabigong ilista ang mga kategorya ng tag",
+    "mergeFailed": "Nabigong pagsamahin ang mga tag",
+    "mergeSameTag": "Pareho ang source at target na tag",
+    "pinNoteFailed": "Nabigong i-pin ang tala",
+    "removeFromNoteFailed": "Nabigong alisin ang tag sa tala",
+    "renameCategoryFailed": "Nabigong palitan ang pangalan ng kategorya ng tag",
+    "renameFailed": "Nabigong palitan ang pangalan ng tag",
+    "reorderFailed": "Nabigong muling isaayos ang mga tag",
+    "unpinNoteFailed": "Nabigong i-unpin ang tala",
+    "updateColorFailed": "Nabigong i-update ang kulay ng tag",
+    "updateIconFailed": "Nabigong i-update ang icon ng tag"
+  },
+  "task": {
+    "archiveFailed": "Nabigong i-archive ang gawain",
+    "archiveManyFailed": "Nabigong i-archive ang mga gawain",
+    "completeFailed": "Nabigong kumpletuhin ang gawain",
+    "completeManyFailed": "Nabigong kumpletuhin ang mga gawain",
+    "convertToSubtaskFailed": "Nabigong gawing subtask",
+    "convertToTaskFailed": "Nabigong gawing gawain",
+    "createFailed": "Nabigong gumawa ng gawain",
+    "deleteFailed": "Nabigong tanggalin ang gawain",
+    "deleteManyFailed": "Nabigong tanggalin ang mga gawain",
+    "duplicateFailed": "Nabigong i-duplicate ang gawain",
+    "moveFailed": "Nabigong ilipat ang gawain",
+    "moveManyFailed": "Nabigong ilipat ang mga gawain",
+    "reorderFailed": "Nabigong muling isaayos ang mga gawain",
+    "unarchiveFailed": "Nabigong i-unarchive ang gawain",
+    "uncompleteFailed": "Nabigong alisin ang pagkakumpleto ng gawain",
+    "updateFailed": "Nabigong i-update ang gawain"
+  },
+  "taskStatus": {
+    "createFailed": "Nabigong gumawa ng katayuan",
+    "deleteFailed": "Nabigong tanggalin ang katayuan",
+    "reorderFailed": "Nabigong muling isaayos ang mga katayuan",
+    "updateFailed": "Nabigong i-update ang katayuan"
+  },
+  "template": {
+    "createFailed": "Nabigong gumawa ng template",
+    "deleteFailed": "Nabigong tanggalin ang template",
+    "duplicateFailed": "Nabigong i-duplicate ang template",
+    "updateFailed": "Nabigong i-update ang template"
   }
 }

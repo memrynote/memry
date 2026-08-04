@@ -1,7 +1,12 @@
 {
   "app": {
-    "quit": "Konec",
-    "preferences": "Nastavení…"
+    "quit": "Ukončit",
+    "preferences": "Nastavení…",
+    "exit": "Konec",
+    "hide": "Skrýt MemryNote",
+    "hideOthers": "Skrýt ostatní",
+    "services": "Služby",
+    "unhide": "Zobrazit vše"
   },
   "file": {
     "label": "Soubor",
@@ -16,20 +21,24 @@
     "forward": "Vpřed"
   },
   "edit": {
-    "label": "Upravit",
+    "label": "Úpravy",
     "undo": "Vrátit zpět",
     "redo": "Znovu",
-    "cut": "Řez",
+    "cut": "Vyjmout",
     "copy": "Kopírovat",
     "paste": "Vložit",
     "selectAll": "Vybrat vše",
     "find": "Najít",
-    "speech": "Řeč"
+    "speech": "Řeč",
+    "delete": "Smazat",
+    "pasteAndMatchStyle": "Vložit a přizpůsobit styl",
+    "startSpeaking": "Spustit předčítání",
+    "stopSpeaking": "Zastavit předčítání"
   },
   "view": {
-    "label": "Zobrazit",
+    "label": "Zobrazení",
     "reload": "Znovu načíst",
-    "toggleDevTools": "Přepnout Vývojářské nástroje",
+    "toggleDevTools": "Přepnout nástroje pro vývojáře",
     "toggleFullscreen": "Přepnout na celou obrazovku",
     "theme": "Motiv",
     "themeDark": "Tmavý",
@@ -37,7 +46,10 @@
     "themeSystem": "Systémový",
     "themeWhite": "Papír",
     "toggleDayPanel": "Přepnout denní panel",
-    "toggleSidebar": "Přepnout postranní panel"
+    "toggleSidebar": "Přepnout postranní panel",
+    "actualSize": "Skutečná velikost",
+    "zoomIn": "Zvětšit",
+    "zoomOut": "Zmenšit"
   },
   "format": {
     "body": "Text",
@@ -55,18 +67,23 @@
     "about": "O aplikaci MemryNote",
     "documentation": "Dokumentace",
     "label": "Nápověda",
-    "shortcuts": "Klávesové zkratky"
+    "shortcuts": "Klávesové zkratky",
+    "aboutVersion": "Verze {version}"
   },
   "insert": {
     "attachment": "Vložit přílohu…",
     "bulletList": "Odrážkový seznam",
     "codeBlock": "Blok kódu",
-    "label": "Vložit",
+    "label": "Vložení",
     "numberedList": "Číslovaný seznam",
     "table": "Tabulka",
     "taskList": "Seznam úkolů"
   },
   "window": {
-    "label": "Okno"
+    "label": "Okno",
+    "close": "Zavřít",
+    "front": "Přenést vše do popředí",
+    "minimize": "Minimalizovat",
+    "zoom": "Zvětšit"
   }
 }

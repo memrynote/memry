@@ -45,7 +45,7 @@ export function registerImportHandlers(): void {
       }
       return { canceled: false as const, filePaths: result.filePaths }
     },
-    'File selection failed'
+    'errors:importer.fileSelectionFailed'
   )
 
   registerCommand(
@@ -55,7 +55,7 @@ export function registerImportHandlers(): void {
       const summary = await runImport(input)
       return { success: true as const, summary }
     },
-    'Import failed'
+    'errors:importer.importFailed'
   )
 
   registerCommand(
@@ -65,7 +65,7 @@ export function registerImportHandlers(): void {
       cancelImport(input.importId)
       return { success: true as const }
     },
-    'Cancel failed'
+    'errors:importer.cancelFailed'
   )
 
   registerCommand(
@@ -75,14 +75,14 @@ export function registerImportHandlers(): void {
       const preview = await previewImport(input)
       return { success: true as const, preview }
     },
-    'Preview failed'
+    'errors:importer.previewFailed'
   )
 
   registerCommand(
     ImportChannels.invoke.LIST,
     z.unknown(),
     () => listImporterMeta(),
-    'Failed to list importers'
+    'errors:importer.listFailed'
   )
 }
 

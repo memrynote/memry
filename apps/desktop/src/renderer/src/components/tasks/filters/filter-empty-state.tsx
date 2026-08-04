@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { TaskFilters, Project } from '@/data/tasks-data'
 import { dueDateFilterOptions } from '@/data/tasks-data'
+import { priorityConfig } from '@/data/task-model'
 
 // ============================================================================
 // TYPES
@@ -51,7 +52,9 @@ export const FilterEmptyState = ({
 
     // Priorities
     if (filters.priorities.length > 0) {
-      const priorityLabels = filters.priorities.map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+      // `priorityConfig` resolves its labels lazily, so reading them here (during
+      // render, not at module load) picks up the active locale.
+      const priorityLabels = filters.priorities.map((p) => priorityConfig[p]?.label ?? p)
       parts.push(priorityLabels.join(', '))
     }
 
@@ -65,7 +68,11 @@ export const FilterEmptyState = ({
 
     // Repeat type
     if (filters.repeatType !== 'all') {
-      parts.push(filters.repeatType === 'repeating' ? 'Repeating' : 'One-time')
+      parts.push(
+        filters.repeatType === 'repeating'
+          ? t('filters.repeatTypeRepeating')
+          : t('filters.repeatTypeOneTime')
+      )
     }
 
     return parts.join(' · ')

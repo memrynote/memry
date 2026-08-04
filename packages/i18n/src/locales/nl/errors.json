@@ -22,7 +22,19 @@
     "writeFailed": "Kan deze notitie niet opslaan. Controleer schijfruimte en machtigingen.",
     "readFailed": "Kan deze notitie niet lezen. Het bestand is mogelijk vergrendeld of beschadigd.",
     "deleteFailed": "Kan deze notitie niet verwijderen. Controleer bestandsrechten.",
-    "invalidPath": "Het notitiepad is ongeldig."
+    "invalidPath": "Het notitiepad is ongeldig.",
+    "applyTemplateFailed": "Kan het sjabloon niet toepassen",
+    "createFailed": "Kan de notitie niet maken",
+    "deleteVersionFailed": "Kan de versie niet verwijderen",
+    "exportHtmlFailed": "Kan niet naar HTML exporteren",
+    "exportPdfFailed": "Kan niet naar PDF exporteren",
+    "importFilesFailed": "Kan de bestanden niet importeren",
+    "moveFailed": "Kan de notitie niet verplaatsen",
+    "renameFailed": "Kan de notitie geen andere naam geven",
+    "reorderFailed": "Kan de notities niet herordenen",
+    "restoreVersionFailed": "Kan de versie niet herstellen",
+    "setLocalOnlyFailed": "Kan alleen-lokaal niet instellen",
+    "updateFailed": "Kan de notitie niet bijwerken"
   },
   "database": {
     "connectionFailed": "Kan geen verbinding maken met de lokale database. Probeer de app opnieuw te starten.",
@@ -41,7 +53,14 @@
     "fileTooLarge": "Dit bestand is te groot om bij te voegen.",
     "unsupportedType": "Dit bestandstype wordt niet ondersteund.",
     "writeFailed": "Kan de bijlage niet opslaan. Controleer schijfruimte.",
-    "deleteFailed": "Kan de bijlage niet verwijderen."
+    "deleteFailed": "Kan de bijlage niet verwijderen.",
+    "downloadFailed": "Downloaden van de bijlage mislukt",
+    "downloadProgressFailed": "Kan de downloadvoortgang niet ophalen",
+    "uploadFailed": "Uploaden van de bijlage mislukt",
+    "uploadProgressFailed": "Kan de uploadvoortgang niet ophalen",
+    "emptyFile": "Kan geen leeg bestand uploaden",
+    "exceedsMaxSize": "Bestand te groot: {size} overschrijdt de limiet van {limit}",
+    "exceedsPlanLimit": "Bestand is groter dan je abonnement toestaat: {size} overschrijdt {limit}"
   },
   "encryption": {
     "failed": "Kan gegevens niet coderen. Mogelijk moeten uw sleutels opnieuw worden gegenereerd.",
@@ -74,6 +93,188 @@
     "securityQuarantinePermanent": "Een synchronisatie-item kan niet worden geverifieerd en is om veiligheidsredenen in quarantaine geplaatst.",
     "securityQuarantineRetry": "Een synchronisatie-item heeft de handtekeningverificatie niet doorstaan en zal opnieuw worden geprobeerd.",
     "certificatePinPaused": "De beveiligde verbinding met de synchronisatieserver kon niet worden geverifieerd. Voor uw veiligheid is de synchronisatie onderbroken.",
-    "paymentRequired": "Een betaald Sync-abonnement is vereist om gehoste versleutelde synchronisatie te gebruiken."
+    "paymentRequired": "Een betaald Sync-abonnement is vereist om gehoste versleutelde synchronisatie te gebruiken.",
+    "attachmentUploadFailed": "Kan bijlage \"{filename}\" niet synchroniseren. Deze blijft op dit apparaat.",
+    "fileTooLarge": "Dit bestand is groter dan je abonnement toestaat. Upgrade je abonnement om grotere bestanden te synchroniseren.",
+    "vaultRecovered": "Kluissleutel hersteld. Het synchroniseren wordt hervat.",
+    "historyFetchFailed": "Kan de synchronisatiegeschiedenis niet ophalen",
+    "keyPersistenceFailed": "Kan de encryptiesleutel niet veilig opslaan. De apparaatregistratie is teruggedraaid. Probeer het opnieuw.",
+    "serverUnreachable": "Kan geen verbinding maken met de synchronisatieserver. Controleer je internetverbinding.",
+    "updateSyncedSettingFailed": "Kan de gesynchroniseerde instelling niet bijwerken",
+    "requestTimedOut": "Het synchronisatieverzoek duurde te lang. Controleer je internetverbinding."
+  },
+  "agent": {
+    "conversationBusy": "Gesprek is bezig",
+    "runtimeStarting": "De agent-runtime start op. Probeer het opnieuw."
+  },
+  "ai": {
+    "inlineDisabled": "Inline AI-bewerking is uitgeschakeld",
+    "listOllamaModelsFailed": "Kan de Ollama-modellen niet ophalen"
+  },
+  "auth": {
+    "approveLinkingFailed": "Kan het koppelen niet goedkeuren",
+    "cannotRemoveCurrentDevice": "Kan het huidige apparaat niet verwijderen",
+    "completeLinkingFailed": "Kan het koppelen niet voltooien",
+    "confirmRecoveryPhraseFailed": "Kan de herstelzin niet bevestigen",
+    "fetchSasCodeFailed": "Kan de SAS-code niet ophalen",
+    "finalizeVaultChoiceFailed": "Kan de kluiskeuze niet afronden",
+    "initiateOAuthFailed": "Kan OAuth niet starten",
+    "invalidRecoveryPhraseFormat": "Ongeldige indeling van de herstelzin",
+    "linkDeviceQrFailed": "Kan het apparaat niet via QR koppelen",
+    "linkRecoveryPhraseFailed": "Kan niet koppelen via de herstelzin",
+    "notAuthenticated": "Niet aangemeld",
+    "pickFolderFailed": "Kan de map niet selecteren",
+    "recoveryPhraseMismatch": "De herstelzin komt niet overeen. Probeer het opnieuw.",
+    "removeDeviceFailed": "Kan het apparaat niet verwijderen",
+    "renameDeviceFailed": "Kan het apparaat geen andere naam geven",
+    "requestOtpFailed": "Kan geen OTP aanvragen",
+    "resendOtpFailed": "Kan de OTP niet opnieuw versturen",
+    "sessionExpired": "Je sessie is verlopen. Meld je opnieuw aan.",
+    "setupFirstDeviceOAuthFailed": "Kan het eerste apparaat niet instellen via OAuth",
+    "verifyOtpFailed": "Kan de OTP niet verifiëren"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "Dit item heeft al een bladwijzer",
+    "notFound": "Bladwijzer niet gevonden"
+  },
+  "calendar": {
+    "connectProviderFailed": "Kan geen verbinding maken met de agendaprovider",
+    "createEventFailed": "Kan het agenda-item niet maken",
+    "deleteEventFailed": "Kan het agenda-item niet verwijderen",
+    "disconnectProviderFailed": "Kan de agendaprovider niet loskoppelen",
+    "eventNotFound": "Agenda-item niet gevonden",
+    "googleNotConnected": "Google Calendar is niet verbonden op dit apparaat",
+    "listGoogleCalendarsFailed": "Kan de Google-agenda's niet ophalen",
+    "onlyGoogleSourcesRetryable": "Alleen agendabronnen van Google kunnen opnieuw worden geprobeerd",
+    "onlySourcesSelectable": "Alleen agendabronnen kunnen worden geselecteerd",
+    "promoteExternalEventFailed": "Kan het externe agenda-item niet overnemen",
+    "refreshProviderFailed": "Kan de agendaprovider niet vernieuwen",
+    "retryGoogleSourceSyncFailed": "Kan de synchronisatie van de Google Calendar-bron niet opnieuw proberen",
+    "setDefaultGoogleCalendarFailed": "Kan de standaard Google-agenda niet instellen",
+    "signInBeforeRefresh": "Meld je aan bij memrynote voordat je Google Calendar vernieuwt",
+    "sourceNotFound": "Agendabron niet gevonden",
+    "syncFailed": "Synchronisatie mislukt",
+    "updateEventFailed": "Kan het agenda-item niet bijwerken",
+    "updateSourceSelectionFailed": "Kan de selectie van agendabronnen niet bijwerken"
+  },
+  "folder": {
+    "createFailed": "Kan de map niet maken",
+    "deleteFailed": "Kan de map niet verwijderen",
+    "renameFailed": "Kan de map geen andere naam geven",
+    "setConfigFailed": "Kan de mapinstellingen niet opslaan"
+  },
+  "folderView": {
+    "deleteViewFailed": "Kan de weergave niet verwijderen",
+    "setConfigFailed": "Kan de configuratie niet opslaan",
+    "setViewFailed": "Kan de weergave niet instellen"
+  },
+  "googleCalendar": {
+    "accessDenied": "De toegang tot Google Calendar is geweigerd. Je kunt opnieuw verbinding maken wanneer je er klaar voor bent.",
+    "connectFailed": "Kan geen verbinding maken met Google Calendar. Probeer het zo meteen opnieuw.",
+    "misconfigured": "Google Calendar is niet juist geconfigureerd. Neem contact op met support als dit blijft gebeuren.",
+    "reconnectNeeded": "Je verbinding met Google Calendar is verlopen. Verbreek de verbinding en maak opnieuw verbinding.",
+    "scopeMissing": "We konden je Google Calendar niet bereiken omdat er geen agendatoestemming is verleend. Probeer het opnieuw en laat het vinkje Agenda aangevinkt staan op het toestemmingsscherm van Google.",
+    "temporarilyUnavailable": "Google Calendar is tijdelijk niet beschikbaar. Probeer het zo meteen opnieuw."
+  },
+  "importer": {
+    "cancelFailed": "Annuleren mislukt",
+    "fileSelectionFailed": "Bestandsselectie mislukt",
+    "importFailed": "Import mislukt",
+    "listFailed": "Kan de importbronnen niet ophalen",
+    "previewFailed": "Voorbeeld mislukt"
+  },
+  "project": {
+    "archiveFailed": "Kan het project niet archiveren",
+    "captureLinkFailed": "Kan de link niet vastleggen",
+    "createFailed": "Kan het project niet maken",
+    "deleteFailed": "Kan het project niet verwijderen",
+    "importFilesFailed": "Kan de bestanden niet importeren",
+    "linkItemFailed": "Kan het item niet koppelen",
+    "listForItemFailed": "Kan de projecten voor dit item niet ophalen",
+    "reorderFailed": "Kan de projecten niet herordenen",
+    "setHomeNoteFailed": "Kan de hoofdnotitie niet instellen",
+    "unlinkItemFailed": "Kan de koppeling met het item niet verwijderen",
+    "updateFailed": "Kan het project niet bijwerken",
+    "updatePinnedFailed": "Kan de vastgezette status niet bijwerken"
+  },
+  "property": {
+    "alreadyExists": "Eigenschap “{name}” bestaat al",
+    "createDefinitionFailed": "Kan de eigenschapsdefinitie niet maken",
+    "entityNotFound": "Entiteit niet gevonden",
+    "notFound": "Eigenschap “{name}” niet gevonden",
+    "renameFailed": "Kan de eigenschap geen andere naam geven",
+    "setCalendarVisibilityFailed": "Kan de zichtbaarheid van de agenda-eigenschap niet instellen",
+    "setFailed": "Kan de eigenschappen niet instellen",
+    "updateDefinitionFailed": "Kan de eigenschapsdefinitie niet bijwerken"
+  },
+  "reminder": {
+    "createFailed": "Kan de herinnering niet maken",
+    "dismissAllFailed": "Kan de herinneringen niet sluiten",
+    "dismissFailed": "Kan de herinnering niet sluiten",
+    "notFound": "Herinnering niet gevonden",
+    "snoozeFailed": "Kan de herinnering niet snoozen",
+    "updateFailed": "Kan de herinnering niet bijwerken"
+  },
+  "savedFilter": {
+    "notFound": "Opgeslagen filter niet gevonden"
+  },
+  "search": {
+    "rebuildFailed": "Opnieuw opbouwen mislukt"
+  },
+  "settings": {
+    "modelAlreadyLoading": "Het model wordt al geladen",
+    "modelLoadFailed": "Kan het model niet laden",
+    "shortcutInUse": "Sneltoets {shortcut} is al in gebruik",
+    "terminalCommandInstallFailed": "Kan de terminalopdracht niet installeren",
+    "terminalCommandUninstallFailed": "Kan de terminalopdracht niet verwijderen",
+    "unknownVault": "Onbekende kluis",
+    "voiceModelDownloadFailed": "Kan het spraakmodel niet downloaden"
+  },
+  "tag": {
+    "categoryNameRequired": "Categorienaam is vereist",
+    "createCategoryFailed": "Kan de tagcategorie niet maken",
+    "deleteCategoryFailed": "Kan de tagcategorie niet verwijderen",
+    "deleteFailed": "Kan de tag niet verwijderen",
+    "listCategoriesFailed": "Kan de tagcategorieën niet ophalen",
+    "mergeFailed": "Kan de tags niet samenvoegen",
+    "mergeSameTag": "De bron- en doeltag zijn hetzelfde",
+    "pinNoteFailed": "Kan de notitie niet vastzetten",
+    "removeFromNoteFailed": "Kan de tag niet van de notitie verwijderen",
+    "renameCategoryFailed": "Kan de tagcategorie geen andere naam geven",
+    "renameFailed": "Kan de tag geen andere naam geven",
+    "reorderFailed": "Kan de tags niet herordenen",
+    "unpinNoteFailed": "Kan de notitie niet losmaken",
+    "updateColorFailed": "Kan de tagkleur niet bijwerken",
+    "updateIconFailed": "Kan het tagpictogram niet bijwerken"
+  },
+  "task": {
+    "archiveFailed": "Kan de taak niet archiveren",
+    "archiveManyFailed": "Kan de taken niet archiveren",
+    "completeFailed": "Kan de taak niet voltooien",
+    "completeManyFailed": "Kan de taken niet voltooien",
+    "convertToSubtaskFailed": "Kan niet omzetten naar subtaak",
+    "convertToTaskFailed": "Kan niet omzetten naar taak",
+    "createFailed": "Kan de taak niet maken",
+    "deleteFailed": "Kan de taak niet verwijderen",
+    "deleteManyFailed": "Kan de taken niet verwijderen",
+    "duplicateFailed": "Kan de taak niet dupliceren",
+    "moveFailed": "Kan de taak niet verplaatsen",
+    "moveManyFailed": "Kan de taken niet verplaatsen",
+    "reorderFailed": "Kan de taken niet herordenen",
+    "unarchiveFailed": "Kan de taak niet uit het archief halen",
+    "uncompleteFailed": "Kan de taak niet op onvoltooid zetten",
+    "updateFailed": "Kan de taak niet bijwerken"
+  },
+  "taskStatus": {
+    "createFailed": "Kan de status niet maken",
+    "deleteFailed": "Kan de status niet verwijderen",
+    "reorderFailed": "Kan de statussen niet herordenen",
+    "updateFailed": "Kan de status niet bijwerken"
+  },
+  "template": {
+    "createFailed": "Kan het sjabloon niet maken",
+    "deleteFailed": "Kan het sjabloon niet verwijderen",
+    "duplicateFailed": "Kan het sjabloon niet dupliceren",
+    "updateFailed": "Kan het sjabloon niet bijwerken"
   }
 }

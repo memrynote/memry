@@ -67,14 +67,16 @@
     "title": "Tanggalin ang kaganapan?",
     "local-description": "Ang \"{title}\" ay permanenteng tatanggalin. Ang pagkilos na ito ay hindi maaaring i-undo.",
     "google-bound-description": "Aalisin ang \"{title}\" sa memrynote at Google Calendar. Ang pagkilos na ito ay hindi maaaring i-undo.",
-    "context-menu-delete-label": "Tanggalin ang kaganapan"
+    "context-menu-delete-label": "Tanggalin ang kaganapan",
+    "context-menu-add-to-project": "Idagdag sa proyekto"
   },
   "promote-dialog": {
     "aria": "I-edit ang panlabas na kaganapan sa kalendaryo",
     "title": "I-edit ang kaganapang ito sa memrynote?",
     "body": "Ang pag-edit sa kaganapang ito ay lilikha ng naka-link na kopya sa memrynote kaya ang mga pagbabago ay nagsi-sync sa parehong paraan. Magpatuloy?",
     "do-not-ask-again": "Wag ka nang magtanong ulit",
-    "confirm-label": "I-edit sa memrynote"
+    "confirm-label": "I-edit sa memrynote",
+    "agent-notice": "Mababasa ng ahente ng AI ang kopyang ito, kahit naka-off ang access ng AI sa Google Calendar. Nananatiling nakatago sa ahente ang orihinal mong kaganapan sa Google."
   },
   "onboarding-dialog": {
     "aria": "Piliin ang iyong default na kalendaryo ng Google",
@@ -181,6 +183,16 @@
     "placeholder": "Maghanap ng kaganapan, gawain, paalala…"
   },
   "undo": {
-    "moveEvent": "Ilipat ang kaganapan"
+    "moveEvent": "Ilipat ang kaganapan",
+    "moveTask": "I-reschedule ang gawain"
+  },
+  "agent-access-dialog": {
+    "allow": "Payagan",
+    "aria": "Piliin kung mababasa ng AI ang iyong mga kaganapan sa Google Calendar",
+    "body": "Makikita mo pa rin ang iyong mga kaganapan sa Google sa memrynote alinman ang piliin mo. Ito lang ang magpapasya kung mababasa ba ng ahente ng AI ang mga ito kapag nagtanong ka tungkol sa iyong iskedyul.",
+    "deny": "Huwag payagan",
+    "footnote": "Maaari mo itong baguhin anumang oras sa Mga setting → Mga pagsasama → Google Calendar.",
+    "save-error": "Nabigong i-save ang iyong pinili",
+    "title": "Payagan ang AI na basahin ang iyong mga kaganapan sa Google Calendar?"
   }
 }

@@ -28,6 +28,13 @@
       "readyDetailFallback": "Yüklemeyi tamamlamak için memrynote'yi yeniden başlatın.",
       "buttonRestartNow": "Şimdi yeniden başlat",
       "releaseNotesLabel": "Sürüm notları:"
+    },
+    "pair": {
+      "buttonAllow": "İzin Ver",
+      "buttonDeny": "Reddet",
+      "buttonPair": "Eşle",
+      "message": "Memry tarayıcı uzantısının bu uygulamaya yakalama göndermesine izin verilsin mi?",
+      "title": "Tarayıcı uzantısını eşle"
     }
   },
   "notification": {
@@ -38,6 +45,11 @@
       "task": "Görev hatırlatıcısı",
       "fallback": "Hatırlatma zamanı",
       "default": "Hatırlatma"
+    },
+    "inboxReview": {
+      "body": "Gözden geçirilecek {count, plural, one {# öğeniz} other {# öğeniz}} var.",
+      "testBody": "Bu bir testtir — günlük gözden geçirme hatırlatıcılarınız böyle görünecek.",
+      "title": "Gelen kutunuzu gözden geçirme zamanı"
     }
   },
   "error": {
@@ -45,5 +57,15 @@
     "definitionNotFound": "Tanım bulunamadı",
     "noteNotFound": "Not bulunamadı",
     "updateFailed": "Güncelleme başarısız oldu"
+  },
+  "startup": {
+    "failed": {
+      "body": "Bu, diskte çok az boş alan kaldığında veya eski ekran kartı sürücülerinde olabilir. Biraz disk alanı açmayı deneyin, ardından MemryNote'yi yeniden açın. Sorun devam ederse yeniden kurmak genellikle çözer.",
+      "title": "MemryNote başlatmayı tamamlayamadı"
+    },
+    "installingUpdate": {
+      "subtitle": "MemryNote otomatik olarak yeniden açılacak.",
+      "title": "Güncelleme yükleniyor…"
+    }
   }
 }

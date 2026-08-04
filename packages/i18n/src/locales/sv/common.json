@@ -25,7 +25,8 @@
     "expand": "Expandera",
     "collapse": "Komprimera",
     "showMore": "+{count, plural, one {# mer} other {# mer}}",
-    "showLess": "Visa mindre"
+    "showLess": "Visa mindre",
+    "undo": "Ångra"
   },
   "tabs": {
     "pin": "Fäst flik",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "Idag",
     "yesterday": "Igår",
-    "daysAgo": "{count, plural, one {# dag sedan} other {# dagar sedan}}"
+    "daysAgo": "{count, plural, one {# dag sedan} other {# dagar sedan}}",
+    "daysLate": "{count, plural, one {# d sen} other {# d sen}}",
+    "daysOverdue": "{count, plural, one {# dag försenad} other {# dagar försenad}}",
+    "tomorrow": "Imorgon"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Varje dag} other {Varje # dagar}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Varje månad på {day}{suffix}} other {Varje # månader på {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Varje månad på {week} {day}} other {Varje # månader på {week} {day}}}",
     "everyNYears": "{count, plural, one {Varje år} other {Varje # år}}",
-    "repeats": "Upprepas"
+    "repeats": "Upprepas",
+    "ordinal": {
+      "first": "första",
+      "fourth": "fjärde",
+      "last": "sista",
+      "second": "andra",
+      "third": "tredje"
+    },
+    "preset": {
+      "everyWeekday": "Varje vardag (mån-fre)",
+      "everyYearOnDate": "Varje år den {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -102,7 +117,15 @@
       "updateDownloadingPercent": "Hämtar {percent}%",
       "updateInstallingSubtitle": "MemryNote startar om automatiskt.",
       "updateInstallingTitle": "Installerar uppdatering",
-      "updateRestart": "Starta om"
+      "updateRestart": "Starta om",
+      "feedbackPrivacyEmailOptional": "Din e-postadress — bara om du anger den, och bara så att vi kan svara",
+      "feedbackPrivacyEmailSignedIn": "E-postadressen till ditt konto ({email}), så att vi kan svara",
+      "feedbackPrivacyMessage": "Ditt meddelande, precis som du skrev det",
+      "feedbackPrivacyNote": "Inget annat. Dina anteckningar stannar på din enhet.",
+      "feedbackPrivacyPlan": "Din plan (free, Plus, Pro eller Believer)",
+      "feedbackPrivacyTitle": "Det här skickas",
+      "feedbackPrivacyVersion": "Appversion och operativsystem",
+      "projects": "Projekt"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Ändra storlek på dagspanel",
@@ -180,8 +203,9 @@
       "search": "Sök",
       "searchNotesTasksJournalInbox": "Sök anteckningar, uppgifter, dagbok, inkorg...",
       "noResultsFor": "Inga resultat för “",
-      "rdquo": "rdquo;",
-      "result": "resultat"
+      "result": "resultat",
+      "noResultsForQuery": "Inga resultat för ”{query}”",
+      "resultCount": "{count, plural, one {# resultat} other {# resultat}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Sök och klicka på objekt för att bygga din spårning",
@@ -228,10 +252,11 @@
       "newTab": "Ny flik",
       "newTab2": "Ny flik",
       "newNote": "Ny anteckning",
-      "journal": "Journal",
+      "journal": "Dagbok",
       "calendar": "Kalender",
       "inboxCapture": "Inkorgfångst",
-      "tasks": "Uppgifter"
+      "tasks": "Uppgifter",
+      "tags": "Taggar"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Osparade ändringar",
@@ -261,15 +286,15 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Något gick fel",
       "anErrorOccurredWhileRenderingThisTabContent": "Ett fel uppstod vid rendering av detta flikinnehåll.",
-      "tryAgain": "Försök igen"
+      "tryAgain": "Försök igen",
+      "sendReport": "Skicka diagnostikrapport"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Anteckningsikon"
     },
     "componentsTabsUnsavedChangesDialog": {
       "unsavedChanges": "Osparade ändringar",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; har osparade ändringar. Vad vill du göra?"
+      "unsavedChangesBody": "”{title}” har osparade ändringar. Vad vill du göra?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Nytt arbetsområde",
@@ -341,7 +366,6 @@
       "logOut": "Logga ut",
       "signInToSync": "Logga in för att synkronisera",
       "remove": "Ta bort “",
-      "rdquoFromList": "rdquo; från listan?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Detta valv kommer att tas bort från appen, men dina filer kommer att finnas kvar på disken. Du kan alltid lägga till det igen senare.",
       "cancel": "Avbryt",
       "remove2": "Ta bort",
@@ -352,7 +376,13 @@
       "downloadLocation": "Plats",
       "changeLocation": "Ändra…",
       "download": "Ladda ner",
-      "downloadFailed": "Valvet kunde inte laddas ner"
+      "downloadFailed": "Valvet kunde inte laddas ner",
+      "deleteFromAccount": "Ta bort från kontot",
+      "deleteVaultBody": "Detta tar permanent bort all synkad data för det här valvet från Memrys servrar och kan inte ångras. Dina filer på disken tas inte bort.",
+      "deleteVaultConfirm": "Ta bort från kontot",
+      "deleteVaultFailed": "Det gick inte att ta bort valvet",
+      "deleteVaultTitle": "Ta bort “{name}” från ditt konto?",
+      "removeVaultTitle": "Ta bort “{name}” från listan?"
     },
     "componentsWindowControls": {
       "searchK": "Sök (⌘K)",
@@ -425,7 +455,7 @@
       },
       "models": {
         "default": "Standard",
-        "label": "Model"
+        "label": "Modell"
       },
       "settings": {
         "reasoning": "Resonemang"
@@ -433,7 +463,7 @@
       "claudeSettings": {
         "reasoning": {
           "low": "Låg",
-          "medium": "Medium",
+          "medium": "Medel",
           "high": "Hög",
           "extraHigh": "Extra hög",
           "extraHighDefault": "Extra hög (standard)",
@@ -443,28 +473,28 @@
       "codexSettings": {
         "reasoning": {
           "low": "Låg",
-          "medium": "Medium",
+          "medium": "Medel",
           "mediumDefault": "Medium (standard)",
           "high": "Hög",
           "extraHigh": "Extra hög"
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Endast valv",
+        "computerAccess": "Datoråtkomst"
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
-        "label": "Web search"
+        "off": "Av",
+        "label": "Webbsökning"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Agentbehörigheter: {access}, webbsökning {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Behörigheter",
+        "access": "Åtkomst",
+        "tools": "Verktyg"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Agentens modellinställningar: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Inga matchningar"
@@ -575,7 +605,7 @@
       "remove": "Ta bort",
       "removeAria": "Ta bort widget",
       "resize": "Storlek",
-      "resizeAria": "Ändra storlek till {{size}}",
+      "resizeAria": "Ändra storlek till {size}",
       "savedFilterDefault": "Idag",
       "savedFilterHint": "Stjärnmärk filter på Uppgifter-sidan för att använda dem här",
       "savedFilterLabel": "Sparat filter",
@@ -624,6 +654,11 @@
     "welcome": {
       "body": "Ditt privata, offline-först-hem. Anteckningar är totalsträckskrypterade — de lämnar aldrig din enhet okrypterade.",
       "title": "Välkommen till MemryNote"
+    },
+    "tour": {
+      "next": "Nästa",
+      "previous": "Föregående",
+      "progress": "{current} av {total}"
     }
   },
   "updatePrompt": {
@@ -640,6 +675,165 @@
     "skip": "Hoppa över denna version"
   },
   "capture": {
-    "focusShortcut": "Fokusera insamlingsfält"
+    "focusShortcut": "Fokusera insamlingsfält",
+    "detailHint": "detaljer",
+    "focusHint": "Q",
+    "submit": "Fånga"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Lägg till kort",
+      "addCreateNote": "Skapa anteckning \"{query}\"",
+      "addCreateNoteEmpty": "Skapa ny anteckning",
+      "addCreatedAt": "Skapad {date}",
+      "addEmpty": "Inget hittades",
+      "addGroupEvents": "Händelser",
+      "addGroupNotes": "Anteckningar",
+      "addGroupTasks": "Uppgifter",
+      "addOnCanvas": "På canvasen",
+      "addPlaceholder": "Sök anteckningar, uppgifter och händelser…",
+      "allDay": "Hela dagen",
+      "createNoteFailed": "Det gick inte att skapa anteckningen",
+      "deleted": "Objektet borttaget",
+      "loading": "Laddar…",
+      "open": "Öppna i flik",
+      "openToEdit": "Öppna i flik för att redigera",
+      "untitled": "Namnlös"
+    },
+    "corruptScene": "Den här canvasen kunde inte läsas. Redigering är avstängd för att inte förlora data.",
+    "createFailed": "Det gick inte att skapa canvasen",
+    "disabledBody": "Den här fliken hör till en funktion som inte är aktiverad på den här enheten.",
+    "disabledTitle": "Canvas är inte aktiverat",
+    "empty": "Inga canvasar än",
+    "libraryStoreFailed": "Det gick inte att spara ditt formbibliotek. De senaste ändringarna i det kan gå förlorade.",
+    "loadFailed": "Det gick inte att ladda canvasar",
+    "loading": "Laddar canvasar…",
+    "newCanvas": "Ny canvas",
+    "notFound": "Den här canvasen kunde inte hittas",
+    "openFailed": "Det gick inte att öppna canvasen",
+    "savedToVault": "Alla ändringar sparas automatiskt i ditt valv",
+    "sectionLabel": "Canvasar",
+    "tooLargeToSync": "Den här canvasen är för stor för att synkroniseras. Den är sparad på den här enheten men når inte dina andra enheter förrän den blir mindre.",
+    "untitled": "Namnlös canvas"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Klicka på rad",
+      "reset": "Återställ",
+      "shortcutsTab": "Fliken Kortkommandon"
+    },
+    "description": "Snabbvägar för att röra dig i memrynote, fånga tankar och beta av arbete.",
+    "groups": {
+      "general": {
+        "description": "Navigering och hjälp i hela appen.",
+        "title": "Allmänt"
+      },
+      "inbox": {
+        "description": "Behandla insamlade objekt snabbt.",
+        "title": "Inkorg"
+      },
+      "journal": {
+        "description": "Navigera i journalvyer och fokusera skrivytan.",
+        "title": "Dagbok"
+      },
+      "notes": {
+        "description": "Skriv, formatera och sök i anteckningar.",
+        "title": "Anteckningar / Redigerare"
+      },
+      "settings": {
+        "description": "Öppna inställningar och anpassa kortkommandon.",
+        "title": "Inställningar"
+      },
+      "tabs": {
+        "description": "Växla mellan flikar och paneler.",
+        "title": "Flikar och delningar"
+      },
+      "tasks": {
+        "description": "Filtrera, markera och slutför uppgifter.",
+        "title": "Uppgifter"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Skapa en anteckning",
+        "keyboardShortcuts": "Öppna kortkommandon",
+        "openSettings": "Öppna inställningar",
+        "quickSearch": "Öppna snabbsökning",
+        "sidebarSection": "Gå till avsnitt i sidofältet",
+        "toggleSidebar": "Växla sidofältet",
+        "undoTaskAction": "Ångra senaste uppgiftsåtgärden"
+      },
+      "inbox": {
+        "archiveItem": "Arkivera markerat objekt",
+        "chooseQuickFileResult": "Välj ett resultat i snabbarkiveringen",
+        "clearSelection": "Rensa markering eller stäng snabbarkivering",
+        "confirmFiling": "Bekräfta arkiveringspanelen",
+        "firstOrLastItem": "Första eller sista objektet",
+        "jumpByPage": "Hoppa en sida i taget",
+        "nextItem": "Nästa objekt",
+        "openOriginal": "Öppna ursprunglig länk",
+        "openQuickFile": "Öppna snabbarkivering",
+        "previousItem": "Föregående objekt",
+        "refresh": "Uppdatera inkorgen",
+        "selectAllVisible": "Markera alla synliga objekt",
+        "selectItem": "Markera objekt",
+        "togglePreview": "Växla förhandsgranskningspanelen"
+      },
+      "journal": {
+        "bold": "Fetstila markerad text",
+        "find": "Sök i journalen",
+        "italic": "Kursivera markerad text",
+        "link": "Lägg till eller redigera länk",
+        "returnFromOverview": "Återgå från månads- eller årsvy",
+        "toggleFullWidth": "Växla journal i full bredd",
+        "underline": "Understryk markerad text"
+      },
+      "notes": {
+        "bold": "Fet",
+        "closeOverlays": "Stäng redigerarens överlägg",
+        "commandMenu": "Öppna redigerarens kommandomeny",
+        "createNote": "Skapa en anteckning",
+        "find": "Sök i anteckningen",
+        "italic": "Kursiv",
+        "link": "Lägg till eller redigera länk",
+        "saveNote": "Spara aktuell anteckning",
+        "underline": "Understruken"
+      },
+      "settings": {
+        "cancelRecording": "Avbryt inspelning av kortkommando",
+        "customizeShortcuts": "Anpassa kortkommandon",
+        "openSettings": "Öppna inställningar",
+        "recordShortcut": "Spela in ett nytt kortkommando",
+        "resetShortcut": "Återställ ett kortkommando till standard"
+      },
+      "tabs": {
+        "closeAllInPane": "Stäng alla flikar i panelen",
+        "closeSplitPane": "Stäng delad panel",
+        "closeTab": "Stäng flik",
+        "duplicateTab": "Duplicera flik",
+        "focusPane": "Fokusera en annan panel",
+        "maximizePane": "Maximera aktuell panel",
+        "moveTabToPane": "Flytta flik till panel",
+        "newTabMenu": "Öppna menyn för ny flik",
+        "nextTab": "Nästa flik",
+        "pinTab": "Fäst eller lossa flik",
+        "previousTab": "Föregående flik",
+        "reopenClosedTab": "Återöppna stängd flik",
+        "splitDown": "Dela nedåt",
+        "splitRight": "Dela till höger"
+      },
+      "tasks": {
+        "clearFilters": "Rensa synliga filter",
+        "clearSelection": "Rensa uppgiftsmarkering",
+        "completeSelected": "Slutför markerade uppgifter",
+        "configureRepeat": "Ställ in upprepning för fokuserad uppgift",
+        "deleteSelected": "Ta bort markerade uppgifter",
+        "selectAllVisible": "Markera alla synliga uppgifter",
+        "skipOccurrence": "Hoppa över en upprepning",
+        "stopRepeating": "Sluta upprepa uppgiften"
+      }
+    },
+    "or": "eller",
+    "then": "sedan"
   }
 }

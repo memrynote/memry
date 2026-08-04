@@ -28,6 +28,13 @@
       "readyDetailFallback": "Uruchom ponownie memrynote, aby zakończyć instalację aktualizacji.",
       "buttonRestartNow": "Uruchom ponownie teraz",
       "releaseNotesLabel": "Informacje o wydaniu:"
+    },
+    "pair": {
+      "buttonAllow": "Zezwól",
+      "buttonDeny": "Odmów",
+      "buttonPair": "Sparuj",
+      "message": "Zezwolić rozszerzeniu przeglądarki Memry na wysyłanie przechwyconych treści do tej aplikacji?",
+      "title": "Sparuj rozszerzenie przeglądarki"
     }
   },
   "notification": {
@@ -38,6 +45,11 @@
       "fallback": "Termin przypomnienia",
       "default": "Przypomnienie",
       "task": "Przypomnienie o zadaniu"
+    },
+    "inboxReview": {
+      "body": "Masz do przejrzenia {count, plural, one {# element} few {# elementy} many {# elementów} other {# elementu}}.",
+      "testBody": "To jest test — tak będą wyglądać Twoje codzienne przypomnienia o przeglądzie.",
+      "title": "Czas przejrzeć skrzynkę odbiorczą"
     }
   },
   "error": {
@@ -45,5 +57,15 @@
     "definitionNotFound": "Nie znaleziono definicji",
     "noteNotFound": "Nie znaleziono notatki",
     "updateFailed": "Aktualizacja nie powiodła się"
+  },
+  "startup": {
+    "failed": {
+      "body": "Może się to zdarzyć, gdy na dysku jest bardzo mało wolnego miejsca lub przy starszych sterownikach graficznych. Zwolnij trochę miejsca na dysku, a następnie otwórz ponownie MemryNote. Jeśli problem się powtarza, zwykle pomaga ponowna instalacja.",
+      "title": "MemryNote nie mógł zakończyć uruchamiania"
+    },
+    "installingUpdate": {
+      "subtitle": "MemryNote uruchomi się ponownie automatycznie.",
+      "title": "Instalowanie aktualizacji…"
+    }
   }
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import {
   CalendarShell,
   type AnchorRect,
@@ -115,7 +116,8 @@ function createDraftFromAnchor(anchorDate: string): CalendarEventDraft {
     isAllDay: false,
     startAt: `${anchorDate}T09:00`,
     endAt: `${anchorDate}T10:00`,
-    targetCalendarId: null
+    targetCalendarId: null,
+    projectId: null
   }
 }
 
@@ -132,7 +134,8 @@ function createDraftFromItem(item: CalendarProjectionItem): CalendarEventDraft {
         ? toLocalDateInputValue(item.endAt)
         : toLocalDateTimeInputValue(item.endAt)
       : '',
-    targetCalendarId: item.binding?.remoteCalendarId ?? null
+    targetCalendarId: item.binding?.remoteCalendarId ?? null,
+    projectId: null
   }
 }
 
@@ -423,7 +426,8 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
               ? toLocalDateInputValue(record.endAt)
               : toLocalDateTimeInputValue(record.endAt)
             : '',
-          targetCalendarId: record.targetCalendarId
+          targetCalendarId: record.targetCalendarId,
+          projectId: null
         } satisfies CalendarEventDraft)
       : createDraftFromItem(source)
 
@@ -636,6 +640,28 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         const result = await calendarService.createEvent(toCreatePayload(popoverState.draft))
         if (!result.success) {
           throw new Error(result.error ?? 'Could not create event.')
+        }
+        const createdId = result.event?.id
+        const projectId = popoverState.draft.projectId
+        // The link needs an event id, which only exists after the create. A
+        // failed link must not discard a successfully created event.
+        if (createdId && projectId) {
+          try {
+            const linked = await tasksService.linkProjectItem({
+              projectId,
+              itemType: 'calendar_event',
+              itemId: createdId
+            })
+            if (!linked.success) throw new Error(linked.error)
+          } catch (error) {
+            const tCalendar = getI18n().getFixedT(null, 'calendar')
+            log.error('Failed to link created event to project', {
+              eventId: createdId,
+              projectId,
+              error: extractErrorMessage(error)
+            })
+            toast.error(extractErrorMessage(error, tCalendar('form.project-update-failed')))
+          }
         }
       } else if (popoverState.eventId) {
         const result = await calendarService.updateEvent({

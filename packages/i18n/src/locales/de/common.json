@@ -25,7 +25,8 @@
     "expand": "Erweitern",
     "collapse": "Zusammenbruch",
     "showMore": "+{count, plural, one {# mehr} other {# mehr}}",
-    "showLess": "Weniger anzeigen"
+    "showLess": "Weniger anzeigen",
+    "undo": "Rückgängig"
   },
   "tabs": {
     "pin": "Pin-Registerkarte",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "Heute",
     "yesterday": "Gestern",
-    "daysAgo": "{count, plural, one {# Tag vor} other {# Tage her}}"
+    "daysAgo": "{count, plural, one {# Tag vor} other {# Tage her}}",
+    "daysLate": "{count, plural, one {# T überfällig} other {# T überfällig}}",
+    "daysOverdue": "{count, plural, one {# Tag überfällig} other {# Tage überfällig}}",
+    "tomorrow": "Morgen"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Jeden Tag} other {Alle # Tage}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Jeden Monat auf dem {day}{suffix}} other {Alle # Monate auf dem {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Jeden Monat auf dem {week} {day}} other {Alle # Monate auf dem {week} {day}}}",
     "everyNYears": "{count, plural, one {Jedes Jahr} other {Alle # Jahre}}",
-    "repeats": "Wiederholt"
+    "repeats": "Wiederholt",
+    "ordinal": {
+      "first": "ersten",
+      "fourth": "vierten",
+      "last": "letzten",
+      "second": "zweiten",
+      "third": "dritten"
+    },
+    "preset": {
+      "everyWeekday": "Jeden Wochentag (Mo-Fr)",
+      "everyYearOnDate": "Jedes Jahr am {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -102,7 +117,15 @@
       "updateDownloadingPercent": "Wird heruntergeladen {percent}%",
       "updateInstallingSubtitle": "MemryNote startet automatisch neu.",
       "updateInstallingTitle": "Update wird installiert",
-      "updateRestart": "Neu starten"
+      "updateRestart": "Neu starten",
+      "feedbackPrivacyEmailOptional": "Deine E-Mail-Adresse — nur wenn du sie angibst, und nur damit wir antworten können",
+      "feedbackPrivacyEmailSignedIn": "Die E-Mail-Adresse deines Kontos ({email}), damit wir antworten können",
+      "feedbackPrivacyMessage": "Deine Nachricht, genau so, wie du sie geschrieben hast",
+      "feedbackPrivacyNote": "Sonst nichts. Deine Notizen bleiben auf deinem Gerät.",
+      "feedbackPrivacyPlan": "Dein Tarif (free, Plus, Pro oder Believer)",
+      "feedbackPrivacyTitle": "Was gesendet wird",
+      "feedbackPrivacyVersion": "App-Version und Betriebssystem",
+      "projects": "Projekte"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Größe des Tagesfensters ändern",
@@ -180,8 +203,9 @@
       "search": "Suchen",
       "searchNotesTasksJournalInbox": "Durchsuchen Sie Notizen, Aufgaben, Tagebuch, Posteingang ...",
       "noResultsFor": "Keine Ergebnisse für „",
-      "rdquo": "rdquo;",
-      "result": "Ergebnis"
+      "result": "Ergebnis",
+      "noResultsForQuery": "Keine Ergebnisse für „{query}“",
+      "resultCount": "{count, plural, one {# Ergebnis} other {# Ergebnisse}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Suchen und klicken Sie auf Elemente, um Ihren Weg zu erstellen",
@@ -231,7 +255,8 @@
       "journal": "Tagebuch",
       "calendar": "Kalender",
       "inboxCapture": "Posteingangserfassung",
-      "tasks": "Aufgaben"
+      "tasks": "Aufgaben",
+      "tags": "Schlagworte"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Nicht gespeicherte Änderungen",
@@ -261,15 +286,15 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Etwas ist schief gelaufen",
       "anErrorOccurredWhileRenderingThisTabContent": "Beim Rendern dieses Tab-Inhalts ist ein Fehler aufgetreten.",
-      "tryAgain": "Versuchen Sie es erneut"
+      "tryAgain": "Versuchen Sie es erneut",
+      "sendReport": "Diagnosebericht senden"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Notizsymbol"
     },
     "componentsTabsUnsavedChangesDialog": {
       "unsavedChanges": "Nicht gespeicherte Änderungen",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; hat nicht gespeicherte Änderungen. Was möchten Sie tun?"
+      "unsavedChangesBody": "„{title}“ hat nicht gespeicherte Änderungen. Was möchten Sie tun?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Neuer Arbeitsbereich",
@@ -341,7 +366,6 @@
       "logOut": "Abmelden",
       "signInToSync": "Melden Sie sich zum Synchronisieren an",
       "remove": "Entfernen „",
-      "rdquoFromList": "rdquo; aus der Liste?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Dieser Tresor wird aus der App entfernt, Ihre Dateien bleiben jedoch auf der Festplatte. Sie können es später jederzeit erneut hinzufügen.",
       "cancel": "Abbrechen",
       "remove2": "Entfernen",
@@ -352,7 +376,13 @@
       "downloadLocation": "Speicherort",
       "changeLocation": "Ändern…",
       "download": "Herunterladen",
-      "downloadFailed": "Der Tresor konnte nicht heruntergeladen werden"
+      "downloadFailed": "Der Tresor konnte nicht heruntergeladen werden",
+      "deleteFromAccount": "Aus Konto löschen",
+      "deleteVaultBody": "Damit werden alle synchronisierten Daten dieses Tresors dauerhaft von den Memry-Servern entfernt. Das lässt sich nicht rückgängig machen. Deine Dateien auf der Festplatte bleiben erhalten.",
+      "deleteVaultConfirm": "Aus Konto löschen",
+      "deleteVaultFailed": "Der Tresor konnte nicht gelöscht werden",
+      "deleteVaultTitle": "„{name}“ aus deinem Konto löschen?",
+      "removeVaultTitle": "„{name}“ aus der Liste entfernen?"
     },
     "componentsWindowControls": {
       "searchK": "Suche (⌘K)",
@@ -425,7 +455,7 @@
       },
       "models": {
         "default": "Standard",
-        "label": "Model"
+        "label": "Modell"
       },
       "settings": {
         "reasoning": "Begründung"
@@ -437,7 +467,7 @@
           "high": "Hoch",
           "extraHigh": "Extra hoch",
           "extraHighDefault": "Extrahoch (Standard)",
-          "max": "Max"
+          "max": "Maximal"
         }
       },
       "codexSettings": {
@@ -450,21 +480,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Nur Tresor",
+        "computerAccess": "Computerzugriff"
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
-        "label": "Web search"
+        "off": "Aus",
+        "label": "Websuche"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Agent-Berechtigungen: {access}, Websuche {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Berechtigungen",
+        "access": "Zugriff",
+        "tools": "Werkzeuge"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Agent-Modelleinstellungen: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Keine Übereinstimmungen"
@@ -479,7 +509,7 @@
     "sidebar": {
       "label": "Rechte Seitenleiste",
       "day": "Tag",
-      "agent": "Agent",
+      "agent": "KI-Agent",
       "pendingApproval": "{count, plural, one {# Genehmigung ausstehend} other {# ausstehende Genehmigungen}}",
       "inProgress": "Agent Runde läuft",
       "close": "Agent schließen"
@@ -556,11 +586,11 @@
       "folderViewSelect": "Ansicht",
       "folderView_gallery": "Galerie",
       "folderView_list": "Liste",
-      "inbox": "Inbox",
+      "inbox": "Posteingang",
       "inboxAllTypes": "Alle Typen",
       "inboxOlder": "{count, plural, one {# älteres} other {# ältere}}",
       "inboxOldest": "ältestes {count, plural, one {# Tag} other {# Tage}}",
-      "journal": "Journal",
+      "journal": "Tagebuch",
       "journalStreak": "{count, plural, one {#-Tage-Serie} other {#-Tage-Serie}}",
       "journalToday": "Heute",
       "journalYesterday": "Gestern",
@@ -575,7 +605,7 @@
       "remove": "Entfernen",
       "removeAria": "Widget entfernen",
       "resize": "Größe",
-      "resizeAria": "Auf {{size}} anpassen",
+      "resizeAria": "Auf {size} anpassen",
       "savedFilterDefault": "Heute",
       "savedFilterHint": "Markiere Filter auf der Aufgabenseite mit Stern, um sie hier zu nutzen",
       "savedFilterLabel": "Gespeicherter Filter",
@@ -624,6 +654,11 @@
     "welcome": {
       "body": "Dein privates, offline-first Zuhause. Notizen sind Ende-zu-Ende-verschlüsselt — sie verlassen dein Gerät nie unverschlüsselt.",
       "title": "Willkommen bei MemryNote"
+    },
+    "tour": {
+      "next": "Weiter",
+      "previous": "Zurück",
+      "progress": "{current} von {total}"
     }
   },
   "updatePrompt": {
@@ -640,6 +675,165 @@
     "skip": "Diese Version überspringen"
   },
   "capture": {
-    "focusShortcut": "Erfassungseingabe fokussieren"
+    "focusShortcut": "Erfassungseingabe fokussieren",
+    "detailHint": "Details",
+    "focusHint": "Q",
+    "submit": "Erfassen"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Karte hinzufügen",
+      "addCreateNote": "Notiz „{query}“ erstellen",
+      "addCreateNoteEmpty": "Neue Notiz erstellen",
+      "addCreatedAt": "Erstellt am {date}",
+      "addEmpty": "Nichts gefunden",
+      "addGroupEvents": "Termine",
+      "addGroupNotes": "Notizen",
+      "addGroupTasks": "Aufgaben",
+      "addOnCanvas": "Auf dem Canvas",
+      "addPlaceholder": "Notizen, Aufgaben und Termine durchsuchen…",
+      "allDay": "Ganztägig",
+      "createNoteFailed": "Notiz konnte nicht erstellt werden",
+      "deleted": "Element gelöscht",
+      "loading": "Wird geladen…",
+      "open": "In Tab öffnen",
+      "openToEdit": "Zum Bearbeiten in Tab öffnen",
+      "untitled": "Ohne Titel"
+    },
+    "corruptScene": "Dieses Canvas konnte nicht gelesen werden. Die Bearbeitung ist deaktiviert, damit keine Daten verloren gehen.",
+    "createFailed": "Canvas konnte nicht erstellt werden",
+    "disabledBody": "Dieser Tab gehört zu einer Funktion, die auf diesem Gerät nicht aktiviert ist.",
+    "disabledTitle": "Canvas ist nicht aktiviert",
+    "empty": "Noch keine Canvases",
+    "libraryStoreFailed": "Deine Formenbibliothek konnte nicht gespeichert werden. Die letzten Änderungen daran gehen möglicherweise verloren.",
+    "loadFailed": "Canvases konnten nicht geladen werden",
+    "loading": "Canvases werden geladen…",
+    "newCanvas": "Neues Canvas",
+    "notFound": "Dieses Canvas wurde nicht gefunden",
+    "openFailed": "Canvas konnte nicht geöffnet werden",
+    "savedToVault": "Alle Änderungen werden automatisch in deinem Tresor gespeichert",
+    "sectionLabel": "Canvases",
+    "tooLargeToSync": "Dieses Canvas ist zu groß für die Synchronisierung. Es ist auf diesem Gerät gespeichert, erreicht deine anderen Geräte aber erst, wenn es kleiner ist.",
+    "untitled": "Unbenanntes Canvas"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Zeile klicken",
+      "reset": "Zurücksetzen",
+      "shortcutsTab": "Tab „Tastenkürzel“"
+    },
+    "description": "Schnelle Wege durch memrynote, zum Festhalten von Gedanken und zum Abarbeiten von Aufgaben.",
+    "groups": {
+      "general": {
+        "description": "App-weite Navigation und Hilfe.",
+        "title": "Allgemein"
+      },
+      "inbox": {
+        "description": "Erfasste Elemente schnell verarbeiten.",
+        "title": "Posteingang"
+      },
+      "journal": {
+        "description": "Durch Tagebuchansichten navigieren und den Schreibbereich fokussieren.",
+        "title": "Tagebuch"
+      },
+      "notes": {
+        "description": "Notizen schreiben, formatieren und durchsuchen.",
+        "title": "Notizen / Editor"
+      },
+      "settings": {
+        "description": "Einstellungen öffnen und Tastenkürzel anpassen.",
+        "title": "Einstellungen"
+      },
+      "tabs": {
+        "description": "Zwischen Tabs und Bereichen wechseln.",
+        "title": "Tabs & Bereiche"
+      },
+      "tasks": {
+        "description": "Aufgaben filtern, auswählen und abschließen.",
+        "title": "Aufgaben"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Eine Notiz erstellen",
+        "keyboardShortcuts": "Tastenkürzel öffnen",
+        "openSettings": "Einstellungen öffnen",
+        "quickSearch": "Schnellsuche öffnen",
+        "sidebarSection": "Zu einem Bereich der Seitenleiste springen",
+        "toggleSidebar": "Seitenleiste umschalten",
+        "undoTaskAction": "Letzte Aufgabenaktion rückgängig machen"
+      },
+      "inbox": {
+        "archiveItem": "Ausgewähltes Element archivieren",
+        "chooseQuickFileResult": "Ein Ergebnis der Schnellablage wählen",
+        "clearSelection": "Auswahl aufheben oder Schnellablage schließen",
+        "confirmFiling": "Ablagebereich bestätigen",
+        "firstOrLastItem": "Erstes oder letztes Element",
+        "jumpByPage": "Seitenweise springen",
+        "nextItem": "Nächstes Element",
+        "openOriginal": "Originallink öffnen",
+        "openQuickFile": "Schnellablage öffnen",
+        "previousItem": "Vorheriges Element",
+        "refresh": "Posteingang aktualisieren",
+        "selectAllVisible": "Alle sichtbaren Elemente auswählen",
+        "selectItem": "Element auswählen",
+        "togglePreview": "Vorschaubereich umschalten"
+      },
+      "journal": {
+        "bold": "Markierten Text fett formatieren",
+        "find": "Im Tagebuch suchen",
+        "italic": "Markierten Text kursiv formatieren",
+        "link": "Link hinzufügen oder bearbeiten",
+        "returnFromOverview": "Aus der Monats- oder Jahresansicht zurückkehren",
+        "toggleFullWidth": "Tagebuch in voller Breite umschalten",
+        "underline": "Markierten Text unterstreichen"
+      },
+      "notes": {
+        "bold": "Fett",
+        "closeOverlays": "Editor-Overlays schließen",
+        "commandMenu": "Befehlsmenü des Editors öffnen",
+        "createNote": "Eine Notiz erstellen",
+        "find": "In der Notiz suchen",
+        "italic": "Kursiv",
+        "link": "Link hinzufügen oder bearbeiten",
+        "saveNote": "Aktuelle Notiz speichern",
+        "underline": "Unterstrichen"
+      },
+      "settings": {
+        "cancelRecording": "Aufzeichnung des Tastenkürzels abbrechen",
+        "customizeShortcuts": "Tastenkürzel anpassen",
+        "openSettings": "Einstellungen öffnen",
+        "recordShortcut": "Neues Tastenkürzel aufzeichnen",
+        "resetShortcut": "Standard eines Tastenkürzels wiederherstellen"
+      },
+      "tabs": {
+        "closeAllInPane": "Alle Tabs im Bereich schließen",
+        "closeSplitPane": "Geteilten Bereich schließen",
+        "closeTab": "Tab schließen",
+        "duplicateTab": "Tab duplizieren",
+        "focusPane": "Anderen Bereich fokussieren",
+        "maximizePane": "Aktuellen Bereich maximieren",
+        "moveTabToPane": "Tab in Bereich verschieben",
+        "newTabMenu": "Menü für neue Tabs öffnen",
+        "nextTab": "Nächster Tab",
+        "pinTab": "Tab anheften oder lösen",
+        "previousTab": "Vorheriger Tab",
+        "reopenClosedTab": "Geschlossenen Tab wieder öffnen",
+        "splitDown": "Nach unten teilen",
+        "splitRight": "Nach rechts teilen"
+      },
+      "tasks": {
+        "clearFilters": "Sichtbare Filter löschen",
+        "clearSelection": "Aufgabenauswahl aufheben",
+        "completeSelected": "Ausgewählte Aufgaben abschließen",
+        "configureRepeat": "Wiederholung der fokussierten Aufgabe einrichten",
+        "deleteSelected": "Ausgewählte Aufgaben löschen",
+        "selectAllVisible": "Alle sichtbaren Aufgaben auswählen",
+        "skipOccurrence": "Wiederholungstermin überspringen",
+        "stopRepeating": "Wiederholung der Aufgabe beenden"
+      }
+    },
+    "or": "oder",
+    "then": "dann"
   }
 }

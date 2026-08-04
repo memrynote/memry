@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import i18next from 'i18next'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PropertiesSettings } from './properties-section'
 import { usePropertyDefinitions } from '@/hooks/use-property-definitions'
@@ -164,10 +165,16 @@ describe('PropertiesSettings', () => {
     const { container } = render(<PropertiesSettings />)
 
     await userEvent.click(screen.getByText('Workflow'))
-    expect(screen.getByText('To do')).toBeInTheDocument()
+    // Built-in status category keys are translated at the display layer
+    // (getStatusCategoryLabel), so the header shows the `notes` locale value
+    // rather than the English label stored on the definition ('To do'). Option
+    // values are user data and still render verbatim.
+    const todoLabel = i18next.getFixedT(null, 'notes')('properties.statusCategories.todo')
+    expect(todoLabel).toBe('To-do')
+    expect(screen.getByText(todoLabel)).toBeInTheDocument()
     expect(screen.getByText('Backlog')).toBeInTheDocument()
 
-    const todoHeader = screen.getByText('To do').closest('div')
+    const todoHeader = screen.getByText(todoLabel).closest('div')
     expect(todoHeader).not.toBeNull()
     const addButton = todoHeader?.querySelector('button')
     expect(addButton).not.toBeNull()

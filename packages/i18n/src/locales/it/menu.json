@@ -1,10 +1,15 @@
 {
   "app": {
     "quit": "Esci",
-    "preferences": "Impostazioni…"
+    "preferences": "Impostazioni…",
+    "exit": "Esci",
+    "hide": "Nascondi MemryNote",
+    "hideOthers": "Nascondi altre",
+    "services": "Servizi",
+    "unhide": "Mostra tutte"
   },
   "file": {
-    "label": "Archivio",
+    "label": "File",
     "newNote": "Nuova nota",
     "close": "Chiudi finestra",
     "closeTab": "Chiudi scheda",
@@ -18,13 +23,17 @@
   "edit": {
     "label": "Modifica",
     "undo": "Annulla",
-    "redo": "Rifare",
+    "redo": "Ripristina",
     "cut": "Taglia",
     "copy": "Copia",
     "paste": "Incolla",
     "selectAll": "Seleziona tutto",
     "find": "Trova",
-    "speech": "Sintesi vocale"
+    "speech": "Sintesi vocale",
+    "delete": "Elimina",
+    "pasteAndMatchStyle": "Incolla e adatta stile",
+    "startSpeaking": "Inizia a parlare",
+    "stopSpeaking": "Smetti di parlare"
   },
   "view": {
     "label": "Visualizza",
@@ -37,7 +46,10 @@
     "themeSystem": "Sistema",
     "themeWhite": "Carta",
     "toggleDayPanel": "Mostra/nascondi pannello del giorno",
-    "toggleSidebar": "Mostra/nascondi barra laterale"
+    "toggleSidebar": "Mostra/nascondi barra laterale",
+    "actualSize": "Dimensioni reali",
+    "zoomIn": "Aumenta zoom",
+    "zoomOut": "Riduci zoom"
   },
   "format": {
     "body": "Corpo",
@@ -55,7 +67,8 @@
     "about": "Informazioni su MemryNote",
     "documentation": "Documentazione",
     "label": "Aiuto",
-    "shortcuts": "Scorciatoie da tastiera"
+    "shortcuts": "Scorciatoie da tastiera",
+    "aboutVersion": "Versione {version}"
   },
   "insert": {
     "attachment": "Inserisci allegato…",
@@ -67,6 +80,10 @@
     "taskList": "Elenco di attività"
   },
   "window": {
-    "label": "Finestra"
+    "label": "Finestra",
+    "close": "Chiudi",
+    "front": "Porta tutto in primo piano",
+    "minimize": "Riduci",
+    "zoom": "Zoom"
   }
 }

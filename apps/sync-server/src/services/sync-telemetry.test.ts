@@ -125,6 +125,22 @@ describe('sync telemetry', () => {
     })
   })
 
+  it('maps template items to the templates domain', () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+
+    logRecordQueryBatch({
+      endpoint: '/sync/records/changes',
+      operation: 'changes',
+      latencyMs: 12,
+      itemTypes: ['template', 'template'],
+      deletedCount: 0
+    })
+
+    const payload = JSON.parse(String(infoSpy.mock.calls[0][0])) as Record<string, unknown>
+    expect(payload.domainTypes).toEqual({ template: 2 })
+    expect(payload.domains).toEqual({ templates: 2 })
+  })
+
   it('logs CRDT traffic with explicit CRDT domain type metadata', () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
 

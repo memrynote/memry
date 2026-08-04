@@ -493,11 +493,9 @@ export function ColumnSelector({
               {tPhaseF('phaseF.componentsFolderViewColumnSelector.deleteFormula')}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {tPhaseF(
-                'phaseF.componentsFolderViewColumnSelector.areYouSureYouWantToDeleteTheFormula'
-              )}
-              {formulaToDelete}&
-              {tPhaseF('phaseF.componentsFolderViewColumnSelector.quotThisActionCannotBeUndone')}
+              {tPhaseF('phaseF.componentsFolderViewColumnSelector.deleteFormulaBody', {
+                name: formulaToDelete
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

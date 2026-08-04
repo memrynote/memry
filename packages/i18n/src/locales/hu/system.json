@@ -28,6 +28,13 @@
       "readyDetailFallback": "A frissítés telepítésének befejezéséhez indítsa újra az memrynote programot.",
       "buttonRestartNow": "Indítsa újra most",
       "releaseNotesLabel": "Kiadási megjegyzések:"
+    },
+    "pair": {
+      "buttonAllow": "Engedélyezés",
+      "buttonDeny": "Elutasítás",
+      "buttonPair": "Párosítás",
+      "message": "Engedélyezed, hogy a Memry böngészőbővítmény rögzítéseket küldjön ennek az alkalmazásnak?",
+      "title": "Böngészőbővítmény párosítása"
     }
   },
   "notification": {
@@ -38,6 +45,11 @@
       "fallback": "Emlékeztető esedékes",
       "default": "Emlékeztető",
       "task": "Feladat-emlékeztető"
+    },
+    "inboxReview": {
+      "body": "{count, plural, one {# elem} other {# elem}} vár átnézésre.",
+      "testBody": "Ez egy teszt — így fognak kinézni a napi átnézési emlékeztetőid.",
+      "title": "Ideje átnézni a Beérkezőket"
     }
   },
   "error": {
@@ -45,5 +57,15 @@
     "definitionNotFound": "A definíció nem található",
     "noteNotFound": "Megjegyzés nem található",
     "updateFailed": "A frissítés nem sikerült"
+  },
+  "startup": {
+    "failed": {
+      "body": "Ez akkor fordulhat elő, ha nagyon kevés a szabad lemezterület, vagy régebbi a grafikus illesztőprogram. Szabadíts fel egy kis lemezterületet, majd nyisd meg újra a MemryNote-ot. Ha továbbra is előfordul, az újratelepítés általában megoldja.",
+      "title": "A MemryNote nem tudott elindulni"
+    },
+    "installingUpdate": {
+      "subtitle": "A MemryNote automatikusan újraindul.",
+      "title": "Frissítés telepítése…"
+    }
   }
 }

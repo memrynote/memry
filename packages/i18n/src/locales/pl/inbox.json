@@ -270,7 +270,50 @@
     "panelEmpty": "Brak nadchodzących przypomnień.",
     "panelPast": "Minione",
     "panelUpcoming": "Nadchodzące",
-    "taskFallback": "Zadanie"
+    "taskFallback": "Zadanie",
+    "dateTime": {
+      "dateAt": "{date} o {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Dzisiaj o {time}",
+      "todayCompact": "Dzisiaj, {time}",
+      "tomorrowAt": "Jutro o {time}",
+      "tomorrowCompact": "Jutro, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Przypomnienie o rocznicy",
+      "inHours": {
+        "label": "Za {count, plural, one {# godzinę} few {# godziny} many {# godzin} other {# godziny}}"
+      },
+      "inMinutes": {
+        "label": "Za {count, plural, one {# minutę} few {# minuty} many {# minut} other {# minuty}}"
+      },
+      "inMonths": {
+        "label": "Za {count, plural, one {# miesiąc} few {# miesiące} many {# miesięcy} other {# miesiąca}}"
+      },
+      "inWeeks": {
+        "label": "Za {count, plural, one {# tydzień} few {# tygodnie} many {# tygodni} other {# tygodnia}}"
+      },
+      "inYears": {
+        "label": "Za {count, plural, one {# rok} few {# lata} many {# lat} other {# roku}}"
+      },
+      "laterToday": {
+        "description": "Za {count, plural, one {# godzinę} few {# godziny} many {# godzin} other {# godziny}}",
+        "label": "Później dzisiaj"
+      },
+      "monthlyReflection": "Miesięczna refleksja",
+      "nextWeek": {
+        "description": "Poniedziałek o 9:00",
+        "label": "Następny tydzień"
+      },
+      "quarterlyReflection": "Kwartalna refleksja",
+      "reviewInAWeek": "Przejrzyj za tydzień",
+      "sameDayNextMonth": "Ten sam dzień w przyszłym miesiącu",
+      "tomorrow": {
+        "description": "Jutro o 9:00",
+        "label": "Jutro"
+      },
+      "tomorrowMorning": "Jutro rano"
+    }
   },
   "insights": {
     "captureActivity": "Przechwytuj aktywność",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Załącz plik (obrazy, dźwięk, wideo, PDF)",
       "recordVoiceMemo": "Nagraj notatkę głosową",
       "recordVoiceMemo2": "Nagraj notatkę głosową",
-      "alreadyCaptured": "Już schwytane: „",
-      "rdquo": "nieważne;",
       "captureAnyway": "Przechwytuj mimo to",
       "focusShortcut": "Ustaw fokus na polu zapisu",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Zapisz link",
+      "captureNote": "Zapisz notatkę",
+      "placeholder": "Szybki zapis — wklej link, zanotuj myśl…",
+      "duplicateNotice": "Już zapisano: „{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Wybierz folder",
@@ -414,10 +459,9 @@
       "captured": "Schwytany",
       "dismissError": "Odrzuć błąd",
       "alreadyCaptured": "Już schwytany",
-      "ldquo": "bdquo;",
-      "rdquoMiddot": "nieważne; · ",
       "captureAnyway": "Przechwytuj mimo to",
-      "close": "Zamknij"
+      "close": "Zamknij",
+      "duplicateMeta": "„{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Upuść, aby przechwycić",
@@ -466,7 +510,12 @@
       "cancelRecording": "Anuluj nagrywanie",
       "cancel": "Anuluj",
       "stopRecording": "Zatrzymaj nagrywanie",
-      "stop": "Zatrzymaj się"
+      "stop": "Zatrzymaj się",
+      "enableMicInSettings": "Włącz dostęp do mikrofonu w ustawieniach systemu i spróbuj ponownie.",
+      "failedToStart": "Nie udało się rozpocząć nagrywania",
+      "microphoneAccessDenied": "Odmowa dostępu do mikrofonu",
+      "noMicrophoneFound": "Nie znaleziono mikrofonu",
+      "recordingError": "Wystąpił błąd nagrywania"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Nie udało się przechwycić pliku",
       "fileCaptureFailed": "Przechwytywanie pliku nie powiodło się",
       "failedToCaptureAudio": "Nie udało się przechwycić dźwięku",
-      "failedToCaptureVoice": "Nie udało się przechwycić głosu"
+      "failedToCaptureVoice": "Nie udało się przechwycić głosu",
+      "failedToLoadInboxPreferences": "Nie udało się załadować preferencji skrzynki odbiorczej",
+      "failedToUpdateInboxPreferences": "Nie udało się zaktualizować preferencji skrzynki odbiorczej"
     },
     "toasts": {
       "inboxRefreshed": "Skrzynka odbiorcza odświeżona"
@@ -516,5 +567,10 @@
     "task": "Zadanie",
     "time": "Godzina",
     "title": "Konwertuj"
+  },
+  "reviewNudge": {
+    "action": "Otwórz skrzynkę odbiorczą",
+    "description": "Przejrzyj dzisiejsze zapiski za jednym spokojnym podejściem.",
+    "title": "{count, plural, one {Czas przejrzeć # element} few {Czas przejrzeć # elementy} many {Czas przejrzeć # elementów} other {Czas przejrzeć # elementu}}"
   }
 }

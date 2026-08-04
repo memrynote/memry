@@ -99,7 +99,8 @@ const baseDraft: CalendarEventDraft = {
   startAt: '2026-05-10T09:00',
   endAt: '2026-05-10T10:00',
   isAllDay: false,
-  targetCalendarId: null
+  targetCalendarId: null,
+  projectId: null
 }
 
 describe('CalendarEventPopover', () => {

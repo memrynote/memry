@@ -33,8 +33,16 @@ import {
   onVaultStatusChanged
 } from './vault'
 import { readPreferences } from './vault/vault-preferences'
-import { getCurrentVaultPath, getStoredLocale, getWindowBounds, setWindowBounds } from './store'
+import {
+  getCurrentVaultPath,
+  getStoredLocale,
+  getVaults,
+  getWindowBounds,
+  setStoredLocale,
+  setWindowBounds
+} from './store'
 import { resolveStartupBounds } from './window-bounds'
+import { resolveOsLocale } from './startup-locale'
 import { configureSessionPermissions } from './session-permissions'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { stopVoiceModel } from './inbox/voice-model'
@@ -94,7 +102,7 @@ import { initializeUpdater, isQuitAndInstallRequested, performQuitAndInstall } f
 import { clearPendingInstallMarker, isPendingInstallInFlight } from './updater-install-guard'
 import { applyGpuCrashGuard, recordGpuCrash, shouldRecordGpuCrash } from './gpu-crash-guard'
 import { buildAppMenu, buildEditableTextContextMenu } from './menu'
-import { setMainI18n } from './lib/main-i18n'
+import { getMainI18n, setMainI18n } from './lib/main-i18n'
 import {
   sendAppNavigationCommand,
   sendAppNavigationKeyboardCommand,
@@ -264,8 +272,41 @@ if (headlessCliArgs) {
   })
 }
 
+/**
+ * Pick the UI language for a genuinely fresh install from the OS locale, and
+ * persist it so the choice is made exactly once.
+ *
+ * A null stored locale is NOT enough to identify a fresh install — every
+ * install that predates the app-level locale setting also has null, and those
+ * users must keep the English UI they have been running. The real first-run
+ * signal is the vault registry: `openVault()` writes `currentVault` and upserts
+ * into `vaults` on every successful open, and nothing ever empties `vaults`
+ * (`removeVault` only drops a single entry). An install that has ever opened a
+ * vault therefore always has an entry here. `currentVault` is checked as well
+ * because a config file written before `vaults` existed merges in as an empty
+ * array — that user is an existing user, not a fresh install.
+ *
+ * Returns null when this is not a first run, leaving the caller's fallback in
+ * place.
+ */
+function detectFirstRunLocale(): Locale | null {
+  try {
+    if (getCurrentVaultPath() !== null || getVaults().length > 0) return null
+
+    const detected = resolveOsLocale(app.getLocale())
+    setStoredLocale(detected)
+    mainLog.info(`first run: adopting OS locale ${app.getLocale()} as ${detected}`)
+    return detected
+  } catch (error) {
+    // Locale detection must never be the reason a launch fails; an unreadable
+    // or unwritable config just means we keep the English fallback.
+    mainLog.warn('first-run locale detection skipped:', error)
+    return null
+  }
+}
+
 async function bootI18n(): Promise<I18nInstance> {
-  let initialLocale: Locale = getStoredLocale() ?? FALLBACK_LOCALE
+  let initialLocale: Locale = getStoredLocale() ?? detectFirstRunLocale() ?? FALLBACK_LOCALE
 
   try {
     const vaultPath = getCurrentVaultPath()
@@ -733,8 +774,75 @@ function createWindow(): void {
 // keeping the old build alive is what makes Squirrel abort (Code=-9) and retry.
 const INSTALLING_SPLASH_EXIT_MS = 2000
 
-const INSTALLING_SPLASH_HTML = `<!doctype html>
-<html><head><meta charset="utf-8"><style>
+/**
+ * Copy for the two windows that can open BEFORE `bootI18n()` assigns `mainI18n`,
+ * so neither can reach `getMainI18n()`.
+ */
+interface PreBootCopy {
+  dir: 'ltr' | 'rtl'
+  installingTitle: string
+  installingSubtitle: string
+  startupErrorTitle: string
+  startupErrorBody: string
+}
+
+/**
+ * English copy, and the fallback whenever the pre-boot lookup below fails.
+ * Neither window may ever fail to appear — the startup-error one is the
+ * last-resort guard against an invisible, process-alive "zombie".
+ */
+const PRE_BOOT_COPY_EN: PreBootCopy = {
+  dir: 'ltr',
+  installingTitle: 'Installing update…',
+  installingSubtitle: 'MemryNote will reopen automatically.',
+  startupErrorTitle: "MemryNote couldn't finish starting",
+  startupErrorBody:
+    'This can happen when the disk is very low on free space, or with older graphics drivers. Try freeing up some disk space, then reopen MemryNote. If it keeps happening, reinstalling usually clears it.'
+}
+
+// The pre-boot lookup only reads locale JSON that is already bundled, so it
+// resolves in microseconds — but these two windows exist precisely for launches
+// that are already going wrong, so cap it rather than risk showing no window.
+const PRE_BOOT_I18N_TIMEOUT_MS = 1500
+
+/**
+ * Resolve pre-boot copy from a throwaway i18n instance built on the OS locale.
+ * Deliberately separate from `bootI18n()`: it leaves the app's boot order and
+ * the `mainI18n` singleton untouched, and it is only paid on the rare launches
+ * that show one of these windows.
+ */
+async function loadPreBootCopy(): Promise<PreBootCopy> {
+  try {
+    const instance = await Promise.race([
+      createMainI18n({ locale: resolveOsLocale(app.getLocale()) }),
+      new Promise<never>((_resolve, reject) =>
+        setTimeout(
+          () => reject(new Error('pre-boot i18n load timed out')),
+          PRE_BOOT_I18N_TIMEOUT_MS
+        )
+      )
+    ])
+    const t = instance.getFixedT(null, 'system')
+    return {
+      dir: instance.dir(),
+      installingTitle: t('startup.installingUpdate.title'),
+      installingSubtitle: t('startup.installingUpdate.subtitle'),
+      startupErrorTitle: t('startup.failed.title'),
+      startupErrorBody: t('startup.failed.body')
+    }
+  } catch (error) {
+    mainLog.warn('pre-boot i18n load failed; using English startup copy:', error)
+    return PRE_BOOT_COPY_EN
+  }
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function installingSplashHtml(copy: PreBootCopy): string {
+  return `<!doctype html>
+<html dir="${copy.dir}"><head><meta charset="utf-8"><style>
   html,body{margin:0;height:100%}
   body{display:flex;align-items:center;justify-content:center;background:#f6f5f0;
     color:#191919;font:14px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
@@ -749,9 +857,10 @@ const INSTALLING_SPLASH_HTML = `<!doctype html>
   @media (prefers-reduced-motion:reduce){.spinner{animation:none}}
 </style></head><body><div class="card">
   <div class="spinner"></div>
-  <div class="title">Installing update…</div>
-  <div class="sub">MemryNote will reopen automatically.</div>
+  <div class="title">${escapeHtml(copy.installingTitle)}</div>
+  <div class="sub">${escapeHtml(copy.installingSubtitle)}</div>
 </div></body></html>`
+}
 
 /**
  * Show a tiny "Installing update…" splash and exit, instead of booting normally.
@@ -761,7 +870,16 @@ const INSTALLING_SPLASH_HTML = `<!doctype html>
  * scratch (the download → Restart loop). Exiting lets ShipIt finish and
  * relaunch the new build itself.
  */
-function showInstallingUpdateWindowAndExit(): void {
+async function showInstallingUpdateWindowAndExit(): Promise<void> {
+  // Hard exit (not app.quit): nothing is initialized, so there is no graceful
+  // shutdown to run, and app.quit() would spin up the before-quit cleanup path
+  // against an empty app. app.exit ends the process so ShipIt can proceed.
+  //
+  // Scheduled BEFORE the copy lookup on purpose: this budget is how long the old
+  // build is allowed to stay alive, and outliving it is exactly what makes
+  // Squirrel abort (Code=-9) and retry. Localizing the splash must not extend it.
+  setTimeout(() => app.exit(0), INSTALLING_SPLASH_EXIT_MS)
+  const copy = await loadPreBootCopy()
   const splash = new BrowserWindow({
     width: 380,
     height: 180,
@@ -776,17 +894,14 @@ function showInstallingUpdateWindowAndExit(): void {
     webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false }
   })
   splash.once('ready-to-show', () => splash.show())
-  void splash.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(INSTALLING_SPLASH_HTML)}`)
-  // Hard exit (not app.quit): nothing is initialized, so there is no graceful
-  // shutdown to run, and app.quit() would spin up the before-quit cleanup path
-  // against an empty app. app.exit ends the process so ShipIt can proceed.
-  setTimeout(() => app.exit(0), INSTALLING_SPLASH_EXIT_MS)
+  void splash.loadURL(
+    `data:text/html;charset=utf-8,${encodeURIComponent(installingSplashHtml(copy))}`
+  )
 }
 
-function startupErrorHtml(message: string): string {
-  const escaped = message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+function startupErrorHtml(message: string, copy: PreBootCopy): string {
   return `<!doctype html>
-<html><head><meta charset="utf-8"><style>
+<html dir="${copy.dir}"><head><meta charset="utf-8"><style>
   html,body{margin:0;height:100%}
   body{display:flex;align-items:center;justify-content:center;background:#f6f5f0;
     color:#191919;font:14px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
@@ -798,11 +913,9 @@ function startupErrorHtml(message: string): string {
     background:rgba(25,25,25,.05);border-radius:6px;padding:10px;white-space:pre-wrap;
     word-break:break-word;max-height:110px;overflow:auto;user-select:text}
 </style></head><body><div class="card">
-  <div class="title">MemryNote couldn't finish starting</div>
-  <div class="body">This can happen when the disk is very low on free space, or with
-    older graphics drivers. Try freeing up some disk space, then reopen MemryNote.
-    If it keeps happening, reinstalling usually clears it.</div>
-  <div class="details">${escaped}</div>
+  <div class="title">${escapeHtml(copy.startupErrorTitle)}</div>
+  <div class="body">${escapeHtml(copy.startupErrorBody)}</div>
+  <div class="details" dir="ltr">${escapeHtml(message)}</div>
 </div></body></html>`
 }
 
@@ -834,9 +947,15 @@ function ensureStartupWindow(error: unknown): void {
   setTimeout(() => {
     if (!errorWindow.isDestroyed()) errorWindow.show()
   }, 3000)
-  void errorWindow.loadURL(
-    `data:text/html;charset=utf-8,${encodeURIComponent(startupErrorHtml(message))}`
-  )
+  // The window is created synchronously above and revealed by the fallback timer
+  // regardless, so resolving the localized copy can never be what leaves the
+  // user with no window.
+  void loadPreBootCopy().then((copy) => {
+    if (errorWindow.isDestroyed()) return
+    void errorWindow.loadURL(
+      `data:text/html;charset=utf-8,${encodeURIComponent(startupErrorHtml(message, copy))}`
+    )
+  })
 }
 
 const pendingOAuthStates = new Map<string, number>()
@@ -855,13 +974,14 @@ async function showPairConsentDialog(origin: string): Promise<boolean> {
   if (!mainWindow) return false
   if (mainWindow.isMinimized()) mainWindow.restore()
   mainWindow.focus()
+  const t = getMainI18n().getFixedT(null, 'system')
   const { response } = await dialog.showMessageBox(mainWindow, {
     type: 'question',
-    buttons: ['Allow', 'Deny'],
+    buttons: [t('dialog.pair.buttonAllow'), t('dialog.pair.buttonDeny')],
     defaultId: 0,
     cancelId: 1,
-    title: 'Pair browser extension',
-    message: 'Allow the Memry browser extension to save captures to this app?',
+    title: t('dialog.pair.title'),
+    message: t('dialog.pair.message'),
     detail: origin
   })
   return response === 0
@@ -903,18 +1023,28 @@ function handleDeepLink(url: string): void {
     }
 
     if (parsed.hostname === 'pair') {
-      void dialog
-        .showMessageBox(mainWindow, {
-          type: 'question',
-          buttons: ['Pair', 'Cancel'],
-          defaultId: 0,
-          cancelId: 1,
-          title: 'Pair browser extension',
-          message: 'Allow the Memry browser extension to send captures to this app?'
-        })
-        .then(({ response }) => {
-          if (response === 0) openPairingWindow()
-        })
+      // getMainI18n() throws until bootI18n() has run. That is only reachable when
+      // the sole window is the pre-boot install splash or the startup-error window,
+      // but it must not abort the handler: the restore/focus below has to run for
+      // every memry:// url, as it did before this dialog was localized.
+      try {
+        const i18n = getMainI18n()
+        const t = i18n.getFixedT(null, 'system')
+        void dialog
+          .showMessageBox(mainWindow, {
+            type: 'question',
+            buttons: [t('dialog.pair.buttonPair'), i18n.t('common:button.cancel')],
+            defaultId: 0,
+            cancelId: 1,
+            title: t('dialog.pair.title'),
+            message: t('dialog.pair.message')
+          })
+          .then(({ response }) => {
+            if (response === 0) openPairingWindow()
+          })
+      } catch (error) {
+        deepLinkLog.error('pair prompt skipped; i18n not ready:', error)
+      }
     }
 
     if (mainWindow.isMinimized()) mainWindow.restore()
@@ -979,7 +1109,7 @@ const appReady = app.whenReady().then(async () => {
   // splash and exit so ShipIt can finish and relaunch the new build itself.
   if (isPendingInstallInFlight()) {
     mainLog.info('pending update install in flight on launch; showing splash and exiting')
-    showInstallingUpdateWindowAndExit()
+    await showInstallingUpdateWindowAndExit()
     return
   }
   // Normal boot commits — drop any leftover pending-install marker.

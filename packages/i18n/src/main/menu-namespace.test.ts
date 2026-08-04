@@ -24,7 +24,8 @@ describe('menu namespace', () => {
 
     expect(i18n.t('menu:file.label')).toBe('Dosya')
     expect(i18n.t('menu:file.newNote')).toBe('Yeni Not')
-    expect(i18n.t('menu:view.reload')).toBe('Yeniden yükle')
+    // Turkish menu items are title case, like the siblings above.
+    expect(i18n.t('menu:view.reload')).toBe('Yeniden Yükle')
   })
 
   it('translates current Arabic app-menu labels', async () => {

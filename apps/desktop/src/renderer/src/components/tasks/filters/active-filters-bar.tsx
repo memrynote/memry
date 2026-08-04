@@ -3,7 +3,9 @@ import { useMemo } from 'react'
 import { X, Star } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { TaskFilters, Project } from '@/data/tasks-data'
-import type { Priority } from '@/data/task-model'
+import { dueDateFilterLabel } from '@/data/tasks-data'
+import { priorityConfig } from '@/data/task-model'
+import { getActiveLocale } from '@/lib/active-locale'
 import { useT } from '@memry/i18n/renderer'
 
 interface ActiveFiltersBarProps {
@@ -14,25 +16,6 @@ interface ActiveFiltersBarProps {
   onSaveFilter?: () => void
   isSaved?: boolean
   className?: string
-}
-
-const DUE_DATE_LABELS: Record<string, string> = {
-  overdue: 'Overdue',
-  today: 'Today',
-  tomorrow: 'Tomorrow',
-  'this-week': 'This Week',
-  'next-week': 'Next Week',
-  none: 'No due date',
-  'this-month': 'This Month',
-  custom: 'Custom'
-}
-
-const PRIORITY_LABELS: Record<Priority, string> = {
-  urgent: 'Urgent',
-  high: 'High',
-  medium: 'Medium',
-  low: 'Low',
-  none: 'None'
 }
 
 const RemoveButton = ({
@@ -84,7 +67,7 @@ export const ActiveFiltersBar = ({
     const result: React.ReactNode[] = []
 
     if (filters.priorities.length > 0) {
-      const values = filters.priorities.map((p) => PRIORITY_LABELS[p]).join(', ')
+      const values = filters.priorities.map((p) => priorityConfig[p]?.label ?? p).join(', ')
       result.push(
         <PillWrapper key="priority">
           <svg
@@ -222,14 +205,14 @@ export const ActiveFiltersBar = ({
     }
 
     if (filters.dueDate.type !== 'any') {
-      let label = DUE_DATE_LABELS[filters.dueDate.type] || filters.dueDate.type
+      let label = dueDateFilterLabel(filters.dueDate.type)
       if (
         filters.dueDate.type === 'custom' &&
         filters.dueDate.customStart &&
         filters.dueDate.customEnd
       ) {
         const fmt = (d: Date | string): string =>
-          (d instanceof Date ? d : new Date(d)).toLocaleDateString('en-US', {
+          (d instanceof Date ? d : new Date(d)).toLocaleDateString(getActiveLocale(), {
             month: 'short',
             day: 'numeric'
           })

@@ -28,6 +28,13 @@
       "readyDetailFallback": "I-restart ang memrynote para tapusin ang pag-install ng update.",
       "buttonRestartNow": "I-restart ngayon",
       "releaseNotesLabel": "Mga tala sa paglabas:"
+    },
+    "pair": {
+      "buttonAllow": "Payagan",
+      "buttonDeny": "Tanggihan",
+      "buttonPair": "Ipares",
+      "message": "Payagan ang Memry browser extension na magpadala ng mga capture sa app na ito?",
+      "title": "Ipares ang browser extension"
     }
   },
   "notification": {
@@ -38,6 +45,11 @@
       "fallback": "Nakatakdang paalala",
       "default": "Paalala",
       "task": "Paalala sa gawain"
+    },
+    "inboxReview": {
+      "body": "May {count, plural, one {# item} other {# na item}} kang dapat suriin.",
+      "testBody": "Isa itong pagsubok — ganito ang magiging hitsura ng iyong mga pang-araw-araw na paalala sa pagsusuri.",
+      "title": "Oras na para suriin ang iyong inbox"
     }
   },
   "error": {
@@ -45,5 +57,15 @@
     "definitionNotFound": "Hindi natagpuan ang kahulugan",
     "noteNotFound": "Hindi nakita ang tala",
     "updateFailed": "Nabigo ang pag-update"
+  },
+  "startup": {
+    "failed": {
+      "body": "Nangyayari ito kapag halos wala nang libreng espasyo sa disk, o sa mas lumang graphics driver. Subukang magbakante ng espasyo sa disk, pagkatapos ay buksang muli ang MemryNote. Kung magpatuloy ito, kadalasang naaayos ito ng muling pag-install.",
+      "title": "Hindi natapos ng MemryNote ang pagsisimula"
+    },
+    "installingUpdate": {
+      "subtitle": "Awtomatikong magbubukas muli ang MemryNote.",
+      "title": "Ini-install ang update…"
+    }
   }
 }

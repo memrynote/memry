@@ -6,6 +6,8 @@ Open **Settings → Import** to see the available sources. Every source shares t
 
 Each importer writes into its own top-level folder (`Notion/`, `Bear/`, `Evernote/`, …) so sources never collide, and imports are **additive** — running an import again creates new notes rather than updating existing ones.
 
+Progress lines, preview warnings and import errors are shown in your selected language.
+
 | Source        | Export format                   | Creates | Details                                                |
 | ------------- | ------------------------------- | ------- | ------------------------------------------------------ |
 | Notion        | HTML export `.zip`              | Notes   | [Notion](#importing-from-notion)                       |

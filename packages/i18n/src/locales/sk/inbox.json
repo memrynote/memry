@@ -147,15 +147,15 @@
     "deselectAll": "Odznačiť všetky",
     "ariaLabel": "Hromadné akcie pre {count} vybrané položky",
     "file": "Súbor",
-    "tag": "Tag",
+    "tag": "Označiť",
     "snooze": "Odložiť",
     "archive": "Archivovať",
     "add": "Pridať",
     "dismissSuggestion": "Návrh na odmietnutie",
     "hint": {
       "file": "súbor",
-      "tag": "tag",
-      "snooze": "snooze",
+      "tag": "označiť",
+      "snooze": "odložiť",
       "archive": "Archív",
       "deselect": "Odznačiť"
     },
@@ -270,7 +270,50 @@
     "panelEmpty": "Žiadne nadchádzajúce pripomienky.",
     "panelPast": "Minulé",
     "panelUpcoming": "Nadchádzajúce",
-    "taskFallback": "Úloha"
+    "taskFallback": "Úloha",
+    "dateTime": {
+      "dateAt": "{date} o {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Dnes o {time}",
+      "todayCompact": "Dnes, {time}",
+      "tomorrowAt": "Zajtra o {time}",
+      "tomorrowCompact": "Zajtra, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Pripomienka výročia",
+      "inHours": {
+        "label": "O {count, plural, one {# hodinu} few {# hodiny} many {# hodiny} other {# hodín}}"
+      },
+      "inMinutes": {
+        "label": "O {count, plural, one {# minútu} few {# minúty} many {# minúty} other {# minút}}"
+      },
+      "inMonths": {
+        "label": "O {count, plural, one {# mesiac} few {# mesiace} many {# mesiaca} other {# mesiacov}}"
+      },
+      "inWeeks": {
+        "label": "O {count, plural, one {# týždeň} few {# týždne} many {# týždňa} other {# týždňov}}"
+      },
+      "inYears": {
+        "label": "O {count, plural, one {# rok} few {# roky} many {# roka} other {# rokov}}"
+      },
+      "laterToday": {
+        "description": "O {count, plural, one {# hodinu} few {# hodiny} many {# hodiny} other {# hodín}}",
+        "label": "Neskôr dnes"
+      },
+      "monthlyReflection": "Mesačná reflexia",
+      "nextWeek": {
+        "description": "V pondelok o 9:00",
+        "label": "Budúci týždeň"
+      },
+      "quarterlyReflection": "Štvrťročná reflexia",
+      "reviewInAWeek": "Prejsť si o týždeň",
+      "sameDayNextMonth": "Rovnaký deň budúci mesiac",
+      "tomorrow": {
+        "description": "Zajtra o 9:00",
+        "label": "Zajtra"
+      },
+      "tomorrowMorning": "Zajtra ráno"
+    }
   },
   "insights": {
     "captureActivity": "Zaznamenať aktivitu",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Priložiť súbor (Obrázky, Audio, Video, PDF)",
       "recordVoiceMemo": "Nahrávať hlasovú poznámku",
       "recordVoiceMemo2": "Nahrávať hlasovú poznámku",
-      "alreadyCaptured": "Už zachytené: “",
-      "rdquo": "rdquo;",
       "captureAnyway": "Zachytiť aj tak",
       "focusShortcut": "Zamerať pole zachytávania",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Zachytiť odkaz",
+      "captureNote": "Zachytiť poznámku",
+      "placeholder": "Rýchle zachytenie — vložte odkaz, zapíšte myšlienku…",
+      "duplicateNotice": "Už zachytené: „{title}“"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Vybrať priečinok",
@@ -414,10 +459,9 @@
       "captured": "Zaznamenané",
       "dismissError": "Chyba pri zrušení",
       "alreadyCaptured": "Už zajatý",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; &middot; ",
       "captureAnyway": "Zachytiť aj tak",
-      "close": "Koniec"
+      "close": "Koniec",
+      "duplicateMeta": "„{title}“ · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Spust na zajatie",
@@ -466,7 +510,12 @@
       "cancelRecording": "Zrušiť nahrávanie",
       "cancel": "Zrušiť",
       "stopRecording": "Zastaviť nahrávanie",
-      "stop": "Stop"
+      "stop": "Zastaviť",
+      "enableMicInSettings": "Povoľte prístup k mikrofónu v nastaveniach systému a skúste to znova.",
+      "failedToStart": "Nahrávanie sa nepodarilo spustiť",
+      "microphoneAccessDenied": "Prístup k mikrofónu bol zamietnutý",
+      "noMicrophoneFound": "Nenašiel sa žiadny mikrofón",
+      "recordingError": "Pri nahrávaní nastala chyba"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Nepodarilo sa zachytiť súbor",
       "fileCaptureFailed": "Zachytenie súboru zlyhalo",
       "failedToCaptureAudio": "Nepodarilo sa zachytiť audio",
-      "failedToCaptureVoice": "Nepodarilo sa zachytiť hlas"
+      "failedToCaptureVoice": "Nepodarilo sa zachytiť hlas",
+      "failedToLoadInboxPreferences": "Nepodarilo sa načítať nastavenia schránky",
+      "failedToUpdateInboxPreferences": "Nepodarilo sa aktualizovať nastavenia schránky"
     },
     "toasts": {
       "inboxRefreshed": "Doručená pošta obnovená"
@@ -516,5 +567,10 @@
     "task": "Úloha",
     "time": "Čas",
     "title": "Konvertovať"
+  },
+  "reviewNudge": {
+    "action": "Otvoriť schránku",
+    "description": "Spracujte dnešné zachytené položky v jednom pokojnom kole.",
+    "title": "{count, plural, one {Čas prejsť si # položku} few {Čas prejsť si # položky} many {Čas prejsť si # položky} other {Čas prejsť si # položiek}}"
   }
 }

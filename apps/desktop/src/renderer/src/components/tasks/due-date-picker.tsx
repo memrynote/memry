@@ -19,7 +19,9 @@ import {
   type DueDateStatus
 } from '@/lib/task-utils'
 import { nextSaturday, nextMonday, type ParsedDateResult } from '@/lib/natural-date-parser'
+import { getActiveLocale } from '@/lib/active-locale'
 import { useT } from '@memry/i18n/renderer'
+import type { TFunction } from 'i18next'
 
 // ============================================================================
 // TYPES
@@ -45,7 +47,9 @@ interface QuickDateOption {
   shortcutNumber: number // Number shortcut (1-4)
 }
 
-const getQuickDateOptions = (): QuickDateOption[] => {
+// Takes the component's `t` so the labels are re-resolved whenever the active
+// language changes, instead of being frozen at the picker's first render.
+const getQuickDateOptions = (t: TFunction<'tasks'>): QuickDateOption[] => {
   const today = startOfDay(new Date())
   const tomorrow = addDays(today, 1)
   const saturday = nextSaturday(today)
@@ -58,14 +62,14 @@ const getQuickDateOptions = (): QuickDateOption[] => {
   const options: QuickDateOption[] = [
     {
       id: 'today',
-      label: 'Today',
+      label: t('phaseF.componentsTasksDueDatePicker.today'),
       icon: <Star className="size-4 text-task-star" />,
       getDate: () => today,
       shortcutNumber: 1
     },
     {
       id: 'tomorrow',
-      label: 'Tomorrow',
+      label: t('phaseF.componentsTasksDueDatePicker.tomorrow'),
       icon: <CalendarIcon className="size-4 text-task-due-tomorrow" />,
       getDate: () => tomorrow,
       shortcutNumber: 2
@@ -75,7 +79,7 @@ const getQuickDateOptions = (): QuickDateOption[] => {
   if (showWeekend) {
     options.push({
       id: 'weekend',
-      label: 'This Weekend',
+      label: t('phaseF.componentsTasksDueDatePicker.thisWeekend'),
       icon: <Sun className="size-4 text-task-due-today" />,
       getDate: () => saturday,
       shortcutNumber: 3
@@ -83,7 +87,7 @@ const getQuickDateOptions = (): QuickDateOption[] => {
 
     options.push({
       id: 'next-week',
-      label: 'Next Week',
+      label: t('phaseF.componentsTasksDueDatePicker.nextWeek'),
       icon: <CalendarIcon className="size-4 text-task-due-upcoming" />,
       getDate: () => monday,
       shortcutNumber: 4
@@ -92,7 +96,7 @@ const getQuickDateOptions = (): QuickDateOption[] => {
     // If weekend, Next Week becomes option 3
     options.push({
       id: 'next-week',
-      label: 'Next Week',
+      label: t('phaseF.componentsTasksDueDatePicker.nextWeek'),
       icon: <CalendarIcon className="size-4 text-task-due-upcoming" />,
       getDate: () => monday,
       shortcutNumber: 3
@@ -108,8 +112,13 @@ const getQuickDateOptions = (): QuickDateOption[] => {
 
 /**
  * Format date for display in trigger button
+ *
+ * Takes the component's `t` so the label follows the active language.
  */
-const formatSelectedDate = (date: Date): { text: string; status: DueDateStatus } => {
+const formatSelectedDate = (
+  date: Date,
+  t: TFunction<'tasks'>
+): { text: string; status: DueDateStatus } => {
   const today = startOfDay(new Date())
   const selectedDate = startOfDay(date)
 
@@ -120,13 +129,13 @@ const formatSelectedDate = (date: Date): { text: string; status: DueDateStatus }
 
   // Today
   if (isSameDay(selectedDate, today)) {
-    return { text: 'Today', status: 'today' }
+    return { text: t('phaseF.componentsTasksDueDatePicker.today'), status: 'today' }
   }
 
   // Tomorrow
   const tomorrow = addDays(today, 1)
   if (isSameDay(selectedDate, tomorrow)) {
-    return { text: 'Tomorrow', status: 'tomorrow' }
+    return { text: t('phaseF.componentsTasksDueDatePicker.tomorrow'), status: 'tomorrow' }
   }
 
   // This week (next 7 days)
@@ -143,7 +152,11 @@ const formatSelectedDate = (date: Date): { text: string; status: DueDateStatus }
  * Format date for quick option display (Mon, Dec 16)
  */
 const formatQuickOptionDate = (date: Date): string => {
-  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  return date.toLocaleDateString(getActiveLocale(), {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric'
+  })
 }
 
 // ============================================================================
@@ -178,13 +191,15 @@ export const DueDatePicker = ({
   const naturalDateInputRef = useRef<NaturalDateInputRef>(null)
   const pickerContentId = useId()
 
-  const quickOptions = useMemo(() => getQuickDateOptions(), [])
+  // `tPhaseF` gets a fresh identity on `languageChanged`, so both memos
+  // re-resolve their labels after a mid-session language switch.
+  const quickOptions = useMemo(() => getQuickDateOptions(tPhaseF), [tPhaseF])
 
   // Determine date display status
   const dateDisplay = useMemo(() => {
     if (!date) return null
-    return formatSelectedDate(date)
-  }, [date])
+    return formatSelectedDate(date, tPhaseF)
+  }, [date, tPhaseF])
 
   // Check if input is empty (for conditional shortcuts)
   const inputIsEmpty = inputValue.trim() === ''
@@ -424,7 +439,7 @@ export const DueDatePicker = ({
                   <div className="flex items-center gap-2 text-sm">
                     <CalendarIcon className="size-4 text-muted-foreground" />
                     <span className="font-medium">
-                      {date.toLocaleDateString('en-US', {
+                      {date.toLocaleDateString(getActiveLocale(), {
                         weekday: 'long',
                         month: 'long',
                         day: 'numeric',

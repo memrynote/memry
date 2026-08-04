@@ -28,6 +28,13 @@
       "readyDetailFallback": "memrynote を再起動して、アップデートのインストールを完了します。",
       "buttonRestartNow": "今すぐ再起動してください",
       "releaseNotesLabel": "リリースノート:"
+    },
+    "pair": {
+      "buttonAllow": "許可",
+      "buttonDeny": "許可しない",
+      "buttonPair": "ペアリング",
+      "message": "Memry のブラウザ拡張機能から、このアプリへのキャプチャ送信を許可しますか？",
+      "title": "ブラウザ拡張機能をペアリング"
     }
   },
   "notification": {
@@ -38,6 +45,11 @@
       "fallback": "リマインダーの期限",
       "default": "リマインダー",
       "task": "タスクのリマインダー"
+    },
+    "inboxReview": {
+      "body": "見直すアイテムが{count, plural, other {#件}}あります。",
+      "testBody": "これはテストです — 毎日の見直しリマインダーはこのように表示されます。",
+      "title": "受信箱を見直す時間です"
     }
   },
   "error": {
@@ -45,5 +57,15 @@
     "definitionNotFound": "定義が見つかりません",
     "noteNotFound": "メモが見つかりません",
     "updateFailed": "アップデートに失敗しました"
+  },
+  "startup": {
+    "failed": {
+      "body": "ディスクの空き容量が非常に少ない場合や、古いグラフィックスドライバをお使いの場合に起こることがあります。ディスクの空き容量を増やしてから MemryNote を開き直してください。それでも解決しない場合は、再インストールすると通常は解消します。",
+      "title": "MemryNote を起動できませんでした"
+    },
+    "installingUpdate": {
+      "subtitle": "MemryNote は自動的に再起動します。",
+      "title": "アップデートをインストール中…"
+    }
   }
 }

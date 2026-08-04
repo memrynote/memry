@@ -12,6 +12,7 @@ import type { Header } from '@tanstack/react-table'
 import type { NoteWithProperties, ColumnConfig } from '@memry/contracts/folder-view-api'
 import { GripVertical } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { getColumnLabel } from '@/lib/contract-display-names'
 import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
@@ -52,20 +53,6 @@ interface ColumnHeaderProps {
 }
 
 // ============================================================================
-// Utility Functions
-// ============================================================================
-
-/**
- * Capitalize first letter and add spaces before capitals (for camelCase)
- */
-function formatColumnName(str: string): string {
-  if (!str) return str
-  // Handle camelCase by adding space before capitals
-  const spaced = str.replace(/([A-Z])/g, ' $1').trim()
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
-}
-
-// ============================================================================
 // Component
 // ============================================================================
 
@@ -100,8 +87,8 @@ export function ColumnHeader({
   const sortDirection = column.getIsSorted() // 'asc' | 'desc' | false
   const canSort = column.getCanSort()
 
-  // Display name: use config displayName, or format the column ID
-  const displayName = columnConfig.displayName || formatColumnName(columnId)
+  // Display name: use config displayName, or the translated/formatted column ID
+  const displayName = columnConfig.displayName || getColumnLabel(columnId)
 
   // ============================================================================
   // Sort Handling (T052)
@@ -313,7 +300,7 @@ export function ColumnHeader({
           <span
             className="truncate"
             onDoubleClick={handleDoubleClick}
-            title={`${displayName} (double-click to edit)`}
+            title={tPhaseF('folderView.columnHeader.doubleClickToEdit', { name: displayName })}
           >
             {displayName}
           </span>

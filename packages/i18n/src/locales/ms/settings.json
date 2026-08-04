@@ -28,7 +28,8 @@
         "properties": "Hartanah",
         "commandLine": "Baris Arahan",
         "features": "Ciri",
-        "import": "Import"
+        "import": "Import",
+        "inbox": "Peti Masuk"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Memuat turun {percent}%",
         "downloaded": "Mulakan semula untuk Memasang",
         "idle": "Semak Kemas Kini"
+      },
+      "autoCheck": {
+        "description": "Semak keluaran baharu apabila apl dimulakan dan secara berkala ketika apl dibuka.",
+        "error": "Gagal mengemas kini tetapan semakan automatik",
+        "label": "Semak kemas kini secara automatik"
+      },
+      "autoDownload": {
+        "description": "Muat turun dan pasang keluaran baharu di latar belakang tanpa bertanya.",
+        "error": "Gagal mengemas kini tetapan muat turun automatik",
+        "label": "Muat turun kemas kini secara automatik"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Kongsi Metrik Penggunaan Tanpa Nama",
         "description": "Ia hanya metrik anon — tiada kandungan nota, pertanyaan carian, laluan fail, e-mel atau ID mentah yang pernah dihantar.",
         "error": "Gagal mengemas kini tetapan telemetri"
+      },
+      "diagnostics": {
+        "building": "Menyediakan laporan…",
+        "consent": "Hantar laporan diagnostik sekali sahaja? Ia mengandungi log teknikal yang ditapis sahaja — tiada kandungan nota.",
+        "error": "Gagal menghantar laporan diagnostik",
+        "notNow": "Bukan sekarang",
+        "previewError": "Laporan diagnostik tidak dapat disediakan",
+        "previewLabel": "Pratonton kandungan laporan",
+        "send": "Hantar",
+        "sendReport": {
+          "button": "Hantar laporan diagnostik",
+          "description": "Hantar laporan sekali sahaja yang mengandungi log teknikal yang ditapis untuk membantu kami menyahpepijat masalah yang anda hadapi.",
+          "label": "Laporan Diagnostik"
+        },
+        "sending": "Menghantar…",
+        "sent": "Laporan dihantar — rujukan {incidentId}",
+        "snapshotLabel": "Gambaran peranti",
+        "title": "Hantar laporan diagnostik?"
       }
     },
     "dateFormat": {
@@ -172,11 +201,11 @@
       },
       "presets": {
         "indigo": "nila",
-        "amber": "Amber",
+        "amber": "Ambar",
         "emerald": "Zamrud",
         "red": "merah",
-        "violet": "Violet",
-        "cyan": "Cyan",
+        "violet": "Ungu",
+        "cyan": "Sian",
         "pink": "Merah jambu",
         "orange": "Jingga"
       },
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Susun atur",
-      "toolbar": "Bar alat"
+      "toolbar": "Bar alat",
+      "spelling": "Ejaan"
     },
     "width": {
       "label": "Lebar Editor",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Sempit",
         "medium": "Sederhana",
-        "wide": "lebar"
+        "wide": "lebar",
+        "full": "Lebar penuh",
+        "normal": "Biasa"
       },
       "error": "Gagal mengemas kini lebar editor"
     },
@@ -229,6 +261,11 @@
       "label": "Bar Alat Pemformatan Melekit",
       "description": "Sentiasa tunjukkan bar alat di atas editor",
       "error": "Gagal mengemas kini mod bar alat"
+    },
+    "spellCheck": {
+      "description": "Garis bawah perkataan yang salah eja dalam nota dan jurnal",
+      "error": "Gagal mengemas kini semakan ejaan",
+      "label": "Semak Ejaan"
     }
   },
   "templates": {
@@ -640,7 +677,7 @@
       "vaultPickerFolderLabel": "Simpan bilik kebal dalam folder",
       "vaultPickerPrimaryHint": "Buka sekarang",
       "vaultPickerTitle": "Pilih apa untuk ditarik",
-      "vaultRow": "Bilik Kebal — {{count}} item · {{date}}"
+      "vaultRow": "Bilik Kebal — {count} item · {date}"
     }
   },
   "devices": {
@@ -673,7 +710,8 @@
       "removeFailed": "Gagal mengalih keluar peranti",
       "renamed": "Dinamakan semula kepada \"{name}\"",
       "renameFailed": "Gagal menamakan semula peranti"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Pautkan peranti baharu",
@@ -772,7 +810,7 @@
       "loading": "Memuatkan",
       "cacheHint": "~23MB · Dicache secara setempat · Semua pada peranti",
       "dimensions": "Dimensi",
-      "embeddings": "Embeddings",
+      "embeddings": "Pembenaman",
       "downloadLoad": "Muat turun & Muatkan Model",
       "downloadingModel": "Memuat turun model...",
       "loadingModel": "Memuatkan model...",
@@ -855,6 +893,11 @@
         "description": "Matikan untuk penyegerakan sehala — anda masih akan melihat acara Google anda dalam memrynote, tetapi acara memrynote tidak akan muncul dalam Google.",
         "error": "Gagal mengemas kini arah penyegerakan",
         "label": "Tunjukkan acara memrynote dalam Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Dimatikan secara lalai. Hidupkan dan ejen AI boleh membaca acara Google anda; matikan dan ia tidak mendapat apa-apa apabila ditanya tentangnya. Anda tetap melihatnya dalam memrynote, walau apa pun pilihan anda.",
+        "error": "Gagal mengemas kini akses AI",
+        "label": "Benarkan AI membaca acara Google Calendar"
       }
     },
     "sourcePicker": {
@@ -898,7 +941,8 @@
     },
     "groups": {
       "storageUsage": "Penggunaan Storan",
-      "location": "Lokasi"
+      "location": "Lokasi",
+      "accountVaults": "Bilik kebal dalam akaun anda"
     },
     "loadingStorage": "Memuatkan maklumat storan...",
     "signInStorage": "Log masuk untuk melihat penggunaan storan",
@@ -919,6 +963,17 @@
       },
       "warningTitle": "Storan hampir penuh",
       "warningDescription": "Kosongkan ruang atau tingkatkan pelan anda untuk mengelakkan masalah penyegerakan."
+    },
+    "accountVaults": {
+      "activeHint": "Tukar ke bilik kebal lain untuk memadamkan yang ini.",
+      "cloudOnly": "Tiada pada peranti ini",
+      "delete": "Padam",
+      "deleteBody": "Semua data yang disegerakkan untuk bilik kebal ini akan dialih keluar secara kekal daripada pelayan Memry dan tindakan ini tidak boleh dibuat asal. Fail anda pada cakera tidak dipadamkan.",
+      "deleteConfirm": "Padam daripada akaun",
+      "deleteFailed": "Bilik kebal tidak dapat dipadamkan",
+      "deleteTitle": "Padam “{name}” daripada akaun anda?",
+      "empty": "Tiada bilik kebal disegerakkan ke akaun anda lagi.",
+      "itemsCount": "{count} item"
     }
   },
   "tags": {
@@ -1108,7 +1163,7 @@
           "description": "Togol pemformatan tebal"
         },
         "italic": {
-          "label": "Italic",
+          "label": "Condong",
           "description": "Togol pemformatan condong"
         },
         "underline": {
@@ -1137,16 +1192,12 @@
       "press": "Tekan ",
       "toToggleThisDialog": "untuk menogol dialog ini"
     },
-    "componentsSyncDeviceList": {
-      "middot": "titik tengah;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Peranti ini telah dialih keluar",
       "exporting": "Mengeksport...",
       "signOut": "Log Keluar"
     },
     "componentsSyncSyncHistory": {
-      "middot": "titik tengah; ",
       "activity": "Aktiviti",
       "filterBySyncType": "Tapis mengikut jenis penyegerakan",
       "allTypes": "Semua jenis",
@@ -1160,7 +1211,12 @@
       "last30Days": "30 hari lepas",
       "loadingSyncHistory": "Memuatkan sejarah penyegerakan",
       "noSyncActivityYet": "Tiada aktiviti penyegerakan lagi",
-      "loadMore": "Muatkan lagi"
+      "loadMore": "Muatkan lagi",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, tunjukkan butiran ralat",
+      "summaryFailed": "Penyegerakan gagal",
+      "summaryPulled": "{count, plural, other {# item ditarik}}",
+      "summaryPushed": "{count, plural, other {# item ditolak}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Terakhir disegerakkan ",
@@ -1208,102 +1264,103 @@
       "failedToCloseVault": "Gagal menutup bilik kebal",
       "failedToSwitchVault": "Gagal menukar bilik kebal",
       "failedToUpdateConfig": "Gagal mengemas kini konfigurasi",
-      "failedToReindex": "Gagal mengindeks semula"
+      "failedToReindex": "Gagal mengindeks semula",
+      "failedToLoadTasks": "Gagal memuatkan tugasan"
     }
   },
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Akses pelayan tempatan untuk klien MCP luaran."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Sambungan",
+      "access": "Akses"
     },
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Gunakan titik akhir localhost ini daripada Cursor, Claude Desktop atau Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Token bearer",
+        "description": "Kelayakan dalam memori untuk pelancaran apl ini."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Putar token",
+        "description": "Batalkan sesi klien luaran yang sedia ada."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "Salin {label}",
+    "notRunning": "Tidak berjalan",
+    "toolsBadge": "{count, plural, other {# alat}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Kebenaran Agent",
+      "subtitle": "Pilih akses lalai, pengesahan dan pembekal tempatan untuk Sembang Agent."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Pembekal tempatan serasi OpenAI",
+      "actions": "Semakan sambungan"
     },
     "presets": {
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Tersuai"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Pratetap"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "URL Asas",
+        "description": "Titik akhir /v1 yang serasi OpenAI."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Benarkan titik akhir bukan loopback",
+        "description": "Data dihantar ke titik akhir yang dikonfigurasikan."
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "Pilih model yang dikembalikan atau masukkan satu secara manual."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "Kunci API",
+        "description": "Kelayakan pilihan yang disimpan dalam rantai kunci OS.",
+        "configured": "Kunci API sudah disimpan dalam rantai kunci OS."
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "save": "Simpan",
+      "models": "Senarai model",
+      "test": "Uji sambungan",
+      "probe": "Siasat alat"
     },
     "status": {
-      "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "disconnected": "Terputus",
+      "toolsDisabled": "Alat dilumpuhkan",
+      "fullTools": "Alat penuh didayakan",
       "checking": "Menyemak…",
       "connected": "Disambung",
       "label": "Sambungan"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Kebenaran Agent",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Akses lalai",
+        "description": "Menetapkan mod akses permulaan untuk giliran Agent baharu.",
+        "vaultOnly": "Bilik kebal sahaja",
+        "computerAccess": "Akses komputer"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Sahkan tindakan",
+        "description": "Pilih sama ada panggilan alat berjalan secara automatik atau menunggu kelulusan dalam sembang.",
+        "alwaysAllow": "Sentiasa benarkan",
+        "askBeforeChanges": "Tanya sebelum perubahan"
       }
     }
   },
@@ -1368,6 +1425,10 @@
       "tasks": {
         "description": "Senarai tugas dan tarikh akhir",
         "label": "Tugasan"
+      },
+      "spatialCanvas": {
+        "description": "Papan ruang untuk menyusun dan memautkan nota",
+        "label": "Kanvas"
       }
     }
   },
@@ -1393,7 +1454,10 @@
         "skipped": "{count} dilangkau",
         "title": "Import selesai"
       },
-      "title": "Import dari {name}"
+      "title": "Import dari {name}",
+      "chooseDirectory": "Pilih folder…",
+      "folderKeepsAssets": "Pilih folder apabila imej berada di luar folder nota itu sendiri — eksport selalunya menyimpan media dalam satu folder yang dikongsi.",
+      "previewError": "Pratonton gagal"
     },
     "header": {
       "subtitle": "Bawa masuk nota dan tugasan anda dari apl lain",
@@ -1432,6 +1496,99 @@
       "tasks": "{count, plural, other {# tugasan}}",
       "withDueDate": "{count} bertarikh",
       "withTags": "{count} ditag"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Lajur: {columns}",
+        "emptyTitle": "Baris dengan tajuk kosong dilangkau (lajur \"{column}\")",
+        "noHeaders": "Fail CSV tiada baris pengepala",
+        "titleColumn": "Tajuk daripada \"{column}\"; lajur lain disimpan sebagai sifat"
+      },
+      "raindrop": {
+        "csvEmpty": "CSV Raindrop kosong",
+        "headerNotFound": "Baris pengepala CSV Raindrop (lajur \"url\") tidak ditemui",
+        "rowNoUrl": "Baris {row} dilangkau: tiada URL"
+      },
+      "readFileFailed": "Gagal membaca fail",
+      "ticktick": {
+        "foldersDropped": "Folder TickTick tiada padanan dalam Memry dan telah digugurkan",
+        "headerNotFound": "Baris pengepala CSV TickTick (\"Folder Name\") tidak ditemui",
+        "reminderNoAnchor": "Peringatan \"{reminder}\" dilangkau (tiada sauh tarikh)",
+        "subtaskParentMissing": "Induk bagi subtugas \"{title}\" tidak ditemui; diimport pada aras atas",
+        "unknownPriority": "Keutamaan TickTick {priority} tidak diketahui → tiada",
+        "unsupportedRepeat": "Peraturan ulangan \"{rule}\" tidak disokong dan dilangkau"
+      },
+      "todoist": {
+        "emptyTitle": "Tugasan dengan kandungan kosong diimport sebagai (tanpa tajuk)",
+        "headerNotFound": "Bukan CSV Todoist: baris pengepala TYPE tiada",
+        "orphanComment": "Komen tanpa tugasan sebelumnya dilangkau",
+        "sectionFlattened": "Bahagian \"{section}\" diratakan",
+        "subtaskNoParent": "Subtugas \"{title}\" tiada induk pada inden {indent}; diimport pada aras atas",
+        "unknownPriority": "Keutamaan {priority} tidak diketahui → tiada",
+        "unparsedDate": "Tidak dapat menghuraikan tarikh \"{date}\""
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Menyalin pangkalan data Apple Notes…"
+      },
+      "bear": {
+        "scanning": "Mengimbas eksport Bear…"
+      },
+      "csv": {
+        "importing": "Mengimport nota CSV…"
+      },
+      "evernote": {
+        "scanning": "Mengimbas fail .enex…"
+      },
+      "html": {
+        "scanning": "Mengimbas fail HTML…"
+      },
+      "importingItem": "Mengimport {title}",
+      "raindrop": {
+        "importing": "Mengimport penanda halaman Raindrop…"
+      },
+      "roam": {
+        "reading": "Membaca eksport Roam…"
+      },
+      "scanningExport": "Mengimbas eksport…",
+      "scanningFiles": "Mengimbas fail…",
+      "ticktick": {
+        "importing": "Mengimport tugasan TickTick…"
+      },
+      "todoist": {
+        "importing": "Mengimport tugasan Todoist…"
+      }
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Memuatkan…",
+      "subtitle": "Peringatan semakan harian dan pilihan peti masuk.",
+      "title": "Peti masuk"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Peringatan lembut setiap hari apabila ada item dalam peti masuk anda.",
+        "label": "Ingatkan saya untuk menyemak peti masuk"
+      },
+      "error": "Peringatan tidak dapat dikemas kini.",
+      "group": "Peringatan semakan harian",
+      "test": {
+        "button": "Hantar ujian",
+        "description": "Cetuskan peringatan sekarang untuk menyemak pemberitahuan sistem anda.",
+        "label": "Pemberitahuan ujian",
+        "sent": "Pemberitahuan ujian dihantar.",
+        "sentHint": "Jika tiada apa-apa muncul, benarkan pemberitahuan untuk MemryNote dalam tetapan sistem anda.",
+        "unsupported": "Peranti ini tidak boleh memaparkan pemberitahuan desktop."
+      },
+      "time": {
+        "description": "Waktu tempatan, pada setiap peranti.",
+        "hourLabel": "Jam",
+        "label": "Masa peringatan",
+        "minuteLabel": "Minit",
+        "periodLabel": "AM atau PM"
+      }
     }
   }
 }

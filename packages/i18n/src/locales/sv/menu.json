@@ -1,10 +1,15 @@
 {
   "app": {
     "quit": "Avsluta",
-    "preferences": "Inställningar…"
+    "preferences": "Inställningar…",
+    "exit": "Avsluta",
+    "hide": "Göm MemryNote",
+    "hideOthers": "Göm övriga",
+    "services": "Tjänster",
+    "unhide": "Visa alla"
   },
   "file": {
-    "label": "Fil",
+    "label": "Arkiv",
     "newNote": "Ny anteckning",
     "close": "Stäng fönster",
     "closeTab": "Stäng flik",
@@ -22,22 +27,29 @@
     "cut": "Klipp ut",
     "copy": "Kopiera",
     "paste": "Klistra in",
-    "selectAll": "Markera alla",
+    "selectAll": "Markera allt",
     "find": "Sök",
-    "speech": "Tal"
+    "speech": "Tal",
+    "delete": "Radera",
+    "pasteAndMatchStyle": "Klistra in och matcha stil",
+    "startSpeaking": "Börja tala",
+    "stopSpeaking": "Sluta tala"
   },
   "view": {
     "label": "Visa",
     "reload": "Ladda om",
     "toggleDevTools": "Växla utvecklarverktyg",
-    "toggleFullscreen": "Växla fullskärm",
+    "toggleFullscreen": "Växla helskärm",
     "theme": "Tema",
     "themeDark": "Mörkt",
     "themeLight": "Ljust",
     "themeSystem": "System",
     "themeWhite": "Papper",
     "toggleDayPanel": "Växla dagpanel",
-    "toggleSidebar": "Växla sidofält"
+    "toggleSidebar": "Växla sidofält",
+    "actualSize": "Verklig storlek",
+    "zoomIn": "Zooma in",
+    "zoomOut": "Zooma ut"
   },
   "format": {
     "body": "Brödtext",
@@ -46,7 +58,7 @@
     "heading1": "Rubrik 1",
     "heading2": "Rubrik 2",
     "heading3": "Rubrik 3",
-    "highlight": "Markering",
+    "highlight": "Överstrykning",
     "italic": "Kursiv",
     "label": "Format",
     "strikethrough": "Genomstruken"
@@ -55,7 +67,8 @@
     "about": "Om MemryNote",
     "documentation": "Dokumentation",
     "label": "Hjälp",
-    "shortcuts": "Kortkommandon"
+    "shortcuts": "Kortkommandon",
+    "aboutVersion": "Version {version}"
   },
   "insert": {
     "attachment": "Infoga bilaga…",
@@ -67,6 +80,10 @@
     "taskList": "Uppgiftslista"
   },
   "window": {
-    "label": "Fönster"
+    "label": "Fönster",
+    "close": "Stäng",
+    "front": "Placera alla överst",
+    "minimize": "Minimera",
+    "zoom": "Zooma"
   }
 }

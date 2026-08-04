@@ -73,9 +73,33 @@ describe('lazy agent IPC handlers', () => {
     registerLazyAgentHandlers()
 
     await expect(findHandler(AgentChannels.invoke.GET_BACKEND_STATUSES)()).rejects.toThrow(
-      'Agent runtime is starting. Try again.'
+      'errors:agent.runtimeStarting'
     )
     expect(mocks.ensureLazyAgentServicesStarted).toHaveBeenCalledTimes(1)
+  })
+
+  // The renderer's shouldRetryAgentBootstrap matches this exact code on the raw
+  // rejection message. A channel that rejects with anything else drops out of
+  // the bootstrap retry loop, so assert the literal on every throwing channel.
+  it('rejects every lazy-start channel with the retryable runtime code', async () => {
+    registerLazyAgentHandlers()
+
+    const lazyStartChannels = [
+      AgentChannels.invoke.CREATE_CONVERSATION,
+      AgentChannels.invoke.LOAD_CONVERSATION,
+      AgentChannels.invoke.CANCEL_TURN,
+      AgentChannels.invoke.APPROVE_TOOL,
+      AgentChannels.invoke.PREVIEW_DIFF,
+      AgentChannels.invoke.EDIT_TRUST_LIST,
+      AgentChannels.invoke.GET_BACKEND_STATUSES,
+      AgentChannels.invoke.LIST_LOCAL_MODELS,
+      AgentChannels.invoke.TEST_LOCAL_PROVIDER,
+      AgentChannels.invoke.PROBE_LOCAL_PROVIDER
+    ]
+
+    for (const channel of lazyStartChannels) {
+      await expect(findHandler(channel)(null, {})).rejects.toThrow('errors:agent.runtimeStarting')
+    }
   })
 
   it('returns static CLI model suggestions without starting services', async () => {

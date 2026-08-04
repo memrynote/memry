@@ -321,7 +321,7 @@ describe('more leaf renderer surfaces', () => {
     const onClose = vi.fn()
 
     const { rerender, container } = render(<TaskEmptyState variant="today" />)
-    expect(screen.getByText('Nothing due today')).toBeInTheDocument()
+    expect(screen.getByText('todayTitle')).toBeInTheDocument()
 
     rerender(<TaskEmptyState variant="project" projectName="Work" onAddTask={onAddTask} />)
     fireEvent.click(screen.getByText('addTask'))

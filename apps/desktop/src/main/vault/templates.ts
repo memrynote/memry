@@ -1,19 +1,22 @@
 /**
  * Template CRUD operations.
- * Templates are stored as markdown files in vault/.memry/templates/
+ *
+ * Custom templates are rows in the data DB `templates` table and sync across
+ * devices with whole-row LWW. Built-in templates are code constants (see
+ * ./built-in-templates) — they have fixed ids, are identical on every device
+ * and immutable, so they are never stored and never synced.
+ *
+ * Legacy installs kept custom templates as markdown files in
+ * vault/.memry/templates/. They are imported once on vault open (see
+ * ./templates-migration) and the files are left on disk as a downgrade path.
  *
  * @module vault/templates
  */
 
 import path from 'path'
-import fs from 'fs/promises'
-import { existsSync, mkdirSync } from 'fs'
-import { BrowserWindow } from 'electron'
-import matter from 'gray-matter'
-import { getStatus } from './index'
-import { getMemryDir } from './init'
-import { VaultError, VaultErrorCode } from '../lib/errors'
-import { generateNoteId } from '../lib/id'
+import { existsSync, unlinkSync } from 'fs'
+import { eq } from 'drizzle-orm'
+import { templates as templatesTable, type TemplateRow } from '@memry/db-schema/schema/templates'
 import { TemplatesChannels } from '@memry/contracts/ipc-channels'
 import type {
   Template,
@@ -22,403 +25,107 @@ import type {
   TemplateUpdateInput,
   TemplateProperty
 } from '@memry/contracts/templates-api'
+import { BUILT_IN_TEMPLATES, BUILT_IN_IDS } from './built-in-templates'
+import { getMemryDir } from './init'
+import { getCurrentVaultPath } from '../store'
+import { getDatabase } from '../database'
+import { VaultError, VaultErrorCode } from '../lib/errors'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
+import { generateNoteId } from '../lib/id'
 import { createLogger } from '../lib/logger'
+import {
+  enqueueLocalSyncCreate,
+  enqueueLocalSyncUpdate,
+  enqueueLocalSyncDelete
+} from '../sync/local-mutations'
 
 const logger = createLogger('Templates')
 
-// ============================================================================
-// Constants
-// ============================================================================
-
-const TEMPLATES_DIR = 'templates'
+/**
+ * Built-ins are immutable, so a stable timestamp keeps them from looking
+ * "modified" every launch.
+ */
+const BUILT_IN_TIMESTAMP = '2025-01-01T00:00:00.000Z'
 
 // ============================================================================
 // Built-in Templates
 // ============================================================================
 
-const BUILT_IN_TEMPLATES: Omit<Template, 'createdAt' | 'modifiedAt'>[] = [
-  {
-    id: 'blank',
-    name: 'Blank Note',
-    description: 'Start with an empty note',
-    icon: '📄',
-    isBuiltIn: true,
-    tags: [],
-    properties: [],
-    content: ''
-  },
-  {
-    id: 'meeting-notes',
-    name: 'Meeting Notes',
-    description: 'Meeting agenda and notes template',
-    icon: '📝',
-    isBuiltIn: true,
-    tags: ['meeting'],
-    properties: [
-      { name: 'date', type: 'date', value: null },
-      { name: 'attendees', type: 'text', value: '' },
-      {
-        name: 'status',
-        type: 'select',
-        value: 'scheduled',
-        options: ['scheduled', 'completed', 'cancelled']
-      }
-    ],
-    content: `## Attendees
+export { BUILT_IN_TEMPLATES }
 
--
-
-## Agenda
-
-1.
-2.
-3.
-
-## Notes
-
-## Action Items
-
-- [ ]
-`
-  },
-  {
-    id: 'project-brief',
-    name: 'Project Brief',
-    description: 'Template for project documentation',
-    icon: '📋',
-    isBuiltIn: true,
-    tags: ['project'],
-    properties: [
-      {
-        name: 'status',
-        type: 'select',
-        value: 'planning',
-        options: ['planning', 'active', 'on-hold', 'completed']
-      },
-      { name: 'priority', type: 'rating', value: 3 },
-      { name: 'startDate', type: 'date', value: null },
-      { name: 'dueDate', type: 'date', value: null }
-    ],
-    content: `## Overview
-
-Brief description of the project...
-
-## Goals
-
--
--
-
-## Scope
-
-### In Scope
-
--
-
-### Out of Scope
-
--
-
-## Timeline
-
-## Notes
-
-`
-  },
-  {
-    id: 'daily-standup',
-    name: 'Daily Standup',
-    description: 'Daily standup format',
-    icon: '✅',
-    isBuiltIn: true,
-    tags: ['standup', 'daily'],
-    properties: [{ name: 'date', type: 'date', value: null }],
-    content: `## What I did yesterday
-
--
-
-## What I'm doing today
-
--
-
-## Blockers
-
--
-`
-  },
-  // ===========================================================================
-  // Journal Templates
-  // ===========================================================================
-  {
-    id: 'morning-pages',
-    name: 'Morning Pages',
-    description: 'Stream of consciousness writing to start your day',
-    icon: '🌅',
-    isBuiltIn: true,
-    tags: ['morning', 'reflection'],
-    properties: [
-      {
-        name: 'mood',
-        type: 'select',
-        value: 'neutral',
-        options: ['great', 'good', 'neutral', 'low', 'difficult']
-      }
-    ],
-    content: `# Morning Pages
-
-Write freely for the next few minutes. Don't worry about grammar, spelling, or making sense. Just let your thoughts flow...
-
----
-
-`
-  },
-  {
-    id: 'daily-reflection',
-    name: 'Daily Reflection',
-    description: 'End-of-day reflection and gratitude',
-    icon: '🌆',
-    isBuiltIn: true,
-    tags: ['reflection', 'gratitude'],
-    properties: [
-      {
-        name: 'mood',
-        type: 'select',
-        value: 'neutral',
-        options: ['great', 'good', 'neutral', 'low', 'difficult']
-      },
-      { name: 'energy', type: 'rating', value: 3 }
-    ],
-    content: `# Daily Reflection
-
-## What went well today?
-
--
-
-## What could have gone better?
-
--
-
-## What am I grateful for?
-
-1.
-2.
-3.
-
-## What did I learn?
-
-`
-  },
-  {
-    id: 'gratitude-journal',
-    name: 'Gratitude Journal',
-    description: 'Focus on what you appreciate',
-    icon: '🙏',
-    isBuiltIn: true,
-    tags: ['gratitude'],
-    properties: [],
-    content: `# Gratitude
-
-Today I am grateful for:
-
-1.
-2.
-3.
-4.
-5.
-
----
-
-*One moment that made me smile:*
-
-`
-  },
-  {
-    id: 'weekly-review',
-    name: 'Weekly Review',
-    description: 'Reflect on your week and plan ahead',
-    icon: '📅',
-    isBuiltIn: true,
-    tags: ['weekly', 'review', 'planning'],
-    properties: [{ name: 'weekNumber', type: 'number', value: 0 }],
-    content: `# Weekly Review
-
-## Wins This Week
-
--
-
-## Challenges Faced
-
--
-
-## Lessons Learned
-
--
-
-## Next Week's Focus
-
-1.
-2.
-3.
-
-## Energy & Wellbeing Check
-
-How do I feel about this week overall?
-
-`
-  }
-]
+/**
+ * Built-ins are a fixed constant, so their list projection and sort order can
+ * never change. Compute both once instead of on every listTemplates() call.
+ */
+const BUILT_IN_LIST_ITEMS: readonly TemplateListItem[] = BUILT_IN_TEMPLATES.map((t) => ({
+  id: t.id,
+  name: t.name,
+  description: t.description,
+  icon: t.icon,
+  isBuiltIn: true as const
+})).sort((a, b) => a.name.localeCompare(b.name))
 
 // ============================================================================
 // Helpers
 // ============================================================================
 
 /**
- * Get the vault path, throwing if no vault is open.
- */
-function getVaultPath(): string {
-  const status = getStatus()
-  if (!status.path) {
-    throw new VaultError('No vault is currently open', VaultErrorCode.NOT_INITIALIZED)
-  }
-  return status.path
-}
-
-/**
- * Get the templates directory path.
- */
-export function getTemplatesDir(): string {
-  const vaultPath = getVaultPath()
-  return path.join(getMemryDir(vaultPath), TEMPLATES_DIR)
-}
-
-/**
- * Ensure the templates directory exists and seed built-in templates.
- */
-export async function ensureTemplatesDir(): Promise<void> {
-  const templatesDir = getTemplatesDir()
-
-  if (!existsSync(templatesDir)) {
-    mkdirSync(templatesDir, { recursive: true })
-  }
-
-  // Seed built-in templates if they don't exist
-  await seedBuiltInTemplates()
-}
-
-/**
- * Seed built-in templates to the templates directory.
- */
-async function seedBuiltInTemplates(): Promise<void> {
-  const templatesDir = getTemplatesDir()
-  const now = new Date().toISOString()
-
-  for (const template of BUILT_IN_TEMPLATES) {
-    const filePath = path.join(templatesDir, `${template.id}.md`)
-
-    // Only create if doesn't exist
-    if (!existsSync(filePath)) {
-      const fullTemplate: Template = {
-        ...template,
-        createdAt: now,
-        modifiedAt: now
-      }
-      await writeTemplate(filePath, fullTemplate)
-    }
-  }
-}
-
-/**
  * Emit template event to all windows.
  */
 function emitTemplateEvent(channel: string, payload: unknown): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, payload)
-  })
+  broadcastToAllWindows(channel, payload)
 }
 
-/**
- * Frontmatter data structure for template files.
- */
-interface TemplateFrontmatter {
-  id?: string
-  name?: string
-  description?: string
-  icon?: string | null
-  isBuiltIn?: boolean
-  tags?: string[]
-  properties?: TemplateProperty[]
-  createdAt?: string
-  modifiedAt?: string
-}
-
-/**
- * Parse a template file.
- */
-function parseTemplate(content: string, filePath: string): Template {
-  const { data, content: body } = matter(content)
-  const frontmatter = data as TemplateFrontmatter
-
-  // Extract id from filename if not in frontmatter
-  const id = frontmatter.id ?? path.basename(filePath, '.md')
-
+function toBuiltInTemplate(template: Omit<Template, 'createdAt' | 'modifiedAt'>): Template {
   return {
-    id,
-    name: frontmatter.name ?? id,
-    description: frontmatter.description,
-    icon: frontmatter.icon ?? null,
-    isBuiltIn: frontmatter.isBuiltIn === true,
-    tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
-    properties: Array.isArray(frontmatter.properties) ? frontmatter.properties : [],
-    content: body.trim(),
-    createdAt: frontmatter.createdAt ?? new Date().toISOString(),
-    modifiedAt: frontmatter.modifiedAt ?? new Date().toISOString()
+    ...template,
+    createdAt: BUILT_IN_TIMESTAMP,
+    modifiedAt: BUILT_IN_TIMESTAMP
+  }
+}
+
+function rowToTemplate(row: TemplateRow): Template {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description ?? undefined,
+    icon: row.icon ?? null,
+    isBuiltIn: false,
+    // Array guards, not casts: these are JSON columns and the sync path can
+    // write whatever a peer pushed. applyTemplate iterates properties, so a
+    // non-array here would throw "not iterable" at note-creation time.
+    tags: Array.isArray(row.tags) ? row.tags : [],
+    properties: Array.isArray(row.properties) ? (row.properties as TemplateProperty[]) : [],
+    content: row.content,
+    createdAt: row.createdAt,
+    modifiedAt: row.modifiedAt
   }
 }
 
 /**
- * Serialize a template to file content.
+ * Path of the pre-sync markdown file for a template, if a vault is open.
+ *
+ * Custom templates used to live at .memry/templates/<id>.md. The migration
+ * deliberately leaves those files on disk as a downgrade path, but a file for a
+ * template the user has since deleted is a resurrection source: the import
+ * guard lives in data.db while the file lives in the vault folder, and the two
+ * have independent lifetimes (a vault synced by Dropbox/iCloud/git, or a
+ * reinstall onto an existing vault, can easily produce one without the other).
  */
-function serializeTemplate(template: Template): string {
-  const frontmatter: Record<string, unknown> = {
-    id: template.id,
-    name: template.name,
-    isBuiltIn: template.isBuiltIn,
-    createdAt: template.createdAt,
-    modifiedAt: template.modifiedAt
-  }
-
-  if (template.description) {
-    frontmatter.description = template.description
-  }
-
-  if (template.icon) {
-    frontmatter.icon = template.icon
-  }
-
-  if (template.tags.length > 0) {
-    frontmatter.tags = template.tags
-  }
-
-  if (template.properties.length > 0) {
-    frontmatter.properties = template.properties
-  }
-
-  return matter.stringify(template.content, frontmatter)
+function legacyTemplateFilePath(id: string): string | null {
+  const vaultPath = getCurrentVaultPath()
+  if (!vaultPath) return null
+  return path.join(getMemryDir(vaultPath), 'templates', `${id}.md`)
 }
 
-/**
- * Write a template to file.
- */
-async function writeTemplate(filePath: string, template: Template): Promise<void> {
-  const content = serializeTemplate(template)
-  await fs.writeFile(filePath, content, 'utf-8')
+function getRow(id: string): TemplateRow | undefined {
+  return getDatabase().select().from(templatesTable).where(eq(templatesTable.id, id)).get()
 }
 
-/**
- * Get template file path by ID.
- */
-function getTemplatePath(id: string): string {
-  const templatesDir = getTemplatesDir()
-  return path.join(templatesDir, `${id}.md`)
+function assertNotBuiltIn(id: string, action: 'modify' | 'delete'): void {
+  if (BUILT_IN_IDS.has(id)) {
+    throw new VaultError(`Cannot ${action} built-in templates`, VaultErrorCode.PERMISSION_DENIED)
+  }
 }
 
 // ============================================================================
@@ -426,72 +133,63 @@ function getTemplatePath(id: string): string {
 // ============================================================================
 
 /**
- * List all templates.
+ * List all templates: built-ins from code, custom ones from the DB.
  */
 export async function listTemplates(): Promise<TemplateListItem[]> {
-  await ensureTemplatesDir()
-  const templatesDir = getTemplatesDir()
+  const custom: TemplateListItem[] = []
 
   try {
-    const files = await fs.readdir(templatesDir)
-    const templates: TemplateListItem[] = []
+    // Projected select: the full markdown body plus the tags/properties/clock
+    // JSON columns would all be parsed and then discarded.
+    const rows = getDatabase()
+      .select({
+        id: templatesTable.id,
+        name: templatesTable.name,
+        description: templatesTable.description,
+        icon: templatesTable.icon
+      })
+      .from(templatesTable)
+      .all()
 
-    for (const file of files) {
-      if (!file.endsWith('.md')) continue
+    for (const row of rows) {
+      // A row carrying a built-in id would otherwise render as a second entry
+      // with a duplicate id that getTemplate shadows and assertNotBuiltIn
+      // refuses to delete — an undeletable ghost. Built-ins always win.
+      if (BUILT_IN_IDS.has(row.id)) continue
 
-      const filePath = path.join(templatesDir, file)
-      try {
-        const content = await fs.readFile(filePath, 'utf-8')
-        const template = parseTemplate(content, filePath)
-        templates.push({
-          id: template.id,
-          name: template.name,
-          description: template.description,
-          icon: template.icon,
-          isBuiltIn: template.isBuiltIn
-        })
-      } catch {
-        // Skip files that can't be parsed
-        logger.warn(`Failed to parse template: ${file}`)
-      }
+      custom.push({
+        id: row.id,
+        name: row.name,
+        description: row.description ?? undefined,
+        icon: row.icon,
+        isBuiltIn: false
+      })
     }
-
-    // Sort: built-in first, then by name
-    templates.sort((a, b) => {
-      if (a.isBuiltIn !== b.isBuiltIn) {
-        return a.isBuiltIn ? -1 : 1
-      }
-      return a.name.localeCompare(b.name)
-    })
-
-    return templates
   } catch (error) {
-    logger.error('Failed to list templates:', error)
-    return []
+    logger.error('Failed to list custom templates:', error)
   }
+
+  custom.sort((a, b) => a.name.localeCompare(b.name))
+
+  // Built-ins first, then custom by name — both halves are already sorted.
+  return [...BUILT_IN_LIST_ITEMS, ...custom]
 }
 
 /**
  * Get a template by ID.
  */
 export async function getTemplate(id: string): Promise<Template | null> {
-  await ensureTemplatesDir()
-  const filePath = getTemplatePath(id)
+  const builtIn = BUILT_IN_TEMPLATES.find((t) => t.id === id)
+  if (builtIn) return toBuiltInTemplate(builtIn)
 
-  try {
-    const content = await fs.readFile(filePath, 'utf-8')
-    return parseTemplate(content, filePath)
-  } catch {
-    return null
-  }
+  const row = getRow(id)
+  return row ? rowToTemplate(row) : null
 }
 
 /**
- * Create a new template.
+ * Create a new custom template.
  */
 export async function createTemplate(input: TemplateCreateInput): Promise<Template> {
-  await ensureTemplatesDir()
-
   const id = generateNoteId()
   const now = new Date().toISOString()
 
@@ -508,29 +206,42 @@ export async function createTemplate(input: TemplateCreateInput): Promise<Templa
     modifiedAt: now
   }
 
-  const filePath = getTemplatePath(id)
-  await writeTemplate(filePath, template)
+  getDatabase()
+    .insert(templatesTable)
+    .values({
+      id,
+      name: template.name,
+      description: template.description ?? null,
+      icon: template.icon,
+      tags: template.tags,
+      properties: template.properties,
+      content: template.content,
+      createdAt: now,
+      modifiedAt: now
+    })
+    .run()
 
-  // Emit event
+  // Registry wiring alone does nothing — a mutation that skips this enqueue
+  // writes the row, seeds once via seedUnclocked, then never syncs again.
+  enqueueLocalSyncCreate('template', id)
+
   emitTemplateEvent(TemplatesChannels.events.CREATED, { template })
 
   return template
 }
 
 /**
- * Update an existing template.
+ * Update an existing custom template.
  */
 export async function updateTemplate(input: TemplateUpdateInput): Promise<Template> {
-  const existing = await getTemplate(input.id)
-  if (!existing) {
+  assertNotBuiltIn(input.id, 'modify')
+
+  const row = getRow(input.id)
+  if (!row) {
     throw new VaultError(`Template not found: ${input.id}`, VaultErrorCode.NOT_FOUND)
   }
 
-  // Prevent modifying built-in templates
-  if (existing.isBuiltIn) {
-    throw new VaultError('Cannot modify built-in templates', VaultErrorCode.PERMISSION_DENIED)
-  }
-
+  const existing = rowToTemplate(row)
   const now = new Date().toISOString()
 
   const updated: Template = {
@@ -547,38 +258,61 @@ export async function updateTemplate(input: TemplateUpdateInput): Promise<Templa
     modifiedAt: now
   }
 
-  const filePath = getTemplatePath(input.id)
-  await writeTemplate(filePath, updated)
+  getDatabase()
+    .update(templatesTable)
+    .set({
+      name: updated.name,
+      description: updated.description ?? null,
+      icon: updated.icon,
+      tags: updated.tags,
+      properties: updated.properties,
+      content: updated.content,
+      modifiedAt: now
+    })
+    .where(eq(templatesTable.id, input.id))
+    .run()
 
-  // Emit event
+  enqueueLocalSyncUpdate('template', input.id)
+
   emitTemplateEvent(TemplatesChannels.events.UPDATED, { id: input.id, template: updated })
 
   return updated
 }
 
 /**
- * Delete a template.
+ * Delete a custom template.
  */
 export async function deleteTemplate(id: string): Promise<void> {
-  const existing = await getTemplate(id)
-  if (!existing) {
+  assertNotBuiltIn(id, 'delete')
+
+  const row = getRow(id)
+  if (!row) {
     throw new VaultError(`Template not found: ${id}`, VaultErrorCode.NOT_FOUND)
   }
 
-  // Prevent deleting built-in templates
-  if (existing.isBuiltIn) {
-    throw new VaultError('Cannot delete built-in templates', VaultErrorCode.PERMISSION_DENIED)
+  // Snapshot before the delete: enqueueDelete returns early without a payload
+  // and the tombstone would never reach the other devices.
+  const snapshot = JSON.stringify(row)
+
+  getDatabase().delete(templatesTable).where(eq(templatesTable.id, id)).run()
+
+  // Drop the pre-sync file too, or the next data.db without the import flag
+  // re-imports this template and pushes it back to every device. Other legacy
+  // files are still left alone, so the downgrade path survives.
+  try {
+    const legacyPath = legacyTemplateFilePath(id)
+    if (legacyPath && existsSync(legacyPath)) unlinkSync(legacyPath)
+  } catch (error) {
+    logger.warn('Failed to remove legacy template file', { id, error })
   }
 
-  const filePath = getTemplatePath(id)
-  await fs.unlink(filePath)
+  enqueueLocalSyncDelete('template', id, snapshot)
 
-  // Emit event
   emitTemplateEvent(TemplatesChannels.events.DELETED, { id })
 }
 
 /**
- * Duplicate a template.
+ * Duplicate a template. Duplicating a built-in produces a custom template.
  */
 export async function duplicateTemplate(id: string, newName: string): Promise<Template> {
   const existing = await getTemplate(id)
@@ -586,7 +320,6 @@ export async function duplicateTemplate(id: string, newName: string): Promise<Te
     throw new VaultError(`Template not found: ${id}`, VaultErrorCode.NOT_FOUND)
   }
 
-  // Create a new template based on the existing one
   return createTemplate({
     name: newName,
     description: existing.description,
