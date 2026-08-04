@@ -126,6 +126,10 @@ A note or journal entry joins a project through its **`project` property**, not 
 - **Renaming or deleting a project** rewrites the `project` value in every linked note's frontmatter — a rename updates the name in place, a delete removes it from the list.
 - Dragging a note or journal entry onto a project in the sidebar sets this same property.
 
+::: tip First open after upgrading
+Notes that were already linked to a project before this property existed get that link written into their frontmatter once, the first time you open the vault. Those notes are saved in the same pass, so their frontmatter is normalised the way any memrynote save normalises it: tags written inline in the note body are lifted into the `tags:` list, and tag capitalisation follows what memrynote has indexed. Nothing is removed, and the note body is untouched.
+:::
+
 Files and calendar events have no frontmatter, so they keep their own **Add to project** action instead of a property — see [Projects](/user-guide/projects#linking-notes-events-and-files).
 
 ## Tags vs Properties — When to Use Which
