@@ -2,13 +2,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTestDatabases, sql, type TestDb } from '@tests/utils/test-db'
 import { resolveRefs } from './relation-handlers'
 
-function insertNote(db: TestDb, id: string, title: string, fileType = 'markdown'): void {
+function insertNote(
+  db: TestDb,
+  id: string,
+  title: string,
+  fileType = 'markdown',
+  emoji: string | null = null
+): void {
   db.run(sql`
     INSERT INTO note_cache (
-      id, path, title, file_type, content_hash, word_count, character_count, created_at, modified_at
+      id, path, title, file_type, emoji, content_hash, word_count, character_count,
+      created_at, modified_at
     )
     VALUES (
-      ${id}, ${`notes/${id}.md`}, ${title}, ${fileType}, ${`hash-${id}`}, 0, 0,
+      ${id}, ${`notes/${id}.md`}, ${title}, ${fileType}, ${emoji}, ${`hash-${id}`}, 0, 0,
       '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'
     )
   `)
@@ -43,8 +50,36 @@ describe('properties:resolveRefs', () => {
 
     insertNote(indexDb, 'nte_1', 'Richard Doe')
     insertNote(indexDb, 'nte_pdf', 'contract.pdf', 'pdf')
+    insertNote(indexDb, 'nte_emoji', 'Jane Doe', 'markdown', '👩')
     insertTask(dataDb, 'tsk_1', 'Call Richard')
     insertEvent(dataDb, 'evt_1', 'Lunch')
+  })
+
+  describe('navigation and display payload', () => {
+    it("returns a markdown note's emoji, and omits it when unset", async () => {
+      const [withEmoji, without] = await resolveRefs(indexDb, dataDb, [
+        'memry://note/nte_emoji',
+        'memry://note/nte_1'
+      ])
+      expect(withEmoji.emoji).toBe('👩')
+      expect(without.emoji).toBeUndefined()
+    })
+
+    it("returns a task's projectId so a chip click can scope the tasks list", async () => {
+      const [task] = await resolveRefs(indexDb, dataDb, ['memry://task/tsk_1'])
+      expect(task.projectId).toBe('project-1')
+    })
+
+    it("returns an event's startAt so the calendar can move its range before focusing", async () => {
+      const [event] = await resolveRefs(indexDb, dataDb, ['memry://event/evt_1'])
+      expect(event.startAt).toBe('2026-05-10T12:00:00.000Z')
+    })
+
+    it('leaves the navigation fields off a target that does not exist', async () => {
+      const [missing] = await resolveRefs(indexDb, dataDb, ['memry://task/tsk_gone'])
+      expect(missing.exists).toBe(false)
+      expect(missing.projectId).toBeUndefined()
+    })
   })
 
   afterEach(() => {

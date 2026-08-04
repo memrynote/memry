@@ -50,21 +50,30 @@ export async function resolveRefs(
 
   const noteRows = idsByKind.note.length
     ? indexDb
-        .select({ id: noteCache.id, title: noteCache.title, fileType: noteCache.fileType })
+        .select({
+          id: noteCache.id,
+          title: noteCache.title,
+          fileType: noteCache.fileType,
+          emoji: noteCache.emoji
+        })
         .from(noteCache)
         .where(inArray(noteCache.id, idsByKind.note))
         .all()
     : []
   const taskRows = idsByKind.task.length
     ? dataDb
-        .select({ id: tasks.id, title: tasks.title })
+        .select({ id: tasks.id, title: tasks.title, projectId: tasks.projectId })
         .from(tasks)
         .where(inArray(tasks.id, idsByKind.task))
         .all()
     : []
   const eventRows = idsByKind.event.length
     ? dataDb
-        .select({ id: calendarEvents.id, title: calendarEvents.title })
+        .select({
+          id: calendarEvents.id,
+          title: calendarEvents.title,
+          startAt: calendarEvents.startAt
+        })
         .from(calendarEvents)
         .where(inArray(calendarEvents.id, idsByKind.event))
         .all()
@@ -90,19 +99,34 @@ export async function resolveRefs(
         targetId: ref.id,
         title: note.title,
         exists: true,
-        ...(note.fileType !== 'markdown' ? { fileType: note.fileType } : {})
+        ...(note.fileType !== 'markdown' ? { fileType: note.fileType } : {}),
+        ...(note.emoji ? { emoji: note.emoji } : {})
       }
     }
 
     if (ref.kind === 'task') {
       const task = taskById.get(ref.id)
       if (!task) return { uri, targetType: 'task', targetId: ref.id, title: '', exists: false }
-      return { uri, targetType: 'task', targetId: ref.id, title: task.title, exists: true }
+      return {
+        uri,
+        targetType: 'task',
+        targetId: ref.id,
+        title: task.title,
+        exists: true,
+        ...(task.projectId ? { projectId: task.projectId } : {})
+      }
     }
 
     const event = eventById.get(ref.id)
     if (!event) return { uri, targetType: 'event', targetId: ref.id, title: '', exists: false }
-    return { uri, targetType: 'event', targetId: ref.id, title: event.title, exists: true }
+    return {
+      uri,
+      targetType: 'event',
+      targetId: ref.id,
+      title: event.title,
+      exists: true,
+      startAt: event.startAt
+    }
   })
 }
 

@@ -97,6 +97,12 @@ export interface ResolvedRelationRef {
   subtitle?: string
   exists: boolean
   fileType?: string
+  /** Note targets only, and only markdown ones — chips show it instead of the kind icon. */
+  emoji?: string
+  /** Task targets only. Scopes the tasks list when a chip navigates. */
+  projectId?: string
+  /** Event targets only. The calendar needs the date to move its range before it can focus the event. */
+  startAt?: string
 }
 
 // ============================================================================
