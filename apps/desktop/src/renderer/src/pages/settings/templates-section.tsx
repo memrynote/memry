@@ -24,7 +24,6 @@ import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import { SettingsHeader, SettingsGroup } from '@/components/settings/settings-primitives'
-import { TemplatePreview } from './template-preview'
 
 export function TemplatesSettings() {
   const { t } = useT('settings')
@@ -35,7 +34,6 @@ export function TemplatesSettings() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [duplicateName, setDuplicateName] = useState('')
   const [duplicateId, setDuplicateId] = useState<string | null>(null)
-  const [previewId, setPreviewId] = useState<string | null>(null)
 
   const handleCreateTemplate = useCallback(() => {
     closeSettings()
@@ -97,10 +95,6 @@ export function TemplatesSettings() {
   const builtInTemplates = templates.filter((t) => t.isBuiltIn)
   const customTemplates = templates.filter((t) => !t.isBuiltIn)
 
-  if (previewId) {
-    return <TemplatePreview templateId={previewId} onBack={() => setPreviewId(null)} />
-  }
-
   return (
     <div className="flex flex-col text-xs/4">
       <SettingsHeader
@@ -129,7 +123,7 @@ export function TemplatesSettings() {
                 <TemplateRow
                   key={template.id}
                   template={template}
-                  onSelect={() => setPreviewId(template.id)}
+                  onSelect={() => handleEditTemplate(template.id, template.name)}
                   onEdit={() => handleEditTemplate(template.id, template.name)}
                   onDuplicate={() => {
                     setDuplicateId(template.id)
@@ -147,7 +141,7 @@ export function TemplatesSettings() {
                 <TemplateRow
                   key={template.id}
                   template={template}
-                  onSelect={() => setPreviewId(template.id)}
+                  onSelect={() => handleEditTemplate(template.id, template.name)}
                   onEdit={() => handleEditTemplate(template.id, template.name)}
                   onDuplicate={() => {
                     setDuplicateId(template.id)
