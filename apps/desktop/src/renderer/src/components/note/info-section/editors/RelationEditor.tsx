@@ -98,6 +98,9 @@ export function RelationEditor({ value, onChange }: RelationEditorProps) {
               className={cn(
                 'flex size-3.5 shrink-0 items-center justify-center rounded-full',
                 'transition-colors duration-150',
+                // main.css clears the global focus-visible outline, so every
+                // focusable control has to draw its own ring.
+                'focus:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                 ref.exists ? 'hover:bg-tint/20' : 'hover:bg-muted-foreground/20'
               )}
             >
