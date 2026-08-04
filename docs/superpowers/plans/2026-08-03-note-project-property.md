@@ -2451,3 +2451,117 @@ propagation can read them; the Step 2 test is updated in the same step.
 
 **Out of scope (per spec):** files and calendar events keep the dialog and pill row;
 folder-view filtering by the project property; project properties in templates.
+
+---
+
+### Task 13: One-time backfill of existing project links into frontmatter
+
+Added after the final whole-branch review, on an explicit human decision. The branch
+otherwise drops any pre-existing `project_links` row for a markdown note the first time
+that note is reconciled, because frontmatter is the source of truth and the row was
+never written there.
+
+The population that matters is **not** the unreleased note→project menu (Kaan already
+ruled that one out — nobody used it). It is the project hub's **file import**: importing
+a `.md` into a project wrote a `('file', <markdown note id>)` row, and the final review's
+I2 fix put those rows under the projector's ownership. Without a backfill, such a note
+loses its project the first time the user edits and saves it.
+
+**Files:**
+
+- Create: `apps/desktop/src/main/vault/backfill-project-frontmatter.ts` + test
+- Modify: `apps/desktop/src/main/vault/index.ts` — call it during `openVault`
+- Modify: whatever holds vault-level one-time flags (see Step 2)
+
+**Interfaces:**
+
+- Consumes: `listMarkdownNoteIdsForProject` / the project-link queries in `apps/desktop/src/main/database/queries/projects.ts`; `getEntityPropertiesRecord` and `setEntityProperties` from `apps/desktop/src/main/notes/entity-properties.ts`; `readProjectNames` / `withProjectName` from `apps/desktop/src/main/notes/project-property.ts`.
+
+- [ ] **Step 1: Establish the ordering constraint before writing code**
+
+The backfill must read `project_links` **before** anything can reconcile those rows away,
+and it must write frontmatter through a path whose prerequisites are actually ready.
+
+In `apps/desktop/src/main/vault/index.ts`, `openVault` currently: initialises both
+databases and runs migrations → `migrateSettingsToConfig` (~:263) → checks index health
+(~:265) → `PropertyDefinitionsService.init` (~:272) → `startProjectionRuntime([...
+createNoteProjectLinksProjector()])` (~:275) → indexes the vault (~:315).
+
+Determine and report, with evidence:
+
+- the earliest point at which both the data DB (for `project_links`) and the index DB (for `setEntityProperties`'s `getNoteCacheById` lookup) are usable;
+- whether the index cache is populated at that point on a **healthy** index (it persists across sessions) and what happens on an **unhealthy** one, where `rebuildIndex` runs;
+- whether running before `startProjectionRuntime` is sufficient, or whether a note changed on disk while the app was closed could still be reconciled first.
+
+If the honest answer is that no single insertion point is safe for both the read and the
+write, say so and propose the split you would make, rather than picking one and hoping.
+
+- [ ] **Step 2: Decide and record the one-time marker**
+
+The backfill must run at most once per vault and must be cheap to skip afterwards.
+`migrateSettingsToConfig` (`apps/desktop/src/main/vault/settings-cache.ts:81`) is the
+established one-time-migration precedent in this codebase — read it and follow its
+shape for where the flag lives and how it is set. Do not invent a new mechanism if that
+one fits.
+
+State in your report where the flag lives and what happens if the app is killed
+mid-backfill.
+
+- [ ] **Step 3: Write the failing test**
+
+Cover, against a real in-memory data DB and mocked property writes:
+
+- a markdown note with a `('note', id)` link and no `project` frontmatter gets the project name written;
+- a markdown note with a legacy `('file', id)` link gets it too — this is the population the task exists for;
+- a note that already names the project is left untouched (no redundant write);
+- a note that names a _different_ project gains the new name without losing the existing one;
+- a binary file's link is ignored;
+- a link whose project no longer exists is skipped;
+- one unwritable note does not abort the rest;
+- running twice writes nothing the second time.
+
+- [ ] **Step 4: Run it and confirm it fails**
+
+```bash
+pnpm --filter @memry/desktop test:main -- backfill-project-frontmatter
+```
+
+Expected: FAIL — module not found.
+
+- [ ] **Step 5: Implement**
+
+Group the rows by note so each note's file is written **once**, not once per project.
+Read the note's current properties, union the project names onto whatever is there
+(`withProjectName` is case-insensitive and idempotent), and write the whole record back
+through `setEntityProperties`. Skip a note whose frontmatter already carries every name.
+Wrap each note's write so a single failure logs and continues.
+
+Log a one-line summary at info level: notes visited, notes written, links skipped.
+
+- [ ] **Step 6: Wire it into `openVault`**
+
+At the point Step 1 established, guarded by the Step 2 flag.
+
+- [ ] **Step 7: Verify**
+
+```bash
+pnpm --filter @memry/desktop test:main
+```
+
+```bash
+pnpm check:architecture
+```
+
+```bash
+pnpm --filter @memry/desktop typecheck:node
+```
+
+```bash
+pnpm lint
+```
+
+- [ ] **Step 8: Commit**
+
+```bash
+git commit -am "feat(projects): backfill existing project links into note frontmatter"
+```
