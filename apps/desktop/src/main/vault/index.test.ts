@@ -42,6 +42,8 @@ const mocks = vi.hoisted(() => ({
   reloadPropertyDefinitions: vi.fn(),
   destroyPropertyDefinitions: vi.fn(),
   migrateSettingsToConfig: vi.fn(),
+  snapshotProjectFrontmatterBackfill: vi.fn(),
+  applyProjectFrontmatterBackfill: vi.fn(),
   startSyncRuntime: vi.fn(),
   stopSyncRuntime: vi.fn(),
   startProjectionRuntime: vi.fn(),
@@ -194,6 +196,13 @@ vi.mock('./settings-cache', () => ({
   migrateSettingsToConfig: (...args: unknown[]) => mocks.migrateSettingsToConfig(...args)
 }))
 
+vi.mock('./backfill-project-frontmatter', () => ({
+  snapshotProjectFrontmatterBackfill: (...args: unknown[]) =>
+    mocks.snapshotProjectFrontmatterBackfill(...args),
+  applyProjectFrontmatterBackfill: (...args: unknown[]) =>
+    mocks.applyProjectFrontmatterBackfill(...args)
+}))
+
 vi.mock('../agent/mcp/lifecycle', () => ({
   startAgentMcpLifecycle: (...args: unknown[]) => mocks.startAgentMcpLifecycle(...args),
   stopAgentMcpLifecycle: (...args: unknown[]) => mocks.stopAgentMcpLifecycle(...args)
@@ -258,6 +267,7 @@ describe('vault lifecycle', () => {
     mocks.stopSyncRuntime.mockResolvedValue(undefined)
     mocks.stopProjectionRuntime.mockResolvedValue(undefined)
     mocks.reconcileProjections.mockResolvedValue(undefined)
+    mocks.applyProjectFrontmatterBackfill.mockResolvedValue(undefined)
     mocks.initEmbeddingModel.mockResolvedValue(undefined)
     mocks.isModelLoaded.mockReturnValue(false)
     mocks.isModelLoading.mockReturnValue(false)
@@ -306,6 +316,34 @@ describe('vault lifecycle', () => {
     expect(mocks.currentVaultPath).toBe('/vault/work')
     expect(getStatus()).toEqual(expect.objectContaining({ isOpen: true, path: '/vault/work' }))
     expect(mocks.sent.some((event) => event.channel === 'vault:status-changed')).toBe(true)
+  })
+
+  // The project-link backfill has to read data.db before the projectors can
+  // reconcile a row away, and can only write once the index cache the property
+  // writer resolves entities through is populated — after indexing.
+  it('snapshots project links before the projectors start and applies them after indexing', async () => {
+    await selectVault({ path: '/vault/work' })
+
+    expect(mocks.snapshotProjectFrontmatterBackfill).toHaveBeenCalledWith({ kind: 'data-db' })
+    expect(mocks.snapshotProjectFrontmatterBackfill.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.startProjectionRuntime.mock.invocationCallOrder[0]
+    )
+    expect(mocks.applyProjectFrontmatterBackfill.mock.invocationCallOrder[0]).toBeGreaterThan(
+      mocks.indexVault.mock.invocationCallOrder[0]
+    )
+  })
+
+  it('applies the backfill after an index rebuild and opens the vault even if it throws', async () => {
+    mocks.checkIndexHealth.mockReturnValue('missing')
+    mocks.applyProjectFrontmatterBackfill.mockRejectedValue(new Error('backfill exploded'))
+
+    const result = await selectVault({ path: '/vault/rebuild' })
+
+    expect(result.success).toBe(true)
+    expect(getStatus()).toEqual(expect.objectContaining({ isOpen: true, path: '/vault/rebuild' }))
+    expect(mocks.applyProjectFrontmatterBackfill.mock.invocationCallOrder[0]).toBeGreaterThan(
+      mocks.rebuildIndex.mock.invocationCallOrder[0]
+    )
   })
 
   it('starts vault-scoped agent services only when lazy startup is requested', async () => {

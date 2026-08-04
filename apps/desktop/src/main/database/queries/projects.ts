@@ -961,6 +961,31 @@ export function listNoteProjectLinkIds(
 }
 
 /**
+ * Every frontmatter-owned project link in the vault, paired with the name of the
+ * project it points at. The input to the one-time frontmatter backfill.
+ *
+ * Keyed on `file_type` rather than the row's `item_type`, exactly as
+ * `listNoteProjectLinkIds` is: the rows this exists for were written by the
+ * project hub's file importer and carry `item_type: 'file'` for an imported
+ * `.md`. Filtering on `item_type` would miss them.
+ *
+ * Both joins are inner joins, so a link pointing at a binary file, a calendar
+ * event, or a project that no longer exists produces no row.
+ */
+export function listMarkdownNoteProjectLinks(
+  db: DataDb
+): { noteId: string; projectName: string }[] {
+  return db
+    .select({ noteId: projectLinks.itemId, projectName: projects.name })
+    .from(projectLinks)
+    .innerJoin(noteMetadata, eq(noteMetadata.id, projectLinks.itemId))
+    .innerJoin(projects, eq(projects.id, projectLinks.projectId))
+    .where(eq(noteMetadata.fileType, 'markdown'))
+    .orderBy(asc(projectLinks.createdAt), asc(projectLinks.id))
+    .all()
+}
+
+/**
  * Clear home_note_id on any project that points at the given note, bumping
  * modifiedAt. Returns the project ids that were changed, so callers can
  * re-enqueue those projects for sync.

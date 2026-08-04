@@ -59,6 +59,10 @@ import { createInboxStatsProjector } from '../projections/projectors/inbox-stats
 import { createNoteProjectLinksProjector } from '../projections/projectors/note-project-links-projector'
 import { PropertyDefinitionsService } from './property-definitions'
 import { migrateSettingsToConfig } from './settings-cache'
+import {
+  applyProjectFrontmatterBackfill,
+  snapshotProjectFrontmatterBackfill
+} from './backfill-project-frontmatter'
 import { configureLazyAgentServices } from '../agent/lazy-services'
 import { registerLazyAgentHandlers, unregisterLazyAgentHandlers } from '../ipc/agent-lazy-handlers'
 import type { AgentHandle } from '../agent/bootstrap'
@@ -262,6 +266,11 @@ async function openVault(vaultPath: string): Promise<void> {
   // Migrate settings: config.json ↔ SQLite cache
   migrateSettingsToConfig(dataDb, vaultPath)
 
+  // Snapshot pre-frontmatter project links BEFORE the projection runtime can
+  // reconcile any of them away. Only data.db is needed to read them; the write
+  // half runs once the index cache is up (see below).
+  snapshotProjectFrontmatterBackfill(dataDb)
+
   // Check index database health before proceeding
   const indexHealth: IndexHealth = checkIndexHealth(indexDbPath)
   if (indexHealth !== 'healthy') {
@@ -329,6 +338,17 @@ async function openVault(vaultPath: string): Promise<void> {
   } catch (error) {
     logger.error('Indexing failed:', error)
     // Continue anyway - watcher will pick up files
+  }
+
+  // Write the snapshotted project links into note frontmatter. Here because
+  // this is the first point the index cache `setEntityProperties` resolves
+  // entities through is populated on both branches above, and still inside the
+  // indexing window, so the embedding projector defers the notes it rewrites
+  // instead of embedding each one inline (#803).
+  try {
+    await applyProjectFrontmatterBackfill(dataDb)
+  } catch (error) {
+    logger.error('Project frontmatter backfill failed:', error)
   }
 
   updateStatus({ isIndexing: false, indexProgress: 100 })
