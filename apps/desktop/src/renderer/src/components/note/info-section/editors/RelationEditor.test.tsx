@@ -361,10 +361,36 @@ describe('RelationEditor — emoji and navigation', () => {
     const tab = mocks.openTab.mock.calls[0][0]
     expect(tab.type).toBe('calendar')
     expect(tab.viewState.focusCalendarEventId).toBe('evt_1')
-    expect(tab.viewState.focusDate).toBe('2026-08-30T12:00:00.000Z')
+    // The calendar's anchorDate is a local YYYY-MM-DD string, NOT an instant:
+    // parseLocalDate splits on '-' and passes the parts to new Date(y, m, d),
+    // so a full ISO timestamp produces NaN and the range memo throws
+    // `RangeError: Invalid time value`, killing the tab. Midday UTC keeps this
+    // assertion on the same local day in every real timezone.
+    expect(tab.viewState.focusDate).toBe('2026-08-30')
     // Both calendar effects short-circuit on a consumed token, so a fresh one
     // is what makes a repeat click work at all.
     expect(typeof tab.viewState.focusedAt).toBe('number')
+  })
+
+  it('opens the calendar unfocused rather than crashing when the event has no usable date', async () => {
+    mockResolveRefs([
+      ref({
+        uri: 'memry://event/evt_bad',
+        targetType: 'event',
+        targetId: 'evt_bad',
+        title: 'Broken',
+        startAt: 'not-a-date'
+      })
+    ])
+    renderWithI18n(<RelationEditor value={['memry://event/evt_bad']} onChange={vi.fn()} />)
+    await userEvent.click(await screen.findByText('Broken'))
+
+    const tab = mocks.openTab.mock.calls[0][0]
+    expect(tab.type).toBe('calendar')
+    // No focusDate at all beats an unparseable one — the calendar's first
+    // effect requires it, so it simply does not fire and the tab still opens.
+    expect(tab.viewState.focusDate).toBeUndefined()
+    expect(tab.viewState.focusCalendarEventId).toBe('evt_bad')
   })
 
   it('does not navigate from a deleted chip', async () => {
