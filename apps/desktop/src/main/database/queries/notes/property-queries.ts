@@ -9,6 +9,7 @@ import {
   type NewPropertyDefinition,
   type PropertyType
 } from '@memry/db-schema/schema/notes-cache'
+import { isRelationValue } from '@memry/contracts/relation-uri'
 import type { IndexDb } from '../../types'
 import { serializeValue, deserializeValue } from './query-helpers'
 import { setPropertyRefs } from './property-ref-queries'
@@ -193,6 +194,32 @@ export function getPropertyType(
   value: unknown,
   inferFn: (name: string, value: unknown) => PropertyType
 ): PropertyType {
+  // Structural override: a value that IS an array of memry:// URIs is a
+  // relation, whatever the stored definition claims. Without this, a relation
+  // added through the UI is pinned to `text` forever — its first write is the
+  // empty default `[]`, `isRelationValue([])` is false, so `inferFn` yields
+  // `text` and `ensurePropertyDefinition` writes that definition row. On the
+  // next read `deserializeValue(value, 'text')` hands back the raw string, the
+  // renderer stops treating the row as a relation, and the following property
+  // edit round-trips that string into the vault file — dropping the
+  // `property_refs` rows, the graph edge and the backlink with it.
+  //
+  // Read-time only, deliberately (no stored-definition update):
+  //   1. The `property_definitions` table is a derived cache of
+  //      `.memry/properties.md` — `PropertyDefinitionsService.rebuildDbCache`
+  //      deletes and reinserts the whole table on every reload/upsert, so a row
+  //      written here would not survive.
+  //   2. `PropertyDefinitionSchema` (contracts/property-types.ts) has no
+  //      `relation` member. Persisting one into `.memry/properties.md` makes
+  //      the file fail `safeParse`, which drops *every* definition in it.
+  //   3. Deriving from the value is idempotent and self-healing: notes already
+  //      damaged by the flow above recover on their next index pass, as long as
+  //      the YAML array survived. This matches `setPropertyRefs`, which is
+  //      likewise purely structural.
+  if (isRelationValue(value)) {
+    return 'relation'
+  }
+
   const definition = getPropertyDefinition(db, name)
   if (definition) {
     return definition.type as PropertyType
