@@ -37,7 +37,8 @@ import {
   setProjectLinkPinned,
   updateProjectHomeNote,
   listProjectsByNames,
-  listNoteProjectLinkIds
+  listNoteProjectLinkIds,
+  isMarkdownNote
 } from './projects'
 import { insertTask } from './tasks'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
@@ -649,6 +650,42 @@ describe('projects queries', () => {
       deleteProjectLink(db, 'p1', 'note', 'n1')
 
       expect(listNoteProjectLinkIds(db, 'n1')).toEqual([])
+    })
+  })
+
+  describe('isMarkdownNote', () => {
+    it('is true for a markdown note', () => {
+      db.insert(noteMetadata)
+        .values({
+          id: 'n1',
+          path: 'notes/n1.md',
+          title: 'Spec',
+          fileType: 'markdown',
+          createdAt: BASE_TIME.toISOString(),
+          modifiedAt: BASE_TIME.toISOString()
+        })
+        .run()
+
+      expect(isMarkdownNote(db, 'n1')).toBe(true)
+    })
+
+    it('is false for a binary file, even one whose link carries item_type note', () => {
+      db.insert(noteMetadata)
+        .values({
+          id: 'f1',
+          path: 'notes/f1.png',
+          title: 'diagram.png',
+          fileType: 'image',
+          createdAt: BASE_TIME.toISOString(),
+          modifiedAt: BASE_TIME.toISOString()
+        })
+        .run()
+
+      expect(isMarkdownNote(db, 'f1')).toBe(false)
+    })
+
+    it('is false when the id resolves to no note at all', () => {
+      expect(isMarkdownNote(db, 'missing')).toBe(false)
     })
   })
 })

@@ -73,6 +73,21 @@ export function getProjectById(db: DataDb, id: string): Project | undefined {
 }
 
 /**
+ * True when the id resolves to a markdown note — the one item kind whose project
+ * links are derived from frontmatter. Keys off `file_type`, not the caller's
+ * `item_type`: a binary file can carry `item_type: 'note'` from before a
+ * conversion, and treating it as frontmatter-owned would drop its link.
+ */
+export function isMarkdownNote(db: DataDb, itemId: string): boolean {
+  const row = db
+    .select({ fileType: noteMetadata.fileType })
+    .from(noteMetadata)
+    .where(eq(noteMetadata.id, itemId))
+    .get()
+  return row?.fileType === 'markdown'
+}
+
+/**
  * Check if a project exists.
  */
 export function projectExists(db: DataDb, id: string): boolean {

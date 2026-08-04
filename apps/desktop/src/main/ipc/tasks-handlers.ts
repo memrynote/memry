@@ -31,6 +31,7 @@ import { createHandler, createStringHandler, createValidatedHandler, withDb } fr
 import { createDesktopTasksDomain } from '../tasks/domain'
 import { captureUrlToProject } from '../tasks/capture-url'
 import { importFilesToProject } from '../tasks/import-files-to-project'
+import { linkProjectItem, unlinkProjectItem } from './project-item-links'
 import { createNote, importFiles, getNoteByPath } from '../vault/notes-crud'
 import { fetchUrlMetadata } from '../inbox/metadata'
 import { createTasksPublisher } from '../tasks/publisher'
@@ -222,7 +223,7 @@ export function registerTasksHandlers(): void {
     TasksChannels.invoke.PROJECT_LINK_ITEM,
     createValidatedHandler(
       ProjectLinkItemSchema,
-      withDb((db, input) => createTaskDomain(db).linkItemToProject(input), 'Failed to link item')
+      withDb((db, input) => linkProjectItem(db, createTaskDomain(db), input), 'Failed to link item')
     )
   )
 
@@ -231,7 +232,7 @@ export function registerTasksHandlers(): void {
     createValidatedHandler(
       ProjectLinkItemSchema,
       withDb(
-        (db, input) => createTaskDomain(db).unlinkItemFromProject(input),
+        (db, input) => unlinkProjectItem(db, createTaskDomain(db), input),
         'Failed to unlink item'
       )
     )
@@ -253,7 +254,7 @@ export function registerTasksHandlers(): void {
             fetchTitle: async (url) => (await fetchUrlMetadata(url)).title ?? null,
             createNote: async ({ title, content }) => createNote({ title, content }),
             linkToProject: async (projectId, noteId) => {
-              const linked = await domain.linkItemToProject({
+              const linked = await linkProjectItem(db, domain, {
                 projectId,
                 itemType: 'note',
                 itemId: noteId
