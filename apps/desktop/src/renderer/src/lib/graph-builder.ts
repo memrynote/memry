@@ -21,6 +21,7 @@ const EDGE_SIZES: Record<string, number> = {
   wikilink: 2,
   'task-note': 1.5,
   'project-task': 1.5,
+  relation: 1.25,
   'entity-tag': 0.8
 }
 

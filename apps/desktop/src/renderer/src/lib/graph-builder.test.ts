@@ -65,7 +65,8 @@ const graphData: GraphDataResponse = {
     { source: 'note-a', target: 'note-b', type: 'wikilink', weight: 2 },
     { source: 'note-a', target: 'task-1', type: 'task-note', weight: 1 },
     { source: 'note-a', target: 'missing', type: 'wikilink', weight: 1 },
-    { source: 'note-a', target: 'note-b', type: 'tag-cooccurrence', weight: 3 }
+    { source: 'note-a', target: 'note-b', type: 'tag-cooccurrence', weight: 3 },
+    { source: 'note-b', target: 'note-a', type: 'relation', weight: 1 }
   ]
 }
 
@@ -93,7 +94,18 @@ describe('graph-builder', () => {
     expect(graph.getEdgeAttribute('note-a-note-b-wikilink', 'color')).toBe('#444444')
     expect(graph.getEdgeAttribute('note-a-note-b-wikilink', 'size')).toBe(2)
     expect(graph.getEdgeAttribute('note-a-task-1-task-note', 'size')).toBe(1.5)
-    expect(graph.size).toBe(5)
+
+    // Relation edges are deliberately drawn thinner than wikilinks while
+    // staying the same grey (no dedicated color token) — see task-13 report
+    // fix round 2.
+    expect(graph.hasEdge('note-b-note-a-relation')).toBe(true)
+    expect(graph.getEdgeAttribute('note-b-note-a-relation', 'color')).toBe('#444444')
+    expect(graph.getEdgeAttribute('note-b-note-a-relation', 'size')).toBe(1.25)
+    expect(graph.getEdgeAttribute('note-b-note-a-relation', 'size')).toBeLessThan(
+      graph.getEdgeAttribute('note-a-note-b-wikilink', 'size')
+    )
+
+    expect(graph.size).toBe(6)
 
     expect(graph.hasNode('tag:shared')).toBe(true)
     expect(graph.getNodeAttribute('tag:shared', 'label')).toBe('#shared')
