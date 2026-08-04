@@ -33,6 +33,12 @@ interface TabBarWithDragProps {
   className?: string
 }
 
+/** Vertical wheel scrolls the strip horizontally, like Chrome */
+const handleWheel = (e: React.WheelEvent<HTMLDivElement>): void => {
+  if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+  e.currentTarget.scrollLeft += e.deltaY
+}
+
 /**
  * Tab bar with drag-to-reorder support and context menu
  * DndContext is provided by SplitViewContainer for cross-panel support
@@ -126,12 +132,6 @@ export const TabBarWithDrag = ({
 
   const scrollToStart = (): void => scrollByLogical(-200)
   const scrollToEnd = (): void => scrollByLogical(200)
-
-  // Vertical wheel scrolls the strip horizontally, like Chrome
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>): void => {
-    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
-    e.currentTarget.scrollLeft += e.deltaY
-  }
 
   return (
     <TabBarContextMenu groupId={groupId}>
