@@ -51,7 +51,7 @@ function EditorLoadingState() {
     <div className="flex items-center justify-center h-full min-h-[400px]">
       <div className="flex flex-col items-center gap-3 text-muted-foreground">
         <Loader2 className="h-8 w-8 animate-spin" />
-        <p className="text-sm">{t('phaseF.pagesTemplateEditor.loadingTemplate')}</p>
+        <p className="text-sm">{t('templateEditor.loading')}</p>
       </div>
     </div>
   )
@@ -94,10 +94,15 @@ function TemplateEditorSurface({
   // Tab wiring
   // ==========================================================================
 
-  useEffect(() => {
-    if (!tabId) return
-    updateTabTitle(tabId, fields.name.trim() || t('templateEditor.title.new'))
-  }, [tabId, fields.name, updateTabTitle, t])
+  // The tab title follows the name as it is typed. Driven from the change
+  // handler rather than an effect so the tab is updated by the edit itself.
+  const handleNameChange = useCallback(
+    (name: string) => {
+      setFields({ name })
+      if (tabId) updateTabTitle(tabId, name.trim() || t('templateEditor.title.new'))
+    },
+    [setFields, tabId, updateTabTitle, t]
+  )
 
   useEffect(() => {
     if (!tabId) return
@@ -351,7 +356,7 @@ function TemplateEditorSurface({
                 emoji={null}
                 title={fields.name}
                 placeholder={t('templateEditor.title.placeholder')}
-                onTitleChange={(name) => setFields({ name })}
+                onTitleChange={handleNameChange}
                 disabled={isBuiltIn}
               />
             </div>
