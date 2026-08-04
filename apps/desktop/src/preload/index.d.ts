@@ -124,6 +124,7 @@ export type TemplatePropertyType =
   | 'multiselect'
   | 'url'
   | 'rating'
+  | 'project'
 
 export interface TemplateProperty {
   name: string

@@ -55,6 +55,7 @@ import {
   CheckSquare,
   FileText,
   Folder,
+  FolderKanban,
   Hash,
   Link,
   List,
@@ -215,7 +216,8 @@ const PROPERTY_TYPE_ICONS: Record<PropertyType, AppIcon> = {
   select: List,
   multiselect: Tags,
   url: Link,
-  rating: Star
+  rating: Star,
+  project: FolderKanban
 }
 
 const BUILT_IN_COLUMN_ICONS: Record<string, AppIcon> = {

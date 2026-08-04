@@ -263,7 +263,15 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   const propertyTypesMap = useMemo(() => {
     const map: Record<
       string,
-      'text' | 'number' | 'checkbox' | 'date' | 'select' | 'multiselect' | 'url' | 'rating'
+      | 'text'
+      | 'number'
+      | 'checkbox'
+      | 'date'
+      | 'select'
+      | 'multiselect'
+      | 'url'
+      | 'rating'
+      | 'project'
     > = {}
     for (const prop of availableProperties) {
       map[prop.name] = prop.type as
@@ -275,6 +283,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
         | 'multiselect'
         | 'url'
         | 'rating'
+        | 'project'
     }
     return map
   }, [availableProperties])

@@ -18,23 +18,11 @@ import {
   type RenamePropertyResponse
 } from '@memry/contracts/properties-api'
 import type { PropertyValue } from '../notes/store'
-import { createLogger } from '../lib/logger'
 import { createValidatedHandler, withErrorHandler } from './validate'
-import { getNoteCacheById, getNoteProperties, getJournalEntryByDate } from '../notes/store'
-import { getDatabase, getIndexDatabase } from '../database'
-import { updateNote } from '../vault/notes'
-import {
-  readJournalEntry,
-  writeJournalEntryWithContent,
-  getJournalRelativePath
-} from '../vault/journal'
-import { getCanonicalJournalByDate } from '@memry/domain-notes'
-import { enqueueJournalUpdate } from '../journal/runtime-effects'
-import { syncNoteUpdate } from '../notes/runtime-effects'
-import { syncJournalCache } from '../vault/journal-cache-sync'
+import { getNoteCacheById, getNoteProperties } from '../notes/store'
+import { getIndexDatabase } from '../database'
+import { setEntityProperties } from '../notes/entity-properties'
 import { getMainI18n } from '../lib/main-i18n'
-
-const logger = createLogger('IPC:Properties')
 
 // ============================================================================
 // Handler Registration
@@ -64,26 +52,7 @@ export function registerPropertiesHandlers(): void {
     createValidatedHandler(
       SetPropertiesSchema,
       withErrorHandler(async (input): Promise<SetPropertiesResponse> => {
-        const db = getIndexDatabase()
-        const entity = getNoteCacheById(db, input.entityId)
-
-        if (!entity) {
-          return { success: false, error: getMainI18n().t('errors:property.entityNotFound') }
-        }
-
-        logger.debug('properties:set', {
-          entityId: input.entityId,
-          propertyKeys: Object.keys(input.properties)
-        })
-
-        if (entity.date) {
-          await updateJournalProperties(entity.date, input.properties)
-          enqueueJournalUpdate(input.entityId, entity.date)
-        } else {
-          await updateNote({ id: input.entityId, properties: input.properties })
-          syncNoteUpdate(input.entityId)
-        }
-        return { success: true }
+        return setEntityProperties(input.entityId, input.properties)
       }, 'errors:property.setFailed')
     )
   )
@@ -129,15 +98,7 @@ export function registerPropertiesHandlers(): void {
           }
         }
 
-        if (entity.date) {
-          await updateJournalProperties(entity.date, newProperties)
-          enqueueJournalUpdate(input.entityId, entity.date)
-        } else {
-          await updateNote({ id: input.entityId, properties: newProperties })
-          syncNoteUpdate(input.entityId)
-        }
-
-        return { success: true }
+        return setEntityProperties(input.entityId, newProperties)
       }, 'errors:property.renameFailed')
     )
   )
@@ -155,56 +116,4 @@ export function unregisterPropertiesHandlers(): void {
   ipcMain.removeHandler(PropertiesChannels.invoke.GET)
   ipcMain.removeHandler(PropertiesChannels.invoke.SET)
   ipcMain.removeHandler(PropertiesChannels.invoke.RENAME)
-}
-
-// ============================================================================
-// Internal Helpers
-// ============================================================================
-
-/**
- * Update properties for a journal entry.
- * Reads the existing entry, updates only the properties, and syncs to cache.
- *
- * @param date - Journal entry date (YYYY-MM-DD)
- * @param properties - Properties to set
- */
-async function updateJournalProperties(
-  date: string,
-  properties: Record<string, unknown>
-): Promise<void> {
-  const existing = await readJournalEntry(date)
-  if (!existing) {
-    throw new Error(`Journal entry not found: ${date}`)
-  }
-
-  // Write entry with updated properties (preserving content and tags)
-  const { entry, fileContent, frontmatter } = await writeJournalEntryWithContent(
-    date,
-    existing.content,
-    existing.tags,
-    existing,
-    properties
-  )
-
-  // Sync to cache
-  const db = getIndexDatabase()
-  const journalPath = getJournalRelativePath(date)
-  const canonical = getCanonicalJournalByDate(getDatabase(), date)
-  const cached = getJournalEntryByDate(db, date)
-  const noteId = canonical?.id ?? cached?.id ?? entry.id
-
-  syncJournalCache(
-    db,
-    {
-      id: noteId,
-      path: journalPath,
-      fileContent,
-      frontmatter,
-      parsedContent: entry.content,
-      title: entry.date,
-      createdAt: entry.createdAt,
-      modifiedAt: entry.modifiedAt
-    },
-    { isNew: false }
-  )
 }

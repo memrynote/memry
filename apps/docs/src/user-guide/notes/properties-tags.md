@@ -87,6 +87,7 @@ A collapsible section under the title for **structured** metadata. Properties ar
 | Multi-select | Many values from a defined set | "Topics: Coding, Health"    |
 | Checkbox     | Boolean                        | "Archived"                  |
 | Status       | Workflow stage with color      | "Todo / In progress / Done" |
+| Project      | Link to one or more projects   | "Project: Website Redesign" |
 
 ### Defining Properties
 
@@ -103,6 +104,33 @@ For a `Date` property, clicking the value opens a calendar pop-up — pick a day
 ### Showing Dates on the Calendar
 
 A `Date` property can surface its value on the [calendar](/user-guide/calendar). On a date property's row, click the calendar icon to turn on **Show on calendar** — the icon stays tinted while it's on, so you can see the state at a glance. The note then appears as an all-day chip on that date, and clicking the chip opens the note. The setting is vault-wide per property name and syncs across your devices.
+
+### Project Property
+
+A note or journal entry joins a project through its **`project` property**, not a menu. Choose **Add property → Project** to create the row; only one `project` property is allowed per note, so once it's added, that entry in the Add property list is disabled.
+
+- **Value** — a list of project names, picked from a dropdown. Each choice shows the project's color and icon; archived projects still resolve to their real appearance there, they just don't appear in the picker for new links. A name that matches no project (a typo, or a project deleted on another device before this note synced) still renders, muted, rather than being silently dropped.
+- **Remove** — click the `×` on a chip.
+- **Storage** — the value lives in the note's **frontmatter** as a plain list of project names, so it's visible and editable in a plain markdown editor and travels with the file. memrynote writes it alongside the note's other properties, under the `properties:` key:
+
+  ```yaml
+  ---
+  properties:
+    project:
+      - Website Redesign
+  ---
+  ```
+
+  A `project:` list written at the top level by another editor is read as well, as long as that note has no `properties:` block of its own. Frontmatter is the source of truth; the [project hub](/user-guide/projects#project-hub) reflects it, not the other way around.
+
+- **Renaming or deleting a project** rewrites the `project` value in every linked note's frontmatter — a rename updates the name in place, a delete removes it from the list.
+- Dragging a note or journal entry onto a project in the sidebar sets this same property.
+
+::: tip First open after upgrading
+Notes that were already linked to a project before this property existed get that link written into their frontmatter once, the first time you open the vault. Those notes are saved in the same pass, so their frontmatter is normalised the way any memrynote save normalises it: tags written inline in the note body are lifted into the `tags:` list, and tag capitalisation follows what memrynote has indexed. Nothing is removed, and the note body is untouched.
+:::
+
+Files and calendar events have no frontmatter, so they keep their own **Add to project** action instead of a property — see [Projects](/user-guide/projects#linking-notes-events-and-files).
 
 ## Tags vs Properties — When to Use Which
 

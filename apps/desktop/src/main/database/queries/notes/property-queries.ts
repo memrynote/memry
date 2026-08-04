@@ -11,6 +11,7 @@ import {
 } from '@memry/db-schema/schema/notes-cache'
 import type { IndexDb } from '../../types'
 import { serializeValue, deserializeValue } from './query-helpers'
+import { resolvePropertyType } from '@main/vault/frontmatter'
 
 // ============================================================================
 // Property Value Operations
@@ -191,8 +192,5 @@ export function getPropertyType(
   inferFn: (name: string, value: unknown) => PropertyType
 ): PropertyType {
   const definition = getPropertyDefinition(db, name)
-  if (definition) {
-    return definition.type as PropertyType
-  }
-  return inferFn(name, value)
+  return resolvePropertyType(name, value, definition?.type as PropertyType | undefined, inferFn)
 }

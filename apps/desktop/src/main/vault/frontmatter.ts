@@ -318,7 +318,7 @@ export function generateContentHash(content: string): string {
 // Properties Extraction (T007, T008)
 // ============================================================================
 
-import type { PropertyType } from '@memry/contracts/property-types'
+import { PROJECT_PROPERTY_KEY, type PropertyType } from '@memry/contracts/property-types'
 
 /**
  * Reserved frontmatter keys that are NOT properties — only the two keys with
@@ -382,11 +382,17 @@ function isURL(value: string): boolean {
  * T008: Used when syncing externally-edited properties that don't have
  * a pre-existing type definition.
  *
- * @param _name - Property name (unused, kept for API compatibility)
+ * @param name - Property name (checked against reserved keys, e.g. `project`)
  * @param value - Property value to infer type from
  * @returns Inferred property type
  */
-export function inferPropertyType(_name: string, value: unknown): PropertyType {
+export function inferPropertyType(name: string, value: unknown): PropertyType {
+  // Reserved: `project` carries an array of project names. Inference would fall
+  // through to the array branch below and flatten it to text.
+  if (name === PROJECT_PROPERTY_KEY) {
+    return 'project'
+  }
+
   // Boolean -> checkbox
   if (typeof value === 'boolean') {
     return 'checkbox'
@@ -417,6 +423,38 @@ export function inferPropertyType(_name: string, value: unknown): PropertyType {
 
   // Default to text for unknown types
   return 'text'
+}
+
+/**
+ * Resolve a property's type, honouring the reserved `project` key ahead of any
+ * stored definition. Both the index DB and the canonical (data) DB persist a
+ * `property_definitions.type` row per name; a stale `{ name: 'project', type:
+ * 'text' }` row — written before this feature existed, e.g. a vault imported
+ * from Obsidian — must not override the reserved key. Callers pass in whatever
+ * stored definition type they already looked up (index or canonical) so this
+ * stays storage-agnostic.
+ *
+ * @param name - Property name (checked against reserved keys, e.g. `project`)
+ * @param value - Property value, passed to inferFn when there's no stored type
+ * @param definitionType - Type from a stored property definition, if any
+ * @param inferFn - Fallback inference when there's no reserved key or definition
+ * @returns Resolved property type
+ */
+export function resolvePropertyType(
+  name: string,
+  value: unknown,
+  definitionType: PropertyType | undefined,
+  inferFn: (name: string, value: unknown) => PropertyType
+): PropertyType {
+  if (name === PROJECT_PROPERTY_KEY) {
+    return 'project'
+  }
+
+  if (definitionType) {
+    return definitionType
+  }
+
+  return inferFn(name, value)
 }
 
 /**

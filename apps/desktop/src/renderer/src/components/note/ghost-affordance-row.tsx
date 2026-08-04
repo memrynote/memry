@@ -14,6 +14,8 @@ export interface GhostAffordanceRowProps {
   onAddTag: (tagId: string) => void
   onCreateTag: (name: string, color: string) => void
   onAddProperty: (property: NewProperty) => void
+  /** Property names already on the entity — used to block a second `project`. */
+  existingNames?: string[]
   disabled?: boolean
   className?: string
 }
@@ -25,6 +27,7 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
   onAddTag,
   onCreateTag,
   onAddProperty,
+  existingNames,
   disabled = false,
   className
 }: GhostAffordanceRowProps) {
@@ -54,6 +57,7 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
         open={isPropertyPopupOpen}
         onOpenChange={setIsPropertyPopupOpen}
         disabled={disabled}
+        existingNames={existingNames}
       >
         <button
           type="button"

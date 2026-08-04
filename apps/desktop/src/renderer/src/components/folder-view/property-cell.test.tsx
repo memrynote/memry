@@ -170,4 +170,39 @@ describe('folder-view property cells', () => {
 
     expect(screen.getAllByText('—')).toHaveLength(3)
   })
+
+  it('renders project property values as chips, not the raw JSON array', () => {
+    // Regression test: the `project` property's value is a string[] of project
+    // names. Before this fix, PropertyType had no 'project' member so the
+    // display switch fell through to the text default, which JSON-stringified
+    // the array (e.g. literal `["Reading"]` text in the cell).
+    const { rerender } = render(<PropertyCell value={['Reading']} type="project" />)
+    expect(screen.getByText('Reading')).toBeInTheDocument()
+    expect(screen.queryByText('["Reading"]')).not.toBeInTheDocument()
+
+    rerender(<PropertyCell value={['Reading', 'Fitness 2026', 'Side Projects']} type="project" />)
+    expect(screen.getByText('Reading')).toBeInTheDocument()
+    expect(screen.getByText('Fitness 2026')).toBeInTheDocument()
+    expect(screen.getByText('Side Projects')).toBeInTheDocument()
+    expect(screen.queryByText('["Reading","Fitness 2026","Side Projects"]')).not.toBeInTheDocument()
+
+    rerender(<PropertyCell value={[]} type="project" />)
+    expect(screen.getByText('—')).toBeInTheDocument()
+    expect(screen.queryByText('[]')).not.toBeInTheDocument()
+  })
+
+  it('commits project edits as an array, not a joined string', () => {
+    // Regression test for the second (edit-mode) switch: without a 'project'
+    // case it fell to the plain TextEditor default, which would commit a
+    // single comma-joined string and silently change the property's stored
+    // type from string[] to string.
+    const onSave = vi.fn()
+    render(<EditablePropertyCell value={['Reading']} type="project" onSave={onSave} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /Reading/ }))
+    fireEvent.change(screen.getByLabelText('text-editor'), {
+      target: { value: 'Reading, Fitness 2026' }
+    })
+    expect(onSave).toHaveBeenCalledWith(['Reading', 'Fitness 2026'])
+  })
 })

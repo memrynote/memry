@@ -47,7 +47,8 @@ export function deserializeValue(value: string | null, type: PropertyType): unkn
       return Number(value)
     case 'checkbox':
       return value === 'true'
-    case 'multiselect': {
+    case 'multiselect':
+    case 'project': {
       try {
         const parsed = JSON.parse(value)
         return Array.isArray(parsed) ? parsed : [value]

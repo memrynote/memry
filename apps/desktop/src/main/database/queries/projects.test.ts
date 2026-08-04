@@ -32,9 +32,15 @@ import {
   getProjectContents,
   getProjectLinkCounts,
   insertProjectLink,
+  deleteProjectLink,
   getProjectLink,
+  getProjectLinkForItem,
   setProjectLinkPinned,
-  updateProjectHomeNote
+  updateProjectHomeNote,
+  listProjectsByNames,
+  listNoteProjectLinkIds,
+  listMarkdownNoteIdsForProject,
+  isMarkdownNote
 } from './projects'
 import { insertTask } from './tasks'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
@@ -582,6 +588,212 @@ describe('projects queries', () => {
       const link = getProjectLink(db, 'p-hub', 'note', 'n1')
       expect(link).toBeDefined()
       expect(link?.pinned).toBe(0)
+    })
+  })
+
+  describe('listProjectsByNames', () => {
+    it('resolves names case-insensitively against a real query', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      insertProject(db, { id: 'p2', name: 'Beta', color: '#000', position: 1, isInbox: false })
+
+      const rows = listProjectsByNames(db, ['alpha', 'BETA', 'ghost'])
+
+      expect(rows.map((r) => r.id).sort()).toEqual(['p1', 'p2'])
+    })
+
+    it('orders duplicate-named projects oldest-first', () => {
+      insertProject(db, {
+        id: 'old',
+        name: 'Alpha',
+        color: '#000',
+        position: 0,
+        isInbox: false,
+        createdAt: '2026-01-01T00:00:00.000Z'
+      })
+      insertProject(db, {
+        id: 'new',
+        name: 'alpha',
+        color: '#000',
+        position: 1,
+        isInbox: false,
+        createdAt: '2026-05-01T00:00:00.000Z'
+      })
+
+      const rows = listProjectsByNames(db, ['Alpha'])
+
+      expect(rows.map((r) => r.id)).toEqual(['old', 'new'])
+    })
+
+    it('returns nothing for an empty name list without querying', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      expect(listProjectsByNames(db, [])).toEqual([])
+    })
+  })
+
+  describe('listNoteProjectLinkIds', () => {
+    const seedNote = (id: string, fileType: string, ext = 'md'): void => {
+      db.insert(noteMetadata)
+        .values({
+          id,
+          path: `notes/${id}.${ext}`,
+          title: id,
+          fileType,
+          createdAt: BASE_TIME.toISOString(),
+          modifiedAt: BASE_TIME.toISOString()
+        })
+        .run()
+    }
+
+    it('lists links for the given note, ignoring other notes', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      insertProject(db, { id: 'p2', name: 'Beta', color: '#000', position: 1, isInbox: false })
+      seedNote('n1', 'markdown')
+      seedNote('other-note', 'markdown')
+      insertProjectLink(db, { id: 'l1', projectId: 'p1', itemType: 'note', itemId: 'n1' })
+      insertProjectLink(db, { id: 'l2', projectId: 'p2', itemType: 'note', itemId: 'n1' })
+      insertProjectLink(db, { id: 'l3', projectId: 'p1', itemType: 'note', itemId: 'other-note' })
+
+      const rows = listNoteProjectLinkIds(db, 'n1')
+
+      expect(rows.map((r) => r.projectId).sort()).toEqual(['p1', 'p2'])
+      expect(rows.every((r) => typeof r.id === 'string')).toBe(true)
+    })
+
+    // The project-hub file importer wrote `item_type: 'file'` for imported `.md`
+    // files. Such a row is frontmatter-owned like any other, and the reconciler
+    // is the only path that can ever delete it.
+    it('includes a markdown-note link whose item_type says file, and reports that type', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      seedNote('n1', 'markdown')
+      insertProjectLink(db, { id: 'l1', projectId: 'p1', itemType: 'file', itemId: 'n1' })
+
+      expect(listNoteProjectLinkIds(db, 'n1')).toEqual([
+        { id: 'l1', projectId: 'p1', itemType: 'file' }
+      ])
+    })
+
+    it('excludes a link whose item is not a markdown note', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      seedNote('f1', 'image', 'png')
+      // item_type says 'note' — a binary converted after the link was written.
+      insertProjectLink(db, { id: 'l1', projectId: 'p1', itemType: 'note', itemId: 'f1' })
+
+      expect(listNoteProjectLinkIds(db, 'f1')).toEqual([])
+    })
+
+    it('excludes a link whose item resolves to no note at all', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      insertProjectLink(db, { id: 'l1', projectId: 'p1', itemType: 'note', itemId: 'ghost' })
+
+      expect(listNoteProjectLinkIds(db, 'ghost')).toEqual([])
+    })
+
+    it('reflects a delete performed through the existing deleteProjectLink', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      seedNote('n1', 'markdown')
+      insertProjectLink(db, { id: 'l1', projectId: 'p1', itemType: 'note', itemId: 'n1' })
+
+      deleteProjectLink(db, 'p1', 'note', 'n1')
+
+      expect(listNoteProjectLinkIds(db, 'n1')).toEqual([])
+    })
+  })
+
+  describe('getProjectLinkForItem', () => {
+    it('finds the link regardless of the item_type it was written with', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      insertProjectLink(db, { id: 'l1', projectId: 'p1', itemType: 'file', itemId: 'n1' })
+
+      expect(getProjectLinkForItem(db, 'p1', 'n1')?.id).toBe('l1')
+    })
+
+    it('does not cross project boundaries', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      insertProject(db, { id: 'p2', name: 'Beta', color: '#000', position: 1, isInbox: false })
+      insertProjectLink(db, { id: 'l1', projectId: 'p1', itemType: 'note', itemId: 'n1' })
+
+      expect(getProjectLinkForItem(db, 'p2', 'n1')).toBeUndefined()
+    })
+  })
+
+  describe('listMarkdownNoteIdsForProject', () => {
+    it('lists only markdown notes linked to the project, excluding files and other projects', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      insertProject(db, { id: 'p2', name: 'Beta', color: '#000', position: 1, isInbox: false })
+      db.insert(noteMetadata)
+        .values([
+          {
+            id: 'n1',
+            path: 'notes/n1.md',
+            title: 'Note 1',
+            fileType: 'markdown',
+            createdAt: BASE_TIME.toISOString(),
+            modifiedAt: BASE_TIME.toISOString()
+          },
+          {
+            id: 'n2',
+            path: 'notes/n2.md',
+            title: 'Note 2',
+            fileType: 'markdown',
+            createdAt: BASE_TIME.toISOString(),
+            modifiedAt: BASE_TIME.toISOString()
+          },
+          {
+            id: 'f1',
+            path: 'notes/f1.png',
+            title: 'diagram.png',
+            fileType: 'image',
+            createdAt: BASE_TIME.toISOString(),
+            modifiedAt: BASE_TIME.toISOString()
+          }
+        ])
+        .run()
+      insertProjectLink(db, { id: 'l1', projectId: 'p1', itemType: 'note', itemId: 'n1' })
+      insertProjectLink(db, { id: 'l2', projectId: 'p1', itemType: 'file', itemId: 'f1' })
+      insertProjectLink(db, { id: 'l3', projectId: 'p2', itemType: 'note', itemId: 'n2' })
+
+      expect(listMarkdownNoteIdsForProject(db, 'p1')).toEqual(['n1'])
+    })
+
+    it('returns an empty list when the project has no linked notes', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      expect(listMarkdownNoteIdsForProject(db, 'p1')).toEqual([])
+    })
+  })
+
+  describe('isMarkdownNote', () => {
+    it('is true for a markdown note', () => {
+      db.insert(noteMetadata)
+        .values({
+          id: 'n1',
+          path: 'notes/n1.md',
+          title: 'Spec',
+          fileType: 'markdown',
+          createdAt: BASE_TIME.toISOString(),
+          modifiedAt: BASE_TIME.toISOString()
+        })
+        .run()
+
+      expect(isMarkdownNote(db, 'n1')).toBe(true)
+    })
+
+    it('is false for a binary file, even one whose link carries item_type note', () => {
+      db.insert(noteMetadata)
+        .values({
+          id: 'f1',
+          path: 'notes/f1.png',
+          title: 'diagram.png',
+          fileType: 'image',
+          createdAt: BASE_TIME.toISOString(),
+          modifiedAt: BASE_TIME.toISOString()
+        })
+        .run()
+
+      expect(isMarkdownNote(db, 'f1')).toBe(false)
+    })
+
+    it('is false when the id resolves to no note at all', () => {
+      expect(isMarkdownNote(db, 'missing')).toBe(false)
     })
   })
 })

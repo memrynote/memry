@@ -21,7 +21,8 @@ describe('PropertyTypes', () => {
       URL: 'url',
       STATUS: 'status',
       SELECT: 'select',
-      MULTISELECT: 'multiselect'
+      MULTISELECT: 'multiselect',
+      PROJECT: 'project'
     })
   })
 })

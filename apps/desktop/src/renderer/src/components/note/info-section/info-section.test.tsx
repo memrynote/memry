@@ -11,6 +11,7 @@ import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
 import { createRendererI18n } from '@memry/i18n/renderer'
 import { InfoSection } from './InfoSection'
+import { AddPropertyPopup } from './AddPropertyPopup'
 import type { Property, PropertyTemplate } from './types'
 
 let i18nEn: I18nInstance
@@ -341,6 +342,38 @@ describe('InfoSection - add property', () => {
     await user.click(options[0])
 
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+})
+
+// ============================================================================
+// AddPropertyPopup - project type
+// ============================================================================
+
+describe('AddPropertyPopup - project type', () => {
+  it('forces the name to `project` when the project type is picked', async () => {
+    const onAdd = vi.fn()
+    const user = userEvent.setup()
+
+    renderWithI18n(
+      <AddPropertyPopup open onAdd={onAdd}>
+        <button type="button">add</button>
+      </AddPropertyPopup>
+    )
+
+    await user.type(screen.getByLabelText(/property name/i), 'My Client')
+    await user.click(screen.getByRole('option', { name: /^project$/i }))
+
+    expect(onAdd).toHaveBeenCalledWith({ name: 'project', type: 'project' })
+  })
+
+  it('disables the project entry when the note already has one', () => {
+    renderWithI18n(
+      <AddPropertyPopup open onAdd={vi.fn()} existingNames={['project']}>
+        <button type="button">add</button>
+      </AddPropertyPopup>
+    )
+
+    expect(screen.getByRole('option', { name: /^project$/i })).toBeDisabled()
   })
 })
 
