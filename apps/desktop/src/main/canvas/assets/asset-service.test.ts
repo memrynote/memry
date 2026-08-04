@@ -23,7 +23,11 @@ import { listAssetsByCanvas, recordAsset } from './asset-store'
 import { hashAssetContent, assetFilename } from './content-hash'
 import { toMemryFileUrl } from '../../lib/paths'
 
-const MIGRATION_FILES = ['0035_spatial_canvas.sql', '0036_canvas_assets.sql']
+const MIGRATION_FILES = [
+  '0035_spatial_canvas.sql',
+  '0036_canvas_assets.sql',
+  '0045_canvas_files.sql'
+]
 
 function freshDb() {
   const sqlite = new Database(':memory:')

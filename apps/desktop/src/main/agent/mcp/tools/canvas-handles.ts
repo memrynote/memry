@@ -96,7 +96,7 @@ export function createCanvasHandles(dataDb: DataDb): VaultServiceHandles['canvas
   return {
     async list() {
       assertSpatialCanvasEnabled()
-      const { db, vaultId } = await getCanvasContext()
+      const { db, vaultId } = getCanvasContext()
       return listCanvasesWithCounts(db, vaultId).map((canvas) => ({
         id: canvas.id,
         title: canvas.title,
@@ -106,9 +106,9 @@ export function createCanvasHandles(dataDb: DataDb): VaultServiceHandles['canvas
     },
     async read(id) {
       assertSpatialCanvasEnabled()
-      const { db, vaultKey } = await getCanvasContext()
-      const canvas = getCanvas(db, vaultKey, id)
-      if (!canvas) return null
+      const { db, vaultPath } = getCanvasContext()
+      const canvas = getCanvas(db, vaultPath, id)
+      if (!canvas || canvas.unreadable) return null
 
       const summary = summarizeScene(canvas.scene)
       const items = await Promise.all(summary.items.map((ref) => resolveCanvasItem(dataDb, ref)))

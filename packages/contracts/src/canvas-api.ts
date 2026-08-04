@@ -44,6 +44,13 @@ export interface Canvas extends CanvasSummary {
    * for a canvas that has not been drawn on yet.
    */
   scene: string
+  /**
+   * The canvas exists in the index but its document could not be read — a
+   * pre-file legacy row whose encrypted snapshot this device holds no key for,
+   * or a file moved/deleted outside the app. `scene` is empty and the editor
+   * must NOT mount: saving over it would erase recoverable ink.
+   */
+  unreadable?: boolean
 }
 
 // ============================================================================

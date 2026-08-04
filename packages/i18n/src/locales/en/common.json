@@ -251,6 +251,8 @@
     "openFailed": "Could not open canvas",
     "notFound": "This canvas could not be found",
     "corruptScene": "This canvas could not be read. Editing is disabled to avoid losing data.",
+    "unreadableTitle": "This canvas cannot be opened here",
+    "unreadableBody": "Its document is missing from the vault, or it was drawn before canvases became files and this device no longer holds the key that unlocks it. Nothing was deleted — open the vault on the device that created it, or restore the canvases folder.",
     "tooLargeToSync": "This canvas is too large to sync. It's saved on this device but won't reach your other devices until it's smaller.",
     "savedToVault": "All changes are saved to your vault automatically",
     "libraryStoreFailed": "Could not save your shape library. Recent changes to it may be lost.",

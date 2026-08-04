@@ -31,12 +31,33 @@ vi.mock('../../canvas/assets/asset-service', () => ({
   reconcileCanvasAssets: mockReconcileCanvasAssets
 }))
 
+// Canvases are files in the vault now; point the handler at a temp folder.
+const vaultDir = vi.hoisted(() => ({ current: '' }))
+vi.mock('../../canvas/vault-path', () => ({
+  getCanvasVaultPath: () => vaultDir.current || null
+}))
+
+import fs from 'node:fs'
+import os from 'node:os'
+import nodePath from 'node:path'
+
 import { canvasHandler } from './canvas-handler'
-import { encryptCanvasSceneForVault, decryptCanvasSceneForVault } from '../../canvas/encryption'
+import { CANVAS_DIR, resolveCanvasFile, withCanvasMeta } from '../../canvas/scene-file'
+import { readCanvasScene } from '../../canvas/store'
 import { hashesReferencedByOtherCanvases } from '../../canvas/assets/asset-store'
 import { initCanvasSyncService, resetCanvasSyncService } from '../canvas-sync'
 
 const ASSET_CTX = { marker: 'asset-ctx' }
+
+/**
+ * The stored document is normalized (stable key order, explicit appState/files),
+ * so scenes are compared by content rather than byte-for-byte.
+ */
+function expectScene(row: { filePath: string | null } | undefined, expected: string): void {
+  const actual = readCanvasScene(vaultDir.current, row?.filePath ?? null)
+  expect(actual).not.toBeNull()
+  expect(JSON.parse(actual!)).toEqual(JSON.parse(expected))
+}
 
 function asset(hash: string): MemryAssetDescriptor {
   return {
@@ -56,7 +77,6 @@ function sceneWithAssets(entityId: string, assets: MemryAssetDescriptor[], extra
   return JSON.stringify(base)
 }
 
-const VAULT_KEY = new Uint8Array(32).fill(7)
 const VAULT_ID = 'vault-1'
 const LOCAL_DEVICE = 'device-LOCAL'
 
@@ -93,12 +113,19 @@ function seedCanvas(
   opts: { deletedAt?: number | null; title?: string | null } = {}
 ): void {
   const now = Date.now()
+  const filePath = nodePath.join(CANVAS_DIR, `${id}.excalidraw`)
+  fs.mkdirSync(nodePath.join(vaultDir.current, CANVAS_DIR), { recursive: true })
+  fs.writeFileSync(
+    resolveCanvasFile(vaultDir.current, filePath),
+    withCanvasMeta(scene, { id, createdAt: now, updatedAt: now })
+  )
   db.insert(canvases)
     .values({
       id,
       vaultId: VAULT_ID,
       title: opts.title ?? 'My Canvas',
-      snapshotCiphertext: encryptCanvasSceneForVault(scene, VAULT_KEY),
+      filePath,
+      snapshotCiphertext: '',
       vectorClock: {},
       createdAt: now,
       updatedAt: now,
@@ -128,7 +155,8 @@ describe('canvasHandler', () => {
       db,
       getDeviceId: () => LOCAL_DEVICE
     })
-    ctx = { db, emit: vi.fn(), vaultKey: VAULT_KEY }
+    vaultDir.current = fs.mkdtempSync(nodePath.join(os.tmpdir(), 'memry-canvas-sync-'))
+    ctx = { db, emit: vi.fn() }
     mockBuildAssetServiceContext.mockReset().mockReturnValue(ASSET_CTX)
     mockEnsureAssetsPresent.mockReset().mockResolvedValue(undefined)
     mockReconcileCanvasAssets.mockReset().mockResolvedValue(undefined)
@@ -137,6 +165,7 @@ describe('canvasHandler', () => {
   afterEach(() => {
     resetCanvasSyncService()
     testDb.close()
+    if (vaultDir.current) fs.rmSync(vaultDir.current, { recursive: true, force: true })
   })
 
   describe('applyUpsert', () => {
@@ -155,7 +184,7 @@ describe('canvasHandler', () => {
       const row = db.select().from(canvases).where(eq(canvases.id, 'c1')).get()
       expect(row).toBeDefined()
       expect(row!.clock).toEqual({ B: 1 })
-      expect(decryptCanvasSceneForVault(row!.snapshotCiphertext, VAULT_KEY)).toBe(data.scene)
+      expectScene(row, data.scene)
       const refs = db
         .select()
         .from(canvasEntityRefs)
@@ -173,9 +202,7 @@ describe('canvasHandler', () => {
 
       expect(result).toBe('skipped')
       const row = db.select().from(canvases).where(eq(canvases.id, 'c1')).get()
-      expect(decryptCanvasSceneForVault(row!.snapshotCiphertext, VAULT_KEY)).toBe(
-        sceneWith('note-keep')
-      )
+      expectScene(row, sceneWith('note-keep'))
     })
 
     it('#given existing row #when remote clock is newer #then overwrites + rebuilds refs', () => {
@@ -192,7 +219,7 @@ describe('canvasHandler', () => {
       expect(result).toBe('applied')
       const row = db.select().from(canvases).where(eq(canvases.id, 'c1')).get()
       expect(row!.clock).toEqual({ A: 1, B: 2 })
-      expect(decryptCanvasSceneForVault(row!.snapshotCiphertext, VAULT_KEY)).toBe(data.scene)
+      expectScene(row, data.scene)
       const refs = db
         .select()
         .from(canvasEntityRefs)
@@ -214,9 +241,7 @@ describe('canvasHandler', () => {
 
       expect(result).toBe('skipped')
       const row = db.select().from(canvases).where(eq(canvases.id, 'c1')).get()
-      expect(decryptCanvasSceneForVault(row!.snapshotCiphertext, VAULT_KEY)).toBe(
-        sceneWith('note-keep')
-      )
+      expectScene(row, sceneWith('note-keep'))
     })
 
     it('#given concurrent clocks #then builds a conflict copy (TWO rows, no ink lost) + enqueues push', () => {
@@ -241,14 +266,14 @@ describe('canvasHandler', () => {
       // Original row now holds the remote (winning) scene + merged clock.
       const original = rows.find((r) => r.id === 'c1')!
       expect(original.clock).toEqual({ A: 2, B: 3 })
-      expect(decryptCanvasSceneForVault(original.snapshotCiphertext, VAULT_KEY)).toBe(remoteScene)
+      expectScene(original, remoteScene)
 
       // The conflict copy preserves the LOSING local scene under a fresh id/clock.
       const copy = rows.find((r) => r.id !== 'c1')!
       expect(copy.title).toContain('(conflict copy)')
       expect(copy.clock).toEqual({ [LOCAL_DEVICE]: 1 })
       expect(copy.deletedAt).toBeNull()
-      expect(decryptCanvasSceneForVault(copy.snapshotCiphertext, VAULT_KEY)).toBe(localScene)
+      expectScene(copy, localScene)
 
       // Copy's advisory refs are duplicated.
       const copyRefs = db
@@ -305,9 +330,7 @@ describe('canvasHandler', () => {
       const copy = rows.find((r) => r.id !== 'c1')!
       // No device id → unclocked copy; seedUnclocked pushes it on the next init.
       expect(copy.clock).toBeNull()
-      expect(decryptCanvasSceneForVault(copy.snapshotCiphertext, VAULT_KEY)).toBe(
-        sceneWith('note-local')
-      )
+      expectScene(copy, sceneWith('note-local'))
     })
 
     it('#given an update that clears the title (null) #then propagates the clear', () => {
@@ -385,25 +408,36 @@ describe('canvasHandler', () => {
   })
 
   describe('buildPushPayload', () => {
-    it('#given a row + vault key #then returns a scene-bearing payload', () => {
+    it('#given a row with a document #then returns a scene-bearing payload', () => {
       seedCanvas(db, 'c1', sceneWith('note-1'), { A: 1 })
-      const payload = canvasHandler.buildPushPayload!(db, 'c1', 'device-A', 'update', VAULT_KEY)
+      const payload = canvasHandler.buildPushPayload!(db, 'c1', 'device-A', 'update')
       expect(payload).not.toBeNull()
       const parsed = JSON.parse(payload!)
-      expect(parsed.scene).toBe(sceneWith('note-1'))
+      expect(JSON.parse(parsed.scene)).toEqual(JSON.parse(sceneWith('note-1')))
       expect(parsed.vaultId).toBe(VAULT_ID)
       expect(parsed.clock).toEqual({ A: 1 })
     })
 
-    it('#given no vault key #then returns null (never re-serializes without the key)', () => {
+    it('#given a row whose document is unreadable #then returns null (never pushes empty ink)', () => {
       seedCanvas(db, 'c1', sceneWith('note-1'), { A: 1 })
+      fs.rmSync(resolveCanvasFile(vaultDir.current, nodePath.join(CANVAS_DIR, 'c1.excalidraw')))
+
       expect(canvasHandler.buildPushPayload!(db, 'c1', 'device-A', 'update')).toBeNull()
     })
 
+    it('#given no open vault #then returns null', () => {
+      seedCanvas(db, 'c1', sceneWith('note-1'), { A: 1 })
+      const open = vaultDir.current
+      vaultDir.current = ''
+      try {
+        expect(canvasHandler.buildPushPayload!(db, 'c1', 'device-A', 'update')).toBeNull()
+      } finally {
+        vaultDir.current = open
+      }
+    })
+
     it('#given no row #then returns null', () => {
-      expect(
-        canvasHandler.buildPushPayload!(db, 'missing', 'device-A', 'update', VAULT_KEY)
-      ).toBeNull()
+      expect(canvasHandler.buildPushPayload!(db, 'missing', 'device-A', 'update')).toBeNull()
     })
   })
 

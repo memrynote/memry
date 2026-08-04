@@ -12,7 +12,13 @@ import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { createLogger } from '../../lib/logger'
 import { generateId } from '../../lib/id'
-import { encryptCanvasSceneForVault, decryptCanvasSceneForVault } from '../../canvas/encryption'
+import {
+  allocateCanvasPath,
+  deleteCanvasFileSync,
+  resolveCanvasFile
+} from '../../canvas/scene-file'
+import { readCanvasScene, writeCanvasScene } from '../../canvas/store'
+import { getCanvasVaultPath } from '../../canvas/vault-path'
 import { extractEntityRefsFromScene } from '../../canvas/scene-refs'
 import { readMemryAssets } from '../../canvas/assets/memry-assets'
 import { ensureAssetsPresent, reconcileCanvasAssets } from '../../canvas/assets/asset-service'
@@ -114,8 +120,10 @@ async function gcDeletedCanvasAssets(canvasId: string): Promise<void> {
  *
  * See docs/superpowers/specs/2026-07-17-spatial-canvas-design.md §5 and §18
  * D1–D8. Key behaviours:
- * - The scene is re-encrypted at rest under the vault key (`snapshotCiphertext`)
- *   on apply, and decrypted fresh on push (`buildPushPayload`).
+ * - The scene is written to the canvas's `.excalidraw` file in the vault on
+ *   apply, and read straight back off disk on push (`buildPushPayload`). No key
+ *   material is involved at rest; the transport encryption in sync/encrypt.ts is
+ *   unchanged, so the server still never sees plaintext.
  * - D5: a payload without a `scene` never clobbers local ink — it is skipped.
  * - §5.4/D4: a concurrent clock hand-builds a conflict-copy row (new id, fresh
  *   clock, duplicated snapshot + refs, enqueued for push) BEFORE the LWW
@@ -133,9 +141,9 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
     data: CanvasSyncPayload,
     clock: VectorClock
   ): ApplyResult {
-    const vaultKey = ctx.vaultKey
-    if (!vaultKey) {
-      log.warn('Skipping canvas apply without vault key', { itemId })
+    const vaultPath = getCanvasVaultPath()
+    if (!vaultPath) {
+      log.warn('Skipping canvas apply without an open vault', { itemId })
       return 'skipped'
     }
 
@@ -162,12 +170,15 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
           log.warn('Skipping canvas create without vaultId', { itemId })
           return 'skipped'
         }
+        const filePath = allocateCanvasPath(vaultPath, data.title ?? null)
+        writeCanvasScene(vaultPath, filePath, itemId, scene, now, now)
         tx.insert(canvases)
           .values({
             id: itemId,
             vaultId,
             title: data.title ?? null,
-            snapshotCiphertext: encryptCanvasSceneForVault(scene, vaultKey),
+            filePath,
+            snapshotCiphertext: '',
             vectorClock: {},
             createdAt: now,
             updatedAt: now,
@@ -197,11 +208,11 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
       // on every remote edit — compare the decrypted scenes before minting one.
       let madeCopy = false
       if (resolution.action === 'merge') {
-        const localScene = decryptCanvasSceneForVault(existing.snapshotCiphertext, vaultKey)
-        if (localScene !== scene) {
+        const localScene = readCanvasScene(vaultPath, existing.filePath)
+        if (localScene !== null && localScene !== scene) {
           // §5.4/D4: hand-build a conflict copy of the LOSING local snapshot BEFORE
           // overwriting, so no ink is lost.
-          this.createConflictCopy(tx, ctx, existing, localScene, now)
+          this.createConflictCopy(tx, ctx, vaultPath, existing, localScene, now)
           madeCopy = true
         }
       }
@@ -210,10 +221,18 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
       // deliberate null the same as an absent field and never propagate the clear.
       const nextTitle = data.title !== undefined ? data.title : existing.title
 
+      // A legacy row we could never decrypt has no file yet; the incoming scene
+      // gives it one rather than writing into nowhere. The filename is NOT
+      // re-derived from an incoming title: renaming files on every remote edit
+      // would churn the user's folder (and their git history) for nothing.
+      const filePath = existing.filePath ?? allocateCanvasPath(vaultPath, nextTitle)
+      writeCanvasScene(vaultPath, filePath, itemId, scene, existing.createdAt, now)
+
       tx.update(canvases)
         .set({
           title: nextTitle,
-          snapshotCiphertext: encryptCanvasSceneForVault(scene, vaultKey),
+          filePath,
+          snapshotCiphertext: '',
           clock: resolution.mergedClock,
           updatedAt: now,
           // An incoming edit means the canvas is alive on the authoring device:
@@ -249,6 +268,7 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
   }
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
+    let deletedFilePath: string | null = null
     const result = ctx.db.transaction((tx): 'applied' | 'skipped' => {
       const existing = tx.select().from(canvases).where(eq(canvases.id, itemId)).get()
       if (!existing || existing.deletedAt !== null) return 'skipped'
@@ -270,6 +290,7 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
       }
 
       const now = Date.now()
+      deletedFilePath = existing.filePath
       tx.update(canvases)
         .set({ deletedAt: now, updatedAt: now, lastSyncedAt: now, clock: nextClock })
         .where(eq(canvases.id, itemId))
@@ -285,6 +306,13 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
     // are removal candidates; the GC union protects any still shared). Only when
     // a tombstone was actually written — a skipped delete leaves the canvas live.
     if (result === 'applied') {
+      // Remove the document too: a tombstoned canvas must not keep haunting the
+      // user's folder. Outside the tx — an fs failure must never roll back (and
+      // thereby resurrect) the tombstone.
+      const vaultPath = getCanvasVaultPath()
+      if (vaultPath && deletedFilePath) {
+        deleteCanvasFileSync(resolveCanvasFile(vaultPath, deletedFilePath))
+      }
       void gcDeletedCanvasAssets(itemId)
     }
     return result
@@ -301,16 +329,25 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
     itemId: string,
     _deviceId: string,
     _operation: string,
-    vaultKey?: Uint8Array
+    _vaultKey?: Uint8Array
   ): string | null {
-    if (!vaultKey) return null
+    const vaultPath = getCanvasVaultPath()
+    if (!vaultPath) return null
     const row = db.select().from(canvases).where(eq(canvases.id, itemId)).get()
     if (!row) return null
+    const scene = readCanvasScene(vaultPath, row.filePath)
+    // No readable document (unmigrated legacy row, or a file the user moved
+    // away): push nothing rather than a scene-less payload, which the receiving
+    // device would skip anyway (D5) after burning a round trip.
+    if (scene === null) {
+      log.warn('Skipping canvas push without a readable document', { itemId })
+      return null
+    }
     return JSON.stringify({
       id: row.id,
       vaultId: row.vaultId,
       title: row.title,
-      scene: decryptCanvasSceneForVault(row.snapshotCiphertext, vaultKey),
+      scene,
       clock: row.clock ?? {},
       deletedAt: row.deletedAt ?? null
     })
@@ -354,6 +391,7 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
   private createConflictCopy(
     tx: CanvasTx,
     ctx: ApplyContext,
+    vaultPath: string,
     existing: CanvasRow,
     localScene: string,
     now: number
@@ -368,13 +406,18 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
     const copyClock = deviceId ? increment({}, deviceId) : null
     const copyTitle = `${existing.title ?? 'Canvas'} (conflict copy)`
 
+    // The LOSING ink gets its own document on disk, so the user finds it in the
+    // vault next to the winner instead of only inside the app.
+    const copyPath = allocateCanvasPath(vaultPath, copyTitle)
+    writeCanvasScene(vaultPath, copyPath, copyId, localScene, now, now)
+
     tx.insert(canvases)
       .values({
         id: copyId,
         vaultId: existing.vaultId,
         title: copyTitle,
-        // Duplicate the LOSING local snapshot verbatim — no re-encrypt needed.
-        snapshotCiphertext: existing.snapshotCiphertext,
+        filePath: copyPath,
+        snapshotCiphertext: '',
         vectorClock: {},
         createdAt: now,
         updatedAt: now,
