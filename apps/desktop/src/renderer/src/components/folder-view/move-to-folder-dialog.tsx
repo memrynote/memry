@@ -431,7 +431,9 @@ function MoveToFolderDialogSession({
                           )}
                           {isCurrent && (
                             <span className="text-xs text-muted-foreground">
-                              ({tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.current')}
+                              {tPhaseF(
+                                'phaseF.componentsFolderViewMoveToFolderDialog.currentFolderBadge'
+                              )}
                             </span>
                           )}
                         </button>
@@ -484,7 +486,9 @@ function MoveToFolderDialogSession({
                         </span>
                         {isCurrent && (
                           <span className="text-xs text-muted-foreground">
-                            ({tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.current2')}
+                            {tPhaseF(
+                              'phaseF.componentsFolderViewMoveToFolderDialog.currentFolderBadge'
+                            )}
                           </span>
                         )}
                       </button>
@@ -495,8 +499,10 @@ function MoveToFolderDialogSession({
                 {folderItems.filter((item) => !item.isSuggestion).length === 0 &&
                   !canCreateFolder && (
                     <div className="flex items-center justify-center h-20 text-muted-foreground text-sm">
-                      {tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.noFoldersMatch')}
-                      {searchQuery}&{tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.quot')}
+                      {tPhaseF(
+                        'phaseF.componentsFolderViewMoveToFolderDialog.noFoldersMatchQuery',
+                        { query: searchQuery }
+                      )}
                     </div>
                   )}
               </div>
@@ -517,9 +523,9 @@ function MoveToFolderDialogSession({
                   >
                     <Plus className="h-4 w-4 flex-shrink-0" />
                     <span className="flex-1 truncate">
-                      {tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.create')}
-                      {searchQuery.trim()}&
-                      {tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.quot2')}
+                      {tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.createFolderNamed', {
+                        name: searchQuery.trim()
+                      })}
                     </span>
                   </button>
                 </div>

@@ -67,14 +67,16 @@
     "title": "Vil du slette arrangementet?",
     "local-description": "\"{title}\" vil bli permanent slettet. Denne handlingen kan ikke angres.",
     "google-bound-description": "«{title}» vil bli fjernet fra memrynote og Google Kalender. Denne handlingen kan ikke angres.",
-    "context-menu-delete-label": "Slett hendelsen"
+    "context-menu-delete-label": "Slett hendelsen",
+    "context-menu-add-to-project": "Legg til i prosjekt"
   },
   "promote-dialog": {
     "aria": "Rediger ekstern kalenderhendelse",
     "title": "Vil du redigere denne hendelsen i memrynote?",
     "body": "Redigering av denne hendelsen vil opprette en koblet kopi i memrynote, så endringer synkroniseres begge veier. Vil du fortsette?",
     "do-not-ask-again": "Ikke spør igjen",
-    "confirm-label": "Rediger i memrynote"
+    "confirm-label": "Rediger i memrynote",
+    "agent-notice": "AI-agenten kan lese denne kopien, selv om AI-tilgang til Google Calendar er slått av. Den opprinnelige Google-hendelsen din forblir skjult for den."
   },
   "onboarding-dialog": {
     "aria": "Velg standard Google-kalender",
@@ -181,6 +183,16 @@
     "placeholder": "Søk i hendelser, oppgaver, påminnelser…"
   },
   "undo": {
-    "moveEvent": "Flytt hendelse"
+    "moveEvent": "Flytt hendelse",
+    "moveTask": "Flytt oppgave"
+  },
+  "agent-access-dialog": {
+    "allow": "Tillat",
+    "aria": "Velg om AI skal få lese Google Calendar-hendelsene dine",
+    "body": "Du ser Google-hendelsene dine i memrynote uansett. Dette avgjør bare om AI-agenten kan lese dem når du spør den om kalenderen din.",
+    "deny": "Ikke tillat",
+    "footnote": "Du kan endre dette når som helst i Innstillinger → Integrasjoner → Google Calendar.",
+    "save-error": "Kunne ikke lagre valget ditt",
+    "title": "Vil du la AI lese Google Calendar-hendelsene dine?"
   }
 }

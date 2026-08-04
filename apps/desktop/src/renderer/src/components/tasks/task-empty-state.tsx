@@ -23,34 +23,34 @@ interface TaskEmptyStateProps {
 
 interface EmptyStateConfig {
   icon: React.ElementType
-  title: string
-  description: string
+  titleKey: string
+  descriptionKey: string
   showAddButton: boolean
 }
 
 const emptyStateConfigs: Record<EmptyStateVariant, EmptyStateConfig> = {
   all: {
     icon: ClipboardList,
-    title: 'No tasks yet',
-    description: 'Create your first task to get started',
+    titleKey: 'phaseF.componentsTasksTaskEmptyState.allTitle',
+    descriptionKey: 'phaseF.componentsTasksTaskEmptyState.allDescription',
     showAddButton: true
   },
   today: {
     icon: Star,
-    title: 'Nothing due today',
-    description: "You're all caught up!",
+    titleKey: 'phaseF.componentsTasksTaskEmptyState.todayTitle',
+    descriptionKey: 'phaseF.componentsTasksTaskEmptyState.todayDescription',
     showAddButton: false
   },
   completed: {
     icon: CheckCircle,
-    title: 'No completed tasks',
-    description: 'Completed tasks will appear here',
+    titleKey: 'phaseF.componentsTasksTaskEmptyState.completedTitle',
+    descriptionKey: 'phaseF.componentsTasksTaskEmptyState.completedDescription',
     showAddButton: false
   },
   project: {
     icon: FolderOpen,
-    title: 'No tasks in this project',
-    description: 'Add a task to get started',
+    titleKey: 'phaseF.componentsTasksTaskEmptyState.projectTitle',
+    descriptionKey: 'phaseF.componentsTasksTaskEmptyState.projectDescription',
     showAddButton: true
   }
 }
@@ -70,7 +70,10 @@ export const TaskEmptyState = ({
   const Icon = config.icon
 
   // Customize title for project variant
-  const title = variant === 'project' && projectName ? `No tasks in ${projectName}` : config.title
+  const title =
+    variant === 'project' && projectName
+      ? tPhaseF('phaseF.componentsTasksTaskEmptyState.projectTitleNamed', { name: projectName })
+      : tPhaseF(config.titleKey)
 
   return (
     <div
@@ -88,7 +91,7 @@ export const TaskEmptyState = ({
       <h3 className="mb-2 text-lg font-medium text-text-primary">{title}</h3>
 
       {/* Description */}
-      <p className="mb-6 max-w-sm text-sm text-text-tertiary">{config.description}</p>
+      <p className="mb-6 max-w-sm text-sm text-text-tertiary">{tPhaseF(config.descriptionKey)}</p>
 
       {/* Add Task Button */}
       {config.showAddButton && onAddTask && (

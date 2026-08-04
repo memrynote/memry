@@ -22,7 +22,19 @@
     "writeFailed": "保存此笔记失败。请检查磁盘空间和权限。",
     "readFailed": "读取此笔记失败。文件可能被锁定或已损坏。",
     "deleteFailed": "删除此笔记失败。请检查文件权限。",
-    "invalidPath": "笔记路径无效。"
+    "invalidPath": "笔记路径无效。",
+    "applyTemplateFailed": "应用模板失败",
+    "createFailed": "创建笔记失败",
+    "deleteVersionFailed": "删除版本失败",
+    "exportHtmlFailed": "导出 HTML 失败",
+    "exportPdfFailed": "导出 PDF 失败",
+    "importFilesFailed": "导入文件失败",
+    "moveFailed": "移动笔记失败",
+    "renameFailed": "重命名笔记失败",
+    "reorderFailed": "重新排序笔记失败",
+    "restoreVersionFailed": "恢复版本失败",
+    "setLocalOnlyFailed": "设置“仅本地”失败",
+    "updateFailed": "更新笔记失败"
   },
   "database": {
     "connectionFailed": "无法连接到本地数据库。请尝试重启应用。",
@@ -41,7 +53,14 @@
     "fileTooLarge": "此文件太大，无法附加。",
     "unsupportedType": "不支持此文件类型。",
     "writeFailed": "保存附件失败。请检查磁盘空间。",
-    "deleteFailed": "删除附件失败。"
+    "deleteFailed": "删除附件失败。",
+    "downloadFailed": "附件下载失败",
+    "downloadProgressFailed": "获取下载进度失败",
+    "uploadFailed": "附件上传失败",
+    "uploadProgressFailed": "获取上传进度失败",
+    "emptyFile": "无法上传空文件",
+    "exceedsMaxSize": "文件太大：{size} 超过 {limit} 的上限",
+    "exceedsPlanLimit": "文件超出你的套餐允许的大小：{size} 超过 {limit}"
   },
   "encryption": {
     "failed": "数据加密失败。您的密钥可能需要重新生成。",
@@ -74,6 +93,188 @@
     "securityQuarantinePermanent": "无法验证同步项目，该项目已为安全起见被隔离。",
     "securityQuarantineRetry": "同步项目签名验证失败，将会重试。",
     "certificatePinPaused": "无法验证与同步服务器的安全连接。为保护您的安全，同步已暂停。",
-    "paymentRequired": "使用托管加密同步需要付费的同步套餐。"
+    "paymentRequired": "使用托管加密同步需要付费的同步套餐。",
+    "attachmentUploadFailed": "无法同步附件“{filename}”。该文件仍保留在此设备上。",
+    "fileTooLarge": "此文件超出了您的套餐允许的大小。升级套餐即可同步更大的文件。",
+    "vaultRecovered": "保险库密钥已恢复。同步将恢复。",
+    "historyFetchFailed": "获取同步历史失败",
+    "keyPersistenceFailed": "无法安全保存加密密钥。设备注册已回滚，请重试。",
+    "serverUnreachable": "无法连接到同步服务器，请检查你的网络连接。",
+    "updateSyncedSettingFailed": "更新同步设置失败",
+    "requestTimedOut": "同步请求超时，请检查你的网络连接。"
+  },
+  "agent": {
+    "conversationBusy": "对话正忙",
+    "runtimeStarting": "Agent 运行时正在启动，请重试。"
+  },
+  "ai": {
+    "inlineDisabled": "AI 行内编辑已禁用",
+    "listOllamaModelsFailed": "列出 Ollama 模型失败"
+  },
+  "auth": {
+    "approveLinkingFailed": "批准关联失败",
+    "cannotRemoveCurrentDevice": "无法移除当前设备",
+    "completeLinkingFailed": "完成关联失败",
+    "confirmRecoveryPhraseFailed": "确认恢复短语失败",
+    "fetchSasCodeFailed": "获取 SAS 校验码失败",
+    "finalizeVaultChoiceFailed": "确认保险库选择失败",
+    "initiateOAuthFailed": "发起 OAuth 失败",
+    "invalidRecoveryPhraseFormat": "恢复短语格式无效",
+    "linkDeviceQrFailed": "通过二维码关联设备失败",
+    "linkRecoveryPhraseFailed": "通过恢复短语关联失败",
+    "notAuthenticated": "尚未登录",
+    "pickFolderFailed": "选择文件夹失败",
+    "recoveryPhraseMismatch": "恢复短语不匹配，请重试。",
+    "removeDeviceFailed": "移除设备失败",
+    "renameDeviceFailed": "重命名设备失败",
+    "requestOtpFailed": "请求验证码失败",
+    "resendOtpFailed": "重新发送验证码失败",
+    "sessionExpired": "会话已过期，请重新登录。",
+    "setupFirstDeviceOAuthFailed": "通过 OAuth 设置首台设备失败",
+    "verifyOtpFailed": "校验验证码失败"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "该项目已加入书签",
+    "notFound": "未找到书签"
+  },
+  "calendar": {
+    "connectProviderFailed": "连接日历服务失败",
+    "createEventFailed": "创建日历事件失败",
+    "deleteEventFailed": "删除日历事件失败",
+    "disconnectProviderFailed": "断开日历服务失败",
+    "eventNotFound": "未找到日历事件",
+    "googleNotConnected": "此设备尚未连接 Google Calendar",
+    "listGoogleCalendarsFailed": "列出 Google 日历失败",
+    "onlyGoogleSourcesRetryable": "只有 Google 日历来源可以重试",
+    "onlySourcesSelectable": "只有日历来源可以被选择",
+    "promoteExternalEventFailed": "转换外部日历事件失败",
+    "refreshProviderFailed": "刷新日历服务失败",
+    "retryGoogleSourceSyncFailed": "重试 Google Calendar 来源同步失败",
+    "setDefaultGoogleCalendarFailed": "设置默认 Google 日历失败",
+    "signInBeforeRefresh": "请先登录 memrynote，再刷新 Google Calendar",
+    "sourceNotFound": "未找到日历来源",
+    "syncFailed": "同步失败",
+    "updateEventFailed": "更新日历事件失败",
+    "updateSourceSelectionFailed": "更新日历来源选择失败"
+  },
+  "folder": {
+    "createFailed": "创建文件夹失败",
+    "deleteFailed": "删除文件夹失败",
+    "renameFailed": "重命名文件夹失败",
+    "setConfigFailed": "设置文件夹配置失败"
+  },
+  "folderView": {
+    "deleteViewFailed": "删除视图失败",
+    "setConfigFailed": "设置配置失败",
+    "setViewFailed": "设置视图失败"
+  },
+  "googleCalendar": {
+    "accessDenied": "Google Calendar 的访问请求被拒绝。你可以随时重新连接。",
+    "connectFailed": "无法连接到 Google Calendar，请稍后重试。",
+    "misconfigured": "Google Calendar 的配置不正确。如果问题持续出现，请联系支持团队。",
+    "reconnectNeeded": "你的 Google Calendar 连接已过期。请断开后重新连接。",
+    "scopeMissing": "由于未授予日历权限，我们无法访问你的 Google Calendar。请重试，并确保在 Google 授权页面上保持勾选日历复选框。",
+    "temporarilyUnavailable": "Google Calendar 暂时不可用，请稍后重试。"
+  },
+  "importer": {
+    "cancelFailed": "取消失败",
+    "fileSelectionFailed": "文件选择失败",
+    "importFailed": "导入失败",
+    "listFailed": "列出导入工具失败",
+    "previewFailed": "预览失败"
+  },
+  "project": {
+    "archiveFailed": "存档项目失败",
+    "captureLinkFailed": "捕获链接失败",
+    "createFailed": "创建项目失败",
+    "deleteFailed": "删除项目失败",
+    "importFilesFailed": "导入文件失败",
+    "linkItemFailed": "链接项目条目失败",
+    "listForItemFailed": "列出该条目所属的项目失败",
+    "reorderFailed": "重新排序项目失败",
+    "setHomeNoteFailed": "设置主页笔记失败",
+    "unlinkItemFailed": "取消链接条目失败",
+    "updateFailed": "更新项目失败",
+    "updatePinnedFailed": "更新置顶状态失败"
+  },
+  "property": {
+    "alreadyExists": "属性“{name}”已存在",
+    "createDefinitionFailed": "创建属性定义失败",
+    "entityNotFound": "未找到该条目",
+    "notFound": "未找到属性“{name}”",
+    "renameFailed": "重命名属性失败",
+    "setCalendarVisibilityFailed": "设置属性在日历上的可见性失败",
+    "setFailed": "设置属性失败",
+    "updateDefinitionFailed": "更新属性定义失败"
+  },
+  "reminder": {
+    "createFailed": "创建提醒失败",
+    "dismissAllFailed": "忽略提醒失败",
+    "dismissFailed": "忽略提醒失败",
+    "notFound": "未找到提醒",
+    "snoozeFailed": "延迟提醒失败",
+    "updateFailed": "更新提醒失败"
+  },
+  "savedFilter": {
+    "notFound": "未找到已保存的筛选器"
+  },
+  "search": {
+    "rebuildFailed": "重建失败"
+  },
+  "settings": {
+    "modelAlreadyLoading": "模型正在加载中",
+    "modelLoadFailed": "加载模型失败",
+    "shortcutInUse": "快捷键 {shortcut} 已被占用",
+    "terminalCommandInstallFailed": "安装终端命令失败",
+    "terminalCommandUninstallFailed": "卸载终端命令失败",
+    "unknownVault": "未知的保险库",
+    "voiceModelDownloadFailed": "下载语音模型失败"
+  },
+  "tag": {
+    "categoryNameRequired": "分类名称为必填",
+    "createCategoryFailed": "创建标签分类失败",
+    "deleteCategoryFailed": "删除标签分类失败",
+    "deleteFailed": "删除标签失败",
+    "listCategoriesFailed": "列出标签分类失败",
+    "mergeFailed": "合并标签失败",
+    "mergeSameTag": "源标签与目标标签相同",
+    "pinNoteFailed": "置顶笔记失败",
+    "removeFromNoteFailed": "从笔记中移除标签失败",
+    "renameCategoryFailed": "重命名标签分类失败",
+    "renameFailed": "重命名标签失败",
+    "reorderFailed": "重新排序标签失败",
+    "unpinNoteFailed": "取消置顶笔记失败",
+    "updateColorFailed": "更新标签颜色失败",
+    "updateIconFailed": "更新标签图标失败"
+  },
+  "task": {
+    "archiveFailed": "归档任务失败",
+    "archiveManyFailed": "归档任务失败",
+    "completeFailed": "完成任务失败",
+    "completeManyFailed": "完成任务失败",
+    "convertToSubtaskFailed": "转换为子任务失败",
+    "convertToTaskFailed": "转换为任务失败",
+    "createFailed": "创建任务失败",
+    "deleteFailed": "删除任务失败",
+    "deleteManyFailed": "删除任务失败",
+    "duplicateFailed": "复制任务失败",
+    "moveFailed": "移动任务失败",
+    "moveManyFailed": "移动任务失败",
+    "reorderFailed": "重新排序任务失败",
+    "unarchiveFailed": "取消归档任务失败",
+    "uncompleteFailed": "取消完成任务失败",
+    "updateFailed": "更新任务失败"
+  },
+  "taskStatus": {
+    "createFailed": "创建状态失败",
+    "deleteFailed": "删除状态失败",
+    "reorderFailed": "重新排序状态失败",
+    "updateFailed": "更新状态失败"
+  },
+  "template": {
+    "createFailed": "创建模板失败",
+    "deleteFailed": "删除模板失败",
+    "duplicateFailed": "复制模板失败",
+    "updateFailed": "更新模板失败"
   }
 }

@@ -67,14 +67,16 @@
     "title": "Ștergeți evenimentul?",
     "local-description": "„{title}” va fi șters definitiv. Această acțiune nu poate fi anulată.",
     "google-bound-description": "„{title}” va fi eliminat din memrynote și Google Calendar. Această acțiune nu poate fi anulată.",
-    "context-menu-delete-label": "Șterge evenimentul"
+    "context-menu-delete-label": "Șterge evenimentul",
+    "context-menu-add-to-project": "Adaugă la proiect"
   },
   "promote-dialog": {
     "aria": "Editați evenimentul din calendar extern",
     "title": "Editați acest eveniment în memrynote?",
     "body": "Editarea acestui eveniment va crea o copie legată în memrynote, astfel încât modificările se sincronizează în ambele sensuri. Continuați?",
     "do-not-ask-again": "Nu mai întreba",
-    "confirm-label": "Editați în memrynote"
+    "confirm-label": "Editați în memrynote",
+    "agent-notice": "Agentul AI poate citi această copie, chiar dacă accesul AI la Google Calendar este dezactivat. Evenimentul Google original rămâne ascuns față de el."
   },
   "onboarding-dialog": {
     "aria": "Alegeți calendarul dvs. implicit Google",
@@ -181,6 +183,16 @@
     "placeholder": "Caută evenimente, sarcini, mementouri…"
   },
   "undo": {
-    "moveEvent": "Mută eveniment"
+    "moveEvent": "Mută eveniment",
+    "moveTask": "Reprogramează sarcina"
+  },
+  "agent-access-dialog": {
+    "allow": "Permite",
+    "aria": "Alege dacă agentul AI poate citi evenimentele tale din Google Calendar",
+    "body": "Vei vedea în continuare evenimentele Google în memrynote, indiferent ce alegi. Aici decizi doar dacă agentul AI le poate citi atunci când îl întrebi despre programul tău.",
+    "deny": "Nu permite",
+    "footnote": "Poți schimba oricând această opțiune din Setări → Integrari → Google Calendar.",
+    "save-error": "Nu s-a putut salva alegerea",
+    "title": "Permiți AI-ului să îți citească evenimentele din Google Calendar?"
   }
 }

@@ -214,7 +214,7 @@ export function registerAuthOAuthHandlers(): void {
 
       return { state }
     },
-    'Failed to initiate OAuth'
+    'errors:auth.initiateOAuthFailed'
   )
 
   // --- Token Refresh (T073, T073a, T073c) ---
@@ -257,7 +257,7 @@ export function registerAuthOAuthHandlers(): void {
 
       return { success: true, needsRecoverySetup: true, needsRecoveryInput: true }
     },
-    'Failed to setup first device via OAuth'
+    'errors:auth.setupFirstDeviceOAuthFailed'
   )
 
   // --- Recovery Phrase Confirmation (T062) ---
@@ -281,7 +281,7 @@ export function registerAuthOAuthHandlers(): void {
       }
       return { success: true }
     },
-    'Failed to confirm recovery phrase'
+    'errors:auth.confirmRecoveryPhraseFailed'
   )
 
   ipcMain.handle(SYNC_CHANNELS.GET_RECOVERY_PHRASE, () => {

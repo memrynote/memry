@@ -1,4 +1,3 @@
-import { BrowserWindow } from 'electron'
 import { eq } from 'drizzle-orm'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
@@ -7,6 +6,7 @@ import type { ArticleCapture } from '@memry/article-extract'
 import { requireDatabase } from '../database'
 import { generateId } from '../lib/id'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { publishProjectionEvent } from '../projections'
 import { insertItemWithTags, emitCapturedAndSync } from './domain'
 import { findDuplicateByUrl } from './duplicates'
@@ -24,9 +24,7 @@ export interface IngestArticleCaptureInput extends ArticleCapture {
 }
 
 function emitInboxEvent(channel: string, data: unknown): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, data)
-  })
+  broadcastToAllWindows(channel, data)
 }
 
 function emitUpdated(itemId: string, changes: Record<string, unknown>): void {

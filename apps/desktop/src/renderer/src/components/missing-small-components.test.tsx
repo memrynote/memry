@@ -1,11 +1,11 @@
-import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { LOCALE_DISPLAY_NAMES, SUPPORTED_LOCALES } from '@memry/i18n/shared'
 
 import { AddSubtaskInput } from './tasks/add-subtask-input'
 import { VaultOnboarding } from './vault-onboarding'
-import { UnsavedChangesDialog, useUnsavedChangesGuard } from './tabs/unsaved-changes-dialog'
+import { UnsavedChangesDialog } from './tabs/unsaved-changes-dialog'
 import { DocumentInfoTab } from './shared/document-info-tab'
 import { NoteDrawer } from './journal/note-drawer'
 import { BulkTagPopover } from './bulk/bulk-tag-popover'
@@ -289,23 +289,7 @@ describe('missing small component surfaces', () => {
     )
   })
 
-  it('guards modified tab closes and renders unsaved changes actions', async () => {
-    const { result } = renderHook(() => useUnsavedChangesGuard())
-
-    act(() => {
-      expect(result.current.requestClose('dirty', 'group')).toBe(false)
-    })
-    expect(result.current.pendingClose).toEqual(
-      expect.objectContaining({ tabId: 'dirty', tabTitle: 'Dirty Note' })
-    )
-
-    act(() => result.current.confirmClose())
-    expect(mocks.closeTab).toHaveBeenCalledWith('dirty', 'group')
-
-    act(() => {
-      expect(result.current.requestClose('clean', 'group')).toBe(true)
-    })
-
+  it('renders unsaved changes dialog actions', () => {
     const onSave = vi.fn()
     const onDiscard = vi.fn()
     const onCancel = vi.fn()

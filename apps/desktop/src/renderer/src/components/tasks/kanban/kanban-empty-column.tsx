@@ -1,6 +1,7 @@
 import { Plus, Check, Calendar } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 type EmptyVariant = 'default' | 'done' | 'schedule'
 
@@ -9,21 +10,24 @@ interface KanbanEmptyColumnProps {
   isDropTarget?: boolean
 }
 
-const EMPTY_CONFIG: Record<EmptyVariant, { icon: typeof Plus; title: string; subtitle: string }> = {
+const EMPTY_CONFIG: Record<
+  EmptyVariant,
+  { icon: typeof Plus; titleKey: string; subtitleKey: string }
+> = {
   default: {
     icon: Plus,
-    title: 'No tasks',
-    subtitle: 'Drag tasks here or click + to add'
+    titleKey: 'kanban.empty.default.title',
+    subtitleKey: 'kanban.empty.default.subtitle'
   },
   done: {
     icon: Check,
-    title: 'No completed tasks',
-    subtitle: 'Complete tasks to see them here'
+    titleKey: 'kanban.empty.done.title',
+    subtitleKey: 'kanban.empty.done.subtitle'
   },
   schedule: {
     icon: Calendar,
-    title: 'Nothing scheduled',
-    subtitle: 'Drag tasks here to reschedule'
+    titleKey: 'kanban.empty.schedule.title',
+    subtitleKey: 'kanban.empty.schedule.subtitle'
   }
 }
 
@@ -31,6 +35,7 @@ export const KanbanEmptyColumn = ({
   variant = 'default',
   isDropTarget = false
 }: KanbanEmptyColumnProps): React.JSX.Element => {
+  const { t } = useT('tasks')
   const config = EMPTY_CONFIG[variant]
   const Icon = config.icon
 
@@ -43,8 +48,8 @@ export const KanbanEmptyColumn = ({
     >
       <Icon className="w-5 h-5 text-text-tertiary" />
       <div className="text-center">
-        <p className="text-[12px] font-medium text-muted-foreground">{config.title}</p>
-        <p className="text-[11px] text-text-tertiary mt-0.5">{config.subtitle}</p>
+        <p className="text-[12px] font-medium text-muted-foreground">{t(config.titleKey)}</p>
+        <p className="text-[11px] text-text-tertiary mt-0.5">{t(config.subtitleKey)}</p>
       </div>
     </div>
   )

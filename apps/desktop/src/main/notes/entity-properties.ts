@@ -16,6 +16,7 @@ import { updateNote } from '../vault/notes'
 import { syncNoteUpdate } from './runtime-effects'
 import { enqueueJournalUpdate } from '../journal/runtime-effects'
 import { updateJournalProperties } from '../journal/properties'
+import { getMainI18n } from '../lib/main-i18n'
 
 const logger = createLogger('EntityProperties')
 
@@ -34,7 +35,7 @@ export async function setEntityProperties(
   const entity = getNoteCacheById(db, entityId)
 
   if (!entity) {
-    return { success: false, error: 'Entity not found' }
+    return { success: false, error: getMainI18n().t('errors:property.entityNotFound') }
   }
 
   logger.debug('setEntityProperties', { entityId, propertyKeys: Object.keys(properties) })

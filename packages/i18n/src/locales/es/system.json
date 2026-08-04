@@ -28,6 +28,13 @@
       "readyDetailFallback": "Reinicie memrynote para finalizar la instalación de la actualización.",
       "buttonRestartNow": "Reiniciar ahora",
       "releaseNotesLabel": "Notas de la versión:"
+    },
+    "pair": {
+      "buttonAllow": "Permitir",
+      "buttonDeny": "Denegar",
+      "buttonPair": "Vincular",
+      "message": "¿Permitir que la extensión de navegador de Memry envíe capturas a esta app?",
+      "title": "Vincular la extensión del navegador"
     }
   },
   "notification": {
@@ -38,6 +45,11 @@
       "fallback": "Recordatorio pendiente",
       "default": "Recordatorio",
       "task": "Recordatorio de tarea"
+    },
+    "inboxReview": {
+      "body": "Tienes {count, plural, one {# elemento} many {# elementos} other {# elementos}} por revisar.",
+      "testBody": "Esto es una prueba — así se verán tus recordatorios de revisión diaria.",
+      "title": "Es hora de revisar tu bandeja de entrada"
     }
   },
   "error": {
@@ -45,5 +57,15 @@
     "definitionNotFound": "Definición no encontrada",
     "noteNotFound": "Nota no encontrada",
     "updateFailed": "La actualización falló"
+  },
+  "startup": {
+    "failed": {
+      "body": "Esto puede ocurrir cuando queda muy poco espacio libre en el disco o con controladores gráficos antiguos. Libera algo de espacio en el disco y vuelve a abrir MemryNote. Si sigue pasando, reinstalar la app suele solucionarlo.",
+      "title": "MemryNote no pudo terminar de iniciarse"
+    },
+    "installingUpdate": {
+      "subtitle": "MemryNote se volverá a abrir automáticamente.",
+      "title": "Instalando la actualización…"
+    }
   }
 }

@@ -209,7 +209,7 @@
     "readingTime": "Geschätzte Lesezeit",
     "lastModified": "Zuletzt geändert",
     "lessThanOneMinute": "< 1 Min",
-    "minutes": "{minutes} min",
+    "minutes": "{minutes} Min",
     "read": "{readingTime} gelesen",
     "modified": "Geändert {date}"
   },
@@ -250,7 +250,7 @@
     "errorPrefix": "Fehler:"
   },
   "export": {
-    "noteTitle": "Journal - {month} {day}, {year}"
+    "noteTitle": "Journal - {day}. {month} {year}"
   },
   "note": {
     "generatedTitle": "Hinweis – {date}",

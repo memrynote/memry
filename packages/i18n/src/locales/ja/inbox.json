@@ -270,7 +270,50 @@
     "panelEmpty": "今後のリマインダーはありません。",
     "panelPast": "過去",
     "panelUpcoming": "今後の予定",
-    "taskFallback": "タスク"
+    "taskFallback": "タスク",
+    "dateTime": {
+      "dateAt": "{date} {time}",
+      "dateCompact": "{date}、{time}",
+      "todayAt": "今日 {time}",
+      "todayCompact": "今日、{time}",
+      "tomorrowAt": "明日 {time}",
+      "tomorrowCompact": "明日、{time}"
+    },
+    "presets": {
+      "anniversaryReminder": "記念日のリマインダー",
+      "inHours": {
+        "label": "{count, plural, other {# 時間後}}"
+      },
+      "inMinutes": {
+        "label": "{count, plural, other {# 分後}}"
+      },
+      "inMonths": {
+        "label": "{count, plural, other {# か月後}}"
+      },
+      "inWeeks": {
+        "label": "{count, plural, other {# 週間後}}"
+      },
+      "inYears": {
+        "label": "{count, plural, other {# 年後}}"
+      },
+      "laterToday": {
+        "description": "{count, plural, other {# 時間後}}",
+        "label": "今日のあとで"
+      },
+      "monthlyReflection": "月次の振り返り",
+      "nextWeek": {
+        "description": "月曜日の午前 9 時",
+        "label": "来週"
+      },
+      "quarterlyReflection": "四半期の振り返り",
+      "reviewInAWeek": "1 週間後に見直す",
+      "sameDayNextMonth": "翌月の同じ日",
+      "tomorrow": {
+        "description": "明日の午前 9 時",
+        "label": "明日"
+      },
+      "tomorrowMorning": "明日の朝"
+    }
   },
   "insights": {
     "captureActivity": "キャプチャアクティビティ",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "ファイルを添付（画像、音声、ビデオ、PDF）",
       "recordVoiceMemo": "ボイスメモを録音する",
       "recordVoiceMemo2": "ボイスメモを録音する",
-      "alreadyCaptured": "すでに捕らえられています：「",
-      "rdquo": "rdquo;",
       "captureAnyway": "とにかくキャプチャする",
       "focusShortcut": "キャプチャ入力にフォーカス",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "リンクをキャプチャ",
+      "captureNote": "メモをキャプチャ",
+      "placeholder": "クイックキャプチャ — リンクを貼る、思いつきを書き留める…",
+      "duplicateNotice": "すでにキャプチャ済み:「{title}」"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "フォルダーを選択してください",
@@ -414,10 +459,9 @@
       "captured": "捕らえられた",
       "dismissError": "エラーを無視",
       "alreadyCaptured": "すでに捕獲されています",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; · ",
       "captureAnyway": "とにかくキャプチャする",
-      "close": "閉じる"
+      "close": "閉じる",
+      "duplicateMeta": "「{title}」· {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "ドロップしてキャプチャ",
@@ -466,7 +510,12 @@
       "cancelRecording": "録音をキャンセルする",
       "cancel": "キャンセル",
       "stopRecording": "録音を停止する",
-      "stop": "停止"
+      "stop": "停止",
+      "enableMicInSettings": "システム設定でマイクへのアクセスを許可してから、もう一度お試しください。",
+      "failedToStart": "録音を開始できませんでした",
+      "microphoneAccessDenied": "マイクへのアクセスが拒否されました",
+      "noMicrophoneFound": "マイクが見つかりません",
+      "recordingError": "録音中にエラーが発生しました"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "ファイルのキャプチャに失敗しました",
       "fileCaptureFailed": "ファイルのキャプチャに失敗しました",
       "failedToCaptureAudio": "音声のキャプチャに失敗しました",
-      "failedToCaptureVoice": "音声のキャプチャに失敗しました"
+      "failedToCaptureVoice": "音声のキャプチャに失敗しました",
+      "failedToLoadInboxPreferences": "受信箱の設定を読み込めませんでした",
+      "failedToUpdateInboxPreferences": "受信箱の設定を更新できませんでした"
     },
     "toasts": {
       "inboxRefreshed": "受信トレイが更新されました"
@@ -516,5 +567,10 @@
     "task": "タスク",
     "time": "時刻",
     "title": "変換"
+  },
+  "reviewNudge": {
+    "action": "受信箱を開く",
+    "description": "今日のキャプチャを、落ち着いて一度に片づけましょう。",
+    "title": "{count, plural, other {#件のアイテムを見直しましょう}}"
   }
 }

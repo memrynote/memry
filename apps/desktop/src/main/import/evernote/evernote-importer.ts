@@ -26,6 +26,7 @@ import * as path from 'path'
 import * as crypto from 'crypto'
 import { JSDOM } from 'jsdom'
 import { parseEnex, prepareEnml, resourceByHash } from '@memry/importers/evernote'
+import { IMPORT_STATUS, importingItemStatus } from '@memry/importers/messages'
 import { createNote } from '../../vault/notes-crud'
 import { saveAttachment } from '../../vault/attachments'
 import { attachmentMarkdown } from '../_shared/attachment-markdown'
@@ -85,7 +86,7 @@ export const evernoteImporter: Importer = {
 
   async run(input: ImportInput, ctx: ImportContext): Promise<ImportSummary> {
     ctx.setPhase('scanning')
-    ctx.status('Scanning .enex files…')
+    ctx.status(IMPORT_STATUS.evernoteScanning)
 
     // Tally total notes across all files for progress reporting
     const filePlans: Array<{ filePath: string; notebook: string }> = []
@@ -125,7 +126,7 @@ export const evernoteImporter: Importer = {
         if (ctx.isCancelled()) return ctx.toSummary()
 
         try {
-          ctx.status(`Importing ${enexNote.title}`)
+          ctx.status(importingItemStatus(enexNote.title))
 
           // Build hash → resource map (injecting Node's MD5 implementation)
           const hashMap = resourceByHash(enexNote.resources, md5Hex)

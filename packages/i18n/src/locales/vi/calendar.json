@@ -67,14 +67,16 @@
     "title": "Xóa sự kiện?",
     "local-description": "\"{title}\" sẽ bị xóa vĩnh viễn. Hành động này không thể hồi phục.",
     "google-bound-description": "\"{title}\" sẽ bị xóa khỏi memrynote và Google Calendar. Hành động này không thể hoàn tác.",
-    "context-menu-delete-label": "Xóa sự kiện"
+    "context-menu-delete-label": "Xóa sự kiện",
+    "context-menu-add-to-project": "Thêm vào dự án"
   },
   "promote-dialog": {
     "aria": "Chỉnh sửa sự kiện trên lịch ngoài",
     "title": "Chỉnh sửa sự kiện này trong memrynote?",
     "body": "Chỉnh sửa sự kiện này sẽ tạo một bản sao liên kết trong memrynote để các thay đổi đồng bộ hai chiều. Tiếp tục?",
     "do-not-ask-again": "Không hỏi lại",
-    "confirm-label": "Chỉnh sửa trong memrynote"
+    "confirm-label": "Chỉnh sửa trong memrynote",
+    "agent-notice": "Trợ lý AI có thể đọc bản sao này, ngay cả khi quyền truy cập của AI vào Google Calendar đang tắt. Sự kiện Google gốc của bạn vẫn ẩn với trợ lý AI."
   },
   "onboarding-dialog": {
     "aria": "Chọn lịch Google mặc định của bạn",
@@ -181,6 +183,16 @@
     "placeholder": "Tìm sự kiện, công việc, nhắc nhở…"
   },
   "undo": {
-    "moveEvent": "Di chuyển sự kiện"
+    "moveEvent": "Di chuyển sự kiện",
+    "moveTask": "Đổi lịch công việc"
+  },
+  "agent-access-dialog": {
+    "allow": "Cho phép",
+    "aria": "Chọn xem AI có được đọc các sự kiện Google Calendar của bạn hay không",
+    "body": "Dù bạn chọn cách nào, bạn vẫn thấy sự kiện Google của mình trong memrynote. Lựa chọn này chỉ quyết định trợ lý AI có được đọc chúng hay không khi bạn hỏi nó về lịch trình của mình.",
+    "deny": "Không cho phép",
+    "footnote": "Bạn có thể thay đổi điều này bất cứ lúc nào trong Cài đặt → Tích hợp → Google Calendar.",
+    "save-error": "Không lưu được lựa chọn của bạn",
+    "title": "Cho AI đọc các sự kiện Google Calendar của bạn?"
   }
 }

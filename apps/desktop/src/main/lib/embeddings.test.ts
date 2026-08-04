@@ -38,7 +38,9 @@ class MockUtilityProcess extends EventEmitter {
 }
 
 class MockBrowserWindow {
+  isDestroyed = () => false
   webContents = {
+    isDestroyed: () => false,
     send: vi.fn()
   }
 }

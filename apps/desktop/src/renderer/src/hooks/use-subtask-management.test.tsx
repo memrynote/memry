@@ -228,14 +228,14 @@ describe('useSubtaskManagement', () => {
 
     act(() => result.current.handleBulkAddSubtasks('parent', ['Solo']))
     expect(onTasksChange).toHaveBeenCalledWith(updatedTasks)
-    expect(toast.success).toHaveBeenCalledWith('1 subtask added')
+    expect(toast.success).toHaveBeenCalledWith('toasts.subtasks.added')
 
     act(() => result.current.handleReorderSubtasks('parent', ['child']))
     expect(onTasksChange).toHaveBeenCalledWith(updatedTasks)
 
     act(() => result.current.handlePromoteToTask('missing-child'))
     expect(onTasksChange).toHaveBeenCalledWith(updatedTasks)
-    expect(toast.success).toHaveBeenCalledWith('"undefined" promoted to task')
+    expect(toast.success).toHaveBeenCalledWith('toasts.subtasks.promoted')
 
     act(() => result.current.handleDeleteSubtask('child'))
     expect(onTasksChange).toHaveBeenCalledWith(updatedTasks)
@@ -429,7 +429,7 @@ describe('useSubtaskManagement', () => {
       )
     expect(successCall?.[1]).toMatchObject({
       duration: 10000,
-      action: { label: 'Undo', onClick: expect.any(Function) }
+      action: { label: 'action.undo', onClick: expect.any(Function) }
     })
     act(() => successCall?.[1]?.action.onClick())
     expect(onUpdateTask).toHaveBeenCalledWith('parent', { completedAt: null })
@@ -469,7 +469,7 @@ describe('useSubtaskManagement', () => {
     })
     act(() => result.current.openBulkDueDateDialog('parent'))
     act(() => result.current.confirmBulkDueDate(null, false))
-    expect(toast.success).toHaveBeenCalledWith('Due date cleared for 2 subtasks')
+    expect(toast.success).toHaveBeenCalledWith('toasts.subtasks.dueDateCleared')
 
     mocks.setDueDateForAllSubtasks.mockReturnValueOnce({
       success: false,

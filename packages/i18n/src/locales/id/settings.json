@@ -28,7 +28,8 @@
         "properties": "Properti",
         "commandLine": "Baris Perintah",
         "features": "Fitur",
-        "import": "Impor"
+        "import": "Impor",
+        "inbox": "Kotak masuk"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Mengunduh {percent}%",
         "downloaded": "Mulai ulang untuk Menginstal",
         "idle": "Periksa Pembaruan"
+      },
+      "autoCheck": {
+        "description": "Periksa rilis baru saat aplikasi dijalankan dan secara berkala selama aplikasi terbuka.",
+        "error": "Gagal memperbarui setelan pemeriksaan otomatis",
+        "label": "Periksa pembaruan secara otomatis"
+      },
+      "autoDownload": {
+        "description": "Unduh dan pasang rilis baru di latar belakang tanpa meminta konfirmasi.",
+        "error": "Gagal memperbarui setelan unduhan otomatis",
+        "label": "Unduh pembaruan secara otomatis"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Bagikan Metrik Penggunaan Anonim",
         "description": "Ini hanya metrik langsung — tidak ada konten catatan, permintaan pencarian, jalur file, email, atau ID mentah yang pernah dikirim.",
         "error": "Gagal memperbarui setelan telemetri"
+      },
+      "diagnostics": {
+        "building": "Menyiapkan laporan…",
+        "consent": "Kirim laporan diagnostik satu kali? Laporan hanya berisi log teknis yang sudah disamarkan — tanpa konten catatan.",
+        "error": "Gagal mengirim laporan diagnostik",
+        "notNow": "Nanti saja",
+        "previewError": "Tidak dapat menyiapkan laporan diagnostik",
+        "previewLabel": "Pratinjau isi laporan",
+        "send": "Kirim",
+        "sendReport": {
+          "button": "Kirim laporan diagnostik",
+          "description": "Kirim laporan satu kali berisi log teknis yang sudah disamarkan untuk membantu kami menelusuri masalah yang Anda alami.",
+          "label": "Laporan Diagnostik"
+        },
+        "sending": "Mengirim…",
+        "sent": "Laporan terkirim — referensi {incidentId}",
+        "snapshotLabel": "Cuplikan perangkat",
+        "title": "Kirim laporan diagnostik?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Tata Letak",
-      "toolbar": "Bilah Alat"
+      "toolbar": "Bilah Alat",
+      "spelling": "Ejaan"
     },
     "width": {
       "label": "Lebar Penyunting",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Sempit",
         "medium": "Sedang",
-        "wide": "Lebar"
+        "wide": "Lebar",
+        "full": "Lebar penuh",
+        "normal": "Normal"
       },
       "error": "Gagal memperbarui lebar editor"
     },
@@ -229,6 +261,11 @@
       "label": "Bilah Alat Pemformatan Lengket",
       "description": "Selalu tampilkan toolbar di atas editor",
       "error": "Gagal memperbarui mode bilah alat"
+    },
+    "spellCheck": {
+      "description": "Garis bawahi kata yang salah eja di catatan dan jurnal",
+      "error": "Gagal memperbarui pemeriksaan ejaan",
+      "label": "Periksa Ejaan"
     }
   },
   "templates": {
@@ -640,7 +677,7 @@
       "vaultPickerFolderLabel": "Simpan vault di folder",
       "vaultPickerPrimaryHint": "Buka sekarang",
       "vaultPickerTitle": "Pilih apa yang akan ditarik",
-      "vaultRow": "Vault — {{count}} item · {{date}}"
+      "vaultRow": "Vault — {count} item · {date}"
     }
   },
   "devices": {
@@ -673,7 +710,8 @@
       "removeFailed": "Gagal menghapus perangkat",
       "renamed": "Berganti nama menjadi \"{name}\"",
       "renameFailed": "Gagal mengganti nama perangkat"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Tautkan perangkat baru",
@@ -855,6 +893,11 @@
         "description": "Nonaktifkan untuk sinkronisasi satu arah — Anda tetap melihat acara Google Anda di memrynote, tetapi acara memrynote tidak akan muncul di Google.",
         "error": "Gagal memperbarui arah sinkronisasi",
         "label": "Tampilkan acara memrynote di Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Nonaktif secara bawaan. Aktifkan dan agen AI dapat membaca acara Google Anda; nonaktifkan dan ia tidak mendapat apa pun saat ditanya tentang acara itu. Anda tetap melihatnya di memrynote, apa pun pilihan Anda.",
+        "error": "Gagal memperbarui akses AI",
+        "label": "Izinkan AI membaca acara Google Calendar"
       }
     },
     "sourcePicker": {
@@ -898,7 +941,8 @@
     },
     "groups": {
       "storageUsage": "Penggunaan Penyimpanan",
-      "location": "Lokasi"
+      "location": "Lokasi",
+      "accountVaults": "Brankas di akun Anda"
     },
     "loadingStorage": "Memuat info penyimpanan...",
     "signInStorage": "Masuk untuk melihat penggunaan penyimpanan",
@@ -919,6 +963,17 @@
       },
       "warningTitle": "Penyimpanan hampir penuh",
       "warningDescription": "Kosongkan ruang atau tingkatkan paket Anda untuk menghindari masalah sinkronisasi."
+    },
+    "accountVaults": {
+      "activeHint": "Beralih ke brankas lain untuk menghapus brankas ini.",
+      "cloudOnly": "Tidak ada di perangkat ini",
+      "delete": "Hapus",
+      "deleteBody": "Semua data brankas ini yang sudah disinkronkan akan dihapus permanen dari server Memry, dan tindakan ini tidak dapat dibatalkan. File Anda di disk tidak ikut terhapus.",
+      "deleteConfirm": "Hapus dari akun",
+      "deleteFailed": "Tidak dapat menghapus brankas",
+      "deleteTitle": "Hapus “{name}” dari akun Anda?",
+      "empty": "Belum ada brankas yang disinkronkan ke akun Anda.",
+      "itemsCount": "{count} item"
     }
   },
   "tags": {
@@ -1137,16 +1192,12 @@
       "press": "Tekan ",
       "toToggleThisDialog": "untuk mengaktifkan dialog ini"
     },
-    "componentsSyncDeviceList": {
-      "middot": "titik tengah;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Perangkat ini telah dihapus",
       "exporting": "Mengekspor...",
       "signOut": "Keluar"
     },
     "componentsSyncSyncHistory": {
-      "middot": "titik tengah; ",
       "activity": "Aktivitas",
       "filterBySyncType": "Filter menurut jenis sinkronisasi",
       "allTypes": "Semua tipe",
@@ -1160,7 +1211,12 @@
       "last30Days": "30 hari terakhir",
       "loadingSyncHistory": "Memuat riwayat sinkronisasi",
       "noSyncActivityYet": "Belum ada aktivitas sinkronisasi",
-      "loadMore": "Muat lebih banyak"
+      "loadMore": "Muat lebih banyak",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, tampilkan detail kesalahan",
+      "summaryFailed": "Sinkronisasi gagal",
+      "summaryPulled": "{count, plural, other {# item ditarik}}",
+      "summaryPushed": "{count, plural, other {# item didorong}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Terakhir disinkronkan ",
@@ -1208,102 +1264,103 @@
       "failedToCloseVault": "Gagal menutup brankas",
       "failedToSwitchVault": "Gagal mengganti brankas",
       "failedToUpdateConfig": "Gagal memperbarui konfigurasi",
-      "failedToReindex": "Gagal mengindeks ulang"
+      "failedToReindex": "Gagal mengindeks ulang",
+      "failedToLoadTasks": "Gagal memuat tugas"
     }
   },
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Akses server lokal untuk klien MCP eksternal."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Koneksi",
+      "access": "Akses"
     },
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Gunakan endpoint localhost ini dari Cursor, Claude Desktop, atau Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Token bearer",
+        "description": "Kredensial dalam memori untuk sesi aplikasi ini."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Rotasi token",
+        "description": "Batalkan sesi klien eksternal yang masih aktif."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "Salin {label}",
+    "notRunning": "Tidak berjalan",
+    "toolsBadge": "{count, plural, other {# alat}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Izin Agent",
+      "subtitle": "Pilih akses bawaan, konfirmasi, dan penyedia lokal untuk Obrolan Agent."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Penyedia lokal yang kompatibel dengan OpenAI",
+      "actions": "Pemeriksaan koneksi"
     },
     "presets": {
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Kustom"
     },
     "fields": {
       "preset": {
         "label": "Preset"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "URL dasar",
+        "description": "Endpoint /v1 yang kompatibel dengan OpenAI."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Izinkan endpoint non-loopback",
+        "description": "Data dikirim ke endpoint yang dikonfigurasi."
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "Pilih model yang tersedia atau masukkan sendiri secara manual."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "Kunci API",
+        "description": "Kredensial opsional yang disimpan di gantungan kunci OS.",
+        "configured": "Kunci API sudah tersimpan di gantungan kunci OS."
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "save": "Simpan",
+      "models": "Daftar model",
+      "test": "Uji koneksi",
+      "probe": "Periksa alat"
     },
     "status": {
-      "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "disconnected": "Terputus",
+      "toolsDisabled": "Alat dinonaktifkan",
+      "fullTools": "Semua alat aktif",
       "checking": "Memeriksa…",
       "connected": "Terhubung",
       "label": "Koneksi"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Izin Agent",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Akses bawaan",
+        "description": "Menetapkan mode akses awal untuk giliran Agent yang baru.",
+        "vaultOnly": "Hanya brankas",
+        "computerAccess": "Akses komputer"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Konfirmasi tindakan",
+        "description": "Pilih apakah panggilan alat berjalan otomatis atau menunggu persetujuan di obrolan.",
+        "alwaysAllow": "Selalu izinkan",
+        "askBeforeChanges": "Tanya sebelum mengubah"
       }
     }
   },
@@ -1368,6 +1425,10 @@
       "tasks": {
         "description": "Daftar tugas dan tanggal jatuh tempo",
         "label": "Tugas"
+      },
+      "spatialCanvas": {
+        "description": "Papan spasial untuk menata dan menautkan catatan",
+        "label": "Kanvas"
       }
     }
   },
@@ -1393,7 +1454,10 @@
         "skipped": "{count} dilewati",
         "title": "Impor selesai"
       },
-      "title": "Impor dari {name}"
+      "title": "Impor dari {name}",
+      "chooseDirectory": "Pilih folder…",
+      "folderKeepsAssets": "Pilih folder jika gambar berada di luar folder catatannya sendiri — hasil ekspor sering menyimpan media di satu folder bersama.",
+      "previewError": "Pratinjau gagal"
     },
     "header": {
       "subtitle": "Bawa catatan dan tugas Anda dari aplikasi lain",
@@ -1432,6 +1496,99 @@
       "tasks": "{count, plural, one {# tugas} other {# tugas}}",
       "withDueDate": "{count} bertanggal",
       "withTags": "{count} bertag"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Kolom: {columns}",
+        "emptyTitle": "Baris dilewati karena judul kosong (kolom \"{column}\")",
+        "noHeaders": "File CSV tidak memiliki baris header",
+        "titleColumn": "Judul diambil dari \"{column}\"; kolom lain disimpan sebagai properti"
+      },
+      "raindrop": {
+        "csvEmpty": "CSV Raindrop kosong",
+        "headerNotFound": "Baris header CSV Raindrop (kolom \"url\") tidak ditemukan",
+        "rowNoUrl": "Baris {row} dilewati: tidak ada URL"
+      },
+      "readFileFailed": "Gagal membaca file",
+      "ticktick": {
+        "foldersDropped": "Folder TickTick tidak memiliki padanan di Memry dan dihilangkan",
+        "headerNotFound": "Baris header CSV TickTick (\"Folder Name\") tidak ditemukan",
+        "reminderNoAnchor": "Pengingat \"{reminder}\" dilewati (tidak ada patokan tanggal)",
+        "subtaskParentMissing": "Induk subtugas \"{title}\" tidak ditemukan; diimpor sebagai tugas tingkat atas",
+        "unknownPriority": "Prioritas TickTick {priority} tidak dikenal → tidak ada",
+        "unsupportedRepeat": "Aturan pengulangan \"{rule}\" tidak didukung dan dilewati"
+      },
+      "todoist": {
+        "emptyTitle": "Tugas dengan konten kosong diimpor sebagai (tanpa judul)",
+        "headerNotFound": "Bukan CSV Todoist: baris header TYPE tidak ada",
+        "orphanComment": "Komentar tanpa tugas sebelumnya dilewati",
+        "sectionFlattened": "Bagian \"{section}\" diratakan",
+        "subtaskNoParent": "Subtugas \"{title}\" tidak memiliki induk pada indentasi {indent}; diimpor sebagai tugas tingkat atas",
+        "unknownPriority": "Prioritas {priority} tidak dikenal → tidak ada",
+        "unparsedDate": "Tidak dapat membaca tanggal \"{date}\""
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Menyalin basis data Apple Notes…"
+      },
+      "bear": {
+        "scanning": "Memindai ekspor Bear…"
+      },
+      "csv": {
+        "importing": "Mengimpor catatan CSV…"
+      },
+      "evernote": {
+        "scanning": "Memindai file .enex…"
+      },
+      "html": {
+        "scanning": "Memindai file HTML…"
+      },
+      "importingItem": "Mengimpor {title}",
+      "raindrop": {
+        "importing": "Mengimpor bookmark Raindrop…"
+      },
+      "roam": {
+        "reading": "Membaca ekspor Roam…"
+      },
+      "scanningExport": "Memindai ekspor…",
+      "scanningFiles": "Memindai file…",
+      "ticktick": {
+        "importing": "Mengimpor tugas TickTick…"
+      },
+      "todoist": {
+        "importing": "Mengimpor tugas Todoist…"
+      }
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Memuat…",
+      "subtitle": "Pengingat tinjauan harian dan preferensi kotak masuk.",
+      "title": "Kotak masuk"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Pengingat lembut setiap hari saat kotak masuk Anda berisi item.",
+        "label": "Ingatkan saya untuk meninjau kotak masuk"
+      },
+      "error": "Tidak dapat memperbarui pengingat.",
+      "group": "Pengingat tinjauan harian",
+      "test": {
+        "button": "Kirim uji coba",
+        "description": "Kirim pengingat sekarang untuk memeriksa notifikasi sistem Anda.",
+        "label": "Notifikasi uji coba",
+        "sent": "Notifikasi uji coba terkirim.",
+        "sentHint": "Jika tidak ada yang muncul, izinkan notifikasi untuk MemryNote di pengaturan sistem Anda.",
+        "unsupported": "Perangkat ini tidak dapat menampilkan notifikasi desktop."
+      },
+      "time": {
+        "description": "Waktu lokal, di setiap perangkat.",
+        "hourLabel": "Jam",
+        "label": "Waktu pengingat",
+        "minuteLabel": "Menit",
+        "periodLabel": "AM atau PM"
+      }
     }
   }
 }

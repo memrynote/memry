@@ -16,9 +16,27 @@
       "willSync": "Magsi-sync ang tala sa cloud",
       "renameFailed": "Nabigong palitan ang pangalan ng tala",
       "toggleLocalOnlyFailed": "Nabigong i-toggle ang lokal lamang",
-      "toggleFullWidthFailed": "Nabigong i-toggle ang buong lapad"
+      "toggleFullWidthFailed": "Nabigong i-toggle ang buong lapad",
+      "copyPathFailed": "Nabigong kopyahin ang landas",
+      "deleteFailed": "Nabigong tanggalin ang tala",
+      "moveFailed": "Nabigong ilipat ang tala",
+      "moved": "Nailipat ang tala",
+      "openExternalFailed": "Nabigong buksan ang tala",
+      "pathCopied": "Nakopya ang landas",
+      "revealFailed": "Nabigong ibunyag ang tala"
     },
-    "deleteDialogTitle": "{count, plural, one {Tanggalin ang Tala} other {Tanggalin ang # Notes}}"
+    "deleteDialogTitle": "{count, plural, one {Tanggalin ang Tala} other {Tanggalin ang # Notes}}",
+    "deleteConfirm": {
+      "cancel": "Kanselahin",
+      "confirm": "Tanggalin",
+      "deleting": "Tinatanggal...",
+      "description": "Sigurado ka bang gusto mong tanggalin ang \"{title}\"? Ang pagkilos na ito ay hindi maaaring i-undo.",
+      "title": "Tanggalin ang tala"
+    },
+    "itemsCount": "{count, plural, one {# item} other {# na item}}",
+    "itemsCountFiltered": "{shown} sa {total, plural, one {# item} other {# na item}}",
+    "renameViewUnavailableForTags": "Hindi pa magagamit sa mga tag ang pagpapalit ng pangalan ng mga naka-save na view",
+    "tagFilterLabel": "tag = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "Tanggalin ang {count} Notes",
       "deleteSelectedItems": "Tanggalin ang {count} item",
       "bookmark": "I-bookmark",
-      "removeFromBookmarks": "Alisin sa Mga Bookmark"
+      "removeFromBookmarks": "Alisin sa Mga Bookmark",
+      "applyTemplate": "Ilapat ang Template"
     },
     "deleteDialog": {
       "noteTitle": "Tanggalin ang Tala",
@@ -67,8 +86,8 @@
     "content": {
       "placeholder": "Magsimulang magsulat, o pindutin ang '/' para sa mga utos...",
       "regionAria": "Editor ng tala",
-      "richTextAria": "Rich text editor",
-      "headingPlaceholder": "Heading",
+      "richTextAria": "Editor ng rich text",
+      "headingPlaceholder": "Pamagat",
       "listPlaceholder": "Listahan ng item",
       "todoPlaceholder": "Item na gagawin"
     },
@@ -83,7 +102,17 @@
       "export": "I-export",
       "fullWidth": "Buong lapad",
       "disableLocalOnly": "Huwag paganahin ang lokal lamang",
-      "setLocalOnly": "Itakda ang lokal lamang"
+      "setLocalOnly": "Itakda ang lokal lamang",
+      "applyTemplate": "Ilapat ang Template",
+      "copyPath": "Kopyahin ang landas",
+      "delete": "Tanggalin ang tala",
+      "find": "Hanapin…",
+      "moreActions": "Higit pang pagkilos",
+      "moveToFolder": "Ilipat sa folder…",
+      "openInDefaultApp": "Buksan sa default na app",
+      "rename": "Palitan ang pangalan…",
+      "revealInFinder": "Ibunyag sa Finder",
+      "revealInSidebar": "Ibunyag sa nabigasyon"
     },
     "breadcrumb": {
       "locationAria": "Tandaan ang lokasyon",
@@ -116,8 +145,8 @@
       "create": "Gumawa ng bagong tala",
       "embed": "I-embed",
       "embedAria": "I-embed ang {title}",
-      "wikiLink": "Wiki link",
-      "wikiLinkAria": "Wiki link {title}"
+      "wikiLink": "Link ng wiki",
+      "wikiLinkAria": "Link ng wiki sa {title}"
     },
     "tags": {
       "aria": "I-tag ang mga mungkahi",
@@ -210,20 +239,25 @@
     "noOptions": "Wala pang pagpipilian",
     "optionName": "Pangalan ng opsyon",
     "newOption": "Bagong opsyon",
-    "ratingAria": "Rating",
+    "ratingAria": "Marka",
     "openUrlAria": "Buksan ang URL",
     "types": {
-      "text": "Text",
+      "text": "Teksto",
       "number": "Numero",
       "date": "Petsa",
       "checkbox": "Checkbox",
       "url": "URL",
       "status": "Katayuan",
       "select": "Pumili",
-      "multiselect": "Multiselect"
+      "multiselect": "Maramihang Pagpili"
     },
     "showOnCalendar": "Ipakita sa kalendaryo",
-    "showingOnCalendar": "Ipinapakita sa kalendaryo"
+    "showingOnCalendar": "Ipinapakita sa kalendaryo",
+    "statusCategories": {
+      "done": "Kumpleto",
+      "inProgress": "Isinasagawa",
+      "todo": "Gagawin"
+    }
   },
   "templateSelector": {
     "title": "Piliin ang Iyong Canvas",
@@ -232,10 +266,13 @@
     "loading": "Naglo-load ng mga template...",
     "empty": "Walang nakitang mga template",
     "myTemplates": "Aking Mga Template",
-    "essentials": "Essentials",
+    "essentials": "Mga Pangunahin",
     "setFolderDefault": "Itakda bilang default ng folder",
     "useTemplate": "Gumamit ng Template",
-    "createNote": "Lumikha ng Tala"
+    "createNote": "Lumikha ng Tala",
+    "applyDescription": "Palitan ng template ang nilalaman ng talang ito",
+    "applyTitle": "Maglapat ng Template",
+    "applyToNote": "Ilapat ang Template"
   },
   "exportDialog": {
     "title": "I-export ang Tala",
@@ -278,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Nilo-load ang template…",
+    "copySuffix": "{name} (Kopyahin)",
     "title": {
       "new": "Bagong Template",
-      "view": "Tingnan ang Template",
-      "edit": "I-edit ang Template"
+      "placeholder": "Pangalan ng template"
+    },
+    "icon": {
+      "label": "Icon ng template"
+    },
+    "content": {
+      "placeholder": "Default na nilalaman para sa mga tala na gawa mula sa template na ito. Gamitin ang '{{'title'}}' upang ipasok ang pamagat ng tala."
+    },
+    "actions": {
+      "create": "Gumawa ng Template",
+      "update": "I-update",
+      "duplicateAndEdit": "I-duplicate at i-edit",
+      "duplicate": "I-duplicate",
+      "delete": "Tanggalin ang template",
+      "more": "Iba pang aksyon"
     },
     "toast": {
-      "nameRequired": "Kinakailangan ang pangalan ng template",
-      "created": "Nagawa ang template",
       "createFailed": "Nabigong gumawa ng template",
-      "saved": "Na-save ang template",
-      "saveFailed": "Nabigong i-save ang template",
-      "duplicateFailed": "Nabigong i-duplicate ang template",
-      "deleteFailed": "Nabigong tanggalin ang template"
+      "saveFailed": "Nabigong i-save ang template"
     }
   },
   "reminders": {
@@ -324,16 +371,15 @@
       "noFormulasDefined": "Walang tinukoy na mga formula",
       "addFormula": "Magdagdag ng Formula",
       "deleteFormula": "Tanggalin ang Formula",
-      "areYouSureYouWantToDeleteTheFormula": "Sigurado ka bang gusto mong tanggalin ang formula \"",
-      "quotThisActionCannotBeUndone": "quot;? Ang pagkilos na ito ay hindi maaaring i-undo.",
       "cancel": "Kanselahin",
       "delete": "Tanggalin",
       "none": "wala",
       "edit": "I-edit",
       "delete2": "Tanggalin",
       "columnBorders": "Mga hangganan ng column",
-      "display": "Display",
-      "showSummaries": "Ipakita ang mga buod"
+      "display": "Pagpapakita",
+      "showSummaries": "Ipakita ang mga buod",
+      "deleteFormulaBody": "Sigurado ka bang tatanggalin ang formula na \"{name}\"? Hindi na ito maaaring bawiin."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Salain",
@@ -352,10 +398,11 @@
       "addCondition": "Magdagdag ng kundisyon",
       "addFilter": "Magdagdag ng filter",
       "addGroup": "Magdagdag ng grupo",
-      "removeGroup": "Alisin ang grupo"
+      "removeGroup": "Alisin ang grupo",
+      "lockedConditionHint": "Tinutukoy ng kundisyong ito ang kasalukuyang view kaya hindi ito maaalis dito."
     },
     "componentsFolderViewFilterRow": {
-      "builtIn": "Built-in",
+      "builtIn": "Nakapaloob",
       "properties": "Mga Katangian",
       "placeholderProperty": "Ari-arian",
       "placeholderOperator": "Operator",
@@ -365,7 +412,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Talahanayan ng mga tala",
       "selectAll": "Piliin ang lahat ng tala",
-      "selectRow": "Piliin ang tala"
+      "selectRow": "Piliin ang tala",
+      "kind": {
+        "Inbox": "Inbox",
+        "Note": "Tala",
+        "Task": "Gawain"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Maghanap ng mga tala...",
@@ -379,15 +431,15 @@
       "preview": "Silipin",
       "fixExpressionErrorsToSeePreview": "Ayusin ang mga error sa expression upang makita ang preview",
       "usingNote": "Gamit ang tala: \"",
-      "quot": "quot;",
       "cancel": "Kanselahin",
       "namePlaceholder": "araw_until_due",
-      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
+      "usingNoteTitle": "Gamit ang tala: \"{title}\""
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "I-clear ang pagpapangkat",
       "searchProperties": "Maghanap ng mga katangian...",
-      "builtIn": "Built-in",
+      "builtIn": "Nakapaloob",
       "properties": "Mga Katangian",
       "noGroupablePropertiesFound": "Walang nakitang napapangkat na mga katangian",
       "sortDirection": "Pagbukud-bukurin ang direksyon",
@@ -408,12 +460,12 @@
       "bestMatch": "Pinakamahusay na tugma",
       "current": "kasalukuyang)",
       "allFolders": "LAHAT NG FOLDERS",
-      "current2": "kasalukuyang)",
       "noFoldersMatch": "Walang mga folder na tumutugma \"",
-      "quot": "quot;",
       "create": "Lumikha\"",
-      "quot2": "quot;",
-      "cancel": "Kanselahin"
+      "cancel": "Kanselahin",
+      "createFolderNamed": "Lumikha ng \"{name}\"",
+      "currentFolderBadge": "(kasalukuyan)",
+      "noFoldersMatchQuery": "Walang folder na tumutugma sa \"{query}\""
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Tanggalin ",
@@ -431,9 +483,9 @@
       "editColumnName": "I-edit ang pangalan ng column"
     },
     "componentsFolderViewViewSwitcher": {
-      "default": "default",
+      "default": "paunang setting",
       "rename": "Palitan ang pangalan",
-      "duplicate": "Duplicate",
+      "duplicate": "I-duplicate",
       "setAsDefault": "Itakda bilang Default",
       "delete": "Tanggalin",
       "createNewView": "Lumikha ng Bagong View",
@@ -441,7 +493,7 @@
       "createANewViewWithCustomColumnsFiltersAndSorting": "Gumawa ng bagong view gamit ang mga custom na column, filter, at pag-uuri.",
       "viewName": "Tingnan ang Pangalan",
       "myCustomView": "Aking Custom View",
-      "baseConfiguration": "Base Configuration",
+      "baseConfiguration": "Batayang Configuration",
       "copyFromCurrentView": "Kopyahin mula sa kasalukuyang view",
       "startFreshDefaultColumns": "Magsimula ng bago (mga default na column)",
       "cancel": "Kanselahin",
@@ -455,7 +507,7 @@
       "thisActionCannotBeUndone": "Ang pagkilos na ito ay hindi maaaring i-undo.",
       "cancel3": "Kanselahin",
       "createView": "Lumikha ng view",
-      "gallery": "Gallery",
+      "gallery": "Galerya",
       "layout": "Layout",
       "list": "Listahan",
       "name": "Pangalan",
@@ -468,7 +520,13 @@
       "failedToLoadPdf": "Nabigong i-load ang PDF: ",
       "download": "I-download",
       "download2": "I-download",
-      "noFileAttached": "Walang naka-attach na file"
+      "noFileAttached": "Walang naka-attach na file",
+      "alignCenter": "Ihanay sa gitna",
+      "alignLeft": "Ihanay sa kaliwa",
+      "alignRight": "Ihanay sa kanan",
+      "nextPage": "Susunod na pahina",
+      "previousPage": "Nakaraang pahina",
+      "resizePdf": "Baguhin ang laki ng PDF"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Buksan sa task panel",
@@ -530,7 +588,8 @@
       "failedToLoadTags": "Nabigong i-load ang mga tag",
       "noTagsYet": "Wala pang tag",
       "filterTags": "I-filter ang mga tag...",
-      "noMatchingTags": "Walang tugmang tag"
+      "noMatchingTags": "Walang tugmang tag",
+      "Uncategorized": "Walang kategorya"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Ihulog dito",
@@ -547,20 +606,21 @@
       "loadingNotes": "Nilo-load ang mga tala...",
       "noNotesWithThisTag": "Walang mga tala na may tag na ito",
       "addThisTagToANoteToSeeItHere": "Idagdag ang tag na ito sa isang tala para makita ito dito",
-      "pinned": "PINNED",
+      "pinned": "NAKA-PIN",
       "allNotes": "LAHAT NG NOTA",
       "allNotesArePinned": "Ang lahat ng mga tala ay naka-pin",
       "unpinFromTag": "I-unpin mula sa tag",
       "unpin": "I-unpin",
       "pinToTag": "I-pin para i-tag",
-      "pin": "Pin",
+      "pin": "I-pin",
       "tagActions": "Mga pagkilos sa tag",
       "editTagName": "I-edit ang pangalan ng tag",
       "changeColor": "Baguhin ang kulay",
       "deleteTag": "Tanggalin ang tag",
       "recent": "Kamakailan",
       "created": "Nilikha",
-      "alphabetical": "Alphabetical"
+      "alphabetical": "Alpabetikal",
+      "tasks": "MGA GAWAIN"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Palitan ang pangalan ng tag",
@@ -612,42 +672,12 @@
       "viewSettings": "Tingnan ang mga setting",
       "displayDensity": "Densidad ng Display",
       "comfortable": "Komportable",
-      "compact": "Compact",
+      "compact": "Siksik",
       "showSummaries": "Ipakita ang mga buod",
       "cancel": "Kanselahin"
     },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Nilo-load ang template...",
-      "builtInTemplatesCannotBeModified": "Hindi mababago ang mga built-in na template",
-      "description": "Paglalarawan",
-      "briefDescriptionOfThisTemplate": "Maikling paglalarawan ng template na ito...",
-      "templateContent": "Nilalaman ng Template",
-      "use": "Gamitin ",
-      "toInsertTheNoteTitleWhenCreatingANote": "upang ipasok ang pamagat ng tala kapag gumagawa ng tala.",
-      "templateName": "Pangalan ng Template",
-      "defaultContentForNotesCreatedFromThisTemplate": "Default na nilalaman para sa mga tala na ginawa mula sa template na ito..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Nilo-load ang koleksyon...",
-      "templateCollection": "Koleksyon ng Template",
-      "templates": "Mga template",
-      "curatedStructuresForYourNotes": "Mga na-curate na istruktura para sa iyong mga tala.",
-      "newTemplate": "Bagong Template",
-      "myTemplates": "Aking Mga Template",
-      "builtIn": "Built-in",
-      "deleteTemplate": "Tanggalin ang Template",
-      "areYouSureYouWantToDelete": "Sigurado ka bang gusto mong tanggalin\"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Ang mga tala na ginawa mula sa template na ito ay hindi maaapektuhan.",
-      "cancel": "Kanselahin",
-      "builtIn2": "Built-in",
-      "duplicate": "Duplicate",
-      "delete": "Tanggalin",
-      "startYourCollection": "Simulan ang Iyong Koleksyon",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Tinutulungan ka ng mga template na lumikha ng mga tala na may pare-parehong istraktura.",
-      "createTemplate": "Lumikha ng Template"
-    },
     "componentsFolderViewSortSelector": {
-      "builtIn": "Built-in",
+      "builtIn": "Nakapaloob",
       "clearSort": "I-clear ang pag-uuri",
       "noSortablePropertiesFound": "Walang nakitang property na maaaring pagbukud-bukurin",
       "properties": "Mga Property",
@@ -733,7 +763,9 @@
     "replyPlaceholder": "Tumugon...",
     "resolve": "Lutasin",
     "sendAria": "Ipadala ang komento",
-    "toolbarComment": "Komento"
+    "toolbarComment": "Komento",
+    "openAttachmentAria": "Buksan ang attachment na {name}",
+    "openImageAria": "Buksan ang larawang {name}"
   },
   "dateMention": {
     "clear": "I-clear",
@@ -743,5 +775,79 @@
     "remind": "Ipaalala",
     "time": "Oras",
     "timeFormat": "Format ng oras"
+  },
+  "applyTemplateConfirm": {
+    "body": "Palitan lang ang nilalaman",
+    "cancel": "Kanselahin",
+    "description": "Papalitan ng \"{name}\" ang kasalukuyang nilalaman ng talang ito. Hindi na ito maibabalik.",
+    "failed": "Nabigong ilapat ang template",
+    "full": "Palitan ang nilalaman at idagdag ang mga detalye ng template",
+    "success": "Nailapat ang template",
+    "title": "Palitan ang nilalaman ng tala?"
+  },
+  "tagView": {
+    "moreActions": "Higit pang pagkilos",
+    "pin": {
+      "action": "I-pin ang {count, plural, one {# tala} other {# na tala}} sa tag",
+      "failed": "Nabigong i-pin ang tala sa tag",
+      "success": "Na-pin ang {count, plural, one {# tala} other {# na tala}} sa tag"
+    }
+  },
+  "tags": {
+    "hubTitle": "Mga tag",
+    "openHub": "Buksan ang tag hub"
+  },
+  "tagsHub": {
+    "cancelCreate": "Kanselahin",
+    "category": {
+      "delete": "Tanggalin ang kategorya",
+      "deleteBody": "Mapupunta ang mga tag sa Walang kategorya. Hindi tatanggalin ang mga ito.",
+      "deleteCancel": "Kanselahin",
+      "deleteConfirm": "Tanggalin",
+      "deleteTitle": "Tanggalin ang {name}?",
+      "dragHandle": "I-drag para muling ayusin ang kategorya",
+      "emptyHint": "Mag-drag ng tag dito",
+      "more": "Mga opsyon ng kategorya",
+      "rename": "Palitan ang pangalan ng kategorya"
+    },
+    "categoryNamePlaceholder": "Pangalan ng kategorya",
+    "errors": {
+      "createCategoryFailed": "Nabigong lumikha ng kategorya",
+      "createTagCategorizeFailed": "Nalikha ang tag ngunit hindi ito naidagdag sa kategorya",
+      "createTagFailed": "Nabigong lumikha ng tag",
+      "deleteCategoryFailed": "Nabigong tanggalin ang kategorya",
+      "loadFailed": "Nabigong i-load ang mga kategorya ng tag",
+      "renameCategoryFailed": "Nabigong palitan ang pangalan ng kategorya",
+      "reorderFailed": "Nabigong baguhin ang pagkakasunod ng mga tag"
+    },
+    "loading": "Naglo-load ng mga tag...",
+    "newCategory": "Bagong kategorya",
+    "newTag": "Bagong tag",
+    "search": {
+      "empty": "Walang kategorya o tag na tumutugma sa iyong paghahanap",
+      "placeholder": "Maghanap ng mga kategorya at tag"
+    },
+    "tagNamePlaceholder": "Pangalan ng tag",
+    "uncategorized": "Walang kategorya"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (i-double-click para i-edit)",
+      "dragToReorder": "I-drag upang muling ayusin ang column: {name}"
+    },
+    "columns": {
+      "created": "Nilikha",
+      "folder": "Folder",
+      "kind": "Uri",
+      "modified": "Binago",
+      "tags": "Mga tag",
+      "title": "Pamagat",
+      "wordCount": "Bilang ng salita"
+    },
+    "defaultViewName": "Paunang Setting",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# tala} other {# tala}}"
+    },
+    "selectView": "Pumili ng View"
   }
 }

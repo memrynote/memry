@@ -13,6 +13,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { TaskFilters, TaskSort, Project } from '@/data/tasks-data'
 import { dueDateFilterOptions } from '@/data/tasks-data'
+import { priorityConfig } from '@/data/task-model'
+import { getActiveLocale } from '@/lib/active-locale'
 import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
@@ -50,7 +52,11 @@ export const SaveFilterDialog = ({
 
     // Search
     if (filters.search) {
-      items.push(`Search: "${filters.search}"`)
+      items.push(
+        tPhaseF('phaseF.componentsTasksFiltersSaveFilterDialog.summarySearch', {
+          query: filters.search
+        })
+      )
     }
 
     // Projects
@@ -58,13 +64,23 @@ export const SaveFilterDialog = ({
       const projectNames = filters.projectIds
         .map((id) => projects.find((p) => p.id === id)?.name)
         .filter(Boolean)
-      items.push(`Project: ${projectNames.join(', ')}`)
+      items.push(
+        tPhaseF('phaseF.componentsTasksFiltersSaveFilterDialog.summaryProjects', {
+          names: projectNames.join(', ')
+        })
+      )
     }
 
     // Priorities
     if (filters.priorities.length > 0) {
-      const priorityLabels = filters.priorities.map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-      items.push(`Priority: ${priorityLabels.join(', ')}`)
+      // `priorityConfig` resolves its labels lazily, so reading them here (inside
+      // the memo, not at module load) picks up the active locale.
+      const priorityLabels = filters.priorities.map((p) => priorityConfig[p]?.label ?? p)
+      items.push(
+        tPhaseF('phaseF.componentsTasksFiltersSaveFilterDialog.summaryPriorities', {
+          names: priorityLabels.join(', ')
+        })
+      )
     }
 
     // Due date
@@ -76,36 +92,49 @@ export const SaveFilterDialog = ({
         filters.dueDate.customEnd
       ) {
         const formatDate = (date: Date | string): string =>
-          (date instanceof Date ? date : new Date(date)).toLocaleDateString('en-US', {
+          (date instanceof Date ? date : new Date(date)).toLocaleDateString(getActiveLocale(), {
             month: 'short',
             day: 'numeric'
           })
         items.push(
-          `Due: ${formatDate(filters.dueDate.customStart)} - ${formatDate(filters.dueDate.customEnd)}`
+          tPhaseF('phaseF.componentsTasksFiltersSaveFilterDialog.summaryDueRange', {
+            start: formatDate(filters.dueDate.customStart),
+            end: formatDate(filters.dueDate.customEnd)
+          })
         )
       } else if (option) {
-        items.push(`Due: ${option.label}`)
+        items.push(
+          tPhaseF('phaseF.componentsTasksFiltersSaveFilterDialog.summaryDue', {
+            value: option.label
+          })
+        )
       }
     }
 
     // Repeat type
     if (filters.repeatType !== 'all') {
       items.push(
-        `Repeat: ${filters.repeatType === 'repeating' ? 'Repeating only' : 'One-time only'}`
+        filters.repeatType === 'repeating'
+          ? tPhaseF('phaseF.componentsTasksFiltersSaveFilterDialog.summaryRepeatRepeating')
+          : tPhaseF('phaseF.componentsTasksFiltersSaveFilterDialog.summaryRepeatOneTime')
       )
     }
 
     // Has time
     if (filters.hasTime !== 'all') {
-      items.push(`Time: ${filters.hasTime === 'with-time' ? 'With time' : 'Without time'}`)
+      items.push(
+        filters.hasTime === 'with-time'
+          ? tPhaseF('phaseF.componentsTasksFiltersSaveFilterDialog.summaryTimeWith')
+          : tPhaseF('phaseF.componentsTasksFiltersSaveFilterDialog.summaryTimeWithout')
+      )
     }
 
     return items
-  }, [filters, projects])
+  }, [filters, projects, tPhaseF])
 
   const handleSave = (): void => {
     if (!name.trim()) {
-      setError('Please enter a name for this filter')
+      setError(tPhaseF('phaseF.componentsTasksFiltersSaveFilterDialog.nameRequired'))
       return
     }
 

@@ -25,7 +25,8 @@
     "expand": "Mở rộng",
     "collapse": "Thu gọn",
     "showMore": "+{count, plural, one {# hơn} other {# hơn}}",
-    "showLess": "Hiển thị ít hơn"
+    "showLess": "Hiển thị ít hơn",
+    "undo": "Hoàn tác"
   },
   "tabs": {
     "pin": "Ghim Tab",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "Hôm nay",
     "yesterday": "Hôm qua",
-    "daysAgo": "{count, plural, one {Cách đây # ngày} other {Cách đây # ngày}}"
+    "daysAgo": "{count, plural, one {Cách đây # ngày} other {Cách đây # ngày}}",
+    "daysLate": "{count, plural, other {trễ # ngày}}",
+    "daysOverdue": "{count, plural, other {quá hạn # ngày}}",
+    "tomorrow": "Ngày mai"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Mỗi ngày} other {Mỗi # ngày}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Mỗi tháng vào ngày {day}{suffix}} other {Mỗi # tháng vào ngày {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Mỗi tháng vào {week} {day}} other {Mỗi # tháng vào {week} {day}}}",
     "everyNYears": "{count, plural, one {Hàng năm} other {Mỗi # năm}}",
-    "repeats": "Lặp lại"
+    "repeats": "Lặp lại",
+    "ordinal": {
+      "first": "thứ nhất",
+      "fourth": "thứ tư",
+      "last": "cuối cùng",
+      "second": "thứ hai",
+      "third": "thứ ba"
+    },
+    "preset": {
+      "everyWeekday": "Mỗi ngày trong tuần (T2-T6)",
+      "everyYearOnDate": "Hàng năm vào {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -102,7 +117,15 @@
       "updateDownloadingPercent": "Đang tải xuống {percent}%",
       "updateInstallingSubtitle": "MemryNote sẽ tự khởi động lại.",
       "updateInstallingTitle": "Đang cài đặt bản cập nhật",
-      "updateRestart": "Khởi động lại"
+      "updateRestart": "Khởi động lại",
+      "feedbackPrivacyEmailOptional": "Email của bạn — chỉ khi bạn tự điền vào, và chỉ để chúng tôi trả lời",
+      "feedbackPrivacyEmailSignedIn": "Email tài khoản của bạn ({email}), để chúng tôi trả lời",
+      "feedbackPrivacyMessage": "Tin nhắn của bạn, đúng như bạn đã viết",
+      "feedbackPrivacyNote": "Không gì khác. Ghi chú của bạn vẫn nằm trên thiết bị.",
+      "feedbackPrivacyPlan": "Gói của bạn (free, Plus, Pro hoặc Believer)",
+      "feedbackPrivacyTitle": "Những gì được gửi đi",
+      "feedbackPrivacyVersion": "Phiên bản ứng dụng và hệ điều hành",
+      "projects": "Dự án"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Thay đổi kích thước Bảng Ngày",
@@ -180,8 +203,9 @@
       "search": "Tìm kiếm",
       "searchNotesTasksJournalInbox": "Tìm kiếm ghi chú, công việc, nhật ký, hộp thư đến...",
       "noResultsFor": "Không có kết quả cho “",
-      "rdquo": "rdquo;",
-      "result": "kết quả"
+      "result": "kết quả",
+      "noResultsForQuery": "Không có kết quả cho “{query}”",
+      "resultCount": "{count, plural, other {# kết quả}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Tìm kiếm và nhấp vào các mục để xây dựng dấu vết của bạn",
@@ -231,7 +255,8 @@
       "journal": "Nhật ký",
       "calendar": "Lịch",
       "inboxCapture": "Thu thập Hộp thư đến",
-      "tasks": "Nhiệm vụ"
+      "tasks": "Nhiệm vụ",
+      "tags": "Thẻ"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Thay đổi chưa lưu",
@@ -261,15 +286,15 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Đã xảy ra sự cố",
       "anErrorOccurredWhileRenderingThisTabContent": "Đã xảy ra lỗi khi hiển thị nội dung tab này.",
-      "tryAgain": "Thử Lại"
+      "tryAgain": "Thử Lại",
+      "sendReport": "Gửi báo cáo chẩn đoán"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Biểu tượng ghi chú"
     },
     "componentsTabsUnsavedChangesDialog": {
       "unsavedChanges": "Thay đổi Chưa lưu",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; có thay đổi chưa lưu. Bạn muốn làm gì?"
+      "unsavedChangesBody": "“{title}” có thay đổi chưa lưu. Bạn muốn làm gì?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Không gian làm việc mới",
@@ -341,7 +366,6 @@
       "logOut": "Đăng xuất",
       "signInToSync": "Đăng nhập để đồng bộ",
       "remove": "Xóa “",
-      "rdquoFromList": "rdquo; từ danh sách?  ",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "  \nKho lưu trữ này sẽ bị xóa khỏi ứng dụng, nhưng các tệp của bạn sẽ vẫn còn trên ổ đĩa. Bạn luôn có thể thêm lại sau.  ",
       "cancel": "Hủy",
       "remove2": "Gỡ bỏ",
@@ -352,7 +376,13 @@
       "downloadLocation": "Vị trí",
       "changeLocation": "Thay đổi…",
       "download": "Tải xuống",
-      "downloadFailed": "Không thể tải xuống két"
+      "downloadFailed": "Không thể tải xuống két",
+      "deleteFromAccount": "Xóa khỏi tài khoản",
+      "deleteVaultBody": "Thao tác này xóa vĩnh viễn toàn bộ dữ liệu đã đồng bộ của kho này khỏi máy chủ Memry và không thể hoàn tác. Các tệp trên ổ đĩa của bạn không bị xóa.",
+      "deleteVaultConfirm": "Xóa khỏi tài khoản",
+      "deleteVaultFailed": "Không thể xóa kho",
+      "deleteVaultTitle": "Xóa “{name}” khỏi tài khoản của bạn?",
+      "removeVaultTitle": "Gỡ “{name}” khỏi danh sách?"
     },
     "componentsWindowControls": {
       "searchK": "  \nTìm kiếm (⌘K)  ",
@@ -425,7 +455,7 @@
       },
       "models": {
         "default": "Mặc định",
-        "label": "Model"
+        "label": "Mô hình"
       },
       "settings": {
         "reasoning": "Lý luận"
@@ -450,21 +480,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Chỉ kho lưu trữ",
+        "computerAccess": "Truy cập máy tính"
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
-        "label": "Web search"
+        "off": "Tắt",
+        "label": "Tìm kiếm web"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Quyền của Agent: {access}, tìm kiếm web {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Quyền",
+        "access": "Quyền truy cập",
+        "tools": "Công cụ"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Cài đặt mô hình Agent: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Không có kết quả phù hợp"
@@ -479,7 +509,7 @@
     "sidebar": {
       "label": "Thanh bên phải",
       "day": "Ngày",
-      "agent": "Agent",
+      "agent": "Trợ lý",
       "pendingApproval": "{count, plural, one {# đang chờ phê duyệt} other {# đang chờ phê duyệt}}",
       "inProgress": "Đang tiến hành lượt Agent",
       "close": "Đóng agent"
@@ -575,7 +605,7 @@
       "remove": "Xóa",
       "removeAria": "Xóa tiện ích",
       "resize": "Kích thước",
-      "resizeAria": "Đổi kích thước thành {{size}}",
+      "resizeAria": "Đổi kích thước thành {size}",
       "savedFilterDefault": "Hôm nay",
       "savedFilterHint": "Gắn sao bộ lọc trên trang Công việc để dùng ở đây",
       "savedFilterLabel": "Bộ lọc đã lưu",
@@ -624,6 +654,11 @@
     "welcome": {
       "body": "Không gian riêng tư, ưu tiên ngoại tuyến của bạn. Ghi chú được mã hóa đầu-cuối — chúng không bao giờ rời thiết bị của bạn ở dạng chưa mã hóa.",
       "title": "Chào mừng đến với MemryNote"
+    },
+    "tour": {
+      "next": "Tiếp theo",
+      "previous": "Trước",
+      "progress": "{current} trên {total}"
     }
   },
   "updatePrompt": {
@@ -640,6 +675,165 @@
     "skip": "Bỏ qua phiên bản này"
   },
   "capture": {
-    "focusShortcut": "Đưa con trỏ vào ô ghi nhanh"
+    "focusShortcut": "Đưa con trỏ vào ô ghi nhanh",
+    "detailHint": "chi tiết",
+    "focusHint": "Q",
+    "submit": "Ghi lại"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Thêm thẻ",
+      "addCreateNote": "Tạo ghi chú \"{query}\"",
+      "addCreateNoteEmpty": "Tạo ghi chú mới",
+      "addCreatedAt": "Đã tạo {date}",
+      "addEmpty": "Không tìm thấy gì",
+      "addGroupEvents": "Sự kiện",
+      "addGroupNotes": "Ghi chú",
+      "addGroupTasks": "Công việc",
+      "addOnCanvas": "Trên bảng vẽ",
+      "addPlaceholder": "Tìm ghi chú, công việc và sự kiện…",
+      "allDay": "Cả ngày",
+      "createNoteFailed": "Không thể tạo ghi chú",
+      "deleted": "Đã xóa mục",
+      "loading": "Đang tải…",
+      "open": "Mở trong tab",
+      "openToEdit": "Mở trong tab để chỉnh sửa",
+      "untitled": "Không có tiêu đề"
+    },
+    "corruptScene": "Không thể đọc bảng vẽ này. Chỉnh sửa đã bị tắt để tránh mất dữ liệu.",
+    "createFailed": "Không thể tạo bảng vẽ",
+    "disabledBody": "Tab này thuộc một tính năng chưa được bật trên thiết bị này.",
+    "disabledTitle": "Bảng vẽ chưa được bật",
+    "empty": "Chưa có bảng vẽ nào",
+    "libraryStoreFailed": "Không thể lưu thư viện hình của bạn. Các thay đổi gần đây có thể bị mất.",
+    "loadFailed": "Không thể tải bảng vẽ",
+    "loading": "Đang tải bảng vẽ…",
+    "newCanvas": "Bảng vẽ mới",
+    "notFound": "Không tìm thấy bảng vẽ này",
+    "openFailed": "Không thể mở bảng vẽ",
+    "savedToVault": "Mọi thay đổi được tự động lưu vào kho của bạn",
+    "sectionLabel": "Bảng vẽ",
+    "tooLargeToSync": "Bảng vẽ này quá lớn để đồng bộ. Nó vẫn được lưu trên thiết bị này, nhưng sẽ chưa xuất hiện trên các thiết bị khác cho đến khi nhỏ hơn.",
+    "untitled": "Bảng vẽ chưa đặt tên"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Nhấp vào hàng",
+      "reset": "Đặt lại",
+      "shortcutsTab": "Tab Phím tắt"
+    },
+    "description": "Lối tắt để di chuyển trong memrynote, ghi lại suy nghĩ và xử lý công việc.",
+    "groups": {
+      "general": {
+        "description": "Điều hướng và trợ giúp toàn ứng dụng.",
+        "title": "Chung"
+      },
+      "inbox": {
+        "description": "Xử lý nhanh các mục đã thu thập.",
+        "title": "Hộp thư đến"
+      },
+      "journal": {
+        "description": "Điều hướng các chế độ xem nhật ký và tập trung vào vùng viết.",
+        "title": "Nhật ký"
+      },
+      "notes": {
+        "description": "Viết, định dạng và tìm kiếm ghi chú.",
+        "title": "Ghi chú / Trình soạn thảo"
+      },
+      "settings": {
+        "description": "Mở cài đặt và tùy chỉnh phím tắt.",
+        "title": "Cài đặt"
+      },
+      "tabs": {
+        "description": "Di chuyển giữa các tab và ngăn.",
+        "title": "Tab & Chia ngăn"
+      },
+      "tasks": {
+        "description": "Lọc, chọn và hoàn thành công việc.",
+        "title": "Công việc"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Tạo một ghi chú",
+        "keyboardShortcuts": "Mở phím tắt bàn phím",
+        "openSettings": "Mở cài đặt",
+        "quickSearch": "Mở tìm kiếm nhanh",
+        "sidebarSection": "Đi tới mục trên thanh bên",
+        "toggleSidebar": "Bật/tắt thanh bên",
+        "undoTaskAction": "Hoàn tác thao tác công việc gần nhất"
+      },
+      "inbox": {
+        "archiveItem": "Lưu trữ mục đã chọn",
+        "chooseQuickFileResult": "Chọn một kết quả sắp xếp nhanh",
+        "clearSelection": "Bỏ chọn hoặc đóng sắp xếp nhanh",
+        "confirmFiling": "Xác nhận bảng sắp xếp",
+        "firstOrLastItem": "Mục đầu hoặc mục cuối",
+        "jumpByPage": "Nhảy theo trang",
+        "nextItem": "Mục tiếp theo",
+        "openOriginal": "Mở liên kết gốc",
+        "openQuickFile": "Mở sắp xếp nhanh",
+        "previousItem": "Mục trước",
+        "refresh": "Làm mới hộp thư đến",
+        "selectAllVisible": "Chọn tất cả mục đang hiển thị",
+        "selectItem": "Chọn mục",
+        "togglePreview": "Bật/tắt bảng xem trước"
+      },
+      "journal": {
+        "bold": "In đậm văn bản đã chọn",
+        "find": "Tìm trong nhật ký",
+        "italic": "In nghiêng văn bản đã chọn",
+        "link": "Thêm hoặc sửa liên kết",
+        "returnFromOverview": "Quay lại từ chế độ xem tháng hoặc năm",
+        "toggleFullWidth": "Bật/tắt nhật ký toàn chiều rộng",
+        "underline": "Gạch chân văn bản đã chọn"
+      },
+      "notes": {
+        "bold": "Đậm",
+        "closeOverlays": "Đóng các lớp phủ của trình soạn thảo",
+        "commandMenu": "Mở menu lệnh của trình soạn thảo",
+        "createNote": "Tạo một ghi chú",
+        "find": "Tìm trong ghi chú",
+        "italic": "Nghiêng",
+        "link": "Thêm hoặc sửa liên kết",
+        "saveNote": "Lưu ghi chú hiện tại",
+        "underline": "Gạch chân"
+      },
+      "settings": {
+        "cancelRecording": "Hủy ghi phím tắt",
+        "customizeShortcuts": "Tùy chỉnh phím tắt bàn phím",
+        "openSettings": "Mở cài đặt",
+        "recordShortcut": "Ghi một phím tắt mới",
+        "resetShortcut": "Khôi phục phím tắt mặc định"
+      },
+      "tabs": {
+        "closeAllInPane": "Đóng tất cả tab trong ngăn",
+        "closeSplitPane": "Đóng ngăn chia",
+        "closeTab": "Đóng tab",
+        "duplicateTab": "Nhân bản tab",
+        "focusPane": "Chuyển sang ngăn khác",
+        "maximizePane": "Phóng to ngăn hiện tại",
+        "moveTabToPane": "Chuyển tab sang ngăn",
+        "newTabMenu": "Mở menu tab mới",
+        "nextTab": "Tab tiếp theo",
+        "pinTab": "Ghim hoặc bỏ ghim tab",
+        "previousTab": "Tab trước",
+        "reopenClosedTab": "Mở lại tab đã đóng",
+        "splitDown": "Chia xuống",
+        "splitRight": "Chia sang phải"
+      },
+      "tasks": {
+        "clearFilters": "Xóa các bộ lọc đang hiển thị",
+        "clearSelection": "Bỏ chọn công việc",
+        "completeSelected": "Hoàn thành các công việc đã chọn",
+        "configureRepeat": "Thiết lập lặp lại cho công việc đang chọn",
+        "deleteSelected": "Xóa các công việc đã chọn",
+        "selectAllVisible": "Chọn tất cả công việc đang hiển thị",
+        "skipOccurrence": "Bỏ qua lần lặp này",
+        "stopRepeating": "Ngừng lặp lại công việc"
+      }
+    },
+    "or": "hoặc",
+    "then": "rồi"
   }
 }

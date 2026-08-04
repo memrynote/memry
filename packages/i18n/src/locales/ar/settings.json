@@ -28,7 +28,8 @@
         "properties": "خصائص",
         "commandLine": "سطر الأوامر",
         "features": "الميزات",
-        "import": "استيراد"
+        "import": "استيراد",
+        "inbox": "البريد الوارد"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "تنزيل {percent}%",
         "downloaded": "أعد التشغيل للتثبيت",
         "idle": "التحقق من وجود تحديثات"
+      },
+      "autoCheck": {
+        "description": "التحقق من الإصدارات الجديدة عند بدء التشغيل، وبشكل دوري ما دام التطبيق مفتوحًا.",
+        "error": "فشل تحديث إعداد التحقق التلقائي",
+        "label": "التحقق من التحديثات تلقائيًا"
+      },
+      "autoDownload": {
+        "description": "تنزيل الإصدارات الجديدة وتثبيتها في الخلفية دون سؤالك.",
+        "error": "فشل تحديث إعداد التنزيل التلقائي",
+        "label": "تنزيل التحديثات تلقائيًا"
       }
     },
     "language": {
@@ -116,7 +127,7 @@
       "defaultNoteFolder": {
         "description": "فارغ = جذر الخزنة",
         "label": "الموقع الافتراضي للملاحظات الجديدة",
-        "placeholder": "notes"
+        "placeholder": "ملاحظات"
       }
     },
     "privacy": {
@@ -124,6 +135,24 @@
         "label": "مشاركة مقاييس الاستخدام المجهولة",
         "description": "إنها مجرد مقاييس مجهولة - لا يتم إرسال محتوى الملاحظات أو استعلامات البحث أو مسارات الملفات أو رسائل البريد الإلكتروني أو المعرفات الأولية على الإطلاق.",
         "error": "فشل تحديث إعداد القياس عن بعد"
+      },
+      "diagnostics": {
+        "building": "جارٍ تجهيز التقرير…",
+        "consent": "هل تريد إرسال تقرير تشخيصي لمرة واحدة؟ يحتوي على سجلات تقنية منقّحة فقط — دون أي محتوى من ملاحظاتك.",
+        "error": "فشل إرسال التقرير التشخيصي",
+        "notNow": "ليس الآن",
+        "previewError": "تعذّر تجهيز التقرير التشخيصي",
+        "previewLabel": "معاينة محتويات التقرير",
+        "send": "إرسال",
+        "sendReport": {
+          "button": "إرسال تقرير تشخيصي",
+          "description": "أرسل تقريرًا لمرة واحدة يضم سجلات تقنية منقّحة لمساعدتنا في تتبّع مشكلة واجهتها.",
+          "label": "تقرير تشخيصي"
+        },
+        "sending": "جارٍ الإرسال…",
+        "sent": "تم إرسال التقرير — المرجع {incidentId}",
+        "snapshotLabel": "لمحة عن الجهاز",
+        "title": "إرسال تقرير تشخيصي؟"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "التخطيط",
-      "toolbar": "شريط الأدوات"
+      "toolbar": "شريط الأدوات",
+      "spelling": "الإملاء"
     },
     "width": {
       "label": "عرض المحرر",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "ضيق",
         "medium": "متوسط",
-        "wide": "واسعة"
+        "wide": "واسعة",
+        "full": "عرض كامل",
+        "normal": "عادي"
       },
       "error": "فشل تحديث عرض المحرر"
     },
@@ -229,6 +261,11 @@
       "label": "شريط أدوات التنسيق اللاصق",
       "description": "قم دائمًا بإظهار شريط الأدوات أعلى المحرر",
       "error": "فشل تحديث وضع شريط الأدوات"
+    },
+    "spellCheck": {
+      "description": "تسطير الكلمات الخاطئة إملائيًا في الملاحظات واليوميات",
+      "error": "فشل تحديث التدقيق الإملائي",
+      "label": "التدقيق الإملائي"
     }
   },
   "templates": {
@@ -322,7 +359,7 @@
     "folder": {
       "description": "المجلد الذي تُخزَّن فيه الملاحظات اليومية",
       "label": "مجلد اليوميات",
-      "placeholder": "journal"
+      "placeholder": "يوميات"
     },
     "preview": {
       "description": "مسار ملف يوميات اليوم",
@@ -640,7 +677,7 @@
       "vaultPickerFolderLabel": "تخزين الخزائن في مجلد",
       "vaultPickerPrimaryHint": "تُفتح الآن",
       "vaultPickerTitle": "اختر ما تريد سحبه",
-      "vaultRow": "خزنة — {{count}} عنصر · {{date}}"
+      "vaultRow": "خزنة — {count} عنصر · {date}"
     }
   },
   "devices": {
@@ -673,7 +710,8 @@
       "removeFailed": "فشل في إزالة الجهاز",
       "renamed": "تمت إعادة تسميته إلى \"{name}\"",
       "renameFailed": "فشلت إعادة تسمية الجهاز"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "ربط الجهاز الجديد",
@@ -855,6 +893,11 @@
         "description": "أوقفه للمزامنة أحادية الاتجاه — ستظل ترى أحداث Google في memrynote، لكن أحداث memrynote لن تظهر في Google.",
         "error": "فشل تحديث اتجاه المزامنة",
         "label": "إظهار أحداث memrynote في تقويم Google"
+      },
+      "agentAccess": {
+        "description": "متوقف افتراضيًا. شغّله ليتمكن وكيل الذكاء الاصطناعي من قراءة أحداث Google الخاصة بك؛ أوقفه فلا يحصل على شيء عند سؤاله عنها. وستظل تراها في memrynote في الحالتين.",
+        "error": "فشل تحديث وصول الذكاء الاصطناعي",
+        "label": "السماح للذكاء الاصطناعي بقراءة أحداث Google Calendar"
       }
     },
     "sourcePicker": {
@@ -898,7 +941,8 @@
     },
     "groups": {
       "storageUsage": "استخدام التخزين",
-      "location": "الموقع"
+      "location": "الموقع",
+      "accountVaults": "الخزائن في حسابك"
     },
     "loadingStorage": "جارٍ تحميل معلومات التخزين...",
     "signInStorage": "قم بتسجيل الدخول لعرض استخدام التخزين",
@@ -919,6 +963,17 @@
       },
       "warningTitle": "التخزين ممتلئ تقريبًا",
       "warningDescription": "قم بتحرير مساحة أو قم بترقية خطتك لتجنب مشكلات المزامنة."
+    },
+    "accountVaults": {
+      "activeHint": "بدّل إلى خزنة أخرى لحذف هذه الخزنة.",
+      "cloudOnly": "ليست على هذا الجهاز",
+      "delete": "حذف",
+      "deleteBody": "يزيل هذا نهائيًا كل البيانات المزامَنة لهذه الخزنة من خوادم Memry، ولا يمكن التراجع عنه. لن تُحذف ملفاتك الموجودة على القرص.",
+      "deleteConfirm": "حذف من الحساب",
+      "deleteFailed": "تعذّر حذف الخزنة",
+      "deleteTitle": "حذف “{name}” من حسابك؟",
+      "empty": "لا توجد خزائن مزامَنة مع حسابك بعد.",
+      "itemsCount": "{count} عنصر"
     }
   },
   "tags": {
@@ -1137,16 +1192,12 @@
       "press": "اضغط ",
       "toToggleThisDialog": "لتبديل مربع الحوار هذا"
     },
-    "componentsSyncDeviceList": {
-      "middot": "ميدوت;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "تمت إزالة هذا الجهاز",
       "exporting": "جارٍ التصدير...",
       "signOut": "تسجيل الخروج"
     },
     "componentsSyncSyncHistory": {
-      "middot": "ميدوت; ",
       "activity": "النشاط",
       "filterBySyncType": "التصفية حسب نوع المزامنة",
       "allTypes": "جميع الأنواع",
@@ -1160,7 +1211,12 @@
       "last30Days": "آخر 30 يومًا",
       "loadingSyncHistory": "جارٍ تحميل سجل المزامنة",
       "noSyncActivityYet": "لا يوجد نشاط مزامنة حتى الآن",
-      "loadMore": "تحميل المزيد"
+      "loadMore": "تحميل المزيد",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}، إظهار تفاصيل الخطأ",
+      "summaryFailed": "فشلت المزامنة",
+      "summaryPulled": "{count, plural, zero {لم يُسحب أي عنصر} one {تم سحب عنصر واحد} two {تم سحب عنصرين} few {تم سحب # عناصر} many {تم سحب # عنصرًا} other {تم سحب # عنصر}}",
+      "summaryPushed": "{count, plural, zero {لم يُرفع أي عنصر} one {تم رفع عنصر واحد} two {تم رفع عنصرين} few {تم رفع # عناصر} many {تم رفع # عنصرًا} other {تم رفع # عنصر}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "آخر مزامنة ",
@@ -1208,102 +1264,103 @@
       "failedToCloseVault": "فشل في إغلاق الخزنة",
       "failedToSwitchVault": "فشل في تبديل المخزن",
       "failedToUpdateConfig": "فشل في تحديث التكوين",
-      "failedToReindex": "فشلت إعادة الفهرسة"
+      "failedToReindex": "فشلت إعادة الفهرسة",
+      "failedToLoadTasks": "فشل تحميل المهام"
     }
   },
   "agentMcp": {
     "header": {
-      "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "title": "MCP للوكيل",
+      "subtitle": "وصول الخادم المحلي لعملاء MCP الخارجيين."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "الاتصال",
+      "access": "الوصول"
     },
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "استخدم نقطة نهاية localhost هذه من Cursor أو Claude Desktop أو Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "رمز Bearer",
+        "description": "بيانات اعتماد في الذاكرة لجلسة تشغيل التطبيق هذه."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "تدوير الرمز",
+        "description": "إبطال جلسات العملاء الخارجيين الحالية."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "نسخ {label}",
+    "notRunning": "غير قيد التشغيل",
+    "toolsBadge": "{count, plural, zero {لا أدوات} one {أداة واحدة} two {أداتان} few {# أدوات} many {# أداة} other {# أداة}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "أذونات الوكيل",
+      "subtitle": "اختر الوصول الافتراضي والتأكيدات والمزودين المحليين لدردشة الوكيل."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "مزود محلي متوافق مع OpenAI",
+      "actions": "فحوصات الاتصال"
     },
     "presets": {
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "مخصص"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "الإعداد المسبق"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "عنوان URL الأساسي",
+        "description": "نقطة نهاية /v1 متوافقة مع OpenAI."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "السماح بنقطة نهاية غير محلية",
+        "description": "تُرسل البيانات إلى نقطة النهاية المُعدّة."
       },
       "model": {
-        "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "label": "النموذج",
+        "description": "اختر نموذجًا من النماذج المُعادة أو أدخل واحدًا يدويًا."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "مفتاح API",
+        "description": "بيانات اعتماد اختيارية تُخزَّن في سلسلة مفاتيح نظام التشغيل.",
+        "configured": "يوجد مفتاح API مخزَّن بالفعل في سلسلة مفاتيح نظام التشغيل."
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "save": "حفظ",
+      "models": "النماذج",
+      "test": "اختبار الاتصال",
+      "probe": "فحص الأدوات"
     },
     "status": {
-      "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "disconnected": "غير متصل",
+      "toolsDisabled": "الأدوات معطّلة",
+      "fullTools": "الأدوات الكاملة مفعّلة",
       "checking": "جارٍ التحقق…",
       "connected": "متصل",
       "label": "الاتصال"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "أذونات الوكيل",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "الوصول الافتراضي",
+        "description": "يحدد وضع الوصول المبدئي لأدوار الوكيل الجديدة.",
+        "vaultOnly": "الخزنة فقط",
+        "computerAccess": "الوصول إلى الكمبيوتر"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "تأكيد الإجراءات",
+        "description": "اختر ما إذا كانت استدعاءات الأدوات تعمل تلقائيًا أم تنتظر الموافقة في الدردشة.",
+        "alwaysAllow": "السماح دائمًا",
+        "askBeforeChanges": "السؤال قبل التغييرات"
       }
     }
   },
@@ -1368,6 +1425,10 @@
       "tasks": {
         "description": "قوائم المهام وتواريخ الاستحقاق",
         "label": "المهام"
+      },
+      "spatialCanvas": {
+        "description": "لوحات مكانية لترتيب الملاحظات وربطها",
+        "label": "اللوحة"
       }
     }
   },
@@ -1393,7 +1454,10 @@
         "skipped": "{count} تم تخطيه",
         "title": "اكتمل الاستيراد"
       },
-      "title": "الاستيراد من {name}"
+      "title": "الاستيراد من {name}",
+      "chooseDirectory": "اختر مجلدًا…",
+      "folderKeepsAssets": "اختر المجلد عندما تكون الصور خارج مجلد الملاحظات نفسه — غالبًا ما تحتفظ عمليات التصدير بالوسائط في مجلد مشترك.",
+      "previewError": "فشلت المعاينة"
     },
     "header": {
       "subtitle": "أحضر ملاحظاتك ومهامك من تطبيقات أخرى",
@@ -1432,6 +1496,99 @@
       "tasks": "{count, plural, zero {لا مهام} one {مهمة واحدة} two {مهمتان} few {# مهام} many {# مهمة} other {# مهمة}}",
       "withDueDate": "{count} مؤرّخ",
       "withTags": "{count} موسوم"
+    },
+    "messages": {
+      "csv": {
+        "columns": "الأعمدة: {columns}",
+        "emptyTitle": "تم تخطي صف بعنوان فارغ (العمود \"{column}\")",
+        "noHeaders": "ملف CSV لا يحتوي على صف رؤوس",
+        "titleColumn": "العنوان مأخوذ من \"{column}\"؛ حُفظت الأعمدة الأخرى كخصائص"
+      },
+      "raindrop": {
+        "csvEmpty": "ملف Raindrop CSV فارغ",
+        "headerNotFound": "لم يُعثر على صف رؤوس Raindrop CSV (العمود \"url\")",
+        "rowNoUrl": "تم تخطي الصف {row}: لا يوجد عنوان URL"
+      },
+      "readFileFailed": "فشلت قراءة الملف",
+      "ticktick": {
+        "foldersDropped": "لا يوجد ما يقابل مجلدات TickTick في Memry، لذا تم تجاهلها",
+        "headerNotFound": "لم يُعثر على صف رؤوس TickTick CSV (\"Folder Name\")",
+        "reminderNoAnchor": "تم تخطي التذكير \"{reminder}\" (لا يوجد تاريخ مرجعي)",
+        "subtaskParentMissing": "لم يُعثر على المهمة الأصل للمهمة الفرعية \"{title}\"؛ تم استيرادها في المستوى الأعلى",
+        "unknownPriority": "أولوية TickTick غير معروفة {priority} ← بلا",
+        "unsupportedRepeat": "تم تخطي قاعدة التكرار غير المدعومة \"{rule}\""
+      },
+      "todoist": {
+        "emptyTitle": "تم استيراد مهمة بمحتوى فارغ باسم (بلا عنوان)",
+        "headerNotFound": "ليس ملف Todoist CSV: صف الرؤوس TYPE مفقود",
+        "orphanComment": "تم تخطي تعليق لا تسبقه مهمة",
+        "sectionFlattened": "تم تسطيح القسم \"{section}\"",
+        "subtaskNoParent": "المهمة الفرعية \"{title}\" ليس لها مهمة أصل عند المستوى {indent}؛ تم استيرادها في المستوى الأعلى",
+        "unknownPriority": "أولوية غير معروفة {priority} ← بلا",
+        "unparsedDate": "تعذّر تحليل التاريخ \"{date}\""
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "جارٍ نسخ قاعدة بيانات Apple Notes…"
+      },
+      "bear": {
+        "scanning": "جارٍ فحص تصدير Bear…"
+      },
+      "csv": {
+        "importing": "جارٍ استيراد ملاحظات CSV…"
+      },
+      "evernote": {
+        "scanning": "جارٍ فحص ملفات .enex…"
+      },
+      "html": {
+        "scanning": "جارٍ فحص ملفات HTML…"
+      },
+      "importingItem": "جارٍ استيراد {title}",
+      "raindrop": {
+        "importing": "جارٍ استيراد إشارات Raindrop المرجعية…"
+      },
+      "roam": {
+        "reading": "جارٍ قراءة تصدير Roam…"
+      },
+      "scanningExport": "جارٍ فحص التصدير…",
+      "scanningFiles": "جارٍ فحص الملفات…",
+      "ticktick": {
+        "importing": "جارٍ استيراد مهام TickTick…"
+      },
+      "todoist": {
+        "importing": "جارٍ استيراد مهام Todoist…"
+      }
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "جارٍ التحميل…",
+      "subtitle": "تذكير المراجعة اليومية وتفضيلات البريد الوارد.",
+      "title": "البريد الوارد"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "تنبيه يومي لطيف حين يكون في بريدك الوارد عناصر.",
+        "label": "ذكّرني بمراجعة بريدي الوارد"
+      },
+      "error": "تعذّر تحديث التذكير.",
+      "group": "تذكير المراجعة اليومية",
+      "test": {
+        "button": "إرسال اختبار",
+        "description": "أرسل التذكير الآن للتأكد من عمل إشعارات النظام.",
+        "label": "إشعار تجريبي",
+        "sent": "تم إرسال الإشعار التجريبي.",
+        "sentHint": "إذا لم يظهر شيء، فاسمح بالإشعارات لـ MemryNote في إعدادات نظامك.",
+        "unsupported": "لا يستطيع هذا الجهاز عرض إشعارات سطح المكتب."
+      },
+      "time": {
+        "description": "التوقيت المحلي، على كل جهاز.",
+        "hourLabel": "الساعة",
+        "label": "وقت التذكير",
+        "minuteLabel": "الدقيقة",
+        "periodLabel": "AM أو PM"
+      }
     }
   }
 }

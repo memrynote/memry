@@ -1,12 +1,17 @@
 {
   "app": {
-    "quit": "Afslut",
-    "preferences": "Indstillinger…"
+    "quit": "Slut",
+    "preferences": "Indstillinger…",
+    "exit": "Afslut",
+    "hide": "Skjul MemryNote",
+    "hideOthers": "Skjul andre",
+    "services": "Tjenester",
+    "unhide": "Vis alle"
   },
   "file": {
     "label": "Fil",
     "newNote": "Ny note",
-    "close": "Luk vinduet",
+    "close": "Luk vindue",
     "closeTab": "Luk faneblad",
     "exportPdf": "Eksportér til PDF…",
     "openQuickly": "Åbn hurtigt…"
@@ -21,23 +26,30 @@
     "redo": "Gentag",
     "cut": "Klip",
     "copy": "Kopiér",
-    "paste": "Indsæt",
-    "selectAll": "Vælg alle",
+    "paste": "Sæt ind",
+    "selectAll": "Vælg alt",
     "find": "Find",
-    "speech": "Tale"
+    "speech": "Tale",
+    "delete": "Slet",
+    "pasteAndMatchStyle": "Sæt ind og tilpas typografi",
+    "startSpeaking": "Start oplæsning",
+    "stopSpeaking": "Stop oplæsning"
   },
   "view": {
     "label": "Visning",
     "reload": "Genindlæs",
-    "toggleDevTools": "Skift udviklerværktøjer",
-    "toggleFullscreen": "Skift fuld skærm",
+    "toggleDevTools": "Vis/skjul udviklerværktøjer",
+    "toggleFullscreen": "Slå fuld skærm til/fra",
     "theme": "Tema",
     "themeDark": "Mørkt",
     "themeLight": "Lyst",
     "themeSystem": "System",
     "themeWhite": "Papir",
-    "toggleDayPanel": "Skift dagpanel",
-    "toggleSidebar": "Skift sidebjælke"
+    "toggleDayPanel": "Vis/skjul dagpanel",
+    "toggleSidebar": "Vis/skjul sidebjælke",
+    "actualSize": "Faktisk størrelse",
+    "zoomIn": "Zoom ind",
+    "zoomOut": "Zoom ud"
   },
   "format": {
     "body": "Brødtekst",
@@ -48,14 +60,15 @@
     "heading3": "Overskrift 3",
     "highlight": "Fremhæv",
     "italic": "Kursiv",
-    "label": "Formatér",
+    "label": "Format",
     "strikethrough": "Gennemstregning"
   },
   "help": {
     "about": "Om MemryNote",
     "documentation": "Dokumentation",
     "label": "Hjælp",
-    "shortcuts": "Tastaturgenveje"
+    "shortcuts": "Tastaturgenveje",
+    "aboutVersion": "Version {version}"
   },
   "insert": {
     "attachment": "Indsæt vedhæftning…",
@@ -67,6 +80,10 @@
     "taskList": "Opgaveliste"
   },
   "window": {
-    "label": "Vindue"
+    "label": "Vindue",
+    "close": "Luk",
+    "front": "Placer alle forrest",
+    "minimize": "Minimer",
+    "zoom": "Zoom"
   }
 }

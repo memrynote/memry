@@ -1,7 +1,12 @@
 {
   "app": {
-    "quit": "Выйти",
-    "preferences": "Настройки…"
+    "quit": "Завершить",
+    "preferences": "Настройки…",
+    "exit": "Выход",
+    "hide": "Скрыть MemryNote",
+    "hideOthers": "Скрыть остальные",
+    "services": "Службы",
+    "unhide": "Показать все"
   },
   "file": {
     "label": "Файл",
@@ -16,7 +21,7 @@
     "forward": "Вперед"
   },
   "edit": {
-    "label": "Редактировать",
+    "label": "Правка",
     "undo": "Отменить",
     "redo": "Повторить",
     "cut": "Вырезать",
@@ -24,10 +29,14 @@
     "paste": "Вставить",
     "selectAll": "Выбрать всё",
     "find": "Найти",
-    "speech": "Речь"
+    "speech": "Речь",
+    "delete": "Удалить",
+    "pasteAndMatchStyle": "Вставить и согласовать стиль",
+    "startSpeaking": "Начать речь",
+    "stopSpeaking": "Остановить речь"
   },
   "view": {
-    "label": "Посмотреть",
+    "label": "Вид",
     "reload": "Перезагрузить",
     "toggleDevTools": "Переключить инструменты разработчика",
     "toggleFullscreen": "Переключить полноэкранный режим",
@@ -37,7 +46,10 @@
     "themeSystem": "Системная",
     "themeWhite": "Бумага",
     "toggleDayPanel": "Переключить панель дня",
-    "toggleSidebar": "Переключить боковую панель"
+    "toggleSidebar": "Переключить боковую панель",
+    "actualSize": "Реальный размер",
+    "zoomIn": "Увеличить",
+    "zoomOut": "Уменьшить"
   },
   "format": {
     "body": "Основной текст",
@@ -52,10 +64,11 @@
     "strikethrough": "Зачёркнутый"
   },
   "help": {
-    "about": "О MemryNote",
+    "about": "О программе MemryNote",
     "documentation": "Документация",
     "label": "Справка",
-    "shortcuts": "Горячие клавиши"
+    "shortcuts": "Горячие клавиши",
+    "aboutVersion": "Версия {version}"
   },
   "insert": {
     "attachment": "Вставить вложение…",
@@ -67,6 +80,10 @@
     "taskList": "Список задач"
   },
   "window": {
-    "label": "Окно"
+    "label": "Окно",
+    "close": "Закрыть",
+    "front": "Все окна вперёд",
+    "minimize": "Свернуть",
+    "zoom": "Масштабировать"
   }
 }

@@ -63,6 +63,8 @@ import {
   applyProjectFrontmatterBackfill,
   snapshotProjectFrontmatterBackfill
 } from './backfill-project-frontmatter'
+import { promoteSpatialCanvas } from '../settings/promote-spatial-canvas'
+import { migrateTemplateFilesToDb } from './templates-migration'
 import { configureLazyAgentServices } from '../agent/lazy-services'
 import { registerLazyAgentHandlers, unregisterLazyAgentHandlers } from '../ipc/agent-lazy-handlers'
 import type { AgentHandle } from '../agent/bootstrap'
@@ -265,6 +267,13 @@ async function openVault(vaultPath: string): Promise<void> {
 
   // Migrate settings: config.json ↔ SQLite cache
   migrateSettingsToConfig(dataDb, vaultPath)
+
+  // One-time: clear a collateral `spatialCanvas: false` left by pre-M7 writes.
+  promoteSpatialCanvas(dataDb)
+
+  // One-time import of pre-sync template files into the data DB. Settings
+  // guarded, so deleted templates are never resurrected.
+  migrateTemplateFilesToDb(dataDb, vaultPath)
 
   // Snapshot pre-frontmatter project links BEFORE the projection runtime can
   // reconcile any of them away. Only data.db is needed to read them; the write

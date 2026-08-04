@@ -28,7 +28,8 @@
         "properties": "Eigenschappen",
         "commandLine": "Opdrachtregel",
         "features": "Functies",
-        "import": "Importeren"
+        "import": "Importeren",
+        "inbox": "Inbox"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "{percent}% downloaden",
         "downloaded": "Start opnieuw om te installeren",
         "idle": "Controleer op updates"
+      },
+      "autoCheck": {
+        "description": "Controleer op nieuwe releases bij het starten en daarna regelmatig zolang de app open is.",
+        "error": "Kan de instelling voor automatisch controleren niet bijwerken",
+        "label": "Automatisch controleren op updates"
+      },
+      "autoDownload": {
+        "description": "Download en installeer nieuwe releases op de achtergrond, zonder te vragen.",
+        "error": "Kan de instelling voor automatisch downloaden niet bijwerken",
+        "label": "Updates automatisch downloaden"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Deel anonieme gebruiksstatistieken",
         "description": "Het zijn alleen anonieme statistieken: er worden nooit notitie-inhoud, zoekopdrachten, bestandspaden, e-mails of onbewerkte ID's verzonden.",
         "error": "Kan de telemetrie-instelling niet updaten"
+      },
+      "diagnostics": {
+        "building": "Rapport voorbereiden…",
+        "consent": "Eenmalig een diagnostisch rapport versturen? Het bevat alleen geanonimiseerde technische logs — geen notitie-inhoud.",
+        "error": "Kan het diagnostisch rapport niet versturen",
+        "notNow": "Niet nu",
+        "previewError": "Kan het diagnostisch rapport niet voorbereiden",
+        "previewLabel": "Inhoud van het rapport bekijken",
+        "send": "Versturen",
+        "sendReport": {
+          "button": "Diagnostisch rapport versturen",
+          "description": "Verstuur eenmalig een rapport met geanonimiseerde technische logs, zodat we het probleem dat je tegenkwam kunnen onderzoeken.",
+          "label": "Diagnostisch rapport"
+        },
+        "sending": "Versturen…",
+        "sent": "Rapport verstuurd — referentie {incidentId}",
+        "snapshotLabel": "Momentopname van apparaat",
+        "title": "Een diagnostisch rapport versturen?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Indeling",
-      "toolbar": "Werkbalk"
+      "toolbar": "Werkbalk",
+      "spelling": "Spelling"
     },
     "width": {
       "label": "Editorbreedte",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Smal",
         "medium": "Middelmatig",
-        "wide": "Breed"
+        "wide": "Breed",
+        "full": "Volledige breedte",
+        "normal": "Normaal"
       },
       "error": "Kan de breedte van de editor niet bijwerken"
     },
@@ -229,6 +261,11 @@
       "label": "Vaste opmaakwerkbalk",
       "description": "Toon altijd de werkbalk boven de editor",
       "error": "Kan de werkbalkmodus niet updaten"
+    },
+    "spellCheck": {
+      "description": "Onderstreep verkeerd gespelde woorden in notities en dagboeken",
+      "error": "Kan de spellingcontrole niet bijwerken",
+      "label": "Spelling controleren"
     }
   },
   "templates": {
@@ -640,7 +677,7 @@
       "vaultPickerFolderLabel": "Kluizen opslaan in map",
       "vaultPickerPrimaryHint": "Opent nu",
       "vaultPickerTitle": "Kies wat je wilt ophalen",
-      "vaultRow": "Kluis — {{count}} items · {{date}}"
+      "vaultRow": "Kluis — {count} items · {date}"
     }
   },
   "devices": {
@@ -673,7 +710,8 @@
       "removeFailed": "Kan apparaat niet verwijderen",
       "renamed": "Hernoemd naar \"{name}\"",
       "renameFailed": "Kan de naam van het apparaat niet wijzigen"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Nieuw apparaat koppelen",
@@ -855,6 +893,11 @@
         "description": "Schakel uit voor eenrichtingssynchronisatie — je ziet je Google-gebeurtenissen nog in memrynote, maar memrynote-gebeurtenissen verschijnen niet in Google.",
         "error": "Kan synchronisatierichting niet bijwerken",
         "label": "memrynote-gebeurtenissen tonen in Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Staat standaard uit. Zet je dit aan, dan kan de AI-agent je Google-gebeurtenissen lezen; zet je het uit, dan krijgt hij er niets over terug wanneer je ernaar vraagt. Je blijft ze hoe dan ook in memrynote zien.",
+        "error": "Kan AI-toegang niet bijwerken",
+        "label": "AI Google Calendar-gebeurtenissen laten lezen"
       }
     },
     "sourcePicker": {
@@ -898,7 +941,8 @@
     },
     "groups": {
       "storageUsage": "Opslaggebruik",
-      "location": "Locatie"
+      "location": "Locatie",
+      "accountVaults": "Kluizen in je account"
     },
     "loadingStorage": "Opslaginformatie laden...",
     "signInStorage": "Meld u aan om het opslaggebruik te bekijken",
@@ -919,6 +963,17 @@
       },
       "warningTitle": "Opslag bijna vol",
       "warningDescription": "Maak ruimte vrij of upgrade uw abonnement om synchronisatieproblemen te voorkomen."
+    },
+    "accountVaults": {
+      "activeHint": "Schakel over naar een andere kluis om deze te verwijderen.",
+      "cloudOnly": "Niet op dit apparaat",
+      "delete": "Verwijderen",
+      "deleteBody": "Hiermee worden alle gesynchroniseerde gegevens van deze kluis definitief van de servers van Memry verwijderd; dit kan niet ongedaan worden gemaakt. Je bestanden op schijf worden niet verwijderd.",
+      "deleteConfirm": "Verwijderen uit account",
+      "deleteFailed": "Kan kluis niet verwijderen",
+      "deleteTitle": "“{name}” uit je account verwijderen?",
+      "empty": "Nog geen kluizen gesynchroniseerd met je account.",
+      "itemsCount": "{count} items"
     }
   },
   "tags": {
@@ -1137,16 +1192,12 @@
       "press": "Druk op ",
       "toToggleThisDialog": "om dit dialoogvenster in of uit te schakelen"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middenpunt;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Dit apparaat is verwijderd",
       "exporting": "Exporteren...",
       "signOut": "Uitloggen"
     },
     "componentsSyncSyncHistory": {
-      "middot": "middenpunt; ",
       "activity": "Activiteit",
       "filterBySyncType": "Filter op synchronisatietype",
       "allTypes": "Alle soorten",
@@ -1160,7 +1211,12 @@
       "last30Days": "Laatste 30 dagen",
       "loadingSyncHistory": "Synchronisatiegeschiedenis laden",
       "noSyncActivityYet": "Nog geen synchronisatieactiviteit",
-      "loadMore": "Laad meer"
+      "loadMore": "Laad meer",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, foutdetails tonen",
+      "summaryFailed": "Synchronisatie mislukt",
+      "summaryPulled": "{count, plural, one {# item opgehaald} other {# items opgehaald}}",
+      "summaryPushed": "{count, plural, one {# item verzonden} other {# items verzonden}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Laatst gesynchroniseerd ",
@@ -1208,102 +1264,103 @@
       "failedToCloseVault": "Kan de kluis niet sluiten",
       "failedToSwitchVault": "Kan niet van kluis wisselen",
       "failedToUpdateConfig": "Kan configuratie niet updaten",
-      "failedToReindex": "Opnieuw indexeren is mislukt"
+      "failedToReindex": "Opnieuw indexeren is mislukt",
+      "failedToLoadTasks": "Kan taken niet laden"
     }
   },
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Lokale servertoegang voor externe MCP-clients."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Verbinding",
+      "access": "Toegang"
     },
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Gebruik dit localhost-eindpunt vanuit Cursor, Claude Desktop of Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Bearer-token",
+        "description": "Referentie in het geheugen voor deze app-start."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Token vernieuwen",
+        "description": "Maakt bestaande sessies van externe clients ongeldig."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
+    "copyLabel": "{label} kopiëren",
+    "notRunning": "Niet actief",
     "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Agentmachtigingen",
+      "subtitle": "Kies de standaardtoegang, bevestigingen en lokale providers voor Agent-chat."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Lokale OpenAI-compatibele provider",
+      "actions": "Verbindingscontroles"
     },
     "presets": {
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Aangepast"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Voorinstelling"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "Basis-URL",
+        "description": "OpenAI-compatibel /v1-eindpunt."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Niet-loopback-eindpunt toestaan",
+        "description": "Gegevens worden naar het ingestelde eindpunt gestuurd."
       },
       "model": {
         "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "description": "Kies een gevonden model of voer er handmatig een in."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "API-sleutel",
+        "description": "Optionele referentie die in de sleutelhanger van het besturingssysteem wordt bewaard.",
+        "configured": "Er staat al een API-sleutel in de sleutelhanger van het besturingssysteem."
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "save": "Opslaan",
+      "models": "Modellen",
+      "test": "Verbinding testen",
+      "probe": "Tools controleren"
     },
     "status": {
-      "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "disconnected": "Niet verbonden",
+      "toolsDisabled": "Tools uitgeschakeld",
+      "fullTools": "Alle tools ingeschakeld",
       "checking": "Controleren…",
       "connected": "Verbonden",
       "label": "Verbinding"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Agentmachtigingen",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Standaardtoegang",
+        "description": "Bepaalt de begintoegangsmodus voor nieuwe agentbeurten.",
+        "vaultOnly": "Alleen kluis",
+        "computerAccess": "Computertoegang"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Acties bevestigen",
+        "description": "Kies of toolaanroepen automatisch worden uitgevoerd of op goedkeuring in de chat wachten.",
+        "alwaysAllow": "Altijd toestaan",
+        "askBeforeChanges": "Vragen vóór wijzigingen"
       }
     }
   },
@@ -1368,6 +1425,10 @@
       "tasks": {
         "description": "To-do's en vervaldatums",
         "label": "Taken"
+      },
+      "spatialCanvas": {
+        "description": "Ruimtelijke borden om notities te ordenen en te koppelen",
+        "label": "Canvas"
       }
     }
   },
@@ -1393,7 +1454,10 @@
         "skipped": "{count} overgeslagen",
         "title": "Import voltooid"
       },
-      "title": "Importeren uit {name}"
+      "title": "Importeren uit {name}",
+      "chooseDirectory": "Map kiezen…",
+      "folderKeepsAssets": "Kies de map wanneer afbeeldingen buiten de eigen map van de notities staan — exports bewaren media vaak in een gedeelde map.",
+      "previewError": "Voorbeeld mislukt"
     },
     "header": {
       "subtitle": "Haal je notities en taken uit andere apps",
@@ -1432,6 +1496,99 @@
       "tasks": "{count, plural, one {# taak} other {# taken}}",
       "withDueDate": "{count} met datum",
       "withTags": "{count} getagd"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Kolommen: {columns}",
+        "emptyTitle": "Rij met lege titel overgeslagen (kolom “{column}”)",
+        "noHeaders": "Het CSV-bestand heeft geen kopregel",
+        "titleColumn": "Titel uit “{column}”; overige kolommen zijn als eigenschappen opgeslagen"
+      },
+      "raindrop": {
+        "csvEmpty": "De Raindrop-CSV is leeg",
+        "headerNotFound": "Kopregel van de Raindrop-CSV (kolom “url”) niet gevonden",
+        "rowNoUrl": "Rij {row} overgeslagen: geen URL"
+      },
+      "readFileFailed": "Kan het bestand niet lezen",
+      "ticktick": {
+        "foldersDropped": "TickTick-mappen hebben geen equivalent in Memry en zijn weggelaten",
+        "headerNotFound": "Kopregel van de TickTick-CSV (“Folder Name”) niet gevonden",
+        "reminderNoAnchor": "Herinnering “{reminder}” overgeslagen (geen datumanker)",
+        "subtaskParentMissing": "Bovenliggende taak van subtaak “{title}” niet gevonden; geïmporteerd op hoofdniveau",
+        "unknownPriority": "Onbekende TickTick-prioriteit {priority} → geen",
+        "unsupportedRepeat": "Niet-ondersteunde herhaalregel “{rule}” overgeslagen"
+      },
+      "todoist": {
+        "emptyTitle": "Taak met lege inhoud geïmporteerd als (zonder titel)",
+        "headerNotFound": "Geen Todoist-CSV: de kopregel TYPE ontbreekt",
+        "orphanComment": "Opmerking zonder voorafgaande taak overgeslagen",
+        "sectionFlattened": "Sectie “{section}” afgevlakt",
+        "subtaskNoParent": "Subtaak “{title}” heeft geen bovenliggende taak op inspringniveau {indent}; geïmporteerd op hoofdniveau",
+        "unknownPriority": "Onbekende prioriteit {priority} → geen",
+        "unparsedDate": "Kan de datum “{date}” niet lezen"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Apple Notes-database kopiëren…"
+      },
+      "bear": {
+        "scanning": "Bear-export scannen…"
+      },
+      "csv": {
+        "importing": "CSV-notities importeren…"
+      },
+      "evernote": {
+        "scanning": ".enex-bestanden scannen…"
+      },
+      "html": {
+        "scanning": "HTML-bestanden scannen…"
+      },
+      "importingItem": "{title} importeren",
+      "raindrop": {
+        "importing": "Raindrop-bladwijzers importeren…"
+      },
+      "roam": {
+        "reading": "Roam-export lezen…"
+      },
+      "scanningExport": "Export scannen…",
+      "scanningFiles": "Bestanden scannen…",
+      "ticktick": {
+        "importing": "TickTick-taken importeren…"
+      },
+      "todoist": {
+        "importing": "Todoist-taken importeren…"
+      }
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Laden…",
+      "subtitle": "Dagelijkse herinnering en inboxvoorkeuren.",
+      "title": "Inbox"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Een vriendelijk dagelijks duwtje wanneer er iets in je inbox staat.",
+        "label": "Herinner me eraan mijn inbox door te nemen"
+      },
+      "error": "Kan de herinnering niet bijwerken.",
+      "group": "Dagelijkse inboxherinnering",
+      "test": {
+        "button": "Test versturen",
+        "description": "Stuur de herinnering nu om je systeemmeldingen te controleren.",
+        "label": "Testmelding",
+        "sent": "Testmelding verstuurd.",
+        "sentHint": "Verschijnt er niets? Sta meldingen voor MemryNote toe in je systeeminstellingen.",
+        "unsupported": "Dit apparaat kan geen bureaubladmeldingen tonen."
+      },
+      "time": {
+        "description": "Lokale tijd, op elk apparaat.",
+        "hourLabel": "Uur",
+        "label": "Tijdstip van de herinnering",
+        "minuteLabel": "Minuut",
+        "periodLabel": "AM of PM"
+      }
     }
   }
 }

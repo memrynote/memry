@@ -54,7 +54,7 @@
     "event-editor-description": "Aktualisieren Sie Titel, Ort, Datum, Uhrzeit und Notizen für dieses Ereignis.",
     "new-event-placeholder": "Neue Veranstaltung",
     "notes-url-placeholder": "Fügen Sie Notizen oder URL hinzu",
-    "start": "Start",
+    "start": "Beginn",
     "end": "Ende",
     "google-calendar": "Google-Kalender",
     "target-calendar": "Zielkalender",
@@ -67,14 +67,16 @@
     "title": "Veranstaltung löschen?",
     "local-description": "„{title}“ wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
     "google-bound-description": "„{title}“ wird aus memrynote und Google Kalender entfernt. Diese Aktion kann nicht rückgängig gemacht werden.",
-    "context-menu-delete-label": "Veranstaltung löschen"
+    "context-menu-delete-label": "Veranstaltung löschen",
+    "context-menu-add-to-project": "Zum Projekt hinzufügen"
   },
   "promote-dialog": {
     "aria": "Externes Kalenderereignis bearbeiten",
     "title": "Dieses Ereignis in memrynote bearbeiten?",
     "body": "Durch die Bearbeitung dieses Ereignisses wird eine verknüpfte Kopie in memrynote erstellt, sodass Änderungen in beide Richtungen synchronisiert werden. Weitermachen?",
     "do-not-ask-again": "Fragen Sie nicht noch einmal",
-    "confirm-label": "Bearbeiten in memrynote"
+    "confirm-label": "Bearbeiten in memrynote",
+    "agent-notice": "Der KI-Agent kann diese Kopie lesen, auch wenn der KI-Zugriff auf Google Calendar deaktiviert ist. Ihr ursprünglicher Google-Termin bleibt für ihn verborgen."
   },
   "onboarding-dialog": {
     "aria": "Wählen Sie Ihren Standard-Google-Kalender",
@@ -106,7 +108,7 @@
   },
   "phaseF": {
     "componentsCalendarCalendarEventMetadata": {
-      "min": "min · "
+      "min": "Min · "
     }
   },
   "phaseI": {
@@ -181,6 +183,16 @@
     "placeholder": "Termine, Aufgaben, Erinnerungen suchen…"
   },
   "undo": {
-    "moveEvent": "Termin verschieben"
+    "moveEvent": "Termin verschieben",
+    "moveTask": "Aufgabe neu planen"
+  },
+  "agent-access-dialog": {
+    "allow": "Erlauben",
+    "aria": "Wählen Sie, ob die KI Ihre Termine aus Google Calendar lesen darf",
+    "body": "Ihre Google-Termine sehen Sie in memrynote in jedem Fall weiterhin. Hier legen Sie nur fest, ob der KI-Agent sie lesen darf, wenn Sie ihn nach Ihrem Terminplan fragen.",
+    "deny": "Nicht erlauben",
+    "footnote": "Sie können dies jederzeit unter Einstellungen → Integrationen → Google Calendar ändern.",
+    "save-error": "Ihre Auswahl konnte nicht gespeichert werden",
+    "title": "Soll die KI Ihre Termine aus Google Calendar lesen dürfen?"
   }
 }

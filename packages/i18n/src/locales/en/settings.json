@@ -39,12 +39,30 @@
       "subtitle": "Turn parts of the app on or off. Off = ghosted in the sidebar and disabled everywhere."
     },
     "items": {
-      "home": { "label": "Home", "description": "Landing dashboard" },
-      "inbox": { "label": "Inbox", "description": "Quick capture and triage" },
-      "journal": { "label": "Journal", "description": "Daily notes" },
-      "tasks": { "label": "Tasks", "description": "To-dos and due dates" },
-      "calendar": { "label": "Calendar", "description": "Events and schedule" },
-      "graph": { "label": "Graph", "description": "Note connections" },
+      "home": {
+        "label": "Home",
+        "description": "Landing dashboard"
+      },
+      "inbox": {
+        "label": "Inbox",
+        "description": "Quick capture and triage"
+      },
+      "journal": {
+        "label": "Journal",
+        "description": "Daily notes"
+      },
+      "tasks": {
+        "label": "Tasks",
+        "description": "To-dos and due dates"
+      },
+      "calendar": {
+        "label": "Calendar",
+        "description": "Events and schedule"
+      },
+      "graph": {
+        "label": "Graph",
+        "description": "Note connections"
+      },
       "spatialCanvas": {
         "label": "Canvas",
         "description": "Spatial boards to arrange and link notes"
@@ -709,7 +727,7 @@
       "vaultPickerDescription": "This account has multiple vaults. Pick a folder and the vault(s) to add to this device.",
       "vaultPickerFolderLabel": "Store vaults in folder",
       "vaultPickerChooseFolder": "Choose folder",
-      "vaultRow": "Vault — {{count}} items · {{date}}",
+      "vaultRow": "Vault — {count} items · {date}",
       "vaultPickerPrimaryHint": "Opens now",
       "vaultPickerDormantHint": "Added, opens when you switch to it",
       "vaultPickerConfirm": "Pull selected"
@@ -745,7 +763,8 @@
       "removeFailed": "Failed to remove device",
       "renamed": "Renamed to \"{name}\"",
       "renameFailed": "Failed to rename device"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Link new device",
@@ -954,7 +973,71 @@
         "skipped": "{count} skipped",
         "failed": "{count} failed"
       },
-      "error": "Import failed"
+      "error": "Import failed",
+      "previewError": "Preview failed"
+    },
+    "messages": {
+      "readFileFailed": "Failed to read file",
+      "csv": {
+        "noHeaders": "CSV file has no headers",
+        "emptyTitle": "Skipped row with empty title (column \"{column}\")",
+        "columns": "Columns: {columns}",
+        "titleColumn": "Title from \"{column}\"; other columns saved as properties"
+      },
+      "raindrop": {
+        "csvEmpty": "Raindrop CSV is empty",
+        "headerNotFound": "Raindrop CSV header row (\"url\" column) not found",
+        "rowNoUrl": "Row {row} skipped: no URL"
+      },
+      "ticktick": {
+        "headerNotFound": "TickTick CSV header row (\"Folder Name\") not found",
+        "foldersDropped": "TickTick folders have no Memry equivalent and were dropped",
+        "subtaskParentMissing": "Subtask \"{title}\" parent not found; imported top-level",
+        "unknownPriority": "Unknown TickTick priority {priority} → none",
+        "unsupportedRepeat": "Unsupported repeat rule \"{rule}\" skipped",
+        "reminderNoAnchor": "Reminder \"{reminder}\" skipped (no date anchor)"
+      },
+      "todoist": {
+        "headerNotFound": "Not a Todoist CSV: missing TYPE header row",
+        "sectionFlattened": "Section \"{section}\" flattened",
+        "orphanComment": "Comment with no preceding task skipped",
+        "emptyTitle": "Task with empty content imported as (untitled)",
+        "unknownPriority": "Unknown priority {priority} → none",
+        "unparsedDate": "Could not parse date \"{date}\"",
+        "subtaskNoParent": "Sub-task \"{title}\" has no parent at indent {indent}; imported top-level"
+      }
+    },
+    "status": {
+      "scanningFiles": "Scanning files…",
+      "scanningExport": "Scanning export…",
+      "importingItem": "Importing {title}",
+      "appleNotes": {
+        "copyingDatabase": "Copying Apple Notes database…"
+      },
+      "bear": {
+        "scanning": "Scanning Bear export…"
+      },
+      "csv": {
+        "importing": "Importing CSV notes…"
+      },
+      "evernote": {
+        "scanning": "Scanning .enex files…"
+      },
+      "html": {
+        "scanning": "Scanning HTML files…"
+      },
+      "raindrop": {
+        "importing": "Importing Raindrop bookmarks…"
+      },
+      "roam": {
+        "reading": "Reading Roam export…"
+      },
+      "ticktick": {
+        "importing": "Importing TickTick tasks…"
+      },
+      "todoist": {
+        "importing": "Importing Todoist tasks…"
+      }
     }
   },
   "integrations": {
@@ -1323,16 +1406,12 @@
       "press": "Press ",
       "toToggleThisDialog": "to toggle this dialog"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middot;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "This device has been removed",
       "exporting": "Exporting...",
       "signOut": "Sign Out"
     },
     "componentsSyncSyncHistory": {
-      "middot": "middot; ",
       "activity": "Activity",
       "filterBySyncType": "Filter by sync type",
       "allTypes": "All types",
@@ -1346,7 +1425,12 @@
       "last30Days": "Last 30 days",
       "loadingSyncHistory": "Loading sync history",
       "noSyncActivityYet": "No sync activity yet",
-      "loadMore": "Load more"
+      "loadMore": "Load more",
+      "duration": "· {duration}",
+      "summaryFailed": "Sync failed",
+      "summaryPushed": "{count, plural, one {# item pushed} other {# items pushed}}",
+      "summaryPulled": "{count, plural, one {# item pulled} other {# items pulled}}",
+      "showErrorDetailsAria": "{summary}, show error details"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Last synced ",

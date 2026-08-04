@@ -1,10 +1,15 @@
 {
   "app": {
-    "quit": "Odustati",
-    "preferences": "Postavke…"
+    "quit": "Izađi",
+    "preferences": "Postavke…",
+    "exit": "Izlaz",
+    "hide": "Sakrij MemryNote",
+    "hideOthers": "Sakrij ostale",
+    "services": "Usluge",
+    "unhide": "Prikaži sve"
   },
   "file": {
-    "label": "File",
+    "label": "Datoteka",
     "newNote": "Nova bilješka",
     "close": "Zatvori prozor",
     "closeTab": "Zatvori karticu",
@@ -12,22 +17,26 @@
     "openQuickly": "Brzo otvori…"
   },
   "navigation": {
-    "back": "natrag",
+    "back": "Natrag",
     "forward": "Naprijed"
   },
   "edit": {
     "label": "Uredi",
     "undo": "Poništi",
     "redo": "Ponovi",
-    "cut": "rezati",
+    "cut": "Izreži",
     "copy": "Kopiraj",
-    "paste": "Zalijepite",
+    "paste": "Zalijepi",
     "selectAll": "Odaberi sve",
     "find": "Pronađi",
-    "speech": "Govor"
+    "speech": "Govor",
+    "delete": "Izbriši",
+    "pasteAndMatchStyle": "Zalijepi i prilagodi stil",
+    "startSpeaking": "Počni govoriti",
+    "stopSpeaking": "Prestani govoriti"
   },
   "view": {
-    "label": "pogled",
+    "label": "Prikaz",
     "reload": "Ponovno učitaj",
     "toggleDevTools": "Uključi/isključi alate za razvojne programere",
     "toggleFullscreen": "Uključi/isključi cijeli zaslon",
@@ -37,7 +46,10 @@
     "themeSystem": "Sustav",
     "themeWhite": "Papir",
     "toggleDayPanel": "Uključi/isključi ploču dana",
-    "toggleSidebar": "Uključi/isključi bočnu traku"
+    "toggleSidebar": "Uključi/isključi bočnu traku",
+    "actualSize": "Stvarna veličina",
+    "zoomIn": "Povećaj",
+    "zoomOut": "Smanji"
   },
   "format": {
     "body": "Tijelo teksta",
@@ -55,7 +67,8 @@
     "about": "O aplikaciji MemryNote",
     "documentation": "Dokumentacija",
     "label": "Pomoć",
-    "shortcuts": "Tipkovnički prečaci"
+    "shortcuts": "Tipkovnički prečaci",
+    "aboutVersion": "Verzija {version}"
   },
   "insert": {
     "attachment": "Umetni privitak…",
@@ -67,6 +80,10 @@
     "taskList": "Popis zadataka"
   },
   "window": {
-    "label": "Prozor"
+    "label": "Prozor",
+    "close": "Zatvori",
+    "front": "Sve u prvi plan",
+    "minimize": "Minimiziraj",
+    "zoom": "Zumiraj"
   }
 }

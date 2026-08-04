@@ -28,6 +28,13 @@
       "readyDetailFallback": "Khởi động lại memrynote để hoàn tất cài đặt cập nhật.",
       "buttonRestartNow": "Khởi động lại ngay bây giờ",
       "releaseNotesLabel": "Ghi chú phát hành:"
+    },
+    "pair": {
+      "buttonAllow": "Cho phép",
+      "buttonDeny": "Từ chối",
+      "buttonPair": "Ghép nối",
+      "message": "Cho phép tiện ích trình duyệt Memry gửi nội dung thu thập tới ứng dụng này?",
+      "title": "Ghép nối tiện ích trình duyệt"
     }
   },
   "notification": {
@@ -38,6 +45,11 @@
       "fallback": "Đến hạn nhắc nhở",
       "default": "Nhắc nhở",
       "task": "Nhắc công việc"
+    },
+    "inboxReview": {
+      "body": "Bạn có {count, plural, other {# mục}} cần xem lại.",
+      "testBody": "Đây là bản thử — lời nhắc xem lại hằng ngày của bạn sẽ trông như thế này.",
+      "title": "Đã đến lúc xem lại hộp thư đến"
     }
   },
   "error": {
@@ -45,5 +57,15 @@
     "definitionNotFound": "Không tìm thấy định nghĩa",
     "noteNotFound": "Không tìm thấy ghi chú",
     "updateFailed": "Cập nhật thất bại"
+  },
+  "startup": {
+    "failed": {
+      "body": "Điều này có thể xảy ra khi ổ đĩa còn rất ít dung lượng trống, hoặc với trình điều khiển đồ họa cũ. Hãy thử giải phóng dung lượng ổ đĩa rồi mở lại MemryNote. Nếu vẫn tiếp diễn, cài đặt lại thường sẽ khắc phục được.",
+      "title": "MemryNote không thể khởi động xong"
+    },
+    "installingUpdate": {
+      "subtitle": "MemryNote sẽ tự mở lại.",
+      "title": "Đang cài đặt bản cập nhật…"
+    }
   }
 }

@@ -25,7 +25,8 @@
     "expand": "拡大する",
     "collapse": "崩壊する",
     "showMore": "+{count, plural, one {# もっと見る} other {# もっと見る}}",
-    "showLess": "表示を少なくする"
+    "showLess": "表示を少なくする",
+    "undo": "元に戻す"
   },
   "tabs": {
     "pin": "ピンタブ",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "今日",
     "yesterday": "昨日",
-    "daysAgo": "{count, plural, one {# 日前} other {# 日前}}"
+    "daysAgo": "{count, plural, one {# 日前} other {# 日前}}",
+    "daysLate": "{count, plural, other {# 日遅れ}}",
+    "daysOverdue": "{count, plural, other {# 日超過}}",
+    "tomorrow": "明日"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {毎日} other {# 日ごと}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {毎月 {day}{suffix}} other {{day}{suffix} の # か月ごと}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {毎月 {week} {day}} other {{week} {day} で # か月ごと}}",
     "everyNYears": "{count, plural, one {毎年} other {# 年ごと}}",
-    "repeats": "繰り返し"
+    "repeats": "繰り返し",
+    "ordinal": {
+      "first": "第1",
+      "fourth": "第4",
+      "last": "最終",
+      "second": "第2",
+      "third": "第3"
+    },
+    "preset": {
+      "everyWeekday": "毎週平日（月〜金）",
+      "everyYearOnDate": "毎年 {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -102,7 +117,15 @@
       "updateDownloadingPercent": "ダウンロード中 {percent}%",
       "updateInstallingSubtitle": "MemryNote は自動的に再起動します。",
       "updateInstallingTitle": "更新をインストール中",
-      "updateRestart": "再起動"
+      "updateRestart": "再起動",
+      "feedbackPrivacyEmailOptional": "メールアドレス — 入力した場合のみ、返信のためだけに使います",
+      "feedbackPrivacyEmailSignedIn": "アカウントのメールアドレス（{email}）。返信のために使います",
+      "feedbackPrivacyMessage": "メッセージ本文（入力したそのまま）",
+      "feedbackPrivacyNote": "送信されるのはこれだけです。メモはデバイスの外に出ません。",
+      "feedbackPrivacyPlan": "ご利用のプラン（free、Plus、Pro、Believer）",
+      "feedbackPrivacyTitle": "送信される内容",
+      "feedbackPrivacyVersion": "アプリのバージョンと OS",
+      "projects": "プロジェクト"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "日パネルのサイズ変更",
@@ -180,8 +203,9 @@
       "search": "検索",
       "searchNotesTasksJournalInbox": "メモ、タスク、日記、受信トレイを検索...",
       "noResultsFor": "「」の結果はありません",
-      "rdquo": "rdquo;",
-      "result": "結果"
+      "result": "結果",
+      "noResultsForQuery": "「{query}」の結果はありません",
+      "resultCount": "{count, plural, other {# 件の結果}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "アイテムを検索してクリックしてトレイルを構築します",
@@ -231,7 +255,8 @@
       "journal": "日記",
       "calendar": "カレンダー",
       "inboxCapture": "受信箱のキャプチャ",
-      "tasks": "タスク"
+      "tasks": "タスク",
+      "tags": "タグ"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "未保存の変更",
@@ -261,15 +286,15 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "何か問題が発生しました",
       "anErrorOccurredWhileRenderingThisTabContent": "このタブのコンテンツをレンダリング中にエラーが発生しました。",
-      "tryAgain": "もう一度試してください"
+      "tryAgain": "もう一度試してください",
+      "sendReport": "診断レポートを送信"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "注記アイコン"
     },
     "componentsTabsUnsavedChangesDialog": {
       "unsavedChanges": "未保存の変更",
-      "quot": "引用;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "引用;未保存の変更があります。何をしたいですか?"
+      "unsavedChangesBody": "「{title}」に未保存の変更があります。どうしますか？"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "新しいワークスペース",
@@ -341,7 +366,6 @@
       "logOut": "ログアウト",
       "signInToSync": "サインインして同期する",
       "remove": "「」を削除します",
-      "rdquoFromList": "rdquo;リストから?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "このボールトはアプリから削除されますが、ファイルはディスク上に残ります。後でいつでも再追加できます。",
       "cancel": "キャンセル",
       "remove2": "削除",
@@ -352,7 +376,13 @@
       "downloadLocation": "保存先",
       "changeLocation": "変更…",
       "download": "ダウンロード",
-      "downloadFailed": "保管庫をダウンロードできませんでした"
+      "downloadFailed": "保管庫をダウンロードできませんでした",
+      "deleteFromAccount": "アカウントから削除",
+      "deleteVaultBody": "この保管庫の同期データを Memry のサーバーから完全に削除します。この操作は元に戻すことができません。ディスク上のファイルは削除されません。",
+      "deleteVaultConfirm": "アカウントから削除",
+      "deleteVaultFailed": "保管庫を削除できませんでした",
+      "deleteVaultTitle": "「{name}」をアカウントから削除しますか？",
+      "removeVaultTitle": "「{name}」を一覧から削除しますか？"
     },
     "componentsWindowControls": {
       "searchK": "検索(⌘K)",
@@ -425,7 +455,7 @@
       },
       "models": {
         "default": "デフォルト",
-        "label": "Model"
+        "label": "モデル"
       },
       "settings": {
         "reasoning": "推論"
@@ -450,21 +480,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "ボールトのみ",
+        "computerAccess": "コンピュータへのアクセス"
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
-        "label": "Web search"
+        "off": "オフ",
+        "label": "Web 検索"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Agent の権限: {access}、Web 検索 {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "権限",
+        "access": "アクセス",
+        "tools": "ツール"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Agent のモデル設定: {model}、{settings}"
     },
     "refPicker": {
       "noMatches": "一致しません"
@@ -479,7 +509,7 @@
     "sidebar": {
       "label": "右サイドバー",
       "day": "日",
-      "agent": "Agent",
+      "agent": "エージェント",
       "pendingApproval": "{count, plural, one {# 承認待ち} other {# 保留中の承認}}",
       "inProgress": "Agent ターン進行中",
       "close": "エージェントを閉じる"
@@ -575,7 +605,7 @@
       "remove": "削除",
       "removeAria": "ウィジェットを削除",
       "resize": "サイズ",
-      "resizeAria": "{{size}} にサイズ変更",
+      "resizeAria": "{size} にサイズ変更",
       "savedFilterDefault": "今日",
       "savedFilterHint": "タスクページでフィルターにスターを付けると、ここで使用できます",
       "savedFilterLabel": "保存したフィルター",
@@ -624,6 +654,11 @@
     "welcome": {
       "body": "あなた専用の、オフラインファーストなホーム。ノートはエンドツーエンドで暗号化され、暗号化されないままデバイスの外に出ることはありません。",
       "title": "MemryNote へようこそ"
+    },
+    "tour": {
+      "next": "次へ",
+      "previous": "戻る",
+      "progress": "{total} 件中 {current} 件目"
     }
   },
   "updatePrompt": {
@@ -640,6 +675,165 @@
     "skip": "このバージョンをスキップ"
   },
   "capture": {
-    "focusShortcut": "キャプチャ入力にフォーカス"
+    "focusShortcut": "キャプチャ入力にフォーカス",
+    "detailHint": "詳細",
+    "focusHint": "Q",
+    "submit": "キャプチャ"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "カードを追加",
+      "addCreateNote": "「{query}」というメモを作成",
+      "addCreateNoteEmpty": "新しいメモを作成",
+      "addCreatedAt": "{date} に作成",
+      "addEmpty": "見つかりませんでした",
+      "addGroupEvents": "予定",
+      "addGroupNotes": "メモ",
+      "addGroupTasks": "タスク",
+      "addOnCanvas": "キャンバス上",
+      "addPlaceholder": "メモ・タスク・予定を検索…",
+      "allDay": "終日",
+      "createNoteFailed": "メモを作成できませんでした",
+      "deleted": "アイテムを削除しました",
+      "loading": "読み込み中…",
+      "open": "タブで開く",
+      "openToEdit": "タブで開いて編集",
+      "untitled": "無題"
+    },
+    "corruptScene": "このキャンバスを読み取れませんでした。データを失わないよう、編集を無効にしています。",
+    "createFailed": "キャンバスを作成できませんでした",
+    "disabledBody": "このタブの機能は、このデバイスでは有効になっていません。",
+    "disabledTitle": "キャンバスは有効になっていません",
+    "empty": "まだキャンバスはありません",
+    "libraryStoreFailed": "図形ライブラリを保存できませんでした。最近の変更が失われる可能性があります。",
+    "loadFailed": "キャンバスを読み込めませんでした",
+    "loading": "キャンバスを読み込んでいます…",
+    "newCanvas": "新しいキャンバス",
+    "notFound": "このキャンバスは見つかりませんでした",
+    "openFailed": "キャンバスを開けませんでした",
+    "savedToVault": "変更はすべて保管庫に自動で保存されます",
+    "sectionLabel": "キャンバス",
+    "tooLargeToSync": "このキャンバスは大きすぎて同期できません。このデバイスには保存されていますが、サイズが小さくなるまで他のデバイスには届きません。",
+    "untitled": "無題のキャンバス"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "行をクリック",
+      "reset": "リセット",
+      "shortcutsTab": "ショートカットタブ"
+    },
+    "description": "memrynote 内の移動、思いつきの記録、作業の処理を素早く行うための近道です。",
+    "groups": {
+      "general": {
+        "description": "アプリ全体のナビゲーションとヘルプ。",
+        "title": "一般"
+      },
+      "inbox": {
+        "description": "キャプチャしたアイテムを素早く処理します。",
+        "title": "受信箱"
+      },
+      "journal": {
+        "description": "ジャーナルの表示を切り替え、書く場所にフォーカスします。",
+        "title": "ジャーナル"
+      },
+      "notes": {
+        "description": "メモを書き、書式を整え、検索します。",
+        "title": "メモ / エディタ"
+      },
+      "settings": {
+        "description": "設定を開き、ショートカットをカスタマイズします。",
+        "title": "設定"
+      },
+      "tabs": {
+        "description": "タブとペインの間を移動します。",
+        "title": "タブと分割"
+      },
+      "tasks": {
+        "description": "タスクを絞り込み、選択し、完了します。",
+        "title": "タスク"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "メモを作成",
+        "keyboardShortcuts": "キーボードショートカットを開く",
+        "openSettings": "設定を開く",
+        "quickSearch": "クイック検索を開く",
+        "sidebarSection": "サイドバーのセクションへ移動",
+        "toggleSidebar": "サイドバーを切り替え",
+        "undoTaskAction": "直前のタスク操作を元に戻す"
+      },
+      "inbox": {
+        "archiveItem": "選択したアイテムをアーカイブ",
+        "chooseQuickFileResult": "クイック整理の候補を選ぶ",
+        "clearSelection": "選択を解除、またはクイック整理を閉じる",
+        "confirmFiling": "整理パネルを確定",
+        "firstOrLastItem": "先頭または末尾のアイテム",
+        "jumpByPage": "ページ単位で移動",
+        "nextItem": "次のアイテム",
+        "openOriginal": "元のリンクを開く",
+        "openQuickFile": "クイック整理を開く",
+        "previousItem": "前のアイテム",
+        "refresh": "受信箱を更新",
+        "selectAllVisible": "表示中のアイテムをすべて選択",
+        "selectItem": "アイテムを選択",
+        "togglePreview": "プレビューパネルを切り替え"
+      },
+      "journal": {
+        "bold": "選択したテキストを太字にする",
+        "find": "ジャーナル内を検索",
+        "italic": "選択したテキストを斜体にする",
+        "link": "リンクを追加または編集",
+        "returnFromOverview": "月表示・年表示から戻る",
+        "toggleFullWidth": "ジャーナルの全幅表示を切り替え",
+        "underline": "選択したテキストに下線を引く"
+      },
+      "notes": {
+        "bold": "太字",
+        "closeOverlays": "エディタのオーバーレイを閉じる",
+        "commandMenu": "エディタのコマンドメニューを開く",
+        "createNote": "メモを作成",
+        "find": "メモ内を検索",
+        "italic": "斜体",
+        "link": "リンクを追加または編集",
+        "saveNote": "現在のメモを保存",
+        "underline": "下線"
+      },
+      "settings": {
+        "cancelRecording": "ショートカットの記録をキャンセル",
+        "customizeShortcuts": "キーボードショートカットをカスタマイズ",
+        "openSettings": "設定を開く",
+        "recordShortcut": "新しいショートカットを記録",
+        "resetShortcut": "ショートカットを初期設定に戻す"
+      },
+      "tabs": {
+        "closeAllInPane": "ペイン内のすべてのタブを閉じる",
+        "closeSplitPane": "分割ペインを閉じる",
+        "closeTab": "タブを閉じる",
+        "duplicateTab": "タブを複製",
+        "focusPane": "別のペインにフォーカス",
+        "maximizePane": "現在のペインを最大化",
+        "moveTabToPane": "タブをペインへ移動",
+        "newTabMenu": "新規タブメニューを開く",
+        "nextTab": "次のタブ",
+        "pinTab": "タブをピン留め / 解除",
+        "previousTab": "前のタブ",
+        "reopenClosedTab": "閉じたタブを開き直す",
+        "splitDown": "下に分割",
+        "splitRight": "右に分割"
+      },
+      "tasks": {
+        "clearFilters": "表示中のフィルターをクリア",
+        "clearSelection": "タスクの選択を解除",
+        "completeSelected": "選択したタスクを完了",
+        "configureRepeat": "フォーカス中のタスクの繰り返しを設定",
+        "deleteSelected": "選択したタスクを削除",
+        "selectAllVisible": "表示中のタスクをすべて選択",
+        "skipOccurrence": "今回の繰り返しをスキップ",
+        "stopRepeating": "タスクの繰り返しを停止"
+      }
+    },
+    "or": "または",
+    "then": "その後"
   }
 }

@@ -260,10 +260,16 @@ describe('note info property editors', () => {
     )
 
     expect(screen.getByText('Missing')).toBeInTheDocument()
-    fireEvent.click(within(screen.getByRole('region', { name: 'Doing' })).getByText('Working'))
+    // Section headers are built-in status categories, so StatusEditor renders the
+    // translated category name (via getStatusCategoryLabel + the real i18n
+    // singleton) rather than the English fallback label on the fixture. Option
+    // values inside the sections stay user data and still render verbatim.
+    fireEvent.click(
+      within(screen.getByRole('region', { name: 'In progress' })).getByText('Working')
+    )
     expect(onChange).toHaveBeenCalledWith('Working')
 
-    fireEvent.click(within(screen.getByRole('region', { name: 'Todo' })).getByText('button.add'))
+    fireEvent.click(within(screen.getByRole('region', { name: 'To-do' })).getByText('button.add'))
     fireEvent.change(screen.getByPlaceholderText('properties.optionName'), {
       target: { value: 'Next' }
     })

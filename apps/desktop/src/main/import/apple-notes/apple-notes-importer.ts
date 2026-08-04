@@ -30,6 +30,7 @@ import {
   ATTACHMENT_TOKEN_PREFIX,
   type AppleNoteRow
 } from '@memry/importers/apple-notes'
+import { IMPORT_STATUS, importingItemStatus } from '@memry/importers/messages'
 
 const ROOT = 'Apple Notes'
 const NOTE_CONTAINER_REL = 'Library/Group Containers/group.com.apple.notes'
@@ -190,7 +191,7 @@ export const appleNotesImporter: Importer = {
 
     try {
       ctx.setPhase('scanning')
-      ctx.status('Copying Apple Notes database…')
+      ctx.status(IMPORT_STATUS.appleNotesCopyingDatabase)
       try {
         tempPath = await copyToTemp(dbPath)
         db = new Database(tempPath, { readonly: true, fileMustExist: true })
@@ -271,7 +272,7 @@ export const appleNotesImporter: Importer = {
         }
 
         try {
-          ctx.status(`Importing ${title}`)
+          ctx.status(importingItemStatus(title))
 
           const folder = row.folder != null ? folderById.get(row.folder) : undefined
           const skipFolder = folder?.folderType === FOLDER_TYPE_SMART

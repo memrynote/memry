@@ -51,7 +51,7 @@
   },
   "empty": {
     "successAria": "Tagumpay, walang laman ang inbox",
-    "title": "Inbox Zero",
+    "title": "Walang Laman ang Inbox",
     "body": "Naproseso na ang lahat. Kumuha ng bago gamit ang input sa itaas, o mag-paste ng link upang makapagsimula.",
     "filedThisWeek": "{count, plural, one {Na-file ang # ngayong linggo} other {Na-file ang # ngayong linggo}}",
     "dayStreak": "{count, plural, one {# na sunod-sunod na araw} other {# na sunod-sunod na araw}}",
@@ -149,14 +149,14 @@
     "file": "file",
     "tag": "Tag",
     "snooze": "I-snooze",
-    "archive": "Archive",
+    "archive": "I-archive",
     "add": "Idagdag",
     "dismissSuggestion": "I-dismiss ang mungkahi",
     "hint": {
-      "file": "file",
-      "tag": "tag",
+      "file": "i-file",
+      "tag": "i-tag",
       "snooze": "i-snooze",
-      "archive": "archive",
+      "archive": "i-archive",
       "deselect": "alisin sa pagkakapili"
     },
     "archiveDialog": {
@@ -183,7 +183,7 @@
   "quickActions": {
     "groupAria": "Mabilis na pagkilos",
     "archiveItem": "I-archive ang item",
-    "archive": "Archive"
+    "archive": "I-archive"
   },
   "detail": {
     "ariaLabel": "Mga detalye ng item",
@@ -193,9 +193,9 @@
     "restoreToInbox": "Ibalik sa inbox",
     "delete": "Tanggalin",
     "deletePermanently": "I-delete nang permanente",
-    "archive": "Archive",
+    "archive": "I-archive",
     "file": "file",
-    "keyboardHint": "{modifier}⏎ file · 1-5 folder · Esc close",
+    "keyboardHint": "{modifier}⏎ i-file · 1-5 folder · Esc isara",
     "voiceTitlePlaceholder": "Pangalanan ang voice memo na ito...",
     "fileTo": "I-file sa",
     "ai": "AI",
@@ -226,7 +226,7 @@
     "capturedAt": "Nakuha ang {date}",
     "todayAt": "ngayon sa {time}",
     "yesterdayAt": "kahapon sa {time}",
-    "dateAt": "{date} at {time}",
+    "dateAt": "{date} nang {time}",
     "words": "{count, plural, one {# salita} other {# salita}}",
     "duration": "Tagal: {duration}",
     "dimensions": "Mga sukat",
@@ -270,7 +270,50 @@
     "panelEmpty": "Walang paparating na paalala.",
     "panelPast": "Nakaraan",
     "panelUpcoming": "Paparating",
-    "taskFallback": "Gawain"
+    "taskFallback": "Gawain",
+    "dateTime": {
+      "dateAt": "{date} nang {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Ngayong araw nang {time}",
+      "todayCompact": "Ngayong araw, {time}",
+      "tomorrowAt": "Bukas nang {time}",
+      "tomorrowCompact": "Bukas, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Paalala sa anibersaryo",
+      "inHours": {
+        "label": "Sa loob ng {count, plural, one {# Oras} other {# Oras}}"
+      },
+      "inMinutes": {
+        "label": "Sa loob ng {count, plural, one {# Minuto} other {# Minuto}}"
+      },
+      "inMonths": {
+        "label": "Sa loob ng {count, plural, one {# Buwan} other {# Buwan}}"
+      },
+      "inWeeks": {
+        "label": "Sa loob ng {count, plural, one {# Linggo} other {# Linggo}}"
+      },
+      "inYears": {
+        "label": "Sa loob ng {count, plural, one {# Taon} other {# Taon}}"
+      },
+      "laterToday": {
+        "description": "Sa loob ng {count, plural, one {# oras} other {# oras}}",
+        "label": "Mamaya Ngayong Araw"
+      },
+      "monthlyReflection": "Buwanang pagninilay",
+      "nextWeek": {
+        "description": "Lunes nang 9 AM",
+        "label": "Sa Susunod na Linggo"
+      },
+      "quarterlyReflection": "Pagninilay kada quarter",
+      "reviewInAWeek": "Suriin sa loob ng isang linggo",
+      "sameDayNextMonth": "Parehong araw sa susunod na buwan",
+      "tomorrow": {
+        "description": "Bukas nang 9 AM",
+        "label": "Bukas"
+      },
+      "tomorrowMorning": "Bukas ng Umaga"
+    }
   },
   "insights": {
     "captureActivity": "Aktibidad sa Pagkuha",
@@ -283,7 +326,7 @@
     "stale": "lipas na",
     "needsAttention": "nangangailangan ng atensyon",
     "allClear": "malinaw lahat",
-    "avgTimeToFile": "Avg Time to File",
+    "avgTimeToFile": "Karaniwang Oras Bago I-file",
     "noCapturesYet": "Wala pang kuha",
     "captures": "{count, plural, one {Pagkuha ng #} other {Mga kinukunan ng #}}",
     "peak": "Tuktok: {day} {start}–{end}",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Mag-attach ng file (Mga Larawan, Audio, Video, PDF)",
       "recordVoiceMemo": "Mag-record ng voice memo",
       "recordVoiceMemo2": "Mag-record ng voice memo",
-      "alreadyCaptured": "Nahuli na: “",
-      "rdquo": "rdquo;",
       "captureAnyway": "Kunin Anyway",
       "focusShortcut": "I-focus ang capture input",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Kunin ang link",
+      "captureNote": "Kunin ang tala",
+      "placeholder": "Mabilis na pagkuha — mag-paste ng link, magtala ng ideya…",
+      "duplicateNotice": "Nakunan na: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Pumili ng folder",
@@ -414,10 +459,9 @@
       "captured": "Nakunan",
       "dismissError": "I-dismiss ang error",
       "alreadyCaptured": "Nakunan na",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; · ",
       "captureAnyway": "Kunin Anyway",
-      "close": "Isara"
+      "close": "Isara",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "I-drop para makuha",
@@ -466,7 +510,12 @@
       "cancelRecording": "Kanselahin ang pagre-record",
       "cancel": "Kanselahin",
       "stopRecording": "Itigil ang pagre-record",
-      "stop": "Tumigil ka"
+      "stop": "Tumigil ka",
+      "enableMicInSettings": "Paganahin ang access sa mikropono sa mga setting ng iyong system, pagkatapos ay subukan muli.",
+      "failedToStart": "Nabigong simulan ang pag-record",
+      "microphoneAccessDenied": "Tinanggihan ang access sa mikropono",
+      "noMicrophoneFound": "Walang nakitang mikropono",
+      "recordingError": "Nagkaroon ng error sa pag-record"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Nabigong makuha ang file",
       "fileCaptureFailed": "Nabigo ang pagkuha ng file",
       "failedToCaptureAudio": "Nabigong makuha ang audio",
-      "failedToCaptureVoice": "Nabigong makuha ang boses"
+      "failedToCaptureVoice": "Nabigong makuha ang boses",
+      "failedToLoadInboxPreferences": "Nabigong i-load ang mga kagustuhan sa inbox",
+      "failedToUpdateInboxPreferences": "Nabigong i-update ang mga kagustuhan sa inbox"
     },
     "toasts": {
       "inboxRefreshed": "Na-refresh ang inbox"
@@ -516,5 +567,10 @@
     "task": "Gawain",
     "time": "Oras",
     "title": "I-convert"
+  },
+  "reviewNudge": {
+    "action": "Buksan ang inbox",
+    "description": "Iproseso ang mga nakuha mo ngayong araw sa isang panatag na pagsusuri.",
+    "title": "{count, plural, one {Oras na para suriin ang # item} other {Oras na para suriin ang # na item}}"
   }
 }

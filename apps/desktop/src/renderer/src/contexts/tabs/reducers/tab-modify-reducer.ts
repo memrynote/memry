@@ -3,7 +3,13 @@ import type { TabAction, TabSystemState } from '../types'
 type ModifyAction = Extract<
   TabAction,
   {
-    type: 'PIN_TAB' | 'UNPIN_TAB' | 'SET_TAB_MODIFIED' | 'SET_TAB_DELETED' | 'UPDATE_TAB_TITLE'
+    type:
+      | 'PIN_TAB'
+      | 'UNPIN_TAB'
+      | 'SET_TAB_MODIFIED'
+      | 'SET_TAB_DELETED'
+      | 'UPDATE_TAB_TITLE'
+      | 'SET_TAB_ENTITY'
   }
 >
 
@@ -103,6 +109,23 @@ export function tabModifyReducer(state: TabSystemState, action: ModifyAction): T
           [groupId]: {
             ...group,
             tabs: group.tabs.map((t) => (t.id === tabId ? { ...t, title } : t))
+          }
+        }
+      }
+    }
+
+    case 'SET_TAB_ENTITY': {
+      const { tabId, groupId, entityId, path } = action.payload
+      const group = state.tabGroups[groupId]
+      if (!group) return state
+
+      return {
+        ...state,
+        tabGroups: {
+          ...state.tabGroups,
+          [groupId]: {
+            ...group,
+            tabs: group.tabs.map((t) => (t.id === tabId ? { ...t, entityId, path } : t))
           }
         }
       }

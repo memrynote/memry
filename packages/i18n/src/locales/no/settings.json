@@ -28,7 +28,8 @@
         "properties": "Egenskaper",
         "commandLine": "Kommandolinje",
         "features": "Funksjoner",
-        "import": "Import"
+        "import": "Import",
+        "inbox": "Innboks"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Laster ned {percent}%",
         "downloaded": "Start på nytt for å installere",
         "idle": "Se etter oppdateringer"
+      },
+      "autoCheck": {
+        "description": "Se etter nye versjoner ved oppstart og med jevne mellomrom mens appen er åpen.",
+        "error": "Kunne ikke oppdatere innstillingen for automatisk sjekk",
+        "label": "Se etter oppdateringer automatisk"
+      },
+      "autoDownload": {
+        "description": "Last ned og installer nye versjoner i bakgrunnen uten å spørre.",
+        "error": "Kunne ikke oppdatere innstillingen for automatisk nedlasting",
+        "label": "Last ned oppdateringer automatisk"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Del anonyme bruksberegninger",
         "description": "Det er bare anon-beregninger – ingen notatinnhold, søk, filbaner, e-poster eller rå-ID-er blir noen gang sendt.",
         "error": "Kunne ikke oppdatere telemetriinnstillingen"
+      },
+      "diagnostics": {
+        "building": "Forbereder rapporten…",
+        "consent": "Vil du sende en diagnoserapport én gang? Den inneholder bare sladdede tekniske logger — ikke noe innhold fra notatene dine.",
+        "error": "Kunne ikke sende diagnoserapporten",
+        "notNow": "Ikke nå",
+        "previewError": "Kunne ikke forberede diagnoserapporten",
+        "previewLabel": "Forhåndsvis innholdet i rapporten",
+        "send": "Send",
+        "sendReport": {
+          "button": "Send diagnoserapport",
+          "description": "Send en engangsrapport med sladdede tekniske logger, så vi kan finne feilen du støtte på.",
+          "label": "Diagnoserapport"
+        },
+        "sending": "Sender…",
+        "sent": "Rapporten er sendt — referanse {incidentId}",
+        "snapshotLabel": "Øyeblikksbilde av enheten",
+        "title": "Vil du sende en diagnoserapport?"
       }
     },
     "dateFormat": {
@@ -172,7 +201,7 @@
       },
       "presets": {
         "indigo": "Indigo",
-        "amber": "Amber",
+        "amber": "Rav",
         "emerald": "Smaragd",
         "red": "Rødt",
         "violet": "Fiolett",
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Oppsett",
-      "toolbar": "Verktøylinje"
+      "toolbar": "Verktøylinje",
+      "spelling": "Staving"
     },
     "width": {
       "label": "Redaktørbredde",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Smal",
         "medium": "Middels",
-        "wide": "Bred"
+        "wide": "Bred",
+        "full": "Full bredde",
+        "normal": "Normal"
       },
       "error": "Kunne ikke oppdatere redigeringsbredden"
     },
@@ -229,6 +261,11 @@
       "label": "Sticky formateringsverktøylinje",
       "description": "Vis alltid verktøylinjen over editoren",
       "error": "Kunne ikke oppdatere verktøylinjemodus"
+    },
+    "spellCheck": {
+      "description": "Understrek feilstavede ord i notater og journaler",
+      "error": "Kunne ikke oppdatere stavekontrollen",
+      "label": "Stavekontroll"
     }
   },
   "templates": {
@@ -538,7 +575,7 @@
     "steps": {
       "signIn": "Logg på",
       "verify": "Bekreft",
-      "link": "Link"
+      "link": "Koble til"
     },
     "progress": "Trinn {current} av {total}: {label}",
     "signIn": {
@@ -640,7 +677,7 @@
       "vaultPickerFolderLabel": "Lagre hvelv i mappe",
       "vaultPickerPrimaryHint": "Åpnes nå",
       "vaultPickerTitle": "Velg hva du vil hente",
-      "vaultRow": "Hvelv — {{count}} elementer · {{date}}"
+      "vaultRow": "Hvelv — {count} elementer · {date}"
     }
   },
   "devices": {
@@ -673,7 +710,8 @@
       "removeFailed": "Kunne ikke fjerne enheten",
       "renamed": "Omdøpt til \"{name}\"",
       "renameFailed": "Kunne ikke gi nytt navn til enheten"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Koble til ny enhet",
@@ -855,6 +893,11 @@
         "description": "Slå av for enveis synkronisering — du ser fortsatt Google-hendelsene dine i memrynote, men memrynote-hendelser vises ikke i Google.",
         "error": "Kunne ikke oppdatere synkroniseringsretning",
         "label": "Vis memrynote-hendelser i Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Av som standard. Slå på, så kan AI-agenten lese Google-hendelsene dine; slå av, og den får ingenting tilbake når den blir spurt om dem. Du ser dem i memrynote uansett.",
+        "error": "Kunne ikke oppdatere AI-tilgangen",
+        "label": "La AI lese Google Calendar-hendelser"
       }
     },
     "sourcePicker": {
@@ -898,7 +941,8 @@
     },
     "groups": {
       "storageUsage": "Lagringsbruk",
-      "location": "Beliggenhet"
+      "location": "Beliggenhet",
+      "accountVaults": "Hvelv i kontoen din"
     },
     "loadingStorage": "Laster lagringsinformasjon ...",
     "signInStorage": "Logg på for å se lagringsbruk",
@@ -919,6 +963,17 @@
       },
       "warningTitle": "Lagring nesten fullt",
       "warningDescription": "Frigjør plass eller oppgrader planen din for å unngå synkroniseringsproblemer."
+    },
+    "accountVaults": {
+      "activeHint": "Bytt til et annet hvelv for å slette dette.",
+      "cloudOnly": "Ikke på denne enheten",
+      "delete": "Slett",
+      "deleteBody": "Dette fjerner for godt alle synkroniserte data for dette hvelvet fra Memrys servere, og kan ikke angres. Filene dine på disken blir ikke slettet.",
+      "deleteConfirm": "Slett fra kontoen",
+      "deleteFailed": "Kunne ikke slette hvelvet",
+      "deleteTitle": "Slette «{name}» fra kontoen din?",
+      "empty": "Ingen hvelv er synkronisert til kontoen din ennå.",
+      "itemsCount": "{count} elementer"
     }
   },
   "tags": {
@@ -981,7 +1036,7 @@
     "types": {
       "status": "Status",
       "select": "Velg",
-      "multiselect": "Multiselect",
+      "multiselect": "Flervalg",
       "text": "Tekst",
       "number": "Nummer",
       "date": "Dato",
@@ -1137,16 +1192,12 @@
       "press": "Trykk på ",
       "toToggleThisDialog": "for å veksle mellom denne dialogen"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middot;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Denne enheten er fjernet",
       "exporting": "Eksporterer...",
       "signOut": "Logg ut"
     },
     "componentsSyncSyncHistory": {
-      "middot": "middot; ",
       "activity": "Aktivitet",
       "filterBySyncType": "Filtrer etter synkroniseringstype",
       "allTypes": "Alle typer",
@@ -1160,7 +1211,12 @@
       "last30Days": "Siste 30 dager",
       "loadingSyncHistory": "Laster synkroniseringslogg",
       "noSyncActivityYet": "Ingen synkroniseringsaktivitet ennå",
-      "loadMore": "Last inn mer"
+      "loadMore": "Last inn mer",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, vis feildetaljer",
+      "summaryFailed": "Synkronisering mislyktes",
+      "summaryPulled": "{count, plural, one {# element hentet} other {# elementer hentet}}",
+      "summaryPushed": "{count, plural, one {# element sendt} other {# elementer sendt}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Sist synkronisert ",
@@ -1208,102 +1264,103 @@
       "failedToCloseVault": "Kunne ikke lukke hvelvet",
       "failedToSwitchVault": "Kunne ikke bytte hvelv",
       "failedToUpdateConfig": "Kunne ikke oppdatere konfigurasjonen",
-      "failedToReindex": "Kunne ikke indeksere på nytt"
+      "failedToReindex": "Kunne ikke indeksere på nytt",
+      "failedToLoadTasks": "Kunne ikke laste inn oppgavene"
     }
   },
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Lokal servertilgang for eksterne MCP-klienter."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Tilkobling",
+      "access": "Tilgang"
     },
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Bruk dette localhost-endepunktet fra Cursor, Claude Desktop eller Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Bearer-token",
+        "description": "Legitimasjon i minnet som gjelder for denne appstarten."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Roter token",
+        "description": "Ugyldiggjør eksisterende økter for eksterne klienter."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "Kopier {label}",
+    "notRunning": "Kjører ikke",
+    "toolsBadge": "{count, plural, one {# verktøy} other {# verktøy}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Agenttillatelser",
+      "subtitle": "Velg standard tilgang, bekreftelser og lokale leverandører for Agentchat."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Lokal OpenAI-kompatibel leverandør",
+      "actions": "Tilkoblingssjekker"
     },
     "presets": {
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Egendefinert"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Forhåndsinnstilling"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "Basis-URL",
+        "description": "OpenAI-kompatibelt /v1-endepunkt."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Tillat endepunkt utenfor loopback",
+        "description": "Data sendes til det konfigurerte endepunktet."
       },
       "model": {
-        "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "label": "Modell",
+        "description": "Velg en av modellene som returneres, eller skriv inn en manuelt."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "API-nøkkel",
+        "description": "Valgfri legitimasjon lagret i OS-nøkkelringen.",
+        "configured": "En API-nøkkel er allerede lagret i OS-nøkkelringen."
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "save": "Lagre",
+      "models": "Modeller",
+      "test": "Test tilkobling",
+      "probe": "Undersøk verktøy"
     },
     "status": {
-      "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "disconnected": "Frakoblet",
+      "toolsDisabled": "Verktøy deaktivert",
+      "fullTools": "Alle verktøy aktivert",
       "checking": "Sjekker…",
       "connected": "Tilkoblet",
       "label": "Tilkobling"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Agenttillatelser",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Standardtilgang",
+        "description": "Angir tilgangsmodusen nye agentturer starter med.",
+        "vaultOnly": "Kun hvelv",
+        "computerAccess": "Datamaskintilgang"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Bekreft handlinger",
+        "description": "Velg om verktøykall kjøres automatisk eller venter på godkjenning i chatten.",
+        "alwaysAllow": "Tillat alltid",
+        "askBeforeChanges": "Spør før endringer"
       }
     }
   },
@@ -1368,6 +1425,10 @@
       "tasks": {
         "description": "Gjøremål og forfallsdatoer",
         "label": "Oppgaver"
+      },
+      "spatialCanvas": {
+        "description": "Lerreter der du kan ordne og koble sammen notater",
+        "label": "Lerret"
       }
     }
   },
@@ -1393,7 +1454,10 @@
         "skipped": "{count} hoppet over",
         "title": "Import fullført"
       },
-      "title": "Importer fra {name}"
+      "title": "Importer fra {name}",
+      "chooseDirectory": "Velg mappe…",
+      "folderKeepsAssets": "Velg mappen når bildene ligger utenfor notatenes egen mappe — eksporter samler ofte mediefiler i en felles mappe.",
+      "previewError": "Forhåndsvisning mislyktes"
     },
     "header": {
       "subtitle": "Hent inn notatene og oppgavene dine fra andre apper",
@@ -1432,6 +1496,99 @@
       "tasks": "{count, plural, one {# oppgave} other {# oppgaver}}",
       "withDueDate": "{count} datert",
       "withTags": "{count} med etikett"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Kolonner: {columns}",
+        "emptyTitle": "Hoppet over rad med tom tittel (kolonnen «{column}»)",
+        "noHeaders": "CSV-filen har ingen kolonneoverskrifter",
+        "titleColumn": "Tittel fra «{column}»; øvrige kolonner lagres som egenskaper"
+      },
+      "raindrop": {
+        "csvEmpty": "Raindrop-CSV-filen er tom",
+        "headerNotFound": "Fant ikke overskriftsraden i Raindrop-CSV-filen (kolonnen «url»)",
+        "rowNoUrl": "Rad {row} hoppet over: ingen URL"
+      },
+      "readFileFailed": "Kunne ikke lese filen",
+      "ticktick": {
+        "foldersDropped": "TickTick-mapper har ingen tilsvarende i Memry og ble utelatt",
+        "headerNotFound": "Fant ikke overskriftsraden i TickTick-CSV-filen («Folder Name»)",
+        "reminderNoAnchor": "Påminnelsen «{reminder}» ble hoppet over (ingen datoforankring)",
+        "subtaskParentMissing": "Fant ikke overordnet oppgave for deloppgaven «{title}»; importert på øverste nivå",
+        "unknownPriority": "Ukjent TickTick-prioritet {priority} → ingen",
+        "unsupportedRepeat": "Gjentakelsesregelen «{rule}» støttes ikke og ble hoppet over"
+      },
+      "todoist": {
+        "emptyTitle": "Oppgave med tomt innhold importert som (uten tittel)",
+        "headerNotFound": "Ikke en Todoist-CSV: overskriftsraden TYPE mangler",
+        "orphanComment": "Kommentar uten en foregående oppgave ble hoppet over",
+        "sectionFlattened": "Seksjonen «{section}» ble flatet ut",
+        "subtaskNoParent": "Deloppgaven «{title}» har ingen overordnet oppgave på innrykk {indent}; importert på øverste nivå",
+        "unknownPriority": "Ukjent prioritet {priority} → ingen",
+        "unparsedDate": "Kunne ikke tolke datoen «{date}»"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Kopierer Apple Notes-databasen…"
+      },
+      "bear": {
+        "scanning": "Skanner Bear-eksporten…"
+      },
+      "csv": {
+        "importing": "Importerer CSV-notater…"
+      },
+      "evernote": {
+        "scanning": "Skanner .enex-filer…"
+      },
+      "html": {
+        "scanning": "Skanner HTML-filer…"
+      },
+      "importingItem": "Importerer {title}",
+      "raindrop": {
+        "importing": "Importerer Raindrop-bokmerker…"
+      },
+      "roam": {
+        "reading": "Leser Roam-eksporten…"
+      },
+      "scanningExport": "Skanner eksporten…",
+      "scanningFiles": "Skanner filer…",
+      "ticktick": {
+        "importing": "Importerer TickTick-oppgaver…"
+      },
+      "todoist": {
+        "importing": "Importerer Todoist-oppgaver…"
+      }
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Laster inn…",
+      "subtitle": "Daglig påminnelse om gjennomgang og innstillinger for innboksen.",
+      "title": "Innboks"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Et vennlig daglig dytt når det ligger noe i innboksen.",
+        "label": "Minn meg på å gå gjennom innboksen"
+      },
+      "error": "Kunne ikke oppdatere påminnelsen.",
+      "group": "Daglig påminnelse om gjennomgang",
+      "test": {
+        "button": "Send test",
+        "description": "Utløs påminnelsen nå for å teste systemvarslene dine.",
+        "label": "Testvarsel",
+        "sent": "Testvarselet er sendt.",
+        "sentHint": "Hvis ingenting dukker opp, må du tillate varsler for MemryNote i systeminnstillingene.",
+        "unsupported": "Denne enheten kan ikke vise skrivebordsvarsler."
+      },
+      "time": {
+        "description": "Lokal tid, på hver enhet.",
+        "hourLabel": "Time",
+        "label": "Tidspunkt for påminnelse",
+        "minuteLabel": "Minutt",
+        "periodLabel": "AM eller PM"
+      }
     }
   }
 }

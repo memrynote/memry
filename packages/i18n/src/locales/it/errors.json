@@ -22,7 +22,19 @@
     "writeFailed": "Impossibile salvare questa nota. Controlla lo spazio su disco e le autorizzazioni.",
     "readFailed": "Impossibile leggere questa nota. Il file potrebbe essere bloccato o danneggiato.",
     "deleteFailed": "Impossibile eliminare questa nota. Controlla i permessi dei file.",
-    "invalidPath": "Il percorso della nota non è valido."
+    "invalidPath": "Il percorso della nota non è valido.",
+    "applyTemplateFailed": "Impossibile applicare il modello",
+    "createFailed": "Impossibile creare la nota",
+    "deleteVersionFailed": "Impossibile eliminare la versione",
+    "exportHtmlFailed": "Impossibile esportare in HTML",
+    "exportPdfFailed": "Impossibile esportare in PDF",
+    "importFilesFailed": "Impossibile importare i file",
+    "moveFailed": "Impossibile spostare la nota",
+    "renameFailed": "Impossibile rinominare la nota",
+    "reorderFailed": "Impossibile riordinare le note",
+    "restoreVersionFailed": "Impossibile ripristinare la versione",
+    "setLocalOnlyFailed": "Impossibile impostare la nota come solo locale",
+    "updateFailed": "Impossibile aggiornare la nota"
   },
   "database": {
     "connectionFailed": "Impossibile connettersi al database locale. Prova a riavviare l'app.",
@@ -41,7 +53,14 @@
     "fileTooLarge": "Questo file è troppo grande per essere allegato.",
     "unsupportedType": "Questo tipo di file non è supportato.",
     "writeFailed": "Impossibile salvare l'allegato. Controlla lo spazio su disco.",
-    "deleteFailed": "Impossibile eliminare l'allegato."
+    "deleteFailed": "Impossibile eliminare l'allegato.",
+    "downloadFailed": "Download dell'allegato non riuscito",
+    "downloadProgressFailed": "Impossibile recuperare l'avanzamento del download",
+    "uploadFailed": "Caricamento dell'allegato non riuscito",
+    "uploadProgressFailed": "Impossibile recuperare l'avanzamento del caricamento",
+    "emptyFile": "Impossibile caricare un file vuoto",
+    "exceedsMaxSize": "File troppo grande: {size} supera il limite di {limit}",
+    "exceedsPlanLimit": "Il file è più grande di quanto consenta il tuo piano: {size} supera {limit}"
   },
   "encryption": {
     "failed": "Impossibile crittografare i dati. Potrebbe essere necessario rigenerare le chiavi.",
@@ -74,6 +93,188 @@
     "securityQuarantinePermanent": "Non è stato possibile verificare un elemento sincronizzato ed è stato messo in quarantena per motivi di sicurezza.",
     "securityQuarantineRetry": "Un elemento di sincronizzazione non ha superato la verifica della firma e verrà ritentato.",
     "certificatePinPaused": "Impossibile verificare la connessione protetta al server di sincronizzazione. La sincronizzazione è stata sospesa per la tua protezione.",
-    "paymentRequired": "È necessario un piano Sync a pagamento per usare la sincronizzazione cifrata ospitata."
+    "paymentRequired": "È necessario un piano Sync a pagamento per usare la sincronizzazione cifrata ospitata.",
+    "attachmentUploadFailed": "Impossibile sincronizzare l'allegato \"{filename}\". Resta su questo dispositivo.",
+    "fileTooLarge": "Questo file supera il limite consentito dal tuo piano. Passa a un piano superiore per sincronizzare file più grandi.",
+    "vaultRecovered": "Chiave del vault ripristinata. La sincronizzazione riprenderà.",
+    "historyFetchFailed": "Impossibile recuperare la cronologia di sincronizzazione",
+    "keyPersistenceFailed": "Impossibile salvare in modo sicuro la chiave di crittografia. La registrazione del dispositivo è stata annullata. Riprova.",
+    "serverUnreachable": "Impossibile connettersi al server di sincronizzazione. Controlla la tua connessione a internet.",
+    "updateSyncedSettingFailed": "Impossibile aggiornare l'impostazione sincronizzata",
+    "requestTimedOut": "La richiesta di sincronizzazione è scaduta. Controlla la tua connessione a internet."
+  },
+  "agent": {
+    "conversationBusy": "Conversazione occupata",
+    "runtimeStarting": "Il runtime dell'agente si sta avviando. Riprova."
+  },
+  "ai": {
+    "inlineDisabled": "La modifica in linea con l'IA è disattivata",
+    "listOllamaModelsFailed": "Impossibile elencare i modelli Ollama"
+  },
+  "auth": {
+    "approveLinkingFailed": "Impossibile approvare il collegamento",
+    "cannotRemoveCurrentDevice": "Impossibile rimuovere il dispositivo corrente",
+    "completeLinkingFailed": "Impossibile completare il collegamento",
+    "confirmRecoveryPhraseFailed": "Impossibile confermare la frase di recupero",
+    "fetchSasCodeFailed": "Impossibile recuperare il codice SAS",
+    "finalizeVaultChoiceFailed": "Impossibile finalizzare la scelta del vault",
+    "initiateOAuthFailed": "Impossibile avviare OAuth",
+    "invalidRecoveryPhraseFormat": "Formato della frase di recupero non valido",
+    "linkDeviceQrFailed": "Impossibile collegare il dispositivo tramite QR",
+    "linkRecoveryPhraseFailed": "Impossibile collegare tramite frase di recupero",
+    "notAuthenticated": "Non autenticato",
+    "pickFolderFailed": "Impossibile scegliere la cartella",
+    "recoveryPhraseMismatch": "La frase di recupero non corrisponde. Riprova.",
+    "removeDeviceFailed": "Impossibile rimuovere il dispositivo",
+    "renameDeviceFailed": "Impossibile rinominare il dispositivo",
+    "requestOtpFailed": "Impossibile richiedere l'OTP",
+    "resendOtpFailed": "Impossibile inviare di nuovo l'OTP",
+    "sessionExpired": "Sessione scaduta. Accedi di nuovo.",
+    "setupFirstDeviceOAuthFailed": "Impossibile configurare il primo dispositivo tramite OAuth",
+    "verifyOtpFailed": "Impossibile verificare l'OTP"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "L'elemento è già tra i segnalibri",
+    "notFound": "Segnalibro non trovato"
+  },
+  "calendar": {
+    "connectProviderFailed": "Impossibile connettere il provider di calendario",
+    "createEventFailed": "Impossibile creare l'evento del calendario",
+    "deleteEventFailed": "Impossibile eliminare l'evento del calendario",
+    "disconnectProviderFailed": "Impossibile disconnettere il provider di calendario",
+    "eventNotFound": "Evento del calendario non trovato",
+    "googleNotConnected": "Google Calendar non è connesso su questo dispositivo",
+    "listGoogleCalendarsFailed": "Impossibile elencare i calendari Google",
+    "onlyGoogleSourcesRetryable": "Solo le sorgenti di Google Calendar possono essere ritentate",
+    "onlySourcesSelectable": "Si possono selezionare solo le sorgenti di calendario",
+    "promoteExternalEventFailed": "Impossibile promuovere l'evento di calendario esterno",
+    "refreshProviderFailed": "Impossibile aggiornare il provider di calendario",
+    "retryGoogleSourceSyncFailed": "Impossibile ritentare la sincronizzazione della sorgente Google Calendar",
+    "setDefaultGoogleCalendarFailed": "Impossibile impostare il calendario Google predefinito",
+    "signInBeforeRefresh": "Accedi a memrynote prima di aggiornare Google Calendar",
+    "sourceNotFound": "Sorgente di calendario non trovata",
+    "syncFailed": "Sincronizzazione non riuscita",
+    "updateEventFailed": "Impossibile aggiornare l'evento del calendario",
+    "updateSourceSelectionFailed": "Impossibile aggiornare la selezione delle sorgenti di calendario"
+  },
+  "folder": {
+    "createFailed": "Impossibile creare la cartella",
+    "deleteFailed": "Impossibile eliminare la cartella",
+    "renameFailed": "Impossibile rinominare la cartella",
+    "setConfigFailed": "Impossibile impostare la configurazione della cartella"
+  },
+  "folderView": {
+    "deleteViewFailed": "Impossibile eliminare la vista",
+    "setConfigFailed": "Impossibile impostare la configurazione",
+    "setViewFailed": "Impossibile impostare la vista"
+  },
+  "googleCalendar": {
+    "accessDenied": "L'accesso a Google Calendar è stato rifiutato. Puoi collegarti di nuovo quando vuoi.",
+    "connectFailed": "Impossibile connettersi a Google Calendar. Riprova tra un momento.",
+    "misconfigured": "Google Calendar non è configurato correttamente. Contatta l'assistenza se il problema persiste.",
+    "reconnectNeeded": "La tua connessione a Google Calendar è scaduta. Disconnettiti e collegati di nuovo.",
+    "scopeMissing": "Non è stato possibile accedere al tuo Google Calendar perché l'autorizzazione Calendario non è stata concessa. Riprova assicurandoti che la casella Calendario resti selezionata nella schermata di consenso di Google.",
+    "temporarilyUnavailable": "Google Calendar è temporaneamente non disponibile. Riprova tra poco."
+  },
+  "importer": {
+    "cancelFailed": "Annullamento non riuscito",
+    "fileSelectionFailed": "Selezione dei file non riuscita",
+    "importFailed": "Importazione non riuscita",
+    "listFailed": "Impossibile elencare gli importatori",
+    "previewFailed": "Anteprima non riuscita"
+  },
+  "project": {
+    "archiveFailed": "Impossibile archiviare il progetto",
+    "captureLinkFailed": "Impossibile catturare il link",
+    "createFailed": "Impossibile creare il progetto",
+    "deleteFailed": "Impossibile eliminare il progetto",
+    "importFilesFailed": "Impossibile importare i file",
+    "linkItemFailed": "Impossibile collegare l'elemento",
+    "listForItemFailed": "Impossibile elencare i progetti per l'elemento",
+    "reorderFailed": "Impossibile riordinare i progetti",
+    "setHomeNoteFailed": "Impossibile impostare la nota principale",
+    "unlinkItemFailed": "Impossibile scollegare l'elemento",
+    "updateFailed": "Impossibile aggiornare il progetto",
+    "updatePinnedFailed": "Impossibile aggiornare lo stato di fissaggio"
+  },
+  "property": {
+    "alreadyExists": "La proprietà \"{name}\" esiste già",
+    "createDefinitionFailed": "Impossibile creare la definizione della proprietà",
+    "entityNotFound": "Entità non trovata",
+    "notFound": "Proprietà \"{name}\" non trovata",
+    "renameFailed": "Impossibile rinominare la proprietà",
+    "setCalendarVisibilityFailed": "Impossibile impostare la visibilità della proprietà nel calendario",
+    "setFailed": "Impossibile impostare le proprietà",
+    "updateDefinitionFailed": "Impossibile aggiornare la definizione della proprietà"
+  },
+  "reminder": {
+    "createFailed": "Impossibile creare il promemoria",
+    "dismissAllFailed": "Impossibile ignorare i promemoria",
+    "dismissFailed": "Impossibile ignorare il promemoria",
+    "notFound": "Promemoria non trovato",
+    "snoozeFailed": "Impossibile posticipare il promemoria",
+    "updateFailed": "Impossibile aggiornare il promemoria"
+  },
+  "savedFilter": {
+    "notFound": "Filtro salvato non trovato"
+  },
+  "search": {
+    "rebuildFailed": "Ricostruzione non riuscita"
+  },
+  "settings": {
+    "modelAlreadyLoading": "Il modello è già in fase di caricamento",
+    "modelLoadFailed": "Impossibile caricare il modello",
+    "shortcutInUse": "La scorciatoia {shortcut} è già in uso",
+    "terminalCommandInstallFailed": "Impossibile installare il comando da terminale",
+    "terminalCommandUninstallFailed": "Impossibile disinstallare il comando da terminale",
+    "unknownVault": "Vault sconosciuto",
+    "voiceModelDownloadFailed": "Impossibile scaricare il modello vocale"
+  },
+  "tag": {
+    "categoryNameRequired": "Il nome della categoria è obbligatorio",
+    "createCategoryFailed": "Impossibile creare la categoria di tag",
+    "deleteCategoryFailed": "Impossibile eliminare la categoria di tag",
+    "deleteFailed": "Impossibile eliminare il tag",
+    "listCategoriesFailed": "Impossibile elencare le categorie di tag",
+    "mergeFailed": "Impossibile unire i tag",
+    "mergeSameTag": "Il tag di origine e quello di destinazione coincidono",
+    "pinNoteFailed": "Impossibile fissare la nota",
+    "removeFromNoteFailed": "Impossibile rimuovere il tag dalla nota",
+    "renameCategoryFailed": "Impossibile rinominare la categoria di tag",
+    "renameFailed": "Impossibile rinominare il tag",
+    "reorderFailed": "Impossibile riordinare i tag",
+    "unpinNoteFailed": "Impossibile rimuovere la nota dai fissati",
+    "updateColorFailed": "Impossibile aggiornare il colore del tag",
+    "updateIconFailed": "Impossibile aggiornare l'icona del tag"
+  },
+  "task": {
+    "archiveFailed": "Impossibile archiviare l'attività",
+    "archiveManyFailed": "Impossibile archiviare le attività",
+    "completeFailed": "Impossibile completare l'attività",
+    "completeManyFailed": "Impossibile completare le attività",
+    "convertToSubtaskFailed": "Impossibile convertire in attività secondaria",
+    "convertToTaskFailed": "Impossibile convertire in attività",
+    "createFailed": "Impossibile creare l'attività",
+    "deleteFailed": "Impossibile eliminare l'attività",
+    "deleteManyFailed": "Impossibile eliminare le attività",
+    "duplicateFailed": "Impossibile duplicare l'attività",
+    "moveFailed": "Impossibile spostare l'attività",
+    "moveManyFailed": "Impossibile spostare le attività",
+    "reorderFailed": "Impossibile riordinare le attività",
+    "unarchiveFailed": "Impossibile ripristinare l'attività dall'archivio",
+    "uncompleteFailed": "Impossibile annullare il completamento dell'attività",
+    "updateFailed": "Impossibile aggiornare l'attività"
+  },
+  "taskStatus": {
+    "createFailed": "Impossibile creare lo stato",
+    "deleteFailed": "Impossibile eliminare lo stato",
+    "reorderFailed": "Impossibile riordinare gli stati",
+    "updateFailed": "Impossibile aggiornare lo stato"
+  },
+  "template": {
+    "createFailed": "Impossibile creare il modello",
+    "deleteFailed": "Impossibile eliminare il modello",
+    "duplicateFailed": "Impossibile duplicare il modello",
+    "updateFailed": "Impossibile aggiornare il modello"
   }
 }

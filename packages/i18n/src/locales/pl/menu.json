@@ -1,7 +1,12 @@
 {
   "app": {
-    "quit": "Przestań",
-    "preferences": "Ustawienia…"
+    "quit": "Zakończ",
+    "preferences": "Ustawienia…",
+    "exit": "Wyjdź",
+    "hide": "Ukryj MemryNote",
+    "hideOthers": "Ukryj pozostałe",
+    "services": "Usługi",
+    "unhide": "Pokaż wszystko"
   },
   "file": {
     "label": "Plik",
@@ -12,22 +17,26 @@
     "openQuickly": "Otwórz szybko…"
   },
   "navigation": {
-    "back": "Powrót",
-    "forward": "Naprzód"
+    "back": "Wstecz",
+    "forward": "Dalej"
   },
   "edit": {
-    "label": "Edytuj",
+    "label": "Edycja",
     "undo": "Cofnij",
-    "redo": "Powtórz",
-    "cut": "Cięcie",
+    "redo": "Ponów",
+    "cut": "Wytnij",
     "copy": "Kopiuj",
     "paste": "Wklej",
     "selectAll": "Zaznacz wszystko",
     "find": "Znajdź",
-    "speech": "Mowa"
+    "speech": "Mowa",
+    "delete": "Usuń",
+    "pasteAndMatchStyle": "Wklej i dopasuj styl",
+    "startSpeaking": "Zacznij mówić",
+    "stopSpeaking": "Przestań mówić"
   },
   "view": {
-    "label": "Zobacz",
+    "label": "Widok",
     "reload": "Załaduj ponownie",
     "toggleDevTools": "Przełącz Narzędzia programistyczne",
     "toggleFullscreen": "Przełącz pełny ekran",
@@ -37,7 +46,10 @@
     "themeSystem": "Systemowy",
     "themeWhite": "Papier",
     "toggleDayPanel": "Przełącz Panel dnia",
-    "toggleSidebar": "Przełącz pasek boczny"
+    "toggleSidebar": "Przełącz pasek boczny",
+    "actualSize": "Rzeczywisty rozmiar",
+    "zoomIn": "Powiększ",
+    "zoomOut": "Pomniejsz"
   },
   "format": {
     "body": "Tekst podstawowy",
@@ -55,7 +67,8 @@
     "about": "O MemryNote",
     "documentation": "Dokumentacja",
     "label": "Pomoc",
-    "shortcuts": "Skróty klawiszowe"
+    "shortcuts": "Skróty klawiszowe",
+    "aboutVersion": "Wersja {version}"
   },
   "insert": {
     "attachment": "Wstaw załącznik…",
@@ -67,6 +80,10 @@
     "taskList": "Lista zadań"
   },
   "window": {
-    "label": "Okno"
+    "label": "Okno",
+    "close": "Zamknij",
+    "front": "Przenieś wszystko na wierzch",
+    "minimize": "Zminimalizuj",
+    "zoom": "Powiększ/zmniejsz"
   }
 }

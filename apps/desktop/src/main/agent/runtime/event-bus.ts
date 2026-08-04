@@ -1,11 +1,7 @@
-import { BrowserWindow } from 'electron'
-
 import { AgentChannels, type AgentEvent } from '@memry/contracts/ipc-agent'
 
+import { broadcastToAllWindows } from '../../lib/window-broadcast'
+
 export function broadcastAgentEvent(event: AgentEvent): void {
-  for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.isDestroyed()) {
-      win.webContents.send(AgentChannels.events.AGENT_EVENT, event)
-    }
-  }
+  broadcastToAllWindows(AgentChannels.events.AGENT_EVENT, event)
 }

@@ -269,7 +269,50 @@
     "custom": "Custom...",
     "panelUpcoming": "Upcoming",
     "panelPast": "Past",
-    "panelEmpty": "No upcoming reminders."
+    "panelEmpty": "No upcoming reminders.",
+    "presets": {
+      "laterToday": {
+        "label": "Later Today",
+        "description": "In {count, plural, one {# hour} other {# hours}}"
+      },
+      "tomorrow": {
+        "label": "Tomorrow",
+        "description": "Tomorrow at 9 AM"
+      },
+      "nextWeek": {
+        "label": "Next Week",
+        "description": "Monday at 9 AM"
+      },
+      "inMinutes": {
+        "label": "In {count, plural, one {# Minute} other {# Minutes}}"
+      },
+      "inHours": {
+        "label": "In {count, plural, one {# Hour} other {# Hours}}"
+      },
+      "inWeeks": {
+        "label": "In {count, plural, one {# Week} other {# Weeks}}"
+      },
+      "inMonths": {
+        "label": "In {count, plural, one {# Month} other {# Months}}"
+      },
+      "inYears": {
+        "label": "In {count, plural, one {# Year} other {# Years}}"
+      },
+      "tomorrowMorning": "Tomorrow Morning",
+      "sameDayNextMonth": "Same day next month",
+      "reviewInAWeek": "Review in a week",
+      "monthlyReflection": "Monthly reflection",
+      "quarterlyReflection": "Quarterly reflection",
+      "anniversaryReminder": "Anniversary reminder"
+    },
+    "dateTime": {
+      "todayAt": "Today at {time}",
+      "todayCompact": "Today, {time}",
+      "tomorrowAt": "Tomorrow at {time}",
+      "tomorrowCompact": "Tomorrow, {time}",
+      "dateAt": "{date} at {time}",
+      "dateCompact": "{date}, {time}"
+    }
   },
   "insights": {
     "captureActivity": "Capture Activity",
@@ -309,12 +352,11 @@
       "attachFileImagesAudioVideoPdf": "Attach file (Images, Audio, Video, PDF)",
       "recordVoiceMemo": "Record voice memo",
       "recordVoiceMemo2": "Record voice memo",
-      "alreadyCaptured": "Already captured: “",
-      "rdquo": "rdquo;",
       "captureAnyway": "Capture Anyway",
       "placeholder": "Quick capture — paste a link, jot a thought…",
       "captureLink": "Capture link",
-      "captureNote": "Capture note"
+      "captureNote": "Capture note",
+      "duplicateNotice": "Already captured: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Choose folder",
@@ -408,10 +450,9 @@
       "captured": "Captured",
       "dismissError": "Dismiss error",
       "alreadyCaptured": "Already captured",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; &middot; ",
       "captureAnyway": "Capture Anyway",
-      "close": "Close"
+      "close": "Close",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Drop to capture",

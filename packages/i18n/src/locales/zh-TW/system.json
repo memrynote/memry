@@ -28,6 +28,13 @@
       "readyDetailFallback": "重新啟動 memrynote 以完成更新安裝。",
       "buttonRestartNow": "立即重新啟動",
       "releaseNotesLabel": "版本更新說明："
+    },
+    "pair": {
+      "buttonAllow": "允許",
+      "buttonDeny": "拒絕",
+      "buttonPair": "配對",
+      "message": "要允許 Memry 瀏覽器擴充功能將擷取內容傳送到這個應用程式嗎？",
+      "title": "配對瀏覽器擴充功能"
     }
   },
   "notification": {
@@ -38,6 +45,11 @@
       "fallback": "提醒到期",
       "default": "提醒",
       "task": "任務提醒"
+    },
+    "inboxReview": {
+      "body": "您有 {count, plural, other {# 個項目}}待回顧。",
+      "testBody": "這是一則測試——您的每日檢閱提醒會像這樣顯示。",
+      "title": "該回顧收件匣了"
     }
   },
   "error": {
@@ -45,5 +57,15 @@
     "definitionNotFound": "未找到定義",
     "noteNotFound": "未找到備註",
     "updateFailed": "更新失敗"
+  },
+  "startup": {
+    "failed": {
+      "body": "當磁碟可用空間過低，或顯示卡驅動程式較舊時，可能會發生這種情況。請試著釋放一些磁碟空間，然後重新開啟 MemryNote。若持續發生，重新安裝通常就能解決。",
+      "title": "MemryNote 無法完成啟動"
+    },
+    "installingUpdate": {
+      "subtitle": "MemryNote 將會自動重新開啟。",
+      "title": "正在安裝更新…"
+    }
   }
 }

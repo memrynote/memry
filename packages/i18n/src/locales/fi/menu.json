@@ -1,11 +1,16 @@
 {
   "app": {
     "quit": "Lopeta",
-    "preferences": "Asetukset…"
+    "preferences": "Asetukset…",
+    "exit": "Lopeta",
+    "hide": "Kätke MemryNote",
+    "hideOthers": "Kätke muut",
+    "services": "Palvelut",
+    "unhide": "Näytä kaikki"
   },
   "file": {
     "label": "Tiedosto",
-    "newNote": "Uusi huomautus",
+    "newNote": "Uusi muistiinpano",
     "close": "Sulje ikkuna",
     "closeTab": "Sulje välilehti",
     "exportPdf": "Vie PDF:ksi…",
@@ -18,18 +23,22 @@
   "edit": {
     "label": "Muokkaa",
     "undo": "Kumoa",
-    "redo": "Toista",
+    "redo": "Tee uudelleen",
     "cut": "Leikkaa",
     "copy": "Kopioi",
     "paste": "Liitä",
     "selectAll": "Valitse kaikki",
     "find": "Etsi",
-    "speech": "Puhe"
+    "speech": "Puhe",
+    "delete": "Poista",
+    "pasteAndMatchStyle": "Liitä ja sovita tyyli",
+    "startSpeaking": "Aloita puhuminen",
+    "stopSpeaking": "Lopeta puhuminen"
   },
   "view": {
     "label": "Näytä",
     "reload": "Lataa uudelleen",
-    "toggleDevTools": "Vaihda Kehittäjätyökalut",
+    "toggleDevTools": "Näytä/piilota kehittäjätyökalut",
     "toggleFullscreen": "Koko näyttö päälle/pois",
     "theme": "Teema",
     "themeDark": "Tumma",
@@ -37,7 +46,10 @@
     "themeSystem": "Järjestelmä",
     "themeWhite": "Paperi",
     "toggleDayPanel": "Näytä/piilota päiväpaneeli",
-    "toggleSidebar": "Näytä/piilota sivupalkki"
+    "toggleSidebar": "Näytä/piilota sivupalkki",
+    "actualSize": "Todellinen koko",
+    "zoomIn": "Lähennä",
+    "zoomOut": "Loitonna"
   },
   "format": {
     "body": "Leipäteksti",
@@ -55,7 +67,8 @@
     "about": "Tietoja MemryNotesta",
     "documentation": "Dokumentaatio",
     "label": "Ohje",
-    "shortcuts": "Pikanäppäimet"
+    "shortcuts": "Pikanäppäimet",
+    "aboutVersion": "Versio {version}"
   },
   "insert": {
     "attachment": "Lisää liite…",
@@ -67,6 +80,10 @@
     "taskList": "Tehtävälista"
   },
   "window": {
-    "label": "Ikkuna"
+    "label": "Ikkuna",
+    "close": "Sulje",
+    "front": "Tuo kaikki eteen",
+    "minimize": "Pienennä",
+    "zoom": "Zoomaa"
   }
 }

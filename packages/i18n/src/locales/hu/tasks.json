@@ -34,7 +34,15 @@
     "createAnother": "Hozzon létre egy másikat",
     "delete": "Feladat törlése",
     "created": "Létrehozva: {date}",
-    "reminder": "Emlékeztető"
+    "reminder": "Emlékeztető",
+    "tags": "Címkék",
+    "priorityLabels": {
+      "high": "Magas",
+      "low": "Alacsony",
+      "medium": "Közepes",
+      "none": "Nincs prioritás",
+      "urgent": "Sürgős"
+    }
   },
   "filters": {
     "filter": "Szűrés",
@@ -43,11 +51,32 @@
     "groupBy": "Csoportosítás szerint",
     "groupByOptions": "Csoportosítás opciók szerint",
     "sortAscending": "Növekvő rendezés",
-    "sortDescending": "Csökkenő rendezés"
+    "sortDescending": "Csökkenő rendezés",
+    "dueDate": {
+      "any": "Bármilyen határidő",
+      "custom": "Egyéni tartomány...",
+      "nextWeek": "Jövő héten",
+      "none": "Nincs határidő",
+      "overdue": "Lejárt",
+      "thisMonth": "Ebben a hónapban",
+      "thisWeek": "Ezen a héten",
+      "today": "Ma",
+      "tomorrow": "Holnap"
+    },
+    "quickPresets": {
+      "dueThisWeek": "Ezen a héten esedékes",
+      "highPriority": "Magas prioritás",
+      "noDueDate": "Nincs határidő",
+      "overdue": "Lejárt",
+      "repeating": "Ismétlődő"
+    },
+    "repeatTypeOneTime": "Egyszeri",
+    "repeatTypeRepeating": "Ismétlődő"
   },
   "quickAdd": {
     "label": "Gyors hozzáadási feladat",
-    "focusDescription": "Fókuszálás a gyors hozzáadási bemenetre"
+    "focusDescription": "Fókuszálás a gyors hozzáadási bemenetre",
+    "placeholder": "Feladat hozzáadása…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Zárja be a feladat részleteit",
@@ -75,7 +104,21 @@
     "searchRelated": "Kapcsolódó keresése…"
   },
   "kanban": {
-    "board": "Kanban tábla"
+    "board": "Kanban tábla",
+    "empty": {
+      "default": {
+        "subtitle": "Húzz ide feladatokat, vagy kattints a + gombra",
+        "title": "Nincsenek feladatok"
+      },
+      "done": {
+        "subtitle": "Végezz el feladatokat, és itt megjelennek",
+        "title": "Nincsenek elvégzett feladatok"
+      },
+      "schedule": {
+        "subtitle": "Húzz ide feladatokat az átütemezéshez",
+        "title": "Nincs semmi ütemezve"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "Projekt frissítve",
@@ -98,7 +141,53 @@
     "noCompletedSelected": "Nincsenek befejezett feladatok kiválasztva",
     "completeFailed": "Nem sikerült végrehajtani a feladatokat",
     "deleteFailed": "Nem sikerült törölni a feladatokat",
-    "moveFailed": "Nem sikerült áthelyezni a feladatokat"
+    "moveFailed": "Nem sikerült áthelyezni a feladatokat",
+    "bulk": {
+      "archived": "{count, plural, one {# feladat archiválva} other {# feladat archiválva}}",
+      "completed": "{count, plural, one {# feladat elvégezve} other {# feladat elvégezve}}",
+      "deleted": "{count, plural, one {# feladat törölve} other {# feladat törölve}}",
+      "deletedDescription": "Ez a művelet rövid ideig visszavonható.",
+      "dueDateRemoved": "{count, plural, one {Határidő eltávolítva # feladatról} other {Határidő eltávolítva # feladatról}}",
+      "dueDateSet": "{count, plural, one {Határidő beállítva # feladathoz} other {Határidő beállítva # feladathoz}}",
+      "movedToProject": "{count, plural, one {# feladat áthelyezve ide: {project}} other {# feladat áthelyezve ide: {project}}}",
+      "movedToStatus": "{count, plural, one {# feladat áthelyezve ide: {status}} other {# feladat áthelyezve ide: {status}}}",
+      "priorityRemoved": "{count, plural, one {Prioritás eltávolítva # feladatról} other {Prioritás eltávolítva # feladatról}}",
+      "prioritySet": "{count, plural, one {Prioritás beállítva erre: {priority} — # feladatnál} other {Prioritás beállítva erre: {priority} — # feladatnál}}",
+      "restored": "{count, plural, one {# feladat visszaállítva} other {# feladat visszaállítva}}",
+      "undoArchive": "{count, plural, one {# feladat archiválása} other {# feladat archiválása}}",
+      "undoComplete": "{count, plural, one {# feladat elvégzése} other {# feladat elvégzése}}",
+      "undoDelete": "{count, plural, one {# feladat törlése} other {# feladat törlése}}",
+      "undoDueDate": "{count, plural, one {Határidő módosítva # feladatnál} other {Határidő módosítva # feladatnál}}",
+      "undoMove": "{count, plural, one {# feladat áthelyezése} other {# feladat áthelyezése}}",
+      "undoStatus": "{count, plural, one {Állapot → {status} # feladatnál} other {Állapot → {status} # feladatnál}}",
+      "undoUncomplete": "{count, plural, one {# feladat visszaállítása befejezetlenre} other {# feladat visszaállítása befejezetlenre}}"
+    },
+    "drag": {
+      "archived": "{count, plural, one {Feladat archiválva} other {# feladat archiválva}}",
+      "deleted": "{count, plural, one {Feladat törölve} other {# feladat törölve}}",
+      "moved": "{count, plural, one {Áthelyezve ide: {target}} other {# feladat áthelyezve ide: {target}}}",
+      "movedTo": "Áthelyezve ide: {target}",
+      "prioritySet": "{count, plural, one {Prioritás beállítva erre: {priority}} other {# feladat prioritása erre állítva: {priority}}}",
+      "prioritySetTo": "Prioritás beállítva erre: {priority}",
+      "rescheduled": "{count, plural, one {Átütemezve ide: {target}} other {# feladat átütemezve ide: {target}}}",
+      "rescheduledTo": "Átütemezve ide: {target}",
+      "undoArchive": "{count, plural, one {# feladat archiválva} other {# feladat archiválva}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, one {# részfeladat hozzáadva} other {# részfeladat hozzáadva}}",
+      "completed": "{count, plural, one {# részfeladat elvégezve} other {# részfeladat elvégezve}}",
+      "deleted": "{count, plural, one {# részfeladat törölve} other {# részfeladat törölve}}",
+      "deletedDescription": "A részfeladat eltávolítva",
+      "dueDateCleared": "{count, plural, one {Határidő törölve # részfeladatnál} other {Határidő törölve # részfeladatnál}}",
+      "dueDateSet": "{count, plural, one {Határidő beállítva # részfeladathoz} other {Határidő beállítva # részfeladathoz}}",
+      "markedIncomplete": "{count, plural, one {# részfeladat befejezetlenként megjelölve} other {# részfeladat befejezetlenként megjelölve}}",
+      "movedUnder": "Áthelyezve ide: „{title}”",
+      "parentAndSubtasksCompleted": "A feladat és a részfeladatok elvégezve",
+      "parentDeletedKeepSubtasks": "Feladat törölve, a részfeladatokból feladatok lettek",
+      "parentDeletedWithSubtasks": "A feladat és a részfeladatok törölve",
+      "prioritySet": "{count, plural, one {Prioritás beállítva # részfeladathoz} other {Prioritás beállítva # részfeladathoz}}",
+      "promoted": "A(z) „{title}” feladattá lépett elő"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -179,7 +268,8 @@
       "nextMonth": "Következő hónapban",
       "goToToday": "Menj a mai napra",
       "today": "Ma",
-      "w": "W"
+      "w": "W",
+      "weekNumber": "{number}. hét"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Dátum eltávolítása",
@@ -197,44 +287,39 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Ennek a projektnek nincsenek feladatai, ezért véglegesen töröljük.",
       "thisActionCannotBeUndone": "Ez a művelet nem vonható vissza.",
       "cancel": "Mégsem",
-      "deleteProject": "Projekt törlése"
+      "deleteProject": "Projekt törlése",
+      "notesEventsAndFilesStayNotice": "A projekt feladatai törlődnek. A jegyzeteid, eseményeid és fájljaid a tárban maradnak."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Törli a feladatot?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; véglegesen törlésre kerül. Ez a művelet nem vonható vissza.",
-      "deleteTask2": "Feladat törlése"
+      "deleteTask2": "Feladat törlése",
+      "deleteConfirmBody": "A(z) „{title}” véglegesen törlődik. Ez a művelet nem vonható vissza."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Minden részfeladat kész!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; minden megvan ",
-      "subtask": "részfeladat",
-      "done": "kész.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "A szülői feladatot is készként szeretné megjelölni?",
       "keepTaskOpen": "Tartsa nyitva a feladatot",
-      "completeTask": "Fejezd be a feladatot ✓"
+      "completeTask": "Fejezd be a feladatot ✓",
+      "allSubtasksDoneBody": "A(z) „{title}” {count, plural, one {# részfeladata elkészült} other {mind a(z) # részfeladata elkészült}}."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Állítsa be az összes részfeladat határidejét",
       "setDueDateFor": "Állítsa be a határidőt ",
-      "subtask": "részfeladat",
-      "in": "a \"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Alkalmas az elvégzett részfeladatokra is (",
       "clearDate": "Tiszta dátum",
       "cancel": "Mégsem",
-      "apply": "Alkalmazni"
+      "apply": "Alkalmazni",
+      "alsoApplyToCompletedSubtasksCount": "Alkalmazás az elvégzett részfeladatokra is ({count})",
+      "setDueDateForSubtasksIn": "Határidő beállítása a(z) „{title}” {count, plural, one {# részfeladatához} other {# részfeladatához}}"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Állítsa be az összes részfeladat prioritását",
       "setPriorityFor": "Állítsa be a prioritást ",
-      "subtask": "részfeladat",
-      "in": "a \"",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Alkalmas az elvégzett részfeladatokra is (",
       "cancel": "Mégsem",
-      "apply": "Alkalmazni"
+      "apply": "Alkalmazni",
+      "alsoApplyToCompletedSubtasksCount": "Alkalmazás az elvégzett részfeladatokra is ({count})",
+      "setPriorityForSubtasksIn": "Prioritás beállítása a(z) „{title}” {count, plural, one {# részfeladatához} other {# részfeladatához}}"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Befejezett feladat hiányos részfeladatokkal?",
@@ -252,13 +337,10 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Törli az összes részfeladatot?",
-      "thisWillDelete": "Ez törli ",
-      "subtask": "részfeladat",
-      "from": "innen: \"",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "Ez a művelet nem vonható vissza.",
       "cancel": "Mégsem",
-      "deleteAll": "Összes törlése"
+      "deleteAll": "Összes törlése",
+      "deleteSubtasksConfirmation": "Ezzel {count, plural, one {# részfeladat} other {# részfeladat}} törlődik a(z) „{title}” feladatból."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Törli a feladatot részfeladatokkal?",
@@ -275,10 +357,13 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Ismétlődő feladat",
       "createACopyOf": "Hozzon létre egy másolatot a \"",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "A részfeladatok megkettőzése is (",
       "cancel": "Mégsem",
-      "duplicate": "Megkettőzés "
+      "duplicate": "Megkettőzés ",
+      "alsoDuplicateSubtasksCount": "A részfeladatok másolása is ({count})",
+      "createACopyOfTitle": "Másolat készítése a(z) „{title}” feladatról",
+      "duplicateTaskOnly": "Feladat másolása",
+      "duplicateWithItems": "Másolás ({count, plural, one {# elem} other {# elem}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Készítsen részfeladatot...",
@@ -324,7 +409,11 @@
       "addTime": "Add hozzá az időt",
       "time": "Idő",
       "clearDate": "Tiszta dátum",
-      "backToOptions": "Vissza a lehetőségekhez"
+      "backToOptions": "Vissza a lehetőségekhez",
+      "nextWeek": "Jövő héten",
+      "thisWeekend": "Ezen a hétvégén",
+      "today": "Ma",
+      "tomorrow": "Holnap"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "Ismétlődő feladat szerkesztése",
@@ -357,7 +446,9 @@
       "due": "esedékes",
       "dueDate": "esedékessége",
       "search": "keresés",
-      "clearAll": "Minden törlése"
+      "clearAll": "Minden törlése",
+      "tags": "címkék",
+      "tagsIs": "A címkék:"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Szűrés határidő szerint",
@@ -421,7 +512,17 @@
       "currentFilters": "Jelenlegi szűrők:",
       "noFiltersApplied": "Nincsenek szűrők",
       "cancel": "Mégsem",
-      "saveFilter2": "Szűrő mentése"
+      "saveFilter2": "Szűrő mentése",
+      "nameRequired": "Adj nevet ennek a szűrőnek",
+      "summaryDue": "Esedékesség: {value}",
+      "summaryDueRange": "Esedékesség: {start} - {end}",
+      "summaryPriorities": "Prioritás: {names}",
+      "summaryProjects": "Projekt: {names}",
+      "summaryRepeatOneTime": "Ismétlés: csak egyszeri",
+      "summaryRepeatRepeating": "Ismétlés: csak ismétlődő",
+      "summarySearch": "Keresés: „{query}”",
+      "summaryTimeWith": "Idő: időponttal",
+      "summaryTimeWithout": "Idő: időpont nélkül"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Mentett szűrők",
@@ -553,7 +654,16 @@
       "d": "d"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "Feladat hozzáadása"
+      "addTask": "Feladat hozzáadása",
+      "allDescription": "Hozd létre az első feladatod a kezdéshez",
+      "allTitle": "Még nincsenek feladatok",
+      "completedDescription": "Az elvégzett feladatok itt jelennek meg",
+      "completedTitle": "Nincsenek elvégzett feladatok",
+      "projectDescription": "Adj hozzá egy feladatot a kezdéshez",
+      "projectTitle": "Nincsenek feladatok ebben a projektben",
+      "projectTitleNamed": "Nincsenek feladatok itt: {name}",
+      "todayDescription": "Mindennel végeztél!",
+      "todayTitle": "Ma nincs esedékes feladat"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "nincs prioritás"
@@ -589,6 +699,12 @@
       "noUpcomingTasks": "Nincsenek közelgő feladatok",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Itt jelennek meg a következő 7 napban esedékes feladatok. Tervezze meg hetét néhány feladat hozzáadásával.",
       "addTask2": "Feladat hozzáadása"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "van",
+      "search": "Keresés...",
+      "selected": "kiválasztott",
+      "tags": "Címkék"
     }
   },
   "phaseI": {
@@ -638,5 +754,147 @@
       "updateFailed": "Nem sikerült frissíteni az emlékeztetőt",
       "updated": "Emlékeztető frissítve"
     }
+  },
+  "addToProject": {
+    "dialogTitle": "Hozzáadás projekthez",
+    "loading": "Projektek betöltése…",
+    "menuLabel": "Hozzáadás projekthez",
+    "noProjects": "Még nincsenek projektek",
+    "toastError": "Nem sikerült hozzáadni a projekthez",
+    "toastSuccess": "Hozzáadva ehhez: {name}"
+  },
+  "itemProjects": {
+    "openProject": "{name} projekt megnyitása"
+  },
+  "projectHome": {
+    "emptyBody": "Válassz egy projektet az oldalsávból a kezdőlapja megnyitásához.",
+    "emptyTitle": "Nincs kiválasztott projekt",
+    "loadError": "Nem sikerült betölteni a projekt adatait",
+    "overview": {
+      "clear": "Áttekintés törlése",
+      "clearError": "Nem sikerült törölni az áttekintő jegyzetet",
+      "create": "Áttekintő jegyzet létrehozása",
+      "createError": "Nem sikerült létrehozni az áttekintő jegyzetet",
+      "defaultTitle": "Áttekintés",
+      "loadError": "Nem sikerült betölteni az áttekintő jegyzetet",
+      "placeholder": "Írj áttekintést ehhez a projekthez…",
+      "saveError": "Nem sikerült elmenteni az áttekintő jegyzetet",
+      "sectionTitle": "Áttekintés"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Fájlok csatolása",
+      "fileError": "Nem sikerült összekapcsolni: {name}",
+      "fileErrorGeneric": "Nem sikerült importálni a fájlokat",
+      "filesAdded": "{count, plural, one {# fájl hozzáadva a projekthez} other {# fájl hozzáadva a projekthez}}",
+      "label": "Hozzáadás ehhez: {name}",
+      "linkAdded": "A link hozzáadva a projekthez",
+      "linkError": "Nem sikerült elmenteni a linket",
+      "placeholder": "Hozzáadás ehhez: {name} — írj egy feladatot, jegyezz fel valamit, vagy illessz be egy linket…"
+    },
+    "groups": {
+      "older": "Régebbi",
+      "past": "Korábbi",
+      "today": "Ma",
+      "tomorrow": "Holnap",
+      "upcoming": "Közelgő",
+      "yesterday": "Tegnap"
+    },
+    "header": {
+      "archiveProject": "Projekt archiválása",
+      "editProject": "Projekt szerkesztése",
+      "menu": "Projektműveletek",
+      "toggleRail": "Projekt részleteinek megjelenítése vagy elrejtése"
+    },
+    "rail": {
+      "addNote": "Jegyzet hozzáadása",
+      "created": "Létrehozva",
+      "details": "Részletek",
+      "doneOf": "{done}/{total} kész",
+      "linked": "Kapcsolódó",
+      "linkedSummary": "{notes, plural, one {# jegyzet} other {# jegyzet}} · {files, plural, one {# fájl} other {# fájl}} · {events, plural, one {# esemény} other {# esemény}}",
+      "overdue": "Lejárt",
+      "overview": "Áttekintés",
+      "pinError": "Nem sikerült hozzáadni a jegyzetet az áttekintéshez",
+      "progress": "Haladás",
+      "unpinError": "Nem sikerült eltávolítani a jegyzetet az áttekintésből",
+      "unpinNote": "{title} eltávolítása az áttekintésből",
+      "updated": "Frissítve"
+    },
+    "rows": {
+      "openEvent": "{title} esemény megnyitása",
+      "openFile": "{title} fájl megnyitása",
+      "openNote": "{title} jegyzet megnyitása",
+      "openTask": "{title} feladat megnyitása",
+      "setNoteIcon": "{title} ikonjának beállítása"
+    },
+    "sections": {
+      "add": "Hozzáadás ehhez: {title}",
+      "emptyEvents": "Még nincs összekapcsolt esemény.",
+      "emptyFiles": "Még nincs összekapcsolt fájl.",
+      "emptyNotes": "Még nincs összekapcsolt jegyzet.",
+      "emptyTasks": "Még nincsenek feladatok.",
+      "newNoteError": "Nem sikerült hozzáadni a jegyzetet",
+      "newNoteTitle": "Névtelen jegyzet",
+      "viewAll": "Az összes megtekintése"
+    },
+    "tabs": {
+      "events": "Események",
+      "files": "Fájlok",
+      "label": "Projektnézetek",
+      "notes": "Jegyzetek",
+      "overview": "Áttekintés",
+      "tasks": "Feladatok"
+    }
+  },
+  "priorityInline": {
+    "high": "magas",
+    "low": "alacsony",
+    "medium": "közepes",
+    "urgent": "sürgős"
+  },
+  "priorityLabels": {
+    "high": "Magas",
+    "low": "Alacsony",
+    "medium": "Közepes",
+    "none": "Nincs prioritás",
+    "urgent": "Sürgős"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "Kész",
+      "inProgress": "Folyamatban",
+      "todo": "Teendő"
+    },
+    "validation": {
+      "minStatuses": "A projektekhez legalább 2 állapot szükséges",
+      "nameRequired": "A projekt neve kötelező",
+      "nameTooLong": "A projekt neve legfeljebb 50 karakter lehet",
+      "needsDoneStatus": "A projektekhez legalább egy „Kész” állapot szükséges",
+      "needsDoneStatusForCompletedTasks": "Az elvégzett feladatokhoz a projekteknek legalább egy „Kész” állapotra van szükségük",
+      "needsTodoStatus": "A projektekhez legalább egy „Teendő” állapot szükséges",
+      "needsTodoStatusForNewTasks": "Az új feladatokhoz a projekteknek legalább egy „Teendő” állapotra van szükségük",
+      "statusNameRequired": "Minden állapotnak nevet kell adni",
+      "statusNamesUnique": "Az állapotneveknek egyedieknek kell lenniük",
+      "statusNotFound": "Az állapot nem található"
+    }
+  },
+  "statusLabels": {
+    "done": "Kész",
+    "inProgress": "Folyamatban",
+    "todo": "Teendő"
+  },
+  "colors": {
+    "blue": "Kék",
+    "gray": "Szürke",
+    "green": "Zöld",
+    "indigo": "Indigó",
+    "orange": "Narancssárga",
+    "pink": "Rózsaszín",
+    "purple": "Lila",
+    "red": "Piros",
+    "teal": "Kékeszöld",
+    "yellow": "Sárga"
   }
 }

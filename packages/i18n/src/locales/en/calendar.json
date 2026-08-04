@@ -71,7 +71,11 @@
     "use-default-calendar": "Use default calendar",
     "use-default-calendar-with-name": "Use default ({calendar})",
     "use-memry-calendar-default": "Use memrynote calendar (default)",
-    "primary-suffix": "primary"
+    "primary-suffix": "primary",
+    "project": "Project",
+    "no-project": "No project",
+    "remove-from-project": "Remove from {project}",
+    "project-update-failed": "Could not update the event's project"
   },
   "delete-dialog": {
     "title": "Delete event?",

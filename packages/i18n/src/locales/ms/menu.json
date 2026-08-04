@@ -1,7 +1,12 @@
 {
   "app": {
     "quit": "Berhenti",
-    "preferences": "Tetapan…"
+    "preferences": "Tetapan…",
+    "exit": "Keluar",
+    "hide": "Sembunyikan MemryNote",
+    "hideOthers": "Sembunyikan Yang Lain",
+    "services": "Perkhidmatan",
+    "unhide": "Tunjukkan Semua"
   },
   "file": {
     "label": "Fail",
@@ -12,19 +17,23 @@
     "openQuickly": "Buka Pantas…"
   },
   "navigation": {
-    "back": "belakang",
-    "forward": "ke hadapan"
+    "back": "Kembali",
+    "forward": "Ke Hadapan"
   },
   "edit": {
     "label": "Sunting",
     "undo": "Buat asal",
     "redo": "Buat semula",
-    "cut": "potong",
-    "copy": "salin",
+    "cut": "Potong",
+    "copy": "Salin",
     "paste": "Tampal",
     "selectAll": "Pilih semua",
     "find": "Cari",
-    "speech": "Pertuturan"
+    "speech": "Pertuturan",
+    "delete": "Padam",
+    "pasteAndMatchStyle": "Tampal dan Padankan Gaya",
+    "startSpeaking": "Mula Bertutur",
+    "stopSpeaking": "Berhenti Bertutur"
   },
   "view": {
     "label": "Lihat",
@@ -37,10 +46,13 @@
     "themeSystem": "Sistem",
     "themeWhite": "Kertas",
     "toggleDayPanel": "Togol Panel Hari",
-    "toggleSidebar": "Togol Bar Sisi"
+    "toggleSidebar": "Togol Bar Sisi",
+    "actualSize": "Saiz Sebenar",
+    "zoomIn": "Zum Masuk",
+    "zoomOut": "Zum Keluar"
   },
   "format": {
-    "body": "Badan",
+    "body": "Teks Isi",
     "bold": "Tebal",
     "code": "Kod",
     "heading1": "Tajuk 1",
@@ -55,7 +67,8 @@
     "about": "Perihal MemryNote",
     "documentation": "Dokumentasi",
     "label": "Bantuan",
-    "shortcuts": "Pintasan Papan Kekunci"
+    "shortcuts": "Pintasan Papan Kekunci",
+    "aboutVersion": "Versi {version}"
   },
   "insert": {
     "attachment": "Sisip Lampiran…",
@@ -67,6 +80,10 @@
     "taskList": "Senarai Tugasan"
   },
   "window": {
-    "label": "Tetingkap"
+    "label": "Tetingkap",
+    "close": "Tutup",
+    "front": "Bawa Semua ke Hadapan",
+    "minimize": "Minimumkan",
+    "zoom": "Zum"
   }
 }

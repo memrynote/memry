@@ -3,8 +3,10 @@ import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import { SettingsSyncPayloadSchema } from '@memry/contracts/settings-sync'
 import type { SettingsSyncPayload, SyncedSettings } from '@memry/contracts/settings-sync'
 import type { VectorClock } from '@memry/contracts/sync-api'
+import { LocaleSchema } from '@memry/contracts/locale-api'
 import type { SyncQueueManager } from '../queue'
 import { getSettingsSyncManager } from '../settings-sync'
+import { applyLocale } from '../../ipc/locale-handler'
 import { writePreferences } from '../../vault/vault-preferences'
 import { writeCacheFromPreferences } from '../../vault/settings-cache'
 import { readPreferences } from '../../vault/vault-preferences'
@@ -132,6 +134,27 @@ function propagateMergedSettings(merged: SyncedSettings): void {
   }
 
   broadcastSettingsChanged(merged)
+
+  applySyncedLocale(merged.general?.language)
+}
+
+// A language changed on another device has to take the same runtime path as a
+// local switch, or this device keeps the old UI language and old native menu
+// until restart and locale-handler's `activeLocale` (what LocaleChannels.Get
+// returns) drifts away from what was just persisted. applyLocale() performs no
+// sync enqueue, so applying an inbound locale cannot push a write back out.
+function applySyncedLocale(candidate: string | undefined): void {
+  if (!candidate) return
+
+  const parsed = LocaleSchema.safeParse(candidate)
+  if (!parsed.success) {
+    log.warn('Ignoring unsupported language from synced settings:', candidate)
+    return
+  }
+
+  applyLocale(parsed.data).catch((err) => {
+    log.warn('Failed to apply synced locale:', err)
+  })
 }
 
 function broadcastSettingsChanged(merged: SyncedSettings): void {

@@ -25,7 +25,8 @@
     "expand": "Uitbreiden",
     "collapse": "Samenvouwen",
     "showMore": "+{count, plural, one {# meer} other {# meer}}",
-    "showLess": "Laat minder zien"
+    "showLess": "Laat minder zien",
+    "undo": "Ongedaan maken"
   },
   "tabs": {
     "pin": "Tabblad vastzetten",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "Vandaag",
     "yesterday": "Gisteren",
-    "daysAgo": "{count, plural, one {# dag geleden} other {# dagen geleden}}"
+    "daysAgo": "{count, plural, one {# dag geleden} other {# dagen geleden}}",
+    "daysLate": "{count, plural, one {#d te laat} other {#d te laat}}",
+    "daysOverdue": "{count, plural, one {# dag te laat} other {# dagen te laat}}",
+    "tomorrow": "Morgen"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Elke dag} other {Elke #-dagen}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Elke maand op de {day}{suffix}} other {Elke # maanden op de {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Elke maand op de {week} {day}} other {Elke # maanden op de {week} {day}}}",
     "everyNYears": "{count, plural, one {Elk jaar} other {Elke #-jaar}}",
-    "repeats": "Herhalingen"
+    "repeats": "Herhalingen",
+    "ordinal": {
+      "first": "eerste",
+      "fourth": "vierde",
+      "last": "laatste",
+      "second": "tweede",
+      "third": "derde"
+    },
+    "preset": {
+      "everyWeekday": "Elke weekdag (ma-vr)",
+      "everyYearOnDate": "Elk jaar op {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -102,7 +117,15 @@
       "updateDownloadingPercent": "Downloaden {percent}%",
       "updateInstallingSubtitle": "MemryNote start automatisch opnieuw op.",
       "updateInstallingTitle": "Update installeren",
-      "updateRestart": "Opnieuw opstarten"
+      "updateRestart": "Opnieuw opstarten",
+      "feedbackPrivacyEmailOptional": "Je e-mailadres — alleen als je het invult, en alleen zodat we kunnen antwoorden",
+      "feedbackPrivacyEmailSignedIn": "Het e-mailadres van je account ({email}), zodat we kunnen antwoorden",
+      "feedbackPrivacyMessage": "Je bericht, precies zoals je het hebt geschreven",
+      "feedbackPrivacyNote": "Verder niets. Je notities blijven op je apparaat.",
+      "feedbackPrivacyPlan": "Je abonnement (free, Plus, Pro of Believer)",
+      "feedbackPrivacyTitle": "Wat er wordt verstuurd",
+      "feedbackPrivacyVersion": "App-versie en besturingssysteem",
+      "projects": "Projecten"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Formaat van dagpaneel wijzigen",
@@ -180,8 +203,9 @@
       "search": "Zoeken",
       "searchNotesTasksJournalInbox": "Zoek naar notities, taken, dagboek, inbox...",
       "noResultsFor": "Geen resultaat voor “",
-      "rdquo": "rdquo;",
-      "result": "resultaat"
+      "result": "resultaat",
+      "noResultsForQuery": "Geen resultaten voor “{query}”",
+      "resultCount": "{count, plural, one {# resultaat} other {# resultaten}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Zoek en klik op items om je parcours te bouwen",
@@ -231,7 +255,8 @@
       "journal": "Journaal",
       "calendar": "Kalender",
       "inboxCapture": "Inbox vastleggen",
-      "tasks": "Taken"
+      "tasks": "Taken",
+      "tags": "Tags"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Niet-opgeslagen wijzigingen",
@@ -261,15 +286,15 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Er is iets misgegaan",
       "anErrorOccurredWhileRenderingThisTabContent": "Er is een fout opgetreden bij het weergeven van de inhoud van dit tabblad.",
-      "tryAgain": "Probeer het opnieuw"
+      "tryAgain": "Probeer het opnieuw",
+      "sendReport": "Diagnostisch rapport versturen"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Notitiepictogram"
     },
     "componentsTabsUnsavedChangesDialog": {
       "unsavedChanges": "Niet-opgeslagen wijzigingen",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; bevat niet-opgeslagen wijzigingen. Wat zou je graag willen doen?"
+      "unsavedChangesBody": "“{title}” heeft niet-opgeslagen wijzigingen. Wat wil je doen?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Nieuwe werkruimte",
@@ -341,7 +366,6 @@
       "logOut": "Uitloggen",
       "signInToSync": "Log in om te synchroniseren",
       "remove": "Verwijder “",
-      "rdquoFromList": "rdquo; uit de lijst?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Deze kluis wordt uit de app verwijderd, maar uw bestanden blijven op schijf staan. Je kunt het later altijd opnieuw toevoegen.",
       "cancel": "Annuleer",
       "remove2": "Verwijderen",
@@ -352,7 +376,13 @@
       "downloadLocation": "Locatie",
       "changeLocation": "Wijzigen…",
       "download": "Downloaden",
-      "downloadFailed": "De kluis kon niet worden gedownload"
+      "downloadFailed": "De kluis kon niet worden gedownload",
+      "deleteFromAccount": "Verwijderen uit account",
+      "deleteVaultBody": "Hiermee worden alle gesynchroniseerde gegevens van deze kluis definitief van de servers van Memry verwijderd; dit kan niet ongedaan worden gemaakt. Je bestanden op schijf worden niet verwijderd.",
+      "deleteVaultConfirm": "Verwijderen uit account",
+      "deleteVaultFailed": "Kan kluis niet verwijderen",
+      "deleteVaultTitle": "“{name}” uit je account verwijderen?",
+      "removeVaultTitle": "“{name}” uit de lijst verwijderen?"
     },
     "componentsWindowControls": {
       "searchK": "Zoeken (⌘K)",
@@ -437,7 +467,7 @@
           "high": "Hoog",
           "extraHigh": "Extra hoog",
           "extraHighDefault": "Extra hoog (standaard)",
-          "max": "Max"
+          "max": "Maximaal"
         }
       },
       "codexSettings": {
@@ -450,21 +480,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Alleen kluis",
+        "computerAccess": "Computertoegang"
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
-        "label": "Web search"
+        "off": "Uit",
+        "label": "Zoeken op het web"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Agentmachtigingen: {access}, zoeken op het web {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
+        "label": "Machtigingen",
+        "access": "Toegang",
         "tools": "Tools"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Modelinstellingen van de agent: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Geen overeenkomsten"
@@ -575,7 +605,7 @@
       "remove": "Verwijderen",
       "removeAria": "Widget verwijderen",
       "resize": "Grootte",
-      "resizeAria": "Vergroten/verkleinen naar {{size}}",
+      "resizeAria": "Vergroten/verkleinen naar {size}",
       "savedFilterDefault": "Vandaag",
       "savedFilterHint": "Markeer filters met een ster op de Taken-pagina om ze hier te gebruiken",
       "savedFilterLabel": "Opgeslagen filter",
@@ -624,6 +654,11 @@
     "welcome": {
       "body": "Je privé, offline-first thuis. Notities zijn end-to-end versleuteld — ze verlaten je apparaat nooit onversleuteld.",
       "title": "Welkom bij MemryNote"
+    },
+    "tour": {
+      "next": "Volgende",
+      "previous": "Vorige",
+      "progress": "{current} van {total}"
     }
   },
   "updatePrompt": {
@@ -640,6 +675,165 @@
     "skip": "Deze versie overslaan"
   },
   "capture": {
-    "focusShortcut": "Vastlegveld focussen"
+    "focusShortcut": "Vastlegveld focussen",
+    "detailHint": "details",
+    "focusHint": "Q",
+    "submit": "Vastleggen"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Kaart toevoegen",
+      "addCreateNote": "Notitie \"{query}\" maken",
+      "addCreateNoteEmpty": "Nieuwe notitie maken",
+      "addCreatedAt": "Gemaakt {date}",
+      "addEmpty": "Niets gevonden",
+      "addGroupEvents": "Evenementen",
+      "addGroupNotes": "Notities",
+      "addGroupTasks": "Taken",
+      "addOnCanvas": "Op canvas",
+      "addPlaceholder": "Zoek notities, taken en evenementen…",
+      "allDay": "De hele dag",
+      "createNoteFailed": "Kan notitie niet maken",
+      "deleted": "Item verwijderd",
+      "loading": "Laden…",
+      "open": "Openen in tabblad",
+      "openToEdit": "Open in tabblad om te bewerken",
+      "untitled": "Zonder titel"
+    },
+    "corruptScene": "Dit canvas kon niet worden gelezen. Bewerken is uitgeschakeld om gegevensverlies te voorkomen.",
+    "createFailed": "Kan canvas niet maken",
+    "disabledBody": "Dit tabblad hoort bij een functie die op dit apparaat niet is ingeschakeld.",
+    "disabledTitle": "Canvas is niet ingeschakeld",
+    "empty": "Nog geen canvassen",
+    "libraryStoreFailed": "Kan je vormenbibliotheek niet opslaan. Recente wijzigingen gaan mogelijk verloren.",
+    "loadFailed": "Kan canvassen niet laden",
+    "loading": "Canvassen laden…",
+    "newCanvas": "Nieuw canvas",
+    "notFound": "Dit canvas kon niet worden gevonden",
+    "openFailed": "Kan canvas niet openen",
+    "savedToVault": "Alle wijzigingen worden automatisch in je kluis opgeslagen",
+    "sectionLabel": "Canvassen",
+    "tooLargeToSync": "Dit canvas is te groot om te synchroniseren. Het is opgeslagen op dit apparaat, maar bereikt je andere apparaten pas als het kleiner is.",
+    "untitled": "Canvas zonder titel"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Klik op rij",
+      "reset": "Herstellen",
+      "shortcutsTab": "Tabblad Sneltoetsen"
+    },
+    "description": "Snelle routes om door memrynote te bewegen, gedachten vast te leggen en werk te verwerken.",
+    "groups": {
+      "general": {
+        "description": "Navigatie en hulp in de hele app.",
+        "title": "Algemeen"
+      },
+      "inbox": {
+        "description": "Verwerk vastgelegde items snel.",
+        "title": "Inbox"
+      },
+      "journal": {
+        "description": "Navigeer door journaalweergaven en focus op het schrijfgebied.",
+        "title": "Journaal"
+      },
+      "notes": {
+        "description": "Notities schrijven, opmaken en doorzoeken.",
+        "title": "Notities / Editor"
+      },
+      "settings": {
+        "description": "Instellingen openen en sneltoetsen aanpassen.",
+        "title": "Instellingen"
+      },
+      "tabs": {
+        "description": "Wissel tussen tabbladen en panelen.",
+        "title": "Tabbladen en splitsingen"
+      },
+      "tasks": {
+        "description": "Taken filteren, selecteren en voltooien.",
+        "title": "Taken"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Een notitie maken",
+        "keyboardShortcuts": "Sneltoetsen openen",
+        "openSettings": "Instellingen openen",
+        "quickSearch": "Snelzoeken openen",
+        "sidebarSection": "Naar een sectie in de zijbalk gaan",
+        "toggleSidebar": "Zijbalk in-/uitschakelen",
+        "undoTaskAction": "Laatste taakactie ongedaan maken"
+      },
+      "inbox": {
+        "archiveItem": "Geselecteerd item archiveren",
+        "chooseQuickFileResult": "Een resultaat van snel opbergen kiezen",
+        "clearSelection": "Selectie wissen of snel opbergen sluiten",
+        "confirmFiling": "Opbergpaneel bevestigen",
+        "firstOrLastItem": "Eerste of laatste item",
+        "jumpByPage": "Per pagina springen",
+        "nextItem": "Volgend item",
+        "openOriginal": "Oorspronkelijke link openen",
+        "openQuickFile": "Snel opbergen openen",
+        "previousItem": "Vorig item",
+        "refresh": "Inbox vernieuwen",
+        "selectAllVisible": "Alle zichtbare items selecteren",
+        "selectItem": "Item selecteren",
+        "togglePreview": "Voorbeeldpaneel in-/uitschakelen"
+      },
+      "journal": {
+        "bold": "Geselecteerde tekst vet maken",
+        "find": "Zoeken in journaal",
+        "italic": "Geselecteerde tekst cursief maken",
+        "link": "Link toevoegen of bewerken",
+        "returnFromOverview": "Terug uit maand- of jaarweergave",
+        "toggleFullWidth": "Journaal op volle breedte in-/uitschakelen",
+        "underline": "Geselecteerde tekst onderstrepen"
+      },
+      "notes": {
+        "bold": "Vet",
+        "closeOverlays": "Overlays van de editor sluiten",
+        "commandMenu": "Opdrachtmenu van de editor openen",
+        "createNote": "Een notitie maken",
+        "find": "Zoeken in notitie",
+        "italic": "Cursief",
+        "link": "Link toevoegen of bewerken",
+        "saveNote": "Huidige notitie opslaan",
+        "underline": "Onderstrepen"
+      },
+      "settings": {
+        "cancelRecording": "Opnemen van sneltoets annuleren",
+        "customizeShortcuts": "Sneltoetsen aanpassen",
+        "openSettings": "Instellingen openen",
+        "recordShortcut": "Een nieuwe sneltoets opnemen",
+        "resetShortcut": "Standaardsneltoets herstellen"
+      },
+      "tabs": {
+        "closeAllInPane": "Alle tabbladen in het paneel sluiten",
+        "closeSplitPane": "Gesplitst paneel sluiten",
+        "closeTab": "Tabblad sluiten",
+        "duplicateTab": "Tabblad dupliceren",
+        "focusPane": "Een ander paneel activeren",
+        "maximizePane": "Huidig paneel maximaliseren",
+        "moveTabToPane": "Tabblad naar paneel verplaatsen",
+        "newTabMenu": "Menu voor nieuw tabblad openen",
+        "nextTab": "Volgend tabblad",
+        "pinTab": "Tabblad vastzetten of losmaken",
+        "previousTab": "Vorig tabblad",
+        "reopenClosedTab": "Gesloten tabblad opnieuw openen",
+        "splitDown": "Omlaag splitsen",
+        "splitRight": "Naar rechts splitsen"
+      },
+      "tasks": {
+        "clearFilters": "Zichtbare filters wissen",
+        "clearSelection": "Taakselectie wissen",
+        "completeSelected": "Geselecteerde taken voltooien",
+        "configureRepeat": "Herhaling instellen voor de gefocuste taak",
+        "deleteSelected": "Geselecteerde taken verwijderen",
+        "selectAllVisible": "Alle zichtbare taken selecteren",
+        "skipOccurrence": "Herhaling overslaan",
+        "stopRepeating": "Stoppen met het herhalen van een taak"
+      }
+    },
+    "or": "of",
+    "then": "dan"
   }
 }

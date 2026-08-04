@@ -5,10 +5,21 @@ import type { ApplyContext, DrizzleDb } from './types'
 
 const mockMergeRemote = vi.fn()
 const mockGetSettings = vi.fn(() => ({}))
+// The outbound half of SettingsSyncManager. Applying an inbound settings item
+// must never touch these — updateField()/enqueue*() are the only things that
+// push a settings item, so a call here is an echo back to the sending device.
+const mockUpdateField = vi.fn()
+const mockEnqueueCreate = vi.fn()
+const mockEnqueueUpdate = vi.fn()
+const mockEnqueueDelete = vi.fn()
 vi.mock('../settings-sync', () => ({
   getSettingsSyncManager: vi.fn(() => ({
     mergeRemote: mockMergeRemote,
-    getSettings: mockGetSettings
+    getSettings: mockGetSettings,
+    updateField: mockUpdateField,
+    enqueueCreate: mockEnqueueCreate,
+    enqueueUpdate: mockEnqueueUpdate,
+    enqueueDelete: mockEnqueueDelete
   }))
 }))
 
@@ -39,21 +50,27 @@ vi.mock('../../vault/vault-preferences', () => ({
 }))
 
 const mockGetCurrentVaultPath = vi.fn(() => '/test/vault')
+const mockSetStoredLocale = vi.fn()
 vi.mock('../../store', () => ({
-  getCurrentVaultPath: () => mockGetCurrentVaultPath()
+  getCurrentVaultPath: () => mockGetCurrentVaultPath(),
+  setStoredLocale: (...args: unknown[]) => mockSetStoredLocale(...args)
 }))
 
 const mockSend = vi.fn()
 vi.mock('electron', () => ({
   BrowserWindow: {
     getAllWindows: vi.fn(() => [{ webContents: { send: mockSend } }])
-  }
+  },
+  // locale-handler registers its IPC channels on import-time registration; the
+  // real apply path is exercised through it, so ipcMain has to exist.
+  ipcMain: { handle: vi.fn() }
 }))
 
 vi.mock('../../database', () => ({
   getDatabase: vi.fn()
 }))
 
+import { LocaleChannels, SettingsChannels } from '@memry/contracts/ipc-channels'
 import { getDatabase } from '../../database'
 import { getSetting, setSetting } from '../../database/queries/settings'
 import { INBOX_REVIEW_LAST_NOTIFIED_KEY } from '../../inbox/review-reminder-constants'
@@ -63,6 +80,10 @@ import {
   asClientDb,
   type TestDatabaseResult
 } from '@tests/utils/test-db'
+// Deliberately the real module, not a mock: the defect these tests cover was
+// that a synced language never reached this runtime path, so stubbing
+// applyLocale() would assert nothing about the thing that was broken.
+import { getActiveLocale, registerLocaleHandlers } from '../../ipc/locale-handler'
 import { settingsHandler } from './settings-handler'
 
 describe('settingsHandler.applyUpsert', () => {
@@ -212,5 +233,206 @@ describe('settingsHandler.applyUpsert', () => {
     settingsHandler.applyUpsert(ctx, 'synced_settings', data, clock)
 
     expect(getSetting(testDb.db, INBOX_REVIEW_LAST_NOTIFIED_KEY)).toBe('2026-07-17')
+  })
+})
+
+// A language changed on device B used to reach config.json and the settings
+// cache but never the runtime: device A kept the old UI language, the old
+// native menu and a stale activeLocale until restart. These drive the real
+// locale-handler so the assertions are about the runtime effects, not about
+// applyLocale() merely having been called.
+describe('settingsHandler.applyUpsert — synced locale', () => {
+  const ctx: ApplyContext = {
+    db: {} as unknown as DrizzleDb,
+    emit: vi.fn()
+  }
+  const clock: VectorClock = { 'device-B': 7 }
+  let testDb: TestDatabaseResult
+  let i18n: { changeLanguage: ReturnType<typeof vi.fn>; language: string }
+  let rebuildMenu: ReturnType<typeof vi.fn>
+
+  // applySyncedLocale() fires applyLocale() without awaiting it (the handler
+  // stays synchronous), so the runtime effects land a microtask later.
+  const settle = (): Promise<void> => new Promise((resolve) => setImmediate(resolve))
+
+  const upsert = (settings: Record<string, unknown>): string => {
+    mockGetSettings.mockReturnValue(settings as never)
+    const data = {
+      settings,
+      fieldClocks: { 'general.language': { 'device-B': 7 } }
+    } as unknown as SettingsSyncPayload
+    return settingsHandler.applyUpsert(ctx, 'synced_settings', data, clock)
+  }
+
+  const localeChangedSends = (): unknown[][] =>
+    mockSend.mock.calls.filter((c: unknown[]) => c[0] === LocaleChannels.Changed)
+
+  const settingsChangedSends = (): unknown[][] =>
+    mockSend.mock.calls.filter((c: unknown[]) => c[0] === SettingsChannels.events.CHANGED)
+
+  /** Re-registering resets locale-handler's module-level activeLocale. */
+  const registerWithActiveLocale = (locale: string): void => {
+    i18n = { changeLanguage: vi.fn().mockResolvedValue(undefined), language: locale }
+    rebuildMenu = vi.fn()
+    registerLocaleHandlers(i18n as never, rebuildMenu as never)
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    testDb = createTestDatabase()
+    vi.mocked(getDatabase).mockReturnValue(asClientDb(testDb.db))
+    mockGetCurrentVaultPath.mockReturnValue('/test/vault')
+    registerWithActiveLocale('en')
+  })
+
+  afterEach(() => {
+    cleanupTestDatabase(testDb)
+  })
+
+  it('#given inbound general.language differs from the active locale #then swaps i18n, rebuilds the native menu and tells the renderer', async () => {
+    upsert({ general: { theme: 'dark', language: 'tr' } })
+    await settle()
+
+    expect(i18n.changeLanguage).toHaveBeenCalledWith('tr')
+    expect(rebuildMenu).toHaveBeenCalledWith('tr')
+    expect(localeChangedSends()).toEqual([[LocaleChannels.Changed, 'tr']])
+    // LocaleChannels.Get answers from activeLocale; if it stayed 'en' the
+    // renderer would keep asking for the pre-sync language.
+    expect(getActiveLocale()).toBe('tr')
+  })
+
+  it('#given inbound general.language differs #then persists it to the store, the vault prefs and the general settings row', async () => {
+    setSetting(testDb.db, 'general', JSON.stringify({ theme: 'dark', language: 'en' }))
+
+    upsert({ general: { theme: 'dark', language: 'tr' } })
+    await settle()
+
+    expect(mockSetStoredLocale).toHaveBeenCalledWith('tr')
+    // The locale write is the last one: propagateMergedSettings writes the
+    // portable prefs first, then the apply path writes the language.
+    expect(mockWritePreferences).toHaveBeenLastCalledWith('/test/vault', { language: 'tr' })
+    const persisted = JSON.parse(getSetting(testDb.db, 'general') as string)
+    expect(persisted).toMatchObject({ theme: 'dark', language: 'tr' })
+  })
+
+  it('#given inbound language equals the active locale #then does not re-apply it', async () => {
+    registerWithActiveLocale('tr')
+
+    upsert({ general: { theme: 'light', language: 'tr' } })
+    await settle()
+
+    expect(i18n.changeLanguage).not.toHaveBeenCalled()
+    expect(rebuildMenu).not.toHaveBeenCalled()
+    expect(localeChangedSends()).toEqual([])
+    expect(mockSetStoredLocale).not.toHaveBeenCalled()
+    expect(getActiveLocale()).toBe('tr')
+    // The rest of the merge still lands — this is a locale no-op, not a
+    // whole-item no-op.
+    expect(settingsChangedSends().length).toBeGreaterThan(0)
+    expect(mockWritePreferences).toHaveBeenCalledTimes(1)
+    expect(mockWritePreferences.mock.calls[0][1]).toMatchObject({ theme: 'light' })
+  })
+
+  it('#given inbound settings carry no language #then leaves the locale alone but still applies the other settings', async () => {
+    const result = upsert({
+      general: { theme: 'light', fontSize: 'large' },
+      editor: { width: 'wide' }
+    })
+    await settle()
+
+    expect(result).toBe('applied')
+    expect(i18n.changeLanguage).not.toHaveBeenCalled()
+    expect(rebuildMenu).not.toHaveBeenCalled()
+    expect(localeChangedSends()).toEqual([])
+    expect(mockSetStoredLocale).not.toHaveBeenCalled()
+    expect(getActiveLocale()).toBe('en')
+
+    expect(mockWritePreferences).toHaveBeenCalledTimes(1)
+    const prefsArg = mockWritePreferences.mock.calls[0][1]
+    expect(prefsArg).toMatchObject({ theme: 'light', fontSize: 'large' })
+    expect(prefsArg).not.toHaveProperty('language')
+    expect(prefsArg.editor).toEqual({ width: 'wide' })
+    expect(settingsChangedSends().map((c) => (c[1] as { key: string }).key)).toEqual([
+      'general',
+      'editor'
+    ])
+  })
+
+  it('#given a synced locale is applied #then nothing is pushed back onto the sync queue', async () => {
+    upsert({ general: { language: 'ja' } })
+    await settle()
+
+    // Guard the guard: without this the assertions below would pass on a
+    // build where the locale is never applied at all.
+    expect(i18n.changeLanguage).toHaveBeenCalledWith('ja')
+
+    expect(mockUpdateField).not.toHaveBeenCalled()
+    expect(mockEnqueueCreate).not.toHaveBeenCalled()
+    expect(mockEnqueueUpdate).not.toHaveBeenCalled()
+    expect(mockEnqueueDelete).not.toHaveBeenCalled()
+  })
+
+  it('#given an unsupported language (older app version wrote config.json) #then degrades without throwing or touching the runtime locale', async () => {
+    let result: string | undefined
+    expect(() => {
+      result = upsert({ general: { theme: 'dark', language: 'klingon' } })
+    }).not.toThrow()
+    await settle()
+
+    expect(result).toBe('applied')
+    expect(i18n.changeLanguage).not.toHaveBeenCalled()
+    expect(rebuildMenu).not.toHaveBeenCalled()
+    expect(localeChangedSends()).toEqual([])
+    expect(mockSetStoredLocale).not.toHaveBeenCalled()
+    expect(getActiveLocale()).toBe('en')
+    // Non-locale settings from the same item still apply.
+    expect(settingsChangedSends().length).toBeGreaterThan(0)
+  })
+
+  it('#given an empty-string language #then is treated as absent rather than parsed', async () => {
+    const result = upsert({ general: { theme: 'dark', language: '' } })
+    await settle()
+
+    expect(result).toBe('applied')
+    expect(i18n.changeLanguage).not.toHaveBeenCalled()
+    expect(getActiveLocale()).toBe('en')
+  })
+
+  it('#given a region-tagged locale such as zh-CN #then applies it verbatim', async () => {
+    upsert({ general: { language: 'zh-CN' } })
+    await settle()
+
+    expect(i18n.changeLanguage).toHaveBeenCalledWith('zh-CN')
+    expect(rebuildMenu).toHaveBeenCalledWith('zh-CN')
+    expect(getActiveLocale()).toBe('zh-CN')
+  })
+
+  it('#given i18n.changeLanguage rejects #then the pull still reports applied and the active locale does not lie', async () => {
+    i18n.changeLanguage.mockRejectedValue(new Error('missing bundle'))
+
+    const result = upsert({ general: { language: 'de' } })
+    await settle()
+
+    expect(result).toBe('applied')
+    // The switch was attempted — without this the assertions below would also
+    // hold on a build that never applies a synced locale at all.
+    expect(i18n.changeLanguage).toHaveBeenCalledWith('de')
+    expect(rebuildMenu).not.toHaveBeenCalled()
+    expect(localeChangedSends()).toEqual([])
+    // activeLocale is only advanced after a successful switch, so
+    // LocaleChannels.Get keeps reporting the language actually in use.
+    expect(getActiveLocale()).toBe('en')
+  })
+
+  it('#given no vault path (vault picker window) #then a synced locale still goes live', async () => {
+    mockGetCurrentVaultPath.mockReturnValue(null)
+
+    upsert({ general: { language: 'fr' } })
+    await settle()
+
+    expect(mockWritePreferences).not.toHaveBeenCalled()
+    expect(i18n.changeLanguage).toHaveBeenCalledWith('fr')
+    expect(rebuildMenu).toHaveBeenCalledWith('fr')
+    expect(getActiveLocale()).toBe('fr')
   })
 })

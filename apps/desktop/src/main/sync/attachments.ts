@@ -6,6 +6,7 @@ import sodium from 'libsodium-wrappers-sumo'
 import { net } from 'electron'
 
 import { createLogger } from '../lib/logger'
+import { getMainI18n } from '../lib/main-i18n'
 import { secureDeleteFile } from '../lib/secure-fs'
 import { ensureDirectory, sanitizeFilename, withTransientFsRetry } from '../vault/file-ops'
 import { encrypt, decrypt, wrapFileKey, unwrapFileKey } from '../crypto/encryption'
@@ -195,9 +196,7 @@ async function binaryFetch(
     })
   } catch (err) {
     log.warn('fetch failed', { method, url, err })
-    throw new NetworkError(
-      'Unable to connect to sync server. Please check your internet connection.'
-    )
+    throw new NetworkError(getMainI18n().t('errors:sync.serverUnreachable'))
   }
 
   if (response.status === 429) {
@@ -270,11 +269,14 @@ export class AttachmentSyncService {
       const fileStat = await stat(filePath)
       if (fileStat.size > MAX_ATTACHMENT_SIZE) {
         throw new Error(
-          `File too large: ${(fileStat.size / (1024 * 1024)).toFixed(1)}MB exceeds ${MAX_ATTACHMENT_SIZE / (1024 * 1024)}MB limit`
+          getMainI18n().t('errors:attachment.exceedsMaxSize', {
+            size: `${(fileStat.size / (1024 * 1024)).toFixed(1)}MB`,
+            limit: `${MAX_ATTACHMENT_SIZE / (1024 * 1024)}MB`
+          })
         )
       }
       if (fileStat.size === 0) {
-        throw new Error('Cannot upload empty file')
+        throw new Error(getMainI18n().t('errors:attachment.emptyFile'))
       }
 
       // Plan preflight, before the expensive read+hash+encrypt pass below. The
@@ -284,7 +286,10 @@ export class AttachmentSyncService {
       const planMaxFileSize = this.deps.getMaxFileSize?.() ?? null
       if (planMaxFileSize !== null && fileStat.size > planMaxFileSize) {
         throw new AttachmentTooLargeError(
-          `File is larger than your plan allows: ${formatBytes(fileStat.size)} exceeds ${formatBytes(planMaxFileSize)}`,
+          getMainI18n().t('errors:attachment.exceedsPlanLimit', {
+            size: formatBytes(fileStat.size),
+            limit: formatBytes(planMaxFileSize)
+          }),
           fileStat.size,
           planMaxFileSize
         )
@@ -879,8 +884,11 @@ export class AttachmentSyncService {
           throw error
         }
       })
-    } catch {
-      throw new Error(`Failed to write attachment: ${filePath}`)
+    } catch (err) {
+      // The path was part of the thrown message before it became user-facing
+      // copy; keep it in the log so the diagnostic is not lost.
+      log.error('failed to write attachment', { filePath, err })
+      throw new Error(getMainI18n().t('errors:attachment.writeFailed'))
     }
   }
 }

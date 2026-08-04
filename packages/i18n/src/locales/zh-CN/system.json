@@ -28,6 +28,13 @@
       "readyDetailFallback": "重新启动 memrynote 以完成更新安装。",
       "buttonRestartNow": "立即重启",
       "releaseNotesLabel": "更新说明："
+    },
+    "pair": {
+      "buttonAllow": "允许",
+      "buttonDeny": "拒绝",
+      "buttonPair": "配对",
+      "message": "允许 Memry 浏览器扩展向此应用发送捕获内容吗？",
+      "title": "配对浏览器扩展"
     }
   },
   "notification": {
@@ -38,6 +45,11 @@
       "fallback": "提醒到期",
       "default": "提醒",
       "task": "任务提醒"
+    },
+    "inboxReview": {
+      "body": "你有 {count, plural, other {# 项内容}}待回顾。",
+      "testBody": "这是一条测试——你的每日回顾提醒就是这样。",
+      "title": "该回顾你的收件箱了"
     }
   },
   "error": {
@@ -45,5 +57,15 @@
     "definitionNotFound": "未找到定义",
     "noteNotFound": "未找到便签",
     "updateFailed": "更新失败"
+  },
+  "startup": {
+    "failed": {
+      "body": "当磁盘可用空间非常少，或显卡驱动较旧时，可能会出现这种情况。请尝试释放一些磁盘空间，然后重新打开 MemryNote。如果问题持续出现，重新安装通常可以解决。",
+      "title": "MemryNote 未能完成启动"
+    },
+    "installingUpdate": {
+      "subtitle": "MemryNote 将自动重新打开。",
+      "title": "正在安装更新…"
+    }
   }
 }

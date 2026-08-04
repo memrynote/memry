@@ -16,9 +16,27 @@
       "willSync": "De notitie wordt gesynchroniseerd met de cloud",
       "renameFailed": "Kan de naam van de notitie niet wijzigen",
       "toggleLocalOnlyFailed": "Kan alleen lokaal niet inschakelen",
-      "toggleFullWidthFailed": "Kan de volledige breedte niet wijzigen"
+      "toggleFullWidthFailed": "Kan de volledige breedte niet wijzigen",
+      "copyPathFailed": "Kan pad niet kopiëren",
+      "deleteFailed": "Kan notitie niet verwijderen",
+      "moveFailed": "Kan notitie niet verplaatsen",
+      "moved": "Notitie verplaatst",
+      "openExternalFailed": "Kan notitie niet openen",
+      "pathCopied": "Pad gekopieerd",
+      "revealFailed": "Kan notitie niet tonen"
     },
-    "deleteDialogTitle": "{count, plural, one {Notitie verwijderen} other {Verwijder #-notities}}"
+    "deleteDialogTitle": "{count, plural, one {Notitie verwijderen} other {Verwijder #-notities}}",
+    "deleteConfirm": {
+      "cancel": "Annuleren",
+      "confirm": "Verwijderen",
+      "deleting": "Verwijderen...",
+      "description": "Weet je zeker dat je \"{title}\" wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
+      "title": "Notitie verwijderen"
+    },
+    "itemsCount": "{count, plural, one {# item} other {# items}}",
+    "itemsCountFiltered": "{shown} van {total, plural, one {# item} other {# items}}",
+    "renameViewUnavailableForTags": "Opgeslagen weergaven hernoemen is nog niet mogelijk voor tags",
+    "tagFilterLabel": "tag = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "Verwijder {count}-notities",
       "deleteSelectedItems": "Verwijder {count}-items",
       "bookmark": "Bladwijzer",
-      "removeFromBookmarks": "Verwijderen uit bladwijzers"
+      "removeFromBookmarks": "Verwijderen uit bladwijzers",
+      "applyTemplate": "Sjabloon toepassen"
     },
     "deleteDialog": {
       "noteTitle": "Notitie verwijderen",
@@ -83,7 +102,17 @@
       "export": "Exporteren",
       "fullWidth": "Volledige breedte",
       "disableLocalOnly": "Schakel alleen lokaal uit",
-      "setLocalOnly": "Alleen lokaal instellen"
+      "setLocalOnly": "Alleen lokaal instellen",
+      "applyTemplate": "Sjabloon toepassen",
+      "copyPath": "Pad kopiëren",
+      "delete": "Notitie verwijderen",
+      "find": "Zoeken…",
+      "moreActions": "Meer acties",
+      "moveToFolder": "Verplaatsen naar map…",
+      "openInDefaultApp": "Openen in standaardapp",
+      "rename": "Hernoemen…",
+      "revealInFinder": "Toon in Finder",
+      "revealInSidebar": "Toon in navigatie"
     },
     "breadcrumb": {
       "locationAria": "Let op locatie",
@@ -223,7 +252,12 @@
       "multiselect": "Multiselecteren"
     },
     "showOnCalendar": "Tonen in agenda",
-    "showingOnCalendar": "Wordt getoond in agenda"
+    "showingOnCalendar": "Wordt getoond in agenda",
+    "statusCategories": {
+      "done": "Voltooid",
+      "inProgress": "In uitvoering",
+      "todo": "Te doen"
+    }
   },
   "templateSelector": {
     "title": "Kies uw canvas",
@@ -235,7 +269,10 @@
     "essentials": "Essentiële zaken",
     "setFolderDefault": "Instellen als mapstandaard",
     "useTemplate": "Gebruik sjabloon",
-    "createNote": "Notitie maken"
+    "createNote": "Notitie maken",
+    "applyDescription": "Vervang de inhoud van deze notitie door een sjabloon",
+    "applyTitle": "Een sjabloon toepassen",
+    "applyToNote": "Sjabloon toepassen"
   },
   "exportDialog": {
     "title": "Notitie exporteren",
@@ -278,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Sjabloon laden…",
+    "copySuffix": "{name} (kopie)",
     "title": {
       "new": "Nieuwe sjabloon",
-      "view": "Sjabloon bekijken",
-      "edit": "Sjabloon bewerken"
+      "placeholder": "Sjabloonnaam"
+    },
+    "icon": {
+      "label": "Sjabloonpictogram"
+    },
+    "content": {
+      "placeholder": "Standaardinhoud voor notities die met dit sjabloon worden gemaakt. Gebruik '{{'title'}}' om de titel van de notitie in te voegen."
+    },
+    "actions": {
+      "create": "Sjabloon maken",
+      "update": "Bijwerken",
+      "duplicateAndEdit": "Dupliceren en bewerken",
+      "duplicate": "Dupliceren",
+      "delete": "Sjabloon verwijderen",
+      "more": "Meer acties"
     },
     "toast": {
-      "nameRequired": "Sjabloonnaam is vereist",
-      "created": "Sjabloon gemaakt",
       "createFailed": "Kan sjabloon niet maken",
-      "saved": "Sjabloon opgeslagen",
-      "saveFailed": "Kan sjabloon niet opslaan",
-      "duplicateFailed": "Kan de sjabloon niet dupliceren",
-      "deleteFailed": "Kan sjabloon niet verwijderen"
+      "saveFailed": "Kan sjabloon niet opslaan"
     }
   },
   "reminders": {
@@ -324,8 +371,6 @@
       "noFormulasDefined": "Geen formules gedefinieerd",
       "addFormula": "Formule toevoegen",
       "deleteFormula": "Formule verwijderen",
-      "areYouSureYouWantToDeleteTheFormula": "Weet u zeker dat u de formule wilt verwijderen \"",
-      "quotThisActionCannotBeUndone": "quot;? Deze actie kan niet ongedaan worden gemaakt.",
       "cancel": "Annuleer",
       "delete": "Verwijderen",
       "none": "Geen",
@@ -333,7 +378,8 @@
       "delete2": "Verwijderen",
       "columnBorders": "Kolomranden",
       "display": "Weergave",
-      "showSummaries": "Samenvattingen tonen"
+      "showSummaries": "Samenvattingen tonen",
+      "deleteFormulaBody": "Weet je zeker dat je de formule “{name}” wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filteren",
@@ -352,7 +398,8 @@
       "addCondition": "Voorwaarde toevoegen",
       "addFilter": "Filter toevoegen",
       "addGroup": "Groep toevoegen",
-      "removeGroup": "Groep verwijderen"
+      "removeGroup": "Groep verwijderen",
+      "lockedConditionHint": "Deze voorwaarde bepaalt de huidige weergave en kan hier niet worden verwijderd."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Ingebouwd",
@@ -365,7 +412,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Notitie tabel",
       "selectAll": "Alle notities selecteren",
-      "selectRow": "Notitie selecteren"
+      "selectRow": "Notitie selecteren",
+      "kind": {
+        "Inbox": "Inbox",
+        "Note": "Notitie",
+        "Task": "Taak"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Zoek notities...",
@@ -379,10 +431,10 @@
       "preview": "Voorbeeld",
       "fixExpressionErrorsToSeePreview": "Repareer expressiefouten om een voorbeeld te zien",
       "usingNote": "Opmerking gebruiken: \"",
-      "quot": "quot;",
       "cancel": "Annuleer",
       "namePlaceholder": "dagen_tot_due",
-      "expressionPlaceholder": "dateDiff(due_date, vandaag(), \"dagen\")"
+      "expressionPlaceholder": "dateDiff(due_date, vandaag(), \"dagen\")",
+      "usingNoteTitle": "Gebruikte notitie: “{title}”"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Duidelijke groepering",
@@ -408,12 +460,12 @@
       "bestMatch": "Beste wedstrijd",
       "current": "huidig)",
       "allFolders": "ALLE MAPPEN",
-      "current2": "huidig)",
       "noFoldersMatch": "Er komen geen mappen overeen \"",
-      "quot": "quot;",
       "create": "Creëer \"",
-      "quot2": "quot;",
-      "cancel": "Annuleer"
+      "cancel": "Annuleer",
+      "createFolderNamed": "“{name}” aanmaken",
+      "currentFolderBadge": "(huidige)",
+      "noFoldersMatchQuery": "Geen mappen gevonden voor “{query}”"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Verwijderen ",
@@ -468,7 +520,13 @@
       "failedToLoadPdf": "Kan PDF niet laden: ",
       "download": "Downloaden",
       "download2": "Downloaden",
-      "noFileAttached": "Geen bestand bijgevoegd"
+      "noFileAttached": "Geen bestand bijgevoegd",
+      "alignCenter": "Centreren",
+      "alignLeft": "Links uitlijnen",
+      "alignRight": "Rechts uitlijnen",
+      "nextPage": "Volgende pagina",
+      "previousPage": "Vorige pagina",
+      "resizePdf": "Formaat van PDF wijzigen"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Openen in taakpaneel",
@@ -530,7 +588,8 @@
       "failedToLoadTags": "Kan tags niet laden",
       "noTagsYet": "Nog geen tags",
       "filterTags": "Labels filteren...",
-      "noMatchingTags": "Geen overeenkomende labels"
+      "noMatchingTags": "Geen overeenkomende labels",
+      "Uncategorized": "Zonder categorie"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Laat het hier vallen",
@@ -560,7 +619,8 @@
       "deleteTag": "Label verwijderen",
       "recent": "Recent",
       "created": "Gemaakt",
-      "alphabetical": "Alfabetisch"
+      "alphabetical": "Alfabetisch",
+      "tasks": "TAKEN"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Naam van tag wijzigen",
@@ -587,7 +647,7 @@
       "previousPage": "Vorige pagina",
       "nextPage": "Volgende pagina",
       "zoomOut": "Uitzoomen",
-      "zoomIn": "Zoom in",
+      "zoomIn": "Inzoomen",
       "fitToWidth": "Pasvorm op breedte",
       "rotate": "Draaien"
     },
@@ -615,36 +675,6 @@
       "compact": "Compact",
       "showSummaries": "Samenvattingen weergeven",
       "cancel": "Annuleer"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Sjabloon laden...",
-      "builtInTemplatesCannotBeModified": "Ingebouwde sjablonen kunnen niet worden gewijzigd",
-      "description": "Beschrijving",
-      "briefDescriptionOfThisTemplate": "Korte beschrijving van dit sjabloon...",
-      "templateContent": "Sjablooninhoud",
-      "use": "Gebruik ",
-      "toInsertTheNoteTitleWhenCreatingANote": "om de notitietitel in te voegen bij het maken van een notitie.",
-      "templateName": "Sjabloonnaam",
-      "defaultContentForNotesCreatedFromThisTemplate": "Standaardinhoud voor notities gemaakt op basis van deze sjabloon..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Collectie laden...",
-      "templateCollection": "Sjablooncollectie",
-      "templates": "Sjablonen",
-      "curatedStructuresForYourNotes": "Samengestelde structuren voor uw aantekeningen.",
-      "newTemplate": "Nieuwe sjabloon",
-      "myTemplates": "Mijn sjablonen",
-      "builtIn": "Ingebouwd",
-      "deleteTemplate": "Sjabloon verwijderen",
-      "areYouSureYouWantToDelete": "Weet u zeker dat u wilt verwijderen \"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Notities die op basis van deze sjabloon zijn gemaakt, worden niet beïnvloed.",
-      "cancel": "Annuleer",
-      "builtIn2": "Ingebouwd",
-      "duplicate": "Duplicaat",
-      "delete": "Verwijderen",
-      "startYourCollection": "Begin met uw verzameling",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Met sjablonen kunt u notities maken met een consistente structuur.",
-      "createTemplate": "Sjabloon maken"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Ingebouwd",
@@ -733,7 +763,9 @@
     "replyPlaceholder": "Antwoorden...",
     "resolve": "Oplossen",
     "sendAria": "Opmerking verzenden",
-    "toolbarComment": "Opmerking"
+    "toolbarComment": "Opmerking",
+    "openAttachmentAria": "Bijlage {name} openen",
+    "openImageAria": "Afbeelding {name} openen"
   },
   "dateMention": {
     "clear": "Wissen",
@@ -743,5 +775,79 @@
     "remind": "Herinneren",
     "time": "Tijd",
     "timeFormat": "Tijdnotatie"
+  },
+  "applyTemplateConfirm": {
+    "body": "Alleen inhoud vervangen",
+    "cancel": "Annuleren",
+    "description": "Als je \"{name}\" toepast, wordt de huidige inhoud van deze notitie vervangen. Dit kan niet ongedaan worden gemaakt.",
+    "failed": "Kan sjabloon niet toepassen",
+    "full": "Inhoud vervangen en sjabloondetails toevoegen",
+    "success": "Sjabloon toegepast",
+    "title": "Notitie-inhoud vervangen?"
+  },
+  "tagView": {
+    "moreActions": "Meer acties",
+    "pin": {
+      "action": "{count, plural, one {# notitie} other {# notities}} vastzetten aan tag",
+      "failed": "Kan notitie niet aan tag vastzetten",
+      "success": "{count, plural, one {# notitie} other {# notities}} vastgezet aan tag"
+    }
+  },
+  "tags": {
+    "hubTitle": "Tags",
+    "openHub": "Tagoverzicht openen"
+  },
+  "tagsHub": {
+    "cancelCreate": "Annuleren",
+    "category": {
+      "delete": "Categorie verwijderen",
+      "deleteBody": "Tags gaan naar Zonder categorie. Ze worden niet verwijderd.",
+      "deleteCancel": "Annuleren",
+      "deleteConfirm": "Verwijderen",
+      "deleteTitle": "{name} verwijderen?",
+      "dragHandle": "Sleep om de volgorde van categorieën te wijzigen",
+      "emptyHint": "Sleep hier een tag naartoe",
+      "more": "Categorieopties",
+      "rename": "Categorie hernoemen"
+    },
+    "categoryNamePlaceholder": "Categorienaam",
+    "errors": {
+      "createCategoryFailed": "Kan categorie niet maken",
+      "createTagCategorizeFailed": "Tag gemaakt, maar kon niet aan de categorie worden toegevoegd",
+      "createTagFailed": "Kan tag niet maken",
+      "deleteCategoryFailed": "Kan categorie niet verwijderen",
+      "loadFailed": "Kan tagcategorieën niet laden",
+      "renameCategoryFailed": "Kan categorie niet hernoemen",
+      "reorderFailed": "Kan de volgorde van tags niet wijzigen"
+    },
+    "loading": "Tags laden...",
+    "newCategory": "Nieuwe categorie",
+    "newTag": "Nieuwe tag",
+    "search": {
+      "empty": "Geen categorieën of tags gevonden voor je zoekopdracht",
+      "placeholder": "Zoek categorieën en tags"
+    },
+    "tagNamePlaceholder": "Tagnaam",
+    "uncategorized": "Zonder categorie"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (dubbelklik om te bewerken)",
+      "dragToReorder": "Sleep om de kolom opnieuw te ordenen: {name}"
+    },
+    "columns": {
+      "created": "Aangemaakt",
+      "folder": "Map",
+      "kind": "Soort",
+      "modified": "Gewijzigd",
+      "tags": "Tags",
+      "title": "Titel",
+      "wordCount": "Aantal woorden"
+    },
+    "defaultViewName": "Standaard",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# notitie} other {# notities}}"
+    },
+    "selectView": "Weergave selecteren"
   }
 }

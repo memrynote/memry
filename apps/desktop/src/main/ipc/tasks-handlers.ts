@@ -54,7 +54,7 @@ export function registerTasksHandlers(): void {
     TasksChannels.invoke.CREATE,
     createValidatedHandler(
       TaskCreateSchema,
-      withDb((db, input) => createTaskDomain(db).createTask(input), 'Failed to create task')
+      withDb((db, input) => createTaskDomain(db).createTask(input), 'errors:task.createFailed')
     )
   )
 
@@ -67,14 +67,14 @@ export function registerTasksHandlers(): void {
     TasksChannels.invoke.UPDATE,
     createValidatedHandler(
       TaskUpdateSchema,
-      withDb((db, input) => createTaskDomain(db).updateTask(input), 'Failed to update task')
+      withDb((db, input) => createTaskDomain(db).updateTask(input), 'errors:task.updateFailed')
     )
   )
 
   ipcMain.handle(
     TasksChannels.invoke.DELETE,
     createStringHandler(
-      withDb((db, id) => createTaskDomain(db).deleteTask(id), 'Failed to delete task')
+      withDb((db, id) => createTaskDomain(db).deleteTask(id), 'errors:task.deleteFailed')
     )
   )
 
@@ -89,7 +89,7 @@ export function registerTasksHandlers(): void {
     TasksChannels.invoke.COMPLETE,
     createValidatedHandler(
       TaskCompleteSchema,
-      withDb((db, input) => createTaskDomain(db).completeTask(input), 'Failed to complete task')
+      withDb((db, input) => createTaskDomain(db).completeTask(input), 'errors:task.completeFailed')
     )
   )
 
@@ -105,21 +105,21 @@ export function registerTasksHandlers(): void {
           result: 'success'
         })
         return result
-      }, 'Failed to uncomplete task')
+      }, 'errors:task.uncompleteFailed')
     )
   )
 
   ipcMain.handle(
     TasksChannels.invoke.ARCHIVE,
     createStringHandler(
-      withDb((db, id) => createTaskDomain(db).archiveTask(id), 'Failed to archive task')
+      withDb((db, id) => createTaskDomain(db).archiveTask(id), 'errors:task.archiveFailed')
     )
   )
 
   ipcMain.handle(
     TasksChannels.invoke.UNARCHIVE,
     createStringHandler(
-      withDb((db, id) => createTaskDomain(db).unarchiveTask(id), 'Failed to unarchive task')
+      withDb((db, id) => createTaskDomain(db).unarchiveTask(id), 'errors:task.unarchiveFailed')
     )
   )
 
@@ -127,7 +127,7 @@ export function registerTasksHandlers(): void {
     TasksChannels.invoke.MOVE,
     createValidatedHandler(
       TaskMoveSchema,
-      withDb((db, input) => createTaskDomain(db).moveTask(input), 'Failed to move task')
+      withDb((db, input) => createTaskDomain(db).moveTask(input), 'errors:task.moveFailed')
     )
   )
 
@@ -137,7 +137,7 @@ export function registerTasksHandlers(): void {
       TaskReorderSchema,
       withDb(
         (db, input) => createTaskDomain(db).reorderTasks(input.taskIds, input.positions),
-        'Failed to reorder tasks'
+        'errors:task.reorderFailed'
       )
     )
   )
@@ -145,7 +145,7 @@ export function registerTasksHandlers(): void {
   ipcMain.handle(
     TasksChannels.invoke.DUPLICATE,
     createStringHandler(
-      withDb((db, id) => createTaskDomain(db).duplicateTask(id), 'Failed to duplicate task')
+      withDb((db, id) => createTaskDomain(db).duplicateTask(id), 'errors:task.duplicateFailed')
     )
   )
 
@@ -162,7 +162,7 @@ export function registerTasksHandlers(): void {
       ConvertToSubtaskSchema,
       withDb(
         (db, input) => createTaskDomain(db).convertToSubtask(input.taskId, input.parentId),
-        'Failed to convert to subtask'
+        'errors:task.convertToSubtaskFailed'
       )
     )
   )
@@ -170,7 +170,7 @@ export function registerTasksHandlers(): void {
   ipcMain.handle(
     TasksChannels.invoke.CONVERT_TO_TASK,
     createStringHandler(
-      withDb((db, id) => createTaskDomain(db).convertToTask(id), 'Failed to convert to task')
+      withDb((db, id) => createTaskDomain(db).convertToTask(id), 'errors:task.convertToTaskFailed')
     )
   )
 
@@ -178,7 +178,10 @@ export function registerTasksHandlers(): void {
     TasksChannels.invoke.PROJECT_CREATE,
     createValidatedHandler(
       ProjectCreateSchema,
-      withDb((db, input) => createTaskDomain(db).createProject(input), 'Failed to create project')
+      withDb(
+        (db, input) => createTaskDomain(db).createProject(input),
+        'errors:project.createFailed'
+      )
     )
   )
 
@@ -206,7 +209,7 @@ export function registerTasksHandlers(): void {
           await propagateProjectRename(db, input.id, previousName, input.name)
         }
         return result
-      }, 'Failed to update project')
+      }, 'errors:project.updateFailed')
     )
   )
 
@@ -223,7 +226,7 @@ export function registerTasksHandlers(): void {
           await propagateProjectDelete(db, id, capture.name, capture.noteIds)
         }
         return result
-      }, 'Failed to delete project')
+      }, 'errors:project.deleteFailed')
     )
   )
 
@@ -235,7 +238,7 @@ export function registerTasksHandlers(): void {
   ipcMain.handle(
     TasksChannels.invoke.PROJECT_ARCHIVE,
     createStringHandler(
-      withDb((db, id) => createTaskDomain(db).archiveProject(id), 'Failed to archive project')
+      withDb((db, id) => createTaskDomain(db).archiveProject(id), 'errors:project.archiveFailed')
     )
   )
 
@@ -245,7 +248,7 @@ export function registerTasksHandlers(): void {
       ProjectReorderSchema,
       withDb(
         (db, input) => createTaskDomain(db).reorderProjects(input.projectIds, input.positions),
-        'Failed to reorder projects'
+        'errors:project.reorderFailed'
       )
     )
   )
@@ -254,7 +257,10 @@ export function registerTasksHandlers(): void {
     TasksChannels.invoke.PROJECT_LINK_ITEM,
     createValidatedHandler(
       ProjectLinkItemSchema,
-      withDb((db, input) => linkProjectItem(db, createTaskDomain(db), input), 'Failed to link item')
+      withDb(
+        (db, input) => linkProjectItem(db, createTaskDomain(db), input),
+        'errors:project.linkItemFailed'
+      )
     )
   )
 
@@ -264,7 +270,7 @@ export function registerTasksHandlers(): void {
       ProjectLinkItemSchema,
       withDb(
         (db, input) => unlinkProjectItem(db, createTaskDomain(db), input),
-        'Failed to unlink item'
+        'errors:project.unlinkItemFailed'
       )
     )
   )
@@ -295,7 +301,7 @@ export function registerTasksHandlers(): void {
           },
           input
         )
-      }, 'Failed to capture link')
+      }, 'errors:project.captureLinkFailed')
     )
   )
 
@@ -324,7 +330,7 @@ export function registerTasksHandlers(): void {
           },
           input
         )
-      }, 'Failed to import files')
+      }, 'errors:project.importFilesFailed')
     )
   )
 
@@ -339,7 +345,7 @@ export function registerTasksHandlers(): void {
       ProjectSetLinkPinnedSchema,
       withDb(
         (db, input) => createTaskDomain(db).setProjectLinkPinned(input),
-        'Failed to update pinned state'
+        'errors:project.updatePinnedFailed'
       )
     )
   )
@@ -350,7 +356,7 @@ export function registerTasksHandlers(): void {
       ProjectSetHomeNoteSchema,
       withDb(
         (db, input) => createTaskDomain(db).setProjectHomeNote(input),
-        'Failed to set home note'
+        'errors:project.setHomeNoteFailed'
       )
     )
   )
@@ -361,7 +367,7 @@ export function registerTasksHandlers(): void {
       ProjectListForItemSchema,
       withDb(
         (db, input) => createTaskDomain(db).listForItem(input.itemType, input.itemId),
-        'Failed to list projects for item'
+        'errors:project.listForItemFailed'
       )
     )
   )
@@ -370,7 +376,10 @@ export function registerTasksHandlers(): void {
     TasksChannels.invoke.STATUS_CREATE,
     createValidatedHandler(
       StatusCreateSchema,
-      withDb((db, input) => createTaskDomain(db).createStatus(input), 'Failed to create status')
+      withDb(
+        (db, input) => createTaskDomain(db).createStatus(input),
+        'errors:taskStatus.createFailed'
+      )
     )
   )
 
@@ -378,14 +387,17 @@ export function registerTasksHandlers(): void {
     TasksChannels.invoke.STATUS_UPDATE,
     createValidatedHandler(
       StatusUpdateSchema,
-      withDb((db, input) => createTaskDomain(db).updateStatus(input), 'Failed to update status')
+      withDb(
+        (db, input) => createTaskDomain(db).updateStatus(input),
+        'errors:taskStatus.updateFailed'
+      )
     )
   )
 
   ipcMain.handle(
     TasksChannels.invoke.STATUS_DELETE,
     createStringHandler(
-      withDb((db, id) => createTaskDomain(db).deleteStatus(id), 'Failed to delete status')
+      withDb((db, id) => createTaskDomain(db).deleteStatus(id), 'errors:taskStatus.deleteFailed')
     )
   )
 
@@ -395,7 +407,7 @@ export function registerTasksHandlers(): void {
       StatusReorderSchema,
       withDb(
         (db, input) => createTaskDomain(db).reorderStatuses(input.statusIds, input.positions),
-        'Failed to reorder statuses'
+        'errors:taskStatus.reorderFailed'
       )
     )
   )
@@ -418,7 +430,7 @@ export function registerTasksHandlers(): void {
       BulkIdsSchema,
       withDb(
         (db, input) => createTaskDomain(db).bulkComplete(input.ids),
-        'Failed to complete tasks'
+        'errors:task.completeManyFailed'
       )
     )
   )
@@ -427,7 +439,10 @@ export function registerTasksHandlers(): void {
     TasksChannels.invoke.BULK_DELETE,
     createValidatedHandler(
       BulkIdsSchema,
-      withDb((db, input) => createTaskDomain(db).bulkDelete(input.ids), 'Failed to delete tasks')
+      withDb(
+        (db, input) => createTaskDomain(db).bulkDelete(input.ids),
+        'errors:task.deleteManyFailed'
+      )
     )
   )
 
@@ -437,7 +452,7 @@ export function registerTasksHandlers(): void {
       BulkMoveSchema,
       withDb(
         (db, input) => createTaskDomain(db).bulkMove(input.ids, input.projectId),
-        'Failed to move tasks'
+        'errors:task.moveManyFailed'
       )
     )
   )
@@ -446,7 +461,10 @@ export function registerTasksHandlers(): void {
     TasksChannels.invoke.BULK_ARCHIVE,
     createValidatedHandler(
       BulkIdsSchema,
-      withDb((db, input) => createTaskDomain(db).bulkArchive(input.ids), 'Failed to archive tasks')
+      withDb(
+        (db, input) => createTaskDomain(db).bulkArchive(input.ids),
+        'errors:task.archiveManyFailed'
+      )
     )
   )
 

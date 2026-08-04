@@ -28,7 +28,8 @@
         "properties": "Ιδιότητες",
         "commandLine": "Γραμμή εντολών",
         "features": "Λειτουργίες",
-        "import": "Εισαγωγή"
+        "import": "Εισαγωγή",
+        "inbox": "Εισερχόμενα"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Λήψη του {percent}%",
         "downloaded": "Κάντε επανεκκίνηση για εγκατάσταση",
         "idle": "Ελέγξτε για Ενημερώσεις"
+      },
+      "autoCheck": {
+        "description": "Έλεγχος για νέες εκδόσεις κατά την εκκίνηση και περιοδικά όσο η εφαρμογή είναι ανοιχτή.",
+        "error": "Η ενημέρωση της ρύθμισης αυτόματου ελέγχου απέτυχε",
+        "label": "Αυτόματος έλεγχος για ενημερώσεις"
+      },
+      "autoDownload": {
+        "description": "Λήψη και εγκατάσταση νέων εκδόσεων στο παρασκήνιο, χωρίς ερώτηση.",
+        "error": "Η ενημέρωση της ρύθμισης αυτόματης λήψης απέτυχε",
+        "label": "Αυτόματη λήψη ενημερώσεων"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Μοιραστείτε ανώνυμες μετρήσεις χρήσης",
         "description": "Είναι μόνο μετρήσεις anon — δεν αποστέλλεται ποτέ περιεχόμενο σημειώσεων, ερωτήματα αναζήτησης, διαδρομές αρχείων, μηνύματα ηλεκτρονικού ταχυδρομείου ή ακατέργαστα αναγνωριστικά.",
         "error": "Η ενημέρωση της ρύθμισης τηλεμετρίας απέτυχε"
+      },
+      "diagnostics": {
+        "building": "Προετοιμασία αναφοράς…",
+        "consent": "Να σταλεί μια εφάπαξ διαγνωστική αναφορά; Περιέχει μόνο τεχνικά αρχεία καταγραφής, με τα ευαίσθητα στοιχεία αποκρυμμένα — κανένα περιεχόμενο σημειώσεων.",
+        "error": "Η αποστολή της διαγνωστικής αναφοράς απέτυχε",
+        "notNow": "Όχι τώρα",
+        "previewError": "Δεν ήταν δυνατή η προετοιμασία της διαγνωστικής αναφοράς",
+        "previewLabel": "Προεπισκόπηση περιεχομένου αναφοράς",
+        "send": "Αποστολή",
+        "sendReport": {
+          "button": "Αποστολή διαγνωστικής αναφοράς",
+          "description": "Στείλτε μια εφάπαξ αναφορά με τεχνικά αρχεία καταγραφής, με τα ευαίσθητα στοιχεία αποκρυμμένα, για να μας βοηθήσετε να διορθώσουμε ένα πρόβλημα που συναντήσατε.",
+          "label": "Διαγνωστική αναφορά"
+        },
+        "sending": "Αποστολή…",
+        "sent": "Η αναφορά στάλθηκε — κωδικός {incidentId}",
+        "snapshotLabel": "Στιγμιότυπο συσκευής",
+        "title": "Αποστολή διαγνωστικής αναφοράς;"
       }
     },
     "dateFormat": {
@@ -171,7 +200,7 @@
         "placeholder": "#000000"
       },
       "presets": {
-        "indigo": "Indigo",
+        "indigo": "Λουλακί",
         "amber": "Κεχριμπάρι",
         "emerald": "Σμαράγδι",
         "red": "Κόκκινο",
@@ -193,7 +222,7 @@
         "description": "Κύρια γραμματοσειρά για τη διεπαφή",
         "options": {
           "system": "Προεπιλογή συστήματος",
-          "sansSerif": "Sans-serif",
+          "sansSerif": "Χωρίς πατούρες",
           "serif": "Serif (Crimson Pro)",
           "gelasio": "Γελάσιο",
           "geist": "Geist",
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Διάταξη",
-      "toolbar": "Γραμμή εργαλείων"
+      "toolbar": "Γραμμή εργαλείων",
+      "spelling": "Ορθογραφία"
     },
     "width": {
       "label": "Πλάτος επεξεργασίας",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Στενό",
         "medium": "Μεσαίο",
-        "wide": "Ευρεία"
+        "wide": "Ευρεία",
+        "full": "Πλήρες πλάτος",
+        "normal": "Κανονικό"
       },
       "error": "Η ενημέρωση του πλάτους του επεξεργαστή απέτυχε"
     },
@@ -229,6 +261,11 @@
       "label": "Γραμμή εργαλείων Sticky Formatting",
       "description": "Να εμφανίζεται πάντα η γραμμή εργαλείων πάνω από το πρόγραμμα επεξεργασίας",
       "error": "Η ενημέρωση της λειτουργίας γραμμής εργαλείων απέτυχε"
+    },
+    "spellCheck": {
+      "description": "Υπογράμμιση λέξεων με ορθογραφικά λάθη σε σημειώσεις και ημερολόγια",
+      "error": "Η ενημέρωση του ορθογραφικού ελέγχου απέτυχε",
+      "label": "Ορθογραφικός έλεγχος"
     }
   },
   "templates": {
@@ -640,7 +677,7 @@
       "vaultPickerFolderLabel": "Αποθήκευση θησαυροφυλακίων στον φάκελο",
       "vaultPickerPrimaryHint": "Ανοίγει τώρα",
       "vaultPickerTitle": "Επιλέξτε τι θα ληφθεί",
-      "vaultRow": "Θησαυροφυλάκιο — {{count}} στοιχεία · {{date}}"
+      "vaultRow": "Θησαυροφυλάκιο — {count} στοιχεία · {date}"
     }
   },
   "devices": {
@@ -673,7 +710,8 @@
       "removeFailed": "Η αφαίρεση της συσκευής απέτυχε",
       "renamed": "Μετονομάστηκε σε \"{name}\"",
       "renameFailed": "Η μετονομασία της συσκευής απέτυχε"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Σύνδεση νέας συσκευής",
@@ -855,6 +893,11 @@
         "description": "Απενεργοποιήστε για μονόδρομο συγχρονισμό — θα εξακολουθείτε να βλέπετε τις εκδηλώσεις σας Google στο memrynote, αλλά οι εκδηλώσεις memrynote δεν θα εμφανίζονται στο Google.",
         "error": "Αποτυχία ενημέρωσης κατεύθυνσης συγχρονισμού",
         "label": "Εμφάνιση εκδηλώσεων memrynote στο Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Απενεργοποιημένο από προεπιλογή. Όταν είναι ενεργό, ο πράκτορας AI μπορεί να διαβάζει τις εκδηλώσεις σας Google· όταν είναι ανενεργό, δεν λαμβάνει τίποτα όταν τον ρωτάτε γι' αυτές. Θα εξακολουθείτε να τις βλέπετε στο memrynote σε κάθε περίπτωση.",
+        "error": "Αποτυχία ενημέρωσης πρόσβασης AI",
+        "label": "Ανάγνωση εκδηλώσεων Google Calendar από το AI"
       }
     },
     "sourcePicker": {
@@ -898,7 +941,8 @@
     },
     "groups": {
       "storageUsage": "Χρήση αποθήκευσης",
-      "location": "Τοποθεσία"
+      "location": "Τοποθεσία",
+      "accountVaults": "Θησαυροφυλάκια στον λογαριασμό σας"
     },
     "loadingStorage": "Φόρτωση πληροφοριών αποθήκευσης...",
     "signInStorage": "Συνδεθείτε για να δείτε τη χρήση αποθηκευτικού χώρου",
@@ -919,6 +963,17 @@
       },
       "warningTitle": "Ο αποθηκευτικός χώρος είναι σχεδόν γεμάτος",
       "warningDescription": "Απελευθερώστε χώρο ή αναβαθμίστε το σχέδιό σας για να αποφύγετε προβλήματα συγχρονισμού."
+    },
+    "accountVaults": {
+      "activeHint": "Μεταβείτε σε άλλο θησαυροφυλάκιο για να διαγράψετε το τρέχον.",
+      "cloudOnly": "Όχι σε αυτήν τη συσκευή",
+      "delete": "Διαγραφή",
+      "deleteBody": "Αυτό αφαιρεί οριστικά όλα τα συγχρονισμένα δεδομένα αυτού του θησαυροφυλακίου από τους διακομιστές του Memry και δεν μπορεί να αναιρεθεί. Τα αρχεία σας στον δίσκο δεν διαγράφονται.",
+      "deleteConfirm": "Διαγραφή από τον λογαριασμό",
+      "deleteFailed": "Δεν ήταν δυνατή η διαγραφή του θησαυροφυλακίου",
+      "deleteTitle": "Διαγραφή του “{name}” από τον λογαριασμό σας;",
+      "empty": "Δεν έχει συγχρονιστεί ακόμη κανένα θησαυροφυλάκιο στον λογαριασμό σας.",
+      "itemsCount": "{count} στοιχεία"
     }
   },
   "tags": {
@@ -1137,16 +1192,12 @@
       "press": "Πατήστε ",
       "toToggleThisDialog": "για εναλλαγή αυτού του διαλόγου"
     },
-    "componentsSyncDeviceList": {
-      "middot": "middot?"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Αυτή η συσκευή έχει αφαιρεθεί",
       "exporting": "Εξαγωγή...",
       "signOut": "Αποσύνδεση"
     },
     "componentsSyncSyncHistory": {
-      "middot": "middot? ",
       "activity": "Δραστηριότητα",
       "filterBySyncType": "Φιλτράρισμα κατά τύπο συγχρονισμού",
       "allTypes": "Όλοι οι τύποι",
@@ -1160,7 +1211,12 @@
       "last30Days": "Τελευταίες 30 ημέρες",
       "loadingSyncHistory": "Φόρτωση ιστορικού συγχρονισμού",
       "noSyncActivityYet": "Δεν υπάρχει ακόμη δραστηριότητα συγχρονισμού",
-      "loadMore": "Φορτώστε περισσότερα"
+      "loadMore": "Φορτώστε περισσότερα",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, εμφάνιση λεπτομερειών σφάλματος",
+      "summaryFailed": "Ο συγχρονισμός απέτυχε",
+      "summaryPulled": "{count, plural, one {# στοιχείο ελήφθη} other {# στοιχεία ελήφθησαν}}",
+      "summaryPushed": "{count, plural, one {# στοιχείο στάλθηκε} other {# στοιχεία στάλθηκαν}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Τελευταίος συγχρονισμός ",
@@ -1208,102 +1264,103 @@
       "failedToCloseVault": "Απέτυχε το κλείσιμο της θυρίδας",
       "failedToSwitchVault": "Αποτυχία αλλαγής θησαυροφυλάκιου",
       "failedToUpdateConfig": "Αποτυχία ενημέρωσης παραμέτρων",
-      "failedToReindex": "Απέτυχε η εκ νέου ευρετηρίαση"
+      "failedToReindex": "Απέτυχε η εκ νέου ευρετηρίαση",
+      "failedToLoadTasks": "Η φόρτωση των εργασιών απέτυχε"
     }
   },
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Τοπική πρόσβαση διακομιστή για εξωτερικά προγράμματα-πελάτες MCP."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Σύνδεση",
+      "access": "Πρόσβαση"
     },
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Χρησιμοποιήστε αυτό το τελικό σημείο localhost από το Cursor, το Claude Desktop ή το Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Διακριτικό Bearer",
+        "description": "Διαπιστευτήριο στη μνήμη, μόνο για αυτήν την εκκίνηση της εφαρμογής."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Ανανέωση διακριτικού",
+        "description": "Ακυρώνει τις υπάρχουσες συνεδρίες εξωτερικών προγραμμάτων-πελατών."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "Αντιγραφή {label}",
+    "notRunning": "Δεν εκτελείται",
+    "toolsBadge": "{count, plural, one {# εργαλείο} other {# εργαλεία}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Δικαιώματα Agent",
+      "subtitle": "Επιλέξτε προεπιλεγμένη πρόσβαση, επιβεβαιώσεις και τοπικούς παρόχους για τη συνομιλία Agent."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Τοπικός πάροχος συμβατός με OpenAI",
+      "actions": "Έλεγχοι σύνδεσης"
     },
     "presets": {
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Προσαρμοσμένη"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Προρύθμιση"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "Βασική διεύθυνση URL",
+        "description": "Τελικό σημείο /v1 συμβατό με OpenAI."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Να επιτρέπεται τελικό σημείο εκτός loopback",
+        "description": "Τα δεδομένα αποστέλλονται στο τελικό σημείο που έχει οριστεί."
       },
       "model": {
-        "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "label": "Μοντέλο",
+        "description": "Επιλέξτε ένα μοντέλο από τη λίστα ή εισαγάγετε ένα χειροκίνητα."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "Κλειδί API",
+        "description": "Προαιρετικό διαπιστευτήριο, αποθηκευμένο στο keychain του λειτουργικού συστήματος.",
+        "configured": "Ένα κλειδί API είναι ήδη αποθηκευμένο στο keychain του λειτουργικού συστήματος."
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "save": "Αποθήκευση",
+      "models": "Μοντέλα",
+      "test": "Δοκιμή σύνδεσης",
+      "probe": "Ανίχνευση εργαλείων"
     },
     "status": {
-      "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "disconnected": "Αποσυνδεδεμένο",
+      "toolsDisabled": "Εργαλεία απενεργοποιημένα",
+      "fullTools": "Πλήρη εργαλεία ενεργοποιημένα",
       "checking": "Έλεγχος…",
       "connected": "Συνδεδεμένο",
       "label": "Σύνδεση"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Δικαιώματα Agent",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Προεπιλεγμένη πρόσβαση",
+        "description": "Ορίζει την αρχική λειτουργία πρόσβασης για νέους γύρους του Agent.",
+        "vaultOnly": "Μόνο θησαυροφυλάκιο",
+        "computerAccess": "Πρόσβαση στον υπολογιστή"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Επιβεβαίωση ενεργειών",
+        "description": "Επιλέξτε αν οι κλήσεις εργαλείων εκτελούνται αυτόματα ή περιμένουν έγκριση στη συνομιλία.",
+        "alwaysAllow": "Να επιτρέπεται πάντα",
+        "askBeforeChanges": "Ερώτηση πριν από αλλαγές"
       }
     }
   },
@@ -1368,6 +1425,10 @@
       "tasks": {
         "description": "Εκκρεμότητες και ημερομηνίες λήξης",
         "label": "Καθήκοντα"
+      },
+      "spatialCanvas": {
+        "description": "Χωρικοί πίνακες για να τακτοποιείτε και να συνδέετε σημειώσεις",
+        "label": "Καμβάς"
       }
     }
   },
@@ -1393,7 +1454,10 @@
         "skipped": "{count} παραλείφθηκαν",
         "title": "Η εισαγωγή ολοκληρώθηκε"
       },
-      "title": "Εισαγωγή από {name}"
+      "title": "Εισαγωγή από {name}",
+      "chooseDirectory": "Επιλογή φακέλου…",
+      "folderKeepsAssets": "Επιλέξτε τον φάκελο όταν οι εικόνες βρίσκονται εκτός του φακέλου των ίδιων των σημειώσεων — οι εξαγωγές συχνά κρατούν τα πολυμέσα σε έναν κοινό φάκελο.",
+      "previewError": "Η προεπισκόπηση απέτυχε"
     },
     "header": {
       "subtitle": "Φέρτε τις σημειώσεις και τις εργασίες σας από άλλες εφαρμογές",
@@ -1432,6 +1496,99 @@
       "tasks": "{count, plural, one {# εργασία} other {# εργασίες}}",
       "withDueDate": "{count} με ημερομηνία",
       "withTags": "{count} με ετικέτα"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Στήλες: {columns}",
+        "emptyTitle": "Παραλείφθηκε γραμμή με κενό τίτλο (στήλη \"{column}\")",
+        "noHeaders": "Το αρχείο CSV δεν έχει κεφαλίδες",
+        "titleColumn": "Τίτλος από τη στήλη \"{column}\"· οι υπόλοιπες στήλες αποθηκεύτηκαν ως ιδιότητες"
+      },
+      "raindrop": {
+        "csvEmpty": "Το CSV του Raindrop είναι κενό",
+        "headerNotFound": "Δεν βρέθηκε η γραμμή κεφαλίδας του CSV του Raindrop (στήλη \"url\")",
+        "rowNoUrl": "Η γραμμή {row} παραλείφθηκε: δεν υπάρχει URL"
+      },
+      "readFileFailed": "Αποτυχία ανάγνωσης του αρχείου",
+      "ticktick": {
+        "foldersDropped": "Οι φάκελοι του TickTick δεν έχουν αντίστοιχο στο Memry και παραλείφθηκαν",
+        "headerNotFound": "Δεν βρέθηκε η γραμμή κεφαλίδας του CSV του TickTick (\"Folder Name\")",
+        "reminderNoAnchor": "Η υπενθύμιση \"{reminder}\" παραλείφθηκε (χωρίς σημείο αναφοράς ημερομηνίας)",
+        "subtaskParentMissing": "Δεν βρέθηκε η γονική εργασία της υποεργασίας \"{title}\"· εισήχθη στο ανώτερο επίπεδο",
+        "unknownPriority": "Άγνωστη προτεραιότητα TickTick {priority} → καμία",
+        "unsupportedRepeat": "Ο μη υποστηριζόμενος κανόνας επανάληψης \"{rule}\" παραλείφθηκε"
+      },
+      "todoist": {
+        "emptyTitle": "Η εργασία με κενό περιεχόμενο εισήχθη ως (χωρίς τίτλο)",
+        "headerNotFound": "Δεν είναι CSV του Todoist: λείπει η γραμμή κεφαλίδας TYPE",
+        "orphanComment": "Παραλείφθηκε σχόλιο χωρίς προηγούμενη εργασία",
+        "sectionFlattened": "Η ενότητα \"{section}\" ισοπεδώθηκε",
+        "subtaskNoParent": "Η υποεργασία \"{title}\" δεν έχει γονική εργασία στην εσοχή {indent}· εισήχθη στο ανώτερο επίπεδο",
+        "unknownPriority": "Άγνωστη προτεραιότητα {priority} → καμία",
+        "unparsedDate": "Δεν ήταν δυνατή η ανάλυση της ημερομηνίας \"{date}\""
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Αντιγραφή της βάσης δεδομένων του Apple Notes…"
+      },
+      "bear": {
+        "scanning": "Σάρωση της εξαγωγής Bear…"
+      },
+      "csv": {
+        "importing": "Εισαγωγή σημειώσεων CSV…"
+      },
+      "evernote": {
+        "scanning": "Σάρωση αρχείων .enex…"
+      },
+      "html": {
+        "scanning": "Σάρωση αρχείων HTML…"
+      },
+      "importingItem": "Εισαγωγή: {title}",
+      "raindrop": {
+        "importing": "Εισαγωγή σελιδοδεικτών Raindrop…"
+      },
+      "roam": {
+        "reading": "Ανάγνωση της εξαγωγής Roam…"
+      },
+      "scanningExport": "Σάρωση της εξαγωγής…",
+      "scanningFiles": "Σάρωση αρχείων…",
+      "ticktick": {
+        "importing": "Εισαγωγή εργασιών TickTick…"
+      },
+      "todoist": {
+        "importing": "Εισαγωγή εργασιών Todoist…"
+      }
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Φόρτωση…",
+      "subtitle": "Υπενθύμιση ημερήσιας ανασκόπησης και προτιμήσεις εισερχομένων.",
+      "title": "Εισερχόμενα"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Μια διακριτική καθημερινή υπενθύμιση όταν τα εισερχόμενά σας έχουν στοιχεία.",
+        "label": "Υπενθύμιση για ανασκόπηση των εισερχομένων μου"
+      },
+      "error": "Δεν ήταν δυνατή η ενημέρωση της υπενθύμισης.",
+      "group": "Υπενθύμιση ημερήσιας ανασκόπησης",
+      "test": {
+        "button": "Αποστολή δοκιμής",
+        "description": "Στείλτε την υπενθύμιση τώρα για να ελέγξετε τις ειδοποιήσεις του συστήματός σας.",
+        "label": "Δοκιμαστική ειδοποίηση",
+        "sent": "Η δοκιμαστική ειδοποίηση στάλθηκε.",
+        "sentHint": "Αν δεν εμφανιστεί τίποτα, επιτρέψτε τις ειδοποιήσεις για το MemryNote στις ρυθμίσεις του συστήματός σας.",
+        "unsupported": "Αυτή η συσκευή δεν μπορεί να εμφανίσει ειδοποιήσεις επιφάνειας εργασίας."
+      },
+      "time": {
+        "description": "Τοπική ώρα, σε κάθε συσκευή.",
+        "hourLabel": "Ώρα",
+        "label": "Ώρα υπενθύμισης",
+        "minuteLabel": "Λεπτό",
+        "periodLabel": "AM ή PM"
+      }
     }
   }
 }

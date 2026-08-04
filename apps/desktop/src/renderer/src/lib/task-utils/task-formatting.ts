@@ -1,4 +1,6 @@
+import { getI18n } from 'react-i18next'
 import { startOfDay, addDays, isSameDay, isBefore, differenceInDays } from './task-date-utils'
+import { getActiveLocale } from '@/lib/active-locale'
 import { formatTimeString } from '@/lib/time-format'
 import type { ClockFormat } from '@/lib/time-format'
 
@@ -49,17 +51,18 @@ export const formatTime = (time: string, clockFormat: ClockFormat = '12h'): stri
 }
 
 export const formatDateShort = (date: Date): string => {
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return date.toLocaleDateString(getActiveLocale(), { month: 'short', day: 'numeric' })
 }
 
 export const formatDayName = (date: Date): string => {
-  return date.toLocaleDateString('en-US', { weekday: 'long' })
+  return date.toLocaleDateString(getActiveLocale(), { weekday: 'long' })
 }
 
 export const formatOverdueRelative = (dueDate: Date): string => {
+  const t = getI18n().getFixedT(null, 'common')
   const days = differenceInDays(startOfDay(new Date()), startOfDay(dueDate))
-  if (days <= 0) return 'Today'
-  return `${days}d late`
+  if (days <= 0) return t('dateRelative.today')
+  return t('dateRelative.daysLate', { count: days })
 }
 
 export const formatDueDate = (
@@ -68,6 +71,7 @@ export const formatDueDate = (
 ): FormattedDueDate | null => {
   if (!dueDate) return null
 
+  const t = getI18n().getFixedT(null, 'common')
   const today = startOfDay(new Date())
   const tomorrow = addDays(today, 1)
   const nextWeek = addDays(today, 7)
@@ -80,11 +84,11 @@ export const formatDueDate = (
   }
 
   if (isSameDay(taskDate, today)) {
-    return { label: 'Today' + timeStr, status: 'today' }
+    return { label: t('dateRelative.today') + timeStr, status: 'today' }
   }
 
   if (isSameDay(taskDate, tomorrow)) {
-    return { label: 'Tomorrow' + timeStr, status: 'tomorrow' }
+    return { label: t('dateRelative.tomorrow') + timeStr, status: 'tomorrow' }
   }
 
   if (isBefore(taskDate, nextWeek)) {

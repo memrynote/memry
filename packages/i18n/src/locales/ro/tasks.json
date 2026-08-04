@@ -34,7 +34,15 @@
     "createAnother": "Creați altul",
     "delete": "Ștergeți sarcina",
     "created": "S-a creat {date}",
-    "reminder": "Memento"
+    "reminder": "Memento",
+    "tags": "Etichete",
+    "priorityLabels": {
+      "high": "Mare",
+      "low": "Mică",
+      "medium": "Medie",
+      "none": "Fără prioritate",
+      "urgent": "Urgentă"
+    }
   },
   "filters": {
     "filter": "Filtru",
@@ -43,11 +51,32 @@
     "groupBy": "Grupați după",
     "groupByOptions": "Grupați după opțiuni",
     "sortAscending": "Sortați crescător",
-    "sortDescending": "Sortați descendent"
+    "sortDescending": "Sortați descendent",
+    "dueDate": {
+      "any": "Orice dată scadentă",
+      "custom": "Interval personalizat...",
+      "nextWeek": "Săptămâna viitoare",
+      "none": "Fără dată scadentă",
+      "overdue": "Restante",
+      "thisMonth": "Luna aceasta",
+      "thisWeek": "Săptămâna aceasta",
+      "today": "Astăzi",
+      "tomorrow": "Mâine"
+    },
+    "quickPresets": {
+      "dueThisWeek": "Scadente săptămâna aceasta",
+      "highPriority": "Prioritate mare",
+      "noDueDate": "Fără dată scadentă",
+      "overdue": "Restante",
+      "repeating": "Recurente"
+    },
+    "repeatTypeOneTime": "Unice",
+    "repeatTypeRepeating": "Recurente"
   },
   "quickAdd": {
     "label": "Sarcină de adăugare rapidă",
-    "focusDescription": "Concentrați intrarea de adăugare rapidă"
+    "focusDescription": "Concentrați intrarea de adăugare rapidă",
+    "placeholder": "Adaugă o sarcină…    !today  !!high  #project"
   },
   "drawer": {
     "close": "Închideți detaliile sarcinii",
@@ -75,7 +104,21 @@
     "searchRelated": "Caută asociate…"
   },
   "kanban": {
-    "board": "Placă Kanban"
+    "board": "Placă Kanban",
+    "empty": {
+      "default": {
+        "subtitle": "Trage sarcini aici sau dă clic pe + pentru a adăuga",
+        "title": "Nicio sarcină"
+      },
+      "done": {
+        "subtitle": "Finalizează sarcini ca să apară aici",
+        "title": "Nicio sarcină finalizată"
+      },
+      "schedule": {
+        "subtitle": "Trage sarcini aici pentru a le reprograma",
+        "title": "Nimic programat"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "Proiect actualizat",
@@ -98,7 +141,53 @@
     "noCompletedSelected": "Nu au fost selectate sarcini finalizate",
     "completeFailed": "Nu s-au finalizat sarcinile",
     "deleteFailed": "Nu s-au șters sarcinile",
-    "moveFailed": "Nu s-au mutat sarcinile"
+    "moveFailed": "Nu s-au mutat sarcinile",
+    "bulk": {
+      "archived": "{count, plural, one {# sarcină arhivată} few {# sarcini arhivate} other {# de sarcini arhivate}}",
+      "completed": "{count, plural, one {# sarcină finalizată} few {# sarcini finalizate} other {# de sarcini finalizate}}",
+      "deleted": "{count, plural, one {# sarcină ștearsă} few {# sarcini șterse} other {# de sarcini șterse}}",
+      "deletedDescription": "Această acțiune poate fi anulată pentru scurt timp.",
+      "dueDateRemoved": "{count, plural, one {Dată scadentă eliminată de la # sarcină} few {Dată scadentă eliminată de la # sarcini} other {Dată scadentă eliminată de la # de sarcini}}",
+      "dueDateSet": "{count, plural, one {Dată scadentă stabilită pentru # sarcină} few {Dată scadentă stabilită pentru # sarcini} other {Dată scadentă stabilită pentru # de sarcini}}",
+      "movedToProject": "{count, plural, one {# sarcină mutată în {project}} few {# sarcini mutate în {project}} other {# de sarcini mutate în {project}}}",
+      "movedToStatus": "{count, plural, one {# sarcină mutată în {status}} few {# sarcini mutate în {status}} other {# de sarcini mutate în {status}}}",
+      "priorityRemoved": "{count, plural, one {Prioritate eliminată pentru # sarcină} few {Prioritate eliminată pentru # sarcini} other {Prioritate eliminată pentru # de sarcini}}",
+      "prioritySet": "{count, plural, one {Prioritate setată la {priority} pentru # sarcină} few {Prioritate setată la {priority} pentru # sarcini} other {Prioritate setată la {priority} pentru # de sarcini}}",
+      "restored": "{count, plural, one {# sarcină restaurată} few {# sarcini restaurate} other {# de sarcini restaurate}}",
+      "undoArchive": "{count, plural, one {Arhivează # sarcină} few {Arhivează # sarcini} other {Arhivează # de sarcini}}",
+      "undoComplete": "{count, plural, one {Finalizează # sarcină} few {Finalizează # sarcini} other {Finalizează # de sarcini}}",
+      "undoDelete": "{count, plural, one {Șterge # sarcină} few {Șterge # sarcini} other {Șterge # de sarcini}}",
+      "undoDueDate": "{count, plural, one {Dată scadentă modificată pentru # sarcină} few {Dată scadentă modificată pentru # sarcini} other {Dată scadentă modificată pentru # de sarcini}}",
+      "undoMove": "{count, plural, one {Mută # sarcină} few {Mută # sarcini} other {Mută # de sarcini}}",
+      "undoStatus": "{count, plural, one {Stare → {status} pentru # sarcină} few {Stare → {status} pentru # sarcini} other {Stare → {status} pentru # de sarcini}}",
+      "undoUncomplete": "{count, plural, one {Marchează # sarcină ca nefinalizată} few {Marchează # sarcini ca nefinalizate} other {Marchează # de sarcini ca nefinalizate}}"
+    },
+    "drag": {
+      "archived": "{count, plural, one {Sarcină arhivată} few {# sarcini arhivate} other {# de sarcini arhivate}}",
+      "deleted": "{count, plural, one {Sarcină ștearsă} few {# sarcini șterse} other {# de sarcini șterse}}",
+      "moved": "{count, plural, one {Mutată în {target}} few {# sarcini mutate în {target}} other {# de sarcini mutate în {target}}}",
+      "movedTo": "Mutată în {target}",
+      "prioritySet": "{count, plural, one {Prioritate setată la {priority}} few {# sarcini setate la {priority}} other {# de sarcini setate la {priority}}}",
+      "prioritySetTo": "Prioritate setată la {priority}",
+      "rescheduled": "{count, plural, one {Reprogramată pentru {target}} few {# sarcini reprogramate pentru {target}} other {# de sarcini reprogramate pentru {target}}}",
+      "rescheduledTo": "Reprogramată pentru {target}",
+      "undoArchive": "{count, plural, one {# sarcină arhivată} few {# sarcini arhivate} other {# de sarcini arhivate}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, one {# subsarcină adăugată} few {# subsarcini adăugate} other {# de subsarcini adăugate}}",
+      "completed": "{count, plural, one {# subsarcină finalizată} few {# subsarcini finalizate} other {# de subsarcini finalizate}}",
+      "deleted": "{count, plural, one {# subsarcină ștearsă} few {# subsarcini șterse} other {# de subsarcini șterse}}",
+      "deletedDescription": "Subsarcina a fost eliminată",
+      "dueDateCleared": "{count, plural, one {Dată scadentă ștearsă pentru # subsarcină} few {Dată scadentă ștearsă pentru # subsarcini} other {Dată scadentă ștearsă pentru # de subsarcini}}",
+      "dueDateSet": "{count, plural, one {Dată scadentă stabilită pentru # subsarcină} few {Dată scadentă stabilită pentru # subsarcini} other {Dată scadentă stabilită pentru # de subsarcini}}",
+      "markedIncomplete": "{count, plural, one {# subsarcină marcată ca nefinalizată} few {# subsarcini marcate ca nefinalizate} other {# de subsarcini marcate ca nefinalizate}}",
+      "movedUnder": "Mutată sub „{title}”",
+      "parentAndSubtasksCompleted": "Sarcina și subsarcinile au fost finalizate",
+      "parentDeletedKeepSubtasks": "Sarcina a fost ștearsă, subsarcinile au fost convertite în sarcini",
+      "parentDeletedWithSubtasks": "Sarcina și subsarcinile au fost șterse",
+      "prioritySet": "{count, plural, one {Prioritate setată pentru # subsarcină} few {Prioritate setată pentru # subsarcini} other {Prioritate setată pentru # de subsarcini}}",
+      "promoted": "„{title}” a fost promovată la sarcină"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -154,7 +243,7 @@
       "repeatOn": "Repetați mai departe",
       "day": "Ziua",
       "ofTheMonth": "a lunii",
-      "the": "The",
+      "the": "A",
       "ofTheMonth2": "a lunii",
       "ends": "Se termină",
       "never": "Niciodată",
@@ -179,7 +268,8 @@
       "nextMonth": "Luna viitoare",
       "goToToday": "Du-te la azi",
       "today": "Astăzi",
-      "w": "W"
+      "w": "W",
+      "weekNumber": "Săptămâna {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Eliminați data",
@@ -197,44 +287,39 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Acest proiect nu are sarcini și va fi șters definitiv.",
       "thisActionCannotBeUndone": "Această acțiune nu poate fi anulată.",
       "cancel": "Anulează",
-      "deleteProject": "Ștergeți proiectul"
+      "deleteProject": "Ștergeți proiectul",
+      "notesEventsAndFilesStayNotice": "Sarcinile din acest proiect sunt șterse. Notele, evenimentele și fișierele tale rămân în seif."
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Ștergeți sarcina?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; vor fi șterse definitiv. Această acțiune nu poate fi anulată.",
-      "deleteTask2": "Ștergeți sarcina"
+      "deleteTask2": "Ștergeți sarcina",
+      "deleteConfirmBody": "„{title}” va fi ștearsă definitiv. Această acțiune nu poate fi anulată."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Toate subsarcinile finalizate!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; are toate ",
-      "subtask": "subsarcină",
-      "done": "gata.",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Doriți să marcați și sarcina părinte ca finalizată?",
       "keepTaskOpen": "Păstrați sarcina deschisă",
-      "completeTask": "Finalizați sarcina ✓"
+      "completeTask": "Finalizați sarcina ✓",
+      "allSubtasksDoneBody": "{count, plural, one {Singura subsarcină din „{title}” este finalizată.} few {Toate cele # subsarcini din „{title}” sunt finalizate.} other {Toate cele # de subsarcini din „{title}” sunt finalizate.}}"
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Setați data limită pentru toate sarcinile secundare",
       "setDueDateFor": "Stabiliți data scadentă pentru ",
-      "subtask": "subsarcină",
-      "in": "în „",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Se aplică și subsarcinilor finalizate (",
       "clearDate": "Data clară",
       "cancel": "Anulează",
-      "apply": "Aplicați"
+      "apply": "Aplicați",
+      "alsoApplyToCompletedSubtasksCount": "Se aplică și subsarcinilor finalizate ({count})",
+      "setDueDateForSubtasksIn": "Setați data scadentă pentru {count, plural, one {# subsarcină} few {# subsarcini} other {# de subsarcini}} din „{title}”"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Setați prioritate pentru toate sarcinile secundare",
       "setPriorityFor": "Setați prioritate pentru ",
-      "subtask": "subsarcină",
-      "in": "în „",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "Se aplică și subsarcinilor finalizate (",
       "cancel": "Anulează",
-      "apply": "Aplicați"
+      "apply": "Aplicați",
+      "alsoApplyToCompletedSubtasksCount": "Se aplică și subsarcinilor finalizate ({count})",
+      "setPriorityForSubtasksIn": "Setați prioritatea pentru {count, plural, one {# subsarcină} few {# subsarcini} other {# de subsarcini}} din „{title}”"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Sarcina completă cu subsarcini incomplete?",
@@ -252,13 +337,10 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Ștergeți toate sarcinile secundare?",
-      "thisWillDelete": "Aceasta se va șterge ",
-      "subtask": "subsarcină",
-      "from": "de la „",
-      "rdquo": "rdquo;.",
       "thisActionCannotBeUndone": "Această acțiune nu poate fi anulată.",
       "cancel": "Anulează",
-      "deleteAll": "Ștergeți toate"
+      "deleteAll": "Ștergeți toate",
+      "deleteSubtasksConfirmation": "{count, plural, one {Se va șterge # subsarcină din „{title}”.} few {Se vor șterge # subsarcini din „{title}”.} other {Se vor șterge # de subsarcini din „{title}”.}}"
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Ștergeți sarcina cu subsarcini?",
@@ -275,10 +357,13 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Sarcină duplicată",
       "createACopyOf": "Creați o copie a „",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "De asemenea, duplicați subsarcini (",
       "cancel": "Anulează",
-      "duplicate": "Duplicat "
+      "duplicate": "Duplicat ",
+      "alsoDuplicateSubtasksCount": "Duplicați și subsarcinile ({count})",
+      "createACopyOfTitle": "Creați o copie a „{title}”",
+      "duplicateTaskOnly": "Duplicați sarcina",
+      "duplicateWithItems": "Duplicați ({count, plural, one {# element} few {# elemente} other {# de elemente}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Faceți o sarcină secundară de...",
@@ -324,7 +409,11 @@
       "addTime": "Adăugați timp",
       "time": "timpul",
       "clearDate": "Data clară",
-      "backToOptions": "Înapoi la opțiuni"
+      "backToOptions": "Înapoi la opțiuni",
+      "nextWeek": "Săptămâna viitoare",
+      "thisWeekend": "Weekendul acesta",
+      "today": "Astăzi",
+      "tomorrow": "Mâine"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "Editați sarcina care se repetă",
@@ -357,7 +446,9 @@
       "due": "Datorită",
       "dueDate": "data scadentă",
       "search": "caută",
-      "clearAll": "Ștergeți totul"
+      "clearAll": "Ștergeți totul",
+      "tags": "etichete",
+      "tagsIs": "Etichetele sunt"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Filtrați după data scadenței",
@@ -421,7 +512,17 @@
       "currentFilters": "Filtre curente:",
       "noFiltersApplied": "Nu s-au aplicat filtre",
       "cancel": "Anulează",
-      "saveFilter2": "Salvați filtrul"
+      "saveFilter2": "Salvați filtrul",
+      "nameRequired": "Introduceți un nume pentru acest filtru",
+      "summaryDue": "Scadență: {value}",
+      "summaryDueRange": "Scadență: {start} - {end}",
+      "summaryPriorities": "Prioritate: {names}",
+      "summaryProjects": "Proiect: {names}",
+      "summaryRepeatOneTime": "Repetare: Doar o singură dată",
+      "summaryRepeatRepeating": "Repetare: Doar recurente",
+      "summarySearch": "Căutare: „{query}”",
+      "summaryTimeWith": "Oră: Cu oră",
+      "summaryTimeWithout": "Oră: Fără oră"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Filtre salvate",
@@ -553,7 +654,16 @@
       "d": "d"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "Adăugați o sarcină"
+      "addTask": "Adăugați o sarcină",
+      "allDescription": "Creează prima ta sarcină ca să începi",
+      "allTitle": "Nicio sarcină încă",
+      "completedDescription": "Sarcinile finalizate vor apărea aici",
+      "completedTitle": "Nicio sarcină finalizată",
+      "projectDescription": "Adaugă o sarcină ca să începi",
+      "projectTitle": "Nicio sarcină în acest proiect",
+      "projectTitleNamed": "Nicio sarcină în {name}",
+      "todayDescription": "Ești la zi!",
+      "todayTitle": "Nimic scadent astăzi"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "nicio prioritate"
@@ -589,6 +699,12 @@
       "noUpcomingTasks": "Fără sarcini viitoare",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Sarcinile datorate în următoarele 7 zile vor apărea aici. Planificați-vă săptămâna adăugând câteva sarcini.",
       "addTask2": "Adăugați sarcină"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "este",
+      "search": "Caută...",
+      "selected": "selectate",
+      "tags": "Etichete"
     }
   },
   "phaseI": {
@@ -638,5 +754,147 @@
       "updateFailed": "Actualizarea mementoului a eșuat",
       "updated": "Memento actualizat"
     }
+  },
+  "addToProject": {
+    "dialogTitle": "Adaugă la proiect",
+    "loading": "Se încarcă proiectele…",
+    "menuLabel": "Adaugă la proiect",
+    "noProjects": "Niciun proiect încă",
+    "toastError": "Nu s-a putut adăuga la proiect",
+    "toastSuccess": "Adăugat la {name}"
+  },
+  "itemProjects": {
+    "openProject": "Deschide proiectul {name}"
+  },
+  "projectHome": {
+    "emptyBody": "Alege un proiect din bara laterală pentru a-i deschide pagina principală.",
+    "emptyTitle": "Niciun proiect selectat",
+    "loadError": "Nu s-au putut încărca detaliile proiectului",
+    "overview": {
+      "clear": "Elimină prezentarea generală",
+      "clearError": "Nu s-a putut elimina nota de prezentare generală",
+      "create": "Creează nota de prezentare generală",
+      "createError": "Nu s-a putut crea nota de prezentare generală",
+      "defaultTitle": "Prezentare generală",
+      "loadError": "Nu s-a putut încărca nota de prezentare generală",
+      "placeholder": "Scrie o prezentare generală pentru acest proiect…",
+      "saveError": "Nu s-a putut salva nota de prezentare generală",
+      "sectionTitle": "Prezentare generală"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "Atașează fișiere",
+      "fileError": "Nu s-a putut lega {name}",
+      "fileErrorGeneric": "Nu s-au putut importa fișierele",
+      "filesAdded": "{count, plural, one {# fișier adăugat la proiect} few {# fișiere adăugate la proiect} other {# de fișiere adăugate la proiect}}",
+      "label": "Adaugă la {name}",
+      "linkAdded": "Link adăugat la proiect",
+      "linkError": "Nu s-a putut salva linkul",
+      "placeholder": "Adaugă la {name} — scrie o sarcină, notează un gând sau lipește un link…"
+    },
+    "groups": {
+      "older": "Mai vechi",
+      "past": "Trecut",
+      "today": "Astăzi",
+      "tomorrow": "Mâine",
+      "upcoming": "Viitoare",
+      "yesterday": "Ieri"
+    },
+    "header": {
+      "archiveProject": "Arhivează proiectul",
+      "editProject": "Editează proiectul",
+      "menu": "Acțiuni proiect",
+      "toggleRail": "Afișează sau ascunde detaliile proiectului"
+    },
+    "rail": {
+      "addNote": "Adaugă o notă",
+      "created": "Creat",
+      "details": "Detalii",
+      "doneOf": "{done} din {total} finalizate",
+      "linked": "Elemente legate",
+      "linkedSummary": "{notes, plural, one {# notă} few {# note} other {# de note}} · {files, plural, one {# fișier} few {# fișiere} other {# de fișiere}} · {events, plural, one {# eveniment} few {# evenimente} other {# de evenimente}}",
+      "overdue": "Întârziate",
+      "overview": "Prezentare generală",
+      "pinError": "Nu s-a putut adăuga nota la prezentarea generală",
+      "progress": "Progres",
+      "unpinError": "Nu s-a putut elimina nota din prezentarea generală",
+      "unpinNote": "Elimină {title} din prezentarea generală",
+      "updated": "Actualizat"
+    },
+    "rows": {
+      "openEvent": "Deschide evenimentul {title}",
+      "openFile": "Deschide fișierul {title}",
+      "openNote": "Deschide nota {title}",
+      "openTask": "Deschide sarcina {title}",
+      "setNoteIcon": "Setează pictograma pentru {title}"
+    },
+    "sections": {
+      "add": "Adaugă la {title}",
+      "emptyEvents": "Niciun eveniment legat încă.",
+      "emptyFiles": "Niciun fișier legat încă.",
+      "emptyNotes": "Nicio notă legată încă.",
+      "emptyTasks": "Nicio sarcină încă.",
+      "newNoteError": "Nu s-a putut adăuga nota",
+      "newNoteTitle": "Notă fără titlu",
+      "viewAll": "Vezi toate"
+    },
+    "tabs": {
+      "events": "Evenimente",
+      "files": "Fișiere",
+      "label": "Vizualizările proiectului",
+      "notes": "Note",
+      "overview": "Prezentare generală",
+      "tasks": "Sarcini"
+    }
+  },
+  "priorityInline": {
+    "high": "mare",
+    "low": "mică",
+    "medium": "medie",
+    "urgent": "urgentă"
+  },
+  "priorityLabels": {
+    "high": "Mare",
+    "low": "Mică",
+    "medium": "Medie",
+    "none": "Fără prioritate",
+    "urgent": "Urgentă"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "Finalizat",
+      "inProgress": "În curs",
+      "todo": "De făcut"
+    },
+    "validation": {
+      "minStatuses": "Proiectele au nevoie de cel puțin 2 stări",
+      "nameRequired": "Numele proiectului este obligatoriu",
+      "nameTooLong": "Numele proiectului trebuie să aibă cel mult 50 de caractere",
+      "needsDoneStatus": "Proiectele au nevoie de cel puțin o stare „Finalizat”",
+      "needsDoneStatusForCompletedTasks": "Proiectele au nevoie de cel puțin o stare „Finalizat” pentru sarcinile finalizate",
+      "needsTodoStatus": "Proiectele au nevoie de cel puțin o stare „De făcut”",
+      "needsTodoStatusForNewTasks": "Proiectele au nevoie de cel puțin o stare „De făcut” pentru sarcinile noi",
+      "statusNameRequired": "Toate stările trebuie să aibă un nume",
+      "statusNamesUnique": "Numele stărilor trebuie să fie unice",
+      "statusNotFound": "Starea nu a fost găsită"
+    }
+  },
+  "statusLabels": {
+    "done": "Finalizat",
+    "inProgress": "În curs",
+    "todo": "De făcut"
+  },
+  "colors": {
+    "blue": "Albastru",
+    "gray": "Gri",
+    "green": "Verde",
+    "indigo": "Indigo",
+    "orange": "Portocaliu",
+    "pink": "Roz",
+    "purple": "Violet",
+    "red": "Roșu",
+    "teal": "Turcoaz",
+    "yellow": "Galben"
   }
 }

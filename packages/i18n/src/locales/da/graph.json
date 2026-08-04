@@ -38,7 +38,7 @@
     "hide-settings": "Skjul indstillinger",
     "reset-filters": "Nulstil filtre",
     "filters": "Filtre",
-    "display": "Display",
+    "display": "Visning",
     "show-labels": "Vis etiketter",
     "focus-depth": "dybde {depth}",
     "clear-focus": "Klar fokuseret node"

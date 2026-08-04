@@ -1,4 +1,5 @@
 import type { ParsedCsv, CsvImportPlan, MapRowsOptions, CsvImportNote } from './types.ts'
+import { IMPORT_MESSAGE_CODES, type ImportMessage } from '../messages.ts'
 import { applyTemplate } from './apply-template.ts'
 
 const TITLE_ALIASES = ['title', 'name', 'subject']
@@ -35,7 +36,7 @@ export function mapRows(parsed: ParsedCsv, options?: MapRowsOptions): CsvImportP
       notes: [],
       stats: { notes: 0, skipped: 0 },
       sampleTitles: [],
-      warnings: ['CSV file has no headers'],
+      warnings: [{ code: IMPORT_MESSAGE_CODES.csvNoHeaders, message: 'CSV file has no headers' }],
       columns: [],
       titleColumn: ''
     }
@@ -45,14 +46,18 @@ export function mapRows(parsed: ParsedCsv, options?: MapRowsOptions): CsvImportP
   const propertyColumns = options?.propertyColumns ?? headers.filter((h) => h !== titleColumn)
 
   const notes: CsvImportNote[] = []
-  const warnings: string[] = []
+  const warnings: ImportMessage[] = []
   let skipped = 0
 
   for (const row of rows) {
     const title = (row[titleColumn] ?? '').trim()
     if (!title) {
       skipped++
-      warnings.push(`Skipped row with empty title (column "${titleColumn}")`)
+      warnings.push({
+        code: IMPORT_MESSAGE_CODES.csvEmptyTitle,
+        message: `Skipped row with empty title (column "${titleColumn}")`,
+        params: { column: titleColumn }
+      })
       continue
     }
 

@@ -67,14 +67,16 @@
     "title": "هل تريد حذف الحدث؟",
     "local-description": "سيتم حذف \"{title}\" نهائيًا. لا يمكن التراجع عن هذا الإجراء.",
     "google-bound-description": "ستتم إزالة \"{title}\" من memrynote وتقويم Google. لا يمكن التراجع عن هذا الإجراء.",
-    "context-menu-delete-label": "حذف الحدث"
+    "context-menu-delete-label": "حذف الحدث",
+    "context-menu-add-to-project": "إضافة إلى مشروع"
   },
   "promote-dialog": {
     "aria": "تحرير حدث التقويم الخارجي",
     "title": "هل تريد تحرير هذا الحدث في memrynote؟",
     "body": "سيؤدي تحرير هذا الحدث إلى إنشاء نسخة مرتبطة في memrynote بحيث تتم مزامنة التغييرات في كلا الاتجاهين. هل تريد المتابعة؟",
     "do-not-ask-again": "لا تسأل مرة أخرى",
-    "confirm-label": "تحرير في memrynote"
+    "confirm-label": "تحرير في memrynote",
+    "agent-notice": "يمكن لوكيل الذكاء الاصطناعي قراءة هذه النسخة، حتى مع إيقاف وصول الذكاء الاصطناعي إلى Google Calendar. أما حدث Google الأصلي فيبقى مخفيًا عنه."
   },
   "onboarding-dialog": {
     "aria": "اختر تقويم Google الافتراضي الخاص بك",
@@ -181,6 +183,16 @@
     "placeholder": "ابحث في الأحداث والمهام والتذكيرات…"
   },
   "undo": {
-    "moveEvent": "نقل الحدث"
+    "moveEvent": "نقل الحدث",
+    "moveTask": "إعادة جدولة المهمة"
+  },
+  "agent-access-dialog": {
+    "allow": "السماح",
+    "aria": "اختر ما إذا كان بإمكان الذكاء الاصطناعي قراءة أحداث Google Calendar الخاصة بك",
+    "body": "ستظل ترى أحداث Google في memrynote في الحالتين. هذا الخيار يحدد فقط ما إذا كان بإمكان وكيل الذكاء الاصطناعي قراءتها عندما تسأله عن جدولك.",
+    "deny": "عدم السماح",
+    "footnote": "يمكنك تغيير هذا في أي وقت من الإعدادات → التكامل → Google Calendar.",
+    "save-error": "فشل حفظ اختيارك",
+    "title": "هل تسمح للذكاء الاصطناعي بقراءة أحداث Google Calendar؟"
   }
 }

@@ -1,7 +1,12 @@
 {
   "app": {
     "quit": "종료",
-    "preferences": "설정…"
+    "preferences": "설정…",
+    "exit": "끝내기",
+    "hide": "MemryNote 가리기",
+    "hideOthers": "기타 가리기",
+    "services": "서비스",
+    "unhide": "모두 보기"
   },
   "file": {
     "label": "파일",
@@ -19,12 +24,16 @@
     "label": "편집",
     "undo": "실행 취소",
     "redo": "다시 실행",
-    "cut": "컷",
+    "cut": "잘라내기",
     "copy": "복사",
     "paste": "붙여넣기",
     "selectAll": "모두 선택",
     "find": "찾기",
-    "speech": "음성"
+    "speech": "음성",
+    "delete": "삭제",
+    "pasteAndMatchStyle": "붙여넣고 스타일 일치시키기",
+    "startSpeaking": "말하기 시작",
+    "stopSpeaking": "말하기 중단"
   },
   "view": {
     "label": "보기",
@@ -37,7 +46,10 @@
     "themeSystem": "시스템",
     "themeWhite": "페이퍼",
     "toggleDayPanel": "데이 패널 전환",
-    "toggleSidebar": "사이드바 전환"
+    "toggleSidebar": "사이드바 전환",
+    "actualSize": "실제 크기",
+    "zoomIn": "확대",
+    "zoomOut": "축소"
   },
   "format": {
     "body": "본문",
@@ -55,7 +67,8 @@
     "about": "MemryNote 정보",
     "documentation": "문서",
     "label": "도움말",
-    "shortcuts": "키보드 단축키"
+    "shortcuts": "키보드 단축키",
+    "aboutVersion": "버전 {version}"
   },
   "insert": {
     "attachment": "첨부 파일 삽입…",
@@ -67,6 +80,10 @@
     "taskList": "작업 목록"
   },
   "window": {
-    "label": "창"
+    "label": "창",
+    "close": "닫기",
+    "front": "모두 앞으로 가져오기",
+    "minimize": "최소화",
+    "zoom": "확대/축소"
   }
 }

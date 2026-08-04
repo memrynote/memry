@@ -1,4 +1,5 @@
 import type { InboxItemPlan, RaindropImportPlan, RaindropRow, ImportWarning } from './types'
+import { IMPORT_MESSAGE_CODES } from '../messages'
 
 const UNSORTED = 'unsorted'
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}T/
@@ -39,7 +40,12 @@ export function mapRows(rows: RaindropRow[], opts: { now: string }): RaindropImp
     const url = row.url.trim()
     if (!url) {
       skipped++
-      warnings.push({ message: `Row ${i + 1} skipped: no URL`, row: i + 1 })
+      warnings.push({
+        code: IMPORT_MESSAGE_CODES.raindropRowNoUrl,
+        message: `Row ${i + 1} skipped: no URL`,
+        params: { row: i + 1 },
+        row: i + 1
+      })
       return
     }
     items.push({

@@ -2,11 +2,13 @@ import { useState, useMemo, useCallback } from 'react'
 
 import { ChevronLeft, ChevronRight } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { getActiveLocale } from '@/lib/active-locale'
 import { withAlpha } from '@/lib/color'
 import { useT } from '@memry/i18n/renderer'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import { EVENT_TYPE_COLORS } from '@/lib/event-type-colors'
 import { type DaySummary } from '../calendar/day-summary'
+import { getWeekdayLabels } from '../calendar/date-utils'
 import { getISOWeekNumber } from './date-picker-calendar-utils'
 
 interface ActivityData {
@@ -41,9 +43,6 @@ function toISO(date: Date): string {
   const d = String(date.getDate()).padStart(2, '0')
   return `${y}-${m}-${d}`
 }
-
-const WEEKDAYS_SUNDAY = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'] as const
-const WEEKDAYS_MONDAY = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'] as const
 
 function isSameDay(a: Date, b: Date): boolean {
   return (
@@ -187,14 +186,12 @@ export function DatePickerCalendar({
     [viewYear, viewMonth, weekStartsOn]
   )
 
-  const monthLabel = useMemo(
-    () =>
-      new Date(viewYear, viewMonth).toLocaleDateString('en-US', {
-        month: 'long',
-        year: 'numeric'
-      }),
-    [viewYear, viewMonth]
-  )
+  // Not memoized: `useT` re-renders this component on `languageChanged`, and a
+  // `[viewYear, viewMonth]` memo would pin the header to the language at mount.
+  const monthLabel = new Date(viewYear, viewMonth).toLocaleDateString(getActiveLocale(), {
+    month: 'long',
+    year: 'numeric'
+  })
 
   const goToPrevMonth = useCallback(() => {
     setViewMonth((m) => {
@@ -224,7 +221,10 @@ export function DatePickerCalendar({
     onTodayClick?.()
   }, [today, onTodayClick])
 
-  const weekdays = weekStartsOn === 1 ? WEEKDAYS_MONDAY : WEEKDAYS_SUNDAY
+  // Locale-abbreviated weekday headers, rotated to `weekStartsOn` — the same
+  // helper (and the same `'short'` width) the calendar month/mini-month grids
+  // use, so every weekday header in the app reads the same way.
+  const weekdays = getWeekdayLabels(getActiveLocale(), weekStartsOn)
 
   const handleDayClick = useCallback(
     (date: Date, isOutsideMonth: boolean) => {
@@ -286,9 +286,11 @@ export function DatePickerCalendar({
             {tPhaseF('phaseF.componentsTasksDatePickerCalendar.w')}
           </div>
         )}
-        {weekdays.map((day) => (
+        {/* Keyed by column, not by label: some locales abbreviate two weekdays
+            to the same string, which would collide as a React key. */}
+        {weekdays.map((day, dayIdx) => (
           <div
-            key={day}
+            key={dayIdx}
             className="flex-1 min-w-0 text-[10px] text-center text-text-tertiary/60 font-medium leading-3 select-none"
           >
             {day}
@@ -302,7 +304,9 @@ export function DatePickerCalendar({
           {showWeekNumbers && (
             <div
               className="w-6 shrink-0 text-[10px] text-center text-text-tertiary/40 leading-3.5 select-none"
-              aria-label={`Week ${getISOWeekNumber(week[0].date)}`}
+              aria-label={tPhaseF('phaseF.componentsTasksDatePickerCalendar.weekNumber', {
+                number: getISOWeekNumber(week[0].date)
+              })}
             >
               {getISOWeekNumber(week[0].date)}
             </div>
@@ -348,7 +352,7 @@ export function DatePickerCalendar({
                     isToday &&
                     'border border-foreground/15 text-text-primary font-medium'
                 )}
-                aria-label={date.toLocaleDateString('en-US', {
+                aria-label={date.toLocaleDateString(getActiveLocale(), {
                   weekday: 'long',
                   month: 'long',
                   day: 'numeric'

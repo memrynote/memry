@@ -270,7 +270,50 @@
     "panelEmpty": "Không có nhắc nhở sắp tới.",
     "panelPast": "Đã qua",
     "panelUpcoming": "Sắp tới",
-    "taskFallback": "Công việc"
+    "taskFallback": "Công việc",
+    "dateTime": {
+      "dateAt": "{date} lúc {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Hôm nay lúc {time}",
+      "todayCompact": "Hôm nay, {time}",
+      "tomorrowAt": "Ngày mai lúc {time}",
+      "tomorrowCompact": "Ngày mai, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Nhắc kỷ niệm",
+      "inHours": {
+        "label": "{count, plural, other {Sau # Giờ}}"
+      },
+      "inMinutes": {
+        "label": "{count, plural, other {Sau # Phút}}"
+      },
+      "inMonths": {
+        "label": "{count, plural, other {Sau # Tháng}}"
+      },
+      "inWeeks": {
+        "label": "{count, plural, other {Sau # Tuần}}"
+      },
+      "inYears": {
+        "label": "{count, plural, other {Sau # Năm}}"
+      },
+      "laterToday": {
+        "description": "{count, plural, other {Sau # giờ}}",
+        "label": "Cuối Ngày Hôm nay"
+      },
+      "monthlyReflection": "Chiêm nghiệm hằng tháng",
+      "nextWeek": {
+        "description": "Thứ Hai lúc 9 giờ sáng",
+        "label": "Tuần Tới"
+      },
+      "quarterlyReflection": "Chiêm nghiệm hằng quý",
+      "reviewInAWeek": "Xem lại sau một tuần",
+      "sameDayNextMonth": "Cùng ngày tháng sau",
+      "tomorrow": {
+        "description": "Ngày mai lúc 9 giờ sáng",
+        "label": "Ngày Mai"
+      },
+      "tomorrowMorning": "Sáng Mai"
+    }
   },
   "insights": {
     "captureActivity": "Hoạt động đã ghi lại",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "  \nĐính kèm tệp (Hình ảnh, Âm thanh, Video, PDF)",
       "recordVoiceMemo": "Ghi nhớ giọng nói",
       "recordVoiceMemo2": "Ghi nhớ giọng nói",
-      "alreadyCaptured": "Đã ghi lại: “",
-      "rdquo": "rdquo;",
       "captureAnyway": "Ghi lại dù sao",
       "focusShortcut": "Đưa con trỏ vào ô ghi nhanh",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Ghi lại liên kết",
+      "captureNote": "Ghi lại ghi chú",
+      "placeholder": "Ghi nhanh — dán một liên kết, ghi vội một suy nghĩ…",
+      "duplicateNotice": "Đã ghi lại trước đó: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Chọn thư mục",
@@ -414,10 +459,9 @@
       "captured": "Đã ghi lại",
       "dismissError": "Bỏ qua lỗi",
       "alreadyCaptured": "Đã chụp",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; &middot; ",
       "captureAnyway": "Ghi lại dù sao",
-      "close": "Đóng"
+      "close": "Đóng",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Thả để chụp",
@@ -466,7 +510,12 @@
       "cancelRecording": "Hủy ghi âm",
       "cancel": "Hủy",
       "stopRecording": "Dừng ghi âm",
-      "stop": "Dừng"
+      "stop": "Dừng",
+      "enableMicInSettings": "Hãy bật quyền truy cập micro trong cài đặt hệ thống, rồi thử lại.",
+      "failedToStart": "Không thể bắt đầu ghi âm",
+      "microphoneAccessDenied": "Quyền truy cập micro bị từ chối",
+      "noMicrophoneFound": "Không tìm thấy micro",
+      "recordingError": "Đã xảy ra lỗi khi ghi âm"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Không thể ghi lại tệp",
       "fileCaptureFailed": "Ghi lại tệp thất bại",
       "failedToCaptureAudio": "Không thể ghi lại âm thanh",
-      "failedToCaptureVoice": "Không thể ghi lại giọng nói"
+      "failedToCaptureVoice": "Không thể ghi lại giọng nói",
+      "failedToLoadInboxPreferences": "Không tải được tùy chọn hộp thư đến",
+      "failedToUpdateInboxPreferences": "Không cập nhật được tùy chọn hộp thư đến"
     },
     "toasts": {
       "inboxRefreshed": "Hộp thư đến đã được làm mới"
@@ -516,5 +567,10 @@
     "task": "Công việc",
     "time": "Giờ",
     "title": "Chuyển đổi"
+  },
+  "reviewNudge": {
+    "action": "Mở hộp thư đến",
+    "description": "Xử lý những gì bạn ghi lại hôm nay trong một lượt thong thả.",
+    "title": "{count, plural, other {Đã đến lúc xem lại # mục}}"
   }
 }

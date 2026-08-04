@@ -80,7 +80,7 @@
     "transcriptionFailed": "Transskription mislykkedes",
     "retryTranscription": "Prøv igen",
     "pageCount": "{count, plural, one {# side} other {# sider}}",
-    "snoozedUntilShort": "snoozed til {date}"
+    "snoozedUntilShort": "udsat til {date}"
   },
   "loading": {
     "inbox": "Indlæser indbakke...",
@@ -148,14 +148,14 @@
     "ariaLabel": "Massehandlinger for {count} valgte elementer",
     "file": "Fil",
     "tag": "Tag",
-    "snooze": "Snooze",
+    "snooze": "Udsæt",
     "archive": "Arkiv",
     "add": "Tilføj",
     "dismissSuggestion": "Afvis forslaget",
     "hint": {
       "file": "fil",
       "tag": "tag",
-      "snooze": "snooze",
+      "snooze": "udsæt",
       "archive": "arkiv",
       "deselect": "fravælg"
     },
@@ -261,7 +261,7 @@
     "viewed": "Set",
     "markViewed": "Markér som vist",
     "notYetViewed": "Ikke set endnu",
-    "snooze": "Snooze",
+    "snooze": "Udsæt",
     "presetInOneHour": "1 time",
     "presetTomorrow": "I morgen",
     "presetNextWeek": "Næste uge",
@@ -270,7 +270,50 @@
     "panelEmpty": "Ingen kommende påmindelser.",
     "panelPast": "Tidligere",
     "panelUpcoming": "Kommende",
-    "taskFallback": "Opgave"
+    "taskFallback": "Opgave",
+    "dateTime": {
+      "dateAt": "{date} kl. {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "I dag kl. {time}",
+      "todayCompact": "I dag, {time}",
+      "tomorrowAt": "I morgen kl. {time}",
+      "tomorrowCompact": "I morgen, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Årsdagspåmindelse",
+      "inHours": {
+        "label": "Om {count, plural, one {# time} other {# timer}}"
+      },
+      "inMinutes": {
+        "label": "Om {count, plural, one {# minut} other {# minutter}}"
+      },
+      "inMonths": {
+        "label": "Om {count, plural, one {# måned} other {# måneder}}"
+      },
+      "inWeeks": {
+        "label": "Om {count, plural, one {# uge} other {# uger}}"
+      },
+      "inYears": {
+        "label": "Om {count, plural, one {# år} other {# år}}"
+      },
+      "laterToday": {
+        "description": "Om {count, plural, one {# time} other {# timer}}",
+        "label": "Senere i dag"
+      },
+      "monthlyReflection": "Månedlig refleksion",
+      "nextWeek": {
+        "description": "Mandag kl. 9",
+        "label": "Næste uge"
+      },
+      "quarterlyReflection": "Kvartalsvis refleksion",
+      "reviewInAWeek": "Gennemgå om en uge",
+      "sameDayNextMonth": "Samme dag næste måned",
+      "tomorrow": {
+        "description": "I morgen kl. 9",
+        "label": "I morgen"
+      },
+      "tomorrowMorning": "I morgen tidlig"
+    }
   },
   "insights": {
     "captureActivity": "Optag aktivitet",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Vedhæft fil (billeder, lyd, video, PDF)",
       "recordVoiceMemo": "Optag stemmememo",
       "recordVoiceMemo2": "Optag stemmememo",
-      "alreadyCaptured": "Allerede fanget: \"",
-      "rdquo": "rdquo;",
       "captureAnyway": "Fang alligevel",
       "focusShortcut": "Fokusér optagelsesfelt",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Optag link",
+      "captureNote": "Optag note",
+      "placeholder": "Hurtig optagelse — indsæt et link, notér en tanke…",
+      "duplicateNotice": "Allerede fanget: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Vælg mappe",
@@ -414,10 +459,9 @@
       "captured": "Fanget",
       "dismissError": "Afvis fejl",
       "alreadyCaptured": "Allerede fanget",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; · ",
       "captureAnyway": "Fang alligevel",
-      "close": "Luk"
+      "close": "Luk",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Slip for at fange",
@@ -442,14 +486,14 @@
       "set": "Angiv"
     },
     "componentsSnoozeSnoozePicker": {
-      "snooze": "Snooze",
-      "snooze2": "Snooze",
+      "snooze": "Udsæt",
+      "snooze2": "Udsæt",
       "pickDateTime": "Vælg dato og tid",
       "pickDateTime2": "Vælg dato og tid",
       "selectWhenToBeRemindedAboutThisItem": "Vælg, hvornår du vil blive mindet om denne vare",
-      "snooze3": "Snooze",
-      "snooze4": "Snooze",
-      "snooze5": "Snooze"
+      "snooze3": "Udsæt",
+      "snooze4": "Udsæt",
+      "snooze5": "Udsæt"
     },
     "componentsSocialCard": {
       "loadingPost": "Indlæser indlæg...",
@@ -466,7 +510,12 @@
       "cancelRecording": "Annuller optagelsen",
       "cancel": "Annuller",
       "stopRecording": "Stop optagelsen",
-      "stop": "Stop"
+      "stop": "Stop",
+      "enableMicInSettings": "Giv adgang til mikrofonen i dine systemindstillinger, og prøv igen.",
+      "failedToStart": "Optagelsen kunne ikke startes",
+      "microphoneAccessDenied": "Adgang til mikrofonen blev nægtet",
+      "noMicrophoneFound": "Ingen mikrofon fundet",
+      "recordingError": "Der opstod en fejl under optagelsen"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Filen kunne ikke fanges",
       "fileCaptureFailed": "Filoptagelse mislykkedes",
       "failedToCaptureAudio": "Lyden kunne ikke optages",
-      "failedToCaptureVoice": "Kunne ikke fange stemmen"
+      "failedToCaptureVoice": "Kunne ikke fange stemmen",
+      "failedToLoadInboxPreferences": "Indbakkeindstillingerne kunne ikke indlæses",
+      "failedToUpdateInboxPreferences": "Indbakkeindstillingerne kunne ikke opdateres"
     },
     "toasts": {
       "inboxRefreshed": "Indbakke opdateret"
@@ -516,5 +567,10 @@
     "task": "Opgave",
     "time": "Tid",
     "title": "Konvertér"
+  },
+  "reviewNudge": {
+    "action": "Åbn indbakke",
+    "description": "Gennemgå dagens optagelser i én rolig omgang.",
+    "title": "{count, plural, one {Tid til at gennemgå # element} other {Tid til at gennemgå # elementer}}"
   }
 }

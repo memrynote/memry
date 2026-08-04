@@ -28,7 +28,8 @@
         "properties": "Propiedades",
         "commandLine": "Línea de comandos",
         "features": "Funciones",
-        "import": "Importar"
+        "import": "Importar",
+        "inbox": "Bandeja de entrada"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Descargando {percent}%",
         "downloaded": "Reiniciar para instalar",
         "idle": "Buscar actualizaciones"
+      },
+      "autoCheck": {
+        "description": "Busca versiones nuevas al iniciar y cada cierto tiempo mientras la app está abierta.",
+        "error": "No se pudo actualizar la opción de búsqueda automática",
+        "label": "Buscar actualizaciones automáticamente"
+      },
+      "autoDownload": {
+        "description": "Descarga e instala las versiones nuevas en segundo plano, sin preguntar.",
+        "error": "No se pudo actualizar la opción de descarga automática",
+        "label": "Descargar actualizaciones automáticamente"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Compartir métricas de uso anónimo",
         "description": "Son solo métricas anónimas: nunca se envía contenido de notas, consultas de búsqueda, rutas de archivos, correos electrónicos o identificaciones sin procesar.",
         "error": "No se pudo actualizar la configuración de telemetría"
+      },
+      "diagnostics": {
+        "building": "Preparando el informe…",
+        "consent": "¿Enviar un informe de diagnóstico puntual? Solo contiene registros técnicos anonimizados — ningún contenido de tus notas.",
+        "error": "No se pudo enviar el informe de diagnóstico",
+        "notNow": "Ahora no",
+        "previewError": "No se pudo preparar el informe de diagnóstico",
+        "previewLabel": "Ver el contenido del informe",
+        "send": "Enviar",
+        "sendReport": {
+          "button": "Enviar informe de diagnóstico",
+          "description": "Envía un informe puntual con registros técnicos anonimizados para ayudarnos a resolver un problema que hayas encontrado.",
+          "label": "Informe de diagnóstico"
+        },
+        "sending": "Enviando…",
+        "sent": "Informe enviado — referencia {incidentId}",
+        "snapshotLabel": "Instantánea del dispositivo",
+        "title": "¿Enviar un informe de diagnóstico?"
       }
     },
     "dateFormat": {
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Diseño",
-      "toolbar": "Barra de herramientas"
+      "toolbar": "Barra de herramientas",
+      "spelling": "Ortografía"
     },
     "width": {
       "label": "Ancho del editor",
@@ -221,7 +251,9 @@
       "options": {
         "narrow": "Estrecho",
         "medium": "Medio",
-        "wide": "ancho"
+        "wide": "ancho",
+        "full": "Ancho completo",
+        "normal": "Normal"
       },
       "error": "No se pudo actualizar el ancho del editor"
     },
@@ -229,6 +261,11 @@
       "label": "Barra de herramientas de formato fijo",
       "description": "Mostrar siempre la barra de herramientas encima del editor",
       "error": "No se pudo actualizar el modo de la barra de herramientas"
+    },
+    "spellCheck": {
+      "description": "Subraya las palabras mal escritas en las notas y los diarios",
+      "error": "No se pudo actualizar la corrección ortográfica",
+      "label": "Corrección ortográfica"
     }
   },
   "templates": {
@@ -640,7 +677,7 @@
       "vaultPickerFolderLabel": "Guardar las bóvedas en la carpeta",
       "vaultPickerPrimaryHint": "Se abre ahora",
       "vaultPickerTitle": "Elige qué descargar",
-      "vaultRow": "Bóveda — {{count}} elementos · {{date}}"
+      "vaultRow": "Bóveda — {count} elementos · {date}"
     }
   },
   "devices": {
@@ -673,7 +710,8 @@
       "removeFailed": "No se pudo eliminar el dispositivo",
       "renamed": "Renombrado a \"{name}\"",
       "renameFailed": "No se pudo cambiar el nombre del dispositivo"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Vincular nuevo dispositivo",
@@ -855,6 +893,11 @@
         "description": "Desactívalo para una sincronización unidireccional: seguirás viendo tus eventos de Google en memrynote, pero los eventos de memrynote no aparecerán en Google.",
         "error": "No se pudo actualizar la dirección de la sincronización",
         "label": "Mostrar los eventos de memrynote en Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Desactivado de forma predeterminada. Actívalo y el agente de IA podrá leer tus eventos de Google; desactívalo y no obtendrá nada cuando se le pregunte por ellos. De cualquier forma, seguirás viéndolos en memrynote.",
+        "error": "No se pudo actualizar el acceso de la IA",
+        "label": "Permitir que la IA lea los eventos de Google Calendar"
       }
     },
     "sourcePicker": {
@@ -898,7 +941,8 @@
     },
     "groups": {
       "storageUsage": "Uso de almacenamiento",
-      "location": "Ubicación"
+      "location": "Ubicación",
+      "accountVaults": "Bóvedas de tu cuenta"
     },
     "loadingStorage": "Cargando información de almacenamiento...",
     "signInStorage": "Inicia sesión para ver el uso de almacenamiento",
@@ -919,6 +963,17 @@
       },
       "warningTitle": "Almacenamiento casi lleno",
       "warningDescription": "Libera espacio o actualiza tu plan para evitar problemas de sincronización."
+    },
+    "accountVaults": {
+      "activeHint": "Cambia a otra bóveda para eliminar esta.",
+      "cloudOnly": "No está en este dispositivo",
+      "delete": "Eliminar",
+      "deleteBody": "Esto elimina de forma permanente todos los datos sincronizados de esta bóveda que hay en los servidores de Memry y no se puede deshacer. Los archivos de tu disco no se eliminan.",
+      "deleteConfirm": "Eliminar de la cuenta",
+      "deleteFailed": "No se pudo eliminar la bóveda",
+      "deleteTitle": "¿Eliminar “{name}” de tu cuenta?",
+      "empty": "Aún no hay bóvedas sincronizadas con tu cuenta.",
+      "itemsCount": "{count} elementos"
     }
   },
   "tags": {
@@ -1137,16 +1192,12 @@
       "press": "prensa ",
       "toToggleThisDialog": "para alternar este cuadro de diálogo"
     },
-    "componentsSyncDeviceList": {
-      "middot": "punto medio;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Este dispositivo ha sido eliminado.",
       "exporting": "Exportando...",
       "signOut": "Cerrar sesión"
     },
     "componentsSyncSyncHistory": {
-      "middot": "punto medio; ",
       "activity": "Actividad",
       "filterBySyncType": "Filtrar por tipo de sincronización",
       "allTypes": "Todos los tipos",
@@ -1160,7 +1211,12 @@
       "last30Days": "últimos 30 días",
       "loadingSyncHistory": "Cargando historial de sincronización",
       "noSyncActivityYet": "Aún no hay actividad de sincronización",
-      "loadMore": "Cargar más"
+      "loadMore": "Cargar más",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, mostrar los detalles del error",
+      "summaryFailed": "Error de sincronización",
+      "summaryPulled": "{count, plural, one {# elemento recibido} many {# elementos recibidos} other {# elementos recibidos}}",
+      "summaryPushed": "{count, plural, one {# elemento enviado} many {# elementos enviados} other {# elementos enviados}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Última sincronización ",
@@ -1208,102 +1264,103 @@
       "failedToCloseVault": "No se pudo cerrar la bóveda",
       "failedToSwitchVault": "No se pudo cambiar la bóveda",
       "failedToUpdateConfig": "No se pudo actualizar la configuración",
-      "failedToReindex": "No se pudo reindexar"
+      "failedToReindex": "No se pudo reindexar",
+      "failedToLoadTasks": "No se pudieron cargar las tareas"
     }
   },
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Acceso al servidor local para clientes MCP externos."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Conexión",
+      "access": "Acceso"
     },
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Usa este endpoint de localhost desde Cursor, Claude Desktop o Zed."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Token Bearer",
+        "description": "Credencial en memoria para esta ejecución de la app."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Rotar token",
+        "description": "Invalida las sesiones existentes de clientes externos."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "Copiar {label}",
+    "notRunning": "No está en ejecución",
+    "toolsBadge": "{count, plural, one {# herramienta} many {# herramientas} other {# herramientas}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Permisos del agente",
+      "subtitle": "Elige el acceso predeterminado, las confirmaciones y los proveedores locales de Agent Chat."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Proveedor local compatible con OpenAI",
+      "actions": "Comprobaciones de conexión"
     },
     "presets": {
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Personalizado"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Preajuste"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "URL base",
+        "description": "Endpoint /v1 compatible con OpenAI."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Permitir endpoints que no sean de loopback",
+        "description": "Los datos se envían al endpoint configurado."
       },
       "model": {
-        "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "label": "Modelo",
+        "description": "Elige uno de los modelos devueltos o escribe uno manualmente."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "Clave API",
+        "description": "Credencial opcional guardada en el llavero del sistema operativo.",
+        "configured": "Ya hay una clave API guardada en el llavero del sistema operativo."
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "save": "Guardar",
+      "models": "Modelos",
+      "test": "Probar conexión",
+      "probe": "Detectar herramientas"
     },
     "status": {
-      "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "disconnected": "Desconectado",
+      "toolsDisabled": "Herramientas desactivadas",
+      "fullTools": "Herramientas completas activadas",
       "checking": "Comprobando…",
       "connected": "Conectado",
       "label": "Conexión"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Permisos del agente",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Acceso predeterminado",
+        "description": "Define el modo de acceso inicial de los nuevos turnos del agente.",
+        "vaultOnly": "Solo la bóveda",
+        "computerAccess": "Acceso al equipo"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Confirmar acciones",
+        "description": "Elige si las llamadas a herramientas se ejecutan automáticamente o esperan aprobación en el chat.",
+        "alwaysAllow": "Permitir siempre",
+        "askBeforeChanges": "Preguntar antes de cambiar"
       }
     }
   },
@@ -1368,6 +1425,10 @@
       "tasks": {
         "description": "Pendientes y fechas de vencimiento",
         "label": "Tareas"
+      },
+      "spatialCanvas": {
+        "description": "Tableros espaciales para organizar y vincular notas",
+        "label": "Lienzo"
       }
     }
   },
@@ -1393,7 +1454,10 @@
         "skipped": "{count} omitidos",
         "title": "Importación completada"
       },
-      "title": "Importar desde {name}"
+      "title": "Importar desde {name}",
+      "chooseDirectory": "Elegir carpeta…",
+      "folderKeepsAssets": "Elige la carpeta cuando las imágenes estén fuera de la carpeta de las propias notas — las exportaciones suelen guardar los archivos multimedia en una carpeta común.",
+      "previewError": "La vista previa falló"
     },
     "header": {
       "subtitle": "Trae tus notas y tareas desde otras aplicaciones",
@@ -1432,6 +1496,99 @@
       "tasks": "{count, plural, one {# tarea} other {# tareas}}",
       "withDueDate": "{count} con fecha",
       "withTags": "{count} etiquetados"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Columnas: {columns}",
+        "emptyTitle": "Se omitió una fila con el título vacío (columna \"{column}\")",
+        "noHeaders": "El archivo CSV no tiene encabezados",
+        "titleColumn": "Título tomado de \"{column}\"; las demás columnas se guardan como propiedades"
+      },
+      "raindrop": {
+        "csvEmpty": "El CSV de Raindrop está vacío",
+        "headerNotFound": "No se encontró la fila de encabezado del CSV de Raindrop (columna \"url\")",
+        "rowNoUrl": "Fila {row} omitida: sin URL"
+      },
+      "readFileFailed": "No se pudo leer el archivo",
+      "ticktick": {
+        "foldersDropped": "Las carpetas de TickTick no tienen equivalente en Memry y se descartaron",
+        "headerNotFound": "No se encontró la fila de encabezado del CSV de TickTick (\"Folder Name\")",
+        "reminderNoAnchor": "Se omitió el recordatorio \"{reminder}\" (sin fecha de referencia)",
+        "subtaskParentMissing": "No se encontró la tarea principal de la subtarea \"{title}\"; se importó al nivel superior",
+        "unknownPriority": "Prioridad de TickTick desconocida {priority} → ninguna",
+        "unsupportedRepeat": "Se omitió la regla de repetición no compatible \"{rule}\""
+      },
+      "todoist": {
+        "emptyTitle": "La tarea sin contenido se importó como (sin título)",
+        "headerNotFound": "No es un CSV de Todoist: falta la fila de encabezado TYPE",
+        "orphanComment": "Se omitió un comentario sin tarea previa",
+        "sectionFlattened": "Se aplanó la sección \"{section}\"",
+        "subtaskNoParent": "La subtarea \"{title}\" no tiene tarea principal en la sangría {indent}; se importó al nivel superior",
+        "unknownPriority": "Prioridad desconocida {priority} → ninguna",
+        "unparsedDate": "No se pudo interpretar la fecha \"{date}\""
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Copiando la base de datos de Apple Notes…"
+      },
+      "bear": {
+        "scanning": "Analizando la exportación de Bear…"
+      },
+      "csv": {
+        "importing": "Importando las notas del CSV…"
+      },
+      "evernote": {
+        "scanning": "Analizando los archivos .enex…"
+      },
+      "html": {
+        "scanning": "Analizando los archivos HTML…"
+      },
+      "importingItem": "Importando {title}",
+      "raindrop": {
+        "importing": "Importando los marcadores de Raindrop…"
+      },
+      "roam": {
+        "reading": "Leyendo la exportación de Roam…"
+      },
+      "scanningExport": "Analizando la exportación…",
+      "scanningFiles": "Analizando los archivos…",
+      "ticktick": {
+        "importing": "Importando las tareas de TickTick…"
+      },
+      "todoist": {
+        "importing": "Importando las tareas de Todoist…"
+      }
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Cargando…",
+      "subtitle": "Recordatorio de revisión diaria y preferencias de la bandeja de entrada.",
+      "title": "Bandeja de entrada"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Un aviso suave cada día cuando haya elementos en tu bandeja de entrada.",
+        "label": "Recordarme que revise mi bandeja de entrada"
+      },
+      "error": "No se pudo actualizar el recordatorio.",
+      "group": "Recordatorio de revisión diaria",
+      "test": {
+        "button": "Enviar prueba",
+        "description": "Lanza el recordatorio ahora para comprobar las notificaciones del sistema.",
+        "label": "Notificación de prueba",
+        "sent": "Notificación de prueba enviada.",
+        "sentHint": "Si no aparece nada, permite las notificaciones de MemryNote en los ajustes del sistema.",
+        "unsupported": "Este dispositivo no puede mostrar notificaciones de escritorio."
+      },
+      "time": {
+        "description": "Hora local, en cada dispositivo.",
+        "hourLabel": "Hora",
+        "label": "Hora del recordatorio",
+        "minuteLabel": "Minuto",
+        "periodLabel": "AM o PM"
+      }
     }
   }
 }

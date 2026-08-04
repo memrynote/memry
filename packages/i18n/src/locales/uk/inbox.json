@@ -51,7 +51,7 @@
   },
   "empty": {
     "successAria": "Успіх, вхідна порожня",
-    "title": "Inbox Zero",
+    "title": "Вхідні порожні",
     "body": "Все оброблено. Зафіксуйте щось нове за допомогою вхідних даних вище або вставте посилання, щоб почати.",
     "filedThisWeek": "{count, plural, one {# цього тижня} other {# цього тижня}}",
     "dayStreak": "{count, plural, one {Серія днів #} other {Серія днів #}}",
@@ -270,7 +270,50 @@
     "panelEmpty": "Немає майбутніх нагадувань.",
     "panelPast": "Минулі",
     "panelUpcoming": "Майбутні",
-    "taskFallback": "Завдання"
+    "taskFallback": "Завдання",
+    "dateTime": {
+      "dateAt": "{date} о {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Сьогодні о {time}",
+      "todayCompact": "Сьогодні, {time}",
+      "tomorrowAt": "Завтра о {time}",
+      "tomorrowCompact": "Завтра, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Нагадування про річницю",
+      "inHours": {
+        "label": "Через {count, plural, one {# годину} few {# години} many {# годин} other {# години}}"
+      },
+      "inMinutes": {
+        "label": "Через {count, plural, one {# хвилину} few {# хвилини} many {# хвилин} other {# хвилини}}"
+      },
+      "inMonths": {
+        "label": "Через {count, plural, one {# місяць} few {# місяці} many {# місяців} other {# місяця}}"
+      },
+      "inWeeks": {
+        "label": "Через {count, plural, one {# тиждень} few {# тижні} many {# тижнів} other {# тижня}}"
+      },
+      "inYears": {
+        "label": "Через {count, plural, one {# рік} few {# роки} many {# років} other {# року}}"
+      },
+      "laterToday": {
+        "description": "Через {count, plural, one {# годину} few {# години} many {# годин} other {# години}}",
+        "label": "Пізніше сьогодні"
+      },
+      "monthlyReflection": "Щомісячна рефлексія",
+      "nextWeek": {
+        "description": "Понеділок о 9:00",
+        "label": "Наступного тижня"
+      },
+      "quarterlyReflection": "Квартальна рефлексія",
+      "reviewInAWeek": "Переглянути через тиждень",
+      "sameDayNextMonth": "Той самий день наступного місяця",
+      "tomorrow": {
+        "description": "Завтра о 9:00",
+        "label": "Завтра"
+      },
+      "tomorrowMorning": "Завтра вранці"
+    }
   },
   "insights": {
     "captureActivity": "Фіксувати активність",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Прикріпити файл (Зображення, Аудіо, Відео, PDF)",
       "recordVoiceMemo": "Записати голосову замітку",
       "recordVoiceMemo2": "Записати голосову замітку",
-      "alreadyCaptured": "Вже захоплено: “",
-      "rdquo": "rdquo;",
       "captureAnyway": "Захопити все одно",
       "focusShortcut": "Фокус на полі захоплення",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Захопити посилання",
+      "captureNote": "Захопити нотатку",
+      "placeholder": "Швидке захоплення — вставте посилання, занотуйте думку…",
+      "duplicateNotice": "Вже захоплено: «{title}»"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Вибрати папку",
@@ -414,10 +459,9 @@
       "captured": "Зафіксовано",
       "dismissError": "Закрити помилку",
       "alreadyCaptured": "Вже захоплено",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; &middot; ",
       "captureAnyway": "Захопити все одно",
-      "close": "Закрити"
+      "close": "Закрити",
+      "duplicateMeta": "«{title}» · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Перетягніть для захоплення",
@@ -466,7 +510,12 @@
       "cancelRecording": "Скасувати запис",
       "cancel": "Скасувати",
       "stopRecording": "Зупинити запис",
-      "stop": "Стоп"
+      "stop": "Стоп",
+      "enableMicInSettings": "Увімкніть доступ до мікрофона в системних налаштуваннях і спробуйте ще раз.",
+      "failedToStart": "Не вдалося почати запис",
+      "microphoneAccessDenied": "Доступ до мікрофона заборонено",
+      "noMicrophoneFound": "Мікрофон не знайдено",
+      "recordingError": "Сталася помилка запису"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Не вдалося захопити файл",
       "fileCaptureFailed": "Не вдалося захопити файл",
       "failedToCaptureAudio": "Не вдалося захопити аудіо",
-      "failedToCaptureVoice": "Не вдалося захопити голос"
+      "failedToCaptureVoice": "Не вдалося захопити голос",
+      "failedToLoadInboxPreferences": "Не вдалося завантажити налаштування вхідних",
+      "failedToUpdateInboxPreferences": "Не вдалося оновити налаштування вхідних"
     },
     "toasts": {
       "inboxRefreshed": "Вхідні оновлено"
@@ -516,5 +567,10 @@
     "task": "Завдання",
     "time": "Час",
     "title": "Перетворити"
+  },
+  "reviewNudge": {
+    "action": "Відкрити вхідні",
+    "description": "Спокійно опрацюйте сьогоднішні захоплення за один раз.",
+    "title": "{count, plural, one {Час переглянути # елемент} few {Час переглянути # елементи} many {Час переглянути # елементів} other {Час переглянути # елемента}}"
   }
 }

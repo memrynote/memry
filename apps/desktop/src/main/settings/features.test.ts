@@ -37,19 +37,20 @@ describe('getFeaturesSettings', () => {
   })
 
   it('merges a stored partial over the defaults', () => {
-    mocks.getSetting.mockReturnValue(JSON.stringify({ spatialCanvas: true }))
+    mocks.getSetting.mockReturnValue(JSON.stringify({ spatialCanvas: false }))
 
     const settings = getFeaturesSettings()
 
-    expect(settings.spatialCanvas).toBe(true)
+    // The stored opt-out wins over the default-on flag.
+    expect(settings.spatialCanvas).toBe(false)
     // Every other flag keeps its default rather than becoming undefined.
     expect(settings.inbox).toBe(FEATURES_SETTINGS_DEFAULTS.inbox)
   })
 
-  it('defaults spatialCanvas off, matching the opt-in rollout', () => {
+  it('defaults spatialCanvas on for an install that never wrote the key', () => {
     mocks.getSetting.mockReturnValue(undefined)
 
-    expect(getFeaturesSettings().spatialCanvas).toBe(false)
+    expect(getFeaturesSettings().spatialCanvas).toBe(true)
   })
 
   it('falls back to defaults on a corrupt blob WITHOUT deleting it', () => {

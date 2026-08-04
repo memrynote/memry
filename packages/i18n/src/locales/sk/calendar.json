@@ -67,14 +67,16 @@
     "title": "Odstrániť udalosť?",
     "local-description": "\"{title}\" bude trvalo odstránený. Túto akciu nie je možné vrátiť späť.",
     "google-bound-description": "\"{title}\" bude odstránený z memrynote a Google Kalendára. Túto akciu nie je možné vrátiť späť.  ",
-    "context-menu-delete-label": "  \nOdstrániť udalosť  "
+    "context-menu-delete-label": "  \nOdstrániť udalosť  ",
+    "context-menu-add-to-project": "Pridať do projektu"
   },
   "promote-dialog": {
     "aria": "  \nUpraviť udalosť v externom kalendári  ",
     "title": "  \nUpraviť túto udalosť v memrynote?  ",
     "body": "  \nÚpravou tejto udalosti sa vytvorí prepojená kópia v memrynote, takže zmeny sa synchronizujú obojstranne. Pokračovať?  ",
     "do-not-ask-again": "  \nNepýtať sa znova  ",
-    "confirm-label": "  \nUpraviť v memrynote  "
+    "confirm-label": "  \nUpraviť v memrynote  ",
+    "agent-notice": "AI agent môže čítať túto kópiu, aj keď je prístup AI ku Google Calendar vypnutý. Vaša pôvodná Google udalosť pred ním zostáva skrytá."
   },
   "onboarding-dialog": {
     "aria": "  \nVyberte svoj predvolený Google kalendár  ",
@@ -181,6 +183,16 @@
     "placeholder": "Hľadať udalosti, úlohy, pripomienky…"
   },
   "undo": {
-    "moveEvent": "Presunúť udalosť"
+    "moveEvent": "Presunúť udalosť",
+    "moveTask": "Preplánovať úlohu"
+  },
+  "agent-access-dialog": {
+    "allow": "Povoliť",
+    "aria": "Vyberte, či môže AI čítať vaše udalosti z Google Calendar",
+    "body": "Svoje Google udalosti budete v memrynote vidieť tak či tak. Toto rozhoduje len o tom, či ich môže AI agent čítať, keď sa ho opýtate na svoj rozvrh.",
+    "deny": "Nepovoliť",
+    "footnote": "Kedykoľvek to môžete zmeniť v časti Nastavenia → Integrácie → Google Calendar.",
+    "save-error": "Nepodarilo sa uložiť vašu voľbu",
+    "title": "Povoliť AI čítať vaše udalosti z Google Calendar?"
   }
 }

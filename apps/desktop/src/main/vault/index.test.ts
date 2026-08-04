@@ -39,11 +39,13 @@ const mocks = vi.hoisted(() => ({
   initializeFtsInbox: vi.fn(),
   closeAllDatabases: vi.fn(),
   ensureDefaultTaskProject: vi.fn(),
+  promoteSpatialCanvas: vi.fn(),
   reloadPropertyDefinitions: vi.fn(),
   destroyPropertyDefinitions: vi.fn(),
   migrateSettingsToConfig: vi.fn(),
   snapshotProjectFrontmatterBackfill: vi.fn(),
   applyProjectFrontmatterBackfill: vi.fn(),
+  migrateTemplateFilesToDb: vi.fn(() => 0),
   startSyncRuntime: vi.fn(),
   stopSyncRuntime: vi.fn(),
   startProjectionRuntime: vi.fn(),
@@ -119,6 +121,10 @@ vi.mock('../database', () => ({
   getDatabase: () => ({ kind: 'data-db' }),
   getIndexDatabase: () => ({ kind: 'index-db' }),
   checkIndexHealth: (...args: unknown[]) => mocks.checkIndexHealth(...args)
+}))
+
+vi.mock('../settings/promote-spatial-canvas', () => ({
+  promoteSpatialCanvas: (...args: unknown[]) => mocks.promoteSpatialCanvas(...args)
 }))
 
 vi.mock('../database/defaults', () => ({
@@ -201,6 +207,10 @@ vi.mock('./backfill-project-frontmatter', () => ({
     mocks.snapshotProjectFrontmatterBackfill(...args),
   applyProjectFrontmatterBackfill: (...args: unknown[]) =>
     mocks.applyProjectFrontmatterBackfill(...args)
+}))
+
+vi.mock('./templates-migration', () => ({
+  migrateTemplateFilesToDb: (...args: unknown[]) => mocks.migrateTemplateFilesToDb(...args)
 }))
 
 vi.mock('../agent/mcp/lifecycle', () => ({
@@ -304,6 +314,8 @@ describe('vault lifecycle', () => {
     expect(mocks.initVault).toHaveBeenCalledWith('/vault/work')
     expect(mocks.runMigrations).toHaveBeenCalledWith('/vault/work/data.db')
     expect(mocks.runIndexMigrations).toHaveBeenCalledWith('/vault/work/index.db')
+    // Existing installs only get canvas turned on if this runs on open.
+    expect(mocks.promoteSpatialCanvas).toHaveBeenCalledWith({ kind: 'data-db' })
     expect(mocks.reloadPropertyDefinitions).toHaveBeenCalled()
     expect(mocks.indexVault).toHaveBeenCalledWith('/vault/work')
     expect(mocks.startWatcher).toHaveBeenCalledWith('/vault/work')

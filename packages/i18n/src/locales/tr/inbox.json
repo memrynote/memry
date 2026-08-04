@@ -270,7 +270,50 @@
     "panelEmpty": "Yaklaşan hatırlatıcı yok.",
     "panelPast": "Geçmiş",
     "panelUpcoming": "Yaklaşan",
-    "taskFallback": "Görev"
+    "taskFallback": "Görev",
+    "dateTime": {
+      "dateAt": "{date} saat {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Bugün saat {time}",
+      "todayCompact": "Bugün, {time}",
+      "tomorrowAt": "Yarın saat {time}",
+      "tomorrowCompact": "Yarın, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Yıl dönümü hatırlatıcısı",
+      "inHours": {
+        "label": "{count, plural, one {# Saat Sonra} other {# Saat Sonra}}"
+      },
+      "inMinutes": {
+        "label": "{count, plural, one {# Dakika Sonra} other {# Dakika Sonra}}"
+      },
+      "inMonths": {
+        "label": "{count, plural, one {# Ay Sonra} other {# Ay Sonra}}"
+      },
+      "inWeeks": {
+        "label": "{count, plural, one {# Hafta Sonra} other {# Hafta Sonra}}"
+      },
+      "inYears": {
+        "label": "{count, plural, one {# Yıl Sonra} other {# Yıl Sonra}}"
+      },
+      "laterToday": {
+        "description": "{count, plural, one {# saat sonra} other {# saat sonra}}",
+        "label": "Bugün İlerleyen Saatlerde"
+      },
+      "monthlyReflection": "Aylık değerlendirme",
+      "nextWeek": {
+        "description": "Pazartesi 09.00",
+        "label": "Gelecek Hafta"
+      },
+      "quarterlyReflection": "Üç aylık değerlendirme",
+      "reviewInAWeek": "Bir hafta sonra gözden geçir",
+      "sameDayNextMonth": "Gelecek ay aynı gün",
+      "tomorrow": {
+        "description": "Yarın 09.00",
+        "label": "Yarın"
+      },
+      "tomorrowMorning": "Yarın Sabah"
+    }
   },
   "insights": {
     "captureActivity": "Etkinliği Yakala",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Dosya ekle (Görüntüler, Ses, Video, PDF)",
       "recordVoiceMemo": "Sesli not kaydet",
       "recordVoiceMemo2": "Sesli not kaydet",
-      "alreadyCaptured": "Zaten yakalandı: \"",
-      "rdquo": "rdquo;",
       "captureAnyway": "Yine de Yakala",
       "focusShortcut": "Yakalama girişine odaklan",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Bağlantıyı yakala",
+      "captureNote": "Notu yakala",
+      "placeholder": "Hızlı yakalama — bir bağlantı yapıştırın, bir fikri not edin…",
+      "duplicateNotice": "Zaten yakalandı: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Klasör seç",
@@ -408,16 +453,15 @@
       "attachFile": "Dosya ekle"
     },
     "componentsQuickCaptureLinkPreview": {
-      "link": "LINK"
+      "link": "BAĞLANTI"
     },
     "componentsQuickCaptureStates": {
       "captured": "Yakalandı",
       "dismissError": "Hatayı reddet",
       "alreadyCaptured": "Zaten yakalandı",
-      "ldquo": "Ldquo;",
-      "rdquoMiddot": "rdquo; · ",
       "captureAnyway": "Yine de Yakala",
-      "close": "Kapat"
+      "close": "Kapat",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Yakalamak için bırakın",
@@ -466,7 +510,12 @@
       "cancelRecording": "Kaydı iptal et",
       "cancel": "İptal",
       "stopRecording": "Kaydı durdur",
-      "stop": "Durdur"
+      "stop": "Durdur",
+      "enableMicInSettings": "Sistem ayarlarınızdan mikrofon erişimine izin verin, sonra tekrar deneyin.",
+      "failedToStart": "Kayıt başlatılamadı",
+      "microphoneAccessDenied": "Mikrofon erişimi reddedildi",
+      "noMicrophoneFound": "Mikrofon bulunamadı",
+      "recordingError": "Kayıt sırasında bir hata oluştu"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Dosya yakalanamadı",
       "fileCaptureFailed": "Dosya yakalama başarısız oldu",
       "failedToCaptureAudio": "Ses yakalanamadı",
-      "failedToCaptureVoice": "Ses yakalanamadı"
+      "failedToCaptureVoice": "Ses yakalanamadı",
+      "failedToLoadInboxPreferences": "Gelen kutusu tercihleri yüklenemedi",
+      "failedToUpdateInboxPreferences": "Gelen kutusu tercihleri güncellenemedi"
     },
     "toasts": {
       "inboxRefreshed": "Gelen kutusu yenilendi"
@@ -516,5 +567,10 @@
     "task": "Görev",
     "time": "Saat",
     "title": "Dönüştür"
+  },
+  "reviewNudge": {
+    "action": "Gelen kutusunu aç",
+    "description": "Bugünün yakalamalarını tek seferde, sakince işleyin.",
+    "title": "{count, plural, one {# öğeyi gözden geçirme zamanı} other {# öğeyi gözden geçirme zamanı}}"
   }
 }

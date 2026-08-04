@@ -34,7 +34,15 @@
     "createAnother": "สร้างอีกอัน",
     "delete": "ลบภารกิจ",
     "created": "สร้างเมื่อ {date}",
-    "reminder": "การเตือน"
+    "reminder": "การเตือน",
+    "tags": "แท็ก",
+    "priorityLabels": {
+      "high": "สูง",
+      "low": "ต่ำ",
+      "medium": "ปานกลาง",
+      "none": "ไม่มีลำดับความสำคัญ",
+      "urgent": "ด่วน"
+    }
   },
   "filters": {
     "filter": "  \nกรอง  ",
@@ -43,11 +51,32 @@
     "groupBy": "จัดกลุ่มตาม",
     "groupByOptions": "ตัวเลือกการจัดกลุ่ม",
     "sortAscending": "เรียงลำดับจากน้อยไปมาก",
-    "sortDescending": "เรียงลำดับจากมากไปน้อย"
+    "sortDescending": "เรียงลำดับจากมากไปน้อย",
+    "dueDate": {
+      "any": "วันครบกำหนดใดก็ได้",
+      "custom": "ช่วงที่กำหนดเอง...",
+      "nextWeek": "สัปดาห์หน้า",
+      "none": "ไม่มีวันครบกำหนด",
+      "overdue": "เลยกำหนด",
+      "thisMonth": "เดือนนี้",
+      "thisWeek": "สัปดาห์นี้",
+      "today": "วันนี้",
+      "tomorrow": "พรุ่งนี้"
+    },
+    "quickPresets": {
+      "dueThisWeek": "ครบกำหนดสัปดาห์นี้",
+      "highPriority": "ลำดับความสำคัญสูง",
+      "noDueDate": "ไม่มีวันครบกำหนด",
+      "overdue": "เลยกำหนด",
+      "repeating": "ทำซ้ำ"
+    },
+    "repeatTypeOneTime": "ครั้งเดียว",
+    "repeatTypeRepeating": "ทำซ้ำ"
   },
   "quickAdd": {
     "label": "เพิ่มงานอย่างรวดเร็ว",
-    "focusDescription": "เน้นที่การป้อนงานอย่างรวดเร็ว"
+    "focusDescription": "เน้นที่การป้อนงานอย่างรวดเร็ว",
+    "placeholder": "เพิ่มงาน…    !today  !!high  #project"
   },
   "drawer": {
     "close": "ปิดรายละเอียดงาน",
@@ -75,7 +104,21 @@
     "searchRelated": "ค้นหาที่เกี่ยวข้อง…"
   },
   "kanban": {
-    "board": "บอร์ดคานบัน"
+    "board": "บอร์ดคานบัน",
+    "empty": {
+      "default": {
+        "subtitle": "ลากงานมาที่นี่หรือคลิก + เพื่อเพิ่ม",
+        "title": "ไม่มีงาน"
+      },
+      "done": {
+        "subtitle": "ทำงานให้เสร็จเพื่อดูที่นี่",
+        "title": "ไม่มีงานที่เสร็จแล้ว"
+      },
+      "schedule": {
+        "subtitle": "ลากงานมาที่นี่เพื่อจัดตารางใหม่",
+        "title": "ยังไม่มีสิ่งที่จัดตารางไว้"
+      }
+    }
   },
   "toasts": {
     "projectUpdated": "ปรับปรุงโครงการแล้ว",
@@ -98,7 +141,53 @@
     "noCompletedSelected": "ไม่มีงานที่เสร็จสมบูรณ์ถูกเลือก",
     "completeFailed": "ไม่สามารถทำงานให้เสร็จสมบูรณ์ได้",
     "deleteFailed": "ไม่สามารถลบงานได้",
-    "moveFailed": "ไม่สามารถย้ายงานได้"
+    "moveFailed": "ไม่สามารถย้ายงานได้",
+    "bulk": {
+      "archived": "{count, plural, other {เก็บถาวร # งานแล้ว}}",
+      "completed": "{count, plural, other {ทำ # งานเสร็จแล้ว}}",
+      "deleted": "{count, plural, other {ลบ # งานแล้ว}}",
+      "deletedDescription": "การกระทำนี้สามารถเลิกทำได้ในช่วงเวลาสั้น ๆ",
+      "dueDateRemoved": "{count, plural, other {ลบวันครบกำหนดออกจาก # งานแล้ว}}",
+      "dueDateSet": "{count, plural, other {ตั้งวันครบกำหนดให้ # งานแล้ว}}",
+      "movedToProject": "{count, plural, other {ย้าย # งานไปยัง {project} แล้ว}}",
+      "movedToStatus": "{count, plural, other {ย้าย # งานไปยัง {status} แล้ว}}",
+      "priorityRemoved": "{count, plural, other {ลบลำดับความสำคัญของ # งานแล้ว}}",
+      "prioritySet": "{count, plural, other {ตั้งลำดับความสำคัญเป็น {priority} ให้ # งานแล้ว}}",
+      "restored": "{count, plural, other {กู้คืน # งานแล้ว}}",
+      "undoArchive": "{count, plural, other {เก็บถาวร # งาน}}",
+      "undoComplete": "{count, plural, other {ทำ # งานให้เสร็จ}}",
+      "undoDelete": "{count, plural, other {ลบ # งาน}}",
+      "undoDueDate": "{count, plural, other {เปลี่ยนวันครบกำหนดของ # งาน}}",
+      "undoMove": "{count, plural, other {ย้าย # งาน}}",
+      "undoStatus": "{count, plural, other {สถานะ → {status} สำหรับ # งาน}}",
+      "undoUncomplete": "{count, plural, other {ยกเลิกสถานะเสร็จของ # งาน}}"
+    },
+    "drag": {
+      "archived": "{count, plural, other {เก็บถาวร # งานแล้ว}}",
+      "deleted": "{count, plural, other {ลบ # งานแล้ว}}",
+      "moved": "{count, plural, other {ย้าย # งานไปยัง {target} แล้ว}}",
+      "movedTo": "ย้ายไปยัง {target} แล้ว",
+      "prioritySet": "{count, plural, other {ตั้งลำดับความสำคัญของ # งานเป็น {priority}}}",
+      "prioritySetTo": "ตั้งลำดับความสำคัญเป็น {priority} แล้ว",
+      "rescheduled": "{count, plural, other {จัดตาราง # งานใหม่ไปยัง {target}}}",
+      "rescheduledTo": "จัดตารางใหม่ไปยัง {target} แล้ว",
+      "undoArchive": "{count, plural, other {เก็บถาวร # งานแล้ว}}"
+    },
+    "subtasks": {
+      "added": "{count, plural, other {เพิ่ม # งานย่อยแล้ว}}",
+      "completed": "{count, plural, other {ทำ # งานย่อยเสร็จแล้ว}}",
+      "deleted": "{count, plural, other {ลบ # งานย่อยแล้ว}}",
+      "deletedDescription": "งานย่อยถูกลบออกแล้ว",
+      "dueDateCleared": "{count, plural, other {ล้างวันครบกำหนดของ # งานย่อยแล้ว}}",
+      "dueDateSet": "{count, plural, other {ตั้งวันครบกำหนดให้ # งานย่อยแล้ว}}",
+      "markedIncomplete": "{count, plural, other {ทำเครื่องหมาย # งานย่อยว่ายังไม่เสร็จ}}",
+      "movedUnder": "ย้ายไปอยู่ใต้ \"{title}\" แล้ว",
+      "parentAndSubtasksCompleted": "งานและงานย่อยเสร็จสมบูรณ์แล้ว",
+      "parentDeletedKeepSubtasks": "ลบงานแล้ว งานย่อยถูกแปลงเป็นงาน",
+      "parentDeletedWithSubtasks": "ลบงานและงานย่อยแล้ว",
+      "prioritySet": "{count, plural, other {ตั้งลำดับความสำคัญให้ # งานย่อยแล้ว}}",
+      "promoted": "เลื่อนระดับ \"{title}\" เป็นงานแล้ว"
+    }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -179,7 +268,8 @@
       "nextMonth": "เดือนถัดไป",
       "goToToday": "ไปยังวันนี้",
       "today": "วันนี้",
-      "w": "พ"
+      "w": "พ",
+      "weekNumber": "สัปดาห์ที่ {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "ลบวันที่",
@@ -197,44 +287,39 @@
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "โครงการนี้ไม่มีงานใด ๆ และจะถูกลบอย่างถาวร",
       "thisActionCannotBeUndone": "การกระทำนี้ไม่สามารถยกเลิกได้",
       "cancel": "ยกเลิก",
-      "deleteProject": "ลบโปรเจกต์"
+      "deleteProject": "ลบโปรเจกต์",
+      "notesEventsAndFilesStayNotice": "งานในโครงการนี้จะถูกลบ ส่วนโน้ต กิจกรรม และไฟล์ของคุณจะยังอยู่ในคลัง"
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "ต้องการลบงานหรือไม่?",
-      "ldquo": "ldquo;",
-      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; จะถูกลบอย่างถาวร การกระทำนี้ไม่สามารถยกเลิกได้",
-      "deleteTask2": "ลบงาน"
+      "deleteTask2": "ลบงาน",
+      "deleteConfirmBody": "“{title}” จะถูกลบอย่างถาวร การกระทำนี้ไม่สามารถย้อนกลับได้"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "งานย่อยทั้งหมดเสร็จสมบูรณ์!",
-      "ldquo": "ldquo;",
-      "rdquoHasAll": "rdquo; มีทั้งหมด ",
-      "subtask": "งานย่อย",
-      "done": "เสร็จแล้ว",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "คุณต้องการทำเครื่องหมายงานหลักว่าเสร็จสมบูรณ์ด้วยหรือไม่?",
       "keepTaskOpen": "เก็บงานให้อยู่ในสถานะเปิด",
-      "completeTask": "ทำงานให้เสร็จ ✓"
+      "completeTask": "ทำงานให้เสร็จ ✓",
+      "allSubtasksDoneBody": "งานย่อยทั้ง {count, plural, other {# รายการ}} ของ “{title}” เสร็จเรียบร้อยแล้ว"
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "กำหนดวันที่ครบกำหนดสำหรับงานย่อยทั้งหมด",
       "setDueDateFor": "ตั้งวันกำหนดส่งสำหรับ",
-      "subtask": "งานย่อย",
-      "in": "ใน “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "ใช้กับงานย่อยที่เสร็จสมบูรณ์ด้วย (",
       "clearDate": "ล้างวันที่",
       "cancel": "ยกเลิก",
-      "apply": "ใช้"
+      "apply": "ใช้",
+      "alsoApplyToCompletedSubtasksCount": "ใช้กับงานย่อยที่เสร็จแล้วด้วย ({count})",
+      "setDueDateForSubtasksIn": "ตั้งวันครบกำหนดให้งานย่อย {count, plural, other {# รายการ}} ใน “{title}”"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "ตั้งค่าลำดับความสำคัญสำหรับงานย่อยทั้งหมด",
       "setPriorityFor": "ตั้งค่าลำดับความสำคัญสำหรับ ",
-      "subtask": "งานย่อย",
-      "in": "ใน “",
-      "rdquo": "rdquo;",
       "alsoApplyToCompletedSubtasks": "ใช้กับงานย่อยที่เสร็จสมบูรณ์ด้วย (",
       "cancel": "ยกเลิก",
-      "apply": "ใช้"
+      "apply": "ใช้",
+      "alsoApplyToCompletedSubtasksCount": "ใช้กับงานย่อยที่เสร็จแล้วด้วย ({count})",
+      "setPriorityForSubtasksIn": "ตั้งลำดับความสำคัญให้งานย่อย {count, plural, other {# รายการ}} ใน “{title}”"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "ทำงานให้เสร็จพร้อมกับงานย่อยที่ยังไม่เสร็จ?",
@@ -252,13 +337,10 @@
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "ลบงานย่อยทั้งหมดหรือไม่?  ",
-      "thisWillDelete": "สิ่งนี้จะลบ  ",
-      "subtask": "งานย่อย",
-      "from": "จาก “  ",
-      "rdquo": "rdquo;  ",
       "thisActionCannotBeUndone": "การกระทำนี้ไม่สามารถยกเลิกได้",
       "cancel": "ยกเลิก",
-      "deleteAll": "ลบทั้งหมด  "
+      "deleteAll": "ลบทั้งหมด  ",
+      "deleteSubtasksConfirmation": "การดำเนินการนี้จะลบงานย่อย {count, plural, other {# รายการ}} ออกจาก “{title}”"
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "ลบงานพร้อมงานย่อยหรือไม่?  ",
@@ -275,10 +357,13 @@
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "ทำสำเนางาน  ",
       "createACopyOf": "สร้างสำเนาของ “  ",
-      "rdquo": "rdquo;",
       "alsoDuplicateSubtasks": "ก็ทำสำเนางานย่อยด้วย (  ",
       "cancel": "ยกเลิก",
-      "duplicate": "ทำสำเนา  "
+      "duplicate": "ทำสำเนา  ",
+      "alsoDuplicateSubtasksCount": "ทำสำเนางานย่อยด้วย ({count})",
+      "createACopyOfTitle": "สร้างสำเนาของ “{title}”",
+      "duplicateTaskOnly": "ทำสำเนางาน",
+      "duplicateWithItems": "ทำสำเนา ({count, plural, other {# รายการ}})"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "ทำให้งานย่อยของ...  ",
@@ -324,7 +409,11 @@
       "addTime": "เพิ่มเวลา",
       "time": "เวลา",
       "clearDate": "ล้างวันที่",
-      "backToOptions": "  \nกลับไปที่ตัวเลือก  "
+      "backToOptions": "  \nกลับไปที่ตัวเลือก  ",
+      "nextWeek": "สัปดาห์หน้า",
+      "thisWeekend": "สุดสัปดาห์นี้",
+      "today": "วันนี้",
+      "tomorrow": "พรุ่งนี้"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "  \nแก้ไขงานที่ทำซ้ำ  ",
@@ -357,7 +446,9 @@
       "due": "ครบกำหนด",
       "dueDate": "วันครบกำหนด",
       "search": "ค้นหา",
-      "clearAll": "ล้างทั้งหมด"
+      "clearAll": "ล้างทั้งหมด",
+      "tags": "แท็ก",
+      "tagsIs": "แท็กคือ"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "กรองตามวันครบกำหนด",
@@ -421,7 +512,17 @@
       "currentFilters": "ตัวกรองปัจจุบัน:",
       "noFiltersApplied": "ยังไม่มีตัวกรองที่ถูกนำมาใช้",
       "cancel": "ยกเลิก",
-      "saveFilter2": "บันทึกตัวกรอง"
+      "saveFilter2": "บันทึกตัวกรอง",
+      "nameRequired": "โปรดใส่ชื่อสำหรับตัวกรองนี้",
+      "summaryDue": "ครบกำหนด: {value}",
+      "summaryDueRange": "ครบกำหนด: {start} - {end}",
+      "summaryPriorities": "ลำดับความสำคัญ: {names}",
+      "summaryProjects": "โครงการ: {names}",
+      "summaryRepeatOneTime": "การทำซ้ำ: เฉพาะงานครั้งเดียว",
+      "summaryRepeatRepeating": "การทำซ้ำ: เฉพาะงานที่ทำซ้ำ",
+      "summarySearch": "ค้นหา: \"{query}\"",
+      "summaryTimeWith": "เวลา: มีเวลา",
+      "summaryTimeWithout": "เวลา: ไม่มีเวลา"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "ตัวกรองที่บันทึก",
@@ -553,7 +654,16 @@
       "d": "d"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "เพิ่มงาน"
+      "addTask": "เพิ่มงาน",
+      "allDescription": "สร้างงานแรกของคุณเพื่อเริ่มต้น",
+      "allTitle": "ยังไม่มีงาน",
+      "completedDescription": "งานที่เสร็จแล้วจะปรากฏที่นี่",
+      "completedTitle": "ไม่มีงานที่เสร็จแล้ว",
+      "projectDescription": "เพิ่มงานเพื่อเริ่มต้น",
+      "projectTitle": "ไม่มีงานในโครงการนี้",
+      "projectTitleNamed": "ไม่มีงานใน {name}",
+      "todayDescription": "คุณจัดการทุกอย่างเรียบร้อยแล้ว!",
+      "todayTitle": "ไม่มีงานครบกำหนดวันนี้"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "ไม่มีลำดับความสำคัญ"
@@ -589,6 +699,12 @@
       "noUpcomingTasks": "ไม่มีงานที่กำลังจะมาถึง",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "งานที่มีกำหนดในอีก 7 วันข้างหน้าจะแสดงที่นี่ วางแผนสัปดาห์ของคุณโดยการเพิ่มงานบางอย่าง",
       "addTask2": "เพิ่มงาน"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "is": "คือ",
+      "search": "ค้นหา...",
+      "selected": "เลือกแล้ว",
+      "tags": "แท็ก"
     }
   },
   "phaseI": {
@@ -638,5 +754,147 @@
       "updateFailed": "อัปเดตการเตือนไม่สำเร็จ",
       "updated": "อัปเดตการเตือนแล้ว"
     }
+  },
+  "addToProject": {
+    "dialogTitle": "เพิ่มไปยังโครงการ",
+    "loading": "กำลังโหลดโครงการ…",
+    "menuLabel": "เพิ่มไปยังโครงการ",
+    "noProjects": "ยังไม่มีโครงการ",
+    "toastError": "เพิ่มไปยังโครงการไม่สำเร็จ",
+    "toastSuccess": "เพิ่มไปยัง {name} แล้ว"
+  },
+  "itemProjects": {
+    "openProject": "เปิดโครงการ {name}"
+  },
+  "projectHome": {
+    "emptyBody": "เลือกโครงการจากแถบด้านข้างเพื่อเปิดหน้าแรกของโครงการ",
+    "emptyTitle": "ยังไม่ได้เลือกโครงการ",
+    "loadError": "ไม่สามารถโหลดรายละเอียดโครงการได้",
+    "overview": {
+      "clear": "ล้างภาพรวม",
+      "clearError": "ไม่สามารถล้างโน้ตภาพรวมได้",
+      "create": "สร้างโน้ตภาพรวม",
+      "createError": "ไม่สามารถสร้างโน้ตภาพรวมได้",
+      "defaultTitle": "ภาพรวม",
+      "loadError": "ไม่สามารถโหลดโน้ตภาพรวมได้",
+      "placeholder": "เขียนภาพรวมสำหรับโครงการนี้…",
+      "saveError": "ไม่สามารถบันทึกโน้ตภาพรวมได้",
+      "sectionTitle": "ภาพรวม"
+    }
+  },
+  "projectHub": {
+    "capture": {
+      "attach": "แนบไฟล์",
+      "fileError": "ไม่สามารถเชื่อมโยง {name} ได้",
+      "fileErrorGeneric": "ไม่สามารถนำเข้าไฟล์ได้",
+      "filesAdded": "{count, plural, other {เพิ่ม # ไฟล์ไปยังโครงการแล้ว}}",
+      "label": "เพิ่มไปยัง {name}",
+      "linkAdded": "เพิ่มลิงก์ไปยังโครงการแล้ว",
+      "linkError": "ไม่สามารถบันทึกลิงก์ได้",
+      "placeholder": "เพิ่มไปยัง {name} — พิมพ์ชื่องาน จดโน้ต หรือวางลิงก์…"
+    },
+    "groups": {
+      "older": "เก่า",
+      "past": "ที่ผ่านมา",
+      "today": "วันนี้",
+      "tomorrow": "พรุ่งนี้",
+      "upcoming": "กำลังจะถึง",
+      "yesterday": "เมื่อวาน"
+    },
+    "header": {
+      "archiveProject": "เก็บถาวรโครงการ",
+      "editProject": "แก้ไขโครงการ",
+      "menu": "การดำเนินการกับโครงการ",
+      "toggleRail": "สลับรายละเอียดโครงการ"
+    },
+    "rail": {
+      "addNote": "เพิ่มโน้ต",
+      "created": "สร้างเมื่อ",
+      "details": "รายละเอียด",
+      "doneOf": "เสร็จแล้ว {done} จาก {total}",
+      "linked": "เชื่อมโยงแล้ว",
+      "linkedSummary": "{notes, plural, other {# โน้ต}} · {files, plural, other {# ไฟล์}} · {events, plural, other {# กิจกรรม}}",
+      "overdue": "เลยกำหนด",
+      "overview": "ภาพรวม",
+      "pinError": "ไม่สามารถเพิ่มโน้ตลงในภาพรวมได้",
+      "progress": "ความคืบหน้า",
+      "unpinError": "ไม่สามารถนำโน้ตออกจากภาพรวมได้",
+      "unpinNote": "นำ {title} ออกจากภาพรวม",
+      "updated": "อัปเดตเมื่อ"
+    },
+    "rows": {
+      "openEvent": "เปิดกิจกรรม {title}",
+      "openFile": "เปิดไฟล์ {title}",
+      "openNote": "เปิดโน้ต {title}",
+      "openTask": "เปิดงาน {title}",
+      "setNoteIcon": "ตั้งค่าไอคอนให้ {title}"
+    },
+    "sections": {
+      "add": "เพิ่มไปยัง {title}",
+      "emptyEvents": "ยังไม่มีกิจกรรมที่เชื่อมโยง",
+      "emptyFiles": "ยังไม่มีไฟล์ที่เชื่อมโยง",
+      "emptyNotes": "ยังไม่มีโน้ตที่เชื่อมโยง",
+      "emptyTasks": "ยังไม่มีงาน",
+      "newNoteError": "ไม่สามารถเพิ่มโน้ตได้",
+      "newNoteTitle": "โน้ตไม่มีชื่อ",
+      "viewAll": "ดูทั้งหมด"
+    },
+    "tabs": {
+      "events": "กิจกรรม",
+      "files": "ไฟล์",
+      "label": "มุมมองโครงการ",
+      "notes": "โน้ต",
+      "overview": "ภาพรวม",
+      "tasks": "งาน"
+    }
+  },
+  "priorityInline": {
+    "high": "สูง",
+    "low": "ต่ำ",
+    "medium": "ปานกลาง",
+    "urgent": "ด่วน"
+  },
+  "priorityLabels": {
+    "high": "สูง",
+    "low": "ต่ำ",
+    "medium": "ปานกลาง",
+    "none": "ไม่มีลำดับความสำคัญ",
+    "urgent": "ด่วน"
+  },
+  "project": {
+    "statusTypes": {
+      "done": "เสร็จแล้ว",
+      "inProgress": "กำลังดำเนินการ",
+      "todo": "ที่ต้องทำ"
+    },
+    "validation": {
+      "minStatuses": "โครงการต้องมีสถานะอย่างน้อย 2 สถานะ",
+      "nameRequired": "ต้องระบุชื่อโครงการ",
+      "nameTooLong": "ชื่อโครงการต้องยาวไม่เกิน 50 ตัวอักษร",
+      "needsDoneStatus": "โครงการต้องมีสถานะ 'เสร็จแล้ว' อย่างน้อยหนึ่งสถานะ",
+      "needsDoneStatusForCompletedTasks": "โครงการต้องมีสถานะ 'เสร็จแล้ว' อย่างน้อยหนึ่งสถานะสำหรับงานที่เสร็จสมบูรณ์",
+      "needsTodoStatus": "โครงการต้องมีสถานะ 'ที่ต้องทำ' อย่างน้อยหนึ่งสถานะ",
+      "needsTodoStatusForNewTasks": "โครงการต้องมีสถานะ 'ที่ต้องทำ' อย่างน้อยหนึ่งสถานะสำหรับงานใหม่",
+      "statusNameRequired": "ทุกสถานะต้องมีชื่อ",
+      "statusNamesUnique": "ชื่อสถานะต้องไม่ซ้ำกัน",
+      "statusNotFound": "ไม่พบสถานะ"
+    }
+  },
+  "statusLabels": {
+    "done": "เสร็จแล้ว",
+    "inProgress": "กำลังดำเนินการ",
+    "todo": "ที่ต้องทำ"
+  },
+  "colors": {
+    "blue": "สีน้ำเงิน",
+    "gray": "สีเทา",
+    "green": "สีเขียว",
+    "indigo": "สีน้ำเงินคราม",
+    "orange": "สีส้ม",
+    "pink": "สีชมพู",
+    "purple": "สีม่วง",
+    "red": "สีแดง",
+    "teal": "สีเขียวน้ำทะเล",
+    "yellow": "สีเหลือง"
   }
 }

@@ -281,7 +281,9 @@ describe('embedding projector', () => {
     const run = vi.fn()
     const prepare = vi.fn(() => ({ run }))
     const send = vi.fn()
-    getAllWindows.mockReturnValue([{ webContents: { send } }])
+    getAllWindows.mockReturnValue([
+      { isDestroyed: () => false, webContents: { isDestroyed: () => false, send } }
+    ])
     getRawIndexDatabase.mockReturnValue({ prepare })
     getIndexDatabase.mockReturnValue({
       all: vi.fn(() => [

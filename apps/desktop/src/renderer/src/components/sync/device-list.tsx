@@ -77,7 +77,6 @@ const platformLabel = (platform: string): string => {
 const COLLAPSED_LIMIT = 3
 
 export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element {
-  const { t: tPhaseF } = useT('settings')
   const { t } = useT('settings')
   const { t: tCommon } = useT('common')
   const [devices, setDevices] = useState<Device[]>([])
@@ -223,8 +222,10 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
                       )}
                     </div>
                     <span className="text-[11px]/3.5 text-muted-foreground">
-                      {platformLabel(device.platform)} &
-                      {tPhaseF('phaseF.componentsSyncDeviceList.middot')} {syncLabel}
+                      {t('devices.platformMeta', {
+                        platform: platformLabel(device.platform),
+                        detail: syncLabel
+                      })}
                     </span>
                   </div>
                 </div>

@@ -52,7 +52,7 @@
       "italic": "cursiv",
       "underline": "Subliniați",
       "strikethrough": "Striat",
-      "link": "Link",
+      "link": "Legătură",
       "image": "Imagine",
       "moreOptions": "Mai multe opțiuni",
       "heading1": "Titlul 1",
@@ -115,7 +115,7 @@
     "monthShort": {
       "january": "ian",
       "february": "feb",
-      "march": "Mar",
+      "march": "mar",
       "april": "apr",
       "may": "mai",
       "june": "Iun",
@@ -124,7 +124,7 @@
       "september": "sept",
       "october": "oct",
       "november": "nov",
-      "december": "Dec"
+      "december": "dec"
     },
     "greeting": {
       "morning": "Bună dimineața",

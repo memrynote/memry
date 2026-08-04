@@ -47,7 +47,8 @@
     "expand": "Expand",
     "collapse": "Collapse",
     "showMore": "+{count, plural, one {# more} other {# more}}",
-    "showLess": "Show less"
+    "showLess": "Show less",
+    "undo": "Undo"
   },
   "tabs": {
     "pin": "Pin Tab",
@@ -81,7 +82,10 @@
   "dateRelative": {
     "today": "Today",
     "yesterday": "Yesterday",
-    "daysAgo": "{count, plural, one {# day ago} other {# days ago}}"
+    "daysAgo": "{count, plural, one {# day ago} other {# days ago}}",
+    "tomorrow": "Tomorrow",
+    "daysOverdue": "{count, plural, one {# day overdue} other {# days overdue}}",
+    "daysLate": "{count, plural, one {#d late} other {#d late}}"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Every day} other {Every # days}}",
@@ -93,7 +97,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Every month on the {day}{suffix}} other {Every # months on the {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Every month on the {week} {day}} other {Every # months on the {week} {day}}}",
     "everyNYears": "{count, plural, one {Every year} other {Every # years}}",
-    "repeats": "Repeats"
+    "repeats": "Repeats",
+    "ordinal": {
+      "first": "first",
+      "second": "second",
+      "third": "third",
+      "fourth": "fourth",
+      "last": "last"
+    },
+    "preset": {
+      "everyWeekday": "Every weekday (Mon-Fri)",
+      "everyYearOnDate": "Every year on {date}"
+    }
   },
   "agentChat": {
     "title": "Agent chat",
@@ -376,8 +391,9 @@
       "search": "Search",
       "searchNotesTasksJournalInbox": "Search notes, tasks, journal, inbox...",
       "noResultsFor": "No results for “",
-      "rdquo": "rdquo;",
-      "result": "result"
+      "result": "result",
+      "noResultsForQuery": "No results for “{query}”",
+      "resultCount": "{count, plural, one {# result} other {# results}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Search and click items to build your trail",
@@ -466,8 +482,7 @@
     },
     "componentsTabsUnsavedChangesDialog": {
       "unsavedChanges": "Unsaved Changes",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; has unsaved changes. What would you like to do?"
+      "unsavedChangesBody": "\"{title}\" has unsaved changes. What would you like to do?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "New workspace",
@@ -539,7 +554,6 @@
       "logOut": "Log out",
       "signInToSync": "Sign in to sync",
       "remove": "Remove “",
-      "rdquoFromList": "rdquo; from list?",
       "removeVaultTitle": "Remove “{name}” from list?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "This vault will be removed from the app, but your files will remain on disk. You can always re-add it later.",
       "cancel": "Cancel",
@@ -581,7 +595,7 @@
       "removeAria": "Remove widget",
       "dragAria": "Drag widget",
       "configAria": "Configure widget",
-      "resizeAria": "Resize to {{size}}",
+      "resizeAria": "Resize to {size}",
       "menuAria": "Widget options",
       "resize": "Size",
       "configure": "Configure",
@@ -695,6 +709,131 @@
     "settings": {
       "title": "Settings & imports",
       "body": "Import your notes from 12+ apps — Obsidian, Notion, Apple Notes, Evernote and more — and tune everything else in Settings."
+    },
+    "tour": {
+      "next": "Next",
+      "previous": "Previous",
+      "progress": "{current} of {total}"
+    }
+  },
+  "shortcuts": {
+    "description": "Fast paths for moving around memrynote, capturing thoughts, and processing work.",
+    "or": "or",
+    "then": "then",
+    "groups": {
+      "general": {
+        "title": "General",
+        "description": "App-wide navigation and help."
+      },
+      "tabs": {
+        "title": "Tabs & Splits",
+        "description": "Move between tabs and panes."
+      },
+      "inbox": {
+        "title": "Inbox",
+        "description": "Process captured items quickly."
+      },
+      "journal": {
+        "title": "Journal",
+        "description": "Navigate journal views and focus the writing area."
+      },
+      "notes": {
+        "title": "Notes / Editor",
+        "description": "Write, format, and search notes."
+      },
+      "tasks": {
+        "title": "Tasks",
+        "description": "Filter, select, and complete tasks."
+      },
+      "settings": {
+        "title": "Settings",
+        "description": "Open settings and customize shortcuts."
+      }
+    },
+    "items": {
+      "general": {
+        "quickSearch": "Open quick search",
+        "createNote": "Create a note",
+        "openSettings": "Open settings",
+        "keyboardShortcuts": "Open keyboard shortcuts",
+        "undoTaskAction": "Undo last task action",
+        "toggleSidebar": "Toggle the sidebar",
+        "sidebarSection": "Go to sidebar section"
+      },
+      "tabs": {
+        "newTabMenu": "Open the new tab menu",
+        "closeTab": "Close tab",
+        "closeAllInPane": "Close all tabs in pane",
+        "reopenClosedTab": "Reopen closed tab",
+        "nextTab": "Next tab",
+        "previousTab": "Previous tab",
+        "pinTab": "Pin or unpin tab",
+        "duplicateTab": "Duplicate tab",
+        "splitRight": "Split right",
+        "splitDown": "Split down",
+        "closeSplitPane": "Close split pane",
+        "focusPane": "Focus another pane",
+        "moveTabToPane": "Move tab to pane",
+        "maximizePane": "Maximize current pane"
+      },
+      "inbox": {
+        "nextItem": "Next item",
+        "previousItem": "Previous item",
+        "firstOrLastItem": "First or last item",
+        "jumpByPage": "Jump by page",
+        "togglePreview": "Toggle preview panel",
+        "selectItem": "Select item",
+        "selectAllVisible": "Select all visible items",
+        "clearSelection": "Clear selection or close quick file",
+        "openQuickFile": "Open quick file",
+        "chooseQuickFileResult": "Choose a quick-file result",
+        "archiveItem": "Archive selected item",
+        "openOriginal": "Open original link",
+        "refresh": "Refresh inbox",
+        "confirmFiling": "Confirm filing panel"
+      },
+      "journal": {
+        "returnFromOverview": "Return from month or year view",
+        "toggleFullWidth": "Toggle full-width journal",
+        "find": "Find in journal",
+        "bold": "Bold selected text",
+        "italic": "Italic selected text",
+        "underline": "Underline selected text",
+        "link": "Add or edit link"
+      },
+      "notes": {
+        "createNote": "Create a note",
+        "saveNote": "Save current note",
+        "find": "Find in note",
+        "bold": "Bold",
+        "italic": "Italic",
+        "underline": "Underline",
+        "link": "Add or edit link",
+        "commandMenu": "Open editor command menu",
+        "closeOverlays": "Close editor overlays"
+      },
+      "tasks": {
+        "clearFilters": "Clear visible filters",
+        "selectAllVisible": "Select all visible tasks",
+        "clearSelection": "Clear task selection",
+        "completeSelected": "Complete selected tasks",
+        "deleteSelected": "Delete selected tasks",
+        "configureRepeat": "Configure repeat on focused task",
+        "skipOccurrence": "Skip repeat occurrence",
+        "stopRepeating": "Stop repeating task"
+      },
+      "settings": {
+        "openSettings": "Open settings",
+        "customizeShortcuts": "Customize keyboard shortcuts",
+        "recordShortcut": "Record a new shortcut",
+        "cancelRecording": "Cancel shortcut recording",
+        "resetShortcut": "Restore a shortcut default"
+      }
+    },
+    "combos": {
+      "shortcutsTab": "Shortcuts tab",
+      "clickRow": "Click row",
+      "reset": "Reset"
     }
   }
 }

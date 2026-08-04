@@ -16,7 +16,16 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
-  useT: () => ({ t: (key: string) => key })
+  // Echo the key, plus any interpolation params, so assertions can pin both the
+  // key and the values passed into it.
+  useT: () => ({
+    t: (key: string, params?: Record<string, unknown>) =>
+      params
+        ? `${key}(${Object.entries(params)
+            .map(([name, value]) => `${name}=${String(value)}`)
+            .join(', ')})`
+        : key
+  })
 }))
 
 vi.mock('@dnd-kit/sortable', () => ({
@@ -220,7 +229,11 @@ describe('ColumnHeader components', () => {
     fireEvent.keyDown(screen.getByDisplayValue('Custom Name'), { key: 'Escape' })
     expect(screen.queryByDisplayValue('Custom Name')).not.toBeInTheDocument()
 
-    const dragHandle = screen.getByLabelText('Drag to reorder column: customName')
+    // The drag handle announces the same resolved display name the visible label
+    // shows ("Custom Name"), not the raw column id.
+    const dragHandle = screen.getByLabelText(
+      'folderView.columnHeader.dragToReorder(name=Custom Name)'
+    )
     fireEvent.click(dragHandle)
     fireEvent.keyDown(dragHandle, { key: 'Enter' })
     fireEvent.keyDown(dragHandle, { key: ' ' })

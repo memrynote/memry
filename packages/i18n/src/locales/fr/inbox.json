@@ -41,11 +41,11 @@
     "images": "Images",
     "voice": "Voix",
     "video": "Vidéo",
-    "clip": "Clip",
+    "clip": "Extrait",
     "clips": "Extraits",
     "pdf": "PDF",
     "pdfs": "PDF",
-    "social": "Social",
+    "social": "Réseau social",
     "reminder": "Rappel",
     "reminders": "Rappels"
   },
@@ -270,7 +270,50 @@
     "panelEmpty": "Aucun rappel à venir.",
     "panelPast": "Passés",
     "panelUpcoming": "À venir",
-    "taskFallback": "Tâche"
+    "taskFallback": "Tâche",
+    "dateTime": {
+      "dateAt": "{date} à {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Aujourd'hui à {time}",
+      "todayCompact": "Aujourd'hui, {time}",
+      "tomorrowAt": "Demain à {time}",
+      "tomorrowCompact": "Demain, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Rappel d'anniversaire",
+      "inHours": {
+        "label": "Dans {count, plural, one {# heure} many {# heures} other {# heures}}"
+      },
+      "inMinutes": {
+        "label": "Dans {count, plural, one {# minute} many {# minutes} other {# minutes}}"
+      },
+      "inMonths": {
+        "label": "Dans {count, plural, one {# mois} many {# mois} other {# mois}}"
+      },
+      "inWeeks": {
+        "label": "Dans {count, plural, one {# semaine} many {# semaines} other {# semaines}}"
+      },
+      "inYears": {
+        "label": "Dans {count, plural, one {# an} many {# ans} other {# ans}}"
+      },
+      "laterToday": {
+        "description": "Dans {count, plural, one {# heure} many {# heures} other {# heures}}",
+        "label": "Plus tard aujourd'hui"
+      },
+      "monthlyReflection": "Réflexion mensuelle",
+      "nextWeek": {
+        "description": "Lundi à 9 h",
+        "label": "La semaine prochaine"
+      },
+      "quarterlyReflection": "Réflexion trimestrielle",
+      "reviewInAWeek": "Revoir dans une semaine",
+      "sameDayNextMonth": "Même jour le mois prochain",
+      "tomorrow": {
+        "description": "Demain à 9 h",
+        "label": "Demain"
+      },
+      "tomorrowMorning": "Demain matin"
+    }
   },
   "insights": {
     "captureActivity": "Activité de capture",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Joindre un fichier (images, audio, vidéo, PDF)",
       "recordVoiceMemo": "Enregistrer un mémo vocal",
       "recordVoiceMemo2": "Enregistrer un mémo vocal",
-      "alreadyCaptured": "Déjà capturé : «",
-      "rdquo": "rdquo ;",
       "captureAnyway": "Capturez quand même",
       "focusShortcut": "Activer le champ de capture",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Capturer le lien",
+      "captureNote": "Capturer la note",
+      "placeholder": "Capture rapide — collez un lien, notez une idée…",
+      "duplicateNotice": "Déjà capturé : « {title} »"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Choisir un dossier",
@@ -414,10 +459,9 @@
       "captured": "Capturé",
       "dismissError": "Ignorer l'erreur",
       "alreadyCaptured": "Déjà capturé",
-      "ldquo": "ldquo ;",
-      "rdquoMiddot": "rdquo ; · ",
       "captureAnyway": "Capturez quand même",
-      "close": "Fermer"
+      "close": "Fermer",
+      "duplicateMeta": "« {title} » · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Lâcher pour capturer",
@@ -466,7 +510,12 @@
       "cancelRecording": "Annuler l'enregistrement",
       "cancel": "Annuler",
       "stopRecording": "Arrêter l'enregistrement",
-      "stop": "Arrêter"
+      "stop": "Arrêter",
+      "enableMicInSettings": "Autorisez l'accès au microphone dans les paramètres de votre système, puis réessayez.",
+      "failedToStart": "Échec du démarrage de l'enregistrement",
+      "microphoneAccessDenied": "Accès au microphone refusé",
+      "noMicrophoneFound": "Aucun microphone détecté",
+      "recordingError": "Une erreur d'enregistrement s'est produite"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Échec de la capture du fichier",
       "fileCaptureFailed": "La capture du fichier a échoué",
       "failedToCaptureAudio": "Échec de la capture audio",
-      "failedToCaptureVoice": "Échec de la capture de la voix"
+      "failedToCaptureVoice": "Échec de la capture de la voix",
+      "failedToLoadInboxPreferences": "Échec du chargement des préférences de la boîte de réception",
+      "failedToUpdateInboxPreferences": "Échec de la mise à jour des préférences de la boîte de réception"
     },
     "toasts": {
       "inboxRefreshed": "Boîte de réception actualisée"
@@ -516,5 +567,10 @@
     "task": "Tâche",
     "time": "Heure",
     "title": "Convertir"
+  },
+  "reviewNudge": {
+    "action": "Ouvrir la boîte de réception",
+    "description": "Traitez les captures du jour en une seule passe tranquille.",
+    "title": "{count, plural, one {Il est temps de passer en revue # élément} many {Il est temps de passer en revue # éléments} other {Il est temps de passer en revue # éléments}}"
   }
 }

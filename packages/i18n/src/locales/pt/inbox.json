@@ -270,7 +270,50 @@
     "panelEmpty": "Sem lembretes futuros.",
     "panelPast": "Passados",
     "panelUpcoming": "Próximos",
-    "taskFallback": "Tarefa"
+    "taskFallback": "Tarefa",
+    "dateTime": {
+      "dateAt": "{date} às {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Hoje às {time}",
+      "todayCompact": "Hoje, {time}",
+      "tomorrowAt": "Amanhã às {time}",
+      "tomorrowCompact": "Amanhã, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Lembrete de aniversário",
+      "inHours": {
+        "label": "Dentro de {count, plural, one {# hora} many {# horas} other {# horas}}"
+      },
+      "inMinutes": {
+        "label": "Dentro de {count, plural, one {# minuto} many {# minutos} other {# minutos}}"
+      },
+      "inMonths": {
+        "label": "Dentro de {count, plural, one {# mês} many {# meses} other {# meses}}"
+      },
+      "inWeeks": {
+        "label": "Dentro de {count, plural, one {# semana} many {# semanas} other {# semanas}}"
+      },
+      "inYears": {
+        "label": "Dentro de {count, plural, one {# ano} many {# anos} other {# anos}}"
+      },
+      "laterToday": {
+        "description": "Dentro de {count, plural, one {# hora} many {# horas} other {# horas}}",
+        "label": "Mais tarde hoje"
+      },
+      "monthlyReflection": "Reflexão mensal",
+      "nextWeek": {
+        "description": "Segunda-feira às 9:00",
+        "label": "Próxima semana"
+      },
+      "quarterlyReflection": "Reflexão trimestral",
+      "reviewInAWeek": "Rever dentro de uma semana",
+      "sameDayNextMonth": "Mesmo dia no próximo mês",
+      "tomorrow": {
+        "description": "Amanhã às 9:00",
+        "label": "Amanhã"
+      },
+      "tomorrowMorning": "Amanhã de manhã"
+    }
   },
   "insights": {
     "captureActivity": "Atividade de captura",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Anexar arquivo (imagens, áudio, vídeo, PDF)",
       "recordVoiceMemo": "Gravar memorando de voz",
       "recordVoiceMemo2": "Gravar memorando de voz",
-      "alreadyCaptured": "Já capturado: “",
-      "rdquo": "rdquo;",
       "captureAnyway": "Capturar de qualquer maneira",
       "focusShortcut": "Focar campo de captura",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Capturar link",
+      "captureNote": "Capturar nota",
+      "placeholder": "Captura rápida — cole um link, anote uma ideia…",
+      "duplicateNotice": "Já capturado: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Escolha a pasta",
@@ -414,10 +459,9 @@
       "captured": "Capturado",
       "dismissError": "Ignorar erro",
       "alreadyCaptured": "Já capturado",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; · ",
       "captureAnyway": "Capturar de qualquer maneira",
-      "close": "Fechar"
+      "close": "Fechar",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Solte para capturar",
@@ -466,7 +510,12 @@
       "cancelRecording": "Cancelar gravação",
       "cancel": "Cancelar",
       "stopRecording": "Pare de gravar",
-      "stop": "Pare"
+      "stop": "Pare",
+      "enableMicInSettings": "Ative o acesso ao microfone nas definições do sistema e tente novamente.",
+      "failedToStart": "Não foi possível iniciar a gravação",
+      "microphoneAccessDenied": "Acesso ao microfone negado",
+      "noMicrophoneFound": "Nenhum microfone encontrado",
+      "recordingError": "Ocorreu um erro de gravação"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Falha ao capturar o arquivo",
       "fileCaptureFailed": "Falha na captura de arquivo",
       "failedToCaptureAudio": "Falha ao capturar áudio",
-      "failedToCaptureVoice": "Falha ao capturar voz"
+      "failedToCaptureVoice": "Falha ao capturar voz",
+      "failedToLoadInboxPreferences": "Falha ao carregar as preferências da caixa de entrada",
+      "failedToUpdateInboxPreferences": "Falha ao atualizar as preferências da caixa de entrada"
     },
     "toasts": {
       "inboxRefreshed": "Caixa de entrada atualizada"
@@ -516,5 +567,10 @@
     "task": "Tarefa",
     "time": "Hora",
     "title": "Converter"
+  },
+  "reviewNudge": {
+    "action": "Abrir caixa de entrada",
+    "description": "Trate das capturas de hoje de uma só vez, com calma.",
+    "title": "{count, plural, one {Hora de rever # item} many {Hora de rever # itens} other {Hora de rever # itens}}"
   }
 }

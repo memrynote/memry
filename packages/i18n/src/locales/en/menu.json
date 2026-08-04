@@ -1,7 +1,12 @@
 {
   "app": {
     "quit": "Quit",
-    "preferences": "Settings…"
+    "preferences": "Settings…",
+    "services": "Services",
+    "hide": "Hide MemryNote",
+    "hideOthers": "Hide Others",
+    "unhide": "Show All",
+    "exit": "Exit"
   },
   "file": {
     "label": "File",
@@ -24,7 +29,11 @@
     "paste": "Paste",
     "selectAll": "Select All",
     "find": "Find",
-    "speech": "Speech"
+    "speech": "Speech",
+    "pasteAndMatchStyle": "Paste and Match Style",
+    "delete": "Delete",
+    "startSpeaking": "Start Speaking",
+    "stopSpeaking": "Stop Speaking"
   },
   "insert": {
     "label": "Insert",
@@ -58,15 +67,23 @@
     "themeLight": "Light",
     "themeDark": "Dark",
     "themeWhite": "Paper",
-    "themeSystem": "System"
+    "themeSystem": "System",
+    "actualSize": "Actual Size",
+    "zoomIn": "Zoom In",
+    "zoomOut": "Zoom Out"
   },
   "window": {
-    "label": "Window"
+    "label": "Window",
+    "minimize": "Minimize",
+    "zoom": "Zoom",
+    "front": "Bring All to Front",
+    "close": "Close"
   },
   "help": {
     "label": "Help",
     "documentation": "Documentation",
     "shortcuts": "Keyboard Shortcuts",
-    "about": "About MemryNote"
+    "about": "About MemryNote",
+    "aboutVersion": "Version {version}"
   }
 }

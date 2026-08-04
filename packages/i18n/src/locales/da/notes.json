@@ -16,9 +16,27 @@
       "willSync": "Note vil synkronisere til skyen",
       "renameFailed": "Noten kunne ikke omdøbes",
       "toggleLocalOnlyFailed": "Kunne ikke skifte lokalt",
-      "toggleFullWidthFailed": "Kunne ikke skifte fuld bredde"
+      "toggleFullWidthFailed": "Kunne ikke skifte fuld bredde",
+      "copyPathFailed": "Stien kunne ikke kopieres",
+      "deleteFailed": "Noten kunne ikke slettes",
+      "moveFailed": "Noten kunne ikke flyttes",
+      "moved": "Noten er flyttet",
+      "openExternalFailed": "Noten kunne ikke åbnes",
+      "pathCopied": "Stien er kopieret",
+      "revealFailed": "Noten kunne ikke vises"
     },
-    "deleteDialogTitle": "{count, plural, one {Slet note} other {Slet #-noter}}"
+    "deleteDialogTitle": "{count, plural, one {Slet note} other {Slet #-noter}}",
+    "deleteConfirm": {
+      "cancel": "Annuller",
+      "confirm": "Slet",
+      "deleting": "Sletter...",
+      "description": "Er du sikker på, at du vil slette \"{title}\"? Denne handling kan ikke fortrydes.",
+      "title": "Slet note"
+    },
+    "itemsCount": "{count, plural, one {# element} other {# elementer}}",
+    "itemsCountFiltered": "{shown} af {total, plural, one {# element} other {# elementer}}",
+    "renameViewUnavailableForTags": "Gemte visninger kan endnu ikke omdøbes for tags",
+    "tagFilterLabel": "tag = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "Slet {count}-noter",
       "deleteSelectedItems": "Slet {count} elementer",
       "bookmark": "Bogmærk",
-      "removeFromBookmarks": "Fjern fra bogmærker"
+      "removeFromBookmarks": "Fjern fra bogmærker",
+      "applyTemplate": "Anvend skabelon"
     },
     "deleteDialog": {
       "noteTitle": "Slet note",
@@ -66,8 +85,8 @@
     },
     "content": {
       "placeholder": "Begynd at skrive, eller tryk på '/' for kommandoer...",
-      "regionAria": "Note editor",
-      "richTextAria": "Rich text editor",
+      "regionAria": "Noteeditor",
+      "richTextAria": "Editor til formateret tekst",
       "headingPlaceholder": "Overskrift",
       "listPlaceholder": "Listeelement",
       "todoPlaceholder": "Opgaveelement"
@@ -83,7 +102,17 @@
       "export": "Eksporter",
       "fullWidth": "Fuld bredde",
       "disableLocalOnly": "Deaktiver kun lokalt",
-      "setLocalOnly": "Indstil kun lokalt"
+      "setLocalOnly": "Indstil kun lokalt",
+      "applyTemplate": "Anvend skabelon",
+      "copyPath": "Kopiér sti",
+      "delete": "Slet note",
+      "find": "Find…",
+      "moreActions": "Flere handlinger",
+      "moveToFolder": "Flyt til mappe…",
+      "openInDefaultApp": "Åbn i standardapp",
+      "rename": "Omdøb…",
+      "revealInFinder": "Vis i Finder",
+      "revealInSidebar": "Vis i navigationen"
     },
     "breadcrumb": {
       "locationAria": "Bemærk placering",
@@ -162,7 +191,7 @@
   },
   "backlinks": {
     "sortRecent": "Seneste",
-    "sortAlpha": "A-Z",
+    "sortAlpha": "A-Å",
     "sortMentions": "Flest omtaler",
     "sortBy": "Sorter backlinks efter {sort}",
     "summary": "{notes} noter · {references} referencer",
@@ -220,10 +249,15 @@
       "url": "URL",
       "status": "Status",
       "select": "Vælg",
-      "multiselect": "Multiselect"
+      "multiselect": "Flervalg"
     },
     "showOnCalendar": "Vis på kalender",
-    "showingOnCalendar": "Vises på kalender"
+    "showingOnCalendar": "Vises på kalender",
+    "statusCategories": {
+      "done": "Fuldført",
+      "inProgress": "I gang",
+      "todo": "At gøre"
+    }
   },
   "templateSelector": {
     "title": "Vælg dit lærred",
@@ -232,10 +266,13 @@
     "loading": "Indlæser skabeloner...",
     "empty": "Ingen skabeloner fundet",
     "myTemplates": "Mine skabeloner",
-    "essentials": "Essentials",
+    "essentials": "Grundlæggende",
     "setFolderDefault": "Indstil som mappestandard",
     "useTemplate": "Brug skabelon",
-    "createNote": "Opret note"
+    "createNote": "Opret note",
+    "applyDescription": "Erstat denne notes indhold med en skabelon",
+    "applyTitle": "Anvend en skabelon",
+    "applyToNote": "Anvend skabelon"
   },
   "exportDialog": {
     "title": "Eksporter note",
@@ -278,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Indlæser skabelon…",
+    "copySuffix": "{name} (Kopi)",
     "title": {
       "new": "Ny skabelon",
-      "view": "Se skabelon",
-      "edit": "Rediger skabelon"
+      "placeholder": "Skabelonnavn"
+    },
+    "icon": {
+      "label": "Skabelonikon"
+    },
+    "content": {
+      "placeholder": "Standardindhold for noter oprettet ud fra denne skabelon. Brug '{{'title'}}' til at indsætte notens titel."
+    },
+    "actions": {
+      "create": "Opret skabelon",
+      "update": "Opdater",
+      "duplicateAndEdit": "Dupliker og rediger",
+      "duplicate": "Dupliker",
+      "delete": "Slet skabelon",
+      "more": "Flere handlinger"
     },
     "toast": {
-      "nameRequired": "Skabelonnavn er påkrævet",
-      "created": "Skabelon oprettet",
       "createFailed": "Kunne ikke oprette skabelon",
-      "saved": "Skabelonen er gemt",
-      "saveFailed": "Skabelonen kunne ikke gemmes",
-      "duplicateFailed": "Skabelonen kunne ikke duplikeres",
-      "deleteFailed": "Skabelonen kunne ikke slettes"
+      "saveFailed": "Skabelonen kunne ikke gemmes"
     }
   },
   "reminders": {
@@ -324,8 +371,6 @@
       "noFormulasDefined": "Ingen formler defineret",
       "addFormula": "Tilføj formel",
       "deleteFormula": "Slet formel",
-      "areYouSureYouWantToDeleteTheFormula": "Er du sikker på, at du vil slette formlen \"",
-      "quotThisActionCannotBeUndone": "quot;? Denne handling kan ikke fortrydes.",
       "cancel": "Annuller",
       "delete": "Slet",
       "none": "Ingen",
@@ -333,7 +378,8 @@
       "delete2": "Slet",
       "columnBorders": "Kolonnekanter",
       "display": "Visning",
-      "showSummaries": "Vis opsummeringer"
+      "showSummaries": "Vis opsummeringer",
+      "deleteFormulaBody": "Er du sikker på, at du vil slette formlen “{name}”? Denne handling kan ikke fortrydes."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filter",
@@ -352,7 +398,8 @@
       "addCondition": "Tilføj betingelse",
       "addFilter": "Tilføj filter",
       "addGroup": "Tilføj gruppe",
-      "removeGroup": "Fjern gruppe"
+      "removeGroup": "Fjern gruppe",
+      "lockedConditionHint": "Denne betingelse definerer den aktuelle visning og kan ikke fjernes her."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Indbygget",
@@ -365,7 +412,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Note tabel",
       "selectAll": "Vælg alle noter",
-      "selectRow": "Vælg note"
+      "selectRow": "Vælg note",
+      "kind": {
+        "Inbox": "Indbakke",
+        "Note": "Note",
+        "Task": "Opgave"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Søg i noter...",
@@ -379,10 +431,10 @@
       "preview": "Forhåndsvisning",
       "fixExpressionErrorsToSeePreview": "Ret udtryksfejl for at se forhåndsvisning",
       "usingNote": "Bruger note: \"",
-      "quot": "quot;",
       "cancel": "Annuller",
       "namePlaceholder": "dage_indtil_termin",
-      "expressionPlaceholder": "dateDiff(forfaldsdato, i dag(), \"dage\")"
+      "expressionPlaceholder": "dateDiff(forfaldsdato, i dag(), \"dage\")",
+      "usingNoteTitle": "Bruger note: “{title}”"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Tydelig gruppering",
@@ -408,12 +460,12 @@
       "bestMatch": "Bedste match",
       "current": "nuværende)",
       "allFolders": "ALLE MAPPER",
-      "current2": "nuværende)",
       "noFoldersMatch": "Ingen mapper matcher \"",
-      "quot": "quot;",
       "create": "Opret \"",
-      "quot2": "quot;",
-      "cancel": "Annuller"
+      "cancel": "Annuller",
+      "createFolderNamed": "Opret “{name}”",
+      "currentFolderBadge": "(nuværende)",
+      "noFoldersMatchQuery": "Ingen mapper matcher “{query}”"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Slet ",
@@ -466,9 +518,15 @@
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Kunne ikke indlæse PDF: ",
-      "download": "Download",
-      "download2": "Download",
-      "noFileAttached": "Ingen fil vedhæftet"
+      "download": "Hent",
+      "download2": "Hent",
+      "noFileAttached": "Ingen fil vedhæftet",
+      "alignCenter": "Justér til midten",
+      "alignLeft": "Justér til venstre",
+      "alignRight": "Justér til højre",
+      "nextPage": "Næste side",
+      "previousPage": "Forrige side",
+      "resizePdf": "Ændr størrelse på PDF"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Åbn i opgavepanelet",
@@ -530,7 +588,8 @@
       "failedToLoadTags": "Tags kunne ikke indlæses",
       "noTagsYet": "Ingen tags endnu",
       "filterTags": "Filtrer tags...",
-      "noMatchingTags": "Ingen matchende tags"
+      "noMatchingTags": "Ingen matchende tags",
+      "Uncategorized": "Ukategoriseret"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Drop her",
@@ -553,14 +612,15 @@
       "unpinFromTag": "Frigør fra tag",
       "unpin": "Frigør",
       "pinToTag": "Fastgør til tag",
-      "pin": "Pin",
+      "pin": "Fastgør",
       "tagActions": "Tag handlinger",
       "editTagName": "Rediger tagnavn",
       "changeColor": "Skift farve",
       "deleteTag": "Slet tag",
       "recent": "Seneste",
       "created": "Oprettet",
-      "alphabetical": "Alfabetisk"
+      "alphabetical": "Alfabetisk",
+      "tasks": "OPGAVER"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Omdøb tag",
@@ -615,36 +675,6 @@
       "compact": "Kompakt",
       "showSummaries": "Vis oversigter",
       "cancel": "Annuller"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Indlæser skabelon...",
-      "builtInTemplatesCannotBeModified": "Indbyggede skabeloner kan ikke ændres",
-      "description": "Beskrivelse",
-      "briefDescriptionOfThisTemplate": "Kort beskrivelse af denne skabelon...",
-      "templateContent": "Skabelonindhold",
-      "use": "Brug ",
-      "toInsertTheNoteTitleWhenCreatingANote": "for at indsætte notetitlen, når du opretter en note.",
-      "templateName": "Skabelonnavn",
-      "defaultContentForNotesCreatedFromThisTemplate": "Standardindhold for noter oprettet ud fra denne skabelon..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Indlæser samling...",
-      "templateCollection": "Skabelonsamling",
-      "templates": "Skabeloner",
-      "curatedStructuresForYourNotes": "Kurerede strukturer til dine noter.",
-      "newTemplate": "Ny skabelon",
-      "myTemplates": "Mine skabeloner",
-      "builtIn": "Indbygget",
-      "deleteTemplate": "Slet skabelon",
-      "areYouSureYouWantToDelete": "Er du sikker på, at du vil slette \"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Noter oprettet fra denne skabelon vil ikke blive påvirket.",
-      "cancel": "Annuller",
-      "builtIn2": "Indbygget",
-      "duplicate": "Dublet",
-      "delete": "Slet",
-      "startYourCollection": "Start din samling",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Skabeloner hjælper dig med at oprette noter med ensartet struktur.",
-      "createTemplate": "Opret skabelon"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Indbygget",
@@ -733,7 +763,9 @@
     "replyPlaceholder": "Svar...",
     "resolve": "Løs",
     "sendAria": "Send kommentar",
-    "toolbarComment": "Kommentér"
+    "toolbarComment": "Kommentér",
+    "openAttachmentAria": "Åbn den vedhæftede fil {name}",
+    "openImageAria": "Åbn billedet {name}"
   },
   "dateMention": {
     "clear": "Ryd",
@@ -743,5 +775,79 @@
     "remind": "Påmind",
     "time": "Tid",
     "timeFormat": "Tidsformat"
+  },
+  "applyTemplateConfirm": {
+    "body": "Erstat kun indholdet",
+    "cancel": "Annuller",
+    "description": "Hvis du anvender \"{name}\", erstattes notens nuværende indhold. Det kan ikke fortrydes.",
+    "failed": "Skabelonen kunne ikke anvendes",
+    "full": "Erstat indhold og tilføj skabelondetaljer",
+    "success": "Skabelonen er anvendt",
+    "title": "Vil du erstatte notens indhold?"
+  },
+  "tagView": {
+    "moreActions": "Flere handlinger",
+    "pin": {
+      "action": "Fastgør {count, plural, one {# note} other {# noter}} til tagget",
+      "failed": "Noten kunne ikke fastgøres til tagget",
+      "success": "{count, plural, one {# note er fastgjort til tagget} other {# noter er fastgjort til tagget}}"
+    }
+  },
+  "tags": {
+    "hubTitle": "Tags",
+    "openHub": "Åbn tagoversigten"
+  },
+  "tagsHub": {
+    "cancelCreate": "Annuller",
+    "category": {
+      "delete": "Slet kategori",
+      "deleteBody": "Tags flyttes til Ukategoriseret. De bliver ikke slettet.",
+      "deleteCancel": "Annuller",
+      "deleteConfirm": "Slet",
+      "deleteTitle": "Vil du slette {name}?",
+      "dragHandle": "Træk for at ændre kategoriens placering",
+      "emptyHint": "Træk et tag hertil",
+      "more": "Kategoriindstillinger",
+      "rename": "Omdøb kategori"
+    },
+    "categoryNamePlaceholder": "Kategorinavn",
+    "errors": {
+      "createCategoryFailed": "Kategorien kunne ikke oprettes",
+      "createTagCategorizeFailed": "Tagget blev oprettet, men kunne ikke føjes til kategorien",
+      "createTagFailed": "Tagget kunne ikke oprettes",
+      "deleteCategoryFailed": "Kategorien kunne ikke slettes",
+      "loadFailed": "Tagkategorierne kunne ikke indlæses",
+      "renameCategoryFailed": "Kategorien kunne ikke omdøbes",
+      "reorderFailed": "Rækkefølgen af tags kunne ikke ændres"
+    },
+    "loading": "Indlæser tags...",
+    "newCategory": "Ny kategori",
+    "newTag": "Nyt tag",
+    "search": {
+      "empty": "Ingen kategorier eller tags matcher din søgning",
+      "placeholder": "Søg i kategorier og tags"
+    },
+    "tagNamePlaceholder": "Tagnavn",
+    "uncategorized": "Ukategoriseret"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (dobbeltklik for at redigere)",
+      "dragToReorder": "Træk for at omarrangere kolonnen: {name}"
+    },
+    "columns": {
+      "created": "Oprettet",
+      "folder": "Mappe",
+      "kind": "Type",
+      "modified": "Ændret",
+      "tags": "Tags",
+      "title": "Titel",
+      "wordCount": "Antal ord"
+    },
+    "defaultViewName": "Standard",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# note} other {# noter}}"
+    },
+    "selectView": "Vælg visning"
   }
 }

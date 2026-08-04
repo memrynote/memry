@@ -1,10 +1,15 @@
 {
   "app": {
     "quit": "ออก",
-    "preferences": "การตั้งค่า…"
+    "preferences": "การตั้งค่า…",
+    "exit": "ออก",
+    "hide": "ซ่อน MemryNote",
+    "hideOthers": "ซ่อนรายการอื่น",
+    "services": "บริการ",
+    "unhide": "แสดงทั้งหมด"
   },
   "file": {
-    "label": "แฟ้ม",
+    "label": "ไฟล์",
     "newNote": "โน้ตใหม่",
     "close": "ปิดหน้าต่าง",
     "closeTab": "ปิดแท็บ",
@@ -13,7 +18,7 @@
   },
   "navigation": {
     "back": "ย้อนกลับ",
-    "forward": "  \nไปข้างหน้า  "
+    "forward": "ไปข้างหน้า"
   },
   "edit": {
     "label": "แก้ไข",
@@ -24,7 +29,11 @@
     "paste": "วาง",
     "selectAll": "เลือกทั้งหมด",
     "find": "ค้นหา",
-    "speech": "การพูด"
+    "speech": "การพูด",
+    "delete": "ลบ",
+    "pasteAndMatchStyle": "วางและจับคู่ลักษณะ",
+    "startSpeaking": "เริ่มพูด",
+    "stopSpeaking": "หยุดพูด"
   },
   "view": {
     "label": "มุมมอง",
@@ -37,7 +46,10 @@
     "themeSystem": "ระบบ",
     "themeWhite": "กระดาษ",
     "toggleDayPanel": "สลับแผงวัน",
-    "toggleSidebar": "สลับแถบด้านข้าง"
+    "toggleSidebar": "สลับแถบด้านข้าง",
+    "actualSize": "ขนาดจริง",
+    "zoomIn": "ซูมเข้า",
+    "zoomOut": "ซูมออก"
   },
   "format": {
     "body": "เนื้อความ",
@@ -54,12 +66,13 @@
   "help": {
     "about": "เกี่ยวกับ MemryNote",
     "documentation": "เอกสาร",
-    "label": "ช่วยเหลือ",
-    "shortcuts": "แป้นพิมพ์ลัด"
+    "label": "ความช่วยเหลือ",
+    "shortcuts": "แป้นพิมพ์ลัด",
+    "aboutVersion": "เวอร์ชัน {version}"
   },
   "insert": {
     "attachment": "แทรกไฟล์แนบ…",
-    "bulletList": "รายการหัวข้อ",
+    "bulletList": "รายการหัวข้อย่อย",
     "codeBlock": "บล็อกโค้ด",
     "label": "แทรก",
     "numberedList": "รายการลำดับเลข",
@@ -67,6 +80,10 @@
     "taskList": "รายการงาน"
   },
   "window": {
-    "label": "หน้าต่าง"
+    "label": "หน้าต่าง",
+    "close": "ปิด",
+    "front": "นำทั้งหมดมาไว้ด้านหน้า",
+    "minimize": "ย่อขนาด",
+    "zoom": "ซูม"
   }
 }

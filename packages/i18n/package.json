@@ -9,7 +9,8 @@
     "./renderer": "./src/renderer/index.ts",
     "./shared": "./src/shared/index.ts",
     "./locales": "./src/locales/index.ts",
-    "./locales/en-errors": "./src/locales/en-errors.ts"
+    "./locales/en-errors": "./src/locales/en-errors.ts",
+    "./locales/en-bundle": "./src/locales/en-bundle.ts"
   },
   "scripts": {
     "test": "vitest run",

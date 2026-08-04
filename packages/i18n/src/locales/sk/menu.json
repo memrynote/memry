@@ -1,7 +1,12 @@
 {
   "app": {
     "quit": "Ukončiť",
-    "preferences": "Nastavenia…"
+    "preferences": "Nastavenia…",
+    "exit": "Ukončiť",
+    "hide": "Skryť MemryNote",
+    "hideOthers": "Skryť ostatné",
+    "services": "Služby",
+    "unhide": "Zobraziť všetko"
   },
   "file": {
     "label": "Súbor",
@@ -16,28 +21,35 @@
     "forward": "Dopredu"
   },
   "edit": {
-    "label": "Edit",
+    "label": "Upraviť",
     "undo": "Späť",
     "redo": "Znovu",
     "cut": "Vystrihnúť",
-    "copy": "Rozumiem",
-    "paste": "Pasta",
+    "copy": "Kopírovať",
+    "paste": "Prilepiť",
     "selectAll": "Vybrať všetko",
     "find": "Hľadať",
-    "speech": "Reč"
+    "speech": "Reč",
+    "delete": "Odstrániť",
+    "pasteAndMatchStyle": "Prilepiť a prispôsobiť štýl",
+    "startSpeaking": "Spustiť čítanie",
+    "stopSpeaking": "Zastaviť čítanie"
   },
   "view": {
     "label": "Zobraziť",
     "reload": "Obnoviť",
-    "toggleDevTools": "Prepínať nástroje vývojára",
-    "toggleFullscreen": "Prepínať režim celej obrazovky",
+    "toggleDevTools": "Prepnúť nástroje pre vývojárov",
+    "toggleFullscreen": "Prepnúť režim celej obrazovky",
     "theme": "Motív",
     "themeDark": "Tmavý",
     "themeLight": "Svetlý",
     "themeSystem": "Systémový",
     "themeWhite": "Papier",
     "toggleDayPanel": "Prepnúť panel dňa",
-    "toggleSidebar": "Prepnúť bočný panel"
+    "toggleSidebar": "Prepnúť bočný panel",
+    "actualSize": "Skutočná veľkosť",
+    "zoomIn": "Priblížiť",
+    "zoomOut": "Oddialiť"
   },
   "format": {
     "body": "Text",
@@ -55,7 +67,8 @@
     "about": "O aplikácii MemryNote",
     "documentation": "Dokumentácia",
     "label": "Pomocník",
-    "shortcuts": "Klávesové skratky"
+    "shortcuts": "Klávesové skratky",
+    "aboutVersion": "Verzia {version}"
   },
   "insert": {
     "attachment": "Vložiť prílohu…",
@@ -67,6 +80,10 @@
     "taskList": "Zoznam úloh"
   },
   "window": {
-    "label": "Okno"
+    "label": "Okno",
+    "close": "Zavrieť",
+    "front": "Preniesť všetko do popredia",
+    "minimize": "Minimalizovať",
+    "zoom": "Zväčšiť"
   }
 }

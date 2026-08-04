@@ -16,9 +16,27 @@
       "willSync": "Заметка будет синхронизирована с облаком",
       "renameFailed": "Не удалось переименовать заметку.",
       "toggleLocalOnlyFailed": "Не удалось переключить только локальный режим.",
-      "toggleFullWidthFailed": "Не удалось переключить полную ширину."
+      "toggleFullWidthFailed": "Не удалось переключить полную ширину.",
+      "copyPathFailed": "Не удалось скопировать путь",
+      "deleteFailed": "Не удалось удалить заметку",
+      "moveFailed": "Не удалось переместить заметку",
+      "moved": "Заметка перемещена",
+      "openExternalFailed": "Не удалось открыть заметку",
+      "pathCopied": "Путь скопирован",
+      "revealFailed": "Не удалось показать заметку"
     },
-    "deleteDialogTitle": "{count, plural, one {Удалить заметку} other {Удалить заметки #}}"
+    "deleteDialogTitle": "{count, plural, one {Удалить заметку} other {Удалить заметки #}}",
+    "deleteConfirm": {
+      "cancel": "Отмена",
+      "confirm": "Удалить",
+      "deleting": "Удаление...",
+      "description": "Вы уверены, что хотите удалить «{title}»? Это действие нельзя отменить.",
+      "title": "Удалить заметку"
+    },
+    "itemsCount": "{count, plural, one {# элемент} few {# элемента} many {# элементов} other {# элемента}}",
+    "itemsCountFiltered": "{shown} из {total, plural, one {# элемента} few {# элементов} many {# элементов} other {# элемента}}",
+    "renameViewUnavailableForTags": "Переименование сохранённых видов пока недоступно для тегов",
+    "tagFilterLabel": "тег = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "Удалить заметки {count}",
       "deleteSelectedItems": "Удалить элементы {count}",
       "bookmark": "Закладка",
-      "removeFromBookmarks": "Убрать из закладок"
+      "removeFromBookmarks": "Убрать из закладок",
+      "applyTemplate": "Применить шаблон"
     },
     "deleteDialog": {
       "noteTitle": "Удалить заметку",
@@ -83,7 +102,17 @@
       "export": "Экспорт",
       "fullWidth": "Полная ширина",
       "disableLocalOnly": "Отключить только локально",
-      "setLocalOnly": "Установить только локально"
+      "setLocalOnly": "Установить только локально",
+      "applyTemplate": "Применить шаблон",
+      "copyPath": "Копировать путь",
+      "delete": "Удалить заметку",
+      "find": "Найти…",
+      "moreActions": "Другие действия",
+      "moveToFolder": "Переместить в папку…",
+      "openInDefaultApp": "Открыть в приложении по умолчанию",
+      "rename": "Переименовать…",
+      "revealInFinder": "Показать в Finder",
+      "revealInSidebar": "Показать на боковой панели"
     },
     "breadcrumb": {
       "locationAria": "Примечание местоположения",
@@ -223,7 +252,12 @@
       "multiselect": "Мультивыбор"
     },
     "showOnCalendar": "Показывать в календаре",
-    "showingOnCalendar": "Показывается в календаре"
+    "showingOnCalendar": "Показывается в календаре",
+    "statusCategories": {
+      "done": "Завершено",
+      "inProgress": "В работе",
+      "todo": "К выполнению"
+    }
   },
   "templateSelector": {
     "title": "Выберите свой холст",
@@ -235,7 +269,10 @@
     "essentials": "Основы",
     "setFolderDefault": "Установить папку по умолчанию",
     "useTemplate": "Использовать шаблон",
-    "createNote": "Создать заметку"
+    "createNote": "Создать заметку",
+    "applyDescription": "Заменить содержимое этой заметки шаблоном",
+    "applyTitle": "Применить шаблон",
+    "applyToNote": "Применить шаблон"
   },
   "exportDialog": {
     "title": "Экспортировать примечание",
@@ -278,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Загрузка шаблона…",
+    "copySuffix": "{name} (Копия)",
     "title": {
       "new": "Новый шаблон",
-      "view": "Просмотр шаблона",
-      "edit": "Редактировать шаблон"
+      "placeholder": "Название шаблона"
+    },
+    "icon": {
+      "label": "Значок шаблона"
+    },
+    "content": {
+      "placeholder": "Содержимое по умолчанию для заметок, созданных из этого шаблона. Используйте '{{'title'}}', чтобы вставить заголовок заметки."
+    },
+    "actions": {
+      "create": "Создать шаблон",
+      "update": "Обновить",
+      "duplicateAndEdit": "Дублировать и изменить",
+      "duplicate": "Дублировать",
+      "delete": "Удалить шаблон",
+      "more": "Другие действия"
     },
     "toast": {
-      "nameRequired": "Укажите название шаблона.",
-      "created": "Шаблон создан",
       "createFailed": "Не удалось создать шаблон",
-      "saved": "Шаблон сохранен.",
-      "saveFailed": "Не удалось сохранить шаблон.",
-      "duplicateFailed": "Не удалось дублировать шаблон.",
-      "deleteFailed": "Не удалось удалить шаблон."
+      "saveFailed": "Не удалось сохранить шаблон."
     }
   },
   "reminders": {
@@ -324,8 +371,6 @@
       "noFormulasDefined": "Формулы не определены",
       "addFormula": "Добавить формулу",
       "deleteFormula": "Удалить формулу",
-      "areYouSureYouWantToDeleteTheFormula": "Вы уверены, что хотите удалить формулу \"",
-      "quotThisActionCannotBeUndone": "quot;? Это действие невозможно отменить.",
       "cancel": "Отмена",
       "delete": "Удалить",
       "none": "Нет",
@@ -333,7 +378,8 @@
       "delete2": "Удалить",
       "columnBorders": "Границы столбцов",
       "display": "Отображение",
-      "showSummaries": "Показывать сводки"
+      "showSummaries": "Показывать сводки",
+      "deleteFormulaBody": "Вы уверены, что хотите удалить формулу «{name}»? Это действие нельзя отменить."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Фильтр",
@@ -352,7 +398,8 @@
       "addCondition": "Добавить условие",
       "addFilter": "Добавить фильтр",
       "addGroup": "Добавить группу",
-      "removeGroup": "Убрать группу"
+      "removeGroup": "Убрать группу",
+      "lockedConditionHint": "Это условие определяет текущий вид, и здесь его нельзя удалить."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Встроенный",
@@ -365,7 +412,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Таблица примечаний",
       "selectAll": "Выбрать все заметки",
-      "selectRow": "Выбрать заметку"
+      "selectRow": "Выбрать заметку",
+      "kind": {
+        "Inbox": "Входящие",
+        "Note": "Заметка",
+        "Task": "Задача"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Поиск заметок...",
@@ -379,10 +431,10 @@
       "preview": "Предварительный просмотр",
       "fixExpressionErrorsToSeePreview": "Исправьте ошибки выражения, чтобы увидеть предварительный просмотр",
       "usingNote": "Используя примечание: \"",
-      "quot": "quot;",
       "cancel": "Отмена",
       "namePlaceholder": "дней_до_даты",
-      "expressionPlaceholder": "dateDiff(due_date, Today(), \"дни\")"
+      "expressionPlaceholder": "dateDiff(due_date, Today(), \"дни\")",
+      "usingNoteTitle": "Используется заметка: «{title}»"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Очистить группировку",
@@ -408,12 +460,12 @@
       "bestMatch": "Лучший матч",
       "current": "текущий)",
       "allFolders": "ВСЕ ПАПКИ",
-      "current2": "текущий)",
       "noFoldersMatch": "Ни одна папка не соответствует \"",
-      "quot": "quot;",
       "create": "Создать \"",
-      "quot2": "quot;",
-      "cancel": "Отмена"
+      "cancel": "Отмена",
+      "createFolderNamed": "Создать «{name}»",
+      "currentFolderBadge": "(текущая)",
+      "noFoldersMatchQuery": "Нет папок, соответствующих запросу «{query}»"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Удалить ",
@@ -468,7 +520,13 @@
       "failedToLoadPdf": "Не удалось загрузить PDF: ",
       "download": "Скачать",
       "download2": "Скачать",
-      "noFileAttached": "Файл не прикреплен"
+      "noFileAttached": "Файл не прикреплен",
+      "alignCenter": "Выровнять по центру",
+      "alignLeft": "Выровнять по левому краю",
+      "alignRight": "Выровнять по правому краю",
+      "nextPage": "Следующая страница",
+      "previousPage": "Предыдущая страница",
+      "resizePdf": "Изменить размер PDF"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Открыть на панели задач",
@@ -530,7 +588,8 @@
       "failedToLoadTags": "Не удалось загрузить теги.",
       "noTagsYet": "Тегов пока нет",
       "filterTags": "Фильтровать теги...",
-      "noMatchingTags": "Нет соответствующих тегов"
+      "noMatchingTags": "Нет соответствующих тегов",
+      "Uncategorized": "Без категории"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Перетащите сюда",
@@ -560,7 +619,8 @@
       "deleteTag": "Удалить тег",
       "recent": "Недавние",
       "created": "Создано",
-      "alphabetical": "Алфавитный"
+      "alphabetical": "Алфавитный",
+      "tasks": "ЗАДАЧИ"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Переименовать тег",
@@ -615,36 +675,6 @@
       "compact": "Компактный",
       "showSummaries": "Показать сводку",
       "cancel": "Отмена"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Загрузка шаблона...",
-      "builtInTemplatesCannotBeModified": "Встроенные шаблоны не могут быть изменены.",
-      "description": "Описание",
-      "briefDescriptionOfThisTemplate": "Краткое описание этого шаблона...",
-      "templateContent": "Содержимое шаблона",
-      "use": "Использование ",
-      "toInsertTheNoteTitleWhenCreatingANote": "чтобы вставить заголовок заметки при создании заметки.",
-      "templateName": "Имя шаблона",
-      "defaultContentForNotesCreatedFromThisTemplate": "Содержимое по умолчанию для заметок, созданных на основе этого шаблона..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Загрузка коллекции...",
-      "templateCollection": "Коллекция шаблонов",
-      "templates": "Шаблоны",
-      "curatedStructuresForYourNotes": "Кураторские структуры для ваших заметок.",
-      "newTemplate": "Новый шаблон",
-      "myTemplates": "Мои шаблоны",
-      "builtIn": "Встроенный",
-      "deleteTemplate": "Удалить шаблон",
-      "areYouSureYouWantToDelete": "Вы уверены, что хотите удалить \"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Заметки, созданные на основе этого шаблона, не будут затронуты.",
-      "cancel": "Отмена",
-      "builtIn2": "Встроенный",
-      "duplicate": "Дублировать",
-      "delete": "Удалить",
-      "startYourCollection": "Начни свою коллекцию",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Шаблоны помогают создавать заметки с единообразной структурой.",
-      "createTemplate": "Создать шаблон"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Встроенное",
@@ -733,7 +763,9 @@
     "replyPlaceholder": "Ответить...",
     "resolve": "Разрешить",
     "sendAria": "Отправить комментарий",
-    "toolbarComment": "Комментарий"
+    "toolbarComment": "Комментарий",
+    "openAttachmentAria": "Открыть вложение {name}",
+    "openImageAria": "Открыть изображение {name}"
   },
   "dateMention": {
     "clear": "Очистить",
@@ -743,5 +775,79 @@
     "remind": "Напомнить",
     "time": "Время",
     "timeFormat": "Формат времени"
+  },
+  "applyTemplateConfirm": {
+    "body": "Заменить только содержимое",
+    "cancel": "Отмена",
+    "description": "Применение шаблона «{name}» заменит текущее содержимое этой заметки. Это действие нельзя отменить.",
+    "failed": "Не удалось применить шаблон",
+    "full": "Заменить содержимое и добавить данные шаблона",
+    "success": "Шаблон применён",
+    "title": "Заменить содержимое заметки?"
+  },
+  "tagView": {
+    "moreActions": "Другие действия",
+    "pin": {
+      "action": "Закрепить за тегом {count, plural, one {# заметку} few {# заметки} many {# заметок} other {# заметки}}",
+      "failed": "Не удалось закрепить заметку за тегом",
+      "success": "{count, plural, one {# заметка закреплена} few {# заметки закреплены} many {# заметок закреплено} other {# заметки закреплено}} за тегом"
+    }
+  },
+  "tags": {
+    "hubTitle": "Теги",
+    "openHub": "Открыть страницу тегов"
+  },
+  "tagsHub": {
+    "cancelCreate": "Отмена",
+    "category": {
+      "delete": "Удалить категорию",
+      "deleteBody": "Теги перейдут в «Без категории». Сами они не удалятся.",
+      "deleteCancel": "Отмена",
+      "deleteConfirm": "Удалить",
+      "deleteTitle": "Удалить {name}?",
+      "dragHandle": "Перетащите, чтобы изменить порядок категорий",
+      "emptyHint": "Перетащите сюда тег",
+      "more": "Действия с категорией",
+      "rename": "Переименовать категорию"
+    },
+    "categoryNamePlaceholder": "Название категории",
+    "errors": {
+      "createCategoryFailed": "Не удалось создать категорию",
+      "createTagCategorizeFailed": "Тег создан, но его не удалось добавить в категорию",
+      "createTagFailed": "Не удалось создать тег",
+      "deleteCategoryFailed": "Не удалось удалить категорию",
+      "loadFailed": "Не удалось загрузить категории тегов",
+      "renameCategoryFailed": "Не удалось переименовать категорию",
+      "reorderFailed": "Не удалось изменить порядок тегов"
+    },
+    "loading": "Загрузка тегов...",
+    "newCategory": "Новая категория",
+    "newTag": "Новый тег",
+    "search": {
+      "empty": "Нет подходящих категорий и тегов",
+      "placeholder": "Поиск категорий и тегов"
+    },
+    "tagNamePlaceholder": "Название тега",
+    "uncategorized": "Без категории"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (двойной щелчок для редактирования)",
+      "dragToReorder": "Перетащите, чтобы изменить порядок столбцов: {name}"
+    },
+    "columns": {
+      "created": "Создано",
+      "folder": "Папка",
+      "kind": "Тип",
+      "modified": "Изменено",
+      "tags": "Теги",
+      "title": "Название",
+      "wordCount": "Количество слов"
+    },
+    "defaultViewName": "По умолчанию",
+    "groupHeader": {
+      "noteCount": "{count, plural, one {# заметка} few {# заметки} many {# заметок} other {# заметки}}"
+    },
+    "selectView": "Выбрать вид"
   }
 }

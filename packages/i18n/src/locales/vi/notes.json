@@ -16,9 +16,27 @@
       "willSync": "Ghi chú sẽ được đồng bộ lên đám mây",
       "renameFailed": "Không thể đổi tên ghi chú",
       "toggleLocalOnlyFailed": "Không thể chuyển đổi chỉ dành cho cục bộ",
-      "toggleFullWidthFailed": "Không thể chuyển đổi toàn bộ chiều rộng"
+      "toggleFullWidthFailed": "Không thể chuyển đổi toàn bộ chiều rộng",
+      "copyPathFailed": "Không sao chép được đường dẫn",
+      "deleteFailed": "Không xóa được ghi chú",
+      "moveFailed": "Không di chuyển được ghi chú",
+      "moved": "Đã di chuyển ghi chú",
+      "openExternalFailed": "Không mở được ghi chú",
+      "pathCopied": "Đã sao chép đường dẫn",
+      "revealFailed": "Không hiển thị được ghi chú"
     },
-    "deleteDialogTitle": "{count, plural, one {Xóa Ghi chú} other {Xóa # Ghi chú}}"
+    "deleteDialogTitle": "{count, plural, one {Xóa Ghi chú} other {Xóa # Ghi chú}}",
+    "deleteConfirm": {
+      "cancel": "Hủy",
+      "confirm": "Xóa",
+      "deleting": "Đang xóa...",
+      "description": "Bạn có chắc chắn muốn xóa \"{title}\" không? Hành động này không thể hoàn tác.",
+      "title": "Xóa ghi chú"
+    },
+    "itemsCount": "{count, plural, other {# mục}}",
+    "itemsCountFiltered": "{shown} trong {total, plural, other {# mục}}",
+    "renameViewUnavailableForTags": "Chưa thể đổi tên chế độ xem đã lưu cho thẻ",
+    "tagFilterLabel": "thẻ = {tag}"
   },
   "tree": {
     "aria": {
@@ -44,7 +62,8 @@
       "deleteSelectedNotes": "Xóa {count} Ghi chú",
       "deleteSelectedItems": "Xóa {count} mục",
       "bookmark": "Dấu trang",
-      "removeFromBookmarks": "Xóa khỏi dấu trang"
+      "removeFromBookmarks": "Xóa khỏi dấu trang",
+      "applyTemplate": "Áp dụng mẫu"
     },
     "deleteDialog": {
       "noteTitle": "Xóa Ghi chú",
@@ -83,7 +102,17 @@
       "export": "Xuất",
       "fullWidth": "Toàn bộ chiều rộng",
       "disableLocalOnly": "Vô hiệu hóa chỉ cục bộ",
-      "setLocalOnly": "Đặt chỉ cục bộ"
+      "setLocalOnly": "Đặt chỉ cục bộ",
+      "applyTemplate": "Áp dụng mẫu",
+      "copyPath": "Sao chép đường dẫn",
+      "delete": "Xóa ghi chú",
+      "find": "Tìm…",
+      "moreActions": "Thao tác khác",
+      "moveToFolder": "Di chuyển tới thư mục…",
+      "openInDefaultApp": "Mở bằng ứng dụng mặc định",
+      "rename": "Đổi tên…",
+      "revealInFinder": "Hiển thị trong Finder",
+      "revealInSidebar": "Hiển thị trong thanh điều hướng"
     },
     "breadcrumb": {
       "locationAria": "Ghi chú vị trí",
@@ -223,7 +252,12 @@
       "multiselect": "Chọn nhiều"
     },
     "showOnCalendar": "Hiện trên lịch",
-    "showingOnCalendar": "Đang hiện trên lịch"
+    "showingOnCalendar": "Đang hiện trên lịch",
+    "statusCategories": {
+      "done": "Hoàn thành",
+      "inProgress": "Đang thực hiện",
+      "todo": "Cần làm"
+    }
   },
   "templateSelector": {
     "title": "Chọn Bảng vẽ của bạn",
@@ -235,7 +269,10 @@
     "essentials": "Các mục cần thiết",
     "setFolderDefault": "Đặt làm mặc định cho thư mục",
     "useTemplate": "Sử dụng mẫu",
-    "createNote": "Tạo ghi chú"
+    "createNote": "Tạo ghi chú",
+    "applyDescription": "Thay thế nội dung của ghi chú này bằng một mẫu",
+    "applyTitle": "Áp dụng một mẫu",
+    "applyToNote": "Áp dụng mẫu"
   },
   "exportDialog": {
     "title": "Xuất ghi chú",
@@ -278,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Đang tải mẫu…",
+    "copySuffix": "{name} (Sao chép)",
     "title": {
       "new": "Mẫu mới",
-      "view": "Xem Mẫu",
-      "edit": "Chỉnh sửa Mẫu"
+      "placeholder": "Tên mẫu"
+    },
+    "icon": {
+      "label": "Biểu tượng mẫu"
+    },
+    "content": {
+      "placeholder": "Nội dung mặc định cho ghi chú được tạo từ mẫu này. Dùng '{{'title'}}' để chèn tiêu đề ghi chú."
+    },
+    "actions": {
+      "create": "Tạo mẫu",
+      "update": "Cập nhật",
+      "duplicateAndEdit": "Sao chép và chỉnh sửa",
+      "duplicate": "Sao chép",
+      "delete": "Xóa mẫu",
+      "more": "Thao tác khác"
     },
     "toast": {
-      "nameRequired": "Tên mẫu là bắt buộc",
-      "created": "Mẫu đã được tạo",
       "createFailed": "Không tạo được mẫu",
-      "saved": "Mẫu đã được lưu",
-      "saveFailed": "Không lưu được mẫu",
-      "duplicateFailed": "Không nhân đôi được mẫu",
-      "deleteFailed": "Không xóa được mẫu"
+      "saveFailed": "Không lưu được mẫu"
     }
   },
   "reminders": {
@@ -324,8 +371,6 @@
       "noFormulasDefined": "Chưa có công thức nào được định nghĩa",
       "addFormula": "Thêm công thức",
       "deleteFormula": "Xóa công thức",
-      "areYouSureYouWantToDeleteTheFormula": "Bạn có chắc muốn xóa công thức \"",
-      "quotThisActionCannotBeUndone": "\" không? Hành động này không thể hoàn tác.",
       "cancel": "Hủy",
       "delete": "Xóa",
       "none": "Không có",
@@ -333,7 +378,8 @@
       "delete2": "Xóa",
       "columnBorders": "Viền cột",
       "display": "Hiển thị",
-      "showSummaries": "Hiện tóm tắt"
+      "showSummaries": "Hiện tóm tắt",
+      "deleteFormulaBody": "Bạn có chắc chắn muốn xóa công thức “{name}” không? Hành động này không thể hoàn tác."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "  \nBộ lọc  ",
@@ -352,7 +398,8 @@
       "addCondition": "Thêm điều kiện",
       "addFilter": "Thêm bộ lọc",
       "addGroup": "Thêm nhóm",
-      "removeGroup": "Xóa nhóm"
+      "removeGroup": "Xóa nhóm",
+      "lockedConditionHint": "Điều kiện này xác định chế độ xem hiện tại và không thể gỡ bỏ ở đây."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Có sẵn",
@@ -365,7 +412,12 @@
     "componentsFolderViewFolderTableView": {
       "notesTable": "Bảng ghi chú",
       "selectAll": "Chọn tất cả ghi chú",
-      "selectRow": "Chọn ghi chú"
+      "selectRow": "Chọn ghi chú",
+      "kind": {
+        "Inbox": "Hộp thư đến",
+        "Note": "Ghi chú",
+        "Task": "Công việc"
+      }
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Tìm kiếm ghi chú...",
@@ -379,10 +431,10 @@
       "preview": "Xem trước",
       "fixExpressionErrorsToSeePreview": "Sửa lỗi biểu thức để xem trước",
       "usingNote": "Sử dụng ghi chú:",
-      "quot": "quot;",
       "cancel": "Hủy",
       "namePlaceholder": "ngày_đến_hạn",
-      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
+      "usingNoteTitle": "Đang dùng ghi chú: “{title}”"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Xóa nhóm",
@@ -408,12 +460,12 @@
       "bestMatch": "Phù hợp nhất",
       "current": "hiện tại)",
       "allFolders": "TẤT CẢ THƯ MỤC",
-      "current2": "hiện tại)",
       "noFoldersMatch": "Không có thư mục nào phù hợp",
-      "quot": "quot;",
       "create": "Tạo",
-      "quot2": "quot;",
-      "cancel": "Hủy"
+      "cancel": "Hủy",
+      "createFolderNamed": "Tạo “{name}”",
+      "currentFolderBadge": "(hiện tại)",
+      "noFoldersMatchQuery": "Không có thư mục nào khớp với “{query}”"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "  \nXóa  ",
@@ -468,7 +520,13 @@
       "failedToLoadPdf": "  \nTải PDF thất bại:  ",
       "download": "  \nTải xuống  ",
       "download2": "  \nTải xuống  ",
-      "noFileAttached": "  \nKhông có tệp đính kèm  "
+      "noFileAttached": "  \nKhông có tệp đính kèm  ",
+      "alignCenter": "Căn giữa",
+      "alignLeft": "Căn trái",
+      "alignRight": "Căn phải",
+      "nextPage": "Trang sau",
+      "previousPage": "Trang trước",
+      "resizePdf": "Đổi kích thước PDF"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "  \nMở trong bảng tác vụ  ",
@@ -530,7 +588,8 @@
       "failedToLoadTags": "Không tải được thẻ",
       "noTagsYet": "Chưa có thẻ nào",
       "filterTags": "Lọc thẻ...",
-      "noMatchingTags": "Không có thẻ phù hợp"
+      "noMatchingTags": "Không có thẻ phù hợp",
+      "Uncategorized": "Chưa phân loại"
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Thả vào đây",
@@ -560,7 +619,8 @@
       "deleteTag": "Xóa thẻ",
       "recent": "Gần đây",
       "created": "Được tạo",
-      "alphabetical": "Theo bảng chữ cái"
+      "alphabetical": "Theo bảng chữ cái",
+      "tasks": "CÔNG VIỆC"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Đổi tên thẻ",
@@ -615,36 +675,6 @@
       "compact": "Gọn gàng",
       "showSummaries": "Hiển thị tóm tắt",
       "cancel": "Hủy"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Đang tải mẫu...",
-      "builtInTemplatesCannotBeModified": "Không thể sửa đổi các mẫu tích hợp sẵn",
-      "description": "Mô tả",
-      "briefDescriptionOfThisTemplate": "Mô tả ngắn về mẫu này...",
-      "templateContent": "Nội dung mẫu",
-      "use": "Sử dụng ",
-      "toInsertTheNoteTitleWhenCreatingANote": "để chèn tiêu đề ghi chú khi tạo ghi chú.",
-      "templateName": "Tên Mẫu",
-      "defaultContentForNotesCreatedFromThisTemplate": "Nội dung mặc định cho các ghi chú được tạo từ mẫu này..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Đang tải bộ sưu tập...",
-      "templateCollection": "Bộ Sưu Tập Mẫu",
-      "templates": "Các mẫu",
-      "curatedStructuresForYourNotes": "Cấu trúc được tuyển chọn cho các ghi chú của bạn.",
-      "newTemplate": "Mẫu mới",
-      "myTemplates": "Mẫu của tôi",
-      "builtIn": "Có sẵn",
-      "deleteTemplate": "Xóa Mẫu",
-      "areYouSureYouWantToDelete": "Bạn có chắc muốn xóa không?  ",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Các ghi chú được tạo từ mẫu này sẽ không bị ảnh hưởng.",
-      "cancel": "Hủy",
-      "builtIn2": "Có sẵn",
-      "duplicate": "Sao chép",
-      "delete": "Xóa",
-      "startYourCollection": "Bắt đầu Bộ Sưu Tập Của Bạn",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Các mẫu giúp bạn tạo ghi chú với cấu trúc nhất quán.",
-      "createTemplate": "Tạo Mẫu"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Tích hợp",
@@ -733,7 +763,9 @@
     "replyPlaceholder": "Trả lời...",
     "resolve": "Giải quyết",
     "sendAria": "Gửi bình luận",
-    "toolbarComment": "Bình luận"
+    "toolbarComment": "Bình luận",
+    "openAttachmentAria": "Mở tệp đính kèm {name}",
+    "openImageAria": "Mở ảnh {name}"
   },
   "dateMention": {
     "clear": "Xóa",
@@ -743,5 +775,79 @@
     "remind": "Nhắc",
     "time": "Giờ",
     "timeFormat": "Định dạng giờ"
+  },
+  "applyTemplateConfirm": {
+    "body": "Chỉ thay thế nội dung",
+    "cancel": "Hủy",
+    "description": "Áp dụng \"{name}\" sẽ thay thế nội dung hiện tại của ghi chú này. Không thể hoàn tác.",
+    "failed": "Không áp dụng được mẫu",
+    "full": "Thay thế nội dung & thêm chi tiết của mẫu",
+    "success": "Đã áp dụng mẫu",
+    "title": "Thay thế nội dung ghi chú?"
+  },
+  "tagView": {
+    "moreActions": "Thao tác khác",
+    "pin": {
+      "action": "Ghim {count, plural, other {# ghi chú}} vào thẻ",
+      "failed": "Không ghim được ghi chú vào thẻ",
+      "success": "Đã ghim {count, plural, other {# ghi chú}} vào thẻ"
+    }
+  },
+  "tags": {
+    "hubTitle": "Thẻ",
+    "openHub": "Mở trang thẻ"
+  },
+  "tagsHub": {
+    "cancelCreate": "Hủy",
+    "category": {
+      "delete": "Xóa danh mục",
+      "deleteBody": "Các thẻ sẽ chuyển sang Chưa phân loại. Chúng sẽ không bị xóa.",
+      "deleteCancel": "Hủy",
+      "deleteConfirm": "Xóa",
+      "deleteTitle": "Xóa {name}?",
+      "dragHandle": "Kéo để sắp xếp lại danh mục",
+      "emptyHint": "Kéo một thẻ vào đây",
+      "more": "Tùy chọn danh mục",
+      "rename": "Đổi tên danh mục"
+    },
+    "categoryNamePlaceholder": "Tên danh mục",
+    "errors": {
+      "createCategoryFailed": "Không tạo được danh mục",
+      "createTagCategorizeFailed": "Đã tạo thẻ nhưng không thể thêm vào danh mục",
+      "createTagFailed": "Không tạo được thẻ",
+      "deleteCategoryFailed": "Không xóa được danh mục",
+      "loadFailed": "Không tải được danh mục thẻ",
+      "renameCategoryFailed": "Không đổi tên được danh mục",
+      "reorderFailed": "Không sắp xếp lại được thẻ"
+    },
+    "loading": "Đang tải thẻ...",
+    "newCategory": "Danh mục mới",
+    "newTag": "Thẻ mới",
+    "search": {
+      "empty": "Không có danh mục hoặc thẻ nào khớp với tìm kiếm của bạn",
+      "placeholder": "Tìm danh mục và thẻ"
+    },
+    "tagNamePlaceholder": "Tên thẻ",
+    "uncategorized": "Chưa phân loại"
+  },
+  "folderView": {
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (nhấp đúp để chỉnh sửa)",
+      "dragToReorder": "Kéo để sắp xếp lại cột: {name}"
+    },
+    "columns": {
+      "created": "Ngày tạo",
+      "folder": "Thư mục",
+      "kind": "Loại",
+      "modified": "Ngày sửa",
+      "tags": "Thẻ",
+      "title": "Tiêu đề",
+      "wordCount": "Số từ"
+    },
+    "defaultViewName": "Mặc định",
+    "groupHeader": {
+      "noteCount": "{count, plural, other {# ghi chú}}"
+    },
+    "selectView": "Chọn Chế độ xem"
   }
 }

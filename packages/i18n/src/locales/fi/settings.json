@@ -9,26 +9,27 @@
         "workspace": "Työtila",
         "preferences": "Asetukset",
         "services": "Palvelut",
-        "data": "Data"
+        "data": "Tiedot"
       },
       "items": {
         "account": "Tili",
         "general": "Kenraali",
         "templates": "Mallit",
         "editor": "Toimittaja",
-        "journal": "Journal",
+        "journal": "Päiväkirja",
         "tasks": "Tehtävät",
         "calendar": "Kalenteri",
         "appearance": "Ulkonäkö",
         "shortcuts": "Pikanäppäimet",
-        "ai": "AI Assistant",
+        "ai": "AI-avustaja",
         "integrations": "Integraatiot",
         "vault": "Holvi",
         "tags": "Tunnisteet",
         "properties": "Ominaisuudet",
         "commandLine": "Komentorivi",
         "features": "Ominaisuudet",
-        "import": "Tuo"
+        "import": "Tuo",
+        "inbox": "Saapuneet"
       }
     }
   },
@@ -75,6 +76,16 @@
         "downloadingPercent": "Ladataan {percent}%",
         "downloaded": "Käynnistä uudelleen asentaaksesi",
         "idle": "Tarkista päivitykset"
+      },
+      "autoCheck": {
+        "description": "Uudet julkaisut tarkistetaan käynnistyksen yhteydessä ja säännöllisesti sovelluksen ollessa auki.",
+        "error": "Automaattisen tarkistuksen asetuksen päivittäminen epäonnistui",
+        "label": "Tarkista päivitykset automaattisesti"
+      },
+      "autoDownload": {
+        "description": "Uudet julkaisut ladataan ja asennetaan taustalla ilman erillistä kysymistä.",
+        "error": "Automaattisen latauksen asetuksen päivittäminen epäonnistui",
+        "label": "Lataa päivitykset automaattisesti"
       }
     },
     "language": {
@@ -124,6 +135,24 @@
         "label": "Jaa nimettömät käyttötiedot",
         "description": "Se on vain anon-mittareita – muistiinpanojen sisältöä, hakukyselyitä, tiedostopolkuja, sähköposteja tai raakatunnuksia ei lähetetä.",
         "error": "Telemetria-asetuksen päivittäminen epäonnistui"
+      },
+      "diagnostics": {
+        "building": "Valmistellaan raporttia…",
+        "consent": "Lähetetäänkö kertaluonteinen diagnostiikkaraportti? Se sisältää vain tekniset lokit, joista tunnistetiedot on poistettu — ei muistiinpanojen sisältöä.",
+        "error": "Diagnostiikkaraportin lähettäminen epäonnistui",
+        "notNow": "Ei nyt",
+        "previewError": "Diagnostiikkaraportin valmistelu epäonnistui",
+        "previewLabel": "Esikatsele raportin sisältöä",
+        "send": "Lähetä",
+        "sendReport": {
+          "button": "Lähetä diagnostiikkaraportti",
+          "description": "Lähetä kertaluonteinen raportti teknisistä lokeista, joista tunnistetiedot on poistettu, jotta voimme selvittää kohtaamasi ongelman.",
+          "label": "Diagnostiikkaraportti"
+        },
+        "sending": "Lähetetään…",
+        "sent": "Raportti lähetetty — viite {incidentId}",
+        "snapshotLabel": "Laitteen tilannekuva",
+        "title": "Lähetetäänkö diagnostiikkaraportti?"
       }
     },
     "dateFormat": {
@@ -172,7 +201,7 @@
       },
       "presets": {
         "indigo": "Indigo",
-        "amber": "Amber",
+        "amber": "Meripihka",
         "emerald": "Smaragdi",
         "red": "Punainen",
         "violet": "Violetti",
@@ -193,12 +222,12 @@
         "description": "Käyttöliittymän ensisijainen kirjasintyyppi",
         "options": {
           "system": "Järjestelmän oletusarvo",
-          "sansSerif": "Sans-serif",
+          "sansSerif": "Päätteetön",
           "serif": "Serif (Crimson Pro)",
           "gelasio": "Gelasio",
           "geist": "Geist",
           "inter": "Inter",
-          "monospace": "Monospace"
+          "monospace": "Tasalevyinen"
         }
       },
       "fontSizeError": "Kirjasinkoon päivittäminen epäonnistui",
@@ -213,7 +242,8 @@
     },
     "groups": {
       "layout": "Asettelu",
-      "toolbar": "Työkalupalkki"
+      "toolbar": "Työkalupalkki",
+      "spelling": "Oikeinkirjoitus"
     },
     "width": {
       "label": "Editor Leveys",
@@ -221,14 +251,21 @@
       "options": {
         "narrow": "kapea",
         "medium": "Keskikokoinen",
-        "wide": "Leveä"
+        "wide": "Leveä",
+        "full": "Koko leveys",
+        "normal": "Normaali"
       },
       "error": "Editorin leveyden päivittäminen epäonnistui"
     },
     "toolbarMode": {
-      "label": "Sticky Formatting Toolbar",
+      "label": "Kiinnitetty muotoilupalkki",
       "description": "Näytä työkalupalkki aina editorin yläpuolella",
       "error": "Työkalupalkkitilan päivittäminen epäonnistui"
+    },
+    "spellCheck": {
+      "description": "Alleviivaa väärin kirjoitetut sanat muistiinpanoissa ja päiväkirjoissa",
+      "error": "Oikeinkirjoituksen tarkistuksen päivittäminen epäonnistui",
+      "label": "Tarkista oikeinkirjoitus"
     }
   },
   "templates": {
@@ -276,7 +313,7 @@
   },
   "journal": {
     "header": {
-      "title": "Journal",
+      "title": "Päiväkirja",
       "subtitle": "Päiväkirjan asetukset ja asetukset",
       "loading": "Ladataan asetuksia..."
     },
@@ -640,7 +677,7 @@
       "vaultPickerFolderLabel": "Tallenna holvit kansioon",
       "vaultPickerPrimaryHint": "Avautuu nyt",
       "vaultPickerTitle": "Valitse, mitä vastaanottaa",
-      "vaultRow": "Holvi — {{count}} kohdetta · {{date}}"
+      "vaultRow": "Holvi — {count} kohdetta · {date}"
     }
   },
   "devices": {
@@ -673,7 +710,8 @@
       "removeFailed": "Laitteen poistaminen epäonnistui",
       "renamed": "Nimetty uudelleen muotoon \"{name}\"",
       "renameFailed": "Laitteen uudelleennimeäminen epäonnistui"
-    }
+    },
+    "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Linkitä uusi laite",
@@ -711,7 +749,7 @@
   },
   "ai": {
     "header": {
-      "title": "AI Assistant",
+      "title": "AI-avustaja",
       "subtitle": "Upotukset toimivat paikallisesti. Äänimuistiinpanot voivat käyttää Whisper Smallia tai OpenAI-avainta.",
       "loading": "Ladataan asetuksia..."
     },
@@ -855,6 +893,11 @@
         "description": "Poista käytöstä yksisuuntaista synkronointia varten — näet edelleen Google-tapahtumasi memrynotessa, mutta memrynote-tapahtumat eivät näy Googlessa.",
         "error": "Synkronointisuunnan päivitys epäonnistui",
         "label": "Näytä memrynote-tapahtumat Google Calendarissa"
+      },
+      "agentAccess": {
+        "description": "Pois käytöstä oletuksena. Kun otat tämän käyttöön, tekoälyagentti voi lukea Google-tapahtumasi; kun poistat sen käytöstä, se ei saa niistä mitään tietoa, vaikka niistä kysyttäisiin. Näet ne memrynotessa joka tapauksessa.",
+        "error": "Tekoälyn pääsyn päivittäminen epäonnistui",
+        "label": "Salli tekoälyn lukea Google Calendar -tapahtumia"
       }
     },
     "sourcePicker": {
@@ -898,7 +941,8 @@
     },
     "groups": {
       "storageUsage": "Varastoinnin käyttö",
-      "location": "Sijainti"
+      "location": "Sijainti",
+      "accountVaults": "Tilisi holvit"
     },
     "loadingStorage": "Ladataan tallennustilatietoja...",
     "signInStorage": "Kirjaudu sisään nähdäksesi tallennustilan käyttö",
@@ -919,6 +963,17 @@
       },
       "warningTitle": "Varastointi melkein täynnä",
       "warningDescription": "Vapauta tilaa tai päivitä suunnitelmasi synkronointiongelmien välttämiseksi."
+    },
+    "accountVaults": {
+      "activeHint": "Vaihda ensin toiseen holviin, jotta voit poistaa tämän.",
+      "cloudOnly": "Ei tällä laitteella",
+      "delete": "Poista",
+      "deleteBody": "Tämä poistaa pysyvästi kaikki tämän holvin synkronoidut tiedot Memryn palvelimilta, eikä sitä voi kumota. Levyllä olevia tiedostojasi ei poisteta.",
+      "deleteConfirm": "Poista tililtä",
+      "deleteFailed": "Holvin poistaminen epäonnistui",
+      "deleteTitle": "Poistetaanko ”{name}” tililtäsi?",
+      "empty": "Tilillesi ei ole vielä synkronoitu holveja.",
+      "itemsCount": "{count} kohdetta"
     }
   },
   "tags": {
@@ -1022,7 +1077,7 @@
     "noMatch": "Mikään pikakuvake ei vastaa hakuasi",
     "conflict": "Ristiriidat: {labels}",
     "globalCapture": {
-      "title": "Global Capture",
+      "title": "Yleinen sieppaus",
       "description": "Tallenna muistiinpano mistä tahansa",
       "permissionNeeded": "Lupa tarvitaan",
       "active": "Aktiivinen",
@@ -1137,16 +1192,12 @@
       "press": "Paina ",
       "toToggleThisDialog": "vaihtaaksesi tämän valintaikkunan"
     },
-    "componentsSyncDeviceList": {
-      "middot": "keskipiste;"
-    },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Tämä laite on poistettu",
       "exporting": "Viedään...",
       "signOut": "Kirjaudu ulos"
     },
     "componentsSyncSyncHistory": {
-      "middot": "keskipiste; ",
       "activity": "Toiminta",
       "filterBySyncType": "Suodata synkronointityypin mukaan",
       "allTypes": "Kaikki tyypit",
@@ -1160,7 +1211,12 @@
       "last30Days": "Viimeiset 30 päivää",
       "loadingSyncHistory": "Ladataan synkronointihistoriaa",
       "noSyncActivityYet": "Ei vielä synkronointitoimintaa",
-      "loadMore": "Lataa lisää"
+      "loadMore": "Lataa lisää",
+      "duration": "· {duration}",
+      "showErrorDetailsAria": "{summary}, näytä virheen tiedot",
+      "summaryFailed": "Synkronointi epäonnistui",
+      "summaryPulled": "{count, plural, one {# kohde vedetty} other {# kohdetta vedetty}}",
+      "summaryPushed": "{count, plural, one {# kohde työnnetty} other {# kohdetta työnnetty}}"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Viimeksi synkronoitu ",
@@ -1208,102 +1264,103 @@
       "failedToCloseVault": "Holvin sulkeminen epäonnistui",
       "failedToSwitchVault": "Holvin vaihtaminen epäonnistui",
       "failedToUpdateConfig": "Konfiguroinnin päivitys epäonnistui",
-      "failedToReindex": "Uudelleenindeksointi epäonnistui"
+      "failedToReindex": "Uudelleenindeksointi epäonnistui",
+      "failedToLoadTasks": "Tehtävien lataaminen epäonnistui"
     }
   },
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Local server access for external MCP clients."
+      "subtitle": "Paikallinen palvelinyhteys ulkoisille MCP-asiakkaille."
     },
     "groups": {
-      "connection": "Connection",
-      "access": "Access"
+      "connection": "Yhteys",
+      "access": "Käyttöoikeus"
     },
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "description": "Käytä tätä localhost-päätepistettä Cursorissa, Claude Desktopissa tai Zedissä."
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Bearer-token",
+        "description": "Vain muistissa säilyvä tunnistetieto tälle sovelluksen käynnistyskerralle."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Rotate token",
-        "description": "Invalidate existing external-client sessions."
+        "label": "Vaihda token",
+        "description": "Mitätöi ulkoisten asiakkaiden nykyiset istunnot."
       }
     },
-    "copyLabel": "Copy {label}",
-    "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "copyLabel": "Kopioi {label}",
+    "notRunning": "Ei käynnissä",
+    "toolsBadge": "{count, plural, one {# työkalu} other {# työkalua}}"
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Permissions",
-      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
+      "title": "Agentin käyttöoikeudet",
+      "subtitle": "Valitse Agent-chatin oletuskäyttöoikeudet, vahvistukset ja paikalliset palveluntarjoajat."
     },
     "groups": {
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
+      "local": "Paikallinen OpenAI-yhteensopiva palveluntarjoaja",
+      "actions": "Yhteystarkistukset"
     },
     "presets": {
       "ollama": "Ollama",
       "lmStudio": "LM Studio",
       "llamaCpp": "llama.cpp",
-      "custom": "Custom"
+      "custom": "Mukautettu"
     },
     "fields": {
       "preset": {
-        "label": "Preset"
+        "label": "Esiasetus"
       },
       "baseUrl": {
-        "label": "Base URL",
-        "description": "OpenAI-compatible /v1 endpoint."
+        "label": "Perus-URL",
+        "description": "OpenAI-yhteensopiva /v1-päätepiste."
       },
       "allowNonLoopback": {
-        "label": "Allow non-loopback endpoint",
-        "description": "Data is sent to the configured endpoint."
+        "label": "Salli muu kuin loopback-päätepiste",
+        "description": "Tiedot lähetetään määritettyyn päätepisteeseen."
       },
       "model": {
-        "label": "Model",
-        "description": "Pick a returned model or enter one manually."
+        "label": "Malli",
+        "description": "Valitse palautettu malli tai syötä malli manuaalisesti."
       },
       "apiKey": {
-        "label": "API key",
-        "description": "Optional credential stored in the OS keychain.",
-        "configured": "An API key is already stored in the OS keychain."
+        "label": "API-avain",
+        "description": "Valinnainen tunnistetieto, joka tallennetaan käyttöjärjestelmän avainnippuun.",
+        "configured": "API-avain on jo tallennettu käyttöjärjestelmän avainnippuun."
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "save": "Tallenna",
+      "models": "Mallit",
+      "test": "Testaa yhteys",
+      "probe": "Tarkista työkalut"
     },
     "status": {
-      "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled",
+      "disconnected": "Ei yhteyttä",
+      "toolsDisabled": "Työkalut pois käytöstä",
+      "fullTools": "Kaikki työkalut käytössä",
       "checking": "Tarkistetaan…",
       "connected": "Yhdistetty",
       "label": "Yhteys"
     },
     "permissions": {
-      "group": "Agent permissions",
+      "group": "Agentin käyttöoikeudet",
       "access": {
-        "label": "Default access",
-        "description": "Sets the starting access mode for new Agent turns.",
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "label": "Oletuskäyttöoikeus",
+        "description": "Määrittää uusien Agent-vuorojen aloituskäyttötilan.",
+        "vaultOnly": "Vain holvi",
+        "computerAccess": "Tietokoneen käyttö"
       },
       "confirm": {
-        "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
-        "alwaysAllow": "Always allow",
-        "askBeforeChanges": "Ask before changes"
+        "label": "Vahvista toiminnot",
+        "description": "Valitse, suoritetaanko työkalukutsut automaattisesti vai odottavatko ne hyväksyntää chatissa.",
+        "alwaysAllow": "Salli aina",
+        "askBeforeChanges": "Kysy ennen muutoksia"
       }
     }
   },
@@ -1368,6 +1425,10 @@
       "tasks": {
         "description": "Tehtävät ja eräpäivät",
         "label": "Tehtävät"
+      },
+      "spatialCanvas": {
+        "description": "Vapaamuotoiset taulut muistiinpanojen järjestämiseen ja linkittämiseen",
+        "label": "Taulu"
       }
     }
   },
@@ -1393,7 +1454,10 @@
         "skipped": "{count} ohitettu",
         "title": "Tuonti valmis"
       },
-      "title": "Tuo lähteestä {name}"
+      "title": "Tuo lähteestä {name}",
+      "chooseDirectory": "Valitse kansio…",
+      "folderKeepsAssets": "Valitse kansio, kun kuvat ovat muistiinpanojen oman kansion ulkopuolella — vienneissä mediatiedostot ovat usein yhteisessä kansiossa.",
+      "previewError": "Esikatselu epäonnistui"
     },
     "header": {
       "subtitle": "Tuo muistiinpanosi ja tehtäväsi muista sovelluksista",
@@ -1432,6 +1496,99 @@
       "tasks": "{count, plural, one {# tehtävä} other {# tehtävää}}",
       "withDueDate": "{count} päivätty",
       "withTags": "{count} merkitty"
+    },
+    "messages": {
+      "csv": {
+        "columns": "Sarakkeet: {columns}",
+        "emptyTitle": "Ohitettiin rivi, jonka otsikko oli tyhjä (sarake \"{column}\")",
+        "noHeaders": "CSV-tiedostossa ei ole otsikkoriviä",
+        "titleColumn": "Otsikko sarakkeesta \"{column}\"; muut sarakkeet tallennettiin ominaisuuksiksi"
+      },
+      "raindrop": {
+        "csvEmpty": "Raindrop-CSV on tyhjä",
+        "headerNotFound": "Raindrop-CSV:n otsikkoriviä (\"url\"-saraketta) ei löytynyt",
+        "rowNoUrl": "Rivi {row} ohitettiin: ei URL-osoitetta"
+      },
+      "readFileFailed": "Tiedoston lukeminen epäonnistui",
+      "ticktick": {
+        "foldersDropped": "TickTick-kansioille ei ole vastinetta Memryssä, joten ne jätettiin pois",
+        "headerNotFound": "TickTick-CSV:n otsikkoriviä (\"Folder Name\") ei löytynyt",
+        "reminderNoAnchor": "Muistutus \"{reminder}\" ohitettiin (ei päivämääräankkuria)",
+        "subtaskParentMissing": "Osatehtävän \"{title}\" ylätehtävää ei löytynyt; tuotiin ylimmälle tasolle",
+        "unknownPriority": "Tuntematon TickTick-prioriteetti {priority} → ei mitään",
+        "unsupportedRepeat": "Toistosääntöä \"{rule}\" ei tueta, se ohitettiin"
+      },
+      "todoist": {
+        "emptyTitle": "Tehtävä, jonka sisältö oli tyhjä, tuotiin nimellä (nimetön)",
+        "headerNotFound": "Ei Todoist-CSV: TYPE-otsikkorivi puuttuu",
+        "orphanComment": "Kommentti, jota ei edeltänyt tehtävä, ohitettiin",
+        "sectionFlattened": "Osio \"{section}\" litistettiin",
+        "subtaskNoParent": "Osatehtävällä \"{title}\" ei ole ylätehtävää sisennystasolla {indent}; tuotiin ylimmälle tasolle",
+        "unknownPriority": "Tuntematon prioriteetti {priority} → ei mitään",
+        "unparsedDate": "Päivämäärää \"{date}\" ei voitu tulkita"
+      }
+    },
+    "status": {
+      "appleNotes": {
+        "copyingDatabase": "Kopioidaan Apple Notes -tietokantaa…"
+      },
+      "bear": {
+        "scanning": "Käydään läpi Bear-vientiä…"
+      },
+      "csv": {
+        "importing": "Tuodaan CSV-muistiinpanoja…"
+      },
+      "evernote": {
+        "scanning": "Käydään läpi .enex-tiedostoja…"
+      },
+      "html": {
+        "scanning": "Käydään läpi HTML-tiedostoja…"
+      },
+      "importingItem": "Tuodaan {title}",
+      "raindrop": {
+        "importing": "Tuodaan Raindrop-kirjanmerkkejä…"
+      },
+      "roam": {
+        "reading": "Luetaan Roam-vientiä…"
+      },
+      "scanningExport": "Käydään läpi vientiä…",
+      "scanningFiles": "Käydään läpi tiedostoja…",
+      "ticktick": {
+        "importing": "Tuodaan TickTick-tehtäviä…"
+      },
+      "todoist": {
+        "importing": "Tuodaan Todoist-tehtäviä…"
+      }
+    }
+  },
+  "inbox": {
+    "header": {
+      "loading": "Ladataan…",
+      "subtitle": "Päivittäinen läpikäyntimuistutus ja Saapuneet-asetukset.",
+      "title": "Saapuneet"
+    },
+    "reviewReminder": {
+      "enabled": {
+        "description": "Hienovarainen päivittäinen muistutus, kun saapuneissa on kohteita.",
+        "label": "Muistuta käymään saapuneet läpi"
+      },
+      "error": "Muistutuksen päivittäminen epäonnistui.",
+      "group": "Päivittäinen läpikäyntimuistutus",
+      "test": {
+        "button": "Lähetä testi",
+        "description": "Lähetä muistutus heti ja tarkista järjestelmäilmoituksesi.",
+        "label": "Testi-ilmoitus",
+        "sent": "Testi-ilmoitus lähetetty.",
+        "sentHint": "Jos mitään ei näy, salli MemryNoten ilmoitukset järjestelmäasetuksissa.",
+        "unsupported": "Tämä laite ei voi näyttää työpöytäilmoituksia."
+      },
+      "time": {
+        "description": "Paikallista aikaa, jokaisella laitteella.",
+        "hourLabel": "Tunti",
+        "label": "Muistutuksen aika",
+        "minuteLabel": "Minuutti",
+        "periodLabel": "AM tai PM"
+      }
     }
   }
 }

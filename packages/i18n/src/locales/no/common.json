@@ -25,7 +25,8 @@
     "expand": "Utvid",
     "collapse": "Kollaps",
     "showMore": "+{count, plural, one {# mer} other {# mer}}",
-    "showLess": "Vis mindre"
+    "showLess": "Vis mindre",
+    "undo": "Angre"
   },
   "tabs": {
     "pin": "Fest fane",
@@ -59,7 +60,10 @@
   "dateRelative": {
     "today": "I dag",
     "yesterday": "I går",
-    "daysAgo": "{count, plural, one {# dag siden} other {# dager siden}}"
+    "daysAgo": "{count, plural, one {# dag siden} other {# dager siden}}",
+    "daysLate": "{count, plural, one {#d forsinket} other {#d forsinket}}",
+    "daysOverdue": "{count, plural, one {# dag forsinket} other {# dager forsinket}}",
+    "tomorrow": "I morgen"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Hver dag} other {Hver # dag}}",
@@ -71,7 +75,18 @@
     "everyNMonthsOnDay": "{count, plural, one {Hver måned på {day}{suffix}} other {Hver # måned på {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Hver måned på {week} {day}} other {Hver # måned på {week} {day}}}",
     "everyNYears": "{count, plural, one {Hvert år} other {Hvert # år}}",
-    "repeats": "Gjentas"
+    "repeats": "Gjentas",
+    "ordinal": {
+      "first": "første",
+      "fourth": "fjerde",
+      "last": "siste",
+      "second": "andre",
+      "third": "tredje"
+    },
+    "preset": {
+      "everyWeekday": "Hver ukedag (man-fre)",
+      "everyYearOnDate": "Hvert år den {date}"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {
@@ -102,7 +117,15 @@
       "updateDownloadingPercent": "Laster ned {percent}%",
       "updateInstallingSubtitle": "MemryNote starter på nytt automatisk.",
       "updateInstallingTitle": "Installerer oppdatering",
-      "updateRestart": "Start på nytt"
+      "updateRestart": "Start på nytt",
+      "feedbackPrivacyEmailOptional": "E-postadressen din — bare hvis du oppgir den, og bare så vi kan svare",
+      "feedbackPrivacyEmailSignedIn": "E-postadressen til kontoen din ({email}), så vi kan svare",
+      "feedbackPrivacyMessage": "Meldingen din, nøyaktig slik du skrev den",
+      "feedbackPrivacyNote": "Ingenting annet. Notatene dine blir værende på enheten din.",
+      "feedbackPrivacyPlan": "Abonnementet ditt (free, Plus, Pro eller Believer)",
+      "feedbackPrivacyTitle": "Dette sendes",
+      "feedbackPrivacyVersion": "Appversjon og operativsystem",
+      "projects": "Prosjekter"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Endre størrelse på dagpanel",
@@ -180,8 +203,9 @@
       "search": "Søk",
       "searchNotesTasksJournalInbox": "Søk i notater, oppgaver, journal, innboks...",
       "noResultsFor": "Ingen resultater for \"",
-      "rdquo": "rdquo;",
-      "result": "resultat"
+      "result": "resultat",
+      "noResultsForQuery": "Ingen resultater for «{query}»",
+      "resultCount": "{count, plural, one {# resultat} other {# resultater}}"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Søk og klikk på elementer for å bygge stien din",
@@ -231,7 +255,8 @@
       "journal": "Journal",
       "calendar": "Kalender",
       "inboxCapture": "Innboksfangst",
-      "tasks": "Oppgaver"
+      "tasks": "Oppgaver",
+      "tags": "Tagger"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Ulagrede endringer",
@@ -261,15 +286,15 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Noe gikk galt",
       "anErrorOccurredWhileRenderingThisTabContent": "Det oppsto en feil under gjengivelsen av dette faneinnholdet.",
-      "tryAgain": "Prøv igjen"
+      "tryAgain": "Prøv igjen",
+      "sendReport": "Send diagnoserapport"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Merknadsikon"
     },
     "componentsTabsUnsavedChangesDialog": {
       "unsavedChanges": "Ulagrede endringer",
-      "quot": "quot;",
-      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; har ulagrede endringer. Hva vil du gjøre?"
+      "unsavedChangesBody": "«{title}» har ulagrede endringer. Hva vil du gjøre?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Ny arbeidsplass",
@@ -341,7 +366,6 @@
       "logOut": "Logg ut",
       "signInToSync": "Logg på for å synkronisere",
       "remove": "Fjern \"",
-      "rdquoFromList": "rdquo; fra listen?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Dette hvelvet vil bli fjernet fra appen, men filene dine forblir på disken. Du kan alltid legge den til på nytt senere.",
       "cancel": "Avbryt",
       "remove2": "Fjern",
@@ -352,7 +376,13 @@
       "downloadLocation": "Plassering",
       "changeLocation": "Endre…",
       "download": "Last ned",
-      "downloadFailed": "Hvelvet kunne ikke lastes ned"
+      "downloadFailed": "Hvelvet kunne ikke lastes ned",
+      "deleteFromAccount": "Slett fra kontoen",
+      "deleteVaultBody": "Dette fjerner for godt alle synkroniserte data for dette hvelvet fra Memrys servere, og kan ikke angres. Filene dine på disken blir ikke slettet.",
+      "deleteVaultConfirm": "Slett fra kontoen",
+      "deleteVaultFailed": "Kunne ikke slette hvelvet",
+      "deleteVaultTitle": "Slette «{name}» fra kontoen din?",
+      "removeVaultTitle": "Fjerne «{name}» fra listen?"
     },
     "componentsWindowControls": {
       "searchK": "Søk (⌘K)",
@@ -373,7 +403,7 @@
     }
   },
   "agentChat": {
-    "title": "Agent chat",
+    "title": "Agentchat",
     "loading": "Laster agentchat...",
     "conversationLoading": "Samtalen lastes inn...",
     "newConversation": "Ny samtale",
@@ -425,7 +455,7 @@
       },
       "models": {
         "default": "Standard",
-        "label": "Model"
+        "label": "Modell"
       },
       "settings": {
         "reasoning": "Begrunnelse"
@@ -450,21 +480,21 @@
         }
       },
       "access": {
-        "vaultOnly": "Vault only",
-        "computerAccess": "Computer access"
+        "vaultOnly": "Kun hvelv",
+        "computerAccess": "Datamaskintilgang"
       },
       "webSearch": {
         "on": "On",
-        "off": "Off",
-        "label": "Web search"
+        "off": "Av",
+        "label": "Nettsøk"
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissionsLabel": "Agenttillatelser: {access}, nettsøk {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "label": "Tillatelser",
+        "access": "Tilgang",
+        "tools": "Verktøy"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Agentens modellinnstillinger: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Ingen treff"
@@ -575,7 +605,7 @@
       "remove": "Fjern",
       "removeAria": "Fjern widget",
       "resize": "Størrelse",
-      "resizeAria": "Endre størrelse til {{size}}",
+      "resizeAria": "Endre størrelse til {size}",
       "savedFilterDefault": "I dag",
       "savedFilterHint": "Merk filtre med stjerne på Oppgaver-siden for å bruke dem her",
       "savedFilterLabel": "Lagret filter",
@@ -624,6 +654,11 @@
     "welcome": {
       "body": "Ditt private, offline-først hjem. Notater er ende-til-ende-kryptert — de forlater aldri enheten din ukryptert.",
       "title": "Velkommen til MemryNote"
+    },
+    "tour": {
+      "next": "Neste",
+      "previous": "Forrige",
+      "progress": "{current} av {total}"
     }
   },
   "updatePrompt": {
@@ -640,6 +675,165 @@
     "skip": "Hopp over denne versjonen"
   },
   "capture": {
-    "focusShortcut": "Fokuser fangstfelt"
+    "focusShortcut": "Fokuser fangstfelt",
+    "detailHint": "detaljer",
+    "focusHint": "Q",
+    "submit": "Fang inn"
+  },
+  "canvas": {
+    "card": {
+      "addCard": "Legg til kort",
+      "addCreateNote": "Opprett notat «{query}»",
+      "addCreateNoteEmpty": "Opprett nytt notat",
+      "addCreatedAt": "Opprettet {date}",
+      "addEmpty": "Ingen treff",
+      "addGroupEvents": "Hendelser",
+      "addGroupNotes": "Notater",
+      "addGroupTasks": "Oppgaver",
+      "addOnCanvas": "På lerretet",
+      "addPlaceholder": "Søk i notater, oppgaver og hendelser…",
+      "allDay": "Hele dagen",
+      "createNoteFailed": "Kunne ikke opprette notatet",
+      "deleted": "Elementet er slettet",
+      "loading": "Laster inn…",
+      "open": "Åpne i fane",
+      "openToEdit": "Åpne i fane for å redigere",
+      "untitled": "Uten tittel"
+    },
+    "corruptScene": "Dette lerretet kunne ikke leses. Redigering er slått av for å unngå tap av data.",
+    "createFailed": "Kunne ikke opprette lerretet",
+    "disabledBody": "Denne fanen hører til en funksjon som ikke er aktivert på denne enheten.",
+    "disabledTitle": "Lerret er ikke aktivert",
+    "empty": "Ingen lerreter ennå",
+    "libraryStoreFailed": "Kunne ikke lagre figurbiblioteket ditt. De siste endringene kan gå tapt.",
+    "loadFailed": "Kunne ikke laste inn lerreter",
+    "loading": "Laster inn lerreter…",
+    "newCanvas": "Nytt lerret",
+    "notFound": "Dette lerretet ble ikke funnet",
+    "openFailed": "Kunne ikke åpne lerretet",
+    "savedToVault": "Alle endringer lagres automatisk i hvelvet ditt",
+    "sectionLabel": "Lerreter",
+    "tooLargeToSync": "Dette lerretet er for stort til å synkroniseres. Det er lagret på denne enheten, men når ikke fram til de andre enhetene dine før det blir mindre.",
+    "untitled": "Lerret uten tittel"
+  },
+  "shortcuts": {
+    "combos": {
+      "clickRow": "Klikk på rad",
+      "reset": "Tilbakestill",
+      "shortcutsTab": "Hurtigtaster-fanen"
+    },
+    "description": "Raske veier for å bevege deg rundt i memrynote, fange tanker og behandle arbeid.",
+    "groups": {
+      "general": {
+        "description": "Navigasjon og hjelp i hele appen.",
+        "title": "Generelt"
+      },
+      "inbox": {
+        "description": "Behandle innfangede elementer raskt.",
+        "title": "Innboks"
+      },
+      "journal": {
+        "description": "Naviger i journalvisninger og fokuser skrivefeltet.",
+        "title": "Journal"
+      },
+      "notes": {
+        "description": "Skriv, formater og søk i notater.",
+        "title": "Notater / editor"
+      },
+      "settings": {
+        "description": "Åpne innstillinger og tilpass hurtigtaster.",
+        "title": "Innstillinger"
+      },
+      "tabs": {
+        "description": "Flytt mellom faner og ruter.",
+        "title": "Faner og delte ruter"
+      },
+      "tasks": {
+        "description": "Filtrer, velg og fullfør oppgaver.",
+        "title": "Oppgaver"
+      }
+    },
+    "items": {
+      "general": {
+        "createNote": "Opprett et notat",
+        "keyboardShortcuts": "Åpne hurtigtaster",
+        "openSettings": "Åpne innstillinger",
+        "quickSearch": "Åpne hurtigsøk",
+        "sidebarSection": "Gå til seksjon i sidefeltet",
+        "toggleSidebar": "Vis eller skjul sidefeltet",
+        "undoTaskAction": "Angre siste oppgavehandling"
+      },
+      "inbox": {
+        "archiveItem": "Arkiver valgt element",
+        "chooseQuickFileResult": "Velg et resultat i hurtigarkivering",
+        "clearSelection": "Tøm utvalget eller lukk hurtigarkivering",
+        "confirmFiling": "Bekreft arkiveringspanelet",
+        "firstOrLastItem": "Første eller siste element",
+        "jumpByPage": "Hopp en side om gangen",
+        "nextItem": "Neste element",
+        "openOriginal": "Åpne opprinnelig lenke",
+        "openQuickFile": "Åpne hurtigarkivering",
+        "previousItem": "Forrige element",
+        "refresh": "Oppdater innboksen",
+        "selectAllVisible": "Velg alle synlige elementer",
+        "selectItem": "Velg element",
+        "togglePreview": "Vis eller skjul forhåndsvisningen"
+      },
+      "journal": {
+        "bold": "Sett merket tekst i fet",
+        "find": "Finn i journalen",
+        "italic": "Sett merket tekst i kursiv",
+        "link": "Legg til eller rediger lenke",
+        "returnFromOverview": "Gå tilbake fra måneds- eller årsvisning",
+        "toggleFullWidth": "Slå av eller på journal i full bredde",
+        "underline": "Understrek merket tekst"
+      },
+      "notes": {
+        "bold": "Fet",
+        "closeOverlays": "Lukk overlegg i editoren",
+        "commandMenu": "Åpne kommandomenyen i editoren",
+        "createNote": "Opprett et notat",
+        "find": "Finn i notatet",
+        "italic": "Kursiv",
+        "link": "Legg til eller rediger lenke",
+        "saveNote": "Lagre gjeldende notat",
+        "underline": "Understreking"
+      },
+      "settings": {
+        "cancelRecording": "Avbryt opptak av hurtigtast",
+        "customizeShortcuts": "Tilpass hurtigtaster",
+        "openSettings": "Åpne innstillinger",
+        "recordShortcut": "Ta opp en ny hurtigtast",
+        "resetShortcut": "Gjenopprett standard for en hurtigtast"
+      },
+      "tabs": {
+        "closeAllInPane": "Lukk alle faner i ruten",
+        "closeSplitPane": "Lukk den delte ruten",
+        "closeTab": "Lukk fane",
+        "duplicateTab": "Dupliser fane",
+        "focusPane": "Fokuser en annen rute",
+        "maximizePane": "Maksimer gjeldende rute",
+        "moveTabToPane": "Flytt fane til rute",
+        "newTabMenu": "Åpne menyen for ny fane",
+        "nextTab": "Neste fane",
+        "pinTab": "Fest eller løsne fane",
+        "previousTab": "Forrige fane",
+        "reopenClosedTab": "Åpne lukket fane på nytt",
+        "splitDown": "Del nedover",
+        "splitRight": "Del mot høyre"
+      },
+      "tasks": {
+        "clearFilters": "Tøm synlige filtre",
+        "clearSelection": "Tøm oppgaveutvalget",
+        "completeSelected": "Fullfør valgte oppgaver",
+        "configureRepeat": "Still inn gjentakelse på oppgaven i fokus",
+        "deleteSelected": "Slett valgte oppgaver",
+        "selectAllVisible": "Velg alle synlige oppgaver",
+        "skipOccurrence": "Hopp over én gjentakelse",
+        "stopRepeating": "Slutt å gjenta oppgaven"
+      }
+    },
+    "or": "eller",
+    "then": "deretter"
   }
 }

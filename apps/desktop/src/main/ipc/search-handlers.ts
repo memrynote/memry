@@ -15,6 +15,7 @@ import { rebuildAllIndexes } from '@main/database/fts-rebuild'
 import { searchReasons } from '@memry/db-schema/schema/search-reasons'
 import { eq, desc, sql, and } from 'drizzle-orm'
 import { trackMainEvent } from '../telemetry/track'
+import { getMainI18n } from '../lib/main-i18n'
 
 const logger = createLogger('IPC:Search')
 
@@ -123,7 +124,7 @@ export function registerSearchHandlers(): void {
         return { started: true as const, ...result }
       } catch (error) {
         logger.error('search:rebuild-index failed:', error)
-        return { started: false as const, error: 'Rebuild failed' }
+        return { started: false as const, error: getMainI18n().t('errors:search.rebuildFailed') }
       }
     })
   )

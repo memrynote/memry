@@ -65,6 +65,7 @@ import {
   type AppIcon
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { getColumnLabel } from '@/lib/contract-display-names'
 import { evaluateFormula } from '@/lib/expression-evaluator'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
 import type {
@@ -581,7 +582,7 @@ export function FolderTableView({
     const visibleColumns = columnConfig.map((col) => {
       const baseColumn = {
         id: col.id,
-        header: col.displayName ?? capitalizeFirst(col.id),
+        header: col.displayName ?? getColumnLabel(col.id),
         size: col.width ?? 150,
         minSize: 50,
         maxSize: 800

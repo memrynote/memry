@@ -33,7 +33,7 @@
     }
   },
   "type": {
-    "link": "Link",
+    "link": "Legătură",
     "links": "Legături",
     "note": "Notă",
     "notes": "Note",
@@ -197,7 +197,7 @@
     "file": "Fișier",
     "keyboardHint": "{modifier}⏎ fișier · 1-5 folder · Esc close",
     "voiceTitlePlaceholder": "Denumiți această notă vocală...",
-    "fileTo": "File to",
+    "fileTo": "Depune în",
     "ai": "AI",
     "selectFolder": "Selectați folderul",
     "searchOrCreateFolder": "Căutați sau creați cu /...",
@@ -270,7 +270,50 @@
     "panelEmpty": "Niciun memento în curând.",
     "panelPast": "Trecute",
     "panelUpcoming": "În curând",
-    "taskFallback": "Sarcină"
+    "taskFallback": "Sarcină",
+    "dateTime": {
+      "dateAt": "{date} la {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Astăzi la {time}",
+      "todayCompact": "Astăzi, {time}",
+      "tomorrowAt": "Mâine la {time}",
+      "tomorrowCompact": "Mâine, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Memento aniversar",
+      "inHours": {
+        "label": "Peste {count, plural, one {# oră} few {# ore} other {# de ore}}"
+      },
+      "inMinutes": {
+        "label": "Peste {count, plural, one {# minut} few {# minute} other {# de minute}}"
+      },
+      "inMonths": {
+        "label": "Peste {count, plural, one {# lună} few {# luni} other {# de luni}}"
+      },
+      "inWeeks": {
+        "label": "Peste {count, plural, one {# săptămână} few {# săptămâni} other {# de săptămâni}}"
+      },
+      "inYears": {
+        "label": "Peste {count, plural, one {# an} few {# ani} other {# de ani}}"
+      },
+      "laterToday": {
+        "description": "Peste {count, plural, one {# oră} few {# ore} other {# de ore}}",
+        "label": "Mai târziu astăzi"
+      },
+      "monthlyReflection": "Reflecție lunară",
+      "nextWeek": {
+        "description": "Luni la ora 9:00",
+        "label": "Săptămâna viitoare"
+      },
+      "quarterlyReflection": "Reflecție trimestrială",
+      "reviewInAWeek": "Revizuire într-o săptămână",
+      "sameDayNextMonth": "Aceeași zi luna viitoare",
+      "tomorrow": {
+        "description": "Mâine la ora 9:00",
+        "label": "Mâine"
+      },
+      "tomorrowMorning": "Mâine dimineață"
+    }
   },
   "insights": {
     "captureActivity": "Captură activitate",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Atașați fișier (imagini, audio, video, PDF)",
       "recordVoiceMemo": "Înregistrați notă vocală",
       "recordVoiceMemo2": "Înregistrați notă vocală",
-      "alreadyCaptured": "Deja capturat: „",
-      "rdquo": "rdquo;",
       "captureAnyway": "Captură oricum",
       "focusShortcut": "Focalizează câmpul de captură",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Capturează linkul",
+      "captureNote": "Capturează nota",
+      "placeholder": "Captură rapidă — lipește un link, notează un gând…",
+      "duplicateNotice": "Deja capturat: „{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Alegeți folderul",
@@ -408,16 +453,15 @@
       "attachFile": "Atașați fișierul"
     },
     "componentsQuickCaptureLinkPreview": {
-      "link": "LINK"
+      "link": "LEGĂTURĂ"
     },
     "componentsQuickCaptureStates": {
       "captured": "Capturat",
       "dismissError": "Închideți eroarea",
       "alreadyCaptured": "Deja capturat",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; · ",
       "captureAnyway": "Captură oricum",
-      "close": "Închide"
+      "close": "Închide",
+      "duplicateMeta": "„{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Aruncă pentru a captura",
@@ -466,7 +510,12 @@
       "cancelRecording": "Anulați înregistrarea",
       "cancel": "Anulează",
       "stopRecording": "Opriți înregistrarea",
-      "stop": "Opreste-te"
+      "stop": "Opreste-te",
+      "enableMicInSettings": "Activează accesul la microfon în setările sistemului, apoi încearcă din nou.",
+      "failedToStart": "Nu s-a putut porni înregistrarea",
+      "microphoneAccessDenied": "Acces la microfon refuzat",
+      "noMicrophoneFound": "Nu s-a găsit niciun microfon",
+      "recordingError": "A apărut o eroare la înregistrare"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Nu s-a putut captura fișierul",
       "fileCaptureFailed": "Captura fișierului a eșuat",
       "failedToCaptureAudio": "Nu s-a putut capta sunetul",
-      "failedToCaptureVoice": "Nu s-a putut capta vocea"
+      "failedToCaptureVoice": "Nu s-a putut capta vocea",
+      "failedToLoadInboxPreferences": "Nu s-au putut încărca preferințele pentru inbox",
+      "failedToUpdateInboxPreferences": "Nu s-au putut actualiza preferințele pentru inbox"
     },
     "toasts": {
       "inboxRefreshed": "Inbox a fost reîmprospătat"
@@ -516,5 +567,10 @@
     "task": "Sarcină",
     "time": "Ora",
     "title": "Convertește"
+  },
+  "reviewNudge": {
+    "action": "Deschide inbox",
+    "description": "Procesează capturile de azi într-o singură trecere calmă.",
+    "title": "{count, plural, one {E timpul să revizuiești # element} few {E timpul să revizuiești # elemente} other {E timpul să revizuiești # de elemente}}"
   }
 }

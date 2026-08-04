@@ -270,7 +270,50 @@
     "panelEmpty": "ไม่มีการเตือนที่กำลังจะถึง",
     "panelPast": "ที่ผ่านมา",
     "panelUpcoming": "กำลังจะถึง",
-    "taskFallback": "งาน"
+    "taskFallback": "งาน",
+    "dateTime": {
+      "dateAt": "{date} เวลา {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "วันนี้ เวลา {time}",
+      "todayCompact": "วันนี้, {time}",
+      "tomorrowAt": "พรุ่งนี้ เวลา {time}",
+      "tomorrowCompact": "พรุ่งนี้, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "เตือนวันครบรอบ",
+      "inHours": {
+        "label": "ใน {count, plural, other {# ชั่วโมง}}"
+      },
+      "inMinutes": {
+        "label": "ใน {count, plural, other {# นาที}}"
+      },
+      "inMonths": {
+        "label": "ใน {count, plural, other {# เดือน}}"
+      },
+      "inWeeks": {
+        "label": "ใน {count, plural, other {# สัปดาห์}}"
+      },
+      "inYears": {
+        "label": "ใน {count, plural, other {# ปี}}"
+      },
+      "laterToday": {
+        "description": "ใน {count, plural, other {# ชั่วโมง}}",
+        "label": "ช่วงหลังของวันนี้"
+      },
+      "monthlyReflection": "ทบทวนประจำเดือน",
+      "nextWeek": {
+        "description": "วันจันทร์ เวลา 9:00 น.",
+        "label": "สัปดาห์หน้า"
+      },
+      "quarterlyReflection": "ทบทวนประจำไตรมาส",
+      "reviewInAWeek": "ทบทวนในอีกหนึ่งสัปดาห์",
+      "sameDayNextMonth": "วันเดียวกันในเดือนหน้า",
+      "tomorrow": {
+        "description": "พรุ่งนี้ เวลา 9:00 น.",
+        "label": "พรุ่งนี้"
+      },
+      "tomorrowMorning": "พรุ่งนี้เช้า"
+    }
   },
   "insights": {
     "captureActivity": "จับกิจกรรม",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "  \nแนบไฟล์ (รูปภาพ, เสียง, วิดีโอ, PDF)",
       "recordVoiceMemo": "บันทึกข้อความเสียง",
       "recordVoiceMemo2": "บันทึกข้อความเสียง",
-      "alreadyCaptured": "จับภาพแล้ว: “",
-      "rdquo": "rdquo;",
       "captureAnyway": "จับภาพต่อ",
       "focusShortcut": "โฟกัสช่องบันทึก",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "บันทึกลิงก์",
+      "captureNote": "บันทึกโน้ต",
+      "placeholder": "บันทึกด่วน — วางลิงก์ หรือจดความคิด…",
+      "duplicateNotice": "บันทึกไว้แล้ว: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "เลือกโฟลเดอร์",
@@ -414,10 +459,9 @@
       "captured": "จับแล้ว",
       "dismissError": "ปิดข้อผิดพลาด",
       "alreadyCaptured": "จับภาพแล้ว",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; &middot; ",
       "captureAnyway": "จับภาพต่อ",
-      "close": "ปิด"
+      "close": "ปิด",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "วางเพื่อจับภาพ",
@@ -466,7 +510,12 @@
       "cancelRecording": "ยกเลิกการบันทึก",
       "cancel": "ยกเลิก",
       "stopRecording": "หยุดการบันทึก",
-      "stop": "หยุด"
+      "stop": "หยุด",
+      "enableMicInSettings": "เปิดสิทธิ์เข้าถึงไมโครโฟนในการตั้งค่าระบบ แล้วลองอีกครั้ง",
+      "failedToStart": "ไม่สามารถเริ่มบันทึกเสียงได้",
+      "microphoneAccessDenied": "การเข้าถึงไมโครโฟนถูกปฏิเสธ",
+      "noMicrophoneFound": "ไม่พบไมโครโฟน",
+      "recordingError": "เกิดข้อผิดพลาดในการบันทึกเสียง"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "ไม่สามารถจับไฟล์ได้",
       "fileCaptureFailed": "การจับไฟล์ล้มเหลว",
       "failedToCaptureAudio": "ไม่สามารถจับเสียงได้",
-      "failedToCaptureVoice": "ไม่สามารถจับเสียงได้"
+      "failedToCaptureVoice": "ไม่สามารถจับเสียงได้",
+      "failedToLoadInboxPreferences": "ไม่สามารถโหลดการตั้งค่ากล่องขาเข้าได้",
+      "failedToUpdateInboxPreferences": "ไม่สามารถอัปเดตการตั้งค่ากล่องขาเข้าได้"
     },
     "toasts": {
       "inboxRefreshed": "กล่องขาเข้าถูกรีเฟรช"
@@ -516,5 +567,10 @@
     "task": "งาน",
     "time": "เวลา",
     "title": "แปลง"
+  },
+  "reviewNudge": {
+    "action": "เปิดกล่องขาเข้า",
+    "description": "จัดการสิ่งที่บันทึกไว้วันนี้ให้จบในรอบเดียวอย่างใจเย็น",
+    "title": "{count, plural, other {ถึงเวลาทบทวน # รายการ}}"
   }
 }

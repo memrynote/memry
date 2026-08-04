@@ -22,6 +22,16 @@ vi.mock('../agent/storage/vault-id', () => ({
   getOrCreateVaultUuid: (...args: unknown[]) => mockGetOrCreateVaultUuid(...args)
 }))
 
+// NetworkError copy resolves through the main-process i18n singleton, which only
+// exists after setMainI18n() during app boot. Echo the key back so the assertion
+// pins the chosen message, not one locale's wording.
+vi.mock('../lib/main-i18n', () => ({
+  getMainI18n: () => ({
+    t: (key: string) => key,
+    getFixedT: () => (key: string) => key
+  })
+}))
+
 import {
   syncFetch,
   postToServer,
@@ -164,9 +174,7 @@ describe('http-client', () => {
 
       // #when / #then
       await expect(syncFetch('GET', '/api/test')).rejects.toThrow(NetworkError)
-      await expect(syncFetch('GET', '/api/test')).rejects.toThrow(
-        'Unable to connect to sync server'
-      )
+      await expect(syncFetch('GET', '/api/test')).rejects.toThrow('errors:sync.serverUnreachable')
     })
 
     it('throws RateLimitError on 429 response', async () => {
@@ -212,6 +220,40 @@ describe('http-client', () => {
       await expect(syncFetch('GET', '/sync/changes')).rejects.toMatchObject({
         statusCode: 403,
         serverError: 'AUTH_DEVICE_REVOKED: Device has been revoked'
+      })
+    })
+
+    it('passes an abort signal to fetch', async () => {
+      // #given
+      mockFetch.mockResolvedValue(createJsonResponse({ ok: true }))
+
+      // #when
+      await syncFetch('GET', '/sync/changes')
+
+      // #then
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/sync/changes'),
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
+      )
+    })
+
+    it('aborts a hung request after the timeout and throws a timed-out NetworkError', async () => {
+      // #given a request that never resolves on its own
+      mockFetch.mockImplementation(
+        (_url: string, init: { signal: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            init.signal.addEventListener('abort', () => reject(init.signal.reason), { once: true })
+          })
+      )
+
+      // #when / #then
+      await expect(
+        syncFetch('GET', '/sync/changes', undefined, undefined, undefined, 25)
+      ).rejects.toMatchObject({
+        name: 'NetworkError',
+        // The i18n mock above echoes keys, so this pins the timeout branch to
+        // its own message rather than the generic unreachable one.
+        message: 'errors:sync.requestTimedOut'
       })
     })
   })

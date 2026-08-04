@@ -106,7 +106,8 @@ vi.mock('./calendar-week-view', () => ({
             startAt: '2026-05-14T09:00',
             endAt: '2026-05-14T10:00',
             isAllDay: false,
-            targetCalendarId: null
+            targetCalendarId: null,
+            projectId: null
           })
         }
       >
@@ -159,7 +160,8 @@ vi.mock('./calendar-event-popover', () => ({
             startAt: '2026-05-14T09:00',
             endAt: '2026-05-14T10:00',
             isAllDay: false,
-            targetCalendarId: null
+            targetCalendarId: null,
+            projectId: null
           })
         }
       >
@@ -263,7 +265,8 @@ describe('CalendarShell', () => {
           startAt: '2026-05-14T09:00',
           endAt: '2026-05-14T10:00',
           isAllDay: false,
-          targetCalendarId: null
+          targetCalendarId: null,
+          projectId: null
         },
         anchorRect: { x: 0, y: 0, width: 10, height: 10 }
       },

@@ -270,7 +270,50 @@
     "panelEmpty": "Nessun promemoria in arrivo.",
     "panelPast": "Passati",
     "panelUpcoming": "In arrivo",
-    "taskFallback": "Attività"
+    "taskFallback": "Attività",
+    "dateTime": {
+      "dateAt": "{date} alle {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Oggi alle {time}",
+      "todayCompact": "Oggi, {time}",
+      "tomorrowAt": "Domani alle {time}",
+      "tomorrowCompact": "Domani, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Promemoria anniversario",
+      "inHours": {
+        "label": "Tra {count, plural, one {# ora} many {# ore} other {# ore}}"
+      },
+      "inMinutes": {
+        "label": "Tra {count, plural, one {# minuto} many {# minuti} other {# minuti}}"
+      },
+      "inMonths": {
+        "label": "Tra {count, plural, one {# mese} many {# mesi} other {# mesi}}"
+      },
+      "inWeeks": {
+        "label": "Tra {count, plural, one {# settimana} many {# settimane} other {# settimane}}"
+      },
+      "inYears": {
+        "label": "Tra {count, plural, one {# anno} many {# anni} other {# anni}}"
+      },
+      "laterToday": {
+        "description": "Tra {count, plural, one {# ora} many {# ore} other {# ore}}",
+        "label": "Più tardi oggi"
+      },
+      "monthlyReflection": "Riflessione mensile",
+      "nextWeek": {
+        "description": "Lunedì alle 9:00",
+        "label": "La prossima settimana"
+      },
+      "quarterlyReflection": "Riflessione trimestrale",
+      "reviewInAWeek": "Rivedi tra una settimana",
+      "sameDayNextMonth": "Stesso giorno il mese prossimo",
+      "tomorrow": {
+        "description": "Domani alle 9:00",
+        "label": "Domani"
+      },
+      "tomorrowMorning": "Domani mattina"
+    }
   },
   "insights": {
     "captureActivity": "Cattura attività",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Allega file (Immagini, Audio, Video, PDF)",
       "recordVoiceMemo": "Registra un promemoria vocale",
       "recordVoiceMemo2": "Registra un promemoria vocale",
-      "alreadyCaptured": "Già catturato: “",
-      "rdquo": "rdquo;",
       "captureAnyway": "Cattura comunque",
       "focusShortcut": "Attiva campo di cattura",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Cattura link",
+      "captureNote": "Cattura nota",
+      "placeholder": "Cattura rapida — incolla un link, annota un pensiero…",
+      "duplicateNotice": "Già catturato: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Scegli la cartella",
@@ -414,10 +459,9 @@
       "captured": "Catturato",
       "dismissError": "Ignora errore",
       "alreadyCaptured": "Già catturato",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; · ",
       "captureAnyway": "Cattura comunque",
-      "close": "Chiudi"
+      "close": "Chiudi",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Rilascia per catturare",
@@ -466,7 +510,12 @@
       "cancelRecording": "Annulla la registrazione",
       "cancel": "Annulla",
       "stopRecording": "Interrompi la registrazione",
-      "stop": "Fermare"
+      "stop": "Fermare",
+      "enableMicInSettings": "Consenti l'accesso al microfono nelle impostazioni di sistema, poi riprova.",
+      "failedToStart": "Impossibile avviare la registrazione",
+      "microphoneAccessDenied": "Accesso al microfono negato",
+      "noMicrophoneFound": "Nessun microfono trovato",
+      "recordingError": "Si è verificato un errore di registrazione"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Impossibile acquisire il file",
       "fileCaptureFailed": "Acquisizione del file non riuscita",
       "failedToCaptureAudio": "Impossibile acquisire l'audio",
-      "failedToCaptureVoice": "Impossibile acquisire la voce"
+      "failedToCaptureVoice": "Impossibile acquisire la voce",
+      "failedToLoadInboxPreferences": "Impossibile caricare le preferenze della posta in arrivo",
+      "failedToUpdateInboxPreferences": "Impossibile aggiornare le preferenze della posta in arrivo"
     },
     "toasts": {
       "inboxRefreshed": "Posta in arrivo aggiornata"
@@ -516,5 +567,10 @@
     "task": "Attività",
     "time": "Ora",
     "title": "Converti"
+  },
+  "reviewNudge": {
+    "action": "Apri Posta in arrivo",
+    "description": "Rivedi con calma le catture di oggi in un unico passaggio.",
+    "title": "{count, plural, one {È ora di rivedere # elemento} many {È ora di rivedere # elementi} other {È ora di rivedere # elementi}}"
   }
 }

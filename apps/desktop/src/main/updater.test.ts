@@ -49,7 +49,9 @@ const mocks = vi.hoisted(() => {
     },
     windows: [
       {
+        isDestroyed: () => false,
         webContents: {
+          isDestroyed: () => false,
           send: vi.fn()
         }
       }

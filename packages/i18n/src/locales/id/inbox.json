@@ -270,7 +270,50 @@
     "panelEmpty": "Tidak ada pengingat mendatang.",
     "panelPast": "Lampau",
     "panelUpcoming": "Mendatang",
-    "taskFallback": "Tugas"
+    "taskFallback": "Tugas",
+    "dateTime": {
+      "dateAt": "{date} pukul {time}",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Hari ini pukul {time}",
+      "todayCompact": "Hari ini, {time}",
+      "tomorrowAt": "Besok pukul {time}",
+      "tomorrowCompact": "Besok, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Pengingat peringatan",
+      "inHours": {
+        "label": "Dalam {count, plural, other {# Jam}}"
+      },
+      "inMinutes": {
+        "label": "Dalam {count, plural, other {# Menit}}"
+      },
+      "inMonths": {
+        "label": "Dalam {count, plural, other {# Bulan}}"
+      },
+      "inWeeks": {
+        "label": "Dalam {count, plural, other {# Minggu}}"
+      },
+      "inYears": {
+        "label": "Dalam {count, plural, other {# Tahun}}"
+      },
+      "laterToday": {
+        "description": "Dalam {count, plural, other {# jam}}",
+        "label": "Nanti Hari Ini"
+      },
+      "monthlyReflection": "Refleksi bulanan",
+      "nextWeek": {
+        "description": "Senin pukul 09.00",
+        "label": "Minggu Depan"
+      },
+      "quarterlyReflection": "Refleksi triwulanan",
+      "reviewInAWeek": "Tinjau dalam seminggu",
+      "sameDayNextMonth": "Hari yang sama bulan depan",
+      "tomorrow": {
+        "description": "Besok pukul 09.00",
+        "label": "Besok"
+      },
+      "tomorrowMorning": "Besok Pagi"
+    }
   },
   "insights": {
     "captureActivity": "Aktivitas Tangkap",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Lampirkan file (Gambar, Audio, Video, PDF)",
       "recordVoiceMemo": "Rekam memo suara",
       "recordVoiceMemo2": "Rekam memo suara",
-      "alreadyCaptured": "Sudah ditangkap: “",
-      "rdquo": "benar;",
       "captureAnyway": "Tangkap Pokoknya",
       "focusShortcut": "Fokuskan input tangkapan",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Tangkap tautan",
+      "captureNote": "Tangkap catatan",
+      "placeholder": "Tangkap cepat — tempel tautan, catat ide…",
+      "duplicateNotice": "Sudah ditangkap: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Pilih map",
@@ -414,10 +459,9 @@
       "captured": "Ditangkap",
       "dismissError": "Singkirkan kesalahan",
       "alreadyCaptured": "Sudah ditangkap",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "benar; · ",
       "captureAnyway": "Tangkap Pokoknya",
-      "close": "Tutup"
+      "close": "Tutup",
+      "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Jatuhkan untuk menangkap",
@@ -466,7 +510,12 @@
       "cancelRecording": "Batalkan perekaman",
       "cancel": "Batalkan",
       "stopRecording": "Berhenti merekam",
-      "stop": "Berhenti"
+      "stop": "Berhenti",
+      "enableMicInSettings": "Aktifkan akses mikrofon di pengaturan sistem Anda, lalu coba lagi.",
+      "failedToStart": "Gagal memulai perekaman",
+      "microphoneAccessDenied": "Akses mikrofon ditolak",
+      "noMicrophoneFound": "Mikrofon tidak ditemukan",
+      "recordingError": "Terjadi kesalahan perekaman"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Gagal mengambil file",
       "fileCaptureFailed": "Pengambilan file gagal",
       "failedToCaptureAudio": "Gagal menangkap audio",
-      "failedToCaptureVoice": "Gagal menangkap suara"
+      "failedToCaptureVoice": "Gagal menangkap suara",
+      "failedToLoadInboxPreferences": "Gagal memuat preferensi kotak masuk",
+      "failedToUpdateInboxPreferences": "Gagal memperbarui preferensi kotak masuk"
     },
     "toasts": {
       "inboxRefreshed": "Kotak masuk disegarkan"
@@ -516,5 +567,10 @@
     "task": "Tugas",
     "time": "Waktu",
     "title": "Konversi"
+  },
+  "reviewNudge": {
+    "action": "Buka kotak masuk",
+    "description": "Selesaikan tangkapan hari ini dalam satu sesi yang tenang.",
+    "title": "{count, plural, other {Waktunya meninjau # item}}"
   }
 }

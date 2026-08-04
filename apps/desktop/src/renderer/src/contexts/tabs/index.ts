@@ -58,5 +58,7 @@ export {
   useTabActions
 } from './context'
 
+export type { TabCloseGuard } from './close-guard'
+
 // Persistence
 export * from './persistence'

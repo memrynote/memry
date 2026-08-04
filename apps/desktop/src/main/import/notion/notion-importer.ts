@@ -6,6 +6,7 @@ import { generateNoteId } from '../../lib/id'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
 import { forEachZipEntry } from '../_shared/zip'
+import { IMPORT_STATUS, importingItemStatus } from '@memry/importers/messages'
 import { parsePageInfo } from './parse-info'
 import { NotionResolverInfo } from './resolver'
 import { convertHtmlToMarkdown } from './convert-to-md'
@@ -44,7 +45,7 @@ export const notionImporter: Importer = {
 
     // ---- Pass 1: scan page tree + buffer attachments ----
     ctx.setPhase('scanning')
-    ctx.status('Scanning export…')
+    ctx.status(IMPORT_STATUS.scanningExport)
     await forEachZipEntry(input.sourcePaths, ctx.signal, async (entry) => {
       if (ctx.isCancelled()) return
       if (entry.name === 'index.html') return
@@ -93,7 +94,7 @@ export const notionImporter: Importer = {
       if (!fileInfo) return
 
       try {
-        ctx.status(`Importing ${fileInfo.title}`)
+        ctx.status(importingItemStatus(fileInfo.title))
         const doc = new JSDOM(await entry.readText()).window.document
         const { body, properties, tags, assets } = convertHtmlToMarkdown(info, doc, entry.filepath)
         const folder = `${ROOT}/${info.getPathForFile(fileInfo)}`.replace(/\/+$/, '')

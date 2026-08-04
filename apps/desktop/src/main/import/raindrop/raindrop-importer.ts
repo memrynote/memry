@@ -17,6 +17,7 @@ import {
   type InboxItemPlan,
   type RaindropImportPlan
 } from '@memry/importers/raindrop'
+import { IMPORT_MESSAGE_CODES, IMPORT_STATUS, toImportMessage } from '@memry/importers/messages'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportPreview } from '../types'
 
@@ -98,13 +99,16 @@ export async function buildRaindropPreview(
           { labelKey: 'import.stats.skipped', value: plan.stats.skipped }
         ],
         sampleTitles: plan.sampleTitles,
-        warnings: plan.warnings.map((w) => w.message)
+        warnings: plan.warnings
       })
     } catch (err) {
       groups.push({
         label: basename(fp),
         counts: [],
-        error: errorMessage(err, 'Failed to read file')
+        error: toImportMessage(err, {
+          code: IMPORT_MESSAGE_CODES.readFileFailed,
+          message: 'Failed to read file'
+        })
       })
     }
   }
@@ -168,7 +172,7 @@ export const raindropImporter: Importer = {
     buildRaindropPreview(input.sourcePaths, new Date().toISOString(), signal),
   run: async (input, ctx) => {
     ctx.setPhase('importing')
-    ctx.status('Importing Raindrop bookmarks…')
+    ctx.status(IMPORT_STATUS.raindropImporting)
     const deps = await defaultDeps()
     await runRaindropImport(input.sourcePaths, deps, ctx, new Date().toISOString())
     return ctx.toSummary()

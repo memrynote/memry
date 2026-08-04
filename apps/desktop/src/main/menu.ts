@@ -80,7 +80,7 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
               type: 'info',
               title: t('help.about'),
               message: 'MemryNote',
-              detail: `Version ${app.getVersion()}`
+              detail: t('help.aboutVersion', { version: app.getVersion() })
             })
         }
       : { role: 'about', label: t('help.about') }
@@ -95,11 +95,13 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
               { type: 'separator' as const },
               cmd('app.preferences', t('app.preferences')),
               { type: 'separator' as const },
-              { role: 'services' as const },
+              { role: 'services' as const, label: t('app.services') },
               { type: 'separator' as const },
-              { role: 'hide' as const },
-              { role: 'hideOthers' as const },
-              { role: 'unhide' as const },
+              // Same app.name trap as About: the hide role's default label is
+              // `Hide ${app.name}`, which reads "Hide @memry/desktop" in production.
+              { role: 'hide' as const, label: t('app.hide') },
+              { role: 'hideOthers' as const, label: t('app.hideOthers') },
+              { role: 'unhide' as const, label: t('app.unhide') },
               { type: 'separator' as const },
               { label: t('app.quit'), role: 'quit' as const }
             ]
@@ -135,7 +137,17 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
         // renderer decides (tab close, or window close once only Home is left) and
         // closes through the IPC path that flushes pending work first.
         cmd('file.closeWindow', t('file.close')),
-        ...(isMac ? [] : [{ type: 'separator' as const }, { role: 'quit' as const }])
+        // Windows names this command "Exit", every other platform "Quit" — the
+        // role default did the same split, so the label keeps both wordings.
+        ...(isMac
+          ? []
+          : [
+              { type: 'separator' as const },
+              {
+                label: process.platform === 'win32' ? t('app.exit') : t('app.quit'),
+                role: 'quit' as const
+              }
+            ])
       ]
     },
     {
@@ -157,8 +169,8 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
         { label: t('edit.cut'), role: 'cut' },
         { label: t('edit.copy'), role: 'copy' },
         { label: t('edit.paste'), role: 'paste' },
-        { role: 'pasteAndMatchStyle' },
-        { role: 'delete' },
+        { label: t('edit.pasteAndMatchStyle'), role: 'pasteAndMatchStyle' },
+        { label: t('edit.delete'), role: 'delete' },
         { label: t('edit.selectAll'), role: 'selectAll', accelerator: 'CmdOrCtrl+A' },
         { type: 'separator' },
         cmd('edit.find', t('edit.find')),
@@ -167,7 +179,10 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
               { type: 'separator' as const },
               {
                 label: t('edit.speech'),
-                submenu: [{ role: 'startSpeaking' as const }, { role: 'stopSpeaking' as const }]
+                submenu: [
+                  { role: 'startSpeaking' as const, label: t('edit.startSpeaking') },
+                  { role: 'stopSpeaking' as const, label: t('edit.stopSpeaking') }
+                ]
               }
             ]
           : [])
@@ -207,9 +222,9 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
         { label: t('view.reload'), role: 'reload' },
         { label: t('view.toggleDevTools'), role: 'toggleDevTools' },
         { type: 'separator' },
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
+        { label: t('view.actualSize'), role: 'resetZoom' },
+        { label: t('view.zoomIn'), role: 'zoomIn' },
+        { label: t('view.zoomOut'), role: 'zoomOut' },
         { type: 'separator' },
         { label: t('view.toggleFullscreen'), role: 'togglefullscreen' },
         { type: 'separator' },
@@ -227,7 +242,20 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
         }
       ]
     },
-    { role: 'windowMenu', label: t('window.label') },
+    {
+      role: 'windowMenu',
+      label: t('window.label'),
+      // The role's own children (Minimize / Zoom / Bring All to Front / Close)
+      // carry Electron's English labels, so they are spelled out here instead:
+      // same items, same roles, same platform split as the role default.
+      submenu: [
+        { role: 'minimize' as const, label: t('window.minimize') },
+        { role: 'zoom' as const, label: t('window.zoom') },
+        ...(isMac
+          ? [{ type: 'separator' as const }, { role: 'front' as const, label: t('window.front') }]
+          : [{ role: 'close' as const, label: t('window.close') }])
+      ]
+    },
     {
       role: 'help',
       label: t('help.label'),

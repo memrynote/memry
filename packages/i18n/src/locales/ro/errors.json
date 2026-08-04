@@ -22,7 +22,19 @@
     "writeFailed": "Nu s-a salvat această notă. Verificați spațiul pe disc și permisiunile.",
     "readFailed": "Nu s-a putut citi această notă. Fișierul poate fi blocat sau corupt.",
     "deleteFailed": "Această notă a eșuat. Verificați permisiunile fișierelor.",
-    "invalidPath": "Calea notei este nevalidă."
+    "invalidPath": "Calea notei este nevalidă.",
+    "applyTemplateFailed": "Nu s-a putut aplica șablonul",
+    "createFailed": "Nu s-a putut crea nota",
+    "deleteVersionFailed": "Nu s-a putut șterge versiunea",
+    "exportHtmlFailed": "Nu s-a putut exporta HTML",
+    "exportPdfFailed": "Nu s-a putut exporta PDF",
+    "importFilesFailed": "Nu s-au putut importa fișierele",
+    "moveFailed": "Nu s-a putut muta nota",
+    "renameFailed": "Nu s-a putut redenumi nota",
+    "reorderFailed": "Nu s-au putut reordona notele",
+    "restoreVersionFailed": "Nu s-a putut restaura versiunea",
+    "setLocalOnlyFailed": "Nu s-a putut seta modul doar local",
+    "updateFailed": "Nu s-a putut actualiza nota"
   },
   "database": {
     "connectionFailed": "Nu s-a putut conecta la baza de date locală. Încercați să reporniți aplicația.",
@@ -41,7 +53,14 @@
     "fileTooLarge": "Acest fișier este prea mare pentru a fi atașat.",
     "unsupportedType": "Acest tip de fișier nu este acceptat.",
     "writeFailed": "Atașamentul nu a fost salvat. Verificați spațiul pe disc.",
-    "deleteFailed": "Atașamentul nu a fost șters."
+    "deleteFailed": "Atașamentul nu a fost șters.",
+    "downloadFailed": "Descărcarea atașamentului a eșuat",
+    "downloadProgressFailed": "Nu s-a putut prelua progresul descărcării",
+    "uploadFailed": "Încărcarea atașamentului a eșuat",
+    "uploadProgressFailed": "Nu s-a putut prelua progresul încărcării",
+    "emptyFile": "Nu se poate încărca un fișier gol",
+    "exceedsMaxSize": "Fișier prea mare: {size} depășește limita de {limit}",
+    "exceedsPlanLimit": "Fișierul este mai mare decât permite planul tău: {size} depășește {limit}"
   },
   "encryption": {
     "failed": "Nu s-au putut cripta datele. Este posibil ca cheile dvs. să fie regenerate.",
@@ -74,6 +93,188 @@
     "securityQuarantinePermanent": "Un element de sincronizare nu a putut fi verificat și a fost pus în carantină pentru securitate.",
     "securityQuarantineRetry": "Un element de sincronizare nu a reușit verificarea semnăturii și va fi reîncercat.",
     "certificatePinPaused": "Conexiunea securizată la serverul de sincronizare nu a putut fi verificată. Sincronizarea a fost întreruptă pentru a vă proteja.",
-    "paymentRequired": "Este necesar un plan Sync plătit pentru a folosi sincronizarea criptată găzduită."
+    "paymentRequired": "Este necesar un plan Sync plătit pentru a folosi sincronizarea criptată găzduită.",
+    "attachmentUploadFailed": "Nu s-a putut sincroniza atașamentul „{filename}”. Rămâne pe acest dispozitiv.",
+    "fileTooLarge": "Acest fișier este mai mare decât permite planul tău. Treci la un plan superior pentru a sincroniza fișiere mai mari.",
+    "vaultRecovered": "Cheia seifului a fost restaurată. Sincronizarea se va relua.",
+    "historyFetchFailed": "Nu s-a putut prelua istoricul sincronizării",
+    "keyPersistenceFailed": "Cheia de criptare nu a putut fi salvată în siguranță. Înregistrarea dispozitivului a fost anulată. Vă rugăm să încercați din nou.",
+    "serverUnreachable": "Nu se poate stabili conexiunea cu serverul de sincronizare. Vă rugăm să verificați conexiunea la internet.",
+    "updateSyncedSettingFailed": "Nu s-a putut actualiza setarea sincronizată",
+    "requestTimedOut": "Cererea de sincronizare a expirat. Verificați conexiunea la internet."
+  },
+  "agent": {
+    "conversationBusy": "Conversație ocupată",
+    "runtimeStarting": "Mediul de execuție al agentului pornește. Încercați din nou."
+  },
+  "ai": {
+    "inlineDisabled": "Editarea AI în linie este dezactivată",
+    "listOllamaModelsFailed": "Nu s-au putut lista modelele Ollama"
+  },
+  "auth": {
+    "approveLinkingFailed": "Nu s-a putut aproba asocierea",
+    "cannotRemoveCurrentDevice": "Dispozitivul curent nu poate fi eliminat",
+    "completeLinkingFailed": "Nu s-a putut finaliza asocierea",
+    "confirmRecoveryPhraseFailed": "Nu s-a putut confirma fraza de recuperare",
+    "fetchSasCodeFailed": "Nu s-a putut prelua codul SAS",
+    "finalizeVaultChoiceFailed": "Nu s-a putut finaliza alegerea seifului",
+    "initiateOAuthFailed": "Nu s-a putut iniția OAuth",
+    "invalidRecoveryPhraseFormat": "Format nevalid al frazei de recuperare",
+    "linkDeviceQrFailed": "Nu s-a putut asocia dispozitivul prin QR",
+    "linkRecoveryPhraseFailed": "Nu s-a putut asocia prin fraza de recuperare",
+    "notAuthenticated": "Neautentificat",
+    "pickFolderFailed": "Nu s-a putut alege dosarul",
+    "recoveryPhraseMismatch": "Fraza de recuperare nu se potrivește. Vă rugăm să încercați din nou.",
+    "removeDeviceFailed": "Nu s-a putut elimina dispozitivul",
+    "renameDeviceFailed": "Nu s-a putut redenumi dispozitivul",
+    "requestOtpFailed": "Nu s-a putut solicita codul OTP",
+    "resendOtpFailed": "Nu s-a putut retrimite codul OTP",
+    "sessionExpired": "Sesiunea a expirat. Vă rugăm să vă conectați din nou.",
+    "setupFirstDeviceOAuthFailed": "Nu s-a putut configura primul dispozitiv prin OAuth",
+    "verifyOtpFailed": "Nu s-a putut verifica codul OTP"
+  },
+  "bookmark": {
+    "alreadyBookmarked": "Elementul este deja marcat",
+    "notFound": "Marcajul nu a fost găsit"
+  },
+  "calendar": {
+    "connectProviderFailed": "Nu s-a putut conecta furnizorul de calendar",
+    "createEventFailed": "Nu s-a putut crea evenimentul din calendar",
+    "deleteEventFailed": "Nu s-a putut șterge evenimentul din calendar",
+    "disconnectProviderFailed": "Nu s-a putut deconecta furnizorul de calendar",
+    "eventNotFound": "Evenimentul din calendar nu a fost găsit",
+    "googleNotConnected": "Google Calendar nu este conectat pe acest dispozitiv",
+    "listGoogleCalendarsFailed": "Nu s-au putut lista calendarele Google",
+    "onlyGoogleSourcesRetryable": "Doar sursele Google Calendar pot fi reîncercate",
+    "onlySourcesSelectable": "Doar sursele de calendar pot fi selectate",
+    "promoteExternalEventFailed": "Nu s-a putut promova evenimentul extern din calendar",
+    "refreshProviderFailed": "Nu s-a putut reîmprospăta furnizorul de calendar",
+    "retryGoogleSourceSyncFailed": "Nu s-a putut reîncerca sincronizarea sursei Google Calendar",
+    "setDefaultGoogleCalendarFailed": "Nu s-a putut seta calendarul Google implicit",
+    "signInBeforeRefresh": "Conectați-vă la memrynote înainte de a reîmprospăta Google Calendar",
+    "sourceNotFound": "Sursa de calendar nu a fost găsită",
+    "syncFailed": "Sincronizarea a eșuat",
+    "updateEventFailed": "Nu s-a putut actualiza evenimentul din calendar",
+    "updateSourceSelectionFailed": "Nu s-a putut actualiza selecția surselor de calendar"
+  },
+  "folder": {
+    "createFailed": "Nu s-a putut crea dosarul",
+    "deleteFailed": "Nu s-a putut șterge dosarul",
+    "renameFailed": "Nu s-a putut redenumi dosarul",
+    "setConfigFailed": "Nu s-a putut seta configurația dosarului"
+  },
+  "folderView": {
+    "deleteViewFailed": "Nu s-a putut șterge vizualizarea",
+    "setConfigFailed": "Nu s-a putut seta configurația",
+    "setViewFailed": "Nu s-a putut seta vizualizarea"
+  },
+  "googleCalendar": {
+    "accessDenied": "Accesul la Google Calendar a fost refuzat. Vă puteți conecta din nou oricând sunteți pregătit.",
+    "connectFailed": "Conectarea la Google Calendar nu a reușit. Vă rugăm să încercați din nou peste puțin timp.",
+    "misconfigured": "Google Calendar nu este configurat corect. Vă rugăm să contactați asistența dacă se repetă.",
+    "reconnectNeeded": "Conexiunea la Google Calendar a expirat. Vă rugăm să vă deconectați și să vă conectați din nou.",
+    "scopeMissing": "Nu am putut accesa Google Calendar deoarece permisiunea pentru Calendar nu a fost acordată. Vă rugăm să încercați din nou și să vă asigurați că bifa pentru Calendar rămâne activă pe ecranul de consimțământ Google.",
+    "temporarilyUnavailable": "Google Calendar este temporar indisponibil. Vă rugăm să încercați din nou în scurt timp."
+  },
+  "importer": {
+    "cancelFailed": "Anularea a eșuat",
+    "fileSelectionFailed": "Selectarea fișierului a eșuat",
+    "importFailed": "Importul a eșuat",
+    "listFailed": "Nu s-au putut lista importatoarele",
+    "previewFailed": "Previzualizarea a eșuat"
+  },
+  "project": {
+    "archiveFailed": "Nu s-a putut arhiva proiectul",
+    "captureLinkFailed": "Nu s-a putut captura linkul",
+    "createFailed": "Nu s-a putut crea proiectul",
+    "deleteFailed": "Nu s-a putut șterge proiectul",
+    "importFilesFailed": "Nu s-au putut importa fișierele",
+    "linkItemFailed": "Nu s-a putut lega elementul",
+    "listForItemFailed": "Nu s-au putut lista proiectele pentru acest element",
+    "reorderFailed": "Nu s-au putut reordona proiectele",
+    "setHomeNoteFailed": "Nu s-a putut seta nota principală",
+    "unlinkItemFailed": "Nu s-a putut desface legătura elementului",
+    "updateFailed": "Nu s-a putut actualiza proiectul",
+    "updatePinnedFailed": "Nu s-a putut actualiza starea de fixare"
+  },
+  "property": {
+    "alreadyExists": "Proprietatea „{name}” există deja",
+    "createDefinitionFailed": "Nu s-a putut crea definiția proprietății",
+    "entityNotFound": "Entitatea nu a fost găsită",
+    "notFound": "Proprietatea „{name}” nu a fost găsită",
+    "renameFailed": "Nu s-a putut redenumi proprietatea",
+    "setCalendarVisibilityFailed": "Nu s-a putut seta vizibilitatea proprietății în calendar",
+    "setFailed": "Nu s-au putut seta proprietățile",
+    "updateDefinitionFailed": "Nu s-a putut actualiza definiția proprietății"
+  },
+  "reminder": {
+    "createFailed": "Nu s-a putut crea mementoul",
+    "dismissAllFailed": "Nu s-au putut respinge mementourile",
+    "dismissFailed": "Nu s-a putut respinge mementoul",
+    "notFound": "Mementoul nu a fost găsit",
+    "snoozeFailed": "Nu s-a putut amâna mementoul",
+    "updateFailed": "Nu s-a putut actualiza mementoul"
+  },
+  "savedFilter": {
+    "notFound": "Filtrul salvat nu a fost găsit"
+  },
+  "search": {
+    "rebuildFailed": "Reconstruirea a eșuat"
+  },
+  "settings": {
+    "modelAlreadyLoading": "Modelul se încarcă deja",
+    "modelLoadFailed": "Nu s-a putut încărca modelul",
+    "shortcutInUse": "Comanda rapidă {shortcut} este deja utilizată",
+    "terminalCommandInstallFailed": "Nu s-a putut instala comanda de terminal",
+    "terminalCommandUninstallFailed": "Nu s-a putut dezinstala comanda de terminal",
+    "unknownVault": "Seif necunoscut",
+    "voiceModelDownloadFailed": "Nu s-a putut descărca modelul vocal"
+  },
+  "tag": {
+    "categoryNameRequired": "Numele categoriei este obligatoriu",
+    "createCategoryFailed": "Nu s-a putut crea categoria de etichete",
+    "deleteCategoryFailed": "Nu s-a putut șterge categoria de etichete",
+    "deleteFailed": "Nu s-a putut șterge eticheta",
+    "listCategoriesFailed": "Nu s-au putut lista categoriile de etichete",
+    "mergeFailed": "Nu s-au putut îmbina etichetele",
+    "mergeSameTag": "Eticheta sursă și cea țintă sunt identice",
+    "pinNoteFailed": "Nu s-a putut fixa nota",
+    "removeFromNoteFailed": "Nu s-a putut elimina eticheta din notă",
+    "renameCategoryFailed": "Nu s-a putut redenumi categoria de etichete",
+    "renameFailed": "Nu s-a putut redenumi eticheta",
+    "reorderFailed": "Nu s-au putut reordona etichetele",
+    "unpinNoteFailed": "Nu s-a putut anula fixarea notei",
+    "updateColorFailed": "Nu s-a putut actualiza culoarea etichetei",
+    "updateIconFailed": "Nu s-a putut actualiza pictograma etichetei"
+  },
+  "task": {
+    "archiveFailed": "Nu s-a putut arhiva sarcina",
+    "archiveManyFailed": "Nu s-au putut arhiva sarcinile",
+    "completeFailed": "Nu s-a putut finaliza sarcina",
+    "completeManyFailed": "Nu s-au putut finaliza sarcinile",
+    "convertToSubtaskFailed": "Nu s-a putut converti în subsarcină",
+    "convertToTaskFailed": "Nu s-a putut converti în sarcină",
+    "createFailed": "Nu s-a putut crea sarcina",
+    "deleteFailed": "Nu s-a putut șterge sarcina",
+    "deleteManyFailed": "Nu s-au putut șterge sarcinile",
+    "duplicateFailed": "Nu s-a putut duplica sarcina",
+    "moveFailed": "Nu s-a putut muta sarcina",
+    "moveManyFailed": "Nu s-au putut muta sarcinile",
+    "reorderFailed": "Nu s-au putut reordona sarcinile",
+    "unarchiveFailed": "Nu s-a putut dezarhiva sarcina",
+    "uncompleteFailed": "Nu s-a putut marca sarcina ca nefinalizată",
+    "updateFailed": "Nu s-a putut actualiza sarcina"
+  },
+  "taskStatus": {
+    "createFailed": "Nu s-a putut crea starea",
+    "deleteFailed": "Nu s-a putut șterge starea",
+    "reorderFailed": "Nu s-au putut reordona stările",
+    "updateFailed": "Nu s-a putut actualiza starea"
+  },
+  "template": {
+    "createFailed": "Nu s-a putut crea șablonul",
+    "deleteFailed": "Nu s-a putut șterge șablonul",
+    "duplicateFailed": "Nu s-a putut duplica șablonul",
+    "updateFailed": "Nu s-a putut actualiza șablonul"
   }
 }

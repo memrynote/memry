@@ -3,7 +3,7 @@
     "tabs": {
       "inbox": "Beérkezett üzenetek",
       "archived": "Archivált",
-      "insights": "Insights",
+      "insights": "Elemzések",
       "ariaLabel": "Beérkezett üzenetek nézet kiválasztása"
     },
     "triageButton": "Triage",
@@ -256,7 +256,7 @@
     "source": "Forrás",
     "journalTitle": "Napló — {date}",
     "noteFallback": "Megjegyzés",
-    "journalFallback": "Journal",
+    "journalFallback": "Napló",
     "highlighted": "Kiemelve: \"{text}\"",
     "viewed": "Megtekintve",
     "markViewed": "Megjelölés megtekintettként",
@@ -270,7 +270,50 @@
     "panelEmpty": "Nincsenek közelgő emlékeztetők.",
     "panelPast": "Korábbi",
     "panelUpcoming": "Közelgő",
-    "taskFallback": "Feladat"
+    "taskFallback": "Feladat",
+    "dateTime": {
+      "dateAt": "{date} {time}-kor",
+      "dateCompact": "{date}, {time}",
+      "todayAt": "Ma {time}-kor",
+      "todayCompact": "Ma, {time}",
+      "tomorrowAt": "Holnap {time}-kor",
+      "tomorrowCompact": "Holnap, {time}"
+    },
+    "presets": {
+      "anniversaryReminder": "Évfordulós emlékeztető",
+      "inHours": {
+        "label": "{count, plural, one {# óra múlva} other {# óra múlva}}"
+      },
+      "inMinutes": {
+        "label": "{count, plural, one {# perc múlva} other {# perc múlva}}"
+      },
+      "inMonths": {
+        "label": "{count, plural, one {# hónap múlva} other {# hónap múlva}}"
+      },
+      "inWeeks": {
+        "label": "{count, plural, one {# hét múlva} other {# hét múlva}}"
+      },
+      "inYears": {
+        "label": "{count, plural, one {# év múlva} other {# év múlva}}"
+      },
+      "laterToday": {
+        "description": "{count, plural, one {# óra múlva} other {# óra múlva}}",
+        "label": "Ma később"
+      },
+      "monthlyReflection": "Havi visszatekintés",
+      "nextWeek": {
+        "description": "Hétfőn 9:00-kor",
+        "label": "Jövő héten"
+      },
+      "quarterlyReflection": "Negyedéves visszatekintés",
+      "reviewInAWeek": "Átnézés egy hét múlva",
+      "sameDayNextMonth": "Jövő hónapban ugyanezen a napon",
+      "tomorrow": {
+        "description": "Holnap 9:00-kor",
+        "label": "Holnap"
+      },
+      "tomorrowMorning": "Holnap reggel"
+    }
   },
   "insights": {
     "captureActivity": "Rögzítési tevékenység",
@@ -310,11 +353,13 @@
       "attachFileImagesAudioVideoPdf": "Fájl csatolása (képek, hang, videó, PDF)",
       "recordVoiceMemo": "Hangjegyzet rögzítése",
       "recordVoiceMemo2": "Hangjegyzet rögzítése",
-      "alreadyCaptured": "Már elfogták: \"",
-      "rdquo": "rdquo;",
       "captureAnyway": "Mindenképpen rögzítse",
       "focusShortcut": "Rögzítési mező fókuszálása",
-      "q": "Q"
+      "q": "Q",
+      "captureLink": "Link rögzítése",
+      "captureNote": "Jegyzet rögzítése",
+      "placeholder": "Gyors rögzítés — illessz be egy linket, jegyezz fel egy gondolatot…",
+      "duplicateNotice": "Már rögzítve: „{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Válasszon mappát",
@@ -414,10 +459,9 @@
       "captured": "Elfogták",
       "dismissError": "Elvetési hiba",
       "alreadyCaptured": "Már elfogták",
-      "ldquo": "ldquo;",
-      "rdquoMiddot": "rdquo; · ",
       "captureAnyway": "Mindenképpen rögzítse",
-      "close": "Bezárás"
+      "close": "Bezárás",
+      "duplicateMeta": "„{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Emelje le a rögzítéshez",
@@ -466,7 +510,12 @@
       "cancelRecording": "Felvétel megszakítása",
       "cancel": "Mégsem",
       "stopRecording": "Állítsa le a felvételt",
-      "stop": "Állj"
+      "stop": "Állj",
+      "enableMicInSettings": "Engedélyezd a mikrofon-hozzáférést a rendszerbeállításokban, majd próbáld újra.",
+      "failedToStart": "Nem sikerült elindítani a felvételt",
+      "microphoneAccessDenied": "A mikrofon-hozzáférés megtagadva",
+      "noMicrophoneFound": "Nem található mikrofon",
+      "recordingError": "Hiba történt a felvétel közben"
     }
   },
   "phaseI": {
@@ -479,7 +528,9 @@
       "failedToCaptureFile": "Nem sikerült rögzíteni a fájlt",
       "fileCaptureFailed": "A fájl rögzítése nem sikerült",
       "failedToCaptureAudio": "Nem sikerült rögzíteni a hangot",
-      "failedToCaptureVoice": "Nem sikerült rögzíteni a hangot"
+      "failedToCaptureVoice": "Nem sikerült rögzíteni a hangot",
+      "failedToLoadInboxPreferences": "Nem sikerült betölteni a Beérkezők beállításait",
+      "failedToUpdateInboxPreferences": "Nem sikerült frissíteni a Beérkezők beállításait"
     },
     "toasts": {
       "inboxRefreshed": "Beérkező levelek frissítve"
@@ -516,5 +567,10 @@
     "task": "Feladat",
     "time": "Idő",
     "title": "Átalakítás"
+  },
+  "reviewNudge": {
+    "action": "Beérkezők megnyitása",
+    "description": "Nézd át a mai rögzítéseidet egyetlen nyugodt körben.",
+    "title": "{count, plural, one {Ideje átnézni # elemet} other {Ideje átnézni # elemet}}"
   }
 }

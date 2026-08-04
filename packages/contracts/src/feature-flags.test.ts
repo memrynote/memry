@@ -3,7 +3,7 @@ import { FEATURES_SETTINGS_DEFAULTS, FeaturesSettingsSchema } from './settings-s
 import { featureForTabType, FEATURE_KEYS } from './feature-flags'
 
 describe('feature flags', () => {
-  it('defaults core features on and the opt-in spatialCanvas off', () => {
+  it('defaults every feature on, including spatialCanvas', () => {
     expect(FeaturesSettingsSchema.parse(FEATURES_SETTINGS_DEFAULTS)).toEqual({
       home: true,
       inbox: true,
@@ -11,7 +11,7 @@ describe('feature flags', () => {
       tasks: true,
       calendar: true,
       graph: true,
-      spatialCanvas: false
+      spatialCanvas: true
     })
   })
 

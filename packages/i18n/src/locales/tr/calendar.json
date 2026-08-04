@@ -61,13 +61,18 @@
     "use-default-calendar": "Varsayılan takvimi kullan",
     "use-default-calendar-with-name": "Varsayılanı kullan ({calendar})",
     "use-memry-calendar-default": "memrynote takvimini kullan (varsayılan)",
-    "primary-suffix": "birincil"
+    "primary-suffix": "birincil",
+    "project": "Proje",
+    "no-project": "Proje yok",
+    "remove-from-project": "{project} projesinden çıkar",
+    "project-update-failed": "Etkinliğin projesi güncellenemedi"
   },
   "delete-dialog": {
     "title": "Etkinlik silinsin mi?",
     "local-description": "\"{title}\" kalıcı olarak silinecek. Bu işlem geri alınamaz.",
     "google-bound-description": "\"{title}\" memrynote ve Google Calendar'dan kaldırılacak. Bu eylem geri alınamaz.",
-    "context-menu-delete-label": "Etkinliği sil"
+    "context-menu-delete-label": "Etkinliği sil",
+    "context-menu-add-to-project": "Projeye ekle"
   },
   "agent-access-dialog": {
     "aria": "Yapay zekanın Google Calendar etkinliklerinizi okuyup okuyamayacağını seçin",
@@ -191,6 +196,7 @@
     "placeholder": "Etkinlik, görev, hatırlatıcı ara…"
   },
   "undo": {
-    "moveEvent": "Etkinliği taşı"
+    "moveEvent": "Etkinliği taşı",
+    "moveTask": "Görevi yeniden planla"
   }
 }
