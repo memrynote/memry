@@ -2231,7 +2231,125 @@ git commit -m "feat(sync): keep frontmatter-owned project links out of the proje
 
 ---
 
-### Task 11: Full verification and docs
+### Task 11: Project properties in templates
+
+Added after the plan was written, on an explicit human decision. The design spec listed
+template support as out of scope; that ruling is superseded — Kaan chose full support over
+both removing the option and deferring it.
+
+**Files:**
+
+- Modify: `packages/contracts/src/templates-api.ts` — `TemplatePropertyType` + `TemplatePropertySchema`
+- Modify: `apps/desktop/src/renderer/src/pages/template-editor.tsx` — the two type maps
+- Test: `packages/contracts/src/templates-api.test.ts`, plus a renderer test for the maps
+
+**Interfaces:**
+
+- Consumes: `PROJECT_PROPERTY_KEY` and the `project` property type (Task 1); `ProjectEditor` (Task 4); the reconciler (Task 7).
+- Produces: `TemplatePropertyType` includes `'project'`.
+
+Today `template-editor.tsx` maps `project → 'text'` on save, so picking "Project" in the
+template editor silently produces a text property. The apply path itself needs no change:
+`apply-template.ts:30` merges `applied.properties` into the note's properties generically, so
+a template carrying `project: ['Alpha']` lands in the note's frontmatter and Task 7's
+projector derives the link on the next write.
+
+- [ ] **Step 1: Establish the backward-compatibility position before writing code**
+
+`TemplatePropertySchema` in `packages/contracts/src/templates-api.ts` is a strict `z.enum` of
+eight types. A template carrying `type: 'project'` fails that validation. Before changing
+anything, determine and report:
+
+- every path on which a template is parsed through this schema (IPC input validation, file read, sync apply);
+- whether any of those paths can be reached by an **older** build reading data a newer build wrote — templates on disk, or the template sync item type;
+- what an older build actually does on a validation failure: skip that property, drop the whole template, or throw.
+
+If an older build would drop or reject a whole template, **stop and report BLOCKED** with what
+you found. Silently making older builds lose templates is not an acceptable cost, and the fix
+would be a schema-tolerance change that needs its own decision.
+
+If the strict enum is only ever applied to renderer→main IPC input on the current build, note
+that and proceed.
+
+- [ ] **Step 2: Write the failing contract test**
+
+In `packages/contracts/src/templates-api.test.ts`:
+
+```ts
+it('accepts a project property', () => {
+  const result = TemplatePropertySchema.safeParse({
+    name: 'project',
+    type: 'project',
+    value: ['Alpha']
+  })
+
+  expect(result.success).toBe(true)
+})
+```
+
+> Match the file's existing test style; the surrounding suite already covers the other types.
+
+- [ ] **Step 3: Run it and confirm it fails**
+
+```bash
+pnpm --filter @memry/contracts test -- templates-api
+```
+
+Expected: FAIL — `type` is not one of the eight enum members.
+
+- [ ] **Step 4: Widen the contract**
+
+Add `| 'project'` to `TemplatePropertyType`, and `'project'` to the schema's `z.enum([...])`
+list. Keep the existing eight members in place and in order.
+
+- [ ] **Step 5: Stop the template editor degrading the type**
+
+In `apps/desktop/src/renderer/src/pages/template-editor.tsx`, change the outbound map entry
+from `project: 'text'` to `project: 'project'`, and add the inbound direction to
+`mapFromTemplatePropertyType`.
+
+Also check that the default value for a `project` property is `[]`, matching the array shape
+the rest of the feature uses. Task 3 added that to `lib/property-utils.ts`; confirm which
+helper this file actually calls rather than assuming.
+
+- [ ] **Step 6: Write the round-trip test**
+
+A renderer test asserting a `project` property survives `mapToTemplatePropertyType` →
+`mapFromTemplatePropertyType` as `'project'`, not `'text'`. Put it beside the template
+editor's existing tests; if that file has none, create `template-editor.test.tsx` covering
+just the two maps.
+
+- [ ] **Step 7: Verify end to end in the running app**
+
+```bash
+pnpm dev
+```
+
+Create a template, add a Project property, pick a project, save. Apply the template to a fresh
+note. The note's `project` property carries the name, the note appears in that project's hub,
+and the `.md` file on disk carries `project:` in its frontmatter.
+
+- [ ] **Step 8: Run the gate and commit**
+
+```bash
+pnpm --filter @memry/contracts test -- templates-api
+```
+
+```bash
+pnpm --filter @memry/desktop test:renderer
+```
+
+```bash
+pnpm ipc:generate && pnpm ipc:check
+```
+
+```bash
+git commit -am "feat(templates): support project properties in templates"
+```
+
+---
+
+### Task 12: Full verification and docs
 
 **Files:**
 
