@@ -78,16 +78,17 @@ A collapsible section under the title for **structured** metadata. Properties ar
 
 ### Property Types
 
-| Type         | Use for                        | Example                     |
-| ------------ | ------------------------------ | --------------------------- |
-| Text         | Free-form short strings        | "Author"                    |
-| Number       | Numeric values                 | "Pages"                     |
-| Date         | Dates and date ranges          | "Started", "Due"            |
-| Select       | One value from a defined set   | "Status: Draft / Live"      |
-| Multi-select | Many values from a defined set | "Topics: Coding, Health"    |
-| Checkbox     | Boolean                        | "Archived"                  |
-| Status       | Workflow stage with color      | "Todo / In progress / Done" |
-| Project      | Link to one or more projects   | "Project: Website Redesign" |
+| Type         | Use for                                | Example                       |
+| ------------ | -------------------------------------- | ----------------------------- |
+| Text         | Free-form short strings                | "Author"                      |
+| Number       | Numeric values                         | "Pages"                       |
+| Date         | Dates and date ranges                  | "Started", "Due"              |
+| Select       | One value from a defined set           | "Status: Draft / Live"        |
+| Multi-select | Many values from a defined set         | "Topics: Coding, Health"      |
+| Checkbox     | Boolean                                | "Archived"                    |
+| Status       | Workflow stage with color              | "Todo / In progress / Done"   |
+| Relation     | Links to other notes, tasks, or events | "Related to: Project Kickoff" |
+| Project      | Link to one or more projects           | "Project: Website Redesign"   |
 
 ### Defining Properties
 
@@ -104,6 +105,14 @@ For a `Date` property, clicking the value opens a calendar pop-up — pick a day
 ### Showing Dates on the Calendar
 
 A `Date` property can surface its value on the [calendar](/user-guide/calendar). On a date property's row, click the calendar icon to turn on **Show on calendar** — the icon stays tinted while it's on, so you can see the state at a glance. The note then appears as an all-day chip on that date, and clicking the chip opens the note. The setting is vault-wide per property name and syncs across your devices.
+
+### Relation Properties
+
+A `Relation` property points to one or more other notes, tasks, or events. Each value renders as a chip showing the target's title and an icon for its kind. Titles are resolved live, so renaming a target updates every chip pointing at it.
+
+Use the relation picker to search and add targets, and to remove existing ones. A target that's been deleted still shows its chip, dimmed, so the reference isn't silently dropped.
+
+Relation properties also feed the [Backlinks panel and Graph view](/user-guide/notes/wiki-links) on the note(s) they point to, alongside wiki links — so a relation and a `[[wiki link]]` to the same note both show up as connections.
 
 ### Project Property
 

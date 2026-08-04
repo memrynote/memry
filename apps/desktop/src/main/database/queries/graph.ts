@@ -1,5 +1,5 @@
 import { eq, isNull } from 'drizzle-orm'
-import { noteCache, noteTags, noteLinks } from '@memry/db-schema/schema/notes-cache'
+import { noteCache, noteTags, noteLinks, propertyRefs } from '@memry/db-schema/schema/notes-cache'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { taskNotes } from '@memry/db-schema/schema/task-relations'
 import { projects } from '@memry/db-schema/schema/projects'
@@ -167,6 +167,31 @@ export function getGraphData(indexDb: IndexDb, dataDb: DataDb): GraphDataRespons
         weight: 1
       })
     }
+  }
+
+  const allPropertyRefs = indexDb
+    .select({
+      sourceNoteId: propertyRefs.sourceNoteId,
+      targetType: propertyRefs.targetType,
+      targetId: propertyRefs.targetId
+    })
+    .from(propertyRefs)
+    .all()
+
+  for (const ref of allPropertyRefs) {
+    // Note→note edges only in v1: task/event targets aren't graph nodes today.
+    if (ref.targetType !== 'note') continue
+    // property_refs is a rebuildable index-DB cache with no FK enforcement on
+    // the target, so a ref can point at a note that was since deleted.
+    if (!nodeIds.has(ref.sourceNoteId) || !nodeIds.has(ref.targetId)) continue
+
+    edges.push({
+      id: `${ref.sourceNoteId}-${ref.targetId}-relation`,
+      source: ref.sourceNoteId,
+      target: ref.targetId,
+      type: 'relation',
+      weight: 1
+    })
   }
 
   const allTaskNotes = dataDb

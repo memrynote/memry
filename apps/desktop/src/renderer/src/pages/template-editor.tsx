@@ -33,7 +33,8 @@ import {
   setPropertyName,
   setPropertyValue,
   toEditableProperties,
-  toUiProperties
+  toUiProperties,
+  TEMPLATE_UNSUPPORTED_PROPERTY_TYPES
 } from '@/lib/template-properties'
 import { createLogger } from '@/lib/logger'
 import { useT } from '@memry/i18n/renderer'
@@ -413,6 +414,7 @@ function TemplateEditorSurface({
               onPropertyOrderChange={handlePropertyOrderChange}
               onAddProperty={handleAddProperty}
               onDeleteProperty={handleDeleteProperty}
+              excludeTypes={TEMPLATE_UNSUPPORTED_PROPERTY_TYPES}
               disabled={isBuiltIn}
               variant="embedded"
               hideAddButton
@@ -426,6 +428,7 @@ function TemplateEditorSurface({
             onAddTag={handleAddTag}
             onCreateTag={handleCreateTag}
             onAddProperty={handleAddProperty}
+            excludeTypes={TEMPLATE_UNSUPPORTED_PROPERTY_TYPES}
             disabled={isBuiltIn}
           />
         </div>

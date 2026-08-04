@@ -29,7 +29,7 @@ import {
   type JournalViewState
 } from '@/components/journal'
 import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
-import { BacklinksSection, type Backlink } from '@/components/note/backlinks'
+import { BacklinksSection, type Backlink, backlinkId } from '@/components/note/backlinks'
 
 import { TagsRow, type Tag } from '@/components/note/tags-row'
 import { InfoSection, type NewProperty } from '@/components/note/info-section'
@@ -703,7 +703,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         .join('/')
         .replace(/^notes\//, '')
       return {
-        id: bl.sourceId,
+        id: backlinkId(bl.sourceId, bl.via),
         noteId: bl.sourceId,
         noteTitle: bl.sourceTitle,
         folder: folderPath,
@@ -713,7 +713,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
           snippet: ctx.snippet,
           linkStart: ctx.linkStart,
           linkEnd: ctx.linkEnd
-        }))
+        })),
+        via: bl.via
       }
     })
   }, [rawBacklinks])

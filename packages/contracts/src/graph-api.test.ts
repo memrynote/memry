@@ -146,7 +146,7 @@ describe('GraphEdgeSchema', () => {
   })
 
   it('accepts all valid edge types', () => {
-    for (const type of ['wikilink', 'task-note', 'project-task', 'tag-cooccurrence']) {
+    for (const type of ['wikilink', 'task-note', 'project-task', 'tag-cooccurrence', 'relation']) {
       const result = GraphEdgeSchema.safeParse({
         id: 'e1',
         source: 'a',

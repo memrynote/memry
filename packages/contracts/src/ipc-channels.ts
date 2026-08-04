@@ -267,7 +267,9 @@ export const PropertiesChannels = {
     /** Set properties for any entity (note or journal) by ID */
     SET: 'properties:set',
     /** Rename a property for a specific entity (note-only scope) */
-    RENAME: 'properties:rename'
+    RENAME: 'properties:rename',
+    /** Resolve relation property URIs to display data (title, existence) */
+    RESOLVE_REFS: 'properties:resolveRefs'
   }
 } as const
 

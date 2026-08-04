@@ -43,14 +43,15 @@ your other devices, and the vault stays readable by Obsidian.
 
 ## Backlinks Panel
 
-The collapsible **Backlinks** section at the bottom of every note lists every other note that links to it.
+The collapsible **Backlinks** section at the bottom of every note lists every other note that links to it — including notes that point to it through a `[[wiki link]]` or through a
+[Relation property](/user-guide/notes/properties-tags#relation-properties).
 
 <!-- screenshot: backlinks section under a note -->
 
 Each entry shows:
 
 - The source note's title
-- A snippet of the surrounding text
+- A snippet of the surrounding text (for a relation, the property name and value instead)
 - A timestamp
 - A click target to open the source note
 
@@ -58,7 +59,7 @@ Each entry shows:
 
 The sidebar **Graph** entry opens a force-directed map of your notes and the links between them. Useful for finding orphan notes or unexpectedly large clusters.
 
-- Nodes are notes; edges are wiki links.
+- Nodes are notes; edges are wiki links and [relation properties](/user-guide/notes/properties-tags#relation-properties) (drawn thinner, to tell them apart from wiki links).
 - Click a node to open the note in a tab.
 - Hover to highlight neighbors.
 

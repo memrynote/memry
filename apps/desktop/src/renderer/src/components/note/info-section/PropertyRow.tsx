@@ -12,6 +12,7 @@ import {
   List,
   Tags,
   Link,
+  Link2,
   Star,
   FolderKanban,
   type AppIcon
@@ -27,6 +28,7 @@ import {
   SelectEditor,
   MultiselectEditor,
   StatusEditor,
+  RelationEditor,
   ProjectEditor
 } from './editors'
 import { usePropertyDefinitions } from '@/hooks/use-property-definitions'
@@ -52,6 +54,7 @@ const PROPERTY_TYPE_ICONS: Record<string, AppIcon> = {
   status: List,
   url: Link,
   rating: Star,
+  relation: Link2,
   project: FolderKanban
 }
 
@@ -141,7 +144,11 @@ const SELECT_TYPES = new Set(['select', 'multiselect', 'status'])
 // Types that manage their own popup/toggle and never use the inline text-edit
 // (isEditing) path — so their type icon must not show the editing tint.
 const isAlwaysInteractiveType = (type: string): boolean =>
-  type === 'checkbox' || type === 'date' || type === 'project' || SELECT_TYPES.has(type)
+  type === 'checkbox' ||
+  type === 'date' ||
+  type === 'relation' ||
+  type === 'project' ||
+  SELECT_TYPES.has(type)
 
 function SelectPropertyRenderer({
   property,
@@ -268,6 +275,11 @@ function PropertyValueRenderer({
         onValueChange={onValueChange}
       />
     )
+  }
+
+  if (property.type === 'relation') {
+    const val = Array.isArray(property.value) ? (property.value as string[]) : []
+    return <RelationEditor value={val} onChange={onValueChange} />
   }
 
   if (property.type === 'date') {

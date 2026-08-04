@@ -212,7 +212,8 @@
     "collapseSection": "Collapse backlinks section",
     "expandSection": "Expand backlinks section",
     "showMore": "Show {count} more backlinks",
-    "more": "{count} more"
+    "more": "{count} more",
+    "viaProperty": "{property} → {title}"
   },
   "comments": {
     "railAria": "Comments",
@@ -275,6 +276,16 @@
     "openUrlAria": "Open URL",
     "showOnCalendar": "Show on calendar",
     "showingOnCalendar": "Showing on calendar",
+    "relation": {
+      "deleted": "Deleted",
+      "removeAria": "Remove {title}",
+      "addAria": "Add relation",
+      "searchPlaceholder": "Search notes, tasks and events…",
+      "groupNotes": "Notes & Files",
+      "groupTasks": "Tasks",
+      "groupEvents": "Events",
+      "empty": "No results"
+    },
     "types": {
       "text": "Text",
       "number": "Number",
@@ -284,6 +295,7 @@
       "status": "Status",
       "select": "Select",
       "multiselect": "Multiselect",
+      "relation": "Relation",
       "project": "Project"
     },
     "statusCategories": {

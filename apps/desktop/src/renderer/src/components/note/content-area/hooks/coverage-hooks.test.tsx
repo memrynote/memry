@@ -281,6 +281,35 @@ describe('coverage hooks around note editing', () => {
     await waitFor(() => expect(onError).toHaveBeenCalledWith('update', expect.any(Error)))
   })
 
+  // The seam downstream of AddPropertyPopup's `onAddProperty`. What leaves here
+  // is the only thing main ever sees for a brand-new relation: the name and an
+  // empty array. No type crosses IPC (`properties:set` carries names→values),
+  // and `notes:ensure-property-definition` rejects anything outside
+  // status/select/multiselect, so the persisted type is derived in main from
+  // this value alone. `property-ref-queries.test.ts` picks the sequence up
+  // there.
+  it('adds a relation property as an empty array with no definition pre-created', async () => {
+    const addProperty = vi.fn().mockResolvedValue(undefined)
+    mocks.useProperties.mockReturnValue({
+      properties: [],
+      updateProperty: vi.fn(),
+      addProperty,
+      removeProperty: vi.fn(),
+      renameProperty: vi.fn(),
+      reorderProperties: vi.fn()
+    })
+
+    const { result } = renderHook(() => usePropertySection({ entityId: 'note-1' }))
+
+    await act(async () => {
+      result.current.handleAddProperty({ name: 'father', type: 'relation' })
+      await vi.dynamicImportSettled()
+    })
+
+    await waitFor(() => expect(addProperty).toHaveBeenCalledWith('father', [], undefined))
+    expect(mocks.ensurePropertyDefinition).not.toHaveBeenCalled()
+  })
+
   it('fetches, caches, refetches, and reports folder suggestions', async () => {
     const api = window.api as typeof window.api & {
       folderView: { getFolderSuggestions: ReturnType<typeof vi.fn> }

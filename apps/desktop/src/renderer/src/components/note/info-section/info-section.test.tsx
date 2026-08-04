@@ -13,6 +13,7 @@ import { createRendererI18n } from '@memry/i18n/renderer'
 import { InfoSection } from './InfoSection'
 import { AddPropertyPopup } from './AddPropertyPopup'
 import type { Property, PropertyTemplate } from './types'
+import { PROPERTY_TYPE_CONFIG, PROPERTY_TYPES } from './types'
 
 let i18nEn: I18nInstance
 let i18nTr: I18nInstance
@@ -414,5 +415,93 @@ describe('InfoSection - accessibility', () => {
 
     const header = screen.getByRole('button', { name: /^properties/i })
     expect(header).toHaveAttribute('aria-expanded', 'true')
+  })
+})
+
+describe('relation property type registration', () => {
+  it('exposes relation in the type registry', () => {
+    expect(PROPERTY_TYPES).toContain('relation')
+    expect(PROPERTY_TYPE_CONFIG.relation.label).toBe('Relation')
+  })
+})
+
+// ============================================================================
+// T8: Relation property type in add-property popup
+// ============================================================================
+
+describe('Task 8: Relation property in add-property popup', () => {
+  const defaultProps = {
+    properties: [],
+    isExpanded: true,
+    onToggleExpand: vi.fn(),
+    onPropertyChange: vi.fn(),
+    onAddProperty: vi.fn(),
+    onDeleteProperty: vi.fn()
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should offer Relation as a property type option', async () => {
+    const user = userEvent.setup()
+    renderWithI18n(<InfoSection {...defaultProps} />)
+
+    const addButton = screen.getByRole('button', { name: /add.*property/i })
+    await user.click(addButton)
+
+    // Check that Relation appears in the popup options
+    expect(screen.getByRole('option', { name: /relation/i })).toBeInTheDocument()
+  })
+
+  it('should call onAddProperty with type: relation when Relation is selected', async () => {
+    const user = userEvent.setup()
+    renderWithI18n(<InfoSection {...defaultProps} />)
+
+    const addButton = screen.getByRole('button', { name: /add.*property/i })
+    await user.click(addButton)
+
+    const relationOption = screen.getByRole('option', { name: /relation/i })
+    await user.click(relationOption)
+
+    expect(defaultProps.onAddProperty).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'relation',
+        name: expect.any(String)
+      })
+    )
+  })
+
+  it('should use Relation as the default name when no custom name provided', async () => {
+    const user = userEvent.setup()
+    renderWithI18n(<InfoSection {...defaultProps} />)
+
+    const addButton = screen.getByRole('button', { name: /add.*property/i })
+    await user.click(addButton)
+
+    const relationOption = screen.getByRole('option', { name: /relation/i })
+    await user.click(relationOption)
+
+    expect(defaultProps.onAddProperty).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'relation',
+        name: 'Relation'
+      })
+    )
+  })
+
+  // The template editor has no storage for a relation and used to map it to
+  // 'text' after the fact, so a user who picked Relation got a text box with no
+  // indication anything had changed. Surfaces that cannot store a type do not
+  // offer it.
+  it('omits excluded types from the popup', async () => {
+    const user = userEvent.setup()
+    renderWithI18n(<InfoSection {...defaultProps} excludeTypes={['relation']} />)
+
+    const addButton = screen.getByRole('button', { name: /add.*property/i })
+    await user.click(addButton)
+
+    expect(screen.queryByRole('option', { name: /relation/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /^text$/i })).toBeInTheDocument()
   })
 })

@@ -122,6 +122,31 @@ export const propertyDefinitions = sqliteTable('property_definitions', {
 // Type Exports
 // ============================================================================
 
+/**
+ * Which entities a note's relation-typed properties point at. Index DB only,
+ * rebuilt from note payloads/files exactly like note_links — never synced.
+ */
+export const propertyRefs = sqliteTable(
+  'property_refs',
+  {
+    sourceNoteId: text('source_note_id')
+      .notNull()
+      .references(() => noteCache.id, { onDelete: 'cascade' }),
+    propertyName: text('property_name').notNull(),
+    targetType: text('target_type').$type<'note' | 'task' | 'event'>().notNull(),
+    targetId: text('target_id').notNull()
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.sourceNoteId, table.propertyName, table.targetType, table.targetId]
+    }),
+    index('idx_property_refs_target').on(table.targetType, table.targetId)
+  ]
+)
+
+export type PropertyRefRow = typeof propertyRefs.$inferSelect
+export type NewPropertyRefRow = typeof propertyRefs.$inferInsert
+
 export type NoteCache = typeof noteCache.$inferSelect
 export type NewNoteCache = typeof noteCache.$inferInsert
 export type NoteTag = typeof noteTags.$inferSelect

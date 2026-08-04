@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 import { TagInputPopup } from './tags-row/TagInputPopup'
 import { AddPropertyPopup } from './info-section/AddPropertyPopup'
 import type { Tag } from './tags-row/TagChip'
-import type { NewProperty } from './info-section/types'
+import type { NewProperty, PropertyType } from './info-section/types'
 import { useT } from '@memry/i18n/renderer'
 
 export interface GhostAffordanceRowProps {
@@ -14,7 +14,9 @@ export interface GhostAffordanceRowProps {
   onAddTag: (tagId: string) => void
   onCreateTag: (name: string, color: string) => void
   onAddProperty: (property: NewProperty) => void
-  /** Property names already on the entity — used to block a second `project`. */
+  /** Property types this surface cannot store; hidden from the picker rather than degraded on save. */
+  excludeTypes?: PropertyType[]
+  /** Property names already on the entity — a second `project` is shown but disabled. */
   existingNames?: string[]
   disabled?: boolean
   className?: string
@@ -27,6 +29,7 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
   onAddTag,
   onCreateTag,
   onAddProperty,
+  excludeTypes,
   existingNames,
   disabled = false,
   className
@@ -56,6 +59,7 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
         onAdd={onAddProperty}
         open={isPropertyPopupOpen}
         onOpenChange={setIsPropertyPopupOpen}
+        excludeTypes={excludeTypes}
         disabled={disabled}
         existingNames={existingNames}
       >

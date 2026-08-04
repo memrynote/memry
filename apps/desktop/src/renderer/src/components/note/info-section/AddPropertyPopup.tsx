@@ -9,7 +9,14 @@ interface AddPropertyPopupProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   disabled?: boolean
-  /** Property names already on the entity — used to block a second `project`. */
+  /**
+   * Types this surface cannot store at all — omitted from the list entirely.
+   * Distinct from the single-instance rule below: this one is about the
+   * surface (a template cannot store a relation), not about what the entity
+   * already has.
+   */
+  excludeTypes?: PropertyType[]
+  /** Property names already on the entity — a second `project` is shown but disabled. */
   existingNames?: string[]
   children: React.ReactNode
 }
@@ -19,6 +26,7 @@ export function AddPropertyPopup({
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
   disabled = false,
+  excludeTypes,
   existingNames,
   children
 }: AddPropertyPopupProps): React.JSX.Element {
@@ -65,6 +73,10 @@ export function AddPropertyPopup({
     }
   }, [])
 
+  const offeredTypes = excludeTypes?.length
+    ? PROPERTY_TYPES.filter((type) => !excludeTypes.includes(type))
+    : PROPERTY_TYPES
+
   const propertyTypeLabels: Record<PropertyType, string> = {
     text: t('properties.types.text'),
     number: t('properties.types.number'),
@@ -74,6 +86,7 @@ export function AddPropertyPopup({
     status: t('properties.types.status'),
     select: t('properties.types.select'),
     multiselect: t('properties.types.multiselect'),
+    relation: t('properties.types.relation'),
     project: t('properties.types.project')
   }
 
@@ -99,7 +112,7 @@ export function AddPropertyPopup({
         </div>
         <Picker.Section label={t('properties.typeSection')}>
           <Picker.List>
-            {PROPERTY_TYPES.map((propType) => {
+            {offeredTypes.map((propType) => {
               const config = PROPERTY_TYPE_CONFIG[propType]
               const IconComponent = config.icon
               return (

@@ -59,8 +59,21 @@ function defaultValueFor(type: PropertyType): unknown {
   }
 }
 
+/**
+ * Types templates cannot store. Hidden from the picker on template surfaces
+ * rather than mapped to something else on save — a `relation` value is an array
+ * of `memry://` URIs, and storing it as text would flatten it to a JSON string.
+ */
+export const TEMPLATE_UNSUPPORTED_PROPERTY_TYPES: PropertyType[] = ['relation']
+
+type StorablePropertyType = Exclude<PropertyType, 'relation'>
+
+function isStorable(type: PropertyType): type is StorablePropertyType {
+  return !TEMPLATE_UNSUPPORTED_PROPERTY_TYPES.includes(type)
+}
+
 /** UI types map 1:1 onto stored types except `status`, which stores as select. */
-function toStoredType(type: PropertyType): TemplateProperty['type'] {
+function toStoredType(type: StorablePropertyType): TemplateProperty['type'] {
   return type === 'status' ? 'select' : type
 }
 
@@ -83,6 +96,13 @@ export function toTemplateProperties(items: EditableProperty[]): TemplatePropert
 }
 
 export function addProperty(items: EditableProperty[], next: NewProperty): EditableProperty[] {
+  // Unreachable by construction — template surfaces pass
+  // TEMPLATE_UNSUPPORTED_PROPERTY_TYPES to the picker, so these types are never
+  // offered. The guard exists so a future caller cannot silently degrade one.
+  if (!isStorable(next.type)) {
+    return items
+  }
+
   const name = getUniquePropertyName(
     next.name,
     items.map((item) => item.property.name)

@@ -14,6 +14,7 @@ import {
   type Eol
 } from '@memry/app-core/markdown'
 import { generateNoteId, isValidNoteId } from '../lib/id'
+import { isRelationValue } from '@memry/contracts/relation-uri'
 
 // ============================================================================
 // Types
@@ -403,6 +404,11 @@ export function inferPropertyType(name: string, value: unknown): PropertyType {
     return 'number'
   }
 
+  // Array of memry:// URIs -> relation (must precede the array->text fallback)
+  if (isRelationValue(value)) {
+    return 'relation'
+  }
+
   // Array -> text (arrays no longer supported, convert to JSON string)
   if (Array.isArray(value)) {
     return 'text'
@@ -426,18 +432,40 @@ export function inferPropertyType(name: string, value: unknown): PropertyType {
 }
 
 /**
- * Resolve a property's type, honouring the reserved `project` key ahead of any
- * stored definition. Both the index DB and the canonical (data) DB persist a
- * `property_definitions.type` row per name; a stale `{ name: 'project', type:
- * 'text' }` row — written before this feature existed, e.g. a vault imported
- * from Obsidian — must not override the reserved key. Callers pass in whatever
- * stored definition type they already looked up (index or canonical) so this
- * stays storage-agnostic.
+ * Resolve a property's type. This is the single ladder every caller uses, in
+ * strict precedence order:
+ *
+ *   1. **Reserved name** — `project` is system-owned. Both the index DB and the
+ *      canonical (data) DB persist a `property_definitions.type` row per name,
+ *      and a stale `{ name: 'project', type: 'text' }` row (written before the
+ *      feature existed, e.g. a vault imported from Obsidian) must not override
+ *      the reserved key.
+ *   2. **Structural value** — an array of `memry://` URIs IS a relation,
+ *      whatever a stored definition claims. This one is not cosmetic: a
+ *      relation's first write is the empty default `[]`, `isRelationValue([])`
+ *      is false, so inference yields `text` and that gets written as the
+ *      definition row. Every later read would then deserialize the URI array
+ *      as a raw JSON string, the renderer would stop treating the row as a
+ *      relation, and the next property edit would round-trip that string into
+ *      the vault file — dropping the `property_refs` rows, the graph edge and
+ *      the backlink with it. Deriving from the value is idempotent and
+ *      self-heals notes already damaged that way.
+ *   3. **Stored definition**, when there is one.
+ *   4. **Inference** from the value.
+ *
+ * Callers pass in whatever stored definition type they already looked up
+ * (index or canonical), so this stays storage-agnostic.
+ *
+ * Note for callers that persist the result: `relation` must never be written
+ * to a definition store — `PropertyDefinitionSchema` has no member for it, so
+ * a persisted `relation` makes `.memry/properties.md` fail `safeParse`, which
+ * discards *every* definition in the file. `isPersistableDefinitionType`
+ * guards that.
  *
  * @param name - Property name (checked against reserved keys, e.g. `project`)
- * @param value - Property value, passed to inferFn when there's no stored type
+ * @param value - Property value, checked structurally and passed to inferFn
  * @param definitionType - Type from a stored property definition, if any
- * @param inferFn - Fallback inference when there's no reserved key or definition
+ * @param inferFn - Fallback inference when nothing earlier in the ladder matches
  * @returns Resolved property type
  */
 export function resolvePropertyType(
@@ -448,6 +476,10 @@ export function resolvePropertyType(
 ): PropertyType {
   if (name === PROJECT_PROPERTY_KEY) {
     return 'project'
+  }
+
+  if (isRelationValue(value)) {
+    return 'relation'
   }
 
   if (definitionType) {

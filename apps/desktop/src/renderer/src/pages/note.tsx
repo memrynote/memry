@@ -19,7 +19,7 @@ import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, type NewProperty } from '@/components/note/info-section'
 import { GhostAffordanceRow } from '@/components/note/ghost-affordance-row'
-import { BacklinksSection, Backlink, Mention } from '@/components/note/backlinks'
+import { BacklinksSection, Backlink, Mention, backlinkId } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
 import {
   useNote,
@@ -591,7 +591,7 @@ export function NotePage({ noteId }: NotePageProps) {
       const folderPath = withoutNotesPrefix.slice(0, -1).join('/')
 
       return {
-        id: bl.sourceId,
+        id: backlinkId(bl.sourceId, bl.via),
         noteId: bl.sourceId,
         noteTitle: bl.sourceTitle,
         folder: folderPath,
@@ -601,7 +601,8 @@ export function NotePage({ noteId }: NotePageProps) {
           snippet: ctx.snippet,
           linkStart: ctx.linkStart,
           linkEnd: ctx.linkEnd
-        }))
+        })),
+        via: bl.via
       }
     })
   }, [rawBacklinks])

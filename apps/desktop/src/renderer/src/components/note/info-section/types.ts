@@ -4,6 +4,7 @@ import {
   Calendar,
   CheckSquare,
   Link,
+  Link2,
   ListChecks,
   List,
   Layers,
@@ -20,6 +21,7 @@ export type PropertyType =
   | 'status'
   | 'select'
   | 'multiselect'
+  | 'relation'
   | 'project'
 
 export interface Property {
@@ -57,6 +59,7 @@ export const PROPERTY_TYPE_CONFIG: Record<PropertyType, PropertyTypeConfig> = {
   status: { label: 'Status', icon: ListChecks },
   select: { label: 'Select', icon: List },
   multiselect: { label: 'Multiselect', icon: Layers },
+  relation: { label: 'Relation', icon: Link2 },
   project: { label: 'Project', icon: FolderKanban }
 }
 

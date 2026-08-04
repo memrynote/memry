@@ -39,6 +39,7 @@
     "./properties-api": "./src/properties-api.ts",
     "./property-types": "./src/property-types.ts",
     "./redact": "./src/redact.ts",
+    "./relation-uri": "./src/relation-uri.ts",
     "./reminder-types": "./src/reminder-types.ts",
     "./reminders-api": "./src/reminders-api.ts",
     "./saved-filters-api": "./src/saved-filters-api.ts",

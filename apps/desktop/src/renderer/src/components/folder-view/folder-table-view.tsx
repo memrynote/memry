@@ -58,6 +58,7 @@ import {
   FolderKanban,
   Hash,
   Link,
+  Link2,
   List,
   Sigma,
   Star,
@@ -217,6 +218,7 @@ const PROPERTY_TYPE_ICONS: Record<PropertyType, AppIcon> = {
   multiselect: Tags,
   url: Link,
   rating: Star,
+  relation: Link2,
   project: FolderKanban
 }
 

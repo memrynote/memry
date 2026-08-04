@@ -11,11 +11,20 @@
  * T117: Added TruncatedTooltip component for shadcn tooltip on truncated content.
  */
 
-import { memo, useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
+import { memo, useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react'
 import { format } from 'date-fns'
 import { formatDate as applyDateFormat, type DateFormat } from '@/lib/format-date'
 import { useDateFormat } from '@/hooks/use-date-format'
-import { Check, X, ExternalLink, Folder, FileText } from '@/lib/icons'
+import {
+  Check,
+  X,
+  ExternalLink,
+  Folder,
+  FileText,
+  CheckSquare,
+  Calendar,
+  type AppIcon
+} from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import {
   TextEditor,
@@ -28,8 +37,16 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
+import { createLogger } from '@/lib/logger'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { propertiesService } from '@/services/properties-service'
+import type { RelationKind, ResolvedRelationRef } from '@memry/contracts/properties-api'
+import { useT } from '@memry/i18n/renderer'
+import { useRelationNavigation } from '@/hooks/use-relation-navigation'
 import { TagChip } from '@/components/note/tags-row/TagChip'
 import { toTagChip, type TagMeta, type TagMetaMap } from './note-card-pieces'
+
+const log = createLogger('PropertyCell')
 
 // ============================================================================
 // Types
@@ -44,6 +61,7 @@ export type PropertyType =
   | 'multiselect'
   | 'url'
   | 'rating'
+  | 'relation'
   | 'project'
 
 interface PropertyCellProps {
@@ -269,6 +287,14 @@ function PropertyValueDisplay({
       return <RatingCell value={rating} className={className} />
     }
 
+    case 'relation':
+      // Pass the raw value through untouched (no derived array here) so
+      // RelationCell can memoize `uris` off a reference that is actually
+      // stable across unrelated re-renders (e.g. highlightQuery changing on
+      // every keystroke) instead of a fresh `.map(String)` copy allocated
+      // on every render of this dispatcher.
+      return <RelationCell value={value} className={className} />
+
     case 'text':
     default:
       return (
@@ -336,6 +362,23 @@ export const EditablePropertyCell = memo(function EditablePropertyCell({
     },
     [onSave, value]
   )
+
+  // Relation values are read-only everywhere in the folder view: this cell
+  // has no picker or remove control, so an edit affordance here would let a
+  // click fall through to the generic text editor below and let a user
+  // overwrite the URI array with a plain comma-joined string. Bypass the
+  // onSave-driven click-to-edit wrapper unconditionally, regardless of
+  // whether the caller passed onSave.
+  if (type === 'relation') {
+    return (
+      <PropertyValueDisplay
+        value={value}
+        type={type}
+        highlightQuery={highlightQuery}
+        className={className}
+      />
+    )
+  }
 
   if (!onSave) {
     return (
@@ -648,6 +691,182 @@ export const RatingCell = memo(function RatingCell({
       {'★'.repeat(rating)}
       {'☆'.repeat(max - rating)}
     </span>
+  )
+})
+
+// ============================================================================
+// Relation ref batching
+// ============================================================================
+
+/**
+ * Coalesces resolveRefs calls made within the same tick into a single IPC
+ * round trip. A virtualized folder table mounts many RelationCell instances
+ * in one React commit (one per visible relation cell); without this, each
+ * cell's own effect would call resolveRefs independently, issuing one IPC
+ * call per visible row instead of one per rendered page. Every call queued
+ * before the microtask flush runs is merged into one deduped request, and
+ * results are fanned back out to each caller by URI.
+ */
+let pendingRelationUris = new Set<string>()
+let pendingRelationWaiters: Array<{
+  uris: string[]
+  resolve: (refs: ResolvedRelationRef[]) => void
+}> = []
+let relationFlushScheduled = false
+
+function flushRelationRefBatch(): void {
+  const uris = Array.from(pendingRelationUris)
+  const waiters = pendingRelationWaiters
+  pendingRelationUris = new Set()
+  pendingRelationWaiters = []
+  relationFlushScheduled = false
+
+  void (async () => {
+    let refs: ResolvedRelationRef[] = []
+    try {
+      refs = await propertiesService.resolveRefs(uris)
+    } catch (err) {
+      log.error('Failed to resolve relation refs:', extractErrorMessage(err))
+    }
+    const byUri = new Map(refs.map((ref) => [ref.uri, ref]))
+    for (const waiter of waiters) {
+      waiter.resolve(
+        waiter.uris
+          .map((uri) => byUri.get(uri))
+          .filter((ref): ref is ResolvedRelationRef => ref !== undefined)
+      )
+    }
+  })()
+}
+
+function resolveRelationRefsBatched(uris: string[]): Promise<ResolvedRelationRef[]> {
+  if (uris.length === 0) return Promise.resolve([])
+  return new Promise((resolve) => {
+    uris.forEach((uri) => pendingRelationUris.add(uri))
+    pendingRelationWaiters.push({ uris, resolve })
+    if (!relationFlushScheduled) {
+      relationFlushScheduled = true
+      queueMicrotask(flushRelationRefBatch)
+    }
+  })
+}
+
+// Stable empty-array reference so a non-array/missing value also keeps
+// `uris` referentially stable across re-renders (see the memo below).
+const EMPTY_RELATION_URIS: string[] = []
+
+const RELATION_KIND_ICONS: Record<RelationKind, AppIcon> = {
+  note: FileText,
+  task: CheckSquare,
+  event: Calendar
+}
+
+/**
+ * Read-only relation chips for the folder table. No picker, no remove
+ * control, no click-to-edit — this view never writes to the property.
+ * Dangling refs (exists: false, including URIs not yet resolved) render in
+ * the same muted "deleted" treatment as the note-side RelationEditor.
+ */
+export const RelationCell = memo(function RelationCell({
+  value,
+  className
+}: {
+  value: unknown
+  className?: string
+}): React.JSX.Element {
+  const { t } = useT('notes')
+  const navigate = useRelationNavigation()
+  const [resolved, setResolved] = useState<ResolvedRelationRef[]>([])
+
+  // Derived from `value` (not created fresh from it) so `uris` keeps the
+  // same reference across re-renders where `value` itself is unchanged —
+  // e.g. a folder-search keystroke re-renders every visible cell via
+  // highlightQuery, but `note.properties[columnId]` (the raw `value` this
+  // receives) stays the same array. Without this memo, a new `uris` array
+  // every render would re-fire the effect below and re-issue an IPC call
+  // for data that never changed — the same "per-cell fetch" defect the
+  // batching above exists to avoid, just triggered by re-render instead of
+  // row count.
+  const uris = useMemo(
+    () => (Array.isArray(value) ? value.map(String) : EMPTY_RELATION_URIS),
+    [value]
+  )
+
+  useEffect(() => {
+    if (uris.length === 0) return
+
+    let cancelled = false
+    void (async () => {
+      const refs = await resolveRelationRefsBatched(uris)
+      if (!cancelled) setResolved(refs)
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [uris])
+
+  if (uris.length === 0) {
+    return <span className={cn('text-muted-foreground/50', className)}>—</span>
+  }
+
+  return (
+    <div className={cn('flex flex-wrap items-center gap-1', className)}>
+      {resolved.map((ref) => {
+        const Icon = RELATION_KIND_ICONS[ref.targetType]
+        const label = ref.exists ? ref.title : t('properties.relation.deleted')
+
+        // A note's own emoji stands in for the generic kind icon.
+        const glyph = ref.emoji ? (
+          <span className="size-3 shrink-0 leading-none text-[11px]" aria-hidden>
+            {ref.emoji}
+          </span>
+        ) : (
+          <Icon className="size-3 shrink-0" aria-hidden />
+        )
+
+        const chipClass = cn(
+          '[font-synthesis:none] inline-flex items-center gap-1',
+          'rounded-[10px] ps-1.5 pe-1.5 py-0.5',
+          'text-[11px]/3.5 font-medium',
+          'shrink-0 select-none max-w-full',
+          ref.exists ? 'bg-tint/10 text-tint' : 'bg-muted text-muted-foreground'
+        )
+
+        // The cell is read-only for editing, but navigation is a read action.
+        // A dangling ref has nothing to open and stays inert.
+        if (!ref.exists) {
+          return (
+            <span key={ref.uri} className={chipClass}>
+              {glyph}
+              <span className="truncate">{label}</span>
+            </span>
+          )
+        }
+
+        return (
+          <button
+            key={ref.uri}
+            type="button"
+            title={ref.title}
+            // The row around this cell has its own click behaviour; opening a
+            // chip must not also trigger it.
+            onClick={(event) => {
+              event.stopPropagation()
+              navigate(ref)
+            }}
+            className={cn(
+              chipClass,
+              'transition-opacity duration-150 hover:opacity-80',
+              'focus:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+            )}
+          >
+            {glyph}
+            <span className="truncate">{label}</span>
+          </button>
+        )
+      })}
+    </div>
   )
 })
 

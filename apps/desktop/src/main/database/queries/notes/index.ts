@@ -46,10 +46,12 @@ export {
   setNoteLinks,
   getOutgoingLinks,
   getIncomingLinks,
+  getIncomingReferences,
   deleteLinksToNote,
   resolveNoteByTitle,
   resolveNotesByTitles,
-  updateLinkTargets
+  updateLinkTargets,
+  type IncomingReference
 } from './link-queries'
 
 export {
@@ -68,6 +70,12 @@ export {
   getPropertyType,
   type PropertyValue
 } from './property-queries'
+
+export {
+  setPropertyRefs,
+  getPropertyRefsForNote,
+  getIncomingPropertyRefs
+} from './property-ref-queries'
 
 export {
   insertNoteSnapshot,

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
 import {
   EditablePropertyCell,
   FolderCell,
@@ -11,6 +12,32 @@ import {
   UrlCell,
   WordCountCell
 } from './property-cell'
+
+const mocks = vi.hoisted(() => ({
+  resolveRefs: vi.fn(),
+  openTab: vi.fn()
+}))
+
+vi.mock('@/services/properties-service', () => ({
+  propertiesService: {
+    resolveRefs: mocks.resolveRefs
+  }
+}))
+
+// RelationCell chips navigate through useRelationNavigation, which reads the
+// tabs context. There is no TabsProvider in these tests.
+vi.mock('@/contexts/tabs', () => ({
+  useTabs: () => ({ openTab: mocks.openTab })
+}))
+
+// Real i18n: tests/setup-dom.ts initializes the global i18next singleton with
+// English resources, so useT('notes') resolves real strings (e.g. "Deleted")
+// without a mock here. A blanket useT mock would also swallow TagChip's own
+// interpolated "Remove tag: {tag}" aria-label used by the pre-existing test
+// below.
+function mockResolveRefs(refs: ResolvedRelationRef[]): void {
+  mocks.resolveRefs.mockResolvedValue(refs)
+}
 
 vi.mock('@/components/note/info-section/editors', () => ({
   TextEditor: ({ value, onChange, onBlur }: any) => (
@@ -204,5 +231,197 @@ describe('folder-view property cells', () => {
       target: { value: 'Reading, Fitness 2026' }
     })
     expect(onSave).toHaveBeenCalledWith(['Reading', 'Fitness 2026'])
+  })
+})
+
+describe('relation property cells', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renders relation values as compact chips', async () => {
+    mockResolveRefs([
+      {
+        uri: 'memry://note/nte_1',
+        targetType: 'note',
+        targetId: 'nte_1',
+        title: 'Richard Doe',
+        exists: true
+      }
+    ])
+    render(<PropertyCell type="relation" value={['memry://note/nte_1']} />)
+    expect(await screen.findByText('Richard Doe')).toBeInTheDocument()
+  })
+
+  it('does not offer editing affordances', async () => {
+    mockResolveRefs([
+      {
+        uri: 'memry://note/nte_1',
+        targetType: 'note',
+        targetId: 'nte_1',
+        title: 'Richard Doe',
+        exists: true
+      }
+    ])
+    render(<PropertyCell type="relation" value={['memry://note/nte_1']} />)
+    expect(await screen.findByText('Richard Doe')).toBeInTheDocument()
+    // No write affordances: no picker to add a ref, no × to remove one. The
+    // chip itself IS a button — navigating to the target is a read action, not
+    // an edit — so "no buttons at all" is deliberately not the assertion here.
+    expect(screen.queryByLabelText('Add relation')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/^Remove /)).not.toBeInTheDocument()
+  })
+
+  it('does not offer editing affordances even when the cell is used editably', async () => {
+    mockResolveRefs([
+      {
+        uri: 'memry://note/nte_1',
+        targetType: 'note',
+        targetId: 'nte_1',
+        title: 'Richard Doe',
+        exists: true
+      }
+    ])
+    const onSave = vi.fn()
+    render(<EditablePropertyCell type="relation" value={['memry://note/nte_1']} onSave={onSave} />)
+    expect(await screen.findByText('Richard Doe')).toBeInTheDocument()
+    expect(screen.queryByLabelText(/^Remove /)).not.toBeInTheDocument()
+
+    // The chip is clickable now, but only to navigate. Clicking it must open
+    // the target and never enter edit mode or write a value.
+    fireEvent.click(screen.getByText('Richard Doe'))
+    expect(onSave).not.toHaveBeenCalled()
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'note', entityId: 'nte_1' })
+    )
+  })
+
+  it('navigates from a chip without letting the click reach the surrounding row', async () => {
+    mockResolveRefs([
+      {
+        uri: 'memry://event/evt_1',
+        targetType: 'event',
+        targetId: 'evt_1',
+        title: 'Lunch',
+        exists: true,
+        startAt: '2026-08-30T12:00:00.000Z'
+      }
+    ])
+    const onRowClick = vi.fn()
+    render(
+      <div onClick={onRowClick}>
+        <PropertyCell type="relation" value={['memry://event/evt_1']} />
+      </div>
+    )
+    fireEvent.click(await screen.findByText('Lunch'))
+
+    expect(mocks.openTab).toHaveBeenCalledWith(expect.objectContaining({ type: 'calendar' }))
+    expect(onRowClick).not.toHaveBeenCalled()
+  })
+
+  it("shows a note's own emoji in place of the kind icon", async () => {
+    mockResolveRefs([
+      {
+        uri: 'memry://note/nte_1',
+        targetType: 'note',
+        targetId: 'nte_1',
+        title: 'Jane Doe',
+        exists: true,
+        emoji: '👩'
+      }
+    ])
+    render(<PropertyCell type="relation" value={['memry://note/nte_1']} />)
+    expect(await screen.findByText('👩')).toBeInTheDocument()
+  })
+
+  it('renders dangling refs in a distinct muted state', async () => {
+    mockResolveRefs([
+      {
+        uri: 'memry://note/nte_gone',
+        targetType: 'note',
+        targetId: 'nte_gone',
+        title: '',
+        exists: false
+      }
+    ])
+    render(<PropertyCell type="relation" value={['memry://note/nte_gone']} />)
+    const chip = await screen.findByText('Deleted')
+    expect(chip.parentElement).toHaveClass('bg-muted', 'text-muted-foreground')
+  })
+
+  it('renders an em dash for an empty relation value without resolving', () => {
+    render(<PropertyCell type="relation" value={[]} />)
+    expect(screen.getByText('—')).toBeInTheDocument()
+    expect(mocks.resolveRefs).not.toHaveBeenCalled()
+  })
+
+  it('batches concurrent relation cells on the same page into one resolveRefs call', async () => {
+    mockResolveRefs([
+      {
+        uri: 'memry://note/nte_1',
+        targetType: 'note',
+        targetId: 'nte_1',
+        title: 'Richard Doe',
+        exists: true
+      },
+      {
+        uri: 'memry://task/tsk_2',
+        targetType: 'task',
+        targetId: 'tsk_2',
+        title: 'Call mom',
+        exists: true
+      }
+    ])
+
+    // Simulate a page of rows: many relation cells mounting in one commit,
+    // the way a virtualized folder table renders its visible rows.
+    render(
+      <div>
+        {Array.from({ length: 50 }, (_, i) => (
+          <PropertyCell
+            key={i}
+            type="relation"
+            value={[i % 2 === 0 ? 'memry://note/nte_1' : 'memry://task/tsk_2']}
+          />
+        ))}
+      </div>
+    )
+
+    expect((await screen.findAllByText('Richard Doe')).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText('Call mom')).length).toBeGreaterThan(0)
+    expect(mocks.resolveRefs).toHaveBeenCalledTimes(1)
+    expect(mocks.resolveRefs).toHaveBeenCalledWith(
+      expect.arrayContaining(['memry://note/nte_1', 'memry://task/tsk_2'])
+    )
+  })
+
+  it('does not re-resolve when an unrelated prop changes and the value reference is unchanged', async () => {
+    mockResolveRefs([
+      {
+        uri: 'memry://note/nte_1',
+        targetType: 'note',
+        targetId: 'nte_1',
+        title: 'Richard Doe',
+        exists: true
+      }
+    ])
+
+    // The same array reference a stable `note.properties[columnId]` would
+    // hand to `info.getValue()` across re-renders — not a fresh literal per
+    // render, which is the point of this test.
+    const value = ['memry://note/nte_1']
+    const { rerender } = render(<PropertyCell type="relation" value={value} />)
+    expect(await screen.findByText('Richard Doe')).toBeInTheDocument()
+    expect(mocks.resolveRefs).toHaveBeenCalledTimes(1)
+
+    // Simulate a folder-search keystroke: highlightQuery changes on every
+    // visible cell, but the relation value itself did not change.
+    rerender(<PropertyCell type="relation" value={value} highlightQuery="richard" />)
+    // Flush any effect + its batched microtask + a macrotask tick so a
+    // spurious resolveRefs call (if the fix regresses) has time to land
+    // before we assert it didn't.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(mocks.resolveRefs).toHaveBeenCalledTimes(1)
   })
 })

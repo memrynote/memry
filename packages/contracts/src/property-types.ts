@@ -9,6 +9,7 @@ export const PropertyTypes = {
   STATUS: 'status',
   SELECT: 'select',
   MULTISELECT: 'multiselect',
+  RELATION: 'relation',
   PROJECT: 'project'
 } as const
 
@@ -107,6 +108,16 @@ const DatePropertySchema = z.object({
 const ProjectPropertySchema = z.object({
   type: z.literal('project')
 })
+
+/**
+ * Types with no `PropertyDefinitionSchema` member, and so never written to a
+ * definition store. A `relation` is typed from its value every time — its URIs
+ * are self-describing — and persisting one into `.memry/properties.md` would
+ * make the file fail `safeParse`, which discards *every* definition in it.
+ */
+export function isPersistableDefinitionType(type: PropertyType): boolean {
+  return type !== PropertyTypes.RELATION
+}
 
 export const PropertyDefinitionSchema = z.discriminatedUnion('type', [
   StatusPropertySchema,

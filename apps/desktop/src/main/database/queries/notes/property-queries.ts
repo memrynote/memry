@@ -11,6 +11,7 @@ import {
 } from '@memry/db-schema/schema/notes-cache'
 import type { IndexDb } from '../../types'
 import { serializeValue, deserializeValue } from './query-helpers'
+import { setPropertyRefs } from './property-ref-queries'
 import { resolvePropertyType } from '@main/vault/frontmatter'
 
 // ============================================================================
@@ -46,6 +47,8 @@ export function setNoteProperties(
     })
     db.insert(noteProperties).values(propertyRecords).run()
   }
+
+  setPropertyRefs(db, noteId, properties)
 }
 
 export function getNoteProperties(db: IndexDb, noteId: string): PropertyValue[] {
@@ -191,6 +194,9 @@ export function getPropertyType(
   value: unknown,
   inferFn: (name: string, value: unknown) => PropertyType
 ): PropertyType {
+  // Storage-aware wrapper: look up this DB's stored definition and hand it to
+  // the shared ladder, which owns every precedence rule (reserved `project`
+  // name, structural `relation` value, stored definition, inference).
   const definition = getPropertyDefinition(db, name)
   return resolvePropertyType(name, value, definition?.type as PropertyType | undefined, inferFn)
 }

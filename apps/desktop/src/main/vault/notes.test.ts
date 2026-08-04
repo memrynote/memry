@@ -1142,6 +1142,76 @@ describe('notes operations', () => {
       expect(links.outgoing[0].targetTitle).toBe('Non Existent Page')
       expect(links.outgoing[0].targetId).toBeNull()
     })
+
+    it('includes property-relation backlinks labeled with the property name', async () => {
+      const { setPropertyRefs } = await import('@main/database/queries/notes')
+
+      const target = await notes.createNote({
+        title: 'Relation Target',
+        content: 'I am referenced through a relation property.'
+      })
+      const source = await notes.createNote({
+        title: 'Relation Source',
+        content: 'No wiki link here, only a property.'
+      })
+
+      setPropertyRefs(testDb.db, source.id, { father: [`memry://note/${target.id}`] })
+
+      const links = await notes.getNoteLinks(target.id)
+
+      expect(links.incoming).toContainEqual(
+        expect.objectContaining({
+          sourceId: source.id,
+          sourceTitle: 'Relation Source',
+          via: { kind: 'property', propertyName: 'father' }
+        })
+      )
+    })
+
+    it('does not give a property-relation backlink the wiki link its source also has', async () => {
+      const { setPropertyRefs } = await import('@main/database/queries/notes')
+
+      const target = await notes.createNote({
+        title: 'Dual Referenced',
+        content: 'Referenced two ways from one source.'
+      })
+      const source = await notes.createNote({
+        title: 'Dual Source',
+        content: 'Mentions [[Dual Referenced]] once in prose.'
+      })
+
+      setPropertyRefs(testDb.db, source.id, { father: [`memry://note/${target.id}`] })
+
+      const links = await notes.getNoteLinks(target.id)
+      const wikiEntry = links.incoming.find((bl) => bl.sourceId === source.id && !bl.via)
+      const propertyEntry = links.incoming.find((bl) => bl.sourceId === source.id && bl.via)
+
+      expect(wikiEntry?.contexts.length).toBe(1)
+      // The snippets belong to the `[[Dual Referenced]]` occurrence. Repeating
+      // them under the "father" card would show the same excerpt twice and give
+      // that card a mention count it did not earn.
+      expect(propertyEntry?.contexts).toEqual([])
+    })
+
+    it('excludes a property-relation backlink whose source note was deleted', async () => {
+      const { setPropertyRefs } = await import('@main/database/queries/notes')
+
+      const target = await notes.createNote({
+        title: 'Relation Target 2',
+        content: 'Target of a dangling relation.'
+      })
+      const ghost = await notes.createNote({
+        title: 'Ghost Source',
+        content: 'About to be deleted.'
+      })
+
+      setPropertyRefs(testDb.db, ghost.id, { father: [`memry://note/${target.id}`] })
+      await notes.deleteNote(ghost.id)
+
+      const links = await notes.getNoteLinks(target.id)
+
+      expect(links.incoming.some((bl) => bl.sourceId === ghost.id)).toBe(false)
+    })
   })
 
   // ==========================================================================

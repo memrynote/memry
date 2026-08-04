@@ -116,6 +116,16 @@ vi.mock('@/hooks/use-notes-query', () => ({
         sourceTitle: 'Backlink Note',
         sourcePath: 'notes/Work/backlink.md',
         contexts: [{ snippet: 'See [[Test Note]]', linkStart: 4, linkEnd: 17 }]
+      },
+      // Same sourceId as above, but referenced through a relation property
+      // instead of a wikilink — must resolve to a different `id` (see
+      // backlinkId in components/note/backlinks/types.ts).
+      {
+        sourceId: 'backlink-1',
+        sourceTitle: 'Backlink Note',
+        sourcePath: 'notes/Work/backlink.md',
+        contexts: [],
+        via: { kind: 'property', propertyName: 'father' }
       }
     ],
     isLoading: false
@@ -419,18 +429,28 @@ vi.mock('@/components/note/ghost-affordance-row', () => ({
   )
 }))
 
-vi.mock('@/components/note/backlinks', () => ({
+vi.mock('@/components/note/backlinks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/components/note/backlinks')>()),
   BacklinksSection: ({
+    backlinks,
     onBacklinkClick
   }: {
+    backlinks: { id: string }[]
     onBacklinkClick: (noteId: string, mention?: { snippet: string }) => void
   }) => (
-    <button
-      type="button"
-      onClick={() => onBacklinkClick('backlink-1', { snippet: '[[Test Note]]' })}
-    >
-      Open backlink
-    </button>
+    <div>
+      <button
+        type="button"
+        onClick={() => onBacklinkClick('backlink-1', { snippet: '[[Test Note]]' })}
+      >
+        Open backlink
+      </button>
+      {backlinks.map((backlink) => (
+        <span key={backlink.id} data-testid="backlink-id">
+          {backlink.id}
+        </span>
+      ))}
+    </div>
   )
 }))
 
@@ -713,6 +733,18 @@ describe('NotePage', () => {
         viewState: expect.objectContaining({ openTaskId: 'task-1', selectedProjectId: 'project-1' })
       })
     )
+  })
+
+  it('assigns distinct backlink ids to a wikilink entry and a property entry sharing a sourceId', async () => {
+    // Exercises the real page transform (only BacklinksSection itself is
+    // mocked) — this is what actually computes `id` via backlinkId(). If the
+    // transform reverted to `id: bl.sourceId` for every entry, both spans
+    // below would carry the same text.
+    renderWithProviders(<NotePage noteId="note-1" />)
+
+    await screen.findByRole('button', { name: 'Test Note' })
+    const ids = screen.getAllByTestId('backlink-id').map((el) => el.textContent)
+    expect(ids).toEqual(['backlink-1', 'backlink-1:property:father'])
   })
 
   it('omits the review rail when there are no comments, keeping note controls', async () => {

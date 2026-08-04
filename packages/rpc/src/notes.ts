@@ -79,6 +79,9 @@ export interface WikiLinkPreview {
   createdAt: string
 }
 
+// Main returns `type: 'relation'` for relation-valued properties, so this union
+// has to carry it — any `Record<PropertyType, X>` or exhaustive switch built on
+// a narrower union would compile clean while silently omitting relation.
 type PropertyType =
   | 'text'
   | 'number'
@@ -89,10 +92,15 @@ type PropertyType =
   | 'status'
   | 'url'
   | 'rating'
+  | 'relation'
 
-// 'project' is reserved and system-managed (see PROJECT_PROPERTY_KEY); it is never
-// created or edited through the generic property-definition CRUD IPC channels.
-type EditablePropertyType = Exclude<CanonicalPropertyType, 'project'>
+// Two types are never created or edited through the generic property-definition
+// CRUD channels, for different reasons:
+//   - `relation` carries no definition-side configuration at all. Its value is
+//     self-describing (`memry://<kind>/<id>`) and `.memry/properties.md` has no
+//     schema member for it.
+//   - `project` is reserved and system-managed (see PROJECT_PROPERTY_KEY).
+type EditablePropertyType = Exclude<CanonicalPropertyType, 'relation' | 'project'>
 type EnsurablePropertyType = Extract<CanonicalPropertyType, 'select' | 'multiselect' | 'status'>
 
 export interface PropertyDefinition {
@@ -268,6 +276,7 @@ export interface Backlink {
   sourcePath: string
   sourceTitle: string
   contexts: BacklinkContext[]
+  via?: { kind: 'property'; propertyName: string }
 }
 
 export interface NoteLinksResponse {

@@ -7,6 +7,7 @@ import {
   type TestDb
 } from '@tests/utils/test-db'
 import { getGraphData, getLocalGraph } from './graph'
+import { setPropertyRefs } from './notes/property-ref-queries'
 
 function insertMarkdownNote(
   db: TestDb,
@@ -152,6 +153,44 @@ describe('graph queries', () => {
       ])
     )
     expect(graph.nodes.find((node) => node.id === 'project-1')?.connectionCount).toBe(1)
+  })
+
+  it('emits a relation edge between two notes', () => {
+    insertMarkdownNote(indexDb, 'note-1', 'Alpha')
+    insertMarkdownNote(indexDb, 'note-2', 'Beta')
+    setPropertyRefs(indexDb, 'note-1', { father: ['memry://note/note-2'] })
+
+    const { edges } = getGraphData(indexDb, dataDb)
+    expect(edges).toContainEqual(
+      expect.objectContaining({ source: 'note-1', target: 'note-2', type: 'relation' })
+    )
+  })
+
+  it('skips relation refs to tasks and events but keeps the note ref', () => {
+    insertMarkdownNote(indexDb, 'note-1', 'Alpha')
+    insertMarkdownNote(indexDb, 'note-2', 'Beta')
+    setPropertyRefs(indexDb, 'note-1', {
+      father: ['memry://note/note-2'],
+      attendees: ['memry://task/tsk_1', 'memry://event/evt_1']
+    })
+
+    const { edges } = getGraphData(indexDb, dataDb)
+    const relationEdges = edges.filter((e) => e.type === 'relation')
+    expect(relationEdges).toHaveLength(1)
+    expect(relationEdges[0]).toMatchObject({ source: 'note-1', target: 'note-2' })
+  })
+
+  it('skips a relation ref whose target note does not exist but keeps the valid one', () => {
+    insertMarkdownNote(indexDb, 'note-1', 'Alpha')
+    insertMarkdownNote(indexDb, 'note-2', 'Beta')
+    setPropertyRefs(indexDb, 'note-1', {
+      father: ['memry://note/note-2', 'memry://note/nte_gone']
+    })
+
+    const { edges } = getGraphData(indexDb, dataDb)
+    const relationEdges = edges.filter((e) => e.type === 'relation')
+    expect(relationEdges).toHaveLength(1)
+    expect(relationEdges[0]).toMatchObject({ source: 'note-1', target: 'note-2' })
   })
 
   it('filters local graph by depth from the selected note', () => {

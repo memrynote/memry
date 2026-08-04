@@ -13,11 +13,39 @@ interface BacklinkCardProps {
 
 export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: BacklinkCardProps) {
   const { t } = useT('notes')
-  const { noteId, noteTitle, mentions } = backlink
+  const { noteId, noteTitle, mentions, via } = backlink
+  const displayLabel = via
+    ? t('backlinks.viaProperty', { property: via.propertyName, title: noteTitle })
+    : noteTitle
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
+  // A property-sourced backlink has no text mentions to reveal, so there is
+  // nothing to expand — rendering the chevron would offer a toggle that does
+  // nothing.
+  const hasMentions = mentions.length > 0
+
+  const titleLink = (
+    <span
+      role="link"
+      tabIndex={0}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick(noteId)
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          e.stopPropagation()
+          onClick(noteId)
+        }
+      }}
+      className="text-[13px]/4 font-medium text-text-bright truncate hover:underline"
+    >
+      {displayLabel}
+    </span>
+  )
 
   return (
-    <div role="group" aria-label={t('backlinks.fromAria', { title: noteTitle })}>
+    <div role="group" aria-label={t('backlinks.fromAria', { title: displayLabel })}>
       <div
         className={cn(
           'flex items-center gap-1.5 px-1.5 py-1',
@@ -26,39 +54,26 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
           'transition-colors duration-150'
         )}
       >
-        <button
-          type="button"
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-1.5 flex-1 min-w-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-border rounded"
-          aria-expanded={isExpanded}
-          aria-label={`${isExpanded ? t('backlinks.collapse') : t('backlinks.expand')} ${noteTitle}`}
-        >
-          <ChevronDown
-            className={cn(
-              'h-3 w-3 text-text-tertiary flex-shrink-0 transition-transform duration-150',
-              !isExpanded && '-rotate-90'
-            )}
-            aria-hidden="true"
-          />
-          <span
-            role="link"
-            tabIndex={0}
-            onClick={(e) => {
-              e.stopPropagation()
-              onClick(noteId)
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                e.stopPropagation()
-                onClick(noteId)
-              }
-            }}
-            className="text-[13px]/4 font-medium text-text-bright truncate hover:underline"
+        {hasMentions ? (
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-1.5 flex-1 min-w-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-border rounded"
+            aria-expanded={isExpanded}
+            aria-label={`${isExpanded ? t('backlinks.collapse') : t('backlinks.expand')} ${displayLabel}`}
           >
-            {noteTitle}
-          </span>
-        </button>
+            <ChevronDown
+              className={cn(
+                'h-3 w-3 text-text-tertiary flex-shrink-0 transition-transform duration-150',
+                !isExpanded && '-rotate-90'
+              )}
+              aria-hidden="true"
+            />
+            {titleLink}
+          </button>
+        ) : (
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">{titleLink}</div>
+        )}
 
         {mentions.length > 1 && (
           <span className="flex-shrink-0 text-[11px] tabular-nums text-text-tertiary">

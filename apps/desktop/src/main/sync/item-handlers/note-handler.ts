@@ -33,7 +33,7 @@ import {
   resolvePropertyType,
   type NoteFrontmatter
 } from '../../vault/frontmatter'
-import type { PropertyType } from '@memry/contracts/property-types'
+import { isPersistableDefinitionType, type PropertyType } from '@memry/contracts/property-types'
 import { syncNoteToCache, syncFileToCache, deleteNoteFromCache } from '../../vault/note-sync'
 import { cleanupProjectLinksForDeletedNote } from '../../notes/runtime-effects'
 import { flushProjectionEvents } from '../../projections'
@@ -396,7 +396,11 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
             existing?.type as PropertyType | undefined,
             inferPropertyType
           )
-          saveCanonicalPropertyDefinition(ctx.db, { name, type })
+          // `relation` has no PropertyDefinitionSchema member, so it is never
+          // persisted — it is re-derived from the value on every pass instead.
+          if (isPersistableDefinitionType(type)) {
+            saveCanonicalPropertyDefinition(ctx.db, { name, type })
+          }
           return type
         }
         setNoteProperties(indexDb, itemId, remoteProperties, getType)
