@@ -3,6 +3,8 @@ import { createTestDataDb, asSyncDb, type TestDatabaseResult } from '@tests/util
 import { projects } from '@memry/db-schema/schema/projects'
 import { statuses } from '@memry/db-schema/schema/statuses'
 import { projectLinks } from '@memry/db-schema/schema/project-links'
+import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { listNoteProjectLinkIds } from '../../database/queries/projects'
 import { SyncQueueManager } from '../queue'
 import { projectHandler } from './project-handler'
 import type { ApplyContext, DrizzleDb } from './types'
@@ -450,6 +452,93 @@ describe('projectHandler', () => {
       )
       expect(payload.homeNoteId).toBe('note-3')
       expect(payload.links).toHaveLength(1)
+    })
+  })
+
+  describe('sync payload split (frontmatter-owned links)', () => {
+    const seedMarkdownNote = (id: string): void => {
+      testDb.db
+        .insert(noteMetadata)
+        .values({
+          id,
+          path: `notes/${id}.md`,
+          title: id,
+          fileType: 'markdown',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          modifiedAt: '2024-01-01T00:00:00.000Z'
+        })
+        .run()
+    }
+
+    it('omits markdown-note links from the pushed payload', () => {
+      testDb.db.insert(projects).values(TEST_PROJECT).run()
+      seedMarkdownNote('n1')
+      testDb.db
+        .insert(projectLinks)
+        .values([
+          { id: 'l1', projectId: 'proj-1', itemType: 'note', itemId: 'n1', position: 0 },
+          { id: 'l2', projectId: 'proj-1', itemType: 'file', itemId: 'f1', position: 1 }
+        ])
+        .run()
+
+      const payload = JSON.parse(
+        projectHandler.buildPushPayload(testDb.db as never, 'proj-1', 'device-A', 'update')!
+      )
+
+      expect(payload.links.map((l: { itemId: string }) => l.itemId)).toEqual(['f1'])
+    })
+
+    it('does not delete a locally derived markdown-note link when a project is pulled', () => {
+      testDb.db
+        .insert(projects)
+        .values({ ...TEST_PROJECT, clock: { 'device-A': 1 } })
+        .run()
+      seedMarkdownNote('n1')
+      // Locally derived by the note's frontmatter projector (Task 9) — not by
+      // anything in the incoming payload.
+      testDb.db
+        .insert(projectLinks)
+        .values({ id: 'l1', projectId: 'proj-1', itemType: 'note', itemId: 'n1', position: 0 })
+        .run()
+
+      // A build that has adopted the split never lists markdown-note links at all.
+      const data: ProjectSyncPayload = {
+        name: 'Renamed',
+        clock: { 'device-A': 1, 'device-B': 1 },
+        links: []
+      }
+      projectHandler.applyUpsert(ctx, 'proj-1', data, { 'device-A': 1, 'device-B': 1 })
+
+      expect(listNoteProjectLinkIds(testDb.db, 'n1')).toHaveLength(1)
+    })
+
+    it('skips a markdown-note link inside an older payload instead of erroring', () => {
+      testDb.db
+        .insert(projects)
+        .values({ ...TEST_PROJECT, clock: { 'device-A': 1 } })
+        .run()
+      seedMarkdownNote('n1')
+      testDb.db
+        .insert(projectLinks)
+        .values({ id: 'l1', projectId: 'proj-1', itemType: 'note', itemId: 'n1', position: 0 })
+        .run()
+
+      // An older build still puts the (already-derived) markdown-note link in
+      // the project payload, under its own link id.
+      const data: ProjectSyncPayload = {
+        name: 'P',
+        clock: { 'device-A': 1, 'device-B': 1 },
+        links: [{ id: 'old-l9', itemType: 'note', itemId: 'n1', position: 0 }]
+      }
+
+      expect(() =>
+        projectHandler.applyUpsert(ctx, 'proj-1', data, { 'device-A': 1, 'device-B': 1 })
+      ).not.toThrow()
+
+      // Skipped, not upserted under the old id — the original derived row
+      // ('l1') survives untouched; no row for 'old-l9' is created.
+      const links = testDb.db.select().from(projectLinks).all()
+      expect(links.map((l) => l.id)).toEqual(['l1'])
     })
   })
 })

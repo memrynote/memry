@@ -6,7 +6,7 @@
  */
 
 import { nanoid } from 'nanoid'
-import { eq, asc, and, isNull, inArray, sql, count } from 'drizzle-orm'
+import { eq, asc, and, or, ne, isNull, inArray, sql, count } from 'drizzle-orm'
 import { projects, type Project, type NewProject } from '@memry/db-schema/schema/projects'
 import { statuses, type Status, type NewStatus } from '@memry/db-schema/schema/statuses'
 import { tasks } from '@memry/db-schema/schema/tasks'
@@ -650,6 +650,26 @@ export function getProjectLinks(db: DataDb, projectId: string): ProjectLink[] {
     .where(eq(projectLinks.projectId, projectId))
     .orderBy(asc(projectLinks.position), asc(projectLinks.createdAt))
     .all()
+}
+
+/**
+ * A project's links minus the frontmatter-owned ones. Markdown-note membership
+ * rides along in the note payload; carrying it here too would let a project pull
+ * delete rows the local frontmatter had just derived.
+ */
+export function listTableOwnedProjectLinks(db: DataDb, projectId: string): ProjectLink[] {
+  return db
+    .select()
+    .from(projectLinks)
+    .leftJoin(noteMetadata, eq(noteMetadata.id, projectLinks.itemId))
+    .where(
+      and(
+        eq(projectLinks.projectId, projectId),
+        or(isNull(noteMetadata.id), ne(noteMetadata.fileType, 'markdown'))
+      )
+    )
+    .all()
+    .map((row) => row.project_links)
 }
 
 /**

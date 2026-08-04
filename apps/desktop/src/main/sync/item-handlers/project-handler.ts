@@ -1,4 +1,4 @@
-import { eq, isNull, and, notInArray } from 'drizzle-orm'
+import { eq, isNull, and, inArray, notInArray } from 'drizzle-orm'
 import { projects } from '@memry/db-schema/schema/projects'
 import { statuses } from '@memry/db-schema/schema/statuses'
 import { projectLinks } from '@memry/db-schema/schema/project-links'
@@ -15,6 +15,8 @@ import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { mergeProjectFields, initAllFieldClocks, PROJECT_SYNCABLE_FIELDS } from '../field-merge'
 import { createLogger } from '../../lib/logger'
+import { listTableOwnedProjectLinks, isMarkdownNote } from '../../database/queries/projects'
+import type { DataDb } from '../../database/types'
 import { BaseItemHandler } from './base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 
@@ -61,15 +63,24 @@ function reconcileStatuses(tx: DrizzleDb, projectId: string, incoming: StatusSyn
   }
 }
 
-function reconcileLinks(tx: DrizzleDb, projectId: string, incoming: ProjectLinkSync[]): void {
+function reconcileLinks(tx: DrizzleDb, projectId: string, remote: ProjectLinkSync[]): void {
+  // Markdown-note membership now rides in the note payload (Task 9's frontmatter
+  // projector derives it locally). Older builds still push those links here —
+  // skip them rather than reject the payload, so an older device keeps syncing.
+  const incoming = remote.filter((l) => !isMarkdownNote(tx as unknown as DataDb, l.itemId))
   const incomingIds = incoming.map((l) => l.id)
 
-  if (incomingIds.length > 0) {
+  // Diff against table-owned rows only: a frontmatter-derived row is never in
+  // this set, so it is never a delete candidate here.
+  const existingIds = listTableOwnedProjectLinks(tx as unknown as DataDb, projectId).map(
+    (l) => l.id
+  )
+  const idsToDelete = existingIds.filter((id) => !incomingIds.includes(id))
+
+  if (idsToDelete.length > 0) {
     tx.delete(projectLinks)
-      .where(and(eq(projectLinks.projectId, projectId), notInArray(projectLinks.id, incomingIds)))
+      .where(and(eq(projectLinks.projectId, projectId), inArray(projectLinks.id, idsToDelete)))
       .run()
-  } else {
-    tx.delete(projectLinks).where(eq(projectLinks.projectId, projectId)).run()
   }
 
   for (const l of incoming) {
@@ -275,7 +286,7 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
     if (!project) return undefined
 
     const projectStatuses = db.select().from(statuses).where(eq(statuses.projectId, itemId)).all()
-    const links = db.select().from(projectLinks).where(eq(projectLinks.projectId, itemId)).all()
+    const links = listTableOwnedProjectLinks(db as unknown as DataDb, itemId)
 
     return { ...project, statuses: projectStatuses, links } as Record<string, unknown>
   }
@@ -290,7 +301,7 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
     if (!project) return null
 
     const projectStatuses = db.select().from(statuses).where(eq(statuses.projectId, itemId)).all()
-    const links = db.select().from(projectLinks).where(eq(projectLinks.projectId, itemId)).all()
+    const links = listTableOwnedProjectLinks(db as unknown as DataDb, itemId)
 
     return JSON.stringify({ ...project, statuses: projectStatuses, links })
   }
@@ -311,7 +322,7 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
         .from(statuses)
         .where(eq(statuses.projectId, item.id))
         .all()
-      const links = db.select().from(projectLinks).where(eq(projectLinks.projectId, item.id)).all()
+      const links = listTableOwnedProjectLinks(db as unknown as DataDb, item.id)
 
       queue.enqueue({
         type: 'project',
