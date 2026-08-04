@@ -31,9 +31,13 @@ import { createHandler, createStringHandler, createValidatedHandler, withDb } fr
 import { createDesktopTasksDomain } from '../tasks/domain'
 import { captureUrlToProject } from '../tasks/capture-url'
 import { importFilesToProject } from '../tasks/import-files-to-project'
-import { linkProjectItem, unlinkProjectItem } from './project-item-links'
-import { getProjectById, listMarkdownNoteIdsForProject } from '../database/queries/projects'
-import { propagateProjectRename, propagateProjectDelete } from '../tasks/project-name-propagation'
+import { linkProjectItem, unlinkProjectItem } from '../tasks/project-item-links'
+import {
+  captureProjectName,
+  captureProjectForDelete,
+  propagateProjectRename,
+  propagateProjectDelete
+} from '../tasks/project-name-propagation'
 import { createNote, importFiles, getNoteByPath } from '../vault/notes-crud'
 import { fetchUrlMetadata } from '../inbox/metadata'
 import { createTasksPublisher } from '../tasks/publisher'
@@ -191,15 +195,15 @@ export function registerTasksHandlers(): void {
         // Read the previous name before the domain call overwrites it — a
         // rename that is not propagated leaves linked notes' frontmatter
         // naming a project that no longer matches.
-        const previous = getProjectById(db, input.id)
+        const previousName = captureProjectName(db, input.id)
         const result = await createTaskDomain(db).updateProject(input)
         if (
           result.success &&
-          previous &&
+          previousName !== undefined &&
           input.name !== undefined &&
-          input.name !== previous.name
+          input.name !== previousName
         ) {
-          await propagateProjectRename(db, input.id, previous.name, input.name)
+          await propagateProjectRename(db, input.id, previousName, input.name)
         }
         return result
       }, 'Failed to update project')
@@ -213,11 +217,10 @@ export function registerTasksHandlers(): void {
         // Collect the linked notes and the project's name before the domain
         // call — project_links cascades away with the project, so after the
         // delete there is nothing left to look up.
-        const project = getProjectById(db, id)
-        const noteIds = listMarkdownNoteIdsForProject(db, id)
+        const capture = captureProjectForDelete(db, id)
         const result = await createTaskDomain(db).deleteProject(id)
-        if (result.success && project) {
-          await propagateProjectDelete(db, id, project.name, noteIds)
+        if (result.success && capture) {
+          await propagateProjectDelete(db, id, capture.name, capture.noteIds)
         }
         return result
       }, 'Failed to delete project')

@@ -11,12 +11,36 @@
 
 import { PROJECT_PROPERTY_KEY } from '@memry/contracts/property-types'
 import { createLogger } from '../lib/logger'
-import { listMarkdownNoteIdsForProject } from '../database/queries/projects'
+import { getProjectById, listMarkdownNoteIdsForProject } from '../database/queries/projects'
 import { getEntityPropertiesRecord, setEntityProperties } from '../notes/entity-properties'
 import { readProjectNames, withoutProjectName } from '../notes/project-property'
 import type { DataDb } from '../database/types'
 
 const logger = createLogger('ProjectNamePropagation')
+
+/**
+ * Reads a project's current name so a caller can detect whether an update
+ * actually renamed it. Must be called before the domain update runs, which
+ * overwrites the row this reads.
+ */
+export function captureProjectName(db: DataDb, projectId: string): string | undefined {
+  return getProjectById(db, projectId)?.name
+}
+
+/**
+ * Captures a project's name and the ids of every markdown note linked to it,
+ * for a later `propagateProjectDelete` call. Must be called before
+ * `deleteProject` runs — its `project_links` FK cascade removes the rows
+ * this reads.
+ */
+export function captureProjectForDelete(
+  db: DataDb,
+  projectId: string
+): { name: string; noteIds: string[] } | undefined {
+  const project = getProjectById(db, projectId)
+  const noteIds = listMarkdownNoteIdsForProject(db, projectId)
+  return project ? { name: project.name, noteIds } : undefined
+}
 
 async function rewriteLinkedNotes(
   db: DataDb,

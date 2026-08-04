@@ -112,11 +112,19 @@ vi.mock('@main/database/queries/projects', () => ({
   listMarkdownNoteIdsForProject: vi.fn()
 }))
 
-// Mock project name propagation (rename/delete → note frontmatter)
-vi.mock('../tasks/project-name-propagation', () => ({
-  propagateProjectRename: vi.fn(),
-  propagateProjectDelete: vi.fn()
-}))
+// Mock project name propagation (rename/delete → note frontmatter). The
+// capture helpers stay real — they're thin reads over the (mocked) project
+// queries above, and the delete-ordering test below depends on them actually
+// running against those mocks — only the propagation calls themselves are
+// stubbed.
+vi.mock('../tasks/project-name-propagation', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../tasks/project-name-propagation')>()
+  return {
+    ...actual,
+    propagateProjectRename: vi.fn(),
+    propagateProjectDelete: vi.fn()
+  }
+})
 
 // Import after mocking
 import { registerTasksHandlers, unregisterTasksHandlers } from './tasks-handlers'
