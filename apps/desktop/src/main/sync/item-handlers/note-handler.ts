@@ -29,18 +29,12 @@ import {
   parseNote,
   serializeNote,
   serializeParsedNote,
-  inferPropertyType,
   type NoteFrontmatter
 } from '../../vault/frontmatter'
 import { syncNoteToCache, syncFileToCache, deleteNoteFromCache } from '../../vault/note-sync'
 import { cleanupProjectLinksForDeletedNote } from '../../notes/runtime-effects'
 import { flushProjectionEvents } from '../../projections'
-import {
-  getNoteMetadataById,
-  updateNoteMetadata,
-  getPropertyDefinition as getCanonicalPropertyDefinition
-} from '@memry/storage-data'
-import { saveCanonicalPropertyDefinition } from '@memry/domain-notes'
+import { getNoteMetadataById, updateNoteMetadata } from '@memry/storage-data'
 import {
   getNoteCacheByPath,
   getNoteTags,
@@ -56,6 +50,7 @@ import {
   fetchLocalNote,
   seedUnclockedNotes
 } from './note-handler-sync-helpers'
+import { resolveSyncPropertyType } from './note-property-type'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 
 const log = createLogger('NoteHandler')
@@ -384,16 +379,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       }
 
       if (propertiesPresent) {
-        const getType = (name: string, value: unknown) => {
-          const type =
-            (getCanonicalPropertyDefinition(ctx.db, name)?.type as
-              | ReturnType<typeof inferPropertyType>
-              | null
-              | undefined) ?? inferPropertyType(name, value)
-          saveCanonicalPropertyDefinition(ctx.db, { name, type })
-          return type
-        }
-        setNoteProperties(indexDb, itemId, remoteProperties, getType)
+        setNoteProperties(indexDb, itemId, remoteProperties, (name, value) =>
+          resolveSyncPropertyType(ctx.db, name, value)
+        )
       }
 
       if (data.pinnedTags) {
