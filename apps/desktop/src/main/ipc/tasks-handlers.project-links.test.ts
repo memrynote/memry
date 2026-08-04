@@ -93,4 +93,41 @@ describe('project item link reroute', () => {
       })
     ).toEqual({ success: false, error: 'Project not found' })
   })
+
+  // The project-hub file-import closure always passes itemType: 'file', even
+  // when the imported file is a markdown note — it has no way to know before
+  // asking. These pin that `linkProjectItem` still keys off `isMarkdownNote`,
+  // not the itemType it was called with, so an imported .md target gets
+  // frontmatter instead of a link row the projector would delete right back.
+  describe('an item linked with itemType "file" (the import-files closure)', () => {
+    it('writes frontmatter when the imported file is actually a markdown note', async () => {
+      isMarkdownNote.mockReturnValue(true)
+      getEntityPropertiesRecord.mockReturnValue({ project: [] })
+
+      const result = await linkProjectItem({} as never, domain as never, {
+        projectId: 'p1',
+        itemType: 'file',
+        itemId: 'n1'
+      })
+
+      expect(result).toEqual({ success: true })
+      expect(setEntityProperties).toHaveBeenCalledWith('n1', { project: ['Alpha'] })
+      expect(domainLink).not.toHaveBeenCalled()
+    })
+
+    it('still writes the project_links row when the imported file is binary', async () => {
+      isMarkdownNote.mockReturnValue(false)
+      domainLink.mockResolvedValue({ success: true })
+
+      const result = await linkProjectItem({} as never, domain as never, {
+        projectId: 'p1',
+        itemType: 'file',
+        itemId: 'f1'
+      })
+
+      expect(result).toEqual({ success: true })
+      expect(domainLink).toHaveBeenCalledWith({ projectId: 'p1', itemType: 'file', itemId: 'f1' })
+      expect(setEntityProperties).not.toHaveBeenCalled()
+    })
+  })
 })

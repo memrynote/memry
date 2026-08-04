@@ -282,7 +282,7 @@ export function registerTasksHandlers(): void {
             },
             getIdByPath: async (destPath) => (await getNoteByPath(destPath))?.id ?? null,
             linkToProject: async (projectId, fileId) => {
-              const linked = await domain.linkItemToProject({
+              const linked = await linkProjectItem(db, domain, {
                 projectId,
                 itemType: 'file',
                 itemId: fileId
