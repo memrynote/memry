@@ -1142,6 +1142,51 @@ describe('notes operations', () => {
       expect(links.outgoing[0].targetTitle).toBe('Non Existent Page')
       expect(links.outgoing[0].targetId).toBeNull()
     })
+
+    it('includes property-relation backlinks labeled with the property name', async () => {
+      const { setPropertyRefs } = await import('@main/database/queries/notes')
+
+      const target = await notes.createNote({
+        title: 'Relation Target',
+        content: 'I am referenced through a relation property.'
+      })
+      const source = await notes.createNote({
+        title: 'Relation Source',
+        content: 'No wiki link here, only a property.'
+      })
+
+      setPropertyRefs(testDb.db, source.id, { father: [`memry://note/${target.id}`] })
+
+      const links = await notes.getNoteLinks(target.id)
+
+      expect(links.incoming).toContainEqual(
+        expect.objectContaining({
+          sourceId: source.id,
+          sourceTitle: 'Relation Source',
+          via: { kind: 'property', propertyName: 'father' }
+        })
+      )
+    })
+
+    it('excludes a property-relation backlink whose source note was deleted', async () => {
+      const { setPropertyRefs } = await import('@main/database/queries/notes')
+
+      const target = await notes.createNote({
+        title: 'Relation Target 2',
+        content: 'Target of a dangling relation.'
+      })
+      const ghost = await notes.createNote({
+        title: 'Ghost Source',
+        content: 'About to be deleted.'
+      })
+
+      setPropertyRefs(testDb.db, ghost.id, { father: [`memry://note/${target.id}`] })
+      await notes.deleteNote(ghost.id)
+
+      const links = await notes.getNoteLinks(target.id)
+
+      expect(links.incoming.some((bl) => bl.sourceId === ghost.id)).toBe(false)
+    })
   })
 
   // ==========================================================================

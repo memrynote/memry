@@ -606,7 +606,8 @@ export function NotePage({ noteId }: NotePageProps) {
           snippet: ctx.snippet,
           linkStart: ctx.linkStart,
           linkEnd: ctx.linkEnd
-        }))
+        })),
+        via: bl.via
       }
     })
   }, [rawBacklinks])

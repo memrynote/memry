@@ -12,6 +12,7 @@ export interface Backlink {
   folder?: string // Parent folder name
   date: Date // When link was created or note updated
   mentions: Mention[] // All mentions of current note
+  via?: { kind: 'property'; propertyName: string } // Set for relation-property-sourced entries
 }
 
 export type BacklinkSortOption = 'recent' | 'alphabetical' | 'mentions'

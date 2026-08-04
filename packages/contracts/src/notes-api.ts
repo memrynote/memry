@@ -70,6 +70,7 @@ export interface Backlink {
   sourcePath: string
   sourceTitle: string
   contexts: BacklinkContext[]
+  via?: { kind: 'property'; propertyName: string }
 }
 
 // ============================================================================

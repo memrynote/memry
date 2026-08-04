@@ -13,11 +13,14 @@ interface BacklinkCardProps {
 
 export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: BacklinkCardProps) {
   const { t } = useT('notes')
-  const { noteId, noteTitle, mentions } = backlink
+  const { noteId, noteTitle, mentions, via } = backlink
+  const displayLabel = via
+    ? t('backlinks.viaProperty', { property: via.propertyName, title: noteTitle })
+    : noteTitle
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
   return (
-    <div role="group" aria-label={t('backlinks.fromAria', { title: noteTitle })}>
+    <div role="group" aria-label={t('backlinks.fromAria', { title: displayLabel })}>
       <div
         className={cn(
           'flex items-center gap-1.5 px-1.5 py-1',
@@ -31,7 +34,7 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
           onClick={() => setIsExpanded(!isExpanded)}
           className="flex items-center gap-1.5 flex-1 min-w-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-border rounded"
           aria-expanded={isExpanded}
-          aria-label={`${isExpanded ? t('backlinks.collapse') : t('backlinks.expand')} ${noteTitle}`}
+          aria-label={`${isExpanded ? t('backlinks.collapse') : t('backlinks.expand')} ${displayLabel}`}
         >
           <ChevronDown
             className={cn(
@@ -56,7 +59,7 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
             }}
             className="text-[13px]/4 font-medium text-text-bright truncate hover:underline"
           >
-            {noteTitle}
+            {displayLabel}
           </span>
         </button>
 

@@ -212,7 +212,8 @@
     "collapseSection": "Collapse backlinks section",
     "expandSection": "Expand backlinks section",
     "showMore": "Show {count} more backlinks",
-    "more": "{count} more"
+    "more": "{count} more",
+    "viaProperty": "{property} → {title}"
   },
   "comments": {
     "railAria": "Comments",

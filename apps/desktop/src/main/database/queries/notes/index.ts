@@ -46,10 +46,12 @@ export {
   setNoteLinks,
   getOutgoingLinks,
   getIncomingLinks,
+  getIncomingReferences,
   deleteLinksToNote,
   resolveNoteByTitle,
   resolveNotesByTitles,
-  updateLinkTargets
+  updateLinkTargets,
+  type IncomingReference
 } from './link-queries'
 
 export {

@@ -7,6 +7,8 @@ import {
   type NewNoteLink
 } from '@memry/db-schema/schema/notes-cache'
 import type { IndexDb } from '../../types'
+import { noteCacheExists } from './note-crud'
+import { getIncomingPropertyRefs } from './property-ref-queries'
 
 export function setNoteLinks(
   db: IndexDb,
@@ -31,6 +33,34 @@ export function getOutgoingLinks(db: IndexDb, noteId: string): NoteLink[] {
 
 export function getIncomingLinks(db: IndexDb, noteId: string): NoteLink[] {
   return db.select().from(noteLinks).where(eq(noteLinks.targetId, noteId)).all()
+}
+
+/**
+ * A note's incoming references: wiki-link backlinks (`via` undefined) plus
+ * relation-property references (`via.kind === 'property'`). A source that
+ * references the target both ways produces two distinct entries.
+ */
+export interface IncomingReference {
+  sourceNoteId: string
+  via?: { kind: 'property'; propertyName: string }
+}
+
+export function getIncomingReferences(db: IndexDb, noteId: string): IncomingReference[] {
+  const wikiLinks: IncomingReference[] = getIncomingLinks(db, noteId).map((link) => ({
+    sourceNoteId: link.sourceId
+  }))
+
+  // property_refs is a rebuildable index-DB cache with no FK enforcement, so
+  // a source note can be deleted without its outgoing rows being cleaned up.
+  // Drop those before they turn into phantom backlinks.
+  const propertyLinks: IncomingReference[] = getIncomingPropertyRefs(db, 'note', noteId)
+    .filter((ref) => noteCacheExists(db, ref.sourceNoteId))
+    .map((ref) => ({
+      sourceNoteId: ref.sourceNoteId,
+      via: { kind: 'property' as const, propertyName: ref.propertyName }
+    }))
+
+  return [...wikiLinks, ...propertyLinks]
 }
 
 export function deleteLinksToNote(db: IndexDb, targetId: string): void {

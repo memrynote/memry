@@ -713,7 +713,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
           snippet: ctx.snippet,
           linkStart: ctx.linkStart,
           linkEnd: ctx.linkEnd
-        }))
+        })),
+        via: bl.via
       }
     })
   }, [rawBacklinks])

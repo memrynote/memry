@@ -19,7 +19,7 @@ import {
   deleteTagDefinition,
   getPropertiesForNotes,
   getOutgoingLinks,
-  getIncomingLinks
+  getIncomingReferences
 } from '@main/database/queries/notes'
 import { getAllTaskTags } from '@main/database/queries/tasks'
 import { getDatabase, getIndexDatabase } from '../database'
@@ -183,13 +183,13 @@ export async function getNoteLinks(id: string): Promise<NoteLinksResponse> {
     targetTitle: link.targetTitle
   }))
 
-  const incoming = getIncomingLinks(db, id)
+  const incoming = getIncomingReferences(db, id)
   const targetCache = getNoteCacheById(db, id)
   const targetTitle = targetCache?.title ?? ''
 
   const backlinks: Backlink[] = await Promise.all(
-    incoming.map(async (link) => {
-      const sourceCache = getNoteCacheById(db, link.sourceId)
+    incoming.map(async (ref) => {
+      const sourceCache = getNoteCacheById(db, ref.sourceNoteId)
       let contexts: Backlink['contexts'] = []
 
       if (sourceCache?.path && targetTitle) {
@@ -201,10 +201,11 @@ export async function getNoteLinks(id: string): Promise<NoteLinksResponse> {
       }
 
       return {
-        sourceId: link.sourceId,
+        sourceId: ref.sourceNoteId,
         sourcePath: sourceCache?.path ?? '',
         sourceTitle: sourceCache?.title ?? '',
-        contexts
+        contexts,
+        via: ref.via
       }
     })
   )
