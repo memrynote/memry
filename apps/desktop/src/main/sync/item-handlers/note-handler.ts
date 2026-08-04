@@ -14,6 +14,7 @@ import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
 import { extractFolderFromPath } from '../note-sync'
 import { markWritebackIgnored } from '../crdt-writeback'
+import { emitNoteUpdated } from '../note-events'
 import { attachmentEvents } from '../attachment-events'
 import { getIndexDatabase } from '../../database/client'
 import {
@@ -237,7 +238,12 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           syncedAt: now,
           modifiedAt: data.modifiedAt ?? now
         })
-        ctx.emit(NotesChannels.events.UPDATED, { id: itemId, source: 'sync' })
+        // Binary/file branch: only sidecar metadata moved, never file bytes.
+        emitNoteUpdated(ctx.emit, {
+          id: itemId,
+          changes: { title: newTitle, emoji: resolvedEmoji },
+          source: 'sync'
+        })
         return resolution.action === 'merge' ? 'conflict' : 'applied'
       }
 
@@ -452,7 +458,19 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         }
       }
 
-      ctx.emit(NotesChannels.events.UPDATED, { id: itemId, source: 'sync' })
+      // This branch rewrites frontmatter, title and path — never the note body.
+      // Body edits arrive separately through the CRDT write-back. Leaving
+      // `content` out is what keeps an open editor from remounting on a pull
+      // that did not touch its text.
+      emitNoteUpdated(ctx.emit, {
+        id: itemId,
+        changes: {
+          title: newTitle,
+          emoji: resolvedEmoji,
+          ...(tagsChanged && remoteTags ? { tags: remoteTags } : {})
+        },
+        source: 'sync'
+      })
       if (tagsChanged) {
         ctx.emit('notes:tags-changed', {})
       }

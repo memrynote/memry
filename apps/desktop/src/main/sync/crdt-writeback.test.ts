@@ -237,9 +237,11 @@ describe('crdt writeback', () => {
       expect.objectContaining({ id: 'note-1', path: 'notes/Existing.md' }),
       { isNew: false }
     )
+    // The body changed here, so `content` rides along — that is what lets an
+    // open editor pick up a remote edit instead of showing stale text.
     expect(mocks.sent).toContainEqual({
       channel: NotesChannels.events.UPDATED,
-      payload: { id: 'note-1', source: 'sync' }
+      payload: { id: 'note-1', changes: { content: 'updated markdown' }, source: 'sync' }
     })
     expect(getWritebackDebugState('note-1')).toMatchObject({
       pending: false,
