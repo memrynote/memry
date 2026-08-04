@@ -309,4 +309,34 @@ describe('relation property cells', () => {
       expect.arrayContaining(['memry://note/nte_1', 'memry://task/tsk_2'])
     )
   })
+
+  it('does not re-resolve when an unrelated prop changes and the value reference is unchanged', async () => {
+    mockResolveRefs([
+      {
+        uri: 'memry://note/nte_1',
+        targetType: 'note',
+        targetId: 'nte_1',
+        title: 'Richard Doe',
+        exists: true
+      }
+    ])
+
+    // The same array reference a stable `note.properties[columnId]` would
+    // hand to `info.getValue()` across re-renders — not a fresh literal per
+    // render, which is the point of this test.
+    const value = ['memry://note/nte_1']
+    const { rerender } = render(<PropertyCell type="relation" value={value} />)
+    expect(await screen.findByText('Richard Doe')).toBeInTheDocument()
+    expect(mocks.resolveRefs).toHaveBeenCalledTimes(1)
+
+    // Simulate a folder-search keystroke: highlightQuery changes on every
+    // visible cell, but the relation value itself did not change.
+    rerender(<PropertyCell type="relation" value={value} highlightQuery="richard" />)
+    // Flush any effect + its batched microtask + a macrotask tick so a
+    // spurious resolveRefs call (if the fix regresses) has time to land
+    // before we assert it didn't.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(mocks.resolveRefs).toHaveBeenCalledTimes(1)
+  })
 })

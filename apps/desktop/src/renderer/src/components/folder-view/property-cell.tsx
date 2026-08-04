@@ -11,7 +11,7 @@
  * T117: Added TruncatedTooltip component for shadcn tooltip on truncated content.
  */
 
-import { memo, useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
+import { memo, useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react'
 import { format } from 'date-fns'
 import { formatDate as applyDateFormat, type DateFormat } from '@/lib/format-date'
 import { useDateFormat } from '@/hooks/use-date-format'
@@ -280,10 +280,13 @@ function PropertyValueDisplay({
       return <RatingCell value={rating} className={className} />
     }
 
-    case 'relation': {
-      const uris = Array.isArray(value) ? value.map(String) : []
-      return <RelationCell value={uris} className={className} />
-    }
+    case 'relation':
+      // Pass the raw value through untouched (no derived array here) so
+      // RelationCell can memoize `uris` off a reference that is actually
+      // stable across unrelated re-renders (e.g. highlightQuery changing on
+      // every keystroke) instead of a fresh `.map(String)` copy allocated
+      // on every render of this dispatcher.
+      return <RelationCell value={value} className={className} />
 
     case 'text':
     default:
@@ -740,6 +743,10 @@ function resolveRelationRefsBatched(uris: string[]): Promise<ResolvedRelationRef
   })
 }
 
+// Stable empty-array reference so a non-array/missing value also keeps
+// `uris` referentially stable across re-renders (see the memo below).
+const EMPTY_RELATION_URIS: string[] = []
+
 const RELATION_KIND_ICONS: Record<RelationKind, AppIcon> = {
   note: FileText,
   task: CheckSquare,
@@ -756,27 +763,41 @@ export const RelationCell = memo(function RelationCell({
   value,
   className
 }: {
-  value: string[]
+  value: unknown
   className?: string
 }): React.JSX.Element {
   const { t } = useT('notes')
   const [resolved, setResolved] = useState<ResolvedRelationRef[]>([])
 
+  // Derived from `value` (not created fresh from it) so `uris` keeps the
+  // same reference across re-renders where `value` itself is unchanged —
+  // e.g. a folder-search keystroke re-renders every visible cell via
+  // highlightQuery, but `note.properties[columnId]` (the raw `value` this
+  // receives) stays the same array. Without this memo, a new `uris` array
+  // every render would re-fire the effect below and re-issue an IPC call
+  // for data that never changed — the same "per-cell fetch" defect the
+  // batching above exists to avoid, just triggered by re-render instead of
+  // row count.
+  const uris = useMemo(
+    () => (Array.isArray(value) ? value.map(String) : EMPTY_RELATION_URIS),
+    [value]
+  )
+
   useEffect(() => {
-    if (value.length === 0) return
+    if (uris.length === 0) return
 
     let cancelled = false
     void (async () => {
-      const refs = await resolveRelationRefsBatched(value)
+      const refs = await resolveRelationRefsBatched(uris)
       if (!cancelled) setResolved(refs)
     })()
 
     return () => {
       cancelled = true
     }
-  }, [value])
+  }, [uris])
 
-  if (value.length === 0) {
+  if (uris.length === 0) {
     return <span className={cn('text-muted-foreground/50', className)}>—</span>
   }
 
