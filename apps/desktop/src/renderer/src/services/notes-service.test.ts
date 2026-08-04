@@ -111,7 +111,8 @@ describe('notes-service', () => {
     expect(api.onNoteCreated).toHaveBeenCalledWith(createdHandler)
 
     expect(onNoteUpdated(updatedHandler)).toBe(unsubscribe)
-    expect(api.onNoteUpdated).toHaveBeenCalledWith(updatedHandler)
+    // onNoteUpdated wraps the handler to normalize `changes` — see below.
+    expect(api.onNoteUpdated).toHaveBeenCalledWith(expect.any(Function))
 
     expect(onNoteDeleted(deletedHandler)).toBe(unsubscribe)
     expect(api.onNoteDeleted).toHaveBeenCalledWith(deletedHandler)
@@ -130,6 +131,42 @@ describe('notes-service', () => {
 
     expect(onFolderConfigUpdated(updatedHandler)).toBe(unsubscribe)
     expect(api.onFolderConfigUpdated).toHaveBeenCalledWith(updatedHandler)
+  })
+
+  describe('onNoteUpdated payload normalization', () => {
+    // Regression: the sync path shipped `{ id, source: 'sync' }` with no
+    // `changes` for months. Subscribers read `changes.content` unguarded, so
+    // every pulled note threw inside the preload listener loop and the
+    // subscriber silently missed the event.
+    it('substitutes an empty changes object when the emitter omits it', () => {
+      let emit: ((event: unknown) => void) | undefined
+      api.onNoteUpdated = vi.fn((cb: (event: unknown) => void) => {
+        emit = cb
+        return vi.fn()
+      })
+
+      const handler = vi.fn()
+      onNoteUpdated(handler)
+      emit?.({ id: 'note-1', source: 'sync' })
+
+      expect(handler).toHaveBeenCalledWith({ id: 'note-1', source: 'sync', changes: {} })
+      expect(() => handler.mock.calls[0][0].changes.content).not.toThrow()
+    })
+
+    it('passes a well-formed payload through untouched', () => {
+      let emit: ((event: unknown) => void) | undefined
+      api.onNoteUpdated = vi.fn((cb: (event: unknown) => void) => {
+        emit = cb
+        return vi.fn()
+      })
+
+      const payload = { id: 'note-1', changes: { content: 'hello' }, source: 'sync' }
+      const handler = vi.fn()
+      onNoteUpdated(handler)
+      emit?.(payload)
+
+      expect(handler).toHaveBeenCalledWith(payload)
+    })
   })
 
   describe('position operations', () => {

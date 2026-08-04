@@ -2,6 +2,7 @@ import * as Y from 'yjs'
 import { createLogger } from '../lib/logger'
 import { getCrdtProvider } from './crdt-provider'
 import { yDocToMarkdown } from './blocknote-converter'
+import { emitNoteUpdated } from './note-events'
 import { readCriticMarkupMarksFromYDoc, serializeCriticMarkup } from '@memry/shared'
 import { utcNow } from '@memry/shared/utc'
 import {
@@ -317,7 +318,14 @@ async function writebackExisting(
   )
   void flushProjectionEvents()
 
-  emitToRenderer(NotesChannels.events.UPDATED, { id: noteId, source: 'sync' })
+  // The body genuinely changed here, so `content` has to ride along: it is what
+  // makes an open editor pick up a remote edit instead of showing stale text
+  // until the tab is reopened.
+  emitNoteUpdated(emitToRenderer, {
+    id: noteId,
+    changes: { content: markdown },
+    source: 'sync'
+  })
   log.debug('Write-back complete', { noteId })
 }
 
