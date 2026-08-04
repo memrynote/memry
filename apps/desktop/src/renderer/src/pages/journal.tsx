@@ -29,7 +29,7 @@ import {
   type JournalViewState
 } from '@/components/journal'
 import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
-import { BacklinksSection, type Backlink } from '@/components/note/backlinks'
+import { BacklinksSection, type Backlink, backlinkId } from '@/components/note/backlinks'
 
 import { TagsRow, type Tag } from '@/components/note/tags-row'
 import { InfoSection, type NewProperty } from '@/components/note/info-section'
@@ -703,10 +703,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         .join('/')
         .replace(/^notes\//, '')
       return {
-        // A source can reference the target both via wikilink and via a
-        // relation property — two distinct entries with the same sourceId.
-        // Disambiguate the React list key so they don't collide.
-        id: bl.via ? `${bl.sourceId}:property:${bl.via.propertyName}` : bl.sourceId,
+        id: backlinkId(bl.sourceId, bl.via),
         noteId: bl.sourceId,
         noteTitle: bl.sourceTitle,
         folder: folderPath,

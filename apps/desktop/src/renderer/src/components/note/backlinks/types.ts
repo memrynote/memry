@@ -15,6 +15,15 @@ export interface Backlink {
   via?: { kind: 'property'; propertyName: string } // Set for relation-property-sourced entries
 }
 
+// A source note can reference the target both via [[wikilink]] and via a
+// relation property, producing two distinct Backlink entries with the same
+// sourceId. BacklinksSection keys its list on `id`, so the two must not
+// collide — this is the one place that decides how they're disambiguated.
+// note.tsx and journal.tsx both call this rather than inlining the formula.
+export function backlinkId(sourceId: string, via: Backlink['via']): string {
+  return via ? `${sourceId}:property:${via.propertyName}` : sourceId
+}
+
 export type BacklinkSortOption = 'recent' | 'alphabetical' | 'mentions'
 
 export interface BacklinksSectionProps {

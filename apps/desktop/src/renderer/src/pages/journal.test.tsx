@@ -111,6 +111,17 @@ vi.mock('@/hooks/use-notes-query', () => ({
         sourceTitle: 'Yesterday',
         sourcePath: 'notes/Journal/2026-01-14.md',
         contexts: []
+      },
+      // Same sourceId as the first entry, but referenced through a relation
+      // property instead of a wikilink — the two must resolve to different
+      // `id`s (see backlinkId in components/note/backlinks/types.ts), or
+      // BacklinksSection would key two sibling cards identically.
+      {
+        sourceId: 'note-1',
+        sourceTitle: 'Source Note',
+        sourcePath: 'notes/Work/source.md',
+        contexts: [],
+        via: { kind: 'property', propertyName: 'father' }
       }
     ],
     isLoading: false
@@ -276,11 +287,16 @@ vi.mock('@/components/note', () => ({
   }
 }))
 
-vi.mock('@/components/note/backlinks', () => ({
+vi.mock('@/components/note/backlinks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/components/note/backlinks')>()),
   BacklinksSection: ({ backlinks, onBacklinkClick }: any) => (
     <div data-testid="backlinks">
       {backlinks.map((backlink: any) => (
-        <button key={backlink.id} onClick={() => onBacklinkClick(backlink.noteId)}>
+        <button
+          key={backlink.id}
+          data-id={backlink.id}
+          onClick={() => onBacklinkClick(backlink.noteId)}
+        >
           {backlink.noteTitle}
         </button>
       ))}
@@ -385,7 +401,7 @@ describe('JournalPage', () => {
     expect(mocks.setPropertiesCollapsed).toHaveBeenCalledWith(false)
     expect(mocks.handleAddProperty).toHaveBeenCalledWith({ name: 'energy', type: 'text' })
 
-    fireEvent.click(screen.getByText('Source Note'))
+    fireEvent.click(screen.getAllByText('Source Note')[0])
     expect(mocks.openTab).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'note', entityId: 'note-1' })
     )
@@ -405,6 +421,19 @@ describe('JournalPage', () => {
     fireEvent.click(screen.getByText('headings'))
     fireEvent.click(screen.getByText('Intro'))
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
+  })
+
+  it('assigns distinct backlink ids to a wikilink entry and a property entry sharing a sourceId', () => {
+    // Exercises the real page transform (only BacklinksSection itself is
+    // mocked) — this is what actually computes `id` via backlinkId(). If the
+    // transform reverted to `id: bl.sourceId` for every entry, both buttons
+    // below would carry the same data-id.
+    render(<JournalPage />)
+
+    const sourceNoteButtons = screen.getAllByText('Source Note').map((el) => el.closest('button'))
+    const ids = sourceNoteButtons.map((button) => button?.getAttribute('data-id'))
+
+    expect(ids).toEqual(['note-1', 'note-1:property:father'])
   })
 
   it('navigates month and year views and header actions', () => {
