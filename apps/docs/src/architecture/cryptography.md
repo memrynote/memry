@@ -46,6 +46,13 @@ account master key and rebinds this verifier before the sync runtime activates. 
 created before sign-in on the same encrypted sync path instead of leaving the push queue without a
 usable vault key.
 
+**That rebind replaces the vault key**, so anything encrypted at rest under the old one stops
+opening. This is why canvases are plain `.excalidraw` files in the vault rather than an encrypted
+column — see [Canvas Files](/architecture/local-storage#canvas-files). Agent chat is the remaining
+at-rest surface: it is deliberately cleared on rebind rather than left undecryptable. Before adding
+any new at-rest-encrypted store, assume the vault key will change under it and say what happens to
+the data when it does.
+
 ## Secret Storage
 
 Secrets (vault master key, sync keys, Google Calendar tokens, voice transcription and local agent
