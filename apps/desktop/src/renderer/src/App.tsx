@@ -138,7 +138,6 @@ const TAB_TYPE_TO_SURFACE: Partial<Record<TabType, TelemetrySurface>> = {
   folder: 'notes',
   collection: 'notes',
   'template-editor': 'notes',
-  templates: 'notes',
   journal: 'journal',
   search: 'search',
   graph: 'graph',

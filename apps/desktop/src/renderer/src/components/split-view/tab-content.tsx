@@ -46,9 +46,6 @@ const LazyFolderViewPage = React.lazy(async () => ({
 const LazyTemplateEditorPage = React.lazy(async () => ({
   default: (await import('@/pages/template-editor')).TemplateEditorPage
 }))
-const LazyTemplatesPage = React.lazy(async () => ({
-  default: (await import('@/pages/templates')).TemplatesPage
-}))
 const LazyGraphPage = React.lazy(async () => ({
   default: (await import('@/components/graph/graph-page')).GraphPage
 }))
@@ -202,9 +199,6 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
 
       case 'template-editor':
         return <LazyTemplateEditorPage templateId={tab.entityId} />
-
-      case 'templates':
-        return <LazyTemplatesPage />
 
       case 'graph':
         return <LazyGraphPage />
