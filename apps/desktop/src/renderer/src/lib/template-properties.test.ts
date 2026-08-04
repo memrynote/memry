@@ -24,6 +24,21 @@ describe('template-properties', () => {
     expect(toTemplateProperties(items)).toEqual(stored)
   })
 
+  it('surfaces a stored project property as project, not text', () => {
+    const items = toEditableProperties([
+      { name: 'project', type: 'project' as const, value: ['Alpha'] }
+    ])
+
+    expect(toUiProperties(items)[0].type).toBe('project')
+    expect(toTemplateProperties(items)[0].type).toBe('project')
+  })
+
+  it('gives a new project property an empty list, not an empty string', () => {
+    const items = addProperty([], { name: 'project', type: 'project' })
+
+    expect(toTemplateProperties(items)[0].value).toEqual([])
+  })
+
   it('preserves the stored type when a value is edited', () => {
     const items = toEditableProperties([{ name: 'Score', type: 'rating', value: 3 }])
     const edited = setPropertyValue(items, items[0].id, 5)

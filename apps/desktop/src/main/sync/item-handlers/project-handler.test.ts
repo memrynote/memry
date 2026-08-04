@@ -3,6 +3,8 @@ import { createTestDataDb, asSyncDb, type TestDatabaseResult } from '@tests/util
 import { projects } from '@memry/db-schema/schema/projects'
 import { statuses } from '@memry/db-schema/schema/statuses'
 import { projectLinks } from '@memry/db-schema/schema/project-links'
+import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { listNoteProjectLinkIds } from '../../database/queries/projects'
 import { SyncQueueManager } from '../queue'
 import { projectHandler } from './project-handler'
 import type { ApplyContext, DrizzleDb } from './types'
@@ -17,6 +19,24 @@ const TEST_PROJECT = {
   isInbox: false,
   createdAt: '2024-01-01T00:00:00.000Z',
   modifiedAt: '2024-01-01T00:00:00.000Z'
+}
+
+/**
+ * A markdown note in the data DB. Frontmatter-owned link rows are identified by
+ * `file_type`, so without this row a link to `id` is just a table-owned link.
+ */
+function seedMarkdownNote(db: TestDatabaseResult, id: string): void {
+  db.db
+    .insert(noteMetadata)
+    .values({
+      id,
+      path: `notes/${id}.md`,
+      title: id,
+      fileType: 'markdown',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      modifiedAt: '2024-01-01T00:00:00.000Z'
+    })
+    .run()
 }
 
 const TEST_STATUSES = [
@@ -269,6 +289,22 @@ describe('projectHandler', () => {
       expect((result!.statuses as unknown[]).length).toBe(2)
     })
 
+    // An earlier round of this work filtered frontmatter-owned links out of the
+    // outbound side, which silently destroyed links on devices running an older
+    // build. `fetchLocal` feeds dirty-recovery, so it has to carry them too.
+    it('#then keeps a markdown-note link', () => {
+      testDb.db.insert(projects).values(TEST_PROJECT).run()
+      seedMarkdownNote(testDb, 'n1')
+      testDb.db
+        .insert(projectLinks)
+        .values({ id: 'l1', projectId: 'proj-1', itemType: 'note', itemId: 'n1', position: 0 })
+        .run()
+
+      const result = projectHandler.fetchLocal(testDb.db as unknown as DrizzleDb, 'proj-1')
+
+      expect((result!.links as { itemId: string }[]).map((l) => l.itemId)).toEqual(['n1'])
+    })
+
     it('#then returns undefined for nonexistent project', () => {
       const result = projectHandler.fetchLocal(testDb.db as unknown as DrizzleDb, 'nonexistent')
       expect(result).toBeUndefined()
@@ -296,6 +332,22 @@ describe('projectHandler', () => {
       const payload = JSON.parse(item.payload)
       expect(payload.clock).toEqual({ 'device-A': 1 })
       expect(payload.statuses).toHaveLength(2)
+    })
+
+    it('#then keeps a markdown-note link in the seeded payload', () => {
+      testDb.db.insert(projects).values(TEST_PROJECT).run()
+      seedMarkdownNote(testDb, 'n1')
+      testDb.db
+        .insert(projectLinks)
+        .values({ id: 'l1', projectId: 'proj-1', itemType: 'note', itemId: 'n1', position: 0 })
+        .run()
+
+      const queue = new SyncQueueManager(asSyncDb(testDb.db))
+      projectHandler.seedUnclocked(testDb.db as unknown as DrizzleDb, 'device-A', queue)
+
+      const [item] = queue.dequeue(1)
+      const payload = JSON.parse(item.payload)
+      expect(payload.links.map((l: { itemId: string }) => l.itemId)).toEqual(['n1'])
     })
 
     it('#then skips projects that already have clocks', () => {
@@ -450,6 +502,145 @@ describe('projectHandler', () => {
       )
       expect(payload.homeNoteId).toBe('note-3')
       expect(payload.links).toHaveLength(1)
+    })
+  })
+
+  describe('sync payload split (frontmatter-owned links)', () => {
+    const seedNote = (id: string): void => seedMarkdownNote(testDb, id)
+
+    it('keeps markdown-note links in the pushed payload — a device that has not adopted the split still needs them', () => {
+      testDb.db.insert(projects).values(TEST_PROJECT).run()
+      seedNote('n1')
+      testDb.db
+        .insert(projectLinks)
+        .values([
+          { id: 'l1', projectId: 'proj-1', itemType: 'note', itemId: 'n1', position: 0 },
+          { id: 'l2', projectId: 'proj-1', itemType: 'file', itemId: 'f1', position: 1 }
+        ])
+        .run()
+
+      const payload = JSON.parse(
+        projectHandler.buildPushPayload(testDb.db as never, 'proj-1', 'device-A', 'update')!
+      )
+
+      expect(payload.links.map((l: { itemId: string }) => l.itemId).sort()).toEqual(['f1', 'n1'])
+    })
+
+    it('does not delete a locally derived markdown-note link when a project is pulled', () => {
+      testDb.db
+        .insert(projects)
+        .values({ ...TEST_PROJECT, clock: { 'device-A': 1 } })
+        .run()
+      seedNote('n1')
+      // Locally derived by the note's frontmatter projector (Task 9) — not by
+      // anything in the incoming payload.
+      testDb.db
+        .insert(projectLinks)
+        .values({ id: 'l1', projectId: 'proj-1', itemType: 'note', itemId: 'n1', position: 0 })
+        .run()
+
+      // A build that has adopted the split never lists markdown-note links at all.
+      const data: ProjectSyncPayload = {
+        name: 'Renamed',
+        clock: { 'device-A': 1, 'device-B': 1 },
+        links: []
+      }
+      projectHandler.applyUpsert(ctx, 'proj-1', data, { 'device-A': 1, 'device-B': 1 })
+
+      expect(listNoteProjectLinkIds(testDb.db, 'n1')).toHaveLength(1)
+    })
+
+    it('applies pinned/position from an incoming markdown-note entry to the existing derived row, without inserting a duplicate or deleting the original', () => {
+      testDb.db
+        .insert(projects)
+        .values({ ...TEST_PROJECT, clock: { 'device-A': 1 } })
+        .run()
+      seedNote('n1')
+      // Locally derived by the note's frontmatter projector — its id ('l1')
+      // is never shared with any other device.
+      testDb.db
+        .insert(projectLinks)
+        .values({
+          id: 'l1',
+          projectId: 'proj-1',
+          itemType: 'note',
+          itemId: 'n1',
+          position: 0,
+          pinned: 0
+        })
+        .run()
+
+      // Another device's own payload for the same note, under its own
+      // (different) locally-derived link id, with view state the user
+      // changed there: pinned it and dragged it to a new position.
+      const data: ProjectSyncPayload = {
+        name: 'P',
+        clock: { 'device-A': 1, 'device-B': 1 },
+        links: [{ id: 'remote-l1', itemType: 'note', itemId: 'n1', position: 5, pinned: 1 }]
+      }
+      projectHandler.applyUpsert(ctx, 'proj-1', data, { 'device-A': 1, 'device-B': 1 })
+
+      // Exactly one row, still under its own original id — updated in place,
+      // never replaced.
+      const links = testDb.db.select().from(projectLinks).all()
+      expect(links).toHaveLength(1)
+      expect(links[0].id).toBe('l1')
+      expect(links[0].position).toBe(5)
+      expect(links[0].pinned).toBe(1)
+    })
+
+    // The two devices can hold the same membership under different item_types:
+    // a legacy file-import row says 'file' where a derived row says 'note'.
+    // Matching on item_type would find nothing and drop the view state.
+    it('applies view state across an item_type mismatch between the local row and the incoming entry', () => {
+      testDb.db
+        .insert(projects)
+        .values({ ...TEST_PROJECT, clock: { 'device-A': 1 } })
+        .run()
+      seedNote('n1')
+      testDb.db
+        .insert(projectLinks)
+        .values({
+          id: 'l1',
+          projectId: 'proj-1',
+          itemType: 'file',
+          itemId: 'n1',
+          position: 0,
+          pinned: 0
+        })
+        .run()
+
+      const data: ProjectSyncPayload = {
+        name: 'P',
+        clock: { 'device-A': 1, 'device-B': 1 },
+        links: [{ id: 'remote-l1', itemType: 'note', itemId: 'n1', position: 5, pinned: 1 }]
+      }
+      projectHandler.applyUpsert(ctx, 'proj-1', data, { 'device-A': 1, 'device-B': 1 })
+
+      const links = testDb.db.select().from(projectLinks).all()
+      expect(links).toHaveLength(1)
+      expect(links[0].id).toBe('l1')
+      expect(links[0].position).toBe(5)
+      expect(links[0].pinned).toBe(1)
+    })
+
+    it('ignores an incoming markdown-note entry when no local derived row exists yet', () => {
+      testDb.db
+        .insert(projects)
+        .values({ ...TEST_PROJECT, clock: { 'device-A': 1 } })
+        .run()
+      seedNote('n1')
+      // No local project_links row for n1 — the note itself has not synced
+      // here yet, so its own projector has not derived one.
+
+      const data: ProjectSyncPayload = {
+        name: 'P',
+        clock: { 'device-A': 1, 'device-B': 1 },
+        links: [{ id: 'remote-l1', itemType: 'note', itemId: 'n1', position: 0 }]
+      }
+      projectHandler.applyUpsert(ctx, 'proj-1', data, { 'device-A': 1, 'device-B': 1 })
+
+      expect(testDb.db.select().from(projectLinks).all()).toHaveLength(0)
     })
   })
 })

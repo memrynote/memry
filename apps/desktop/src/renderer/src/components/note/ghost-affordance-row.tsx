@@ -16,6 +16,8 @@ export interface GhostAffordanceRowProps {
   onAddProperty: (property: NewProperty) => void
   /** Property types this surface cannot store; hidden from the picker rather than degraded on save. */
   excludeTypes?: PropertyType[]
+  /** Property names already on the entity — a second `project` is shown but disabled. */
+  existingNames?: string[]
   disabled?: boolean
   className?: string
 }
@@ -28,6 +30,7 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
   onCreateTag,
   onAddProperty,
   excludeTypes,
+  existingNames,
   disabled = false,
   className
 }: GhostAffordanceRowProps) {
@@ -58,6 +61,7 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
         onOpenChange={setIsPropertyPopupOpen}
         excludeTypes={excludeTypes}
         disabled={disabled}
+        existingNames={existingNames}
       >
         <button
           type="button"

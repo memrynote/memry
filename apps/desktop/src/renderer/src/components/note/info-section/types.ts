@@ -8,6 +8,7 @@ import {
   ListChecks,
   List,
   Layers,
+  FolderKanban,
   type AppIcon
 } from '@/lib/icons'
 
@@ -21,6 +22,7 @@ export type PropertyType =
   | 'select'
   | 'multiselect'
   | 'relation'
+  | 'project'
 
 export interface Property {
   id: string
@@ -57,7 +59,8 @@ export const PROPERTY_TYPE_CONFIG: Record<PropertyType, PropertyTypeConfig> = {
   status: { label: 'Status', icon: ListChecks },
   select: { label: 'Select', icon: List },
   multiselect: { label: 'Multiselect', icon: Layers },
-  relation: { label: 'Relation', icon: Link2 }
+  relation: { label: 'Relation', icon: Link2 },
+  project: { label: 'Project', icon: FolderKanban }
 }
 
 export const PROPERTY_TYPES = Object.keys(PROPERTY_TYPE_CONFIG) as PropertyType[]

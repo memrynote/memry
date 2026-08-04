@@ -215,6 +215,7 @@ export const InfoSection = memo(function InfoSection({
                 onAdd={handleAddProperty}
                 disabled={disabled}
                 excludeTypes={excludeTypes}
+                existingNames={properties.map((p) => p.name)}
               >
                 <button
                   type="button"

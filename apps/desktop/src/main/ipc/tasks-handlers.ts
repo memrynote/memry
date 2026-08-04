@@ -31,6 +31,13 @@ import { createHandler, createStringHandler, createValidatedHandler, withDb } fr
 import { createDesktopTasksDomain } from '../tasks/domain'
 import { captureUrlToProject } from '../tasks/capture-url'
 import { importFilesToProject } from '../tasks/import-files-to-project'
+import { linkProjectItem, unlinkProjectItem } from '../tasks/project-item-links'
+import {
+  captureProjectName,
+  captureProjectForDelete,
+  propagateProjectRename,
+  propagateProjectDelete
+} from '../tasks/project-name-propagation'
 import { createNote, importFiles, getNoteByPath } from '../vault/notes-crud'
 import { fetchUrlMetadata } from '../inbox/metadata'
 import { createTasksPublisher } from '../tasks/publisher'
@@ -187,17 +194,39 @@ export function registerTasksHandlers(): void {
     TasksChannels.invoke.PROJECT_UPDATE,
     createValidatedHandler(
       ProjectUpdateSchema,
-      withDb(
-        (db, input) => createTaskDomain(db).updateProject(input),
-        'errors:project.updateFailed'
-      )
+      withDb(async (db, input) => {
+        // Read the previous name before the domain call overwrites it — a
+        // rename that is not propagated leaves linked notes' frontmatter
+        // naming a project that no longer matches.
+        const previousName = captureProjectName(db, input.id)
+        const result = await createTaskDomain(db).updateProject(input)
+        if (
+          result.success &&
+          previousName !== undefined &&
+          input.name !== undefined &&
+          input.name !== previousName
+        ) {
+          await propagateProjectRename(db, input.id, previousName, input.name)
+        }
+        return result
+      }, 'errors:project.updateFailed')
     )
   )
 
   ipcMain.handle(
     TasksChannels.invoke.PROJECT_DELETE,
     createStringHandler(
-      withDb((db, id) => createTaskDomain(db).deleteProject(id), 'errors:project.deleteFailed')
+      withDb(async (db, id) => {
+        // Collect the linked notes and the project's name before the domain
+        // call — project_links cascades away with the project, so after the
+        // delete there is nothing left to look up.
+        const capture = captureProjectForDelete(db, id)
+        const result = await createTaskDomain(db).deleteProject(id)
+        if (result.success && capture) {
+          await propagateProjectDelete(db, id, capture.name, capture.noteIds)
+        }
+        return result
+      }, 'errors:project.deleteFailed')
     )
   )
 
@@ -229,7 +258,7 @@ export function registerTasksHandlers(): void {
     createValidatedHandler(
       ProjectLinkItemSchema,
       withDb(
-        (db, input) => createTaskDomain(db).linkItemToProject(input),
+        (db, input) => linkProjectItem(db, createTaskDomain(db), input),
         'errors:project.linkItemFailed'
       )
     )
@@ -240,7 +269,7 @@ export function registerTasksHandlers(): void {
     createValidatedHandler(
       ProjectLinkItemSchema,
       withDb(
-        (db, input) => createTaskDomain(db).unlinkItemFromProject(input),
+        (db, input) => unlinkProjectItem(db, createTaskDomain(db), input),
         'errors:project.unlinkItemFailed'
       )
     )
@@ -262,7 +291,7 @@ export function registerTasksHandlers(): void {
             fetchTitle: async (url) => (await fetchUrlMetadata(url)).title ?? null,
             createNote: async ({ title, content }) => createNote({ title, content }),
             linkToProject: async (projectId, noteId) => {
-              const linked = await domain.linkItemToProject({
+              const linked = await linkProjectItem(db, domain, {
                 projectId,
                 itemType: 'note',
                 itemId: noteId
@@ -290,7 +319,7 @@ export function registerTasksHandlers(): void {
             },
             getIdByPath: async (destPath) => (await getNoteByPath(destPath))?.id ?? null,
             linkToProject: async (projectId, fileId) => {
-              const linked = await domain.linkItemToProject({
+              const linked = await linkProjectItem(db, domain, {
                 projectId,
                 itemType: 'file',
                 itemId: fileId

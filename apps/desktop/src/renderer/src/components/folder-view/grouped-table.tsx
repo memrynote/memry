@@ -55,6 +55,7 @@ import {
   ChevronDown,
   FileText,
   Folder,
+  FolderKanban,
   Hash,
   Link,
   Link2,
@@ -230,7 +231,8 @@ const PROPERTY_TYPE_ICONS: Record<PropertyType, AppIcon> = {
   multiselect: Tags,
   url: Link,
   rating: Star,
-  relation: Link2
+  relation: Link2,
+  project: FolderKanban
 }
 
 const BUILT_IN_COLUMN_ICONS: Record<string, AppIcon> = {

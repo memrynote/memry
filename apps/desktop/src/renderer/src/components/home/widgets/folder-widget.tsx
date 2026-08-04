@@ -23,6 +23,7 @@ type PropertyType =
   | 'multiselect'
   | 'url'
   | 'rating'
+  | 'project'
 
 export function FolderWidget({ config }: WidgetComponentProps): React.JSX.Element {
   const { t } = useT('common')

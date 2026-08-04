@@ -83,6 +83,16 @@ describe('TemplatePropertySchema', () => {
     expect(result.success).toBe(true)
   })
 
+  it('accepts a project property', () => {
+    const result = TemplatePropertySchema.safeParse({
+      name: 'project',
+      type: 'project',
+      value: ['Alpha']
+    })
+
+    expect(result.success).toBe(true)
+  })
+
   it('should validate all property types', () => {
     const types = ['text', 'number', 'checkbox', 'date', 'select', 'multiselect', 'url', 'rating']
     types.forEach((type) => {

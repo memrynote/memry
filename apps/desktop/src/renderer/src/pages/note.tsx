@@ -54,15 +54,12 @@ import {
   FolderOpen,
   PanelLeft,
   ExternalLink,
-  FolderKanban,
   Trash2
 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Picker } from '@/components/ui/picker'
 import { Switch } from '@/components/ui/switch'
 import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
-import { AddNoteToProjectDialog } from '@/components/tasks/projects/add-note-to-project-dialog'
-import { ItemProjectChips } from '@/components/tasks/projects/item-project-chips'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -145,7 +142,6 @@ function NoteEmptyState() {
 
 export function NotePage({ noteId }: NotePageProps) {
   const { t } = useT('notes')
-  const { t: tTasks } = useT('tasks')
   // TanStack Query hooks for data fetching with caching
   const { note, isLoading, error: noteError, refetch: refetchNote } = useNote(noteId ?? null)
   const { createNote, updateNote, renameNote, deleteNote, moveNote } = useNoteMutations()
@@ -196,7 +192,6 @@ export function NotePage({ noteId }: NotePageProps) {
   const [isLocalGraphOpen, setIsLocalGraphOpen] = useState(false)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false)
-  const [isAddToProjectOpen, setIsAddToProjectOpen] = useState(false)
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   // External ref to the inline title textarea so the "Rename" menu item can focus it
@@ -1061,23 +1056,6 @@ export function NotePage({ noteId }: NotePageProps) {
     [openTab, backlinks]
   )
 
-  const handleOpenProject = useCallback(
-    (projectId: string) => {
-      openTab({
-        type: 'project',
-        title: 'Project',
-        icon: 'folder',
-        path: `/project/${projectId}`,
-        entityId: projectId,
-        isPinned: false,
-        isModified: false,
-        isPreview: false,
-        isDeleted: false
-      })
-    },
-    [openTab]
-  )
-
   // Handle clicking on a linked task
   const handleLinkedTaskClick = useCallback(
     (taskId: string) => {
@@ -1186,7 +1164,6 @@ export function NotePage({ noteId }: NotePageProps) {
           if (action === 'apply-template') setIsApplyTemplateOpen(true)
           if (action === 'rename') handleRename()
           if (action === 'move-to-folder') setIsMoveDialogOpen(true)
-          if (action === 'add-to-project') setIsAddToProjectOpen(true)
           if (action === 'copy-path') void handleCopyPath()
           if (action === 'reveal-in-finder') void handleRevealInFinder()
           if (action === 'reveal-in-sidebar') handleRevealInSidebar()
@@ -1268,11 +1245,6 @@ export function NotePage({ noteId }: NotePageProps) {
               value="copy-path"
               label={t('editor.toolbar.copyPath')}
               icon={<Copy className="size-4" />}
-            />
-            <Picker.Item
-              value="add-to-project"
-              label={tTasks('addToProject.menuLabel')}
-              icon={<FolderKanban className="size-4" />}
             />
             <Picker.Separator />
             <Picker.Item
@@ -1359,8 +1331,6 @@ export function NotePage({ noteId }: NotePageProps) {
             inputRef={titleInputRef}
           />
 
-          <ItemProjectChips itemType="note" itemId={noteId} onProjectClick={handleOpenProject} />
-
           {/* Tags: visible when tags exist */}
           <TagsRow
             tags={noteTags}
@@ -1408,6 +1378,7 @@ export function NotePage({ noteId }: NotePageProps) {
             onAddTag={(...args) => void handleAddTag(...args)}
             onCreateTag={(...args) => void handleCreateTag(...args)}
             onAddProperty={handleAddPropertyWithExpand}
+            existingNames={properties.map((p) => p.name)}
             disabled={isDeleted}
           />
         </div>
@@ -1552,13 +1523,6 @@ export function NotePage({ noteId }: NotePageProps) {
         }
         noteTitle={note.title}
         onMove={(targetFolder) => void handleMoveToFolder(targetFolder)}
-      />
-
-      {/* Add to Project Dialog */}
-      <AddNoteToProjectDialog
-        open={isAddToProjectOpen}
-        onOpenChange={setIsAddToProjectOpen}
-        noteId={noteId}
       />
 
       {/* Delete confirmation */}

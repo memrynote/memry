@@ -9,10 +9,19 @@ export const PropertyTypes = {
   STATUS: 'status',
   SELECT: 'select',
   MULTISELECT: 'multiselect',
-  RELATION: 'relation'
+  RELATION: 'relation',
+  PROJECT: 'project'
 } as const
 
 export type PropertyType = (typeof PropertyTypes)[keyof typeof PropertyTypes]
+
+/**
+ * The one frontmatter key that carries project membership. Reserved: its type is
+ * always `project`, whatever the definition file or type inference would say.
+ * Inference would otherwise read `project: [Alpha]` as a plain array and store it
+ * as text, so a note written in Obsidian would render the wrong editor.
+ */
+export const PROJECT_PROPERTY_KEY = 'project'
 
 export interface SelectOption {
   value: string
@@ -96,11 +105,26 @@ const DatePropertySchema = z.object({
   showOnCalendar: z.boolean().optional()
 })
 
+const ProjectPropertySchema = z.object({
+  type: z.literal('project')
+})
+
+/**
+ * Types with no `PropertyDefinitionSchema` member, and so never written to a
+ * definition store. A `relation` is typed from its value every time — its URIs
+ * are self-describing — and persisting one into `.memry/properties.md` would
+ * make the file fail `safeParse`, which discards *every* definition in it.
+ */
+export function isPersistableDefinitionType(type: PropertyType): boolean {
+  return type !== PropertyTypes.RELATION
+}
+
 export const PropertyDefinitionSchema = z.discriminatedUnion('type', [
   StatusPropertySchema,
   SelectPropertySchema,
   MultiselectPropertySchema,
-  DatePropertySchema
+  DatePropertySchema,
+  ProjectPropertySchema
 ])
 
 export const PropertyDefinitionsFileSchema = z.object({

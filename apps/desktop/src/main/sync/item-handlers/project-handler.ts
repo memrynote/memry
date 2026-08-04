@@ -1,4 +1,4 @@
-import { eq, isNull, and, notInArray } from 'drizzle-orm'
+import { eq, isNull, and, inArray, notInArray } from 'drizzle-orm'
 import { projects } from '@memry/db-schema/schema/projects'
 import { statuses } from '@memry/db-schema/schema/statuses'
 import { projectLinks } from '@memry/db-schema/schema/project-links'
@@ -15,6 +15,11 @@ import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { mergeProjectFields, initAllFieldClocks, PROJECT_SYNCABLE_FIELDS } from '../field-merge'
 import { createLogger } from '../../lib/logger'
+import {
+  listTableOwnedProjectLinks,
+  isMarkdownNote,
+  getProjectLinkForItem
+} from '../../database/queries/projects'
 import { BaseItemHandler } from './base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 
@@ -61,18 +66,66 @@ function reconcileStatuses(tx: DrizzleDb, projectId: string, incoming: StatusSyn
   }
 }
 
-function reconcileLinks(tx: DrizzleDb, projectId: string, incoming: ProjectLinkSync[]): void {
-  const incomingIds = incoming.map((l) => l.id)
+/**
+ * A markdown-note entry's *membership* never applies here: Task 9's frontmatter
+ * projector derives each device's own row for it, under an id generated
+ * per-device and never shared, so it can never be matched by incoming id and
+ * must never be inserted or deleted from this path. Its `pinned`/`position` —
+ * project-hub view state, not membership — is still this payload's to carry,
+ * so apply it to whichever row the local projector already owns, matched by
+ * the (project, item) pair instead of by id.
+ *
+ * `item_type` is deliberately not part of that match: the two devices can hold
+ * the same membership under different `item_type` values (a legacy file-import
+ * row says 'file', a derived row says 'note'), and matching on it would insert
+ * nothing, update nothing, and silently drop the view state.
+ */
+function applyViewStateToMarkdownLinks(
+  tx: DrizzleDb,
+  projectId: string,
+  entries: ProjectLinkSync[]
+): void {
+  for (const l of entries) {
+    const existing = getProjectLinkForItem(tx, projectId, l.itemId)
+    if (!existing) continue // membership arrives with the note itself, via its own projector
 
-  if (incomingIds.length > 0) {
-    tx.delete(projectLinks)
-      .where(and(eq(projectLinks.projectId, projectId), notInArray(projectLinks.id, incomingIds)))
+    tx.update(projectLinks)
+      .set({
+        position: l.position,
+        // Clients that predate the project hub push links with no `pinned`
+        // key. Falling back to the column default would wipe every local pin
+        // on their next push, so fall back to the row we already have.
+        pinned: l.pinned ?? existing.pinned ?? 0
+      })
+      .where(eq(projectLinks.id, existing.id))
       .run()
-  } else {
-    tx.delete(projectLinks).where(eq(projectLinks.projectId, projectId)).run()
+  }
+}
+
+function reconcileLinks(tx: DrizzleDb, projectId: string, remote: ProjectLinkSync[]): void {
+  const markdownEntries: ProjectLinkSync[] = []
+  const tableOwnedEntries: ProjectLinkSync[] = []
+  for (const l of remote) {
+    if (isMarkdownNote(tx, l.itemId)) markdownEntries.push(l)
+    else tableOwnedEntries.push(l)
   }
 
-  for (const l of incoming) {
+  applyViewStateToMarkdownLinks(tx, projectId, markdownEntries)
+
+  const incomingIds = tableOwnedEntries.map((l) => l.id)
+
+  // Diff against table-owned rows only: a frontmatter-derived row is never in
+  // this set, so it is never a delete candidate here.
+  const existingIds = listTableOwnedProjectLinks(tx, projectId).map((l) => l.id)
+  const idsToDelete = existingIds.filter((id) => !incomingIds.includes(id))
+
+  if (idsToDelete.length > 0) {
+    tx.delete(projectLinks)
+      .where(and(eq(projectLinks.projectId, projectId), inArray(projectLinks.id, idsToDelete)))
+      .run()
+  }
+
+  for (const l of tableOwnedEntries) {
     const existing = tx.select().from(projectLinks).where(eq(projectLinks.id, l.id)).get()
     if (existing) {
       tx.update(projectLinks)

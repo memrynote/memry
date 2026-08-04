@@ -295,13 +295,19 @@
       "status": "Status",
       "select": "Select",
       "multiselect": "Multiselect",
-      "relation": "Relation"
+      "relation": "Relation",
+      "project": "Project"
     },
     "statusCategories": {
       "todo": "To-do",
       "inProgress": "In progress",
       "done": "Complete"
-    }
+    },
+    "projectAlreadySet": "This note already has a project property",
+    "projectPlaceholder": "No project",
+    "projectSearch": "Search projects",
+    "projectEmpty": "No projects",
+    "projectRemove": "Remove from {name}"
   },
   "templateSelector": {
     "title": "Choose Your Canvas",

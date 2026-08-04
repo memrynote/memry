@@ -6,7 +6,7 @@
  */
 
 import { nanoid } from 'nanoid'
-import { eq, asc, and, isNull, inArray, sql, count } from 'drizzle-orm'
+import { eq, asc, and, or, ne, isNull, inArray, sql, count } from 'drizzle-orm'
 import { projects, type Project, type NewProject } from '@memry/db-schema/schema/projects'
 import { statuses, type Status, type NewStatus } from '@memry/db-schema/schema/statuses'
 import { tasks } from '@memry/db-schema/schema/tasks'
@@ -70,6 +70,21 @@ export function deleteProject(db: DataDb, id: string): void {
  */
 export function getProjectById(db: DataDb, id: string): Project | undefined {
   return db.select().from(projects).where(eq(projects.id, id)).get()
+}
+
+/**
+ * True when the id resolves to a markdown note — the one item kind whose project
+ * links are derived from frontmatter. Keys off `file_type`, not the caller's
+ * `item_type`: a binary file can carry `item_type: 'note'` from before a
+ * conversion, and treating it as frontmatter-owned would drop its link.
+ */
+export function isMarkdownNote(db: DataDb, itemId: string): boolean {
+  const row = db
+    .select({ fileType: noteMetadata.fileType })
+    .from(noteMetadata)
+    .where(eq(noteMetadata.id, itemId))
+    .get()
+  return row?.fileType === 'markdown'
 }
 
 /**
@@ -626,6 +641,23 @@ export function getProjectLink(
 }
 
 /**
+ * A project's link to one item, matched without `item_type`. Frontmatter-owned
+ * rows are identified by the note they point at, so a stale `item_type` on the
+ * local row (or on the incoming entry) must not hide it.
+ */
+export function getProjectLinkForItem(
+  db: DataDb,
+  projectId: string,
+  itemId: string
+): ProjectLink | undefined {
+  return db
+    .select()
+    .from(projectLinks)
+    .where(and(eq(projectLinks.projectId, projectId), eq(projectLinks.itemId, itemId)))
+    .get()
+}
+
+/**
  * List all items linked to a project.
  */
 export function getProjectLinks(db: DataDb, projectId: string): ProjectLink[] {
@@ -635,6 +667,26 @@ export function getProjectLinks(db: DataDb, projectId: string): ProjectLink[] {
     .where(eq(projectLinks.projectId, projectId))
     .orderBy(asc(projectLinks.position), asc(projectLinks.createdAt))
     .all()
+}
+
+/**
+ * A project's links minus the frontmatter-owned ones. Markdown-note membership
+ * rides along in the note payload; carrying it here too would let a project pull
+ * delete rows the local frontmatter had just derived.
+ */
+export function listTableOwnedProjectLinks(db: DataDb, projectId: string): ProjectLink[] {
+  return db
+    .select()
+    .from(projectLinks)
+    .leftJoin(noteMetadata, eq(noteMetadata.id, projectLinks.itemId))
+    .where(
+      and(
+        eq(projectLinks.projectId, projectId),
+        or(isNull(noteMetadata.id), ne(noteMetadata.fileType, 'markdown'))
+      )
+    )
+    .all()
+    .map((row) => row.project_links)
 }
 
 /**
@@ -851,6 +903,92 @@ export function deleteProjectLinksForItem(db: DataDb, itemType: string, itemId: 
   }
 
   return affected
+}
+
+/**
+ * Resolve project names case-insensitively, oldest-first. Names are not
+ * unique and the column carries no NOCASE collation, so the case-fold has to
+ * be explicit in the query rather than left to SQLite's default comparison.
+ * Ordering oldest-first is load-bearing: callers resolve a duplicate name to
+ * the first row they see for it.
+ */
+export function listProjectsByNames(
+  db: DataDb,
+  names: string[]
+): { id: string; name: string; createdAt: string }[] {
+  if (names.length === 0) return []
+  const lowered = names.map((n) => n.toLowerCase())
+  return db
+    .select({ id: projects.id, name: projects.name, createdAt: projects.createdAt })
+    .from(projects)
+    .where(sql`lower(${projects.name}) IN ${lowered}`)
+    .orderBy(asc(projects.createdAt))
+    .all()
+}
+
+/**
+ * Markdown notes linked to a project — the ones whose frontmatter names it,
+ * for rename/delete propagation into note files.
+ */
+export function listMarkdownNoteIdsForProject(db: DataDb, projectId: string): string[] {
+  return db
+    .select({ id: noteMetadata.id })
+    .from(projectLinks)
+    .innerJoin(noteMetadata, eq(noteMetadata.id, projectLinks.itemId))
+    .where(and(eq(projectLinks.projectId, projectId), eq(noteMetadata.fileType, 'markdown')))
+    .all()
+    .map((row) => row.id)
+}
+
+/**
+ * Every project link pointing at one markdown note, for the frontmatter
+ * reconciler.
+ *
+ * Membership is keyed on `file_type`, never on the row's `item_type`: the
+ * project-hub file importer wrote `item_type: 'file'` for imported `.md` files,
+ * and such a row is frontmatter-owned all the same. Filtering it out here would
+ * leave it invisible to the only path that can delete it — `listTableOwnedProjectLinks`
+ * excludes it too — so it would show up in the hub forever.
+ */
+export function listNoteProjectLinkIds(
+  db: DataDb,
+  noteId: string
+): { id: string; projectId: string; itemType: string }[] {
+  return db
+    .select({
+      id: projectLinks.id,
+      projectId: projectLinks.projectId,
+      itemType: projectLinks.itemType
+    })
+    .from(projectLinks)
+    .innerJoin(noteMetadata, eq(noteMetadata.id, projectLinks.itemId))
+    .where(and(eq(projectLinks.itemId, noteId), eq(noteMetadata.fileType, 'markdown')))
+    .all()
+}
+
+/**
+ * Every frontmatter-owned project link in the vault, paired with the name of the
+ * project it points at. The input to the one-time frontmatter backfill.
+ *
+ * Keyed on `file_type` rather than the row's `item_type`, exactly as
+ * `listNoteProjectLinkIds` is: the rows this exists for were written by the
+ * project hub's file importer and carry `item_type: 'file'` for an imported
+ * `.md`. Filtering on `item_type` would miss them.
+ *
+ * Both joins are inner joins, so a link pointing at a binary file, a calendar
+ * event, or a project that no longer exists produces no row.
+ */
+export function listMarkdownNoteProjectLinks(
+  db: DataDb
+): { noteId: string; projectName: string }[] {
+  return db
+    .select({ noteId: projectLinks.itemId, projectName: projects.name })
+    .from(projectLinks)
+    .innerJoin(noteMetadata, eq(noteMetadata.id, projectLinks.itemId))
+    .innerJoin(projects, eq(projects.id, projectLinks.projectId))
+    .where(eq(noteMetadata.fileType, 'markdown'))
+    .orderBy(asc(projectLinks.createdAt), asc(projectLinks.id))
+    .all()
 }
 
 /**

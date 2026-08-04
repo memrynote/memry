@@ -36,6 +36,7 @@ function toUiType(type: TemplateProperty['type']): PropertyType {
     case 'url':
     case 'select':
     case 'multiselect':
+    case 'project':
       return type
     default:
       return 'text'
@@ -50,6 +51,9 @@ function defaultValueFor(type: PropertyType): unknown {
       return 0
     case 'date':
       return null
+    case 'project':
+      // Project membership is always a list of names, never a scalar.
+      return []
     default:
       return ''
   }

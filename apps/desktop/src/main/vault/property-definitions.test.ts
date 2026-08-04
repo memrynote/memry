@@ -280,6 +280,23 @@ describe('PropertyDefinitionsService', () => {
     })
   })
 
+  it('round-trips a project definition through properties.md', async () => {
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.upsert({ name: 'project', type: 'project' })
+
+    const writtenContent = atomicWriteMock.mock.calls[0][1] as string
+    safeReadMock.mockResolvedValueOnce(writtenContent)
+
+    const reloaded = PropertyDefinitionsService.init('/vault')
+    await reloaded.reload()
+
+    expect(reloaded.get('project')).toEqual({
+      name: 'project',
+      type: 'project',
+      options: undefined
+    })
+  })
+
   it('serializes queued writes and exports the shared default status definition', async () => {
     const service = PropertyDefinitionsService.init('/vault')
     const writes: string[] = []

@@ -24,6 +24,7 @@ export type TemplatePropertyType =
   | 'multiselect'
   | 'url'
   | 'rating'
+  | 'project'
 
 /**
  * A property definition within a template
@@ -100,7 +101,17 @@ export interface FolderInfo {
 
 export const TemplatePropertySchema = z.object({
   name: z.string().min(1),
-  type: z.enum(['text', 'number', 'checkbox', 'date', 'select', 'multiselect', 'url', 'rating']),
+  type: z.enum([
+    'text',
+    'number',
+    'checkbox',
+    'date',
+    'select',
+    'multiselect',
+    'url',
+    'rating',
+    'project'
+  ]),
   value: z.unknown(),
   options: z.array(z.string()).optional()
 })

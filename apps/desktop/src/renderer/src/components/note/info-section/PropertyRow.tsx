@@ -14,6 +14,7 @@ import {
   Link,
   Link2,
   Star,
+  FolderKanban,
   type AppIcon
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -27,7 +28,8 @@ import {
   SelectEditor,
   MultiselectEditor,
   StatusEditor,
-  RelationEditor
+  RelationEditor,
+  ProjectEditor
 } from './editors'
 import { usePropertyDefinitions } from '@/hooks/use-property-definitions'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
@@ -52,7 +54,8 @@ const PROPERTY_TYPE_ICONS: Record<string, AppIcon> = {
   status: List,
   url: Link,
   rating: Star,
-  relation: Link2
+  relation: Link2,
+  project: FolderKanban
 }
 
 interface PropertyValueRendererProps {
@@ -141,7 +144,11 @@ const SELECT_TYPES = new Set(['select', 'multiselect', 'status'])
 // Types that manage their own popup/toggle and never use the inline text-edit
 // (isEditing) path — so their type icon must not show the editing tint.
 const isAlwaysInteractiveType = (type: string): boolean =>
-  type === 'checkbox' || type === 'date' || type === 'relation' || SELECT_TYPES.has(type)
+  type === 'checkbox' ||
+  type === 'date' ||
+  type === 'relation' ||
+  type === 'project' ||
+  SELECT_TYPES.has(type)
 
 function SelectPropertyRenderer({
   property,
@@ -255,6 +262,11 @@ function PropertyValueRenderer({
     return <CheckboxEditor value={Boolean(property.value)} onChange={onValueChange} />
   }
 
+  if (property.type === 'project') {
+    const names = Array.isArray(property.value) ? (property.value as string[]) : []
+    return <ProjectEditor value={names} defaultOpen={autoOpen} onChange={onValueChange} />
+  }
+
   if (SELECT_TYPES.has(property.type)) {
     return (
       <SelectPropertyRenderer
@@ -325,6 +337,10 @@ export function PropertyRow({
   const [isNameHovered, setIsNameHovered] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
 
+  // The reserved `project` key is what the reconciler reads; renaming it would
+  // silently unlink the note.
+  const canRenameName = property.type !== 'project' ? onNameChange : undefined
+
   const isDragEnabled = isSortable && !disabled
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -363,7 +379,7 @@ export function PropertyRow({
 
   // Name editing handlers
   const handleStartNameEdit = useCallback(() => {
-    if (!disabled && onNameChange) {
+    if (!disabled && canRenameName) {
       setEditedName(property.name)
       setIsEditingName(true)
       requestAnimationFrame(() => {
@@ -371,7 +387,7 @@ export function PropertyRow({
         nameInputRef.current?.select()
       })
     }
-  }, [disabled, onNameChange, property.name])
+  }, [disabled, canRenameName, property.name])
 
   const handleEndNameEdit = useCallback(() => {
     const trimmedName = editedName.trim()
@@ -464,18 +480,18 @@ export function PropertyRow({
           />
         ) : (
           <span
-            onClick={onNameChange ? handleStartNameEdit : undefined}
+            onClick={canRenameName ? handleStartNameEdit : undefined}
             className={cn(
               'w-28 shrink-0',
               'text-[13px] text-text-tertiary font-sans leading-4',
               'truncate',
-              onNameChange && !disabled && 'cursor-pointer hover:text-text-secondary'
+              canRenameName && !disabled && 'cursor-pointer hover:text-text-secondary'
             )}
             title={property.name}
-            role={onNameChange ? 'button' : undefined}
-            tabIndex={onNameChange && !disabled ? 0 : undefined}
+            role={canRenameName ? 'button' : undefined}
+            tabIndex={canRenameName && !disabled ? 0 : undefined}
             onKeyDown={
-              onNameChange && !disabled
+              canRenameName && !disabled
                 ? (e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault()

@@ -14,7 +14,8 @@ import {
   calculateWordCount,
   generateContentHash,
   createSnippet,
-  inferPropertyType
+  inferPropertyType,
+  resolvePropertyType
 } from './frontmatter'
 import { extractDateFromPath, getNoteCacheByPath } from '@main/database/queries/notes'
 import { getDatabase, type IndexDb } from '../database'
@@ -47,7 +48,12 @@ function syncCanonicalMetadata(
   if (properties) {
     for (const [name, value] of Object.entries(properties)) {
       const existing = getCanonicalPropertyDefinition(dataDb, name)
-      const type = (existing?.type as PropertyType | undefined) ?? inferPropertyType(name, value)
+      const type = resolvePropertyType(
+        name,
+        value,
+        existing?.type as PropertyType | undefined,
+        inferPropertyType
+      )
       saveCanonicalPropertyDefinition(dataDb, { name, type: type })
     }
   }

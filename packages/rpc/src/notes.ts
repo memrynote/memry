@@ -94,10 +94,13 @@ type PropertyType =
   | 'rating'
   | 'relation'
 
-// A relation carries no definition-side configuration — its value is
-// self-describing (`memry://<kind>/<id>`) and `.memry/properties.md` has no
-// schema member for it — so it stays out of the property-definition API.
-type EditablePropertyType = Exclude<CanonicalPropertyType, 'relation'>
+// Two types are never created or edited through the generic property-definition
+// CRUD channels, for different reasons:
+//   - `relation` carries no definition-side configuration at all. Its value is
+//     self-describing (`memry://<kind>/<id>`) and `.memry/properties.md` has no
+//     schema member for it.
+//   - `project` is reserved and system-managed (see PROJECT_PROPERTY_KEY).
+type EditablePropertyType = Exclude<CanonicalPropertyType, 'relation' | 'project'>
 type EnsurablePropertyType = Extract<CanonicalPropertyType, 'select' | 'multiselect' | 'status'>
 
 export interface PropertyDefinition {

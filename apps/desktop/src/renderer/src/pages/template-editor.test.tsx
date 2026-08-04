@@ -3,7 +3,11 @@ import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { TemplateEditorPage } from './template-editor'
+import {
+  TemplateEditorPage,
+  mapFromTemplatePropertyType,
+  mapToTemplatePropertyType
+} from './template-editor'
 
 const getTemplate = vi.fn()
 const createTemplate = vi.fn()

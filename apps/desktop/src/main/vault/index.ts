@@ -56,8 +56,13 @@ import { createNoteDerivedStateProjector } from '../projections/projectors/note-
 import { createSearchProjector } from '../projections/projectors/search-projector'
 import { createEmbeddingProjector } from '../projections/projectors/embedding-projector'
 import { createInboxStatsProjector } from '../projections/projectors/inbox-stats-projector'
+import { createNoteProjectLinksProjector } from '../projections/projectors/note-project-links-projector'
 import { PropertyDefinitionsService } from './property-definitions'
 import { migrateSettingsToConfig } from './settings-cache'
+import {
+  applyProjectFrontmatterBackfill,
+  snapshotProjectFrontmatterBackfill
+} from './backfill-project-frontmatter'
 import { promoteSpatialCanvas } from '../settings/promote-spatial-canvas'
 import { migrateTemplateFilesToDb } from './templates-migration'
 import { configureLazyAgentServices } from '../agent/lazy-services'
@@ -270,6 +275,11 @@ async function openVault(vaultPath: string): Promise<void> {
   // guarded, so deleted templates are never resurrected.
   migrateTemplateFilesToDb(dataDb, vaultPath)
 
+  // Snapshot pre-frontmatter project links BEFORE the projection runtime can
+  // reconcile any of them away. Only data.db is needed to read them; the write
+  // half runs once the index cache is up (see below).
+  snapshotProjectFrontmatterBackfill(dataDb)
+
   // Check index database health before proceeding
   const indexHealth: IndexHealth = checkIndexHealth(indexDbPath)
   if (indexHealth !== 'healthy') {
@@ -287,7 +297,8 @@ async function openVault(vaultPath: string): Promise<void> {
       () => vaultPath,
       () => currentStatus.isIndexing
     ),
-    createInboxStatsProjector()
+    createInboxStatsProjector(),
+    createNoteProjectLinksProjector()
   ])
 
   // Set the vault path before indexing so getConfig() (and the journal-config
@@ -336,6 +347,17 @@ async function openVault(vaultPath: string): Promise<void> {
   } catch (error) {
     logger.error('Indexing failed:', error)
     // Continue anyway - watcher will pick up files
+  }
+
+  // Write the snapshotted project links into note frontmatter. Here because
+  // this is the first point the index cache `setEntityProperties` resolves
+  // entities through is populated on both branches above, and still inside the
+  // indexing window, so the embedding projector defers the notes it rewrites
+  // instead of embedding each one inline (#803).
+  try {
+    await applyProjectFrontmatterBackfill(dataDb)
+  } catch (error) {
+    logger.error('Project frontmatter backfill failed:', error)
   }
 
   updateStatus({ isIndexing: false, indexProgress: 100 })

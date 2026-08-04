@@ -22,7 +22,8 @@ describe('PropertyTypes', () => {
       STATUS: 'status',
       SELECT: 'select',
       MULTISELECT: 'multiselect',
-      RELATION: 'relation'
+      RELATION: 'relation',
+      PROJECT: 'project'
     })
   })
 })

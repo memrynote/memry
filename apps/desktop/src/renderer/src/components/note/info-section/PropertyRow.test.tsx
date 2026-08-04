@@ -38,6 +38,13 @@ vi.mock('@dnd-kit/utilities', () => ({
   CSS: { Transform: { toString: () => '' } }
 }))
 
+vi.mock('@/hooks/use-projects-list', () => ({
+  useProjectsList: () => ({
+    projects: [{ id: 'p1', name: 'Alpha', color: '#f00', icon: null, archivedAt: null }],
+    isLoading: false
+  })
+}))
+
 vi.mock('@/hooks/use-property-definitions', () => ({
   usePropertyDefinitions: () => ({
     refresh: mocks.refresh,
@@ -68,155 +75,165 @@ vi.mock('@/services/notes-service', () => ({
   }
 }))
 
-vi.mock('./editors', () => ({
-  TextEditor: ({
-    value,
-    onChange,
-    onBlur
-  }: {
-    value: string
-    onChange: (value: string) => void
-    onBlur: () => void
-  }) => (
-    <input
-      aria-label="text-editor"
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      onBlur={onBlur}
-    />
-  ),
-  NumberEditor: ({
-    value,
-    onChange,
-    onBlur
-  }: {
-    value: number | null
-    onChange: (value: number) => void
-    onBlur: () => void
-  }) => (
-    <input
-      aria-label="number-editor"
-      value={value ?? ''}
-      onChange={(event) => onChange(Number(event.target.value))}
-      onBlur={onBlur}
-    />
-  ),
-  CheckboxEditor: ({ value, onChange }: { value: boolean; onChange: (value: boolean) => void }) => (
-    <input
-      aria-label="checkbox-editor"
-      type="checkbox"
-      checked={value}
-      onChange={(event) => onChange(event.target.checked)}
-    />
-  ),
-  DateEditor: ({
-    value,
-    onChange,
-    onBlur
-  }: {
-    value: Date | null
-    onChange: (date: Date | null) => void
-    onBlur: () => void
-  }) => (
-    <button
-      type="button"
-      onClick={() => onChange(new Date('2026-05-10T00:00:00Z'))}
-      onBlur={onBlur}
-    >
-      date:{value?.toISOString() ?? 'none'}
-    </button>
-  ),
-  UrlEditor: ({
-    value,
-    onChange,
-    onBlur
-  }: {
-    value: string
-    onChange: (value: string) => void
-    onBlur: () => void
-  }) => (
-    <input
-      aria-label="url-editor"
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      onBlur={onBlur}
-    />
-  ),
-  SelectEditor: ({
-    options,
-    onChange,
-    onAddOption,
-    onRemoveOption
-  }: {
-    options: Array<{ value: string }>
-    onChange: (value: string) => void
-    onAddOption: (option: { value: string; label: string }) => void
-    onRemoveOption: (value: string) => void
-  }) => (
-    <div>
-      <button type="button" onClick={() => onChange(options[0]?.value ?? 'high')}>
-        select-editor
+vi.mock('./editors', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./editors')>()
+  return {
+    ProjectEditor: actual.ProjectEditor,
+    RelationEditor: ({
+      value,
+      onChange
+    }: {
+      value: string[]
+      onChange: (value: string[]) => void
+    }) => (
+      <div>
+        <span>relation-editor:{value.join(',')}</span>
+        <button type="button" onClick={() => onChange([])}>
+          clear-relation
+        </button>
+      </div>
+    ),
+    TextEditor: ({
+      value,
+      onChange,
+      onBlur
+    }: {
+      value: string
+      onChange: (value: string) => void
+      onBlur: () => void
+    }) => (
+      <input
+        aria-label="text-editor"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onBlur={onBlur}
+      />
+    ),
+    NumberEditor: ({
+      value,
+      onChange,
+      onBlur
+    }: {
+      value: number | null
+      onChange: (value: number) => void
+      onBlur: () => void
+    }) => (
+      <input
+        aria-label="number-editor"
+        value={value ?? ''}
+        onChange={(event) => onChange(Number(event.target.value))}
+        onBlur={onBlur}
+      />
+    ),
+    CheckboxEditor: ({
+      value,
+      onChange
+    }: {
+      value: boolean
+      onChange: (value: boolean) => void
+    }) => (
+      <input
+        aria-label="checkbox-editor"
+        type="checkbox"
+        checked={value}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+    ),
+    DateEditor: ({
+      value,
+      onChange,
+      onBlur
+    }: {
+      value: Date | null
+      onChange: (date: Date | null) => void
+      onBlur: () => void
+    }) => (
+      <button
+        type="button"
+        onClick={() => onChange(new Date('2026-05-10T00:00:00Z'))}
+        onBlur={onBlur}
+      >
+        date:{value?.toISOString() ?? 'none'}
       </button>
-      <button type="button" onClick={() => onAddOption({ value: 'low', label: 'Low' })}>
-        add-option
-      </button>
-      <button type="button" onClick={() => onRemoveOption('high')}>
-        remove-option
-      </button>
-    </div>
-  ),
-  MultiselectEditor: ({
-    onChange,
-    onAddOption
-  }: {
-    onChange: (value: string[]) => void
-    onAddOption: (option: { value: string; label: string }) => void
-  }) => (
-    <div>
-      <button type="button" onClick={() => onChange(['high'])}>
-        multiselect-editor
-      </button>
-      <button type="button" onClick={() => onAddOption({ value: 'low', label: 'Low' })}>
-        add-multi
-      </button>
-    </div>
-  ),
-  StatusEditor: ({
-    onChange,
-    onAddOption,
-    onRemoveOption
-  }: {
-    onChange: (value: string) => void
-    onAddOption: (category: 'todo', option: { value: string; label: string }) => void
-    onRemoveOption: (value: string) => void
-  }) => (
-    <div>
-      <button type="button" onClick={() => onChange('todo')}>
-        status-editor
-      </button>
-      <button type="button" onClick={() => onAddOption('todo', { value: 'next', label: 'Next' })}>
-        add-status
-      </button>
-      <button type="button" onClick={() => onRemoveOption('todo')}>
-        remove-status
-      </button>
-    </div>
-  ),
-  RelationEditor: ({
-    value,
-    onChange
-  }: {
-    value: string[]
-    onChange: (value: string[]) => void
-  }) => (
-    <div>
-      <span>relation-editor:{value.join(',')}</span>
-      <button type="button" onClick={() => onChange([])}>
-        clear-relation
-      </button>
-    </div>
-  )
-}))
+    ),
+    UrlEditor: ({
+      value,
+      onChange,
+      onBlur
+    }: {
+      value: string
+      onChange: (value: string) => void
+      onBlur: () => void
+    }) => (
+      <input
+        aria-label="url-editor"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onBlur={onBlur}
+      />
+    ),
+    SelectEditor: ({
+      options,
+      onChange,
+      onAddOption,
+      onRemoveOption
+    }: {
+      options: Array<{ value: string }>
+      onChange: (value: string) => void
+      onAddOption: (option: { value: string; label: string }) => void
+      onRemoveOption: (value: string) => void
+    }) => (
+      <div>
+        <button type="button" onClick={() => onChange(options[0]?.value ?? 'high')}>
+          select-editor
+        </button>
+        <button type="button" onClick={() => onAddOption({ value: 'low', label: 'Low' })}>
+          add-option
+        </button>
+        <button type="button" onClick={() => onRemoveOption('high')}>
+          remove-option
+        </button>
+      </div>
+    ),
+    MultiselectEditor: ({
+      onChange,
+      onAddOption
+    }: {
+      onChange: (value: string[]) => void
+      onAddOption: (option: { value: string; label: string }) => void
+    }) => (
+      <div>
+        <button type="button" onClick={() => onChange(['high'])}>
+          multiselect-editor
+        </button>
+        <button type="button" onClick={() => onAddOption({ value: 'low', label: 'Low' })}>
+          add-multi
+        </button>
+      </div>
+    ),
+    StatusEditor: ({
+      onChange,
+      onAddOption,
+      onRemoveOption
+    }: {
+      onChange: (value: string) => void
+      onAddOption: (category: 'todo', option: { value: string; label: string }) => void
+      onRemoveOption: (value: string) => void
+    }) => (
+      <div>
+        <button type="button" onClick={() => onChange('todo')}>
+          status-editor
+        </button>
+        <button type="button" onClick={() => onAddOption('todo', { value: 'next', label: 'Next' })}>
+          add-status
+        </button>
+        <button type="button" onClick={() => onRemoveOption('todo')}>
+          remove-status
+        </button>
+      </div>
+    )
+  }
+})
 
 const property = (overrides: Partial<Property> = {}): Property => ({
   id: 'prop-1',
@@ -226,6 +243,11 @@ const property = (overrides: Partial<Property> = {}): Property => ({
   isCustom: true,
   ...overrides
 })
+
+// `@memry/i18n/renderer` is mocked module-wide above (t returns the key
+// unchanged), so this is a plain alias — kept for parity with the other
+// info-section test files that render behind a real i18n provider.
+const renderWithI18n = render
 
 describe('PropertyRow', () => {
   beforeEach(() => {
@@ -366,34 +388,6 @@ describe('PropertyRow', () => {
     })
   })
 
-  it('dispatches relation properties to RelationEditor with a normalized array value', () => {
-    const onValueChange = vi.fn()
-
-    const { rerender } = render(
-      <PropertyRow
-        property={property({
-          name: 'Related',
-          type: 'relation',
-          value: ['memry://note/nte_1']
-        })}
-        onValueChange={onValueChange}
-      />
-    )
-    expect(screen.getByText('relation-editor:memry://note/nte_1')).toBeInTheDocument()
-    fireEvent.click(screen.getByText('clear-relation'))
-    expect(onValueChange).toHaveBeenCalledWith([])
-
-    // Non-array stored value (e.g. null on a freshly-added property) is
-    // normalized to an empty array rather than passed through raw.
-    rerender(
-      <PropertyRow
-        property={property({ name: 'Related', type: 'relation', value: null })}
-        onValueChange={onValueChange}
-      />
-    )
-    expect(screen.getByText('relation-editor:')).toBeInTheDocument()
-  })
-
   it('shows calendar toggle trigger only for date properties', () => {
     const onValueChange = vi.fn()
 
@@ -443,5 +437,56 @@ describe('PropertyRow', () => {
     expect(onBtn).toHaveAttribute('aria-pressed', 'true')
     fireEvent.click(onBtn)
     expect(mocks.setEnabled).toHaveBeenCalledWith('Deadline', false)
+  })
+
+  it('renders the project editor for a project property', () => {
+    renderWithI18n(
+      <PropertyRow
+        property={{ id: '1', name: 'project', type: 'project', value: ['Alpha'], isCustom: true }}
+        onValueChange={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText('Alpha')).toBeInTheDocument()
+  })
+
+  it('does not let a project property be renamed', () => {
+    renderWithI18n(
+      <PropertyRow
+        property={{ id: '1', name: 'project', type: 'project', value: [], isCustom: true }}
+        onValueChange={vi.fn()}
+        onNameChange={vi.fn()}
+      />
+    )
+
+    expect(screen.getByTitle('project')).not.toHaveAttribute('role', 'button')
+  })
+
+  it('dispatches relation properties to RelationEditor with a normalized array value', () => {
+    const onValueChange = vi.fn()
+
+    const { rerender } = render(
+      <PropertyRow
+        property={property({
+          name: 'Related',
+          type: 'relation',
+          value: ['memry://note/nte_1']
+        })}
+        onValueChange={onValueChange}
+      />
+    )
+    expect(screen.getByText('relation-editor:memry://note/nte_1')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('clear-relation'))
+    expect(onValueChange).toHaveBeenCalledWith([])
+
+    // Non-array stored value (e.g. null on a freshly-added property) is
+    // normalized to an empty array rather than passed through raw.
+    rerender(
+      <PropertyRow
+        property={property({ name: 'Related', type: 'relation', value: null })}
+        onValueChange={onValueChange}
+      />
+    )
+    expect(screen.getByText('relation-editor:')).toBeInTheDocument()
   })
 })

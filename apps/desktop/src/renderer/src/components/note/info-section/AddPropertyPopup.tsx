@@ -2,14 +2,22 @@ import { useCallback, useState } from 'react'
 import { Picker } from '@/components/ui/picker'
 import { type PropertyType, PROPERTY_TYPE_CONFIG, PROPERTY_TYPES, type NewProperty } from './types'
 import { useT } from '@memry/i18n/renderer'
+import { PROJECT_PROPERTY_KEY } from '@memry/contracts/property-types'
 
 interface AddPropertyPopupProps {
   onAdd: (property: NewProperty) => void
   open?: boolean
   onOpenChange?: (open: boolean) => void
   disabled?: boolean
-  /** Types this surface cannot store, and so must not offer. */
+  /**
+   * Types this surface cannot store at all — omitted from the list entirely.
+   * Distinct from the single-instance rule below: this one is about the
+   * surface (a template cannot store a relation), not about what the entity
+   * already has.
+   */
   excludeTypes?: PropertyType[]
+  /** Property names already on the entity — a second `project` is shown but disabled. */
+  existingNames?: string[]
   children: React.ReactNode
 }
 
@@ -19,21 +27,32 @@ export function AddPropertyPopup({
   onOpenChange: controlledOnOpenChange,
   disabled = false,
   excludeTypes,
+  existingNames,
   children
 }: AddPropertyPopupProps): React.JSX.Element {
   const { t } = useT('notes')
   const [propertyName, setPropertyName] = useState('')
   const [internalOpen, setInternalOpen] = useState(false)
   const open = controlledOpen ?? internalOpen
+  const hasProject = (existingNames ?? []).includes(PROJECT_PROPERTY_KEY)
 
   const handleTypeSelect = useCallback(
     (type: string) => {
+      // The project link is keyed off one reserved frontmatter key, so the name is
+      // not the user's to choose — a second `project 2` would render but never link.
+      if (type === 'project') {
+        if (hasProject) return
+        onAdd({ name: PROJECT_PROPERTY_KEY, type: 'project' })
+        setPropertyName('')
+        return
+      }
+
       const config = PROPERTY_TYPE_CONFIG[type as PropertyType]
       const baseName = propertyName.trim() || config.label
       onAdd({ name: baseName, type: type as PropertyType })
       setPropertyName('')
     },
-    [onAdd, propertyName]
+    [hasProject, onAdd, propertyName]
   )
 
   const handleOpenChange = useCallback(
@@ -67,7 +86,8 @@ export function AddPropertyPopup({
     status: t('properties.types.status'),
     select: t('properties.types.select'),
     multiselect: t('properties.types.multiselect'),
-    relation: t('properties.types.relation')
+    relation: t('properties.types.relation'),
+    project: t('properties.types.project')
   }
 
   return (
@@ -100,6 +120,7 @@ export function AddPropertyPopup({
                   key={propType}
                   value={propType}
                   label={propertyTypeLabels[propType]}
+                  disabled={propType === 'project' && hasProject}
                   icon={
                     <span className="text-muted-foreground">
                       <IconComponent className="size-4" />

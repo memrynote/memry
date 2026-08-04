@@ -62,6 +62,7 @@ export type PropertyType =
   | 'url'
   | 'rating'
   | 'relation'
+  | 'project'
 
 interface PropertyCellProps {
   /** Property value */
@@ -260,7 +261,12 @@ function PropertyValueDisplay({
     case 'select':
       return <SelectCell value={stringifyUnknown(value)} className={className} />
 
-    case 'multiselect': {
+    case 'multiselect':
+    case 'project': {
+      // `project` values are an array of project names (frontmatter), the same
+      // shape as multiselect. Per-chip project color/icon would need the live
+      // project list threaded down into every row's cell — plain chips here
+      // instead (see property-cell.tsx PropertyType doc / fix report).
       const items = Array.isArray(value) ? value : stringifyUnknown(value).split(',')
       return <MultiSelectCell values={items.map(stringifyUnknown)} className={className} />
     }
@@ -453,6 +459,7 @@ export const EditablePropertyCell = memo(function EditablePropertyCell({
                 <UrlEditor value={textValue} onChange={handleCommit} onBlur={handleStopEditing} />
               )
             case 'multiselect':
+            case 'project':
               return (
                 <TextEditor
                   value={textValue}
