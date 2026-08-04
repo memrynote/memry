@@ -137,9 +137,9 @@ memrynote-provided templates. Read-only; duplicate to make an editable copy.
 
 ### My Templates
 
-Custom templates you've made. Edit, duplicate, or delete from each row.
+Custom templates you've made. Edit, duplicate, or delete from each row's ⋯ menu.
 
-A **Create Template** button opens the [template editor](/user-guide/templates).
+Clicking a row — built-in or custom — opens it in the [template editor](/user-guide/templates) tab and closes Settings. The **New Template** button in the header opens an empty one.
 
 ---
 
