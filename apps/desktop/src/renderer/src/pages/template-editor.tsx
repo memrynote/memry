@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { NoteLayout } from '@/components/note'
 import { ContentArea } from '@/components/note/content-area'
@@ -43,6 +43,12 @@ const log = createLogger('Page:TemplateEditor')
 
 interface TemplateEditorPageProps {
   templateId?: string // undefined for a new template
+  /**
+   * The tab this page is rendered in. Falls back to the active tab when the
+   * host does not supply it, but the active tab is the wrong answer in split
+   * view: the editor can be mounted in a pane that is not the focused one.
+   */
+  tabId?: string
 }
 
 function EditorLoadingState() {
@@ -59,29 +65,36 @@ function EditorLoadingState() {
 
 interface TemplateEditorSurfaceProps {
   templateId?: string
+  tabId?: string
   initial: TemplateDraftFields
   isBuiltIn: boolean
 }
 
 function TemplateEditorSurface({
   templateId: initialTemplateId,
+  tabId: ownTabId,
   initial,
   isBuiltIn
 }: TemplateEditorSurfaceProps) {
   const { t } = useT('notes')
+  const queryClient = useQueryClient()
   const { deleteTemplate, duplicateTemplate } = useTemplates({ autoLoad: false })
   const { tags: allAvailableTags } = useNoteTagsQuery()
   const { settings: editorSettings } = useNoteEditorSettings()
   const { closeTab, openTab, updateTabTitle, setTabModified, setTabEntity, registerCloseGuard } =
     useTabs()
   const activeTab = useActiveTab()
-  const tabId = activeTab?.id
+  const tabId = ownTabId ?? activeTab?.id
 
   const handleCreated = useCallback(
-    (createdId: string) => {
-      if (tabId) setTabEntity(tabId, createdId, `/templates/${createdId}`)
+    (created: Template) => {
+      // Seed the cache before the tab adopts the id: the id reaches this page
+      // back through `tab.entityId`, and an unseeded query would flip to
+      // loading and tear the whole surface — editor included — down again.
+      queryClient.setQueryData(['template-editor', created.id], created)
+      if (tabId) setTabEntity(tabId, created.id, `/templates/${created.id}`)
     },
-    [tabId, setTabEntity]
+    [tabId, setTabEntity, queryClient]
   )
 
   const { fields, setFields, state, templateId, isDirty, canSave, save } = useTemplateDraft({
@@ -112,14 +125,24 @@ function TemplateEditorSurface({
   // Delete closes the tab on purpose; the guard must not then offer to save the
   // template that was just removed.
   const suppressGuardRef = useRef(false)
+  // Read through refs so the guard registration stays stable across edits.
+  // Synced after commit rather than during render: the guard is only ever
+  // consulted from a close action, which happens well after the commit.
   const isDirtyRef = useRef(isDirty)
-  isDirtyRef.current = isDirty
+  const canSaveRef = useRef(canSave)
   const saveRef = useRef(save)
-  saveRef.current = save
+  useEffect(() => {
+    isDirtyRef.current = isDirty
+    canSaveRef.current = canSave
+    saveRef.current = save
+  })
 
   useEffect(() => {
     if (!tabId || isBuiltIn) return
     return registerCloseGuard(tabId, {
+      // A nameless draft cannot be persisted; say so rather than let the prompt
+      // offer a Save that would silently do nothing.
+      canSave: () => canSaveRef.current,
       isDirty: () => !suppressGuardRef.current && isDirtyRef.current,
       save: () => saveRef.current()
     })
@@ -133,9 +156,12 @@ function TemplateEditorSurface({
   // hold it locally so the chip is not colourless in the meantime.
   const pendingTagColorsRef = useRef<Map<string, string>>(new Map())
 
+  // Keyed lower-case on both sides, as note.tsx does: tag names are
+  // case-preserving, so a raw-case lookup would miss the pending colour of a
+  // tag the user typed with a capital.
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>()
-    for (const tag of allAvailableTags) map.set(tag.tag, tag.color)
+    for (const tag of allAvailableTags) map.set(tag.tag.toLowerCase(), tag.color)
     for (const key of pendingTagColorsRef.current.keys()) {
       if (map.has(key)) pendingTagColorsRef.current.delete(key)
     }
@@ -147,7 +173,10 @@ function TemplateEditorSurface({
       fields.tags.map((name) => ({
         id: name,
         name,
-        color: tagColorMap.get(name) ?? pendingTagColorsRef.current.get(name) ?? ''
+        color:
+          tagColorMap.get(name.toLowerCase()) ??
+          pendingTagColorsRef.current.get(name.toLowerCase()) ??
+          ''
       })),
     [fields.tags, tagColorMap]
   )
@@ -426,8 +455,12 @@ function toInitialFields(template: Template | null | undefined): TemplateDraftFi
   }
 }
 
-export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
+export function TemplateEditorPage({ templateId, tabId }: TemplateEditorPageProps) {
   const { getTemplate } = useTemplates({ autoLoad: false })
+  // Pinned to the identity this tab opened with. `templateId` changes once, when
+  // a draft adopts its new id, and remounting the surface there would throw away
+  // the editor the user is typing in.
+  const surfaceKey = useRef(templateId ?? 'new').current
 
   const { data: template, isLoading } = useQuery({
     queryKey: ['template-editor', templateId],
@@ -440,14 +473,17 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
 
   const initial = useMemo(() => toInitialFields(template), [template])
 
-  if (templateId && isLoading) {
+  // Only ever a first-paint state: a tab that opened on a draft has no query to
+  // wait for, and by the time it adopts an id the cache is already seeded.
+  if (surfaceKey !== 'new' && isLoading) {
     return <EditorLoadingState />
   }
 
   return (
     <TemplateEditorSurface
-      key={templateId ?? 'new'}
+      key={surfaceKey}
       templateId={templateId}
+      tabId={tabId}
       initial={initial}
       isBuiltIn={template?.isBuiltIn ?? false}
     />

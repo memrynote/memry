@@ -14,6 +14,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { toTemplateProperties, type EditableProperty } from '@/lib/template-properties'
 import { useT } from '@memry/i18n/renderer'
+import type { Template } from '@/services/templates-service'
 
 const log = createLogger('Hook:TemplateDraft')
 
@@ -33,7 +34,8 @@ export interface UseTemplateDraftOptions {
   templateId?: string
   initial: TemplateDraftFields
   autoSaveDelayMs?: number
-  onCreated?: (templateId: string) => void
+  /** Receives the freshly created template so the caller can seed its cache. */
+  onCreated?: (template: Template) => void
 }
 
 export interface UseTemplateDraftResult {
@@ -76,10 +78,15 @@ export function useTemplateDraft({
   const current = useMemo(() => serialize(fields), [fields])
   const isDirty = current !== persistedRef.current
 
+  // `save` reads these instead of closing over the values, so it stays stable
+  // for the debounce timer. Synced in an effect, not during render, because
+  // render has to stay pure — and every reader runs after commit anyway.
   const fieldsRef = useRef(fields)
-  fieldsRef.current = fields
   const templateIdRef = useRef(templateId)
-  templateIdRef.current = templateId
+  useEffect(() => {
+    fieldsRef.current = fields
+    templateIdRef.current = templateId
+  })
 
   const state: TemplateSaveState = isSaving
     ? 'saving'
@@ -122,7 +129,7 @@ export function useTemplateDraft({
         }
         persistedRef.current = payload
         setTemplateId(created.id)
-        onCreated?.(created.id)
+        onCreated?.(created)
         return true
       }
 
@@ -149,8 +156,12 @@ export function useTemplateDraft({
     }
   }, [createTemplate, updateTemplate, onCreated, t])
 
+  // Held in a ref so the debounce below is not torn down and restarted every
+  // time `save` is rebuilt. Synced after commit to keep render pure.
   const saveRef = useRef(save)
-  saveRef.current = save
+  useEffect(() => {
+    saveRef.current = save
+  })
 
   // Auto-save only once the template exists. A draft is committed by the
   // Create button, never by a timer.

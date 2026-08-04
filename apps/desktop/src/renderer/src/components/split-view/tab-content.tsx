@@ -198,7 +198,7 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
         )
 
       case 'template-editor':
-        return <LazyTemplateEditorPage templateId={tab.entityId} />
+        return <LazyTemplateEditorPage templateId={tab.entityId} tabId={tab.id} />
 
       case 'graph':
         return <LazyGraphPage />

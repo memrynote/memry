@@ -34,8 +34,11 @@ vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({ t: (key: string) => TRANSLATIONS[key] ?? key.split('.').at(-1) ?? key })
 }))
 
+const setQueryData = vi.fn()
+
 vi.mock('@tanstack/react-query', () => ({
-  useQuery: () => ({ data: queryData, isLoading: queryLoading })
+  useQuery: () => ({ data: queryData, isLoading: queryLoading }),
+  useQueryClient: () => ({ setQueryData })
 }))
 
 vi.mock('@/hooks/use-templates', () => ({
@@ -281,6 +284,35 @@ describe('TemplateEditorPage', () => {
       expect(setTabEntity).toHaveBeenCalledWith('tab-1', 'tpl-1', '/templates/tpl-1')
     )
     expect(await screen.findByRole('button', { name: /^update$/i })).toBeInTheDocument()
+  })
+
+  it('keeps the editor mounted when the tab hands the new id back', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(<TemplateEditorPage />)
+
+    await user.type(screen.getByLabelText('template title'), 'Meeting')
+    await user.click(screen.getByRole('button', { name: /create template/i }))
+    await waitFor(() => expect(setTabEntity).toHaveBeenCalled())
+
+    // The tab adopts the id, so this page re-renders with a templateId it did
+    // not open with. Keying the surface off that id would remount it and throw
+    // away the editor the user is still typing in.
+    queryLoading = true
+    rerender(<TemplateEditorPage templateId="tpl-1" />)
+
+    expect(screen.getByLabelText('template title')).toHaveValue('Meeting')
+    expect(screen.queryByText('loading')).not.toBeInTheDocument()
+  })
+
+  it('drives the tab it was mounted in, not whichever tab is active', async () => {
+    const user = userEvent.setup()
+    activeTab = { id: 'focused-elsewhere' }
+    render(<TemplateEditorPage tabId="tab-1" />)
+
+    await user.type(screen.getByLabelText('template title'), 'M')
+
+    await waitFor(() => expect(updateTabTitle).toHaveBeenCalledWith('tab-1', 'M'))
+    expect(registerCloseGuard).toHaveBeenCalledWith('tab-1', expect.any(Object))
   })
 
   it('tracks the tab title live and marks the tab modified', async () => {

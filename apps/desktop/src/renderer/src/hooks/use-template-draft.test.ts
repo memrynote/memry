@@ -75,7 +75,7 @@ describe('useTemplateDraft', () => {
     })
 
     expect(createTemplate).toHaveBeenCalledWith(expect.objectContaining({ name: 'Meeting' }))
-    expect(onCreated).toHaveBeenCalledWith('tpl-1')
+    expect(onCreated).toHaveBeenCalledWith({ id: 'tpl-1', name: 'X' })
     expect(result.current.templateId).toBe('tpl-1')
     expect(result.current.state).toBe('saved')
     expect(result.current.isDirty).toBe(false)

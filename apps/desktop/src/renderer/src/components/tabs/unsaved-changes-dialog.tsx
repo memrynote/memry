@@ -6,7 +6,6 @@
 import { useT } from '@memry/i18n/renderer'
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -14,6 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
 
 // =============================================================================
 // DIALOG COMPONENT
@@ -59,10 +59,13 @@ export const UnsavedChangesDialog = ({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onCancel}>{t('button.cancel')}</AlertDialogCancel>
-          <AlertDialogAction onClick={onDiscard} className="bg-red-500 hover:bg-red-600">
+          {/* Plain buttons, not AlertDialogAction: that primitive is Dialog.Close
+              and would fire onOpenChange(false) — read as Cancel — on top of the
+              handler below, aborting the close it was meant to resolve. */}
+          <Button onClick={onDiscard} className="bg-red-500 hover:bg-red-600">
             {t('button.dontSave')}
-          </AlertDialogAction>
-          {onSave && <AlertDialogAction onClick={onSave}>{t('button.save')}</AlertDialogAction>}
+          </Button>
+          {onSave && <Button onClick={onSave}>{t('button.save')}</Button>}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
