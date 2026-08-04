@@ -39,6 +39,7 @@ import { attachmentEvents } from '../sync/attachment-events'
 import { flushProjectionEvents } from '../projections'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { replaceNoteBodyInCrdt } from '../sync/crdt-feed'
+import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
 import {
   enqueueJournalCreate,
   enqueueJournalDelete,
@@ -616,6 +617,15 @@ export class VaultWatcher {
     })
     feedExternalEditToCrdt(cached.id, parsed.content).catch((err) => {
       logger.warn('Failed to feed external edit to CRDT', { noteId: cached.id, error: err })
+    })
+
+    // Markdown wins: a `- [x]`/`- [ ]` flipped outside the app is the user's
+    // intent for that task, so the DB row follows the file.
+    reconcileTaskCheckboxesFromMarkdown(parsed.content).catch((err) => {
+      logger.warn('Failed to reconcile task checkboxes from external edit', {
+        noteId: cached.id,
+        error: err
+      })
     })
 
     if (isJournalPath(relativePath)) {

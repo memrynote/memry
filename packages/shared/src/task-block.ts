@@ -52,6 +52,37 @@ export function parseTaskBlockSuffix(text: string): { taskId: string; title: str
   return { taskId, title: trimmed.slice(0, open).trim() }
 }
 
+// Markdown is the source of truth for a task's checkbox state: editing
+// `- [ ] … {task:id}` into `- [x] … {task:id}` in any external editor means the
+// task is done, and vice versa. Scans a note body for those lines so the
+// ingest paths (vault watcher, indexer) can reconcile the DB rows to match.
+//
+// Deliberately tolerant of what other editors emit: any list marker (`-`, `*`,
+// `+`), any indentation, and an upper- or lower-case `x`. Hand-parsed for the
+// same linear-time reason as parseTaskBlockSuffix.
+export function scanTaskCheckboxStates(markdown: string): Map<string, boolean> {
+  const states = new Map<string, boolean>()
+  if (!markdown.includes(TASK_BLOCK_SUFFIX_OPEN)) return states
+
+  for (const line of markdown.split('\n')) {
+    const trimmed = line.trimStart()
+    if (trimmed.length < 5) continue
+    const marker = trimmed[0]
+    if (marker !== '-' && marker !== '*' && marker !== '+') continue
+    if (trimmed[1] !== ' ' || trimmed[2] !== '[' || trimmed[4] !== ']') continue
+
+    const box = trimmed[3]
+    const checked = box === 'x' || box === 'X'
+    if (!checked && box !== ' ') continue
+
+    const parsed = parseTaskBlockSuffix(trimmed.slice(5))
+    if (!parsed) continue
+    states.set(parsed.taskId, checked)
+  }
+
+  return states
+}
+
 export function extractInlineText(content: unknown): string {
   if (typeof content === 'string') return content
   if (!Array.isArray(content)) return ''

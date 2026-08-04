@@ -19,6 +19,8 @@ import {
   type NoteFrontmatter
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
+import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
+import { hasPendingWriteback } from '../sync/crdt-writeback'
 import {
   atomicWrite,
   safeRead,
@@ -340,6 +342,20 @@ export async function getNoteById(id: string): Promise<Note | null> {
   }
 
   const parsed = parseNote(fileContent, cached.path)
+
+  // Markdown wins for task checkbox state. The watcher covers edits made while
+  // the app is running; this covers the rest — a note edited (or imported)
+  // while Memry was closed, which the initial scan deliberately skips.
+  //
+  // Skipped while a writeback is queued or mid-write: the file is then a stale
+  // copy of the live doc, and reconciling from it would revert a task the user
+  // just ticked in the app. Fire and forget otherwise — the note must render
+  // immediately, and the task events that follow refresh the affected rows.
+  if (!hasPendingWriteback(id)) {
+    void reconcileTaskCheckboxesFromMarkdown(parsed.content).catch((err) => {
+      logger.warn('Failed to reconcile task checkboxes on note open', { id, error: err })
+    })
+  }
 
   return {
     id,

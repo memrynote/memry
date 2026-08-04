@@ -741,9 +741,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           .join('')
           .trim() ?? ''
 
+      // Markdown is the source of truth: a checkbox that arrives already
+      // ticked (`- [x] Buy milk`, typically from an import or an external
+      // editor) becomes a task that is already done.
+      const wasChecked = !!(block.props as any)?.checked
+
       editor.updateBlock(block, {
         type: 'taskBlock' as any,
-        props: { taskId: '', title: text, checked: false }
+        props: { taskId: '', title: text, checked: wasChecked }
       })
 
       void (async () => {
@@ -783,6 +788,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             linkedNoteIds: noteId ? [noteId] : []
           })
           if (result.success && result.task) {
+            if (wasChecked) await tasksService.complete({ id: result.task.id })
             const freshBlock = editor.getBlock(blockId)
             if (freshBlock) {
               const currentTitle = (freshBlock.props as any).title || parsed.title
@@ -791,7 +797,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 props: {
                   taskId: result.task.id,
                   title: currentTitle,
-                  checked: false,
+                  checked: wasChecked,
                   parentTaskId: currentParentTaskId
                 }
               })
@@ -822,9 +828,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           .join('')
           .trim() ?? ''
 
+      // Same markdown-wins rule as convertCheckboxToTask: an already-ticked
+      // nested checkbox becomes a completed subtask.
+      const wasChecked = !!(block.props as any)?.checked
+
       editor.updateBlock(block, {
         type: 'taskBlock' as any,
-        props: { taskId: '', title: text, checked: false, parentTaskId }
+        props: { taskId: '', title: text, checked: wasChecked, parentTaskId }
       })
 
       void (async () => {
@@ -843,11 +853,17 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             linkedNoteIds: noteId ? [noteId] : []
           })
           if (result.success && result.task) {
+            if (wasChecked) await tasksService.complete({ id: result.task.id })
             const freshBlock = editor.getBlock(blockId)
             if (freshBlock) {
               const currentTitle = (freshBlock.props as any).title || text
               editor.updateBlock(freshBlock, {
-                props: { taskId: result.task.id, title: currentTitle, checked: false, parentTaskId }
+                props: {
+                  taskId: result.task.id,
+                  title: currentTitle,
+                  checked: wasChecked,
+                  parentTaskId
+                }
               })
               if (currentTitle && currentTitle !== result.task.title) {
                 void tasksService.update({ id: result.task.id, title: currentTitle })

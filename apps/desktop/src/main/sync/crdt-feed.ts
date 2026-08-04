@@ -7,6 +7,7 @@
 
 import { getCrdtProvider, ORIGIN_LOCAL } from './crdt-provider'
 import { markdownToBlocks, blocksToYFragment } from './blocknote-converter'
+import { normalizeTaskBlocks } from '@memry/shared/task-block'
 import { getIndexDatabase } from '../database'
 import { getNoteCacheById } from '@main/database/queries/notes'
 
@@ -36,10 +37,17 @@ export async function replaceNoteBodyInCrdt(noteId: string, markdown: string): P
   const blocks = await markdownToBlocks(markdown, noteCachePath(noteId))
   if (!blocks) return false
 
+  // Same upgrade the initial markdown seed does (markdownToYFragment): without
+  // it a `- [ ] … {task:id}` line lands in the fragment as a raw checkbox and
+  // the open note paints a checkbox with the id suffix showing, instead of the
+  // task row. In CRDT mode the renderer trusts the fragment and never
+  // re-normalizes, so this is the only place it can happen.
+  const normalized = normalizeTaskBlocks(blocks).blocks
+
   const fragment = doc.getXmlFragment('prosemirror')
   doc.transact(() => {
     fragment.delete(0, fragment.length)
-    blocksToYFragment(blocks, fragment)
+    blocksToYFragment(normalized, fragment)
   }, ORIGIN_LOCAL)
 
   return true

@@ -64,8 +64,19 @@ interface PendingWriteback {
 }
 
 const pendingTimers = new Map<string, PendingWriteback>()
+const inFlightWritebacks = new Set<string>()
 const ignoredWrites = new Map<string, number>()
 const lastNetworkUpdateMs = new Map<string, number>()
+
+/**
+ * True while this note's on-disk markdown is known to be behind the live doc —
+ * a writeback is debounced or mid-write. Readers that treat the file as the
+ * source of truth (see tasks/reconcile-markdown-tasks) must stand down in this
+ * window, or they would "restore" state the user just changed in the app.
+ */
+export function hasPendingWriteback(noteId: string): boolean {
+  return pendingTimers.has(noteId) || inFlightWritebacks.has(noteId)
+}
 
 interface WritebackDebugState {
   pending: boolean
@@ -151,14 +162,19 @@ export function scheduleWriteback(noteId: string, doc: Y.Doc): void {
 
   const timer = setTimeout(() => {
     pendingTimers.delete(noteId)
-    performWriteback(noteId, doc).catch((err) => {
-      updateDebugState(noteId, {
-        pending: false,
-        lastError: err instanceof Error ? err.message : String(err)
+    inFlightWritebacks.add(noteId)
+    performWriteback(noteId, doc)
+      .catch((err) => {
+        updateDebugState(noteId, {
+          pending: false,
+          lastError: err instanceof Error ? err.message : String(err)
+        })
+        log.error('Write-back failed', { noteId, error: err })
+        emitToRenderer('sync:write-back-failed', { noteId })
       })
-      log.error('Write-back failed', { noteId, error: err })
-      emitToRenderer('sync:write-back-failed', { noteId })
-    })
+      .finally(() => {
+        inFlightWritebacks.delete(noteId)
+      })
   }, WRITEBACK_DEBOUNCE_MS)
 
   pendingTimers.set(noteId, { timer, doc })
