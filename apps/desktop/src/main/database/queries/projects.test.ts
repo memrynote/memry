@@ -34,6 +34,7 @@ import {
   insertProjectLink,
   deleteProjectLink,
   getProjectLink,
+  getProjectLinkForItem,
   setProjectLinkPinned,
   updateProjectHomeNote,
   listProjectsByNames,
@@ -630,13 +631,27 @@ describe('projects queries', () => {
   })
 
   describe('listNoteProjectLinkIds', () => {
-    it('lists only note-type links for the given note, ignoring other items and notes', () => {
+    const seedNote = (id: string, fileType: string, ext = 'md'): void => {
+      db.insert(noteMetadata)
+        .values({
+          id,
+          path: `notes/${id}.${ext}`,
+          title: id,
+          fileType,
+          createdAt: BASE_TIME.toISOString(),
+          modifiedAt: BASE_TIME.toISOString()
+        })
+        .run()
+    }
+
+    it('lists links for the given note, ignoring other notes', () => {
       insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
       insertProject(db, { id: 'p2', name: 'Beta', color: '#000', position: 1, isInbox: false })
+      seedNote('n1', 'markdown')
+      seedNote('other-note', 'markdown')
       insertProjectLink(db, { id: 'l1', projectId: 'p1', itemType: 'note', itemId: 'n1' })
       insertProjectLink(db, { id: 'l2', projectId: 'p2', itemType: 'note', itemId: 'n1' })
       insertProjectLink(db, { id: 'l3', projectId: 'p1', itemType: 'note', itemId: 'other-note' })
-      insertProjectLink(db, { id: 'l4', projectId: 'p1', itemType: 'file', itemId: 'n1' })
 
       const rows = listNoteProjectLinkIds(db, 'n1')
 
@@ -644,13 +659,60 @@ describe('projects queries', () => {
       expect(rows.every((r) => typeof r.id === 'string')).toBe(true)
     })
 
+    // The project-hub file importer wrote `item_type: 'file'` for imported `.md`
+    // files. Such a row is frontmatter-owned like any other, and the reconciler
+    // is the only path that can ever delete it.
+    it('includes a markdown-note link whose item_type says file, and reports that type', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      seedNote('n1', 'markdown')
+      insertProjectLink(db, { id: 'l1', projectId: 'p1', itemType: 'file', itemId: 'n1' })
+
+      expect(listNoteProjectLinkIds(db, 'n1')).toEqual([
+        { id: 'l1', projectId: 'p1', itemType: 'file' }
+      ])
+    })
+
+    it('excludes a link whose item is not a markdown note', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      seedNote('f1', 'image', 'png')
+      // item_type says 'note' — a binary converted after the link was written.
+      insertProjectLink(db, { id: 'l1', projectId: 'p1', itemType: 'note', itemId: 'f1' })
+
+      expect(listNoteProjectLinkIds(db, 'f1')).toEqual([])
+    })
+
+    it('excludes a link whose item resolves to no note at all', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      insertProjectLink(db, { id: 'l1', projectId: 'p1', itemType: 'note', itemId: 'ghost' })
+
+      expect(listNoteProjectLinkIds(db, 'ghost')).toEqual([])
+    })
+
     it('reflects a delete performed through the existing deleteProjectLink', () => {
       insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      seedNote('n1', 'markdown')
       insertProjectLink(db, { id: 'l1', projectId: 'p1', itemType: 'note', itemId: 'n1' })
 
       deleteProjectLink(db, 'p1', 'note', 'n1')
 
       expect(listNoteProjectLinkIds(db, 'n1')).toEqual([])
+    })
+  })
+
+  describe('getProjectLinkForItem', () => {
+    it('finds the link regardless of the item_type it was written with', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      insertProjectLink(db, { id: 'l1', projectId: 'p1', itemType: 'file', itemId: 'n1' })
+
+      expect(getProjectLinkForItem(db, 'p1', 'n1')?.id).toBe('l1')
+    })
+
+    it('does not cross project boundaries', () => {
+      insertProject(db, { id: 'p1', name: 'Alpha', color: '#000', position: 0, isInbox: false })
+      insertProject(db, { id: 'p2', name: 'Beta', color: '#000', position: 1, isInbox: false })
+      insertProjectLink(db, { id: 'l1', projectId: 'p1', itemType: 'note', itemId: 'n1' })
+
+      expect(getProjectLinkForItem(db, 'p2', 'n1')).toBeUndefined()
     })
   })
 

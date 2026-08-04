@@ -10,12 +10,40 @@
 import { PROJECT_PROPERTY_KEY } from '@memry/contracts/property-types'
 
 /**
+ * Widen the raw value to a list of candidate entries.
+ *
+ * The JSON-array branch is a self-heal, not a convenience. A build that predates
+ * the `project` property type stores the array through the generic `text` path
+ * (`JSON.stringify` in, the literal string out), then pushes `project:
+ * "[\"Alpha\"]"` on its next sync. Reading that as one name called `["Alpha"]`
+ * would resolve to no project and silently drop the membership; it also covers
+ * the same shape typed by hand into a markdown editor.
+ */
+function toEntryList(raw: unknown): unknown[] {
+  if (Array.isArray(raw)) return raw
+  if (raw == null || raw === '') return []
+
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim()
+    if (trimmed.startsWith('[')) {
+      try {
+        const parsed: unknown = JSON.parse(trimmed)
+        if (Array.isArray(parsed)) return parsed
+      } catch {
+        // Not JSON after all — fall through and treat it as a literal name.
+      }
+    }
+  }
+
+  return [raw]
+}
+
+/**
  * The `project` value as a clean name list. Tolerates every shape a hand-edited
  * frontmatter can produce: a bare string, a nested array, nulls, blank entries.
  */
 export function readProjectNames(properties: Record<string, unknown>): string[] {
-  const raw = properties[PROJECT_PROPERTY_KEY]
-  const list = Array.isArray(raw) ? raw : raw == null || raw === '' ? [] : [raw]
+  const list = toEntryList(properties[PROJECT_PROPERTY_KEY])
 
   const seen = new Set<string>()
   const names: string[] = []

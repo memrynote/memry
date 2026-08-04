@@ -111,7 +111,18 @@ A note or journal entry joins a project through its **`project` property**, not 
 
 - **Value** — a list of project names, picked from a dropdown. Each choice shows the project's color and icon; archived projects still resolve to their real appearance there, they just don't appear in the picker for new links. A name that matches no project (a typo, or a project deleted on another device before this note synced) still renders, muted, rather than being silently dropped.
 - **Remove** — click the `×` on a chip.
-- **Storage** — the value lives in the note's **frontmatter** as a plain list of names (`project: [Website Redesign]`), so it's visible and editable in a plain markdown editor and travels with the file. Frontmatter is the source of truth; the [project hub](/user-guide/projects#project-hub) reflects it, not the other way around.
+- **Storage** — the value lives in the note's **frontmatter** as a plain list of project names, so it's visible and editable in a plain markdown editor and travels with the file. memrynote writes it alongside the note's other properties, under the `properties:` key:
+
+  ```yaml
+  ---
+  properties:
+    project:
+      - Website Redesign
+  ---
+  ```
+
+  A `project:` list written at the top level by another editor is read as well, as long as that note has no `properties:` block of its own. Frontmatter is the source of truth; the [project hub](/user-guide/projects#project-hub) reflects it, not the other way around.
+
 - **Renaming or deleting a project** rewrites the `project` value in every linked note's frontmatter — a rename updates the name in place, a delete removes it from the list.
 - Dragging a note or journal entry onto a project in the sidebar sets this same property.
 

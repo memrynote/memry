@@ -49,7 +49,7 @@ describe('note-project-links projector', () => {
 
   it('deletes a link whose project is no longer named', async () => {
     listProjectsByNames.mockReturnValue([])
-    listNoteProjectLinkIds.mockReturnValue([{ id: 'l1', projectId: 'p1' }])
+    listNoteProjectLinkIds.mockReturnValue([{ id: 'l1', projectId: 'p1', itemType: 'note' }])
     const { createNoteProjectLinksProjector } = await import('./note-project-links-projector')
 
     await createNoteProjectLinksProjector().project(markdownEvent({ project: [] }))
@@ -60,7 +60,7 @@ describe('note-project-links projector', () => {
 
   it('leaves an unchanged link untouched so position and pinned survive', async () => {
     listProjectsByNames.mockReturnValue([{ id: 'p1', name: 'Alpha', createdAt: '2026-01-01' }])
-    listNoteProjectLinkIds.mockReturnValue([{ id: 'l1', projectId: 'p1' }])
+    listNoteProjectLinkIds.mockReturnValue([{ id: 'l1', projectId: 'p1', itemType: 'note' }])
     const { createNoteProjectLinksProjector } = await import('./note-project-links-projector')
 
     await createNoteProjectLinksProjector().project(markdownEvent({ project: ['Alpha'] }))
@@ -137,12 +137,37 @@ describe('note-project-links projector', () => {
       { id: 'p2', name: 'Beta', createdAt: '2026-01-01' }
     ])
     listNoteProjectLinkIds.mockReturnValue([
-      { id: 'l1', projectId: 'p1' },
-      { id: 'l2', projectId: 'p2' }
+      { id: 'l1', projectId: 'p1', itemType: 'note' },
+      { id: 'l2', projectId: 'p2', itemType: 'note' }
     ])
     const { createNoteProjectLinksProjector } = await import('./note-project-links-projector')
 
     await createNoteProjectLinksProjector().project(markdownEvent({ project: ['Alpha', 'Beta'] }))
+
+    expect(insertProjectLink).not.toHaveBeenCalled()
+    expect(deleteProjectLink).not.toHaveBeenCalled()
+  })
+
+  // The project-hub file importer linked imported `.md` files with
+  // `item_type: 'file'`. Deleting under a hardcoded 'note' would leave that row
+  // in place forever — invisible to the project pull, unremovable from the UI,
+  // and still listed in the hub's Notes section.
+  it('deletes a stale link under its own item_type, not a hardcoded note', async () => {
+    listProjectsByNames.mockReturnValue([])
+    listNoteProjectLinkIds.mockReturnValue([{ id: 'l1', projectId: 'p1', itemType: 'file' }])
+    const { createNoteProjectLinksProjector } = await import('./note-project-links-projector')
+
+    await createNoteProjectLinksProjector().project(markdownEvent({ project: [] }))
+
+    expect(deleteProjectLink).toHaveBeenCalledWith({}, 'p1', 'file', 'n1')
+  })
+
+  it('does not add a second row when a stale file-typed link already covers the named project', async () => {
+    listProjectsByNames.mockReturnValue([{ id: 'p1', name: 'Alpha', createdAt: '2026-01-01' }])
+    listNoteProjectLinkIds.mockReturnValue([{ id: 'l1', projectId: 'p1', itemType: 'file' }])
+    const { createNoteProjectLinksProjector } = await import('./note-project-links-projector')
+
+    await createNoteProjectLinksProjector().project(markdownEvent({ project: ['Alpha'] }))
 
     expect(insertProjectLink).not.toHaveBeenCalled()
     expect(deleteProjectLink).not.toHaveBeenCalled()
@@ -154,8 +179,8 @@ describe('note-project-links projector', () => {
       { id: 'p3', name: 'Gamma', createdAt: '2026-01-01' }
     ])
     listNoteProjectLinkIds.mockReturnValue([
-      { id: 'l1', projectId: 'p1' },
-      { id: 'l2', projectId: 'p2' }
+      { id: 'l1', projectId: 'p1', itemType: 'note' },
+      { id: 'l2', projectId: 'p2', itemType: 'note' }
     ])
     const { createNoteProjectLinksProjector } = await import('./note-project-links-projector')
 

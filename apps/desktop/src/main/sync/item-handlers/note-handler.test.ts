@@ -85,6 +85,17 @@ vi.mock('../../projections', () => ({
   flushProjectionEvents: (...args: unknown[]) => mockFlushProjectionEvents(...args)
 }))
 
+// `ctx.db` here is a bare stub, so the frontmatter→project_links reconcile the
+// update path performs is stubbed out. Its real behaviour is covered against a
+// real data DB in note-handler.project-links.test.ts.
+const mockReconcileNoteLinks = vi.fn()
+vi.mock('../../projections/projectors/note-project-links-projector', () => ({
+  reconcileNoteLinks: (...args: unknown[]) => mockReconcileNoteLinks(...args)
+}))
+vi.mock('../../database/queries/projects', () => ({
+  isMarkdownNote: vi.fn(() => true)
+}))
+
 const mockCleanupProjectLinksForDeletedNote = vi.fn(() => Promise.resolve())
 vi.mock('../../notes/runtime-effects', () => ({
   cleanupProjectLinksForDeletedNote: (...args: unknown[]) =>

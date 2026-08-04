@@ -641,6 +641,23 @@ export function getProjectLink(
 }
 
 /**
+ * A project's link to one item, matched without `item_type`. Frontmatter-owned
+ * rows are identified by the note they point at, so a stale `item_type` on the
+ * local row (or on the incoming entry) must not hide it.
+ */
+export function getProjectLinkForItem(
+  db: DataDb,
+  projectId: string,
+  itemId: string
+): ProjectLink | undefined {
+  return db
+    .select()
+    .from(projectLinks)
+    .where(and(eq(projectLinks.projectId, projectId), eq(projectLinks.itemId, itemId)))
+    .get()
+}
+
+/**
  * List all items linked to a project.
  */
 export function getProjectLinks(db: DataDb, projectId: string): ProjectLink[] {
@@ -917,15 +934,29 @@ export function listMarkdownNoteIdsForProject(db: DataDb, projectId: string): st
     .map((row) => row.id)
 }
 
-/** Every project link pointing at one note, for the frontmatter reconciler. */
+/**
+ * Every project link pointing at one markdown note, for the frontmatter
+ * reconciler.
+ *
+ * Membership is keyed on `file_type`, never on the row's `item_type`: the
+ * project-hub file importer wrote `item_type: 'file'` for imported `.md` files,
+ * and such a row is frontmatter-owned all the same. Filtering it out here would
+ * leave it invisible to the only path that can delete it — `listTableOwnedProjectLinks`
+ * excludes it too — so it would show up in the hub forever.
+ */
 export function listNoteProjectLinkIds(
   db: DataDb,
   noteId: string
-): { id: string; projectId: string }[] {
+): { id: string; projectId: string; itemType: string }[] {
   return db
-    .select({ id: projectLinks.id, projectId: projectLinks.projectId })
+    .select({
+      id: projectLinks.id,
+      projectId: projectLinks.projectId,
+      itemType: projectLinks.itemType
+    })
     .from(projectLinks)
-    .where(and(eq(projectLinks.itemType, 'note'), eq(projectLinks.itemId, noteId)))
+    .innerJoin(noteMetadata, eq(noteMetadata.id, projectLinks.itemId))
+    .where(and(eq(projectLinks.itemId, noteId), eq(noteMetadata.fileType, 'markdown')))
     .all()
 }
 

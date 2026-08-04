@@ -18,7 +18,7 @@ import { createLogger } from '../../lib/logger'
 import {
   listTableOwnedProjectLinks,
   isMarkdownNote,
-  getProjectLink
+  getProjectLinkForItem
 } from '../../database/queries/projects'
 import { BaseItemHandler } from './base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
@@ -74,6 +74,11 @@ function reconcileStatuses(tx: DrizzleDb, projectId: string, incoming: StatusSyn
  * project-hub view state, not membership — is still this payload's to carry,
  * so apply it to whichever row the local projector already owns, matched by
  * the (project, item) pair instead of by id.
+ *
+ * `item_type` is deliberately not part of that match: the two devices can hold
+ * the same membership under different `item_type` values (a legacy file-import
+ * row says 'file', a derived row says 'note'), and matching on it would insert
+ * nothing, update nothing, and silently drop the view state.
  */
 function applyViewStateToMarkdownLinks(
   tx: DrizzleDb,
@@ -81,7 +86,7 @@ function applyViewStateToMarkdownLinks(
   entries: ProjectLinkSync[]
 ): void {
   for (const l of entries) {
-    const existing = getProjectLink(tx, projectId, l.itemType, l.itemId)
+    const existing = getProjectLinkForItem(tx, projectId, l.itemId)
     if (!existing) continue // membership arrives with the note itself, via its own projector
 
     tx.update(projectLinks)

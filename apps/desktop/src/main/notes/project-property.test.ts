@@ -40,6 +40,26 @@ describe('readProjectNames', () => {
   it('returns an empty list when the key is missing', () => {
     expect(readProjectNames({})).toEqual([])
   })
+
+  // A build that predates the `project` property type round-trips the array
+  // through the generic text path and pushes the JSON literal back to us. Read
+  // as one name it resolves to no project, so membership would vanish and the
+  // vault file would keep the mangled value.
+  it('recovers the names from a JSON-array string written by an older build', () => {
+    expect(readProjectNames({ project: '["Alpha","Beta"]' })).toEqual(['Alpha', 'Beta'])
+  })
+
+  it('applies the same cleanup to a recovered JSON array', () => {
+    expect(readProjectNames({ project: '["  Alpha  ", "alpha", "", 7]' })).toEqual(['Alpha'])
+  })
+
+  it('keeps a bracketed string that is not valid JSON as a literal name', () => {
+    expect(readProjectNames({ project: '[not json' })).toEqual(['[not json'])
+  })
+
+  it('keeps a JSON string that is not an array as a literal name', () => {
+    expect(readProjectNames({ project: '{"a":1}' })).toEqual(['{"a":1}'])
+  })
 })
 
 describe('withProjectName', () => {

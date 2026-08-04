@@ -18,8 +18,14 @@ const logger = createLogger('Projections:NoteProjectLinks')
  * the source of truth. Rows that survive the diff are never deleted and
  * reinserted — that is what preserves `position` and `pinned`, which are
  * project-hub state that has nothing to do with the note.
+ *
+ * Exported because the sync update path writes a note's properties without
+ * publishing `note.upserted` (see `sync/item-handlers/note-handler.ts`), so it
+ * has to drive this directly. Callers outside the projector must guard on the
+ * note actually being markdown, and must not let a throw here fail their own
+ * work.
  */
-function reconcileNoteLinks(noteId: string, properties: Record<string, unknown>): void {
+export function reconcileNoteLinks(noteId: string, properties: Record<string, unknown>): void {
   const db = getDatabase()
 
   const names = readProjectNames(properties)
@@ -64,7 +70,10 @@ function reconcileNoteLinks(noteId: string, properties: Record<string, unknown>)
 
   for (const row of existing) {
     if (desired.has(row.projectId)) continue
-    deleteProjectLink(db, row.projectId, 'note', noteId)
+    // Delete under the row's own `item_type`, not a hardcoded 'note': a link
+    // written by the project-hub file importer carries 'file' even for a
+    // markdown note, and would otherwise be undeletable.
+    deleteProjectLink(db, row.projectId, row.itemType, noteId)
     touched.add(row.projectId)
   }
 

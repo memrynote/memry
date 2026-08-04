@@ -37,6 +37,8 @@ import type { PropertyType } from '@memry/contracts/property-types'
 import { syncNoteToCache, syncFileToCache, deleteNoteFromCache } from '../../vault/note-sync'
 import { cleanupProjectLinksForDeletedNote } from '../../notes/runtime-effects'
 import { flushProjectionEvents } from '../../projections'
+import { reconcileNoteLinks } from '../../projections/projectors/note-project-links-projector'
+import { isMarkdownNote } from '../../database/queries/projects'
 import {
   getNoteMetadataById,
   updateNoteMetadata,
@@ -425,6 +427,26 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       })
 
       requestEmbeddedAttachmentDownloads(itemId, data.attachmentReferences)
+
+      // Frontmatter is the source of truth for a markdown note's project
+      // membership, and this branch just rewrote it. The create path derives the
+      // `project_links` rows from the `note.upserted` event `syncNoteToCache`
+      // publishes; this one publishes nothing, so it has to reconcile directly.
+      // Without this the note shows its project chip here while the project hub
+      // stays empty — and the next rename of that project skips the note, which
+      // unlinks it from the renamed project on every device.
+      if (propertiesPresent && isMarkdownNote(ctx.db, itemId)) {
+        try {
+          reconcileNoteLinks(itemId, remoteProperties)
+        } catch (err) {
+          // Everything else about the note applied; a link reconcile failure
+          // must not turn the whole pull into a retry.
+          log.error('Failed to reconcile project links for synced note update', {
+            itemId,
+            error: err
+          })
+        }
+      }
 
       ctx.emit(NotesChannels.events.UPDATED, { id: itemId, source: 'sync' })
       if (tagsChanged) {
