@@ -11,8 +11,6 @@
  * @module canvas/library-file
  */
 
-import path from 'path'
-
 import type { CanvasLibraryItem } from '@memry/contracts/canvas-api'
 import { createLogger } from '../lib/logger'
 import {
@@ -33,7 +31,9 @@ interface LibraryFileShape {
 }
 
 export function libraryFileRelativePath(): string {
-  return path.join(CANVAS_DIR, CANVAS_LIBRARY_FILE)
+  // Forward slash, never path.join: vault-relative paths are stored and
+  // compared POSIX-style so a vault written on Windows opens on macOS/Linux.
+  return `${CANVAS_DIR}/${CANVAS_LIBRARY_FILE}`
 }
 
 /**

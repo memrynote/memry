@@ -278,6 +278,8 @@ export async function reconcileCanvasFiles(
 }
 
 function titleFromPath(filePath: string): string {
+  // Case-insensitive extension strip: a `.EXCALIDRAW` file copied from a
+  // Windows vault must not keep the extension in its title.
   const base = filePath.split(/[\\/]/).pop() ?? filePath
-  return base.replace(/\.excalidraw$/, '')
+  return base.replace(/\.excalidraw$/i, '')
 }

@@ -188,7 +188,7 @@ export function updateCanvas(
     // heading. A failed rename keeps the old path — never lose the file.
     let filePath = row.filePath
     if (input.title !== undefined && input.title !== row.title) {
-      const target = allocateCanvasPath(vaultPath, nextTitle)
+      const target = allocateCanvasPath(vaultPath, nextTitle, new Set(), row.filePath)
       filePath = renameCanvasFile(vaultPath, row.filePath, target)
       if (filePath !== row.filePath) changes.filePath = filePath
     }

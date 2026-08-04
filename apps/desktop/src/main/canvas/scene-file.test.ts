@@ -1,10 +1,19 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync
+} from 'fs'
 import { tmpdir } from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import {
   CANVAS_DIR,
+  CANVAS_FILE_EXT,
   allocateCanvasPath,
   deleteCanvasFileSync,
   listCanvasFiles,
@@ -130,7 +139,7 @@ describe('readCanvasMeta', () => {
 
 describe('file io', () => {
   it('writes atomically and reads back', () => {
-    const rel = path.join(CANVAS_DIR, 'Plan.excalidraw')
+    const rel = `${CANVAS_DIR}/Plan.excalidraw`
 
     writeCanvasFileSync(resolveCanvasFile(vault, rel), withCanvasMeta('', META))
 
@@ -155,7 +164,7 @@ describe('file io', () => {
     writeFileSync(path.join(vault, CANVAS_DIR, 'library.excalidrawlib'), '{}')
     writeFileSync(path.join(vault, CANVAS_DIR, 'notes.md'), '#')
 
-    expect(listCanvasFiles(vault)).toEqual([path.join(CANVAS_DIR, 'A.excalidraw')])
+    expect(listCanvasFiles(vault)).toEqual([`${CANVAS_DIR}/A.excalidraw`])
   })
 
   it('lists nothing when the vault has no canvases directory', () => {
@@ -166,41 +175,39 @@ describe('file io', () => {
 describe('allocateCanvasPath', () => {
   it('names the file after the title', () => {
     expect(allocateCanvasPath(vault, 'Istanbul Weekend')).toBe(
-      path.join(CANVAS_DIR, 'Istanbul Weekend.excalidraw')
+      `${CANVAS_DIR}/Istanbul Weekend.excalidraw`
     )
   })
 
   it('falls back to Canvas for an empty title', () => {
-    expect(allocateCanvasPath(vault, null)).toBe(path.join(CANVAS_DIR, 'Canvas.excalidraw'))
+    expect(allocateCanvasPath(vault, null)).toBe(`${CANVAS_DIR}/Canvas.excalidraw`)
   })
 
   it('never returns a path that already exists on disk', () => {
     mkdirSync(path.join(vault, CANVAS_DIR), { recursive: true })
     writeFileSync(path.join(vault, CANVAS_DIR, 'Plan.excalidraw'), '{}')
 
-    expect(allocateCanvasPath(vault, 'Plan')).toBe(path.join(CANVAS_DIR, 'Plan 2.excalidraw'))
+    expect(allocateCanvasPath(vault, 'Plan')).toBe(`${CANVAS_DIR}/Plan 2.excalidraw`)
   })
 
   it('never collides with a path claimed earlier in the same batch', () => {
-    const taken = new Set([path.join(CANVAS_DIR, 'Plan.excalidraw')])
+    const taken = new Set([`${CANVAS_DIR}/Plan.excalidraw`])
 
-    expect(allocateCanvasPath(vault, 'Plan', taken)).toBe(
-      path.join(CANVAS_DIR, 'Plan 2.excalidraw')
-    )
+    expect(allocateCanvasPath(vault, 'Plan', taken)).toBe(`${CANVAS_DIR}/Plan 2.excalidraw`)
   })
 
   it('strips path traversal out of the title', () => {
     const allocated = allocateCanvasPath(vault, '../../etc/passwd')
 
-    expect(allocated.startsWith(CANVAS_DIR + path.sep)).toBe(true)
+    expect(allocated.startsWith(`${CANVAS_DIR}/`)).toBe(true)
     expect(allocated).not.toContain('..')
   })
 })
 
 describe('renameCanvasFile', () => {
   it('moves the file and returns the new path', () => {
-    const from = path.join(CANVAS_DIR, 'Old.excalidraw')
-    const to = path.join(CANVAS_DIR, 'New.excalidraw')
+    const from = `${CANVAS_DIR}/Old.excalidraw`
+    const to = `${CANVAS_DIR}/New.excalidraw`
     writeCanvasFileSync(resolveCanvasFile(vault, from), withCanvasMeta('', META))
 
     expect(renameCanvasFile(vault, from, to)).toBe(to)
@@ -209,18 +216,106 @@ describe('renameCanvasFile', () => {
   })
 
   it('keeps the old path when the file is missing, rather than losing the row', () => {
-    const from = path.join(CANVAS_DIR, 'Gone.excalidraw')
-    const to = path.join(CANVAS_DIR, 'New.excalidraw')
+    const from = `${CANVAS_DIR}/Gone.excalidraw`
+    const to = `${CANVAS_DIR}/New.excalidraw`
 
     expect(renameCanvasFile(vault, from, to)).toBe(from)
   })
 
   it('writes JSON a human can read in git', () => {
-    const rel = path.join(CANVAS_DIR, 'Pretty.excalidraw')
+    const rel = `${CANVAS_DIR}/Pretty.excalidraw`
     writeCanvasFileSync(resolveCanvasFile(vault, rel), withCanvasMeta('', META))
 
     expect(readFileSync(resolveCanvasFile(vault, rel), 'utf-8')).toContain(
       '\n  "type": "excalidraw"'
     )
+  })
+})
+
+describe('cross-platform paths and filenames', () => {
+  it('stores vault-relative paths with forward slashes on every platform', () => {
+    // A vault written on Windows must open on macOS/Linux after a copy; a
+    // backslash-joined path resolves to one bogus filename there.
+    expect(allocateCanvasPath(vault, 'Plan')).toBe(`${CANVAS_DIR}/Plan.excalidraw`)
+    expect(allocateCanvasPath(vault, 'Plan')).not.toContain('\\')
+    expect(listCanvasFiles(vault).every((p) => !p.includes('\\'))).toBe(true)
+  })
+
+  it('resolves a forward-slashed path natively (round-trips through the fs)', () => {
+    const rel = `${CANVAS_DIR}/Round Trip.excalidraw`
+
+    writeCanvasFileSync(resolveCanvasFile(vault, rel), withCanvasMeta('', META))
+
+    expect(resolveCanvasFile(vault, rel)).toBe(
+      path.join(vault, CANVAS_DIR, 'Round Trip.excalidraw')
+    )
+    expect(readCanvasMeta(readCanvasFileSync(resolveCanvasFile(vault, rel))!)).toEqual(META)
+  })
+
+  it('refuses a stored path that escapes the vault', () => {
+    expect(() => resolveCanvasFile(vault, '../../etc/passwd')).toThrow('escapes the vault')
+    expect(() => resolveCanvasFile(vault, 'canvases/../../secrets.txt')).toThrow(
+      'escapes the vault'
+    )
+  })
+
+  it('renames Windows reserved device names, which fail whatever the extension', () => {
+    for (const reserved of ['CON', 'nul', 'com1', 'LPT9']) {
+      const allocated = allocateCanvasPath(vault, reserved)
+      const base = allocated.slice(`${CANVAS_DIR}/`.length, -CANVAS_FILE_EXT.length)
+      expect(base.toLowerCase()).not.toBe(reserved.toLowerCase())
+      expect(base).toContain(reserved)
+    }
+  })
+
+  it('strips trailing dots and spaces, which Win32 silently trims', () => {
+    expect(allocateCanvasPath(vault, 'Plan.')).toBe(`${CANVAS_DIR}/Plan.excalidraw`)
+    expect(allocateCanvasPath(vault, 'Plan   ')).toBe(`${CANVAS_DIR}/Plan.excalidraw`)
+  })
+
+  it('treats a case-only difference as a collision (macOS/Windows are case-insensitive)', () => {
+    mkdirSync(path.join(vault, CANVAS_DIR), { recursive: true })
+    writeFileSync(path.join(vault, CANVAS_DIR, 'Plan.excalidraw'), '{}')
+
+    // On a case-insensitive fs existsSync already catches it; on Linux the
+    // batch set must, or the pair merges into one file after a copy to a Mac.
+    const taken = new Set([`${CANVAS_DIR}/PLAN.excalidraw`])
+    expect(allocateCanvasPath(vault, 'plan', taken)).toBe(`${CANVAS_DIR}/plan 2.excalidraw`)
+  })
+
+  it('keeps its own file on a case-only title change', () => {
+    mkdirSync(path.join(vault, CANVAS_DIR), { recursive: true })
+    writeFileSync(path.join(vault, CANVAS_DIR, 'Plan.excalidraw'), '{}')
+
+    // Its own file must not count as a collision, or the rename lands on "plan 2".
+    expect(allocateCanvasPath(vault, 'plan', new Set(), `${CANVAS_DIR}/Plan.excalidraw`)).toBe(
+      `${CANVAS_DIR}/plan.excalidraw`
+    )
+  })
+
+  it('leaves no temp files behind, and never a predictable one', () => {
+    const rel = `${CANVAS_DIR}/Temp Check.excalidraw`
+
+    writeCanvasFileSync(resolveCanvasFile(vault, rel), withCanvasMeta('', META))
+
+    const leftovers = readdirSync(path.join(vault, CANVAS_DIR)).filter((n) => n.endsWith('.tmp'))
+    expect(leftovers).toEqual([])
+  })
+
+  it('overwrites an existing document (rename must replace on Windows too)', () => {
+    const rel = `${CANVAS_DIR}/Overwrite.excalidraw`
+    const abs = resolveCanvasFile(vault, rel)
+    writeCanvasFileSync(abs, withCanvasMeta('', META))
+
+    writeCanvasFileSync(abs, withCanvasMeta('', { ...META, updatedAt: 9999 }))
+
+    expect(readCanvasMeta(readCanvasFileSync(abs)!)?.updatedAt).toBe(9999)
+  })
+
+  it('reports a directory sitting where a document should be, instead of throwing', () => {
+    const rel = `${CANVAS_DIR}/Folder.excalidraw`
+    mkdirSync(resolveCanvasFile(vault, rel), { recursive: true })
+
+    expect(readCanvasFileSync(resolveCanvasFile(vault, rel))).toBeNull()
   })
 })

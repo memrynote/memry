@@ -92,7 +92,7 @@ describe('legacy migration', () => {
 
     expect(result.migrated).toBe(1)
     const row = db.select().from(schema.canvases).all()[0]
-    expect(row.filePath).toBe(path.join(CANVAS_DIR, 'Weekend Plan.excalidraw'))
+    expect(row.filePath).toBe(`${CANVAS_DIR}/Weekend Plan.excalidraw`)
     expect(row.snapshotCiphertext).toBe('')
     const onDisk = fs.readFileSync(path.join(vault, row.filePath!), 'utf8')
     expect(JSON.parse(onDisk).elements).toEqual([{ id: 'r1' }])
@@ -193,7 +193,7 @@ describe('adoption', () => {
     expect(row).toMatchObject({
       id: 'copied-1',
       title: 'From USB',
-      filePath: path.join(CANVAS_DIR, 'From USB.excalidraw'),
+      filePath: `${CANVAS_DIR}/From USB.excalidraw`,
       createdAt: 5,
       // Null clock so the next sync seeds it out to the user's other devices.
       clock: null
@@ -228,7 +228,7 @@ describe('adoption', () => {
     expect(result.adopted).toBe(0)
     expect(db.select().from(schema.canvases).all()).toHaveLength(1)
     expect(db.select().from(schema.canvases).all()[0].filePath).toBe(
-      path.join(CANVAS_DIR, 'Renamed In Finder.excalidraw')
+      `${CANVAS_DIR}/Renamed In Finder.excalidraw`
     )
   })
 

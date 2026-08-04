@@ -113,7 +113,7 @@ function seedCanvas(
   opts: { deletedAt?: number | null; title?: string | null } = {}
 ): void {
   const now = Date.now()
-  const filePath = nodePath.join(CANVAS_DIR, `${id}.excalidraw`)
+  const filePath = `${CANVAS_DIR}/${id}.excalidraw`
   fs.mkdirSync(nodePath.join(vaultDir.current, CANVAS_DIR), { recursive: true })
   fs.writeFileSync(
     resolveCanvasFile(vaultDir.current, filePath),
@@ -420,7 +420,7 @@ describe('canvasHandler', () => {
 
     it('#given a row whose document is unreadable #then returns null (never pushes empty ink)', () => {
       seedCanvas(db, 'c1', sceneWith('note-1'), { A: 1 })
-      fs.rmSync(resolveCanvasFile(vaultDir.current, nodePath.join(CANVAS_DIR, 'c1.excalidraw')))
+      fs.rmSync(resolveCanvasFile(vaultDir.current, `${CANVAS_DIR}/c1.excalidraw`))
 
       expect(canvasHandler.buildPushPayload!(db, 'c1', 'device-A', 'update')).toBeNull()
     })

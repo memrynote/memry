@@ -67,7 +67,7 @@ describe('canvas store', () => {
     expect(elementsOf(created.scene)).toEqual([{ id: 'r1' }])
 
     const row = db.select().from(schema.canvases).all()[0]
-    expect(row.filePath).toBe(path.join(CANVAS_DIR, 'Brain dump.excalidraw'))
+    expect(row.filePath).toBe(`${CANVAS_DIR}/Brain dump.excalidraw`)
     // Nothing is encrypted at rest any more.
     expect(row.snapshotCiphertext).toBe('')
 
@@ -157,7 +157,7 @@ describe('canvas store', () => {
     updateCanvas(db, vault, created.id, { title: 'New' })
 
     const row = db.select().from(schema.canvases).all()[0]
-    expect(row.filePath).toBe(path.join(CANVAS_DIR, 'New.excalidraw'))
+    expect(row.filePath).toBe(`${CANVAS_DIR}/New.excalidraw`)
     expect(fs.existsSync(path.join(vault, CANVAS_DIR, 'Old.excalidraw'))).toBe(false)
     expect(elementsOf(getCanvas(db, vault, created.id)?.scene)).toEqual([{ id: 'r1' }])
   })
