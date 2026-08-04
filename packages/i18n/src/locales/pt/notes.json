@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Carregando modelo…",
+    "copySuffix": "{name} (Cópia)",
     "title": {
       "new": "Novo modelo",
-      "view": "Ver modelo",
-      "edit": "Editar modelo"
+      "placeholder": "Nome do modelo"
+    },
+    "icon": {
+      "label": "Ícone do modelo"
+    },
+    "content": {
+      "placeholder": "Conteúdo padrão para notas criadas a partir deste modelo. Use '{{'title'}}' para inserir o título da nota."
+    },
+    "actions": {
+      "create": "Criar modelo",
+      "update": "Atualizar",
+      "duplicateAndEdit": "Duplicar e editar",
+      "duplicate": "Duplicar",
+      "delete": "Excluir modelo",
+      "more": "Mais ações"
     },
     "toast": {
-      "nameRequired": "O nome do modelo é obrigatório",
-      "created": "Modelo criado",
       "createFailed": "Falha ao criar modelo",
-      "saved": "Modelo salvo",
-      "saveFailed": "Falha ao salvar o modelo",
-      "duplicateFailed": "Falha ao duplicar o modelo",
-      "deleteFailed": "Falha ao excluir modelo"
+      "saveFailed": "Falha ao salvar o modelo"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Compacto",
       "showSummaries": "Mostrar resumos",
       "cancel": "Cancelar"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Carregando modelo...",
-      "builtInTemplatesCannotBeModified": "Os modelos integrados não podem ser modificados",
-      "description": "Descrição",
-      "briefDescriptionOfThisTemplate": "Breve descrição deste modelo...",
-      "templateContent": "Conteúdo do modelo",
-      "use": "Usar ",
-      "toInsertTheNoteTitleWhenCreatingANote": "para inserir o título da nota ao criar uma nota.",
-      "templateName": "Nome do modelo",
-      "defaultContentForNotesCreatedFromThisTemplate": "Conteúdo padrão para notas criadas a partir deste modelo..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Carregando coleção...",
-      "templateCollection": "Coleção de modelos",
-      "templates": "Modelos",
-      "curatedStructuresForYourNotes": "Estruturas selecionadas para suas anotações.",
-      "newTemplate": "Novo modelo",
-      "myTemplates": "Meus modelos",
-      "builtIn": "Integrado",
-      "deleteTemplate": "Excluir modelo",
-      "areYouSureYouWantToDelete": "Tem certeza de que deseja excluir \"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "As notas criadas a partir deste modelo não serão afetadas.",
-      "cancel": "Cancelar",
-      "builtIn2": "Integrado",
-      "duplicate": "Duplicar",
-      "delete": "Excluir",
-      "startYourCollection": "Comece sua coleção",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Os modelos ajudam você a criar notas com estrutura consistente.",
-      "createTemplate": "Criar modelo"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Incorporado",

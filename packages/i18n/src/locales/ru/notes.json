@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Загрузка шаблона…",
+    "copySuffix": "{name} (Копия)",
     "title": {
       "new": "Новый шаблон",
-      "view": "Просмотр шаблона",
-      "edit": "Редактировать шаблон"
+      "placeholder": "Название шаблона"
+    },
+    "icon": {
+      "label": "Значок шаблона"
+    },
+    "content": {
+      "placeholder": "Содержимое по умолчанию для заметок, созданных из этого шаблона. Используйте '{{'title'}}', чтобы вставить заголовок заметки."
+    },
+    "actions": {
+      "create": "Создать шаблон",
+      "update": "Обновить",
+      "duplicateAndEdit": "Дублировать и изменить",
+      "duplicate": "Дублировать",
+      "delete": "Удалить шаблон",
+      "more": "Другие действия"
     },
     "toast": {
-      "nameRequired": "Укажите название шаблона.",
-      "created": "Шаблон создан",
       "createFailed": "Не удалось создать шаблон",
-      "saved": "Шаблон сохранен.",
-      "saveFailed": "Не удалось сохранить шаблон.",
-      "duplicateFailed": "Не удалось дублировать шаблон.",
-      "deleteFailed": "Не удалось удалить шаблон."
+      "saveFailed": "Не удалось сохранить шаблон."
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Компактный",
       "showSummaries": "Показать сводку",
       "cancel": "Отмена"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Загрузка шаблона...",
-      "builtInTemplatesCannotBeModified": "Встроенные шаблоны не могут быть изменены.",
-      "description": "Описание",
-      "briefDescriptionOfThisTemplate": "Краткое описание этого шаблона...",
-      "templateContent": "Содержимое шаблона",
-      "use": "Использование ",
-      "toInsertTheNoteTitleWhenCreatingANote": "чтобы вставить заголовок заметки при создании заметки.",
-      "templateName": "Имя шаблона",
-      "defaultContentForNotesCreatedFromThisTemplate": "Содержимое по умолчанию для заметок, созданных на основе этого шаблона..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Загрузка коллекции...",
-      "templateCollection": "Коллекция шаблонов",
-      "templates": "Шаблоны",
-      "curatedStructuresForYourNotes": "Кураторские структуры для ваших заметок.",
-      "newTemplate": "Новый шаблон",
-      "myTemplates": "Мои шаблоны",
-      "builtIn": "Встроенный",
-      "deleteTemplate": "Удалить шаблон",
-      "areYouSureYouWantToDelete": "Вы уверены, что хотите удалить \"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Заметки, созданные на основе этого шаблона, не будут затронуты.",
-      "cancel": "Отмена",
-      "builtIn2": "Встроенный",
-      "duplicate": "Дублировать",
-      "delete": "Удалить",
-      "startYourCollection": "Начни свою коллекцию",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Шаблоны помогают создавать заметки с единообразной структурой.",
-      "createTemplate": "Создать шаблон"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Встроенное",

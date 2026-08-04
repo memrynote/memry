@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Sjabloon laden…",
+    "copySuffix": "{name} (kopie)",
     "title": {
       "new": "Nieuwe sjabloon",
-      "view": "Sjabloon bekijken",
-      "edit": "Sjabloon bewerken"
+      "placeholder": "Sjabloonnaam"
+    },
+    "icon": {
+      "label": "Sjabloonpictogram"
+    },
+    "content": {
+      "placeholder": "Standaardinhoud voor notities die met dit sjabloon worden gemaakt. Gebruik '{{'title'}}' om de titel van de notitie in te voegen."
+    },
+    "actions": {
+      "create": "Sjabloon maken",
+      "update": "Bijwerken",
+      "duplicateAndEdit": "Dupliceren en bewerken",
+      "duplicate": "Dupliceren",
+      "delete": "Sjabloon verwijderen",
+      "more": "Meer acties"
     },
     "toast": {
-      "nameRequired": "Sjabloonnaam is vereist",
-      "created": "Sjabloon gemaakt",
       "createFailed": "Kan sjabloon niet maken",
-      "saved": "Sjabloon opgeslagen",
-      "saveFailed": "Kan sjabloon niet opslaan",
-      "duplicateFailed": "Kan de sjabloon niet dupliceren",
-      "deleteFailed": "Kan sjabloon niet verwijderen"
+      "saveFailed": "Kan sjabloon niet opslaan"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Compact",
       "showSummaries": "Samenvattingen weergeven",
       "cancel": "Annuleer"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Sjabloon laden...",
-      "builtInTemplatesCannotBeModified": "Ingebouwde sjablonen kunnen niet worden gewijzigd",
-      "description": "Beschrijving",
-      "briefDescriptionOfThisTemplate": "Korte beschrijving van dit sjabloon...",
-      "templateContent": "Sjablooninhoud",
-      "use": "Gebruik ",
-      "toInsertTheNoteTitleWhenCreatingANote": "om de notitietitel in te voegen bij het maken van een notitie.",
-      "templateName": "Sjabloonnaam",
-      "defaultContentForNotesCreatedFromThisTemplate": "Standaardinhoud voor notities gemaakt op basis van deze sjabloon..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Collectie laden...",
-      "templateCollection": "Sjablooncollectie",
-      "templates": "Sjablonen",
-      "curatedStructuresForYourNotes": "Samengestelde structuren voor uw aantekeningen.",
-      "newTemplate": "Nieuwe sjabloon",
-      "myTemplates": "Mijn sjablonen",
-      "builtIn": "Ingebouwd",
-      "deleteTemplate": "Sjabloon verwijderen",
-      "areYouSureYouWantToDelete": "Weet u zeker dat u wilt verwijderen \"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Notities die op basis van deze sjabloon zijn gemaakt, worden niet beïnvloed.",
-      "cancel": "Annuleer",
-      "builtIn2": "Ingebouwd",
-      "duplicate": "Duplicaat",
-      "delete": "Verwijderen",
-      "startYourCollection": "Begin met uw verzameling",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Met sjablonen kunt u notities maken met een consistente structuur.",
-      "createTemplate": "Sjabloon maken"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Ingebouwd",

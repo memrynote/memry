@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "テンプレートを読み込み中…",
+    "copySuffix": "{name} (コピー)",
     "title": {
       "new": "新しいテンプレート",
-      "view": "テンプレートの表示",
-      "edit": "テンプレートの編集"
+      "placeholder": "テンプレート名"
+    },
+    "icon": {
+      "label": "テンプレートのアイコン"
+    },
+    "content": {
+      "placeholder": "このテンプレートから作成されるノートの既定の内容です。'{{'title'}}' でノートのタイトルを挿入できます。"
+    },
+    "actions": {
+      "create": "テンプレートを作成",
+      "update": "更新",
+      "duplicateAndEdit": "複製して編集",
+      "duplicate": "複製",
+      "delete": "テンプレートを削除",
+      "more": "その他の操作"
     },
     "toast": {
-      "nameRequired": "テンプレート名は必須です",
-      "created": "テンプレートが作成されました",
       "createFailed": "テンプレートの作成に失敗しました",
-      "saved": "テンプレートが保存されました",
-      "saveFailed": "テンプレートの保存に失敗しました",
-      "duplicateFailed": "テンプレートの複製に失敗しました",
-      "deleteFailed": "テンプレートの削除に失敗しました"
+      "saveFailed": "テンプレートの保存に失敗しました"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "コンパクト",
       "showSummaries": "概要を表示",
       "cancel": "キャンセル"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "テンプレートを読み込んでいます...",
-      "builtInTemplatesCannotBeModified": "組み込みのテンプレートは変更できません",
-      "description": "説明",
-      "briefDescriptionOfThisTemplate": "このテンプレートの簡単な説明...",
-      "templateContent": "テンプレートの内容",
-      "use": "使用する ",
-      "toInsertTheNoteTitleWhenCreatingANote": "メモを作成するときにメモのタイトルを挿入します。",
-      "templateName": "テンプレート名",
-      "defaultContentForNotesCreatedFromThisTemplate": "このテンプレートから作成されたメモのデフォルトのコンテンツ..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "コレクションを読み込んでいます...",
-      "templateCollection": "テンプレートコレクション",
-      "templates": "テンプレート",
-      "curatedStructuresForYourNotes": "メモ用に厳選された構造。",
-      "newTemplate": "新しいテンプレート",
-      "myTemplates": "私のテンプレート",
-      "builtIn": "内蔵",
-      "deleteTemplate": "テンプレートの削除",
-      "areYouSureYouWantToDelete": "削除してもよろしいですか?",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "このテンプレートから作成されたメモは影響を受けません。",
-      "cancel": "キャンセル",
-      "builtIn2": "内蔵",
-      "duplicate": "重複",
-      "delete": "削除",
-      "startYourCollection": "コレクションを始めましょう",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "テンプレートを使用すると、一貫した構造のメモを作成できます。",
-      "createTemplate": "テンプレートの作成"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "組み込み",

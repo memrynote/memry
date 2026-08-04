@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "正在載入模板…",
+    "copySuffix": "{name}（複製）",
     "title": {
       "new": "新模板",
-      "view": "查看模板",
-      "edit": "編輯模板"
+      "placeholder": "模板名稱"
+    },
+    "icon": {
+      "label": "模板圖示"
+    },
+    "content": {
+      "placeholder": "使用此模板建立的筆記的預設內容。使用 '{{'title'}}' 可插入筆記標題。"
+    },
+    "actions": {
+      "create": "建立模板",
+      "update": "更新",
+      "duplicateAndEdit": "複製並編輯",
+      "duplicate": "複製",
+      "delete": "刪除模板",
+      "more": "更多操作"
     },
     "toast": {
-      "nameRequired": "模板名稱為必填",
-      "created": "模板已建立",
       "createFailed": "創建模板失敗",
-      "saved": "模板已保存",
-      "saveFailed": "無法儲存範本",
-      "duplicateFailed": "無法複製範本",
-      "deleteFailed": "無法刪除範本"
+      "saveFailed": "無法儲存範本"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "緊湊",
       "showSummaries": "顯示摘要",
       "cancel": "取消"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "正在加載模板...",
-      "builtInTemplatesCannotBeModified": "內建範本無法修改",
-      "description": "描述",
-      "briefDescriptionOfThisTemplate": "此模板的簡要描述...",
-      "templateContent": "範本內容",
-      "use": "使用",
-      "toInsertTheNoteTitleWhenCreatingANote": "在建立筆記時輸入筆記標題。",
-      "templateName": "範本名稱",
-      "defaultContentForNotesCreatedFromThisTemplate": "從此範本建立的筆記的預設內容..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "正在加載收藏...",
-      "templateCollection": "範本收藏",
-      "templates": "範本",
-      "curatedStructuresForYourNotes": "為您的筆記精心整理的結構。",
-      "newTemplate": "新模板",
-      "myTemplates": "我的模板",
-      "builtIn": "內建",
-      "deleteTemplate": "刪除範本",
-      "areYouSureYouWantToDelete": "你確定要刪除嗎",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "從此範本建立的筆記將不會受到影響。",
-      "cancel": "取消",
-      "builtIn2": "內建",
-      "duplicate": "複製",
-      "delete": "刪除",
-      "startYourCollection": "開始你的收藏",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "範本可以幫助你建立具有一致結構的筆記。",
-      "createTemplate": "創建範本"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "內建",

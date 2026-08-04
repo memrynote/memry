@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Ladataan mallia…",
+    "copySuffix": "{name} (kopio)",
     "title": {
       "new": "Uusi malli",
-      "view": "Näytä malli",
-      "edit": "Muokkaa mallia"
+      "placeholder": "Mallin nimi"
+    },
+    "icon": {
+      "label": "Mallin kuvake"
+    },
+    "content": {
+      "placeholder": "Oletussisältö tästä mallista luoduille muistiinpanoille. Lisää muistiinpanon otsikko merkinnällä '{{'title'}}'."
+    },
+    "actions": {
+      "create": "Luo malli",
+      "update": "Päivitä",
+      "duplicateAndEdit": "Kopioi ja muokkaa",
+      "duplicate": "Kopioi",
+      "delete": "Poista malli",
+      "more": "Lisää toimintoja"
     },
     "toast": {
-      "nameRequired": "Mallin nimi vaaditaan",
-      "created": "Malli luotu",
       "createFailed": "Mallin luominen epäonnistui",
-      "saved": "Malli tallennettu",
-      "saveFailed": "Mallin tallennus epäonnistui",
-      "duplicateFailed": "Mallin kopiointi epäonnistui",
-      "deleteFailed": "Mallin poistaminen epäonnistui"
+      "saveFailed": "Mallin tallennus epäonnistui"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Kompakti",
       "showSummaries": "Näytä yhteenvedot",
       "cancel": "Peruuta"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Ladataan mallia...",
-      "builtInTemplatesCannotBeModified": "Sisäisiä malleja ei voi muokata",
-      "description": "Kuvaus",
-      "briefDescriptionOfThisTemplate": "Lyhyt kuvaus tästä mallista...",
-      "templateContent": "Mallin sisältö",
-      "use": "Käytä ",
-      "toInsertTheNoteTitleWhenCreatingANote": "lisätäksesi muistiinpanon otsikon muistiinpanoa luodessasi.",
-      "templateName": "Mallin nimi",
-      "defaultContentForNotesCreatedFromThisTemplate": "Tästä mallista luotujen muistiinpanojen oletussisältö..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Ladataan kokoelmaa...",
-      "templateCollection": "Mallikokoelma",
-      "templates": "Mallit",
-      "curatedStructuresForYourNotes": "Kuroidut rakenteet muistiinpanoillesi.",
-      "newTemplate": "Uusi malli",
-      "myTemplates": "Omat mallit",
-      "builtIn": "Sisäänrakennettu",
-      "deleteTemplate": "Poista malli",
-      "areYouSureYouWantToDelete": "Oletko varma, että haluat poistaa \"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Tämä ei vaikuta tästä mallista luotuihin muistiinpanoihin.",
-      "cancel": "Peruuta",
-      "builtIn2": "Sisäänrakennettu",
-      "duplicate": "Kopioi",
-      "delete": "Poista",
-      "startYourCollection": "Aloita kokoelmasi",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Mallit auttavat luomaan muistiinpanoja, joiden rakenne on johdonmukainen.",
-      "createTemplate": "Luo malli"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Sisäänrakennettu",

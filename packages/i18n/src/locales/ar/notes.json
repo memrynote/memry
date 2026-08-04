@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "جارٍ تحميل القالب…",
+    "copySuffix": "{name} (نسخة)",
     "title": {
       "new": "قالب جديد",
-      "view": "عرض القالب",
-      "edit": "تحرير القالب"
+      "placeholder": "اسم القالب"
+    },
+    "icon": {
+      "label": "أيقونة القالب"
+    },
+    "content": {
+      "placeholder": "المحتوى الافتراضي للملاحظات المنشأة من هذا القالب. استخدم '{{'title'}}' لإدراج عنوان الملاحظة."
+    },
+    "actions": {
+      "create": "إنشاء قالب",
+      "update": "تحديث",
+      "duplicateAndEdit": "تكرار وتحرير",
+      "duplicate": "تكرار",
+      "delete": "حذف القالب",
+      "more": "إجراءات أخرى"
     },
     "toast": {
-      "nameRequired": "اسم القالب مطلوب",
-      "created": "تم إنشاء القالب",
       "createFailed": "فشل في إنشاء القالب",
-      "saved": "تم حفظ القالب",
-      "saveFailed": "فشل حفظ القالب",
-      "duplicateFailed": "فشل تكرار القالب",
-      "deleteFailed": "فشل في حذف القالب"
+      "saveFailed": "فشل حفظ القالب"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "مدمج",
       "showSummaries": "عرض الملخصات",
       "cancel": "إلغاء"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "جارٍ تحميل النموذج...",
-      "builtInTemplatesCannotBeModified": "لا يمكن تعديل القوالب المضمنة",
-      "description": "الوصف",
-      "briefDescriptionOfThisTemplate": "وصف مختصر لهذا القالب...",
-      "templateContent": "محتوى القالب",
-      "use": "استخدم ",
-      "toInsertTheNoteTitleWhenCreatingANote": "لإدراج عنوان الملاحظة عند إنشاء ملاحظة.",
-      "templateName": "اسم القالب",
-      "defaultContentForNotesCreatedFromThisTemplate": "المحتوى الافتراضي للملاحظات التي تم إنشاؤها من هذا القالب..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "جارٍ تحميل المجموعة...",
-      "templateCollection": "مجموعة القوالب",
-      "templates": "قوالب",
-      "curatedStructuresForYourNotes": "الهياكل المنسقة لملاحظاتك.",
-      "newTemplate": "قالب جديد",
-      "myTemplates": "القوالب الخاصة بي",
-      "builtIn": "مدمج",
-      "deleteTemplate": "حذف القالب",
-      "areYouSureYouWantToDelete": "هل أنت متأكد أنك تريد حذف \"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "لن تتأثر الملاحظات التي تم إنشاؤها من هذا القالب.",
-      "cancel": "إلغاء",
-      "builtIn2": "مدمج",
-      "duplicate": "مكررة",
-      "delete": "حذف",
-      "startYourCollection": "ابدأ مجموعتك",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "تساعدك القوالب على إنشاء ملاحظات ذات بنية متسقة.",
-      "createTemplate": "إنشاء قالب"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "مدمج",

@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Vorlage wird geladen…",
+    "copySuffix": "{name} (Kopie)",
     "title": {
       "new": "Neue Vorlage",
-      "view": "Vorlage anzeigen",
-      "edit": "Vorlage bearbeiten"
+      "placeholder": "Vorlagenname"
+    },
+    "icon": {
+      "label": "Vorlagensymbol"
+    },
+    "content": {
+      "placeholder": "Standardinhalt für Notizen, die aus dieser Vorlage erstellt werden. Mit '{{'title'}}' fügen Sie den Notiztitel ein."
+    },
+    "actions": {
+      "create": "Vorlage erstellen",
+      "update": "Aktualisieren",
+      "duplicateAndEdit": "Duplizieren und bearbeiten",
+      "duplicate": "Duplizieren",
+      "delete": "Vorlage löschen",
+      "more": "Weitere Aktionen"
     },
     "toast": {
-      "nameRequired": "Der Name der Vorlage ist erforderlich",
-      "created": "Vorlage erstellt",
       "createFailed": "Vorlage konnte nicht erstellt werden",
-      "saved": "Vorlage gespeichert",
-      "saveFailed": "Vorlage konnte nicht gespeichert werden",
-      "duplicateFailed": "Die Vorlage konnte nicht dupliziert werden",
-      "deleteFailed": "Vorlage konnte nicht gelöscht werden"
+      "saveFailed": "Vorlage konnte nicht gespeichert werden"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Kompakt",
       "showSummaries": "Zusammenfassungen anzeigen",
       "cancel": "Abbrechen"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Vorlage wird geladen...",
-      "builtInTemplatesCannotBeModified": "Integrierte Vorlagen können nicht geändert werden",
-      "description": "Beschreibung",
-      "briefDescriptionOfThisTemplate": "Kurze Beschreibung dieser Vorlage...",
-      "templateContent": "Vorlageninhalt",
-      "use": "Benutzen ",
-      "toInsertTheNoteTitleWhenCreatingANote": ", um den Notiztitel beim Erstellen einer Notiz einzufügen.",
-      "templateName": "Vorlagenname",
-      "defaultContentForNotesCreatedFromThisTemplate": "Standardinhalt für Notizen, die aus dieser Vorlage erstellt wurden ..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Sammlung wird geladen...",
-      "templateCollection": "Vorlagensammlung",
-      "templates": "Vorlagen",
-      "curatedStructuresForYourNotes": "Kuratierte Strukturen für Ihre Notizen.",
-      "newTemplate": "Neue Vorlage",
-      "myTemplates": "Meine Vorlagen",
-      "builtIn": "Eingebaut",
-      "deleteTemplate": "Vorlage löschen",
-      "areYouSureYouWantToDelete": "Sind Sie sicher, dass Sie löschen möchten?",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Notizen, die mit dieser Vorlage erstellt wurden, sind nicht betroffen.",
-      "cancel": "Abbrechen",
-      "builtIn2": "Eingebaut",
-      "duplicate": "Duplizieren",
-      "delete": "Löschen",
-      "startYourCollection": "Starten Sie Ihre Sammlung",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Mithilfe von Vorlagen können Sie Notizen mit einheitlicher Struktur erstellen.",
-      "createTemplate": "Vorlage erstellen"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Integriert",

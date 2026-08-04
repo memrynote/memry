@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Učitavanje predloška…",
+    "copySuffix": "{name} (Kopiraj)",
     "title": {
       "new": "Novi predložak",
-      "view": "Prikaži predložak",
-      "edit": "Uredi predložak"
+      "placeholder": "Naziv predloška"
+    },
+    "icon": {
+      "label": "Ikona predloška"
+    },
+    "content": {
+      "placeholder": "Zadani sadržaj za bilješke stvorene iz ovog predloška. Upotrijebite '{{'title'}}' za umetanje naslova bilješke."
+    },
+    "actions": {
+      "create": "Stvori predložak",
+      "update": "Ažuriraj",
+      "duplicateAndEdit": "Dupliciraj i uredi",
+      "duplicate": "Dupliciraj",
+      "delete": "Izbriši predložak",
+      "more": "Više radnji"
     },
     "toast": {
-      "nameRequired": "Potreban je naziv predloška",
-      "created": "Predložak izrađen",
       "createFailed": "Stvaranje predloška nije uspjelo",
-      "saved": "Predložak spremljen",
-      "saveFailed": "Spremanje predloška nije uspjelo",
-      "duplicateFailed": "Dupliciranje predloška nije uspjelo",
-      "deleteFailed": "Brisanje predloška nije uspjelo"
+      "saveFailed": "Spremanje predloška nije uspjelo"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Kompaktan",
       "showSummaries": "Prikaži sažetke",
       "cancel": "Odustani"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Učitavanje predloška...",
-      "builtInTemplatesCannotBeModified": "Ugrađeni predlošci ne mogu se mijenjati",
-      "description": "Opis",
-      "briefDescriptionOfThisTemplate": "Kratak opis ovog predloška...",
-      "templateContent": "Sadržaj predloška",
-      "use": "Koristite ",
-      "toInsertTheNoteTitleWhenCreatingANote": "za umetanje naslova bilješke prilikom stvaranja bilješke.",
-      "templateName": "Naziv predloška",
-      "defaultContentForNotesCreatedFromThisTemplate": "Zadani sadržaj za bilješke stvorene iz ovog predloška..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Učitavanje zbirke...",
-      "templateCollection": "Zbirka predložaka",
-      "templates": "Predlošci",
-      "curatedStructuresForYourNotes": "Odabrane strukture za vaše bilješke.",
-      "newTemplate": "Novi predložak",
-      "myTemplates": "Moji predlošci",
-      "builtIn": "Ugrađeni",
-      "deleteTemplate": "Izbriši predložak",
-      "areYouSureYouWantToDelete": "Jeste li sigurni da želite izbrisati \"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "To neće utjecati na bilješke stvorene iz ovog predloška.",
-      "cancel": "Odustani",
-      "builtIn2": "Ugrađeni",
-      "duplicate": "Duplikat",
-      "delete": "Izbriši",
-      "startYourCollection": "Započnite svoju kolekciju",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Predlošci vam pomažu stvoriti bilješke s dosljednom strukturom.",
-      "createTemplate": "Stvori predložak"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Ugrađeno",

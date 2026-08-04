@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Laster mal…",
+    "copySuffix": "{name} (Kopi)",
     "title": {
       "new": "Ny mal",
-      "view": "Vis mal",
-      "edit": "Rediger mal"
+      "placeholder": "Malnavn"
+    },
+    "icon": {
+      "label": "Malikon"
+    },
+    "content": {
+      "placeholder": "Standardinnhold for notater som opprettes fra denne malen. Bruk '{{'title'}}' for å sette inn notattittelen."
+    },
+    "actions": {
+      "create": "Opprett mal",
+      "update": "Oppdater",
+      "duplicateAndEdit": "Dupliser og rediger",
+      "duplicate": "Dupliser",
+      "delete": "Slett mal",
+      "more": "Flere handlinger"
     },
     "toast": {
-      "nameRequired": "Malnavn er påkrevd",
-      "created": "Mal opprettet",
       "createFailed": "Kunne ikke opprette mal",
-      "saved": "Malen er lagret",
-      "saveFailed": "Kunne ikke lagre malen",
-      "duplicateFailed": "Kunne ikke duplisere malen",
-      "deleteFailed": "Kunne ikke slette malen"
+      "saveFailed": "Kunne ikke lagre malen"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Kompakt",
       "showSummaries": "Vis sammendrag",
       "cancel": "Avbryt"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Laster inn mal...",
-      "builtInTemplatesCannotBeModified": "Innebygde maler kan ikke endres",
-      "description": "Beskrivelse",
-      "briefDescriptionOfThisTemplate": "Kort beskrivelse av denne malen...",
-      "templateContent": "Malinnhold",
-      "use": "Bruk ",
-      "toInsertTheNoteTitleWhenCreatingANote": "for å sette inn notattittelen når du oppretter et notat.",
-      "templateName": "Malnavn",
-      "defaultContentForNotesCreatedFromThisTemplate": "Standardinnhold for notater opprettet fra denne malen..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Laster inn samlingen ...",
-      "templateCollection": "Malsamling",
-      "templates": "Maler",
-      "curatedStructuresForYourNotes": "Kuraterte strukturer for notatene dine.",
-      "newTemplate": "Ny mal",
-      "myTemplates": "Mine maler",
-      "builtIn": "Innebygd",
-      "deleteTemplate": "Slett mal",
-      "areYouSureYouWantToDelete": "Er du sikker på at du vil slette \"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Notater opprettet fra denne malen vil ikke bli påvirket.",
-      "cancel": "Avbryt",
-      "builtIn2": "Innebygd",
-      "duplicate": "Duplikat",
-      "delete": "Slett",
-      "startYourCollection": "Start samlingen din",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Maler hjelper deg med å lage notater med konsistent struktur.",
-      "createTemplate": "Lag mal"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Innebygd",

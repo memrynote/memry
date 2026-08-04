@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Şablon yükleniyor…",
+    "copySuffix": "{name} (Kopya)",
     "title": {
       "new": "Yeni Şablon",
-      "view": "Şablonu Görüntüle",
-      "edit": "Şablonu Düzenle"
+      "placeholder": "Şablon adı"
+    },
+    "icon": {
+      "label": "Şablon simgesi"
+    },
+    "content": {
+      "placeholder": "Bu şablondan oluşturulan notların varsayılan içeriği. Not başlığını eklemek için '{{'title'}}' kullanın."
+    },
+    "actions": {
+      "create": "Şablon Oluştur",
+      "update": "Güncelle",
+      "duplicateAndEdit": "Çoğalt ve düzenle",
+      "duplicate": "Çoğalt",
+      "delete": "Şablonu sil",
+      "more": "Diğer işlemler"
     },
     "toast": {
-      "nameRequired": "Şablon adı gerekli",
-      "created": "Şablon oluşturuldu",
       "createFailed": "Şablon oluşturulamadı",
-      "saved": "Şablon kaydedildi",
-      "saveFailed": "Şablon kaydedilemedi",
-      "duplicateFailed": "Şablon kopyalanamadı",
-      "deleteFailed": "Şablon silinemedi"
+      "saveFailed": "Şablon kaydedilemedi"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Kompakt",
       "showSummaries": "Özetleri göster",
       "cancel": "İptal"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Şablon yükleniyor...",
-      "builtInTemplatesCannotBeModified": "Yerleşik şablonlar değiştirilemez",
-      "description": "Açıklama",
-      "briefDescriptionOfThisTemplate": "Bu şablonun kısa açıklaması...",
-      "templateContent": "Şablon İçeriği",
-      "use": "Kullanım ",
-      "toInsertTheNoteTitleWhenCreatingANote": "Not oluştururken not başlığını eklemek için.",
-      "templateName": "Şablon Adı",
-      "defaultContentForNotesCreatedFromThisTemplate": "Bu şablondan oluşturulan notlar için varsayılan içerik..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Koleksiyon yükleniyor...",
-      "templateCollection": "Şablon Koleksiyonu",
-      "templates": "Şablonlar",
-      "curatedStructuresForYourNotes": "Notlarınız için seçilmiş yapılar.",
-      "newTemplate": "Yeni Şablon",
-      "myTemplates": "Şablonlarım",
-      "builtIn": "Yerleşik",
-      "deleteTemplate": "Şablonu Sil",
-      "areYouSureYouWantToDelete": "Silmek istediğinizden emin misiniz: \"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Bu şablondan oluşturulan notlar etkilenmeyecektir.",
-      "cancel": "İptal",
-      "builtIn2": "Yerleşik",
-      "duplicate": "Çoğalt",
-      "delete": "Sil",
-      "startYourCollection": "Koleksiyonunuzu Başlatın",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Şablonlar tutarlı yapıya sahip notlar oluşturmanıza yardımcı olur.",
-      "createTemplate": "Şablon Oluştur"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Yerleşik",

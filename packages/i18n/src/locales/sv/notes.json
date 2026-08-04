@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Läser in mall…",
+    "copySuffix": "{name} (Kopiera)",
     "title": {
       "new": "Ny mall",
-      "view": "Visa mall",
-      "edit": "Redigera mall"
+      "placeholder": "Mallnamn"
+    },
+    "icon": {
+      "label": "Mallikon"
+    },
+    "content": {
+      "placeholder": "Standardinnehåll för anteckningar som skapas från den här mallen. Använd '{{'title'}}' för att infoga anteckningens titel."
+    },
+    "actions": {
+      "create": "Skapa mall",
+      "update": "Uppdatera",
+      "duplicateAndEdit": "Duplicera och redigera",
+      "duplicate": "Duplicera",
+      "delete": "Ta bort mall",
+      "more": "Fler åtgärder"
     },
     "toast": {
-      "nameRequired": "Mallnamn krävs",
-      "created": "Mall skapad",
       "createFailed": "Misslyckades med att skapa mall",
-      "saved": "Mall sparad",
-      "saveFailed": "Misslyckades med att spara mall",
-      "duplicateFailed": "Misslyckades med att duplicera mall",
-      "deleteFailed": "Misslyckades med att ta bort mall"
+      "saveFailed": "Misslyckades med att spara mall"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Kompakt",
       "showSummaries": "Visa sammanfattningar",
       "cancel": "Avbryt"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Laddar mall...",
-      "builtInTemplatesCannotBeModified": "Inbyggda mallar kan inte ändras",
-      "description": "Beskrivning",
-      "briefDescriptionOfThisTemplate": "Kort beskrivning av denna mall...",
-      "templateContent": "Mallinnehåll",
-      "use": "Använd ",
-      "toInsertTheNoteTitleWhenCreatingANote": "för att infoga anteckningstiteln när du skapar en anteckning.",
-      "templateName": "Mallnamn",
-      "defaultContentForNotesCreatedFromThisTemplate": "Standardinnehåll för anteckningar skapade från denna mall..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Laddar samling...",
-      "templateCollection": "Mallkollektion",
-      "templates": "Mallar",
-      "curatedStructuresForYourNotes": "Kuraterade strukturer för dina anteckningar.",
-      "newTemplate": "Ny mall",
-      "myTemplates": "Mina mallar",
-      "builtIn": "Inbyggd",
-      "deleteTemplate": "Radera mall",
-      "areYouSureYouWantToDelete": "Är du säker på att du vill radera ",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Anteckningar skapade från denna mall kommer inte att påverkas.",
-      "cancel": "Avbryt",
-      "builtIn2": "Inbyggd",
-      "duplicate": "Duplicera",
-      "delete": "Ta bort",
-      "startYourCollection": "Starta din samling",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Mallar hjälper dig att skapa anteckningar med konsekvent struktur.",
-      "createTemplate": "Skapa mall"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Inbyggd",

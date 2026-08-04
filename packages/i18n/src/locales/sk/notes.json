@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Načítava sa šablóna…",
+    "copySuffix": "{name} (Kopírovať)",
     "title": {
       "new": "Nová šablóna",
-      "view": "Zobraziť šablónu",
-      "edit": "Upraviť šablónu"
+      "placeholder": "Názov šablóny"
+    },
+    "icon": {
+      "label": "Ikona šablóny"
+    },
+    "content": {
+      "placeholder": "Predvolený obsah poznámok vytvorených z tejto šablóny. Pomocou '{{'title'}}' vložíte názov poznámky."
+    },
+    "actions": {
+      "create": "Vytvoriť šablónu",
+      "update": "Aktualizovať",
+      "duplicateAndEdit": "Duplikovať a upraviť",
+      "duplicate": "Duplikovať",
+      "delete": "Vymazať šablónu",
+      "more": "Ďalšie akcie"
     },
     "toast": {
-      "nameRequired": "Je potrebné zadať názov šablóny",
-      "created": "Šablóna vytvorená",
       "createFailed": "Nepodarilo sa vytvoriť šablónu",
-      "saved": "Šablóna uložená",
-      "saveFailed": "Nepodarilo sa uložiť šablónu",
-      "duplicateFailed": "Nepodarilo sa skopírovať šablónu",
-      "deleteFailed": "Nepodarilo sa vymazať šablónu"
+      "saveFailed": "Nepodarilo sa uložiť šablónu"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Kompaktné",
       "showSummaries": "Zobraziť súhrny",
       "cancel": "Zrušiť"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Načítavam šablónu...",
-      "builtInTemplatesCannotBeModified": "Vstavané šablóny nie je možné upravovať",
-      "description": "Popis",
-      "briefDescriptionOfThisTemplate": "Krátky popis tejto šablóny...",
-      "templateContent": "Obsah šablóny",
-      "use": "Použite ",
-      "toInsertTheNoteTitleWhenCreatingANote": "na vloženie názvu poznámky pri vytváraní poznámky.",
-      "templateName": "Názov šablóny",
-      "defaultContentForNotesCreatedFromThisTemplate": "Predvolený obsah pre poznámky vytvorené z tejto šablóny..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Načítavam kolekciu...",
-      "templateCollection": "Kolekcia šablón",
-      "templates": "Šablóny",
-      "curatedStructuresForYourNotes": "Kurátorované štruktúry pre vaše poznámky.",
-      "newTemplate": "Nová šablóna",
-      "myTemplates": "Moje šablóny",
-      "builtIn": "Vstavané",
-      "deleteTemplate": "Zmazať šablónu",
-      "areYouSureYouWantToDelete": "Ste si istý, že chcete vymazať",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Poznámky vytvorené z tejto šablóny nebudú ovplyvnené.",
-      "cancel": "Zrušiť",
-      "builtIn2": "Vstavané",
-      "duplicate": "Duplikovať",
-      "delete": "Vymazať",
-      "startYourCollection": "Začnite svoju kolekciu",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Šablóny vám pomáhajú vytvárať poznámky so konzistentnou štruktúrou.",
-      "createTemplate": "Vytvoriť šablónu"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Vstavané",

@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Đang tải mẫu…",
+    "copySuffix": "{name} (Sao chép)",
     "title": {
       "new": "Mẫu mới",
-      "view": "Xem Mẫu",
-      "edit": "Chỉnh sửa Mẫu"
+      "placeholder": "Tên mẫu"
+    },
+    "icon": {
+      "label": "Biểu tượng mẫu"
+    },
+    "content": {
+      "placeholder": "Nội dung mặc định cho ghi chú được tạo từ mẫu này. Dùng '{{'title'}}' để chèn tiêu đề ghi chú."
+    },
+    "actions": {
+      "create": "Tạo mẫu",
+      "update": "Cập nhật",
+      "duplicateAndEdit": "Sao chép và chỉnh sửa",
+      "duplicate": "Sao chép",
+      "delete": "Xóa mẫu",
+      "more": "Thao tác khác"
     },
     "toast": {
-      "nameRequired": "Tên mẫu là bắt buộc",
-      "created": "Mẫu đã được tạo",
       "createFailed": "Không tạo được mẫu",
-      "saved": "Mẫu đã được lưu",
-      "saveFailed": "Không lưu được mẫu",
-      "duplicateFailed": "Không nhân đôi được mẫu",
-      "deleteFailed": "Không xóa được mẫu"
+      "saveFailed": "Không lưu được mẫu"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Gọn gàng",
       "showSummaries": "Hiển thị tóm tắt",
       "cancel": "Hủy"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Đang tải mẫu...",
-      "builtInTemplatesCannotBeModified": "Không thể sửa đổi các mẫu tích hợp sẵn",
-      "description": "Mô tả",
-      "briefDescriptionOfThisTemplate": "Mô tả ngắn về mẫu này...",
-      "templateContent": "Nội dung mẫu",
-      "use": "Sử dụng ",
-      "toInsertTheNoteTitleWhenCreatingANote": "để chèn tiêu đề ghi chú khi tạo ghi chú.",
-      "templateName": "Tên Mẫu",
-      "defaultContentForNotesCreatedFromThisTemplate": "Nội dung mặc định cho các ghi chú được tạo từ mẫu này..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Đang tải bộ sưu tập...",
-      "templateCollection": "Bộ Sưu Tập Mẫu",
-      "templates": "Các mẫu",
-      "curatedStructuresForYourNotes": "Cấu trúc được tuyển chọn cho các ghi chú của bạn.",
-      "newTemplate": "Mẫu mới",
-      "myTemplates": "Mẫu của tôi",
-      "builtIn": "Có sẵn",
-      "deleteTemplate": "Xóa Mẫu",
-      "areYouSureYouWantToDelete": "Bạn có chắc muốn xóa không?  ",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Các ghi chú được tạo từ mẫu này sẽ không bị ảnh hưởng.",
-      "cancel": "Hủy",
-      "builtIn2": "Có sẵn",
-      "duplicate": "Sao chép",
-      "delete": "Xóa",
-      "startYourCollection": "Bắt đầu Bộ Sưu Tập Của Bạn",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Các mẫu giúp bạn tạo ghi chú với cấu trúc nhất quán.",
-      "createTemplate": "Tạo Mẫu"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Tích hợp",

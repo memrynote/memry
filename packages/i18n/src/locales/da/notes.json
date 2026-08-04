@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Indlæser skabelon…",
+    "copySuffix": "{name} (Kopi)",
     "title": {
       "new": "Ny skabelon",
-      "view": "Se skabelon",
-      "edit": "Rediger skabelon"
+      "placeholder": "Skabelonnavn"
+    },
+    "icon": {
+      "label": "Skabelonikon"
+    },
+    "content": {
+      "placeholder": "Standardindhold for noter oprettet ud fra denne skabelon. Brug '{{'title'}}' til at indsætte notens titel."
+    },
+    "actions": {
+      "create": "Opret skabelon",
+      "update": "Opdater",
+      "duplicateAndEdit": "Dupliker og rediger",
+      "duplicate": "Dupliker",
+      "delete": "Slet skabelon",
+      "more": "Flere handlinger"
     },
     "toast": {
-      "nameRequired": "Skabelonnavn er påkrævet",
-      "created": "Skabelon oprettet",
       "createFailed": "Kunne ikke oprette skabelon",
-      "saved": "Skabelonen er gemt",
-      "saveFailed": "Skabelonen kunne ikke gemmes",
-      "duplicateFailed": "Skabelonen kunne ikke duplikeres",
-      "deleteFailed": "Skabelonen kunne ikke slettes"
+      "saveFailed": "Skabelonen kunne ikke gemmes"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Kompakt",
       "showSummaries": "Vis oversigter",
       "cancel": "Annuller"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Indlæser skabelon...",
-      "builtInTemplatesCannotBeModified": "Indbyggede skabeloner kan ikke ændres",
-      "description": "Beskrivelse",
-      "briefDescriptionOfThisTemplate": "Kort beskrivelse af denne skabelon...",
-      "templateContent": "Skabelonindhold",
-      "use": "Brug ",
-      "toInsertTheNoteTitleWhenCreatingANote": "for at indsætte notetitlen, når du opretter en note.",
-      "templateName": "Skabelonnavn",
-      "defaultContentForNotesCreatedFromThisTemplate": "Standardindhold for noter oprettet ud fra denne skabelon..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Indlæser samling...",
-      "templateCollection": "Skabelonsamling",
-      "templates": "Skabeloner",
-      "curatedStructuresForYourNotes": "Kurerede strukturer til dine noter.",
-      "newTemplate": "Ny skabelon",
-      "myTemplates": "Mine skabeloner",
-      "builtIn": "Indbygget",
-      "deleteTemplate": "Slet skabelon",
-      "areYouSureYouWantToDelete": "Er du sikker på, at du vil slette \"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Noter oprettet fra denne skabelon vil ikke blive påvirket.",
-      "cancel": "Annuller",
-      "builtIn2": "Indbygget",
-      "duplicate": "Dublet",
-      "delete": "Slet",
-      "startYourCollection": "Start din samling",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Skabeloner hjælper dig med at oprette noter med ensartet struktur.",
-      "createTemplate": "Opret skabelon"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Indbygget",

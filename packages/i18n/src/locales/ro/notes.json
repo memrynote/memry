@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Se încarcă șablonul…",
+    "copySuffix": "{name} (Copiere)",
     "title": {
       "new": "Șablon nou",
-      "view": "Vizualizare șablon",
-      "edit": "Editați șablonul"
+      "placeholder": "Numele șablonului"
+    },
+    "icon": {
+      "label": "Pictograma șablonului"
+    },
+    "content": {
+      "placeholder": "Conținutul implicit pentru notițele create din acest șablon. Folosiți '{{'title'}}' pentru a insera titlul notiței."
+    },
+    "actions": {
+      "create": "Creează șablon",
+      "update": "Actualizează",
+      "duplicateAndEdit": "Duplicare și editare",
+      "duplicate": "Duplicat",
+      "delete": "Șterge șablonul",
+      "more": "Mai multe acțiuni"
     },
     "toast": {
-      "nameRequired": "Numele șablonului este obligatoriu",
-      "created": "Șablon creat",
       "createFailed": "Nu s-a putut crea șablonul",
-      "saved": "Șablonul a fost salvat",
-      "saveFailed": "Nu s-a salvat șablonul",
-      "duplicateFailed": "Nu s-a putut duplica șablonul",
-      "deleteFailed": "Ștergerea șablonului a eșuat"
+      "saveFailed": "Nu s-a salvat șablonul"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Compact",
       "showSummaries": "Afișați rezumate",
       "cancel": "Anulează"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Se încarcă șablonul...",
-      "builtInTemplatesCannotBeModified": "Șabloanele încorporate nu pot fi modificate",
-      "description": "Descriere",
-      "briefDescriptionOfThisTemplate": "Scurtă descriere a acestui șablon...",
-      "templateContent": "Conținutul șablonului",
-      "use": "Utilizați ",
-      "toInsertTheNoteTitleWhenCreatingANote": "pentru a insera titlul notei la crearea unei note.",
-      "templateName": "Nume șablon",
-      "defaultContentForNotesCreatedFromThisTemplate": "Conținut prestabilit pentru notele create din acest șablon..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Se încarcă colecția...",
-      "templateCollection": "Colecție de șabloane",
-      "templates": "Șabloane",
-      "curatedStructuresForYourNotes": "Structuri organizate pentru notițele dvs.",
-      "newTemplate": "Șablon nou",
-      "myTemplates": "Șabloanele mele",
-      "builtIn": "Încorporat",
-      "deleteTemplate": "Ștergeți șablonul",
-      "areYouSureYouWantToDelete": "Sigur vrei să ștergi\"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Notele create din acest șablon nu vor fi afectate.",
-      "cancel": "Anulează",
-      "builtIn2": "Încorporat",
-      "duplicate": "Duplicat",
-      "delete": "Ștergeți",
-      "startYourCollection": "Începeți-vă colecția",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Șabloanele vă ajută să creați note cu o structură consistentă.",
-      "createTemplate": "Creați șablon"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Încorporat",
