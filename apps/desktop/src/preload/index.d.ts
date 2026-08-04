@@ -928,7 +928,7 @@ export interface GraphClientAPI {
       id: string
       source: string
       target: string
-      type: 'wikilink' | 'task-note' | 'project-task' | 'tag-cooccurrence'
+      type: 'wikilink' | 'task-note' | 'project-task' | 'tag-cooccurrence' | 'relation'
       weight: number
     }>
   }>
@@ -949,7 +949,7 @@ export interface GraphClientAPI {
       id: string
       source: string
       target: string
-      type: 'wikilink' | 'task-note' | 'project-task' | 'tag-cooccurrence'
+      type: 'wikilink' | 'task-note' | 'project-task' | 'tag-cooccurrence' | 'relation'
       weight: number
     }>
   }>

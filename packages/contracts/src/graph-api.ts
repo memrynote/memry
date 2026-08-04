@@ -19,7 +19,7 @@ export const GraphEdgeSchema = z.object({
   id: z.string().min(1),
   source: z.string().min(1),
   target: z.string().min(1),
-  type: z.enum(['wikilink', 'task-note', 'project-task', 'tag-cooccurrence']),
+  type: z.enum(['wikilink', 'task-note', 'project-task', 'tag-cooccurrence', 'relation']),
   weight: z.number().default(1)
 })
 
