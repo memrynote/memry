@@ -107,7 +107,7 @@ A `Date` property can surface its value on the [calendar](/user-guide/calendar).
 
 ### Relation Properties
 
-A `Relation` property points to one or more other notes, tasks, or events. Each value renders as a clickable chip showing the target's title (and icon, for notes); clicking a chip opens the target.
+A `Relation` property points to one or more other notes, tasks, or events. Each value renders as a chip showing the target's title and an icon for its kind. Titles are resolved live, so renaming a target updates every chip pointing at it.
 
 Use the relation picker to search and add targets, and to remove existing ones. A target that's been deleted still shows its chip, dimmed, so the reference isn't silently dropped.
 
