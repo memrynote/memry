@@ -596,7 +596,10 @@ export function NotePage({ noteId }: NotePageProps) {
       const folderPath = withoutNotesPrefix.slice(0, -1).join('/')
 
       return {
-        id: bl.sourceId,
+        // A source can reference the target both via wikilink and via a
+        // relation property — two distinct entries with the same sourceId.
+        // Disambiguate the React list key so they don't collide.
+        id: bl.via ? `${bl.sourceId}:property:${bl.via.propertyName}` : bl.sourceId,
         noteId: bl.sourceId,
         noteTitle: bl.sourceTitle,
         folder: folderPath,
