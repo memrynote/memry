@@ -134,6 +134,7 @@ A note or journal entry joins a project through its **`project` property**, not 
 
 - **Renaming or deleting a project** rewrites the `project` value in every linked note's frontmatter — a rename updates the name in place, a delete removes it from the list.
 - Dragging a note or journal entry onto a project in the sidebar sets this same property.
+- **In a [folder view](/user-guide/folder-view) column**, each project shows as a pill with the project's color and icon; clicking one opens that project's page, the way clicking a tag opens its tag page. The cell is read-only there — a `project` value is a list of project _names_, so editing it as free text in a table would point the note at a project that doesn't exist. Add, remove, and rename projects from the note's property row or the project itself.
 
 ::: tip First open after upgrading
 Notes that were already linked to a project before this property existed get that link written into their frontmatter once, the first time you open the vault. Those notes are saved in the same pass, so their frontmatter is normalised the way any memrynote save normalises it: tags written inline in the note body are lifted into the `tags:` list, and tag capitalisation follows what memrynote has indexed. Nothing is removed, and the note body is untouched.

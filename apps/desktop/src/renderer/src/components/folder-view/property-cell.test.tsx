@@ -15,7 +15,14 @@ import {
 
 const mocks = vi.hoisted(() => ({
   resolveRefs: vi.fn(),
-  openTab: vi.fn()
+  openTab: vi.fn(),
+  projects: [] as Array<{
+    id: string
+    name: string
+    icon: string
+    color: string
+    isArchived: boolean
+  }>
 }))
 
 vi.mock('@/services/properties-service', () => ({
@@ -24,10 +31,16 @@ vi.mock('@/services/properties-service', () => ({
   }
 }))
 
-// RelationCell chips navigate through useRelationNavigation, which reads the
+// RelationCell and ProjectCell chips navigate by opening a tab, which reads the
 // tabs context. There is no TabsProvider in these tests.
 vi.mock('@/contexts/tabs', () => ({
   useTabs: () => ({ openTab: mocks.openTab })
+}))
+
+// ProjectCell resolves names against the live project list from the tasks
+// context. There is no TasksProvider in these tests.
+vi.mock('@/contexts/tasks', () => ({
+  useTasksOptional: () => ({ projects: mocks.projects })
 }))
 
 // Real i18n: tests/setup-dom.ts initializes the global i18next singleton with
@@ -218,19 +231,51 @@ describe('folder-view property cells', () => {
     expect(screen.queryByText('[]')).not.toBeInTheDocument()
   })
 
-  it('commits project edits as an array, not a joined string', () => {
-    // Regression test for the second (edit-mode) switch: without a 'project'
-    // case it fell to the plain TextEditor default, which would commit a
-    // single comma-joined string and silently change the property's stored
-    // type from string[] to string.
+  it('treats a bare project string as one name, not a comma list', () => {
+    // The main process's readProjectNames widens a non-array value to a single
+    // entry. Splitting on commas the way multiselect does would turn a project
+    // genuinely called "Alpha, Beta" into two chips that resolve to nothing.
+    render(<PropertyCell value="Alpha, Beta" type="project" />)
+    expect(screen.getByText('Alpha, Beta')).toBeInTheDocument()
+  })
+
+  it('never opens an editor for project values', () => {
+    // Regression test: project entries are project NAMES. Click-to-edit let a
+    // user type over one, pointing the note at a project that does not exist
+    // and silently dropping the membership. The cell is read-only now, even
+    // when the table passes onSave.
     const onSave = vi.fn()
     render(<EditablePropertyCell value={['Reading']} type="project" onSave={onSave} />)
 
+    fireEvent.click(screen.getByText('Reading'))
+
+    expect(screen.queryByLabelText('text-editor')).not.toBeInTheDocument()
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
+  it('opens the project page when a resolved project chip is clicked', () => {
+    mocks.openTab.mockClear()
+    mocks.projects = [
+      { id: 'prj_1', name: 'Reading', icon: 'Folder', color: '#6366f1', isArchived: false }
+    ]
+
+    render(<EditablePropertyCell value={['Reading', 'Ghost']} type="project" onSave={vi.fn()} />)
+
     fireEvent.click(screen.getByRole('button', { name: /Reading/ }))
-    fireEvent.change(screen.getByLabelText('text-editor'), {
-      target: { value: 'Reading, Fitness 2026' }
-    })
-    expect(onSave).toHaveBeenCalledWith(['Reading', 'Fitness 2026'])
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'project',
+        entityId: 'prj_1',
+        path: '/project/prj_1',
+        title: 'Reading'
+      })
+    )
+
+    // A name matching no project still renders, but has nothing to open.
+    expect(screen.getByText('Ghost')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Ghost/ })).not.toBeInTheDocument()
+
+    mocks.projects = []
   })
 })
 

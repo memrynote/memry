@@ -43,6 +43,10 @@ import { propertiesService } from '@/services/properties-service'
 import type { RelationKind, ResolvedRelationRef } from '@memry/contracts/properties-api'
 import { useT } from '@memry/i18n/renderer'
 import { useRelationNavigation } from '@/hooks/use-relation-navigation'
+import { useTabs } from '@/contexts/tabs'
+import { useTasksOptional } from '@/contexts/tasks'
+import { ProjectIcon } from '@/components/tasks/project-icon'
+import type { Project } from '@/data/tasks-data'
 import { TagChip } from '@/components/note/tags-row/TagChip'
 import { toTagChip, type TagMeta, type TagMetaMap } from './note-card-pieces'
 
@@ -261,15 +265,13 @@ function PropertyValueDisplay({
     case 'select':
       return <SelectCell value={stringifyUnknown(value)} className={className} />
 
-    case 'multiselect':
-    case 'project': {
-      // `project` values are an array of project names (frontmatter), the same
-      // shape as multiselect. Per-chip project color/icon would need the live
-      // project list threaded down into every row's cell — plain chips here
-      // instead (see property-cell.tsx PropertyType doc / fix report).
+    case 'multiselect': {
       const items = Array.isArray(value) ? value : stringifyUnknown(value).split(',')
       return <MultiSelectCell values={items.map(stringifyUnknown)} className={className} />
     }
+
+    case 'project':
+      return <ProjectCell value={value} className={className} />
 
     case 'url':
       return urlAsLink ? (
@@ -363,13 +365,16 @@ export const EditablePropertyCell = memo(function EditablePropertyCell({
     [onSave, value]
   )
 
-  // Relation values are read-only everywhere in the folder view: this cell
-  // has no picker or remove control, so an edit affordance here would let a
-  // click fall through to the generic text editor below and let a user
-  // overwrite the URI array with a plain comma-joined string. Bypass the
-  // onSave-driven click-to-edit wrapper unconditionally, regardless of
+  // Relation and project values are read-only everywhere in the folder view:
+  // this cell has no picker or remove control, so an edit affordance here
+  // would let a click fall through to the generic text editor below and let a
+  // user overwrite the value with free text. For `project` that is worse than
+  // cosmetic — its entries are project NAMES, so typing over one points the
+  // note at a project that does not exist and silently drops the membership
+  // (renaming a project is the Project page's job, not a table cell's). Bypass
+  // the onSave-driven click-to-edit wrapper unconditionally, regardless of
   // whether the caller passed onSave.
-  if (type === 'relation') {
+  if (type === 'relation' || type === 'project') {
     return (
       <PropertyValueDisplay
         value={value}
@@ -459,7 +464,6 @@ export const EditablePropertyCell = memo(function EditablePropertyCell({
                 <UrlEditor value={textValue} onChange={handleCommit} onBlur={handleStopEditing} />
               )
             case 'multiselect':
-            case 'project':
               return (
                 <TextEditor
                   value={textValue}
@@ -863,6 +867,131 @@ export const RelationCell = memo(function RelationCell({
           >
             {glyph}
             <span className="truncate">{label}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+})
+
+// ============================================================================
+// Project cell
+// ============================================================================
+
+const EMPTY_PROJECTS: Project[] = []
+
+/**
+ * The `project` frontmatter value as a clean name list.
+ *
+ * Mirrors the main process's `readProjectNames` widening rather than the
+ * multiselect one: a bare string is ONE name, never a comma-separated list, so
+ * a project actually called "Alpha, Beta" doesn't split into two chips that
+ * resolve to nothing.
+ */
+function toProjectNames(value: unknown): string[] {
+  const list = Array.isArray(value) ? value : value === null || value === undefined ? [] : [value]
+
+  const seen = new Set<string>()
+  const names: string[] = []
+  for (const entry of list) {
+    const name = stringifyUnknown(entry).trim()
+    if (!name) continue
+    const key = name.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    names.push(name)
+  }
+  return names
+}
+
+/**
+ * Read-only project chips for the folder table — one pill per project name in
+ * the note's frontmatter, clicking one opens that project's page the same way
+ * a tag chip opens its tag page.
+ *
+ * Resolution is by name and includes archived projects, matching the note-side
+ * {@link ProjectEditor}: a note already in an archived project keeps its real
+ * color/icon. A name matching no project (a typo, or a project since deleted)
+ * still renders — muted and inert — instead of being silently dropped.
+ */
+export const ProjectCell = memo(function ProjectCell({
+  value,
+  className
+}: {
+  value: unknown
+  className?: string
+}): React.JSX.Element {
+  const { openTab } = useTabs()
+  const projects = useTasksOptional()?.projects ?? EMPTY_PROJECTS
+
+  const names = useMemo(() => toProjectNames(value), [value])
+  const byName = useMemo(
+    () => new Map(projects.map((project) => [project.name.toLowerCase(), project])),
+    [projects]
+  )
+
+  if (names.length === 0) {
+    return <span className={cn('text-muted-foreground/50', className)}>—</span>
+  }
+
+  return (
+    <div className={cn('flex flex-wrap items-center gap-1', className)}>
+      {names.map((name) => {
+        const project = byName.get(name.toLowerCase())
+
+        const chipClass = cn(
+          'inline-flex max-w-full items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs',
+          project ? 'border-border bg-muted/40' : 'border-dashed border-border text-text-tertiary'
+        )
+
+        if (!project) {
+          return (
+            <span key={name} className={chipClass} title={name}>
+              <span className="truncate">{name}</span>
+            </span>
+          )
+        }
+
+        return (
+          <button
+            key={name}
+            type="button"
+            title={name}
+            // The row around this cell has its own click behaviour; opening a
+            // chip must not also select the row.
+            onClick={(event) => {
+              event.stopPropagation()
+              openTab({
+                type: 'project',
+                title: project.name,
+                icon: 'folder',
+                path: `/project/${project.id}`,
+                entityId: project.id,
+                isPinned: false,
+                isModified: false,
+                isPreview: false,
+                isDeleted: false
+              })
+            }}
+            className={cn(
+              chipClass,
+              'transition-opacity duration-150 hover:opacity-80',
+              'focus:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+            )}
+          >
+            <ProjectIcon
+              icon={project.icon}
+              color={project.color}
+              className="size-3 shrink-0"
+              fallback={
+                <span
+                  className="size-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: project.color }}
+                  aria-hidden="true"
+                />
+              }
+            />
+            <span className="truncate">{name}</span>
           </button>
         )
       })}
