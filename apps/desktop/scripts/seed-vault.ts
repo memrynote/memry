@@ -33,17 +33,16 @@ import {
   insertTaskNotes,
   insertTasks,
   insertTaskTags,
-  openDataDb,
-  upsertSetting
+  openDataDb
 } from './seed-vault/db-writer'
 import type { SeedTagCategory, SeedTagDefinition } from './seed-vault/db-writer'
 import { generateId } from '../src/main/lib/id'
 import {
-  computeVaultKeyVerifier,
-  encryptCanvasScene,
-  resolveVaultKey,
-  VAULT_KEY_VERIFIER_SETTING
-} from './seed-vault/canvas-crypto'
+  allocateCanvasPath,
+  resolveCanvasFile,
+  withCanvasMeta,
+  writeCanvasFileSync
+} from '../src/main/canvas/scene-file'
 
 import { FOLDER_CONFIGS, NOTES, NOTE_METADATA } from './seed-data/notes'
 import { JOURNAL_NOTES, JOURNAL_METADATA } from './seed-data/journal'
@@ -56,12 +55,6 @@ import { CANVASES } from './seed-data/canvas'
 
 interface CliArgs {
   vaultPath: string
-  /**
-   * Keychain device suffix used to derive the canvas encryption key. Must match
-   * the app instance that will open the vault: 'dev' for plain `pnpm dev`
-   * (default), 'A'/'B'/'C' for the dev:a/b/c profiles.
-   */
-  device: string
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -71,12 +64,14 @@ function parseArgs(argv: string[]): CliArgs {
       args.vaultPath = resolve(raw.slice('--vault='.length))
     }
     if (raw.startsWith('--device=')) {
-      args.device = raw.slice('--device='.length)
+      // Accepted and ignored: canvases used to be encrypted under a per-device
+      // keychain key, so a seeded vault only opened in the matching dev profile.
+      // They are files now — every profile can read them.
+      console.warn('--device is no longer needed; canvases are plain files in the vault.')
     }
   }
   return {
-    vaultPath: args.vaultPath ?? resolve(homedir(), 'MemryDemoVault'),
-    device: args.device || 'dev'
+    vaultPath: args.vaultPath ?? resolve(homedir(), 'MemryDemoVault')
   }
 }
 
@@ -201,7 +196,7 @@ function writeMinimalConfig(vaultPath: string): void {
 }
 
 async function main(): Promise<void> {
-  const { vaultPath, device } = parseArgs(process.argv.slice(2))
+  const { vaultPath } = parseArgs(process.argv.slice(2))
 
   console.log(`Seeding demo vault at: ${vaultPath}`)
 
@@ -271,22 +266,27 @@ async function main(): Promise<void> {
     const homePageCount = insertHomePages(db, HOME_PAGES)
     console.log(`  → home_pages: ${homePageCount}`)
 
-    // Canvas scenes are encrypted at rest with the vault key; derive the same
-    // key the app will use and pre-bind the vault to it via the verifier.
+    // Canvases are plain `.excalidraw` files in the vault, written through the
+    // app's own writer so the seed can never drift from the real format. No key
+    // material, no keychain, no device binding: a seeded vault opens in any
+    // profile and survives being copied elsewhere.
     const vaultId = ensureVaultMetadata(db)
-    const vaultKey = await resolveVaultKey(device)
-    upsertSetting(db, VAULT_KEY_VERIFIER_SETTING, computeVaultKeyVerifier(vaultKey, vaultId))
+    const claimed = new Set<string>()
     const canvasCount = insertCanvases(
       db,
       vaultId,
-      CANVASES.map((c) => ({
-        id: c.id,
-        title: c.title,
-        snapshotCiphertext: encryptCanvasScene(c.scene, vaultKey),
-        entityRefs: c.entityRefs
-      }))
+      CANVASES.map((c) => {
+        const filePath = allocateCanvasPath(vaultPath, c.title, claimed)
+        claimed.add(filePath)
+        const now = Date.now()
+        writeCanvasFileSync(
+          resolveCanvasFile(vaultPath, filePath),
+          withCanvasMeta(c.scene, { id: c.id, createdAt: now, updatedAt: now })
+        )
+        return { id: c.id, title: c.title, filePath, entityRefs: c.entityRefs }
+      })
     )
-    console.log(`  → canvases: ${canvasCount} (scenes encrypted for device '${device}')`)
+    console.log(`  → canvases: ${canvasCount} (as .excalidraw files in canvases/)`)
   } finally {
     close()
   }
@@ -305,9 +305,6 @@ async function main(): Promise<void> {
   console.log(`Vault path: ${vaultPath}`)
   console.log('')
   console.log('Open memrynote → Switch Vault → choose this path to view.')
-  console.log(
-    `Note: canvas scenes are bound to the '${device}' dev keychain device — open the vault with the matching app profile (--device=A|B|C to target dev:a/b/c).`
-  )
 }
 
 main().catch((error) => {

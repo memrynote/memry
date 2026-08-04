@@ -588,7 +588,8 @@ export function upsertSetting(db: DataDb, key: string, value: string): void {
 export interface SeedCanvasRow {
   id: string
   title: string
-  snapshotCiphertext: string
+  /** Vault-relative path of the `.excalidraw` document written alongside this row. */
+  filePath: string
   entityRefs: Array<{ entityType: 'note' | 'task' | 'calendar_event'; entityId: string }>
 }
 
@@ -601,7 +602,9 @@ export function insertCanvases(db: DataDb, vaultId: string, rows: SeedCanvasRow[
         id: c.id,
         vaultId,
         title: c.title,
-        snapshotCiphertext: c.snapshotCiphertext,
+        filePath: c.filePath,
+        // Canvases are files in the vault now; nothing is encrypted at rest.
+        snapshotCiphertext: '',
         vectorClock: {},
         createdAt: now,
         updatedAt: now,

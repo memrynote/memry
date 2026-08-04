@@ -259,9 +259,14 @@ export function writeCanvasFileSync(absolutePath: string, content: string): void
     // leftovers on retry.
     const tmp = path.join(path.dirname(absolutePath), `.${randomBytes(6).toString('hex')}.tmp`)
     try {
-      writeFileSync(tmp, content, { encoding: 'utf-8', mode: 0o600, flag: 'wx' })
-      const fd = openSync(tmp, 'r+')
+      // ONE exclusive handle for write + fsync. Reopening the path to flush
+      // would hand a window to anything that can swap it in between (and reads
+      // as an unguarded open to CodeQL's insecure-temp-file query, correctly).
+      // `wx` fails rather than follows an existing file or symlink; 0o600 keeps
+      // the half-written scene unreadable by other users.
+      const fd = openSync(tmp, 'wx', 0o600)
       try {
+        writeFileSync(fd, content, 'utf-8')
         fsyncSync(fd)
       } finally {
         closeSync(fd)

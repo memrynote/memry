@@ -43,10 +43,15 @@ note. Those links carry no foreign key to their target, so they are inserted aft
 events they reference. File links are intentionally absent — binary files get their id from the
 indexer at vault-open time, so a pre-seeded file id would never match.
 
-The seed includes canvases, which are encrypted at rest with the vault key. The script derives
-the same key the app will use and pre-binds the vault to it via the key-verifier setting, so the
-seeded vault opens without a key mismatch. Pass `--device=A|B|C` (default `dev`) to match the
-keychain entry of the app profile that will open the vault (`pnpm dev` vs `dev:a`/`dev:b`/`dev:c`).
+The seed includes canvases, written as plain `.excalidraw` files under `canvases/` through the
+app's own writer (`main/canvas/scene-file.ts`), so the seed can never drift from the real format.
+No keychain, no key material, no device binding: a seeded vault opens in any dev profile and keeps
+working after it is copied elsewhere. `--device` is accepted and ignored — it used to pick the
+keychain entry the canvas ciphertext was bound to.
+
+The seed no longer writes the vault key-verifier setting. It used to, which silently rebound the
+vault to a key it had just minted — the failure mode that made an already-open vault report
+"Current master key does not match this vault".
 
 When changing seed data, run the relevant seed-data test file or the desktop main test project:
 
