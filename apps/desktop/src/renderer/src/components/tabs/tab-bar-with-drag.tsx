@@ -5,6 +5,7 @@
  */
 
 import { useRef, useState, useLayoutEffect, useCallback } from 'react'
+import { useDndContext } from '@dnd-kit/core'
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
 import { ChevronLeft, ChevronRight, LayoutAlignRightIcon } from '@/lib/icons'
 import { useDayPanel } from '@/contexts/day-panel-context'
@@ -32,6 +33,12 @@ interface TabBarWithDragProps {
   className?: string
 }
 
+/** Vertical wheel scrolls the strip horizontally, like Chrome */
+const handleWheel = (e: React.WheelEvent<HTMLDivElement>): void => {
+  if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+  e.currentTarget.scrollLeft += e.deltaY
+}
+
 /**
  * Tab bar with drag-to-reorder support and context menu
  * DndContext is provided by SplitViewContainer for cross-panel support
@@ -57,21 +64,28 @@ export const TabBarWithDrag = ({
   // Only the top-right tab bar shows the day-panel toggle (and reserves room for it)
   const showDayPanelToggleButton = !isDayPanelOpen && showDayPanelToggle
 
-  // Scroll state
+  // Scroll state — "start"/"end" are logical, so the math holds in RTL where
+  // scrollLeft counts down from 0
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [canScrollLeft, setCanScrollLeft] = useState(false)
-  const [canScrollRight, setCanScrollRight] = useState(false)
+  const [canScrollToStart, setCanScrollToStart] = useState(false)
+  const [canScrollToEnd, setCanScrollToEnd] = useState(false)
+  const isOverflowing = canScrollToStart || canScrollToEnd
+
+  // A tab being dragged owns the scroll position — dnd-kit runs its own autoscroll
+  const { active: activeDragItem } = useDndContext()
 
   // Check scroll state - must be before early return (rules of hooks)
   const checkScroll = useCallback(() => {
     if (!scrollRef.current) return
     const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current
-    setCanScrollLeft(scrollLeft > 0)
-    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 1)
+    const offset = Math.abs(scrollLeft)
+    setCanScrollToStart(offset > 1)
+    setCanScrollToEnd(offset + clientWidth < scrollWidth - 1)
   }, [])
 
   // Compute tabs length safely before early return for useEffect dependency
   const regularTabsLength = group?.tabs.filter((t) => !t.isPinned).length ?? 0
+  const activeTabId = group?.activeTabId ?? null
 
   // Set up scroll listener - must be before early return (rules of hooks)
   useLayoutEffect(() => {
@@ -90,6 +104,17 @@ export const TabBarWithDrag = ({
     }
   }, [checkScroll, regularTabsLength])
 
+  // Keep the active tab visible — without this the strip stays pinned at the start
+  // and a newly opened (or newly activated) tab sits past the end edge.
+  // Re-runs on the chevron gutters too: they widen the scroll content one render
+  // after the scroll fires, which would push the tab back out of view.
+  useLayoutEffect(() => {
+    if (!activeTabId || activeDragItem) return
+    const tabEl = scrollRef.current?.querySelector(`[data-tab-id="${CSS.escape(activeTabId)}"]`)
+    // scrollIntoView is not implemented in jsdom
+    tabEl?.scrollIntoView?.({ inline: 'nearest', block: 'nearest', behavior: 'smooth' })
+  }, [activeTabId, regularTabsLength, activeDragItem, canScrollToStart, canScrollToEnd])
+
   // If group doesn't exist, don't render (after all hooks)
   if (!group) return null
 
@@ -97,14 +122,16 @@ export const TabBarWithDrag = ({
   const pinnedTabs = group.tabs.filter((t) => t.isPinned)
   const regularTabs = group.tabs.filter((t) => !t.isPinned)
 
-  // Scroll handlers
-  const scrollLeft = (): void => {
-    scrollRef.current?.scrollBy({ left: -200, behavior: 'smooth' })
+  // Scroll handlers — scrollLeft runs negative in RTL, so flip the delta with the direction
+  const scrollByLogical = (distance: number): void => {
+    const el = scrollRef.current
+    if (!el) return
+    const sign = getComputedStyle(el).direction === 'rtl' ? -1 : 1
+    el.scrollBy({ left: distance * sign, behavior: 'smooth' })
   }
 
-  const scrollRight = (): void => {
-    scrollRef.current?.scrollBy({ left: 200, behavior: 'smooth' })
-  }
+  const scrollToStart = (): void => scrollByLogical(-200)
+  const scrollToEnd = (): void => scrollByLogical(200)
 
   return (
     <TabBarContextMenu groupId={groupId}>
@@ -142,11 +169,11 @@ export const TabBarWithDrag = ({
           </>
         )}
 
-        {/* Scroll left button */}
-        {canScrollLeft && (
+        {/* Scroll to start button */}
+        {canScrollToStart && (
           <button
             type="button"
-            onClick={scrollLeft}
+            onClick={scrollToStart}
             className={cn(
               'no-drag',
               'flex items-center justify-center w-7 h-[calc(100%-4px)]',
@@ -157,63 +184,75 @@ export const TabBarWithDrag = ({
             )}
             aria-label={tPhaseF('phaseF.componentsTabsTabBarWithDrag.scrollTabsLeft')}
           >
-            <ChevronLeft className="w-3.5 h-3.5 text-text-tertiary hover:text-foreground transition-colors" />
+            <ChevronLeft className="w-3.5 h-3.5 text-text-tertiary hover:text-foreground transition-colors rtl:rotate-180" />
           </button>
         )}
 
-        {/* Regular tabs section (sortable) */}
+        {/* Regular tabs section (sortable) — tabs are direct flex children so they
+            share the strip evenly and overflow it once they hit their min width */}
         <div
           ref={scrollRef}
+          onWheel={handleWheel}
+          data-testid="tab-strip"
           className={cn(
-            'flex-1 flex items-end overflow-x-auto',
+            'flex-1 flex items-end gap-0.5 px-1 pb-0 overflow-x-auto',
             'scroll-smooth',
             'scrollbar-none [&::-webkit-scrollbar]:hidden',
             '[-ms-overflow-style:none] [scrollbar-width:none]',
-            canScrollLeft && 'ps-7',
-            canScrollRight && 'pe-7'
+            canScrollToStart && 'ps-7',
+            canScrollToEnd && 'pe-7'
           )}
         >
           <SortableContext
             items={regularTabs.map((t) => t.id)}
             strategy={horizontalListSortingStrategy}
           >
-            <div className="no-drag flex items-end gap-0.5 px-1 pb-0">
-              {regularTabs.map((tab) => (
-                <SortableTab
-                  key={tab.id}
-                  tab={tab}
-                  groupId={groupId}
-                  isActive={tab.id === group.activeTabId}
-                />
-              ))}
-            </div>
+            {regularTabs.map((tab) => (
+              <SortableTab
+                key={tab.id}
+                tab={tab}
+                groupId={groupId}
+                isActive={tab.id === group.activeTabId}
+              />
+            ))}
           </SortableContext>
 
-          {/* New tab — inline after last tab, Chrome-style */}
-          <div className="no-drag flex items-center shrink-0 px-1 self-center">
-            <NewTabMenu groupId={groupId} />
-          </div>
+          {/* New tab — inline after last tab, Chrome-style. Once the strip overflows
+              it is pinned outside the scroller instead, so it stays reachable. */}
+          {!isOverflowing && (
+            <div className="no-drag flex items-center shrink-0 px-1 self-center">
+              <NewTabMenu groupId={groupId} />
+            </div>
+          )}
         </div>
 
-        {/* Scroll right button */}
-        {canScrollRight && (
+        {/* Scroll to end button */}
+        {canScrollToEnd && (
           <button
             type="button"
-            onClick={scrollRight}
+            onClick={scrollToEnd}
             className={cn(
               'no-drag',
               'flex items-center justify-center w-7 h-[calc(100%-4px)]',
               'bg-gradient-to-l from-muted/95 via-muted/70 to-transparent',
               'hover:from-surface-active/95',
               'transition-all duration-150 ease-out z-20',
+              // Clears the pinned new-tab button (36px), plus the day-panel toggle (48px)
               showDayPanelToggleButton
-                ? 'absolute end-[48px] bottom-px'
-                : 'absolute end-0 bottom-px'
+                ? 'absolute end-[84px] bottom-px'
+                : 'absolute end-[36px] bottom-px'
             )}
             aria-label={tPhaseF('phaseF.componentsTabsTabBarWithDrag.scrollTabsRight')}
           >
-            <ChevronRight className="w-3.5 h-3.5 text-text-tertiary hover:text-foreground transition-colors" />
+            <ChevronRight className="w-3.5 h-3.5 text-text-tertiary hover:text-foreground transition-colors rtl:rotate-180" />
           </button>
+        )}
+
+        {/* New tab — pinned past the scroller while the strip overflows */}
+        {isOverflowing && (
+          <div className="no-drag flex items-center shrink-0 px-1 self-center">
+            <NewTabMenu groupId={groupId} />
+          </div>
         )}
 
         {/* Tab actions */}

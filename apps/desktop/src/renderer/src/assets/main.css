@@ -3,6 +3,11 @@
 :root {
   --chrome-width: 180px;
   --direction: 1;
+
+  /* Tab strip sizing — tabs share the strip evenly, growing to --tab-w-max and
+     compressing to --tab-w-min (icon-only) before the strip starts scrolling. */
+  --tab-w-min: 52px;
+  --tab-w-max: 240px;
 }
 
 [dir='rtl'] {

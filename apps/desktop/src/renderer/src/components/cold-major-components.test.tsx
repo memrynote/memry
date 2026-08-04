@@ -529,7 +529,7 @@ vi.mock('@/lib/render-note-icon', () => ({
 }))
 
 vi.mock('./tabs/sortable-tab', () => ({
-  SortableTab: ({ tab }: any) => <div>tab {tab.title}</div>
+  SortableTab: ({ tab }: any) => <div data-tab-id={tab.id}>tab {tab.title}</div>
 }))
 
 vi.mock('./tabs/pinned-tab', () => ({
@@ -1145,5 +1145,33 @@ describe('cold major renderer components', () => {
     mocks.tabGroup = null
     rerender(<TabBarWithDrag groupId="missing" />)
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+  })
+
+  it('scrolls the active tab into view so it never stays past the strip edge', () => {
+    const scrolled: Element[] = []
+    const spy = vi
+      .spyOn(HTMLElement.prototype, 'scrollIntoView')
+      .mockImplementation(function scrollIntoViewStub(this: HTMLElement) {
+        scrolled.push(this)
+      })
+
+    try {
+      mocks.tabGroup = {
+        id: 'group-1',
+        activeTabId: 'tab-1',
+        tabs: [
+          { id: 'tab-1', title: 'First', isPinned: false, type: 'note' },
+          { id: 'tab-2', title: 'Last', isPinned: false, type: 'note' }
+        ]
+      }
+      const { rerender } = render(<TabBarWithDrag groupId="group-1" />)
+      expect(scrolled.at(-1)).toHaveAttribute('data-tab-id', 'tab-1')
+
+      mocks.tabGroup = { ...mocks.tabGroup, activeTabId: 'tab-2' }
+      rerender(<TabBarWithDrag groupId="group-1" />)
+      expect(scrolled.at(-1)).toHaveAttribute('data-tab-id', 'tab-2')
+    } finally {
+      spy.mockRestore()
+    }
   })
 })

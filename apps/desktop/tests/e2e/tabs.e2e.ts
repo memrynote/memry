@@ -99,6 +99,39 @@ test.describe('Tab System', () => {
       await expect(activeTab).toBeVisible()
     })
 
+    test('should keep the active tab visible once the strip overflows', async ({ page }) => {
+      const tabBar = page.locator(SELECTORS.tabBar).first()
+      await expect(tabBar).toBeVisible()
+
+      const strip = page.locator('[data-testid="tab-strip"]').first()
+      const isOverflowing = () =>
+        strip.evaluate((el) => el.scrollWidth > el.clientWidth + 1).catch(() => false)
+
+      // Open tabs until they are compressed to their minimum width and the strip overflows
+      for (let i = 0; i < 40 && !(await isOverflowing()); i++) {
+        await page.keyboard.press(SHORTCUTS.newNote)
+        await page.waitForTimeout(200)
+      }
+      await page.waitForTimeout(600)
+
+      if (!(await isOverflowing())) {
+        test.skip(true, `Strip never overflowed (${await getTabCount(page)} tabs)`)
+      }
+
+      const scrollLeft = await strip.evaluate((el) => Math.abs(el.scrollLeft))
+      expect(scrollLeft).toBeGreaterThan(0)
+
+      // The newly activated tab must sit inside the visible strip, not past its end
+      const barBox = await tabBar.boundingBox()
+      const activeBox = await tabBar
+        .locator('[role="tab"][aria-selected="true"]')
+        .first()
+        .boundingBox()
+      expect(activeBox).not.toBeNull()
+      expect(activeBox.x).toBeGreaterThanOrEqual(barBox.x - 1)
+      expect(activeBox.x + activeBox.width).toBeLessThanOrEqual(barBox.x + barBox.width + 1)
+    })
+
     test('should render sidebar trigger inside tab bar', async ({ page }) => {
       const tabBar = page.locator(SELECTORS.tabBar).first()
       await expect(tabBar).toBeVisible()

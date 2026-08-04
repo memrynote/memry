@@ -22,6 +22,26 @@ interface RegularTabProps {
   className?: string
 }
 
+/** Unsaved-changes dot, shown in place of the close button when it is hidden */
+const ModifiedDot = ({
+  label,
+  className
+}: {
+  label: string
+  className?: string
+}): React.JSX.Element => (
+  <div
+    className={cn(
+      'w-1.5 h-1.5 rounded-full',
+      'bg-tint',
+      'transition-transform duration-150',
+      'animate-pulse',
+      className
+    )}
+    aria-label={label}
+  />
+)
+
 /**
  * Regular tab component with full title and controls
  * Memoized to prevent unnecessary re-renders when other tabs change
@@ -74,7 +94,10 @@ const RegularTabComponent = ({
     <div
       className={cn(
         'group relative flex items-center gap-2 h-9 pt-0.5 px-4 cursor-pointer',
-        'min-w-[100px] max-w-[180px]',
+        'w-full min-w-0',
+        // Compression tiers — tighten spacing, then drop the close button, then the title
+        '@max-[124px]:px-2.5 @max-[124px]:gap-1.5',
+        '@max-[76px]:px-0 @max-[76px]:gap-0 @max-[76px]:justify-center',
         'select-none',
         'border-e border-e-border/40',
         'border-b-2',
@@ -92,6 +115,8 @@ const RegularTabComponent = ({
       onMouseLeave={handleMouseLeave}
       role="tab"
       aria-selected={isActive}
+      // Keeps the accessible name when the title is hidden at narrow widths
+      aria-label={tab.title}
       tabIndex={isActive ? 0 : -1}
       data-testid={tab.type === 'home' ? 'nav-home' : undefined}
       data-tab-id={tab.id}
@@ -113,6 +138,7 @@ const RegularTabComponent = ({
       <span
         className={cn(
           'flex-1 truncate text-[13px] tracking-[-0.01em]',
+          '@max-[76px]:hidden',
           'transition-colors duration-150',
           isActive
             ? 'text-foreground font-medium'
@@ -124,35 +150,35 @@ const RegularTabComponent = ({
       </span>
 
       {/* Close / Modified indicator with smooth animations */}
-      <div className="w-4 h-4 flex-shrink-0 flex items-center justify-center">
-        {tab.isModified && !showCloseButton ? (
-          // Modified dot with pulse animation
-          <div
-            className={cn(
-              'w-1.5 h-1.5 rounded-full',
-              'bg-tint',
-              'transition-transform duration-150',
-              'animate-pulse'
+      <div className="w-4 h-4 flex-shrink-0 flex items-center justify-center @max-[76px]:hidden">
+        {showCloseButton ? (
+          <>
+            {/* Close button with refined hover state — makes way for the dot when compressed */}
+            <button
+              type="button"
+              onClick={handleClose}
+              className={cn(
+                'w-5 h-5 -me-0.5 rounded-md flex items-center justify-center',
+                '@max-[124px]:hidden',
+                'hover:bg-surface-active/70',
+                'active:bg-surface-active',
+                'transition-all duration-100',
+                // Smooth fade in/out
+                !isActive && 'opacity-0 group-hover:opacity-100'
+              )}
+              aria-label={`Close ${tab.title}`}
+            >
+              <X className="w-3 h-3 text-text-tertiary hover:text-foreground transition-colors" />
+            </button>
+            {tab.isModified && (
+              <ModifiedDot
+                className="hidden @max-[124px]:block"
+                label={tPhaseF('phaseF.componentsTabsRegularTab.unsavedChanges')}
+              />
             )}
-            aria-label={tPhaseF('phaseF.componentsTabsRegularTab.unsavedChanges')}
-          />
-        ) : showCloseButton ? (
-          // Close button with refined hover state
-          <button
-            type="button"
-            onClick={handleClose}
-            className={cn(
-              'w-5 h-5 -me-0.5 rounded-md flex items-center justify-center',
-              'hover:bg-surface-active/70',
-              'active:bg-surface-active',
-              'transition-all duration-100',
-              // Smooth fade in/out
-              !isActive && 'opacity-0 group-hover:opacity-100'
-            )}
-            aria-label={`Close ${tab.title}`}
-          >
-            <X className="w-3 h-3 text-text-tertiary hover:text-foreground transition-colors" />
-          </button>
+          </>
+        ) : tab.isModified ? (
+          <ModifiedDot label={tPhaseF('phaseF.componentsTabsRegularTab.unsavedChanges')} />
         ) : null}
       </div>
     </div>
