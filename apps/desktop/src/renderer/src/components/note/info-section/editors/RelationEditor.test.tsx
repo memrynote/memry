@@ -181,6 +181,34 @@ describe('RelationEditor', () => {
     expect(screen.getByLabelText('Add relation').className).toMatch(/focus-visible:/)
   })
 
+  // Same requirement for the chip remove buttons, which sit between the add
+  // trigger and the rest of the row in tab order. Both chip states are checked:
+  // they take different branches for their hover styling and could drift apart.
+  it('gives chip remove buttons a visible focus-visible treatment', async () => {
+    mockResolveRefs([
+      {
+        uri: 'memry://note/nte_1',
+        targetType: 'note',
+        targetId: 'nte_1',
+        title: 'Richard Doe',
+        exists: true
+      },
+      {
+        uri: 'memry://note/nte_gone',
+        targetType: 'note',
+        targetId: 'nte_gone',
+        title: '',
+        exists: false
+      }
+    ])
+    renderWithI18n(
+      <RelationEditor value={['memry://note/nte_1', 'memry://note/nte_gone']} onChange={vi.fn()} />
+    )
+
+    expect((await screen.findByLabelText('Remove Richard Doe')).className).toMatch(/focus-visible:/)
+    expect(screen.getByLabelText('Remove Deleted').className).toMatch(/focus-visible:/)
+  })
+
   it('does not add a duplicate URI', async () => {
     mockResolveRefs([
       {
