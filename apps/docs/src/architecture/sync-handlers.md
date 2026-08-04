@@ -75,6 +75,43 @@ The Yjs `meta` title is not a source of truth in the other direction either. It 
 creation and updated only while the note's doc is open in memory, so a note renamed from the sidebar
 never records the new title there. Read it only when nothing else knows the note.
 
+## Renderer Events From the Sync Path
+
+Handlers notify the renderer through `ctx.emit`, typed `(channel: string, data: unknown)`. That
+signature is deliberate — a handler emits on many channels — but it means the renderer-side payload
+contract is invisible to `tsc` here, and the write-back path in `crdt-writeback.ts` has the same
+hole.
+
+Subscribers do not defend themselves. `useNoteLinks` reads `changes.content` for every note that is
+not the open one, so a `notes:updated` emitted without `changes` threw once per note in a pull —
+inside the preload listener loop, where each callback is caught individually. Nothing crashed; the
+subscriber simply never saw the event, and link caches stopped refreshing after a pull.
+
+Emit through a typed helper rather than `ctx.emit` directly when a channel has a declared payload
+type. `note-events.ts` is the pattern:
+
+```ts
+export function emitNoteUpdated(
+  emit: (channel: string, data: unknown) => void,
+  event: NoteUpdatedEvent
+): void {
+  emit(NotesChannels.events.UPDATED, event)
+}
+```
+
+Two rules for the `changes` field itself:
+
+- **Only name fields the branch actually wrote.** The handler's markdown-update path rewrites
+  frontmatter, title and path but never the note body, so it must leave `content` out. Including it
+  would remount an open editor over text that did not change.
+- **`content` implies the body moved.** The CRDT write-back is the one emitter that sets it. Because
+  `scheduleWriteback` also fires for local typing — a 500ms debounce, ahead of the editor's 1000ms
+  save — the note page skips `source: 'sync'` entirely rather than remounting mid-keystroke over
+  bytes the IPC CRDT provider has already applied.
+
+The renderer normalizes a missing `changes` to `{}` in `onNoteUpdated`, so a newer renderer stays
+tolerant of an older main process. That is a compatibility floor, not a licence to omit the field.
+
 ## Adding a New Sync Type
 
 1. Define a Zod schema in `packages/contracts/<domain>-api.ts`.
