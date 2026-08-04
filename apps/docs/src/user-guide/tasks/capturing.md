@@ -81,6 +81,30 @@ Subtasks inherit nothing automatically — give them their own due dates and pri
 
 Selecting a checklist item in a note offers a "Convert to task" action in the inline menu. The task is created with the note as a back-reference.
 
+A checklist item that is already ticked becomes a task that is already done — so a note you imported with `- [x] Book flights` in it does not reopen work you finished elsewhere.
+
+## The Checkbox in the File Wins
+
+A note's tasks live in the note's own Markdown file, as checklist lines carrying the task id:
+
+```markdown
+- [ ] Book flights {task:0f2a…}
+- [x] Renew passport {task:9c41…}
+```
+
+That checkbox is the source of truth for whether the task is done. Tick or untick it in any other editor — Obsidian, vim, a script, a file you sync in from another machine — and memrynote follows the file:
+
+| The file says | memrynote does          |
+| ------------- | ----------------------- |
+| `- [x]`       | Marks the task complete |
+| `- [ ]`       | Reopens the task        |
+
+The change lands whether the file was edited while memrynote was running or while it was closed, and it shows up everywhere the task appears — the task lists, Today, the project, and any other note that links it.
+
+Only the checkbox is read this way; due dates, priority, and project stay with the task itself. Leave the `{task:…}` suffix alone — it is how the line and the task find each other. A line whose id no longer matches a task is left untouched.
+
+Any list marker works (`-`, `*`, `+`), as does an uppercase `- [X]`. Other markers some editors use for "in progress", such as `- [-]`, are ignored rather than guessed at.
+
 ## Rich Descriptions
 
 A task's description is a rich text editor, the same style as notes. In the task detail drawer (and the add-task dialog) you can use headings, lists, checkboxes, and inline formatting, and paste links that stay clickable. Type `/` for the block menu. Descriptions are stored as Markdown, so plain-text descriptions from earlier versions keep working unchanged.
