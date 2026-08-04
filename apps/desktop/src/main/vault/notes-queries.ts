@@ -192,7 +192,12 @@ export async function getNoteLinks(id: string): Promise<NoteLinksResponse> {
       const sourceCache = getNoteCacheById(db, ref.sourceNoteId)
       let contexts: Backlink['contexts'] = []
 
-      if (sourceCache?.path && targetTitle) {
+      // Contexts come from scanning the source for `[[target]]`, so they belong
+      // to the wiki link only. A property-sourced entry (`ref.via` set) has no
+      // text occurrence of its own — copying the wiki link's snippets onto it
+      // would show the same excerpts twice under two labels, and inflate the
+      // property card's mention count with matches it did not produce.
+      if (!ref.via && sourceCache?.path && targetTitle) {
         const absolutePath = toAbsolutePath(sourceCache.path)
         const content = await safeRead(absolutePath)
         if (content) {

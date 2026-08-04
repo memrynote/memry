@@ -1168,6 +1168,31 @@ describe('notes operations', () => {
       )
     })
 
+    it('does not give a property-relation backlink the wiki link its source also has', async () => {
+      const { setPropertyRefs } = await import('@main/database/queries/notes')
+
+      const target = await notes.createNote({
+        title: 'Dual Referenced',
+        content: 'Referenced two ways from one source.'
+      })
+      const source = await notes.createNote({
+        title: 'Dual Source',
+        content: 'Mentions [[Dual Referenced]] once in prose.'
+      })
+
+      setPropertyRefs(testDb.db, source.id, { father: [`memry://note/${target.id}`] })
+
+      const links = await notes.getNoteLinks(target.id)
+      const wikiEntry = links.incoming.find((bl) => bl.sourceId === source.id && !bl.via)
+      const propertyEntry = links.incoming.find((bl) => bl.sourceId === source.id && bl.via)
+
+      expect(wikiEntry?.contexts.length).toBe(1)
+      // The snippets belong to the `[[Dual Referenced]]` occurrence. Repeating
+      // them under the "father" card would show the same excerpt twice and give
+      // that card a mention count it did not earn.
+      expect(propertyEntry?.contexts).toEqual([])
+    })
+
     it('excludes a property-relation backlink whose source note was deleted', async () => {
       const { setPropertyRefs } = await import('@main/database/queries/notes')
 

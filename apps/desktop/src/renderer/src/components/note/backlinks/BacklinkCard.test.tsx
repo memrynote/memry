@@ -39,4 +39,21 @@ describe('BacklinkCard', () => {
 
     expect(screen.getByRole('link', { name: 'father → John' })).toBeInTheDocument()
   })
+
+  it('offers no expand toggle when there are no mentions to reveal', () => {
+    render(<BacklinkCard backlink={baseBacklink} onClick={vi.fn()} />)
+
+    expect(screen.queryByRole('button', { name: /expand/i })).not.toBeInTheDocument()
+  })
+
+  it('offers the expand toggle when mentions exist', () => {
+    const withMentions: Backlink = {
+      ...baseBacklink,
+      mentions: [{ id: 'm1', snippet: 'see [[John]] here', linkStart: 4, linkEnd: 12 }]
+    }
+
+    render(<BacklinkCard backlink={withMentions} onClick={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: /expand/i })).toBeInTheDocument()
+  })
 })
