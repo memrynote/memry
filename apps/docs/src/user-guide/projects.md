@@ -91,12 +91,12 @@ Every category keeps its heading even when it is empty, so you can always see wh
 
 Notes, events, and files join a project as **links** (many-to-many): the same note or file can belong to more than one project.
 
-- **Add a note** — from a note's **⋯** menu choose **Add to project**, or drag the note onto a project in the sidebar
+- **Add a note or journal entry** — set its **`project` property** (see [Properties & Tags](/user-guide/notes/properties-tags#project-property)), or drag it onto a project in the sidebar, which fills the same property. A note's project membership lives in its frontmatter, not a menu — the project hub reflects whatever the file says.
 - **Add a file** — open the file and choose **Add to project** from its toolbar, drag it onto a project in the sidebar, or use the hub's paperclip
 - **Add an event** — right-click a calendar event and choose **Add to project**
 - Dragging any note or file from the sidebar onto a project links it in one step — memrynote tells notes and files apart automatically, so the same drag works for either
 
-Wherever a note, event, or file lives, small **project chips** under its title show which projects it belongs to. On notes and events, click a chip to jump to that project's hub.
+Files and calendar events, which have no frontmatter, show small **project chips** under their title — click a chip to jump to that project's hub. A note or journal entry shows its projects in the `project` property row instead.
 
 ## Deleting a Project
 
