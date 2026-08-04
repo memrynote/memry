@@ -171,6 +171,15 @@ describe('Write tools — P1 deny-by-default', () => {
         items: [{ entity_type: 'note', entity_id: 'n1' }]
       },
       vault_remove_canvas_item: { canvas_id: 'c1', entity_type: 'note', entity_id: 'n1' },
+      vault_create_canvas: { title: 'Board' },
+      vault_draw_on_canvas: {
+        canvas_id: 'c1',
+        elements: [{ type: 'rectangle', x: 0, y: 0, width: 10, height: 10 }]
+      },
+      vault_edit_canvas_elements: {
+        canvas_id: 'c1',
+        edits: [{ elementId: 'el-1', x: 10 }]
+      },
       vault_desktop_write: { operation: 'templates.create', args: [{ name: 'Template' }] }
     }
     for (const t of tools) {

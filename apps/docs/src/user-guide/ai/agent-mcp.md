@@ -176,6 +176,7 @@ Read tools are available to Agent Chat and external MCP clients:
 - `vault_get_tags`
 - `vault_list_canvases`
 - `vault_read_canvas`
+- `vault_read_canvas_elements`
 - `vault_desktop_read`
 
 ### Notes and filed files
@@ -243,24 +244,57 @@ auto-accepted or shown for inline approval depending on the Agent Permissions se
 - `vault_move_to_folder`
 - `vault_add_canvas_item`
 - `vault_remove_canvas_item`
+- `vault_create_canvas`
+- `vault_draw_on_canvas`
+- `vault_edit_canvas_elements`
 - `vault_desktop_write`
 
 ### Canvas
 
-| Tool                       | What it does                                                                      |
-| -------------------------- | --------------------------------------------------------------------------------- |
-| `vault_list_canvases`      | Every canvas, with how many items sit on each                                     |
-| `vault_read_canvas`        | One canvas: the notes/tasks/events on it (with titles) and any text written on it |
-| `vault_add_canvas_item`    | Put existing notes/tasks/events on a canvas as cards                              |
-| `vault_remove_canvas_item` | Take a card off a canvas                                                          |
+| Tool                         | What it does                                                                      |
+| ---------------------------- | --------------------------------------------------------------------------------- |
+| `vault_list_canvases`        | Every canvas, with how many items sit on each                                     |
+| `vault_read_canvas`          | One canvas: the notes/tasks/events on it (with titles) and any text written on it |
+| `vault_read_canvas_elements` | The shapes on one canvas: ids, position, size, text, colors, arrow bindings       |
+| `vault_create_canvas`        | Create an empty canvas                                                            |
+| `vault_add_canvas_item`      | Put existing notes/tasks/events on a canvas as cards                              |
+| `vault_remove_canvas_item`   | Take a card off a canvas                                                          |
+| `vault_draw_on_canvas`       | Draw shapes, text, arrows, lines, freedraw, frames, images and embeds             |
+| `vault_edit_canvas_elements` | Move, restyle, retext or delete elements already on a canvas                      |
 
 Canvas tools need the **Spatial Canvas** feature turned on (Settings → Features). With it off they
 return a message saying so rather than failing silently.
 
-Reading a canvas never returns the drawing itself. An agent gets what is _on_ the canvas, not the
-geometry that draws it — a scene is mostly coordinates and style properties, and dumping it into an
-agent's context crowds out everything useful. Long canvases cap the amount of text returned and say
-so with `texts_truncated`.
+There are two ways to read a canvas, for two different questions. `vault_read_canvas` answers "what
+is _on_ this canvas" — the notes, tasks and events, with their titles, and any text written on it.
+It returns no geometry, because a scene is mostly coordinates and style properties and dumping that
+into an agent's context crowds out everything useful. Long canvases cap the amount of text returned
+and say so with `texts_truncated`. `vault_read_canvas_elements` answers the other question — "where
+is everything" — and is the read to use before drawing: an element id from it is what an arrow binds
+to and what an edit changes.
+
+### Drawing
+
+`vault_draw_on_canvas` takes Excalidraw's own element skeletons, in camelCase, so anything you can
+draw by hand you can ask for: rectangles, ellipses, diamonds, text, arrows, lines, freedraw, frames,
+images and embeds, with the full style vocabulary (`strokeColor`, `backgroundColor`, `fillStyle`,
+`strokeWidth`, `strokeStyle`, `roughness`, `opacity`, `roundness`, `fontSize`, `fontFamily`).
+
+Two things make it a diagram rather than a pile of shapes:
+
+- **Refs.** Give an element a `ref` and other elements in the same call can point at it. The response
+  maps every ref to the id it became, so the next call can keep building on it.
+- **Real bindings.** An arrow with `start` and `end` — either `{"ref": "..."}` for something in the
+  same call or `{"elementId": "..."}` for something already on the canvas — is bound on both sides.
+  It follows the shapes when you drag them, exactly like an arrow you drew yourself. Frames work the
+  same way: children can be new elements or ones already there.
+
+An agent cannot mint entity cards this way. A card is a rectangle carrying the entity reference that
+`canvas_entity_refs` is rebuilt from, so cards go through `vault_add_canvas_item`, which checks that
+the note/task/event actually exists. `vault_edit_canvas_elements` will move and restyle a card, but
+not rewrite its text — that text lives in the note.
+
+Images need a `fileId` already attached to the canvas; agents cannot upload binaries.
 
 Adding an item applies to the open editor when you have that canvas open, so the card appears while
 you watch instead of being overwritten by the next autosave. A canvas nobody has open is updated
@@ -270,15 +304,16 @@ sync, the tool response says so.
 Some canvas operations are deliberately unavailable through `vault_desktop_read` /
 `vault_desktop_write`:
 
-- `canvas.get` — returns the whole scene; use `vault_read_canvas`
+- `canvas.get` — returns the whole scene; use `vault_read_canvas` or `vault_read_canvas_elements`
 - `canvas.update` — replaces the entire scene with no version check, which would overwrite whatever
-  you have open; use the item tools
+  you have open; use the item and drawing tools
 - `canvas.librarySave` — saves the shape library as one whole list, so a partial one deletes shapes
 - `canvas.uploadAsset` — binary image upload, no agent path yet
 
-Agents cannot draw arrows between cards. An arrow on a canvas is a picture, not a stored
-relationship, so an agent drawing one would look like it created a link when it did not. Use wiki
-links between notes when you want a real connection.
+An arrow an agent draws is a picture, not a stored relationship. It is bound, it moves with the
+shapes, and it is genuinely useful on a diagram — but nothing queries it. When you want a connection
+the rest of the app can follow, use wiki links between notes or the project link layer; the arrow is
+the drawing of that connection, not the connection.
 
 `vault_desktop_read` and `vault_desktop_write` cover the remaining desktop CRUD surface through an
 allowlisted desktop API operation name plus an `args` array. They are used for desktop domains such

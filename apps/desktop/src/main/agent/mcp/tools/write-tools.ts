@@ -5,6 +5,7 @@ import type { ToolRegistration } from '../server'
 import type { VaultServiceHandles } from './handles'
 import { TOOL_SCHEMAS, WRITE_TOOL_NAMES, type ToolName } from './schemas'
 import type { AgentMcpDesktopWriteOperation } from '@memry/contracts/agent-mcp-channels'
+import type { CanvasDrawElement, CanvasElementEdit } from '@memry/contracts/canvas-draw'
 
 export interface GateContext {
   conversationId: string
@@ -652,6 +653,52 @@ export function buildWriteTools(
           },
           ctx.windowId
         )
+      }
+    },
+    vault_create_canvas: {
+      name: 'vault_create_canvas',
+      description: TOOL_SCHEMAS.vault_create_canvas.description,
+      inputSchema: TOOL_SCHEMAS.vault_create_canvas.input,
+      handler: async (input, ctx) => {
+        const parsed = parse<{ title?: string }>(TOOL_SCHEMAS.vault_create_canvas.input, input)
+        const args = await approvedArgs(gate, 'vault_create_canvas', parsed, ctx)
+        // Through the desktop bridge rather than the canvas store directly: the
+        // IPC handler is what enqueues the sync item and emits canvas:created,
+        // and a canvas created without those is invisible to the sidebar and
+        // never reaches the user's other devices.
+        return handles.desktop.write(
+          { operation: 'canvas.create', args: [{ title: args.title ?? null }] },
+          ctx.windowId
+        )
+      }
+    },
+    vault_draw_on_canvas: {
+      name: 'vault_draw_on_canvas',
+      description: TOOL_SCHEMAS.vault_draw_on_canvas.description,
+      inputSchema: TOOL_SCHEMAS.vault_draw_on_canvas.input,
+      handler: async (input, ctx) => {
+        const parsed = parse<{ canvas_id: string; elements: CanvasDrawElement[] }>(
+          TOOL_SCHEMAS.vault_draw_on_canvas.input,
+          input
+        )
+        const args = await approvedArgs(gate, 'vault_draw_on_canvas', parsed, ctx)
+        return handles.canvas.draw(
+          { canvasId: args.canvas_id, elements: args.elements },
+          ctx.windowId
+        )
+      }
+    },
+    vault_edit_canvas_elements: {
+      name: 'vault_edit_canvas_elements',
+      description: TOOL_SCHEMAS.vault_edit_canvas_elements.description,
+      inputSchema: TOOL_SCHEMAS.vault_edit_canvas_elements.input,
+      handler: async (input, ctx) => {
+        const parsed = parse<{ canvas_id: string; edits: CanvasElementEdit[] }>(
+          TOOL_SCHEMAS.vault_edit_canvas_elements.input,
+          input
+        )
+        const args = await approvedArgs(gate, 'vault_edit_canvas_elements', parsed, ctx)
+        return handles.canvas.edit({ canvasId: args.canvas_id, edits: args.edits }, ctx.windowId)
       }
     },
     vault_desktop_write: {

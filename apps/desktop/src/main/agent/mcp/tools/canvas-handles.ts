@@ -13,6 +13,7 @@
 import type { CanvasEntityRef } from '@memry/contracts/canvas-api'
 
 import { getCalendarEventById } from '../../../calendar/repositories/calendar-events-repository'
+import { readSceneElements } from '../../../canvas/elements'
 import { getCanvas, listCanvasesWithCounts } from '../../../canvas/store'
 import { summarizeScene } from '../../../canvas/summary'
 import { getCanvasContext } from '../../../canvas/vault-key'
@@ -23,6 +24,7 @@ import { AgentToolError } from '../errors'
 import { assertSpatialCanvasEnabled } from './canvas-flag'
 import { invokeCanvasWrite } from './canvas-write'
 import type {
+  CanvasDrawOutcome,
   CanvasEntityKind,
   CanvasItemSummary,
   CanvasWriteOutcome,
@@ -92,6 +94,23 @@ function toCanvasWriteOutcome(
   }
 }
 
+function toCanvasDrawOutcome(
+  canvasId: string,
+  result: Awaited<ReturnType<typeof invokeCanvasWrite>>
+): CanvasDrawOutcome {
+  const elements = result.elements
+  return {
+    canvas_id: canvasId,
+    refs: elements?.refs ?? {},
+    created_ids: elements?.createdIds ?? [],
+    updated_ids: elements?.updatedIds ?? [],
+    deleted_ids: elements?.deletedIds ?? [],
+    missing_ids: elements?.missingIds ?? [],
+    updated_at: result.updatedAt,
+    too_large: result.tooLarge
+  }
+}
+
 export function createCanvasHandles(dataDb: DataDb): VaultServiceHandles['canvas'] {
   return {
     async list() {
@@ -122,6 +141,38 @@ export function createCanvasHandles(dataDb: DataDb): VaultServiceHandles['canvas
         element_count: summary.elementCount,
         texts_truncated: summary.textsTruncated
       }
+    },
+    async readElements(id) {
+      assertSpatialCanvasEnabled()
+      const { db, vaultPath } = getCanvasContext()
+      const canvas = getCanvas(db, vaultPath, id)
+      if (!canvas || canvas.unreadable) return null
+
+      const scene = readSceneElements(canvas.scene)
+      return {
+        canvas_id: canvas.id,
+        elements: scene.elements,
+        element_count: scene.elementCount,
+        truncated: scene.truncated
+      }
+    },
+    async draw(input, windowId) {
+      assertSpatialCanvasEnabled()
+      const result = await invokeCanvasWrite(windowId, {
+        canvasId: input.canvasId,
+        op: 'draw',
+        elements: input.elements
+      })
+      return toCanvasDrawOutcome(input.canvasId, result)
+    },
+    async edit(input, windowId) {
+      assertSpatialCanvasEnabled()
+      const result = await invokeCanvasWrite(windowId, {
+        canvasId: input.canvasId,
+        op: 'edit',
+        edits: input.edits
+      })
+      return toCanvasDrawOutcome(input.canvasId, result)
     },
     async addItems(input, windowId) {
       assertSpatialCanvasEnabled()

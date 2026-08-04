@@ -22,11 +22,53 @@ import {
   type SceneRect
 } from './canvas-cards'
 
-/** Element fields the remove path rewrites, beyond the card basics. */
+/**
+ * Element fields the agent write paths rewrite, beyond the card basics. Still a
+ * deliberate subset of ExcalidrawElement — the index signature carries the rest
+ * through untouched, which is what lets these modules edit a scene written by a
+ * newer Excalidraw without dropping fields they never heard of.
+ */
 export interface SceneEditElement extends CardElement {
   boundElements?: { id: string; type: string }[] | null
-  startBinding?: { elementId: string } | null
-  endBinding?: { elementId: string } | null
+  startBinding?: { elementId: string; focus?: number; gap?: number } | null
+  endBinding?: { elementId: string; focus?: number; gap?: number } | null
+  /** The frame this element belongs to. */
+  frameId?: string | null
+  /** The element this text is bound to (a shape or arrow label). */
+  containerId?: string | null
+  text?: string
+  [key: string]: unknown
+}
+
+/**
+ * Drop elements by id and repair what pointed at them.
+ *
+ * Three places reference an element: the element itself, the start/end binding
+ * on any arrow bound to it, and the boundElements array on elements it was
+ * bound to. Missing the last two leaves arrows bound to elements that no longer
+ * exist, which Excalidraw either silently repairs or does not.
+ */
+export function dropElements(
+  elements: readonly SceneEditElement[],
+  ids: ReadonlySet<string>
+): SceneEditElement[] {
+  if (ids.size === 0) return [...elements]
+
+  return elements
+    .filter((element) => !ids.has(element.id))
+    .map((element) => {
+      const patch: Partial<SceneEditElement> = {}
+      if (element.startBinding && ids.has(element.startBinding.elementId)) {
+        patch.startBinding = null
+      }
+      if (element.endBinding && ids.has(element.endBinding.elementId)) {
+        patch.endBinding = null
+      }
+      if (element.boundElements?.some((bound) => ids.has(bound.id))) {
+        patch.boundElements = element.boundElements.filter((bound) => !ids.has(bound.id))
+      }
+      return Object.keys(patch).length > 0 ? { ...element, ...patch } : element
+    })
 }
 
 /**
@@ -98,14 +140,7 @@ export function planCardPlacements(
   })
 }
 
-/**
- * Drop every card rectangle for one entity and repair what pointed at it.
- *
- * Three places reference a card: the rectangle itself, the start/end binding on
- * any arrow bound to it, and the boundElements array on elements it was bound
- * to. Missing the last two leaves arrows bound to elements that no longer
- * exist, which Excalidraw either silently repairs or does not.
- */
+/** Drop every card rectangle for one entity, repairing what pointed at it. */
 export function removeCardElements(
   elements: readonly SceneEditElement[],
   ref: CanvasEntityRef
@@ -114,26 +149,5 @@ export function removeCardElements(
     .filter((card) => card.entityType === ref.entityType && card.entityId === ref.entityId)
     .map((card) => card.elementId)
 
-  if (removedIds.length === 0) {
-    return { elements: [...elements], removedIds }
-  }
-
-  const removed = new Set(removedIds)
-  const next = elements
-    .filter((element) => !removed.has(element.id))
-    .map((element) => {
-      const patch: Partial<SceneEditElement> = {}
-      if (element.startBinding && removed.has(element.startBinding.elementId)) {
-        patch.startBinding = null
-      }
-      if (element.endBinding && removed.has(element.endBinding.elementId)) {
-        patch.endBinding = null
-      }
-      if (element.boundElements?.some((bound) => removed.has(bound.id))) {
-        patch.boundElements = element.boundElements.filter((bound) => !removed.has(bound.id))
-      }
-      return Object.keys(patch).length > 0 ? { ...element, ...patch } : element
-    })
-
-  return { elements: next, removedIds }
+  return { elements: dropElements(elements, new Set(removedIds)), removedIds }
 }

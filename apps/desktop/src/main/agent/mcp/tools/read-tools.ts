@@ -191,6 +191,15 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
         return canvas
       }
     },
+    vault_read_canvas_elements: {
+      name: 'vault_read_canvas_elements',
+      description: TOOL_SCHEMAS.vault_read_canvas_elements.description,
+      inputSchema: TOOL_SCHEMAS.vault_read_canvas_elements.input,
+      handler: async (input) => {
+        const a = parse<{ id: string }>(TOOL_SCHEMAS.vault_read_canvas_elements.input, input)
+        return handles.canvas.readElements(a.id)
+      }
+    },
     vault_desktop_read: {
       name: 'vault_desktop_read',
       description: TOOL_SCHEMAS.vault_desktop_read.description,
