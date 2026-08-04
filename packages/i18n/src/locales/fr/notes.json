@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Chargement du modèle…",
+    "copySuffix": "{name} (Copie)",
     "title": {
       "new": "Nouveau modèle",
-      "view": "Afficher le modèle",
-      "edit": "Modifier le modèle"
+      "placeholder": "Nom du modèle"
+    },
+    "icon": {
+      "label": "Icône du modèle"
+    },
+    "content": {
+      "placeholder": "Contenu par défaut des notes créées à partir de ce modèle. Utilisez '{{'title'}}' pour insérer le titre de la note."
+    },
+    "actions": {
+      "create": "Créer un modèle",
+      "update": "Mettre à jour",
+      "duplicateAndEdit": "Dupliquer et modifier",
+      "duplicate": "Dupliquer",
+      "delete": "Supprimer le modèle",
+      "more": "Plus d’actions"
     },
     "toast": {
-      "nameRequired": "Le nom du modèle est obligatoire",
-      "created": "Modèle créé",
       "createFailed": "Échec de la création du modèle",
-      "saved": "Modèle enregistré",
-      "saveFailed": "Échec de l'enregistrement du modèle",
-      "duplicateFailed": "Échec de la duplication du modèle",
-      "deleteFailed": "Échec de la suppression du modèle"
+      "saveFailed": "Échec de l'enregistrement du modèle"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Compacte",
       "showSummaries": "Afficher les résumés",
       "cancel": "Annuler"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Chargement du modèle...",
-      "builtInTemplatesCannotBeModified": "Les modèles intégrés ne peuvent pas être modifiés",
-      "description": "Descriptif",
-      "briefDescriptionOfThisTemplate": "Brève description de ce modèle...",
-      "templateContent": "Contenu du modèle",
-      "use": "Utiliser ",
-      "toInsertTheNoteTitleWhenCreatingANote": "pour insérer le titre de la note lors de la création d'une note.",
-      "templateName": "Nom du modèle",
-      "defaultContentForNotesCreatedFromThisTemplate": "Contenu par défaut pour les notes créées à partir de ce modèle..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Chargement de la collection...",
-      "templateCollection": "Collection de modèles",
-      "templates": "Modèles",
-      "curatedStructuresForYourNotes": "Structures organisées pour vos notes.",
-      "newTemplate": "Nouveau modèle",
-      "myTemplates": "Mes modèles",
-      "builtIn": "Intégré",
-      "deleteTemplate": "Supprimer le modèle",
-      "areYouSureYouWantToDelete": "Etes-vous sûr de vouloir supprimer \"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Les notes créées à partir de ce modèle ne seront pas affectées.",
-      "cancel": "Annuler",
-      "builtIn2": "Intégré",
-      "duplicate": "Dupliquer",
-      "delete": "Supprimer",
-      "startYourCollection": "Commencez votre collection",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Les modèles vous aident à créer des notes avec une structure cohérente.",
-      "createTemplate": "Créer un modèle"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Intégré",

@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "טוען תבנית…",
+    "copySuffix": "{name} (העתק)",
     "title": {
       "new": "תבנית חדשה",
-      "view": "הצג תבנית",
-      "edit": "ערוך תבנית"
+      "placeholder": "שם התבנית"
+    },
+    "icon": {
+      "label": "סמל התבנית"
+    },
+    "content": {
+      "placeholder": "תוכן ברירת המחדל לפתקים שנוצרים מתבנית זו. השתמש ב-'{{'title'}}' כדי להוסיף את כותרת הפתק."
+    },
+    "actions": {
+      "create": "צור תבנית",
+      "update": "עדכן",
+      "duplicateAndEdit": "שכפל וערוך",
+      "duplicate": "שכפול",
+      "delete": "מחק תבנית",
+      "more": "פעולות נוספות"
     },
     "toast": {
-      "nameRequired": "נדרש שם תבנית",
-      "created": "התבנית נוצרה",
       "createFailed": "יצירת התבנית נכשלה",
-      "saved": "התבנית נשמרה",
-      "saveFailed": "שמירת התבנית נכשלה",
-      "duplicateFailed": "שכפול התבנית נכשל",
-      "deleteFailed": "מחיקת התבנית נכשלה"
+      "saveFailed": "שמירת התבנית נכשלה"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "קומפקטי",
       "showSummaries": "הצג סיכומים",
       "cancel": "בטל"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "טוען תבנית...",
-      "builtInTemplatesCannotBeModified": "לא ניתן לשנות תבניות מובנות",
-      "description": "תיאור",
-      "briefDescriptionOfThisTemplate": "תיאור קצר של תבנית זו...",
-      "templateContent": "תוכן תבנית",
-      "use": "השתמש ",
-      "toInsertTheNoteTitleWhenCreatingANote": "כדי להוסיף את כותרת ההערה בעת יצירת הערה.",
-      "templateName": "שם התבנית",
-      "defaultContentForNotesCreatedFromThisTemplate": "תוכן ברירת מחדל להערות שנוצרו מתבנית זו..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "טוען אוסף...",
-      "templateCollection": "אוסף תבניות",
-      "templates": "תבניות",
-      "curatedStructuresForYourNotes": "מבנים אוצרים עבור ההערות שלך.",
-      "newTemplate": "תבנית חדשה",
-      "myTemplates": "התבניות שלי",
-      "builtIn": "מובנה",
-      "deleteTemplate": "מחק תבנית",
-      "areYouSureYouWantToDelete": "האם אתה בטוח שאתה רוצה למחוק \"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "הערות שנוצרו מתבנית זו לא יושפעו.",
-      "cancel": "בטל",
-      "builtIn2": "מובנה",
-      "duplicate": "שכפול",
-      "delete": "מחק",
-      "startYourCollection": "התחל את האוסף שלך",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "תבניות עוזרות לך ליצור הערות עם מבנה עקבי.",
-      "createTemplate": "צור תבנית"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "מובנה",

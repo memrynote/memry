@@ -121,4 +121,48 @@ describe('tabModifyReducer', () => {
     )
     expect(state.tabGroups['group-a'].tabs[1]).toEqual(expect.objectContaining({ title: 'Other' }))
   })
+
+  describe('SET_TAB_ENTITY', () => {
+    it('writes entityId and path onto the target tab', () => {
+      const state = stateWith([
+        tab({ id: 'target', type: 'template-editor', path: '/templates/new', entityId: undefined }),
+        tab({ id: 'other', title: 'Other' })
+      ])
+
+      const result = tabModifyReducer(state, {
+        type: 'SET_TAB_ENTITY',
+        payload: {
+          tabId: 'target',
+          groupId: 'group-a',
+          entityId: 'tpl-42',
+          path: '/templates/tpl-42'
+        }
+      })
+
+      expect(result.tabGroups['group-a'].tabs[0]).toEqual(
+        expect.objectContaining({ entityId: 'tpl-42', path: '/templates/tpl-42' })
+      )
+    })
+
+    it('leaves other tabs untouched', () => {
+      const state = stateWith([
+        tab({ id: 'target', type: 'template-editor', path: '/templates/new', entityId: undefined }),
+        tab({ id: 'other', title: 'Other', path: '/notes/other', entityId: 'note-other' })
+      ])
+
+      const result = tabModifyReducer(state, {
+        type: 'SET_TAB_ENTITY',
+        payload: {
+          tabId: 'target',
+          groupId: 'group-a',
+          entityId: 'tpl-42',
+          path: '/templates/tpl-42'
+        }
+      })
+
+      expect(result.tabGroups['group-a'].tabs[1]).toEqual(
+        expect.objectContaining({ path: '/notes/other', entityId: 'note-other' })
+      )
+    })
+  })
 })

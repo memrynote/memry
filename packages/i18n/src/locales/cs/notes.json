@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Načítání šablony…",
+    "copySuffix": "{name} (kopie)",
     "title": {
       "new": "Nová šablona",
-      "view": "Zobrazit šablonu",
-      "edit": "Upravit šablonu"
+      "placeholder": "Název šablony"
+    },
+    "icon": {
+      "label": "Ikona šablony"
+    },
+    "content": {
+      "placeholder": "Výchozí obsah poznámek vytvořených z této šablony. Pomocí '{{'title'}}' vložíte název poznámky."
+    },
+    "actions": {
+      "create": "Vytvořit šablonu",
+      "update": "Aktualizovat",
+      "duplicateAndEdit": "Duplikovat a upravit",
+      "duplicate": "Duplikovat",
+      "delete": "Smazat šablonu",
+      "more": "Další akce"
     },
     "toast": {
-      "nameRequired": "Název šablony je povinný",
-      "created": "Šablona vytvořena",
       "createFailed": "Vytvoření šablony se nezdařilo",
-      "saved": "Šablona uložena",
-      "saveFailed": "Šablonu se nepodařilo uložit",
-      "duplicateFailed": "Duplikování šablony se nezdařilo",
-      "deleteFailed": "Šablonu se nepodařilo smazat"
+      "saveFailed": "Šablonu se nepodařilo uložit"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Kompaktní",
       "showSummaries": "Zobrazit souhrny",
       "cancel": "Zrušit"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Načítání šablony...",
-      "builtInTemplatesCannotBeModified": "Vestavěné šablony nelze upravovat",
-      "description": "Popis",
-      "briefDescriptionOfThisTemplate": "Stručný popis této šablony...",
-      "templateContent": "Obsah šablony",
-      "use": "Použijte ",
-      "toInsertTheNoteTitleWhenCreatingANote": "pro vložení názvu poznámky při vytváření poznámky.",
-      "templateName": "Název šablony",
-      "defaultContentForNotesCreatedFromThisTemplate": "Výchozí obsah pro poznámky vytvořené z této šablony..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Načítání sbírky...",
-      "templateCollection": "Kolekce šablon",
-      "templates": "Šablony",
-      "curatedStructuresForYourNotes": "Vybrané struktury pro vaše poznámky.",
-      "newTemplate": "Nová šablona",
-      "myTemplates": "Moje šablony",
-      "builtIn": "Vestavěný",
-      "deleteTemplate": "Smazat šablonu",
-      "areYouSureYouWantToDelete": "Opravdu chcete smazat \"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Poznámky vytvořené z této šablony nebudou ovlivněny.",
-      "cancel": "Zrušit",
-      "builtIn2": "Vestavěný",
-      "duplicate": "Duplicitní",
-      "delete": "Smazat",
-      "startYourCollection": "Začněte svou sbírku",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Šablony vám pomohou vytvořit poznámky s konzistentní strukturou.",
-      "createTemplate": "Vytvořit šablonu"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Vestavěné",

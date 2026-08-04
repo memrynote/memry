@@ -1,560 +1,466 @@
 /**
  * Template Editor Page
  *
- * Full-featured editor for creating and editing templates.
- * Reuses note editor components (NoteTitle, TagsRow, InfoSection, ContentArea).
+ * A template is authored on the note surface: the same title, tags, properties
+ * and content editor a note uses. A new template is an in-memory draft until
+ * the Create button is pressed; after that every edit auto-saves, the way a
+ * note does.
  */
 
-import { useState, useCallback, useRef, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { NoteTitle } from '@/components/note/note-title'
-import { TagsRow, Tag } from '@/components/note/tags-row'
-import { InfoSection, Property, NewProperty, PropertyType } from '@/components/note/info-section'
-import { getUniquePropertyName } from '@/lib/property-utils'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+
+import { NoteLayout } from '@/components/note'
 import { ContentArea } from '@/components/note/content-area'
+import { GhostAffordanceRow } from '@/components/note/ghost-affordance-row'
+import { InfoSection, type NewProperty } from '@/components/note/info-section'
+import { NoteTitle } from '@/components/note/note-title'
+import { TagsRow, type Tag } from '@/components/note/tags-row'
+import { IconPickerButton } from '@/components/icon-picker-button'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
-import { Loader2, Save, ArrowLeft, Lock } from '@/lib/icons'
+import { Picker } from '@/components/ui/picker'
+import { Copy, FileText, Loader2, MoreVertical, Trash2 } from '@/lib/icons'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { useTemplates } from '@/hooks/use-templates'
 import { useNoteTagsQuery } from '@/hooks/use-notes-query'
-import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
-import { toast } from 'sonner'
-import type { Template, TemplateProperty } from '@/services/templates-service'
+import { useTabs, useActiveTab } from '@/contexts/tabs'
+import { useTemplateDraft, type TemplateDraftFields } from '@/hooks/use-template-draft'
+import {
+  addProperty,
+  removeProperty,
+  reorderProperties,
+  setPropertyName,
+  setPropertyValue,
+  toEditableProperties,
+  toUiProperties
+} from '@/lib/template-properties'
 import { createLogger } from '@/lib/logger'
 import { useT } from '@memry/i18n/renderer'
+import type { Template } from '@/services/templates-service'
 
 const log = createLogger('Page:TemplateEditor')
 
-// ============================================================================
-// Types
-// ============================================================================
-
 interface TemplateEditorPageProps {
-  templateId?: string // undefined for new template
+  templateId?: string // undefined for a new template
+  /**
+   * The tab this page is rendered in. Falls back to the active tab when the
+   * host does not supply it, but the active tab is the wrong answer in split
+   * view: the editor can be mounted in a pane that is not the focused one.
+   */
+  tabId?: string
 }
-
-interface TemplateEditorInitialState {
-  name: string
-  description: string
-  icon: string | null
-  tags: string[]
-  properties: TemplateProperty[]
-  content: string
-  isBuiltIn: boolean
-}
-
-// Default values for property types
-function getDefaultValueForType(type: PropertyType): unknown {
-  switch (type) {
-    case 'checkbox':
-      return false
-    case 'number':
-      return 0
-    case 'date':
-      return null
-    default:
-      return ''
-  }
-}
-
-// Map PropertyType to TemplatePropertyType
-// Note: Templates support more property types than the unified properties system
-function mapToTemplatePropertyType(type: PropertyType): TemplateProperty['type'] {
-  const typeMap: Record<PropertyType, TemplateProperty['type']> = {
-    text: 'text',
-    number: 'number',
-    date: 'date',
-    checkbox: 'checkbox',
-    url: 'url',
-    status: 'select',
-    select: 'select',
-    multiselect: 'multiselect'
-  }
-  return typeMap[type] ?? 'text'
-}
-
-// Map TemplatePropertyType to PropertyType
-// Unsupported template types fall back to 'text'
-function mapFromTemplatePropertyType(type: TemplateProperty['type']): PropertyType {
-  const typeMap: Partial<Record<TemplateProperty['type'], PropertyType>> = {
-    text: 'text',
-    number: 'number',
-    checkbox: 'checkbox',
-    date: 'date',
-    url: 'url'
-  }
-  return typeMap[type] ?? 'text'
-}
-
-// ============================================================================
-// Loading State Component
-// ============================================================================
 
 function EditorLoadingState() {
-  const { t: tPhaseF } = useT('notes')
+  const { t } = useT('notes')
   return (
     <div className="flex items-center justify-center h-full min-h-[400px]">
       <div className="flex flex-col items-center gap-3 text-muted-foreground">
         <Loader2 className="h-8 w-8 animate-spin" />
-        <p className="text-sm">{tPhaseF('phaseF.pagesTemplateEditor.loadingTemplate')}</p>
+        <p className="text-sm">{t('templateEditor.loading')}</p>
       </div>
     </div>
   )
 }
 
-function getInitialTemplateState(
-  template: Template | null | undefined
-): TemplateEditorInitialState {
-  return {
-    name: template?.name ?? '',
-    description: template?.description ?? '',
-    icon: template?.icon ?? null,
-    tags: template?.tags ?? [],
-    properties: template?.properties ?? [],
-    content: template?.content ?? '',
-    isBuiltIn: template?.isBuiltIn ?? false
-  }
-}
-
-interface TemplateEditorFormProps {
+interface TemplateEditorSurfaceProps {
   templateId?: string
-  initialTemplate: TemplateEditorInitialState
-  allAvailableTags: Array<{ tag: string; color: string }>
-  createTemplate: (input: {
-    name: string
-    description?: string
-    icon: string | null
-    tags: string[]
-    properties: TemplateProperty[]
-    content: string
-  }) => Promise<Template | null>
-  updateTemplate: (input: {
-    id: string
-    name: string
-    description?: string
-    icon: string | null
-    tags: string[]
-    properties: TemplateProperty[]
-    content: string
-  }) => Promise<Template | null>
-  onCloseActiveTab: () => void
-  onUpdateActiveTabTitle: (title: string) => void
-  isStickyToolbar: boolean
+  tabId?: string
+  initial: TemplateDraftFields
+  isBuiltIn: boolean
 }
 
-// ============================================================================
-// Form Component
-// ============================================================================
+function TemplateEditorSurface({
+  templateId: initialTemplateId,
+  tabId: ownTabId,
+  initial,
+  isBuiltIn
+}: TemplateEditorSurfaceProps) {
+  const { t } = useT('notes')
+  const queryClient = useQueryClient()
+  const { deleteTemplate, duplicateTemplate } = useTemplates({ autoLoad: false })
+  const { tags: allAvailableTags } = useNoteTagsQuery()
+  const { settings: editorSettings } = useNoteEditorSettings()
+  const { closeTab, openTab, updateTabTitle, setTabModified, setTabEntity, registerCloseGuard } =
+    useTabs()
+  const activeTab = useActiveTab()
+  const tabId = ownTabId ?? activeTab?.id
 
-function TemplateEditorForm({
-  templateId,
-  initialTemplate,
-  allAvailableTags,
-  createTemplate,
-  updateTemplate,
-  onCloseActiveTab,
-  onUpdateActiveTabTitle,
-  isStickyToolbar
-}: TemplateEditorFormProps) {
-  const { t: tPhaseF } = useT('notes')
-  const isNew = !templateId
-  const initialSnapshot = useMemo(
-    () =>
-      JSON.stringify({
-        name: initialTemplate.name,
-        description: initialTemplate.description,
-        icon: initialTemplate.icon,
-        tags: initialTemplate.tags,
-        properties: initialTemplate.properties,
-        content: initialTemplate.content
-      }),
-    [initialTemplate]
+  const handleCreated = useCallback(
+    (created: Template) => {
+      // Seed the cache before the tab adopts the id: the id reaches this page
+      // back through `tab.entityId`, and an unseeded query would flip to
+      // loading and tear the whole surface — editor included — down again.
+      queryClient.setQueryData(['template-editor', created.id], created)
+      if (tabId) setTabEntity(tabId, created.id, `/templates/${created.id}`)
+    },
+    [tabId, setTabEntity, queryClient]
   )
 
-  const [isSaving, setIsSaving] = useState(false)
-  const isBuiltIn = initialTemplate.isBuiltIn
+  const { fields, setFields, state, templateId, isDirty, canSave, save } = useTemplateDraft({
+    templateId: initialTemplateId,
+    initial,
+    onCreated: handleCreated
+  })
 
-  // Form state
-  const [name, setName] = useState(initialTemplate.name)
-  const [description, setDescription] = useState(initialTemplate.description)
-  const icon = initialTemplate.icon
-  const [tags, setTags] = useState<string[]>(() => [...initialTemplate.tags])
-  const [properties, setProperties] = useState<TemplateProperty[]>(() => [
-    ...initialTemplate.properties
-  ])
-  const [content, setContent] = useState(initialTemplate.content)
+  // ==========================================================================
+  // Tab wiring
+  // ==========================================================================
 
-  // Track if modified
-  const initialStateRef = useRef<string>(initialSnapshot)
-  const isModified = useMemo(() => {
-    const currentState = JSON.stringify({ name, description, icon, tags, properties, content })
-    return currentState !== initialStateRef.current
-  }, [name, description, icon, tags, properties, content])
+  // The tab title follows the name as it is typed. Driven from the change
+  // handler rather than an effect so the tab is updated by the edit itself.
+  const handleNameChange = useCallback(
+    (name: string) => {
+      setFields({ name })
+      if (tabId) updateTabTitle(tabId, name.trim() || t('templateEditor.title.new'))
+    },
+    [setFields, tabId, updateTabTitle, t]
+  )
 
-  // Convert tags to UI format
-  const pendingTagColorsRef = useRef<Map<string, string> | null>(null)
-  if (pendingTagColorsRef.current === null) {
-    pendingTagColorsRef.current = new Map<string, string>()
-  }
+  useEffect(() => {
+    if (!tabId) return
+    setTabModified(tabId, isDirty)
+  }, [tabId, isDirty, setTabModified])
 
+  // Delete closes the tab on purpose; the guard must not then offer to save the
+  // template that was just removed.
+  const suppressGuardRef = useRef(false)
+  // Read through refs so the guard registration stays stable across edits.
+  // Synced after commit rather than during render: the guard is only ever
+  // consulted from a close action, which happens well after the commit.
+  const isDirtyRef = useRef(isDirty)
+  const canSaveRef = useRef(canSave)
+  const saveRef = useRef(save)
+  useEffect(() => {
+    isDirtyRef.current = isDirty
+    canSaveRef.current = canSave
+    saveRef.current = save
+  })
+
+  useEffect(() => {
+    if (!tabId || isBuiltIn) return
+    return registerCloseGuard(tabId, {
+      // A nameless draft cannot be persisted; say so rather than let the prompt
+      // offer a Save that would silently do nothing.
+      canSave: () => canSaveRef.current,
+      isDirty: () => !suppressGuardRef.current && isDirtyRef.current,
+      save: () => saveRef.current()
+    })
+  }, [tabId, isBuiltIn, registerCloseGuard])
+
+  // ==========================================================================
+  // Tags
+  // ==========================================================================
+
+  // A tag created here has no colour in the notes query until the write lands;
+  // hold it locally so the chip is not colourless in the meantime.
+  const pendingTagColorsRef = useRef<Map<string, string>>(new Map())
+
+  // Keyed lower-case on both sides, as note.tsx does: tag names are
+  // case-preserving, so a raw-case lookup would miss the pending colour of a
+  // tag the user typed with a capital.
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>()
-    for (const t of allAvailableTags) {
-      map.set(t.tag, t.color)
-    }
-    for (const key of pendingTagColorsRef.current!.keys()) {
-      if (map.has(key)) pendingTagColorsRef.current!.delete(key)
+    for (const tag of allAvailableTags) map.set(tag.tag.toLowerCase(), tag.color)
+    for (const key of pendingTagColorsRef.current.keys()) {
+      if (map.has(key)) pendingTagColorsRef.current.delete(key)
     }
     return map
   }, [allAvailableTags])
 
-  const templateTags: Tag[] = useMemo(() => {
-    return tags.map((tagName) => ({
-      id: tagName,
-      name: tagName,
-      color: tagColorMap.get(tagName) ?? pendingTagColorsRef.current!.get(tagName) ?? ''
-    }))
-  }, [tags, tagColorMap])
+  const templateTags: Tag[] = useMemo(
+    () =>
+      fields.tags.map((name) => ({
+        id: name,
+        name,
+        color:
+          tagColorMap.get(name.toLowerCase()) ??
+          pendingTagColorsRef.current.get(name.toLowerCase()) ??
+          ''
+      })),
+    [fields.tags, tagColorMap]
+  )
 
-  const availableTags: Tag[] = useMemo(() => {
-    return allAvailableTags.map((t) => ({
-      id: t.tag,
-      name: t.tag,
-      color: t.color
-    }))
-  }, [allAvailableTags])
-
-  // Convert properties to UI format
-  const uiProperties: Property[] = useMemo(() => {
-    return properties.map((prop, index) => ({
-      id: `prop-${index}`,
-      name: prop.name,
-      type: mapFromTemplatePropertyType(prop.type),
-      value: prop.value,
-      isCustom: true,
-      options: prop.options
-    }))
-  }, [properties])
-
-  // ============================================================================
-  // Handlers
-  // ============================================================================
-
-  const handleSave = useCallback(async () => {
-    if (!name.trim()) {
-      toast.error(tPhaseF('templateEditor.toast.nameRequired'))
-      return
-    }
-
-    setIsSaving(true)
-    try {
-      if (isNew) {
-        const result = await createTemplate({
-          name: name.trim(),
-          description: description.trim() || undefined,
-          icon,
-          tags,
-          properties,
-          content
-        })
-        if (result) {
-          toast.success(tPhaseF('templateEditor.toast.created'))
-          // Update initial state to mark as saved
-          initialStateRef.current = JSON.stringify({
-            name,
-            description,
-            icon,
-            tags,
-            properties,
-            content
-          })
-          // Close the tab or navigate to the new template
-          onCloseActiveTab()
-        } else {
-          toast.error(tPhaseF('templateEditor.toast.createFailed'))
-        }
-      } else {
-        const result = await updateTemplate({
-          id: templateId,
-          name: name.trim(),
-          description: description.trim() || undefined,
-          icon,
-          tags,
-          properties,
-          content
-        })
-        if (result) {
-          toast.success(tPhaseF('templateEditor.toast.saved'))
-          onUpdateActiveTabTitle(name.trim())
-          initialStateRef.current = JSON.stringify({
-            name,
-            description,
-            icon,
-            tags,
-            properties,
-            content
-          })
-        } else {
-          toast.error(tPhaseF('templateEditor.toast.saveFailed'))
-        }
-      }
-    } catch (err) {
-      log.error('Failed to save template:', err)
-      toast.error(tPhaseF('templateEditor.toast.saveFailed'))
-    } finally {
-      setIsSaving(false)
-    }
-  }, [
-    isNew,
-    name,
-    description,
-    icon,
-    tags,
-    properties,
-    content,
-    createTemplate,
-    updateTemplate,
-    templateId,
-    onCloseActiveTab,
-    onUpdateActiveTabTitle,
-    tPhaseF
-  ])
-
-  const handleNameChange = useCallback(
-    (newName: string) => {
-      if (isBuiltIn) return
-      setName(newName)
-    },
-    [isBuiltIn]
+  const availableTags: Tag[] = useMemo(
+    () => allAvailableTags.map((tag) => ({ id: tag.tag, name: tag.tag, color: tag.color })),
+    [allAvailableTags]
   )
 
   const handleAddTag = useCallback(
     (tagId: string) => {
-      if (isBuiltIn) return
-      const tagToAdd = availableTags.find((t) => t.id === tagId)
-      if (tagToAdd && !tags.includes(tagToAdd.name)) {
-        setTags([...tags, tagToAdd.name])
-      }
+      const tag = availableTags.find((candidate) => candidate.id === tagId)
+      if (!tag || fields.tags.includes(tag.name)) return
+      setFields({ tags: [...fields.tags, tag.name] })
     },
-    [tags, availableTags, isBuiltIn]
+    [availableTags, fields.tags, setFields]
   )
 
   const handleCreateTag = useCallback(
-    (tagName: string, color: string) => {
-      if (isBuiltIn) return
-      pendingTagColorsRef.current!.set(tagName.toLowerCase(), color)
-      if (!tags.includes(tagName)) {
-        setTags([...tags, tagName])
-      }
+    (name: string, color: string) => {
+      pendingTagColorsRef.current.set(name.toLowerCase(), color)
+      if (fields.tags.includes(name)) return
+      setFields({ tags: [...fields.tags, name] })
     },
-    [tags, isBuiltIn]
+    [fields.tags, setFields]
   )
 
   const handleRemoveTag = useCallback(
     (tagId: string) => {
-      if (isBuiltIn) return
-      setTags(tags.filter((t) => t !== tagId))
+      setFields({ tags: fields.tags.filter((tag) => tag !== tagId) })
     },
-    [tags, isBuiltIn]
+    [fields.tags, setFields]
   )
+
+  // ==========================================================================
+  // Properties
+  // ==========================================================================
+
+  const [propertiesExpanded, setPropertiesExpanded] = useState(true)
+  const uiProperties = useMemo(() => toUiProperties(fields.properties), [fields.properties])
 
   const handlePropertyChange = useCallback(
     (propertyId: string, value: unknown) => {
-      if (isBuiltIn) return
-      const index = parseInt(propertyId.replace('prop-', ''), 10)
-      setProperties((prev) => {
-        const updated = [...prev]
-        if (updated[index]) {
-          updated[index] = { ...updated[index], value }
-        }
-        return updated
-      })
+      setFields({ properties: setPropertyValue(fields.properties, propertyId, value) })
     },
-    [isBuiltIn]
+    [fields.properties, setFields]
+  )
+
+  const handlePropertyNameChange = useCallback(
+    (propertyId: string, name: string) => {
+      setFields({ properties: setPropertyName(fields.properties, propertyId, name) })
+    },
+    [fields.properties, setFields]
+  )
+
+  const handlePropertyOrderChange = useCallback(
+    (orderedIds: string[]) => {
+      setFields({ properties: reorderProperties(fields.properties, orderedIds) })
+    },
+    [fields.properties, setFields]
   )
 
   const handleAddProperty = useCallback(
-    (newProp: NewProperty) => {
-      if (isBuiltIn) return
-      const defaultValue = getDefaultValueForType(newProp.type)
-      setProperties((prev) => {
-        const existingNames = prev.map((p) => p.name)
-        const uniqueName = getUniquePropertyName(newProp.name, existingNames)
-        return [
-          ...prev,
-          {
-            name: uniqueName,
-            type: mapToTemplatePropertyType(newProp.type),
-            value: defaultValue
-          }
-        ]
-      })
+    (property: NewProperty) => {
+      setPropertiesExpanded(true)
+      setFields({ properties: addProperty(fields.properties, property) })
     },
-    [isBuiltIn]
+    [fields.properties, setFields]
   )
 
   const handleDeleteProperty = useCallback(
     (propertyId: string) => {
-      if (isBuiltIn) return
-      const index = parseInt(propertyId.replace('prop-', ''), 10)
-      setProperties((prev) => prev.filter((_, i) => i !== index))
+      setFields({ properties: removeProperty(fields.properties, propertyId) })
     },
-    [isBuiltIn]
+    [fields.properties, setFields]
   )
 
-  const handleContentChange = useCallback((markdown: string) => {
-    // Note: isBuiltIn check is handled by ContentArea's editable prop
-    setContent(markdown)
-  }, [])
+  // ==========================================================================
+  // Actions
+  // ==========================================================================
 
-  const handleBack = useCallback(() => {
-    onCloseActiveTab()
-  }, [onCloseActiveTab])
+  const openTemplateTab = useCallback(
+    (template: { id: string; name: string }) => {
+      openTab({
+        type: 'template-editor',
+        title: template.name,
+        icon: 'layout-template',
+        path: `/templates/${template.id}`,
+        entityId: template.id,
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false
+      })
+    },
+    [openTab]
+  )
 
-  // ============================================================================
-  // Render
-  // ============================================================================
+  const handleDuplicate = useCallback(async () => {
+    if (!templateId) return
+    try {
+      const copy = await duplicateTemplate(
+        templateId,
+        t('templateEditor.copySuffix', { name: fields.name.trim() })
+      )
+      if (copy) openTemplateTab(copy)
+    } catch (err) {
+      log.error('Failed to duplicate template:', err)
+    }
+  }, [templateId, duplicateTemplate, fields.name, t, openTemplateTab])
+
+  const handleDelete = useCallback(async () => {
+    if (!templateId) return
+    try {
+      const deleted = await deleteTemplate(templateId)
+      if (!deleted) return
+      suppressGuardRef.current = true
+      if (tabId) closeTab(tabId)
+    } catch (err) {
+      log.error('Failed to delete template:', err)
+    }
+  }, [templateId, deleteTemplate, tabId, closeTab])
+
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
+
+  const isSaving = state === 'saving'
+  const primaryDisabled = !canSave || isSaving || (templateId !== undefined && !isDirty)
+
+  const actions = (
+    <div className="flex items-center gap-1.5">
+      {isBuiltIn ? (
+        <Button size="sm" onClick={() => void handleDuplicate()}>
+          {t('templateEditor.actions.duplicateAndEdit')}
+        </Button>
+      ) : (
+        <>
+          <Button size="sm" disabled={primaryDisabled} onClick={() => void save()}>
+            {isSaving && <Loader2 className="size-3.5 me-1.5 animate-spin" />}
+            {templateId === undefined
+              ? t('templateEditor.actions.create')
+              : t('templateEditor.actions.update')}
+          </Button>
+
+          {templateId !== undefined && (
+            <Picker
+              value={null}
+              open={moreMenuOpen}
+              onOpenChange={setMoreMenuOpen}
+              onValueChange={(action) => {
+                setMoreMenuOpen(false)
+                if (action === 'duplicate') void handleDuplicate()
+                if (action === 'delete') void handleDelete()
+              }}
+            >
+              <Picker.Trigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  aria-label={t('templateEditor.actions.more')}
+                >
+                  <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                </Button>
+              </Picker.Trigger>
+              <Picker.Content align="end">
+                <Picker.List>
+                  <Picker.Item
+                    value="duplicate"
+                    label={t('templateEditor.actions.duplicate')}
+                    icon={<Copy className="size-4" />}
+                  />
+                  <Picker.Item
+                    value="delete"
+                    label={t('templateEditor.actions.delete')}
+                    icon={<Trash2 className="size-4" />}
+                    destructive
+                  />
+                </Picker.List>
+              </Picker.Content>
+            </Picker>
+          )}
+        </>
+      )}
+    </div>
+  )
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={handleBack}>
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-          <div>
-            <h1 className="font-semibold">
-              {isNew
-                ? tPhaseF('templateEditor.title.new')
-                : isBuiltIn
-                  ? tPhaseF('templateEditor.title.view')
-                  : tPhaseF('templateEditor.title.edit')}
-            </h1>
-            {isBuiltIn && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <Lock className="w-3 h-3" />
+    <NoteLayout actions={actions}>
+      <div className="flex flex-col flex-1 mx-auto w-full max-w-4xl">
+        <div className="group/metadata flex flex-col gap-2.5 pb-[15px]">
+          <div className="flex items-center gap-3">
+            <IconPickerButton
+              hasIcon={fields.icon !== null}
+              onIconChange={(icon) => setFields({ icon })}
+              ariaLabel={t('templateEditor.icon.label')}
+            >
+              {fields.icon ? (
+                <NoteIconDisplay value={fields.icon} className="text-[22px] leading-6" />
+              ) : (
+                <FileText className="size-5 text-muted-foreground/60" />
+              )}
+            </IconPickerButton>
 
-                {tPhaseF('phaseF.pagesTemplateEditor.builtInTemplatesCannotBeModified')}
-              </p>
-            )}
-          </div>
-        </div>
-        {!isBuiltIn && (
-          <Button onClick={() => void handleSave()} disabled={isSaving || (!isNew && !isModified)}>
-            {isSaving ? (
-              <Loader2 className="w-4 h-4 me-2 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4 me-2" />
-            )}
-            {isNew ? 'Create Template' : 'Save Changes'}
-          </Button>
-        )}
-      </div>
-
-      {/* Editor content */}
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-3xl mx-auto p-6 space-y-6">
-          {/* Template metadata */}
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="description">
-                {tPhaseF('phaseF.pagesTemplateEditor.description')}
-              </Label>
-              <textarea
-                id="description"
-                value={description}
-                onChange={(e) => !isBuiltIn && setDescription(e.target.value)}
-                aria-label={tPhaseF('phaseF.pagesTemplateEditor.description')}
-                placeholder={tPhaseF('phaseF.pagesTemplateEditor.briefDescriptionOfThisTemplate')}
-                className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-                rows={2}
-                disabled={isBuiltIn}
-              />
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Note preview section */}
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground mb-4">
-              {tPhaseF('phaseF.pagesTemplateEditor.templateContent')}
-            </h3>
-            <p className="text-xs text-muted-foreground mb-4">
-              {tPhaseF('phaseF.pagesTemplateEditor.use')}
-              <code className="bg-muted px-1 rounded">{'{{title}}'}</code>{' '}
-              {tPhaseF('phaseF.pagesTemplateEditor.toInsertTheNoteTitleWhenCreatingANote')}
-            </p>
-
-            {/* Title with emoji */}
-            <div className="space-y-4">
+            <div className="min-w-0 flex-1">
               <NoteTitle
-                emoji={icon}
-                title={name}
-                placeholder={tPhaseF('phaseF.pagesTemplateEditor.templateName')}
+                emoji={null}
+                title={fields.name}
+                placeholder={t('templateEditor.title.placeholder')}
                 onTitleChange={handleNameChange}
                 disabled={isBuiltIn}
               />
-
-              {/* Tags */}
-              <TagsRow
-                tags={templateTags}
-                availableTags={availableTags}
-                recentTags={availableTags.slice(0, 4)}
-                onAddTag={handleAddTag}
-                onCreateTag={handleCreateTag}
-                onRemoveTag={handleRemoveTag}
-                disabled={isBuiltIn}
-              />
-
-              {/* Properties */}
-              <InfoSection
-                properties={uiProperties}
-                isExpanded={true}
-                onToggleExpand={() => {}}
-                onPropertyChange={handlePropertyChange}
-                onAddProperty={handleAddProperty}
-                onDeleteProperty={handleDeleteProperty}
-                disabled={isBuiltIn}
-              />
-            </div>
-
-            <Separator className="my-6" />
-
-            {/* Content editor */}
-            <div className="min-h-[300px] border rounded-md p-4 bg-card">
-              <ContentArea
-                key={templateId || 'new'}
-                initialContent={content}
-                contentType="markdown"
-                placeholder={tPhaseF(
-                  'phaseF.pagesTemplateEditor.defaultContentForNotesCreatedFromThisTemplate'
-                )}
-                stickyToolbar={isStickyToolbar}
-                onMarkdownChange={handleContentChange}
-                editable={!isBuiltIn}
-              />
             </div>
           </div>
+
+          <TagsRow
+            tags={templateTags}
+            availableTags={availableTags}
+            recentTags={availableTags.slice(0, 4)}
+            onAddTag={handleAddTag}
+            onCreateTag={handleCreateTag}
+            onRemoveTag={handleRemoveTag}
+            disabled={isBuiltIn}
+            hideWhenEmpty
+            hideAddButton
+          />
+
+          {uiProperties.length > 0 && (
+            <InfoSection
+              properties={uiProperties}
+              isExpanded={propertiesExpanded}
+              onToggleExpand={() => setPropertiesExpanded((prev) => !prev)}
+              onPropertyChange={handlePropertyChange}
+              onPropertyNameChange={handlePropertyNameChange}
+              onPropertyOrderChange={handlePropertyOrderChange}
+              onAddProperty={handleAddProperty}
+              onDeleteProperty={handleDeleteProperty}
+              disabled={isBuiltIn}
+              variant="embedded"
+              hideAddButton
+            />
+          )}
+
+          <GhostAffordanceRow
+            availableTags={availableTags}
+            recentTags={availableTags.slice(0, 4)}
+            currentTagIds={templateTags.map((tag) => tag.id)}
+            onAddTag={handleAddTag}
+            onCreateTag={handleCreateTag}
+            onAddProperty={handleAddProperty}
+            disabled={isBuiltIn}
+          />
+        </div>
+
+        <div className="editor-click-area flex-1 pb-[30vh] relative">
+          <ContentArea
+            initialContent={initial.content}
+            contentType="markdown"
+            placeholder={t('templateEditor.content.placeholder')}
+            stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+            onMarkdownChange={(markdown) => setFields({ content: markdown })}
+            editable={!isBuiltIn}
+          />
         </div>
       </div>
-    </div>
+    </NoteLayout>
   )
 }
 
-// ============================================================================
-// Main Component
-// ============================================================================
+function toInitialFields(template: Template | null | undefined): TemplateDraftFields {
+  return {
+    name: template?.name ?? '',
+    icon: template?.icon ?? null,
+    tags: template?.tags ?? [],
+    properties: toEditableProperties(template?.properties ?? []),
+    content: template?.content ?? ''
+  }
+}
 
-export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
-  const { getTemplate, createTemplate, updateTemplate } = useTemplates({ autoLoad: false })
-  const { tags: allAvailableTags } = useNoteTagsQuery()
-  const { closeTab, updateTabTitle } = useTabs()
-  const activeTab = useActiveTab()
-  const { settings: editorSettings } = useNoteEditorSettings()
+export function TemplateEditorPage({ templateId, tabId }: TemplateEditorPageProps) {
+  const { getTemplate } = useTemplates({ autoLoad: false })
+  // Pinned to the identity this tab opened with. `templateId` changes once, when
+  // a draft adopts its new id, and remounting the surface there would throw away
+  // the editor the user is typing in.
+  const surfaceKey = useRef(templateId ?? 'new').current
 
   const { data: template, isLoading } = useQuery({
     queryKey: ['template-editor', templateId],
@@ -565,38 +471,21 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
     enabled: !!templateId
   })
 
-  const initialTemplate = useMemo(() => getInitialTemplateState(template), [template])
+  const initial = useMemo(() => toInitialFields(template), [template])
 
-  const handleCloseActiveTab = useCallback(() => {
-    if (activeTab) {
-      closeTab(activeTab.id)
-    }
-  }, [activeTab, closeTab])
-
-  const handleUpdateActiveTabTitle = useCallback(
-    (title: string) => {
-      if (activeTab) {
-        updateTabTitle(activeTab.id, title)
-      }
-    },
-    [activeTab, updateTabTitle]
-  )
-
-  if (templateId && isLoading) {
+  // Only ever a first-paint state: a tab that opened on a draft has no query to
+  // wait for, and by the time it adopts an id the cache is already seeded.
+  if (surfaceKey !== 'new' && isLoading) {
     return <EditorLoadingState />
   }
 
   return (
-    <TemplateEditorForm
-      key={templateId || 'new'}
+    <TemplateEditorSurface
+      key={surfaceKey}
       templateId={templateId}
-      initialTemplate={initialTemplate}
-      allAvailableTags={allAvailableTags}
-      createTemplate={createTemplate}
-      updateTemplate={updateTemplate}
-      onCloseActiveTab={handleCloseActiveTab}
-      onUpdateActiveTabTitle={handleUpdateActiveTabTitle}
-      isStickyToolbar={editorSettings.toolbarMode === 'sticky'}
+      tabId={tabId}
+      initial={initial}
+      isBuiltIn={template?.isBuiltIn ?? false}
     />
   )
 }

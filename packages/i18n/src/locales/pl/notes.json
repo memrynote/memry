@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Wczytywanie szablonu…",
+    "copySuffix": "{name} (Kopia)",
     "title": {
       "new": "Nowy szablon",
-      "view": "Zobacz szablon",
-      "edit": "Edytuj szablon"
+      "placeholder": "Nazwa szablonu"
+    },
+    "icon": {
+      "label": "Ikona szablonu"
+    },
+    "content": {
+      "placeholder": "Domyślna treść notatek tworzonych z tego szablonu. Użyj '{{'title'}}', aby wstawić tytuł notatki."
+    },
+    "actions": {
+      "create": "Utwórz szablon",
+      "update": "Aktualizuj",
+      "duplicateAndEdit": "Duplikuj i edytuj",
+      "duplicate": "Duplikuj",
+      "delete": "Usuń szablon",
+      "more": "Więcej akcji"
     },
     "toast": {
-      "nameRequired": "Nazwa szablonu jest wymagana",
-      "created": "Szablon został utworzony",
       "createFailed": "Nie udało się utworzyć szablonu",
-      "saved": "Szablon został zapisany",
-      "saveFailed": "Nie udało się zapisać szablonu",
-      "duplicateFailed": "Nie udało się zduplikować szablonu",
-      "deleteFailed": "Nie udało się usunąć szablonu"
+      "saveFailed": "Nie udało się zapisać szablonu"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Kompaktowy",
       "showSummaries": "Pokaż podsumowania",
       "cancel": "Anuluj"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Ładowanie szablonu...",
-      "builtInTemplatesCannotBeModified": "Wbudowanych szablonów nie można modyfikować",
-      "description": "Opis",
-      "briefDescriptionOfThisTemplate": "Krótki opis tego szablonu...",
-      "templateContent": "Treść szablonu",
-      "use": "Użyj ",
-      "toInsertTheNoteTitleWhenCreatingANote": ", aby wstawić tytuł notatki podczas tworzenia notatki.",
-      "templateName": "Nazwa szablonu",
-      "defaultContentForNotesCreatedFromThisTemplate": "Domyślna treść notatek utworzonych na podstawie tego szablonu..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Ładowanie kolekcji...",
-      "templateCollection": "Kolekcja szablonów",
-      "templates": "Szablony",
-      "curatedStructuresForYourNotes": "Wyselekcjonowane struktury Twoich notatek.",
-      "newTemplate": "Nowy szablon",
-      "myTemplates": "Moje szablony",
-      "builtIn": "Wbudowany",
-      "deleteTemplate": "Usuń szablon",
-      "areYouSureYouWantToDelete": "Czy na pewno chcesz usunąć”",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Nie będzie to miało wpływu na notatki utworzone na podstawie tego szablonu.",
-      "cancel": "Anuluj",
-      "builtIn2": "Wbudowany",
-      "duplicate": "Duplikat",
-      "delete": "Usuń",
-      "startYourCollection": "Rozpocznij swoją kolekcję",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Szablony pomagają tworzyć notatki o spójnej strukturze.",
-      "createTemplate": "Utwórz szablon"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Wbudowane",

@@ -97,7 +97,6 @@ const TYPE_TO_ICON: Record<TabType, string> = {
   search: 'search',
   collection: 'bookmark',
   'template-editor': 'layout-template',
-  templates: 'layout-template',
   graph: 'graph',
   tags: 'tag',
   tag: 'tag',

@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Cargando plantilla…",
+    "copySuffix": "{name} (Copia)",
     "title": {
       "new": "Nueva plantilla",
-      "view": "Ver plantilla",
-      "edit": "Editar plantilla"
+      "placeholder": "Nombre de la plantilla"
+    },
+    "icon": {
+      "label": "Icono de la plantilla"
+    },
+    "content": {
+      "placeholder": "Contenido predeterminado para las notas creadas a partir de esta plantilla. Usa '{{'title'}}' para insertar el título de la nota."
+    },
+    "actions": {
+      "create": "Crear plantilla",
+      "update": "Actualizar",
+      "duplicateAndEdit": "Duplicar y editar",
+      "duplicate": "Duplicar",
+      "delete": "Eliminar plantilla",
+      "more": "Más acciones"
     },
     "toast": {
-      "nameRequired": "El nombre de la plantilla es obligatorio",
-      "created": "Plantilla creada",
       "createFailed": "No se pudo crear la plantilla",
-      "saved": "Plantilla guardada",
-      "saveFailed": "No se pudo guardar la plantilla",
-      "duplicateFailed": "No se pudo duplicar la plantilla",
-      "deleteFailed": "No se pudo eliminar la plantilla"
+      "saveFailed": "No se pudo guardar la plantilla"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Compacto",
       "showSummaries": "Mostrar resúmenes",
       "cancel": "Cancelar"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Cargando plantilla...",
-      "builtInTemplatesCannotBeModified": "Las plantillas integradas no se pueden modificar",
-      "description": "Descripción",
-      "briefDescriptionOfThisTemplate": "Breve descripción de esta plantilla...",
-      "templateContent": "Contenido de la plantilla",
-      "use": "uso ",
-      "toInsertTheNoteTitleWhenCreatingANote": "para insertar el título de la nota al crear una nota.",
-      "templateName": "Nombre de la plantilla",
-      "defaultContentForNotesCreatedFromThisTemplate": "Contenido predeterminado para las notas creadas a partir de esta plantilla..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Cargando colección...",
-      "templateCollection": "Colección de plantillas",
-      "templates": "Plantillas",
-      "curatedStructuresForYourNotes": "Estructuras seleccionadas para tus notas.",
-      "newTemplate": "Nueva plantilla",
-      "myTemplates": "Mis plantillas",
-      "builtIn": "Incorporado",
-      "deleteTemplate": "Eliminar plantilla",
-      "areYouSureYouWantToDelete": "¿Estás seguro de que deseas eliminar \"?",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Las notas creadas a partir de esta plantilla no se verán afectadas.",
-      "cancel": "Cancelar",
-      "builtIn2": "Incorporado",
-      "duplicate": "Duplicar",
-      "delete": "Eliminar",
-      "startYourCollection": "Comience su colección",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Las plantillas te ayudan a crear notas con una estructura coherente.",
-      "createTemplate": "Crear plantilla"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Integrado",

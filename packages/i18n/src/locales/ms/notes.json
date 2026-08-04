@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Memuatkan templat…",
+    "copySuffix": "{name} (Salinan)",
     "title": {
       "new": "Templat Baharu",
-      "view": "Lihat Templat",
-      "edit": "Edit Templat"
+      "placeholder": "Nama templat"
+    },
+    "icon": {
+      "label": "Ikon templat"
+    },
+    "content": {
+      "placeholder": "Kandungan lalai untuk nota yang dibuat daripada templat ini. Gunakan '{{'title'}}' untuk memasukkan tajuk nota."
+    },
+    "actions": {
+      "create": "Cipta Templat",
+      "update": "Kemas kini",
+      "duplicateAndEdit": "Duplikat dan edit",
+      "duplicate": "Pendua",
+      "delete": "Padam templat",
+      "more": "Tindakan lain"
     },
     "toast": {
-      "nameRequired": "Nama templat diperlukan",
-      "created": "Templat dibuat",
       "createFailed": "Gagal membuat templat",
-      "saved": "Templat disimpan",
-      "saveFailed": "Gagal menyimpan templat",
-      "duplicateFailed": "Gagal menduplikasi templat",
-      "deleteFailed": "Gagal memadamkan templat"
+      "saveFailed": "Gagal menyimpan templat"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Padat",
       "showSummaries": "Tunjukkan ringkasan",
       "cancel": "Batal"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Memuatkan templat...",
-      "builtInTemplatesCannotBeModified": "Templat terbina dalam tidak boleh diubah suai",
-      "description": "Penerangan",
-      "briefDescriptionOfThisTemplate": "Penerangan ringkas templat ini...",
-      "templateContent": "Kandungan Templat",
-      "use": "guna ",
-      "toInsertTheNoteTitleWhenCreatingANote": "untuk memasukkan tajuk nota semasa membuat nota.",
-      "templateName": "Nama Templat",
-      "defaultContentForNotesCreatedFromThisTemplate": "Kandungan lalai untuk nota yang dibuat daripada templat ini..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Memuatkan koleksi...",
-      "templateCollection": "Koleksi Templat",
-      "templates": "templat",
-      "curatedStructuresForYourNotes": "Struktur susun atur untuk nota anda.",
-      "newTemplate": "Templat Baharu",
-      "myTemplates": "Templat Saya",
-      "builtIn": "terbina dalam",
-      "deleteTemplate": "Padam Templat",
-      "areYouSureYouWantToDelete": "Adakah anda pasti mahu memadamkan \"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Nota yang dibuat daripada templat ini tidak akan terjejas.",
-      "cancel": "Batal",
-      "builtIn2": "terbina dalam",
-      "duplicate": "Pendua",
-      "delete": "Padam",
-      "startYourCollection": "Mulakan Koleksi Anda",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Templat membantu anda membuat nota dengan struktur yang konsisten.",
-      "createTemplate": "Cipta Templat"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Terbina dalam",

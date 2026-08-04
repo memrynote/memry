@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "템플릿 불러오는 중…",
+    "copySuffix": "{name} (복사)",
     "title": {
       "new": "새 템플릿",
-      "view": "템플릿 보기",
-      "edit": "템플릿 편집"
+      "placeholder": "템플릿 이름"
+    },
+    "icon": {
+      "label": "템플릿 아이콘"
+    },
+    "content": {
+      "placeholder": "이 템플릿으로 만든 노트의 기본 내용입니다. '{{'title'}}' 을 사용하면 노트 제목이 삽입됩니다."
+    },
+    "actions": {
+      "create": "템플릿 만들기",
+      "update": "업데이트",
+      "duplicateAndEdit": "복제 후 편집",
+      "duplicate": "복제",
+      "delete": "템플릿 삭제",
+      "more": "추가 작업"
     },
     "toast": {
-      "nameRequired": "템플릿 이름은 필수 항목입니다.",
-      "created": "템플릿이 생성되었습니다.",
       "createFailed": "템플릿을 생성하지 못했습니다.",
-      "saved": "템플릿이 저장되었습니다.",
-      "saveFailed": "템플릿을 저장하지 못했습니다.",
-      "duplicateFailed": "템플릿을 복제하지 못했습니다.",
-      "deleteFailed": "템플릿을 삭제하지 못했습니다."
+      "saveFailed": "템플릿을 저장하지 못했습니다."
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "콤팩트",
       "showSummaries": "요약 표시",
       "cancel": "취소"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "템플릿 로드 중...",
-      "builtInTemplatesCannotBeModified": "내장 템플릿은 수정할 수 없습니다.",
-      "description": "설명",
-      "briefDescriptionOfThisTemplate": "이 템플릿에 대한 간략한 설명...",
-      "templateContent": "템플릿 콘텐츠",
-      "use": "사용 ",
-      "toInsertTheNoteTitleWhenCreatingANote": "노트 생성 시 노트 제목을 삽입하려면",
-      "templateName": "템플릿 이름",
-      "defaultContentForNotesCreatedFromThisTemplate": "이 템플릿으로 생성된 메모의 기본 콘텐츠..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "컬렉션 로드 중...",
-      "templateCollection": "템플릿 컬렉션",
-      "templates": "템플릿",
-      "curatedStructuresForYourNotes": "귀하의 노트에 맞게 선별된 구조입니다.",
-      "newTemplate": "새 템플릿",
-      "myTemplates": "내 템플릿",
-      "builtIn": "내장",
-      "deleteTemplate": "템플릿 삭제",
-      "areYouSureYouWantToDelete": "정말 삭제하시겠습니까?",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "이 템플릿으로 생성된 메모는 영향을 받지 않습니다.",
-      "cancel": "취소",
-      "builtIn2": "내장",
-      "duplicate": "중복",
-      "delete": "삭제",
-      "startYourCollection": "컬렉션 시작",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "템플릿을 사용하면 일관된 구조의 메모를 만들 수 있습니다.",
-      "createTemplate": "템플릿 생성"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "기본 제공",

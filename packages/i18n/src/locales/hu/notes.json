@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Sablon betöltése…",
+    "copySuffix": "{name} (másolat)",
     "title": {
       "new": "Új sablon",
-      "view": "Sablon megtekintése",
-      "edit": "Sablon szerkesztése"
+      "placeholder": "Sablon neve"
+    },
+    "icon": {
+      "label": "Sablon ikonja"
+    },
+    "content": {
+      "placeholder": "Az ebből a sablonból létrehozott jegyzetek alapértelmezett tartalma. A '{{'title'}}' beszúrja a jegyzet címét."
+    },
+    "actions": {
+      "create": "Sablon létrehozása",
+      "update": "Frissítés",
+      "duplicateAndEdit": "Megkettőzés és szerkesztés",
+      "duplicate": "Megkettőzés",
+      "delete": "Sablon törlése",
+      "more": "További műveletek"
     },
     "toast": {
-      "nameRequired": "A sablonnév megadása kötelező",
-      "created": "Sablon létrehozva",
       "createFailed": "Nem sikerült létrehozni a sablont",
-      "saved": "Sablon mentve",
-      "saveFailed": "Nem sikerült menteni a sablont",
-      "duplicateFailed": "Nem sikerült a sablon másolása",
-      "deleteFailed": "Nem sikerült törölni a sablont"
+      "saveFailed": "Nem sikerült menteni a sablont"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Kompakt",
       "showSummaries": "Összefoglalók megjelenítése",
       "cancel": "Mégsem"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Sablon betöltése...",
-      "builtInTemplatesCannotBeModified": "A beépített sablonok nem módosíthatók",
-      "description": "Leírás",
-      "briefDescriptionOfThisTemplate": "A sablon rövid leírása...",
-      "templateContent": "Sablon tartalma",
-      "use": "Használja ",
-      "toInsertTheNoteTitleWhenCreatingANote": "a jegyzet címének beszúrásához jegyzet létrehozásakor.",
-      "templateName": "Sablon neve",
-      "defaultContentForNotesCreatedFromThisTemplate": "Az ebből a sablonból létrehozott jegyzetek alapértelmezett tartalma..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Gyűjtemény betöltése...",
-      "templateCollection": "Sablon gyűjtemény",
-      "templates": "Sablonok",
-      "curatedStructuresForYourNotes": "Válogatott szerkezetek a jegyzeteihez.",
-      "newTemplate": "Új sablon",
-      "myTemplates": "Saját sablonok",
-      "builtIn": "Beépített",
-      "deleteTemplate": "Sablon törlése",
-      "areYouSureYouWantToDelete": "Biztosan törölni szeretnéd",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Az ebből a sablonból létrehozott jegyzeteket ez nem érinti.",
-      "cancel": "Mégsem",
-      "builtIn2": "Beépített",
-      "duplicate": "Megkettőzés",
-      "delete": "Törölje",
-      "startYourCollection": "Indítsa el a gyűjteményt",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "A sablonok segítségével egységes szerkezetű jegyzeteket hozhat létre.",
-      "createTemplate": "Sablon létrehozása"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Beépített",

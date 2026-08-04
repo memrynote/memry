@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "กำลังโหลดเทมเพลต…",
+    "copySuffix": "{name} (คัดลอก)",
     "title": {
       "new": "เทมเพลตใหม่",
-      "view": "ดูเทมเพลต",
-      "edit": "แก้ไขเทมเพลต"
+      "placeholder": "ชื่อเทมเพลต"
+    },
+    "icon": {
+      "label": "ไอคอนเทมเพลต"
+    },
+    "content": {
+      "placeholder": "เนื้อหาเริ่มต้นสำหรับโน้ตที่สร้างจากเทมเพลตนี้ ใช้ '{{'title'}}' เพื่อแทรกชื่อโน้ต"
+    },
+    "actions": {
+      "create": "สร้างเทมเพลต",
+      "update": "อัปเดต",
+      "duplicateAndEdit": "ทำซ้ำและแก้ไข",
+      "duplicate": "ทำซ้ำ",
+      "delete": "ลบเทมเพลต",
+      "more": "การดำเนินการเพิ่มเติม"
     },
     "toast": {
-      "nameRequired": "ต้องใส่ชื่อเทมเพลต",
-      "created": "สร้างเทมเพลตแล้ว",
       "createFailed": "ไม่สามารถสร้างเทมเพลตได้",
-      "saved": "เทมเพลตถูกบันทึกแล้ว",
-      "saveFailed": "ไม่สามารถบันทึกเทมเพลตได้",
-      "duplicateFailed": "ไม่สามารถสร้างสำเนาเทมเพลตได้",
-      "deleteFailed": "ไม่สามารถลบเทมเพลตได้"
+      "saveFailed": "ไม่สามารถบันทึกเทมเพลตได้"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "กะทัดรัด",
       "showSummaries": "แสดงสรุป",
       "cancel": "ยกเลิก"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "กำลังโหลดเทมเพลต...",
-      "builtInTemplatesCannotBeModified": "เทมเพลตที่ติดตั้งในตัวไม่สามารถแก้ไขได้",
-      "description": "คำอธิบาย",
-      "briefDescriptionOfThisTemplate": "คำอธิบายสั้น ๆ ของเทมเพลตนี้...",
-      "templateContent": "เนื้อหาเทมเพลต",
-      "use": "ใช้ ",
-      "toInsertTheNoteTitleWhenCreatingANote": "เพื่อแทรกชื่อบันทึกเมื่อสร้างบันทึก",
-      "templateName": "ชื่อเทมเพลต",
-      "defaultContentForNotesCreatedFromThisTemplate": "เนื้อหาเริ่มต้นสำหรับบันทึกที่สร้างจากเทมเพลตนี้..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "กำลังโหลดคอลเลกชัน...",
-      "templateCollection": "คอลเลกชันเทมเพลต",
-      "templates": "เทมเพลต",
-      "curatedStructuresForYourNotes": "โครงสร้างที่คัดสรรสำหรับบันทึกของคุณ",
-      "newTemplate": "เทมเพลตใหม่",
-      "myTemplates": "แม่แบบของฉัน",
-      "builtIn": "ในตัว",
-      "deleteTemplate": "ลบเทมเพลต",
-      "areYouSureYouWantToDelete": "คุณแน่ใจหรือว่าต้องการลบ",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "บันทึกที่สร้างจากเทมเพลตนี้จะไม่ถูกกระทบ",
-      "cancel": "ยกเลิก",
-      "builtIn2": "ในตัว",
-      "duplicate": "ทำซ้ำ",
-      "delete": "ลบ",
-      "startYourCollection": "เริ่มคอลเลกชันของคุณ",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "เทมเพลตช่วยให้คุณสร้างบันทึกด้วยโครงสร้างที่สอดคล้องกัน",
-      "createTemplate": "สร้างเทมเพลต"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "ในตัว",

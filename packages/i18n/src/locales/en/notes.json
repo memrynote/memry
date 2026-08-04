@@ -347,19 +347,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Loading template…",
+    "copySuffix": "{name} (Copy)",
     "title": {
       "new": "New Template",
-      "view": "View Template",
-      "edit": "Edit Template"
+      "placeholder": "Template name"
+    },
+    "icon": {
+      "label": "Template icon"
+    },
+    "content": {
+      "placeholder": "Default content for notes created from this template. Use '{{'title'}}' to insert the note title."
+    },
+    "actions": {
+      "create": "Create Template",
+      "update": "Update",
+      "duplicateAndEdit": "Duplicate & Edit",
+      "duplicate": "Duplicate",
+      "delete": "Delete Template",
+      "more": "More actions"
     },
     "toast": {
-      "nameRequired": "Template name is required",
-      "created": "Template created",
       "createFailed": "Failed to create template",
-      "saved": "Template saved",
-      "saveFailed": "Failed to save template",
-      "duplicateFailed": "Failed to duplicate template",
-      "deleteFailed": "Failed to delete template"
+      "saveFailed": "Failed to save template"
     }
   },
   "reminders": {
@@ -697,36 +707,6 @@
       "compact": "Compact",
       "showSummaries": "Show summaries",
       "cancel": "Cancel"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Loading template...",
-      "builtInTemplatesCannotBeModified": "Built-in templates cannot be modified",
-      "description": "Description",
-      "briefDescriptionOfThisTemplate": "Brief description of this template...",
-      "templateContent": "Template Content",
-      "use": "Use ",
-      "toInsertTheNoteTitleWhenCreatingANote": "to insert the note title when creating a note.",
-      "templateName": "Template Name",
-      "defaultContentForNotesCreatedFromThisTemplate": "Default content for notes created from this template..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Loading collection...",
-      "templateCollection": "Template Collection",
-      "templates": "Templates",
-      "curatedStructuresForYourNotes": "Curated structures for your notes.",
-      "newTemplate": "New Template",
-      "myTemplates": "My Templates",
-      "builtIn": "Built-in",
-      "deleteTemplate": "Delete Template",
-      "areYouSureYouWantToDelete": "Are you sure you want to delete \"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Notes created from this template will not be affected.",
-      "cancel": "Cancel",
-      "builtIn2": "Built-in",
-      "duplicate": "Duplicate",
-      "delete": "Delete",
-      "startYourCollection": "Start Your Collection",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Templates help you create notes with consistent structure.",
-      "createTemplate": "Create Template"
     },
     "componentsFolderViewSortSelector": {
       "clearSort": "Clear sort",

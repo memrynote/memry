@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Caricamento modello…",
+    "copySuffix": "{name} (Copia)",
     "title": {
       "new": "Nuovo modello",
-      "view": "Visualizza modello",
-      "edit": "Modifica modello"
+      "placeholder": "Nome del modello"
+    },
+    "icon": {
+      "label": "Icona del modello"
+    },
+    "content": {
+      "placeholder": "Contenuto predefinito per le note create da questo modello. Usa '{{'title'}}' per inserire il titolo della nota."
+    },
+    "actions": {
+      "create": "Crea modello",
+      "update": "Aggiorna",
+      "duplicateAndEdit": "Duplica e modifica",
+      "duplicate": "Duplica",
+      "delete": "Elimina modello",
+      "more": "Altre azioni"
     },
     "toast": {
-      "nameRequired": "Il nome del modello è obbligatorio",
-      "created": "Modello creato",
       "createFailed": "Impossibile creare il modello",
-      "saved": "Modello salvato",
-      "saveFailed": "Impossibile salvare il modello",
-      "duplicateFailed": "Impossibile duplicare il modello",
-      "deleteFailed": "Impossibile eliminare il modello"
+      "saveFailed": "Impossibile salvare il modello"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Compatto",
       "showSummaries": "Mostra riepiloghi",
       "cancel": "Annulla"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Caricamento modello...",
-      "builtInTemplatesCannotBeModified": "I modelli incorporati non possono essere modificati",
-      "description": "Descrizione",
-      "briefDescriptionOfThisTemplate": "Breve descrizione di questo modello...",
-      "templateContent": "Contenuto del modello",
-      "use": "Utilizzare ",
-      "toInsertTheNoteTitleWhenCreatingANote": "per inserire il titolo della nota durante la creazione di una nota.",
-      "templateName": "Nome del modello",
-      "defaultContentForNotesCreatedFromThisTemplate": "Contenuto predefinito per le note create da questo modello..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Caricamento raccolta...",
-      "templateCollection": "Raccolta di modelli",
-      "templates": "Modelli",
-      "curatedStructuresForYourNotes": "Strutture curate per i tuoi appunti.",
-      "newTemplate": "Nuovo modello",
-      "myTemplates": "I miei modelli",
-      "builtIn": "Integrato",
-      "deleteTemplate": "Elimina modello",
-      "areYouSureYouWantToDelete": "Sei sicuro di voler eliminare \"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Le note create da questo modello non saranno interessate.",
-      "cancel": "Annulla",
-      "builtIn2": "Integrato",
-      "duplicate": "Duplicato",
-      "delete": "Elimina",
-      "startYourCollection": "Inizia la tua collezione",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "I modelli ti aiutano a creare note con una struttura coerente.",
-      "createTemplate": "Crea modello"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Integrato",

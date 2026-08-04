@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Nilo-load ang template…",
+    "copySuffix": "{name} (Kopyahin)",
     "title": {
       "new": "Bagong Template",
-      "view": "Tingnan ang Template",
-      "edit": "I-edit ang Template"
+      "placeholder": "Pangalan ng template"
+    },
+    "icon": {
+      "label": "Icon ng template"
+    },
+    "content": {
+      "placeholder": "Default na nilalaman para sa mga tala na gawa mula sa template na ito. Gamitin ang '{{'title'}}' upang ipasok ang pamagat ng tala."
+    },
+    "actions": {
+      "create": "Gumawa ng Template",
+      "update": "I-update",
+      "duplicateAndEdit": "I-duplicate at i-edit",
+      "duplicate": "I-duplicate",
+      "delete": "Tanggalin ang template",
+      "more": "Iba pang aksyon"
     },
     "toast": {
-      "nameRequired": "Kinakailangan ang pangalan ng template",
-      "created": "Nagawa ang template",
       "createFailed": "Nabigong gumawa ng template",
-      "saved": "Na-save ang template",
-      "saveFailed": "Nabigong i-save ang template",
-      "duplicateFailed": "Nabigong i-duplicate ang template",
-      "deleteFailed": "Nabigong tanggalin ang template"
+      "saveFailed": "Nabigong i-save ang template"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Siksik",
       "showSummaries": "Ipakita ang mga buod",
       "cancel": "Kanselahin"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Nilo-load ang template...",
-      "builtInTemplatesCannotBeModified": "Hindi mababago ang mga built-in na template",
-      "description": "Paglalarawan",
-      "briefDescriptionOfThisTemplate": "Maikling paglalarawan ng template na ito...",
-      "templateContent": "Nilalaman ng Template",
-      "use": "Gamitin ",
-      "toInsertTheNoteTitleWhenCreatingANote": "upang ipasok ang pamagat ng tala kapag gumagawa ng tala.",
-      "templateName": "Pangalan ng Template",
-      "defaultContentForNotesCreatedFromThisTemplate": "Default na nilalaman para sa mga tala na ginawa mula sa template na ito..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Nilo-load ang koleksyon...",
-      "templateCollection": "Koleksyon ng Template",
-      "templates": "Mga template",
-      "curatedStructuresForYourNotes": "Mga na-curate na istruktura para sa iyong mga tala.",
-      "newTemplate": "Bagong Template",
-      "myTemplates": "Aking Mga Template",
-      "builtIn": "Nakapaloob",
-      "deleteTemplate": "Tanggalin ang Template",
-      "areYouSureYouWantToDelete": "Sigurado ka bang gusto mong tanggalin\"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Ang mga tala na ginawa mula sa template na ito ay hindi maaapektuhan.",
-      "cancel": "Kanselahin",
-      "builtIn2": "Nakapaloob",
-      "duplicate": "I-duplicate",
-      "delete": "Tanggalin",
-      "startYourCollection": "Simulan ang Iyong Koleksyon",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Tinutulungan ka ng mga template na lumikha ng mga tala na may pare-parehong istraktura.",
-      "createTemplate": "Lumikha ng Template"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Nakapaloob",

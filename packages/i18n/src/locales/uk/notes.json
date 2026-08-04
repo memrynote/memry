@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Завантаження шаблону…",
+    "copySuffix": "{name} (Копіювати)",
     "title": {
       "new": "Новий шаблон",
-      "view": "Переглянути шаблон",
-      "edit": "Редагувати шаблон"
+      "placeholder": "Назва шаблону"
+    },
+    "icon": {
+      "label": "Піктограма шаблону"
+    },
+    "content": {
+      "placeholder": "Типовий вміст для нотаток, створених із цього шаблону. Використовуйте '{{'title'}}', щоб вставити заголовок нотатки."
+    },
+    "actions": {
+      "create": "Створити шаблон",
+      "update": "Оновити",
+      "duplicateAndEdit": "Дублювати та редагувати",
+      "duplicate": "Дублювати",
+      "delete": "Видалити шаблон",
+      "more": "Інші дії"
     },
     "toast": {
-      "nameRequired": "Потрібна назва шаблону",
-      "created": "Шаблон створено",
       "createFailed": "Не вдалося створити шаблон",
-      "saved": "Шаблон збережено",
-      "saveFailed": "Не вдалося зберегти шаблон",
-      "duplicateFailed": "Не вдалося дублювати шаблон",
-      "deleteFailed": "Не вдалося видалити шаблон"
+      "saveFailed": "Не вдалося зберегти шаблон"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Компактна",
       "showSummaries": "Показати резюме",
       "cancel": "Скасувати"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Завантаження шаблону...",
-      "builtInTemplatesCannotBeModified": "Вбудовані шаблони не можна змінювати",
-      "description": "Опис",
-      "briefDescriptionOfThisTemplate": "Короткий опис цього шаблону...",
-      "templateContent": "Вміст шаблону",
-      "use": "Використовуйте ",
-      "toInsertTheNoteTitleWhenCreatingANote": "щоб вставити назву нотатки при створенні нотатки.",
-      "templateName": "Назва шаблону",
-      "defaultContentForNotesCreatedFromThisTemplate": "Зміст за замовчуванням для нотаток, створених з цього шаблону..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Завантаження колекції...",
-      "templateCollection": "Колекція шаблонів",
-      "templates": "Шаблони",
-      "curatedStructuresForYourNotes": "Ретельно підібрані структури для ваших нотаток.",
-      "newTemplate": "Новий шаблон",
-      "myTemplates": "Мої шаблони",
-      "builtIn": "Вбудовані",
-      "deleteTemplate": "Видалити шаблон",
-      "areYouSureYouWantToDelete": "Ви впевнені, що хочете видалити",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Нотатки, створені з цього шаблону, не будуть змінені.",
-      "cancel": "Скасувати",
-      "builtIn2": "Вбудовані",
-      "duplicate": "Дублювати",
-      "delete": "Видалити",
-      "startYourCollection": "Розпочати вашу колекцію",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Шаблони допомагають створювати нотатки з послідовною структурою.",
-      "createTemplate": "Створити шаблон"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Вбудований",

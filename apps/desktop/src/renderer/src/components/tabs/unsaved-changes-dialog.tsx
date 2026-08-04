@@ -1,14 +1,11 @@
 /**
- * Unsaved Changes Guard
- * Hook and dialog for handling unsaved changes on tab close
+ * Unsaved Changes Dialog
+ * Confirmation dialog for closing a tab with unsaved changes
  */
 
-import { useState, useCallback } from 'react'
-import { useTabs } from '@/contexts/tabs'
 import { useT } from '@memry/i18n/renderer'
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -16,76 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
-
-// =============================================================================
-// TYPES
-// =============================================================================
-
-interface PendingClose {
-  tabId: string
-  groupId: string
-  tabTitle: string
-}
-
-interface UseUnsavedChangesGuardResult {
-  /** Request to close a tab (returns true if OK to close immediately) */
-  requestClose: (tabId: string, groupId: string) => boolean
-  /** Pending close info */
-  pendingClose: PendingClose | null
-  /** Clear pending close */
-  clearPendingClose: () => void
-  /** Confirm close (discard changes) */
-  confirmClose: () => void
-}
-
-// =============================================================================
-// HOOK
-// =============================================================================
-
-/**
- * Hook to guard against closing tabs with unsaved changes
- */
-export const useUnsavedChangesGuard = (): UseUnsavedChangesGuardResult => {
-  const { state, closeTab } = useTabs()
-  const [pendingClose, setPendingClose] = useState<PendingClose | null>(null)
-
-  const requestClose = useCallback(
-    (tabId: string, groupId: string): boolean => {
-      const group = state.tabGroups[groupId]
-      const tab = group?.tabs.find((t) => t.id === tabId)
-
-      if (tab?.isModified) {
-        setPendingClose({
-          tabId,
-          groupId,
-          tabTitle: tab.title
-        })
-        return false // Don't close yet
-      }
-
-      return true // OK to close
-    },
-    [state.tabGroups]
-  )
-
-  const clearPendingClose = useCallback(() => {
-    setPendingClose(null)
-  }, [])
-
-  const confirmClose = useCallback(() => {
-    if (pendingClose) {
-      closeTab(pendingClose.tabId, pendingClose.groupId)
-      setPendingClose(null)
-    }
-  }, [pendingClose, closeTab])
-
-  return {
-    requestClose,
-    pendingClose,
-    clearPendingClose,
-    confirmClose
-  }
-}
+import { Button } from '@/components/ui/button'
 
 // =============================================================================
 // DIALOG COMPONENT
@@ -131,10 +59,13 @@ export const UnsavedChangesDialog = ({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onCancel}>{t('button.cancel')}</AlertDialogCancel>
-          <AlertDialogAction onClick={onDiscard} className="bg-red-500 hover:bg-red-600">
+          {/* Plain buttons, not AlertDialogAction: that primitive is Dialog.Close
+              and would fire onOpenChange(false) — read as Cancel — on top of the
+              handler below, aborting the close it was meant to resolve. */}
+          <Button onClick={onDiscard} className="bg-red-500 hover:bg-red-600">
             {t('button.dontSave')}
-          </AlertDialogAction>
-          {onSave && <AlertDialogAction onClick={onSave}>{t('button.save')}</AlertDialogAction>}
+          </Button>
+          {onSave && <Button onClick={onSave}>{t('button.save')}</Button>}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

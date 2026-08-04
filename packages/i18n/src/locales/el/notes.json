@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Φόρτωση προτύπου…",
+    "copySuffix": "{name} (Αντιγραφή)",
     "title": {
       "new": "Νέο πρότυπο",
-      "view": "Προβολή προτύπου",
-      "edit": "Επεξεργασία προτύπου"
+      "placeholder": "Όνομα προτύπου"
+    },
+    "icon": {
+      "label": "Εικονίδιο προτύπου"
+    },
+    "content": {
+      "placeholder": "Προεπιλεγμένο περιεχόμενο για σημειώσεις που δημιουργούνται από αυτό το πρότυπο. Χρησιμοποιήστε '{{'title'}}' για να εισαγάγετε τον τίτλο της σημείωσης."
+    },
+    "actions": {
+      "create": "Δημιουργία προτύπου",
+      "update": "Ενημέρωση",
+      "duplicateAndEdit": "Διπλότυπο και επεξεργασία",
+      "duplicate": "Διπλότυπο",
+      "delete": "Διαγραφή προτύπου",
+      "more": "Περισσότερες ενέργειες"
     },
     "toast": {
-      "nameRequired": "Απαιτείται όνομα προτύπου",
-      "created": "Το πρότυπο δημιουργήθηκε",
       "createFailed": "Αποτυχία δημιουργίας προτύπου",
-      "saved": "Το πρότυπο αποθηκεύτηκε",
-      "saveFailed": "Αποτυχία αποθήκευσης προτύπου",
-      "duplicateFailed": "Αποτυχία αντιγραφής προτύπου",
-      "deleteFailed": "Αποτυχία διαγραφής προτύπου"
+      "saveFailed": "Αποτυχία αποθήκευσης προτύπου"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Συμπαγές",
       "showSummaries": "Εμφάνιση περιλήψεων",
       "cancel": "Ακύρωση"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Φόρτωση προτύπου...",
-      "builtInTemplatesCannotBeModified": "Δεν είναι δυνατή η τροποποίηση των ενσωματωμένων προτύπων",
-      "description": "Περιγραφή",
-      "briefDescriptionOfThisTemplate": "Σύντομη περιγραφή αυτού του προτύπου...",
-      "templateContent": "Περιεχόμενο προτύπου",
-      "use": "Χρήση ",
-      "toInsertTheNoteTitleWhenCreatingANote": "για να εισαγάγετε τον τίτλο της σημείωσης κατά τη δημιουργία μιας σημείωσης.",
-      "templateName": "Όνομα προτύπου",
-      "defaultContentForNotesCreatedFromThisTemplate": "Προεπιλεγμένο περιεχόμενο για σημειώσεις που δημιουργούνται από αυτό το πρότυπο..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Φόρτωση συλλογής...",
-      "templateCollection": "Συλλογή προτύπων",
-      "templates": "Πρότυπα",
-      "curatedStructuresForYourNotes": "Επιμελημένες δομές για τις σημειώσεις σας.",
-      "newTemplate": "Νέο πρότυπο",
-      "myTemplates": "Τα Πρότυπά μου",
-      "builtIn": "Ενσωματωμένο",
-      "deleteTemplate": "Διαγραφή προτύπου",
-      "areYouSureYouWantToDelete": "Είστε βέβαιοι ότι θέλετε να διαγράψετε \"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Οι σημειώσεις που δημιουργούνται από αυτό το πρότυπο δεν θα επηρεαστούν.",
-      "cancel": "Ακύρωση",
-      "builtIn2": "Ενσωματωμένο",
-      "duplicate": "Διπλότυπο",
-      "delete": "Διαγραφή",
-      "startYourCollection": "Ξεκινήστε τη συλλογή σας",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Τα πρότυπα σάς βοηθούν να δημιουργείτε σημειώσεις με συνεπή δομή.",
-      "createTemplate": "Δημιουργία προτύπου"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Ενσωματωμένα",

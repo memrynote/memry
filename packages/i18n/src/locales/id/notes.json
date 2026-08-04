@@ -315,19 +315,29 @@
     }
   },
   "templateEditor": {
+    "loading": "Memuat templat…",
+    "copySuffix": "{name} (Salinan)",
     "title": {
       "new": "Templat Baru",
-      "view": "Lihat Templat",
-      "edit": "Sunting Templat"
+      "placeholder": "Nama templat"
+    },
+    "icon": {
+      "label": "Ikon templat"
+    },
+    "content": {
+      "placeholder": "Konten default untuk catatan yang dibuat dari templat ini. Gunakan '{{'title'}}' untuk menyisipkan judul catatan."
+    },
+    "actions": {
+      "create": "Buat Templat",
+      "update": "Perbarui",
+      "duplicateAndEdit": "Duplikat dan edit",
+      "duplicate": "Duplikat",
+      "delete": "Hapus templat",
+      "more": "Tindakan lainnya"
     },
     "toast": {
-      "nameRequired": "Nama templat wajib diisi",
-      "created": "Templat dibuat",
       "createFailed": "Gagal membuat templat",
-      "saved": "Templat disimpan",
-      "saveFailed": "Gagal menyimpan templat",
-      "duplicateFailed": "Gagal menduplikasi template",
-      "deleteFailed": "Gagal menghapus templat"
+      "saveFailed": "Gagal menyimpan templat"
     }
   },
   "reminders": {
@@ -665,36 +675,6 @@
       "compact": "Kompak",
       "showSummaries": "Tampilkan ringkasan",
       "cancel": "Batalkan"
-    },
-    "pagesTemplateEditor": {
-      "loadingTemplate": "Memuat templat...",
-      "builtInTemplatesCannotBeModified": "Templat bawaan tidak dapat diubah",
-      "description": "Deskripsi",
-      "briefDescriptionOfThisTemplate": "Deskripsi singkat tentang templat ini...",
-      "templateContent": "Konten Templat",
-      "use": "Gunakan ",
-      "toInsertTheNoteTitleWhenCreatingANote": "untuk menyisipkan judul catatan saat membuat catatan.",
-      "templateName": "Nama Templat",
-      "defaultContentForNotesCreatedFromThisTemplate": "Konten default untuk catatan yang dibuat dari templat ini..."
-    },
-    "pagesTemplates": {
-      "loadingCollection": "Memuat koleksi...",
-      "templateCollection": "Koleksi Templat",
-      "templates": "Templat",
-      "curatedStructuresForYourNotes": "Struktur yang dikurasi untuk catatan Anda.",
-      "newTemplate": "Templat Baru",
-      "myTemplates": "Templat Saya",
-      "builtIn": "Bawaan",
-      "deleteTemplate": "Hapus Templat",
-      "areYouSureYouWantToDelete": "Apakah Anda yakin ingin menghapus \"",
-      "notesCreatedFromThisTemplateWillNotBeAffected": "Catatan yang dibuat dari templat ini tidak akan terpengaruh.",
-      "cancel": "Batalkan",
-      "builtIn2": "Bawaan",
-      "duplicate": "Duplikat",
-      "delete": "Hapus",
-      "startYourCollection": "Mulai Koleksi Anda",
-      "templatesHelpYouCreateNotesWithConsistentStructure": "Templat membantu Anda membuat catatan dengan struktur yang konsisten.",
-      "createTemplate": "Buat Templat"
     },
     "componentsFolderViewSortSelector": {
       "builtIn": "Bawaan",
