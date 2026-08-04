@@ -470,7 +470,7 @@ describe('projectHandler', () => {
         .run()
     }
 
-    it('omits markdown-note links from the pushed payload', () => {
+    it('keeps markdown-note links in the pushed payload — a device that has not adopted the split still needs them', () => {
       testDb.db.insert(projects).values(TEST_PROJECT).run()
       seedMarkdownNote('n1')
       testDb.db
@@ -485,7 +485,7 @@ describe('projectHandler', () => {
         projectHandler.buildPushPayload(testDb.db as never, 'proj-1', 'device-A', 'update')!
       )
 
-      expect(payload.links.map((l: { itemId: string }) => l.itemId)).toEqual(['f1'])
+      expect(payload.links.map((l: { itemId: string }) => l.itemId).sort()).toEqual(['f1', 'n1'])
     })
 
     it('does not delete a locally derived markdown-note link when a project is pulled', () => {
@@ -512,33 +512,62 @@ describe('projectHandler', () => {
       expect(listNoteProjectLinkIds(testDb.db, 'n1')).toHaveLength(1)
     })
 
-    it('skips a markdown-note link inside an older payload instead of erroring', () => {
+    it('applies pinned/position from an incoming markdown-note entry to the existing derived row, without inserting a duplicate or deleting the original', () => {
       testDb.db
         .insert(projects)
         .values({ ...TEST_PROJECT, clock: { 'device-A': 1 } })
         .run()
       seedMarkdownNote('n1')
+      // Locally derived by the note's frontmatter projector — its id ('l1')
+      // is never shared with any other device.
       testDb.db
         .insert(projectLinks)
-        .values({ id: 'l1', projectId: 'proj-1', itemType: 'note', itemId: 'n1', position: 0 })
+        .values({
+          id: 'l1',
+          projectId: 'proj-1',
+          itemType: 'note',
+          itemId: 'n1',
+          position: 0,
+          pinned: 0
+        })
         .run()
 
-      // An older build still puts the (already-derived) markdown-note link in
-      // the project payload, under its own link id.
+      // Another device's own payload for the same note, under its own
+      // (different) locally-derived link id, with view state the user
+      // changed there: pinned it and dragged it to a new position.
       const data: ProjectSyncPayload = {
         name: 'P',
         clock: { 'device-A': 1, 'device-B': 1 },
-        links: [{ id: 'old-l9', itemType: 'note', itemId: 'n1', position: 0 }]
+        links: [{ id: 'remote-l1', itemType: 'note', itemId: 'n1', position: 5, pinned: 1 }]
       }
+      projectHandler.applyUpsert(ctx, 'proj-1', data, { 'device-A': 1, 'device-B': 1 })
 
-      expect(() =>
-        projectHandler.applyUpsert(ctx, 'proj-1', data, { 'device-A': 1, 'device-B': 1 })
-      ).not.toThrow()
-
-      // Skipped, not upserted under the old id — the original derived row
-      // ('l1') survives untouched; no row for 'old-l9' is created.
+      // Exactly one row, still under its own original id — updated in place,
+      // never replaced.
       const links = testDb.db.select().from(projectLinks).all()
-      expect(links.map((l) => l.id)).toEqual(['l1'])
+      expect(links).toHaveLength(1)
+      expect(links[0].id).toBe('l1')
+      expect(links[0].position).toBe(5)
+      expect(links[0].pinned).toBe(1)
+    })
+
+    it('ignores an incoming markdown-note entry when no local derived row exists yet', () => {
+      testDb.db
+        .insert(projects)
+        .values({ ...TEST_PROJECT, clock: { 'device-A': 1 } })
+        .run()
+      seedMarkdownNote('n1')
+      // No local project_links row for n1 — the note itself has not synced
+      // here yet, so its own projector has not derived one.
+
+      const data: ProjectSyncPayload = {
+        name: 'P',
+        clock: { 'device-A': 1, 'device-B': 1 },
+        links: [{ id: 'remote-l1', itemType: 'note', itemId: 'n1', position: 0 }]
+      }
+      projectHandler.applyUpsert(ctx, 'proj-1', data, { 'device-A': 1, 'device-B': 1 })
+
+      expect(testDb.db.select().from(projectLinks).all()).toHaveLength(0)
     })
   })
 })
