@@ -93,6 +93,7 @@ export type PropertyType =
   | 'status'
   | 'url'
   | 'rating'
+  | 'relation'
 
 export interface PropertyValue {
   name: string

@@ -79,6 +79,9 @@ export interface WikiLinkPreview {
   createdAt: string
 }
 
+// Main returns `type: 'relation'` for relation-valued properties, so this union
+// has to carry it — any `Record<PropertyType, X>` or exhaustive switch built on
+// a narrower union would compile clean while silently omitting relation.
 type PropertyType =
   | 'text'
   | 'number'
@@ -89,10 +92,11 @@ type PropertyType =
   | 'status'
   | 'url'
   | 'rating'
+  | 'relation'
 
-// 'relation' is registered as a canonical property type but has no value
-// handling, UI, or storage support yet (later tasks own that surface), so it
-// is excluded from the types creatable/editable via the property-definition API.
+// A relation carries no definition-side configuration — its value is
+// self-describing (`memry://<kind>/<id>`) and `.memry/properties.md` has no
+// schema member for it — so it stays out of the property-definition API.
 type EditablePropertyType = Exclude<CanonicalPropertyType, 'relation'>
 type EnsurablePropertyType = Extract<CanonicalPropertyType, 'select' | 'multiselect' | 'status'>
 
