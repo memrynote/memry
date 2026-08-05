@@ -464,6 +464,65 @@ describe('PushCoordinator', () => {
       expect(body.items[0].encryptedData).toBe(v2)
       expect(queue.getSize()).toBe(0)
     })
+
+    // `buildPushPayload` is optional on SyncItemHandler and `settings` omits it,
+    // so nothing rebuilds the payload from local state — the frozen queue
+    // payload is what goes over the wire. The retained row therefore has to be
+    // the newer one, or the newer edit is deleted via the success path having
+    // never been pushed (#953).
+    it('#then the newer payload is pushed even when the handler cannot rebuild it', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      acceptAll()
+      getHandlerMock.mockReturnValue({ markPushSynced: vi.fn() })
+
+      const v1 = JSON.stringify({ general: { theme: 'light' } })
+      const v2 = JSON.stringify({ general: { theme: 'dark' } })
+      queue.enqueue({
+        type: 'settings',
+        itemId: 'synced_settings',
+        operation: 'update',
+        payload: v1
+      })
+      queue.markFailed(queue.peek()[0].id, 'transient')
+      queue.enqueue({
+        type: 'settings',
+        itemId: 'synced_settings',
+        operation: 'update',
+        payload: v2
+      })
+      expect(queue.getSize()).toBe(2)
+
+      await coordinator.push()
+
+      expect(postToServerMock).toHaveBeenCalledTimes(1)
+      const body = postToServerMock.mock.calls[0][1] as PushBody
+      expect(body.items).toHaveLength(1)
+      expect(body.items[0].encryptedData).toBe(v2)
+      expect(queue.getSize()).toBe(0)
+    })
+
+    // Keeping the newest row must not silently downgrade the operation: the
+    // create was never acked, so an `update` for an id the server has never
+    // seen is not an equivalent request. Same precedence enqueue() applies.
+    it('#then an unacked create survives a newer update row', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      acceptAll()
+      getHandlerMock.mockReturnValue({ markPushSynced: vi.fn() })
+
+      const v1 = JSON.stringify({ title: 'first' })
+      const v2 = JSON.stringify({ title: 'second' })
+      queue.enqueue({ type: 'task', itemId: 'task-2', operation: 'create', payload: v1 })
+      queue.markFailed(queue.peek()[0].id, 'transient')
+      queue.enqueue({ type: 'task', itemId: 'task-2', operation: 'update', payload: v2 })
+
+      await coordinator.push()
+
+      const body = postToServerMock.mock.calls[0][1] as PushBody
+      expect(body.items).toHaveLength(1)
+      expect(body.items[0].operation).toBe('create')
+      expect(body.items[0].encryptedData).toBe(v2)
+      expect(queue.getSize()).toBe(0)
+    })
   })
 
   describe('#given sync is paused #when requestPush is called', () => {
