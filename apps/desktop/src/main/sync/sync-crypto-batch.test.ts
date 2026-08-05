@@ -287,6 +287,37 @@ describe('sync crypto batch', () => {
     )
   })
 
+  // A bridge that has latched itself off reports isRunning false. These two pin
+  // the other half of that contract: a false gate must take the main-thread path
+  // outright, never paying a worker round trip to rediscover it is broken.
+  it('encrypts on the main thread without a worker request when the bridge is not running', async () => {
+    const workerBridge = { isRunning: false, encryptBatch: vi.fn() }
+
+    const result = await encryptPushBatch([queueRow], vaultKey, signingSecretKey, 'device-1', {
+      workerBridge: workerBridge as never,
+      queue: { markFailed: mocks.markFailed } as never,
+      extractPayloadMetadata: () => ({}),
+      resolvePushPayload: (item) => item.payload
+    })
+
+    expect(workerBridge.encryptBatch).not.toHaveBeenCalled()
+    expect(mocks.encryptItemForPush).toHaveBeenCalledTimes(1)
+    expect(result).toEqual([{ queueId: 'queue-1', pushItem: { encrypted: true } }])
+  })
+
+  it('decrypts on the main thread without a worker request when the bridge is not running', async () => {
+    const workerBridge = { isRunning: false, decryptBatch: vi.fn() }
+
+    const result = await decryptPullBatch([pullItem] as never, vaultKey, {
+      workerBridge: workerBridge as never,
+      resolveDeviceKey: vi.fn(async () => new Uint8Array([9]))
+    })
+
+    expect(workerBridge.decryptBatch).not.toHaveBeenCalled()
+    expect(mocks.decryptSingleItem).toHaveBeenCalledTimes(1)
+    expect(result.decrypted).toEqual([{ id: 'note-1', content: 'plain' }])
+  })
+
   it('returns only skipped failures when every worker item lacks a signer key', async () => {
     const workerBridge = {
       isRunning: true,

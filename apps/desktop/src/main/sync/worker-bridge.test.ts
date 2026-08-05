@@ -43,7 +43,7 @@ vi.mock('../lib/logger', () => ({
   createLogger: () => logger
 }))
 
-import { SyncWorkerBridge } from './worker-bridge'
+import { MAX_CONSECUTIVE_FAILURES, SyncWorkerBridge } from './worker-bridge'
 
 describe('SyncWorkerBridge', () => {
   let bridge: SyncWorkerBridge
@@ -444,6 +444,102 @@ describe('SyncWorkerBridge', () => {
 
       // #then — a clean stop() must not warn on every shutdown
       expect(logger.warn).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('#given running bridge #when requests keep failing', () => {
+    const startReady = async (): Promise<void> => {
+      const p = bridge.start()
+      mockWorkerInstance.simulateMessage({ type: 'ready' })
+      await p
+    }
+
+    const encryptBatchRequests = (): unknown[] =>
+      mockWorkerInstance.postMessage.mock.calls.filter(([m]) => m.type === 'encrypt-batch')
+
+    /** One batch against a worker that is alive but never answers. */
+    const silentBatch = async (): Promise<void> => {
+      const request = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+      vi.advanceTimersByTime(60_001)
+      await expect(request).rejects.toThrow('Worker request timed out')
+    }
+
+    const answeredBatch = async (): Promise<void> => {
+      const request = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+      const posted = encryptBatchRequests().at(-1)![0]
+      mockWorkerInstance.simulateMessage({
+        type: 'encrypt-batch-result',
+        requestId: posted.requestId,
+        results: [],
+        errors: []
+      })
+      await request
+    }
+
+    it('#then still routes to the worker below the latch threshold', async () => {
+      // #given
+      await startReady()
+
+      // #when — one short of the threshold; a lone hiccup must not cost the
+      // session its worker
+      for (let i = 0; i < MAX_CONSECUTIVE_FAILURES - 1; i++) await silentBatch()
+
+      // #then
+      expect(bridge.isRunning).toBe(true)
+      expect(encryptBatchRequests()).toHaveLength(MAX_CONSECUTIVE_FAILURES - 1)
+    })
+
+    it('#then latches off at the threshold so no further round trip is paid', async () => {
+      // #given
+      await startReady()
+
+      // #when
+      for (let i = 0; i < MAX_CONSECUTIVE_FAILURES; i++) await silentBatch()
+
+      // #then — sync-crypto-batch gates on isRunning (its only two call sites),
+      // so a false here is exactly "main-thread crypto, no worker request". The
+      // timeout penalty is now bounded at MAX_CONSECUTIVE_FAILURES for the whole
+      // session instead of one per batch.
+      expect(bridge.isRunning).toBe(false)
+      expect(encryptBatchRequests()).toHaveLength(MAX_CONSECUTIVE_FAILURES)
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Sync worker latched off after repeated failures — using main-thread crypto',
+        expect.objectContaining({ consecutiveFailures: MAX_CONSECUTIVE_FAILURES })
+      )
+    })
+
+    it('#then a successful batch clears the failure count', async () => {
+      // #given — failures stop one short of the threshold
+      await startReady()
+      for (let i = 0; i < MAX_CONSECUTIVE_FAILURES - 1; i++) await silentBatch()
+
+      // #when — the worker recovers, then stumbles again
+      await answeredBatch()
+      for (let i = 0; i < MAX_CONSECUTIVE_FAILURES - 1; i++) await silentBatch()
+
+      // #then — failures must be *consecutive* to latch. Without the reset the
+      // count would already stand at 2 * (MAX - 1) and this would be latched.
+      expect(bridge.isRunning).toBe(true)
+
+      // #and — the threshold is still enforced, just counted from the success
+      await silentBatch()
+      expect(bridge.isRunning).toBe(false)
+    })
+
+    it('#then a restarted bridge is no longer latched', async () => {
+      // #given — a latched bridge
+      await startReady()
+      for (let i = 0; i < MAX_CONSECUTIVE_FAILURES; i++) await silentBatch()
+      expect(bridge.isRunning).toBe(false)
+
+      // #when — the only in-session recovery path: drop the thread and respawn
+      const stopPromise = bridge.stop()
+      mockWorkerInstance.simulateExit(0)
+      await stopPromise
+      await startReady()
+
+      // #then — a fresh thread is not the thread that failed
+      expect(bridge.isRunning).toBe(true)
     })
   })
 
