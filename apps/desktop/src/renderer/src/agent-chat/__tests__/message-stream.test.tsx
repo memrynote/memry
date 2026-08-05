@@ -15,9 +15,11 @@ vi.mock('@/contexts/tabs', () => ({
 }))
 
 import { MessageStream } from '../message-stream'
+import { clearVaultItemIconCache } from '../messages/use-vault-item-icon'
 
 const mockApproveTool = vi.fn()
 const mockPreviewDiff = vi.fn()
+const mockGetNote = vi.fn()
 
 function message(input: {
   id: string
@@ -53,10 +55,20 @@ describe('MessageStream', () => {
       candidate: 'old\n\nnew'
     })
     mockUseAgentOptional.mockReturnValue(null)
-    ;(window.api as typeof window.api & { agent?: { previewDiff: typeof mockPreviewDiff } }).agent =
-      {
-        previewDiff: mockPreviewDiff
+    clearVaultItemIconCache()
+    mockGetNote.mockReset()
+    mockGetNote.mockResolvedValue(null)
+    ;(
+      window.api as typeof window.api & {
+        agent?: { previewDiff: typeof mockPreviewDiff }
+        notes?: { get: typeof mockGetNote }
       }
+    ).agent = {
+      previewDiff: mockPreviewDiff
+    }
+    ;(window.api as typeof window.api & { notes?: { get: typeof mockGetNote } }).notes = {
+      get: mockGetNote
+    }
   })
 
   it('renders all stored agent message roles', () => {
@@ -511,6 +523,56 @@ describe('MessageStream', () => {
     const link = screen.getByRole('link', { name: 'Movies' })
     expect(link.querySelector('[data-agent-link-icon="note-custom"]')).not.toBeNull()
     expect(link.querySelector('[data-agent-link-label]')).toHaveTextContent('Movies')
+  })
+
+  it('resolves note icons from the vault even when no source metadata exists', async () => {
+    mockGetNote.mockResolvedValue({ id: 'note-1', title: 'Watchlist 2026', emoji: '🎬' })
+
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'assistant-1',
+            role: 'assistant',
+            content: {
+              role: 'assistant',
+              data: { text: '[Watchlist 2026](memry://note/note-1)' }
+            }
+          })
+        ]}
+      />
+    )
+
+    const link = screen.getByRole('link', { name: 'Watchlist 2026' })
+
+    await waitFor(() => {
+      expect(link.querySelector('[data-agent-link-icon="note-custom"]')).toHaveTextContent('🎬')
+    })
+    expect(link.querySelector('[data-agent-link-icon="note-default"]')).toBeNull()
+    expect(mockGetNote).toHaveBeenCalledWith('note-1')
+  })
+
+  it('keeps the default icon when the vault says the note has none', async () => {
+    mockGetNote.mockResolvedValue({ id: 'note-1', title: 'Plain', emoji: null })
+
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'assistant-1',
+            role: 'assistant',
+            content: {
+              role: 'assistant',
+              data: { text: '[Plain](memry://note/note-1)' }
+            }
+          })
+        ]}
+      />
+    )
+
+    await waitFor(() => expect(mockGetNote).toHaveBeenCalledWith('note-1'))
+    const link = screen.getByRole('link', { name: 'Plain' })
+    expect(link.querySelector('[data-agent-link-icon="note-default"]')).not.toBeNull()
   })
 
   it('lifts an emoji written into the link label into the item icon slot', () => {

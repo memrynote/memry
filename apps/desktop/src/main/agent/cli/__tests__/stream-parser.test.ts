@@ -124,6 +124,83 @@ describe('Claude stream-json parser', () => {
     })
   })
 
+  it('extracts tool_result blocks from Claude Code user messages', () => {
+    const events: unknown[] = []
+    const parser = createStreamParser((event) => events.push(event))
+
+    parser.feed(
+      `${JSON.stringify({
+        type: 'user',
+        message: {
+          role: 'user',
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: 'tool-1',
+              content: [{ type: 'text', text: JSON.stringify({ id: 'note-1', title: 'Movies' }) }]
+            },
+            {
+              type: 'tool_result',
+              tool_use_id: 'tool-2',
+              is_error: true,
+              content: [
+                { type: 'text', text: JSON.stringify({ code: 'NOT_FOUND', message: 'missing' }) }
+              ]
+            }
+          ]
+        }
+      })}\n`
+    )
+
+    expect(events).toEqual([
+      {
+        kind: 'tool_result',
+        toolUseId: 'tool-1',
+        ok: true,
+        data: { id: 'note-1', title: 'Movies' }
+      },
+      {
+        kind: 'tool_result',
+        toolUseId: 'tool-2',
+        ok: false,
+        error: { code: 'NOT_FOUND', message: 'missing' }
+      }
+    ])
+  })
+
+  it('treats user messages without tool results as noop', () => {
+    const events: unknown[] = []
+    const parser = createStreamParser((event) => events.push(event))
+
+    parser.feed(
+      `${JSON.stringify({
+        type: 'user',
+        message: { role: 'user', content: [{ type: 'text', text: 'hi' }] }
+      })}\n`
+    )
+
+    expect(events).toEqual([{ kind: 'noop' }])
+  })
+
+  it('reads plain string tool_result content from user messages', () => {
+    const events: unknown[] = []
+    const parser = createStreamParser((event) => events.push(event))
+
+    parser.feed(
+      `${JSON.stringify({
+        type: 'user',
+        message: {
+          role: 'user',
+          content: [{ type: 'tool_result', tool_use_id: 'tool-3', content: 'plain text output' }]
+        }
+      })}\n`
+    )
+
+    expect(events).toEqual([
+      { kind: 'tool_result', toolUseId: 'tool-3', ok: true, data: 'plain text output' }
+    ])
+  })
+
   it('emits message_stop on stop event', () => {
     const events: unknown[] = []
     const parser = createStreamParser((event) => events.push(event))

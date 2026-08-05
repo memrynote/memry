@@ -10,11 +10,12 @@ export function createStreamParser(onEvent: (event: BackendEvent) => void): Stre
   let emittedAssistantText = false
 
   const emitBufferedLine = (line: string): void => {
-    const event = parseLine(line, emittedAssistantText)
-    if (event.kind === 'assistant_delta') {
-      emittedAssistantText = true
+    for (const event of parseLine(line, emittedAssistantText)) {
+      if (event.kind === 'assistant_delta') {
+        emittedAssistantText = true
+      }
+      onEvent(event)
     }
-    onEvent(event)
   }
 
   return {
@@ -39,16 +40,77 @@ export function createStreamParser(onEvent: (event: BackendEvent) => void): Stre
   }
 }
 
-function parseLine(line: string, emittedAssistantText: boolean): BackendEvent {
+function parseLine(line: string, emittedAssistantText: boolean): BackendEvent[] {
   try {
     const obj = JSON.parse(line) as Record<string, unknown>
     return translate(obj, emittedAssistantText)
   } catch {
-    return { kind: 'unknown', raw: line }
+    return [{ kind: 'unknown', raw: line }]
   }
 }
 
-function translate(obj: Record<string, unknown>, emittedAssistantText: boolean): BackendEvent {
+function translate(obj: Record<string, unknown>, emittedAssistantText: boolean): BackendEvent[] {
+  // Claude Code delivers tool results inside user-role messages, not as
+  // top-level tool_result events — without this, no tool result is ever seen.
+  if (obj.type === 'user') {
+    return toolResultsFromUserMessage(obj)
+  }
+  return [translateSingle(obj, emittedAssistantText)]
+}
+
+function toolResultsFromUserMessage(obj: Record<string, unknown>): BackendEvent[] {
+  const message = isRecord(obj.message) ? obj.message : obj
+  const content = message.content
+  if (!Array.isArray(content)) return [{ kind: 'noop' }]
+
+  const events: BackendEvent[] = []
+  for (const block of content) {
+    if (!isRecord(block) || block.type !== 'tool_result') continue
+    events.push(toolResultEvent(block))
+  }
+  return events.length > 0 ? events : [{ kind: 'noop' }]
+}
+
+function toolResultEvent(event: Record<string, unknown>): BackendEvent {
+  const toolUseId = eventId(event.tool_use_id)
+  const isError = Boolean(event.is_error)
+  const content = event.content
+  const text = Array.isArray(content)
+    ? ((content as Array<{ type?: string; text?: string }>).find((entry) => entry.type === 'text')
+        ?.text ?? '')
+    : typeof content === 'string'
+      ? content
+      : ''
+  let parsed: unknown = text
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    parsed = text
+  }
+
+  if (isError) {
+    const errorPayload =
+      typeof parsed === 'object' && parsed !== null
+        ? (parsed as { code?: string; message?: string })
+        : null
+    return {
+      kind: 'tool_result',
+      toolUseId,
+      ok: false,
+      error: {
+        code: errorPayload?.code ?? 'INTERNAL',
+        message: errorPayload?.message ?? text
+      }
+    }
+  }
+
+  return { kind: 'tool_result', toolUseId, ok: true, data: parsed }
+}
+
+function translateSingle(
+  obj: Record<string, unknown>,
+  emittedAssistantText: boolean
+): BackendEvent {
   const event = unwrapClaudeCodeEvent(obj)
   const type = event.type
   if (type === 'content_block_delta') {
@@ -76,34 +138,7 @@ function translate(obj: Record<string, unknown>, emittedAssistantText: boolean):
   }
 
   if (type === 'tool_result') {
-    const toolUseId = eventId(event.tool_use_id)
-    const isError = Boolean(event.is_error)
-    const content = event.content as Array<{ type?: string; text?: string }> | undefined
-    const text = content?.find((entry) => entry.type === 'text')?.text ?? ''
-    let parsed: unknown = text
-    try {
-      parsed = JSON.parse(text)
-    } catch {
-      parsed = text
-    }
-
-    if (isError) {
-      const errorPayload =
-        typeof parsed === 'object' && parsed !== null
-          ? (parsed as { code?: string; message?: string })
-          : null
-      return {
-        kind: 'tool_result',
-        toolUseId,
-        ok: false,
-        error: {
-          code: errorPayload?.code ?? 'INTERNAL',
-          message: errorPayload?.message ?? text
-        }
-      }
-    }
-
-    return { kind: 'tool_result', toolUseId, ok: true, data: parsed }
+    return toolResultEvent(event)
   }
 
   if (type === 'message_stop') {
@@ -117,7 +152,6 @@ function translate(obj: Record<string, unknown>, emittedAssistantText: boolean):
 
   if (
     type === 'system' ||
-    type === 'user' ||
     type === 'assistant' ||
     type === 'message_start' ||
     type === 'message_delta' ||

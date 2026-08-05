@@ -26,6 +26,7 @@ import {
 } from '@/lib/icons'
 import { SidebarCalendar, SidebarJournal, SidebarTasks } from '@/lib/icons/sidebar-nav-icons'
 import { memryLinkClassName } from './memry-links-constants'
+import { useVaultItemIcon } from './use-vault-item-icon'
 
 type OpenableTab = Omit<Tab, 'id' | 'openedAt' | 'lastAccessedAt'>
 
@@ -149,14 +150,13 @@ const CALENDAR_VISUAL_TYPE_ICONS: Record<string, LinkIconComponent> = {
 function resolveMemryLinkIcon(
   href?: string,
   source?: AgentSourceRef | null,
-  fallbackIcon?: string | null
+  customIcon?: string | null
 ): LinkIconDescriptor | null {
   const parsed = typeof href === 'string' ? parseMemryHref(href) : null
   const kind = source?.kind ?? parsed?.kind
   if (!kind) return null
 
   // An item's own icon always wins over the per-type default.
-  const customIcon = source?.icon ?? fallbackIcon
   if (customIcon) {
     return {
       kind: 'note',
@@ -242,7 +242,12 @@ export function MemryLinkIcon({
   fallbackIcon?: string | null
   className?: string
 }): React.JSX.Element | null {
-  const resolved = resolveMemryLinkIcon(href, source, fallbackIcon)
+  const parsed = typeof href === 'string' ? parseMemryHref(href) : null
+  // The vault is the source of truth for an item's icon; anything the backend
+  // or model relayed (source refs, emoji spelled into the label) is a hint
+  // that renders instantly and gets replaced when the lookup lands.
+  const vaultIcon = useVaultItemIcon(parsed?.kind, parsed?.id)
+  const resolved = resolveMemryLinkIcon(href, source, vaultIcon ?? source?.icon ?? fallbackIcon)
   if (!resolved) return null
   const iconClassName = cn('size-3.5 shrink-0', className)
 
