@@ -73,10 +73,12 @@ Inbox snooze confirmations use the same explicit inbox item reference as other i
 memrynote only links explicit tool-provided references. Plain titles without an ID or date stay as
 normal text. Clickable item mentions use memrynote's standard link color, show a dotted underline on
 hover, and display the matching item icon before the title. Each link shows exactly one icon: the
-item's own icon when it has one, otherwise the icon for its type. When a backend writes an item's
-emoji into the link text itself, memrynote moves that emoji into the icon slot rather than showing it
-next to a generic one. Inbox items use their capture-type icon, and journal, calendar, and task links
-use the same visual language as the main app surfaces.
+item's own icon when it has one, otherwise the icon for its type. Note icons are read directly from
+the vault, so a linked note shows the same custom icon it has in the sidebar even while the reply is
+still streaming, and regardless of which agent backend produced the link. When a backend writes an
+item's emoji into the link text itself, memrynote moves that emoji into the icon slot rather than
+showing it next to a generic one. Inbox items use their capture-type icon, and journal, calendar, and
+task links use the same visual language as the main app surfaces.
 
 Press <kbd>Enter</kbd> to send the prompt. Press <kbd>Shift</kbd>+<kbd>Enter</kbd> to insert a
 new line in the prompt box.
