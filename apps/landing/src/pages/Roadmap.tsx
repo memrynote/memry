@@ -38,8 +38,9 @@ const ACTIVE_ITEMS: RoadmapItem[] = [
       'Extend page, highlight, and snippet clipping to Safari alongside Chrome, Firefox, and Edge.'
   },
   {
-    title: 'Browser extension store listings',
-    caption: 'Publish the clipper to the Chrome Web Store, Firefox Add-ons, and Edge Add-ons.'
+    title: 'Edge Add-ons store listing',
+    caption:
+      'Publish the clipper to the Edge Add-ons store — Chrome Web Store and Firefox Add-ons are already live.'
   },
   {
     title: 'Optional AI Agent public release polish',
@@ -92,6 +93,16 @@ const PLANNED_ITEMS: RoadmapItem[] = [
 ]
 
 const LAUNCHED_GROUPS: LaunchedGroup[] = [
+  {
+    period: 'August 2026',
+    items: [
+      {
+        title: 'Web clipper live on the Chrome Web Store',
+        caption:
+          'Install the memrynote clipper straight from the Chrome Web Store — one click from any page to your Inbox.'
+      }
+    ]
+  },
   {
     period: 'July 2026',
     items: [

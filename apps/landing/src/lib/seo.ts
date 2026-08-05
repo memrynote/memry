@@ -77,7 +77,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   webClipper: {
     title: 'Web Clipper — memrynote',
     description:
-      'Clip and save any link into memrynote. One click sends the page, its text, and the URL to your Inbox. Browser extensions for Chrome, Firefox, and Edge — in review by Google and Firefox.',
+      'Clip and save any link into memrynote. One click sends the page, its text, and the URL to your Inbox. Live on the Chrome Web Store and Firefox Add-ons — Edge on the way.',
     path: '/features/web-clipper'
   },
   downloadDesktop: {

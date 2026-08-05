@@ -91,8 +91,7 @@ export const DOWNLOAD_NAV_ITEMS: readonly LandingDropdownItem[] = [
     description: 'Clip and save any link',
     href: '/features/web-clipper',
     icon: '/mascots/web-clipper.png',
-    iconType: 'image',
-    badge: 'In review'
+    iconType: 'image'
   },
   {
     label: 'memrynote for Mobile',
@@ -273,7 +272,7 @@ export const ROADMAP_DATA = {
       caption: 'The next work is focused on wider clipping and agent reliability.',
       items: [
         'Safari web clipper support',
-        'Browser store listings: Chrome Web Store, Firefox Add-ons, Edge',
+        'Browser store listing: Edge Add-ons',
         'Optional AI Agent polish: provider settings, streaming, approvals'
       ]
     },

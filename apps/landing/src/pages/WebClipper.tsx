@@ -58,23 +58,31 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   )
 }
 
-function ReviewPill({ size = 'sm' }: { size?: 'sm' | 'md' }) {
+function LivePill({ size = 'sm' }: { size?: 'sm' | 'md' }) {
   return (
     <span
       className={
-        'inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 font-mono-accent uppercase tracking-[0.22em] text-amber-700 ' +
+        'inline-flex items-center gap-1.5 rounded-full border border-sage/30 bg-sage/10 font-mono-accent uppercase tracking-[0.22em] text-sage ' +
         (size === 'sm' ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]')
       }
     >
-      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 motion-safe:animate-pulse" />
-      Live on Firefox · Chrome in review
+      <span className="h-1.5 w-1.5 rounded-full bg-sage motion-safe:animate-pulse" />
+      Live on Chrome &amp; Firefox
     </span>
   )
 }
 
+const CHROME_WEBSTORE_URL =
+  'https://chromewebstore.google.com/detail/memrynote-web-clipper/jnhaegegapkdlpmigfilekablabnhdnk'
+
 // Official browser logos live in public/browsers/*.svg.
 const BROWSERS: { logo: string; name: string; store: string; url?: string }[] = [
-  { logo: '/browsers/chrome.svg', name: 'Chrome', store: 'Chrome Web Store' },
+  {
+    logo: '/browsers/chrome.svg',
+    name: 'Chrome',
+    store: 'Chrome Web Store',
+    url: CHROME_WEBSTORE_URL
+  },
   {
     logo: '/browsers/firefox.svg',
     name: 'Firefox',
@@ -102,7 +110,7 @@ function BrowserCards() {
         ) : (
           <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-medium text-muted">
             <CheckCircle2 className="h-3.5 w-3.5 text-amber-600" strokeWidth={2} />
-            In review · {b.store}
+            On the way · {b.store}
           </p>
         )
         const cardClass =
@@ -155,7 +163,7 @@ function ClipperHero() {
               <Globe className="h-3 w-3" strokeWidth={2} />
               Web Clipper
             </span>
-            <ReviewPill size="md" />
+            <LivePill size="md" />
           </div>
           <h1 className="mt-5 font-serif text-4xl font-normal leading-[1.05] text-ink text-balance md:text-6xl">
             Clip and save
@@ -168,7 +176,13 @@ function ClipperHero() {
             in a vault you own.
           </p>
 
-          <div className="mt-9 flex justify-center">
+          <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Button size="lg" className="rounded-full px-7" asChild>
+              <a href={CHROME_WEBSTORE_URL} target="_blank" rel="noopener noreferrer">
+                Add to Chrome
+                <ArrowUpRight className="h-4 w-4" />
+              </a>
+            </Button>
             <Button
               size="lg"
               variant="ghost"
@@ -183,7 +197,7 @@ function ClipperHero() {
           </div>
 
           <p className="mt-12 font-mono-accent text-[11px] uppercase tracking-[0.28em] text-muted">
-            Live on Firefox · Chrome &amp; Edge on the way
+            Live on Chrome &amp; Firefox · Edge on the way
           </p>
         </motion.div>
 
@@ -280,11 +294,11 @@ function FinalCta() {
           <h2 className="mt-3 font-serif text-3xl font-normal leading-tight text-ink md:text-5xl">
             Install memrynote now.
             <br />
-            Clip the web the day it ships.
+            Clip the web today.
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-muted">
-            The clipper pairs with the desktop app. Set up your vault today, grab the Firefox add-on
-            now, and Chrome slots in as soon as Google finishes its review.
+            The clipper pairs with the desktop app. Set up your vault today and grab the extension
+            for Chrome or Firefox — Edge is on the way.
           </p>
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button size="lg" className="rounded-full px-7" asChild>
