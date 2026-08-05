@@ -164,6 +164,23 @@ describe('JournalSyncService push', () => {
     expect(payload.properties).toEqual({ Mood: 'good' })
   })
 
+  it('re-pushes a recovered update at the stored clock, carrying the date it was given', () => {
+    seedJournalNote({ clock: { 'device-a': 4 } })
+
+    // Dirty recovery hands the date over from the row it selected. Without it
+    // the payload builder resolves a file path from `undefined` — outside its
+    // own try/catch — and throws out of the recovery loop.
+    makeService().enqueueRecoveredUpdate(JOURNAL_ID, DATE)
+
+    const payload = payloadOf(queueRows()[0])
+    expect(payload.date).toBe(DATE)
+    expect(payload.tags).toEqual(['daily'])
+    expect(JournalSyncPayloadSchema.safeParse(payload).success).toBe(true)
+    // Recovery re-sends the STORED clock: the one that never reached the server.
+    expect(payload.clock).toEqual({ 'device-a': 4 })
+    expect(storedClock()).toEqual({ 'device-a': 4 })
+  })
+
   it('coalesces a follow-up update into the pending create with the newest frontmatter', () => {
     seedJournalNote()
     const service = makeService()

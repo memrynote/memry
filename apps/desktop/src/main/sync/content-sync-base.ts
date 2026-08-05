@@ -66,8 +66,8 @@ export abstract class ContentSyncService<
    * again would only widen the gap. An item that is actually in step is
    * replay-detected server side and simply stamped as synced.
    */
-  enqueueRecoveredUpdate(itemId: string): void {
-    this.getController().enqueueRecoveredUpdate(itemId)
+  enqueueRecoveredUpdate(itemId: string, ...extra: TArgs): void {
+    this.getController().enqueueRecoveredUpdate(itemId, ...extra)
   }
 
   private getController(): RecordSyncController<NoteMetadata, TArgs, TArgs> {

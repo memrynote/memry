@@ -5,6 +5,7 @@ import { noteMetadata } from '@memry/db-schema/data-schema'
 import type { SyncAdapterRegistry } from '@memry/sync-core'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
+import { getJournalSyncService } from './journal-sync'
 import { getNoteSyncService } from './note-sync'
 import { getProjectSyncService } from './project-sync'
 import { getTaskSyncService } from './task-sync'
@@ -18,6 +19,7 @@ export interface RecoveryResult {
   tasks: number
   projects: number
   notes: number
+  journals: number
 }
 
 /**
@@ -93,16 +95,18 @@ export function recoverDirtyItems(
   }
 
   const noteCount = recoverDirtyNotes(db, adapters)
+  const journalCount = recoverDirtyJournals(db, adapters)
 
-  if (taskCount > 0 || projectCount > 0 || noteCount > 0) {
+  if (taskCount > 0 || projectCount > 0 || noteCount > 0 || journalCount > 0) {
     log.info('Recovered dirty items for sync', {
       tasks: taskCount,
       projects: projectCount,
-      notes: noteCount
+      notes: noteCount,
+      journals: journalCount
     })
   }
 
-  return { tasks: taskCount, projects: projectCount, notes: noteCount }
+  return { tasks: taskCount, projects: projectCount, notes: noteCount, journals: journalCount }
 }
 
 /**
@@ -117,9 +121,11 @@ export function recoverDirtyItems(
  *
  * Scope is deliberately narrow: only notes the server already knows (`clock`
  * set) and that are not local-only. Clock-less notes belong to
- * `seedUnclockedNotes`, journals to the journal sync service. The recovered
- * enqueue reuses the stored clock instead of bumping it, so a note that is
- * actually in step is simply replay-detected by the server and stamped clean.
+ * `seedUnclockedNotes`, journals to `recoverDirtyJournals` below — they are a
+ * different sync service with a different payload builder, so they stay a
+ * separate query rather than a branch in this one. The recovered enqueue reuses
+ * the stored clock instead of bumping it, so a note that is actually in step is
+ * simply replay-detected by the server and stamped clean.
  */
 function recoverDirtyNotes(
   db: DrizzleDb,
@@ -150,4 +156,63 @@ function recoverDirtyNotes(
   }
 
   return dirtyNotes.length
+}
+
+/**
+ * The journal half of the sweep above. Journals live in the same
+ * `note_metadata` table but are pushed by their own sync service, so they need
+ * their own query and their own enqueue — the note arm excludes them by
+ * construction (`journalDate IS NULL`).
+ *
+ * Kept as a sibling rather than a branch inside `recoverDirtyNotes` on purpose:
+ * the two route to different services, and the journal payload builder takes an
+ * argument the note one does not. Folding them together would mean carrying the
+ * date and a service switch through a query that currently needs neither.
+ *
+ * The `date` handed to `enqueueRecoveredUpdate` is load-bearing.
+ * `JournalSyncService.buildSnapshotPayload` resolves the journal's file path
+ * from it *before* its own try/catch, and `formatJournalFilename` does
+ * `isoDate.split('-')`, so recovering a journal without one throws out of this
+ * loop and takes the whole sweep — tasks, projects and notes included — with it.
+ *
+ * Same narrow scope as notes: only journals the server already knows (`clock`
+ * set) and that are not local-only. Clock-less journals belong to
+ * `journalHandler.seedUnclocked`. The enqueue reuses the stored clock rather
+ * than bumping it, so a journal that is actually in step is replay-detected
+ * server side and simply stamped as synced.
+ */
+function recoverDirtyJournals(
+  db: DrizzleDb,
+  adapters?: SyncAdapterRegistry<DrizzleDb, (channel: string, data: unknown) => void>
+): number {
+  const journalSync = adapters?.getLocal('journal') ?? getJournalSyncService()
+  if (!journalSync?.enqueueRecoveredUpdate) return 0
+
+  const dirtyJournals = db
+    .select({ id: noteMetadata.id, journalDate: noteMetadata.journalDate })
+    .from(noteMetadata)
+    .where(
+      and(
+        isNotNull(noteMetadata.clock),
+        isNotNull(noteMetadata.journalDate),
+        sql`${noteMetadata.localOnly} IS NOT 1`,
+        or(
+          isNull(noteMetadata.syncedAt),
+          and(isNotNull(noteMetadata.syncedAt), gt(noteMetadata.modifiedAt, noteMetadata.syncedAt))
+        )
+      )
+    )
+    .all()
+
+  let recovered = 0
+  for (const journal of dirtyJournals) {
+    // Unreachable given the `isNotNull` above — but the date is what keeps the
+    // payload builder from throwing, so it is narrowed here rather than asserted.
+    if (!journal.journalDate) continue
+    log.debug('Recovering dirty journal', { noteId: journal.id })
+    journalSync.enqueueRecoveredUpdate(journal.id, journal.journalDate)
+    recovered++
+  }
+
+  return recovered
 }

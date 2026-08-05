@@ -40,12 +40,13 @@ That's it. Open it, point it at a folder, and your vault is yours.
 
 ## What's inside
 
-Six surfaces, one app. Turn off anything you don't use.
+Seven surfaces, one app. Turn off anything you don't use.
 
 - **Notes** — Block editor, markdown on disk, backlinks, tags, instant search.
 - **Tasks & Projects** — Due dates, priorities, recurrence. CRDT merge, so two devices never clobber each other.
 - **Journal** — One file a day. Open in three keystrokes.
 - **Calendar** — Time-block your tasks. Drag to reschedule.
+- **Canvas** — Infinite board. Draw freehand, then drop real notes, tasks, and events on it as live cards — never copies.
 - **Inbox** — Capture now, sort later.
 - **AI Agent** — Bring your own model (Claude, Codex, local LLMs). It reads and writes your vault — with an approval step for every write.
 - **Sync** — Optional, end-to-end encrypted, multi-device. The server only ever sees ciphertext.
@@ -71,7 +72,7 @@ https://memrynote.com/roadmap
 
 ## Community
 
-[@X](https://twitter.com/h4yfans) · [Issues](https://github.com/memrynote/memry/issues) · kaan@memrynote.com
+[r/memrynote](https://www.reddit.com/r/memrynote/) · [@X](https://twitter.com/h4yfans) · [Issues](https://github.com/memrynote/memry/issues) · kaan@memrynote.com
 
 Ship a workflow you love? Tell us. Something broken? Tell us louder.
 

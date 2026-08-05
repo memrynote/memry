@@ -306,7 +306,20 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueUpdate(itemId: string, date?: string): void {
         if (!date) return
-        getJournalSyncService()?.enqueueUpdate(itemId, date)
+
+        const service = getJournalSyncService()
+        if (service) {
+          service.enqueueUpdate(itemId, date)
+          return
+        }
+
+        // Same hole notes had, and worse: journals were also outside the note
+        // recovery sweep (`recoverDirtyNotes` filters `journalDate IS NULL`), so
+        // a metadata edit raised while the runtime was down (quit, vault switch,
+        // re-auth) had nothing left to re-push it — no queue row, no dirty
+        // marker, no sweep. Marking the row dirty hands it to
+        // `recoverDirtyJournals` at the next runtime start.
+        incrementNoteClockOffline(getDatabase(), itemId)
       },
       enqueueDelete(itemId: string, date?: string): void {
         if (!date) return

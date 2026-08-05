@@ -396,4 +396,131 @@ describe('dirty-recovery', () => {
       expect(row?.clock).toEqual({ 'device-A': 3 })
     })
   })
+
+  // Journals share `note_metadata` with notes but are pushed by their own sync
+  // service, so the note sweep excludes them by construction (`journalDate IS
+  // NULL`). Without an arm of their own, a journal metadata update raised while
+  // the runtime was down had nothing left to re-push it: no queue row, no dirty
+  // marker, no sweep.
+  describe('journals', () => {
+    const recovered: string[] = []
+    const journalAdapters = {
+      getLocal: (type: string) =>
+        type === 'journal'
+          ? { enqueueRecoveredUpdate: (id: string) => recovered.push(id) }
+          : undefined
+    } as unknown as Parameters<typeof recoverDirtyItems>[1]
+
+    const insertJournal = (values: Record<string, unknown>): void => {
+      db.insert(noteMetadata)
+        .values({
+          path: `journal/${values.id as string}.md`,
+          title: 'A journal',
+          journalDate: '2026-01-02',
+          createdAt: '2026-01-01T00:00:00Z',
+          ...values
+        } as never)
+        .run()
+    }
+
+    beforeEach(() => {
+      recovered.length = 0
+    })
+
+    it('recovers a synced journal whose local change never reached the server', () => {
+      // #given — the push that carried the tag edit was dropped, so the journal
+      // is modified after its last confirmed sync but nothing is queued
+      insertJournal({
+        id: 'journal-diverged',
+        clock: { 'device-A': 2 },
+        syncedAt: '2026-01-01T00:00:00Z',
+        modifiedAt: '2026-01-02T00:00:00Z'
+      })
+
+      // #when
+      const result = recoverDirtyItems(db, journalAdapters)
+
+      // #then
+      expect(result.journals).toBe(1)
+      expect(recovered).toEqual(['journal-diverged'])
+    })
+
+    it('leaves clean, local-only and clock-less journals — and plain notes — alone', () => {
+      // clean: already stamped after its last edit
+      insertJournal({
+        id: 'journal-clean',
+        clock: { 'device-A': 1 },
+        syncedAt: '2026-01-03T00:00:00Z',
+        modifiedAt: '2026-01-02T00:00:00Z'
+      })
+      // local-only: must never be pushed
+      insertJournal({
+        id: 'journal-local',
+        clock: { 'device-A': 1 },
+        localOnly: true,
+        syncPolicy: 'local-only',
+        modifiedAt: '2026-01-02T00:00:00Z'
+      })
+      // clock-less: journalHandler.seedUnclocked owns the first push
+      insertJournal({ id: 'journal-unclocked', modifiedAt: '2026-01-02T00:00:00Z' })
+      // a plain note must not be dragged in by the journal arm
+      db.insert(noteMetadata)
+        .values({
+          id: 'plain-note',
+          path: 'notes/plain-note.md',
+          title: 'A note',
+          createdAt: '2026-01-01T00:00:00Z',
+          clock: { 'device-A': 1 },
+          syncedAt: null,
+          modifiedAt: '2026-01-02T00:00:00Z'
+        } as never)
+        .run()
+
+      // #when
+      const result = recoverDirtyItems(db, journalAdapters)
+
+      // #then
+      expect(result.journals).toBe(0)
+      expect(recovered).toEqual([])
+    })
+
+    it('re-pushes a journal whose update was enqueued while the sync service was down', () => {
+      // #given — a journal the server has already confirmed, and a registered
+      // device (metadata edits only sync while signed in)
+      db.insert(syncDevices)
+        .values({
+          id: 'device-A',
+          name: 'Test device',
+          platform: 'darwin',
+          appVersion: '1.0.0',
+          linkedAt: new Date('2026-01-01T00:00:00Z'),
+          isCurrentDevice: true,
+          signingPublicKey: 'pk'
+        })
+        .run()
+      insertJournal({
+        id: 'journal-tagged',
+        clock: { 'device-A': 2 },
+        syncedAt: '2026-01-02T00:00:00Z',
+        modifiedAt: '2026-01-01T00:00:00Z'
+      })
+
+      // A metadata-only write never touches modifiedAt, so without the fallback
+      // this journal stays invisible to recovery forever.
+      expect(recoverDirtyItems(db, journalAdapters).journals).toBe(0)
+
+      // #when — the property edit lands after the runtime was torn down, so the
+      // journal adapter's offline fallback is all that runs
+      incrementNoteClockOffline(db, 'journal-tagged')
+
+      // #then — the next runtime start pushes it, at a clock the server cannot
+      // dismiss as a replay of what it already has
+      const result = recoverDirtyItems(db, journalAdapters)
+      expect(result.journals).toBe(1)
+      expect(recovered).toEqual(['journal-tagged'])
+
+      const row = db.select().from(noteMetadata).where(eq(noteMetadata.id, 'journal-tagged')).get()
+      expect(row?.clock).toEqual({ 'device-A': 3 })
+    })
+  })
 })

@@ -104,18 +104,27 @@ export class RecordSyncController<
     })
   }
 
-  enqueueRecoveredUpdate(itemId: string): void {
+  /**
+   * `extra` is optional because most types serialize from the row alone. Types
+   * whose payload builder needs an argument (journals need their date) must
+   * pass it: the empty fallback would reach the builder as `undefined`, and
+   * `journal-sync`'s builder resolves a file path from it before its own
+   * try/catch, so it would throw out of the caller's recovery loop.
+   */
+  enqueueRecoveredUpdate(itemId: string, ...extra: TArgs): void {
     const deviceId = this.deps.getDeviceId()
     if (!deviceId) return
 
+    const args = extra.length > 0 ? extra : this.getFallbackArgs()
+
     if (!this.deps.recoverPendingChange) {
-      this.enqueueForPush(itemId, 'update', ...this.getFallbackArgs())
+      this.enqueueForPush(itemId, 'update', ...args)
       return
     }
 
     const recovered = this.deps.recoverPendingChange(itemId, deviceId)
     if (recovered === null) {
-      this.enqueueForPush(itemId, 'update', ...this.getFallbackArgs())
+      this.enqueueForPush(itemId, 'update', ...args)
       return
     }
 
