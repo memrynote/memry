@@ -379,6 +379,9 @@ export const AgentPromptEditor = forwardRef<AgentPromptEditorHandle, AgentPrompt
           role: 'textbox',
           'aria-label': placeholder,
           'aria-multiline': 'true',
+          // The accessible name is the placeholder, which is product copy and
+          // has been reworded twice. Tests target this instead.
+          'data-testid': 'agent-composer-input',
           class: cn(
             '!min-h-[48.4px] min-h-[48.4px] max-h-[258px] whitespace-pre-wrap break-words border-0 bg-transparent p-3 text-[16px] text-foreground outline-none transition-[padding] duration-200 ease-in-out focus:outline-none',
             '[&_p]:m-0 [&_.is-editor-empty:first-child::before]:pointer-events-none [&_.is-editor-empty:first-child::before]:float-left [&_.is-editor-empty:first-child::before]:h-0 [&_.is-editor-empty:first-child::before]:text-sm [&_.is-editor-empty:first-child::before]:text-muted-foreground [&_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',

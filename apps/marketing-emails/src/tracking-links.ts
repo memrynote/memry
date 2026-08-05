@@ -14,7 +14,8 @@ export const WAITLIST_CAMPAIGNS = {
   migrationGuide: 'waitlist_migration',
   syncConversion: 'waitlist_sync_conversion',
   tasksDeepDive: 'waitlist_tasks_deep_dive',
-  openBeta: 'open_beta_launch'
+  openBeta: 'open_beta_launch',
+  betaUpdateAugust: 'beta_update_2026_08'
 } as const
 
 export type WaitlistCampaignId = (typeof WAITLIST_CAMPAIGNS)[keyof typeof WAITLIST_CAMPAIGNS]

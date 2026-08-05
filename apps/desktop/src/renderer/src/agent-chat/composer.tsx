@@ -680,6 +680,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                   <button
                     type="button"
                     aria-label={modelAriaLabel}
+                    data-testid="agent-model-trigger"
                     className="inline-flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:bg-accent"
                   >
                     <SelectedProviderIcon

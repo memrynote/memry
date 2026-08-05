@@ -12,6 +12,7 @@ import {
   approveAgentToolCall,
   enableManualAgentToolApproval,
   getAgentComposer,
+  getAgentModelTrigger,
   openAgentChat
 } from './utils/agent-chat-helpers'
 import {
@@ -67,7 +68,7 @@ test.describe('Agent chat Codex create-task flow', () => {
     await enableManualAgentToolApproval(page)
 
     await openAgentChat(page)
-    await page.getByRole('button', { name: 'Agent provider: Claude' }).click()
+    await getAgentModelTrigger(page).click()
     await page.getByRole('menuitem', { name: /codex/i }).click()
 
     const composer = getAgentComposer(page)

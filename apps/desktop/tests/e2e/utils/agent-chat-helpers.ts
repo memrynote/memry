@@ -30,9 +30,12 @@ export async function openAgentChat(page: Page): Promise<void> {
 }
 
 export function getAgentComposer(page: Page): Locator {
-  return page.getByRole('textbox', {
-    name: /Ask (?:Memry|memrynote) anything\. @ to use mention file/i
-  })
+  return page.getByTestId('agent-composer-input')
+}
+
+/** Opens the model menu. Its label carries the provider and model names, both product copy. */
+export function getAgentModelTrigger(page: Page): Locator {
+  return page.getByTestId('agent-model-trigger')
 }
 
 export async function enableManualAgentToolApproval(page: Page): Promise<void> {
