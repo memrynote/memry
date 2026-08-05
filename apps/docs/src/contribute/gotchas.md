@@ -89,6 +89,17 @@ Fix: fire submit from `onPointerDown`. Keep `onClick` as a keyboard-activation f
 
 See `calendar-quick-create-dialog.tsx` for the canonical version.
 
+## Anchor Rects From Virtualized Scrollers Are Not Viewport Coordinates
+
+The calendar week grid is an **infinitely virtualized day strip**: the grid element is roughly 4.5 million pixels wide, and once it is scrolled to today its own left edge sits about 2.6 million pixels outside the window. Using that element's rect as a popover anchor — for example as a fallback when the day column element cannot be measured — places the popover far off-screen. It still reports as visible and enabled, so a click on it retries until the test or the user gives up.
+
+Two rules when anchoring floating UI on a virtualized grid:
+
+1. Anchor on the **column** element, and derive the column offset (`gridRect.x + columnIndex * columnWidth`) when that element is not measurable. Never collapse onto the strip's own left edge.
+2. Clamp the computed position into the viewport on **both** axes, so a bad anchor can never push an action row out of reach.
+
+`computePopoverPosition` in `popover-position.ts` owns the clamp for every calendar popover (task, note, event, inbox-snooze, quick-create).
+
 ## Editor-Zone Mousedown Handlers Steal Focus from BlockNote Menus
 
 BlockNote's shadcn menus (drag-handle menu, side menu, toolbars and their nested dropdowns) render **inline inside `.bn-container`, not portaled**. Any editor-zone mousedown handler — such as the "click the marquee zone to focus the editor at end" handler in `note.tsx` / `journal.tsx`, or the marquee selection hook — therefore also sees clicks on menu items. If such a handler focuses the editor on mousedown, the menu unmounts between `pointerdown` and `pointerup`, so the item's click never lands and the action silently does nothing (for example, drag-handle Colors/Delete appear to do nothing).

@@ -113,10 +113,16 @@ function buildSelection(
     ? getColumnElement(columnIndex)
     : ((el?.children?.[columnIndex + 1] as HTMLElement | undefined) ?? null)
   const colRect = columnEl?.getBoundingClientRect()
+  const fallbackColumnWidth = (gridRect?.width ?? 0) / Math.max(columnCount, 1)
   const anchorRect = {
-    x: colRect?.x ?? gridRect?.x ?? 0,
+    // Week view's grid is an infinitely virtualized strip, so `gridRect.x` is the
+    // strip's own left edge — millions of pixels off-screen once scrolled to
+    // today. Collapsing the anchor onto it placed the quick-create popover
+    // outside the window; offset by the column instead. Day view has a single
+    // column at index 0, so its anchor is unchanged.
+    x: colRect?.x ?? (gridRect?.x ?? 0) + columnIndex * fallbackColumnWidth,
     y: (gridRect?.top ?? 0) + top - scrollTop,
-    width: colRect?.width ?? (gridRect?.width ?? 0) / Math.max(columnCount, 1),
+    width: colRect?.width ?? fallbackColumnWidth,
     height
   }
   return {

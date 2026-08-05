@@ -14,7 +14,12 @@ export function computePopoverPosition(
 
   const rightCandidate = anchor.x + anchor.width + POPOVER_GAP
   const fitsRight = rightCandidate + width + 8 <= viewportWidth
-  const left = fitsRight ? rightCandidate : Math.max(8, anchor.x - width - POPOVER_GAP)
+  const preferredLeft = fitsRight ? rightCandidate : anchor.x - width - POPOVER_GAP
+  // Clamp both edges into the window. An anchor can sit outside the viewport —
+  // the week grid is an infinitely virtualized strip whose own rect is millions
+  // of pixels off-screen — and an unclamped `left` then parked the popover
+  // outside the window, where its Save/action row could never be clicked.
+  const left = Math.min(Math.max(8, preferredLeft), Math.max(8, viewportWidth - width - 8))
   const top = Math.min(Math.max(8, anchor.y), Math.max(8, viewportHeight - estimatedHeight))
   return { top, left }
 }

@@ -270,6 +270,55 @@ describe('useTimeGridMarquee', () => {
     vi.unstubAllGlobals()
   })
 
+  it('anchors on the column offset when the column element cannot be measured', () => {
+    // Week view renders an infinitely virtualized day strip: the grid element is
+    // ~4.5M px wide and, once scrolled to today, its own left edge sits ~2.5M px
+    // outside the window. Falling back to that edge put the quick-create popover
+    // off-window entirely, so its Save button was unclickable.
+    const COLUMN_WIDTH = 125
+    const COLUMN_COUNT = 36_525
+    const TODAY_INDEX = 20_671
+    const GRID_LEFT = 304 - 20_670 * COLUMN_WIDTH
+
+    const grid = document.createElement('div')
+    Object.defineProperty(grid, 'scrollTop', { value: 0, writable: true })
+    grid.getBoundingClientRect = vi.fn(
+      () =>
+        ({
+          top: 100,
+          left: GRID_LEFT,
+          bottom: 1252,
+          right: GRID_LEFT + COLUMN_WIDTH * COLUMN_COUNT,
+          width: COLUMN_WIDTH * COLUMN_COUNT,
+          height: 1152,
+          x: GRID_LEFT,
+          y: 100,
+          toJSON: () => ({})
+        }) as DOMRect
+    )
+    const ref = { current: grid } as React.RefObject<HTMLDivElement | null>
+    const { result } = renderHook(() =>
+      useTimeGridMarquee({
+        gridRef: ref,
+        dateForColumn: () => '2026-08-06',
+        columnCount: COLUMN_COUNT,
+        // The virtualizer had not rendered this column yet.
+        getColumnElement: () => null
+      })
+    )
+
+    act(() => {
+      result.current.handlers.onDoubleClick(
+        { clientY: 196, target: grid, preventDefault: vi.fn() } as unknown as React.MouseEvent,
+        TODAY_INDEX
+      )
+    })
+
+    expect(result.current.selection!.anchorRect).toEqual(
+      expect.objectContaining({ x: 429, width: COLUMN_WIDTH })
+    )
+  })
+
   it('clears click-only drags on mouseup', () => {
     const ref = createMockGridRef()
     const { result } = renderHook(() =>
