@@ -11,7 +11,7 @@ import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters } from '@memry/db-schema/schema/settings'
 import type { VectorClock } from '@memry/contracts/sync-api'
-import { ItemApplier, type EmitToWindows } from './apply-item'
+import { ItemApplier, type ApplyItemInput, type EmitToWindows } from './apply-item'
 import { SyncQueueManager } from './queue'
 
 const TEST_PROJECT = {
@@ -753,6 +753,191 @@ describe('ItemApplier', () => {
       expect(result).toBe('skipped')
       const task = testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()
       expect(task).toBeDefined()
+    })
+  })
+
+  // ─── Mixed-Version Safety ────────────────────────────────────────
+  //
+  // Two devices on different builds is the normal state during a staged
+  // rollout, and the older one is guaranteed to be handed things it cannot
+  // read: a type that did not exist when it shipped, a payload with a field
+  // shape it does not accept, a blob that failed to decrypt cleanly. Its only
+  // correct move is to skip that one item. Anything that escapes `apply()`
+  // aborts the whole page in the pull coordinator and takes the user's other,
+  // perfectly readable items down with it.
+
+  const UNKNOWN_TYPE = 'future_widget' as ApplyItemInput['type']
+
+  describe('#given an item type this build has no handler for', () => {
+    it('#then skips it instead of throwing, and emits nothing', () => {
+      const result = applier.apply({
+        itemId: 'widget-1',
+        type: UNKNOWN_TYPE,
+        operation: 'create',
+        content: new TextEncoder().encode(JSON.stringify({ anything: true })),
+        clock: { 'device-B': 1 }
+      })
+
+      expect(result).toBe('skipped')
+      expect(emitToWindows).not.toHaveBeenCalled()
+    })
+
+    it('#then leaves the neighbouring items in the same batch untouched', () => {
+      // A page mixing one unreadable item with ordinary ones.
+      const batch: ApplyItemInput[] = [
+        {
+          itemId: 'task-1',
+          type: 'task',
+          operation: 'create',
+          content: makeTaskPayload(),
+          clock: { 'device-B': 1 }
+        },
+        {
+          itemId: 'widget-1',
+          type: UNKNOWN_TYPE,
+          operation: 'create',
+          content: new TextEncoder().encode(JSON.stringify({ anything: true })),
+          clock: { 'device-B': 1 }
+        },
+        {
+          itemId: 'inbox-1',
+          type: 'inbox',
+          operation: 'create',
+          content: makeInboxPayload(),
+          clock: { 'device-B': 1 }
+        }
+      ]
+
+      const results = batch.map((item) => applier.apply(item))
+
+      expect(results).toEqual(['applied', 'skipped', 'applied'])
+      expect(testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()).toBeDefined()
+      expect(
+        testDb.db.select().from(inboxItems).where(eq(inboxItems.id, 'inbox-1')).get()
+      ).toBeDefined()
+    })
+
+    it('#then skips an unknown-type delete without removing anything', () => {
+      testDb.db
+        .insert(tasks)
+        .values({ id: 'task-1', projectId: 'proj-1', title: 'Keep Me', priority: 0, position: 0 })
+        .run()
+
+      const result = applier.apply({
+        itemId: 'task-1',
+        type: UNKNOWN_TYPE,
+        operation: 'delete',
+        content: new Uint8Array(),
+        deletedAt: Date.now()
+      })
+
+      expect(result).toBe('skipped')
+      expect(testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()).toBeDefined()
+    })
+  })
+
+  describe('#given a payload that fails schema validation', () => {
+    it('#then returns skipped and leaves the local row exactly as it was', () => {
+      testDb.db
+        .insert(tasks)
+        .values({
+          id: 'task-1',
+          projectId: 'proj-1',
+          title: 'Local Title',
+          priority: 0,
+          position: 0,
+          clock: { 'device-A': 1 } satisfies VectorClock
+        })
+        .run()
+
+      // Valid JSON, wrong shape — a newer build widened `title`.
+      const result = applier.apply({
+        itemId: 'task-1',
+        type: 'task',
+        operation: 'update',
+        content: new TextEncoder().encode(JSON.stringify({ title: 42, projectId: 'proj-1' })),
+        clock: { 'device-B': 9 }
+      })
+
+      expect(result).toBe('skipped')
+      const task = testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()
+      expect(task!.title).toBe('Local Title')
+      expect(task!.clock).toEqual({ 'device-A': 1 })
+    })
+
+    it('#then does not stop the rest of the batch', () => {
+      const results = [
+        applier.apply({
+          itemId: 'task-bad',
+          type: 'task',
+          operation: 'create',
+          content: new TextEncoder().encode(JSON.stringify({ title: 42 })),
+          clock: { 'device-B': 1 }
+        }),
+        applier.apply({
+          itemId: 'task-1',
+          type: 'task',
+          operation: 'create',
+          content: makeTaskPayload(),
+          clock: { 'device-B': 1 }
+        })
+      ]
+
+      expect(results).toEqual(['skipped', 'applied'])
+      expect(testDb.db.select().from(tasks).where(eq(tasks.id, 'task-bad')).get()).toBeUndefined()
+      expect(testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()).toBeDefined()
+    })
+  })
+
+  describe('#given malformed JSON', () => {
+    it('#then returns parse_error and leaves the local row exactly as it was', () => {
+      testDb.db
+        .insert(tasks)
+        .values({
+          id: 'task-1',
+          projectId: 'proj-1',
+          title: 'Local Title',
+          priority: 0,
+          position: 0,
+          clock: { 'device-A': 1 } satisfies VectorClock
+        })
+        .run()
+
+      // parse_error, not skipped: the pull coordinator refetches these, because
+      // a truncated blob is a transport problem, not an unreadable item.
+      const result = applier.apply({
+        itemId: 'task-1',
+        type: 'task',
+        operation: 'update',
+        content: new TextEncoder().encode('{"title":"Half a pay'),
+        clock: { 'device-B': 9 }
+      })
+
+      expect(result).toBe('parse_error')
+      const task = testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()
+      expect(task!.title).toBe('Local Title')
+    })
+
+    it('#then does not stop the rest of the batch', () => {
+      const results = [
+        applier.apply({
+          itemId: 'task-broken',
+          type: 'task',
+          operation: 'create',
+          content: new TextEncoder().encode('not json at all'),
+          clock: { 'device-B': 1 }
+        }),
+        applier.apply({
+          itemId: 'task-1',
+          type: 'task',
+          operation: 'create',
+          content: makeTaskPayload(),
+          clock: { 'device-B': 1 }
+        })
+      ]
+
+      expect(results).toEqual(['parse_error', 'applied'])
+      expect(testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()).toBeDefined()
     })
   })
 })

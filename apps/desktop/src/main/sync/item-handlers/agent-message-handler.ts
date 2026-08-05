@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { eq } from 'drizzle-orm'
 import { AgentMessageSyncPayloadSchema } from '@memry/contracts/sync-payloads'
 import type { AgentMessageSyncPayload } from '@memry/contracts/sync-payloads'
+import { AgentChannels } from '@memry/contracts/ipc-agent'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { agentMessages } from '@memry/db-schema/schema/agent-messages'
 import type { SyncQueueManager } from '../queue'
@@ -115,6 +116,10 @@ export class AgentMessageHandler extends BaseItemHandler<AgentMessageSyncPayload
             deletedAt: data.deletedAt ?? null
           })
           .run()
+        ctx.emit(AgentChannels.events.MESSAGES_CHANGED, {
+          conversationId: data.conversationId,
+          messageId: itemId
+        })
         return 'applied'
       }
 
@@ -135,6 +140,10 @@ export class AgentMessageHandler extends BaseItemHandler<AgentMessageSyncPayload
       .set({ deletedAt: Date.now(), updatedAt: Date.now() })
       .where(eq(agentMessages.id, itemId))
       .run()
+    ctx.emit(AgentChannels.events.MESSAGES_CHANGED, {
+      conversationId: existing.conversationId,
+      messageId: itemId
+    })
     return 'applied'
   }
 

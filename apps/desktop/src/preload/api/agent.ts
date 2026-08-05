@@ -74,5 +74,14 @@ export const agentApi = {
   getWindowId: (): Promise<{ windowId: string | null }> =>
     invoke(AgentChannels.invoke.GET_WINDOW_ID),
   onEvent: (callback: (event: AgentEvent) => void): (() => void) =>
-    subscribe<AgentEvent>(AgentChannels.events.AGENT_EVENT, callback)
+    subscribe<AgentEvent>(AgentChannels.events.AGENT_EVENT, callback),
+  onConversationsChanged: (callback: (payload: { conversationId: string }) => void): (() => void) =>
+    subscribe<{ conversationId: string }>(AgentChannels.events.CONVERSATIONS_CHANGED, callback),
+  onMessagesChanged: (
+    callback: (payload: { conversationId: string; messageId: string }) => void
+  ): (() => void) =>
+    subscribe<{ conversationId: string; messageId: string }>(
+      AgentChannels.events.MESSAGES_CHANGED,
+      callback
+    )
 }

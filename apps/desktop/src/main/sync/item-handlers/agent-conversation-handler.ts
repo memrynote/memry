@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { AgentConversationSyncPayloadSchema } from '@memry/contracts/sync-payloads'
 import type { AgentConversationSyncPayload } from '@memry/contracts/sync-payloads'
+import { AgentChannels } from '@memry/contracts/ipc-agent'
 import type { FieldClocks, VectorClock } from '@memry/contracts/sync-api'
 import { agentConversations } from '@memry/db-schema/schema/agent-conversations'
 import type { SyncQueueManager } from '../queue'
@@ -127,6 +128,7 @@ export class AgentConversationHandler extends BaseItemHandler<AgentConversationS
             lastSyncedAt: now
           })
           .run()
+        ctx.emit(AgentChannels.events.CONVERSATIONS_CHANGED, { conversationId: itemId })
         return 'applied'
       }
 
@@ -164,6 +166,7 @@ export class AgentConversationHandler extends BaseItemHandler<AgentConversationS
         if (fieldValuesEqual(localPayload, nextPayload)) return 'skipped'
 
         this.writeMerged(tx, itemId, nextPayload, vaultKey, now)
+        ctx.emit(AgentChannels.events.CONVERSATIONS_CHANGED, { conversationId: itemId })
         return merged.hadConflicts ? 'conflict' : 'applied'
       }
 
@@ -174,6 +177,7 @@ export class AgentConversationHandler extends BaseItemHandler<AgentConversationS
         deletedAt: data.deletedAt ?? null
       }
       this.writeMerged(tx, itemId, nextPayload, vaultKey, now)
+      ctx.emit(AgentChannels.events.CONVERSATIONS_CHANGED, { conversationId: itemId })
       return 'applied'
     })
   }
@@ -197,6 +201,7 @@ export class AgentConversationHandler extends BaseItemHandler<AgentConversationS
       .set({ deletedAt: now, updatedAt: now, lastSyncedAt: now })
       .where(eq(agentConversations.id, itemId))
       .run()
+    ctx.emit(AgentChannels.events.CONVERSATIONS_CHANGED, { conversationId: itemId })
     return 'applied'
   }
 

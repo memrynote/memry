@@ -34,27 +34,10 @@ const EMIT_PROBE_EXEMPT: Partial<Record<SyncItemType, string>> = {
   // data-db handle. Covered by note-handler.test.ts.
   note: 'requires an initialised index database',
   journal: 'requires an initialised index database',
-  // applyUpsert kicks off an un-awaited writeMergedFolderConfig() that throws
-  // VAULT_NOT_INITIALIZED without an open vault — an unhandled rejection here,
-  // and in main whenever a folder_config lands while the vault is closed.
-  folder_config: 'writes the vault folder config; needs an open vault',
   // Notifies the renderer by walking BrowserWindow.getAllWindows() itself
   // (settings-handler.ts) instead of going through ctx.emit.
   settings: 'broadcasts directly via BrowserWindow, not ctx.emit'
 }
-
-/**
- * Types that currently FAIL the invariant. Listed here so the suite stays green
- * while the gap is tracked: each runs under `it.fails`, so the moment the
- * handler starts notifying the renderer the test goes red and this entry must
- * be deleted.
- *
- * agent_conversation / agent_message write the local DB on a remote pull and
- * emit nothing — and nothing else in the main process broadcasts an agent
- * conversation change either. A conversation synced from another device is
- * therefore invisible in an already-running window until the app restarts.
- */
-const KNOWN_MISSING_EMIT: SyncItemType[] = ['agent_conversation', 'agent_message']
 
 const PROJECT_ID = 'registry-probe-project'
 const CALENDAR_SOURCE_ID = 'registry-probe-calendar-source'
@@ -159,9 +142,7 @@ describe('sync item handler registry', () => {
         continue
       }
 
-      const probe = KNOWN_MISSING_EMIT.includes(type) ? it.fails : it
-
-      probe(`${type}: emits a renderer event when a remote upsert is applied`, () => {
+      it(`${type}: emits a renderer event when a remote upsert is applied`, () => {
         const handler = getHandler(type)
         expect(handler, `no handler registered for ${type}`).toBeDefined()
 

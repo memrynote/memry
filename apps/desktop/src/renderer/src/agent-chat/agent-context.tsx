@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef
+} from 'react'
 import type { ReactNode } from 'react'
 
 import type {
@@ -52,6 +60,14 @@ interface AgentClientApi {
   acceptDisclosure: () => Promise<DisclosureState>
   getWindowId: () => Promise<{ windowId: string | null }>
   onEvent: (callback: (event: AgentEvent) => void) => () => void
+  /**
+   * Fired when a sync pull rewrites a conversation row. Optional because older
+   * preload bundles (and the test stubs written against them) do not expose it.
+   */
+  onConversationsChanged?: (callback: (payload: { conversationId: string }) => void) => () => void
+  onMessagesChanged?: (
+    callback: (payload: { conversationId: string; messageId: string }) => void
+  ) => () => void
 }
 
 interface AgentContextValue {
@@ -145,6 +161,12 @@ export function AgentProvider({
 }): React.JSX.Element {
   const { t } = useT('common')
   const [state, dispatch] = useReducer(agentReducer, initialAgentState)
+
+  // Read by the sync-event subscription below without making it a dependency:
+  // resubscribing on every conversation switch would tear down and rebuild the
+  // IPC listener for no gain.
+  const activeConversationIdRef = useRef(state.activeConversationId)
+  activeConversationIdRef.current = state.activeConversationId
 
   const refreshConversations = useCallback(async () => {
     try {
@@ -356,11 +378,25 @@ export function AgentProvider({
       })
 
     const unsubscribe = api.onEvent((event) => dispatch({ type: 'event', event }))
+
+    // `agent:event` only carries this window's own turn lifecycle. A
+    // conversation or message pulled from another device lands straight in the
+    // local DB, so without these the list stays stale until the app restarts.
+    const unsubscribeConversations = api.onConversationsChanged?.(() => {
+      void refreshConversations()
+    })
+    const unsubscribeMessages = api.onMessagesChanged?.(({ conversationId }) => {
+      if (conversationId !== activeConversationIdRef.current) return
+      void loadConversation(conversationId, { activate: false })
+    })
+
     return () => {
       cancelled = true
       unsubscribe()
+      unsubscribeConversations?.()
+      unsubscribeMessages?.()
     }
-  }, [t, active])
+  }, [t, active, refreshConversations, loadConversation])
 
   const value = useMemo<AgentContextValue>(
     () => ({

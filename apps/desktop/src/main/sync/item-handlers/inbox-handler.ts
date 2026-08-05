@@ -38,21 +38,36 @@ class InboxHandler extends BaseItemHandler<InboxSyncPayload> {
           log.warn('Concurrent inbox edit, using last-write-wins', { itemId })
         }
 
+        // Nullable fields distinguish "key omitted" from "key present and null".
+        // Omitted means the sender predates the column and must not clobber the
+        // local value; an explicit null IS the remote clear that unsnooze,
+        // unarchive and unfile push (inbox/snooze.ts, inbox/crud.ts). A blanket
+        // `?? null` destroys local data on an older payload; a blanket
+        // `?? existing` strands a remote unsnooze forever. Same approach as
+        // calendar-external-event-handler.ts.
+        const hasKey = (k: string): boolean => Object.prototype.hasOwnProperty.call(data, k)
+
         tx.update(inboxItems)
           .set({
             title: data.title ?? existing.title,
-            content: data.content ?? null,
+            content: hasKey('content') ? (data.content ?? null) : existing.content,
             type: data.type ?? existing.type,
-            metadata: data.metadata ?? null,
-            filedAt: data.filedAt ?? null,
-            filedTo: data.filedTo ?? null,
-            filedAction: data.filedAction ?? null,
-            snoozedUntil: data.snoozedUntil ?? null,
-            snoozeReason: data.snoozeReason ?? null,
-            archivedAt: data.archivedAt ?? null,
-            sourceUrl: data.sourceUrl ?? null,
-            sourceTitle: data.sourceTitle ?? null,
-            captureSource: data.captureSource ?? existing.captureSource ?? null,
+            metadata: hasKey('metadata') ? (data.metadata ?? null) : existing.metadata,
+            filedAt: hasKey('filedAt') ? (data.filedAt ?? null) : existing.filedAt,
+            filedTo: hasKey('filedTo') ? (data.filedTo ?? null) : existing.filedTo,
+            filedAction: hasKey('filedAction') ? (data.filedAction ?? null) : existing.filedAction,
+            snoozedUntil: hasKey('snoozedUntil')
+              ? (data.snoozedUntil ?? null)
+              : existing.snoozedUntil,
+            snoozeReason: hasKey('snoozeReason')
+              ? (data.snoozeReason ?? null)
+              : existing.snoozeReason,
+            archivedAt: hasKey('archivedAt') ? (data.archivedAt ?? null) : existing.archivedAt,
+            sourceUrl: hasKey('sourceUrl') ? (data.sourceUrl ?? null) : existing.sourceUrl,
+            sourceTitle: hasKey('sourceTitle') ? (data.sourceTitle ?? null) : existing.sourceTitle,
+            captureSource: hasKey('captureSource')
+              ? (data.captureSource ?? null)
+              : existing.captureSource,
             clock: resolution.mergedClock,
             syncedAt: now,
             modifiedAt: data.modifiedAt ?? now
@@ -72,6 +87,16 @@ class InboxHandler extends BaseItemHandler<InboxSyncPayload> {
           type: data.type ?? 'note',
           content: data.content ?? null,
           metadata: data.metadata ?? null,
+          // Carried on the insert too: buildPushPayload ships the whole row, so
+          // an item that is snoozed, filed or archived on the origin device must
+          // arrive that way on a device seeing it for the first time. Omitting
+          // these resurrected archived items into the peer's inbox.
+          filedAt: data.filedAt ?? null,
+          filedTo: data.filedTo ?? null,
+          filedAction: data.filedAction ?? null,
+          snoozedUntil: data.snoozedUntil ?? null,
+          snoozeReason: data.snoozeReason ?? null,
+          archivedAt: data.archivedAt ?? null,
           sourceUrl: data.sourceUrl ?? null,
           sourceTitle: data.sourceTitle ?? null,
           captureSource: data.captureSource ?? null,
