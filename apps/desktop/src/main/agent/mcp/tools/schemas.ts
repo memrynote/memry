@@ -3,6 +3,12 @@ import {
   AgentMcpDesktopReadOperations,
   AgentMcpDesktopWriteOperations
 } from '@memry/contracts/agent-mcp-channels'
+import {
+  CanvasDrawElementSchema,
+  CanvasElementEditSchema,
+  MAX_DRAW_ELEMENTS,
+  MAX_EDIT_ELEMENTS
+} from '@memry/contracts/canvas-draw'
 import { NoteFileTypeEnum } from '@memry/contracts/search-api'
 
 const idSchema = z.string().min(1)
@@ -169,6 +175,15 @@ export const TOOL_SCHEMAS = {
     description:
       'Read one canvas: title, the entities on it (with titles), and any text written on it. ' +
       'Returns no scene geometry — use vault_add_canvas_item to change what is on it.'
+  },
+  vault_read_canvas_elements: {
+    input: z.object({ id: idSchema }),
+    description:
+      'Read the SHAPES on a canvas: every element with its id, type, position, size, text, ' +
+      'colors, arrow bindings and frame. This is the read to use before drawing — an element ' +
+      'id from here is what vault_draw_on_canvas binds an arrow to and what ' +
+      'vault_edit_canvas_elements changes. Cards carry entity_type/entity_id. Use ' +
+      'vault_read_canvas instead when you only need to know WHICH notes/tasks/events are on it.'
   },
   vault_desktop_read: {
     input: desktopReadSchema,
@@ -430,6 +445,42 @@ export const TOOL_SCHEMAS = {
       "Remove an entity's card from a canvas, clearing any arrows bound to it. " +
       'The note/task/event itself is not deleted. Requires user approval.'
   },
+  vault_create_canvas: {
+    input: z.object({ title: z.string().min(1).max(200).optional() }),
+    description: 'Create an empty spatial canvas and return its id. Requires user approval.'
+  },
+  vault_draw_on_canvas: {
+    input: z.object({
+      canvas_id: idSchema,
+      elements: z.array(CanvasDrawElementSchema).min(1).max(MAX_DRAW_ELEMENTS)
+    }),
+    description:
+      'Draw on a canvas: rectangles, ellipses, diamonds, text, arrows, lines, freedraw, ' +
+      "frames, images and embeds. Element fields are Excalidraw's own skeleton fields in " +
+      'camelCase (strokeColor, backgroundColor, fillStyle, strokeWidth, strokeStyle, ' +
+      'roughness, opacity, roundness, fontSize, points, ...), so a shape is e.g. ' +
+      '{"type":"rectangle","x":0,"y":0,"width":240,"height":120,"backgroundColor":"#ffec99",' +
+      '"label":{"text":"Chapter 1"}}. Give an element a "ref" to point arrows at it or put it ' +
+      'in a frame within the same call; bind to something already on the canvas with ' +
+      '{"elementId":"..."} from vault_read_canvas_elements. An arrow with start and end is a ' +
+      'REAL binding — it follows the shapes when the user drags them: ' +
+      '{"type":"arrow","start":{"ref":"a"},"end":{"elementId":"..."},"endArrowhead":"arrow",' +
+      '"label":{"text":"leads to"}}. Coordinates are scene coordinates; x/y default to 0, so ' +
+      'read the canvas first and place relative to what is there. To put a note/task/event on ' +
+      'the canvas use vault_add_canvas_item — this tool cannot mint entity cards. Images need ' +
+      'a fileId already attached to the canvas. Requires user approval.'
+  },
+  vault_edit_canvas_elements: {
+    input: z.object({
+      canvas_id: idSchema,
+      edits: z.array(CanvasElementEditSchema).min(1).max(MAX_EDIT_ELEMENTS)
+    }),
+    description:
+      'Move, restyle, retext or delete elements already on a canvas, by element id from ' +
+      'vault_read_canvas_elements. Absent fields are left alone; {"delete":true} removes the ' +
+      'element and clears any arrow bound to it. Works on entity cards too (move and restyle ' +
+      'them), except their text, which lives in the note. Requires user approval.'
+  },
   vault_desktop_write: {
     input: desktopWriteSchema,
     description: 'Run an allowlisted desktop CRUD mutation. Requires user approval.'
@@ -455,6 +506,7 @@ export const READ_TOOL_NAMES = [
   'vault_get_tags',
   'vault_list_canvases',
   'vault_read_canvas',
+  'vault_read_canvas_elements',
   'vault_desktop_read'
 ] as const satisfies readonly ToolName[]
 
@@ -503,6 +555,9 @@ export const WRITE_TOOL_NAMES = [
   'vault_move_to_folder',
   'vault_add_canvas_item',
   'vault_remove_canvas_item',
+  'vault_create_canvas',
+  'vault_draw_on_canvas',
+  'vault_edit_canvas_elements',
   'vault_desktop_write'
 ] as const satisfies readonly ToolName[]
 
@@ -513,7 +568,8 @@ export const CREATE_TOOL_NAMES = [
   'vault_create_project',
   'vault_create_status',
   'vault_create_journal_entry',
-  'vault_add_to_inbox'
+  'vault_add_to_inbox',
+  'vault_create_canvas'
 ] as const satisfies readonly ToolName[]
 
 export const UPDATE_TOOL_NAMES = [
@@ -554,6 +610,8 @@ export const UPDATE_TOOL_NAMES = [
   'vault_move_to_folder',
   'vault_add_canvas_item',
   'vault_remove_canvas_item',
+  'vault_draw_on_canvas',
+  'vault_edit_canvas_elements',
   'vault_desktop_write'
 ] as const satisfies readonly ToolName[]
 

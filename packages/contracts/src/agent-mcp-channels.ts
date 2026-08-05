@@ -3,6 +3,12 @@ import { z } from 'zod'
 // .ts extension required: this file is read by the rpc bindings generator under
 // node --experimental-strip-types (same constraint as canvas-api.ts).
 import { CanvasEntityRefSchema } from './canvas-api.ts'
+import {
+  CanvasDrawElementSchema,
+  CanvasElementEditSchema,
+  MAX_DRAW_ELEMENTS,
+  MAX_EDIT_ELEMENTS
+} from './canvas-draw.ts'
 
 export const AgentMcpChannels = {
   invoke: {
@@ -354,16 +360,52 @@ export type AgentMcpDesktopApiResponse =
  */
 export const AgentMcpCanvasWriteChannel = 'agent_mcp:canvas_write'
 
-export const AgentMcpCanvasWriteRequestSchema = z.object({
-  canvasId: z.string().min(1),
-  op: z.enum(['add', 'remove']),
-  items: z.array(CanvasEntityRefSchema).min(1).max(20)
-})
+const canvasWriteBase = { canvasId: z.string().min(1) }
+
+/**
+ * Four ops share one channel because they share the whole hard part: deciding
+ * whether the target canvas is open, and not clobbering it either way.
+ * `add`/`remove` move entity cards; `draw`/`edit` author and revise free-form
+ * Excalidraw elements.
+ */
+export const AgentMcpCanvasWriteRequestSchema = z.discriminatedUnion('op', [
+  z.object({
+    ...canvasWriteBase,
+    op: z.literal('add'),
+    items: z.array(CanvasEntityRefSchema).min(1).max(20)
+  }),
+  z.object({
+    ...canvasWriteBase,
+    op: z.literal('remove'),
+    items: z.array(CanvasEntityRefSchema).min(1).max(20)
+  }),
+  z.object({
+    ...canvasWriteBase,
+    op: z.literal('draw'),
+    elements: z.array(CanvasDrawElementSchema).min(1).max(MAX_DRAW_ELEMENTS)
+  }),
+  z.object({
+    ...canvasWriteBase,
+    op: z.literal('edit'),
+    edits: z.array(CanvasElementEditSchema).min(1).max(MAX_EDIT_ELEMENTS)
+  })
+])
 export type AgentMcpCanvasWriteRequest = z.infer<typeof AgentMcpCanvasWriteRequestSchema>
 
 export interface AgentMcpCanvasWriteSkip {
   ref: { entityType: string; entityId: string }
   reason: 'already-on-canvas' | 'not-on-canvas'
+}
+
+/** What a draw/edit op did, in terms the caller can bind to on its next call. */
+export interface AgentMcpCanvasElementOutcome {
+  /** Batch ref → minted element id, for every drawn element that carried a ref. */
+  refs: Record<string, string>
+  createdIds: string[]
+  updatedIds: string[]
+  deletedIds: string[]
+  /** Ids the caller asked for that are not on this canvas. */
+  missingIds: string[]
 }
 
 export type AgentMcpCanvasWriteResponse =
@@ -376,6 +418,8 @@ export type AgentMcpCanvasWriteResponse =
       tooLarge: boolean
       /** Which route ran — 'live' means the user has that canvas open. */
       path: 'live' | 'headless'
+      /** Present for op 'draw' and op 'edit'. */
+      elements?: AgentMcpCanvasElementOutcome
     }
   | { ok: false; error: { code: string; message: string } }
 

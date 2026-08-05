@@ -5,6 +5,11 @@ import type {
   AgentMcpDesktopReadOperation,
   AgentMcpDesktopWriteOperation
 } from '@memry/contracts/agent-mcp-channels'
+import type {
+  CanvasDrawElement,
+  CanvasElementEdit,
+  CanvasElementView
+} from '@memry/contracts/canvas-draw'
 import type { NoteFileType } from '@memry/contracts/search-api'
 
 /**
@@ -145,6 +150,28 @@ export interface CanvasWriteOutcome {
   updated_at: number
   /** Saved locally but too large to sync (canvas spec §5.6). */
   too_large: boolean
+}
+
+/** What a draw/edit call did, in ids the next call can bind to. */
+export interface CanvasDrawOutcome {
+  canvas_id: string
+  /** Batch ref → the element id it became. */
+  refs: Record<string, string>
+  created_ids: string[]
+  updated_ids: string[]
+  deleted_ids: string[]
+  /** Refs and element ids that named nothing on this canvas. */
+  missing_ids: string[]
+  updated_at: number
+  too_large: boolean
+}
+
+/** The scene's geometry, for an agent that has to place something. */
+export interface CanvasElementsDetail {
+  canvas_id: string
+  elements: CanvasElementView[]
+  element_count: number
+  truncated: boolean
 }
 
 export interface VaultServiceHandles {
@@ -335,6 +362,15 @@ export interface VaultServiceHandles {
   canvas: {
     list(): Promise<CanvasListEntry[]>
     read(id: string): Promise<CanvasDetail | null>
+    readElements(id: string): Promise<CanvasElementsDetail | null>
+    draw(
+      input: { canvasId: string; elements: CanvasDrawElement[] },
+      windowId: string | null
+    ): Promise<CanvasDrawOutcome>
+    edit(
+      input: { canvasId: string; edits: CanvasElementEdit[] },
+      windowId: string | null
+    ): Promise<CanvasDrawOutcome>
     addItems(
       input: { canvasId: string; items: { entityType: CanvasEntityKind; entityId: string }[] },
       windowId: string | null

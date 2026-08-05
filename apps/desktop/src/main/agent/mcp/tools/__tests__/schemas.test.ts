@@ -20,6 +20,7 @@ describe('Vault MCP tool schemas', () => {
       'vault_get_tags',
       'vault_list_canvases',
       'vault_read_canvas',
+      'vault_read_canvas_elements',
       'vault_desktop_read',
       'vault_create_note',
       'vault_rename_note',
@@ -65,6 +66,9 @@ describe('Vault MCP tool schemas', () => {
       'vault_move_to_folder',
       'vault_add_canvas_item',
       'vault_remove_canvas_item',
+      'vault_create_canvas',
+      'vault_draw_on_canvas',
+      'vault_edit_canvas_elements',
       'vault_desktop_write'
     ])
   })
