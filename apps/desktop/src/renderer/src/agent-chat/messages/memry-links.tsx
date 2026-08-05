@@ -53,7 +53,10 @@ export function MemryLink({
 }: ComponentProps<'a'> & { source?: AgentSourceRef | null }): React.JSX.Element {
   const navigate = useMemryLinkNavigation()
   const isMemryLink = typeof href === 'string' && href.startsWith('memry://')
-  const labelChildren = isMemryLink && source?.title ? source.title : children
+  const rawLabel = isMemryLink && source?.title ? source.title : children
+  const { icon: inlineIcon, label: labelChildren } = isMemryLink
+    ? splitEdgeIcon(rawLabel)
+    : { icon: null, label: rawLabel }
 
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
     onClick?.(event)
@@ -76,7 +79,7 @@ export function MemryLink({
     >
       {isMemryLink ? (
         <>
-          <MemryLinkIcon href={href} source={source} />
+          <MemryLinkIcon href={href} source={source} fallbackIcon={inlineIcon} />
           <span data-agent-link-label>{labelChildren}</span>
         </>
       ) : (
@@ -84,6 +87,32 @@ export function MemryLink({
       )}
     </a>
   )
+}
+
+const EMOJI_SOURCE =
+  '\\p{Extended_Pictographic}(?:\\uFE0F|\\p{Emoji_Modifier}|\\u200D\\p{Extended_Pictographic}|\\uFE0F\\u200D\\p{Extended_Pictographic})*'
+const LEADING_EMOJI = new RegExp(`^(${EMOJI_SOURCE})\\s+`, 'u')
+const TRAILING_EMOJI = new RegExp(`\\s+(${EMOJI_SOURCE})$`, 'u')
+
+/**
+ * Backends often spell a note's own icon into the link text ("Watchlist 2026 🎬").
+ * Lift that emoji out of the label so it renders as the item icon instead of
+ * sitting next to the generic fallback one.
+ */
+export function splitEdgeIcon(label: React.ReactNode): {
+  icon: string | null
+  label: React.ReactNode
+} {
+  if (typeof label !== 'string') return { icon: null, label }
+
+  const text = label.trim()
+  const leading = LEADING_EMOJI.exec(text)
+  if (leading) return { icon: leading[1], label: text.slice(leading[0].length) }
+
+  const trailing = TRAILING_EMOJI.exec(text)
+  if (trailing) return { icon: trailing[1], label: text.slice(0, trailing.index) }
+
+  return { icon: null, label }
 }
 
 type LinkIconComponent = ComponentType<{ className?: string }>
@@ -119,16 +148,25 @@ const CALENDAR_VISUAL_TYPE_ICONS: Record<string, LinkIconComponent> = {
 
 function resolveMemryLinkIcon(
   href?: string,
-  source?: AgentSourceRef | null
+  source?: AgentSourceRef | null,
+  fallbackIcon?: string | null
 ): LinkIconDescriptor | null {
   const parsed = typeof href === 'string' ? parseMemryHref(href) : null
   const kind = source?.kind ?? parsed?.kind
   if (!kind) return null
 
+  // An item's own icon always wins over the per-type default.
+  const customIcon = source?.icon ?? fallbackIcon
+  if (customIcon) {
+    return {
+      kind: 'note',
+      label: kind === 'note' ? 'note-custom' : `${kind}-custom`,
+      noteIcon: customIcon
+    }
+  }
+
   if (kind === 'note') {
-    return source?.icon
-      ? { kind: 'note', label: 'note-custom', noteIcon: source.icon }
-      : { kind: 'component', label: 'note-default', Icon: FileText }
+    return { kind: 'component', label: 'note-default', Icon: FileText }
   }
 
   if (kind === 'task') return { kind: 'component', label: 'task', Icon: SidebarTasks }
@@ -196,13 +234,15 @@ function iconForCalendarVisualType(value: string | undefined): LinkIconComponent
 export function MemryLinkIcon({
   href,
   source,
+  fallbackIcon,
   className
 }: {
   href?: string
   source?: AgentSourceRef | null
+  fallbackIcon?: string | null
   className?: string
 }): React.JSX.Element | null {
-  const resolved = resolveMemryLinkIcon(href, source)
+  const resolved = resolveMemryLinkIcon(href, source, fallbackIcon)
   if (!resolved) return null
   const iconClassName = cn('size-3.5 shrink-0', className)
 

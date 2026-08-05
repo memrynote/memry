@@ -109,9 +109,161 @@ describe('MessageStream', () => {
 
     expect(screen.getByText('Create a task')).toBeInTheDocument()
     expect(screen.getByText('I can do that.')).toBeInTheDocument()
+    expect(screen.getByText('context_attached')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /1 step/i }))
+
     expect(screen.getByText('Creating task')).toBeInTheDocument()
     expect(screen.getByText('Tool result')).toBeInTheDocument()
-    expect(screen.getByText('context_attached')).toBeInTheDocument()
+  })
+
+  it('collapses consecutive tool calls into one activity group', () => {
+    render(
+      <MessageStream
+        inFlight
+        messages={[
+          message({
+            id: 'tool-call-1',
+            role: 'tool_call',
+            toolCallId: 'tool-1',
+            content: {
+              role: 'tool_call',
+              data: {
+                tool: 'vault_desktop_read',
+                args: { operation: 'settings.get' },
+                status: 'output-available'
+              }
+            }
+          }),
+          message({
+            id: 'tool-call-2',
+            role: 'tool_call',
+            toolCallId: 'tool-2',
+            content: {
+              role: 'tool_call',
+              data: {
+                tool: 'vault_search_notes',
+                args: { query: 'milk' },
+                status: 'input-available'
+              }
+            }
+          })
+        ]}
+      />
+    )
+
+    const trigger = screen.getByRole('button', { name: /Searching notes/i })
+    expect(trigger.querySelector('.animate-spin')).not.toBeNull()
+    expect(screen.queryByText('Reading app data')).not.toBeInTheDocument()
+
+    fireEvent.click(trigger)
+
+    expect(screen.getByText('Reading app data')).toBeInTheDocument()
+    expect(screen.getAllByText('Searching notes')).toHaveLength(2)
+  })
+
+  it('labels a settled activity group by step count without a spinner', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'tool-call-1',
+            role: 'tool_call',
+            toolCallId: 'tool-1',
+            content: {
+              role: 'tool_call',
+              data: { tool: 'vault_read_note', args: { id: 'a' }, status: 'output-available' }
+            }
+          }),
+          message({
+            id: 'tool-call-2',
+            role: 'tool_call',
+            toolCallId: 'tool-2',
+            content: {
+              role: 'tool_call',
+              data: { tool: 'vault_read_note', args: { id: 'b' }, status: 'output-available' }
+            }
+          })
+        ]}
+      />
+    )
+
+    const trigger = screen.getByRole('button', { name: /2 steps/i })
+    expect(trigger.querySelector('.animate-spin')).toBeNull()
+    expect(screen.queryByText('Reading note')).not.toBeInTheDocument()
+  })
+
+  it('stops the activity spinner once the turn is no longer in flight', () => {
+    const messages = [
+      message({
+        id: 'tool-call-1',
+        role: 'tool_call',
+        toolCallId: 'tool-1',
+        content: {
+          role: 'tool_call',
+          data: { tool: 'vault_desktop_read', args: {}, status: 'input-available' }
+        }
+      }),
+      message({
+        id: 'tool-call-2',
+        role: 'tool_call',
+        toolCallId: 'tool-2',
+        content: {
+          role: 'tool_call',
+          data: { tool: 'vault_desktop_read', args: {}, status: 'input-available' }
+        }
+      })
+    ]
+
+    const { rerender } = render(<MessageStream inFlight messages={messages} />)
+
+    expect(
+      screen.getByRole('button', { name: /Reading app data/i }).querySelector('.animate-spin')
+    ).not.toBeNull()
+
+    // The backend never reported results, so only the turn ending can settle the group.
+    rerender(<MessageStream inFlight={false} messages={messages} />)
+
+    const settled = screen.getByRole('button', { name: /2 steps/i })
+    expect(settled.querySelector('.animate-spin')).toBeNull()
+  })
+
+  it('keeps an activity group open while a tool waits for approval', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'tool-call-1',
+            role: 'tool_call',
+            toolCallId: 'tool-1',
+            content: {
+              role: 'tool_call',
+              data: { tool: 'vault_read_note', args: { id: 'a' }, status: 'output-available' }
+            }
+          }),
+          message({
+            id: 'tool-call-2',
+            role: 'tool_call',
+            toolCallId: 'tool-2',
+            content: {
+              role: 'tool_call',
+              data: {
+                tool: 'vault_delete_note',
+                args: { id: 'b' },
+                status: 'approval-requested'
+              }
+            }
+          })
+        ]}
+      />
+    )
+
+    expect(screen.getAllByText('Deleting note')).toHaveLength(2)
+    expect(screen.getByText('Reading note')).toBeInTheDocument()
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Deleting note/i })[0])
+
+    expect(screen.getByText('Reading note')).toBeInTheDocument()
   })
 
   it('renders user message attachment labels', () => {
@@ -359,6 +511,42 @@ describe('MessageStream', () => {
     const link = screen.getByRole('link', { name: 'Movies' })
     expect(link.querySelector('[data-agent-link-icon="note-custom"]')).not.toBeNull()
     expect(link.querySelector('[data-agent-link-label]')).toHaveTextContent('Movies')
+  })
+
+  it('lifts an emoji written into the link label into the item icon slot', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'assistant-1',
+            role: 'assistant',
+            content: {
+              role: 'assistant',
+              data: {
+                text: [
+                  '[Watchlist 2026 🎬](memry://note/note-1)',
+                  '[🎧 Podcasts](memry://note/note-2)',
+                  '[Plain note](memry://note/note-3)'
+                ].join(' ')
+              }
+            }
+          })
+        ]}
+      />
+    )
+
+    const trailing = screen.getByRole('link', { name: 'Watchlist 2026' })
+    expect(trailing.querySelector('[data-agent-link-icon="note-custom"]')).toHaveTextContent('🎬')
+    expect(trailing.querySelector('[data-agent-link-icon="note-default"]')).toBeNull()
+
+    const leading = screen.getByRole('link', { name: 'Podcasts' })
+    expect(leading.querySelector('[data-agent-link-icon="note-custom"]')).toHaveTextContent('🎧')
+
+    expect(
+      screen
+        .getByRole('link', { name: 'Plain note' })
+        .querySelector('[data-agent-link-icon="note-default"]')
+    ).not.toBeNull()
   })
 
   it('renders item-type icons for non-note memrynote links', () => {

@@ -66,6 +66,7 @@ export function ConversationView({
       {conversation && !isWorkspace && <ConversationHeader conversation={conversation} />}
       <MessageStream
         messages={messages}
+        inFlight={inFlight}
         contentClassName={isWorkspace ? cn(workspaceOuterClassName, 'pb-3 pt-6') : undefined}
         messageListClassName={isWorkspace ? workspaceMessageListClassName : undefined}
       />

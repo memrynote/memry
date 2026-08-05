@@ -11,7 +11,7 @@ import {
 } from '@/components/ai-elements/message'
 import { Source, Sources, SourcesContent, SourcesTrigger } from '@/components/ai-elements/sources'
 import { cn } from '@/lib/utils'
-import { MemryLink, MemryLinkIcon, useMemryLinkNavigation } from './memry-links'
+import { MemryLink, MemryLinkIcon, splitEdgeIcon, useMemryLinkNavigation } from './memry-links'
 import { memryLinkClassName } from './memry-links-constants'
 
 type AssistantMessageModel = Message & {
@@ -89,21 +89,24 @@ function AssistantSources({ sources }: { sources: AgentSourceRef[] }): React.JSX
         className={cn(memryLinkClassName, 'w-fit text-xs')}
       />
       <SourcesContent className="w-full">
-        {sources.map((source) => (
-          <Source
-            key={source.href}
-            className={cn('flex w-fit items-center gap-2 text-xs', memryLinkClassName)}
-            href={source.href}
-            onClick={(event) => {
-              event.preventDefault()
-              navigateMemryLink(source.href, source.title)
-            }}
-            title={source.title}
-          >
-            <MemryLinkIcon href={source.href} source={source} />
-            <span className="block font-medium">{source.title}</span>
-          </Source>
-        ))}
+        {sources.map((source) => {
+          const { icon, label } = splitEdgeIcon(source.title)
+          return (
+            <Source
+              key={source.href}
+              className={cn('flex w-fit items-center gap-2 text-xs', memryLinkClassName)}
+              href={source.href}
+              onClick={(event) => {
+                event.preventDefault()
+                navigateMemryLink(source.href, source.title)
+              }}
+              title={source.title}
+            >
+              <MemryLinkIcon href={source.href} source={source} fallbackIcon={icon} />
+              <span className="block font-medium">{label}</span>
+            </Source>
+          )
+        })}
       </SourcesContent>
     </Sources>
   )

@@ -120,7 +120,7 @@ function getDesktopToolLabel(tool: string, args: unknown): string | null {
   return null
 }
 
-function humanizeToolName(name: string, args: unknown): string {
+export function humanizeToolName(name: string, args: unknown): string {
   const normalized = normalizeToolName(name)
   const desktopLabel = getDesktopToolLabel(normalized, args)
   if (desktopLabel) return desktopLabel
