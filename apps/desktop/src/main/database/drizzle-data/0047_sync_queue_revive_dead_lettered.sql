@@ -1,0 +1,21 @@
+-- Revive sync-queue rows that were dead-lettered inside a single push cycle.
+--
+-- Before this release one push() call spent the whole retry budget on a burst of
+-- back-to-back requests, so a single transient server rejection pushed a row to
+-- attempts = DEFAULT_MAX_ATTEMPTS (5) immediately. Both dequeue() and
+-- getPendingCount() ignore rows at or above that ceiling and nothing ever reset
+-- them, so the mutation was parked forever, invisible in the UI, and eventually
+-- purged. Those edits are still on disk and still unsynced on real installs.
+--
+-- Attempts are now spread across sync cycles, so hand the budget back once.
+-- Data-only and row-preserving: no schema change, no DELETE. error_message and
+-- last_attempt are kept so the earlier failure stays diagnosable. A row whose
+-- rejection is genuinely permanent simply re-parks after five more cycles —
+-- a bounded cost against silently losing a user's edit.
+--
+-- The literal 5 mirrors DEFAULT_MAX_ATTEMPTS in src/main/sync/queue.ts; SQL
+-- cannot import it. Raising that constant does not require editing this file:
+-- the migration only ever runs once, against the ceiling in force when the row
+-- was parked.
+-- Hand-written (project switched off Drizzle generator after 0020).
+UPDATE `sync_queue` SET `attempts` = 0 WHERE `attempts` >= 5;

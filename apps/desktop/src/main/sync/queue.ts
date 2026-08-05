@@ -1,4 +1,4 @@
-import { eq, and, sql, desc, asc, lt, lte, count } from 'drizzle-orm'
+import { eq, and, sql, desc, asc, lt, lte, count, notInArray } from 'drizzle-orm'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import type { SyncItemType, SyncOperation } from '@memry/contracts/sync-api'
 import type { DataDb } from '../database'
@@ -101,11 +101,31 @@ export class SyncQueueManager {
     return id
   }
 
-  dequeue(batchSize: number): Array<typeof syncQueue.$inferSelect> {
+  /**
+   * Rows still inside their retry budget, highest priority / oldest first.
+   *
+   * `excludeIds` holds rows the caller has already failed during the current
+   * push cycle. It matters because the push loop dequeues repeatedly in one
+   * `push()` call: without the exclusion it re-dequeues the row it just failed
+   * on the very next iteration, so all `DEFAULT_MAX_ATTEMPTS` are spent against
+   * a single burst of back-to-back requests and one transient server rejection
+   * dead-letters a user's edit for good. The budget is meant to span sync
+   * cycles, and the delay between them is the cycle interval itself — so the
+   * exclusion is per-call state only and is deliberately never persisted.
+   *
+   * Excluding by id rather than by `lastAttempt` keeps this independent of the
+   * system clock: a backwards clock jump must never hide a pending edit.
+   */
+  dequeue(batchSize: number, excludeIds?: Iterable<string>): Array<typeof syncQueue.$inferSelect> {
+    const excluded = excludeIds ? Array.from(excludeIds) : []
+    const withinBudget = lt(syncQueue.attempts, DEFAULT_MAX_ATTEMPTS)
+
     return this.db
       .select()
       .from(syncQueue)
-      .where(lt(syncQueue.attempts, DEFAULT_MAX_ATTEMPTS))
+      .where(
+        excluded.length > 0 ? and(withinBudget, notInArray(syncQueue.id, excluded)) : withinBudget
+      )
       .orderBy(desc(syncQueue.priority), asc(syncQueue.createdAt))
       .limit(batchSize)
       .all()

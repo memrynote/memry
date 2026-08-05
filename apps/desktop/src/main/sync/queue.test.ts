@@ -186,6 +186,22 @@ describe('SyncQueueManager', () => {
       expect(queue.getSize()).toBe(1)
     })
 
+    it('skips excluded ids without touching their remaining attempt budget', () => {
+      // #given a row the caller already failed inside the current push cycle
+      const failed = queue.enqueue(makeInput({ itemId: 'failed-this-cycle' }))
+      queue.enqueue(makeInput({ itemId: 'still-fresh' }))
+      simulateFailedAttempt(queue, failed, 'transient')
+
+      // #when dequeue excludes it
+      const items = queue.dequeue(10, [failed])
+
+      // #then only the other row comes back, and the excluded one keeps its
+      // budget for the next cycle rather than being spent again immediately
+      expect(items.map((i) => i.itemId)).toEqual(['still-fresh'])
+      expect(queue.getPendingCount()).toBe(2)
+      expect(queue.peek().find((r) => r.id === failed)?.attempts).toBe(1)
+    })
+
     it('does not increment attempts on dequeue before a failure is recorded', () => {
       // #given item in queue
       queue.enqueue(makeInput())
