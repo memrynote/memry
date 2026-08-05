@@ -329,8 +329,33 @@ describe('JournalSyncPayloadSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('rejects missing date', () => {
-    const result = JournalSyncPayloadSchema.safeParse({ content: 'Today...' })
+  it('accepts a delete tombstone that omits the date', () => {
+    // Deletes carry no user data: the receiver short-circuits on
+    // `operation === 'delete'` and never decodes the body, so the journalled
+    // day was uploaded on every delete for nothing. See
+    // journal-sync.buildDeletePayload. An upsert without a date is still
+    // rejected — by journal-handler.applyUpsert, not by this schema.
+    const result = JournalSyncPayloadSchema.safeParse({
+      clock: { 'device-a': 4 },
+      createdAt: '2026-04-16T00:00:00Z',
+      modifiedAt: '2026-04-16T01:00:00Z'
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('still accepts a dated tombstone from a sender that predates the change', () => {
+    // Old sender -> new receiver: the field is optional now, not removed.
+    const result = JournalSyncPayloadSchema.safeParse({
+      date: '2026-04-16',
+      clock: { 'device-a': 4 },
+      createdAt: '2026-04-16T00:00:00Z',
+      modifiedAt: '2026-04-16T01:00:00Z'
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects a non-string date', () => {
+    const result = JournalSyncPayloadSchema.safeParse({ date: 20260416 })
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(result.error.issues[0].path).toContain('date')

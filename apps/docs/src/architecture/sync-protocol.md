@@ -297,6 +297,25 @@ a move, a re-index — carry file state only, and must not erase it.
 
 Deletions include `deleted_at` inside the **Ed25519-signed** payload — preventing a hostile server from forging deletions.
 
+A tombstone body carries no user content. The receiving side never decodes it: `ItemApplier`
+short-circuits on `operation === 'delete'` and calls `applyDelete(ctx, itemId, clock)`, and
+`SyncItemHandler.applyDelete` has no parameter that could accept the body. Handlers resolve
+whatever they need from the local row instead — the journal handler, for example, reads the
+journalled day from `noteMetadata.journalDate`.
+
+So note and journal tombstones ship `{ clock, createdAt, modifiedAt }` and nothing else: no title,
+no journal date. Anything more is encrypted and uploaded on every delete for no reader, and sits in
+plaintext in the local `sync_queue` row until the push drains.
+
+`clock` is the one field a tombstone must keep. `PushCoordinator.extractPayloadMetadata` parses it
+back out of the payload string to stamp the server-side item version, so dropping it would break
+delete ordering across devices.
+
+Payload schemas therefore mark these fields optional (`NoteSyncPayloadSchema.title`,
+`JournalSyncPayloadSchema.date`) — a tombstone legitimately omits them. Where a field is still
+required for a create or update, the handler enforces it: `journal-handler.applyUpsert` skips an
+upsert that arrives with no `date`.
+
 ## Account Vault Directory
 
 An account can hold several vaults (subject to the plan's vault limit). The directory lets any
