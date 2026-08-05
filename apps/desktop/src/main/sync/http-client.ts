@@ -1,19 +1,13 @@
 import { net } from 'electron'
 import { RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
 import { getMainI18n } from '../lib/main-i18n'
+import { resolveSyncServerUrl } from './sync-server-url'
 import { withRetry } from './retry'
 
 // Declared to the server so it never sends this build an item type our
 // RecordPullResponseSchema would reject — one unknown type fails the whole-page
 // safeParse and silently drops the page.
 const SYNC_TYPES_HEADER_VALUE = RECORD_SYNC_ITEM_TYPES.join(',')
-
-function getSyncServerUrl(): string {
-  const url = process.env.SYNC_SERVER_URL
-  if (url) return url
-  if (process.env.NODE_ENV === 'development') return 'http://localhost:8787'
-  throw new Error('SYNC_SERVER_URL environment variable is not configured')
-}
 
 export type FetchFn = typeof globalThis.fetch
 
@@ -108,7 +102,14 @@ export const syncFetch = async <T>(
   fetchFn?: FetchFn,
   timeoutMs: number = SYNC_REQUEST_TIMEOUT_MS
 ): Promise<T> => {
-  const url = `${getSyncServerUrl()}${path}`
+  // Resolved per call, never hoisted to a module-level const: dotenv runs in
+  // index.ts *after* this module is imported, so capturing at import time
+  // freezes the wrong value (see sync-server-url.ts). resolveSyncServerUrl()
+  // preserves that laziness and additionally strips a trailing slash, which
+  // this file used to pass through verbatim — `${url}/sync/...` against a
+  // slash-terminated env yields `//sync/...`, a different route to Cloudflare
+  // Workers, so every sync request 404'd.
+  const url = `${resolveSyncServerUrl()}${path}`
   const fetchImpl = fetchFn ?? ((...args: Parameters<typeof net.fetch>) => net.fetch(...args))
 
   const headers: Record<string, string> = {

@@ -326,6 +326,32 @@ list.
 | `POST /devices/*`         | mixed     | Linking, listing, revoking                                                     |
 | `POST /keys/*`            | mixed     | Key sealing during link, rotation                                              |
 
+### Server base URL
+
+Every path above is appended to a single resolved base URL. `resolveSyncServerUrl()`
+(`src/main/sync/sync-server-url.ts`) is the only resolver — sync HTTP, OAuth sign-in, canvas assets
+and attachment transfers all call it, so one env var cannot end up with two policies.
+
+Two properties of that resolver are load-bearing:
+
+- **Resolved per call, never at import time.** The main process applies `.env.<environment>` via
+  dotenv in `index.ts` _after_ the IPC handler modules are imported, so a module-level
+  `const URL = process.env.SYNC_SERVER_URL || …` freezes to the fallback before the env file lands.
+  In `dev` the fallback happens to equal the configured value, which hides the bug; in `dev:staging`
+  it silently pinned sync and OAuth to localhost.
+- **Trailing slashes are stripped.** Callers build paths as `` `${base}${path}` ``, so a
+  slash-terminated `SYNC_SERVER_URL` yields `https://host//sync/push`. Cloudflare Workers routes the
+  doubled slash as a different path, so the request 404s instead of reaching its handler. Only
+  trailing slashes are normalized — scheme, host, port and any base path are left verbatim so a typo
+  still fails loudly rather than being rewritten into something that "works".
+
+`SYNC_SERVER_URL` is required. The `http://localhost:8787` fallback applies only when `NODE_ENV` is
+`development` or `test` — the unpackaged dev server and the vitest/Playwright harnesses. A packaged
+build has `NODE_ENV` undefined and gets an explicit configuration error rather than a silent dial to
+a localhost port nothing is listening on. Packaging cannot legitimately omit the value:
+`scripts/build-packaged-app.js` refuses to build without `apps/desktop/.env.production` and asserts
+the value is a non-local HTTPS URL.
+
 ## Realtime Socket Auth
 
 The change-notification WebSocket (`/sync/ws`) authenticates once at handshake with a Bearer access
