@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { parseLocalDate, toLocalDateKey } from './date-utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
+import { HOUR_HEIGHT, SNAP_MINUTES } from './time-grid-constants'
 
-const HOUR_HEIGHT = 48
-const SNAP_MINUTES = 15
 const MOVE_THRESHOLD_PX = 4
 const DEFAULT_DURATION_MINUTES = 60
 export const MINUTES_IN_DAY = 1440

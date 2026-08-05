@@ -1,5 +1,6 @@
 import { test, expect, type Page } from './fixtures'
 import { waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
+import { HOUR_HEIGHT } from '../../src/renderer/src/components/calendar/time-grid-constants'
 
 async function scrollCalendarToTop(page: Page): Promise<void> {
   const dayView = page.getByTestId('calendar-view')
@@ -34,10 +35,12 @@ async function dragSelection(page: Page, columnXOffset: number, durationHours = 
   const box = await dayView.boundingBox()
   if (!box) throw new Error('calendar view has no bounding box')
 
-  // Grid is 96 px per hour (HOUR_HEIGHT). Drag relative to that.
+  // Drag relative to the grid's own row height so a "1 hour" drag really is
+  // one hour — hard-coding it meant every drag here covered twice its stated
+  // duration once HOUR_HEIGHT was halved.
   const x = box.x + columnXOffset
-  const yStart = box.y + 96
-  const yEnd = box.y + 96 + 96 * durationHours
+  const yStart = box.y + HOUR_HEIGHT
+  const yEnd = box.y + HOUR_HEIGHT + HOUR_HEIGHT * durationHours
 
   await page.mouse.move(x, yStart)
   await page.mouse.down()
@@ -140,13 +143,13 @@ test.describe('Calendar — marquee quick-create', () => {
       .first()
     await expect(chip).toBeVisible()
 
-    // Chip wrapper is positioned absolutely with height equal to durationMinutes × 1.6 px.
-    // 2 hours = 120 min × 1.6 = 192 px. Allow some tolerance for rounding. The bug
-    // produced 24 px (the hard-coded minimum for < 15-min events) regardless of duration.
+    // The chip wrapper is positioned absolutely at durationMinutes × (HOUR_HEIGHT / 60),
+    // so 2 hours is 2 × HOUR_HEIGHT. Allow tolerance for rounding. The bug produced
+    // 24 px (the hard-coded minimum for < 15-min events) regardless of duration.
     const chipBox = await chip.boundingBox()
     if (!chipBox) throw new Error('chip has no bounding box')
-    expect(chipBox.height).toBeGreaterThanOrEqual(150)
-    expect(chipBox.height).toBeLessThanOrEqual(210)
+    expect(chipBox.height).toBeGreaterThanOrEqual(2 * HOUR_HEIGHT - 16)
+    expect(chipBox.height).toBeLessThanOrEqual(2 * HOUR_HEIGHT + 16)
   })
 
   test('created event renders with correct duration in week view — regression', async ({
@@ -175,9 +178,9 @@ test.describe('Calendar — marquee quick-create', () => {
     if (!chipBox) throw new Error('chip has no bounding box')
     // Chip element itself — not just its positioned wrapper — must fill the slot.
     // Regression guard: pre-fix, the chip had natural content height (~24 px)
-    // inside a 192-px wrapper, so the user saw a 15-min-looking block.
-    expect(chipBox.height).toBeGreaterThanOrEqual(150)
-    expect(chipBox.height).toBeLessThanOrEqual(210)
+    // inside a full-duration wrapper, so the user saw a 15-min-looking block.
+    expect(chipBox.height).toBeGreaterThanOrEqual(2 * HOUR_HEIGHT - 16)
+    expect(chipBox.height).toBeLessThanOrEqual(2 * HOUR_HEIGHT + 16)
   })
 
   test('Cancel button dismisses without creating', async ({ page }) => {

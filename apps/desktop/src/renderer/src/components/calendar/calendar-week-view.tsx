@@ -24,8 +24,8 @@ import { formatHour } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 import type { AnchorRect, CalendarEventDraft } from './types'
+import { HOUR_HEIGHT } from './time-grid-constants'
 
-const HOUR_HEIGHT = 48
 const HEADER_HEIGHT = 40
 const GUTTER_WIDTH = 48
 const ALL_DAY_ROW_MIN_HEIGHT = 28

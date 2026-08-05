@@ -17,8 +17,8 @@ import { CalendarQuickCreateDialog } from './calendar-quick-create-dialog'
 import { useScrollToCurrentTime } from './use-scroll-to-current-time'
 import { useOptionalDragContext } from '@/contexts/drag-context'
 import type { AnchorRect, CalendarEventDraft } from './types'
+import { HOUR_HEIGHT } from './time-grid-constants'
 
-const HOUR_HEIGHT = 48
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
 const GRID_LINE_BG =
   'repeating-linear-gradient(to bottom, transparent, transparent 47px, var(--grid-line-color) 47px, var(--grid-line-color) 48px)'
