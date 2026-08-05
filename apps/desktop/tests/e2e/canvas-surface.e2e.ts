@@ -2,10 +2,11 @@
 /**
  * Spatial canvas M1 — canvas surface (local-only).
  *
- * The spatialCanvas flag is hidden (not in FEATURE_KEYS), so tests enable it
- * through settings.setFeaturesSettings. Canvas pixels are not assertable in
- * Playwright; persistence is asserted through the scene JSON returned by
- * window.api.canvas.get (element count/type), per the design spec (§18 B4).
+ * The spatialCanvas flag defaults ON since the M7 rollout, so tests drive it
+ * both ways through settings.setFeaturesSettings. Canvas pixels are not
+ * assertable in Playwright; persistence is asserted through the scene JSON
+ * returned by window.api.canvas.get (element count/type), per the design
+ * spec (§18 B4).
  */
 import { test, expect, type Page } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
@@ -71,16 +72,18 @@ async function createCanvasFromSidebar(page: Page): Promise<string> {
 }
 
 test.describe('Spatial canvas — surface (M1)', () => {
-  // Each test boots the app up to three times (initial + reload per flag
-  // write + persistence reload) at ~25s per boot — the 60s default is short.
-  test.describe.configure({ timeout: 240_000 })
+  // Each test boots the app up to four times (initial + reload per flag write
+  // + persistence reload) at ~25s per boot — the 60s default is short.
+  test.describe.configure({ timeout: 300_000 })
 
   test('flag off shows no sidebar section; enabled: create, draw, reload persists ink', async ({
     page
   }) => {
     await openVault(page)
 
-    // Flag off (default): zero user-visible change.
+    // Flag off: zero user-visible change. Turned off explicitly — the default
+    // has been ON since the M7 rollout, so the gate is only observable here.
+    await setSpatialCanvasFlag(page, false)
     await expect(page.getByRole('button', { name: /Canvases section/ })).toHaveCount(0)
 
     await setSpatialCanvasFlag(page, true)
