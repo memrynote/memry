@@ -133,6 +133,15 @@ step is then replay-detected by the server, costs one round trip, and is stamped
 that really is ahead of the server changes anything. Scope is limited to items the server already
 knows: clock-less rows belong to the initial seed, and journals to their own handler.
 
+Because recovery never advances a clock, a change made while the sync runtime is down has to advance
+its own at write time or the re-push would be dismissed as a replay. Records park that tick under a
+placeholder device that their sync service rebinds on the way out; notes have no rebinding step, so
+their fallback bumps under the current device directly and does nothing when no device is registered
+(the same thing the online path does). It also clears the sync stamp, because metadata-only writes —
+recording an uploaded attachment, say — deliberately leave `modifiedAt` alone and would otherwise be
+invisible to the "modified after its stamp" test above. A note that never leaves the device, and one
+with no clock yet, are both left alone.
+
 ### Foreign-key parents and orphan repair
 
 Some rows carry foreign keys — a task references its project and its status — and the data DB
@@ -271,7 +280,11 @@ across devices:
   (`attachment_upload_queue`, migration 0039) before the transfer starts and
   cleared only after the server accepts the file. Failed or quit-interrupted
   uploads are retried on every sync runtime start instead of being lost with
-  the in-memory queue.
+  the in-memory queue. Recording the reference enqueues a note push so peers
+  learn the blob exists; if that lands while the runtime is down — an upload
+  finishing during quit, a vault switch, re-auth — the note is marked for
+  [recovery](#recovering-pushes-that-never-landed) instead, so the push happens
+  at the next runtime start rather than waiting for an unrelated later edit.
 
 `attachmentReferences` is the only signal that tells another device a note
 embeds a file — the markdown link alone points at a path that exists nowhere
