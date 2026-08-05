@@ -41,7 +41,12 @@ export async function enableManualAgentToolApproval(page: Page): Promise<void> {
 
 export async function approveAgentToolCall(page: Page, toolName: string | RegExp): Promise<void> {
   const agentChat = page.getByRole('region', { name: 'Agent chat' })
-  const toolCall = agentChat.getByRole('button', { name: toolName })
+  // Scoped to the individual call: once a turn makes two or more tool calls
+  // they collapse under a group summary row that repeats the same label and
+  // status, which would otherwise make this locator ambiguous.
+  const toolCall = agentChat
+    .getByTestId('agent-tool-call')
+    .and(agentChat.getByRole('button', { name: toolName }))
   await expect(toolCall).toBeVisible({ timeout: 20_000 })
   await toolCall.click()
   await agentChat.getByRole('button', { name: 'Allow once' }).click()

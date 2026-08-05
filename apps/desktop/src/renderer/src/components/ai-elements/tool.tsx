@@ -57,6 +57,10 @@ export function ToolHeader({
 
   return (
     <CollapsibleTrigger
+      // A ToolActivityGroup summary row carries the same label and status text
+      // as the call it summarizes, so name-based lookups cannot tell them
+      // apart. This marks the individual call.
+      data-testid="agent-tool-call"
       className={cn(
         'inline-flex max-w-full items-center gap-1.5 py-1 text-start text-muted-foreground hover:text-foreground',
         className

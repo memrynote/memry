@@ -72,7 +72,10 @@ export function ToolActivityGroup({
 
   return (
     <Collapsible open={open} onOpenChange={setExpanded} className="rounded-md text-xs">
-      <CollapsibleTrigger className="inline-flex max-w-full items-center gap-1.5 py-1 text-start text-muted-foreground hover:text-foreground">
+      <CollapsibleTrigger
+        data-testid="agent-tool-group"
+        className="inline-flex max-w-full items-center gap-1.5 py-1 text-start text-muted-foreground hover:text-foreground"
+      >
         <ChevronRight
           className={cn('size-3 shrink-0 transition-transform', open && 'rotate-90')}
           aria-hidden="true"
