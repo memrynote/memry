@@ -23,7 +23,25 @@ export function decompressPayload(data: Uint8Array): Uint8Array {
   const payload = data.subarray(1)
 
   if (flag === FLAG_DEFLATE) {
-    return pako.inflate(payload)
+    // pako throws for a corrupt stream, but a TRUNCATED one is different: the
+    // inflator never reaches Z_STREAM_END, so `onEnd` never runs, `err` stays 0
+    // and `inflate()` returns `undefined` without throwing. Handing that back
+    // under a `Uint8Array` return type makes decrypt.ts report
+    // `{ content: undefined, verified: true }`, which decrypt-item.ts decodes
+    // to '' — a truncated body becomes a SUCCESSFUL decrypt of an empty item
+    // and the applier writes it as a content wipe. Throw instead, matching how
+    // this function already reports a corrupt stream.
+    //
+    // Backward compatible: a deflate stream that ends normally always leaves a
+    // defined result (pako's onEnd assigns `flattenChunks(chunks)`, which is an
+    // empty Uint8Array when there is no output, never undefined). So every
+    // payload that decompresses today still decompresses; only the streams that
+    // already produced no usable bytes now surface as a failure.
+    const inflated = pako.inflate(payload) as Uint8Array | undefined
+    if (inflated === undefined) {
+      throw new Error('Failed to decompress payload: incomplete deflate stream')
+    }
+    return inflated
   }
 
   return payload

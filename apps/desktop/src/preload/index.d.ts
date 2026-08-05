@@ -1711,6 +1711,10 @@ interface AgentClientAPI {
   getDisclosureState: () => Promise<{ accepted: boolean }>
   getWindowId: () => Promise<{ windowId: string | null }>
   onEvent: (callback: (event: AgentEvent) => void) => () => void
+  onConversationsChanged: (callback: (payload: { conversationId: string }) => void) => () => void
+  onMessagesChanged: (
+    callback: (payload: { conversationId: string; messageId: string }) => void
+  ) => () => void
 }
 
 interface MainInvokePayload {

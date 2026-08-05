@@ -2,8 +2,10 @@ import { createHash } from 'node:crypto'
 import { eq } from 'drizzle-orm'
 import { AgentMessageSyncPayloadSchema } from '@memry/contracts/sync-payloads'
 import type { AgentMessageSyncPayload } from '@memry/contracts/sync-payloads'
+import { AgentChannels } from '@memry/contracts/ipc-agent'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { agentMessages } from '@memry/db-schema/schema/agent-messages'
+import { agentConversations } from '@memry/db-schema/schema/agent-conversations'
 import type { SyncQueueManager } from '../queue'
 import {
   agentMessageRowToModel,
@@ -14,6 +16,7 @@ import { TERMINAL_STATUSES } from '../../agent/storage/types'
 import type { MessageStatus } from '../../agent/storage/types'
 import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from './base-handler'
+import { MissingSyncParentError } from './types'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 
 const log = createLogger('AgentMessageHandler')
@@ -68,6 +71,49 @@ function isTerminal(status: string): boolean {
   return TERMINAL_STATUSES.has(status as MessageStatus)
 }
 
+/**
+ * `agent_messages.conversation_id` carries NO foreign key, so — unlike the
+ * task/project and calendar work in #837 — SQLite happily writes a message whose
+ * conversation has not been pulled yet. The row then exists but belongs to
+ * nothing: `listByConversation` is only ever called for a conversation the UI
+ * knows about, so the message is invisible forever, and because messages are
+ * immutable it never receives a later remote update that could reconcile it.
+ *
+ * Checking the parent by hand restores the convention the FK-bound handlers get
+ * for free: throw `MissingSyncParentError`, which is the only error
+ * pull-coordinator routes into `orphanedItems` → `repairOrphans`. That re-fetches
+ * the conversation by id (authoritative in a way the pull cursor window is not)
+ * and either replays the message once its conversation lands or tombstones it if
+ * the conversation is gone everywhere.
+ *
+ * Backward compatibility: nothing new goes on the wire and no payload written by
+ * an older app version is read differently — this only decides whether an
+ * out-of-order message is written now or a moment later. Throwing from inside
+ * the transaction leaves the DB exactly as it was, and the pull coordinator
+ * parks the item in `pendingApplyRetries`, so deferring cannot lose it. A peer
+ * on an older build is unaffected: it pushes the same message payload it always
+ * did, and its own (unguarded) apply keeps its previous behaviour.
+ *
+ * Soft-deleted conversations still count as present — `fetchLocal`, which
+ * `repairOrphans` uses to decide "parent exists locally", returns tombstoned
+ * rows too, so treating them as missing here would spin the repair loop.
+ */
+function requireConversation(tx: DrizzleDb, messageId: string, conversationId: string): void {
+  const parent = tx
+    .select({ id: agentConversations.id })
+    .from(agentConversations)
+    .where(eq(agentConversations.id, conversationId))
+    .get()
+  if (!parent) {
+    throw new MissingSyncParentError(
+      'agent_message',
+      messageId,
+      'agent_conversation',
+      conversationId
+    )
+  }
+}
+
 export class AgentMessageHandler extends BaseItemHandler<AgentMessageSyncPayload> {
   readonly type = 'agent_message' as const
   readonly schema = AgentMessageSyncPayloadSchema
@@ -100,6 +146,7 @@ export class AgentMessageHandler extends BaseItemHandler<AgentMessageSyncPayload
       const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
 
       if (!existing) {
+        requireConversation(tx as unknown as DrizzleDb, itemId, data.conversationId)
         tx.insert(agentMessages)
           .values({
             id: itemId,
@@ -115,6 +162,10 @@ export class AgentMessageHandler extends BaseItemHandler<AgentMessageSyncPayload
             deletedAt: data.deletedAt ?? null
           })
           .run()
+        ctx.emit(AgentChannels.events.MESSAGES_CHANGED, {
+          conversationId: data.conversationId,
+          messageId: itemId
+        })
         return 'applied'
       }
 
@@ -126,15 +177,38 @@ export class AgentMessageHandler extends BaseItemHandler<AgentMessageSyncPayload
     })
   }
 
-  applyDelete(ctx: ApplyContext, itemId: string, _clock?: VectorClock): 'applied' | 'skipped' {
+  applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
     const existing = ctx.db.select().from(agentMessages).where(eq(agentMessages.id, itemId)).get()
     if (!existing || existing.deletedAt !== null) return 'skipped'
+
+    // Every other handler here gates a remote tombstone on the clock (see
+    // bookmark-handler / tag-category-handler); this one accepted it blindly, so
+    // a delete could win over a local row the deleting peer had never seen.
+    //
+    // Backward compatibility: this reads a clock that already travels with every
+    // delete envelope — nothing new is emitted, nothing new is required of a
+    // peer on an older build, and an absent clock keeps the previous
+    // unconditional behaviour. A message is frozen once terminal and only
+    // terminal messages sync, so a synced row's clock equals the tombstone's and
+    // still resolves to 'apply'; the only newly-skipped case is a row still
+    // being written locally, where losing the delete is the correct answer.
+    if (clock && existing.vectorClock) {
+      const resolution = this.resolveClock(existing.vectorClock, clock)
+      if (resolution.action === 'skip' || resolution.action === 'merge') {
+        log.info('Skipping remote agent message delete, local has unseen changes', { itemId })
+        return 'skipped'
+      }
+    }
 
     ctx.db
       .update(agentMessages)
       .set({ deletedAt: Date.now(), updatedAt: Date.now() })
       .where(eq(agentMessages.id, itemId))
       .run()
+    ctx.emit(AgentChannels.events.MESSAGES_CHANGED, {
+      conversationId: existing.conversationId,
+      messageId: itemId
+    })
     return 'applied'
   }
 

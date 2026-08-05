@@ -19,17 +19,47 @@ vi.mock('../../vault/folders', () => ({
   readFolderConfig: vi.fn()
 }))
 
+// Shared stub (not a fresh object per createLogger call) so the vault-write
+// failure paths can be asserted on.
+const logger = vi.hoisted(() => ({
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn()
+}))
+
 vi.mock('../../lib/logger', () => ({
-  createLogger: () => ({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn()
-  })
+  createLogger: () => logger
 }))
 
 import { folderConfigHandler } from './folder-config-handler'
 import { writeFolderConfig, readFolderConfig } from '../../vault/folders'
+import { VaultError, VaultErrorCode } from '../../lib/errors'
+
+/**
+ * The vault mirror write is fire-and-forget, so give Node a chance to drain the
+ * microtask queue and emit `unhandledRejection` before asserting on it.
+ */
+async function flushPendingRejections(): Promise<void> {
+  await new Promise((resolve) => setImmediate(resolve))
+  await new Promise((resolve) => setImmediate(resolve))
+}
+
+/** Records anything Node reports as an unhandled rejection while `run` executes. */
+async function captureUnhandledRejections(run: () => void): Promise<unknown[]> {
+  const rejections: unknown[] = []
+  const onUnhandled = (reason: unknown): void => {
+    rejections.push(reason)
+  }
+  process.on('unhandledRejection', onUnhandled)
+  try {
+    run()
+    await flushPendingRejections()
+  } finally {
+    process.off('unhandledRejection', onUnhandled)
+  }
+  return rejections
+}
 
 const mockWriteFolderConfig = vi.mocked(writeFolderConfig)
 const mockReadFolderConfig = vi.mocked(readFolderConfig)
@@ -196,6 +226,122 @@ describe('folderConfigHandler', () => {
       const row = testDb.db.select().from(folderConfigs).where(eq(folderConfigs.path, 'docs')).get()
       expect(row!.icon).toBe('🔥')
       expect(row!.clock).toEqual({ 'device-A': 2, 'device-B': 3 })
+    })
+  })
+
+  // The .folder.md mirror is fire-and-forget, so a rejection there used to
+  // escape as an unhandled rejection in the main process — reachable in
+  // production whenever a folder_config lands while the vault is closed or
+  // mid-close (quit, vault switch, sign-out).
+  describe('vault mirror failures', () => {
+    it('#given no vault is open #when remote upsert arrives #then applies the DB row without an unhandled rejection', async () => {
+      mockReadFolderConfig.mockRejectedValue(
+        new VaultError('No vault is currently open', VaultErrorCode.NOT_INITIALIZED)
+      )
+
+      let result: string | undefined
+      const rejections = await captureUnhandledRejections(() => {
+        result = folderConfigHandler.applyUpsert(ctx, 'docs', { icon: '📁' }, { 'device-B': 1 })
+      })
+
+      expect(result).toBe('applied')
+      expect(rejections).toEqual([])
+
+      const row = testDb.db.select().from(folderConfigs).where(eq(folderConfigs.path, 'docs')).get()
+      expect(row!.icon).toBe('📁')
+      expect(ctx.emit as ReturnType<typeof vi.fn>).toHaveBeenCalledWith(
+        'notes:folder-config-updated',
+        { path: 'docs' }
+      )
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Skipped folder config file write, no vault is open',
+        { itemId: 'docs' }
+      )
+      expect(logger.error).not.toHaveBeenCalled()
+    })
+
+    it('#given no vault is open #when remote delete arrives #then removes the DB row without an unhandled rejection', async () => {
+      testDb.db
+        .insert(folderConfigs)
+        .values({
+          path: 'old-folder',
+          icon: '📁',
+          clock: { 'device-A': 1 },
+          createdAt: '2026-04-10T00:00:00.000Z',
+          modifiedAt: '2026-04-10T00:00:00.000Z'
+        })
+        .run()
+      mockReadFolderConfig.mockRejectedValue(
+        new VaultError('No vault is currently open', VaultErrorCode.NOT_INITIALIZED)
+      )
+
+      let result: string | undefined
+      const rejections = await captureUnhandledRejections(() => {
+        result = folderConfigHandler.applyDelete(ctx, 'old-folder', {
+          'device-A': 1,
+          'device-B': 2
+        })
+      })
+
+      expect(result).toBe('applied')
+      expect(rejections).toEqual([])
+      expect(
+        testDb.db.select().from(folderConfigs).where(eq(folderConfigs.path, 'old-folder')).get()
+      ).toBeUndefined()
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Skipped folder config file write, no vault is open',
+        { itemId: 'old-folder' }
+      )
+    })
+
+    // Same shape as the registry emit probe: a bare data-db handle, no vault
+    // ever opened, and the REAL vault/folders module behind the mock. Guards
+    // the exemption removal in registry.test.ts.
+    it('#given the real vault module and no vault ever opened #when remote upsert arrives #then applies and emits without an unhandled rejection', async () => {
+      const actual =
+        await vi.importActual<typeof import('../../vault/folders')>('../../vault/folders')
+      mockReadFolderConfig.mockImplementation(actual.readFolderConfig)
+      mockWriteFolderConfig.mockImplementation(actual.writeFolderConfig)
+
+      let result: string | undefined
+      const rejections = await captureUnhandledRejections(() => {
+        result = folderConfigHandler.applyUpsert(
+          ctx,
+          'folder_config-registry-probe',
+          { icon: null },
+          { 'device-remote': 1 }
+        )
+      })
+
+      expect(result).toBe('applied')
+      expect(rejections).toEqual([])
+      expect(ctx.emit as ReturnType<typeof vi.fn>).toHaveBeenCalledWith(
+        'notes:folder-config-updated',
+        { path: 'folder_config-registry-probe' }
+      )
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Skipped folder config file write, no vault is open',
+        { itemId: 'folder_config-registry-probe' }
+      )
+    })
+
+    it('#given the .folder.md write fails #when remote upsert arrives #then logs at error with the itemId instead of throwing', async () => {
+      const writeError = new Error('EACCES: permission denied')
+      mockWriteFolderConfig.mockRejectedValue(writeError)
+
+      let result: string | undefined
+      const rejections = await captureUnhandledRejections(() => {
+        result = folderConfigHandler.applyUpsert(ctx, 'docs', { icon: '📁' }, { 'device-B': 1 })
+      })
+
+      expect(result).toBe('applied')
+      expect(rejections).toEqual([])
+      expect(logger.error).toHaveBeenCalledWith('Failed to write synced folder config file', {
+        itemId: 'docs',
+        error: writeError
+      })
+      // A genuine write failure must not be downgraded to the benign no-vault path.
+      expect(logger.warn).not.toHaveBeenCalled()
     })
   })
 

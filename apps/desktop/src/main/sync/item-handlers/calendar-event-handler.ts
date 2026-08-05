@@ -64,10 +64,26 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
             remoteFC
           )
 
+          // Routing and recurrence identity are deliberately NOT in
+          // CALENDAR_EVENT_SYNCABLE_FIELDS — adding them would change the
+          // fieldClocks shape mid-flight and put entries on the wire that older
+          // peers never wrote. They are merged by presence instead: an absent
+          // key means the sender predates the field and the local value stands.
+          const hasMergeKey = (k: string): boolean => Object.prototype.hasOwnProperty.call(data, k)
+
           tx.update(calendarEvents)
             .set({
               ...result.merged,
               archivedAt: data.archivedAt ?? existing.archivedAt,
+              targetCalendarId: hasMergeKey('targetCalendarId')
+                ? (data.targetCalendarId ?? null)
+                : (existing.targetCalendarId ?? null),
+              parentEventId: hasMergeKey('parentEventId')
+                ? (data.parentEventId ?? null)
+                : (existing.parentEventId ?? null),
+              originalStartTime: hasMergeKey('originalStartTime')
+                ? (data.originalStartTime ?? null)
+                : (existing.originalStartTime ?? null),
               clock: resolution.mergedClock,
               fieldClocks: result.mergedFieldClocks,
               modifiedAt: data.modifiedAt ?? now
@@ -108,6 +124,15 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
               ? (data.visibility ?? null)
               : (existing.visibility ?? null),
             colorId: hasKey('colorId') ? (data.colorId ?? null) : (existing.colorId ?? null),
+            targetCalendarId: hasKey('targetCalendarId')
+              ? (data.targetCalendarId ?? null)
+              : (existing.targetCalendarId ?? null),
+            parentEventId: hasKey('parentEventId')
+              ? (data.parentEventId ?? null)
+              : (existing.parentEventId ?? null),
+            originalStartTime: hasKey('originalStartTime')
+              ? (data.originalStartTime ?? null)
+              : (existing.originalStartTime ?? null),
             conferenceData: hasKey('conferenceData')
               ? ((data.conferenceData as CalendarEvent['conferenceData']) ?? null)
               : (existing.conferenceData ?? null),
@@ -145,6 +170,9 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
           conferenceData:
             (data.conferenceData as CalendarEvent['conferenceData'] | undefined) ?? null,
           archivedAt: data.archivedAt ?? null,
+          targetCalendarId: data.targetCalendarId ?? null,
+          parentEventId: data.parentEventId ?? null,
+          originalStartTime: data.originalStartTime ?? null,
           clock: remoteClock,
           fieldClocks: insertedFC,
           createdAt: data.createdAt ?? now,
@@ -199,6 +227,12 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
       colorId: row.colorId ?? null,
       conferenceData: (row.conferenceData as Record<string, unknown> | null) ?? null,
       archivedAt: row.archivedAt ?? null,
+      // The push coordinator prefers this rebuild over the frozen queue payload,
+      // so anything omitted here never reaches the peer even though serialize()
+      // carries it.
+      targetCalendarId: row.targetCalendarId ?? null,
+      parentEventId: row.parentEventId ?? null,
+      originalStartTime: row.originalStartTime ?? null,
       clock: (row.clock as VectorClock) ?? undefined,
       fieldClocks: row.fieldClocks ?? undefined,
       createdAt: row.createdAt,

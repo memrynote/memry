@@ -1,5 +1,6 @@
 import { eq, isNull } from 'drizzle-orm'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
+import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import type {
   CalendarAttendee,
   CalendarConferenceData,
@@ -16,10 +17,50 @@ import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from './base-handler'
+import { MissingSyncParentError } from './types'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 
 const log = createLogger('CalendarExternalEventHandler')
 const CALENDAR_CHANGED = 'calendar:changed'
+
+/**
+ * `calendar_external_events.source_id` is NOT NULL and FK-bound to
+ * `calendar_sources` (ON DELETE cascade), so an event whose source has not
+ * landed locally is unwritable. Surface it as a typed error naming the missing
+ * id instead of SQLite's anonymous `FOREIGN KEY constraint failed` (#837).
+ *
+ * Why the classification matters: pull-coordinator routes only
+ * `MissingSyncParentError` into `orphanedItems` → `repairOrphans`, which
+ * re-fetches the parent by id (authoritative in a way the pull cursor window is
+ * not) and then either replays the child or tombstones it. Any other error is
+ * logged as "deferred retry failed — item skipped until next remote update" and
+ * the item is dropped. An unchanged Google event never gets a next remote
+ * update, so it would stay invisible forever while the calendar_source itself
+ * syncs fine and the UI keeps reporting "connected".
+ *
+ * Backward compatibility: this only changes how an already-failing apply is
+ * classified. The write threw before and throws now, from inside the same
+ * transaction, so no row is written or mutated either way and no payload
+ * written by an older app version is read differently. Throwing is precisely
+ * what parks the item in `pendingApplyRetries`, so deferring cannot lose it:
+ * it replays once its source arrives, and if the source is gone everywhere the
+ * repair path tombstones it rather than re-pulling it forever.
+ */
+function requireCalendarSource(tx: DrizzleDb, eventId: string, sourceId: string): void {
+  const parent = tx
+    .select({ id: calendarSources.id })
+    .from(calendarSources)
+    .where(eq(calendarSources.id, sourceId))
+    .get()
+  if (!parent) {
+    throw new MissingSyncParentError(
+      'calendar_external_event',
+      eventId,
+      'calendar_source',
+      sourceId
+    )
+  }
+}
 
 class CalendarExternalEventHandler extends BaseItemHandler<CalendarExternalEventSyncPayload> {
   readonly type = 'calendar_external_event' as const
@@ -49,6 +90,11 @@ class CalendarExternalEventHandler extends BaseItemHandler<CalendarExternalEvent
 
         // M5 nullable rich fields: distinguish "omitted" from "explicit null".
         const hasKey = (k: string): boolean => Object.prototype.hasOwnProperty.call(data, k)
+
+        // An absent sourceId means "unchanged", and the existing parent is
+        // already valid — only a supplied one can point somewhere that has not
+        // landed yet (an event moved onto a newly added calendar).
+        if (data.sourceId) requireCalendarSource(tx as unknown as DrizzleDb, itemId, data.sourceId)
 
         tx.update(calendarExternalEvents)
           .set({
@@ -90,10 +136,19 @@ class CalendarExternalEventHandler extends BaseItemHandler<CalendarExternalEvent
         return resolution.action === 'merge' ? 'conflict' : 'applied'
       }
 
+      // A create must name its source. `source_id` is NOT NULL and FK-bound, so
+      // there is no id we could invent to stand in for a missing one — the old
+      // `?? 'unknown-source'` literal was exactly such an invention and could
+      // only ever FK-fail. Report the absence as a missing parent with no id so
+      // orphan repair asks the server, finds nothing, and tombstones the
+      // unwritable event instead of the pull silently dropping it on every run.
+      const sourceId = data.sourceId ?? ''
+      requireCalendarSource(tx as unknown as DrizzleDb, itemId, sourceId)
+
       tx.insert(calendarExternalEvents)
         .values({
           id: itemId,
-          sourceId: data.sourceId ?? 'unknown-source',
+          sourceId,
           remoteEventId: data.remoteEventId ?? itemId,
           remoteEtag: data.remoteEtag ?? null,
           remoteUpdatedAt: data.remoteUpdatedAt ?? null,

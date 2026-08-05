@@ -50,8 +50,20 @@ export class NoteSyncService extends ContentSyncService<NoteSyncPayload> {
       return null
     }
 
+    // A tombstone deliberately carries NO user-visible text. Nothing consumes
+    // it: ItemApplier short-circuits `operation === 'delete'` and calls
+    // applyDelete(ctx, itemId, clock) without ever decoding the payload bytes,
+    // and SyncItemHandler.applyDelete has no data parameter to receive them
+    // with. The title was therefore dead weight that still got encrypted and
+    // uploaded on every single note delete.
+    //
+    // Backward compatible in both directions: `title` is optional in
+    // NoteSyncPayloadSchema, so an older receiving build that did parse this
+    // body still validates it, and no shipped delete path reads the field. The
+    // `clock` MUST stay — push-coordinator.extractPayloadMetadata lifts it out
+    // of this string to stamp the server-side item version, so dropping it
+    // would break delete ordering across devices.
     return {
-      title: cached.title,
       clock,
       createdAt: cached.createdAt,
       modifiedAt: cached.modifiedAt

@@ -51,7 +51,9 @@ describe('AgentChannels', () => {
         GET_WINDOW_ID: 'agent:getWindowId'
       },
       events: {
-        AGENT_EVENT: 'agent:event'
+        AGENT_EVENT: 'agent:event',
+        CONVERSATIONS_CHANGED: 'agent:conversations-changed',
+        MESSAGES_CHANGED: 'agent:messages-changed'
       }
     })
   })

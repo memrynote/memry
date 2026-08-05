@@ -119,13 +119,20 @@ function requestEmbeddedAttachmentDownloads(
   for (const attachmentId of refs) {
     const key = `${itemId}:${attachmentId}`
     if (requestedAttachmentDownloads.has(key)) continue
-    requestedAttachmentDownloads.add(key)
-    attachmentEvents.emitDownloadNeeded({
+    const delivered = attachmentEvents.emitDownloadNeeded({
       noteId: itemId,
       attachmentId,
       diskPath: attachmentsDir,
       intoDir: true
     })
+    // Only remember the request once it actually reached the downloader.
+    // `unregisterAttachmentHandlers()` removes every 'download-needed' listener
+    // on sync-runtime restart, sign-out/in and token churn, and this Set is
+    // never cleared — so marking a dropped emit as requested meant the image was
+    // never asked for again for the life of the process. Skipping the record
+    // lets the next pull of the same note re-request it; the downloader still
+    // skips files that already exist on disk, so a re-request is cheap.
+    if (delivered) requestedAttachmentDownloads.add(key)
   }
 }
 

@@ -193,6 +193,10 @@ export const JournalSyncPayloadSchema = z.object({
 export const TagDefinitionSyncPayloadSchema = z.object({
   name: z.string(),
   color: z.string(),
+  // Did a human pick `color`, or did the palette hand it out? Only a sender that
+  // knows this field can say `false`; absent means "cannot tell" and the receiver
+  // honours the colour. See tag-definition-handler.ts.
+  colorAuthored: z.boolean().optional(),
   icon: z.string().nullable().optional(),
   categoryId: z.string().nullable().optional(),
   sortOrder: z.number().int().optional(),
@@ -234,6 +238,23 @@ export const CalendarEventSyncPayloadSchema = z.object({
   visibility: z.enum(['default', 'public', 'private', 'confidential']).nullable().optional(),
   colorId: z.string().nullable().optional(),
   conferenceData: z.record(z.string(), z.unknown()).nullable().optional(),
+  // Recurrence-exception identity. Written locally by the Google writeback
+  // (calendar/google/sync-service.ts applyGoogleCalendarWriteback) and read back
+  // out by mapCalendarEventToGoogleInput to set recurringEventId/originalStartTime
+  // on the next push. Without these keys zod stripped them on arrival, so a peer
+  // re-pushed an exception as a brand new standalone event.
+  parentEventId: z.string().nullable().optional(),
+  originalStartTime: z.string().nullable().optional(),
+  // Which remote calendar this event is pinned to. Consumed by
+  // calendar/google/account-routing.ts and sync-service.ts to route the push, and
+  // set by promote-external-event.ts. Zod used to strip it on arrival, so the
+  // receiving device silently fell back to the memry-managed calendar.
+  //
+  // All three are `.optional()` on purpose: a payload from an older build simply
+  // omits the key, and an absent key must mean "sender predates this field, keep
+  // the local value" — never a clear. Receiving handlers must gate on
+  // `Object.prototype.hasOwnProperty.call(data, key)`, not on `?? existing`.
+  targetCalendarId: z.string().nullable().optional(),
   archivedAt: z.string().nullable().optional(),
   clock: VectorClockSchema.optional(),
   fieldClocks: FieldClocksSchema.nullable().optional(),

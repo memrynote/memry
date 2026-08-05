@@ -323,6 +323,13 @@
       "when": 1785585341000,
       "tag": "0045_canvas_files",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "6",
+      "when": 1785585342000,
+      "tag": "0046_tag_definition_color_authored",
+      "breakpoints": true
     }
   ]
 }

@@ -33,7 +33,15 @@ export const AgentChannels = {
     GET_WINDOW_ID: 'agent:getWindowId'
   },
   events: {
-    AGENT_EVENT: 'agent:event'
+    AGENT_EVENT: 'agent:event',
+    /**
+     * A conversation row changed outside the live turn stream — today only a
+     * sync pull from another device. The renderer must re-read the list; the
+     * `agent:event` stream only carries the local turn lifecycle.
+     */
+    CONVERSATIONS_CHANGED: 'agent:conversations-changed',
+    /** A message row for `conversationId` changed via a sync pull. */
+    MESSAGES_CHANGED: 'agent:messages-changed'
   }
 } as const
 

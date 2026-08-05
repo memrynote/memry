@@ -32,6 +32,7 @@ import type { ConversationStore } from '../agent/storage/conversation-store'
 import type { MessageStore } from '../agent/storage/message-store'
 import type { Conversation, Message } from '../agent/storage/types'
 import { broadcastAgentEvent } from '../agent/runtime/event-bus'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { createLogger } from '../lib/logger'
 import { getMainI18n } from '../lib/main-i18n'
 
@@ -110,12 +111,18 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
       backend?: string
       backendModel?: string | null
     }
-    return deps.conversations.create({
+    const conversation = deps.conversations.create({
       vaultId,
       title: 'New conversation',
       backend: AgentBackendIdSchema.parse(backend),
       backendModel
     })
+    // The creating window learns about the row from this invoke's return value;
+    // every OTHER window learned nothing at all, because `agent:event` only
+    // carries the turn lifecycle. Their conversation list stayed stale until the
+    // app restarted.
+    broadcastConversationsChanged(conversation.id)
+    return conversation
   })
 
   ipcMain.handle(AgentChannels.invoke.LOAD_CONVERSATION, async (_event, payload: unknown) => {
@@ -259,6 +266,10 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
     for (const toolName of remove ?? []) {
       deps.conversations.removeFromTrustList(conversationId, toolName)
     }
+    // Same stale-list problem as create: this rewrites the conversation row
+    // (trust list, clocks, updatedAt — which is the list's sort key) and told
+    // nobody but the calling window.
+    broadcastConversationsChanged(conversationId)
     return deps.conversations.getById(conversationId)
   })
 
@@ -400,6 +411,28 @@ function broadcastMessage(message: Message): void {
 
 function broadcastConversation(conversation: Conversation): void {
   broadcastAgentEvent({ kind: 'conversation_updated', conversation })
+}
+
+/**
+ * Tell every window the conversation list changed. Same channel the sync item
+ * handlers use for a pulled conversation, so the renderer already has one
+ * listener that re-reads the list — a locally created conversation is
+ * indistinguishable from a pulled one as far as a second window is concerned.
+ *
+ * Goes through `broadcastToAllWindows` rather than a hand-rolled
+ * `BrowserWindow.getAllWindows()` loop: that helper skips destroyed windows,
+ * which short-lived windows (quick capture, splash) leave behind and which throw
+ * "Object has been destroyed" on `webContents.send`.
+ *
+ * Backward compatibility: purely additive. A renderer from an older build never
+ * subscribes to this channel, and an unhandled `webContents.send` is a no-op
+ * there — the sender's own invoke result is unchanged, so nothing regresses for
+ * a window that ignores it. `agent:conversations-changed` deliberately carries
+ * only an id, not a row, so it stays readable by any build and leaks no
+ * plaintext title over IPC.
+ */
+function broadcastConversationsChanged(conversationId: string): void {
+  broadcastToAllWindows(AgentChannels.events.CONVERSATIONS_CHANGED, { conversationId })
 }
 
 function resolveSenderWindowId(sender: WebContents): string | null {

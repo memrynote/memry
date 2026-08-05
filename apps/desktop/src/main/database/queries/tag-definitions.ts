@@ -61,10 +61,15 @@ export function getOrCreateTag(
     }
   }
 
+  // Indexing by local tag count means the same tag name gets a different colour
+  // on every device (green as the 12th tag, red as the 23rd). That is fine as a
+  // local starting point but it is nobody's choice, so it is minted unauthored:
+  // it may never repaint the same tag on another device. See
+  // tag-definition-handler.ts.
   const tagCount = db.select({ count: count() }).from(tagDefinitions).get()?.count ?? 0
   const color = TAG_COLOR_PALETTE[tagCount % TAG_COLOR_PALETTE.length]
 
-  db.insert(tagDefinitions).values({ name: normalizedName, color }).run()
+  db.insert(tagDefinitions).values({ name: normalizedName, color, colorAuthored: false }).run()
 
   return { name: normalizedName, color, icon: null, categoryId: null, sortOrder: 0 }
 }
@@ -95,9 +100,17 @@ export function setTagCategory(db: DataDb, name: string, categoryId: string | nu
     .run()
 }
 
+/**
+ * The only path by which a human picks a tag colour (tags:update-color, which the
+ * colour picker and the create-tag dialog both use), so this is where the colour
+ * becomes authored and starts outranking auto-minted colours on other devices.
+ */
 export function updateTagColor(db: DataDb, name: string, color: string): void {
   const normalizedName = name.toLowerCase().trim()
-  db.update(tagDefinitions).set({ color }).where(eq(tagDefinitions.name, normalizedName)).run()
+  db.update(tagDefinitions)
+    .set({ color, colorAuthored: true })
+    .where(eq(tagDefinitions.name, normalizedName))
+    .run()
 }
 
 export function updateTagIcon(db: DataDb, name: string, icon: string | null): void {

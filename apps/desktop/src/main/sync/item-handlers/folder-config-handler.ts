@@ -10,6 +10,7 @@ import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { createLogger } from '../../lib/logger'
+import { VaultError, VaultErrorCode } from '../../lib/errors'
 import { BaseItemHandler } from './base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 import { readFolderConfig, writeFolderConfig } from '../../vault/folders'
@@ -25,6 +26,33 @@ const log = createLogger('FolderConfigHandler')
 async function writeMergedFolderConfig(folderPath: string, icon: string | null): Promise<void> {
   const current = (await readFolderConfig(folderPath)) ?? {}
   await writeFolderConfig(folderPath, { ...current, icon })
+}
+
+/**
+ * Mirror the applied icon into .folder.md without letting the file write take
+ * down the apply.
+ *
+ * The DB row is the sync record and is written inside the surrounding
+ * transaction; the .folder.md write is a best-effort vault mirror, so it is
+ * deliberately fire-and-forget. Un-awaited it must still be `.catch()`-ed:
+ * `vault/folders` throws `VAULT_NOT_INITIALIZED` when no vault is open, so
+ * every folder_config applied while the vault is closed or mid-close (quit,
+ * vault switch, sign-out) otherwise surfaces as an unhandled promise rejection
+ * in the main process.
+ *
+ * The no-vault case is expected during those transitions and is logged at warn
+ * — it is a real DB/vault divergence (nothing re-mirrors the row on the next
+ * vault open) but not a fault worth drowning error telemetry in. Everything
+ * else is a genuine write failure and is logged at error with the itemId.
+ */
+function mirrorFolderConfigToVault(itemId: string, icon: string | null): void {
+  void writeMergedFolderConfig(itemId, icon).catch((error: unknown) => {
+    if (error instanceof VaultError && error.code === VaultErrorCode.NOT_INITIALIZED) {
+      log.warn('Skipped folder config file write, no vault is open', { itemId })
+      return
+    }
+    log.error('Failed to write synced folder config file', { itemId, error })
+  })
 }
 
 class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
@@ -61,7 +89,7 @@ class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
           .where(eq(folderConfigs.path, itemId))
           .run()
 
-        void writeMergedFolderConfig(itemId, data.icon ?? existing.icon)
+        mirrorFolderConfigToVault(itemId, data.icon ?? existing.icon)
         ctx.emit(NotesChannels.events.FOLDER_CONFIG_UPDATED, { path: itemId })
         return resolution.action === 'merge' ? 'conflict' : 'applied'
       }
@@ -76,7 +104,7 @@ class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
         })
         .run()
 
-      void writeMergedFolderConfig(itemId, data.icon ?? null)
+      mirrorFolderConfigToVault(itemId, data.icon ?? null)
       ctx.emit(NotesChannels.events.FOLDER_CONFIG_UPDATED, { path: itemId })
       return 'applied'
     })
@@ -95,7 +123,7 @@ class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
     }
 
     ctx.db.delete(folderConfigs).where(eq(folderConfigs.path, itemId)).run()
-    void writeMergedFolderConfig(itemId, null)
+    mirrorFolderConfigToVault(itemId, null)
     ctx.emit(NotesChannels.events.FOLDER_CONFIG_UPDATED, { path: itemId })
     return 'applied'
   }

@@ -276,10 +276,11 @@ describe('content sync services', () => {
     })
 
     service.enqueueDelete('note-1')
+    // The tombstone carries the clock and nothing the user typed — no title.
     expect(JSON.parse(queue.items[2].payload)).toMatchObject({
-      title: 'Plan',
       clock: { 'dev-a': 1 }
     })
+    expect(JSON.parse(queue.items[2].payload)).not.toHaveProperty('title')
     expect(service.removeQueueItems('note-1')).toBe(1)
   })
 
