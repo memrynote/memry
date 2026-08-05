@@ -1,5 +1,8 @@
 import { deleteByPrefix } from './blob'
-import { getUploadedByteTotal, parseUploadedChunks } from './upload-size'
+import { getUploadedByteTotal, readUploadedChunks } from './upload-size'
+import { createLogger } from '../lib/logger'
+
+const logger = createLogger('VaultDeletion')
 
 /**
  * True if this user owns this vault. Callers 404 on false — a cross-user
@@ -34,6 +37,11 @@ interface OpenUploadSessionRow {
  * of whether we can read the chunk list — fall back to releasing the full
  * `total_size` (matching abort/expiry-sweep behavior in blob.ts /
  * cleanup.ts), not zero, so we never under-release.
+ *
+ * A corrupt column must never abort the deletion: that would strand the
+ * reservation and leave the user unable to delete their vault at all. It is
+ * logged rather than swallowed, because we are about to delete the row that
+ * carries the evidence.
  */
 async function sumOpenUploadSessionBytes(
   db: D1Database,
@@ -49,7 +57,16 @@ async function sumOpenUploadSessionBytes(
 
   let total = 0
   for (const session of result.results ?? []) {
-    const landed = getUploadedByteTotal(parseUploadedChunks(session.uploaded_chunks))
+    const read = readUploadedChunks(session.uploaded_chunks)
+    if (!read.ok) {
+      logger.error('upload session uploaded_chunks is corrupt; releasing full reservation', {
+        userId,
+        vaultId,
+        reason: read.reason,
+        totalSize: session.total_size
+      })
+    }
+    const landed = getUploadedByteTotal(read.entries)
     total += landed === null ? session.total_size : session.total_size - landed
   }
   return total

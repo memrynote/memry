@@ -31,14 +31,55 @@ async function init(): Promise<void> {
         handleDecryptBatch(msg)
         break
       case 'shutdown':
+        // The exit is delegated to the `if (shuttingDown)` line below (which
+        // already existed for exactly this) rather than called inline, so this
+        // case can `break` and a `default:` can follow it without falling
+        // through. Same tick, same behaviour as the previous inline exit.
         shuttingDown = true
         port.postMessage({ type: 'shutdown-ack' } satisfies WorkerToMainMessage)
-        process.exit(0)
+        break
+      default:
+        handleUnknownMessage(msg)
+        break
     }
     if (shuttingDown) process.exit(0)
   })
 
   port.postMessage({ type: 'ready' } satisfies WorkerToMainMessage)
+}
+
+/**
+ * Reply to a message kind this worker build does not know about.
+ *
+ * A packaged install can end up with a main bundle and a worker bundle from
+ * different builds (partial update, stale asar). Before this existed the switch
+ * above simply dropped such a message with no reply, so the parent's promise
+ * only settled when worker-bridge's REQUEST_TIMEOUT_MS (60s) fired — every
+ * crypto batch stalled a full minute. A typed `error` reply lets
+ * SyncWorkerBridge.encryptBatch/decryptBatch reject immediately instead.
+ *
+ * Compat: unreachable when main and worker come from the same build, because
+ * every kind in `MainToWorkerMessage` is handled above — which is why `msg`
+ * narrows to `never` here. Same-build installs see no behaviour change at all.
+ */
+function handleUnknownMessage(msg: never): void {
+  const unknown = msg as { type?: unknown; requestId?: unknown }
+  const kind = typeof unknown.type === 'string' ? unknown.type : String(unknown.type)
+
+  log.warn('Unsupported message kind from main process', { kind })
+
+  // `shutdown` is the only known kind with no requestId, and an unknown kind
+  // without one has no pending promise to settle. Replying `requestId:
+  // undefined` would put an off-protocol message on the wire that
+  // worker-bridge's `'requestId' in msg` check would accept and then look up as
+  // the key `undefined`, so stay silent in that case.
+  if (typeof unknown.requestId !== 'string') return
+
+  port.postMessage({
+    type: 'error',
+    requestId: unknown.requestId,
+    error: `Unsupported worker message kind: ${kind}`
+  } satisfies WorkerToMainMessage)
 }
 
 function handleEncryptBatch(msg: Extract<MainToWorkerMessage, { type: 'encrypt-batch' }>): void {

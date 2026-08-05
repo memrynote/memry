@@ -6,6 +6,7 @@ import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { CalendarExternalEventSyncPayloadSchema } from '@memry/contracts/sync-payloads'
 import { SyncQueueManager } from '../queue'
 import { getHandler } from './index'
+import { MissingSyncParentError } from './types'
 import type { ApplyContext, DrizzleDb } from './types'
 
 vi.mock('../../lib/logger', () => ({
@@ -261,6 +262,92 @@ describe('calendar external event handler — rich fields (M5 Codex P2c)', () =>
       colorId: null,
       conferenceData: null
     })
+  })
+
+  it('reports a create whose calendar_source has not landed as a typed missing parent', () => {
+    const handler = getHandler('calendar_external_event')
+
+    let thrown: unknown
+    try {
+      handler?.applyUpsert(
+        ctx,
+        'external-orphan',
+        {
+          sourceId: 'source-not-pulled-yet',
+          title: 'Imported',
+          startAt: '2026-04-20T09:00:00.000Z'
+        },
+        { 'device-b': 1 }
+      )
+    } catch (err) {
+      thrown = err
+    }
+
+    // Naming the parent is what routes the item into orphan repair instead of
+    // "skipped until next remote update" — an unchanged Google event has no
+    // next remote update, so a bare FK error loses it permanently.
+    expect(thrown).toBeInstanceOf(MissingSyncParentError)
+    expect((thrown as MissingSyncParentError).parentType).toBe('calendar_source')
+    expect((thrown as MissingSyncParentError).parentId).toBe('source-not-pulled-yet')
+
+    // The failed apply is fully rolled back — deferring must never half-write.
+    expect(
+      testDb.db
+        .select()
+        .from(calendarExternalEvents)
+        .where(eq(calendarExternalEvents.id, 'external-orphan'))
+        .get()
+    ).toBeUndefined()
+  })
+
+  it('reports a create with no sourceId at all rather than inventing an id that can only FK-fail', () => {
+    const handler = getHandler('calendar_external_event')
+
+    expect(() =>
+      handler?.applyUpsert(ctx, 'external-sourceless', { title: 'Imported' }, {})
+    ).toThrow(MissingSyncParentError)
+    expect(
+      testDb.db
+        .select()
+        .from(calendarExternalEvents)
+        .where(eq(calendarExternalEvents.id, 'external-sourceless'))
+        .get()
+    ).toBeUndefined()
+  })
+
+  it('reports an update that moves the event onto a source that has not landed', () => {
+    const handler = getHandler('calendar_external_event')
+    testDb.db
+      .insert(calendarExternalEvents)
+      .values({
+        id: 'external-moved',
+        sourceId: 'source-rich',
+        remoteEventId: 'google-moved',
+        title: 'Existing',
+        startAt: '2026-04-20T09:00:00.000Z',
+        clock: { 'device-a': 1 }
+      })
+      .run()
+
+    expect(() =>
+      handler?.applyUpsert(
+        ctx,
+        'external-moved',
+        { sourceId: 'source-added-later' },
+        {
+          'device-a': 2
+        }
+      )
+    ).toThrow(MissingSyncParentError)
+
+    // Rolled back: the row keeps the parent it had.
+    expect(
+      testDb.db
+        .select()
+        .from(calendarExternalEvents)
+        .where(eq(calendarExternalEvents.id, 'external-moved'))
+        .get()
+    ).toMatchObject({ sourceId: 'source-rich', title: 'Existing' })
   })
 
   it('handles stale/concurrent clocks, delete guards, fetch, null payload, and seed queueing', () => {

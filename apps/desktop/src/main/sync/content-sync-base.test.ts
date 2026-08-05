@@ -352,14 +352,12 @@ describe('ContentSyncService', () => {
       expect(queue.items).toHaveLength(1)
     })
 
-    // BUG: `shouldSkip` (localOnly) is wired into the snapshot path only — the
-    // controller's delete path never consults it. Deleting a note the user
-    // marked local-only therefore pushes a tombstone, and the real
-    // NoteSyncService.buildDeletePayload puts the note's TITLE in it. A note
-    // that was promised never to leave the device leaks its title to the
-    // server the moment it is deleted. Fix belongs here: apply the same
-    // localOnly guard to buildDeletePayload (return null for local-only rows).
-    it.fails('#then a local-only row is NOT tombstoned to the server', () => {
+    // `shouldSkip` (localOnly) is wired into the snapshot path only — the
+    // shared controller's delete path never consults it — so the base class
+    // re-applies the guard inside its buildDeletePayload wrapper. Without it,
+    // deleting a note the user marked local-only pushes a tombstone off the
+    // device, breaking the one promise localOnly makes.
+    it('#then a local-only row is NOT tombstoned to the server', () => {
       const { service, queue } = makeService()
       mocks.local = makeNote({ localOnly: true })
 

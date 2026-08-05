@@ -360,12 +360,12 @@ describe('decryptSingleItem', () => {
       }
     }
 
-    // BUG (root cause in compress.ts — see compress.test.ts): pako returns
-    // `undefined` for an incomplete deflate stream instead of throwing, so
-    // this path reports a SUCCESSFUL decrypt of an empty item. Applying that
-    // as an update wipes the note's content on every device. Decrypt failures
-    // must be typed failures; "" is not a decrypt result.
-    it.fails('#then it is reported as a failure, not as an empty success', () => {
+    // Root cause in compress.ts (see compress.test.ts): pako returns
+    // `undefined` for an incomplete deflate stream instead of throwing. If that
+    // leaks through, this path reports a SUCCESSFUL decrypt of an empty item,
+    // and applying it as an update wipes the note's content on every device.
+    // Decrypt failures must be typed failures; "" is not a decrypt result.
+    it('#then it is reported as a failure, not as an empty success', () => {
       const keys = generateTestKeys()
 
       const result = decryptSingleItem(
@@ -375,10 +375,15 @@ describe('decryptSingleItem', () => {
       )
 
       expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.failure.error).toMatch(/decompress/i)
     })
 
-    it('#then it currently decodes to empty content marked as verified', () => {
-      // Pins the observed behaviour behind the bug above.
+    it('#then the failure is not misreported as a signature or key problem', () => {
+      // The signature verifies and the AEAD tag verifies — only the compressed
+      // body is short. Flagging it as a signature error would quarantine the
+      // item; flagging it as a crypto error would push the page toward the
+      // account-key mismatch path. Neither is true here.
       const keys = generateTestKeys()
 
       const result = decryptSingleItem(
@@ -387,9 +392,11 @@ describe('decryptSingleItem', () => {
         keys.signingPublicKey
       )
 
-      expect(result.ok).toBe(true)
-      if (!result.ok) return
-      expect(result.item.content).toBe('')
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.failure.isSignatureError).toBe(false)
+      expect(result.failure.isCryptoError).toBe(false)
+      expect(result.failure.id).toBe('item-1')
     })
   })
 

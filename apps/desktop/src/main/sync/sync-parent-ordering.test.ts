@@ -178,18 +178,22 @@ describe('out-of-order pull: calendar_external_event before its calendar_source'
     for (const item of page) expect(applier.apply(item)).toBe('applied')
   })
 
-  // GAP. `taskHandler` translates a dangling FK into MissingSyncParentError, so
-  // repairOrphans can refetch the parent and — if it is gone everywhere —
-  // tombstone the child, ending the #837 re-pull loop. The external event
-  // handler still raises SQLite's anonymous "FOREIGN KEY constraint failed",
-  // which names neither the constraint nor the missing id, so the coordinator
-  // can only log and drop it. Deleting a calendar_source cascades its events
-  // away locally while the server keeps them alive, which is exactly the loop
-  // #837 fixed for tasks. Delete `.fails` once the handler names its parent.
-  it.fails('should name the missing calendar_source so orphan repair can act', () => {
+  // Like `taskHandler`, the external event handler translates a dangling FK
+  // into MissingSyncParentError, so repairOrphans can refetch the parent and —
+  // if it is gone everywhere — tombstone the child, ending the #837 re-pull
+  // loop. SQLite's anonymous "FOREIGN KEY constraint failed" names neither the
+  // constraint nor the missing id, so the coordinator could only log and drop
+  // it, and an unchanged Google event has no next remote update to recover on.
+  // Deleting a calendar_source cascades its events away locally while the
+  // server keeps them alive, which is exactly the loop #837 fixed for tasks.
+  it('names the missing calendar_source so orphan repair can act', () => {
     const err = applyCatching(externalEventItem())
 
     expect(err).toBeInstanceOf(MissingSyncParentError)
+    const missing = err as MissingSyncParentError
+    expect(missing.parentType).toBe('calendar_source')
+    expect(missing.parentId).toBe(LATE_SOURCE)
+    expect(missing.childId).toBe('event-late')
   })
 })
 

@@ -124,31 +124,19 @@ describe('compressPayload / decompressPayload', () => {
       expect(() => decompressPayload(garbage)).toThrow()
     })
 
-    // BUG: pako's `inflate()` only assigns `result` when the deflate stream
-    // ENDS. A truncated stream leaves err === 0 and result === undefined, so
-    // `pako.inflate()` returns undefined without throwing — and
-    // decompressPayload hands that back while claiming a `Uint8Array` return
-    // type. Downstream, decrypt.ts wraps it as `{ content: undefined,
-    // verified: true }` and decrypt-item.ts turns it into '' via
-    // `new TextDecoder().decode(undefined)`: a truncated payload is reported
-    // as a SUCCESSFUL decrypt of an empty item, which applies as a content
-    // wipe rather than a failure. The AEAD tag covers the compressed bytes, so
-    // this is only reachable when a writer emits a short stream (not from
-    // transport corruption) — but the failure mode is silent data loss.
-    // Fix: treat an undefined inflate result as an error in decompressPayload.
-    it.fails('#then a truncated deflate body throws instead of returning nothing', () => {
+    // pako's `inflate()` only assigns `result` when the deflate stream ENDS. A
+    // truncated stream leaves err === 0 and result === undefined, so
+    // `pako.inflate()` returns undefined WITHOUT throwing. decompressPayload
+    // must convert that into a throw: otherwise decrypt.ts wraps it as
+    // `{ content: undefined, verified: true }` and decrypt-item.ts turns it
+    // into '' via `new TextDecoder().decode(undefined)` — a truncated payload
+    // reported as a SUCCESSFUL decrypt of an empty item, which applies as a
+    // content wipe rather than a failure.
+    it('#then a truncated deflate body throws instead of returning nothing', () => {
       const full = compressPayload(repeat(0x62, 50_000))
       const truncated = full.slice(0, Math.floor(full.byteLength / 2))
 
-      expect(() => decompressPayload(truncated)).toThrow()
-    })
-
-    it('#then a truncated deflate body currently yields no bytes at all', () => {
-      // Pins the observed behaviour behind the bug above so a change is loud.
-      const full = compressPayload(repeat(0x62, 50_000))
-      const truncated = full.slice(0, Math.floor(full.byteLength / 2))
-
-      expect(decompressPayload(truncated)).toBeUndefined()
+      expect(() => decompressPayload(truncated)).toThrow(/incomplete deflate stream/)
     })
 
     it('#then a deflate body with a flipped byte throws', () => {

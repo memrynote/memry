@@ -177,7 +177,7 @@ describe('CalendarExternalEventSyncService', () => {
     //
     // Worse, the insert defaults `sourceId` to the literal 'unknown-source'
     // when the payload omits it, which can only ever FK-fail.
-    it.fails('#then the handler reports it as a typed missing-parent, not a raw FK error', () => {
+    it('#then the handler reports it as a typed missing-parent, not a raw FK error', () => {
       expect(() =>
         calendarExternalEventHandler.applyUpsert(
           { db: asSyncDb(testDb.db), emit: vi.fn() },

@@ -22,6 +22,27 @@ function freshDb() {
       updated_at INTEGER NOT NULL,
       deleted_at INTEGER
     );
+    -- applyUpsert requires the parent conversation to exist before it will
+    -- insert a message (MissingSyncParentError), so a message-only schema no
+    -- longer reflects reality. Seeded with the 'c1' parent every case here uses.
+    CREATE TABLE agent_conversations (
+      id TEXT PRIMARY KEY,
+      vault_id TEXT NOT NULL,
+      title_ciphertext TEXT NOT NULL,
+      backend TEXT NOT NULL,
+      backend_model TEXT,
+      trust_list TEXT NOT NULL DEFAULT '[]',
+      pinned INTEGER NOT NULL DEFAULT 0,
+      vector_clock TEXT NOT NULL,
+      field_clocks TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      deleted_at INTEGER,
+      last_synced_at INTEGER
+    );
+    INSERT INTO agent_conversations
+      (id, vault_id, title_ciphertext, backend, vector_clock, field_clocks, created_at, updated_at)
+    VALUES ('c1', 'v1', 'x', 'claude', '{}', '{}', 1, 1);
   `)
   return drizzle(sqlite, { schema })
 }

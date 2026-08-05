@@ -19,7 +19,8 @@ import {
   MAX_CHUNK_CRYPTO_OVERHEAD,
   expectedEncryptedTotal,
   getUploadedByteTotal,
-  parseUploadedChunks
+  readUploadedChunks,
+  type UploadedChunkEntry
 } from '../services/upload-size'
 import { DereferenceRequestSchema, UploadInitRequestSchema } from '@memry/contracts/blob-api'
 import type { AppContext } from '../types'
@@ -302,7 +303,7 @@ blob.put('/attachments/upload/:session_id/chunk/:chunk_index', chunkUploadLimit,
     )
   }
 
-  const uploadedChunks = parseUploadedChunks(session.uploaded_chunks)
+  const uploadedChunks = readSessionChunksOrThrow(session, 'uploadChunk')
   if (uploadedChunks.some((c) => c.i === chunkIndex)) {
     throw new AppError(ErrorCodes.UPLOAD_CHUNK_CONFLICT, 'Chunk already uploaded', 409)
   }
@@ -381,7 +382,7 @@ blob.post('/attachments/upload/:session_id/complete', chunkUploadLimit, async (c
 
   const session = await getUploadSession(c.env.DB, sessionId, userId, vaultId)
 
-  const uploadedEntries = parseUploadedChunks(session.uploaded_chunks)
+  const uploadedEntries = readSessionChunksOrThrow(session, 'uploadComplete')
   const uploadedIndices = new Set(uploadedEntries.map((e) => e.i))
   const expected = Array.from({ length: session.chunk_count }, (_, i) => i)
   const missing = expected.filter((i) => !uploadedIndices.has(i))
@@ -465,7 +466,7 @@ blob.get('/attachments/upload/:session_id', uploadSessionLimit, async (c) => {
 
   const session = await getUploadSession(c.env.DB, sessionId, userId, vaultId)
 
-  const entries: Array<{ i: number }> = JSON.parse(session.uploaded_chunks)
+  const entries = readSessionChunksOrThrow(session, 'uploadStatus')
   return c.json({
     sessionId: session.id,
     attachmentId: session.attachment_id,
@@ -483,8 +484,24 @@ blob.delete('/attachments/upload/:session_id', uploadSessionLimit, async (c) => 
 
   const session = await getUploadSession(c.env.DB, sessionId, userId, vaultId)
 
-  const uploadedEntries: Array<{ i: number; h: string }> = JSON.parse(session.uploaded_chunks)
-  const sessionHashes = new Set(uploadedEntries.map((e) => e.h))
+  // Abort RELEASES storage, so unlike the upload paths it must never be blocked
+  // by a corrupt column: refusing here would strand the reservation refunded
+  // below and leave the user paying for an upload they cancelled, with no way
+  // to clear it. Degrade to "no chunks" and still delete the row and refund.
+  // The skipped ref_count decrements leave those blob_chunks rows charged until
+  // the vault is deleted — a bounded residue, and far better than a session
+  // that can never be aborted.
+  const abortRead = readUploadedChunks(session.uploaded_chunks)
+  if (!abortRead.ok) {
+    logger.error('upload session uploaded_chunks is corrupt; aborting without chunk cleanup', {
+      operation: 'uploadAbort',
+      sessionId: session.id,
+      userId,
+      vaultId,
+      reason: abortRead.reason
+    })
+  }
+  const sessionHashes = new Set(abortRead.entries.map((e) => e.h))
 
   for (const hash of sessionHashes) {
     const chunk = await c.env.DB.prepare(
@@ -679,6 +696,44 @@ interface UploadSessionRow {
   uploaded_chunks: string
   expires_at: number
   created_at: number
+}
+
+/**
+ * Read a session's chunk list for a path that ACQUIRES storage, refusing to
+ * continue when the column is corrupt.
+ *
+ * Degrading a corrupt `uploaded_chunks` to "no chunks" is unsafe here in three
+ * separate ways: it reports zero landed bytes, silently resetting the quota
+ * ceiling compared on every chunk PUT; it re-opens the duplicate-chunk guard;
+ * and at complete it blames the client for chunks it may well have sent. The
+ * chunk PUT could not succeed anyway — the `json_insert` append needs the
+ * column to be valid JSON — so continuing would merely write the chunk to R2
+ * and touch blob_chunks before failing untyped.
+ *
+ * `uploaded_chunks` is written solely by this server, so a corrupt value is a
+ * server fault, not a client one: log it and raise a typed 500 (captured by
+ * errorHandler) instead of mis-billing quietly. Aborting the session still
+ * works and refunds the reservation, which is the way out.
+ */
+function readSessionChunksOrThrow(
+  session: UploadSessionRow,
+  operation: string
+): UploadedChunkEntry[] {
+  const read = readUploadedChunks(session.uploaded_chunks)
+  if (read.ok) return read.entries
+
+  logger.error('upload session uploaded_chunks is corrupt', {
+    operation,
+    sessionId: session.id,
+    userId: session.user_id,
+    vaultId: session.vault_id,
+    reason: read.reason
+  })
+  throw new AppError(
+    ErrorCodes.INTERNAL_ERROR,
+    'Upload session state is corrupt; abort the session and retry the upload',
+    500
+  )
 }
 
 async function getUploadSession(

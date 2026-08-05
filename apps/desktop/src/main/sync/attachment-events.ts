@@ -26,9 +26,31 @@ type DownloadNeededHandler = (event: AttachmentDownloadNeededEvent) => void
 type SavedHandler = (event: AttachmentSavedEvent) => void
 
 class AttachmentEventBus extends EventEmitter {
-  emitSaved(event: AttachmentSavedEvent): void {
+  /**
+   * Returns whether the event reached at least one listener.
+   *
+   * `unregisterAttachmentHandlers()` calls `removeAllListeners(...)`, so a
+   * zero-listener window is real during sync-runtime restart, sign-out/in and
+   * token churn. Discarding `EventEmitter.emit`'s boolean made a drop
+   * indistinguishable from a delivery, and callers that dedupe (see
+   * `requestEmbeddedAttachmentDownloads` in item-handlers/note-handler.ts)
+   * recorded the request anyway — so the attachment was never asked for again
+   * for the life of the process.
+   *
+   * Backward compatibility: widening the return type from `void` to `boolean`
+   * is purely local to this process. Nothing here is persisted, sent over IPC,
+   * or put on the wire, so no older build and no on-disk/served payload can
+   * observe the change; existing callers that ignore the value keep compiling
+   * and behaving exactly as before.
+   */
+  emitSaved(event: AttachmentSavedEvent): boolean {
     log.debug('attachment saved', { noteId: event.noteId })
-    this.emit('saved', event)
+    const delivered = this.emit('saved', event)
+    if (!delivered) {
+      // noteId only — the absolute host path must never reach the log.
+      log.warn('attachment saved event dropped: no listener registered', { noteId: event.noteId })
+    }
+    return delivered
   }
 
   onSaved(handler: SavedHandler): void {
@@ -39,12 +61,21 @@ class AttachmentEventBus extends EventEmitter {
     this.off('saved', handler)
   }
 
-  emitDownloadNeeded(event: AttachmentDownloadNeededEvent): void {
+  /** See {@link emitSaved} — same delivery signal, same compat reasoning. */
+  emitDownloadNeeded(event: AttachmentDownloadNeededEvent): boolean {
     log.debug('attachment download needed', {
       noteId: event.noteId,
       attachmentId: event.attachmentId
     })
-    this.emit('download-needed', event)
+    const delivered = this.emit('download-needed', event)
+    if (!delivered) {
+      // Ids only — `diskPath` must never reach the log.
+      log.warn('attachment download-needed event dropped: no listener registered', {
+        noteId: event.noteId,
+        attachmentId: event.attachmentId
+      })
+    }
+    return delivered
   }
 
   onDownloadNeeded(handler: DownloadNeededHandler): void {

@@ -5,6 +5,11 @@ import { nocaseText } from './nocase.ts'
 export const tagDefinitions = sqliteTable('tag_definitions', {
   name: nocaseText('name').primaryKey(),
   color: text('color').notNull(),
+  // True only when a human picked `color`. False means the palette handed it out
+  // in `getOrCreateTag`, which indexes by local tag count and so disagrees with
+  // every other device — such a colour may not repaint another device's tag.
+  // See drizzle-data/0046_tag_definition_color_authored.sql.
+  colorAuthored: integer('color_authored', { mode: 'boolean' }).notNull().default(false),
   icon: text('icon'),
   clock: text('clock', { mode: 'json' }),
   createdAt: text('created_at')

@@ -294,14 +294,14 @@ describe('CalendarEventSyncService', () => {
   })
 
   describe('#given an event pinned to a specific Google calendar', () => {
-    // PRODUCT BUG. `targetCalendarId` is what routes a push to the right Google
-    // calendar (see calendar/google/account-routing.ts and sync-service.ts), and
-    // promote-external-event.ts sets it. serialize() ships the whole row so the
-    // column does leave this device — but CalendarEventSyncPayloadSchema has no
-    // `targetCalendarId` key, so zod strips it on the receiving side and the
-    // peer falls back to the memry-managed calendar. The pin is silently lost
-    // cross-device.
-    it.fails('#then the target calendar survives the sync payload contract', () => {
+    // REGRESSION GUARD. `targetCalendarId` is what routes a push to the right
+    // Google calendar (see calendar/google/account-routing.ts and
+    // sync-service.ts), and promote-external-event.ts sets it. serialize() ships
+    // the whole row so the column does leave this device — but
+    // CalendarEventSyncPayloadSchema used to have no `targetCalendarId` key, so
+    // zod stripped it on the receiving side and the peer fell back to the
+    // memry-managed calendar. The pin was silently lost cross-device.
+    it('#then the target calendar survives the sync payload contract', () => {
       testDb.db
         .insert(calendarEvents)
         .values({ ...TEST_EVENT, targetCalendarId: 'work@group.calendar.google.com' })
@@ -315,6 +315,49 @@ describe('CalendarEventSyncService', () => {
 
       const parsed = CalendarEventSyncPayloadSchema.parse(raw) as Record<string, unknown>
       expect(parsed.targetCalendarId).toBe('work@group.calendar.google.com')
+    })
+  })
+
+  describe('#given a recurrence exception written back from Google', () => {
+    // `parentEventId` / `originalStartTime` are written onto the local
+    // calendar_events row by applyGoogleCalendarWriteback and read back out by
+    // mapCalendarEventToGoogleInput (recurringEventId + originalStartTime).
+    // Stripping them on arrival turned a peer's exception into a standalone
+    // event on its next push to Google.
+    it('#then the exception identity survives the sync payload contract', () => {
+      testDb.db
+        .insert(calendarEvents)
+        .values({
+          ...TEST_EVENT,
+          parentEventId: 'series-1',
+          originalStartTime: '2026-08-05T08:00:00.000Z'
+        })
+        .run()
+
+      service.enqueueCreate('evt-1')
+
+      const [item] = queue.dequeue(1)
+      const parsed = CalendarEventSyncPayloadSchema.parse(JSON.parse(item.payload)) as Record<
+        string,
+        unknown
+      >
+      expect(parsed.parentEventId).toBe('series-1')
+      expect(parsed.originalStartTime).toBe('2026-08-05T08:00:00.000Z')
+    })
+
+    it('#then a payload from an older build that omits the new keys still parses', () => {
+      // Backward compat: the three new keys are optional, so an older sender
+      // that never wrote them parses cleanly and leaves them undefined — which
+      // receivers must read as "keep local", not "clear".
+      const parsed = CalendarEventSyncPayloadSchema.parse({
+        title: 'Standup',
+        startAt: '2026-08-05T09:00:00.000Z',
+        timezone: 'UTC'
+      }) as Record<string, unknown>
+
+      expect(parsed.targetCalendarId).toBeUndefined()
+      expect(parsed.parentEventId).toBeUndefined()
+      expect(parsed.originalStartTime).toBeUndefined()
     })
   })
 

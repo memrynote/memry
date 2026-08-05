@@ -41,9 +41,27 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
           log.warn('Concurrent tag definition edit, using last-write-wins', { itemId })
         }
 
+        // A colour the palette handed out is not a colour anyone chose.
+        // `getOrCreateTag` mints one from `palette[localTagCount % 24]`, so the
+        // same tag name is green on the device where it was the 12th tag and red
+        // where it was the 23rd. Both sides only ever "seed" that row, so the
+        // clocks come out concurrent and last-write-wins used to repaint a
+        // deliberate colour with one nobody picked (report 2026-07-21, a green
+        // tag turning red after some notes were edited).
+        //
+        // So an explicitly unauthored colour may create a tag (below) but may
+        // never repaint one. `undefined` is *not* "unauthored": only a build that
+        // knows this field can send `false`, and refusing every older payload
+        // would silently stop honouring real colour changes made on older builds.
+        // We honour such a colour without recording an authorship we never
+        // observed, so it is never re-asserted onward to a third device.
+        const takeRemoteColor = data.colorAuthored !== false && data.color !== undefined
+        const color = takeRemoteColor ? data.color : existing.color
+
         tx.update(tagDefinitions)
           .set({
-            color: data.color ?? existing.color,
+            color,
+            colorAuthored: takeRemoteColor ? data.colorAuthored === true : existing.colorAuthored,
             icon: data.icon !== undefined ? data.icon : existing.icon,
             categoryId: data.categoryId !== undefined ? data.categoryId : existing.categoryId,
             sortOrder: data.sortOrder ?? existing.sortOrder,
@@ -60,7 +78,9 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
           writeTagViews(tx, itemId, data.views)
         }
 
-        ctx.emit(TagsChannels.events.COLOR_UPDATED, { tag: itemId, color: data.color })
+        // The colour the row actually kept, not the one that was offered — the
+        // renderer must not paint a repaint the merge just refused.
+        ctx.emit(TagsChannels.events.COLOR_UPDATED, { tag: itemId, color })
         ctx.emit('notes:tags-changed', {})
         return resolution.action === 'merge' ? 'conflict' : 'applied'
       }
@@ -69,6 +89,10 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
         .values({
           name: itemId,
           color: data.color ?? '#808080',
+          // Creating a tag we do not have takes the sender's colour whatever its
+          // provenance — there is nothing here to overwrite. We only record
+          // authorship the sender actually asserted.
+          colorAuthored: data.colorAuthored === true,
           icon: data.icon ?? null,
           categoryId: data.categoryId ?? null,
           sortOrder: data.sortOrder ?? 0,
@@ -126,6 +150,7 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
     const payload: TagDefinitionSyncPayload = {
       name: tag.name,
       color: tag.color,
+      colorAuthored: tag.colorAuthored,
       icon: tag.icon ?? null,
       categoryId: tag.categoryId ?? null,
       sortOrder: tag.sortOrder,

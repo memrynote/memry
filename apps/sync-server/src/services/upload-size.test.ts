@@ -7,6 +7,7 @@ import {
   expectedEncryptedTotal,
   getUploadedByteTotal,
   parseUploadedChunks,
+  readUploadedChunks,
   type UploadedChunkEntry
 } from './upload-size'
 
@@ -112,34 +113,77 @@ describe('parseUploadedChunks', () => {
     expect(parseUploadedChunks(raw)).toEqual([])
   })
 
-  // PRODUCT BUG (documented, not fixed here — this file may not touch source).
-  //
-  // The JSDoc on parseUploadedChunks claims it tolerates "a malformed or
-  // non-array payload as 'no chunks'". Only the non-array half is true: the bare
-  // `JSON.parse(value)` throws a SyntaxError on malformed JSON, which propagates
-  // to every caller.
-  //
-  // Blast radius, all with an unguarded call:
-  //   - routes/blob.ts:305 and :384 — a chunk PUT / upload completion becomes an
-  //     unhandled 500 instead of a typed AppError.
-  //   - services/vault-deletion.ts:52 — sumOpenUploadSessionBytes throws, so the
-  //     whole vault deletion aborts and the user's storage is never released.
-  //
-  // Severity: low-to-moderate. `uploaded_chunks` is only ever written by the
-  // server via JSON.stringify, so reaching this needs DB corruption or a
-  // partial write — it is not a client-reachable quota bypass. But the
-  // documented contract and the code disagree, and the failure mode is a stuck,
-  // undeletable vault rather than a clean error.
-  it.fails('tolerates malformed JSON as no chunks, as its JSDoc promises', () => {
+  // FIXED: the bare `JSON.parse(value)` used to throw a SyntaxError on a
+  // malformed column, which propagated to every unguarded caller — most
+  // damagingly services/vault-deletion.ts, where it aborted the whole vault
+  // deletion so the user's storage was never released and the vault could not
+  // be deleted. The function is now total, matching its JSDoc.
+  it('tolerates malformed JSON as no chunks, as its JSDoc promises', () => {
     expect(parseUploadedChunks('not json')).toEqual([])
   })
 
-  it('actually throws on malformed JSON today', () => {
-    // #then — pinning the real behaviour alongside the it.fails above, so the
-    // discrepancy is unambiguous rather than looking like a flaky expectation.
-    expect(() => parseUploadedChunks('not json')).toThrow(SyntaxError)
-    expect(() => parseUploadedChunks('')).toThrow(SyntaxError)
-    expect(() => parseUploadedChunks('[{"i":0},')).toThrow(SyntaxError)
+  it('never throws on any malformed payload', () => {
+    // #then — totality is the contract storage-releasing callers depend on:
+    // vault-deletion.ts must not abort on an unreadable column.
+    expect(parseUploadedChunks('')).toEqual([])
+    expect(parseUploadedChunks('[{"i":0},')).toEqual([])
+    expect(parseUploadedChunks('{"i":0')).toEqual([])
+    expect(parseUploadedChunks('undefined')).toEqual([])
+  })
+})
+
+describe('readUploadedChunks', () => {
+  // parseUploadedChunks flattens "corrupt" into "empty", which is right for
+  // storage-releasing callers and wrong for billing ones. readUploadedChunks is
+  // how routes/blob.ts tells the two apart.
+
+  it('reports a well-formed array as readable', () => {
+    // #given
+    const raw = JSON.stringify([{ i: 0, h: 'hash-0', b: 100 }])
+
+    // #then
+    expect(readUploadedChunks(raw)).toEqual({
+      ok: true,
+      entries: [{ i: 0, h: 'hash-0', b: 100 }]
+    })
+  })
+
+  it('reports a genuinely empty upload as readable, not corrupt', () => {
+    // #then — a session with no chunks yet is the normal state right after
+    // initiate. It must NOT be conflated with an unreadable column, or every
+    // fresh session would 500 on its first chunk PUT.
+    expect(readUploadedChunks('[]')).toEqual({ ok: true, entries: [] })
+  })
+
+  it('reports malformed JSON as corrupt', () => {
+    // #then — same [] entries as the tolerant parse, but flagged so billing
+    // callers can refuse rather than credit the user zero landed bytes.
+    expect(readUploadedChunks('not json')).toEqual({
+      ok: false,
+      entries: [],
+      reason: 'malformed-json'
+    })
+    expect(readUploadedChunks('')).toEqual({ ok: false, entries: [], reason: 'malformed-json' })
+  })
+
+  it.each([
+    ['object', '{"i":0}'],
+    ['null literal', 'null'],
+    ['string literal', '"nope"'],
+    ['number literal', '42'],
+    ['boolean literal', 'true']
+  ])('reports a valid-JSON non-array payload as corrupt: %s', (_label, raw) => {
+    // #then — valid JSON that is not a chunk list is just as unreadable as
+    // broken JSON, and is distinguished only for triage in the log line.
+    expect(readUploadedChunks(raw)).toEqual({ ok: false, entries: [], reason: 'not-an-array' })
+  })
+
+  it('agrees with parseUploadedChunks on entries for every input', () => {
+    // #then — parseUploadedChunks is defined as `readUploadedChunks(...).entries`,
+    // so the tolerant path can never drift from the discriminated one.
+    for (const raw of ['[]', '[{"i":0,"h":"a","b":1}]', 'not json', '{}', 'null', '']) {
+      expect(parseUploadedChunks(raw)).toEqual(readUploadedChunks(raw).entries)
+    }
   })
 })
 
@@ -237,5 +281,15 @@ describe('getUploadedByteTotal', () => {
     expect(getUploadedByteTotal(parseUploadedChunks(untrustworthy))).toBeNull()
     // A non-array column also yields 0 landed bytes rather than a bogus credit.
     expect(getUploadedByteTotal(parseUploadedChunks('{}'))).toBe(0)
+  })
+
+  it('lets a malformed column resolve to zero landed bytes instead of throwing', () => {
+    // #given — the exact expression at vault-deletion.ts:52. It computes
+    // `total_size - landed`, so 0 landed releases the FULL reservation, which
+    // is what that function's own JSDoc prescribes for an unparseable column.
+    // Before the fix this threw and aborted the entire vault deletion.
+    // #then
+    expect(getUploadedByteTotal(parseUploadedChunks('not json'))).toBe(0)
+    expect(getUploadedByteTotal(parseUploadedChunks(''))).toBe(0)
   })
 })

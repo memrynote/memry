@@ -24,6 +24,12 @@ vi.mock('../database', () => ({
   getIndexDatabase: () => state.index
 }))
 
+// Stubbed at the module boundary: the real registry drags in every sync service
+// singleton, and what this module owes the caller is only "the established
+// enqueue path was called with ('note', noteId)".
+const enqueueLocalSyncUpdate = vi.hoisted(() => vi.fn())
+vi.mock('./local-mutations', () => ({ enqueueLocalSyncUpdate }))
+
 import { recordUploadedAttachment, recordDownloadedFileSize } from './note-attachment-metadata'
 
 let dataDb: TestDataDb
@@ -65,6 +71,7 @@ beforeEach(() => {
   indexDb = indexResult.db as unknown as IndexDb
   state.data = dataDb
   state.index = indexDb
+  enqueueLocalSyncUpdate.mockClear()
 })
 
 afterEach(() => {
@@ -231,7 +238,68 @@ describe('recordUploadedAttachment', () => {
     // never tells any peer it exists — "images inside notes never arrive",
     // and re-adding the image walks the same path again. The two writes are
     // not atomic and the failed one is neither retried nor logged.
+    //
+    // STILL FAILING BY DESIGN. Closing this would mean minting a
+    // `note_metadata` row out of the index cache, i.e. fabricating a sync
+    // source-of-truth row (path, clock, createdAt) from a rebuildable cache.
+    // What this module can honestly do — and now does — is (a) write the data
+    // DB FIRST so the cache can never get ahead of the sync store, (b) log a
+    // warn instead of swallowing the miss, and (c) not enqueue a push for a
+    // note it could not record. Repairing an orphaned index row belongs to the
+    // index rebuild, not to the attachment upload path.
     expect(getNoteMetadataById(dataDb, 'note-1')?.attachmentReferences).toEqual(['att-1'])
+  })
+
+  it('enqueues a note push so peers learn about the new reference', () => {
+    seedDataRow('note-1')
+    seedIndexRow('note-1')
+
+    recordUploadedAttachment('note-1', 'att-1')
+
+    // Nothing else on the upload path enqueues a note push. Without this the
+    // reference sat in the local data DB until an unrelated later edit happened
+    // to push the note, and until then every peer got a payload with no
+    // `attachmentReferences` and never emitted `download-needed` — text arrived,
+    // images did not.
+    expect(enqueueLocalSyncUpdate).toHaveBeenCalledWith('note', 'note-1')
+  })
+
+  it('enqueues one push per upload so a multi-image note converges', () => {
+    seedDataRow('note-1')
+    seedIndexRow('note-1')
+
+    recordUploadedAttachment('note-1', 'att-1')
+    recordUploadedAttachment('note-1', 'att-2')
+
+    expect(enqueueLocalSyncUpdate).toHaveBeenCalledTimes(2)
+    expect(enqueueLocalSyncUpdate).toHaveBeenLastCalledWith('note', 'note-1')
+  })
+
+  it('re-enqueues even when the id was already recorded', () => {
+    // Re-adding the same image is exactly what a user does when the picture
+    // never showed up on the other device, so the retry must still push.
+    seedDataRow('note-1', { attachmentReferences: ['att-1'], attachmentId: 'att-1' })
+    seedIndexRow('note-1')
+
+    recordUploadedAttachment('note-1', 'att-1')
+
+    expect(enqueueLocalSyncUpdate).toHaveBeenCalledWith('note', 'note-1')
+  })
+
+  it('does not enqueue a push for a note the data DB never recorded', () => {
+    // The push payload is built from the data DB. With no row there is nothing
+    // to push, and enqueuing would only churn the sync queue.
+    seedIndexRow('note-1')
+
+    recordUploadedAttachment('note-1', 'att-1')
+
+    expect(enqueueLocalSyncUpdate).not.toHaveBeenCalled()
+  })
+
+  it('does not enqueue a push for a note that exists in neither store', () => {
+    recordUploadedAttachment('ghost', 'att-1')
+
+    expect(enqueueLocalSyncUpdate).not.toHaveBeenCalled()
   })
 })
 

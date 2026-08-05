@@ -16,6 +16,50 @@ interface TagDefinitionSyncDeps {
 
 let instance: TagDefinitionSyncService | null = null
 
+/**
+ * Normalise a raw `tag_definitions` row into something
+ * `TagDefinitionSyncPayloadSchema` accepts.
+ *
+ * `tag_definitions.views` is a TEXT column holding a JSON array, but the
+ * contract expects `array | null | undefined`. Shipping the row verbatim put a
+ * *string* on the wire, so `safeParse` failed on the receiving device and the
+ * whole tag definition — colour included — was dropped.
+ *
+ * The push coordinator normally rebuilds this payload via
+ * `tagDefinitionHandler.buildPushPayload` (which calls `readTagViews`), so the
+ * frozen queue payload only escapes on the fallback path — reached when the row
+ * is gone locally by flush time, e.g. a remote delete hard-deletes it while a
+ * local update is still queued. Normalising here makes both paths agree.
+ *
+ * Backward compatibility:
+ * - Key presence is preserved exactly as the row provides it, so this never
+ *   turns an absent `views` into an explicit clear.
+ * - A corrupt or non-array blob drops the key rather than sending `null`, so the
+ *   receiver's `hasOwnProperty` guard keeps its local views instead of clearing
+ *   them. An absent key is also what an older sender produces, so receivers on
+ *   every build already handle it.
+ */
+function normalizeTagPayload(local: Record<string, unknown>): Record<string, unknown> {
+  if (!Object.prototype.hasOwnProperty.call(local, 'views')) return local
+
+  const raw = local.views
+  // `null` is an explicit clear and an array is already schema-shaped.
+  if (raw === null || Array.isArray(raw)) return local
+
+  if (typeof raw === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(raw)
+      if (Array.isArray(parsed)) return { ...local, views: parsed }
+    } catch {
+      // Corrupt blob: fall through and drop the key. Mirrors `readTagViews`,
+      // which treats unreadable JSON as "no saved views" rather than throwing.
+    }
+  }
+
+  const { views: _unreadable, ...rest } = local
+  return rest
+}
+
 export function initTagDefinitionSyncService(
   deps: TagDefinitionSyncDeps
 ): TagDefinitionSyncService {
@@ -55,7 +99,7 @@ export class TagDefinitionSyncService {
 
         return { ...local, clock: newClock }
       },
-      serialize: (local) => local,
+      serialize: (local) => normalizeTagPayload(local),
       buildDeletePayload: ({ itemId, extra, deviceId }) => {
         const snapshotPayload = extra[0]
         if (snapshotPayload) {

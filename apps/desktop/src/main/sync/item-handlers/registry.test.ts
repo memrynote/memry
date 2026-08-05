@@ -41,6 +41,7 @@ const EMIT_PROBE_EXEMPT: Partial<Record<SyncItemType, string>> = {
 
 const PROJECT_ID = 'registry-probe-project'
 const CALENDAR_SOURCE_ID = 'registry-probe-calendar-source'
+const CONVERSATION_ID = 'registry-probe-conversation'
 
 /**
  * Minimal valid payload per type. Most sync payload schemas are fully optional
@@ -68,7 +69,7 @@ const FIXTURE_OVERRIDES: Partial<Record<SyncItemType, Record<string, unknown>>> 
     updatedAt: 1
   },
   agent_message: {
-    conversationId: 'registry-probe-conversation',
+    conversationId: CONVERSATION_ID,
     role: 'user',
     content: { role: 'user', data: { text: 'registry probe' } },
     attachments: [],
@@ -97,6 +98,16 @@ beforeEach(() => {
   expect(sourceHandler.applyUpsert(seedCtx, CALENDAR_SOURCE_ID, {}, { 'device-seed': 1 })).toBe(
     'applied'
   )
+
+  const conversationHandler = getHandler('agent_conversation')!
+  expect(
+    conversationHandler.applyUpsert(
+      seedCtx,
+      CONVERSATION_ID,
+      conversationHandler.schema.parse(FIXTURE_OVERRIDES.agent_conversation),
+      { 'device-seed': 1 }
+    )
+  ).toBe('applied')
 })
 
 describe('sync item handler registry', () => {

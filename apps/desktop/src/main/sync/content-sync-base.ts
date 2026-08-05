@@ -11,6 +11,14 @@ export interface ContentSyncDeps {
   getDeviceId: () => string | null
 }
 
+/**
+ * Single reading of the "never leaves this device" flag, shared by the snapshot
+ * path and the delete path so the two can never drift apart again.
+ */
+function isLocalOnly(local: NoteMetadata | undefined): boolean {
+  return Boolean(local?.localOnly)
+}
+
 export abstract class ContentSyncService<
   TPayload extends Record<string, unknown>,
   TArgs extends string[] = []
@@ -83,8 +91,24 @@ export abstract class ContentSyncService<
       },
       serialize: (local, operation, extra) =>
         this.buildSnapshotPayload(local, (local.clock as VectorClock) ?? {}, operation, ...extra),
-      shouldSkip: (local) => Boolean(local.localOnly),
+      shouldSkip: (local) => isLocalOnly(local),
       buildDeletePayload: ({ local, deviceId, extra }) => {
+        // `localOnly` is the user's "this never leaves my device" switch, and
+        // RecordSyncController wires `shouldSkip` into the create/update path
+        // ONLY — its `enqueueDelete` never consults it. Without re-applying the
+        // guard here, deleting a local-only row queues a tombstone that is
+        // encrypted, uploaded to the server and fanned out to every other
+        // device in the vault. Returning null makes the controller drop the
+        // enqueue before it ever reaches the queue.
+        //
+        // This covers every subclass (notes and journals both load their row
+        // via getNoteMetadataById, so both carry the same `localOnly` column).
+        //
+        // When `local` is undefined the row is already gone and we cannot tell
+        // whether it was local-only, so the pre-existing behaviour stands and
+        // the subclass decides (NoteSyncService returns null in that case).
+        if (isLocalOnly(local)) return null
+
         const nextClock = incrementClock((local?.clock as VectorClock) ?? {}, deviceId)
         const payload = this.buildDeletePayload(local, nextClock, ...extra)
         return payload === null ? null : JSON.stringify(payload)

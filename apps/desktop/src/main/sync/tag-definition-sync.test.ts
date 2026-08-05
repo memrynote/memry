@@ -147,27 +147,47 @@ describe('TagDefinitionSyncService push', () => {
     expect(storedClock()).toEqual({})
   })
 
-  it.fails(
-    'queues a create payload that satisfies the tag_definition sync schema when views are saved',
-    () => {
-      // PRODUCT BUG: `serialize: (local) => local` ships the raw DB row, and
-      // `tag_definitions.views` is a TEXT column holding JSON, so the queued
-      // payload carries `views` as a *string* while the contract expects an
-      // array. The push coordinator normally rebuilds the payload via
-      // `tagDefinitionHandler.buildPushPayload` (which calls `readTagViews`),
-      // so this only escapes on the frozen-payload fallback — reached when the
-      // row disappears locally before the push flushes (e.g. a remote delete
-      // hard-deletes the row, which `tagDefinitionHandler.applyDelete` does).
-      // The receiver then fails schema validation and drops the whole tag,
-      // colour included.
-      seedTag({ views: JSON.stringify([{ id: 'v1', name: 'All', type: 'list' }]) })
+  it('queues a create payload that satisfies the tag_definition sync schema when views are saved', () => {
+    // REGRESSION GUARD: `serialize` used to ship the raw DB row, and
+    // `tag_definitions.views` is a TEXT column holding JSON, so the queued
+    // payload carried `views` as a *string* while the contract expects an
+    // array. The push coordinator normally rebuilds the payload via
+    // `tagDefinitionHandler.buildPushPayload` (which calls `readTagViews`),
+    // so this only escaped on the frozen-payload fallback — reached when the
+    // row disappears locally before the push flushes (e.g. a remote delete
+    // hard-deletes the row, which `tagDefinitionHandler.applyDelete` does).
+    // The receiver then failed schema validation and dropped the whole tag,
+    // colour included.
+    seedTag({ views: JSON.stringify([{ id: 'v1', name: 'All', type: 'list' }]) })
 
-      makeService().enqueueCreate('work')
+    makeService().enqueueCreate('work')
 
-      const payload = payloadOf(queueRows()[0])
-      expect(TagDefinitionSyncPayloadSchema.safeParse(payload).success).toBe(true)
-    }
-  )
+    const payload = payloadOf(queueRows()[0])
+    expect(payload.views).toEqual([{ id: 'v1', name: 'All', type: 'list' }])
+    expect(TagDefinitionSyncPayloadSchema.safeParse(payload).success).toBe(true)
+  })
+
+  it('sends null views as an explicit clear and never invents the key', () => {
+    seedTag()
+
+    makeService().enqueueCreate('work')
+
+    const payload = payloadOf(queueRows()[0])
+    expect(payload.views).toBeNull()
+    expect(TagDefinitionSyncPayloadSchema.safeParse(payload).success).toBe(true)
+  })
+
+  it('drops an unreadable views blob instead of clearing the peer copy', () => {
+    // A corrupt blob must not become `views: null` on the wire — the receiver
+    // treats an absent key as "sender predates this field, keep local".
+    seedTag({ views: '{not json' })
+
+    makeService().enqueueCreate('work')
+
+    const payload = payloadOf(queueRows()[0])
+    expect(Object.prototype.hasOwnProperty.call(payload, 'views')).toBe(false)
+    expect(TagDefinitionSyncPayloadSchema.safeParse(payload).success).toBe(true)
+  })
 })
 
 describe('TagDefinitionSyncService deletes', () => {

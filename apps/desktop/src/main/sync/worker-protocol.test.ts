@@ -208,6 +208,38 @@ describe('worker message contract', () => {
       expect(received.requestId).toBe('req-9')
     })
 
+    it('lets the worker answer an unknown kind with a reply the bridge can route', () => {
+      // worker.ts's `default:` branch builds exactly this from the unknown
+      // request. worker-bridge.ts routes replies with `'requestId' in msg` and
+      // then rejects on `type === 'error'`, so this shape settles the caller's
+      // promise immediately instead of leaving it to the 60s REQUEST_TIMEOUT_MS.
+      const fromNewerBuild = overWire({ type: 'compact-batch', requestId: 'req-9' })
+
+      const reply: WorkerToMainMessage = {
+        type: 'error',
+        requestId: fromNewerBuild.requestId,
+        error: `Unsupported worker message kind: ${fromNewerBuild.type}`
+      }
+
+      const received = overWire(reply)
+
+      expect(received).toEqual(reply)
+      expect('requestId' in received).toBe(true)
+      if (received.type !== 'error') throw new Error('unreachable')
+      expect(received.requestId).toBe('req-9')
+      expect(received.error).toContain('compact-batch')
+    })
+
+    it('has no reply to route when an unknown kind carries no requestId', () => {
+      // `shutdown` is the only known kind without one. An unknown kind that also
+      // lacks it has no pending promise, and a reply with `requestId:
+      // undefined` would pass worker-bridge's `'requestId' in msg` check and be
+      // looked up under the key `undefined` — so worker.ts stays silent.
+      const fromNewerBuild = overWire({ type: 'flush-cache' }) as { requestId?: unknown }
+
+      expect(typeof fromNewerBuild.requestId).not.toBe('string')
+    })
+
     it('keeps the two kind namespaces disjoint so a reply is never mistaken for a request', () => {
       for (const kind of KNOWN_WORKER_TO_MAIN) {
         expect(KNOWN_MAIN_TO_WORKER).not.toContain(kind)

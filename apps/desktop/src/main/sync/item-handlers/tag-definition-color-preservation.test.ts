@@ -33,7 +33,11 @@ vi.mock('../../lib/logger', () => ({
 }))
 
 import { tagDefinitionHandler } from './tag-definition-handler'
-import { ensureTagDefinitions, getOrCreateTag } from '../../database/queries/tag-definitions'
+import {
+  ensureTagDefinitions,
+  getOrCreateTag,
+  updateTagColor
+} from '../../database/queries/tag-definitions'
 import { SyncQueueManager } from '../queue'
 import { ItemApplier } from '../apply-item'
 import type { ApplyContext, DrizzleDb } from './types'
@@ -55,6 +59,12 @@ const asSync = (handle: TestDataDb): DrizzleDb => handle as unknown as DrizzleDb
 
 function colorOf(handle: TestDataDb, name: string): string | undefined {
   return handle.select().from(tagDefinitions).where(eq(tagDefinitions.name, name)).get()?.color
+}
+
+/** Did a human pick that colour, or did the palette hand it out? */
+function authoredFlagOf(handle: TestDataDb, name: string): boolean | undefined {
+  return handle.select().from(tagDefinitions).where(eq(tagDefinitions.name, name)).get()
+    ?.colorAuthored
 }
 
 /** Mint `focus` locally as the Nth tag, so its palette colour is deterministic. */
@@ -187,9 +197,13 @@ describe('tag colour: note indexing must not re-colour a tag it did not create',
  * `getOrCreateTag` colours a brand-new tag with `palette[tagCount % 24]`, so
  * the same tag name mints *green* on the device where it was the 12th tag and
  * *red* on the device where it was the 23rd. That auto-minted colour is then
- * pushed like any user choice (`seedUnclocked`), lands as a concurrent clock on
- * the first device, and last-write-wins repaints a colour the user picked with
- * one nobody picked at all.
+ * pushed like any user choice (`seedUnclocked`) and lands as a concurrent clock
+ * on the first device, where last-write-wins used to repaint a colour the user
+ * picked with one nobody picked at all.
+ *
+ * The fix is `color_authored`: the palette's pick travels marked as nobody's
+ * choice and may create a tag but never repaint one, while a colour set through
+ * the picker still wins the very same merge.
  *
  * Trigger matches the report exactly: the mint happens inside
  * `ensureTagDefinitions`, which the vault watcher calls when notes are edited.
@@ -222,31 +236,38 @@ describe('tag colour: green → red across devices (report 2026-07-21)', () => {
     expect(mintTagAsNth(deviceB, 'focus', RED_AT_TAG_COUNT)).toBe('red')
   })
 
-  it('documents CURRENT behaviour: the auto-minted red wins on the green device', () => {
+  it('a locally auto-minted colour must not repaint the tag on other devices', () => {
     mintTagAsNth(db, 'focus', GREEN_AT_TAG_COUNT)
     pushLocallyMintedTag(db, 'device-a')
 
     const deviceB = createTestDataDb()
     mintTagAsNth(deviceB, 'focus', RED_AT_TAG_COUNT)
+
+    // The clocks still merge — the rest of the row has to converge — but the
+    // colour is the one thing a concurrent seed may not decide.
+    expect(replayOnDeviceA(pushLocallyMintedTag(deviceB, 'device-b'))).toBe('conflict')
+    expect(colorOf(db, 'focus')).toBe('green')
+  })
+
+  it('still lets a colour the user actually picked win the same concurrent merge', () => {
+    // Same shape as above, but on device B the user opened the colour picker.
+    // Authorship, not the clock, is what separates the two cases.
+    mintTagAsNth(db, 'focus', GREEN_AT_TAG_COUNT)
+    pushLocallyMintedTag(db, 'device-a')
+
+    const deviceB = createTestDataDb()
+    mintTagAsNth(deviceB, 'focus', RED_AT_TAG_COUNT)
+    updateTagColor(deviceB, 'focus', 'red')
 
     expect(replayOnDeviceA(pushLocallyMintedTag(deviceB, 'device-b'))).toBe('conflict')
     expect(colorOf(db, 'focus')).toBe('red')
   })
 
-  // BUG. A colour the user never chose — picked by a modulo over the local tag
-  // count — overwrites one they did. Because both sides are only ever "seeded",
-  // the clocks are concurrent and last-write-wins has no way to prefer the real
-  // choice. Fixing it means either not pushing an auto-minted colour as an
-  // authored value, or preferring the older `createdAt` on a concurrent tag
-  // merge. Delete `.fails` once that lands.
-  it.fails('a locally auto-minted colour must not repaint the tag on other devices', () => {
-    mintTagAsNth(db, 'focus', GREEN_AT_TAG_COUNT)
-    pushLocallyMintedTag(db, 'device-a')
+  it('marks a tag authored only once someone picks its colour', () => {
+    getOrCreateTag(db, 'focus')
+    expect(authoredFlagOf(db, 'focus')).toBe(false)
 
-    const deviceB = createTestDataDb()
-    mintTagAsNth(deviceB, 'focus', RED_AT_TAG_COUNT)
-    replayOnDeviceA(pushLocallyMintedTag(deviceB, 'device-b'))
-
-    expect(colorOf(db, 'focus')).toBe('green')
+    updateTagColor(db, 'focus', 'violet')
+    expect(authoredFlagOf(db, 'focus')).toBe(true)
   })
 })

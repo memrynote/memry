@@ -279,7 +279,7 @@ describe('NoteSyncService push', () => {
 })
 
 describe('NoteSyncService deletes', () => {
-  it('propagates a delete as its own queue row carrying the title and a bumped clock', () => {
+  it('propagates a delete as its own queue row with a bumped clock and NO title', () => {
     seedNote({ clock: { 'device-a': 2 } })
 
     makeService().enqueueDelete('note-1')
@@ -289,11 +289,24 @@ describe('NoteSyncService deletes', () => {
     expect(rows[0].type).toBe('note')
     expect(rows[0].operation).toBe('delete')
     expect(payloadOf(rows[0])).toMatchObject({
-      title: 'Quarterly Plan',
       clock: { 'device-a': 3 },
       createdAt: CREATED_AT,
       modifiedAt: MODIFIED_AT
     })
+    // The tombstone must not carry the note's title. Nothing on the receiving
+    // side reads it, so shipping it only widened what a delete uploads.
+    expect(payloadOf(rows[0])).not.toHaveProperty('title')
+  })
+
+  it('never tombstones a local-only note', () => {
+    // localOnly is the user's "this never leaves my machine" switch. The shared
+    // controller applies it to creates/updates only, so the delete path needs
+    // its own guard or the promise breaks at exactly the wrong moment.
+    seedNote({ localOnly: true })
+
+    makeService().enqueueDelete('note-1')
+
+    expect(queueRows()).toEqual([])
   })
 
   it('lets a delete win over a still-pending create instead of being dropped', () => {

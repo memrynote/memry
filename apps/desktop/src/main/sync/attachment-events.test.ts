@@ -204,6 +204,9 @@ describe('attachmentEvents — download needed', () => {
       attachmentId: 'att-1'
     })
     expect(JSON.stringify(debugSpy.mock.calls)).not.toContain('/Users/someone')
+    // No listener is registered here, so the drop warning fires too — it is held
+    // to the same hygiene rule as the debug line.
+    expect(JSON.stringify(warnSpy.mock.calls)).not.toContain('/Users/someone')
   })
 })
 
@@ -267,11 +270,11 @@ describe('attachmentEvents — failure surfacing', () => {
     expect(later).not.toHaveBeenCalled()
   })
 
-  it('drops a download-needed event on the floor when nothing is listening', () => {
+  it('warns when a download-needed event is dropped because nothing is listening', () => {
     expect(attachmentEvents.listenerCount('download-needed')).toBe(0)
 
-    // No throw, no warn, no error — and the debug line reads exactly the same as
-    // a delivered event. `unregisterAttachmentHandlers()` calls
+    // A drop must stay non-fatal, but it must not read like a success either.
+    // `unregisterAttachmentHandlers()` calls
     // `removeAllListeners('download-needed')`, so this is the real state during
     // a sync-runtime restart or sign-out/in.
     expect(() =>
@@ -283,26 +286,45 @@ describe('attachmentEvents — failure surfacing', () => {
       })
     ).not.toThrow()
 
-    expect(debugSpy).toHaveBeenCalledWith('attachment download needed', {
-      noteId: 'note-1',
-      attachmentId: 'att-1'
-    })
-    expect(warnSpy).not.toHaveBeenCalled()
+    expect(warnSpy).toHaveBeenCalledWith(
+      'attachment download-needed event dropped: no listener registered',
+      { noteId: 'note-1', attachmentId: 'att-1' }
+    )
+    // Still not an error: the caller retries on the next pull of the note.
     expect(errorSpy).not.toHaveBeenCalled()
   })
 
-  it('drops a saved event on the floor when nothing is listening', () => {
+  it('warns when a saved event is dropped because nothing is listening', () => {
     expect(attachmentEvents.listenerCount('saved')).toBe(0)
 
     expect(() =>
       attachmentEvents.emitSaved({ noteId: 'note-1', diskPath: '/vault/a.png' })
     ).not.toThrow()
 
-    expect(warnSpy).not.toHaveBeenCalled()
+    expect(warnSpy).toHaveBeenCalledWith('attachment saved event dropped: no listener registered', {
+      noteId: 'note-1'
+    })
+    expect(JSON.stringify(warnSpy.mock.calls)).not.toContain('/vault/a.png')
     expect(errorSpy).not.toHaveBeenCalled()
   })
 
-  it.fails('BUG: emitDownloadNeeded should tell the caller whether the event was delivered', () => {
+  it('reports delivery when a listener is registered', () => {
+    attachmentEvents.onDownloadNeeded(vi.fn())
+    attachmentEvents.onSaved(vi.fn())
+
+    expect(
+      attachmentEvents.emitDownloadNeeded({
+        noteId: 'note-1',
+        attachmentId: 'att-1',
+        diskPath: '/vault/attachments/note-1',
+        intoDir: true
+      })
+    ).toBe(true)
+    expect(attachmentEvents.emitSaved({ noteId: 'note-1', diskPath: '/vault/a.png' })).toBe(true)
+    expect(warnSpy).not.toHaveBeenCalled()
+  })
+
+  it('emitDownloadNeeded tells the caller whether the event was delivered', () => {
     // `EventEmitter.emit` already returns `false` when there is no listener,
     // but the wrapper declares `: void` and discards it. The caller
     // (`requestEmbeddedAttachmentDownloads` in item-handlers/note-handler.ts)
@@ -311,11 +333,7 @@ describe('attachmentEvents — failure surfacing', () => {
     // here is never re-requested for the lifetime of the process — the image
     // simply never arrives, with nothing above debug level in the log.
     // Returning the boolean is the minimal fix that lets the caller retry.
-    const bus = attachmentEvents as unknown as {
-      emitDownloadNeeded: (event: DownloadNeededEvent) => boolean | void
-    }
-
-    const delivered = bus.emitDownloadNeeded({
+    const delivered = attachmentEvents.emitDownloadNeeded({
       noteId: 'note-1',
       attachmentId: 'att-1',
       diskPath: '/vault/attachments/note-1',
@@ -325,15 +343,11 @@ describe('attachmentEvents — failure surfacing', () => {
     expect(delivered).toBe(false)
   })
 
-  it.fails('BUG: emitSaved should tell the caller whether the event was delivered', () => {
+  it('emitSaved tells the caller whether the event was delivered', () => {
     // Same discarded signal on the upload side: the vault watcher emits `saved`
     // for every new attachment file. With no listener the upload intent is never
     // even written to the outbox, so the blob is never pushed.
-    const bus = attachmentEvents as unknown as {
-      emitSaved: (event: SavedEvent) => boolean | void
-    }
-
-    const delivered = bus.emitSaved({ noteId: 'note-1', diskPath: '/vault/a.png' })
+    const delivered = attachmentEvents.emitSaved({ noteId: 'note-1', diskPath: '/vault/a.png' })
 
     expect(delivered).toBe(false)
   })
