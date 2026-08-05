@@ -390,6 +390,29 @@ describe('local-mutations', () => {
     expect(incrementNoteClockOffline).not.toHaveBeenCalled()
   })
 
+  it('falls back to the offline clock bump when the journal sync service is down', () => {
+    const db = {}
+    ;(getDatabase as Mock).mockReturnValue(db)
+    ;(getJournalSyncService as Mock).mockReturnValue(null)
+
+    enqueueLocalSyncUpdate('journal', 'journal-1', '2026-08-04')
+
+    // Journals had the same fallback-less adapter notes used to have, and are
+    // additionally outside the note recovery sweep — so a metadata edit raised
+    // during runtime teardown had nothing at all to re-push it.
+    expect(incrementNoteClockOffline).toHaveBeenCalledWith(db, 'journal-1')
+  })
+
+  it('does not bump the offline clock when the journal sync service is up', () => {
+    const journalService = { enqueueUpdate: vi.fn() }
+    ;(getJournalSyncService as Mock).mockReturnValue(journalService)
+
+    enqueueLocalSyncUpdate('journal', 'journal-1', '2026-08-04')
+
+    expect(journalService.enqueueUpdate).toHaveBeenCalledWith('journal-1', '2026-08-04')
+    expect(incrementNoteClockOffline).not.toHaveBeenCalled()
+  })
+
   it('removes pending note sync items through the local sync helper', () => {
     const removeQueueItems = vi.fn(() => 2)
     ;(getNoteSyncService as Mock).mockReturnValue({ removeQueueItems })

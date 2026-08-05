@@ -20,7 +20,7 @@ export interface RecordLocalSyncAdapter {
   enqueueUpdate(itemId: string, ...extra: unknown[]): void
   enqueueDelete(itemId: string, ...extra: unknown[]): void
   enqueueForPush?(itemId: string, operation: 'create' | 'update', ...extra: unknown[]): void
-  enqueueRecoveredUpdate?(itemId: string): void
+  enqueueRecoveredUpdate?(itemId: string, ...extra: unknown[]): void
 }
 
 export interface RemoteSyncAdapter<TDb = unknown, TEmit = unknown, TPayload = unknown> {
