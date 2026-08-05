@@ -534,3 +534,84 @@ describe('0043_bookmark_reminder_sync migration', () => {
     sqlite.close()
   })
 })
+
+describe('0047_sync_queue_revive_dead_lettered migration', () => {
+  let tempDir: string
+  const migrationsDir = path.join(__dirname, 'drizzle-data')
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-sync-queue-revive-migrate-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  /** Copy of drizzle-data/ with 0047 and everything after it stripped. */
+  function makePre0047Folder(): string {
+    const copy = path.join(tempDir, 'drizzle-data-pre-0047')
+    fs.cpSync(migrationsDir, copy, { recursive: true })
+    const journalPath = path.join(copy, 'meta', '_journal.json')
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+      entries: { tag: string }[]
+    }
+    const cutoff = journal.entries.findIndex(
+      (e) => e.tag === '0047_sync_queue_revive_dead_lettered'
+    )
+    expect(cutoff).toBeGreaterThanOrEqual(0)
+    const removed = journal.entries.splice(cutoff)
+    for (const entry of removed) {
+      fs.rmSync(path.join(copy, `${entry.tag}.sql`))
+    }
+    fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
+    return copy
+  }
+
+  it('hands the retry budget back to rows an older build parked, and leaves the rest alone', () => {
+    const sqlite = new Database(path.join(tempDir, 'data.db'))
+    const db = drizzle(sqlite)
+    migrate(db, { migrationsFolder: makePre0047Folder() })
+
+    const insert = sqlite.prepare(
+      `INSERT INTO sync_queue (id, type, item_id, operation, payload, priority, attempts, last_attempt, error_message, created_at)
+       VALUES (?, 'note', ?, 'update', ?, 0, ?, ?, ?, ?)`
+    )
+    // Parked by the old in-cycle burn: unreachable and invisible in the UI.
+    insert.run(
+      'q_dead',
+      'note_1',
+      '{"title":"Parked"}',
+      5,
+      1785000000000,
+      'SYNC_VALIDATION_FAILED',
+      1784000000000
+    )
+    // Mid-budget and untouched rows must keep the attempts they earned.
+    insert.run(
+      'q_partial',
+      'note_2',
+      '{"title":"Halfway"}',
+      2,
+      1785000000000,
+      'SYNC_VALIDATION_FAILED',
+      1784000000000
+    )
+    insert.run('q_fresh', 'note_3', '{"title":"Fresh"}', 0, null, null, 1784000000000)
+
+    migrate(db, { migrationsFolder: migrationsDir })
+
+    const rows = sqlite
+      .prepare('SELECT id, attempts, payload, error_message FROM sync_queue ORDER BY id')
+      .all() as { id: string; attempts: number; payload: string; error_message: string | null }[]
+
+    expect(rows.map((r) => [r.id, r.attempts])).toEqual([
+      ['q_dead', 0],
+      ['q_fresh', 0],
+      ['q_partial', 2]
+    ])
+    // Row-preserving: the edit and its failure reason both survive the reset.
+    expect(rows[0].payload).toBe('{"title":"Parked"}')
+    expect(rows[0].error_message).toBe('SYNC_VALIDATION_FAILED')
+    sqlite.close()
+  })
+})

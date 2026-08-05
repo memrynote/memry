@@ -97,6 +97,15 @@ export class PushCoordinator {
         return
       }
 
+      // Rows the server rejected during THIS call. They keep their remaining
+      // retry budget but must not be dequeued again before the next sync cycle:
+      // this loop has no backoff, so re-pushing a rejected row here would spend
+      // every attempt on one burst of requests and permanently park the edit.
+      // A row that `markSuccess` declined to delete (it changed while in flight)
+      // is intentionally absent — that re-push consumes no attempt and is how
+      // the newer payload reaches the server.
+      const rejectedThisCycle = new Set<string>()
+
       try {
         for (let iteration = 0; iteration < MAX_PUSH_ITERATIONS; iteration++) {
           if (abortSignal.aborted) break
@@ -109,9 +118,16 @@ export class PushCoordinator {
               raw: rawCount
             })
           }
-          const items = this.ctx.deps.queue.dequeue(this.ctx.options.pushBatchSize)
+          const items = this.ctx.deps.queue.dequeue(
+            this.ctx.options.pushBatchSize,
+            rejectedThisCycle
+          )
           if (items.length === 0) {
-            log.debug('Push complete: queue empty', { preDequeueCount, rawCount })
+            log.debug('Push complete: nothing left to push this cycle', {
+              preDequeueCount,
+              rawCount,
+              deferredToNextCycle: rejectedThisCycle.size
+            })
             break
           }
 
@@ -221,6 +237,7 @@ export class PushCoordinator {
               } else if (reason === 'STORAGE_QUOTA_EXCEEDED') {
                 log.warn('Push: storage quota exceeded', { itemId: pushItem.id.slice(0, 8) })
                 this.ctx.deps.queue.markFailed(queueId, reason)
+                rejectedThisCycle.add(queueId)
                 this.ctx.lastErrorInfo = {
                   category: 'storage_quota_exceeded',
                   message: 'errors:sync.storageQuotaExceeded',
@@ -236,6 +253,7 @@ export class PushCoordinator {
                   reason
                 })
                 this.ctx.deps.queue.markFailed(queueId, reason)
+                rejectedThisCycle.add(queueId)
               }
             }
           }

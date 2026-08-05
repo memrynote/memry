@@ -166,6 +166,15 @@ function acceptAll(): void {
   }))
 }
 
+function rejectAllWith(reason: string): void {
+  postToServerMock.mockImplementation(async (_path: string, body: PushBody) => ({
+    accepted: [],
+    rejected: body.items.map((i) => ({ id: i.id, reason })),
+    serverTime: Math.floor(Date.now() / 1000),
+    maxCursor: 0
+  }))
+}
+
 describe('PushCoordinator', () => {
   const { getDb } = setupTestDb()
 
@@ -257,12 +266,7 @@ describe('PushCoordinator', () => {
       const { coordinator, queue } = createHarness(getDb())
       const markPushSynced = vi.fn()
       getHandlerMock.mockReturnValue({ markPushSynced })
-      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => ({
-        accepted: [],
-        rejected: body.items.map((i) => ({ id: i.id, reason: 'SYNC_VALIDATION_FAILED' })),
-        serverTime: Math.floor(Date.now() / 1000),
-        maxCursor: 0
-      }))
+      rejectAllWith('SYNC_VALIDATION_FAILED')
 
       const payload = JSON.stringify({ title: 'Rejected edit' })
       queue.enqueue({ type: 'task', itemId: 'task-1', operation: 'update', payload })
@@ -273,11 +277,75 @@ describe('PushCoordinator', () => {
       expect(queue.getSize()).toBe(1)
       expect(queue.peek()[0].payload).toBe(payload)
       expect(markPushSynced).not.toHaveBeenCalled()
-      // Documents current behaviour: one push() call re-pushes the same rejected
-      // row every iteration, burning the whole attempt budget in a single cycle
-      // (no backoff between in-cycle retries) and dead-lettering it immediately.
-      expect(queue.peek()[0].attempts).toBe(DEFAULT_MAX_ATTEMPTS)
+      // One cycle costs exactly one attempt. The push loop has no backoff, so a
+      // row re-pushed inside the same call would burn the whole budget against a
+      // single burst of requests and dead-letter a transiently rejected edit for
+      // good; the row is deferred to the next cycle instead.
+      expect(postToServerMock).toHaveBeenCalledTimes(1)
+      expect(queue.peek()[0].attempts).toBe(1)
+      expect(queue.getPendingCount()).toBe(1)
+    })
+
+    it('#then the attempt budget still dead-letters the row, but only after one cycle each', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      rejectAllWith('SYNC_VALIDATION_FAILED')
+
+      queue.enqueue({
+        type: 'task',
+        itemId: 'task-1',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'Doomed edit' })
+      })
+
+      for (let cycle = 1; cycle <= DEFAULT_MAX_ATTEMPTS; cycle++) {
+        await coordinator.push()
+        expect(queue.peek()[0].attempts).toBe(cycle)
+      }
+
+      // The brake is intact: the budget is spent, just spread over cycles.
+      expect(postToServerMock).toHaveBeenCalledTimes(DEFAULT_MAX_ATTEMPTS)
       expect(queue.getPendingCount()).toBe(0)
+
+      // And a spent budget really does stop the pushing.
+      await coordinator.push()
+      expect(postToServerMock).toHaveBeenCalledTimes(DEFAULT_MAX_ATTEMPTS)
+    })
+
+    it('#then a rejected row does not block the rows queued behind it in the same cycle', async () => {
+      const { coordinator, queue, ctx } = createHarness(getDb())
+      // One row per request, so the rejected row is at the head of every dequeue.
+      ctx.options.pushBatchSize = 1
+      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => {
+        const rejected = body.items.filter((i) => i.id === 'task-1')
+        return {
+          accepted: body.items.filter((i) => i.id !== 'task-1').map((i) => i.id),
+          rejected: rejected.map((i) => ({ id: i.id, reason: 'SYNC_VALIDATION_FAILED' })),
+          serverTime: Math.floor(Date.now() / 1000),
+          maxCursor: 0
+        }
+      })
+
+      queue.enqueue({
+        type: 'task',
+        itemId: 'task-1',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'Rejected' })
+      })
+      queue.enqueue({
+        type: 'task',
+        itemId: 'task-2',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'Fine' })
+      })
+
+      await coordinator.push()
+
+      // Two requests: the rejected row is skipped for the rest of the cycle
+      // rather than re-sent, and the healthy row behind it still goes out.
+      expect(postToServerMock).toHaveBeenCalledTimes(2)
+      expect(queue.peek()).toHaveLength(1)
+      expect(queue.peek()[0].itemId).toBe('task-1')
+      expect(queue.peek()[0].attempts).toBe(1)
     })
 
     it('#then a replay rejection is treated as already-synced and drops the row', async () => {
