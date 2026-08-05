@@ -93,16 +93,38 @@ reference.
 The prompt box uses the operating-system text editing menu, so Cut, Copy, Paste, Select All, and
 native right-click editing work like other text fields.
 
+### Dictating a prompt
+
+The microphone in the prompt bar records a prompt and types it for you. Click it once to start
+recording — the icon turns red and nothing else on the bar moves. Click it again to stop; the icon
+becomes a spinner while the audio is transcribed, then the text is appended to whatever is already
+in the prompt box.
+
+Dictation uses the same engine as inbox voice memos, so it needs a transcription backend configured
+first — see [Voice Transcription](/user-guide/ai/voice-transcription). Audio recorded here is
+transcribed and discarded; it does not create an inbox item. If the microphone is blocked at the
+operating-system level, memrynote points you at the relevant privacy settings.
+
+### Connected tools
+
+While Google Calendar is not linked, a tray peeks out below the prompt box offering it. Clicking the
+Google Calendar icon opens the same consent dialog as the **Connect Google** button on the calendar
+page, and the tray disappears once the account is linked — from either place.
+
 Stop requests are scoped to the active conversation across Claude, Codex, and local providers.
 Automatic title generation and conversation summaries run through the selected backend without
 exposing memrynote MCP tools.
 
-The prompt bar shows the selected agent provider. The provider is pinned per conversation; changing
-it after messages exist updates the conversation and records the switch in the chat history. Claude
-and Codex expose prompt-time reasoning effort settings, with provider-specific settings shown only
-for the active provider. The same compact prompt bar has a per-turn permissions menu. It starts from
-your default Agent Permissions setting, then lets you send a single turn as **Vault only** or
-**Computer access**, and optionally allow web search for that turn.
+The prompt bar holds four controls. The **+** button opens the mention picker and the per-turn
+permissions menu; a dot on the button means at least one permission differs from your defaults. The
+first chip shows the active provider and model, and its menu switches either. The second chip sets
+reasoning effort. The microphone dictates a prompt by voice, and the arrow sends the turn.
+
+The provider is pinned per conversation; changing it after messages exist updates the conversation
+and records the switch in the chat history. Claude and Codex expose prompt-time reasoning effort
+settings, with provider-specific settings shown only for the active provider. The permissions menu
+starts from your default Agent Permissions setting, then lets you send a single turn as **Vault
+only** or **Computer access**, and optionally allow web search for that turn.
 
 **Vault only** keeps the CLI backend constrained to memrynote vault tools. **Computer access** gives the
 backend broader local CLI access for that turn. Web search is passed through only when the selected

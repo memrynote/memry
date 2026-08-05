@@ -2,6 +2,10 @@
 
 Transcribe captured voice memos into text.
 
+The backend you pick here is also what powers dictation in the Agent Chat prompt bar — see
+[Dictating a prompt](/user-guide/ai/agent-mcp#dictating-a-prompt). Dictated audio is transcribed and
+discarded rather than filed as an inbox item.
+
 <!-- screenshot: voice settings panel -->
 
 ## Two Backends
