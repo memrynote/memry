@@ -4,9 +4,12 @@ import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/ut
 import { bookmarks } from '@memry/db-schema/schema/bookmarks'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { templates } from '@memry/db-schema/schema/templates'
+import { noteMetadata } from '@memry/db-schema/data-schema'
+import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import {
   OFFLINE_DEVICE_KEY,
   incrementBookmarkClockOffline,
+  incrementNoteClockOffline,
   incrementReminderClockOffline,
   incrementTemplateClockOffline
 } from './offline-clock'
@@ -140,6 +143,104 @@ describe('offline clock helpers', () => {
 
       const row = testDb.db.select().from(reminders).where(eq(reminders.id, 'rem-1')).get()
       expect(row?.triggeredAt).toBe('2026-08-03T09:00:01.000Z')
+    })
+  })
+
+  // The note fallback is the only one that bumps under the real device id and
+  // clears `syncedAt` — see the doc comment on the helper for why. What it owes
+  // callers is a row `recoverDirtyItems` will re-push, with a clock the server
+  // cannot dismiss as a replay.
+  describe('incrementNoteClockOffline', () => {
+    const SYNCED_AT = '2026-08-04T10:00:00.000Z'
+
+    const insertNote = (values: Record<string, unknown>): void => {
+      testDb.db
+        .insert(noteMetadata)
+        .values({
+          path: `notes/${values.id as string}.md`,
+          title: 'A note',
+          createdAt: '2026-08-01T00:00:00.000Z',
+          modifiedAt: '2026-08-01T00:00:00.000Z',
+          ...values
+        } as never)
+        .run()
+    }
+
+    const registerDevice = (id: string): void => {
+      testDb.db
+        .insert(syncDevices)
+        .values({
+          id,
+          name: 'Test device',
+          platform: 'darwin',
+          appVersion: '1.0.0',
+          linkedAt: new Date('2026-08-01T00:00:00.000Z'),
+          isCurrentDevice: true,
+          signingPublicKey: 'pk'
+        })
+        .run()
+    }
+
+    const readNote = (id: string): { clock: unknown; syncedAt: string | null } | undefined =>
+      testDb.db.select().from(noteMetadata).where(eq(noteMetadata.id, id)).get()
+
+    it('#given a synced note #then bumps the clock under the current device and clears syncedAt', () => {
+      registerDevice('device-A')
+      insertNote({ id: 'note-1', clock: { 'device-A': 3 }, syncedAt: SYNCED_AT })
+
+      incrementNoteClockOffline(asClientDb(testDb.db), 'note-1')
+
+      const row = readNote('note-1')
+      expect(row?.clock).toEqual({ 'device-A': 4 })
+      expect(row?.syncedAt).toBeNull()
+    })
+
+    it('#then never parks a tick under the offline device key', () => {
+      registerDevice('device-A')
+      insertNote({ id: 'note-1', clock: { 'device-B': 2 }, syncedAt: SYNCED_AT })
+
+      incrementNoteClockOffline(asClientDb(testDb.db), 'note-1')
+
+      // Notes have no rebinding step on the way out, so an `_offline` tick would
+      // reach peers verbatim and collide with theirs.
+      expect(readNote('note-1')?.clock).toEqual({ 'device-B': 2, 'device-A': 1 })
+    })
+
+    it('#given a local-only note #then leaves the row untouched', () => {
+      registerDevice('device-A')
+      insertNote({ id: 'note-1', clock: { 'device-A': 3 }, syncedAt: SYNCED_AT, localOnly: true })
+
+      incrementNoteClockOffline(asClientDb(testDb.db), 'note-1')
+
+      const row = readNote('note-1')
+      expect(row?.clock).toEqual({ 'device-A': 3 })
+      expect(row?.syncedAt).toBe(SYNCED_AT)
+    })
+
+    it('#given a note that was never pushed #then leaves it to the unclocked seed', () => {
+      registerDevice('device-A')
+      insertNote({ id: 'note-1' })
+
+      incrementNoteClockOffline(asClientDb(testDb.db), 'note-1')
+
+      expect(readNote('note-1')?.clock).toBeNull()
+    })
+
+    it('#given no registered device #then leaves the row untouched', () => {
+      insertNote({ id: 'note-1', clock: { 'device-A': 3 }, syncedAt: SYNCED_AT })
+
+      incrementNoteClockOffline(asClientDb(testDb.db), 'note-1')
+
+      const row = readNote('note-1')
+      expect(row?.clock).toEqual({ 'device-A': 3 })
+      expect(row?.syncedAt).toBe(SYNCED_AT)
+    })
+
+    it('#given the note does not exist #then no-ops without throwing', () => {
+      registerDevice('device-A')
+
+      expect(() => incrementNoteClockOffline(asClientDb(testDb.db), 'missing')).not.toThrow()
+      expect(testDb.db.select().from(noteMetadata).all()).toHaveLength(0)
     })
   })
 })

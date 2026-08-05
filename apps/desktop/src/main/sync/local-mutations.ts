@@ -8,6 +8,7 @@ import {
   incrementCanvasClockOffline,
   incrementFilterClockOffline,
   incrementInboxClockOffline,
+  incrementNoteClockOffline,
   incrementProjectClocksOffline,
   incrementReminderClockOffline,
   incrementTaskClocksOffline
@@ -264,10 +265,28 @@ const localSyncRegistry = createSyncAdapterRegistry([
     kind: 'crdt',
     local: {
       enqueueCreate(itemId: string): void {
+        // No offline fallback on purpose: a note that has never been pushed has
+        // no clock, and `seedUnclockedNotes` already sweeps those into a create
+        // at the next sync runtime start.
         getNoteSyncService()?.enqueueCreate(itemId)
       },
       enqueueUpdate(itemId: string): void {
-        getNoteSyncService()?.enqueueUpdate(itemId)
+        const service = getNoteSyncService()
+        if (service) {
+          service.enqueueUpdate(itemId)
+          return
+        }
+
+        // Notes used to be the one type whose update simply evaporated when the
+        // sync runtime was down (quit, vault switch, re-auth). It bites hardest
+        // on attachment uploads: the blob is durably queued in the attachment
+        // outbox, but `recordUploadedAttachment`'s note push — the thing that
+        // tells peers a blob exists to download — was fire-and-forget, so an
+        // upload completing during teardown left the image on this device until
+        // some unrelated later edit happened to push the note. Marking the note
+        // dirty hands the push to `recoverDirtyItems`, which re-pushes it at the
+        // next runtime start.
+        incrementNoteClockOffline(getDatabase(), itemId)
       },
       enqueueRecoveredUpdate(itemId: string): void {
         getNoteSyncService()?.enqueueRecoveredUpdate(itemId)
