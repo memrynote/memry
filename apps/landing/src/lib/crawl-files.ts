@@ -1,7 +1,7 @@
 import { ALTERNATIVES } from './alternatives'
 import { BASE_URL, PAGE_META } from './seo'
 
-function toAbsoluteUrl(path: string) {
+export function toAbsoluteUrl(path: string) {
   return path === '/' ? `${BASE_URL}/` : `${BASE_URL}${path}`
 }
 
