@@ -126,21 +126,27 @@ server with nothing queued, and every later pull would resolve `skip` rather tha
 
 Items expose a "the server has this state" stamp (`syncedAt`) that advances on a confirmed push as
 well as on an applied pull. Anything modified after its stamp — or never stamped at all — is
-re-queued on the next full sync for tasks, projects and notes alike.
+re-queued on the next full sync for tasks, projects, notes and journals alike.
 
 Recovery re-sends the item's **stored** clock rather than bumping it. An item that is genuinely in
 step is then replay-detected by the server, costs one round trip, and is stamped clean; only an item
 that really is ahead of the server changes anything. Scope is limited to items the server already
-knows: clock-less rows belong to the initial seed, and journals to their own handler.
+knows: clock-less rows belong to the initial seed.
+
+Notes and journals share a table but not a sync service, so they are swept separately and each
+re-push is handed to the service that owns it. The journal sweep also carries the entry's date, which
+its payload builder needs to find the file on disk — recovering a journal without one would fail
+before the builder's own error handling and take the rest of the sweep down with it.
 
 Because recovery never advances a clock, a change made while the sync runtime is down has to advance
 its own at write time or the re-push would be dismissed as a replay. Records park that tick under a
-placeholder device that their sync service rebinds on the way out; notes have no rebinding step, so
-their fallback bumps under the current device directly and does nothing when no device is registered
-(the same thing the online path does). It also clears the sync stamp, because metadata-only writes —
-recording an uploaded attachment, say — deliberately leave `modifiedAt` alone and would otherwise be
-invisible to the "modified after its stamp" test above. A note that never leaves the device, and one
-with no clock yet, are both left alone.
+placeholder device that their sync service rebinds on the way out; notes and journals have no
+rebinding step, so their fallback bumps under the current device directly and does nothing when no
+device is registered (the same thing the online path does). It also clears the sync stamp, because
+metadata-only writes — recording an uploaded attachment or editing a journal's tags, say —
+deliberately leave `modifiedAt` alone and would otherwise be invisible to the "modified after its
+stamp" test above. A row that never leaves the device, and one with no clock yet, are both left
+alone.
 
 ### Foreign-key parents and orphan repair
 
