@@ -50,3 +50,58 @@ jobs:
           echo "Deployed: $(cat deployment-url.txt)" >> "$GITHUB_STEP_SUMMARY"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      # Push-notifies Bing, Yandex, Seznam, Naver and Yep that the site changed.
+      # Google does not participate in IndexNow and is not reachable this way.
+      #
+      # Must run after the deploy: IndexNow verifies a batch by fetching the key
+      # file from the live host, so pinging a not-yet-published key returns 403.
+      #
+      # continue-on-error because indexing is a nice-to-have — a flaky endpoint
+      # must never turn a successful production deploy red.
+      - name: Ping IndexNow
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+
+          key=$(sed -n "s/^export const INDEXNOW_KEY = '\([a-zA-Z0-9-]\{8,128\}\)'$/\1/p" \
+            apps/landing/src/lib/indexnow.ts)
+          if [ -z "$key" ]; then
+            echo "Could not read INDEXNOW_KEY from apps/landing/src/lib/indexnow.ts"
+            exit 1
+          fi
+
+          # Confirm the deploy that just went out is actually serving the key file,
+          # otherwise the submission is guaranteed to bounce.
+          if [ "$(curl -fsS "https://memrynote.com/$key.txt" || true)" != "$key" ]; then
+            echo "Key file is not live at /$key.txt yet — skipping submission."
+            exit 1
+          fi
+
+          # The live sitemap is the source of truth for what is indexable, so the
+          # batch cannot drift from it the way a second hardcoded list would.
+          urls=$(curl -fsS https://memrynote.com/sitemap.xml \
+            | grep -oE '<loc>[^<]+</loc>' \
+            | sed -E 's#</?loc>##g' \
+            | jq -R . | jq -sc .)
+          count=$(printf '%s' "$urls" | jq 'length')
+          if [ "$count" -eq 0 ]; then
+            echo "Sitemap returned no URLs — skipping submission."
+            exit 1
+          fi
+
+          status=$(jq -nc --arg key "$key" --argjson urlList "$urls" \
+            '{host: "memrynote.com", key: $key,
+              keyLocation: "https://memrynote.com/\($key).txt", urlList: $urlList}' \
+            | curl -sS -o /dev/stderr -w '%{http_code}' \
+                -X POST https://api.indexnow.org/indexnow \
+                -H 'Content-Type: application/json; charset=utf-8' \
+                --data-binary @-)
+
+          echo "IndexNow: $count URL(s) submitted, HTTP $status" >> "$GITHUB_STEP_SUMMARY"
+
+          # 200 accepted, 202 accepted pending key validation.
+          case "$status" in
+            200|202) ;;
+            *) echo "IndexNow rejected the batch (HTTP $status)"; exit 1 ;;
+          esac

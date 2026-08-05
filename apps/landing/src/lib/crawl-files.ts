@@ -18,15 +18,14 @@ export function getIndexablePaths(): string[] {
   return Object.values(PAGE_META).map((meta) => meta.path)
 }
 
-export function buildSitemapXml(
-  paths: readonly string[] = getIndexablePaths(),
-  lastmod: string = new Date().toISOString().slice(0, 10)
-): string {
+// No <lastmod>. It used to be the build date, stamped identically onto every URL,
+// which told Google that all 36 pages changed on every deploy. Search engines drop
+// lastmod once they catch it being unreliable, so an omitted date and a distrusted
+// one are worth the same — minus the false signal. Reinstate it only with real
+// per-page change dates.
+export function buildSitemapXml(paths: readonly string[] = getIndexablePaths()): string {
   const urls = paths
-    .map(
-      (path) =>
-        `  <url>\n    <loc>${escapeXml(toAbsoluteUrl(path))}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </url>`
-    )
+    .map((path) => `  <url>\n    <loc>${escapeXml(toAbsoluteUrl(path))}</loc>\n  </url>`)
     .join('\n')
 
   return [
