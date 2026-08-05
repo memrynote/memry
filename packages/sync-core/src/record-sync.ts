@@ -55,9 +55,26 @@ export class RecordSyncController<
     const deviceId = this.deps.getDeviceId()
     if (!deviceId || !this.deps.buildDeletePayload) return
 
+    // `shouldSkip` is the "this row never leaves the device" switch, and it has
+    // to hold on delete too. A tombstone carries no body, but the item's id and
+    // its deletion time still get encrypted, uploaded, and fanned out to every
+    // other device in the vault.
+    //
+    // LIMIT OF THIS GUARD — it can only fire while the row outlives the
+    // enqueue. When `load` returns undefined the row is already gone and its
+    // local-only-ness is unknowable, so the delete is let through on purpose:
+    // dropping it here would silently swallow legitimate tombstones for
+    // ordinary rows, which is a data-loss bug in the opposite direction.
+    //
+    // So a caller that deletes its row BEFORE it enqueues has to carry its own
+    // guard over whatever snapshot it passes in — this one never sees its row.
+    // `inbox-sync.ts` is exactly that shape and guards on its snapshot.
+    const local = this.deps.load(itemId)
+    if (local !== undefined && this.deps.shouldSkip?.(local)) return
+
     const payload = this.deps.buildDeletePayload({
       itemId,
-      local: this.deps.load(itemId),
+      local,
       deviceId,
       extra
     })
