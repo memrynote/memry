@@ -6,8 +6,10 @@
     "title": "Asetukset",
     "nav": {
       "groups": {
-        "workspace": "Työtila",
-        "preferences": "Asetukset",
+        "account": "Tili",
+        "application": "Sovellus",
+        "editing": "Muokkaus",
+        "modules": "Moduulit",
         "services": "Palvelut",
         "data": "Tiedot"
       },

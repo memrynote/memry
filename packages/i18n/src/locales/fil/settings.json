@@ -6,8 +6,10 @@
     "title": "Mga setting",
     "nav": {
       "groups": {
-        "workspace": "Lugar ng Trabaho",
-        "preferences": "Mga Kagustuhan",
+        "account": "Account",
+        "application": "Aplikasyon",
+        "editing": "Pag-edit",
+        "modules": "Mga Module",
         "services": "Mga serbisyo",
         "data": "Datos"
       },

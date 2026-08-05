@@ -6,8 +6,10 @@
     "title": "postavke",
     "nav": {
       "groups": {
-        "workspace": "Radni prostor",
-        "preferences": "Postavke",
+        "account": "Račun",
+        "application": "Aplikacija",
+        "editing": "Uređivanje",
+        "modules": "Moduli",
         "services": "Usluge",
         "data": "Podaci"
       },

@@ -6,8 +6,10 @@
     "title": "Configuración",
     "nav": {
       "groups": {
-        "workspace": "Espacio de trabajo",
-        "preferences": "Preferencias",
+        "account": "cuenta",
+        "application": "Aplicación",
+        "editing": "Edición",
+        "modules": "Módulos",
         "services": "Servicios",
         "data": "Datos"
       },

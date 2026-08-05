@@ -6,8 +6,10 @@
     "title": "الإعدادات",
     "nav": {
       "groups": {
-        "workspace": "مساحة العمل",
-        "preferences": "التفضيلات",
+        "account": "الحساب",
+        "application": "التطبيق",
+        "editing": "التحرير",
+        "modules": "الوحدات",
         "services": "الخدمات",
         "data": "البيانات"
       },

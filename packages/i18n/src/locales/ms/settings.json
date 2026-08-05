@@ -6,8 +6,10 @@
     "title": "tetapan",
     "nav": {
       "groups": {
-        "workspace": "Ruang kerja",
-        "preferences": "Keutamaan",
+        "account": "Akaun",
+        "application": "Aplikasi",
+        "editing": "Penyuntingan",
+        "modules": "Modul",
         "services": "Perkhidmatan",
         "data": "Data"
       },

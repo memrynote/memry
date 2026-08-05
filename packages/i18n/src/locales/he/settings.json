@@ -6,8 +6,10 @@
     "title": "הגדרות",
     "nav": {
       "groups": {
-        "workspace": "סביבת עבודה",
-        "preferences": "העדפות",
+        "account": "חשבון",
+        "application": "יישום",
+        "editing": "עריכה",
+        "modules": "מודולים",
         "services": "שירותים",
         "data": "נתונים"
       },

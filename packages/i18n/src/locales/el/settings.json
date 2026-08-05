@@ -6,8 +6,10 @@
     "title": "Ρυθμίσεις",
     "nav": {
       "groups": {
-        "workspace": "Χώρος εργασίας",
-        "preferences": "Προτιμήσεις",
+        "account": "Λογαριασμός",
+        "application": "Εφαρμογή",
+        "editing": "Επεξεργασία",
+        "modules": "Μονάδες",
         "services": "Υπηρεσίες",
         "data": "Δεδομένα"
       },

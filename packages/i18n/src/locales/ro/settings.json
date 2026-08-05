@@ -6,8 +6,10 @@
     "title": "Setări",
     "nav": {
       "groups": {
-        "workspace": "Spațiul de lucru",
-        "preferences": "Preferințe",
+        "account": "Cont",
+        "application": "Aplicație",
+        "editing": "Editare",
+        "modules": "Module",
         "services": "Servicii",
         "data": "Date"
       },

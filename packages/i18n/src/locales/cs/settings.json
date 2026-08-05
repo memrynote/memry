@@ -6,8 +6,10 @@
     "title": "Nastavení",
     "nav": {
       "groups": {
-        "workspace": "Pracovní prostor",
-        "preferences": "Předvolby",
+        "account": "účet",
+        "application": "Aplikace",
+        "editing": "Úpravy",
+        "modules": "Moduly",
         "services": "Služby",
         "data": "Data"
       },

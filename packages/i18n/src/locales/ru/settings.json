@@ -6,8 +6,10 @@
     "title": "Настройки",
     "nav": {
       "groups": {
-        "workspace": "Рабочая область",
-        "preferences": "Предпочтения",
+        "account": "Аккаунт",
+        "application": "Приложение",
+        "editing": "Редактирование",
+        "modules": "Модули",
         "services": "Услуги",
         "data": "Данные"
       },

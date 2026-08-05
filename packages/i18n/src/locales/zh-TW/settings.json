@@ -6,8 +6,10 @@
     "title": "場景設定",
     "nav": {
       "groups": {
-        "workspace": "工作區",
-        "preferences": "偏好設定",
+        "account": "帳戶",
+        "application": "應用程式",
+        "editing": "編輯",
+        "modules": "模組",
         "services": "服務",
         "data": "資料"
       },

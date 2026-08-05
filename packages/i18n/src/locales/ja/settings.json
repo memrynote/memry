@@ -6,8 +6,10 @@
     "title": "設定",
     "nav": {
       "groups": {
-        "workspace": "ワークスペース",
-        "preferences": "設定",
+        "account": "アカウント",
+        "application": "アプリケーション",
+        "editing": "編集",
+        "modules": "モジュール",
         "services": "サービス",
         "data": "データ"
       },

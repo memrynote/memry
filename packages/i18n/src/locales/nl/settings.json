@@ -6,8 +6,10 @@
     "title": "Instellingen",
     "nav": {
       "groups": {
-        "workspace": "Werkruimte",
-        "preferences": "Voorkeuren",
+        "account": "Rekening",
+        "application": "Applicatie",
+        "editing": "Bewerken",
+        "modules": "Modules",
         "services": "Diensten",
         "data": "Gegevens"
       },

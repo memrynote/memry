@@ -6,8 +6,10 @@
     "title": "Ayarlar",
     "nav": {
       "groups": {
-        "workspace": "Çalışma alanı",
-        "preferences": "Tercihler",
+        "account": "Hesap",
+        "application": "Uygulama",
+        "editing": "Düzenleme",
+        "modules": "Modüller",
         "services": "Hizmetler",
         "data": "Veri"
       },

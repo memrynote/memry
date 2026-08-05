@@ -6,8 +6,10 @@
     "title": "Pengaturan",
     "nav": {
       "groups": {
-        "workspace": "Ruang kerja",
-        "preferences": "Preferensi",
+        "account": "Akun",
+        "application": "Aplikasi",
+        "editing": "Penyuntingan",
+        "modules": "Modul",
         "services": "Layanan",
         "data": "Data"
       },

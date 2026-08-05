@@ -2,12 +2,14 @@
 
 Every panel in the memrynote settings modal, in one searchable page. Open with <kbd>Cmd</kbd>+<kbd>,</kbd> or from the sidebar menu.
 
-Settings are organized into four groups:
+Settings are organized into six groups:
 
-- **Workspace** — how memrynote behaves day-to-day (Account, General, Templates, Editor, Journal, Tasks, Calendar)
-- **Preferences** — your personal taste (Appearance, Keyboard Shortcuts)
+- **Account** — identity, sync, billing, devices, and security
+- **Application** — app-wide behavior and personal taste (General, Appearance, Keyboard Shortcuts, Command Line)
+- **Editing** — the writing surface (Editor, Templates)
+- **Modules** — feature toggles and per-module settings (Features, Journal, Tasks, Inbox, Calendar)
 - **Services** — external integrations and AI (AI Assistant, Integrations)
-- **Data** — what's on disk and metadata (Vault, Tags, Properties)
+- **Data** — what's on disk and metadata (Vault, Tags, Properties, Import)
 
 <!-- screenshot: settings modal with sidebar of sections -->
 

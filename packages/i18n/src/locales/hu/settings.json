@@ -6,8 +6,10 @@
     "title": "Beállítások elemre",
     "nav": {
       "groups": {
-        "workspace": "Munkaterület",
-        "preferences": "Preferenciák",
+        "account": "fiók",
+        "application": "Alkalmazás",
+        "editing": "Szerkesztés",
+        "modules": "Modulok",
         "services": "Szolgáltatások",
         "data": "Adatok"
       },

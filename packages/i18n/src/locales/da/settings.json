@@ -6,8 +6,10 @@
     "title": "Indstillinger",
     "nav": {
       "groups": {
-        "workspace": "Arbejdsplads",
-        "preferences": "Præferencer",
+        "account": "Konto",
+        "application": "Applikation",
+        "editing": "Redigering",
+        "modules": "Moduler",
         "services": "Tjenester",
         "data": "Data"
       },

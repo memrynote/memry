@@ -6,8 +6,10 @@
     "title": "การตั้งค่า",
     "nav": {
       "groups": {
-        "workspace": "พื้นที่ทำงาน",
-        "preferences": "การตั้งค่า",
+        "account": "บัญชี",
+        "application": "แอปพลิเคชัน",
+        "editing": "การแก้ไข",
+        "modules": "โมดูล",
         "services": "บริการ",
         "data": "ข้อมูล"
       },

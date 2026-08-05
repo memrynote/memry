@@ -54,13 +54,16 @@ export function SettingsPage() {
   return (
     <div className="flex-1 min-h-0 flex">
       <div className="w-60 shrink-0 pt-5 pb-4 overflow-y-auto min-h-0 bg-sidebar border-e border-border text-xs/4 font-[family-name:var(--font-sans)]">
-        <SettingsNavGroup label={t('page.nav.groups.workspace')}>
+        <SettingsNavGroup label={t('page.nav.groups.account')}>
           <SettingsNavItem
             icon={<User className="w-3.5 h-3.5" />}
             label={t('page.nav.items.account')}
             isActive={activeSection === 'account'}
             onClick={() => setActiveSection('account')}
           />
+        </SettingsNavGroup>
+
+        <SettingsNavGroup label={t('page.nav.groups.application')}>
           <SettingsNavItem
             icon={<SettingsIcon className="w-3.5 h-3.5" />}
             label={t('page.nav.items.general')}
@@ -68,16 +71,46 @@ export function SettingsPage() {
             onClick={() => setActiveSection('general')}
           />
           <SettingsNavItem
-            icon={<FileText className="w-3.5 h-3.5" />}
-            label={t('page.nav.items.templates')}
-            isActive={activeSection === 'templates'}
-            onClick={() => setActiveSection('templates')}
+            icon={<Palette className="w-3.5 h-3.5" />}
+            label={t('page.nav.items.appearance')}
+            isActive={activeSection === 'appearance'}
+            onClick={() => setActiveSection('appearance')}
           />
+          <SettingsNavItem
+            icon={<Key className="w-3.5 h-3.5" />}
+            label={t('page.nav.items.shortcuts')}
+            isActive={activeSection === 'shortcuts'}
+            onClick={() => setActiveSection('shortcuts')}
+          />
+          <SettingsNavItem
+            icon={<Terminal className="w-3.5 h-3.5" />}
+            label={t('page.nav.items.commandLine')}
+            isActive={activeSection === 'command-line'}
+            onClick={() => setActiveSection('command-line')}
+          />
+        </SettingsNavGroup>
+
+        <SettingsNavGroup label={t('page.nav.groups.editing')}>
           <SettingsNavItem
             icon={<PenLine className="w-3.5 h-3.5" />}
             label={t('page.nav.items.editor')}
             isActive={activeSection === 'editor'}
             onClick={() => setActiveSection('editor')}
+          />
+          <SettingsNavItem
+            icon={<FileText className="w-3.5 h-3.5" />}
+            label={t('page.nav.items.templates')}
+            isActive={activeSection === 'templates'}
+            onClick={() => setActiveSection('templates')}
+          />
+        </SettingsNavGroup>
+
+        <SettingsNavGroup label={t('page.nav.groups.modules')}>
+          <SettingsNavItem
+            icon={<LayoutGrid className="w-3.5 h-3.5" />}
+            label={t('page.nav.items.features')}
+            isActive={activeSection === 'features'}
+            onClick={() => setActiveSection('features')}
           />
           <SettingsNavItem
             icon={<BookOpen className="w-3.5 h-3.5" />}
@@ -105,33 +138,6 @@ export function SettingsPage() {
             isActive={activeSection === 'calendar'}
             disabled={!flags.calendar}
             onClick={() => setActiveSection('calendar')}
-          />
-          <SettingsNavItem
-            icon={<LayoutGrid className="w-3.5 h-3.5" />}
-            label={t('page.nav.items.features')}
-            isActive={activeSection === 'features'}
-            onClick={() => setActiveSection('features')}
-          />
-        </SettingsNavGroup>
-
-        <SettingsNavGroup label={t('page.nav.groups.preferences')}>
-          <SettingsNavItem
-            icon={<Palette className="w-3.5 h-3.5" />}
-            label={t('page.nav.items.appearance')}
-            isActive={activeSection === 'appearance'}
-            onClick={() => setActiveSection('appearance')}
-          />
-          <SettingsNavItem
-            icon={<Key className="w-3.5 h-3.5" />}
-            label={t('page.nav.items.shortcuts')}
-            isActive={activeSection === 'shortcuts'}
-            onClick={() => setActiveSection('shortcuts')}
-          />
-          <SettingsNavItem
-            icon={<Terminal className="w-3.5 h-3.5" />}
-            label={t('page.nav.items.commandLine')}
-            isActive={activeSection === 'command-line'}
-            onClick={() => setActiveSection('command-line')}
           />
         </SettingsNavGroup>
 

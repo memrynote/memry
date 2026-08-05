@@ -6,8 +6,10 @@
     "title": "设置",
     "nav": {
       "groups": {
-        "workspace": "工作区",
-        "preferences": "偏好设置",
+        "account": "账户",
+        "application": "应用",
+        "editing": "编辑",
+        "modules": "模块",
         "services": "服务",
         "data": "数据"
       },

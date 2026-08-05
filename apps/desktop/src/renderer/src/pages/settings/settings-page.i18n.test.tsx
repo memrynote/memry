@@ -56,9 +56,12 @@ describe('SettingsPage i18n', () => {
 
     expect(screen.queryByText('Settings')).not.toBeInTheDocument()
 
-    for (const label of ['Workspace', 'Preferences', 'Services', 'Data']) {
+    for (const label of ['Application', 'Editing', 'Modules', 'Services', 'Data']) {
       expect(screen.getByText(label)).toBeInTheDocument()
     }
+
+    // 'Account' is both a group label and a nav item
+    expect(screen.getAllByText('Account')).toHaveLength(2)
 
     for (const label of [
       'Account',

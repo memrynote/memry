@@ -6,8 +6,10 @@
     "title": "Cài đặt",
     "nav": {
       "groups": {
-        "workspace": "Không gian làm việc",
-        "preferences": "Tùy chọn",
+        "account": "Tài khoản",
+        "application": "Ứng dụng",
+        "editing": "Chỉnh sửa",
+        "modules": "Mô-đun",
         "services": "Dịch vụ",
         "data": "Dữ liệu"
       },
