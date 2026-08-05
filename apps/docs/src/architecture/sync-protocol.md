@@ -122,6 +122,25 @@ queued and goes out on the next iteration. Deleting unconditionally would drop t
 permanently, because the local clock advances at mutation time: the item would sit ahead of the
 server with nothing queued, and every later pull would resolve `skip` rather than repair it.
 
+Enqueue-time coalescing only folds into a row that has **not** been attempted yet, so a failed or
+rejected push leaves the next edit to open a second row for the same `(type, itemId)`. Both rows can
+then land in one batch, and the push collapses them again before encrypting. That batch-level
+collapse keeps the **newest** row: the batch arrives oldest-first, and the older row's payload is by
+definition the stale one. Keeping the newest row also keeps the row that is still unattempted, which
+is the row a concurrent local edit would coalesce into — so the conditional acknowledgement above
+continues to guard it.
+
+The superseded row's operation is folded into the retained row with the same precedence enqueue
+uses: a later delete wins outright, and an unacked create survives a newer update, because the server
+has never seen the item and an update for an unknown id is not an equivalent request.
+
+Collapsing to the newest row matters on its own terms rather than as an optimisation. The pushed
+payload is normally rebuilt from local state at push time, but that rebuild hook is optional on the
+handler interface and settings does not implement it — settings live in `config.json` and the
+preferences cache, not in a sync table there is anything to rebuild from. For any such type the
+frozen queue payload is the entire push, so retaining the older row published older state and
+discarded the newer edit through the success path, with no error surfaced.
+
 ### The per-item attempt budget is spent per sync cycle
 
 A push response can accept some items and reject others. A rejected row keeps its payload and is
@@ -154,6 +173,15 @@ Recovery re-sends the item's **stored** clock rather than bumping it. An item th
 step is then replay-detected by the server, costs one round trip, and is stamped clean; only an item
 that really is ahead of the server changes anything. Scope is limited to items the server already
 knows: clock-less rows belong to the initial seed, and journals to their own handler.
+
+Because recovery never advances a clock, a change made while the sync runtime is down has to advance
+its own at write time or the re-push would be dismissed as a replay. Records park that tick under a
+placeholder device that their sync service rebinds on the way out; notes have no rebinding step, so
+their fallback bumps under the current device directly and does nothing when no device is registered
+(the same thing the online path does). It also clears the sync stamp, because metadata-only writes —
+recording an uploaded attachment, say — deliberately leave `modifiedAt` alone and would otherwise be
+invisible to the "modified after its stamp" test above. A note that never leaves the device, and one
+with no clock yet, are both left alone.
 
 ### Foreign-key parents and orphan repair
 
@@ -293,7 +321,11 @@ across devices:
   (`attachment_upload_queue`, migration 0039) before the transfer starts and
   cleared only after the server accepts the file. Failed or quit-interrupted
   uploads are retried on every sync runtime start instead of being lost with
-  the in-memory queue.
+  the in-memory queue. Recording the reference enqueues a note push so peers
+  learn the blob exists; if that lands while the runtime is down — an upload
+  finishing during quit, a vault switch, re-auth — the note is marked for
+  [recovery](#recovering-pushes-that-never-landed) instead, so the push happens
+  at the next runtime start rather than waiting for an unrelated later edit.
 
 `attachmentReferences` is the only signal that tells another device a note
 embeds a file — the markdown link alone points at a path that exists nowhere
@@ -305,6 +337,25 @@ a move, a re-index — carry file state only, and must not erase it.
 ## Tombstones
 
 Deletions include `deleted_at` inside the **Ed25519-signed** payload — preventing a hostile server from forging deletions.
+
+A tombstone body carries no user content. The receiving side never decodes it: `ItemApplier`
+short-circuits on `operation === 'delete'` and calls `applyDelete(ctx, itemId, clock)`, and
+`SyncItemHandler.applyDelete` has no parameter that could accept the body. Handlers resolve
+whatever they need from the local row instead — the journal handler, for example, reads the
+journalled day from `noteMetadata.journalDate`.
+
+So note and journal tombstones ship `{ clock, createdAt, modifiedAt }` and nothing else: no title,
+no journal date. Anything more is encrypted and uploaded on every delete for no reader, and sits in
+plaintext in the local `sync_queue` row until the push drains.
+
+`clock` is the one field a tombstone must keep. `PushCoordinator.extractPayloadMetadata` parses it
+back out of the payload string to stamp the server-side item version, so dropping it would break
+delete ordering across devices.
+
+Payload schemas therefore mark these fields optional (`NoteSyncPayloadSchema.title`,
+`JournalSyncPayloadSchema.date`) — a tombstone legitimately omits them. Where a field is still
+required for a create or update, the handler enforces it: `journal-handler.applyUpsert` skips an
+upsert that arrives with no `date`.
 
 ## Account Vault Directory
 
@@ -347,6 +398,32 @@ list.
 | `GET /auth/key-verifier`  | down      | Account key verifier for an established session (vault-key mismatch detection) |
 | `POST /devices/*`         | mixed     | Linking, listing, revoking                                                     |
 | `POST /keys/*`            | mixed     | Key sealing during link, rotation                                              |
+
+### Server base URL
+
+Every path above is appended to a single resolved base URL. `resolveSyncServerUrl()`
+(`src/main/sync/sync-server-url.ts`) is the only resolver — sync HTTP, OAuth sign-in, canvas assets
+and attachment transfers all call it, so one env var cannot end up with two policies.
+
+Two properties of that resolver are load-bearing:
+
+- **Resolved per call, never at import time.** The main process applies `.env.<environment>` via
+  dotenv in `index.ts` _after_ the IPC handler modules are imported, so a module-level
+  `const URL = process.env.SYNC_SERVER_URL || …` freezes to the fallback before the env file lands.
+  In `dev` the fallback happens to equal the configured value, which hides the bug; in `dev:staging`
+  it silently pinned sync and OAuth to localhost.
+- **Trailing slashes are stripped.** Callers build paths as `` `${base}${path}` ``, so a
+  slash-terminated `SYNC_SERVER_URL` yields `https://host//sync/push`. Cloudflare Workers routes the
+  doubled slash as a different path, so the request 404s instead of reaching its handler. Only
+  trailing slashes are normalized — scheme, host, port and any base path are left verbatim so a typo
+  still fails loudly rather than being rewritten into something that "works".
+
+`SYNC_SERVER_URL` is required. The `http://localhost:8787` fallback applies only when `NODE_ENV` is
+`development` or `test` — the unpackaged dev server and the vitest/Playwright harnesses. A packaged
+build has `NODE_ENV` undefined and gets an explicit configuration error rather than a silent dial to
+a localhost port nothing is listening on. Packaging cannot legitimately omit the value:
+`scripts/build-packaged-app.js` refuses to build without `apps/desktop/.env.production` and asserts
+the value is a non-local HTTPS URL.
 
 ## Realtime Socket Auth
 
@@ -409,3 +486,22 @@ latch and sync resumes.
 ## Encryption Stays End-to-End
 
 The server never sees plaintext. See [Cryptography](/architecture/cryptography) for the key hierarchy.
+
+### Crypto worker and main-thread fallback
+
+Push encryption and pull decryption run in a worker thread so a large batch does not block the main
+process. The worker is an optimisation, never a dependency: whenever it is unavailable the same
+batch is encrypted or decrypted on the main thread instead, and sync continues at reduced speed
+rather than failing.
+
+"Unavailable" covers both a worker that never started and a running worker that rejects a request —
+a request timeout, the worker crashing or exiting mid-batch, or a message kind the worker build does
+not implement, which is what a partially updated install looks like. The batch that was in flight
+when any of those happen degrades to the main thread with the rest; it is not lost.
+
+Degrading cannot mask a bad payload. The worker reports per-item crypto outcomes in its reply — a
+failed decrypt or a signature mismatch comes back as a per-item failure, not as a rejected batch —
+so a rejection only ever means the worker itself was unreachable. The main-thread path then runs the
+identical encryption and signature verification over the same inputs, so an item that genuinely
+fails crypto still fails; it just fails on the main thread. Push payloads are resolved once and
+shared by both paths, so the fallback encrypts exactly what the worker was handed.

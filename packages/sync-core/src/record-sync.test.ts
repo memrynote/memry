@@ -59,6 +59,50 @@ describe('RecordSyncController', () => {
     expect(handleMissingDevice).toHaveBeenCalledWith('task-1', 'update', [['statusId']])
     expect(queue.enqueue).not.toHaveBeenCalled()
   })
+
+  it('does not tombstone a row shouldSkip rejects', () => {
+    const queue = { enqueue: vi.fn() }
+
+    const controller = new RecordSyncController({
+      type: 'task',
+      queue,
+      getDeviceId: () => 'device-A',
+      load: () => ({ id: 'task-1', title: 'Hello', localOnly: true }),
+      applyLocalChange: ({ local }) => local,
+      serialize: (local) => local,
+      shouldSkip: (local) => Boolean(local.localOnly),
+      buildDeletePayload: () => JSON.stringify({ tombstone: true })
+    })
+
+    controller.enqueueDelete('task-1')
+
+    expect(queue.enqueue).not.toHaveBeenCalled()
+  })
+
+  it('still tombstones an already-removed row, whose local-only-ness is unknowable', () => {
+    // Deliberate asymmetry: with the row gone there is nothing left to read the
+    // flag off, and refusing to enqueue would silently swallow legitimate
+    // deletes for ordinary rows. `shouldSkip` here would reject everything —
+    // it simply never gets a row to reject.
+    const queue = { enqueue: vi.fn() }
+    const buildDeletePayload = vi.fn(() => JSON.stringify({ tombstone: true }))
+
+    const controller = new RecordSyncController<{ id: string; localOnly?: boolean }, [], []>({
+      type: 'task',
+      queue,
+      getDeviceId: () => 'device-A',
+      load: () => undefined,
+      applyLocalChange: ({ local }) => local,
+      serialize: (local) => local,
+      shouldSkip: () => true,
+      buildDeletePayload
+    })
+
+    controller.enqueueDelete('task-1')
+
+    expect(buildDeletePayload).toHaveBeenCalledWith(expect.objectContaining({ local: undefined }))
+    expect(queue.enqueue).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('withIncrementedClock', () => {

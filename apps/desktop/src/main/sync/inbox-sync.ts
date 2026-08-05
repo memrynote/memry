@@ -14,6 +14,31 @@ interface InboxSyncDeps {
   getDeviceId: () => string | null
 }
 
+/** Single reading of the "never leaves this device" flag for a loaded row. */
+function isLocalOnly(local: Record<string, unknown>): boolean {
+  return Boolean(local.localOnly)
+}
+
+/**
+ * Same flag, read off a serialized snapshot instead of a live row — the only
+ * option on the delete path, where the row is already gone. Column name is
+ * `local_only` in SQL but the snapshot is a stringified Drizzle row, so the
+ * mapped `localOnly` property is what lands in the JSON.
+ */
+function isLocalOnlySnapshot(snapshot: string): boolean {
+  try {
+    const parsed = JSON.parse(snapshot) as unknown
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false
+    return Boolean((parsed as { localOnly?: unknown }).localOnly)
+  } catch {
+    // An unparseable snapshot tells us nothing about localOnly. Fall through to
+    // the normal tombstone rather than swallowing a legitimate delete — older
+    // builds wrote this payload too, and dropping their deletes would strand
+    // the item on every other device.
+    return false
+  }
+}
+
 let instance: InboxSyncService | null = null
 
 export function initInboxSyncService(deps: InboxSyncDeps): InboxSyncService {
@@ -50,8 +75,21 @@ export class InboxSyncService {
         return { ...local, clock: newClock }
       },
       serialize: (local) => local,
-      shouldSkip: (local) => Boolean(local.localOnly),
-      buildDeletePayload: ({ extra, deviceId }) => withIncrementedClock(extra[0], deviceId)
+      shouldSkip: isLocalOnly,
+      buildDeletePayload: ({ extra, deviceId }) => {
+        // Second home for the localOnly guard, and inbox genuinely needs it.
+        // RecordSyncController.enqueueDelete applies `shouldSkip` to the row it
+        // loads, but handleDeletePermanent (inbox/crud.ts) snapshots the row,
+        // DELETES it, and only then enqueues — so by the time the controller
+        // runs, `load` returns undefined and its guard cannot fire on this path.
+        //
+        // The snapshot we are handed is the row's last known state, which makes
+        // it the only thing left that still knows whether the user marked this
+        // item as never leaving the device.
+        if (isLocalOnlySnapshot(extra[0])) return null
+
+        return withIncrementedClock(extra[0], deviceId)
+      }
     })
   }
 

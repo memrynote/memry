@@ -1,4 +1,6 @@
 import { eq } from 'drizzle-orm'
+import { noteMetadata } from '@memry/db-schema/data-schema'
+import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
@@ -229,6 +231,75 @@ export function incrementReminderClockOffline(db: DataDb, reminderId: string): v
     log.debug('Incremented offline reminder clock', { reminderId })
   } catch (err) {
     log.warn('Failed to increment offline reminder clock', { reminderId, error: err })
+  }
+}
+
+function getCurrentDeviceId(db: DataDb): string | null {
+  const device = db
+    .select({ id: syncDevices.id })
+    .from(syncDevices)
+    .where(eq(syncDevices.isCurrentDevice, true))
+    .get()
+  return device?.id ?? null
+}
+
+/**
+ * Offline fallback for note metadata updates — the note counterpart of the
+ * `increment*ClockOffline` helpers above, with two deliberate differences.
+ *
+ * 1. It bumps under the REAL device id, not `OFFLINE_DEVICE_KEY`. The record
+ *    types park ticks under `_offline` because they can be edited with no
+ *    device registered at all, and their sync services rebind those ticks on
+ *    the way out (`recoverPendingChange` in task-sync/project-sync). Notes have
+ *    no such rebinding hook — `ContentSyncService` pushes the stored clock
+ *    verbatim — so an `_offline` tick would reach peers as a device entry two
+ *    machines can both claim, and their clocks would then compare equal for
+ *    edits that are actually concurrent. When no device is registered we do
+ *    nothing, which is exactly what the online path already does (the
+ *    controller drops the enqueue via `handleMissingDevice`).
+ * 2. It clears `syncedAt` so `recoverDirtyItems` re-pushes the note at the next
+ *    sync runtime start. A clock bump alone is invisible to that sweep: its
+ *    dirty test is `modifiedAt > syncedAt`, and metadata-only writes such as
+ *    `recordUploadedAttachment` never touch `modifiedAt` (updateNoteMetadata
+ *    only stamps `storedAt`). `syncedAt = null` is also simply true here — the
+ *    local row now holds state the server has not confirmed.
+ *
+ * The bump itself is load-bearing: the recovered push reuses the stored clock
+ * without advancing it, so re-pushing at the acknowledged clock would be
+ * replay-detected and peers would never see the new metadata.
+ *
+ * Backward compatible: no schema change. `clock` and `syncedAt` are existing
+ * columns, `syncedAt` is already nullable and already means "never confirmed
+ * synced" for notes created offline, and older builds treat such a row exactly
+ * the same way (dirty-recovery is the only reader).
+ */
+export function incrementNoteClockOffline(db: DataDb, noteId: string): void {
+  try {
+    const note = db.select().from(noteMetadata).where(eq(noteMetadata.id, noteId)).get()
+    if (!note) return
+    // The user's "never leaves this device" switch — mirrors `shouldSkip` on
+    // the online path.
+    if (note.localOnly) return
+    // No clock means the note has never been pushed; `seedUnclockedNotes` owns
+    // its first push and would overwrite whatever we set here.
+    if (!note.clock) return
+
+    const deviceId = getCurrentDeviceId(db)
+    if (!deviceId) {
+      log.warn('No current device, skipping offline note clock bump', { noteId })
+      return
+    }
+
+    const nextClock = increment(note.clock, deviceId)
+
+    db.update(noteMetadata)
+      .set({ clock: nextClock, syncedAt: null })
+      .where(eq(noteMetadata.id, noteId))
+      .run()
+
+    log.debug('Incremented offline note clock', { noteId })
+  } catch (err) {
+    log.warn('Failed to increment offline note clock', { noteId, error: err })
   }
 }
 

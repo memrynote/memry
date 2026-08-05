@@ -81,7 +81,9 @@ export class SyncWorkerBridge {
     if (!this.worker) return
 
     this.worker.on('message', (msg: WorkerToMainMessage) => {
-      if (msg.type === 'ready') return
+      // `ready` is consumed by start(); `shutdown-ack` is the expected reply to
+      // stop() and carries no requestId. Neither is a dropped reply.
+      if (msg.type === 'ready' || msg.type === 'shutdown-ack') return
 
       if ('requestId' in msg) {
         const pending = this.pendingRequests.get(msg.requestId)
@@ -89,8 +91,21 @@ export class SyncWorkerBridge {
           clearTimeout(pending.timer)
           this.pendingRequests.delete(msg.requestId)
           pending.resolve(msg)
+          return
         }
+        // Late reply after a timeout, or a requestId this bridge never issued.
+        // Silently dropping it left the caller's 60s timeout unexplained in
+        // user logs. requestId is a counter + timestamp, never key material.
+        log.warn('Dropped worker reply with no pending request', {
+          type: msg.type,
+          requestId: msg.requestId
+        })
+        return
       }
+
+      log.warn('Dropped off-protocol worker message', {
+        type: (msg as { type?: unknown }).type
+      })
     })
 
     this.worker.on('error', (err: Error) => {

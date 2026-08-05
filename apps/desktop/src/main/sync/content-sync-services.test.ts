@@ -365,10 +365,11 @@ describe('content sync services', () => {
     })
 
     service.enqueueDelete('journal-2026-05-10', '2026-05-10')
-    expect(JSON.parse(queue.items[2].payload)).toMatchObject({
-      date: '2026-05-10',
-      clock: { 'dev-a': 1 }
-    })
+    // The tombstone keeps the clock (push-coordinator reads it back out) but
+    // drops the journalled day — no receiver ever decodes a delete body.
+    const tombstone = JSON.parse(queue.items[2].payload) as Record<string, unknown>
+    expect(tombstone).toMatchObject({ clock: { 'dev-a': 1 } })
+    expect(Object.prototype.hasOwnProperty.call(tombstone, 'date')).toBe(false)
 
     expect(getJournalSyncService()).toBeNull()
     expect(

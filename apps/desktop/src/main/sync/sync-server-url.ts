@@ -7,7 +7,9 @@
  * `const URL = process.env.SYNC_SERVER_URL || 'http://localhost:8787'` freezes
  * to the fallback before the env file is applied. In `dev` the fallback equals
  * `.env.dev`'s value so the bug is invisible; in `dev:staging` it silently
- * pinned OAuth/sync to localhost. Mirrors `http-client.ts`'s lazy resolution.
+ * pinned OAuth/sync to localhost. `http-client.ts` used to carry its own copy of
+ * this resolution; it now calls in here, so every sync-adjacent consumer —
+ * sync HTTP, OAuth sign-in, canvas assets, attachments — reads one policy.
  */
 
 const DEV_FALLBACK_URL = 'http://localhost:8787'
@@ -16,14 +18,14 @@ export function resolveSyncServerUrl(): string {
   const configured = process.env.SYNC_SERVER_URL
   if (configured) return normalizeSyncServerUrl(configured)
 
-  // Same policy as http-client.ts's getSyncServerUrl(): the localhost fallback
-  // is a *development* convenience, not a runtime default. This module used to
-  // fall back unconditionally, which meant the two call sites that do NOT go
-  // through http-client — the OAuth sign-in URL (ipc/auth-oauth-handlers.ts)
-  // and the canvas asset service (canvas/assets/asset-service-context.ts) —
-  // silently pointed a real user's packaged app at http://localhost:8787 while
-  // sync HTTP was already failing loudly with a config error. One env var must
-  // not have two contradictory policies.
+  // The localhost fallback is a *development* convenience, not a runtime
+  // default. This module used to fall back unconditionally, which meant the two
+  // call sites that do NOT go through http-client — the OAuth sign-in URL
+  // (ipc/auth-oauth-handlers.ts) and the canvas asset service
+  // (canvas/assets/asset-service-context.ts) — silently pointed a real user's
+  // packaged app at http://localhost:8787 while sync HTTP was already failing
+  // loudly with a config error. One env var must not have two contradictory
+  // policies.
   //
   // NODE_ENV is 'development' under `electron-vite dev` and undefined at
   // runtime in packaged Electron (see the applyPackagedLogLevels comment in
@@ -35,6 +37,15 @@ export function resolveSyncServerUrl(): string {
   // NODE_ENV: 'test') run an UNPACKAGED build that often has no
   // SYNC_SERVER_URL. Excluding it would turn a green harness into a hard
   // failure without making a shipped build any safer.
+  //
+  // Compat, http-client: adopting this resolver widened sync HTTP's dev-only
+  // predicate to include 'test', so an unconfigured harness now dials
+  // localhost:8787 instead of throwing a config error. That combination —
+  // NODE_ENV==='test' with no SYNC_SERVER_URL — cannot occur in a packaged
+  // build (NODE_ENV is undefined there), so no shipped install changes
+  // behaviour; and the rest of the sync surface (attachments, canvas assets,
+  // OAuth) already resolved to localhost under 'test', so sync HTTP was the
+  // outlier, not the standard.
   //
   // Compat, packaged builds: this throw is unreachable for an app that was
   // built normally. scripts/build-packaged-app.js refuses to package without

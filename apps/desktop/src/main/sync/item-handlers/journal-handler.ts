@@ -35,6 +35,17 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     data: JournalSyncPayload,
     clock: VectorClock
   ): ApplyResult {
+    // `date` is optional in JournalSyncPayloadSchema only so a delete tombstone
+    // can leave it out (see sync-payloads.ts and journal-sync.buildDeletePayload).
+    // An upsert without it has no day to write to, so keep rejecting it here —
+    // this is the same outcome the required field used to produce, just with a
+    // clearer log line than a generic schema validation failure.
+    const { date } = data
+    if (!date) {
+      log.warn('Skipping remote journal upsert with no date', { itemId })
+      return 'skipped'
+    }
+
     const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
     const now = utcNow()
     const existing = getNoteMetadataById(ctx.db, itemId)
@@ -51,7 +62,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       }
 
       writeJournalEntryWithContent(
-        data.date,
+        date,
         data.content ?? '',
         data.tags,
         null,
@@ -87,15 +98,15 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
           void flushProjectionEvents()
         })
         .catch((err) => {
-          log.error('Failed to write synced journal entry', { itemId, date: data.date, error: err })
+          log.error('Failed to write synced journal entry', { itemId, date, error: err })
         })
 
-      ctx.emit(JournalChannels.events.ENTRY_UPDATED, { date: data.date, source: 'sync' })
+      ctx.emit(JournalChannels.events.ENTRY_UPDATED, { date, source: 'sync' })
       return resolution.action === 'merge' ? 'conflict' : 'applied'
     }
 
     writeJournalEntryWithContent(
-      data.date,
+      date,
       data.content ?? '',
       data.tags,
       null,
@@ -130,12 +141,12 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         )
         void flushProjectionEvents()
 
-        ctx.emit(JournalChannels.events.ENTRY_CREATED, { date: data.date, source: 'sync' })
+        ctx.emit(JournalChannels.events.ENTRY_CREATED, { date, source: 'sync' })
       })
       .catch((err) => {
         log.error('Failed to write new synced journal entry', {
           itemId,
-          date: data.date,
+          date,
           error: err
         })
       })

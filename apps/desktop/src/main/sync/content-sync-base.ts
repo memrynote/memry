@@ -12,8 +12,9 @@ export interface ContentSyncDeps {
 }
 
 /**
- * Single reading of the "never leaves this device" flag, shared by the snapshot
- * path and the delete path so the two can never drift apart again.
+ * Single reading of the "never leaves this device" flag. Handed to the
+ * controller as `shouldSkip`, which applies it to the snapshot path and the
+ * delete path alike, so the two can never drift apart again.
  */
 function isLocalOnly(local: NoteMetadata | undefined): boolean {
   return Boolean(local?.localOnly)
@@ -93,22 +94,16 @@ export abstract class ContentSyncService<
         this.buildSnapshotPayload(local, (local.clock as VectorClock) ?? {}, operation, ...extra),
       shouldSkip: (local) => isLocalOnly(local),
       buildDeletePayload: ({ local, deviceId, extra }) => {
-        // `localOnly` is the user's "this never leaves my device" switch, and
-        // RecordSyncController wires `shouldSkip` into the create/update path
-        // ONLY — its `enqueueDelete` never consults it. Without re-applying the
-        // guard here, deleting a local-only row queues a tombstone that is
-        // encrypted, uploaded to the server and fanned out to every other
-        // device in the vault. Returning null makes the controller drop the
-        // enqueue before it ever reaches the queue.
+        // No `localOnly` check here on purpose: RecordSyncController.enqueueDelete
+        // applies `shouldSkip` above, so a local-only row never reaches this
+        // builder. Both subclasses are covered — notes and journals load their
+        // row via getNoteMetadataById, so both read the same `localOnly` column.
         //
-        // This covers every subclass (notes and journals both load their row
-        // via getNoteMetadataById, so both carry the same `localOnly` column).
-        //
-        // When `local` is undefined the row is already gone and we cannot tell
-        // whether it was local-only, so the pre-existing behaviour stands and
-        // the subclass decides (NoteSyncService returns null in that case).
-        if (isLocalOnly(local)) return null
-
+        // The controller's guard works for us because deletes are enqueued
+        // BEFORE the row is removed (see deleteNoteCommand in notes/domain.ts,
+        // which enqueues first precisely so the clock is still readable). If
+        // that order is ever flipped, `load` starts returning undefined and the
+        // guard goes silently dead — re-read the note on enqueueDelete first.
         const nextClock = incrementClock((local?.clock as VectorClock) ?? {}, deviceId)
         const payload = this.buildDeletePayload(local, nextClock, ...extra)
         return payload === null ? null : JSON.stringify(payload)

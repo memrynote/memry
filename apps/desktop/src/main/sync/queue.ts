@@ -26,6 +26,23 @@ export interface QueueStats {
   total: number
 }
 
+/**
+ * Fold two mutations for the same item into the single operation that has to
+ * reach the server. A later delete wins outright; otherwise an unacked create
+ * survives, because the server has never seen the item and an `update` for an
+ * id it does not know is not the same request.
+ *
+ * Exported because two call sites collapse rows for the same `(type, itemId)`:
+ * `enqueue` (into an `attempts = 0` row) and the push coordinator's batch
+ * dedupe (rows that could not coalesce because the older one had already
+ * failed). They must agree, or the precedence depends on which path ran.
+ */
+export function coalesceSyncOperations(existing: string, incoming: string): string {
+  if (incoming === 'delete') return 'delete'
+  if (existing === 'create' || incoming === 'create') return 'create'
+  return incoming
+}
+
 export class SyncQueueManager {
   constructor(private readonly db: DataDb) {}
 
@@ -50,12 +67,7 @@ export class SyncQueueManager {
         .get()
 
       if (existing) {
-        const coalescedOp =
-          operation === 'delete'
-            ? 'delete'
-            : existing.operation === 'create' || operation === 'create'
-              ? 'create'
-              : operation
+        const coalescedOp = coalesceSyncOperations(existing.operation, operation)
         tx.update(syncQueue)
           .set({ payload, priority, operation: coalescedOp })
           .where(eq(syncQueue.id, existing.id))

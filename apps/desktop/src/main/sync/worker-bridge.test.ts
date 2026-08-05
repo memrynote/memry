@@ -32,13 +32,15 @@ vi.mock('worker_threads', () => {
   }
 })
 
+const logger = vi.hoisted(() => ({
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn()
+}))
+
 vi.mock('../lib/logger', () => ({
-  createLogger: () => ({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn()
-  })
+  createLogger: () => logger
 }))
 
 import { SyncWorkerBridge } from './worker-bridge'
@@ -388,6 +390,60 @@ describe('SyncWorkerBridge', () => {
       await expect(
         bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
       ).rejects.toThrow('Worker not started')
+    })
+  })
+
+  describe('#given running bridge #when a reply matches no pending request', () => {
+    it('#then logs the dropped reply instead of vanishing', async () => {
+      // #given
+      const p = bridge.start()
+      mockWorkerInstance.simulateMessage({ type: 'ready' })
+      await p
+      logger.warn.mockClear()
+
+      // #when — a reply for a request this bridge never issued (or one that
+      // already timed out)
+      mockWorkerInstance.simulateMessage({
+        type: 'error',
+        requestId: 'req_stale_1',
+        error: 'boom'
+      })
+
+      // #then
+      expect(logger.warn).toHaveBeenCalledWith('Dropped worker reply with no pending request', {
+        type: 'error',
+        requestId: 'req_stale_1'
+      })
+    })
+
+    it('#then logs an off-protocol message that carries no requestId', async () => {
+      // #given
+      const p = bridge.start()
+      mockWorkerInstance.simulateMessage({ type: 'ready' })
+      await p
+      logger.warn.mockClear()
+
+      // #when
+      mockWorkerInstance.simulateMessage({ type: 'nonsense' } as never)
+
+      // #then
+      expect(logger.warn).toHaveBeenCalledWith('Dropped off-protocol worker message', {
+        type: 'nonsense'
+      })
+    })
+
+    it('#then stays quiet for shutdown-ack, which legitimately has no requestId', async () => {
+      // #given
+      const p = bridge.start()
+      mockWorkerInstance.simulateMessage({ type: 'ready' })
+      await p
+      logger.warn.mockClear()
+
+      // #when
+      mockWorkerInstance.simulateMessage({ type: 'shutdown-ack' })
+
+      // #then — a clean stop() must not warn on every shutdown
+      expect(logger.warn).not.toHaveBeenCalled()
     })
   })
 

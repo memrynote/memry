@@ -4,7 +4,9 @@ import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/ut
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { noteMetadata } from '@memry/db-schema/data-schema'
+import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import type { DataDb } from '../database/client'
+import { incrementNoteClockOffline } from './offline-clock'
 import { SyncQueueManager } from './queue'
 import { initTaskSyncService, resetTaskSyncService } from './task-sync'
 import { initProjectSyncService, resetProjectSyncService } from './project-sync'
@@ -353,6 +355,45 @@ describe('dirty-recovery', () => {
       // #then
       expect(result.notes).toBe(0)
       expect(recovered).toEqual([])
+    })
+
+    it('re-pushes a note whose update was enqueued while the sync service was down', () => {
+      // #given — a note the server has already confirmed, and a registered
+      // device (uploads only happen signed in)
+      db.insert(syncDevices)
+        .values({
+          id: 'device-A',
+          name: 'Test device',
+          platform: 'darwin',
+          appVersion: '1.0.0',
+          linkedAt: new Date('2026-01-01T00:00:00Z'),
+          isCurrentDevice: true,
+          signingPublicKey: 'pk'
+        })
+        .run()
+      insertNote({
+        id: 'note-attachment',
+        clock: { 'device-A': 2 },
+        syncedAt: '2026-01-02T00:00:00Z',
+        modifiedAt: '2026-01-01T00:00:00Z'
+      })
+
+      // The attachment reference write itself never touches modifiedAt, so
+      // without the fallback this note stays invisible to recovery forever.
+      expect(recoverDirtyItems(db, noteAdapters).notes).toBe(0)
+
+      // #when — the upload completes after the runtime was torn down, so the
+      // note adapter's offline fallback is all that runs
+      incrementNoteClockOffline(db, 'note-attachment')
+
+      // #then — the next runtime start pushes it, at a clock the server cannot
+      // dismiss as a replay of what it already has
+      const result = recoverDirtyItems(db, noteAdapters)
+      expect(result.notes).toBe(1)
+      expect(recovered).toEqual(['note-attachment'])
+
+      const row = db.select().from(noteMetadata).where(eq(noteMetadata.id, 'note-attachment')).get()
+      expect(row?.clock).toEqual({ 'device-A': 3 })
     })
   })
 })

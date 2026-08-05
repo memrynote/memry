@@ -48,6 +48,19 @@ For tasks, projects, and agent conversations, handlers additionally invoke `merg
 Agent message sync is append-only. If a message id already exists locally, the handler treats the
 remote item as idempotent instead of overwriting a terminal message.
 
+## `buildPushPayload` is optional
+
+`buildPushPayload` rebuilds the outgoing payload from local state at push time, so the newest local
+state goes out even when the queued row was frozen earlier. It is optional on the interface, and
+`BaseItemHandler` supplies no default. Every handler backed by a sync table implements it; `settings`
+does not, because settings live in `config.json` and the preferences cache rather than in a table
+there is anything to rebuild from.
+
+A type without it pushes the frozen queue payload verbatim, so queue bookkeeping alone has to be
+correct for it — see
+[Push acknowledgements and in-flight mutations](/architecture/sync-protocol#push-acknowledgements-and-in-flight-mutations).
+When adding a handler, implement it unless the type genuinely has no local row to read back.
+
 ## Canvas: the payload comes from a file
 
 `canvas-handler.ts` is the one handler whose content does not live in the data DB. A canvas scene
@@ -166,6 +179,41 @@ Because `buildPushPayload` serializes the whole row, a same-version peer always 
 Insert branches need the same audit for a different reason: they simply omitted six inbox columns, so
 an item archived on one device arrived un-archived on a device seeing it for the first time. If a
 column round-trips through `buildPushPayload`, it has to be written on **both** branches.
+
+## Local-Only Rows Must Not Be Tombstoned
+
+`shouldSkip` on `RecordSyncController` is the "this row never leaves my device" switch, and it has to
+hold on delete as well as on create/update. A tombstone carries no body, but the item's id and its
+deletion time still get encrypted, uploaded and fanned out to every other device in the vault.
+
+`enqueueDelete` applies it (`packages/sync-core/src/record-sync.ts`), so a service that passes a
+`shouldSkip` gets the guard on every path without a second copy inside `buildDeletePayload`.
+
+The guard has one hard limit: it reads the row `load` returns, so it can only fire while that row
+still exists.
+
+```ts
+const local = this.deps.load(itemId)
+if (local !== undefined && this.deps.shouldSkip?.(local)) return
+```
+
+When `load` returns `undefined` the row is already gone and its local-only-ness is unknowable, so the
+delete is let through deliberately. Refusing there would swallow legitimate tombstones for ordinary
+rows — data loss in the opposite direction, and the item would be stranded on every other device.
+
+That splits the record services in two by delete ordering:
+
+- **Enqueue, then delete** — notes and journals. `deleteNoteCommand` (`main/notes/domain.ts`)
+  enqueues first precisely so the clock is still readable, so `load` still sees the row and the
+  controller guard covers them. Flipping that order would kill the guard silently.
+- **Delete, then enqueue** — inbox. `handleDeletePermanent` (`main/inbox/crud.ts`) snapshots the row,
+  deletes it, and only then enqueues, so `load` returns `undefined` on that path every time. The
+  controller guard can never fire there, so `inbox-sync.ts` guards on the snapshot it is handed —
+  the last thing that still knows the flag.
+
+A service in the second shape has to carry its own guard. An unparseable snapshot falls through to
+the normal tombstone rather than dropping the delete, so payloads written by older builds keep
+working.
 
 ## Missing Parents
 

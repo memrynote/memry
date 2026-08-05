@@ -5,6 +5,7 @@ import {
   asSyncDb,
   type TestDatabaseResult
 } from '@tests/utils/test-db'
+import { eq } from 'drizzle-orm'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { SyncQueueManager } from './queue'
@@ -133,6 +134,32 @@ describe('InboxSyncService', () => {
       const payload = JSON.parse(item.payload)
       expect(payload).toMatchObject(TEST_INBOX_ITEM)
       expect(payload.clock).toEqual({ 'device-A': 1 })
+    })
+  })
+
+  describe('#given a localOnly inbox item #when enqueueDelete called', () => {
+    it('#then no tombstone leaves the device', () => {
+      // Mirrors handleDeletePermanent (inbox/crud.ts), which snapshots the row,
+      // DELETES it, and only then enqueues. The row is deliberately NOT seeded:
+      // seeding it would test a state production never reaches and would go
+      // green off the controller's row guard instead of the snapshot guard that
+      // is the only thing actually running here.
+      expect(
+        testDb.db.select().from(inboxItems).where(eq(inboxItems.id, 'inbox-1')).get()
+      ).toBeUndefined()
+
+      service.enqueueDelete('inbox-1', JSON.stringify({ ...TEST_INBOX_ITEM, localOnly: true }))
+
+      expect(queue.getPendingCount()).toBe(0)
+    })
+
+    it('#then an unparseable snapshot still tombstones instead of swallowing the delete', () => {
+      // Older builds wrote this payload too. A snapshot we cannot read tells us
+      // nothing about localOnly, and dropping the delete would strand the item
+      // on every other device — the worse of the two failure modes.
+      service.enqueueDelete('inbox-1', 'not json')
+
+      expect(queue.getPendingCount()).toBe(1)
     })
   })
 
