@@ -81,6 +81,30 @@ describe('http-client', () => {
       expect(result).toEqual(responseData)
     })
 
+    it('strips a trailing slash from SYNC_SERVER_URL before appending the path', async () => {
+      // #given a slash-terminated env value. http-client used to interpolate it
+      // verbatim, producing `http://localhost:8787//api/users` — Cloudflare
+      // Workers routes the doubled slash as a different path, so every sync
+      // request 404'd instead of reaching its handler.
+      const original = process.env.SYNC_SERVER_URL
+      process.env.SYNC_SERVER_URL = 'http://localhost:8787/'
+      mockFetch.mockResolvedValue(createJsonResponse({}))
+
+      try {
+        // #when
+        await syncFetch('GET', '/api/users')
+
+        // #then
+        expect(mockFetch).toHaveBeenCalledWith(
+          'http://localhost:8787/api/users',
+          expect.objectContaining({ method: 'GET' })
+        )
+      } finally {
+        if (original === undefined) delete process.env.SYNC_SERVER_URL
+        else process.env.SYNC_SERVER_URL = original
+      }
+    })
+
     it('makes a POST request with body', async () => {
       // #given
       const requestBody = { email: 'test@example.com' }

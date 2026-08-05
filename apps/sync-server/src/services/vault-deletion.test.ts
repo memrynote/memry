@@ -171,6 +171,25 @@ describe('deleteVaultData with open upload sessions', () => {
     ])
     expect(decrement).toBe(-(BASE + 300))
   })
+
+  it('releases the full total_size when uploaded_chunks is not JSON at all', async () => {
+    // The sibling case above passes valid JSON with a bad byte count, which
+    // only exercises getUploadedByteTotal's null fallback. This one never
+    // parses, so it takes readUploadedChunks' `ok: false` branch instead.
+    //
+    // The invariant under test is that a corrupt column must not abort the
+    // deletion: the failure mode is a user permanently unable to delete their
+    // vault. Asserting the numeric release keeps the fallback honest at the
+    // same time — the reservation is real whether or not the chunk list can be
+    // read, so the whole total_size comes back rather than zero.
+    const decrement = await decrementFor([{ total_size: 700, uploaded_chunks: 'not json' }])
+    expect(decrement).toBe(-(BASE + 700))
+  })
+
+  it('releases the full total_size when uploaded_chunks parses to a non-array', async () => {
+    const decrement = await decrementFor([{ total_size: 900, uploaded_chunks: '{"i":0}' }])
+    expect(decrement).toBe(-(BASE + 900))
+  })
 })
 
 describe('deleteVaultData ordering', () => {

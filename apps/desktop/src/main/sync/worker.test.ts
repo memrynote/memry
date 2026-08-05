@@ -340,4 +340,63 @@ describe('worker', () => {
       expect(mockCleanup).toHaveBeenCalledWith(vaultKey)
     })
   })
+
+  // A packaged install can end up with a main bundle and a worker bundle from
+  // different builds (partial update, stale asar), which is the only way an
+  // unknown kind reaches this switch. Both halves matter and fail in opposite
+  // directions, so both are pinned.
+  describe('#given worker ready #when an unknown message kind is received', () => {
+    const emitUnknown = (msg: unknown): void => {
+      mockPort.emit('message', msg as MainToWorkerMessage)
+    }
+
+    it('#then replies with a typed error for a request-shaped message', async () => {
+      // #given a kind this build does not implement, carrying a requestId — so
+      // the parent has a pending promise waiting on it.
+      const resultPromise = captureNextPostMessage()
+
+      // #when
+      emitUnknown({ type: 'compact-batch', requestId: 'req-9' })
+      const result = await resultPromise
+
+      // #then the bridge can reject immediately instead of stalling until its
+      // 60s REQUEST_TIMEOUT_MS fires, which is what a silent drop used to cost
+      // every crypto batch.
+      expect(result).toEqual({
+        type: 'error',
+        requestId: 'req-9',
+        error: 'Unsupported worker message kind: compact-batch'
+      })
+    })
+
+    it('#then stays silent when the message carries no requestId', async () => {
+      // #given no requestId, so there is no pending promise to settle.
+      // #when
+      emitUnknown({ type: 'flush-cache' })
+      await new Promise((resolve) => setTimeout(resolve, 20))
+
+      // #then replying `requestId: undefined` would put an off-protocol message
+      // on the wire that worker-bridge's `'requestId' in msg` check accepts and
+      // then looks up under the key `undefined`. Silence is the contract.
+      expect(mockPort.postMessage).not.toHaveBeenCalled()
+    })
+
+    it('#then does not throw when `type` is not a string', async () => {
+      // #given a bundle mismatch can deliver anything, including a message with
+      // no usable discriminant. String(undefined) keeps the log line readable
+      // rather than crashing the worker on a property access.
+      const resultPromise = captureNextPostMessage()
+
+      // #when
+      emitUnknown({ requestId: 'req-10' })
+      const result = await resultPromise
+
+      // #then
+      expect(result).toEqual({
+        type: 'error',
+        requestId: 'req-10',
+        error: 'Unsupported worker message kind: undefined'
+      })
+    })
+  })
 })
