@@ -163,6 +163,48 @@ describe('journalHandler', () => {
     })
   })
 
+  it('skips an upsert with no date instead of writing an undefined day', async () => {
+    // `date` is optional in the schema only so delete tombstones can omit it.
+    // A create/update without one has no day to write to, so the handler has to
+    // reject it where the required field used to.
+    mockGetNoteMetadataById.mockReturnValue(undefined)
+    const ctx = makeCtx()
+
+    expect(
+      journalHandler.applyUpsert(ctx, 'journal-1', { content: 'orphan' }, { 'device-a': 1 })
+    ).toBe('skipped')
+    await flushPromises()
+
+    expect(mockWriteJournalEntryWithContent).not.toHaveBeenCalled()
+    expect(mockSaveCanonicalNote).not.toHaveBeenCalled()
+    expect(ctx.emit).not.toHaveBeenCalled()
+    expect(loggerMock.warn).toHaveBeenCalledWith('Skipping remote journal upsert with no date', {
+      itemId: 'journal-1'
+    })
+  })
+
+  it('applies a delete without reading the tombstone body at all', async () => {
+    // The receiver-side half of the compat argument for dropping `date`:
+    // applyDelete takes only (ctx, itemId, clock) — there is no parameter that
+    // could carry the payload — and it resolves the day from the local row.
+    // Every shipped build behaves this way, so a tombstone with no date is
+    // indistinguishable from one with a date on any receiver.
+    mockGetNoteMetadataById.mockReturnValue({
+      id: 'journal-1',
+      journalDate: '2026-05-10',
+      clock: { 'device-a': 1 }
+    })
+    const ctx = makeCtx()
+
+    expect(journalHandler.applyDelete(ctx, 'journal-1', { 'device-a': 2 })).toBe('applied')
+
+    expect(mockDeleteJournalEntryFile).toHaveBeenCalledWith('2026-05-10')
+    expect(ctx.emit).toHaveBeenCalledWith(JournalChannels.events.ENTRY_DELETED, {
+      date: '2026-05-10',
+      source: 'sync'
+    })
+  })
+
   it('skips stale updates and applies concurrent updates as conflicts', async () => {
     const ctx = makeCtx()
     mockGetNoteMetadataById.mockReturnValueOnce({

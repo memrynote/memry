@@ -181,7 +181,14 @@ export const NoteSyncPayloadSchema = z.object({
 })
 
 export const JournalSyncPayloadSchema = z.object({
-  date: z.string(),
+  // Optional ONLY so a delete tombstone can leave it out — a create/update
+  // without a date is still rejected, by an explicit guard in
+  // journal-handler.applyUpsert rather than by this schema. Deletes never reach
+  // any parser: ItemApplier short-circuits `operation === 'delete'` before it
+  // decodes the body, and SyncItemHandler.applyDelete has no data parameter, so
+  // shipping the journalled day inside a tombstone only widened what every
+  // delete encrypts and uploads. See journal-sync.buildDeletePayload.
+  date: z.string().optional(),
   content: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),
   properties: z.record(z.string(), z.unknown()).nullable().optional(),

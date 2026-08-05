@@ -223,7 +223,7 @@ describe('JournalSyncService push', () => {
 })
 
 describe('JournalSyncService deletes', () => {
-  it('propagates a delete as a dated tombstone with a bumped clock', () => {
+  it('propagates a delete as a bumped clock with NO journal date', () => {
     seedJournalNote({ clock: { 'device-a': 3 } })
 
     makeService().enqueueDelete(JOURNAL_ID, DATE)
@@ -232,8 +232,12 @@ describe('JournalSyncService deletes', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0].type).toBe('journal')
     expect(rows[0].operation).toBe('delete')
-    expect(payloadOf(rows[0])).toMatchObject({
-      date: DATE,
+    // The tombstone must not carry the journalled day. Nothing on the receiving
+    // side reads it — ItemApplier never decodes a delete body — so shipping it
+    // only widened what every delete encrypts, uploads and parks in the local
+    // plaintext sync queue. The clock MUST survive: push-coordinator lifts it
+    // out of this string to stamp the server-side item version.
+    expect(payloadOf(rows[0])).toEqual({
       clock: { 'device-a': 4 },
       createdAt: CREATED_AT,
       modifiedAt: MODIFIED_AT
@@ -241,14 +245,24 @@ describe('JournalSyncService deletes', () => {
   })
 
   it('still propagates the delete when the metadata row is already gone', () => {
-    // Unlike notes, a journal tombstone is buildable from the date alone, so a
-    // missing cache row must not swallow the delete.
+    // Unlike notes, a journal delete is enqueued even without a cache row, so a
+    // missing row must not swallow the delete.
     makeService().enqueueDelete('journal-2026-01-01', '2026-01-01')
 
     const rows = queueRows()
     expect(rows).toHaveLength(1)
     expect(rows[0].operation).toBe('delete')
-    expect(payloadOf(rows[0])).toEqual({ date: '2026-01-01', clock: { 'device-a': 1 } })
+    expect(payloadOf(rows[0])).toEqual({ clock: { 'device-a': 1 } })
+  })
+
+  it('emits a tombstone the current schema accepts, date key entirely absent', () => {
+    seedJournalNote()
+
+    makeService().enqueueDelete(JOURNAL_ID, DATE)
+
+    const payload = payloadOf(queueRows()[0])
+    expect(Object.prototype.hasOwnProperty.call(payload, 'date')).toBe(false)
+    expect(JournalSyncPayloadSchema.safeParse(payload).success).toBe(true)
   })
 
   it('lets a delete win over a still-pending create instead of being dropped', () => {
