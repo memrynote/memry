@@ -2,7 +2,12 @@ import type { ReactNode } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
+import {
+  MeasuringStrategy,
+  type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent
+} from '@dnd-kit/core'
 import TagsHubPage from './tags-hub'
 
 const mockUseTagCategories = vi.hoisted(() =>
@@ -50,7 +55,8 @@ const mockOpenSidebarItem = vi.fn()
 const dndMocks = vi.hoisted(() => ({
   onDragStart: null as null | ((event: DragStartEvent) => void),
   onDragOver: null as null | ((event: DragOverEvent) => void),
-  onDragEnd: null as null | ((event: DragEndEvent) => void)
+  onDragEnd: null as null | ((event: DragEndEvent) => void),
+  measuring: null as null | { droppable?: { strategy?: unknown } }
 }))
 
 vi.mock('@dnd-kit/core', async () => {
@@ -61,11 +67,13 @@ vi.mock('@dnd-kit/core', async () => {
       onDragStart?: (event: DragStartEvent) => void
       onDragOver?: (event: DragOverEvent) => void
       onDragEnd?: (event: DragEndEvent) => void
+      measuring?: { droppable?: { strategy?: unknown } }
       children?: ReactNode
     }): ReactNode => {
       dndMocks.onDragStart = props.onDragStart ?? null
       dndMocks.onDragOver = props.onDragOver ?? null
       dndMocks.onDragEnd = props.onDragEnd ?? null
+      dndMocks.measuring = props.measuring ?? null
       return props.children
     },
     // The overlay portals to the body and would duplicate every chip in the
@@ -90,6 +98,18 @@ vi.mock('@/hooks/use-sidebar-navigation', () => ({
 }))
 
 describe('TagsHubPage', () => {
+  // Regression for the intermittent "Maximum update depth exceeded" crash:
+  // a tag drag re-parents the dragged chip's DOM node between `CategoryBlock`s
+  // on every category-preview update. With dnd-kit's default measuring,
+  // re-measuring droppables while dragging picks up the reflow that causes,
+  // which can flip `over` to a different category under a stationary pointer
+  // and loop forever. Freezing droppable rects to their pre-drag geometry
+  // makes collision detection immune to reflow the drag itself causes.
+  it('freezes droppable measurement to pre-drag geometry, so the tag drag preview cannot feed back into collision detection', () => {
+    render(<TagsHubPage />)
+    expect(dndMocks.measuring?.droppable?.strategy).toBe(MeasuringStrategy.BeforeDragging)
+  })
+
   it('renders the create affordances', () => {
     render(<TagsHubPage />)
     expect(screen.getByRole('button', { name: /new category/i })).toBeInTheDocument()

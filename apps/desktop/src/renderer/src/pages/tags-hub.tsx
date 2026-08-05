@@ -7,6 +7,7 @@ import {
   DragOverlay,
   KeyboardCode,
   KeyboardSensor,
+  MeasuringStrategy,
   PointerSensor,
   closestCorners,
   defaultDropAnimationSideEffects,
@@ -17,7 +18,8 @@ import {
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
-  type DropAnimation
+  type DropAnimation,
+  type MeasuringConfiguration
 } from '@dnd-kit/core'
 import {
   SortableContext,
@@ -84,6 +86,21 @@ const hubCollisionDetection: CollisionDetection = (args) => {
   return [...collisions].sort(
     (a, b) => (typeById.get(a.id) === 'tag' ? 0 : 1) - (typeById.get(b.id) === 'tag' ? 0 : 1)
   )
+}
+
+// A tag drag moves the chip's own DOM subtree between `CategoryBlock`s mid-drag
+// (the preview in `handleDragOver`, below). dnd-kit's default droppable
+// measuring re-runs continuously while dragging, so that reflow — a
+// flex-wrapped category row growing or shrinking a line — can shift the
+// section boundaries under a *stationary* pointer and flip `over` to a
+// different category on the next internal remeasure. `previewContainerMove`'s
+// same-category guard doesn't catch that, since the flip is between two
+// different categories: each flip previews the tag back, reflowing again,
+// forever — "Maximum update depth exceeded". Freezing droppable rects to
+// their pre-drag geometry (`BeforeDragging`) makes collision detection immune
+// to reflow the drag itself causes.
+const hubMeasuring: MeasuringConfiguration = {
+  droppable: { strategy: MeasuringStrategy.BeforeDragging }
 }
 
 type ActiveDrag = { kind: 'tag'; tag: HubTag } | { kind: 'category'; name: string; count: number }
@@ -339,6 +356,7 @@ export function TagsHubPage(): React.JSX.Element {
             <DndContext
               sensors={activeSensors}
               collisionDetection={hubCollisionDetection}
+              measuring={hubMeasuring}
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
               onDragCancel={handleDragCancel}
