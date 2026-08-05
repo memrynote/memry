@@ -48,6 +48,19 @@ For tasks, projects, and agent conversations, handlers additionally invoke `merg
 Agent message sync is append-only. If a message id already exists locally, the handler treats the
 remote item as idempotent instead of overwriting a terminal message.
 
+## `buildPushPayload` is optional
+
+`buildPushPayload` rebuilds the outgoing payload from local state at push time, so the newest local
+state goes out even when the queued row was frozen earlier. It is optional on the interface, and
+`BaseItemHandler` supplies no default. Every handler backed by a sync table implements it; `settings`
+does not, because settings live in `config.json` and the preferences cache rather than in a table
+there is anything to rebuild from.
+
+A type without it pushes the frozen queue payload verbatim, so queue bookkeeping alone has to be
+correct for it — see
+[Push acknowledgements and in-flight mutations](/architecture/sync-protocol#push-acknowledgements-and-in-flight-mutations).
+When adding a handler, implement it unless the type genuinely has no local row to read back.
+
 ## Canvas: the payload comes from a file
 
 `canvas-handler.ts` is the one handler whose content does not live in the data DB. A canvas scene

@@ -122,6 +122,25 @@ queued and goes out on the next iteration. Deleting unconditionally would drop t
 permanently, because the local clock advances at mutation time: the item would sit ahead of the
 server with nothing queued, and every later pull would resolve `skip` rather than repair it.
 
+Enqueue-time coalescing only folds into a row that has **not** been attempted yet, so a failed or
+rejected push leaves the next edit to open a second row for the same `(type, itemId)`. Both rows can
+then land in one batch, and the push collapses them again before encrypting. That batch-level
+collapse keeps the **newest** row: the batch arrives oldest-first, and the older row's payload is by
+definition the stale one. Keeping the newest row also keeps the row that is still unattempted, which
+is the row a concurrent local edit would coalesce into — so the conditional acknowledgement above
+continues to guard it.
+
+The superseded row's operation is folded into the retained row with the same precedence enqueue
+uses: a later delete wins outright, and an unacked create survives a newer update, because the server
+has never seen the item and an update for an unknown id is not an equivalent request.
+
+Collapsing to the newest row matters on its own terms rather than as an optimisation. The pushed
+payload is normally rebuilt from local state at push time, but that rebuild hook is optional on the
+handler interface and settings does not implement it — settings live in `config.json` and the
+preferences cache, not in a sync table there is anything to rebuild from. For any such type the
+frozen queue payload is the entire push, so retaining the older row published older state and
+discarded the newer edit through the success path, with no error surfaced.
+
 ### Recovering pushes that never landed
 
 Items expose a "the server has this state" stamp (`syncedAt`) that advances on a confirmed push as
