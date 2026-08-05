@@ -1,9 +1,13 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { toast } from 'sonner'
+
 const mockUseAgentOptional = vi.hoisted(() => vi.fn())
 const mockUseActiveTab = vi.hoisted(() => vi.fn())
+const mockPrepareVoiceMemoAudio = vi.hoisted(() => vi.fn())
 
 vi.mock('../agent-context', () => ({
   useAgentOptional: mockUseAgentOptional
@@ -13,17 +17,66 @@ vi.mock('@/contexts/tabs', () => ({
   useActiveTab: mockUseActiveTab
 }))
 
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn() }
+}))
+
+vi.mock('@/lib/voice-memo-audio', () => ({
+  prepareVoiceMemoAudio: mockPrepareVoiceMemoAudio
+}))
+
+import { SettingsModalProvider } from '@/contexts/settings-modal-context'
 import { Composer } from '../composer'
+
+class MockMediaRecorder {
+  static isTypeSupported = vi.fn(() => true)
+
+  state: 'inactive' | 'recording' = 'inactive'
+  ondataavailable: ((event: { data: Blob }) => void) | null = null
+  onstop: (() => void) | null = null
+  onerror: ((event: unknown) => void) | null = null
+
+  constructor(
+    public stream: MediaStream,
+    public options: MediaRecorderOptions
+  ) {}
+
+  start(): void {
+    this.state = 'recording'
+  }
+
+  stop(): void {
+    this.state = 'inactive'
+    queueMicrotask(() => {
+      this.ondataavailable?.({ data: new Blob(['voice'], { type: 'audio/webm' }) })
+      this.onstop?.()
+    })
+  }
+}
 
 const mockSendTurn = vi.fn()
 const mockCancelTurn = vi.fn()
 const mockCreateConversation = vi.fn()
 const mockSearchQuery = vi.fn()
 const mockCalendarListEvents = vi.fn()
+const mockGetProviderStatus = vi.fn()
+const mockConnectProvider = vi.fn()
+const mockGetUserMedia = vi.fn()
 const readyBackendStatuses = {
   claude_cli: { backend: 'claude_cli', available: true },
   codex_cli: { backend: 'codex_cli', available: true },
   local_openai_compatible: { backend: 'local_openai_compatible', available: true }
+}
+
+function renderComposer(conversationId: string | null): ReturnType<typeof render> {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <SettingsModalProvider>
+        <Composer conversationId={conversationId} sourceWindowId="window-1" />
+      </SettingsModalProvider>
+    </QueryClientProvider>
+  )
 }
 
 async function setPromptText(text: string): Promise<HTMLElement> {
@@ -46,6 +99,26 @@ async function submitPrompt(): Promise<void> {
 describe('Composer', () => {
   beforeEach(() => {
     localStorage.clear()
+    vi.mocked(toast.error).mockReset()
+    mockGetUserMedia.mockReset()
+    mockGetUserMedia.mockResolvedValue({ getTracks: () => [{ stop: vi.fn() }] })
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { getUserMedia: mockGetUserMedia }
+    })
+    Object.defineProperty(globalThis, 'MediaRecorder', {
+      configurable: true,
+      value: MockMediaRecorder
+    })
+    mockPrepareVoiceMemoAudio.mockReset()
+    mockPrepareVoiceMemoAudio.mockResolvedValue({
+      data: new ArrayBuffer(8),
+      duration: 1.5,
+      format: 'wav',
+      waveform: []
+    })
+    vi.mocked(window.api.settings.getVoiceRecordingReadiness).mockResolvedValue({ ready: true })
+    vi.mocked(window.api.inbox.transcribeAudio).mockReset()
     mockSendTurn.mockReset()
     mockCancelTurn.mockReset()
     mockCreateConversation.mockReset()
@@ -70,10 +143,16 @@ describe('Composer', () => {
       cancelTurn: mockCancelTurn
     })
     vi.mocked(window.api.search.query).mockImplementation(mockSearchQuery)
+    mockGetProviderStatus.mockReset()
+    mockGetProviderStatus.mockResolvedValue({ provider: 'google', connected: true })
+    mockConnectProvider.mockReset()
+    mockConnectProvider.mockResolvedValue({ success: true })
     Object.assign(window.api, {
       calendar: {
         ...((window.api as unknown as { calendar?: Record<string, unknown> }).calendar ?? {}),
-        listEvents: mockCalendarListEvents
+        listEvents: mockCalendarListEvents,
+        getProviderStatus: mockGetProviderStatus,
+        connectProvider: mockConnectProvider
       }
     })
     vi.mocked(window.api.agent.listBackendModels).mockImplementation(async ({ backend }) => ({
@@ -99,7 +178,7 @@ describe('Composer', () => {
   })
 
   it('submits on Enter', async () => {
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+    renderComposer('conversation-1')
 
     await setPromptText('hello')
     await submitPrompt()
@@ -114,7 +193,7 @@ describe('Composer', () => {
   })
 
   it('submits from pointer down on the send button', async () => {
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+    renderComposer('conversation-1')
 
     await setPromptText('hello')
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Send' }))
@@ -130,27 +209,129 @@ describe('Composer', () => {
     })
   })
 
-  it('renders the ai-02 prompt surface', () => {
-    const { container } = render(
-      <Composer conversationId="conversation-1" sourceWindowId="window-1" />
-    )
+  it('renders the agent composer surface', () => {
+    const { container } = renderComposer('conversation-1')
 
     expect(container.firstElementChild).not.toHaveClass('border-t')
-    expect(screen.getByRole('textbox')).toHaveClass('min-h-[48.4px]')
-    expect(screen.getByRole('button', { name: 'Send' })).toHaveClass('rounded-full')
+    expect(screen.getByRole('textbox')).toHaveClass('!min-h-9')
+    expect(screen.getByRole('button', { name: 'Send' })).toHaveClass('rounded-md')
+    expect(screen.getByRole('button', { name: 'Send' })).toHaveClass('size-7')
     expect(screen.queryByText('Agent')).not.toBeInTheDocument()
   })
 
-  it('opens a borderless provider dropdown from the cloud slot', () => {
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+  it('offers the connected-tools tray only while Google Calendar is unlinked', async () => {
+    mockGetProviderStatus.mockResolvedValue({ provider: 'google', connected: false })
+    renderComposer('conversation-1')
 
-    const providerTrigger = screen.getByRole('button', { name: 'Agent provider: Claude' })
+    const connectButton = await screen.findByRole('button', { name: 'Connect Google Calendar' })
+    expect(screen.getByText('Connected tools')).toBeInTheDocument()
+
+    // Same hand-off as the calendar toolbar: the icon opens the consent dialog
+    // rather than firing OAuth straight from the tray.
+    fireEvent.click(connectButton)
+
+    const dialog = await screen.findByTestId('google-calendar-connect-prompt')
+    expect(mockConnectProvider).not.toHaveBeenCalled()
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Continue with Google' }))
+
+    await waitFor(() => expect(mockConnectProvider).toHaveBeenCalledWith({ provider: 'google' }))
+  })
+
+  it('hides the connected-tools tray once Google Calendar is linked', async () => {
+    renderComposer('conversation-1')
+
+    await waitFor(() => expect(mockGetProviderStatus).toHaveBeenCalled())
+    expect(screen.queryByText('Connected tools')).not.toBeInTheDocument()
+  })
+
+  it('offers voice dictation from an idle mic button', () => {
+    renderComposer('conversation-1')
+
+    const mic = screen.getByRole('button', { name: 'Start voice dictation' })
+    expect(mic).toBeEnabled()
+    expect(mic).toHaveClass('size-7')
+    expect(mic).toHaveClass('text-muted-foreground')
+    expect(mic).not.toHaveClass('text-destructive')
+  })
+
+  it('records, transcribes, and appends the transcript to the prompt', async () => {
+    let resolveTranscription: (value: { success: boolean; text: string }) => void = () => {}
+    vi.mocked(window.api.inbox.transcribeAudio).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveTranscription = resolve
+        })
+    )
+    renderComposer('conversation-1')
+
+    await setPromptText('note this')
+    await userEvent.click(screen.getByRole('button', { name: 'Start voice dictation' }))
+
+    const recordingMic = await screen.findByRole('button', { name: 'Stop voice dictation' })
+    expect(recordingMic).toHaveClass('size-7')
+    expect(recordingMic).toHaveClass('text-destructive')
+
+    await userEvent.click(recordingMic)
+
+    const transcribingMic = await screen.findByRole('button', {
+      name: 'Transcribing voice input'
+    })
+    expect(transcribingMic).toHaveClass('size-7')
+    expect(window.api.inbox.transcribeAudio).toHaveBeenCalledWith({
+      data: expect.any(ArrayBuffer),
+      duration: 1.5,
+      format: 'wav'
+    })
+
+    await act(async () => {
+      resolveTranscription({ success: true, text: 'call the vet' })
+      await Promise.resolve()
+    })
+
+    await waitFor(() =>
+      expect(screen.getByRole('textbox')).toHaveTextContent('note this call the vet')
+    )
+    expect(screen.getByRole('button', { name: 'Start voice dictation' })).toBeInTheDocument()
+  })
+
+  it('returns to idle and surfaces the error when the microphone is blocked', async () => {
+    mockGetUserMedia.mockRejectedValue(new DOMException('blocked', 'NotAllowedError'))
+    renderComposer('conversation-1')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Start voice dictation' }))
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Microphone access denied'))
+    expect(screen.getByRole('button', { name: 'Start voice dictation' })).toBeInTheDocument()
+  })
+
+  it('returns to idle and surfaces the error when transcription fails', async () => {
+    vi.mocked(window.api.inbox.transcribeAudio).mockResolvedValue({
+      success: false,
+      text: '',
+      error: 'Whisper is unavailable'
+    })
+    renderComposer('conversation-1')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Start voice dictation' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Stop voice dictation' }))
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Whisper is unavailable'))
+    expect(await screen.findByRole('button', { name: 'Start voice dictation' })).toBeInTheDocument()
+  })
+
+  it('opens provider and model choices from the model chip', () => {
+    renderComposer('conversation-1')
+
+    const providerTrigger = screen.getByRole('button', { name: 'Agent model: Claude Opus' })
     expect(providerTrigger).not.toHaveClass('border')
     expect(providerTrigger).toHaveClass('hover:bg-accent')
-    expect(providerTrigger).toHaveClass('hover:text-accent-foreground')
+    expect(providerTrigger).toHaveClass('rounded-md')
     expect(providerTrigger).toHaveClass('data-[state=open]:bg-accent')
 
     fireEvent.pointerDown(providerTrigger)
+
+    expect(screen.getByText('Provider')).toBeInTheDocument()
 
     expect(screen.getByRole('menuitem', { name: /claude/i })).toHaveClass('hover:bg-accent')
     expect(screen.getByRole('menuitem', { name: /claude/i })).toHaveClass('focus:bg-accent')
@@ -159,18 +340,16 @@ describe('Composer', () => {
   })
 
   it('passes selected access mode and web search intent with the prompt', async () => {
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+    renderComposer('conversation-1')
 
-    const permissionsTrigger = await screen.findByRole('button', {
-      name: 'Agent permissions: Vault only, web search Off'
-    })
-    expect(permissionsTrigger).toHaveClass('size-8')
+    const addTrigger = await screen.findByRole('button', { name: 'Add context' })
+    expect(addTrigger).toHaveClass('size-7')
     expect(
       screen.queryByRole('button', { name: 'Agent access: Vault only' })
     ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Web search: Off' })).not.toBeInTheDocument()
 
-    fireEvent.pointerDown(permissionsTrigger)
+    fireEvent.pointerDown(addTrigger)
     expect(screen.getByText('Permissions')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Computer access' }))
     fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Web search' }))
@@ -178,16 +357,10 @@ describe('Composer', () => {
     await waitFor(() => {
       expect(
         screen.getByRole('button', {
-          name: 'Agent permissions: Computer access, web search On'
+          name: 'Add context (Agent permissions: Computer access, web search On)'
         })
       ).toBeInTheDocument()
     })
-
-    expect(
-      screen.queryByRole('button', {
-        name: 'Agent permissions: Computer access, web search On'
-      })
-    ).toHaveClass('size-8')
 
     await setPromptText('check the launch page')
     await submitPrompt()
@@ -202,24 +375,21 @@ describe('Composer', () => {
     })
   })
 
-  it('combines model and reasoning controls into one compact menu', async () => {
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+  it('splits provider/model and reasoning into the two composer chips', async () => {
+    renderComposer('conversation-1')
 
-    const modelSettingsTrigger = await screen.findByRole('button', {
-      name: 'Agent model settings: Opus, Extra High'
-    })
-    expect(modelSettingsTrigger).toHaveClass('max-w-36')
-    expect(screen.queryByRole('button', { name: 'Agent model: Opus' })).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'Agent settings: Extra High' })
-    ).not.toBeInTheDocument()
-
-    fireEvent.pointerDown(modelSettingsTrigger)
+    const modelTrigger = await screen.findByRole('button', { name: 'Agent model: Claude Opus' })
+    fireEvent.pointerDown(modelTrigger)
 
     expect(screen.getByRole('menu')).toHaveClass('floating-content-motion')
+    expect(screen.getByText('Provider')).toBeInTheDocument()
     expect(screen.getByText('Model')).toBeInTheDocument()
     expect(await screen.findByRole('menuitem', { name: 'Sonnet' })).toBeInTheDocument()
     expect(screen.queryByLabelText('Custom model ID')).not.toBeInTheDocument()
+    expect(screen.queryByText('Reasoning')).not.toBeInTheDocument()
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' })
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent reasoning: Extra High' }))
     expect(screen.getByText('Reasoning')).toBeInTheDocument()
     expect(screen.getByRole('menuitemcheckbox', { name: 'Extra High (default)' })).toHaveAttribute(
       'aria-checked',
@@ -246,24 +416,23 @@ describe('Composer', () => {
       sendTurn: mockSendTurn,
       cancelTurn: mockCancelTurn
     })
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+    renderComposer('conversation-1')
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent provider: Claude' }))
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent model: Claude Opus' }))
 
     expect(screen.getByRole('menuitem', { name: /codex/i })).toHaveAttribute('data-disabled', '')
   })
 
   it('shows supported Claude effort settings next to the selected provider', () => {
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+    renderComposer('conversation-1')
 
     const settingsTrigger = screen.getByRole('button', {
-      name: 'Agent model settings: Opus, Extra High'
+      name: 'Agent reasoning: Extra High'
     })
-    expect(settingsTrigger).toHaveClass('rounded-full')
+    expect(settingsTrigger).toHaveClass('rounded-md')
 
     fireEvent.pointerDown(settingsTrigger)
 
-    expect(screen.getByText('Model')).toBeInTheDocument()
     expect(screen.getByText('Reasoning')).toBeInTheDocument()
     expect(screen.getByRole('menuitemcheckbox', { name: 'Extra High (default)' })).toHaveAttribute(
       'aria-checked',
@@ -276,17 +445,15 @@ describe('Composer', () => {
 
     expect(
       screen.getByRole('button', {
-        name: 'Agent model settings: Opus, Low'
+        name: 'Agent reasoning: Low'
       })
     ).toBeInTheDocument()
   })
 
   it('passes the selected Claude effort with the prompt', async () => {
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+    renderComposer('conversation-1')
 
-    fireEvent.pointerDown(
-      screen.getByRole('button', { name: 'Agent model settings: Opus, Extra High' })
-    )
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent reasoning: Extra High' }))
     fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Low' }))
 
     await setPromptText('quick answer')
@@ -302,11 +469,9 @@ describe('Composer', () => {
   })
 
   it('passes the selected Claude model with the prompt', async () => {
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+    renderComposer('conversation-1')
 
-    fireEvent.pointerDown(
-      await screen.findByRole('button', { name: 'Agent model settings: Opus, Extra High' })
-    )
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Agent model: Claude Opus' }))
     expect(screen.queryByRole('menuitem', { name: 'Default' })).not.toBeInTheDocument()
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Sonnet' }))
 
@@ -323,9 +488,9 @@ describe('Composer', () => {
   })
 
   it('passes Codex backend options when Codex is selected', async () => {
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+    renderComposer('conversation-1')
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent provider: Claude' }))
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent model: Claude Opus' }))
     fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
 
     await setPromptText('create a task')
@@ -341,16 +506,16 @@ describe('Composer', () => {
   })
 
   it('shows supported Codex reasoning settings next to the selected provider', async () => {
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+    renderComposer('conversation-1')
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent provider: Claude' }))
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent model: Claude Opus' }))
     fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
-    await screen.findByRole('button', { name: 'Agent model settings: GPT-5.5, Medium' })
+    await screen.findByRole('button', { name: 'Agent model: Codex GPT-5.5' })
 
     const settingsTrigger = screen.getByRole('button', {
-      name: 'Agent model settings: GPT-5.5, Medium'
+      name: 'Agent reasoning: Medium'
     })
-    expect(settingsTrigger).toHaveClass('rounded-full')
+    expect(settingsTrigger).toHaveClass('rounded-md')
 
     fireEvent.pointerDown(settingsTrigger)
 
@@ -366,13 +531,11 @@ describe('Composer', () => {
   })
 
   it('passes the selected Codex reasoning with the prompt', async () => {
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+    renderComposer('conversation-1')
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent provider: Claude' }))
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent model: Claude Opus' }))
     fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
-    fireEvent.pointerDown(
-      screen.getByRole('button', { name: 'Agent model settings: GPT-5.5, Medium' })
-    )
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent reasoning: Medium' }))
     fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'High' }))
 
     await setPromptText('create a task')
@@ -388,13 +551,11 @@ describe('Composer', () => {
   })
 
   it('passes the selected Codex model with the prompt', async () => {
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+    renderComposer('conversation-1')
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent provider: Claude' }))
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent model: Claude Opus' }))
     fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
-    fireEvent.pointerDown(
-      await screen.findByRole('button', { name: 'Agent model settings: GPT-5.5, Medium' })
-    )
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Agent model: Codex GPT-5.5' }))
     expect(screen.queryByRole('menuitem', { name: 'Default' })).not.toBeInTheDocument()
     fireEvent.click(await screen.findByRole('menuitem', { name: 'GPT-5.4' }))
 
@@ -427,13 +588,13 @@ describe('Composer', () => {
               { id: 'opus', label: 'Opus' }
             ]
     }))
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+    renderComposer('conversation-1')
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent provider: Claude' }))
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent model: Claude Opus' }))
     fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
 
     expect(
-      await screen.findByRole('button', { name: 'Agent model settings: GPT-5.6, Medium' })
+      await screen.findByRole('button', { name: 'Agent model: Codex GPT-5.6' })
     ).toBeInTheDocument()
 
     await setPromptText('create a task')
@@ -449,7 +610,7 @@ describe('Composer', () => {
   })
 
   it('creates a conversation before sending the first empty-chat prompt', async () => {
-    render(<Composer conversationId={null} sourceWindowId="window-1" />)
+    renderComposer(null)
 
     await setPromptText('draft a plan')
     await submitPrompt()
@@ -470,11 +631,9 @@ describe('Composer', () => {
   })
 
   it('creates a new conversation with selected backend model metadata', async () => {
-    render(<Composer conversationId={null} sourceWindowId="window-1" />)
+    renderComposer(null)
 
-    fireEvent.pointerDown(
-      await screen.findByRole('button', { name: 'Agent model settings: Opus, Extra High' })
-    )
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Agent model: Claude Opus' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Sonnet' }))
 
     await setPromptText('draft a plan')
@@ -488,7 +647,7 @@ describe('Composer', () => {
 
   it('keeps the first prompt on the send control while the conversation is being created', async () => {
     mockCreateConversation.mockReturnValue(new Promise(() => {}))
-    render(<Composer conversationId={null} sourceWindowId="window-1" />)
+    renderComposer(null)
 
     await setPromptText('draft a plan')
     await userEvent.keyboard('{Enter}')
@@ -498,7 +657,7 @@ describe('Composer', () => {
   })
 
   it('allows Shift+Enter to create a newline without submitting', async () => {
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+    renderComposer('conversation-1')
 
     await setPromptText('hello')
     await userEvent.keyboard('{Shift>}{Enter}{/Shift}')
@@ -508,7 +667,7 @@ describe('Composer', () => {
   })
 
   it('focuses the prompt editor when the blank input surface is clicked', async () => {
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+    renderComposer('conversation-1')
 
     const textbox = screen.getByRole('textbox')
     const promptSurface = textbox.parentElement?.parentElement
@@ -546,7 +705,7 @@ describe('Composer', () => {
       totalCount: 1,
       queryTimeMs: 1
     })
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+    renderComposer('conversation-1')
 
     await setPromptText('summarize @plan')
     fireEvent.click(await screen.findByRole('option', { name: /planning note/i }))
@@ -610,7 +769,7 @@ describe('Composer', () => {
       totalCount: 3,
       queryTimeMs: 1
     })
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+    renderComposer('conversation-1')
 
     await setPromptText('summarize @')
 
@@ -787,7 +946,7 @@ describe('Composer', () => {
         }
       ]
     })
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+    renderComposer('conversation-1')
 
     const textbox = await setPromptText('summarize @star wars')
 
@@ -869,7 +1028,7 @@ describe('Composer', () => {
       totalCount: 1,
       queryTimeMs: 1
     })
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+    renderComposer('conversation-1')
 
     await setPromptText('summarize @star wars')
     fireEvent.click(await screen.findByRole('option', { name: /star wars movies/i }))
@@ -913,7 +1072,7 @@ describe('Composer', () => {
       totalCount: 1,
       queryTimeMs: 1
     })
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+    renderComposer('conversation-1')
 
     await setPromptText('@star wars')
     fireEvent.click(await screen.findByRole('option', { name: /star wars movies/i }))
@@ -933,7 +1092,7 @@ describe('Composer', () => {
       title: 'Current brief',
       entityId: 'note-2'
     })
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+    renderComposer('conversation-1')
 
     await setPromptText('summarize')
     await submitPrompt()
@@ -958,7 +1117,7 @@ describe('Composer', () => {
       cancelTurn: mockCancelTurn
     })
 
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+    renderComposer('conversation-1')
 
     expect(screen.queryByRole('button', { name: 'Send' })).not.toBeInTheDocument()
 

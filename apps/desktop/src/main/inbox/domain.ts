@@ -11,7 +11,8 @@ import {
 } from '@memry/domain-inbox'
 import type {
   InboxItem as ContractInboxItem,
-  InboxItemListItem as ContractInboxItemListItem
+  InboxItemListItem as ContractInboxItemListItem,
+  TranscribeAudioResponse
 } from '@memry/contracts/inbox-api'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
@@ -383,6 +384,34 @@ async function captureVoiceItem(input: CaptureVoiceInput): Promise<InboxCaptureR
     tags: input.tags,
     source: input.source
   })
+}
+
+/**
+ * Transcribe audio and hand the text straight back — no inbox item is created.
+ * Used by the agent composer's voice dictation.
+ */
+export async function transcribeAudioInput(input: {
+  data: Buffer | Uint8Array | ArrayBuffer | Record<string, unknown>
+  format: string
+}): Promise<TranscribeAudioResponse> {
+  const audioBuffer = normalizeBinaryInput(input.data)
+  if (!audioBuffer) {
+    return { success: false, text: '', error: 'Invalid audio data format' }
+  }
+
+  if (audioBuffer.length === 0) {
+    return { success: false, text: '', error: 'Empty audio data' }
+  }
+
+  // Imported lazily: transcription.ts pulls in the app entrypoint for envConfig,
+  // which must not land in the module graph of every domain consumer.
+  const { transcribeAudioData } = await import('./transcription')
+  const outcome = await transcribeAudioData(audioBuffer, input.format, 'dictation request')
+  if (outcome.error !== undefined) {
+    return { success: false, text: '', error: outcome.error }
+  }
+
+  return { success: true, text: outcome.transcription ?? '' }
 }
 
 async function getInboxItem(itemId: string): Promise<ContractInboxItem | null> {

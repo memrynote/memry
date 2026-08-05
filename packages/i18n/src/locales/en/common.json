@@ -152,11 +152,31 @@
     "composer": {
       "currentNote": "Current note",
       "removeAttachment": "Remove {label}",
-      "placeholder": "Ask memrynote anything. @ to use mention file",
+      "placeholder": "Do anything with memrynote... @ to mention notes, tasks, and events",
       "send": "Send",
       "providerLabel": "Agent provider: {provider}",
       "settingsSummary": "{reasoning}",
+      "connectedTools": "Connected tools",
+      "connectTool": "Connect {tool}",
+      "addContext": "Add context",
+      "addContextWithPermissions": "Add context ({permissions})",
+      "mentionContext": "Mention a note, task, or event",
+      "voice": {
+        "start": "Start voice dictation",
+        "stop": "Stop voice dictation",
+        "transcribing": "Transcribing voice input",
+        "errors": {
+          "permissionDenied": "Microphone access denied",
+          "noMicrophone": "No microphone found",
+          "accessFailed": "Could not access the microphone",
+          "recordingFailed": "Could not record voice input",
+          "transcriptionFailed": "Could not transcribe voice input"
+        }
+      },
+      "modelLabel": "Agent model: {provider} {model}",
+      "reasoningLabel": "Agent reasoning: {reasoning}",
       "providers": {
+        "label": "Provider",
         "claude": "Claude",
         "codex": "Codex",
         "local": "Local"

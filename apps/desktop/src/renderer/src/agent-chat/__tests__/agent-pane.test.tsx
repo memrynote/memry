@@ -1,4 +1,5 @@
 import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -17,7 +18,19 @@ vi.mock('@/contexts/tabs', () => ({
   useActiveTab: () => null
 }))
 
+import { SettingsModalProvider } from '@/contexts/settings-modal-context'
 import { AgentPane } from '../agent-pane'
+
+function renderPane(): ReturnType<typeof render> {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <SettingsModalProvider>
+        <AgentPane />
+      </SettingsModalProvider>
+    </QueryClientProvider>
+  )
+}
 
 const readyClaudeStatus: AgentBackendStatus = {
   backend: 'claude_cli',
@@ -84,7 +97,7 @@ describe('AgentPane', () => {
     const user = userEvent.setup()
     mockAgentState({ disclosureAccepted: false })
 
-    render(<AgentPane />)
+    renderPane()
 
     expect(screen.getByText('Enable memrynote Agent')).toBeInTheDocument()
 
@@ -96,10 +109,10 @@ describe('AgentPane', () => {
   it('renders an empty chat composer instead of the startup status', () => {
     mockAgentState({})
 
-    render(<AgentPane />)
+    renderPane()
 
     expect(screen.getByRole('textbox')).toHaveAccessibleName(
-      'Ask memrynote anything. @ to use mention file'
+      'Do anything with memrynote... @ to mention notes, tasks, and events'
     )
     expect(screen.queryByText('Start chatting with your vault')).not.toBeInTheDocument()
     expect(screen.queryByText(/claude .*detected and ready/)).not.toBeInTheDocument()
@@ -109,7 +122,7 @@ describe('AgentPane', () => {
   it('uses the main layout background for the agent shell', () => {
     mockUseAgentOptional.mockReturnValue(null)
 
-    render(<AgentPane />)
+    renderPane()
 
     const shell = screen.getByLabelText('Agent chat')
 
@@ -132,10 +145,10 @@ describe('AgentPane', () => {
       }
     })
 
-    render(<AgentPane />)
+    renderPane()
 
     expect(screen.getByRole('textbox')).toHaveAccessibleName(
-      'Ask memrynote anything. @ to use mention file'
+      'Do anything with memrynote... @ to mention notes, tasks, and events'
     )
     expect(screen.queryByText(/claude not found/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'New conversation' })).not.toBeInTheDocument()
@@ -189,7 +202,7 @@ describe('AgentPane', () => {
       loadConversation: mockLoadConversation
     })
 
-    render(<AgentPane />)
+    renderPane()
 
     expect(screen.getByText('Planning')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Conversation history' })).not.toBeInTheDocument()

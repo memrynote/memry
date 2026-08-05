@@ -208,6 +208,7 @@ export function createGeneratedRpcApi({
       "bulkSnooze": ((input) => invoke("inbox:bulk-snooze", input)) as GeneratedRpcApi["inbox"]["bulkSnooze"],
       "fileAllStale": (() => invoke("inbox:file-all-stale")) as GeneratedRpcApi["inbox"]["fileAllStale"],
       "retryTranscription": ((itemId) => invoke("inbox:retry-transcription", itemId)) as GeneratedRpcApi["inbox"]["retryTranscription"],
+      "transcribeAudio": ((input) => invoke("inbox:transcribe-audio", input)) as GeneratedRpcApi["inbox"]["transcribeAudio"],
       "retryMetadata": ((itemId) => invoke("inbox:retry-metadata", itemId)) as GeneratedRpcApi["inbox"]["retryMetadata"],
       "getStats": (() => invoke("inbox:get-stats")) as GeneratedRpcApi["inbox"]["getStats"],
       "getJobs": ((options) => invoke("inbox:get-jobs", options ?? {})) as GeneratedRpcApi["inbox"]["getJobs"],

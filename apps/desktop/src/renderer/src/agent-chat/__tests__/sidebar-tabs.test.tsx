@@ -1,5 +1,6 @@
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -34,8 +35,13 @@ vi.mock('@/contexts/ai-settings-context', () => ({
   useAISettingsContext: mockUseAISettingsContext
 }))
 
+import { SettingsModalProvider } from '@/contexts/settings-modal-context'
 import { SidebarTabs } from '../sidebar-tabs'
 import { AgentPane } from '../agent-pane'
+
+function testQueryClient(): QueryClient {
+  return new QueryClient({ defaultOptions: { queries: { retry: false } } })
+}
 
 function renderTabs(
   props: {
@@ -45,12 +51,14 @@ function renderTabs(
   } = {}
 ) {
   return render(
-    <SidebarTabs {...props}>
-      {{
-        day: <div>Day content</div>,
-        agent: <div>Agent content</div>
-      }}
-    </SidebarTabs>
+    <QueryClientProvider client={testQueryClient()}>
+      <SidebarTabs {...props}>
+        {{
+          day: <div>Day content</div>,
+          agent: <div>Agent content</div>
+        }}
+      </SidebarTabs>
+    </QueryClientProvider>
   )
 }
 
@@ -319,7 +327,13 @@ describe('SidebarTabs', () => {
       )
     }
 
-    render(<Harness />)
+    render(
+      <QueryClientProvider client={testQueryClient()}>
+        <SettingsModalProvider>
+          <Harness />
+        </SettingsModalProvider>
+      </QueryClientProvider>
+    )
 
     await user.click(screen.getByRole('button', { name: 'New conversation' }))
 

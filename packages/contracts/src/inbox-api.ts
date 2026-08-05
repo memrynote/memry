@@ -398,6 +398,22 @@ export const CaptureVoiceSchema = z.object({
   waveform: z.array(z.number().min(0).max(1)).max(120).optional()
 })
 
+/**
+ * Transcribe-only request: returns text for the caller to use directly and
+ * never creates an inbox item (agent composer dictation).
+ */
+export const TranscribeAudioSchema = z.object({
+  data: binaryDataSchema,
+  format: z.enum(['webm', 'mp3', 'wav']),
+  duration: z.number().min(0).max(300).optional()
+})
+
+export interface TranscribeAudioResponse {
+  success: boolean
+  text: string
+  error?: string
+}
+
 export const CaptureClipSchema = z.object({
   html: z.string().max(100000),
   text: z.string().max(50000),
@@ -644,6 +660,9 @@ export interface InboxHandlers {
   [InboxChannels.invoke.RETRY_TRANSCRIPTION]: (
     itemId: string
   ) => Promise<{ success: boolean; error?: string }>
+  [InboxChannels.invoke.TRANSCRIBE_AUDIO]: (
+    input: z.infer<typeof TranscribeAudioSchema>
+  ) => Promise<TranscribeAudioResponse>
 
   // Stats
   [InboxChannels.invoke.GET_STATS]: () => Promise<InboxStats>

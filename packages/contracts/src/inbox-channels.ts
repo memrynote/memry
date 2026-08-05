@@ -91,6 +91,8 @@ export const InboxChannels = {
     // Transcription
     /** Retry transcription for a voice item */
     RETRY_TRANSCRIPTION: 'inbox:retry-transcription',
+    /** Transcribe an audio buffer and return the text without creating an item */
+    TRANSCRIBE_AUDIO: 'inbox:transcribe-audio',
 
     // Metadata
     /** Retry metadata fetch for a link item */

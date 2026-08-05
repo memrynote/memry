@@ -4,7 +4,8 @@ import {
   CaptureLinkSchema,
   CaptureTextSchema,
   CaptureVoiceSchema,
-  FileItemSchema
+  FileItemSchema,
+  TranscribeAudioSchema
 } from '@memry/contracts/inbox-api'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
 import { createLogger } from '../lib/logger'
@@ -15,7 +16,8 @@ import {
   createDesktopInboxDomain,
   createDesktopInboxQueryHandlers,
   resumeInboxJobs,
-  teardownInboxJobScheduler
+  teardownInboxJobScheduler,
+  transcribeAudioInput
 } from '../inbox/domain'
 import { registerInboxBatchHandlers, unregisterInboxBatchHandlers } from './inbox-batch-handlers'
 import { registerInboxCrudHandlers, unregisterInboxCrudHandlers } from './inbox-crud-handlers'
@@ -171,6 +173,9 @@ export function registerInboxHandlers(): void {
   ipcMain.handle(InboxChannels.invoke.RETRY_METADATA, (_, itemId) =>
     inboxDomain.retryMetadata(itemId)
   )
+  ipcMain.handle(InboxChannels.invoke.TRANSCRIBE_AUDIO, (_, input) =>
+    transcribeAudioInput(TranscribeAudioSchema.parse(input))
+  )
 
   ipcMain.handle(InboxChannels.invoke.PREVIEW_LINK, async (_, url: string) => {
     try {
@@ -222,6 +227,7 @@ export function unregisterInboxHandlers(): void {
   ipcMain.removeHandler(InboxChannels.invoke.GET_SNOOZED)
   ipcMain.removeHandler(InboxChannels.invoke.RETRY_TRANSCRIPTION)
   ipcMain.removeHandler(InboxChannels.invoke.RETRY_METADATA)
+  ipcMain.removeHandler(InboxChannels.invoke.TRANSCRIBE_AUDIO)
 
   logger.info('Inbox handlers unregistered')
 }

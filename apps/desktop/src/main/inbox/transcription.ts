@@ -39,6 +39,12 @@ export interface TranscriptionResult {
   error?: string
 }
 
+/** Result of transcribing a raw audio buffer, with no inbox item involved. */
+export interface AudioTranscriptionOutcome {
+  transcription?: string
+  error?: string
+}
+
 // ============================================================================
 // Constants
 // ============================================================================
@@ -172,6 +178,96 @@ function createFailureResult(
   return { success: false, error } satisfies TranscriptionResult
 }
 
+function normalizeTranscriptionError(error: unknown): string {
+  const errorMessage = error instanceof Error ? error.message : 'Unknown transcription error'
+
+  if (errorMessage.includes('rate_limit')) {
+    return 'Rate limit exceeded. Please try again later.'
+  }
+  if (errorMessage.includes('invalid_api_key')) {
+    return 'Invalid OpenAI API key. Please check your settings.'
+  }
+  if (errorMessage.includes('insufficient_quota')) {
+    return 'OpenAI quota exceeded. Please check your billing.'
+  }
+
+  return errorMessage
+}
+
+// ============================================================================
+// Buffer Transcription (no inbox item)
+// ============================================================================
+
+/**
+ * Transcribe an in-memory audio buffer with the configured provider.
+ *
+ * Shared by inbox voice memos and by callers that only want text back
+ * (agent composer dictation) — there is exactly one transcription engine.
+ *
+ * @param audioBuffer - Raw audio bytes
+ * @param ext - Lowercase file extension without the dot (e.g. `wav`)
+ * @param logContext - Label used in log lines to identify the caller
+ */
+export async function transcribeAudioData(
+  audioBuffer: Buffer,
+  ext: string,
+  logContext = 'audio'
+): Promise<AudioTranscriptionOutcome> {
+  try {
+    const settings = getVoiceTranscriptionSettings()
+
+    if (settings.provider === 'openai' && !SUPPORTED_FORMATS.includes(ext)) {
+      const error = `Unsupported audio format: ${ext}. Supported: ${SUPPORTED_FORMATS.join(', ')}`
+      log.error(error)
+      return { error }
+    }
+
+    if (settings.provider === 'local' && ext !== 'wav') {
+      const error =
+        'Local transcription requires WAV voice memos. Record a new memo or switch to OpenAI.'
+      log.error(error)
+      return { error }
+    }
+
+    if (settings.provider === 'openai' && audioBuffer.length > MAX_FILE_SIZE) {
+      const sizeMB = Math.round(audioBuffer.length / 1024 / 1024)
+      const error = `Audio file too large: ${sizeMB}MB. Maximum size is 25MB.`
+      log.error(error)
+      return { error }
+    }
+
+    if (settings.provider === 'local') {
+      log.info(`Starting local transcription for ${logContext}`)
+      return { transcription: await transcribeWithLocalModel(audioBuffer) }
+    }
+
+    const apiKey = await getVoiceTranscriptionOpenAIApiKey()
+    if (!apiKey) {
+      const error = 'OpenAI API key not configured in Settings.'
+      log.warn(error)
+      return { error }
+    }
+
+    log.info(`Starting OpenAI transcription for ${logContext} (${ext} format)`)
+    const openai = getOpenAIClient(apiKey)
+    const file = await toFile(audioBuffer, `audio.${ext}`, {
+      type: `audio/${ext}`
+    })
+
+    const response = await openai.audio.transcriptions.create({
+      file,
+      model: envConfig.whisperModel || 'whisper-1',
+      response_format: 'text'
+    })
+
+    return { transcription: response as unknown as string }
+  } catch (error) {
+    const normalized = normalizeTranscriptionError(error)
+    log.error(`Transcription error for ${logContext}:`, normalized)
+    return { error: normalized }
+  }
+}
+
 // ============================================================================
 // Main Transcription Function
 // ============================================================================
@@ -220,58 +316,14 @@ export async function transcribeAudio(
     }
 
     const ext = getExtension(absolutePath)
-    const isSupportedOpenAIFormat = SUPPORTED_FORMATS.includes(ext)
-    const isSupportedLocalFormat = ext === 'wav'
-
-    if (settings.provider === 'openai' && !isSupportedOpenAIFormat) {
-      const error = `Unsupported audio format: ${ext}. Supported: ${SUPPORTED_FORMATS.join(', ')}`
-      log.error(error)
-      return createFailureResult(db, itemId, error)
-    }
-
-    if (settings.provider === 'local' && !isSupportedLocalFormat) {
-      const error =
-        'Local transcription requires WAV voice memos. Record a new memo or switch to OpenAI.'
-      log.error(error)
-      return createFailureResult(db, itemId, error)
-    }
-
     const audioBuffer = await readFile(absolutePath)
 
-    if (settings.provider === 'openai' && audioBuffer.length > MAX_FILE_SIZE) {
-      const sizeMB = Math.round(audioBuffer.length / 1024 / 1024)
-      const error = `Audio file too large: ${sizeMB}MB. Maximum size is 25MB.`
-      log.error(error)
-      return createFailureResult(db, itemId, error)
+    const outcome = await transcribeAudioData(audioBuffer, ext, `item ${itemId}`)
+    if (outcome.error !== undefined) {
+      return createFailureResult(db, itemId, outcome.error)
     }
 
-    let transcription = ''
-
-    if (settings.provider === 'local') {
-      log.info(`Starting local transcription for item ${itemId}`)
-      transcription = await transcribeWithLocalModel(audioBuffer)
-    } else {
-      const apiKey = await getVoiceTranscriptionOpenAIApiKey()
-      if (!apiKey) {
-        const error = 'OpenAI API key not configured in Settings.'
-        log.warn(error)
-        return createFailureResult(db, itemId, error)
-      }
-
-      log.info(`Starting OpenAI transcription for item ${itemId} (${ext} format)`)
-      const openai = getOpenAIClient(apiKey)
-      const file = await toFile(audioBuffer, `audio.${ext}`, {
-        type: `audio/${ext}`
-      })
-
-      const response = await openai.audio.transcriptions.create({
-        file,
-        model: envConfig.whisperModel || 'whisper-1',
-        response_format: 'text'
-      })
-
-      transcription = response as unknown as string
-    }
+    const transcription = outcome.transcription ?? ''
 
     log.info(`Success for item ${itemId}: "${transcription.substring(0, 50)}..."`)
 
@@ -310,18 +362,8 @@ export async function transcribeAudio(
 
     return { success: true, transcription }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown transcription error'
-    log.error(`Error for item ${itemId}:`, errorMessage)
-
-    // Check for specific OpenAI errors
-    let userFriendlyError = errorMessage
-    if (errorMessage.includes('rate_limit')) {
-      userFriendlyError = 'Rate limit exceeded. Please try again later.'
-    } else if (errorMessage.includes('invalid_api_key')) {
-      userFriendlyError = 'Invalid OpenAI API key. Please check your settings.'
-    } else if (errorMessage.includes('insufficient_quota')) {
-      userFriendlyError = 'OpenAI quota exceeded. Please check your billing.'
-    }
+    const userFriendlyError = normalizeTranscriptionError(error)
+    log.error(`Error for item ${itemId}:`, userFriendlyError)
 
     return createFailureResult(db, itemId, userFriendlyError)
   }

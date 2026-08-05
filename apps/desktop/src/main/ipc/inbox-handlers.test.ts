@@ -15,6 +15,7 @@ const mockCaptureTextCommand = vi.hoisted(() => vi.fn())
 const mockCaptureLinkCommand = vi.hoisted(() => vi.fn())
 const mockCaptureImageCommand = vi.hoisted(() => vi.fn())
 const mockRetryTranscriptionCommand = vi.hoisted(() => vi.fn())
+const mockTranscribeAudioData = vi.hoisted(() => vi.fn())
 const mockRetryMetadataCommand = vi.hoisted(() => vi.fn())
 
 // Mock electron modules
@@ -136,7 +137,8 @@ vi.mock('../inbox/domain', async () => {
 })
 
 vi.mock('../inbox/transcription', () => ({
-  retryTranscription: vi.fn()
+  retryTranscription: vi.fn(),
+  transcribeAudioData: mockTranscribeAudioData
 }))
 
 vi.mock('../inbox/jobs', () => ({
@@ -367,6 +369,45 @@ describe('inbox-handlers', () => {
         data: { 0: 1, 1: 2, 2: 3 },
         filename: 'test.png',
         mimeType: 'image/png'
+      })
+    })
+  })
+
+  describe('TRANSCRIBE_AUDIO handler', () => {
+    beforeEach(() => {
+      registerInboxHandlers()
+      mockTranscribeAudioData.mockReset()
+    })
+
+    it('returns transcript text without creating an inbox item', async () => {
+      mockTranscribeAudioData.mockResolvedValue({ transcription: 'call the vet' })
+
+      const result = await invokeHandler(InboxChannels.invoke.TRANSCRIBE_AUDIO, {
+        data: { 0: 1, 1: 2, 2: 3 },
+        format: 'wav',
+        duration: 1.2
+      })
+
+      expect(result).toEqual({ success: true, text: 'call the vet' })
+      expect(mockTranscribeAudioData).toHaveBeenCalledWith(
+        Buffer.from([1, 2, 3]),
+        'wav',
+        'dictation request'
+      )
+    })
+
+    it('surfaces transcription failures', async () => {
+      mockTranscribeAudioData.mockResolvedValue({ error: 'Local model is not installed.' })
+
+      const result = await invokeHandler(InboxChannels.invoke.TRANSCRIBE_AUDIO, {
+        data: { 0: 1 },
+        format: 'wav'
+      })
+
+      expect(result).toEqual({
+        success: false,
+        text: '',
+        error: 'Local model is not installed.'
       })
     })
   })

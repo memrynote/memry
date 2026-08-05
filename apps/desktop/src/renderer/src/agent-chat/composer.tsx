@@ -26,15 +26,19 @@ import { Button } from '@/components/ui/button'
 import { useActiveTab } from '@/contexts/tabs'
 import {
   AiWebBrowsing,
+  ArrowUp,
+  AtSign,
   ChatGpt,
   Check,
   ChevronDown,
   Claude,
   Computer,
-  Send,
+  Plus,
   Shield,
   Square
 } from '@/lib/icons'
+import { ConnectedToolsTray } from './connected-tools-tray'
+import { VoiceDictationButton } from './voice-dictation-button'
 import {
   AgentPromptEditor,
   type AgentPromptEditorHandle,
@@ -199,6 +203,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const activeTab = useActiveTab()
   const promptEditorRef = useRef<AgentPromptEditorHandle>(null)
   const composerBoxRef = useRef<HTMLDivElement>(null)
+  const pendingMentionRef = useRef(false)
   const [promptValue, setPromptValue] = useState<AgentPromptValue>({
     text: '',
     attachments: []
@@ -350,11 +355,16 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const settingsSummary = t('agentChat.composer.settingsSummary', {
     reasoning: t(selectedReasoning.summaryKey)
   })
-  const modelSettingsSummary = `${selectedModelLabel} · ${settingsSummary}`
-  const modelSettingsAriaLabel = t('agentChat.composer.modelSettingsLabel', {
-    model: selectedModelLabel,
-    settings: settingsSummary
+  const modelAriaLabel = t('agentChat.composer.modelLabel', {
+    provider: selectedProviderLabel,
+    model: selectedModelLabel
   })
+  const reasoningAriaLabel = t('agentChat.composer.reasoningLabel', {
+    reasoning: settingsSummary
+  })
+  const addContextAriaLabel = permissionsActive
+    ? t('agentChat.composer.addContextWithPermissions', { permissions: permissionsAriaLabel })
+    : t('agentChat.composer.addContext')
   const backendOptions = (): AgentBackendOptions => {
     if (selectedProvider === 'local_openai_compatible') {
       return { backend: 'local_openai_compatible', toolsEnabled: true }
@@ -418,6 +428,15 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
       void loadModelOptions(provider)
     }
   }
+  const insertTranscript = useCallback((text: string): void => {
+    const editor = promptEditorRef.current
+    if (!editor) return
+
+    const existing = editor.getValue().text
+    const needsSpace = existing.length > 0 && !/\s$/.test(existing)
+    editor.insertText(needsSpace ? ` ${text}` : text)
+    editor.focus()
+  }, [])
   const closePicker = useCallback(() => {
     setMentionQuery(null)
     setPickerOpen(false)
@@ -527,237 +546,284 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
           onClose={closePicker}
         />
       )}
-      <div
-        ref={composerBoxRef}
-        className="flex min-h-[120px] cursor-text flex-col rounded-2xl border border-border bg-card shadow-lg"
-      >
+      <div className="relative flex flex-col pb-8">
+        <ConnectedToolsTray />
         <div
-          className="relative max-h-[258px] flex-1 overflow-y-auto"
-          onPointerDown={(event) => {
-            if (event.button !== 0) return
-            if (
-              event.target instanceof HTMLElement &&
-              event.target.closest('[contenteditable="true"]')
-            ) {
-              return
-            }
-            event.preventDefault()
-            promptEditorRef.current?.focus()
-          }}
+          ref={composerBoxRef}
+          className="relative flex min-h-[102px] cursor-text flex-col justify-between gap-4 rounded-2xl border border-border bg-card px-2.5 pb-2.5 pt-3"
         >
-          <AgentPromptEditor
-            ref={promptEditorRef}
-            disabled={busy || !agent}
-            placeholder={t('agentChat.composer.placeholder')}
-            onEscape={closePicker}
-            onMentionKeyDown={handleMentionKeyDown}
-            onMentionQueryChange={(query) => {
-              setMentionQuery(query)
-              setPickerOpen(query !== null)
-              if (query === null) {
-                setPickerItems([])
-                setSelectedPickerIndex(-1)
+          <div
+            className="relative max-h-[180px] flex-1 overflow-y-auto"
+            onPointerDown={(event) => {
+              if (event.button !== 0) return
+              if (
+                event.target instanceof HTMLElement &&
+                event.target.closest('[contenteditable="true"]')
+              ) {
+                return
               }
+              event.preventDefault()
+              promptEditorRef.current?.focus()
             }}
-            onSubmit={() => void submit()}
-            onValueChange={setPromptValue}
-          />
-        </div>
-        <div className="flex min-h-[40px] items-center gap-2 p-2 pb-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label={t('agentChat.composer.providerLabel', {
-                  provider: selectedProviderLabel
-                })}
-                className="inline-flex h-8 items-center gap-1.5 rounded-full bg-transparent px-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
-              >
-                <SelectedProviderIcon className="size-4" aria-hidden="true" />
-                <span>{selectedProviderLabel}</span>
-                <ChevronDown className="size-3" aria-hidden="true" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-36 border-0">
-              <DropdownMenuItem
-                disabled={claudeDisabled}
-                onSelect={() => selectProvider('claude_cli')}
-                className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-              >
-                <Claude className="size-4 text-muted-foreground" aria-hidden="true" />
-                <span>{claudeProviderLabel}</span>
-                {selectedProvider === 'claude_cli' && (
-                  <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
-                )}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={codexDisabled}
-                onSelect={() => selectProvider('codex_cli')}
-                className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-              >
-                <ChatGpt className="size-4 text-muted-foreground" aria-hidden="true" />
-                <span>{codexProviderLabel}</span>
-                {selectedProvider === 'codex_cli' && (
-                  <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
-                )}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() => selectProvider('local_openai_compatible')}
-                className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-              >
-                <Computer className="size-4 text-muted-foreground" aria-hidden="true" />
-                <span>{localProviderLabel}</span>
-                {selectedProvider === 'local_openai_compatible' && (
-                  <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
-                )}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label={permissionsAriaLabel}
-                className={[
-                  'relative inline-flex size-8 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:bg-accent data-[state=open]:text-accent-foreground',
-                  permissionsActive
-                    ? 'bg-accent text-accent-foreground hover:bg-accent/90'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-                ].join(' ')}
-              >
-                {accessMode === 'computer_access' ? (
-                  <Computer className="size-4" aria-hidden="true" />
-                ) : (
-                  <Shield className="size-4" aria-hidden="true" />
-                )}
-                {webSearchEnabled && (
-                  <span className="absolute -end-0.5 -top-0.5 inline-flex size-3 items-center justify-center rounded-full bg-background text-foreground ring-1 ring-border">
-                    <AiWebBrowsing className="size-2" aria-hidden="true" />
-                  </span>
-                )}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-52 border-border/60 p-1.5">
-              <DropdownMenuLabel className="px-2 py-1 text-xs font-medium">
-                {t('agentChat.composer.permissions.label')}
-              </DropdownMenuLabel>
-              <DropdownMenuLabel className="px-2 pb-1 pt-2 text-[11px] font-medium uppercase text-muted-foreground">
-                {t('agentChat.composer.permissions.access')}
-              </DropdownMenuLabel>
-              <DropdownMenuItem
-                onSelect={(event) => {
-                  event.preventDefault()
-                  setAccessMode('vault_only')
-                }}
-                className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-              >
-                <Shield className="size-4 text-muted-foreground" aria-hidden="true" />
-                <span>{t('agentChat.composer.access.vaultOnly')}</span>
-                {accessMode === 'vault_only' && (
-                  <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
-                )}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={(event) => {
-                  event.preventDefault()
-                  setAccessMode('computer_access')
-                }}
-                className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-              >
-                <Computer className="size-4 text-muted-foreground" aria-hidden="true" />
-                <span>{t('agentChat.composer.access.computerAccess')}</span>
-                {accessMode === 'computer_access' && (
-                  <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
-                )}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="px-2 pb-1 pt-2 text-[11px] font-medium uppercase text-muted-foreground">
-                {t('agentChat.composer.permissions.tools')}
-              </DropdownMenuLabel>
-              <DropdownMenuCheckboxItem
-                checked={webSearchEnabled}
-                onCheckedChange={(checked) => setWebSearchEnabled(checked === true)}
-                onSelect={(event) => event.preventDefault()}
-                className="text-xs focus:bg-accent focus:text-accent-foreground"
-              >
-                <span className="flex min-w-0 items-center gap-2">
-                  <AiWebBrowsing className="size-4 text-muted-foreground" aria-hidden="true" />
-                  <span>{t('agentChat.composer.webSearch.label')}</span>
-                </span>
-              </DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {isCliProvider(selectedProvider) && (
-            <DropdownMenu open={modelMenuOpen} onOpenChange={handleModelMenuOpenChange}>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  aria-label={modelSettingsAriaLabel}
-                  className="inline-flex h-8 max-w-36 items-center gap-1 rounded-full bg-muted px-2 text-xs text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  <span className="truncate">{modelSettingsSummary}</span>
-                  <ChevronDown className="size-3 shrink-0" aria-hidden="true" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="min-w-52 border-border/60 p-1.5">
-                <DropdownMenuLabel className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
-                  {t('agentChat.composer.models.label')}
-                </DropdownMenuLabel>
-                {(selectedModelOptions?.models ?? []).map((model) => (
-                  <DropdownMenuItem
-                    key={model.id}
-                    onSelect={() => selectModel(model.id)}
-                    className="text-xs focus:bg-transparent focus:text-foreground"
+          >
+            <AgentPromptEditor
+              ref={promptEditorRef}
+              disabled={busy || !agent}
+              editorClassName="!min-h-9 max-h-[180px] p-1 text-[13px] leading-[18px] [&_.is-editor-empty:first-child::before]:text-[13px]"
+              placeholder={t('agentChat.composer.placeholder')}
+              onEscape={closePicker}
+              onMentionKeyDown={handleMentionKeyDown}
+              onMentionQueryChange={(query) => {
+                setMentionQuery(query)
+                setPickerOpen(query !== null)
+                if (query === null) {
+                  setPickerItems([])
+                  setSelectedPickerIndex(-1)
+                }
+              }}
+              onSubmit={() => void submit()}
+              onValueChange={setPromptValue}
+            />
+          </div>
+          <div className="flex w-full items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={addContextAriaLabel}
+                    className="relative inline-flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
                   >
-                    <span>{model.label}</span>
-                    {selectedBackendModel === model.id && (
+                    <Plus className="size-3" aria-hidden="true" />
+                    {permissionsActive && (
+                      <span
+                        className="absolute -end-0.5 -top-0.5 size-2 rounded-full bg-foreground ring-2 ring-card"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="start"
+                  className="min-w-52 border-border/60 p-1.5"
+                  onCloseAutoFocus={(event) => {
+                    // Radix parks focus back on the trigger on close, which would
+                    // undo the caret we just placed in the editor.
+                    if (!pendingMentionRef.current) return
+                    pendingMentionRef.current = false
+                    event.preventDefault()
+                    promptEditorRef.current?.focus()
+                    promptEditorRef.current?.insertMentionTrigger()
+                  }}
+                >
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      pendingMentionRef.current = true
+                    }}
+                    className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                  >
+                    <AtSign className="size-4 text-muted-foreground" aria-hidden="true" />
+                    <span>{t('agentChat.composer.mentionContext')}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="px-2 py-1 text-xs font-medium">
+                    {t('agentChat.composer.permissions.label')}
+                  </DropdownMenuLabel>
+                  <DropdownMenuLabel className="px-2 pb-1 pt-2 text-[11px] font-medium uppercase text-muted-foreground">
+                    {t('agentChat.composer.permissions.access')}
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onSelect={(event) => {
+                      event.preventDefault()
+                      setAccessMode('vault_only')
+                    }}
+                    className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                  >
+                    <Shield className="size-4 text-muted-foreground" aria-hidden="true" />
+                    <span>{t('agentChat.composer.access.vaultOnly')}</span>
+                    {accessMode === 'vault_only' && (
                       <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
                     )}
                   </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
-                  {t('agentChat.composer.settings.reasoning')}
-                </DropdownMenuLabel>
-                {selectedReasoningOptions.map((option) => (
-                  <DropdownMenuCheckboxItem
-                    key={option.value}
-                    checked={selectedReasoningValue === option.value}
-                    onCheckedChange={() => selectReasoning(option.value)}
-                    className="text-xs"
+                  <DropdownMenuItem
+                    onSelect={(event) => {
+                      event.preventDefault()
+                      setAccessMode('computer_access')
+                    }}
+                    className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
                   >
-                    {t(option.labelKey)}
+                    <Computer className="size-4 text-muted-foreground" aria-hidden="true" />
+                    <span>{t('agentChat.composer.access.computerAccess')}</span>
+                    {accessMode === 'computer_access' && (
+                      <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="px-2 pb-1 pt-2 text-[11px] font-medium uppercase text-muted-foreground">
+                    {t('agentChat.composer.permissions.tools')}
+                  </DropdownMenuLabel>
+                  <DropdownMenuCheckboxItem
+                    checked={webSearchEnabled}
+                    onCheckedChange={(checked) => setWebSearchEnabled(checked === true)}
+                    onSelect={(event) => event.preventDefault()}
+                    className="text-xs focus:bg-accent focus:text-accent-foreground"
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <AiWebBrowsing className="size-4 text-muted-foreground" aria-hidden="true" />
+                      <span>{t('agentChat.composer.webSearch.label')}</span>
+                    </span>
                   </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-          <div className="ms-auto flex items-center gap-3">
-            {turnInFlight ? (
-              <Button
-                type="button"
-                aria-label={t('agentChat.stop')}
-                disabled={!agent}
-                onClick={cancelTurn}
-                className="size-8 rounded-full p-0"
-              >
-                <Square className="size-3.5" aria-hidden="true" />
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                aria-label={t('agentChat.composer.send')}
-                disabled={!canSend}
-                onPointerDown={(event) => {
-                  event.preventDefault()
-                  void submit()
-                }}
-                onClick={() => void submit()}
-                className="size-8 rounded-full bg-primary p-0 disabled:cursor-not-allowed"
-              >
-                <Send className="size-3.5 text-primary-foreground" aria-hidden="true" />
-              </Button>
-            )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu open={modelMenuOpen} onOpenChange={handleModelMenuOpenChange}>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={modelAriaLabel}
+                    className="inline-flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:bg-accent"
+                  >
+                    <SelectedProviderIcon
+                      className={[
+                        'size-3.5 shrink-0',
+                        selectedProvider === 'claude_cli'
+                          ? 'text-[#FF671A]'
+                          : 'text-muted-foreground'
+                      ].join(' ')}
+                      aria-hidden="true"
+                    />
+                    <span className="truncate text-[13px] leading-[18px] text-foreground">
+                      {isCliProvider(selectedProvider) ? selectedModelLabel : selectedProviderLabel}
+                    </span>
+                    <ChevronDown
+                      className="size-3 shrink-0 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-52 border-border/60 p-1.5">
+                  <DropdownMenuLabel className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                    {t('agentChat.composer.providers.label')}
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem
+                    disabled={claudeDisabled}
+                    onSelect={() => selectProvider('claude_cli')}
+                    className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                  >
+                    <Claude className="size-4 text-muted-foreground" aria-hidden="true" />
+                    <span>{claudeProviderLabel}</span>
+                    {selectedProvider === 'claude_cli' && (
+                      <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={codexDisabled}
+                    onSelect={() => selectProvider('codex_cli')}
+                    className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                  >
+                    <ChatGpt className="size-4 text-muted-foreground" aria-hidden="true" />
+                    <span>{codexProviderLabel}</span>
+                    {selectedProvider === 'codex_cli' && (
+                      <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => selectProvider('local_openai_compatible')}
+                    className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                  >
+                    <Computer className="size-4 text-muted-foreground" aria-hidden="true" />
+                    <span>{localProviderLabel}</span>
+                    {selectedProvider === 'local_openai_compatible' && (
+                      <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
+                    )}
+                  </DropdownMenuItem>
+                  {isCliProvider(selectedProvider) && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                        {t('agentChat.composer.models.label')}
+                      </DropdownMenuLabel>
+                      {(selectedModelOptions?.models ?? []).map((model) => (
+                        <DropdownMenuItem
+                          key={model.id}
+                          onSelect={() => selectModel(model.id)}
+                          className="text-xs focus:bg-transparent focus:text-foreground"
+                        >
+                          <span>{model.label}</span>
+                          {selectedBackendModel === model.id && (
+                            <Check
+                              className="ms-auto size-3 text-muted-foreground"
+                              aria-hidden="true"
+                            />
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {isCliProvider(selectedProvider) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={reasoningAriaLabel}
+                      className="inline-flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:bg-accent"
+                    >
+                      <span className="truncate text-[13px] leading-[18px] text-foreground">
+                        {settingsSummary}
+                      </span>
+                      <ChevronDown
+                        className="size-3 shrink-0 text-muted-foreground"
+                        aria-hidden="true"
+                      />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="min-w-52 border-border/60 p-1.5">
+                    <DropdownMenuLabel className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                      {t('agentChat.composer.settings.reasoning')}
+                    </DropdownMenuLabel>
+                    {selectedReasoningOptions.map((option) => (
+                      <DropdownMenuCheckboxItem
+                        key={option.value}
+                        checked={selectedReasoningValue === option.value}
+                        onCheckedChange={() => selectReasoning(option.value)}
+                        className="text-xs"
+                      >
+                        {t(option.labelKey)}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <VoiceDictationButton disabled={busy || !agent} onTranscript={insertTranscript} />
+              {turnInFlight ? (
+                <Button
+                  type="button"
+                  aria-label={t('agentChat.stop')}
+                  disabled={!agent}
+                  onClick={cancelTurn}
+                  className="size-7 rounded-md bg-[#B7D4F0] p-0 text-white hover:bg-[#A6C9EB]"
+                >
+                  <Square className="size-3" aria-hidden="true" />
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  aria-label={t('agentChat.composer.send')}
+                  disabled={!canSend}
+                  onPointerDown={(event) => {
+                    event.preventDefault()
+                    void submit()
+                  }}
+                  onClick={() => void submit()}
+                  className="size-7 rounded-md bg-[#B7D4F0] p-0 text-white hover:bg-[#A6C9EB] disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+                >
+                  <ArrowUp className="size-3.5" aria-hidden="true" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>

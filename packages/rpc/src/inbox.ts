@@ -264,6 +264,18 @@ export interface CaptureVoiceInput {
   waveform?: number[]
 }
 
+export interface TranscribeAudioInput {
+  data: ArrayBuffer
+  format: 'webm' | 'mp3' | 'wav'
+  duration?: number
+}
+
+export interface TranscribeAudioResponse {
+  success: boolean
+  text: string
+  error?: string
+}
+
 export interface CaptureClipInput {
   html: string
   text: string
@@ -574,6 +586,12 @@ export const inboxRpc = defineDomain({
     retryTranscription: defineMethod<(itemId: string) => SuccessResponse>({
       channel: InboxChannels.invoke.RETRY_TRANSCRIPTION,
       params: ['itemId']
+    }),
+    transcribeAudio: defineMethod<
+      (input: TranscribeAudioInput) => Promise<TranscribeAudioResponse>
+    >({
+      channel: InboxChannels.invoke.TRANSCRIBE_AUDIO,
+      params: ['input']
     }),
     retryMetadata: defineMethod<(itemId: string) => SuccessResponse>({
       channel: InboxChannels.invoke.RETRY_METADATA,

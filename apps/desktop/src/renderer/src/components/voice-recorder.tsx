@@ -2,6 +2,11 @@ import { forwardRef, useState, useRef, useCallback, useEffect, useImperativeHand
 import { motion, useReducedMotion } from 'motion/react'
 import { Mic, Square, X, Loader2, Settings, AlertCircle } from '@/lib/icons'
 import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
+import {
+  useVoiceCapture,
+  VOICE_CAPTURE_MAX_DURATION,
+  type VoiceCaptureError
+} from '@/hooks/use-voice-capture'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -10,8 +15,6 @@ import { useT } from '@memry/i18n/renderer'
 import { getI18n } from 'react-i18next'
 
 const log = createLogger('Component:VoiceRecorder')
-
-type RecordingState = 'idle' | 'requesting-permission' | 'recording' | 'processing'
 
 interface VoiceRecorderProps {
   onRecordingComplete: (audioBlob: Blob, duration: number) => void
@@ -24,8 +27,6 @@ export interface VoiceRecorderHandle {
   start: () => Promise<void>
 }
 
-const DEFAULT_MAX_DURATION = 300
-const MIME_TYPE = 'audio/webm'
 const WAVEFORM_BAR_COUNT = 40
 const MIN_BAR_HEIGHT = 3
 const MAX_BAR_HEIGHT = 18
@@ -54,24 +55,16 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
     {
       onRecordingComplete,
       onCancel,
-      maxDuration = DEFAULT_MAX_DURATION,
+      maxDuration = VOICE_CAPTURE_MAX_DURATION,
       className
     }: VoiceRecorderProps,
     ref
   ): React.JSX.Element {
     const { t: tPhaseF } = useT('inbox')
     const prefersReducedMotion = useReducedMotion()
-    const [state, setState] = useState<RecordingState>('idle')
-    const [duration, setDuration] = useState(0)
     const [error, setError] = useState<string | null>(null)
     const [permissionDenied, setPermissionDenied] = useState(false)
     const [waveformBars, setWaveformBars] = useState<number[]>(createWaveformBars)
-
-    const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-    const streamRef = useRef<MediaStream | null>(null)
-    const chunksRef = useRef<Blob[]>([])
-    const timerRef = useRef<number | null>(null)
-    const startTimeRef = useRef<number>(0)
 
     const audioContextRef = useRef<AudioContext | null>(null)
     const analyserRef = useRef<AnalyserNode | null>(null)
@@ -144,126 +137,61 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
       setWaveformBars(emptyBars)
     }, [])
 
-    const stopRecording = useCallback(
-      (cancelled = false) => {
-        if (timerRef.current) {
-          clearInterval(timerRef.current)
-          timerRef.current = null
+    const handleCaptureError = useCallback(
+      (captureError: VoiceCaptureError) => {
+        if (captureError.kind === 'permission-denied') {
+          setPermissionDenied(true)
+          setError(tPhaseF('phaseF.componentsVoiceRecorder.microphoneAccessDenied'))
+          return
         }
 
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-          mediaRecorderRef.current.stop()
+        if (captureError.kind === 'no-microphone') {
+          setError(tPhaseF('phaseF.componentsVoiceRecorder.noMicrophoneFound'))
+          return
         }
 
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach((track) => track.stop())
-          streamRef.current = null
+        if (captureError.kind === 'access-failed') {
+          setError(
+            extractErrorMessage(
+              captureError.cause,
+              getI18n().getFixedT(null, 'common')('phaseI.errors.failedToAccessMicrophone')
+            )
+          )
+          return
         }
 
-        cleanupAudio()
-
-        if (cancelled) {
-          chunksRef.current = []
-          setState('idle')
-          setDuration(0)
-          resetWaveform()
+        if (captureError.kind === 'recorder-failed') {
+          setError(tPhaseF('phaseF.componentsVoiceRecorder.recordingError'))
+          return
         }
+
+        setError(tPhaseF('phaseF.componentsVoiceRecorder.failedToStart'))
       },
-      [cleanupAudio, resetWaveform]
+      [tPhaseF]
     )
+
+    const { state, duration, stream, start, stop, cancel } = useVoiceCapture({
+      maxDuration,
+      onComplete: onRecordingComplete,
+      onError: handleCaptureError
+    })
+
+    useEffect(() => {
+      if (!stream) return
+
+      startWaveformAnalysis(stream)
+
+      return () => {
+        cleanupAudio()
+        resetWaveform()
+      }
+    }, [stream, startWaveformAnalysis, cleanupAudio, resetWaveform])
 
     const startRecording = useCallback(async () => {
       setError(null)
       setPermissionDenied(false)
-      setState('requesting-permission')
-
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            sampleRate: 44100
-          }
-        })
-
-        streamRef.current = stream
-        chunksRef.current = []
-
-        const mediaRecorder = new MediaRecorder(stream, {
-          mimeType: MediaRecorder.isTypeSupported(MIME_TYPE) ? MIME_TYPE : 'audio/webm'
-        })
-
-        mediaRecorderRef.current = mediaRecorder
-
-        mediaRecorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            chunksRef.current.push(event.data)
-          }
-        }
-
-        mediaRecorder.onstop = () => {
-          if (chunksRef.current.length > 0) {
-            setState('processing')
-
-            const blob = new Blob(chunksRef.current, { type: MIME_TYPE })
-            const finalDuration = (Date.now() - startTimeRef.current) / 1000
-
-            chunksRef.current = []
-            onRecordingComplete(blob, finalDuration)
-
-            setState('idle')
-            setDuration(0)
-          } else {
-            setState('idle')
-            setDuration(0)
-          }
-        }
-
-        mediaRecorder.onerror = (event) => {
-          log.error('MediaRecorder error', event)
-          setError(tPhaseF('phaseF.componentsVoiceRecorder.recordingError'))
-          stopRecording(true)
-        }
-
-        mediaRecorder.start()
-        startTimeRef.current = Date.now()
-        setState('recording')
-        setDuration(0)
-
-        startWaveformAnalysis(stream)
-
-        timerRef.current = window.setInterval(() => {
-          const elapsed = (Date.now() - startTimeRef.current) / 1000
-          setDuration(elapsed)
-
-          if (elapsed >= maxDuration) {
-            stopRecording(false)
-          }
-        }, 100)
-      } catch (err) {
-        log.error('Failed to start recording', err)
-
-        if (err instanceof DOMException) {
-          if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-            setPermissionDenied(true)
-            setError(tPhaseF('phaseF.componentsVoiceRecorder.microphoneAccessDenied'))
-          } else if (err.name === 'NotFoundError') {
-            setError(tPhaseF('phaseF.componentsVoiceRecorder.noMicrophoneFound'))
-          } else {
-            setError(
-              extractErrorMessage(
-                err,
-                getI18n().getFixedT(null, 'common')('phaseI.errors.failedToAccessMicrophone')
-              )
-            )
-          }
-        } else {
-          setError(tPhaseF('phaseF.componentsVoiceRecorder.failedToStart'))
-        }
-
-        setState('idle')
-      }
-    }, [maxDuration, onRecordingComplete, startWaveformAnalysis, stopRecording, tPhaseF])
+      await start()
+    }, [start])
 
     useImperativeHandle(
       ref,
@@ -273,20 +201,14 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
       [startRecording]
     )
 
-    useEffect(() => {
-      return () => {
-        stopRecording(true)
-      }
-    }, [stopRecording])
-
     const handleStop = useCallback(() => {
-      stopRecording(false)
-    }, [stopRecording])
+      stop()
+    }, [stop])
 
     const handleCancel = useCallback(() => {
-      stopRecording(true)
+      cancel()
       onCancel()
-    }, [stopRecording, onCancel])
+    }, [cancel, onCancel])
 
     // Keyboard parity while the mic is hot: Esc cancels anywhere; Enter/Space
     // stop unless the user is typing in an input. Capture phase so list-level

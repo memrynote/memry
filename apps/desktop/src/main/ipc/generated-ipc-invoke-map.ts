@@ -154,6 +154,7 @@ export interface MainIpcInvokeHandlers {
   "inbox:set-stale-threshold": (...args: [any]) => Awaited<Promise<{ success: boolean; }>>
   "inbox:snooze": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
   "inbox:track-suggestion": (...args: [string, string, string, string, number, string[], string[]]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; error?: string | undefined; }>>
+  "inbox:transcribe-audio": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").TranscribeAudioResponse>>
   "inbox:unarchive": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
   "inbox:undo-archive": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
   "inbox:undo-file": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>

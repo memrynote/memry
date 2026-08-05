@@ -238,6 +238,8 @@ const createMockApi = () => ({
   settings: {
     get: vi.fn().mockResolvedValue(null),
     set: vi.fn().mockResolvedValue({ success: true }),
+    getVoiceRecordingReadiness: vi.fn().mockResolvedValue({ ready: true }),
+    openOsMicrophoneSettings: vi.fn().mockResolvedValue({ success: true }),
     getJournalSettings: vi.fn().mockResolvedValue({}),
     setJournalSettings: vi.fn().mockResolvedValue({ success: true }),
     getAISettings: vi.fn().mockResolvedValue({ enabled: false }),
@@ -293,6 +295,7 @@ const createMockApi = () => ({
     bulkSnooze: vi.fn().mockResolvedValue({ success: true, processedCount: 0, errors: [] }),
     fileAllStale: vi.fn().mockResolvedValue({ success: true, processedCount: 0, errors: [] }),
     retryTranscription: vi.fn().mockResolvedValue({ success: true }),
+    transcribeAudio: vi.fn().mockResolvedValue({ success: true, text: '' }),
     retryMetadata: vi.fn().mockResolvedValue({ success: true }),
     getStats: vi.fn().mockResolvedValue({ totalItems: 0 }),
     getJobs: vi.fn().mockResolvedValue({ jobs: [] }),
