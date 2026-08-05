@@ -122,6 +122,28 @@ queued and goes out on the next iteration. Deleting unconditionally would drop t
 permanently, because the local clock advances at mutation time: the item would sit ahead of the
 server with nothing queued, and every later pull would resolve `skip` rather than repair it.
 
+### The per-item attempt budget is spent per sync cycle
+
+A push response can accept some items and reject others. A rejected row keeps its payload and is
+charged one attempt; after five it stops being dequeued and no longer counts as pending.
+
+That budget is spent **at most once per push cycle**. One `push()` call loops until the queue drains,
+and the loop has no backoff, so a row re-sent inside the same call would consume all five attempts
+across a handful of back-to-back requests — turning a few seconds of transient server trouble into a
+permanently parked edit that the UI reports as nothing-to-sync. Rows the server rejects are therefore
+excluded from the remaining dequeues of that call and picked up again on the next cycle, which is
+where the delay between attempts comes from. Other queued rows are unaffected: a rejected row is
+skipped, not treated as a barrier, so healthy items behind it still go out in the same cycle.
+
+The exclusion lives only in memory for the duration of the call. It is keyed on row id rather than on
+the persisted `lastAttempt` timestamp, so a backwards system-clock jump can never hide a pending
+edit. A row that changed while in flight is a different case and is _not_ excluded — that re-send
+carries the newer payload and costs no attempt.
+
+Migration 0047 resets `attempts` to 0 for rows that an earlier build had already exhausted, so edits
+stranded by the old in-cycle spend are retried again after upgrading. It preserves the row, its
+payload, and its recorded error.
+
 ### Recovering pushes that never landed
 
 Items expose a "the server has this state" stamp (`syncedAt`) that advances on a confirmed push as
