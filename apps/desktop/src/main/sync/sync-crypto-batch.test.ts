@@ -206,6 +206,87 @@ describe('sync crypto batch', () => {
     ])
   })
 
+  it('falls back to main-thread encryption when the worker rejects the batch', async () => {
+    // A version-skewed worker bundle answers an unknown kind with
+    // { type: 'error' }, which the bridge turns into a rejection.
+    const workerBridge = {
+      isRunning: true,
+      encryptBatch: vi
+        .fn()
+        .mockRejectedValue(new Error('Unsupported worker message kind: encrypt-batch'))
+    }
+
+    const result = await encryptPushBatch([queueRow], vaultKey, signingSecretKey, 'device-1', {
+      workerBridge: workerBridge as never,
+      queue: { markFailed: mocks.markFailed } as never,
+      extractPayloadMetadata: () => ({ clock: { a: 1 }, stateVector: 'sv' }),
+      resolvePushPayload: (item) => item.payload
+    })
+
+    expect(result).toEqual([{ queueId: 'queue-1', pushItem: { encrypted: true } }])
+    expect(mocks.encryptItemForPush).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'note-1', clock: { a: 1 }, stateVector: 'sv' })
+    )
+    expect(mocks.markFailed).not.toHaveBeenCalled()
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      'Push: worker crypto unavailable, falling back to main thread',
+      { error: 'Unsupported worker message kind: encrypt-batch' }
+    )
+  })
+
+  it('resolves the push payload once so the encrypt fallback reuses the worker payload', async () => {
+    const workerBridge = {
+      isRunning: true,
+      encryptBatch: vi.fn().mockRejectedValue(new Error('Worker exited with code 1'))
+    }
+    const resolvePushPayload = vi.fn((item: { payload: string }) => item.payload)
+
+    await encryptPushBatch([queueRow], vaultKey, signingSecretKey, 'device-1', {
+      workerBridge: workerBridge as never,
+      queue: { markFailed: mocks.markFailed } as never,
+      extractPayloadMetadata: () => ({}),
+      resolvePushPayload: resolvePushPayload as never
+    })
+
+    // Re-resolving would read live DB rows again and could hand the fallback a
+    // different payload than the worker was asked to encrypt.
+    expect(resolvePushPayload).toHaveBeenCalledTimes(1)
+    expect(workerBridge.encryptBatch.mock.calls[0][0]).toEqual([
+      expect.objectContaining({ payload: queueRow.payload })
+    ])
+    expect(mocks.encryptItemForPush).toHaveBeenCalledWith(expect.objectContaining({ id: 'note-1' }))
+  })
+
+  it('falls back to main-thread decryption when the worker rejects the batch', async () => {
+    mocks.decryptSingleItem.mockReturnValue({ ok: true, item: { id: 'note-1', content: 'plain' } })
+    const workerBridge = {
+      isRunning: true,
+      decryptBatch: vi.fn().mockRejectedValue(new Error('Worker exited with code 1'))
+    }
+
+    const result = await decryptPullBatch(
+      [pullItem, { ...pullItem, id: 'note-skip', signerDeviceId: 'skip' }] as never,
+      vaultKey,
+      {
+        workerBridge: workerBridge as never,
+        resolveDeviceKey: vi.fn(async (deviceId) =>
+          deviceId === 'skip' ? null : new Uint8Array([9])
+        )
+      }
+    )
+
+    expect(mocks.decryptSingleItem).toHaveBeenCalledTimes(1)
+    expect(result.decrypted).toEqual([{ id: 'note-1', content: 'plain' }])
+    // The skipped item is re-derived by the fallback loop, not duplicated.
+    expect(result.failures).toEqual([
+      expect.objectContaining({ id: 'note-skip', signerDeviceId: 'skip' })
+    ])
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      'Pull: worker crypto unavailable, falling back to main thread',
+      { error: 'Worker exited with code 1' }
+    )
+  })
+
   it('returns only skipped failures when every worker item lacks a signer key', async () => {
     const workerBridge = {
       isRunning: true,

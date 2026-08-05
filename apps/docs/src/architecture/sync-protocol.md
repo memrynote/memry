@@ -387,3 +387,22 @@ latch and sync resumes.
 ## Encryption Stays End-to-End
 
 The server never sees plaintext. See [Cryptography](/architecture/cryptography) for the key hierarchy.
+
+### Crypto worker and main-thread fallback
+
+Push encryption and pull decryption run in a worker thread so a large batch does not block the main
+process. The worker is an optimisation, never a dependency: whenever it is unavailable the same
+batch is encrypted or decrypted on the main thread instead, and sync continues at reduced speed
+rather than failing.
+
+"Unavailable" covers both a worker that never started and a running worker that rejects a request —
+a request timeout, the worker crashing or exiting mid-batch, or a message kind the worker build does
+not implement, which is what a partially updated install looks like. The batch that was in flight
+when any of those happen degrades to the main thread with the rest; it is not lost.
+
+Degrading cannot mask a bad payload. The worker reports per-item crypto outcomes in its reply — a
+failed decrypt or a signature mismatch comes back as a per-item failure, not as a rejected batch —
+so a rejection only ever means the worker itself was unreachable. The main-thread path then runs the
+identical encryption and signature verification over the same inputs, so an item that genuinely
+fails crypto still fails; it just fails on the main thread. Push payloads are resolved once and
+shared by both paths, so the fallback encrypts exactly what the worker was handed.

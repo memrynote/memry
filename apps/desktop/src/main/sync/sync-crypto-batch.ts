@@ -48,67 +48,70 @@ export async function encryptPushBatch(
   signerDeviceId: string,
   deps: EncryptBatchDeps
 ): Promise<Array<{ queueId: string; pushItem: PushItem }>> {
-  const prepareItem = (
-    item: QueueRow
-  ): {
-    payload: string
-    meta: ReturnType<EncryptBatchDeps['extractPayloadMetadata']>
-    deletedAt?: number
-  } => {
+  // Prepared once, used by whichever path ends up doing the crypto. Building it
+  // up front (rather than per path) keeps the worker request and the
+  // main-thread fallback byte-identical: resolvePushPayload reads live DB rows,
+  // so re-running it after a worker failure could hand the fallback a different
+  // payload than the one the worker was asked to encrypt.
+  const rawItems: RawPushItem[] = items.map((item) => {
     const payload = deps.resolvePushPayload(item, signerDeviceId, vaultKey)
     const meta = deps.extractPayloadMetadata(payload)
     return {
+      queueId: item.id,
+      itemId: item.itemId,
+      type: item.type as SyncItemType,
+      operation: item.operation as SyncOperation,
       payload,
-      meta,
-      ...(item.operation === 'delete' ? { deletedAt: Math.floor(Date.now() / 1000) } : {})
+      clock: meta.clock,
+      stateVector: meta.stateVector,
+      deletedAt: item.operation === 'delete' ? Math.floor(Date.now() / 1000) : undefined
     }
-  }
+  })
 
   if (deps.workerBridge?.isRunning) {
-    const rawItems: RawPushItem[] = items.map((item) => {
-      const { payload, meta, deletedAt } = prepareItem(item)
-      return {
-        queueId: item.id,
-        itemId: item.itemId,
-        type: item.type as SyncItemType,
-        operation: item.operation as SyncOperation,
-        payload,
-        clock: meta.clock,
-        stateVector: meta.stateVector,
-        deletedAt
+    try {
+      const { results, errors } = await deps.workerBridge.encryptBatch(
+        rawItems,
+        vaultKey,
+        signingKeyBytes,
+        signerDeviceId
+      )
+
+      for (const err of errors) {
+        log.error('Push: worker encrypt failed', { itemId: err.itemId, error: err.error })
+        deps.queue.markFailed(err.queueId, `Encrypt failed: ${err.error}`)
       }
-    })
 
-    const { results, errors } = await deps.workerBridge.encryptBatch(
-      rawItems,
-      vaultKey,
-      signingKeyBytes,
-      signerDeviceId
-    )
-
-    for (const err of errors) {
-      log.error('Push: worker encrypt failed', { itemId: err.itemId, error: err.error })
-      deps.queue.markFailed(err.queueId, `Encrypt failed: ${err.error}`)
+      return results.map((r) => ({ queueId: r.queueId, pushItem: r.pushItem }))
+    } catch (err) {
+      // Only worker transport/lifecycle failures reach here — the worker never
+      // rejects the request for a crypto failure. Per-item crypto errors come
+      // back in-band in `errors` above; a reject means "worker not started",
+      // request timeout, worker `error`/non-zero `exit` (rejectAll), an
+      // `{ type: 'error' }` protocol reply, or an unexpected response type.
+      // Falling through therefore cannot swallow a crypto/auth failure: the
+      // fallback re-runs the exact same encryptItemForPush on the same inputs,
+      // so a genuinely bad item still fails, just on this thread.
+      log.error('Push: worker crypto unavailable, falling back to main thread', {
+        error: err instanceof Error ? err.message : String(err)
+      })
     }
-
-    return results.map((r) => ({ queueId: r.queueId, pushItem: r.pushItem }))
   }
 
-  return items.map((item) => {
-    const { payload, meta, deletedAt } = prepareItem(item)
+  return rawItems.map((item) => {
     const result = encryptItemForPush({
       id: item.itemId,
-      type: item.type as Parameters<typeof encryptItemForPush>[0]['type'],
-      operation: item.operation as Parameters<typeof encryptItemForPush>[0]['operation'],
-      content: new TextEncoder().encode(payload),
+      type: item.type,
+      operation: item.operation,
+      content: new TextEncoder().encode(item.payload),
       vaultKey,
       ['signingSecretKey']: signingKeyBytes,
       signerDeviceId,
-      clock: meta.clock,
-      stateVector: meta.stateVector,
-      deletedAt
+      clock: item.clock,
+      stateVector: item.stateVector,
+      deletedAt: item.deletedAt
     })
-    return { queueId: item.id, pushItem: result.pushItem }
+    return { queueId: item.queueId, pushItem: result.pushItem }
   })
 }
 
@@ -167,15 +170,28 @@ export async function decryptPullBatch(
       return { decrypted: [], failures: skipped }
     }
 
-    const { results, failures } = await deps.workerBridge.decryptBatch(
-      workerItems,
-      vaultKey,
-      signerKeys
-    )
+    try {
+      const { results, failures } = await deps.workerBridge.decryptBatch(
+        workerItems,
+        vaultKey,
+        signerKeys
+      )
 
-    return {
-      decrypted: results,
-      failures: [...skipped, ...failures]
+      return {
+        decrypted: results,
+        failures: [...skipped, ...failures]
+      }
+    } catch (err) {
+      // Same reasoning as the push path: a reject is a worker transport or
+      // lifecycle failure, never a crypto verdict — per-item decrypt and
+      // signature failures arrive in-band in `failures`. The loop below re-runs
+      // the identical decryptSingleItem (signature verification included) on
+      // this thread, so nothing unverified is accepted. It also re-derives
+      // `skipped` from the cached device keys, so those failures are neither
+      // lost nor duplicated.
+      log.error('Pull: worker crypto unavailable, falling back to main thread', {
+        error: err instanceof Error ? err.message : String(err)
+      })
     }
   }
 
