@@ -52,9 +52,16 @@ Agent Chat can:
 - stream assistant text back into the sidebar
 - link returned or created memrynote items directly in assistant replies, with a collapsible Sources
   section for the same items
-- show collapsed tool calls, tool results, and optional approvals inline in the chat stream
+- fold a turn's tool calls, tool results, and optional approvals into one collapsed activity row
 - stop an in-flight turn
 - compact older conversation history when a prompt grows too large
+
+While a turn runs, its tool calls collapse into a single activity row instead of stacking one row per
+step, so a long turn no longer pushes the answer off screen. The row names the tool the agent is
+running, counts the steps so far, and shows a spinner until the turn ends. Once the turn is done the
+row settles to a step count, and selecting it expands the individual tool calls with their parameters
+and results. A tool that needs your approval keeps the row open, because the Allow and Deny buttons
+live inside it.
 
 When a tool result includes a real memrynote reference, Agent Chat renders that item as a clickable
 mention instead of plain text. Lists link each returned note, task, inbox item, journal entry,
@@ -65,9 +72,11 @@ Inbox snooze confirmations use the same explicit inbox item reference as other i
 
 memrynote only links explicit tool-provided references. Plain titles without an ID or date stay as
 normal text. Clickable item mentions use memrynote's standard link color, show a dotted underline on
-hover, and display the matching item icon before the title. Notes use their custom note icon when
-one exists, inbox items use their capture-type icon, and journal, calendar, and task links use the
-same visual language as the main app surfaces.
+hover, and display the matching item icon before the title. Each link shows exactly one icon: the
+item's own icon when it has one, otherwise the icon for its type. When a backend writes an item's
+emoji into the link text itself, memrynote moves that emoji into the icon slot rather than showing it
+next to a generic one. Inbox items use their capture-type icon, and journal, calendar, and task links
+use the same visual language as the main app surfaces.
 
 Press <kbd>Enter</kbd> to send the prompt. Press <kbd>Shift</kbd>+<kbd>Enter</kbd> to insert a
 new line in the prompt box.
