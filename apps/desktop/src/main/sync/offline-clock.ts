@@ -247,6 +247,11 @@ function getCurrentDeviceId(db: DataDb): string | null {
  * Offline fallback for note metadata updates — the note counterpart of the
  * `increment*ClockOffline` helpers above, with two deliberate differences.
  *
+ * Journals use it too: they are `note_metadata` rows like notes, share the
+ * `clock`/`syncedAt`/`localOnly` columns this touches, and are re-pushed by
+ * `recoverDirtyJournals` on the same `syncedAt` signal. Only the sweep that
+ * picks the row up and the service that pushes it differ.
+ *
  * 1. It bumps under the REAL device id, not `OFFLINE_DEVICE_KEY`. The record
  *    types park ticks under `_offline` because they can be edited with no
  *    device registered at all, and their sync services rebind those ticks on
@@ -280,8 +285,9 @@ export function incrementNoteClockOffline(db: DataDb, noteId: string): void {
     // The user's "never leaves this device" switch — mirrors `shouldSkip` on
     // the online path.
     if (note.localOnly) return
-    // No clock means the note has never been pushed; `seedUnclockedNotes` owns
-    // its first push and would overwrite whatever we set here.
+    // No clock means the row has never been pushed; the unclocked seeds own its
+    // first push (`seedUnclockedNotes` for notes, `journalHandler.seedUnclocked`
+    // for journals) and would overwrite whatever we set here.
     if (!note.clock) return
 
     const deviceId = getCurrentDeviceId(db)
