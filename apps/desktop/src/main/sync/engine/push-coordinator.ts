@@ -5,6 +5,7 @@ import type { PushResponse, SyncItemType } from '@memry/contracts/sync-api'
 import { secureCleanup } from '../../crypto/index'
 import { encryptPushBatch } from '../sync-crypto-batch'
 import { getHandler, getRemoteSyncAdapter } from '../item-handlers'
+import { coalesceSyncOperations } from '../queue'
 import { withRetry } from '../retry'
 import { engineAuthRetryDeps, withAuthRetry } from '../auth-retry'
 import { postToServer, RateLimitError } from '../http-client'
@@ -353,25 +354,48 @@ export class PushCoordinator {
     }
   }
 
+  /**
+   * Collapse rows that `enqueue` could not coalesce — it only folds into an
+   * `attempts = 0` row, so a failed push leaves the next edit to open a second
+   * row for the same `(type, itemId)`.
+   *
+   * The retained row must be the NEWEST one. `dequeue` orders
+   * `desc(priority), asc(createdAt)`, so at equal priority the batch arrives
+   * oldest-first; keeping the first row seen would keep the stale payload.
+   * That only looked harmless because `resolvePushPayload` rebuilds from the
+   * DB via the OPTIONAL `handler.buildPushPayload` — for a type without it
+   * (`settings`) the frozen payload is all the push has, so the older row
+   * pushed the older state and the newer edit was deleted unpushed (#953).
+   * Keeping the newest row also keeps the row that live mutations coalesce
+   * into (`attempts = 0`), so the payload-conditional ack still guards it.
+   */
   private deduplicateByItemId(
     items: Array<typeof import('@memry/db-schema/schema/sync-queue').syncQueue.$inferSelect>
   ): typeof items {
     const seen = new Map<string, (typeof items)[0]>()
-    const dupes: Array<{ id: string; payload: string }> = []
+    const superseded: Array<{ id: string; payload: string }> = []
 
     for (const item of items) {
       const key = `${item.type}:${item.itemId}`
-      if (!seen.has(key)) {
+      const older = seen.get(key)
+      if (!older) {
         seen.set(key, item)
-      } else {
-        dupes.push({ id: item.id, payload: item.payload })
+        continue
       }
+      // Fold the operation with the same precedence `enqueue` uses, or a
+      // create that was never acked would be downgraded to the newer row's
+      // update and pushed for an id the server has never seen.
+      seen.set(key, {
+        ...item,
+        operation: coalesceSyncOperations(older.operation, item.operation)
+      })
+      superseded.push({ id: older.id, payload: older.payload })
     }
 
-    if (dupes.length > 0) {
-      log.info('Push: deduplicated queue items', { removed: dupes.length })
-      for (const dupe of dupes) {
-        this.ctx.deps.queue.markSuccess(dupe.id, dupe.payload)
+    if (superseded.length > 0) {
+      log.info('Push: dropped superseded queue rows', { removed: superseded.length })
+      for (const row of superseded) {
+        this.ctx.deps.queue.markSuccess(row.id, row.payload)
       }
     }
 
