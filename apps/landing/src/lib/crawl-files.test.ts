@@ -25,6 +25,10 @@ describe('landing crawl files', () => {
     assert.doesNotMatch(sitemap, /memrynote\.ai/)
   })
 
+  it('omits lastmod rather than stamping every URL with the build date', () => {
+    assert.doesNotMatch(buildSitemapXml(), /<lastmod>/)
+  })
+
   it('builds robots.txt pointing crawlers at the sitemap', () => {
     assert.equal(buildRobotsTxt(), `User-agent: *\nAllow: /\n\nSitemap: ${BASE_URL}/sitemap.xml\n`)
   })
