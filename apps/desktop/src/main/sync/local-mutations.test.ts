@@ -79,7 +79,8 @@ vi.mock('./offline-clock', () => ({
   incrementFilterClockOffline: vi.fn(),
   incrementBookmarkClockOffline: vi.fn(),
   incrementReminderClockOffline: vi.fn(),
-  incrementTemplateClockOffline: vi.fn()
+  incrementTemplateClockOffline: vi.fn(),
+  incrementNoteClockOffline: vi.fn()
 }))
 
 import { getDatabase } from '../database'
@@ -94,6 +95,7 @@ import {
   incrementBookmarkClockOffline,
   incrementFilterClockOffline,
   incrementInboxClockOffline,
+  incrementNoteClockOffline,
   incrementProjectClocksOffline,
   incrementReminderClockOffline,
   incrementTaskClocksOffline,
@@ -364,6 +366,28 @@ describe('local-mutations', () => {
     expect(filterService.enqueueDelete).not.toHaveBeenCalled()
     expect(removePendingNoteSyncItems('note-1')).toBe(0)
     expect(() => syncSettingsFieldUpdate('general.locale', 'tr')).not.toThrow()
+  })
+
+  it('falls back to the offline clock bump when the note sync service is down', () => {
+    const db = {}
+    ;(getDatabase as Mock).mockReturnValue(db)
+    ;(getNoteSyncService as Mock).mockReturnValue(null)
+
+    enqueueLocalSyncUpdate('note', 'note-1')
+
+    // Without this the enqueue evaporated: a note update raised during runtime
+    // teardown (an attachment upload finishing, say) was never pushed.
+    expect(incrementNoteClockOffline).toHaveBeenCalledWith(db, 'note-1')
+  })
+
+  it('does not bump the offline clock when the note sync service is up', () => {
+    const noteService = { enqueueUpdate: vi.fn() }
+    ;(getNoteSyncService as Mock).mockReturnValue(noteService)
+
+    enqueueLocalSyncUpdate('note', 'note-1')
+
+    expect(noteService.enqueueUpdate).toHaveBeenCalledWith('note-1')
+    expect(incrementNoteClockOffline).not.toHaveBeenCalled()
   })
 
   it('removes pending note sync items through the local sync helper', () => {
