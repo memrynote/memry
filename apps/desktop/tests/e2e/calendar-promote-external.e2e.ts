@@ -168,7 +168,7 @@ test.describe('Calendar — M2 promote external event', () => {
     ).toBeVisible()
   })
 
-  test('#given promoteConfirmDismissed=true in settings #when the user clicks an imported event #then the dialog is skipped and the edit popover opens directly', async ({
+  test('#given promoteConfirmDismissed=true and agent consent granted #when the user clicks an imported event #then the dialog is skipped and the edit popover opens directly', async ({
     page,
     electronApp
   }) => {
@@ -184,9 +184,15 @@ test.describe('Calendar — M2 promote external event', () => {
       if (!api) throw new Error('hooks missing')
     })
     // Flip the "don't ask again" flag via the renderer settings IPC (the same
-    // channel the dialog checkbox uses).
+    // channel the dialog checkbox uses). Agent consent has to be granted too:
+    // promotion moves the event into native storage where the agent can read it
+    // regardless of the Google gate, so "don't ask again" is deliberately
+    // ignored while consent is anything but a stored `true`.
     await page.evaluate(async () => {
-      await window.api.settings.setCalendarGoogleSettings({ promoteConfirmDismissed: true })
+      await window.api.settings.setCalendarGoogleSettings({
+        promoteConfirmDismissed: true,
+        agentReadEventsConsent: true
+      })
     })
 
     const calendarPage = page.getByTestId('calendar-page')

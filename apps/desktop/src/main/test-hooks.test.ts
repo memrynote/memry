@@ -34,6 +34,7 @@ const getDatabaseMock = vi.fn(() => ({
 const getNoteMetadataByIdMock = vi.fn(() => ({ id: 'note-1' }))
 const storeGoogleCalendarRefreshTokenMock = vi.fn(async () => undefined)
 const upsertCalendarSourceMock = vi.fn()
+const writeCalendarGoogleSettingsMock = vi.fn()
 const getGooglePushRuntimeMock = vi.fn(() => ({ getActiveChannelCount: vi.fn(() => 2) }))
 const startGoogleCalendarSyncRunnerMock = vi.fn(async () => undefined)
 const syncGoogleCalendarSourceMock = vi.fn(async () => undefined)
@@ -112,6 +113,10 @@ vi.mock('./calendar/google/keychain', () => ({
 
 vi.mock('./calendar/repositories/calendar-sources-repository', () => ({
   upsertCalendarSource: upsertCalendarSourceMock
+}))
+
+vi.mock('./calendar/google/calendar-google-settings', () => ({
+  writeCalendarGoogleSettings: writeCalendarGoogleSettingsMock
 }))
 
 vi.mock('./calendar/google/push-runtime', () => ({
@@ -285,6 +290,11 @@ describe('main test hooks', () => {
 
     expect(dbGetMock).toHaveBeenCalled()
     expect(dbRunMock).toHaveBeenCalledTimes(6)
+    // A seeded Google source must carry an answer to the one-time agent-access
+    // question, or the calendar opens behind a modal the specs cannot dismiss.
+    expect(writeCalendarGoogleSettingsMock).toHaveBeenCalledWith(expect.anything(), {
+      agentReadEventsConsent: false
+    })
     expect(windowSendMock).toHaveBeenCalledWith(
       expect.stringContaining('calendar'),
       expect.objectContaining({ id: 'calendar-e2e-external' })
@@ -340,6 +350,11 @@ describe('main test hooks', () => {
     })
     expect(upsertCalendarSourceMock).toHaveBeenCalledTimes(2)
     expect(startGoogleCalendarSyncRunnerMock).toHaveBeenCalled()
+    // Standing in for the connect flow includes standing in for its answer to
+    // the one-time agent-access question.
+    expect(writeCalendarGoogleSettingsMock).toHaveBeenCalledWith(expect.anything(), {
+      agentReadEventsConsent: false
+    })
 
     await hooks.syncGoogleCalendarSourceForE2E({ sourceId: 'source-1' })
     expect(syncGoogleCalendarSourceMock).toHaveBeenCalledWith(expect.any(Object), 'source-1')

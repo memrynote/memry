@@ -12,6 +12,7 @@ import { getNoteMetadataById } from '@memry/storage-data'
 import { CalendarChannels, TasksChannels } from '@memry/contracts/ipc-channels'
 import { storeGoogleCalendarRefreshToken } from './calendar/google/keychain'
 import { upsertCalendarSource } from './calendar/repositories/calendar-sources-repository'
+import { writeCalendarGoogleSettings } from './calendar/google/calendar-google-settings'
 import { getGooglePushRuntime } from './calendar/google/push-runtime'
 import { startGoogleCalendarSyncRunner } from './calendar/google/google-sync-runner'
 import {
@@ -488,6 +489,13 @@ export function registerTestHooks(): void {
         )
       `)
 
+      // Seeding a Google source fabricates a vault that already went through
+      // connect + onboarding, so it has to carry that flow's answer to the
+      // one-time agent-access question too. Left unanswered, the calendar opens
+      // behind a modal no test knows to dismiss. Denied is the safe seed: the
+      // agent read path gates on `=== true`.
+      writeCalendarGoogleSettings(db, { agentReadEventsConsent: false })
+
       if (input.overlapMemryTitle) {
         db.run(sql`
           INSERT INTO calendar_events (
@@ -645,6 +653,11 @@ export function registerTestHooks(): void {
         createdAt: now,
         modifiedAt: now
       })
+
+      // Standing in for the connect flow means standing in for its consent
+      // answer as well — otherwise the calendar opens behind the one-time
+      // agent-access modal. Denied matches the `=== true` agent read gate.
+      writeCalendarGoogleSettings(db, { agentReadEventsConsent: false })
 
       // Best-effort start — the runner short-circuits without Memry sync auth, but that
       // doesn't block sync-service direct calls which don't need Memry auth.

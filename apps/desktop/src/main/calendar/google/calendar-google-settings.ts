@@ -2,7 +2,7 @@ import {
   CALENDAR_GOOGLE_SETTINGS_DEFAULTS,
   type CalendarGoogleSettings
 } from '@memry/contracts/settings-schemas'
-import { getSetting } from '../../settings/settings-store'
+import { getSetting, setSetting } from '../../settings/settings-store'
 import type { DataDb } from '../../database'
 
 const CALENDAR_GOOGLE_SETTINGS_KEY = 'calendar.google'
@@ -16,4 +16,13 @@ export function readCalendarGoogleSettings(db: DataDb): CalendarGoogleSettings {
   } catch {
     return { ...CALENDAR_GOOGLE_SETTINGS_DEFAULTS }
   }
+}
+
+/** Merge a partial update into the stored group, from inside the main process. */
+export function writeCalendarGoogleSettings(
+  db: DataDb,
+  updates: Partial<CalendarGoogleSettings>
+): void {
+  const next: CalendarGoogleSettings = { ...readCalendarGoogleSettings(db), ...updates }
+  setSetting(db, CALENDAR_GOOGLE_SETTINGS_KEY, JSON.stringify(next))
 }
