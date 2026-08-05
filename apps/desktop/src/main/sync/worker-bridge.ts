@@ -21,14 +21,38 @@ type PendingRequest = {
 
 const REQUEST_TIMEOUT_MS = 60_000
 
+/**
+ * Consecutive failed worker requests before the bridge stops offering itself.
+ *
+ * `isRunning` can only see that the thread has not exited, so a worker that is
+ * alive but never answers keeps being chosen and costs a full
+ * REQUEST_TIMEOUT_MS per batch before sync-crypto-batch degrades to
+ * main-thread crypto. Counting failures gives that case an exit.
+ *
+ * 3 rather than 1: a single failure is noise — one transient timeout under load
+ * should not cost the session its worker. 3 rather than more: the worst case is
+ * paid in whole minutes, and 3 silent batches is a bounded ~3 minutes of
+ * degraded-but-correct sync, after which the worker costs nothing for the rest
+ * of the session.
+ */
+export const MAX_CONSECUTIVE_FAILURES = 3
+
 export class SyncWorkerBridge {
   private worker: Worker | null = null
   private pendingRequests = new Map<string, PendingRequest>()
   private readyPromise: Promise<void> | null = null
   private requestCounter = 0
+  private consecutiveFailures = 0
+  private latchedOff = false
 
   async start(): Promise<void> {
     if (this.worker) return
+
+    // A freshly spawned thread is not the thread that failed, so it gets a
+    // clean slate. Reaching here after a latch (stop() then start()) is the
+    // only in-session way back to worker crypto.
+    this.consecutiveFailures = 0
+    this.latchedOff = false
 
     const workerPath = join(__dirname, 'sync-worker.js')
     this.worker = new Worker(workerPath)
@@ -131,6 +155,32 @@ export class SyncWorkerBridge {
     }
   }
 
+  /**
+   * Only worker-infrastructure failures reach here, never a crypto verdict.
+   * The worker returns per-item outcomes in-band — `encrypt-batch-result.errors`
+   * and `decrypt-batch-result.failures`, including signature mismatches — and
+   * never rejects the request for them. A rejection therefore always means the
+   * worker was unreachable: not started, timed out, crashed/exited, protocol
+   * drift (`{ type: 'error' }`), or an unexpected response type. Latching on
+   * these cannot hide a bad item; the main-thread path re-runs the same crypto.
+   *
+   * The thread is left alive rather than terminated. Terminating buys nothing
+   * once the bridge stops routing to it, and it would remove the stop()/start()
+   * recovery path above.
+   */
+  private recordRequestFailure(err: unknown): void {
+    this.consecutiveFailures += 1
+    if (this.latchedOff || this.consecutiveFailures < MAX_CONSECUTIVE_FAILURES) return
+
+    this.latchedOff = true
+    // Only the failure count and the transport error text; crypto error
+    // messages never travel this path, so no key material or plaintext.
+    log.warn('Sync worker latched off after repeated failures — using main-thread crypto', {
+      consecutiveFailures: this.consecutiveFailures,
+      error: err instanceof Error ? err.message : String(err)
+    })
+  }
+
   private nextRequestId(): string {
     return `req_${++this.requestCounter}_${Date.now()}`
   }
@@ -163,23 +213,29 @@ export class SyncWorkerBridge {
     errors: Array<{ queueId: string; itemId: string; error: string }>
   }> {
     const requestId = this.nextRequestId()
-    const response = await this.sendRequest({
-      type: 'encrypt-batch',
-      requestId,
-      items,
-      vaultKey: new Uint8Array(vaultKey),
-      signingSecretKey: new Uint8Array(signingSecretKey),
-      signerDeviceId
-    })
+    try {
+      const response = await this.sendRequest({
+        type: 'encrypt-batch',
+        requestId,
+        items,
+        vaultKey: new Uint8Array(vaultKey),
+        signingSecretKey: new Uint8Array(signingSecretKey),
+        signerDeviceId
+      })
 
-    if (response.type === 'error') {
-      throw new Error(response.error)
-    }
-    if (response.type !== 'encrypt-batch-result') {
-      throw new Error(`Unexpected response type: ${response.type}`)
-    }
+      if (response.type === 'error') {
+        throw new Error(response.error)
+      }
+      if (response.type !== 'encrypt-batch-result') {
+        throw new Error(`Unexpected response type: ${response.type}`)
+      }
 
-    return { results: response.results, errors: response.errors }
+      this.consecutiveFailures = 0
+      return { results: response.results, errors: response.errors }
+    } catch (err) {
+      this.recordRequestFailure(err)
+      throw err
+    }
   }
 
   async decryptBatch(
@@ -191,26 +247,36 @@ export class SyncWorkerBridge {
     failures: DecryptionFailure[]
   }> {
     const requestId = this.nextRequestId()
-    const response = await this.sendRequest({
-      type: 'decrypt-batch',
-      requestId,
-      items,
-      vaultKey: new Uint8Array(vaultKey),
-      signerKeys
-    })
+    try {
+      const response = await this.sendRequest({
+        type: 'decrypt-batch',
+        requestId,
+        items,
+        vaultKey: new Uint8Array(vaultKey),
+        signerKeys
+      })
 
-    if (response.type === 'error') {
-      throw new Error(response.error)
-    }
-    if (response.type !== 'decrypt-batch-result') {
-      throw new Error(`Unexpected response type: ${response.type}`)
-    }
+      if (response.type === 'error') {
+        throw new Error(response.error)
+      }
+      if (response.type !== 'decrypt-batch-result') {
+        throw new Error(`Unexpected response type: ${response.type}`)
+      }
 
-    return { results: response.results, failures: response.failures }
+      this.consecutiveFailures = 0
+      return { results: response.results, failures: response.failures }
+    } catch (err) {
+      this.recordRequestFailure(err)
+      throw err
+    }
   }
 
+  // sync-crypto-batch gates every batch on this, so a latched bridge sends it
+  // straight to main-thread crypto without a round trip. stop() deliberately
+  // checks `this.worker` instead, so a latched-but-alive thread is still shut
+  // down cleanly.
   get isRunning(): boolean {
-    return this.worker !== null
+    return this.worker !== null && !this.latchedOff
   }
 
   async stop(): Promise<void> {

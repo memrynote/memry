@@ -483,3 +483,16 @@ so a rejection only ever means the worker itself was unreachable. The main-threa
 identical encryption and signature verification over the same inputs, so an item that genuinely
 fails crypto still fails; it just fails on the main thread. Push payloads are resolved once and
 shared by both paths, so the fallback encrypts exactly what the worker was handed.
+
+A worker that crashes takes itself out of the rotation, because the exit leaves nothing to send to. A
+worker that is alive but silent does not: it looks healthy, so every batch would ask it again and
+wait out the 60-second request timeout before degrading. The bridge therefore counts consecutive
+failed requests and stops offering itself after three, from which point batches go straight to the
+main thread with no round trip. The penalty for a silent worker is bounded at three timeouts for the
+whole session rather than one per batch.
+
+Three is deliberate on both sides. One failure is noise — a single timeout under load should not cost
+the session its worker — so a successful batch resets the count and only consecutive failures latch.
+Waiting longer is expensive, because the penalty is paid in whole minutes. The thread is left alive
+rather than terminated, and restarting the sync runtime gives the bridge a fresh worker and a clean
+count.
