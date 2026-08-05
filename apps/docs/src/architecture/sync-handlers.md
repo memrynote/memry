@@ -122,6 +122,73 @@ Two rules for the `changes` field itself:
 The renderer normalizes a missing `changes` to `{}` in `onNoteUpdated`, so a newer renderer stays
 tolerant of an older main process. That is a compatibility floor, not a licence to omit the field.
 
+**Every applied write must emit.** A handler that mutates the data DB and returns `applied` without
+notifying the renderer leaves an open window showing stale data until the app restarts — the "my
+other device changed it but this one still shows the old version" report. `registry.test.ts` walks
+`SYNC_ITEM_TYPES`, applies a minimal payload through each registered handler, and fails any type that
+returns `applied` without calling `ctx.emit`. The agent conversation and message handlers were
+written without one and are the reason the test exists. Only `applied` obligates a broadcast: a
+`skipped` or `parse_error` changed nothing locally, so there is nothing to re-read.
+
+Two types are exempt from that probe and say so in the test. `settings` notifies by walking
+`BrowserWindow.getAllWindows()` itself rather than going through `ctx.emit`; `note` and `journal`
+write the index DB too, so they cannot run against a bare data-db handle and are covered by their own
+handler tests instead.
+
+## Nullable Fields: Omitted vs Explicit Null
+
+A nullable column has two distinct remote signals and `??` cannot tell them apart:
+
+- **Key absent** — the sender predates the column. Keep the local value.
+- **Key present, value `null`** — an explicit clear. Apply it.
+
+Collapsing them either way loses data. `data.x ?? null` lets an older peer wipe a column it has never
+heard of; `data.x ?? existing.x` strands a real clear forever. The inbox handler shipped the first
+form for ten columns, so a payload from a build predating any one of them silently nulled the local
+value — and an explicit clear is not hypothetical there: `unsnoozeItem`, unarchive and unfile all
+push `null` (`main/inbox/snooze.ts`, `main/inbox/crud.ts`). Reading those as "omitted" would leave an
+item snoozed on the other device forever.
+
+The house pattern is a local `hasKey` helper over the raw payload:
+
+```ts
+const hasKey = (k: string): boolean => Object.prototype.hasOwnProperty.call(data, k)
+
+tx.update(inboxItems).set({
+  snoozedUntil: hasKey('snoozedUntil') ? (data.snoozedUntil ?? null) : existing.snoozedUntil
+})
+```
+
+`calendar-external-event-handler.ts`, `inbox-handler.ts` and `calendar-event-handler.ts` all use it.
+Because `buildPushPayload` serializes the whole row, a same-version peer always sends the key — so
+`hasKey` is false exactly when the sender is older, which is precisely when the local value must win.
+
+Insert branches need the same audit for a different reason: they simply omitted six inbox columns, so
+an item archived on one device arrived un-archived on a device seeing it for the first time. If a
+column round-trips through `buildPushPayload`, it has to be written on **both** branches.
+
+## Missing Parents
+
+An FK-bound child whose parent has not arrived yet must throw `MissingSyncParentError` from inside
+the transaction, naming the parent type and id:
+
+```ts
+if (!parent) throw new MissingSyncParentError('task', taskId, 'project', projectId)
+```
+
+`pull-coordinator` routes only that typed error into `orphanedItems`, where `repairOrphans` re-fetches
+the parent by id and either replays the child or tombstones it. Let SQLite raise its anonymous
+`FOREIGN KEY constraint failed` instead and the coordinator logs "deferred retry failed — item
+skipped until next remote update" and drops the item. For an unchanged upstream record — a Google
+calendar event nobody has edited — there is no next remote update, so it never appears on that device
+at all while the UI keeps reporting the source as connected.
+
+`sortByApplyOrder` ranks parents ahead of children, but only within a page, so cross-page ordering is
+unprotected and the guard is what makes it safe. `task-handler.ts`, `calendar-external-event-handler.ts`
+and `agent-message-handler.ts` implement it. Never substitute a placeholder id to get past the
+constraint: an invented `'unknown-source'` can only ever FK-fail, and it makes the failure
+unclassifiable as well as fatal.
+
 ## Adding a New Sync Type
 
 1. Define a Zod schema in `packages/contracts/<domain>-api.ts`.
@@ -136,6 +203,10 @@ tolerant of an older main process. That is a compatibility floor, not a licence 
    register it in **both** `local-mutations.ts` and the adapter registry in `runtime.ts`.
 7. Add a server-side validator in `apps/sync-server` if the new type has unusual constraints.
 8. Add tests under the handler file (every existing handler has one).
+9. Add a minimal payload for the type to `FIXTURE_OVERRIDES` in `item-handlers/registry.test.ts` if
+   `{}` does not parse against its schema, and seed any FK parent the fixture needs. The registry
+   test fails on an unregistered type and on an applied write that does not emit, so it is the one
+   place a half-wired type shows up as a failure rather than as silence.
 
 Steps 5 and 6 are three separate registrations and each fails silently on its own:
 `enqueueLocalSync*` typechecks and no-ops when no push service is registered, so the entity never
