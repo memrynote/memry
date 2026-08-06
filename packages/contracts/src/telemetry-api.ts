@@ -58,7 +58,28 @@ export const TelemetryEventNameSchema = z.enum([
   'canvas_asset_dedup_hit',
   'canvas_asset_gc_reaped',
   'canvas_created',
-  'canvas_opened'
+  'canvas_opened',
+  'canvas_deleted',
+  'canvas_card_added',
+  'project_opened',
+  'project_updated',
+  'project_archived',
+  'project_deleted',
+  'project_item_linked',
+  'tag_created',
+  'tag_renamed',
+  'tag_deleted',
+  'tag_merged',
+  'tag_category_created',
+  'task_updated',
+  'task_deleted',
+  'calendar_event_deleted',
+  'calendar_google_disconnected',
+  'note_imported',
+  'note_exported',
+  'import_completed',
+  'deep_link_opened',
+  'home_board_customized'
 ])
 
 export const TelemetrySurfaceSchema = z.enum([
@@ -78,7 +99,9 @@ export const TelemetrySurfaceSchema = z.enum([
   'ai',
   'voice',
   'updater',
-  'canvas'
+  'canvas',
+  'projects',
+  'tags'
 ])
 
 export const TelemetryResultSchema = z.enum(['success', 'failed', 'canceled', 'skipped'])
