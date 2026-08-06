@@ -1,4 +1,4 @@
-import type { TelemetryResult } from '@memry/contracts/telemetry-api'
+import type { TelemetryErrorDetail, TelemetryResult } from '@memry/contracts/telemetry-api'
 import {
   buildErrorDetail,
   normalizeRejectionReason,
@@ -47,12 +47,20 @@ export const childProcessGoneErrorCode = (details: ChildProcessGoneDetails): str
 export const trackChildProcessGone = (details: ChildProcessGoneDetails): void => {
   const errorCode = childProcessGoneErrorCode(details)
   if (!errorCode) return
-  // errorCode stays stable (no exit code baked in) so Grafana can count crashes
-  // per worker; the exit status rides along as a metric instead.
+  // A dead child process leaves no JS stack in this one, so PostHog Error
+  // Tracking has no frames to render for this family — and it is the largest one
+  // in production. The message is the only "what happened" the issue page gets,
+  // so it spells out the worker, the reason and the exit status. Every part is an
+  // Electron constant or our own worker label: no user content can reach it.
+  const worker = details.name ?? details.serviceName ?? details.type
+  const exit = typeof details.exitCode === 'number' ? ` (exit ${details.exitCode})` : ''
+  // errorCode stays stable (no exit code baked in) so the issue grouping counts
+  // crashes per worker; the exit status rides along as a metric instead.
   trackMainLog('error', {
     scope: 'Electron',
     action: 'child_process_gone',
     errorCode,
+    error: { message: `${worker} utility process ${details.reason}${exit}` },
     metrics: typeof details.exitCode === 'number' ? { value: details.exitCode } : undefined
   })
 }
@@ -90,6 +98,7 @@ export const trackMainLog = (
     scope: string
     action: string
     errorCode?: string
+    error?: TelemetryErrorDetail
     metrics?: {
       durationMs?: number
       itemCount?: number
@@ -110,6 +119,9 @@ export const trackMainLog = (
 
   if (options.errorCode) {
     eventOptions.errorCode = toSafeToken(options.errorCode, 'LogError')
+  }
+  if (options.error) {
+    eventOptions.error = options.error
   }
   if (options.metrics) {
     eventOptions.metrics = options.metrics

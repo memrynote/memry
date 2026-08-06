@@ -144,6 +144,97 @@ export const productEvent = (
   }
 }
 
+// --- stack frames ---------------------------------------------------------
+//
+// Error Tracking renders code locations ONLY from `$exception_list[].stacktrace`
+// (see https://posthog.com/docs/error-tracking/installation/manual). A stack
+// pasted into `value` is dead text: every desktop issue read "No stacktrace
+// available" until this parser landed, while the landing site's posthog-js —
+// which sends real frames — showed them fine.
+//
+// The desktop sends the stack as text because that is the only shape that
+// survives the client-side frame filter + redaction in
+// packages/contracts/src/telemetry-api.ts (buildErrorDetail). Parsing it back
+// into frames here, rather than shipping a frame array from the client, keeps
+// that privacy pipeline untouched and needs no desktop release to take effect.
+
+interface RawFrame {
+  platform: 'custom'
+  lang: 'javascript'
+  function: string
+  filename: string
+  lineno?: number
+  colno?: number
+  resolved: boolean
+  in_app: boolean
+}
+
+// A 4000-char stack is ~40 frames; 50 is headroom, not a real-world truncation.
+const MAX_FRAMES = 50
+
+// "~/app/sync.ts:12:5" → filename + position. Lazy prefix with an anchored
+// numeric tail so a `file:///…` URL keeps its scheme colons and only the last
+// two numeric segments are read as line/column.
+const LOCATION = /^(.*?)(?::(\d+))?(?::(\d+))?$/
+
+// Frames we did not write: symbolifying or blaming them wastes triage time, and
+// PostHog's UI hides non-in_app frames by default (falling back to showing all
+// when an exception has none, so a fully-vendor stack is never blank).
+const isVendorFrame = (filename: string): boolean =>
+  filename.startsWith('node:') ||
+  filename.startsWith('internal/') ||
+  filename.includes('node_modules') ||
+  filename.includes('electron/js2c')
+
+// "    at fn (file:line:col)" / "    at file:line:col" / "    at Object.<anonymous> (file)".
+// Anything that is not a frame line was already dropped client-side by
+// keepStackFrameLines, so a non-match here means a shape we cannot place.
+const parseFrame = (line: string): RawFrame | null => {
+  const body = /^\s*at\s+(.+)$/.exec(line)?.[1]
+  if (!body) return null
+
+  const parenthesized = /^(.*?)\s+\((.+)\)$/.exec(body)
+  const fn = parenthesized ? parenthesized[1] : '<anonymous>'
+  const location = parenthesized ? parenthesized[2] : body
+
+  const match = LOCATION.exec(location)
+  if (!match) return null
+  const filename = match[1]
+  if (!filename) return null
+
+  const lineno = match[2] ? Number(match[2]) : undefined
+  const colno = match[3] ? Number(match[3]) : undefined
+
+  return {
+    platform: 'custom',
+    lang: 'javascript',
+    // `custom` frames are shown verbatim. Claiming `web:javascript` would enter
+    // PostHog's symbolification path, which needs uploaded source maps and a
+    // chunk id per frame — we ship neither, so it would resolve to nothing.
+    function: fn,
+    filename,
+    ...(lineno !== undefined ? { lineno } : {}),
+    ...(colno !== undefined ? { colno } : {}),
+    resolved: true,
+    in_app: !isVendorFrame(filename)
+  }
+}
+
+// Defense in depth: the client already redacted, re-run in mask mode (no hasher)
+// so a stack that reached us from an older/edited client cannot leak a home path.
+export const parseStackFrames = (stack: string): RawFrame[] => {
+  const frames = redactText(stack, {})
+    .split('\n')
+    .map(parseFrame)
+    .filter((frame): frame is RawFrame => frame !== null)
+  // Cap BEFORE reversing: the innermost frames are the throw site, so a deep
+  // stack must lose its outermost callers, never the frame that actually failed.
+  // Reversed after, because PostHog treats the LAST frame as the throw site
+  // while a JS stack string is innermost-first — unreversed, every issue blames
+  // the outermost caller.
+  return frames.slice(0, MAX_FRAMES).reverse()
+}
+
 // Error Tracking requires the event name to be exactly `$exception`; a plain
 // `exception` lands in Events and never reaches the Error Tracking product.
 //
@@ -161,8 +252,19 @@ export const exceptionEvent = (
   const type = event.errorCode ?? event.name
   // Defense in depth: the client already redacted, re-run in mask mode (no hasher).
   const message = event.error?.message ? redactText(event.error.message, {}) : ''
-  const stack = event.error?.stack ?? ''
-  const value = [message, stack].filter((part) => part.length > 0).join('\n\n') || type
+  // `value` is the issue title in Error Tracking, so it holds the message ALONE.
+  // It used to carry `message + "\n\n" + stack`, which made every title a wall of
+  // frames — and the frames still did not render, because the UI reads them from
+  // `stacktrace` (below) and never parses `value`.
+  const value = message || type
+
+  const componentStack = event.error?.componentStack ?? ''
+  // React's component stack uses the same "    at X (…)" shape, so it parses with
+  // the same frame reader. It is only promoted to the frame list when there is no
+  // JS stack at all — component names are not call frames, but for a render crash
+  // with no other location they are the only "where" we have.
+  const frames = parseStackFrames(event.error?.stack ?? '')
+  const stacktraceFrames = frames.length > 0 ? frames : parseStackFrames(componentStack)
 
   return {
     event: '$exception',
@@ -172,9 +274,20 @@ export const exceptionEvent = (
         {
           type,
           value,
-          mechanism: { handled: true, synthetic: false }
+          mechanism: { handled: true, synthetic: false },
+          // Omitted entirely when nothing parsed. An empty `frames: []` would
+          // claim we resolved a stack and found none — utility-process crashes
+          // and log-derived errors genuinely have no JS stack to report.
+          ...(stacktraceFrames.length > 0
+            ? { stacktrace: { type: 'raw', frames: stacktraceFrames } }
+            : {})
         }
       ],
+      $exception_level: 'error',
+      // Kept raw alongside the frames: for a React error the component tree is
+      // the fastest read during triage, and flattening it into frames would lose
+      // the nesting.
+      ...(componentStack ? { $exception_component_stack: redactText(componentStack, {}) } : {}),
       // Unlike `type`, the fingerprint must NOT fall back to event.name: that would
       // collapse every distinct error without an errorCode into one Error Tracking
       // issue (all grouped under e.g. "app_error_seen"), defeating the pinning this

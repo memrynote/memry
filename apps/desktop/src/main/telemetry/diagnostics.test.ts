@@ -109,6 +109,19 @@ describe('telemetry diagnostics', () => {
     })
   })
 
+  describe('child-process-gone detail', () => {
+    it('omits the exit status when the platform did not report one', () => {
+      trackChildProcessGone({ type: 'Utility', reason: 'launch-failed', name: 'CrdtPreflight' })
+
+      expect(trackMainEventMock).toHaveBeenCalledWith(
+        'app_log_recorded',
+        expect.objectContaining({
+          error: { message: 'CrdtPreflight utility process launch-failed' }
+        })
+      )
+    })
+  })
+
   describe('expected conditions', () => {
     it('emits nothing for an error marked as an expected condition', () => {
       // #given Ollama not running / an abandoned OAuth flow — normal states
@@ -367,6 +380,9 @@ describe('telemetry diagnostics', () => {
         source: 'Electron',
         result: 'failed',
         errorCode: 'Utility:crashed:Embeddings',
+        // A dead child leaves no JS stack in this process, so this message is the
+        // only thing PostHog's Error Tracking issue page can show for this family.
+        error: { message: 'Embeddings utility process crashed (exit 11)' },
         dimensions: { log_action: 'child_process_gone' },
         metrics: { value: 11 }
       })

@@ -480,6 +480,10 @@ export const normalizeWindowError = (report: WindowErrorReport): Error => {
  * gets full redaction, just with fixed `<email>`/`<id>`/`[name].ext`
  * placeholders instead of correlatable hashes. The sync-server re-runs the same
  * redaction in mask mode as a backstop; see TelemetryErrorDetailSchema.message.
+ *
+ * That redaction is shape-based: a note TITLE quoted in a message with no file
+ * extension is not a shape it can recognize, so this is narrower than the
+ * earlier all-or-nothing "no message field at all" guarantee.
  */
 export const buildErrorDetail = (
   error: unknown,

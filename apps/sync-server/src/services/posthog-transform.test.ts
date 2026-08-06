@@ -340,7 +340,7 @@ describe('exceptionEvent', () => {
       eventFixture({
         name: 'app_error_seen',
         errorCode: 'SYNC_TIMEOUT',
-        error: { stack: 'at sync (a.js:1:1)' }
+        error: { stack: '    at sync (a.js:1:1)' }
       }),
       ctx
     )
@@ -348,20 +348,20 @@ describe('exceptionEvent', () => {
     expect(result?.properties.$exception_fingerprint).toBe('SYNC_TIMEOUT')
     const list = result?.properties.$exception_list as { type: string; value: string }[]
     expect(list[0].type).toBe('SYNC_TIMEOUT')
-    expect(list[0].value).toContain('at sync (a.js:1:1)')
+    expect(list[0].value).toBe('SYNC_TIMEOUT')
   })
 
-  it('prefers the redacted message over the stack for the value', () => {
+  it('uses the redacted message alone as the value — the stack belongs in frames', () => {
     const result = exceptionEvent(
       batchFixture(),
       eventFixture({
         errorCode: 'DB_LOCKED',
-        error: { message: 'database is locked', stack: 'at db (b.js:2:2)' }
+        error: { message: 'database is locked', stack: '    at db (b.js:2:2)' }
       }),
       ctx
     )
     const list = result?.properties.$exception_list as { value: string }[]
-    expect(list[0].value).toBe('database is locked\n\nat db (b.js:2:2)')
+    expect(list[0].value).toBe('database is locked')
   })
 
   it('re-runs redaction on the message as a backstop', () => {
@@ -397,6 +397,150 @@ describe('exceptionEvent', () => {
     )
     const list = result?.properties.$exception_list as { type: string }[]
     expect(list[0].type).toBe('app_error_seen')
+  })
+
+  // Error Tracking reads frames ONLY from $exception_list[].stacktrace. A stack
+  // pasted into `value` renders as "No stacktrace available", which is what every
+  // desktop issue showed before this block existed.
+  it('emits a raw stacktrace with one frame per parsed stack line', () => {
+    const result = exceptionEvent(
+      batchFixture(),
+      eventFixture({
+        errorCode: 'SYNC_TIMEOUT',
+        error: {
+          message: 'timed out',
+          stack: '    at push (~/app/sync.ts:12:5)\n    at flush (~/app/queue.ts:40:11)'
+        }
+      }),
+      ctx
+    )
+    const list = result?.properties.$exception_list as {
+      stacktrace: { type: string; frames: Record<string, unknown>[] }
+    }[]
+    expect(list[0].stacktrace.type).toBe('raw')
+    // Reversed: PostHog renders the LAST frame as the throw site, but a JS stack
+    // string is innermost-first. Unreversed, every issue blames the outermost caller.
+    expect(list[0].stacktrace.frames.map((frame) => frame.function)).toEqual(['flush', 'push'])
+    expect(list[0].stacktrace.frames[1]).toMatchObject({
+      platform: 'custom',
+      lang: 'javascript',
+      function: 'push',
+      filename: '~/app/sync.ts',
+      lineno: 12,
+      colno: 5,
+      resolved: true,
+      in_app: true
+    })
+  })
+
+  it('parses a bare "at file:line:col" frame with no function name', () => {
+    const result = exceptionEvent(
+      batchFixture(),
+      eventFixture({ errorCode: 'X', error: { stack: '    at file:///app/index-a1b2.js:9:3' } }),
+      ctx
+    )
+    const list = result?.properties.$exception_list as {
+      stacktrace: { frames: Record<string, unknown>[] }
+    }[]
+    expect(list[0].stacktrace.frames[0]).toMatchObject({
+      function: '<anonymous>',
+      filename: 'file:///app/index-a1b2.js',
+      lineno: 9,
+      colno: 3
+    })
+  })
+
+  it('marks node internals and dependency frames as not in_app', () => {
+    const result = exceptionEvent(
+      batchFixture(),
+      eventFixture({
+        errorCode: 'X',
+        error: {
+          stack: [
+            '    at open (node:fs:120:3)',
+            '    at run (~/app/node_modules/better-sqlite3/lib/db.js:8:1)',
+            '    at save (~/app/src/vault.ts:3:9)'
+          ].join('\n')
+        }
+      }),
+      ctx
+    )
+    const list = result?.properties.$exception_list as {
+      stacktrace: { frames: { filename: string; in_app: boolean }[] }
+    }[]
+    const byFile = Object.fromEntries(
+      list[0].stacktrace.frames.map((frame) => [frame.filename, frame.in_app])
+    )
+    expect(byFile['node:fs']).toBe(false)
+    expect(byFile['~/app/node_modules/better-sqlite3/lib/db.js']).toBe(false)
+    expect(byFile['~/app/src/vault.ts']).toBe(true)
+  })
+
+  // Utility-process crashes and log-derived errors carry no stack at all. Emitting
+  // `stacktrace: { frames: [] }` would claim we resolved a stack and found nothing.
+  it('omits stacktrace entirely when no frame line parses', () => {
+    const result = exceptionEvent(
+      batchFixture(),
+      eventFixture({ errorCode: 'Utility:crashed:Embeddings' }),
+      ctx
+    )
+    const list = result?.properties.$exception_list as Record<string, unknown>[]
+    expect(list[0]).not.toHaveProperty('stacktrace')
+  })
+
+  it('falls back to component-stack frames when there is no JS stack', () => {
+    const result = exceptionEvent(
+      batchFixture(),
+      eventFixture({
+        errorCode: 'RENDER_FAILED',
+        error: { componentStack: '    at NoteEditor (~/app/note-editor.tsx:1:1)' }
+      }),
+      ctx
+    )
+    const list = result?.properties.$exception_list as {
+      stacktrace: { frames: { function: string }[] }
+    }[]
+    expect(list[0].stacktrace.frames[0].function).toBe('NoteEditor')
+  })
+
+  it('keeps the raw component stack as its own property for React triage', () => {
+    const result = exceptionEvent(
+      batchFixture(),
+      eventFixture({
+        errorCode: 'RENDER_FAILED',
+        error: { stack: '    at x (a.js:1:1)', componentStack: '    at NoteEditor (b.tsx:2:2)' }
+      }),
+      ctx
+    )
+    expect(result?.properties.$exception_component_stack).toBe('    at NoteEditor (b.tsx:2:2)')
+  })
+
+  it('re-runs redaction over stack frames as a backstop', () => {
+    const result = exceptionEvent(
+      batchFixture(),
+      eventFixture({
+        errorCode: 'X',
+        error: { stack: '    at send (/Users/kaan/app/mail.ts:1:1)' }
+      }),
+      ctx
+    )
+    const list = result?.properties.$exception_list as {
+      stacktrace: { frames: { filename: string }[] }
+    }[]
+    expect(list[0].stacktrace.frames[0].filename).toBe('~/app/mail.ts')
+  })
+
+  it('caps frames so a hostile stack cannot inflate the payload', () => {
+    const stack = Array.from({ length: 90 }, (_, i) => `    at fn${i} (a.js:${i + 1}:1)`).join('\n')
+    const result = exceptionEvent(
+      batchFixture(),
+      eventFixture({ errorCode: 'X', error: { stack } }),
+      ctx
+    )
+    const list = result?.properties.$exception_list as {
+      stacktrace: { frames: unknown[] }
+    }[]
+    expect(list[0].stacktrace.frames).toHaveLength(50)
   })
 
   it('pins $exception_fingerprint to the error code when one is present', () => {

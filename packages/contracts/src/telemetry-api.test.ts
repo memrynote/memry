@@ -739,6 +739,48 @@ describe('normalizeRejectionReason', () => {
     expect(JSON.stringify(buildErrorDetail(normalized))).not.toContain('on fire')
   })
 
+  it('ships the error message, redacted, so the issue title says what broke', () => {
+    // #given a real Error whose message is the only human-readable "what happened"
+    const detail = buildErrorDetail(new Error('database is locked'))
+
+    // #then it rides along — without it PostHog titles every issue with the bare
+    // error code and there is nothing to read on the issue page
+    expect(detail?.message).toBe('database is locked')
+  })
+
+  it('redacts note titles, emails and home paths out of the message', () => {
+    const detail = buildErrorDetail(
+      new Error('failed to write /Users/kaan/Vault/secret.md for kaan@example.com')
+    )
+
+    expect(detail?.message).not.toContain('secret.md')
+    expect(detail?.message).not.toContain('kaan@example.com')
+    expect(detail?.message).not.toContain('/Users/kaan')
+    // #and the diagnostic shape survives
+    expect(detail?.message).toContain('failed to write')
+  })
+
+  it('caps the message at the contract length so a dumped payload cannot ride in', () => {
+    // Words, not one long run of characters: an unbroken 40+ char token is a
+    // secret shape and redactText collapses it to <redacted> before any capping.
+    const detail = buildErrorDetail(new Error('failed to write note '.repeat(50)))
+    expect(detail?.message).toHaveLength(512)
+  })
+
+  it('returns a detail for a message-only error that carries no stack', () => {
+    const stackless = new Error('boom')
+    stackless.stack = undefined
+    // #then the error is still reportable — previously this returned undefined and
+    // the event reached PostHog with no error detail at all
+    expect(buildErrorDetail(stackless)?.message).toBe('boom')
+  })
+
+  it('still returns undefined when there is nothing at all to report', () => {
+    const empty = new Error('')
+    empty.stack = undefined
+    expect(buildErrorDetail(empty)).toBeUndefined()
+  })
+
   it('names the constructor for a plain-object reason', () => {
     class Boom {}
     expect(normalizeRejectionReason(new Boom()).name).toBe('Rejection_Boom')
