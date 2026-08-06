@@ -35,6 +35,7 @@ const mockCopyFile = vi.fn()
 const mockUnlink = vi.fn()
 const mockExistsSync = vi.fn()
 const mockSyncTaskCreate = vi.fn()
+const mockTrackMainError = vi.fn()
 const mockInsertTask = vi.fn()
 const mockGetNextTaskPosition = vi.fn()
 const mockSetTaskTags = vi.fn()
@@ -94,6 +95,10 @@ vi.mock('../lib/logger', () => ({
 
 vi.mock('../tasks/runtime-effects', () => ({
   syncTaskCreate: (...args: unknown[]) => mockSyncTaskCreate(...args)
+}))
+
+vi.mock('../telemetry/diagnostics', () => ({
+  trackMainError: (...args: unknown[]) => mockTrackMainError(...args)
 }))
 
 vi.mock('../database/queries/tasks', () => ({
@@ -180,6 +185,7 @@ describe('Inbox Filing Operations', () => {
     mockUnlink.mockReset().mockResolvedValue(undefined)
     mockExistsSync.mockReset().mockReturnValue(false)
     mockSyncTaskCreate.mockReset()
+    mockTrackMainError.mockReset()
     mockInsertTask.mockReset().mockImplementation((_db, input) => ({ ...input }))
     mockGetNextTaskPosition.mockReset().mockReturnValue(42)
     mockSetTaskTags.mockReset()
@@ -1014,6 +1020,31 @@ describe('Inbox Filing Operations', () => {
 
       await expect(convertToTask(failingItemId)).resolves.toEqual(
         expect.objectContaining({ success: false, error: 'insert failed' })
+      )
+    })
+
+    it('still reports success when syncTaskCreate throws (task persisted locally)', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'task-sync-throws',
+        type: 'note',
+        title: 'Sync enqueue fails'
+      })
+      const syncError = new Error('sync runtime down')
+      mockSyncTaskCreate.mockImplementationOnce(() => {
+        throw syncError
+      })
+
+      const result = await convertToTask(itemId)
+
+      expect(result.success).toBe(true)
+      expect(result.taskId).toEqual(expect.any(String))
+      const row = testDb.db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
+      expect(row?.filedAction).toBe('task')
+      expect(row?.filedTo).toBe(result.taskId)
+      expect(mockTrackMainError).toHaveBeenCalledWith(
+        'inbox',
+        'task_conversion_sync_enqueue',
+        syncError
       )
     })
 
