@@ -285,6 +285,47 @@ Errors additionally become `$exception` events for PostHog Error Tracking (`exce
 `services/posthog-transform.ts`), fingerprinted on our own `errorCode` when one is present so
 grouping follows the app's own error taxonomy rather than PostHog's pattern-hash default.
 
+#### Stack frames
+
+Error Tracking renders code locations **only** from `$exception_list[].stacktrace` — it never
+parses the exception's `value`. The desktop sends its stack as redacted text (that is the shape
+the client-side frame filter and redaction produce), so `parseStackFrames` in
+`services/posthog-transform.ts` turns each `at fn (file:line:col)` line back into a raw frame:
+
+```json
+"stacktrace": { "type": "raw", "frames": [
+  { "platform": "custom", "lang": "javascript", "function": "push",
+    "filename": "~/app/sync.ts", "lineno": 12, "colno": 5,
+    "resolved": true, "in_app": true }
+] }
+```
+
+Four rules that are load-bearing:
+
+- **Reversed.** PostHog treats the **last** frame as the throw site; a JS stack string is
+  innermost-first. The cap of 50 frames is applied _before_ reversing, so a deep stack loses its
+  outermost callers rather than the frame that actually failed.
+- **`platform: 'custom'`.** Claiming `web:javascript` enters PostHog's symbolification path, which
+  needs uploaded source maps and a per-frame chunk id. We ship neither, so it would resolve to
+  nothing; `custom` frames render verbatim.
+- **`in_app: false`** for `node:*`, `internal/*`, `node_modules` and `electron/js2c` frames. The
+  UI hides non-in-app frames by default, falling back to showing all of them when an exception has
+  none — so a fully-vendor stack is never blank.
+- **Omitted, not empty.** An exception with no parsable frame carries no `stacktrace` key at all.
+  `frames: []` would claim we resolved a stack and found nothing; utility-process crashes and
+  log-derived errors genuinely have none.
+
+`value` holds the redacted message alone — it is the issue title, and the stack belongs in frames.
+A React component stack is promoted to frames when there is no JS stack, and always ships intact as
+`$exception_component_stack`.
+
+Errors that carry no JS stack by construction — `child-process-gone` for a crashed utility worker,
+where the process that died is not the one reporting — instead carry a synthesized message naming
+the worker, reason and exit status, so their issue page is not blank.
+
+This transform is entirely server-side: it applies to batches from already-installed desktop
+versions as soon as the sync-server deploys.
+
 No raw identifiers are stored: the install ID is HMAC-hashed server-side (`TELEMETRY_HMAC_KEY`,
 `hashTelemetryId`) and used as the PostHog `distinct_id`; server-side `user_id`/`device_id`/
 `vault_id` are hashed the same way before they ride along as event properties.
@@ -470,10 +511,12 @@ which can trap `getPrototypeOf`) is individually guarded. A hostile value can no
 the diagnostics handler and destroy the report being built.
 
 The free-form exception message was historically never sent at all, since on the desktop it can
-embed a note title, filename, or content. A message is now permitted
-(`TelemetryErrorDetailSchema.message`, optional), but only after the client has run it through
+embed a note title, filename, or content. `buildErrorDetail` now ships it
+(`TelemetryErrorDetailSchema.message`, optional, capped at 512) after running it through
 `redactText` (`packages/contracts/src/redact.ts`) — the server re-runs redaction in mask mode as
-a backstop. `redactText` strips known-sensitive shapes (secrets, tokens, emails, ids,
+a backstop. This is what makes an issue readable: without a message PostHog titles every issue
+with the bare error code, which is how a whole family of production issues came to read
+`StringError / StringError`. `redactText` strips known-sensitive shapes (secrets, tokens, emails, ids,
 home-directory paths, content-file basenames) rather than proving the remaining prose is
 note-free, so this is narrower than the earlier all-or-nothing "no message field" guarantee. The
 stack is separately reduced to code-location frames only — the leading `Name: message` header
