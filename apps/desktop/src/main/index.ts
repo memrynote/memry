@@ -62,7 +62,14 @@ import {
   stopActiveHeartbeat
 } from './telemetry/diagnostics'
 import { recordLaunchPhase, reportLaunchTimeline } from './launch-timeline'
-import { trackMainEvent } from './telemetry/track'
+import { toErrorCode } from '@memry/contracts/telemetry-api'
+import { drainEarlyMainEvents, trackMainEvent } from './telemetry/track'
+import {
+  clearCrashMarker,
+  detectUncleanShutdown,
+  installCrashMarker,
+  markShutdownFailure
+} from './telemetry/crash-marker'
 import {
   startGoogleCalendarSyncRunner,
   stopGoogleCalendarSyncRunner,
@@ -710,6 +717,12 @@ function createWindow(): void {
       mainLog.error(
         `main window failed to load (${errorCode} ${errorDescription}) ${validatedURL}; revealing anyway`
       )
+      // The user is now staring at a blank/broken renderer — make the rate of
+      // failed first paints countable. The name is enum-ish so toErrorCode
+      // adopts it; the URL never leaves the process.
+      const failure = new Error()
+      failure.name = `DidFailLoad:${errorCode}`
+      trackMainError('main_window', 'did_fail_load', failure)
       revealMainWindow('did-fail-load')
     }
   )
@@ -992,6 +1005,29 @@ function handleDeepLink(url: string): void {
     const parsed = new URL(url)
     if (parsed.protocol !== 'memry:') return
 
+    // Deep links are the clipper/billing/pairing entry funnel; count the
+    // intent even when no window is up to act on it. Only the coarse target
+    // ships — never the URL, which can carry ids and OAuth params.
+    const target =
+      parsed.hostname === 'open'
+        ? 'open'
+        : parsed.hostname === 'billing'
+          ? parsed.pathname === '/start'
+            ? 'billing_start'
+            : parsed.pathname === '/complete'
+              ? 'billing_complete'
+              : 'billing'
+          : parsed.hostname === 'oauth' || parsed.pathname.startsWith('/oauth')
+            ? 'oauth'
+            : parsed.hostname === 'pair'
+              ? 'pair'
+              : 'unknown'
+    trackMainEvent('deep_link_opened', {
+      surface: 'app',
+      action: 'opened',
+      dimensions: { target }
+    })
+
     const mainWindow = BrowserWindow.getAllWindows()[0]
     if (!mainWindow) return
 
@@ -1088,6 +1124,12 @@ if (!headlessCliArgs && !allowMultiInstanceForDeviceTests) {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 const appReady = app.whenReady().then(async () => {
+  // Register the process-level nets before ANY other startup work: failures in
+  // the identity carry-over / pending-install window used to happen before the
+  // handlers existed and vanished. trackMainError buffers until the telemetry
+  // runtime initializes (see telemetry/track.ts), so these early reports ship
+  // once it does. The later registerMainDiagnostics call is an idempotent no-op.
+  registerMainDiagnostics()
   // The Safe Storage keychain carry-over must land before anything reads
   // secrets through safeStorage (see app-identity.ts).
   await identityContinuity
@@ -1285,8 +1327,16 @@ const appReady = app.whenReady().then(async () => {
 
       // No Range header - return full file
       return net.fetch(`file://${filePath}`)
-    } catch {
-      // Return 404 for any errors
+    } catch (error) {
+      // A failure here renders as a silently broken image/PDF/video embed
+      // (EACCES/EIO/file vanished mid-read — the class behind #896). Leave a
+      // trace before answering 404; the path itself never leaves the process.
+      mainLog.warn('memry-file: serve failed', { error })
+      trackMainLog('warn', {
+        scope: 'MemryFile',
+        action: 'serve_failed',
+        errorCode: toErrorCode(error)
+      })
       return new Response(null, { status: 404, statusText: 'Not Found' })
     }
   })
@@ -1305,7 +1355,7 @@ const appReady = app.whenReady().then(async () => {
 
   // Initialize telemetry runtime before handlers so registerTelemetryHandlers
   // can resolve `getTelemetryRuntime()` to the live instance.
-  initializeTelemetryRuntime({
+  const telemetryRuntime = initializeTelemetryRuntime({
     appVersion: app.getVersion(),
     locale: app.getLocale(),
     buildChannel: resolveMemryEnvironment(),
@@ -1313,8 +1363,13 @@ const appReady = app.whenReady().then(async () => {
     syncStateProvider: getTelemetrySyncState,
     accessTokenProvider: () => getValidAccessToken()
   })
+  drainEarlyMainEvents()
   installLogShip({ buildChannel: resolveMemryEnvironment() })
   registerMainDiagnostics()
+  // Order matters: detect the PREVIOUS session's leftover marker before this
+  // session writes its own.
+  detectUncleanShutdown()
+  installCrashMarker(telemetryRuntime.context.sessionId, app.getVersion())
   startActiveHeartbeat(() => BrowserWindow.getFocusedWindow() !== null)
 
   app.on('browser-window-blur', () => {
@@ -1360,7 +1415,12 @@ const appReady = app.whenReady().then(async () => {
     flushWindow(win)
       .then(() => createCloseSnapshots())
       .then(() => win.close())
-      .catch((err) => mainLog.error('Window close flush failed:', err))
+      .catch((err) => {
+        // The window silently refuses to close AND edits may be unsaved —
+        // both symptoms arrive as support reports with no trail otherwise.
+        mainLog.error('Window close flush failed:', err)
+        trackMainError('main_process', 'window_close_flush_failed', err)
+      })
   })
 
   // Quick Capture IPC handlers
@@ -1728,6 +1788,14 @@ function registerQuickCaptureShortcut(): void {
     quickCaptureLog.warn(
       `failed to register global shortcut: ${QUICK_CAPTURE_SHORTCUT}. It may be in use by another application.`
     )
+    // Both the configured and the fallback shortcut failed: quick capture is
+    // dead for this install. Countable, not just a local warn line.
+    if (!quickCaptureShortcutRegistration.registered) {
+      trackMainLog('warn', {
+        scope: 'QuickCapture',
+        action: 'global_shortcut_register_failed'
+      })
+    }
   }
 }
 
@@ -1852,6 +1920,9 @@ app.on('before-quit', (event) => {
     // If the user asked to install an update, still hand off to Squirrel/NSIS
     // rather than app.exit() — a hard exit skips the install (and bypasses
     // autoInstallOnAppQuit), so the update never applies and the app re-prompts.
+    // The forced exit below never flushes the log queue; the crash marker is
+    // what carries this failure to the next launch (SHUTDOWN_TIMEOUT).
+    markShutdownFailure('timeout')
     if (isQuitAndInstallRequested()) {
       shutdownLog.error('cleanup timed out; installing downloaded update anyway')
       performQuitAndInstall()
@@ -1924,6 +1995,10 @@ app.on('before-quit', (event) => {
     .then(() => {
       shutdownLog.info('cleanup complete')
       clearTimeout(shutdownTimeout)
+      // Cleanup finished: this shutdown is clean, so the next launch must not
+      // report app_crashed. The timeout/failed-cleanup paths deliberately keep
+      // the marker — a hung or failed shutdown IS an unclean exit worth seeing.
+      clearCrashMarker()
       if (isQuitAndInstallRequested()) {
         // Cleanup is done; hand off to Squirrel/NSIS to install + relaunch.
         // The re-entrant before-quit returns early (isShuttingDown), so the
@@ -1942,6 +2017,9 @@ app.on('before-quit', (event) => {
     .catch((error) => {
       shutdownLog.error('error during cleanup:', error)
       clearTimeout(shutdownTimeout)
+      // Same as the timeout path: the exit below outruns any log flush, so the
+      // marker reports this shutdown failure on the next launch.
+      markShutdownFailure('cleanup_error')
       // Same as the timeout path: a pending install must survive a failed
       // cleanup, otherwise the hard exit drops the update and the loop returns.
       if (isQuitAndInstallRequested()) {

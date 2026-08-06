@@ -73,9 +73,16 @@ export function createValidatedHandler<TSchema extends z.ZodSchema, TResult>(
         const messages = (issues as Array<{ path: (string | number)[]; message: string }>)
           .map((e) => `${e.path.join('.')}: ${e.message}`)
           .join(', ')
+        // A validation failure is a renderer↔main contract drift, not user
+        // error — worth counting. Only the ZodError name/stack ship, never the
+        // issue messages, which can echo input values.
+        trackIpcError(handler.name || 'validated_handler', error)
         throw new Error(`Validation failed: ${messages}`)
       }
       ipcLog.error('handler error:', error)
+      // Handlers on this wrapper (canvas, calendar reads) never pass withDb/
+      // withErrorHandler, so this rethrow used to be their ONLY trace.
+      trackIpcError(handler.name || 'validated_handler', error)
       throw error instanceof Error ? new Error(error.message) : new Error('Something went wrong')
     }
   }
@@ -101,7 +108,13 @@ export function createHandler<TResult>(
   handler: () => TResult | Promise<TResult>
 ): (event: IpcMainInvokeEvent) => Promise<TResult> {
   return async (_event: IpcMainInvokeEvent): Promise<TResult> => {
-    return handler()
+    try {
+      return await handler()
+    } catch (error) {
+      ipcLog.error('handler error:', error)
+      trackIpcError(handler.name || 'handler', error)
+      throw error
+    }
   }
 }
 

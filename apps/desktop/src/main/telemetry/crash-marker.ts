@@ -1,0 +1,161 @@
+// Unclean-shutdown detection. A hard crash (main-process abort, OOM kill,
+// force-quit) discards the in-memory telemetry queue, so the crash itself never
+// ships — the classic "it crashed and there are no logs" report. The marker
+// file inverts that: written at startup, refreshed while alive, removed on
+// clean quit. A marker still present at the NEXT launch means the previous
+// session died uncleanly, and that launch emits `app_crashed` on its behalf.
+import fs from 'node:fs'
+import path from 'node:path'
+
+import { app } from 'electron'
+
+import { createLogger } from '../lib/logger'
+import { trackMainEvent } from './track'
+
+const logger = createLogger('CrashMarker')
+
+export const CRASH_MARKER_FILENAME = 'session-marker.json'
+const ALIVE_INTERVAL_MS = 60_000
+
+export type ShutdownFailureReason = 'timeout' | 'cleanup_error'
+
+interface SessionMarker {
+  sessionId: string
+  startedAt: string
+  lastAliveAt: string
+  appVersion?: string
+  // Set when a shutdown was ATTEMPTED but failed (5s timeout / cleanup chain
+  // rejected) before the forced exit — distinguishes "shutdown hung" from a
+  // hard crash on the next launch's report.
+  shutdownFailure?: ShutdownFailureReason
+}
+
+let aliveTimer: ReturnType<typeof setInterval> | null = null
+// Only the process that WROTE a marker may remove one: a short-lived second
+// instance (single-instance lock loser) shares userData and must not erase the
+// primary's marker on its way out.
+let installedThisSession = false
+
+const markerPath = (): string => path.join(app.getPath('userData'), CRASH_MARKER_FILENAME)
+
+const parseMarker = (raw: string): SessionMarker | null => {
+  try {
+    const parsed = JSON.parse(raw) as SessionMarker
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+const priorSessionDurationMs = (marker: SessionMarker): number | undefined => {
+  const startedAt = Date.parse(marker.startedAt)
+  const lastAliveAt = Date.parse(marker.lastAliveAt)
+  if (!Number.isFinite(startedAt) || !Number.isFinite(lastAliveAt)) return undefined
+  return Math.max(0, lastAliveAt - startedAt)
+}
+
+/**
+ * Emit `app_crashed` if the previous session left its marker behind. Call once
+ * per launch, after the telemetry runtime initializes and BEFORE
+ * installCrashMarker writes this session's own marker.
+ */
+export const detectUncleanShutdown = (): void => {
+  let raw: string | null = null
+  try {
+    raw = fs.readFileSync(markerPath(), 'utf-8')
+  } catch {
+    return // no marker: the previous session quit cleanly (or first launch)
+  }
+
+  // The marker's PRESENCE is the crash signal; its contents only enrich the
+  // event. An unparseable marker still reports the crash, just without the
+  // observed-uptime metric.
+  const marker = parseMarker(raw)
+  const durationMs = marker ? priorSessionDurationMs(marker) : undefined
+  const errorCode =
+    marker?.shutdownFailure === 'timeout'
+      ? 'SHUTDOWN_TIMEOUT'
+      : marker?.shutdownFailure === 'cleanup_error'
+        ? 'SHUTDOWN_CLEANUP_FAILED'
+        : 'UNCLEAN_SHUTDOWN'
+  trackMainEvent('app_crashed', {
+    surface: 'app',
+    action: 'unclean_shutdown',
+    source: 'main_process',
+    result: 'failed',
+    errorCode,
+    metrics: durationMs === undefined ? undefined : { durationMs },
+    dimensions: marker?.appVersion ? { prior_app_version: marker.appVersion } : undefined
+  })
+}
+
+/**
+ * Write this session's marker and keep its lastAliveAt fresh, so a later crash
+ * report carries how long the session survived. Never throws — a read-only
+ * disk must not break startup.
+ */
+export const installCrashMarker = (sessionId: string, appVersion?: string): void => {
+  const startedAt = new Date().toISOString()
+  const write = (): void => {
+    const marker: SessionMarker = {
+      sessionId,
+      startedAt,
+      lastAliveAt: new Date().toISOString(),
+      ...(appVersion ? { appVersion } : {})
+    }
+    fs.writeFileSync(markerPath(), JSON.stringify(marker), 'utf-8')
+  }
+
+  try {
+    write()
+  } catch (error) {
+    logger.warn('Failed to write crash marker; unclean shutdowns will go undetected', { error })
+    return
+  }
+  installedThisSession = true
+
+  aliveTimer = setInterval(() => {
+    try {
+      write()
+    } catch {
+      // Transient write failure: the previous lastAliveAt stays on disk, which
+      // only under-reports the session duration — never worth logging per tick.
+    }
+  }, ALIVE_INTERVAL_MS)
+  if (typeof aliveTimer.unref === 'function') aliveTimer.unref()
+}
+
+/**
+ * Stamp the marker with the shutdown-failure reason right before a forced
+ * exit, so the next launch's app_crashed says "shutdown hung/failed" instead
+ * of a generic unclean exit. The process is about to app.exit(); the shipped
+ * log line for this failure never flushes, but the marker survives.
+ */
+export const markShutdownFailure = (reason: ShutdownFailureReason): void => {
+  if (!installedThisSession) return
+  try {
+    const raw = fs.readFileSync(markerPath(), 'utf-8')
+    const marker = parseMarker(raw)
+    if (!marker) return
+    marker.shutdownFailure = reason
+    marker.lastAliveAt = new Date().toISOString()
+    fs.writeFileSync(markerPath(), JSON.stringify(marker), 'utf-8')
+  } catch {
+    // The plain marker still reports UNCLEAN_SHUTDOWN — losing only the reason.
+  }
+}
+
+/** Remove the marker on clean shutdown so the next launch reports nothing. */
+export const clearCrashMarker = (): void => {
+  if (aliveTimer) {
+    clearInterval(aliveTimer)
+    aliveTimer = null
+  }
+  if (!installedThisSession) return
+  installedThisSession = false
+  try {
+    fs.rmSync(markerPath(), { force: true })
+  } catch (error) {
+    logger.warn('Failed to clear crash marker; next launch may report a false crash', { error })
+  }
+}

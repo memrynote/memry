@@ -40,7 +40,9 @@ const getWindowBoundsMock = vi.fn((): StoredWindowBoundsShape | null => null)
 const setWindowBoundsMock = vi.fn()
 const getVaultStatusMock = vi.fn(() => ({ path: null as string | null }))
 const readPreferencesMock = vi.fn(() => ({ language: 'en' }))
-const initializeTelemetryRuntimeMock = vi.fn()
+const initializeTelemetryRuntimeMock = vi.fn(() => ({
+  context: { sessionId: 'test-session' }
+}))
 const disposeTelemetryRuntimeMock = vi.fn(async () => undefined)
 const initPersistenceMock = vi.fn(async () => undefined)
 const getOpenNoteIdsMock = vi.fn(() => [] as string[])
@@ -224,7 +226,8 @@ vi.mock('./lib/embeddings', async (importOriginal) => ({
 
 vi.mock('./telemetry/runtime', () => ({
   initializeTelemetryRuntime: initializeTelemetryRuntimeMock,
-  disposeTelemetryRuntime: disposeTelemetryRuntimeMock
+  disposeTelemetryRuntime: disposeTelemetryRuntimeMock,
+  getTelemetryRuntime: vi.fn(() => null)
 }))
 
 vi.mock('./telemetry/state', () => ({

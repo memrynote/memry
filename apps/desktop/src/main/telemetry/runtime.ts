@@ -13,6 +13,8 @@ import type {
 import { createLogger } from '../lib/logger'
 import {
   createTelemetryClient,
+  TELEMETRY_BATCH_LIMIT,
+  TELEMETRY_QUEUE_LIMIT,
   type TelemetryClient,
   type TelemetryClientContext,
   type TelemetryFetch,
@@ -195,7 +197,17 @@ export const initializeTelemetryRuntime = (deps?: TelemetryRuntimeDeps): Telemet
         clearInterval(flushTimer)
         flushTimer = null
       }
-      await client.flush('shutdown').catch(() => undefined)
+      // One flush sends at most TELEMETRY_BATCH_LIMIT events, but a session can
+      // queue up to TELEMETRY_QUEUE_LIMIT — a single shutdown flush silently
+      // dropped everything past the first batch. Drain in bounded rounds,
+      // stopping at the first failure so an offline quit never stalls.
+      const maxRounds = Math.ceil(TELEMETRY_QUEUE_LIMIT / TELEMETRY_BATCH_LIMIT)
+      for (let round = 0; round < maxRounds && client.getQueueDepth() > 0; round++) {
+        const result = await client
+          .flush('shutdown')
+          .catch((): TelemetryFlushResult => ({ success: false, attempted: 0, accepted: 0 }))
+        if (!result.success) break
+      }
       runtimeInstance = null
     }
   }
