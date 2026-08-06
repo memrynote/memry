@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import type { TelemetryBatch } from '@memry/contracts/telemetry-api'
+import type {
+  TelemetryBatch,
+  TelemetryEvent,
+  TelemetryMetrics
+} from '@memry/contracts/telemetry-api'
 
 import {
   exceptionEvent,
@@ -167,6 +171,114 @@ describe('productEvent', () => {
     )
     expect(result.properties.log_action).toBe('gpu_gone')
   })
+})
+
+// productEvent writes client dimensions FIRST and every server-derived key after,
+// so a trusted value always overwrites a colliding client one. Only `environment`
+// and `session_id` had dedicated regression tests above; the rest of the trusted
+// keys rested on that structural ordering plus a code comment, so an edit that
+// inserted a new trusted assignment ABOVE the dimensions loop would have gone
+// unnoticed. The sweep below covers every trusted key at once.
+//
+// SafeDimensionKeySchema now also rejects reserved and `$`-prefixed dimension
+// keys outright, which reduces but does not replace this: the ordering is the
+// second line of defence, and these fixtures are built directly rather than
+// parsed so they deliberately carry keys the schema would refuse.
+const SPOOFED_DIMENSION_VALUE = 'client-spoofed'
+
+// The Required<> annotations are the anti-drift guard. TRUSTED_KEYS is derived
+// from the implementation, but a NEW conditional trusted key would only show up
+// there if these fixtures populate the field that gates it. Typing them as
+// Required<> means a fresh optional field on TelemetryEvent, TelemetryMetrics or
+// TelemetryBatch stops this file typechecking until the fixture covers it, so
+// the gap cannot reopen quietly.
+const maximalMetrics: Required<TelemetryMetrics> = {
+  durationMs: 42,
+  itemCount: 7,
+  byteCount: 2048,
+  queueCount: 3,
+  resultCount: 11,
+  retryCount: 2,
+  activeSeconds: 90,
+  value: 5
+}
+
+const maximalBatch = (): TelemetryBatch => {
+  const batch: Required<TelemetryBatch> = { ...batchFixture(), clientQueueDepth: 4 }
+  return batch
+}
+
+const maximalEvent = (dimensions?: Record<string, string>): TelemetryEvent => {
+  const event: Required<Omit<TelemetryEvent, 'dimensions'>> = {
+    id: '44444444-4444-4444-8444-444444444444',
+    name: 'note_created',
+    occurredAt: '2026-07-22T10:00:00.000Z',
+    surface: 'notes',
+    action: 'create',
+    objectType: 'note',
+    source: 'command_palette',
+    result: 'success',
+    errorCode: 'SYNC_TIMEOUT',
+    metrics: maximalMetrics,
+    error: { message: 'boom', stack: 'at boom (a.js:1:1)', componentStack: 'at Note' }
+  }
+  return dimensions ? { ...event, dimensions } : event
+}
+
+// Read off the implementation rather than hand-listed, so a trusted key added
+// later is swept without anyone remembering to extend this file.
+const TRUSTED_KEYS = Object.keys(productEvent(maximalBatch(), maximalEvent(), ctx).properties)
+
+describe('productEvent trusted-key collisions', () => {
+  it('owns exactly the reviewed set of server-derived keys', () => {
+    // The sweep below adapts on its own; this is the reviewed record of what
+    // productEvent is allowed to own, so adding or dropping a trusted key has to
+    // be a deliberate, visible change rather than a silent one.
+    expect([...TRUSTED_KEYS].sort()).toEqual(
+      [
+        'surface',
+        'action',
+        'environment',
+        'session_id',
+        '$set',
+        'platform',
+        'app_version',
+        'build_channel',
+        'object_type',
+        'source',
+        'result',
+        'error_code',
+        'duration_ms',
+        'item_count',
+        'byte_count',
+        'queue_count',
+        'result_count',
+        'retry_count',
+        'active_seconds',
+        'value'
+      ].sort()
+    )
+  })
+
+  it.each(TRUSTED_KEYS)(
+    'does not let a client dimension named "%s" overwrite the server-derived value',
+    (key) => {
+      const baseline = productEvent(maximalBatch(), maximalEvent(), ctx).properties
+      const spoofed = productEvent(
+        maximalBatch(),
+        maximalEvent({ [key]: SPOOFED_DIMENSION_VALUE }),
+        ctx
+      ).properties
+
+      // Fixture sanity: a trusted value that already equalled the sentinel would
+      // make the assertions below pass for the wrong reason.
+      expect(baseline[key]).not.toBe(SPOOFED_DIMENSION_VALUE)
+      expect(spoofed[key]).toEqual(baseline[key])
+      // Nothing else shifts either: the colliding key is fully absorbed, so the
+      // client cannot smuggle a value in under any trusted name.
+      expect(spoofed).toEqual(baseline)
+    }
+  )
 })
 
 describe('exceptionEvent', () => {
