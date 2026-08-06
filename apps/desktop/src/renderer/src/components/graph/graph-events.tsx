@@ -1,40 +1,90 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useRegisterEvents, useSigma } from '@react-sigma/core'
 import { useTabActions } from '@/contexts/tabs'
 import { useT } from '@memry/i18n/renderer'
+
+/** Pointer travel (viewport px) past which a press counts as a drag rather than a click. */
+const DRAG_THRESHOLD_PX = 3
+
+interface DragState {
+  nodeId: string
+  startX: number
+  startY: number
+  moved: boolean
+}
 
 interface GraphEventsProps {
   onHoverNode: (nodeId: string | null) => void
   onTooltipMove: (pos: { x: number; y: number } | null) => void
   onFocusNode: (nodeId: string) => void
   onContextMenu?: (menu: { nodeId: string; x: number; y: number } | null) => void
+  onNodeGrab?: (nodeId: string) => void
+  onNodeDrag?: (nodeId: string, x: number, y: number) => void
+  onNodeRelease?: (nodeId: string) => void
 }
 
 export function GraphEvents({
   onHoverNode,
   onTooltipMove,
   onFocusNode,
-  onContextMenu
+  onContextMenu,
+  onNodeGrab,
+  onNodeDrag,
+  onNodeRelease
 }: GraphEventsProps): null {
   const sigma = useSigma()
   const registerEvents = useRegisterEvents()
   const { openTab } = useTabActions()
   const { t } = useT('graph')
+  const dragRef = useRef<DragState | null>(null)
+  const suppressClickRef = useRef(false)
 
   useEffect(() => {
     registerEvents({
       enterNode: ({ node, event }) => {
         onHoverNode(node)
         onTooltipMove({ x: event.x, y: event.y })
-        document.body.style.cursor = 'pointer'
+        if (!dragRef.current) document.body.style.cursor = 'pointer'
       },
       leaveNode: () => {
         onHoverNode(null)
         onTooltipMove(null)
-        document.body.style.cursor = 'default'
+        if (!dragRef.current) document.body.style.cursor = 'default'
+      },
+      downNode: ({ node, event }) => {
+        dragRef.current = { nodeId: node, startX: event.x, startY: event.y, moved: false }
+        document.body.style.cursor = 'grabbing'
+        onNodeGrab?.(node)
+      },
+      mousemovebody: (event) => {
+        const drag = dragRef.current
+        if (!drag) return
+
+        if (!drag.moved) {
+          const travel = Math.hypot(event.x - drag.startX, event.y - drag.startY)
+          if (travel > DRAG_THRESHOLD_PX) drag.moved = true
+        }
+
+        const { x, y } = sigma.viewportToGraph({ x: event.x, y: event.y })
+        onNodeDrag?.(drag.nodeId, x, y)
+
+        // Without this sigma pans the camera while we are moving a node.
+        event.preventSigmaDefault()
+      },
+      mouseup: () => {
+        const drag = dragRef.current
+        if (!drag) return
+        dragRef.current = null
+        suppressClickRef.current = drag.moved
+        document.body.style.cursor = 'pointer'
+        onNodeRelease?.(drag.nodeId)
       },
       clickNode: ({ node }) => {
         onContextMenu?.(null)
+        if (suppressClickRef.current) {
+          suppressClickRef.current = false
+          return
+        }
         openNodeInTab(sigma, openTab, node, t('context-menu.untitled'))
       },
       rightClickNode: ({ node, event }) => {
@@ -45,7 +95,19 @@ export function GraphEvents({
         onContextMenu?.(null)
       }
     })
-  }, [sigma, registerEvents, openTab, onHoverNode, onTooltipMove, onFocusNode, onContextMenu, t])
+  }, [
+    sigma,
+    registerEvents,
+    openTab,
+    onHoverNode,
+    onTooltipMove,
+    onFocusNode,
+    onContextMenu,
+    onNodeGrab,
+    onNodeDrag,
+    onNodeRelease,
+    t
+  ])
 
   return null
 }

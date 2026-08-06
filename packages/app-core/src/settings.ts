@@ -97,7 +97,7 @@ const settingsGroupDefaults: Record<SettingsGroupName, Record<string, unknown>> 
     layout: 'forceatlas2',
     showLabels: false,
     showEdgeLabels: false,
-    animateLayout: false,
+    animateLayout: true,
     showTagEdges: false
   },
   calendar: {

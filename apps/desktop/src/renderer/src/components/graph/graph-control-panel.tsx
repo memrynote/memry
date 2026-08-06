@@ -212,6 +212,11 @@ export function GraphControlPanel({
                 checked={settings.showLabels}
                 onCheckedChange={(v) => updateSettings({ showLabels: v })}
               />
+              <FilterSwitch
+                label={t('control.live-motion')}
+                checked={settings.animateLayout}
+                onCheckedChange={(v) => updateSettings({ animateLayout: v })}
+              />
             </div>
           </PanelSection>
         </div>

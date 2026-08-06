@@ -700,7 +700,7 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
     layout: 'forceatlas2',
     showLabels: false,
     showEdgeLabels: false,
-    animateLayout: false,
+    animateLayout: true,
     showTagEdges: false
   })
 
