@@ -1,5 +1,6 @@
 import { createLogger } from '../lib/logger'
 import type { TelemetryFetch } from './client'
+import { createQueueStore } from './queue-store'
 
 const logger = createLogger('LogShip')
 
@@ -12,6 +13,13 @@ export interface ShipQueueDeps<T> {
   buildBody: (items: T[]) => unknown
   queueLimit?: number
   batchLimit?: number
+  /**
+   * Absolute path of the crash-durable mirror. Set → the queue restores whatever
+   * the previous process left behind and rewrites the file on every enqueue and
+   * flush, so a hard crash no longer discards the last 30s of evidence. Omitted
+   * (tests, callers that do not want on-disk state) → memory only, as before.
+   */
+  persistPath?: string
 }
 
 export interface ShipQueueFlushResult {
@@ -30,7 +38,8 @@ export interface ShipQueue<T> {
 export const createShipQueue = <T>(deps: ShipQueueDeps<T>): ShipQueue<T> => {
   const queueLimit = deps.queueLimit ?? SHIP_QUEUE_LIMIT
   const batchLimit = deps.batchLimit ?? SHIP_BATCH_LIMIT
-  const queue: T[] = []
+  const store = deps.persistPath ? createQueueStore<T>(deps.persistPath) : null
+  const queue: T[] = store ? store.load() : []
   let enabled = false
 
   const trimQueue = (): void => {
@@ -39,10 +48,23 @@ export const createShipQueue = <T>(deps: ShipQueueDeps<T>): ShipQueue<T> => {
     }
   }
 
+  const persist = (): void => {
+    store?.save(queue)
+  }
+
+  // The restored set is bounded by the SAME limit as a live one, so a mirror
+  // written by a build with a larger queueLimit cannot resurrect an unbounded
+  // queue. Rewrite immediately, otherwise the dropped head returns next launch.
+  if (queue.length > queueLimit) {
+    trimQueue()
+    persist()
+  }
+
   const enqueue = (item: T): void => {
     if (!enabled) return
     queue.push(item)
     trimQueue()
+    persist()
   }
 
   const flush = async (): Promise<ShipQueueFlushResult> => {
@@ -69,6 +91,7 @@ export const createShipQueue = <T>(deps: ShipQueueDeps<T>): ShipQueue<T> => {
           response.status >= 400 && response.status < 500 && response.status !== 429
         if (permanentlyRejected) {
           queue.splice(0, batchSize)
+          persist()
         }
         logger.warn('Ship batch rejected', {
           status: response.status,
@@ -78,6 +101,7 @@ export const createShipQueue = <T>(deps: ShipQueueDeps<T>): ShipQueue<T> => {
       }
 
       queue.splice(0, batchSize)
+      persist()
       return { success: true, attempted: batchSize, accepted: batchSize }
     } catch (error) {
       logger.warn('Ship flush failed', {
@@ -91,6 +115,9 @@ export const createShipQueue = <T>(deps: ShipQueueDeps<T>): ShipQueue<T> => {
     enabled = next
     if (!next) {
       queue.length = 0
+      // Turning telemetry off must leave nothing behind on disk either — a
+      // restored mirror would otherwise outlive the opt-out.
+      store?.clear()
     }
   }
 

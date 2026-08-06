@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 
 import type { TelemetryEvent } from '@memry/contracts/telemetry-api'
 
@@ -341,5 +344,52 @@ describe('createTelemetryClient', () => {
       expect(headers['Authorization']).toBe('Bearer my-access-token')
       expect(headers['Authorization']).toMatch(/^Bearer [^ ]+$/)
     })
+  })
+})
+
+describe('createTelemetryClient — crash durability', () => {
+  let tempDir: string
+  let persistPath: string
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-telemetry-client-'))
+    persistPath = path.join(tempDir, 'events.json')
+  })
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  it('restores events a killed process never got to flush', async () => {
+    // #given a session that recorded app_crashed and died before its 30s flush
+    const dead = createTelemetryClient(createDeps({ persistPath }).deps)
+    dead.track(buildEvent('11111111-1111-1111-1111-111111111111', 'app_crashed'))
+
+    // #when the next launch opens the same mirror
+    const { deps, calls } = createDeps({ persistPath })
+    const revived = createTelemetryClient(deps)
+    expect(revived.getQueueDepth()).toBe(1)
+
+    // #then the crash event ships instead of being lost with the process
+    await revived.flush('manual')
+    const batch = JSON.parse(String(calls[0].init?.body)) as { events: TelemetryEvent[] }
+    expect(batch.events.map((e) => e.name)).toEqual(['app_crashed'])
+
+    // #and it is not sent again on the launch after that
+    expect(createTelemetryClient(createDeps({ persistPath }).deps).getQueueDepth()).toBe(0)
+  })
+
+  it('never restores events for an install that opted out between launches', () => {
+    // #given events mirrored while telemetry was on
+    createTelemetryClient(createDeps({ persistPath }).deps).track(
+      buildEvent('11111111-1111-1111-1111-111111111111')
+    )
+
+    // #when the next launch starts with telemetry disabled
+    const client = createTelemetryClient(createDeps({ persistPath, initialEnabled: false }).deps)
+
+    // #then nothing is restored and nothing is left on disk
+    expect(client.getQueueDepth()).toBe(0)
+    expect(fs.existsSync(persistPath)).toBe(false)
   })
 })

@@ -190,9 +190,12 @@ offline quit never stalls the exit.
 
 ## Crash & Unclean-Shutdown Detection
 
-A hard crash — main-process abort, OOM kill, force quit — discards the in-memory telemetry queue,
-so the crash itself never ships: the classic "it crashed and there are no logs" report. A marker
-file inverts that (`apps/desktop/src/main/telemetry/crash-marker.ts`):
+A hard crash — main-process abort, OOM kill, force quit — used to discard the in-memory telemetry
+queue, so the crash itself never shipped: the classic "it crashed and there are no logs" report.
+Two mechanisms fix that: a marker file that notices the crash, and a durable queue that keeps the
+resulting event alive long enough to send.
+
+A marker file (`apps/desktop/src/main/telemetry/crash-marker.ts`):
 
 - `session-marker.json` is written into `userData` at startup with the session id, `startedAt`,
   `lastAliveAt`, and app version, then refreshed every 60s while the app is alive.
@@ -219,6 +222,49 @@ line for that failure never flushes, but the marker survives to the next launch.
 that wrote a marker may remove one — a second instance that loses the single-instance lock shares
 `userData` and must not erase the primary's marker on its way out. Marker write failures are
 logged and swallowed; a read-only disk must never break startup.
+
+### Durable Queues
+
+The marker only detects the crash — `app_crashed` still has to survive long enough to be sent, and
+both telemetry queues flush on a 30s interval. A second hard crash inside that window would
+otherwise take the crash report with it, which is why both queues mirror to `userData`
+(`telemetry/queue-store.ts`):
+
+| Queue                                      | Mirror                       | Carries                                     |
+| ------------------------------------------ | ---------------------------- | ------------------------------------------- |
+| Event queue (`telemetry/client.ts`)        | `telemetry-event-queue.json` | `app_crashed`, `app_error_seen`, all events |
+| Log-ship queue (`telemetry/ship-queue.ts`) | `telemetry-log-queue.json`   | Path A redacted `warn`/`error` log lines    |
+
+The mirror is rewritten on every enqueue and after every flush, so what is on disk is what has not
+yet been accepted by the server. The next launch restores it and drains it; a drained batch is
+removed from the mirror, so nothing is sent twice.
+
+Rules the mirror follows:
+
+- **Format** is `{"version":1,"items":[…]}`. A file whose version this build does not recognise is
+  discarded rather than parsed, and builds that predate the mirror never read it at all — so
+  neither a downgrade nor a future format bump can wedge startup.
+- **Corruption is expected.** The mirror is most likely to be truncated by exactly the crash it was
+  written to survive, so an unparseable file is logged, deleted, and treated as empty.
+- **Write failures are non-fatal.** A read-only or full disk costs durability, never logging or
+  shutdown; the failure is logged once per streak rather than once per line.
+- **The limit applies to the restored set too** (`TELEMETRY_QUEUE_LIMIT` / `SHIP_QUEUE_LIMIT`), so a
+  mirror written by a build with a larger limit cannot resurrect an unbounded queue.
+- **Opting out deletes the mirror.** Turning telemetry off clears the file, not just the in-memory
+  queue, and a launch that starts with telemetry disabled discards the mirror instead of restoring
+  it.
+
+Restored events keep their own `occurredAt`; the batch envelope is stamped with the session that
+ships them, so an event resurrected from a dead session is attributed to the launch that sent it.
+
+### Native Crash Dumps
+
+`crashReporter.start({ uploadToServer: false })` runs before `app.ready`, so main, renderer, and
+utility processes all write minidumps for native crashes that no JS handler ever observes. The
+dumps stay in `app.getPath('crashDumps')` for the Path B diagnostic bundle the user submits
+deliberately. **`uploadToServer` must stay `false`**: a minidump is raw process memory — PostHog
+does not ingest minidumps, and there is no way to redact one, so uploading would breach the
+redaction model every other telemetry path is built around.
 
 ## PostHog Event Capture
 

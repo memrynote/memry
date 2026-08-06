@@ -27,6 +27,7 @@ import type { CanvasAssetRow } from '@memry/db-schema'
 import { createLogger } from '../../lib/logger'
 import { toMemryFileUrl } from '../../lib/paths'
 import { atomicWriteBinary, fileExists } from '../../vault/file-ops'
+import { getMainRedactOptions } from '../../telemetry/redact-options'
 import type { TrackMainEventOptions } from '../../telemetry/track'
 
 import { assetFilename, hashAssetContent } from './content-hash'
@@ -246,7 +247,7 @@ export async function ensureAssetsPresent(
         source: 'canvas_asset_service',
         result: 'failed',
         errorCode: toErrorCode(err),
-        error: buildErrorDetail(err)
+        error: buildErrorDetail(err, undefined, getMainRedactOptions())
       })
     }
   }
