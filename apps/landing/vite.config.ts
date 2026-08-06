@@ -97,6 +97,11 @@ export default defineConfig(({ mode }) => {
             'react-vendor': ['react', 'react-dom', 'react-router'],
             motion: ['framer-motion', 'lenis'],
             paddle: ['@paddle/paddle-js'],
+            // Must stay the module.full.no-external subpath: the bare specifier
+            // resolves to the lean bundle that lazy-loads rrweb as an external
+            // script, which disable_external_dependency_loading blocks, silently
+            // killing session replay. See src/lib/analytics.ts.
+            posthog: ['posthog-js/dist/module.full.no-external'],
             crypto: ['libsodium-wrappers-sumo'],
             icons: ['lucide-react', '@hugeicons/react', '@hugeicons/core-free-icons']
           }
