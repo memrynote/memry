@@ -808,7 +808,12 @@ export async function convertToTask(
     const enrichedTask = { ...task, linkedNoteIds: [] as string[] }
     broadcastToAllWindows(TasksChannels.events.CREATED, { task: enrichedTask })
 
-    syncTaskCreate(taskId)
+    try {
+      syncTaskCreate(taskId)
+    } catch (error) {
+      log.warn('syncTaskCreate failed; task persisted locally', error)
+      trackMainError('inbox', 'task_conversion_sync_enqueue', error)
+    }
 
     // Tasks born here bypass the tasks domain publisher (direct insertTask),
     // so the publisher's task_created never fires for this path.
