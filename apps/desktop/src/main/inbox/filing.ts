@@ -32,6 +32,7 @@ import { extractYouTubeVideoId } from '@memry/shared/youtube'
 import { extractDomain } from './metadata-utils'
 import { publishProjectionEvent } from '../projections'
 import { syncTaskCreate } from '../tasks/runtime-effects'
+import { trackMainError } from '../telemetry/diagnostics'
 
 const log = createLogger('Inbox:Filing')
 
@@ -803,7 +804,12 @@ export async function convertToTask(
     const enrichedTask = { ...task, linkedNoteIds: [] as string[] }
     broadcastToAllWindows(TasksChannels.events.CREATED, { task: enrichedTask })
 
-    syncTaskCreate(taskId)
+    try {
+      syncTaskCreate(taskId)
+    } catch (error) {
+      log.warn('syncTaskCreate failed; task persisted locally', error)
+      trackMainError('inbox', 'task_conversion_sync_enqueue', error)
+    }
 
     return { success: true, taskId }
   } catch (error) {
