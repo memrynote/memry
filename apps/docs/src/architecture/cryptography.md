@@ -75,6 +75,44 @@ out of the OS keyring. Plain `pnpm dev` worktrees also stay on the OS keychain: 
 master key machine-globally while user data is per-worktree, so migrating would strand the shared
 key for other worktrees.
 
+An unreadable secret is never reported as absent. `getSecret()` throws when a ciphertext exists in
+the store but cannot be decrypted this run, because the callers that act on a `null` are destructive:
+they regenerate the vault master key or tear down local sync state. Relatedly, an `integrity`
+teardown — which `checkSyncIntegrity()` triggers from a single failed device-signing-key read — clears
+the session tokens and the signing key but **never the vault master key**. That key cannot be
+re-issued by signing in again, so it is not collateral for another entry's absence; only an explicit
+sign-out clears it.
+
+## Runtime Identity and the safeStorage Key
+
+On macOS the `safeStorage` encryption key is not stored with the app — it lives in a login-keychain
+generic password that Chromium derives entirely from `app.getName()`: service `<name> Safe Storage`,
+account `<name> Key`. The ` Key` suffix comes from Electron's own Chromium patch
+(`kAccountNameSuffix`; MAS builds use ` App Store Key`), not from Electron's C++, which sets only the
+service suffix. **Changing the app name therefore changes which key decrypts `secure-secrets.json`.**
+
+Because of that, the app name and the user-data path are independent levers and are resolved
+separately in `app-identity.ts`, synchronously at module load — before `ready`, and before a headless
+`--cli` launch can touch safeStorage:
+
+- **Path.** `userData` always ends up at `<appData>/memrynote`, with a compatibility symlink left at
+  the legacy `@memry/desktop` path. A directory is only treated as an existing profile when it holds
+  something other than `logs/`, because on Windows and Linux the log directory is nested inside
+  `userData` and is created unconditionally after the identity decision.
+- **Name.** Derived per install from the filesystem alone and then pinned in `app-identity.json`
+  inside the profile. A profile whose secret store predates the rename keeps `@memry/desktop`
+  permanently; a profile born under the new name keeps `memrynote`. Windows is always `memrynote`
+  (DPAPI is not keyed by app name), and Linux keeps the legacy name whenever a store exists.
+
+The derivation touches **zero keychain items** — only Chromium ever reads or writes its own Safe
+Storage entry. A store's location never proved which key encrypted it, so after `ready` a probe
+(`probeSecretStoreIdentity()`) answers that by decrypting: the master-key entry dominates the verdict,
+and a decrypt that yields non-printable bytes does not count as readable, since Chromium's macOS
+OSCrypt is unauthenticated AES-CBC and the wrong key still "succeeds" on padding luck. On a mismatch
+the other identity is pinned for the next launch — at most one flip, so it always converges — rather
+than relaunching mid-startup. The probe reads the store file directly and never moves an unparseable
+store aside, which would turn "unreadable" into "absent".
+
 ## Vault-Key Mismatch Detection
 
 The per-vault verifier only proves self-consistency — a freshly provisioned vault binds whatever

@@ -426,6 +426,80 @@ async function migrateLegacySecret(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Store identity probe
+// ---------------------------------------------------------------------------
+
+export type StoreIdentityVerdict = 'ok' | 'wrong-identity' | 'unknown'
+
+// Inlined rather than imported from @memry/contracts: this module sits on the
+// earliest startup path and is bundled into the worker entries, so it stays
+// dependency-free. Kept honest by secret-storage.test.ts, which asserts these
+// equal KEYCHAIN_ENTRIES.MASTER_KEY.
+const MASTER_KEY_SERVICE = 'com.memry.sync'
+const MASTER_KEY_ACCOUNT = 'master-key'
+
+/**
+ * Chromium's macOS OSCrypt is unauthenticated AES-CBC, so decrypting with the
+ * wrong key still succeeds roughly 1 in 256 times, on PKCS#7 padding luck alone.
+ * Every secret we store is base64 or hex, so anything non-printable is garbage
+ * rather than a real plaintext.
+ */
+function looksLikePlaintextSecret(value: string): boolean {
+  if (value.length === 0) return false
+  for (let i = 0; i < value.length; i += 1) {
+    const code = value.charCodeAt(i)
+    if (code < 0x20 || code > 0x7e) return false
+  }
+  return true
+}
+
+/**
+ * Answer one question, without touching keytar: can the app decrypt its own
+ * secret store under the app identity that is live in this process?
+ *
+ * Reads the store file directly instead of going through readStoreFile, which
+ * renames an unparseable store aside — a destructive side effect that must never
+ * fire from a diagnostic.
+ *
+ * The master key dominates the verdict: it is the one irreplaceable secret, and
+ * a store can legitimately be mixed (a token re-written after a failed identity
+ * migration decrypts fine while everything older does not).
+ */
+export function probeSecretStoreIdentity(): StoreIdentityVerdict {
+  if (!isSafeStorageAvailable()) return 'unknown'
+  const filePath = resolveStoreFilePath()
+  if (filePath === null) return 'unknown'
+
+  let entries: Record<string, Record<string, string>>
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as SecretStoreFile
+    if (!parsed?.entries || typeof parsed.entries !== 'object') return 'unknown'
+    entries = parsed.entries
+  } catch {
+    return 'unknown'
+  }
+
+  let sawEntry = false
+  let readableCount = 0
+  for (const [service, accounts] of Object.entries(entries)) {
+    if (!accounts || typeof accounts !== 'object') continue
+    for (const [account, ciphertext] of Object.entries(accounts)) {
+      if (typeof ciphertext !== 'string') continue
+      sawEntry = true
+      const value = decryptValue(ciphertext)
+      const readable = value !== null && looksLikePlaintextSecret(value)
+      if (readable) readableCount += 1
+      if (service === MASTER_KEY_SERVICE && account === MASTER_KEY_ACCOUNT) {
+        return readable ? 'ok' : 'wrong-identity'
+      }
+    }
+  }
+
+  if (!sawEntry) return 'unknown'
+  return readableCount > 0 ? 'ok' : 'wrong-identity'
+}
+
 async function cleanupLegacyKeytarCopy(
   service: string,
   account: string,

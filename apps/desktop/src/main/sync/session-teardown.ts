@@ -74,8 +74,14 @@ async function performTeardown(reason: TeardownReason): Promise<TeardownResult> 
     KEYCHAIN_ENTRIES.ACCESS_TOKEN,
     KEYCHAIN_ENTRIES.REFRESH_TOKEN,
     KEYCHAIN_ENTRIES.SETUP_TOKEN,
-    KEYCHAIN_ENTRIES.MASTER_KEY,
-    KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY
+    KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY,
+    // An 'integrity' teardown is triggered by checkSyncIntegrity finding the
+    // DEVICE_SIGNING_KEY absent — a conclusion drawn from one keychain read that
+    // may be wrong for reasons that have nothing to do with the master key (see
+    // the v2026-08-06 safeStorage identity incident, where every read failed).
+    // The master key is the one secret that cannot be re-issued by signing in
+    // again, so it is never collateral: an explicit sign-out still clears it.
+    ...(reason === 'integrity' ? [] : [KEYCHAIN_ENTRIES.MASTER_KEY])
   ]
   const results = await Promise.allSettled(keychainEntries.map((entry) => deleteKey(entry)))
   for (const [i, result] of results.entries()) {
