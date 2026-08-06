@@ -47,6 +47,7 @@ import { NotesChannels } from '@memry/contracts/notes-api'
 import type { FolderInfo } from '@memry/contracts/templates-api'
 import { readFolderConfig } from './folders'
 import { createLogger } from '../lib/logger'
+import { trackMainLog } from '../telemetry/diagnostics'
 import { getFileType, getExtension } from '@memry/shared/file-types'
 import { getStatus, getConfig } from './index'
 import { emitNoteEvent, getNotesDir, toAbsolutePath, toRelativePath } from './notes-io'
@@ -337,6 +338,12 @@ export async function getNoteById(id: string): Promise<Note | null> {
     logger.warn('getNoteById: file missing on disk, returning null (watcher handles cleanup)', {
       id,
       path: cached.path
+    })
+    // Index/file divergence ("my note is empty") must be countable on dashboards.
+    trackMainLog('warn', {
+      scope: 'Notes',
+      action: 'note_file_missing',
+      errorCode: 'NOTE_FILE_MISSING'
     })
     return null
   }
@@ -844,7 +851,16 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
       failed++
       const message = error instanceof Error ? error.message : 'Unknown error'
       errors.push(`Failed to import ${path.basename(sourcePath)}: ${message}`)
+      logger.warn('Failed to import file', { sourcePath, error })
     }
+  }
+
+  if (failed > 0) {
+    trackMainLog('warn', {
+      scope: 'Notes',
+      action: 'import_files_failed',
+      metrics: { itemCount: failed }
+    })
   }
 
   return {

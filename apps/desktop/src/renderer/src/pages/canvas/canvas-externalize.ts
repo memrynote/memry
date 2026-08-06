@@ -11,6 +11,7 @@
  */
 
 import { createLogger } from '@/lib/logger'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 
 const log = createLogger('SpatialCanvas')
 
@@ -79,6 +80,7 @@ export async function externalizeSceneAssets(
       changed = true
     } catch (err) {
       log.error('Failed to externalize canvas asset; keeping inline data URI', { fileId, err })
+      trackRendererError('canvas_asset_externalize', err)
     }
   }
 

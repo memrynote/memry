@@ -2,6 +2,7 @@ import type { SyncItemType } from '@memry/contracts/sync-api'
 import { createSyncAdapterRegistry } from '@memry/sync-core'
 import { getDatabase } from '../database'
 import { createLogger } from '../lib/logger'
+import { trackMainLog } from '../telemetry/diagnostics'
 import {
   incrementBookmarkClockOffline,
   incrementTemplateClockOffline,
@@ -36,6 +37,28 @@ const log = createLogger('LocalSync')
 
 type LocalSyncType = Exclude<SyncItemType, 'attachment'>
 
+/**
+ * Telemetry tripwire for the #969/#970 bug class: a mutation raised while the
+ * sync runtime is down (or before services initialize) on a type with no
+ * offline fallback is a silent no-op — the edit never syncs. Returns the
+ * service unchanged so `?.` call sites keep their exact behavior; a null
+ * service is counted per type before the no-op happens.
+ */
+function svcOrTrackDrop<T>(
+  type: LocalSyncType,
+  service: T | null | undefined
+): T | null | undefined {
+  if (!service) {
+    log.warn('Local mutation dropped — sync service not running', { type })
+    trackMainLog('warn', {
+      scope: 'LocalSync',
+      action: 'local_mutation_dropped',
+      errorCode: type
+    })
+  }
+  return service
+}
+
 const localSyncRegistry = createSyncAdapterRegistry([
   {
     type: 'task',
@@ -61,7 +84,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
-        getTaskSyncService()?.enqueueDelete(itemId, snapshotPayload)
+        svcOrTrackDrop('task', getTaskSyncService())?.enqueueDelete(itemId, snapshotPayload)
       }
     }
   },
@@ -89,7 +112,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
-        getProjectSyncService()?.enqueueDelete(itemId, snapshotPayload)
+        svcOrTrackDrop('project', getProjectSyncService())?.enqueueDelete(itemId, snapshotPayload)
       }
     }
   },
@@ -117,7 +140,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
-        getInboxSyncService()?.enqueueDelete(itemId, snapshotPayload)
+        svcOrTrackDrop('inbox', getInboxSyncService())?.enqueueDelete(itemId, snapshotPayload)
       }
     }
   },
@@ -145,7 +168,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
-        getFilterSyncService()?.enqueueDelete(itemId, snapshotPayload)
+        svcOrTrackDrop('filter', getFilterSyncService())?.enqueueDelete(itemId, snapshotPayload)
       }
     }
   },
@@ -173,7 +196,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
-        getTemplateSyncService()?.enqueueDelete(itemId, snapshotPayload)
+        svcOrTrackDrop('template', getTemplateSyncService())?.enqueueDelete(itemId, snapshotPayload)
       }
     }
   },
@@ -201,7 +224,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
-        getBookmarkSyncService()?.enqueueDelete(itemId, snapshotPayload)
+        svcOrTrackDrop('bookmark', getBookmarkSyncService())?.enqueueDelete(itemId, snapshotPayload)
       }
     }
   },
@@ -229,7 +252,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
-        getReminderSyncService()?.enqueueDelete(itemId, snapshotPayload)
+        svcOrTrackDrop('reminder', getReminderSyncService())?.enqueueDelete(itemId, snapshotPayload)
       }
     }
   },
@@ -256,7 +279,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
         incrementCanvasClockOffline(getDatabase(), itemId)
       },
       enqueueDelete(itemId: string): void {
-        getCanvasSyncService()?.enqueueDelete(itemId)
+        svcOrTrackDrop('canvas', getCanvasSyncService())?.enqueueDelete(itemId)
       }
     }
   },
@@ -292,7 +315,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
         getNoteSyncService()?.enqueueRecoveredUpdate(itemId)
       },
       enqueueDelete(itemId: string): void {
-        getNoteSyncService()?.enqueueDelete(itemId)
+        svcOrTrackDrop('note', getNoteSyncService())?.enqueueDelete(itemId)
       }
     }
   },
@@ -302,7 +325,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
     local: {
       enqueueCreate(itemId: string, date?: string): void {
         if (!date) return
-        getJournalSyncService()?.enqueueCreate(itemId, date)
+        svcOrTrackDrop('journal', getJournalSyncService())?.enqueueCreate(itemId, date)
       },
       enqueueUpdate(itemId: string, date?: string): void {
         if (!date) return
@@ -323,7 +346,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string, date?: string): void {
         if (!date) return
-        getJournalSyncService()?.enqueueDelete(itemId, date)
+        svcOrTrackDrop('journal', getJournalSyncService())?.enqueueDelete(itemId, date)
       }
     }
   },
@@ -332,13 +355,16 @@ const localSyncRegistry = createSyncAdapterRegistry([
     kind: 'record',
     local: {
       enqueueCreate(itemId: string): void {
-        getTagDefinitionSyncService()?.enqueueCreate(itemId)
+        svcOrTrackDrop('tag_definition', getTagDefinitionSyncService())?.enqueueCreate(itemId)
       },
       enqueueUpdate(itemId: string): void {
-        getTagDefinitionSyncService()?.enqueueUpdate(itemId)
+        svcOrTrackDrop('tag_definition', getTagDefinitionSyncService())?.enqueueUpdate(itemId)
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
-        getTagDefinitionSyncService()?.enqueueDelete(itemId, snapshotPayload)
+        svcOrTrackDrop('tag_definition', getTagDefinitionSyncService())?.enqueueDelete(
+          itemId,
+          snapshotPayload
+        )
       }
     }
   },
@@ -347,13 +373,16 @@ const localSyncRegistry = createSyncAdapterRegistry([
     kind: 'record',
     local: {
       enqueueCreate(itemId: string): void {
-        getTagCategorySyncService()?.enqueueCreate(itemId)
+        svcOrTrackDrop('tag_category', getTagCategorySyncService())?.enqueueCreate(itemId)
       },
       enqueueUpdate(itemId: string): void {
-        getTagCategorySyncService()?.enqueueUpdate(itemId)
+        svcOrTrackDrop('tag_category', getTagCategorySyncService())?.enqueueUpdate(itemId)
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
-        getTagCategorySyncService()?.enqueueDelete(itemId, snapshotPayload)
+        svcOrTrackDrop('tag_category', getTagCategorySyncService())?.enqueueDelete(
+          itemId,
+          snapshotPayload
+        )
       }
     }
   },
@@ -362,13 +391,13 @@ const localSyncRegistry = createSyncAdapterRegistry([
     kind: 'record',
     local: {
       enqueueCreate(): void {
-        getSettingsSyncManager()?.enqueueCreate()
+        svcOrTrackDrop('settings', getSettingsSyncManager())?.enqueueCreate()
       },
       enqueueUpdate(): void {
-        getSettingsSyncManager()?.enqueueUpdate()
+        svcOrTrackDrop('settings', getSettingsSyncManager())?.enqueueUpdate()
       },
       enqueueDelete(): void {
-        getSettingsSyncManager()?.enqueueDelete()
+        svcOrTrackDrop('settings', getSettingsSyncManager())?.enqueueDelete()
       }
     }
   },
@@ -377,13 +406,16 @@ const localSyncRegistry = createSyncAdapterRegistry([
     kind: 'record',
     local: {
       enqueueCreate(itemId: string): void {
-        getFolderConfigSyncService()?.enqueueCreate(itemId)
+        svcOrTrackDrop('folder_config', getFolderConfigSyncService())?.enqueueCreate(itemId)
       },
       enqueueUpdate(itemId: string): void {
-        getFolderConfigSyncService()?.enqueueUpdate(itemId)
+        svcOrTrackDrop('folder_config', getFolderConfigSyncService())?.enqueueUpdate(itemId)
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
-        getFolderConfigSyncService()?.enqueueDelete(itemId, snapshotPayload)
+        svcOrTrackDrop('folder_config', getFolderConfigSyncService())?.enqueueDelete(
+          itemId,
+          snapshotPayload
+        )
       }
     }
   },
@@ -392,13 +424,19 @@ const localSyncRegistry = createSyncAdapterRegistry([
     kind: 'record',
     local: {
       enqueueCreate(itemId: string): void {
-        getCalendarEventSyncService()?.enqueueCreate(itemId)
+        svcOrTrackDrop('calendar_event', getCalendarEventSyncService())?.enqueueCreate(itemId)
       },
       enqueueUpdate(itemId: string, changedFields?: string[]): void {
-        getCalendarEventSyncService()?.enqueueUpdate(itemId, changedFields)
+        svcOrTrackDrop('calendar_event', getCalendarEventSyncService())?.enqueueUpdate(
+          itemId,
+          changedFields
+        )
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
-        getCalendarEventSyncService()?.enqueueDelete(itemId, snapshotPayload)
+        svcOrTrackDrop('calendar_event', getCalendarEventSyncService())?.enqueueDelete(
+          itemId,
+          snapshotPayload
+        )
       }
     }
   },
@@ -407,13 +445,16 @@ const localSyncRegistry = createSyncAdapterRegistry([
     kind: 'record',
     local: {
       enqueueCreate(itemId: string): void {
-        getCalendarSourceSyncService()?.enqueueCreate(itemId)
+        svcOrTrackDrop('calendar_source', getCalendarSourceSyncService())?.enqueueCreate(itemId)
       },
       enqueueUpdate(itemId: string): void {
-        getCalendarSourceSyncService()?.enqueueUpdate(itemId)
+        svcOrTrackDrop('calendar_source', getCalendarSourceSyncService())?.enqueueUpdate(itemId)
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
-        getCalendarSourceSyncService()?.enqueueDelete(itemId, snapshotPayload)
+        svcOrTrackDrop('calendar_source', getCalendarSourceSyncService())?.enqueueDelete(
+          itemId,
+          snapshotPayload
+        )
       }
     }
   },
@@ -422,13 +463,16 @@ const localSyncRegistry = createSyncAdapterRegistry([
     kind: 'record',
     local: {
       enqueueCreate(itemId: string): void {
-        getCalendarBindingSyncService()?.enqueueCreate(itemId)
+        svcOrTrackDrop('calendar_binding', getCalendarBindingSyncService())?.enqueueCreate(itemId)
       },
       enqueueUpdate(itemId: string): void {
-        getCalendarBindingSyncService()?.enqueueUpdate(itemId)
+        svcOrTrackDrop('calendar_binding', getCalendarBindingSyncService())?.enqueueUpdate(itemId)
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
-        getCalendarBindingSyncService()?.enqueueDelete(itemId, snapshotPayload)
+        svcOrTrackDrop('calendar_binding', getCalendarBindingSyncService())?.enqueueDelete(
+          itemId,
+          snapshotPayload
+        )
       }
     }
   },
@@ -437,13 +481,22 @@ const localSyncRegistry = createSyncAdapterRegistry([
     kind: 'record',
     local: {
       enqueueCreate(itemId: string): void {
-        getCalendarExternalEventSyncService()?.enqueueCreate(itemId)
+        svcOrTrackDrop(
+          'calendar_external_event',
+          getCalendarExternalEventSyncService()
+        )?.enqueueCreate(itemId)
       },
       enqueueUpdate(itemId: string): void {
-        getCalendarExternalEventSyncService()?.enqueueUpdate(itemId)
+        svcOrTrackDrop(
+          'calendar_external_event',
+          getCalendarExternalEventSyncService()
+        )?.enqueueUpdate(itemId)
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
-        getCalendarExternalEventSyncService()?.enqueueDelete(itemId, snapshotPayload)
+        svcOrTrackDrop(
+          'calendar_external_event',
+          getCalendarExternalEventSyncService()
+        )?.enqueueDelete(itemId, snapshotPayload)
       }
     }
   }
@@ -458,6 +511,11 @@ function callLocalMutation(
   const adapter = localSyncRegistry.getLocal(type)
   if (!adapter) {
     log.warn('Missing local sync adapter', { type, method, itemId })
+    trackMainLog('warn', {
+      scope: 'LocalSync',
+      action: 'local_mutation_dropped',
+      errorCode: type
+    })
     return
   }
 

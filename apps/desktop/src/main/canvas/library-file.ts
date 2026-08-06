@@ -13,6 +13,7 @@
 
 import type { CanvasLibraryItem } from '@memry/contracts/canvas-api'
 import { createLogger } from '../lib/logger'
+import { trackMainError } from '../telemetry/diagnostics'
 import {
   CANVAS_DIR,
   CANVAS_LIBRARY_FILE,
@@ -50,6 +51,10 @@ export function readCanvasLibrary(vaultPath: string): CanvasLibraryItem[] {
     return parsed.libraryItems as CanvasLibraryItem[]
   } catch (err) {
     log.error('Canvas library file is not readable JSON; showing an empty panel', { err })
+    // The next Excalidraw save overwrites the corrupt file with the empty
+    // list, making the loss permanent — corrupt-library incidents must
+    // aggregate somewhere.
+    trackMainError('canvas', 'library_file_parse', err)
     return []
   }
 }

@@ -8,6 +8,7 @@ import { useVoiceCapture, type VoiceCaptureError } from '@/hooks/use-voice-captu
 import { Loader2, Mic } from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { cn } from '@/lib/utils'
 import { prepareVoiceMemoAudio } from '@/lib/voice-memo-audio'
 import {
@@ -73,6 +74,8 @@ export function VoiceDictationButton({
           })
 
           if (!result.success) {
+            log.error('Voice dictation transcription failed', result.error)
+            trackRendererError('agent_voice_dictation', result.error)
             toast.error(
               extractErrorMessage(
                 result.error,
@@ -86,6 +89,7 @@ export function VoiceDictationButton({
           if (text) onTranscript(text)
         } catch (err) {
           log.error('Voice dictation failed', err)
+          trackRendererError('agent_voice_dictation', err)
           toast.error(
             extractErrorMessage(err, t('agentChat.composer.voice.errors.transcriptionFailed'))
           )

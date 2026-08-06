@@ -128,34 +128,49 @@ export function registerInboxHandlers(): void {
   registerInboxQueryHandlers(queryHandlers)
   registerInboxBatchHandlers(batchHandlers)
 
-  ipcMain.handle(InboxChannels.invoke.FILE, async (_, input) => {
-    const result = await inboxDomain.fileItem(FileItemSchema.parse(input))
+  const trackInboxFiled = (filedAction: string, success: boolean): void => {
     trackMainEvent('inbox_filed', {
       surface: 'inbox',
       action: 'filed',
-      result: result?.success ? 'success' : 'failed'
+      result: success ? 'success' : 'failed',
+      dimensions: { filed_action: filedAction }
     })
+  }
+
+  ipcMain.handle(InboxChannels.invoke.FILE, async (_, input) => {
+    const result = await inboxDomain.fileItem(FileItemSchema.parse(input))
+    trackInboxFiled('folder', Boolean(result?.success))
     return result
   })
   ipcMain.handle(InboxChannels.invoke.GET_SUGGESTIONS, (_, itemId) =>
     inboxDomain.getSuggestions(itemId)
   )
   ipcMain.handle(InboxChannels.invoke.TRACK_SUGGESTION, handleTrackSuggestionIpc)
-  ipcMain.handle(InboxChannels.invoke.CONVERT_TO_NOTE, (_, itemId) =>
-    inboxDomain.convertToNote(itemId)
-  )
-  ipcMain.handle(InboxChannels.invoke.CONVERT_TO_TASK, (_, itemId, input) =>
-    inboxDomain.convertToTask(itemId, input)
-  )
-  ipcMain.handle(InboxChannels.invoke.CONVERT_TO_EVENT, (_, itemId, input) =>
-    inboxDomain.convertToEvent(itemId, input)
-  )
-  ipcMain.handle(InboxChannels.invoke.CONVERT_TO_REMINDER, (_, itemId, input) =>
-    inboxDomain.convertToReminder(itemId, input)
-  )
-  ipcMain.handle(InboxChannels.invoke.LINK_TO_NOTE, (_, itemId, noteId, tags) =>
-    inboxDomain.linkToNote(itemId, noteId, tags || [])
-  )
+  ipcMain.handle(InboxChannels.invoke.CONVERT_TO_NOTE, async (_, itemId) => {
+    const result = await inboxDomain.convertToNote(itemId)
+    trackInboxFiled('note', Boolean(result?.success))
+    return result
+  })
+  ipcMain.handle(InboxChannels.invoke.CONVERT_TO_TASK, async (_, itemId, input) => {
+    const result = await inboxDomain.convertToTask(itemId, input)
+    trackInboxFiled('task', Boolean(result?.success))
+    return result
+  })
+  ipcMain.handle(InboxChannels.invoke.CONVERT_TO_EVENT, async (_, itemId, input) => {
+    const result = await inboxDomain.convertToEvent(itemId, input)
+    trackInboxFiled('event', Boolean(result?.success))
+    return result
+  })
+  ipcMain.handle(InboxChannels.invoke.CONVERT_TO_REMINDER, async (_, itemId, input) => {
+    const result = await inboxDomain.convertToReminder(itemId, input)
+    trackInboxFiled('reminder', Boolean(result?.success))
+    return result
+  })
+  ipcMain.handle(InboxChannels.invoke.LINK_TO_NOTE, async (_, itemId, noteId, tags) => {
+    const result = await inboxDomain.linkToNote(itemId, noteId, tags || [])
+    trackInboxFiled('linked', Boolean(result?.success))
+    return result
+  })
   ipcMain.handle(InboxChannels.invoke.SNOOZE, async (_, input) => {
     const result = await inboxDomain.snooze(input)
     trackMainEvent('inbox_snoozed', {
@@ -165,7 +180,15 @@ export function registerInboxHandlers(): void {
     })
     return result
   })
-  ipcMain.handle(InboxChannels.invoke.UNSNOOZE, (_, itemId) => inboxDomain.unsnooze(itemId))
+  ipcMain.handle(InboxChannels.invoke.UNSNOOZE, async (_, itemId) => {
+    const result = await inboxDomain.unsnooze(itemId)
+    trackMainEvent('inbox_snoozed', {
+      surface: 'inbox',
+      action: 'unsnoozed',
+      result: result?.success ? 'success' : 'failed'
+    })
+    return result
+  })
   ipcMain.handle(InboxChannels.invoke.GET_SNOOZED, () => inboxDomain.getSnoozed())
   ipcMain.handle(InboxChannels.invoke.RETRY_TRANSCRIPTION, (_, itemId) =>
     inboxDomain.retryTranscription(itemId)

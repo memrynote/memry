@@ -1,6 +1,10 @@
 import { powerMonitor } from 'electron'
+import { toSafeToken } from '@memry/contracts/telemetry-api'
 import { createLogger } from '../../lib/logger'
 import { requireDatabase, isDatabaseInitialized } from '../../database'
+import { trackMainError } from '../../telemetry/diagnostics'
+import { shouldEmitThrottled } from '../../telemetry/throttle'
+import { trackMainEvent } from '../../telemetry/track'
 import { isMemryUserSignedIn } from '../../sync/auth-state'
 import { hasGoogleCalendarConnection } from './oauth'
 import { listCalendarSources } from '../repositories/calendar-sources-repository'
@@ -22,10 +26,41 @@ export function getCurrentPollIntervalMs(): number {
   return currentPollIntervalMs
 }
 
-function runPeriodicSync(): void {
-  void syncGoogleCalendarNow().catch((error) => {
-    log.warn('periodic Google Calendar sync failed', error)
+// A broken fleet re-fails every poll (5–30 min); throttle per action so the
+// failure still surfaces in Error Tracking without flooding the queue.
+const SYNC_FAILED_THROTTLE_MS = 30 * 60 * 1000
+const SYNC_COMPLETED_THROTTLE_MS = 60 * 60 * 1000
+
+function trackSyncFailed(action: string, error: unknown): void {
+  if (!shouldEmitThrottled(`calendar_google_sync_failed:${action}`, SYNC_FAILED_THROTTLE_MS)) return
+  trackMainError('calendar', action, error)
+}
+
+function trackSyncCompleted(source: string): void {
+  // Manual refresh emits from the REFRESH_PROVIDER handler; these background
+  // sources make sync health measurable. Periodic runs constantly — hourly is
+  // enough for cadence dashboards.
+  if (
+    source === 'periodic' &&
+    !shouldEmitThrottled('calendar_google_sync_completed:periodic', SYNC_COMPLETED_THROTTLE_MS)
+  ) {
+    return
+  }
+  trackMainEvent('calendar_google_sync_completed', {
+    surface: 'calendar',
+    action: 'sync_completed',
+    source,
+    result: 'success'
   })
+}
+
+function runPeriodicSync(): void {
+  void syncGoogleCalendarNow()
+    .then(() => trackSyncCompleted('periodic'))
+    .catch((error) => {
+      log.warn('periodic Google Calendar sync failed', error)
+      trackSyncFailed('google_periodic_sync', error)
+    })
 }
 
 export function triggerGoogleCalendarSyncNow(reason: string): void {
@@ -39,9 +74,12 @@ export function triggerGoogleCalendarSyncNow(reason: string): void {
     return
   }
   lastTriggerAt = now
-  void syncGoogleCalendarNow().catch((error) => {
-    log.warn('on-demand Google Calendar sync failed', { reason, error })
-  })
+  void syncGoogleCalendarNow()
+    .then(() => trackSyncCompleted(toSafeToken(reason, 'trigger')))
+    .catch((error) => {
+      log.warn('on-demand Google Calendar sync failed', { reason, error })
+      trackSyncFailed('google_trigger_sync', error)
+    })
 }
 
 export function __resetTriggerForTests(): void {
@@ -62,9 +100,12 @@ export async function startGoogleCalendarSyncRunner(): Promise<void> {
   if (!(await isMemryUserSignedIn())) return
   if (!(await hasGoogleCalendarConnection(requireDatabase()))) return
 
-  void syncGoogleCalendarNow().catch((error) => {
-    log.warn('initial Google Calendar sync failed', error)
-  })
+  void syncGoogleCalendarNow()
+    .then(() => trackSyncCompleted('initial'))
+    .catch((error) => {
+      log.warn('initial Google Calendar sync failed', error)
+      trackSyncFailed('google_initial_sync', error)
+    })
 
   syncInterval = setInterval(runPeriodicSync, currentPollIntervalMs)
 

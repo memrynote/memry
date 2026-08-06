@@ -21,14 +21,21 @@ export function useProjectQuickCreate(onCreated: (projectId: string) => void): P
 
   const handleSave = useCallback(
     async (project: Project): Promise<void> => {
-      await tasks?.addProject(project)
+      // addProject rejects when the create failed (envelope or IPC); the
+      // failure is already logged + tracked in the mutation layer. Returning
+      // here is what stops onCreated from selecting a phantom project id.
+      try {
+        await tasks?.addProject(project)
+      } catch {
+        return
+      }
       onCreated(project.id)
     },
     [tasks, onCreated]
   )
 
   const dialog = tasks ? (
-    // Modal closes immediately after onSave; addProject is optimistic and handles its own errors
+    // Modal closes immediately after onSave; handleSave contains the rejection.
     <ProjectModal
       isOpen={isOpen}
       onClose={() => setIsOpen(false)}

@@ -3,6 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { LocaleSchema, type Locale } from '@memry/contracts/locale-api'
 import { createLogger } from './lib/logger'
+import { trackMainError } from './telemetry/diagnostics'
 
 const logger = createLogger('Store')
 
@@ -169,6 +170,9 @@ function readConfig(): StoreSchema {
     }
   } catch (error) {
     logger.error('Error reading config:', error)
+    // A corrupt/unreadable config makes the app look factory-reset (vault list,
+    // current vault, window bounds all gone) — must be visible fleet-wide.
+    trackMainError('store', 'config_read_failed', error)
   }
   return { ...defaultData }
 }
@@ -183,6 +187,9 @@ function writeConfig(data: StoreSchema): void {
     cache = data
   } catch (error) {
     logger.error('Error writing config:', error)
+    // Silently loses vault registration / currentVault / device id until restart;
+    // the in-memory cache masks it, so telemetry is the only timely signal.
+    trackMainError('store', 'config_write_failed', error)
   }
 }
 

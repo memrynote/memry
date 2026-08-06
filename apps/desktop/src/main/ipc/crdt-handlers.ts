@@ -10,6 +10,7 @@ import {
   type CrdtSyncStep1Result
 } from '@memry/contracts/ipc-crdt'
 import { getCrdtProvider } from '../sync/crdt-provider'
+import { trackNoteBodyEditThrottled } from '../telemetry/diagnostics'
 import { createValidatedHandler } from './validate'
 
 let handlersRegistered = false
@@ -58,6 +59,10 @@ export function registerCrdtIpcHandlers(): void {
     const { noteId, update: updateArr } = CrdtApplyUpdateSchema.parse(rawInput)
     const sourceWindowId = BrowserWindow.fromWebContents(event.sender)?.id ?? -1
     getCrdtProvider().applyIpcUpdate(noteId, updateArr, sourceWindowId)
+    // Body edits arrive through this channel, not the notes UPDATE IPC —
+    // typing never counted as note_updated before this. Remote sync updates
+    // take the network path inside the provider and are deliberately excluded.
+    trackNoteBodyEditThrottled(noteId)
   })
 
   ipcMain.handle(

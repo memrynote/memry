@@ -11,6 +11,8 @@ import {
 } from './pairing'
 import { validateCaptureRequest, isExtensionOrigin } from './auth'
 import { createLogger } from '../lib/logger'
+import { trackMainError } from '../telemetry/diagnostics'
+import { trackMainEvent } from '../telemetry/track'
 
 const log = createLogger('Capture:Server')
 
@@ -137,6 +139,16 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
       return
     }
     const result = await ingestArticleCapture(parsed.data, 'browser-extension')
+    // The extension bypasses the inbox IPC handlers (where inbox_captured is
+    // normally emitted), so clipper intake must be tracked here.
+    trackMainEvent('inbox_captured', {
+      surface: 'inbox',
+      action: 'captured',
+      objectType: 'inbox_clipper',
+      source: 'browser_extension',
+      result: 'success',
+      dimensions: { capture_type: 'clipper' }
+    })
     json(res, 200, { itemId: result.itemId })
     return
   }
@@ -169,6 +181,7 @@ function listen(port: number): Promise<number> {
     const next = http.createServer((req, res) => {
       handle(req, res).catch((err) => {
         log.error('capture request failed', err)
+        trackMainError('capture_server', 'capture_request', err)
         if (!res.headersSent) json(res, 500, { error: 'internal' })
       })
     })
@@ -208,6 +221,11 @@ export async function startCaptureServer(
   })()
   try {
     return await startInFlight
+  } catch (err) {
+    // A failed start kills the whole clipper feature for the session; the
+    // caller only logs, so report it here.
+    trackMainError('capture_server', 'capture_server_start', err)
+    throw err
   } finally {
     startInFlight = null
   }

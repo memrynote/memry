@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { Command } from 'cmdk'
 import { Search, Loader2 } from '@/lib/icons'
 import type {
@@ -12,6 +12,7 @@ import { useTabs } from '@/contexts/tabs'
 import { useSearch } from '@/hooks/use-search'
 import { searchService } from '@/services/search-service'
 import { trackTelemetry } from '@/lib/telemetry'
+import { createLogger } from '@/lib/logger'
 import { SearchResultGroup } from './search-result-group'
 import { SearchFilters } from './search-filters'
 import { RecentReasons } from './recent-reasons'
@@ -28,6 +29,8 @@ const TYPE_SHORTCUT_MAP: Record<string, ContentType> = {
   '3': 'task',
   '4': 'inbox'
 }
+
+const log = createLogger('CommandPalette')
 
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): React.JSX.Element {
   const { t: tPhaseF } = useT('common')
@@ -56,6 +59,21 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
       void trackTelemetry('command_palette_opened', { surface: 'search', action: 'opened' })
     }
   }, [open])
+
+  // First stage of the search funnel (search_opened -> search_performed ->
+  // search_result_opened): a palette open only counts as search intent once the
+  // user actually types a query — emitted at most once per open.
+  const searchOpenedRef = useRef(false)
+  useEffect(() => {
+    if (!open) {
+      searchOpenedRef.current = false
+      return
+    }
+    if (!searchOpenedRef.current && query.trim().length > 0) {
+      searchOpenedRef.current = true
+      void trackTelemetry('search_opened', { surface: 'search', action: 'opened' })
+    }
+  }, [open, query])
 
   const handleClose = useCallback(() => {
     onOpenChange(false)
@@ -236,7 +254,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
           itemIcon,
           searchQuery: query
         })
-        .catch(() => {})
+        .catch((err) => log.warn('Failed to persist recent search', err))
     },
     [handleClose, openItemTab, query]
   )

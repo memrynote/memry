@@ -1,6 +1,7 @@
 import { Worker } from 'worker_threads'
 import { join } from 'path'
 import { createLogger } from '../lib/logger'
+import { trackMainError } from '../telemetry/diagnostics'
 import type {
   MainToWorkerMessage,
   WorkerToMainMessage,
@@ -141,6 +142,7 @@ export class SyncWorkerBridge {
       if (code !== 0) {
         log.error('Sync worker exited unexpectedly', { code })
         log.warn('Crypto operations will fall back to main thread')
+        trackMainError('sync', 'crypto_worker_exited', new Error(`Worker exited with code ${code}`))
         this.rejectAll(new Error(`Worker exited with code ${code}`))
       }
       this.worker = null
@@ -179,6 +181,9 @@ export class SyncWorkerBridge {
       consecutiveFailures: this.consecutiveFailures,
       error: err instanceof Error ? err.message : String(err)
     })
+    // Once per session by construction (latchedOff guard above). A build that
+    // ships a broken sync-worker.js must be chartable by platform/version.
+    trackMainError('sync', 'crypto_worker_latched', err)
   }
 
   private nextRequestId(): string {

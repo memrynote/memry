@@ -15,6 +15,11 @@ vi.mock('node:fs', () => ({ readFileSync: vi.fn(), writeFileSync: vi.fn(), rmSyn
 vi.mock('./lib/logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })
 }))
+// The real module pulls the telemetry runtime, whose electron import ('net')
+// the mock above does not provide.
+vi.mock('./telemetry/diagnostics', () => ({
+  trackMainLog: vi.fn()
+}))
 
 import { readFileSync, writeFileSync, rmSync } from 'node:fs'
 import {

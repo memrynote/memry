@@ -1,5 +1,7 @@
 import * as Y from 'yjs'
 import { createLogger } from '../lib/logger'
+import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
+import { shouldEmitThrottled } from '../telemetry/throttle'
 import { getCrdtProvider } from './crdt-provider'
 import { yDocToMarkdown } from './blocknote-converter'
 import { emitNoteUpdated } from './note-events'
@@ -170,6 +172,11 @@ export function scheduleWriteback(noteId: string, doc: Y.Doc): void {
           lastError: err instanceof Error ? err.message : String(err)
         })
         log.error('Write-back failed', { noteId, error: err })
+        // A failed write-back means typed content was NOT persisted to disk.
+        // Throttled: a persistent disk fault would otherwise fire per debounce.
+        if (shouldEmitThrottled(`note_writeback_error:${noteId}`)) {
+          trackMainError('notes', 'note_writeback', err)
+        }
         emitToRenderer('sync:write-back-failed', { noteId })
       })
       .finally(() => {
@@ -243,6 +250,11 @@ async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
   })
   if (markdown === null) {
     log.warn('Conversion returned null, keeping stale file', { noteId })
+    // Silent editor/file divergence — a serializer regression must show on
+    // dashboards. Throttled: fires per debounce while the user keeps typing.
+    if (shouldEmitThrottled(`writeback_conversion_null:${noteId}`)) {
+      trackMainLog('error', { scope: 'CrdtWriteback', action: 'conversion_null' })
+    }
     return
   }
 

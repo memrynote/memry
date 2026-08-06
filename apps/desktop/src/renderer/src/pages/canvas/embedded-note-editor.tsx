@@ -18,6 +18,7 @@ import { useNote } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 
 const log = createLogger('EmbeddedNoteEditor')
 
@@ -53,6 +54,12 @@ export const EmbeddedNoteEditor = ({ noteId }: EmbeddedNoteEditorProps): React.J
       lastSavedContentRef.current = pending
     } catch (err) {
       log.error('Failed to save note', { noteId, error: err })
+      trackRendererError('canvas_card_note_save', err)
+      // Put the unsaved text back so the next flush retries instead of
+      // dropping it — unless a newer edit already replaced it mid-await.
+      if (pendingContentRef.current === null) {
+        pendingContentRef.current = pending
+      }
     }
   }, [noteId])
 

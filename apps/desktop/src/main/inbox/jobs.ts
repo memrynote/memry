@@ -16,6 +16,7 @@ import { getItemAttachmentsDir } from './attachments'
 import { isBotPageTitle, titleFromUrl } from './metadata-utils'
 import { transcribeAudio } from './transcription'
 import { publishProjectionEvent } from '../projections'
+import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { trackMainEvent } from '../telemetry/track'
 
 const log = createLogger('Inbox:Jobs')
@@ -306,6 +307,7 @@ async function processMetadataJob(db: DataDb, job: JobRow): Promise<void> {
     })
 
     failJob(db, job.id, message)
+    trackMainError('inbox', 'metadata_scrape', error)
   }
 }
 
@@ -327,6 +329,7 @@ export async function processArticleExtractJob(db: DataDb, job: JobRow): Promise
 
     if (capture.extractionStatus === 'failed') {
       completeJob(db, job.id, { extractionStatus: 'failed' })
+      trackMainLog('warn', { scope: 'InboxJobs', action: 'article_extract_status_failed' })
       return
     }
 
@@ -341,7 +344,9 @@ export async function processArticleExtractJob(db: DataDb, job: JobRow): Promise
       rescheduleJob(db, job, message, ARTICLE_RETRY_DELAY_MS)
       return
     }
+    log.warn('Article extraction failed after final attempt', { jobId: job.id, message })
     failJob(db, job.id, message)
+    trackMainError('inbox', 'article_extract', error)
   }
 }
 
@@ -423,6 +428,7 @@ async function processInboxJob(jobId: string): Promise<void> {
     }
   } catch (error) {
     log.error('Inbox job processor crashed', error)
+    trackMainError('inbox', 'job_processor', error)
   } finally {
     activeJobs.delete(jobId)
   }

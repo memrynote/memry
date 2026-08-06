@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import {
   FEATURES_SETTINGS_DEFAULTS,
   type FeaturesSettings
@@ -60,9 +61,11 @@ export function useFeatureFlags(): UseFeatureFlagsReturn {
         setFlags((prev) => ({ ...prev, ...updates }))
         return true
       }
+      trackRendererError('feature_flag_toggle', result.error ?? 'Update failed')
       setError(result.error ?? 'Update failed')
       return false
     } catch (err) {
+      trackRendererError('feature_flag_toggle', err)
       setError(extractErrorMessage(err))
       return false
     }

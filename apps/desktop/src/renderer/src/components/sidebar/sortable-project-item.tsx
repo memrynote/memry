@@ -18,6 +18,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { linkSidebarItemToProject } from '@/lib/link-sidebar-item-to-project'
 import { notesService } from '@/services/notes-service'
 import { tasksService } from '@/services/tasks-service'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import type { Project } from '@/data/tasks-data'
 import { useT } from '@memry/i18n/renderer'
 
@@ -111,6 +112,7 @@ export const SortableProjectItem = ({
           })
           if (linked) toast.success(tTasks('addToProject.toastSuccess', { name: project.name }))
         } catch (error) {
+          trackRendererError('project_link_drop', error)
           toast.error(extractErrorMessage(error, tTasks('addToProject.toastError')))
         }
       })()

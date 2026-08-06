@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import { FolderKanban } from '@/lib/icons'
@@ -16,6 +16,8 @@ import { notesService } from '@/services/notes-service'
 import { tasksService } from '@/services/tasks-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { trackTelemetry } from '@/lib/telemetry'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import type { Project } from '@/data/tasks-data'
 import type { ProjectLinkedEvent } from '@memry/rpc/tasks'
 import { useProjectHub, type ProjectTabKey } from './use-project-hub'
@@ -43,6 +45,13 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
   const activeTab = useActiveTab()
 
   const hub = useProjectHub(projectId)
+
+  // page_viewed dedupes by tab TYPE, so switching between two project tabs is
+  // invisible there; this counts each distinct project-hub open instead.
+  useEffect(() => {
+    if (!projectId) return
+    void trackTelemetry('project_opened', { surface: 'projects', action: 'opened' })
+  }, [projectId])
   const project = hub.project
 
   const [isEditing, setIsEditing] = useState(false)
@@ -160,6 +169,28 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
     }
   }, [project, hub, handleOpenNote, t])
 
+  // Archiving goes through the dedicated PROJECT_ARCHIVE IPC — the generic
+  // updateProject path has no archived field in ProjectUpdateSchema, so routing
+  // { isArchived: true } through it silently no-ops.
+  const handleArchiveProject = useCallback(async (): Promise<void> => {
+    if (!project) return
+    try {
+      const result = await tasksService.archiveProject(project.id)
+      if (!result.success) throw new Error(result.error ?? 'Failed to archive project')
+      void trackTelemetry('project_archived', {
+        surface: 'tasks',
+        action: 'archived',
+        objectType: 'project',
+        result: 'success'
+      })
+      toast.success(t('toasts.projectArchived'))
+    } catch (error) {
+      log.error('Failed to archive project', extractErrorMessage(error))
+      trackRendererError('project_archive', error)
+      toast.error(t('toasts.projectArchiveError'))
+    }
+  }, [project, t])
+
   // Tasks open where every other surface opens them: the Tasks tab with the
   // detail drawer already focused on that task (see calendar-task-popover and
   // tag-detail-view). The hub itself has no task editor to route to.
@@ -273,7 +304,7 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
           railOpen={railOpen}
           onToggleRail={toggleRail}
           onEdit={() => setIsEditing(true)}
-          onArchive={() => void updateProject(project.id, { isArchived: true })}
+          onArchive={() => void handleArchiveProject()}
         />
       </div>
 
@@ -336,7 +367,9 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
         isOpen={isEditing}
         onClose={() => setIsEditing(false)}
         onSave={(updated: Project) => {
-          void updateProject(updated.id, updated)
+          // updateProject rejects on failure (already logged + tracked there);
+          // this surface has no failure toast, so just avoid an unhandled rejection.
+          updateProject(updated.id, updated).catch(() => {})
           setIsEditing(false)
         }}
         project={project}

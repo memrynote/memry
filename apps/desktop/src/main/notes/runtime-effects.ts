@@ -12,12 +12,20 @@ import {
 import { createDesktopTasksDomain } from '../tasks/domain'
 import { createTasksPublisher } from '../tasks/publisher'
 import { generateId } from '../lib/id'
+import { createLogger } from '../lib/logger'
+import { trackMainError } from '../telemetry/diagnostics'
+
+const logger = createLogger('NoteRuntimeEffects')
 
 export function syncNoteCreate(noteId: string, title: string, tags: string[]): void {
   enqueueLocalSyncCreate('note', noteId)
   getCrdtProvider()
     ?.initForNote(noteId, { title }, tags)
-    .catch(() => {})
+    .catch((error) => {
+      // A swallowed init means the note's body never enters CRDT sync.
+      logger.error('CRDT init failed for new note', { noteId, error })
+      trackMainError('notes', 'crdt_init_for_note', error)
+    })
 }
 
 export function syncNoteUpdate(noteId: string, title?: string): void {

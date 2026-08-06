@@ -6,6 +6,7 @@ import { serviceTaskToDisplayTask, PRIORITY_REVERSE } from './task-block-utils'
 import { useTasksOptional } from '@/contexts/tasks'
 import { useTabActions } from '@/contexts/tabs'
 import { tasksService } from '@/services/tasks-service'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import type { Task as DisplayTask } from '@/data/task-model'
 import { defaultStatuses, type Project, type Status } from '@/data/tasks-data'
 import { TaskRow } from '@/components/tasks/task-row'
@@ -437,10 +438,18 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
       if (!taskIdArg) return
       const newChecked = !isCompleted
       editor.updateBlock(block, { props: { ...block.props, checked: newChecked } })
-      if (newChecked) {
-        await tasksService.complete({ id: taskIdArg })
-      } else {
-        await tasksService.uncomplete(taskIdArg)
+      // complete/uncomplete resolve a {success:false} envelope instead of
+      // rejecting; a failure must revert the optimistic flip or the markdown
+      // checkbox (source of truth) diverges from the tasks row.
+      const result = newChecked
+        ? await tasksService.complete({ id: taskIdArg })
+        : await tasksService.uncomplete(taskIdArg)
+      if (!result?.success) {
+        editor.updateBlock(block, { props: { ...block.props, checked: !newChecked } })
+        trackRendererError(
+          'task_checkbox_toggle',
+          new Error(result?.error ?? 'Task toggle returned success:false')
+        )
       }
     },
     [isCompleted, block, editor]

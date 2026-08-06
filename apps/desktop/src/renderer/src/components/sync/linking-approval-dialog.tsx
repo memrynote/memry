@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import type { LinkingRequestEvent } from '@memry/contracts/ipc-events'
 import { Monitor, Smartphone, Loader2 } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
@@ -59,7 +60,11 @@ export function LinkingApprovalDialog({
           setVerificationCode(result.verificationCode)
         }
       })
-      .catch(() => {})
+      .catch((err: unknown) => {
+        // Dialog falls back to the "unavailable" copy; ship the failure so
+        // linking dead-ends are visible in Error Tracking.
+        trackRendererError('linking_sas_fetch_failed', err)
+      })
       .finally(() => {
         if (!cancelled) setSasLoading(false)
       })

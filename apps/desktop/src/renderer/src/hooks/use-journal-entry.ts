@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { JournalEntry } from '../../../preload/index.d'
@@ -145,6 +146,8 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       if (pendingTags !== null) saveInput.tags = pendingTags
 
       journalService.updateEntry(saveInput).catch((err) => {
+        // The user has already navigated away — this is silent data loss.
+        trackRendererError('journal_pending_save_failed', err)
         log.error(`Failed to save pending changes for ${oldDate}:`, err)
       })
     }
@@ -233,6 +236,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
         const year = parseInt(createdEntry.date.slice(0, 4), 10)
         void queryClient.invalidateQueries({ queryKey: journalKeys.heatmap(year) })
       } catch (err) {
+        trackRendererError('journal_template_seed_failed', err)
         log.error('Failed to seed journal entry from default template:', err)
       } finally {
         if (!cancelled) {
@@ -284,6 +288,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
         pendingTagsRef.current = null
       }
     } catch (err) {
+      trackRendererError('journal_save_failed', err)
       log.error('Failed to save journal entry:', err)
       const errorMessage = extractErrorMessage(
         err,
@@ -374,6 +379,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       }
       return result.success
     } catch (err) {
+      trackRendererError('journal_delete_failed', err)
       log.error('Failed to delete journal entry:', err)
       return false
     }

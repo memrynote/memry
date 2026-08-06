@@ -14,6 +14,7 @@ import { getI18n } from 'react-i18next'
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { Note } from '@memry/rpc/notes'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { notesService, onNoteDeleted, onNoteExternalChange } from '@/services/notes-service'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { toast } from 'sonner'
@@ -135,6 +136,7 @@ export function useNoteEditor(
         setError('Note not found')
       }
     } catch (err) {
+      trackRendererError('note_load_failed', err)
       const message = extractErrorMessage(
         err,
         getI18n().getFixedT(null, 'notes')('page.error.title')
@@ -242,6 +244,7 @@ export function useNoteEditor(
           }, 2000)
         }
       } catch (err) {
+        trackRendererError('note_save_failed', err)
         const message = extractErrorMessage(
           err,
           getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToSave')
@@ -273,6 +276,7 @@ export function useNoteEditor(
           setNote(result as unknown as Note)
         }
       } catch (err) {
+        trackRendererError('note_rename_failed', err)
         const message = extractErrorMessage(
           err,
           getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToRename')
@@ -327,6 +331,7 @@ export function useNoteEditor(
           setNote(result as unknown as Note)
         }
       } catch (err) {
+        trackRendererError('note_emoji_update_failed', err)
         const message = extractErrorMessage(
           err,
           getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToUpdateEmoji')
@@ -350,6 +355,7 @@ export function useNoteEditor(
           setNote(result as unknown as Note)
         }
       } catch (err) {
+        trackRendererError('note_tags_update_failed', err)
         const message = extractErrorMessage(
           err,
           getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToUpdateTags')

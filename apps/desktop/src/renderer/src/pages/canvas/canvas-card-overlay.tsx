@@ -26,6 +26,8 @@ import { useOptionalDragContext } from '@/contexts/drag-context'
 import { notesService } from '@/services/notes-service'
 import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackTelemetry } from '@/lib/telemetry'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useT } from '@memry/i18n/renderer'
 import { CanvasCard, CARD_SCROLL_ATTR } from './canvas-card'
 import { CanvasCardActive } from './canvas-card-active'
@@ -333,6 +335,17 @@ export const CanvasCardLayer = ({
         elements: [...existing, ...created],
         captureUpdate: CaptureUpdateAction.IMMEDIATELY
       })
+      // Every UI placement path (add-card picker, dnd drop, HTML5 drop,
+      // create-note) funnels through here, so this is the one choke point for
+      // the created → opened → carded funnel.
+      for (const ref of refs) {
+        void trackTelemetry('canvas_card_added', {
+          surface: 'canvas',
+          action: 'added',
+          objectType: ref.entityType,
+          result: 'success'
+        })
+      }
       onSceneMutated()
       recompute()
     },
@@ -619,6 +632,7 @@ export const CanvasCardLayer = ({
         await placeCard('note', result.note.id)
       } catch (err) {
         log.error('Failed to create canvas note', err)
+        trackRendererError('canvas_create_note', err)
         toast.error(
           extractErrorMessage(
             err,

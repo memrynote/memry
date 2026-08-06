@@ -27,6 +27,7 @@ import { useT } from '@memry/i18n/renderer'
 import { canvasService, onCanvasTooLarge } from '@/services/canvas-service'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { createScenePersister } from './canvas-persistence'
 import { externalizeSceneAssets } from './canvas-externalize'
 import { pickExcalidrawLangCode } from './excalidraw-lang'
@@ -132,6 +133,7 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
           return serializeAsJSON(api.getSceneElements(), api.getAppState(), api.getFiles(), 'local')
         } catch (err) {
           log.error('Failed to serialize canvas scene', err)
+          trackRendererError('canvas_scene_serialize', err)
           return null
         }
       },
@@ -146,6 +148,7 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
           )
         } catch (err) {
           log.error('Failed to externalize canvas assets; saving scene as-is', err)
+          trackRendererError('canvas_asset_externalize', err)
           // Fall back to the original scene — the pre-push size guard surfaces oversize saves.
         }
         await canvasService.update({
@@ -156,7 +159,12 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
       },
       debounceMs: SCENE_SAVE_DEBOUNCE_MS,
       lastSavedScene: initialScene,
-      onError: (err) => log.error('Failed to save canvas scene', err)
+      onError: (err) => {
+        log.error('Failed to save canvas scene', err)
+        // The persister keeps the change pending and retries, but a failing
+        // save is silent data loss in the making — it must reach telemetry.
+        trackRendererError('canvas_scene_save', err)
+      }
     })
     // PR #747 lesson: the debounce window must survive quit. The registry's
     // flush runs on the main process's app:request-flush handshake and on
@@ -209,6 +217,7 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
         save: (libraryItems) => canvasService.librarySave(libraryItems),
         onError: (err, operation) => {
           log.error(`Failed to ${operation} canvas library`, err)
+          trackRendererError(`canvas_library_${operation}`, err)
           if (operation === 'save') {
             // A failed load leaves the panel as-is and retries on the next
             // save; a failed save means the user's import is not on disk, so

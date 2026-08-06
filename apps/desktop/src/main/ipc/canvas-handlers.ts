@@ -97,11 +97,16 @@ export function registerCanvasHandlers(): void {
         // Fires per successful load, so a tab-switch remount counts again. That
         // is the intended meaning ("canvas loads"), documented in
         // apps/docs/src/architecture/observability.md — it is NOT distinct opens.
+        // An unreadable canvas (unmigrated legacy snapshot, or a file moved
+        // outside the app) shows the dead-end screen instead of a canvas, so it
+        // counts as a failed open, not a success.
         trackMainEvent('canvas_opened', {
           surface: 'canvas',
           action: 'opened',
           objectType: 'canvas',
-          result: 'success'
+          ...(canvas.unreadable
+            ? { result: 'failed' as const, errorCode: 'canvas_unreadable' }
+            : { result: 'success' as const })
         })
       }
       return canvas
@@ -165,6 +170,12 @@ export function registerCanvasHandlers(): void {
 
       const success = deleteCanvas(db, vaultPath, id)
       if (success) {
+        trackMainEvent('canvas_deleted', {
+          surface: 'canvas',
+          action: 'deleted',
+          objectType: 'canvas',
+          result: 'success'
+        })
         syncCanvasDelete(id)
         emitCanvasEvent(CanvasChannels.events.DELETED, { id })
       }

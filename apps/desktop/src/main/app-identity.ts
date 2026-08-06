@@ -4,6 +4,9 @@ import { existsSync, lstatSync, renameSync, symlinkSync } from 'node:fs'
 import { join } from 'node:path'
 import { createLogger } from './lib/logger'
 import { SECRET_STORE_FILENAME } from './secrets/secret-storage'
+// Runs before the telemetry runtime exists; trackMainError events are held in
+// the early buffer (telemetry/track.ts) and shipped once the runtime installs.
+import { trackMainError } from './telemetry/diagnostics'
 
 const logger = createLogger('AppIdentity')
 
@@ -78,6 +81,7 @@ export function applyMemrynoteIdentity(dirs?: IdentityDirs): Promise<void> {
         logger.error('Could not move legacy userData; keeping the legacy identity this launch', {
           error: err
         })
+        trackMainError('app_identity', 'userdata_rename_failed', err)
         return Promise.resolve()
       }
       try {
@@ -99,6 +103,7 @@ export function applyMemrynoteIdentity(dirs?: IdentityDirs): Promise<void> {
   } catch (err) {
     try {
       logger.error('App identity migration failed; keeping the legacy identity', { error: err })
+      trackMainError('app_identity', 'identity_migration_failed', err)
     } catch {
       /* logging must never break startup */
     }
@@ -130,5 +135,6 @@ async function carrySafeStorageKeychainKey(): Promise<void> {
     logger.error('Safe Storage keychain carry-over failed (will retry next launch)', {
       error: err
     })
+    trackMainError('app_identity', 'keychain_carry_over_failed', err)
   }
 }

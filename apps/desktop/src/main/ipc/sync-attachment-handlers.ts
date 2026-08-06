@@ -263,6 +263,7 @@ export function registerAttachmentHandlers(): void {
         return { success: true, filePath: result.filePath }
       } catch (err) {
         logger.error('Attachment download failed', err)
+        trackMainError('sync_attachments', 'attachment_download_failed', err)
         return { success: false, error: err instanceof Error ? err.message : String(err) }
       } finally {
         service.setProgressCallback(null)
@@ -413,6 +414,9 @@ export function registerAttachmentHandlers(): void {
           diskPath,
           error: message
         })
+        // Mirrors the upload path above — a download-side outage (auth, R2,
+        // decrypt) must not repeat the 58-day blindness the upload path had.
+        trackMainError('sync_attachments', 'attachment_download_failed', err)
         for (const win of BrowserWindow.getAllWindows()) {
           win.webContents.send(SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED, {
             noteId,

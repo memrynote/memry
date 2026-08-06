@@ -40,6 +40,8 @@ import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
 import { createLogger } from '../lib/logger'
 import { trackCalendar } from './calendar-telemetry'
+import { trackMainError } from '../telemetry/diagnostics'
+import { trackMainEvent } from '../telemetry/track'
 import { requireDatabase, getIndexDatabase, type DataDb } from '../database'
 import { generateId } from '../lib/id'
 import { createStringHandler, createValidatedHandler, withDb } from './validate'
@@ -258,6 +260,14 @@ async function disconnectGoogleAccount(
     log.warn('Google Calendar disconnect failed', { accountId, err })
   }
 
+  trackMainEvent('calendar_google_disconnected', {
+    surface: 'calendar',
+    action: 'disconnected',
+    source: 'google',
+    result: 'success',
+    metrics: { itemCount: 1 }
+  })
+
   const allProviderSources = listCalendarSourceRows(db, { provider })
   const targetSources = allProviderSources.filter((source) =>
     source.kind === 'account' ? source.accountId === accountId : source.accountId === accountId
@@ -401,6 +411,8 @@ export function registerCalendarHandlers(): void {
           syncCalendarEventCreate(id)
         } catch (error) {
           log.warn('syncCalendarEventCreate failed; event persisted locally', error)
+          // The event will never reach device sync or Google — permanent divergence.
+          trackMainError('calendar', 'event_create_sync_enqueue', error)
         }
         emitCalendarChanged({ entityType: 'calendar_event', id })
         trackCalendar('calendar_event_created', 'created', 'calendar_page')
@@ -504,6 +516,13 @@ export function registerCalendarHandlers(): void {
         db.delete(calendarEvents).where(eq(calendarEvents.id, id)).run()
         syncCalendarEventDelete(id, JSON.stringify(existing))
         emitCalendarChanged({ entityType: 'calendar_event', id })
+        // Direct trackMainEvent: trackCalendar's name union predates this event.
+        trackMainEvent('calendar_event_deleted', {
+          surface: 'calendar',
+          action: 'deleted',
+          source: 'calendar_page',
+          result: 'success'
+        })
         return { success: true }
       }, 'errors:calendar.deleteEventFailed')
     )
@@ -669,8 +688,11 @@ export function registerCalendarHandlers(): void {
           modifiedAt: now
         })
 
-        void startGoogleCalendarSyncRunner().catch(() => {
-          // Runner self-logs on failure; swallow to keep connect success green.
+        void startGoogleCalendarSyncRunner().catch((error) => {
+          // Only the inner sync self-logs; pre-sync awaits (keychain read, auth
+          // checks) can throw before that. Swallow to keep connect success green.
+          log.warn('startGoogleCalendarSyncRunner failed after connect', error)
+          trackMainError('calendar', 'sync_runner_start', error)
         })
 
         trackCalendar('calendar_google_connected', 'connected', 'google')
@@ -771,6 +793,14 @@ export function registerCalendarHandlers(): void {
           emitCalendarChanged({ entityType: 'calendar_source', id: row.id })
         }
 
+        trackMainEvent('calendar_google_disconnected', {
+          surface: 'calendar',
+          action: 'disconnected',
+          source: 'google',
+          result: 'success',
+          metrics: { itemCount: accountIdsToDisconnect.length }
+        })
+
         return {
           success: true,
           status: await buildProviderStatus(db, input.provider)
@@ -868,6 +898,8 @@ export function registerCalendarHandlers(): void {
         try {
           await syncGoogleCalendarSource(db, source.id)
         } catch (err) {
+          log.warn('Google Calendar source retry sync failed', err)
+          trackMainError('calendar', 'google_source_retry', err)
           const updated = getCalendarSourceById(db, source.id)
           return {
             success: false,
@@ -897,6 +929,9 @@ export function registerCalendarHandlers(): void {
             err instanceof ExternalEventNotFoundError ||
             err instanceof ExternalEventSourceMissingError
           ) {
+            // SourceMissing especially is referential breakage between
+            // calendar_external_events and calendar_sources, not a user state.
+            trackMainError('calendar', 'promote_external_event', err)
             return { success: false, eventId: null, error: err.message }
           }
           throw err

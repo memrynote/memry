@@ -87,7 +87,11 @@ import {
   updatePropertyDefinitionRecord
 } from '../vault/property-definition-store'
 import { trackMainEvent } from '../telemetry/track'
+import { trackMainError } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
+import { createLogger } from '../lib/logger'
+
+const logger = createLogger('NotesHandlers')
 
 // ============================================================================
 // Zod Schemas for Property Definitions (T017-T018)
@@ -295,6 +299,12 @@ export function registerNotesHandlers(): void {
     ApplyTemplateSchema,
     async (input) => {
       const note = await applyTemplateToNote(input)
+      trackMainEvent('note_updated', {
+        surface: 'notes',
+        action: 'template_applied',
+        objectType: 'note',
+        result: 'success'
+      })
       return { success: true as const, note }
     },
     'errors:note.applyTemplateFailed'
@@ -699,8 +709,14 @@ export function registerNotesHandlers(): void {
         try {
           const diskPath = fromMemryFileUrl(result.path)
           emitNoteAttachmentSaved(input.noteId, diskPath)
-        } catch {
-          // Don't block local save if sync event fails
+        } catch (error) {
+          // Don't block local save if sync event fails — but a swallowed emit
+          // means the attachment silently never syncs to other devices.
+          logger.warn('Attachment sync emit failed after local save', {
+            noteId: input.noteId,
+            error
+          })
+          trackMainError('notes', 'attachment_sync_emit', error)
         }
       }
       return result
@@ -845,6 +861,12 @@ export function registerNotesHandlers(): void {
       win.destroy()
       await fs.writeFile(targetPath, pdfData)
 
+      trackMainEvent('note_exported', {
+        surface: 'notes',
+        action: 'pdf',
+        objectType: 'note',
+        result: 'success'
+      })
       return { success: true as const, path: targetPath }
     },
     'errors:note.exportPdfFailed'
@@ -894,6 +916,12 @@ export function registerNotesHandlers(): void {
 
       await fs.writeFile(targetPath, html, 'utf-8')
 
+      trackMainEvent('note_exported', {
+        surface: 'notes',
+        action: 'html',
+        objectType: 'note',
+        result: 'success'
+      })
       return { success: true as const, path: targetPath }
     },
     'errors:note.exportHtmlFailed'
@@ -925,6 +953,12 @@ export function registerNotesHandlers(): void {
     createStringHandler(
       withErrorHandler(async (snapshotId) => {
         const note = await restoreVersion(snapshotId)
+        trackMainEvent('note_updated', {
+          surface: 'notes',
+          action: 'version_restored',
+          objectType: 'note',
+          result: 'success'
+        })
         return { success: true, note }
       }, 'errors:note.restoreVersionFailed')
     )
@@ -988,6 +1022,13 @@ export function registerNotesHandlers(): void {
     }),
     async (input) => {
       const result = await importFiles(input)
+      trackMainEvent('note_imported', {
+        surface: 'notes',
+        action: 'imported',
+        objectType: 'note',
+        result: result.failed === 0 ? 'success' : 'failed',
+        metrics: { itemCount: result.imported }
+      })
       for (const file of result.importedFiles) {
         if (file.fileType !== 'markdown') {
           emitNoteAttachmentSaved('vault-import', file.destPath)

@@ -74,6 +74,17 @@ export class ItemApplier {
       data = adapter ? adapter.schema.parse(parsed) : handler!.schema.parse(parsed)
     } catch (err) {
       log.error('Schema validation failed', { type: input.type, itemId: input.itemId, error: err })
+      // Unlike 'parse_error' (corrupt-tracker refetch flow), 'skipped' still
+      // advances the cursor and never retries — a schema-drift item from a
+      // newer peer silently never lands here. Same mixed-version tripwire as
+      // the unknown-type case above, for known types with drifted payloads.
+      trackMainEvent('sync_skipped_unknown_type', {
+        surface: 'sync',
+        action: 'schema_validation_failed',
+        objectType: 'sync_item',
+        result: 'skipped',
+        dimensions: { itemType: input.type }
+      })
       return 'skipped'
     }
 

@@ -2,7 +2,11 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import type { ToolSet } from 'ai'
 
+import { createLogger } from '../../lib/logger'
+import { trackMainError } from '../../telemetry/diagnostics'
 import { ALL_TOOL_NAMES, TOOL_SCHEMAS, type ToolName } from '../mcp/tools/schemas'
+
+const logger = createLogger('AgentToolBridge')
 
 export interface AgentToolCallInput {
   conversationId: string
@@ -52,6 +56,7 @@ async function callVaultMcpTool(input: AgentToolCallInput): Promise<AgentToolCal
   const { getPublicStatus } = await import('../mcp/lifecycle')
   const status = getPublicStatus()
   if (!status.url || !status.token) {
+    logger.warn('Vault MCP tool call skipped: agent MCP server is not running')
     return {
       ok: false,
       error: { code: 'MCP_UNAVAILABLE', message: 'Agent MCP server is not running.' }
@@ -83,6 +88,10 @@ async function callVaultMcpTool(input: AgentToolCallInput): Promise<AgentToolCal
       data: extractMcpResult(result as { structuredContent?: unknown; content?: unknown })
     }
   } catch (error) {
+    // Transport-level failures (server down mid-call, connect/close errors,
+    // malformed responses) never reach the MCP server's own logging.
+    logger.warn(`Vault MCP tool transport failure for ${input.name}`, error)
+    trackMainError('agent', 'mcp_tool_transport', error)
     return {
       ok: false,
       error: { code: 'MCP_TOOL_CALL_FAILED', message: errorMessage(error) }

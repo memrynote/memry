@@ -5,6 +5,7 @@ import { notesService } from '@/services/notes-service'
 import { createFileBlockContent } from '../file-block'
 import type { DropTarget } from '../drop-target-utils'
 import { createLogger } from '@/lib/logger'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { toMemryFileUrl } from '@/lib/memry-file-url'
 import { MEMRY_NOTE_DRAG_MIME } from '@/lib/drag-mime'
 
@@ -103,6 +104,10 @@ export function useEditorFileUpload({
 
           if (!result.success) {
             log.error('Upload failed', result.error)
+            trackRendererError(
+              'editor_attachment_upload',
+              new Error(result.error || 'Upload failed')
+            )
             continue
           }
 
@@ -139,6 +144,7 @@ export function useEditorFileUpload({
           placement = 'after'
         } catch (error) {
           log.error('Failed to upload file', file.name, error)
+          trackRendererError('editor_attachment_upload', error)
         }
       }
 

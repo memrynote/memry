@@ -4,6 +4,7 @@ import { getFilteredTasks } from '@/lib/task-utils'
 import { tasksService, onProjectUpdated } from '@/services/tasks-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import type { Project, Status, StatusType } from '@/data/tasks-data'
 import type { Task } from '@/data/task-model'
 import type {
@@ -165,6 +166,7 @@ export function useProjectHub(projectId: string | undefined): ProjectHubData {
       } catch (error) {
         if (cancelled) return
         log.error('Failed to load project contents', extractErrorMessage(error))
+        trackRendererError('project_hub_load', error)
         // `isLoading` is derived from "no payload for this project", so leaving
         // the slot empty would pin the hub on its skeleton for good. An empty
         // payload renders the page instead, and refresh() can still retry.

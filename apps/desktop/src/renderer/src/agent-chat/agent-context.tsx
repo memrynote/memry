@@ -25,6 +25,7 @@ import type {
 import { useT } from '@memry/i18n/renderer'
 
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import {
   agentReducer,
   initialAgentState,
@@ -173,6 +174,7 @@ export function AgentProvider({
       const conversations = await getAgentApi().listConversations()
       dispatch({ type: 'set_conversations', conversations })
     } catch (error) {
+      trackRendererError('agent_list_conversations', error)
       dispatch({
         type: 'set_error',
         error: extractErrorMessage(error, t('agentChat.errors.loadConversations'))
@@ -191,6 +193,7 @@ export function AgentProvider({
           messages
         })
       } catch (error) {
+        trackRendererError('agent_load_conversation', error)
         dispatch({
           type: 'set_error',
           error: extractErrorMessage(error, t('agentChat.errors.loadConversation'))
@@ -211,6 +214,7 @@ export function AgentProvider({
         dispatch({ type: 'set_active_conversation', conversation, messages: [] })
         return conversation
       } catch (error) {
+        trackRendererError('agent_create_conversation', error)
         const message = extractErrorMessage(error, t('agentChat.errors.createConversation'))
         dispatch({ type: 'set_error', error: message })
         throw new Error(message)
@@ -245,6 +249,7 @@ export function AgentProvider({
           throw new Error(message)
         }
       } catch (error) {
+        trackRendererError('agent_send_turn', error)
         dispatch({ type: 'set_in_flight', conversationId: input.conversationId, inFlight: false })
         const message = extractErrorMessage(error, t('agentChat.errors.sendTurn'))
         dispatch({ type: 'set_error', error: message })
@@ -260,6 +265,7 @@ export function AgentProvider({
         await getAgentApi().cancelTurn({ conversationId })
         dispatch({ type: 'set_in_flight', conversationId, inFlight: false })
       } catch (error) {
+        trackRendererError('agent_cancel_turn', error)
         dispatch({
           type: 'set_error',
           error: extractErrorMessage(error, t('agentChat.errors.cancelTurn'))
@@ -279,6 +285,7 @@ export function AgentProvider({
           status: input.decision.kind === 'deny' ? 'denied' : 'approved'
         })
       } catch (error) {
+        trackRendererError('agent_approve_tool', error)
         dispatch({
           type: 'set_error',
           error: extractErrorMessage(error, t('agentChat.errors.submitApproval'))
@@ -300,6 +307,7 @@ export function AgentProvider({
           })
         }
       } catch (error) {
+        trackRendererError('agent_edit_trust_list', error)
         dispatch({
           type: 'set_error',
           error: extractErrorMessage(error, t('agentChat.errors.updateTrust'))
@@ -314,6 +322,7 @@ export function AgentProvider({
       const result = await getAgentApi().acceptDisclosure()
       dispatch({ type: 'set_disclosure', accepted: result.accepted })
     } catch (error) {
+      trackRendererError('agent_accept_disclosure', error)
       dispatch({
         type: 'set_error',
         error: extractErrorMessage(error, t('agentChat.errors.saveDisclosure'))
@@ -335,6 +344,7 @@ export function AgentProvider({
       })
       .catch((error) => {
         if (cancelled) return
+        trackRendererError('agent_resolve_window', error)
         dispatch({
           type: 'set_error',
           error: extractErrorMessage(error, t('agentChat.errors.resolveWindow'))
@@ -347,6 +357,7 @@ export function AgentProvider({
       })
       .catch((error) => {
         if (cancelled) return
+        trackRendererError('agent_backend_status', error)
         dispatch({
           type: 'set_error',
           error: extractErrorMessage(error, t('agentChat.errors.detectCli'))
@@ -359,6 +370,7 @@ export function AgentProvider({
       })
       .catch((error) => {
         if (cancelled) return
+        trackRendererError('agent_load_disclosure', error)
         dispatch({
           type: 'set_error',
           error: extractErrorMessage(error, t('agentChat.errors.loadDisclosure'))
@@ -371,6 +383,7 @@ export function AgentProvider({
       })
       .catch((error) => {
         if (cancelled) return
+        trackRendererError('agent_list_conversations', error)
         dispatch({
           type: 'set_error',
           error: extractErrorMessage(error, t('agentChat.errors.loadConversations'))

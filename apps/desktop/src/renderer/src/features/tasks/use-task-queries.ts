@@ -15,8 +15,20 @@ import {
   onProjectDeleted
 } from '@/services/tasks-service'
 import { createLogger } from '@/lib/logger'
+import { trackRendererError, trackRendererLog } from '@/lib/telemetry-diagnostics'
 
 const log = createLogger('Tasks:Queries')
+
+// Main's withDb converts domain failures into a RESOLVED { success: false }
+// envelope, so `await tasksService.x(...)` alone never rejects on them — the
+// failure would vanish untracked while invalidateWorkspace() silently reverts
+// the optimistic edit.
+function reportEnvelopeFailure(action: string, result: { success: boolean; error?: string }): void {
+  if (result.success) return
+  const error = new Error(result.error ?? `${action} failed`)
+  log.error(`Mutation failed: ${action}`, error)
+  trackRendererError(action, error)
+}
 
 const EMPTY_TASKS: UiTask[] = []
 const EMPTY_PROJECTS: UiProject[] = []
@@ -193,6 +205,7 @@ export function useTaskWorkspaceData({ enabled = true }: { enabled?: boolean }) 
             }
           } catch (error) {
             log.warn(`Failed to load statuses for project ${project.id}:`, error)
+            trackRendererLog('warn', 'load_statuses', 'TaskQueries')
             return project
           }
         })
@@ -305,7 +318,7 @@ export function useTaskWorkspaceMutations() {
       setTasks((prev) => [...prev, task])
 
       try {
-        await tasksService.create({
+        const result = await tasksService.create({
           projectId: task.projectId,
           title: task.title,
           description: task.description || null,
@@ -320,9 +333,11 @@ export function useTaskWorkspaceMutations() {
           tags: task.tags,
           linkedNoteIds: task.linkedNoteIds
         })
+        reportEnvelopeFailure('task_create', result)
         invalidateWorkspace()
       } catch (error) {
         log.error('Failed to create task:', error)
+        trackRendererError('task_create', error)
       }
     },
     [invalidateWorkspace, setTasks]
@@ -335,19 +350,22 @@ export function useTaskWorkspaceMutations() {
       try {
         if ('completedAt' in updates) {
           if (updates.completedAt) {
-            await tasksService.complete({
-              id: taskId,
-              completedAt: updates.completedAt.toISOString()
-            })
+            reportEnvelopeFailure(
+              'task_update',
+              await tasksService.complete({
+                id: taskId,
+                completedAt: updates.completedAt.toISOString()
+              })
+            )
           } else {
-            await tasksService.uncomplete(taskId)
+            reportEnvelopeFailure('task_update', await tasksService.uncomplete(taskId))
           }
 
           const { completedAt: _completedAt, ...otherUpdates } = updates
           void _completedAt
 
           if (Object.keys(otherUpdates).length > 0) {
-            await tasksService.update({
+            const result = await tasksService.update({
               id: taskId,
               title: otherUpdates.title,
               description: otherUpdates.description ?? undefined,
@@ -370,6 +388,7 @@ export function useTaskWorkspaceMutations() {
               linkedNoteIds: otherUpdates.linkedNoteIds,
               tags: otherUpdates.tags
             })
+            reportEnvelopeFailure('task_update', result)
           }
 
           invalidateWorkspace()
@@ -378,16 +397,16 @@ export function useTaskWorkspaceMutations() {
 
         if ('archivedAt' in updates) {
           if (updates.archivedAt) {
-            await tasksService.archive(taskId)
+            reportEnvelopeFailure('task_update', await tasksService.archive(taskId))
           } else {
-            await tasksService.unarchive(taskId)
+            reportEnvelopeFailure('task_update', await tasksService.unarchive(taskId))
           }
 
           const { archivedAt: _archivedAt, ...otherUpdates } = updates
           void _archivedAt
 
           if (Object.keys(otherUpdates).length > 0) {
-            await tasksService.update({
+            const result = await tasksService.update({
               id: taskId,
               title: otherUpdates.title,
               description: otherUpdates.description ?? undefined,
@@ -410,13 +429,14 @@ export function useTaskWorkspaceMutations() {
               linkedNoteIds: otherUpdates.linkedNoteIds,
               tags: otherUpdates.tags
             })
+            reportEnvelopeFailure('task_update', result)
           }
 
           invalidateWorkspace()
           return
         }
 
-        await tasksService.update({
+        const result = await tasksService.update({
           id: taskId,
           title: updates.title,
           description: updates.description ?? undefined,
@@ -437,10 +457,12 @@ export function useTaskWorkspaceMutations() {
           linkedNoteIds: updates.linkedNoteIds,
           tags: updates.tags
         })
+        reportEnvelopeFailure('task_update', result)
 
         invalidateWorkspace()
       } catch (error) {
         log.error('Failed to update task:', error)
+        trackRendererError('task_update', error)
       }
     },
     [invalidateWorkspace, setTasks]
@@ -451,10 +473,11 @@ export function useTaskWorkspaceMutations() {
       setTasks((prev) => prev.filter((task) => task.id !== taskId))
 
       try {
-        await tasksService.delete(taskId)
+        reportEnvelopeFailure('task_delete', await tasksService.delete(taskId))
         invalidateWorkspace()
       } catch (error) {
         log.error('Failed to delete task:', error)
+        trackRendererError('task_delete', error)
       }
     },
     [invalidateWorkspace, setTasks]
@@ -465,7 +488,7 @@ export function useTaskWorkspaceMutations() {
       setProjects((prev) => [...prev, project])
 
       try {
-        await tasksService.createProject({
+        const result = await tasksService.createProject({
           name: project.name,
           description: project.description || null,
           color: project.color,
@@ -481,8 +504,15 @@ export function useTaskWorkspaceMutations() {
               : undefined
         })
         invalidateWorkspace()
+        // Rethrow so callers hit their catch (error toast) instead of showing a
+        // success toast — and quick-create stops selecting a phantom project id.
+        if (!result.success) {
+          throw new Error(result.error ?? 'Failed to create project')
+        }
       } catch (error) {
         log.error('Failed to create project:', error)
+        trackRendererError('project_create', error)
+        throw error
       }
     },
     [invalidateWorkspace, setProjects]
@@ -495,7 +525,7 @@ export function useTaskWorkspaceMutations() {
       )
 
       try {
-        await tasksService.updateProject({
+        const result = await tasksService.updateProject({
           id: projectId,
           name: updates.name,
           description: updates.description ?? undefined,
@@ -510,8 +540,13 @@ export function useTaskWorkspaceMutations() {
           }))
         })
         invalidateWorkspace()
+        if (!result.success) {
+          throw new Error(result.error ?? 'Failed to update project')
+        }
       } catch (error) {
         log.error('Failed to update project:', error)
+        trackRendererError('project_update', error)
+        throw error
       }
     },
     [invalidateWorkspace, setProjects]
@@ -522,10 +557,15 @@ export function useTaskWorkspaceMutations() {
       setProjects((prev) => prev.filter((project) => project.id !== projectId))
 
       try {
-        await tasksService.deleteProject(projectId)
+        const result = await tasksService.deleteProject(projectId)
         invalidateWorkspace()
+        if (!result.success) {
+          throw new Error(result.error ?? 'Failed to delete project')
+        }
       } catch (error) {
         log.error('Failed to delete project:', error)
+        trackRendererError('project_delete', error)
+        throw error
       }
     },
     [invalidateWorkspace, setProjects]

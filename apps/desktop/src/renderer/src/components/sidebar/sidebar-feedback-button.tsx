@@ -17,6 +17,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { createLogger } from '@/lib/logger'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 
 const log = createLogger('Component:SidebarFeedbackButton')
 
@@ -58,9 +59,11 @@ export function SidebarFeedbackButton() {
         setEmail('')
         setOpen(false)
       } else {
+        trackRendererError('feedback_submit_failed', (result as { error?: unknown }).error)
         toast.error(t('phaseF.componentsAppSidebar.feedbackError'))
       }
     } catch (err) {
+      trackRendererError('feedback_submit_failed', err)
       log.error('feedback submit failed', err)
       toast.error(t('phaseF.componentsAppSidebar.feedbackError'))
     } finally {

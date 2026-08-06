@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useCallback, useMemo } from 'react'
+import { toSafeToken } from '@memry/contracts/telemetry-api'
+import { trackTelemetry } from '@/lib/telemetry'
 
 export type SettingsSection =
   | 'general'
@@ -68,6 +70,13 @@ export function SettingsModalProvider({ children }: { children: React.ReactNode 
       setFocusRequestId((id) => id + 1)
     }
     setIsOpen(true)
+    // Settings is a modal, not a tab, so App's tab-driven page_viewed never
+    // fires for it — emit here. Section names are a closed set of code tokens.
+    void trackTelemetry('page_viewed', {
+      surface: 'settings',
+      action: 'viewed',
+      objectType: toSafeToken(target.section, 'general')
+    })
   }, [])
 
   const close = useCallback(() => {

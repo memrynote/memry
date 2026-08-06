@@ -1,5 +1,10 @@
 import { spawnSync } from 'node:child_process'
-import { delimiter } from 'node:path'
+import { basename, delimiter } from 'node:path'
+
+import { createLogger } from '../../lib/logger'
+import { trackMainLog } from '../../telemetry/diagnostics'
+
+const logger = createLogger('AgentCli:LoginShellPath')
 
 /**
  * Resolve the user's real login-shell PATH so packaged builds can find CLIs.
@@ -52,6 +57,18 @@ export function mergePaths(
 /** Probe the login shell for its PATH; returns null on any failure. */
 export function readLoginShellPath(spawn: SpawnSync = spawnSync): string | null {
   const shell = process.env.SHELL || '/bin/bash'
+  // A silent null here is precisely the failure that greys out Claude/Codex
+  // providers in packaged builds — leave a breadcrumb per failure class.
+  // Shell basename only, never the full path.
+  const probeFailed = (failureClass: string): null => {
+    logger.warn(`Login shell PATH probe failed (${basename(shell)}): ${failureClass}`)
+    trackMainLog('warn', {
+      scope: 'AgentCli',
+      action: 'login_shell_path_probe_failed',
+      errorCode: failureClass
+    })
+    return null
+  }
   try {
     // `-i` (interactive) so zsh's ~/.zshrc / bash's ~/.bashrc run — that's where
     // PATH is usually set; `-l` (login) so profile files run too.
@@ -60,11 +77,15 @@ export function readLoginShellPath(spawn: SpawnSync = spawnSync): string | null 
       timeout: 3000
     })
     if (!result || result.status !== 0 || typeof result.stdout !== 'string') {
-      return null
+      return probeFailed(`status_${result?.status ?? 'none'}`)
     }
-    return parseShellPath(result.stdout)
+    const parsed = parseShellPath(result.stdout)
+    if (parsed === null) {
+      return probeFailed('marker_missing')
+    }
+    return parsed
   } catch {
-    return null
+    return probeFailed('spawn_error')
   }
 }
 

@@ -3,6 +3,7 @@ import { syncState } from '@memry/db-schema/schema/sync-state'
 import { createLogger } from '../../lib/logger'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import type { SecurityWarningEvent, QuarantinedItemInfo } from '@memry/contracts/ipc-events'
+import { trackMainError } from '../../telemetry/diagnostics'
 import type { SyncContext, QuarantineEntry } from './sync-context'
 import {
   SYNC_STATE_KEYS,
@@ -42,6 +43,10 @@ export class QuarantineManager {
       attemptCount,
       permanent
     })
+
+    // Fleet-wide quarantine rate — the user gets a toast, but without this
+    // Error Tracking never sees signature failures (tampering or key drift).
+    trackMainError('sync', 'item_quarantined', new Error(error))
 
     this.ctx.deps.emitToRenderer(EVENT_CHANNELS.SECURITY_WARNING, {
       itemId,

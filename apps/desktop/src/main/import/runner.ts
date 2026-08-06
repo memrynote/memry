@@ -1,9 +1,31 @@
+import { toSafeToken } from '@memry/contracts/telemetry-api'
 import { getImporter } from './registry'
 import { createImportContext } from './import-context'
 import { flushProjectionEvents } from '../projections'
+import { trackMainLog } from '../telemetry/diagnostics'
+import { trackMainEvent } from '../telemetry/track'
 import type { ImportPreview, ImportSummary } from './types'
 
 const controllers = new Map<string, AbortController>()
+
+function trackImportCompleted(importerId: string, summary: ImportSummary, canceled: boolean): void {
+  trackMainEvent('import_completed', {
+    surface: 'vault',
+    action: toSafeToken(importerId, 'importer'),
+    source: 'import',
+    result: canceled ? 'canceled' : summary.failed.length > 0 ? 'failed' : 'success',
+    metrics: { itemCount: summary.imported, value: summary.failed.length }
+  })
+  if (summary.failed.length > 0) {
+    // Per-item failures are user-visible in the summary dialog; aggregate them
+    // here rather than tracking each item (imports can fail in bursts).
+    trackMainLog('warn', {
+      scope: 'import',
+      action: importerId,
+      metrics: { itemCount: summary.failed.length, value: summary.imported }
+    })
+  }
+}
 
 export interface RunImportInput {
   importId: string
@@ -20,7 +42,12 @@ export async function runImport(input: RunImportInput): Promise<ImportSummary> {
   controllers.set(input.importId, controller)
   const ctx = createImportContext(input.importId, controller.signal)
   try {
-    return await importer.run({ sourcePaths: input.sourcePaths, options: input.options }, ctx)
+    const summary = await importer.run(
+      { sourcePaths: input.sourcePaths, options: input.options },
+      ctx
+    )
+    trackImportCompleted(input.importerId, summary, controller.signal.aborted)
+    return summary
   } finally {
     controllers.delete(input.importId)
     // Importers write notes through the async projection pipeline; their

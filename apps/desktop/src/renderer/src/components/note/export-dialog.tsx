@@ -10,6 +10,8 @@ import { getI18n } from 'react-i18next'
 
 import React, { useState, useCallback, useEffect } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackTelemetry } from '@/lib/telemetry'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import {
   Dialog,
   DialogContent,
@@ -117,6 +119,13 @@ export function ExportDialog({
 
       if (result.success) {
         setExportSuccess(true)
+        void trackTelemetry('note_exported', {
+          surface: 'notes',
+          action: 'exported',
+          objectType: 'note',
+          result: 'success',
+          dimensions: { format }
+        })
         toast.success(
           getI18n().getFixedT(null, 'notes')('phaseI.toasts.noteExportedSuccessfully'),
           {
@@ -138,6 +147,7 @@ export function ExportDialog({
       } else if (result.error === 'Export cancelled') {
         // User cancelled - do nothing
       } else {
+        trackRendererError('note_export_failed', result.error)
         toast.error(t('exportDialog.toast.failed'), {
           description: extractErrorMessage(
             result.error,
@@ -146,6 +156,7 @@ export function ExportDialog({
         })
       }
     } catch (error) {
+      trackRendererError('note_export_failed', error)
       toast.error(t('exportDialog.toast.failed'), {
         description: extractErrorMessage(
           error,
@@ -315,12 +326,12 @@ export function ExportDialog({
           <Button onClick={() => void handleExport()} disabled={isExporting || exportSuccess}>
             {isExporting ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="me-2 h-4 w-4 animate-spin" />
                 {t('exportDialog.exporting')}
               </>
             ) : exportSuccess ? (
               <>
-                <CheckCircle className="mr-2 h-4 w-4" />
+                <CheckCircle className="me-2 h-4 w-4" />
                 {t('exportDialog.exported')}
               </>
             ) : (

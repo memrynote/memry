@@ -115,6 +115,15 @@ vi.mock('./lib/app-version-display', () => ({
   formatAppVersionForDisplay: (version: string) => `v${version}`
 }))
 
+// The real modules pull the telemetry runtime, whose electron import ('net')
+// the mock above does not provide.
+vi.mock('./telemetry/diagnostics', () => ({
+  trackMainError: vi.fn()
+}))
+vi.mock('./telemetry/track', () => ({
+  trackMainEvent: vi.fn()
+}))
+
 async function loadUpdater() {
   vi.resetModules()
   return import('./updater')

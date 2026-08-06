@@ -5,6 +5,7 @@ import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { Badge } from '@/components/ui/badge'
 import { Search, RotateCcw, X, AlertTriangle, Info } from '@/lib/icons'
 import { useKeyboardSettings } from '@/hooks/use-keyboard-settings'
+import { trackRendererLog } from '@/lib/telemetry-diagnostics'
 import { toast } from 'sonner'
 import type { ShortcutBinding } from '@memry/contracts/settings-schemas'
 import type { ShortcutBindingDTO } from '../../../../preload/index.d'
@@ -381,7 +382,10 @@ export function ShortcutsSettings() {
   const handleGlobalCaptureSave = useCallback(
     async (binding: ShortcutBindingDTO | null): Promise<void> => {
       const success = await updateSettings({ globalCapture: binding })
-      if (!success) toast.error(t('shortcuts.toasts.saveGlobalFailed'))
+      if (!success) {
+        trackRendererLog('warn', 'keyboard_settings_save_failed', 'Settings')
+        toast.error(t('shortcuts.toasts.saveGlobalFailed'))
+      }
     },
     [updateSettings, t]
   )
@@ -395,12 +399,18 @@ export function ShortcutsSettings() {
         const newOverrides = { ...overrides }
         delete newOverrides[id]
         const success = await updateSettings({ overrides: newOverrides })
-        if (!success) toast.error(t('shortcuts.toasts.saveFailed'))
+        if (!success) {
+          trackRendererLog('warn', 'keyboard_settings_save_failed', 'Settings')
+          toast.error(t('shortcuts.toasts.saveFailed'))
+        }
         return
       }
 
       const success = await updateSettings({ overrides: { ...overrides, [id]: binding } })
-      if (!success) toast.error(t('shortcuts.toasts.saveFailed'))
+      if (!success) {
+        trackRendererLog('warn', 'keyboard_settings_save_failed', 'Settings')
+        toast.error(t('shortcuts.toasts.saveFailed'))
+      }
     },
     [overrides, updateSettings, t]
   )
@@ -410,7 +420,10 @@ export function ShortcutsSettings() {
       const newOverrides = { ...overrides }
       delete newOverrides[id]
       const success = await updateSettings({ overrides: newOverrides })
-      if (!success) toast.error(t('shortcuts.toasts.resetFailed'))
+      if (!success) {
+        trackRendererLog('warn', 'keyboard_settings_reset_failed', 'Settings')
+        toast.error(t('shortcuts.toasts.resetFailed'))
+      }
     },
     [overrides, updateSettings, t]
   )
@@ -418,7 +431,10 @@ export function ShortcutsSettings() {
   const handleResetAll = useCallback(async () => {
     const success = await resetToDefaults()
     if (success) toast.success(t('shortcuts.toasts.resetAllSuccess'))
-    else toast.error(t('shortcuts.toasts.resetAllFailed'))
+    else {
+      trackRendererLog('warn', 'keyboard_settings_reset_failed', 'Settings')
+      toast.error(t('shortcuts.toasts.resetAllFailed'))
+    }
   }, [resetToDefaults, t])
 
   const lowerQuery = query.toLowerCase()

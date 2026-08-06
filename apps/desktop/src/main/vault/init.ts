@@ -1,5 +1,9 @@
 import fs from 'fs'
 import path from 'path'
+import { createLogger } from '../lib/logger'
+import { trackMainLog } from '../telemetry/diagnostics'
+
+const logger = createLogger('VaultInit')
 
 /**
  * Default vault folder structure
@@ -113,6 +117,11 @@ export function initVault(vaultPath: string): void {
   }
 }
 
+// readVaultConfig sits on hot paths (getConfig runs on most vault operations),
+// so a corrupt config.json would otherwise warn on every call — report once
+// per config path per process.
+const warnedConfigPaths = new Set<string>()
+
 /**
  * Read the vault configuration
  */
@@ -123,7 +132,14 @@ export function readVaultConfig(vaultPath: string): typeof DEFAULT_CONFIG {
     const content = fs.readFileSync(configPath, 'utf-8')
     const parsed = JSON.parse(content) as Partial<typeof DEFAULT_CONFIG>
     return { ...DEFAULT_CONFIG, ...parsed }
-  } catch {
+  } catch (error) {
+    // A missing config is a normal fresh-vault state; a corrupt/unreadable one
+    // silently reverts journal/exclude settings to defaults, so surface it.
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT' && !warnedConfigPaths.has(configPath)) {
+      warnedConfigPaths.add(configPath)
+      logger.warn('Vault config unreadable, falling back to defaults:', error)
+      trackMainLog('warn', { scope: 'vault', action: 'config_corrupt_fallback' })
+    }
     return DEFAULT_CONFIG
   }
 }

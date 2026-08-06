@@ -21,6 +21,7 @@ import { join } from 'node:path'
 import type { DataDb } from '../../database'
 import type { CanvasUploadAssetResponse, MemryAssetDescriptor } from '@memry/contracts/canvas-api'
 import type { TelemetryEventName } from '@memry/contracts/telemetry-api'
+import { buildErrorDetail, toErrorCode } from '@memry/contracts/telemetry-api'
 import type { CanvasAssetRow } from '@memry/db-schema'
 
 import { createLogger } from '../../lib/logger'
@@ -235,6 +236,17 @@ export async function ensureAssetsPresent(
         canvasId,
         fileId: descriptor.fileId,
         err
+      })
+      // The receiving user sees a broken image on the synced canvas — surface
+      // the failure through the injected sink (telemetry stays injectable).
+      ctx.trackEvent('app_error_seen', {
+        surface: 'sync',
+        action: 'canvas_asset_restore',
+        objectType: 'exception',
+        source: 'canvas_asset_service',
+        result: 'failed',
+        errorCode: toErrorCode(err),
+        error: buildErrorDetail(err)
       })
     }
   }

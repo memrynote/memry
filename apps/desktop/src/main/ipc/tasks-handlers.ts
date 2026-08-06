@@ -257,10 +257,19 @@ export function registerTasksHandlers(): void {
     TasksChannels.invoke.PROJECT_LINK_ITEM,
     createValidatedHandler(
       ProjectLinkItemSchema,
-      withDb(
-        (db, input) => linkProjectItem(db, createTaskDomain(db), input),
-        'errors:project.linkItemFailed'
-      )
+      withDb(async (db, input) => {
+        const result = await linkProjectItem(db, createTaskDomain(db), input)
+        if (result.success) {
+          trackMainEvent('project_item_linked', {
+            surface: 'tasks',
+            action: 'link_item',
+            // Schema-constrained enum ('note' | 'file' | 'calendar_event'), never a name.
+            objectType: input.itemType,
+            result: 'success'
+          })
+        }
+        return result
+      }, 'errors:project.linkItemFailed')
     )
   )
 
@@ -286,7 +295,7 @@ export function registerTasksHandlers(): void {
       ProjectCaptureUrlSchema,
       withDb(async (db, input) => {
         const domain = createTaskDomain(db)
-        return captureUrlToProject(
+        const result = await captureUrlToProject(
           {
             fetchTitle: async (url) => (await fetchUrlMetadata(url)).title ?? null,
             createNote: async ({ title, content }) => createNote({ title, content }),
@@ -301,6 +310,15 @@ export function registerTasksHandlers(): void {
           },
           input
         )
+        if (result.success) {
+          trackMainEvent('project_item_linked', {
+            surface: 'tasks',
+            action: 'capture_url',
+            objectType: 'url',
+            result: 'success'
+          })
+        }
+        return result
       }, 'errors:project.captureLinkFailed')
     )
   )
@@ -311,7 +329,7 @@ export function registerTasksHandlers(): void {
       ProjectImportFilesSchema,
       withDb(async (db, input) => {
         const domain = createTaskDomain(db)
-        return importFilesToProject(
+        const result = await importFilesToProject(
           {
             importFiles: async (sourcePaths) => {
               const result = await importFiles({ sourcePaths })
@@ -330,6 +348,16 @@ export function registerTasksHandlers(): void {
           },
           input
         )
+        if (result.linked.length > 0) {
+          trackMainEvent('project_item_linked', {
+            surface: 'tasks',
+            action: 'import_files',
+            objectType: 'file',
+            result: 'success',
+            metrics: { itemCount: result.linked.length }
+          })
+        }
+        return result
       }, 'errors:project.importFilesFailed')
     )
   )
@@ -354,10 +382,18 @@ export function registerTasksHandlers(): void {
     TasksChannels.invoke.PROJECT_SET_HOME_NOTE,
     createValidatedHandler(
       ProjectSetHomeNoteSchema,
-      withDb(
-        (db, input) => createTaskDomain(db).setProjectHomeNote(input),
-        'errors:project.setHomeNoteFailed'
-      )
+      withDb(async (db, input) => {
+        const result = await createTaskDomain(db).setProjectHomeNote(input)
+        if (result.success) {
+          trackMainEvent('project_updated', {
+            surface: 'tasks',
+            action: 'set_home_note',
+            objectType: 'project',
+            result: 'success'
+          })
+        }
+        return result
+      }, 'errors:project.setHomeNoteFailed')
     )
   )
 

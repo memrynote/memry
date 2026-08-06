@@ -22,6 +22,8 @@ import { postToServer, getFromServer, RateLimitError } from '../http-client'
 import { classifyError } from '../sync-errors'
 import { isBinaryFileType } from '@memry/shared/file-types'
 import { SyncTimer } from '../sync-timer'
+import { trackMainEvent } from '../../telemetry/track'
+import { trackMainLog } from '../../telemetry/diagnostics'
 import type { SyncContext } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
 import type { QuarantineManager } from './quarantine-manager'
@@ -390,6 +392,18 @@ export class PullCoordinator {
       throw error
     }
 
+    // Swallowed here, so engine.pull() records sync_run_completed success —
+    // the sync_error for this terminal outcome must be emitted from inside
+    // this handler.
+    trackMainEvent('sync_error', {
+      surface: 'sync',
+      action: 'pull_failed',
+      result: 'failed',
+      errorCode: errorInfo.category,
+      metrics: { durationMs: Date.now() - startedAt },
+      source: 'pull',
+      dimensions: { transport: 'record' }
+    })
     this.stateManager.setState('error')
     this.stateManager.recordHistory('error', 0, Date.now() - startedAt, errorInfo.message)
   }
@@ -487,6 +501,13 @@ export class PullCoordinator {
           type: dec.type,
           error: retryError instanceof Error ? retryError.message : String(retryError)
         })
+        // For an item that never gets another server-side update this is
+        // permanent absence on this device — count the drop per type.
+        trackMainLog('error', {
+          scope: 'PullCoordinator',
+          action: 'pull_apply_dropped',
+          errorCode: dec.type
+        })
       }
     }
 
@@ -548,6 +569,17 @@ export class PullCoordinator {
       log.warn('pull_page_dropped', {
         reason: 'invalid_pull_response',
         droppedCount: itemIds.length
+      })
+      // The cursor still advances past this page, so these items may never
+      // apply — a server-side contract regression must be chartable.
+      trackMainEvent('sync_error', {
+        surface: 'sync',
+        action: 'pull_page_dropped',
+        result: 'failed',
+        errorCode: 'invalid_pull_response',
+        metrics: { itemCount: itemIds.length },
+        source: 'pull',
+        dimensions: { transport: 'record' }
       })
       return { applied: 0, conflicts: 0, stop: 'none' }
     }
@@ -613,6 +645,17 @@ export class PullCoordinator {
           'Pull: vault key does not match the account — stopping cycle without recording item failures',
           { failedCount: failures.length }
         )
+        // Ends the run as 'refused', never a throw — engine.pull() records a
+        // success, so the incident-class event must be emitted here.
+        trackMainEvent('sync_error', {
+          surface: 'sync',
+          action: 'vault_key_mismatch',
+          result: 'failed',
+          errorCode: 'vault_key_mismatch',
+          metrics: { itemCount: failures.length },
+          source: 'pull',
+          dimensions: { transport: 'record' }
+        })
         this.ctx.deps.onVaultKeyMismatch?.()
         return { applied: 0, conflicts: 0, stop: 'mismatch' }
       }
@@ -763,6 +806,11 @@ export class PullCoordinator {
             itemId: dec.id,
             error: err instanceof Error ? err.message : String(err)
           })
+          trackMainLog('error', {
+            scope: 'PullCoordinator',
+            action: 'pull_apply_dropped',
+            errorCode: dec.type
+          })
         }
       }
 
@@ -807,6 +855,18 @@ export class PullCoordinator {
       }
       this.stateManager.setState('error')
       log.error('Pull: circuit breaker tripped — all items failed crypto', { cryptoFailCount })
+      // 2026-07-18 poisoned-payload incident class: previously only a log line
+      // and a renderer event with no listener — invisible until a support
+      // email. The run ends 'refused' (no throw), so emit from here.
+      trackMainEvent('sync_error', {
+        surface: 'sync',
+        action: 'pull_breaker_tripped',
+        result: 'failed',
+        errorCode: 'crypto_breaker',
+        metrics: { itemCount: cryptoFailCount },
+        source: 'pull',
+        dimensions: { transport: 'record' }
+      })
       // The account key check above said 'match' (or was unavailable), so
       // these payloads are undecryptable with the CORRECT key — server-side
       // poisoned data that no amount of re-pulling can fix. Record each item
@@ -861,6 +921,14 @@ export class PullCoordinator {
       itemId: dec.id,
       operation: 'update',
       payload: '{}'
+    })
+
+    // Conflict rate per item type is the core health metric for the
+    // field-merge strategy; only canvas had a conflict event before.
+    trackMainLog('info', {
+      scope: 'PullCoordinator',
+      action: 'conflict_resolved',
+      errorCode: dec.type
     })
   }
 

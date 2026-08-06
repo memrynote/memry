@@ -63,6 +63,8 @@ import {
   type TagAssignment
 } from '../tags/store'
 import { createLogger } from '../lib/logger'
+import { trackMainError } from '../telemetry/diagnostics'
+import { trackMainEvent } from '../telemetry/track'
 import { toAbsolutePath } from '../vault/notes'
 import { parseNote, serializeParsedNote } from '../vault/frontmatter'
 import { atomicWrite } from '../vault/file-ops'
@@ -187,42 +189,49 @@ export function registerTagsHandlers(): void {
   ipcMain.handle(
     TagsChannels.invoke.GET_NOTES_BY_TAG,
     createValidatedHandler(GetNotesByTagSchema, (input) => {
-      const indexDb = requireIndexDatabase()
-      const dataDb = requireDatabase()
+      try {
+        const indexDb = requireIndexDatabase()
+        const dataDb = requireDatabase()
 
-      // Get tag definition for color (create if missing)
-      const { color } = getOrCreateTag(dataDb, input.tag)
+        // Get tag definition for color (create if missing)
+        const { color } = getOrCreateTag(dataDb, input.tag)
 
-      const notes = findNotesWithTagInfo(indexDb, input.tag, {
-        sortBy: input.sortBy,
-        sortOrder: input.sortOrder,
-        includeDescendants: input.includeDescendants
-      })
+        const notes = findNotesWithTagInfo(indexDb, input.tag, {
+          sortBy: input.sortBy,
+          sortOrder: input.sortOrder,
+          includeDescendants: input.includeDescendants
+        })
 
-      // Separate pinned and unpinned
-      const pinnedNotes: TagNoteItem[] = []
-      const unpinnedNotes: TagNoteItem[] = []
+        // Separate pinned and unpinned
+        const pinnedNotes: TagNoteItem[] = []
+        const unpinnedNotes: TagNoteItem[] = []
 
-      for (const note of notes) {
-        const noteTags = getNoteTags(indexDb, note.id)
-        const item = toTagNoteItem(note, noteTags)
+        for (const note of notes) {
+          const noteTags = getNoteTags(indexDb, note.id)
+          const item = toTagNoteItem(note, noteTags)
 
-        if (note.isPinned) {
-          pinnedNotes.push(item)
-        } else {
-          unpinnedNotes.push(item)
+          if (note.isPinned) {
+            pinnedNotes.push(item)
+          } else {
+            unpinnedNotes.push(item)
+          }
         }
-      }
 
-      const response: GetNotesByTagResponse = {
-        tag: input.tag,
-        color,
-        count: notes.length,
-        pinnedNotes,
-        unpinnedNotes
-      }
+        const response: GetNotesByTagResponse = {
+          tag: input.tag,
+          color,
+          count: notes.length,
+          pinnedNotes,
+          unpinnedNotes
+        }
 
-      return response
+        return response
+      } catch (error) {
+        // Rethrow untouched: the renderer treats the rejected invoke as its
+        // error state. Telemetry only — this path had no app_error_seen at all.
+        trackMainError('tags', 'get_notes_by_tag', error)
+        throw error
+      }
     })
   )
 
@@ -295,7 +304,11 @@ export function registerTagsHandlers(): void {
           noteIds.map((noteId) =>
             updateNoteFrontmatterTag(indexDb, noteId, (tags) =>
               tags.map((t) => (t.toLowerCase() === normalizedOld ? trimmedNew : t))
-            ).catch((err) => log.warn('Failed to update frontmatter for note', { noteId, err }))
+            ).catch((err) => {
+              log.warn('Failed to update frontmatter for note', { noteId, err })
+              // DB and vault file now diverge silently; must reach Error Tracking.
+              trackMainError('tags', 'frontmatter_writeback', err)
+            })
           )
         )
 
@@ -305,6 +318,14 @@ export function registerTagsHandlers(): void {
           affectedNotes
         })
         emitTagEvent('notes:tags-changed', {})
+
+        trackMainEvent('tag_renamed', {
+          surface: 'tags',
+          action: 'renamed',
+          objectType: 'tag',
+          result: 'success',
+          metrics: { itemCount: affectedNotes }
+        })
 
         return { success: true, affectedNotes } as RenameTagResponse
       }, 'errors:tag.renameFailed')
@@ -377,12 +398,23 @@ export function registerTagsHandlers(): void {
           noteIds.map((noteId) =>
             updateNoteFrontmatterTag(indexDb, noteId, (tags) =>
               tags.filter((t) => t.toLowerCase() !== normalizedTag)
-            ).catch((err) => log.warn('Failed to update frontmatter for note', { noteId, err }))
+            ).catch((err) => {
+              log.warn('Failed to update frontmatter for note', { noteId, err })
+              trackMainError('tags', 'frontmatter_writeback', err)
+            })
           )
         )
 
         emitTagEvent(TagsChannels.events.DELETED, { tag, affectedNotes })
         emitTagEvent('notes:tags-changed', {})
+
+        trackMainEvent('tag_deleted', {
+          surface: 'tags',
+          action: 'deleted',
+          objectType: 'tag',
+          result: 'success',
+          metrics: { itemCount: affectedNotes }
+        })
 
         return { success: true, affectedNotes } as DeleteTagResponse
       }, 'errors:tag.deleteFailed')
@@ -401,9 +433,10 @@ export function registerTagsHandlers(): void {
         const normalizedTag = input.tag.toLowerCase().trim()
         await updateNoteFrontmatterTag(db, input.noteId, (tags) =>
           tags.filter((t) => t.toLowerCase() !== normalizedTag)
-        ).catch((err) =>
+        ).catch((err) => {
           log.warn('Failed to update frontmatter for note', { noteId: input.noteId, err })
-        )
+          trackMainError('tags', 'frontmatter_writeback', err)
+        })
 
         emitTagEvent(TagsChannels.events.NOTES_CHANGED, {
           tag: input.tag,
@@ -421,9 +454,17 @@ export function registerTagsHandlers(): void {
   ipcMain.handle(
     TagsChannels.invoke.GET_ALL_WITH_COUNTS,
     createHandler((): GetAllWithCountsResponse => {
-      const indexDb = requireIndexDatabase()
-      const dataDb = requireDatabase()
-      return { tags: getAllTagsWithCounts(indexDb, dataDb) }
+      try {
+        const indexDb = requireIndexDatabase()
+        const dataDb = requireDatabase()
+        return { tags: getAllTagsWithCounts(indexDb, dataDb) }
+      } catch (error) {
+        // Rethrow untouched: the renderer treats the rejected invoke as its
+        // error state. Telemetry only — this handler also writes (tag cleanup
+        // inside getAllTagsWithCounts), so a mid-cleanup failure must surface.
+        trackMainError('tags', 'get_all_with_counts', error)
+        throw error
+      }
     })
   )
 
@@ -464,9 +505,10 @@ export function registerTagsHandlers(): void {
               const withoutSource = tags.filter((t) => t.toLowerCase() !== normalizedSource)
               const hasTarget = withoutSource.some((t) => t.toLowerCase() === normalizedTarget)
               return hasTarget ? withoutSource : [...withoutSource, trimmedTarget]
-            }).catch((err) =>
+            }).catch((err) => {
               log.warn('Failed to update frontmatter for note during merge', { noteId, err })
-            )
+              trackMainError('tags', 'frontmatter_writeback', err)
+            })
           )
         )
 
@@ -477,6 +519,14 @@ export function registerTagsHandlers(): void {
           affectedNotes: noteResult.affected
         })
         emitTagEvent('notes:tags-changed', {})
+
+        trackMainEvent('tag_merged', {
+          surface: 'tags',
+          action: 'merged',
+          objectType: 'tag',
+          result: 'success',
+          metrics: { itemCount: noteResult.affected + taskResult.affected }
+        })
 
         return {
           success: true,
@@ -492,6 +542,7 @@ export function registerTagsHandlers(): void {
       return { success: true, categories: listTagCategories(requireDatabase()) }
     } catch (error) {
       log.error('Failed to list tag categories', error)
+      trackMainError('tags', 'category_list', error)
       return {
         success: false,
         error: extractErrorMessage(error, getMainI18n().t('errors:tag.listCategoriesFailed'))
@@ -507,9 +558,16 @@ export function registerTagsHandlers(): void {
       const category = createTagCategory(requireDatabase(), name)
       syncTagCategoryCreate(category.id)
       emitTagEvent(TagsChannels.events.CATEGORIES_CHANGED, { categoryId: category.id })
+      trackMainEvent('tag_category_created', {
+        surface: 'tags',
+        action: 'created',
+        objectType: 'tag_category',
+        result: 'success'
+      })
       return { success: true, category }
     } catch (error) {
       log.error('Failed to create tag category', error)
+      trackMainError('tags', 'category_create', error)
       return {
         success: false,
         error: extractErrorMessage(error, getMainI18n().t('errors:tag.createCategoryFailed'))
@@ -530,6 +588,7 @@ export function registerTagsHandlers(): void {
         return { success: true }
       } catch (error) {
         log.error('Failed to rename tag category', error)
+        trackMainError('tags', 'category_rename', error)
         return {
           success: false,
           error: extractErrorMessage(error, getMainI18n().t('errors:tag.renameCategoryFailed'))
@@ -547,6 +606,7 @@ export function registerTagsHandlers(): void {
       return { success: true }
     } catch (error) {
       log.error('Failed to delete tag category', error)
+      trackMainError('tags', 'category_delete', error)
       return {
         success: false,
         error: extractErrorMessage(error, getMainI18n().t('errors:tag.deleteCategoryFailed'))
@@ -585,6 +645,7 @@ export function registerTagsHandlers(): void {
         return { success: true }
       } catch (error) {
         log.error('Failed to reorder tag categories', error)
+        trackMainError('tags', 'reorder', error)
         return {
           success: false,
           error: extractErrorMessage(error, getMainI18n().t('errors:tag.reorderFailed'))

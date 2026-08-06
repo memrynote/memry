@@ -35,6 +35,10 @@ import { serializeBookmark } from './bookmark-block'
 import { extractDomain } from '@/lib/url-metadata'
 import { serializeTaskBlock } from './task-block/task-block-utils'
 import { parseFileBlockMarker, serializeFileBlock, type FileBlockProps } from './file-block-markers'
+import { createLogger } from '@/lib/logger'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
+
+const log = createLogger('MarkdownUtils')
 
 export function isEmptyParagraph(block: Block): boolean {
   if (block.type !== 'paragraph') return false
@@ -174,7 +178,10 @@ async function resolveWikiImageEmbeds(markdown: string, notePath?: string): Prom
   let resolved: Record<string, string> = {}
   try {
     resolved = (await window.api?.vault?.resolveEmbeds?.({ refs, notePath })) ?? {}
-  } catch {
+  } catch (error) {
+    // Every wiki image embed in the note renders broken past this point.
+    log.error('Failed to resolve wiki image embeds', error)
+    trackRendererError('editor_resolve_embeds', error)
     return markdown
   }
 

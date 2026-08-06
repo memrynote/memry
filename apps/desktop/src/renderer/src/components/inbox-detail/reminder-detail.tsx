@@ -102,7 +102,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
   const handleNavigateToSource = useCallback(() => {
     if (!metadata) return
 
-    inboxService.markViewed(item.id).catch(() => {})
+    inboxService.markViewed(item.id).catch((err) => log.warn('Failed to mark reminder viewed', err))
 
     openTab(
       buildReminderTargetTab({

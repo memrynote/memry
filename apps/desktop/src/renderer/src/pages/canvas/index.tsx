@@ -10,6 +10,7 @@ import React, { useEffect, useState } from 'react'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { canvasService, type Canvas } from '@/services/canvas-service'
 import { createLogger } from '@/lib/logger'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useT } from '@memry/i18n/renderer'
 
@@ -51,6 +52,7 @@ export const CanvasPage = ({ canvasId }: CanvasPageProps): React.JSX.Element => 
       .catch((err: unknown) => {
         if (cancelled) return
         log.error('Failed to load canvas', err)
+        trackRendererError('canvas_open', err)
         setError(extractErrorMessage(err, t('canvas.openFailed')))
       })
       .finally(() => {

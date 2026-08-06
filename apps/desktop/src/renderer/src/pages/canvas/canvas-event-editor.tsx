@@ -19,6 +19,7 @@ import type { CalendarEventDraft } from '@/components/calendar/types'
 import { calendarService, type CalendarEventRecord } from '@/services/calendar-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { cn } from '@/lib/utils'
 
 const log = createLogger('CanvasEventEditor')
@@ -74,6 +75,7 @@ export const CanvasEventEditor = ({
           eventId,
           error: extractErrorMessage(error)
         })
+        trackRendererError('canvas_event_card_load', error)
       })
     return () => {
       cancelled = true

@@ -7,6 +7,7 @@ import {
 } from '@memry/contracts/telemetry-api'
 
 import { isExpectedConditionError } from './expected-conditions'
+import { shouldEmitThrottled } from './throttle'
 import { trackMainEvent, type TrackMainEventOptions } from './track'
 
 type DiagnosticLevel = 'debug' | 'info' | 'warn' | 'error'
@@ -114,6 +115,24 @@ export const trackMainLog = (
   }
 
   trackMainEvent('app_log_recorded', eventOptions)
+}
+
+/**
+ * Count a local body edit as note_updated. Body edits flow through the CRDT
+ * provider, not the notes UPDATE IPC, so typing never registered as usage.
+ * The throttle key deliberately matches notes-handlers.ts UPDATE so metadata
+ * and body edits share one 5-minute window per note. Only the throttle key
+ * sees the note id; the event itself carries no identifier.
+ */
+export const trackNoteBodyEditThrottled = (noteId: string): void => {
+  if (!shouldEmitThrottled(`note_updated:${noteId}`)) return
+  trackMainEvent('note_updated', {
+    surface: 'notes',
+    action: 'updated',
+    objectType: 'note',
+    source: 'editor_body',
+    result: 'success'
+  })
 }
 
 const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000

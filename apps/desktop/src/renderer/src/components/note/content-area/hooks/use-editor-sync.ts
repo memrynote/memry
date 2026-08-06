@@ -20,6 +20,7 @@ import { createLinkMentionContent } from '../link-mention'
 import { fetchLinkPreview } from '@/lib/url-metadata'
 import type { HeadingInfo } from '../types'
 import { createLogger } from '@/lib/logger'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 
 const log = createLogger('Hook:EditorSync')
 const activeNoteEditors = new Map<string, any>()
@@ -229,7 +230,9 @@ export function useEditorSync({
             hydrateLinkMentionFavicons(editor)
             loadedSuccessfully = true
           } catch (error) {
+            // The user sees a blank/stale editor and thinks the note is gone.
             log.error(`Failed to parse ${contentType} content`, error)
+            trackRendererError('editor_content_parse', error)
           }
         } else if (Array.isArray(initialContent) && initialContent.length > 0) {
           let normalizedBlocks = normalizeNoteBlocks(initialContent)
@@ -308,7 +311,9 @@ export function useEditorSync({
 
             onMarkdownChange(markdown)
           } catch (error) {
+            // The debounced save silently stops while the user keeps typing.
             log.error('Failed to convert blocks to markdown', error)
+            trackRendererError('editor_serialize_save', error)
           }
         })()
       }, 150)

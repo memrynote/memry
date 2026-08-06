@@ -6,6 +6,7 @@ import type {
 } from '@memry/contracts/calendar-api'
 import { createLogger } from '../lib/logger'
 import { generateId } from '../lib/id'
+import { trackMainEvent } from '../telemetry/track'
 import { enqueueLocalSyncCreate, enqueueLocalSyncUpdate } from '../sync/local-mutations'
 import type { DataDb } from '../database'
 import { upsertCalendarEvent } from './repositories/calendar-events-repository'
@@ -129,6 +130,16 @@ export function promoteExternalEvent(
     eventId,
     remoteCalendarId,
     remoteEventId: mirror.remoteEventId
+  })
+
+  // Bypasses CREATE_EVENT, so calendar_event_created never fires otherwise.
+  // Emitted here (not the IPC handler) so the idempotent repeat path above
+  // does not double count.
+  trackMainEvent('calendar_event_created', {
+    surface: 'calendar',
+    action: 'promoted',
+    source: 'google_promote',
+    result: 'success'
   })
 
   return { success: true, eventId }

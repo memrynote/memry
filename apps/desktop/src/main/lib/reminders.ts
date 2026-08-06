@@ -30,6 +30,7 @@ import {
 } from '@memry/contracts/reminders-api'
 import { InboxChannels, type ReminderMetadata } from '@memry/contracts/inbox-api'
 import { createLogger } from './logger'
+import { trackMainError } from '../telemetry/diagnostics'
 import { broadcastToAllWindows } from './window-broadcast'
 import { getMainI18n } from './main-i18n'
 import { publishProjectionEvent } from '../projections'
@@ -229,6 +230,7 @@ function createReminderInboxItem(reminder: ReminderWithTarget): void {
     logger.debug(`Created inbox item ${id} for reminder ${reminder.id}`)
   } catch (error) {
     logger.error('Failed to create inbox item for reminder:', error)
+    trackMainError('reminders', 'reminder_inbox_item_create', error)
   }
 }
 
@@ -292,12 +294,14 @@ function showDesktopNotification(reminder: ReminderWithTarget): void {
     // rather than re-notifying (which would double-create the fallback).
     notification.on('failed', (_event, error) => {
       logger.error(`Desktop notification failed for reminder ${reminder.id}:`, error)
+      trackMainError('reminders', 'reminder_notification_failed', error)
     })
 
     notification.show()
     logger.debug(`Showed desktop notification for reminder ${reminder.id}`)
   } catch (error) {
     logger.error('Failed to show desktop notification:', error)
+    trackMainError('reminders', 'reminder_notification_show', error)
   }
 }
 

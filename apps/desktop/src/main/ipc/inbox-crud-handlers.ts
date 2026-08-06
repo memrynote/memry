@@ -17,7 +17,7 @@ export function registerInboxCrudHandlers(handlers: InboxCrudHandlers): void {
     trackMainEvent('inbox_archived', {
       surface: 'inbox',
       action: 'archived',
-      result: 'success'
+      result: result?.success ? 'success' : 'failed'
     })
     return result
   })

@@ -1,9 +1,18 @@
 import { useCallback, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { HomePage, WidgetInstance } from '@memry/contracts/home-page-api'
+import { trackTelemetry } from '@/lib/telemetry'
 
 const ACTIVE_KEY = 'memry-home-active-board'
 const homeBoardsKey = ['home-boards'] as const
+
+const trackBoardCustomized = (action: string, widgetCount?: number): void => {
+  void trackTelemetry('home_board_customized', {
+    surface: 'home',
+    action,
+    ...(widgetCount !== undefined ? { metrics: { itemCount: widgetCount } } : {})
+  })
+}
 
 export function useHomeBoards() {
   const qc = useQueryClient()
@@ -26,23 +35,35 @@ export function useHomeBoards() {
   const createMut = useMutation({
     mutationFn: (name: string) =>
       window.api.homePages.create({ name, position: boards.length, widgets: [] }),
-    onSuccess: invalidate
+    onSuccess: () => {
+      trackBoardCustomized('create')
+      void invalidate()
+    }
   })
 
   const updateMut = useMutation({
     mutationFn: (input: { id: string; name?: string; widgets?: WidgetInstance[] }) =>
       window.api.homePages.update(input),
-    onSuccess: invalidate
+    onSuccess: (_data, input) => {
+      trackBoardCustomized(input.widgets ? 'widgets' : 'rename', input.widgets?.length)
+      void invalidate()
+    }
   })
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => window.api.homePages.delete(id),
-    onSuccess: invalidate
+    onSuccess: () => {
+      trackBoardCustomized('delete')
+      void invalidate()
+    }
   })
 
   const reorderMut = useMutation({
     mutationFn: (ids: string[]) => window.api.homePages.reorder(ids),
-    onSuccess: invalidate
+    onSuccess: () => {
+      trackBoardCustomized('reorder')
+      void invalidate()
+    }
   })
 
   const resolvedActiveId =

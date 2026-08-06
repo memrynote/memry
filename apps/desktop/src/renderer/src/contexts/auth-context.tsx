@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { authService } from '@/services/auth-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { deviceService, setupService } from '@/services/device-service'
 import { getI18n } from 'react-i18next'
 
@@ -389,6 +390,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       dispatch({ type: 'OTP_REQUESTED', email })
       return { expiresIn: result.expiresIn }
     } catch (err) {
+      trackRendererError('auth_otp_request_failed', err)
       const message = extractErrorMessage(
         err,
         getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToSendVerificationCode')
@@ -447,6 +449,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
         })
         return otpResult
       } catch (err) {
+        trackRendererError('auth_otp_verify_failed', err)
         const message = extractErrorMessage(
           err,
           getI18n().getFixedT(null, 'settings')('phaseI.errors.invalidVerificationCode')
@@ -472,6 +475,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       }
       return { expiresIn: result.expiresIn }
     } catch (err) {
+      trackRendererError('auth_otp_resend_failed', err)
       const message = extractErrorMessage(
         err,
         getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToResendCode')
@@ -553,6 +557,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       }
       dispatch({ type: 'RECOVERY_CONFIRMED' })
     } catch (err) {
+      trackRendererError('auth_recovery_confirm_failed', err)
       throw new Error(
         extractErrorMessage(
           err,
@@ -576,6 +581,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       dispatch({ type: 'RECOVERY_LINKED', deviceId: result.deviceId ?? '' })
       return { deviceId: result.deviceId }
     } catch (err) {
+      trackRendererError('auth_recovery_link_failed', err)
       throw new Error(
         extractErrorMessage(err, getI18n().getFixedT(null, 'settings')('setup.recovery.failed'))
       )

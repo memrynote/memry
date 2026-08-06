@@ -105,7 +105,7 @@ trackTelemetry('page_viewed', { surface: 'notes', action: 'viewed' })
 Recognized surfaces (`TelemetrySurface` in `packages/contracts/telemetry-api`):
 
 `app`, `home`, `onboarding`, `vault`, `notes`, `journal`, `tasks`, `inbox`, `calendar`, `search`,
-`graph`, `settings`, `sync`, `ai`, `voice`, `updater`.
+`graph`, `settings`, `sync`, `ai`, `voice`, `updater`, `canvas`, `projects`, `tags`.
 
 ### What Never Ships
 
@@ -137,28 +137,88 @@ void trackTelemetry('onboarding_completed', {
 
 The `void` makes the call non-blocking and unfailable from the UI's point of view.
 
+### Events Before the Runtime Exists
+
+`trackMainEvent` used to no-op while `getTelemetryRuntime()` was still `null`, so anything that
+failed during early startup — the app-identity migration, the Safe Storage keychain carry-over,
+the GPU crash guard disabling hardware acceleration — was never reported. Early events are now
+buffered in memory (`apps/desktop/src/main/telemetry/track.ts`, capped at 100 events) and
+forwarded by `drainEarlyMainEvents()`, called from `main/index.ts` immediately after
+`initializeTelemetryRuntime`. Each event keeps its original `occurredAt`. The buffer is set to
+`null` once drained, so a runtime disposed during shutdown cannot quietly re-accumulate events
+nobody will ever flush.
+
+`registerMainDiagnostics()` is registered before any other startup work for the same reason — the
+later call in the ready handler is an idempotent no-op — so a failure in the identity carry-over /
+pending-install window still produces a report.
+
+### Shutdown Drain
+
+One flush sends at most `TELEMETRY_BATCH_LIMIT` events while a session can queue up to
+`TELEMETRY_QUEUE_LIMIT`, so the previous single `flush('shutdown')` silently dropped everything
+past the first batch. Shutdown now drains in bounded rounds
+(`ceil(TELEMETRY_QUEUE_LIMIT / TELEMETRY_BATCH_LIMIT)`), stopping at the first failed round so an
+offline quit never stalls the exit.
+
 ## Event Categories
 
-| Category        | Events                                                                                                                           |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Surface views   | `page_viewed` — one per active-tab change; carries the tab type as `objectType`                                                  |
-| App lifecycle   | `app_started`, `app_backgrounded`, `app_active_heartbeat`, `app_update_installed`                                                |
-| Onboarding      | `onboarding_started`, `onboarding_completed`                                                                                     |
-| Vault           | `vault_created`, `vault_opened`                                                                                                  |
-| Notes           | `note_created`, `note_opened`, `note_updated` (throttled 1/doc/5 min), `note_deleted`                                            |
-| Journal         | `journal_opened`, `journal_updated` (throttled 1/doc/5 min)                                                                      |
-| Tasks           | `task_created`, `task_completed`, `task_reopened`, `project_created`                                                             |
-| Inbox           | `inbox_captured`, `inbox_filed`, `inbox_archived`, `inbox_snoozed`                                                               |
-| Calendar        | `calendar_event_created`, `calendar_event_updated`, `calendar_google_connected`, `calendar_google_sync_completed`                |
-| Search          | `search_performed`, `search_result_opened` (`search_opened` is defined but unused — it would duplicate `command_palette_opened`) |
-| Command palette | `command_palette_opened`, `search_result_opened` (palette context)                                                               |
-| Graph           | `graph_opened` — on graph page mount                                                                                             |
-| Voice           | `voice_recording_completed` (duration + bytes), `transcription_completed` (success/failure + processing duration)                |
-| Settings        | `setting_changed` — surface only, never the value                                                                                |
-| Agent chat      | `agent_chat_started`, `agent_chat_message_sent`, `ai_action_completed` (turn result + duration)                                  |
-| Sync health     | `sync_enabled`, `sync_run_completed`, `sync_error` (counts/status only)                                                          |
-| Auth            | `signin_started`, `signin_succeeded`                                                                                             |
-| Diagnostics     | `app_log_recorded`, `app_error_seen`, `app_launch_phase_completed`                                                               |
+| Category        | Events                                                                                                                                                                                                                           |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Surface views   | `page_viewed` — one per active-tab change; carries the tab type as `objectType`                                                                                                                                                  |
+| App lifecycle   | `app_started`, `app_backgrounded`, `app_active_heartbeat`, `app_update_installed`, `deep_link_opened` (coarse target only — `open`, `billing_start`, `billing_complete`, `billing`, `oauth`, `pair`, `unknown`; never the URL)   |
+| Onboarding      | `onboarding_started`, `onboarding_completed`                                                                                                                                                                                     |
+| Vault           | `vault_created`, `vault_opened`                                                                                                                                                                                                  |
+| Notes           | `note_created`, `note_opened`, `note_updated` (throttled 1/doc/5 min), `note_deleted`, `note_imported`, `note_exported`                                                                                                          |
+| Journal         | `journal_opened`, `journal_updated` (throttled 1/doc/5 min)                                                                                                                                                                      |
+| Tasks           | `task_created`, `task_completed`, `task_reopened`, `task_updated`, `task_deleted`                                                                                                                                                |
+| Projects        | `project_created`, `project_opened`, `project_updated`, `project_archived`, `project_deleted`, `project_item_linked`                                                                                                             |
+| Tags            | `tag_created`, `tag_renamed`, `tag_deleted`, `tag_merged`, `tag_category_created`                                                                                                                                                |
+| Canvas          | `canvas_created`, `canvas_opened`, `canvas_deleted`, `canvas_card_added`, plus the rollout counters `canvas_sync_conflict_copy`, `canvas_too_large`, `canvas_asset_uploaded`, `canvas_asset_dedup_hit`, `canvas_asset_gc_reaped` |
+| Inbox           | `inbox_captured`, `inbox_filed`, `inbox_archived`, `inbox_snoozed`                                                                                                                                                               |
+| Calendar        | `calendar_event_created`, `calendar_event_updated`, `calendar_event_deleted`, `calendar_google_connected`, `calendar_google_disconnected`, `calendar_google_sync_completed`                                                      |
+| Import          | `import_completed`                                                                                                                                                                                                               |
+| Home            | `home_board_customized`                                                                                                                                                                                                          |
+| Search          | `search_performed`, `search_result_opened` (`search_opened` is defined but unused — it would duplicate `command_palette_opened`)                                                                                                 |
+| Command palette | `command_palette_opened`, `search_result_opened` (palette context)                                                                                                                                                               |
+| Graph           | `graph_opened` — on graph page mount                                                                                                                                                                                             |
+| Voice           | `voice_recording_completed` (duration + bytes), `transcription_completed` (success/failure + processing duration)                                                                                                                |
+| Settings        | `setting_changed` — surface only, never the value                                                                                                                                                                                |
+| Agent chat      | `agent_chat_started`, `agent_chat_message_sent`, `ai_action_completed` (turn result + duration)                                                                                                                                  |
+| Sync health     | `sync_enabled`, `sync_run_completed`, `sync_error` (counts/status only)                                                                                                                                                          |
+| Auth            | `signin_started`, `signin_succeeded`                                                                                                                                                                                             |
+| Diagnostics     | `app_log_recorded`, `app_error_seen`, `app_launch_phase_completed`, `app_crashed` (see [Crash & Unclean-Shutdown Detection](#crash-unclean-shutdown-detection))                                                                  |
+
+## Crash & Unclean-Shutdown Detection
+
+A hard crash — main-process abort, OOM kill, force quit — discards the in-memory telemetry queue,
+so the crash itself never ships: the classic "it crashed and there are no logs" report. A marker
+file inverts that (`apps/desktop/src/main/telemetry/crash-marker.ts`):
+
+- `session-marker.json` is written into `userData` at startup with the session id, `startedAt`,
+  `lastAliveAt`, and app version, then refreshed every 60s while the app is alive.
+- `clearCrashMarker()` removes it once the shutdown cleanup chain completes.
+- A marker still present at the **next** launch means the previous session died uncleanly, and
+  that launch emits `app_crashed` on its behalf. Detection runs before the new session writes its
+  own marker.
+
+The marker's _presence_ is the signal; its contents only enrich the event. An unparseable marker
+still reports the crash, just without the observed-uptime metric (`metrics.durationMs`, derived
+from `lastAliveAt − startedAt`). The previous session's app version ships as a `prior_app_version`
+dimension.
+
+`errorCode` separates the failure modes:
+
+| `errorCode`               | Meaning                                                                      |
+| ------------------------- | ---------------------------------------------------------------------------- |
+| `UNCLEAN_SHUTDOWN`        | no shutdown was attempted — hard crash, OOM kill, force quit                 |
+| `SHUTDOWN_TIMEOUT`        | shutdown ran but the 5s cleanup timeout fired before the forced `app.exit()` |
+| `SHUTDOWN_CLEANUP_FAILED` | the cleanup chain rejected                                                   |
+
+The last two are stamped by `markShutdownFailure()` immediately before the forced exit: the log
+line for that failure never flushes, but the marker survives to the next launch. Only the process
+that wrote a marker may remove one — a second instance that loses the single-instance lock shares
+`userData` and must not erase the primary's marker on its way out. Marker write failures are
+logged and swallowed; a read-only disk must never break startup.
 
 ## PostHog Event Capture
 
@@ -214,6 +274,13 @@ a later retry.
 `note_updated` and `journal_updated` events fired by the autosave path are throttled to at most
 one emission per document per 5-minute window (in-memory, resets on restart). This prevents
 high-frequency editor flushes from inflating event counts.
+
+Body edits reach the note through the CRDT provider rather than the notes UPDATE IPC, so typing
+never registered as usage at all. `trackNoteBodyEditThrottled` (`telemetry/diagnostics.ts`, called
+from `ipc/crdt-handlers.ts`) now emits `note_updated` with `source: 'editor_body'` on the **same**
+`note_updated:<noteId>` throttle key the UPDATE handler uses, so metadata saves and body edits
+share one 5-minute window per note. Only the throttle key ever sees the note id; the event itself
+carries no identifier.
 
 ## Landing Site Telemetry
 
@@ -425,7 +492,25 @@ reason, phase, mode, status, kind, result`, plus numeric metric keys like
   recurring `Error` masked a genuine different `Error` from another handler for the whole window.
   The expected `noVaultOpen` envelope is not tracked, and the envelope's user-facing `error`
   string (which may contain note-derived text) never leaves the process — only the error code and
-  redacted stack frames ship.
+  redacted stack frames ship. Handlers that **throw** instead of returning an envelope report the
+  same way: `createHandler` and `createValidatedHandler` (`main/ipc/validate.ts`) wrap the call,
+  so canvas and calendar reads — which never pass through `withDb` / `withErrorHandler` and whose
+  rethrow used to be their only trace — are now countable. A Zod validation failure is reported
+  too (renderer↔main contract drift, not user error); only the `ZodError` name and stack ship,
+  never the issue messages, which can echo input values. An
+  [expected condition](#error-reporting) is skipped **before** the throttle map, so a suppressed
+  error can't claim the key and mask a real failure from the same handler.
+- **Vault watcher**: chokidar `onError` can burst per file (a permission-denied subtree), so
+  watcher faults are sampled to one `app_error_seen` per minute (`main/vault/watcher.ts`). Every
+  error still reaches the local log.
+- **User-visible failures that previously left no trail**: a renderer `did-fail-load` (the user is
+  staring at a blank window) reports as `DidFailLoad:<chromiumErrorCode>` — the URL never leaves
+  the process; a `memry-file:` protocol serve failure (a silently broken image/PDF/video embed)
+  logs a `MemryFile` / `serve_failed` breadcrumb with the coded errno before answering 404; a
+  window-close flush rejection (window refuses to close, edits possibly unsaved) reports as
+  `window_close_flush_failed`; and quick capture reports
+  `QuickCapture` / `global_shortcut_register_failed` when both the configured and the fallback
+  global shortcut fail to register.
 - **Expected conditions**: some failures are normal states, not faults. They still surface to the
   UI as an error envelope, but the throw site marks them and error telemetry skips them, so they
   cannot drown real signal. Currently marked: an Ollama model-list fetch that is **refused**

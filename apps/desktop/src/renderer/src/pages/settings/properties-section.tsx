@@ -22,6 +22,7 @@ import { toast } from 'sonner'
 import { usePropertyDefinitions } from '@/hooks/use-property-definitions'
 import { notesService } from '@/services/notes-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackRendererError, trackRendererLog } from '@/lib/telemetry-diagnostics'
 import {
   getTagColors,
   withAlpha,
@@ -42,6 +43,15 @@ import type {
 
 const STATUS_CATEGORY_ORDER: StatusCategoryKey[] = ['todo', 'in_progress', 'done']
 
+// Malformed options JSON in the index DB silently renders as "no options" —
+// report once per session so stored-data corruption is at least countable.
+let optionsParseFailureReported = false
+function reportOptionsParseFailure(): void {
+  if (optionsParseFailureReported) return
+  optionsParseFailureReported = true
+  trackRendererLog('warn', 'property_options_parse_failed', 'Properties')
+}
+
 function parseOptions(optionsJson: string | null): SelectOption[] {
   if (!optionsJson) return []
   try {
@@ -49,6 +59,7 @@ function parseOptions(optionsJson: string | null): SelectOption[] {
     if (Array.isArray(parsed)) return parsed
     return []
   } catch {
+    reportOptionsParseFailure()
     return []
   }
 }
@@ -60,6 +71,7 @@ function parseCategories(optionsJson: string | null): StatusCategories | null {
     if (parsed?.categories) return parsed.categories
     return null
   } catch {
+    reportOptionsParseFailure()
     return null
   }
 }
@@ -140,6 +152,7 @@ function PropertyManager() {
         toast.success(t('properties.toasts.renamed', { oldValue, newValue: newValue.trim() }))
         await refresh()
       } catch (err) {
+        trackRendererError('property_option_update', err)
         toast.error(extractErrorMessage(err, t('properties.toasts.renameFailed')))
       }
       setEditingOption(null)
@@ -154,6 +167,7 @@ function PropertyManager() {
         toast.success(t('properties.toasts.removed', { value: optionValue }))
         await refresh()
       } catch (err) {
+        trackRendererError('property_option_update', err)
         toast.error(extractErrorMessage(err, t('properties.toasts.removeFailed')))
       }
     },
@@ -171,6 +185,7 @@ function PropertyManager() {
         )
         await refresh()
       } catch (err) {
+        trackRendererError('property_option_update', err)
         toast.error(extractErrorMessage(err, t('properties.toasts.colorFailed')))
       }
       setColorEdit(null)
@@ -185,6 +200,7 @@ function PropertyManager() {
       toast.success(t('properties.toasts.deleted', { name: deleteTarget }))
       await refresh()
     } catch (err) {
+      trackRendererError('property_definition_delete', err)
       toast.error(extractErrorMessage(err, t('properties.toasts.deleteFailed')))
     }
     setDeleteTarget(null)
@@ -202,6 +218,7 @@ function PropertyManager() {
         await refresh()
         setNewOptionName('')
       } catch (err) {
+        trackRendererError('property_option_update', err)
         toast.error(extractErrorMessage(err, t('properties.toasts.addFailed')))
       }
       setAddingOption(null)
@@ -221,6 +238,7 @@ function PropertyManager() {
         await refresh()
         setNewOptionName('')
       } catch (err) {
+        trackRendererError('property_option_update', err)
         toast.error(extractErrorMessage(err, t('properties.toasts.addFailed')))
       }
       setAddingStatusOption(null)

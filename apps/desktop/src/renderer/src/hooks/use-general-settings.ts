@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { GENERAL_SETTINGS_DEFAULTS } from '@memry/contracts/settings-schemas'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import type { GeneralSettingsDTO } from '../../../preload/index.d'
 import { getI18n } from 'react-i18next'
 
@@ -59,9 +60,11 @@ export function useGeneralSettings(): UseGeneralSettingsReturn {
           setSettings((prev) => ({ ...prev, ...updates }))
           return true
         }
+        trackRendererError('settings_save', result.error ?? 'Update failed')
         setError(result.error ?? 'Update failed')
         return false
       } catch (err) {
+        trackRendererError('settings_save', err)
         setError(
           extractErrorMessage(
             err,

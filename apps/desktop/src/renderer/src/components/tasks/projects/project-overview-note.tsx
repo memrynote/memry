@@ -8,6 +8,7 @@ import { tasksService } from '@/services/tasks-service'
 import { notesService, type Note } from '@/services/notes-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useT } from '@memry/i18n/renderer'
 
@@ -126,6 +127,7 @@ export const ProjectOverviewNote = ({
               'Failed to save overview note',
               extractErrorMessage(error, t('projectHome.overview.saveError'))
             )
+            trackRendererError('project_overview_note_save', error)
           }
         })()
       }, 1000)
@@ -141,6 +143,10 @@ export const ProjectOverviewNote = ({
       })
       if (!result.success || !result.note) {
         log.error('Failed to create overview note', result.error ?? 'no note returned')
+        trackRendererError(
+          'project_overview_note_create',
+          new Error(result.error ?? 'no note returned')
+        )
         toast.error(t('projectHome.overview.createError'))
         return
       }
@@ -150,11 +156,13 @@ export const ProjectOverviewNote = ({
       })
       if (!setResult.success) {
         log.error('Failed to set overview note', setResult.error ?? 'unknown')
+        trackRendererError('project_overview_note_create', new Error(setResult.error ?? 'unknown'))
         toast.error(t('projectHome.overview.createError'))
         return
       }
       onHomeNoteChange(result.note.id)
     } catch (error) {
+      trackRendererError('project_overview_note_create', error)
       toast.error(extractErrorMessage(error, t('projectHome.overview.createError')))
     } finally {
       setIsCreating(false)
@@ -166,11 +174,13 @@ export const ProjectOverviewNote = ({
       const result = await tasksService.setProjectHomeNote({ projectId, noteId: null })
       if (!result.success) {
         log.error('Failed to clear overview note', result.error ?? 'unknown')
+        trackRendererError('project_overview_note_clear', new Error(result.error ?? 'unknown'))
         toast.error(t('projectHome.overview.clearError'))
         return
       }
       onHomeNoteChange(null)
     } catch (error) {
+      trackRendererError('project_overview_note_clear', error)
       toast.error(extractErrorMessage(error, t('projectHome.overview.clearError')))
     }
   }, [projectId, onHomeNoteChange, t])
