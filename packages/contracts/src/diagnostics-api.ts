@@ -71,6 +71,13 @@ export const DiagnosticReportSchema = z.object({
   }),
   snapshot: DiagnosticSnapshotSchema,
   lines: z.array(DiagnosticLogLineSchema).max(200),
+  /**
+   * Accepted for backward compatibility with older desktop builds, but
+   * DELIBERATELY IGNORED by the server. Report identity is resolved from the
+   * verified `Authorization` bearer instead (see routes/diagnostics.ts): a body
+   * field is client-asserted, and it feeds a PostHog `distinct_id`, where an
+   * `$identify` merge is permanent. Do not start trusting this.
+   */
   accountId: z.string().uuid().optional()
 })
 

@@ -220,12 +220,12 @@ describe('scheduled cleanup', () => {
       { waitUntil: vi.fn(), passThroughOnException: vi.fn() } as never
     )
 
-    // all 8 cleanup tasks fail against the broken DB — each must reach PostHog
+    // all 9 cleanup tasks fail against the broken DB — each must reach PostHog
     // Logs (redacted detail) and PostHog events (server_error_seen), one of each per failure.
     const logCalls = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/v1/logs'))
     const eventCalls = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/batch/'))
-    expect(logCalls).toHaveLength(8)
-    expect(eventCalls).toHaveLength(8)
+    expect(logCalls).toHaveLength(9)
+    expect(eventCalls).toHaveLength(9)
     const body = JSON.parse((logCalls[0][1] as RequestInit).body as string)
     const record = body.resourceLogs[0].scopeLogs[0].logRecords[0]
     expect(record.severityText).toBe('error')

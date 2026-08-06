@@ -30,15 +30,51 @@ export const batchFixture = (overrides: Partial<TelemetryBatch> = {}): Telemetry
   ...overrides
 })
 
+// hashTelemetryId output shape: 64 lowercase hex chars.
+const ACCOUNT_HASH = 'a'.repeat(64)
+const RAW_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000'
+
 describe('resolveDistinctId', () => {
-  it('uses the account id when present', () => {
+  it('uses the account hash when present', () => {
     expect(
-      resolveDistinctId({ installHash: 'hash', accountId: 'acct_1', environment: 'production' })
-    ).toBe('acct_1')
+      resolveDistinctId({
+        installHash: 'hash',
+        accountHash: ACCOUNT_HASH,
+        environment: 'production'
+      })
+    ).toBe(ACCOUNT_HASH)
   })
 
   it('falls back to the install hash', () => {
     expect(resolveDistinctId({ installHash: 'hash', environment: 'production' })).toBe('hash')
+  })
+
+  // THE ONE-WAY DOOR. A raw account id reaching distinct_id cannot be undone:
+  // $identify merges in PostHog are permanent and cannot be re-keyed. If this
+  // test fails, do not "fix" it by loosening the guard.
+  it('never lets a raw account id become the distinct id', () => {
+    expect(
+      resolveDistinctId({
+        installHash: 'hash',
+        accountHash: RAW_ACCOUNT_ID,
+        environment: 'production'
+      })
+    ).toBe('hash')
+  })
+
+  it('rejects anything that is not a 64-char lowercase hex hash', () => {
+    for (const value of [
+      '',
+      'acct_1',
+      'kaan@example.com',
+      ACCOUNT_HASH.toUpperCase(),
+      ACCOUNT_HASH.slice(0, 63),
+      `${ACCOUNT_HASH}a`
+    ]) {
+      expect(
+        resolveDistinctId({ installHash: 'hash', accountHash: value, environment: 'production' })
+      ).toBe('hash')
+    }
   })
 })
 
@@ -67,14 +103,26 @@ describe('identifyEvent', () => {
   it('aliases the install hash onto the account', () => {
     const event = identifyEvent(batchFixture({ authState: 'signed_in' }), {
       installHash: 'hash',
-      accountId: 'acct_1',
+      accountHash: ACCOUNT_HASH,
       environment: 'production'
     })
     expect(event).not.toBeNull()
     expect(event?.event).toBe('$identify')
-    expect(event?.distinct_id).toBe('acct_1')
+    expect(event?.distinct_id).toBe(ACCOUNT_HASH)
     expect(event?.properties.$anon_distinct_id).toBe('hash')
     expect(event?.properties.environment).toBe('production')
+  })
+
+  // A permanent merge onto a raw account id is the exact irreversible outcome
+  // this whole module guards against — refuse to merge rather than fall back.
+  it('refuses to merge when the account hash is a raw account id', () => {
+    expect(
+      identifyEvent(batchFixture({ authState: 'signed_in' }), {
+        installHash: 'hash',
+        accountHash: RAW_ACCOUNT_ID,
+        environment: 'production'
+      })
+    ).toBeNull()
   })
 })
 

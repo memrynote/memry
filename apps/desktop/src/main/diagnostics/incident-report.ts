@@ -23,6 +23,7 @@ import { getTelemetryAuthState, getTelemetrySyncState } from '../telemetry/state
 import { getOrCreateDiagnosticsSalt, makeSaltedHasher } from '../telemetry/diagnostics-salt'
 import type { TelemetryFetch } from '../telemetry/client'
 import { getSyncEngine } from '../sync/runtime'
+import { getValidAccessToken } from '../sync/token-manager'
 
 // Crockford-ish base32 (no 0/1/8/9 or lowercase) keeps ids unambiguous when read
 // aloud/typed into a support ticket. 8 chars satisfies the schema's 6-12 range.
@@ -116,6 +117,18 @@ export interface SendIncidentReportDeps {
   /** Injectable for tests; defaults to electron's net.fetch. */
   fetch?: TelemetryFetch
   endpoint?: string
+  /**
+   * Resolves the signed-in account's access token so the server can attribute
+   * the report to the same PostHog person as this install's events. Same
+   * contract as the telemetry client's: null/throw → anonymous report. The
+   * report body's `accountId` is NOT used for this — a body field is
+   * client-asserted, the bearer is verified.
+   *
+   * Injectable for tests; defaults to the real token manager. The default lives
+   * here rather than at the IPC call site because `src/main/ipc/**` may not
+   * import `src/main/sync/**` (see scripts/check-architecture-boundaries.js).
+   */
+  getAccessToken?: () => Promise<string | null>
 }
 
 export const sendIncidentReport = async (
@@ -124,9 +137,20 @@ export const sendIncidentReport = async (
 ): Promise<{ incidentId: string }> => {
   const endpoint = resolveEndpoint(deps.endpoint, report.buildChannel)
   const fetchFn = deps.fetch ?? ((input, init) => net.fetch(input.toString(), init))
+  let bearer: string | null = null
+  try {
+    bearer = await (deps.getAccessToken ?? getValidAccessToken)()
+  } catch {
+    // Signed out, keychain locked, refresh failed — send anonymously rather
+    // than losing the report.
+    bearer = null
+  }
   const response = await fetchFn(endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(bearer ? { Authorization: `Bearer ${bearer}` } : {})
+    },
     body: JSON.stringify(report)
   })
   if (!response.ok) {

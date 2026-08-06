@@ -24,6 +24,7 @@ import {
   cleanupExpiredTombstones,
   cleanupExpiredUploadSessions,
   cleanupOrphanedBlobChunks,
+  cleanupStaleIdentifySessions,
   cleanupStaleRateLimits
 } from './services/cleanup'
 import { createLogger } from './lib/logger'
@@ -178,7 +179,8 @@ const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (_event, env,
     ['consumed_setup_tokens', cleanupConsumedSetupTokens(env.DB)],
     ['expired_tombstones', cleanupExpiredTombstones(env.DB, env.STORAGE)],
     ['orphaned_blob_chunks', cleanupOrphanedBlobChunks(env.DB, env.STORAGE)],
-    ['expired_gcal_channels', cleanupExpiredGoogleCalendarChannels(env.DB)]
+    ['expired_gcal_channels', cleanupExpiredGoogleCalendarChannels(env.DB)],
+    ['stale_identify_sessions', cleanupStaleIdentifySessions(env.DB)]
   ]
   const results = await Promise.allSettled(tasks.map(([, promise]) => promise))
 
