@@ -15,7 +15,8 @@ import {
   productEvent,
   resolveDistinctId
 } from '../services/posthog-transform'
-import { hashTelemetryId } from '../services/telemetry'
+import { hashTelemetryId, resolveTelemetryAccountHash } from '../services/telemetry'
+import { claimIdentifySession } from '../services/telemetry-identify'
 import type { AppContext } from '../types'
 
 const logger = createLogger('Telemetry')
@@ -43,15 +44,21 @@ telemetry.post('/batch', async (c) => {
   }
 
   const batch = parsed.data
-  const installHash = await hashTelemetryId(c.env.TELEMETRY_HMAC_KEY, batch.installId)
-  // accountId stays undefined in this train: /telemetry/* deliberately bypasses
-  // the auth middleware and TelemetryBatchSchema carries no account identifier,
-  // so every install reports anonymously until a later release restores the
-  // bearer. resolveDistinctId already falls back to installHash — nothing here
-  // changes when that lands except this one field becoming populated.
+  const [installHash, accountHash] = await Promise.all([
+    hashTelemetryId(c.env.TELEMETRY_HMAC_KEY, batch.installId),
+    // /telemetry/* still bypasses the auth middleware — a bad or absent bearer
+    // must never reject telemetry. resolveTelemetryAccountHash returns undefined
+    // in that case and the batch reports anonymously against installHash.
+    // It returns the HMAC of the account id, never the raw id.
+    resolveTelemetryAccountHash(
+      c.req.header('Authorization'),
+      c.env.JWT_PUBLIC_KEY,
+      c.env.TELEMETRY_HMAC_KEY
+    )
+  ])
   const ctx = {
     installHash,
-    accountId: undefined as string | undefined,
+    accountHash,
     environment: c.env.ENVIRONMENT ?? 'unknown'
   }
   const distinctId = resolveDistinctId(ctx)
@@ -61,12 +68,16 @@ telemetry.post('/batch', async (c) => {
     .map((event) => exceptionEvent(batch, event, ctx))
     .filter((event): event is NonNullable<typeof event> => event !== null)
 
-  // identifyEvent returns null whenever ctx.accountId is unset, which is always
-  // true today — so this is unreachable until account resolution ships. $identify
-  // merges the anonymous install into the account PERMANENTLY, so once accountId
-  // is populated a once-per-session guard MUST land together with that
-  // resolution, before this can fire on every 30s batch instead of once.
-  const identify = identifyEvent(batch, ctx)
+  // $identify merges the anonymous install person into the account person
+  // PERMANENTLY, and the desktop flushes roughly every 30s. claimIdentifySession
+  // is the once-per-session guard that keeps this to one merge per app session
+  // instead of ~120/hour. identifyEvent still returns null for an anonymous
+  // batch, so the claim is only attempted when there is an account to merge to.
+  const identify = accountHash
+    ? (await claimIdentifySession(c.env.DB, batch.sessionId, accountHash))
+      ? identifyEvent(batch, ctx)
+      : null
+    : null
 
   safeWaitUntil(
     c,
@@ -123,10 +134,13 @@ telemetry.post('/logs', async (c) => {
     hashTelemetryId(c.env.TELEMETRY_HMAC_KEY, batch.installId)
       .then((installHash) => {
         // Resolved distinct id, not the raw install hash, so these logs surface
-        // on the right person profile once account resolution lands.
+        // on the right person profile once account resolution lands here too.
+        // Still anonymous: the desktop log shipper does not attach a bearer to
+        // /telemetry/logs yet, so wiring the header read on this side alone
+        // would be dead code. Tracked as a follow-up.
         const distinctId = resolveDistinctId({
           installHash,
-          accountId: undefined,
+          accountHash: undefined,
           environment: c.env.ENVIRONMENT ?? 'unknown'
         })
         return pushPostHogLogs(

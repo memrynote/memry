@@ -9,12 +9,31 @@ import type { PostHogEvent } from './posthog'
 
 export interface TransformContext {
   installHash: string
-  accountId?: string
+  /**
+   * HMAC of the account id (`hashTelemetryId`), NEVER the raw account id.
+   * Deliberately named `accountHash`, not `accountId`, for the same reason
+   * `installHash` is: PostHog is a third-party sink and only ever sees opaque
+   * hashes. See ACCOUNT_HASH_PATTERN below.
+   */
+  accountHash?: string
   environment: string
 }
 
+// THE ONE-WAY DOOR. `hashTelemetryId` returns exactly 64 lowercase hex chars.
+// Anything else reaching this field is a bug — most plausibly a raw account id
+// — and must never become a `distinct_id`, because a `$identify` merge in
+// PostHog is PERMANENT and IRREVERSIBLE: a leaked raw account id cannot be
+// un-leaked or re-keyed afterwards. Shape-checking here rather than trusting
+// call sites means the failure mode of a future mistake is "telemetry stays
+// anonymous", not "raw account ids are now in a third-party product forever".
+// Do not relax this to a truthiness check.
+const ACCOUNT_HASH_PATTERN = /^[0-9a-f]{64}$/
+
+export const isAccountHash = (value: string | undefined): value is string =>
+  typeof value === 'string' && ACCOUNT_HASH_PATTERN.test(value)
+
 export const resolveDistinctId = (ctx: TransformContext): string =>
-  ctx.accountId && ctx.accountId.length > 0 ? ctx.accountId : ctx.installHash
+  isAccountHash(ctx.accountHash) ? ctx.accountHash : ctx.installHash
 
 export const personProperties = (
   batch: TelemetryBatch,
@@ -30,17 +49,20 @@ export const personProperties = (
   environment
 })
 
-// Emitted once per session by the caller (see the KV guard in the route), not on
-// every batch: $identify is idempotent in PostHog but bills as an identified event.
-// The merge it performs is PERMANENT and cannot be undone.
+// Emitted once per session by the caller (see claimIdentifySession in the
+// route), not on every batch: $identify is idempotent in PostHog but bills as an
+// identified event. The merge it performs is PERMANENT and cannot be undone.
 export const identifyEvent = (
   batch: TelemetryBatch,
   ctx: TransformContext
 ): PostHogEvent | null => {
-  if (!ctx.accountId || ctx.accountId.length === 0) return null
+  // Not `resolveDistinctId`: that falls back to installHash, which would make
+  // $identify alias the anonymous person onto itself. No valid account hash
+  // means no merge at all.
+  if (!isAccountHash(ctx.accountHash)) return null
   return {
     event: '$identify',
-    distinct_id: ctx.accountId,
+    distinct_id: ctx.accountHash,
     properties: {
       $anon_distinct_id: ctx.installHash,
       $set: personProperties(batch, ctx.environment),

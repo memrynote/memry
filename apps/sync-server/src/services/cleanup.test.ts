@@ -8,8 +8,10 @@ import {
   cleanupExpiredTombstones,
   cleanupExpiredUploadSessions,
   cleanupOrphanedBlobChunks,
+  cleanupStaleIdentifySessions,
   cleanupStaleRateLimits
 } from './cleanup'
+import { IDENTIFY_SESSION_TTL_SECONDS } from './telemetry-identify'
 
 function createDbWithChanges(changes: number) {
   const run = vi.fn(async () => ({ meta: { changes } }))
@@ -234,6 +236,21 @@ describe('cleanup services', () => {
     expect(result).toBe(7)
     expect(prepare).toHaveBeenCalledWith('DELETE FROM rate_limits WHERE window_start < ?')
     expect(bind).toHaveBeenCalledWith(1_700_000_000 - 3600)
+  })
+
+  it('cleans up $identify session claims older than the TTL', async () => {
+    // #given
+    const { db, prepare, bind } = createDbWithChanges(8)
+
+    // #when
+    const result = await cleanupStaleIdentifySessions(db)
+
+    // #then
+    expect(result).toBe(8)
+    expect(prepare).toHaveBeenCalledWith(
+      'DELETE FROM telemetry_identify_sessions WHERE created_at < ?'
+    )
+    expect(bind).toHaveBeenCalledWith(1_700_000_000 - IDENTIFY_SESSION_TTL_SECONDS)
   })
 
   describe('cleanupExpiredTombstones', () => {
