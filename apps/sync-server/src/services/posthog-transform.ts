@@ -195,7 +195,11 @@ const parseFrame = (line: string): RawFrame | null => {
 
   const parenthesized = /^(.*?)\s+\((.+)\)$/.exec(body)
   const fn = parenthesized ? parenthesized[1] : '<anonymous>'
-  const location = parenthesized ? parenthesized[2] : body
+  // V8 writes an anonymous async frame as `at async <path>:line:col` — no
+  // parentheses, but the `async` keyword still there. Left in place it becomes
+  // part of the filename ("async /tmp/…/index.js"), which then matches no source
+  // file and no in_app rule. Production stacks are full of these.
+  const location = parenthesized ? parenthesized[2] : body.replace(/^async\s+/, '')
 
   const match = LOCATION.exec(location)
   if (!match) return null

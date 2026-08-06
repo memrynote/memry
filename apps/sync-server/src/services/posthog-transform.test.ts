@@ -530,6 +530,47 @@ describe('exceptionEvent', () => {
     expect(list[0].stacktrace.frames[0].filename).toBe('~/app/mail.ts')
   })
 
+  // Verbatim from a production `Error` issue (Linux AppImage). Two shapes here
+  // are not in any hand-written fixture: `at async fn (…)` and — the one that
+  // matters — `at async <path>` with NO parentheses, where a naive parser folds
+  // the `async` keyword into the filename.
+  it('parses a real production stack, async frames and all', () => {
+    const result = exceptionEvent(
+      batchFixture(),
+      eventFixture({
+        errorCode: 'ENOENT',
+        error: {
+          stack: [
+            '    at async rename (node:internal/fs/promises:785:10)',
+            '    at async renameFolder (/tmp/.mount_MemryNkMktI7/resources/app.asar/out/main/index.js:7442:3)',
+            '    at async /tmp/.mount_MemryNkMktI7/resources/app.asar/out/main/index.js:28913:7',
+            '    at async Session.<anonymous> (node:electron/js2c/browser_init:2:114924)'
+          ].join('\n')
+        }
+      }),
+      ctx
+    )
+    const frames = (
+      result?.properties.$exception_list as {
+        stacktrace: { frames: { function: string; filename: string; in_app: boolean }[] }
+      }[]
+    )[0].stacktrace.frames
+
+    // innermost-last after the reverse: `rename` is where it actually threw
+    expect(frames.at(-1)).toMatchObject({
+      function: 'async rename',
+      filename: 'node:internal/fs/promises',
+      in_app: false
+    })
+    // the parenthesis-free async frame keeps a clean filename
+    expect(frames.map((frame) => frame.filename)).toContain(
+      '/tmp/.mount_MemryNkMktI7/resources/app.asar/out/main/index.js'
+    )
+    // our own bundle is in_app; electron internals are not
+    expect(frames.find((frame) => frame.filename.includes('app.asar'))?.in_app).toBe(true)
+    expect(frames.find((frame) => frame.filename.includes('js2c'))?.in_app).toBe(false)
+  })
+
   it('caps frames so a hostile stack cannot inflate the payload', () => {
     const stack = Array.from({ length: 90 }, (_, i) => `    at fn${i} (a.js:${i + 1}:1)`).join('\n')
     const result = exceptionEvent(
