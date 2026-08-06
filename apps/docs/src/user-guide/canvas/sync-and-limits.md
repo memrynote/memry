@@ -27,11 +27,11 @@ is stored once. Deleting the image, or the canvas, releases the stored copy.
 
 ## The shape library
 
-Your shape library is stored in your vault encrypted, alongside your boards, and
-is shared by every canvas. It does not yet sync between devices: a kit you
-install on one computer stays on that computer, and you install it again on the
-next one. Installing different kits on two devices is safe — neither replaces
-the other.
+Your shape library is a single `library.excalidrawlib` file in your vault's
+`canvases/` folder, alongside your boards, and is shared by every canvas. It does
+not yet sync between devices: a kit you install on one computer stays on that
+computer, and you install it again on the next one. Installing different kits on
+two devices is safe — neither replaces the other.
 
 ## Size limit
 

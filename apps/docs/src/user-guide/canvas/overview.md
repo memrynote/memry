@@ -53,19 +53,31 @@ way:
 - **Drag the file** onto the canvas.
 - **Open the library panel**, click the **⋯** menu, and choose **Open**.
 
-Your library is stored in your vault, encrypted, and is shared by every canvas
-rather than belonging to one board — so a kit you install stays available when
-you switch boards or restart. Removing an item from the panel removes it for
-good.
+Your library is a single `library.excalidrawlib` file in your vault's `canvases/`
+folder, in Excalidraw's own format, and is shared by every canvas rather than
+belonging to one board — so a kit you install stays available when you switch
+boards or restart. Removing an item from the panel removes it for good.
 
 ## Saving
 
 Canvases save into your vault automatically as you draw — there is nothing to
 save by hand. Pressing **Cmd/Ctrl+S** simply confirms this with a short
-"changes are saved" notice; it never opens a file dialog. Canvases are not
-files on disk, so the drawing engine's own open/save/export-to-file actions for
-_boards_ are hidden. The library's own file actions stay available, since a
-shape kit is a file you bring in from elsewhere.
+"changes are saved" notice; it never opens a file dialog.
+
+Each canvas is a plain `.excalidraw` file in your vault's `canvases/` folder,
+named after the board's title. The file is the real canvas and the sidebar entry
+is an index of it, so copying that folder to another machine brings the boards
+along, and dropping an `.excalidraw` file into `canvases/` adds it as a canvas
+the next time memrynote opens the vault. Renaming a file outside the app doesn't
+create a duplicate either — the same board picks up the new filename on the next
+open, though its title in the sidebar stays as it was.
+
+Because your vault is the only store, the drawing engine's own **Open** and
+**Save to...** actions are hidden for _boards_: they would write a copy outside
+the vault, or silently replace the canvas you have open, instead of editing the
+file the app is already saving to. **Export image...** stays available for taking
+a PNG or SVG copy, and so do the library's own file actions, since a shape kit is
+a file you bring in from elsewhere.
 
 ## Next steps
 
