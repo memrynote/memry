@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import { FolderKanban } from '@/lib/icons'
@@ -45,6 +45,13 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
   const activeTab = useActiveTab()
 
   const hub = useProjectHub(projectId)
+
+  // page_viewed dedupes by tab TYPE, so switching between two project tabs is
+  // invisible there; this counts each distinct project-hub open instead.
+  useEffect(() => {
+    if (!projectId) return
+    void trackTelemetry('project_opened', { surface: 'projects', action: 'opened' })
+  }, [projectId])
   const project = hub.project
 
   const [isEditing, setIsEditing] = useState(false)
