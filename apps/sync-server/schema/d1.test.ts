@@ -50,7 +50,8 @@ describe('D1 schema', () => {
         'crdt_snapshots',
         'upload_sessions',
         'blob_chunks',
-        'google_calendar_channels'
+        'google_calendar_channels',
+        'release_download_counts'
       ])
     )
 

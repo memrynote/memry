@@ -179,9 +179,7 @@ describe('POST /telemetry/batch — account identity', () => {
     const identify = captureEvents(fetchSpy).find((e) => e.event === '$identify')
     expect(identify).toBeDefined()
     expect(identify?.distinct_id).toBe(await hashTelemetryId(HMAC_KEY, ACCOUNT_ID))
-    expect(identify?.properties.$anon_distinct_id).toBe(
-      await hashTelemetryId(HMAC_KEY, INSTALL_ID)
-    )
+    expect(identify?.properties.$anon_distinct_id).toBe(await hashTelemetryId(HMAC_KEY, INSTALL_ID))
     expectNoRawAccountId(fetchSpy)
   })
 
@@ -320,9 +318,7 @@ describe('POST /diagnostics/report — account identity', () => {
     const call = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/v1/logs'))
     const record = JSON.parse((call?.[1] as RequestInit).body as string).resourceLogs[0]
       .scopeLogs[0].logRecords[0]
-    const attribute = record.attributes.find(
-      (a: { key: string }) => a.key === 'posthogDistinctId'
-    )
+    const attribute = record.attributes.find((a: { key: string }) => a.key === 'posthogDistinctId')
     return attribute.value.stringValue
   }
 

@@ -27,6 +27,7 @@ export type Bindings = {
   TELEMETRY_HMAC_KEY: string
   POSTHOG_KEY?: string
   POSTHOG_HOST?: string
+  GITHUB_TOKEN?: string
   fetch?: typeof fetch
 }
 

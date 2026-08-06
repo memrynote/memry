@@ -234,4 +234,65 @@ describe('scheduled cleanup', () => {
     expect(line.action).toMatch(/^cleanup_/)
     expect(line.message).toBe('D1 down')
   })
+
+  it('pulls release download counts only on the daily trigger', async () => {
+    // #given a GitHub API that answers and a DB that does not
+    const fetchMock = vi
+      .fn()
+      .mockImplementation((url: string) =>
+        Promise.resolve(
+          String(url).startsWith('https://api.github.com/')
+            ? new Response(
+                JSON.stringify([
+                  { tag_name: 'v1', assets: [{ id: 1, name: 'a.dmg', download_count: 5 }] }
+                ]),
+                { status: 200 }
+              )
+            : new Response('{}', { status: 200 })
+        )
+      )
+    vi.stubGlobal('fetch', fetchMock)
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    const env = createEnv({
+      DB: {
+        prepare: vi.fn(() => {
+          throw new Error('D1 down')
+        }),
+        batch: vi.fn().mockRejectedValue(new Error('D1 down'))
+      },
+      ENVIRONMENT: 'test',
+      POSTHOG_KEY: 'phc_test',
+      POSTHOG_HOST: 'https://us.i.posthog.com'
+    })
+    const ctx = { waitUntil: vi.fn(), passThroughOnException: vi.fn() } as never
+
+    // #when the 6-hourly trigger fires
+    await worker.scheduled({ cron: '0 */6 * * *' } as never, env as never, ctx)
+
+    // #then the GitHub API is not touched — only the 9 cleanups ran
+    expect(
+      fetchMock.mock.calls.filter(([url]) => String(url).startsWith('https://api.github.com/'))
+    ).toHaveLength(0)
+
+    // #when the daily trigger fires
+    fetchMock.mockClear()
+    await worker.scheduled({ cron: '0 4 * * *' } as never, env as never, ctx)
+
+    // #then the release pull runs and its D1 failure is reported under its own action
+    expect(
+      fetchMock.mock.calls.filter(([url]) => String(url).startsWith('https://api.github.com/'))
+    ).toHaveLength(1)
+    const actions = fetchMock.mock.calls
+      .filter(([url]) => String(url).endsWith('/v1/logs'))
+      .map(([, init]) => {
+        const body = JSON.parse((init as RequestInit).body as string)
+        return JSON.parse(body.resourceLogs[0].scopeLogs[0].logRecords[0].body.stringValue).action
+      })
+    expect(actions).toContain('release_download_counts')
+    // 9 cleanups + the release pull; the pull is the only one without the prefix
+    expect(actions.filter((a: string) => a.startsWith('cleanup_'))).toHaveLength(9)
+    expect(actions).toHaveLength(10)
+  })
 })

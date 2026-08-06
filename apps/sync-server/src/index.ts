@@ -29,6 +29,7 @@ import {
 } from './services/cleanup'
 import { createLogger } from './lib/logger'
 import { captureServerError } from './services/analytics'
+import { syncReleaseDownloadCounts } from './services/release-downloads'
 import type { Bindings, AppContext } from './types'
 
 const logger = createLogger('Server')
@@ -170,18 +171,30 @@ app.route('/feedback', feedback)
 app.route('/webhooks', webhooks)
 app.route('/calendar/channels', calendarChannels)
 
-const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (_event, env, _ctx) => {
+// GitHub release download counts are a once-a-day pull, so they ride their own
+// trigger rather than the 6-hourly cleanup sweep (see wrangler.toml [triggers]).
+const DAILY_CRON = '0 4 * * *'
+
+const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (event, env, _ctx) => {
   const tasks: Array<[string, Promise<unknown>]> = [
-    ['expired_otp_codes', cleanupExpiredOtpCodes(env.DB)],
-    ['expired_linking_sessions', cleanupExpiredLinkingSessions(env.DB)],
-    ['expired_upload_sessions', cleanupExpiredUploadSessions(env.DB, env.STORAGE)],
-    ['stale_rate_limits', cleanupStaleRateLimits(env.DB)],
-    ['consumed_setup_tokens', cleanupConsumedSetupTokens(env.DB)],
-    ['expired_tombstones', cleanupExpiredTombstones(env.DB, env.STORAGE)],
-    ['orphaned_blob_chunks', cleanupOrphanedBlobChunks(env.DB, env.STORAGE)],
-    ['expired_gcal_channels', cleanupExpiredGoogleCalendarChannels(env.DB)],
-    ['stale_identify_sessions', cleanupStaleIdentifySessions(env.DB)]
+    // Action names are verbatim here rather than prefixed at the call site: the
+    // cleanups keep the `cleanup_` action names they have always emitted, while
+    // the daily release pull is not a cleanup and must not inherit that prefix.
+    ['cleanup_expired_otp_codes', cleanupExpiredOtpCodes(env.DB)],
+    ['cleanup_expired_linking_sessions', cleanupExpiredLinkingSessions(env.DB)],
+    ['cleanup_expired_upload_sessions', cleanupExpiredUploadSessions(env.DB, env.STORAGE)],
+    ['cleanup_stale_rate_limits', cleanupStaleRateLimits(env.DB)],
+    ['cleanup_consumed_setup_tokens', cleanupConsumedSetupTokens(env.DB)],
+    ['cleanup_expired_tombstones', cleanupExpiredTombstones(env.DB, env.STORAGE)],
+    ['cleanup_orphaned_blob_chunks', cleanupOrphanedBlobChunks(env.DB, env.STORAGE)],
+    ['cleanup_expired_gcal_channels', cleanupExpiredGoogleCalendarChannels(env.DB)],
+    ['cleanup_stale_identify_sessions', cleanupStaleIdentifySessions(env.DB)]
   ]
+
+  if (event.cron === DAILY_CRON) {
+    tasks.push(['release_download_counts', syncReleaseDownloadCounts(env)])
+  }
+
   const results = await Promise.allSettled(tasks.map(([, promise]) => promise))
 
   for (const [i, result] of results.entries()) {
@@ -190,7 +203,7 @@ const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (_event, env,
       await captureServerError(env, {
         error: result.reason,
         source: 'cron',
-        action: `cleanup_${tasks[i][0]}`,
+        action: tasks[i][0],
         statusCode: 500,
         handled: true
       })

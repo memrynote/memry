@@ -330,6 +330,7 @@ Additional events in the same pipeline:
 | `app_error_seen`             | Renderer, React boundary, and main errors |
 | `server_error_seen`          | Sync-server request/background failures   |
 | `server_log_recorded`        | Structured sync-server diagnostic logs    |
+| `release_asset_downloaded`   | Daily GitHub Releases download-count pull |
 
 ### Batch Validation & Retry
 
@@ -355,6 +356,52 @@ from `ipc/crdt-handlers.ts`) now emits `note_updated` with `source: 'editor_body
 `note_updated:<noteId>` throttle key the UPDATE handler uses, so metadata saves and body edits
 share one 5-minute window per note. Only the throttle key ever sees the note id; the event itself
 carries no identifier.
+
+## Release Download Counts
+
+Downloads happen on GitHub Releases, where PostHog cannot see them — the landing site's
+download-click event measures intent, not a download. A daily cron on the sync server
+(`services/release-downloads.ts`, run from the `scheduled` handler at 04:00 UTC) reads
+`GET /repos/memrynote/memry/releases` and emits one `release_asset_downloaded` event per asset.
+
+**`assets[].download_count` is cumulative per asset.** Emitting it raw would produce a
+monotonically increasing counter that is useless as an event stream — and it fails silently,
+producing meaningless numbers rather than an error. The last total seen per asset is therefore
+stored in D1 (`release_download_counts`, migration `0003`) and only the **delta** is emitted:
+
+- The first run for an asset seeds its row and emits nothing; a cumulative counter carries no
+  meaningful delta until it has a baseline.
+- A total that went **down** — GitHub recounting, or a replaced asset — reseeds the baseline
+  rather than emitting a negative delta.
+- The store is written **before** the events are captured. A D1 failure then throws, the cron
+  reports it, and the untouched baseline makes the next run emit the full delta. Emitting first
+  would double-count that delta after a failed write.
+
+The pull rides its own cron entry (`crons = ["0 */6 * * *", "0 4 * * *"]`) so it runs once a day
+while the cleanup sweep keeps its 6-hourly cadence. The daily entry deliberately avoids the
+6-hourly times — colliding entries collapse into one invocation.
+
+Events are not person-scoped: an anonymous downloader has no identity to key on, so `distinct_id`
+is a fixed `memry_releases_<environment>`. Staging and production both poll the same public repo,
+so — as everywhere else — an insight that does not filter `environment` blends them.
+
+| Property               | Meaning                                                              |
+| ---------------------- | -------------------------------------------------------------------- |
+| `release_tag`          | Release the asset belongs to (`v2026-08-06`)                         |
+| `asset_name`           | Published filename                                                   |
+| `platform`             | `macos` / `windows` / `linux` / `unknown`, derived from the filename |
+| `asset_kind`           | `installer`, or `update_metadata` for `latest*.yml` and `.blockmap`  |
+| `downloads`            | **The delta** — sum this, never `cumulative_downloads`               |
+| `cumulative_downloads` | Total GitHub reported at pull time, for context only                 |
+
+`asset_kind` is load-bearing: every installed app polls `latest*.yml` and fetches `.blockmap`
+deltas on its update schedule, so counting those as downloads would swamp the number that
+matters. Filter to `asset_kind = 'installer'` for real downloads.
+
+**Downloads cannot be joined to activation.** An anonymous downloader and a desktop install share
+no key. The funnel only works for people who sign up on the landing site _and_ sign in on the
+desktop, where the identity merge puts both on one person. This is a limitation to state plainly,
+not to engineer around.
 
 ## Landing Site Telemetry
 
@@ -651,6 +698,12 @@ where both are a no-op):
 POSTHOG_KEY=...                          # wrangler secret (PostHog project token)
 POSTHOG_HOST=https://us.i.posthog.com    # wrangler var (staging and production)
 ```
+
+`GITHUB_TOKEN` is optional and only used by the daily
+[release download-count](#release-download-counts) cron. Without it the pull is unauthenticated
+and shares the 60-requests-per-hour-per-IP limit with every other Worker on the same egress
+address; a public-repo read token lifts that. A failed pull throws and is reported as a
+`release_download_counts` cron failure rather than silently skewing the numbers.
 
 ### Diagnostic Log Endpoints
 

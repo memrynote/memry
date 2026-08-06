@@ -17,6 +17,14 @@ describe('wrangler config', () => {
     expect(toml).toContain('new_sqlite_classes = ["UserSyncState", "LinkingSession"]')
   })
 
+  it('schedules both the cleanup sweep and the daily release download pull', () => {
+    const toml = readFileSync(resolve(__dirname, 'wrangler.toml'), 'utf8')
+
+    // The daily entry must not coincide with a 6-hourly one, or the two triggers
+    // collapse into a single invocation and the download sync stops running.
+    expect(toml).toContain('crons = ["0 */6 * * *", "0 4 * * *"]')
+  })
+
   it('defines environment-specific deployment sections', () => {
     const toml = readFileSync(resolve(__dirname, 'wrangler.toml'), 'utf8')
 
