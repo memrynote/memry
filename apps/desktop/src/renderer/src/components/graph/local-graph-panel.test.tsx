@@ -10,11 +10,12 @@ const mocks = vi.hoisted(() => ({
     isLoading: false
   },
   sigma: {
-    refresh: vi.fn()
+    refresh: vi.fn(),
+    // The live simulation refreshes only the instance that owns the graph it is
+    // stepping, so the mock has to model getGraph like the real Sigma does.
+    getGraph: (): unknown => mocks.sigmaContainerProps?.graph
   },
-  sigmaContainerProps: null as null | Record<string, any>,
-  layoutStart: vi.fn(),
-  layoutStop: vi.fn()
+  sigmaContainerProps: null as null | Record<string, any>
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -31,13 +32,6 @@ vi.mock('@react-sigma/core', () => ({
     return <div data-testid="sigma">{props.children}</div>
   },
   useSigma: () => mocks.sigma
-}))
-
-vi.mock('@react-sigma/layout-forceatlas2', () => ({
-  useWorkerLayoutForceAtlas2: () => ({
-    start: mocks.layoutStart,
-    stop: mocks.layoutStop
-  })
 }))
 
 vi.mock('@/hooks/use-graph-data', () => ({
@@ -176,7 +170,6 @@ describe('LocalGraphPanel', () => {
     )
 
     expect(screen.getByTestId('sigma')).toBeInTheDocument()
-    expect(mocks.layoutStart).toHaveBeenCalledTimes(1)
     expect(mocks.sigmaContainerProps?.settings.labelColor).toEqual({ color: '#111111' })
     expect(mocks.sigmaContainerProps?.graph.hasNode('note-a')).toBe(true)
 
@@ -215,6 +208,33 @@ describe('LocalGraphPanel', () => {
       vi.runOnlyPendingTimers()
     })
     unmount()
-    expect(mocks.layoutStop).toHaveBeenCalled()
+  })
+
+  it('runs a live simulation and stops it on unmount', () => {
+    // The suite-wide stub runs frames synchronously, which would settle the whole
+    // simulation during mount. Queue them instead so each step is observable.
+    const frames: FrameRequestCallback[] = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      frames.push(callback)
+      return frames.length
+    })
+
+    const { unmount } = render(<LocalGraphPanel noteId="note-a" onClose={vi.fn()} />)
+    const graph = mocks.sigmaContainerProps?.graph
+    const before = graph.getNodeAttribute('note-a', 'x')
+    expect(frames).toHaveLength(1)
+
+    act(() => {
+      frames.shift()?.(16)
+    })
+    expect(graph.getNodeAttribute('note-a', 'x')).not.toBe(before)
+    expect(frames).toHaveLength(1)
+
+    unmount()
+    const afterUnmount = graph.getNodeAttribute('note-a', 'x')
+    act(() => {
+      frames.shift()?.(32)
+    })
+    expect(graph.getNodeAttribute('note-a', 'x')).toBe(afterUnmount)
   })
 })

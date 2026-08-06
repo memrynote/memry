@@ -40,6 +40,7 @@
     "filters": "Filtreler",
     "display": "Ekran",
     "show-labels": "Etiketleri göster",
+    "live-motion": "Canlı hareket",
     "focus-depth": "derinlik {depth}",
     "clear-focus": "Odaklanmış düğümü temizle"
   },

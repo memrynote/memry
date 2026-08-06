@@ -62,6 +62,15 @@ The sidebar **Graph** entry opens a force-directed map of your notes and the lin
 - Nodes are notes; edges are wiki links and [relation properties](/user-guide/notes/properties-tags#relation-properties) (drawn thinner, to tell them apart from wiki links).
 - Click a node to open the note in a tab.
 - Hover to highlight neighbors.
+- Drag a node to pull it around — linked notes follow it, and the graph settles again when you let go.
+
+The layout is a live simulation: it arranges itself when the view opens, comes to rest on
+its own, and wakes up again whenever you drag something. Node positions are not saved, so
+each time you open the graph it settles into a fresh arrangement.
+
+Turn the motion off with **Live motion** under the gear icon → **Display** if you prefer a
+still graph — the same forces then run once and stop, which is also the lighter option on
+very large vaults.
 
 ## Renaming Targets
 

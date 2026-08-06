@@ -112,17 +112,25 @@ describe('graph-builder', () => {
     expect(graph.getNodeAttribute('tag:shared', 'connectionCount')).toBe(2)
     expect(graph.getNodeAttribute('tag:shared', 'size')).toBe(5)
     expect(graph.hasEdge('note-a-tag:shared-entity-tag')).toBe(true)
+  })
 
-    expect(mocks.assign).toHaveBeenCalledWith(
-      graph,
-      expect.objectContaining({
-        iterations: expect.any(Number),
-        settings: expect.objectContaining({
-          gravity: 0.5,
-          barnesHutOptimize: false
-        })
-      })
-    )
+  it('does not bake a static layout — positions are left to the live simulation', () => {
+    buildGraphologyGraph(graphData)
+
+    expect(mocks.assign).not.toHaveBeenCalled()
+  })
+
+  it('seeds every node at a finite position inside the simulation scale', () => {
+    const graph = buildGraphologyGraph(graphData)
+    const seedLimit = Math.max(60, Math.sqrt(graph.order) * 30)
+
+    graph.forEachNode((node) => {
+      const x = graph.getNodeAttribute(node, 'x') as number
+      const y = graph.getNodeAttribute(node, 'y') as number
+      expect(Number.isFinite(x)).toBe(true)
+      expect(Number.isFinite(y)).toBe(true)
+      expect(Math.hypot(x, y)).toBeLessThanOrEqual(seedLimit)
+    })
   })
 
   it('can omit tag expansion and falls back when CSS variables are absent', () => {

@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { SigmaContainer, useSigma } from '@react-sigma/core'
-import { useWorkerLayoutForceAtlas2 } from '@react-sigma/layout-forceatlas2'
 import { useTheme } from 'next-themes'
 import '@react-sigma/core/lib/style.css'
 import type Graph from 'graphology'
 import type { GraphDataResponse } from '@memry/contracts/graph-api'
 import type { NodeDisplayData, EdgeDisplayData } from 'sigma/types'
 import { buildGraphologyGraph, computeFocusSet, type BuildGraphOptions } from '@/lib/graph-builder'
+import { LivePhysics, SettledPhysics, type PhysicsHandle } from './physics-layout'
 import type { GraphFilterState } from '@/hooks/use-graph-filters'
 import type { GraphSettings } from '@memry/contracts/graph-api'
 import { useTabActions } from '@/contexts/tabs'
@@ -73,6 +73,19 @@ export function GraphCanvas({
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const fadeRef = useRef(0)
   const hoverTargetRef = useRef<string | null>(null)
+  const physicsHandleRef = useRef<PhysicsHandle | null>(null)
+
+  const handleNodeGrab = useCallback((nodeId: string) => {
+    physicsHandleRef.current?.grab(nodeId)
+  }, [])
+
+  const handleNodeDrag = useCallback((nodeId: string, x: number, y: number) => {
+    physicsHandleRef.current?.drag(nodeId, x, y)
+  }, [])
+
+  const handleNodeRelease = useCallback((nodeId: string) => {
+    physicsHandleRef.current?.release(nodeId)
+  }, [])
 
   const dimmedColor = useMemo(() => resolveGraphVar('--graph-dimmed-node', '#e4e4de'), [])
 
@@ -254,12 +267,16 @@ export function GraphCanvas({
           layout={graphSettings.layout}
           animate={graphSettings.animateLayout}
           graph={graph}
+          physicsHandleRef={physicsHandleRef}
         />
         <GraphEvents
           onHoverNode={setHoveredNode}
           onTooltipMove={setTooltipPos}
           onFocusNode={onFocusNode}
           onContextMenu={setContextMenu}
+          onNodeGrab={handleNodeGrab}
+          onNodeDrag={handleNodeDrag}
+          onNodeRelease={handleNodeRelease}
         />
       </SigmaContainer>
       {hoveredNode && tooltipPos && !contextMenu && (
@@ -466,11 +483,13 @@ function SigmaSettingsSync({
 function LayoutManager({
   layout,
   animate,
-  graph
+  graph,
+  physicsHandleRef
 }: {
   layout: GraphSettings['layout']
   animate: boolean
   graph: Graph
+  physicsHandleRef: React.MutableRefObject<PhysicsHandle | null>
 }): React.JSX.Element | null {
   useEffect(() => {
     if (layout === 'circular') {
@@ -480,11 +499,13 @@ function LayoutManager({
     }
   }, [layout, graph])
 
-  if (layout === 'forceatlas2') {
-    return <ForceAtlas2Layout animate={animate} />
-  }
+  if (layout !== 'forceatlas2') return null
 
-  return null
+  return animate ? (
+    <LivePhysics graph={graph} handleRef={physicsHandleRef} />
+  ) : (
+    <SettledPhysics graph={graph} />
+  )
 }
 
 function applyCircularLayout(graph: Graph): void {
@@ -504,35 +525,4 @@ function applyRandomLayout(graph: Graph): void {
     graph.setNodeAttribute(node, 'x', (Math.random() - 0.5) * 1000)
     graph.setNodeAttribute(node, 'y', (Math.random() - 0.5) * 1000)
   })
-}
-
-function ForceAtlas2Layout({ animate }: { animate: boolean }): null {
-  const { start, stop } = useWorkerLayoutForceAtlas2({
-    settings: {
-      gravity: 0.75,
-      scalingRatio: 12.5,
-      slowDown: 3,
-      barnesHutOptimize: true,
-      strongGravityMode: true,
-      edgeWeightInfluence: 0
-    }
-  })
-
-  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-
-  useEffect(() => {
-    if (!animate) {
-      stop()
-      return
-    }
-    start()
-    timerRef.current = setTimeout(stop, 8000)
-
-    return () => {
-      clearTimeout(timerRef.current)
-      stop()
-    }
-  }, [start, stop, animate])
-
-  return null
 }

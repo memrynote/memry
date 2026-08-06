@@ -1,5 +1,4 @@
 import Graph from 'graphology'
-import forceAtlas2 from 'graphology-layout-forceatlas2'
 import type { GraphDataResponse } from '@memry/contracts/graph-api'
 
 const NODE_COLOR_VARS: Record<string, string> = {
@@ -53,7 +52,9 @@ export function buildGraphologyGraph(
     resolvedEdgeColors[type] = resolveVar(varName)
   }
 
-  const spread = Math.max(800, Math.sqrt(data.nodes.length) * 100)
+  // Seeded near the scale the force simulation settles at, so the opening frames
+  // read as the graph organising itself rather than imploding from a huge cloud.
+  const spread = Math.max(60, Math.sqrt(data.nodes.length) * 30)
 
   for (const node of data.nodes) {
     const angle = Math.random() * 2 * Math.PI
@@ -141,21 +142,6 @@ export function buildGraphologyGraph(
       graph.setNodeAttribute(tagNodeId, 'size', tagSize)
       graph.setNodeAttribute(tagNodeId, 'connectionCount', degree)
     }
-  }
-
-  if (graph.order > 1) {
-    const iterations = Math.min(150, Math.max(50, 600 / Math.sqrt(graph.order)))
-    forceAtlas2.assign(graph, {
-      iterations,
-      settings: {
-        gravity: 0.5,
-        scalingRatio: 12,
-        slowDown: 5,
-        barnesHutOptimize: graph.order > 100,
-        strongGravityMode: true,
-        edgeWeightInfluence: 0
-      }
-    })
   }
 
   return graph

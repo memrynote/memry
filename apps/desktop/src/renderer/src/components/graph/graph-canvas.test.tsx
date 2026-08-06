@@ -53,12 +53,18 @@ vi.mock('./graph-events', () => ({
     onHoverNode,
     onTooltipMove,
     onFocusNode,
-    onContextMenu
+    onContextMenu,
+    onNodeGrab,
+    onNodeDrag,
+    onNodeRelease
   }: {
     onHoverNode: (id: string | null) => void
     onTooltipMove: (pos: { x: number; y: number } | null) => void
     onFocusNode: (id: string) => void
     onContextMenu?: (menu: { nodeId: string; x: number; y: number } | null) => void
+    onNodeGrab?: (id: string) => void
+    onNodeDrag?: (id: string, x: number, y: number) => void
+    onNodeRelease?: (id: string) => void
   }) => (
     <div>
       <button
@@ -78,6 +84,15 @@ vi.mock('./graph-events', () => ({
       </button>
       <button type="button" onClick={() => onContextMenu?.({ nodeId: 'ghost', x: 3, y: 4 })}>
         context ghost
+      </button>
+      <button type="button" onClick={() => onNodeGrab?.('note-a')}>
+        grab note
+      </button>
+      <button type="button" onClick={() => onNodeDrag?.('note-a', 777, -321)}>
+        drag note
+      </button>
+      <button type="button" onClick={() => onNodeRelease?.('note-a')}>
+        release note
       </button>
     </div>
   )
@@ -353,8 +368,8 @@ describe('GraphCanvas', () => {
     expect(graphCanvasMocks.sigma.setSetting).toHaveBeenCalledWith('labelRenderedSizeThreshold', 6)
   })
 
-  it('syncs sigma settings and starts/stops forceatlas layout', () => {
-    const { rerender, unmount } = render(
+  it('syncs sigma settings and hides nodes outside the focus set', () => {
+    render(
       <GraphCanvas
         data={data}
         filterState={{ ...filters, focusNodeId: 'note-a', focusDepth: 1 }}
@@ -368,7 +383,6 @@ describe('GraphCanvas', () => {
       />
     )
 
-    expect(graphCanvasMocks.layoutStart).toHaveBeenCalledTimes(1)
     expect(graphCanvasMocks.sigma.setSetting).toHaveBeenCalledWith(
       'labelRenderedSizeThreshold',
       Infinity
@@ -382,17 +396,98 @@ describe('GraphCanvas', () => {
       isOrphan: true
     })
     expect(focusedOut.hidden).toBe(true)
+  })
 
-    rerender(
-      <GraphCanvas
-        data={data}
-        filterState={filters}
-        graphSettings={{ ...settings, layout: 'random', animateLayout: false }}
-        onFocusNode={vi.fn()}
-      />
-    )
+  describe('live simulation', () => {
+    const livePhysics: GraphSettings = {
+      ...settings,
+      layout: 'forceatlas2',
+      animateLayout: true
+    }
 
-    unmount()
-    expect(graphCanvasMocks.layoutStop).toHaveBeenCalled()
+    function renderLive(overrides: Partial<GraphSettings> = {}): {
+      graph: any
+      unmount: () => void
+    } {
+      const { unmount } = render(
+        <GraphCanvas
+          data={data}
+          filterState={filters}
+          graphSettings={{ ...livePhysics, ...overrides }}
+          onFocusNode={vi.fn()}
+        />
+      )
+      return { graph: graphCanvasMocks.sigmaContainerProps?.graph, unmount }
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('moves nodes and repaints on every animation frame', () => {
+      const { graph } = renderLive()
+      const before = graph.getNodeAttribute('note-a', 'x')
+      graphCanvasMocks.sigma.refresh.mockClear()
+
+      vi.advanceTimersToNextFrame()
+
+      expect(graph.getNodeAttribute('note-a', 'x')).not.toBe(before)
+      expect(graphCanvasMocks.sigma.refresh).toHaveBeenCalled()
+    })
+
+    it('pins a node to the pointer while it is being dragged', () => {
+      const { graph } = renderLive()
+
+      fireEvent.click(screen.getByText('grab note'))
+      fireEvent.click(screen.getByText('drag note'))
+      vi.advanceTimersToNextFrame()
+
+      expect(graph.getNodeAttribute('note-a', 'x')).toBe(777)
+      expect(graph.getNodeAttribute('note-a', 'y')).toBe(-321)
+    })
+
+    it('lets a released node settle back into the layout', () => {
+      const { graph } = renderLive()
+
+      fireEvent.click(screen.getByText('grab note'))
+      fireEvent.click(screen.getByText('drag note'))
+      vi.advanceTimersToNextFrame()
+      fireEvent.click(screen.getByText('release note'))
+      for (let i = 0; i < 20; i++) vi.advanceTimersToNextFrame()
+
+      expect(graph.getNodeAttribute('note-a', 'x')).not.toBe(777)
+    })
+
+    it('leaves positions alone for static layouts', () => {
+      const { graph } = renderLive({ layout: 'random' })
+      const before = graph.getNodeAttribute('note-a', 'x')
+
+      vi.advanceTimersToNextFrame()
+
+      expect(graph.getNodeAttribute('note-a', 'x')).toBe(before)
+    })
+
+    it('leaves positions alone when live motion is switched off', () => {
+      const { graph } = renderLive({ animateLayout: false })
+      const before = graph.getNodeAttribute('note-a', 'x')
+
+      vi.advanceTimersToNextFrame()
+
+      expect(graph.getNodeAttribute('note-a', 'x')).toBe(before)
+    })
+
+    it('stops the animation loop on unmount', () => {
+      const { graph, unmount } = renderLive()
+      unmount()
+      const before = graph.getNodeAttribute('note-a', 'x')
+
+      vi.advanceTimersToNextFrame()
+
+      expect(graph.getNodeAttribute('note-a', 'x')).toBe(before)
+    })
   })
 })

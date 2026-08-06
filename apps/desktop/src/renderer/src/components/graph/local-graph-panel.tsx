@@ -1,6 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { SigmaContainer, useSigma } from '@react-sigma/core'
-import { useWorkerLayoutForceAtlas2 } from '@react-sigma/layout-forceatlas2'
 import { useTheme } from 'next-themes'
 import '@react-sigma/core/lib/style.css'
 import { X, Maximize2 } from '@/lib/icons'
@@ -8,13 +7,21 @@ import type { NodeDisplayData, EdgeDisplayData } from 'sigma/types'
 import { Button } from '@/components/ui/button'
 import { useLocalGraphData } from '@/hooks/use-graph-data'
 import { buildGraphologyGraph } from '@/lib/graph-builder'
+import type { GraphPhysicsOptions } from '@/lib/graph-physics'
 import { useT } from '@memry/i18n/renderer'
 import { GraphEvents } from './graph-events'
 import { GraphTooltip } from './graph-tooltip'
+import { LivePhysics, type PhysicsHandle } from './physics-layout'
 
 const CENTER_HIGHLIGHT_COLOR = '#f59e0b'
 const HOVER_FADE_IN_MS = 250
 const HOVER_FADE_OUT_MS = 180
+
+/** Tighter than the full graph — this panel is only 250px tall. */
+const LOCAL_PHYSICS: GraphPhysicsOptions = {
+  linkDistance: 32,
+  chargeStrength: -140
+}
 
 function resolveGraphVar(varName: string, fallback: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallback
@@ -43,6 +50,7 @@ export function LocalGraphPanel({
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null)
   const fadeRef = useRef(0)
   const hoverTargetRef = useRef<string | null>(null)
+  const physicsHandleRef = useRef<PhysicsHandle | null>(null)
 
   const dimmedColor = useMemo(() => resolveGraphVar('--graph-dimmed-node', '#e4e4de'), [])
 
@@ -129,6 +137,18 @@ export function LocalGraphPanel({
 
   const handleFocusNode = useCallback(() => {}, [])
 
+  const handleNodeGrab = useCallback((nodeId: string) => {
+    physicsHandleRef.current?.grab(nodeId)
+  }, [])
+
+  const handleNodeDrag = useCallback((nodeId: string, x: number, y: number) => {
+    physicsHandleRef.current?.drag(nodeId, x, y)
+  }, [])
+
+  const handleNodeRelease = useCallback((nodeId: string) => {
+    physicsHandleRef.current?.release(nodeId)
+  }, [])
+
   if (isLoading || !graph) {
     return (
       <div className="relative h-[250px] rounded-md border border-border bg-muted/30">
@@ -161,11 +181,14 @@ export function LocalGraphPanel({
           fadeRef={fadeRef}
           hoverTargetRef={hoverTargetRef}
         />
-        <LocalForceLayout />
+        <LivePhysics graph={graph} handleRef={physicsHandleRef} options={LOCAL_PHYSICS} />
         <GraphEvents
           onHoverNode={setHoveredNode}
           onTooltipMove={setTooltipPos}
           onFocusNode={handleFocusNode}
+          onNodeGrab={handleNodeGrab}
+          onNodeDrag={handleNodeDrag}
+          onNodeRelease={handleNodeRelease}
         />
       </SigmaContainer>
 
@@ -186,7 +209,7 @@ function PanelHeader({
   const { t } = useT('graph')
 
   return (
-    <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-1">
+    <div className="absolute top-1.5 end-1.5 z-10 flex items-center gap-1">
       {onOpenFullGraph && (
         <Button
           variant="ghost"
@@ -265,31 +288,6 @@ function LocalHoverFadeAnimator({
       }
     }
   }, [hoveredNode, sigma, fadeRef, hoverTargetRef])
-
-  return null
-}
-
-function LocalForceLayout(): null {
-  const { start, stop } = useWorkerLayoutForceAtlas2({
-    settings: {
-      gravity: 0.5,
-      scalingRatio: 4,
-      slowDown: 3,
-      barnesHutOptimize: true
-    }
-  })
-
-  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-
-  useEffect(() => {
-    start()
-    timerRef.current = setTimeout(stop, 4000)
-
-    return () => {
-      clearTimeout(timerRef.current)
-      stop()
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return null
 }

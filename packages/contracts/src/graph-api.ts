@@ -53,6 +53,6 @@ export const GRAPH_SETTINGS_DEFAULTS: GraphSettings = {
   layout: 'forceatlas2',
   showLabels: false,
   showEdgeLabels: false,
-  animateLayout: false,
+  animateLayout: true,
   showTagEdges: false
 }
