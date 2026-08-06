@@ -83,7 +83,8 @@ import {
   applyPackagedLogLevels,
   migrateLegacyLogDir
 } from './lib/logger'
-import { applyMemrynoteIdentity } from './app-identity'
+import { applyMemrynoteIdentity, flipIdentityPin, getIdentityDecision } from './app-identity'
+import { probeSecretStoreIdentity } from './secrets/secret-storage'
 import { isAllowedExternalUrl, isPathInsideDirs, resolveMemryFilePath } from './lib/external-url'
 import { remapCrossDeviceAttachmentPath } from './lib/attachment-path-remap'
 import { decideFrameNavigation } from './lib/frame-navigation'
@@ -143,12 +144,41 @@ function resolveDeviceId(): string | undefined {
 
 const deviceId = resolveDeviceId()
 
-// Adopt the `memrynote` runtime identity (app name + userData dir, with
-// legacy migration) for production launches; dev profiles keep their
-// per-device `memry-<id>` identity below. The promise carries the macOS
-// Safe Storage keychain copy — awaited at the top of whenReady, before
-// anything decrypts secrets.
-const identityContinuity = deviceId ? Promise.resolve() : applyMemrynoteIdentity()
+// Resolve this install's runtime identity (app name + userData dir) for
+// production launches; dev profiles keep their per-device `memry-<id>` identity
+// below. Fully synchronous and keychain-free, so it is settled before anything —
+// including a headless `--cli` launch, which never reaches whenReady — can touch
+// safeStorage. The app NAME decides which macOS Keychain item safeStorage uses,
+// so an install carrying a pre-rename secret store keeps the legacy name.
+if (!deviceId) applyMemrynoteIdentity()
+
+/**
+ * Confirm, by decrypting, that the identity we derived can actually read this
+ * profile's secret store — the only exact test there is, since the store's
+ * location never proved which key encrypted it.
+ *
+ * On a mismatch the other identity is pinned for the next launch. Deliberately
+ * no app.relaunch(): forcing a restart mid-startup is a worse failure mode than
+ * asking for one. flipIdentityPin() spends at most one flip per install, which
+ * is what makes this converge.
+ */
+function verifySecretStoreIdentity(): void {
+  try {
+    const decision = getIdentityDecision()
+    // No decision means a dev profile or a custom --user-data-dir: not ours.
+    if (!decision || decision.flipped || !decision.pinned) return
+    const verdict = probeSecretStoreIdentity()
+    if (verdict !== 'wrong-identity') return
+    const flipped = flipIdentityPin()
+    trackMainError(
+      'app_identity',
+      flipped ? 'identity_flipped_for_next_launch' : 'identity_flip_failed',
+      new Error(`secret store unreadable under "${decision.appName}" (${decision.reason})`)
+    )
+  } catch (err) {
+    mainLog.warn('Secret store identity check failed', { error: err })
+  }
+}
 
 let mainDiagnosticsRegistered = false
 
@@ -1139,9 +1169,12 @@ const appReady = app.whenReady().then(async () => {
   // runtime initializes (see telemetry/track.ts), so these early reports ship
   // once it does. The later registerMainDiagnostics call is an idempotent no-op.
   registerMainDiagnostics()
-  // The Safe Storage keychain carry-over must land before anything reads
-  // secrets through safeStorage (see app-identity.ts).
-  await identityContinuity
+  // The identity itself is already settled (module scope, see applyMemrynoteIdentity).
+  // safeStorage only becomes usable after 'ready', so this is the first point at
+  // which we can check the derivation by actually decrypting something. On a
+  // mismatch we pin the other identity for the NEXT launch rather than relaunching
+  // mid-startup — at most one flip, so this always terminates.
+  verifySecretStoreIdentity()
   if (headlessCliArgs) return
 
   // Test-only reproduction of the customer's "app won't open" case: a startup that
