@@ -398,18 +398,21 @@ describe('useTaskWorkspaceMutations', () => {
         completedAt: null,
         archivedAt: null
       })
-      await result.current.addProject({
-        id: 'bad-project',
-        name: 'Bad',
-        description: '',
-        icon: 'folder',
-        color: '#6366f1',
-        isDefault: false,
-        isArchived: false,
-        createdAt: new Date('2026-05-01T00:00:00.000Z'),
-        taskCount: 0,
-        statuses: []
-      })
+      // Project mutations rethrow so callers can skip their success toast.
+      await expect(
+        result.current.addProject({
+          id: 'bad-project',
+          name: 'Bad',
+          description: '',
+          icon: 'folder',
+          color: '#6366f1',
+          isDefault: false,
+          isArchived: false,
+          createdAt: new Date('2026-05-01T00:00:00.000Z'),
+          taskCount: 0,
+          statuses: []
+        })
+      ).rejects.toThrow('project failed')
     })
 
     expect(mocks.log.error).toHaveBeenCalledWith('Failed to create task:', expect.any(Error))

@@ -3,6 +3,7 @@ import { QrCode, KeyRound, AlertTriangle, Lock } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useT } from '@memry/i18n/renderer'
 import { useAuth, type WizardStep } from '@/contexts/auth-context'
 import { EmailEntryForm } from '@/components/sync/email-entry-form'
@@ -90,11 +91,15 @@ export function SetupWizard(): React.JSX.Element {
       .then((phrase) => {
         if (cancelled) return
         if (phrase) setRecoveryPhrase(phrase)
-        else setRecoveryPhraseError(true)
+        else {
+          trackRendererError('recovery_phrase_fetch_failed', new Error('empty recovery phrase'))
+          setRecoveryPhraseError(true)
+        }
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         // Phrase lives only in main-process memory; it is gone after a restart
         // before confirmation. Surface a recoverable error instead of a blank step.
+        trackRendererError('recovery_phrase_fetch_failed', err)
         if (cancelled) return
         setRecoveryPhraseError(true)
       })

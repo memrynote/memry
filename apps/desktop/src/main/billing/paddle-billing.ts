@@ -3,6 +3,7 @@ import { getFromServer, postToServer } from '../sync/http-client'
 import { getValidAccessToken } from '../sync/token-manager'
 import { startSyncRuntime } from '../sync/runtime'
 import { createLogger } from '../lib/logger'
+import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import {
   getCachedEntitlement,
   isPaidBillingStatus,
@@ -109,6 +110,8 @@ export async function reconcileBillingAndSync(input?: { transactionId?: string }
     log.warn('Failed to reconcile billing from deep link', {
       error: error instanceof Error ? error.message : String(error)
     })
+    // A user who just completed checkout can silently fail to activate.
+    trackMainError('billing', 'deep_link_reconcile', error)
   }
 }
 
@@ -126,10 +129,14 @@ export async function resolveEntitlementForSyncStart(): Promise<CachedEntitlemen
       }
     }
     log.warn('Billing status unavailable; treating as unpaid for this launch')
+    // Envelope failure (e.g. signed out): no exception object, but a paying
+    // user may be degraded to free-plan gating for the whole launch.
+    trackMainLog('warn', { scope: 'Billing', action: 'entitlement_unavailable_treated_unpaid' })
   } catch (error) {
     log.warn('Billing status fetch failed; treating as unpaid for this launch', {
       error: error instanceof Error ? error.message : String(error)
     })
+    trackMainError('billing', 'entitlement_resolve', error)
   }
   return cached ?? { isPaid: false, plan: 'free', status: 'inactive' }
 }

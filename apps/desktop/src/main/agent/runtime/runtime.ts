@@ -1,6 +1,8 @@
 import type { AgentPreferences, ApproveToolDecision } from '@memry/contracts/ipc-agent'
+import { toSafeToken } from '@memry/contracts/telemetry-api'
 
 import { createLogger } from '../../lib/logger'
+import { trackMainEvent } from '../../telemetry/track'
 import { setWriteGate as setMcpWriteGate } from '../mcp/lifecycle'
 import type { ConversationStore } from '../storage/conversation-store'
 import type { MessageStore } from '../storage/message-store'
@@ -32,6 +34,15 @@ export interface AgentRuntimeDeps {
 
 export type PendingApprovalSnapshot = Omit<PendingApproval, 'resolve'>
 
+function trackApprovalDecided(decision: string, result: 'success' | 'failed'): void {
+  trackMainEvent('ai_action_completed', {
+    surface: 'ai',
+    action: 'tool_approval_decided',
+    result,
+    dimensions: { decision: toSafeToken(decision, 'unknown') }
+  })
+}
+
 export class AgentRuntime {
   private inFlight = new Map<string, AbortController>()
   private pending = new Map<string, PendingApproval>()
@@ -56,6 +67,7 @@ export class AgentRuntime {
         toolApprovalMode: this.deps.getPreferences?.().toolApprovalMode
       })
       if (decision.outcome === 'auto_approve') {
+        trackApprovalDecided('auto', 'success')
         return { approved: true }
       }
 
@@ -69,6 +81,13 @@ export class AgentRuntime {
         args: ctx.parsedArgs,
         requiresDiff
       })
+      // Tool name only, never args.
+      trackMainEvent('ai_action_completed', {
+        surface: 'ai',
+        action: 'tool_approval_requested',
+        result: 'success',
+        dimensions: { tool: toSafeToken(ctx.toolName, 'unknown_tool') }
+      })
 
       const userDecision = await this.waitForApproval({
         conversationId: ctx.conversationId,
@@ -77,6 +96,12 @@ export class AgentRuntime {
         args: ctx.parsedArgs,
         requiresDiff
       })
+      // Shutdown resolves every pending approval as deny; label that
+      // abandonment distinctly so the funnel separates it from a real "No".
+      trackApprovalDecided(
+        this.isShuttingDown && userDecision.kind === 'deny' ? 'abandoned' : userDecision.kind,
+        userDecision.kind === 'deny' ? 'failed' : 'success'
+      )
       if (userDecision.kind === 'deny') {
         return { approved: false, reason: 'User denied request.' }
       }

@@ -3,11 +3,16 @@ import { randomUUID } from 'crypto'
 import { asc, and, eq, sql } from 'drizzle-orm'
 import { attachmentUploadQueue } from '@memry/db-schema/data-schema'
 import { createLogger } from '../lib/logger'
+import { trackMainLog } from '../telemetry/diagnostics'
 import type { DrizzleDb } from './item-handlers/types'
 
 const log = createLogger('AttachmentOutbox')
 
 const DRAIN_BATCH_LIMIT = 50
+// Rows have no attempt cap, so a row can fail on every drain forever with the
+// only trackMainError long scrolled past (it fired on the first live attempt).
+// Crossing this many attempts flags the row as stuck, exactly once.
+const STUCK_UPLOAD_ATTEMPTS = 5
 
 /**
  * Durable outbox for note-attachment uploads.
@@ -122,11 +127,26 @@ export async function drainOutboxWith(deps: OutboxDrainDeps): Promise<{
         err instanceof Error ? err.message : String(err)
       )
       failed++
+      // row.attempts is the pre-drain count; this failure persists attempts+1.
+      if (row.attempts + 1 === STUCK_UPLOAD_ATTEMPTS) {
+        trackMainLog('warn', {
+          scope: 'AttachmentOutbox',
+          action: 'attachment_outbox_stuck',
+          metrics: { retryCount: row.attempts + 1 }
+        })
+      }
     }
   }
 
   if (pending.length > 0) {
-    log.info('Attachment outbox drained', { pending: pending.length, uploaded, failed, dropped })
+    const summary = { pending: pending.length, uploaded, failed, dropped }
+    // warn ships to log telemetry; info does not — a drain with failures must
+    // be visible remotely.
+    if (failed > 0) {
+      log.warn('Attachment outbox drained', summary)
+    } else {
+      log.info('Attachment outbox drained', summary)
+    }
   }
   return { uploaded, failed, dropped }
 }

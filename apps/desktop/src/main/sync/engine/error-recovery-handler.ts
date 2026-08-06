@@ -4,6 +4,7 @@ import type { CertificatePinFailedEvent, DeviceRevokedEvent } from '@memry/contr
 import type { SyncErrorCategory } from '@memry/contracts/ipc-sync-ops'
 import { RateLimitError } from '../http-client'
 import { classifyError } from '../sync-errors'
+import { trackMainEvent } from '../../telemetry/track'
 import type { SyncContext } from './sync-context'
 import { MAX_RATE_LIMIT_BACKOFF_MS, BASE_RATE_LIMIT_BACKOFF_MS } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
@@ -47,6 +48,19 @@ export class ErrorRecoveryHandler {
 
   handleDeviceRevoked(): void {
     log.warn('Device has been revoked by another device')
+    // WS-delivered revocations (the common case) never pass through the
+    // engine's push/pull catch, so they had no sync_error. The HTTP path sets
+    // lastErrorInfo in the coordinator catch before landing here — skip those
+    // to avoid double-counting one incident.
+    if (this.ctx.lastErrorInfo?.category !== 'device_revoked') {
+      trackMainEvent('sync_error', {
+        surface: 'sync',
+        action: 'device_revoked',
+        result: 'failed',
+        errorCode: 'device_revoked',
+        source: 'ws'
+      })
+    }
     this.ctx.abortController?.abort()
     this.ctx.lastErrorInfo = {
       category: 'device_revoked',
@@ -66,6 +80,15 @@ export class ErrorRecoveryHandler {
   handleCertPinFailed(event: CertificatePinFailedEvent): void {
     log.error('SECURITY: Certificate pin failed — sync permanently paused', {
       hostname: event.hostname
+    })
+    // This path never flows through the engine push/pull catches, so nothing
+    // else captures it; a pin/rotation regression (#876 class) must aggregate.
+    trackMainEvent('sync_error', {
+      surface: 'sync',
+      action: 'certificate_pin_failed',
+      result: 'failed',
+      errorCode: 'certificate_pin_failed',
+      source: 'ws'
     })
     this.ctx.lastError = 'errors:sync.certificatePinFailed'
     this.ctx.lastErrorInfo = {

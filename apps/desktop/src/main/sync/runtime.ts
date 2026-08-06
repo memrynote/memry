@@ -17,6 +17,7 @@ import {
 import { SyncEngine, type SyncEngineDeps } from './engine'
 import { resolveSyncServerUrl } from './sync-server-url'
 import { syncGoogleCalendarSource } from '../calendar/google/sync-service'
+import { toErrorCode } from '@memry/contracts/telemetry-api'
 import { trackMainEvent } from '../telemetry/track'
 import { SyncQueueManager } from './queue'
 import { NetworkMonitor } from './network'
@@ -769,6 +770,15 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       runtime = null
       resetSyncServiceSingletons()
       log.error('Failed to start sync runtime', error)
+      // sync_enabled only fires on success, so a fleet-wide startup regression
+      // would show up as an unexplained DROP in sync_enabled — emit the
+      // failure counterpart so it spikes instead.
+      trackMainEvent('sync_error', {
+        surface: 'sync',
+        action: 'runtime_start_failed',
+        result: 'failed',
+        errorCode: toErrorCode(error)
+      })
       return null
     } finally {
       startPromise = null

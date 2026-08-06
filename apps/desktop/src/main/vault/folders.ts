@@ -11,7 +11,11 @@ import { existsSync } from 'fs'
 import matter from 'gray-matter'
 import { getStatus, getConfig } from './index'
 import { VaultError, VaultErrorCode } from '../lib/errors'
+import { createLogger } from '../lib/logger'
+import { trackMainError } from '../telemetry/diagnostics'
 import type { FolderConfig } from '@memry/contracts/templates-api'
+
+const logger = createLogger('VaultFolders')
 
 // ============================================================================
 // Constants
@@ -161,7 +165,12 @@ export async function readFolderConfig(folderPath: string): Promise<FolderConfig
     }
     const content = await fs.readFile(configPath, 'utf-8')
     return parseFolderConfig(content)
-  } catch {
+  } catch (error) {
+    // The file exists but could not be read/parsed. SET_FOLDER_CONFIG merges
+    // views/formulas from this read before writing, so a silent null here lets
+    // the next write wipe the folder's saved views (#720 clobber class).
+    logger.warn('Failed to read folder config', { folderPath, error })
+    trackMainError('notes', 'folder_config_read', error)
     return null
   }
 }

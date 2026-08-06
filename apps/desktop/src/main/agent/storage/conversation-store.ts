@@ -4,6 +4,8 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 import * as schema from '@memry/db-schema/data-schema'
 
+import { createLogger } from '../../lib/logger'
+import { trackMainError } from '../../telemetry/diagnostics'
 import {
   AGENT_CONVERSATION_SYNCABLE_FIELDS,
   type AgentConversationField
@@ -12,6 +14,8 @@ import { decryptAgentJsonForVault, encryptAgentJsonForVault } from './encryption
 import type { AgentBackendId } from '@memry/contracts/ipc-agent'
 
 import type { Conversation, FieldClocks, VectorClock } from './types'
+
+const logger = createLogger('AgentConversationStore')
 
 interface StoreDeps {
   db: BetterSQLite3Database<typeof schema>
@@ -167,7 +171,12 @@ export function createConversationStore(deps: StoreDeps): ConversationStore {
       return rows.flatMap((row) => {
         try {
           return [agentConversationRowToModel(row, vaultKey)]
-        } catch {
+        } catch (error) {
+          // Wrong vault key, corrupt row, or cross-device sync artifact: keep
+          // the rest of the list rendering, but a conversation silently
+          // vanishing here is exactly what support tickets look like.
+          logger.warn(`Dropping undecryptable agent conversation row ${row.id}`, error)
+          trackMainError('agent', 'conversation_decrypt', error)
           return []
         }
       })

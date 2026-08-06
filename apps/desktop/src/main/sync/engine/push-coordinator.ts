@@ -13,6 +13,7 @@ import { classifyError } from '../sync-errors'
 import { isBinaryFileType } from '@memry/shared/file-types'
 import { parallelWithLimit } from '../concurrency'
 import { SyncTimer } from '../sync-timer'
+import { trackMainEvent } from '../../telemetry/track'
 import type { SyncContext } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
 import {
@@ -69,6 +70,7 @@ export class PushCoordinator {
     const timer = new SyncTimer()
     const startTime = Date.now()
     let pushedCount = 0
+    let quotaEventSent = false
     let lastServerTime = 0
     let lastMaxCursor = 0
     let vaultKey: Uint8Array | null = null
@@ -237,6 +239,20 @@ export class PushCoordinator {
                 this.markItemSynced(pushItem.id, pushItem.type)
               } else if (reason === 'STORAGE_QUOTA_EXCEEDED') {
                 log.warn('Push: storage quota exceeded', { itemId: pushItem.id.slice(0, 8) })
+                // Ends the run via `break`, never a throw — engine.push() records
+                // it as a success, so sync_error must be emitted here. Once per
+                // run: later iterations can hit the same quota wall.
+                if (!quotaEventSent) {
+                  quotaEventSent = true
+                  trackMainEvent('sync_error', {
+                    surface: 'sync',
+                    action: 'push_quota_exceeded',
+                    result: 'failed',
+                    errorCode: 'storage_quota_exceeded',
+                    source: 'push',
+                    dimensions: { transport: 'record' }
+                  })
+                }
                 this.ctx.deps.queue.markFailed(queueId, reason)
                 rejectedThisCycle.add(queueId)
                 this.ctx.lastErrorInfo = {
@@ -301,6 +317,18 @@ export class PushCoordinator {
         ) {
           throw error
         }
+        // Swallowed here (the user sees the error banner via state), so
+        // engine.push() records sync_run_completed success — the sync_error for
+        // this terminal outcome must be emitted from inside this catch.
+        trackMainEvent('sync_error', {
+          surface: 'sync',
+          action: 'push_failed',
+          result: 'failed',
+          errorCode: errorInfo.category,
+          metrics: { durationMs: Date.now() - startTime },
+          source: 'push',
+          dimensions: { transport: 'record' }
+        })
         this.stateManager.setState('error')
         this.stateManager.recordHistory('error', 0, Date.now() - startTime, errorInfo.message)
       }

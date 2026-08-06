@@ -32,6 +32,8 @@ import { extractYouTubeVideoId } from '@memry/shared/youtube'
 import { extractDomain } from './metadata-utils'
 import { publishProjectionEvent } from '../projections'
 import { syncTaskCreate } from '../tasks/runtime-effects'
+import { trackMainError } from '../telemetry/diagnostics'
+import { trackMainEvent } from '../telemetry/track'
 
 const log = createLogger('Inbox:Filing')
 
@@ -591,6 +593,7 @@ async function fileBinaryToFolder(
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     log.error('Error filing binary to folder:', message)
+    trackMainError('inbox', 'file_binary', error)
     return { success: false, filedTo: null, error: message }
   }
 }
@@ -665,6 +668,7 @@ export async function fileToFolder(
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     log.error('Error filing to folder:', message)
+    trackMainError('inbox', 'file_folder', error)
     return { success: false, filedTo: null, error: message }
   }
 }
@@ -724,6 +728,7 @@ export async function convertToNote(itemId: string): Promise<FileResponse> {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     log.error('Error converting to note:', message)
+    trackMainError('inbox', 'convert_note', error)
     return { success: false, filedTo: null, error: message }
   }
 }
@@ -805,10 +810,21 @@ export async function convertToTask(
 
     syncTaskCreate(taskId)
 
+    // Tasks born here bypass the tasks domain publisher (direct insertTask),
+    // so the publisher's task_created never fires for this path.
+    trackMainEvent('task_created', {
+      surface: 'inbox',
+      action: 'created',
+      objectType: 'task',
+      source: 'inbox_conversion',
+      result: 'success'
+    })
+
     return { success: true, taskId }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     log.error('Error converting to task:', message)
+    trackMainError('inbox', 'convert_task', error)
     return { success: false, taskId: null, error: message }
   }
 }
@@ -863,16 +879,30 @@ export async function convertToEvent(
       syncCalendarEventCreate(id)
     } catch (error) {
       log.warn('syncCalendarEventCreate failed; event persisted locally', error)
+      // The event exists locally but never enqueues for sync — a silent
+      // device-divergence failure, so it must be countable.
+      trackMainError('inbox', 'convert_event_sync_enqueue', error)
     }
     broadcastToAllWindows(CalendarChannels.events.CHANGED, { entityType: 'calendar_event', id })
 
     markItemAsFiled(itemId, id, 'event')
     recordFilingHistory(item.type, item.content, id, 'event', mergedTags)
     log.info(`Converted to event: ${id}`)
+
+    // Bypasses CREATE_EVENT (direct upsert), so calendar_event_created never
+    // fires otherwise — same pattern as promote-external-event.ts.
+    trackMainEvent('calendar_event_created', {
+      surface: 'calendar',
+      action: 'created',
+      source: 'inbox_conversion',
+      result: 'success'
+    })
+
     return { success: true, eventId: id }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     log.error('Error converting to event:', message)
+    trackMainError('inbox', 'convert_event', error)
     return { success: false, eventId: null, error: message }
   }
 }
@@ -926,6 +956,7 @@ export async function convertToReminder(
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     log.error('Error converting to reminder:', message)
+    trackMainError('inbox', 'convert_reminder', error)
     return { success: false, noteId: null, error: message }
   }
 }
@@ -1080,6 +1111,7 @@ async function linkBinaryToNotes(
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     log.error('Error linking binary to notes:', message)
+    trackMainError('inbox', 'link_binary', error)
     return { success: false, error: message }
   }
 }
@@ -1192,6 +1224,7 @@ export async function linkToNotes(
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     log.error('Error linking to notes:', message)
+    trackMainError('inbox', 'link_notes', error)
     return { success: false, error: message }
   }
 }

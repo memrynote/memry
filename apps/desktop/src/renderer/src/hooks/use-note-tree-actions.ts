@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useTabActions } from '@/contexts/tabs'
 import { notesKeys, useNoteMutations } from '@/hooks/use-notes-query'
 import type { Note } from '@memry/contracts/notes-api'
@@ -168,6 +169,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         setRenameValue('Untitled')
       }
     } catch (err) {
+      trackRendererError('note_create_failed', err)
       log.error('Failed to create note', err)
       toast.error(
         extractErrorMessage(
@@ -210,6 +212,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
           })
         }
       } catch (err) {
+        trackRendererError('note_create_failed', err)
         log.error('Failed to create note', err)
         toast.error(
           extractErrorMessage(
@@ -254,6 +257,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         setFolderRenameValue(folderName)
       }
     } catch (err) {
+      trackRendererError('folder_create_failed', err)
       log.error('Failed to create folder', err)
       toast.error(
         extractErrorMessage(
@@ -288,6 +292,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
           await deps.refreshFolders()
         }
       } catch (err) {
+        trackRendererError('folder_create_failed', err)
         log.error('Failed to create folder', err)
         toast.error(
           extractErrorMessage(
@@ -353,6 +358,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       try {
         await deps.mutations.renameNote.mutateAsync({ id: noteId, newTitle: renameValue.trim() })
       } catch (err) {
+        trackRendererError('note_rename_failed', err)
         log.error('Failed to rename note', err)
         revertOptimisticTitle(noteId)
         toast.error(
@@ -410,6 +416,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         await notesService.renameFolder(oldPath, newPath)
         await deps.refreshFolders()
       } catch (err) {
+        trackRendererError('folder_rename_failed', err)
         log.error('Failed to rename folder', err)
         toast.error(
           extractErrorMessage(

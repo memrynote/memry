@@ -18,6 +18,8 @@ import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
 import type { InboxItem, InboxItemListItem } from '@memry/contracts/inbox-api'
 import { syncInboxUpdate } from './runtime-effects'
+import { trackMainError } from '../telemetry/diagnostics'
+import { trackMainEvent } from '../telemetry/track'
 
 const log = createLogger('Inbox:Snooze')
 
@@ -410,9 +412,18 @@ function processDueItems(): void {
       items: dueItems
     })
 
+    // Closes the snooze funnel: snoozed (manual) → resurfaced (scheduler).
+    trackMainEvent('inbox_snoozed', {
+      surface: 'inbox',
+      action: 'resurfaced',
+      result: 'success',
+      metrics: { itemCount: dueItems.length }
+    })
+
     log.info(`Surfaced ${dueItems.length} items`)
   } catch (error) {
     log.error('Error processing due items:', error)
+    trackMainError('inbox', 'snooze_resurface', error)
   }
 }
 

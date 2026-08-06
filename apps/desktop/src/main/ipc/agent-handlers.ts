@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import { BrowserWindow, ipcMain, type WebContents } from 'electron'
 
 import {
@@ -35,6 +37,8 @@ import { broadcastAgentEvent } from '../agent/runtime/event-bus'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { createLogger } from '../lib/logger'
 import { getMainI18n } from '../lib/main-i18n'
+import { trackMainError } from '../telemetry/diagnostics'
+import { trackMainEvent } from '../telemetry/track'
 
 const logger = createLogger('IPC:Agent')
 
@@ -214,6 +218,22 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
     )
       .catch((error) => {
         logger.error('Agent turn failed', error)
+        // Failures before the subprocess streams (missing CLI binary, MCP
+        // server not running, spawn throw) never reach runTurn's own
+        // turn_error broadcast or its turn_completed telemetry.
+        trackMainError('agent', 'turn_start', error)
+        trackMainEvent('ai_action_completed', {
+          surface: 'ai',
+          action: 'turn_completed',
+          source: request.backendOptions.backend,
+          result: 'failed'
+        })
+        broadcastAgentEvent({
+          kind: 'turn_error',
+          conversationId: request.conversationId,
+          turnId: randomUUID(),
+          message: extractErrorMessage(error, 'Agent turn failed')
+        })
       })
       .finally(() => {
         deps.runtime.releaseTurnLock(request.conversationId)

@@ -11,6 +11,7 @@
 
 import { PROJECT_PROPERTY_KEY } from '@memry/contracts/property-types'
 import { createLogger } from '../lib/logger'
+import { trackMainLog } from '../telemetry/diagnostics'
 import { getProjectById, listMarkdownNoteIdsForProject } from '../database/queries/projects'
 import { getEntityPropertiesRecord, setEntityProperties } from '../notes/entity-properties'
 import { readProjectNames, withoutProjectName } from '../notes/project-property'
@@ -49,6 +50,7 @@ async function rewriteLinkedNotes(
   noteIds?: string[]
 ): Promise<void> {
   const ids = noteIds ?? listMarkdownNoteIdsForProject(db, projectId)
+  let failed = 0
 
   for (const noteId of ids) {
     const properties = getEntityPropertiesRecord(noteId)
@@ -64,13 +66,26 @@ async function rewriteLinkedNotes(
         [PROJECT_PROPERTY_KEY]: next
       })
       if (!result.success) {
+        failed++
         logger.error('Failed to propagate project name to note', { noteId, error: result.error })
       }
     } catch (err) {
       // One unwritable note must not abandon the rest — a half-propagated rename
       // is recoverable, an abandoned one leaves the vault inconsistent.
+      failed++
       logger.error('Failed to propagate project name to note', { noteId, err })
     }
+  }
+
+  // One event per run (bounded by linked-note count) so half-propagated
+  // renames — vault frontmatter naming a project that no longer matches —
+  // are countable in telemetry, not just log lines.
+  if (failed > 0) {
+    trackMainLog('error', {
+      scope: 'ProjectNamePropagation',
+      action: 'propagate_failed',
+      metrics: { itemCount: failed }
+    })
   }
 }
 

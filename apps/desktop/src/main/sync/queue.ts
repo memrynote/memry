@@ -3,6 +3,9 @@ import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import type { SyncItemType, SyncOperation } from '@memry/contracts/sync-api'
 import type { DataDb } from '../database'
 import { createLogger } from '../lib/logger'
+import { toSafeToken } from '@memry/contracts/telemetry-api'
+import { trackMainEvent } from '../telemetry/track'
+import { trackMainLog } from '../telemetry/diagnostics'
 
 const log = createLogger('SyncQueue')
 
@@ -185,6 +188,30 @@ export class SyncQueueManager {
       })
       .where(eq(syncQueue.id, id))
       .run()
+
+    // Dead-letter transition: once attempts reaches the budget the row simply
+    // stops matching dequeue's filter and the edit silently never syncs again.
+    // Equality (not >=) so the event fires exactly once per row.
+    const row = this.db
+      .select({ attempts: syncQueue.attempts, type: syncQueue.type })
+      .from(syncQueue)
+      .where(eq(syncQueue.id, id))
+      .get()
+    if (row && row.attempts === DEFAULT_MAX_ATTEMPTS) {
+      log.error('markFailed: retry budget exhausted — item dead-lettered', {
+        id: id.slice(0, 8),
+        type: row.type,
+        error
+      })
+      trackMainEvent('sync_error', {
+        surface: 'sync',
+        action: 'queue_dead_letter',
+        result: 'failed',
+        errorCode: toSafeToken(error, 'rejected'),
+        source: 'push',
+        dimensions: { itemType: row.type }
+      })
+    }
   }
 
   getSize(): number {
@@ -254,6 +281,12 @@ export class SyncQueueManager {
       .run()
     if (result.changes > 0) {
       log.debug('purgeOldErrors: purged', { purged: result.changes, beforeCount })
+      // Permanent deletion of dead-lettered user edits — countable remotely.
+      trackMainLog('warn', {
+        scope: 'SyncQueue',
+        action: 'dead_letter_purged',
+        metrics: { itemCount: result.changes }
+      })
     }
     return result.changes
   }

@@ -6,6 +6,7 @@ import type { DataDb } from '../database'
 import { generateId } from '../lib/id'
 import { deleteInboxAttachments } from './attachments'
 import { syncInboxDelete } from './runtime-effects'
+import { trackMainError } from '../telemetry/diagnostics'
 
 type InboxCrudLogger = {
   info: (message: string) => void
@@ -81,6 +82,7 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
 
       return { success: true, item }
     } catch (error) {
+      trackMainError('inbox', 'crud_update', error)
       return { success: false, item: null, error: getErrorMessage(error) }
     }
   }
@@ -104,6 +106,7 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
 
       return { success: true }
     } catch (error) {
+      trackMainError('inbox', 'crud_archive', error)
       return { success: false, error: getErrorMessage(error) }
     }
   }
@@ -141,6 +144,7 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
 
       return { success: true }
     } catch (error) {
+      trackMainError('inbox', 'crud_add_tag', error)
       return { success: false, error: getErrorMessage(error) }
     }
   }
@@ -158,6 +162,7 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
 
       return { success: true }
     } catch (error) {
+      trackMainError('inbox', 'crud_remove_tag', error)
       return { success: false, error: getErrorMessage(error) }
     }
   }
@@ -188,6 +193,7 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
       deps.logger.info(`Marked item ${itemId} as viewed`)
       return { success: true }
     } catch (error) {
+      trackMainError('inbox', 'crud_mark_viewed', error)
       return { success: false, error: getErrorMessage(error) }
     }
   }
@@ -218,6 +224,7 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
 
       return { success: true }
     } catch (error) {
+      trackMainError('inbox', 'crud_unarchive', error)
       return { success: false, error: getErrorMessage(error) }
     }
   }
@@ -241,6 +248,7 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
 
       return { success: true }
     } catch (error) {
+      trackMainError('inbox', 'crud_delete_permanent', error)
       return { success: false, error: getErrorMessage(error) }
     }
   }
@@ -277,6 +285,7 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
       deps.logger.info(`Undo file for item ${id}`)
       return { success: true }
     } catch (error) {
+      trackMainError('inbox', 'crud_undo_file', error)
       return { success: false, error: getErrorMessage(error) }
     }
   }
@@ -308,6 +317,7 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
       deps.logger.info(`Undo archive for item ${id}`)
       return { success: true }
     } catch (error) {
+      trackMainError('inbox', 'crud_undo_archive', error)
       return { success: false, error: getErrorMessage(error) }
     }
   }

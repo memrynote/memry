@@ -25,6 +25,7 @@ import { ensureAssetsPresent, reconcileCanvasAssets } from '../../canvas/assets/
 import { buildAssetServiceContext } from '../../canvas/assets/asset-service-context'
 import { getCanvasSyncService } from '../canvas-sync'
 import { trackMainEvent } from '../../telemetry/track'
+import { trackMainLog } from '../../telemetry/diagnostics'
 import { BaseItemHandler } from './base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 import type { MemryAssetDescriptor } from '@memry/contracts/canvas-api'
@@ -341,6 +342,12 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
     // device would skip anyway (D5) after burning a round trip.
     if (scene === null) {
       log.warn('Skipping canvas push without a readable document', { itemId })
+      // Sizes the never-syncing unreadable/moved-file canvas population.
+      trackMainLog('warn', {
+        scope: 'CanvasHandler',
+        action: 'push_skipped_unreadable',
+        errorCode: 'canvas_unreadable'
+      })
       return null
     }
     return JSON.stringify({

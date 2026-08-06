@@ -28,6 +28,7 @@ import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { dbProjectToUiProject } from '@/features/tasks/use-task-queries'
 import { tasksService } from '@/services/tasks-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import {
   useConvertToTask,
   useConvertToEvent,
@@ -119,12 +120,14 @@ export const ConvertActions = ({
     try {
       const result = await promise
       if (!result.success) {
+        trackRendererError('inbox_convert_failed', result.error)
         toast.error(t('convert.failed', { error: result.error ?? '' }))
         return
       }
       toast.success(t('convert.success', { target: targetLabel }))
       onConverted()
     } catch (error) {
+      trackRendererError('inbox_convert_failed', error)
       toast.error(t('convert.failed', { error: extractErrorMessage(error) }))
     }
   }
@@ -141,6 +144,7 @@ export const ConvertActions = ({
         }
       })
       if (!result.success || !result.taskId) {
+        trackRendererError('inbox_convert_failed', result.error)
         toast.error(t('convert.failed', { error: result.error ?? '' }))
         return
       }
@@ -156,6 +160,7 @@ export const ConvertActions = ({
       toast.success(t('convert.success', { target: t('convert.task') }))
       onConverted()
     } catch (error) {
+      trackRendererError('inbox_convert_failed', error)
       toast.error(t('convert.failed', { error: extractErrorMessage(error) }))
     }
   }

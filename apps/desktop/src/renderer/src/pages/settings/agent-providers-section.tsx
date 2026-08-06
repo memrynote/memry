@@ -26,6 +26,7 @@ import {
   SettingRowTall
 } from '@/components/settings/settings-primitives'
 import { RefreshCw } from '@/lib/icons'
+import { trackTelemetry } from '@/lib/telemetry'
 
 const PRESET_DEFAULTS: Record<Exclude<AgentLocalProviderPreset, 'custom'>, string> = {
   ollama: 'http://localhost:11434/v1',
@@ -112,6 +113,12 @@ export function AgentProvidersSection({
       return { ...current, preset, baseUrl }
     })
     setDirty(true)
+    void trackTelemetry('setting_changed', {
+      surface: 'settings',
+      action: 'changed',
+      objectType: 'agent_local_provider_preset',
+      dimensions: { value: preset }
+    })
   }, [])
 
   const updateApiKey = useCallback((value: string) => {
@@ -123,12 +130,25 @@ export function AgentProvidersSection({
     setPreferences((current) => (current ? { ...current, toolApprovalMode } : current))
     const saved = await window.api.agent.setPreferences({ toolApprovalMode })
     setPreferences(saved)
+    // Security-relevant preference: enum value only, never free text.
+    void trackTelemetry('setting_changed', {
+      surface: 'settings',
+      action: 'changed',
+      objectType: 'agent_tool_approval_mode',
+      dimensions: { value: toolApprovalMode }
+    })
   }, [])
 
   const changeAccessMode = useCallback(async (accessMode: AgentAccessMode) => {
     setPreferences((current) => (current ? { ...current, accessMode } : current))
     const saved = await window.api.agent.setPreferences({ accessMode })
     setPreferences(saved)
+    void trackTelemetry('setting_changed', {
+      surface: 'settings',
+      action: 'changed',
+      objectType: 'agent_access_mode',
+      dimensions: { value: accessMode }
+    })
   }, [])
 
   const loadModels = useCallback(async () => {

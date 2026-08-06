@@ -2,6 +2,7 @@ import { count, eq, like } from 'drizzle-orm'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import type { ViewConfig } from '@memry/contracts/folder-view-api'
 import { createLogger } from '../../lib/logger'
+import { trackMainEvent } from '../../telemetry/track'
 import type { DataDb } from '../types'
 
 const logger = createLogger('TagDefinitions')
@@ -70,6 +71,14 @@ export function getOrCreateTag(
   const color = TAG_COLOR_PALETTE[tagCount % TAG_COLOR_PALETTE.length]
 
   db.insert(tagDefinitions).values({ name: normalizedName, color, colorAuthored: false }).run()
+
+  // Insert branch only — the get branch above returns without emitting.
+  trackMainEvent('tag_created', {
+    surface: 'tags',
+    action: 'created',
+    objectType: 'tag',
+    result: 'success'
+  })
 
   return { name: normalizedName, color, icon: null, categoryId: null, sortOrder: 0 }
 }

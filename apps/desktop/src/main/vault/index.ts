@@ -49,6 +49,8 @@ import { VaultError, VaultErrorCode } from '../lib/errors'
 import { startWatcher, stopWatcher } from './watcher'
 import { indexVault, rebuildIndex } from './indexer'
 import { createLogger } from '../lib/logger'
+import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
+import { trackMainEvent } from '../telemetry/track'
 import { getMainI18n } from '../lib/main-i18n'
 import { startSyncRuntime, stopSyncRuntime } from '../sync/runtime'
 import { reconcileProjections, startProjectionRuntime, stopProjectionRuntime } from '../projections'
@@ -234,6 +236,14 @@ export interface IndexRecoveredEvent {
  * Sent after automatic recovery from corrupt or missing index.
  */
 export function emitIndexRecovered(event: IndexRecoveredEvent): void {
+  // Automatic recovery from a corrupt/missing index (or a failed index
+  // migration) is user-visible data-corruption recovery — count it in telemetry.
+  trackMainLog('warn', {
+    scope: 'vault',
+    action: 'index_recovered',
+    errorCode: event.reason,
+    metrics: { durationMs: event.duration, itemCount: event.filesIndexed }
+  })
   BrowserWindow.getAllWindows().forEach((win) => {
     win.webContents.send(VaultChannels.events.INDEX_RECOVERED, event)
   })
@@ -355,6 +365,7 @@ async function openVault(vaultPath: string): Promise<void> {
     }
   } catch (error) {
     logger.error('Indexing failed:', error)
+    trackMainError('vault', 'index_on_open', error)
     // Continue anyway - watcher will pick up files
   }
 
@@ -367,6 +378,7 @@ async function openVault(vaultPath: string): Promise<void> {
     await applyProjectFrontmatterBackfill(dataDb)
   } catch (error) {
     logger.error('Project frontmatter backfill failed:', error)
+    trackMainError('vault', 'project_frontmatter_backfill', error)
   }
 
   updateStatus({ isIndexing: false, indexProgress: 100 })
@@ -394,6 +406,7 @@ async function openVault(vaultPath: string): Promise<void> {
 
   void reconcileProjections().catch((error) => {
     logger.error('Background projection reconcile failed:', error)
+    trackMainError('vault', 'projection_reconcile', error)
   })
 
   // Register the agent IPC handlers before the sync runtime starts: agent chat
@@ -456,6 +469,9 @@ export async function selectVault(input: { path?: string }): Promise<SelectVault
     return { success: true, vault: vaultInfo }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to select vault'
+    // The error envelope below is the only signal the IPC layer sees — the
+    // handler never observes a throw — so report the failure here.
+    trackMainError('vault', 'open', error)
     updateStatus({ error: message })
     return { success: false, vault: null, error: message }
   }
@@ -703,8 +719,18 @@ export async function autoOpenLastVault(): Promise<void> {
     try {
       await openVault(lastVault)
       touchVault(lastVault)
+      // The IPC handlers only track explicit select/switch/download-remote;
+      // without this the most common open path (app launch) is never counted.
+      trackMainEvent('vault_opened', {
+        surface: 'vault',
+        action: 'opened',
+        source: 'auto',
+        result: 'success'
+      })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to open last vault'
+      logger.error('Auto-open of last vault failed:', error)
+      trackMainError('vault', 'auto_open', error)
       updateStatus({ error: message })
       // Clear the invalid vault path
       setCurrentVaultPath(null)

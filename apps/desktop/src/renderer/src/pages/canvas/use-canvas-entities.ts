@@ -19,6 +19,7 @@ import {
 } from '@/services/tasks-service'
 import { calendarService, onCalendarChanged } from '@/services/calendar-service'
 import { createLogger } from '@/lib/logger'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { entityKey, type CanvasCardRef } from './canvas-cards'
 import type { CanvasEntityType } from '@memry/contracts/canvas-api'
 
@@ -208,7 +209,11 @@ export function useCanvasEntities(visibleRefs: readonly CanvasCardRef[]): Entity
       }
       void loadEntity(entityType, entityId)
         .then((state) => dispatch({ type: 'set', key, state }))
-        .catch(() => dispatch({ type: 'set', key, state: { status: 'dangling' } }))
+        .catch((err: unknown) => {
+          log.error('Failed to refresh canvas card entity', err)
+          trackRendererError('canvas_card_refresh', err)
+          dispatch({ type: 'set', key, state: { status: 'dangling' } })
+        })
     }
 
     const unsubscribes = [

@@ -65,6 +65,7 @@ import type { BookmarkWithItem } from '@/hooks/use-bookmarks'
 import { BookmarkItemTypes } from '@memry/contracts/bookmarks-api'
 import { getAllSupportedExtensions } from '@memry/shared/file-types'
 import { createLogger } from '@/lib/logger'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useFileDrop } from '@/hooks/use-file-drop'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useT } from '@memry/i18n/renderer'
@@ -358,6 +359,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
       handleCanvasOpen(canvas)
     } catch (error) {
       log.error('Failed to create canvas', error)
+      trackRendererError('canvas_create', error)
       toast.error(
         extractErrorMessage(error, getI18n().getFixedT(null, 'common')('canvas.createFailed'))
       )

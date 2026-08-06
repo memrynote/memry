@@ -2,6 +2,9 @@ import { app } from 'electron'
 import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createLogger } from './lib/logger'
+// Runs at module load, before the telemetry runtime exists; events land in the
+// early buffer (telemetry/track.ts) and ship once the runtime installs.
+import { trackMainLog } from './telemetry/diagnostics'
 
 const logger = createLogger('GpuCrashGuard')
 
@@ -74,6 +77,7 @@ export function applyGpuCrashGuard(): void {
     try {
       app.disableHardwareAcceleration()
       logger.warn('hardware acceleration disabled after a prior GPU crash on this version')
+      trackMainLog('warn', { scope: 'GpuCrashGuard', action: 'hw_accel_disabled' })
     } catch (err) {
       logger.warn('failed to disable hardware acceleration', err)
     }

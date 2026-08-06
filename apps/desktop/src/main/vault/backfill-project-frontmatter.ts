@@ -40,6 +40,7 @@ import { extractProperties, parseNote } from './frontmatter'
 import { safeRead } from './file-ops'
 import { toAbsolutePath } from './notes-io'
 import { createLogger } from '../lib/logger'
+import { trackMainLog } from '../telemetry/diagnostics'
 import type { DataDb } from '../database'
 
 const logger = createLogger('ProjectFrontmatterBackfill')
@@ -183,8 +184,13 @@ export async function applyProjectFrontmatterBackfill(db: DataDb): Promise<void>
     pending = JSON.parse(raw) as PendingBackfill
   } catch {
     // Nothing can be recovered from an unreadable snapshot, and retrying it
-    // every open would only repeat the failure.
+    // every open would only repeat the failure. Irreversible loss of legacy
+    // project memberships for this vault — make it countable fleet-wide.
     logger.error('Unreadable project frontmatter backfill snapshot, skipping')
+    trackMainLog('error', {
+      scope: 'ProjectFrontmatterBackfill',
+      action: 'snapshot_unreadable'
+    })
     setSetting(db, PROJECT_FRONTMATTER_BACKFILL_KEY, DONE)
     return
   }
@@ -277,5 +283,13 @@ export async function applyProjectFrontmatterBackfill(db: DataDb): Promise<void>
     deferred,
     failed,
     outstanding
+  })
+
+  // Graphable fleet-wide backfill health: itemCount = notes visited,
+  // value = failed writes, queueCount = notes still outstanding.
+  trackMainLog(failed > 0 ? 'warn' : 'info', {
+    scope: 'ProjectFrontmatterBackfill',
+    action: 'apply',
+    metrics: { itemCount: visited, value: failed, queueCount: outstanding }
   })
 }

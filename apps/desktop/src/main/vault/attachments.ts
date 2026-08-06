@@ -13,6 +13,10 @@ import { ensureDirectory, sanitizeFilename } from './file-ops'
 import { toMemryFileUrl } from '../lib/paths'
 import { getStatus } from './index'
 import { VaultError, VaultErrorCode } from '../lib/errors'
+import { createLogger } from '../lib/logger'
+import { trackMainError } from '../telemetry/diagnostics'
+
+const logger = createLogger('VaultAttachments')
 
 // ============================================================================
 // Error Handling
@@ -316,6 +320,10 @@ export async function saveAttachment(
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
+    // This envelope never throws through the IPC wrapper, so track here or the
+    // failure is invisible to telemetry.
+    logger.error('Failed to save attachment', { noteId, error })
+    trackMainError('vault', 'attachment_save', error)
     return { success: false, error: `Failed to save attachment: ${message}` }
   }
 }
@@ -401,7 +409,9 @@ export async function listNoteAttachments(noteId: string): Promise<AttachmentInf
     }
 
     return attachments
-  } catch {
+  } catch (error) {
+    // An unreadable folder must not look identical to a genuinely empty one.
+    logger.warn('Failed to list note attachments', { noteId, error })
     return []
   }
 }

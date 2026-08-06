@@ -34,6 +34,7 @@ import {
 } from './rename-tracker'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@memry/shared/file-types'
 import { createLogger } from '../lib/logger'
+import { trackMainError } from '../telemetry/diagnostics'
 import { isWritebackIgnored, wasRecentNetworkUpdate } from '../sync/crdt-writeback'
 import { attachmentEvents } from '../sync/attachment-events'
 import { flushProjectionEvents } from '../projections'
@@ -769,6 +770,12 @@ export function getWatcher(): VaultWatcher {
  * @param vaultPath - Absolute path to the vault
  * @param excludePatterns - Optional patterns to exclude from watching (defaults to config)
  */
+// Watcher errors can burst per-file (e.g. a permission-denied subtree), so
+// sample telemetry to one report per minute — same idea as trackIpcError's
+// 60s throttle. Every error still reaches the local log.
+let lastWatcherErrorTrackedAt = 0
+const WATCHER_ERROR_TRACK_INTERVAL_MS = 60_000
+
 export async function startWatcher(vaultPath: string, excludePatterns?: string[]): Promise<void> {
   const watcher = getWatcher()
   // Use provided patterns or fall back to config
@@ -778,6 +785,11 @@ export async function startWatcher(vaultPath: string, excludePatterns?: string[]
     excludePatterns: patterns,
     onError: (error) => {
       logger.error('Error:', error)
+      const now = Date.now()
+      if (now - lastWatcherErrorTrackedAt >= WATCHER_ERROR_TRACK_INTERVAL_MS) {
+        lastWatcherErrorTrackedAt = now
+        trackMainError('vault', 'watcher', error)
+      }
     }
   })
 }

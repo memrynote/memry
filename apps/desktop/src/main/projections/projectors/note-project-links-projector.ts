@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto'
 import { createLogger } from '../../lib/logger'
+import { trackMainError } from '../../telemetry/diagnostics'
 import { getDatabase } from '../../database'
 import {
   deleteProjectLink,
@@ -99,7 +100,11 @@ export function createNoteProjectLinksProjector(): ProjectionProjector {
         reconcileNoteLinks(event.note.noteId, event.note.properties)
       } catch (err) {
         // A reconcile failure must not stall the projection queue behind it.
+        // Frontmatter is the source of truth for note→project membership, so a
+        // recurring failure means project_links drift stale — surface it in
+        // Error Tracking, not just a log line.
         logger.error('Failed to reconcile project links', err)
+        trackMainError('tasks', 'note_project_links_reconcile', err)
       }
     },
 

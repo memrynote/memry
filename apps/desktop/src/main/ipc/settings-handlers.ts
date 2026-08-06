@@ -61,6 +61,7 @@ import { syncSettingsUpdates } from '../settings/runtime-effects'
 import { INBOX_REVIEW_LAST_NOTIFIED_KEY } from '../inbox/review-reminder-constants'
 import { sendTestReviewNotification } from '../inbox/review-notification'
 import { trackMainEvent } from '../telemetry/track'
+import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { SafeDimensionValueSchema } from '@memry/contracts/telemetry-api'
 import {
   getTerminalCommandStatus,
@@ -220,8 +221,31 @@ function readGroupSettings<T extends Record<string, unknown>>(groupKey: string, 
     return { ...defaults, ...parsed }
   } catch {
     logger.warn(`Corrupted settings for "${groupKey}", resetting to defaults`)
+    trackMainLog('warn', {
+      scope: 'Settings',
+      action: 'group_corrupted_reset',
+      errorCode: `settings_group_corrupted_${groupKey}`
+    })
     deleteSetting(db, groupKey)
     return { ...defaults }
+  }
+}
+
+/**
+ * Emit setting_changed per updated field. Field NAMES only (never values) —
+ * `${groupKey}.${field}` is a closed set of code identifiers, gated by the
+ * safe-dimension schema as a backstop.
+ */
+function trackGroupSettingChanges(groupKey: string, updates: Record<string, unknown>): void {
+  for (const field of Object.keys(updates)) {
+    const setting = `${groupKey}.${field}`
+    if (SafeDimensionValueSchema.safeParse(setting).success) {
+      trackMainEvent('setting_changed', {
+        surface: 'settings',
+        action: 'changed',
+        dimensions: { setting }
+      })
+    }
   }
 }
 
@@ -296,7 +320,8 @@ async function getTerminalStatus(): Promise<TerminalCommandStatus> {
 async function getTerminalStatusSafely(): Promise<TerminalCommandStatus | undefined> {
   try {
     return await getTerminalStatus()
-  } catch {
+  } catch (error) {
+    logger.warn('Terminal status probe failed:', error)
     return undefined
   }
 }
@@ -323,6 +348,8 @@ function writeGroupSettings<T extends Record<string, unknown>>(
       value: updates
     })
   })
+
+  trackGroupSettingChanges(groupKey, updates)
 
   return { success: true }
 }
@@ -455,6 +482,8 @@ export function registerSettingsHandlers(): void {
         })
       })
 
+      trackGroupSettingChanges('journal', settings)
+
       return { success: true }
     }
   )
@@ -499,6 +528,8 @@ export function registerSettingsHandlers(): void {
         })
       })
 
+      trackGroupSettingChanges('ai', settings)
+
       return { success: true }
     }
   )
@@ -530,11 +561,17 @@ export function registerSettingsHandlers(): void {
       }
 
       const status = getVoiceModelStatus()
+      trackMainLog('warn', {
+        scope: 'Voice',
+        action: 'model_download_failed',
+        errorCode: 'voice_model_download_failed'
+      })
       return {
         success: false,
         error: status.error ?? getMainI18n().t('errors:settings.voiceModelDownloadFailed')
       }
     } catch (error) {
+      trackMainError('voice', 'model_download', error)
       const message =
         error instanceof Error ? error.message : getMainI18n().t('errors:generic.unknown')
       return { success: false, error: message }
@@ -555,6 +592,7 @@ export function registerSettingsHandlers(): void {
           status: await getTerminalStatus()
         }
       } catch (error) {
+        trackMainError('settings', 'terminal_command_install', error)
         return {
           success: false,
           error:
@@ -577,6 +615,7 @@ export function registerSettingsHandlers(): void {
           status: await getTerminalStatus()
         }
       } catch (error) {
+        trackMainError('settings', 'terminal_command_uninstall', error)
         return {
           success: false,
           error:
@@ -759,6 +798,8 @@ export function registerSettingsHandlers(): void {
         })
       })
 
+      trackGroupSettingChanges('tabs', settings)
+
       return { success: true }
     }
   )
@@ -799,6 +840,8 @@ export function registerSettingsHandlers(): void {
           value: settings
         })
       })
+
+      trackGroupSettingChanges('noteEditor', settings)
 
       return { success: true }
     }
@@ -1012,6 +1055,11 @@ export function applyGlobalCaptureShortcut(): GlobalCaptureResult {
 
   if (!registered) {
     logger.warn(`Global capture: failed to register ${accelerator} (may be in use)`)
+    trackMainLog('warn', {
+      scope: 'Settings',
+      action: 'global_capture_register_failed',
+      errorCode: 'shortcut_in_use'
+    })
     return {
       success: false,
       registered: false,
@@ -1039,6 +1087,11 @@ function writePortableGeneralToConfig(updates: Partial<GeneralSettings>): void {
       writePreferences(vaultPath, portable)
     } catch (err) {
       logger.warn('Failed to write preferences to config.json:', err)
+      trackMainLog('warn', {
+        scope: 'Settings',
+        action: 'config_write_failed',
+        errorCode: 'config_json_write_failed'
+      })
     }
   }
 }
@@ -1051,6 +1104,11 @@ function writeEditorToConfig(updates: Partial<EditorSettings>): void {
     writePreferences(vaultPath, { editor: updates })
   } catch (err) {
     logger.warn('Failed to write editor preferences to config.json:', err)
+    trackMainLog('warn', {
+      scope: 'Settings',
+      action: 'config_write_failed',
+      errorCode: 'config_json_write_failed'
+    })
   }
 }
 

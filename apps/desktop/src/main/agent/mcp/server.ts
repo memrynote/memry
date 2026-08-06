@@ -5,8 +5,9 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import type { ZodTypeAny } from 'zod'
 
 import { createLogger } from '../../lib/logger'
+import { trackMainError, trackMainLog } from '../../telemetry/diagnostics'
 import { decorateToolResultWithAgentSources } from '../source-refs'
-import { toMcpToolErrorContent } from './errors'
+import { AgentToolError, toMcpToolErrorContent } from './errors'
 import { createMcpSession } from './session'
 
 const logger = createLogger('AgentMcpServer')
@@ -61,6 +62,17 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
             }
           } catch (err) {
             logger.error(`Tool ${reg.name} failed`, err)
+            // Single choke point for all vault-tool execution failures (every
+            // backend and external MCP client routes through this server). A
+            // user tapping Deny is a normal state, not a fault worth counting.
+            const code = err instanceof AgentToolError ? err.code : 'INTERNAL'
+            if (code !== 'PERMISSION_DENIED') {
+              trackMainLog('error', {
+                scope: 'AgentMcpServer',
+                action: `tool_failed_${reg.name}`,
+                errorCode: code
+              })
+            }
             return toMcpToolErrorContent(err)
           }
         }
@@ -97,6 +109,7 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
         await transport.handleRequest(req, res, body)
       } catch (err) {
         logger.error('MCP request failed', err)
+        trackMainError('agent', 'mcp_request', err)
         if (!res.headersSent) {
           res.writeHead(500, { 'content-type': 'application/json' })
           res.end(JSON.stringify({ error: 'internal' }))

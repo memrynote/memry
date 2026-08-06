@@ -63,6 +63,7 @@ import { useAppUpdater } from '@/hooks/use-app-updater'
 import { useThemeSync } from '@/hooks/use-theme-sync'
 import { useWeekStartSync } from '@/hooks/use-week-start-sync'
 import { trackTelemetry } from '@/lib/telemetry'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import type { TelemetrySurface } from '@memry/contracts/telemetry-api'
 import { useActiveTab } from '@/contexts/tabs'
 import type { TabType } from '@/contexts/tabs'
@@ -132,15 +133,19 @@ const TAB_TYPE_TO_SURFACE: Partial<Record<TabType, TelemetrySurface>> = {
   'all-tasks': 'tasks',
   today: 'tasks',
   completed: 'tasks',
-  project: 'tasks',
+  project: 'projects',
   note: 'notes',
   file: 'notes',
   folder: 'notes',
   collection: 'notes',
+  'virtual-note': 'notes',
   'template-editor': 'notes',
   journal: 'journal',
   search: 'search',
   graph: 'graph',
+  tags: 'tags',
+  tag: 'tags',
+  canvas: 'canvas',
   'agent-chat': 'ai'
 }
 
@@ -551,7 +556,22 @@ function App(): React.JSX.Element {
         themes={['light', 'dark', 'white', 'system']}
         storageKey={THEME_STORAGE_KEY}
       >
-        <VaultOnboarding />
+        {/* First-run onboarding used to render with NO boundary: a render crash
+            white-screened the app at the most churn-sensitive moment, reported
+            only as a stackless generic window_error. */}
+        <IncidentReportProvider>
+          <TabErrorBoundary
+            onError={(error, errorInfo) =>
+              trackRendererError(
+                'onboarding_error_boundary',
+                error,
+                errorInfo.componentStack ?? undefined
+              )
+            }
+          >
+            <VaultOnboarding />
+          </TabErrorBoundary>
+        </IncidentReportProvider>
         <UpdatePromptDialog />
         <Toaster />
       </ThemeProvider>

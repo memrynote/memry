@@ -35,6 +35,7 @@ import {
 import { getNoteMetadataByPath } from '@memry/storage-data'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@memry/shared/file-types'
 import { createLogger } from '../lib/logger'
+import { trackMainLog } from '../telemetry/diagnostics'
 
 const logger = createLogger('Indexer')
 
@@ -390,6 +391,15 @@ export async function indexVault(vaultPath: string): Promise<IndexResult> {
     logger.info(indexingMessage)
   } else {
     logger.debug(indexingMessage)
+  }
+
+  if (result.errors > 0) {
+    // itemCount = files that failed to index this pass; value = files indexed.
+    trackMainLog('warn', {
+      scope: 'vault',
+      action: 'index_pass_errors',
+      metrics: { itemCount: result.errors, value: result.indexed }
+    })
   }
 
   // Verify counts (notes and journal entries are counted separately)

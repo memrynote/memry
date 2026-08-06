@@ -19,6 +19,7 @@ import { createDesktopTasksDomain } from './domain'
 import { createTasksPublisher } from './publisher'
 import { generateId } from '../lib/id'
 import { createLogger } from '../lib/logger'
+import { trackMainError } from '../telemetry/diagnostics'
 
 const log = createLogger('ReconcileMarkdownTasks')
 
@@ -70,6 +71,8 @@ export async function reconcileTaskCheckboxesFromMarkdown(
       changed++
     } catch (err) {
       log.warn('Failed to reconcile task checkbox from markdown', { taskId, checked, error: err })
+      // Markdown (source of truth) and the tasks row stay divergent here.
+      trackMainError('tasks', 'reconcile_checkbox', err)
     }
   }
 

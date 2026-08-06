@@ -8,6 +8,8 @@ import { getMainI18n } from './lib/main-i18n'
 import { formatAppVersionForDisplay } from './lib/app-version-display'
 import { htmlToPlainText } from './lib/html-to-plain-text'
 import { getUpdaterPrefs, setAutoCheckPref, setAutoDownloadPref, setSkippedVersion } from './store'
+import { trackMainError } from './telemetry/diagnostics'
+import { trackMainEvent } from './telemetry/track'
 
 const logger = createLogger('Updater')
 
@@ -253,6 +255,9 @@ export function initializeUpdater(): void {
     const message =
       error instanceof Error ? error.message : getMainI18n().t('system:error.updateFailed')
     logger.error('updater error', error, describeUpdaterError(error, currentErrorPhase()))
+    // Update-pipeline breakage (feed 404s, signature failures, disk-full
+    // downloads) must reach error tracking: affected users cannot update to a fix.
+    trackMainError('updater', currentErrorPhase(), error)
     setState({
       status: 'error',
       error: message
@@ -367,6 +372,11 @@ export async function downloadUpdate(): Promise<AppUpdateState> {
 export function skipVersion(version: string): AppUpdateState {
   logger.info('skipping update version', { version })
   setSkippedVersion(version)
+  trackMainEvent('setting_changed', {
+    surface: 'updater',
+    action: 'changed',
+    dimensions: { setting: 'skip_version' }
+  })
   setState({
     status: 'up-to-date',
     availableVersion: null,
@@ -388,6 +398,11 @@ export function skipVersion(version: string): AppUpdateState {
 export function setAutoDownloadEnabled(enabled: boolean): AppUpdateState {
   logger.info('setting auto-download preference', { enabled })
   setAutoDownloadPref(enabled)
+  trackMainEvent('setting_changed', {
+    surface: 'updater',
+    action: 'changed',
+    dimensions: { setting: 'auto_download' }
+  })
   // electron-updater reads autoDownload only when the NEXT update-available fires.
   autoUpdater.autoDownload = enabled
   setState({ autoDownloadEnabled: enabled })
@@ -413,6 +428,11 @@ export function setAutoDownloadEnabled(enabled: boolean): AppUpdateState {
 export function setAutoCheckEnabled(enabled: boolean): AppUpdateState {
   logger.info('setting auto-check preference', { enabled })
   setAutoCheckPref(enabled)
+  trackMainEvent('setting_changed', {
+    surface: 'updater',
+    action: 'changed',
+    dimensions: { setting: 'auto_check' }
+  })
   if (enabled) {
     startAutoCheckTimer()
     void checkForUpdates().catch((error) => {

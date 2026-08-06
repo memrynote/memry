@@ -28,6 +28,7 @@ import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 import type { DataDb } from '../database'
 import { createLogger } from '../lib/logger'
 import { generateId } from '../lib/id'
+import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { extractEntityRefsFromScene } from './scene-refs'
 import { decryptCanvasLibraryItemForVault, decryptCanvasSceneForVault } from './encryption'
 import { readCanvasLibrary, writeCanvasLibrary } from './library-file'
@@ -140,6 +141,9 @@ export async function reconcileCanvasFiles(
         id: row.id,
         err
       })
+      // The PR #946 orphaned-canvas failure mode — a key-rebind recurrence
+      // must aggregate in Error Tracking, not just in shipped log lines.
+      trackMainError('canvas', 'legacy_snapshot_decrypt', err)
       result.unreadable += 1
       continue
     }
@@ -283,6 +287,23 @@ export async function reconcileCanvasFiles(
     result.libraryItemsMigrated
   ) {
     log.info('Canvas files reconciled', result)
+  }
+  // Unreadable rows and vanished files are the fleet-health signals for the
+  // orphaned-canvas and half-copied-vault failure modes; info logs never ship,
+  // so emit their counts as warn metrics.
+  if (result.unreadable > 0) {
+    trackMainLog('warn', {
+      scope: 'CanvasReconcile',
+      action: 'reconcile_unreadable',
+      metrics: { itemCount: result.unreadable }
+    })
+  }
+  if (result.missingFiles > 0) {
+    trackMainLog('warn', {
+      scope: 'CanvasReconcile',
+      action: 'reconcile_missing_files',
+      metrics: { itemCount: result.missingFiles }
+    })
   }
   return result
 }

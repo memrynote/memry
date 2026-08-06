@@ -323,7 +323,8 @@ function resolveWikiImageEmbedsInMarkdown(markdown: string, notePath?: string): 
   try {
     const resolved = resolveVaultEmbeds(refs, notePath)
     return rewriteWikiImageEmbeds(markdown, (ref) => resolved[ref])
-  } catch {
+  } catch (err) {
+    log.warn('Embed resolution failed, leaving embeds as written', { notePath, error: err })
     return markdown
   }
 }

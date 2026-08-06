@@ -8,6 +8,7 @@ import { tasksService } from '@/services/tasks-service'
 import { notesService } from '@/services/notes-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import type { Priority } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 
@@ -58,6 +59,7 @@ export const ProjectCaptureInput = ({
         onChanged()
       } catch (error) {
         log.error('Failed to capture url', extractErrorMessage(error))
+        trackRendererError('project_capture_url', error)
         toast.error(extractErrorMessage(error, t('projectHub.capture.linkError')))
       } finally {
         setIsBusy(false)
@@ -101,9 +103,11 @@ export const ProjectCaptureInput = ({
             : failure.error || t('projectHub.capture.fileErrorGeneric')
         )
         log.error('Failed to link imported file', failure.path, failure.error)
+        trackRendererError('project_import_files', new Error(failure.error || 'link failed'))
       }
     } catch (error) {
       log.error('Failed to import files', extractErrorMessage(error))
+      trackRendererError('project_import_files', error)
       toast.error(extractErrorMessage(error, t('projectHub.capture.fileErrorGeneric')))
     } finally {
       setIsBusy(false)

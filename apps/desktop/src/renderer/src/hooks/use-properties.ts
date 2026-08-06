@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { propertiesService, type PropertyValue } from '@/services/properties-service'
 import { inferType, getUniquePropertyName } from '@/lib/property-utils'
 import { toast } from 'sonner'
@@ -92,6 +93,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
           throw new Error(result.error ?? 'Failed to update property')
         }
       } catch (err) {
+        trackRendererError('note_property_update_failed', err)
         log.error('Error updating:', err)
         toast.error(getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToUpdateProperty'))
         await fetchProperties()
@@ -118,6 +120,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
           throw new Error(result.error ?? 'Failed to add property')
         }
       } catch (err) {
+        trackRendererError('note_property_add_failed', err)
         log.error('Error adding:', err)
         toast.error(getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToAddProperty'))
         await fetchProperties()
@@ -141,6 +144,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
           throw new Error(result.error ?? 'Failed to remove property')
         }
       } catch (err) {
+        trackRendererError('note_property_remove_failed', err)
         log.error('Error removing:', err)
         toast.error(getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToDeleteProperty'))
         await fetchProperties()
@@ -163,6 +167,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
           throw new Error(result.error ?? 'Failed to rename property')
         }
       } catch (err) {
+        trackRendererError('note_property_rename_failed', err)
         log.error('Error renaming:', err)
         toast.error(getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToRenameProperty'))
         await fetchProperties()
@@ -199,6 +204,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
           throw new Error(result.error ?? 'Failed to reorder properties')
         }
       } catch (err) {
+        trackRendererError('note_property_reorder_failed', err)
         log.error('Error reordering:', err)
         toast.error(getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToReorderProperties'))
         await fetchProperties()

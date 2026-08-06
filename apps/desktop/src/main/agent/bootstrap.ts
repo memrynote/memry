@@ -6,6 +6,7 @@ import {
   unregisterAgentHandlers
 } from '../ipc/agent-handlers'
 import { createLogger } from '../lib/logger'
+import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { ClaudeCliBackend } from './backends/claude-cli-backend'
 import { CodexCliBackend } from './backends/codex-cli-backend'
 import { getLocalProviderApiKey } from './backends/local-provider-keychain'
@@ -61,6 +62,9 @@ export async function startAgent(): Promise<AgentHandle> {
   } catch (error) {
     const reason = extractErrorMessage(error, 'Vault key unavailable')
     logger.warn(`Agent runtime unavailable: ${reason}`)
+    // The whole Agent Chat feature is disabled for this session — a fully
+    // user-facing failure (every agent invoke errors), so it must be countable.
+    trackMainError('agent', 'bootstrap_vault_key', error)
     registerUnavailableAgentHandlers(reason)
     return {
       shutdown: async () => {
@@ -234,6 +238,11 @@ export async function startAgent(): Promise<AgentHandle> {
           logger.warn(
             `Local provider model listing failed: ${extractErrorMessage(error, 'unknown')}`
           )
+          trackMainLog('warn', {
+            scope: 'AgentBootstrap',
+            action: 'local_models_list_failed',
+            errorCode: 'LOCAL_PROVIDER_UNREACHABLE'
+          })
           return { models: [] }
         }
       },

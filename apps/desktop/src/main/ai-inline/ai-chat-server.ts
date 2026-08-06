@@ -9,6 +9,7 @@ import {
 import { createLanguageModel } from './ai-llm-service'
 import type { AIInlineSettings } from '@memry/contracts/ai-inline-channels'
 import { createLogger } from '../lib/logger'
+import { trackMainError } from '../telemetry/diagnostics'
 
 const logger = createLogger('AI:ChatServer')
 
@@ -77,6 +78,7 @@ export async function startChatServer(settings: AIInlineSettings): Promise<numbe
       if (req.method === 'POST' && req.url === '/api/ai/chat') {
         handleChatRequest(req, res, model).catch((err) => {
           logger.error('Unhandled chat request error:', err)
+          trackMainError('ai_inline', 'inline_chat_request_unhandled', err)
           if (!res.headersSent) {
             res.writeHead(500, { 'Content-Type': 'application/json' })
           }
@@ -184,6 +186,7 @@ async function handleChatRequest(
     result.pipeUIMessageStreamToResponse(res)
   } catch (error) {
     logger.error('Chat request failed:', error)
+    trackMainError('ai_inline', 'inline_chat_request', error)
     if (!res.headersSent) {
       res.writeHead(500, { 'Content-Type': 'application/json' })
     }

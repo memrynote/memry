@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { createLogger } from '../lib/logger'
 import { createPinnedAgent, CertificatePinningError } from './certificate-pinning'
 import { getSyncVaultHeaders } from './http-client'
+import { trackMainEvent } from '../telemetry/track'
 
 const log = createLogger('WebSocket')
 
@@ -156,6 +157,17 @@ export class WebSocketManager extends EventEmitter {
       }
       if (code === CLOSE_CODE_VERSION_INCOMPATIBLE) {
         this.versionRejected = true
+        // warn (not the info line above) so the latch ships to log telemetry;
+        // 'version_rejected' has no listener anywhere, so without this event
+        // real-time sync dies for the session with no remote trace.
+        log.warn('WebSocket closed: server rejected app version — reconnect latched off')
+        trackMainEvent('sync_error', {
+          surface: 'sync',
+          action: 'ws_version_rejected',
+          result: 'failed',
+          errorCode: 'ws_version_rejected',
+          source: 'ws'
+        })
         this.cleanup()
         this.emit('version_rejected', reason.toString())
         return
@@ -177,6 +189,15 @@ export class WebSocketManager extends EventEmitter {
       if (statusCode === HTTP_UPGRADE_REQUIRED) {
         this.versionRejected = true
         const reason = response.statusMessage || `HTTP ${statusCode}`
+        // Previously this path had no log line at all.
+        log.warn('WebSocket handshake rejected: app version deprecated', { statusCode })
+        trackMainEvent('sync_error', {
+          surface: 'sync',
+          action: 'ws_version_rejected',
+          result: 'failed',
+          errorCode: 'ws_version_rejected',
+          source: 'ws'
+        })
         this.emit('version_rejected', reason)
       }
     })

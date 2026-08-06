@@ -8,6 +8,7 @@ import {
   type CrdtBatchPullResponse
 } from '../http-client'
 import { decryptCrdtUpdate } from '../crdt-encrypt'
+import { trackMainError } from '../../telemetry/diagnostics'
 import type { SyncContext } from './sync-context'
 
 const log = createLogger('CrdtSyncCoordinator')
@@ -19,6 +20,8 @@ export class CrdtSyncCoordinator {
   private pendingPulls = new Set<string>()
   private lastAppliedSequence = new Map<string, number>()
   private resolveDeviceKey: ResolveDeviceKey
+  /** Once per key per session — CRDT apply failures recur every pass and would storm otherwise. */
+  private applyFailureReported = new Set<string>()
 
   constructor(ctx: SyncContext, resolveDeviceKey: ResolveDeviceKey) {
     this.ctx = ctx
@@ -171,6 +174,12 @@ export class CrdtSyncCoordinator {
         noteId,
         error: err instanceof Error ? err.message : String(err)
       })
+      // Persistent note-body divergence (stale bodies across devices)
+      // otherwise never reaches telemetry.
+      if (!this.applyFailureReported.has(noteId)) {
+        this.applyFailureReported.add(noteId)
+        trackMainError('sync', 'crdt_apply_failed', err)
+      }
     } finally {
       if (!wasOpen) {
         await crdtProvider.closeIfInactive(noteId)
@@ -297,6 +306,12 @@ export class CrdtSyncCoordinator {
       log.warn('Failed to apply CRDT batch', {
         error: err instanceof Error ? err.message : String(err)
       })
+      // One undecryptable update aborts the remaining notes in the pass —
+      // engine-level sync_run_completed still reports success without this.
+      if (!this.applyFailureReported.has('__batch__')) {
+        this.applyFailureReported.add('__batch__')
+        trackMainError('sync', 'crdt_apply_failed', err)
+      }
     } finally {
       for (const noteId of syncOpenedNoteIds) {
         await crdtProvider.closeIfInactive(noteId)

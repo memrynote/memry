@@ -2,6 +2,7 @@ import { useMemo, useCallback, useEffect } from 'react'
 import { Loader2, AlertCircle, Network, Link2, Lightbulb } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { trackTelemetry } from '@/lib/telemetry'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useGraphData, useGraphReactivity } from '@/hooks/use-graph-data'
 import { useGraphFilters } from '@/hooks/use-graph-filters'
 import { useGraphSettings } from '@/hooks/use-graph-settings'
@@ -24,6 +25,11 @@ export function GraphPage(): React.JSX.Element {
     void trackTelemetry('graph_opened', { surface: 'graph', action: 'opened' })
   }, [])
   const { data, isLoading, error, refetch } = useGraphData()
+  // React Query catches the IPC rejection, so the global unhandledrejection
+  // net never sees a graph load failure — report it when the error state lands.
+  useEffect(() => {
+    if (error) trackRendererError('graph_load', error)
+  }, [error])
   useGraphReactivity()
   const { filterState, dispatch, isFiltered } = useGraphFilters()
   const { settings: graphSettings, updateSettings } = useGraphSettings()

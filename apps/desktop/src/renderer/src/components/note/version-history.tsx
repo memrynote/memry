@@ -10,6 +10,7 @@ import { getI18n } from 'react-i18next'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { formatDate } from '@/lib/format-date'
 import { useDateFormat } from '@/hooks/use-date-format'
 import {
@@ -198,7 +199,8 @@ function VersionHistorySession({
       try {
         const detail = await notesService.getVersion(snapshotId)
         setPreviewContent(detail)
-      } catch {
+      } catch (err) {
+        trackRendererError('note_version_preview_failed', err)
         toast.error(t('versionHistory.toast.loadPreviewFailed'))
       } finally {
         setPreviewLoading(false)
@@ -222,6 +224,7 @@ function VersionHistorySession({
         onOpenChange(false)
         onRestore?.()
       } else {
+        trackRendererError('note_version_restore_failed', result.error)
         toast.error(
           extractErrorMessage(
             result.error,
@@ -230,6 +233,7 @@ function VersionHistorySession({
         )
       }
     } catch (err) {
+      trackRendererError('note_version_restore_failed', err)
       toast.error(
         extractErrorMessage(
           err,
@@ -258,6 +262,7 @@ function VersionHistorySession({
           setPreviewContent(null)
         }
       } else {
+        trackRendererError('note_version_delete_failed', result.error)
         toast.error(
           extractErrorMessage(
             result.error,
@@ -266,6 +271,7 @@ function VersionHistorySession({
         )
       }
     } catch (err) {
+      trackRendererError('note_version_delete_failed', err)
       toast.error(
         extractErrorMessage(
           err,

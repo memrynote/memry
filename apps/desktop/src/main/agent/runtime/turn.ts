@@ -2,7 +2,10 @@ import { randomUUID } from 'node:crypto'
 
 import type { AgentBackendOptions, AgentTurnPermissions } from '@memry/contracts/ipc-agent'
 
+import { toSafeToken } from '@memry/contracts/telemetry-api'
+
 import { createLogger } from '../../lib/logger'
+import { trackMainError, trackMainLog } from '../../telemetry/diagnostics'
 import { trackMainEvent } from '../../telemetry/track'
 import type { BackendEvent } from '../cli/types'
 import type { ConversationStore } from '../storage/conversation-store'
@@ -103,20 +106,29 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     context: promptContext
   })
 
-  await maybeCompact({
-    conversationId: input.conversationId,
-    messages: deps.messages,
-    summarize: (toSummarize) =>
-      summarizeWithBackend(deps, {
-        prompt: toSummarize,
-        conversationId: input.conversationId,
-        windowId: input.sourceWindowId,
-        backend,
-        options: input.backendOptions
-      }),
-    estimateLimit: COMPACTION_THRESHOLD,
-    currentEstimate: estimateTokens(prompt)
-  })
+  try {
+    await maybeCompact({
+      conversationId: input.conversationId,
+      messages: deps.messages,
+      summarize: (toSummarize) =>
+        summarizeWithBackend(deps, {
+          prompt: toSummarize,
+          conversationId: input.conversationId,
+          windowId: input.sourceWindowId,
+          backend,
+          options: input.backendOptions
+        }),
+      estimateLimit: COMPACTION_THRESHOLD,
+      currentEstimate: estimateTokens(prompt)
+    })
+  } catch (error) {
+    // A failed or empty summarization must not become a 'compacted' marker —
+    // compactedHistory replaces all prior history with the summary, so a bad
+    // one would permanently destroy conversation context. Skip compaction for
+    // this turn and run with the uncompacted prompt instead.
+    logger.warn('Conversation compaction failed; skipping compaction for this turn', error)
+    trackMainError('agent', 'compact_summarize', error)
+  }
 
   history = deps.messages
     .listByConversation(input.conversationId)
@@ -154,6 +166,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
 
   let buffered = ''
   let backendError: string | null = null
+  let unknownEventCount = 0
   const toolCalls = new Map<string, { name: string; args: unknown }>()
   const sourceRefs = new Map<string, AgentSourceRef>()
   try {
@@ -175,8 +188,24 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
             sourceRefs.set(ref.href, ref)
           }
         },
+        onToolFailed: (toolUseId, errorCode) => {
+          // The only tool-failure signal for CLI backends — transport failures
+          // never reach the MCP server's own catch. Tool name only, never args.
+          const toolName = toolCalls.get(toolUseId)?.name
+          trackMainEvent('ai_action_completed', {
+            surface: 'ai',
+            action: 'tool_call',
+            source: backendLabel,
+            result: 'failed',
+            errorCode: toSafeToken(errorCode ?? 'INTERNAL', 'INTERNAL'),
+            ...(toolName ? { dimensions: { tool: toSafeToken(toolName, 'unknown_tool') } } : {})
+          })
+        },
         onAssistantText: (text) => {
           buffered += text
+        },
+        onUnknownEvent: () => {
+          unknownEventCount += 1
         }
       })
     }
@@ -227,6 +256,16 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
       conversationId: input.conversationId,
       turnId
     })
+    if (!buffered.trim() && unknownEventCount > 0) {
+      // A "successful" turn whose events all failed to parse blanks the reply
+      // while dashboards show success — the realistic CLI output-format-drift
+      // scenario. The per-event logger.debug never ships, so flag it here.
+      trackMainLog('warn', {
+        scope: 'AgentRuntime:Turn',
+        action: 'empty_turn_unknown_events',
+        metrics: { itemCount: unknownEventCount }
+      })
+    }
     trackTurnCompleted('success')
   } finally {
     await sub.cleanup()
@@ -395,8 +434,15 @@ async function summarizeWithBackend(
     for await (const event of sub.events) {
       if (event.kind === 'assistant_delta') summary += event.text
     }
-    await sub.waitExit()
-    return summary.trim()
+    const exitCode = await sub.waitExit()
+    if (exitCode !== 0) {
+      throw new Error(`${input.backend.id} summarize exited with code ${exitCode}`)
+    }
+    const trimmed = summary.trim()
+    if (!trimmed) {
+      throw new Error(`${input.backend.id} summarize produced an empty summary`)
+    }
+    return trimmed
   } finally {
     await sub.cleanup()
   }
@@ -417,7 +463,9 @@ async function handleBackendEvent(
     assistantMessageId: string
     onToolUse: (toolUseId: string, name: string, args: unknown) => void
     onToolResult: (toolUseId: string, data: unknown) => void
+    onToolFailed: (toolUseId: string, errorCode: string | undefined) => void
     onAssistantText: (text: string) => void
+    onUnknownEvent: () => void
   }
 ): Promise<void> {
   if (event.kind === 'assistant_delta') {
@@ -453,6 +501,7 @@ async function handleBackendEvent(
         result: event.data
       })
     } else {
+      ctx.onToolFailed(event.toolUseId, event.error?.code)
       broadcastAgentEvent({
         kind: 'tool_call_failed',
         conversationId: ctx.conversationId,
@@ -464,6 +513,7 @@ async function handleBackendEvent(
   }
 
   if (event.kind === 'unknown') {
+    ctx.onUnknownEvent()
     logger.debug('Unknown backend event', event.raw)
   }
 }

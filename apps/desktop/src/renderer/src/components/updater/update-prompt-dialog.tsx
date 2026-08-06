@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Download, RotateCw } from '@/lib/icons'
 import { useAppUpdater } from '@/hooks/use-app-updater'
 import { createLogger } from '@/lib/logger'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import memryLogo from '@/assets/icon-logo.png'
 
 const log = createLogger('Component:UpdatePromptDialog')
@@ -61,7 +62,10 @@ export function UpdatePromptDialog(): React.JSX.Element | null {
   const handleDownload = useCallback(() => {
     setBusy(true)
     void downloadUpdate()
-      .catch((err) => log.error('update download failed', err))
+      .catch((err) => {
+        log.error('update download failed', err)
+        trackRendererError('update_download', err)
+      })
       .finally(() => setBusy(false))
   }, [downloadUpdate])
 
@@ -77,6 +81,7 @@ export function UpdatePromptDialog(): React.JSX.Element | null {
     setBusy(true)
     void quitAndInstall().catch((err) => {
       log.error('restart to install failed', err)
+      trackRendererError('update_install', err)
       setBusy(false)
     })
   }, [quitAndInstall])

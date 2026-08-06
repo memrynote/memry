@@ -8,6 +8,12 @@ vi.mock('electron', () => ({
   app: mockApp
 }))
 
+// The real module pulls the telemetry runtime, whose electron import ('net')
+// the mock above does not provide.
+vi.mock('./telemetry/diagnostics', () => ({
+  trackMainError: vi.fn()
+}))
+
 import {
   getCurrentVaultPath,
   setCurrentVaultPath,

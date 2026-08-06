@@ -37,6 +37,7 @@ import { Search, MoreHorizontal, Pencil, Merge, Trash2, Palette, Tag } from '@/l
 import { toast } from 'sonner'
 import { useTags } from '@/hooks/use-tags'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { getTagColors, COLOR_ROWS, TAG_COLORS } from '@/components/note/tags-row/tag-colors'
 import { CustomColorSwatch } from '@/components/note/tags-row/CustomColorSwatch'
 import { TagIconChip } from './tag-icon-chip'
@@ -77,9 +78,11 @@ export function TagManager() {
       if (result.success) {
         toast.success(t('tags.toasts.renamed', { oldName: editingTag, newName }))
       } else {
+        trackRendererError('tag_rename', result.error ?? 'rename failed')
         toast.error(result.error ?? t('tags.toasts.renameFailed'))
       }
     } catch (err) {
+      trackRendererError('tag_rename', err)
       toast.error(extractErrorMessage(err, t('tags.toasts.renameFailed')))
     }
     setEditingTag(null)
@@ -101,9 +104,11 @@ export function TagManager() {
           })
         )
       } else {
+        trackRendererError('tag_delete', result.error ?? 'delete failed')
         toast.error(result.error ?? t('tags.toasts.deleteFailed'))
       }
     } catch (err) {
+      trackRendererError('tag_delete', err)
       toast.error(extractErrorMessage(err, t('tags.toasts.deleteFailed')))
     }
     setDeleteTarget(null)
@@ -122,9 +127,11 @@ export function TagManager() {
           })
         )
       } else {
+        trackRendererError('tag_merge', result.error ?? 'merge failed')
         toast.error(result.error ?? t('tags.toasts.mergeFailed'))
       }
     } catch (err) {
+      trackRendererError('tag_merge', err)
       toast.error(extractErrorMessage(err, t('tags.toasts.mergeFailed')))
     }
     setMergeSource(null)

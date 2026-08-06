@@ -19,6 +19,7 @@ import { RefPicker } from '@/agent-chat/ref-picker'
 import { Button } from '@/components/ui/button'
 import { ArrowUp, AtSign, Loader2, Paperclip, X } from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { cn } from '@/lib/utils'
 import { notesService } from '@/services/notes-service'
 import { useT } from '@memry/i18n/renderer'
@@ -363,6 +364,12 @@ async function uploadFiles(
     try {
       const result = await notesService.uploadAttachment(targetId, file)
       if (!result.success || !result.path) {
+        // Envelope failure carries no exception; the main-side save path is
+        // silent, so this is the only place the failure can be reported.
+        trackRendererError(
+          'comment_attachment_upload_failed',
+          new Error(result.error || 'attachment upload failed')
+        )
         setUploadError(result.error || fallbackError)
         continue
       }
@@ -376,6 +383,7 @@ async function uploadFiles(
         ...(result.type ? { type: result.type } : {})
       })
     } catch (err) {
+      trackRendererError('comment_attachment_upload_failed', err)
       setUploadError(extractErrorMessage(err, fallbackError))
     }
   }
