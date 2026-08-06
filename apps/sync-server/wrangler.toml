@@ -28,7 +28,9 @@ tag = "v1"
 new_sqlite_classes = ["UserSyncState", "LinkingSession"]
 
 [triggers]
-crons = ["0 */6 * * *"]
+# 6-hourly: the D1/R2 cleanup sweep. Daily at 04:00 UTC: GitHub release download
+# counts, one PostHog event per asset per day (src/services/release-downloads.ts).
+crons = ["0 */6 * * *", "0 4 * * *"]
 
 # Inherited by env.staging and env.production (observability is an inheritable key)
 [observability.logs]

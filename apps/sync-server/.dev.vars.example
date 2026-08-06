@@ -15,5 +15,7 @@ PADDLE_CHECKOUT_TOKEN_SECRET=replace-me
 TELEMETRY_HMAC_KEY=replace-me
 # Optional PostHog mirroring:
 # POSTHOG_KEY=replace-with-posthog-project-token
+# Optional: raises the GitHub Releases API rate limit for the daily download-count cron.
+# GITHUB_TOKEN=replace-with-a-public-repo-read-token
 # Optional: comma-separated emails auto-granted a paid (believer) sync plan in development.
 # LOCAL_ADMIN_SYNC_EMAILS=admin@example.com
