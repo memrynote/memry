@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createHash } from 'node:crypto'
 import { redactLogLine } from './redact'
+import { buildErrorDetail } from './telemetry-api'
 
 // Real salted hasher (this test runs under Node/Vitest, node:crypto available).
 const hash = (v: string): string =>
@@ -52,6 +53,45 @@ describe('fuzz invariant — no raw secret survives', () => {
     )
     const dump = serialize(out)
     for (const s of SECRETS) expect(dump).not.toContain(s)
+  })
+})
+
+// TelemetryErrorDetail.message is the ONE telemetry field carrying free-form
+// error text, so the same invariant has to hold there — and it is redacted by a
+// different call path (buildErrorDetail → redactText) than the log lines above.
+describe('fuzz invariant — no raw secret survives buildErrorDetail.message', () => {
+  for (const secret of SECRETS) {
+    it(`drops "${secret.slice(0, 20)}…" with the salted (main-process) config`, () => {
+      const detail = buildErrorDetail(new Error(`operation failed: ${secret}`), undefined, opts)
+      expect(detail?.message).toBeTruthy()
+      expect(serialize(detail)).not.toContain(secret)
+    })
+    it(`drops "${secret.slice(0, 20)}…" in mask mode (renderer, no salt)`, () => {
+      const detail = buildErrorDetail(new Error(`operation failed: ${secret}`))
+      expect(detail?.message).toBeTruthy()
+      expect(serialize(detail)).not.toContain(secret)
+    })
+  }
+
+  it('combined payload leaks nothing, from message or component stack', () => {
+    const detail = buildErrorDetail(
+      new Error(SECRETS.join(' | ')),
+      `    in Editor (at ${SECRETS[3]})`,
+      opts
+    )
+    const dump = serialize(detail)
+    for (const s of SECRETS) expect(dump).not.toContain(s)
+  })
+
+  it('keeps the message useful — the diagnostic prose survives redaction', () => {
+    const detail = buildErrorDetail(
+      new Error('Failed to open vault: EACCES /home/victim/Vault/Notes/Passport Scan.pdf'),
+      undefined,
+      opts
+    )
+    expect(detail?.message).toContain('Failed to open vault: EACCES')
+    expect(detail?.message).toContain('<vault>/Notes/')
+    expect(detail?.message).not.toContain('Passport Scan')
   })
 })
 

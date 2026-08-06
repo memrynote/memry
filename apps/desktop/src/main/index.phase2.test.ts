@@ -78,6 +78,7 @@ const ipcMainHandleMock = vi.fn()
 const setCertificateVerifyProcMock = vi.fn()
 const setPermissionRequestHandlerMock = vi.fn()
 const setPermissionCheckHandlerMock = vi.fn()
+const crashReporterStartMock = vi.fn()
 const globalShortcutRegisterMock = vi.fn(() => true)
 const globalShortcutUnregisterAllMock = vi.fn()
 const menuSetApplicationMenuMock = vi.fn()
@@ -372,6 +373,9 @@ vi.mock('electron', () => ({
   },
   net: {
     fetch: netFetchMock
+  },
+  crashReporter: {
+    start: crashReporterStartMock
   },
   globalShortcut: {
     register: globalShortcutRegisterMock,
@@ -1766,6 +1770,16 @@ describe('main index phase2 exports', () => {
     await flushUntil(() => vi.mocked(app.exit).mock.calls.length > 0)
 
     expect(app.exit).toHaveBeenCalledWith(1)
+  })
+
+  it('starts the crash reporter without ever uploading minidumps', async () => {
+    // #when the main module loads
+    await importMainModule()
+
+    // #then dumps are kept for the local diagnostic bundle only. uploadToServer
+    // must stay false: a minidump is raw process memory, and PostHog neither
+    // ingests it nor could redact it.
+    expect(crashReporterStartMock).toHaveBeenCalledWith({ uploadToServer: false })
   })
 
   it('handles app close lifecycle events', async () => {

@@ -8,6 +8,7 @@ import type {
 } from '@memry/contracts/telemetry-api'
 
 import { createLogger } from '../lib/logger'
+import { createQueueStore } from './queue-store'
 
 const logger = createLogger('Telemetry')
 
@@ -39,6 +40,13 @@ export interface TelemetryClientDeps {
   getSyncState: () => TelemetrySyncState
   /** Resolves the signed-in account's access token for identity attribution; null/throw → anonymous batch. */
   getAccessToken?: () => Promise<string | null>
+  /**
+   * Absolute path of the crash-durable mirror. `app_crashed` (and every other
+   * event recorded in the ≤30s before a hard crash) lives in THIS queue, so
+   * without it the crash marker only reports a crash that does not kill the app
+   * again within one flush interval. Omitted → memory only, as before.
+   */
+  persistPath?: string
 }
 
 export type TelemetryFlushReason = 'manual' | 'interval' | 'shutdown' | 'background'
@@ -59,13 +67,31 @@ export interface TelemetryClient {
 }
 
 export const createTelemetryClient = (deps: TelemetryClientDeps): TelemetryClient => {
-  const queue: TelemetryEvent[] = []
+  const store = deps.persistPath ? createQueueStore<TelemetryEvent>(deps.persistPath) : null
+  // Restore only when telemetry is on: an install that opted out between
+  // launches must not keep the previous session's events on disk, let alone
+  // ship them. Each restored event keeps its own occurredAt; the batch envelope
+  // is stamped with the CURRENT session, so a resurrected event is attributed
+  // to the launch that shipped it rather than the one that died.
+  const queue: TelemetryEvent[] = store && deps.initialEnabled ? store.load() : []
+  if (store && !deps.initialEnabled) store.clear()
   let enabled = deps.initialEnabled
 
   const trimQueue = (): void => {
     if (queue.length > TELEMETRY_QUEUE_LIMIT) {
       queue.splice(0, queue.length - TELEMETRY_QUEUE_LIMIT)
     }
+  }
+
+  const persist = (): void => {
+    store?.save(queue)
+  }
+
+  // A mirror written by a build with a larger limit must not resurrect an
+  // unbounded queue; rewrite so the dropped head does not return next launch.
+  if (queue.length > TELEMETRY_QUEUE_LIMIT) {
+    trimQueue()
+    persist()
   }
 
   const buildBatch = (events: TelemetryEvent[]): TelemetryBatch => ({
@@ -88,6 +114,7 @@ export const createTelemetryClient = (deps: TelemetryClientDeps): TelemetryClien
     if (!enabled) return
     queue.push(event)
     trimQueue()
+    persist()
   }
 
   const flush = async (reason: TelemetryFlushReason): Promise<TelemetryFlushResult> => {
@@ -130,6 +157,7 @@ export const createTelemetryClient = (deps: TelemetryClientDeps): TelemetryClien
           response.status >= 400 && response.status < 500 && response.status !== 429
         if (permanentlyRejected) {
           queue.splice(0, batchSize)
+          persist()
         }
         logger.warn('Telemetry batch rejected', {
           status: response.status,
@@ -145,6 +173,7 @@ export const createTelemetryClient = (deps: TelemetryClientDeps): TelemetryClien
       }
 
       queue.splice(0, batchSize)
+      persist()
       return { success: true, attempted: batchSize, accepted: batchSize }
     } catch (error) {
       logger.warn('Telemetry flush failed', {
@@ -164,6 +193,8 @@ export const createTelemetryClient = (deps: TelemetryClientDeps): TelemetryClien
     enabled = next
     if (!next) {
       queue.length = 0
+      // Turning telemetry off must leave nothing behind on disk either.
+      store?.clear()
     }
   }
 

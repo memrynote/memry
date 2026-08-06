@@ -7,6 +7,7 @@ import {
 } from '@memry/contracts/telemetry-api'
 
 import { isExpectedConditionError } from './expected-conditions'
+import { getMainRedactOptions } from './redact-options'
 import { shouldEmitThrottled } from './throttle'
 import { trackMainEvent, type TrackMainEventOptions } from './track'
 
@@ -69,7 +70,7 @@ export const trackMainError = (source: string, action: string, error: unknown): 
     source: toSafeToken(source, 'main_process'),
     result: 'failed',
     errorCode: toErrorCode(error),
-    error: buildErrorDetail(error)
+    error: buildErrorDetail(error, undefined, getMainRedactOptions())
   })
 }
 

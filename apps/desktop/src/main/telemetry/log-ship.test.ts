@@ -147,7 +147,7 @@ describe('installLogShip', () => {
     expect(lines[0].fields?.filePath).toMatch(/^<vault>\/\[name:[0-9a-f]{8}\]\.md$/)
   })
 
-  it('ignores records from its own re-entrancy scopes (LogShip/Telemetry/Loki)', () => {
+  it('ignores records from its own re-entrancy scopes (LogShip/Telemetry/QueueStore)', () => {
     const { fetchMock } = createFetch()
     const shipped = installLogShip({
       buildChannel: 'production',
@@ -159,7 +159,7 @@ describe('installLogShip', () => {
 
     getTransport()({ level: 'warn', scope: 'LogShip', data: ['flush failed'] })
     getTransport()({ level: 'warn', scope: 'Telemetry', data: ['flush failed'] })
-    getTransport()({ level: 'warn', scope: 'Loki', data: ['flush failed'] })
+    getTransport()({ level: 'warn', scope: 'TelemetryQueueStore', data: ['flush failed'] })
 
     expect(shipped.recentLines()).toHaveLength(0)
   })

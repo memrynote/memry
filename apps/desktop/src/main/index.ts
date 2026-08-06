@@ -2,6 +2,7 @@ import {
   app,
   shell,
   BrowserWindow,
+  crashReporter,
   ipcMain,
   protocol,
   net,
@@ -206,6 +207,14 @@ migrateLegacyLogDir()
 // blacklisted Windows GPUs paint nothing, leaving an invisible window), fall
 // back to software rendering this launch instead of stranding the user.
 applyGpuCrashGuard()
+
+// Native crashes (the ones no JS handler ever sees) leave a minidump in
+// app.getPath('crashDumps') for the Path B diagnostic bundle the user submits
+// deliberately. uploadToServer is false and must STAY false: PostHog does not
+// ingest minidumps, and a dump is raw process memory — shipping it would breach
+// the redaction model every other telemetry path is built around. Started before
+// 'ready' so renderer and utility processes inherit the handler.
+crashReporter.start({ uploadToServer: false })
 
 const mainLog = createLogger('Main')
 const configLog = createLogger('Config')
@@ -1355,16 +1364,26 @@ const appReady = app.whenReady().then(async () => {
 
   // Initialize telemetry runtime before handlers so registerTelemetryHandlers
   // can resolve `getTelemetryRuntime()` to the live instance.
+  // Both queues mirror to userData so a hard crash no longer discards the last
+  // flush interval — including the app_crashed event detectUncleanShutdown is
+  // about to record. Resolved here rather than inside the telemetry modules, for
+  // the same reason installLogShip is: nothing under telemetry/ reaches for
+  // process-wide state on its own.
+  const telemetryDir = app.getPath('userData')
   const telemetryRuntime = initializeTelemetryRuntime({
     appVersion: app.getVersion(),
     locale: app.getLocale(),
     buildChannel: resolveMemryEnvironment(),
     authStateProvider: getTelemetryAuthState,
     syncStateProvider: getTelemetrySyncState,
-    accessTokenProvider: () => getValidAccessToken()
+    accessTokenProvider: () => getValidAccessToken(),
+    persistPath: join(telemetryDir, 'telemetry-event-queue.json')
   })
   drainEarlyMainEvents()
-  installLogShip({ buildChannel: resolveMemryEnvironment() })
+  installLogShip({
+    buildChannel: resolveMemryEnvironment(),
+    persistPath: join(telemetryDir, 'telemetry-log-queue.json')
+  })
   registerMainDiagnostics()
   // Order matters: detect the PREVIOUS session's leftover marker before this
   // session writes its own.

@@ -20,9 +20,9 @@ import { createShipQueue, type ShipQueue } from './ship-queue'
 // Scopes that belong to this pipeline itself. Without this guard a flush failure
 // (logged via createLogger('LogShip').warn(...) in ship-queue.ts) would be
 // re-ingested by this same transport, redacted, enqueued, and potentially fail to
-// flush again — an unbounded loop. 'Telemetry'/'Loki' are the sibling telemetry
-// scopes with the same recursion risk.
-const SKIP_SCOPES = new Set(['LogShip', 'Telemetry', 'Loki'])
+// flush again — an unbounded loop. 'Telemetry'/'TelemetryQueueStore' are the
+// sibling telemetry scopes with the same recursion risk.
+const SKIP_SCOPES = new Set(['LogShip', 'Telemetry', 'TelemetryQueueStore'])
 
 const RING_LIMIT = 200
 const RING_MS = 5 * 60 * 1000
@@ -78,6 +78,8 @@ export interface LogShipDeps {
   level?: string
   /** null disables the periodic flush timer (tests drive flush via dispose()). */
   flushIntervalMs?: number | null
+  /** Absolute path of the log queue's crash-durable mirror; omitted → memory only. */
+  persistPath?: string
 }
 
 export interface LogShip {
@@ -150,10 +152,20 @@ export const installLogShip = (deps: LogShipDeps): LogShip => {
   const queue: ShipQueue<DiagnosticLogLine> = createShipQueue<DiagnosticLogLine>({
     fetch: wrapFetch(deps.fetch),
     endpoint,
-    buildBody
+    buildBody,
+    persistPath: deps.persistPath
   })
 
   const enabled = (): boolean => getTelemetryRuntime()?.getSettings().enabled === true
+
+  // Settle the gate once at install, not only on the next log record: lines a
+  // crashed session left in the mirror have to become flushable without waiting
+  // for a fresh warn/error, and an install with telemetry off has to purge the
+  // mirror instead of carrying it forward.
+  const syncQueueEnabled = (): void => {
+    queue.setEnabled(deps.buildChannel === 'development' ? false : enabled())
+  }
+  syncQueueEnabled()
 
   let reentrant = false
 
@@ -207,7 +219,7 @@ export const installLogShip = (deps: LogShipDeps): LogShip => {
       sweepThrottle(now)
       pushRing(line)
 
-      queue.setEnabled(deps.buildChannel === 'development' ? false : enabled())
+      syncQueueEnabled()
       queue.enqueue(line)
     } finally {
       reentrant = false
