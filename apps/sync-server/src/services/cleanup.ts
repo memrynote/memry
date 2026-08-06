@@ -1,4 +1,5 @@
 import { adjustStorageUsed } from './quota'
+import { IDENTIFY_SESSION_TTL_SECONDS } from './telemetry-identify'
 
 export const cleanupExpiredOtpCodes = async (db: D1Database): Promise<number> => {
   const now = Math.floor(Date.now() / 1000)
@@ -120,6 +121,15 @@ export const cleanupStaleRateLimits = async (db: D1Database): Promise<number> =>
   const result = await db
     .prepare('DELETE FROM rate_limits WHERE window_start < ?')
     .bind(oneHourAgo)
+    .run()
+  return result.meta.changes ?? 0
+}
+
+export const cleanupStaleIdentifySessions = async (db: D1Database): Promise<number> => {
+  const cutoff = Math.floor(Date.now() / 1000) - IDENTIFY_SESSION_TTL_SECONDS
+  const result = await db
+    .prepare('DELETE FROM telemetry_identify_sessions WHERE created_at < ?')
+    .bind(cutoff)
     .run()
   return result.meta.changes ?? 0
 }

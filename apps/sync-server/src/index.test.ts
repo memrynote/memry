@@ -220,12 +220,12 @@ describe('scheduled cleanup', () => {
       { waitUntil: vi.fn(), passThroughOnException: vi.fn() } as never
     )
 
-    // all 8 cleanup tasks fail against the broken DB — each must reach PostHog
+    // all 9 cleanup tasks fail against the broken DB — each must reach PostHog
     // Logs (redacted detail) and PostHog events (server_error_seen), one of each per failure.
     const logCalls = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/v1/logs'))
     const eventCalls = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/batch/'))
-    expect(logCalls).toHaveLength(8)
-    expect(eventCalls).toHaveLength(8)
+    expect(logCalls).toHaveLength(9)
+    expect(eventCalls).toHaveLength(9)
     const body = JSON.parse((logCalls[0][1] as RequestInit).body as string)
     const record = body.resourceLogs[0].scopeLogs[0].logRecords[0]
     expect(record.severityText).toBe('error')
@@ -271,7 +271,7 @@ describe('scheduled cleanup', () => {
     // #when the 6-hourly trigger fires
     await worker.scheduled({ cron: '0 */6 * * *' } as never, env as never, ctx)
 
-    // #then the GitHub API is not touched — only the 8 cleanups ran
+    // #then the GitHub API is not touched — only the 9 cleanups ran
     expect(
       fetchMock.mock.calls.filter(([url]) => String(url).startsWith('https://api.github.com/'))
     ).toHaveLength(0)
@@ -291,6 +291,8 @@ describe('scheduled cleanup', () => {
         return JSON.parse(body.resourceLogs[0].scopeLogs[0].logRecords[0].body.stringValue).action
       })
     expect(actions).toContain('release_download_counts')
-    expect(actions).toHaveLength(9)
+    // 9 cleanups + the release pull; the pull is the only one without the prefix
+    expect(actions.filter((a: string) => a.startsWith('cleanup_'))).toHaveLength(9)
+    expect(actions).toHaveLength(10)
   })
 })

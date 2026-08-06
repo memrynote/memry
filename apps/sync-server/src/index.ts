@@ -24,6 +24,7 @@ import {
   cleanupExpiredTombstones,
   cleanupExpiredUploadSessions,
   cleanupOrphanedBlobChunks,
+  cleanupStaleIdentifySessions,
   cleanupStaleRateLimits
 } from './services/cleanup'
 import { createLogger } from './lib/logger'
@@ -176,6 +177,9 @@ const DAILY_CRON = '0 4 * * *'
 
 const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (event, env, _ctx) => {
   const tasks: Array<[string, Promise<unknown>]> = [
+    // Action names are verbatim here rather than prefixed at the call site: the
+    // cleanups keep the `cleanup_` action names they have always emitted, while
+    // the daily release pull is not a cleanup and must not inherit that prefix.
     ['cleanup_expired_otp_codes', cleanupExpiredOtpCodes(env.DB)],
     ['cleanup_expired_linking_sessions', cleanupExpiredLinkingSessions(env.DB)],
     ['cleanup_expired_upload_sessions', cleanupExpiredUploadSessions(env.DB, env.STORAGE)],
@@ -183,7 +187,8 @@ const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (event, env, 
     ['cleanup_consumed_setup_tokens', cleanupConsumedSetupTokens(env.DB)],
     ['cleanup_expired_tombstones', cleanupExpiredTombstones(env.DB, env.STORAGE)],
     ['cleanup_orphaned_blob_chunks', cleanupOrphanedBlobChunks(env.DB, env.STORAGE)],
-    ['cleanup_expired_gcal_channels', cleanupExpiredGoogleCalendarChannels(env.DB)]
+    ['cleanup_expired_gcal_channels', cleanupExpiredGoogleCalendarChannels(env.DB)],
+    ['cleanup_stale_identify_sessions', cleanupStaleIdentifySessions(env.DB)]
   ]
 
   if (event.cron === DAILY_CRON) {

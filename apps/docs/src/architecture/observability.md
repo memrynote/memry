@@ -190,9 +190,12 @@ offline quit never stalls the exit.
 
 ## Crash & Unclean-Shutdown Detection
 
-A hard crash — main-process abort, OOM kill, force quit — discards the in-memory telemetry queue,
-so the crash itself never ships: the classic "it crashed and there are no logs" report. A marker
-file inverts that (`apps/desktop/src/main/telemetry/crash-marker.ts`):
+A hard crash — main-process abort, OOM kill, force quit — used to discard the in-memory telemetry
+queue, so the crash itself never shipped: the classic "it crashed and there are no logs" report.
+Two mechanisms fix that: a marker file that notices the crash, and a durable queue that keeps the
+resulting event alive long enough to send.
+
+A marker file (`apps/desktop/src/main/telemetry/crash-marker.ts`):
 
 - `session-marker.json` is written into `userData` at startup with the session id, `startedAt`,
   `lastAliveAt`, and app version, then refreshed every 60s while the app is alive.
@@ -220,6 +223,49 @@ that wrote a marker may remove one — a second instance that loses the single-i
 `userData` and must not erase the primary's marker on its way out. Marker write failures are
 logged and swallowed; a read-only disk must never break startup.
 
+### Durable Queues
+
+The marker only detects the crash — `app_crashed` still has to survive long enough to be sent, and
+both telemetry queues flush on a 30s interval. A second hard crash inside that window would
+otherwise take the crash report with it, which is why both queues mirror to `userData`
+(`telemetry/queue-store.ts`):
+
+| Queue                                      | Mirror                       | Carries                                     |
+| ------------------------------------------ | ---------------------------- | ------------------------------------------- |
+| Event queue (`telemetry/client.ts`)        | `telemetry-event-queue.json` | `app_crashed`, `app_error_seen`, all events |
+| Log-ship queue (`telemetry/ship-queue.ts`) | `telemetry-log-queue.json`   | Path A redacted `warn`/`error` log lines    |
+
+The mirror is rewritten on every enqueue and after every flush, so what is on disk is what has not
+yet been accepted by the server. The next launch restores it and drains it; a drained batch is
+removed from the mirror, so nothing is sent twice.
+
+Rules the mirror follows:
+
+- **Format** is `{"version":1,"items":[…]}`. A file whose version this build does not recognise is
+  discarded rather than parsed, and builds that predate the mirror never read it at all — so
+  neither a downgrade nor a future format bump can wedge startup.
+- **Corruption is expected.** The mirror is most likely to be truncated by exactly the crash it was
+  written to survive, so an unparseable file is logged, deleted, and treated as empty.
+- **Write failures are non-fatal.** A read-only or full disk costs durability, never logging or
+  shutdown; the failure is logged once per streak rather than once per line.
+- **The limit applies to the restored set too** (`TELEMETRY_QUEUE_LIMIT` / `SHIP_QUEUE_LIMIT`), so a
+  mirror written by a build with a larger limit cannot resurrect an unbounded queue.
+- **Opting out deletes the mirror.** Turning telemetry off clears the file, not just the in-memory
+  queue, and a launch that starts with telemetry disabled discards the mirror instead of restoring
+  it.
+
+Restored events keep their own `occurredAt`; the batch envelope is stamped with the session that
+ships them, so an event resurrected from a dead session is attributed to the launch that sent it.
+
+### Native Crash Dumps
+
+`crashReporter.start({ uploadToServer: false })` runs before `app.ready`, so main, renderer, and
+utility processes all write minidumps for native crashes that no JS handler ever observes. The
+dumps stay in `app.getPath('crashDumps')` for the Path B diagnostic bundle the user submits
+deliberately. **`uploadToServer` must stay `false`**: a minidump is raw process memory — PostHog
+does not ingest minidumps, and there is no way to redact one, so uploading would breach the
+redaction model every other telemetry path is built around.
+
 ## PostHog Event Capture
 
 PostHog is the sole telemetry store (`POSTHOG_HOST`, `https://us.i.posthog.com` by default). The
@@ -241,8 +287,36 @@ grouping follows the app's own error taxonomy rather than PostHog's pattern-hash
 
 No raw identifiers are stored: the install ID is HMAC-hashed server-side (`TELEMETRY_HMAC_KEY`,
 `hashTelemetryId`) and used as the PostHog `distinct_id`; server-side `user_id`/`device_id`/
-`vault_id` are hashed the same way before they ride along as event properties. Telemetry batches
-are anonymous — no account identity is attached today.
+`vault_id` are hashed the same way before they ride along as event properties.
+
+### Account identity
+
+The desktop attaches its access token to `/telemetry/batch` and `/diagnostics/report` as an
+**optional** bearer. Neither route runs the auth middleware: `resolveTelemetryAccountHash`
+verifies the JWT if one is present and returns `undefined` for a missing, malformed or expired
+token, so telemetry is never rejected for auth reasons — that batch simply reports anonymously
+against its install hash.
+
+The resolved account id is **HMAC-hashed before it can become a `distinct_id`**, exactly like the
+install ID. `TransformContext` names the field `accountHash`, and `resolveDistinctId` shape-checks
+it against `hashTelemetryId`'s output (64 lowercase hex chars); anything else — most plausibly a
+raw account id — degrades to the install hash rather than reaching PostHog. This is deliberately
+strict: a PostHog `$identify` merge is permanent and cannot be undone or re-keyed, so a raw
+account id that reached a person profile could not be removed afterwards.
+
+When a batch resolves to an account, a `$identify` event aliases the anonymous install person onto
+the account person. It fires **once per app session**, guarded by the `telemetry_identify_sessions`
+D1 table (`claimIdentifySession`, migration `0003`, swept by the cron cleanup after 24h). Without
+the guard, the desktop's ~30s flush cadence would emit one identified event per batch. The guard
+fails open: a D1 error emits `$identify` anyway (idempotent in PostHog) rather than leaving the
+install unlinked.
+
+Diagnostic reports resolve identity through the same `resolveDistinctId` path as events and logs,
+so a report lands on the same person profile as the events around it.
+
+**Known limitation:** telemetry identity is verified but **not revocation-checked**. A revoked
+device's still-unexpired access token (≤15 min) can attribute telemetry until it lapses. Telemetry
+is not an authorization decision, so a per-batch device lookup is not worth the D1 read.
 
 Environments are separated by an `environment` property on every event inside one PostHog
 project, not by separate projects.
@@ -633,9 +707,9 @@ address; a public-repo read token lifts that. A failed pull throws and is report
 
 ### Diagnostic Log Endpoints
 
-Two additional endpoints feed the `kind=log` / `kind=report` streams. Both are anonymous (no
-sign-in required), rate-limited per user/IP, Zod-validated, and PostHog-Logs-only — neither
-writes a PostHog product event:
+Two additional endpoints feed the `kind=log` / `kind=report` streams. Both accept unauthenticated
+requests (no sign-in required), are rate-limited per user/IP, Zod-validated, and PostHog-Logs-only
+— neither writes a PostHog product event:
 
 | Endpoint                   | Stream                 | Rate limit    | Payload                                                                                                 |
 | -------------------------- | ---------------------- | ------------- | ------------------------------------------------------------------------------------------------------- |
@@ -645,9 +719,14 @@ writes a PostHog product event:
 A malformed payload is rejected with `400 VALIDATION_ERROR` (only the Zod path + issue code is
 logged, never values, same convention as `/telemetry/batch`). A valid payload always gets `202`,
 including when `POSTHOG_KEY` is unset — the push inside `pushPostHogLogs` is a silent no-op in
-that case, so a dev build never error-spams. The `accountId` field is reserved in the report
-schema for future account attribution but is not currently populated by the client (reports are
-anonymous). `/telemetry/batch` is unchanged by either endpoint.
+that case, so a dev build never error-spams.
+
+`/diagnostics/report` attributes to an account when the desktop attaches a bearer (see
+[Account identity](#account-identity)); `/telemetry/logs` is still anonymous because the log
+shipper does not attach one yet. `DiagnosticReportSchema.accountId` is accepted for backward
+compatibility with older desktop builds but is **deliberately ignored** — a body field is
+client-asserted, and it would feed a `distinct_id` whose `$identify` merge is permanent, so
+identity comes only from the verified bearer. `/telemetry/batch` is unchanged by either endpoint.
 
 ## Performance
 

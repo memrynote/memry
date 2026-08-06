@@ -47,6 +47,8 @@ export interface TelemetryRuntimeDeps {
   accessTokenProvider?: () => Promise<string | null>
   /** Disable internal flush interval (used in tests) */
   flushIntervalMs?: number | null
+  /** Absolute path of the event queue's crash-durable mirror; omitted → memory only. */
+  persistPath?: string
 }
 
 export interface TelemetryRuntime {
@@ -141,7 +143,8 @@ export const initializeTelemetryRuntime = (deps?: TelemetryRuntimeDeps): Telemet
     initialEnabled,
     getAuthState: deps?.authStateProvider ?? (() => 'anonymous'),
     getSyncState: deps?.syncStateProvider ?? (() => 'unknown'),
-    getAccessToken: deps?.accessTokenProvider
+    getAccessToken: deps?.accessTokenProvider,
+    persistPath: deps?.persistPath
   })
 
   if (initialEnabled) {

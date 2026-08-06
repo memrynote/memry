@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { redactText, type RedactOptions } from './redact'
+
 // DEPLOY ORDER: the sync-server validates /telemetry/batch with THIS schema
 // (apps/sync-server/src/routes/telemetry.ts). A server running older contracts
 // rejects the ENTIRE batch with a 400, not just the unknown event — so any
@@ -465,18 +467,31 @@ export const normalizeWindowError = (report: WindowErrorReport): Error => {
 
 /**
  * Build the redacted, length-capped error detail attached to `app_error_seen`
- * desktop telemetry. buildErrorDetail itself never populates `message` — a raw
- * error message can contain a note title/filename/content — so this only sends
- * the stack frames (code locations) and the React component stack, with home
- * paths and stray identifiers scrubbed. See TelemetryErrorDetailSchema.message
- * above for the contract's own optional, redacted message field.
- * Returns undefined when there is nothing useful to send.
+ * desktop telemetry: the stack frames (code locations), the React component
+ * stack, and the error message — each with home paths and stray identifiers
+ * scrubbed. Returns undefined when there is nothing useful to send.
+ *
+ * The message is the one field that can carry free-form text (a note title, a
+ * filename, note content), so it never ships raw: it goes through `redactText`
+ * — the same module Path A log shipping uses — HERE, on the device, before it
+ * ever leaves the process. `redactOptions` carries the caller's vault root and
+ * salted hasher; main-process callers pass both, so placeholders correlate
+ * across lines. A caller with neither (the renderer, which knows no salt) still
+ * gets full redaction, just with fixed `<email>`/`<id>`/`[name].ext`
+ * placeholders instead of correlatable hashes. The sync-server re-runs the same
+ * redaction in mask mode as a backstop; see TelemetryErrorDetailSchema.message.
  */
 export const buildErrorDetail = (
   error: unknown,
-  componentStack?: string
+  componentStack?: string,
+  redactOptions?: RedactOptions
 ): TelemetryErrorDetail | undefined => {
   const detail: TelemetryErrorDetail = {}
+  const message = readProp(error, 'message')
+  if (typeof message === 'string' && message) {
+    const redacted = truncate(redactText(message, redactOptions), 512)
+    if (redacted) detail.message = redacted
+  }
   const stack = readProp(error, 'stack')
   const rawStack = isError(error) && typeof stack === 'string' ? stack : undefined
   if (rawStack) {
@@ -486,5 +501,5 @@ export const buildErrorDetail = (
   if (componentStack) {
     detail.componentStack = truncate(redactSensitive(componentStack), 2000)
   }
-  return detail.stack || detail.componentStack ? detail : undefined
+  return detail.message || detail.stack || detail.componentStack ? detail : undefined
 }

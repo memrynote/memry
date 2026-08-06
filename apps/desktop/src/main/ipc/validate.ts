@@ -8,7 +8,7 @@ import { isExpectedConditionError } from '../telemetry/expected-conditions'
 
 const ipcLog = createLogger('IPC')
 
-// Every IPC envelope error becomes a telemetry event (→ Loki), throttled so an
+// Every IPC envelope error becomes a telemetry event (→ PostHog), throttled so an
 // error loop can't flood the queue. The key must discriminate: keyed only by
 // error.name and shared across ALL handlers, one benign recurring "Error"
 // masked a genuine different "Error" from another handler for a whole window.

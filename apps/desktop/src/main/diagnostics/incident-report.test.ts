@@ -23,6 +23,9 @@ vi.mock('../telemetry/diagnostics-salt', () => ({
 }))
 
 const getSyncEngineMock = vi.fn()
+vi.mock('../sync/token-manager', () => ({
+  getValidAccessToken: vi.fn(async () => null)
+}))
 vi.mock('../sync/runtime', () => ({
   getSyncEngine: () => getSyncEngineMock()
 }))
@@ -157,6 +160,59 @@ describe('sendIncidentReport', () => {
     expect(calls).toHaveLength(1)
     expect(calls[0].url).toBe('http://localhost:8787/diagnostics/report')
     expect(calls[0].body).toEqual(report)
+  })
+
+  it('attaches the access token so the report lands on the account person profile', async () => {
+    const headers: Record<string, string>[] = []
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      headers.push(init?.headers as Record<string, string>)
+      return { ok: true, status: 202 }
+    })
+
+    await sendIncidentReport(report, {
+      fetch: fetchMock,
+      endpoint: 'http://localhost:8787/diagnostics/report',
+      getAccessToken: async () => 'jwt-token'
+    })
+
+    expect(headers[0].Authorization).toBe('Bearer jwt-token')
+  })
+
+  it('sends anonymously when there is no token', async () => {
+    const headers: Record<string, string>[] = []
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      headers.push(init?.headers as Record<string, string>)
+      return { ok: true, status: 202 }
+    })
+
+    await sendIncidentReport(report, {
+      fetch: fetchMock,
+      endpoint: 'http://localhost:8787/diagnostics/report',
+      getAccessToken: async () => null
+    })
+
+    expect(headers[0]).not.toHaveProperty('Authorization')
+  })
+
+  it('still sends the report when the token lookup throws', async () => {
+    // Signed out, keychain locked, refresh failed — losing the incident report
+    // would be worse than losing its attribution.
+    const headers: Record<string, string>[] = []
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      headers.push(init?.headers as Record<string, string>)
+      return { ok: true, status: 202 }
+    })
+
+    const result = await sendIncidentReport(report, {
+      fetch: fetchMock,
+      endpoint: 'http://localhost:8787/diagnostics/report',
+      getAccessToken: async () => {
+        throw new Error('keychain locked')
+      }
+    })
+
+    expect(result).toEqual({ incidentId: report.incidentId })
+    expect(headers[0]).not.toHaveProperty('Authorization')
   })
 
   // DoD: "verified with a synthetic secret that does not appear in [what reaches] Loki".
