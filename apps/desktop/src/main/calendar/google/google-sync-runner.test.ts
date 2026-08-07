@@ -102,6 +102,32 @@ describe('startGoogleCalendarSyncRunner (concurrent start)', () => {
     expect(powerMonitorHolder.resumeHandlers).toHaveLength(1)
   })
 
+  it('installs nothing when stop() ran while the start was still in flight', async () => {
+    // #given a start that is parked on its connection check (sign-in / device
+    // registration kicked it off just before the user signed out)
+    let releaseConnectionCheck: () => void = () => {}
+    const reachedConnectionCheck = new Promise<void>((entered) => {
+      hasConnectionMock.mockImplementationOnce(
+        () =>
+          new Promise<boolean>((resolve) => {
+            releaseConnectionCheck = () => resolve(true)
+            entered()
+          })
+      )
+    })
+    const pending = startGoogleCalendarSyncRunner()
+    await reachedConnectionCheck
+
+    // #when the runner is stopped before that start finishes, then it resolves
+    stopGoogleCalendarSyncRunner()
+    releaseConnectionCheck()
+    await pending
+
+    // #then the stopped runner stays stopped — no timer, no resume listener
+    expect(vi.getTimerCount()).toBe(0)
+    expect(powerMonitorHolder.resumeHandlers).toHaveLength(0)
+  })
+
   it('does not latch permanently when the start attempt bails out', async () => {
     // #given the user is not signed in yet
     signedInMock.mockResolvedValueOnce(false)

@@ -22,6 +22,7 @@ let currentPollIntervalMs = RUN_INTERVAL_MS
 let resumeHandler: (() => void) | null = null
 let lastTriggerAt = 0
 let startInFlight: Promise<void> | null = null
+let startGeneration = 0
 
 export function getCurrentPollIntervalMs(): number {
   return currentPollIntervalMs
@@ -117,8 +118,14 @@ export async function startGoogleCalendarSyncRunner(): Promise<void> {
 }
 
 async function runStart(): Promise<void> {
+  const generation = startGeneration
   if (!(await isMemryUserSignedIn())) return
   if (!(await hasGoogleCalendarConnection(requireDatabase()))) return
+  // Sign-out / disconnect can call stop() while this start is still parked on
+  // the awaits above. Installing now would arm a timer and resume listener that
+  // nothing is going to stop again. Checked after the last await, before any
+  // install.
+  if (generation !== startGeneration) return
 
   void syncGoogleCalendarNow()
     .then(() => trackSyncCompleted('initial'))
@@ -153,6 +160,11 @@ async function runStart(): Promise<void> {
 }
 
 export function stopGoogleCalendarSyncRunner(): void {
+  // Bump first, above the `!syncInterval` early return: when the runner has not
+  // installed its interval yet, an in-flight start is exactly what needs
+  // invalidating.
+  startGeneration += 1
+
   if (resumeHandler) {
     powerMonitor.removeListener('resume', resumeHandler)
     resumeHandler = null
