@@ -105,7 +105,7 @@ describe('preload api wrappers', () => {
     quickCaptureApi.close()
     quickCaptureApi.resize(240)
     quickCaptureApi.openSettings('sync')
-    flushApi.notifyFlushDone()
+    flushApi.notifyFlushDone('flush-1')
 
     expect(electronMock.ipcRenderer.send).toHaveBeenCalledWith('window-minimize')
     expect(electronMock.ipcRenderer.send).toHaveBeenCalledWith('window-maximize')
@@ -116,7 +116,7 @@ describe('preload api wrappers', () => {
       'quick-capture:open-settings',
       'sync'
     )
-    expect(electronMock.ipcRenderer.send).toHaveBeenCalledWith('app:flush-done')
+    expect(electronMock.ipcRenderer.send).toHaveBeenCalledWith('app:flush-done', 'flush-1')
 
     expect(getFileDropPaths([new File(['x'], 'note.md')])).toEqual(['/drop/note.md'])
     expect(electronMock.webUtils.getPathForFile).toHaveBeenCalled()
@@ -129,8 +129,8 @@ describe('preload api wrappers', () => {
     const flushCallback = vi.fn()
     const unsubscribeFlush = flushApi.onFlushRequested(flushCallback)
     const [, flushHandler] = electronMock.ipcRenderer.on.mock.calls.at(-1)!
-    flushHandler({}, undefined)
-    expect(flushCallback).toHaveBeenCalled()
+    flushHandler({}, 'flush-2')
+    expect(flushCallback).toHaveBeenCalledWith('flush-2')
     unsubscribeFlush()
   })
 

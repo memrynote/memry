@@ -522,10 +522,12 @@ describe('navigation and keyboard hooks', () => {
 
     const flush = renderHook(() => useFlushOnQuit())
     await act(async () => {
-      await mocks.taskListeners.flush()
+      await mocks.taskListeners.flush('flush-1')
     })
     expect(mocks.flushAllPendingSaves).toHaveBeenCalled()
-    expect(window.api.notifyFlushDone).toHaveBeenCalled()
+    // The request id has to survive the round trip or main can't tell which
+    // flush was answered and falls back to its timeout.
+    expect(window.api.notifyFlushDone).toHaveBeenCalledWith('flush-1')
     mocks.hasPendingSaves.mockReturnValueOnce(true)
     fireEvent(window, new Event('beforeunload'))
     expect(mocks.flushAllPendingSaves).toHaveBeenCalledTimes(2)
