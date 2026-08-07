@@ -500,6 +500,21 @@ describe('GraphCanvas', () => {
        * node and re-feeds the node *and* edge programs, which is what stops a
        * repaint from being a frame behind. `skipIndexation` is what turns that
        * pass off.
+       *
+       * TRIPWIRE, read this before bumping sigma. This is a hand-written *model*
+       * of that contract, not real Sigma — driving the real renderer needs WebGL.
+       * It is pinned to sigma@3.0.3, where the source of truth is two lines of
+       * `Sigma#refresh`: `fullRefresh = !opts || !opts.partialGraph` (so `{}`
+       * takes the partial branch and reduces nothing) and
+       * `if (fullRefresh || !skipIndexation) this.needToProcess = true` (so
+       * omitting `skipIndexation` keeps the position pass). Sigma's own docstring
+       * scopes `skipIndexation` to "if you haven't modify x, y, zIndex & size".
+       *
+       * A model cannot notice sigma changing underneath it: if an upgrade alters
+       * either mechanism, this file keeps asserting the OLD contract, stays green,
+       * and the graph silently renders a frame behind. A sigma major or minor bump
+       * must therefore re-read `refresh` in the new dist and re-confirm both lines
+       * by hand — the suite will not do it for you.
        */
       function recordRepaints(): {
         nodeReducerCalls: string[]
