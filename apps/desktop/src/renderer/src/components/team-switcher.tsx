@@ -50,14 +50,14 @@ export function TeamSwitcher({
               <div className="flex aspect-square size-6 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground">
                 <activeTeam.logo className="size-3" />
               </div>
-              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+              <div className="grid flex-1 text-start text-sm leading-tight group-data-[collapsible=icon]:hidden">
                 <span className="truncate font-normal">{activeTeam.name}</span>
               </div>
-              <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
+              <ChevronsUpDown className="ms-auto size-4 group-data-[collapsible=icon]:hidden" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-[--radix-dropdown-menu-trigger-width] min-w-64 rounded-xl p-2 shadow-lg border border-gray-200/80"
+            className="w-(--radix-dropdown-menu-trigger-width) min-w-64 rounded-xl p-2 shadow-lg border border-gray-200/80"
             align="start"
             side={isMobile ? 'bottom' : 'right'}
             sideOffset={8}
