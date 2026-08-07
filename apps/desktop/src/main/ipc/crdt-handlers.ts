@@ -56,9 +56,9 @@ export function registerCrdtIpcHandlers(): void {
   })
 
   ipcMain.handle(CRDT_CHANNELS.APPLY_UPDATE, async (event, rawInput: unknown) => {
-    const { noteId, update: updateArr } = CrdtApplyUpdateSchema.parse(rawInput)
+    const { noteId, update } = CrdtApplyUpdateSchema.parse(rawInput)
     const sourceWindowId = BrowserWindow.fromWebContents(event.sender)?.id ?? -1
-    getCrdtProvider().applyIpcUpdate(noteId, updateArr, sourceWindowId)
+    getCrdtProvider().applyIpcUpdate(noteId, update, sourceWindowId)
     // Body edits arrive through this channel, not the notes UPDATE IPC —
     // typing never counted as note_updated before this. Remote sync updates
     // take the network path inside the provider and are deliberately excluded.
@@ -73,8 +73,7 @@ export function registerCrdtIpcHandlers(): void {
         const provider = getCrdtProvider()
         if (!provider.isInitialized()) return null
         const doc = await provider.open(input.noteId)
-        const remoteVector = new Uint8Array(input.stateVector)
-        const diff = Y.encodeStateAsUpdate(doc, remoteVector)
+        const diff = Y.encodeStateAsUpdate(doc, input.stateVector)
         const stateVector = Y.encodeStateVector(doc)
         return { diff, stateVector }
       }

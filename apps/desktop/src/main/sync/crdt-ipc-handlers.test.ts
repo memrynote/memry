@@ -142,7 +142,7 @@ describe('CRDT IPC handlers — lifecycle resilience', () => {
       // #when — late renderer update arrives post-logout
       const result = await invokeHandler(CRDT_CHANNELS.APPLY_UPDATE, {
         noteId: 'ghost-note',
-        update: [1, 2, 3]
+        update: new Uint8Array([1, 2, 3])
       })
 
       // #then — void return, no throw
@@ -157,7 +157,7 @@ describe('CRDT IPC handlers — lifecycle resilience', () => {
       // #when
       const result = await invokeHandler(CRDT_CHANNELS.SYNC_STEP_2, {
         noteId: 'ghost-note',
-        diff: [0, 0]
+        diff: new Uint8Array([0, 0])
       })
 
       // #then
@@ -171,7 +171,7 @@ describe('CRDT IPC handlers — lifecycle resilience', () => {
       // #when
       const result = await invokeHandler(CRDT_CHANNELS.SYNC_STEP_1, {
         noteId: 'any-note',
-        stateVector: [0]
+        stateVector: new Uint8Array([0])
       })
 
       // #then — handler guards and returns null rather than throwing

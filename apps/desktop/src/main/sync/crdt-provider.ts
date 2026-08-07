@@ -720,7 +720,7 @@ export class CrdtProvider {
       if (win && !win.isDestroyed()) {
         win.webContents.send(CRDT_EVENTS.STATE_CHANGED, {
           noteId,
-          update: Array.from(update),
+          update,
           origin
         })
       } else {
@@ -896,21 +896,19 @@ export class CrdtProvider {
     return { ok: true }
   }
 
-  applyIpcUpdate(noteId: string, updateArr: number[], sourceWindowId: number): void {
+  applyIpcUpdate(noteId: string, update: Uint8Array, sourceWindowId: number): void {
     const entry = this.docs.get(noteId)
     if (!entry) return
     this.touchDoc(entry)
 
-    const update = new Uint8Array(updateArr)
     const origin: IpcOrigin = { source: 'ipc', windowId: sourceWindowId }
     Y.applyUpdate(entry.doc, update, origin)
   }
 
-  applyIpcSyncStep2(noteId: string, diffArr: number[]): void {
+  applyIpcSyncStep2(noteId: string, diff: Uint8Array): void {
     const entry = this.docs.get(noteId)
     if (!entry) return
     this.touchDoc(entry)
-    const diff = new Uint8Array(diffArr)
     Y.applyUpdate(entry.doc, diff, { source: 'ipc', windowId: -1 } satisfies IpcOrigin)
   }
 }
