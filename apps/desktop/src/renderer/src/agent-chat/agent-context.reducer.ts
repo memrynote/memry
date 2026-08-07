@@ -17,6 +17,9 @@ export interface AgentState {
   messagesByConversation: Record<string, Message[]>
   pendingApprovals: PendingToolApproval[]
   inFlight: Record<string, boolean>
+  /** Derived: any message in any conversation is still streaming. Kept here so
+   * subscribers read a scalar instead of rescanning every transcript. */
+  hasStreamingMessage: boolean
   error: string | null
 }
 
@@ -50,6 +53,7 @@ export const initialAgentState: AgentState = {
   messagesByConversation: {},
   pendingApprovals: [],
   inFlight: {},
+  hasStreamingMessage: false,
   error: null
 }
 
@@ -162,7 +166,30 @@ function withoutInFlight(state: AgentState, conversationId: string): Record<stri
   return rest
 }
 
+function scanForStreamingMessage(
+  messagesByConversation: AgentState['messagesByConversation']
+): boolean {
+  for (const messages of Object.values(messagesByConversation)) {
+    for (const message of messages) {
+      if (message.status === 'streaming') return true
+    }
+  }
+  return false
+}
+
 export function agentReducer(state: AgentState, action: AgentAction): AgentState {
+  const next = reduceAgentState(state, action)
+  // The transcripts are untouched, so no message status can have changed.
+  if (next.messagesByConversation === state.messagesByConversation) return next
+  // `assistant_text_delta` only appends text to an existing message: it never adds,
+  // removes, or restatuses one, so the derived flag survives every streamed token.
+  if (action.type === 'event' && action.event.kind === 'assistant_text_delta') return next
+  const hasStreamingMessage = scanForStreamingMessage(next.messagesByConversation)
+  if (hasStreamingMessage === next.hasStreamingMessage) return next
+  return { ...next, hasStreamingMessage }
+}
+
+function reduceAgentState(state: AgentState, action: AgentAction): AgentState {
   switch (action.type) {
     case 'set_backend_statuses':
       return {
