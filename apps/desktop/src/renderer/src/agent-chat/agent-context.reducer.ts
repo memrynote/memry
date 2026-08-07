@@ -39,7 +39,12 @@ export type AgentAction =
   | { type: 'set_in_flight'; conversationId: string; inFlight: boolean }
   | { type: 'set_error'; error: string | null }
   | { type: 'event'; event: AgentEvent }
-  | { type: 'clear_pending'; toolCallId: string; status?: 'approved' | 'denied' }
+  | {
+      type: 'clear_pending'
+      conversationId: string
+      toolCallId: string
+      status?: 'approved' | 'denied'
+    }
 
 export const initialAgentState: AgentState = {
   backendStatuses: null,
@@ -121,8 +126,10 @@ function updateToolCallStatus(
   status: ToolCallStatus,
   patch?: { output?: unknown; error?: { code: string; message: string } }
 ): Message[] {
-  return messages.map((message) => {
+  let matched = false
+  const next: Message[] = messages.map((message) => {
     if (message.toolCallId !== toolCallId || message.content.role !== 'tool_call') return message
+    matched = true
     return {
       ...message,
       status:
@@ -141,20 +148,23 @@ function updateToolCallStatus(
       }
     }
   })
+  return matched ? next : messages
 }
 
-function updateToolCallStatusEverywhere(
+function updateToolCallStatusIn(
   messagesByConversation: AgentState['messagesByConversation'],
+  conversationId: string,
   toolCallId: string,
   status: ToolCallStatus,
   patch?: { output?: unknown; error?: { code: string; message: string } }
 ): AgentState['messagesByConversation'] {
-  return Object.fromEntries(
-    Object.entries(messagesByConversation).map(([conversationId, messages]) => [
-      conversationId,
-      updateToolCallStatus(messages, toolCallId, status, patch)
-    ])
-  )
+  const messages = messagesByConversation[conversationId]
+  // Transcript not loaded (or already evicted): nothing to patch here. The persisted
+  // transcript is reloaded from the main process on open, so no result is lost.
+  if (!messages) return messagesByConversation
+  const nextMessages = updateToolCallStatus(messages, toolCallId, status, patch)
+  if (nextMessages === messages) return messagesByConversation
+  return { ...messagesByConversation, [conversationId]: nextMessages }
 }
 
 function withoutInFlight(state: AgentState, conversationId: string): Record<string, boolean> {
@@ -230,8 +240,9 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
           (pending) => pending.toolCallId !== action.toolCallId
         ),
         messagesByConversation: action.status
-          ? updateToolCallStatusEverywhere(
+          ? updateToolCallStatusIn(
               state.messagesByConversation,
+              action.conversationId,
               action.toolCallId,
               action.status === 'denied' ? 'output-denied' : 'approval-responded'
             )
@@ -317,8 +328,9 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
           pendingApprovals: state.pendingApprovals.filter(
             (pending) => pending.toolCallId !== event.toolCallId
           ),
-          messagesByConversation: updateToolCallStatusEverywhere(
+          messagesByConversation: updateToolCallStatusIn(
             state.messagesByConversation,
+            event.conversationId,
             event.toolCallId,
             event.kind === 'tool_call_completed'
               ? 'output-available'
