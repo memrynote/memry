@@ -86,6 +86,24 @@ let currentStatus: VaultStatus = {
 }
 let agentHandle: AgentHandle | null = null
 let agentStartupPromise: Promise<void> | null = null
+
+/**
+ * How long stopVaultAgentServices() waits for an in-flight agent start before
+ * tearing down without it.
+ *
+ * Derived from the shutdown budget, not picked for roundness: closeVault() is
+ * the last step of the `before-quit` chain in main/index.ts, which force-exits
+ * the app after 5000ms. flushAllWindows() ahead of it can already spend 2000ms
+ * (flushWindow's default per-window timeout), and after this wait closeVault()
+ * still has to stop the watcher, drain projections, stop the sync runtime and
+ * close the databases. Claiming a third of the ~3000ms remainder keeps this
+ * step from ever being the one that blows the budget.
+ *
+ * It is a backstop, not a throttle: a healthy start is a localhost HTTP bind,
+ * one keychain read, a KDF and a few SQLite statements — orders of magnitude
+ * under this — so the timeout only fires when the start is genuinely wedged.
+ */
+const AGENT_STARTUP_TEARDOWN_WAIT_MS = 1000
 let isShuttingDown = false
 const statusListeners = new Set<(status: VaultStatus) => void>()
 
@@ -631,9 +649,32 @@ async function stopVaultAgentServices(): Promise<void> {
   // with handlers closed over the previous vault's db/conversations/vaultId,
   // and left that runtime alive (vault key unzeroed, subprocesses running).
   // Waiting makes the handle read below the one to tear down.
-  // startVaultAgentServicesOnce swallows its own failures so this cannot
-  // reject; the catch only keeps a future change from wedging vault switching.
-  if (agentStartupPromise) await agentStartupPromise.catch(() => undefined)
+  //
+  // The wait is bounded because closeVault() also runs on the quit path, where
+  // main/index.ts force-exits the app once its 5s budget is gone. A start
+  // that never settles must not turn the leak into a hung quit — on timeout,
+  // fall through to the teardown below and accept that the orphan may still
+  // land late (the pre-fix behaviour), which is strictly better than freezing.
+  if (agentStartupPromise) {
+    let settleTimer: ReturnType<typeof setTimeout> | undefined
+    const settled = await Promise.race([
+      // startVaultAgentServicesOnce swallows its own failures, so this only
+      // rejects if that ever changes; either way the start is over.
+      agentStartupPromise.then(
+        () => true,
+        () => true
+      ),
+      new Promise<boolean>((resolve) => {
+        settleTimer = setTimeout(() => resolve(false), AGENT_STARTUP_TEARDOWN_WAIT_MS)
+      })
+    ])
+    clearTimeout(settleTimer)
+    if (!settled) {
+      logger.warn(
+        `Agent startup did not settle within ${AGENT_STARTUP_TEARDOWN_WAIT_MS}ms; tearing down without it`
+      )
+    }
+  }
 
   const currentAgentHandle = agentHandle
   agentHandle = null

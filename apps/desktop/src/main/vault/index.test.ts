@@ -509,10 +509,19 @@ describe('vault lifecycle', () => {
     const startupInFlight = firstStarter()
     await startAgentEntered
 
-    const switchInFlight = selectVault({ path: '/vault/two' })
-    releaseStartAgent({ shutdown: mocks.agentShutdown })
-    await startupInFlight
-    await switchInFlight
+    vi.useFakeTimers()
+    try {
+      const switchInFlight = selectVault({ path: '/vault/two' })
+      releaseStartAgent({ shutdown: mocks.agentShutdown })
+      await startupInFlight
+      await switchInFlight
+
+      // The settle path must clear its timeout rather than leave a pending
+      // timer behind — closeVault() also runs on the quit path.
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
 
     // The orphaned runtime is shut down: handlers unregistered, subprocesses
     // killed, vault key zeroed.
@@ -538,6 +547,97 @@ describe('vault lifecycle', () => {
     await secondStarter()
     expect(mocks.startAgent).toHaveBeenCalledTimes(1)
     expect(mocks.currentVaultPath).toBe('/vault/two')
+  })
+
+  // closeVault() also runs on the quit path, where main/index.ts force-exits
+  // after 5s. Waiting on a start that never settles would trade the leak above
+  // for a frozen vault switch and a hung quit, so the wait is bounded.
+  it('does not block a vault switch on an agent startup that never settles', async () => {
+    await selectVault({ path: '/vault/one' })
+    const firstStarter = mocks.configureLazyAgentServices.mock.calls.at(
+      -1
+    )?.[0] as () => Promise<void>
+
+    let markStartAgentEntered!: () => void
+    const startAgentEntered = new Promise<void>((resolve) => {
+      markStartAgentEntered = resolve
+    })
+    // Wedged start: resolvable only by the test, so the module is not left
+    // holding a forever-pending promise after this case.
+    let releaseStuckStart!: (handle: { shutdown: () => Promise<void> }) => void
+    const stuckStart = new Promise<{ shutdown: () => Promise<void> }>((resolve) => {
+      releaseStuckStart = resolve
+    })
+    mocks.startAgent.mockImplementation(() => {
+      markStartAgentEntered()
+      return stuckStart
+    })
+
+    const startupInFlight = firstStarter()
+    await startAgentEntered
+
+    vi.useFakeTimers()
+    try {
+      let switchSettled = false
+      const switchInFlight = selectVault({ path: '/vault/two' }).then((result) => {
+        switchSettled = true
+        return result
+      })
+
+      // Burn exactly the teardown budget. advanceTimersByTimeAsync drains
+      // microtasks between ticks, so an unbounded wait leaves this false.
+      await vi.advanceTimersByTimeAsync(1000)
+
+      expect(switchSettled).toBe(true)
+      await switchInFlight
+    } finally {
+      vi.useRealTimers()
+      releaseStuckStart({ shutdown: mocks.agentShutdown })
+      await startupInFlight
+    }
+
+    // The switch completed and the new vault owns its own agent IPC handlers.
+    expect(getStatus()).toEqual(expect.objectContaining({ isOpen: true, path: '/vault/two' }))
+    expect(mocks.currentVaultPath).toBe('/vault/two')
+    expect(mocks.closeAllDatabases).toHaveBeenCalledTimes(1)
+    expect(mocks.registerLazyAgentHandlers.mock.invocationCallOrder.at(-1)).toBeGreaterThan(
+      mocks.unregisterLazyAgentHandlers.mock.invocationCallOrder[0] as number
+    )
+  })
+
+  // The bound has to be generous enough that a slow-but-healthy start is still
+  // waited for; a wait that gives up immediately would be no fix at all.
+  it('waits for a slow agent startup that settles inside the teardown budget', async () => {
+    await selectVault({ path: '/vault/one' })
+    const firstStarter = mocks.configureLazyAgentServices.mock.calls.at(
+      -1
+    )?.[0] as () => Promise<void>
+
+    vi.useFakeTimers()
+    try {
+      mocks.startAgent.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            setTimeout(() => resolve({ shutdown: mocks.agentShutdown }), 500)
+          })
+      )
+
+      const startupInFlight = firstStarter()
+      await vi.advanceTimersByTimeAsync(0)
+
+      const switchInFlight = selectVault({ path: '/vault/two' })
+      await vi.advanceTimersByTimeAsync(500)
+      await startupInFlight
+      await switchInFlight
+    } finally {
+      vi.useRealTimers()
+    }
+
+    expect(mocks.agentShutdown).toHaveBeenCalledTimes(1)
+    expect(mocks.stopAgentMcpLifecycle).toHaveBeenCalledTimes(1)
+    expect(mocks.agentShutdown.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.closeAllDatabases.mock.invocationCallOrder[0]
+    )
   })
 
   it('auto-opens the test vault and emits explicit progress/error events', async () => {
