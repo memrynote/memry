@@ -88,6 +88,41 @@ describe('database client', () => {
     expect(raw.pragma('temp_store', { simple: true })).toBe(2)
   })
 
+  it('closes the previous data handle when initDatabase runs again', () => {
+    // #given — a connection left behind by an open that threw after
+    // initDatabase, so closeVault() early-returned and never closed it
+    const orphan = initDatabase(dataDbPath)
+    const orphanClient = (orphan as unknown as { $client: Database.Database }).$client
+    expect(orphanClient.open).toBe(true)
+
+    // #when — the retry re-enters initDatabase on top of that orphan
+    const live = initDatabase(dataDbPath)
+    const liveClient = (live as unknown as { $client: Database.Database }).$client
+
+    // #then — the orphan (16MB page cache + fd + WAL) is gone, one live handle left
+    expect(orphanClient.open).toBe(false)
+    expect(liveClient).not.toBe(orphanClient)
+    expect(liveClient.open).toBe(true)
+    expect(getDatabase()).toBe(live)
+  })
+
+  it('closes the previous index handle when initIndexDatabase runs again', () => {
+    // #given — an index connection from a vault open that never reached close
+    initIndexDatabase(indexDbPath)
+    const orphanRaw = getRawIndexDatabase()
+    expect(orphanRaw.open).toBe(true)
+
+    // #when — the retry re-enters initIndexDatabase on top of that orphan
+    const live = initIndexDatabase(indexDbPath)
+    const liveRaw = getRawIndexDatabase()
+
+    // #then — the orphan (32MB page cache + fd + WAL) is gone, one live handle left
+    expect(orphanRaw.open).toBe(false)
+    expect(liveRaw).not.toBe(orphanRaw)
+    expect(liveRaw.open).toBe(true)
+    expect(getIndexDatabase()).toBe(live)
+  })
+
   it('closes databases and resets getters', () => {
     initDatabase(dataDbPath)
     initIndexDatabase(indexDbPath)
