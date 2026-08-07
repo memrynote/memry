@@ -190,6 +190,7 @@ jobs:
         env:
           GOOGLE_CALENDAR_CLIENT_ID: ${{ secrets.GOOGLE_CALENDAR_CLIENT_ID }}
           GOOGLE_CALENDAR_CLIENT_SECRET: ${{ secrets.GOOGLE_CALENDAR_CLIENT_SECRET }}
+          ONENOTE_CLIENT_ID: ${{ secrets.ONENOTE_CLIENT_ID }}
           SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
         run: |
           set -euo pipefail
@@ -209,6 +210,7 @@ jobs:
             printf 'SYNC_SERVER_URL=%s\n' "$SYNC_SERVER_URL"
             printf 'GOOGLE_CALENDAR_CLIENT_ID=%s\n' "$GOOGLE_CALENDAR_CLIENT_ID"
             printf 'GOOGLE_CALENDAR_CLIENT_SECRET=%s\n' "$GOOGLE_CALENDAR_CLIENT_SECRET"
+            printf 'ONENOTE_CLIENT_ID=%s\n' "$ONENOTE_CLIENT_ID"
           } > apps/desktop/.env.production
 
       - name: Build signed macOS artifacts

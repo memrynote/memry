@@ -1,9 +1,9 @@
-import type { CSSProperties, ReactElement } from 'react'
+import type { CSSProperties, ReactElement, ReactNode } from 'react'
 import {
   Body,
-  Button,
   Container,
   Head,
+  Heading,
   Hr,
   Html,
   Img,
@@ -15,14 +15,15 @@ import {
 import { trackedMemryUrl, WAITLIST_CAMPAIGNS } from './tracking-links'
 
 export const betaUpdateAugustContent = {
-  subject: 'Five weeks of Memrynote — here is what shipped',
-  preview: 'Canvas, a rebuilt project hub, tags that scale, and a long list of fixes you asked for.'
+  subject: '🗒️ Memrynote August Update: Canvas, Projects, Tags, and more!',
+  preview: 'Canvas, a real project hub, tags that scale, and a long list of fixes you asked for.'
 } as const
 
 export type BetaUpdateAugustEmailProps = {
   firstName?: string
   logoUrl?: string
   iconUrl?: string
+  posthogImageUrl?: string
   canvasImageUrl?: string
   projectsImageUrl?: string
   tagsImageUrl?: string
@@ -38,6 +39,7 @@ const defaultProps = {
   firstName: '',
   logoUrl: 'https://memrynote.com/memrynote-logo.png',
   iconUrl: 'https://memrynote.com/memrynote-icon.png',
+  posthogImageUrl: '',
   canvasImageUrl: '',
   projectsImageUrl: '',
   tagsImageUrl: '',
@@ -51,9 +53,11 @@ const homeUrl = trackedMemryUrl('/', campaign, 'logo')
 const docsUrl = trackedMemryUrl('https://docs.memrynote.com/', campaign, 'docs')
 const importDocsUrl = trackedMemryUrl('https://docs.memrynote.com/', campaign, 'import_docs')
 const clipperUrl = trackedMemryUrl('/features/web-clipper', campaign, 'web_clipper')
+const changelogUrl = trackedMemryUrl('/changelog', campaign, 'changelog')
 const footerDownloadUrl = trackedMemryUrl('/download/desktop', campaign, 'footer_download')
 const footerHomeUrl = trackedMemryUrl('/', campaign, 'footer_home')
 const redditUrl = 'https://www.reddit.com/r/MemryNote/'
+const twitterUrl = trackedMemryUrl('https://x.com/h4yfans', campaign, 'twitter')
 
 type EmailComponent = {
   (props: BetaUpdateAugustEmailProps): ReactElement
@@ -65,6 +69,7 @@ export const BetaUpdateAugustEmail: EmailComponent = (props) => {
     firstName,
     logoUrl,
     iconUrl,
+    posthogImageUrl,
     canvasImageUrl,
     projectsImageUrl,
     tagsImageUrl,
@@ -77,221 +82,273 @@ export const BetaUpdateAugustEmail: EmailComponent = (props) => {
     ...props
   }
 
-  const greeting = firstName ? `Hi ${firstName},` : 'Hi,'
+  const greeting = firstName ? `Hi ${firstName} 👋` : 'Hi 👋'
 
   return (
     <Html lang="en">
       <Head />
       <Preview>{betaUpdateAugustContent.preview}</Preview>
       <Body style={styles.body}>
-        <Container style={styles.card}>
-          <Section style={styles.header}>
-            <Link href={homeUrl} style={styles.logoLink}>
-              <Img src={logoUrl} alt="Memrynote" width="145" height="20" style={styles.logoImage} />
-            </Link>
-          </Section>
+        <Container style={styles.container}>
+          <Link href={homeUrl} style={styles.logoLink}>
+            <Img src={iconUrl} alt="Memrynote" width="45" height="36" style={styles.headerIcon} />
+          </Link>
 
-          <Section style={styles.main}>
-            <Text style={styles.paragraph}>{greeting}</Text>
+          <Hr style={styles.divider} />
 
-            <Text style={styles.paragraph}>
-              Memrynote has been out for a little over a month now. Thank you — genuinely. More
-              people downloaded it, kept it open, and wrote back than I expected for a beta, and the
-              replies have been detailed in a way that is rare.
-            </Text>
+          <Text style={styles.paragraph}>{greeting}</Text>
 
-            <Text style={styles.paragraph}>
-              This is the first of what I would like to make a monthly note: what shipped, what is
-              next, and what I still need from you. It is short.
-            </Text>
+          <Text style={styles.paragraph}>
+            It&apos;s{' '}
+            <Link href={twitterUrl} style={styles.link}>
+              Kaan
+            </Link>{' '}
+            here with the first monthly update. I build Memrynote, and from now on I want to send
+            one of these every month: what shipped, what is next, and what I still need from you.
+          </Text>
 
-            <Text style={styles.paragraphBottom}>
-              <strong>
-                A lot of what is below started as an email or an in-app report from someone reading
-                this.
-              </strong>
-            </Text>
+          <Text style={styles.paragraph}>
+            Memrynote has been out for a little over a month. Thank you — genuinely. More people
+            downloaded it, kept it open, and wrote back than I expected for a beta, and the replies
+            have been detailed in a way that is rare. Almost everything below started as an email or
+            an in-app report from someone reading this.
+          </Text>
 
-            <Hr style={styles.sectionRule} />
+          <Spacer />
 
-            <Text style={styles.sectionHeading}>Canvas</Text>
+          <Media
+            url={posthogImageUrl}
+            alt="A chart showing Memrynote downloads and active users since launch"
+            label="PostHog: downloads and active users since launch"
+            hint="posthogImageUrl — PostHog chart for the first month. 1200×630 PNG or JPG at 2x, under 300KB. Crop to the chart itself: no browser chrome, no internal project names."
+          />
 
-            <Text style={styles.paragraphTight}>
-              A new surface for thinking spatially. Drag notes, tasks, and calendar events onto an
-              infinite canvas — the cards stay live, so editing a note updates it on the canvas.
-              Canvases are plain files in your vault, and they sync end-to-end encrypted like
-              everything else.
-            </Text>
+          <Heading as="h2" style={styles.h2}>
+            Canvas
+          </Heading>
 
-            <Shot
-              url={canvasImageUrl}
-              alt="Dragging a note and a task onto a Memrynote canvas, where both render as live cards"
-              label="Canvas: dragging a note and a task onto the canvas"
-              hint="Animated GIF. 1140×740 captured at 2x, shown at 570px, under 800KB. The first frame must read on its own — Outlook shows only that frame."
-            />
+          <Text style={styles.paragraph}>
+            A new surface for thinking spatially. Drag notes, tasks, and calendar events onto an
+            infinite canvas and the cards stay live, so editing a note updates it right there on the
+            canvas. This is the feature I use the most now — I stopped keeping a separate whiteboard
+            app open entirely.
+          </Text>
 
-            <Text style={styles.sectionHeading}>Projects got a real home</Text>
+          <Text style={styles.paragraph}>
+            Canvases are plain files in your vault, and they sync end-to-end encrypted like
+            everything else.
+          </Text>
 
-            <Text style={styles.paragraphTight}>
-              The project page is now a hub: overview, notes, tasks, files, and calendar events in
-              one place. You can assign a note to a project from its properties, put an event on a
-              project from the event form, and link records to each other with the new relation
-              property.
-            </Text>
+          <Spacer />
 
-            <Shot
-              url={projectsImageUrl}
-              alt="The Memrynote project hub with overview, notes, tasks, and files tabs"
-              label="Projects: the project hub with its tabs populated"
-              hint="1140×740 PNG or JPG captured at 2x, shown at 570px, under 300KB. Use a project with real notes, tasks, and files — not an empty state."
-            />
+          <Media
+            url={canvasImageUrl}
+            alt="Dragging a note and a task onto a Memrynote canvas, where both render as live cards"
+            label="Canvas: dragging a note and a task onto the canvas"
+            hint="canvasImageUrl — animated GIF, 1200×630 at 2x, under 800KB. The first frame must read on its own: Outlook shows only that frame."
+          />
 
-            <Text style={styles.sectionHeading}>Tags that scale</Text>
+          <Heading as="h2" style={styles.h2}>
+            Projects Got a Real Home
+          </Heading>
 
-            <Text style={styles.paragraphTight}>
-              Tag categories, a tag hub to organize them, a page per tag, and tags on tasks — not
-              just notes.
-            </Text>
+          <Text style={styles.paragraph}>
+            The project page is now a proper hub: overview, notes, tasks, files, and calendar events
+            in one place. You can assign a note to a project from its properties, put an event on a
+            project straight from the event form, and link records to each other with the new
+            relation property.
+          </Text>
 
-            <Shot
-              url={tagsImageUrl}
-              alt="The Memrynote tag hub showing tag categories and a single-tag page"
-              label="Tags: the tag hub with categories, and a single-tag page"
-              hint="1140×740 PNG or JPG captured at 2x, shown at 570px, under 300KB. Enough tags to make the categories look worth having."
-            />
+          <Spacer />
 
-            <Text style={styles.sectionHeading}>Tasks and the daily loop</Text>
+          <Media
+            url={projectsImageUrl}
+            alt="The Memrynote project hub with overview, notes, tasks, and files tabs"
+            label="Projects: the project hub with its tabs populated"
+            hint="projectsImageUrl — 1200×630 PNG or JPG at 2x, under 300KB. Use a project with real notes, tasks, and files, not an empty state."
+          />
 
-            <Text style={styles.paragraphTight}>
-              Drag a task onto the calendar to schedule it. Checkboxes in your markdown files are
-              now the source of truth, so an <span style={styles.code}>[x]</span> you type anywhere
-              — or in another editor — completes the task. Plus a daily inbox review reminder, so
-              nothing sits there for a week.
-            </Text>
+          <Heading as="h2" style={styles.h2}>
+            Tags That Scale
+          </Heading>
 
-            <Shot
-              url={tasksImageUrl}
-              alt="A Memrynote task being scheduled by dragging it from the task list onto a calendar day"
-              label="Tasks: dragging a task from the list onto a calendar day"
-              hint="1140×740 PNG or JPG captured at 2x, shown at 570px, under 300KB. Two panes — task list on one side, calendar with the task landed on a day. Swap for the markdown checkbox shot if that reads better."
-            />
+          <Text style={styles.paragraph}>
+            Tag categories, a tag hub to organise them, a page per tag, and tags on tasks — not just
+            notes. If you were one of the people who wrote in with a screenshot of a sidebar with
+            two hundred tags in it, this one is for you.
+          </Text>
 
-            <Text style={styles.sectionHeading}>The AI panel is easier to live with</Text>
+          <Spacer />
 
-            <Text style={styles.paragraphTight}>
-              A rebuilt composer, voice dictation, and a tool activity view that collapses into one
-              line instead of flooding the chat. It still works against your vault on your machine,
-              and it still asks before it writes anything.
-            </Text>
+          <Media
+            url={tagsImageUrl}
+            alt="The Memrynote tag hub showing tag categories and a single-tag page"
+            label="Tags: the tag hub with categories, and a single-tag page"
+            hint="tagsImageUrl — 1200×630 PNG or JPG at 2x, under 300KB. Enough tags on screen to make the categories look worth having."
+          />
 
-            <Shot
-              url={agentImageUrl}
-              alt="The Memrynote AI panel with the new composer, voice dictation, and a collapsed tool activity row"
-              label="AI panel: the new composer with voice dictation and a collapsed tool activity row"
-              hint="1140×740 PNG or JPG captured at 2x, shown at 570px, under 300KB. Show one finished tool run collapsed into a single row."
-            />
+          <Heading as="h2" style={styles.h2}>
+            Tasks and the Daily Loop
+          </Heading>
 
-            <Text style={styles.sectionHeading}>And the rest</Text>
+          <Text style={styles.paragraph}>
+            Drag a task onto the calendar to schedule it. Checkboxes in your markdown files are now
+            the source of truth, so an <span style={styles.code}>[x]</span> you type anywhere — even
+            in another editor — completes the task. There is also a daily inbox review reminder now,
+            so nothing sits there for a week.
+          </Text>
 
-            <ul style={styles.list}>
-              <li style={styles.listItem}>
-                Templates you can author like a normal note, and that sync across your devices
-              </li>
-              <li style={styles.listItem}>Bookmarks and reminders now sync too</li>
-              <li style={styles.listItem}>PDFs and Obsidian-style image embeds in the editor</li>
-              <li style={styles.listItem}>
-                A proper tab bar, per-note width, and a darker dark theme
-              </li>
-              <li style={styles.listItem}>
+          <Spacer />
+
+          <Media
+            url={tasksImageUrl}
+            alt="A Memrynote task being scheduled by dragging it from the task list onto a calendar day"
+            label="Tasks: dragging a task from the list onto a calendar day"
+            hint="tasksImageUrl — 1200×630 PNG or JPG at 2x, under 300KB. Two panes: task list on one side, calendar with the task landed on a day."
+          />
+
+          <Heading as="h2" style={styles.h2}>
+            The AI Panel Is Easier to Live With
+          </Heading>
+
+          <Text style={styles.paragraph}>
+            A rebuilt composer, voice dictation, and a tool activity view that collapses into one
+            line instead of flooding the chat. It still works against your vault on your machine,
+            and it still asks before it writes anything.
+          </Text>
+
+          <Spacer />
+
+          <Media
+            url={agentImageUrl}
+            alt="The Memrynote AI panel with the new composer, voice dictation, and a collapsed tool activity row"
+            label="AI panel: the new composer with a collapsed tool activity row"
+            hint="agentImageUrl — 1200×630 PNG or JPG at 2x, under 300KB. Show one finished tool run collapsed into a single row."
+          />
+
+          <Spacer />
+
+          <Heading as="h3" style={styles.h3}>
+            In Other News
+          </Heading>
+
+          <ul style={styles.list}>
+            <li style={styles.listItem}>
+              <p style={styles.listParagraph}>
+                Templates you can author like a normal note, and that sync across your devices.
+              </p>
+            </li>
+            <li style={styles.listItem}>
+              <p style={styles.listParagraph}>Bookmarks and reminders sync now too.</p>
+            </li>
+            <li style={styles.listItem}>
+              <p style={styles.listParagraph}>
+                PDFs and Obsidian-style image embeds work in the editor.
+              </p>
+            </li>
+            <li style={styles.listItem}>
+              <p style={styles.listParagraph}>
+                A proper tab bar, per-note width, and a darker dark theme.
+              </p>
+            </li>
+            <li style={styles.listItem}>
+              <p style={styles.listParagraph}>
                 The web clipper is live on the{' '}
-                <Link href={clipperUrl} style={styles.inlineLink}>
+                <Link href={clipperUrl} style={styles.link}>
                   Chrome Web Store
                 </Link>
-                , and on Firefox
-              </li>
-              <li style={styles.listItem}>
-                Delete a vault from your account, with a server-side purge — your files on disk stay
-              </li>
-              <li style={styles.listItem}>
-                Optional, redacted diagnostic reports for when something breaks
-              </li>
-            </ul>
+                , and on Firefox.
+              </p>
+            </li>
+            <li style={styles.listItem}>
+              <p style={styles.listParagraph}>
+                You can delete a vault from your account with a server-side purge — your files on
+                disk stay exactly where they are.
+              </p>
+            </li>
+            <li style={styles.listItem}>
+              <p style={styles.listParagraph}>
+                Optional, redacted diagnostic reports for when something breaks.
+              </p>
+            </li>
+            <li style={styles.listItem}>
+              <p style={styles.listParagraph}>
+                Plus a long list of fixes: sync reliability, editor formatting that did not survive
+                a save, a due date that was off by one in some time zones, startup hangs, and undo
+                on Windows and Linux.
+              </p>
+            </li>
+          </ul>
 
-            <Text style={styles.paragraph}>
-              Plus a long list of fixes: sync reliability, editor formatting that did not survive a
-              save, a due date that was off by one in some time zones, startup hangs, and undo on
-              Windows and Linux.
-            </Text>
+          <Spacer />
 
-            <Hr style={styles.sectionRule} />
+          <Heading as="h3" style={styles.h3}>
+            If You Have Not Started Yet
+          </Heading>
 
-            <Text style={styles.paragraphTight}>
-              <strong>If you have not started yet:</strong> you can{' '}
-              <Link href={importDocsUrl} style={styles.inlineLink}>
-                import
-              </Link>{' '}
-              from Notion, Obsidian, Apple Notes, Bear, and plain markdown folders in a few clicks.
-              It is usually faster than people expect.
-            </Text>
+          <Text style={styles.paragraph}>
+            You can{' '}
+            <Link href={importDocsUrl} style={styles.link}>
+              import
+            </Link>{' '}
+            from Notion, Obsidian, Apple Notes, Bear, and plain markdown folders in a few clicks. It
+            is usually faster than people expect.{' '}
+            <Link href={downloadUrl} style={styles.link}>
+              Get the latest version
+            </Link>
+            . Updates install themselves, so you may already be on it — check Settings if you are
+            not sure.
+          </Text>
 
-            <Section style={styles.buttonRow}>
-              <Button href={downloadUrl} style={styles.button}>
-                Get the latest version
-              </Button>
-            </Section>
+          <Spacer />
 
-            <Text style={styles.paragraph}>
-              Updates install themselves, so you may already be on it — check Settings if you are
-              not sure.
-            </Text>
+          <Text style={styles.paragraph}>
+            <strong>What is next:</strong> more work on projects and the canvas, and a steady pass
+            over the rough edges you keep finding. We are still early and still in beta. Some things
+            will break. When they do, hit the Feedback button in the app or just reply to this email
+            — both land with me, and I read all of them.
+          </Text>
 
-            <Text style={styles.paragraphBottom}>
-              <strong>What is next:</strong> more work on projects and the canvas, and a steady pass
-              over the rough edges you keep finding. We are still early and still in beta. Some
-              things will break. When they do, hit the Feedback button in the app or just reply to
-              this email — both land with me, and I read all of them. The{' '}
-              <Link href={docsUrl} style={styles.inlineLink}>
-                docs
-              </Link>{' '}
-              cover most of what is above in more detail.
-            </Text>
+          <Text style={styles.paragraph}>
+            That is it for this month. For everything else, check out the{' '}
+            <Link href={changelogUrl} style={styles.link}>
+              changelog
+            </Link>{' '}
+            or the{' '}
+            <Link href={docsUrl} style={styles.link}>
+              docs
+            </Link>
+            .
+          </Text>
 
-            <Text style={styles.paragraph}>Talk in a month.</Text>
+          <Text style={styles.paragraph}>See you next month!</Text>
 
-            <Text style={styles.signoff}>Best,</Text>
-            <Text style={styles.signature}>Kaan</Text>
-
-            <Hr style={styles.hr} />
-          </Section>
+          <Hr style={styles.divider} />
 
           <Section style={styles.footer}>
-            <Section style={styles.footerLogo}>
-              <Img src={iconUrl} alt="Memrynote" width="34" height="27" style={styles.logoImage} />
-            </Section>
+            <Img src={logoUrl} alt="Memrynote" width="185" height="26" style={styles.footerLogo} />
 
-            <Text style={styles.footerLinks}>
-              <Link href={footerDownloadUrl} style={styles.footerLink}>
+            <Text style={styles.footerText}>
+              <Link href={footerDownloadUrl} style={styles.link}>
                 Download Memrynote
               </Link>{' '}
               ·{' '}
-              <Link href={docsUrl} style={styles.footerLink}>
+              <Link href={docsUrl} style={styles.link}>
                 Docs
               </Link>{' '}
               ·{' '}
-              <Link href={footerHomeUrl} style={styles.footerLink}>
+              <Link href={footerHomeUrl} style={styles.link}>
                 memrynote.com
               </Link>{' '}
               ·{' '}
-              <Link href={redditUrl} style={styles.footerLink}>
+              <Link href={redditUrl} style={styles.link}>
                 r/MemryNote
               </Link>
-            </Text>
-
-            <Text style={styles.footerLine}>© 2026 Memrynote</Text>
-
-            <Text style={styles.footerUnsubscribe}>
-              <Link href={unsubscribeUrl} style={styles.footerLink}>
-                Unsubscribe
+              <br />
+              <span style={styles.footerMuted}>© 2026 Memrynote</span>
+              <br />
+              <Link href={unsubscribeUrl} style={styles.link}>
+                <u>Unsubscribe</u>
               </Link>
             </Text>
           </Section>
@@ -301,7 +358,15 @@ export const BetaUpdateAugustEmail: EmailComponent = (props) => {
   )
 }
 
-function Shot({
+function Spacer(): ReactNode {
+  return (
+    <Text style={styles.paragraph}>
+      <br />
+    </Text>
+  )
+}
+
+function Media({
   url,
   alt,
   label,
@@ -311,16 +376,17 @@ function Shot({
   alt: string
   label: string
   hint: string
-}) {
+}): ReactNode {
   if (url) {
-    return <Img src={url} alt={alt} width="570" style={styles.shotImage} />
+    return <Img src={url} alt={alt} width="100%" style={styles.mediaImage} />
   }
 
   return (
-    <Section style={styles.placeholder}>
-      <Text style={styles.placeholderLabel}>{label}</Text>
-      <Text style={styles.placeholderHint}>{hint}</Text>
-    </Section>
+    <Text style={styles.mediaNote}>
+      <strong>↓ {label}</strong>
+      <br />
+      {hint}
+    </Text>
   )
 }
 
@@ -329,176 +395,136 @@ BetaUpdateAugustEmail.PreviewProps = defaultProps
 export default BetaUpdateAugustEmail
 
 const systemFont =
-  "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
+  "-apple-system, system-ui, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif"
+
+const accent = '#ff671a'
 
 const styles = {
   body: {
     margin: 0,
-    backgroundColor: '#f4f3ef',
+    backgroundColor: '#ffffff',
     fontFamily: systemFont,
-    color: '#000000'
+    fontStyle: 'normal',
+    fontWeight: 400,
+    fontSize: '13px',
+    lineHeight: '20px',
+    color: '#222222'
   },
-  card: {
+  container: {
     width: '100%',
-    maxWidth: '620px',
+    maxWidth: '600px',
     margin: '0 auto',
-    backgroundColor: '#faf9f7'
-  },
-  header: {
-    padding: '13px 25px',
-    minHeight: '48px'
+    padding: '32px 20px',
+    backgroundColor: '#ffffff'
   },
   logoLink: {
     display: 'inline-block',
     textDecoration: 'none'
   },
-  logoImage: {
+  headerIcon: {
     display: 'block',
-    maxWidth: '100%'
+    outline: 'none',
+    border: 'none',
+    textDecoration: 'none',
+    borderRadius: '8px'
   },
-  main: {
-    padding: '32px 25px 0'
+  divider: {
+    width: '100%',
+    margin: '0 0 13px',
+    border: 'none',
+    borderTop: '2px solid #eaeaea'
   },
   paragraph: {
-    margin: '0 0 16px',
-    color: '#000000',
-    fontSize: '16px',
-    lineHeight: '24px'
+    margin: 0,
+    padding: '7px 0',
+    color: '#222222',
+    fontSize: '13px',
+    fontWeight: 400,
+    lineHeight: '20px'
   },
-  paragraphTight: {
-    margin: '0 0 16px',
-    color: '#000000',
-    fontSize: '16px',
-    lineHeight: '24px'
+  h2: {
+    margin: 0,
+    padding: '5px 0 0',
+    color: '#222222',
+    fontSize: '23px',
+    fontWeight: 600,
+    lineHeight: '34px'
   },
-  paragraphBottom: {
-    margin: '0 0 21px',
-    color: '#000000',
-    fontSize: '16px',
-    lineHeight: '24px'
-  },
-  sectionRule: {
-    margin: '10px 0 26px',
-    border: 'none',
-    borderTop: '1px solid #e0dfdd'
-  },
-  sectionHeading: {
-    margin: '32px 0 8px',
-    color: '#000000',
+  h3: {
+    margin: 0,
+    padding: '5px 0 0',
+    color: '#222222',
     fontSize: '18px',
     fontWeight: 600,
-    lineHeight: '26px'
+    lineHeight: '24px'
   },
-  buttonRow: {
-    margin: '16px 0 21px'
-  },
-  button: {
-    display: 'inline-block',
-    padding: '11px 18px',
-    borderRadius: '8px',
-    backgroundColor: '#000000',
-    color: '#faf9f7',
-    fontSize: '16px',
+  link: {
+    color: accent,
     fontWeight: 400,
-    lineHeight: '20px',
-    textAlign: 'center',
-    textDecoration: 'none'
+    textDecoration: 'underline'
   },
-  shotImage: {
+  mediaImage: {
     display: 'block',
+    outline: 'none',
+    border: 'none',
+    textDecoration: 'none',
     width: '100%',
-    maxWidth: '570px',
+    maxWidth: '100%',
     height: 'auto',
     borderRadius: '8px'
   },
-  placeholder: {
-    margin: '0 0 8px',
-    padding: '40px 24px',
-    border: '1px dashed #d0d0d0',
-    borderRadius: '8px',
-    backgroundColor: '#f4f3ef',
-    textAlign: 'center'
-  },
-  placeholderLabel: {
-    margin: '0 0 6px',
-    color: '#555555',
-    fontSize: '14px',
-    lineHeight: '20px',
-    fontWeight: 600
-  },
-  placeholderHint: {
+  mediaNote: {
     margin: 0,
+    padding: '7px 0',
     color: '#888888',
     fontSize: '12px',
+    fontWeight: 400,
     lineHeight: '18px'
   },
   list: {
-    margin: '8px 0 16px',
-    paddingLeft: '24px'
+    margin: 0,
+    padding: '0 0 13px 15px'
   },
   listItem: {
-    margin: '0 0 8px',
-    color: '#000000',
-    fontSize: '16px',
-    lineHeight: '24px'
+    margin: '0 0 0 13px',
+    padding: '4px 0'
   },
-  inlineLink: {
-    color: '#000000',
+  listParagraph: {
+    margin: 0,
+    padding: 0,
+    color: '#222222',
+    fontSize: '13px',
     fontWeight: 400,
-    textDecoration: 'underline'
+    lineHeight: '20px'
   },
   code: {
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
     fontWeight: 600,
     padding: '1px 6px',
     borderRadius: '4px',
-    backgroundColor: '#f4f3ef',
-    border: '1px solid #e0dfdd'
-  },
-  signoff: {
-    margin: 0,
-    color: '#000000',
-    fontSize: '16px',
-    lineHeight: '24px'
-  },
-  signature: {
-    margin: '0 0 16px',
-    color: '#000000',
-    fontSize: '16px',
-    lineHeight: '24px'
-  },
-  hr: {
-    margin: '52px 0',
-    border: 'none',
-    borderTop: '1px solid #e0dfdd'
+    backgroundColor: '#f6f6f6',
+    border: '1px solid #eaeaea'
   },
   footer: {
-    padding: '0 25px'
+    fontSize: '11px'
   },
   footerLogo: {
-    margin: '0 0 21px'
+    display: 'block',
+    outline: 'none',
+    border: 'none',
+    textDecoration: 'none',
+    padding: '10px 0'
   },
-  footerLinks: {
-    margin: '0 0 21px',
-    color: '#808080',
-    fontSize: '14px',
-    lineHeight: '21px'
-  },
-  footerLink: {
-    color: '#808080',
+  footerText: {
+    margin: 0,
+    padding: '7px 0',
+    color: '#a8a29e',
+    fontSize: '11px',
     fontWeight: 400,
-    textDecoration: 'underline'
+    lineHeight: '18px',
+    textAlign: 'center'
   },
-  footerLine: {
-    margin: '0 0 21px',
-    color: '#808080',
-    fontSize: '14px',
-    lineHeight: '21px'
-  },
-  footerUnsubscribe: {
-    margin: '0 0 52px',
-    color: '#808080',
-    fontSize: '14px',
-    lineHeight: '21px'
+  footerMuted: {
+    color: '#a8a29e'
   }
 } satisfies Record<string, CSSProperties>
