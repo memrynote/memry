@@ -55,6 +55,7 @@ import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { getDeviceSigningKey } from './device-keys'
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import { CrdtUpdateQueue } from './crdt-queue'
+import { drainPendingCrdtNotes, recordPendingCrdtNotes } from './crdt-pending-notes'
 import { recoverDirtyItems } from './dirty-recovery'
 import { encryptCrdtUpdate } from './crdt-encrypt'
 import { postToServer, pushCrdtSnapshot, SyncServerError } from './http-client'
@@ -472,7 +473,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         }
       ])
 
-      const crdtQueue = new CrdtUpdateQueue()
+      const crdtQueue = new CrdtUpdateQueue({ persistUnflushed: recordPendingCrdtNotes })
       crdtQueue.start(async (noteId, updates) => {
         let token = await getValidAccessToken()
         const vaultKey = await getOptionalRuntimeVaultKey(db, 'crdt update batch')
@@ -596,6 +597,16 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const crdtProvider = getCrdtProvider()
       await crdtProvider.init(crdtQueue, snapshotPushFn)
 
+      // Notes whose updates were still buffered when the app last quit paused
+      // (offline / expired token / quota). Their content is safe in the local
+      // CRDT store; pushing the full state is what the server missed.
+      const replayPendingCrdtNotes = (): void => {
+        void drainPendingCrdtNotes({
+          pushSnapshot: (noteId) => crdtProvider.pushSnapshotForNote(noteId),
+          isSyncable: (noteId) => crdtProvider.validateNoteForCrdt(noteId).ok
+        }).catch((err) => log.warn('Pending CRDT note replay failed', err))
+      }
+
       const emitFn = (channel: string, data: unknown): void => {
         broadcastToAllWindows(channel, data)
       }
@@ -619,6 +630,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       network.on('status-changed', ({ online }: { online: boolean }) => {
         if (online) {
           crdtQueue.resume()
+          replayPendingCrdtNotes()
         } else {
           crdtQueue.pause()
         }
@@ -740,6 +752,8 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       void import('./attachment-outbox')
         .then(({ drainAttachmentOutbox }) => drainAttachmentOutbox())
         .catch(() => {})
+
+      replayPendingCrdtNotes()
 
       trackMainEvent('sync_enabled', {
         surface: 'sync',
