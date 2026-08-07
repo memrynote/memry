@@ -12,11 +12,13 @@ const mocks = vi.hoisted(() => ({
   openTab: vi.fn(),
   openSettings: vi.fn(),
   createNote: vi.fn(),
+  createCanvas: vi.fn(),
   importFiles: vi.fn(),
   notesTreeExpandAll: vi.fn(),
   notesTreeCollapseAll: vi.fn(),
   notesTreeCreateNote: vi.fn(),
   notesTreeCreateFolder: vi.fn(),
+  canvasTreeCreateFolder: vi.fn(),
   authState: { status: 'unauthenticated' },
   inboxItems: [
     { id: 'inbox-1', type: 'note' },
@@ -86,14 +88,17 @@ vi.mock('@/components/sidebar-section', () => ({
   SidebarSection: ({
     label,
     actions,
-    children
+    children,
+    totalCount
   }: {
     label: string
     actions?: ReactNode
     children: ReactNode
+    totalCount?: number
   }) => (
     <section>
       <h2>{label}</h2>
+      {totalCount !== undefined && <span>{`${label} total ${totalCount}`}</span>}
       {actions}
       {children}
     </section>
@@ -125,10 +130,28 @@ vi.mock('@/components/notes-tree', () => ({
 }))
 
 // Heavy child, and the only one that subscribes to canvas IPC events. The
-// spatialCanvas flag defaults on, so this list now mounts in every sidebar
-// test; its own behavior is covered by sidebar-canvas-list.test.tsx.
-vi.mock('@/components/sidebar/sidebar-canvas-list', () => ({
-  SidebarCanvasList: () => <div>Canvas list</div>
+// spatialCanvas flag defaults on, so this tree now mounts in every sidebar
+// test; its own behavior is covered by canvas-tree.test.tsx. The stub reports a
+// count and a target folder so the sidebar's half of that contract is testable.
+vi.mock('@/components/sidebar/canvas-tree/canvas-tree', () => ({
+  CanvasTree: forwardRef<
+    { createFolder: () => void },
+    {
+      onCountChange?: (count: number) => void
+      onTargetFolderChange?: (folder: string | null) => void
+    }
+  >(function CanvasTree({ onCountChange, onTargetFolderChange }, ref) {
+    useImperativeHandle(ref, () => ({ createFolder: mocks.canvasTreeCreateFolder }))
+    useEffect(() => {
+      onCountChange?.(3)
+      onTargetFolderChange?.('Work')
+    }, [onCountChange, onTargetFolderChange])
+    return <div>Canvas tree</div>
+  })
+}))
+
+vi.mock('@/services/canvas-service', () => ({
+  canvasService: { create: mocks.createCanvas }
 }))
 
 vi.mock('@/components/sidebar/sidebar-tag-list', () => ({
@@ -289,6 +312,35 @@ describe('AppSidebar', () => {
       success: true,
       note: { id: 'note-1', title: 'New note' }
     })
+    mocks.createCanvas.mockResolvedValue({ id: 'canvas-1', title: 'Fresh canvas' })
+  })
+
+  it('shows the canvas count and creates a canvas in the folder the tree reports', async () => {
+    render(<AppSidebar currentPage="inbox" viewCounts={{}} />)
+
+    // The collapsed canvases header can only show `(n)` if the count reaches it.
+    await waitFor(() => expect(screen.getByText('sectionLabel total 3')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: 'newCanvas' }))
+
+    await waitFor(() => expect(mocks.createCanvas).toHaveBeenCalledWith({ folder: 'Work' }))
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'canvas',
+        title: 'Fresh canvas',
+        entityId: 'canvas-1'
+      })
+    )
+  })
+
+  it('offers a root-level New folder beside New canvas, the way NOTES does', async () => {
+    // A folder row's own menu can only create a CHILD folder, so without a
+    // section-level control a user with no folders can never make their first.
+    render(<AppSidebar currentPage="inbox" viewCounts={{}} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'newCanvasFolder' }))
+
+    expect(mocks.canvasTreeCreateFolder).toHaveBeenCalledTimes(1)
   })
 
   it('opens app sections, creates notes in selected folders, and forwards tree actions', async () => {

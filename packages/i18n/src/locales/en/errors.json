@@ -165,6 +165,13 @@
     "retryGoogleSourceSyncFailed": "Failed to retry Google Calendar source sync",
     "promoteExternalEventFailed": "Failed to promote external calendar event"
   },
+  "canvasFolder": {
+    "exists": "A canvas folder with that name already exists here.",
+    "descendant": "A canvas folder cannot be moved into one of its own subfolders.",
+    "moveFailed": "The canvas folder could not be moved. It may be open in another app.",
+    "depth": "Canvas folders cannot be nested any deeper.",
+    "invalidName": "Enter a name for the canvas folder."
+  },
   "folder": {
     "createFailed": "Failed to create folder",
     "renameFailed": "Failed to rename folder",
