@@ -479,6 +479,67 @@ describe('vault lifecycle', () => {
     expect(mocks.currentVaultPath).toBe('/vault/two')
   })
 
+  // A vault switch that lands while startAgent() is still in flight used to
+  // early-return from the agent teardown (agentHandle was still null), so the
+  // orphaned start resolved *after* the next vault registered its lazy
+  // handlers: registerAgentHandlers() replaced them with handlers closed over
+  // the previous vault's db/conversations/vaultId, and that runtime was never
+  // shut down (vault key left unzeroed, subprocesses left alive).
+  it('tears down an agent runtime that finishes starting during a vault switch', async () => {
+    await selectVault({ path: '/vault/one' })
+    const firstStarter = mocks.configureLazyAgentServices.mock.calls.at(
+      -1
+    )?.[0] as () => Promise<void>
+
+    // Park the startup inside startAgent() so the switch is guaranteed to run
+    // in the gap — no timers, no timing assumptions.
+    let markStartAgentEntered!: () => void
+    const startAgentEntered = new Promise<void>((resolve) => {
+      markStartAgentEntered = resolve
+    })
+    let releaseStartAgent!: (handle: { shutdown: () => Promise<void> }) => void
+    const staleHandle = new Promise<{ shutdown: () => Promise<void> }>((resolve) => {
+      releaseStartAgent = resolve
+    })
+    mocks.startAgent.mockImplementation(() => {
+      markStartAgentEntered()
+      return staleHandle
+    })
+
+    const startupInFlight = firstStarter()
+    await startAgentEntered
+
+    const switchInFlight = selectVault({ path: '/vault/two' })
+    releaseStartAgent({ shutdown: mocks.agentShutdown })
+    await startupInFlight
+    await switchInFlight
+
+    // The orphaned runtime is shut down: handlers unregistered, subprocesses
+    // killed, vault key zeroed.
+    expect(mocks.agentShutdown).toHaveBeenCalledTimes(1)
+    expect(mocks.stopAgentMcpLifecycle).toHaveBeenCalledTimes(1)
+
+    // ...and it is torn down before the previous vault's databases close and
+    // before the new vault publishes its own agent IPC handlers, so the new
+    // vault's channels are never replaced by old-vault-bound ones.
+    const shutdownOrder = mocks.agentShutdown.mock.invocationCallOrder[0]
+    expect(shutdownOrder).toBeLessThan(mocks.closeAllDatabases.mock.invocationCallOrder[0])
+    expect(shutdownOrder).toBeLessThan(
+      mocks.registerLazyAgentHandlers.mock.invocationCallOrder.at(-1) as number
+    )
+
+    // The new vault gets its own runtime rather than inheriting the stale
+    // handle — never two live runtimes, never zero.
+    mocks.startAgent.mockReset()
+    mocks.startAgent.mockResolvedValue({ shutdown: mocks.agentShutdown })
+    const secondStarter = mocks.configureLazyAgentServices.mock.calls.at(
+      -1
+    )?.[0] as () => Promise<void>
+    await secondStarter()
+    expect(mocks.startAgent).toHaveBeenCalledTimes(1)
+    expect(mocks.currentVaultPath).toBe('/vault/two')
+  })
+
   it('auto-opens the test vault and emits explicit progress/error events', async () => {
     process.env.NODE_ENV = 'test'
     process.env.TEST_VAULT_PATH = '/vault/e2e'

@@ -625,6 +625,16 @@ async function stopVaultAgentServices(): Promise<void> {
   configureLazyAgentServices(null)
   unregisterLazyAgentHandlers()
 
+  // A start that is still in flight owns this vault's db handles and calls
+  // registerAgentHandlers() when it resolves. Dropping the promise here let it
+  // land after the *next* vault had registered its own handlers, replacing them
+  // with handlers closed over the previous vault's db/conversations/vaultId,
+  // and left that runtime alive (vault key unzeroed, subprocesses running).
+  // Waiting makes the handle read below the one to tear down.
+  // startVaultAgentServicesOnce swallows its own failures so this cannot
+  // reject; the catch only keeps a future change from wedging vault switching.
+  if (agentStartupPromise) await agentStartupPromise.catch(() => undefined)
+
   const currentAgentHandle = agentHandle
   agentHandle = null
   agentStartupPromise = null
