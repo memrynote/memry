@@ -210,8 +210,6 @@ jobs:
             printf 'SYNC_SERVER_URL=%s\n' "$SYNC_SERVER_URL"
             printf 'GOOGLE_CALENDAR_CLIENT_ID=%s\n' "$GOOGLE_CALENDAR_CLIENT_ID"
             printf 'GOOGLE_CALENDAR_CLIENT_SECRET=%s\n' "$GOOGLE_CALENDAR_CLIENT_SECRET"
-            # Unguarded on purpose: OneNote import is optional, so an unset
-            # secret hides the importer instead of failing the release.
             printf 'ONENOTE_CLIENT_ID=%s\n' "$ONENOTE_CLIENT_ID"
           } > apps/desktop/.env.production
 
