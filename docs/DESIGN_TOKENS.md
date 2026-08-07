@@ -188,11 +188,14 @@ Dark mode uses lighter, more legible variants.
 | `--sidebar-border`             | `#d9d5ce`                   | `#e9e9e7`                   | `#333333`                | `border-sidebar-border`           |
 | `--sidebar-ring`               | `var(--tint)`               | `var(--tint)`               | `var(--tint)`            | `ring-sidebar-ring`               |
 | `--sidebar-muted`              | `#b5b0a6`                   | `#b0afab`                   | `#6b6b6b`                | `text-sidebar-muted`              |
+| `--sidebar-section-heading`    | `#6b6459`                   | `#6b6966`                   | `#9d9d9d`                | `text-sidebar-section-heading`    |
 | `--sidebar-terracotta`         | `var(--tint)`               | `var(--tint)`               | `var(--tint)`            | `bg-sidebar-terracotta`           |
 | `--sidebar-text-folder`        | `#3d3a35`                   | `#37352f`                   | `#c5c0b8`                | `text-sidebar-text-folder`        |
 | `--sidebar-text-child`         | `#5c5850`                   | `#6b6966`                   | `#9a958d`                | `text-sidebar-text-child`         |
 | `--sidebar-dot-inactive`       | `#d9d5ce`                   | `#e3e2e0`                   | `#444444`                | `bg-sidebar-dot-inactive`         |
 | `--sidebar-surface`            | `rgba(0,0,0,0.04)`          | `rgba(0,0,0,0.03)`          | `#2a2a2a`                | `bg-sidebar-surface`              |
+
+**`--sidebar-section-heading`** is the only sidebar token with a contrast floor. `SidebarSection` renders its heading at 11px, which WCAG AA treats as small text (4.5:1), so the token is kept separate from `--sidebar-muted` — that one also colours chevrons and decorative icon buttons, where darkening would be too loud. Measured against each theme's own `--sidebar` in `base.css` (`#efefe9` / `#f9f8f7` / `#1a1a1a`): **5.07:1**, **5.16:1**, **6.42:1**. The heading takes no hover colour: `--sidebar-foreground`, the old hover target, is 3.18:1 on the warm sidebar, and the tokens that would clear the floor are the emphasis colours (`--sidebar-primary`, `--sidebar-text-folder`) — too loud for an 11px label. The chevron fading in carries the affordance instead. `sidebar-section.contrast.test.tsx` recomputes these ratios from this CSS and fails under 4.5.
 
 ---
 
