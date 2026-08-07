@@ -73,6 +73,7 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const chunksRef = useRef<Blob[]>([])
+  const cancelledRef = useRef(false)
   const timerRef = useRef<number | null>(null)
   const startTimeRef = useRef<number>(0)
 
@@ -80,6 +81,14 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
     if (timerRef.current) {
       clearInterval(timerRef.current)
       timerRef.current = null
+    }
+
+    // The recorder runs without a timeslice, so the whole recording arrives as a
+    // single `dataavailable` fired *after* `stop()` returns. Latch the discard
+    // before stopping so those late callbacks never resurrect the audio — a
+    // cancelled memo must never reach the vault or the transcriber.
+    if (cancelled) {
+      cancelledRef.current = true
     }
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -113,6 +122,7 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
 
       streamRef.current = mediaStream
       chunksRef.current = []
+      cancelledRef.current = false
 
       const mediaRecorder = new MediaRecorder(mediaStream, {
         mimeType: MediaRecorder.isTypeSupported(MIME_TYPE) ? MIME_TYPE : 'audio/webm'
@@ -121,12 +131,18 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
       mediaRecorderRef.current = mediaRecorder
 
       mediaRecorder.ondataavailable = (event) => {
+        if (cancelledRef.current) return
         if (event.data.size > 0) {
           chunksRef.current.push(event.data)
         }
       }
 
       mediaRecorder.onstop = () => {
+        if (cancelledRef.current) {
+          chunksRef.current = []
+          return
+        }
+
         if (chunksRef.current.length > 0) {
           setState('processing')
 

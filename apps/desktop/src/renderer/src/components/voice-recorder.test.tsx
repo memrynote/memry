@@ -6,7 +6,6 @@ import { VoiceRecorder, type VoiceRecorderHandle } from './voice-recorder'
 
 class MockMediaRecorder {
   static isTypeSupported = vi.fn(() => true)
-  static emitDataOnStop = true
 
   state: 'inactive' | 'recording' = 'inactive'
   ondataavailable: ((event: { data: Blob }) => void) | null = null
@@ -25,9 +24,7 @@ class MockMediaRecorder {
   stop(): void {
     this.state = 'inactive'
     queueMicrotask(() => {
-      if (MockMediaRecorder.emitDataOnStop) {
-        this.ondataavailable?.({ data: new Blob(['voice'], { type: 'audio/webm' }) })
-      }
+      this.ondataavailable?.({ data: new Blob(['voice'], { type: 'audio/webm' }) })
       this.onstop?.()
     })
   }
@@ -79,7 +76,6 @@ describe('VoiceRecorder', () => {
     getUserMedia.mockResolvedValue({
       getTracks: () => [{ stop: trackStop }]
     })
-    MockMediaRecorder.emitDataOnStop = true
   })
 
   it('starts recording, stops, and returns the captured blob', async () => {
@@ -125,8 +121,9 @@ describe('VoiceRecorder', () => {
     expect(recordingShell).not.toHaveClass('py-2.5')
   })
 
+  // The recorder runs without a timeslice, so a real browser always emits the
+  // whole recording *after* stop() — cancel has to survive that late blob.
   it('cancels an active recording and clears chunks', async () => {
-    MockMediaRecorder.emitDataOnStop = false
     render(<VoiceRecorder onRecordingComplete={onRecordingComplete} onCancel={onCancel} />)
 
     await userEvent.click(screen.getByLabelText('Start voice recording'))
