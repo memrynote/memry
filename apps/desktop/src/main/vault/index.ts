@@ -86,6 +86,18 @@ let currentStatus: VaultStatus = {
 }
 let agentHandle: AgentHandle | null = null
 let agentStartupPromise: Promise<void> | null = null
+/**
+ * Whether the MCP lifecycle owns a listening server for the current vault.
+ *
+ * The MCP server comes up before the agent runtime and survives a startAgent()
+ * failure, so teardown cannot be keyed on agentHandle: the server outlives it,
+ * and its tool closures hold this vault's data/index database handles.
+ *
+ * Tracked here rather than read back from the lifecycle module so closeVault()
+ * does not have to import that module — and the MCP SDK and every vault tool it
+ * pulls in — on the quit path of a user who never touched the agent.
+ */
+let agentMcpStarted = false
 let isShuttingDown = false
 const statusListeners = new Set<(status: VaultStatus) => void>()
 
@@ -614,6 +626,7 @@ async function startVaultAgentServicesOnce(): Promise<void> {
     ])
 
     await startAgentMcpLifecycle()
+    agentMcpStarted = true
     agentHandle = await startAgent()
   } catch (error) {
     logger.warn('Agent runtime failed to start:', error)
@@ -626,13 +639,22 @@ async function stopVaultAgentServices(): Promise<void> {
   unregisterLazyAgentHandlers()
 
   const currentAgentHandle = agentHandle
+  const mcpStarted = agentMcpStarted
   agentHandle = null
   agentStartupPromise = null
+  agentMcpStarted = false
 
-  if (!currentAgentHandle) return
+  // Not `!currentAgentHandle` alone: startAgent() can throw after the MCP
+  // server is listening, and skipping teardown then left a bearer-authenticated
+  // localhost server holding the outgoing vault's database handles. Because
+  // startAgentMcpLifecycle() early-returns while its handle is set, the next
+  // vault inherited that server instead of binding one to its own databases.
+  if (!currentAgentHandle && !mcpStarted) return
 
   const { stopAgentMcpLifecycle } = await import('../agent/mcp/lifecycle')
-  await currentAgentHandle.shutdown()
+  // The agent runtime routes its tool calls through this server, so it goes
+  // first; on the failed-start path there is no runtime left to stop.
+  await currentAgentHandle?.shutdown()
   await stopAgentMcpLifecycle()
 }
 
