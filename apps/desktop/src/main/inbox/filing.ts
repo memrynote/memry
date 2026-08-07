@@ -30,7 +30,7 @@ import { createReminder } from '../lib/reminders'
 import { resolveAttachmentUrl, deleteInboxAttachments } from './attachments'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
 import { extractDomain } from './metadata-utils'
-import { publishProjectionEvent } from '../projections'
+import { publishInboxUpserted, syncInboxUpdate } from './runtime-effects'
 import { syncTaskCreate } from '../tasks/runtime-effects'
 import { trackMainError } from '../telemetry/diagnostics'
 import { trackMainEvent } from '../telemetry/track'
@@ -462,10 +462,21 @@ function markItemAsFiled(itemId: string, filedTo: string, filedAction: FilingAct
     .where(eq(inboxItems.id, itemId))
     .run()
 
-  publishProjectionEvent({
-    type: 'inbox.upserted',
-    itemId
-  })
+  // Filing must reach the other devices. Without a push the filed state never
+  // leaves this device, and a peer that still holds `filedAt: null` pushes that
+  // whole row on its next change — which applyUpsert reads as a deliberate
+  // unfile and applies here, resurrecting the item the user already filed.
+  // Best-effort like convertToTask's enqueue: a sync outage must not fail a
+  // filing that already succeeded locally, but it must stay countable.
+  try {
+    syncInboxUpdate(itemId)
+  } catch (error) {
+    log.warn('syncInboxUpdate failed; filing persisted locally', error)
+    trackMainError('inbox', 'filing_sync_enqueue', error)
+    // syncInboxUpdate publishes the projection itself; republish here so a
+    // failed enqueue doesn't also leave the local Inbox list stale.
+    publishInboxUpserted(itemId)
+  }
 
   // Emit filed event
   emitInboxEvent(InboxChannels.events.FILED, {

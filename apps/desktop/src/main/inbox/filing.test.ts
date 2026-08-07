@@ -29,6 +29,16 @@ vi.mock('../database/queries/notes', () => ({
   setNoteTags: (...args: unknown[]) => mockSetNoteTags(...args)
 }))
 
+const { mockSyncInboxUpdate, mockPublishInboxUpserted } = vi.hoisted(() => ({
+  mockSyncInboxUpdate: vi.fn(),
+  mockPublishInboxUpserted: vi.fn()
+}))
+
+vi.mock('./runtime-effects', () => ({
+  syncInboxUpdate: mockSyncInboxUpdate,
+  publishInboxUpserted: mockPublishInboxUpserted
+}))
+
 const mockSend = vi.fn()
 const mockRename = vi.fn()
 const mockCopyFile = vi.fn()
@@ -191,6 +201,8 @@ describe('Inbox Filing Operations', () => {
     mockSetTaskTags.mockReset()
     mockGetInboxProject.mockReset().mockReturnValue({ id: 'project-inbox' })
     mockCreateReminder.mockReset().mockReturnValue({ id: 'rem_1' })
+    mockSyncInboxUpdate.mockReset()
+    mockPublishInboxUpserted.mockReset()
     vi.mocked(getStatus).mockReturnValue({ isOpen: true, path: '/mock-vault' } as never)
 
     mockCreateNote.mockResolvedValue({
@@ -1509,6 +1521,115 @@ describe('Inbox Filing Operations', () => {
 
       expect(result.processedCount).toBe(2)
       expect(result.errors).toHaveLength(1)
+    })
+  })
+
+  // ==========================================================================
+  // Sync enqueue on filing (#1159)
+  //
+  // Filing is the Inbox's primary action, and every path funnels through
+  // markItemAsFiled. Without a push the filed state never leaves the device,
+  // and a stale peer's next push — buildPushPayload ships the whole row, so it
+  // still carries filedAt: null — reads as a deliberate unfile and resurrects
+  // the item on the device that filed it.
+  // ==========================================================================
+  describe('filing enqueues a sync push', () => {
+    async function seedTargetNote(): Promise<void> {
+      mockGetNoteById.mockResolvedValue({
+        id: 'target-note',
+        content: '# Target',
+        path: 'notes/target.md'
+      })
+    }
+
+    it('fileToFolder (text) pushes the filed state', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'item-1', type: 'note', title: 'Test Item' })
+
+      await fileToFolder(itemId, 'projects')
+
+      expect(mockSyncInboxUpdate).toHaveBeenCalledWith(itemId)
+    })
+
+    it('fileToFolder (binary) pushes the filed state', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'image-1', type: 'image', title: 'Shot' })
+      updateInboxItem(itemId, { attachmentPath: 'attachments/inbox/image-1/shot.png' })
+
+      await fileToFolder(itemId, 'projects')
+
+      expect(mockSyncInboxUpdate).toHaveBeenCalledWith(itemId)
+    })
+
+    it('convertToNote pushes the filed state', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'item-1', type: 'note', title: 'Test Item' })
+
+      await convertToNote(itemId)
+
+      expect(mockSyncInboxUpdate).toHaveBeenCalledWith(itemId)
+    })
+
+    it('convertToTask pushes the filed state', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'item-1', type: 'note', title: 'Test Item' })
+
+      await convertToTask(itemId)
+
+      expect(mockSyncInboxUpdate).toHaveBeenCalledWith(itemId)
+    })
+
+    it('convertToEvent pushes the filed state', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'item-1', type: 'note', title: 'Test Item' })
+
+      await convertToEvent(itemId, { startAt: '2099-01-02T15:00:00.000Z' })
+
+      expect(mockSyncInboxUpdate).toHaveBeenCalledWith(itemId)
+    })
+
+    it('convertToReminder pushes the filed state', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'item-1', type: 'note', title: 'Test Item' })
+
+      await convertToReminder(itemId, { remindAt: '2099-01-02T09:00:00.000Z' })
+
+      expect(mockSyncInboxUpdate).toHaveBeenCalledWith(itemId)
+    })
+
+    it('linkToNotes (text) pushes the filed state', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'item-1', type: 'note', title: 'Test Item' })
+      await seedTargetNote()
+
+      await linkToNotes(itemId, ['target-note'])
+
+      expect(mockSyncInboxUpdate).toHaveBeenCalledWith(itemId)
+    })
+
+    it('linkToNotes (binary) pushes the filed state', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'image-2', type: 'image', title: 'Shot' })
+      updateInboxItem(itemId, { attachmentPath: 'attachments/inbox/image-2/shot.png' })
+      await seedTargetNote()
+
+      await linkToNotes(itemId, ['target-note'])
+
+      expect(mockSyncInboxUpdate).toHaveBeenCalledWith(itemId)
+    })
+
+    it('keeps the filing when the sync enqueue throws, and still publishes locally', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'item-1', type: 'note', title: 'Test Item' })
+      mockSyncInboxUpdate.mockImplementation(() => {
+        throw new Error('sync service down')
+      })
+
+      const result = await fileToFolder(itemId, 'projects')
+
+      expect(result.success).toBe(true)
+      const row = testDb.db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
+      expect(row?.filedAt).toBeTruthy()
+      expect(row?.filedAction).toBe('folder')
+      // syncInboxUpdate publishes the projection itself; when it throws before
+      // getting there the local Inbox list would otherwise go stale.
+      expect(mockPublishInboxUpserted).toHaveBeenCalledWith(itemId)
+      expect(mockTrackMainError).toHaveBeenCalledWith(
+        'inbox',
+        'filing_sync_enqueue',
+        expect.any(Error)
+      )
     })
   })
 })
