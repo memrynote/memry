@@ -140,6 +140,20 @@ External events are **read-mostly**: titles and times sync in. Inline edits prop
 
 While no Google account is linked, the calendar toolbar shows a **Connect Google** button. It opens a short prompt covering what a linked calendar unlocks — seeing your Google events beside notes and tasks, two-way sync, and scheduling tasks and notes on your calendar — then runs the same connect flow as Settings. The button disappears once an account is connected.
 
+### How Often Google Events Refresh
+
+memrynote polls your linked Google calendars about every 5 minutes in the background. When Google
+push notifications are active for your selected calendars, changes arrive as they happen and the
+poll falls back to roughly every 30 minutes.
+
+Two extra pulls sit on top of that: memrynote syncs immediately when your machine wakes from sleep,
+and bringing the memrynote window back to the front pulls again if the last pull was more than two
+minutes ago. Re-focusing the window more often than that is deliberately ignored so alt-tabbing all
+day doesn't hammer the network.
+
+Need something right now? Click the **Refresh Google calendars** button in the calendar toolbar. It
+pulls straight away and never waits on any of the intervals above.
+
 ### Sync Direction
 
 By default Google Calendar sync is **two-way**: events, tasks, reminders, and snoozes you create in memrynote are pushed up to Google, and changes made in Google flow back into memrynote.
