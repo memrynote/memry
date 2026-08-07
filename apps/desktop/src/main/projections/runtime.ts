@@ -1,10 +1,12 @@
-import { ProjectionBus } from './bus'
+import { DEFAULT_PROJECTION_QUEUE_LIMIT, ProjectionBus } from './bus'
 import type { ProjectionEvent, ProjectionLogger, ProjectionProjector } from './types'
 
 interface ProjectionRuntimeOptions {
   projectors: ProjectionProjector[]
   logger?: ProjectionLogger
   scheduleDrain?: (task: () => void) => void
+  /** Per-lane pending-event cap. See DEFAULT_PROJECTION_QUEUE_LIMIT. */
+  queueLimit?: number
 }
 
 export interface ProjectionRuntime {
@@ -52,12 +54,13 @@ interface ProjectorLane {
 export function createProjectionRuntime(options: ProjectionRuntimeOptions): ProjectionRuntime {
   const logger = options.logger
   const scheduleDrain = options.scheduleDrain ?? ((task: () => void) => queueMicrotask(task))
+  const queueLimit = options.queueLimit ?? DEFAULT_PROJECTION_QUEUE_LIMIT
 
   let isStopped = false
 
   const lanes: ProjectorLane[] = options.projectors.map((projector) => ({
     projector,
-    bus: new ProjectionBus(),
+    bus: new ProjectionBus(queueLimit),
     isScheduled: false,
     activeDrain: null
   }))
@@ -106,6 +109,16 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
       } finally {
         lane.isScheduled = false
         lane.activeDrain = null
+
+        const dropped = lane.bus.takeDroppedCount()
+        if (dropped > 0) {
+          logger?.warn?.('Projection queue overflow — dropped pending events', {
+            projector: lane.projector.name,
+            dropped,
+            limit: queueLimit
+          })
+        }
+
         settle()
 
         if (!isStopped && lane.bus.size > 0) {
@@ -144,7 +157,14 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
         return
       }
 
+      // Route at enqueue time. Fanning every event into every lane meant a note
+      // body sat in the inbox lane (and an inbox event in the note lanes) until
+      // the slowest lane finally dequeued and discarded it (#992).
       for (const lane of lanes) {
+        if (!lane.projector.handles(event)) {
+          continue
+        }
+
         lane.bus.enqueue(event)
         schedule(lane)
       }

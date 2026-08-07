@@ -2,29 +2,33 @@ import { describe, expect, it, vi } from 'vitest'
 import { createProjectionRuntime } from './runtime'
 import type { ProjectionEvent, ProjectionProjector } from './types'
 
-const noteEvent: ProjectionEvent = {
-  type: 'note.upserted',
-  note: {
-    kind: 'markdown',
-    noteId: 'note-1',
-    path: 'notes/note-1.md',
-    title: 'Note 1',
-    fileType: 'markdown',
-    localOnly: false,
-    contentHash: 'hash',
-    wordCount: 1,
-    characterCount: 4,
-    snippet: 'test',
-    date: null,
-    emoji: null,
-    createdAt: '2026-01-01T00:00:00.000Z',
-    modifiedAt: '2026-01-01T00:00:00.000Z',
-    parsedContent: 'test',
-    tags: [],
-    properties: {},
-    wikiLinks: []
+function markdownEvent(noteId: string, parsedContent: string): ProjectionEvent {
+  return {
+    type: 'note.upserted',
+    note: {
+      kind: 'markdown',
+      noteId,
+      path: `notes/${noteId}.md`,
+      title: 'Note 1',
+      fileType: 'markdown',
+      localOnly: false,
+      contentHash: 'hash',
+      wordCount: 1,
+      characterCount: parsedContent.length,
+      snippet: parsedContent,
+      date: null,
+      emoji: null,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      modifiedAt: '2026-01-01T00:00:00.000Z',
+      parsedContent,
+      tags: [],
+      properties: {},
+      wikiLinks: []
+    }
   }
 }
+
+const noteEvent: ProjectionEvent = markdownEvent('note-1', 'test')
 
 function createProjector(
   name: string,
@@ -170,6 +174,69 @@ describe('projection runtime', () => {
 
     expect(done).toEqual(['fast', 'slow'])
     expect(runtime.getPendingCount()).toBe(0)
+  })
+
+  /**
+   * #992: publish() used to push every event into all five lanes and only ask
+   * handles() at drain time, so an inbox event sat in the note lanes (and a
+   * note body sat in the inbox lane) until the slowest lane got to it.
+   */
+  it('queues an event only in the lanes whose projector handles it', () => {
+    const noteLane = createProjector('note-lane', {
+      handles: (event: ProjectionEvent) => event.type === 'note.upserted'
+    })
+    const inboxLane = createProjector('inbox-lane', {
+      handles: (event: ProjectionEvent) => event.type.startsWith('inbox.')
+    })
+    // Freeze the lanes so the queues stay observable.
+    const runtime = createProjectionRuntime({
+      projectors: [noteLane, inboxLane],
+      scheduleDrain: () => {}
+    })
+
+    runtime.publish(noteEvent)
+
+    expect(runtime.getPendingCount()).toBe(1)
+  })
+
+  /**
+   * #992: the embedding lane awaits a ~23MB model load plus per-note CPU
+   * inference, so a stalled lane used to retain one full `parsedContent` per
+   * queued event. Re-saving one note must not grow its backlog.
+   */
+  it('retains only the newest queued event per note while a lane is stalled', () => {
+    const runtime = createProjectionRuntime({
+      projectors: [createProjector('slow')],
+      scheduleDrain: () => {}
+    })
+
+    for (let i = 0; i < 10_000; i++) {
+      runtime.publish(markdownEvent('note-1', `body ${i}`))
+    }
+
+    expect(runtime.getPendingCount()).toBe(1)
+  })
+
+  it('bounds a stalled lane queue and reports the dropped events', async () => {
+    const logger = { warn: vi.fn() }
+    const runtime = createProjectionRuntime({
+      projectors: [createProjector('slow')],
+      scheduleDrain: () => {},
+      queueLimit: 100,
+      logger
+    })
+
+    for (let i = 0; i < 10_000; i++) {
+      runtime.publish(markdownEvent(`note-${i}`, 'body'))
+    }
+
+    expect(runtime.getPendingCount()).toBe(100)
+
+    await runtime.flush()
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Projection queue overflow — dropped pending events',
+      expect.objectContaining({ projector: 'slow', dropped: 9900, limit: 100 })
+    )
   })
 
   it('dispatches rebuild and reconcile to selected projectors', async () => {
