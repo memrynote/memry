@@ -49,6 +49,8 @@ interface ProjectorLane {
   bus: ProjectionBus
   isScheduled: boolean
   activeDrain: Promise<void> | null
+  /** Set when the cap dropped events; owed repair, paid once the lane empties. */
+  needsReconcile: boolean
 }
 
 export function createProjectionRuntime(options: ProjectionRuntimeOptions): ProjectionRuntime {
@@ -62,7 +64,8 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
     projector,
     bus: new ProjectionBus(queueLimit),
     isScheduled: false,
-    activeDrain: null
+    activeDrain: null,
+    needsReconcile: false
   }))
 
   const runEvent = async (lane: ProjectorLane, event: ProjectionEvent): Promise<void> => {
@@ -76,6 +79,32 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
       logger?.error?.('Projection projector failed', {
         projector: lane.projector.name,
         event,
+        error
+      })
+    }
+  }
+
+  /**
+   * Pay off the repair the queue cap owes. Dropping the oldest events keeps the
+   * lane bounded, but it also means this projector's output is now missing
+   * whatever they carried, and nothing else calls reconcile() on this path — so
+   * overflow costs a deferred full repair instead of a silently wrong
+   * projection (#992).
+   *
+   * The flag is cleared before reconcile() runs so any event reconcile itself
+   * publishes cannot re-trigger the repair in a loop; only a *new* overflow
+   * sets it again. On failure the flag is restored, so the next drain pass
+   * retries rather than leaving the loss unrepaired forever.
+   */
+  const repairLane = async (lane: ProjectorLane): Promise<void> => {
+    lane.needsReconcile = false
+
+    try {
+      await lane.projector.reconcile()
+    } catch (error) {
+      lane.needsReconcile = true
+      logger?.warn?.('Projection overflow repair failed', {
+        projector: lane.projector.name,
         error
       })
     }
@@ -106,18 +135,23 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
 
           await runEvent(lane, event)
         }
-      } finally {
-        lane.isScheduled = false
-        lane.activeDrain = null
 
         const dropped = lane.bus.takeDroppedCount()
         if (dropped > 0) {
+          lane.needsReconcile = true
           logger?.warn?.('Projection queue overflow — dropped pending events', {
             projector: lane.projector.name,
             dropped,
             limit: queueLimit
           })
         }
+
+        if (!isStopped && lane.needsReconcile) {
+          await repairLane(lane)
+        }
+      } finally {
+        lane.isScheduled = false
+        lane.activeDrain = null
 
         settle()
 
@@ -160,6 +194,11 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
       // Route at enqueue time. Fanning every event into every lane meant a note
       // body sat in the inbox lane (and an inbox event in the note lanes) until
       // the slowest lane finally dequeued and discarded it (#992).
+      //
+      // This skip assumes handles() is a pure function of event.type — every
+      // projector's is. runEvent() re-checks at drain time, so a stateful
+      // handles() would still never project an event it rejects; it would only
+      // lose the ones it would have accepted later.
       for (const lane of lanes) {
         if (!lane.projector.handles(event)) {
           continue

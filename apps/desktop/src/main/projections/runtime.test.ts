@@ -239,6 +239,96 @@ describe('projection runtime', () => {
     )
   })
 
+  /**
+   * #992: the cap drops the oldest pending events, so the lane's output is now
+   * missing whatever they carried — a dropped `note.upserted` in the search lane
+   * means that note is absent from search. Nothing else calls reconcile() on this
+   * path, so overflow must pay for itself with a deferred repair rather than
+   * leaving a quietly wrong projection.
+   */
+  it('reconciles a lane once after an overflowed queue drains', async () => {
+    const slow = createProjector('slow', { reconcile: vi.fn() })
+    const runtime = createProjectionRuntime({
+      projectors: [slow],
+      scheduleDrain: () => {},
+      queueLimit: 2
+    })
+
+    for (let i = 0; i < 10; i++) {
+      runtime.publish(markdownEvent(`note-${i}`, 'body'))
+    }
+    await runtime.flush()
+
+    expect(slow.reconcile).toHaveBeenCalledOnce()
+
+    // A later burst that never overflows must not pay for another repair.
+    runtime.publish(markdownEvent('note-later', 'body'))
+    await runtime.flush()
+
+    expect(slow.reconcile).toHaveBeenCalledOnce()
+  })
+
+  it('does not let an event published by the overflow repair trigger another repair', async () => {
+    // A repair that writes through the bus must not re-arm itself. Publishing is
+    // capped so that a runtime which never clears the flag fails the assertion
+    // below instead of spinning forever.
+    let echoes = 0
+    const slow = createProjector('slow', {
+      reconcile: vi.fn(() => {
+        if (echoes >= 3) {
+          return
+        }
+        echoes++
+        runtime.publish(markdownEvent(`echo-${echoes}`, 'body'))
+      })
+    })
+    const runtime = createProjectionRuntime({
+      projectors: [slow],
+      scheduleDrain: () => {},
+      queueLimit: 2
+    })
+
+    for (let i = 0; i < 10; i++) {
+      runtime.publish(markdownEvent(`note-${i}`, 'body'))
+    }
+    await runtime.flush()
+
+    expect(slow.reconcile).toHaveBeenCalledOnce()
+    expect(echoes).toBe(1)
+  })
+
+  it('logs a failed overflow repair and retries it on the next drain', async () => {
+    const logger = { warn: vi.fn() }
+    const slow = createProjector('slow', {
+      reconcile: vi.fn(async () => {
+        throw new Error('boom')
+      })
+    })
+    const runtime = createProjectionRuntime({
+      projectors: [slow],
+      scheduleDrain: () => {},
+      queueLimit: 2,
+      logger
+    })
+
+    for (let i = 0; i < 10; i++) {
+      runtime.publish(markdownEvent(`note-${i}`, 'body'))
+    }
+    await runtime.flush()
+
+    expect(slow.reconcile).toHaveBeenCalledOnce()
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Projection overflow repair failed',
+      expect.objectContaining({ projector: 'slow' })
+    )
+
+    // The lane is not wedged and the repair is still owed, so the next drain retries.
+    runtime.publish(markdownEvent('note-later', 'body'))
+    await runtime.flush()
+
+    expect(slow.reconcile).toHaveBeenCalledTimes(2)
+  })
+
   it('dispatches rebuild and reconcile to selected projectors', async () => {
     const first = createProjector('first', { rebuild: vi.fn(), reconcile: vi.fn() })
     const second = createProjector('second', { rebuild: vi.fn(), reconcile: vi.fn() })
