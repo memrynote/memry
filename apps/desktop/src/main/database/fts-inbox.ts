@@ -52,9 +52,23 @@ export function insertFtsInboxItem(
   transcription: string,
   sourceTitle: string
 ): void {
+  // Delete first: `id` is UNINDEXED with no PRIMARY KEY or UNIQUE index, so the
+  // INSERT OR REPLACE this used to be had no conflict target and appended a row
+  // on every inbox write. Same defect as fts.ts — see the note there.
+  db.transaction((tx) => {
+    tx.run(sql`DELETE FROM fts_inbox WHERE id = ${itemId}`)
+    tx.run(sql`
+      INSERT INTO fts_inbox (id, title, content, transcription, source_title)
+      VALUES (${itemId}, ${title}, ${content}, ${transcription}, ${sourceTitle})
+    `)
+  })
+}
+
+/** One-time repair for rows appended by builds with the duplicate bug. */
+export function dedupeFtsInbox(db: DataDb): void {
   db.run(sql`
-    INSERT OR REPLACE INTO fts_inbox (id, title, content, transcription, source_title)
-    VALUES (${itemId}, ${title}, ${content}, ${transcription}, ${sourceTitle})
+    DELETE FROM fts_inbox
+    WHERE rowid NOT IN (SELECT MAX(rowid) FROM fts_inbox GROUP BY id)
   `)
 }
 

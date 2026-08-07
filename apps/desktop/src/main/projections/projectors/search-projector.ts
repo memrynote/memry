@@ -3,10 +3,22 @@ import path from 'path'
 import { sql } from 'drizzle-orm'
 import { SearchChannels } from '@memry/contracts/ipc-channels'
 import { getDatabase, getIndexDatabase } from '../../database'
-import { clearFtsTable, deleteFtsNote, insertFtsNote } from '../../database/fts'
-import { clearFtsTasksTable, deleteFtsTask, insertFtsTask } from '../../database/fts-tasks'
+import {
+  clearFtsTable,
+  dedupeFtsNotes,
+  deleteFtsNote,
+  insertFtsNote,
+  insertFtsNoteUnchecked
+} from '../../database/fts'
+import {
+  clearFtsTasksTable,
+  dedupeFtsTasks,
+  deleteFtsTask,
+  insertFtsTask
+} from '../../database/fts-tasks'
 import {
   clearFtsInboxTable,
+  dedupeFtsInbox,
   deleteFtsInboxItem,
   insertFtsInboxItem
 } from '../../database/fts-inbox'
@@ -117,7 +129,14 @@ async function rebuildNotes(getVaultPath: () => string | null): Promise<number> 
     try {
       const raw = await fs.readFile(absolutePath, 'utf-8')
       const parsed = parseNote(raw, row.path)
-      insertFtsNote(indexDb, row.id, row.title, parsed.content, tagsByNote.get(row.id) ?? [])
+      // clearFtsTable above emptied the table, so every id here is absent.
+      insertFtsNoteUnchecked(
+        indexDb,
+        row.id,
+        row.title,
+        parsed.content,
+        tagsByNote.get(row.id) ?? []
+      )
       indexed++
     } catch (error) {
       logger.warn('Failed to rebuild note search entry', { noteId: row.id, error })
@@ -228,6 +247,12 @@ async function reconcileNotes(
 
   const indexDb = getIndexDatabase()
 
+  // Installs that ran a build where insertFtsNote appended instead of replaced
+  // carry duplicate rows on disk. Nothing else prunes them — a user who never
+  // triggers a manual rebuild would keep them forever — so the pass that
+  // already runs on every open owns the repair.
+  dedupeFtsNotes(indexDb)
+
   indexDb.run(sql`
     DELETE FROM fts_notes
     WHERE id NOT IN (
@@ -272,15 +297,14 @@ async function reconcileNotes(
         .all<{ tag: string }>(sql`SELECT tag FROM note_tags WHERE note_id = ${row.id}`)
         .map((tagRow) => tagRow.tag)
 
-      // `id` is UNINDEXED on the fts5 table, so there is no conflict target for
-      // the INSERT OR REPLACE inside insertFtsNote and a refresh would append a
-      // second row instead of replacing the first. The rebuild path never hit
-      // this because it cleared the whole table up front. Only notes that
-      // actually had a row pay for the delete.
+      // `indexedIds` was taken after the dedupe and orphan sweeps and nothing
+      // else writes this table during the pass, so it is authoritative: absent
+      // means absent, and skipping the scan keeps a cold-index backfill linear.
       if (indexedIds.has(row.id)) {
-        deleteFtsNote(indexDb, row.id)
+        insertFtsNote(indexDb, row.id, row.title, parsed.content, tags)
+      } else {
+        insertFtsNoteUnchecked(indexDb, row.id, row.title, parsed.content, tags)
       }
-      insertFtsNote(indexDb, row.id, row.title, parsed.content, tags)
       indexed++
     } catch (error) {
       logger.warn('Failed to reconcile note search entry', { noteId: row.id, error })
@@ -361,6 +385,7 @@ function reconcileTasks(signal?: AbortSignal): number {
 
   const dataDb = getDatabase()
 
+  dedupeFtsTasks(dataDb)
   dataDb.run(sql`DELETE FROM fts_tasks WHERE id NOT IN (SELECT id FROM tasks)`)
 
   const rows = dataDb.all<{ id: string }>(sql`
@@ -381,6 +406,7 @@ function reconcileInbox(signal?: AbortSignal): number {
 
   const dataDb = getDatabase()
 
+  dedupeFtsInbox(dataDb)
   dataDb.run(sql`DELETE FROM fts_inbox WHERE id NOT IN (SELECT id FROM inbox_items)`)
 
   const rows = dataDb.all<{ id: string }>(sql`

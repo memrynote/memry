@@ -195,6 +195,108 @@ describe('search projector', () => {
     expect(getFtsInboxCount(dataDb.db as never)).toBe(1)
   })
 
+  it('projecting the same note, task, and inbox item twice leaves one row each', async () => {
+    seedTask('task-1')
+    seedInboxItem('inbox-1')
+
+    const projector = createSearchProjector(() => vaultDir)
+    const noteEvent = {
+      type: 'note.upserted',
+      note: {
+        kind: 'markdown',
+        noteId: 'note-1',
+        path: 'notes/searchable.md',
+        title: 'Searchable Note',
+        fileType: 'markdown',
+        localOnly: false,
+        contentHash: 'hash',
+        wordCount: 2,
+        characterCount: 10,
+        snippet: 'first pass',
+        date: null,
+        emoji: null,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        modifiedAt: '2026-01-01T00:00:00.000Z',
+        parsedContent: 'first pass',
+        tags: ['alpha'],
+        properties: {},
+        wikiLinks: []
+      }
+    } as const
+
+    // Every save republishes the same upsert. Twice must not mean two rows.
+    await projector.project(noteEvent)
+    await projector.project({
+      ...noteEvent,
+      note: { ...noteEvent.note, parsedContent: 'second pass' }
+    })
+    await projector.project({ type: 'task.upserted', taskId: 'task-1' })
+    await projector.project({ type: 'task.upserted', taskId: 'task-1' })
+    await projector.project({ type: 'inbox.upserted', itemId: 'inbox-1' })
+    await projector.project({ type: 'inbox.upserted', itemId: 'inbox-1' })
+
+    expect(getFtsCount(indexDb.db as never)).toBe(1)
+    expect(
+      dataDb.db.get<{ count: number }>(sql`SELECT COUNT(*) as count FROM fts_tasks`)?.count
+    ).toBe(1)
+    expect(getFtsInboxCount(dataDb.db as never)).toBe(1)
+    expect(
+      indexDb.db.all<{ id: string }>(sql`SELECT id FROM fts_notes WHERE fts_notes MATCH ${'first'}`)
+    ).toHaveLength(0)
+  })
+
+  it('reconcile sweeps duplicate rows left behind by earlier versions', async () => {
+    seedMarkdownNote('note-1', 'notes/searchable.md', 'Disk content', ['alpha'])
+    seedTask('task-1')
+    seedInboxItem('inbox-1')
+
+    // What an install upgraded from a build with the append bug looks like: the
+    // newest row per id carries the current content, the older ones are stale.
+    for (const content of ['oldest', 'middle', 'newest']) {
+      indexDb.db.run(sql`
+        INSERT INTO fts_notes (id, title, content, tags)
+        VALUES (${'note-1'}, ${'Searchable Note'}, ${content}, ${'alpha'})
+      `)
+      dataDb.db.run(sql`
+        INSERT INTO fts_tasks (id, title, description, tags)
+        VALUES (${'task-1'}, ${'Task title'}, ${content}, ${'focus'})
+      `)
+      dataDb.db.run(sql`
+        INSERT INTO fts_inbox (id, title, content, transcription, source_title)
+        VALUES (${'inbox-1'}, ${'Inbox title'}, ${content}, ${''}, ${'Source'})
+      `)
+    }
+
+    readFileSpy.mockClear()
+
+    const projector = createSearchProjector(() => vaultDir)
+    await projector.reconcile()
+
+    expect(getFtsCount(indexDb.db as never)).toBe(1)
+    expect(
+      dataDb.db.get<{ count: number }>(sql`SELECT COUNT(*) as count FROM fts_tasks`)?.count
+    ).toBe(1)
+    expect(getFtsInboxCount(dataDb.db as never)).toBe(1)
+
+    // The surviving row is the most recent write, not the oldest.
+    expect(
+      indexDb.db.get<{ content: string }>(sql`SELECT content FROM fts_notes WHERE id = ${'note-1'}`)
+        ?.content
+    ).toBe('newest')
+    expect(
+      dataDb.db.get<{ description: string }>(
+        sql`SELECT description FROM fts_tasks WHERE id = ${'task-1'}`
+      )?.description
+    ).toBe('newest')
+    expect(
+      dataDb.db.get<{ content: string }>(sql`SELECT content FROM fts_inbox WHERE id = ${'inbox-1'}`)
+        ?.content
+    ).toBe('newest')
+
+    // Deduping is not an excuse to re-read the vault.
+    expect(readFileSpy).not.toHaveBeenCalled()
+  })
+
   it('reconcile leaves an already-consistent index alone: no FTS teardown, no disk re-scan', async () => {
     seedMarkdownNote('note-1', 'notes/searchable.md', 'Disk content', ['alpha'])
     seedTask('task-1')
