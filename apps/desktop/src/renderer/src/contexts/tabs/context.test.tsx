@@ -1,6 +1,7 @@
-import { act, render, renderHook, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { TabCloseGuard } from './close-guard'
 import {
   TabProvider,
   useActiveGroup,
@@ -110,6 +111,21 @@ describe('TabProvider context', () => {
 
     expect(result.current).toBeInstanceOf(Error)
     expect((result.current as Error).message).toBe('useTabs must be used within a TabProvider')
+  })
+
+  it('throws when useTabActions is used outside a provider', () => {
+    const { result } = renderHook(() => {
+      try {
+        return useTabActions()
+      } catch (error) {
+        return error
+      }
+    })
+
+    expect(result.current).toBeInstanceOf(Error)
+    expect((result.current as Error).message).toBe(
+      'useTabActions must be used within a TabProvider'
+    )
   })
 
   it('merges initial settings, handles settings events, and unsubscribes', async () => {
@@ -315,6 +331,80 @@ describe('tab selector hooks', () => {
     expect(renderHook(() => useTabActions(), { wrapper }).result.current.dispatch).toBeTypeOf(
       'function'
     )
+  })
+})
+
+describe('TabProvider unsaved-changes prompt', () => {
+  // The registry itself is covered in close-guard.test.tsx; these cover the
+  // provider's wiring of it into the dialog — the prompt's title, and each
+  // button actually resolving the close it was raised for.
+  function promptForDirtyTab(guard: TabCloseGuard) {
+    const alpha = makeTab({ id: 'alpha', title: 'Alpha', entityId: 'alpha' })
+    const beta = makeTab({ id: 'beta', title: 'Beta', entityId: 'beta' })
+    const rendered = captureContext(makeState([makeGroup('main', [alpha, beta], 'alpha')]))
+
+    act(() => {
+      rendered.ctx.registerCloseGuard('alpha', guard)
+    })
+    act(() => {
+      rendered.ctx.closeTab('alpha')
+    })
+
+    return {
+      ...rendered,
+      get openTabIds() {
+        return rendered.ctx.state.tabGroups.main.tabs.map((tab) => tab.id)
+      }
+    }
+  }
+
+  it('names the pending tab and keeps it open when the prompt is cancelled', async () => {
+    const save = vi.fn().mockResolvedValue(true)
+    const rendered = promptForDirtyTab({ isDirty: () => true, save })
+
+    expect(screen.getByRole('alertdialog')).toBeTruthy()
+    expect(screen.getByText('"Alpha" has unsaved changes. What would you like to do?')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull()
+    })
+    expect(save).not.toHaveBeenCalled()
+    expect(rendered.openTabIds).toEqual(['alpha', 'beta'])
+  })
+
+  it('closes the tab without saving on Don’t Save', async () => {
+    const save = vi.fn().mockResolvedValue(true)
+    const rendered = promptForDirtyTab({ isDirty: () => true, save })
+
+    fireEvent.click(screen.getByRole('button', { name: "Don't Save" }))
+
+    await waitFor(() => {
+      expect(rendered.openTabIds).toEqual(['beta'])
+    })
+    expect(save).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
+
+  it('saves before closing the tab on Save', async () => {
+    const save = vi.fn().mockResolvedValue(true)
+    const rendered = promptForDirtyTab({ isDirty: () => true, save })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(rendered.openTabIds).toEqual(['beta'])
+    })
+    expect(save).toHaveBeenCalledTimes(1)
+  })
+
+  it('drops the Save button while the pending tab cannot be saved yet', () => {
+    const save = vi.fn().mockResolvedValue(true)
+    promptForDirtyTab({ isDirty: () => true, canSave: () => false, save })
+
+    expect(screen.getByRole('button', { name: "Don't Save" })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
   })
 })
 
