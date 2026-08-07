@@ -12,7 +12,9 @@ still starting, memrynote retries the status check until the vault-scoped endpoi
 tool list are ready to copy.
 
 The Agent runtime and MCP endpoint are scoped to the open vault. Closing or switching vaults stops
-active turns, clears pending tool approvals, and restarts the Agent services for the next vault.
+active turns, clears pending tool approvals, and restarts the Agent services for the next vault. The
+MCP endpoint is stopped with the vault even if the Agent runtime itself failed to start, so the next
+vault always gets a fresh endpoint and bearer token instead of the previous vault's.
 
 The same MCP endpoint can also be copied into other desktop AI clients for vault read tools.
 
