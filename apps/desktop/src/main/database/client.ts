@@ -5,10 +5,13 @@ import * as dataSchema from '@memry/db-schema/data-schema'
 import * as indexSchema from '@memry/db-schema/index-schema'
 import * as sqliteVec from 'sqlite-vec'
 import { EMBEDDING_DIMENSION } from '../lib/embeddings-constants'
+import { createLogger } from '../lib/logger'
 import { registerDataDbFunctions } from './sqlite-functions'
 import type { DataDb, IndexDb, RawIndexDb } from './types'
 
 export type { DataDb, IndexDb, RawIndexDb } from './types'
+
+const logger = createLogger('DatabaseClient')
 
 let dataDb: DataDb | null = null
 let indexDb: IndexDb | null = null
@@ -23,13 +26,14 @@ export const SQLITE_TEMP_STORE = 'MEMORY'
  * Close a leftover connection before re-initializing on top of it. A close that
  * refuses (better-sqlite3 throws while a connection is busy) must not escalate a
  * leaked handle into a failed vault open, so the new connection replaces it
- * either way — the pre-fix behaviour.
+ * either way — the pre-fix behaviour. That degrade re-leaks the handle, so it is
+ * logged rather than swallowed: silence here would hide a returning leak.
  */
-function closeStaleHandle(close: () => void): void {
+function closeStaleHandle(label: string, close: () => void): void {
   try {
     close()
-  } catch {
-    // fall through to the fresh connection below
+  } catch (error) {
+    logger.warn(`Failed to close the previous ${label} connection; it stays leaked`, error)
   }
 }
 
@@ -40,7 +44,7 @@ export function initDatabase(dbPath: string): DataDb {
   // orphan keeps its 16MB page cache, fd and WAL alive. Closing is safe here —
   // better-sqlite3 is synchronous, so nothing is mid-statement, and consumers
   // resolve the connection through getDatabase() per call rather than holding it.
-  closeStaleHandle(closeDatabase)
+  closeStaleHandle('data', closeDatabase)
 
   sqliteDataDb = new Database(dbPath)
 
@@ -71,7 +75,7 @@ export function initDatabase(dbPath: string): DataDb {
 
 export function initIndexDatabase(dbPath: string): IndexDb {
   // Same orphan handling as initDatabase, for the 32MB index connection.
-  closeStaleHandle(closeIndexDatabase)
+  closeStaleHandle('index', closeIndexDatabase)
 
   sqliteIndexDb = new Database(dbPath)
 

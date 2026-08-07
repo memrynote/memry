@@ -3,6 +3,20 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import Database from 'better-sqlite3'
+
+const { loggerWarnMock } = vi.hoisted(() => ({
+  loggerWarnMock: vi.fn()
+}))
+
+vi.mock('../lib/logger', () => ({
+  createLogger: () => ({
+    info: vi.fn(),
+    warn: loggerWarnMock,
+    error: vi.fn(),
+    debug: vi.fn()
+  })
+}))
+
 import { runIndexMigrations } from './migrate'
 import {
   initDatabase,
@@ -23,6 +37,7 @@ describe('database client', () => {
   let indexDbPath: string
 
   beforeEach(() => {
+    loggerWarnMock.mockClear()
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-db-client-'))
     dataDbPath = path.join(tempDir, 'data.db')
     indexDbPath = path.join(tempDir, 'index.db')
@@ -121,6 +136,70 @@ describe('database client', () => {
     expect(liveRaw).not.toBe(orphanRaw)
     expect(liveRaw.open).toBe(true)
     expect(getIndexDatabase()).toBe(live)
+  })
+
+  it('leaks rather than fails the open when the previous data handle refuses to close', () => {
+    // #given — a stale connection whose close() throws, the way better-sqlite3
+    // rejects a close on a busy connection
+    const orphan = initDatabase(dataDbPath)
+    const orphanClient = (orphan as unknown as { $client: Database.Database }).$client
+    const refusingClose = vi.spyOn(orphanClient, 'close').mockImplementation(() => {
+      throw new Error('database is busy')
+    })
+
+    // #when — the retry re-enters initDatabase on top of it
+    const live = initDatabase(dataDbPath)
+    const liveClient = (live as unknown as { $client: Database.Database }).$client
+
+    // #then — the refusal degrades to a leak, never to a failed vault open
+    expect(liveClient).not.toBe(orphanClient)
+    expect(liveClient.open).toBe(true)
+    expect(liveClient.prepare('SELECT 1 AS ok').get()).toEqual({ ok: 1 })
+
+    // #then — post-init state is coherent: the getter resolves the new handle,
+    // never the stale one closeDatabase() left behind when its close() threw
+    expect(getDatabase()).toBe(live)
+    expect((getDatabase() as unknown as { $client: Database.Database }).$client).toBe(liveClient)
+
+    // #then — the returning leak is visible in the diagnostic logs
+    expect(loggerWarnMock).toHaveBeenCalledWith(
+      expect.stringContaining('previous data connection'),
+      expect.any(Error)
+    )
+
+    refusingClose.mockRestore()
+    orphanClient.close()
+  })
+
+  it('leaks rather than fails the open when the previous index handle refuses to close', () => {
+    // #given — a stale index connection whose close() throws
+    initIndexDatabase(indexDbPath)
+    const orphanRaw = getRawIndexDatabase()
+    const refusingClose = vi.spyOn(orphanRaw, 'close').mockImplementation(() => {
+      throw new Error('database is busy')
+    })
+
+    // #when — the retry re-enters initIndexDatabase on top of it
+    const live = initIndexDatabase(indexDbPath)
+    const liveRaw = getRawIndexDatabase()
+
+    // #then — the refusal degrades to a leak, never to a failed vault open
+    expect(liveRaw).not.toBe(orphanRaw)
+    expect(liveRaw.open).toBe(true)
+    expect(liveRaw.prepare('SELECT 1 AS ok').get()).toEqual({ ok: 1 })
+
+    // #then — post-init state is coherent: both getters resolve the new handle
+    expect(getIndexDatabase()).toBe(live)
+    expect(getRawIndexDatabase()).toBe(liveRaw)
+
+    // #then — the returning leak is visible in the diagnostic logs
+    expect(loggerWarnMock).toHaveBeenCalledWith(
+      expect.stringContaining('previous index connection'),
+      expect.any(Error)
+    )
+
+    refusingClose.mockRestore()
+    orphanRaw.close()
   })
 
   it('closes databases and resets getters', () => {
