@@ -76,6 +76,19 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
   const timerRef = useRef<number | null>(null)
   const startTimeRef = useRef<number>(0)
 
+  /**
+   * Hand the microphone back to the OS. `getUserMedia` turns the mic on before
+   * the recorder is built, so any path that abandons a stream has to stop every
+   * track — otherwise the mic stays hot with no UI saying it is recording.
+   */
+  const releaseStream = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+    setStream(null)
+  }, [])
+
   const stopRecording = useCallback((cancelled: boolean) => {
     if (timerRef.current) {
       clearInterval(timerRef.current)
@@ -110,6 +123,10 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
           sampleRate: 44100
         }
       })
+
+      // Overwriting the ref while an earlier stream is still live would strand
+      // it: nothing else holds a reference, so it could never be stopped.
+      releaseStream()
 
       streamRef.current = mediaStream
       chunksRef.current = []
@@ -164,10 +181,14 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
       }, 100)
     } catch (err) {
       log.error('Failed to start recording', err)
+      // `getUserMedia` may have already succeeded before the MediaRecorder
+      // constructor or `start()` threw, so release the mic before going idle.
+      releaseStream()
+      mediaRecorderRef.current = null
       optionsRef.current.onError(toCaptureError(err))
       setState('idle')
     }
-  }, [stopRecording])
+  }, [releaseStream, stopRecording])
 
   const stop = useCallback(() => stopRecording(false), [stopRecording])
   const cancel = useCallback(() => stopRecording(true), [stopRecording])
