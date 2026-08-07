@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto'
-
 import { createOpenAI } from '@ai-sdk/openai'
 import { createOllama } from 'ollama-ai-provider-v2'
 import {
@@ -40,14 +38,20 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
   readonly id = 'local_openai_compatible' as const
 
   // Single slot: only one provider configuration is live at a time, so an entry for an
-  // older one is worthless and this can never grow.
+  // older one is worthless and this can never grow. `apiKey` is compared by value and
+  // never hashed or otherwise derived — the cache only needs to know whether the key
+  // changed since the last probe.
   private probeCache: {
-    key: string
+    settingsKey: string
+    apiKey: string | null
     result: AgentLocalProviderProbeResult
     expiresAt: number
   } | null = null
-  private probeInFlight: { key: string; promise: Promise<AgentLocalProviderProbeResult> } | null =
-    null
+  private probeInFlight: {
+    settingsKey: string
+    apiKey: string | null
+    promise: Promise<AgentLocalProviderProbeResult>
+  } | null = null
 
   constructor(
     private readonly deps: {
@@ -99,17 +103,23 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
     apiKey: string | null,
     options: { force?: boolean } = {}
   ): Promise<AgentLocalProviderProbeResult> {
-    const key = probeCacheKey(settings, apiKey)
+    const settingsKey = probeSettingsKey(settings)
     if (!options.force) {
       const cached = this.probeCache
-      if (cached?.key === key && cached.expiresAt > Date.now()) return cached.result
+      if (
+        cached?.settingsKey === settingsKey &&
+        cached.apiKey === apiKey &&
+        cached.expiresAt > Date.now()
+      ) {
+        return cached.result
+      }
       // Two turns starting at once must share one probe rather than racing.
       const pending = this.probeInFlight
-      if (pending?.key === key) return pending.promise
+      if (pending?.settingsKey === settingsKey && pending.apiKey === apiKey) return pending.promise
     }
 
-    const promise = this.runProbe(key, settings, apiKey)
-    if (!options.force) this.probeInFlight = { key, promise }
+    const promise = this.runProbe(settingsKey, settings, apiKey)
+    if (!options.force) this.probeInFlight = { settingsKey, apiKey, promise }
     try {
       return await promise
     } finally {
@@ -118,13 +128,13 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
   }
 
   private async runProbe(
-    key: string,
+    settingsKey: string,
     settings: AgentLocalProviderSettings,
     apiKey: string | null
   ): Promise<AgentLocalProviderProbeResult> {
     const result = await probeLocalProvider(settings, this.deps.fetch ?? fetch, apiKey)
     const ttl = probeCacheTtlMs(result)
-    this.probeCache = ttl > 0 ? { key, result, expiresAt: Date.now() + ttl } : null
+    this.probeCache = ttl > 0 ? { settingsKey, apiKey, result, expiresAt: Date.now() + ttl } : null
     return result
   }
 
@@ -302,11 +312,11 @@ async function probeLocalProvider(
   }
 }
 
-function probeCacheKey(settings: AgentLocalProviderSettings, apiKey: string | null): string {
-  // Hashed so a long-lived cache entry never keeps a second copy of the API key around.
-  return createHash('sha256')
-    .update(JSON.stringify([settings.preset, settings.baseUrl, settings.model, apiKey]))
-    .digest('hex')
+// Non-secret half of the probe identity. The API key is deliberately not part of this
+// string: it is compared by value on the cache slot instead, so no derived form of the
+// user's credential is ever produced.
+function probeSettingsKey(settings: AgentLocalProviderSettings): string {
+  return JSON.stringify([settings.preset, settings.baseUrl, settings.model])
 }
 
 function probeCacheTtlMs(result: AgentLocalProviderProbeResult): number {
