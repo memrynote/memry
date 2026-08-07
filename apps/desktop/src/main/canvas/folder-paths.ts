@@ -9,6 +9,12 @@
  * @module canvas/folder-paths
  */
 
+// Typed, not plain Errors: a depth breach and an empty name are both things a
+// user does, and the IPC layer turns the code into a translated string. The
+// class lives in its own leaf module so this one stays free of I/O and of the
+// store that imports it.
+import { CanvasFolderError, CanvasFolderErrorCode } from './folder-errors'
+
 /**
  * Deepest nesting a canvas folder may reach — enforced here, at construction,
  * and matched by the recursive walk in `scene-file.listCanvasFiles`. Both ends
@@ -44,40 +50,78 @@ function assertFolderDepth(segments: string[]): void {
   if (segments.length > MAX_CANVAS_FOLDER_DEPTH) {
     // No folder name in the message: it is user content, and this error ends up
     // in the UI and in telemetry.
-    throw new Error(`Canvas folders cannot nest deeper than ${MAX_CANVAS_FOLDER_DEPTH} levels`)
+    throw new CanvasFolderError(
+      `Canvas folders cannot nest deeper than ${MAX_CANVAS_FOLDER_DEPTH} levels`,
+      CanvasFolderErrorCode.DEPTH
+    )
   }
 }
 
+function splitFolder(folder: string | null | undefined): string[] {
+  if (!folder) return []
+  return folder
+    .split('/')
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0 && segment !== '.' && segment !== '..')
+}
+
 /**
- * Canonical form of a folder path: `null` for the root, otherwise
- * slash-joined segments with no leading/trailing/repeated separators.
+ * Canonical form of a folder path a caller ASKED FOR: `null` for the root,
+ * otherwise slash-joined segments with no leading/trailing/repeated separators.
  *
  * Traversal segments are dropped, not resolved: a canvas folder is a label in a
  * tree, not a path to walk, and the canonical form every later caller trusts
  * must never carry a `..` for a downstream `path.join` to act on.
  *
  * Throws past `MAX_CANVAS_FOLDER_DEPTH` — refusing an over-deep folder here, at
- * the one funnel every folder goes through, beats letting it be created and
+ * the one funnel every NEW folder goes through, beats letting it be created and
  * then silently vanish from `listCanvasFiles`.
+ *
+ * This is the construction-time guard, so it belongs on a folder a caller chose.
+ * For a folder that is already stored, use `normalizeStoredFolder`: a read must
+ * never throw on data the database already holds.
  */
 export function normalizeFolder(folder: string | null | undefined): string | null {
-  if (!folder) return null
-  const segments = folder
-    .split('/')
-    .map((segment) => segment.trim())
-    .filter((segment) => segment.length > 0 && segment !== '.' && segment !== '..')
+  const segments = splitFolder(folder)
   assertFolderDepth(segments)
   return segments.length > 0 ? segments.join('/') : null
 }
 
+/**
+ * Canonical form of a folder path that is ALREADY STORED — total, never throws.
+ *
+ * The same cleanup as `normalizeFolder` without the depth cap. A row can hold a
+ * folder deeper than the cap (written by another device, or by a future version
+ * that raised it), and running the construction guard over it would make the
+ * canvas throw on read and on update — the user could not even open it to move
+ * it back out.
+ *
+ * Returned in full, never truncated to the cap: the stored folder describes
+ * where the file actually IS, and a shortened one would point the index at a
+ * different directory.
+ */
+export function normalizeStoredFolder(folder: string | null | undefined): string | null {
+  const segments = splitFolder(folder)
+  return segments.length > 0 ? segments.join('/') : null
+}
+
+/**
+ * The parts of a folder path. Total, like `normalizeStoredFolder` — this runs
+ * over stored rows (descendant checks, canonicalization) far more often than
+ * over anything a user just typed.
+ */
 export function folderSegments(folder: string | null): string[] {
-  return normalizeFolder(folder)?.split('/') ?? []
+  return splitFolder(folder)
 }
 
 export function joinFolder(parent: string | null, name: string): string {
   const base = normalizeFolder(parent)
   const leaf = normalizeFolder(name)
-  if (!leaf) throw new Error('Canvas folder name cannot be empty')
+  if (!leaf)
+    throw new CanvasFolderError(
+      'Canvas folder name cannot be empty',
+      CanvasFolderErrorCode.INVALID_NAME
+    )
   const joined = base ? `${base}/${leaf}` : leaf
   // Each side cleared the cap on its own; only the sum can breach it.
   assertFolderDepth(joined.split('/'))
@@ -130,7 +174,9 @@ export function rewriteFolderPrefix(
   if (fromSegments.length === 0) {
     throw new Error('Canvas folder rewrite needs a source folder')
   }
-  if (!isDescendantFolder(folder, from)) return normalizeFolder(folder)
+  // An unrelated folder is handed back as it is stored: it is not moving, so the
+  // construction guard has no business throwing on it.
+  if (!isDescendantFolder(folder, from)) return normalizeStoredFolder(folder)
   const rest = folderSegments(folder).slice(fromSegments.length)
   const segments = [...folderSegments(to), ...rest]
   assertFolderDepth(segments)

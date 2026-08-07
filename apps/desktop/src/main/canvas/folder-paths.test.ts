@@ -5,6 +5,7 @@ import {
   isDescendantFolder,
   joinFolder,
   normalizeFolder,
+  normalizeStoredFolder,
   parentFolder,
   rewriteFolderPrefix
 } from './folder-paths'
@@ -38,6 +39,23 @@ describe('normalizeFolder', () => {
   it('refuses a folder nested past the depth every canvas walk stops at', () => {
     expect(normalizeFolder(AT_CAP)).toBe(AT_CAP)
     expect(() => normalizeFolder(PAST_CAP)).toThrow(/deeper than/)
+  })
+})
+
+describe('normalizeStoredFolder', () => {
+  it('cleans a path up exactly like the strict form', () => {
+    expect(normalizeStoredFolder(null)).toBeNull()
+    expect(normalizeStoredFolder('  ')).toBeNull()
+    expect(normalizeStoredFolder('/Work//Q3/')).toBe('Work/Q3')
+    expect(normalizeStoredFolder('Work/..')).toBe('Work')
+  })
+
+  it('accepts a stored folder past the depth cap, in full', () => {
+    // A row can hold one: another device wrote it, or a future version raised
+    // the cap. Reading it must not throw, and it must not be truncated either —
+    // the stored folder says where the file IS, and a shortened one would point
+    // the index at a different directory.
+    expect(normalizeStoredFolder(PAST_CAP)).toBe(PAST_CAP)
   })
 })
 
@@ -110,6 +128,12 @@ describe('rewriteFolderPrefix', () => {
   it('leaves unrelated folders alone, including prefix lookalikes', () => {
     expect(rewriteFolderPrefix('Workshop', 'Work', 'Job')).toBe('Workshop')
     expect(rewriteFolderPrefix(null, 'Work', 'Job')).toBeNull()
+  })
+
+  it('hands back an unrelated folder that is already past the cap, rather than throwing', () => {
+    // It is not moving, so the construction guard has no business refusing it —
+    // and refusing would take down the whole rename that merely walked past it.
+    expect(rewriteFolderPrefix(PAST_CAP, 'Work', 'Job')).toBe(PAST_CAP)
   })
 
   it('refuses an empty source rather than re-rooting every folder in the vault', () => {

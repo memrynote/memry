@@ -1,8 +1,16 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import Database from 'better-sqlite3'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+
+import * as schema from '@memry/db-schema/data-schema'
 
 const mocks = vi.hoisted(() => ({
   getCanvasContext: vi.fn(),
   getCanvas: vi.fn(),
+  listCanvases: vi.fn(),
   listCanvasesWithCounts: vi.fn(),
   getNoteById: vi.fn(),
   getTaskById: vi.fn(),
@@ -14,6 +22,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../../../../canvas/vault-key', () => ({ getCanvasContext: mocks.getCanvasContext }))
 vi.mock('../../../../canvas/store', () => ({
   getCanvas: mocks.getCanvas,
+  listCanvases: mocks.listCanvases,
   listCanvasesWithCounts: mocks.listCanvasesWithCounts
 }))
 vi.mock('../../../../vault/notes', () => ({ getNoteById: mocks.getNoteById }))
@@ -31,6 +40,31 @@ vi.mock('../canvas-write', () => ({ invokeCanvasWrite: mocks.invokeCanvasWrite }
 import { createCanvasHandles } from '../canvas-handles'
 
 const dataDb = {} as never
+
+/**
+ * A real data DB for the one block below that drives the real canvas store —
+ * the canvas migrations only, which is all the store touches.
+ */
+function freshDataDb() {
+  const sqlite = new Database(':memory:')
+  sqlite.pragma('foreign_keys = ON')
+  for (const file of [
+    '0035_spatial_canvas.sql',
+    '0036_canvas_assets.sql',
+    '0045_canvas_files.sql',
+    '0048_canvas_folders.sql'
+  ]) {
+    const sql = fs.readFileSync(
+      path.join(__dirname, '..', '..', '..', '..', 'database', 'drizzle-data', file),
+      'utf8'
+    )
+    for (const statement of sql.split('--> statement-breakpoint')) {
+      const trimmed = statement.trim()
+      if (trimmed) sqlite.exec(trimmed)
+    }
+  }
+  return drizzle(sqlite, { schema })
+}
 
 function sceneWith(
   cards: { entityType: string; entityId: string }[],
@@ -54,11 +88,12 @@ describe('canvas handles', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.getCanvasContext.mockResolvedValue({
+    mocks.getCanvasContext.mockReturnValue({
       db: {},
       vaultId: 'vault-1',
-      vaultKey: new Uint8Array()
+      vaultPath: '/vault'
     })
+    mocks.listCanvases.mockReturnValue([])
     mocks.assertSpatialCanvasEnabled.mockImplementation(() => {})
     handles = createCanvasHandles(dataDb)
   })
@@ -66,12 +101,31 @@ describe('canvas handles', () => {
   describe('list', () => {
     it('maps store rows to the agent shape', async () => {
       mocks.listCanvasesWithCounts.mockReturnValue([
-        { id: 'c1', title: 'Roadmap', createdAt: 1, updatedAt: 5, itemCount: 2 }
+        { id: 'c1', title: 'Roadmap', folder: null, createdAt: 1, updatedAt: 5, itemCount: 2 }
       ])
 
       await expect(handles.list()).resolves.toEqual([
-        { id: 'c1', title: 'Roadmap', updated_at: 5, item_count: 2 }
+        { id: 'c1', title: 'Roadmap', folder: null, path: 'Roadmap', updated_at: 5, item_count: 2 }
       ])
+    })
+
+    it('qualifies same-titled canvases by folder so the two are tellable apart', async () => {
+      mocks.listCanvasesWithCounts.mockReturnValue([
+        { id: 'c-work', title: 'Plan', folder: 'Work', createdAt: 1, updatedAt: 5, itemCount: 0 },
+        {
+          id: 'c-personal',
+          title: 'Plan',
+          folder: 'Personal',
+          createdAt: 1,
+          updatedAt: 6,
+          itemCount: 0
+        }
+      ])
+
+      const entries = await handles.list()
+
+      expect(entries.map((entry) => entry.path)).toEqual(['Work/Plan', 'Personal/Plan'])
+      expect(entries.map((entry) => entry.folder)).toEqual(['Work', 'Personal'])
     })
 
     it('refuses when the spatialCanvas flag is off', async () => {
@@ -237,6 +291,157 @@ describe('canvas handles', () => {
         handles.removeItem({ canvasId: 'c1', item: { entityType: 'note', entityId: 'n1' } }, null)
       ).rejects.toThrow(/disabled/i)
       expect(mocks.invokeCanvasWrite).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('canvas name resolution with folders', () => {
+    const row = (id: string, title: string | null, folder: string | null) => ({
+      id,
+      title,
+      folder,
+      icon: null,
+      createdAt: 1,
+      updatedAt: 2
+    })
+    const duplicates = [row('c-work', 'Plan', 'Work'), row('c-personal', 'Plan', 'Personal')]
+
+    beforeEach(() => {
+      mocks.invokeCanvasWrite.mockResolvedValue({ updatedAt: 11, tooLarge: false })
+    })
+
+    const drawnCanvasId = (): unknown =>
+      (mocks.invokeCanvasWrite.mock.calls[0][1] as { canvasId: string }).canvasId
+
+    it('resolves a folder-qualified name', async () => {
+      mocks.listCanvases.mockReturnValue(duplicates)
+
+      await handles.draw({ canvasId: 'Work/Plan', elements: [] }, '1')
+
+      expect(drawnCanvasId()).toBe('c-work')
+    })
+
+    it('refuses an ambiguous bare name and lists the candidates', async () => {
+      mocks.listCanvases.mockReturnValue(duplicates)
+
+      await expect(handles.draw({ canvasId: 'Plan', elements: [] }, '1')).rejects.toMatchObject({
+        code: 'VALIDATION',
+        details: {
+          candidates: [
+            { id: 'c-work', path: 'Work/Plan' },
+            { id: 'c-personal', path: 'Personal/Plan' }
+          ]
+        }
+      })
+      expect(mocks.invokeCanvasWrite).not.toHaveBeenCalled()
+    })
+
+    it('still resolves an unambiguous bare name', async () => {
+      mocks.listCanvases.mockReturnValue([row('c-work', 'Plan', 'Work')])
+
+      await handles.draw({ canvasId: 'Plan', elements: [] }, '1')
+
+      expect(drawnCanvasId()).toBe('c-work')
+    })
+
+    it('matches a qualified name whatever its case', async () => {
+      mocks.listCanvases.mockReturnValue(duplicates)
+
+      await handles.draw({ canvasId: 'work/plan', elements: [] }, '1')
+
+      expect(drawnCanvasId()).toBe('c-work')
+    })
+
+    it('prefers an exact qualified match over the bare-title fallback', async () => {
+      mocks.listCanvases.mockReturnValue([
+        row('c-root', 'Plan', null),
+        row('c-work', 'Plan', 'Work')
+      ])
+
+      await handles.draw({ canvasId: 'Plan', elements: [] }, '1')
+
+      expect(drawnCanvasId()).toBe('c-root')
+    })
+
+    it('leaves a real id alone even when a canvas is titled like it', async () => {
+      mocks.listCanvases.mockReturnValue([row('c-work', 'Plan', 'Work'), row('Plan', null, null)])
+
+      await handles.draw({ canvasId: 'Plan', elements: [] }, '1')
+
+      expect(drawnCanvasId()).toBe('Plan')
+    })
+
+    it('reads the canvas a folder-qualified name points at', async () => {
+      mocks.listCanvases.mockReturnValue(duplicates)
+      mocks.getCanvas.mockReturnValue({
+        id: 'c-personal',
+        title: 'Plan',
+        createdAt: 1,
+        updatedAt: 5,
+        scene: sceneWith([])
+      })
+
+      await handles.read('Personal/Plan')
+
+      expect(mocks.getCanvas).toHaveBeenCalledWith({}, '/vault', 'c-personal')
+    })
+
+    it('refuses an ambiguous name on an item write before anything is minted', async () => {
+      mocks.listCanvases.mockReturnValue(duplicates)
+      mocks.getNoteById.mockResolvedValue({ id: 'n1', title: 'Spec' })
+
+      await expect(
+        handles.addItems({ canvasId: 'Plan', items: [{ entityType: 'note', entityId: 'n1' }] }, '1')
+      ).rejects.toMatchObject({ code: 'VALIDATION' })
+      expect(mocks.invokeCanvasWrite).not.toHaveBeenCalled()
+    })
+
+    /**
+     * The only block that runs against the REAL store, on a real vault folder.
+     *
+     * Resolution here is only as good as the rows the store writes: a hand-made
+     * pair of rows would prove the matcher and nothing about whether the app can
+     * ever produce two canvases an agent cannot tell apart. Moving a second
+     * `Plan` into `Work` is exactly the sequence that used to mint that pair.
+     */
+    describe('against the real store', () => {
+      let realDb: ReturnType<typeof freshDataDb>
+      let vault: string
+
+      beforeEach(() => {
+        realDb = freshDataDb()
+        vault = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-canvas-handles-'))
+        mocks.getCanvasContext.mockReturnValue({ db: realDb, vaultId: 'vault-1', vaultPath: vault })
+        mocks.invokeCanvasWrite.mockResolvedValue({ updatedAt: 11, tooLarge: false })
+      })
+
+      afterEach(() => {
+        fs.rmSync(vault, { recursive: true, force: true })
+      })
+
+      it('tells two same-titled canvases apart after one moves in beside the other', async () => {
+        const store = await vi.importActual<typeof import('../../../../canvas/store')>(
+          '../../../../canvas/store'
+        )
+        mocks.listCanvases.mockImplementation((db: never, vaultId: string) =>
+          store.listCanvases(db, vaultId)
+        )
+        const settled = store.createCanvas(realDb, vault, 'vault-1', {
+          title: 'Plan',
+          folder: 'Work'
+        })
+        const moving = store.createCanvas(realDb, vault, 'vault-1', { title: 'Plan' })
+
+        store.updateCanvas(realDb, vault, moving.id, { folder: 'Work' })
+
+        await handles.draw({ canvasId: 'Work/Plan', elements: [] }, '1')
+        await handles.draw({ canvasId: 'Work/Plan 2', elements: [] }, '1')
+
+        expect(
+          mocks.invokeCanvasWrite.mock.calls.map(
+            (call) => (call[1] as { canvasId: string }).canvasId
+          )
+        ).toEqual([settled.id, moving.id])
+      })
     })
   })
 })

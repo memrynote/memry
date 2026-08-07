@@ -31,6 +31,7 @@ import {
   readdirSync,
   readFileSync,
   renameSync,
+  rmdirSync,
   unlinkSync,
   writeFileSync
 } from 'fs'
@@ -38,7 +39,12 @@ import path from 'path'
 
 import { createLogger } from '../lib/logger'
 import { sanitizeFilename } from '../vault/file-ops'
-import { canvasPathKey, folderSegments, MAX_CANVAS_FOLDER_DEPTH } from './folder-paths'
+import {
+  canvasPathKey,
+  folderSegments,
+  MAX_CANVAS_FOLDER_DEPTH,
+  normalizeFolder
+} from './folder-paths'
 
 // `canvasPathKey` lives with the rest of the pure path algebra; it stays
 // exported from here because that is where its callers already import it from.
@@ -314,6 +320,133 @@ export function readCanvasFileSync(absolutePath: string): string | null {
   }
 }
 
+/**
+ * Removes `absDir`, and ONLY when nothing is left in it.
+ *
+ * `rmdirSync` cannot delete a file and refuses a non-empty directory, and that
+ * refusal is the safety property rather than an error to work around: whatever
+ * is still in there is the user's, and nothing here may take it. A cloud
+ * client's `.tmp`/`.trash` staging area keeps its parent (correctly) non-empty
+ * for exactly the same reason.
+ *
+ * Total — never throws.
+ *
+ * @returns true when `absDir` is gone afterwards.
+ */
+function rmdirIfEmpty(absDir: string): boolean {
+  try {
+    rmdirSync(absDir)
+    return true
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code
+    if (code === 'ENOENT') return true
+    // ENOTEMPTY (EEXIST on some platforms) is the expected refusal, not a fault.
+    if (code !== 'ENOTEMPTY' && code !== 'EEXIST') {
+      // Errno only — folder names are user content and this reaches telemetry.
+      log.warn('Could not remove an emptied canvas folder directory', { code })
+    }
+    return false
+  }
+}
+
+/**
+ * `rmdirIfEmpty` over `absDir` and every directory beneath it, bottom-up —
+ * a parent cannot go until its children have.
+ *
+ * Dot-entries are skipped for the same reason the walks above skip them: a cloud
+ * client's staging area is not ours to descend into.
+ *
+ * @returns true when `absDir` is gone afterwards.
+ */
+function pruneEmptyDirs(absDir: string, depth: number): boolean {
+  if (depth > MAX_CANVAS_FOLDER_DEPTH) return false
+
+  let entries: Dirent[]
+  try {
+    entries = readdirSync(absDir, { withFileTypes: true })
+  } catch (err) {
+    // Already gone is the outcome this was asked for; anything else (a file
+    // where the directory was, no permission) means leave it alone.
+    return (err as NodeJS.ErrnoException).code === 'ENOENT'
+  }
+
+  for (const entry of entries) {
+    if (entry.name.startsWith('.')) continue
+    // `withFileTypes` reports a symlink with `isDirectory() === false`, so the
+    // prune never follows one out of the vault.
+    if (entry.isDirectory()) pruneEmptyDirs(path.join(absDir, entry.name), depth + 1)
+  }
+
+  return rmdirIfEmpty(absDir)
+}
+
+/**
+ * Absolute path of a stored canvas folder, or null when it is not a directory
+ * this module may touch.
+ *
+ * Routed through `resolveCanvasFile` so a path that arrived from another
+ * device's database cannot walk out of the vault, and the canvases ROOT is
+ * refused outright. The stored path is used as it is: `portableCanvasFolder`
+ * would throw on a row deeper than the cap, and this has to work for every row
+ * the index holds.
+ */
+function canvasFolderDirPath(vaultPath: string, folder: string): string | null {
+  let absolutePath: string
+  try {
+    absolutePath = resolveCanvasFile(vaultPath, `${CANVAS_DIR}/${folder}`)
+  } catch {
+    return null
+  }
+  return absolutePath === canvasDirPath(vaultPath) ? null : absolutePath
+}
+
+/**
+ * Removes a canvas folder's directory, and any directory beneath it, once
+ * nothing is left in them.
+ *
+ * The counterpart of `deleteCanvasFileSync` for a folder: a tombstoned folder
+ * must not keep haunting the user's vault, or the next reconcile finds the
+ * directory, adopts it back as a live folder, and the delete the user made on
+ * one device is undone on all the others.
+ *
+ * Deliberately NOT a recursive remove. `deleteCanvasFolder` sends the whole
+ * directory to the OS trash because the user asked for it there and the trash is
+ * recoverable; this runs on a REMOTE delete, where the local files are removed
+ * one at a time by `canvasHandler.applyDelete` and a removal that failed (a
+ * locked file, a refused trash) has left ink behind. Only empty directories go.
+ *
+ * Total — never throws, so a tombstone that is already committed cannot be
+ * undone by a filesystem failure. It is also allowed to fail: the apply order
+ * regularly reaches this before the canvas deletes it is waiting on, so the
+ * retry is reconcile's `removeCanvasFolderDirIfEmpty` sweep at vault open.
+ *
+ * @returns true when the folder's own directory is gone afterwards.
+ */
+export function removeEmptyCanvasFolderDirs(vaultPath: string, folder: string): boolean {
+  const absolutePath = canvasFolderDirPath(vaultPath, folder)
+  return absolutePath ? pruneEmptyDirs(absolutePath, 0) : false
+}
+
+/**
+ * Removes ONE canvas folder's own directory, and only when it is empty.
+ *
+ * The sweep half of `removeEmptyCanvasFolderDirs`, for a caller that already
+ * knows the whole set of directories it may take (reconcile, which has the
+ * tombstone rows in hand). It does not descend, because the caller's set is the
+ * authority on what is sweepable: a directory beneath this one may belong to a
+ * folder that is still LIVE — a child whose own delete has not arrived yet —
+ * and removing it would only earn it back from `restoreMissingFolderDirs` on the
+ * same pass, re-creating this directory in the process.
+ *
+ * Total — never throws.
+ *
+ * @returns true when the directory is gone afterwards.
+ */
+export function removeCanvasFolderDirIfEmpty(vaultPath: string, folder: string): boolean {
+  const absolutePath = canvasFolderDirPath(vaultPath, folder)
+  return absolutePath ? rmdirIfEmpty(absolutePath) : false
+}
+
 export function deleteCanvasFileSync(absolutePath: string): void {
   try {
     withTransientFsRetrySync(() => unlinkSync(absolutePath), 'deleteCanvasFile')
@@ -408,7 +541,15 @@ function portableCanvasBase(title: string | null): string {
  * canonical folder is safe.
  */
 export function portableCanvasFolder(folder: string | null): string | null {
-  const segments = folderSegments(folder).map((segment) => portableCanvasBase(segment))
+  // `normalizeFolder` — the STRICT one — on purpose: this is the funnel every
+  // new placement goes through (`ensureCanvasFolderDir` and, via
+  // `canvasRelativePath`, `allocateCanvasPath`), so a folder past the depth cap
+  // is refused here rather than created and then never walked to by
+  // `listCanvasFiles`. `folderSegments` itself is total, because it also runs
+  // over rows that are already stored.
+  const segments = folderSegments(normalizeFolder(folder)).map((segment) =>
+    portableCanvasBase(segment)
+  )
   return segments.length > 0 ? segments.join('/') : null
 }
 

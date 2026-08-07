@@ -31,6 +31,18 @@ export type CanvasEntityType = (typeof CANVAS_ENTITY_TYPES)[number]
 export interface CanvasSummary {
   id: string
   title: string | null
+  /** Path relative to `canvases/`, forward-slashed. Null means the root. */
+  folder: string | null
+  icon: string | null
+  /**
+   * The document could not be read — a pre-file legacy row whose encrypted
+   * snapshot this device holds no key for, or a file moved/deleted outside the
+   * app. On a full `Canvas` this also means `scene` is empty and the editor
+   * must NOT mount: saving over it would erase recoverable ink. Carried on the
+   * summary too so the sidebar can render it as degraded instead of pretending
+   * it opens.
+   */
+  unreadable?: boolean
   createdAt: number
   updatedAt: number
 }
@@ -44,13 +56,6 @@ export interface Canvas extends CanvasSummary {
    * for a canvas that has not been drawn on yet.
    */
   scene: string
-  /**
-   * The canvas exists in the index but its document could not be read — a
-   * pre-file legacy row whose encrypted snapshot this device holds no key for,
-   * or a file moved/deleted outside the app. `scene` is empty and the editor
-   * must NOT mount: saving over it would erase recoverable ink.
-   */
-  unreadable?: boolean
 }
 
 // ============================================================================
@@ -70,13 +75,23 @@ export type CanvasEntityRef = z.infer<typeof CanvasEntityRefSchema>
 
 export const CanvasCreateSchema = z.object({
   title: z.string().nullable().optional(),
-  scene: z.string().optional()
+  scene: z.string().optional(),
+  /** Path relative to `canvases/`, forward-slashed. Null/absent is the root. */
+  folder: z.string().nullable().optional(),
+  icon: z.string().nullable().optional()
 })
 
 export const CanvasUpdateSchema = z.object({
   id: z.string().min(1),
   title: z.string().nullable().optional(),
   scene: z.string().optional(),
+  /**
+   * Move the canvas. Path relative to `canvases/`, forward-slashed; null moves
+   * it to the root. Absent leaves placement untouched — which is why every
+   * pre-existing caller (autosave included) keeps working unchanged.
+   */
+  folder: z.string().nullable().optional(),
+  icon: z.string().nullable().optional(),
   entityRefs: z.array(CanvasEntityRefSchema).optional(),
   /**
    * Optimistic concurrency guard. When present the store compares it against

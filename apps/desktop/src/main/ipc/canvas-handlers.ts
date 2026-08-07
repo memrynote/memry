@@ -7,7 +7,7 @@
  */
 
 import { z } from 'zod'
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain, BrowserWindow, shell } from 'electron'
 import {
   CanvasChannels,
   CanvasCreateSchema,
@@ -29,7 +29,16 @@ import {
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
 import { getCanvasContext, disposeCanvasVaultKey } from '../canvas/vault-key'
 import { forgetWindow, markCanvasClosed, markCanvasOpen } from '../canvas/live-registry'
-import { createCanvas, deleteCanvas, getCanvas, listCanvases, updateCanvas } from '../canvas/store'
+import {
+  createCanvas,
+  deleteCanvas,
+  duplicateCanvas,
+  getCanvas,
+  getCanvasFilePath,
+  listCanvases,
+  updateCanvas
+} from '../canvas/store'
+import { resolveCanvasFile } from '../canvas/scene-file'
 import { readCanvasLibrary, writeCanvasLibrary } from '../canvas/library-file'
 import { syncCanvasCreate, syncCanvasUpdate, syncCanvasDelete } from '../canvas/sync-bridge'
 import {
@@ -41,6 +50,9 @@ import {
 } from '../canvas/assets/asset-service'
 import { buildAssetServiceContext } from '../canvas/assets/asset-service-context'
 import { trackMainEvent } from '../telemetry/track'
+import { createLogger } from '../lib/logger'
+
+const log = createLogger('CanvasIPC')
 
 function emitCanvasEvent(
   channel: string,
@@ -168,7 +180,10 @@ export function registerCanvasHandlers(): void {
         await reconcileCanvasAssets(assetCtx, id, '')
       }
 
-      const success = deleteCanvas(db, vaultPath, id)
+      // The document goes to the OS trash, not straight to /dev/null: a canvas
+      // is a real file in the user's vault, and a mis-click must be recoverable
+      // from Finder/Explorer the way deleting the file by hand would be.
+      const success = await deleteCanvas(db, vaultPath, id, (abs) => shell.trashItem(abs))
       if (success) {
         trackMainEvent('canvas_deleted', {
           surface: 'canvas',
@@ -189,6 +204,61 @@ export function registerCanvasHandlers(): void {
     createHandler(async () => {
       const { db, vaultId } = getCanvasContext()
       return { canvases: listCanvases(db, vaultId) }
+    })
+  )
+
+  // canvas:duplicate - Copy a canvas (scene + asset rows) beside the original
+  ipcMain.handle(
+    CanvasChannels.invoke.DUPLICATE,
+    createStringHandler(async (id) => {
+      const { db, vaultId, vaultPath } = getCanvasContext()
+      const copy = duplicateCanvas(db, vaultPath, vaultId, id)
+      // Null means the original is gone or its document could not be read. The
+      // store already logged why; there is nothing to announce.
+      if (!copy) return null
+      const { scene, ...summary } = copy
+      const synced = syncCanvasCreate(copy.id, scene)
+      emitCanvasEvent(CanvasChannels.events.CREATED, { canvas: summary })
+      if (!synced) {
+        // Copied locally but too large to sync (§5.6) — surface, never silent.
+        // Only the event, no `tooLarge` on the response: this mirrors
+        // canvas:create, the handler duplicate is shaped like. The response
+        // mirror exists on canvas:update for callers with no subscription
+        // (agent MCP writes), and the agent surface has no canvas duplicate.
+        emitCanvasEvent(CanvasChannels.events.TOO_LARGE, { id: copy.id })
+      }
+      return summary
+    })
+  )
+
+  // canvas:reveal-in-finder - Show the canvas document in Finder/Explorer
+  ipcMain.handle(
+    CanvasChannels.invoke.REVEAL_IN_FINDER,
+    createStringHandler(async (id) => {
+      const { db, vaultPath } = getCanvasContext()
+      const filePath = getCanvasFilePath(db, id)
+      // A tombstoned canvas, or a pre-file legacy row, has no document to point
+      // at. Returning quietly beats throwing: the renderer offers this action on
+      // an unreadable canvas precisely so the user can go look for the file.
+      if (!filePath) {
+        log.warn('No canvas document to reveal', { id })
+        return
+      }
+      shell.showItemInFolder(resolveCanvasFile(vaultPath, filePath))
+    })
+  )
+
+  // canvas:open-external - Open the canvas document in the OS default app
+  ipcMain.handle(
+    CanvasChannels.invoke.OPEN_EXTERNAL,
+    createStringHandler(async (id) => {
+      const { db, vaultPath } = getCanvasContext()
+      const filePath = getCanvasFilePath(db, id)
+      if (!filePath) {
+        log.warn('No canvas document to open externally', { id })
+        return
+      }
+      await shell.openPath(resolveCanvasFile(vaultPath, filePath))
     })
   )
 
@@ -290,6 +360,9 @@ export function unregisterCanvasHandlers(): void {
   ipcMain.removeHandler(CanvasChannels.invoke.UPDATE)
   ipcMain.removeHandler(CanvasChannels.invoke.DELETE)
   ipcMain.removeHandler(CanvasChannels.invoke.LIST)
+  ipcMain.removeHandler(CanvasChannels.invoke.DUPLICATE)
+  ipcMain.removeHandler(CanvasChannels.invoke.REVEAL_IN_FINDER)
+  ipcMain.removeHandler(CanvasChannels.invoke.OPEN_EXTERNAL)
   ipcMain.removeHandler(CanvasChannels.invoke.UPLOAD_ASSET)
   ipcMain.removeHandler(CanvasChannels.invoke.GET_ASSET)
   ipcMain.removeHandler(CanvasChannels.invoke.LIST_ASSETS)

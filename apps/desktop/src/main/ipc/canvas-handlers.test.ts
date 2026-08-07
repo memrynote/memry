@@ -9,8 +9,15 @@ import {
   reconcileCanvasAssets,
   uploadCanvasAsset
 } from '../canvas/assets/asset-service'
-import { createCanvas, getCanvas, updateCanvas, deleteCanvas } from '../canvas/store'
-import { syncCanvasUpdate, syncCanvasDelete } from '../canvas/sync-bridge'
+import {
+  createCanvas,
+  getCanvas,
+  updateCanvas,
+  deleteCanvas,
+  duplicateCanvas,
+  getCanvasFilePath
+} from '../canvas/store'
+import { syncCanvasCreate, syncCanvasUpdate, syncCanvasDelete } from '../canvas/sync-bridge'
 import { trackMainEvent } from '../telemetry/track'
 
 // Mock electron ipcMain so register/unregister can run in tests
@@ -22,6 +29,11 @@ vi.mock('electron', () => ({
   BrowserWindow: {
     getAllWindows: vi.fn(() => []),
     fromWebContents: vi.fn()
+  },
+  shell: {
+    trashItem: vi.fn(async () => {}),
+    showItemInFolder: vi.fn(),
+    openPath: vi.fn(async () => '')
   }
 }))
 
@@ -48,7 +60,9 @@ vi.mock('../canvas/vault-path', () => ({
 vi.mock('../canvas/store', () => ({
   createCanvas: vi.fn(),
   deleteCanvas: vi.fn(),
+  duplicateCanvas: vi.fn(),
   getCanvas: vi.fn(),
+  getCanvasFilePath: vi.fn(() => null),
   listCanvases: vi.fn(() => []),
   updateCanvas: vi.fn()
 }))
@@ -376,7 +390,7 @@ describe('canvas asset IPC handlers', () => {
       await withWorkingCanvasContext()
       const fakeCtx = { marker: 'ctx' }
       vi.mocked(buildAssetServiceContext).mockReturnValue(fakeCtx as never)
-      vi.mocked(deleteCanvas).mockReturnValue(true)
+      vi.mocked(deleteCanvas).mockResolvedValue(true)
       const handlers = await registerAndGetHandlers()
 
       const result = await handlers[CanvasChannels.invoke.DELETE]({}, 'canvas-1')
@@ -389,13 +403,190 @@ describe('canvas asset IPC handlers', () => {
     it('skips reconcile when no vault is open (ctx is null)', async () => {
       await withWorkingCanvasContext()
       vi.mocked(buildAssetServiceContext).mockReturnValue(null)
-      vi.mocked(deleteCanvas).mockReturnValue(true)
+      vi.mocked(deleteCanvas).mockResolvedValue(true)
       const handlers = await registerAndGetHandlers()
 
       await handlers[CanvasChannels.invoke.DELETE]({}, 'canvas-1')
 
       expect(reconcileCanvasAssets).not.toHaveBeenCalled()
     })
+  })
+
+  describe('canvas:delete — the document goes to the OS trash', () => {
+    it('hands the store a trash callback wired to shell.trashItem', async () => {
+      // The headline of this handler is "delete is recoverable from Finder".
+      // Asserting only { success } would stay green if the callback were dropped
+      // or swapped for an unlink, which is exactly the regression that costs a
+      // user their ink.
+      await withWorkingCanvasContext()
+      const { shell } = await import('electron')
+      vi.mocked(buildAssetServiceContext).mockReturnValue(null)
+      vi.mocked(deleteCanvas).mockResolvedValue(true)
+      const handlers = await registerAndGetHandlers()
+
+      await handlers[CanvasChannels.invoke.DELETE]({}, 'canvas-1')
+
+      const call = vi.mocked(deleteCanvas).mock.calls[0]
+      expect(call[1]).toBe('/vaults/Memry')
+      expect(call[2]).toBe('canvas-1')
+      const trash = call[3]
+      expect(typeof trash).toBe('function')
+
+      await trash('/vaults/Memry/canvases/Work/Plan.excalidraw')
+      expect(shell.trashItem).toHaveBeenCalledWith('/vaults/Memry/canvases/Work/Plan.excalidraw')
+    })
+  })
+})
+
+describe('canvas:duplicate', () => {
+  afterEach(() => {
+    unregisterCanvasHandlers()
+    vi.clearAllMocks()
+  })
+
+  it('pushes the copy to sync and announces it without the scene', async () => {
+    await withWorkingCanvasContext()
+    vi.mocked(duplicateCanvas).mockReturnValue({
+      id: 'canvas-2',
+      title: 'Plan 2',
+      folder: 'Work',
+      icon: null,
+      createdAt: 5,
+      updatedAt: 5,
+      scene: '{"scene":"copy"}'
+    })
+    const { BrowserWindow } = await import('electron')
+    const send = vi.fn()
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([{ webContents: { send } }] as never)
+    const handlers = await registerAndGetHandlers()
+
+    const result = await handlers[CanvasChannels.invoke.DUPLICATE]({}, 'canvas-1')
+
+    expect(duplicateCanvas).toHaveBeenCalledWith({}, '/vaults/Memry', 'vault-1', 'canvas-1')
+    expect(syncCanvasCreate).toHaveBeenCalledWith('canvas-2', '{"scene":"copy"}')
+    expect(send).toHaveBeenCalledWith(CanvasChannels.events.CREATED, {
+      canvas: {
+        id: 'canvas-2',
+        title: 'Plan 2',
+        folder: 'Work',
+        icon: null,
+        createdAt: 5,
+        updatedAt: 5
+      }
+    })
+    // The summary the renderer gets never carries the scene payload.
+    expect(result).not.toHaveProperty('scene')
+  })
+
+  it('warns when the copy is too large to sync instead of leaving it silently unsynced', async () => {
+    // A duplicate that never syncs is invisible until the user opens another
+    // device and finds the copy missing — canvas:create and canvas:update both
+    // announce this, and duplicate has to as well.
+    await withWorkingCanvasContext()
+    vi.mocked(duplicateCanvas).mockReturnValue({
+      id: 'canvas-2',
+      title: 'Plan 2',
+      folder: null,
+      icon: null,
+      createdAt: 5,
+      updatedAt: 5,
+      scene: '{"scene":"huge"}'
+    })
+    vi.mocked(syncCanvasCreate).mockReturnValue(false)
+    const { BrowserWindow } = await import('electron')
+    const send = vi.fn()
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([{ webContents: { send } }] as never)
+    const handlers = await registerAndGetHandlers()
+
+    await handlers[CanvasChannels.invoke.DUPLICATE]({}, 'canvas-1')
+
+    expect(send).toHaveBeenCalledWith(CanvasChannels.events.TOO_LARGE, { id: 'canvas-2' })
+  })
+
+  it('stays quiet about size for a copy that synced', async () => {
+    await withWorkingCanvasContext()
+    vi.mocked(duplicateCanvas).mockReturnValue({
+      id: 'canvas-2',
+      title: 'Plan 2',
+      folder: null,
+      icon: null,
+      createdAt: 5,
+      updatedAt: 5,
+      scene: '{"scene":"copy"}'
+    })
+    vi.mocked(syncCanvasCreate).mockReturnValue(true)
+    const { BrowserWindow } = await import('electron')
+    const send = vi.fn()
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([{ webContents: { send } }] as never)
+    const handlers = await registerAndGetHandlers()
+
+    await handlers[CanvasChannels.invoke.DUPLICATE]({}, 'canvas-1')
+
+    expect(send).not.toHaveBeenCalledWith(CanvasChannels.events.TOO_LARGE, expect.anything())
+  })
+
+  it('returns null and announces nothing when the original cannot be copied', async () => {
+    await withWorkingCanvasContext()
+    vi.mocked(duplicateCanvas).mockReturnValue(null)
+    const { BrowserWindow } = await import('electron')
+    const send = vi.fn()
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([{ webContents: { send } }] as never)
+    const handlers = await registerAndGetHandlers()
+
+    const result = await handlers[CanvasChannels.invoke.DUPLICATE]({}, 'canvas-1')
+
+    expect(result).toBeNull()
+    expect(syncCanvasCreate).not.toHaveBeenCalled()
+    expect(send).not.toHaveBeenCalled()
+  })
+})
+
+describe('canvas:reveal-in-finder / canvas:open-external', () => {
+  afterEach(() => {
+    unregisterCanvasHandlers()
+    vi.clearAllMocks()
+  })
+
+  it('reveals the resolved absolute path of the canvas document', async () => {
+    await withWorkingCanvasContext()
+    const { shell } = await import('electron')
+    vi.mocked(getCanvasFilePath).mockReturnValue('canvases/Work/Plan.excalidraw')
+    const handlers = await registerAndGetHandlers()
+
+    await handlers[CanvasChannels.invoke.REVEAL_IN_FINDER]({}, 'canvas-1')
+
+    expect(getCanvasFilePath).toHaveBeenCalledWith({}, 'canvas-1')
+    expect(shell.showItemInFolder).toHaveBeenCalledWith(
+      '/vaults/Memry/canvases/Work/Plan.excalidraw'
+    )
+  })
+
+  it('opens the resolved absolute path in the external app', async () => {
+    await withWorkingCanvasContext()
+    const { shell } = await import('electron')
+    vi.mocked(getCanvasFilePath).mockReturnValue('canvases/Plan.excalidraw')
+    const handlers = await registerAndGetHandlers()
+
+    await handlers[CanvasChannels.invoke.OPEN_EXTERNAL]({}, 'canvas-1')
+
+    expect(shell.openPath).toHaveBeenCalledWith('/vaults/Memry/canvases/Plan.excalidraw')
+  })
+
+  it('stays quiet for a canvas with no document instead of throwing at the renderer', async () => {
+    await withWorkingCanvasContext()
+    const { shell } = await import('electron')
+    vi.mocked(getCanvasFilePath).mockReturnValue(null)
+    const handlers = await registerAndGetHandlers()
+
+    await expect(
+      handlers[CanvasChannels.invoke.REVEAL_IN_FINDER]({}, 'canvas-1')
+    ).resolves.toBeUndefined()
+    await expect(
+      handlers[CanvasChannels.invoke.OPEN_EXTERNAL]({}, 'canvas-1')
+    ).resolves.toBeUndefined()
+
+    expect(shell.showItemInFolder).not.toHaveBeenCalled()
+    expect(shell.openPath).not.toHaveBeenCalled()
   })
 })
 

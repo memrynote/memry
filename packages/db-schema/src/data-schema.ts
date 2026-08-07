@@ -35,6 +35,7 @@ export * from './schema/vault-metadata.ts'
 export * from './schema/agent-conversations.ts'
 export * from './schema/agent-messages.ts'
 export * from './schema/canvas.ts'
+export * from './schema/canvas-folder.ts'
 export {
   propertyDefinitions,
   type PropertyDefinition,
