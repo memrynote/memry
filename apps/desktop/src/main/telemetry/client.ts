@@ -87,6 +87,12 @@ export const createTelemetryClient = (deps: TelemetryClientDeps): TelemetryClien
     store?.save(queue)
   }
 
+  // The enqueue path appends one line rather than rewriting the mirror, so a
+  // tracked event costs the same whether the queue holds 1 event or 500.
+  const persistAppend = (event: TelemetryEvent): void => {
+    store?.append(event, queue)
+  }
+
   // A mirror written by a build with a larger limit must not resurrect an
   // unbounded queue; rewrite so the dropped head does not return next launch.
   if (queue.length > TELEMETRY_QUEUE_LIMIT) {
@@ -114,7 +120,7 @@ export const createTelemetryClient = (deps: TelemetryClientDeps): TelemetryClien
     if (!enabled) return
     queue.push(event)
     trimQueue()
-    persist()
+    persistAppend(event)
   }
 
   const flush = async (reason: TelemetryFlushReason): Promise<TelemetryFlushResult> => {
