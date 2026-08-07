@@ -107,14 +107,19 @@ export const MAX_RATE_LIMIT_BACKOFF_MS = 5 * 60 * 1000
 export const BASE_RATE_LIMIT_BACKOFF_MS = 5_000
 export const YIELD_EVERY_N_ITEMS = 20
 export const CRDT_SNAPSHOT_CONCURRENCY = 5
-// The vault-wide CRDT sweep at the end of fullSync is a safety net, not the
-// primary transport: while the socket is up, every remote body edit arrives as
-// a `crdt_updated` broadcast and is pulled per note, and notes whose record
-// metadata changed are CRDT-batched inside pull() itself. fullSync, however,
-// re-runs on every reconnect/resume/rate-limit release/auth refresh, so an
-// unthrottled sweep charged two HTTP requests, a Y.Doc load and a keychain read
-// per note in the vault for every Wi-Fi blip. Throttling bounds that to once
-// per interval without ever excluding a note from the sweep.
+// Fallback cadence for the vault-wide CRDT sweep at the end of fullSync, used
+// ONLY when the socket cannot answer whether broadcasts were missed: no sweep
+// recorded against the current engine yet (process start, vault switch, engine
+// retry), or a socket that is down and has not reconnected. A live socket skips
+// the sweep outright and a completed reconnect runs it immediately, so this
+// number never gates the healthy path.
+//
+// It is deliberately not shorter. Where it does apply the device is receiving
+// no broadcasts at all, which makes the sweep the sole discovery path for
+// remote body edits — and each pass costs an HTTP round trip, a Y.Doc load and
+// a keychain read per note in the vault. 15 minutes caps that at four passes an
+// hour in the worst case (a socket blocked outright by a proxy) while keeping
+// the blind window short enough to be invisible in normal use.
 export const CRDT_FULL_SWEEP_MIN_INTERVAL_MS = 15 * 60 * 1000
 export const PUSH_DEBOUNCE_MS = 2000
 

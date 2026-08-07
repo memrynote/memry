@@ -80,6 +80,17 @@ interface Harness {
   purgeOldErrors: ReturnType<typeof vi.fn>
   getPendingCount: ReturnType<typeof vi.fn>
   crdtSync: FakeCrdtSync
+  ws: FakeWebSocket
+}
+
+/**
+ * `connectionGeneration` advances once per successful socket open, so an
+ * unchanged generation on a still-connected socket proves no `crdt_updated`
+ * broadcast could have been missed since it was last read.
+ */
+interface FakeWebSocket {
+  connected: boolean
+  connectionGeneration: number
 }
 
 /**
@@ -95,6 +106,7 @@ function createHarness(
     crdtProvider?: unknown
     isQuarantined?: (itemId: string, itemType: string) => boolean
     online?: boolean
+    ws?: FakeWebSocket | null
   } = {}
 ): Harness {
   const calls: string[] = []
@@ -114,11 +126,20 @@ function createHarness(
     }
   })
 
+  const ws: FakeWebSocket =
+    options.ws === undefined
+      ? { connected: true, connectionGeneration: 1 }
+      : (options.ws ?? {
+          connected: false,
+          connectionGeneration: 0
+        })
+
   const ctx = {
     deps: {
       db: { __db: 'data' },
       queue: { getPendingCount, purgeOldErrors },
       network: { online: options.online ?? true },
+      ...(options.ws !== null && { ws }),
       getAccessToken: vi.fn(async () => 'token-1'),
       getSigningKeys: vi.fn(async () =>
         options.signingKeys === undefined ? { deviceId: 'dev-a' } : options.signingKeys
@@ -177,7 +198,8 @@ function createHarness(
     clearPendingAfterFullSync,
     purgeOldErrors,
     getPendingCount,
-    crdtSync
+    crdtSync,
+    ws
   }
 }
 
@@ -545,17 +567,27 @@ describe('FullSyncRunner', () => {
     })
   })
 
-  describe('#given a vault-wide CRDT sweep that just ran #when another full sync starts', () => {
-    it('#then the sweep is skipped instead of re-pulling every note in the vault', async () => {
-      // fullSync runs on every reconnect, resume, rate-limit release and auth
-      // refresh. Re-queueing every note in the vault each time costs two HTTP
-      // requests, a Y.Doc load and a keychain read PER NOTE, so a single Wi-Fi
-      // blip on a 1,000-note vault cost ~2,000 requests.
+  describe('#given the socket stayed live since the last sweep #when another full sync starts', () => {
+    it('#then the sweep never runs again, however long has passed', async () => {
+      // fullSync also fires on auth refresh and rate-limit release. While the
+      // socket is up, every remote body edit already arrived as a
+      // `crdt_updated` broadcast and was pulled per note, so a sweep can only
+      // re-discover what this device already has. A clock cannot see that: the
+      // liveness signal must win over the interval, not the other way round.
       const h = createHarness({ crdtProvider: {} })
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
+
+      await h.runner.run()
+      expect(mocks.getAllCrdtNoteIds).toHaveBeenCalledTimes(1)
+
+      mocks.getAllCrdtNoteIds.mockClear()
+      h.actions.scheduleSync.mockClear()
+      // Well past the fallback interval, and the socket never dropped.
       h.getStateValue.mockImplementation((key: string) =>
-        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT ? String(Date.now() - 1000) : undefined
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT
+          ? String(Date.now() - CRDT_FULL_SWEEP_MIN_INTERVAL_MS * 10)
+          : undefined
       )
 
       await h.runner.run()
@@ -565,15 +597,16 @@ describe('FullSyncRunner', () => {
     })
 
     it('#then notes the server announced over the websocket are still pulled', async () => {
-      // The throttle only covers the blanket safety-net sweep. A `crdt_updated`
+      // The gate only covers the blanket safety-net sweep. A `crdt_updated`
       // broadcast is a positive signal that THIS note changed remotely and must
       // never be swallowed.
       const h = createHarness({ crdtProvider: {} })
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
-      h.getStateValue.mockImplementation((key: string) =>
-        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT ? String(Date.now() - 1000) : undefined
-      )
+
+      await h.runner.run()
+      mocks.getAllCrdtNoteIds.mockClear()
+      h.actions.scheduleSync.mockClear()
       h.crdtSync.addPendingPull('note-9')
 
       await h.runner.run()
@@ -582,8 +615,83 @@ describe('FullSyncRunner', () => {
       expect(h.actions.scheduleSync).toHaveBeenCalledTimes(1)
       expect(h.crdtSync.pendingPullCount).toBe(0)
     })
+  })
 
-    it('#then a sweep older than the interval runs again', async () => {
+  describe('#given the socket dropped and came back #when another full sync starts', () => {
+    it('#then the sweep runs immediately rather than waiting out the interval', async () => {
+      // This is the one case where broadcasts were provably missed, and the
+      // case where the user is most likely staring at a stale note. Deferring
+      // it on a timer would be exactly backwards.
+      const h = createHarness({ crdtProvider: {} })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
+
+      await h.runner.run()
+      mocks.getAllCrdtNoteIds.mockClear()
+      h.actions.scheduleSync.mockClear()
+      // Swept one second ago — deep inside the fallback interval.
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT ? String(Date.now() - 1000) : undefined
+      )
+      h.ws.connectionGeneration += 1
+
+      await h.runner.run()
+
+      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(2)
+    })
+
+    it('#then a socket that is still down falls back to the interval', async () => {
+      // Down-and-not-yet-back is not a completed reconnect. Sweeping on every
+      // cycle here would reinstate the storm for anyone whose socket is blocked
+      // outright, so the interval bounds it instead.
+      const h = createHarness({ crdtProvider: {} })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
+
+      await h.runner.run()
+      mocks.getAllCrdtNoteIds.mockClear()
+      h.actions.scheduleSync.mockClear()
+      h.ws.connected = false
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT ? String(Date.now() - 1000) : undefined
+      )
+
+      await h.runner.run()
+
+      expect(mocks.getAllCrdtNoteIds).not.toHaveBeenCalled()
+
+      // ...but it does run once the interval elapses.
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT
+          ? String(Date.now() - CRDT_FULL_SWEEP_MIN_INTERVAL_MS - 1)
+          : undefined
+      )
+
+      await h.runner.run()
+
+      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  describe('#given no liveness signal yet #when a full sync starts', () => {
+    it('#then a fresh runner does not sweep unconditionally', async () => {
+      // FullSyncRunner is rebuilt with every engine (vault switch, restart,
+      // retry). An instance-only signal that re-armed an immediate sweep would
+      // repeat the lastManifestCheckAt bug: a retry loop would sweep the whole
+      // vault on every single cycle. The persisted stamp is the authority here.
+      const h = createHarness({ crdtProvider: {} })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT ? String(Date.now() - 1000) : undefined
+      )
+
+      await h.runner.run()
+
+      expect(mocks.getAllCrdtNoteIds).not.toHaveBeenCalled()
+    })
+
+    it('#then a stamp older than the interval sweeps', async () => {
       // A device that was offline for weeks discovers body-only remote edits
       // (which never enter the record change feed) only through this sweep.
       const h = createHarness({ crdtProvider: {} })
@@ -598,6 +706,23 @@ describe('FullSyncRunner', () => {
       await h.runner.run()
 
       expect(h.actions.scheduleSync).toHaveBeenCalledTimes(2)
+    })
+
+    it('#then a missing websocket manager falls back to the interval', async () => {
+      const h = createHarness({ crdtProvider: {}, ws: null })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
+
+      await h.runner.run()
+      mocks.getAllCrdtNoteIds.mockClear()
+      h.actions.scheduleSync.mockClear()
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT ? String(Date.now() - 1000) : undefined
+      )
+
+      await h.runner.run()
+
+      expect(mocks.getAllCrdtNoteIds).not.toHaveBeenCalled()
     })
 
     it('#then a future-dated stamp does not park the sweep until the clock catches up', async () => {
@@ -630,13 +755,20 @@ describe('FullSyncRunner', () => {
 
       expect(h.actions.scheduleSync).toHaveBeenCalledTimes(1)
     })
+  })
 
-    it('#then a manifest re-pull forces the sweep regardless of the throttle', async () => {
+  describe('#given the gate would otherwise skip #when the cycle demands a sweep', () => {
+    it('#then a manifest re-pull forces the sweep even on a live socket', async () => {
       // Server rows this device has never seen (fresh install, restored vault,
-      // index rebuild) mean the local CRDT watermarks cannot be trusted.
+      // index rebuild) mean local CRDT state cannot be trusted, whatever the
+      // socket did.
       const h = createHarness({ crdtProvider: {} })
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
+
+      await h.runner.run()
+      mocks.getAllCrdtNoteIds.mockClear()
+      h.actions.scheduleSync.mockClear()
       h.getStateValue.mockImplementation((key: string) =>
         key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT ? String(Date.now()) : undefined
       )

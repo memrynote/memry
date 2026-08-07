@@ -33,6 +33,12 @@ export class FullSyncRunner {
   // manifest check each time — with a permanently quarantined item that meant
   // a cursor reset and full re-pull on every single sync cycle.
   lastManifestCheckAt = 0
+  /**
+   * WebSocket connection generation observed the last time this runner swept.
+   * Null until it sweeps once — deliberately in-memory only: a generation from
+   * a previous process says nothing about the current socket.
+   */
+  private lastSweepConnectionGeneration: number | null = null
 
   constructor(
     ctx: SyncContext,
@@ -57,8 +63,15 @@ export class FullSyncRunner {
    * device was not connected to receive its `crdt_updated` broadcast — note
    * bodies never travel in the record change feed (NoteSync sends
    * `content: null` on update), so nothing else covers them. It therefore stays
-   * exhaustive: no note is ever excluded, the sweep just does not re-run on
-   * every reconnect.
+   * exhaustive: no note is ever excluded from a sweep that runs.
+   *
+   * What changes is WHEN it runs, and that is decided by the trigger rather
+   * than by a clock, because fullSync's callers are not equivalent. Fired by
+   * auth refresh or rate-limit release on a socket that never dropped, a sweep
+   * is provably pointless — every broadcast in that window arrived. Fired by a
+   * real reconnect, it is provably necessary, and is exactly when the user is
+   * most likely looking at a stale note, so it must not wait out a timer. Only
+   * when the trigger is unknowable does the interval decide.
    */
   private shouldSweepAllCrdtNotes(force: boolean): boolean {
     // Nothing is fetchable while offline. Sweeping here would schedule pulls
@@ -67,6 +80,25 @@ export class FullSyncRunner {
     if (!this.ctx.deps.network.online) return false
     if (force) return true
 
+    const ws = this.ctx.deps.ws
+    if (ws && this.lastSweepConnectionGeneration !== null) {
+      // Same socket as the last sweep and still up: no broadcast could have
+      // been missed in between, whatever the clock says.
+      if (ws.connected && ws.connectionGeneration === this.lastSweepConnectionGeneration) {
+        return false
+      }
+      // A new generation means the socket dropped and came back. Broadcasts
+      // were missed in that gap — sweep now, not on the next interval.
+      if (ws.connectionGeneration !== this.lastSweepConnectionGeneration) return true
+    }
+
+    // Trigger unknowable: no sweep recorded against this runner yet, no socket
+    // manager, or a socket that went down and has not reconnected. Note that
+    // "no sweep recorded yet" must NOT mean "sweep now" — this runner is
+    // rebuilt with every engine (vault switch, restart, retry), and an
+    // instance-only signal that re-armed here would sweep the whole vault on
+    // every cycle of a retry loop, the same trap documented on
+    // lastManifestCheckAt above. The persisted stamp is the authority.
     const persistedRaw = Number(
       this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT) ?? '0'
     )
@@ -197,6 +229,7 @@ export class FullSyncRunner {
         for (const noteId of getAllCrdtNoteIds(getIndexDatabase())) {
           this.crdtSync.addPendingPull(noteId)
         }
+        this.lastSweepConnectionGeneration = this.ctx.deps.ws?.connectionGeneration ?? null
         this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT, String(Date.now()))
       }
       if (this.crdtSync.pendingPullCount > 0) {

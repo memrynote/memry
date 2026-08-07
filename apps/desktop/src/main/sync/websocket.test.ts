@@ -252,6 +252,46 @@ describe('WebSocketManager', () => {
     })
   })
 
+  describe('#given the connection generation #when the socket opens and drops', () => {
+    // Consumers use this to tell "the socket has been live the whole time"
+    // (nothing was missed) from "it dropped and came back" (broadcasts were
+    // missed). A boolean `connected` cannot distinguish the two after the fact.
+    it('#then it starts at zero before the first open', () => {
+      const manager = new WebSocketManager(createMockDeps())
+
+      expect(manager.connectionGeneration).toBe(0)
+    })
+
+    it('#then it advances once per successful open', async () => {
+      const manager = new WebSocketManager(createMockDeps())
+
+      await manager.connect()
+      lastWs().simulateOpen()
+      const afterFirstOpen = manager.connectionGeneration
+
+      lastWs().simulateClose()
+      await vi.advanceTimersByTimeAsync(2_000)
+      lastWs().simulateOpen()
+
+      expect(afterFirstOpen).toBe(1)
+      expect(manager.connectionGeneration).toBe(2)
+    })
+
+    it('#then a close alone does not advance it', async () => {
+      // Only a reconnect means broadcasts resumed on a NEW socket. A close on
+      // its own must leave the marker put, or a still-down socket would read as
+      // a completed reconnect.
+      const manager = new WebSocketManager(createMockDeps())
+
+      await manager.connect()
+      lastWs().simulateOpen()
+      lastWs().simulateClose()
+
+      expect(manager.connectionGeneration).toBe(1)
+      expect(manager.connected).toBe(false)
+    })
+  })
+
   describe('#given connected WebSocket #when connection closes', () => {
     it('#then emits disconnected', async () => {
       const manager = new WebSocketManager(createMockDeps())

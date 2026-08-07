@@ -51,6 +51,7 @@ export class WebSocketManager extends EventEmitter {
   private reconnectAttempt = 0
   private shouldBeConnected = false
   private _connected = false
+  private _connectionGeneration = 0
   private authFailed = false
   private versionRejected = false
   private certPinFailed = false
@@ -67,6 +68,17 @@ export class WebSocketManager extends EventEmitter {
 
   get connected(): boolean {
     return this._connected
+  }
+
+  /**
+   * Advances once per successful socket open (including the internal
+   * reconnects nothing else observes). Read together with `connected` it tells
+   * "this is the same socket you saw last time, still up" — so no server
+   * broadcast could have been missed in between — apart from "it dropped and
+   * came back", which `connected` alone cannot distinguish after the fact.
+   */
+  get connectionGeneration(): number {
+    return this._connectionGeneration
   }
 
   async connect(): Promise<void> {
@@ -110,6 +122,7 @@ export class WebSocketManager extends EventEmitter {
 
     ws.on('open', () => {
       this._connected = true
+      this._connectionGeneration++
       this.reconnectAttempt = 0
       this.resetHeartbeat()
       this.startPing()
