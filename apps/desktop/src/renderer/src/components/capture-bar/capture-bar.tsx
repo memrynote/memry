@@ -27,6 +27,7 @@ import {
   lastToken,
   replaceLastToken
 } from './capture-bar-tokens'
+import { ownsFocusShortcut, registerCaptureField } from './focus-shortcut-owner'
 import type { Priority } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 
@@ -146,13 +147,27 @@ export const CaptureBar = ({
   const disabled = isBusy
   const trimmed = value.trim()
 
-  useKeyboardShortcuts([
-    {
-      key: 'q',
-      action: () => fieldRef.current?.focus(),
-      description: t('capture.focusShortcut')
-    }
-  ])
+  // Registered for the lifetime of the bar, so `ownsFocusShortcut` can pick a
+  // single winner when split view has more than one bar mounted.
+  useEffect(() => registerCaptureField(() => fieldRef.current), [])
+
+  // Memoized: an inline array would hand `useKeyboardShortcuts` a new value on
+  // every render, tearing the window listener down and re-adding it on every
+  // keystroke. Both callbacks read `fieldRef` at keypress time rather than
+  // closing over state, so a stable array cannot go stale.
+  const focusShortcuts = useMemo(
+    () => [
+      {
+        key: 'q',
+        when: () => ownsFocusShortcut(fieldRef.current),
+        action: () => fieldRef.current?.focus(),
+        description: t('capture.focusShortcut')
+      }
+    ],
+    [t]
+  )
+
+  useKeyboardShortcuts(focusShortcuts)
 
   // Focus on demand (sidebar clicks, empty-state buttons). The signal changes
   // each time, so this re-fires even when the surface is already open.
