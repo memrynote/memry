@@ -562,7 +562,7 @@ Grafana + Loki instance the sync server used to push to; PostHog Logs now carrie
 detail (stacks, operational messages) that a PostHog _event_ deliberately omits.
 
 - **Transport**: the sync server posts log lines to PostHog Logs' plain OTLP-JSON receiver
-  (`{POSTHOG_HOST}/v1/logs`, `services/posthog-logs.ts`, `pushPostHogLogs`) — no OpenTelemetry SDK
+  (`{POSTHOG_HOST}/i/v1/logs`, `services/posthog-logs.ts`, `pushPostHogLogs`) — no OpenTelemetry SDK
   is used — authenticated with the PostHog project token (`POSTHOG_KEY`) as a bearer. Pushes are
   fire-and-forget in `waitUntil`: a missing key (local dev) is a silent no-op, and a failed push
   can never affect request handling. Records are grouped into one `resourceLogs` entry per `app`

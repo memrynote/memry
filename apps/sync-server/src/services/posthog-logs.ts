@@ -16,6 +16,12 @@ const logger = createLogger('PostHogLogs')
 
 const DEFAULT_HOST = 'https://us.i.posthog.com'
 
+// The public ingest path is `/i/v1/logs`, NOT `/v1/logs`. Only the internal
+// capture-logs service binds both; on the edge host `/v1/logs` is an unrouted
+// 404, and because every push here is fire-and-forget the failure is invisible.
+// Same `/i/` prefix as `/i/v1/traces` and `/i/v1/metrics`. Do not "simplify" it.
+const LOGS_PATH = '/i/v1/logs'
+
 export interface LogRecord {
   level: 'warn' | 'error'
   app: 'desktop' | 'server'
@@ -64,7 +70,7 @@ export const pushPostHogLogs = async (env: PostHogEnv, records: LogRecord[]): Pr
       ]
     }))
 
-    const response = await fetch(`${host}/v1/logs`, {
+    const response = await fetch(`${host}${LOGS_PATH}`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
