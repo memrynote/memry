@@ -22,7 +22,9 @@ const TRIGGER_COOLDOWN_MS = 10 * 1000
 // refresh calls syncGoogleCalendarNow directly, so focus only has to close the
 // gap between polls — not race them.
 const FOCUS_TRIGGER_COOLDOWN_MS = 2 * 60 * 1000
-const WINDOW_FOCUS_REASON = 'window-focus'
+// Exported so the focus handler in main/index.ts can pass this instead of its own
+// literal — a silent rename there would drop focus back to the 10 s cooldown.
+export const WINDOW_FOCUS_REASON = 'window-focus'
 
 let syncInterval: NodeJS.Timeout | null = null
 let currentPollIntervalMs = RUN_INTERVAL_MS

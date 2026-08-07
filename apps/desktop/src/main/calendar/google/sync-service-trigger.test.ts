@@ -58,7 +58,8 @@ import {
   __resetTriggerForTests,
   triggerGoogleCalendarSyncNow,
   startGoogleCalendarSyncRunner,
-  stopGoogleCalendarSyncRunner
+  stopGoogleCalendarSyncRunner,
+  WINDOW_FOCUS_REASON
 } from './google-sync-runner'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 
@@ -141,6 +142,14 @@ describe('triggerGoogleCalendarSyncNow (focus/resume/manual refresh)', () => {
     // #then no extra sync fires — alt-tabbing cannot drive network + DB writes
     expect(syncNowMock).toHaveBeenCalledTimes(1)
     vi.useRealTimers()
+  })
+
+  it('keys the focus cooldown on the exact reason main/index.ts passes', () => {
+    // #given main/index.ts calls triggerGoogleCalendarSyncNow('window-focus') on
+    // window focus, and the runner branches on WINDOW_FOCUS_REASON
+    // #then the two must stay identical — the tests above pass the raw literal, so
+    // if the constant drifts the long cooldown silently reverts to 10 s
+    expect(WINDOW_FOCUS_REASON).toBe('window-focus')
   })
 
   it('keeps the short cooldown for non-focus triggers', async () => {
