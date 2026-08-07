@@ -271,6 +271,8 @@ OneNote import is **disabled** until an **Azure app registration** is configured
 
 OneNote is an account importer: instead of picking files, the import dialog signs you in with your Microsoft account (the consent screen opens in your browser; tokens are stored in your OS keychain, and **Switch account** forgets them again). After sign-in, Memry loads your notebooks and lets you choose exactly which sections to import.
 
+![The OneNote import dialog: signed-in account, the notebook and section picker with three sections selected, and the skip and attachment options above Start import.](/onenote.png)
+
 Pages land as one note each under `OneNote/<notebook>/<section group…>/<section>/`, and subpages nest in a folder named after their parent page. Created/modified timestamps carry over.
 
 **What converts:**
