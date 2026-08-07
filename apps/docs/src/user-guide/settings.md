@@ -296,7 +296,7 @@ machine-local and are not synced between devices.
 - **Model** — choose from `/v1/models` when available or type a model manually
 - **API Key** — optional, stored in the OS keychain
 - **Test Connection** — checks the endpoint and selected model
-- **Probe Tools** — verifies tool-call emission and tool-result continuation before vault tools are enabled
+- **Probe Tools** — verifies tool-call emission and tool-result continuation before vault tools are enabled, and forces a fresh check when the cached verdict is stale
 
 The Agent Chat prompt bar can override access for one turn and can enable web search when the active
 backend supports it. Vault-only turns keep the CLI backend constrained to memrynote tools; computer

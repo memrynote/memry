@@ -141,6 +141,12 @@ model can emit tool calls and continue after a tool result, memrynote enables th
 the probe fails, local chat can still answer from attached context, but vault tool calls stay
 disabled.
 
+The probe costs a couple of model generations, so memrynote runs it once and reuses the verdict for
+up to ten minutes instead of repeating it on every message. Changing the preset, base URL, model, or
+API key re-checks immediately, and an unreachable provider is never remembered — start your local
+server and the next message picks it up. If you swap the model behind an unchanged configuration,
+press **Probe Tools** in Settings to force a fresh check.
+
 If the configured local provider is not running, the model picker returns no discovered models
 instead of treating the settings page as an Agent runtime error. Start the provider, then load models
 or test the connection again.
