@@ -85,9 +85,14 @@ describe('projection runtime lifecycle', () => {
   /**
    * The queued events belong to the PREVIOUS vault, and by the time
    * `startProjectionRuntime` runs again the new vault's databases are already
-   * installed — replaying them would write the old vault's derived state into
-   * the new vault's index. They are dropped instead; reopening that vault
-   * re-indexes and reconciles from its files, which are the source of truth.
+   * installed — draining them would replay the old vault's backlog into the new
+   * vault's index. They are dropped instead.
+   *
+   * This covers the queued backlog only. An event already inside
+   * `projector.project()` is not awaited by `stop()` and still completes against
+   * whatever database handle is installed, so one stray row remains possible;
+   * see the note in `index.ts`. Everything involved is derived state that
+   * `indexVault()` + `reconcileProjections()` rebuild from the vault files.
    */
   it('drops events still queued on the superseded runtime', async () => {
     const stale = createProjector('stale')
