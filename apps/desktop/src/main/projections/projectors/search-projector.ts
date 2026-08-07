@@ -173,16 +173,49 @@ function rebuildInbox(): number {
   return rows.length
 }
 
+/** How many files reconcile stats at once before yielding to the event loop. */
+const STAT_BATCH_SIZE = 64
+
 /**
- * Reconcile is a membership check, not a rewrite.
+ * Slack between a file's mtime and the moment we recorded having indexed it.
+ * FAT/SMB timestamps are 2s-granular and can round up past the `indexed_at`
+ * we wrote right after the file, which would otherwise re-read those notes on
+ * every single open. The window only has to be smaller than "the app was
+ * closed while someone edited the vault", which it is by orders of magnitude.
+ */
+const MTIME_TOLERANCE_MS = 2000
+
+interface NoteRow {
+  id: string
+  title: string
+  path: string
+  indexedAt: string
+}
+
+/**
+ * Reconcile repairs divergence instead of rewriting everything.
  *
  * It used to call the rebuild helpers on every vault open — `DELETE FROM
  * fts_*` followed by a full disk re-scan — which cost thousands of file reads
  * and a complete FTS5 rewrite for an index that was already correct, and left
- * search empty if the process died mid-pass. Only divergent rows are touched
- * now: rows whose entity is gone are dropped, entities with no row are
- * indexed. Content changes arrive as `*.upserted` events, and `rebuild()`
- * stays the repair path for a corrupt index (#993).
+ * search empty if the process died mid-pass.
+ *
+ * A note is now re-read only when it has no FTS row, or when its file is newer
+ * than the `note_cache.indexed_at` stamp written the last time we processed it.
+ * That second half is not optional: `indexFile` returns 'skipped' for any path
+ * already in the cache without comparing mtimes and the watcher only starts
+ * afterwards, so a note edited outside Memry while the app was closed never
+ * produces a `note.upserted` event — the full re-scan was the only thing
+ * keeping search results fresh for it.
+ *
+ * `indexed_at` rather than `modified_at` because every writer of a cache row
+ * stamps it (`insertNoteCache`/`updateNoteCache`), always after the file is on
+ * disk, whereas `modified_at` is whatever the writer passed: fs mtime from the
+ * indexer, the local clock from note CRUD, the *remote* clock from a sync pull.
+ * Comparing against that would re-read every synced note on every open forever.
+ *
+ * `rebuild()` keeps the full teardown as the repair path for a corrupt index
+ * (#993).
  */
 async function reconcileNotes(
   getVaultPath: () => string | null,
@@ -204,20 +237,24 @@ async function reconcileNotes(
     )
   `)
 
-  const rows = indexDb.all<{
-    id: string
-    title: string
-    path: string
-  }>(sql`
-    SELECT id, title, path
+  const indexedIds = new Set(
+    indexDb.all<{ id: string }>(sql`SELECT id FROM fts_notes`).map((row) => row.id)
+  )
+
+  const rows = indexDb.all<NoteRow>(sql`
+    SELECT id, title, path, indexed_at as indexedAt
     FROM note_cache
     WHERE COALESCE(file_type, 'markdown') = 'markdown'
-      AND id NOT IN (SELECT id FROM fts_notes)
   `)
 
+  const stale = await selectStaleNotes(rows, indexedIds, vaultPath, signal)
+  if (signal?.aborted) {
+    return 0
+  }
+
   let indexed = 0
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i]
+  for (let i = 0; i < stale.length; i++) {
+    const row = stale[i]
     const absolutePath = path.join(vaultPath, row.path)
 
     try {
@@ -234,22 +271,84 @@ async function reconcileNotes(
       const tags = indexDb
         .all<{ tag: string }>(sql`SELECT tag FROM note_tags WHERE note_id = ${row.id}`)
         .map((tagRow) => tagRow.tag)
+
+      // `id` is UNINDEXED on the fts5 table, so there is no conflict target for
+      // the INSERT OR REPLACE inside insertFtsNote and a refresh would append a
+      // second row instead of replacing the first. The rebuild path never hit
+      // this because it cleared the whole table up front. Only notes that
+      // actually had a row pay for the delete.
+      if (indexedIds.has(row.id)) {
+        deleteFtsNote(indexDb, row.id)
+      }
       insertFtsNote(indexDb, row.id, row.title, parsed.content, tags)
       indexed++
     } catch (error) {
       logger.warn('Failed to reconcile note search entry', { noteId: row.id, error })
     }
 
-    if ((i + 1) % 100 === 0 || i === rows.length - 1) {
+    if ((i + 1) % 100 === 0 || i === stale.length - 1) {
       broadcast(SearchChannels.events.INDEX_REBUILD_PROGRESS, {
         phase: 'notes',
         current: i + 1,
-        total: rows.length
+        total: stale.length
       } satisfies RebuildProgress)
     }
   }
 
   return indexed
+}
+
+/**
+ * Narrow every cached markdown note down to the ones worth re-reading. A `stat`
+ * is a fraction of the cost of the `readFile` + `parseNote` + `insertFtsNote`
+ * it replaces, and the batches keep the event loop responsive while giving the
+ * abort a place to land.
+ */
+async function selectStaleNotes(
+  rows: NoteRow[],
+  indexedIds: Set<string>,
+  vaultPath: string,
+  signal?: AbortSignal
+): Promise<NoteRow[]> {
+  const stale: NoteRow[] = []
+
+  for (let start = 0; start < rows.length; start += STAT_BATCH_SIZE) {
+    if (signal?.aborted) {
+      return stale
+    }
+
+    const batch = rows.slice(start, start + STAT_BATCH_SIZE)
+    const verdicts = await Promise.all(
+      batch.map(async (row) => {
+        // Never indexed — no need to ask the filesystem anything.
+        if (!indexedIds.has(row.id)) {
+          return true
+        }
+
+        const stats = await fs.stat(path.join(vaultPath, row.path)).catch(() => null)
+        if (!stats) {
+          // Vanished or unreadable. Pruning the cache row belongs to the
+          // note-derived-state projector; leave the FTS row for it to trigger.
+          return false
+        }
+
+        const indexedAtMs = Date.parse(row.indexedAt)
+        if (Number.isNaN(indexedAtMs)) {
+          return true
+        }
+
+        return stats.mtimeMs > indexedAtMs + MTIME_TOLERANCE_MS
+      })
+    )
+
+    for (let i = 0; i < batch.length; i++) {
+      if (verdicts[i]) {
+        stale.push(batch[i])
+      }
+    }
+  }
+
+  return stale
 }
 
 // Tasks and inbox items are read straight from the data DB, so these passes are

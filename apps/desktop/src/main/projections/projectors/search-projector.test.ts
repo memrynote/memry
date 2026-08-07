@@ -13,10 +13,16 @@ const getDatabase = vi.hoisted(() => vi.fn())
 const getIndexDatabase = vi.hoisted(() => vi.fn())
 const getAllWindows = vi.hoisted(() => vi.fn())
 const readFileSpy = vi.hoisted(() => vi.fn())
+const statSpy = vi.hoisted(() => vi.fn())
 
 vi.mock('fs/promises', async () => {
   const actual = await vi.importActual<typeof import('fs/promises')>('fs/promises')
-  return { ...actual, default: { ...actual, readFile: readFileSpy }, readFile: readFileSpy }
+  return {
+    ...actual,
+    default: { ...actual, readFile: readFileSpy, stat: statSpy },
+    readFile: readFileSpy,
+    stat: statSpy
+  }
 })
 
 vi.mock('../../database', async () => {
@@ -54,6 +60,7 @@ describe('search projector', () => {
     readFileSpy.mockImplementation(async (filePath: string, encoding: BufferEncoding) =>
       fs.readFileSync(filePath, encoding)
     )
+    statSpy.mockImplementation(async (filePath: string) => fs.statSync(filePath))
   })
 
   afterEach(() => {
@@ -227,6 +234,69 @@ describe('search projector', () => {
       dataDb.db.get<{ content: string }>(sql`SELECT content FROM fts_inbox WHERE id = ${'inbox-1'}`)
         ?.content
     ).toBe('already indexed')
+  })
+
+  it('reconcile refreshes a note whose file changed on disk while the cache went stale', async () => {
+    // indexFile() returns 'skipped' for any path already in note_cache without
+    // comparing mtimes, and the watcher only starts afterwards, so a note edited
+    // outside Memry while the app was closed has a stale cache row by
+    // construction. Reconcile is the pass that repairs search for it.
+    seedMarkdownNote('note-1', 'notes/searchable.md', 'Old content', ['alpha'])
+    indexDb.db.run(sql`
+      INSERT INTO fts_notes (id, title, content, tags)
+      VALUES (${'note-1'}, ${'Searchable Note'}, ${'Old content'}, ${'alpha'})
+    `)
+    indexDb.db.run(
+      sql`UPDATE note_cache SET indexed_at = ${'2026-01-01T00:00:00.000Z'} WHERE id = ${'note-1'}`
+    )
+
+    // Edited outside Memry: newer file bytes, cache untouched.
+    fs.writeFileSync(
+      path.join(vaultDir, 'notes/searchable.md'),
+      `---\nid: note-1\ntitle: Searchable Note\ntags:\n  - alpha\ncreated: 2026-01-01T00:00:00.000Z\nmodified: 2026-01-01T00:00:00.000Z\n---\nEdited outside Memry\n`,
+      'utf8'
+    )
+
+    const projector = createSearchProjector(() => vaultDir)
+    await projector.reconcile()
+
+    expect(
+      indexDb.db.get<{ content: string }>(sql`SELECT content FROM fts_notes WHERE id = ${'note-1'}`)
+        ?.content
+    ).toContain('Edited outside Memry')
+    expect(
+      indexDb.db.get<{ count: number }>(
+        sql`SELECT COUNT(*) as count FROM fts_notes WHERE fts_notes MATCH ${'Memry'}`
+      )?.count
+    ).toBe(1)
+  })
+
+  it('reconcile stops statting the vault once its abort signal fires', async () => {
+    // 65 rows = two stat batches, so the second batch is only reached if the
+    // pass ignores the abort. Every row is stale, so an abort that is ignored
+    // also shows up as a file read.
+    for (let i = 0; i < 65; i++) {
+      seedMarkdownNote(`note-${i}`, `notes/note-${i}.md`, `Content ${i}`, ['alpha'])
+      indexDb.db.run(sql`
+        INSERT INTO fts_notes (id, title, content, tags)
+        VALUES (${`note-${i}`}, ${'Searchable Note'}, ${`Content ${i}`}, ${'alpha'})
+      `)
+    }
+    indexDb.db.run(sql`UPDATE note_cache SET indexed_at = ${'2026-01-01T00:00:00.000Z'}`)
+
+    const controller = new AbortController()
+    statSpy.mockClear()
+    readFileSpy.mockClear()
+    statSpy.mockImplementation(async (filePath: string) => {
+      controller.abort()
+      return fs.statSync(filePath)
+    })
+
+    const projector = createSearchProjector(() => vaultDir)
+    await projector.reconcile(controller.signal)
+
+    expect(statSpy.mock.calls.length).toBeLessThanOrEqual(64)
+    expect(readFileSpy).not.toHaveBeenCalled()
   })
 
   it('reconcile stops reading the vault once its abort signal fires', async () => {
