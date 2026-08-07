@@ -23,7 +23,10 @@ export async function getCaptureToken(): Promise<string> {
   if (cachedToken) return cachedToken
   if (inFlightRead) return inFlightRead
   inFlightRead = (async () => {
-    const existing = await getSecret(SERVICE, ACCOUNT)
+    // An unreadable token is replaced on the next line, so treating it as
+    // absent is safe and is the only way a profile stranded by the
+    // v2026-08-06 identity rename can ever pair the clipper again.
+    const existing = await getSecret(SERVICE, ACCOUNT, { treatUnreadableAsAbsent: true })
     const token = existing ?? generateToken()
     if (!existing) await setSecret(SERVICE, ACCOUNT, token)
     cachedToken = token

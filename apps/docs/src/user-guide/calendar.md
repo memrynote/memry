@@ -179,6 +179,16 @@ improve AI models.
 Note that promoting an external event (above) copies it into your vault as a memrynote event. From
 then on it is your own event, and the assistant can read it regardless of this setting.
 
+### If the account says "Reconnect required"
+
+An account can drop back to **Reconnect required** without you doing anything — most often after an
+app update, because the stored Google tokens are encrypted with a key tied to the app's identity on
+your machine and that identity can change across versions. memrynote never guesses at a credential
+it cannot read, so it asks you to reconnect rather than syncing with something stale.
+
+Press **Connect** and sign in again. That writes fresh tokens over the unreadable ones, and your
+calendars, selections and existing events are untouched — only the sign-in is redone.
+
 ## Day Cell Click Behavior
 
 [Settings → Calendar](/user-guide/settings#calendar) lets you choose what clicking a date does by default:
