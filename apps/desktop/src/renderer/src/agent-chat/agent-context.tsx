@@ -103,6 +103,25 @@ const AgentContext = createContext<AgentContextValue | null>(null)
 const AGENT_BOOTSTRAP_ATTEMPTS = 40
 const AGENT_BOOTSTRAP_RETRY_MS = 250
 
+type AssistantTextDelta = Extract<AgentEvent, { kind: 'assistant_text_delta' }>
+
+/**
+ * Folds a delta into the tail of the pending buffer when it continues the same
+ * message. Backends emit dozens of tiny deltas per second and each one used to
+ * dispatch on its own, re-rendering every agent-context consumer per token.
+ * Merging only into the *adjacent* entry keeps interleaved messages in their
+ * exact arrival order, and the buffer stays at one entry per streamed message
+ * even when a hidden window goes a long time without a frame.
+ */
+function bufferAssistantDelta(pending: AssistantTextDelta[], event: AssistantTextDelta): void {
+  const last = pending[pending.length - 1]
+  if (last && last.conversationId === event.conversationId && last.messageId === event.messageId) {
+    pending[pending.length - 1] = { ...last, text: `${last.text}${event.text}` }
+    return
+  }
+  pending.push(event)
+}
+
 /**
  * Mirrors `AGENT_RUNTIME_STARTING_CODE` in main/ipc/agent-lazy-handlers.ts —
  * the two processes cannot share a module, so keep the literals in sync. The
@@ -168,6 +187,23 @@ export function AgentProvider({
   // IPC listener for no gain.
   const activeConversationIdRef = useRef(state.activeConversationId)
   activeConversationIdRef.current = state.activeConversationId
+
+  // Streamed text is buffered here and committed once per animation frame. A
+  // hidden window gets no frames, so a background window stops re-rendering
+  // altogether until the next event that has to be applied immediately.
+  const pendingDeltasRef = useRef<AssistantTextDelta[]>([])
+  const deltaFrameRef = useRef<number | null>(null)
+
+  const flushAssistantDeltas = useCallback(() => {
+    if (deltaFrameRef.current !== null) {
+      cancelAnimationFrame(deltaFrameRef.current)
+      deltaFrameRef.current = null
+    }
+    const pending = pendingDeltasRef.current
+    if (pending.length === 0) return
+    pendingDeltasRef.current = []
+    for (const event of pending) dispatch({ type: 'event', event })
+  }, [])
 
   const refreshConversations = useCallback(async () => {
     try {
@@ -390,7 +426,22 @@ export function AgentProvider({
         })
       })
 
-    const unsubscribe = api.onEvent((event) => dispatch({ type: 'event', event }))
+    const unsubscribe = api.onEvent((event) => {
+      if (event.kind === 'assistant_text_delta') {
+        bufferAssistantDelta(pendingDeltasRef.current, event)
+        if (deltaFrameRef.current === null) {
+          deltaFrameRef.current = requestAnimationFrame(() => {
+            deltaFrameRef.current = null
+            flushAssistantDeltas()
+          })
+        }
+        return
+      }
+      // Every other event has to observe the text that arrived before it, so
+      // drain the buffer first and keep the transcript in exact arrival order.
+      flushAssistantDeltas()
+      dispatch({ type: 'event', event })
+    })
 
     // `agent:event` only carries this window's own turn lifecycle. A
     // conversation or message pulled from another device lands straight in the
@@ -405,11 +456,14 @@ export function AgentProvider({
 
     return () => {
       cancelled = true
+      // Locale changes re-run this effect mid-stream; commit what is buffered
+      // rather than dropping it.
+      flushAssistantDeltas()
       unsubscribe()
       unsubscribeConversations?.()
       unsubscribeMessages?.()
     }
-  }, [t, active, refreshConversations, loadConversation])
+  }, [t, active, refreshConversations, loadConversation, flushAssistantDeltas])
 
   const value = useMemo<AgentContextValue>(
     () => ({
