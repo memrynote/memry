@@ -1,5 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
+import { AgentToolError } from '../errors'
 import { startAgentMcpServer, type AgentMcpServerHandle } from '../server'
 
 describe('Agent MCP HTTP server', () => {
@@ -216,17 +218,233 @@ describe('Agent MCP server tool round-trip', () => {
   })
 })
 
+describe('Agent MCP server registration reuse', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('registers each tool once across sequential MCP requests', async () => {
+    const handle = await startAgentMcpServer({
+      toolRegistrations: [
+        buildTool('tool_a', async () => ({ ok: 'a' })),
+        buildTool('tool_b', async () => ({ ok: 'b' })),
+        buildTool('tool_c', async () => ({ ok: 'c' }))
+      ]
+    })
+    const registerSpy = vi.spyOn(McpServer.prototype, 'registerTool')
+
+    try {
+      await callTool(handle, 'tool_a', {})
+      await callTool(handle, 'tool_b', {})
+      await callTool(handle, 'tool_c', {})
+
+      // 3 tools built once, then reused for the 2nd and 3rd request.
+      expect(registerSpy).toHaveBeenCalledTimes(3)
+    } finally {
+      await handle.stop()
+    }
+  })
+
+  it('never hands the reused server to two overlapping requests', async () => {
+    let releaseFirst!: () => void
+    let resolveFirstStarted!: () => void
+    const firstStarted = new Promise<void>((resolve) => {
+      resolveFirstStarted = resolve
+    })
+    const firstCanFinish = new Promise<void>((resolve) => {
+      releaseFirst = resolve
+    })
+    const handle = await startAgentMcpServer({
+      toolRegistrations: [
+        buildTool('overlap_tool', async (input) => {
+          const msg = (input as { msg?: string }).msg
+          if (msg === 'first') {
+            resolveFirstStarted()
+            await firstCanFinish
+          }
+          return { echoed: msg }
+        })
+      ]
+    })
+
+    try {
+      // Warm the reuse slot so the overlapping pair actually contends for it.
+      const warm = await callTool(handle, 'overlap_tool', { msg: 'warm' })
+      expect(await warm.text()).toContain('"echoed":"warm"')
+
+      const registerSpy = vi.spyOn(McpServer.prototype, 'registerTool')
+      const first = callTool(handle, 'overlap_tool', { msg: 'first' })
+      await firstStarted
+      const second = callTool(handle, 'overlap_tool', { msg: 'second' })
+      await new Promise((resolve) => setTimeout(resolve, 25))
+      releaseFirst()
+      const [firstResponse, secondResponse] = await Promise.all([first, second])
+
+      expect(firstResponse.status).toBe(200)
+      expect(secondResponse.status).toBe(200)
+      expect(await firstResponse.text()).toContain('"echoed":"first"')
+      expect(await secondResponse.text()).toContain('"echoed":"second"')
+      // One request takes the warm instance, the other must build its own.
+      expect(registerSpy).toHaveBeenCalledTimes(1)
+    } finally {
+      await handle.stop()
+    }
+  })
+
+  it('drops a warmed server when a tool registration is replaced', async () => {
+    const handle = await startAgentMcpServer({
+      toolRegistrations: [buildTool('gated_tool', async () => ({ version: 'first' }))]
+    })
+
+    try {
+      // Warm the reuse slot with the pre-replacement handler.
+      const warm = await callTool(handle, 'gated_tool', {})
+      expect(await warm.text()).toContain('"version":"first"')
+
+      handle.registerTool(buildTool('gated_tool', async () => ({ version: 'second' })))
+
+      const after = await callTool(handle, 'gated_tool', {})
+      const text = await after.text()
+      expect(text).toContain('"version":"second"')
+      expect(text).not.toContain('"version":"first"')
+    } finally {
+      await handle.stop()
+    }
+  })
+
+  it('never re-parks a server whose registrations changed mid-request', async () => {
+    let releaseSlow!: () => void
+    let resolveSlowStarted!: () => void
+    const slowStarted = new Promise<void>((resolve) => {
+      resolveSlowStarted = resolve
+    })
+    const slowCanFinish = new Promise<void>((resolve) => {
+      releaseSlow = resolve
+    })
+    const handle = await startAgentMcpServer({
+      toolRegistrations: [
+        buildTool('slow_gated_tool', async () => {
+          resolveSlowStarted()
+          await slowCanFinish
+          return { version: 'first' }
+        })
+      ]
+    })
+
+    try {
+      const slow = callTool(handle, 'slow_gated_tool', {})
+      await slowStarted
+      // Gate revoked while the old-gate server is still serving a request.
+      handle.registerTool(buildTool('slow_gated_tool', async () => ({ version: 'second' })))
+      releaseSlow()
+      await slow
+
+      const after = await callTool(handle, 'slow_gated_tool', {})
+      const text = await after.text()
+      expect(text).toContain('"version":"second"')
+      expect(text).not.toContain('"version":"first"')
+    } finally {
+      await handle.stop()
+    }
+  })
+
+  it('does not carry a reused server across a stop/start cycle', async () => {
+    // Mirrors a vault switch: stopAgentMcpLifecycle drops the handle, then
+    // startAgentMcpLifecycle rebuilds tools over the new vault's DB handles.
+    const first = await startAgentMcpServer({
+      toolRegistrations: [buildTool('vault_probe', async () => ({ vault: 'vault-a' }))]
+    })
+    const warm = await callTool(first, 'vault_probe', {})
+    expect(await warm.text()).toContain('"vault":"vault-a"')
+    await first.stop()
+
+    const second = await startAgentMcpServer({
+      toolRegistrations: [buildTool('vault_probe', async () => ({ vault: 'vault-b' }))]
+    })
+    try {
+      const after = await callTool(second, 'vault_probe', {})
+      const text = await after.text()
+      expect(text).toContain('"vault":"vault-b"')
+      expect(text).not.toContain('"vault":"vault-a"')
+    } finally {
+      await second.stop()
+    }
+  })
+
+  it('derives conversation identity per request on a reused server', async () => {
+    const seen: Array<{ conversationId: string | null; windowId: string | null }> = []
+    const handle = await startAgentMcpServer({
+      toolRegistrations: [
+        buildTool('ctx_probe', async (_input, ctx) => {
+          seen.push({ conversationId: ctx.conversationId, windowId: ctx.windowId })
+          if (!ctx.conversationId) {
+            throw new AgentToolError('PERMISSION_DENIED', 'Write tools require a conversation.')
+          }
+          return { conversationId: ctx.conversationId }
+        })
+      ]
+    })
+
+    try {
+      const approved = await callTool(
+        handle,
+        'ctx_probe',
+        {},
+        { 'x-memry-conversation': 'conv-a', 'x-memry-window': 'win-a' }
+      )
+      expect(await approved.text()).toContain('"conversationId":"conv-a"')
+
+      // Same reused McpServer, different caller: identity must not carry over.
+      const denied = await callTool(handle, 'ctx_probe', {})
+      expect(await denied.text()).toContain('PERMISSION_DENIED')
+
+      const other = await callTool(
+        handle,
+        'ctx_probe',
+        {},
+        { 'x-memry-conversation': 'conv-b', 'x-memry-window': 'win-b' }
+      )
+      expect(await other.text()).toContain('"conversationId":"conv-b"')
+
+      expect(seen).toEqual([
+        { conversationId: 'conv-a', windowId: 'win-a' },
+        { conversationId: null, windowId: null },
+        { conversationId: 'conv-b', windowId: 'win-b' }
+      ])
+    } finally {
+      await handle.stop()
+    }
+  })
+})
+
+function buildTool(
+  name: string,
+  handler: (
+    input: unknown,
+    ctx: { conversationId: string | null; windowId: string | null }
+  ) => Promise<unknown>
+) {
+  return {
+    name,
+    description: `${name} description`,
+    inputSchema: z.object({ msg: z.string().optional() }),
+    handler
+  }
+}
+
 function callTool(
   handle: AgentMcpServerHandle,
   name: string,
-  args: Record<string, unknown>
+  args: Record<string, unknown>,
+  extraHeaders: Record<string, string> = {}
 ): Promise<Response> {
   return fetch(`${handle.url}/mcp`, {
     method: 'POST',
     headers: {
       authorization: `Bearer ${handle.token}`,
       'content-type': 'application/json',
-      accept: 'application/json, text/event-stream'
+      accept: 'application/json, text/event-stream',
+      ...extraHeaders
     },
     body: JSON.stringify({
       jsonrpc: '2.0',
