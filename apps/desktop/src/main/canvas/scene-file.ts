@@ -23,6 +23,7 @@
 import { randomBytes } from 'crypto'
 import {
   closeSync,
+  Dirent,
   existsSync,
   fsyncSync,
   mkdirSync,
@@ -37,6 +38,11 @@ import path from 'path'
 
 import { createLogger } from '../lib/logger'
 import { sanitizeFilename } from '../vault/file-ops'
+import { canvasPathKey, folderSegments, MAX_CANVAS_FOLDER_DEPTH } from './folder-paths'
+
+// `canvasPathKey` lives with the rest of the pure path algebra; it stays
+// exported from here because that is where its callers already import it from.
+export { canvasPathKey } from './folder-paths'
 
 const log = createLogger('CanvasSceneFile')
 
@@ -97,28 +103,27 @@ export function resolveCanvasFile(vaultPath: string, relativePath: string): stri
   return path.join(vaultPath, ...segments)
 }
 
-/** Vault-relative (always forward-slashed) path inside the canvases directory. */
-function canvasRelativePath(filename: string): string {
-  return `${CANVAS_DIR}/${filename}`
+/**
+ * Vault-relative (always forward-slashed) path inside the canvases directory,
+ * optionally nested in a folder.
+ */
+function canvasRelativePath(filename: string, folder: string | null = null): string {
+  const normalized = portableCanvasFolder(folder)
+  return normalized ? `${CANVAS_DIR}/${normalized}/${filename}` : `${CANVAS_DIR}/${filename}`
 }
 
 /**
- * Comparison key for "is this the same file?" — never for opening one.
+ * The folder a stored canvas path sits in, or null for the canvases root.
  *
- * Two normalizations, both platform reality rather than taste:
- * - **case**: macOS and Windows default to case-insensitive filesystems, so
- *   `Plan` and `plan` are one file there.
- * - **Unicode**: macOS stores filenames decomposed (NFD), so a canvas titled
- *   `Yağmur` written by the app (NFC) comes back from `readdir` as different
- *   bytes for the same name. Without this, every vault open would see a
- *   "new" file and rewrite the row's path.
- *
- * The stored path always keeps the bytes as they exist on disk, because Linux
- * filesystems are normalization-SENSITIVE: a path normalized to NFC would not
- * open a file that arrived NFD from a Mac.
+ * Reads the raw on-disk segments, so what comes back is the CANONICAL folder —
+ * see `portableCanvasFolder`. This is how a caller obtains the folder to store
+ * after `allocateCanvasPath`.
  */
-export function canvasPathKey(relativePath: string): string {
-  return relativePath.normalize('NFC').toLowerCase()
+export function folderOfCanvasPath(relativePath: string): string | null {
+  const segments = relativePath.split('/').filter(Boolean)
+  // Drop the leading CANVAS_DIR segment and the filename.
+  const folderSegs = segments.slice(1, -1)
+  return folderSegs.length > 0 ? folderSegs.join('/') : null
 }
 
 /**
@@ -206,6 +211,19 @@ export function readCanvasMeta(content: string): CanvasFileMeta | null {
 
 export function ensureCanvasDir(vaultPath: string): void {
   mkdirSync(canvasDirPath(vaultPath), { recursive: true })
+}
+
+/**
+ * Creates the directory a canvas folder maps to. Sanitized first, so the
+ * directory that appears on disk is the one `allocateCanvasPath` will write
+ * into — an unsanitized `CON/` would fail to create on Windows only.
+ */
+export function ensureCanvasFolderDir(vaultPath: string, folder: string | null): void {
+  const normalized = portableCanvasFolder(folder)
+  const target = normalized
+    ? path.join(canvasDirPath(vaultPath), ...normalized.split('/'))
+    : canvasDirPath(vaultPath)
+  mkdirSync(target, { recursive: true })
 }
 
 /**
@@ -306,14 +324,51 @@ export function deleteCanvasFileSync(absolutePath: string): void {
   }
 }
 
-/** Vault-relative paths of every canvas document, sorted for stable adoption. */
+/**
+ * Vault-relative paths of every canvas document, sorted for stable adoption.
+ *
+ * Recursive since canvases gained folders. Dot-directories are skipped so a
+ * cloud client's `.tmp`/`.trash` staging area never becomes a visible folder.
+ *
+ * The walk stops at `MAX_CANVAS_FOLDER_DEPTH`, the same cap folder creation
+ * enforces, so an absurdly deep tree (hand-made, or left by another tool) cannot
+ * stall vault open. Anything past it is unreachable in the app, so it is logged
+ * rather than dropped in silence. Not a symlink guard: `withFileTypes` reports a
+ * symlink with `isDirectory() === false`, so the walk never follows one.
+ */
 export function listCanvasFiles(vaultPath: string): string[] {
-  const dir = canvasDirPath(vaultPath)
-  if (!existsSync(dir)) return []
-  return readdirSync(dir)
-    .filter((name) => name.toLowerCase().endsWith(CANVAS_FILE_EXT))
-    .sort()
-    .map((name) => canvasRelativePath(name))
+  const root = canvasDirPath(vaultPath)
+  if (!existsSync(root)) return []
+
+  const found: string[] = []
+  const walk = (absDir: string, relSegments: string[]): void => {
+    if (relSegments.length > MAX_CANVAS_FOLDER_DEPTH) {
+      // Depth only — the segments are title-derived.
+      log.warn(
+        `Skipping canvases nested deeper than ${MAX_CANVAS_FOLDER_DEPTH} folders; ` +
+          'they cannot be opened in the app',
+        { depth: relSegments.length }
+      )
+      return
+    }
+    let entries: Dirent[]
+    try {
+      entries = readdirSync(absDir, { withFileTypes: true })
+    } catch {
+      return // an unreadable directory must not take the whole listing down
+    }
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (entry.name.startsWith('.')) continue
+      if (entry.isDirectory()) {
+        walk(path.join(absDir, entry.name), [...relSegments, entry.name])
+      } else if (entry.isFile() && entry.name.toLowerCase().endsWith(CANVAS_FILE_EXT)) {
+        found.push([CANVAS_DIR, ...relSegments, entry.name].join('/'))
+      }
+    }
+  }
+
+  walk(root, [])
+  return found.sort()
 }
 
 /**
@@ -339,6 +394,25 @@ function portableCanvasBase(title: string | null): string {
 }
 
 /**
+ * The CANONICAL form of a canvas folder — the one that exists on disk.
+ *
+ * Sanitizes each folder segment. Windows rejects `CON` as a directory name too,
+ * and a trailing dot/space is trimmed there just the same — so a folder has to
+ * clear exactly the rules a filename does, segment by segment.
+ *
+ * **Invariant: the folder a caller stores is always this form**, never the
+ * folder the user typed. `CON` lands in `CON canvas/` on disk, and an index row
+ * holding `CON` would miss the canvas on every later lookup by folder. Take the
+ * folder from `folderOfCanvasPath(allocateCanvasPath(...))`, or run the
+ * requested one through here first. Idempotent, so canonicalizing an already
+ * canonical folder is safe.
+ */
+export function portableCanvasFolder(folder: string | null): string | null {
+  const segments = folderSegments(folder).map((segment) => portableCanvasBase(segment))
+  return segments.length > 0 ? segments.join('/') : null
+}
+
+/**
  * Vault-relative path for a canvas title, uniquified against what is already on
  * disk. `taken` carries paths claimed earlier in the same batch (adoption,
  * migration) that are not written out yet.
@@ -357,19 +431,30 @@ export function allocateCanvasPath(
    * only changes case ("Plan" → "plan") collides with the canvas's own file on
    * macOS/Windows and lands on "plan 2".
    */
-  current: string | null = null
+  current: string | null = null,
+  /**
+   * Folder to place the canvas in, relative to `canvases/`. Null is the root.
+   * Because the candidate carries the folder, the loop below uniquifies PER
+   * folder — the same title may exist once in `Work` and once in `Personal`.
+   *
+   * Sanitized on the way in, so the folder in the returned path may differ from
+   * this one (`CON` → `CON canvas`). The RETURNED path is the source of truth:
+   * store `folderOfCanvasPath(result)`, never this argument, or the index and
+   * the disk name two different folders. Throws past MAX_CANVAS_FOLDER_DEPTH.
+   */
+  folder: string | null = null
 ): string {
   const base = portableCanvasBase(title)
   const claimed = new Set([...taken].map(canvasPathKey))
   const own = current ? canvasPathKey(current) : null
-  let candidate = canvasRelativePath(`${base}${CANVAS_FILE_EXT}`)
+  let candidate = canvasRelativePath(`${base}${CANVAS_FILE_EXT}`, folder)
   let counter = 1
   while (
     canvasPathKey(candidate) !== own &&
     (claimed.has(canvasPathKey(candidate)) || existsSync(resolveCanvasFile(vaultPath, candidate)))
   ) {
     counter += 1
-    candidate = canvasRelativePath(`${base} ${counter}${CANVAS_FILE_EXT}`)
+    candidate = canvasRelativePath(`${base} ${counter}${CANVAS_FILE_EXT}`, folder)
   }
   return candidate
 }
