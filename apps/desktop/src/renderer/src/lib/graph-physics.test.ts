@@ -215,6 +215,94 @@ describe('GraphPhysics', () => {
     expect(graph.getNodeAttribute('a', 'x')).toBe(x)
   })
 
+  describe('sync', () => {
+    it('reports no work when the graph is untouched', () => {
+      const physics = new GraphPhysics(
+        makeGraph([
+          ['a', 0, 0],
+          ['b', 40, 0]
+        ])
+      )
+
+      expect(physics.sync()).toBe(false)
+    })
+
+    it('folds a node added to the graph into the running simulation', () => {
+      const graph = makeGraph([
+        ['a', 0, 0],
+        ['b', 40, 0]
+      ])
+      const physics = new GraphPhysics(graph)
+      settle(physics)
+      graph.addNode('c', { x: 4, y: 4, size: 5 })
+
+      expect(physics.sync()).toBe(true)
+
+      physics.reheat()
+      for (let i = 0; i < 60; i++) physics.tick()
+
+      expect(graph.getNodeAttribute('c', 'x')).not.toBe(4)
+    })
+
+    it('keeps the positions of the nodes that survive a sync', () => {
+      const graph = makeGraph([
+        ['a', 0, 0],
+        ['b', 40, 0]
+      ])
+      const physics = new GraphPhysics(graph)
+      settle(physics)
+      const x = graph.getNodeAttribute('a', 'x') as number
+      const y = graph.getNodeAttribute('a', 'y') as number
+
+      graph.addNode('c', { x: 300, y: 300, size: 5 })
+      physics.sync()
+      physics.tick()
+
+      expect(graph.getNodeAttribute('a', 'x')).toBeCloseTo(x, 6)
+      expect(graph.getNodeAttribute('a', 'y')).toBeCloseTo(y, 6)
+    })
+
+    it('forgets nodes and edges dropped from the graph', () => {
+      const graph = makeGraph(
+        [
+          ['a', 0, 0],
+          ['b', 40, 0]
+        ],
+        [['a', 'b']]
+      )
+      const physics = new GraphPhysics(graph)
+      graph.dropNode('b')
+
+      expect(physics.sync()).toBe(true)
+      expect(() => physics.tick()).not.toThrow()
+    })
+
+    it('picks up a link added between existing nodes', () => {
+      const graph = makeGraph([
+        ['a', -900, 0],
+        ['b', 900, 0]
+      ])
+      const physics = new GraphPhysics(graph)
+      graph.addEdgeWithKey('later', 'a', 'b', { weight: 1 })
+
+      expect(physics.sync()).toBe(true)
+
+      const before = distance(graph, 'a', 'b')
+      for (let i = 0; i < 60; i++) physics.tick()
+
+      expect(distance(graph, 'a', 'b')).toBeLessThan(before)
+    })
+
+    it('does nothing after destroy', () => {
+      const graph = makeGraph([['a', 0, 0]])
+      const physics = new GraphPhysics(graph)
+      physics.destroy()
+      graph.addNode('b', { x: 5, y: 5, size: 5 })
+
+      expect(physics.sync()).toBe(false)
+    })
+  })
+
   it('handles an empty graph without throwing', () => {
     const physics = new GraphPhysics(new Graph())
 

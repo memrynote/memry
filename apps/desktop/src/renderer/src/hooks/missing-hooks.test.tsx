@@ -689,7 +689,9 @@ describe('state and settings hooks', () => {
       mocks.notesListeners.created()
       mocks.taskListeners.updated()
     })
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['graph'] })
+    // The graph refetch is debounced so one save cannot fan out into several.
+    expect(invalidate).not.toHaveBeenCalledWith({ queryKey: ['graph'] })
+    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['graph'] }))
 
     const graphSettings = renderHook(() => useGraphSettings(), { wrapper })
     await waitFor(() => expect(graphSettings.result.current.settings.layout).toBe('force'))

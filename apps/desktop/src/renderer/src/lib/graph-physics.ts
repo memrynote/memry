@@ -74,6 +74,8 @@ export class GraphPhysics {
   private readonly nodes: PhysicsNode[] = []
   private readonly nodesById = new Map<string, PhysicsNode>()
   private readonly links: PhysicsLink[] = []
+  /** Edge keys currently modelled, so `sync` can tell a rewire from a no-op. */
+  private linkKeys = new Set<string>()
   private readonly cutoff: number
   private alphaValue = 1
   private alphaTarget = 0
@@ -100,23 +102,7 @@ export class GraphPhysics {
       this.nodesById.set(id, node)
     })
 
-    graph.forEachEdge((edge) => {
-      const [sourceId, targetId] = graph.extremities(edge)
-      // Self-loops collapse to a zero-length spring and blow the solver up.
-      if (sourceId === targetId) return
-      const source = this.nodesById.get(sourceId)
-      const target = this.nodesById.get(targetId)
-      if (!source || !target) return
-      source.degree++
-      target.degree++
-      this.links.push({ source, target, strength: 0, bias: 0 })
-    })
-
-    for (const link of this.links) {
-      const total = link.source.degree + link.target.degree
-      link.strength = 1 / Math.min(link.source.degree, link.target.degree)
-      link.bias = total === 0 ? 0.5 : link.source.degree / total
-    }
+    this.rebuildLinks()
   }
 
   get alpha(): number {
@@ -141,6 +127,61 @@ export class GraphPhysics {
     for (let i = 0; i < COLLIDE_ITERATIONS; i++) this.applyCollision()
 
     this.syncPositions()
+  }
+
+  /**
+   * Reconcile with a graph that was patched in place: nodes that survived keep
+   * their position and velocity, new ones join where the builder seeded them,
+   * dropped ones are forgotten. Returns whether the node or link set actually
+   * moved — an attribute-only refresh is not a reason to reheat.
+   */
+  sync(): boolean {
+    if (this.destroyed) return false
+
+    let structureChanged = false
+    const surviving: PhysicsNode[] = []
+    const present = new Set<string>()
+
+    this.graph.forEachNode((id, attrs) => {
+      present.add(id)
+      let node = this.nodesById.get(id)
+      if (!node) {
+        node = {
+          id,
+          x: (attrs.x as number) ?? 0,
+          y: (attrs.y as number) ?? 0,
+          vx: 0,
+          vy: 0,
+          fx: null,
+          fy: null,
+          radius: 0,
+          degree: 0
+        }
+        this.nodesById.set(id, node)
+        structureChanged = true
+      }
+      node.radius = ((attrs.size as number) ?? 4) * 1.2 + this.settings.collidePadding
+      surviving.push(node)
+    })
+
+    for (const id of this.nodesById.keys()) {
+      if (present.has(id)) continue
+      this.nodesById.delete(id)
+      structureChanged = true
+    }
+
+    this.nodes.length = 0
+    for (const node of surviving) this.nodes.push(node)
+
+    const previousLinkKeys = this.linkKeys
+    this.rebuildLinks()
+
+    if (this.linkKeys.size !== previousLinkKeys.size) return true
+    if (structureChanged) return true
+    for (const key of this.linkKeys) {
+      if (!previousLinkKeys.has(key)) return true
+    }
+    return false
   }
 
   reheat(alpha: number = REHEAT_ALPHA): void {
@@ -178,7 +219,34 @@ export class GraphPhysics {
     this.destroyed = true
     this.nodes.length = 0
     this.links.length = 0
+    this.linkKeys.clear()
     this.nodesById.clear()
+  }
+
+  /** Rederive every spring from the graph's current edges. */
+  private rebuildLinks(): void {
+    this.links.length = 0
+    this.linkKeys = new Set<string>()
+    for (const node of this.nodes) node.degree = 0
+
+    this.graph.forEachEdge((edge) => {
+      const [sourceId, targetId] = this.graph.extremities(edge)
+      // Self-loops collapse to a zero-length spring and blow the solver up.
+      if (sourceId === targetId) return
+      const source = this.nodesById.get(sourceId)
+      const target = this.nodesById.get(targetId)
+      if (!source || !target) return
+      source.degree++
+      target.degree++
+      this.linkKeys.add(edge)
+      this.links.push({ source, target, strength: 0, bias: 0 })
+    })
+
+    for (const link of this.links) {
+      const total = link.source.degree + link.target.degree
+      link.strength = 1 / Math.min(link.source.degree, link.target.degree)
+      link.bias = total === 0 ? 0.5 : link.source.degree / total
+    }
   }
 
   /** Springs pulling each linked pair toward `linkDistance`. */

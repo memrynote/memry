@@ -5,7 +5,12 @@ import '@react-sigma/core/lib/style.css'
 import type Graph from 'graphology'
 import type { GraphDataResponse } from '@memry/contracts/graph-api'
 import type { NodeDisplayData, EdgeDisplayData } from 'sigma/types'
-import { buildGraphologyGraph, computeFocusSet, type BuildGraphOptions } from '@/lib/graph-builder'
+import {
+  buildGraphologyGraph,
+  computeFocusSet,
+  syncGraphologyGraph,
+  type BuildGraphOptions
+} from '@/lib/graph-builder'
 import { LivePhysics, SettledPhysics, type PhysicsHandle } from './physics-layout'
 import type { GraphFilterState } from '@/hooks/use-graph-filters'
 import type { GraphSettings } from '@memry/contracts/graph-api'
@@ -98,16 +103,15 @@ export function GraphCanvas({
     [graphSettings.showTagEdges]
   )
 
-  const graph = useMemo(
-    () => buildGraphologyGraph(data, graphBuildOptions),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, graphBuildOptions, resolvedTheme]
-  )
+  const { graph, revision } = useLiveGraph(data, graphBuildOptions, resolvedTheme)
 
   const focusVisibleSet = useMemo(() => {
     if (!filterState.focusNodeId) return null
     return computeFocusSet(graph, filterState.focusNodeId, filterState.focusDepth)
-  }, [graph, filterState.focusNodeId, filterState.focusDepth])
+    // `revision` is not read here — it marks the patch that changed the topology
+    // this focus neighbourhood is derived from.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [graph, revision, filterState.focusNodeId, filterState.focusDepth])
 
   const searchLower = useMemo(
     () => filterState.searchQuery.toLowerCase(),
@@ -267,6 +271,7 @@ export function GraphCanvas({
           layout={graphSettings.layout}
           animate={graphSettings.animateLayout}
           graph={graph}
+          revision={revision}
           physicsHandleRef={physicsHandleRef}
         />
         <GraphEvents
@@ -292,6 +297,51 @@ export function GraphCanvas({
       )}
     </div>
   )
+}
+
+/**
+ * One graphology instance for the lifetime of the canvas, patched in place as
+ * data arrives.
+ *
+ * `SigmaContainer` recreates Sigma — and with it the WebGL context — whenever the
+ * `graph` prop changes identity, and the layout restarts from a cold alpha. Every
+ * note or task save invalidates the graph query, so rebuilding here meant a
+ * renderer teardown and a full re-simulation per keystroke-debounce. Only a
+ * remount (vault switch, tab close, reload) builds a fresh graph now.
+ */
+function useLiveGraph(
+  data: GraphDataResponse,
+  options: BuildGraphOptions,
+  themeKey: string | undefined
+): { graph: Graph; revision: number } {
+  const [graph] = useState(() => buildGraphologyGraph(data, options))
+  const [revision, setRevision] = useState(0)
+  const appliedRef = useRef({ data, options, themeKey })
+
+  /* eslint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change,
+     react-you-might-not-need-an-effect/no-event-handler,
+     react-you-might-not-need-an-effect/no-chain-state-updates -- genuine external sync: the
+     graphology instance sigma is bound to is mutated here, and the counter only records that it
+     happened so the layout and the focus set can react. Patching during render would fire
+     graphology's change events mid-render. */
+  useEffect(() => {
+    const applied = appliedRef.current
+    // Nothing has arrived since the graph was built or last patched. `themeKey`
+    // takes part because a theme flip re-resolves the CSS colour variables the
+    // node and edge attributes were built from.
+    if (applied.data === data && applied.options === options && applied.themeKey === themeKey) {
+      return
+    }
+    appliedRef.current = { data, options, themeKey }
+    if (syncGraphologyGraph(graph, data, options).changed) {
+      setRevision((current) => current + 1)
+    }
+  }, [graph, data, options, themeKey])
+  /* eslint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change,
+     react-you-might-not-need-an-effect/no-event-handler,
+     react-you-might-not-need-an-effect/no-chain-state-updates */
+
+  return { graph, revision }
 }
 
 function ContextMenuWithTabAction({
@@ -484,11 +534,13 @@ function LayoutManager({
   layout,
   animate,
   graph,
+  revision,
   physicsHandleRef
 }: {
   layout: GraphSettings['layout']
   animate: boolean
   graph: Graph
+  revision: number
   physicsHandleRef: React.MutableRefObject<PhysicsHandle | null>
 }): React.JSX.Element | null {
   useEffect(() => {
@@ -497,14 +549,15 @@ function LayoutManager({
     } else if (layout === 'random') {
       applyRandomLayout(graph)
     }
-  }, [layout, graph])
+    // A patch can add nodes the static layouts have never placed.
+  }, [layout, graph, revision])
 
   if (layout !== 'forceatlas2') return null
 
   return animate ? (
-    <LivePhysics graph={graph} handleRef={physicsHandleRef} />
+    <LivePhysics graph={graph} handleRef={physicsHandleRef} revision={revision} />
   ) : (
-    <SettledPhysics graph={graph} />
+    <SettledPhysics graph={graph} revision={revision} />
   )
 }
 

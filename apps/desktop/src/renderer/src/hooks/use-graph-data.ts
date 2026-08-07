@@ -27,12 +27,24 @@ export function useLocalGraphData(noteId: string | undefined) {
   })
 }
 
+/**
+ * One save can fire several of these events (the note plus each task it owns),
+ * and each refetch rebuilds the whole graph in the main process. Coalesce them.
+ */
+const GRAPH_INVALIDATE_DEBOUNCE_MS = 250
+
 export function useGraphReactivity(): void {
   const queryClient = useQueryClient()
 
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null
+
     const invalidateAll = () => {
-      void queryClient.invalidateQueries({ queryKey: graphKeys.all })
+      if (timer !== null) clearTimeout(timer)
+      timer = setTimeout(() => {
+        timer = null
+        void queryClient.invalidateQueries({ queryKey: graphKeys.all })
+      }, GRAPH_INVALIDATE_DEBOUNCE_MS)
     }
 
     const unsubs = [
@@ -45,6 +57,7 @@ export function useGraphReactivity(): void {
     ]
 
     return () => {
+      if (timer !== null) clearTimeout(timer)
       for (const unsub of unsubs) unsub()
     }
   }, [queryClient])
