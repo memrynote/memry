@@ -191,7 +191,7 @@ jobs:
 
   e2e-smoke:
     name: Electron E2E smoke
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -262,7 +262,7 @@ jobs:
     # No xvfb: macOS runners have a window server. ensure-native.sh is used
     # directly (it is bash-native and works here — the Windows job hand-rolls the
     # rebuild + stamp only because ensure-native.sh breaks under MSYS).
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     runs-on: macos-latest
     timeout-minutes: 45
 
@@ -322,7 +322,7 @@ jobs:
     # windows-2022 is pinned — windows-latest ships VS 2026, which node-gyp
     # cannot detect, breaking the native electron-rebuild (same reason the
     # release build-windows job pins it).
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     runs-on: windows-2022
     timeout-minutes: 45
 
@@ -406,7 +406,7 @@ jobs:
 
   e2e-full:
     name: Electron E2E full (${{ matrix.shard }})
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 75
     strategy:
