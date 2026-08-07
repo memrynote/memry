@@ -71,6 +71,7 @@ import {
   installCrashMarker,
   markShutdownFailure
 } from './telemetry/crash-marker'
+import { detectFailedUpdateInstall } from './telemetry/update-install-marker'
 import {
   startGoogleCalendarSyncRunner,
   stopGoogleCalendarSyncRunner,
@@ -1421,6 +1422,10 @@ const appReady = app.whenReady().then(async () => {
   // Order matters: detect the PREVIOUS session's leftover marker before this
   // session writes its own.
   detectUncleanShutdown()
+  // Same shape as the crash marker: an update install that never applied left a
+  // marker behind because the failure itself happened after this runtime was
+  // disposed on the previous quit.
+  detectFailedUpdateInstall(app.getVersion())
   installCrashMarker(telemetryRuntime.context.sessionId, app.getVersion())
   startActiveHeartbeat(() => BrowserWindow.getFocusedWindow() !== null)
 
