@@ -108,10 +108,10 @@ function deleteNote(noteId: string): void {
   deleteNoteCache(db, noteId)
 }
 
-function reconcileMissingFiles(): void {
+function reconcileMissingFiles(getVaultPath: () => string | null): void {
   const db = getIndexDatabase()
   const cachedNotes = listNotesFromCache(db, { limit: 100000 })
-  const vaultPath = currentVaultPathProvider?.()
+  const vaultPath = getVaultPath()
 
   if (!vaultPath) {
     return
@@ -125,13 +125,9 @@ function reconcileMissingFiles(): void {
   }
 }
 
-let currentVaultPathProvider: (() => string | null) | null = null
-
 export function createNoteDerivedStateProjector(
   getVaultPath: () => string | null
 ): ProjectionProjector {
-  currentVaultPathProvider = getVaultPath
-
   return {
     name: 'note-derived-state',
     handles(event: ProjectionEvent): boolean {
@@ -159,11 +155,11 @@ export function createNoteDerivedStateProjector(
     },
 
     async rebuild(): Promise<void> {
-      reconcileMissingFiles()
+      reconcileMissingFiles(getVaultPath)
     },
 
     async reconcile(): Promise<void> {
-      reconcileMissingFiles()
+      reconcileMissingFiles(getVaultPath)
       logger.debug?.('Reconciled note-derived state')
     }
   }

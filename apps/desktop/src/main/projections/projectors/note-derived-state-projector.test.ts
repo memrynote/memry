@@ -85,6 +85,40 @@ describe('note derived state projector', () => {
     expect(cached).toEqual(expect.objectContaining({ id: 'present-note', path: relativePath }))
   })
 
+  /**
+   * Regression (#1024): the vault path used to be stashed in a module-level
+   * variable at construction time, so building a projector for a second vault
+   * silently repointed every earlier instance at that vault — reconcile then
+   * looked for the first vault's notes under the second vault's root and
+   * deleted every one of them from note_cache.
+   */
+  it('keeps each projector instance bound to its own vault path', async () => {
+    const relativePath = 'notes/present.md'
+    const absolutePath = path.join(vaultDir, relativePath)
+    fs.mkdirSync(path.dirname(absolutePath), { recursive: true })
+    fs.writeFileSync(absolutePath, '# Present\n', 'utf8')
+    seedCachedNote('present-note', relativePath)
+
+    const projector = createNoteDerivedStateProjector(() => vaultDir)
+    const otherVaultDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-other-vault-'))
+
+    try {
+      createNoteDerivedStateProjector(() => otherVaultDir)
+
+      await projector.reconcile()
+
+      const cached = indexDb.db
+        .select()
+        .from(noteCache)
+        .where(eq(noteCache.id, 'present-note'))
+        .get()
+
+      expect(cached).toEqual(expect.objectContaining({ id: 'present-note' }))
+    } finally {
+      fs.rmSync(otherVaultDir, { recursive: true, force: true })
+    }
+  })
+
   it('project clears stale outbound links when a note no longer contains wiki links', async () => {
     seedCachedNote('source-note', 'notes/source.md')
     indexDb.db.run(sql`
