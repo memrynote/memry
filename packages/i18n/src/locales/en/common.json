@@ -742,6 +742,11 @@
       "next": "Next",
       "previous": "Previous",
       "progress": "{current} of {total}"
+    },
+    "starPrompt": {
+      "title": "Onboarding complete",
+      "body": "Please star us on GitHub — it helps other people find MemryNote.",
+      "action": "Star on GitHub"
     }
   },
   "shortcuts": {

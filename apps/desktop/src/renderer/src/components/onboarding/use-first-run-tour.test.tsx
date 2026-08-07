@@ -22,6 +22,7 @@ vi.mock('@memry/i18n/renderer', () => ({ useT: () => ({ t: (k: string) => k }) }
 vi.mock('@/contexts/day-panel-context', () => ({ useDayPanel: () => ({ open: vi.fn() }) }))
 
 import { useFirstRunTour, TOUR_KEY } from './use-first-run-tour'
+import { STAR_PROMPT_EVENT, STAR_PROMPT_KEY } from './star-prompt'
 
 describe('useFirstRunTour', () => {
   beforeEach(() => {
@@ -54,6 +55,34 @@ describe('useFirstRunTour', () => {
     expect(localStorage.getItem(TOUR_KEY)).toBeNull()
     capturedConfig?.onDestroyed?.()
     expect(localStorage.getItem(TOUR_KEY)).toBe('1')
+  })
+
+  it('arms the star prompt when the tour is destroyed, and announces it', () => {
+    const announced = vi.fn()
+    window.addEventListener(STAR_PROMPT_EVENT, announced)
+
+    renderHook(() => useFirstRunTour())
+    expect(localStorage.getItem(STAR_PROMPT_KEY)).toBeNull()
+
+    capturedConfig?.onDestroyed?.()
+    expect(localStorage.getItem(STAR_PROMPT_KEY)).toBe('pending')
+    expect(announced).toHaveBeenCalledTimes(1)
+
+    window.removeEventListener(STAR_PROMPT_EVENT, announced)
+  })
+
+  it('never re-arms the star prompt for a user who already answered it', () => {
+    const announced = vi.fn()
+    window.addEventListener(STAR_PROMPT_EVENT, announced)
+    localStorage.setItem(STAR_PROMPT_KEY, 'done')
+
+    renderHook(() => useFirstRunTour())
+    capturedConfig?.onDestroyed?.()
+
+    expect(localStorage.getItem(STAR_PROMPT_KEY)).toBe('done')
+    expect(announced).not.toHaveBeenCalled()
+
+    window.removeEventListener(STAR_PROMPT_EVENT, announced)
   })
 
   it('does not start the tour when the flag is already set', () => {

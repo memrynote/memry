@@ -4,6 +4,7 @@ import 'driver.js/dist/driver.css'
 import './tour.css'
 import { useT } from '@memry/i18n/renderer'
 import { useDayPanel } from '@/contexts/day-panel-context'
+import { STAR_PROMPT_EVENT, STAR_PROMPT_KEY } from './star-prompt'
 
 export const TOUR_KEY = 'memry:onboarding:tour:v1'
 
@@ -176,6 +177,13 @@ export function useFirstRunTour(): void {
         onDestroyed: () => {
           // ponytail: localStorage, app-wide once; move to a per-vault setting if we ever need to re-show per vault
           localStorage.setItem(TOUR_KEY, '1')
+          // The tour lands here however it ended — finished, skipped, or closed —
+          // so the star prompt is armed here too. Arm it only while unset: once
+          // the user has answered ('done'), never ask again.
+          if (!localStorage.getItem(STAR_PROMPT_KEY)) {
+            localStorage.setItem(STAR_PROMPT_KEY, 'pending')
+            window.dispatchEvent(new Event(STAR_PROMPT_EVENT))
+          }
         }
       })
 
