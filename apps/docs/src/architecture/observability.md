@@ -641,14 +641,34 @@ reason, phase, mode, status, kind, result`, plus numeric metric keys like
   image-processing, voice-model each exit after ~30s idle) is a lifecycle event, not a fault, so a
   `clean-exit` reason is skipped entirely — only a real fault produces an error event, mirroring
   the GPU crash guard. Note that `child_process_gone` is **not** throttled: the crash cadence is
-  itself a diagnostic signal.
-- **Embedding worker**: the embeddings bridge reports its own non-clean worker exits under
-  `source="Embeddings"` with a `worker_exit_<phase>` breadcrumb, where phase is `starting`,
-  `in_flight`, `idle_shutdown`, or `idle`. This is what separates a harmless teardown crash
-  (`idle_shutdown` — the embedding was already delivered) from real user impact (`in_flight` — the
-  user silently lost semantic-search indexing for that note). Embedding generation failures emit
-  `embed_failed`, throttled to one event per 5-minute window because a broken worker would
-  otherwise fail once per note edit.
+  itself a diagnostic signal. When the owning module can resolve a lifecycle phase for the dead
+  worker, the breadcrumb becomes `child_process_gone_<phase>` and the phase joins the exit status
+  in the message (`Embeddings utility process crashed (exit 6, idle_shutdown)`). The **error code
+  stays phase-free**: it is the Error Tracking fingerprint, so splitting it per phase would orphan
+  the existing issue's history.
+- **Embedding worker**: phase is `starting`, `in_flight`, `idle_shutdown`, or `idle`. This is what
+  separates a harmless teardown crash (`idle_shutdown` — the embedding was already delivered) from
+  real user impact (`in_flight` — the user silently lost semantic-search indexing for that note).
+
+  The phase is resolved by `getEmbeddingWorkerPhase(details.name)` at the `child-process-gone` call
+  site, **not** inside the worker's own `exit` handler. Electron's `UtilityProcess` `exit` event
+  does not fire for a native crash — a SIGABRT out of the model runtime is neither a graceful exit
+  nor the V8 `FatalError` the instance `error` event covers — so the bridge never learns its worker
+  died. Production proved it: across 107 consecutive `Utility:crashed:Embeddings` events the
+  bridge's own `worker_exit_<phase>` breadcrumb emitted **zero**, and so did `embed_failed`, while
+  `child-process-gone` fired for all 107. Resolving the phase at the report that does arrive is
+  what makes those events answerable. The `worker_exit_<phase>` breadcrumb is kept for the paths
+  where `exit` does fire (a non-crash abnormal exit, a force-kill), and carries a different error
+  code (`EmbeddingWorkerExit`) so the two are never confused.
+
+  Anything reading the phase from outside the exit handler must also survive the force-kill race:
+  `reset()` latches `idle_shutdown` before killing, then nulls the process handle, so the latch is
+  cleared when there is no process to kill — the latch now outlives the exit handler that used to
+  clear it, and a stale one would make the next worker's crash read as a teardown it never had.
+
+  Embedding generation failures emit `embed_failed`, throttled to one event per 5-minute window
+  because a broken worker would otherwise fail once per note edit.
+
 - **Desktop IPC envelopes**: every `{ success: false }` error envelope produced by the IPC layer
   (`withErrorHandler` / `withDb`) also emits an `app_error_seen` event, throttled in-memory to one
   event per **action + error code** per minute so an error loop can't flood the telemetry queue.
