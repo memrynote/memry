@@ -317,3 +317,105 @@ describe('tab selector hooks', () => {
     )
   })
 })
+
+describe('tab context render scoping', () => {
+  const STATE_UPDATES = 200
+
+  function renderScopingHarness() {
+    const alpha = makeTab({ id: 'alpha', title: 'Alpha', entityId: 'alpha' })
+    const beta = makeTab({ id: 'beta', title: 'Beta', entityId: 'beta' })
+    const initialState = makeState([makeGroup('main', [alpha, beta], 'alpha')])
+
+    const renders = { actions: 0, tabState: 0 }
+    let capturedActions: ReturnType<typeof useTabActions> | null = null
+    let capturedContext: ReturnType<typeof useTabs> | null = null
+    let seenTitle = ''
+
+    // Only ever reads actions: must not re-render when tab state changes.
+    const ActionsProbe = (): null => {
+      renders.actions += 1
+      capturedActions = useTabActions()
+      return null
+    }
+
+    // Reads tab state: must keep re-rendering when tab state changes.
+    const StateProbe = (): null => {
+      renders.tabState += 1
+      seenTitle = useTabs().state.tabGroups.main.tabs.find((t) => t.id === 'alpha')?.title ?? ''
+      return null
+    }
+
+    // Drives the state changes from outside the two probes above.
+    const Driver = (): null => {
+      capturedContext = useTabs()
+      return null
+    }
+
+    const view = render(
+      <TabProvider initialState={initialState}>
+        <ActionsProbe />
+        <StateProbe />
+        <Driver />
+      </TabProvider>
+    )
+
+    return {
+      ...view,
+      renders,
+      get actions() {
+        if (!capturedActions) throw new Error('missing tab actions')
+        return capturedActions
+      },
+      get ctx() {
+        if (!capturedContext) throw new Error('missing tab context')
+        return capturedContext
+      },
+      get seenTitle() {
+        return seenTitle
+      },
+      tab(id: string) {
+        if (!capturedContext) throw new Error('missing tab context')
+        return capturedContext.state.tabGroups.main.tabs.find((t) => t.id === id)
+      }
+    }
+  }
+
+  it('keeps useTabActions consumers out of tab state re-renders', () => {
+    const harness = renderScopingHarness()
+
+    expect(harness.renders.actions).toBe(1)
+    expect(harness.renders.tabState).toBe(1)
+
+    for (let i = 0; i < STATE_UPDATES; i++) {
+      act(() => {
+        harness.ctx.updateTabTitle('alpha', `Alpha ${i}`)
+      })
+    }
+
+    // State consumers must still see every change.
+    expect(harness.seenTitle).toBe(`Alpha ${STATE_UPDATES - 1}`)
+    expect(harness.renders.tabState).toBe(1 + STATE_UPDATES)
+
+    // Action-only consumers must render exactly once.
+    expect(harness.renders.actions).toBe(1)
+  })
+
+  it('runs actions against current tab state from a consumer that never re-rendered', () => {
+    const harness = renderScopingHarness()
+    const actions = harness.actions
+
+    act(() => {
+      harness.ctx.pinTab('alpha')
+    })
+    expect(harness.tab('alpha')?.isPinned).toBe(true)
+
+    // togglePinTab must read the committed state, not the render that captured it.
+    act(() => {
+      actions.togglePinTab('alpha')
+    })
+    expect(harness.tab('alpha')?.isPinned).toBe(false)
+
+    // ...and it did all of that without the action consumer re-rendering once.
+    expect(harness.renders.actions).toBe(1)
+  })
+})
