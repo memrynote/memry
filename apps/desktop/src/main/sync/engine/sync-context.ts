@@ -84,7 +84,8 @@ export const SYNC_STATE_KEYS = {
   SYNC_PAUSED: 'syncPaused',
   INITIAL_SEED_DONE: 'initialSeedDone',
   QUARANTINED_ITEMS: 'quarantinedItems',
-  LAST_MANIFEST_CHECK_AT: 'lastManifestCheckAt'
+  LAST_MANIFEST_CHECK_AT: 'lastManifestCheckAt',
+  LAST_CRDT_SWEEP_AT: 'lastCrdtSweepAt'
 } as const
 
 // Item ids are NOT unique across item types (default project id 'inbox', tag
@@ -106,6 +107,15 @@ export const MAX_RATE_LIMIT_BACKOFF_MS = 5 * 60 * 1000
 export const BASE_RATE_LIMIT_BACKOFF_MS = 5_000
 export const YIELD_EVERY_N_ITEMS = 20
 export const CRDT_SNAPSHOT_CONCURRENCY = 5
+// The vault-wide CRDT sweep at the end of fullSync is a safety net, not the
+// primary transport: while the socket is up, every remote body edit arrives as
+// a `crdt_updated` broadcast and is pulled per note, and notes whose record
+// metadata changed are CRDT-batched inside pull() itself. fullSync, however,
+// re-runs on every reconnect/resume/rate-limit release/auth refresh, so an
+// unthrottled sweep charged two HTTP requests, a Y.Doc load and a keychain read
+// per note in the vault for every Wi-Fi blip. Throttling bounds that to once
+// per interval without ever excluding a note from the sweep.
+export const CRDT_FULL_SWEEP_MIN_INTERVAL_MS = 15 * 60 * 1000
 export const PUSH_DEBOUNCE_MS = 2000
 
 export const yieldToEventLoop = (): Promise<void> => new Promise((r) => setImmediate(r))

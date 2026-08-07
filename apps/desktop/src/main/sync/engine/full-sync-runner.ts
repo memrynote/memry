@@ -5,7 +5,7 @@ import { ERROR_RETENTION_DAYS } from '../queue'
 import { checkManifestIntegrity } from '../manifest-check'
 import { runInitialSeed } from '../initial-seed'
 import type { SyncContext } from './sync-context'
-import { SYNC_STATE_KEYS } from './sync-context'
+import { CRDT_FULL_SWEEP_MIN_INTERVAL_MS, SYNC_STATE_KEYS } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
 import type { PushCoordinator } from './push-coordinator'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
@@ -50,9 +50,42 @@ export class FullSyncRunner {
     this.isQuarantined = isQuarantined
   }
 
+  /**
+   * Should the end-of-cycle sweep re-queue every CRDT note in the vault?
+   *
+   * The sweep is the only way a body-only remote edit is discovered when this
+   * device was not connected to receive its `crdt_updated` broadcast — note
+   * bodies never travel in the record change feed (NoteSync sends
+   * `content: null` on update), so nothing else covers them. It therefore stays
+   * exhaustive: no note is ever excluded, the sweep just does not re-run on
+   * every reconnect.
+   */
+  private shouldSweepAllCrdtNotes(force: boolean): boolean {
+    // Nothing is fetchable while offline. Sweeping here would schedule pulls
+    // that are guaranteed to fail and then stamp the interval, hiding real
+    // remote edits until the window reopened.
+    if (!this.ctx.deps.network.online) return false
+    if (force) return true
+
+    const persistedRaw = Number(
+      this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT) ?? '0'
+    )
+    const now = Date.now()
+    // A future-dated stamp (clock skew, machine migration) is not a sweep that
+    // happened — treated as "never swept" so the safety net cannot be parked
+    // until the wall clock catches up. Clamping to now would not help: the
+    // elapsed time stays pinned at zero for exactly as long.
+    const lastSweepAt = Number.isFinite(persistedRaw) && persistedRaw <= now ? persistedRaw : 0
+    return now - lastSweepAt >= CRDT_FULL_SWEEP_MIN_INTERVAL_MS
+  }
+
   async run(): Promise<void> {
     log.debug('fullSync started')
     this.ctx.fullSyncActive = true
+    // A manifest re-pull means the server holds items this device has never
+    // seen (fresh install, restored vault, rebuilt index): local CRDT state
+    // cannot be trusted, so the sweep runs regardless of the throttle.
+    let forceCrdtSweep = false
     try {
       await this.actions.pull()
       log.debug('fullSync: pull complete')
@@ -129,6 +162,7 @@ export class FullSyncRunner {
       })
 
       if (manifestResult.rePullNeeded) {
+        forceCrdtSweep = true
         log.info('fullSync: manifest detected server-only items, resetting cursor for re-pull', {
           serverOnlyCount: manifestResult.serverOnlyCount
         })
@@ -155,10 +189,15 @@ export class FullSyncRunner {
       } satisfies InitialSyncProgressEvent)
     } finally {
       this.ctx.fullSyncActive = false
-      if (this.ctx.deps.crdtProvider && isIndexDatabaseInitialized()) {
+      if (
+        this.ctx.deps.crdtProvider &&
+        isIndexDatabaseInitialized() &&
+        this.shouldSweepAllCrdtNotes(forceCrdtSweep)
+      ) {
         for (const noteId of getAllCrdtNoteIds(getIndexDatabase())) {
           this.crdtSync.addPendingPull(noteId)
         }
+        this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT, String(Date.now()))
       }
       if (this.crdtSync.pendingPullCount > 0) {
         log.debug('fullSync: flushing pending CRDT pulls', {

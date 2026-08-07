@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import { FullSyncRunner, type FullSyncActions } from './full-sync-runner'
-import { SYNC_STATE_KEYS, type SyncContext } from './sync-context'
+import { CRDT_FULL_SWEEP_MIN_INTERVAL_MS, SYNC_STATE_KEYS, type SyncContext } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
 import type { PushCoordinator } from './push-coordinator'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
@@ -94,6 +94,7 @@ function createHarness(
     signingKeys?: { deviceId: string } | null
     crdtProvider?: unknown
     isQuarantined?: (itemId: string, itemType: string) => boolean
+    online?: boolean
   } = {}
 ): Harness {
   const calls: string[] = []
@@ -117,7 +118,7 @@ function createHarness(
     deps: {
       db: { __db: 'data' },
       queue: { getPendingCount, purgeOldErrors },
-      network: { online: true },
+      network: { online: options.online ?? true },
       getAccessToken: vi.fn(async () => 'token-1'),
       getSigningKeys: vi.fn(async () =>
         options.signingKeys === undefined ? { deviceId: 'dev-a' } : options.signingKeys
@@ -131,7 +132,7 @@ function createHarness(
   const setStateValue = vi.fn((key: string) => {
     calls.push(`setState:${key}`)
   })
-  const getStateValue = vi.fn(() => undefined as string | undefined)
+  const getStateValue = vi.fn((_key: string) => undefined as string | undefined)
   const isPaused = vi.fn(() => false)
   const stateManager = { setStateValue, getStateValue, isPaused } as unknown as SyncStateManager
 
@@ -531,6 +532,134 @@ describe('FullSyncRunner', () => {
 
       expect(mocks.getAllCrdtNoteIds).not.toHaveBeenCalled()
       expect(h.actions.scheduleSync).not.toHaveBeenCalled()
+    })
+
+    it('#then a completed sweep is stamped so the next cycle can throttle it', async () => {
+      const h = createHarness({ crdtProvider: {} })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
+
+      await h.runner.run()
+
+      expect(h.calls).toContain(`setState:${SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT}`)
+    })
+  })
+
+  describe('#given a vault-wide CRDT sweep that just ran #when another full sync starts', () => {
+    it('#then the sweep is skipped instead of re-pulling every note in the vault', async () => {
+      // fullSync runs on every reconnect, resume, rate-limit release and auth
+      // refresh. Re-queueing every note in the vault each time costs two HTTP
+      // requests, a Y.Doc load and a keychain read PER NOTE, so a single Wi-Fi
+      // blip on a 1,000-note vault cost ~2,000 requests.
+      const h = createHarness({ crdtProvider: {} })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT ? String(Date.now() - 1000) : undefined
+      )
+
+      await h.runner.run()
+
+      expect(mocks.getAllCrdtNoteIds).not.toHaveBeenCalled()
+      expect(h.actions.scheduleSync).not.toHaveBeenCalled()
+    })
+
+    it('#then notes the server announced over the websocket are still pulled', async () => {
+      // The throttle only covers the blanket safety-net sweep. A `crdt_updated`
+      // broadcast is a positive signal that THIS note changed remotely and must
+      // never be swallowed.
+      const h = createHarness({ crdtProvider: {} })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT ? String(Date.now() - 1000) : undefined
+      )
+      h.crdtSync.addPendingPull('note-9')
+
+      await h.runner.run()
+
+      expect(mocks.getAllCrdtNoteIds).not.toHaveBeenCalled()
+      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(1)
+      expect(h.crdtSync.pendingPullCount).toBe(0)
+    })
+
+    it('#then a sweep older than the interval runs again', async () => {
+      // A device that was offline for weeks discovers body-only remote edits
+      // (which never enter the record change feed) only through this sweep.
+      const h = createHarness({ crdtProvider: {} })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT
+          ? String(Date.now() - CRDT_FULL_SWEEP_MIN_INTERVAL_MS - 1)
+          : undefined
+      )
+
+      await h.runner.run()
+
+      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(2)
+    })
+
+    it('#then a future-dated stamp does not park the sweep until the clock catches up', async () => {
+      // Clock skew or a machine migration can leave a stamp 30 days ahead.
+      // Trusting it would disable the only discovery path for body-only remote
+      // edits for a month.
+      const h = createHarness({ crdtProvider: {} })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT
+          ? String(Date.now() + 30 * 24 * 60 * 60 * 1000)
+          : undefined
+      )
+
+      await h.runner.run()
+
+      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(1)
+    })
+
+    it('#then a non-numeric stamp is treated as never swept', async () => {
+      const h = createHarness({ crdtProvider: {} })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT ? 'not-a-number' : undefined
+      )
+
+      await h.runner.run()
+
+      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(1)
+    })
+
+    it('#then a manifest re-pull forces the sweep regardless of the throttle', async () => {
+      // Server rows this device has never seen (fresh install, restored vault,
+      // index rebuild) mean the local CRDT watermarks cannot be trusted.
+      const h = createHarness({ crdtProvider: {} })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT ? String(Date.now()) : undefined
+      )
+      mocks.checkManifestIntegrity.mockResolvedValue(
+        manifestResult({ rePullNeeded: true, serverOnlyCount: 3 })
+      )
+
+      await h.runner.run()
+
+      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(2)
+    })
+
+    it('#then an offline cycle neither sweeps nor burns the throttle window', async () => {
+      // Pulls scheduled while offline are guaranteed to fail; stamping the
+      // sweep there would hide real remote edits for a whole interval.
+      const h = createHarness({ crdtProvider: {}, online: false })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
+
+      await h.runner.run()
+
+      expect(mocks.getAllCrdtNoteIds).not.toHaveBeenCalled()
+      expect(h.calls).not.toContain(`setState:${SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT}`)
     })
   })
 })
