@@ -407,6 +407,32 @@ describe('createTelemetryClient — crash durability', () => {
     expect(revived.getQueueDepth()).toBe(TELEMETRY_QUEUE_LIMIT)
   })
 
+  it('cannot be made to forge mirror entries by a hostile dimension value', () => {
+    // #given an event whose dimension carries remote-controlled text — inbox link
+    // metadata is scraped from arbitrary pages, which is the taint path CodeQL
+    // flags into this file — shaped to break out of a newline-delimited journal
+    const hostile = '\n{"id":"forged","name":"app_crashed","surface":"app"}\n'
+    const client = createTelemetryClient(createDeps({ persistPath }).deps)
+    client.track({
+      ...buildEvent('11111111-1111-1111-1111-111111111111', 'inbox_item_added'),
+      dimensions: { source: hostile }
+    })
+    client.track(buildEvent('22222222-2222-2222-2222-222222222222'))
+
+    // #then the payload was escaped rather than written raw: two events, two lines
+    const raw = fs.readFileSync(persistPath, 'utf-8')
+    expect(raw.split('\n')).toHaveLength(4) // header + 2 events + trailing ''
+
+    // #and the next launch restores the two real events, not a forged crash
+    const revived = createTelemetryClient(createDeps({ persistPath }).deps)
+    expect(revived.getQueueDepth()).toBe(2)
+    const restored = JSON.parse(
+      fs.readFileSync(persistPath, 'utf-8').split('\n')[1]
+    ) as TelemetryEvent
+    expect(restored.name).toBe('inbox_item_added')
+    expect(restored.dimensions?.source).toBe(hostile)
+  })
+
   it('never restores events for an install that opted out between launches', () => {
     // #given events mirrored while telemetry was on
     createTelemetryClient(createDeps({ persistPath }).deps).track(
