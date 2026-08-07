@@ -60,6 +60,10 @@ export const IMPORT_STATUS_CODES = {
   csvImporting: 'status.csv.importing',
   evernoteScanning: 'status.evernote.scanning',
   htmlScanning: 'status.html.scanning',
+  onenoteLoadingNotebooks: 'status.onenote.loadingNotebooks',
+  onenoteRateLimited: 'status.onenote.rateLimited',
+  /** Per-attachment line the OneNote importer emits: takes `{ name }`. */
+  onenoteDownloadingAttachment: 'status.onenote.downloadingAttachment',
   raindropImporting: 'status.raindrop.importing',
   roamReading: 'status.roam.reading',
   ticktickImporting: 'status.ticktick.importing',
@@ -104,6 +108,14 @@ export const IMPORT_STATUS = {
     message: 'Scanning .enex files…'
   },
   htmlScanning: { code: IMPORT_STATUS_CODES.htmlScanning, message: 'Scanning HTML files…' },
+  onenoteLoadingNotebooks: {
+    code: IMPORT_STATUS_CODES.onenoteLoadingNotebooks,
+    message: 'Loading OneNote notebooks…'
+  },
+  onenoteRateLimited: {
+    code: IMPORT_STATUS_CODES.onenoteRateLimited,
+    message: 'OneNote is rate-limiting; waiting before retrying…'
+  },
   raindropImporting: {
     code: IMPORT_STATUS_CODES.raindropImporting,
     message: 'Importing Raindrop bookmarks…'
@@ -117,14 +129,26 @@ export const IMPORT_STATUS = {
     code: IMPORT_STATUS_CODES.todoistImporting,
     message: 'Importing Todoist tasks…'
   }
-} satisfies Record<Exclude<keyof typeof IMPORT_STATUS_CODES, 'importingItem'>, ImportMessage>
+} satisfies Record<
+  Exclude<keyof typeof IMPORT_STATUS_CODES, 'importingItem' | 'onenoteDownloadingAttachment'>,
+  ImportMessage
+>
 
-/** The per-item progress line — the only status that interpolates a value. */
+/** The per-item progress line — interpolates the item's title. */
 export function importingItemStatus(title: string): ImportMessage {
   return {
     code: IMPORT_STATUS_CODES.importingItem,
     message: `Importing ${title}`,
     params: { title }
+  }
+}
+
+/** The OneNote per-attachment progress line — interpolates the file name. */
+export function onenoteDownloadingAttachmentStatus(name: string): ImportMessage {
+  return {
+    code: IMPORT_STATUS_CODES.onenoteDownloadingAttachment,
+    message: `Downloading attachment ${name}`,
+    params: { name }
   }
 }
 

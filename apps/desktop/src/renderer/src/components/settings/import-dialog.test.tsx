@@ -106,3 +106,93 @@ describe('ImportDialog i18n', () => {
     expect(screen.getByRole('button', { name: 'Start import' })).toBeEnabled()
   })
 })
+
+describe('ImportDialog account-based importer (OneNote)', () => {
+  let i18n: I18nInstance
+  let start: ReturnType<typeof vi.fn>
+
+  const onenoteItem: ImporterItem = {
+    id: 'onenote',
+    name: 'OneNote',
+    descriptionKey: 'import.sources.onenote',
+    fileSpec: { label: 'Microsoft OneNote', extensions: [], allowMultiple: false },
+    supportsPreview: false,
+    accountBased: true,
+    icon: DEFAULT_IMPORT_ICON
+  }
+
+  beforeAll(async () => {
+    i18n = await createRendererI18n({ locale: 'en' })
+  })
+
+  beforeEach(() => {
+    start = vi.fn(() =>
+      Promise.resolve({
+        success: true,
+        summary: { imported: 1, attachments: 0, skipped: 0, failed: [] }
+      })
+    )
+    ;(window as unknown as { api: unknown }).api = {
+      onImportProgress: () => () => {},
+      import: {
+        pickFiles: vi.fn(),
+        start,
+        cancel: () => {},
+        preview: () => {},
+        list: () => {},
+        onenote: {
+          status: vi.fn(() =>
+            Promise.resolve({
+              configured: true,
+              connected: true,
+              account: { name: 'Kaan', email: 'kaan@example.com' }
+            })
+          ),
+          connect: vi.fn(),
+          disconnect: vi.fn(),
+          notebooks: vi.fn(() =>
+            Promise.resolve({
+              notebooks: [
+                {
+                  id: 'nb1',
+                  displayName: 'Work',
+                  sections: [{ id: 's1', displayName: 'Ideas' }],
+                  sectionGroups: []
+                }
+              ]
+            })
+          )
+        }
+      }
+    }
+  })
+
+  it('replaces the file picker with the OneNote panel and starts with options', async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <I18nextProvider i18n={i18n}>
+          <ImportDialog item={onenoteItem} open onOpenChange={() => {}} />
+        </I18nextProvider>
+      </QueryClientProvider>
+    )
+
+    // No native file picker for an account-based importer.
+    expect(screen.queryByText('Choose file…')).toBeNull()
+
+    // Panel loads the tree and preselects; Start becomes enabled.
+    await screen.findByText('Ideas')
+    const startButton = screen.getByText('Start import').closest('button')!
+    await waitFor(() => expect(startButton).not.toBeDisabled())
+
+    fireEvent.pointerDown(startButton)
+    fireEvent.click(startButton)
+
+    await waitFor(() => expect(start).toHaveBeenCalledTimes(1))
+    const payload = start.mock.calls[0][0]
+    expect(payload.importerId).toBe('onenote')
+    expect(payload.sourcePaths).toEqual([])
+    expect(payload.options.sectionIds).toEqual(['s1'])
+    expect(payload.options.skipPreviouslyImported).toBe(true)
+    expect(payload.options.includeIncompatibleAttachments).toBe(false)
+  })
+})

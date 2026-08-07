@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   ImportChannels,
+  OneNoteImportChannels,
   ImportStartSchema,
   ImportCancelSchema,
   ImportPickFilesSchema,
@@ -61,5 +62,21 @@ describe('ImportChannels', () => {
       ImportPreviewSchema.safeParse({ importId: 'i1', importerId: '', sourcePaths: ['/a.csv'] })
         .success
     ).toBe(false)
+  })
+})
+
+describe('OneNoteImportChannels', () => {
+  it('defines prefixed channels', () => {
+    expect(OneNoteImportChannels.invoke.STATUS).toBe('import:onenote:status')
+    expect(OneNoteImportChannels.invoke.CONNECT).toBe('import:onenote:connect')
+    expect(OneNoteImportChannels.invoke.DISCONNECT).toBe('import:onenote:disconnect')
+    expect(OneNoteImportChannels.invoke.NOTEBOOKS).toBe('import:onenote:notebooks')
+  })
+
+  it('does not collide with the generic import channels', () => {
+    const generic = Object.values(ImportChannels.invoke)
+    for (const channel of Object.values(OneNoteImportChannels.invoke)) {
+      expect(generic).not.toContain(channel)
+    }
   })
 })

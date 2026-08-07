@@ -182,18 +182,42 @@ function renderBlock(ctx: Ctx, el: Element): string {
 
 function renderList(ctx: Ctx, listEl: Element, ordered: boolean): string {
   const items = Array.from(listEl.children).filter((c) => c.tagName.toLowerCase() === 'li')
-  const lines = items.map((li, i) => {
-    const todo = parseTodo(ctx, li)
-    if (todo) return `${todo.checked ? '- [x]' : '- [ ]'} ${todo.text}`
-    const marker = ordered ? `${i + 1}.` : '-'
-    return `${marker} ${renderInline(ctx, li).trim()}`
+  const lines: string[] = []
+  items.forEach((li, i) => {
+    // Nested lists render as indented sub-lists, not flattened into the line.
+    const nestedLists = Array.from(li.children).filter((c) => {
+      const tag = c.tagName.toLowerCase()
+      return tag === 'ul' || tag === 'ol'
+    })
+    const text = renderInlineExcept(ctx, li, nestedLists).trim()
+    const todo = parseTodo(li, nestedLists)
+    const marker = todo ? (todo.checked ? '- [x]' : '- [ ]') : ordered ? `${i + 1}.` : '-'
+    lines.push(`${marker} ${text}`)
+
+    const indent = ' '.repeat((todo ? 2 : marker.length) + 1)
+    for (const nested of nestedLists) {
+      const nestedMd = renderList(ctx, nested, nested.tagName.toLowerCase() === 'ol')
+      for (const line of nestedMd.split('\n')) {
+        if (line) lines.push(indent + line)
+      }
+    }
   })
   return lines.join('\n')
 }
 
-function parseTodo(ctx: Ctx, li: Element): { checked: boolean; text: string } | null {
-  const input = li.querySelector('input[type="checkbox"]')
-  const box = li.querySelector('.checkbox')
+/**
+ * Detect a checkbox item. Matches inside `nested` sub-lists are ignored: they
+ * belong to the child item, and a plain parent bullet must not inherit its
+ * child's marker or checked state.
+ */
+function parseTodo(li: Element, nested: Element[]): { checked: boolean } | null {
+  const ownMatch = (selector: string): Element | null =>
+    Array.from(li.querySelectorAll(selector)).find(
+      (el) => !nested.some((list) => list.contains(el))
+    ) ?? null
+
+  const input = ownMatch('input[type="checkbox"]')
+  const box = ownMatch('.checkbox')
   const isTodo =
     !!input ||
     !!box ||
@@ -206,7 +230,7 @@ function parseTodo(ctx: Ctx, li: Element): { checked: boolean; text: string } | 
     : box
       ? box.classList.contains('checkbox-on')
       : false
-  return { checked, text: renderInline(ctx, li).trim() }
+  return { checked }
 }
 
 function renderBlockquote(ctx: Ctx, el: Element): string {
@@ -261,8 +285,14 @@ function renderTable(ctx: Ctx, table: Element): string {
 // ============================================================================
 
 function renderInline(ctx: Ctx, el: Element): string {
+  return renderInlineExcept(ctx, el, [])
+}
+
+/** Render an element's children inline, skipping the given child elements. */
+function renderInlineExcept(ctx: Ctx, el: Element, skip: Element[]): string {
   let out = ''
   for (const node of Array.from(el.childNodes)) {
+    if (node.nodeType === ELEMENT_NODE && skip.includes(node as Element)) continue
     out += renderInlineNode(ctx, node)
   }
   return out

@@ -181,7 +181,11 @@
     "importFailed": "Import failed",
     "cancelFailed": "Cancel failed",
     "previewFailed": "Preview failed",
-    "listFailed": "Failed to list importers"
+    "listFailed": "Failed to list importers",
+    "onenoteStatusFailed": "Could not read the OneNote connection state",
+    "onenoteConnectFailed": "Microsoft sign-in failed",
+    "onenoteDisconnectFailed": "Could not disconnect the Microsoft account",
+    "onenoteNotebooksFailed": "Could not load OneNote notebooks"
   },
   "project": {
     "createFailed": "Failed to create project",

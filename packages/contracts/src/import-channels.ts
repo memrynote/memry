@@ -125,6 +125,12 @@ export interface ImporterMeta {
     message?: string
   }
   supportsPreview: boolean
+  /**
+   * Imports from a connected account instead of picked files; the dialog
+   * renders the importer's own panel (sign-in + source picker) in place of the
+   * file picker. Absent on payloads from older builds → treated as false.
+   */
+  accountBased?: boolean
 }
 
 // ============================================================================
@@ -177,3 +183,67 @@ export interface ImportPreviewSuccess {
 }
 
 export type ImportPreviewResponse = ImportPreviewSuccess | ImportErrorResult
+
+// ============================================================================
+// OneNote (account-based importer) — Microsoft sign-in + notebook tree for the
+// dialog's OneNote panel. The import itself still runs over the generic
+// `import:start` channel, with the panel's choices in `options`.
+// ============================================================================
+
+export const OneNoteImportChannels = {
+  invoke: {
+    /** Current auth state (configured / connected / signed-in account). */
+    STATUS: 'import:onenote:status',
+    /** Run the interactive Microsoft sign-in (system browser + loopback). */
+    CONNECT: 'import:onenote:connect',
+    /** Forget the connected Microsoft account (local token wipe). */
+    DISCONNECT: 'import:onenote:disconnect',
+    /** Notebook → section group → section tree for the section picker. */
+    NOTEBOOKS: 'import:onenote:notebooks'
+  }
+} as const
+
+export interface OneNoteAccountInfo {
+  name: string
+  email: string
+}
+
+export interface OneNoteAuthStatusResult {
+  /** False until the install has an Azure client id (`ONENOTE_CLIENT_ID`). */
+  configured: boolean
+  connected: boolean
+  account: OneNoteAccountInfo | null
+}
+
+export interface OneNoteSectionSummaryDto {
+  id: string
+  displayName: string
+}
+
+export interface OneNoteSectionGroupDto {
+  id: string
+  displayName: string
+  sections: OneNoteSectionSummaryDto[]
+  sectionGroups: OneNoteSectionGroupDto[]
+}
+
+export interface OneNoteNotebookDto {
+  id: string
+  displayName: string
+  sections: OneNoteSectionSummaryDto[]
+  sectionGroups: OneNoteSectionGroupDto[]
+}
+
+export interface OneNoteNotebooksResult {
+  notebooks: OneNoteNotebookDto[]
+}
+
+/** Shape of `ImportStartInput.options` for the OneNote importer. */
+export interface OneNoteImportOptionsInput {
+  /** Section ids to import; omit to import every section. */
+  sectionIds?: string[]
+  /** Also save attachment types Memry cannot embed natively (default false). */
+  includeIncompatibleAttachments?: boolean
+  /** Skip pages a previous OneNote run already imported (default true). */
+  skipPreviouslyImported?: boolean
+}

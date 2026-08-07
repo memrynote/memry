@@ -63,6 +63,12 @@ export interface Importer {
   name: string
   descriptionKey: string
   fileSpec: ImportFileSpec
+  /**
+   * Imports from a connected account instead of picked files (the dialog shows
+   * the importer's own panel — e.g. OneNote's sign-in + notebook picker —
+   * rather than the native file picker).
+   */
+  accountBased?: boolean
   preview?(input: ImportInput, signal: AbortSignal): Promise<ImportPreview>
   run(input: ImportInput, ctx: ImportContext): Promise<ImportSummary>
 }

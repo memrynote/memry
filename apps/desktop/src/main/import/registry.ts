@@ -26,7 +26,8 @@ export function listImporterMeta(): ImporterMeta[] {
       name: i.name,
       descriptionKey: i.descriptionKey,
       fileSpec: i.fileSpec,
-      supportsPreview: typeof i.preview === 'function'
+      supportsPreview: typeof i.preview === 'function',
+      accountBased: i.accountBased === true
     }))
     .sort((a, b) => a.name.localeCompare(b.name))
 }

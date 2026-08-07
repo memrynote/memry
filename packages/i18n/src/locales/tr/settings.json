@@ -1438,6 +1438,21 @@
     "action": "İçe Aktar",
     "dialog": {
       "cancel": "İptal",
+      "onenote": {
+        "connect": "Microsoft ile oturum aç",
+        "connecting": "Tarayıcıda oturum açma bekleniyor…",
+        "connectedAs": "{name} ({email}) olarak oturum açıldı",
+        "switchAccount": "Hesap değiştir",
+        "loadingNotebooks": "Not defterleri yükleniyor…",
+        "notebooksEmpty": "Bu hesapta not defteri bulunamadı.",
+        "selectAll": "Tümünü seç",
+        "deselectAll": "Seçimi temizle",
+        "sectionsSelected": "{count, plural, one {# bölüm seçildi} other {# bölüm seçildi}}",
+        "includeIncompatible": "Uyumsuz ekleri içe aktar",
+        "includeIncompatibleHint": "Memry'nin önizleyemediği dosya türlerini de kaydet (sunumlar, medya, arşivler — asla çalıştırılabilir dosyalar değil). Dosya bloğu olarak görünürler.",
+        "skipPrevious": "Daha önce içe aktarılan sayfaları atla",
+        "skipPreviousHint": "Önceki bir OneNote çalıştırmasında içe aktarılan sayfalar atlanır; yeniden çalıştırmak yalnızca yenileri alır."
+      },
       "choose": "Dosya seç…",
       "chooseFolder": "Apple Notes klasörünü seç…",
       "chooseHint": "{label} seçin",
@@ -1545,6 +1560,11 @@
       },
       "html": {
         "scanning": "HTML dosyaları taranıyor…"
+      },
+      "onenote": {
+        "loadingNotebooks": "OneNote not defterleri yükleniyor…",
+        "rateLimited": "OneNote hız sınırı uyguluyor; yeniden denemeden önce bekleniyor…",
+        "downloadingAttachment": "{name} eki indiriliyor"
       },
       "importingItem": "{title} içe aktarılıyor",
       "raindrop": {

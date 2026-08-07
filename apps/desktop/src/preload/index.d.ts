@@ -35,7 +35,9 @@ import type {
   ImportProgressEvent,
   ImportPreviewInput,
   ImportPreviewResponse,
-  ImporterMeta
+  ImporterMeta,
+  OneNoteAuthStatusResult,
+  OneNoteNotebooksResult
 } from '@memry/contracts/import-channels'
 import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
 import type {
@@ -1756,6 +1758,12 @@ interface API extends WindowAPI, GeneratedRpcApi {
     cancel: (input: ImportCancelInput) => Promise<{ success: true }>
     preview: (input: ImportPreviewInput) => Promise<ImportPreviewResponse>
     list: () => Promise<ImporterMeta[]>
+    onenote: {
+      status: () => Promise<OneNoteAuthStatusResult>
+      connect: () => Promise<OneNoteAuthStatusResult>
+      disconnect: () => Promise<{ success: true }>
+      notebooks: () => Promise<OneNoteNotebooksResult>
+    }
   }
   updater: {
     getState: () => Promise<AppUpdateState>
