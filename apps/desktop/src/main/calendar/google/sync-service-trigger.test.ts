@@ -114,12 +114,48 @@ describe('triggerGoogleCalendarSyncNow (focus/resume/manual refresh)', () => {
     triggerGoogleCalendarSyncNow('window-focus')
     await Promise.resolve()
 
-    // #when time advances past the 10-second cooldown
-    vi.setSystemTime(new Date('2026-01-01T00:00:11Z'))
+    // #when time advances past the focus cooldown
+    vi.setSystemTime(new Date('2026-01-01T00:02:01Z'))
     triggerGoogleCalendarSyncNow('window-focus')
     await Promise.resolve()
 
     // #then a second sync fires
+    expect(syncNowMock).toHaveBeenCalledTimes(2)
+    vi.useRealTimers()
+  })
+
+  it('holds window-focus triggers to a 2-minute cooldown, not the short one', async () => {
+    // #given a focus trigger already fired at t=0
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
+    triggerGoogleCalendarSyncNow('window-focus')
+    await Promise.resolve()
+
+    // #when the window is re-focused repeatedly across the next two minutes
+    for (const at of ['00:00:11', '00:00:30', '00:01:00', '00:01:59']) {
+      vi.setSystemTime(new Date(`2026-01-01T${at}Z`))
+      triggerGoogleCalendarSyncNow('window-focus')
+      await Promise.resolve()
+    }
+
+    // #then no extra sync fires — alt-tabbing cannot drive network + DB writes
+    expect(syncNowMock).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
+  })
+
+  it('keeps the short cooldown for non-focus triggers', async () => {
+    // #given a focus trigger already fired at t=0
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
+    triggerGoogleCalendarSyncNow('window-focus')
+    await Promise.resolve()
+
+    // #when the machine wakes 11 seconds later
+    vi.setSystemTime(new Date('2026-01-01T00:00:11Z'))
+    triggerGoogleCalendarSyncNow('system-resume')
+    await Promise.resolve()
+
+    // #then resume still syncs immediately
     expect(syncNowMock).toHaveBeenCalledTimes(2)
     vi.useRealTimers()
   })

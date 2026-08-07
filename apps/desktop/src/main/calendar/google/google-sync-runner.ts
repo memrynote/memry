@@ -16,6 +16,13 @@ const log = createLogger('Calendar:GoogleSyncRunner')
 const RUN_INTERVAL_MS = 5 * 60 * 1000
 export const PUSH_BACKOFF_INTERVAL_MS = 30 * 60 * 1000
 const TRIGGER_COOLDOWN_MS = 10 * 1000
+// Window focus fires on every alt-tab, so the 10 s cooldown let an all-day user
+// drive ~6 full calendar syncs a minute (network + DB writes + telemetry). The
+// periodic poll above still bounds staleness on its own schedule, and manual
+// refresh calls syncGoogleCalendarNow directly, so focus only has to close the
+// gap between polls — not race them.
+const FOCUS_TRIGGER_COOLDOWN_MS = 2 * 60 * 1000
+const WINDOW_FOCUS_REASON = 'window-focus'
 
 let syncInterval: NodeJS.Timeout | null = null
 let currentPollIntervalMs = RUN_INTERVAL_MS
@@ -69,7 +76,9 @@ export function triggerGoogleCalendarSyncNow(reason: string): void {
     return
   }
   const now = Date.now()
-  if (now - lastTriggerAt < TRIGGER_COOLDOWN_MS) {
+  const cooldownMs =
+    reason === WINDOW_FOCUS_REASON ? FOCUS_TRIGGER_COOLDOWN_MS : TRIGGER_COOLDOWN_MS
+  if (now - lastTriggerAt < cooldownMs) {
     log.debug('skipping Google Calendar sync trigger (cooldown)', { reason })
     return
   }
