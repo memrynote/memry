@@ -260,7 +260,10 @@ function TagTreeItem({
           </ContextMenuContent>
         </ContextMenu>
 
-        <span className="ms-auto pe-2.5 text-[10px] text-muted-foreground/40 tabular-nums opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* The note count is information, not chrome, and 10px is small text
+            under WCAG AA. `--muted-foreground` at 40% was 1.95:1 on the row's
+            hover background; the sidebar heading token holds 5.06:1 there. */}
+        <span className="ms-auto pe-2.5 text-[10px] text-sidebar-section-heading tabular-nums opacity-0 group-hover:opacity-100 transition-opacity">
           {node.totalCount}
         </span>
       </div>
@@ -526,10 +529,16 @@ export function SidebarTagList({
 
             return (
               <div key={group.id} className="flex flex-col gap-0.5">
+                {/* A category heading, so it takes the same token as every
+                    other sidebar section heading. `--muted-foreground` at 70%
+                    was 3.62:1 (paper) and 2.85:1 (white) at 10px, under the
+                    4.5:1 AA floor for small text. The colour no longer changes
+                    on hover — `bg-muted` carries the affordance, and the token
+                    clears AA on that surface too. */}
                 <button
                   type="button"
                   onClick={() => handleToggle(`${CATEGORY_KEY_PREFIX}${group.id}`)}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70 hover:text-foreground hover:bg-muted transition-colors"
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide text-sidebar-section-heading hover:bg-muted transition-colors"
                   aria-label={isGroupExpanded ? t('action.collapse') : t('action.expand')}
                 >
                   {isGroupExpanded ? (
@@ -556,7 +565,13 @@ export function SidebarTagList({
                       <button
                         type="button"
                         onClick={() => toggleShowAllForGroup(group.id)}
-                        className="rounded-sm py-0.5 px-2 ms-6 text-[11px] font-medium leading-3.5 text-sidebar-muted hover:text-sidebar-foreground transition-colors text-start"
+                        // 11px is small text under WCAG AA. `--sidebar-muted`
+                        // was 1.87:1 on the paper sidebar and hovering made it
+                        // 3.18:1 — still under 4.5:1. This is a control rather
+                        // than a heading, so unlike the section headings it
+                        // keeps a hover colour: `--sidebar-primary` raises the
+                        // ratio (15.2:1 paper) instead of lowering it.
+                        className="rounded-sm py-0.5 px-2 ms-6 text-[11px] font-medium leading-3.5 text-sidebar-section-heading hover:text-sidebar-primary transition-colors text-start"
                       >
                         {showAllForGroup
                           ? t('action.showLess')

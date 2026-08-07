@@ -36,7 +36,7 @@ import { SidebarTagList } from '@/components/sidebar/sidebar-tag-list'
 import { SidebarUpdateButton } from '@/components/sidebar/sidebar-update-button'
 import { SidebarFeedbackButton } from '@/components/sidebar/sidebar-feedback-button'
 import { SidebarBookmarkList } from '@/components/sidebar/sidebar-bookmark-list'
-import { SidebarCanvasList } from '@/components/sidebar/sidebar-canvas-list'
+import { CanvasTree, type CanvasTreeActions } from '@/components/sidebar/canvas-tree/canvas-tree'
 import { SortableProjectList } from '@/components/sidebar/sortable-project-list'
 import { ProjectModal } from '@/components/tasks/project-modal'
 import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
@@ -353,9 +353,23 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
     [openTab, tPhaseF]
   )
 
+  // The canvas tree reports where the user is looking; the section header's `+`
+  // sits outside the tree and would otherwise always land at the root.
+  const canvasTargetFolderRef = useRef<string | null>(null)
+  const [canvasCount, setCanvasCount] = useState(0)
+
+  // A folder row's own menu can only ever create a CHILD folder, so the root
+  // needs a control that sits outside the tree — the same shape NOTES uses for
+  // its own "New folder".
+  const canvasTreeRef = useRef<CanvasTreeActions | null>(null)
+
+  const handleCanvasTargetFolderChange = useCallback((folder: string | null) => {
+    canvasTargetFolderRef.current = folder
+  }, [])
+
   const handleCreateCanvas = useCallback(async () => {
     try {
-      const canvas = await canvasService.create({})
+      const canvas = await canvasService.create({ folder: canvasTargetFolderRef.current })
       handleCanvasOpen(canvas)
     } catch (error) {
       log.error('Failed to create canvas', error)
@@ -569,25 +583,48 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
             id="canvases"
             label={tPhaseF('canvas.sectionLabel')}
             defaultExpanded={false}
+            totalCount={canvasCount}
             actions={
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => void handleCreateCanvas()}
-                    className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
-                    aria-label={tPhaseF('canvas.newCanvas')}
-                  >
-                    <Plus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  {tPhaseF('canvas.newCanvas')}
-                </TooltipContent>
-              </Tooltip>
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => void handleCreateCanvas()}
+                      className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
+                      aria-label={tPhaseF('canvas.newCanvas')}
+                    >
+                      <Plus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    {tPhaseF('canvas.newCanvas')}
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => canvasTreeRef.current?.createFolder()}
+                      className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
+                      aria-label={tPhaseF('canvas.newCanvasFolder')}
+                    >
+                      <FolderPlus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    {tPhaseF('canvas.newCanvasFolder')}
+                  </TooltipContent>
+                </Tooltip>
+              </>
             }
           >
-            <SidebarCanvasList onCanvasClick={handleCanvasOpen} />
+            <CanvasTree
+              ref={canvasTreeRef}
+              onCanvasClick={handleCanvasOpen}
+              onCountChange={setCanvasCount}
+              onTargetFolderChange={handleCanvasTargetFolderChange}
+            />
           </SidebarSection>
         )}
 

@@ -21,7 +21,11 @@ function SectionChevron({ expanded }: { expanded: boolean }): React.JSX.Element 
     <ChevronRight
       size={10}
       className={cn(
-        'shrink-0 text-sidebar-muted transition-transform duration-200 ease-in-out opacity-0 group-hover/section:opacity-100',
+        // Decorative to assistive tech, but it is the header's only visible
+        // focus state: the header sets `focus-visible:outline-none` and the app
+        // paints no global focus ring, so a chevron that stayed at `opacity-0`
+        // would leave a keyboard user with nothing on screen at all.
+        'shrink-0 text-sidebar-muted transition-transform duration-200 ease-in-out opacity-0 group-hover/section:opacity-100 group-focus-within/section:opacity-100',
         expanded && 'rotate-90'
       )}
       aria-hidden="true"
@@ -139,7 +143,11 @@ export const SidebarSection = ({
             <SectionChevron expanded={isExpanded} />
 
             {!isExpanded && totalCount !== undefined && totalCount > 0 && (
-              <span className="text-sidebar-muted/60 tabular-nums text-[10px] leading-3">
+              // The count is the only thing left telling you how much a
+              // collapsed section hides, so it is informational text, not
+              // decoration: `--sidebar-muted` at 60% was 1.43:1 on the paper
+              // sidebar. The heading token carries it at 5.07:1.
+              <span className="text-sidebar-section-heading tabular-nums text-[10px] leading-3">
                 ({totalCount})
               </span>
             )}
@@ -147,7 +155,10 @@ export const SidebarSection = ({
 
           {actions && (
             <div
-              className="flex shrink-0 items-center gap-0.5 pe-2 opacity-0 group-hover/section:opacity-100 transition-opacity duration-150"
+              // Every action in here is in the tab order, so hover cannot be
+              // the only thing that reveals them — a keyboard user would land
+              // on a control painted at `opacity-0` (WCAG 2.4.7).
+              className="flex shrink-0 items-center gap-0.5 pe-2 opacity-0 group-hover/section:opacity-100 group-focus-within/section:opacity-100 transition-opacity duration-150"
               onClick={(e) => e.stopPropagation()}
             >
               {actions}
