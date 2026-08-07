@@ -140,6 +140,7 @@ export class AgentRuntime {
 
   cancelTurn(conversationId: string): void {
     this.inFlight.get(conversationId)?.abort()
+    this.denyPendingApprovals(conversationId)
     for (const sub of this.subprocesses.values()) {
       if (sub.conversationId !== conversationId) continue
       try {
@@ -233,6 +234,30 @@ export class AgentRuntime {
       await Promise.allSettled(turns)
     }
     this.activeTurns.clear()
+  }
+
+  /**
+   * A cancelled turn must settle every approval it left on screen. An approval
+   * promise nobody resolves strands its MCP tool handler forever, and with it
+   * the HTTP response, the socket and the per-request McpServer behind it —
+   * which also blocks `server.close()` at quit. Cancelling is never consent, so
+   * these always settle as deny; the tool call fails with PERMISSION_DENIED and
+   * never runs.
+   */
+  private denyPendingApprovals(conversationId: string): void {
+    for (const [toolCallId, approval] of this.pending) {
+      if (approval.conversationId !== conversationId) continue
+      this.pending.delete(toolCallId)
+      approval.resolve({ kind: 'deny' })
+      // The approval card is only ever cleared by a decision event; without
+      // this the cancelled turn leaves a dead card the user can still click.
+      broadcastAgentEvent({
+        kind: 'tool_call_failed',
+        conversationId,
+        toolCallId,
+        error: { code: 'PERMISSION_DENIED', message: 'Turn cancelled before approval.' }
+      })
+    }
   }
 
   private waitForApproval(input: PendingApprovalSnapshot): Promise<ApproveToolDecision> {
