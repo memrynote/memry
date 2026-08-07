@@ -14,7 +14,19 @@ import { Spinner } from '@/components/ui/spinner'
 import { useImportRun } from '@/hooks/use-import-run'
 import { notesKeys } from '@/hooks/use-notes-query'
 import { formatImportMessage } from '@/lib/import-message'
+import {
+  OneNoteImportPanel,
+  type OneNotePanelState
+} from '@/components/settings/onenote-import-panel'
 import type { ImporterItem } from '@/hooks/use-importers'
+
+/** Account-based importers bring their own source panel, keyed by importer id. */
+const ACCOUNT_PANELS: Record<
+  string,
+  React.ComponentType<{ disabled: boolean; onStateChange: (state: OneNotePanelState) => void }>
+> = {
+  onenote: OneNoteImportPanel
+}
 
 interface ImportDialogProps {
   item: ImporterItem | null
@@ -27,6 +39,10 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
   const run = useImportRun()
   const queryClient = useQueryClient()
   const [paths, setPaths] = useState<string[]>([])
+  const [accountState, setAccountState] = useState<OneNotePanelState>({
+    ready: false,
+    options: {}
+  })
 
   // The import runner drains its projection pipeline before resolving, so once a
   // summary arrives the note_cache is complete. Refetch the sidebar tree (notes +
@@ -40,6 +56,7 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
 
   const reset = () => {
     setPaths([])
+    setAccountState({ ready: false, options: {} })
     run.reset()
   }
 
@@ -68,9 +85,20 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
   // Electron degrades a combined file+directory panel to directory-only on
   // Windows/Linux, so an importer that accepts either gets two buttons.
   const offersFolderToo = Boolean(item?.fileSpec.allowDirectory) && !isDirectoryPick
+  // Account-based importers replace the file picker with their own panel. The
+  // flag decides the flow, not the map: an account importer whose panel is
+  // missing must not silently fall back to a file picker it cannot use.
+  const isAccountBased = Boolean(item?.accountBased)
+  const AccountPanel = isAccountBased && item ? ACCOUNT_PANELS[item.id] : undefined
 
   const startImport = () => {
-    if (!item || paths.length === 0 || run.isRunning) return
+    if (!item || run.isRunning) return
+    if (isAccountBased) {
+      if (!AccountPanel || !accountState.ready) return
+      void run.start(item.id, [], accountState.options as Record<string, unknown>)
+      return
+    }
+    if (paths.length === 0) return
     void run.start(item.id, paths)
   }
 
@@ -91,29 +119,34 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
 
         {!summary && (
           <div className="flex min-w-0 flex-col gap-3 py-2">
-            {isDirectoryPick && (
+            {AccountPanel && (
+              <AccountPanel disabled={run.isRunning} onStateChange={setAccountState} />
+            )}
+            {!isAccountBased && isDirectoryPick && (
               <p className="text-xs/4 text-muted-foreground">{t('import.dialog.folderHint')}</p>
             )}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void choose()}
-                disabled={run.isRunning || run.isPreviewing}
-              >
-                {isDirectoryPick ? t('import.dialog.chooseFolder') : t('import.dialog.choose')}
-              </Button>
-              {offersFolderToo && (
+            {!isAccountBased && (
+              <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => void choose(true)}
+                  onClick={() => void choose()}
                   disabled={run.isRunning || run.isPreviewing}
                 >
-                  {t('import.dialog.chooseDirectory')}
+                  {isDirectoryPick ? t('import.dialog.chooseFolder') : t('import.dialog.choose')}
                 </Button>
-              )}
-            </div>
+                {offersFolderToo && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void choose(true)}
+                    disabled={run.isRunning || run.isPreviewing}
+                  >
+                    {t('import.dialog.chooseDirectory')}
+                  </Button>
+                )}
+              </div>
+            )}
             {offersFolderToo && (
               <p className="text-xs/4 text-muted-foreground">
                 {t('import.dialog.folderKeepsAssets')}
@@ -235,7 +268,11 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
           ) : (
             <Button
               size="sm"
-              disabled={paths.length === 0 || run.isPreviewing || (needsPreview && !run.preview)}
+              disabled={
+                isAccountBased
+                  ? !AccountPanel || !accountState.ready
+                  : paths.length === 0 || run.isPreviewing || (needsPreview && !run.preview)
+              }
               onPointerDown={startImport}
               onClick={startImport}
             >

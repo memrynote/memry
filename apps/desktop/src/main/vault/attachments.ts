@@ -82,6 +82,17 @@ const generatePrefix = customAlphabet('0123456789abcdefghijklmnopqrstuvwxyz', 6)
 // Types
 // ============================================================================
 
+export interface SaveAttachmentOptions {
+  /**
+   * Additional extensions to accept beyond {@link ALLOWED_EXTENSIONS} for this
+   * one call. Importers use this for source files Memry cannot embed natively
+   * (e.g. OneNote presentations/media); the renderer shows them as file blocks.
+   * The size cap still applies, and callers must pass a curated list — never
+   * executables.
+   */
+  extraAllowedExtensions?: string[]
+}
+
 export interface AttachmentResult {
   success: boolean
   /** Relative path from note to attachment (e.g., ../attachments/{noteId}/abc123-image.png) */
@@ -226,10 +237,11 @@ export function generateUniqueFilename(originalFilename: string): string {
   // Spaces and parens survive sanitizeFilename but break markdown image links
   // (`![](a b.png)` / `![](a(1).png)` stop parsing at the space/paren and render
   // as raw text). Percent-encoding the URL is not enough — the editor decodes it
-  // back on save — so keep them out of the filename itself.
+  // back on save — so keep them out of the filename itself. Braces go too: they
+  // would terminate the `<!-- file:{...} -->` block marker early.
   const sanitizedName =
     sanitizeFilename(baseName)
-      .replace(/[\s()]+/g, '-')
+      .replace(/[\s(){}]+/g, '-')
       .replace(/-{2,}/g, '-')
       .replace(/^-|-$/g, '') || 'file'
   return `${prefix}-${sanitizedName}${ext}`
@@ -270,16 +282,19 @@ export async function ensureNoteAttachmentsFolder(noteId: string): Promise<strin
  * @param noteId - The note ID to associate the attachment with
  * @param data - File contents as Buffer
  * @param originalFilename - Original filename (for extension and display name)
+ * @param options - Per-call overrides (see {@link SaveAttachmentOptions})
  * @returns AttachmentResult with path and metadata
  */
 export async function saveAttachment(
   noteId: string,
   data: Buffer,
-  originalFilename: string
+  originalFilename: string,
+  options?: SaveAttachmentOptions
 ): Promise<AttachmentResult> {
   // Validate file type
-  if (!isAllowedFileType(originalFilename)) {
-    const ext = getFileExtension(originalFilename)
+  const ext = getFileExtension(originalFilename)
+  const extraAllowed = options?.extraAllowedExtensions ?? []
+  if (!isAllowedFileType(originalFilename) && !extraAllowed.includes(ext)) {
     return {
       success: false,
       error: `File type ".${ext}" is not allowed. Allowed types: ${ALLOWED_EXTENSIONS.join(', ')}`

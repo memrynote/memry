@@ -181,6 +181,10 @@
     "fileSelectionFailed": "Dosya seçimi başarısız oldu",
     "importFailed": "İçe aktarma başarısız oldu",
     "listFailed": "İçe aktarıcılar listelenemedi",
+    "onenoteStatusFailed": "OneNote bağlantı durumu okunamadı",
+    "onenoteConnectFailed": "Microsoft oturum açma başarısız oldu",
+    "onenoteDisconnectFailed": "Microsoft hesabının bağlantısı kesilemedi",
+    "onenoteNotebooksFailed": "OneNote not defterleri yüklenemedi",
     "previewFailed": "Önizleme başarısız oldu"
   },
   "project": {

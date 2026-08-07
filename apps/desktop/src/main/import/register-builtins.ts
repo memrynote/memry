@@ -12,6 +12,8 @@ import { appleJournalImporter } from './apple-journal/apple-journal-importer'
 import { csvImporter } from './csv/csv-importer'
 import { raindropImporter } from './raindrop/raindrop-importer'
 import { appleNotesImporter } from './apple-notes/apple-notes-importer'
+import { onenoteImporter } from './onenote/onenote-importer'
+import { isOneNoteConfigured } from './onenote/onenote-auth'
 
 let registered = false
 
@@ -34,5 +36,10 @@ export function registerBuiltinImporters(): void {
   // Apple Notes reads the local macOS NoteStore.sqlite — gate to macOS only.
   if (process.platform === 'darwin') {
     registerImporter(appleNotesImporter)
+  }
+  // OneNote talks to Microsoft Graph and needs an Azure app registration;
+  // until ONENOTE_CLIENT_ID is set it stays out of the import list.
+  if (isOneNoteConfigured()) {
+    registerImporter(onenoteImporter)
   }
 }

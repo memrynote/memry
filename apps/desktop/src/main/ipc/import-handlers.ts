@@ -11,6 +11,10 @@ import { registerCommand } from './lib/register-command'
 import { registerBuiltinImporters } from '../import/register-builtins'
 import { listImporterMeta } from '../import/registry'
 import { runImport, previewImport, cancelImport } from '../import/runner'
+import {
+  registerOneNoteImportHandlers,
+  unregisterOneNoteImportHandlers
+} from './onenote-import-handlers'
 
 /**
  * Generic import IPC: start a run (resolves with the final summary) and cancel
@@ -84,6 +88,8 @@ export function registerImportHandlers(): void {
     () => listImporterMeta(),
     'errors:importer.listFailed'
   )
+
+  registerOneNoteImportHandlers()
 }
 
 export function unregisterImportHandlers(): void {
@@ -92,4 +98,5 @@ export function unregisterImportHandlers(): void {
   ipcMain.removeHandler(ImportChannels.invoke.CANCEL)
   ipcMain.removeHandler(ImportChannels.invoke.PREVIEW)
   ipcMain.removeHandler(ImportChannels.invoke.LIST)
+  unregisterOneNoteImportHandlers()
 }

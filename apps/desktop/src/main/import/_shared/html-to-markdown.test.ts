@@ -103,3 +103,55 @@ describe('percentDecodeRef', () => {
     expect(percentDecodeRef('bad%ref')).toBe('bad%ref')
   })
 })
+
+describe('nested lists', () => {
+  it('renders nested unordered lists as indented sub-items', () => {
+    const { markdown } = convert(
+      '<ul><li>Parent<ul><li>Child A</li><li>Child B</li></ul></li><li>Sibling</li></ul>'
+    )
+    expect(markdown).toBe('- Parent\n  - Child A\n  - Child B\n- Sibling')
+  })
+
+  it('indents ordered children under their unordered parent', () => {
+    const { markdown } = convert('<ul><li>Steps<ol><li>One</li><li>Two</li></ol></li></ul>')
+    expect(markdown).toBe('- Steps\n  1. One\n  2. Two')
+  })
+
+  it('indents by marker width for ordered parents', () => {
+    const { markdown } = convert('<ol><li>First<ul><li>Inner</li></ul></li></ol>')
+    expect(markdown).toBe('1. First\n   - Inner')
+  })
+
+  it('supports two levels of nesting', () => {
+    const { markdown } = convert('<ul><li>A<ul><li>B<ul><li>C</li></ul></li></ul></li></ul>')
+    expect(markdown).toBe('- A\n  - B\n    - C')
+  })
+
+  it('keeps checkbox items working with nested content', () => {
+    const { markdown } = convert('<ul><li class="to-do">Task<ul><li>Detail</li></ul></li></ul>')
+    expect(markdown).toBe('- [ ] Task\n   - Detail')
+  })
+})
+
+describe('nested checklists', () => {
+  it('does not give a plain parent its child list checkbox state', () => {
+    const { markdown } = convert(
+      '<ul><li>Groceries<ul><li><input type="checkbox" checked>Milk</li></ul></li></ul>'
+    )
+    expect(markdown).toBe('- Groceries\n  - [x] Milk')
+  })
+
+  it('keeps ordered numbering on a parent that wraps a checklist', () => {
+    const { markdown } = convert(
+      '<ol><li>Step one<ul><li><input type="checkbox">sub</li></ul></li><li>Step two</li></ol>'
+    )
+    expect(markdown).toBe('1. Step one\n   - [ ] sub\n2. Step two')
+  })
+
+  it('still detects a checkbox that belongs to the item itself', () => {
+    const { markdown } = convert(
+      '<ul><li><input type="checkbox" checked>Parent<ul><li>child</li></ul></li></ul>'
+    )
+    expect(markdown).toBe('- [x] Parent\n   - child')
+  })
+})

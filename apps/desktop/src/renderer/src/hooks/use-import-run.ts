@@ -19,7 +19,11 @@ export interface UseImportRun {
   isRunning: boolean
   error: string | null
   runPreview: (importerId: string, sourcePaths: string[]) => Promise<void>
-  start: (importerId: string, sourcePaths: string[]) => Promise<void>
+  start: (
+    importerId: string,
+    sourcePaths: string[],
+    options?: Record<string, unknown>
+  ) => Promise<void>
   cancel: () => void
   reset: () => void
 }
@@ -78,35 +82,47 @@ export function useImportRun(): UseImportRun {
     []
   )
 
-  const start = useCallback(async (importerId: string, sourcePaths: string[]): Promise<void> => {
-    const id = crypto.randomUUID()
-    activeIdRef.current = id
-    setImportId(id)
-    setProgress(null)
-    setSummary(null)
-    setError(null)
-    setIsRunning(true)
+  const start = useCallback(
+    async (
+      importerId: string,
+      sourcePaths: string[],
+      options?: Record<string, unknown>
+    ): Promise<void> => {
+      const id = crypto.randomUUID()
+      activeIdRef.current = id
+      setImportId(id)
+      setProgress(null)
+      setSummary(null)
+      setError(null)
+      setIsRunning(true)
 
-    unsubscribeRef.current?.()
-    unsubscribeRef.current = window.api.onImportProgress((event) => {
-      if (event.importId !== activeIdRef.current) return
-      setProgress(event)
-    })
-
-    try {
-      // The IPC layer resolves errors as a { success: false, error } envelope
-      // (it does not reject), so a thrown importer surfaces here, not in catch.
-      const result = await window.api.import.start({ importId: id, importerId, sourcePaths })
-      if (result.success) setSummary(result.summary)
-      else setError(result.error ?? importFailed())
-    } catch (err) {
-      setError(err instanceof Error ? err.message : importFailed())
-    } finally {
-      setIsRunning(false)
       unsubscribeRef.current?.()
-      unsubscribeRef.current = null
-    }
-  }, [])
+      unsubscribeRef.current = window.api.onImportProgress((event) => {
+        if (event.importId !== activeIdRef.current) return
+        setProgress(event)
+      })
+
+      try {
+        // The IPC layer resolves errors as a { success: false, error } envelope
+        // (it does not reject), so a thrown importer surfaces here, not in catch.
+        const result = await window.api.import.start({
+          importId: id,
+          importerId,
+          sourcePaths,
+          options
+        })
+        if (result.success) setSummary(result.summary)
+        else setError(result.error ?? importFailed())
+      } catch (err) {
+        setError(err instanceof Error ? err.message : importFailed())
+      } finally {
+        setIsRunning(false)
+        unsubscribeRef.current?.()
+        unsubscribeRef.current = null
+      }
+    },
+    []
+  )
 
   const cancel = useCallback(() => {
     const id = activeIdRef.current

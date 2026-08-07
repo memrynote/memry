@@ -42,3 +42,31 @@ describe('check-staged-secrets constructor values', () => {
     ])
   })
 })
+
+describe('check-staged-secrets function values', () => {
+  it('ignores a token-named key assigned an arrow function with parameters', () => {
+    assert.deepEqual(rules('  getAccessToken: (force) => mintToken({ clientId, force }),'), [])
+  })
+
+  it('still flags an arrow function body containing a string literal', () => {
+    assert.deepEqual(rules("  getAccessToken: (force) => 'hunter2secretvalue'"), [
+      'high-risk-secret-assignment'
+    ])
+  })
+})
+
+describe('check-staged-secrets fallback chains', () => {
+  it('ignores a secret-named key assigned a nullish chain over code references', () => {
+    assert.deepEqual(rules('  refreshToken: tokens.refreshToken ?? refreshToken,'), [])
+  })
+
+  it('ignores a logical-or chain over code references', () => {
+    assert.deepEqual(rules('  apiKeyValue: config.apiKey || fallbackKey,'), [])
+  })
+
+  it('still flags a fallback chain ending in a quoted literal', () => {
+    assert.deepEqual(rules("  refreshToken: tokens.refreshToken ?? 'hunter2secretvalue'"), [
+      'high-risk-secret-assignment'
+    ])
+  })
+})

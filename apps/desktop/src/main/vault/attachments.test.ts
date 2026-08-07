@@ -366,6 +366,38 @@ describe('attachment operations', () => {
     })
   })
 
+  describe('saveAttachment with extraAllowedExtensions', () => {
+    it('accepts a listed extra extension for this call only', async () => {
+      const result = await saveAttachment('note123', Buffer.from('deck'), 'slides.ppt', {
+        extraAllowedExtensions: ['ppt']
+      })
+      expect(result.success).toBe(true)
+      expect(result.type).toBe('file')
+      expect(result.name).toBe('slides.ppt')
+
+      // Without the override the same file is still rejected.
+      const rejected = await saveAttachment('note123', Buffer.from('deck'), 'slides2.ppt')
+      expect(rejected.success).toBe(false)
+      expect(rejected.error).toContain('not allowed')
+    })
+
+    it('does not accept extensions outside the override list', async () => {
+      const result = await saveAttachment('note123', Buffer.from('bin'), 'tool.exe', {
+        extraAllowedExtensions: ['ppt']
+      })
+      expect(result.success).toBe(false)
+    })
+
+    it('still enforces the size cap for extra extensions', async () => {
+      const big = Buffer.alloc(MAX_FILE_SIZE + 1)
+      const result = await saveAttachment('note123', big, 'movie.mp4', {
+        extraAllowedExtensions: ['mp4']
+      })
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('too large')
+    })
+  })
+
   describe('attachmentExists', () => {
     it('T394: returns true for existing attachment', async () => {
       const saveResult = await saveAttachment('note123', Buffer.from('data'), 'test.png')

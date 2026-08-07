@@ -956,6 +956,21 @@
     "dialog": {
       "title": "Import from {name}",
       "choose": "Choose file…",
+      "onenote": {
+        "connect": "Sign in with Microsoft",
+        "connecting": "Waiting for the browser sign-in…",
+        "connectedAs": "Signed in as {name} ({email})",
+        "switchAccount": "Switch account",
+        "loadingNotebooks": "Loading notebooks…",
+        "notebooksEmpty": "No notebooks found in this account.",
+        "selectAll": "Select all",
+        "deselectAll": "Clear selection",
+        "sectionsSelected": "{count, plural, one {# section selected} other {# sections selected}}",
+        "includeIncompatible": "Import incompatible attachments",
+        "includeIncompatibleHint": "Also save file types Memry can't preview (presentations, media, archives — never executables). They appear as file blocks.",
+        "skipPrevious": "Skip previously imported pages",
+        "skipPreviousHint": "Pages imported by an earlier OneNote run are skipped, so re-running only picks up what's new."
+      },
       "chooseFolder": "Select Apple Notes folder…",
       "chooseDirectory": "Choose folder…",
       "folderKeepsAssets": "Choose the folder when images sit outside the notes' own folder — exports often keep media in a shared one.",
@@ -1027,6 +1042,11 @@
       },
       "html": {
         "scanning": "Scanning HTML files…"
+      },
+      "onenote": {
+        "loadingNotebooks": "Loading OneNote notebooks…",
+        "rateLimited": "OneNote is rate-limiting; waiting before retrying…",
+        "downloadingAttachment": "Downloading attachment {name}"
       },
       "raindrop": {
         "importing": "Importing Raindrop bookmarks…"

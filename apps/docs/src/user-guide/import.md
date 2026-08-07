@@ -266,9 +266,34 @@ Import a [Raindrop.io](https://raindrop.io) bookmark export. Unlike the other so
 ## Importing from OneNote
 
 ::: warning Setup required
-OneNote import is **disabled** until an **Azure app registration** is configured. Microsoft Graph requires a public-client application (client) id plus a registered loopback redirect URI and the delegated scopes `user.read` and `notes.read`. Until the client id is set, OneNote does not appear in the import list.
+OneNote import is **disabled** until an **Azure app registration** is configured: set the `ONENOTE_CLIENT_ID` environment variable to a public-client application (client) id whose registration has `http://localhost` as a **Mobile and desktop applications** redirect URI and the delegated scopes `user.read` and `notes.read` (`offline_access` is requested automatically). Until the client id is set, OneNote does not appear in the import list.
 :::
 
-Once configured, OneNote imports notebooks → sections → pages from the Microsoft Graph API into `OneNote/<notebook>/<section>/`, converting each page's HTML to Markdown and saving inline images as attachments.
+OneNote is an account importer: instead of picking files, the import dialog signs you in with your Microsoft account (the consent screen opens in your browser; tokens are stored in your OS keychain, and **Switch account** forgets them again). After sign-in, Memry loads your notebooks and lets you choose exactly which sections to import.
 
-**Deferred:** OneNote math (`<math>` / MathML → LaTeX) and handwriting/ink (InkML → SVG) are not yet converted and pass through as plain text.
+Pages land as one note each under `OneNote/<notebook>/<section group…>/<section>/`, and subpages nest in a folder named after their parent page. Created/modified timestamps carry over.
+
+**What converts:**
+
+| OneNote content                      | Becomes                                                                 |
+| ------------------------------------ | ----------------------------------------------------------------------- |
+| Page HTML                            | Markdown (headings, lists — nested included — tables, quotes)           |
+| Note tags (`Important`, …)           | Note tags in frontmatter (`:` becomes `-`)                              |
+| To-do tags                           | Markdown task checkboxes (`- [ ]` / `- [x]`)                            |
+| Bold/italic/strike/highlight styling | `**bold**`, `*italic*`, `~~strike~~`, `==highlight==`                   |
+| Code (Consolas runs)                 | Inline code or fenced code blocks                                       |
+| Math (MathML)                        | Inline LaTeX (`$…$`)                                                    |
+| Handwriting / drawings               | An SVG attachment embedded at the end of the note                       |
+| Images (incl. pasted)                | Vault attachments (full-resolution, OCR alt text kept)                  |
+| File attachments                     | Vault attachments shown as clickable file blocks                        |
+| Linked (non-OneNote) images          | Left as plain external links — never downloaded with your account       |
+| Online videos                        | Markdown links                                                          |
+| OneNote-internal links               | Unwrapped to their text (they would point at the local OneNote install) |
+
+**Options:**
+
+- **Sections** — pick notebooks/section groups/sections in the dialog; everything is selected by default.
+- **Skip previously imported pages** (default on) — imported page ids are remembered per vault (`.memry/import/onenote.json`), so re-running an import only picks up new pages. Turn it off to re-import everything.
+- **Import incompatible attachments** (default off) — also saves file types Memry can't embed natively (presentations, media, archives, and image formats the editor can't render such as EMF/TIFF clipboard art). They render as file blocks and open externally. Executables are never imported, even with this on.
+
+**Limitations:** attachments are capped at 10 MB each (Memry's vault attachment limit); larger files are skipped and counted. Microsoft throttles the OneNote API — large imports may pause for up to a minute at a time and continue automatically.

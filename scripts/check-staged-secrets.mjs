@@ -95,6 +95,16 @@ function isSourceCodeReferenceValue(filePath, value) {
     return isSourceCodeReferenceValue(filePath, jsxInner[1])
   }
 
+  // Fallback chain over code references (`tokens.refreshToken ?? refreshToken`).
+  // Every operand must itself be a code reference, so a quoted literal on
+  // either side stays flagged.
+  const operands = normalized.split(/\s*(?:\?\?|\|\|)\s*/)
+  if (operands.length > 1) {
+    return operands.every(
+      (operand) => operand.length > 0 && isSourceCodeReferenceValue(filePath, operand)
+    )
+  }
+
   return (
     isTypeScriptTypeValue(normalized) ||
     /^[A-Za-z_$][\w$]*$/.test(normalized) ||
@@ -115,6 +125,10 @@ function isCodeDeclarationValue(filePath, value) {
     // numeric literals (`tokenIssuedAt = 0`) carry no secret material
     /^-?\d+(?:\.\d+)?$/.test(normalized) ||
     normalized.startsWith('() =>') ||
+    // arrow function taking parameters (`getAccessToken: (force) => mint(force)`):
+    // the value is a function, not a literal. Quote characters anywhere in it
+    // keep an embedded string literal flagged.
+    /^\([^)'"`]*\)\s*=>[^'"`]*$/.test(normalized) ||
     /^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/i.test(normalized) ||
     isSourceCodeReferenceValue(filePath, value)
   )

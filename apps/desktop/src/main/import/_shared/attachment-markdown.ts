@@ -32,7 +32,10 @@ export function encodeAttachmentUrl(url: string): string {
 export function serializeFileBlockMarker(result: AttachmentResult): string {
   const props = {
     url: result.path ?? '',
-    name: result.name ?? '',
+    // The display name is the source filename, which may legitimately contain
+    // braces; a literal `}` here would end the marker early and leave the raw
+    // comment visible in the note.
+    name: (result.name ?? '').replace(/[{}]/g, ''),
     size: result.size ?? 0,
     mimeType: result.mimeType ?? 'application/octet-stream'
   }
