@@ -10,6 +10,20 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-07-canvas-management-design.md`
 
+## Status — 2026-08-07
+
+Tasks 1–15 are implemented and checked off. Task 16 is checked off for Steps 1, 2 and 5.
+
+**Four steps are deliberately left unchecked**, because nobody has performed them:
+
+- **Step 3 (two-profile sync check by hand)** — needs two running desktop profiles and a live sync server; not doable from an automated session. The empty-folder round trip is the one it exists for.
+- **Step 4 (full verification sweep)** — `pnpm lint`, `typecheck`, `test`, `check:architecture`, `check:contracts`, `ipc:check`, `i18n:check`, `git diff --check` have not been run as one sweep over the finished branch.
+- **Steps 6 and 7 (branch rename, draft PR, commits)** — git work, owned by whoever lands this.
+
+**Deviation from Task 16 Step 1:** the spec file is `apps/desktop/tests/e2e/canvas-management.e2e.ts`, not `.spec.ts`. `config/playwright.config.ts` matches `**/*.e2e.{ts,tsx}` only, so a `.spec.ts` file would never have been collected. Step 7's `git add` path should be updated to match.
+
+**E2E evidence:** `1 passed (27.9s)`, run as `npx playwright test --config config/playwright.config.ts canvas-management` after `pnpm build` and `ensure-native.sh electron`. Proven non-vacuous by mutation: replacing the root drop zone's `onDrop={(event) => handleDrop(event, null)}` with a bare `preventDefault` turns the run red at the drag-to-root assertion (`expect(received).toBeNull()` / `Received: "Work"`, line 176). Restored and re-run green.
+
 ## Global Constraints
 
 - **Production app, backward compatibility is mandatory.** No DB resets. Data-DB migrations are hand-written and additive (Drizzle snapshots broken past 0021). Next free migration number is `0048`.
@@ -92,11 +106,11 @@ Independent of everything else and fixes a reported bug app-wide. Ship it first 
 - Consumes: nothing
 - Produces: nothing — pure styling fix
 
-- [ ] **Step 1: Read the current component**
+- [x] **Step 1: Read the current component**
 
 Read `apps/desktop/src/renderer/src/components/ui/context-menu.tsx`. Note that `ContextMenuContent` (~line 67) has `overflow-hidden` and no max-height, while `ContextMenuSubContent` (~line 90) already has `max-h-(--radix-context-menu-content-available-height) ... overflow-x-hidden overflow-y-auto`. The fix is to bring the root content in line with its own sub-content.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Create `apps/desktop/src/renderer/src/components/ui/context-menu.test.tsx`:
 
@@ -129,7 +143,7 @@ describe('ContextMenuContent', () => {
 })
 ```
 
-- [ ] **Step 3: Run the test and confirm it fails**
+- [x] **Step 3: Run the test and confirm it fails**
 
 ```bash
 pnpm --filter @memry/desktop test:renderer -- context-menu
@@ -137,7 +151,7 @@ pnpm --filter @memry/desktop test:renderer -- context-menu
 
 Expected: FAIL — the class list contains `overflow-hidden` and neither of the other two classes.
 
-- [ ] **Step 4: Apply the fix**
+- [x] **Step 4: Apply the fix**
 
 In `ContextMenuContent`'s `cn(...)` call, replace `overflow-hidden` with:
 
@@ -147,7 +161,7 @@ max-h-(--radix-context-menu-content-available-height) overflow-x-hidden overflow
 
 Leave every other class untouched, and leave `ContextMenuSubContent` alone — it is already correct.
 
-- [ ] **Step 5: Run the test and confirm it passes**
+- [x] **Step 5: Run the test and confirm it passes**
 
 ```bash
 pnpm --filter @memry/desktop test:renderer -- context-menu
@@ -155,7 +169,7 @@ pnpm --filter @memry/desktop test:renderer -- context-menu
 
 Expected: PASS.
 
-- [ ] **Step 6: Check for visual regressions in long menus**
+- [x] **Step 6: Check for visual regressions in long menus**
 
 ```bash
 pnpm --filter @memry/desktop test:renderer -- virtualized-notes-tree
@@ -163,7 +177,7 @@ pnpm --filter @memry/desktop test:renderer -- virtualized-notes-tree
 
 Expected: PASS. The notes tree renders the app's other long menus; nothing should change.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/desktop/src/renderer/src/components/ui/context-menu.tsx apps/desktop/src/renderer/src/components/ui/context-menu.test.tsx
@@ -184,7 +198,7 @@ git commit -m "fix(ui): let context menus scroll instead of clipping their optio
 - Consumes: nothing
 - Produces: CSS variable `--sidebar-section-heading` / Tailwind class `text-sidebar-section-heading`
 
-- [ ] **Step 1: Measure the current ratios**
+- [x] **Step 1: Measure the current ratios**
 
 The heading renders at 11px, which WCAG AA treats as small text (4.5:1 required). Current values, from `base.css`:
 
@@ -196,7 +210,7 @@ The heading renders at 11px, which WCAG AA treats as small text (4.5:1 required)
 
 Compute each contrast ratio with the WCAG formula. Record the "before" numbers — they go in the PR description.
 
-- [ ] **Step 2: Pick values that clear 4.5:1**
+- [x] **Step 2: Pick values that clear 4.5:1**
 
 Add a new token per theme. Do **not** change `--sidebar-muted` itself: it also colors chevrons and decorative icon buttons, where extra weight fights the calm direction in `PRODUCT.md`.
 
@@ -213,7 +227,7 @@ Starting points to verify and adjust until each clears 4.5:1 against its own `--
 
 Confirm each measured ratio is ≥ 4.5:1 before moving on. If one falls short, darken (light themes) or lighten (dark theme) until it clears.
 
-- [ ] **Step 3: Register the token with Tailwind**
+- [x] **Step 3: Register the token with Tailwind**
 
 In the `@theme inline` block of `base.css`, beside `--color-sidebar-muted`:
 
@@ -221,7 +235,7 @@ In the `@theme inline` block of `base.css`, beside `--color-sidebar-muted`:
 --color-sidebar-section-heading: var(--sidebar-section-heading);
 ```
 
-- [ ] **Step 4: Use it in the heading**
+- [x] **Step 4: Use it in the heading**
 
 In `sidebar-section.tsx`, in the header `<button>`'s `cn(...)`, change:
 
@@ -237,7 +251,7 @@ to:
 
 Leave `SectionChevron`'s `text-sidebar-muted` alone — the chevron is decorative and exempt.
 
-- [ ] **Step 5: Verify in all three themes**
+- [x] **Step 5: Verify in all three themes**
 
 ```bash
 pnpm dev
@@ -245,7 +259,7 @@ pnpm dev
 
 Switch through paper / white / dark in settings. The section headings (NOTES, PROJECTS, BOOKMARKS, CANVASES, TAGS) should read clearly; the chevrons and the `(n)` count should look unchanged.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/desktop/src/renderer/src/assets/base.css apps/desktop/src/renderer/src/components/sidebar-section.tsx
@@ -275,7 +289,7 @@ Every folder rule that is worth testing lives here, so the store and the rendere
   - `parentFolder(folder: string | null): string | null`
   - `MAX_CANVAS_FOLDER_DEPTH = 8`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `apps/desktop/src/main/canvas/folder-paths.test.ts`:
 
@@ -364,7 +378,7 @@ describe('folderSegments', () => {
 })
 ```
 
-- [ ] **Step 2: Run and confirm failure**
+- [x] **Step 2: Run and confirm failure**
 
 ```bash
 pnpm --filter @memry/desktop test:main -- folder-paths
@@ -372,7 +386,7 @@ pnpm --filter @memry/desktop test:main -- folder-paths
 
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `apps/desktop/src/main/canvas/folder-paths.ts`:
 
@@ -453,7 +467,7 @@ export function rewriteFolderPrefix(
 }
 ```
 
-- [ ] **Step 4: Run and confirm passing**
+- [x] **Step 4: Run and confirm passing**
 
 ```bash
 pnpm --filter @memry/desktop test:main -- folder-paths
@@ -461,7 +475,7 @@ pnpm --filter @memry/desktop test:main -- folder-paths
 
 Expected: PASS, all cases.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/desktop/src/main/canvas/folder-paths.ts apps/desktop/src/main/canvas/folder-paths.test.ts
@@ -487,7 +501,7 @@ git commit -m "feat(canvas): add pure path algebra for canvas folders"
   - `ensureCanvasFolderDir(vaultPath: string, folder: string | null): void`
   - `portableCanvasFolder(folder: string | null): string | null` — sanitizes each segment
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `apps/desktop/src/main/canvas/scene-file.test.ts`:
 
@@ -551,7 +565,7 @@ describe('folder-aware canvas paths', () => {
 
 Use whatever temp-vault helper the existing test file already defines; if it has none, add `makeTempVault()` using `mkdtempSync(path.join(tmpdir(), 'canvas-'))` and register cleanup in `afterEach`.
 
-- [ ] **Step 2: Run and confirm failure**
+- [x] **Step 2: Run and confirm failure**
 
 ```bash
 pnpm --filter @memry/desktop test:main -- scene-file
@@ -559,7 +573,7 @@ pnpm --filter @memry/desktop test:main -- scene-file
 
 Expected: FAIL — the new exports do not exist and `allocateCanvasPath` ignores its fifth argument.
 
-- [ ] **Step 3: Implement the new exports**
+- [x] **Step 3: Implement the new exports**
 
 In `scene-file.ts`, add imports from `./folder-paths` and these functions:
 
@@ -587,7 +601,7 @@ export function ensureCanvasFolderDir(vaultPath: string, folder: string | null):
 }
 ```
 
-- [ ] **Step 4: Make `canvasRelativePath` and `allocateCanvasPath` folder-aware**
+- [x] **Step 4: Make `canvasRelativePath` and `allocateCanvasPath` folder-aware**
 
 ```ts
 function canvasRelativePath(filename: string, folder: string | null = null): string {
@@ -624,7 +638,7 @@ export function allocateCanvasPath(
 
 The uniquification loop is unchanged — because the candidate now carries the folder, collisions are already scoped per folder.
 
-- [ ] **Step 5: Make `listCanvasFiles` recursive**
+- [x] **Step 5: Make `listCanvasFiles` recursive**
 
 ```ts
 /**
@@ -664,7 +678,7 @@ export function listCanvasFiles(vaultPath: string): string[] {
 
 Add `Dirent` to the `fs` import.
 
-- [ ] **Step 6: Run and confirm passing**
+- [x] **Step 6: Run and confirm passing**
 
 ```bash
 pnpm --filter @memry/desktop test:main -- scene-file
@@ -672,7 +686,7 @@ pnpm --filter @memry/desktop test:main -- scene-file
 
 Expected: PASS, including every pre-existing test in the file.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/desktop/src/main/canvas/scene-file.ts apps/desktop/src/main/canvas/scene-file.test.ts
@@ -708,7 +722,7 @@ Grouped because a partial contract change does not typecheck — `pnpm typecheck
   - `CanvasFolderChannels`
   - `canvasFolders` Drizzle table
 
-- [ ] **Step 1: Write the failing id test**
+- [x] **Step 1: Write the failing id test**
 
 Create `packages/contracts/src/canvas-folder-types.test.ts`:
 
@@ -734,7 +748,7 @@ describe('canvasFolderSyncId', () => {
 })
 ```
 
-- [ ] **Step 2: Run and confirm failure**
+- [x] **Step 2: Run and confirm failure**
 
 ```bash
 pnpm --filter @memry/contracts test -- canvas-folder-types
@@ -742,7 +756,7 @@ pnpm --filter @memry/contracts test -- canvas-folder-types
 
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Implement `canvas-folder-types.ts`**
+- [x] **Step 3: Implement `canvas-folder-types.ts`**
 
 ```ts
 /**
@@ -768,7 +782,7 @@ export function canvasFolderSyncId(path: string): string {
 }
 ```
 
-- [ ] **Step 4: Run and confirm passing**
+- [x] **Step 4: Run and confirm passing**
 
 ```bash
 pnpm --filter @memry/contracts test -- canvas-folder-types
@@ -776,7 +790,7 @@ pnpm --filter @memry/contracts test -- canvas-folder-types
 
 Expected: PASS.
 
-- [ ] **Step 5: Extend the canvas API contract**
+- [x] **Step 5: Extend the canvas API contract**
 
 In `packages/contracts/src/canvas-api.ts`:
 
@@ -813,7 +827,7 @@ Add the same two lines to `CanvasUpdateSchema`. Add to `CanvasChannels.invoke` i
     OPEN_EXTERNAL: 'canvas:open-external',
 ```
 
-- [ ] **Step 6: Add the folder contract**
+- [x] **Step 6: Add the folder contract**
 
 Create `packages/contracts/src/canvas-folder-api.ts`:
 
@@ -917,13 +931,13 @@ export type CanvasFolderEventChannel =
   (typeof CanvasFolderChannels.events)[keyof typeof CanvasFolderChannels.events]
 ```
 
-- [ ] **Step 7: Register the sync type**
+- [x] **Step 7: Register the sync type**
 
 In `packages/contracts/src/sync-api.ts`, add `'canvas_folder'` to **all four** arrays: `SYNC_ITEM_TYPES`, `RECORD_SYNC_ITEM_TYPES`, `RECORD_CLOCK_REQUIRED_ITEM_TYPES`, `ENCRYPTABLE_ITEM_TYPES`.
 
 Do **not** touch `LEGACY_RECORD_SYNC_ITEM_TYPES` — it is a frozen list that protects binaries already in users' hands.
 
-- [ ] **Step 8: Extend the sync payloads**
+- [x] **Step 8: Extend the sync payloads**
 
 In `sync-payloads.ts`, add to `CanvasSyncPayloadSchema`:
 
@@ -981,7 +995,7 @@ describe('CanvasSyncPayloadSchema folder tolerance', () => {
 })
 ```
 
-- [ ] **Step 9: Add the Drizzle table and columns**
+- [x] **Step 9: Add the Drizzle table and columns**
 
 Create `packages/db-schema/src/schema/canvas-folder.ts`:
 
@@ -1035,7 +1049,7 @@ In `packages/db-schema/src/schema/canvas.ts`, add to the `canvases` table:
     icon: text('icon'),
 ```
 
-- [ ] **Step 10: Write the migration by hand**
+- [x] **Step 10: Write the migration by hand**
 
 Create `apps/desktop/src/main/database/drizzle-data/0048_canvas_folders.sql`:
 
@@ -1064,7 +1078,7 @@ Do **not** run `db:generate` — data-DB migrations are hand-written here. Apply
 pnpm --filter @memry/desktop db:push
 ```
 
-- [ ] **Step 11: Register the migration in tests that enumerate migrations**
+- [x] **Step 11: Register the migration in tests that enumerate migrations**
 
 Grep for tests that list migration files explicitly:
 
@@ -1074,7 +1088,7 @@ rg -n "0045_canvas_files|0046_|0047_" apps/desktop/src --glob '*.test.ts'
 
 Every hit that hand-builds a canvas schema needs `0048_canvas_folders.sql` added to its list — the same trap PR #946 hit with `0045`. `apps/desktop/tests/utils/test-db.ts` reads the real folder and needs nothing.
 
-- [ ] **Step 12: Typecheck and test**
+- [x] **Step 12: Typecheck and test**
 
 ```bash
 pnpm --filter @memry/contracts test
@@ -1090,7 +1104,7 @@ Expected: `typecheck` fails in exactly one place — `apps/sync-server/src/servi
 
 beside the existing `case 'canvas'`. Re-run `pnpm typecheck`; expected: clean.
 
-- [ ] **Step 13: Commit**
+- [x] **Step 13: Commit**
 
 ```bash
 git add packages/contracts packages/db-schema apps/desktop/src/main/database/drizzle-data/0048_canvas_folders.sql apps/sync-server/src/services/sync-telemetry.ts
@@ -1116,7 +1130,7 @@ git commit -m "feat(canvas): add folder and icon contracts, schema and migration
   - `deleteCanvas(db, vaultPath, id, trash: (absPath: string) => Promise<void>): Promise<boolean>`
   - `listCanvases(db, vaultId): CanvasSummary[]` — returns `folder` + `icon`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `apps/desktop/src/main/canvas/store.test.ts`:
 
@@ -1237,7 +1251,7 @@ describe('deleteCanvas', () => {
 
 Reuse the file's existing `setup()` helper; if it has none, build one that opens an in-memory data DB with the real migration folder and a temp vault dir.
 
-- [ ] **Step 2: Run and confirm failure**
+- [x] **Step 2: Run and confirm failure**
 
 ```bash
 pnpm --filter @memry/desktop test:main -- canvas/store
@@ -1245,7 +1259,7 @@ pnpm --filter @memry/desktop test:main -- canvas/store
 
 Expected: FAIL — `duplicateCanvas` is not exported, `deleteCanvas` takes three arguments, folder/icon are ignored.
 
-- [ ] **Step 3: Thread folder + icon through create, update and list**
+- [x] **Step 3: Thread folder + icon through create, update and list**
 
 In `toSummary`, add `folder: row.folder ?? null` and `icon: row.icon ?? null`, and widen its `Pick<...>`.
 
@@ -1290,7 +1304,7 @@ and extend the returned summary to `toSummary({ ...row, title: nextTitle, folder
 
 Add `folder: canvases.folder` and `icon: canvases.icon` to the select lists in `listCanvases` and `listCanvasesWithCounts`.
 
-- [ ] **Step 4: Implement `duplicateCanvas`**
+- [x] **Step 4: Implement `duplicateCanvas`**
 
 ```ts
 /**
@@ -1342,7 +1356,7 @@ export function duplicateCanvas(
 
 `createCanvas`'s `allocateCanvasPath` already turns a second `Plan` into `Plan 2` within the folder; set the new row's `title` from the allocated filename so the sidebar label and the file agree — read it back via `folderOfCanvasPath`/`path.basename` after allocation if the title must match exactly.
 
-- [ ] **Step 5: Make delete trash the file**
+- [x] **Step 5: Make delete trash the file**
 
 ```ts
 export async function deleteCanvas(
@@ -1376,7 +1390,7 @@ export async function deleteCanvas(
 
 Add `import { createLogger } from '../lib/logger'` and a module logger if the file lacks one.
 
-- [ ] **Step 6: Run and confirm passing**
+- [x] **Step 6: Run and confirm passing**
 
 ```bash
 pnpm --filter @memry/desktop test:main -- canvas/store
@@ -1384,7 +1398,7 @@ pnpm --filter @memry/desktop test:main -- canvas/store
 
 Expected: PASS. Fix any pre-existing `deleteCanvas` call site the signature change broke (`ipc/canvas-handlers.ts`, `sync/item-handlers/canvas-handler.ts`) by passing `(abs) => shell.trashItem(abs)` in main and a plain unlink shim in sync.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/desktop/src/main/canvas/store.ts apps/desktop/src/main/canvas/store.test.ts
@@ -1410,7 +1424,7 @@ git commit -m "feat(canvas): folder, icon, duplicate and trash-backed delete in 
   - `setCanvasFolderIcon(db, vaultId, path, icon): CanvasFolder | null`
   - `deleteCanvasFolder(db, vaultPath, vaultId, path, trash): Promise<string[]>` — returns tombstoned canvas ids
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```ts
 describe('canvas folder store', () => {
@@ -1481,7 +1495,7 @@ describe('canvas folder store', () => {
 })
 ```
 
-- [ ] **Step 2: Run and confirm failure**
+- [x] **Step 2: Run and confirm failure**
 
 ```bash
 pnpm --filter @memry/desktop test:main -- folder-store
@@ -1489,7 +1503,7 @@ pnpm --filter @memry/desktop test:main -- folder-store
 
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Implement the store**
+- [x] **Step 3: Implement the store**
 
 Create `apps/desktop/src/main/canvas/folder-store.ts`. Key rules to encode:
 
@@ -1500,7 +1514,7 @@ Create `apps/desktop/src/main/canvas/folder-store.ts`. Key rules to encode:
 
 Every mutation must call the local-mutations enqueue functions added in Task 9; leave `TODO(task-9)` comments at those five points and remove them there.
 
-- [ ] **Step 4: Run and confirm passing**
+- [x] **Step 4: Run and confirm passing**
 
 ```bash
 pnpm --filter @memry/desktop test:main -- folder-store
@@ -1508,7 +1522,7 @@ pnpm --filter @memry/desktop test:main -- folder-store
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/desktop/src/main/canvas/folder-store.ts apps/desktop/src/main/canvas/folder-store.test.ts
@@ -1528,7 +1542,7 @@ git commit -m "feat(canvas): add the canvas folder store"
 
 - Consumes: `folderOfCanvasPath`, `listCanvasFiles` (Task 4); `canvasFolderSyncId` (Task 5)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```ts
 describe('folder reconciliation', () => {
@@ -1584,7 +1598,7 @@ describe('folder reconciliation', () => {
 })
 ```
 
-- [ ] **Step 2: Run and confirm failure**
+- [x] **Step 2: Run and confirm failure**
 
 ```bash
 pnpm --filter @memry/desktop test:main -- canvas/reconcile
@@ -1592,7 +1606,7 @@ pnpm --filter @memry/desktop test:main -- canvas/reconcile
 
 Expected: FAIL on the three folder cases; the last one should already pass and is here as a regression guard.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 In `reconcile.ts`:
 
@@ -1601,7 +1615,7 @@ In `reconcile.ts`:
 - After the file pass, walk the canvas directory tree and upsert a `canvas_folders` row for every directory that has no live row, using `canvasFolderSyncId(path)`. Skip dot-directories, same as `listCanvasFiles`.
 - Leave the "never tombstone a row whose file is missing" rule exactly as it is.
 
-- [ ] **Step 4: Run and confirm passing**
+- [x] **Step 4: Run and confirm passing**
 
 ```bash
 pnpm --filter @memry/desktop test:main -- canvas/reconcile
@@ -1609,7 +1623,7 @@ pnpm --filter @memry/desktop test:main -- canvas/reconcile
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/desktop/src/main/canvas/reconcile.ts apps/desktop/src/main/canvas/reconcile.test.ts
@@ -1632,7 +1646,7 @@ git commit -m "feat(canvas): adopt folders during vault reconcile"
 
 - Produces: `canvasFolderHandler`, `initCanvasFolderSyncService`, `getCanvasFolderSyncService`, `resetCanvasFolderSyncService`, `incrementCanvasFolderClockOffline`
 
-- [ ] **Step 1: Carry folder and icon through the canvas handler**
+- [x] **Step 1: Carry folder and icon through the canvas handler**
 
 In `canvas-handler.ts`'s apply path, replace the bare allocation:
 
@@ -1650,11 +1664,11 @@ const filePath = allocateCanvasPath(vaultPath, data.title ?? null, new Set(), nu
 
 Add `folder` and `icon: data.icon ?? null` to the insert values and to the update `set(...)`. Add both to `buildPushPayload`'s serialized row.
 
-- [ ] **Step 2: Write the failing handler test**
+- [x] **Step 2: Write the failing handler test**
 
 Create `apps/desktop/src/main/sync/item-handlers/canvas-folder-handler.test.ts`, modelled on `task-handler.test.ts`, covering the seven required cases: insert, newer-clock update, older-clock skip, concurrent → `'conflict'`, delete, delete-skip when local has unseen changes, and `seedUnclocked` enqueues one item per unclocked row.
 
-- [ ] **Step 3: Run and confirm failure**
+- [x] **Step 3: Run and confirm failure**
 
 ```bash
 pnpm --filter @memry/desktop test:main -- canvas-folder-handler
@@ -1662,7 +1676,7 @@ pnpm --filter @memry/desktop test:main -- canvas-folder-handler
 
 Expected: FAIL — module not found.
 
-- [ ] **Step 4: Implement the handler**
+- [x] **Step 4: Implement the handler**
 
 Copy `filter-handler.ts` verbatim into `canvas-folder-handler.ts` and change: `savedFilters` → `canvasFolders`; `'filter'` → `'canvas_folder'`; `SavedFiltersChannels` → `CanvasFolderChannels`; the mutable fields to `path` and `icon`; `FilterSyncPayload` → `CanvasFolderSyncPayload`.
 
@@ -1671,7 +1685,7 @@ Two deliberate deviations from the template:
 - **Timestamps are `Date.now()`, not `utcNow()`** — `canvas_folders` uses INTEGER epoch ms to match `canvases`.
 - **`applyDelete` soft-deletes.** `filter` hard-deletes; canvas rows must stay visible to sync, so set `deletedAt`/`updatedAt` instead of `tx.delete(...)`, and have `fetchLocal`/`seedUnclocked` filter `isNull(canvasFolders.deletedAt)`.
 
-- [ ] **Step 5: Run and confirm passing**
+- [x] **Step 5: Run and confirm passing**
 
 ```bash
 pnpm --filter @memry/desktop test:main -- canvas-folder-handler
@@ -1679,7 +1693,7 @@ pnpm --filter @memry/desktop test:main -- canvas-folder-handler
 
 Expected: PASS, all seven.
 
-- [ ] **Step 6: Wire the remaining six files**
+- [x] **Step 6: Wire the remaining six files**
 
 - `item-handlers/index.ts` — add `['canvas_folder', canvasFolderHandler]` to the Map.
 - `canvas-folder-sync.ts` — copy `filter-sync.ts`, substituting table, type string, and names.
@@ -1699,13 +1713,13 @@ for (const f of syncedCanvasFolders) {
 }
 ```
 
-- [ ] **Step 7: Call the enqueue functions from the folder store**
+- [x] **Step 7: Call the enqueue functions from the folder store**
 
 Return to `folder-store.ts` and replace every `TODO(task-9)` with the matching call from the local-mutations registry (`enqueueCreate` on create, `enqueueUpdate` on rename/move/set-icon, `enqueueDelete` with a snapshot payload on delete).
 
 **This step is the one that makes folders actually sync.** The registry entry alone seeds once and then goes quiet forever.
 
-- [ ] **Step 8: Verify the whole sync surface**
+- [x] **Step 8: Verify the whole sync surface**
 
 ```bash
 pnpm typecheck
@@ -1715,7 +1729,7 @@ pnpm test:sync-server
 
 Expected: PASS.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add apps/desktop/src/main/sync apps/desktop/src/main/canvas/folder-store.ts
@@ -1738,7 +1752,7 @@ git commit -m "feat(sync): sync canvas folders and canvas placement"
 - Consumes: Tasks 6, 7
 - Produces: `window.api.canvas.duplicate/revealInFinder/openExternal`, `window.api.canvasFolder.*`
 
-- [ ] **Step 1: Add the three canvas handlers**
+- [x] **Step 1: Add the three canvas handlers**
 
 In `registerCanvasHandlers()`:
 
@@ -1782,7 +1796,7 @@ ipcMain.handle(
 
 Add a small `getCanvasFilePath(db, id): string | null` export to `store.ts`. Import `shell` from `electron`.
 
-- [ ] **Step 2: Switch delete over to the trash**
+- [x] **Step 2: Switch delete over to the trash**
 
 `deleteCanvas` now takes a trash callback. At the `canvas:delete` handler, pass:
 
@@ -1790,11 +1804,11 @@ Add a small `getCanvasFilePath(db, id): string | null` export to `store.ts`. Imp
 await deleteCanvas(db, vaultPath, id, (abs) => shell.trashItem(abs))
 ```
 
-- [ ] **Step 3: Add the folder handlers**
+- [x] **Step 3: Add the folder handlers**
 
 Create `canvas-folder-handlers.ts` with `registerCanvasFolderHandlers()` covering the six invoke channels, each using `createValidatedHandler` with the Task 5 schemas, and each emitting the matching `CanvasFolderChannels.events.*` to all windows through the same fan-out helper `canvas-handlers.ts` uses. Register it wherever `registerCanvasHandlers()` is called.
 
-- [ ] **Step 4: Regenerate and check the IPC map**
+- [x] **Step 4: Regenerate and check the IPC map**
 
 ```bash
 pnpm ipc:generate
@@ -1803,7 +1817,7 @@ pnpm ipc:check
 
 Expected: the generated invoke map gains all nine channels and `ipc:check` passes. If it reports the map is out of date, re-run `ipc:generate` and commit the result.
 
-- [ ] **Step 5: Test the handlers**
+- [x] **Step 5: Test the handlers**
 
 Write `canvas-folder-handlers.test.ts` asserting each channel validates its input and calls the store. Then:
 
@@ -1814,7 +1828,7 @@ pnpm check:architecture && pnpm check:contracts
 
 Expected: PASS. `check:architecture` matters here — IPC files must not import queries directly, which is why the stores live under `main/canvas/`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/desktop/src/main/ipc apps/desktop/src/preload packages/rpc
@@ -1839,7 +1853,7 @@ git commit -m "feat(canvas): add duplicate, reveal, open-external and folder IPC
   - `type CanvasDragPayload = { tree: 'canvas'; kind: 'canvas'; id: string } | { tree: 'canvas'; kind: 'folder'; path: string }`
   - `canDrop(payload: unknown, targetFolder: string | null): boolean`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```ts
 describe('buildCanvasTree', () => {
@@ -1900,7 +1914,7 @@ describe('canDrop', () => {
 
 Define the `canvas()`, `folder()` and `label()` helpers at the top of the test file.
 
-- [ ] **Step 2: Run and confirm failure**
+- [x] **Step 2: Run and confirm failure**
 
 ```bash
 pnpm --filter @memry/desktop test:renderer -- canvas-tree-model
@@ -1908,13 +1922,13 @@ pnpm --filter @memry/desktop test:renderer -- canvas-tree-model
 
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Port `normalizeFolder`, `folderSegments` and `isDescendantFolder` semantics for the renderer (a small local copy — the renderer cannot import from `main/`). Build the tree by walking each canvas's folder segments and creating missing nodes on the way, then sort each level with `folders first`, then `localeCompare` with `{ sensitivity: 'base' }`.
 
 `canDrop` guards in this order: payload is an object → `payload.tree === 'canvas'` → for folders, `!isDescendantFolder(target, payload.path)`.
 
-- [ ] **Step 4: Run and confirm passing**
+- [x] **Step 4: Run and confirm passing**
 
 ```bash
 pnpm --filter @memry/desktop test:renderer -- canvas-tree-model
@@ -1922,7 +1936,7 @@ pnpm --filter @memry/desktop test:renderer -- canvas-tree-model
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/desktop/src/renderer/src/components/sidebar/canvas-tree/canvas-tree-model.ts apps/desktop/src/renderer/src/components/sidebar/canvas-tree/canvas-tree-model.test.ts
@@ -1944,7 +1958,7 @@ git commit -m "feat(canvas): add the sidebar canvas tree model"
 - Consumes: Task 11 model, Task 10 IPC
 - Produces: `<CanvasTree onCanvasClick={...} onCountChange={...} />`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```tsx
 describe('CanvasTree', () => {
@@ -1979,7 +1993,7 @@ Mock `canvasService` and `canvasFolderService` with `vi.mock`. Follow the mockin
 
 > Mocked IPC gives false confidence on its own — Task 15's E2E is what proves the wiring. Keep both.
 
-- [ ] **Step 2: Run and confirm failure**
+- [x] **Step 2: Run and confirm failure**
 
 ```bash
 pnpm --filter @memry/desktop test:renderer -- canvas-tree
@@ -1987,15 +2001,15 @@ pnpm --filter @memry/desktop test:renderer -- canvas-tree
 
 Expected: FAIL — modules not found.
 
-- [ ] **Step 3: Add the renderer service**
+- [x] **Step 3: Add the renderer service**
 
 Create `services/canvas-folder-service.ts` mirroring `canvas-service.ts` exactly: a `createWindowApiForwarder(() => window.api.canvasFolder)` plus `onCanvasFolderCreated/Updated/Deleted` subscription wrappers returning unsubscribe closures.
 
-- [ ] **Step 4: Implement `use-canvas-tree.ts`**
+- [x] **Step 4: Implement `use-canvas-tree.ts`**
 
 Loads `canvasService.list()` and `canvasFolderService.list()` in parallel, exposes `{ canvases, folders, isLoading, hasError, refresh }`, and subscribes to all six events (three canvas, three folder), each triggering `refresh`. Same shape as the current `SidebarCanvasList` effect, so the existing loading / error / empty states carry over.
 
-- [ ] **Step 5: Implement the rows**
+- [x] **Step 5: Implement the rows**
 
 `canvas-row.tsx` — `ContextMenu` wrapping a `SidebarMenuButton`, with:
 
@@ -2007,7 +2021,7 @@ Use `IconPickerButton` for the leading glyph, exactly as `NoteRow` does. When `c
 
 **Move to folder ▸** lists "Root" first, then every folder as an indented path label, with the canvas's current folder disabled. This is the keyboard path for organizing canvases; drag & drop has none.
 
-- [ ] **Step 6: Implement `canvas-tree.tsx`**
+- [x] **Step 6: Implement `canvas-tree.tsx`**
 
 Renders `flattenVisible(...)`, owns expansion state persisted per folder path in `localStorage`, and wraps the rows in a scroll container:
 
@@ -2017,7 +2031,7 @@ Renders `flattenVisible(...)`, owns expansion state persisted per folder path in
 
 Indent with `paddingInlineStart` (a logical property) computed from `depth`, never `paddingLeft`.
 
-- [ ] **Step 7: Add the i18n strings**
+- [x] **Step 7: Add the i18n strings**
 
 Add every new label under the existing `canvas.*` namespace in the English locale — `canvas.actions.rename`, `.duplicate`, `.setIcon`, `.removeIcon`, `.moveToFolder`, `.moveToRoot`, `.openExternal`, `.revealInFinder`, `.newCanvasHere`, `.newFolder`, `.deleteConfirmTitle`, `.deleteConfirmBody`, `.deleteFolderConfirmBody`, `.unreadable`.
 
@@ -2027,7 +2041,7 @@ pnpm --filter @memry/desktop i18n:check
 
 Expected: PASS.
 
-- [ ] **Step 8: Run and confirm passing**
+- [x] **Step 8: Run and confirm passing**
 
 ```bash
 pnpm --filter @memry/desktop test:renderer -- canvas-tree
@@ -2035,7 +2049,7 @@ pnpm --filter @memry/desktop test:renderer -- canvas-tree
 
 Expected: PASS.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add apps/desktop/src/renderer/src/components/sidebar/canvas-tree apps/desktop/src/renderer/src/services/canvas-folder-service.ts packages/i18n
@@ -2055,7 +2069,7 @@ git commit -m "feat(canvas): add the sidebar canvas tree with full context menus
 
 - Consumes: `canDrop`, `CanvasDragPayload` (Task 11)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```tsx
 describe('canvas tree drag and drop', () => {
@@ -2082,7 +2096,7 @@ describe('canvas tree drag and drop', () => {
 })
 ```
 
-- [ ] **Step 2: Run and confirm failure**
+- [x] **Step 2: Run and confirm failure**
 
 ```bash
 pnpm --filter @memry/desktop test:renderer -- canvas-tree-dnd
@@ -2090,7 +2104,7 @@ pnpm --filter @memry/desktop test:renderer -- canvas-tree-dnd
 
 Expected: FAIL — no drag handlers yet.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Native HTML5 DnD, matching `virtualized-notes-tree.tsx` rather than dnd-kit:
 
@@ -2108,7 +2122,7 @@ Native HTML5 DnD, matching `virtualized-notes-tree.tsx` rather than dnd-kit:
 - `onDrop` calls `canvasService.update({ id, folder })` or `canvasFolderService.move({ path, parent })`, then lets the event subscriptions refresh the tree.
 - A root drop zone sits under the last row so a canvas can be dragged out of a folder.
 
-- [ ] **Step 4: Run and confirm passing**
+- [x] **Step 4: Run and confirm passing**
 
 ```bash
 pnpm --filter @memry/desktop test:renderer -- canvas-tree-dnd
@@ -2116,7 +2130,7 @@ pnpm --filter @memry/desktop test:renderer -- canvas-tree-dnd
 
 Expected: PASS.
 
-- [ ] **Step 5: Verify by hand**
+- [x] **Step 5: Verify by hand**
 
 ```bash
 pnpm dev
@@ -2124,7 +2138,7 @@ pnpm dev
 
 Drag a canvas into a folder, out to the root, and a folder into another folder. Try dragging a folder onto its own child — the drop must be refused with no indicator. Try dragging a note from the notes tree onto the canvas tree — nothing should happen.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/desktop/src/renderer/src/components/sidebar/canvas-tree
@@ -2145,15 +2159,15 @@ git commit -m "feat(canvas): drag and drop canvases and folders in the sidebar"
 
 - Consumes: Tasks 11–13
 
-- [ ] **Step 1: Swap the component in**
+- [x] **Step 1: Swap the component in**
 
 In `app-sidebar.tsx`, replace `<SidebarCanvasList onCanvasClick={handleCanvasOpen} />` with `<CanvasTree onCanvasClick={handleCanvasOpen} onCountChange={setCanvasCount} />`, and pass `totalCount={canvasCount}` to the enclosing `SidebarSection` so the collapsed header shows `(n)`.
 
-- [ ] **Step 2: Target the selected folder when creating**
+- [x] **Step 2: Target the selected folder when creating**
 
 `handleCreateCanvas` currently calls `canvasService.create({})`. Thread the tree's selected folder through so a new canvas lands where the user is looking, mirroring how the notes tree's "New note" uses `onTargetFolderChange`.
 
-- [ ] **Step 3: Delete the old list**
+- [x] **Step 3: Delete the old list**
 
 ```bash
 git rm apps/desktop/src/renderer/src/components/sidebar/sidebar-canvas-list.tsx apps/desktop/src/renderer/src/components/sidebar/sidebar-canvas-list.test.tsx
@@ -2161,7 +2175,7 @@ git rm apps/desktop/src/renderer/src/components/sidebar/sidebar-canvas-list.tsx 
 
 Remove its export from `components/sidebar/index.ts` and any remaining import.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 ```bash
 pnpm --filter @memry/desktop test:renderer -- app-sidebar
@@ -2170,7 +2184,7 @@ pnpm typecheck
 
 Expected: PASS with no dangling imports.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A apps/desktop/src/renderer/src/components
@@ -2189,7 +2203,7 @@ Folders make duplicate canvas titles legal for the first time. Today's resolver 
 - Modify: `apps/desktop/src/main/agent/mcp/tools/canvas-write.ts` (only if it resolves names itself)
 - Test: `.../canvas-handles.test.ts` (extend)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```ts
 describe('canvas name resolution with folders', () => {
@@ -2208,7 +2222,7 @@ describe('canvas name resolution with folders', () => {
 })
 ```
 
-- [ ] **Step 2: Run and confirm failure**
+- [x] **Step 2: Run and confirm failure**
 
 ```bash
 pnpm --filter @memry/desktop test:main -- canvas-handles
@@ -2216,11 +2230,11 @@ pnpm --filter @memry/desktop test:main -- canvas-handles
 
 Expected: FAIL — ambiguity currently resolves silently to whichever row comes first.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Match on the qualified path (`folder ? \`${folder}/${title}\` : title`) first. If no qualified match, fall back to matching on title alone. If that yields more than one, return a structured error listing every qualified candidate rather than guessing.
 
-- [ ] **Step 4: Run and confirm passing**
+- [x] **Step 4: Run and confirm passing**
 
 ```bash
 pnpm --filter @memry/desktop test:main -- canvas-handles
@@ -2229,7 +2243,7 @@ pnpm --filter @memry/desktop test:main -- canvas-write
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/desktop/src/main/agent/mcp/tools
@@ -2245,13 +2259,13 @@ git commit -m "fix(mcp): resolve canvases by folder-qualified name"
 - Create: `apps/desktop/tests/e2e/canvas-management.spec.ts`
 - Modify: `apps/docs/src/**` as `docs:impact` directs
 
-- [ ] **Step 1: Write the E2E spec**
+- [x] **Step 1: Write the E2E spec**
 
 Cover one full journey: create a folder → create a canvas inside it → rename it → duplicate it → drag it to the root → delete it with confirmation → reload and assert the tree matches.
 
 Watch for the two known E2E traps: the onboarding tour blocks the suite unless dismissed, and a stale build makes the run test old code.
 
-- [ ] **Step 2: Run the E2E suite**
+- [x] **Step 2: Run the E2E suite**
 
 ```bash
 pnpm test:e2e
@@ -2299,7 +2313,7 @@ git diff --check
 
 Expected: all clean. Verify lint with `--no-cache` if it passes suspiciously fast — the ESLint cache has masked warnings before.
 
-- [ ] **Step 5: Docs gate**
+- [x] **Step 5: Docs gate**
 
 ```bash
 pnpm docs:impact --base origin/main --strict

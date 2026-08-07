@@ -131,6 +131,7 @@ Changes in `main/canvas/scene-file.ts`:
 - Adopting a file records its folder from the file's own path.
 - A file the user moved into a subfolder in Finder updates `canvases.folder` on the next open. **Path is truth for placement**, the same way the file is truth for ink.
 - Unchanged: never tombstone a row whose file is missing.
+- **Sweeps the emptied directory of an already-tombstoned folder.** `canvasFolderHandler.applyDelete` removes the directory only when it is empty, and `canvas`/`canvas_folder` share a rank in `PULL_APPLY_ORDER` — so a peer's folder delete regularly applies while the documents are still on disk, the `rmdir` no-ops, and nothing revisits it. Retried here because reconcile is ordering-independent and repairs leftovers from earlier releases too. Own directory only, `rmdir` only: a directory holding anything at all (a document a peer failed to remove, a cloud client's dot-staging area, a file the user filed by hand) is left exactly as it is, and a folder whose canvases were merely late comes back when one lands. The one exception to "reconcile is additive in both directions".
 
 ---
 
@@ -411,7 +412,22 @@ New user-facing strings go through `@memry/i18n`; no literals in JSX. New Tailwi
 
 ## 14. Open items for implementation
 
+_Reconciled 2026-08-07 against what was actually built. Every item below is now settled; the decision taken is recorded in place rather than replacing the original wording, so the reasoning stays readable._
+
 - ~~Exact `--sidebar-section-heading` values per theme (§12).~~ **Settled:** `#6b6459` paper / `#6b6966` white / `#9d9d9d` dark, measuring 5.07:1, 5.16:1 and 6.42:1. Hover no longer changes the colour — it previously dropped paper back to 3.18:1.
-- Whether `canvas:duplicate` copies the scene's `memryAssets` descriptors verbatim or re-uploads. Verbatim plus new `canvas_assets` rows is the intent (§9.3); confirm against `asset-service.ts` before writing it.
+- ~~Whether `canvas:duplicate` copies the scene's `memryAssets` descriptors verbatim or re-uploads.~~ **Settled: verbatim.** `duplicateCanvas` in `main/canvas/store.ts` writes the original's scene text unchanged and then copies every `canvas_assets` row to the new canvas id with `onConflictDoNothing`. No re-upload: the bytes are already in the vault under the same `contentHash`, and re-uploading would mint a second copy of every image. The rows are what matter — they are the union `planDereference` counts, which is the §9.3 failure being avoided.
 - ~~Depth cap for the recursive walk is proposed at 8.~~ **Settled:** enforced at construction in `normalizeFolder`, not only at read time. A folder that could be created but not listed would be data the user sees in Finder and not in the app.
-- **Excalidraw context-menu clipping (§9.1) needs its own decision.** The CSS half (cap `.excalidraw .context-menu` height and give it `overflow-y: auto`) is a small scoped override. The positioning half is an upstream coordinate-space bug and cannot be fixed from CSS. Options: ship the CSS safety net alone, patch upstream and pin, or file it with Excalidraw. Not started — deliberately excluded from this spec's scope.
+- ~~**Excalidraw context-menu clipping (§9.1) needs its own decision.**~~ **Settled: the scoped CSS safety net shipped alone.** No upstream patch and no pin. `renderer/src/assets/base.css` caps `.excalidraw .context-menu` and gives it `overflow-y: auto`, scoped under `.excalidraw` so it cannot reach our own Radix menus (which carry `data-slot="context-menu-content"`, never a `.context-menu` class). The upstream positioning arithmetic is left alone. `excalidraw-context-menu-css.test.ts` pins the override to `@excalidraw/excalidraw@0.18.1` and fails on upgrade, so the override cannot quietly outlive the bug. The `ContextMenuSubContent` scroll fix shipped separately, as §9.1 describes, because the "Move to folder ▸" submenu depends on it.
+- **Still out of scope, unchanged:** `DropdownMenuContent` in `components/ui/dropdown-menu.tsx` keeps `overflow-hidden` with no max-height (§9.1, final paragraph). Not touched here.
+
+---
+
+## 15. Shipped beyond this spec
+
+Five things were added during implementation that this document never asked for. Each closed a hole that only showed up once the tree was real:
+
+- **Filter box.** Appears above the tree once the section holds eight or more canvases; <kbd>Esc</kbd> clears it. While filtering, every folder containing a match is force-expanded without writing to the stored expansion set, so clearing the filter restores exactly the tree the user had open.
+- **Per-folder canvas counts.** A collapsed folder row shows how many canvases are inside it — the same answer `SidebarSection` already gives for the whole section (§9.6), one level down. Shown only while collapsed: expanded, the rows are the answer. Uses `--sidebar-section-heading` rather than `--sidebar-muted`, because at 10px the muted token measured 1.43:1.
+- **Empty-folder state.** An expanded folder with no children rendered as literally nothing, which reads as a folder that failed to open. It now shows a "Nothing here yet" line and a **New canvas here** link.
+- **Keyboard row actions.** <kbd>F2</kbd> renames and <kbd>Delete</kbd>/<kbd>Backspace</kbd> deletes from a focused row, matching Finder and Explorer. Both are inert while the row owns an open menu or picker: Radix portals menu content out of the row's DOM subtree, but it is still a React child, and React synthetic events propagate through the React tree — so <kbd>Delete</kbd> pressed while arrowing through the menu was destroying a canvas the user never chose.
+- **Root-level folder creation.** §7 gave folder creation to folder rows only, which meant a root folder was unreachable and a user with no folders could never make their first. The CANVASES section header now carries a **New canvas folder** button (via a `CanvasTreeActions` handle on the tree), and the empty state offers both **New canvas** and **New folder** — it is the one state with no row to right-click.

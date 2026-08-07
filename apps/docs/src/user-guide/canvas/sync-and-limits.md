@@ -8,6 +8,12 @@ your notes. The server stores only ciphertext and never sees your board.
 Cards sync as references. The notes, tasks, and events they point at sync
 through their own channels, so a card on device B resolves to the same item.
 
+Folders sync too, including their icons and including folders with nothing in
+them, so the structure you build on one device is the structure you find on the
+next. See [Organizing Canvases](./organizing.md). Folder support arrived with a
+server update — if a device is running an older release of memrynote, canvases
+still reach it, but they arrive at the top level until it is updated.
+
 ## Conflict copies
 
 Canvases are not real-time collaborative documents. If the same canvas is edited

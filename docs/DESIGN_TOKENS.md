@@ -195,7 +195,13 @@ Dark mode uses lighter, more legible variants.
 | `--sidebar-dot-inactive`       | `#d9d5ce`                   | `#e3e2e0`                   | `#444444`                | `bg-sidebar-dot-inactive`         |
 | `--sidebar-surface`            | `rgba(0,0,0,0.04)`          | `rgba(0,0,0,0.03)`          | `#2a2a2a`                | `bg-sidebar-surface`              |
 
-**`--sidebar-section-heading`** is the only sidebar token with a contrast floor. `SidebarSection` renders its heading at 11px, which WCAG AA treats as small text (4.5:1), so the token is kept separate from `--sidebar-muted` — that one also colours chevrons and decorative icon buttons, where darkening would be too loud. Measured against each theme's own `--sidebar` in `base.css` (`#efefe9` / `#f9f8f7` / `#1a1a1a`): **5.07:1**, **5.16:1**, **6.42:1**. The heading takes no hover colour: `--sidebar-foreground`, the old hover target, is 3.18:1 on the warm sidebar, and the tokens that would clear the floor are the emphasis colours (`--sidebar-primary`, `--sidebar-text-folder`) — too loud for an 11px label. The chevron fading in carries the affordance instead. `sidebar-section.contrast.test.tsx` recomputes these ratios from this CSS and fails under 4.5.
+**`--sidebar-section-heading`** is the only sidebar token with a contrast floor. It is the sidebar's de-emphasised **small-text** colour: anything in the sidebar that carries real information at 10–11px takes it, because WCAG AA treats that size as small text and holds it to 4.5:1. The token is kept separate from `--sidebar-muted` — that one also colours chevrons and decorative icon buttons, where darkening would be too loud. Current users: `SidebarSection`'s heading and its collapsed item count, and in `SidebarTagList` the tag-group headings, the show-more control, and the per-tag note count.
+
+Measured against each theme's own `--sidebar` in `base.css` (`#efefe9` / `#f9f8f7` / `#1a1a1a`): **5.07:1**, **5.16:1**, **6.42:1**. Two of those users sit on `--muted` instead (`#efefe9` / `#f7f6f3` / `#202020`), because their row paints `hover:bg-muted` while the text is visible: **5.07:1**, **5.06:1**, **6.01:1**.
+
+Headings take no hover colour: `--sidebar-foreground`, the old hover target, is 3.18:1 on the warm sidebar, and the tokens that would clear the floor are the emphasis colours — too loud for a static label. The chevron fading in, or the row's `bg-muted`, carries the affordance instead. The one exception is the tag list's show-more **control**, where `hover:text-sidebar-primary` _raises_ the ratio (15.22:1 / 11.56:1 / 13.84:1).
+
+`sidebar-section.contrast.test.tsx` and `sidebar/sidebar-tag-list.contrast.test.tsx` recompute every one of these ratios from this CSS via `tests/utils/contrast.ts` and fail under 4.5 — including any state variant (`hover:`, `group-hover/name:`, `focus:`, …) that repaints the text below the floor, or merely below where it rested.
 
 ---
 
