@@ -16,7 +16,7 @@ Bring canvases up to the same management parity notes and folders already have. 
 
 1. A canvas cannot be deleted.
 2. Canvases cannot be arranged in folders.
-3. The context menu is not scrollable and hides options.
+3. The context menu is not scrollable and hides options. (Root-caused after implementation to Excalidraw's own menu, not ours — see §9.1. Split out of this spec.)
 4. A canvas cannot be renamed.
 5. Sidebar section headings have very low text contrast.
 
@@ -269,9 +269,25 @@ A confirmation dialog precedes both canvas and folder deletes. Folder delete sta
 
 These came out of the codebase read. Each is either a latent bug this feature would expose, or a gap that makes the feature worse than it looks.
 
-### 9.1 Context-menu clipping is app-wide, not canvas-specific
+### 9.1 The reported clipping is Excalidraw's own menu, not ours
 
-`ContextMenuContent` sets `overflow-hidden` with no max-height. Its sibling `ContextMenuSubContent`, ten lines below, already has `max-h-(--radix-context-menu-content-available-height) overflow-x-hidden overflow-y-auto`. Copying that onto the root content fixes the reported clipping — and fixes it for notes, folders, tags, and projects at the same time, since they all render through the same component. The canvas menus specified above are among the longest in the app, so the bug would be worse here if left alone.
+**Corrected 2026-08-07 after implementation. The original text of this section was wrong** and is preserved here as a caution: it claimed `ContextMenuContent` had `overflow-hidden` with no max-height and that `ContextMenuSubContent` was already correct. The two components are adjacent and nearly identical, and the claim came from reading two class strings in file order without checking which function each belonged to. At `HEAD` the truth was the exact opposite: `ContextMenuSubContent` (function line 59) had `overflow-hidden`; `ContextMenuContent` (function line 76) **already scrolled**.
+
+So the root right-click menu was never the reported bug. The real cause, confirmed by reading the vendored `@excalidraw/excalidraw@0.18.1` build:
+
+Right-clicking the canvas surface opens **Excalidraw's own** context menu, which never touches our Radix components. Three facts in that package combine:
+
+1. `.excalidraw { position: relative; overflow: hidden }` — the container is both the containing block for the menu and its clipper.
+2. `.excalidraw .popover { position: absolute; z-index: 10 }` — the menu is positioned inside that clipping box.
+3. `.excalidraw .context-menu { … }` declares **no** `max-height` and **no** `overflow`. The only scroll path is Excalidraw's fit-in-viewport effect, which sets `overflowY: 'scroll'` solely when the menu is at least as tall as the whole container. A menu shorter than the container never gets a scrollbar.
+
+On excalidraw.com the container fills the window, so the overflow guard's arithmetic works by accident. In Memry the canvas sits below a 36px tab bar and beside a 256px sidebar, so the guard under-triggers by roughly those offsets and the menu is left extending past the container edge, where rule 1 clips it away with no way to reach it. A vertical split pane makes the vertical error much larger.
+
+**This is a separate fix from everything else in this spec** — it means overriding a third-party component's CSS, and it is not coupled to folders, rename, or delete. Tracked separately; see §14.
+
+What did ship under this heading is the `ContextMenuSubContent` fix, which is a genuine prerequisite for §9.2's "Move to folder ▸" submenu — a list whose length grows with the user's folder count.
+
+Unrelated but found while confirming this: `DropdownMenuContent` in `components/ui/dropdown-menu.tsx` still carries `overflow-hidden` with no max-height, the same defect on a different surface. Out of scope here.
 
 ### 9.2 "Move to folder ▸" is an accessibility requirement, not a convenience
 
@@ -395,6 +411,7 @@ New user-facing strings go through `@memry/i18n`; no literals in JSX. New Tailwi
 
 ## 14. Open items for implementation
 
-- Exact `--sidebar-section-heading` values per theme (§12).
+- ~~Exact `--sidebar-section-heading` values per theme (§12).~~ **Settled:** `#6b6459` paper / `#6b6966` white / `#9d9d9d` dark, measuring 5.07:1, 5.16:1 and 6.42:1. Hover no longer changes the colour — it previously dropped paper back to 3.18:1.
 - Whether `canvas:duplicate` copies the scene's `memryAssets` descriptors verbatim or re-uploads. Verbatim plus new `canvas_assets` rows is the intent (§9.3); confirm against `asset-service.ts` before writing it.
-- Depth cap for the recursive walk is proposed at 8; confirm nothing in the vault legitimately nests deeper.
+- ~~Depth cap for the recursive walk is proposed at 8.~~ **Settled:** enforced at construction in `normalizeFolder`, not only at read time. A folder that could be created but not listed would be data the user sees in Finder and not in the app.
+- **Excalidraw context-menu clipping (§9.1) needs its own decision.** The CSS half (cap `.excalidraw .context-menu` height and give it `overflow-y: auto`) is a small scoped override. The positioning half is an upstream coordinate-space bug and cannot be fixed from CSS. Options: ship the CSS safety net alone, patch upstream and pin, or file it with Excalidraw. Not started — deliberately excluded from this spec's scope.
