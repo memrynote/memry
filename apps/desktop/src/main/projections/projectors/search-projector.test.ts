@@ -132,6 +132,35 @@ describe('search projector', () => {
     `)
   }
 
+  const DEDUPE_MARKER_KEY = 'search.ftsDedupeVersion'
+
+  function readDedupeMarker(): string | undefined {
+    return dataDb.db.get<{ value: string }>(
+      sql`SELECT value FROM settings WHERE key = ${DEDUPE_MARKER_KEY}`
+    )?.value
+  }
+
+  /**
+   * What an install upgraded from a build with the append bug looks like: three
+   * rows per id, the newest carrying the current content.
+   */
+  function seedDuplicateFtsRows(): void {
+    for (const content of ['oldest', 'middle', 'newest']) {
+      indexDb.db.run(sql`
+        INSERT INTO fts_notes (id, title, content, tags)
+        VALUES (${'note-1'}, ${'Searchable Note'}, ${content}, ${'alpha'})
+      `)
+      dataDb.db.run(sql`
+        INSERT INTO fts_tasks (id, title, description, tags)
+        VALUES (${'task-1'}, ${'Task title'}, ${content}, ${'focus'})
+      `)
+      dataDb.db.run(sql`
+        INSERT INTO fts_inbox (id, title, content, transcription, source_title)
+        VALUES (${'inbox-1'}, ${'Inbox title'}, ${content}, ${''}, ${'Source'})
+      `)
+    }
+  }
+
   function seedInboxItem(itemId: string): void {
     dataDb.db.run(sql`
       INSERT INTO inbox_items (id, type, title, content, source_title, created_at, modified_at)
@@ -249,23 +278,7 @@ describe('search projector', () => {
     seedMarkdownNote('note-1', 'notes/searchable.md', 'Disk content', ['alpha'])
     seedTask('task-1')
     seedInboxItem('inbox-1')
-
-    // What an install upgraded from a build with the append bug looks like: the
-    // newest row per id carries the current content, the older ones are stale.
-    for (const content of ['oldest', 'middle', 'newest']) {
-      indexDb.db.run(sql`
-        INSERT INTO fts_notes (id, title, content, tags)
-        VALUES (${'note-1'}, ${'Searchable Note'}, ${content}, ${'alpha'})
-      `)
-      dataDb.db.run(sql`
-        INSERT INTO fts_tasks (id, title, description, tags)
-        VALUES (${'task-1'}, ${'Task title'}, ${content}, ${'focus'})
-      `)
-      dataDb.db.run(sql`
-        INSERT INTO fts_inbox (id, title, content, transcription, source_title)
-        VALUES (${'inbox-1'}, ${'Inbox title'}, ${content}, ${''}, ${'Source'})
-      `)
-    }
+    seedDuplicateFtsRows()
 
     readFileSpy.mockClear()
 
@@ -295,6 +308,84 @@ describe('search projector', () => {
 
     // Deduping is not an excuse to re-read the vault.
     expect(readFileSpy).not.toHaveBeenCalled()
+  })
+
+  it('runs the duplicate sweep once and skips it on every later open', async () => {
+    seedMarkdownNote('note-1', 'notes/searchable.md', 'Disk content', ['alpha'])
+    seedTask('task-1')
+    seedInboxItem('inbox-1')
+    seedDuplicateFtsRows()
+
+    const projector = createSearchProjector(() => vaultDir)
+    await projector.reconcile()
+
+    expect(getFtsCount(indexDb.db as never)).toBe(1)
+    expect(readDedupeMarker()).toBe('1')
+
+    // The sweep is a full fts5 scan and the defect it repairs can only happen
+    // once, so a completed sweep must never scan again. Proven with a row a
+    // second sweep would have removed.
+    indexDb.db.run(sql`
+      INSERT INTO fts_notes (id, title, content, tags)
+      VALUES (${'note-1'}, ${'Searchable Note'}, ${'sneaked in'}, ${'alpha'})
+    `)
+    await projector.reconcile()
+
+    expect(getFtsCount(indexDb.db as never)).toBe(2)
+  })
+
+  it('leaves the dedupe marker unset when the sweep fails part-way through', async () => {
+    seedMarkdownNote('note-1', 'notes/searchable.md', 'Disk content', ['alpha'])
+    seedTask('task-1')
+    seedInboxItem('inbox-1')
+    seedDuplicateFtsRows()
+
+    // Stand-in for the process dying mid-sweep: the notes and tasks tables are
+    // swept, then the inbox one blows up before the marker would be written.
+    dataDb.db.run(sql`DROP TABLE fts_inbox`)
+
+    const projector = createSearchProjector(() => vaultDir)
+    await expect(projector.reconcile()).rejects.toThrow()
+
+    expect(readDedupeMarker()).toBeUndefined()
+
+    // Next open finishes the job rather than treating it as already done.
+    initializeFtsInbox(dataDb.db as never)
+    dataDb.db.run(sql`
+      INSERT INTO fts_inbox (id, title, content, transcription, source_title)
+      VALUES (${'inbox-1'}, ${'Inbox title'}, ${'dup'}, ${''}, ${'Source'})
+    `)
+    dataDb.db.run(sql`
+      INSERT INTO fts_inbox (id, title, content, transcription, source_title)
+      VALUES (${'inbox-1'}, ${'Inbox title'}, ${'dup'}, ${''}, ${'Source'})
+    `)
+
+    await projector.reconcile()
+
+    expect(getFtsInboxCount(dataDb.db as never)).toBe(1)
+    expect(readDedupeMarker()).toBe('1')
+  })
+
+  it('leaves the dedupe marker unset when the pass is interrupted, so the next open retries', async () => {
+    seedMarkdownNote('note-1', 'notes/searchable.md', 'Disk content', ['alpha'])
+    seedTask('task-1')
+    seedInboxItem('inbox-1')
+    seedDuplicateFtsRows()
+
+    const controller = new AbortController()
+    controller.abort()
+
+    const projector = createSearchProjector(() => vaultDir)
+    await projector.reconcile(controller.signal)
+
+    expect(readDedupeMarker()).toBeUndefined()
+    expect(getFtsCount(indexDb.db as never)).toBe(3)
+
+    // Next open picks the work back up.
+    await projector.reconcile()
+
+    expect(getFtsCount(indexDb.db as never)).toBe(1)
+    expect(readDedupeMarker()).toBe('1')
   })
 
   it('reconcile leaves an already-consistent index alone: no FTS teardown, no disk re-scan', async () => {

@@ -22,6 +22,7 @@ import {
   deleteFtsInboxItem,
   insertFtsInboxItem
 } from '../../database/fts-inbox'
+import { getSetting, setSetting } from '../../database/queries/settings'
 import { parseNote } from '../../vault/frontmatter'
 import { createLogger } from '../../lib/logger'
 import { broadcastToAllWindows } from '../../lib/window-broadcast'
@@ -196,6 +197,54 @@ function rebuildInbox(): number {
 const STAT_BATCH_SIZE = 64
 
 /**
+ * Marks the one-time duplicate-row sweep as done. Local per install: it
+ * describes the state of this device's FTS tables, and the `settings` table is
+ * the codebase's existing home for that (`ai.embeddingInputVersion` is the same
+ * pattern). Arbitrary rows here do not sync — `SyncedSettingsSchema` is a
+ * closed shape — so one device finishing its sweep cannot make another skip its
+ * own.
+ *
+ * Bump the version to force a re-sweep for everyone in a future release. It
+ * deliberately does NOT cover a user who downgrades to a build with the append
+ * bug, re-accumulates duplicates and upgrades again: the marker is already set,
+ * so their sweep stays skipped until either this constant is bumped or they run
+ * "Rebuild search index", which clears the tables outright.
+ */
+const FTS_DEDUPE_VERSION_KEY = 'search.ftsDedupeVersion'
+const FTS_DEDUPE_VERSION = 1
+
+/**
+ * Repairs rows appended by builds where the FTS inserts never replaced.
+ *
+ * Gated because it is a full fts5 scan per table and the defect it repairs can
+ * only have happened once — the insert path is correct now. Leaving it ungated
+ * would put a permanent per-launch scan on every vault to clean up a historical
+ * one-off.
+ *
+ * The marker is written last and only on a completed run, so an interrupted
+ * sweep is simply retried on the next open.
+ */
+function sweepDuplicateFtsRows(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    return
+  }
+
+  const dataDb = getDatabase()
+  if (getSetting(dataDb, FTS_DEDUPE_VERSION_KEY) === String(FTS_DEDUPE_VERSION)) {
+    return
+  }
+
+  dedupeFtsNotes(getIndexDatabase())
+  dedupeFtsTasks(dataDb)
+  dedupeFtsInbox(dataDb)
+
+  setSetting(dataDb, FTS_DEDUPE_VERSION_KEY, String(FTS_DEDUPE_VERSION))
+  logger.info('Swept duplicate FTS rows left by an earlier build', {
+    version: FTS_DEDUPE_VERSION
+  })
+}
+
+/**
  * Slack between a file's mtime and the moment we recorded having indexed it.
  * FAT/SMB timestamps are 2s-granular and can round up past the `indexed_at`
  * we wrote right after the file, which would otherwise re-read those notes on
@@ -246,12 +295,6 @@ async function reconcileNotes(
   }
 
   const indexDb = getIndexDatabase()
-
-  // Installs that ran a build where insertFtsNote appended instead of replaced
-  // carry duplicate rows on disk. Nothing else prunes them — a user who never
-  // triggers a manual rebuild would keep them forever — so the pass that
-  // already runs on every open owns the repair.
-  dedupeFtsNotes(indexDb)
 
   indexDb.run(sql`
     DELETE FROM fts_notes
@@ -385,7 +428,6 @@ function reconcileTasks(signal?: AbortSignal): number {
 
   const dataDb = getDatabase()
 
-  dedupeFtsTasks(dataDb)
   dataDb.run(sql`DELETE FROM fts_tasks WHERE id NOT IN (SELECT id FROM tasks)`)
 
   const rows = dataDb.all<{ id: string }>(sql`
@@ -406,7 +448,6 @@ function reconcileInbox(signal?: AbortSignal): number {
 
   const dataDb = getDatabase()
 
-  dedupeFtsInbox(dataDb)
   dataDb.run(sql`DELETE FROM fts_inbox WHERE id NOT IN (SELECT id FROM inbox_items)`)
 
   const rows = dataDb.all<{ id: string }>(sql`
@@ -500,6 +541,10 @@ export function createSearchProjector(getVaultPath: () => string | null): Projec
     },
 
     async reconcile(signal?: AbortSignal): Promise<void> {
+      // Before reconcileNotes reads its membership set, so the set never sees
+      // the duplicates.
+      sweepDuplicateFtsRows(signal)
+
       await reconcileNotes(getVaultPath, signal)
       reconcileTasks(signal)
       reconcileInbox(signal)

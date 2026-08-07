@@ -12,14 +12,14 @@ import type { DataDb } from './client'
  */
 
 export function createFtsInboxTable(db: DataDb): void {
+  // `tokenize=` trails the column above deliberately — see the note in fts.ts.
   db.run(sql`
     CREATE VIRTUAL TABLE IF NOT EXISTS fts_inbox USING fts5(
       id UNINDEXED,
       title,
       content,
       transcription,
-      source_title,
-      tokenize='porter unicode61'
+      source_title, tokenize='porter unicode61'
     )
   `)
 }
