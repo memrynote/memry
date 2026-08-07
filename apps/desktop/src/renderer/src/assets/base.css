@@ -2098,6 +2098,13 @@ del.bn-inline-content {
   --sidebar-border: #d9d5ce;
   --sidebar-ring: var(--tint);
   --sidebar-muted: #b5b0a6;
+  /* The sidebar's de-emphasized small-text colour: section and tag-group
+     headings, item counts, the tag list's show-more control — anything
+     carrying real information at 10-11px, which WCAG AA treats as small text
+     (4.5:1). Separate from --sidebar-muted, which also colors chevrons and
+     decorative icon buttons where the extra weight would be too loud.
+     5.07:1 on --sidebar, 5.07:1 on --muted (the row hover surface). */
+  --sidebar-section-heading: #6b6459;
   --sidebar-terracotta: var(--tint);
   --sidebar-text-folder: #3d3a35;
   --sidebar-text-child: #5c5850;
@@ -2116,6 +2123,8 @@ del.bn-inline-content {
   --sidebar-border: #e9e9e7;
   --sidebar-ring: var(--tint);
   --sidebar-muted: #b0afab;
+  /* 5.16:1 on --sidebar, 5.06:1 on --muted. See the :root block. */
+  --sidebar-section-heading: #6b6966;
   --sidebar-terracotta: var(--tint);
   --sidebar-text-folder: #37352f;
   --sidebar-text-child: #6b6966;
@@ -2134,6 +2143,8 @@ del.bn-inline-content {
   --sidebar-border: #333333;
   --sidebar-ring: var(--tint);
   --sidebar-muted: #6b6b6b;
+  /* 6.42:1 on --sidebar, 6.01:1 on --muted. See the :root block. */
+  --sidebar-section-heading: #9d9d9d;
   --sidebar-terracotta: var(--tint);
   --sidebar-text-folder: #c5c0b8;
   --sidebar-text-child: #9a958d;
@@ -2241,6 +2252,7 @@ del.bn-inline-content {
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-section-heading: var(--sidebar-section-heading);
   --color-sidebar-terracotta: var(--sidebar-terracotta);
   --color-sidebar-text-folder: var(--sidebar-text-folder);
   --color-sidebar-text-child: var(--sidebar-text-child);

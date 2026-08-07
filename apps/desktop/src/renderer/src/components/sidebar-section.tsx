@@ -123,8 +123,12 @@ export const SidebarSection = ({
               'flex flex-1 min-w-0 cursor-pointer items-center gap-1.5 px-2 py-1 h-6 shrink-0',
               'text-[11px] leading-3.5 font-medium tracking-[0.04em]',
               "font-['DM_Sans',system-ui,sans-serif]",
-              'text-sidebar-muted hover:text-sidebar-foreground',
-              'transition-colors focus-visible:outline-none'
+              // Resting colour only. `hover:text-sidebar-foreground` used to live
+              // here, and on the paper sidebar that is 3.18:1 — under the 4.5:1 AA
+              // floor for 11px text — so the heading lost its guarantee exactly
+              // while being pointed at. The chevron fading in carries the affordance.
+              'text-sidebar-section-heading',
+              'focus-visible:outline-none'
             )}
             aria-expanded={isExpanded}
             aria-controls={contentId}
@@ -135,7 +139,11 @@ export const SidebarSection = ({
             <SectionChevron expanded={isExpanded} />
 
             {!isExpanded && totalCount !== undefined && totalCount > 0 && (
-              <span className="text-sidebar-muted/60 tabular-nums text-[10px] leading-3">
+              // The count is the only thing left telling you how much a
+              // collapsed section hides, so it is informational text, not
+              // decoration: `--sidebar-muted` at 60% was 1.43:1 on the paper
+              // sidebar. The heading token carries it at 5.07:1.
+              <span className="text-sidebar-section-heading tabular-nums text-[10px] leading-3">
                 ({totalCount})
               </span>
             )}
