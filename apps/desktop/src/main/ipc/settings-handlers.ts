@@ -7,7 +7,8 @@
  * @module main/ipc/settings-handlers
  */
 
-import { ipcMain, BrowserWindow, app, globalShortcut, systemPreferences, shell } from 'electron'
+import { ipcMain, app, globalShortcut, systemPreferences, shell } from 'electron'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import {
   GENERAL_SETTINGS_DEFAULTS,
@@ -342,11 +343,9 @@ function writeGroupSettings<T extends Record<string, unknown>>(
   const updated = { ...current, ...updates }
   setSetting(db, groupKey, JSON.stringify(updated))
 
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(SettingsChannels.events.CHANGED, {
-      key: groupKey,
-      value: updates
-    })
+  broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+    key: groupKey,
+    value: updates
   })
 
   trackGroupSettingChanges(groupKey, updates)
@@ -386,9 +385,7 @@ export function registerSettingsHandlers(): void {
       setSetting(db, key, value)
 
       // Emit settings changed event
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(SettingsChannels.events.CHANGED, { key, value })
-      })
+      broadcastToAllWindows(SettingsChannels.events.CHANGED, { key, value })
 
       if (SafeDimensionValueSchema.safeParse(key).success) {
         trackMainEvent('setting_changed', {
@@ -475,11 +472,9 @@ export function registerSettingsHandlers(): void {
       }
 
       // Emit settings changed event
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(SettingsChannels.events.CHANGED, {
-          key: 'journal',
-          value: settings
-        })
+      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+        key: 'journal',
+        value: settings
       })
 
       trackGroupSettingChanges('journal', settings)
@@ -521,11 +516,9 @@ export function registerSettingsHandlers(): void {
       }
 
       // Emit settings changed event
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(SettingsChannels.events.CHANGED, {
-          key: 'ai',
-          value: settings
-        })
+      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+        key: 'ai',
+        value: settings
       })
 
       trackGroupSettingChanges('ai', settings)
@@ -791,11 +784,9 @@ export function registerSettingsHandlers(): void {
       }
 
       // Emit settings changed event
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(SettingsChannels.events.CHANGED, {
-          key: 'tabs',
-          value: settings
-        })
+      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+        key: 'tabs',
+        value: settings
       })
 
       trackGroupSettingChanges('tabs', settings)
@@ -834,11 +825,9 @@ export function registerSettingsHandlers(): void {
       }
 
       // Emit settings changed event
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(SettingsChannels.events.CHANGED, {
-          key: 'noteEditor',
-          value: settings
-        })
+      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+        key: 'noteEditor',
+        value: settings
       })
 
       trackGroupSettingChanges('noteEditor', settings)
@@ -986,11 +975,9 @@ export function registerSettingsHandlers(): void {
 
     deleteSetting(db, 'keyboard')
 
-    BrowserWindow.getAllWindows().forEach((win) => {
-      win.webContents.send(SettingsChannels.events.CHANGED, {
-        key: 'keyboard',
-        value: KEYBOARD_SHORTCUTS_DEFAULTS
-      })
+    broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+      key: 'keyboard',
+      value: KEYBOARD_SHORTCUTS_DEFAULTS
     })
 
     return { success: true }
@@ -1048,9 +1035,7 @@ export function applyGlobalCaptureShortcut(): GlobalCaptureResult {
 
   const accelerator = toElectronAccelerator(binding)
   const registered = globalShortcut.register(accelerator, () => {
-    BrowserWindow.getAllWindows().forEach((win) => {
-      if (!win.isDestroyed()) win.webContents.send('quick-capture:open')
-    })
+    broadcastToAllWindows('quick-capture:open')
   })
 
   if (!registered) {

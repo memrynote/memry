@@ -1,4 +1,5 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { ipcMain } from 'electron'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
 import { CalendarChannels } from '@memry/contracts/ipc-channels'
 import {
@@ -92,9 +93,7 @@ import { getMainI18n } from '../lib/main-i18n'
 const log = createLogger('IPC:Calendar')
 
 function emitCalendarChanged(event: CalendarChangedEvent): void {
-  for (const win of BrowserWindow.getAllWindows()) {
-    win.webContents.send(CalendarChannels.events.CHANGED, event)
-  }
+  broadcastToAllWindows(CalendarChannels.events.CHANGED, event)
 }
 
 function mapCalendarEvent(row: typeof calendarEvents.$inferSelect): CalendarEventRecord {

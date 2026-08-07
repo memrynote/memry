@@ -59,7 +59,7 @@ vi.mock('../../store', () => ({
 const mockSend = vi.fn()
 vi.mock('electron', () => ({
   BrowserWindow: {
-    getAllWindows: vi.fn(() => [{ webContents: { send: mockSend } }])
+    getAllWindows: vi.fn(() => [{ isDestroyed: () => false, webContents: { send: mockSend } }])
   },
   // locale-handler registers its IPC channels on import-time registration; the
   // real apply path is exercised through it, so ipcMain has to exist.
