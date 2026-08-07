@@ -43,6 +43,28 @@ const MAX_SYNC_ENGINE_LISTENERS = 50
 // makes periodicPull skip forever, and only an app restart recovers.
 export const SYNC_LOCK_STALE_MS = 15 * 60 * 1000
 
+// How often a WebSocket reconnect may re-pull the CRDT docs the provider still
+// caches without an editor attached (up to inactiveDocLimit, currently 32).
+//
+// They cannot be dropped from reconnect recovery: a body-only remote edit
+// reaches this device as a `crdt_updated` broadcast and by no other route —
+// note records in the change feed carry no body — so an edit made while the
+// socket was down is discovered either here or by the vault-wide sweep at the
+// end of the next fullSync, and a socket-only reconnect does not run a
+// fullSync. They also cannot run on every reconnect: backoff caps at 30s
+// (websocket.ts), so a flapping connection buys a snapshot GET, paged
+// incrementals and a vault-key derivation per cached doc twice a minute, for as
+// long as the network misbehaves.
+//
+// 5 minutes therefore bounds the flapping case to roughly one cache pass per
+// five minutes instead of ten, while costing nothing on a healthy connection —
+// a stable socket delivers every edit live, and docs with a live editor stay on
+// the every-reconnect path regardless. A pass suppressed inside the window is
+// remembered and paid by the next reconnect or the periodic pull tick, so the
+// worst case is an editor-less doc going stale for a few extra minutes during
+// an outage, never a body that is not pulled at all.
+export const INACTIVE_CRDT_SWEEP_MIN_INTERVAL_MS = 5 * 60 * 1000
+
 const classifySyncErrorCode = (error: unknown): string => {
   try {
     const info = classifyError(error)
@@ -67,6 +89,11 @@ export class SyncEngine extends EventEmitter {
   private networkReconnectAbortController: AbortController | null = null
   private syncLockAcquiredAt: number | null = null
   private activeLockRelease: (() => void) | null = null
+  // Zero means "never swept by this engine", so the first reconnect after a
+  // start, vault switch or engine rebuild always sweeps. Instance state only:
+  // a timestamp from a previous process says nothing about this socket.
+  private lastInactiveCrdtSweepAt = 0
+  private inactiveCrdtSweepOwed = false
 
   constructor(deps: SyncEngineDeps, options?: Partial<SyncEngineOptions>) {
     super()
@@ -517,6 +544,7 @@ export class SyncEngine extends EventEmitter {
     if (this.pullInterval) return
     this.pullInterval = setInterval(() => {
       this.recoverStaleSyncLock()
+      this.payOwedInactiveCrdtSweep()
       this.pullCoordinator.periodicPull()
     }, 60_000)
   }
@@ -690,11 +718,54 @@ export class SyncEngine extends EventEmitter {
       this.scheduleSync(async () => {
         await this.pull()
 
-        const openNoteIds = this.ctx.deps.crdtProvider?.getOpenNoteIds() ?? []
-        for (const noteId of openNoteIds) {
+        // Docs with a live editor are what the user is looking at right now:
+        // pulled on every reconnect, however often the socket flaps.
+        const activeNoteIds = this.ctx.deps.crdtProvider?.getOpenNoteIds({ active: true }) ?? []
+        for (const noteId of activeNoteIds) {
           await this.crdtSync.pullCrdtForNote(noteId)
         }
+
+        await this.sweepInactiveCrdtDocs()
       })
     }
+  }
+
+  /**
+   * Re-pull the cached CRDT docs no editor holds open, at most once per
+   * INACTIVE_CRDT_SWEEP_MIN_INTERVAL_MS. A pass the window suppresses is
+   * remembered rather than dropped — see the constant for why neither dropping
+   * it nor running it every reconnect is acceptable.
+   */
+  private async sweepInactiveCrdtDocs(): Promise<void> {
+    const crdtProvider = this.ctx.deps.crdtProvider
+    if (!crdtProvider) return
+
+    if (Date.now() - this.lastInactiveCrdtSweepAt < INACTIVE_CRDT_SWEEP_MIN_INTERVAL_MS) {
+      this.inactiveCrdtSweepOwed = true
+      return
+    }
+
+    this.lastInactiveCrdtSweepAt = Date.now()
+    this.inactiveCrdtSweepOwed = false
+
+    // Re-read both sets here rather than reusing the reconnect's snapshot: an
+    // editor may have opened or closed while the active pulls above ran.
+    const activeNoteIds = new Set(crdtProvider.getOpenNoteIds({ active: true }))
+    for (const noteId of crdtProvider.getOpenNoteIds()) {
+      if (activeNoteIds.has(noteId)) continue
+      await this.crdtSync.pullCrdtForNote(noteId)
+    }
+  }
+
+  /**
+   * Settles a sweep the window held back when no further reconnect arrives to
+   * carry it — a socket that flaps twice and then stabilises still owes one.
+   * Paused or mid-fullSync it stays owed: resume() and fullSync both end in the
+   * vault-wide CRDT sweep, and the flag survives for the next tick regardless.
+   */
+  private payOwedInactiveCrdtSweep(): void {
+    if (!this.inactiveCrdtSweepOwed || this.stateManager.isPaused()) return
+    if (Date.now() - this.lastInactiveCrdtSweepAt < INACTIVE_CRDT_SWEEP_MIN_INTERVAL_MS) return
+    this.scheduleSync(() => this.sweepInactiveCrdtDocs())
   }
 }

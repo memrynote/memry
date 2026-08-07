@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { EventEmitter } from 'events'
-import { SyncEngine, type SyncEngineDeps } from './engine'
+import { INACTIVE_CRDT_SWEEP_MIN_INTERVAL_MS, SyncEngine, type SyncEngineDeps } from './engine'
 import { NetworkError } from './http-client'
 import type { WebSocketMessage } from './websocket'
 import { createMockDeps, createMockNetwork, setupTestDb } from '@tests/utils/engine-mocks'
@@ -215,8 +215,8 @@ describe('SyncEngine', () => {
 
       const deps = createMockDeps(getDb(), {
         crdtProvider: {
-          getOpenNoteIds: vi.fn().mockReturnValue(['note-1', 'note-2'])
-        } as SyncEngineDeps['crdtProvider']
+          getOpenNoteIds: vi.fn(({ active = false } = {}) => (active ? [] : ['note-1', 'note-2']))
+        } as unknown as SyncEngineDeps['crdtProvider']
       })
       const engine = new SyncEngine(deps)
       await engine.start()
@@ -245,6 +245,128 @@ describe('SyncEngine', () => {
       expect(pullCrdtForNote).toHaveBeenCalledWith('note-2')
 
       await engine.stop()
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given cached CRDT docs with no editor attached #when the socket reconnects', () => {
+    // The provider keeps up to 32 editor-less docs in its LRU cache, and
+    // reconnect backoff caps at 30s — so re-pulling the whole cache on every
+    // reconnect buys a snapshot GET, paged incrementals and a vault-key
+    // derivation per cached doc, twice a minute, for as long as the network
+    // flaps (#1026). Docs with a live editor are what the user is actually
+    // looking at and stay on the every-reconnect path.
+    const OPEN_IDS = ['editor-1', 'cached-1', 'cached-2']
+
+    async function startEngine(): Promise<{
+      engine: SyncEngine
+      deps: SyncEngineDeps
+      pullCrdtForNote: ReturnType<typeof vi.fn>
+      settle: () => Promise<void>
+    }> {
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+
+      const deps = createMockDeps(getDb(), {
+        crdtProvider: {
+          getOpenNoteIds: vi.fn(({ active = false } = {}) => (active ? ['editor-1'] : OPEN_IDS))
+        } as unknown as SyncEngineDeps['crdtProvider']
+      })
+      const engine = new SyncEngine(deps)
+      await engine.start()
+
+      const pullCrdtForNote = vi.fn().mockResolvedValue(undefined)
+      ;(engine as unknown as { crdtSync: { pullCrdtForNote: typeof pullCrdtForNote } }).crdtSync = {
+        pullCrdtForNote
+      }
+
+      // Deterministic drain: the reconnect handler runs through scheduleSync,
+      // so the work is only observable once the engine's in-flight chain is
+      // empty. Polling with waitFor would only prove pulls that DID happen.
+      const ctx = (engine as unknown as { ctx: { inFlightSync: Promise<void> | null } }).ctx
+      const settle = async (): Promise<void> => {
+        while (ctx.inFlightSync) {
+          await ctx.inFlightSync.catch(() => {})
+        }
+      }
+
+      return { engine, deps, pullCrdtForNote, settle }
+    }
+
+    const pulledIds = (mock: ReturnType<typeof vi.fn>): string[] =>
+      mock.mock.calls.map(([noteId]) => noteId as string).sort()
+
+    it('#then the first reconnect still pulls every cached doc', async () => {
+      const { engine, deps, pullCrdtForNote, settle } = await startEngine()
+
+      deps.ws.emit('connected')
+      await settle()
+
+      expect(pulledIds(pullCrdtForNote)).toEqual([...OPEN_IDS].sort())
+
+      await engine.stop()
+      vi.restoreAllMocks()
+    })
+
+    it('#then a reconnect inside the sweep window pulls only docs with a live editor', async () => {
+      const { engine, deps, pullCrdtForNote, settle } = await startEngine()
+
+      deps.ws.emit('connected')
+      await settle()
+      pullCrdtForNote.mockClear()
+
+      deps.ws.emit('connected')
+      await settle()
+
+      expect(pulledIds(pullCrdtForNote)).toEqual(['editor-1'])
+
+      await engine.stop()
+      vi.restoreAllMocks()
+    })
+
+    it('#then a reconnect past the sweep window sweeps the cache again', async () => {
+      const { engine, deps, pullCrdtForNote, settle } = await startEngine()
+
+      deps.ws.emit('connected')
+      await settle()
+      pullCrdtForNote.mockClear()
+
+      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + INACTIVE_CRDT_SWEEP_MIN_INTERVAL_MS + 1)
+      deps.ws.emit('connected')
+      await settle()
+
+      expect(pulledIds(pullCrdtForNote)).toEqual([...OPEN_IDS].sort())
+
+      await engine.stop()
+      vi.restoreAllMocks()
+    })
+
+    it('#then a sweep the window held back is paid by the pull tick, not dropped', async () => {
+      // Nothing else re-pulls an editor-less body: note records in the change
+      // feed carry no body, and a socket-only reconnect never runs a fullSync.
+      // If the throttled sweep were dropped rather than deferred, an edit made
+      // on another device during the outage would never land here.
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+      const { engine, deps, pullCrdtForNote, settle } = await startEngine()
+
+      deps.ws.emit('connected')
+      await settle()
+      deps.ws.emit('connected')
+      await settle()
+      pullCrdtForNote.mockClear()
+
+      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + INACTIVE_CRDT_SWEEP_MIN_INTERVAL_MS + 1)
+      await vi.advanceTimersByTimeAsync(60_000)
+      await settle()
+
+      expect(pulledIds(pullCrdtForNote)).toEqual(['cached-1', 'cached-2'])
+
+      await engine.stop()
+      vi.useRealTimers()
       vi.restoreAllMocks()
     })
   })
