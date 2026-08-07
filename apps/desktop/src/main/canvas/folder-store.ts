@@ -181,6 +181,121 @@ function upsertFolderRow(
   return tx.select().from(canvasFolders).where(eq(canvasFolders.id, id)).get()!
 }
 
+/**
+ * Writes a row for `path` only when NOTHING holds its derived id yet, and hands
+ * back what it wrote (null when it wrote nothing).
+ *
+ * Deliberately not `liveFolderRow`: a TOMBSTONE occupies the id too, and this
+ * function must never revive one. That is the whole difference from
+ * `upsertFolderRow` — the rows it writes are implied (an ancestor on the way to
+ * a folder the user asked for, a level the user's delete has to account for),
+ * and an implied write must not undo an explicit delete, here or on a peer that
+ * is mid-pull.
+ *
+ * `onConflictDoNothing` on top of the lookup is belt and braces: better-sqlite3
+ * is synchronous and this runs inside a transaction, so no sync apply can land
+ * between the two statements — but two devices deriving the same id from the
+ * same path is the normal case, and converging beats colliding.
+ */
+function insertFolderRowIfAbsent(
+  tx: FolderTx,
+  values: {
+    vaultId: string
+    path: string
+    createdAt: number
+    updatedAt: number
+    deletedAt: number | null
+  }
+): CanvasFolderRow | null {
+  const id = canvasFolderSyncId(values.path)
+  if (tx.select().from(canvasFolders).where(eq(canvasFolders.id, id)).get()) return null
+  tx.insert(canvasFolders)
+    .values({
+      id,
+      vaultId: values.vaultId,
+      path: values.path,
+      icon: null,
+      createdAt: values.createdAt,
+      updatedAt: values.updatedAt,
+      deletedAt: values.deletedAt
+    })
+    .onConflictDoNothing()
+    .run()
+  return tx.select().from(canvasFolders).where(eq(canvasFolders.id, id)).get() ?? null
+}
+
+/**
+ * Gives every ancestor of `canonicalFolder` a row, and returns the ones that
+ * were actually written.
+ *
+ * A folder the tree shows but this table does not hold is MATERIALIZED — the
+ * tree invents it from a canvas's own `folder` string, because a canvas can
+ * arrive from sync long before its folder item does. Minting only the leaf left
+ * those ancestors rowless, and a rowless folder is exactly the folder this table
+ * exists for: it can carry no icon, and it does not reach another device when it
+ * is empty.
+ *
+ * Lives here rather than in the renderer on purpose. Every caller — the tree,
+ * the sidebar drop, the MCP tools, a future one — reaches folders through this
+ * store, so the chain is minted once, where the transaction and the sync queue
+ * already are, and the renderer cannot drift out of step with it.
+ */
+function mintAncestorFolderRows(
+  tx: FolderTx,
+  vaultId: string,
+  canonicalFolder: string,
+  now: number
+): CanvasFolderRow[] {
+  const segments = folderSegments(canonicalFolder)
+  const minted: CanvasFolderRow[] = []
+  for (let depth = 1; depth < segments.length; depth += 1) {
+    const row = insertFolderRowIfAbsent(tx, {
+      vaultId,
+      path: segments.slice(0, depth).join('/'),
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null
+    })
+    if (row) minted.push(row)
+  }
+  return minted
+}
+
+/**
+ * Every folder path at or under `canonicalFolder` that these stored folder
+ * strings imply — `canonicalFolder` itself always included.
+ *
+ * This is what a delete has to account for. `descendantFolderRows` finds the
+ * folders that HAVE rows; the tree also shows the ones only a canvas's folder
+ * string (or a deeper row's path) names, and each of those needs a tombstone of
+ * its own or the peer holding its row syncs it straight back, empty.
+ *
+ * Spelling is re-rooted on the canonical form and deduped through
+ * `canvasPathKey`, so a canvas filed under `work/q3` beneath a row spelled
+ * `Work` does not mint a second folder for the same directory.
+ *
+ * `storedFolders` must already be at or under `canonicalFolder` — both callers
+ * read them through `canvasesInFolder` / `descendantFolderRows`, which is where
+ * the segment-wise "`Workshop` is not a child of `Work`" rule is applied.
+ */
+function impliedFolderPaths(canonicalFolder: string, storedFolders: (string | null)[]): string[] {
+  const rootSegments = folderSegments(canonicalFolder)
+  const byKey = new Map<string, string>()
+  const collect = (segments: string[]): void => {
+    for (let depth = rootSegments.length; depth <= segments.length; depth += 1) {
+      const folderPath = segments.slice(0, depth).join('/')
+      const key = canvasPathKey(folderPath)
+      if (!byKey.has(key)) byKey.set(key, folderPath)
+    }
+  }
+
+  collect(rootSegments)
+  for (const folder of storedFolders) {
+    collect([...rootSegments, ...folderSegments(folder).slice(rootSegments.length)])
+  }
+  return [...byKey.values()]
+}
+
 export function listCanvasFolders(db: DataDb, vaultId: string): CanvasFolder[] {
   return db
     .select()
@@ -192,10 +307,14 @@ export function listCanvasFolders(db: DataDb, vaultId: string): CanvasFolder[] {
 }
 
 /**
- * Creates a folder: the directory first, then the row.
+ * Creates a folder: the directory first, then the row — and a row for every
+ * ancestor that does not have one, because `ensureCanvasFolderDir` makes the
+ * whole directory chain and the index has to describe the same tree.
  *
  * Idempotent — asking for a folder that already exists returns it rather than
- * failing, which is what a sync apply and a double-click both want.
+ * failing, which is what a sync apply and a double-click both want. The ancestor
+ * pass runs either way, so calling this on an existing leaf repairs a chain that
+ * arrived incomplete.
  */
 export function createCanvasFolder(
   db: DataDb,
@@ -221,27 +340,33 @@ export function createCanvasFolder(
   // the caller's spelling first would leave a second directory on a
   // case-sensitive filesystem with no row pointing at it.
   const existing = liveFolderRow(db, canonical)
-  if (existing) {
-    ensureCanvasFolderDir(vaultPath, existing.path)
-    return toFolder(existing)
-  }
+  const stored = existing?.path ?? canonical
 
-  // Directory first, row second.
-  ensureCanvasFolderDir(vaultPath, canonical)
+  // Directory first, row second. `mkdir -p`, so this is also what puts every
+  // ancestor directory on disk — the rows below just catch the index up.
+  ensureCanvasFolderDir(vaultPath, stored)
 
   const now = Date.now()
-  const row = db.transaction((tx) =>
-    upsertFolderRow(tx, {
-      vaultId,
-      path: canonical,
-      icon: null,
-      createdAt: now,
-      updatedAt: now
-    })
-  )
-  // After the row exists, never inside the transaction: the queue write is its
+  const { row, ancestors } = db.transaction((tx) => {
+    const ancestors = mintAncestorFolderRows(tx, vaultId, stored, now)
+    if (existing) return { row: existing, ancestors }
+    return {
+      row: upsertFolderRow(tx, {
+        vaultId,
+        path: canonical,
+        icon: null,
+        createdAt: now,
+        updatedAt: now
+      }),
+      ancestors
+    }
+  })
+  // After the rows exist, never inside the transaction: the queue write is its
   // own transaction, and a folder that is not committed yet has nothing to push.
-  enqueueLocalSyncCreate('canvas_folder', row.id)
+  for (const ancestor of ancestors) enqueueLocalSyncCreate('canvas_folder', ancestor.id)
+  // An already-live leaf is not a new folder; re-announcing it would push a
+  // create for a row the peers already have.
+  if (!existing) enqueueLocalSyncCreate('canvas_folder', row.id)
   return toFolder(row)
 }
 
@@ -320,7 +445,11 @@ function relocateFolder(
   const now = Date.now()
   // Everything the sync queue needs, collected inside the transaction and
   // enqueued after it commits: a rolled-back move must not leave pushes behind.
-  let moved: { target: CanvasFolderRow | null; written: CanvasFolderRow[] }
+  let moved: {
+    target: CanvasFolderRow | null
+    written: CanvasFolderRow[]
+    ancestors: CanvasFolderRow[]
+  }
   try {
     moved = db.transaction((tx) => {
       for (const { canvas, nextFolder } of canvasMoves) {
@@ -349,6 +478,10 @@ function relocateFolder(
           .where(eq(canvasFolders.id, folder.id))
           .run()
       }
+      // A drop onto a materialized folder lands the subtree under a parent with
+      // no row of its own; the destination chain gets the same treatment a
+      // create gives it.
+      const ancestors = mintAncestorFolderRows(tx, vaultId, toPath, now)
       let target: CanvasFolderRow | null = null
       const written: CanvasFolderRow[] = []
       for (const { folder, nextPath } of folderMoves) {
@@ -367,7 +500,7 @@ function relocateFolder(
         written.push(replacement)
         if (folder.id === row.id) target = replacement
       }
-      return { target, written }
+      return { target, written, ancestors }
     })
   } catch (err) {
     // The rows still say the folder is where it was, so the directory has to be
@@ -390,6 +523,9 @@ function relocateFolder(
   for (const { folder } of folderMoves) {
     if (revivedIds.has(folder.id)) continue
     enqueueLocalSyncDelete('canvas_folder', folder.id, deleteSnapshot(folder))
+  }
+  for (const folder of moved.ancestors) {
+    enqueueLocalSyncCreate('canvas_folder', folder.id)
   }
   for (const folder of moved.written) {
     enqueueLocalSyncUpdate('canvas_folder', folder.id)
@@ -522,8 +658,10 @@ export async function deleteCanvasFolder(
   const { deletedCanvasIds, deletedFolders } = db.transaction((tx) => {
     const now = Date.now()
     // Collected first: once the rows carry a deletedAt they no longer match the
-    // "live canvases in this folder" query that found them.
-    const ids = canvasesInFolder(tx, vaultId, canonical).map((row) => row.id)
+    // "live canvases in this folder" query that found them. The folder strings
+    // come along because they are what names the materialized levels below.
+    const inside = canvasesInFolder(tx, vaultId, canonical)
+    const ids = inside.map((row) => row.id)
     for (const id of ids) {
       tx.update(canvases).set({ deletedAt: now, updatedAt: now }).where(eq(canvases.id, id)).run()
       // The FK cascade only fires on hard deletes; prune advisory refs here so
@@ -539,7 +677,29 @@ export async function deleteCanvasFolder(
         .where(eq(canvasFolders.id, folder.id))
         .run()
     }
-    return { deletedCanvasIds: ids, deletedFolders: folders }
+
+    // The levels the tree shows but this table never held — the deleted folder
+    // itself when it had no row, and every rowless step between it and a canvas
+    // (or a deeper row) below. Each gets a tombstone of its own: without one
+    // there is nothing to push, and the peer that does hold the row keeps it,
+    // so the folder the user deleted comes back, empty. A path that already has
+    // a row is skipped, tombstone included — an earlier delete stands.
+    const materialized: CanvasFolderRow[] = []
+    for (const folderPath of impliedFolderPaths(canonical, [
+      ...inside.map((row) => row.folder),
+      ...folders.map((folder) => folder.path)
+    ])) {
+      const row = insertFolderRowIfAbsent(tx, {
+        vaultId,
+        path: folderPath,
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: now
+      })
+      if (row) materialized.push(row)
+    }
+
+    return { deletedCanvasIds: ids, deletedFolders: [...folders, ...materialized] }
   })
 
   // After the tombstones commit, never inside the transaction.

@@ -90,6 +90,13 @@ describe('canvas folder store', () => {
   const folderPaths = (): string[] => listCanvasFolders(db, VAULT_ID).map((f) => f.path)
   const dirExists = (...segments: string[]): boolean =>
     fs.existsSync(path.join(vault, CANVAS_DIR, ...segments))
+  /** Any row for a path — tombstones included, which `listCanvasFolders` hides. */
+  const folderRow = (folderPath: string): schema.CanvasFolderRow | null =>
+    db
+      .select()
+      .from(schema.canvasFolders)
+      .all()
+      .find((row) => row.id === canvasFolderSyncId(folderPath)) ?? null
 
   describe('createCanvasFolder', () => {
     it('creates a real directory and a row keyed by the path', () => {
@@ -384,6 +391,131 @@ describe('canvas folder store', () => {
     })
   })
 
+  /**
+   * A MATERIALIZED folder is one the tree renders from a canvas's own `folder`
+   * string (or from a deeper folder row's path) while no `canvas_folders` row
+   * holds it — a canvas can arrive from sync well before its folder item does.
+   *
+   * Such a folder is invisible to this table, so it can carry no icon and never
+   * reaches another device as an empty folder; and on a delete it has nothing to
+   * tombstone, so the peer that does own its row syncs it straight back.
+   */
+  describe('materialized folders', () => {
+    it('mints a row for every ancestor, not just the leaf', () => {
+      // The canvas arrived first: `Work` and `Work/Q3` exist in the tree only
+      // because this canvas names them.
+      createCanvas(db, vault, VAULT_ID, { title: 'Plan', folder: 'Work/Q3', scene: SCENE })
+      expect(folderPaths()).toEqual([])
+
+      createCanvasFolder(db, vault, VAULT_ID, 'Work', 'Q3')
+      expect(setCanvasFolderIcon(db, VAULT_ID, 'Work/Q3', '🎨')?.icon).toBe('🎨')
+
+      // `Work` is the one that used to be skipped.
+      expect(folderPaths()).toEqual(['Work', 'Work/Q3'])
+    })
+
+    it('fills the chain in even when the leaf already has a row', () => {
+      // The leaf arrived from sync on its own; the levels above it did not.
+      db.insert(schema.canvasFolders)
+        .values({
+          id: canvasFolderSyncId('Work/Q3'),
+          vaultId: VAULT_ID,
+          path: 'Work/Q3',
+          icon: null,
+          createdAt: 1,
+          updatedAt: 1
+        })
+        .run()
+
+      createCanvasFolder(db, vault, VAULT_ID, 'Work', 'Q3')
+
+      expect(folderPaths()).toEqual(['Work', 'Work/Q3'])
+    })
+
+    it('mints the parent when a folder is moved under a materialized one', () => {
+      createCanvas(db, vault, VAULT_ID, { title: 'Plan', folder: 'Work', scene: SCENE })
+      createCanvasFolder(db, vault, VAULT_ID, null, 'Q3')
+
+      expect(moveCanvasFolder(db, vault, VAULT_ID, 'Q3', 'Work')?.path).toBe('Work/Q3')
+      expect(folderPaths()).toEqual(['Work', 'Work/Q3'])
+    })
+
+    it('leaves an ancestor the user deliberately deleted tombstoned', async () => {
+      createCanvasFolder(db, vault, VAULT_ID, null, 'Work')
+      await deleteCanvasFolder(db, vault, VAULT_ID, 'Work', rmAsTrash)
+      syncMock.enqueueLocalSyncCreate.mockClear()
+
+      // Reachable when a peer's delete of `Work` lands while this device is
+      // still filing things under it. Minting an ancestor must never undo it —
+      // only an explicit create of that folder revives it.
+      createCanvasFolder(db, vault, VAULT_ID, 'Work', 'Q3')
+
+      expect(folderPaths()).toEqual(['Work/Q3'])
+      expect(folderRow('Work')?.deletedAt).toEqual(expect.any(Number))
+      // Nor may it announce one: a create pushed for a row that is a tombstone
+      // here is a folder the peers are told to bring back.
+      expect(syncMock.enqueueLocalSyncCreate).not.toHaveBeenCalledWith(
+        'canvas_folder',
+        canvasFolderSyncId('Work')
+      )
+    })
+
+    it('tombstones a materialized folder and its materialized descendants', async () => {
+      const outer = createCanvas(db, vault, VAULT_ID, {
+        title: 'Plan',
+        folder: 'Work',
+        scene: SCENE
+      })
+      const inner = createCanvas(db, vault, VAULT_ID, {
+        title: 'Deep',
+        folder: 'Work/Q3',
+        scene: SCENE
+      })
+      expect(folderPaths()).toEqual([])
+
+      const deleted = await deleteCanvasFolder(db, vault, VAULT_ID, 'Work', rmAsTrash)
+
+      expect(deleted.sort()).toEqual([outer.id, inner.id].sort())
+      expect(folderRow('Work')?.deletedAt).toEqual(expect.any(Number))
+      expect(folderRow('Work/Q3')?.deletedAt).toEqual(expect.any(Number))
+      expect(folderPaths()).toEqual([])
+      // Without a tombstone to push, the peer that owns the row keeps it and the
+      // folder comes back, empty.
+      expect(syncMock.enqueueLocalSyncDelete).toHaveBeenCalledWith(
+        'canvas_folder',
+        canvasFolderSyncId('Work'),
+        expect.stringContaining('Work')
+      )
+      expect(syncMock.enqueueLocalSyncDelete).toHaveBeenCalledWith(
+        'canvas_folder',
+        canvasFolderSyncId('Work/Q3'),
+        expect.any(String)
+      )
+    })
+
+    it('tombstones a rowless level between the deleted folder and a row below it', async () => {
+      // Exactly how a pull delivers it: the deep folder item lands before the
+      // ones above it, so the middle level has no row of its own.
+      db.insert(schema.canvasFolders)
+        .values({
+          id: canvasFolderSyncId('Work/Q3/Deep'),
+          vaultId: VAULT_ID,
+          path: 'Work/Q3/Deep',
+          icon: null,
+          createdAt: 1,
+          updatedAt: 1
+        })
+        .run()
+
+      await deleteCanvasFolder(db, vault, VAULT_ID, 'Work', rmAsTrash)
+
+      expect(folderRow('Work')?.deletedAt).toEqual(expect.any(Number))
+      expect(folderRow('Work/Q3')?.deletedAt).toEqual(expect.any(Number))
+      expect(folderRow('Work/Q3/Deep')?.deletedAt).toEqual(expect.any(Number))
+      expect(folderPaths()).toEqual([])
+    })
+  })
+
   describe('deleteCanvasFolder', () => {
     it('tombstones the folder, its descendants and every canvas inside', async () => {
       createCanvasFolder(db, vault, VAULT_ID, null, 'Work')
@@ -446,6 +578,17 @@ describe('canvas folder store', () => {
       createCanvasFolder(db, vault, VAULT_ID, null, 'Work')
 
       expect(syncMock.enqueueLocalSyncCreate).not.toHaveBeenCalled()
+    })
+
+    it('enqueues a create for each ancestor row it mints', () => {
+      createCanvasFolder(db, vault, VAULT_ID, 'Work', 'Q3')
+
+      // A row written locally and never pushed is a folder the other devices
+      // cannot see — the whole reason this table exists.
+      expect(syncMock.enqueueLocalSyncCreate).toHaveBeenCalledWith(
+        'canvas_folder',
+        canvasFolderSyncId('Work')
+      )
     })
 
     it('enqueues an update when the icon changes', () => {
