@@ -245,17 +245,31 @@ async function postToken(
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body
   })
-  const json: unknown = await response.json().catch(() => ({}))
-  const parsed = TokenResponseSchema.safeParse(json)
-  if (!response.ok || !parsed.success) {
-    const err = (json ?? {}) as TokenErrorBody
+
+  // fetch resolves on 4xx/5xx, so the status decides how the body is read: an
+  // error response carries an OAuth error payload, never a token. Reading it
+  // first would lose the status for any body that is not JSON (a gateway's
+  // HTML error page), leaving the user with a bare "sign-in failed".
+  if (!response.ok) {
+    const err = ((await response.json().catch(() => ({}))) ?? {}) as TokenErrorBody
     logger.error('Microsoft token request failed', {
       status: response.status,
       error: err.error,
       description: err.error_description
     })
-    throw new Error(err.error_description || err.error || 'Microsoft sign-in failed')
+    throw new Error(
+      err.error_description || err.error || `Microsoft sign-in failed (HTTP ${response.status})`
+    )
   }
+
+  const parsed = TokenResponseSchema.safeParse(await response.json().catch(() => ({})))
+  if (!parsed.success) {
+    logger.error('Microsoft token response was not in the expected shape', {
+      status: response.status
+    })
+    throw new Error('Microsoft sign-in failed')
+  }
+
   return {
     accessToken: parsed.data.access_token,
     refreshToken: parsed.data.refresh_token,

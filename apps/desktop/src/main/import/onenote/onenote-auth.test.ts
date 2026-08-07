@@ -320,6 +320,30 @@ describe('onenote-auth', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
+  it('surfaces the OAuth error description when the token endpoint rejects', async () => {
+    seedRefreshToken('refresh-1')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({ error: 'invalid_grant', error_description: 'AADSTS70000: expired' }),
+            { status: 400, headers: { 'Content-Type': 'application/json' } }
+          )
+      )
+    )
+    await expect(refreshAccessToken({ clientId: 'client-123' })).rejects.toThrow(/AADSTS70000/)
+  })
+
+  it('keeps the status when the token endpoint returns a non-JSON error body', async () => {
+    seedRefreshToken('refresh-1')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('<html>gateway timeout</html>', { status: 504 }))
+    )
+    await expect(refreshAccessToken({ clientId: 'client-123' })).rejects.toThrow(/504/)
+  })
+
   it('errors clearly when refreshing without a stored token', async () => {
     await expect(refreshAccessToken({ clientId: 'client-123' })).rejects.toThrow(/not connected/i)
   })
