@@ -121,6 +121,18 @@ export const CRDT_SNAPSHOT_CONCURRENCY = 5
 // hour in the worst case (a socket blocked outright by a proxy) while keeping
 // the blind window short enough to be invisible in normal use.
 export const CRDT_FULL_SWEEP_MIN_INTERVAL_MS = 15 * 60 * 1000
+// Floor between reconnect-triggered sweeps. A drop/reconnect is a real gap, so
+// the sweep is genuinely owed — but a connection flapping every few seconds
+// would otherwise buy one full O(vault) pass per flap, which is precisely the
+// "one Wi-Fi blip = ~2,000 requests" storm this whole gate exists to remove.
+// Inside the floor the sweep is deferred, never dropped.
+//
+// 60 seconds: long enough to collapse a flapping burst (drops re-establish in
+// seconds) and to outlast a sweep of a large vault, so passes cannot overlap;
+// short enough that a user who lost Wi-Fi and got it back sees another device's
+// edits inside a minute. Unlike the fallback interval this one is only ever
+// paid once per burst, so it does not need to be conservative.
+export const CRDT_RECONNECT_SWEEP_FLOOR_MS = 60 * 1000
 export const PUSH_DEBOUNCE_MS = 2000
 
 export const yieldToEventLoop = (): Promise<void> => new Promise((r) => setImmediate(r))

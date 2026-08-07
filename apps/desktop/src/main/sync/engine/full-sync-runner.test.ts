@@ -1,7 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import { FullSyncRunner, type FullSyncActions } from './full-sync-runner'
-import { CRDT_FULL_SWEEP_MIN_INTERVAL_MS, SYNC_STATE_KEYS, type SyncContext } from './sync-context'
+import {
+  CRDT_FULL_SWEEP_MIN_INTERVAL_MS,
+  CRDT_RECONNECT_SWEEP_FLOOR_MS,
+  SYNC_STATE_KEYS,
+  type SyncContext
+} from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
 import type { PushCoordinator } from './push-coordinator'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
@@ -621,7 +626,7 @@ describe('FullSyncRunner', () => {
     it('#then the sweep runs immediately rather than waiting out the interval', async () => {
       // This is the one case where broadcasts were provably missed, and the
       // case where the user is most likely staring at a stale note. Deferring
-      // it on a timer would be exactly backwards.
+      // it by the fallback interval would be exactly backwards.
       const h = createHarness({ crdtProvider: {} })
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
@@ -629,9 +634,11 @@ describe('FullSyncRunner', () => {
       await h.runner.run()
       mocks.getAllCrdtNoteIds.mockClear()
       h.actions.scheduleSync.mockClear()
-      // Swept one second ago — deep inside the fallback interval.
+      // Past the reconnect floor but far inside the fallback interval.
       h.getStateValue.mockImplementation((key: string) =>
-        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT ? String(Date.now() - 1000) : undefined
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT
+          ? String(Date.now() - CRDT_RECONNECT_SWEEP_FLOOR_MS - 1)
+          : undefined
       )
       h.ws.connectionGeneration += 1
 
@@ -670,6 +677,116 @@ describe('FullSyncRunner', () => {
       await h.runner.run()
 
       expect(h.actions.scheduleSync).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  describe('#given a connection flapping faster than the floor #when it reconnects', () => {
+    // A drop/reconnect is a real gap, so the sweep is owed — but one full
+    // O(vault) pass per flap is the exact "single Wi-Fi blip = ~2,000 requests"
+    // storm #998 was filed about. The floor collapses a burst of flaps into one
+    // sweep; the debt must survive it.
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    async function reconnectInsideFloor(): Promise<Harness> {
+      const h = createHarness({ crdtProvider: {} })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
+
+      await h.runner.run()
+      mocks.getAllCrdtNoteIds.mockClear()
+      h.actions.scheduleSync.mockClear()
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT ? String(Date.now() - 1_000) : undefined
+      )
+      h.ws.connectionGeneration += 1
+
+      await h.runner.run()
+      return h
+    }
+
+    it('#then the sweep is held back instead of running per flap', async () => {
+      const h = await reconnectInsideFloor()
+
+      expect(mocks.getAllCrdtNoteIds).not.toHaveBeenCalled()
+      expect(h.actions.scheduleSync).not.toHaveBeenCalled()
+    })
+
+    it('#then the owed sweep still runs once the floor expires', async () => {
+      // The debt cannot be silently swallowed: after a flap the device is
+      // missing whatever changed during the gap, and no further fullSync is
+      // guaranteed once the connection settles.
+      const h = await reconnectInsideFloor()
+
+      await vi.advanceTimersByTimeAsync(CRDT_RECONNECT_SWEEP_FLOOR_MS)
+
+      expect(mocks.getAllCrdtNoteIds).toHaveBeenCalledTimes(1)
+      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(2)
+    })
+
+    it('#then repeated flaps inside the floor still cost exactly one sweep', async () => {
+      const h = await reconnectInsideFloor()
+
+      for (let i = 0; i < 5; i++) {
+        h.ws.connectionGeneration += 1
+        await h.runner.run()
+      }
+      await vi.advanceTimersByTimeAsync(CRDT_RECONNECT_SWEEP_FLOOR_MS)
+
+      expect(mocks.getAllCrdtNoteIds).toHaveBeenCalledTimes(1)
+    })
+
+    it('#then a full sync arriving past the floor pays the debt without double-sweeping', async () => {
+      // The deferred timer is still armed at this point. If it did not check
+      // whether the debt was already settled, the vault would be swept twice
+      // for one gap — the storm this floor exists to prevent, half-restored.
+      const h = await reconnectInsideFloor()
+
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT
+          ? String(Date.now() - CRDT_RECONNECT_SWEEP_FLOOR_MS - 1)
+          : undefined
+      )
+      await h.runner.run()
+      expect(mocks.getAllCrdtNoteIds).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(CRDT_RECONNECT_SWEEP_FLOOR_MS * 2)
+
+      expect(mocks.getAllCrdtNoteIds).toHaveBeenCalledTimes(1)
+    })
+
+    it('#then the debt is cleared once paid, so a live socket never re-arms it', async () => {
+      const h = await reconnectInsideFloor()
+      await vi.advanceTimersByTimeAsync(CRDT_RECONNECT_SWEEP_FLOOR_MS)
+      mocks.getAllCrdtNoteIds.mockClear()
+
+      await h.runner.run()
+      // A leaked debt would have deferred here and armed a fresh timer.
+      await vi.advanceTimersByTimeAsync(CRDT_RECONNECT_SWEEP_FLOOR_MS * 2)
+
+      expect(mocks.getAllCrdtNoteIds).not.toHaveBeenCalled()
+    })
+
+    it('#then disposing the runner cancels every pending owed sweep', async () => {
+      // Engine teardown (vault switch, sign-out): a timer left armed fires
+      // against a dead engine and drains the pending pulls into a no-op. Each
+      // flap must therefore re-use the one armed timer rather than stacking a
+      // new one — dispose() can only clear the handle it still holds.
+      const h = await reconnectInsideFloor()
+      for (let i = 0; i < 3; i++) {
+        h.ws.connectionGeneration += 1
+        await h.runner.run()
+      }
+
+      h.runner.dispose()
+      await vi.advanceTimersByTimeAsync(CRDT_RECONNECT_SWEEP_FLOOR_MS * 2)
+
+      expect(mocks.getAllCrdtNoteIds).not.toHaveBeenCalled()
     })
   })
 
