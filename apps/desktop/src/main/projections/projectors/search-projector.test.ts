@@ -12,6 +12,12 @@ import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@t
 const getDatabase = vi.hoisted(() => vi.fn())
 const getIndexDatabase = vi.hoisted(() => vi.fn())
 const getAllWindows = vi.hoisted(() => vi.fn())
+const readFileSpy = vi.hoisted(() => vi.fn())
+
+vi.mock('fs/promises', async () => {
+  const actual = await vi.importActual<typeof import('fs/promises')>('fs/promises')
+  return { ...actual, default: { ...actual, readFile: readFileSpy }, readFile: readFileSpy }
+})
 
 vi.mock('../../database', async () => {
   const actual = await vi.importActual<typeof import('../../database')>('../../database')
@@ -45,6 +51,9 @@ describe('search projector', () => {
     initializeFtsTasks(dataDb.db as never)
     initializeFtsInbox(dataDb.db as never)
     vaultDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-search-projector-'))
+    readFileSpy.mockImplementation(async (filePath: string, encoding: BufferEncoding) =>
+      fs.readFileSync(filePath, encoding)
+    )
   })
 
   afterEach(() => {
@@ -173,6 +182,84 @@ describe('search projector', () => {
     expect(
       indexDb.db.get<{ count: number }>(sql`SELECT COUNT(*) as count FROM fts_notes`)?.count
     ).toBe(1)
+    expect(
+      dataDb.db.get<{ count: number }>(sql`SELECT COUNT(*) as count FROM fts_tasks`)?.count
+    ).toBe(1)
+    expect(getFtsInboxCount(dataDb.db as never)).toBe(1)
+  })
+
+  it('reconcile leaves an already-consistent index alone: no FTS teardown, no disk re-scan', async () => {
+    seedMarkdownNote('note-1', 'notes/searchable.md', 'Disk content', ['alpha'])
+    seedTask('task-1')
+    seedInboxItem('inbox-1')
+
+    // Warm index: every canonical row is already indexed. Content deliberately
+    // differs from disk so a re-scan would be visible in the assertions below.
+    indexDb.db.run(sql`
+      INSERT INTO fts_notes (id, title, content, tags)
+      VALUES (${'note-1'}, ${'Searchable Note'}, ${'already indexed'}, ${'alpha'})
+    `)
+    dataDb.db.run(sql`
+      INSERT INTO fts_tasks (id, title, description, tags)
+      VALUES (${'task-1'}, ${'Task title'}, ${'already indexed'}, ${'focus'})
+    `)
+    dataDb.db.run(sql`
+      INSERT INTO fts_inbox (id, title, content, transcription, source_title)
+      VALUES (${'inbox-1'}, ${'Inbox title'}, ${'already indexed'}, ${''}, ${'Source'})
+    `)
+
+    readFileSpy.mockClear()
+
+    const projector = createSearchProjector(() => vaultDir)
+    await projector.reconcile()
+
+    expect(readFileSpy).not.toHaveBeenCalled()
+    expect(
+      indexDb.db.get<{ content: string }>(sql`SELECT content FROM fts_notes WHERE id = ${'note-1'}`)
+        ?.content
+    ).toBe('already indexed')
+    expect(
+      dataDb.db.get<{ description: string }>(
+        sql`SELECT description FROM fts_tasks WHERE id = ${'task-1'}`
+      )?.description
+    ).toBe('already indexed')
+    expect(
+      dataDb.db.get<{ content: string }>(sql`SELECT content FROM fts_inbox WHERE id = ${'inbox-1'}`)
+        ?.content
+    ).toBe('already indexed')
+  })
+
+  it('reconcile stops reading the vault once its abort signal fires', async () => {
+    for (let i = 0; i < 4; i++) {
+      seedMarkdownNote(`note-${i}`, `notes/note-${i}.md`, `Content ${i}`, ['alpha'])
+    }
+
+    // Orphan rows that a completed pass would have swept away.
+    dataDb.db.run(sql`
+      INSERT INTO fts_tasks (id, title, description, tags)
+      VALUES (${'stale-task'}, ${'Stale'}, ${'stale'}, ${'stale'})
+    `)
+    dataDb.db.run(sql`
+      INSERT INTO fts_inbox (id, title, content, transcription, source_title)
+      VALUES (${'stale-inbox'}, ${'Stale'}, ${'stale'}, ${''}, ${''})
+    `)
+
+    const controller = new AbortController()
+    readFileSpy.mockClear()
+    readFileSpy.mockImplementation(async (filePath: string, encoding: BufferEncoding) => {
+      controller.abort()
+      return fs.readFileSync(filePath, encoding)
+    })
+
+    const projector = createSearchProjector(() => vaultDir)
+    await projector.reconcile(controller.signal)
+
+    expect(readFileSpy).toHaveBeenCalledTimes(1)
+    // Nothing is written after the abort either — the database may already be
+    // closed. The next open re-runs the same diff and finishes the backfill.
+    expect(
+      indexDb.db.get<{ count: number }>(sql`SELECT COUNT(*) as count FROM fts_notes`)?.count
+    ).toBe(0)
     expect(
       dataDb.db.get<{ count: number }>(sql`SELECT COUNT(*) as count FROM fts_tasks`)?.count
     ).toBe(1)
