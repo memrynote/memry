@@ -55,6 +55,7 @@ import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { getDeviceSigningKey } from './device-keys'
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import { CrdtUpdateQueue } from './crdt-queue'
+import { CrdtSnapshotScheduler } from './crdt-snapshot-scheduler'
 import { recoverDirtyItems } from './dirty-recovery'
 import { encryptCrdtUpdate } from './crdt-encrypt'
 import { postToServer, pushCrdtSnapshot, SyncServerError } from './http-client'
@@ -94,6 +95,7 @@ interface SyncRuntimeState {
   ws: WebSocketManager
   engine: SyncEngine
   crdtQueue: CrdtUpdateQueue
+  snapshotScheduler: CrdtSnapshotScheduler
   workerBridge: SyncWorkerBridge
 }
 
@@ -473,6 +475,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       ])
 
       const crdtQueue = new CrdtUpdateQueue()
+      const snapshotScheduler = new CrdtSnapshotScheduler((noteId) =>
+        crdtProvider.pushSnapshotForNote(noteId)
+      )
       crdtQueue.start(async (noteId, updates) => {
         let token = await getValidAccessToken()
         const vaultKey = await getOptionalRuntimeVaultKey(db, 'crdt update batch')
@@ -514,14 +519,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
             { maxRetries: 3, baseDelayMs: 2000 }
           )
 
-          try {
-            await crdtProvider.pushSnapshotForNote(noteId)
-          } catch (snapshotErr) {
-            log.warn('Failed to push CRDT snapshot after update batch', {
-              noteId,
-              error: snapshotErr
-            })
-          }
+          // The incremental batch is already durable on the server; the full
+          // snapshot is only a compaction point, so it rides a long debounce
+          // instead of re-encoding the whole document every flush.
+          snapshotScheduler.request(noteId)
         } catch (err) {
           if (err instanceof SyncServerError && err.statusCode === 401) {
             // withAuthRetry already attempted a refresh. Pause so the
@@ -723,7 +724,15 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       recoverDirtyItems(runtimeSyncDb, adapters)
 
-      pendingRuntime = { queue, network, ws, engine, crdtQueue, workerBridge }
+      pendingRuntime = {
+        queue,
+        network,
+        ws,
+        engine,
+        crdtQueue,
+        snapshotScheduler,
+        workerBridge
+      }
       runtime = pendingRuntime
 
       seedAbortController = new AbortController()
@@ -754,6 +763,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       return engine
     } catch (error) {
       if (pendingRuntime) {
+        pendingRuntime.snapshotScheduler.stop()
         pendingRuntime.crdtQueue.stop()
         pendingRuntime.ws.disconnect()
         pendingRuntime.network.stop()
@@ -808,6 +818,11 @@ export async function stopSyncRuntime(options?: { skipFinalSync?: boolean }): Pr
   }
 
   const active = runtime
+
+  // Cancel deferred snapshots before the shutdown flush: pushAllSnapshots()
+  // covers every note with pending bytes, so a timer firing mid-teardown would
+  // only duplicate that work against a provider about to be destroyed.
+  active?.snapshotScheduler.stop()
 
   if (active && !options?.skipFinalSync) {
     try {
