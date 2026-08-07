@@ -48,7 +48,7 @@ import { configureSessionPermissions } from './session-permissions'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { stopVoiceModel } from './inbox/voice-model'
 import { stopImageProcessing } from './image-processing/bridge'
-import { stopEmbeddingModel } from './lib/embeddings'
+import { getEmbeddingWorkerPhase, stopEmbeddingModel } from './lib/embeddings'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { startInboxReviewScheduler, stopInboxReviewScheduler } from './inbox/review-scheduler'
 import { disposeTelemetryRuntime, initializeTelemetryRuntime } from './telemetry/runtime'
@@ -210,7 +210,15 @@ function registerMainDiagnostics(): void {
     // Idle utility workers (embeddings, image-processing, voice-model) exit
     // cleanly every ~30s — lifecycle, not a fault. trackChildProcessGone skips
     // clean exits and codes real faults as type:reason:serviceName.
-    trackChildProcessGone(details)
+    //
+    // This is also the ONLY report a native worker crash produces: the worker's
+    // own 'exit' event never fires for one, so the owning module never learns it
+    // died. Resolving the lifecycle phase here is what lets that surviving report
+    // say whether the user lost an embedding or the worker died tearing down.
+    trackChildProcessGone({
+      ...details,
+      phase: getEmbeddingWorkerPhase(details.name) ?? undefined
+    })
     // A dead GPU process means this launch may already be painting nothing.
     // Record it so the next launch disables hardware acceleration (see
     // gpu-crash-guard). Exclude 'clean-exit' (normal shutdown) and, since
