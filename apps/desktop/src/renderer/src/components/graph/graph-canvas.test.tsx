@@ -515,6 +515,19 @@ describe('GraphCanvas', () => {
        * and the graph silently renders a frame behind. A sigma major or minor bump
        * must therefore re-read `refresh` in the new dist and re-confirm both lines
        * by hand — the suite will not do it for you.
+       *
+       * Scope, concretely. What is counted here is the reducer work driven by
+       * `LivePhysics.step()`'s own `refresh` call, and nothing else. The model
+       * binds no graphology listeners, so it cannot observe the reducer work the
+       * real renderer does around that call: sigma's `bindGraphHandlers`
+       * subscribes to `nodeAttributesUpdated` independently, and every
+       * `setNodeAttribute` therefore costs a `refresh({partialGraph:{nodes:[key]}})`
+       * -> `updateNode` -> one more `nodeReducer` pass. Before #1045,
+       * `GraphPhysics.syncPositions()` wrote x and y as two separate
+       * `setNodeAttribute` calls per node, so those events contributed ~2N
+       * `updateNode` calls per frame on top of whatever `step()` asked for. A zero
+       * here means `step()` reduces nothing; it does not by itself mean a frame
+       * reduces nothing.
        */
       function recordRepaints(): {
         nodeReducerCalls: string[]
