@@ -39,7 +39,11 @@ that `claude` is available on `PATH`, that it reports version `2.1.0` or newer, 
 disclosure has been accepted; the Codex CLI is detected the same way. On macOS and Linux, memrynote
 resolves your login shell's `PATH` at startup, so CLIs installed in shell-managed locations
 (`~/.local/bin`, Homebrew, nvm, volta) are still found when the app is launched from the Dock or
-Finder rather than from a terminal. For local models, configure a compatible server in
+Finder rather than from a terminal. If the CLI is removed, replaced, or loses its executable bit
+between that check and the moment a turn actually starts, the turn ends right away with a
+`Claude CLI failed to start: ...` (or `Codex CLI failed to start: ...`) error naming the reason, and
+the conversation is free to accept a new message as soon as the CLI is back.
+For local models, configure a compatible server in
 [Settings -> AI Assistant -> Agent Permissions](/user-guide/settings#agent-permissions) first.
 If the global AI switch is off in [Settings -> AI](/user-guide/settings#ai), the Agent tab and Agent
 MCP current-note bridge are hidden and inactive.
