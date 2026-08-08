@@ -317,6 +317,56 @@ describe('secret-storage', () => {
     })
   })
 
+  describe('treatUnreadableAsAbsent opt-in', () => {
+    const seedUndecryptable = (): void => {
+      fs.mkdirSync(harness.userDataDir, { recursive: true })
+      fs.writeFileSync(
+        storeFilePath(),
+        JSON.stringify({ version: 1, entries: { [SERVICE]: { [ACCOUNT]: 'not-decryptable' } } }),
+        'utf-8'
+      )
+      harness.keytarStore.clear()
+    }
+
+    it('returns null instead of throwing for a caller that is about to overwrite', async () => {
+      seedUndecryptable()
+
+      await expect(
+        getSecret(SERVICE, ACCOUNT, { treatUnreadableAsAbsent: true })
+      ).resolves.toBeNull()
+    })
+
+    it('also covers the safeStorage-unavailable-this-run shape', async () => {
+      await setSecret(SERVICE, ACCOUNT, 'store-value')
+      harness.keytarStore.clear()
+      harness.encryptionAvailable = false
+
+      await expect(
+        getSecret(SERVICE, ACCOUNT, { treatUnreadableAsAbsent: true })
+      ).resolves.toBeNull()
+    })
+
+    it('lets the caller heal the entry by writing over it', async () => {
+      seedUndecryptable()
+
+      expect(await getSecret(SERVICE, ACCOUNT, { treatUnreadableAsAbsent: true })).toBeNull()
+      await setSecret(SERVICE, ACCOUNT, 'healed-value')
+
+      await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBe('healed-value')
+    })
+
+    it('leaves the guard armed for every caller that does not opt in', async () => {
+      // The master-key path must keep throwing: a false absence there
+      // regenerates the vault key and orphans the encrypted data (#772).
+      seedUndecryptable()
+
+      await expect(getSecret(SERVICE, ACCOUNT)).rejects.toThrow(/could not be read this run/)
+      await expect(getSecret(SERVICE, ACCOUNT, { treatUnreadableAsAbsent: false })).rejects.toThrow(
+        /could not be read this run/
+      )
+    })
+  })
+
   describe('deferred keytar delete', () => {
     it('persists the migrated secret but keeps the keytar copy until finalize', async () => {
       harness.keytarStore.set(`${SERVICE}:${ACCOUNT}`, 'master-key-material')

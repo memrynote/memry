@@ -75,7 +75,7 @@ describe('POST /diagnostics/report', () => {
     })
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled())
     const [url, init] = fetchMock.mock.calls[0]
-    expect(String(url)).toBe('https://us.i.posthog.com/v1/logs')
+    expect(String(url)).toBe('https://us.i.posthog.com/i/v1/logs')
     const parsedBody = JSON.parse((init as { body: string }).body)
     const record = parsedBody.resourceLogs[0].scopeLogs[0].logRecords[0]
     expect(record.attributes).toContainEqual({ key: 'kind', value: { stringValue: 'report' } })

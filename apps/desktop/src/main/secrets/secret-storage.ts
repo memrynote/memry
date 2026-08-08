@@ -26,6 +26,21 @@ export interface GetSecretOptions {
    * (see finalizeKeytarMigration and crypto/vault-key-state.ts).
    */
   deferKeytarDelete?: boolean
+  /**
+   * Return `null` instead of throwing when the secret exists in the store but
+   * cannot be read this run (see the guard in getSecret).
+   *
+   * Opt in ONLY where a false absence is harmless because the very next thing
+   * the caller does is overwrite the entry, delete it, or report "not
+   * connected". Never opt in from a path that would regenerate key material or
+   * tear down local state on absence — that is the #772 data-loss shape the
+   * guard exists to prevent.
+   *
+   * Without this, an entry left undecryptable by the v2026-08-06 app-identity
+   * rename could never be replaced: the pre-write read threw before the write
+   * ran, so re-connecting an account was permanently impossible.
+   */
+  treatUnreadableAsAbsent?: boolean
 }
 
 // Lazy keytar cleanup (crash-resume: ciphertext persisted but the keytar
@@ -257,6 +272,15 @@ export async function getSecret(
   // its encrypted data. This is the failure mode behind the #772 keytar→
   // safeStorage regression. Fail loud so the caller retries on a healthy run.
   if (storePath !== null && readCiphertext(storePath, service, account) !== null) {
+    if (options?.treatUnreadableAsAbsent) {
+      // Logged at warn so the cohort stranded by the identity rename is
+      // measurable, and so a caller that opted in by mistake is still visible.
+      logger.warn('Secret exists but is unreadable; caller opted to treat it as absent', {
+        service,
+        account
+      })
+      return null
+    }
     throw new Error(
       `Secret ${service}/${account} exists in the secret store but could not be read this run; ` +
         'refusing to report it as absent'
