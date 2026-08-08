@@ -115,6 +115,12 @@ Stop requests are scoped to the active conversation across Claude, Codex, and lo
 Automatic title generation and conversation summaries run through the selected backend without
 exposing memrynote MCP tools.
 
+Stopping a turn — and quitting memrynote while one is running — asks the chat backend to shut down
+first, and forces it to close if it has not stopped shortly afterwards. Quitting waits for that to
+finish, so a backend is never left running in the background after memrynote is gone. A backend that
+has to be forced closed does not get to finish writing its own scratch files, so the unfinished reply
+is lost; your message and the rest of the conversation are kept.
+
 The prompt bar holds four controls. The **+** button opens the mention picker and the per-turn
 permissions menu; a dot on the button means at least one permission differs from your defaults. The
 first chip shows the active provider and model, and its menu switches either. The second chip sets
