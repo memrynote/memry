@@ -8,6 +8,22 @@ import {
   type RefObject
 } from 'react'
 
+/**
+ * How long the find bar waits after the last keystroke before searching.
+ *
+ * One search is a `TreeWalker` over the entire note plus one `Range` per match,
+ * so running it per character makes every intermediate prefix — the ones with
+ * the most matches, e.g. a bare `a` — the expensive ones, and none of them is
+ * ever read. 150 ms swallows a typed burst while staying under the ~200 ms
+ * where a UI starts to feel unresponsive.
+ *
+ * Trailing edge only: there is deliberately no leading-edge call, because the
+ * first character is the worst case. The final keystroke always searches — the
+ * timer is only ever restarted by another keystroke, or cancelled by `close()`
+ * / unmount, and `next()` / `prev()` flush it rather than skip it.
+ */
+const QUERY_DEBOUNCE_MS = 150
+
 interface FindInPageResult {
   isOpen: boolean
   query: string
@@ -121,6 +137,26 @@ export function useFindInPage(
     [containerRef, clearHighlights, highlightAndScroll]
   )
 
+  // Pending debounced search. `pendingQueryRef` is the query the timer will run,
+  // and is null exactly when no timer is armed. Nothing about the DOM is cached:
+  // a flushed search walks the note from scratch, so an edit that lands inside
+  // the debounce window can never feed stale ranges into the highlight.
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingQueryRef = useRef<string | null>(null)
+
+  const cancelPendingSearch = useCallback(() => {
+    if (searchTimeoutRef.current !== null) clearTimeout(searchTimeoutRef.current)
+    searchTimeoutRef.current = null
+    pendingQueryRef.current = null
+  }, [])
+
+  const flushPendingSearch = useCallback(() => {
+    const pending = pendingQueryRef.current
+    if (pending === null) return
+    cancelPendingSearch()
+    performSearch(pending)
+  }, [cancelPendingSearch, performSearch])
+
   // Highlight current match + scroll into view on navigation (next/prev)
   useEffect(() => {
     highlightAndScroll(currentIndex)
@@ -166,41 +202,49 @@ export function useFindInPage(
 
   const close = useCallback(() => {
     setIsOpen(false)
+    cancelPendingSearch()
     setQueryState('')
     clearHighlights()
     matchesRef.current = []
     setMatchCount(0)
     setCurrentIndex(-1)
     currentIndexRef.current = -1
-  }, [clearHighlights])
+  }, [cancelPendingSearch, clearHighlights])
 
   const setQuery = useCallback(
     (q: string) => {
       setQueryState(q)
-      if (isOpen) {
+      if (!isOpen) return
+      cancelPendingSearch()
+      pendingQueryRef.current = q
+      searchTimeoutRef.current = setTimeout(() => {
+        searchTimeoutRef.current = null
+        pendingQueryRef.current = null
         performSearch(q)
-      }
+      }, QUERY_DEBOUNCE_MS)
     },
-    [isOpen, performSearch]
+    [isOpen, performSearch, cancelPendingSearch]
   )
 
   const next = useCallback(() => {
+    flushPendingSearch()
     const len = matchesRef.current.length
     if (len === 0) return
     const newIndex = (currentIndexRef.current + 1) % len
     currentIndexRef.current = newIndex
     setCurrentIndex(newIndex)
     highlightAndScroll(newIndex)
-  }, [highlightAndScroll])
+  }, [flushPendingSearch, highlightAndScroll])
 
   const prev = useCallback(() => {
+    flushPendingSearch()
     const len = matchesRef.current.length
     if (len === 0) return
     const newIndex = (currentIndexRef.current - 1 + len) % len
     currentIndexRef.current = newIndex
     setCurrentIndex(newIndex)
     highlightAndScroll(newIndex)
-  }, [highlightAndScroll])
+  }, [flushPendingSearch, highlightAndScroll])
 
   // Cmd+F / Ctrl+F shortcut
   useEffect(() => {
@@ -227,8 +271,11 @@ export function useFindInPage(
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => clearHighlights()
-  }, [clearHighlights])
+    return () => {
+      cancelPendingSearch()
+      clearHighlights()
+    }
+  }, [cancelPendingSearch, clearHighlights])
 
   return {
     isOpen,
