@@ -10,7 +10,7 @@ import { trackMainEvent } from '../../telemetry/track'
 import type { BackendEvent } from '../cli/types'
 import type { ConversationStore } from '../storage/conversation-store'
 import type { MessageStore } from '../storage/message-store'
-import type { MessageAttachment } from '../storage/types'
+import type { Message, MessageAttachment } from '../storage/types'
 import type { AgentBackend, BackendRunHandle } from '../backends/types'
 import type { AgentBackendRegistry } from '../backends/registry'
 import { broadcastAgentEvent } from './event-bus'
@@ -29,6 +29,9 @@ export interface TurnDeps {
   trackRunHandle?: (conversationId: string, handle: BackendRunHandle) => BackendRunHandle
 }
 
+// How long a stranded child gets to die before the turn stops waiting on it.
+// Comfortably inside the 5s force-exit budget main gives the whole shutdown.
+const STRANDED_KILL_GRACE_MS = 2000
 const DEFAULT_CONVERSATION_TITLE = 'New conversation'
 const DEFAULT_TURN_PERMISSIONS: AgentTurnPermissions = {
   accessMode: 'vault_only',
@@ -150,19 +153,32 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     purpose: 'turn'
   })
   const sub = deps.trackRunHandle?.(input.conversationId, rawSub) ?? rawSub
-  const stderrTextPromise = sub.stderr ? collectStreamText(sub.stderr) : Promise.resolve('')
 
-  const assistant = deps.messages.append({
-    conversationId: input.conversationId,
-    role: 'assistant',
-    content: { role: 'assistant', data: { text: '' } },
-    attachments: [],
-    status: 'streaming'
-  })
-  broadcastAgentEvent({
-    kind: 'message_upserted',
-    message: assistant
-  })
+  // The child is spawned and tracked, but the turn's own try/finally below has
+  // not been entered yet. An encrypted SQLite append or a broadcast to a window
+  // that died mid-send can throw here, and nothing upstream stops subprocesses —
+  // the IPC caller's catch only logs and reports. Without this guard the child
+  // runs for the rest of the session and its pid never leaves the tracking map.
+  let stderrTextPromise: Promise<string>
+  let assistant: Message
+  try {
+    stderrTextPromise = sub.stderr ? collectStreamText(sub.stderr) : Promise.resolve('')
+
+    assistant = deps.messages.append({
+      conversationId: input.conversationId,
+      role: 'assistant',
+      content: { role: 'assistant', data: { text: '' } },
+      attachments: [],
+      status: 'streaming'
+    })
+    broadcastAgentEvent({
+      kind: 'message_upserted',
+      message: assistant
+    })
+  } catch (error) {
+    await discardStrandedSubprocess(sub)
+    throw error
+  }
 
   let buffered = ''
   let backendError: string | null = null
@@ -273,6 +289,41 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
   }
 
   return { turnId }
+}
+
+/**
+ * Stop a child that was tracked but never handed to the turn's event loop.
+ *
+ * cleanup() is where the tracked-handle wrapper untracks the pid, and that map
+ * is what killAll() walks at quit — so the child is only untracked once the OS
+ * says it is gone. A survivor stays tracked on purpose: still leaking, but still
+ * reachable at shutdown, which an untracked survivor never is again.
+ */
+async function discardStrandedSubprocess(sub: BackendRunHandle): Promise<void> {
+  // Bounded: killAll() awaits in-flight turns and main force-exits 5s into
+  // shutdown, so an unbounded wait here would trade the leak for a hang.
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timedOut = new Promise<false>((resolve) => {
+    timer = setTimeout(() => resolve(false), STRANDED_KILL_GRACE_MS)
+  })
+
+  let exited = false
+  try {
+    sub.kill()
+    exited = await Promise.race([sub.waitExit().then(() => true), timedOut])
+  } catch (error) {
+    logger.warn('Failed to stop stranded agent subprocess', { pid: sub.pid, error })
+  } finally {
+    clearTimeout(timer)
+  }
+
+  if (!exited) {
+    logger.warn('Stranded agent subprocess still running; leaving it tracked for shutdown', {
+      pid: sub.pid
+    })
+    return
+  }
+  await sub.cleanup()
 }
 
 async function maybeGenerateConversationTitle(
