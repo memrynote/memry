@@ -154,6 +154,10 @@ backend also generates a short conversation title. memrynote stores that title o
 conversation row and refreshes the sidebar title without giving the title-generation subprocess
 access to memrynote MCP tools.
 
+If a turn fails before the reply starts streaming — a disk or database error while saving the empty
+reply, for example — memrynote stops the chat backend it just started instead of leaving it running in
+the background for the rest of the session. Your prompt is kept, so you can send it again.
+
 Conversation rows, message bodies, and message attachments are encrypted at rest before they are
 written to SQLite. Free accounts keep agent chat history local-only. Paid accounts can sync finalized
 conversations and terminal messages through memrynote Sync; in-progress streaming messages are not
