@@ -91,15 +91,40 @@ The popup offers three ways to grab a page:
 - **Article** — the readable main content, stripped of navigation and ads (the default).
 - **Selection** — only the text you've highlighted on the page.
 - **Screenshot** — a stitched full-page image, captured by scrolling the page.
+- **PDF** — when the tab is a PDF, the actual file. The popup shows a PDF badge instead of a content
+  preview; you can still edit the title and tags before saving.
 
-Article and Selection land as text; Screenshot lands as an image attachment.
+Article and Selection land as text; Screenshot lands as an image attachment; PDF lands as a PDF file
+you can open in memrynote's built-in viewer and file into a folder like any other attachment.
+
+### Clipping PDFs
+
+When you open a PDF — a `.pdf` link, or a site that opens one — the browser renders it with its own
+viewer, which extensions cannot read text from. So the clipper saves the file itself instead.
+
+The first time you clip a PDF from a given site, your browser asks whether to give memrynote access
+to that site. This is needed to download the file with your session, so PDFs behind a login work.
+The prompt appears once per site, not once per PDF.
+
+Limits worth knowing:
+
+- PDFs up to **16 MB** can be clipped. Larger ones are better saved to disk and dragged into the
+  inbox, which allows up to 50 MB.
+- PDFs that can't be downloaded a second time — one-time links, or a file opened by submitting a form
+  — can't be clipped. You'll see a message rather than a broken item.
+- If you're signed out, the site may return its login page instead of the file. The clipper detects
+  this and tells you rather than saving something unreadable.
+- PDF clips are **not** queued when memrynote is closed. The popup opens the app and sends; if that
+  fails, click again with the tab still open.
 
 ### Keyboard shortcut
 
 Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> on
 macOS) to capture the current page in Article mode without opening the popup. A brief ✓ badge
 confirms the save. Rebind it at `chrome://extensions/shortcuts` if it collides with another
-extension. (The shortcut is Article-only — Selection and Screenshot need the popup.)
+extension. (The shortcut handles Article and PDF — Selection and Screenshot need the popup. For a
+PDF it only works on a site you've already granted access to through the popup, since a keyboard
+shortcut can't show a permission prompt.)
 
 ### Offline queue
 
