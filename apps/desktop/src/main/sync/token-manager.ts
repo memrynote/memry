@@ -42,7 +42,7 @@ let onTokenRefreshedCallback: (() => void) | null = null
 let refreshRejections = 0
 let refreshBlockedUntil = 0
 
-export function setOnTokenRefreshed(cb: () => void): void {
+export function setOnTokenRefreshed(cb: (() => void) | null): void {
   onTokenRefreshedCallback = cb
 }
 

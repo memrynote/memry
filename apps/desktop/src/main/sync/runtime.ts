@@ -820,6 +820,14 @@ export async function stopSyncRuntime(options?: { skipFinalSync?: boolean }): Pr
 
   runtime = null
   startPromise = null
+  // token-manager holds this runtime's callback in a single slot and keeps
+  // firing it long after teardown (its refresh timer is independent), so the
+  // closure pins the dead crdtQueue/ws/network graph and resumes a stopped
+  // queue on the next refresh. Detach in the same tick that clears `runtime`:
+  // that is the last moment before a concurrent startSyncRuntime() can get past
+  // its `if (runtime) return` guard and install its own callback — clearing
+  // after any of the awaits below would silently unhook the *live* runtime.
+  setOnTokenRefreshed(null)
 
   resetSyncServiceSingletons()
 
