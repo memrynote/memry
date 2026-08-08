@@ -13,7 +13,7 @@ export interface PairResponse {
 
 export type CaptureResponse = { ok: true; itemId: string } | { ok: false; error: string }
 
-export type CaptureMode = 'article' | 'selection' | 'screenshot'
+export type CaptureMode = 'article' | 'selection' | 'screenshot' | 'pdf'
 
 export type PopupMessage =
   | { type: 'GET_STATUS' }
@@ -21,6 +21,7 @@ export type PopupMessage =
   | { type: 'CAPTURE'; capture: ArticleCapture }
   | { type: 'WAIT_FOR_SERVER' }
   | { type: 'GRAB_SCREENSHOT' }
+  | { type: 'FETCH_PDF'; url: string }
   | { type: 'FLUSH_QUEUE' }
   | { type: 'REVOKE' }
 
@@ -41,6 +42,10 @@ export interface PageMetrics {
 }
 
 export type ScreenshotResponse = { ok: true; dataUrl: string } | { ok: false; error: string }
+
+export type FetchPdfResponse =
+  | { ok: true; dataUrl: string; filename: string }
+  | { ok: false; error: string }
 
 export interface FlushResponse {
   flushed: number

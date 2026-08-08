@@ -1,6 +1,7 @@
 import type {
   CaptureResponse,
   ExtractResponse,
+  FetchPdfResponse,
   FlushResponse,
   PageMetrics,
   PairResponse,
@@ -23,9 +24,12 @@ import {
   badgeText,
   dequeueById,
   enqueue,
+  isQueueable,
   isRetryable,
   type QueuedCapture
 } from '@/lib/capture-queue'
+import { buildPdfDraft, isPdfBytes, MAX_PDF_BYTES, pdfFilenameFrom } from '@/lib/pdf-capture'
+import { hasOriginPermission } from '@/lib/capture-permissions'
 
 const TOKEN_KEY = 'memry:capture-token'
 
@@ -142,6 +146,29 @@ async function grabScreenshot(): Promise<ScreenshotResponse> {
   }
 }
 
+// Re-fetch the tab's PDF with the user's cookies. Content scripts never run in
+// Chrome's or Firefox's PDF viewer, so re-fetching is the only way to reach the
+// bytes. Requires the page origin's host permission, which the popup requests on
+// the Send click.
+async function fetchPdf(url: string): Promise<FetchPdfResponse> {
+  try {
+    const res = await fetch(url, { credentials: 'include' })
+    if (!res.ok) return { ok: false, error: 'pdf-fetch-failed' }
+    const bytes = new Uint8Array(await res.arrayBuffer())
+    // An auth-gated URL commonly answers 200 with an HTML login page. Without
+    // this check we would store that as a corrupt "PDF".
+    if (!isPdfBytes(bytes)) return { ok: false, error: 'not-a-pdf' }
+    if (bytes.length > MAX_PDF_BYTES) return { ok: false, error: 'pdf-too-large' }
+    return {
+      ok: true,
+      dataUrl: bytesToDataUrl(bytes, 'application/pdf'),
+      filename: pdfFilenameFrom(url, res.headers.get('content-disposition'))
+    }
+  } catch {
+    return { ok: false, error: 'pdf-fetch-failed' }
+  }
+}
+
 const QUEUE_KEY = 'memry:capture-queue'
 const FLUSH_ALARM = 'memry-flush'
 
@@ -222,7 +249,7 @@ async function captureOrQueue(body: ArticleCapture): Promise<CaptureResponse> {
     void flushQueue()
     return res
   }
-  if (isRetryable(res.error)) {
+  if (isRetryable(res.error) && isQueueable(body)) {
     const queue = enqueue(await readQueue(), {
       id: crypto.randomUUID(),
       capture: body,
@@ -252,6 +279,8 @@ export default defineBackground(() => {
         return waitForServer()
       case 'GRAB_SCREENSHOT':
         return grabScreenshot()
+      case 'FETCH_PDF':
+        return fetchPdf(message.url)
       case 'FLUSH_QUEUE':
         return flushQueue()
       case 'REVOKE':
@@ -275,7 +304,18 @@ export default defineBackground(() => {
     const extracted: ExtractResponse = await browser.tabs
       .sendMessage(tab.id, { type: 'EXTRACT' })
       .catch(() => ({ ok: false, error: 'no-content-script' }))
-    if (!extracted.ok) {
+    let capture = extracted.ok ? extracted.capture : null
+    // The content script is absent on a PDF tab. We cannot prompt for site access
+    // from a service worker (no user gesture), so this only works for an origin
+    // the user already approved through the popup.
+    if (!capture && tab.url && (await hasOriginPermission(tab.url))) {
+      const draft = buildPdfDraft({ url: tab.url, title: tab.title })
+      const pdf = draft ? await fetchPdf(tab.url) : null
+      if (draft && pdf?.ok) {
+        capture = { ...draft, pdfDataUrl: pdf.dataUrl, pdfFilename: pdf.filename }
+      }
+    }
+    if (!capture) {
       await browser.action.setBadgeText({ text: '!' })
       await browser.action.setBadgeBackgroundColor({ color: '#E56458' })
       setTimeout(() => void restoreQueueBadge(), 2000)
@@ -287,7 +327,7 @@ export default defineBackground(() => {
     // fails and captureOrQueue queues the capture (the badge shows the count)
     // rather than losing it; the queue flushes once the user grants access by
     // saving from the popup once.
-    const res = await captureOrQueue(extracted.capture)
+    const res = await captureOrQueue(capture)
     if (res.ok) {
       await browser.action.setBadgeText({ text: '✓' })
       await browser.action.setBadgeBackgroundColor({ color: '#3B873E' })
