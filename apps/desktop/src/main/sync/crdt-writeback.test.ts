@@ -468,4 +468,99 @@ describe('crdt writeback', () => {
       expect.objectContaining({ noteId: 'note-1' })
     )
   })
+
+  /**
+   * Burn `ms` of clock inside the conversion — the dominant stage of a pass —
+   * and hand back a different body every time so the no-op guard never trips.
+   * Measured real costs: ~36ms for a 2KB note, ~134ms at 12KB, ~430ms at 49KB.
+   */
+  function withWritebackCost(ms: number): () => number {
+    let pass = 0
+    mocks.yDocToMarkdown.mockImplementation(async () => {
+      vi.setSystemTime(new Date(Date.now() + ms))
+      return `updated markdown ${pass++}`
+    })
+    return () => pass
+  }
+
+  /** 60 updates 500ms apart — the rhythm that fires the debounce every time. */
+  async function typeFor30Seconds(): Promise<void> {
+    for (let i = 0; i < 60; i++) {
+      scheduleWriteback('note-1', makeDoc('Typing', ['new-tag']))
+      await vi.advanceTimersByTimeAsync(500)
+    }
+    await vi.advanceTimersByTimeAsync(5000)
+  }
+
+  it('throttles the write-back pipeline in proportion to what the last pass cost', async () => {
+    withWritebackCost(200)
+
+    await typeFor30Seconds()
+
+    // A 200ms pass buys a 1800ms cooldown, so passes land every ~2s of wall
+    // clock: 16 full serialize→read→parse→write→reindex cycles instead of the
+    // 60 this rhythm used to cost, and write-back now burns ~10% of a core
+    // instead of 40%.
+    expect(mocks.yDocToMarkdown).toHaveBeenCalledTimes(16)
+    expect(mocks.safeRead).toHaveBeenCalledTimes(16)
+    expect(mocks.parseNote).toHaveBeenCalledTimes(16)
+    expect(mocks.atomicWrite).toHaveBeenCalledTimes(16)
+    expect(mocks.syncNoteToCache).toHaveBeenCalledTimes(16)
+
+    // The file still ends up holding the last body the doc produced, byte for
+    // byte what an unthrottled pass would have written.
+    expect(mocks.atomicWrite).toHaveBeenLastCalledWith(
+      '/vault/notes/Existing.md',
+      JSON.stringify({
+        frontmatter: { id: 'note-1', title: 'Existing', tags: ['new-tag'] },
+        markdown: 'updated markdown 15',
+        options: { frontmatterEdited: true }
+      })
+    )
+  })
+
+  it('leaves cheap notes on the plain 500ms debounce', async () => {
+    withWritebackCost(0)
+
+    await typeFor30Seconds()
+
+    // A pass that costs nothing earns no cooldown: unchanged from before.
+    expect(mocks.yDocToMarkdown).toHaveBeenCalledTimes(60)
+    expect(mocks.atomicWrite).toHaveBeenCalledTimes(60)
+  })
+
+  it('caps the cooldown so a pathologically slow pass cannot strand the file', async () => {
+    withWritebackCost(3000)
+
+    await typeFor30Seconds()
+
+    // 3000ms * 9 would be 27s of cooldown; the 5s ceiling keeps the file
+    // catching up during the run instead of only at the end.
+    expect(mocks.atomicWrite).toHaveBeenCalledTimes(7)
+  })
+
+  it('flushPendingWritebacks still lands a write-back that is inside its cooldown', async () => {
+    withWritebackCost(200)
+
+    scheduleWriteback('note-1', makeDoc('First', ['new-tag']))
+    await vi.advanceTimersByTimeAsync(500)
+    expect(mocks.atomicWrite).toHaveBeenCalledTimes(1)
+
+    // Second edit lands inside the 1800ms cooldown, so its timer has not fired.
+    scheduleWriteback('note-1', makeDoc('Second', ['new-tag']))
+    await vi.advanceTimersByTimeAsync(500)
+    expect(mocks.atomicWrite).toHaveBeenCalledTimes(1)
+
+    await flushPendingWritebacks()
+
+    expect(mocks.atomicWrite).toHaveBeenCalledTimes(2)
+    expect(mocks.atomicWrite).toHaveBeenLastCalledWith(
+      '/vault/notes/Existing.md',
+      JSON.stringify({
+        frontmatter: { id: 'note-1', title: 'Existing', tags: ['new-tag'] },
+        markdown: 'updated markdown 1',
+        options: { frontmatterEdited: true }
+      })
+    )
+  })
 })

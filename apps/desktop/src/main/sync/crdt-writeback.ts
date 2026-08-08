@@ -58,6 +58,28 @@ const reminderSyncHooks: RemindersServiceHooks = {
 const log = createLogger('CrdtWriteback')
 
 const WRITEBACK_DEBOUNCE_MS = 500
+
+/**
+ * How many times the last pass's own cost a note must stay idle before the next
+ * write-back may start.
+ *
+ * A pass re-serializes the WHOLE document (`yDocToMarkdown`), so it costs what
+ * the note is big rather than what the edit was: ~36ms for a 2KB note, ~134ms at
+ * 12KB, ~430ms at 49KB. The debounce re-arms per update, so it never fires while
+ * keys land faster than every 500ms — but a typing rhythm whose gaps sit around
+ * half a second (word and sentence pauses) fires the whole pipeline on each one,
+ * up to twice a second. Spacing passes by a multiple of their own cost caps
+ * write-back at roughly 1/(1 + FACTOR) of wall clock per note. Cheap notes never
+ * reach the 500ms floor, so their timing is unchanged.
+ */
+const WRITEBACK_COOLDOWN_FACTOR = 9
+
+/**
+ * Ceiling on that cooldown. The markdown file is the user's data, so however
+ * expensive a note gets, it may never lag the live doc by more than this.
+ */
+const WRITEBACK_MAX_COOLDOWN_MS = 5000
+
 const IGNORED_WRITE_TTL_MS = 5000
 
 interface PendingWriteback {
@@ -65,6 +87,12 @@ interface PendingWriteback {
   doc: Y.Doc
 }
 
+interface WritebackCost {
+  finishedAt: number
+  durationMs: number
+}
+
+const lastWritebackCost = new Map<string, WritebackCost>()
 const pendingTimers = new Map<string, PendingWriteback>()
 const inFlightWritebacks = new Set<string>()
 const ignoredWrites = new Map<string, number>()
@@ -153,6 +181,31 @@ function emitToRenderer(channel: string, data: unknown): void {
   }
 }
 
+/**
+ * Delay before the next pass for this note: the debounce, extended while the
+ * previous pass's cooldown is still running. Never shortens the debounce.
+ */
+function writebackDelayMs(noteId: string): number {
+  const last = lastWritebackCost.get(noteId)
+  if (!last) return WRITEBACK_DEBOUNCE_MS
+  const cooldownMs = Math.min(
+    last.durationMs * WRITEBACK_COOLDOWN_FACTOR,
+    WRITEBACK_MAX_COOLDOWN_MS
+  )
+  return Math.max(WRITEBACK_DEBOUNCE_MS, last.finishedAt + cooldownMs - Date.now())
+}
+
+/** Runs a pass and records what it cost, which is what paces the next one. */
+async function runWriteback(noteId: string, doc: Y.Doc): Promise<void> {
+  const startedAt = Date.now()
+  try {
+    await performWriteback(noteId, doc)
+  } finally {
+    const finishedAt = Date.now()
+    lastWritebackCost.set(noteId, { finishedAt, durationMs: finishedAt - startedAt })
+  }
+}
+
 export function scheduleWriteback(noteId: string, doc: Y.Doc): void {
   const existing = pendingTimers.get(noteId)
   if (existing) clearTimeout(existing.timer)
@@ -165,7 +218,7 @@ export function scheduleWriteback(noteId: string, doc: Y.Doc): void {
   const timer = setTimeout(() => {
     pendingTimers.delete(noteId)
     inFlightWritebacks.add(noteId)
-    performWriteback(noteId, doc)
+    runWriteback(noteId, doc)
       .catch((err) => {
         updateDebugState(noteId, {
           pending: false,
@@ -182,7 +235,7 @@ export function scheduleWriteback(noteId: string, doc: Y.Doc): void {
       .finally(() => {
         inFlightWritebacks.delete(noteId)
       })
-  }, WRITEBACK_DEBOUNCE_MS)
+  }, writebackDelayMs(noteId))
 
   pendingTimers.set(noteId, { timer, doc })
 }
@@ -192,6 +245,7 @@ export function cancelPendingWritebacks(): void {
     clearTimeout(timer)
   }
   pendingTimers.clear()
+  lastWritebackCost.clear()
 }
 
 export async function flushPendingWritebacks(): Promise<void> {
@@ -200,7 +254,7 @@ export async function flushPendingWritebacks(): Promise<void> {
   for (const [, { timer }] of pending) clearTimeout(timer)
   await Promise.all(
     pending.map(([noteId, { doc }]) =>
-      performWriteback(noteId, doc).catch((err) => {
+      runWriteback(noteId, doc).catch((err) => {
         log.error('Write-back failed during shutdown flush', { noteId, error: err })
       })
     )
