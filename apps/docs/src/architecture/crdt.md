@@ -82,6 +82,26 @@ Three pieces of metadata prevent feedback loops:
 2. **Y.Doc origin parameter** distinguishes local typing, IPC re-application, and network apply.
 3. **Update buffering** in `CrdtUpdateQueue` orders updates per `noteId`.
 
+## Markdown Write-Back
+
+Every local or remote Y.Doc update schedules a write-back that re-serializes the whole
+document to its vault `.md` file and re-indexes it for search.
+
+- **Debounce** — 500 ms after the last update, re-armed per update, so a fast typing run
+  produces one write-back at the end rather than one per keystroke.
+- **Cost-proportional cooldown** — a pass re-serializes the entire document, so it costs
+  what the note is big rather than what the edit was. After a pass finishes, the next one
+  waits until the note has been idle for nine times what that pass cost, capped at 5 s.
+  Small notes never reach the 500 ms debounce floor and are unaffected; large notes settle
+  at roughly a tenth of wall clock instead of saturating a core while the user types.
+- **Nothing is deferred indefinitely** — the trailing pass always runs, and
+  `flushPendingWritebacks()` forces any pending pass through before the CRDT provider is
+  destroyed, which covers app quit and vault switch.
+
+While a write-back is queued or mid-write the `.md` file is knowingly behind the Y.Doc, so
+markdown-as-truth readers (task checkbox reconciliation) stand down for that window. Search
+results and the file on disk catch up when the pass runs.
+
 ## Hybrid Sync Model
 
 Notes flow through **both** sync paths:
