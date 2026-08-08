@@ -1,7 +1,8 @@
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-import { describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../event-bus', () => ({
   broadcastAgentEvent: vi.fn()
@@ -24,14 +25,26 @@ import type { Conversation, Message, MessageStore } from '../../storage/types'
 import { AgentRuntime } from '../runtime'
 import { runTurn } from '../turn'
 
-const MISSING_BINARY = path.join(tmpdir(), 'memry-missing-cli-binary-1034')
+// A path inside a per-run mkdtemp directory, so nothing else can pre-create it
+// and turn the intended ENOENT into something else.
+let fixtureDir: string
+let missingBinary: string
+
+beforeAll(async () => {
+  fixtureDir = await mkdtemp(path.join(tmpdir(), 'memry-turn-spawn-failure-'))
+  missingBinary = path.join(fixtureDir, 'claude')
+})
+
+afterAll(async () => {
+  await rm(fixtureDir, { recursive: true, force: true })
+})
 
 // Byte-for-byte the adapter from agent/bootstrap.ts: its exit promise still
 // only listens for 'exit', which is exactly why a child that never starts used
 // to strand the turn forever.
 const claudeBackendOverMissingBinary = new ClaudeCliBackend({
   spawn: async ({ prompt, effort }) => {
-    const sub = await spawnClaudeTurn({ binaryPath: MISSING_BINARY, effort, prompt })
+    const sub = await spawnClaudeTurn({ binaryPath: missingBinary, effort, prompt })
     const stdout = sub.proc.stdout
     const stderr = sub.proc.stderr
     if (!stdout || !stderr) {
@@ -84,7 +97,7 @@ describe('turn lock when the CLI binary cannot be spawned', () => {
 
     const shownToUser = await send('hi')
 
-    expect(shownToUser).toBe(`Claude CLI failed to start: spawn ${MISSING_BINARY} ENOENT`)
+    expect(shownToUser).toBe(`Claude CLI failed to start: spawn ${missingBinary} ENOENT`)
     // No half-written assistant bubble is left behind spinning forever.
     expect(messages.listByConversation('conversation-1').map((m) => m.status)).toEqual([
       'completed'
