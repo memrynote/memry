@@ -450,6 +450,11 @@ The server verifies the token and requires it to belong to the same device befor
 expiry. Renewal is best-effort: a rejected or unanswered `auth` leaves the original expiry in place,
 so the socket closes at expiry and the client reconnects with a fresh token as it otherwise would.
 
+The renewal hook belongs to the running sync runtime, not to the token manager: the runtime installs
+it at start and detaches it at stop. A refresh that lands after a vault switch or sign-out therefore
+renews nothing instead of reaching into a torn-down socket and CRDT queue, and the runtime that
+replaces it installs its own hook.
+
 ## Vault-Key Verification
 
 Before syncing — and whenever an entire pull page fails to decrypt — the client verifies its local
