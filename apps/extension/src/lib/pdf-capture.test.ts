@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildPdfDraft,
+  checkPdfBytes,
   isPdfBytes,
   MAX_PDF_BYTES,
   originPatternOf,
@@ -68,6 +69,37 @@ describe('isPdfBytes', () => {
 
   it('rejects a response too short to have a header', () => {
     expect(isPdfBytes(new Uint8Array([0x25, 0x50]))).toBe(false)
+  })
+})
+
+describe('checkPdfBytes', () => {
+  const pdfMagic = new TextEncoder().encode('%PDF-1.7\n')
+
+  function bytesOfLength(length: number, magic?: Uint8Array): Uint8Array {
+    const bytes = new Uint8Array(length)
+    if (magic) bytes.set(magic)
+    return bytes
+  }
+
+  it('accepts a valid pdf under the size cap', () => {
+    expect(checkPdfBytes(bytesOfLength(1024, pdfMagic))).toEqual({ ok: true })
+  })
+
+  it('rejects a valid pdf over the size cap as too-large', () => {
+    expect(checkPdfBytes(bytesOfLength(MAX_PDF_BYTES + 1, pdfMagic))).toEqual({
+      ok: false,
+      error: 'pdf-too-large'
+    })
+  })
+
+  it('rejects an oversized non-pdf as not-a-pdf, never as too-large — pins the check order', () => {
+    // A buffer bigger than the cap but without the PDF magic bytes must fail the
+    // magic-byte check first. If the two checks inside checkPdfBytes were ever
+    // swapped, this would wrongly report pdf-too-large instead of not-a-pdf.
+    expect(checkPdfBytes(bytesOfLength(MAX_PDF_BYTES + 1))).toEqual({
+      ok: false,
+      error: 'not-a-pdf'
+    })
   })
 })
 

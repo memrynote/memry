@@ -28,7 +28,7 @@ import {
   isRetryable,
   type QueuedCapture
 } from '@/lib/capture-queue'
-import { buildPdfDraft, isPdfBytes, MAX_PDF_BYTES, pdfFilenameFrom } from '@/lib/pdf-capture'
+import { buildPdfDraft, checkPdfBytes, pdfFilenameFrom } from '@/lib/pdf-capture'
 import { hasOriginPermission } from '@/lib/capture-permissions'
 
 const TOKEN_KEY = 'memry:capture-token'
@@ -155,10 +155,8 @@ async function fetchPdf(url: string): Promise<FetchPdfResponse> {
     const res = await fetch(url, { credentials: 'include' })
     if (!res.ok) return { ok: false, error: 'pdf-fetch-failed' }
     const bytes = new Uint8Array(await res.arrayBuffer())
-    // An auth-gated URL commonly answers 200 with an HTML login page. Without
-    // this check we would store that as a corrupt "PDF".
-    if (!isPdfBytes(bytes)) return { ok: false, error: 'not-a-pdf' }
-    if (bytes.length > MAX_PDF_BYTES) return { ok: false, error: 'pdf-too-large' }
+    const check = checkPdfBytes(bytes)
+    if (!check.ok) return check
     return {
       ok: true,
       dataUrl: bytesToDataUrl(bytes, 'application/pdf'),

@@ -54,6 +54,20 @@ export function isPdfBytes(bytes: Uint8Array): boolean {
   return String.fromCharCode(...bytes.subarray(0, PDF_MAGIC.length)) === PDF_MAGIC
 }
 
+export type PdfBytesCheck = { ok: true } | { ok: false; error: 'not-a-pdf' | 'pdf-too-large' }
+
+// Classify a fetched response body before we trust it as a PDF. Order matters:
+// the magic-byte check must run before the size check, because an auth-gated
+// URL commonly answers 200 with an HTML login page — checking size first would
+// let a large login page masquerade as "pdf-too-large" instead of "not-a-pdf",
+// and a future refactor that swapped these lines would silently store the
+// login page as a corrupt "PDF".
+export function checkPdfBytes(bytes: Uint8Array): PdfBytesCheck {
+  if (!isPdfBytes(bytes)) return { ok: false, error: 'not-a-pdf' }
+  if (bytes.length > MAX_PDF_BYTES) return { ok: false, error: 'pdf-too-large' }
+  return { ok: true }
+}
+
 // The draft the popup shows before any bytes exist. Fetching them needs a host
 // permission that only a user gesture can request, so mount-time we have nothing
 // but tab metadata. `force: true` skips the desktop's URL dedup, whose enrichment
