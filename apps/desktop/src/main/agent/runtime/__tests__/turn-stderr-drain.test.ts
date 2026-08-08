@@ -200,6 +200,115 @@ describe('agent turns against a CLI that floods stderr', () => {
     expect(cli.child()?.stdout?.readableEnded).toBe(true)
   })
 
+  it('logs why the summary CLI died and leaves the history uncompacted', async () => {
+    const messages = createFakeMessageStore([
+      seedMessage({
+        id: 'old-1',
+        role: 'user',
+        content: { role: 'user', data: { text: 'a'.repeat(210_000) } },
+        createdAt: 1
+      }),
+      seedMessage({
+        id: 'old-2',
+        role: 'assistant',
+        content: { role: 'assistant', data: { text: 'b'.repeat(210_000) } },
+        createdAt: 2
+      })
+    ])
+    const conversations = createFakeConversationStore()
+    // No stdout reply and a non-zero exit: the CLI dies after its own noise.
+    const cli = floodingCli('', { stderrTail: FATAL_TAIL, exitCode: 1 })
+
+    await withDeadline(
+      'failed compaction summary turn',
+      runTurn(
+        {
+          conversations,
+          messages,
+          backends: createFakeRegistry(backendOverFloodingCli(cli.spawn, 'summary'))
+        },
+        {
+          conversationId: 'conversation-1',
+          sourceWindowId: 'window-1',
+          text: 'continue',
+          attachments: [],
+          backendOptions: { backend: 'claude_cli', claudeEffort: 'high' }
+        }
+      )
+    )
+
+    expect(cli.child()?.exitCode).toBe(1)
+    expect(cli.stderrBytesRead()).toBe(STDERR_BYTES + FATAL_TAIL.length)
+    // The thrown error is swallowed into a compaction warning upstream, so this
+    // log line is the only place the CLI's own reason survives.
+    const warned = loggerWarnMock.mock.calls.find(
+      (call) => call[0] === 'Conversation summary backend exited non-zero'
+    )
+    expect(warned?.[1]).toEqual({
+      backend: 'claude_cli',
+      exitCode: 1,
+      stderr: expect.stringMatching(new RegExp(`^a{8158}${FATAL_TAIL}$`))
+    })
+    expect((warned?.[1] as { stderr: string }).stderr).toHaveLength(8192)
+    // No 'compacted' marker: a failed summary must never replace the history it
+    // failed to summarize. The user's turn runs anyway, uncompacted.
+    expect(messages.listByConversation('conversation-1').map((message) => message.role)).toEqual([
+      'user',
+      'assistant',
+      'user',
+      'assistant'
+    ])
+  })
+
+  it('survives a stderr read error without stranding a rejection in main', async () => {
+    const messages = createFakeMessageStore()
+    const conversations = createFakeConversationStore()
+    // A pipe can fail mid-read — the child is killed and its stdio destroyed
+    // with an error (stop button, killAll on vault teardown). The CLI here still
+    // exits 0, so nothing awaits the drain: unhandled, that rejection reaches
+    // main's swallowing uncaughtException handler and vanishes.
+    const readError = new Error('read ECONNRESET')
+    const unhandled: unknown[] = []
+    const recordUnhandled = (reason: unknown): void => {
+      unhandled.push(reason)
+    }
+    process.on('unhandledRejection', recordUnhandled)
+
+    try {
+      await withDeadline(
+        'title turn over a failing stderr pipe',
+        runTurn(
+          {
+            conversations,
+            messages,
+            backends: createFakeRegistry(backendWithFailingTitleStderr(readError))
+          },
+          {
+            conversationId: 'conversation-1',
+            sourceWindowId: 'window-1',
+            text: 'plan my week from my notes',
+            attachments: [],
+            backendOptions: { backend: 'claude_cli', claudeEffort: 'low' }
+          }
+        )
+      )
+      // An unhandled rejection is reported a tick after the promise is dropped.
+      await new Promise((resolve) => setTimeout(resolve, 250))
+    } finally {
+      process.off('unhandledRejection', recordUnhandled)
+    }
+
+    expect(unhandled).toEqual([])
+    // The read error is reported, not silently eaten.
+    expect(loggerWarnMock).toHaveBeenCalledWith('Failed to read backend stderr', readError)
+    // And the turn is unaffected: the title the CLI produced still lands.
+    expect(conversations.update).toHaveBeenCalledWith(
+      'conversation-1',
+      { title: 'Weekly Review Plan' },
+      ['title']
+    )
+  })
+
   it('keeps the stderr tail for the failure log and discards the noise before it', async () => {
     const messages = createFakeMessageStore()
     const conversations = createFakeConversationStore()
@@ -339,6 +448,32 @@ function backendOverFloodingCli(
       quickHandle([{ kind: 'assistant_delta', text: 'ok' }, { kind: 'message_stop' }]),
     generateTitle: async (input) => (route === 'title' ? real.generateTitle(input) : quickHandle()),
     summarize: async (input) => (route === 'summary' ? real.summarize(input) : quickHandle()),
+    cancel: () => {},
+    getStatus: async () => ({ backend: 'claude_cli' as const, available: true })
+  }
+}
+
+function backendWithFailingTitleStderr(readError: Error): AgentBackend {
+  return {
+    id: 'claude_cli',
+    runTurn: async () =>
+      quickHandle([{ kind: 'assistant_delta', text: 'ok' }, { kind: 'message_stop' }]),
+    generateTitle: async () => ({
+      events: (async function* () {
+        yield { kind: 'assistant_delta', text: 'Weekly Review Plan' } as BackendEvent
+      })(),
+      stderr: (async function* () {
+        yield Buffer.from('claude: starting\n')
+        throw readError
+      })(),
+      pid: 2,
+      kill: () => {},
+      // Exit 0: the failure branch that awaits the drain is never taken, so the
+      // rejection has no other observer.
+      waitExit: async () => 0,
+      cleanup: async () => {}
+    }),
+    summarize: async () => quickHandle(),
     cancel: () => {},
     getStatus: async () => ({ backend: 'claude_cli' as const, available: true })
   }
