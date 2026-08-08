@@ -56,6 +56,13 @@ Agent Chat can:
 - stop an in-flight turn
 - compact older conversation history when a prompt grows too large
 
+Naming a new conversation and compacting its history both run the CLI in the background. A CLI that
+prints a lot of diagnostic output while doing so no longer stalls the turn: memrynote reads that
+output as it arrives rather than waiting for the CLI to finish. If the CLI then fails, the tail of
+that output is written to the local log, the conversation falls back to a title derived from your
+first message, and the turn continues with its history uncompacted — your message and the
+conversation are never lost.
+
 While a turn runs, its tool calls collapse into a single activity row instead of stacking one row per
 step, so a long turn no longer pushes the answer off screen. The row names the tool the agent is
 running, counts the steps so far, and shows a spinner until the turn ends. Once the turn is done the
