@@ -16,7 +16,7 @@
     "submit": "wxt submit --chrome-zip .output/*-chrome.zip",
     "sources:firefox": "node ../../scripts/build-extension-firefox-sources.mjs",
     "submit:firefox": "wxt submit --firefox-zip .output/*-firefox.zip --firefox-sources-zip .output/firefox-review-sources.zip",
-    "release": "pnpm version --tag-version-prefix=extension-v --message \"chore(extension): release v%s\" && git push --follow-tags",
+    "release": "pnpm version patch --tag-version-prefix=extension-v --message \"chore(extension): release v%s\" && git push --follow-tags",
     "typecheck": "wxt prepare && tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
