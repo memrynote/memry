@@ -330,11 +330,27 @@ export class GraphPhysics {
     }
   }
 
+  /**
+   * Publish this tick's positions onto the graph, without announcing them.
+   *
+   * `setNodeAttribute` emits a `nodeAttributesUpdated` per axis — two graphology
+   * events per node per frame. Sigma is the only subscriber (`bindGraphHandlers`),
+   * and all its handler does for a moved node is re-run the node reducer and
+   * schedule a partial refresh. Neither is needed here: the caller refreshes
+   * sigma itself immediately after every tick, and sigma's indexation pass reads
+   * x/y straight back off the graph for every node, so the frame is painted from
+   * these exact values either way. Writing into the node's live attribute object
+   * skips the announcement and keeps the value identical to the bit.
+   *
+   * Only nodes this simulation owns are touched, so anything added to the graph
+   * after construction keeps whatever position put it there.
+   */
   private syncPositions(): void {
     for (const node of this.nodes) {
       if (!this.graph.hasNode(node.id)) continue
-      this.graph.setNodeAttribute(node.id, 'x', node.x)
-      this.graph.setNodeAttribute(node.id, 'y', node.y)
+      const attributes = this.graph.getNodeAttributes(node.id)
+      attributes.x = node.x
+      attributes.y = node.y
     }
   }
 }
