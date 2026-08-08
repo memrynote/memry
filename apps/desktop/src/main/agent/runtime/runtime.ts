@@ -24,7 +24,16 @@ interface TrackedSubprocess {
   conversationId: string
   pid: number
   kill: () => void
+  waitExit: () => Promise<number>
 }
+
+// How long shutdown waits for a killed CLI to actually be gone. Covers the 900ms
+// of SIGTERM grace in createEscalatingKill plus ~300ms for the SIGKILL to land and
+// 'exit' to propagate. Sized against main's 5000ms force-exit budget: flushAllWindows
+// alone can claim 2000ms of it, and killAll runs at the tail of the shutdown chain
+// (closeVault -> stopVaultAgentServices), so waiting longer here would trade a leak
+// for a hang and lose the escalation entirely when main exits first.
+const KILL_REAP_BUDGET_MS = 1200
 
 export interface AgentRuntimeDeps {
   conversations: ConversationStore
@@ -184,12 +193,14 @@ export class AgentRuntime {
     subprocess: {
       pid: number
       kill: () => void
+      waitExit: () => Promise<number>
     }
   ): void {
     this.subprocesses.set(subprocess.pid, {
       conversationId,
       pid: subprocess.pid,
-      kill: subprocess.kill
+      kill: subprocess.kill,
+      waitExit: subprocess.waitExit
     })
     if (this.isShuttingDown) {
       try {
@@ -213,14 +224,15 @@ export class AgentRuntime {
     }
     this.pending.clear()
 
-    for (const sub of this.subprocesses.values()) {
+    const tracked = [...this.subprocesses.values()]
+    for (const sub of tracked) {
       try {
         sub.kill()
       } catch (error) {
         logger.warn('Failed to kill subprocess', error)
       }
     }
-    this.subprocesses.clear()
+    await Promise.all(tracked.map((sub) => this.reapSubprocess(sub)))
 
     for (const controller of this.inFlight.values()) {
       controller.abort()
@@ -233,6 +245,29 @@ export class AgentRuntime {
       await Promise.allSettled(turns)
     }
     this.activeTurns.clear()
+  }
+
+  // A signal sent is not a process gone. Shutdown has to see the exit before it
+  // resolves, because main exits moments later and anything still running is
+  // reparented to init, out of reach forever. Entries are only dropped once the
+  // exit is observed: a survivor stays in the map so a later cancelTurn/killAll
+  // still reaches it.
+  private async reapSubprocess(sub: TrackedSubprocess): Promise<void> {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const timedOut = new Promise<false>((resolve) => {
+      timer = setTimeout(() => resolve(false), KILL_REAP_BUDGET_MS)
+    })
+    try {
+      if (await Promise.race([sub.waitExit().then(() => true), timedOut])) {
+        this.subprocesses.delete(sub.pid)
+        return
+      }
+      logger.warn('Agent subprocess still alive after kill', { pid: sub.pid })
+    } catch (error) {
+      logger.warn('Failed to await agent subprocess exit', { pid: sub.pid, error })
+    } finally {
+      clearTimeout(timer)
+    }
   }
 
   private waitForApproval(input: PendingApprovalSnapshot): Promise<ApproveToolDecision> {
