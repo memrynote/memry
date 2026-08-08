@@ -138,6 +138,89 @@ describe('runTurn subprocess lifetime on the turn error path', () => {
     expect(tracking.aliveWhenCleanupRan).toBe(false)
   })
 
+  it('keeps the turn error and still cleans up when the kill call itself throws', async () => {
+    const child = startChild({ first: deltaLine('hello'), linger: LINGER_MS })
+    // What ChildProcess.kill() does when the platform rejects the signal
+    // (EINVAL/ENOSYS) — the one way kill() raises instead of returning false.
+    child.killImpl = () => {
+      throw new Error('kill EINVAL')
+    }
+    const backend = createClaudeBackend(child.handle)
+    const tracking = createTrackingHarness(child)
+
+    broadcastAgentEventMock.mockImplementation((event: { kind: string }) => {
+      if (event.kind === 'assistant_text_delta') {
+        throw new Error('Object has been destroyed')
+      }
+    })
+
+    const startedAt = Date.now()
+    // The error the user is shown is still the one that actually ended the
+    // turn. Anything thrown out of the finally would replace it with
+    // 'kill EINVAL' and bury the real cause.
+    await expect(
+      runTurn(
+        {
+          conversations: createFakeConversationStore({ title: 'Existing conversation' }),
+          messages: createFakeMessageStore(),
+          backends: createFakeRegistry(backend),
+          trackRunHandle: tracking.trackRunHandle
+        },
+        {
+          conversationId: 'conversation-1',
+          sourceWindowId: 'window-1',
+          text: 'hi',
+          attachments: [],
+          backendOptions: { backend: 'claude_cli', claudeEffort: 'low' }
+        }
+      )
+    ).rejects.toThrow('Object has been destroyed')
+
+    expect(child.killCount).toBe(1)
+    // Nothing was signalled, so there is nothing to wait for: the turn must not
+    // burn the grace period, and cleanup still has to run to drop the spawn
+    // temp directory.
+    expect(Date.now() - startedAt).toBeLessThan(1000)
+    expect(child.cleanupCount).toBe(1)
+  })
+
+  it('keeps the turn error and still cleans up when the exit promise rejects', async () => {
+    const child = startChild({ first: deltaLine('hello'), linger: LINGER_MS })
+    child.waitExitImpl = () => Promise.reject(new Error('exit watch failed'))
+    const backend = createClaudeBackend(child.handle)
+    const tracking = createTrackingHarness(child)
+
+    broadcastAgentEventMock.mockImplementation((event: { kind: string }) => {
+      if (event.kind === 'assistant_text_delta') {
+        throw new Error('Object has been destroyed')
+      }
+    })
+
+    await expect(
+      runTurn(
+        {
+          conversations: createFakeConversationStore({ title: 'Existing conversation' }),
+          messages: createFakeMessageStore(),
+          backends: createFakeRegistry(backend),
+          trackRunHandle: tracking.trackRunHandle
+        },
+        {
+          conversationId: 'conversation-1',
+          sourceWindowId: 'window-1',
+          text: 'hi',
+          attachments: [],
+          backendOptions: { backend: 'claude_cli', claudeEffort: 'low' }
+        }
+      )
+    ).rejects.toThrow('Object has been destroyed')
+
+    expect(child.killCount).toBe(1)
+    expect(child.cleanupCount).toBe(1)
+    // turn.ts could not confirm the exit, but the signal it sent was real.
+    await waitForExit(child.proc, 5000)
+    expect(child.proc.signalCode).toBe('SIGTERM')
+  })
+
   it('gives up on a child that ignores the kill instead of hanging the turn', async () => {
     const child = startChild({
       first: deltaLine('hello'),
@@ -220,7 +303,14 @@ interface StartedChild {
   handle: RawSubprocessHandle
   proc: ChildProcess
   killCount: number
+  cleanupCount: number
   onKill: () => void
+  // Overridable so a test can model a backend handle whose kill() or exit
+  // promise fails. Both are ordinary implementations of BackendRunHandle:
+  // ChildProcess.kill() throws on EINVAL/ENOSYS, and waitExit() is a plain
+  // Promise any backend may reject.
+  killImpl: () => void
+  waitExitImpl: () => Promise<number>
 }
 
 function startChild(input: {
@@ -256,7 +346,12 @@ function startChild(input: {
   const started: StartedChild = {
     proc,
     killCount: 0,
+    cleanupCount: 0,
     onKill: () => {},
+    killImpl: () => {
+      proc.kill('SIGTERM')
+    },
+    waitExitImpl: () => exitCodePromise,
     handle: {
       stdout,
       stderr,
@@ -264,13 +359,28 @@ function startChild(input: {
       kill: () => {
         started.killCount += 1
         started.onKill()
-        proc.kill('SIGTERM')
+        started.killImpl()
       },
-      waitExit: () => exitCodePromise,
-      cleanup: async () => {}
+      waitExit: () => started.waitExitImpl(),
+      cleanup: async () => {
+        started.cleanupCount += 1
+      }
     }
   }
   return started
+}
+
+// Proves a signal was really delivered in the cases where turn.ts deliberately
+// does not wait for the exit itself.
+function waitForExit(proc: ChildProcess, timeoutMs: number): Promise<void> {
+  if (proc.exitCode !== null || proc.signalCode !== null) return Promise.resolve()
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('child did not exit in time')), timeoutMs)
+    proc.once('exit', () => {
+      clearTimeout(timer)
+      resolve()
+    })
+  })
 }
 
 interface TrackingHarness {
