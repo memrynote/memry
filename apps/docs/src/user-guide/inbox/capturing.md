@@ -86,7 +86,7 @@ issues the extension a token. Until paired, the popup shows a needs-pairing stat
 
 ### Capture modes
 
-The popup offers three ways to grab a page:
+The popup offers four ways to grab a page:
 
 - **Article** — the readable main content, stripped of navigation and ads (the default).
 - **Selection** — only the text you've highlighted on the page.
@@ -99,8 +99,8 @@ you can open in memrynote's built-in viewer and file into a folder like any othe
 
 ### Clipping PDFs
 
-When you open a PDF — a `.pdf` link, or a site that opens one — the browser renders it with its own
-viewer, which extensions cannot read text from. So the clipper saves the file itself instead.
+When you open a PDF, the browser renders it with its own viewer, which extensions cannot read text
+from. So the clipper saves the file itself instead.
 
 The first time you clip a PDF from a given site, your browser asks whether to give memrynote access
 to that site. This is needed to download the file with your session, so PDFs behind a login work.
@@ -108,6 +108,8 @@ The prompt appears once per site, not once per PDF.
 
 Limits worth knowing:
 
+- The tab's address has to end in `.pdf`. A PDF served from an address without that ending isn't
+  recognised as one — the popup shows "Couldn't read this page" instead.
 - PDFs up to **16 MB** can be clipped. Larger ones are better saved to disk and dragged into the
   inbox, which allows up to 50 MB.
 - PDFs that can't be downloaded a second time — one-time links, or a file opened by submitting a form

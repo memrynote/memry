@@ -28,7 +28,12 @@ import {
   isRetryable,
   type QueuedCapture
 } from '@/lib/capture-queue'
-import { buildPdfDraft, checkPdfBytes, pdfFilenameFrom } from '@/lib/pdf-capture'
+import {
+  buildPdfDraft,
+  checkPdfBytes,
+  checkPdfContentLength,
+  pdfFilenameFrom
+} from '@/lib/pdf-capture'
 import { hasOriginPermission } from '@/lib/capture-permissions'
 
 const TOKEN_KEY = 'memry:capture-token'
@@ -154,6 +159,10 @@ async function fetchPdf(url: string): Promise<FetchPdfResponse> {
   try {
     const res = await fetch(url, { credentials: 'include' })
     if (!res.ok) return { ok: false, error: 'pdf-fetch-failed' }
+    // Bail on a declared oversize BEFORE buffering: arrayBuffer() on a hostile or
+    // mislabelled multi-gigabyte body would OOM the service worker.
+    const declared = checkPdfContentLength(res.headers.get('content-length'))
+    if (!declared.ok) return declared
     const bytes = new Uint8Array(await res.arrayBuffer())
     const check = checkPdfBytes(bytes)
     if (!check.ok) return check
@@ -189,6 +198,14 @@ async function setBadge(count: number): Promise<void> {
 
 async function restoreQueueBadge(): Promise<void> {
   await setBadge((await readQueue()).length)
+}
+
+// Brief "that didn't work" badge for the keyboard shortcut, which has no popup to
+// report into. Reverts to the queue count after 2s.
+async function flashErrorBadge(): Promise<void> {
+  await browser.action.setBadgeText({ text: '!' })
+  await browser.action.setBadgeBackgroundColor({ color: '#E56458' })
+  setTimeout(() => void restoreQueueBadge(), 2000)
 }
 
 async function ensureFlushAlarm(): Promise<void> {
@@ -302,36 +319,39 @@ export default defineBackground(() => {
     const extracted: ExtractResponse = await browser.tabs
       .sendMessage(tab.id, { type: 'EXTRACT' })
       .catch(() => ({ ok: false, error: 'no-content-script' }))
-    let capture = extracted.ok ? extracted.capture : null
+    let payload = extracted.ok ? extracted.capture : null
     // The content script is absent on a PDF tab. We cannot prompt for site access
     // from a service worker (no user gesture), so this only works for an origin
     // the user already approved through the popup.
-    if (!capture && tab.url && (await hasOriginPermission(tab.url))) {
+    if (!payload && tab.url && (await hasOriginPermission(tab.url))) {
       const draft = buildPdfDraft({ url: tab.url, title: tab.title })
       const pdf = draft ? await fetchPdf(tab.url) : null
       if (draft && pdf?.ok) {
-        capture = { ...draft, pdfDataUrl: pdf.dataUrl, pdfFilename: pdf.filename }
+        payload = { ...draft, pdfDataUrl: pdf.dataUrl, pdfFilename: pdf.filename }
       }
     }
-    if (!capture) {
-      await browser.action.setBadgeText({ text: '!' })
-      await browser.action.setBadgeBackgroundColor({ color: '#E56458' })
-      setTimeout(() => void restoreQueueBadge(), 2000)
+    if (!payload) {
+      await flashErrorBadge()
       return
     }
     // On Firefox MV3 the loopback host permission is opt-in and can only be
     // requested from a user-gesture page — the popup — so this background
     // shortcut cannot prompt for it. Until it is granted, the loopback fetch
-    // fails and captureOrQueue queues the capture (the badge shows the count)
-    // rather than losing it; the queue flushes once the user grants access by
-    // saving from the popup once.
-    const res = await captureOrQueue(capture)
+    // fails. A queueable capture is then stored for the retry alarm (the badge
+    // shows the count) and flushes once the user grants access by saving from the
+    // popup once. A PDF is NOT queueable — megabytes of base64 would blow Chrome's
+    // 10MB storage.local cap — so it is simply lost, and the error badge is the
+    // only signal the user gets. The same applies whenever the desktop app is
+    // closed.
+    const res = await captureOrQueue(payload)
     if (res.ok) {
       await browser.action.setBadgeText({ text: '✓' })
       await browser.action.setBadgeBackgroundColor({ color: '#3B873E' })
       setTimeout(() => void restoreQueueBadge(), 2000)
+    } else if (res.error !== 'queued') {
+      // A queued save already set its own count badge inside captureOrQueue.
+      await flashErrorBadge()
     }
-    // A queued save already set the count badge inside captureOrQueue.
   })
 
   // Restore the badge + retry alarm whenever the service worker (re)starts.

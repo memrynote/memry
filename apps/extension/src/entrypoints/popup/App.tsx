@@ -55,9 +55,11 @@ export default function App() {
     browser.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
       if (!tab?.id) return dispatch({ type: 'DRAFT_READY', draft: null })
       // Content scripts never inject into a PDF viewer, so a rejected EXTRACT on
-      // an http(s) tab means the browser is showing a binary — treat it as a PDF.
-      // buildPdfDraft returns null for chrome://, file:// and the Web Store, which
-      // keeps today's "Couldn't read this page" state for those.
+      // a fetchable http(s) tab whose path ends in .pdf means the browser is
+      // showing the file itself. buildPdfDraft enforces both conditions; a
+      // rejected EXTRACT alone is NOT proof of a PDF, because browsers also skip
+      // injection into tabs left open across an extension update. Everything else
+      // keeps today's "Couldn't read this page" state and prompts for nothing.
       const pdfFallback = () => buildPdfDraft({ url: tab.url, title: tab.title })
       browser.tabs
         .sendMessage(tab.id, { type: 'EXTRACT' })

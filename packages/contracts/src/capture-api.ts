@@ -21,7 +21,10 @@ export const ArticleCaptureSchema = z.object({
   // Base64 data URL of the tab's PDF, set only by the extension's pdf mode.
   // Capped at 16MB raw client-side so it fits the /capture body limit.
   pdfDataUrl: z.string().optional(),
-  pdfFilename: z.string().optional(),
+  // Bounded because ingest stores it verbatim as metadata.originalFilename, which
+  // then syncs — a hostile Content-Disposition must not be able to plant an
+  // unbounded string. 255 is the usual filesystem name limit.
+  pdfFilename: z.string().max(255).optional(),
   tags: z.array(z.string()).optional(),
   force: z.boolean().optional()
 })

@@ -9,11 +9,15 @@ const PDF_MAGIC = '%PDF-'
 
 // Host-permission match pattern for a page we may need to re-fetch. Only http(s)
 // is fetchable with the user's cookies; blob:, file: and chrome: never are.
+// Built from hostname, NOT origin: a match-pattern host may not carry a port, so
+// `https://intranet.corp:8443/*` either throws in permissions.contains() or never
+// matches the real host — either way the grant is silently skipped and the fetch
+// is blocked with no prompt.
 export function originPatternOf(url: string): string | null {
   try {
     const parsed = new URL(url)
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null
-    return `${parsed.origin}/*`
+    return `${parsed.protocol}//${parsed.hostname}/*`
   } catch {
     return null
   }
@@ -23,11 +27,27 @@ function sanitize(name: string): string {
   return name.replace(/[/\\]/g, '_').trim()
 }
 
+// RFC 5987 value: `charset'language'percent-encoded-name`. Only the name matters
+// to us; the charset is always UTF-8 in practice and decodeURIComponent assumes it.
+function decodeExtendedValue(value: string): string | null {
+  const match = /^[^']*'[^']*'(.*)$/.exec(value.trim())
+  if (!match) return null
+  try {
+    return decodeURIComponent(match[1])
+  } catch {
+    return null
+  }
+}
+
 function fromContentDisposition(header: string | null): string | null {
   if (!header) return null
+  // `filename*=UTF-8''…` wins when both forms are present: it is the only one
+  // that can carry a non-ASCII name, and servers send the plain `filename` beside
+  // it purely as an ASCII-mangled fallback.
+  const extended = /filename\*\s*=\s*([^;]+)/i.exec(header)
   const quoted = /filename\s*=\s*"([^"]+)"/i.exec(header)
   const bare = /filename\s*=\s*([^;]+)/i.exec(header)
-  const raw = quoted?.[1] ?? bare?.[1]
+  const raw = (extended?.[1] ? decodeExtendedValue(extended[1]) : null) ?? quoted?.[1] ?? bare?.[1]
   return raw ? sanitize(raw) || null : null
 }
 
@@ -68,15 +88,46 @@ export function checkPdfBytes(bytes: Uint8Array): PdfBytesCheck {
   return { ok: true }
 }
 
+export type PdfLengthCheck = { ok: true } | { ok: false; error: 'pdf-too-large' }
+
+// Reject an oversized body from its Content-Length, BEFORE the whole response is
+// buffered. checkPdfBytes only spares us the base64 cost; the download itself is
+// the unbounded one, and a multi-gigabyte body at a .pdf URL would OOM the
+// service worker before any check ran. A missing, blank or non-numeric header —
+// chunked responses legitimately omit it — falls through to the post-read
+// checkPdfBytes rather than being trusted or rejected on a guess.
+export function checkPdfContentLength(header: string | null): PdfLengthCheck {
+  if (!header || !/^\d+$/.test(header.trim())) return { ok: true }
+  return Number(header.trim()) > MAX_PDF_BYTES
+    ? { ok: false, error: 'pdf-too-large' }
+    : { ok: true }
+}
+
+// Only a URL whose PATH ends in `.pdf` is offered as a PDF. A failed content-script
+// EXTRACT is NOT proof of a PDF: browsers do not inject content scripts into tabs
+// that were already open when the extension updated, so every such tab looks
+// identical to a PDF viewer. Without this, an ordinary article would show a PDF
+// badge and its Send would ask for a persistent site grant that buys nothing.
+// Content-negotiated PDFs at extension-less URLs fall back to "Couldn't read this
+// page" — the pre-branch behaviour, so no regression.
+function hasPdfPath(url: string): boolean {
+  try {
+    return /\.pdf$/i.test(new URL(url).pathname)
+  } catch {
+    return false
+  }
+}
+
 // The draft the popup shows before any bytes exist. Fetching them needs a host
 // permission that only a user gesture can request, so mount-time we have nothing
 // but tab metadata. `force: true` skips the desktop's URL dedup, whose enrichment
-// branch would update content/metadata only and drop the PDF bytes.
+// branch would update content/metadata only and drop the PDF bytes. Null unless
+// the tab is a fetchable http(s) URL with a `.pdf` path — see hasPdfPath.
 export function buildPdfDraft(
   tab: { url?: string; title?: string },
   now: string = new Date().toISOString()
 ): ArticleCapture | null {
-  if (!tab.url || !originPatternOf(tab.url)) return null
+  if (!tab.url || !originPatternOf(tab.url) || !hasPdfPath(tab.url)) return null
   const filename = fromUrlPath(tab.url)
   const title = filename?.replace(/\.[^.]+$/, '') || tab.title?.trim() || tab.url
   return {

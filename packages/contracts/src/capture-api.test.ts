@@ -88,4 +88,24 @@ describe('ArticleCaptureSchema — pdf mode', () => {
     const parsed = ArticleCaptureSchema.safeParse({ ...base, mode: 'epub' })
     expect(parsed.success).toBe(false)
   })
+
+  it('rejects a pdfFilename over 255 chars — it is stored and synced verbatim', () => {
+    const parsed = ArticleCaptureSchema.safeParse({
+      ...base,
+      mode: 'pdf',
+      pdfDataUrl: 'data:application/pdf;base64,JVBERi0xLjQK',
+      pdfFilename: `${'a'.repeat(256)}.pdf`
+    })
+    expect(parsed.success).toBe(false)
+  })
+
+  it('accepts a pdfFilename at the 255-char bound', () => {
+    const parsed = ArticleCaptureSchema.safeParse({
+      ...base,
+      mode: 'pdf',
+      pdfDataUrl: 'data:application/pdf;base64,JVBERi0xLjQK',
+      pdfFilename: 'a'.repeat(255)
+    })
+    expect(parsed.success).toBe(true)
+  })
 })
