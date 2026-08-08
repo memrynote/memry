@@ -88,6 +88,21 @@ interface MeasuredBlock {
 // image settling to its final height, a zoom change or a block appearing can
 // never feed a stale rect into the selection — the only way a wrong rect gets
 // in is if the browser hands us one.
+//
+// TRIPWIRE, read this before changing how blocks are laid out. Both facts above
+// hold only while every `.bn-block` is in normal block flow. What was checked to
+// establish that: `@blocknote/xl-multi-column` is not a dependency, there is no
+// column block in `editor-schema.ts`, and no rule in `base.css` floats a
+// `.bn-block`, positions one absolutely, or puts siblings side by side.
+//
+// Introducing ANY non-normal-flow block layout — multi-column blocks,
+// side-by-side callouts, floats, absolute positioning — breaks those facts, and
+// this function then returns a WRONG selection rather than a slow one. That
+// selection feeds bulk delete/move, so the failure is data loss, not a glitch.
+// The tests cannot catch it: they build normal-flow DOM and compare against an
+// exhaustive scan of that same DOM, so they stay green while the assumption is
+// false. Revisit this function — pruning has to become per-column — as part of
+// any such change, not after a bug report.
 function collectMarqueeHits(
   container: HTMLElement,
   blocks: ArrayLike<HTMLElement>,
