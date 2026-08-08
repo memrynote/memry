@@ -12,6 +12,9 @@ vi.mock('./task-block-marquee-indent', () => marqueeIndentMocks)
 
 import { topLevelSelectedBlockIds, useBlockMarqueeSelection } from './use-block-marquee-selection'
 
+/** Every stubbed `getBoundingClientRect()` bumps this — one measure, one count. */
+let rectReads = 0
+
 function setRect(el: Element, rect: Partial<DOMRect>): void {
   const value = {
     left: rect.left ?? 0,
@@ -25,7 +28,10 @@ function setRect(el: Element, rect: Partial<DOMRect>): void {
     toJSON: () => ({})
   } as DOMRect
   Object.defineProperty(el, 'getBoundingClientRect', {
-    value: () => value,
+    value: () => {
+      rectReads += 1
+      return value
+    },
     configurable: true
   })
 }
@@ -230,6 +236,296 @@ describe('useBlockMarqueeSelection', () => {
 
     unmount()
     trigger.remove()
+  })
+})
+
+// --- Marquee measurement cost -------------------------------------------------
+
+interface BlockSpec {
+  id: string
+  children?: BlockSpec[]
+}
+
+const BLOCK_ROW_PX = 20
+const BLOCK_GAP_PX = 4
+const NEST_INDENT_PX = 24
+
+/**
+ * Lay a note out the way CSS block flow does: siblings stack top-to-bottom in
+ * document order and a nested block is rendered inside its parent's box, so the
+ * parent's rect encloses every descendant. Returns the y the caller continues at.
+ */
+function layoutBlocks(
+  specs: ReadonlyArray<BlockSpec>,
+  parent: HTMLElement,
+  startTop: number,
+  left: number
+): number {
+  let y = startTop
+  for (const spec of specs) {
+    const el = document.createElement('div')
+    el.className = 'bn-block'
+    el.dataset.id = spec.id
+    parent.append(el)
+    const top = y
+    y += BLOCK_ROW_PX
+    if (spec.children?.length) {
+      y = layoutBlocks(spec.children, el, y, left + NEST_INDENT_PX)
+    }
+    setRect(el, { left, top, width: 300 - (left - 10), height: y - top })
+    y += BLOCK_GAP_PX
+  }
+  return y
+}
+
+function setupNote(specs: ReadonlyArray<BlockSpec>): {
+  trigger: HTMLDivElement
+  blockContainer: HTMLDivElement
+  blockContainerRef: React.RefObject<HTMLDivElement | null>
+  cleanup: () => void
+} {
+  const trigger = document.createElement('div')
+  const blockContainer = document.createElement('div')
+  const height = layoutBlocks(specs, blockContainer, 10, 10)
+  setRect(trigger, { left: 0, top: 0, width: 400, height: height + 10 })
+  trigger.append(blockContainer)
+  document.body.append(trigger)
+  return {
+    trigger,
+    blockContainer,
+    blockContainerRef: { current: blockContainer },
+    cleanup: () => trigger.remove()
+  }
+}
+
+function flatNote(count: number): BlockSpec[] {
+  return Array.from({ length: count }, (_, index) => ({ id: `b${index}` }))
+}
+
+/**
+ * The reference implementation: measure every block, keep the ones the box
+ * touches. Whatever the hook does, it must agree with this exactly.
+ */
+function exhaustiveHits(
+  blockContainer: HTMLElement,
+  box: { left: number; top: number; right: number; bottom: number }
+): string[] {
+  const ids: string[] = []
+  blockContainer.querySelectorAll<HTMLElement>('.bn-block[data-id]').forEach((el) => {
+    const r = el.getBoundingClientRect()
+    if (!(r.right < box.left || r.left > box.right || r.bottom < box.top || r.top > box.bottom)) {
+      const id = el.dataset.id
+      if (id && !ids.includes(id)) ids.push(id)
+    }
+  })
+  return ids
+}
+
+function boxOf(
+  from: { x: number; y: number },
+  to: { x: number; y: number }
+): { left: number; top: number; right: number; bottom: number } {
+  return {
+    left: Math.min(from.x, to.x),
+    right: Math.max(from.x, to.x),
+    top: Math.min(from.y, to.y),
+    bottom: Math.max(from.y, to.y)
+  }
+}
+
+/** Deterministic LCG so a failure is reproducible from the seed alone. */
+function makeRandom(seed: number): () => number {
+  let state = seed >>> 0
+  return () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0
+    return state / 0x100000000
+  }
+}
+
+describe('useBlockMarqueeSelection measurement cost', () => {
+  const editor = { prosemirrorView: { dom: { blur: vi.fn() } } }
+
+  beforeEach(() => {
+    rectReads = 0
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      cb(0)
+      return 1
+    })
+    vi.stubGlobal('cancelAnimationFrame', vi.fn())
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    document.body.innerHTML = ''
+  })
+
+  function drag(
+    trigger: HTMLElement,
+    blockContainerRef: React.RefObject<HTMLDivElement | null>,
+    from: { x: number; y: number },
+    to: { x: number; y: number },
+    downTarget?: HTMLElement
+  ): { ids: string[]; readsForOneFrame: number; unmount: () => void } {
+    const { result, unmount } = renderHook(() =>
+      useBlockMarqueeSelection({ editor, blockContainerRef, triggerContainerEl: trigger })
+    )
+    act(() => {
+      ;(downTarget ?? trigger).dispatchEvent(
+        mouse('mousedown', { clientX: from.x, clientY: from.y })
+      )
+    })
+    rectReads = 0
+    act(() => {
+      document.dispatchEvent(mouse('mousemove', { clientX: to.x, clientY: to.y }))
+    })
+    const readsForOneFrame = rectReads
+    act(() => {
+      document.dispatchEvent(mouse('mouseup', { clientX: to.x, clientY: to.y }))
+    })
+    return { ids: [...result.current.selectedBlockIds], readsForOneFrame, unmount }
+  }
+
+  it('measures a handful of blocks per frame instead of every block in the note', () => {
+    // 200 flat blocks on a 24px pitch: b0 spans 10..30, b199 spans 4786..4806.
+    const { trigger, blockContainerRef, cleanup } = setupNote(flatNote(200))
+    // A marquee low in the note — the case where "scan from the top" is worst.
+    const from = { x: 5, y: 4002 }
+    const to = { x: 200, y: 4060 }
+
+    const { ids, readsForOneFrame, unmount } = drag(trigger, blockContainerRef, from, to)
+
+    // Identical selection to the reference scan…
+    expect(ids).toEqual(exhaustiveHits(blockContainerRef.current!, boxOf(from, to)))
+    expect(ids).toEqual(['b166', 'b167', 'b168'])
+    // …at a fixed cost: 1 trigger rect + 7 binary-search probes + 4 blocks
+    // walked back from the marquee (3 hits plus the one that ends above it).
+    expect(readsForOneFrame).toBe(12)
+
+    unmount()
+    cleanup()
+  })
+
+  it('still selects an enclosing parent when the marquee only covers its deep children', () => {
+    // The parent's own rect reaches down over its children, so a marquee that
+    // touches only the children touches the parent too.
+    const { trigger, blockContainerRef, cleanup } = setupNote([
+      { id: 'lead' },
+      {
+        id: 'parent',
+        children: Array.from({ length: 12 }, (_, index) => ({ id: `child${index}` }))
+      },
+      { id: 'tail' }
+    ])
+    const from = { x: 5, y: 150 }
+    const to = { x: 200, y: 195 }
+
+    const { ids, unmount } = drag(trigger, blockContainerRef, from, to)
+
+    expect(ids).toEqual(exhaustiveHits(blockContainerRef.current!, boxOf(from, to)))
+    expect(ids).toEqual(['parent', 'child4', 'child5'])
+
+    unmount()
+    cleanup()
+  })
+
+  it('selects the same blocks as an exhaustive scan for every drag shape', () => {
+    const specs: BlockSpec[] = [
+      { id: 'b0' },
+      { id: 'b1', children: [{ id: 'b1a' }, { id: 'b1b', children: [{ id: 'b1b1' }] }] },
+      { id: 'b2' },
+      { id: 'b3', children: [{ id: 'b3a' }] },
+      { id: 'b4' },
+      { id: 'b5' }
+    ]
+
+    const shapes: Array<{
+      name: string
+      from: { x: number; y: number }
+      to: { x: number; y: number }
+      onBlock?: string
+      expected: string[]
+    }> = [
+      {
+        name: 'down',
+        from: { x: 5, y: 15 },
+        to: { x: 250, y: 120 },
+        expected: ['b0', 'b1', 'b1a', 'b1b', 'b1b1']
+      },
+      {
+        name: 'up',
+        from: { x: 250, y: 200 },
+        to: { x: 5, y: 60 },
+        expected: ['b1', 'b1a', 'b1b', 'b1b1', 'b2', 'b3', 'b3a']
+      },
+      {
+        name: 'right-to-left',
+        from: { x: 320, y: 60 },
+        to: { x: 12, y: 130 },
+        expected: ['b1', 'b1a', 'b1b', 'b1b1', 'b2']
+      },
+      {
+        name: 'starts inside a block',
+        from: { x: 40, y: 140 },
+        to: { x: 250, y: 260 },
+        onBlock: 'b2',
+        expected: ['b2', 'b3', 'b3a', 'b4', 'b5']
+      },
+      // A thin drag in the left gutter: vertically over the note, horizontally
+      // clear of every block, so it must select nothing.
+      { name: 'selects nothing', from: { x: 1, y: 60 }, to: { x: 6, y: 200 }, expected: [] }
+    ]
+
+    for (const shape of shapes) {
+      const { trigger, blockContainer, blockContainerRef, cleanup } = setupNote(specs)
+      const downTarget = shape.onBlock
+        ? blockContainer.querySelector<HTMLElement>(`[data-id="${shape.onBlock}"]`)!
+        : undefined
+
+      const { ids, unmount } = drag(trigger, blockContainerRef, shape.from, shape.to, downTarget)
+
+      expect({ shape: shape.name, ids }).toEqual({
+        shape: shape.name,
+        ids: exhaustiveHits(blockContainer, boxOf(shape.from, shape.to))
+      })
+      expect({ shape: shape.name, ids }).toEqual({ shape: shape.name, ids: shape.expected })
+
+      unmount()
+      cleanup()
+    }
+  })
+
+  it('agrees with the exhaustive scan across randomised marquees on a nested note', () => {
+    const specs: BlockSpec[] = Array.from({ length: 40 }, (_, index) =>
+      index % 3 === 0
+        ? {
+            id: `n${index}`,
+            children: [
+              { id: `n${index}c0` },
+              { id: `n${index}c1`, children: [{ id: `n${index}c1c` }] }
+            ]
+          }
+        : { id: `n${index}` }
+    )
+    const random = makeRandom(20260808)
+
+    for (let i = 0; i < 150; i += 1) {
+      const { trigger, blockContainer, blockContainerRef, cleanup } = setupNote(specs)
+      const height = trigger.getBoundingClientRect().height
+      const y1 = Math.round(random() * height)
+      const y2 = Math.max(
+        0,
+        Math.min(height, y1 + (random() < 0.5 ? -1 : 1) * (16 + random() * 400))
+      )
+      const from = { x: Math.round(random() * 380), y: y1 }
+      const to = { x: Math.round(random() * 380), y: Math.round(y2) }
+
+      const { ids, unmount } = drag(trigger, blockContainerRef, from, to)
+
+      expect({ i, ids }).toEqual({ i, ids: exhaustiveHits(blockContainer, boxOf(from, to)) })
+
+      unmount()
+      cleanup()
+    }
   })
 })
 
