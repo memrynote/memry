@@ -62,7 +62,13 @@ export function mapError(code: string): string {
     case 'pair-timeout':
       return 'Pairing timed out. Try again.'
     case 'permission-denied':
-      return 'Allow access to 127.0.0.1, then save again.'
+      return 'Allow the access Memry asked for, then save again.'
+    case 'pdf-fetch-failed':
+      return "Couldn't download this PDF. Open it directly, then try again."
+    case 'not-a-pdf':
+      return "This isn't a PDF — nothing to save."
+    case 'pdf-too-large':
+      return 'This PDF is too large to clip (limit 16 MB).'
     default:
       return "Couldn't reach Memry. Try again."
   }

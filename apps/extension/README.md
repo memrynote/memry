@@ -51,6 +51,19 @@ scripts just produce a separately-named artifact for the Edge Add-ons store.
 `zip:edge` produces `.output/*-edge.zip` for submission to the Microsoft Edge
 Add-ons store.
 
+## Release
+
+`pnpm --filter @memry/extension release` bumps the version and pushes an
+`extension-v*` tag, which triggers `.github/workflows/publish-extension.yml`.
+
+> [!IMPORTANT]
+> **Ship the desktop app first.** The extension only ever adds fields to the
+> `/capture` payload, and the desktop validates that payload strictly: a newer
+> extension talking to an older desktop gets a 422 on every capture using a field
+> that desktop doesn't know yet (currently PDF clips, which are also never queued,
+> so each one is lost). Release order is always: desktop version containing the
+> contract change → then the `extension-v*` tag.
+
 ## Manual QA (the Phase-3 acceptance gate — human-required)
 
 Run the desktop app first: `pnpm dev`.
