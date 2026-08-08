@@ -2,9 +2,15 @@
  * The sidebar canvas tree: folders and canvases in one list, with the context
  * menus that organize them.
  *
- * The tree owns every mutation and every dialog; the rows only report intent.
- * That is what keeps a rename, a move and a delete going through one place
- * where the typed folder failures get translated and surfaced.
+ * The tree owns every mutation; the rows only report intent. That is what keeps
+ * a rename, a move and a delete going through one place where the typed folder
+ * failures get translated and surfaced.
+ *
+ * Naming happens ON the row — a field in place of the label, exactly as the
+ * notes tree does it. Creating goes the same way: the canvas or folder is made
+ * immediately under a default name and the new row opens for editing, so the
+ * user never has to find it again afterwards. Only DELETE keeps a dialog,
+ * because a destructive action is worth confirming.
  *
  * @module components/sidebar/canvas-tree/canvas-tree
  */
@@ -30,18 +36,9 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
   buildCanvasTree,
   canDrop,
+  childFolderNames,
   collectFolderPaths,
   filterCanvasTree,
   flattenVisible,
@@ -50,6 +47,7 @@ import {
   rewriteExpandedFolderPaths,
   rowKeyOf,
   splitFolderPath,
+  uniqueFolderName,
   CANVAS_TREE_DRAG_MIME,
   type CanvasDragPayload,
   type CanvasTreeFolderNode,
@@ -58,6 +56,7 @@ import {
 import { useCanvasTree } from './use-canvas-tree'
 import { CanvasRow } from './canvas-row'
 import { CanvasFolderRow } from './canvas-folder-row'
+import type { CanvasRowEdit } from './canvas-row-name-input'
 import { CANVAS_ROW_INDENT_PX, type CanvasFolderOption } from './folder-options'
 
 const log = createLogger('SpatialCanvas')
@@ -132,6 +131,16 @@ const EMPTY_STATE_FOCUS_KEY = 'empty:new-canvas'
  */
 const FOCUS_SETTLE_MS = 1000
 
+/**
+ * The name a canvas folder is born with, before the user types the real one.
+ *
+ * Not translated, deliberately: this becomes a DIRECTORY in the vault, and a
+ * name that depended on the app's language would put the same folder on disk
+ * under a different path per device. The notes tree makes the same call, and
+ * the user is already typing over it.
+ */
+const DEFAULT_FOLDER_NAME = 'Untitled Folder'
+
 /** Shared by the empty state's two buttons; matches the empty-folder hint's link. */
 const EMPTY_STATE_ACTION_CLASS =
   'rounded-sm text-[11px] leading-3.5 font-medium text-sidebar-section-heading transition-colors text-start hover:text-sidebar-primary'
@@ -158,72 +167,8 @@ function readDragPayload(transfer: DataTransfer, remembered: CanvasDragPayload |
 }
 
 // ============================================================================
-// Dialogs
+// Delete confirmation
 // ============================================================================
-
-interface NameDialogProps {
-  title: string
-  label: string
-  initialValue: string
-  /** Resolve false to keep the dialog open — a rejected name is worth retyping. */
-  onSubmit: (value: string) => Promise<boolean>
-  onCancel: () => void
-}
-
-function CanvasNameDialog({
-  title,
-  label,
-  initialValue,
-  onSubmit,
-  onCancel
-}: NameDialogProps): React.JSX.Element {
-  const { t } = useT('common')
-  const [value, setValue] = React.useState(initialValue)
-  const [submitting, setSubmitting] = React.useState(false)
-  const inputId = React.useId()
-
-  const submit = async (): Promise<void> => {
-    const next = value.trim()
-    if (!next || submitting) return
-    setSubmitting(true)
-    const closed = await onSubmit(next)
-    if (!closed) setSubmitting(false)
-  }
-
-  return (
-    <Dialog open onOpenChange={(open) => !open && !submitting && onCancel()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-2 py-2">
-          <Label htmlFor={inputId}>{label}</Label>
-          <Input
-            id={inputId}
-            value={value}
-            autoFocus
-            disabled={submitting}
-            onChange={(event) => setValue(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault()
-                void submit()
-              }
-            }}
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onCancel} disabled={submitting}>
-            {t('button.cancel')}
-          </Button>
-          <Button onClick={() => void submit()} disabled={submitting || !value.trim()}>
-            {t('button.save')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
 
 interface ConfirmDialogProps {
   title: string
@@ -280,10 +225,40 @@ function CanvasConfirmDialog({
 // Tree
 // ============================================================================
 
-type PromptState =
-  | { kind: 'rename-canvas'; canvas: CanvasSummary }
-  | { kind: 'rename-folder'; node: CanvasTreeFolderNode }
-  | { kind: 'new-folder'; parent: string | null }
+/**
+ * Which row is being named, by identity alone.
+ *
+ * Identity rather than the node itself: the row re-renders — and for a freshly
+ * created one, does not exist yet — while the field is open, so anything holding
+ * a node object would go stale on the first refresh. `materialized` rides along
+ * because a folder with no `canvas_folders` row needs one minted before the
+ * rename can touch anything.
+ */
+type EditTarget =
+  | { kind: 'canvas'; id: string }
+  | { kind: 'folder'; path: string; materialized: boolean }
+
+interface EditState {
+  target: EditTarget
+  /** The name the row already had, so an unchanged submit costs no write. */
+  original: string
+  value: string
+  busy: boolean
+  /**
+   * The last refusal, translated, together with the exact value that earned it.
+   *
+   * One object rather than a loose message because the two may never drift
+   * apart: the field shows the reason only while it still holds that value, and
+   * the same pairing is what stops a name the store has already refused from
+   * being sent again unchanged.
+   */
+  failure: { value: string; message: string } | null
+}
+
+/** The row key `target` names, matching `rowKeyOf`. */
+function editKeyOf(target: EditTarget): string {
+  return target.kind === 'canvas' ? `canvas:${target.id}` : `folder:${target.path}`
+}
 
 type ConfirmState =
   | { kind: 'delete-canvas'; canvas: CanvasSummary }
@@ -297,7 +272,7 @@ type ConfirmState =
  * folder is unreachable, and a user with no folders can never make their first.
  */
 export interface CanvasTreeActions {
-  /** Opens the name dialog for a new folder at the canvases root. */
+  /** Creates a folder at the canvases root and opens its row for naming. */
   createFolder: () => void
 }
 
@@ -347,7 +322,7 @@ export function CanvasTree({
   })
 
   const [filter, setFilter] = React.useState('')
-  const [prompt, setPrompt] = React.useState<PromptState | null>(null)
+  const [editing, setEditing] = React.useState<EditState | null>(null)
   const [confirm, setConfirm] = React.useState<ConfirmState | null>(null)
   const [dragging, setDragging] = React.useState<CanvasDragPayload | null>(null)
   const [dropTarget, setDropTarget] = React.useState<string | null>(null)
@@ -475,6 +450,23 @@ export function CanvasTree({
   )
 
   /**
+   * Logs a failure, toasts it, and hands the sentence back.
+   *
+   * The sentence is returned rather than only shown because the inline field
+   * keeps it: a typed `CanvasFolderError` is the user's instruction for what to
+   * type instead, and a toast that scrolls away is not where they are looking.
+   */
+  const describeFailure = React.useCallback(
+    (err: unknown): string => {
+      log.error('Canvas tree action failed', err)
+      const message = extractErrorMessage(err, t('canvas.actionFailed'))
+      toast.error(message)
+      return message
+    },
+    [t]
+  )
+
+  /**
    * Every mutation funnels through here so a typed folder failure reaches the
    * user as its translated sentence instead of dying in the console.
    */
@@ -484,12 +476,11 @@ export function CanvasTree({
         await action()
         return true
       } catch (err) {
-        log.error('Canvas tree action failed', err)
-        toast.error(extractErrorMessage(err, t('canvas.actionFailed')))
+        describeFailure(err)
         return false
       }
     },
-    [t]
+    [describeFailure]
   )
 
   /**
@@ -531,11 +522,84 @@ export function CanvasTree({
     []
   )
 
-  React.useImperativeHandle(
-    ref,
-    () => ({ createFolder: () => setPrompt({ kind: 'new-folder', parent: null }) }),
-    []
-  )
+  // --------------------------------------------------------------------------
+  // Naming a row in place
+  // --------------------------------------------------------------------------
+
+  /** Opens the field on `target`, with `original` selected for overtyping. */
+  const beginEdit = React.useCallback((target: EditTarget, original: string) => {
+    setEditing({ target, original, value: original, busy: false, failure: null })
+  }, [])
+
+  const changeEdit = React.useCallback((value: string) => {
+    setEditing((current) => (current ? { ...current, value } : current))
+  }, [])
+
+  const cancelEdit = React.useCallback(() => {
+    if (!editing) return
+    // The field IS the row's focusable content while it is open, so closing it
+    // without saying where focus goes drops it to `document.body`.
+    setPendingFocus([editKeyOf(editing.target)])
+    setEditing(null)
+  }, [editing])
+
+  /**
+   * Commits the typed name.
+   *
+   * An empty or unchanged name closes the field without a write — the notes
+   * tree's semantics, and the reason blur can be a commit at all: clicking away
+   * from an untouched field must not cost an `updatedAt` bump and a sync.
+   */
+  const submitEdit = React.useCallback(async (): Promise<void> => {
+    if (!editing || editing.busy) return
+    const { target, original } = editing
+    const next = editing.value.trim()
+    if (!next || next === original) {
+      cancelEdit()
+      return
+    }
+    // Already refused, unchanged since. Asking again can only fail again, so
+    // the write is not sent — the field stays open on the reason it was given,
+    // and a second Enter costs nothing instead of a second round trip.
+    if (editing.failure?.value === next) return
+
+    setEditing((current) => (current ? { ...current, busy: true } : current))
+    /** Where the store put the folder, once it has said so. */
+    let renamedPath: string | null = null
+    try {
+      if (target.kind === 'canvas') {
+        await canvasService.update({ id: target.id, title: next })
+      } else {
+        await ensureFolderRow(target.path, target.materialized)
+        const { folder: renamed } = await canvasFolderService.rename({
+          path: target.path,
+          name: next
+        })
+        renamedPath = renamed?.path ?? null
+      }
+    } catch (err) {
+      const message = describeFailure(err)
+      // Left open, with the reason: a name the store refused is one the user has
+      // to change, and silently reverting would read as the app ignoring them.
+      setEditing((current) =>
+        current ? { ...current, busy: false, failure: { value: next, message } } : current
+      )
+      return
+    }
+
+    // A renamed folder's row key IS its path, so it changed; the old row is
+    // gone and focus would otherwise land on a detached node. The path the
+    // STORE settled on, not the one we asked for: it canonicalises names it
+    // cannot use as a directory, so a predicted path names a row that never
+    // renders. Only fall back when the store returned no folder at all.
+    const parent = target.kind === 'folder' ? splitFolderPath(target.path).parent : null
+    setPendingFocus(
+      target.kind === 'canvas'
+        ? [`canvas:${target.id}`]
+        : [`folder:${renamedPath ?? (parent ? `${parent}/${next}` : next)}`]
+    )
+    setEditing(null)
+  }, [cancelEdit, describeFailure, editing, ensureFolderRow])
 
   const toggleFolder = React.useCallback(
     (path: string) => {
@@ -614,16 +678,60 @@ export function CanvasTree({
     [dragging, ensureFolderRow, run]
   )
 
+  /**
+   * Makes the row, then opens it for naming.
+   *
+   * The canvas is created with no title at all — the field is pre-filled with
+   * the "Untitled canvas" label the row would show, so overtyping it is the
+   * whole interaction and abandoning it leaves the row exactly as a canvas
+   * created any other way. The tab still opens immediately: if the canvas
+   * surface takes focus, the field blurs onto an UNCHANGED name, which commits
+   * nothing and degrades to the behaviour this replaced.
+   */
   const handleNewCanvas = React.useCallback(
     (path: string | null) => {
       void run(async () => {
         const created = await canvasService.create({ folder: path })
         if (path) setExpanded((previous) => new Set(previous).add(path))
+        // A filter still hiding the new row is a field the user cannot see.
+        setFilter('')
         onCanvasClick?.(created)
+        beginEdit({ kind: 'canvas', id: created.id }, created.title || t('canvas.untitled'))
       })
     },
-    [onCanvasClick, run]
+    [beginEdit, onCanvasClick, run, t]
   )
+
+  /**
+   * Creates a folder under a default name and opens its row for naming.
+   *
+   * The name has to be one the store accepts before the user has typed
+   * anything, so it is uniquified against the folder's SIBLINGS — the same
+   * thing the notes tree does, and the reason a second "New folder" in a row
+   * does not fail on a collision.
+   */
+  const handleNewFolder = React.useCallback(
+    (parent: string | null) => {
+      void run(async () => {
+        const name = uniqueFolderName(DEFAULT_FOLDER_NAME, childFolderNames(tree, parent))
+        const { folder: created } = await canvasFolderService.create({ parent, name })
+        if (parent) setExpanded((previous) => new Set(previous).add(parent))
+        setFilter('')
+        // The path the STORE settled on, not the one we asked for: it
+        // canonicalises names it cannot use as a directory, so a predicted path
+        // addresses a row that does not exist and the field opens on nothing.
+        // Only fall back when the store returned no folder at all.
+        const path = created?.path ?? (parent ? `${parent}/${name}` : name)
+        // Freshly created, so it has a row of its own — nothing to mint.
+        beginEdit({ kind: 'folder', path, materialized: false }, splitFolderPath(path).name)
+      })
+    },
+    [beginEdit, run, tree]
+  )
+
+  React.useImperativeHandle(ref, () => ({ createFolder: () => handleNewFolder(null) }), [
+    handleNewFolder
+  ])
 
   /**
    * The keyboard path to moving a folder. Drag and drop has none, so this is
@@ -634,40 +742,22 @@ export function CanvasTree({
     (target: CanvasTreeFolderNode, parent: string | null) => {
       void run(async () => {
         await ensureFolderRow(target.path, target.materialized)
-        return canvasFolderService.move({ path: target.path, parent })
+        const { folder: moved } = await canvasFolderService.move({ path: target.path, parent })
+        // The row this ran from is gone: a folder row's key IS its path. The
+        // menu restores focus to a trigger that went with it, so without a
+        // target of its own a keyboard move ends on `document.body`.
+        //
+        // The path the STORE settled on, for the reason submitEdit and
+        // handleNewFolder read theirs back: it canonicalises names it cannot
+        // use as a directory, and resolves a collision under the new parent, so
+        // a predicted path names a row that never renders. Only fall back when
+        // the store returned no folder at all.
+        const { name } = splitFolderPath(target.path)
+        const path = moved?.path ?? (parent ? `${parent}/${name}` : name)
+        setPendingFocus([`folder:${path}`])
       })
     },
     [ensureFolderRow, run]
-  )
-
-  const handleSubmitPrompt = React.useCallback(
-    async (value: string): Promise<boolean> => {
-      if (!prompt) return true
-      const ok = await run(async () => {
-        if (prompt.kind === 'rename-canvas') {
-          await canvasService.update({ id: prompt.canvas.id, title: value })
-        } else if (prompt.kind === 'rename-folder') {
-          await ensureFolderRow(prompt.node.path, prompt.node.materialized)
-          await canvasFolderService.rename({ path: prompt.node.path, name: value })
-        } else {
-          await canvasFolderService.create({ parent: prompt.parent, name: value })
-        }
-      })
-      if (!ok) return ok
-
-      // A renamed folder's key IS its path, so it changed; the old row is gone
-      // and Radix would restore focus to a detached node.
-      if (prompt.kind === 'rename-canvas') {
-        setPendingFocus([`canvas:${prompt.canvas.id}`])
-      } else {
-        const parent =
-          prompt.kind === 'rename-folder' ? splitFolderPath(prompt.node.path).parent : prompt.parent
-        setPendingFocus([`folder:${parent ? `${parent}/${value}` : value}`])
-      }
-      setPrompt(null)
-      return ok
-    },
-    [ensureFolderRow, prompt, run]
   )
 
   const handleConfirm = React.useCallback(async (): Promise<void> => {
@@ -696,28 +786,24 @@ export function CanvasTree({
     setConfirm(null)
   }, [confirm, ensureFolderRow, run, survivorsAround])
 
-  const promptCopy = React.useMemo(() => {
-    if (!prompt) return null
-    if (prompt.kind === 'rename-canvas') {
-      return {
-        title: t('canvas.renameTitle'),
-        label: t('canvas.renameLabel'),
-        initialValue: prompt.canvas.title ?? ''
-      }
-    }
-    if (prompt.kind === 'rename-folder') {
-      return {
-        title: t('canvas.renameFolderTitle'),
-        label: t('canvas.folderNameLabel'),
-        initialValue: prompt.node.name
-      }
-    }
+  /**
+   * The field's props for `key`, or `null` when this is not the row being
+   * named. Its absence is what tells a row to render its label.
+   */
+  const editFor = (key: string): CanvasRowEdit | null => {
+    if (!editing || editKeyOf(editing.target) !== key) return null
     return {
-      title: t('canvas.newFolderTitle'),
-      label: t('canvas.folderNameLabel'),
-      initialValue: ''
+      value: editing.value,
+      busy: editing.busy,
+      // The reason belongs to the value that earned it: it clears the moment
+      // the user edits that value away — which is also what makes blur a commit
+      // again — and comes back if they type it in once more.
+      error: editing.failure?.value === editing.value.trim() ? editing.failure.message : null,
+      onChange: changeEdit,
+      onSubmit: () => void submitEdit(),
+      onCancel: cancelEdit
     }
-  }, [prompt, t])
+  }
 
   const confirmCopy = React.useMemo(() => {
     if (!confirm) return null
@@ -738,20 +824,10 @@ export function CanvasTree({
     }
   }, [confirm, t])
 
-  // Rendered beside every state below, the empty one included: the "New folder"
-  // affordance a vault with nothing needs is useless without its name dialog.
+  // Rendered beside every state below: a delete started from a row survives the
+  // list collapsing to its empty state under it.
   const dialogs = (
     <>
-      {prompt && promptCopy && (
-        <CanvasNameDialog
-          title={promptCopy.title}
-          label={promptCopy.label}
-          initialValue={promptCopy.initialValue}
-          onSubmit={handleSubmitPrompt}
-          onCancel={() => setPrompt(null)}
-        />
-      )}
-
       {confirm && confirmCopy && (
         <CanvasConfirmDialog
           title={confirmCopy.title}
@@ -802,7 +878,7 @@ export function CanvasTree({
             </button>
             <button
               type="button"
-              onClick={() => setPrompt({ kind: 'new-folder', parent: null })}
+              onClick={() => handleNewFolder(null)}
               className={EMPTY_STATE_ACTION_CLASS}
             >
               {t('canvas.actions.newFolder')}
@@ -847,6 +923,7 @@ export function CanvasTree({
                 <CanvasFolderRow
                   rowKey={rowKeyOf(node)}
                   node={node}
+                  edit={editFor(rowKeyOf(node))}
                   isExpanded={isExpanded}
                   isDropTarget={dropTarget === node.path}
                   onDragStart={(event, target) =>
@@ -867,7 +944,7 @@ export function CanvasTree({
                   onDrop={(event, target) => handleDrop(event, target.path)}
                   onToggle={toggleFolder}
                   onNewCanvas={handleNewCanvas}
-                  onNewFolder={(path) => setPrompt({ kind: 'new-folder', parent: path })}
+                  onNewFolder={handleNewFolder}
                   onSetIcon={(target, icon) => {
                     void run(async () => {
                       // The icon lives ONLY on the row, so a materialized folder
@@ -876,7 +953,12 @@ export function CanvasTree({
                       return canvasFolderService.setIcon({ path: target.path, icon })
                     })
                   }}
-                  onRename={(target) => setPrompt({ kind: 'rename-folder', node: target })}
+                  onRename={(target) =>
+                    beginEdit(
+                      { kind: 'folder', path: target.path, materialized: target.materialized },
+                      target.name
+                    )
+                  }
                   folderOptions={folderOptions}
                   onMove={handleFolderMove}
                   onDelete={(target) =>
@@ -930,6 +1012,7 @@ export function CanvasTree({
               key={rowKeyOf(node)}
               rowKey={rowKeyOf(node)}
               canvas={canvas}
+              edit={editFor(rowKeyOf(node))}
               depth={node.depth}
               isActive={isActiveItem(sidebarItem)}
               folderOptions={folderOptions}
@@ -937,7 +1020,9 @@ export function CanvasTree({
                 onTargetFolderChange?.(target.folder ?? null)
                 onCanvasClick?.(target)
               }}
-              onRename={(target) => setPrompt({ kind: 'rename-canvas', canvas: target })}
+              onRename={(target) =>
+                beginEdit({ kind: 'canvas', id: target.id }, target.title || t('canvas.untitled'))
+              }
               onDuplicate={(target) => {
                 void run(() => canvasService.duplicate(target.id))
               }}

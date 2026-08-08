@@ -3,6 +3,7 @@ import type { CanvasSummary } from '@/services/canvas-service'
 import type { CanvasFolder } from '@/services/canvas-folder-service'
 import {
   buildCanvasTree,
+  childFolderNames,
   collectFolderPaths,
   filterCanvasTree,
   flattenVisible,
@@ -10,6 +11,7 @@ import {
   folderSubtreeDepth,
   rewriteExpandedFolderPaths,
   splitFolderPath,
+  uniqueFolderName,
   MAX_CANVAS_FOLDER_DEPTH,
   type CanvasTreeNode
 } from './canvas-tree-model'
@@ -378,5 +380,54 @@ describe('rewriteExpandedFolderPaths', () => {
   it('re-keys a move onto a new parent', () => {
     const next = rewriteExpandedFolderPaths(new Set(['Work/Q3']), 'Work/Q3', 'Personal/Q3')
     expect([...next]).toEqual(['Personal/Q3'])
+  })
+})
+
+describe('childFolderNames', () => {
+  const built = buildCanvasTree(
+    [canvas('c1', 'Alpha', 'Work/Q3')],
+    [folder('Work'), folder('Work/Q3'), folder('Personal')]
+  )
+
+  it('names the folders sitting at the root', () => {
+    expect(childFolderNames(built, null).sort()).toEqual(['Personal', 'Work'])
+  })
+
+  it('names only the direct children of a folder', () => {
+    expect(childFolderNames(built, 'Work')).toEqual(['Q3'])
+  })
+
+  it('finds the parent however the caller spells its case', () => {
+    // The create handler passes back the path the ROW carries, but a canvas can
+    // name its folder in another case; a miss here would silently uniquify
+    // against an empty sibling list and collide on disk.
+    expect(childFolderNames(built, 'work')).toEqual(['Q3'])
+  })
+
+  it('reads an unknown parent as holding no folders', () => {
+    expect(childFolderNames(built, 'Nowhere')).toEqual([])
+  })
+})
+
+describe('uniqueFolderName', () => {
+  it('keeps the base name when nothing has taken it', () => {
+    expect(uniqueFolderName('Untitled Folder', ['Work'])).toBe('Untitled Folder')
+  })
+
+  it('counts from 2, so the first duplicate is not named 1', () => {
+    expect(uniqueFolderName('Untitled Folder', ['Untitled Folder'])).toBe('Untitled Folder 2')
+  })
+
+  it('skips every suffix already taken', () => {
+    expect(uniqueFolderName('Untitled Folder', ['Untitled Folder', 'Untitled Folder 2'])).toBe(
+      'Untitled Folder 3'
+    )
+  })
+
+  it('treats a case-different sibling as taken', () => {
+    // macOS and Windows default to case-insensitive filesystems: creating
+    // `Untitled Folder` beside `untitled folder` is a collision the store
+    // refuses, so the UI must not offer the name.
+    expect(uniqueFolderName('Untitled Folder', ['untitled folder'])).toBe('Untitled Folder 2')
   })
 })

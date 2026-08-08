@@ -350,6 +350,50 @@ export function folderCanvasCounts(
   return out
 }
 
+/** The folder node stored at `path`, or `null`. Compared through `canvasPathKey`. */
+function findFolderNode(nodes: CanvasTreeNode[], path: string): CanvasTreeFolderNode | null {
+  const wanted = folderSegments(path).map(canvasPathKey).join('/')
+  for (const node of nodes) {
+    if (node.kind !== 'folder') continue
+    if (folderSegments(node.path).map(canvasPathKey).join('/') === wanted) return node
+    const nested = findFolderNode(node.children, path)
+    if (nested) return nested
+  }
+  return null
+}
+
+/**
+ * Names of the folders sitting DIRECTLY inside `parent` (`null` is the
+ * canvases root).
+ *
+ * What `uniqueFolderName` is judged against. Direct children only, because that
+ * is the scope a folder name has to be unique in — a `Q3` two levels down is
+ * not a collision.
+ */
+export function childFolderNames(nodes: CanvasTreeNode[], parent: string | null): string[] {
+  const level = parent === null ? nodes : (findFolderNode(nodes, parent)?.children ?? [])
+  return level.filter((node) => node.kind === 'folder').map((node) => node.name)
+}
+
+/**
+ * `base`, or `base 2`, `base 3`… — the first name `taken` has not claimed.
+ *
+ * A folder is created with a default name BEFORE the user types the real one,
+ * so the default has to be a name the store will accept. Compared through
+ * `canvasPathKey`, because macOS and Windows default to case-insensitive
+ * filesystems: creating `Untitled Folder` beside `untitled folder` is a
+ * collision the store refuses, and the user would watch the row never appear.
+ *
+ * Counts from 2 rather than 1 — `Untitled Folder` already IS the first one.
+ */
+export function uniqueFolderName(base: string, taken: readonly string[]): string {
+  const claimed = new Set(taken.map(canvasPathKey))
+  if (!claimed.has(canvasPathKey(base))) return base
+  let counter = 2
+  while (claimed.has(canvasPathKey(`${base} ${counter}`))) counter += 1
+  return `${base} ${counter}`
+}
+
 /** Every folder path in `nodes`, at any depth. */
 export function collectFolderPaths(
   nodes: CanvasTreeNode[],

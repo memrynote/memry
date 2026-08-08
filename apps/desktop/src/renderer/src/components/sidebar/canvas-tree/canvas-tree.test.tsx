@@ -92,11 +92,24 @@ vi.mock('@/components/sidebar/bookmark-menu-item', () => ({
   )
 }))
 
-// The real button opens an emoji popover. What the tree owes the user is the
-// call that follows the pick, so the seam is reduced to a button that makes one.
-vi.mock('@/components/folder-icon-button', () => ({
-  FolderIconButton: ({ onIconChange }: { onIconChange: (icon: string | null) => void }) => (
-    <button type="button" data-testid="folder-icon" onClick={() => onIconChange('📌')} />
+// `FolderIconButton` is deliberately NOT mocked: it wraps `IconPickerButton`,
+// which is a click-propagation boundary of its own — a picker that let its
+// clicks through would open or toggle the row behind it. A stub button in its
+// place erases that boundary and makes the suite blind to the leak. Only the
+// emoji grid itself is stubbed, because loading the real one is the one part
+// that costs anything.
+vi.mock('@/components/note/note-title/EmojiPicker', () => ({
+  EmojiPicker: ({
+    onSelect,
+    onRemove
+  }: {
+    onSelect: (icon: string) => void
+    onRemove: () => void
+  }) => (
+    <div data-testid="emoji-picker">
+      <button type="button" data-testid="emoji-pick" onClick={() => onSelect('📌')} />
+      <button type="button" data-testid="emoji-remove" onClick={onRemove} />
+    </div>
   )
 }))
 
@@ -137,6 +150,55 @@ function openRowMenu(label: string): HTMLElement {
   const row = screen.getByText(label).closest('[data-testid="canvas-tree-row"]')
   fireEvent.contextMenu(row as HTMLElement)
   return screen.getByTestId('canvas-tree-menu')
+}
+
+/**
+ * The row's own "⋯" dropdown — the menu that is a React CHILD of the row, and
+ * therefore the one whose events can leak into it. Opened from the keyboard,
+ * which is what Radix's trigger listens for.
+ */
+function openActionsMenu(rowLabel: string, menuLabel: string): Promise<HTMLElement> {
+  const row = screen.getByText(rowLabel).closest('[data-testid="canvas-tree-row"]') as HTMLElement
+  const trigger = within(row).getByLabelText(menuLabel)
+  trigger.focus()
+  fireEvent.keyDown(trigger, { key: 'Enter' })
+  return screen.findByTestId('canvas-row-actions-menu')
+}
+
+/** The row a node's key names, or `null` when it is not on screen. */
+function rowByKey(key: string): HTMLElement | null {
+  return document.querySelector<HTMLElement>(`[data-row-key="${key}"]`)
+}
+
+/**
+ * The inline naming field, whichever row kind owns it. Named through the row's
+ * own i18n key, so the assertion also pins the accessible name.
+ */
+function nameField(): Promise<HTMLElement> {
+  return screen.findByLabelText(/^(renameLabel|folderNameLabel)$/)
+}
+
+/** The same field, read in the tick it appeared in. */
+function queryNameField(): HTMLElement | null {
+  return screen.queryByLabelText(/^(renameLabel|folderNameLabel)$/)
+}
+
+/**
+ * Chooses an emoji for `row`, the way the user does: open the picker from the
+ * row's icon, then pick. Both clicks go through the real picker, so both of its
+ * propagation boundaries are exercised.
+ */
+async function pickIcon(row: HTMLElement): Promise<void> {
+  fireEvent.click(within(row).getByLabelText('setFolderIcon'))
+  fireEvent.click(await screen.findByTestId('emoji-pick'))
+}
+
+/** Types `value` into the open field and commits it with Enter. */
+async function commitName(value: string): Promise<HTMLElement> {
+  const input = await nameField()
+  fireEvent.change(input, { target: { value } })
+  fireEvent.keyDown(input, { key: 'Enter' })
+  return input
 }
 
 describe('CanvasTree', () => {
@@ -203,7 +265,84 @@ describe('CanvasTree', () => {
     expect(isRevealed(actions)).toBe(true)
   })
 
-  it('renames a canvas through the context menu', async () => {
+  /**
+   * The dropdown's content is portaled out of the row's DOM subtree, but it is
+   * still a React CHILD of the row — and React synthetic events propagate
+   * through the REACT tree — so choosing an item ALSO fired the row's own
+   * click. Asking for Rename opened the canvas; so did asking for Duplicate.
+   *
+   * The same leak was already stopped for keydown; this is the click half.
+   */
+  describe('choosing an item from a row menu is not clicking the row', () => {
+    it('does not open the canvas behind its menu', async () => {
+      setData([canvas({ id: 'c1', title: 'Alpha' })])
+      const onCanvasClick = vi.fn()
+      renderTree({ onCanvasClick })
+      await rowsRendered()
+
+      const menu = await openActionsMenu('Alpha', 'canvasMenu')
+      fireEvent.click(within(menu).getByText('duplicate'))
+
+      await waitFor(() => expect(mocks.canvas.duplicate).toHaveBeenCalledWith('c1'))
+      expect(onCanvasClick).not.toHaveBeenCalled()
+    })
+
+    it('does not open the canvas when Rename is the item chosen', async () => {
+      setData([canvas({ id: 'c1', title: 'Alpha' })])
+      const onCanvasClick = vi.fn()
+      renderTree({ onCanvasClick })
+      await rowsRendered()
+
+      const menu = await openActionsMenu('Alpha', 'canvasMenu')
+      fireEvent.click(within(menu).getByText('rename'))
+
+      // Asserted in the same tick the click was handled in: the leak is
+      // synchronous, and the field itself is transient once the menu hands
+      // focus back.
+      expect(queryNameField()).toBeInTheDocument()
+      expect(onCanvasClick).not.toHaveBeenCalled()
+    })
+
+    it('does not toggle the folder behind its menu', async () => {
+      setData([canvas({ id: 'c1', title: 'Beta', folder: 'Work' })], [folder('Work')])
+      const onTargetFolderChange = vi.fn()
+      renderTree({ onTargetFolderChange })
+      await rowsRendered()
+
+      const menu = await openActionsMenu('Work', 'folderMenu')
+      fireEvent.click(within(menu).getByText('rename'))
+
+      expect(queryNameField()).toBeInTheDocument()
+      // A toggle would have expanded the folder and reported it as the target.
+      expect(onTargetFolderChange).not.toHaveBeenCalled()
+      expect(screen.queryByText('Beta')).not.toBeInTheDocument()
+    })
+  })
+
+  /**
+   * The icon picker is the row's OTHER propagation boundary. Its popover is
+   * portaled out of the row's DOM subtree, but it stays a React CHILD of the
+   * row and React synthetic events travel the REACT tree — so both opening the
+   * picker and choosing from it used to be able to activate the row underneath.
+   */
+  it('choosing an icon is not clicking the row', async () => {
+    setData([canvas({ id: 'c1', title: 'Beta', folder: 'Work' })], [folder('Work')])
+    const onTargetFolderChange = vi.fn()
+    renderTree({ onTargetFolderChange })
+    await rowsRendered()
+
+    const row = screen.getByText('Work').closest('[data-testid="canvas-tree-row"]') as HTMLElement
+    await pickIcon(row)
+
+    await waitFor(() =>
+      expect(mocks.folder.setIcon).toHaveBeenCalledWith({ path: 'Work', icon: '📌' })
+    )
+    // A toggle would have expanded the folder and reported it as the target.
+    expect(onTargetFolderChange).not.toHaveBeenCalled()
+    expect(screen.queryByText('Beta')).not.toBeInTheDocument()
+  })
+
+  it('renames a canvas on the row itself, never in a dialog', async () => {
     setData([canvas({ id: 'c1', title: 'Alpha' })])
     renderTree()
     await rowsRendered()
@@ -211,14 +350,71 @@ describe('CanvasTree', () => {
     const menu = openRowMenu('Alpha')
     fireEvent.click(within(menu).getByText('rename'))
 
-    const dialog = await screen.findByRole('dialog')
-    const input = within(dialog).getByRole('textbox')
+    // The field opens carrying the current name, ON the row.
+    const input = await nameField()
+    expect(input).toHaveValue('Alpha')
+    expect(input.closest('[data-testid="canvas-tree-row"]')).not.toBeNull()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
     fireEvent.change(input, { target: { value: 'Renamed' } })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'save' }))
+    fireEvent.keyDown(input, { key: 'Enter' })
 
     await waitFor(() => {
       expect(mocks.canvas.update).toHaveBeenCalledWith({ id: 'c1', title: 'Renamed' })
     })
+  })
+
+  /**
+   * A row is a drag SOURCE, and a draggable ancestor takes the press-and-move
+   * gesture for a drag: the browser starts dragging the row instead of
+   * extending a selection, so the user cannot sweep the caret across the name
+   * they are editing, nor drag over part of it to replace it. Both row kinds
+   * therefore have to let go of the drag while their field is open.
+   */
+  describe('a row being named stops being a drag source', () => {
+    it('lets go on the folder row', async () => {
+      setData([], [folder('Work')])
+      renderTree()
+      await rowsRendered()
+
+      expect(rowByKey('folder:Work')).toHaveAttribute('draggable', 'true')
+
+      fireEvent.click(within(openRowMenu('Work')).getByText('rename'))
+      await nameField()
+
+      expect(rowByKey('folder:Work')).toHaveAttribute('draggable', 'false')
+    })
+
+    it('lets go on the canvas row', async () => {
+      setData([canvas({ id: 'c1', title: 'Alpha' })])
+      renderTree()
+      await rowsRendered()
+
+      expect(rowByKey('canvas:c1')).toHaveAttribute('draggable', 'true')
+
+      fireEvent.click(within(openRowMenu('Alpha')).getByText('rename'))
+      await nameField()
+
+      expect(rowByKey('canvas:c1')).toHaveAttribute('draggable', 'false')
+    })
+  })
+
+  it('clicking into the field is not clicking the row', async () => {
+    // The row opens the canvas on click, and the field sits inside it. Putting
+    // the caret somewhere is not asking for the canvas.
+    setData([canvas({ id: 'c1', title: 'Alpha' })])
+    const onCanvasClick = vi.fn()
+    renderTree({ onCanvasClick })
+    await rowsRendered()
+
+    fireEvent.click(within(openRowMenu('Alpha')).getByText('rename'))
+    const input = await nameField()
+    expect(onCanvasClick).not.toHaveBeenCalled()
+
+    fireEvent.click(input)
+
+    expect(onCanvasClick).not.toHaveBeenCalled()
+    expect(input).toBeInTheDocument()
   })
 
   it('deletes only after the confirmation is accepted', async () => {
@@ -321,29 +517,32 @@ describe('CanvasTree', () => {
     await waitFor(() => expect(screen.getByText('Beta')).toBeInTheDocument())
   })
 
-  it('surfaces a typed folder failure as its translated message', async () => {
-    setData([], [folder('Work')])
-    mocks.folder.create.mockRejectedValue(new Error('errors:canvasFolder.exists'))
+  it('surfaces a typed folder failure in the field, and keeps the user in it', async () => {
+    setData([], [folder('Work'), folder('Personal')])
+    mocks.folder.rename.mockRejectedValue(new Error('errors:canvasFolder.exists'))
     renderTree()
     await rowsRendered()
 
-    const menu = openRowMenu('Work')
-    fireEvent.click(within(menu).getByText('newFolder'))
-
-    const dialog = await screen.findByRole('dialog')
-    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Q3' } })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'save' }))
+    fireEvent.click(within(openRowMenu('Work')).getByText('rename'))
+    const input = await commitName('Personal')
 
     await waitFor(() => {
-      expect(mocks.folder.create).toHaveBeenCalledWith({ parent: 'Work', name: 'Q3' })
+      expect(mocks.folder.rename).toHaveBeenCalledWith({ path: 'Work', name: 'Personal' })
       // The whole chain: CanvasFolderErrorCode.EXISTS → the `errors:` key the
       // IPC layer sends → the sentence extractErrorMessage resolves it to.
       expect(mocks.toastError).toHaveBeenCalledWith(
         'A canvas folder with that name already exists here.'
       )
     })
-    // A rejected name is worth keeping on screen to fix.
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+
+    // A refused name is an instruction to type another one, so the field stays
+    // — with the reason beside it, not only in a toast that scrolls away.
+    expect(input).toBeInTheDocument()
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'A canvas folder with that name already exists here.'
+    )
+    await waitFor(() => expect(input).toHaveFocus())
   })
 
   it('creates a canvas inside the folder it was asked from', async () => {
@@ -358,6 +557,158 @@ describe('CanvasTree', () => {
     await waitFor(() => {
       expect(mocks.canvas.create).toHaveBeenCalledWith({ folder: 'Work' })
       expect(onCanvasClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'c9' }))
+    })
+  })
+
+  /**
+   * Creating anything is one interaction: the row is made immediately and opens
+   * as a field. That only holds if the new row is actually ON SCREEN — a folder
+   * left collapsed or a filter left in place puts the field somewhere the user
+   * cannot see they are typing.
+   */
+  describe('a new row opens as a field', () => {
+    /** What the main process emits once the canvas exists on disk. */
+    function refreshed(canvases: CanvasSummary[], folders: CanvasFolder[]): void {
+      setData(canvases, folders)
+      mocks.subscriptions.forEach((cb) => cb())
+    }
+
+    it('opens the new canvas for naming, in the folder it just expanded', async () => {
+      setData([], [folder('Work')])
+      mocks.canvas.create.mockResolvedValue({ id: 'c9', title: null, folder: 'Work' })
+      renderTree()
+      await rowsRendered()
+
+      fireEvent.click(within(openRowMenu('Work')).getByText('newCanvasHere'))
+      await waitFor(() => expect(mocks.canvas.create).toHaveBeenCalledWith({ folder: 'Work' }))
+
+      // Work was collapsed, so without the expansion the new row — and the
+      // field on it — never renders at all.
+      refreshed([canvas({ id: 'c9', folder: 'Work' })], [folder('Work')])
+
+      const input = await nameField()
+      expect(rowByKey('canvas:c9')).toContainElement(input)
+      // Pre-filled with the label the row would otherwise show, so overtyping
+      // it is the whole interaction.
+      expect(input).toHaveValue('untitled')
+
+      fireEvent.change(input, { target: { value: 'Plan' } })
+      fireEvent.keyDown(input, { key: 'Enter' })
+      await waitFor(() =>
+        expect(mocks.canvas.update).toHaveBeenCalledWith({ id: 'c9', title: 'Plan' })
+      )
+    })
+
+    it('clears a filter that would hide the canvas it just created', async () => {
+      // Work is already open, so the filter is the only thing that could keep
+      // the new row off screen.
+      localStorage.setItem('sidebar-canvas-tree-expanded', JSON.stringify(['Work']))
+      setData(
+        [canvas({ id: 'c1', title: 'Alpha' }), canvas({ id: 'c2', title: 'Beta', folder: 'Work' })],
+        [folder('Work')]
+      )
+      mocks.canvas.create.mockResolvedValue({ id: 'c9', title: null, folder: 'Work' })
+      renderTree({ filterThreshold: 2 })
+      await rowsRendered()
+
+      fireEvent.change(screen.getByLabelText('filterPlaceholder'), { target: { value: 'beta' } })
+      await waitFor(() => expect(screen.queryByText('Alpha')).not.toBeInTheDocument())
+
+      fireEvent.click(within(openRowMenu('Work')).getByText('newCanvasHere'))
+      await waitFor(() => expect(mocks.canvas.create).toHaveBeenCalledWith({ folder: 'Work' }))
+
+      refreshed(
+        [
+          canvas({ id: 'c1', title: 'Alpha' }),
+          canvas({ id: 'c2', title: 'Beta', folder: 'Work' }),
+          canvas({ id: 'c9', folder: 'Work' })
+        ],
+        [folder('Work')]
+      )
+
+      // An untitled canvas does not match "beta", so a filter left standing
+      // leaves the user typing into a row that is not rendered.
+      const input = await nameField()
+      expect(rowByKey('canvas:c9')).toContainElement(input)
+    })
+
+    it('opens the new subfolder for naming, in the parent it just expanded', async () => {
+      setData([], [folder('Work')])
+      mocks.folder.create.mockResolvedValue({ folder: folder('Work/Untitled Folder') })
+      renderTree()
+      await rowsRendered()
+
+      fireEvent.click(within(openRowMenu('Work')).getByText('newFolder'))
+      await waitFor(() =>
+        expect(mocks.folder.create).toHaveBeenCalledWith({
+          parent: 'Work',
+          name: 'Untitled Folder'
+        })
+      )
+
+      refreshed([], [folder('Work'), folder('Work/Untitled Folder')])
+
+      const input = await nameField()
+      expect(rowByKey('folder:Work/Untitled Folder')).toContainElement(input)
+      expect(input).toHaveValue('Untitled Folder')
+    })
+
+    it('clears a filter that would hide the folder it just created', async () => {
+      setData([canvas({ id: 'c1', title: 'Alpha' }), canvas({ id: 'c2', title: 'Beta' })], [])
+      mocks.folder.create.mockResolvedValue({ folder: folder('Untitled Folder') })
+      const ref: { current: CanvasTreeActions | null } = { current: null }
+      render(
+        <SidebarProvider>
+          <CanvasTree ref={ref} filterThreshold={2} />
+        </SidebarProvider>
+      )
+      await rowsRendered()
+
+      fireEvent.change(screen.getByLabelText('filterPlaceholder'), { target: { value: 'alpha' } })
+      await waitFor(() => expect(screen.queryByText('Beta')).not.toBeInTheDocument())
+
+      await act(async () => {
+        ref.current?.createFolder()
+      })
+      await waitFor(() => expect(mocks.folder.create).toHaveBeenCalled())
+
+      refreshed(
+        [canvas({ id: 'c1', title: 'Alpha' }), canvas({ id: 'c2', title: 'Beta' })],
+        [folder('Untitled Folder')]
+      )
+
+      // The new folder matches nothing the user typed, so the filter has to go.
+      const input = await nameField()
+      expect(rowByKey('folder:Untitled Folder')).toContainElement(input)
+    })
+
+    it('opens the row the store actually made, not the one it was asked for', async () => {
+      // The store canonicalises a name it cannot use as a directory, so a
+      // predicted path addresses a row that does not exist and the field opens
+      // on nothing.
+      setData([], [])
+      mocks.folder.create.mockResolvedValue({ folder: folder('Untitled Folder canvas') })
+      renderTree()
+      await waitFor(() => expect(screen.getByText('empty')).toBeInTheDocument())
+
+      fireEvent.click(screen.getByRole('button', { name: 'newFolder' }))
+      await waitFor(() =>
+        expect(mocks.folder.create).toHaveBeenCalledWith({ parent: null, name: 'Untitled Folder' })
+      )
+
+      refreshed([], [folder('Untitled Folder canvas')])
+
+      const input = await nameField()
+      expect(input).toHaveValue('Untitled Folder canvas')
+
+      fireEvent.change(input, { target: { value: 'Work' } })
+      fireEvent.keyDown(input, { key: 'Enter' })
+      await waitFor(() =>
+        expect(mocks.folder.rename).toHaveBeenCalledWith({
+          path: 'Untitled Folder canvas',
+          name: 'Work'
+        })
+      )
     })
   })
 
@@ -395,9 +746,7 @@ describe('CanvasTree', () => {
       await rowsRendered()
 
       fireEvent.click(within(openRowMenu('Work')).getByText('rename'))
-      const dialog = await screen.findByRole('dialog')
-      fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Studio' } })
-      fireEvent.click(within(dialog).getByRole('button', { name: 'save' }))
+      await commitName('Studio')
 
       await waitFor(() => {
         expect(mocks.folder.rename).toHaveBeenCalledWith({ path: 'Work', name: 'Studio' })
@@ -414,7 +763,7 @@ describe('CanvasTree', () => {
       await rowsRendered()
 
       const row = screen.getByText('Q3').closest('[data-testid="canvas-tree-row"]') as HTMLElement
-      fireEvent.click(within(row).getByTestId('folder-icon'))
+      await pickIcon(row)
 
       await waitFor(() => {
         expect(mocks.folder.setIcon).toHaveBeenCalledWith({ path: 'Work/Q3', icon: '📌' })
@@ -449,9 +798,7 @@ describe('CanvasTree', () => {
       await rowsRendered()
 
       fireEvent.click(within(openRowMenu('Work')).getByText('rename'))
-      const dialog = await screen.findByRole('dialog')
-      fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Studio' } })
-      fireEvent.click(within(dialog).getByRole('button', { name: 'save' }))
+      await commitName('Studio')
 
       await waitFor(() => {
         expect(mocks.folder.rename).toHaveBeenCalledWith({ path: 'Work', name: 'Studio' })
@@ -466,9 +813,7 @@ describe('CanvasTree', () => {
       await rowsRendered()
 
       fireEvent.click(within(openRowMenu('Work')).getByText('rename'))
-      const dialog = await screen.findByRole('dialog')
-      fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Studio' } })
-      fireEvent.click(within(dialog).getByRole('button', { name: 'save' }))
+      await commitName('Studio')
 
       await waitFor(() => expect(mocks.toastError).toHaveBeenCalled())
       expect(mocks.folder.rename).not.toHaveBeenCalled()
@@ -624,25 +969,104 @@ describe('CanvasTree', () => {
     expect(localStorage.getItem('sidebar-canvas-tree-expanded')).toContain('Studio')
   })
 
+  /**
+   * A rename is not a promise that the name asked for is the name given: the
+   * store canonicalises anything it cannot use as a directory. A folder row's
+   * key IS its path, so a predicted key addresses a row that never renders and
+   * focus restoration lands nowhere — the same failure `handleNewFolder` had.
+   */
+  it('returns focus to the folder path the store settled on, not the name it asked for', async () => {
+    setData([], [folder('Work')])
+    mocks.folder.rename.mockResolvedValue({ folder: folder('CON canvas') })
+    renderTree()
+    await rowsRendered()
+
+    fireEvent.click(within(openRowMenu('Work')).getByText('rename'))
+    await commitName('CON')
+
+    await waitFor(() =>
+      expect(mocks.folder.rename).toHaveBeenCalledWith({ path: 'Work', name: 'CON' })
+    )
+
+    // What the main process emits once the directory exists under its real name.
+    setData([], [folder('CON canvas')])
+    mocks.subscriptions.forEach((cb) => cb())
+
+    await waitFor(() => expect(rowByKey('folder:CON canvas')).not.toBeNull())
+    // The row the prediction named was never rendered — nothing to focus.
+    expect(rowByKey('folder:CON')).toBeNull()
+    await waitFor(() =>
+      expect(
+        rowByKey('folder:CON canvas')?.querySelector('[data-slot="sidebar-menu-button"]')
+      ).toHaveFocus()
+    )
+  })
+
   describe('creating a folder at the root', () => {
-    /** Types `name` into the open name dialog and saves it. */
-    async function submitName(name: string): Promise<void> {
-      const dialog = await screen.findByRole('dialog')
-      fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: name } })
-      fireEvent.click(within(dialog).getByRole('button', { name: 'save' }))
+    /**
+     * What the main process emits once the folder exists — the row the field is
+     * waiting for does not render until this lands.
+     */
+    function folderArrived(...paths: string[]): void {
+      setData(
+        [],
+        paths.map((path) => folder(path))
+      )
+      mocks.subscriptions.forEach((cb) => cb())
     }
 
     it('offers it from the empty state, so a vault with nothing is not a dead end', async () => {
       setData([], [])
-      mocks.folder.create.mockResolvedValue({ folder: folder('Work') })
+      mocks.folder.create.mockResolvedValue({ folder: folder('Untitled Folder') })
       renderTree()
       await waitFor(() => expect(screen.getByText('empty')).toBeInTheDocument())
 
       fireEvent.click(screen.getByRole('button', { name: 'newFolder' }))
-      await submitName('Work')
+
+      // Created straight away under a default name — no dialog stands between
+      // asking for a folder and having one.
+      await waitFor(() =>
+        expect(mocks.folder.create).toHaveBeenCalledWith({ parent: null, name: 'Untitled Folder' })
+      )
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+      folderArrived('Untitled Folder')
+      const input = await nameField()
+      expect(input).toHaveValue('Untitled Folder')
+
+      fireEvent.change(input, { target: { value: 'Work' } })
+      fireEvent.keyDown(input, { key: 'Enter' })
 
       await waitFor(() =>
-        expect(mocks.folder.create).toHaveBeenCalledWith({ parent: null, name: 'Work' })
+        expect(mocks.folder.rename).toHaveBeenCalledWith({
+          path: 'Untitled Folder',
+          name: 'Work'
+        })
+      )
+    })
+
+    it('steps the default name past the siblings that already took it', async () => {
+      // Created before the user has typed anything, so the default has to be a
+      // name the store will accept — otherwise a second New folder just fails.
+      setData([], [folder('Untitled Folder'), folder('Untitled Folder 2')])
+      mocks.folder.create.mockResolvedValue({ folder: folder('Untitled Folder 3') })
+      const ref: { current: CanvasTreeActions | null } = { current: null }
+      render(
+        <SidebarProvider>
+          <CanvasTree ref={ref} />
+        </SidebarProvider>
+      )
+      await rowsRendered()
+
+      await act(async () => {
+        ref.current?.createFolder()
+      })
+
+      await waitFor(() =>
+        expect(mocks.folder.create).toHaveBeenCalledWith({
+          parent: null,
+          name: 'Untitled Folder 3'
+        })
       )
     })
 
@@ -663,7 +1087,7 @@ describe('CanvasTree', () => {
       // menu can only ever create a CHILD — so without this handle the root is
       // unreachable however many folders already exist.
       setData([], [folder('Work')])
-      mocks.folder.create.mockResolvedValue({ folder: folder('Personal') })
+      mocks.folder.create.mockResolvedValue({ folder: folder('Untitled Folder') })
       const ref: { current: CanvasTreeActions | null } = { current: null }
       render(
         <SidebarProvider>
@@ -675,10 +1099,20 @@ describe('CanvasTree', () => {
       await act(async () => {
         ref.current?.createFolder()
       })
-      await submitName('Personal')
 
       await waitFor(() =>
-        expect(mocks.folder.create).toHaveBeenCalledWith({ parent: null, name: 'Personal' })
+        expect(mocks.folder.create).toHaveBeenCalledWith({ parent: null, name: 'Untitled Folder' })
+      )
+
+      folderArrived('Work', 'Untitled Folder')
+      fireEvent.change(await nameField(), { target: { value: 'Personal' } })
+      fireEvent.keyDown(await nameField(), { key: 'Enter' })
+
+      await waitFor(() =>
+        expect(mocks.folder.rename).toHaveBeenCalledWith({
+          path: 'Untitled Folder',
+          name: 'Personal'
+        })
       )
     })
   })
@@ -723,6 +1157,47 @@ describe('CanvasTree', () => {
       fireEvent.click(within(submenu).getByText('Personal'))
       await waitFor(() =>
         expect(mocks.folder.move).toHaveBeenCalledWith({ path: 'Work', parent: 'Personal' })
+      )
+    })
+
+    /**
+     * The menu is the only keyboard path to moving a folder, and the row it was
+     * run from is gone the moment the move lands: a folder row's key IS its
+     * path. Radix hands focus back to a trigger that went with it, so without a
+     * target of its own the move ends with focus on `document.body`.
+     *
+     * And the target has to be the path the STORE settled on — it canonicalises
+     * names it cannot use as a directory, so a predicted path names a row that
+     * never renders.
+     */
+    it('returns focus to the folder path the store settled on after a move', async () => {
+      localStorage.setItem('sidebar-canvas-tree-expanded', JSON.stringify(['Personal']))
+      setData([], [folder('Work'), folder('Personal')])
+      mocks.folder.move.mockResolvedValue({ folder: folder('Personal/Work canvas') })
+      renderTree()
+      await rowsRendered()
+
+      fireEvent.click(within(openRowMenu('Work')).getByText('moveToFolder'))
+      const submenu = await screen.findByTestId('canvas-folder-move-menu')
+      fireEvent.click(within(submenu).getByText('Personal'))
+
+      await waitFor(() =>
+        expect(mocks.folder.move).toHaveBeenCalledWith({ path: 'Work', parent: 'Personal' })
+      )
+
+      // What the main process emits once the directory has moved on disk.
+      setData([], [folder('Personal'), folder('Personal/Work canvas')])
+      mocks.subscriptions.forEach((cb) => cb())
+
+      await waitFor(() => expect(rowByKey('folder:Personal/Work canvas')).not.toBeNull())
+      // The row the prediction named was never rendered — nothing to focus.
+      expect(rowByKey('folder:Personal/Work')).toBeNull()
+      await waitFor(() =>
+        expect(
+          rowByKey('folder:Personal/Work canvas')?.querySelector(
+            '[data-slot="sidebar-menu-button"]'
+          )
+        ).toHaveFocus()
       )
     })
 

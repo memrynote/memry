@@ -16,8 +16,15 @@ it shows up in the other.
 - **Inside another folder**, right-click that folder — or focus it and use its
   **⋯** button — and choose **New folder**.
 
-Name it in the dialog and press **Save**. Folders nest up to eight levels deep;
-anything that would go deeper is refused rather than filed somewhere unexpected.
+Either way the folder is created immediately, under a default name, and its row
+in the tree turns into a text field with that name selected. Type the real name
+and press <kbd>Enter</kbd>. <kbd>Esc</kbd> keeps the default name, and clicking
+away accepts whatever you have typed.
+
+Folders nest up to eight levels deep; anything that would go deeper is refused
+rather than filed somewhere unexpected. A name the vault cannot accept — one
+that is already taken, or too deep — leaves the field open with the reason
+beside it, so you can type another one.
 
 While the section is completely empty there is no row to right-click, so it
 offers **New canvas** and **New folder** links directly. That is how the first
@@ -29,8 +36,9 @@ find it waiting on the next.
 
 ## Putting canvases in folders
 
-- **New canvas here** — from a folder's menu. The new board opens in a tab and
-  the folder expands to show it.
+- **New canvas here** — from a folder's menu. The new board opens in a tab, the
+  folder expands to show it, and its row opens as a text field so you can name
+  it without leaving the tree.
 - **Drag a canvas** onto a folder row. The row outlines while it is a legal
   drop.
 - **Drag a folder** onto another folder to move it, with everything inside.
@@ -56,7 +64,16 @@ Two shortcuts work directly on a focused row:
 
 ## Renaming
 
-**Rename** from the row menu, or <kbd>F2</kbd>, opens a small dialog.
+**Rename** from the row menu, or <kbd>F2</kbd>, turns the row itself into a text
+field with the current name selected — there is no dialog, so the row never
+moves out from under you.
+
+- <kbd>Enter</kbd> commits the new name.
+- <kbd>Esc</kbd> abandons the change and leaves the old name.
+- Clicking away commits too; an empty or unchanged name is simply not written.
+
+If the name is refused, the field stays open with the reason beside it and the
+caret comes back to it, ready for another try.
 
 Renaming a canvas renames its file too, so the board and the file keep the same
 name. Renaming a folder moves the directory and everything inside it in one go —

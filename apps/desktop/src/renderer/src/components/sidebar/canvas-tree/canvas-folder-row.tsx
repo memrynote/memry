@@ -33,6 +33,7 @@ import {
   type CanvasMenuEntry,
   type CanvasMenuSubItem
 } from './canvas-row-menu'
+import { CanvasRowNameInput, type CanvasRowEdit } from './canvas-row-name-input'
 
 export interface CanvasFolderRowProps {
   node: CanvasTreeFolderNode
@@ -43,6 +44,8 @@ export interface CanvasFolderRowProps {
   isDropTarget: boolean
   /** Every folder in the tree, in render order — the Move submenu's raw material. */
   folderOptions: CanvasFolderOption[]
+  /** Set only while THIS row is being named — the row draws a field instead of its label. */
+  edit?: CanvasRowEdit | null
   onToggle: (path: string) => void
   onNewCanvas: (path: string) => void
   onNewFolder: (path: string) => void
@@ -65,6 +68,7 @@ export function CanvasFolderRow({
   isExpanded,
   isDropTarget,
   folderOptions,
+  edit,
   onToggle,
   onNewCanvas,
   onNewFolder,
@@ -188,9 +192,12 @@ export function CanvasFolderRow({
    * that content, but it stays a React CHILD of the row and React synthetic
    * events propagate through the REACT tree, so a `Delete` aimed at the menu
    * also reached here and deleted the folder the user was navigating past.
+   *
+   * Inert while the row is being named too: `Delete` inside a text field edits
+   * the text, and must never reach the row's destructive action.
    */
   const handleKeyDown = (event: React.KeyboardEvent): void => {
-    if (event.defaultPrevented || menus.anyOpen) return
+    if (event.defaultPrevented || menus.anyOpen || edit) return
     if (event.key === 'F2') {
       event.preventDefault()
       onRename(node)
@@ -212,7 +219,9 @@ export function CanvasFolderRow({
           style={{ paddingInlineStart: `${node.depth * CANVAS_ROW_INDENT_PX}px` }}
           onClick={() => onToggle(node.path)}
           onKeyDown={handleKeyDown}
-          draggable
+          // A draggable ancestor swallows the pointer, so the user could not
+          // select the text in the field they are typing into.
+          draggable={!edit}
           onDragStart={(event) => onDragStart(event, node)}
           onDragEnd={onDragEnd}
           onDragOver={(event) => onDragOver(event, node)}
@@ -238,18 +247,25 @@ export function CanvasFolderRow({
             onPickerOpenChange={menus.setPickerOpen}
           />
 
-          <SidebarMenuButton className="flex-1" aria-expanded={isExpanded}>
-            <span className="sidebar-label-fade flex-1 text-[13px] font-medium text-sidebar-text-folder">
-              {node.name}
-            </span>
-          </SidebarMenuButton>
+          {/* The field REPLACES the label button rather than sitting inside it:
+              an <input> nested in a <button> is invalid, and the button would
+              swallow the clicks that place the caret. */}
+          {edit ? (
+            <CanvasRowNameInput edit={edit} ariaLabel={t('canvas.folderNameLabel')} />
+          ) : (
+            <SidebarMenuButton className="flex-1" aria-expanded={isExpanded}>
+              <span className="sidebar-label-fade flex-1 text-[13px] font-medium text-sidebar-text-folder">
+                {node.name}
+              </span>
+            </SidebarMenuButton>
+          )}
 
           {/* Only while collapsed, the way `SidebarSection` states its own
               count: expanded, the rows themselves are the answer and a badge
               would just be a second one. Informational rather than decorative,
               so it takes the heading token that clears AA at 10px instead of
               `--sidebar-muted`. */}
-          {!isExpanded && node.canvasCount > 0 && (
+          {!isExpanded && !edit && node.canvasCount > 0 && (
             <span
               data-testid="canvas-folder-count"
               aria-label={t('canvas.folderCanvasCount', { count: node.canvasCount })}

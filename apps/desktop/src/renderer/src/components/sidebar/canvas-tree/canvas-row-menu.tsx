@@ -288,7 +288,22 @@ export function CanvasRowActions({
           <MoreHorizontal className="h-4 w-4" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" data-testid="canvas-row-actions-menu">
+      {/*
+        Nothing chosen in here is also a click on the row.
+
+        Radix portals this content out of the row's DOM subtree, but it stays a
+        React CHILD of the row and React synthetic events propagate through the
+        REACT tree — so every item's click also reached the row's own `onClick`
+        and opened the canvas (or toggled the folder) the user had only asked
+        for a menu on. Stopped once, at the boundary, for the same reason the
+        keydown leak is guarded once on the row: a per-item fix is a list that
+        the next item added silently falls off.
+      */}
+      <DropdownMenuContent
+        align="end"
+        data-testid="canvas-row-actions-menu"
+        onClick={(event) => event.stopPropagation()}
+      >
         <CanvasDropdownMenuBody entries={entries} />
       </DropdownMenuContent>
     </DropdownMenu>

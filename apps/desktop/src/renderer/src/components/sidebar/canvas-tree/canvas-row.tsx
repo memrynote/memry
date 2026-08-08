@@ -45,6 +45,7 @@ import {
   useRowMenuState,
   type CanvasMenuEntry
 } from './canvas-row-menu'
+import { CanvasRowNameInput, type CanvasRowEdit } from './canvas-row-name-input'
 
 const CANVAS_ICON_SPACER = <div className="h-4 w-4" />
 
@@ -56,6 +57,8 @@ export interface CanvasRowProps {
   isActive: boolean
   /** Every folder in the tree, in render order — the Move submenu's contents. */
   folderOptions: CanvasFolderOption[]
+  /** Set only while THIS row is being named — the row draws a field instead of its label. */
+  edit?: CanvasRowEdit | null
   onOpen: (canvas: CanvasSummary) => void
   onRename: (canvas: CanvasSummary) => void
   onDuplicate: (canvas: CanvasSummary) => void
@@ -74,6 +77,7 @@ export function CanvasRow({
   depth,
   isActive,
   folderOptions,
+  edit,
   onOpen,
   onRename,
   onDuplicate,
@@ -194,9 +198,13 @@ export function CanvasRow({
    * React synthetic events propagate through the REACT tree — so `Delete`
    * pressed while arrowing through the menu also arrived here and destroyed a
    * canvas the user never chose.
+   *
+   * Inert while the row is being named for the same reason: `Delete` inside a
+   * text field edits the text, and must never reach the row's destructive
+   * action.
    */
   const handleKeyDown = (event: React.KeyboardEvent): void => {
-    if (event.defaultPrevented || menus.anyOpen) return
+    if (event.defaultPrevented || menus.anyOpen || edit) return
     if (event.key === 'F2') {
       if (unreadable) return
       event.preventDefault()
@@ -222,8 +230,10 @@ export function CanvasRow({
           // A row that cannot open must say why before it is clicked, not after.
           title={unreadable ? t('canvas.unreadable') : undefined}
           // An unreadable canvas is not draggable for the same reason its menu
-          // hides "Move to folder": there is no document to file anywhere.
-          draggable={!unreadable}
+          // hides "Move to folder": there is no document to file anywhere. A row
+          // being named is not draggable either — a draggable ancestor swallows
+          // the pointer, and the user could not select the text they are editing.
+          draggable={!unreadable && !edit}
           onDragStart={(event) => onDragStart(event, canvas)}
           onDragEnd={onDragEnd}
         >
@@ -248,18 +258,25 @@ export function CanvasRow({
             </IconPickerButton>
           )}
 
-          <SidebarMenuButton isActive={isActive} className="flex-1">
-            <span
-              className={cn(
-                'sidebar-label-fade flex-1 text-[13px] font-medium',
-                unreadable
-                  ? 'text-muted-foreground line-through decoration-destructive/60'
-                  : 'text-sidebar-text-folder'
-              )}
-            >
-              {title}
-            </span>
-          </SidebarMenuButton>
+          {/* The field REPLACES the label button rather than sitting inside it:
+              an <input> nested in a <button> is invalid, and the button would
+              swallow the clicks that place the caret. */}
+          {edit ? (
+            <CanvasRowNameInput edit={edit} ariaLabel={t('canvas.renameLabel')} />
+          ) : (
+            <SidebarMenuButton isActive={isActive} className="flex-1">
+              <span
+                className={cn(
+                  'sidebar-label-fade flex-1 text-[13px] font-medium',
+                  unreadable
+                    ? 'text-muted-foreground line-through decoration-destructive/60'
+                    : 'text-sidebar-text-folder'
+                )}
+              >
+                {title}
+              </span>
+            </SidebarMenuButton>
+          )}
 
           <CanvasRowActions
             label={t('canvas.actions.canvasMenu')}
