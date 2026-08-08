@@ -3,7 +3,9 @@ import { SigmaContainer, useSigma } from '@react-sigma/core'
 import { useTheme } from 'next-themes'
 import '@react-sigma/core/lib/style.css'
 import { X, Maximize2 } from '@/lib/icons'
+import Graph from 'graphology'
 import type { NodeDisplayData, EdgeDisplayData } from 'sigma/types'
+import type { GraphDataResponse } from '@memry/contracts/graph-api'
 import { Button } from '@/components/ui/button'
 import { useLocalGraphData } from '@/hooks/use-graph-data'
 import { buildGraphologyGraph } from '@/lib/graph-builder'
@@ -57,8 +59,8 @@ export function LocalGraphPanel({
   const softEdgeColor = useMemo(() => resolveGraphVar('--graph-edge-soft', '#d5d3cd'), [])
 
   const labelColor = useMemo(() => resolveGraphVar('--graph-label-color', '#1a1a1a'), [])
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const graph = useMemo(() => (data ? buildGraphologyGraph(data) : null), [data, resolvedTheme])
+
+  const { graph, layoutRevision } = useLiveLocalGraph(data, resolvedTheme)
 
   const nodeReducer = useCallback(
     (node: string, attrs: Record<string, unknown>): Partial<NodeDisplayData> => {
@@ -121,7 +123,7 @@ export function LocalGraphPanel({
     [graph, softEdgeColor]
   )
 
-  const sigmaSettings = useMemo(
+  const initialSigmaSettings = useMemo(
     () => ({
       nodeReducer,
       edgeReducer,
@@ -132,7 +134,10 @@ export function LocalGraphPanel({
       renderEdgeLabels: false,
       minEdgeThickness: 0.5
     }),
-    [nodeReducer, edgeReducer, labelColor]
+    // Frozen on purpose: a new settings object makes SigmaContainer rebuild the
+    // renderer. Reducers that change afterwards are pushed by LocalSigmaSettingsSync.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   )
 
   const handleFocusNode = useCallback(() => {}, [])
@@ -149,7 +154,7 @@ export function LocalGraphPanel({
     physicsHandleRef.current?.release(nodeId)
   }, [])
 
-  if (isLoading || !graph) {
+  if (isLoading || !data) {
     return (
       <div className="relative h-[250px] rounded-md border border-border bg-muted/30">
         <div className="flex h-full items-center justify-center">
@@ -160,7 +165,7 @@ export function LocalGraphPanel({
     )
   }
 
-  if (graph.order === 0) {
+  if (data.nodes.length === 0) {
     return (
       <div className="relative h-[250px] rounded-md border border-border bg-muted/30">
         <div className="flex h-full items-center justify-center">
@@ -175,13 +180,21 @@ export function LocalGraphPanel({
     <div className="relative h-[250px] rounded-md border border-border bg-muted/30 overflow-hidden">
       <PanelHeader onClose={onClose} onOpenFullGraph={onOpenFullGraph} />
 
-      <SigmaContainer graph={graph} settings={sigmaSettings} className="h-full w-full">
+      <SigmaContainer graph={graph} settings={initialSigmaSettings} className="h-full w-full">
+        <LocalSigmaSettingsSync nodeReducer={nodeReducer} edgeReducer={edgeReducer} />
         <LocalHoverFadeAnimator
           hoveredNode={hoveredNode}
           fadeRef={fadeRef}
           hoverTargetRef={hoverTargetRef}
         />
-        <LivePhysics graph={graph} handleRef={physicsHandleRef} options={LOCAL_PHYSICS} />
+        {/* Remounting the simulation is how nodes a refetch added get placed: the
+            graph instance outlives them now, so the effect keyed on it never re-runs. */}
+        <LivePhysics
+          key={layoutRevision}
+          graph={graph}
+          handleRef={physicsHandleRef}
+          options={LOCAL_PHYSICS}
+        />
         <GraphEvents
           onHoverNode={setHoveredNode}
           onTooltipMove={setTooltipPos}
@@ -197,6 +210,123 @@ export function LocalGraphPanel({
       )}
     </div>
   )
+}
+
+/**
+ * One graphology instance for the panel's lifetime, refilled in place as data arrives.
+ *
+ * `SigmaContainer` kills and rebuilds Sigma — and with it the WebGL context — whenever
+ * the `graph` or `settings` prop changes identity, and the note page invalidates
+ * `graphKeys.local(noteId)` on every 1s save debounce. Building a new graph per refetch
+ * therefore burned a WebGL context per keystroke pause; browsers cap the live ones and
+ * silently drop the oldest, which blanks graphs elsewhere in the app.
+ *
+ * `layoutRevision` counts the refills that changed the node or edge set, so the force
+ * simulation is restarted only when it has something new to place.
+ */
+function useLiveLocalGraph(
+  data: GraphDataResponse | undefined,
+  themeKey: string | undefined
+): { graph: Graph; layoutRevision: number } {
+  const [graph] = useState(() => new Graph({ multi: true, type: 'undirected' }))
+  const appliedRef = useRef<{ data: GraphDataResponse; themeKey: string | undefined } | null>(null)
+  const [layoutRevision, setLayoutRevision] = useState(0)
+
+  useEffect(() => {
+    if (!data) return
+    const applied = appliedRef.current
+    // `themeKey` takes part because a theme flip re-resolves the CSS colour
+    // variables every node and edge attribute was built from.
+    if (applied && applied.data === data && applied.themeKey === themeKey) return
+    appliedRef.current = { data, themeKey }
+    /* eslint-disable react-you-might-not-need-an-effect/no-event-handler,
+       react-you-might-not-need-an-effect/no-chain-state-updates,
+       react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- genuine external sync: the
+       graphology instance Sigma is bound to is mutated here, and the counter only records that
+       its node or edge set moved so the simulation can be rebuilt. Refilling during render
+       would fire graphology's change events mid-render. */
+    if (refillGraph(graph, buildGraphologyGraph(data))) {
+      setLayoutRevision((current) => current + 1)
+    }
+    /* eslint-enable react-you-might-not-need-an-effect/no-event-handler,
+       react-you-might-not-need-an-effect/no-chain-state-updates,
+       react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
+  }, [graph, data, themeKey])
+
+  return { graph, layoutRevision }
+}
+
+/**
+ * Make `graph` hold exactly what `next` holds, without replacing the instance.
+ *
+ * Attributes are copied from a freshly built graph rather than recomputed here, so this
+ * can never drift from `buildGraphologyGraph` (tag nodes, degree-scaled sizes). Nodes
+ * that survive keep the position the simulation settled them at — the arrangement the
+ * user is looking at. Returns true when the node or edge set changed.
+ */
+function refillGraph(graph: Graph, next: Graph): boolean {
+  // Measured before the refill, and only over the node and edge sets: an attribute-only
+  // refetch — a word count ticking up as the user types — must not disturb the layout.
+  const structureChanged =
+    next.someNode((node) => !graph.hasNode(node)) ||
+    graph.someNode((node) => !next.hasNode(node)) ||
+    next.someEdge((edge) => !graph.hasEdge(edge)) ||
+    graph.someEdge((edge) => !next.hasEdge(edge))
+
+  for (const node of graph.nodes()) {
+    if (!next.hasNode(node)) graph.dropNode(node)
+  }
+
+  for (const edge of graph.edges()) {
+    if (!next.hasEdge(edge)) graph.dropEdge(edge)
+  }
+
+  next.forEachNode((node, attributes) => {
+    if (!graph.hasNode(node)) {
+      graph.addNode(node, attributes)
+      return
+    }
+    graph.replaceNodeAttributes(node, {
+      ...attributes,
+      x: graph.getNodeAttribute(node, 'x'),
+      y: graph.getNodeAttribute(node, 'y')
+    })
+  })
+
+  next.forEachEdge((edge, attributes, source, target) => {
+    if (graph.hasEdge(edge)) {
+      graph.replaceEdgeAttributes(edge, attributes)
+      return
+    }
+    graph.addEdgeWithKey(edge, source, target, attributes)
+  })
+
+  return structureChanged
+}
+
+/**
+ * Pushes the current reducers onto the live Sigma. `settings` is frozen at first render
+ * because handing SigmaContainer a new object rebuilds the renderer, so reducers that
+ * close over changed props (a different centre note) have to be applied imperatively.
+ */
+function LocalSigmaSettingsSync({
+  nodeReducer,
+  edgeReducer
+}: {
+  nodeReducer: (node: string, attrs: Record<string, unknown>) => Partial<NodeDisplayData>
+  edgeReducer: (edge: string, attrs: Record<string, unknown>) => Partial<EdgeDisplayData>
+}): null {
+  const sigma = useSigma()
+
+  useEffect(() => {
+    sigma.setSetting('nodeReducer', nodeReducer)
+  }, [sigma, nodeReducer])
+
+  useEffect(() => {
+    sigma.setSetting('edgeReducer', edgeReducer)
+  }, [sigma, edgeReducer])
+
+  return null
 }
 
 function PanelHeader({
