@@ -140,6 +140,18 @@ External events are **read-mostly**: titles and times sync in. Inline edits prop
 
 While no Google account is linked, the calendar toolbar shows a **Connect Google** button. It opens a short prompt covering what a linked calendar unlocks — seeing your Google events beside notes and tasks, two-way sync, and scheduling tasks and notes on your calendar — then runs the same connect flow as Settings. The button disappears once an account is connected.
 
+### Multiple Accounts and Calendars
+
+You can link more than one Google account. In [Settings → Integrations](/user-guide/settings#integrations) → Google Calendar, **Add account** starts the connect flow again and Google shows its account chooser, so you can pick a different account than the one your browser is already signed in to.
+
+Each linked account gets its own group listing every calendar on that account — shared calendars, team calendars, holiday calendars, all of them — with a checkbox each. Tick a calendar to bring its events into memrynote; untick it to take them out. Only your primary calendar is ticked when an account is first linked, so nothing else arrives until you ask for it.
+
+**Unticking a calendar deletes its events from memrynote.** Nothing refreshes a calendar you have turned off, so its events are removed rather than left behind to go stale, and the removal reaches your other devices. Tick it again and the events are fetched fresh. Events you [promoted to your vault](#promote-external-events) are your own copy and are not affected.
+
+The calendar list refreshes on every sync, so a calendar you create in Google later shows up on its own. If you linked an account before this existed, your other calendars appear after the next sync — no need to reconnect.
+
+Each account has its own **Disconnect**, which unlinks only that account and removes only its events.
+
 ### Sync Direction
 
 By default Google Calendar sync is **two-way**: events, tasks, reminders, and snoozes you create in memrynote are pushed up to Google, and changes made in Google flow back into memrynote.
