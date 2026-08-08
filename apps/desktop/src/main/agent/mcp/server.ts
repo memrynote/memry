@@ -128,6 +128,22 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
     server.once('error', reject)
     server.listen(0, '127.0.0.1', () => {
       server.off('error', reject)
+      // Lifetime handler, installed in the same tick the listen-only one is
+      // removed. Without it a later server-level 'error' — accept(2) failing
+      // after listen — is an unhandled EventEmitter error thrown out of Node's
+      // onconnection callback, and main/index.ts's uncaughtException handler
+      // absorbs it into telemetry as `main_process:uncaught_exception`: nothing
+      // in the log file, and no hint the MCP endpoint was involved.
+      //
+      // Log and report only. An accept failure never closes the listening
+      // socket, so the endpoint keeps serving; stopping it here would kill
+      // Agent Chat for the rest of the vault session, because
+      // startAgentMcpLifecycle() early-returns while it holds this handle and
+      // nothing would rebind until the vault is switched.
+      server.on('error', (err) => {
+        logger.error('Agent MCP server error', err)
+        trackMainError('agent', 'mcp_server', err)
+      })
       resolve()
     })
   })

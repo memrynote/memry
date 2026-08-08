@@ -185,6 +185,11 @@ The localhost MCP endpoint can serve overlapping Agent Chat turns and external r
 keeps the URL/token stable for the app session, but handles each MCP request with an isolated
 transport so one client connection does not block another.
 
+If the operating system refuses a connection to the endpoint — for example when the app has run out
+of file handles — memrynote records the failure in the app log as an `AgentMcpServer` error and keeps
+the endpoint listening on the same URL and token. Individual client connections can be dropped, but
+Agent Chat and external clients can reconnect without restarting the app or reopening the vault.
+
 Client-specific config keys vary. Use the copied URL as the MCP server URL and the copied token as a
 Bearer authorization header. Plain external clients can use read tools, but they do not get the
 in-app conversation/window context that approved writes require.
