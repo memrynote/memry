@@ -79,8 +79,17 @@ export function connectGoogleCalendarProvider(): Promise<CalendarProviderMutatio
   return calendarService.connectProvider({ provider: 'google' })
 }
 
-export function disconnectGoogleCalendarProvider(): Promise<CalendarProviderMutationResponse> {
-  return calendarService.disconnectProvider({ provider: 'google' })
+/**
+ * Omitting `accountId` disconnects every linked Google account — that is the
+ * main-process fallback branch. Pass one to unlink a single account.
+ */
+export function disconnectGoogleCalendarProvider(
+  accountId?: string
+): Promise<CalendarProviderMutationResponse> {
+  return calendarService.disconnectProvider({
+    provider: 'google',
+    ...(accountId ? { accountId } : {})
+  })
 }
 
 export function refreshGoogleCalendarProvider(): Promise<CalendarProviderMutationResponse> {
