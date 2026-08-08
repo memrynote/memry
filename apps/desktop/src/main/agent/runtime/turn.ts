@@ -30,6 +30,10 @@ export interface TurnDeps {
 }
 
 const DEFAULT_CONVERSATION_TITLE = 'New conversation'
+// Title and summary stderr is drained purely to keep the child moving, so it is
+// retained as a bounded tail rather than in full: a CLI can emit megabytes of
+// node warnings and MCP diagnostics, and the reason it failed is at the end.
+const STDERR_TAIL_LIMIT = 8 * 1024
 const DEFAULT_TURN_PERMISSIONS: AgentTurnPermissions = {
   accessMode: 'vault_only',
   webSearchEnabled: false
@@ -332,6 +336,11 @@ async function generateTitleWithBackend(
     purpose: 'title'
   })
   const sub = deps.trackRunHandle?.(input.conversationId, rawSub) ?? rawSub
+  // Draining has to start before the event loop below, not after waitExit():
+  // once the OS stderr pipe buffer fills, the child blocks on write, so it
+  // stops producing stdout and never exits, and both the loop and waitExit()
+  // wait forever on a child that is waiting on us.
+  const stderrTailPromise = sub.stderr ? collectStreamTail(sub.stderr) : Promise.resolve('')
   let raw = ''
   let title = ''
 
@@ -345,7 +354,7 @@ async function generateTitleWithBackend(
 
     const exitCode = await sub.waitExit()
     if (exitCode !== 0) {
-      const stderrText = sub.stderr ? (await collectStreamText(sub.stderr)).trim() : ''
+      const stderrText = (await stderrTailPromise).trim()
       logger.warn('Conversation title backend exited non-zero', {
         backend: input.backend.id,
         exitCode,
@@ -428,6 +437,10 @@ async function summarizeWithBackend(
     purpose: 'summary'
   })
   const sub = deps.trackRunHandle?.(input.conversationId, rawSub) ?? rawSub
+  // Same deadlock as the title path: a summarize child that fills the stderr
+  // pipe blocks on write and never exits, and this one runs before the turn's
+  // own subprocess, so it strands the whole turn.
+  const stderrTailPromise = sub.stderr ? collectStreamTail(sub.stderr) : Promise.resolve('')
   let summary = ''
 
   try {
@@ -436,6 +449,13 @@ async function summarizeWithBackend(
     }
     const exitCode = await sub.waitExit()
     if (exitCode !== 0) {
+      // The thrown message is swallowed into a compaction warning upstream, so
+      // stderr is logged here or the CLI's own reason is lost entirely.
+      logger.warn('Conversation summary backend exited non-zero', {
+        backend: input.backend.id,
+        exitCode,
+        stderr: (await stderrTailPromise).trim()
+      })
       throw new Error(`${input.backend.id} summarize exited with code ${exitCode}`)
     }
     const trimmed = summary.trim()
@@ -446,6 +466,24 @@ async function summarizeWithBackend(
   } finally {
     await sub.cleanup()
   }
+}
+
+// Consumes the stream to the end — that is the point, the child cannot finish
+// until it does — while retaining only the last STDERR_TAIL_LIMIT characters.
+// Never rejects: callers only await it on the failure branch, so a read error
+// on a stream nobody is waiting for must not become an unhandled rejection in
+// main (where index.ts's uncaughtException handler would silently swallow it).
+async function collectStreamTail(stream: AsyncIterable<Buffer | string>): Promise<string> {
+  let text = ''
+  try {
+    for await (const chunk of stream) {
+      text += typeof chunk === 'string' ? chunk : chunk.toString('utf8')
+      if (text.length > STDERR_TAIL_LIMIT) text = text.slice(-STDERR_TAIL_LIMIT)
+    }
+  } catch (error) {
+    logger.warn('Failed to read backend stderr', error)
+  }
+  return text
 }
 
 async function collectStreamText(stream: AsyncIterable<Buffer | string>): Promise<string> {
