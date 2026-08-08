@@ -108,8 +108,9 @@ The prompt appears once per site, not once per PDF.
 
 Limits worth knowing:
 
-- The tab's address has to end in `.pdf`. A PDF served from an address without that ending isn't
-  recognised as one — the popup shows "Couldn't read this page" instead.
+- The tab's address has to end in `.pdf`, ignoring anything after a `?` or `#`. A PDF served from an
+  address without that ending isn't recognised as one — the popup shows "Couldn't read this page"
+  instead.
 - PDFs up to **16 MB** can be clipped. Larger ones are better saved to disk and dragged into the
   inbox, which allows up to 50 MB.
 - PDFs that can't be downloaded a second time — one-time links, or a file opened by submitting a form

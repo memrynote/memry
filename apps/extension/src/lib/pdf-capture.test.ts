@@ -65,6 +65,24 @@ describe('pdfFilenameFrom', () => {
     expect(pdfFilenameFrom('https://x.test/', null)).toBe('document.pdf')
   })
 
+  // The contract caps pdfFilename at 255. Exceeding it 422s on the desktop, and a
+  // 422 is not retryable while PDF captures are never queued — the clip would be
+  // lost outright, so the cap is enforced here rather than left to the server.
+  it('clamps an over-long name to the 255-char contract bound, keeping .pdf', () => {
+    const name = pdfFilenameFrom(`https://x.test/${'a'.repeat(400)}.pdf`, null)
+    expect(name.length).toBe(255)
+    expect(name.endsWith('.pdf')).toBe(true)
+  })
+
+  it('clamps an over-long Content-Disposition name too', () => {
+    const name = pdfFilenameFrom(
+      'https://x.test/a.pdf',
+      `attachment; filename="${'b'.repeat(400)}"`
+    )
+    expect(name.length).toBe(255)
+    expect(name.endsWith('.pdf')).toBe(true)
+  })
+
   it('decodes an RFC 5987 filename* value', () => {
     expect(
       pdfFilenameFrom('https://x.test/dl', "attachment; filename*=UTF-8''R%C3%A9sum%C3%A9.pdf")

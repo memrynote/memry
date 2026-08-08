@@ -61,10 +61,19 @@ function fromUrlPath(url: string): string | null {
   }
 }
 
+// Matches the contract's pdfFilename bound. A longer name would 422 on the
+// desktop, and a 422 is not retryable and PDF captures are never queued — the
+// clip would be lost outright rather than merely misnamed.
+const MAX_FILENAME_LENGTH = 255
+
 // Best available name for the stored file, always ending in .pdf.
 export function pdfFilenameFrom(url: string, contentDisposition: string | null): string {
   const name = fromContentDisposition(contentDisposition) ?? fromUrlPath(url) ?? 'document'
-  return /\.pdf$/i.test(name) ? name : `${name}.pdf`
+  const stem = (/\.pdf$/i.test(name) ? name.slice(0, -4) : name).slice(
+    0,
+    MAX_FILENAME_LENGTH - '.pdf'.length
+  )
+  return `${stem}.pdf`
 }
 
 // Cheap proof the bytes really are a PDF. An auth-gated URL commonly returns a
