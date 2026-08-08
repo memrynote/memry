@@ -8,7 +8,7 @@ import type {
   StatusResponse
 } from '@/lib/messages'
 import { initialState, reducer, selectPhase } from '@/lib/popup-state'
-import { ensureHostPermission } from '@/lib/capture-permissions'
+import { ensureCapturePermissions } from '@/lib/capture-permissions'
 import { EditableTitle } from '@/components/EditableTitle'
 import { PropertyRows } from '@/components/PropertyRows'
 import { TagEditor } from '@/components/TagEditor'
@@ -132,7 +132,7 @@ export default function App() {
   // a no-op on Chrome/Edge where it's granted at install. Then re-probe: the
   // mount probe may have been blocked by the missing permission.
   const onSend = async () => {
-    if (!(await ensureHostPermission())) {
+    if (!(await ensureCapturePermissions(null))) {
       dispatch({ type: 'SAVE_DONE', result: { ok: false, error: 'permission-denied' } })
       return
     }

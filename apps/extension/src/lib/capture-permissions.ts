@@ -1,3 +1,5 @@
+import { originPatternOf } from './pdf-capture'
+
 // Firefox MV3 treats manifest host_permissions as opt-in: they are NOT granted
 // at install, so every 127.0.0.1 loopback fetch is blocked until the user
 // approves. Chrome/Edge grant the declared host at install, so contains() is
@@ -9,18 +11,37 @@ interface PermissionsApi {
   request(perms: { origins: string[] }): Promise<boolean>
 }
 
-// Ensure the loopback host permission before any 127.0.0.1 fetch. Must be called
-// from a user gesture (a click) so Firefox allows the request prompt. Returns
-// true when the permission is held (already granted, or just approved), false
-// when the user denies it. If the permissions API is unavailable the capture is
-// not blocked — the manifest still declares the host.
-export async function ensureHostPermission(
+// Ensure every origin this capture needs, in ONE request so the user gesture is
+// not split — Firefox drops the prompt for a second, await-separated request.
+// `pageUrl` is the tab we may need to re-fetch (PDF mode); pass null for captures
+// that only talk to the desktop app.
+export async function ensureCapturePermissions(
+  pageUrl: string | null,
   permissions: PermissionsApi = browser.permissions
 ): Promise<boolean> {
+  const pagePattern = pageUrl ? originPatternOf(pageUrl) : null
+  const origins = pagePattern ? [LOOPBACK_ORIGIN, pagePattern] : [LOOPBACK_ORIGIN]
   try {
-    if (await permissions.contains({ origins: [LOOPBACK_ORIGIN] })) return true
-    return await permissions.request({ origins: [LOOPBACK_ORIGIN] })
+    if (await permissions.contains({ origins })) return true
+    return await permissions.request({ origins })
   } catch {
     return true
+  }
+}
+
+// Check-only variant for the background service worker, which has no user
+// gesture and therefore cannot prompt. Unlike ensureCapturePermissions, an
+// unavailable permissions API means "no" — we must not attempt a fetch we
+// are not allowed to make.
+export async function hasOriginPermission(
+  pageUrl: string,
+  permissions: PermissionsApi = browser.permissions
+): Promise<boolean> {
+  const pattern = originPatternOf(pageUrl)
+  if (!pattern) return false
+  try {
+    return await permissions.contains({ origins: [pattern] })
+  } catch {
+    return false
   }
 }
