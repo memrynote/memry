@@ -110,7 +110,7 @@
   },
   "devDependencies": {
     "@ai-sdk/anthropic": "^3.0.107",
-    "@ai-sdk/openai": "^3.0.68",
+    "@ai-sdk/openai": "^3.0.91",
     "@blocknote/code-block": "^0.47.1",
     "@blocknote/core": "^0.47.1",
     "@blocknote/react": "^0.47.1",

@@ -138,8 +138,8 @@ importers:
         specifier: ^3.0.107
         version: 3.0.107(zod@4.3.6)
       '@ai-sdk/openai':
-        specifier: ^3.0.68
-        version: 3.0.71(zod@4.3.6)
+        specifier: ^3.0.91
+        version: 3.0.91(zod@4.3.6)
       '@blocknote/code-block':
         specifier: ^0.47.1
         version: 0.47.1(@blocknote/core@0.47.1(patch_hash=3449fe80e8250449972daaa5e90945cc40086f945ac0ed30c6a3f0d8d89a9848)(@types/hast@3.0.4))
@@ -1265,8 +1265,8 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/openai@3.0.71':
-    resolution: {integrity: sha512-j6eBAa5oHFZ4U5CxpIV3T4zXNM/BviodNCZCL1qHkA4aqkwK9iQ18TWYz2DZcXpw4BO5pikKzqpXORxb1EnZGA==}
+  '@ai-sdk/openai@3.0.91':
+    resolution: {integrity: sha512-NJQ1ukJ/c2uKVHCJiVToMlSKEhtWnGHBO/klxQwyV3JY/zOlsgrTilGj/t3KX48B1a6dYYnRxu0Pnand12vrsA==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -12905,10 +12905,10 @@ snapshots:
       '@vercel/oidc': 3.1.0
       zod: 4.3.6
 
-  '@ai-sdk/openai@3.0.71(zod@4.3.6)':
+  '@ai-sdk/openai@3.0.91(zod@4.3.6)':
     dependencies:
-      '@ai-sdk/provider': 3.0.10
-      '@ai-sdk/provider-utils': 4.0.29(zod@4.3.6)
+      '@ai-sdk/provider': 3.0.14
+      '@ai-sdk/provider-utils': 4.0.42(zod@4.3.6)
       zod: 4.3.6
 
   '@ai-sdk/provider-utils@4.0.19(zod@4.3.6)':
