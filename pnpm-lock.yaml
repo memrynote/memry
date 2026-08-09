@@ -54,7 +54,7 @@ overrides:
   brace-expansion@>=5.0.0 <5.0.7: 5.0.7
   js-yaml@>=3.0.0 <3.15.0: 3.15.0
   js-yaml@>=4.0.0 <4.3.0: 4.3.1
-  nanoid@>=3.0.0 <3.3.8: 3.3.8
+  nanoid@>=3.0.0 <3.3.8: 5.1.16
   nanoid@>=4.0.0 <5.0.9: 5.0.9
   uuid@>=8.0.0 <9.0.0: 11.1.1
   react-router@>=7.0.0 <7.18.0: 7.18.0
@@ -607,7 +607,7 @@ importers:
         version: 12.34.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       nanoid:
         specifier: ^5.1.6
-        version: 5.1.6
+        version: 5.1.16
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -1002,7 +1002,7 @@ importers:
         version: 17.0.1
       nanoid:
         specifier: ^5.1.6
-        version: 5.1.6
+        version: 5.1.16
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*
@@ -9895,18 +9895,13 @@ packages:
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
-  nanoid@3.3.8:
-    resolution: {integrity: sha512-WNLf5Sd8oZxOm+TzppcYk8gVOgP+l58xNy58D0nbUnOxOWRWvlcCV4kUF7ltmI6PsrLl/BgKEyS4mqsGChFN0w==}
-    engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
-    hasBin: true
-
   nanoid@5.0.9:
     resolution: {integrity: sha512-Aooyr6MXU6HpvvWXKoVoXwKMs/KyVakWwg7xQfv5/S/RIgJMy0Ifa45H9qqYy7pTCszrHzP21Uk4PZq2HpEM8Q==}
     engines: {node: ^18 || >=20}
     hasBin: true
 
-  nanoid@5.1.6:
-    resolution: {integrity: sha512-c7+7RQ+dMB5dPwwCp4ee1/iV/q2P6aK1mTZcfr1BTuVlyW9hJYiMPybJCcnBlQtuSmTIWNeazm/zqNoZSSElBg==}
+  nanoid@5.1.16:
+    resolution: {integrity: sha512-kVrnsrJqMR8+oLJnGEmSWw9BivK5mt7H3FZatVRjrc5wGqFYuBxX1yG7+A7Gi5AefkX6t/oCkizcQgpu0cY1dQ==}
     engines: {node: ^18 || >=20}
     hasBin: true
 
@@ -14087,7 +14082,7 @@ snapshots:
       jotai-scope: 0.7.2(jotai@2.11.0(@types/react@19.2.13)(react@19.2.8))(react@19.2.8)
       lodash.debounce: 4.0.8
       lodash.throttle: 4.1.1
-      nanoid: 3.3.8
+      nanoid: 5.1.16
       open-color: 1.9.1
       pako: 2.0.3
       perfect-freehand: 1.2.0
@@ -22444,11 +22439,9 @@ snapshots:
 
   nanoid@3.3.16: {}
 
-  nanoid@3.3.8: {}
-
   nanoid@5.0.9: {}
 
-  nanoid@5.1.6: {}
+  nanoid@5.1.16: {}
 
   nanospinner@1.2.2:
     dependencies:
