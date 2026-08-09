@@ -57,7 +57,7 @@ overrides:
   shell-quote: '>=1.8.4'
   # Stay on the 5.x line: markdown-it 14 declares linkify-it ^5.0.0.
   linkify-it: '>=5.0.2 <6'
-  dompurify: '>=3.4.12'
+  dompurify: '>=3.4.13'
   form-data: '>=4.0.6'
   fast-uri: '>=3.1.4 <4'
   ip-address: '>=10.1.1'
