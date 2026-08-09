@@ -109,7 +109,7 @@
     "yjs": "^13.6.29"
   },
   "devDependencies": {
-    "@ai-sdk/anthropic": "^3.0.81",
+    "@ai-sdk/anthropic": "^3.0.107",
     "@ai-sdk/openai": "^3.0.68",
     "@blocknote/code-block": "^0.47.1",
     "@blocknote/core": "^0.47.1",

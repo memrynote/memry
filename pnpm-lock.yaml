@@ -135,8 +135,8 @@ importers:
         version: 13.6.29
     devDependencies:
       '@ai-sdk/anthropic':
-        specifier: ^3.0.81
-        version: 3.0.81(zod@4.3.6)
+        specifier: ^3.0.107
+        version: 3.0.107(zod@4.3.6)
       '@ai-sdk/openai':
         specifier: ^3.0.68
         version: 3.0.71(zod@4.3.6)
@@ -1247,8 +1247,8 @@ packages:
   '@adobe/css-tools@4.4.4':
     resolution: {integrity: sha512-Elp+iwUx5rN5+Y8xLt5/GRoG20WGoDCQ/1Fb+1LiGtvwbDavuSk0jhD/eZdckHAuzcDzccnkv+rEjyWfRx18gg==}
 
-  '@ai-sdk/anthropic@3.0.81':
-    resolution: {integrity: sha512-B1JDd9Ugq9R5AgIaW3674lhGCMMYJcPUxnrZh8fzbGojgg4QvHFRv6eZahGQAUsmGHbcf74G9bdSBDLWQGY2GA==}
+  '@ai-sdk/anthropic@3.0.107':
+    resolution: {integrity: sha512-aXwAv1v9ezU3lkAvcz4dfuzJb30ioLk0WRhwpuDgCGKN0dEZiNLeDuyVcRqxWRlYc4Zg4Z4rJcZBKmzJTdzrtw==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -1277,20 +1277,24 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/provider-utils@4.0.27':
-    resolution: {integrity: sha512-ubkAJ+xODouwtmN1tYlvTPphH1hPOBfZaEQe8U7skGvFAnIRs9PPpsq57bC2+Ky/MB4yzhd6YOsxTAx9sGpazw==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
-
   '@ai-sdk/provider-utils@4.0.29':
     resolution: {integrity: sha512-uhukHaCBvqkwBHkT8C2PrnqKTCoLn3pdHXqtcR9I8ErH+flbzgW4o7VHSNIup9LRu+WBvZIZDQLsx6rwl2tiOA==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
+  '@ai-sdk/provider-utils@4.0.42':
+    resolution: {integrity: sha512-Q07lZsq4ir+xwAGVfSbY2WNGLrbfWINFaL2I/vTBFrkuXeP7VZh+UtQgLOKZS6Z/6flNFW22jDYdbINvwTV/PA==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
   '@ai-sdk/provider@3.0.10':
     resolution: {integrity: sha512-Q3BZ27qfpYqnCYGvE3vt+Qi6LGOF9R5Nmzn+9JoM1lCRsD9mYaIhfJLkSunN48nfGXJ6n+XNV0J/XVpqGQl7Dw==}
+    engines: {node: '>=18'}
+
+  '@ai-sdk/provider@3.0.14':
+    resolution: {integrity: sha512-5X1k57JBJ4H7H1QjX7CnJYAB1I19r/trVZTMcSms7/kLNZ8RaU4Nt2agcwZzv82Hfx6Q7/TOLU7agAKeFfc8cA==}
     engines: {node: '>=18'}
 
   '@ai-sdk/provider@3.0.8':
@@ -12881,10 +12885,10 @@ snapshots:
 
   '@adobe/css-tools@4.4.4': {}
 
-  '@ai-sdk/anthropic@3.0.81(zod@4.3.6)':
+  '@ai-sdk/anthropic@3.0.107(zod@4.3.6)':
     dependencies:
-      '@ai-sdk/provider': 3.0.10
-      '@ai-sdk/provider-utils': 4.0.27(zod@4.3.6)
+      '@ai-sdk/provider': 3.0.14
+      '@ai-sdk/provider-utils': 4.0.42(zod@4.3.6)
       zod: 4.3.6
 
   '@ai-sdk/gateway@3.0.132(zod@4.3.6)':
@@ -12914,13 +12918,6 @@ snapshots:
       eventsource-parser: 3.1.0
       zod: 4.3.6
 
-  '@ai-sdk/provider-utils@4.0.27(zod@4.3.6)':
-    dependencies:
-      '@ai-sdk/provider': 3.0.10
-      '@standard-schema/spec': 1.1.0
-      eventsource-parser: 3.1.0
-      zod: 4.3.6
-
   '@ai-sdk/provider-utils@4.0.29(zod@4.3.6)':
     dependencies:
       '@ai-sdk/provider': 3.0.10
@@ -12928,7 +12925,19 @@ snapshots:
       eventsource-parser: 3.1.0
       zod: 4.3.6
 
+  '@ai-sdk/provider-utils@4.0.42(zod@4.3.6)':
+    dependencies:
+      '@ai-sdk/provider': 3.0.14
+      '@standard-schema/spec': 1.1.0
+      eventsource-parser: 3.1.0
+      undici: 7.28.0
+      zod: 4.3.6
+
   '@ai-sdk/provider@3.0.10':
+    dependencies:
+      json-schema: 0.4.0
+
+  '@ai-sdk/provider@3.0.14':
     dependencies:
       json-schema: 0.4.0
 
@@ -13536,7 +13545,7 @@ snapshots:
 
   '@blocknote/xl-ai@0.47.1(@floating-ui/dom@1.8.0)(@mantine/core@8.3.16(@mantine/hooks@8.3.16(react@19.2.8))(@types/react@19.2.13)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@mantine/hooks@8.3.16(react@19.2.8))(@mantine/utils@6.0.22(react@19.2.8))(@tiptap/pm@3.19.0)(@types/hast@3.0.4)(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29)(zod@4.3.6)':
     dependencies:
-      '@ai-sdk/provider-utils': 4.0.29(zod@4.3.6)
+      '@ai-sdk/provider-utils': 4.0.42(zod@4.3.6)
       '@ai-sdk/react': 3.0.118(react@19.2.8)(zod@4.3.6)
       '@blocknote/core': 0.47.1(patch_hash=3449fe80e8250449972daaa5e90945cc40086f945ac0ed30c6a3f0d8d89a9848)(@types/hast@3.0.4)
       '@blocknote/mantine': 0.47.1(@floating-ui/dom@1.8.0)(@mantine/core@8.3.16(@mantine/hooks@8.3.16(react@19.2.8))(@types/react@19.2.13)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@mantine/hooks@8.3.16(react@19.2.8))(@mantine/utils@6.0.22(react@19.2.8))(@types/hast@3.0.4)(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -22641,8 +22650,8 @@ snapshots:
 
   ollama-ai-provider-v2@3.6.0(ai@6.0.206(zod@4.3.6))(zod@4.3.6):
     dependencies:
-      '@ai-sdk/provider': 3.0.10
-      '@ai-sdk/provider-utils': 4.0.29(zod@4.3.6)
+      '@ai-sdk/provider': 3.0.14
+      '@ai-sdk/provider-utils': 4.0.42(zod@4.3.6)
       ai: 6.0.206(zod@4.3.6)
       zod: 4.3.6
 
