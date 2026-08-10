@@ -211,7 +211,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/libsodium-wrappers-sumo": "^0.8.2",
     "@types/mime-types": "^3.0.1",
-    "@types/node": "^25.0.3",
+    "@types/node": "^25.9.5",
     "@types/pako": "^2.0.4",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
