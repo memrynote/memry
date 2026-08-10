@@ -60,7 +60,7 @@ overrides:
   dompurify: '>=3.4.13'
   form-data: '>=4.0.6'
   fast-uri: '>=3.1.4 <4'
-  ip-address: '>=10.1.1'
+  ip-address: '>=10.3.1'
   smol-toml: '>=1.6.1'
   srvx: '>=0.11.13'
   tmp: '>=0.2.6'
