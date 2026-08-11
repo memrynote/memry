@@ -85,12 +85,22 @@ The blob is the encrypted body. The server can reason about order, dedupe, and a
 
 Item ids are human-readable and may repeat across types: the default project id is `inbox`, a
 `tag_definition` id is the lowercased tag name, and a `folder_config` id is the folder path. R2 keys
-for sync-item payloads therefore include the item type — new pushes write to
-`<user>/vaults/<vault>/items-v2/<type>/<id>`, so a project and a tag both named `inbox` own separate
-objects. Rows written before this layout keep their legacy untyped `items/<id>` key; every read path
-resolves the `blob_key` stored on the row rather than re-deriving it, so old rows continue to work
-without a migration. (The old layout let same-id items of different types overwrite one shared
-object, which permanently broke the losing row's signature.)
+for sync-item payloads therefore include the item type, and since `items-v3` also the payload's
+content hash — new pushes write to `<user>/vaults/<vault>/items-v3/<type>/<id>/<content-hash>`, so a
+project and a tag both named `inbox` own separate objects, and every push writes its own immutable
+object instead of mutating a shared per-item one. Content-addressing is what makes concurrent pushes
+of the same item safe: with a shared mutable key, two devices racing on one id (external calendar
+events have deterministic ids, so every device pushes the same ids) could interleave blob and row
+writes such that the surviving row carried one push's signature over the other push's bytes — the
+item then failed Ed25519 verification on every pull until re-pushed. After a replacing push commits
+its row, the previous version's object is deleted best-effort; a delete that loses a race merely
+leaks a bounded orphan object. Rows written before these layouts keep their legacy `items/<id>` or
+`items-v2/<type>/<id>` keys; every read path resolves the `blob_key` stored on the row rather than
+re-deriving it, so old rows continue to work without a migration. (The untyped layout let same-id
+items of different types overwrite one shared object, which permanently broke the losing row's
+signature.) A pull that finds a row whose object is missing skips that row instead of failing the
+page: a replaced item re-arrives at a later cursor, and a dangling row must not wedge every puller
+behind one broken item.
 
 ### Per-item bookkeeping and retry semantics
 

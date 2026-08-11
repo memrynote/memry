@@ -1200,8 +1200,10 @@ describe('pullItems', () => {
     ).rejects.toMatchObject({ code: ErrorCodes.INTERNAL_ERROR })
   })
 
-  it('should reject missing blobs and corrupt blob payloads', async () => {
-    // #given
+  it('should skip missing blobs but still reject corrupt blob payloads', async () => {
+    // #given — a missing object costs only its own row (a dangling row must
+    // not wedge every pull page), while corruption stays loud: bytes that
+    // exist but cannot be parsed mean something is actively wrong.
     const row = {
       item_id: 'item-1',
       item_type: 'note',
@@ -1223,7 +1225,7 @@ describe('pullItems', () => {
     // #when / #then
     await expect(
       pullItems(db as unknown as D1Database, {} as R2Bucket, 'user-1', ['item-1'])
-    ).rejects.toMatchObject({ code: ErrorCodes.STORAGE_BLOB_NOT_FOUND })
+    ).resolves.toEqual([])
 
     const corruptStmt = createMockStatement()
     corruptStmt.all.mockResolvedValue({ results: [row] })
@@ -1790,8 +1792,12 @@ describe('processPushItem', () => {
     const projectKey = await runPush('project')
     const tagKey = await runPush('tag_definition')
 
-    expect(projectKey).toBe('user-1/vaults/vault-1/items-v2/project/inbox')
-    expect(tagKey).toBe('user-1/vaults/vault-1/items-v2/tag_definition/inbox')
+    // Keys are content-addressed since items-v3, so assert the type-scoped
+    // prefix and cross-type disjointness rather than a literal full key.
+    expect(projectKey).toMatch(/^user-1\/vaults\/vault-1\/items-v3\/project\/inbox\/[0-9a-f]{64}$/)
+    expect(tagKey).toMatch(
+      /^user-1\/vaults\/vault-1\/items-v3\/tag_definition\/inbox\/[0-9a-f]{64}$/
+    )
     expect(projectKey).not.toBe(tagKey)
   })
 
@@ -2101,5 +2107,278 @@ describe('sync-type negotiation', () => {
       expect(result).toEqual([])
       expect(db.prepare).not.toHaveBeenCalled()
     })
+  })
+})
+
+// ============================================================================
+// Tests: torn-write protection (concurrent same-item pushes)
+// ============================================================================
+
+describe('concurrent same-item pushes (torn blob regression)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockedGetNextCursor.mockResolvedValue(42)
+    mockedVerifyEd25519.mockResolvedValue(true)
+    mockedGetDevice.mockResolvedValue({
+      id: 'device-1',
+      user_id: 'user-1',
+      name: 'test',
+      platform: 'desktop',
+      os_version: null,
+      app_version: '1.0.0',
+      auth_public_key: btoa(String.fromCharCode(...new Array(32).fill(0))),
+      push_token: null,
+      revoked_at: null,
+      last_sync_at: null,
+      created_at: 1000,
+      updated_at: 1000
+    })
+  })
+
+  it('keeps the winning row pointing at the exact bytes its signature covers', async () => {
+    // Jerry's 2026-08-10 incident shape: two devices race to push the same
+    // item id (external calendar events have deterministic ids, so every
+    // device pushes the same ids independently). With a shared mutable blob
+    // key, the interleaving putBlob(A), putBlob(B), upsert(B), upsert(A)
+    // leaves A's signature on the row while B's bytes sit in the object —
+    // the item then fails Ed25519 verification on every pull, forever.
+    const r2 = new Map<string, string>()
+    vi.mocked(putBlob).mockImplementation(async (_storage, key, data) => {
+      r2.set(key, new TextDecoder().decode(new Uint8Array(data as ArrayBuffer)))
+      return { etag: 'e' } as unknown as R2Object
+    })
+
+    const finalRow: { blobKey?: string; signature?: string } = {}
+    const gates: Array<() => void> = []
+
+    const makeGatedDb = () => {
+      const stmt = createMockStatement()
+      stmt.first.mockResolvedValue(null)
+      const db = createMockDb()
+      db.prepare.mockReturnValue(stmt)
+      db.batch.mockImplementation(async () => {
+        await new Promise<void>((resolve) => gates.push(resolve))
+        const upsertArgs = stmt.bind.mock.calls.find((call) => call.length === 19)
+        finalRow.blobKey = upsertArgs?.[5] as string
+        finalRow.signature = upsertArgs?.[13] as string
+        return []
+      })
+      return db
+    }
+
+    const sigA = btoa(String.fromCharCode(...new Array(64).fill(1)))
+    const sigB = btoa(String.fromCharCode(...new Array(64).fill(2)))
+    const itemA = createValidPushItem({
+      encryptedData: btoa('payload-from-device-A'),
+      signature: sigA
+    })
+    const itemB = createValidPushItem({
+      encryptedData: btoa('payload-from-device-B'),
+      signature: sigB,
+      signerDeviceId: 'device-2',
+      clock: { 'device-2': 1 }
+    })
+
+    const waitForGates = async (count: number) => {
+      while (gates.length < count) await new Promise((resolve) => setTimeout(resolve, 0))
+    }
+
+    // Device A uploads its blob, then stalls just before its row write.
+    const pushA = processPushItem(
+      makeGatedDb() as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      itemA
+    )
+    await waitForGates(1)
+
+    // Device B pushes the same item id start-to-finish while A is stalled.
+    const pushB = processPushItem(
+      makeGatedDb() as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-2',
+      itemB
+    )
+    await waitForGates(2)
+    gates[1]()
+    await pushB
+
+    // A's row write lands last, so A's signature owns the row.
+    gates[0]()
+    await pushA
+
+    expect(finalRow.signature).toBe(sigA)
+    // The row's blob must contain exactly the payload A signed.
+    expect(r2.get(finalRow.blobKey ?? '')).toBe(serializePayload(itemA))
+  })
+})
+
+// ============================================================================
+// Tests: replaced-blob cleanup
+// ============================================================================
+
+describe('processPushItem replaced blob cleanup', () => {
+  const oldBlobKey = 'user-1/vaults/default/items-v2/note/550e8400-e29b-41d4-a716-446655440000'
+
+  const existingRow = {
+    version: 1,
+    clock: '{"device-1":1}',
+    created_at: 1000,
+    size_bytes: 10,
+    blob_key: oldBlobKey
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockedGetNextCursor.mockResolvedValue(42)
+    mockedVerifyEd25519.mockResolvedValue(true)
+    mockedGetDevice.mockResolvedValue({
+      id: 'device-1',
+      user_id: 'user-1',
+      name: 'test',
+      platform: 'desktop',
+      os_version: null,
+      app_version: '1.0.0',
+      auth_public_key: btoa(String.fromCharCode(...new Array(32).fill(0))),
+      push_token: null,
+      revoked_at: null,
+      last_sync_at: null,
+      created_at: 1000,
+      updated_at: 1000
+    })
+    vi.mocked(putBlob).mockResolvedValue({ etag: 'etag-1' } as unknown as R2Object)
+  })
+
+  it('deletes the replaced blob only after the row points at the new one', async () => {
+    const stmt = createMockStatement()
+    stmt.first.mockResolvedValue(existingRow)
+    const db = createMockDb()
+    db.prepare.mockReturnValue(stmt)
+    const storage = { delete: vi.fn().mockResolvedValue(undefined) } as unknown as R2Bucket
+
+    const result = await processPushItem(
+      db as unknown as D1Database,
+      storage,
+      'user-1',
+      'device-1',
+      createValidPushItem({ operation: 'update', clock: { 'device-1': 2 } })
+    )
+
+    expect(result.accepted).toBe(true)
+    const deleteMock = vi.mocked(storage.delete)
+    expect(deleteMock).toHaveBeenCalledWith(oldBlobKey)
+    // Ordering: the D1 row must point at the new blob before the old one goes.
+    expect(db.batch.mock.invocationCallOrder[0]).toBeLessThan(
+      deleteMock.mock.invocationCallOrder[0]
+    )
+  })
+
+  it('does not delete anything for a first-time item', async () => {
+    const stmt = createMockStatement()
+    stmt.first.mockResolvedValue(null)
+    const db = createMockDb()
+    db.prepare.mockReturnValue(stmt)
+    const storage = { delete: vi.fn().mockResolvedValue(undefined) } as unknown as R2Bucket
+
+    const result = await processPushItem(
+      db as unknown as D1Database,
+      storage,
+      'user-1',
+      'device-1',
+      createValidPushItem()
+    )
+
+    expect(result.accepted).toBe(true)
+    expect(vi.mocked(storage.delete)).not.toHaveBeenCalled()
+  })
+
+  it('still accepts the push when the old blob delete fails', async () => {
+    const stmt = createMockStatement()
+    stmt.first.mockResolvedValue(existingRow)
+    const db = createMockDb()
+    db.prepare.mockReturnValue(stmt)
+    const storage = {
+      delete: vi.fn().mockRejectedValue(new Error('R2 hiccup'))
+    } as unknown as R2Bucket
+
+    const result = await processPushItem(
+      db as unknown as D1Database,
+      storage,
+      'user-1',
+      'device-1',
+      createValidPushItem({ operation: 'update', clock: { 'device-1': 2 } })
+    )
+
+    expect(result.accepted).toBe(true)
+  })
+})
+
+// ============================================================================
+// Tests: pull tolerance for missing blobs
+// ============================================================================
+
+describe('pullItems missing blob tolerance', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('skips a row whose blob is missing instead of failing the whole page', async () => {
+    // A dangling row (blob deleted, row alive) must not wedge every puller:
+    // one 404 used to reject the whole Promise.all, so the pull page failed
+    // on every retry and the client cursor never advanced.
+    const stmt = createMockStatement()
+    stmt.all.mockResolvedValue({
+      results: [
+        {
+          item_id: 'item-gone',
+          item_type: 'note',
+          blob_key: 'user-1/vaults/default/items-v2/note/item-gone',
+          crypto_version: 1,
+          operation: 'update',
+          signer_device_id: 'device-1',
+          signature: 'sig-gone',
+          state_vector: null,
+          clock: null,
+          deleted_at: null,
+          server_cursor: 7
+        },
+        {
+          item_id: 'item-ok',
+          item_type: 'note',
+          blob_key: 'user-1/vaults/default/items-v2/note/item-ok',
+          crypto_version: 1,
+          operation: 'update',
+          signer_device_id: 'device-1',
+          signature: 'sig-ok',
+          state_vector: null,
+          clock: null,
+          deleted_at: null,
+          server_cursor: 8
+        }
+      ]
+    })
+    const db = createMockDb()
+    db.prepare.mockReturnValue(stmt)
+    vi.mocked(getBlob).mockImplementation(async (_storage, key) =>
+      key.includes('item-gone')
+        ? null
+        : ({
+            body: JSON.stringify({
+              encryptedKey: 'ek',
+              keyNonce: 'kn',
+              encryptedData: 'ed',
+              dataNonce: 'dn'
+            })
+          } as unknown as R2ObjectBody)
+    )
+
+    const result = await pullItems(db as unknown as D1Database, {} as R2Bucket, 'user-1', [
+      'item-gone',
+      'item-ok'
+    ])
+
+    expect(result.map((item) => item.id)).toEqual(['item-ok'])
   })
 })
