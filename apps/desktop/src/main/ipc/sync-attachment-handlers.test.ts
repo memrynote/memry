@@ -163,7 +163,7 @@ import {
   recordUploadedAttachment
 } from '../sync/note-attachment-metadata'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
-import { AttachmentTooLargeError } from '../sync/attachments'
+import { AttachmentTooLargeError, type TransferProgress } from '../sync/attachments'
 import { SyncServerError } from '../sync/http-client'
 import { setCachedEntitlementFromStatus, getCachedMaxFileSize } from '../billing/entitlement-cache'
 import type { BillingStatus } from '../billing/paddle-billing'
@@ -283,7 +283,7 @@ describe('sync-attachment-handlers', () => {
     })
   })
 
-  it('downloads only inside the vault attachments directory and clears progress callbacks', async () => {
+  it('downloads only inside the vault attachments directory with a per-transfer progress callback', async () => {
     vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
     vi.mocked(getVaultStatus).mockReturnValue({ path: '/vault' } as any)
     registerAttachmentHandlers()
@@ -297,9 +297,12 @@ describe('sync-attachment-handlers', () => {
 
     expect(attachmentMocks.service.downloadAttachment).toHaveBeenCalledWith(
       'attachment-1',
-      '/vault/attachments/file.pdf'
+      '/vault/attachments/file.pdf',
+      { onProgress: expect.any(Function) }
     )
-    expect(attachmentMocks.service.setProgressCallback).toHaveBeenLastCalledWith(null)
+    // The shared slot is never touched, so nothing can clear a concurrent
+    // transfer's progress.
+    expect(attachmentMocks.service.setProgressCallback).not.toHaveBeenCalled()
 
     await expect(
       invokeHandler(SYNC_CHANNELS.DOWNLOAD_ATTACHMENT, {
@@ -310,6 +313,118 @@ describe('sync-attachment-handlers', () => {
       success: false,
       error: 'Target path must be within the vault attachments directory'
     })
+  })
+
+  it('collapses per-chunk upload progress to whole-percent changes and still delivers 100%', async () => {
+    // #given an upload whose progress callback is captured from the queue
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    let onProgress: ((progress: TransferProgress) => void) | null = null
+    attachmentMocks.queue.enqueue.mockImplementation(
+      async (_noteId: string, _filePath: string, cb: (progress: TransferProgress) => void) => {
+        onProgress = cb
+        return { attachmentId: 'attachment-1', sessionId: 'session-1' }
+      }
+    )
+    registerAttachmentHandlers()
+
+    await invokeHandler(SYNC_CHANNELS.UPLOAD_ATTACHMENT, {
+      noteId: 'note-1',
+      filePath: '/vault/attachments/big.bin'
+    })
+    expect(onProgress).not.toBeNull()
+
+    // #when 500 chunks complete, one event each
+    const totalChunks = 500
+    for (let i = 1; i <= totalChunks; i++) {
+      onProgress!({
+        attachmentId: 'attachment-1',
+        phase: 'uploading',
+        chunksCompleted: i,
+        totalChunks,
+        bytesTransferred: i,
+        totalBytes: totalChunks
+      })
+    }
+
+    // #then at most one broadcast per distinct whole percent
+    const events = attachmentMocks.sent.filter((e) => e.channel === SYNC_EVENTS.UPLOAD_PROGRESS)
+    expect(events.length).toBeLessThanOrEqual(101)
+    const percents = events.map((e) => (e.payload as { progress: number }).progress)
+    expect(new Set(percents).size).toBe(percents.length)
+    // #then the terminal event still reaches the UI
+    expect(events.at(-1)?.payload).toEqual({
+      attachmentId: 'attachment-1',
+      sessionId: '',
+      progress: 100,
+      status: 'uploading'
+    })
+  })
+
+  it('gives each concurrent download its own progress callback and throttle state', async () => {
+    // #given a slow download that is still in flight when a second one finishes
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    const callbacks = new Map<string, (progress: TransferProgress) => void>()
+    let releaseSlow: (() => void) | null = null
+    attachmentMocks.service.downloadAttachment.mockImplementation(
+      async (
+        attachmentId: string,
+        _targetPath: string,
+        opts?: { onProgress?: (progress: TransferProgress) => void }
+      ) => {
+        if (opts?.onProgress) callbacks.set(attachmentId, opts.onProgress)
+        if (attachmentId === 'attachment-slow') {
+          await new Promise<void>((resolve) => {
+            releaseSlow = resolve
+          })
+        }
+        return { filePath: `/tmp/${attachmentId}.pdf` }
+      }
+    )
+    registerAttachmentHandlers()
+
+    const slow = invokeHandler(SYNC_CHANNELS.DOWNLOAD_ATTACHMENT, {
+      attachmentId: 'attachment-slow',
+      targetPath: '/tmp/slow.pdf'
+    })
+    await expect(
+      invokeHandler(SYNC_CHANNELS.DOWNLOAD_ATTACHMENT, {
+        attachmentId: 'attachment-fast',
+        targetPath: '/tmp/fast.pdf'
+      })
+    ).resolves.toEqual({ success: true, filePath: '/tmp/attachment-fast.pdf' })
+
+    // #then both transfers hold distinct callbacks, not one shared slot
+    expect(callbacks.size).toBe(2)
+    expect(callbacks.get('attachment-slow')).not.toBe(callbacks.get('attachment-fast'))
+    expect(attachmentMocks.service.setProgressCallback).not.toHaveBeenCalled()
+
+    // #when both report the same percent, after one transfer already finished
+    const halfway = (attachmentId: string): TransferProgress => ({
+      attachmentId,
+      phase: 'downloading',
+      chunksCompleted: 5,
+      totalChunks: 10,
+      bytesTransferred: 5,
+      totalBytes: 10
+    })
+    callbacks.get('attachment-fast')!(halfway('attachment-fast'))
+    callbacks.get('attachment-slow')!(halfway('attachment-slow'))
+    releaseSlow?.()
+    await expect(slow).resolves.toEqual({ success: true, filePath: '/tmp/attachment-slow.pdf' })
+
+    // #then neither transfer swallowed the other's event
+    expect(attachmentMocks.sent.filter((e) => e.channel === SYNC_EVENTS.DOWNLOAD_PROGRESS)).toEqual(
+      [
+        {
+          channel: SYNC_EVENTS.DOWNLOAD_PROGRESS,
+          payload: { attachmentId: 'attachment-fast', progress: 50, status: 'downloading' }
+        },
+        {
+          channel: SYNC_EVENTS.DOWNLOAD_PROGRESS,
+          payload: { attachmentId: 'attachment-slow', progress: 50, status: 'downloading' }
+        }
+      ]
+    )
   })
 
   it('maps download progress and uploads saved attachments from event callbacks', async () => {
