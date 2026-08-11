@@ -38,6 +38,7 @@ vi.mock('electron', () => ({
   },
   globalShortcut: {
     unregisterAll: vi.fn(),
+    unregister: vi.fn(),
     register: vi.fn()
   },
   systemPreferences: {
