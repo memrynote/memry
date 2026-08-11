@@ -172,7 +172,22 @@ let state: AppUpdateState = {
   lastCheckedAt: null,
   error: null,
   autoDownloadEnabled: false,
-  autoCheckEnabled: true
+  autoCheckEnabled: true,
+  installFailed: null
+}
+
+/**
+ * Surface a previous session's failed install to the renderer. Called at startup
+ * from the update-install marker, which runs long before initializeUpdater() —
+ * setState merges, so the flag survives updater init either way.
+ *
+ * Without this the failure is telemetry-only: the user sees the update prompt
+ * again on every launch, presses Restart again, and never learns why nothing
+ * changes. With it, the renderer can offer the manual installer instead.
+ */
+export function noteFailedUpdateInstall(version: string | null): void {
+  logger.warn('previous update install did not apply', { version })
+  setState({ installFailed: { version } })
 }
 
 export function initializeUpdater(): void {

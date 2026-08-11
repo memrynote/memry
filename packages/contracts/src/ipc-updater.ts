@@ -46,4 +46,13 @@ export interface AppUpdateState {
   autoDownloadEnabled: boolean
   /** Whether the app checks for updates automatically at launch and on an interval (persisted). */
   autoCheckEnabled: boolean
+  /**
+   * Set on launch when the PREVIOUS session handed off to the update installer and
+   * the install never applied (see telemetry/update-install-marker), null on a
+   * normal launch. `version` is the update that failed, or null when the marker
+   * did not record one — the failure is still worth surfacing without it.
+   * Optional so an older renderer bundle reading a newer main keeps type-checking:
+   * absent and null both mean "no failed install".
+   */
+  installFailed?: { version: string | null } | null
 }

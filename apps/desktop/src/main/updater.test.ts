@@ -652,6 +652,27 @@ describe('updater', () => {
     )
   })
 
+  it("surfaces a previous session's failed install in the state the renderer reads", async () => {
+    const updater = await loadUpdater()
+
+    // Called at startup from the update-install marker, BEFORE initializeUpdater.
+    updater.noteFailedUpdateInstall('v1.2.7')
+    updater.initializeUpdater()
+
+    // Must survive updater init: otherwise the user gets the same prompt, the
+    // same Restart, and never learns the install is what is failing.
+    expect(updater.getUpdateState().installFailed).toEqual({ version: 'v1.2.7' })
+  })
+
+  it('records a failed install whose target version the marker never captured', async () => {
+    const updater = await loadUpdater()
+
+    updater.noteFailedUpdateInstall(null)
+
+    // Still worth surfacing: the failure is what matters, not which version.
+    expect(updater.getUpdateState().installFailed).toEqual({ version: null })
+  })
+
   it("routes electron-updater's own diagnostics into the app log instead of a dead console", async () => {
     const updater = await loadUpdater()
     updater.initializeUpdater()
