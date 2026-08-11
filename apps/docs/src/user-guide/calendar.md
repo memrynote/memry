@@ -160,6 +160,29 @@ To switch to **one-way (inbound only)**, open [Settings → Integrations](/user-
 
 Switching to one-way is non-destructive — anything already synced to Google before the change stays there; only new pushes, updates, and deletes are stopped.
 
+### How Often Google Events Refresh
+
+Inbound pulls run on a schedule. One pull covers everything at once — every linked account and every
+calendar you have ticked — so accounts never drift out of step with each other. This is also the
+"every sync" that refreshes the calendar list itself, as described under
+[Multiple Accounts and Calendars](#multiple-accounts-and-calendars).
+
+memrynote pulls about every 5 minutes in the background. When Google push notifications are active
+for your selected calendars, changes arrive as they happen and the background pull falls back to
+roughly every 30 minutes.
+
+Two extra pulls sit on top of that: memrynote syncs immediately when your machine wakes from sleep,
+and bringing the memrynote window back to the front pulls again if the last pull was more than two
+minutes ago. Re-focusing the window more often than that is deliberately ignored so alt-tabbing all
+day doesn't hammer the network.
+
+Need something right now? Click the **Refresh Google calendars** button in the calendar toolbar. It
+pulls straight away and never waits on any of the intervals above.
+
+None of these schedules apply to an account showing **Reconnect required** — memrynote will not sync
+an account whose sign-in it cannot read. See
+[If the account says "Reconnect required"](#if-the-account-says-reconnect-required).
+
 ### Promote External Events
 
 Right-click an external event → **Promote to vault** to copy it into your encrypted vault. Useful when you want to attach notes, tags, or reminders that wouldn't survive on the source calendar.
