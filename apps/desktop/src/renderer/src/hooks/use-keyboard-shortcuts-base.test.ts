@@ -80,6 +80,83 @@ describe('useKeyboardShortcuts', () => {
 
       expect(removeEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function), false)
     })
+
+    it('should bind the listener once when callers pass a fresh array every render', () => {
+      const addEventListenerSpy = vi.spyOn(window, 'addEventListener')
+      const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener')
+      const action = vi.fn()
+
+      const keydownAdds = (): unknown[] =>
+        addEventListenerSpy.mock.calls.filter(([type]) => type === 'keydown')
+      const keydownRemoves = (): unknown[] =>
+        removeEventListenerSpy.mock.calls.filter(([type]) => type === 'keydown')
+
+      // Callers such as useTabKeyboardShortcuts rebuild the array whenever tab
+      // state changes, so the hook receives a new identity on every render.
+      const { rerender, unmount } = renderHook(
+        ({ description }: { description: string }) =>
+          useKeyboardShortcuts([{ key: 'a', action, description }]),
+        { initialProps: { description: 'render-0' } }
+      )
+
+      expect(keydownAdds()).toHaveLength(1)
+
+      for (let i = 1; i <= 5; i++) {
+        rerender({ description: `render-${i}` })
+      }
+
+      expect(keydownAdds()).toHaveLength(1)
+      expect(keydownRemoves()).toHaveLength(0)
+
+      unmount()
+
+      expect(keydownRemoves()).toHaveLength(1)
+
+      addEventListenerSpy.mockRestore()
+      removeEventListenerSpy.mockRestore()
+    })
+
+    it('should run the newest action after the shortcut array changes', () => {
+      const firstAction = vi.fn()
+      const secondAction = vi.fn()
+
+      const { rerender } = renderHook(
+        ({ action }: { action: () => void }) =>
+          useKeyboardShortcuts([{ key: 'a', action, description: 'Test A' }]),
+        { initialProps: { action: firstAction } }
+      )
+
+      rerender({ action: secondAction })
+
+      act(() => {
+        window.dispatchEvent(createKeyboardEvent('a'))
+      })
+
+      expect(secondAction).toHaveBeenCalledTimes(1)
+      expect(firstAction).not.toHaveBeenCalled()
+    })
+
+    it('should evaluate `when` against the latest render state', () => {
+      const action = vi.fn()
+
+      const { rerender } = renderHook(
+        ({ allowed }: { allowed: boolean }) =>
+          useKeyboardShortcuts([{ key: 'a', action, description: 'Test A', when: () => allowed }]),
+        { initialProps: { allowed: false } }
+      )
+
+      act(() => {
+        window.dispatchEvent(createKeyboardEvent('a'))
+      })
+      expect(action).not.toHaveBeenCalled()
+
+      rerender({ allowed: true })
+
+      act(() => {
+        window.dispatchEvent(createKeyboardEvent('a'))
+      })
+      expect(action).toHaveBeenCalledTimes(1)
+    })
   })
 
   // ==========================================================================

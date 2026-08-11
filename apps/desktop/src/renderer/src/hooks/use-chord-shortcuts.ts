@@ -3,7 +3,7 @@
  * Handles two-key sequences (e.g., ⌘K ⌘→)
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTabs } from '@/contexts/tabs'
 import { isMac } from './use-keyboard-shortcuts-base'
 import { calculateGroupPositions, type GroupPosition } from './use-pane-navigation'
@@ -240,36 +240,45 @@ export const useChordShortcuts = (): boolean => {
     ]
   )
 
-  // Event listener for chord keys
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (hintModeActiveRef.current) return
+  const handleKeyDown = (e: KeyboardEvent): void => {
+    if (hintModeActiveRef.current) return
 
-      const metaOrCtrl = isMac ? e.metaKey : e.ctrlKey
+    const metaOrCtrl = isMac ? e.metaKey : e.ctrlKey
 
-      // Ignore if typing in input
-      const target = e.target as HTMLElement
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-        return
-      }
-
-      // Check for chord start (⌘K)
-      if (metaOrCtrl && e.key.toLowerCase() === 'k' && !chord.isActive) {
-        e.preventDefault()
-        startChord('k')
-        return
-      }
-
-      // Check for chord completion
-      if (chord.isActive && (metaOrCtrl || e.shiftKey)) {
-        e.preventDefault()
-        handleChordSecondKey(e.key, e.shiftKey)
-      }
+    // Ignore if typing in input
+    const target = e.target as HTMLElement
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      return
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [chord.isActive, startChord, handleChordSecondKey])
+    // Check for chord start (⌘K)
+    if (metaOrCtrl && e.key.toLowerCase() === 'k' && !chord.isActive) {
+      e.preventDefault()
+      startChord('k')
+      return
+    }
+
+    // Check for chord completion
+    if (chord.isActive && (metaOrCtrl || e.shiftKey)) {
+      e.preventDefault()
+      handleChordSecondKey(e.key, e.shiftKey)
+    }
+  }
+
+  // The handler closes over chord + tab state, both of which change constantly.
+  // Keep the latest one in a ref so the window listener binds once per mount.
+  const handleKeyDownRef = useRef(handleKeyDown)
+  useEffect(() => {
+    handleKeyDownRef.current = handleKeyDown
+  })
+
+  // Event listener for chord keys
+  useEffect(() => {
+    const listener = (e: KeyboardEvent): void => handleKeyDownRef.current(e)
+
+    window.addEventListener('keydown', listener)
+    return () => window.removeEventListener('keydown', listener)
+  }, [])
 
   return chord.isActive
 }
