@@ -58,6 +58,7 @@ import { CrdtUpdateQueue } from './crdt-queue'
 import { recoverDirtyItems } from './dirty-recovery'
 import { encryptCrdtUpdate } from './crdt-encrypt'
 import { postToServer, pushCrdtSnapshot, SyncServerError } from './http-client'
+import { classifyError } from './sync-errors'
 import {
   EVENT_CHANNELS,
   type SyncStatusChangedEvent,
@@ -115,6 +116,15 @@ function emitQuotaExceeded(): void {
     pendingCount: 0,
     error: 'Storage quota exceeded',
     errorCategory: 'storage_quota_exceeded'
+  })
+}
+
+function emitNoteTooLarge(): void {
+  emitSyncStatus({
+    status: 'error',
+    pendingCount: 0,
+    error: 'A note is too large to sync',
+    errorCategory: 'note_too_large'
   })
 }
 
@@ -531,8 +541,14 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
             crdtQueue.pause()
           }
           if (err instanceof SyncServerError && err.statusCode === 413) {
-            crdtQueue.pause()
-            emitQuotaExceeded()
+            if (classifyError(err).category === 'storage_quota_exceeded') {
+              crdtQueue.pause()
+              emitQuotaExceeded()
+            } else {
+              // Body-limit 413: one oversized note must not stall the queue
+              // for every other note.
+              emitNoteTooLarge()
+            }
           }
           throw err
         } finally {
@@ -583,8 +599,14 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
             crdtQueue.pause()
           }
           if (err instanceof SyncServerError && err.statusCode === 413) {
-            crdtQueue.pause()
-            emitQuotaExceeded()
+            if (classifyError(err).category === 'storage_quota_exceeded') {
+              crdtQueue.pause()
+              emitQuotaExceeded()
+            } else {
+              // Body-limit 413: one oversized note must not stall the queue
+              // for every other note.
+              emitNoteTooLarge()
+            }
           }
           throw err
         } finally {
