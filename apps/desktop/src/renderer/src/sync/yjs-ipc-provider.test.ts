@@ -68,8 +68,8 @@ describe('YjsIpcProvider.connect', () => {
     remoteDoc.getMap('meta').set('title', 'Remote title')
     const emptyDoc = new Y.Doc()
     mockSyncStep1.mockResolvedValueOnce({
-      diff: Array.from(Y.encodeStateAsUpdate(remoteDoc)),
-      stateVector: Array.from(Y.encodeStateVector(emptyDoc))
+      diff: Y.encodeStateAsUpdate(remoteDoc),
+      stateVector: Y.encodeStateVector(emptyDoc)
     })
 
     const doc = new Y.Doc()
@@ -81,12 +81,12 @@ describe('YjsIpcProvider.connect', () => {
     expect(mockOpenDoc).toHaveBeenCalledWith({ noteId: 'note-42' })
     expect(mockSyncStep1).toHaveBeenCalledWith({
       noteId: 'note-42',
-      stateVector: expect.any(Array)
+      stateVector: expect.any(Uint8Array)
     })
     expect(doc.getMap('meta').get('title')).toBe('Remote title')
     expect(mockSyncStep2).toHaveBeenCalledWith({
       noteId: 'note-42',
-      diff: expect.any(Array)
+      diff: expect.any(Uint8Array)
     })
     expect(provider.isSynced).toBe(true)
 
@@ -98,7 +98,7 @@ describe('YjsIpcProvider.connect', () => {
 
   it('applies matching IPC updates and forwards local document updates', async () => {
     let stateChanged:
-      | ((data: { noteId: string; update: number[]; origin: string }) => void)
+      | ((data: { noteId: string; update: Uint8Array; origin: string }) => void)
       | null = null
     mockOnCrdtStateChanged.mockImplementationOnce((callback) => {
       stateChanged = callback
@@ -114,14 +114,14 @@ describe('YjsIpcProvider.connect', () => {
     otherDoc.getMap('meta').set('remote', true)
     stateChanged?.({
       noteId: 'other-note',
-      update: Array.from(Y.encodeStateAsUpdate(otherDoc)),
+      update: Y.encodeStateAsUpdate(otherDoc),
       origin: 'remote'
     })
     expect(doc.getMap('meta').get('remote')).toBeUndefined()
 
     stateChanged?.({
       noteId: 'note-42',
-      update: Array.from(Y.encodeStateAsUpdate(otherDoc)),
+      update: Y.encodeStateAsUpdate(otherDoc),
       origin: 'remote'
     })
     expect(doc.getMap('meta').get('remote')).toBe(true)
@@ -130,7 +130,7 @@ describe('YjsIpcProvider.connect', () => {
     doc.getMap('meta').set('local', true)
     expect(mockApplyUpdate).toHaveBeenCalledWith({
       noteId: 'note-42',
-      update: expect.any(Array)
+      update: expect.any(Uint8Array)
     })
 
     mockApplyUpdate.mockClear()

@@ -203,10 +203,10 @@ const createWindow = (id: number, destroyed = false) => {
   return win
 }
 
-const makeRemoteUpdate = (text: string): number[] => {
+const makeRemoteUpdate = (text: string): Uint8Array => {
   const doc = new Y.Doc()
   doc.getMap('meta').set('title', text)
-  return Array.from(Y.encodeStateAsUpdate(doc))
+  return Y.encodeStateAsUpdate(doc)
 }
 
 describe('CrdtProvider', () => {
@@ -289,6 +289,27 @@ describe('CrdtProvider', () => {
     expect(queue.enqueue).toHaveBeenCalled()
     expect(mocks.persistenceInstances[0].storeUpdate).toHaveBeenCalled()
     expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+  })
+
+  it('broadcasts one shared Uint8Array instead of a boxed copy per receiving window', async () => {
+    createWindow(1)
+    createWindow(2)
+    createWindow(3)
+    await provider.open('note-1', 1, { skipSeed: true })
+    await provider.open('note-1', 2, { skipSeed: true })
+    await provider.open('note-1', 3, { skipSeed: true })
+
+    const update = makeRemoteUpdate('typed payload')
+    provider.applyIpcUpdate('note-1', update, 1)
+
+    // Two receivers (the source window is skipped).
+    expect(mocks.sent).toHaveLength(2)
+    const payloads = mocks.sent.map((entry) => entry.payload as { update: unknown })
+    for (const payload of payloads) {
+      expect(payload.update).toBeInstanceOf(Uint8Array)
+    }
+    // One allocation for the whole fan-out — not Array.from() inside the loop.
+    expect(payloads[0].update).toBe(payloads[1].update)
   })
 
   it('buffers network broadcasts until close and records network-origin writeback', async () => {
