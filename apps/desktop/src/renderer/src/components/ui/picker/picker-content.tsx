@@ -16,7 +16,7 @@ export const PickerContent = React.forwardRef<
     width === 'auto'
       ? 'w-auto'
       : width === 'trigger'
-        ? 'w-[--radix-popover-trigger-width]'
+        ? 'w-(--radix-popover-trigger-width)'
         : typeof width === 'number'
           ? undefined
           : 'w-72'
