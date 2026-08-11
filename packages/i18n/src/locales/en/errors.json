@@ -123,6 +123,7 @@
   "auth": {
     "notAuthenticated": "Not authenticated",
     "sessionExpired": "Session expired. Please sign in again.",
+    "setupSessionExpired": "Your sign-in timed out before this finished. Sign in again, then enter your recovery phrase.",
     "invalidRecoveryPhraseFormat": "Invalid recovery phrase format",
     "recoveryPhraseMismatch": "Recovery phrase does not match. Please try again.",
     "cannotRemoveCurrentDevice": "Cannot remove the current device",

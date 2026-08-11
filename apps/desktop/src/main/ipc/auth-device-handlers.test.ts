@@ -17,10 +17,12 @@ vi.mock('../sync/http-client', () => ({
   deleteFromServer: (...args: unknown[]) => mockDeleteFromServer(...args),
   patchToServer: (...args: unknown[]) => mockPatchToServer(...args),
   SyncServerError: class SyncServerError extends Error {
-    status: number
-    constructor(msg: string, status: number) {
+    statusCode: number
+    serverError?: string
+    constructor(msg: string, statusCode: number, serverError?: string) {
       super(msg)
-      this.status = status
+      this.statusCode = statusCode
+      this.serverError = serverError
     }
   }
 }))
@@ -128,12 +130,15 @@ vi.mock('electron', () => ({
 const mockGetValidAccessToken = vi.fn()
 const mockRetrieveToken = vi.fn()
 const mockStoreToken = vi.fn()
+const mockIsTokenExpired = vi.fn()
 vi.mock('../sync/token-manager', () => ({
   getValidAccessToken: (...args: unknown[]) => mockGetValidAccessToken(...args),
+  isTokenExpired: (...args: unknown[]) => mockIsTokenExpired(...args),
   retrieveToken: (...args: unknown[]) => mockRetrieveToken(...args),
   storeToken: (...args: unknown[]) => mockStoreToken(...args)
 }))
 
+import { SyncServerError } from '../sync/http-client'
 import { registerAuthDeviceHandlers, unregisterAuthDeviceHandlers } from './auth-device-handlers'
 
 // ============================================================================
@@ -147,6 +152,7 @@ describe('auth-device handlers', () => {
     vi.useFakeTimers()
     mockStoreGet.mockReturnValue({})
     mockRetrieveToken.mockResolvedValue('mock-access-token')
+    mockIsTokenExpired.mockReturnValue(false)
     mockStoreToken.mockResolvedValue(undefined)
     mockGetValidAccessToken.mockResolvedValue('mock-access-token')
     mockValidateKeyVerifier.mockReturnValue(true)
@@ -437,7 +443,8 @@ describe('auth-device handlers', () => {
       // #then
       expect(result).toEqual({
         success: false,
-        error: 'Session expired. Please sign in again.'
+        error:
+          'Your sign-in timed out before this finished. Sign in again, then enter your recovery phrase.'
       })
     })
 
@@ -585,6 +592,52 @@ describe('auth-device handlers', () => {
       expect(mockSecureCleanup).toHaveBeenCalledWith(signingSecretKey)
     })
 
+    it('reports setup-token failures as a sign-in timeout, never the server wording', async () => {
+      // #given — the sentence a user can act on (#1202: they saw "Invalid setup token")
+      registerAuthDeviceHandlers()
+      const timedOut = {
+        success: false,
+        error:
+          'Your sign-in timed out before this finished. Sign in again, then enter your recovery phrase.'
+      }
+      const phrase = { recoveryPhrase: 'correct horse battery staple' }
+
+      // #when — the five-minute token already ran out while the user hunted for their phrase
+      mockIsTokenExpired.mockReturnValueOnce(true)
+
+      // #then — answered locally, no pointless round trip
+      await expect(invokeHandler(SYNC_CHANNELS.LINK_VIA_RECOVERY, phrase)).resolves.toEqual(
+        timedOut
+      )
+      expect(mockGetFromServer).not.toHaveBeenCalled()
+
+      // #when / #then — the server's own 401 wording is translated, not forwarded
+      mockGetFromServer.mockRejectedValueOnce(
+        new SyncServerError('Invalid setup token', 401, 'AUTH_INVALID_TOKEN: Invalid setup token')
+      )
+      await expect(invokeHandler(SYNC_CHANNELS.LINK_VIA_RECOVERY, phrase)).resolves.toEqual(
+        timedOut
+      )
+
+      // #when / #then — same for a token already consumed by a device registration
+      mockGetFromServer.mockResolvedValueOnce({ kdfSalt: 'salt', keyVerifier: 'verifier' })
+      mockRecoverMasterKeyFromPhrase.mockResolvedValueOnce({
+        masterKey: new Uint8Array(32).fill(3),
+        kdfSalt: 'salt',
+        keyVerifier: 'verifier'
+      })
+      mockGetOrCreateSigningKeyPair.mockResolvedValueOnce({
+        publicKey: new Uint8Array(32),
+        secretKey: new Uint8Array(64)
+      })
+      mockPersistKeysAndRegisterDevice.mockRejectedValueOnce(
+        new SyncServerError('Setup token already used', 401)
+      )
+      await expect(invokeHandler(SYNC_CHANNELS.LINK_VIA_RECOVERY, phrase)).resolves.toEqual(
+        timedOut
+      )
+    })
+
     it('returns recovery-linking validation and verifier failures without registering a device', async () => {
       registerAuthDeviceHandlers()
 
@@ -598,7 +651,11 @@ describe('auth-device handlers', () => {
         invokeHandler(SYNC_CHANNELS.LINK_VIA_RECOVERY, {
           recoveryPhrase: 'correct horse battery staple'
         })
-      ).resolves.toEqual({ success: false, error: 'Session expired. Please sign in again.' })
+      ).resolves.toEqual({
+        success: false,
+        error:
+          'Your sign-in timed out before this finished. Sign in again, then enter your recovery phrase.'
+      })
 
       mockGetFromServer.mockResolvedValueOnce({ kdfSalt: 'salt', keyVerifier: 'verifier' })
       mockRecoverMasterKeyFromPhrase.mockResolvedValueOnce({
