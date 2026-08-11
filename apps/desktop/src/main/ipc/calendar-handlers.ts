@@ -694,6 +694,12 @@ export function registerCalendarHandlers(): void {
           isMemryManaged: false,
           syncStatus: 'pending',
           metadata: { connectedVia: 'oauth', email: connected.account.email },
+          // A per-account disconnect tombstones these rows instead of deleting
+          // them, and every read path filters on `archivedAt IS NULL`. Without
+          // clearing it here the reconnect finishes, stores fresh tokens, and
+          // still leaves the account row invisible — so status reports "Not
+          // Connected" forever and the user can never get back in (#1201).
+          archivedAt: null,
           createdAt: now,
           modifiedAt: now
         })
@@ -712,6 +718,10 @@ export function registerCalendarHandlers(): void {
           isMemryManaged: false,
           syncStatus: 'pending',
           metadata: null,
+          // Same tombstone as above: discovery already revives calendar rows
+          // (`discoverGoogleCalendarSources`), but it runs after this upsert and
+          // is allowed to fail, so the primary has to clear its own.
+          archivedAt: null,
           createdAt: now,
           modifiedAt: now
         })

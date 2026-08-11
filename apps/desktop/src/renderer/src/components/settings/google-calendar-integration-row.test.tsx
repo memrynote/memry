@@ -276,6 +276,20 @@ describe('Google Calendar integration row', () => {
     })
   ]
 
+  it('counts only the calendars it renders, not the hidden memrynote one (#1205)', async () => {
+    // CONNECTED_STATUS reports calendars.selected = 2 (Work + the memrynote-
+    // managed calendar), but the list below hides memrynote-managed rows, so
+    // only Work is visible as selected. Reporting the raw status count is what
+    // made a single-account install read as two connected calendars.
+    mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
+    mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
+
+    renderIntegrationList()
+
+    expect(await screen.findByText('1 selected')).toBeInTheDocument()
+    expect(screen.queryByText('2 selected')).not.toBeInTheDocument()
+  })
+
   it('lists each account with only its own calendars underneath', async () => {
     mockGetGoogleCalendarStatus.mockResolvedValue(TWO_ACCOUNT_STATUS)
     mockListSources.mockResolvedValue({ sources: TWO_ACCOUNT_SOURCES })
