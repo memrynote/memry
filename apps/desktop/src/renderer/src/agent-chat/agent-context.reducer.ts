@@ -15,6 +15,12 @@ export interface AgentState {
   activeConversationId: string | null
   conversations: Record<string, Conversation>
   messagesByConversation: Record<string, Message[]>
+  /**
+   * Conversation ids whose transcript was hydrated from main, least recently
+   * hydrated first. Drives transcript eviction; see
+   * {@link HYDRATED_CONVERSATION_LIMIT}.
+   */
+  hydratedConversationIds: string[]
   pendingApprovals: PendingToolApproval[]
   inFlight: Record<string, boolean>
   error: string | null
@@ -41,6 +47,19 @@ export type AgentAction =
   | { type: 'event'; event: AgentEvent }
   | { type: 'clear_pending'; toolCallId: string; status?: 'approved' | 'denied' }
 
+/**
+ * How many conversation transcripts stay hydrated in renderer memory. Without a
+ * cap, a day of Agent Chat use retains every opened conversation's full message
+ * array — including every tool call's args and every tool result's output — for
+ * the lifetime of the window.
+ *
+ * The cap sits above the number of agent surfaces that can be mounted at once
+ * (four split-view panes plus the right sidebar) so a transcript is never
+ * evicted out from under a view that is rendering it, which would make that
+ * view re-fetch it immediately.
+ */
+export const HYDRATED_CONVERSATION_LIMIT = 6
+
 export const initialAgentState: AgentState = {
   backendStatuses: null,
   disclosureAccepted: null,
@@ -48,6 +67,7 @@ export const initialAgentState: AgentState = {
   activeConversationId: null,
   conversations: {},
   messagesByConversation: {},
+  hydratedConversationIds: [],
   pendingApprovals: [],
   inFlight: {},
   error: null
@@ -157,6 +177,71 @@ function updateToolCallStatusEverywhere(
   )
 }
 
+/**
+ * A transcript may only be dropped when main can rebuild it byte for byte.
+ * Anything still live in this window — the conversation on screen, a turn we
+ * started, an approval the user has not answered, or an assistant message whose
+ * streamed text main only persists once the turn ends — is retained regardless
+ * of the cap.
+ */
+function isPinnedTranscript(
+  state: AgentState,
+  input: {
+    activeConversationId: string | null
+    messagesByConversation: AgentState['messagesByConversation']
+    conversationId: string
+  }
+): boolean {
+  if (input.conversationId === input.activeConversationId) return true
+  if (state.inFlight[input.conversationId] === true) return true
+  if (state.pendingApprovals.some((pending) => pending.conversationId === input.conversationId)) {
+    return true
+  }
+  return (input.messagesByConversation[input.conversationId] ?? []).some(
+    (message) => message.status === 'streaming'
+  )
+}
+
+/**
+ * Records `hydratedConversationId` as the most recently hydrated transcript and
+ * drops the transcripts that fall outside the cap. Everything dropped here is
+ * re-fetched from main the next time the conversation is opened.
+ */
+function retainHydratedTranscripts(
+  state: AgentState,
+  input: {
+    hydratedConversationId: string
+    activeConversationId: string | null
+    messagesByConversation: AgentState['messagesByConversation']
+  }
+): Pick<AgentState, 'messagesByConversation' | 'hydratedConversationIds'> {
+  const hydratedConversationIds = [
+    ...state.hydratedConversationIds.filter((id) => id !== input.hydratedConversationId),
+    input.hydratedConversationId
+  ]
+  const recent = new Set(hydratedConversationIds.slice(-HYDRATED_CONVERSATION_LIMIT))
+  const evicted = new Set(
+    Object.keys(input.messagesByConversation).filter(
+      (conversationId) =>
+        !recent.has(conversationId) &&
+        !isPinnedTranscript(state, {
+          activeConversationId: input.activeConversationId,
+          messagesByConversation: input.messagesByConversation,
+          conversationId
+        })
+    )
+  )
+  if (evicted.size === 0) {
+    return { messagesByConversation: input.messagesByConversation, hydratedConversationIds }
+  }
+  return {
+    messagesByConversation: Object.fromEntries(
+      Object.entries(input.messagesByConversation).filter(([id]) => !evicted.has(id))
+    ),
+    hydratedConversationIds: hydratedConversationIds.filter((id) => !evicted.has(id))
+  }
+}
+
 function withoutInFlight(state: AgentState, conversationId: string): Record<string, boolean> {
   const { [conversationId]: _removed, ...rest } = state.inFlight
   return rest
@@ -180,35 +265,47 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
           action.conversations.map((conversation) => [conversation.id, conversation])
         )
       }
-    case 'set_active_conversation':
+    case 'set_active_conversation': {
       if (!action.conversation) {
         return { ...state, activeConversationId: null }
       }
+      const conversationId = action.conversation.id
       return {
         ...state,
-        activeConversationId: action.conversation.id,
+        activeConversationId: conversationId,
         conversations: {
           ...state.conversations,
-          [action.conversation.id]: action.conversation
+          [conversationId]: action.conversation
         },
-        messagesByConversation: {
-          ...state.messagesByConversation,
-          [action.conversation.id]: action.messages
-        }
+        ...retainHydratedTranscripts(state, {
+          hydratedConversationId: conversationId,
+          activeConversationId: conversationId,
+          messagesByConversation: {
+            ...state.messagesByConversation,
+            [conversationId]: action.messages
+          }
+        })
       }
-    case 'set_conversation_messages':
+    }
+    case 'set_conversation_messages': {
       if (!action.conversation) return state
+      const conversationId = action.conversation.id
       return {
         ...state,
         conversations: {
           ...state.conversations,
-          [action.conversation.id]: action.conversation
+          [conversationId]: action.conversation
         },
-        messagesByConversation: {
-          ...state.messagesByConversation,
-          [action.conversation.id]: action.messages
-        }
+        ...retainHydratedTranscripts(state, {
+          hydratedConversationId: conversationId,
+          activeConversationId: state.activeConversationId,
+          messagesByConversation: {
+            ...state.messagesByConversation,
+            [conversationId]: action.messages
+          }
+        })
       }
+    }
     case 'clear_active_conversation':
       return {
         ...state,
