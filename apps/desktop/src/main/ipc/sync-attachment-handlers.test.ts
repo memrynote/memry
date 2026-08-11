@@ -85,6 +85,24 @@ vi.mock('../sync/upload-queue', () => ({
   })
 }))
 
+// The outbox uploader is only reachable as a registered callback. Keep the real
+// module and just record what gets registered, so the uploader's own progress
+// wiring can be driven directly.
+type OutboxUploader = Parameters<
+  typeof import('../sync/attachment-outbox').registerOutboxUploader
+>[0]
+const outboxUploaders = vi.hoisted(() => [] as OutboxUploader[])
+vi.mock('../sync/attachment-outbox', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../sync/attachment-outbox')>()
+  return {
+    ...actual,
+    registerOutboxUploader: (...args: Parameters<typeof actual.registerOutboxUploader>): void => {
+      outboxUploaders.push(args[0])
+      actual.registerOutboxUploader(...args)
+    }
+  }
+})
+
 const mockOnSaved = vi.fn()
 const mockOnDownloadNeeded = vi.fn()
 const mockRemoveAll = vi.fn()
@@ -152,6 +170,7 @@ vi.mock('libsodium-wrappers-sumo', () => ({
 
 import {
   clearAttachmentState,
+  getCanvasAssetIO,
   registerAttachmentHandlers,
   unregisterAttachmentHandlers
 } from './sync-attachment-handlers'
@@ -185,6 +204,7 @@ describe('sync-attachment-handlers', () => {
       .mockReset()
       .mockResolvedValue({ attachmentId: 'attachment-1', sessionId: 'session-1' })
     attachmentMocks.queue.dispose.mockReset()
+    outboxUploaders.length = 0
     mockOnSaved.mockClear()
     mockOnDownloadNeeded.mockClear()
     mockRemoveAll.mockClear()
@@ -425,6 +445,70 @@ describe('sync-attachment-handlers', () => {
         }
       ]
     )
+  })
+
+  it('hands canvas asset uploads a fresh broadcaster and sends downloads straight to the service', async () => {
+    // #given the canvas asset IO bound over the shared singletons
+    const io = getCanvasAssetIO()
+    expect(io).not.toBeNull()
+
+    // #when two canvas uploads and a canvas download run through it
+    await io!.uploadAttachment('canvas-1', '/vault/attachments/canvas-1.png')
+    await io!.uploadAttachment('canvas-2', '/vault/attachments/canvas-2.png')
+    await io!.downloadAttachment('attachment-1', '/vault/attachments/canvas-1.png')
+
+    // #then each upload carries its own callback, never one shared instance
+    expect(attachmentMocks.queue.enqueue).toHaveBeenCalledWith(
+      'canvas-1',
+      '/vault/attachments/canvas-1.png',
+      expect.any(Function)
+    )
+    expect(attachmentMocks.queue.enqueue.mock.calls[0][2]).not.toBe(
+      attachmentMocks.queue.enqueue.mock.calls[1][2]
+    )
+    expect(attachmentMocks.service.downloadAttachment).toHaveBeenCalledWith(
+      'attachment-1',
+      '/vault/attachments/canvas-1.png'
+    )
+  })
+
+  it('gives the outbox uploader its own throttled progress broadcaster', async () => {
+    // #given the uploader registered with the attachment outbox
+    registerAttachmentHandlers()
+    const uploader = outboxUploaders.filter(Boolean).at(-1)
+    expect(uploader).toBeDefined()
+
+    // #when the outbox drains one queued attachment
+    await expect(uploader!('note-1', '/vault/attachments/outbox.pdf')).resolves.toEqual({
+      attachmentId: 'attachment-1'
+    })
+    expect(attachmentMocks.queue.enqueue).toHaveBeenCalledWith(
+      'note-1',
+      '/vault/attachments/outbox.pdf',
+      expect.any(Function)
+    )
+
+    // #then the broadcaster it was handed dedupes on its own state
+    const broadcaster = attachmentMocks.queue.enqueue.mock.calls[0][2] as (
+      progress: TransferProgress
+    ) => void
+    const halfway: TransferProgress = {
+      attachmentId: 'attachment-1',
+      phase: 'uploading',
+      chunksCompleted: 1,
+      totalChunks: 2,
+      bytesTransferred: 1,
+      totalBytes: 2
+    }
+    broadcaster(halfway)
+    broadcaster({ ...halfway })
+
+    expect(attachmentMocks.sent.filter((e) => e.channel === SYNC_EVENTS.UPLOAD_PROGRESS)).toEqual([
+      {
+        channel: SYNC_EVENTS.UPLOAD_PROGRESS,
+        payload: { attachmentId: 'attachment-1', sessionId: '', progress: 50, status: 'uploading' }
+      }
+    ])
   })
 
   it('maps download progress and uploads saved attachments from event callbacks', async () => {
