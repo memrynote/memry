@@ -260,6 +260,7 @@ export class SyncEngine extends EventEmitter {
     this.ctx.deps.ws.removeListener('device_revoked', this.handleDeviceRevokedFromWs)
     this.ctx.deps.ws.removeListener('certificate_pin_failed', this.handleCertPinFailed)
     this.ctx.deps.ws.disconnect()
+    this.fullSyncRunner.dispose()
     this.pullCoordinator.clearCaches()
     this.quarantine.clear()
     this.ctx.syncing = false
