@@ -776,6 +776,64 @@ describe('reminders service', () => {
     })
   })
 
+  describe('scheduler tick', () => {
+    it('subscribes to the shared minute tick instead of owning a timer', async () => {
+      const { getMinuteTickIds, isMinuteTickRunning } = await import('./minute-tick')
+      const setIntervalSpy = vi.spyOn(globalThis, 'setInterval')
+
+      remindersService.startReminderScheduler()
+
+      expect(getMinuteTickIds()).toEqual(['reminders'])
+      expect(remindersService.isSchedulerRunning()).toBe(true)
+      expect(setIntervalSpy).toHaveBeenCalledTimes(1)
+
+      remindersService.stopReminderScheduler()
+
+      expect(getMinuteTickIds()).toEqual([])
+      expect(isMinuteTickRunning()).toBe(false)
+      setIntervalSpy.mockRestore()
+    })
+
+    it('runs a single count query and no badge call on an idle tick', () => {
+      vi.useFakeTimers()
+      try {
+        remindersService.startReminderScheduler()
+        setBadgeCountMock.mockClear()
+        const prepareSpy = vi.spyOn(dataDb.sqlite, 'prepare')
+
+        vi.advanceTimersByTime(60 * 1000)
+
+        const statements = prepareSpy.mock.calls.map((call) => String(call[0]).toLowerCase())
+        expect(statements).toHaveLength(1)
+        expect(statements[0]).toContain('count(*)')
+        expect(setBadgeCountMock).not.toHaveBeenCalled()
+        prepareSpy.mockRestore()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('still triggers a reminder that becomes due after the scheduler started', () => {
+      vi.useFakeTimers()
+      try {
+        remindersService.startReminderScheduler()
+
+        seedReminder({
+          id: 'rem-tick',
+          remindAt: '2000-01-01T00:00:00.000Z',
+          status: reminderStatus.PENDING
+        })
+
+        vi.advanceTimersByTime(60 * 1000)
+
+        const row = dataDb.db.select().from(reminders).where(eq(reminders.id, 'rem-tick')).get()
+        expect(row?.status).toBe(reminderStatus.TRIGGERED)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+  })
+
   it('validates reminder mutations, missing rows, and pending count fallbacks', () => {
     const pastDate = '2000-01-01T00:00:00.000Z'
     const futureDate = new Date(Date.now() + 60 * 60 * 1000).toISOString()
