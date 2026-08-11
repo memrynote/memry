@@ -74,7 +74,10 @@ describe('SYNC_STATE_KEYS', () => {
         SYNC_PAUSED: 'syncPaused',
         INITIAL_SEED_DONE: 'initialSeedDone',
         QUARANTINED_ITEMS: 'quarantinedItems',
-        LAST_MANIFEST_CHECK_AT: 'lastManifestCheckAt'
+        LAST_MANIFEST_CHECK_AT: 'lastManifestCheckAt',
+        // Additive: absent on installs written by older builds, which reads
+        // back as 0 and simply runs the vault-wide CRDT sweep once.
+        LAST_CRDT_SWEEP_AT: 'lastCrdtSweepAt'
       })
     })
 

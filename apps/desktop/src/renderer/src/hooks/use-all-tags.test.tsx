@@ -8,7 +8,8 @@ import { useAllTags } from './use-all-tags'
 const mocks = vi.hoisted(() => ({
   notesGetTags: vi.fn(),
   inboxGetTags: vi.fn(),
-  tagListeners: [] as Array<() => void>
+  tagListeners: [] as Array<() => void>,
+  tagUnsubscribes: [] as Array<ReturnType<typeof vi.fn>>
 }))
 
 vi.mock('@/services/notes-service', () => ({
@@ -17,7 +18,9 @@ vi.mock('@/services/notes-service', () => ({
   },
   onTagsChanged: (callback: () => void) => {
     mocks.tagListeners.push(callback)
-    return vi.fn()
+    const unsubscribe = vi.fn()
+    mocks.tagUnsubscribes.push(unsubscribe)
+    return unsubscribe
   }
 }))
 
@@ -46,6 +49,7 @@ describe('useAllTags', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.tagListeners = []
+    mocks.tagUnsubscribes = []
     mocks.notesGetTags.mockResolvedValue([
       { tag: 'Work', count: 4, color: '#111111' },
       { tag: 'work/design', count: 2, color: '#222222' },
@@ -106,6 +110,34 @@ describe('useAllTags', () => {
     })
     expect(mocks.notesGetTags).toHaveBeenCalledTimes(3)
     expect(mocks.inboxGetTags).toHaveBeenCalledTimes(2)
+  })
+
+  it('subscribes to tag events once across re-renders and unsubscribes on unmount', async () => {
+    const { result, rerender, unmount } = renderHook(() => useAllTags(), {
+      wrapper: createWrapper()
+    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    // The sole consumer (tag-autocomplete) re-renders on every keystroke.
+    for (let i = 0; i < 10; i += 1) {
+      rerender()
+    }
+
+    expect(mocks.tagListeners).toHaveLength(1)
+    expect(mocks.tagUnsubscribes.filter((fn) => fn.mock.calls.length > 0)).toHaveLength(0)
+
+    // A tags-changed event arriving after those re-renders must still reach the
+    // consumer (guards against a listener left holding stale render state).
+    // mockResolvedValue (not ...Once) so an unconsumed queue entry can never leak
+    // into the next test in this file.
+    mocks.notesGetTags.mockResolvedValue([{ tag: 'after-rerenders', count: 12 }])
+    await act(async () => {
+      mocks.tagListeners[mocks.tagListeners.length - 1]()
+    })
+    await waitFor(() => expect(result.current.tags[0].name).toBe('after-rerenders'))
+
+    unmount()
+    expect(mocks.tagUnsubscribes.filter((fn) => fn.mock.calls.length > 0)).toHaveLength(1)
   })
 
   it('surfaces query errors while still exposing empty helper results', async () => {

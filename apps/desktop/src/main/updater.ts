@@ -10,8 +10,29 @@ import { htmlToPlainText } from './lib/html-to-plain-text'
 import { getUpdaterPrefs, setAutoCheckPref, setAutoDownloadPref, setSkippedVersion } from './store'
 import { trackMainError } from './telemetry/diagnostics'
 import { trackMainEvent } from './telemetry/track'
+import { markUpdateInstallStarted } from './telemetry/update-install-marker'
 
 const logger = createLogger('Updater')
+
+/**
+ * electron-updater defaults its own logger to `console` (AppUpdater sets it at
+ * construction), and a packaged build has no console attached — so its
+ * diagnostics went nowhere. That is the half of the update pipeline we never
+ * see: "Cannot run installer: error code: EACCES/UNKNOWN/ENOENT", the
+ * elevate.exe retry, differential-download fallbacks. Routing them into the app
+ * log makes a user's main.log answer why an update did not install.
+ */
+const libraryLogger = createLogger('ElectronUpdater')
+const updaterLibraryLogger = {
+  info: (message?: unknown) => logMessage('info', message),
+  warn: (message?: unknown) => logMessage('warn', message),
+  error: (message?: unknown) => logMessage('error', message),
+  debug: (message?: unknown) => logMessage('debug', message)
+}
+
+function logMessage(level: 'info' | 'warn' | 'error' | 'debug', message?: unknown): void {
+  libraryLogger[level](typeof message === 'string' ? message : String(message ?? ''))
+}
 
 /**
  * How often to re-check for updates while the app is running when auto-check is on.
@@ -160,6 +181,7 @@ export function initializeUpdater(): void {
   }
 
   initialized = true
+  autoUpdater.logger = updaterLibraryLogger
   const prefs = getUpdaterPrefs()
   const autoDownloadEnabled = prefs.autoDownload ?? false
   const autoCheckEnabled = prefs.autoCheck ?? true
@@ -477,6 +499,11 @@ export function isQuitAndInstallRequested(): boolean {
 // (adds /S) and relaunch afterwards (adds --force-run). macOS Squirrel relaunches
 // regardless; the flags only affect the Windows NSIS installer.
 export function performQuitAndInstall(): void {
+  // Last chance to leave evidence: the installer runs after this process exits,
+  // and the shutdown chain has already disposed the telemetry runtime and the
+  // log-ship transport, so an install failure from here on reaches nobody. The
+  // next launch reads this marker and reports the install that never applied.
+  markUpdateInstallStarted(getCurrentVersion(), state.availableVersion ?? undefined)
   autoUpdater.quitAndInstall(true, true)
 }
 

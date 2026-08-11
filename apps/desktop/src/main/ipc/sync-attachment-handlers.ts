@@ -1,4 +1,5 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { ipcMain } from 'electron'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import fs from 'node:fs'
 import path from 'node:path'
 import sodium from 'libsodium-wrappers-sumo'
@@ -81,14 +82,12 @@ const broadcastUploadProgress = (progress: TransferProgress): void => {
     progress.totalChunks > 0
       ? Math.round((progress.chunksCompleted / progress.totalChunks) * 100)
       : 0
-  for (const win of BrowserWindow.getAllWindows()) {
-    win.webContents.send(SYNC_EVENTS.UPLOAD_PROGRESS, {
-      attachmentId: progress.attachmentId,
-      sessionId: '',
-      progress: percent,
-      status: progress.phase
-    })
-  }
+  broadcastToAllWindows(SYNC_EVENTS.UPLOAD_PROGRESS, {
+    attachmentId: progress.attachmentId,
+    sessionId: '',
+    progress: percent,
+    status: progress.phase
+  })
 }
 
 const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
@@ -234,13 +233,11 @@ export function registerAttachmentHandlers(): void {
           progress.totalChunks > 0
             ? Math.round((progress.chunksCompleted / progress.totalChunks) * 100)
             : 0
-        for (const win of BrowserWindow.getAllWindows()) {
-          win.webContents.send(SYNC_EVENTS.DOWNLOAD_PROGRESS, {
-            attachmentId: progress.attachmentId,
-            progress: percent,
-            status: progress.phase
-          })
-        }
+        broadcastToAllWindows(SYNC_EVENTS.DOWNLOAD_PROGRESS, {
+          attachmentId: progress.attachmentId,
+          progress: percent,
+          status: progress.phase
+        })
       })
 
       try {
@@ -374,14 +371,12 @@ export function registerAttachmentHandlers(): void {
           invalidateCachedEntitlementLimits()
         }
 
-        for (const win of BrowserWindow.getAllWindows()) {
-          win.webContents.send(SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED, {
-            noteId,
-            diskPath,
-            error: message,
-            errorCategory: category
-          })
-        }
+        broadcastToAllWindows(SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED, {
+          noteId,
+          diskPath,
+          error: message,
+          errorCategory: category
+        })
       }
     })()
   })
@@ -417,13 +412,11 @@ export function registerAttachmentHandlers(): void {
         // Mirrors the upload path above — a download-side outage (auth, R2,
         // decrypt) must not repeat the 58-day blindness the upload path had.
         trackMainError('sync_attachments', 'attachment_download_failed', err)
-        for (const win of BrowserWindow.getAllWindows()) {
-          win.webContents.send(SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED, {
-            noteId,
-            diskPath,
-            error: message
-          })
-        }
+        broadcastToAllWindows(SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED, {
+          noteId,
+          diskPath,
+          error: message
+        })
       }
     })()
   })

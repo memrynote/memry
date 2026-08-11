@@ -189,6 +189,42 @@ describe('sync-server app entry point', () => {
       }
     })
   })
+
+  it('lets multi-MB sync bodies through so route-level 5MB payload checks are reachable', async () => {
+    const request = new Request('http://localhost/sync/crdt/snapshot', {
+      method: 'POST',
+      body: new Uint8Array(2 * ONE_MB)
+    })
+
+    const response = await app.request(request, {}, createEnv())
+
+    expect(response.status).toBe(401)
+    const body = await response.json()
+    expect(body).toEqual({
+      error: {
+        code: 'AUTH_INVALID_TOKEN',
+        message: 'Missing or malformed Authorization header'
+      }
+    })
+  })
+
+  it('rejects sync bodies above the sync route limit', async () => {
+    const request = new Request('http://localhost/sync/crdt/snapshot', {
+      method: 'POST',
+      body: new Uint8Array(8 * ONE_MB + 1)
+    })
+
+    const response = await app.request(request, {}, createEnv())
+
+    expect(response.status).toBe(413)
+    const body = await response.json()
+    expect(body).toEqual({
+      error: {
+        code: 'VALIDATION_BODY_TOO_LARGE',
+        message: 'Request body too large'
+      }
+    })
+  })
 })
 
 describe('scheduled cleanup', () => {

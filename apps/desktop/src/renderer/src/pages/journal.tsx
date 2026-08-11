@@ -217,12 +217,18 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const [editorRevision, setEditorRevision] = useState(0)
 
   const editorLoadState = loadedForDate === selectedDate ? 'loaded' : 'pending'
+  // `externalUpdateCount` is deliberately NOT part of the key: an external
+  // update (device sync, an on-disk edit, an agent write) is handed to the live
+  // editor via `externalContentRevision` instead of throwing the editor away and
+  // building a new one for every remote change. `editorRevision` stays in the
+  // key — it is the error-boundary recovery path, where a fresh editor is the
+  // point.
   const editorState = useMemo(
     () => ({
-      key: `${selectedDate}-${editorLoadState}-${externalUpdateCount}-${editorRevision}`,
+      key: `${selectedDate}-${editorLoadState}-${editorRevision}`,
       content: editorLoadState === 'loaded' ? (entry?.content ?? '') : ''
     }),
-    [selectedDate, editorLoadState, externalUpdateCount, editorRevision, entry?.content]
+    [selectedDate, editorLoadState, editorRevision, entry?.content]
   )
 
   const isDataPending = isEntryLoading || loadedForDate !== selectedDate
@@ -949,6 +955,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                               noteId={entry?.id}
                               initialContent={review.editorInitialContent}
                               contentType="markdown"
+                              externalContentRevision={externalUpdateCount}
                               placeholder={
                                 selectedDate > today
                                   ? t('editor.placeholder.future')

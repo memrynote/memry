@@ -96,6 +96,14 @@ export interface ContentAreaProps {
   initialContent?: Block[] | string
   /** Type of content being passed: 'html', 'markdown', or 'blocks' */
   contentType?: 'html' | 'markdown' | 'blocks'
+  /**
+   * Bump this when `initialContent` was replaced by an edit that did not come
+   * from this editor (device sync, an on-disk edit, an agent write). The editor
+   * re-reads `initialContent` in place, so the caller never has to remount it.
+   * Ignored while collaboration is active — the shared Y.Doc already merges the
+   * update into the live editor.
+   */
+  externalContentRevision?: number
   /** Placeholder text when editor is empty */
   placeholder?: string
   /** Whether the editor is read-only */

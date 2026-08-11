@@ -37,7 +37,7 @@ import { createRemindersService, type RemindersServiceHooks } from '@memry/app-c
 import { syncNoteDateReminders, clearNoteDateReminders } from '../notes/note-date-reminders'
 import { deleteFile } from '../vault/file-ops'
 import { NotesChannels, JournalChannels } from '@memry/contracts/ipc-channels'
-import { BrowserWindow } from 'electron'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import path from 'path'
 import {
   enqueueLocalSyncCreate,
@@ -88,9 +88,17 @@ interface WritebackDebugState {
   lastError: string | null
 }
 
+/**
+ * E2E-only bookkeeping. `lastMarkdown` is the entire serialized note body, and
+ * nothing evicts entries, so populating this in a real session would pin one
+ * full copy of every edited note in the main process for the app's lifetime.
+ * The only reader is the `getWritebackDebugState` test hook, which is itself
+ * registered behind the same gate (see `registerTestHooks`).
+ */
 const debugState = new Map<string, WritebackDebugState>()
 
 function updateDebugState(noteId: string, patch: Partial<WritebackDebugState>): void {
+  if (process.env.NODE_ENV !== 'test') return
   const current = debugState.get(noteId) ?? {
     pending: false,
     scheduledCount: 0,
@@ -148,9 +156,7 @@ export function wasRecentNetworkUpdate(noteId: string): boolean {
 }
 
 function emitToRenderer(channel: string, data: unknown): void {
-  for (const win of BrowserWindow.getAllWindows()) {
-    win.webContents.send(channel, data)
-  }
+  broadcastToAllWindows(channel, data)
 }
 
 export function scheduleWriteback(noteId: string, doc: Y.Doc): void {

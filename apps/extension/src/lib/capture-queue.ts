@@ -34,3 +34,11 @@ export function badgeText(count: number): string {
   if (count <= 0) return ''
   return count > 99 ? '99+' : String(count)
 }
+
+// PDF captures carry megabytes of base64 and are never queued: Chrome caps
+// storage.local at 10MB without the unlimitedStorage permission. The popup's
+// launch-and-send flow already covers the app-closed case, and the tab is still
+// open, so retrying is one click.
+export function isQueueable(capture: ArticleCapture): boolean {
+  return !capture.pdfDataUrl
+}

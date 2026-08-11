@@ -345,6 +345,38 @@ export class CrdtProvider {
     return !this.docs.has(noteId)
   }
 
+  /**
+   * Release every doc reference held by a window that no longer exists.
+   *
+   * The CLOSE_DOC invoke, sent from the renderer's React cleanup, is the only
+   * other path that clears a windowId — and ⌘W, a reload, or a renderer crash
+   * tears the process down without running it. BrowserWindow ids are monotonic
+   * and never recycled, so the stale id pins the doc for the rest of the
+   * session: close() early-returns, eviction skips it (windowIds.size === 0)
+   * and compaction bails, leaving the update log to grow unbounded.
+   *
+   * Call this ONLY for a window that has actually been destroyed. A hidden,
+   * minimised or background window is still live and must keep its docs
+   * pinned. Docs another live window still holds are left untouched, and the
+   * release goes through the same closeIfInactive path the sync engine uses,
+   * so the doc is flushed to persistence before it is destroyed.
+   */
+  async forgetWindow(windowId: number): Promise<void> {
+    const orphaned: string[] = []
+    for (const [noteId, entry] of this.docs) {
+      if (!entry.windowIds.delete(windowId)) continue
+      if (entry.windowIds.size === 0) orphaned.push(noteId)
+    }
+
+    for (const noteId of orphaned) {
+      await this.closeIfInactive(noteId)
+    }
+
+    if (orphaned.length > 0) {
+      log.debug('Released docs held by a closed window', { windowId, count: orphaned.length })
+    }
+  }
+
   async purge(noteId: string): Promise<void> {
     await this.close(noteId)
     await this.persistence?.clearDocument(noteId).catch((err) => {
@@ -720,11 +752,19 @@ export class CrdtProvider {
       if (win && !win.isDestroyed()) {
         win.webContents.send(CRDT_EVENTS.STATE_CHANGED, {
           noteId,
-          update: Array.from(update),
+          update,
           origin
         })
       } else {
-        log.debug('Skipping CRDT broadcast for unavailable window', { noteId, windowId })
+        // Backstop for a window whose 'closed' hook never ran (opened the note
+        // before the hook was registered, or the provider was replaced by a
+        // vault switch): drop the id so it stops pinning the doc. A hidden or
+        // minimised window still resolves here, so this only ever sheds ids
+        // whose window is genuinely gone. Deliberately does not close the doc —
+        // this runs inside the doc's own 'update' handler — it just makes the
+        // doc eligible for the normal inactive-doc eviction pass.
+        entry.windowIds.delete(windowId)
+        log.debug('Dropped CRDT broadcast target for a window that is gone', { noteId, windowId })
       }
     }
   }
@@ -896,21 +936,19 @@ export class CrdtProvider {
     return { ok: true }
   }
 
-  applyIpcUpdate(noteId: string, updateArr: number[], sourceWindowId: number): void {
+  applyIpcUpdate(noteId: string, update: Uint8Array, sourceWindowId: number): void {
     const entry = this.docs.get(noteId)
     if (!entry) return
     this.touchDoc(entry)
 
-    const update = new Uint8Array(updateArr)
     const origin: IpcOrigin = { source: 'ipc', windowId: sourceWindowId }
     Y.applyUpdate(entry.doc, update, origin)
   }
 
-  applyIpcSyncStep2(noteId: string, diffArr: number[]): void {
+  applyIpcSyncStep2(noteId: string, diff: Uint8Array): void {
     const entry = this.docs.get(noteId)
     if (!entry) return
     this.touchDoc(entry)
-    const diff = new Uint8Array(diffArr)
     Y.applyUpdate(entry.doc, diff, { source: 'ipc', windowId: -1 } satisfies IpcOrigin)
   }
 }

@@ -31,11 +31,10 @@ export class YjsIpcProvider extends Observable<string> {
     this.doc.on('update', this.updateHandler)
 
     this.ipcCleanup = window.api.onCrdtStateChanged(
-      (data: { noteId: string; update: number[]; origin: string }) => {
+      (data: { noteId: string; update: Uint8Array; origin: string }) => {
         if (data.noteId !== this.noteId) return
-        const update = new Uint8Array(data.update)
-        Y.applyUpdate(this.doc, update, 'remote')
-        log.debug('Applied remote update', { noteId: this.noteId, bytes: update.byteLength })
+        Y.applyUpdate(this.doc, data.update, 'remote')
+        log.debug('Applied remote update', { noteId: this.noteId, bytes: data.update.byteLength })
       }
     )
 
@@ -94,20 +93,19 @@ export class YjsIpcProvider extends Observable<string> {
 
     const result = await window.api.syncCrdt.syncStep1({
       noteId: this.noteId,
-      stateVector: Array.from(stateVector)
+      stateVector
     })
 
     if (this.destroyed) return
 
     if (result) {
-      const diff = new Uint8Array(result.diff)
-      Y.applyUpdate(this.doc, diff, 'ipc-provider')
+      Y.applyUpdate(this.doc, result.diff, 'ipc-provider')
 
-      const localDiff = Y.encodeStateAsUpdate(this.doc, new Uint8Array(result.stateVector))
+      const localDiff = Y.encodeStateAsUpdate(this.doc, result.stateVector)
       if (localDiff.byteLength > 0) {
         await window.api.syncCrdt.syncStep2({
           noteId: this.noteId,
-          diff: Array.from(localDiff)
+          diff: localDiff
         })
       }
     }
@@ -123,7 +121,7 @@ export class YjsIpcProvider extends Observable<string> {
   private sendUpdate(update: Uint8Array): void {
     void window.api.syncCrdt.applyUpdate({
       noteId: this.noteId,
-      update: Array.from(update)
+      update
     })
   }
 }

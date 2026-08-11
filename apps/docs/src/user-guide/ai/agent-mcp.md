@@ -39,7 +39,10 @@ that `claude` is available on `PATH`, that it reports version `2.1.0` or newer, 
 disclosure has been accepted; the Codex CLI is detected the same way. On macOS and Linux, memrynote
 resolves your login shell's `PATH` at startup, so CLIs installed in shell-managed locations
 (`~/.local/bin`, Homebrew, nvm, volta) are still found when the app is launched from the Dock or
-Finder rather than from a terminal. For local models, configure a compatible server in
+Finder rather than from a terminal. These checks run in the background rather than pausing the app,
+and a successful check is reused for a few minutes so a burst of turns does not re-run it. A failed
+check is never remembered: if you install or upgrade a CLI while memrynote is running, the next
+message or provider check picks it up without a restart. For local models, configure a compatible server in
 [Settings -> AI Assistant -> Agent Permissions](/user-guide/settings#agent-permissions) first.
 If the global AI switch is off in [Settings -> AI](/user-guide/settings#ai), the Agent tab and Agent
 MCP current-note bridge are hidden and inactive.
@@ -140,6 +143,12 @@ llama.cpp server, plus a Custom endpoint. Local tool access is gated by a capabi
 model can emit tool calls and continue after a tool result, memrynote enables the full vault tool set. If
 the probe fails, local chat can still answer from attached context, but vault tool calls stay
 disabled.
+
+The probe costs a couple of model generations, so memrynote runs it once and reuses the verdict for
+up to ten minutes instead of repeating it on every message. Changing the preset, base URL, model, or
+API key re-checks immediately, and an unreachable provider is never remembered — start your local
+server and the next message picks it up. If you swap the model behind an unchanged configuration,
+press **Probe Tools** in Settings to force a fresh check.
 
 If the configured local provider is not running, the model picker returns no discovered models
 instead of treating the settings page as an Agent runtime error. Start the provider, then load models
@@ -409,6 +418,9 @@ approval controls inside the tool row. You can allow the request once, allow cre
 that conversation, deny it, or edit the arguments before allowing. Note updates load a before/after
 diff before the write is applied. Unauthenticated or context-free write requests continue to be
 denied.
+
+Stopping the turn while an approval is waiting counts as a denial: the pending request is refused,
+the tool never runs, and the approval controls disappear. Nothing is written to your vault.
 
 ## Project Links
 

@@ -78,13 +78,18 @@ export function useAllTags(): UseAllTagsResult {
     staleTime: 60 * 1000 // 1 minute
   })
 
+  // `notesQuery` is a new object on every render, so depending on it re-subscribed
+  // the IPC listener per keystroke in tag-autocomplete. `refetch` is stable and
+  // always refetches the current query, so it cannot go stale.
+  const refetchNotes = notesQuery.refetch
+
   useEffect(() => {
     const unsubscribe = onTagsChanged(() => {
-      void notesQuery.refetch()
+      void refetchNotes()
     })
 
     return unsubscribe
-  }, [notesQuery, notesQuery.refetch])
+  }, [refetchNotes])
 
   // Combine and deduplicate tags from both sources
   const combinedTags = useMemo((): TagWithMeta[] => {

@@ -25,7 +25,9 @@ describe('pushPostHogLogs', () => {
     ])
 
     const [url, init] = fetchSpy.mock.calls[0]
-    expect(url).toBe('https://us.i.posthog.com/v1/logs')
+    // `/i/v1/logs`, not `/v1/logs` — the latter is a 404 on the edge host and
+    // this assertion previously locked that in, so the Logs tab stayed empty.
+    expect(url).toBe('https://us.i.posthog.com/i/v1/logs')
     expect((init as RequestInit).headers).toMatchObject({ authorization: 'Bearer phc_test' })
 
     const body = JSON.parse((init as RequestInit).body as string)

@@ -1,4 +1,5 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { ipcMain } from 'electron'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { LocaleChannels } from '@memry/contracts/ipc-channels'
 import { LocaleSchema, SUPPORTED_LOCALES, type Locale } from '@memry/contracts/locale-api'
 import { GENERAL_SETTINGS_DEFAULTS, type GeneralSettings } from '@memry/contracts/settings-schemas'
@@ -101,9 +102,7 @@ export async function applyLocale(locale: Locale): Promise<void> {
     await runtime.i18n.changeLanguage(locale)
     runtime.rebuildMenu(locale)
 
-    for (const win of BrowserWindow.getAllWindows()) {
-      win.webContents.send(LocaleChannels.Changed, locale)
-    }
+    broadcastToAllWindows(LocaleChannels.Changed, locale)
 
     activeLocale = locale
     persistLocale(locale)

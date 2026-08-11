@@ -52,6 +52,7 @@ import { formatDateKey } from '@/lib/task-utils'
 import { editorSchema } from './editor-schema'
 import { analyzeTaskIntents } from './scan-task-intents'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
+import { useEditorTeardown } from '@/hooks/use-editor-teardown'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { vaultService } from '@/services/vault-service'
 import { createNoteFileUrlResolver } from '@/lib/create-note-file-url-resolver'
@@ -135,6 +136,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   notePath,
   initialContent,
   contentType = 'html',
+  externalContentRevision,
   placeholder,
   editable = true,
   stickyToolbar = false,
@@ -265,12 +267,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   })
 
   // Hook #2: Content sync (initial load + debounced change handler)
-  const { handleChange } = useEditorSync({
+  const { handleChange, flushPendingMarkdown } = useEditorSync({
     editor,
     noteId,
     notePath,
     initialContent,
     contentType,
+    externalContentRevision,
     yjsFragment,
     isRemoteUpdateRef,
     noteTags,
@@ -283,6 +286,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     onHeadingsChange,
     onInlineTagsChange
   })
+
+  // Hook #2b: Explicit teardown. `useCreateBlockNote` never disposes what it
+  // builds, so the editor is destroyed here — after the pending markdown save
+  // has been flushed, since serializing needs a live editor.
+  useEditorTeardown(editor, flushPendingMarkdown)
 
   useEffect(() => {
     onReviewEditorReady?.(editor)

@@ -379,6 +379,60 @@ describe('createTelemetryClient — crash durability', () => {
     expect(createTelemetryClient(createDeps({ persistPath }).deps).getQueueDepth()).toBe(0)
   })
 
+  it('does not rewrite the whole mirror once per tracked event', () => {
+    // #given a client whose queue is already at the limit — what an unreachable
+    // endpoint produces, where every further event used to re-serialise all 500
+    const client = createTelemetryClient(createDeps({ persistPath }).deps)
+    for (let i = 0; i < TELEMETRY_QUEUE_LIMIT; i++) {
+      client.track(buildEvent(`11111111-1111-1111-1111-${String(i).padStart(12, '0')}`))
+    }
+    const mirrorSize = fs.statSync(persistPath).size
+    // fs.appendFileSync dispatches through fs.writeFileSync inside Node, so this
+    // spy sees both paths; byte volume is what separates them.
+    const write = vi.spyOn(fs, 'writeFileSync')
+
+    // #when 100 more events are tracked
+    for (let i = 1000; i < 1100; i++) {
+      client.track(buildEvent(`11111111-1111-1111-1111-${String(i).padStart(12, '0')}`))
+    }
+
+    // #then the whole burst wrote less than a single copy of the queue, where
+    // mirroring per event wrote 100 copies of it
+    const written = write.mock.calls.reduce((sum, call) => sum + String(call[1]).length, 0)
+    expect(written).toBeLessThan(mirrorSize)
+    write.mockRestore()
+
+    // #and a crash still loses nothing: the newest 500 events are on disk
+    const revived = createTelemetryClient(createDeps({ persistPath }).deps)
+    expect(revived.getQueueDepth()).toBe(TELEMETRY_QUEUE_LIMIT)
+  })
+
+  it('cannot be made to forge mirror entries by a hostile dimension value', () => {
+    // #given an event whose dimension carries remote-controlled text — inbox link
+    // metadata is scraped from arbitrary pages, which is the taint path CodeQL
+    // flags into this file — shaped to break out of a newline-delimited journal
+    const hostile = '\n{"id":"forged","name":"app_crashed","surface":"app"}\n'
+    const client = createTelemetryClient(createDeps({ persistPath }).deps)
+    client.track({
+      ...buildEvent('11111111-1111-1111-1111-111111111111', 'inbox_item_added'),
+      dimensions: { source: hostile }
+    })
+    client.track(buildEvent('22222222-2222-2222-2222-222222222222'))
+
+    // #then the payload was escaped rather than written raw: two events, two lines
+    const raw = fs.readFileSync(persistPath, 'utf-8')
+    expect(raw.split('\n')).toHaveLength(4) // header + 2 events + trailing ''
+
+    // #and the next launch restores the two real events, not a forged crash
+    const revived = createTelemetryClient(createDeps({ persistPath }).deps)
+    expect(revived.getQueueDepth()).toBe(2)
+    const restored = JSON.parse(
+      fs.readFileSync(persistPath, 'utf-8').split('\n')[1]
+    ) as TelemetryEvent
+    expect(restored.name).toBe('inbox_item_added')
+    expect(restored.dimensions?.source).toBe(hostile)
+  })
+
   it('never restores events for an install that opted out between launches', () => {
     // #given events mirrored while telemetry was on
     createTelemetryClient(createDeps({ persistPath }).deps).track(

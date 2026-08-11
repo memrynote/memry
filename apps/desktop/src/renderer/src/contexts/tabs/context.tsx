@@ -34,11 +34,11 @@ import { UnsavedChangesDialog } from '@/components/tabs/unsaved-changes-dialog'
 // =============================================================================
 
 /**
- * Tab context interface providing state and methods
+ * Tab actions interface. Every member keeps its identity for the provider's
+ * lifetime, so this half of the context is published separately and consumers
+ * that only act on tabs never re-render when tab state changes.
  */
-interface TabContextType {
-  /** Current tab system state */
-  state: TabSystemState
+interface TabActionsContextType {
   /** Dispatch function for actions */
   dispatch: React.Dispatch<TabAction>
 
@@ -118,24 +118,9 @@ interface TabContextType {
   navForward: (groupId?: string) => void
 
   /**
-   * True when navBack would activate a tab.
-   */
-  canNavBack: boolean
-
-  /**
-   * True when navForward would activate a tab.
-   */
-  canNavForward: boolean
-
-  /**
    * Reopen the most recently closed tab (browser-style Cmd+Shift+T).
    */
   reopenClosedTab: () => void
-
-  /**
-   * True when there is a closed tab available to reopen.
-   */
-  canReopenClosedTab: boolean
 
   /**
    * Pin a tab
@@ -229,6 +214,29 @@ interface TabContextType {
    * Reset to default state
    */
   resetToDefault: () => void
+}
+
+/**
+ * Tab context interface providing state and methods
+ */
+interface TabContextType extends TabActionsContextType {
+  /** Current tab system state */
+  state: TabSystemState
+
+  /**
+   * True when navBack would activate a tab.
+   */
+  canNavBack: boolean
+
+  /**
+   * True when navForward would activate a tab.
+   */
+  canNavForward: boolean
+
+  /**
+   * True when there is a closed tab available to reopen.
+   */
+  canReopenClosedTab: boolean
 
   // =========================================================================
   // SELECTORS
@@ -265,6 +273,13 @@ interface TabContextType {
 // =============================================================================
 
 const TabContext = createContext<TabContextType | null>(null)
+
+/**
+ * Published alongside `TabContext` so `useTabActions` can subscribe to the
+ * stable half alone. Its value is memoized over callbacks that never change
+ * identity, so it never notifies its consumers after the first render.
+ */
+const TabActionsContext = createContext<TabActionsContextType | null>(null)
 
 // =============================================================================
 // PROVIDER COMPONENT
@@ -700,11 +715,12 @@ export const TabProvider = ({
   // CONTEXT VALUE
   // =========================================================================
 
-  const value = useMemo<TabContextType>(
+  // Every member below is a `useCallback` that never changes identity (they read
+  // live state through refs, not through closures), so this object is created
+  // once and `useTabActions` consumers never re-render because of tab state.
+  const actions = useMemo<TabActionsContextType>(
     () => ({
-      state,
       dispatch,
-      // Methods
       openTab,
       openFromSidebar,
       closeTab,
@@ -719,10 +735,7 @@ export const TabProvider = ({
       goToTabIndex,
       navBack,
       navForward,
-      canNavBack,
-      canNavForward,
       reopenClosedTab,
-      canReopenClosedTab,
       pinTab,
       unpinTab,
       togglePinTab,
@@ -739,7 +752,51 @@ export const TabProvider = ({
       moveTabToNewSplit,
       updateSettings,
       restoreSession,
-      resetToDefault,
+      resetToDefault
+    }),
+    [
+      openTab,
+      openFromSidebar,
+      closeTab,
+      registerCloseGuard,
+      closeOtherTabs,
+      closeTabsToRight,
+      closeAllTabs,
+      setActiveTab,
+      setActiveGroup,
+      goToNextTab,
+      goToPreviousTab,
+      goToTabIndex,
+      navBack,
+      navForward,
+      reopenClosedTab,
+      pinTab,
+      unpinTab,
+      togglePinTab,
+      setTabModified,
+      setTabDeleted,
+      updateTabTitle,
+      updateTabTitleByEntityId,
+      setTabEntity,
+      reorderTabs,
+      moveTabToGroup,
+      saveTabState,
+      splitView,
+      closeSplit,
+      moveTabToNewSplit,
+      updateSettings,
+      restoreSession,
+      resetToDefault
+    ]
+  )
+
+  const value = useMemo<TabContextType>(
+    () => ({
+      ...actions,
+      state,
+      canNavBack,
+      canNavForward,
+      canReopenClosedTab,
       // Selectors
       getActiveTab,
       getActiveGroup,
@@ -748,42 +805,11 @@ export const TabProvider = ({
       hasTabForEntity
     }),
     [
+      actions,
       state,
-      openTab,
-      openFromSidebar,
-      closeTab,
-      registerCloseGuard,
-      closeOtherTabs,
-      closeTabsToRight,
-      closeAllTabs,
-      setActiveTab,
-      setActiveGroup,
-      goToNextTab,
-      goToPreviousTab,
-      goToTabIndex,
-      navBack,
-      navForward,
       canNavBack,
       canNavForward,
-      reopenClosedTab,
       canReopenClosedTab,
-      pinTab,
-      unpinTab,
-      togglePinTab,
-      setTabModified,
-      setTabDeleted,
-      updateTabTitle,
-      updateTabTitleByEntityId,
-      setTabEntity,
-      reorderTabs,
-      moveTabToGroup,
-      saveTabState,
-      splitView,
-      closeSplit,
-      moveTabToNewSplit,
-      updateSettings,
-      restoreSession,
-      resetToDefault,
       getActiveTab,
       getActiveGroup,
       getAllTabs,
@@ -798,19 +824,23 @@ export const TabProvider = ({
         .find((t) => t.id === closeGuards.pending?.tabId)?.title ?? '')
     : ''
 
+  // Both providers render unconditionally: swapping either for a Fragment would
+  // remount the whole app subtree.
   return (
-    <TabContext.Provider value={value}>
-      {children}
-      <UnsavedChangesDialog
-        isOpen={closeGuards.pending !== null}
-        tabTitle={pendingTabTitle}
-        onSave={
-          closeGuards.pendingCanSave ? () => void closeGuards.resolvePending('save') : undefined
-        }
-        onDiscard={() => void closeGuards.resolvePending('discard')}
-        onCancel={() => void closeGuards.resolvePending('cancel')}
-      />
-    </TabContext.Provider>
+    <TabActionsContext.Provider value={actions}>
+      <TabContext.Provider value={value}>
+        {children}
+        <UnsavedChangesDialog
+          isOpen={closeGuards.pending !== null}
+          tabTitle={pendingTabTitle}
+          onSave={
+            closeGuards.pendingCanSave ? () => void closeGuards.resolvePending('save') : undefined
+          }
+          onDiscard={() => void closeGuards.resolvePending('discard')}
+          onCancel={() => void closeGuards.resolvePending('cancel')}
+        />
+      </TabContext.Provider>
+    </TabActionsContext.Provider>
   )
 }
 
@@ -912,103 +942,17 @@ export const useTabCounts = () => {
 }
 
 /**
- * Hook to get only tab actions (stable references that don't change)
+ * Hook to get only tab actions (stable references that don't change).
  * Use this when you only need to perform actions like openTab, closeTab, etc.
- * This prevents re-renders when tab state changes.
+ *
+ * Subscribes to `TabActionsContext` alone, so tab state changes never re-render
+ * the caller. The actions still operate on the current state: they read it
+ * through refs the provider keeps in sync, not through a captured closure.
  */
-export const useTabActions = () => {
-  const {
-    openTab,
-    openFromSidebar,
-    closeTab,
-    closeOtherTabs,
-    closeTabsToRight,
-    closeAllTabs,
-    setActiveTab,
-    setActiveGroup,
-    goToNextTab,
-    goToPreviousTab,
-    goToTabIndex,
-    pinTab,
-    unpinTab,
-    togglePinTab,
-    setTabModified,
-    setTabDeleted,
-    updateTabTitle,
-    updateTabTitleByEntityId,
-    reorderTabs,
-    moveTabToGroup,
-    saveTabState,
-    splitView,
-    closeSplit,
-    moveTabToNewSplit,
-    updateSettings,
-    restoreSession,
-    resetToDefault,
-    dispatch
-  } = useTabs()
-
-  // Return only actions - these are stable references due to useCallback with empty deps
-  return useMemo(
-    () => ({
-      openTab,
-      openFromSidebar,
-      closeTab,
-      closeOtherTabs,
-      closeTabsToRight,
-      closeAllTabs,
-      setActiveTab,
-      setActiveGroup,
-      goToNextTab,
-      goToPreviousTab,
-      goToTabIndex,
-      pinTab,
-      unpinTab,
-      togglePinTab,
-      setTabModified,
-      setTabDeleted,
-      updateTabTitle,
-      updateTabTitleByEntityId,
-      reorderTabs,
-      moveTabToGroup,
-      saveTabState,
-      splitView,
-      closeSplit,
-      moveTabToNewSplit,
-      updateSettings,
-      restoreSession,
-      resetToDefault,
-      dispatch
-    }),
-    [
-      openTab,
-      openFromSidebar,
-      closeTab,
-      closeOtherTabs,
-      closeTabsToRight,
-      closeAllTabs,
-      setActiveTab,
-      setActiveGroup,
-      goToNextTab,
-      goToPreviousTab,
-      goToTabIndex,
-      pinTab,
-      unpinTab,
-      togglePinTab,
-      setTabModified,
-      setTabDeleted,
-      updateTabTitle,
-      updateTabTitleByEntityId,
-      reorderTabs,
-      moveTabToGroup,
-      saveTabState,
-      splitView,
-      closeSplit,
-      moveTabToNewSplit,
-      updateSettings,
-      restoreSession,
-      resetToDefault,
-      dispatch
-    ]
-  )
+export const useTabActions = (): TabActionsContextType => {
+  const context = useContext(TabActionsContext)
+  if (!context) {
+    throw new Error('useTabActions must be used within a TabProvider')
+  }
+  return context
 }

@@ -276,16 +276,18 @@ function showDesktopNotification(reminder: ReminderWithTarget): void {
       silent: false
     })
 
-    // Handle click - focus window and emit event to navigate
+    // Handle click - focus window and emit event to navigate.
+    // Takes the first *live* window rather than getAllWindows()[0]: short-lived
+    // windows (splash, quick capture, print/export) can still be listed after
+    // destruction, and any access to one throws "Object has been destroyed" —
+    // which would kill the click with nothing focused and nothing navigated.
     notification.on('click', () => {
-      const windows = BrowserWindow.getAllWindows()
-      if (windows.length > 0) {
-        const win = windows[0]
-        if (win.isMinimized()) win.restore()
-        win.focus()
-        // Emit event to navigate to the reminder target
-        win.webContents.send(ReminderChannels.events.CLICKED, { reminder })
-      }
+      const win = BrowserWindow.getAllWindows().find((candidate) => !candidate.isDestroyed())
+      if (!win) return
+      if (win.isMinimized()) win.restore()
+      win.focus()
+      // Emit event to navigate to the reminder target
+      win.webContents.send(ReminderChannels.events.CLICKED, { reminder })
     })
 
     // Electron 42+ routes macOS notifications through UNUserNotificationCenter:

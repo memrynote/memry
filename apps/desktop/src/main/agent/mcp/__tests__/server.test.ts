@@ -417,6 +417,42 @@ describe('Agent MCP server registration reuse', () => {
   })
 })
 
+describe('Agent MCP server shutdown', () => {
+  it('stops while a tool call is still in flight', async () => {
+    let releaseHandler!: () => void
+    let markHandlerStarted!: () => void
+    const handlerStarted = new Promise<void>((resolve) => {
+      markHandlerStarted = resolve
+    })
+    const handlerCanFinish = new Promise<void>((resolve) => {
+      releaseHandler = resolve
+    })
+    const handle = await startAgentMcpServer({
+      toolRegistrations: [
+        {
+          name: 'stuck_tool',
+          description: 'blocks until released',
+          inputSchema: z.object({}),
+          handler: async () => {
+            markHandlerStarted()
+            await handlerCanFinish
+            return {}
+          }
+        }
+      ]
+    })
+    const inFlight = callTool(handle, 'stuck_tool', {}).catch(() => undefined)
+    await handlerStarted
+
+    try {
+      await expect(withDeadline(handle.stop(), 3000)).resolves.toBe('stopped')
+    } finally {
+      releaseHandler()
+      await inFlight
+    }
+  })
+})
+
 function buildTool(
   name: string,
   handler: (
@@ -430,6 +466,16 @@ function buildTool(
     inputSchema: z.object({ msg: z.string().optional() }),
     handler
   }
+}
+
+function withDeadline(promise: Promise<unknown>, ms: number): Promise<'stopped'> {
+  let timer: NodeJS.Timeout
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error(`stop() did not resolve within ${ms}ms`)), ms)
+  })
+  return Promise.race([promise.then(() => 'stopped' as const), deadline]).finally(() =>
+    clearTimeout(timer)
+  )
 }
 
 function callTool(

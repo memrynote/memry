@@ -485,6 +485,54 @@ describe('reminders service', () => {
     })
   })
 
+  it('routes a notification click past a destroyed window to the first live one', () => {
+    seedNoteCache('note-1', 'Focus Note')
+    seedReminder({
+      id: 'rem-destroyed',
+      targetType: 'note',
+      targetId: 'note-1',
+      remindAt: '2000-01-01T00:00:00.000Z',
+      status: reminderStatus.PENDING
+    })
+
+    // getAllWindows() can still list a destroyed short-lived window (splash,
+    // quick capture, print/export). Real Electron throws 'Object has been
+    // destroyed' on any access to one, so taking windows[0] blindly kills the
+    // click handler and focuses nothing.
+    const destroyed = {
+      isDestroyed: () => true,
+      isMinimized(): never {
+        throw new Error('Object has been destroyed')
+      },
+      focus(): never {
+        throw new Error('Object has been destroyed')
+      },
+      get webContents(): never {
+        throw new Error('Object has been destroyed')
+      }
+    }
+    remindersService.startReminderScheduler()
+    remindersService.stopReminderScheduler()
+
+    const notification = notificationInstances[0]
+    expect(notification).toBeDefined()
+
+    // The window dies between the banner being shown and the user clicking it.
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
+      destroyed as unknown as import('electron').BrowserWindow,
+      window as unknown as import('electron').BrowserWindow
+    ])
+
+    expect(() => notification?.emit('click')).not.toThrow()
+    expect(window.focus).toHaveBeenCalled()
+    expect(window.webContents.send).toHaveBeenCalledWith(
+      ReminderChannels.events.CLICKED,
+      expect.objectContaining({
+        reminder: expect.objectContaining({ id: 'rem-destroyed' })
+      })
+    )
+  })
+
   it('builds notifications with a stable id/groupId and logs delivery failures without throwing', () => {
     seedNoteCache('note-1', 'Focus Note')
     seedReminder({

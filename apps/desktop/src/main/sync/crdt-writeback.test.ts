@@ -42,6 +42,7 @@ vi.mock('electron', () => ({
   BrowserWindow: {
     getAllWindows: () => [
       {
+        isDestroyed: () => false,
         webContents: {
           send: (channel: string, payload: unknown) => mocks.sent.push({ channel, payload })
         }
@@ -248,6 +249,26 @@ describe('crdt writeback', () => {
       performedCount: 1,
       lastMarkdown: 'updated markdown'
     })
+  })
+
+  it('keeps no debug state (and no note markdown) outside test mode', async () => {
+    const previousNodeEnv = process.env.NODE_ENV
+    process.env.NODE_ENV = 'production'
+    try {
+      scheduleWriteback('note-prod', makeDoc('Yjs title'))
+      expect(getWritebackDebugState('note-prod')).toBeNull()
+
+      await vi.advanceTimersByTimeAsync(500)
+
+      // The write-back itself still runs; only the debug bookkeeping is skipped.
+      expect(mocks.atomicWrite).toHaveBeenCalledWith(
+        '/vault/notes/Existing.md',
+        expect.stringContaining('updated markdown')
+      )
+      expect(getWritebackDebugState('note-prod')).toBeNull()
+    } finally {
+      process.env.NODE_ENV = previousNodeEnv
+    }
   })
 
   it('serializes CriticMarkup marks from the Y.Doc during existing note writeback', async () => {

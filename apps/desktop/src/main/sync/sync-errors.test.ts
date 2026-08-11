@@ -22,11 +22,25 @@ describe('classifyError', () => {
     expect(result.retryable).toBe(false)
   })
 
-  it('#given SyncServerError 413 without a file-too-large code #then storage_quota_exceeded', () => {
-    const err = new SyncServerError('Storage quota exceeded', 413)
+  it('#given SyncServerError 413 with VALIDATION_BODY_TOO_LARGE #then note_too_large', () => {
+    // The server's body-limit middleware 413s oversized CRDT payloads. Calling
+    // that "storage full" sends the user to free up space, which never fixes it.
+    const body = '{"error":{"code":"VALIDATION_BODY_TOO_LARGE","message":"Request body too large"}}'
+    const err = new SyncServerError(`Failed to push snapshot: ${body}`, 413, body)
     const result = classifyError(err)
 
-    expect(result.category).toBe('storage_quota_exceeded')
+    expect(result.category).toBe('note_too_large')
+    expect(result.retryable).toBe(false)
+  })
+
+  it('#given SyncServerError 413 with no error code #then note_too_large, not retryable', () => {
+    // Real quota responses always carry STORAGE_QUOTA_EXCEEDED in the body. A
+    // bare 413 comes from a body-size layer (middleware, edge proxy), so it is
+    // a payload-size problem, not an account-storage problem.
+    const err = new SyncServerError('Request Entity Too Large', 413)
+    const result = classifyError(err)
+
+    expect(result.category).toBe('note_too_large')
     expect(result.retryable).toBe(false)
   })
 
@@ -79,8 +93,9 @@ describe('classifyError', () => {
     expect(result.retryable).toBe(true)
   })
 
-  it('#given SyncServerError 413 #then storage_quota_exceeded, not retryable', () => {
-    const err = new SyncServerError('Storage quota exceeded', 413)
+  it('#given SyncServerError 413 with STORAGE_QUOTA_EXCEEDED #then storage_quota_exceeded', () => {
+    const body = '{"error":{"code":"STORAGE_QUOTA_EXCEEDED","message":"Storage quota exceeded"}}'
+    const err = new SyncServerError('Storage quota exceeded', 413, body)
     const result = classifyError(err)
 
     expect(result.category).toBe('storage_quota_exceeded')

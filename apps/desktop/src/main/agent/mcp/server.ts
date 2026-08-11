@@ -12,6 +12,10 @@ import { createMcpSession } from './session'
 
 const logger = createLogger('AgentMcpServer')
 
+// How long stop() lets an in-flight tool call finish before its socket is
+// destroyed. Kept well under the 5s app shutdown budget in main/index.ts.
+const STOP_GRACE_MS = 500
+
 export interface ToolRegistration {
   name: string
   description: string
@@ -177,7 +181,22 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
     rotateToken: () => session.rotateToken(),
     registerTool: bindTool,
     async stop() {
-      await new Promise<void>((resolve) => server.close(() => resolve()))
+      await new Promise<void>((resolve) => {
+        // close() only refuses new connections and drops idle ones: a socket
+        // still serving a request (including one whose tool call never
+        // settles) keeps it pending forever. At quit that stalls closeVault()
+        // before it can drain projections, stop sync and close the databases,
+        // so the 5s shutdown timeout fires app.exit(1) with work unfinished.
+        // Give in-flight calls a short grace period, then destroy the sockets.
+        const graceTimer = setTimeout(() => {
+          logger.warn('Agent MCP connections still open at stop; destroying them')
+          server.closeAllConnections?.()
+        }, STOP_GRACE_MS)
+        server.close(() => {
+          clearTimeout(graceTimer)
+          resolve()
+        })
+      })
       logger.info('Agent MCP server stopped')
     }
   }

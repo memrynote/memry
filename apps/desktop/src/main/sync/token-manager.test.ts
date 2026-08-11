@@ -217,7 +217,7 @@ describe('token-manager', () => {
       const { SyncServerError } = await import('./http-client')
       mockPostToServer.mockRejectedValue(new SyncServerError('Unauthorized', 401))
 
-      const mockWin = { webContents: { send: vi.fn() } }
+      const mockWin = { isDestroyed: () => false, webContents: { send: vi.fn() } }
       mockGetAllWindows.mockReturnValue([mockWin])
 
       // #when
@@ -281,7 +281,7 @@ describe('token-manager', () => {
         return Promise.resolve(null)
       })
       mockDecodeJwt.mockReturnValue({ exp: nowSeconds() - 100 })
-      const win = { webContents: { send: vi.fn() } }
+      const win = { isDestroyed: () => false, webContents: { send: vi.fn() } }
       mockGetAllWindows.mockReturnValue([win])
       return { win }
     }

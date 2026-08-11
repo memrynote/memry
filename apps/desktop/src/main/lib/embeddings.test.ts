@@ -69,6 +69,7 @@ import { resetTelemetryThrottle } from '../telemetry/throttle'
 import {
   EMBEDDING_DIMENSION,
   generateEmbedding,
+  getEmbeddingWorkerPhase,
   getModelInfo,
   initEmbeddingModel,
   isInformationalWorkerStderr,
@@ -530,6 +531,83 @@ describe('embeddings', () => {
 
       // #then a clean lifecycle exit is NOT reported as a worker_exit_starting fault
       expect(trackMainLogMock).not.toHaveBeenCalled()
+    })
+  })
+
+  // The `exit` event every test above drives never arrives in production for a
+  // native worker crash: 107 consecutive `Utility:crashed:Embeddings` reports
+  // produced zero `EmbeddingWorkerExit` events, and `embed_failed` was silent
+  // too — the bridge never observes the death at all. `app.on('child-process-
+  // gone')` is the path that does fire (107/107), so the phase has to be
+  // readable from outside the exit handler for that report to carry it.
+  describe('getEmbeddingWorkerPhase', () => {
+    // Wrapped in an object, never returned bare: an async function flattens a
+    // returned promise, so `await startWorker()` would block on the embedding
+    // itself instead of on the worker being up.
+    const startWorker = async (): Promise<{ pending: Promise<Float32Array | null> }> => {
+      const pending = generateEmbedding('content long enough for embeddings')
+      void pending.catch(() => {})
+      mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+      await vi.waitFor(() => {
+        expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(1)
+      })
+      return { pending }
+    }
+
+    it('returns null when no worker has been forked', () => {
+      expect(getEmbeddingWorkerPhase('Embeddings')).toBeNull()
+    })
+
+    it('ignores a crash reported for a different utility worker', async () => {
+      await startWorker()
+
+      // #then CrdtPreflight's crash must not inherit the embedding worker's phase
+      expect(getEmbeddingWorkerPhase('CrdtPreflight')).toBeNull()
+      expect(getEmbeddingWorkerPhase(undefined)).toBeNull()
+    })
+
+    it('reports in_flight while a request is outstanding', async () => {
+      await startWorker()
+
+      // #then a crash here costs the user this note's semantic-search indexing
+      expect(getEmbeddingWorkerPhase('Embeddings')).toBe('in_flight')
+    })
+
+    it('reports idle once the embedding has been delivered', async () => {
+      const { pending } = await startWorker()
+      const request = mockUtilityProcessInstance.postMessage.mock.calls[0]?.[0] as {
+        requestId: string
+      }
+      mockUtilityProcessInstance.simulateMessage({
+        type: 'embed-result',
+        requestId: request.requestId,
+        embedding: Array.from(new Float32Array(EMBEDDING_DIMENSION))
+      })
+      await expect(pending).resolves.toBeInstanceOf(Float32Array)
+
+      expect(getEmbeddingWorkerPhase('Embeddings')).toBe('idle')
+    })
+
+    it('keeps the latched teardown phase after a force-kill clears the handle', async () => {
+      await startWorker()
+
+      // #when unloadModel() force-kills the worker, `process` is nulled at once
+      // while child-process-gone lands a tick later
+      unloadModel()
+
+      // #then the crash still reads as a teardown death, not a spontaneous one
+      expect(getEmbeddingWorkerPhase('Embeddings')).toBe('idle_shutdown')
+    })
+
+    it('does not leak a teardown latch into the next worker generation', async () => {
+      await startWorker()
+      unloadModel()
+
+      // #given a second reset with no live worker to kill
+      unloadModel()
+
+      // #then a later unrelated crash must not inherit the stale latch
+      expect(getEmbeddingWorkerPhase('Embeddings')).toBeNull()
     })
   })
 

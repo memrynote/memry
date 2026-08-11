@@ -123,6 +123,11 @@ vi.mock('./telemetry/diagnostics', () => ({
 vi.mock('./telemetry/track', () => ({
   trackMainEvent: vi.fn()
 }))
+vi.mock('./telemetry/update-install-marker', () => ({
+  markUpdateInstallStarted: vi.fn()
+}))
+
+import { markUpdateInstallStarted } from './telemetry/update-install-marker'
 
 async function loadUpdater() {
   vi.resetModules()
@@ -626,5 +631,35 @@ describe('updater', () => {
     expect(mocks.autoUpdater.quitAndInstall).toHaveBeenCalledTimes(1)
     // Silent install (/S) + relaunch (--force-run) on Windows NSIS.
     expect(mocks.autoUpdater.quitAndInstall).toHaveBeenCalledWith(true, true)
+  })
+
+  it('records the install attempt before handing off, so a failed install is detectable', async () => {
+    const updater = await loadUpdater()
+    updater.initializeUpdater()
+
+    mocks.autoUpdater.emit('update-downloaded', { version: '1.2.7' })
+    await flushAsyncWork()
+    updater.quitAndInstall()
+
+    updater.performQuitAndInstall()
+
+    // Raw app version (comparable on the next launch) + the display version of
+    // the build being installed.
+    expect(markUpdateInstallStarted).toHaveBeenCalledWith('1.2.3', 'v1.2.7')
+    // The marker must land BEFORE the handoff: afterwards the process is gone.
+    expect(vi.mocked(markUpdateInstallStarted).mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.autoUpdater.quitAndInstall.mock.invocationCallOrder[0]
+    )
+  })
+
+  it("routes electron-updater's own diagnostics into the app log instead of a dead console", async () => {
+    const updater = await loadUpdater()
+    updater.initializeUpdater()
+
+    // Without this the installer-spawn failures electron-updater logs itself
+    // ("Cannot run installer: error code: ...") never reach main.log.
+    expect(mocks.autoUpdater.logger).toBeDefined()
+    mocks.autoUpdater.logger.info('Cannot run installer: error code: EACCES')
+    expect(mocks.logger.info).toHaveBeenCalledWith('Cannot run installer: error code: EACCES')
   })
 })

@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { decodeJwt } from 'jose'
 
 import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
@@ -104,10 +104,7 @@ export const cancelTokenRefresh = (): void => {
 
 export const emitSessionExpired = (reason: SessionExpiredReason = 'token_expired'): void => {
   cancelTokenRefresh()
-  const windows = BrowserWindow.getAllWindows()
-  for (const win of windows) {
-    win.webContents.send(SYNC_EVENTS.SESSION_EXPIRED, { reason })
-  }
+  broadcastToAllWindows(SYNC_EVENTS.SESSION_EXPIRED, { reason })
 }
 
 const clearRefreshRejections = (): void => {

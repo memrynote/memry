@@ -651,7 +651,7 @@ describe('UserSyncState', () => {
       // #then
       expect(fetchMock).toHaveBeenCalledTimes(1)
       const [url, init] = fetchMock.mock.calls[0]
-      expect(url).toBe('https://us.i.posthog.com/v1/logs')
+      expect(url).toBe('https://us.i.posthog.com/i/v1/logs')
       const body = JSON.parse(init.body)
       const record = body.resourceLogs[0].scopeLogs[0].logRecords[0]
       expect(record.severityText).toBe('error')

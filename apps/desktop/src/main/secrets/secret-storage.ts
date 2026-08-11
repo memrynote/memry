@@ -26,11 +26,36 @@ export interface GetSecretOptions {
    * (see finalizeKeytarMigration and crypto/vault-key-state.ts).
    */
   deferKeytarDelete?: boolean
+  /**
+   * Return `null` instead of throwing when the secret exists in the store but
+   * cannot be read this run (see the guard in getSecret).
+   *
+   * Opt in ONLY where a false absence is harmless because the very next thing
+   * the caller does is overwrite the entry, delete it, or report "not
+   * connected". Never opt in from a path that would regenerate key material or
+   * tear down local state on absence — that is the #772 data-loss shape the
+   * guard exists to prevent.
+   *
+   * Without this, an entry left undecryptable by the v2026-08-06 app-identity
+   * rename could never be replaced: the pre-write read threw before the write
+   * ran, so re-connecting an account was permanently impossible.
+   */
+  treatUnreadableAsAbsent?: boolean
 }
 
 // Lazy keytar cleanup (crash-resume: ciphertext persisted but the keytar
 // delete never ran) is attempted at most once per secret per process run.
 const keytarCleanupAttempted = new Set<string>()
+
+// Secrets whose deferred keytar migration this run has already PROVEN complete
+// — the OS keychain holds no copy of them any more. The master key is finalized
+// on every vault-key fetch (getOrInitializeLocalVaultKey), which sync calls per
+// CRDT update batch and per pulled note, so without this latch the steady state
+// repeats a store read + safeStorage decrypt + OS keychain round-trip hundreds
+// of times an hour only to find nothing left to delete. Entries are added only
+// once the keytar copy is known gone, and dropped whenever the secret is
+// written or deleted, so a re-created keytar copy is still migrated.
+const keytarMigrationFinalized = new Set<string>()
 
 let loggedPlaintextBackend = false
 
@@ -39,6 +64,7 @@ const cleanupKey = (service: string, account: string): string => `${service}\u00
 /** Test-only: reset per-run module state between test cases. */
 export function resetSecretStorageForTests(): void {
   keytarCleanupAttempted.clear()
+  keytarMigrationFinalized.clear()
   loggedPlaintextBackend = false
 }
 
@@ -257,6 +283,15 @@ export async function getSecret(
   // its encrypted data. This is the failure mode behind the #772 keytar→
   // safeStorage regression. Fail loud so the caller retries on a healthy run.
   if (storePath !== null && readCiphertext(storePath, service, account) !== null) {
+    if (options?.treatUnreadableAsAbsent) {
+      // Logged at warn so the cohort stranded by the identity rename is
+      // measurable, and so a caller that opted in by mistake is still visible.
+      logger.warn('Secret exists but is unreadable; caller opted to treat it as absent', {
+        service,
+        account
+      })
+      return null
+    }
     throw new Error(
       `Secret ${service}/${account} exists in the secret store but could not be read this run; ` +
         'refusing to report it as absent'
@@ -267,6 +302,9 @@ export async function getSecret(
 }
 
 export async function setSecret(service: string, account: string, value: string): Promise<void> {
+  // A rewritten secret can land back in the OS keychain (the fallback below),
+  // so any earlier "migration complete" verdict no longer holds.
+  keytarMigrationFinalized.delete(cleanupKey(service, account))
   const filePath = isSafeStorageAvailable() ? resolveStoreFilePath() : null
 
   if (filePath) {
@@ -310,6 +348,9 @@ export async function setSecret(service: string, account: string, value: string)
 }
 
 export async function deleteSecret(service: string, account: string): Promise<void> {
+  // Sign-out clears the secret; whatever is provisioned next must be migrated
+  // from scratch, so drop any "migration complete" verdict for it.
+  keytarMigrationFinalized.delete(cleanupKey(service, account))
   // Keytar first: it was the pre-migration source of truth and its errors are
   // what call sites historically surfaced.
   await keytar.deletePassword(service, account)
@@ -326,6 +367,7 @@ export async function deleteSecret(service: string, account: string): Promise<vo
  * safeStorage copy.
  */
 export async function finalizeKeytarMigration(service: string, account: string): Promise<void> {
+  if (keytarMigrationFinalized.has(cleanupKey(service, account))) return
   if (!isSafeStorageAvailable()) return
   const filePath = resolveStoreFilePath()
   if (!filePath) return
@@ -335,10 +377,18 @@ export async function finalizeKeytarMigration(service: string, account: string):
     const value = decryptValue(ciphertext)
     if (value === null) return
     const legacy = await keytar.getPassword(service, account)
-    if (legacy !== null && legacy === value) {
+    if (legacy === null) {
+      // Nothing left in the OS keychain — this migration is done for this run.
+      keytarMigrationFinalized.add(cleanupKey(service, account))
+      return
+    }
+    if (legacy === value) {
       await keytar.deletePassword(service, account)
+      keytarMigrationFinalized.add(cleanupKey(service, account))
       logger.info('Removed confirmed migrated secret from OS keychain', { service, account })
     }
+    // A keytar copy that differs from the stored secret is deliberately left
+    // unlatched so the next call re-checks it.
   } catch (err) {
     logger.warn('Deferred OS keychain cleanup failed (will retry next run)', {
       error: err,

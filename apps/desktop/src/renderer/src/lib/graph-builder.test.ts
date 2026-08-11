@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GraphDataResponse } from '@memry/contracts/graph-api'
 
-import { buildGraphologyGraph, computeFocusSet } from './graph-builder'
+import { buildGraphologyGraph, computeFocusSet, syncGraphologyGraph } from './graph-builder'
 
 const mocks = vi.hoisted(() => ({
   assign: vi.fn()
@@ -143,6 +143,101 @@ describe('graph-builder', () => {
     expect(graph.hasEdge('note-a-tag:shared-entity-tag')).toBe(false)
     expect(graph.getNodeAttribute('note-a', 'color')).toBe('#8c8c8c')
     expect(graph.getEdgeAttribute('note-a-note-b-wikilink', 'color')).toBe('#8c8c8c')
+  })
+
+  describe('syncGraphologyGraph', () => {
+    const gamma: GraphDataResponse['nodes'][number] = {
+      id: 'note-c',
+      type: 'note',
+      label: 'Gamma',
+      tags: [],
+      wordCount: 10,
+      connectionCount: 1,
+      emoji: null,
+      isOrphan: false,
+      isUnresolved: false
+    }
+
+    it('adds new nodes and edges while leaving settled positions alone', () => {
+      const graph = buildGraphologyGraph(graphData)
+      graph.setNodeAttribute('note-a', 'x', 123)
+      graph.setNodeAttribute('note-a', 'y', -45)
+
+      const result = syncGraphologyGraph(graph, {
+        nodes: [...graphData.nodes, gamma],
+        edges: [...graphData.edges, { source: 'note-a', target: 'note-c', type: 'wikilink' }]
+      })
+
+      expect(result).toEqual({ changed: true, structureChanged: true })
+      expect(graph.hasNode('note-c')).toBe(true)
+      expect(graph.hasEdge('note-a-note-c-wikilink')).toBe(true)
+      expect(graph.getNodeAttribute('note-a', 'x')).toBe(123)
+      expect(graph.getNodeAttribute('note-a', 'y')).toBe(-45)
+    })
+
+    it('drops nodes and their edges when they leave the data', () => {
+      const graph = buildGraphologyGraph(graphData)
+
+      const result = syncGraphologyGraph(graph, {
+        nodes: graphData.nodes.filter((node) => node.id !== 'task-1'),
+        edges: graphData.edges
+      })
+
+      expect(result.structureChanged).toBe(true)
+      expect(graph.hasNode('task-1')).toBe(false)
+      expect(graph.hasEdge('note-a-task-1-task-note')).toBe(false)
+      expect(graph.hasNode('note-a')).toBe(true)
+    })
+
+    it('drops an unlinked edge but keeps both endpoints', () => {
+      const graph = buildGraphologyGraph(graphData)
+
+      const result = syncGraphologyGraph(graph, {
+        nodes: graphData.nodes,
+        edges: graphData.edges.filter((edge) => edge.type !== 'task-note')
+      })
+
+      expect(result.structureChanged).toBe(true)
+      expect(graph.hasEdge('note-a-task-1-task-note')).toBe(false)
+      expect(graph.hasNode('task-1')).toBe(true)
+    })
+
+    it('renames a node in place without disturbing the layout', () => {
+      const graph = buildGraphologyGraph(graphData)
+      graph.setNodeAttribute('note-a', 'x', 77)
+
+      const result = syncGraphologyGraph(graph, {
+        nodes: graphData.nodes.map((node) =>
+          node.id === 'note-a' ? { ...node, label: 'Renamed' } : node
+        ),
+        edges: graphData.edges
+      })
+
+      expect(result).toEqual({ changed: true, structureChanged: false })
+      expect(graph.getNodeAttribute('note-a', 'label')).toBe('Renamed')
+      expect(graph.getNodeAttribute('note-a', 'x')).toBe(77)
+    })
+
+    it('reports nothing changed when an identical payload arrives', () => {
+      const graph = buildGraphologyGraph(graphData)
+
+      const result = syncGraphologyGraph(graph, {
+        nodes: graphData.nodes.map((node) => ({ ...node, tags: [...node.tags] })),
+        edges: graphData.edges.map((edge) => ({ ...edge }))
+      })
+
+      expect(result).toEqual({ changed: false, structureChanged: false })
+    })
+
+    it('honours the tag toggle when patching', () => {
+      const graph = buildGraphologyGraph(graphData)
+      expect(graph.hasNode('tag:shared')).toBe(true)
+
+      const result = syncGraphologyGraph(graph, graphData, { showTags: false })
+
+      expect(result.structureChanged).toBe(true)
+      expect(graph.hasNode('tag:shared')).toBe(false)
+    })
   })
 
   it('computes focus neighborhoods by graph distance', () => {

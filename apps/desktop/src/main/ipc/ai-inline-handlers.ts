@@ -1,4 +1,5 @@
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain } from 'electron'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { AIInlineChannels, AI_INLINE_SETTINGS_DEFAULTS } from '@memry/contracts/ai-inline-channels'
 import type { AIInlineSettings } from '@memry/contracts/ai-inline-channels'
 
@@ -62,11 +63,9 @@ export function registerAIInlineHandlers(): void {
       const updated = { ...current, ...updates }
       setSetting(db, SETTINGS_KEY, JSON.stringify(updated))
 
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(AIInlineChannels.events.SERVER_READY, {
-          key: SETTINGS_KEY,
-          value: maskApiKey(updated)
-        })
+      broadcastToAllWindows(AIInlineChannels.events.SERVER_READY, {
+        key: SETTINGS_KEY,
+        value: maskApiKey(updated)
       })
 
       return { success: true }

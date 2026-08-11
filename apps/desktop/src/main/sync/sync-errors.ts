@@ -70,10 +70,13 @@ export function classifyError(error: unknown): SyncErrorInfo {
       }
     }
     if (error.statusCode === 413) {
-      // 413 covers two different problems. STORAGE_FILE_TOO_LARGE means this one
-      // file is over the plan's per-file limit; a bare 413 means the account is
-      // out of storage. Reporting "Storage quota exceeded" for the former sends
-      // the user to free up space, which never fixes it.
+      // 413 covers three different problems. STORAGE_FILE_TOO_LARGE means this
+      // one file is over the plan's per-file limit; STORAGE_QUOTA_EXCEEDED
+      // means the account is out of storage; anything else (the body-limit
+      // middleware's VALIDATION_BODY_TOO_LARGE, or a bare edge-proxy 413) means
+      // a single payload is too big. Real quota responses always carry their
+      // code, so only they may report "storage full" — anything else would send
+      // the user to free up space, which never fixes a payload problem.
       if (
         error.serverError?.includes('STORAGE_FILE_TOO_LARGE') ||
         error.message.includes('STORAGE_FILE_TOO_LARGE')
@@ -84,9 +87,19 @@ export function classifyError(error: unknown): SyncErrorInfo {
           retryable: false
         }
       }
+      if (
+        error.serverError?.includes('STORAGE_QUOTA_EXCEEDED') ||
+        error.message.includes('STORAGE_QUOTA_EXCEEDED')
+      ) {
+        return {
+          category: 'storage_quota_exceeded',
+          message: 'Storage quota exceeded',
+          retryable: false
+        }
+      }
       return {
-        category: 'storage_quota_exceeded',
-        message: 'Storage quota exceeded',
+        category: 'note_too_large',
+        message: 'A note is too large to sync',
         retryable: false
       }
     }
