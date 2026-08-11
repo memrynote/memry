@@ -1866,8 +1866,8 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onCrdtStateChanged: (
     callback: (data: { noteId: string; update: Uint8Array; origin: string }) => void
   ) => () => void
-  onFlushRequested: (callback: () => void) => () => void
-  notifyFlushDone: () => void
+  onFlushRequested: (callback: (requestId?: string) => void) => () => void
+  notifyFlushDone: (requestId?: string) => void
 }
 
 declare global {
