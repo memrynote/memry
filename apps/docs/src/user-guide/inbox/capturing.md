@@ -59,6 +59,10 @@ While recording, a red dot marks the live microphone and the timer turns amber d
 seconds before the 5-minute limit. Keyboard shortcuts work too: **Esc** cancels the recording,
 **Enter** or **Space** stops and saves it.
 
+The bars next to the timer are a live level meter that scrolls 20 times a second, so you can see
+the microphone is picking you up. It measures loudness only — memrynote does no more audio analysis
+per second than those 20 updates need, keeping a long recording cheap to leave running.
+
 The recording's waveform is captured alongside the audio, so the detail panel shows the real
 waveform instantly when you open a voice item.
 
