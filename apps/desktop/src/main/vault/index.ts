@@ -25,11 +25,12 @@ import {
   getVaultName,
   readVaultConfig,
   writeVaultConfig,
+  invalidateVaultConfigCache,
   countMarkdownFiles,
   getDataDbPath,
   getIndexDbPath
 } from './init'
-import { setJournalConfig } from './journal-config'
+import { getJournalConfig, setJournalConfig } from './journal-config'
 import {
   initDatabase,
   initIndexDatabase,
@@ -276,6 +277,9 @@ export function emitIndexRecovered(event: IndexRecoveredEvent): void {
  * Open a vault: initialize structure, run migrations, start database, index notes
  */
 async function openVault(vaultPath: string): Promise<void> {
+  // Start from disk, never from whatever the previously open vault left behind.
+  invalidateVaultConfigCache()
+
   // Initialize vault structure if needed
   if (!isVaultInitialized(vaultPath)) {
     initVault(vaultPath)
@@ -519,10 +523,7 @@ export function getConfig(): VaultConfig {
       journalDateFormat: 'YYYY-MM-DD',
       attachmentsFolder: 'attachments'
     }
-    setJournalConfig({
-      journalFolder: fallback.journalFolder,
-      journalDateFormat: fallback.journalDateFormat
-    })
+    syncJournalConfig(fallback)
     return fallback
   }
 
@@ -534,11 +535,29 @@ export function getConfig(): VaultConfig {
     journalDateFormat: config.journalDateFormat,
     attachmentsFolder: config.attachmentsFolder
   }
-  setJournalConfig({
-    journalFolder: resolved.journalFolder,
-    journalDateFormat: resolved.journalDateFormat
-  })
+  syncJournalConfig(resolved)
   return resolved
+}
+
+/**
+ * Push journal settings into the process-wide holder, but only when they differ.
+ *
+ * getConfig() runs on most vault operations and many callers depend on it
+ * keeping the holder fresh, so the side effect stays — writing an identical
+ * value on every call is the part that was pure overhead.
+ */
+function syncJournalConfig(config: VaultConfig): void {
+  const current = getJournalConfig()
+  if (
+    current.journalFolder === config.journalFolder &&
+    current.journalDateFormat === config.journalDateFormat
+  ) {
+    return
+  }
+  setJournalConfig({
+    journalFolder: config.journalFolder,
+    journalDateFormat: config.journalDateFormat
+  })
 }
 
 /**
@@ -605,6 +624,8 @@ export async function closeVault(): Promise<void> {
   await stopSyncRuntime()
 
   PropertyDefinitionsService.destroy()
+
+  invalidateVaultConfigCache()
 
   // Close databases
   closeAllDatabases()
