@@ -1777,12 +1777,12 @@ interface API extends WindowAPI, GeneratedRpcApi {
   syncCrdt: {
     openDoc: (input: { noteId: string }) => Promise<CrdtOpenDocResult>
     closeDoc: (input: { noteId: string }) => Promise<void>
-    applyUpdate: (input: { noteId: string; update: number[] }) => Promise<void>
+    applyUpdate: (input: { noteId: string; update: Uint8Array }) => Promise<void>
     syncStep1: (input: {
       noteId: string
-      stateVector: number[]
+      stateVector: Uint8Array
     }) => Promise<CrdtSyncStep1Result | null>
-    syncStep2: (input: { noteId: string; diff: number[] }) => Promise<void>
+    syncStep2: (input: { noteId: string; diff: Uint8Array }) => Promise<void>
   }
   /** Show a native OS context menu and return the selected item id, or null if dismissed */
   showContextMenu: (items: ContextMenuItem[]) => Promise<string | null>
@@ -1864,10 +1864,10 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onMainInvoke: (callback: (payload: MainInvokePayload) => void | Promise<void>) => () => void
   respondToMainInvoke: (requestId: string, response: unknown) => void
   onCrdtStateChanged: (
-    callback: (data: { noteId: string; update: number[]; origin: string }) => void
+    callback: (data: { noteId: string; update: Uint8Array; origin: string }) => void
   ) => () => void
-  onFlushRequested: (callback: () => void) => () => void
-  notifyFlushDone: () => void
+  onFlushRequested: (callback: (requestId?: string) => void) => () => void
+  notifyFlushDone: (requestId?: string) => void
 }
 
 declare global {

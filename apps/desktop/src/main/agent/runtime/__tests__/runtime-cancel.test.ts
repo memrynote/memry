@@ -30,8 +30,16 @@ describe('AgentRuntime subprocess cancellation', () => {
     const firstKill = vi.fn()
     const secondKill = vi.fn()
 
-    agentRuntime.trackSubprocess('conversation-1', { pid: 1, kill: firstKill })
-    agentRuntime.trackSubprocess('conversation-2', { pid: 2, kill: secondKill })
+    agentRuntime.trackSubprocess('conversation-1', {
+      pid: 1,
+      kill: firstKill,
+      waitExit: async () => 0
+    })
+    agentRuntime.trackSubprocess('conversation-2', {
+      pid: 2,
+      kill: secondKill,
+      waitExit: async () => 0
+    })
 
     agentRuntime.cancelTurn('conversation-1')
 
@@ -43,7 +51,7 @@ describe('AgentRuntime subprocess cancellation', () => {
     const agentRuntime = runtime()
     const kill = vi.fn()
 
-    agentRuntime.trackSubprocess('conversation-1', { pid: 1, kill })
+    agentRuntime.trackSubprocess('conversation-1', { pid: 1, kill, waitExit: async () => 0 })
     agentRuntime.untrackSubprocess(1)
     agentRuntime.cancelTurn('conversation-1')
 
@@ -55,7 +63,7 @@ describe('AgentRuntime subprocess cancellation', () => {
     const kill = vi.fn()
     const activeTurn = deferred<void>()
 
-    agentRuntime.trackSubprocess('conversation-1', { pid: 1, kill })
+    agentRuntime.trackSubprocess('conversation-1', { pid: 1, kill, waitExit: async () => 0 })
     agentRuntime.trackTurn('conversation-1', activeTurn.promise)
 
     let shutdownSettled = false

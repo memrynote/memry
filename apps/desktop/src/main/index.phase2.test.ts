@@ -455,6 +455,30 @@ async function flushUntil(predicate: () => boolean, maxTicks = 100): Promise<voi
   }
 }
 
+type FlushDoneListener = (event: { sender: unknown }, requestId?: string) => void
+
+function getFlushDoneListeners(): FlushDoneListener[] {
+  return ipcMainOnMock.mock.calls
+    .filter(([event]) => event === 'app:flush-done')
+    .map(([, handler]) => handler as FlushDoneListener)
+}
+
+function getFlushRequestId(window: ReturnType<typeof createBrowserWindowMock>): string | undefined {
+  return window.webContents.send.mock.calls
+    .filter(([channel]) => channel === 'app:request-flush')
+    .at(-1)?.[1] as string | undefined
+}
+
+// `app:flush-done` is a shared channel, so a reply only counts when it carries
+// the sender and the request id the main process actually asked for. Fanning the
+// reply out to every listener mirrors the real ipcMain dispatch.
+function completeFlush(window: ReturnType<typeof createBrowserWindowMock>): void {
+  const requestId = getFlushRequestId(window)
+  for (const listener of getFlushDoneListeners()) {
+    listener({ sender: window.webContents }, requestId)
+  }
+}
+
 describe('main index phase2 exports', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -1406,10 +1430,7 @@ describe('main index phase2 exports', () => {
     closeHandler()
     BrowserWindowMock.getFocusedWindow.mockReturnValueOnce(mainWindow)
     closeHandler()
-    const flushHandler = ipcMainOnMock.mock.calls.find(
-      ([event]) => event === 'app:flush-done'
-    )?.[1] as () => void
-    flushHandler()
+    completeFlush(browserWindows[0])
     await flushReadyWork()
     expect(mainWindow.close).toHaveBeenCalled()
 
@@ -1598,10 +1619,7 @@ describe('main index phase2 exports', () => {
     beforeQuitHandler({ preventDefault: duplicatePreventDefault })
     expect(duplicatePreventDefault).not.toHaveBeenCalled()
 
-    const flushHandler = ipcMainOnMock.mock.calls.find(
-      ([event]) => event === 'app:flush-done'
-    )?.[1] as () => void
-    flushHandler()
+    completeFlush(browserWindows[0])
     for (let i = 0; i < 40; i++) {
       await Promise.resolve()
     }
@@ -1612,6 +1630,131 @@ describe('main index phase2 exports', () => {
     // Memrynote.exe and blocks the Windows NSIS update install (#805).
     expect(stopEmbeddingModelMock).toHaveBeenCalled()
     expect(stopSyncRuntimeMock).toHaveBeenCalled()
+    expect(closeVaultMock).toHaveBeenCalled()
+  })
+
+  it('removes the flush-done listener when a window flush times out', async () => {
+    // A busy renderer that never answers must not leave a listener behind on the
+    // shared ipcMain: window-close runs on every close, so the leak is unbounded.
+    vi.useFakeTimers()
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+    const { ipcMain } = await import('electron')
+
+    const mainWindow = browserWindows[0]
+    const closeHandler = ipcMainOnMock.mock.calls.find(
+      ([event]) => event === 'window-close'
+    )?.[1] as () => void
+    closeHandler()
+
+    const flushListener = getFlushDoneListeners().at(-1)
+    expect(flushListener).toBeDefined()
+
+    vi.advanceTimersByTime(2000)
+    await flushUntil(() => mainWindow.close.mock.calls.length > 0)
+
+    expect(mainWindow.close).toHaveBeenCalled()
+    expect(ipcMain.removeListener).toHaveBeenCalledWith('app:flush-done', flushListener)
+  })
+
+  it('waits for every window to answer its own flush before shutdown continues', async () => {
+    // One window replying must not satisfy the other window's flush, or the
+    // slower renderer is torn down with unsaved edits still pending.
+    vi.useFakeTimers()
+    whenReadyMock.mockResolvedValue(undefined)
+    applyGlobalCaptureShortcutMock.mockReturnValue({ registered: false })
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const shortcutHandler = globalShortcutRegisterMock.mock.calls[0][1] as () => void
+    shortcutHandler()
+    expect(browserWindows.length).toBeGreaterThan(1)
+
+    const beforeQuitHandler = appOnMock.mock.calls.find(
+      ([event]) => event === 'before-quit'
+    )?.[1] as (event: { preventDefault: () => void }) => void
+    beforeQuitHandler({ preventDefault: vi.fn() })
+
+    expect(getFlushDoneListeners()).toHaveLength(browserWindows.length)
+
+    completeFlush(browserWindows[0])
+    await flushUntil(() => closeVaultMock.mock.calls.length > 0, 40)
+    expect(closeVaultMock).not.toHaveBeenCalled()
+
+    completeFlush(browserWindows[1])
+    await flushUntil(() => closeVaultMock.mock.calls.length > 0)
+    expect(closeVaultMock).toHaveBeenCalled()
+  })
+
+  it('ignores a flush-done from another window even when it carries the pending request id', async () => {
+    // Defence in depth on top of the request id: no renderer may answer on
+    // another window's behalf, because that window's saves are still in flight.
+    vi.useFakeTimers()
+    whenReadyMock.mockResolvedValue(undefined)
+    applyGlobalCaptureShortcutMock.mockReturnValue({ registered: false })
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const shortcutHandler = globalShortcutRegisterMock.mock.calls[0][1] as () => void
+    shortcutHandler()
+
+    const beforeQuitHandler = appOnMock.mock.calls.find(
+      ([event]) => event === 'before-quit'
+    )?.[1] as (event: { preventDefault: () => void }) => void
+    beforeQuitHandler({ preventDefault: vi.fn() })
+
+    const impersonatedRequestId = getFlushRequestId(browserWindows[0])
+    for (const listener of getFlushDoneListeners()) {
+      listener({ sender: browserWindows[1].webContents }, impersonatedRequestId)
+    }
+
+    completeFlush(browserWindows[1])
+    await flushUntil(() => closeVaultMock.mock.calls.length > 0, 40)
+    expect(closeVaultMock).not.toHaveBeenCalled()
+
+    completeFlush(browserWindows[0])
+    await flushUntil(() => closeVaultMock.mock.calls.length > 0)
+    expect(closeVaultMock).toHaveBeenCalled()
+  })
+
+  it('ignores a stale flush-done from an earlier request on the same window', async () => {
+    // The close flush timed out and the renderer answered late. That reply is
+    // about older content, so it must not satisfy the quit flush.
+    vi.useFakeTimers()
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const mainWindow = browserWindows[0]
+    const closeHandler = ipcMainOnMock.mock.calls.find(
+      ([event]) => event === 'window-close'
+    )?.[1] as () => void
+    closeHandler()
+    const staleRequestId = getFlushRequestId(mainWindow)
+    vi.advanceTimersByTime(2000)
+    await flushUntil(() => mainWindow.close.mock.calls.length > 0)
+
+    const beforeQuitHandler = appOnMock.mock.calls.find(
+      ([event]) => event === 'before-quit'
+    )?.[1] as (event: { preventDefault: () => void }) => void
+    beforeQuitHandler({ preventDefault: vi.fn() })
+
+    const quitRequestId = getFlushRequestId(mainWindow)
+    expect(quitRequestId).not.toBe(staleRequestId)
+
+    for (const listener of getFlushDoneListeners()) {
+      listener({ sender: mainWindow.webContents }, staleRequestId)
+    }
+    await flushUntil(() => closeVaultMock.mock.calls.length > 0, 40)
+    expect(closeVaultMock).not.toHaveBeenCalled()
+
+    completeFlush(mainWindow)
+    await flushUntil(() => closeVaultMock.mock.calls.length > 0)
     expect(closeVaultMock).toHaveBeenCalled()
   })
 
@@ -1628,10 +1771,7 @@ describe('main index phase2 exports', () => {
     )?.[1] as (event: { preventDefault: () => void }) => void
     beforeQuitHandler({ preventDefault: vi.fn() })
 
-    const flushHandler = ipcMainOnMock.mock.calls.find(
-      ([event]) => event === 'app:flush-done'
-    )?.[1] as () => void
-    flushHandler()
+    completeFlush(browserWindows[0])
     for (let i = 0; i < 40; i++) {
       await Promise.resolve()
     }
@@ -1658,10 +1798,7 @@ describe('main index phase2 exports', () => {
     )?.[1] as (event: { preventDefault: () => void }) => void
     beforeQuitHandler({ preventDefault: vi.fn() })
 
-    const flushHandler = ipcMainOnMock.mock.calls.find(
-      ([event]) => event === 'app:flush-done'
-    )?.[1] as () => void
-    flushHandler()
+    completeFlush(browserWindows[0])
     for (let i = 0; i < 40; i++) {
       await Promise.resolve()
     }
@@ -1698,10 +1835,7 @@ describe('main index phase2 exports', () => {
     )?.[1] as (event: { preventDefault: () => void }) => void
     beforeQuitHandler({ preventDefault: vi.fn() })
 
-    const flushHandler = ipcMainOnMock.mock.calls.find(
-      ([event]) => event === 'app:flush-done'
-    )?.[1] as () => void
-    flushHandler()
+    completeFlush(browserWindows[0])
     for (let i = 0; i < 30; i++) {
       await Promise.resolve()
     }
@@ -1737,10 +1871,7 @@ describe('main index phase2 exports', () => {
     )?.[1] as (event: { preventDefault: () => void }) => void
     beforeQuitHandler({ preventDefault: vi.fn() })
 
-    const flushHandler = ipcMainOnMock.mock.calls.find(
-      ([event]) => event === 'app:flush-done'
-    )?.[1] as () => void
-    flushHandler()
+    completeFlush(browserWindows[0])
     for (let i = 0; i < 20; i++) {
       await Promise.resolve()
     }
@@ -1763,10 +1894,7 @@ describe('main index phase2 exports', () => {
     )?.[1] as (event: { preventDefault: () => void }) => void
     beforeQuitHandler({ preventDefault: vi.fn() })
 
-    const flushHandler = ipcMainOnMock.mock.calls.find(
-      ([event]) => event === 'app:flush-done'
-    )?.[1] as () => void
-    flushHandler()
+    completeFlush(browserWindows[0])
     await flushUntil(() => vi.mocked(app.exit).mock.calls.length > 0)
 
     expect(app.exit).toHaveBeenCalledWith(1)

@@ -19,6 +19,7 @@ const mockHasGoogleCalendarLocalAuth = vi.fn()
 const mockHasAnyGoogleCalendarLocalAuth = vi.fn()
 const mockListGoogleAccountIds = vi.fn(() => [] as string[])
 const mockResolveDefaultGoogleAccountId = vi.fn(() => null as string | null)
+const mockDiscoverGoogleCalendarSources = vi.fn()
 const mockSyncGoogleCalendarNow = vi.fn()
 const mockSyncGoogleCalendarSource = vi.fn()
 const mockSyncLocalSourceToGoogleCalendar = vi.fn(async () => null)
@@ -53,7 +54,9 @@ vi.mock('electron', () => ({
     })
   },
   BrowserWindow: {
-    getAllWindows: vi.fn(() => [{ webContents: { send: webContentsSend } }])
+    getAllWindows: vi.fn(() => [
+      { isDestroyed: () => false, webContents: { send: webContentsSend } }
+    ])
   }
 }))
 
@@ -83,6 +86,7 @@ vi.mock('../calendar/google/oauth', () => ({
 }))
 
 vi.mock('../calendar/google/sync-service', () => ({
+  discoverGoogleCalendarSources: (...args: unknown[]) => mockDiscoverGoogleCalendarSources(...args),
   syncGoogleCalendarNow: (...args: unknown[]) => mockSyncGoogleCalendarNow(...args),
   syncGoogleCalendarSource: (...args: unknown[]) => mockSyncGoogleCalendarSource(...args),
   syncLocalSourceToGoogleCalendar: (...args: unknown[]) =>
@@ -651,6 +655,160 @@ describe('calendar-handlers', () => {
       isSelected: false,
       calendarId: 'remote-calendar-1'
     })
+  })
+
+  it('brings every calendar on the account into the picker when connecting', async () => {
+    registerCalendarHandlers()
+    mockConnectGoogleCalendar.mockResolvedValue({
+      accountId: 'work@example.com',
+      account: {
+        remoteId: 'work@example.com',
+        email: 'work@example.com',
+        title: 'Work Example',
+        timezone: 'Europe/Istanbul'
+      },
+      primaryCalendar: {
+        remoteId: 'work@example.com',
+        title: 'Work Example',
+        timezone: 'Europe/Istanbul',
+        color: '#0ea5e9',
+        isPrimary: true
+      }
+    })
+    mockHasAnyGoogleCalendarLocalAuth.mockResolvedValue(true)
+    mockListGoogleAccountIds.mockReturnValue(['work@example.com'])
+    // Stand-in for the real discovery pass, which has its own real-DB tests.
+    mockDiscoverGoogleCalendarSources.mockImplementation(async () => {
+      db.run(sql`
+        INSERT INTO calendar_sources (
+          id, provider, kind, account_id, remote_id, title, timezone,
+          is_selected, sync_status, created_at, modified_at
+        )
+        VALUES (
+          ${'google-calendar:team@group.calendar.google.com'}, ${'google'}, ${'calendar'},
+          ${'work@example.com'}, ${'team@group.calendar.google.com'}, ${'Team'},
+          ${'Europe/Istanbul'}, ${0}, ${'idle'},
+          ${'2026-04-12T08:01:00.000Z'}, ${'2026-04-12T08:01:00.000Z'}
+        )
+      `)
+    })
+
+    await invokeHandler(CalendarChannels.invoke.CONNECT_PROVIDER, { provider: 'google' })
+
+    expect(mockDiscoverGoogleCalendarSources).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'work@example.com'
+    )
+
+    const sources = await invokeHandler(CalendarChannels.invoke.LIST_SOURCES, {
+      provider: 'google',
+      kind: 'calendar'
+    })
+
+    // The account's other calendars have to reach the picker; otherwise there
+    // is nothing for the user to turn on and only the primary ever syncs.
+    expect(sources.sources.map((source: { remoteId: string }) => source.remoteId)).toEqual(
+      expect.arrayContaining(['work@example.com', 'team@group.calendar.google.com'])
+    )
+  })
+
+  it('deletes a de-selected calendar events and leaves the other calendars alone', async () => {
+    registerCalendarHandlers()
+
+    for (const [id, remoteId, title] of [
+      ['google-calendar-1', 'remote-calendar-1', 'Work'],
+      ['google-calendar-2', 'remote-calendar-2', 'Personal']
+    ]) {
+      db.run(sql`
+        INSERT INTO calendar_sources (
+          id, provider, kind, account_id, remote_id, title, timezone,
+          is_selected, sync_status, created_at, modified_at
+        )
+        VALUES (
+          ${id}, ${'google'}, ${'calendar'}, ${'google-account-1'}, ${remoteId}, ${title},
+          ${'Europe/Istanbul'}, ${1}, ${'ok'},
+          ${'2026-04-12T08:01:00.000Z'}, ${'2026-04-12T08:01:00.000Z'}
+        )
+      `)
+    }
+
+    for (const [id, sourceId, remoteEventId, title] of [
+      ['ext-1', 'google-calendar-1', 'remote-event-1', 'Standup'],
+      ['ext-2', 'google-calendar-1', 'remote-event-2', 'Retro'],
+      ['ext-3', 'google-calendar-2', 'remote-event-3', 'Dentist']
+    ]) {
+      db.run(sql`
+        INSERT INTO calendar_external_events (
+          id, source_id, remote_event_id, title, start_at, created_at, modified_at
+        )
+        VALUES (
+          ${id}, ${sourceId}, ${remoteEventId}, ${title}, ${'2026-04-12T09:00:00.000Z'},
+          ${'2026-04-12T08:01:00.000Z'}, ${'2026-04-12T08:01:00.000Z'}
+        )
+      `)
+    }
+
+    await invokeHandler(CalendarChannels.invoke.UPDATE_SOURCE_SELECTION, {
+      id: 'google-calendar-1',
+      isSelected: false
+    })
+
+    const remaining = db
+      .all<{ id: string }>(sql`SELECT id FROM calendar_external_events ORDER BY id`)
+      .map((row) => row.id)
+
+    // Turning a calendar off has to take its events with it — otherwise they
+    // linger on the calendar view with nothing left to refresh or remove them.
+    expect(remaining).toEqual(['ext-3'])
+    expect(enqueueLocalSyncDelete).toHaveBeenCalledWith(
+      'calendar_external_event',
+      'ext-1',
+      expect.any(String)
+    )
+    expect(enqueueLocalSyncDelete).toHaveBeenCalledWith(
+      'calendar_external_event',
+      'ext-2',
+      expect.any(String)
+    )
+  })
+
+  it('keeps a calendar events when it is turned back on', async () => {
+    registerCalendarHandlers()
+
+    db.run(sql`
+      INSERT INTO calendar_sources (
+        id, provider, kind, account_id, remote_id, title, timezone,
+        is_selected, sync_status, created_at, modified_at
+      )
+      VALUES (
+        ${'google-calendar-1'}, ${'google'}, ${'calendar'}, ${'google-account-1'},
+        ${'remote-calendar-1'}, ${'Work'}, ${'Europe/Istanbul'}, ${0}, ${'idle'},
+        ${'2026-04-12T08:01:00.000Z'}, ${'2026-04-12T08:01:00.000Z'}
+      )
+    `)
+    db.run(sql`
+      INSERT INTO calendar_external_events (
+        id, source_id, remote_event_id, title, start_at, created_at, modified_at
+      )
+      VALUES (
+        ${'ext-1'}, ${'google-calendar-1'}, ${'remote-event-1'}, ${'Standup'},
+        ${'2026-04-12T09:00:00.000Z'}, ${'2026-04-12T08:01:00.000Z'},
+        ${'2026-04-12T08:01:00.000Z'}
+      )
+    `)
+
+    await invokeHandler(CalendarChannels.invoke.UPDATE_SOURCE_SELECTION, {
+      id: 'google-calendar-1',
+      isSelected: true
+    })
+
+    const remaining = db
+      .all<{ id: string }>(sql`SELECT id FROM calendar_external_events`)
+      .map((row) => row.id)
+
+    expect(remaining).toEqual(['ext-1'])
+    expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
   })
 
   it('covers calendar handler error and provider edge paths', async () => {

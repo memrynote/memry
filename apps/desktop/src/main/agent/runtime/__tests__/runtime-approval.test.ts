@@ -13,9 +13,23 @@ vi.mock('../event-bus', () => ({
   broadcastAgentEvent: mocks.broadcastAgentEvent
 }))
 
+import type { VaultServiceHandles } from '../../mcp/tools/handles'
+import { buildWriteTools } from '../../mcp/tools/write-tools'
 import type { ConversationStore } from '../../storage/conversation-store'
 import type { MessageStore } from '../../storage/message-store'
 import { AgentRuntime } from '../runtime'
+
+/** Drains every queued microtask so an already-settled promise wins a race. */
+function flushMicrotasks(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0))
+}
+
+function broadcastToolCallIds(): string[] {
+  return mocks.broadcastAgentEvent.mock.calls
+    .map(([event]) => event as { kind: string; toolCallId: string })
+    .filter((event) => event.kind === 'tool_call_pending_approval')
+    .map((event) => event.toolCallId)
+}
 
 function createRuntime(toolApprovalMode: 'always_accept' | 'ask' = 'always_accept') {
   const conversations = {
@@ -165,6 +179,77 @@ describe('AgentRuntime approval gate', () => {
       approved: false,
       reason: 'User denied request.'
     })
+  })
+
+  it('denies pending approvals for the cancelled conversation only', async () => {
+    const { runtime, conversations } = createRuntime('ask')
+    conversations.getById.mockImplementation((id: string) => ({ id, trustList: [] }))
+    vi.spyOn(Date, 'now').mockReturnValueOnce(100).mockReturnValueOnce(200)
+
+    runtime.install()
+    const gate = installedGate()
+    const cancelled = gate({
+      conversationId: 'conversation-1',
+      toolName: 'vault_create_task',
+      parsedArgs: { title: 'Task' }
+    })
+    const untouched = gate({
+      conversationId: 'conversation-2',
+      toolName: 'vault_create_task',
+      parsedArgs: { title: 'Other task' }
+    })
+    const [cancelledId, untouchedId] = broadcastToolCallIds()
+    expect(cancelledId).not.toBe(untouchedId)
+
+    runtime.cancelTurn('conversation-1')
+    await flushMicrotasks()
+
+    await expect(
+      Promise.race([cancelled, Promise.resolve('still-pending' as const)])
+    ).resolves.toEqual({ approved: false, reason: 'User denied request.' })
+    expect(runtime.getPendingApproval(cancelledId)).toBeNull()
+    expect(mocks.broadcastAgentEvent).toHaveBeenCalledWith({
+      kind: 'tool_call_failed',
+      conversationId: 'conversation-1',
+      toolCallId: cancelledId,
+      error: { code: 'PERMISSION_DENIED', message: 'Turn cancelled before approval.' }
+    })
+
+    await expect(
+      Promise.race([untouched, Promise.resolve('still-pending' as const)])
+    ).resolves.toBe('still-pending')
+    expect(runtime.getPendingApproval(untouchedId)).not.toBeNull()
+  })
+
+  it('fails the awaiting write tool with PERMISSION_DENIED and never executes it on cancel', async () => {
+    const { runtime, conversations } = createRuntime('ask')
+    conversations.getById.mockReturnValue({ id: 'conversation-1', trustList: [] })
+
+    runtime.install()
+    const create = vi.fn(async () => ({ id: 'note-1' }))
+    const createNote = buildWriteTools(
+      { notes: { create } } as unknown as VaultServiceHandles,
+      installedGate()
+    ).find((tool) => tool.name === 'vault_create_note')
+    if (!createNote) throw new Error('vault_create_note is not registered')
+
+    const call = createNote.handler(
+      { title: 'Notes', content_markdown: 'body' },
+      { conversationId: 'conversation-1', windowId: null }
+    )
+    const settled = call.then(
+      () => 'resolved-as-approved' as const,
+      (error: unknown) => error
+    )
+    expect(runtime.getPendingApproval('gate-100-i')).not.toBeNull()
+
+    runtime.cancelTurn('conversation-1')
+    await flushMicrotasks()
+
+    await expect(
+      Promise.race([settled, Promise.resolve('still-pending' as const)])
+    ).resolves.toMatchObject({ code: 'PERMISSION_DENIED' })
+    expect(create).not.toHaveBeenCalled()
   })
 
   it('denies pending approvals and clears the MCP write gate on shutdown', async () => {

@@ -46,3 +46,45 @@ jobs:
           CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
           CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
           CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+
+  publish-firefox:
+    name: Build, zip, and submit to Firefox Add-ons (AMO)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Exposed at job scope so the submit step can skip cleanly until AMO is set up.
+    env:
+      FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Zip extension (Firefox)
+        run: pnpm --filter @memry/extension zip:firefox
+
+      - name: Build reproducible sources zip
+        run: pnpm --filter @memry/extension sources:firefox
+
+      # Skipped (job stays green) until the AMO secrets are added, so the build +
+      # sources zip are still validated on every release. The add-on's first listing
+      # must be created manually on AMO before the API can accept updates.
+      - name: Submit to Firefox Add-ons
+        if: ${{ env.FIREFOX_JWT_SECRET != '' }}
+        run: pnpm --filter @memry/extension submit:firefox
+        env:
+          FIREFOX_EXTENSION_ID: ${{ secrets.FIREFOX_EXTENSION_ID }}
+          FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
+          FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}

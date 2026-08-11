@@ -13,9 +13,10 @@ import {
   nativeImage,
   Menu,
   MenuItem,
-  dialog
+  dialog,
+  type IpcMainEvent
 } from 'electron'
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { join, resolve, normalize } from 'path'
 import { homedir } from 'node:os'
 import { existsSync, readdirSync, statSync, createReadStream } from 'node:fs'
@@ -1901,21 +1902,40 @@ function flushWindow(win: BrowserWindow, timeoutMs = 2000): Promise<void> {
 
     shutdownLog.info('flushWindow: requesting flush from window', win.id)
 
-    const timer = setTimeout(() => {
-      shutdownLog.warn('flushWindow: timeout for window', win.id)
-      resolve()
-    }, timeoutMs)
-
     const channel = 'app:flush-done'
-    const handler = (): void => {
-      shutdownLog.info('flushWindow: flush-done received from window', win.id)
+    const requestId = randomUUID()
+    let settled = false
+
+    const settle = (): void => {
+      if (settled) return
+      settled = true
       clearTimeout(timer)
+      // The timeout path used to skip this: a renderer that never answers left a
+      // listener on the shared ipcMain forever, and window-close runs this on
+      // every close.
       ipcMain.removeListener(channel, handler)
       resolve()
     }
 
+    // `app:flush-done` is one shared channel for every in-flight flush, so a
+    // reply only counts when it comes from this window AND answers this request.
+    // Without both checks the first window to reply resolved all of them, and a
+    // late reply to an earlier request satisfied the next one — either way a
+    // renderer gets torn down with unsaved edits still pending.
+    const handler = (event: IpcMainEvent, doneRequestId?: string): void => {
+      if (event.sender !== win.webContents) return
+      if (doneRequestId !== requestId) return
+      shutdownLog.info('flushWindow: flush-done received from window', win.id)
+      settle()
+    }
+
+    const timer = setTimeout(() => {
+      shutdownLog.warn('flushWindow: timeout for window', win.id)
+      settle()
+    }, timeoutMs)
+
     ipcMain.on(channel, handler)
-    win.webContents.send('app:request-flush')
+    win.webContents.send('app:request-flush', requestId)
   })
 }
 

@@ -16,7 +16,8 @@ vi.mock('@/contexts/auth-context', () => ({
 }))
 
 vi.mock('@/hooks/use-app-updater', () => ({
-  useAppUpdater: () => ({ state: { currentVersion: '1.2.3' } })
+  useAppUpdaterSelector: (selector: (state: { currentVersion: string }) => unknown) =>
+    selector({ currentVersion: '1.2.3' })
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -24,7 +25,10 @@ vi.mock('@memry/i18n/renderer', () => ({
 }))
 
 vi.mock('sonner', () => ({
-  toast: { success: (...a: unknown[]) => mocks.toastSuccess(...a), error: (...a: unknown[]) => mocks.toastError(...a) }
+  toast: {
+    success: (...a: unknown[]) => mocks.toastSuccess(...a),
+    error: (...a: unknown[]) => mocks.toastError(...a)
+  }
 }))
 
 vi.mock('@/lib/icons', () => ({ MessageCircle: () => <svg data-testid="icon-feedback" /> }))

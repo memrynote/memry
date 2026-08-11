@@ -6,11 +6,11 @@ const log = createLogger('FlushOnQuit')
 
 export function useFlushOnQuit(): void {
   useEffect(() => {
-    const unsubscribe = window.api.onFlushRequested(() => {
+    const unsubscribe = window.api.onFlushRequested((requestId) => {
       log.info('flush requested by main process')
       void flushAllPendingSaves().then(() => {
         log.info('flush complete, notifying main')
-        window.api.notifyFlushDone()
+        window.api.notifyFlushDone(requestId)
       })
     })
 

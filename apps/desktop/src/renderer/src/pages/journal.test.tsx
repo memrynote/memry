@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { JournalPage } from './journal'
-import type React from 'react'
+import React from 'react'
 
 const mocks = vi.hoisted(() => ({
   openTab: vi.fn(),
@@ -26,6 +26,8 @@ const mocks = vi.hoisted(() => ({
   togglePropertiesCollapsed: vi.fn(),
   saveError: null as string | null,
   entryError: null as string | null,
+  externalUpdateCount: 0,
+  contentAreaMounts: 0,
   entry: {
     id: 'j2026-01-15',
     date: '2026-01-15',
@@ -81,7 +83,7 @@ vi.mock('@/hooks/use-journal', () => ({
     loadedForDate: mocks.activeTab.viewState?.date ?? '2026-01-15',
     error: mocks.entryError,
     saveError: mocks.saveError,
-    externalUpdateCount: 0,
+    externalUpdateCount: mocks.externalUpdateCount,
     updateContent: mocks.updateContent,
     updateTags: mocks.updateTags,
     forceReload: mocks.forceReload,
@@ -256,6 +258,7 @@ vi.mock('@/components/note', () => ({
   ContentArea: ({
     initialContent,
     placeholder,
+    externalContentRevision,
     onMarkdownChange,
     onLinkClick,
     onInternalLinkClick,
@@ -263,8 +266,16 @@ vi.mock('@/components/note', () => ({
     focusAtEndRef
   }: any) => {
     focusAtEndRef.current = vi.fn()
+    // Counting mounts (not renders) is the whole point: an external update must
+    // reach the live editor as a prop, never as a fresh editor instance.
+    React.useEffect(() => {
+      mocks.contentAreaMounts += 1
+    }, [])
     return (
-      <div data-testid="content-area">
+      <div
+        data-testid="content-area"
+        data-external-revision={String(externalContentRevision ?? 'none')}
+      >
         {initialContent}:{placeholder}
         <div
           data-testid="blocknote-editor"
@@ -369,7 +380,9 @@ describe('JournalPage', () => {
     mocks.activeTab = { type: 'journal', viewState: { date: '2026-01-15' } }
     mocks.saveError = null
     mocks.entryError = null
-    mocks.entry = { ...mocks.entry, id: 'j2026-01-15', date: '2026-01-15' }
+    mocks.externalUpdateCount = 0
+    mocks.contentAreaMounts = 0
+    mocks.entry = { ...mocks.entry, id: 'j2026-01-15', date: '2026-01-15', content: '# Today' }
     mocks.resolveWikiLink.mockResolvedValue({ type: 'note', id: 'note-2', title: 'Linked Note' })
     vi.stubGlobal('localStorage', {
       getItem: vi.fn(() => 'false'),
@@ -377,6 +390,25 @@ describe('JournalPage', () => {
     })
     document.body.innerHTML = '<div data-id="h1"></div>'
     Element.prototype.scrollIntoView = vi.fn()
+  })
+
+  it('hands an external update to the live editor instead of remounting it', () => {
+    const { rerender } = render(<JournalPage />)
+
+    expect(screen.getByTestId('content-area')).toHaveTextContent('# Today')
+    expect(mocks.contentAreaMounts).toBe(1)
+
+    // A sync/agent/on-disk edit lands: useJournalEntry swaps the entry and bumps
+    // externalUpdateCount.
+    mocks.entry = { ...mocks.entry, content: '# Edited elsewhere' }
+    mocks.externalUpdateCount = 1
+    rerender(<JournalPage />)
+
+    // The new content must be visible...
+    expect(screen.getByTestId('content-area')).toHaveTextContent('# Edited elsewhere')
+    expect(screen.getByTestId('content-area')).toHaveAttribute('data-external-revision', '1')
+    // ...without throwing away the editor instance.
+    expect(mocks.contentAreaMounts).toBe(1)
   })
 
   it('renders the day editor and drives tags, properties, backlinks, and links', async () => {

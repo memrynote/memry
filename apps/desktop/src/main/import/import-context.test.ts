@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const send = vi.fn()
 vi.mock('electron', () => ({
-  BrowserWindow: { getAllWindows: () => [{ webContents: { send } }] }
+  BrowserWindow: { getAllWindows: () => [{ isDestroyed: () => false, webContents: { send } }] }
 }))
 
 import { createImportContext } from './import-context'

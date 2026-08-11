@@ -1401,12 +1401,18 @@ export function NotePage({ noteId }: NotePageProps) {
             onRecover={refetchNote}
             onError={(error) => log.error('Editor error:', error)}
           >
+            {/* `externalUpdateCount` is deliberately NOT part of the key: an
+                update that did not originate here is handed to the live editor
+                via `externalContentRevision` instead of destroying and
+                rebuilding the editor for every remote change. `noteId` stays —
+                a different note in this tab is a genuinely different document. */}
             <ContentArea
-              key={`${noteId}-${externalUpdateCount}`}
+              key={noteId}
               noteId={noteId}
               notePath={note.path}
               initialContent={review.editorInitialContent}
               contentType="markdown"
+              externalContentRevision={externalUpdateCount}
               placeholder={t('editor.content.placeholder')}
               stickyToolbar={editorSettings.toolbarMode === 'sticky'}
               spellCheck={editorSettings.spellCheck}

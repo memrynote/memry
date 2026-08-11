@@ -62,16 +62,19 @@ export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void 
   useEffect(() => {
     if (!enabled) return
 
-    const serialized = serializeTabState(state)
-    const json = JSON.stringify(serialized)
-
-    if (json === lastSavedRef.current) return
-
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current)
     }
 
+    // Serialize inside the debounced callback: only the last timer of a burst
+    // survives, and it closes over the newest state, so a burst of tab-state
+    // changes walks the tab tree once instead of once per change.
     saveTimeoutRef.current = setTimeout(() => {
+      const serialized = serializeTabState(state)
+      const json = JSON.stringify(serialized)
+
+      if (json === lastSavedRef.current) return
+
       void storage.save(serialized).then(() => {
         lastSavedRef.current = json
       })
@@ -89,13 +92,13 @@ export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void 
     if (!enabled) return
 
     const handleBeforeUnload = (): void => {
-      const serialized = serializeTabState(state)
+      const serialized = serializeTabState(stateRef.current)
       saveSync(serialized)
     }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [state, enabled])
+  }, [enabled])
 }
 
 // =============================================================================

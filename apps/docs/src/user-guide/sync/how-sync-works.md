@@ -61,6 +61,12 @@ Pause sync from the indicator menu when:
 
 Resume sync to push and pull queued changes. Outgoing changes queue locally until paused → resumed.
 
+Quitting while paused or offline does not lose those queued note edits. Everything you typed is
+already on disk, and memrynote records which notes still owe the server an update. The next time
+sync runs — on the next launch, or as soon as the network comes back — it pushes those notes'
+current state. A long offline editing session also stays cheap in memory: queued edits for a note
+are merged together rather than kept one per keystroke.
+
 ## What Gets Synced
 
 | Item                                                           | Sync? |

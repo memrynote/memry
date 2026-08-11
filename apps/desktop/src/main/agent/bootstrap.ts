@@ -25,6 +25,7 @@ import type { ClaudeCliSpawnInput, CodexCliSpawnInput } from './backends/types'
 import { detectClaudeBinary } from './cli/claude-binary'
 import { detectCodexBinary } from './cli/codex-binary'
 import { spawnCodexTurn } from './cli/codex-spawn'
+import { createEscalatingKill } from './cli/kill'
 import { spawnClaudeTurn } from './cli/spawn'
 import { getPublicStatus } from './mcp/lifecycle'
 import { createVaultServiceHandles } from './mcp/tools/handles-adapter'
@@ -130,7 +131,7 @@ export async function startAgent(): Promise<AgentHandle> {
       stdout,
       stderr,
       pid: sub.pid,
-      kill: () => sub.proc.kill('SIGTERM'),
+      kill: createEscalatingKill(sub.proc),
       waitExit: () => exitCodePromise,
       cleanup: sub.cleanup
     }
@@ -186,7 +187,7 @@ export async function startAgent(): Promise<AgentHandle> {
       stdout,
       stderr,
       pid: sub.pid,
-      kill: () => sub.proc.kill('SIGTERM'),
+      kill: createEscalatingKill(sub.proc),
       waitExit: () => exitCodePromise,
       cleanup: sub.cleanup
     }

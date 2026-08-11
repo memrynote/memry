@@ -77,6 +77,24 @@ describe('fts integration', () => {
     expect(prefix.map((r) => r.id)).toEqual(['note-1'])
   })
 
+  it('replaces the previous entry when the same note is indexed again', () => {
+    // fts5 has no PRIMARY KEY or UNIQUE index here (`id` is UNINDEXED), so an
+    // INSERT OR REPLACE has nothing to conflict on. Without an explicit delete
+    // every save of a note appends another row: unbounded index growth plus
+    // stale terms that keep matching.
+    createFtsTable(db)
+    insertFtsNote(db, 'note-1', 'Title', 'alpha beta', ['alpha'])
+    insertFtsNote(db, 'note-1', 'Title', 'gamma delta', ['gamma'])
+
+    expect(getFtsCount(db)).toBe(1)
+    expect(
+      db.all<{ id: string }>(sql`SELECT id FROM fts_notes WHERE fts_notes MATCH 'gamma'`)
+    ).toHaveLength(1)
+    expect(
+      db.all<{ id: string }>(sql`SELECT id FROM fts_notes WHERE fts_notes MATCH 'alpha'`)
+    ).toHaveLength(0)
+  })
+
   it('clears the FTS table and reports counts', () => {
     createFtsTable(db)
     insertFtsNote(db, 'note-1', 'Title', 'content', ['tag'])
