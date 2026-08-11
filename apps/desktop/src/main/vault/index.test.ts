@@ -421,6 +421,24 @@ describe('vault lifecycle', () => {
     expect(getStatus().indexProgress).toBe(100)
   })
 
+  it('drains deferred embeddings after a manual reindex and a structural config rebuild', async () => {
+    await selectVault({ path: '/vault/config' })
+    // The open-time reconcile already ran; only the passes below should count.
+    mocks.reconcileProjections.mockClear()
+
+    // Both passes run with isIndexing set, so the embedding projector defers
+    // every note they touch. Without a drain here those ids sit unembedded until
+    // the next vault open.
+    await reindex()
+    expect(mocks.reconcileProjections).toHaveBeenCalledWith(['embedding'])
+
+    mocks.reconcileProjections.mockClear()
+    await updateConfig({ journalFolder: 'diary' })
+
+    expect(mocks.rebuildIndex).toHaveBeenCalledWith('/vault/config')
+    expect(mocks.reconcileProjections).toHaveBeenCalledWith(['embedding'])
+  })
+
   it('returns default config when closed and closes/removes the active vault', async () => {
     await selectVault({ path: '/vault/remove' })
 
