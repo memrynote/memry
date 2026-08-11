@@ -60,6 +60,13 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
 
   let isStopped = false
 
+  // A reconcile pass runs backgrounded (vault open fires it and does not await
+  // it), so stop() has to be able to cut it short: without this, switching
+  // vaults left the previous runtime's pass reading the old vault path against
+  // a database that closeVault had already closed (#993).
+  let reconcileAbort: AbortController | null = null
+  let activeReconcile: Promise<unknown> | null = null
+
   const lanes: ProjectorLane[] = options.projectors.map((projector) => ({
     projector,
     bus: new ProjectionBus(queueLimit),
@@ -224,16 +231,40 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
     },
 
     async reconcile(names) {
-      const results: Record<string, unknown> = {}
+      const controller = new AbortController()
+      const run = (async () => {
+        const results: Record<string, unknown> = {}
 
-      for (const projector of selectProjectors(options.projectors, names)) {
-        results[projector.name] = await projector.reconcile()
+        for (const projector of selectProjectors(options.projectors, names)) {
+          if (controller.signal.aborted) {
+            break
+          }
+
+          results[projector.name] = await projector.reconcile(controller.signal)
+        }
+
+        return results
+      })()
+
+      reconcileAbort = controller
+      activeReconcile = run
+
+      try {
+        return await run
+      } finally {
+        if (reconcileAbort === controller) {
+          reconcileAbort = null
+        }
+        if (activeReconcile === run) {
+          activeReconcile = null
+        }
       }
-
-      return results
     },
 
     async stop(stopOptions) {
+      reconcileAbort?.abort()
+      const pendingReconcile = activeReconcile
+
       const shouldDrain = stopOptions?.drain ?? true
       if (shouldDrain) {
         await drain()
@@ -243,6 +274,12 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
       for (const lane of lanes) {
         lane.isScheduled = false
         lane.bus.clear()
+      }
+
+      // Wait for the aborted pass to unwind before returning: the caller closes
+      // the databases right after this resolves.
+      if (pendingReconcile) {
+        await pendingReconcile.catch(() => {})
       }
     },
 

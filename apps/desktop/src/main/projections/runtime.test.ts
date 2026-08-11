@@ -342,4 +342,39 @@ describe('projection runtime', () => {
     expect(first.reconcile).toHaveBeenCalledOnce()
     expect(second.reconcile).toHaveBeenCalledOnce()
   })
+
+  it('stop aborts an in-flight reconcile and waits for it to unwind', async () => {
+    const steps: number[] = []
+    let unwound = false
+
+    // Each step parks on a timer, so the pass can only have unwound by the time
+    // stop() resolves if stop() actually awaited it — draining microtasks is
+    // not enough.
+    const slow = createProjector('slow', {
+      reconcile: async (signal?: AbortSignal) => {
+        for (let i = 0; i < 5; i++) {
+          if (signal?.aborted) {
+            break
+          }
+          steps.push(i)
+          await new Promise((resolve) => setTimeout(resolve, 20))
+        }
+        unwound = true
+      }
+    })
+    const runtime = createProjectionRuntime({ projectors: [slow] })
+
+    const reconcilePromise = runtime.reconcile()
+    await Promise.resolve()
+    expect(steps).toEqual([0])
+
+    await runtime.stop()
+
+    // stop() must not resolve while the old pass can still touch the vault...
+    expect(unwound).toBe(true)
+    // ...and the pass must have been cut short rather than run to completion.
+    expect(steps).toEqual([0])
+
+    await reconcilePromise
+  })
 })
