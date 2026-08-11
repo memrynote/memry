@@ -281,6 +281,7 @@ export function AgentProvider({
         await getAgentApi().approveTool(input)
         dispatch({
           type: 'clear_pending',
+          conversationId: input.conversationId,
           toolCallId: input.toolCallId,
           status: input.decision.kind === 'deny' ? 'denied' : 'approved'
         })
