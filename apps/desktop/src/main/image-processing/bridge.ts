@@ -323,17 +323,11 @@ class ImageProcessingBridge {
     })
   }
 
+  // Only ever called while the process is alive: every path that clears
+  // `this.process` also runs `rejectAll`, which empties the queue.
   private drainQueue(): void {
     while (this.queuedRequests.length > 0 && this.pendingRequests.size < MAX_IN_FLIGHT_REQUESTS) {
-      const next = this.queuedRequests.shift()
-      if (!next) {
-        return
-      }
-
-      if (!this.process) {
-        next.reject(new Error('Image processing utility is not running'))
-        continue
-      }
+      const next = this.queuedRequests.shift()!
 
       const timer = setTimeout(() => {
         this.pendingRequests.delete(next.message.requestId)
@@ -347,7 +341,7 @@ class ImageProcessingBridge {
         reject: next.reject,
         timer
       })
-      this.process.postMessage(next.message)
+      this.process!.postMessage(next.message)
     }
   }
 
