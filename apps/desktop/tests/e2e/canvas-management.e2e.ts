@@ -69,14 +69,28 @@ async function rowAction(page: Page, key: string, label: string | RegExp): Promi
   await expect(menu).toHaveCount(0)
 }
 
-/** Types a name into the tree's shared name dialog and saves it. */
-async function submitNameDialog(page: Page, title: RegExp, value: string): Promise<void> {
-  const dialog = page.getByRole('dialog')
-  await expect(dialog.getByText(title)).toBeVisible()
-  const input = dialog.locator('input')
-  await input.fill(value)
-  await dialog.getByRole('button', { name: 'Save', exact: true }).click()
-  await expect(page.getByRole('dialog')).toHaveCount(0)
+/**
+ * Types a name into the field a row turns into, and commits it with Enter.
+ *
+ * The wait before typing is the point: the field opens from a menu that is
+ * still animating out, and a focus restore landing on it blurs the field —
+ * which this tree treats as a commit and closes. So the field has to still be
+ * there, and still hold focus, a beat AFTER it appeared.
+ */
+async function commitInlineName(
+  page: Page,
+  rowKey: string,
+  label: 'Folder name' | 'Canvas name',
+  value: string
+): Promise<void> {
+  const field = row(page, rowKey).getByLabel(label)
+  await expect(field).toBeVisible()
+  await page.waitForTimeout(500)
+  await expect(field).toBeVisible()
+  await expect(field).toBeFocused()
+  await field.fill(value)
+  await field.press('Enter')
+  await expect(field).toHaveCount(0)
 }
 
 async function listCanvases(page: Page) {
@@ -137,7 +151,9 @@ test.describe('Canvas management — folders, placement and row actions', () => 
     const header = sectionHeader(page)
     await header.hover()
     await page.getByRole('button', { name: 'New canvas folder', exact: true }).click()
-    await submitNameDialog(page, /New canvas folder/, 'Work')
+    // Created immediately under the default name, with its row already open for
+    // naming — there is no dialog to fill in.
+    await commitInlineName(page, 'folder:Untitled Folder', 'Folder name', 'Work')
 
     await expect(row(page, 'folder:Work')).toBeVisible()
     await expect.poll(async () => (await listFolders(page)).folders.length).toBe(1)
@@ -156,10 +172,20 @@ test.describe('Canvas management — folders, placement and row actions', () => 
 
     // ---------------------------------------------------------------- rename
     await rowAction(page, canvasKey, 'Rename')
-    await submitNameDialog(page, /Rename canvas/, 'Plan')
+    await commitInlineName(page, canvasKey, 'Canvas name', 'Plan')
     await expect
       .poll(async () => (await listCanvases(page)).find((c) => c.id === created.id)?.title)
       .toBe('Plan')
+
+    // A FOLDER rename goes the same way, from the row's own menu — the path
+    // the user actually takes, and the one that has to survive the menu
+    // closing over the field it just opened.
+    await rowAction(page, 'folder:Work', 'Rename')
+    await commitInlineName(page, 'folder:Work', 'Folder name', 'Studio')
+    await expect(row(page, 'folder:Studio')).toBeVisible()
+    await expect
+      .poll(async () => (await listFolders(page)).folders.map((folder) => folder.path))
+      .toEqual(['Studio'])
 
     // ------------------------------------------------------------- duplicate
     await rowAction(page, canvasKey, 'Duplicate')
@@ -168,7 +194,7 @@ test.describe('Canvas management — folders, placement and row actions', () => 
     const duplicate = (await listCanvases(page)).find((c) => c.id !== created.id)
     expect(duplicate).toBeTruthy()
     // A duplicate lands beside its original, not at the root.
-    expect(duplicate.folder).toBe('Work')
+    expect(duplicate.folder).toBe('Studio')
     await expect(row(page, `canvas:${duplicate.id}`)).toBeVisible()
 
     // ---------------------------------------------------------- drag to root
@@ -177,7 +203,7 @@ test.describe('Canvas management — folders, placement and row actions', () => 
       .poll(async () => (await listCanvases(page)).find((c) => c.id === created.id)?.folder ?? null)
       .toBeNull()
     // The one that did not move stayed put.
-    expect((await listCanvases(page)).find((c) => c.id === duplicate.id).folder).toBe('Work')
+    expect((await listCanvases(page)).find((c) => c.id === duplicate.id).folder).toBe('Studio')
 
     // ---------------------------------------------------------------- delete
     await rowAction(page, canvasKey, 'Delete')
@@ -195,17 +221,17 @@ test.describe('Canvas management — folders, placement and row actions', () => 
     await expandCanvasSection(page)
 
     const folders = await listFolders(page)
-    expect(folders.folders.map((folder) => folder.path)).toEqual(['Work'])
+    expect(folders.folders.map((folder) => folder.path)).toEqual(['Studio'])
 
     const survivors = await listCanvases(page)
     expect(survivors).toHaveLength(1)
     expect(survivors[0].id).toBe(duplicate.id)
-    expect(survivors[0].folder).toBe('Work')
+    expect(survivors[0].folder).toBe('Studio')
 
     // The tree redraws from disk + db. Which folders were open is remembered
-    // across restarts, so `Work` comes back expanded and its one canvas is on
+    // across restarts, so `Studio` comes back expanded and its one canvas is on
     // screen without another click — the deleted one is not.
-    const folderRow = row(page, 'folder:Work')
+    const folderRow = row(page, 'folder:Studio')
     const duplicateRow = row(page, `canvas:${duplicate.id}`)
     await expect(folderRow).toBeVisible()
     await expect(duplicateRow).toBeVisible()

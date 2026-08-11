@@ -71,6 +71,44 @@ export type CanvasMenuEntry =
 
 const DESTRUCTIVE_CLASS = 'text-destructive focus:text-destructive'
 
+/**
+ * Stops the closing dropdown from pulling focus back out of a row's name field.
+ *
+ * Radix restores focus when the menu content UNMOUNTS, not when it closes, and
+ * the content stays mounted for its exit animation. Choosing Rename (or New
+ * canvas / New folder) therefore ran this sequence: the field opened, focused
+ * itself on the next frame, and then — a beat later, once the menu had finished
+ * fading — Radix focused the "⋯" trigger it came from. That landed on the field
+ * as a BLUR, and the tree reads a blur as "clicked away, keep the name": it
+ * committed the unchanged name and closed. The field appeared and vanished
+ * before the user could type a character.
+ *
+ * None of that is visible to the renderer suite. jsdom runs no CSS animations,
+ * so the content unmounts in the same commit that opens the field and the
+ * restore lands harmlessly before it exists; only the E2E can see this.
+ *
+ * `preventDefault` is how the restore is declined: the dropdown composes its
+ * `triggerRef.focus()` behind `checkForDefaultPrevented`. Focus is already
+ * where it belongs — in the field — so declining is all that is needed.
+ *
+ * Guarded on `isNaming` rather than applied always, because the restore is
+ * right for every other item: after Delete or Move the row's own control is
+ * where a keyboard user has to end up.
+ *
+ * `isNaming` is the whole TREE's state, not the row's: "New canvas here" opens
+ * the field on a row that is not the one whose menu is closing.
+ *
+ * The CONTEXT menu needs none of this — it restores to whatever was focused
+ * when it opened, which is not the field and does not take focus off it. Proven
+ * by removing this from its content and watching `canvas-folder-rename.e2e`
+ * stay green, so a guard there would be code answering a question nobody asked.
+ */
+export function declineFocusRestoreWhileNaming(isNaming: boolean) {
+  return (event: Event): void => {
+    if (isNaming) event.preventDefault()
+  }
+}
+
 /** What a row knows about the overlays it owns. */
 export interface RowMenuState {
   /** True while ANY menu, submenu or picker belonging to the row is on screen. */
@@ -251,6 +289,8 @@ export interface CanvasRowActionsProps {
    * user is arrowing through my menu".
    */
   onOpenChange?: (open: boolean) => void
+  /** True while any row in the tree is being named — see `declineFocusRestoreWhileNaming`. */
+  isNaming?: boolean
 }
 
 /**
@@ -264,7 +304,8 @@ export interface CanvasRowActionsProps {
 export function CanvasRowActions({
   label,
   entries,
-  onOpenChange
+  onOpenChange,
+  isNaming = false
 }: CanvasRowActionsProps): React.JSX.Element {
   return (
     <DropdownMenu onOpenChange={onOpenChange}>
@@ -303,6 +344,7 @@ export function CanvasRowActions({
         align="end"
         data-testid="canvas-row-actions-menu"
         onClick={(event) => event.stopPropagation()}
+        onCloseAutoFocus={declineFocusRestoreWhileNaming(isNaming)}
       >
         <CanvasDropdownMenuBody entries={entries} />
       </DropdownMenuContent>

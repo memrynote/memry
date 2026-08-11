@@ -46,6 +46,14 @@ export interface CanvasFolderRowProps {
   folderOptions: CanvasFolderOption[]
   /** Set only while THIS row is being named — the row draws a field instead of its label. */
   edit?: CanvasRowEdit | null
+  /**
+   * True while ANY row in the tree is being named, this one included.
+   *
+   * Wider than `edit` on purpose: "New canvas here" opens the field on a row
+   * this menu does not belong to, and the closing menu would pull focus off it
+   * just the same. See `declineFocusRestoreWhileNaming`.
+   */
+  isNaming?: boolean
   onToggle: (path: string) => void
   onNewCanvas: (path: string) => void
   onNewFolder: (path: string) => void
@@ -69,6 +77,7 @@ export function CanvasFolderRow({
   isDropTarget,
   folderOptions,
   edit,
+  isNaming = false,
   onToggle,
   onNewCanvas,
   onNewFolder,
@@ -279,6 +288,7 @@ export function CanvasFolderRow({
             label={t('canvas.actions.folderMenu')}
             entries={entries}
             onOpenChange={menus.setActionsOpen}
+            isNaming={isNaming}
           />
         </SidebarMenuItem>
       </ContextMenuTrigger>

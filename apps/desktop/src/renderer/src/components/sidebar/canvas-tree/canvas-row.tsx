@@ -59,6 +59,14 @@ export interface CanvasRowProps {
   folderOptions: CanvasFolderOption[]
   /** Set only while THIS row is being named — the row draws a field instead of its label. */
   edit?: CanvasRowEdit | null
+  /**
+   * True while ANY row in the tree is being named, this one included.
+   *
+   * Wider than `edit` on purpose: a menu item can open the field on a DIFFERENT
+   * row, and this closing menu would pull focus off it just the same. See
+   * `declineFocusRestoreWhileNaming`.
+   */
+  isNaming?: boolean
   onOpen: (canvas: CanvasSummary) => void
   onRename: (canvas: CanvasSummary) => void
   onDuplicate: (canvas: CanvasSummary) => void
@@ -78,6 +86,7 @@ export function CanvasRow({
   isActive,
   folderOptions,
   edit,
+  isNaming = false,
   onOpen,
   onRename,
   onDuplicate,
@@ -282,6 +291,7 @@ export function CanvasRow({
             label={t('canvas.actions.canvasMenu')}
             entries={entries}
             onOpenChange={menus.setActionsOpen}
+            isNaming={isNaming}
           />
         </SidebarMenuItem>
       </ContextMenuTrigger>

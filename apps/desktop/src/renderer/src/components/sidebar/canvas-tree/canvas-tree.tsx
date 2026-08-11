@@ -924,6 +924,7 @@ export function CanvasTree({
                   rowKey={rowKeyOf(node)}
                   node={node}
                   edit={editFor(rowKeyOf(node))}
+                  isNaming={editing !== null}
                   isExpanded={isExpanded}
                   isDropTarget={dropTarget === node.path}
                   onDragStart={(event, target) =>
@@ -1013,6 +1014,7 @@ export function CanvasTree({
               rowKey={rowKeyOf(node)}
               canvas={canvas}
               edit={editFor(rowKeyOf(node))}
+              isNaming={editing !== null}
               depth={node.depth}
               isActive={isActiveItem(sidebarItem)}
               folderOptions={folderOptions}
