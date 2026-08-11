@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useEditorSync } from './use-editor-sync'
+import { useEditorTeardown } from '@/hooks/use-editor-teardown'
 import { fetchLinkPreview } from '@/lib/url-metadata'
 
 const blockNoteMocks = vi.hoisted(() => ({
@@ -65,7 +66,8 @@ function createEditor(parsedBlocks: any[] = []) {
       if ('props' in update) block.props = { ...block.props, ...update.props }
     }),
     _tiptapEditor: {
-      state: {}
+      state: {},
+      destroy: vi.fn()
     }
   }
 }
@@ -332,6 +334,123 @@ describe('useEditorSync', () => {
     })
     expect(onInlineTagsChange).toHaveBeenCalledWith(['Build', 'Focus'])
     expect(result.current.prevInlineTagsRef.current).toEqual(['Build', 'Focus'])
+  })
+
+  it('re-applies external content in place when the external revision changes', async () => {
+    const editor = createEditor([
+      { id: 'paragraph-1', type: 'paragraph', props: {}, content: ['Body'], children: [] }
+    ])
+
+    const { rerender } = renderHook(
+      ({ initialContent, externalContentRevision }) =>
+        useEditorSync({
+          editor,
+          initialContent,
+          contentType: 'markdown',
+          externalContentRevision
+        }),
+      { initialProps: { initialContent: 'Body', externalContentRevision: 0 } }
+    )
+
+    await waitFor(() => expect(blockNoteMocks.removeAndInsertBlocks).toHaveBeenCalledTimes(1))
+
+    editor.tryParseMarkdownToBlocks.mockResolvedValue([
+      {
+        id: 'paragraph-2',
+        type: 'paragraph',
+        props: {},
+        content: ['Edited elsewhere'],
+        children: []
+      }
+    ])
+    rerender({ initialContent: 'Edited elsewhere', externalContentRevision: 1 })
+
+    await waitFor(() => expect(blockNoteMocks.removeAndInsertBlocks).toHaveBeenCalledTimes(2))
+    expect(editor.document).toEqual([
+      {
+        id: 'paragraph-2',
+        type: 'paragraph',
+        props: {},
+        content: ['Edited elsewhere'],
+        children: []
+      }
+    ])
+  })
+
+  it('leaves an external revision to the Y.Doc when collaboration is active', async () => {
+    const editor = createEditor([
+      { id: 'paragraph-1', type: 'paragraph', props: {}, content: ['Body'], children: [] }
+    ])
+
+    const { result, rerender } = renderHook(
+      ({ externalContentRevision }) =>
+        useEditorSync({
+          editor,
+          initialContent: 'Body',
+          contentType: 'markdown',
+          yjsFragment: {} as never,
+          externalContentRevision
+        }),
+      { initialProps: { externalContentRevision: 0 } }
+    )
+
+    await waitFor(() => expect(result.current.isContentReadyRef.current).toBe(true))
+
+    rerender({ externalContentRevision: 1 })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    // The main process feeds the external edit into the shared Y.Doc, which the
+    // IPC provider merges into this editor. Re-parsing here would clobber that
+    // merge (and any concurrent local edit riding on the same doc).
+    expect(blockNoteMocks.removeAndInsertBlocks).not.toHaveBeenCalled()
+    expect(editor.replaceBlocks).not.toHaveBeenCalled()
+    expect(editor.document).toEqual([
+      { id: 'initial', type: 'paragraph', props: {}, content: [], children: [] }
+    ])
+  })
+
+  it('flushes a pending markdown save before the editor is torn down', async () => {
+    const onMarkdownChange = vi.fn()
+    const editor = createEditor()
+    editor.blocksToMarkdownLossy.mockResolvedValue('Typed just before closing')
+    const typed = [
+      {
+        id: 'paragraph-1',
+        type: 'paragraph',
+        props: {},
+        content: [{ type: 'text', text: 'Typed just before closing', styles: {} }],
+        children: []
+      }
+    ]
+
+    const { result, unmount } = renderHook(() => {
+      const sync = useEditorSync({
+        editor,
+        initialContent: typed as never,
+        contentType: 'blocks',
+        onMarkdownChange
+      })
+      useEditorTeardown(editor, sync.flushPendingMarkdown)
+      return sync
+    })
+
+    await waitFor(() => expect(result.current.isContentReadyRef.current).toBe(true))
+
+    // Type, then close the tab inside the 150ms debounce window.
+    act(() => {
+      result.current.handleChange()
+    })
+    unmount()
+
+    await waitFor(() => expect(onMarkdownChange).toHaveBeenCalledTimes(1))
+    expect(onMarkdownChange.mock.calls[0][0]).toContain('Typed just before closing')
+    expect(editor._tiptapEditor.destroy).toHaveBeenCalledTimes(1)
+    expect(onMarkdownChange.mock.invocationCallOrder[0]).toBeLessThan(
+      editor._tiptapEditor.destroy.mock.invocationCallOrder[0]
+    )
   })
 
   it('skips markdown persistence for remote updates and Yjs-backed documents', async () => {
