@@ -20,6 +20,7 @@ import {
 } from '@blocknote/react'
 import { MessageCircle } from '@/lib/icons'
 import type { ReviewSelection } from './types'
+import { ListTypeButtons } from './list-type-buttons'
 import { useT } from '@memry/i18n/renderer'
 
 interface ReviewFormattingToolbarProps {
@@ -60,6 +61,7 @@ export function ReviewFormattingToolbar({
     return (
       <FormattingToolbar {...toolbarProps}>
         {getFormattingToolbarItems(toolbarProps.blockTypeSelectItems)}
+        <ListTypeButtons />
         <ReviewToolbarButton onSelect={onAddComment} />
       </FormattingToolbar>
     )
@@ -83,6 +85,10 @@ export function ReviewFormattingToolbar({
           <BasicTextStyleButton basicTextStyle="italic" />
           <BasicTextStyleButton basicTextStyle="underline" />
           <BasicTextStyleButton basicTextStyle="strike" />
+          {/* Turning selected lines into a list is the reason most people open
+              this popup (#1206), so the toggles sit next to the text styles
+              rather than behind the "Paragraph" dropdown above. */}
+          <ListTypeButtons />
           <TextAlignButton textAlignment="left" />
           <TextAlignButton textAlignment="center" />
           <TextAlignButton textAlignment="right" />
