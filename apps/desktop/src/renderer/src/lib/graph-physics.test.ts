@@ -97,6 +97,60 @@ const GOLDEN_SPREAD_16: Array<[string, number, number]> = [
   ['n15', -22.68429529230571, 50.26736166843403]
 ]
 
+/** Deterministic scatter with a spanning tree, so one tick exercises every force. */
+function makeMixedGraph(count: number): Graph {
+  const graph = new Graph({ multi: true, type: 'undirected' })
+  let seed = 7
+  const next = (): number => {
+    seed = (seed * 48271) % 2147483647
+    return seed / 2147483647
+  }
+  for (let i = 0; i < count; i++) {
+    graph.addNode(`n${i}`, {
+      x: (next() - 0.5) * 900,
+      y: (next() - 0.5) * 900,
+      size: 4 + (i % 6)
+    })
+  }
+  for (let i = 1; i < count; i++) {
+    graph.addEdgeWithKey(`e${i}`, `n${i}`, `n${Math.floor(next() * i)}`, { weight: 1 })
+  }
+  return graph
+}
+
+/** Every graphology attribute event the graph emits, in order. */
+function recordAttributeEvents(graph: Graph): string[] {
+  const seen: string[] = []
+  graph.on('nodeAttributesUpdated', (payload: { key: string; name?: string }) => {
+    seen.push(`nodeAttributesUpdated:${payload.key}.${payload.name ?? '*'}`)
+  })
+  graph.on('eachNodeAttributesUpdated', () => {
+    seen.push('eachNodeAttributesUpdated')
+  })
+  return seen
+}
+
+/**
+ * Positions after 150 ticks of `makeMixedGraph(12)`, captured from the
+ * `setNodeAttribute(id, 'x', …)` + `setNodeAttribute(id, 'y', …)` publish. How
+ * a tick hands its result to graphology must not move a node by a single bit,
+ * so these are exact doubles, not tolerances.
+ */
+const GOLDEN_MIXED_12: Array<[string, number, number]> = [
+  ['n0', -32.682853572554095, 10.115943671329513],
+  ['n1', 34.467567410680445, -43.42329389259581],
+  ['n2', 15.67316923174072, -96.31579881675414],
+  ['n3', 3.641044913997191, 67.35618663448567],
+  ['n4', -64.2931143999873, -36.166041345753015],
+  ['n5', 73.87976930883534, -85.15404215585886],
+  ['n6', -100.71492081895607, 24.339911204926477],
+  ['n7', 56.18484769784674, 109.86992800228032],
+  ['n8', 71.68162327899498, 167.81578267528562],
+  ['n9', 90.61253201172838, -31.59692348425795],
+  ['n10', -155.60752978717684, 21.712830047666813],
+  ['n11', 24.169334125816402, 192.43890357419528]
+]
+
 describe('GraphPhysics', () => {
   it('writes simulated positions back onto the graphology graph', () => {
     const graph = makeGraph([
@@ -457,6 +511,92 @@ describe('GraphPhysics', () => {
 
       expect(internals(physics).grid.size).toBe(0)
       expect(internals(physics).cellPool).toHaveLength(0)
+    })
+  })
+
+  describe('publishing positions', () => {
+    it('publishes a whole tick without emitting a single attribute event', () => {
+      const graph = makeMixedGraph(12)
+      const physics = new GraphPhysics(graph)
+      const events = recordAttributeEvents(graph)
+
+      physics.tick()
+
+      expect(events).toEqual([])
+    })
+
+    it('stays silent every tick, not just the first', () => {
+      const graph = makeMixedGraph(12)
+      const physics = new GraphPhysics(graph)
+      const events = recordAttributeEvents(graph)
+
+      for (let i = 0; i < 5; i++) physics.tick()
+
+      expect(events).toEqual([])
+    })
+
+    it('lands every node exactly where the per-attribute writes left it', () => {
+      const graph = makeMixedGraph(12)
+      const physics = new GraphPhysics(graph)
+
+      for (let i = 0; i < 150; i++) physics.tick()
+
+      expect(positions(graph)).toEqual(GOLDEN_MIXED_12)
+    })
+
+    it('reads back through the public accessor, not just the attribute object', () => {
+      const graph = makeMixedGraph(12)
+      const physics = new GraphPhysics(graph)
+
+      for (let i = 0; i < 150; i++) physics.tick()
+
+      for (const [id, x, y] of GOLDEN_MIXED_12) {
+        expect(graph.getNodeAttribute(id, 'x')).toBe(x)
+        expect(graph.getNodeAttribute(id, 'y')).toBe(y)
+      }
+    })
+
+    it('leaves a node added after the simulation started exactly where it was put', () => {
+      const graph = makeMixedGraph(12)
+      const physics = new GraphPhysics(graph)
+      graph.addNode('late', { x: 512, y: -512, size: 5 })
+
+      for (let i = 0; i < 5; i++) physics.tick()
+
+      expect(graph.getNodeAttribute('late', 'x')).toBe(512)
+      expect(graph.getNodeAttribute('late', 'y')).toBe(-512)
+    })
+
+    it('keeps publishing the survivors after a node is dropped mid-simulation', () => {
+      const graph = makeMixedGraph(12)
+      const physics = new GraphPhysics(graph)
+      physics.tick()
+      graph.dropNode('n5')
+      const before = graph.getNodeAttribute('n6', 'x')
+
+      expect(() => physics.tick()).not.toThrow()
+      expect(graph.getNodeAttribute('n6', 'x')).not.toBe(before)
+    })
+
+    it('runs two simulations side by side, each writing only to its own graph', () => {
+      const soloA = makeMixedGraph(12)
+      const soloB = makeMixedGraph(7)
+      const physicsSoloA = new GraphPhysics(soloA)
+      for (let i = 0; i < 60; i++) physicsSoloA.tick()
+      const physicsSoloB = new GraphPhysics(soloB)
+      for (let i = 0; i < 60; i++) physicsSoloB.tick()
+
+      const pairedA = makeMixedGraph(12)
+      const pairedB = makeMixedGraph(7)
+      const physicsA = new GraphPhysics(pairedA)
+      const physicsB = new GraphPhysics(pairedB)
+      for (let i = 0; i < 60; i++) {
+        physicsA.tick()
+        physicsB.tick()
+      }
+
+      expect(positions(pairedA)).toEqual(positions(soloA))
+      expect(positions(pairedB)).toEqual(positions(soloB))
     })
   })
 })
