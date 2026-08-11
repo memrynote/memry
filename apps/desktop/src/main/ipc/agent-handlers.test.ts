@@ -51,6 +51,7 @@ vi.mock('../agent/settings', () => ({
 
 import { AgentChannels } from '@memry/contracts/ipc-agent'
 
+import { broadcastAgentEvent } from '../agent/runtime/event-bus'
 import {
   registerAgentHandlers,
   registerUnavailableAgentHandlers,
@@ -453,6 +454,87 @@ describe('agent IPC handlers', () => {
 
     expect(mockElectron.BrowserWindow.fromWebContents).toHaveBeenCalledWith({ id: 123 })
     expect(result).toEqual({ windowId: '42' })
+  })
+
+  it('records the sender window so streamed deltas reach only it', async () => {
+    registerAgentHandlers(deps)
+    const viewer = new mockElectron.BrowserWindow()
+    const other = new mockElectron.BrowserWindow()
+    mockElectron.BrowserWindow.fromWebContents.mockReturnValue(viewer as never)
+    mockElectron.BrowserWindow.getAllWindows.mockReturnValue([viewer, other] as never)
+
+    const result = await findHandler(AgentChannels.invoke.SET_STREAM_TARGET)(
+      { sender: viewer.webContents },
+      { conversationId: 'conversation-1' }
+    )
+    broadcastAgentEvent({
+      kind: 'assistant_text_delta',
+      conversationId: 'conversation-1',
+      messageId: 'message-1',
+      text: 'hello'
+    })
+
+    expect(result).toEqual({ ok: true })
+    expect(viewer.webContents.send).toHaveBeenCalledWith(
+      AgentChannels.events.AGENT_EVENT,
+      expect.objectContaining({ kind: 'assistant_text_delta' })
+    )
+    expect(other.webContents.send).not.toHaveBeenCalled()
+  })
+
+  it('records the sender window even while the agent runtime is unavailable', async () => {
+    registerUnavailableAgentHandlers('missing key')
+    const viewer = new mockElectron.BrowserWindow()
+    const other = new mockElectron.BrowserWindow()
+    mockElectron.BrowserWindow.fromWebContents.mockReturnValue(viewer as never)
+    mockElectron.BrowserWindow.getAllWindows.mockReturnValue([viewer, other] as never)
+
+    const result = await findHandler(AgentChannels.invoke.SET_STREAM_TARGET)(
+      { sender: viewer.webContents },
+      { conversationId: 'conversation-2' }
+    )
+    broadcastAgentEvent({
+      kind: 'assistant_text_delta',
+      conversationId: 'conversation-2',
+      messageId: 'message-2',
+      text: 'hello'
+    })
+
+    expect(result).toEqual({ ok: true })
+    expect(viewer.webContents.send).toHaveBeenCalledWith(
+      AgentChannels.events.AGENT_EVENT,
+      expect.objectContaining({ kind: 'assistant_text_delta' })
+    )
+    expect(other.webContents.send).not.toHaveBeenCalled()
+  })
+
+  it('leaves a sender whose window cannot be resolved unrecorded', async () => {
+    registerAgentHandlers(deps)
+    const first = new mockElectron.BrowserWindow()
+    const second = new mockElectron.BrowserWindow()
+    mockElectron.BrowserWindow.getAllWindows.mockReturnValue([first, second] as never)
+
+    // Two live windows and no match: resolveSenderWindowId gives up, so the
+    // sender stays unknown and keeps receiving the full stream.
+    await findHandler(AgentChannels.invoke.SET_STREAM_TARGET)(
+      { sender: { id: 999 } },
+      { conversationId: 'conversation-3' }
+    )
+    broadcastAgentEvent({
+      kind: 'assistant_text_delta',
+      conversationId: 'conversation-3',
+      messageId: 'message-3',
+      text: 'hello'
+    })
+
+    expect(first.webContents.send).toHaveBeenCalledWith(
+      AgentChannels.events.AGENT_EVENT,
+      expect.objectContaining({ kind: 'assistant_text_delta' })
+    )
+    expect(second.webContents.send).toHaveBeenCalledWith(
+      AgentChannels.events.AGENT_EVENT,
+      expect.objectContaining({ kind: 'assistant_text_delta' })
+    )
   })
 
   it('falls back to matching sender webContents when resolving window id', async () => {

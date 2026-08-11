@@ -135,6 +135,20 @@ describe('lazy agent IPC handlers', () => {
     expect(mocks.setAgentPreferences).toHaveBeenCalledWith({ toolApprovalMode: 'ask' })
   })
 
+  it('records a stream target without starting the runtime', () => {
+    const window = new mockElectron.BrowserWindow()
+    mockElectron.BrowserWindow.fromWebContents.mockReturnValue(window)
+    registerLazyAgentHandlers()
+
+    expect(
+      findHandler(AgentChannels.invoke.SET_STREAM_TARGET)(
+        { sender: window.webContents },
+        { conversationId: 'conversation-1' }
+      )
+    ).toEqual({ ok: true })
+    expect(mocks.ensureLazyAgentServicesStarted).not.toHaveBeenCalled()
+  })
+
   it('starts services when resolving the sender window id', () => {
     const window = new mockElectron.BrowserWindow()
     mockElectron.BrowserWindow.fromWebContents.mockReturnValue(window)

@@ -157,6 +157,15 @@ describe('AgentProvider', () => {
     )
   })
 
+  it('keeps bootstrapping when the stream-target report fails', async () => {
+    agentApi.setStreamTarget.mockRejectedValue(new Error('stream target unavailable'))
+
+    const { result } = renderHook(() => useAgent(), { wrapper })
+
+    await waitFor(() => expect(result.current.state.sourceWindowId).toBe('window-1'))
+    expect(agentApi.setStreamTarget).toHaveBeenCalled()
+  })
+
   it('retries backend status bootstrap while lazy agent handlers start', async () => {
     agentApi.getBackendStatuses.mockRejectedValueOnce(
       new Error(
