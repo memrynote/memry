@@ -450,6 +450,24 @@ describe('SyncProvider', () => {
       )
     })
 
+    it('#then shows the note-too-large toast for note_too_large status errors', async () => {
+      // A 413 from the body-limit middleware is a payload problem, not a quota
+      // problem. Telling the user to free up space would never fix it.
+      renderHook(() => useSync(), { wrapper })
+      await vi.waitFor(() => expect(syncStatusListeners.length).toBeGreaterThan(0))
+
+      act(() => {
+        for (const cb of syncStatusListeners) {
+          cb({ status: 'error', pendingCount: 0, errorCategory: 'note_too_large' })
+        }
+      })
+
+      expect(toastMock.error).toHaveBeenCalledWith(
+        'A note is too large to sync. Splitting it into smaller notes will fix this.',
+        { duration: 10000 }
+      )
+    })
+
     it('#then translates session and device revoked state errors', async () => {
       const { result } = renderHook(() => useSync(), { wrapper })
       await vi.waitFor(() => expect(sessionExpiredListeners.length).toBeGreaterThan(0))

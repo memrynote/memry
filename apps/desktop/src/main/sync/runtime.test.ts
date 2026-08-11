@@ -336,11 +336,22 @@ vi.mock('./crdt-encrypt', () => ({
 vi.mock('./http-client', () => ({
   postToServer: runtimeMocks.postToServer,
   pushCrdtSnapshot: runtimeMocks.pushCrdtSnapshot,
-  SyncServerError: runtimeMocks.SyncServerError
+  SyncServerError: runtimeMocks.SyncServerError,
+  // runtime.ts → sync-errors.ts imports these; they only need to exist here.
+  NetworkError: class NetworkError extends Error {},
+  RateLimitError: class RateLimitError extends Error {},
+  AttachmentTooLargeError: class AttachmentTooLargeError extends Error {}
 }))
 
 vi.mock('./retry', () => ({
-  withRetry: runtimeMocks.withRetry
+  withRetry: runtimeMocks.withRetry,
+  // runtime.ts → sync-errors.ts imports this; the class itself is exercised in
+  // sync-errors.test.ts, here it only needs to exist.
+  DeadLetterError: class DeadLetterError extends Error {
+    constructor(public lastError: unknown) {
+      super('dead letter')
+    }
+  }
 }))
 
 vi.mock('./token-manager', () => ({
@@ -616,6 +627,9 @@ describe('sync runtime', () => {
     expect(queue.pause).toHaveBeenCalled()
     expect(runtimeMocks.emitSessionExpired).not.toHaveBeenCalled()
 
+    // Bare 413 = body-limit rejection (oversized note), NOT quota: report
+    // note_too_large and keep the queue running for every other note.
+    const pauseCallsBeforeBodyLimit = queue.pause.mock.calls.length
     runtimeMocks.postToServer.mockRejectedValueOnce(new runtimeMocks.SyncServerError(413))
     await expect(queue.onBatch?.('note-1', [new Uint8Array([1])])).rejects.toThrow(
       'sync server error'
@@ -624,9 +638,27 @@ describe('sync runtime', () => {
       'sync:status-changed',
       expect.objectContaining({
         status: 'error',
+        errorCategory: 'note_too_large'
+      })
+    )
+    expect(queue.pause.mock.calls.length).toBe(pauseCallsBeforeBodyLimit)
+
+    // 413 carrying the server's quota code is the real storage-full case:
+    // everything will fail, so pausing the queue is correct.
+    runtimeMocks.postToServer.mockRejectedValueOnce(
+      new runtimeMocks.SyncServerError(413, 'STORAGE_QUOTA_EXCEEDED: Storage quota exceeded')
+    )
+    await expect(queue.onBatch?.('note-1', [new Uint8Array([1])])).rejects.toThrow(
+      'STORAGE_QUOTA_EXCEEDED'
+    )
+    expect(runtimeMocks.browserSend).toHaveBeenCalledWith(
+      'sync:status-changed',
+      expect.objectContaining({
+        status: 'error',
         errorCategory: 'storage_quota_exceeded'
       })
     )
+    expect(queue.pause.mock.calls.length).toBe(pauseCallsBeforeBodyLimit + 1)
 
     await runtime.stopSyncRuntime({ skipFinalSync: true })
     expect(runtimeMocks.crdtProvider.pushAllSnapshots).not.toHaveBeenCalled()
@@ -671,14 +703,30 @@ describe('sync runtime', () => {
     expect(runtimeMocks.refreshAccessToken).toHaveBeenCalled()
     expect(runtimeMocks.emitSessionExpired).not.toHaveBeenCalled()
 
+    // Bare 413 on snapshot push = the note's snapshot is over the body limit:
+    // note_too_large, no queue pause (other notes must keep syncing).
+    const pauseCallsBeforeSnapshot = queue.pause.mock.calls.length
     runtimeMocks.pushCrdtSnapshot.mockRejectedValueOnce(new runtimeMocks.SyncServerError(413))
-    await expect(snapshotPush('note-quota', new Uint8Array([1]))).rejects.toThrow(
+    await expect(snapshotPush('note-oversized', new Uint8Array([1]))).rejects.toThrow(
       'sync server error'
+    )
+    expect(runtimeMocks.browserSend).toHaveBeenCalledWith(
+      'sync:status-changed',
+      expect.objectContaining({ errorCategory: 'note_too_large' })
+    )
+    expect(queue.pause.mock.calls.length).toBe(pauseCallsBeforeSnapshot)
+
+    runtimeMocks.pushCrdtSnapshot.mockRejectedValueOnce(
+      new runtimeMocks.SyncServerError(413, 'STORAGE_QUOTA_EXCEEDED: Storage quota exceeded')
+    )
+    await expect(snapshotPush('note-quota', new Uint8Array([1]))).rejects.toThrow(
+      'STORAGE_QUOTA_EXCEEDED'
     )
     expect(runtimeMocks.browserSend).toHaveBeenCalledWith(
       'sync:status-changed',
       expect.objectContaining({ errorCategory: 'storage_quota_exceeded' })
     )
+    expect(queue.pause.mock.calls.length).toBe(pauseCallsBeforeSnapshot + 1)
   })
 
   it('exposes engine dependency branches for signing keys, device keys, and calendar sync', async () => {
