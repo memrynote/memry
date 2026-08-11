@@ -43,7 +43,11 @@ import {
   setStoredLocale,
   setWindowBounds
 } from './store'
-import { resolveStartupBounds } from './window-bounds'
+import {
+  createWindowBoundsPersister,
+  resolveStartupBounds,
+  type SavedWindowBounds
+} from './window-bounds'
 import { resolveOsLocale } from './startup-locale'
 import { configureSessionPermissions } from './session-permissions'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
@@ -620,28 +624,17 @@ function resizeWindowIfNeeded(
   window.setSize(size.width, size.height)
 }
 
-let persistWindowBoundsTimer: ReturnType<typeof setTimeout> | null = null
-
 /**
- * Save the main window's geometry so the next launch / dock reopen restores it.
- * Guarded to the real app window — the compact vault picker is never remembered.
- * When maximized we store the *normal* (un-maximized) bounds plus the flag, so a
- * later restore can place the window correctly and then re-maximize.
+ * Read the main window's geometry for persistence, or null when there is nothing
+ * worth remembering. Guarded to the real app window — the compact vault picker is
+ * never remembered. When maximized we report the *normal* (un-maximized) bounds
+ * plus the flag, so a later restore can place the window correctly and re-maximize.
  */
-function persistWindowBounds(window: BrowserWindow): void {
-  if (window.isDestroyed() || !getCurrentVaultPath()) return
+function readWindowBounds(window: BrowserWindow): SavedWindowBounds | null {
+  if (window.isDestroyed() || !getCurrentVaultPath()) return null
   const isMaximized = window.isMaximized()
   const { width, height, x, y } = isMaximized ? window.getNormalBounds() : window.getBounds()
-  setWindowBounds({ width, height, x, y, isMaximized })
-}
-
-/** Debounced persist for the noisy resize/move event streams. */
-function scheduleWindowBoundsPersist(window: BrowserWindow): void {
-  if (persistWindowBoundsTimer) clearTimeout(persistWindowBoundsTimer)
-  persistWindowBoundsTimer = setTimeout(() => {
-    persistWindowBoundsTimer = null
-    persistWindowBounds(window)
-  }, 400)
+  return { width, height, x, y, isMaximized }
 }
 
 function createWindow(): void {
@@ -691,18 +684,20 @@ function createWindow(): void {
   if (startupBounds.maximize) mainWindow.maximize()
   recordLaunchPhase('window_created')
 
-  // Remember geometry as the user resizes/moves/maximizes it, and on close.
-  mainWindow.on('resize', () => scheduleWindowBoundsPersist(mainWindow))
-  mainWindow.on('move', () => scheduleWindowBoundsPersist(mainWindow))
-  mainWindow.on('maximize', () => persistWindowBounds(mainWindow))
-  mainWindow.on('unmaximize', () => persistWindowBounds(mainWindow))
-  mainWindow.on('close', () => {
-    if (persistWindowBoundsTimer) {
-      clearTimeout(persistWindowBoundsTimer)
-      persistWindowBoundsTimer = null
-    }
-    persistWindowBounds(mainWindow)
+  // Remember geometry as the user resizes/moves/maximizes it, and on close. Every
+  // persist rewrites the whole config file synchronously, so all four event streams
+  // share one trailing debounce that also drops geometry identical to the last write
+  // (maximize/unmaximize each fire alongside their own `resize`). `close` flushes so
+  // the final geometry is never lost to a pending timer.
+  const boundsPersister = createWindowBoundsPersister({
+    read: () => readWindowBounds(mainWindow),
+    write: setWindowBounds
   })
+  mainWindow.on('resize', () => boundsPersister.schedule())
+  mainWindow.on('move', () => boundsPersister.schedule())
+  mainWindow.on('maximize', () => boundsPersister.schedule())
+  mainWindow.on('unmaximize', () => boundsPersister.schedule())
+  mainWindow.on('close', () => boundsPersister.flush())
 
   const unsubscribeVaultStatus = onVaultStatusChanged((status) => {
     if (mainWindow.isDestroyed()) return

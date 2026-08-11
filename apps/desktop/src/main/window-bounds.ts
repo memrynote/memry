@@ -87,3 +87,78 @@ export function resolveStartupBounds(
 
   return result
 }
+
+/**
+ * Trailing debounce applied to the noisy `resize`/`move` event streams.
+ *
+ * Persisting bounds rewrites the entire pretty-printed config file synchronously
+ * (vault list, sync state, entitlement cache, allowlists), so the delay is long
+ * enough that a continuous drag settles into a single write once the gesture ends.
+ */
+export const WINDOW_BOUNDS_PERSIST_DELAY_MS = 1500
+
+export interface WindowBoundsPersister {
+  /** Queue a trailing-debounced write; each call pushes the pending write back. */
+  schedule(): void
+  /** Drop the pending write and persist right now (window close). */
+  flush(): void
+}
+
+function isSameBounds(a: SavedWindowBounds, b: SavedWindowBounds): boolean {
+  return (
+    a.width === b.width &&
+    a.height === b.height &&
+    a.x === b.x &&
+    a.y === b.y &&
+    a.isMaximized === b.isMaximized
+  )
+}
+
+/**
+ * Debounce and de-duplicate main-window geometry writes.
+ *
+ * `read` returns the window's current geometry, or null when there is nothing to
+ * remember (window destroyed, no vault open). Geometry identical to the last write
+ * is dropped, so repeated events that do not actually move the window — maximize
+ * firing alongside its own `resize`, or a drag that lands where it started — never
+ * rewrite the config.
+ *
+ * Electron-free by design so the debounce can be unit tested with fake timers.
+ */
+export function createWindowBoundsPersister({
+  read,
+  write,
+  delayMs = WINDOW_BOUNDS_PERSIST_DELAY_MS
+}: {
+  read: () => SavedWindowBounds | null
+  write: (bounds: SavedWindowBounds) => void
+  delayMs?: number
+}): WindowBoundsPersister {
+  let timer: ReturnType<typeof setTimeout> | null = null
+  let lastWritten: SavedWindowBounds | null = null
+
+  const persistNow = (): void => {
+    const bounds = read()
+    if (!bounds) return
+    if (lastWritten !== null && isSameBounds(lastWritten, bounds)) return
+    lastWritten = bounds
+    write(bounds)
+  }
+
+  return {
+    schedule(): void {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => {
+        timer = null
+        persistNow()
+      }, delayMs)
+    },
+    flush(): void {
+      if (timer) {
+        clearTimeout(timer)
+        timer = null
+      }
+      persistNow()
+    }
+  }
+}
