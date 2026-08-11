@@ -10,6 +10,10 @@ export default defineConfig({
     description: 'Save the page you are reading to Memrynote as a readable note.',
     permissions: ['storage', 'activeTab', 'alarms'],
     host_permissions: ['http://127.0.0.1/*'],
+    // Optional, so it shows no install-time warning: the popup requests just the
+    // PDF's own origin on the Send click, per site. Needed to re-fetch a PDF tab
+    // with the user's cookies, since content scripts never run in a PDF viewer.
+    optional_host_permissions: ['*://*/*'],
     commands: {
       'capture-page': {
         suggested_key: { default: 'Ctrl+Shift+S', mac: 'Command+Shift+S' },

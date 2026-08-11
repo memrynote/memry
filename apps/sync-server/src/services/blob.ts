@@ -8,17 +8,28 @@ export const generateBlobKey = (userId: string, itemId: string, vaultId = 'defau
 // id = lowercased tag name, folder_config id = folder path), so an untyped key
 // makes a project and a tag named 'inbox' overwrite ONE R2 object while D1 keeps
 // two rows — the losing row's signature can never verify again and its payload
-// is silently destroyed. The 'items-v2' segment keeps the typed namespace fully
-// disjoint from legacy untyped keys (folder_config ids may contain slashes, so
-// nesting types under 'items/' could still collide with an old key). Reads are
-// unaffected: every consumer reads the per-row stored blob_key, never re-derives
-// it, so legacy rows keep resolving to their old untyped objects.
+// is silently destroyed ('items-v2' fixed that; folder_config ids may contain
+// slashes, so nesting types under 'items/' could still collide with an old key).
+//
+// Keys must ALSO include the content hash: a mutable per-item key let two
+// concurrent pushes of the same item id tear the row apart — putBlob(A),
+// putBlob(B), upsert(B), upsert(A) leaves A's signature on the D1 row with B's
+// bytes in R2, and the item fails Ed25519 verification on every pull until
+// someone re-pushes it. External calendar events made this real: their ids are
+// deterministic, so every device pushes the same ids independently. With the
+// hash in the key ('items-v3') each push writes its own immutable object and
+// the row always points at exactly the bytes its signature covers; the loser
+// of an upsert race leaks one bounded orphan object instead of poisoning the
+// item. Reads are unaffected: every consumer reads the per-row stored
+// blob_key, never re-derives it, so v2 and legacy untyped rows keep resolving
+// to their old objects.
 export const generateItemBlobKey = (
   userId: string,
   itemType: string,
   itemId: string,
-  vaultId = 'default'
-): string => `${userId}/vaults/${vaultId}/items-v2/${itemType}/${itemId}`
+  vaultId = 'default',
+  contentHash: string
+): string => `${userId}/vaults/${vaultId}/items-v3/${itemType}/${itemId}/${contentHash}`
 
 export const generateCrdtKey = (userId: string, noteId: string, vaultId = 'default'): string =>
   `${userId}/vaults/${vaultId}/crdt/${noteId}/snapshot`

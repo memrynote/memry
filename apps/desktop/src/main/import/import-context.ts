@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { ImportChannels } from '@memry/contracts/import-channels'
 import type { ImportMessage } from '@memry/contracts/import-channels'
 import { createLogger } from '../lib/logger'
@@ -38,9 +38,7 @@ export function createImportContext(importId: string, signal: AbortSignal): Impo
       done,
       summary: done ? toSummary() : undefined
     }
-    for (const win of BrowserWindow.getAllWindows()) {
-      win.webContents.send(ImportChannels.events.PROGRESS, payload)
-    }
+    broadcastToAllWindows(ImportChannels.events.PROGRESS, payload)
   }
 
   return {

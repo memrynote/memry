@@ -91,6 +91,10 @@ export const CanvasCardLayer = ({
   const [visibleRefs, setVisibleRefs] = useState<CanvasCardRef[]>([])
   const visibleIdsRef = useRef<Set<string>>(new Set())
   const signatureRef = useRef('')
+  /** Last measurement of the clip's box; dropped by the ResizeObserver below. */
+  const clipSizeRef = useRef<{ width: number; height: number } | null>(null)
+  /** The coalescing frame, so N Excalidraw commits in one frame cost one pass. */
+  const frameRef = useRef<number | null>(null)
 
   // Level of detail: cards render their entity at full editor fidelity until
   // the scene gets too small to read or too crowded to mount (see
@@ -151,23 +155,65 @@ export const CanvasCardLayer = ({
     return { cards: getCardRefs(elements), appState }
   }, [excalidrawAPI])
 
-  const recompute = useCallback(() => {
-    const { cards, appState } = readScene()
+  /**
+   * Glue the layer onto the scene. Style writes only, no layout read, so this
+   * is what keeps running on every Excalidraw commit while the heavier pass
+   * below is coalesced onto a frame — pan and zoom stay exactly as immediate as
+   * they are today, which is the whole point of the overlay.
+   */
+  const syncViewport = useCallback((): void => {
     const clip = clipRef.current
     const layer = layerRef.current
     if (!clip || !layer) {
       return
     }
-    // Transform is imperative: no React render during pan/zoom.
+    const appState = excalidrawAPI.getAppState() as unknown as CanvasAppStateView
     layer.style.transform = overlayTransform(appState)
     clip.dataset.scrollX = String(appState.scrollX)
     clip.dataset.scrollY = String(appState.scrollY)
     clip.dataset.zoom = String(appState.zoom.value)
+  }, [excalidrawAPI])
 
-    const rect = viewportSceneRect(appState, {
-      width: clip.clientWidth,
-      height: clip.clientHeight
-    })
+  /**
+   * The clip's box, measured at most once per size change. `clientWidth` /
+   * `clientHeight` force a synchronous layout, and the pass that needs them runs
+   * on every Excalidraw commit — including commits that only changed which
+   * element is hovered — so reading them unconditionally put a forced layout in
+   * the critical path of every frame.
+   *
+   * Holding the measurement is only safe because the ResizeObserver below
+   * watches this exact element and CLEARS this cache: a ResizeObserver reports
+   * any box change whatever caused it (window resize, sidebar toggle, split
+   * drag, tab show/hide, a stylesheet landing late), which is the invalidation
+   * a scroll/resize listener could not give. Nothing here stores a size taken
+   * from the observer entry — the next pass re-reads the live element — so a
+   * padding or box-sizing change cannot desync the two.
+   *
+   * A stale measurement can never move the overlay: the layer transform is
+   * derived from appState alone (`syncViewport`). It only feeds virtualization,
+   * so the worst case is one pass deciding membership against the previous
+   * viewport size, inside the 200/500px hysteresis band.
+   */
+  const clipSize = useCallback((clip: HTMLDivElement): { width: number; height: number } => {
+    const cached = clipSizeRef.current
+    if (cached) {
+      return cached
+    }
+    const size = { width: clip.clientWidth, height: clip.clientHeight }
+    clipSizeRef.current = size
+    return size
+  }, [])
+
+  const recompute = useCallback(() => {
+    const { cards, appState } = readScene()
+    const clip = clipRef.current
+    if (!clip || !layerRef.current) {
+      return
+    }
+    // Transform is imperative: no React render during pan/zoom.
+    syncViewport()
+
+    const rect = viewportSceneRect(appState, clipSize(clip))
     const nextIds = withActivePinned(
       computeVisibleCardIds(cards, rect, {
         enterPadding: ENTER_PADDING,
@@ -209,13 +255,38 @@ export const CanvasCardLayer = ({
       signatureRef.current = signature
       setVisibleRefs(visible)
     }
-  }, [readScene, dispatchActive])
+  }, [readScene, dispatchActive, syncViewport, clipSize])
+
+  /**
+   * Excalidraw triggers onChange from componentDidUpdate for EVERY committed
+   * state change — a pan tick, a zoom tick, a pointer-move that only changed
+   * the hovered element — and several of those can land in one frame while the
+   * wheel outruns the display. The glue runs on each of them; deciding which
+   * cards are mounted and where is worth doing once per frame, not once per
+   * commit.
+   */
+  const scheduleRecompute = useCallback(() => {
+    syncViewport()
+    if (frameRef.current !== null) {
+      return
+    }
+    frameRef.current = requestAnimationFrame(() => {
+      frameRef.current = null
+      recompute()
+    })
+  }, [syncViewport, recompute])
 
   useEffect(() => {
     recompute()
-    const unsubscribe = excalidrawAPI.onChange(() => recompute())
-    return unsubscribe
-  }, [excalidrawAPI, recompute])
+    const unsubscribe = excalidrawAPI.onChange(scheduleRecompute)
+    return () => {
+      unsubscribe()
+      if (frameRef.current !== null) {
+        cancelAnimationFrame(frameRef.current)
+        frameRef.current = null
+      }
+    }
+  }, [excalidrawAPI, recompute, scheduleRecompute])
 
   // Container resize changes the viewport → recompute membership + let
   // Excalidraw recalc its canvas offsets so coordinate math stays correct.
@@ -225,6 +296,7 @@ export const CanvasCardLayer = ({
       return
     }
     const observer = new ResizeObserver(() => {
+      clipSizeRef.current = null
       excalidrawAPI.refresh()
       recompute()
     })

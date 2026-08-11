@@ -12,6 +12,10 @@ import { createMcpSession } from './session'
 
 const logger = createLogger('AgentMcpServer')
 
+// How long stop() lets an in-flight tool call finish before its socket is
+// destroyed. Kept well under the 5s app shutdown budget in main/index.ts.
+const STOP_GRACE_MS = 500
+
 export interface ToolRegistration {
   name: string
   description: string
@@ -37,9 +41,16 @@ export interface AgentMcpServerHandle {
 export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpServerHandle> {
   const session = createMcpSession()
   const tools = new Map<string, ToolRegistration>()
+  // Bumped on every tool-set mutation. A parked McpServer holds closures over
+  // the registrations it was built from (including the write-approval gate), so
+  // anything built before a mutation must never serve a later request.
+  let toolGeneration = 0
+  let idleMcp: McpServer | null = null
 
   function bindTool(reg: ToolRegistration): void {
     tools.set(reg.name, reg)
+    toolGeneration += 1
+    idleMcp = null
   }
 
   for (const reg of opts.toolRegistrations) bindTool(reg)
@@ -81,6 +92,27 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
     return mcp
   }
 
+  // The transport is stateless, so every JSON-RPC message arrives as its own
+  // POST. Building all tool registrations per request is pure waste, but the
+  // SDK allows only one transport per McpServer, so a parked instance is handed
+  // out to at most one in-flight request at a time; overlapping requests still
+  // get their own. Nothing request-scoped is captured here: the tool callbacks
+  // read conversation/window identity from each call's own request headers.
+  function acquireMcpServer(): { mcp: McpServer; release: () => void } {
+    const generation = toolGeneration
+    const parked = idleMcp
+    idleMcp = null
+    const mcp = parked ?? createMcpServer()
+    return {
+      mcp,
+      release: () => {
+        if (generation !== toolGeneration) return
+        if (idleMcp || mcp.isConnected()) return
+        idleMcp = mcp
+      }
+    }
+  }
+
   const server = http.createServer((req, res) => {
     void handleRequest(req, res)
   })
@@ -102,7 +134,7 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
 
     if (req.method === 'POST' && req.url === '/mcp') {
       const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
-      const mcp = createMcpServer()
+      const { mcp, release } = acquireMcpServer()
       try {
         await mcp.connect(transport)
         const body = await readJson(req)
@@ -116,6 +148,7 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
         }
       } finally {
         await mcp.close()
+        release()
       }
       return
     }
@@ -128,6 +161,22 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
     server.once('error', reject)
     server.listen(0, '127.0.0.1', () => {
       server.off('error', reject)
+      // Lifetime handler, installed in the same tick the listen-only one is
+      // removed. Without it a later server-level 'error' — accept(2) failing
+      // after listen — is an unhandled EventEmitter error thrown out of Node's
+      // onconnection callback, and main/index.ts's uncaughtException handler
+      // absorbs it into telemetry as `main_process:uncaught_exception`: nothing
+      // in the log file, and no hint the MCP endpoint was involved.
+      //
+      // Log and report only. An accept failure never closes the listening
+      // socket, so the endpoint keeps serving; stopping it here would kill
+      // Agent Chat for the rest of the vault session, because
+      // startAgentMcpLifecycle() early-returns while it holds this handle and
+      // nothing would rebind until the vault is switched.
+      server.on('error', (err) => {
+        logger.error('Agent MCP server error', err)
+        trackMainError('agent', 'mcp_server', err)
+      })
       resolve()
     })
   })
@@ -148,7 +197,22 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
     rotateToken: () => session.rotateToken(),
     registerTool: bindTool,
     async stop() {
-      await new Promise<void>((resolve) => server.close(() => resolve()))
+      await new Promise<void>((resolve) => {
+        // close() only refuses new connections and drops idle ones: a socket
+        // still serving a request (including one whose tool call never
+        // settles) keeps it pending forever. At quit that stalls closeVault()
+        // before it can drain projections, stop sync and close the databases,
+        // so the 5s shutdown timeout fires app.exit(1) with work unfinished.
+        // Give in-flight calls a short grace period, then destroy the sockets.
+        const graceTimer = setTimeout(() => {
+          logger.warn('Agent MCP connections still open at stop; destroying them')
+          server.closeAllConnections?.()
+        }, STOP_GRACE_MS)
+        server.close(() => {
+          clearTimeout(graceTimer)
+          resolve()
+        })
+      })
       logger.info('Agent MCP server stopped')
     }
   }

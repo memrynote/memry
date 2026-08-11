@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, like, inArray, sql, count, type SQL } from 'drizzle-orm'
+import { eq, desc, asc, and, gt, like, inArray, sql, count, type SQL } from 'drizzle-orm'
 import {
   noteCache,
   noteTags,
@@ -140,6 +140,35 @@ export function listNotesFromCache(db: IndexDb, options: ListNotesOptions = {}):
   }
 
   return query.orderBy(orderFn(sortColumn)).limit(limit).offset(offset).all()
+}
+
+export interface NoteCacheFileRow {
+  id: string
+  path: string
+  indexedAt: string
+}
+
+/**
+ * Cursor-paged `id`/`path` scan over the same rows `listNotesFromCache` walks
+ * (journal entries carry a date and stay out of it).
+ *
+ * Keyset on the primary key instead of LIMIT/OFFSET: the reconcile pass deletes
+ * rows while it walks, and an offset window silently skips a row for every one
+ * removed behind it. `indexedAt` rides along so a caller that leaves the pass to
+ * do async work can tell whether the row it read was rewritten in the meantime.
+ */
+export function listNoteCacheFilesAfter(
+  db: IndexDb,
+  afterId: string,
+  limit: number
+): NoteCacheFileRow[] {
+  return db
+    .select({ id: noteCache.id, path: noteCache.path, indexedAt: noteCache.indexedAt })
+    .from(noteCache)
+    .where(and(sql`${noteCache.date} IS NULL`, gt(noteCache.id, afterId)))
+    .orderBy(asc(noteCache.id))
+    .limit(limit)
+    .all()
 }
 
 export function countNotes(db: IndexDb, folder?: string): number {

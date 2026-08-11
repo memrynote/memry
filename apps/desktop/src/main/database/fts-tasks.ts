@@ -12,13 +12,13 @@ import type { DataDb } from './client'
  */
 
 export function createFtsTasksTable(db: DataDb): void {
+  // `tokenize=` trails the column above deliberately — see the note in fts.ts.
   db.run(sql`
     CREATE VIRTUAL TABLE IF NOT EXISTS fts_tasks USING fts5(
       id UNINDEXED,
       title,
       description,
-      tags,
-      tokenize='porter unicode61'
+      tags, tokenize='porter unicode61'
     )
   `)
 }
@@ -51,9 +51,23 @@ export function insertFtsTask(
   tags: string[]
 ): void {
   const tagsStr = tags.join(' ')
+  // Delete first: `id` is UNINDEXED with no PRIMARY KEY or UNIQUE index, so the
+  // INSERT OR REPLACE this used to be had no conflict target and appended a row
+  // on every task save. Same defect as fts.ts — see the note there.
+  db.transaction((tx) => {
+    tx.run(sql`DELETE FROM fts_tasks WHERE id = ${taskId}`)
+    tx.run(sql`
+      INSERT INTO fts_tasks (id, title, description, tags)
+      VALUES (${taskId}, ${title}, ${description}, ${tagsStr})
+    `)
+  })
+}
+
+/** One-time repair for rows appended by builds with the duplicate bug. */
+export function dedupeFtsTasks(db: DataDb): void {
   db.run(sql`
-    INSERT OR REPLACE INTO fts_tasks (id, title, description, tags)
-    VALUES (${taskId}, ${title}, ${description}, ${tagsStr})
+    DELETE FROM fts_tasks
+    WHERE rowid NOT IN (SELECT MAX(rowid) FROM fts_tasks GROUP BY id)
   `)
 }
 

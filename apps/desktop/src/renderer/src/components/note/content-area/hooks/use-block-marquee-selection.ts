@@ -69,6 +69,88 @@ function rectsIntersect(
   return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom)
 }
 
+interface MeasuredBlock {
+  element: HTMLElement
+  rect: DOMRect
+}
+
+// Find the blocks a marquee box covers without measuring the whole note.
+//
+// Blocks live in normal block flow: siblings stack top-to-bottom in document
+// order and a nested block is laid out inside its parent's box. So across the
+// document-order list `rect.top` is non-decreasing, and any block that precedes
+// another without being its ancestor finishes before that one starts. Those two
+// facts are enough to skip everything above and below the marquee, which is why
+// a drag on a 500-block note costs the same as a drag on a 5-block one.
+//
+// Nothing here is cached. `blocks` is re-queried and every rect is re-read on
+// the frame it is used, so scrolling mid-drag, a resize, a sidebar toggle, an
+// image settling to its final height, a zoom change or a block appearing can
+// never feed a stale rect into the selection — the only way a wrong rect gets
+// in is if the browser hands us one.
+//
+// TRIPWIRE, read this before changing how blocks are laid out. Both facts above
+// hold only while every `.bn-block` is in normal block flow. What was checked to
+// establish that: `@blocknote/xl-multi-column` is not a dependency, there is no
+// column block in `editor-schema.ts`, and no rule in `base.css` floats a
+// `.bn-block`, positions one absolutely, or puts siblings side by side.
+//
+// Introducing ANY non-normal-flow block layout — multi-column blocks,
+// side-by-side callouts, floats, absolute positioning — breaks those facts, and
+// this function then returns a WRONG selection rather than a slow one. That
+// selection feeds bulk delete/move, so the failure is data loss, not a glitch.
+// The tests cannot catch it: they build normal-flow DOM and compare against an
+// exhaustive scan of that same DOM, so they stay green while the assumption is
+// false. Revisit this function — pruning has to become per-column — as part of
+// any such change, not after a bug report.
+function collectMarqueeHits(
+  container: HTMLElement,
+  blocks: ArrayLike<HTMLElement>,
+  box: { left: number; top: number; right: number; bottom: number }
+): MeasuredBlock[] {
+  // Binary search for the first block that starts below the marquee's bottom
+  // edge. Every later block starts at least as low, so none of them intersect.
+  let lo = 0
+  let hi = blocks.length
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1
+    if (blocks[mid].getBoundingClientRect().top > box.bottom) hi = mid
+    else lo = mid + 1
+  }
+
+  const hits: MeasuredBlock[] = []
+  let stopIndex = -1
+  for (let i = lo - 1; i >= 0; i -= 1) {
+    const element = blocks[i]
+    const rect = element.getBoundingClientRect()
+    if (rect.bottom < box.top) {
+      // This block ends above the marquee. Every earlier block is either one of
+      // its ancestors or finishes before it starts, so the ancestors are the
+      // only boxes left that can still reach down into the marquee.
+      stopIndex = i
+      break
+    }
+    if (rectsIntersect(rect, box)) hits.push({ element, rect })
+  }
+  hits.reverse()
+
+  if (stopIndex === -1) return hits
+
+  const ancestors: MeasuredBlock[] = []
+  let node = blocks[stopIndex].parentElement
+  while (node && node !== container) {
+    if (node.matches('.bn-block[data-id]')) {
+      const rect = node.getBoundingClientRect()
+      if (rectsIntersect(rect, box)) ancestors.push({ element: node, rect })
+    }
+    node = node.parentElement
+  }
+  // Walked innermost-first; document order wants the outermost ancestor first,
+  // and every ancestor precedes every block the backwards scan collected.
+  ancestors.reverse()
+  return [...ancestors, ...hits]
+}
+
 function getOrderedBlockIds(container: HTMLElement, ids: ReadonlySet<string>): string[] {
   if (ids.size === 0) return []
   const ordered: string[] = []
@@ -358,11 +440,10 @@ export function useBlockMarqueeSelection({
         const blockEls = blockContainer.querySelectorAll<HTMLElement>('.bn-block[data-id]')
         const next = new Set<string>()
         const nextRects: BlockHighlightRect[] = []
-        blockEls.forEach((el) => {
-          const id = el.getAttribute('data-id')
-          if (!id || next.has(id)) return
-          const blockRect = el.getBoundingClientRect()
-          if (rectsIntersect(blockRect, { left, top, right, bottom })) {
+        collectMarqueeHits(blockContainer, blockEls, { left, top, right, bottom }).forEach(
+          ({ element, rect: blockRect }) => {
+            const id = element.getAttribute('data-id')
+            if (!id || next.has(id)) return
             next.add(id)
             nextRects.push({
               id,
@@ -372,7 +453,7 @@ export function useBlockMarqueeSelection({
               height: blockRect.height
             })
           }
-        })
+        )
         selectedRef.current = next
         setHighlightRects(nextRects)
 

@@ -26,35 +26,82 @@ export function computeFiredAnchorIds(reminders: FiredCandidate[]): Set<string> 
   return ids
 }
 
-/**
- * Toggle `data-fired` on every date pill in `container` so CSS can recolor fired
- * ones. Idempotent — safe to call repeatedly.
- */
-export function applyFiredState(container: HTMLElement, firedAnchorIds: Set<string>): void {
-  const pills = container.querySelectorAll<HTMLElement>('.date-mention[data-anchor-id]')
-  pills.forEach((pill) => {
+const PILL_SELECTOR = '.date-mention[data-anchor-id]'
+
+function isElement(node: Node): node is HTMLElement {
+  return node.nodeType === Node.ELEMENT_NODE
+}
+
+/** `root` itself when it is a date pill, plus every date pill inside it. */
+function collectPills(root: HTMLElement): HTMLElement[] {
+  const pills = root.matches(PILL_SELECTOR) ? [root] : []
+  pills.push(...root.querySelectorAll<HTMLElement>(PILL_SELECTOR))
+  return pills
+}
+
+/** Toggle `data-fired` on the given pills. Idempotent. */
+function paintPills(pills: HTMLElement[], firedAnchorIds: Set<string>): void {
+  for (const pill of pills) {
     const anchorId = pill.getAttribute('data-anchor-id')
     if (anchorId && firedAnchorIds.has(anchorId)) {
       pill.setAttribute('data-fired', 'true')
     } else {
       pill.removeAttribute('data-fired')
     }
-  })
+  }
+}
+
+/**
+ * Toggle `data-fired` on every date pill in `container` so CSS can recolor fired
+ * ones. Idempotent — safe to call repeatedly.
+ */
+export function applyFiredState(container: HTMLElement, firedAnchorIds: Set<string>): void {
+  paintPills(collectPills(container), firedAnchorIds)
+}
+
+/**
+ * The pills a mutation batch can have left unpainted: pills inside freshly
+ * attached elements, and pills whose anchor id just changed. A keystroke that
+ * only rewrites text yields none, so nothing is scanned.
+ */
+function pillsTouchedBy(records: MutationRecord[]): HTMLElement[] {
+  const pills: HTMLElement[] = []
+  for (const record of records) {
+    if (record.type === 'attributes') {
+      if (isElement(record.target)) pills.push(record.target)
+      continue
+    }
+    for (const node of record.addedNodes) {
+      if (isElement(node)) pills.push(...collectPills(node))
+    }
+  }
+  return pills
 }
 
 /**
  * Re-apply fired state whenever BlockNote recreates pill DOM (raw node-views are
- * rebuilt on updateBlock). `getFiredAnchorIds` is read lazily so the latest set
- * is used on every mutation. Returns a cleanup that disconnects the observer.
+ * rebuilt on updateBlock). Only the changed subtrees are scanned — ProseMirror
+ * touches the DOM on every keystroke, so scanning the whole note here costs a
+ * full-document query per character. `getFiredAnchorIds` is read lazily so the
+ * latest set is used on every mutation. Returns a cleanup that disconnects the
+ * observer.
  */
 export function watchFiredPills(
   container: HTMLElement,
   getFiredAnchorIds: () => Set<string>
 ): () => void {
-  const observer = new MutationObserver(() => {
-    applyFiredState(container, getFiredAnchorIds())
+  const observer = new MutationObserver((records) => {
+    const pills = pillsTouchedBy(records)
+    if (pills.length > 0) paintPills(pills, getFiredAnchorIds())
   })
-  observer.observe(container, { childList: true, subtree: true })
+  // `data-fired` is deliberately not in the filter: painting must not re-trigger
+  // the observer.
+  observer.observe(container, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['data-anchor-id']
+  })
   return () => observer.disconnect()
 }
 

@@ -551,7 +551,11 @@ export function buildGoogleCalendarAuthUrl(input: {
   authUrl.searchParams.set('scope', GOOGLE_ALL_SCOPES.join(' '))
   authUrl.searchParams.set('state', input.state)
   authUrl.searchParams.set('access_type', 'offline')
-  authUrl.searchParams.set('prompt', 'consent')
+  // select_account: without it Google reuses whichever account the browser is
+  // already signed in to, so a second account can never be added — the flow
+  // completes and returns the account that is already linked.
+  // consent: still required, it is what makes Google return a refresh token.
+  authUrl.searchParams.set('prompt', 'select_account consent')
   authUrl.searchParams.set('include_granted_scopes', 'true')
   authUrl.searchParams.set('code_challenge', input.codeChallenge)
   authUrl.searchParams.set('code_challenge_method', 'S256')

@@ -13,9 +13,17 @@ const getAllWindows = vi.hoisted(() => vi.fn())
 
 class MockUtilityProcess extends EventEmitter {
   postMessage = vi.fn()
-  kill = vi.fn().mockReturnValue(true)
-  stdout = null
-  stderr = null
+  // Models Electron's UtilityProcess.kill(): the child is reaped, so `exit`
+  // fires and the pipes go away. A second kill on a dead child returns false.
+  killed = false
+  kill = vi.fn(() => {
+    if (this.killed) return false
+    this.killed = true
+    this.emit('exit', 0)
+    return true
+  })
+  stdout = new EventEmitter()
+  stderr = new EventEmitter()
   pid = 1234
 
   simulateMessage(message: unknown): void {
@@ -336,6 +344,71 @@ describe('voice model', () => {
     await vi.advanceTimersByTimeAsync(5 * 60_000)
 
     await requestTimeoutExpectation
+  })
+
+  it('reaps the utility process and detaches its listeners when the start times out', async () => {
+    vi.useFakeTimers()
+    const startTimeout = transcribeWithLocalModel(Buffer.from('audio'))
+    const startTimeoutExpectation = expect(startTimeout).rejects.toThrow(
+      'Voice transcription utility failed to start within timeout'
+    )
+
+    const orphan = mockUtilityProcessInstance
+    const orphanStdout = orphan.stdout
+    const orphanStderr = orphan.stderr
+    expect(orphan.killed).toBe(false)
+    expect(orphanStdout.listenerCount('data')).toBe(1)
+    expect(orphanStderr.listenerCount('data')).toBe(1)
+
+    await vi.advanceTimersByTimeAsync(10_000)
+    await startTimeoutExpectation
+
+    // The child is still holding the Whisper model at this point, so dropping
+    // the reference is not enough — it has to be reaped.
+    expect(orphan.kill).toHaveBeenCalledTimes(1)
+    expect(orphan.killed).toBe(true)
+    // ...and nothing may still be pointing at it.
+    expect(orphan.listenerCount('message')).toBe(0)
+    expect(orphan.listenerCount('error')).toBe(0)
+    expect(orphan.listenerCount('exit')).toBe(0)
+    expect(orphanStdout.listenerCount('data')).toBe(0)
+    expect(orphanStderr.listenerCount('data')).toBe(0)
+  })
+
+  it('transcribes on the next attempt after a start timeout, ignoring the orphan', async () => {
+    vi.useFakeTimers()
+    const timedOut = transcribeWithLocalModel(Buffer.from('first'))
+    const timedOutExpectation = expect(timedOut).rejects.toThrow(
+      'Voice transcription utility failed to start within timeout'
+    )
+    const orphan = mockUtilityProcessInstance
+
+    await vi.advanceTimersByTimeAsync(10_000)
+    await timedOutExpectation
+
+    const retry = transcribeWithLocalModel(Buffer.from('second'))
+    expect(mockFork).toHaveBeenCalledTimes(2)
+    const fresh = mockUtilityProcessInstance
+    expect(fresh).not.toBe(orphan)
+
+    // A worker that finally finished loading long after we gave up must not be
+    // able to reach back in and knock out the process we just started.
+    orphan.emit('message', { type: 'ready' })
+    orphan.emit('exit', 1)
+
+    fresh.simulateMessage({ type: 'ready' })
+    await vi.waitFor(() => {
+      expect(fresh.postMessage).toHaveBeenCalledTimes(1)
+    })
+    const request = fresh.postMessage.mock.calls[0]?.[0] as { requestId: string }
+    fresh.simulateMessage({
+      type: 'transcribe-result',
+      requestId: request.requestId,
+      transcription: 'second memo'
+    })
+
+    await expect(retry).resolves.toBe('second memo')
+    expect(fresh.killed).toBe(false)
   })
 
   it('stops a running utility process via graceful shutdown or timeout kill', async () => {

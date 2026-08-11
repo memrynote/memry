@@ -20,6 +20,12 @@ vi.mock('electron', () => ({
   }
 }))
 
+const { loggerMock } = vi.hoisted(() => ({
+  loggerMock: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
+}))
+
+vi.mock('./logger', () => ({ createLogger: () => loggerMock }))
+
 import { broadcastToAllWindows } from './window-broadcast'
 
 function makeLiveWindow() {
@@ -57,9 +63,27 @@ function makeDeadContentsWindow() {
   }
 }
 
+/**
+ * Passes the isDestroyed() guards but blows up on the actual send — the window
+ * died in the gap between the check and the delivery.
+ */
+function makeThrowingWindow() {
+  const send = vi.fn(() => {
+    throw new Error('Object has been destroyed')
+  })
+  return {
+    win: {
+      isDestroyed: () => false,
+      webContents: { isDestroyed: () => false, send }
+    },
+    send
+  }
+}
+
 describe('broadcastToAllWindows', () => {
   beforeEach(() => {
     windows.length = 0
+    loggerMock.warn.mockClear()
   })
 
   it('sends the payload to every live window', () => {
@@ -93,5 +117,44 @@ describe('broadcastToAllWindows', () => {
 
     expect(dead.send).not.toHaveBeenCalled()
     expect(live.send).toHaveBeenCalledWith('sync:event', { id: 1 })
+  })
+
+  // A window that dies between the isDestroyed() guard and the send must not
+  // take the rest of the fan-out down with it, and must not surface as a throw
+  // in a caller that is mid-transaction (#935, #1000).
+  it('keeps delivering after a send throws, and does not propagate to the caller', () => {
+    const before = makeLiveWindow()
+    const throwing = makeThrowingWindow()
+    const after = makeLiveWindow()
+    windows.push(before.win, throwing.win, after.win)
+
+    expect(() => broadcastToAllWindows('sync:event', { id: 1 })).not.toThrow()
+
+    expect(before.send).toHaveBeenCalledWith('sync:event', { id: 1 })
+    expect(after.send).toHaveBeenCalledWith('sync:event', { id: 1 })
+  })
+
+  it('logs a failed delivery rather than dropping it silently', () => {
+    const throwing = makeThrowingWindow()
+    windows.push(throwing.win)
+
+    broadcastToAllWindows('sync:event', { id: 1 })
+
+    expect(loggerMock.warn).toHaveBeenCalledWith(
+      'Failed to deliver sync:event to a window:',
+      expect.any(Error)
+    )
+  })
+
+  // The global-capture shortcut broadcasts a bare channel with no payload.
+  // Passing an explicit `undefined` would change the send() arity every window
+  // sees, so the helper must forward exactly the arguments it was given.
+  it('preserves a zero-payload send arity', () => {
+    const live = makeLiveWindow()
+    windows.push(live.win)
+
+    broadcastToAllWindows('quick-capture:open')
+
+    expect(live.send).toHaveBeenCalledWith('quick-capture:open')
   })
 })

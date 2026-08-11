@@ -301,7 +301,11 @@ describe('agentReducer', () => {
     }
 
     const queued = agentReducer(initialAgentState, { type: 'event', event })
-    const cleared = agentReducer(queued, { type: 'clear_pending', toolCallId: 'tool-1' })
+    const cleared = agentReducer(queued, {
+      type: 'clear_pending',
+      conversationId: conversation.id,
+      toolCallId: 'tool-1'
+    })
 
     expect(queued.pendingApprovals).toEqual([event])
     expect(cleared.pendingApprovals).toEqual([])
@@ -376,6 +380,7 @@ describe('agentReducer', () => {
 
     const approved = agentReducer(queued, {
       type: 'clear_pending',
+      conversationId: conversation.id,
       toolCallId: 'tool-1',
       status: 'approved'
     })
@@ -505,6 +510,251 @@ describe('agentReducer', () => {
         error: { code: 'INTERNAL', message: 'Connection timeout' }
       }
     })
+  })
+
+  it('applies a tool result only to the conversation that owns the tool call', () => {
+    const otherConversation: Conversation = { ...conversation, id: 'conversation-2' }
+    const otherMessages = [
+      message({
+        id: 'assistant-2',
+        conversationId: otherConversation.id,
+        role: 'assistant',
+        text: 'Other transcript',
+        status: 'completed'
+      })
+    ]
+
+    const started = agentReducer(
+      {
+        ...initialAgentState,
+        activeConversationId: conversation.id,
+        conversations: {
+          [conversation.id]: conversation,
+          [otherConversation.id]: otherConversation
+        },
+        messagesByConversation: {
+          [conversation.id]: [],
+          [otherConversation.id]: otherMessages
+        }
+      },
+      {
+        type: 'event',
+        event: {
+          kind: 'tool_call_started',
+          conversationId: conversation.id,
+          toolCallId: 'tool-1',
+          name: 'vault_read_note',
+          args: { id: 'note-1' }
+        }
+      }
+    )
+
+    const completed = agentReducer(started, {
+      type: 'event',
+      event: {
+        kind: 'tool_call_completed',
+        conversationId: conversation.id,
+        toolCallId: 'tool-1',
+        result: { title: 'Planning' }
+      }
+    })
+
+    expect(completed.messagesByConversation[conversation.id][0]?.content).toEqual({
+      role: 'tool_call',
+      data: {
+        tool: 'vault_read_note',
+        args: { id: 'note-1' },
+        status: 'output-available',
+        output: { title: 'Planning' }
+      }
+    })
+    expect(completed.messagesByConversation[otherConversation.id]).toBe(
+      started.messagesByConversation[otherConversation.id]
+    )
+  })
+
+  it('keeps each in-flight tool call on its own conversation when results interleave', () => {
+    const otherConversation: Conversation = { ...conversation, id: 'conversation-2' }
+    const base: AgentState = {
+      ...initialAgentState,
+      activeConversationId: conversation.id,
+      conversations: {
+        [conversation.id]: conversation,
+        [otherConversation.id]: otherConversation
+      },
+      messagesByConversation: {
+        [conversation.id]: [],
+        [otherConversation.id]: []
+      }
+    }
+
+    const bothStarted = [
+      { conversationId: conversation.id, toolCallId: 'tool-1' },
+      { conversationId: otherConversation.id, toolCallId: 'tool-2' }
+    ].reduce(
+      (acc, input) =>
+        agentReducer(acc, {
+          type: 'event',
+          event: {
+            kind: 'tool_call_started',
+            conversationId: input.conversationId,
+            toolCallId: input.toolCallId,
+            name: 'vault_read_note',
+            args: { id: 'note-1' }
+          }
+        }),
+      base
+    )
+
+    const secondDone = agentReducer(bothStarted, {
+      type: 'event',
+      event: {
+        kind: 'tool_call_completed',
+        conversationId: otherConversation.id,
+        toolCallId: 'tool-2',
+        result: { title: 'Second' }
+      }
+    })
+
+    expect(secondDone.messagesByConversation[otherConversation.id][0]?.content).toEqual({
+      role: 'tool_call',
+      data: {
+        tool: 'vault_read_note',
+        args: { id: 'note-1' },
+        status: 'output-available',
+        output: { title: 'Second' }
+      }
+    })
+    expect(secondDone.messagesByConversation[conversation.id]).toBe(
+      bothStarted.messagesByConversation[conversation.id]
+    )
+
+    const firstDone = agentReducer(secondDone, {
+      type: 'event',
+      event: {
+        kind: 'tool_call_completed',
+        conversationId: conversation.id,
+        toolCallId: 'tool-1',
+        result: { title: 'First' }
+      }
+    })
+
+    expect(firstDone.messagesByConversation[conversation.id][0]?.content).toEqual({
+      role: 'tool_call',
+      data: {
+        tool: 'vault_read_note',
+        args: { id: 'note-1' },
+        status: 'output-available',
+        output: { title: 'First' }
+      }
+    })
+    expect(firstDone.messagesByConversation[otherConversation.id]).toBe(
+      secondDone.messagesByConversation[otherConversation.id]
+    )
+  })
+
+  it('leaves the transcript map untouched when the tool result targets an unloaded conversation', () => {
+    const state: AgentState = {
+      ...initialAgentState,
+      activeConversationId: conversation.id,
+      conversations: { [conversation.id]: conversation },
+      messagesByConversation: { [conversation.id]: [] }
+    }
+
+    const next = agentReducer(state, {
+      type: 'event',
+      event: {
+        kind: 'tool_call_completed',
+        conversationId: 'conversation-not-loaded',
+        toolCallId: 'tool-9',
+        result: { title: 'Planning' }
+      }
+    })
+
+    expect(next.messagesByConversation).toBe(state.messagesByConversation)
+    expect(Object.keys(next.messagesByConversation)).toEqual([conversation.id])
+  })
+
+  it('keeps the transcript reference when no message matches the tool call', () => {
+    const state: AgentState = {
+      ...initialAgentState,
+      activeConversationId: conversation.id,
+      conversations: { [conversation.id]: conversation },
+      messagesByConversation: {
+        [conversation.id]: [
+          message({
+            id: 'assistant-1',
+            conversationId: conversation.id,
+            role: 'assistant',
+            text: 'Hello',
+            status: 'completed'
+          })
+        ]
+      }
+    }
+
+    const next = agentReducer(state, {
+      type: 'event',
+      event: {
+        kind: 'tool_call_completed',
+        conversationId: conversation.id,
+        toolCallId: 'tool-not-in-transcript',
+        result: { title: 'Planning' }
+      }
+    })
+
+    expect(next.messagesByConversation).toBe(state.messagesByConversation)
+    expect(next.messagesByConversation[conversation.id]).toBe(
+      state.messagesByConversation[conversation.id]
+    )
+  })
+
+  it('applies an approval response only to the conversation that owns the tool call', () => {
+    const otherConversation: Conversation = { ...conversation, id: 'conversation-2' }
+    const queued = agentReducer(
+      {
+        ...initialAgentState,
+        activeConversationId: conversation.id,
+        conversations: {
+          [conversation.id]: conversation,
+          [otherConversation.id]: otherConversation
+        },
+        messagesByConversation: {
+          [conversation.id]: [],
+          [otherConversation.id]: []
+        }
+      },
+      {
+        type: 'event',
+        event: {
+          kind: 'tool_call_pending_approval',
+          conversationId: conversation.id,
+          toolCallId: 'tool-1',
+          name: 'vault_create_task',
+          args: { title: 'Buy milk' },
+          requiresDiff: false
+        }
+      }
+    )
+
+    const approved = agentReducer(queued, {
+      type: 'clear_pending',
+      conversationId: conversation.id,
+      toolCallId: 'tool-1',
+      status: 'approved'
+    })
+
+    expect(approved.messagesByConversation[conversation.id][0]?.content).toEqual({
+      role: 'tool_call',
+      data: {
+        tool: 'vault_create_task',
+        args: { title: 'Buy milk' },
+        status: 'approval-responded'
+      }
+    })
+    expect(approved.messagesByConversation[otherConversation.id]).toBe(
+      queued.messagesByConversation[otherConversation.id]
+    )
   })
 
   it('clears in-flight state when a turn ends', () => {

@@ -19,6 +19,7 @@
  */
 import React, { memo, useEffect } from 'react'
 import { useCreateBlockNote } from '@blocknote/react'
+import { useEditorTeardown } from '@/hooks/use-editor-teardown'
 import { BlockNoteView } from '@blocknote/shadcn'
 import { useTheme } from 'next-themes'
 
@@ -49,6 +50,9 @@ export const CanvasNoteBody = memo(function CanvasNoteBody({
 }: CanvasNoteBodyProps): React.JSX.Element {
   const { resolvedTheme } = useTheme()
   const editor = useCreateBlockNote({ schema: editorSchema })
+
+  // `useCreateBlockNote` never disposes what it builds.
+  useEditorTeardown(editor)
 
   useEffect(() => {
     let cancelled = false

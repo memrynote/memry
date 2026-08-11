@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useRef } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CanvasCardLayer } from './canvas-card-overlay'
 import { CANVAS_ITEM_DRAG_MIME, noteCardSize, type CardElement } from './canvas-cards'
@@ -705,5 +705,280 @@ describe('CanvasCardLayer — dnd-kit drops', () => {
     })
 
     await waitFor(() => expect(screen.queryByTestId('canvas-drop-ring')).toBeNull())
+  })
+})
+
+// --- Recompute scoping (#1052) ----------------------------------------------
+//
+// Excalidraw triggers its onChange emitter from componentDidUpdate for EVERY
+// committed state change, not just scene edits: a pan tick, a zoom tick, a
+// pointer-move that only changed which element is hovered. So the work the
+// overlay does per onChange is work it does per frame — several times per frame
+// while the wheel outruns the display — and `clientWidth`/`clientHeight` in
+// that path is a forced synchronous layout in the critical path of every frame.
+//
+// These tests pin counts (scene reads = full passes, clip measurements = forced
+// layouts) and the exact overlay geometry, so an implementation that gets cheap
+// by drifting off its cards cannot pass.
+
+/** Clip viewport the counting getters below report, in CSS px. */
+const CLIP_WIDTH = 800
+const CLIP_HEIGHT = 600
+
+describe('CanvasCardLayer — recompute scoping', () => {
+  let clipWidth = CLIP_WIDTH
+  let clipHeight = CLIP_HEIGHT
+  /** Every clientWidth/clientHeight read anywhere in the tree — one forced layout each. */
+  let clipMeasures = 0
+  let frames = new Map<number, FrameRequestCallback>()
+  let nextFrameId = 1
+  let resizeCallbacks: ResizeObserverCallback[] = []
+  let widthDescriptor: PropertyDescriptor | undefined
+  let heightDescriptor: PropertyDescriptor | undefined
+
+  function flushFrames(): void {
+    const pending = [...frames.values()]
+    frames = new Map()
+    pending.forEach((callback) => callback(0))
+  }
+
+  /** The transformed overlay layer — where the whole card plane sits. */
+  function layer(): HTMLElement {
+    return document.querySelector('[data-canvas-overlay]') as HTMLElement
+  }
+
+  /** The absolutely positioned box wrapping one card. */
+  function cardBox(elementId: string): Record<string, string> {
+    const style = (screen.getByTestId(`card-${elementId}`).parentElement as HTMLElement).style
+    return {
+      left: style.left,
+      top: style.top,
+      width: style.width,
+      height: style.height
+    }
+  }
+
+  /** A scene whose appState and elements the test mutates between onChange fires. */
+  function makeLiveApi(elements: CardElement[]): {
+    api: ExcalidrawImperativeAPI
+    fire: () => void
+    appState: { scrollX: number; scrollY: number; zoom: { value: number } }
+    /** Full recompute passes so far — readScene() reads the elements exactly once. */
+    passes: () => number
+  } {
+    let onChangeCb: (() => void) | null = null
+    let passes = 0
+    const appState = { scrollX: 0, scrollY: 0, zoom: { value: 1 }, offsetLeft: 0, offsetTop: 0 }
+    const api = {
+      getSceneElements: () => {
+        passes += 1
+        return elements
+      },
+      getSceneElementsIncludingDeleted: () => elements,
+      getAppState: () => appState,
+      getFiles: () => ({}),
+      updateScene: vi.fn(),
+      refresh: vi.fn(),
+      onChange: (cb: () => void) => {
+        onChangeCb = cb
+        return () => {
+          onChangeCb = null
+        }
+      }
+    } as unknown as ExcalidrawImperativeAPI
+    return { api, fire: () => onChangeCb?.(), appState, passes: () => passes }
+  }
+
+  beforeEach(() => {
+    mocks.openTab.mockReset()
+    mocks.notesGet.mockReset()
+    mocks.notesGet.mockResolvedValue({ id: 'n', content: '' })
+    mocks.entities = new Map()
+    mocks.lockReason = null
+    dnd.listeners = {}
+    dnd.isOver = false
+    dnd.dragContext = null
+
+    clipWidth = CLIP_WIDTH
+    clipHeight = CLIP_HEIGHT
+    clipMeasures = 0
+    frames = new Map()
+    nextFrameId = 1
+    resizeCallbacks = []
+
+    // jsdom reports 0 for every layout box, so the viewport would be empty and
+    // virtualization untestable. These getters give the clip a real size AND
+    // count the reads, which is the forced layout this issue is about.
+    widthDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'clientWidth')
+    heightDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'clientHeight')
+    Object.defineProperty(Element.prototype, 'clientWidth', {
+      configurable: true,
+      get: () => {
+        clipMeasures += 1
+        return clipWidth
+      }
+    })
+    Object.defineProperty(Element.prototype, 'clientHeight', {
+      configurable: true,
+      get: () => {
+        clipMeasures += 1
+        return clipHeight
+      }
+    })
+
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      const id = nextFrameId
+      nextFrameId += 1
+      frames.set(id, callback)
+      return id
+    })
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => {
+      frames.delete(id)
+    })
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          resizeCallbacks.push(callback)
+        }
+        observe(): void {}
+        unobserve(): void {}
+        disconnect(): void {}
+      }
+    )
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    if (widthDescriptor) {
+      Object.defineProperty(Element.prototype, 'clientWidth', widthDescriptor)
+    }
+    if (heightDescriptor) {
+      Object.defineProperty(Element.prototype, 'clientHeight', heightDescriptor)
+    }
+  })
+
+  it('coalesces a burst of pan commits into one pass, with the overlay glued meanwhile', () => {
+    const { api, fire, appState, passes } = makeLiveApi([
+      cardEl('e1', 'n1', 0, 0),
+      cardEl('e2', 'n2', 400, 0)
+    ])
+    render(<Harness api={api} />)
+
+    // Mount: one pass, one clip measurement (width + height).
+    expect(passes()).toBe(1)
+    expect(clipMeasures).toBe(2)
+    expect(layer().style.transform).toBe('translate(0px, 0px) scale(1)')
+
+    const passesBefore = passes()
+    const measuresBefore = clipMeasures
+    // Five pan commits landing before the browser gets a frame.
+    for (let step = 1; step <= 5; step += 1) {
+      appState.scrollX = -step * 10
+      fire()
+    }
+
+    // The layer must already be over the panned scene — waiting for the frame
+    // would leave every card lagging the rectangle it covers.
+    expect(layer().style.transform).toBe('translate(-50px, 0px) scale(1)')
+    expect(passes()).toBe(passesBefore)
+
+    act(flushFrames)
+
+    expect(passes() - passesBefore).toBe(1)
+    expect(clipMeasures - measuresBefore).toBe(0)
+    expect(layer().style.transform).toBe('translate(-50px, 0px) scale(1)')
+    expect(cardBox('e1')).toEqual({ left: '0px', top: '0px', width: '260px', height: '168px' })
+    expect(cardBox('e2')).toEqual({ left: '400px', top: '0px', width: '260px', height: '168px' })
+  })
+
+  it('applies zoom to the layer immediately and leaves card boxes in scene units', () => {
+    const { api, fire, appState, passes } = makeLiveApi([cardEl('e1', 'n1', 0, 0)])
+    render(<Harness api={api} />)
+    const passesBefore = passes()
+    const measuresBefore = clipMeasures
+
+    appState.zoom = { value: 2 }
+    appState.scrollX = 20
+    appState.scrollY = -30
+    fire()
+    fire()
+    fire()
+
+    expect(layer().style.transform).toBe('translate(40px, -60px) scale(2)')
+
+    act(flushFrames)
+
+    expect(passes() - passesBefore).toBe(1)
+    expect(clipMeasures - measuresBefore).toBe(0)
+    expect(layer().style.transform).toBe('translate(40px, -60px) scale(2)')
+    // Cards are positioned in scene coordinates; the layer's scale does the zoom.
+    expect(cardBox('e1')).toEqual({ left: '0px', top: '0px', width: '260px', height: '168px' })
+  })
+
+  it('follows a dragged element to its exact new geometry', () => {
+    const moved = cardEl('e1', 'n1', 0, 0)
+    const { api, fire, passes } = makeLiveApi([moved])
+    render(<Harness api={api} />)
+    const passesBefore = passes()
+    const measuresBefore = clipMeasures
+
+    // Excalidraw mutates elements in place during a drag and commits per tick.
+    moved.x = 120
+    moved.y = 45
+    fire()
+    moved.x = 137
+    moved.y = 52
+    fire()
+
+    act(flushFrames)
+
+    expect(passes() - passesBefore).toBe(1)
+    expect(clipMeasures - measuresBefore).toBe(0)
+    expect(cardBox('e1')).toEqual({ left: '137px', top: '52px', width: '260px', height: '168px' })
+  })
+
+  it('unmounts a card deleted from the scene', () => {
+    const elements = [cardEl('e1', 'n1', 0, 0), cardEl('e2', 'n2', 400, 0)]
+    const { api, fire } = makeLiveApi(elements)
+    render(<Harness api={api} />)
+    expect(screen.getByTestId('card-e2')).toBeInTheDocument()
+
+    elements[1].isDeleted = true
+    fire()
+    act(flushFrames)
+
+    expect(screen.queryByTestId('card-e2')).toBeNull()
+    expect(cardBox('e1')).toEqual({ left: '0px', top: '0px', width: '260px', height: '168px' })
+  })
+
+  it('re-measures the clip after a resize, so a card entering the wider viewport mounts', () => {
+    // e2 sits past 800px viewport + 200px enter padding, so it starts unmounted.
+    const { api } = makeLiveApi([cardEl('e1', 'n1', 0, 0), cardEl('e2', 'n2', 1500, 0)])
+    render(<Harness api={api} />)
+    expect(screen.queryByTestId('card-e2')).toBeNull()
+
+    // A window resize / sidebar toggle widens the clip. Nothing about the scene
+    // or the viewport transform changed, so only a fresh clip measurement can
+    // bring e2 in — a held size would leave a blank hole where the card is.
+    clipWidth = 2000
+    act(() => {
+      resizeCallbacks.forEach((callback) => callback([], {} as ResizeObserver))
+    })
+
+    expect(screen.getByTestId('card-e2')).toBeInTheDocument()
+    expect(cardBox('e2')).toEqual({ left: '1500px', top: '0px', width: '260px', height: '168px' })
+  })
+
+  it('drops a scheduled pass when the layer unmounts before the frame runs', () => {
+    const { api, fire, passes } = makeLiveApi([cardEl('e1', 'n1', 0, 0)])
+    const { unmount } = render(<Harness api={api} />)
+    const passesBefore = passes()
+
+    fire()
+    unmount()
+    act(flushFrames)
+
+    expect(passes()).toBe(passesBefore)
   })
 })
