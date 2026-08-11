@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { eq } from 'drizzle-orm'
-import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { createTestDataDb, trackPreparedSql, type TestDatabaseResult } from '@tests/utils/test-db'
 import { SyncStateManager, type NodeEmit } from './sync-state-manager'
 import { SYNC_STATE_KEYS, CLOCK_SKEW_THRESHOLD_SECONDS } from './sync-context'
 import type { SyncContext } from './sync-context'
@@ -107,6 +107,64 @@ describe('SyncStateManager', () => {
   describe('#given no SYNC_PAUSED key in DB #when isPaused called', () => {
     it('#then returns false', () => {
       // #when / #then
+      expect(mgr.isPaused()).toBe(false)
+    })
+  })
+
+  describe('#given sync is not paused #when isPaused called on every event', () => {
+    it('#then only the first call reads sync_state', () => {
+      // #given
+      const prepared = trackPreparedSql(testDb)
+      const syncStateReads = (): number =>
+        prepared.filter((s) => /from "sync_state"/.test(s)).length
+
+      // #when — stands in for a burst of WS messages / enqueues
+      for (let i = 0; i < 25; i++) {
+        expect(mgr.isPaused()).toBe(false)
+      }
+
+      // #then
+      expect(syncStateReads()).toBe(1)
+    })
+  })
+
+  describe('#given isPaused was answered from cache #when sync is paused', () => {
+    it('#then the very next isPaused reports paused', () => {
+      // #given
+      expect(mgr.isPaused()).toBe(false)
+
+      // #when
+      mgr.setStateValue(SYNC_STATE_KEYS.SYNC_PAUSED, 'true')
+
+      // #then
+      expect(mgr.isPaused()).toBe(true)
+    })
+  })
+
+  describe('#given sync is paused #when resumed', () => {
+    it('#then the very next isPaused reports not paused', () => {
+      // #given
+      mgr.setStateValue(SYNC_STATE_KEYS.SYNC_PAUSED, 'true')
+      expect(mgr.isPaused()).toBe(true)
+
+      // #when
+      mgr.setStateValue(SYNC_STATE_KEYS.SYNC_PAUSED, 'false')
+
+      // #then
+      expect(mgr.isPaused()).toBe(false)
+    })
+  })
+
+  describe('#given sync is paused #when the row is dropped outside the manager', () => {
+    it('#then isPaused re-reads and stops reporting paused', () => {
+      // #given — emergency wipe / teardown / re-registration delete rows directly
+      mgr.setStateValue(SYNC_STATE_KEYS.SYNC_PAUSED, 'true')
+      expect(mgr.isPaused()).toBe(true)
+
+      // #when
+      testDb.db.delete(syncState).where(eq(syncState.key, SYNC_STATE_KEYS.SYNC_PAUSED)).run()
+
+      // #then
       expect(mgr.isPaused()).toBe(false)
     })
   })
