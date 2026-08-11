@@ -62,6 +62,11 @@ seconds before the 5-minute limit. Keyboard shortcuts work too: **Esc** cancels 
 The recording's waveform is captured alongside the audio, so the detail panel shows the real
 waveform instantly when you open a voice item.
 
+Every recording is stored as a mono 16 kHz PCM WAV file, which is what the transcription models
+expect. Preparing that file releases the decoded audio as soon as each stage is done, so saving a
+full 5-minute memo no longer holds the whole recording in memory several times over. The stored
+format is unchanged, so voice items recorded by earlier versions still play.
+
 If voice transcription is enabled, memrynote transcribes the audio in the background — see [Voice Transcription](/user-guide/ai/voice-transcription).
 
 If voice transcription setup is incomplete, memrynote takes you to AI settings before recording. If
