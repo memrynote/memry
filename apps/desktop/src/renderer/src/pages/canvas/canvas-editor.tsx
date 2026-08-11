@@ -6,7 +6,7 @@
  * public/excalidraw-asset-path.js) because the CSP blocks Excalidraw's CDN.
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Excalidraw,
   serializeAsJSON,
@@ -28,7 +28,7 @@ import { canvasService, onCanvasTooLarge } from '@/services/canvas-service'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
-import { createScenePersister } from './canvas-persistence'
+import { computeSceneSignature, createScenePersister } from './canvas-persistence'
 import { externalizeSceneAssets } from './canvas-externalize'
 import { pickExcalidrawLangCode } from './excalidraw-lang'
 import { CanvasCardLayer } from './canvas-card-overlay'
@@ -45,9 +45,6 @@ const log = createLogger('SpatialCanvas')
 
 const SCENE_SAVE_DEBOUNCE_MS = 800
 
-/** Sentinel for a stored scene that exists but cannot be parsed. */
-const CORRUPT = Symbol('corrupt-scene')
-
 interface CanvasEditorProps {
   canvasId: string
   /** Serialized scene as stored (serializeAsJSON output), '' when never drawn on. */
@@ -61,28 +58,45 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
   const wrapperRef = useRef<HTMLDivElement>(null)
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null)
 
-  const initialData = useMemo(() => {
+  // Parse the stored scene up front only to decide whether it is loadable —
+  // and deliberately throw the parsed graph away. Retaining it (as a useMemo
+  // did) kept a second full copy of the scene, inline image data URLs and all,
+  // alive for as long as the tab was open. Excalidraw accepts a function for
+  // initialData and calls it once from componentDidMount, so the real parse
+  // happens there and becomes garbage as soon as Excalidraw has restored it
+  // into its own objects. The cost is one extra parse per canvas open; the
+  // saving is a multi-MB copy per open canvas.
+  const corrupt = useMemo(() => {
     if (!initialScene) {
-      return null
+      return false
     }
     try {
-      // serializeAsJSON output: { elements, appState, files } plus metadata
-      // keys initialData ignores. Its exported appState is already cleaned
-      // (no volatile keys, no collaborators), so it restores as-is.
-      const parsed = JSON.parse(initialScene) as ExcalidrawInitialDataState
-      return {
-        elements: parsed.elements ?? [],
-        appState: parsed.appState ?? {},
-        files: parsed.files,
-        scrollToContent: true
-      } satisfies ExcalidrawInitialDataState
+      JSON.parse(initialScene)
+      return false
     } catch (err) {
       log.error('Failed to parse stored canvas scene; refusing to mount editor', err)
-      return CORRUPT
+      return true
     }
   }, [initialScene])
 
-  const corrupt = initialData === CORRUPT
+  const loadInitialData = useCallback((): ExcalidrawInitialDataState | null => {
+    if (!initialScene) {
+      return null
+    }
+    // serializeAsJSON output: { elements, appState, files } plus metadata
+    // keys initialData ignores. Its exported appState is already cleaned
+    // (no volatile keys, no collaborators), so it restores as-is. Corruption
+    // was already ruled out above, so a throw here cannot happen — but if it
+    // ever did, Excalidraw catches it and surfaces its own error message
+    // rather than mounting a silently empty scene.
+    const parsed = JSON.parse(initialScene) as ExcalidrawInitialDataState
+    return {
+      elements: parsed.elements ?? [],
+      appState: parsed.appState ?? {},
+      files: parsed.files,
+      scrollToContent: true
+    } satisfies ExcalidrawInitialDataState
+  }, [initialScene])
 
   // §5.6: a save whose scene is too large to sync is kept locally but never
   // pushed; surface it so the divergence is never silent.
@@ -100,33 +114,67 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
     if (corrupt) {
       return
     }
+    // Shared by serialize and signature so a readable-scene check can never
+    // drift between them: a signature taken from a scene the serializer would
+    // refuse to read must not advance the dedupe baseline.
+    const readableApi = (): ExcalidrawImperativeAPI | null => {
+      const api = apiRef.current
+      if (!api) {
+        return null
+      }
+      // Teardown guard: on an in-session unmount (tab switch / close), React
+      // destroys the Excalidraw child BEFORE this parent's effect cleanup
+      // runs its flush — at which point getSceneElements() returns [] and we
+      // would serialize (and persist) an empty scene, wiping the real one.
+      // The wrapper node is already detached from the document by then, so
+      // treat a disconnected wrapper as "torn down, not readable" (the
+      // serialize contract's null case). During normal saves and the
+      // beforeunload/quit flush the wrapper is still connected, so those
+      // persist as before.
+      if (!wrapperRef.current?.isConnected) {
+        return null
+      }
+      // Init guard: Excalidraw applies initialData asynchronously after
+      // mount (componentDidMount → initializeScene). Until that resolves,
+      // getSceneElements() returns [] while appState.isLoading is true —
+      // and the isConnected guard above does not cover this window (e.g.
+      // StrictMode's simulated remount runs this effect's cleanup flush
+      // with the wrapper still attached). Serializing here would persist
+      // an empty scene over the stored one, so treat a still-loading
+      // scene as not readable.
+      if (api.getAppState().isLoading) {
+        return null
+      }
+      return api
+    }
+
     const persister = createScenePersister({
-      serialize: () => {
-        const api = apiRef.current
+      // Cheap gate in front of the serialize below: onChange fires for pan and
+      // zoom too, and without this every 800 ms of idle panning paid a full
+      // serializeAsJSON (inline image data URLs included) just to discover the
+      // string was unchanged. Null on any failure — never "unchanged".
+      signature: () => {
+        const api = readableApi()
         if (!api) {
           return null
         }
-        // Teardown guard: on an in-session unmount (tab switch / close), React
-        // destroys the Excalidraw child BEFORE this parent's effect cleanup
-        // runs its flush — at which point getSceneElements() returns [] and we
-        // would serialize (and persist) an empty scene, wiping the real one.
-        // The wrapper node is already detached from the document by then, so
-        // treat a disconnected wrapper as "torn down, not readable" (the
-        // serialize contract's null case). During normal saves and the
-        // beforeunload/quit flush the wrapper is still connected, so those
-        // persist as before.
-        if (!wrapperRef.current?.isConnected) {
+        try {
+          return computeSceneSignature({
+            elements: api.getSceneElements(),
+            files: api.getFiles(),
+            // serializeAsJSON exports only a few appState keys; running it
+            // over an empty scene yields exactly those, without paying for
+            // elements or files.
+            appStateJson: serializeAsJSON([], api.getAppState(), {}, 'local')
+          })
+        } catch (err) {
+          log.error('Failed to fingerprint canvas scene; falling back to a full serialize', err)
           return null
         }
-        // Init guard: Excalidraw applies initialData asynchronously after
-        // mount (componentDidMount → initializeScene). Until that resolves,
-        // getSceneElements() returns [] while appState.isLoading is true —
-        // and the isConnected guard above does not cover this window (e.g.
-        // StrictMode's simulated remount runs this effect's cleanup flush
-        // with the wrapper still attached). Serializing here would persist
-        // an empty scene over the stored one, so treat a still-loading
-        // scene as not readable.
-        if (api.getAppState().isLoading) {
+      },
+      serialize: () => {
+        const api = readableApi()
+        if (!api) {
           return null
         }
         try {
@@ -273,7 +321,7 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
           apiRef.current = instance
           setApi(instance)
         }}
-        initialData={initialData}
+        initialData={loadInitialData}
         // The vault is the only store: hide Excalidraw's own file actions
         // (open .excalidraw, save to disk) so they can't bypass — or, via
         // loadScene, silently replace — the vault-persisted scene.
