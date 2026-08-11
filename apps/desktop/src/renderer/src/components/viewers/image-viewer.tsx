@@ -24,6 +24,16 @@ interface ImageViewerProps {
   className?: string
 }
 
+interface Position {
+  x: number
+  y: number
+}
+
+/** Single source of truth for the image transform, shared by React and the imperative pan writes. */
+function buildTransform(position: Position, scale: number, rotation: number): string {
+  return `translate(${position.x}px, ${position.y}px) scale(${scale}) rotate(${rotation}deg)`
+}
+
 // ============================================================================
 // Image Viewer Component
 // ============================================================================
@@ -35,14 +45,22 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
 
   const [scale, setScale] = useState(1)
   const [rotation, setRotation] = useState(0)
-  const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [position, setPosition] = useState<Position>({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState(false)
 
+  /** Live pan offset. Leads `position` during a drag; `position` catches up on pointer-up. */
+  const positionRef = useRef<Position>(position)
+  const dragStartRef = useRef<Position>({ x: 0, y: 0 })
+
+  const commitPosition = useCallback((next: Position) => {
+    positionRef.current = next
+    setPosition(next)
+  }, [])
+
   if (scale === 1 && (position.x !== 0 || position.y !== 0)) {
-    setPosition({ x: 0, y: 0 })
+    commitPosition({ x: 0, y: 0 })
   }
 
   // Attach wheel event with passive: false to allow preventDefault
@@ -72,8 +90,8 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
 
   const resetZoom = useCallback(() => {
     setScale(1)
-    setPosition({ x: 0, y: 0 })
-  }, [])
+    commitPosition({ x: 0, y: 0 })
+  }, [commitPosition])
 
   const rotate = useCallback(() => {
     setRotation((r) => (r + 90) % 360)
@@ -91,35 +109,52 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
       const newScale = Math.min(scaleX, scaleY, 1)
 
       setScale(newScale)
-      setPosition({ x: 0, y: 0 })
+      commitPosition({ x: 0, y: 0 })
     }
-  }, [])
+  }, [commitPosition])
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if (scale > 1) {
+        dragStartRef.current = {
+          x: e.clientX - positionRef.current.x,
+          y: e.clientY - positionRef.current.y
+        }
         setIsDragging(true)
-        setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y })
       }
     },
-    [scale, position]
+    [scale]
   )
 
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (isDragging) {
-        setPosition({
-          x: e.clientX - dragStart.x,
-          y: e.clientY - dragStart.y
-        })
+  // Pan writes the transform straight to the DOM so a gesture costs zero React renders.
+  // Listeners live on the window so the drag survives leaving the container and still
+  // ends on mouseup outside it; `position` is reconciled once the gesture finishes.
+  useEffect(() => {
+    if (!isDragging) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const next = {
+        x: e.clientX - dragStartRef.current.x,
+        y: e.clientY - dragStartRef.current.y
       }
-    },
-    [isDragging, dragStart]
-  )
+      positionRef.current = next
+      if (imageRef.current) {
+        imageRef.current.style.transform = buildTransform(next, scale, rotation)
+      }
+    }
 
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false)
-  }, [])
+    const handleMouseUp = () => {
+      setIsDragging(false)
+      commitPosition(positionRef.current)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDragging, scale, rotation, commitPosition])
 
   const handleImageLoad = useCallback(() => {
     setLoaded(true)
@@ -209,9 +244,6 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
           isDragging && 'cursor-grabbing'
         )}
         onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
       >
         <img
           ref={imageRef}
@@ -225,7 +257,9 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
             isDragging && 'transition-none'
           )}
           style={{
-            transform: `translate(${position.x}px, ${position.y}px) scale(${scale}) rotate(${rotation}deg)`
+            // Live ref, not `position`: a render triggered mid-drag (e.g. wheel zoom) must not
+            // rewrite the transform with the stale pointer-down offset.
+            transform: buildTransform(positionRef.current, scale, rotation)
           }}
           draggable={false}
         />
