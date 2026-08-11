@@ -19,6 +19,15 @@ let nextLocalRunPid = -1
 // if someone needs to tune it.
 const OLLAMA_NUM_CTX = 8192
 
+// ponytail: a capability probe costs /v1/models, a streaming completion and two full
+// tool round-trip generations (#1009), so it cannot run per message. Results are cached
+// per (preset, baseUrl, model, api key); anything the user can change from outside the
+// app is bounded by these TTLs instead.
+const PROBE_TTL_MS = 10 * 60_000
+// A "no tools" verdict is usually a model property, but a transient provider error at
+// the tool step looks identical, so it expires fast.
+const PROBE_DEGRADED_TTL_MS = 60_000
+
 // Ollama's native API (the only endpoint that accepts num_ctx) lives at /api, while
 // the stored ollama preset baseUrl points at the /v1 OpenAI-compat path.
 function toOllamaApiBaseUrl(baseUrl: string): string {
@@ -27,6 +36,22 @@ function toOllamaApiBaseUrl(baseUrl: string): string {
 
 export class LocalOpenAICompatibleBackend implements AgentBackend {
   readonly id = 'local_openai_compatible' as const
+
+  // Single slot: only one provider configuration is live at a time, so an entry for an
+  // older one is worthless and this can never grow. `apiKey` is compared by value and
+  // never hashed or otherwise derived — the cache only needs to know whether the key
+  // changed since the last probe.
+  private probeCache: {
+    settingsKey: string
+    apiKey: string | null
+    result: AgentLocalProviderProbeResult
+    expiresAt: number
+  } | null = null
+  private probeInFlight: {
+    settingsKey: string
+    apiKey: string | null
+    promise: Promise<AgentLocalProviderProbeResult>
+  } | null = null
 
   constructor(
     private readonly deps: {
@@ -68,7 +93,49 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
   async probeCapabilities(): Promise<AgentLocalProviderProbeResult> {
     const settings = await this.deps.getSettings()
     const apiKey = await this.deps.getApiKey()
-    return probeLocalProvider(settings, this.deps.fetch ?? fetch, apiKey)
+    // The settings screen asks for this on demand, so it must be live and it doubles as
+    // the manual way to clear a stale verdict.
+    return this.resolveProbe(settings, apiKey, { force: true })
+  }
+
+  private async resolveProbe(
+    settings: AgentLocalProviderSettings,
+    apiKey: string | null,
+    options: { force?: boolean } = {}
+  ): Promise<AgentLocalProviderProbeResult> {
+    const settingsKey = probeSettingsKey(settings)
+    if (!options.force) {
+      const cached = this.probeCache
+      if (
+        cached?.settingsKey === settingsKey &&
+        cached.apiKey === apiKey &&
+        cached.expiresAt > Date.now()
+      ) {
+        return cached.result
+      }
+      // Two turns starting at once must share one probe rather than racing.
+      const pending = this.probeInFlight
+      if (pending?.settingsKey === settingsKey && pending.apiKey === apiKey) return pending.promise
+    }
+
+    const promise = this.runProbe(settingsKey, settings, apiKey)
+    if (!options.force) this.probeInFlight = { settingsKey, apiKey, promise }
+    try {
+      return await promise
+    } finally {
+      if (this.probeInFlight?.promise === promise) this.probeInFlight = null
+    }
+  }
+
+  private async runProbe(
+    settingsKey: string,
+    settings: AgentLocalProviderSettings,
+    apiKey: string | null
+  ): Promise<AgentLocalProviderProbeResult> {
+    const result = await probeLocalProvider(settings, this.deps.fetch ?? fetch, apiKey)
+    const ttl = probeCacheTtlMs(result)
+    this.probeCache = ttl > 0 ? { settingsKey, apiKey, result, expiresAt: Date.now() + ttl } : null
+    return result
   }
 
   private async run(input: AgentBackendRunInput, allowTools: boolean): Promise<BackendRunHandle> {
@@ -90,7 +157,7 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
     const toolsEnabled =
       allowTools &&
       (options?.toolsEnabled ?? true) &&
-      (await probeLocalProvider(settings, this.deps.fetch ?? fetch, apiKey)).toolsEnabled
+      (await this.resolveProbe(settings, apiKey)).toolsEnabled
     const result = streamText({
       model,
       prompt: input.prompt,
@@ -243,6 +310,21 @@ async function probeLocalProvider(
       toolProbe.toolCallingSupported &&
       toolProbe.toolContinuationSupported
   }
+}
+
+// Non-secret half of the probe identity. The API key is deliberately not part of this
+// string: it is compared by value on the cache slot instead, so no derived form of the
+// user's credential is ever produced.
+function probeSettingsKey(settings: AgentLocalProviderSettings): string {
+  return JSON.stringify([settings.preset, settings.baseUrl, settings.model])
+}
+
+function probeCacheTtlMs(result: AgentLocalProviderProbeResult): number {
+  // Unreachable provider, model not pulled yet, or no streaming: the user fixes all of
+  // these outside the app, and none of them paid for the expensive tool probe, so never
+  // cache them — starting the local server must take effect on the very next turn.
+  if (!result.connected || !result.modelAvailable || !result.streamingSupported) return 0
+  return result.toolsEnabled ? PROBE_TTL_MS : PROBE_DEGRADED_TTL_MS
 }
 
 export async function listOpenAiCompatibleModels(

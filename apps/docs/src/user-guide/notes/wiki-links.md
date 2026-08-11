@@ -68,6 +68,10 @@ The layout is a live simulation: it arranges itself when the view opens, comes t
 its own, and wakes up again whenever you drag something. Node positions are not saved, so
 each time you open the graph it settles into a fresh arrangement.
 
+Edits made while the graph is open are folded into the arrangement you are looking at. A
+new note or link slides into place and the neighbours shift to make room; nothing else
+moves, and the graph does not rebuild itself from scratch on every save.
+
 Turn the motion off with **Live motion** under the gear icon → **Display** if you prefer a
 still graph — the same forces then run once and stop, which is also the lighter option on
 very large vaults.

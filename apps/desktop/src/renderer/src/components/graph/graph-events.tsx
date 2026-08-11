@@ -40,6 +40,15 @@ export function GraphEvents({
   const suppressClickRef = useRef(false)
 
   useEffect(() => {
+    const endDrag = (): void => {
+      const drag = dragRef.current
+      if (!drag) return
+      dragRef.current = null
+      suppressClickRef.current = drag.moved
+      document.body.style.cursor = 'pointer'
+      onNodeRelease?.(drag.nodeId)
+    }
+
     registerEvents({
       enterNode: ({ node, event }) => {
         onHoverNode(node)
@@ -71,14 +80,7 @@ export function GraphEvents({
         // Without this sigma pans the camera while we are moving a node.
         event.preventSigmaDefault()
       },
-      mouseup: () => {
-        const drag = dragRef.current
-        if (!drag) return
-        dragRef.current = null
-        suppressClickRef.current = drag.moved
-        document.body.style.cursor = 'pointer'
-        onNodeRelease?.(drag.nodeId)
-      },
+      mouseup: endDrag,
       clickNode: ({ node }) => {
         onContextMenu?.(null)
         if (suppressClickRef.current) {
@@ -95,6 +97,23 @@ export function GraphEvents({
         onContextMenu?.(null)
       }
     })
+
+    // Sigma only learns a drag is over from its own mouseup. A pointer released
+    // past the window edge, focus lost mid-drag, or a pointer the browser hands
+    // elsewhere never delivers one — the node would stay pinned and the physics
+    // simulation held at its drag alpha, so the frame loop would never park.
+    // Capture phase, so nothing in between can swallow the release.
+    window.addEventListener('pointerup', endDrag, true)
+    window.addEventListener('pointercancel', endDrag, true)
+    // Bubble phase: `blur` does not bubble, but capturing it here would end the
+    // drag every time any field in the app loses focus.
+    window.addEventListener('blur', endDrag, false)
+
+    return () => {
+      window.removeEventListener('pointerup', endDrag, true)
+      window.removeEventListener('pointercancel', endDrag, true)
+      window.removeEventListener('blur', endDrag, false)
+    }
   }, [
     sigma,
     registerEvents,

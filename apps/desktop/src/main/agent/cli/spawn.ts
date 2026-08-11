@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process'
+import { once } from 'node:events'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -98,6 +99,33 @@ export async function spawnClaudeTurn(opts: SpawnOptions): Promise<ClaudeSubproc
   const proc = spawn(opts.binaryPath, args, {
     cwd: dir,
     env: { ...process.env }
+  })
+  // A child that never starts (binary removed after the version probe, EACCES,
+  // EAGAIN) emits 'error' and never 'exit'. Unhandled, that is a main-process
+  // uncaughtException; and because the caller's exit promise only ever listens
+  // for 'exit', the turn would hang forever and hold its conversation's turn
+  // lock for the rest of the app run. 'spawn' and 'error' are mutually
+  // exclusive and exactly one always fires, so this wait is bounded.
+  proc.on('error', (error) => {
+    logger.error('Claude subprocess error', error)
+  })
+  try {
+    await once(proc, 'spawn')
+  } catch (error) {
+    // The temp dir holds the MCP bearer token and no handle reaches the caller,
+    // so nothing else would ever clean it up.
+    await rm(dir, { recursive: true, force: true }).catch((cleanupError: unknown) => {
+      logger.warn('Failed to clean Claude temp directory', cleanupError)
+    })
+    throw new Error(
+      `Claude CLI failed to start: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error }
+    )
+  }
+  // EPIPE from a CLI that exits before it has read the whole prompt is emitted
+  // on stdin, not on the child.
+  proc.stdin?.on('error', (error) => {
+    logger.warn('Claude subprocess stdin error', error)
   })
   proc.stdin?.write(opts.prompt)
   proc.stdin?.end()

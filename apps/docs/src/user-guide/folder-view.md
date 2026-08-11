@@ -94,6 +94,14 @@ Opening a tag (see [Properties & Tags](/user-guide/notes/properties-tags)) shows
 
 If you opened folder view from a folder, a breadcrumb at the top lets you navigate up to parent folders. A tag-scoped folder view shows the tag instead, as a locked `tag = <name>` filter chip that can't be removed — it defines the view.
 
+## Staying Up To Date
+
+A folder view refreshes itself as the vault changes, so you can keep one open in a split pane next to the note you are writing.
+
+Rows appear, disappear, and move immediately when a note is created, renamed, moved to another folder, or deleted — whether you did it in Memry, another device did it and it arrived over sync, or you did it in Finder, Explorer, or Obsidian. Tag-scoped views update the same way when a note gains or loses the tag.
+
+Row _contents_ — Modified, word count, properties, title, emoji — settle a few seconds after you stop typing rather than on every autosave. Which notes are listed is never delayed; only their columns are.
+
 ## See Also
 
 - [Properties & Tags](/user-guide/notes/properties-tags)

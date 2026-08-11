@@ -10,7 +10,7 @@ import { trackMainEvent } from '../../telemetry/track'
 import type { BackendEvent } from '../cli/types'
 import type { ConversationStore } from '../storage/conversation-store'
 import type { MessageStore } from '../storage/message-store'
-import type { MessageAttachment } from '../storage/types'
+import type { Message, MessageAttachment } from '../storage/types'
 import type { AgentBackend, BackendRunHandle } from '../backends/types'
 import type { AgentBackendRegistry } from '../backends/registry'
 import { broadcastAgentEvent } from './event-bus'
@@ -29,7 +29,14 @@ export interface TurnDeps {
   trackRunHandle?: (conversationId: string, handle: BackendRunHandle) => BackendRunHandle
 }
 
+// How long an abandoned child gets to die before the turn stops waiting on it.
+// Comfortably inside the 5s force-exit budget main gives the whole shutdown.
+const ABANDONED_KILL_GRACE_MS = 2000
 const DEFAULT_CONVERSATION_TITLE = 'New conversation'
+// Title and summary stderr is drained purely to keep the child moving, so it is
+// retained as a bounded tail rather than in full: a CLI can emit megabytes of
+// node warnings and MCP diagnostics, and the reason it failed is at the end.
+const STDERR_TAIL_LIMIT = 8 * 1024
 const DEFAULT_TURN_PERMISSIONS: AgentTurnPermissions = {
   accessMode: 'vault_only',
   webSearchEnabled: false
@@ -150,22 +157,36 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     purpose: 'turn'
   })
   const sub = deps.trackRunHandle?.(input.conversationId, rawSub) ?? rawSub
-  const stderrTextPromise = sub.stderr ? collectStreamText(sub.stderr) : Promise.resolve('')
 
-  const assistant = deps.messages.append({
-    conversationId: input.conversationId,
-    role: 'assistant',
-    content: { role: 'assistant', data: { text: '' } },
-    attachments: [],
-    status: 'streaming'
-  })
-  broadcastAgentEvent({
-    kind: 'message_upserted',
-    message: assistant
-  })
+  // The child is spawned and tracked, but the turn's own try/finally below has
+  // not been entered yet. An encrypted SQLite append or a broadcast to a window
+  // that died mid-send can throw here, and nothing upstream stops subprocesses —
+  // the IPC caller's catch only logs and reports. Without this guard the child
+  // runs for the rest of the session and its pid never leaves the tracking map.
+  let stderrTextPromise: Promise<string>
+  let assistant: Message
+  try {
+    stderrTextPromise = sub.stderr ? collectStreamText(sub.stderr) : Promise.resolve('')
+
+    assistant = deps.messages.append({
+      conversationId: input.conversationId,
+      role: 'assistant',
+      content: { role: 'assistant', data: { text: '' } },
+      attachments: [],
+      status: 'streaming'
+    })
+    broadcastAgentEvent({
+      kind: 'message_upserted',
+      message: assistant
+    })
+  } catch (error) {
+    await discardStrandedSubprocess(sub)
+    throw error
+  }
 
   let buffered = ''
   let backendError: string | null = null
+  let exitObserved = false
   let unknownEventCount = 0
   const toolCalls = new Map<string, { name: string; args: unknown }>()
   const sourceRefs = new Map<string, AgentSourceRef>()
@@ -210,6 +231,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
       })
     }
     const exitCode = await sub.waitExit()
+    exitObserved = true
     const stderrText = (await stderrTextPromise).trim()
 
     if (backendError || exitCode !== 0) {
@@ -268,11 +290,67 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     }
     trackTurnCompleted('success')
   } finally {
+    // Only ever reached once the turn is over: either waitExit() already
+    // resolved (exitObserved) or the event loop above threw and abandoned a
+    // child that is still running. A slow turn is still inside the loop, so it
+    // is never touched here.
+    if (!exitObserved) await killAbandonedChild(sub)
     await sub.cleanup()
     await titlePromise
   }
 
   return { turnId }
+}
+
+// cleanup() is where the tracked-handle wrapper untracks the pid, which removes
+// it from the map killAll() walks at quit. A child still alive at that moment is
+// unreachable forever, so it has to be killed first — and the caller must wait
+// for it to actually be gone, not merely signalled. Resolves true only when the
+// exit was observed.
+async function killAbandonedChild(sub: BackendRunHandle): Promise<boolean> {
+  try {
+    sub.kill()
+  } catch (error) {
+    logger.warn('Failed to kill abandoned agent subprocess', { pid: sub.pid, error })
+    return false
+  }
+
+  // Bounded: killAll() awaits in-flight turns and main force-exits 5s into
+  // shutdown, so an unbounded wait here would trade the leak for a hang.
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timedOut = new Promise<false>((resolve) => {
+    timer = setTimeout(() => resolve(false), ABANDONED_KILL_GRACE_MS)
+  })
+  try {
+    const exited = await Promise.race([sub.waitExit().then(() => true), timedOut])
+    if (!exited) {
+      logger.warn('Abandoned agent subprocess did not exit after kill', { pid: sub.pid })
+    }
+    return exited
+  } catch (error) {
+    logger.warn('Failed to await abandoned agent subprocess exit', { pid: sub.pid, error })
+    return false
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/**
+ * Stop a child that was tracked but never handed to the turn's event loop.
+ *
+ * cleanup() is where the tracked-handle wrapper untracks the pid, and that map
+ * is what killAll() walks at quit — so the child is only untracked once the OS
+ * says it is gone. A survivor stays tracked on purpose: still leaking, but still
+ * reachable at shutdown, which an untracked survivor never is again.
+ */
+async function discardStrandedSubprocess(sub: BackendRunHandle): Promise<void> {
+  if (!(await killAbandonedChild(sub))) {
+    logger.warn('Stranded agent subprocess still running; leaving it tracked for shutdown', {
+      pid: sub.pid
+    })
+    return
+  }
+  await sub.cleanup()
 }
 
 async function maybeGenerateConversationTitle(
@@ -332,6 +410,11 @@ async function generateTitleWithBackend(
     purpose: 'title'
   })
   const sub = deps.trackRunHandle?.(input.conversationId, rawSub) ?? rawSub
+  // Draining has to start before the event loop below, not after waitExit():
+  // once the OS stderr pipe buffer fills, the child blocks on write, so it
+  // stops producing stdout and never exits, and both the loop and waitExit()
+  // wait forever on a child that is waiting on us.
+  const stderrTailPromise = sub.stderr ? collectStreamTail(sub.stderr) : Promise.resolve('')
   let raw = ''
   let title = ''
 
@@ -345,7 +428,7 @@ async function generateTitleWithBackend(
 
     const exitCode = await sub.waitExit()
     if (exitCode !== 0) {
-      const stderrText = sub.stderr ? (await collectStreamText(sub.stderr)).trim() : ''
+      const stderrText = (await stderrTailPromise).trim()
       logger.warn('Conversation title backend exited non-zero', {
         backend: input.backend.id,
         exitCode,
@@ -428,6 +511,10 @@ async function summarizeWithBackend(
     purpose: 'summary'
   })
   const sub = deps.trackRunHandle?.(input.conversationId, rawSub) ?? rawSub
+  // Same deadlock as the title path: a summarize child that fills the stderr
+  // pipe blocks on write and never exits, and this one runs before the turn's
+  // own subprocess, so it strands the whole turn.
+  const stderrTailPromise = sub.stderr ? collectStreamTail(sub.stderr) : Promise.resolve('')
   let summary = ''
 
   try {
@@ -436,6 +523,13 @@ async function summarizeWithBackend(
     }
     const exitCode = await sub.waitExit()
     if (exitCode !== 0) {
+      // The thrown message is swallowed into a compaction warning upstream, so
+      // stderr is logged here or the CLI's own reason is lost entirely.
+      logger.warn('Conversation summary backend exited non-zero', {
+        backend: input.backend.id,
+        exitCode,
+        stderr: (await stderrTailPromise).trim()
+      })
       throw new Error(`${input.backend.id} summarize exited with code ${exitCode}`)
     }
     const trimmed = summary.trim()
@@ -446,6 +540,24 @@ async function summarizeWithBackend(
   } finally {
     await sub.cleanup()
   }
+}
+
+// Consumes the stream to the end — that is the point, the child cannot finish
+// until it does — while retaining only the last STDERR_TAIL_LIMIT characters.
+// Never rejects: callers only await it on the failure branch, so a read error
+// on a stream nobody is waiting for must not become an unhandled rejection in
+// main (where index.ts's uncaughtException handler would silently swallow it).
+async function collectStreamTail(stream: AsyncIterable<Buffer | string>): Promise<string> {
+  let text = ''
+  try {
+    for await (const chunk of stream) {
+      text += typeof chunk === 'string' ? chunk : chunk.toString('utf8')
+      if (text.length > STDERR_TAIL_LIMIT) text = text.slice(-STDERR_TAIL_LIMIT)
+    }
+  } catch (error) {
+    logger.warn('Failed to read backend stderr', error)
+  }
+  return text
 }
 
 async function collectStreamText(stream: AsyncIterable<Buffer | string>): Promise<string> {

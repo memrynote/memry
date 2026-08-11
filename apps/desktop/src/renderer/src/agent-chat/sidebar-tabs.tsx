@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { History } from 'lucide-react'
 import { useT } from '@memry/i18n/renderer'
 
@@ -66,13 +66,7 @@ export function SidebarTabs({
   }, [active])
 
   const pendingApprovalCount = agent?.state.pendingApprovals.length ?? 0
-  const hasStreamingMessage = useMemo(
-    () =>
-      Object.values(agent?.state.messagesByConversation ?? {}).some((messages) =>
-        messages.some((message) => message.status === 'streaming')
-      ),
-    [agent?.state.messagesByConversation]
-  )
+  const hasStreamingMessage = agent?.state.hasStreamingMessage ?? false
   const hasInFlightTurn = Object.values(agent?.state.inFlight ?? {}).some(Boolean)
   const hasBackgroundActivity =
     aiEnabled &&

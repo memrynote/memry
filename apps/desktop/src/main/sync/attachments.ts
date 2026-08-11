@@ -264,6 +264,9 @@ export class AttachmentSyncService {
     const [token, vaultKey, signingKeys] = await this.requireAuth()
     const fileKey = generateFileKey()
     const emit = (p: TransferProgress): void => (onProgress ?? this.onProgress)?.(p)
+    // Set once the session is registered below, so the finally can drop it on
+    // every exit — success, throw, or abort — instead of only the happy path.
+    let trackedSessionId: string | null = null
 
     try {
       const fileStat = await stat(filePath)
@@ -388,6 +391,7 @@ export class AttachmentSyncService {
         totalBytes: fileStat.size
       }
       this.activeUploads.set(sessionId, uploadState)
+      trackedSessionId = sessionId
 
       const existingChunks = await this.checkResumableSession(token, sessionId, netOpts)
       if (existingChunks) {
@@ -446,11 +450,15 @@ export class AttachmentSyncService {
       const encryptedManifest = this.encryptManifest(manifest, fileKey, vaultKey, signingKeys)
       await this.completeUploadSession(token, sessionId, encryptedManifest, netOpts)
 
-      this.activeUploads.delete(sessionId)
       log.info('upload complete', { attachmentId, sessionId })
 
       return { attachmentId, sessionId, manifest }
     } finally {
+      // The transfer is over by the time finally runs, so this can never orphan
+      // an in-flight upload. The key is a server-issued session id unique to
+      // this call, so the entry can only ever be ours (cancelUpload may have
+      // dropped it already — deleting a missing key is a no-op).
+      if (trackedSessionId !== null) this.activeUploads.delete(trackedSessionId)
       secureCleanup(fileKey)
       secureCleanup(signingKeys.secretKey)
     }
@@ -479,6 +487,9 @@ export class AttachmentSyncService {
     }
 
     const { manifest, fileKey } = this.decryptManifest(encryptedManifest, vaultKey, signerPublicKey)
+    // Set once this transfer is registered below; identifies OUR entry so the
+    // finally can drop it on every exit without touching anyone else's.
+    let trackedProgress: TransferProgress | null = null
 
     try {
       const totalChunks = manifest.chunks.length
@@ -513,6 +524,7 @@ export class AttachmentSyncService {
         totalBytes: manifest.size
       }
       this.activeDownloads.set(attachmentId, downloadProgress)
+      trackedProgress = downloadProgress
 
       const decryptedChunks: Buffer[] = new Array(totalChunks)
       let bytesDownloaded = 0
@@ -549,11 +561,17 @@ export class AttachmentSyncService {
 
       await this.atomicWriteBinary(destPath, reassembled)
 
-      this.activeDownloads.delete(attachmentId)
       log.info('download complete', { attachmentId, path: destPath })
 
       return { filePath: destPath, manifest }
     } finally {
+      // Unlike uploads, the key here is the attachmentId, which a concurrent
+      // download of the same attachment shares — it overwrites this entry when
+      // it registers. Only remove the entry if it is still ours, so a transfer
+      // that loses that race cannot blank out the live one's progress.
+      if (this.activeDownloads.get(attachmentId) === trackedProgress) {
+        this.activeDownloads.delete(attachmentId)
+      }
       secureCleanup(fileKey)
     }
   }

@@ -838,27 +838,31 @@ export function registerNotesHandlers(): void {
         }
       })
 
-      await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
-      await new Promise((resolve) => setTimeout(resolve, 100))
+      let pdfData: Buffer
+      try {
+        await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
+        await new Promise((resolve) => setTimeout(resolve, 100))
 
-      const pageSizeMap: Record<string, Electron.PrintToPDFOptions['pageSize']> = {
-        A4: 'A4',
-        Letter: 'Letter',
-        Legal: 'Legal'
+        const pageSizeMap: Record<string, Electron.PrintToPDFOptions['pageSize']> = {
+          A4: 'A4',
+          Letter: 'Letter',
+          Legal: 'Legal'
+        }
+
+        pdfData = await win.webContents.printToPDF({
+          printBackground: true,
+          pageSize: pageSizeMap[input.pageSize] || 'A4',
+          margins: {
+            top: 0.5,
+            bottom: 0.5,
+            left: 0.5,
+            right: 0.5
+          }
+        })
+      } finally {
+        if (!win.isDestroyed()) win.destroy()
       }
 
-      const pdfData = await win.webContents.printToPDF({
-        printBackground: true,
-        pageSize: pageSizeMap[input.pageSize] || 'A4',
-        margins: {
-          top: 0.5,
-          bottom: 0.5,
-          left: 0.5,
-          right: 0.5
-        }
-      })
-
-      win.destroy()
       await fs.writeFile(targetPath, pdfData)
 
       trackMainEvent('note_exported', {

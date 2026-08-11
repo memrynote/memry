@@ -18,7 +18,7 @@ const log = createLogger('Inbox:Ingest')
 
 export interface IngestArticleCaptureInput extends ArticleCapture {
   itemId?: string
-  itemType?: 'link' | 'clip'
+  itemType?: 'link' | 'clip' | 'pdf'
   tags?: string[]
   force?: boolean
 }
@@ -103,15 +103,42 @@ export async function ingestArticleCapture(
     }
   }
 
+  // PDF mode: the extension fetched the tab's PDF and base64'd it. Decode into an
+  // inbox attachment and file it as a `pdf` item — the same row shape the
+  // drag-and-drop path produces, so the viewer and folder filing need no changes.
+  // Any failure here degrades to a plain link item rather than losing the clip.
+  let pdfPath: string | null = null
+  let pdfMetadata: Record<string, unknown> = {}
+  if (input.pdfDataUrl) {
+    const parsed = parseDataUrl(input.pdfDataUrl)
+    if (!parsed || parsed.mime !== 'application/pdf') {
+      log.warn('pdf capture had a non-pdf data url', { itemId: id, mime: parsed?.mime })
+    } else {
+      const filename = input.pdfFilename ?? 'document.pdf'
+      const stored = await storeInboxAttachment(id, parsed.buffer, filename, 'application/pdf')
+      if (stored.success && stored.path) {
+        pdfPath = stored.path
+        pdfMetadata = {
+          originalFilename: filename,
+          fileSize: parsed.buffer.length,
+          mimeType: 'application/pdf'
+        }
+      } else {
+        log.warn('pdf attachment failed', { itemId: id, error: stored.error })
+      }
+    }
+  }
+
   const thumbnailPath = screenshotPath ?? (await downloadHero(id, input.heroImage))
   const { row, tags: appliedTags } = insertItemWithTags(
     db,
     {
       id,
-      type: input.itemType ?? 'link',
+      type: input.itemType ?? (pdfPath ? 'pdf' : 'link'),
       title: input.properties.title,
-      content,
+      content: pdfPath ? null : content,
       sourceUrl: input.url,
+      attachmentPath: pdfPath,
       thumbnailPath,
       createdAt: now,
       modifiedAt: now,
@@ -123,7 +150,8 @@ export async function ingestArticleCapture(
         excerpt: input.excerpt,
         extractionStatus: input.extractionStatus,
         heroImage: input.heroImage,
-        properties: input.properties
+        properties: input.properties,
+        ...pdfMetadata
       }
     },
     tags

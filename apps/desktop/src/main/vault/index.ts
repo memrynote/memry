@@ -1,4 +1,5 @@
-import { dialog, BrowserWindow } from 'electron'
+import { dialog } from 'electron'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import type {
   VaultInfo,
   VaultStatus,
@@ -86,6 +87,36 @@ let currentStatus: VaultStatus = {
 }
 let agentHandle: AgentHandle | null = null
 let agentStartupPromise: Promise<void> | null = null
+/**
+ * Whether the MCP lifecycle owns a listening server for the current vault.
+ *
+ * The MCP server comes up before the agent runtime and survives a startAgent()
+ * failure, so teardown cannot be keyed on agentHandle: the server outlives it,
+ * and its tool closures hold this vault's data/index database handles.
+ *
+ * Tracked here rather than read back from the lifecycle module so closeVault()
+ * does not have to import that module — and the MCP SDK and every vault tool it
+ * pulls in — on the quit path of a user who never touched the agent.
+ */
+let agentMcpStarted = false
+
+/**
+ * How long stopVaultAgentServices() waits for an in-flight agent start before
+ * tearing down without it.
+ *
+ * Derived from the shutdown budget, not picked for roundness: closeVault() is
+ * the last step of the `before-quit` chain in main/index.ts, which force-exits
+ * the app after 5000ms. flushAllWindows() ahead of it can already spend 2000ms
+ * (flushWindow's default per-window timeout), and after this wait closeVault()
+ * still has to stop the watcher, drain projections, stop the sync runtime and
+ * close the databases. Claiming a third of the ~3000ms remainder keeps this
+ * step from ever being the one that blows the budget.
+ *
+ * It is a backstop, not a throttle: a healthy start is a localhost HTTP bind,
+ * one keychain read, a KDF and a few SQLite statements — orders of magnitude
+ * under this — so the timeout only fires when the start is genuinely wedged.
+ */
+const AGENT_STARTUP_TEARDOWN_WAIT_MS = 1000
 let isShuttingDown = false
 const statusListeners = new Set<(status: VaultStatus) => void>()
 
@@ -197,9 +228,7 @@ function emitStatusChanged(): void {
   // nothing should react to it while the app is quitting/installing.
   if (isShuttingDown) return
   statusListeners.forEach((listener) => listener(currentStatus))
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send('vault:status-changed', currentStatus)
-  })
+  broadcastToAllWindows('vault:status-changed', currentStatus)
 }
 
 /**
@@ -207,9 +236,7 @@ function emitStatusChanged(): void {
  */
 export function emitIndexProgress(progress: number): void {
   updateStatus({ indexProgress: progress })
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send('vault:index-progress', progress)
-  })
+  broadcastToAllWindows('vault:index-progress', progress)
 }
 
 /**
@@ -217,9 +244,7 @@ export function emitIndexProgress(progress: number): void {
  */
 export function emitVaultError(error: string): void {
   updateStatus({ error })
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send('vault:error', error)
-  })
+  broadcastToAllWindows('vault:error', error)
 }
 
 /**
@@ -244,9 +269,7 @@ export function emitIndexRecovered(event: IndexRecoveredEvent): void {
     errorCode: event.reason,
     metrics: { durationMs: event.duration, itemCount: event.filesIndexed }
   })
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(VaultChannels.events.INDEX_RECOVERED, event)
-  })
+  broadcastToAllWindows(VaultChannels.events.INDEX_RECOVERED, event)
 }
 
 /**
@@ -614,6 +637,7 @@ async function startVaultAgentServicesOnce(): Promise<void> {
     ])
 
     await startAgentMcpLifecycle()
+    agentMcpStarted = true
     agentHandle = await startAgent()
   } catch (error) {
     logger.warn('Agent runtime failed to start:', error)
@@ -625,14 +649,56 @@ async function stopVaultAgentServices(): Promise<void> {
   configureLazyAgentServices(null)
   unregisterLazyAgentHandlers()
 
+  // A start that is still in flight owns this vault's db handles and calls
+  // registerAgentHandlers() when it resolves. Dropping the promise here let it
+  // land after the *next* vault had registered its own handlers, replacing them
+  // with handlers closed over the previous vault's db/conversations/vaultId,
+  // and left that runtime alive (vault key unzeroed, subprocesses running).
+  // Waiting makes the handle read below the one to tear down.
+  //
+  // The wait is bounded because closeVault() also runs on the quit path, where
+  // main/index.ts force-exits the app once its 5s budget is gone. A start
+  // that never settles must not turn the leak into a hung quit — on timeout,
+  // fall through to the teardown below and accept that the orphan may still
+  // land late (the pre-fix behaviour), which is strictly better than freezing.
+  if (agentStartupPromise) {
+    let settleTimer: ReturnType<typeof setTimeout> | undefined
+    const settled = await Promise.race([
+      // startVaultAgentServicesOnce swallows its own failures, so this only
+      // rejects if that ever changes; either way the start is over.
+      agentStartupPromise.then(
+        () => true,
+        () => true
+      ),
+      new Promise<boolean>((resolve) => {
+        settleTimer = setTimeout(() => resolve(false), AGENT_STARTUP_TEARDOWN_WAIT_MS)
+      })
+    ])
+    clearTimeout(settleTimer)
+    if (!settled) {
+      logger.warn(
+        `Agent startup did not settle within ${AGENT_STARTUP_TEARDOWN_WAIT_MS}ms; tearing down without it`
+      )
+    }
+  }
+
   const currentAgentHandle = agentHandle
+  const mcpStarted = agentMcpStarted
   agentHandle = null
   agentStartupPromise = null
+  agentMcpStarted = false
 
-  if (!currentAgentHandle) return
+  // Not `!currentAgentHandle` alone: startAgent() can throw after the MCP
+  // server is listening, and skipping teardown then left a bearer-authenticated
+  // localhost server holding the outgoing vault's database handles. Because
+  // startAgentMcpLifecycle() early-returns while its handle is set, the next
+  // vault inherited that server instead of binding one to its own databases.
+  if (!currentAgentHandle && !mcpStarted) return
 
   const { stopAgentMcpLifecycle } = await import('../agent/mcp/lifecycle')
-  await currentAgentHandle.shutdown()
+  // The agent runtime routes its tool calls through this server, so it goes
+  // first; on the failed-start path there is no runtime left to stop.
+  await currentAgentHandle?.shutdown()
   await stopAgentMcpLifecycle()
 }
 

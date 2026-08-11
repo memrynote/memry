@@ -83,7 +83,12 @@ export interface ProjectionProjector {
   handles(event: ProjectionEvent): boolean
   project(event: ProjectionEvent): void | Promise<void>
   rebuild(): unknown
-  reconcile(): unknown
+  /**
+   * Consistency pass. Runs backgrounded on every vault open, so it must stop
+   * promptly when `signal` aborts — otherwise a vault switch leaves the old
+   * pass reading the previous vault against a closed database (#993).
+   */
+  reconcile(signal?: AbortSignal): unknown
 }
 
 export interface ProjectionLogger {

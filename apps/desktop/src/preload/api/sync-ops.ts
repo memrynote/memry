@@ -58,17 +58,18 @@ export const syncAttachments = {
 export const syncCrdt = {
   openDoc: (input: { noteId: string }) => invoke(SYNC_CHANNELS.OPEN_DOC, input),
   closeDoc: (input: { noteId: string }) => invoke(SYNC_CHANNELS.CLOSE_DOC, input),
-  applyUpdate: (input: { noteId: string; update: number[] }) =>
+  applyUpdate: (input: { noteId: string; update: Uint8Array }) =>
     invoke(SYNC_CHANNELS.APPLY_UPDATE, input),
-  syncStep1: (input: { noteId: string; stateVector: number[] }) =>
+  syncStep1: (input: { noteId: string; stateVector: Uint8Array }) =>
     invoke(SYNC_CHANNELS.SYNC_STEP_1, input),
-  syncStep2: (input: { noteId: string; diff: number[] }) => invoke(SYNC_CHANNELS.SYNC_STEP_2, input)
+  syncStep2: (input: { noteId: string; diff: Uint8Array }) =>
+    invoke(SYNC_CHANNELS.SYNC_STEP_2, input)
 }
 
 export const onCrdtStateChanged = (
-  callback: (data: { noteId: string; update: number[]; origin: string }) => void
+  callback: (data: { noteId: string; update: Uint8Array; origin: string }) => void
 ): (() => void) =>
-  subscribe<{ noteId: string; update: number[]; origin: string }>(
+  subscribe<{ noteId: string; update: Uint8Array; origin: string }>(
     SYNC_EVENTS.STATE_CHANGED,
     callback
   )

@@ -133,6 +133,85 @@ describe('useWikiLinkHover', () => {
     expect(result.current.isVisible).toBe(true)
   })
 
+  it('re-renders nothing when a scroll arrives with no preview open', () => {
+    const { container } = setupLink()
+    const ref = { current: container }
+    let renders = 0
+    renderHook(() => {
+      renders++
+      return useWikiLinkHover(ref)
+    })
+
+    const baseline = renders
+    // One act() per event so React cannot batch them into a single render.
+    for (let i = 0; i < 5; i++) {
+      act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
+    }
+
+    expect(renders).toBe(baseline)
+  })
+
+  it('hides an open preview on scroll, then stops re-rendering', async () => {
+    const { container, link } = setupLink()
+    const ref = { current: container }
+    let renders = 0
+    const { result } = renderHook(() => {
+      renders++
+      return useWikiLinkHover(ref)
+    })
+
+    act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+    })
+    expect(result.current.isVisible).toBe(true)
+
+    act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
+    expect(result.current.isVisible).toBe(false)
+
+    // One more scroll to absorb React's render-phase bailout: right after a real
+    // update it re-renders this component once before it can compare eagerly.
+    act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
+    const settled = renders
+
+    for (let i = 0; i < 5; i++) {
+      act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
+    }
+
+    expect(renders).toBe(settled)
+    expect(result.current.isVisible).toBe(false)
+  })
+
+  it('cancels an armed preview on scroll so no card pops up over scrolled content', async () => {
+    const api = getMockApi() as {
+      notes: {
+        previewByTitle: ReturnType<typeof vi.fn>
+      }
+    }
+    const { container, link } = setupLink()
+    const ref = { current: container }
+    let renders = 0
+    const { result } = renderHook(() => {
+      renders++
+      return useWikiLinkHover(ref)
+    })
+
+    act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(150)
+    })
+
+    const baseline = renders
+    act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500)
+    })
+
+    expect(api.notes.previewByTitle).not.toHaveBeenCalled()
+    expect(result.current.isVisible).toBe(false)
+    expect(renders).toBe(baseline)
+  })
+
   it('ignores missing targets, null previews, stale async results, and service failures', async () => {
     const api = getMockApi() as {
       notes: {

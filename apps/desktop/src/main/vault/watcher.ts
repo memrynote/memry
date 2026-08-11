@@ -11,7 +11,7 @@ import path from 'path'
 import fs from 'fs/promises'
 import chokidar from 'chokidar'
 import type { FSWatcher } from 'chokidar'
-import { BrowserWindow } from 'electron'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getConfig } from './index'
 import { parseNote, generateContentHash, extractProperties } from './frontmatter'
 import { safeRead } from './file-ops'
@@ -114,9 +114,7 @@ function createPathDebouncer(
  * Emit event to all renderer windows.
  */
 function emitEvent(channel: string, payload: unknown): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, payload)
-  })
+  broadcastToAllWindows(channel, payload)
 }
 
 /**

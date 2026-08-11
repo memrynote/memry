@@ -48,6 +48,10 @@ const app = new Hono<AppContext>()
 app.use('*', securityHeaders)
 
 const MAX_BODY_BYTES_API = 1 * 1024 * 1024
+// Sync routes carry encrypted payloads the routes themselves cap at 5MB
+// decoded (MAX_UPDATE_BYTES, MAX_ENCRYPTED_DATA_BYTES); base64 plus the JSON
+// envelope needs headroom above that, or those route checks are unreachable.
+const MAX_BODY_BYTES_SYNC = 8 * 1024 * 1024
 const MAX_BODY_BYTES_BLOB = 10 * 1024 * 1024
 const MAX_BODY_BYTES_TELEMETRY = 128 * 1024
 
@@ -63,7 +67,11 @@ const getMaxBodyBytes = (path: string): number => {
   }
 
   const isBlobRoute = path.includes('/blob') || path.includes('/attachments/')
-  return isBlobRoute ? MAX_BODY_BYTES_BLOB : MAX_BODY_BYTES_API
+  if (isBlobRoute) {
+    return MAX_BODY_BYTES_BLOB
+  }
+
+  return path.startsWith('/sync/') ? MAX_BODY_BYTES_SYNC : MAX_BODY_BYTES_API
 }
 
 const isBodyWithinLimit = async (request: Request, maxBodyBytes: number): Promise<boolean> => {

@@ -273,6 +273,9 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
         if (event.errorCategory === 'file_too_large') {
           toast.error(t('sync.fileTooLarge'), { duration: 10000 })
         }
+        if (event.errorCategory === 'note_too_large') {
+          toast.error(t('sync.noteTooLarge'), { duration: 10000 })
+        }
       })
     )
 
