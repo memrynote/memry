@@ -177,6 +177,11 @@ export function createEmbeddingProjector(
   return {
     name: 'embedding',
 
+    // Nothing reads embeddings back in the same turn, and project() below can
+    // await a model load plus CPU inference — so callers of
+    // flushProjectionEvents() must not queue behind this lane (#1078).
+    background: true,
+
     handles(event: ProjectionEvent): boolean {
       return event.type === 'note.upserted' || event.type === 'note.deleted'
     },
