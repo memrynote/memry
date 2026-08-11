@@ -15,7 +15,12 @@ const RECONNECT_JITTER_MS = 500
 const PING_INTERVAL_MS = 25_000
 const HTTP_UNAUTHORIZED = 401
 const HTTP_UPGRADE_REQUIRED = 426
-const MAX_WEBSOCKET_MANAGER_LISTENERS = 50
+// Steady state is one listener per event name: the constructor's own 'error'
+// logger, plus the SyncEngine's four ('message', 'connected', 'device_revoked',
+// 'certificate_pin_failed') attached in start() and removed in stop(). Keeping
+// the ceiling at Node's default leaves headroom without hiding an accumulating
+// subscriber behind a silent budget. See src/main/sync/emitter-budget.test.ts.
+const MAX_WEBSOCKET_MANAGER_LISTENERS = 10
 
 const WebSocketMessageSchema = z.object({
   type: z.enum([
