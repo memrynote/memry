@@ -1,6 +1,10 @@
 import { renderHook } from '@testing-library/react'
+import { StrictMode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useEditorTeardown } from './use-editor-teardown'
+
+/** Teardown is deferred by a microtask so StrictMode can cancel it. */
+const settleTeardown = (): Promise<void> => Promise.resolve()
 
 function createEditor() {
   const listeners = new Map<string, Set<() => void>>()
@@ -24,7 +28,7 @@ afterEach(() => {
 })
 
 describe('useEditorTeardown', () => {
-  it('destroys the editor on unmount and drops its registered listeners', () => {
+  it('destroys the editor on unmount and drops its registered listeners', async () => {
     const { editor, tiptap, listeners } = createEditor()
     tiptap.on('update', () => {})
     const win = window as unknown as { ProseMirror?: unknown }
@@ -34,6 +38,7 @@ describe('useEditorTeardown', () => {
     expect(tiptap.destroy).not.toHaveBeenCalled()
 
     unmount()
+    await settleTeardown()
 
     expect(tiptap.destroy).toHaveBeenCalledTimes(1)
     expect(tiptap.isDestroyed).toBe(true)
@@ -41,7 +46,7 @@ describe('useEditorTeardown', () => {
     expect(win.ProseMirror).toBeUndefined()
   })
 
-  it('keeps a window handle that belongs to a different editor', () => {
+  it('keeps a window handle that belongs to a different editor', async () => {
     const { editor } = createEditor()
     const other = createEditor()
     const win = window as unknown as { ProseMirror?: unknown }
@@ -49,8 +54,51 @@ describe('useEditorTeardown', () => {
 
     const { unmount } = renderHook(() => useEditorTeardown(editor))
     unmount()
+    await settleTeardown()
 
     expect(win.ProseMirror).toBe(other.tiptap)
+  })
+
+  it('survives the StrictMode double effect that remounts the same editor', async () => {
+    const { editor, tiptap } = createEditor()
+    const flush = vi.fn()
+
+    // StrictMode runs setup → cleanup → setup on the same fiber. `useMemo`
+    // hands the same editor back, so destroying it here blanks every editing
+    // surface for the rest of the session.
+    const { unmount } = renderHook(() => useEditorTeardown(editor, flush), {
+      wrapper: StrictMode
+    })
+    await settleTeardown()
+
+    expect(tiptap.destroy).not.toHaveBeenCalled()
+    expect(tiptap.isDestroyed).toBe(false)
+    expect(flush).not.toHaveBeenCalled()
+
+    unmount()
+    await settleTeardown()
+
+    expect(tiptap.destroy).toHaveBeenCalledTimes(1)
+  })
+
+  it('still tears the previous editor down when the editor identity changes', async () => {
+    const first = createEditor()
+    const second = createEditor()
+
+    const { rerender, unmount } = renderHook(({ editor }) => useEditorTeardown(editor), {
+      initialProps: { editor: first.editor as unknown }
+    })
+
+    rerender({ editor: second.editor as unknown })
+    await settleTeardown()
+
+    expect(first.tiptap.destroy).toHaveBeenCalledTimes(1)
+    expect(second.tiptap.destroy).not.toHaveBeenCalled()
+
+    unmount()
+    await settleTeardown()
+
+    expect(second.tiptap.destroy).toHaveBeenCalledTimes(1)
   })
 
   it('waits for an async flush before destroying, and destroys even if it rejects', async () => {
@@ -69,6 +117,7 @@ describe('useEditorTeardown', () => {
 
     const { unmount } = renderHook(() => useEditorTeardown(editor, flush))
     unmount()
+    await settleTeardown()
 
     expect(flush).toHaveBeenCalledTimes(1)
     expect(tiptap.destroy).not.toHaveBeenCalled()
