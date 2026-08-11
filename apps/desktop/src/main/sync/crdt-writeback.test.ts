@@ -131,10 +131,12 @@ import {
   cancelPendingWritebacks,
   flushPendingWritebacks,
   getWritebackDebugState,
+  getWritebackStateSizes,
   handleSyncDeletion,
   isWritebackIgnored,
   markWritebackIgnored,
   recordNetworkUpdate,
+  resetWritebackState,
   scheduleWriteback,
   wasRecentNetworkUpdate
 } from './crdt-writeback'
@@ -583,5 +585,77 @@ describe('crdt writeback', () => {
         options: { frontmatterEdited: true }
       })
     )
+  })
+})
+
+describe('crdt-writeback per-vault state reset', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    resetWritebackState()
+  })
+
+  afterEach(() => {
+    cancelPendingWritebacks()
+    resetWritebackState()
+    vi.useRealTimers()
+  })
+
+  it('drops ignored writes, network-update marks and debug state on vault teardown', () => {
+    // #given — a vault session that populated every module-level per-note map
+    markWritebackIgnored('/vault-a/notes/One.md')
+    recordNetworkUpdate('note-1')
+    scheduleWriteback('note-1', makeDoc('One'))
+
+    expect(isWritebackIgnored('/vault-a/notes/One.md')).toBe(true)
+    expect(wasRecentNetworkUpdate('note-1')).toBe(true)
+    expect(getWritebackDebugState('note-1')).not.toBeNull()
+
+    // #when — the vault is closed (CrdtProvider.destroy)
+    cancelPendingWritebacks()
+    resetWritebackState()
+
+    // #then — nothing from the old vault survives into the next one
+    expect(isWritebackIgnored('/vault-a/notes/One.md')).toBe(false)
+    expect(wasRecentNetworkUpdate('note-1')).toBe(false)
+    expect(getWritebackDebugState('note-1')).toBeNull()
+    expect(getWritebackStateSizes()).toEqual({
+      ignoredWrites: 0,
+      networkUpdates: 0,
+      debugState: 0
+    })
+  })
+
+  it('evicts expired network-update marks instead of keeping one per note forever', () => {
+    // #given — a note that received a network update
+    recordNetworkUpdate('note-old')
+    expect(wasRecentNetworkUpdate('note-old')).toBe(true)
+
+    // #when — the concurrent-edit window passes and any other note updates.
+    // `wasRecentNetworkUpdate('note-old')` is deliberately NOT called here: it
+    // used to be the only thing that ever deleted an entry, so a note nobody
+    // re-reads is exactly the case that leaked.
+    vi.advanceTimersByTime(2500)
+    recordNetworkUpdate('note-new')
+
+    // #then — only the fresh note is still held; the stale key was evicted
+    // rather than merely reported as expired
+    expect(getWritebackStateSizes().networkUpdates).toBe(1)
+    expect(wasRecentNetworkUpdate('note-old')).toBe(false)
+    expect(wasRecentNetworkUpdate('note-new')).toBe(true)
+  })
+
+  it('evicts expired ignored writes from the write path, not only from watcher reads', () => {
+    // #given — a write-back marked a file as self-written
+    markWritebackIgnored('/vault-a/notes/Old.md')
+
+    // #when — the TTL passes and another write-back lands, with no watcher event
+    // in between (a stopped watcher never calls `isWritebackIgnored`)
+    vi.advanceTimersByTime(6000)
+    markWritebackIgnored('/vault-a/notes/New.md')
+
+    // #then — the expired entry did not survive the session
+    expect(getWritebackStateSizes().ignoredWrites).toBe(1)
+    expect(isWritebackIgnored('/vault-a/notes/Old.md')).toBe(false)
+    expect(isWritebackIgnored('/vault-a/notes/New.md')).toBe(true)
   })
 })

@@ -48,7 +48,8 @@ vi.mock('./crdt-writeback', () => ({
   scheduleWriteback: vi.fn(),
   cancelPendingWritebacks: vi.fn(),
   flushPendingWritebacks: vi.fn(),
-  recordNetworkUpdate: vi.fn()
+  recordNetworkUpdate: vi.fn(),
+  resetWritebackState: vi.fn()
 }))
 vi.mock('./microtask-batch-broadcaster', () => ({
   MicrotaskBatchBroadcaster: class {

@@ -70,6 +70,7 @@ const mocks = vi.hoisted(() => {
     scheduleWriteback: vi.fn(),
     flushPendingWritebacks: vi.fn(),
     recordNetworkUpdate: vi.fn(),
+    resetWritebackState: vi.fn(),
     persistenceInstances: [] as Array<{
       getYDoc: ReturnType<typeof vi.fn>
       clearDocument: ReturnType<typeof vi.fn>
@@ -157,7 +158,8 @@ vi.mock('./crdt-compact-utils', () => ({
 vi.mock('./crdt-writeback', () => ({
   scheduleWriteback: (...args: unknown[]) => mocks.scheduleWriteback(...args),
   flushPendingWritebacks: (...args: unknown[]) => mocks.flushPendingWritebacks(...args),
-  recordNetworkUpdate: (...args: unknown[]) => mocks.recordNetworkUpdate(...args)
+  recordNetworkUpdate: (...args: unknown[]) => mocks.recordNetworkUpdate(...args),
+  resetWritebackState: (...args: unknown[]) => mocks.resetWritebackState(...args)
 }))
 
 vi.mock('./microtask-batch-broadcaster', () => ({
@@ -399,6 +401,9 @@ describe('CrdtProvider', () => {
     await provider.destroy()
     expect(mocks.flushPendingWritebacks).toHaveBeenCalled()
     expect(mocks.persistenceInstances[0].destroy).toHaveBeenCalled()
+    // Vault close / vault switch runs through here, so the write-back module's
+    // per-note maps must not carry this vault's ids into the next one.
+    expect(mocks.resetWritebackState).toHaveBeenCalled()
   })
 
   it('returns state vectors and diffs only for open docs', async () => {

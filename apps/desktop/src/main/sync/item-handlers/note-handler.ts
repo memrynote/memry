@@ -90,6 +90,28 @@ async function removeEmptyParents(dir: string, stopAt: string): Promise<void> {
 // files that already exist on disk.
 const requestedAttachmentDownloads = new Set<string>()
 
+/**
+ * Ceiling on that guard. Entries are never retired individually, so without one
+ * the Set grows by every note×attachment this device has ever pulled — across
+ * vaults, since it is module-level. Insertion order is FIFO, so the oldest key
+ * goes first; re-requesting it later is cheap because the downloader skips
+ * files that already exist on disk.
+ */
+const MAX_REQUESTED_ATTACHMENT_DOWNLOADS = 5000
+
+/** Vault switch / sync-runtime stop: these keys belong to the old vault's notes. */
+export function resetRequestedAttachmentDownloads(): void {
+  requestedAttachmentDownloads.clear()
+}
+
+function rememberAttachmentDownload(key: string): void {
+  if (requestedAttachmentDownloads.size >= MAX_REQUESTED_ATTACHMENT_DOWNLOADS) {
+    const oldest = requestedAttachmentDownloads.values().next().value
+    if (oldest !== undefined) requestedAttachmentDownloads.delete(oldest)
+  }
+  requestedAttachmentDownloads.add(key)
+}
+
 function mergeAttachmentReferences(
   local: string[] | null | undefined,
   remote: string[] | null | undefined
@@ -132,7 +154,7 @@ function requestEmbeddedAttachmentDownloads(
     // never asked for again for the life of the process. Skipping the record
     // lets the next pull of the same note re-request it; the downloader still
     // skips files that already exist on disk, so a re-request is cheap.
-    if (delivered) requestedAttachmentDownloads.add(key)
+    if (delivered) rememberAttachmentDownload(key)
   }
 }
 

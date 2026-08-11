@@ -138,7 +138,7 @@ vi.mock('../../vault/index', () => ({
   getStatus: vi.fn(() => ({ path: VAULT_ROOT }))
 }))
 
-import { noteHandler } from './note-handler'
+import { noteHandler, resetRequestedAttachmentDownloads } from './note-handler'
 import { deleteFile } from '../../vault/file-ops'
 import { parseNote, serializeParsedNote } from '../../vault/frontmatter'
 import { deleteNoteFromCache, syncFileToCache, syncNoteToCache } from '../../vault/note-sync'
@@ -751,5 +751,21 @@ describe('noteHandler.applyUpsert — embedded attachment references', () => {
     const call = mockUpdateNoteMetadata.mock.calls.find((c) => c[1] === 'note-att-none')
     expect(call).toBeTruthy()
     expect((call![2] as Record<string, unknown>).attachmentReferences).toBeUndefined()
+  })
+
+  it('re-requests downloads after a vault teardown clears the session guard', () => {
+    // #given — a note whose attachment was already requested this session
+    const payload = makeNotePayload({ attachmentReferences: ['att-a'] })
+    noteHandler.applyUpsert(ctx, 'note-att-vault', payload, {})
+    noteHandler.applyUpsert(ctx, 'note-att-vault', payload, {})
+    expect(downloadEvents).toHaveLength(1)
+
+    // #when — the vault is switched (stopSyncRuntime → resetSyncServiceSingletons)
+    resetRequestedAttachmentDownloads()
+    noteHandler.applyUpsert(ctx, 'note-att-vault', payload, {})
+
+    // #then — the guard no longer carries the previous vault's keys, so the new
+    // vault's copy of the note asks for its attachment again
+    expect(downloadEvents).toHaveLength(2)
   })
 })

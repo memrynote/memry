@@ -9,7 +9,12 @@ import { getIndexDatabase } from '../database/client'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import type { CrdtUpdateQueue } from './crdt-queue'
 import { MicrotaskBatchBroadcaster } from './microtask-batch-broadcaster'
-import { scheduleWriteback, flushPendingWritebacks, recordNetworkUpdate } from './crdt-writeback'
+import {
+  scheduleWriteback,
+  flushPendingWritebacks,
+  recordNetworkUpdate,
+  resetWritebackState
+} from './crdt-writeback'
 import { runCrdtPreflight } from './crdt-preflight'
 import { moveStoreDir } from './crdt-store-move'
 import { toAbsolutePath } from '../vault/notes'
@@ -466,6 +471,10 @@ export class CrdtProvider {
     this.openLocks.clear()
     this.updateQueue = null
     this.snapshotPushFn = null
+
+    // Write-back keeps its own module-level per-note maps, keyed by ids and
+    // absolute paths belonging to the vault being torn down here.
+    resetWritebackState()
 
     log.info('CrdtProvider destroyed')
   }
