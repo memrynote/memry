@@ -173,6 +173,7 @@ export default defineConfig(
       'apps/desktop/src/main/inbox/filing.ts',
       'apps/desktop/src/main/inbox/suggestions.ts',
       'apps/desktop/src/main/sync/attachments.ts',
+      'apps/desktop/src/main/sync/crdt-provider.ts',
       'apps/desktop/src/main/vault/watcher.ts'
     ],
     rules: {

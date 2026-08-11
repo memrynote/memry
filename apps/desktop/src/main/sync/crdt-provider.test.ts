@@ -454,6 +454,46 @@ describe('CrdtProvider', () => {
     expect(provider.getDoc('active-note')).toBe(activeDoc)
   })
 
+  it('releases the docs of a destroyed window and closes the ones it was last to hold', async () => {
+    // A window torn down by ⌘W / reload / renderer crash never runs the React
+    // cleanup that sends crdt:close-doc, and BrowserWindow ids are never
+    // recycled — so without an explicit release the stale id pins the doc for
+    // the rest of the session and disables eviction and compaction with it.
+    createWindow(11)
+    createWindow(12)
+
+    const shared = await provider.open('shared-note', 11, { skipSeed: true })
+    await provider.open('shared-note', 12, { skipSeed: true })
+    await provider.open('solo-note', 11, { skipSeed: true })
+
+    await provider.forgetWindow(11)
+
+    // Window 12 is still live and editing shared-note — never evict under it.
+    expect(provider.getDoc('shared-note')).toBe(shared)
+    expect(
+      provider.getOpenDocMetrics().docs.find((doc) => doc.noteId === 'shared-note')?.windowCount
+    ).toBe(1)
+
+    // solo-note lost its only window: flushed to persistence, then released.
+    expect(mocks.persistenceInstances[0].flushDocument).toHaveBeenCalledWith('solo-note')
+    expect(provider.getDoc('solo-note')).toBeUndefined()
+  })
+
+  it('drops broadcast targets whose window is gone so the doc stops being pinned', async () => {
+    createWindow(21)
+    await provider.open('note-1', 21, { skipSeed: true })
+    expect(provider.getOpenDocMetrics().docs[0].windowCount).toBe(1)
+
+    // The window is destroyed without any close-doc IPC and without the
+    // 'closed' hook having run (e.g. it was opened before registration).
+    mocks.windows.delete(21)
+
+    provider.updateMeta('note-1', { title: 'still typing' })
+
+    expect(provider.getOpenDocMetrics().docs[0].windowCount).toBe(0)
+    await expect(provider.closeIfInactive('note-1')).resolves.toBe(true)
+  })
+
   it('evicts least-recently-used inactive docs without evicting active editor docs', async () => {
     let now = 1_000
     const cappedProvider = new CrdtProvider({
