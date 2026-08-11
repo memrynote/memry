@@ -97,6 +97,11 @@ document to its vault `.md` file and re-indexes it for search.
 - **Nothing is deferred indefinitely** — the trailing pass always runs, and
   `flushPendingWritebacks()` forces any pending pass through before the CRDT provider is
   destroyed, which covers app quit and vault switch.
+- **Per-vault bookkeeping** — write-back tracks self-written files and recent inbound
+  network updates in short-TTL maps. Entries are evicted in an amortized pass (at most one
+  sweep per TTL window) rather than scanned on every watcher event, and
+  `CrdtProvider.destroy()` clears the maps outright, so no vault's note ids or file paths
+  survive into the next one.
 
 While a write-back is queued or mid-write the `.md` file is knowingly behind the Y.Doc, so
 markdown-as-truth readers (task checkbox reconciliation) stand down for that window. Search

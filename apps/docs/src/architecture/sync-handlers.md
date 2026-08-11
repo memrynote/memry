@@ -98,6 +98,20 @@ The Yjs `meta` title is not a source of truth in the other direction either. It 
 creation and updated only while the note's doc is open in memory, so a note renamed from the sidebar
 never records the new title there. Read it only when nothing else knows the note.
 
+## Module-Level Handler State Is Per-Vault
+
+A handler that keeps module-level state — the note handler's guard against re-requesting the same
+embedded attachment download is the one that exists — must treat that state as belonging to the open
+vault. It is reset from `resetSyncServiceSingletons()`, which runs on sync-runtime stop and therefore
+on vault close, vault switch and sign-out, alongside the per-type service singletons. Session-scoped
+collections also need a ceiling: the attachment guard is FIFO-capped, because keys are never retired
+individually and re-requesting one is cheap (the downloader skips files already on disk).
+
+The same rule holds inside the engine. `CrdtSyncCoordinator` caches an applied-sequence cursor per
+note, which after a full sync means the entire vault; `engine.stop()` clears it. Dropping the cursors
+is safe because the next pass re-derives `since` from the server snapshot baseline and re-applying a
+CRDT update is a no-op.
+
 ## Renderer Events From the Sync Path
 
 Handlers notify the renderer through `ctx.emit`, typed `(channel: string, data: unknown)`. That
