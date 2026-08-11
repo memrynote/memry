@@ -171,6 +171,9 @@ memrynote pulls about every 5 minutes in the background. When Google push notifi
 for your selected calendars, changes arrive as they happen and the background pull falls back to
 roughly every 30 minutes.
 
+Google returns a busy calendar in pages. Every pull follows all of them before it finishes, so a
+calendar full of repeating meetings cannot crowd your one-off appointments out of the results.
+
 Two extra pulls sit on top of that: memrynote syncs immediately when your machine wakes from sleep,
 and bringing the memrynote window back to the front pulls again if the last pull was more than two
 minutes ago. Re-focusing the window more often than that is deliberately ignored so alt-tabbing all
