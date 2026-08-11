@@ -184,6 +184,8 @@ If a turn fails partway through — a window closing while the reply is still st
 memrynote stops the chat backend it started for that turn instead of leaving it running in the
 background. The unfinished reply is lost, but your message and the rest of the conversation are kept,
 so you can send the prompt again. A turn that is simply taking a long time is never stopped this way.
+The same applies when a turn fails before the reply even starts streaming, such as a disk or database
+error while saving the empty reply.
 
 Conversation rows, message bodies, and message attachments are encrypted at rest before they are
 written to SQLite. Free accounts keep agent chat history local-only. Paid accounts can sync finalized

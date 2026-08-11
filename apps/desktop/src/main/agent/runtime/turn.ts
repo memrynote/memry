@@ -10,7 +10,7 @@ import { trackMainEvent } from '../../telemetry/track'
 import type { BackendEvent } from '../cli/types'
 import type { ConversationStore } from '../storage/conversation-store'
 import type { MessageStore } from '../storage/message-store'
-import type { MessageAttachment } from '../storage/types'
+import type { Message, MessageAttachment } from '../storage/types'
 import type { AgentBackend, BackendRunHandle } from '../backends/types'
 import type { AgentBackendRegistry } from '../backends/registry'
 import { broadcastAgentEvent } from './event-bus'
@@ -157,19 +157,32 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     purpose: 'turn'
   })
   const sub = deps.trackRunHandle?.(input.conversationId, rawSub) ?? rawSub
-  const stderrTextPromise = sub.stderr ? collectStreamText(sub.stderr) : Promise.resolve('')
 
-  const assistant = deps.messages.append({
-    conversationId: input.conversationId,
-    role: 'assistant',
-    content: { role: 'assistant', data: { text: '' } },
-    attachments: [],
-    status: 'streaming'
-  })
-  broadcastAgentEvent({
-    kind: 'message_upserted',
-    message: assistant
-  })
+  // The child is spawned and tracked, but the turn's own try/finally below has
+  // not been entered yet. An encrypted SQLite append or a broadcast to a window
+  // that died mid-send can throw here, and nothing upstream stops subprocesses —
+  // the IPC caller's catch only logs and reports. Without this guard the child
+  // runs for the rest of the session and its pid never leaves the tracking map.
+  let stderrTextPromise: Promise<string>
+  let assistant: Message
+  try {
+    stderrTextPromise = sub.stderr ? collectStreamText(sub.stderr) : Promise.resolve('')
+
+    assistant = deps.messages.append({
+      conversationId: input.conversationId,
+      role: 'assistant',
+      content: { role: 'assistant', data: { text: '' } },
+      attachments: [],
+      status: 'streaming'
+    })
+    broadcastAgentEvent({
+      kind: 'message_upserted',
+      message: assistant
+    })
+  } catch (error) {
+    await discardStrandedSubprocess(sub)
+    throw error
+  }
 
   let buffered = ''
   let backendError: string | null = null
@@ -291,14 +304,15 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
 
 // cleanup() is where the tracked-handle wrapper untracks the pid, which removes
 // it from the map killAll() walks at quit. A child still alive at that moment is
-// unreachable forever, so it has to be killed first — and cleanup() must wait
-// for it to actually be gone, not merely signalled.
-async function killAbandonedChild(sub: BackendRunHandle): Promise<void> {
+// unreachable forever, so it has to be killed first — and the caller must wait
+// for it to actually be gone, not merely signalled. Resolves true only when the
+// exit was observed.
+async function killAbandonedChild(sub: BackendRunHandle): Promise<boolean> {
   try {
     sub.kill()
   } catch (error) {
     logger.warn('Failed to kill abandoned agent subprocess', { pid: sub.pid, error })
-    return
+    return false
   }
 
   // Bounded: killAll() awaits in-flight turns and main force-exits 5s into
@@ -308,14 +322,35 @@ async function killAbandonedChild(sub: BackendRunHandle): Promise<void> {
     timer = setTimeout(() => resolve(false), ABANDONED_KILL_GRACE_MS)
   })
   try {
-    if (!(await Promise.race([sub.waitExit().then(() => true), timedOut]))) {
+    const exited = await Promise.race([sub.waitExit().then(() => true), timedOut])
+    if (!exited) {
       logger.warn('Abandoned agent subprocess did not exit after kill', { pid: sub.pid })
     }
+    return exited
   } catch (error) {
     logger.warn('Failed to await abandoned agent subprocess exit', { pid: sub.pid, error })
+    return false
   } finally {
     clearTimeout(timer)
   }
+}
+
+/**
+ * Stop a child that was tracked but never handed to the turn's event loop.
+ *
+ * cleanup() is where the tracked-handle wrapper untracks the pid, and that map
+ * is what killAll() walks at quit — so the child is only untracked once the OS
+ * says it is gone. A survivor stays tracked on purpose: still leaking, but still
+ * reachable at shutdown, which an untracked survivor never is again.
+ */
+async function discardStrandedSubprocess(sub: BackendRunHandle): Promise<void> {
+  if (!(await killAbandonedChild(sub))) {
+    logger.warn('Stranded agent subprocess still running; leaving it tracked for shutdown', {
+      pid: sub.pid
+    })
+    return
+  }
+  await sub.cleanup()
 }
 
 async function maybeGenerateConversationTitle(
