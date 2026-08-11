@@ -19,6 +19,13 @@ const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 
 const pendingRefreshes = new Map<string, Promise<string>>()
 
+// events.list defaults to 250 per page and caps at 2500. Pin the default explicitly so the
+// page size is visible at the call site instead of being whatever Google picks.
+const GOOGLE_EVENTS_PAGE_SIZE = 250
+// Safety bound on the pagination loop: a remote that keeps handing back a pageToken must not
+// spin forever. 100 pages ≈ 25k events per calendar per pass, far above any real calendar.
+const GOOGLE_EVENTS_MAX_PAGES = 100
+
 const GoogleCalendarListItemSchema = z.object({
   id: z.string().min(1),
   summary: z.string().optional(),
@@ -100,6 +107,7 @@ const GoogleEventSchema = z.object({
 
 const GoogleEventsListSchema = z.object({
   items: z.array(GoogleEventSchema).default([]),
+  nextPageToken: z.string().optional(),
   nextSyncToken: z.string().optional()
 })
 
@@ -494,37 +502,64 @@ export function createGoogleCalendarClient(
       events: GoogleCalendarRemoteEvent[]
       nextSyncCursor: string | null
     }> {
-      const useSyncToken = Boolean(input.syncCursor)
+      const syncToken = input.syncCursor ?? undefined
+      const baseQuery: Record<string, string | undefined | null> = syncToken
+        ? {
+            showDeleted: 'true',
+            singleEvents: 'true',
+            syncToken
+          }
+        : {
+            showDeleted: 'true',
+            singleEvents: 'true',
+            timeMin: input.timeMin ?? undefined,
+            timeMax: input.timeMax ?? undefined
+          }
 
-      const response = await withAuthorizedResponse(accountId, {
-        path: `/calendars/${encodeURIComponent(input.calendarId)}/events`,
-        query: useSyncToken
-          ? {
-              showDeleted: 'true',
-              singleEvents: 'true',
-              syncToken: input.syncCursor!
-            }
-          : {
-              showDeleted: 'true',
-              singleEvents: 'true',
-              timeMin: input.timeMin ?? undefined,
-              timeMax: input.timeMax ?? undefined
-            }
+      // Both branches paginate: a token-based delta can span pages just like a windowed
+      // listing. Google only emits nextSyncToken on the LAST page, so reading it before the
+      // traversal ends leaves the cursor permanently null and incremental sync never engages.
+      const events: GoogleCalendarRemoteEvent[] = []
+      let pageToken: string | undefined
+
+      for (let page = 0; page < GOOGLE_EVENTS_MAX_PAGES; page += 1) {
+        const response = await withAuthorizedResponse(accountId, {
+          path: `/calendars/${encodeURIComponent(input.calendarId)}/events`,
+          query: {
+            ...baseQuery,
+            maxResults: String(GOOGLE_EVENTS_PAGE_SIZE),
+            pageToken
+          }
+        })
+
+        // A 410 anywhere in the traversal invalidates the whole run — the pages already
+        // collected came from a token Google has since expired. Drop them and report a null
+        // cursor so the caller re-syncs from scratch, exactly as on a first-page 410.
+        if (response.status === 410) {
+          return { events: [], nextSyncCursor: null }
+        }
+
+        if (!response.ok) {
+          await throwCalendarApiFailure(response, 'list Google calendar events')
+        }
+
+        const parsed = GoogleEventsListSchema.parse(await response.json())
+        for (const item of parsed.items) {
+          events.push(mapRemoteEvent(input.calendarId, item))
+        }
+
+        if (!parsed.nextPageToken) {
+          return { events, nextSyncCursor: parsed.nextSyncToken ?? null }
+        }
+        pageToken = parsed.nextPageToken
+      }
+
+      log.error('Google calendar event pagination hit the page cap; results truncated', {
+        calendarId: input.calendarId,
+        maxPages: GOOGLE_EVENTS_MAX_PAGES,
+        eventCount: events.length
       })
-
-      if (response.status === 410) {
-        return { events: [], nextSyncCursor: null }
-      }
-
-      if (!response.ok) {
-        await throwCalendarApiFailure(response, 'list Google calendar events')
-      }
-
-      const parsed = GoogleEventsListSchema.parse(await response.json())
-      return {
-        events: parsed.items.map((item) => mapRemoteEvent(input.calendarId, item)),
-        nextSyncCursor: parsed.nextSyncToken ?? null
-      }
+      return { events, nextSyncCursor: null }
     },
 
     async getEvent(input): Promise<GoogleCalendarRemoteEvent> {
