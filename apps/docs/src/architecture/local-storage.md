@@ -119,6 +119,22 @@ Drizzle schemas live in `packages/db-schema`. Tables of note:
 - `sync_items`, `sync_pull_cursor`, `sync_outbox` (sync state)
 - `field_clocks` JSON column on tasks and projects (per-field vector clocks)
 
+### Graph Queries
+
+`apps/desktop/src/main/database/queries/graph.ts` answers two different questions with two
+different query shapes:
+
+- **Whole graph** (`getGraphData`) scans every markdown note, tag, unarchived task, unarchived
+  project, wikilink, relation ref and task↔note row. The graph view asks for all of it, so it
+  costs what it costs.
+- **Local graph** (`getLocalGraph`) walks outwards from one note, one hop at a time, with
+  indexed lookups on both sides of every relationship. It reads the neighbourhood, not the
+  vault, so a note's local graph costs the same on a 5,000-note vault as on a small one.
+
+The local traversal still enumerates the edges touching its outermost ring without following
+them, because a node's `connectionCount` is its degree in the whole graph rather than inside the
+returned slice.
+
 ## Migrations
 
 ```bash
