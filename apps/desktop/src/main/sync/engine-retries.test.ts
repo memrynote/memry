@@ -575,7 +575,14 @@ describe('SyncEngine', () => {
           payload: JSON.stringify({ title: 'Test', clock: { 'device-1': 1 } })
         })
 
-        await engine.push()
+        // The mock network reports online, so withRetry treats an unreachable
+        // server as transient and spaces its retries by backoff (~31s of wall
+        // clock). Drive that with fake timers rather than waiting for it.
+        vi.useFakeTimers()
+        const pushed = engine.push()
+        await vi.advanceTimersByTimeAsync(60_000)
+        await pushed
+        vi.useRealTimers()
 
         expect(engine.currentState).toBe('offline')
         expect(engine.getStatus().error).toBeUndefined()

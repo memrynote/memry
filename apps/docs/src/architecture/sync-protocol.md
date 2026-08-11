@@ -479,6 +479,7 @@ phrase can restore the correct key. See
 | Failure             | Behavior                                                                                   |
 | ------------------- | ------------------------------------------------------------------------------------------ |
 | Offline             | Outbox queues; retry with backoff                                                          |
+| Server unreachable  | Machine still has a link, so requests are retried with exponential backoff, not instantly  |
 | Auth expired (401)  | Refresh the access token and retry the request once; only a failed refresh prompts sign-in |
 | Refresh rejected    | Stop refreshing entirely (see below); prompt the user to sign in again                     |
 | Payment required    | Sync stays local-only until a paid plan is active                                          |
