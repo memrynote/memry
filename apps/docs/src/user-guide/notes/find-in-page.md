@@ -42,3 +42,5 @@ PDF previews use their own embedded find — memrynote's find bar doesn't reach 
 ## Performance
 
 Find runs against the rendered document, so it sees what you see (including code blocks, list items, callout text). It does not cross block boundaries that aren't visually adjacent.
+
+Typing in the bar is debounced: on a long note the matches update a moment after you stop typing rather than on every character. Whatever you typed last always gets searched, and pressing <kbd>Enter</kbd> or <kbd>⇧</kbd>+<kbd>Enter</kbd> searches straight away instead of waiting. Editing the note while the bar is open re-runs the search too, so the match count and highlights stay in step with the text.

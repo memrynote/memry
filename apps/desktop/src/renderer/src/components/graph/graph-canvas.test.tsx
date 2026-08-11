@@ -622,5 +622,155 @@ describe('GraphCanvas', () => {
         expect(new Set(record.edgeReducerCalls)).toEqual(new Set(graph.edges()))
       })
     })
+
+    it('leaves no graph listeners behind on unmount', () => {
+      const { graph, unmount } = renderLive()
+      unmount()
+
+      for (const event of ['nodeAdded', 'nodeDropped', 'edgeAdded', 'edgeDropped']) {
+        expect(graph.listenerCount(event)).toBe(0)
+      }
+    })
+  })
+
+  describe('incremental data updates', () => {
+    const noteC: GraphDataResponse['nodes'][number] = {
+      id: 'note-c',
+      type: 'note',
+      label: 'Gamma',
+      tags: [],
+      wordCount: 10,
+      connectionCount: 1,
+      emoji: null,
+      color: '#555555',
+      isOrphan: false,
+      isUnresolved: false
+    }
+
+    function renderWith(
+      next: GraphDataResponse,
+      graphSettings: GraphSettings = settings
+    ): { rerender: (data: GraphDataResponse) => void; unmount: () => void } {
+      const { rerender, unmount } = render(
+        <GraphCanvas
+          data={next}
+          filterState={filters}
+          graphSettings={graphSettings}
+          onFocusNode={vi.fn()}
+        />
+      )
+      return {
+        rerender: (updated) =>
+          rerender(
+            <GraphCanvas
+              data={updated}
+              filterState={filters}
+              graphSettings={graphSettings}
+              onFocusNode={vi.fn()}
+            />
+          ),
+        unmount
+      }
+    }
+
+    function liveGraph(): any {
+      return graphCanvasMocks.sigmaContainerProps?.graph
+    }
+
+    it('keeps the same graph instance so sigma is never recreated', () => {
+      const { rerender } = renderWith(data)
+      const graph = liveGraph()
+
+      rerender({ nodes: [...data.nodes, noteC], edges: data.edges })
+
+      expect(liveGraph()).toBe(graph)
+      expect(graph.hasNode('note-c')).toBe(true)
+    })
+
+    it('removes a deleted note and its edges from the live graph', () => {
+      const { rerender } = renderWith(data)
+      const graph = liveGraph()
+      expect(graph.hasEdge('note-a-task-1-task-note')).toBe(true)
+
+      rerender({
+        nodes: data.nodes.filter((node) => node.id !== 'task-1'),
+        edges: data.edges.filter((edge) => edge.target !== 'task-1')
+      })
+
+      expect(liveGraph()).toBe(graph)
+      expect(graph.hasNode('task-1')).toBe(false)
+      expect(graph.hasEdge('note-a-task-1-task-note')).toBe(false)
+    })
+
+    it('renames a node in the live graph', () => {
+      const { rerender } = renderWith(data)
+      const graph = liveGraph()
+
+      rerender({
+        nodes: data.nodes.map((node) =>
+          node.id === 'note-a' ? { ...node, label: 'Renamed' } : node
+        ),
+        edges: data.edges
+      })
+
+      expect(liveGraph()).toBe(graph)
+      expect(graph.getNodeAttribute('note-a', 'label')).toBe('Renamed')
+    })
+
+    it('adds and removes links in the live graph', () => {
+      const { rerender } = renderWith(data)
+      const graph = liveGraph()
+
+      rerender({
+        nodes: data.nodes,
+        edges: [
+          ...data.edges,
+          { id: 'edge-b-ghost', source: 'note-b', target: 'ghost', type: 'wikilink', weight: 1 }
+        ]
+      })
+      expect(graph.hasEdge('note-b-ghost-wikilink')).toBe(true)
+
+      rerender({ nodes: data.nodes, edges: data.edges })
+      expect(graph.hasEdge('note-b-ghost-wikilink')).toBe(false)
+      expect(liveGraph()).toBe(graph)
+    })
+
+    it('does not re-simulate when a save changes nothing structural', () => {
+      const live: GraphSettings = { ...settings, layout: 'forceatlas2', animateLayout: true }
+      const { rerender } = renderWith(data, live)
+      for (let i = 0; i < 400; i++) vi.advanceTimersToNextFrame()
+      const settledX = liveGraph().getNodeAttribute('note-a', 'x')
+
+      rerender({
+        nodes: data.nodes.map((node) => ({ ...node, tags: [...node.tags] })),
+        edges: data.edges.map((edge) => ({ ...edge }))
+      })
+      for (let i = 0; i < 5; i++) vi.advanceTimersToNextFrame()
+
+      expect(liveGraph().getNodeAttribute('note-a', 'x')).toBe(settledX)
+    })
+
+    it('reheats the settled simulation when a node appears', () => {
+      const live: GraphSettings = { ...settings, layout: 'forceatlas2', animateLayout: true }
+      const { rerender } = renderWith(data, live)
+      for (let i = 0; i < 400; i++) vi.advanceTimersToNextFrame()
+      const graph = liveGraph()
+      const settledX = graph.getNodeAttribute('note-a', 'x')
+
+      rerender({
+        nodes: [...data.nodes, noteC],
+        edges: [
+          ...data.edges,
+          { id: 'edge-a-c', source: 'note-a', target: 'note-c', type: 'wikilink', weight: 1 }
+        ]
+      })
+      vi.advanceTimersToNextFrame()
+      const afterFirstFrame = graph.getNodeAttribute('note-a', 'x')
+      for (let i = 0; i < 20; i++) vi.advanceTimersToNextFrame()
+
+      expect(afterFirstFrame).not.toBe(settledX)
+      // Without the reheat the loop parks itself again after that single tick.
+      expect(graph.getNodeAttribute('note-a', 'x')).not.toBe(afterFirstFrame)
+    })
   })
 })

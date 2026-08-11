@@ -9,7 +9,7 @@ export interface ArticleProperties {
 
 export interface ArticleCapture {
   url: string
-  mode: 'article' | 'selection' | 'screenshot'
+  mode: 'article' | 'selection' | 'screenshot' | 'pdf'
   contentMarkdown: string
   excerpt: string
   extractionStatus: 'full' | 'partial' | 'failed'
@@ -22,6 +22,8 @@ export interface ArticleCapture {
   // extraction mapping never sets them).
   force?: boolean
   screenshotDataUrl?: string
+  pdfDataUrl?: string
+  pdfFilename?: string
 }
 
 export interface DefuddleLikeResult {

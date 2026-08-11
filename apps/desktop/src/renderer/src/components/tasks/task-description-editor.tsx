@@ -8,6 +8,7 @@
 
 import { memo, useCallback, useEffect, useRef } from 'react'
 import { useCreateBlockNote } from '@blocknote/react'
+import { useEditorTeardown } from '@/hooks/use-editor-teardown'
 import { BlockNoteView } from '@blocknote/shadcn'
 import { useTheme } from 'next-themes'
 
@@ -56,6 +57,9 @@ export const TaskDescriptionEditor = memo(function TaskDescriptionEditor({
       checkListItem: 'To-do item'
     }
   })
+
+  // `useCreateBlockNote` never disposes what it builds.
+  useEditorTeardown(editor)
 
   // Parse and load initial markdown once.
   useEffect(() => {

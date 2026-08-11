@@ -49,9 +49,16 @@ export function useWikiLinkHover(
   }, [])
 
   const dismiss = useCallback(() => {
+    // Timers and the active target are cleared unconditionally: a scroll (or a
+    // mouseout) that lands while a preview is merely *armed* must cancel it, or
+    // the card pops up moments later over content the user has moved past.
     clearTimers()
     activeTargetRef.current = null
-    setState({ preview: null, position: null, isVisible: false })
+    // Nothing shown means nothing to hide. Handing back `prev` lets React bail
+    // out instead of re-rendering the whole editor tree for an identical state.
+    setState((prev) =>
+      prev.isVisible ? { preview: null, position: null, isVisible: false } : prev
+    )
   }, [clearTimers])
 
   const computePosition = useCallback((linkEl: Element): HoverPosition | null => {

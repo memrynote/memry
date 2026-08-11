@@ -7,7 +7,7 @@
  */
 
 import path from 'path'
-import { BrowserWindow } from 'electron'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getStatus, getConfig } from './index'
 import { normalizeRelativePath } from '../lib/paths'
 import { VaultError, VaultErrorCode } from '../lib/errors'
@@ -49,7 +49,5 @@ export function toRelativePath(absolutePath: string): string {
 // ============================================================================
 
 export function emitNoteEvent(channel: string, payload: unknown): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, payload)
-  })
+  broadcastToAllWindows(channel, payload)
 }

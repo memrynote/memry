@@ -110,6 +110,13 @@ interface EditorSyncParams {
   initialContent?: Block[] | string
   contentType?: 'html' | 'markdown' | 'blocks'
   yjsFragment?: Y.XmlFragment
+  /**
+   * Bumped by the owner when `initialContent` was replaced by an edit that did
+   * NOT come from this editor (device sync, an on-disk edit, an agent write).
+   * The editor is an uncontrolled component, so without this the content only
+   * loads once per instance and the owner has to remount the whole editor.
+   */
+  externalContentRevision?: number
   isRemoteUpdateRef?: React.RefObject<boolean>
   noteTags?: string[]
   tagColorMap?: Map<string, string>
@@ -122,6 +129,12 @@ interface EditorSyncParams {
 
 interface EditorSyncResult {
   handleChange: () => void
+  /**
+   * Run the debounced markdown save right now instead of waiting for its timer.
+   * Used at teardown so an edit made inside the debounce window still persists
+   * before the editor is destroyed. Resolves once `onMarkdownChange` has run.
+   */
+  flushPendingMarkdown: () => Promise<void>
   isContentReadyRef: React.RefObject<boolean>
   prevInlineTagsRef: React.MutableRefObject<string[]>
   lastNormalizedTagsRef: React.MutableRefObject<string>
@@ -134,6 +147,7 @@ export function useEditorSync({
   initialContent,
   contentType = 'html',
   yjsFragment,
+  externalContentRevision,
   isRemoteUpdateRef,
   noteTags,
   tagColorMap,
@@ -143,7 +157,7 @@ export function useEditorSync({
   onHeadingsChange,
   onInlineTagsChange
 }: EditorSyncParams): EditorSyncResult {
-  const initialContentLoadedRef = useRef(false)
+  const loadedContentRevisionRef = useRef<number | null>(null)
   const isContentReadyRef = useRef(false)
   const prevInlineTagsRef = useRef<string[]>([])
   const lastNormalizedTagsRef = useRef<string>('')
@@ -151,6 +165,8 @@ export function useEditorSync({
   const markdownDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const headingsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inlineTagsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // The debounced markdown save, kept callable so teardown can run it early.
+  const pendingMarkdownSaveRef = useRef<(() => Promise<void>) | null>(null)
 
   // Cleanup debounce timers on unmount
   useEffect(() => {
@@ -170,16 +186,31 @@ export function useEditorSync({
     }
   }, [editor, noteId])
 
-  // Parse content on initial mount (uncontrolled component pattern).
+  // Parse content on initial mount (uncontrolled component pattern), and again
+  // whenever the owner reports that `initialContent` was replaced from outside
+  // this editor (`externalContentRevision`). Re-parsing in place is what lets
+  // the owner keep one editor instance alive across external updates instead of
+  // remounting a brand-new one.
   // Cancellation flag + cleanup return mark this as a synchronization effect
   // so the unnecessary-effect lints recognize it as legitimate.
   useEffect(() => {
-    if (initialContentLoadedRef.current) {
+    const revision = externalContentRevision ?? 0
+    if (loadedContentRevisionRef.current === revision) {
       return
     }
-    initialContentLoadedRef.current = true
+    const isExternalReload = loadedContentRevisionRef.current !== null
+    loadedContentRevisionRef.current = revision
 
     let cancelled = false
+
+    // Collaboration owns the document: the main process feeds an external edit
+    // into the shared Y.Doc (`feedExternalEditToCrdt`), the IPC provider applies
+    // it here, and y-prosemirror merges it into this editor in place. Replacing
+    // the blocks from `initialContent` would clobber that merge — including any
+    // edit the user is making concurrently.
+    if (isExternalReload && yjsFragment) {
+      return
+    }
 
     if (yjsFragment) {
       clearYjsUndoHistory(editor)
@@ -278,7 +309,7 @@ export function useEditorSync({
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor])
+  }, [editor, externalContentRevision])
 
   // Debounced change handler
   const handleChange = useCallback(() => {
@@ -301,21 +332,22 @@ export function useEditorSync({
       if (markdownDebounceRef.current) {
         clearTimeout(markdownDebounceRef.current)
       }
-      markdownDebounceRef.current = setTimeout(() => {
-        void (async () => {
-          try {
-            const markdown = await serializeBlocksPreservingBlanks(
-              editor,
-              editor.document as Block[]
-            )
+      const save = async (): Promise<void> => {
+        pendingMarkdownSaveRef.current = null
+        try {
+          const markdown = await serializeBlocksPreservingBlanks(editor, editor.document as Block[])
 
-            onMarkdownChange(markdown)
-          } catch (error) {
-            // The debounced save silently stops while the user keeps typing.
-            log.error('Failed to convert blocks to markdown', error)
-            trackRendererError('editor_serialize_save', error)
-          }
-        })()
+          onMarkdownChange(markdown)
+        } catch (error) {
+          // The debounced save silently stops while the user keeps typing.
+          log.error('Failed to convert blocks to markdown', error)
+          trackRendererError('editor_serialize_save', error)
+        }
+      }
+      pendingMarkdownSaveRef.current = save
+      markdownDebounceRef.current = setTimeout(() => {
+        markdownDebounceRef.current = null
+        void save()
       }, 150)
     }
 
@@ -352,5 +384,22 @@ export function useEditorSync({
     onInlineTagsChange
   ])
 
-  return { handleChange, isContentReadyRef, prevInlineTagsRef, lastNormalizedTagsRef }
+  // Teardown hook: run the debounced save now. The unmount cleanup above only
+  // clears the timer, so without this an edit made in the last 150ms before the
+  // tab/journal date closed would never reach `onMarkdownChange`.
+  const flushPendingMarkdown = useCallback(async (): Promise<void> => {
+    if (markdownDebounceRef.current) {
+      clearTimeout(markdownDebounceRef.current)
+      markdownDebounceRef.current = null
+    }
+    await pendingMarkdownSaveRef.current?.()
+  }, [])
+
+  return {
+    handleChange,
+    flushPendingMarkdown,
+    isContentReadyRef,
+    prevInlineTagsRef,
+    lastNormalizedTagsRef
+  }
 }

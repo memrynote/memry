@@ -12,11 +12,25 @@ const mocks = vi.hoisted(() => ({
   tabsState: null as TabSystemState | null,
   dispatch: vi.fn(),
   pendingSave: null as null | (() => void),
+  serializeCalls: 0,
   registerPendingSave: vi.fn((_: string, callback: () => void) => {
     mocks.pendingSave = callback
   }),
   unregisterPendingSave: vi.fn()
 }))
+
+// Counts full tab-tree serializations so the auto-save tests can assert how many
+// times the tree is walked, independently of how long the debounce waits.
+vi.mock('./serialization', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./serialization')>()
+  return {
+    ...actual,
+    serializeTabState: (state: TabSystemState) => {
+      mocks.serializeCalls += 1
+      return actual.serializeTabState(state)
+    }
+  }
+})
 
 vi.mock('@/contexts/tabs', () => ({
   useTabs: () => ({
@@ -135,6 +149,59 @@ const persisted = (overrides: Partial<PersistedTabState> = {}): PersistedTabStat
   settings: state().settings,
   savedAt: 123,
   ...overrides
+})
+
+const CLOCK_START = 1_700_000_000_000
+const STATE_CHANGES = 20
+
+/** Publishes 20 distinct tab states, re-rendering the probe after each one. */
+function applyStateChanges(rerender: () => void): void {
+  for (let i = 1; i <= STATE_CHANGES; i++) {
+    const next = state()
+    next.tabGroups['group-1'].tabs[0] = tab({ title: `Roadmap ${i}` })
+    mocks.tabsState = next
+    rerender()
+  }
+}
+
+/** The exact payload the last of those states must serialize to. */
+const expectedPersisted = (savedAt: number): PersistedTabState => ({
+  version: 2,
+  tabGroups: {
+    'group-1': {
+      id: 'group-1',
+      activeTabId: 'tab-1',
+      tabs: [
+        {
+          id: 'tab-1',
+          type: 'note',
+          title: `Roadmap ${STATE_CHANGES}`,
+          icon: 'file-text',
+          emoji: null,
+          path: '/note/tab-1',
+          entityId: 'tab-1',
+          isPinned: false,
+          scrollPosition: 42,
+          viewState: { cursor: 'top' }
+        },
+        {
+          id: 'pin-1',
+          type: 'inbox',
+          title: 'Inbox',
+          icon: 'inbox',
+          emoji: null,
+          path: '/inbox',
+          isPinned: true,
+          scrollPosition: 42,
+          viewState: { cursor: 'top' }
+        }
+      ]
+    }
+  },
+  layout: { type: 'leaf', tabGroupId: 'group-1' },
+  activeGroupId: 'group-1',
+  settings: state().settings,
+  savedAt
 })
 
 function withQueryClient(children: React.ReactNode) {
@@ -320,6 +387,7 @@ describe('tab persistence hooks', () => {
     localStorage.clear()
     mocks.tabsState = state()
     mocks.pendingSave = null
+    mocks.serializeCalls = 0
     sessionSnapshot = null
     manualSnapshot = null
   })
@@ -354,6 +422,55 @@ describe('tab persistence hooks', () => {
 
     unmount()
     expect(mocks.unregisterPendingSave).toHaveBeenCalledWith('tab-state')
+  })
+
+  it('serializes once per debounce window, not once per tab-state change', async () => {
+    const storage: TabStorage = {
+      save: vi.fn().mockResolvedValue(undefined),
+      load: vi.fn(),
+      clear: vi.fn()
+    }
+    vi.setSystemTime(CLOCK_START)
+
+    const { rerender } = render(<TabPersistenceProbe storage={storage} debounceMs={25} />)
+    applyStateChanges(() => rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />))
+
+    // Mount plus 20 tab-state changes: the tree must not be walked once per change.
+    expect(mocks.serializeCalls).toBe(0)
+    expect(storage.save).not.toHaveBeenCalled()
+
+    act(() => vi.advanceTimersByTime(25))
+
+    expect(mocks.serializeCalls).toBe(1)
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
+    expect(storage.save).toHaveBeenCalledWith(expectedPersisted(CLOCK_START + 25))
+  })
+
+  it('registers the unload handler once and writes the latest state on unload', () => {
+    const storage: TabStorage = {
+      save: vi.fn().mockResolvedValue(undefined),
+      load: vi.fn(),
+      clear: vi.fn()
+    }
+    const addSpy = vi.spyOn(window, 'addEventListener')
+    const removeSpy = vi.spyOn(window, 'removeEventListener')
+    vi.setSystemTime(CLOCK_START)
+
+    const { rerender } = render(<TabPersistenceProbe storage={storage} debounceMs={25} />)
+    applyStateChanges(() => rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />))
+
+    const unloadAdds = addSpy.mock.calls.filter(([type]) => type === 'beforeunload')
+    const unloadRemovals = removeSpy.mock.calls.filter(([type]) => type === 'beforeunload')
+    expect(unloadAdds).toHaveLength(1)
+    expect(unloadRemovals).toHaveLength(0)
+
+    act(() => window.dispatchEvent(new Event('beforeunload')))
+
+    // The one long-lived handler must still write the newest tab tree, not the
+    // tree it closed over when it was registered.
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')).toEqual(
+      expectedPersisted(CLOCK_START)
+    )
   })
 
   it('restores full sessions, pinned-only sessions, errors, and manual operations', async () => {

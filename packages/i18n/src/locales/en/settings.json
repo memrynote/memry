@@ -1083,6 +1083,7 @@
         "reconnectRequired": "Reconnect Required"
       },
       "accountReconnect": "Reconnect Google",
+      "addAccount": "Add account",
       "importedCalendars": "Imported Calendars",
       "selected": "{count} selected",
       "syncNow": "Sync Now",

@@ -31,9 +31,11 @@ export const quickCaptureApi = {
 }
 
 export const flushApi = {
-  onFlushRequested: (callback: () => void): (() => void) =>
-    subscribe<void>('app:request-flush', () => callback()),
-  notifyFlushDone: (): void => {
-    ipcRenderer.send('app:flush-done')
+  // The request id scopes the reply to the flush the main process is waiting on;
+  // echo it back untouched or main falls back to its timeout.
+  onFlushRequested: (callback: (requestId?: string) => void): (() => void) =>
+    subscribe<string | undefined>('app:request-flush', (requestId) => callback(requestId)),
+  notifyFlushDone: (requestId?: string): void => {
+    ipcRenderer.send('app:flush-done', requestId)
   }
 }

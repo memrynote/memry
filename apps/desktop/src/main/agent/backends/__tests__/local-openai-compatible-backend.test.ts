@@ -433,6 +433,180 @@ describe('LocalOpenAICompatibleBackend', () => {
     expect(streamArgs.providerOptions).toEqual({ ollama: { options: { num_ctx: 8192 } } })
   })
 
+  describe('capability probe caching', () => {
+    const baseSettings = {
+      preset: 'ollama' as const,
+      baseUrl: 'http://localhost:11434/v1',
+      model: 'llama3.2',
+      apiKeyConfigured: false,
+      allowNonLoopback: false
+    }
+
+    function alwaysStream(): void {
+      mocks.streamText.mockImplementation(() => ({
+        fullStream: (async function* () {
+          yield { type: 'finish' }
+        })()
+      }))
+    }
+
+    function probeCallCount(fetchImpl: typeof fetch): number {
+      return (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls.length
+    }
+
+    async function turn(backend: LocalOpenAICompatibleBackend): Promise<void> {
+      await backend.runTurn({
+        conversationId: 'conversation-1',
+        windowId: 'window-1',
+        prompt: 'User: hello',
+        options: { backend: 'local_openai_compatible', model: 'llama3.2', toolsEnabled: true }
+      })
+    }
+
+    it('probes once and reuses the result across turns', async () => {
+      alwaysStream()
+      const fetchImpl = createProbeFetch()
+      const backend = new LocalOpenAICompatibleBackend({
+        getSettings: async () => baseSettings,
+        getApiKey: async () => null,
+        toolBridge: { execute: vi.fn() } as never,
+        fetch: fetchImpl
+      })
+
+      await turn(backend)
+      // /v1/models + streaming completion + two tool round-trip completions
+      expect(probeCallCount(fetchImpl)).toBe(4)
+
+      await turn(backend)
+      expect(probeCallCount(fetchImpl)).toBe(4)
+      expect(mocks.streamText).toHaveBeenLastCalledWith(
+        expect.objectContaining({ tools: expect.anything() })
+      )
+    })
+
+    it('re-probes when the model, base URL, or API key changes', async () => {
+      alwaysStream()
+      const fetchImpl = createProbeFetch({ models: ['llama3.2', 'qwen3'] })
+      let settings = { ...baseSettings }
+      let apiKey: string | null = null
+      const backend = new LocalOpenAICompatibleBackend({
+        getSettings: async () => settings,
+        getApiKey: async () => apiKey,
+        toolBridge: { execute: vi.fn() } as never,
+        fetch: fetchImpl
+      })
+
+      await turn(backend)
+      expect(probeCallCount(fetchImpl)).toBe(4)
+
+      settings = { ...settings, model: 'qwen3' }
+      await turn(backend)
+      expect(probeCallCount(fetchImpl)).toBe(8)
+
+      settings = { ...settings, baseUrl: 'http://localhost:1234/v1' }
+      await turn(backend)
+      expect(probeCallCount(fetchImpl)).toBe(12)
+
+      apiKey = 'rotated'
+      await turn(backend)
+      expect(probeCallCount(fetchImpl)).toBe(16)
+    })
+
+    it('never caches an unreachable provider so starting the server takes effect next turn', async () => {
+      alwaysStream()
+      const live = createProbeFetch()
+      let serverUp = false
+      const fetchImpl = vi.fn(async (url: string | URL, init?: RequestInit) =>
+        serverUp ? live(url, init) : new Response('down', { status: 503 })
+      ) as unknown as typeof fetch
+
+      const backend = new LocalOpenAICompatibleBackend({
+        getSettings: async () => baseSettings,
+        getApiKey: async () => null,
+        toolBridge: { execute: vi.fn() } as never,
+        fetch: fetchImpl
+      })
+
+      await turn(backend)
+      await turn(backend)
+      // Both turns hit /v1/models — the failure must never be cached.
+      expect(probeCallCount(fetchImpl)).toBe(2)
+      expect(mocks.streamText).toHaveBeenLastCalledWith(
+        expect.not.objectContaining({ tools: expect.anything() })
+      )
+
+      serverUp = true
+      await turn(backend)
+      expect(probeCallCount(fetchImpl)).toBe(6)
+      expect(mocks.streamText).toHaveBeenLastCalledWith(
+        expect.objectContaining({ tools: expect.anything() })
+      )
+    })
+
+    it('collapses concurrent turns onto a single in-flight probe', async () => {
+      alwaysStream()
+      const fetchImpl = createProbeFetch()
+      const backend = new LocalOpenAICompatibleBackend({
+        getSettings: async () => baseSettings,
+        getApiKey: async () => null,
+        toolBridge: { execute: vi.fn() } as never,
+        fetch: fetchImpl
+      })
+
+      await Promise.all([turn(backend), turn(backend), turn(backend)])
+
+      expect(probeCallCount(fetchImpl)).toBe(4)
+    })
+
+    it('forces a live probe for the settings screen and refreshes the cache', async () => {
+      alwaysStream()
+      const fetchImpl = createProbeFetch()
+      const backend = new LocalOpenAICompatibleBackend({
+        getSettings: async () => baseSettings,
+        getApiKey: async () => null,
+        toolBridge: { execute: vi.fn() } as never,
+        fetch: fetchImpl
+      })
+
+      await turn(backend)
+      expect(probeCallCount(fetchImpl)).toBe(4)
+
+      await expect(backend.probeCapabilities()).resolves.toMatchObject({ toolsEnabled: true })
+      expect(probeCallCount(fetchImpl)).toBe(8)
+
+      await turn(backend)
+      expect(probeCallCount(fetchImpl)).toBe(8)
+    })
+
+    it('expires a cached probe after the TTL', async () => {
+      alwaysStream()
+      vi.useFakeTimers({ toFake: ['Date'] })
+      try {
+        vi.setSystemTime(new Date('2026-08-07T00:00:00.000Z'))
+        const fetchImpl = createProbeFetch()
+        const backend = new LocalOpenAICompatibleBackend({
+          getSettings: async () => baseSettings,
+          getApiKey: async () => null,
+          toolBridge: { execute: vi.fn() } as never,
+          fetch: fetchImpl
+        })
+
+        await turn(backend)
+        expect(probeCallCount(fetchImpl)).toBe(4)
+
+        vi.setSystemTime(new Date('2026-08-07T00:09:00.000Z'))
+        await turn(backend)
+        expect(probeCallCount(fetchImpl)).toBe(4)
+
+        vi.setSystemTime(new Date('2026-08-07T00:10:01.000Z'))
+        await turn(backend)
+        expect(probeCallCount(fetchImpl)).toBe(8)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+  })
+
   it('non-ollama preset stays on the /v1 openai-compat path without num_ctx', async () => {
     mocks.streamText.mockReturnValueOnce({
       fullStream: (async function* () {
@@ -467,12 +641,17 @@ describe('LocalOpenAICompatibleBackend', () => {
 })
 
 function createProbeFetch(
-  input: { toolCall?: boolean; toolProbeStatus?: number; streamBody?: boolean } = {}
+  input: {
+    toolCall?: boolean
+    toolProbeStatus?: number
+    streamBody?: boolean
+    models?: string[]
+  } = {}
 ): typeof fetch {
   return vi.fn(async (url: string | URL, init?: RequestInit) => {
     const href = String(url)
     if (href.endsWith('/models')) {
-      return jsonResponse({ data: [{ id: 'llama3.2' }] })
+      return jsonResponse({ data: (input.models ?? ['llama3.2']).map((id) => ({ id })) })
     }
 
     const body = JSON.parse(String(init?.body ?? '{}')) as {

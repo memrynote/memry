@@ -203,10 +203,10 @@ const createWindow = (id: number, destroyed = false) => {
   return win
 }
 
-const makeRemoteUpdate = (text: string): number[] => {
+const makeRemoteUpdate = (text: string): Uint8Array => {
   const doc = new Y.Doc()
   doc.getMap('meta').set('title', text)
-  return Array.from(Y.encodeStateAsUpdate(doc))
+  return Y.encodeStateAsUpdate(doc)
 }
 
 describe('CrdtProvider', () => {
@@ -289,6 +289,27 @@ describe('CrdtProvider', () => {
     expect(queue.enqueue).toHaveBeenCalled()
     expect(mocks.persistenceInstances[0].storeUpdate).toHaveBeenCalled()
     expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+  })
+
+  it('broadcasts one shared Uint8Array instead of a boxed copy per receiving window', async () => {
+    createWindow(1)
+    createWindow(2)
+    createWindow(3)
+    await provider.open('note-1', 1, { skipSeed: true })
+    await provider.open('note-1', 2, { skipSeed: true })
+    await provider.open('note-1', 3, { skipSeed: true })
+
+    const update = makeRemoteUpdate('typed payload')
+    provider.applyIpcUpdate('note-1', update, 1)
+
+    // Two receivers (the source window is skipped).
+    expect(mocks.sent).toHaveLength(2)
+    const payloads = mocks.sent.map((entry) => entry.payload as { update: unknown })
+    for (const payload of payloads) {
+      expect(payload.update).toBeInstanceOf(Uint8Array)
+    }
+    // One allocation for the whole fan-out — not Array.from() inside the loop.
+    expect(payloads[0].update).toBe(payloads[1].update)
   })
 
   it('buffers network broadcasts until close and records network-origin writeback', async () => {
@@ -396,6 +417,21 @@ describe('CrdtProvider', () => {
     )
   })
 
+  it('separates docs with a live editor from the ones the cache merely retains', async () => {
+    // getOpenNoteIds() is every doc in the LRU cache, including the up-to-32 an
+    // editor has already released. Reconnect recovery needs the smaller set.
+    createWindow(1)
+    await provider.open('with-editor', 1, { skipSeed: true })
+    await provider.open('cached-only', undefined, { skipSeed: true })
+
+    expect(provider.getOpenNoteIds().sort()).toEqual(['cached-only', 'with-editor'])
+    expect(provider.getOpenNoteIds({ active: true })).toEqual(['with-editor'])
+
+    await provider.close('with-editor', 1)
+
+    expect(provider.getOpenNoteIds({ active: true })).toEqual([])
+  })
+
   it('exposes aggregate open-doc metrics with per-doc size and window counts', async () => {
     createWindow(1)
     await provider.open('note-1', 1, { skipSeed: true })
@@ -452,6 +488,46 @@ describe('CrdtProvider', () => {
 
     await expect(provider.closeIfInactive('active-note')).resolves.toBe(false)
     expect(provider.getDoc('active-note')).toBe(activeDoc)
+  })
+
+  it('releases the docs of a destroyed window and closes the ones it was last to hold', async () => {
+    // A window torn down by ⌘W / reload / renderer crash never runs the React
+    // cleanup that sends crdt:close-doc, and BrowserWindow ids are never
+    // recycled — so without an explicit release the stale id pins the doc for
+    // the rest of the session and disables eviction and compaction with it.
+    createWindow(11)
+    createWindow(12)
+
+    const shared = await provider.open('shared-note', 11, { skipSeed: true })
+    await provider.open('shared-note', 12, { skipSeed: true })
+    await provider.open('solo-note', 11, { skipSeed: true })
+
+    await provider.forgetWindow(11)
+
+    // Window 12 is still live and editing shared-note — never evict under it.
+    expect(provider.getDoc('shared-note')).toBe(shared)
+    expect(
+      provider.getOpenDocMetrics().docs.find((doc) => doc.noteId === 'shared-note')?.windowCount
+    ).toBe(1)
+
+    // solo-note lost its only window: flushed to persistence, then released.
+    expect(mocks.persistenceInstances[0].flushDocument).toHaveBeenCalledWith('solo-note')
+    expect(provider.getDoc('solo-note')).toBeUndefined()
+  })
+
+  it('drops broadcast targets whose window is gone so the doc stops being pinned', async () => {
+    createWindow(21)
+    await provider.open('note-1', 21, { skipSeed: true })
+    expect(provider.getOpenDocMetrics().docs[0].windowCount).toBe(1)
+
+    // The window is destroyed without any close-doc IPC and without the
+    // 'closed' hook having run (e.g. it was opened before registration).
+    mocks.windows.delete(21)
+
+    provider.updateMeta('note-1', { title: 'still typing' })
+
+    expect(provider.getOpenDocMetrics().docs[0].windowCount).toBe(0)
+    await expect(provider.closeIfInactive('note-1')).resolves.toBe(true)
   })
 
   it('evicts least-recently-used inactive docs without evicting active editor docs', async () => {

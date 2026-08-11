@@ -107,6 +107,12 @@ export default defineConfig({
           include: ['src/renderer/**/*.{test,spec}.{ts,tsx}'],
           setupFiles: ['tests/setup.ts', 'tests/setup-dom.ts'],
           css: true,
+          // `@react-sigma/core` is the only renderer dependency a test drives for
+          // real rather than stubbing: local-graph-panel-sigma-lifecycle.test.tsx
+          // needs the container's genuine "recreate Sigma on prop identity change"
+          // rule. Externalised it would import the real `sigma` (WebGL, absent in
+          // jsdom) and ignore `vi.mock('sigma')`; inlined, the stub applies.
+          server: { deps: { inline: ['@react-sigma/core'] } },
           testTimeout: 30000,
           hookTimeout: 30000,
           environmentOptions: {

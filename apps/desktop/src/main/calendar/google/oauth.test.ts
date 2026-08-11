@@ -166,7 +166,7 @@ describe('google calendar oauth', () => {
       expect(parsed.pathname).toBe('/o/oauth2/v2/auth')
       expect(parsed.searchParams.get('scope')).toContain(GOOGLE_CALENDAR_SCOPE)
       expect(parsed.searchParams.get('access_type')).toBe('offline')
-      expect(parsed.searchParams.get('prompt')).toBe('consent')
+      expect(parsed.searchParams.get('prompt')).toBe('select_account consent')
 
       const state = parsed.searchParams.get('state')
       const redirectUri = parsed.searchParams.get('redirect_uri')
@@ -232,10 +232,28 @@ describe('google calendar oauth', () => {
     expect(parsed.searchParams.get('scope')).toBe(`openid email profile ${GOOGLE_CALENDAR_SCOPE}`)
     expect(parsed.searchParams.get('state')).toBe('state-123')
     expect(parsed.searchParams.get('access_type')).toBe('offline')
-    expect(parsed.searchParams.get('prompt')).toBe('consent')
+    expect(parsed.searchParams.get('prompt')).toBe('select_account consent')
     expect(parsed.searchParams.get('include_granted_scopes')).toBe('true')
     expect(parsed.searchParams.get('code_challenge')).toBe('challenge-123')
     expect(parsed.searchParams.get('code_challenge_method')).toBe('S256')
+  })
+
+  it('asks Google for the account chooser so a second account can be added', () => {
+    // Without select_account Google silently reuses whichever account is already
+    // signed in to the browser, so connecting a second account is impossible —
+    // the flow completes and lands right back on the account already linked.
+    const authUrl = buildGoogleCalendarAuthUrl({
+      clientId: 'client-id',
+      redirectUri: 'http://127.0.0.1:1234/callback',
+      state: 'state-123',
+      codeChallenge: 'challenge-123'
+    })
+
+    const prompt = new URL(authUrl).searchParams.get('prompt')?.split(' ') ?? []
+
+    expect(prompt).toContain('select_account')
+    // Still required: only a consent round-trip returns a refresh token.
+    expect(prompt).toContain('consent')
   })
 
   it('rejects provider error and malformed callback responses before token exchange', async () => {

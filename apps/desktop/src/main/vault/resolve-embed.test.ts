@@ -182,4 +182,46 @@ describe('resolveVaultEmbed', () => {
     const resolved = resolver.resolveVaultEmbeds(['Images/photo.png', 'missing.png'])
     expect(Object.keys(resolved)).toEqual(['Images/photo.png'])
   })
+
+  // The batch exists so that opening a note costs one round trip. Resolving each
+  // ref on its own re-read config.json (readFileSync + JSON.parse) and re-ran the
+  // whole-image-table fallback scan once per embed, so a 20-image note paid both
+  // costs 20 times.
+  it('reads the vault config once and touches the index once for a whole batch', () => {
+    writeVaultFile('Images/photo.png')
+    writeVaultFile('deep/nested/found.png')
+    indexDb.sqlite
+      .prepare(
+        `INSERT INTO note_cache (id, path, title, file_type, created_at, modified_at)
+         VALUES (?, ?, ?, 'image', 0, 0)`
+      )
+      .run('img1', 'deep/nested/found.png', 'found')
+
+    const readConfig = vi.mocked(vaultIndex.getConfig)
+    const openIndex = vi.mocked(database.getIndexDatabase)
+    readConfig.mockClear()
+    openIndex.mockClear()
+
+    const resolved = resolver.resolveVaultEmbeds([
+      'Images/photo.png',
+      'found.png',
+      'missing-one.png',
+      'missing-two.png'
+    ])
+
+    expect(Object.keys(resolved).sort()).toEqual(['Images/photo.png', 'found.png'])
+    expect.soft(readConfig).toHaveBeenCalledTimes(1)
+    expect.soft(openIndex).toHaveBeenCalledTimes(1)
+  })
+
+  it('skips the index entirely when every target is already on disk', () => {
+    writeVaultFile('Images/a.png')
+    writeVaultFile('Images/b.png')
+    const openIndex = vi.mocked(database.getIndexDatabase)
+    openIndex.mockClear()
+
+    resolver.resolveVaultEmbeds(['Images/a.png', 'Images/b.png'])
+
+    expect(openIndex).not.toHaveBeenCalled()
+  })
 })

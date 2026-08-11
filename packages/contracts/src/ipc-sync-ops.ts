@@ -38,6 +38,9 @@ export type SyncErrorCategory =
   // One file is over the plan's per-file limit — distinct from being out of
   // storage, and not fixable by freeing space.
   | 'file_too_large'
+  // One note's sync payload is over the server's per-request body limit —
+  // a payload problem, not an account-storage problem.
+  | 'note_too_large'
   | 'sync_payment_required'
   | 'certificate_pin_failed'
   | 'unknown'

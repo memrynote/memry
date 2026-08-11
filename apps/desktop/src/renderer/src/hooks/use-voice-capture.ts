@@ -73,13 +73,35 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const chunksRef = useRef<Blob[]>([])
+  const cancelledRef = useRef(false)
   const timerRef = useRef<number | null>(null)
   const startTimeRef = useRef<number>(0)
+
+  /**
+   * Hand the microphone back to the OS. `getUserMedia` turns the mic on before
+   * the recorder is built, so any path that abandons a stream has to stop every
+   * track — otherwise the mic stays hot with no UI saying it is recording.
+   */
+  const releaseStream = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+    setStream(null)
+  }, [])
 
   const stopRecording = useCallback((cancelled: boolean) => {
     if (timerRef.current) {
       clearInterval(timerRef.current)
       timerRef.current = null
+    }
+
+    // The recorder runs without a timeslice, so the whole recording arrives as a
+    // single `dataavailable` fired *after* `stop()` returns. Latch the discard
+    // before stopping so those late callbacks never resurrect the audio — a
+    // cancelled memo must never reach the vault or the transcriber.
+    if (cancelled) {
+      cancelledRef.current = true
     }
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -111,8 +133,13 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
         }
       })
 
+      // Overwriting the ref while an earlier stream is still live would strand
+      // it: nothing else holds a reference, so it could never be stopped.
+      releaseStream()
+
       streamRef.current = mediaStream
       chunksRef.current = []
+      cancelledRef.current = false
 
       const mediaRecorder = new MediaRecorder(mediaStream, {
         mimeType: MediaRecorder.isTypeSupported(MIME_TYPE) ? MIME_TYPE : 'audio/webm'
@@ -121,12 +148,18 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
       mediaRecorderRef.current = mediaRecorder
 
       mediaRecorder.ondataavailable = (event) => {
+        if (cancelledRef.current) return
         if (event.data.size > 0) {
           chunksRef.current.push(event.data)
         }
       }
 
       mediaRecorder.onstop = () => {
+        if (cancelledRef.current) {
+          chunksRef.current = []
+          return
+        }
+
         if (chunksRef.current.length > 0) {
           setState('processing')
 
@@ -164,10 +197,14 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
       }, 100)
     } catch (err) {
       log.error('Failed to start recording', err)
+      // `getUserMedia` may have already succeeded before the MediaRecorder
+      // constructor or `start()` threw, so release the mic before going idle.
+      releaseStream()
+      mediaRecorderRef.current = null
       optionsRef.current.onError(toCaptureError(err))
       setState('idle')
     }
-  }, [stopRecording])
+  }, [releaseStream, stopRecording])
 
   const stop = useCallback(() => stopRecording(false), [stopRecording])
   const cancel = useCallback(() => stopRecording(true), [stopRecording])

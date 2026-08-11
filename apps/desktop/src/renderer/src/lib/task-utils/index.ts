@@ -55,6 +55,8 @@ export {
 
 export {
   getFilteredTasks,
+  type TaskWorkspaceCounts,
+  getTaskWorkspaceCounts,
   type TaskCounts,
   getTaskCounts,
   formatTaskSubtitle,

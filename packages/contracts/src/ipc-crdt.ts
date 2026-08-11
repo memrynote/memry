@@ -18,17 +18,25 @@ export const CRDT_FRAGMENT_NAME = 'prosemirror' as const
 
 export const CrdtOpenDocSchema = z.object({ noteId: z.string().min(1) })
 export const CrdtCloseDocSchema = z.object({ noteId: z.string().min(1) })
+
+/**
+ * Yjs payloads stay binary across IPC. Electron's structured clone carries
+ * `Uint8Array` natively; boxing it into `number[]` costs ~8x the wire size plus
+ * an O(n) allocation on each side, on every keystroke and every doc open.
+ */
+const CrdtBinarySchema = z.instanceof(Uint8Array)
+
 export const CrdtApplyUpdateSchema = z.object({
   noteId: z.string().min(1),
-  update: z.array(z.number().int().min(0).max(255))
+  update: CrdtBinarySchema
 })
 export const CrdtSyncStep1Schema = z.object({
   noteId: z.string().min(1),
-  stateVector: z.array(z.number().int().min(0).max(255))
+  stateVector: CrdtBinarySchema
 })
 export const CrdtSyncStep2Schema = z.object({
   noteId: z.string().min(1),
-  diff: z.array(z.number().int().min(0).max(255))
+  diff: CrdtBinarySchema
 })
 
 export interface CrdtOpenDocInput {
