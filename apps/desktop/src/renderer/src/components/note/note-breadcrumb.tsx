@@ -2,6 +2,8 @@ import { useMemo, useCallback } from 'react'
 import { ChevronLeft } from '@/lib/icons'
 import { useTabs } from '@/contexts/tabs'
 import { useT } from '@memry/i18n/renderer'
+import { useNotesRoot } from '@/hooks/use-vault'
+import { stripNotesRoot } from '@/components/notes-tree-utils'
 
 interface BreadcrumbSegment {
   label: string
@@ -13,17 +15,17 @@ interface NoteBreadcrumbProps {
   noteTitle: string
 }
 
-function parseBreadcrumbSegments(notePath: string): BreadcrumbSegment[] {
-  const parts = notePath.split('/')
+function parseBreadcrumbSegments(notePath: string, notesRoot: string): BreadcrumbSegment[] {
+  // Crumbs open folder tabs, so they must be in the same base as folder views:
+  // relative to the notes root, not the vault root (#1204).
+  const parts = stripNotesRoot(notePath, notesRoot).split('/')
+  parts.pop()
 
-  const withoutNotesPrefix = parts[0] === 'notes' ? parts.slice(1) : [...parts]
-  withoutNotesPrefix.pop()
+  if (parts.length === 0) return []
 
-  if (withoutNotesPrefix.length === 0) return []
-
-  return withoutNotesPrefix.map((segment, i) => ({
+  return parts.map((segment, i) => ({
     label: segment,
-    folderPath: withoutNotesPrefix.slice(0, i + 1).join('/')
+    folderPath: parts.slice(0, i + 1).join('/')
   }))
 }
 
@@ -36,7 +38,12 @@ export function NoteBreadcrumb({ notePath, noteTitle }: NoteBreadcrumbProps) {
   const { t } = useT('notes')
   const { openTab } = useTabs()
 
-  const segments = useMemo(() => parseBreadcrumbSegments(notePath), [notePath])
+  const notesRoot = useNotesRoot()
+
+  const segments = useMemo(
+    () => parseBreadcrumbSegments(notePath, notesRoot),
+    [notePath, notesRoot]
+  )
 
   const handleFolderClick = useCallback(
     (folderPath: string, folderName: string) => {

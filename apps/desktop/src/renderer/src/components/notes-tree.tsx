@@ -127,6 +127,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
   const actions = useNoteTreeActions({
     noteMap: data.noteMap,
     tree: data.tree,
+    notesRoot: data.notesRoot,
     folders: data.folders,
     notePositions: data.notePositions,
     setNotePositions: data.setNotePositions,

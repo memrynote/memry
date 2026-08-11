@@ -95,12 +95,17 @@ const otherNote = createNote('other', 'notes/Other/C.pdf', { fileType: 'pdf' })
 const folders = [{ path: 'Work' }, { path: 'Other' }, { path: 'Work/Nested' }] as any[]
 const allNotes = [rootNote, workA, workB, otherNote]
 const noteMap = new Map(allNotes.map((note) => [note.id, note]))
-const tree = buildTreeFromNotes(allNotes, folders, {
-  'notes/Work/A.md': 1,
-  'notes/Work/B.md': 2,
-  Work: 1,
-  Other: 2
-})
+const tree = buildTreeFromNotes(
+  allNotes,
+  folders,
+  {
+    'notes/Work/A.md': 1,
+    'notes/Work/B.md': 2,
+    Work: 1,
+    Other: 2
+  },
+  'notes'
+)
 
 const createMutations = () =>
   ({
@@ -125,6 +130,7 @@ const renderActions = (overrides: Partial<NoteTreeActionsDeps> = {}) => {
   const deps: NoteTreeActionsDeps = {
     noteMap,
     tree,
+    notesRoot: 'notes',
     folders,
     notePositions: {},
     setNotePositions: vi.fn(),

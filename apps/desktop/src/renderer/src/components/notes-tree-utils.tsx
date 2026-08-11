@@ -17,12 +17,31 @@ export function getDisplayName(notePath: string): string {
   return lastDot > 0 ? filename.slice(0, lastDot) : filename
 }
 
-export function extractFolderFromPath(notePath: string): string {
-  const parts = notePath.split('/')
+/**
+ * Strip the configured notes root (`defaultNoteFolder`) off a vault-relative
+ * note path.
+ *
+ * Note paths from the index are relative to the VAULT root, but every folder
+ * consumer — `folderExists`, the folder view's LIKE query, `.folder.md` config,
+ * create/rename/delete folder — resolves folder paths against the NOTES root
+ * (`<vault>/<defaultNoteFolder>`). This used to strip a hardcoded `notes`
+ * literal, so any other value produced folder paths in the wrong base: a folder
+ * named after `defaultNoteFolder` resolved to `<vault>/<root>/<root>` and the
+ * view reported "Folder not found" (#1204).
+ *
+ * Tolerant on purpose: a path outside the notes root is returned unchanged,
+ * matching `noteFolderFromPath` in @memry/app-core.
+ */
+export function stripNotesRoot(notePath: string, notesRoot: string): string {
+  const root = notesRoot.replace(/^\/+|\/+$/g, '')
+  if (!root) return notePath
+  if (notePath === root) return ''
+  return notePath.startsWith(`${root}/`) ? notePath.slice(root.length + 1) : notePath
+}
+
+export function extractFolderFromPath(notePath: string, notesRoot = ''): string {
+  const parts = stripNotesRoot(notePath, notesRoot).split('/')
   parts.pop()
-  if (parts.length > 0 && parts[0] === 'notes') {
-    return parts.slice(1).join('/')
-  }
   return parts.join('/')
 }
 
@@ -83,7 +102,8 @@ export function getFoldersInParent(tree: TreeStructure, parentPath: string): str
 export function buildTreeFromNotes(
   notes: NoteListItem[],
   folders: FolderInfo[],
-  positions: Record<string, number>
+  positions: Record<string, number>,
+  notesRoot = ''
 ): TreeStructure {
   const folderMap = new Map<string, FolderNode>()
   const rootNotes: NoteListItem[] = []
@@ -135,18 +155,13 @@ export function buildTreeFromNotes(
   })
 
   notes.forEach((note) => {
-    const pathParts = note.path.split('/')
-    pathParts.pop()
+    // Folder nodes must stay in the same base as `folders` (notes-root-relative),
+    // because their path is what the grid button hands to `folderExists`.
+    const folderPath = extractFolderFromPath(note.path, notesRoot)
 
-    if (pathParts.length === 0 || pathParts[0] === 'notes') {
-      if (pathParts.length <= 1) {
-        rootNotes.push(note)
-      } else {
-        const folderPath = pathParts.slice(1).join('/')
-        ensureFolderInMap(folderPath).notes.push(note)
-      }
+    if (!folderPath) {
+      rootNotes.push(note)
     } else {
-      const folderPath = pathParts.join('/')
       ensureFolderInMap(folderPath).notes.push(note)
     }
   })

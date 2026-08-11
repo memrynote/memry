@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import {
   getDisplayName,
+  stripNotesRoot,
   extractFolderFromPath,
   getParentFolder,
   isDescendantOrSelf,
@@ -84,19 +85,29 @@ describe('getDisplayName', () => {
 
 describe('extractFolderFromPath', () => {
   it('extracts folder from notes-prefixed path', () => {
-    expect(extractFolderFromPath('notes/Projects/hello.md')).toBe('Projects')
+    expect(extractFolderFromPath('notes/Projects/hello.md', 'notes')).toBe('Projects')
   })
 
   it('returns empty for root note', () => {
-    expect(extractFolderFromPath('notes/hello.md')).toBe('')
+    expect(extractFolderFromPath('notes/hello.md', 'notes')).toBe('')
   })
 
   it('handles nested folders', () => {
-    expect(extractFolderFromPath('notes/a/b/c/file.md')).toBe('a/b/c')
+    expect(extractFolderFromPath('notes/a/b/c/file.md', 'notes')).toBe('a/b/c')
   })
 
   it('handles non-notes-prefixed path', () => {
-    expect(extractFolderFromPath('Projects/hello.md')).toBe('Projects')
+    expect(extractFolderFromPath('Projects/hello.md', 'notes')).toBe('Projects')
+  })
+
+  it('returns the folder relative to a differently named notes root', () => {
+    expect(extractFolderFromPath('Notes/Work/a.md', 'Notes')).toBe('Work')
+    expect(extractFolderFromPath('Notes/a.md', 'Notes')).toBe('')
+  })
+
+  it('treats the whole path as folder-bearing on a flat vault', () => {
+    expect(extractFolderFromPath('Work/a.md', '')).toBe('Work')
+    expect(extractFolderFromPath('notes/a.md', '')).toBe('notes')
   })
 })
 
@@ -218,7 +229,7 @@ describe('buildTreeFromNotes', () => {
     ]
     const folders = [{ path: 'Projects', icon: null }]
 
-    const tree = buildTreeFromNotes(notes, folders, {})
+    const tree = buildTreeFromNotes(notes, folders, {}, 'notes')
     expect(tree.rootNotes).toHaveLength(1)
     expect(tree.rootNotes[0].id).toBe('a')
     expect(tree.folders).toHaveLength(1)
@@ -236,13 +247,13 @@ describe('buildTreeFromNotes', () => {
     ]
     const positions = { 'notes/c.md': 0, 'notes/a.md': 1 }
 
-    const tree = buildTreeFromNotes(notes, [], positions)
+    const tree = buildTreeFromNotes(notes, [], positions, 'notes')
     expect(tree.rootNotes.map((n) => n.id)).toEqual(['c', 'a', 'b'])
   })
 
   it('creates intermediate folders for nested paths', () => {
     const notes = [createNote({ id: 'a', path: 'notes/a/b/c/file.md', modified: baseDate })]
-    const tree = buildTreeFromNotes(notes, [], {})
+    const tree = buildTreeFromNotes(notes, [], {}, 'notes')
     expect(tree.folders).toHaveLength(1)
     expect(tree.folders[0].name).toBe('a')
     expect(tree.folders[0].children[0].name).toBe('b')
@@ -255,6 +266,66 @@ describe('buildTreeFromNotes', () => {
 
     const tree = buildTreeFromNotes(notes, folders, {})
     expect(tree.folders[0].icon).toBe('📦')
+  })
+
+  // #1204: "Default Location for New Notes" = the name of an existing top-level
+  // folder. Note paths are vault-root-relative, folder paths are notes-root
+  // relative; before the fix the notes root leaked into the tree as a phantom
+  // node whose path resolved to <vault>/Notes/Notes, so the folder view that the
+  // grid button opens reported "Folder not found".
+  it('does not emit a folder node for the notes root itself', () => {
+    const notes = [
+      createNote({ id: 'a', path: 'Notes/hello.md', modified: baseDate }),
+      createNote({ id: 'b', path: 'Notes/Work/alpha.md', modified: baseDate })
+    ]
+    // What getFolders() returns for defaultNoteFolder = 'Notes': children only.
+    const folders = [{ path: 'Work', icon: null }]
+
+    const tree = buildTreeFromNotes(notes, folders, {}, 'Notes')
+
+    expect(tree.folders.map((f) => f.path)).toEqual(['Work'])
+    expect(tree.rootNotes.map((n) => n.id)).toEqual(['a'])
+    expect(tree.folders[0].notes.map((n) => n.id)).toEqual(['b'])
+  })
+
+  it('keeps a top-level folder named like the default browsable on a flat vault', () => {
+    const notes = [createNote({ id: 'a', path: 'notes/hello.md', modified: baseDate })]
+    const folders = [{ path: 'notes', icon: null }]
+
+    const tree = buildTreeFromNotes(notes, folders, {}, '')
+
+    expect(tree.rootNotes).toHaveLength(0)
+    expect(tree.folders.map((f) => f.path)).toEqual(['notes'])
+    expect(tree.folders[0].notes.map((n) => n.id)).toEqual(['a'])
+  })
+})
+
+// ============================================================================
+// stripNotesRoot
+// ============================================================================
+
+describe('stripNotesRoot', () => {
+  it('rebases a vault-relative note path onto the notes root', () => {
+    expect(stripNotesRoot('Notes/Work/a.md', 'Notes')).toBe('Work/a.md')
+    expect(stripNotesRoot('Notes/a.md', 'Notes')).toBe('a.md')
+    expect(stripNotesRoot('Notes', 'Notes')).toBe('')
+  })
+
+  it('leaves paths alone when there is no notes root', () => {
+    expect(stripNotesRoot('notes/a.md', '')).toBe('notes/a.md')
+  })
+
+  it('is case-sensitive and does not strip partial segment matches', () => {
+    expect(stripNotesRoot('notes/a.md', 'Notes')).toBe('notes/a.md')
+    expect(stripNotesRoot('Notesy/a.md', 'Notes')).toBe('Notesy/a.md')
+  })
+
+  it('tolerates paths outside the notes root', () => {
+    expect(stripNotesRoot('Archive/a.md', 'Notes')).toBe('Archive/a.md')
+  })
+
+  it('tolerates a slash-padded notes root', () => {
+    expect(stripNotesRoot('Notes/a.md', '/Notes/')).toBe('a.md')
   })
 })
 

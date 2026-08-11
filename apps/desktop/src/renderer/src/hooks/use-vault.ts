@@ -265,6 +265,45 @@ export function useVault() {
 }
 
 /**
+ * The vault's notes root (`config.defaultNoteFolder`); `''` for a flat vault.
+ *
+ * Folder paths — tree nodes, folder-view scopes, `.folder.md` config — are
+ * relative to this root, while note paths from the index are relative to the
+ * vault root. `stripNotesRoot` in `notes-tree-utils` rebases between the two.
+ *
+ * Deliberately lighter than `useVault()`: it holds a single string and only
+ * re-renders when that string actually changes, so the notes tree does not
+ * re-render on every index-progress tick.
+ */
+export function useNotesRoot(): string {
+  const [notesRoot, setNotesRoot] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+
+    const load = async () => {
+      try {
+        const config = await vaultService.getConfig()
+        if (!cancelled) setNotesRoot(config.defaultNoteFolder ?? '')
+      } catch {
+        // Keep the flat-vault default — the tree still renders, just unrebased.
+      }
+    }
+
+    void load()
+    // Changing defaultNoteFolder triggers a reindex, which emits a status change.
+    const unsubscribe = onVaultStatusChanged(() => void load())
+
+    return () => {
+      cancelled = true
+      unsubscribe()
+    }
+  }, [])
+
+  return notesRoot
+}
+
+/**
  * Hook for getting the list of all known vaults.
  */
 export function useVaultList() {

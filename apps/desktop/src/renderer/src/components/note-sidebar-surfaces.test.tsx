@@ -35,6 +35,12 @@ vi.mock('@memry/i18n/renderer', () => ({
   })
 }))
 
+// Breadcrumb folder paths are relative to the vault's notes root; these fixtures
+// use `notes/...` paths, i.e. a vault with defaultNoteFolder = 'notes'.
+vi.mock('@/hooks/use-vault', () => ({
+  useNotesRoot: () => 'notes'
+}))
+
 vi.mock('@/components/note/note-reminder-button', () => ({
   NoteReminderButton: ({ noteId, disabled }: { noteId: string; disabled?: boolean }) => (
     <button type="button" disabled={disabled}>

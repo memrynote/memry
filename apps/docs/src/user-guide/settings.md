@@ -106,6 +106,13 @@ locale has finished loading.
 
 **Create in Selected Folder** routes new notes into whichever folder is currently selected in the sidebar.
 
+**Default Location for New Notes** sets the folder your notes live in. Leave it empty — the default —
+and notes sit directly in the vault root. Enter a folder name (say `Notes`) and that folder becomes
+the root of your notes tree: new notes are created inside it, and the sidebar shows *its* contents
+rather than the folder itself. Nothing is moved on disk, so switching the value back restores the
+previous layout. Notes that live outside this folder are still indexed and searchable, but they are
+listed relative to the vault root instead.
+
 ### Privacy
 
 **Telemetry** opts in or out of anonymous usage analytics. Off by default. Only enum-like event

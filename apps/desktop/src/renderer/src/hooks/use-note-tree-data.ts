@@ -6,7 +6,12 @@ import {
   type NoteListItem
 } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
-import { buildTreeFromNotes, type TreeStructure } from '@/components/notes-tree-utils'
+import {
+  buildTreeFromNotes,
+  extractFolderFromPath,
+  type TreeStructure
+} from '@/components/notes-tree-utils'
+import { useNotesRoot } from '@/hooks/use-vault'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Hook:NoteTreeData')
@@ -20,6 +25,8 @@ export interface NoteTreeData {
   setFolderIcon: ReturnType<typeof useNoteFoldersQuery>['setFolderIcon']
   refreshFolders: ReturnType<typeof useNoteFoldersQuery>['refetch']
   mutations: ReturnType<typeof useNoteMutations>
+  /** Vault's `defaultNoteFolder` — the base every folder path in `tree` uses. */
+  notesRoot: string
   tree: TreeStructure
   noteMap: Map<string, NoteListItem>
   notePositions: Record<string, number>
@@ -33,6 +40,7 @@ export function useNoteTreeData(): NoteTreeData {
   const { notes, isLoading, error } = useNotesList({ limit: 10000 })
   const mutations = useNoteMutations()
   const { folders, createFolder, setFolderIcon, refetch: refreshFolders } = useNoteFoldersQuery()
+  const notesRoot = useNotesRoot()
 
   const [folderTemplateNames, setFolderTemplateNames] = useState<Map<string, string>>(new Map())
   const [notePositions, setNotePositions] = useState<Record<string, number>>({})
@@ -86,8 +94,8 @@ export function useNoteTreeData(): NoteTreeData {
   }, [notes])
 
   const tree = useMemo(() => {
-    return buildTreeFromNotes(notes, folders, notePositions)
-  }, [notes, folders, notePositions])
+    return buildTreeFromNotes(notes, folders, notePositions, notesRoot)
+  }, [notes, folders, notePositions, notesRoot])
 
   const noteMap = useMemo(() => {
     const map = new Map<string, NoteListItem>()
@@ -107,14 +115,13 @@ export function useNoteTreeData(): NoteTreeData {
 
       const note = noteMap.get(selectedId)
       if (note) {
-        const parts = note.path.split('/')
-        parts.pop()
-        return parts.join('/')
+        // createNote resolves `folder` against the notes root, so rebase here.
+        return extractFolderFromPath(note.path, notesRoot)
       }
 
       return ''
     }
-  }, [noteMap])
+  }, [noteMap, notesRoot])
 
   return {
     notes,
@@ -125,6 +132,7 @@ export function useNoteTreeData(): NoteTreeData {
     setFolderIcon,
     refreshFolders,
     mutations,
+    notesRoot,
     tree,
     noteMap,
     notePositions,
