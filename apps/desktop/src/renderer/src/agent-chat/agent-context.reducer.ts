@@ -81,18 +81,28 @@ export const initialAgentState: AgentState = {
 function appendAssistantDelta(messages: Message[], event: AgentEvent): Message[] {
   if (event.kind !== 'assistant_text_delta') return messages
 
-  return messages.map((message) => {
-    if (message.id !== event.messageId || message.content.role !== 'assistant') return message
-    return {
-      ...message,
-      content: {
-        role: 'assistant',
-        data: {
-          text: `${message.content.data.text}${event.text}`
-        }
+  const index = messages.findIndex(
+    (message) => message.id === event.messageId && message.content.role === 'assistant'
+  )
+  // The delta can arrive before the message it belongs to (or for a transcript
+  // this window never loaded). Returning the same reference keeps the array
+  // identity stable so the stream does not re-render for nothing.
+  if (index === -1) return messages
+
+  const target = messages[index]
+  if (target.content.role !== 'assistant') return messages
+
+  const next = messages.slice()
+  next[index] = {
+    ...target,
+    content: {
+      role: 'assistant',
+      data: {
+        text: `${target.content.data.text}${event.text}`
       }
     }
-  })
+  }
+  return next
 }
 
 function upsertMessage(messages: Message[], nextMessage: Message): Message[] {
@@ -369,14 +379,14 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
         }
       }
       if (event.kind === 'assistant_text_delta') {
+        const current = state.messagesByConversation[event.conversationId] ?? []
+        const next = appendAssistantDelta(current, event)
+        if (next === current) return state
         return {
           ...state,
           messagesByConversation: {
             ...state.messagesByConversation,
-            [event.conversationId]: appendAssistantDelta(
-              state.messagesByConversation[event.conversationId] ?? [],
-              event
-            )
+            [event.conversationId]: next
           }
         }
       }

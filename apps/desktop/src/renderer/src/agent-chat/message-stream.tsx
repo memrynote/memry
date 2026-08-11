@@ -1,3 +1,5 @@
+import { memo, useMemo } from 'react'
+
 import type { Message } from '@memry/contracts/ipc-agent'
 
 import { Conversation, ConversationContent } from '@/components/ai-elements/conversation'
@@ -22,19 +24,32 @@ function isToolMessage(message: Message): boolean {
   return message.role === 'tool_call' || message.role === 'tool_result'
 }
 
+/**
+ * A streamed delta rebuilds the message array but every message object except
+ * the one being streamed keeps its identity, so memoised rows turn a token into
+ * a single row commit instead of re-rendering the whole transcript. Wrapped
+ * here rather than at each definition: this is the only caller that re-renders
+ * per token, and the rows stay plain components everywhere else.
+ */
+const AssistantMessageRow = memo(AssistantMessage)
+const SystemMessageRow = memo(SystemMessage)
+const ToolCallMessageRow = memo(ToolCallMessage)
+const ToolResultMessageRow = memo(ToolResultMessage)
+const UserMessageRow = memo(UserMessage)
+
 function renderMessage(message: Message): React.JSX.Element | null {
-  if (message.role === 'user') return <UserMessage key={message.id} message={message} />
+  if (message.role === 'user') return <UserMessageRow key={message.id} message={message} />
   if (message.role === 'assistant') {
-    return <AssistantMessage key={message.id} message={message} />
+    return <AssistantMessageRow key={message.id} message={message} />
   }
   if (message.role === 'tool_call') {
-    return <ToolCallMessage key={message.id} message={message} />
+    return <ToolCallMessageRow key={message.id} message={message} />
   }
   if (message.role === 'tool_result') {
-    return <ToolResultMessage key={message.id} message={message} />
+    return <ToolResultMessageRow key={message.id} message={message} />
   }
   if (message.role === 'system') {
-    return <SystemMessage key={message.id} message={message} />
+    return <SystemMessageRow key={message.id} message={message} />
   }
   return null
 }
@@ -61,7 +76,7 @@ export function MessageStream({
   contentClassName,
   messageListClassName
 }: MessageStreamProps): React.JSX.Element {
-  const groups = groupMessages(messages)
+  const groups = useMemo(() => groupMessages(messages), [messages])
   const renderedMessages = groups.map((group, index) => {
     const first = group[0]
     if (group.length < 2) return renderMessage(first)
