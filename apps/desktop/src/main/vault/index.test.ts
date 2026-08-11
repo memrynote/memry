@@ -641,6 +641,49 @@ describe('vault lifecycle', () => {
     )
   })
 
+  // startAgentMcpLifecycle() binds the localhost server's tool closures to this
+  // vault's data/index databases *before* startAgent() runs, so a start that
+  // fails after that point leaves a listening, bearer-authenticated server
+  // holding the outgoing vault's handles. Teardown keyed on agentHandle skipped
+  // it, and startAgentMcpLifecycle()'s `if (handle) return` then handed that
+  // same server to the next vault.
+  it('stops the MCP server when the agent runtime failed to start', async () => {
+    await selectVault({ path: '/vault/one' })
+    const firstStarter = mocks.configureLazyAgentServices.mock.calls.at(
+      -1
+    )?.[0] as () => Promise<void>
+    mocks.startAgent.mockRejectedValue(new Error('agent runtime exploded'))
+
+    await firstStarter()
+
+    expect(mocks.startAgentMcpLifecycle).toHaveBeenCalledTimes(1)
+    expect(mocks.stopAgentMcpLifecycle).not.toHaveBeenCalled()
+
+    await selectVault({ path: '/vault/two' })
+
+    // The listener is closed — and closed before the databases its tool
+    // closures captured, so it never serves the outgoing vault to a client
+    // holding the still-valid bearer token.
+    expect(mocks.stopAgentMcpLifecycle).toHaveBeenCalledTimes(1)
+    expect(mocks.stopAgentMcpLifecycle.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.closeAllDatabases.mock.invocationCallOrder[0]
+    )
+    // Nothing to shut down on the agent side: that runtime never came up.
+    expect(mocks.agentShutdown).not.toHaveBeenCalled()
+
+    // ...and the next vault starts its own server instead of inheriting the
+    // stale one — never two live servers, never zero.
+    mocks.startAgent.mockResolvedValue({ shutdown: mocks.agentShutdown })
+    const secondStarter = mocks.configureLazyAgentServices.mock.calls.at(
+      -1
+    )?.[0] as () => Promise<void>
+    await secondStarter()
+
+    expect(mocks.startAgentMcpLifecycle).toHaveBeenCalledTimes(2)
+    expect(mocks.startAgent).toHaveBeenCalledTimes(2)
+    expect(mocks.currentVaultPath).toBe('/vault/two')
+  })
+
   it('auto-opens the test vault and emits explicit progress/error events', async () => {
     process.env.NODE_ENV = 'test'
     process.env.TEST_VAULT_PATH = '/vault/e2e'
