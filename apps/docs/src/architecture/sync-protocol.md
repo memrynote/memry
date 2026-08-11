@@ -315,6 +315,12 @@ Desktop periodically compares `/sync/manifest` with local syncable records. Note
 matched from canonical `note_metadata` first, with the rebuildable index cache as a fallback, so a
 freshly pushed note is not treated as server-only while indexing catches up.
 
+The comparison reads ids only. Repair payloads are built one row at a time, and only for a record
+the server manifest is actually missing, so the usual clean check never materializes or serializes a
+single row body — the cost of the check scales with the size of the disagreement, not with the size
+of the vault. The bytes a repair pushes are unchanged: the lazy build runs the same full-row select
+through the same serialization the eager pass used.
+
 ## Note Attachments
 
 Files embedded in a note (images, PDFs) live on disk under the vault's
