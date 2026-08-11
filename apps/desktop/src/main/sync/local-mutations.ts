@@ -7,6 +7,7 @@ import {
   incrementBookmarkClockOffline,
   incrementTemplateClockOffline,
   incrementCanvasClockOffline,
+  incrementCanvasFolderClockOffline,
   incrementFilterClockOffline,
   incrementInboxClockOffline,
   incrementNoteClockOffline,
@@ -17,6 +18,7 @@ import {
 import { getBookmarkSyncService } from './bookmark-sync'
 import { getTemplateSyncService } from './template-sync'
 import { getCanvasSyncService } from './canvas-sync'
+import { getCanvasFolderSyncService } from './canvas-folder-sync'
 import { getFilterSyncService } from './filter-sync'
 import { getInboxSyncService } from './inbox-sync'
 import { getJournalSyncService } from './journal-sync'
@@ -280,6 +282,37 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string): void {
         svcOrTrackDrop('canvas', getCanvasSyncService())?.enqueueDelete(itemId)
+      }
+    }
+  },
+  {
+    type: 'canvas_folder',
+    kind: 'record',
+    local: {
+      enqueueCreate(itemId: string): void {
+        const service = getCanvasFolderSyncService()
+        if (service) {
+          service.enqueueCreate(itemId)
+          return
+        }
+
+        incrementCanvasFolderClockOffline(getDatabase(), itemId)
+      },
+      enqueueUpdate(itemId: string): void {
+        const service = getCanvasFolderSyncService()
+        if (service) {
+          service.enqueueUpdate(itemId)
+          return
+        }
+
+        incrementCanvasFolderClockOffline(getDatabase(), itemId)
+      },
+      enqueueDelete(itemId: string, snapshotPayload?: string): void {
+        if (!snapshotPayload) return
+        svcOrTrackDrop('canvas_folder', getCanvasFolderSyncService())?.enqueueDelete(
+          itemId,
+          snapshotPayload
+        )
       }
     }
   },

@@ -16,7 +16,7 @@ export const PickerContent = React.forwardRef<
     width === 'auto'
       ? 'w-auto'
       : width === 'trigger'
-        ? 'w-[--radix-popover-trigger-width]'
+        ? 'w-(--radix-popover-trigger-width)'
         : typeof width === 'number'
           ? undefined
           : 'w-72'
@@ -28,6 +28,11 @@ export const PickerContent = React.forwardRef<
       data-slot="picker-content"
       className={cn(
         'p-0 rounded-md overflow-clip shadow-[var(--shadow-card-hover)]',
+        // Radix anchors the popover to its trigger, so a trigger low in the
+        // window gets little room below it. Cap at the height Radix measured
+        // and lay out as a column so the body can shrink and scroll rather than
+        // be swallowed by `overflow-clip`.
+        'flex flex-col max-h-(--radix-popover-content-available-height)',
         widthClass,
         className
       )}
@@ -35,7 +40,9 @@ export const PickerContent = React.forwardRef<
       onClick={(e) => e.stopPropagation()}
       {...props}
     >
-      <div className="flex flex-col text-[13px] leading-4 [font-synthesis:none]">{children}</div>
+      <div className="flex flex-col min-h-0 text-[13px] leading-4 [font-synthesis:none]">
+        {children}
+      </div>
     </PopoverContent>
   )
 })

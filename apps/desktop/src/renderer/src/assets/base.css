@@ -2098,6 +2098,13 @@ del.bn-inline-content {
   --sidebar-border: #d9d5ce;
   --sidebar-ring: var(--tint);
   --sidebar-muted: #b5b0a6;
+  /* The sidebar's de-emphasized small-text colour: section and tag-group
+     headings, item counts, the tag list's show-more control — anything
+     carrying real information at 10-11px, which WCAG AA treats as small text
+     (4.5:1). Separate from --sidebar-muted, which also colors chevrons and
+     decorative icon buttons where the extra weight would be too loud.
+     5.07:1 on --sidebar, 5.07:1 on --muted (the row hover surface). */
+  --sidebar-section-heading: #6b6459;
   --sidebar-terracotta: var(--tint);
   --sidebar-text-folder: #3d3a35;
   --sidebar-text-child: #5c5850;
@@ -2116,6 +2123,8 @@ del.bn-inline-content {
   --sidebar-border: #e9e9e7;
   --sidebar-ring: var(--tint);
   --sidebar-muted: #b0afab;
+  /* 5.16:1 on --sidebar, 5.06:1 on --muted. See the :root block. */
+  --sidebar-section-heading: #6b6966;
   --sidebar-terracotta: var(--tint);
   --sidebar-text-folder: #37352f;
   --sidebar-text-child: #6b6966;
@@ -2134,6 +2143,8 @@ del.bn-inline-content {
   --sidebar-border: #333333;
   --sidebar-ring: var(--tint);
   --sidebar-muted: #6b6b6b;
+  /* 6.42:1 on --sidebar, 6.01:1 on --muted. See the :root block. */
+  --sidebar-section-heading: #9d9d9d;
   --sidebar-terracotta: var(--tint);
   --sidebar-text-folder: #c5c0b8;
   --sidebar-text-child: #9a958d;
@@ -2241,6 +2252,7 @@ del.bn-inline-content {
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-section-heading: var(--sidebar-section-heading);
   --color-sidebar-terracotta: var(--sidebar-terracotta);
   --color-sidebar-text-folder: var(--sidebar-text-folder);
   --color-sidebar-text-child: var(--sidebar-text-child);
@@ -3295,4 +3307,58 @@ del.bn-inline-content {
 }
 .marquee-zone[data-marquee-active='true'] * {
   user-select: none !important;
+}
+
+/* ============================================================================
+   THIRD-PARTY OVERRIDE — EXCALIDRAW CANVAS CONTEXT MENU
+   ============================================================================ */
+
+/*
+ * Verified against @excalidraw/excalidraw 0.18.1 — recheck on every upgrade.
+ * (excalidraw-context-menu-css.test.ts fails if the installed version moves
+ * past this pin, so the recheck cannot be skipped silently.)
+ *
+ * Symptom: right-clicking the spatial canvas opens a menu that is cut off at
+ * the canvas edge with no way to reach the hidden items.
+ *
+ * Upstream ships the menu inside its own clipping box and never bounds its
+ * height. In their stylesheet:
+ *   .excalidraw              -> position: relative; overflow: hidden
+ *                               (the containing block AND the clipper)
+ *   .excalidraw .popover     -> position: absolute; z-index: 10
+ *   .excalidraw .context-menu-> neither a max-height nor an overflow value
+ * Their only scroll path sets overflow-y on the menu when it is at least as
+ * tall as the entire container, so a menu that merely outgrows the space below
+ * the click point never gets a scrollbar — it just runs past the container edge
+ * and `overflow: hidden` eats the rest.
+ *
+ * The positioning half is an upstream coordinate-space bug we cannot reach from
+ * CSS. Their fit-in-viewport guard compares `top + height - offsetTop` against
+ * the viewport height, where `top` is already container-relative while
+ * `offsetTop` is viewport-relative. On excalidraw.com the container fills the
+ * window, both offsets are 0, and the mistake is invisible. In Memry the canvas
+ * sits below the tab strip and beside the sidebar, so the guard under-triggers
+ * by exactly those offsets and leaves the menu hanging past the bottom edge.
+ * Correcting that needs the menu's own layout code; patching node_modules or
+ * forking Excalidraw would have to be redone on every upgrade, so we do not.
+ *
+ * What CSS can do — and what removes the user-visible failure — is guarantee
+ * the menu never exceeds the canvas viewport and always scrolls when it would.
+ * The 96px reserve clears the 36px tab strip plus breathing room at both ends.
+ * overflow-x stays hidden so the vertical scrollbar can never induce a
+ * horizontal one in this shrink-to-fit box; upstream sets `white-space: nowrap`
+ * on the items, so there is no wrapped content to lose. Scroll chaining is
+ * contained because the element behind the menu is an infinite pan/zoom canvas.
+ * Height, padding, border and radius are otherwise left to upstream.
+ *
+ * Scoped under `.excalidraw` deliberately: our own menus are Radix
+ * (`data-slot="context-menu-content"` plus Tailwind classes) and never carry a
+ * `.context-menu` class, so this cannot leak outside the canvas. The scrollbar
+ * inherits the app-wide themed 8px/thin treatment from the global rules above.
+ */
+.excalidraw .context-menu {
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
 }

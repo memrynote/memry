@@ -62,6 +62,7 @@ const toSyncDomain = (itemType: SyncItemType): SyncDomain => {
     case 'agent_message':
       return 'agent_chat'
     case 'canvas':
+    case 'canvas_folder':
       return 'canvas'
     case 'bookmark':
       return 'bookmarks'

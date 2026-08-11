@@ -71,6 +71,20 @@ export const canvasRpc = defineDomain({
       channel: CanvasChannels.invoke.LIST,
       params: []
     }),
+    // Null when the canvas is gone or its document cannot be read — a copy of
+    // ink we could not load would be an empty canvas wearing the original name.
+    duplicate: defineMethod<(id: string) => Promise<CanvasSummary | null>>({
+      channel: CanvasChannels.invoke.DUPLICATE,
+      params: ['id']
+    }),
+    revealInFinder: defineMethod<(id: string) => Promise<void>>({
+      channel: CanvasChannels.invoke.REVEAL_IN_FINDER,
+      params: ['id']
+    }),
+    openExternal: defineMethod<(id: string) => Promise<void>>({
+      channel: CanvasChannels.invoke.OPEN_EXTERNAL,
+      params: ['id']
+    }),
     uploadAsset: defineMethod<
       (input: {
         canvasId: string

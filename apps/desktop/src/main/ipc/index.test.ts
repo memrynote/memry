@@ -27,6 +27,8 @@ const hoisted = vi.hoisted(() => ({
   unregisterCalendarHandlers: vi.fn(),
   registerCanvasHandlers: vi.fn(),
   unregisterCanvasHandlers: vi.fn(),
+  registerCanvasFolderHandlers: vi.fn(),
+  unregisterCanvasFolderHandlers: vi.fn(),
   registerFolderViewHandlers: vi.fn(),
   unregisterFolderViewHandlers: vi.fn(),
   registerPropertiesHandlers: vi.fn(),
@@ -114,6 +116,10 @@ vi.mock('./calendar-handlers', () => ({
 vi.mock('./canvas-handlers', () => ({
   registerCanvasHandlers: hoisted.registerCanvasHandlers,
   unregisterCanvasHandlers: hoisted.unregisterCanvasHandlers
+}))
+vi.mock('./canvas-folder-handlers', () => ({
+  registerCanvasFolderHandlers: hoisted.registerCanvasFolderHandlers,
+  unregisterCanvasFolderHandlers: hoisted.unregisterCanvasFolderHandlers
 }))
 vi.mock('./folder-view-handlers', () => ({
   registerFolderViewHandlers: hoisted.registerFolderViewHandlers,
@@ -208,6 +214,7 @@ describe('ipc index registration lifecycle', () => {
     expect(hoisted.registerAgentMcpHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerImportHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerCanvasHandlers).toHaveBeenCalledTimes(1)
+    expect(hoisted.registerCanvasFolderHandlers).toHaveBeenCalledTimes(1)
   })
 
   it('prevents duplicate registration', () => {
@@ -234,6 +241,7 @@ describe('ipc index registration lifecycle', () => {
     expect(hoisted.unregisterAgentMcpHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.unregisterImportHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.unregisterCanvasHandlers).toHaveBeenCalledTimes(1)
+    expect(hoisted.unregisterCanvasFolderHandlers).toHaveBeenCalledTimes(1)
   })
 
   it('is a no-op to unregister when handlers are not registered', () => {

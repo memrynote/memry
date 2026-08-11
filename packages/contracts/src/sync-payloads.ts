@@ -119,6 +119,31 @@ export const CanvasSyncPayloadSchema = z.object({
   vaultId: z.string().optional(),
   title: z.string().nullable().optional(),
   scene: z.string().optional(),
+  /**
+   * Placement: path relative to `canvases/`, forward-slashed (`Work/Q3`).
+   * Null/absent is the canvases root — which is what every payload written
+   * before folders existed means, so an old payload degrades correctly.
+   */
+  folder: z.string().nullable().optional(),
+  icon: z.string().nullable().optional(),
+  clock: VectorClockSchema.optional(),
+  deletedAt: z.number().nullable().optional()
+})
+
+/**
+ * Canvas folder sync payload. All-optional for the same forward-tolerance
+ * reason as every other payload here: a newer client's row must still parse on
+ * an older one. `path` is validated at the apply site, never here.
+ *
+ * Carries only the folder's icon and its existence — placement lives on the
+ * canvas row — so a canvas whose folder row has not arrived yet still lands in
+ * the right place.
+ */
+export const CanvasFolderSyncPayloadSchema = z.object({
+  id: z.string().optional(),
+  vaultId: z.string().optional(),
+  path: z.string().optional(),
+  icon: z.string().nullable().optional(),
   clock: VectorClockSchema.optional(),
   deletedAt: z.number().nullable().optional()
 })
@@ -469,6 +494,7 @@ export type TemplateSyncPayload = z.infer<typeof TemplateSyncPayloadSchema>
 export type BookmarkSyncPayload = z.infer<typeof BookmarkSyncPayloadSchema>
 export type ReminderSyncPayload = z.infer<typeof ReminderSyncPayloadSchema>
 export type CanvasSyncPayload = z.infer<typeof CanvasSyncPayloadSchema>
+export type CanvasFolderSyncPayload = z.infer<typeof CanvasFolderSyncPayloadSchema>
 export type ProjectSyncPayload = z.infer<typeof ProjectSyncPayloadSchema>
 export type StatusSync = z.infer<typeof StatusSyncSchema>
 export type ProjectLinkSync = z.infer<typeof ProjectLinkSyncSchema>

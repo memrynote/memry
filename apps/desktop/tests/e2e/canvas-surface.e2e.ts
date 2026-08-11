@@ -60,7 +60,7 @@ async function createCanvasFromSidebar(page: Page): Promise<string> {
   const sectionHeader = page.getByRole('button', { name: /Canvases section/ })
   await expect(sectionHeader).toBeVisible()
   await sectionHeader.hover()
-  await page.getByRole('button', { name: 'New canvas' }).click()
+  await page.getByRole('button', { name: 'New canvas', exact: true }).click()
 
   // The editor tab opens on the freshly created canvas.
   await expect(page.locator('[data-canvas-editor]')).toBeVisible({ timeout: 20000 })

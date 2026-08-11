@@ -268,6 +268,11 @@ vi.mock('./canvas-sync', () => ({
   resetCanvasSyncService: vi.fn(),
   getCanvasSyncService: vi.fn(() => null)
 }))
+vi.mock('./canvas-folder-sync', () => ({
+  initCanvasFolderSyncService: vi.fn(() => ({})),
+  resetCanvasFolderSyncService: vi.fn(),
+  getCanvasFolderSyncService: vi.fn(() => null)
+}))
 vi.mock('./project-sync', () => ({
   initProjectSyncService: runtimeMocks.projectSync.init,
   resetProjectSyncService: runtimeMocks.projectSync.reset

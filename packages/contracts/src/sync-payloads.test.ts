@@ -15,6 +15,7 @@ import {
   CalendarEventSyncPayloadSchema,
   CalendarExternalEventSyncPayloadSchema,
   CalendarSourceSyncPayloadSchema,
+  CanvasFolderSyncPayloadSchema,
   CanvasSyncPayloadSchema,
   FilterSyncPayloadSchema,
   FolderConfigSyncPayloadSchema,
@@ -214,6 +215,65 @@ describe('CanvasSyncPayloadSchema', () => {
 
   it('rejects a clock with a negative tick', () => {
     expect(CanvasSyncPayloadSchema.safeParse({ clock: { 'device-a': -1 } }).success).toBe(false)
+  })
+
+  it('carries folder and icon through a new-shape payload', () => {
+    const parsed = CanvasSyncPayloadSchema.safeParse({
+      id: 'canvas-1',
+      title: 'Plan',
+      scene: '{}',
+      folder: 'Work/Q3',
+      icon: '🎨'
+    })
+    expect(parsed.success).toBe(true)
+    expect(parsed.data?.folder).toBe('Work/Q3')
+    expect(parsed.data?.icon).toBe('🎨')
+  })
+
+  it('accepts null folder and null icon (explicit root, no icon)', () => {
+    const parsed = CanvasSyncPayloadSchema.safeParse({ folder: null, icon: null })
+    expect(parsed.success).toBe(true)
+    expect(parsed.data?.folder).toBeNull()
+    expect(parsed.data?.icon).toBeNull()
+  })
+
+  it('parses an old-shape payload with no folder or icon', () => {
+    const parsed = CanvasSyncPayloadSchema.safeParse({ id: 'c1', title: 'Plan', scene: '{}' })
+    expect(parsed.success).toBe(true)
+    expect(parsed.data?.folder).toBeUndefined()
+    expect(parsed.data?.icon).toBeUndefined()
+  })
+
+  it('rejects a non-string folder', () => {
+    expect(CanvasSyncPayloadSchema.safeParse({ folder: 42 }).success).toBe(false)
+  })
+})
+
+describe('CanvasFolderSyncPayloadSchema', () => {
+  it('parses a full payload', () => {
+    const parsed = CanvasFolderSyncPayloadSchema.safeParse({
+      id: 'cvf_work',
+      vaultId: 'v1',
+      path: 'Work',
+      icon: '📁',
+      clock: { deviceA: 1 },
+      deletedAt: null
+    })
+    expect(parsed.success).toBe(true)
+    expect(parsed.data?.path).toBe('Work')
+    expect(parsed.data?.icon).toBe('📁')
+  })
+
+  it('parses an empty payload from a future client', () => {
+    expect(CanvasFolderSyncPayloadSchema.safeParse({}).success).toBe(true)
+  })
+
+  it('rejects a non-string path', () => {
+    expect(CanvasFolderSyncPayloadSchema.safeParse({ path: 42 }).success).toBe(false)
+  })
+
+  it('rejects a clock with a negative tick', () => {
+    expect(CanvasFolderSyncPayloadSchema.safeParse({ clock: { deviceA: -1 } }).success).toBe(false)
   })
 })
 

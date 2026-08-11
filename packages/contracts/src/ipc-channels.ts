@@ -685,6 +685,12 @@ export const CanvasChannels = {
     UPDATE: 'canvas:update',
     DELETE: 'canvas:delete',
     LIST: 'canvas:list',
+    /** Copy scene + canvas_assets rows into a new canvas in the same folder. */
+    DUPLICATE: 'canvas:duplicate',
+    /** Mirrors notes:reveal-in-finder, canvas-id scoped. */
+    REVEAL_IN_FINDER: 'canvas:reveal-in-finder',
+    /** Mirrors notes:open-external, canvas-id scoped. */
+    OPEN_EXTERNAL: 'canvas:open-external',
     UPLOAD_ASSET: 'canvas:upload-asset',
     GET_ASSET: 'canvas:get-asset',
     LIST_ASSETS: 'canvas:list-assets',
@@ -709,6 +715,31 @@ export const CanvasChannels = {
 
 export type CanvasInvokeChannel = (typeof CanvasChannels.invoke)[keyof typeof CanvasChannels.invoke]
 export type CanvasEventChannel = (typeof CanvasChannels.events)[keyof typeof CanvasChannels.events]
+
+// ============================================================================
+// Canvas Folder Channels (directories under <vault>/canvases)
+// ============================================================================
+
+export const CanvasFolderChannels = {
+  invoke: {
+    LIST: 'canvasFolder:list',
+    CREATE: 'canvasFolder:create',
+    RENAME: 'canvasFolder:rename',
+    MOVE: 'canvasFolder:move',
+    DELETE: 'canvasFolder:delete',
+    SET_ICON: 'canvasFolder:set-icon'
+  },
+  events: {
+    CREATED: 'canvasFolder:created',
+    UPDATED: 'canvasFolder:updated',
+    DELETED: 'canvasFolder:deleted'
+  }
+} as const
+
+export type CanvasFolderInvokeChannel =
+  (typeof CanvasFolderChannels.invoke)[keyof typeof CanvasFolderChannels.invoke]
+export type CanvasFolderEventChannel =
+  (typeof CanvasFolderChannels.events)[keyof typeof CanvasFolderChannels.events]
 
 // ============================================================================
 // Reminder Channels

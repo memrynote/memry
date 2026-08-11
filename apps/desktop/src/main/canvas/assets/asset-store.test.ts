@@ -17,7 +17,8 @@ import {
 const MIGRATION_FILES = [
   '0035_spatial_canvas.sql',
   '0036_canvas_assets.sql',
-  '0045_canvas_files.sql'
+  '0045_canvas_files.sql',
+  '0048_canvas_folders.sql'
 ]
 
 function freshDb() {

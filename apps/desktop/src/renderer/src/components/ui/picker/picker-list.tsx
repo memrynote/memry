@@ -6,7 +6,7 @@ export function PickerList({ className, children, ...props }: PickerListProps): 
   return (
     <div
       data-slot="picker-list"
-      className={cn('flex flex-col p-1', className)}
+      className={cn('flex flex-col p-1 min-h-0 overflow-y-auto', className)}
       role="listbox"
       {...props}
     >

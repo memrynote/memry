@@ -337,6 +337,13 @@
       "when": 1785585343000,
       "tag": "0047_sync_queue_revive_dead_lettered",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "6",
+      "when": 1785585344000,
+      "tag": "0048_canvas_folders",
+      "breakpoints": true
     }
   ]
 }

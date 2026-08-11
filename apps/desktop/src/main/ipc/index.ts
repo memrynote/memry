@@ -14,6 +14,10 @@ import { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers
 import { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
 import { registerCalendarHandlers, unregisterCalendarHandlers } from './calendar-handlers'
 import { registerCanvasHandlers, unregisterCanvasHandlers } from './canvas-handlers'
+import {
+  registerCanvasFolderHandlers,
+  unregisterCanvasFolderHandlers
+} from './canvas-folder-handlers'
 import { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
 import { registerPropertiesHandlers, unregisterPropertiesHandlers } from './properties-handlers'
 import { registerRelationHandlers, unregisterRelationHandlers } from './relation-handlers'
@@ -113,6 +117,9 @@ export function registerAllHandlers(deps?: IpcDeps): void {
   // Register canvas handlers (spatial canvas)
   registerCanvasHandlers()
 
+  // Register canvas folder handlers (directories under <vault>/canvases)
+  registerCanvasFolderHandlers()
+
   // Register folder view handlers
   registerFolderViewHandlers()
 
@@ -190,6 +197,7 @@ export function unregisterAllHandlers(): void {
   unregisterReminderHandlers()
   unregisterCalendarHandlers()
   unregisterCanvasHandlers()
+  unregisterCanvasFolderHandlers()
   unregisterFolderViewHandlers()
   unregisterPropertiesHandlers()
   unregisterRelationHandlers()
@@ -235,6 +243,10 @@ export { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers
 export { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
 export { registerCalendarHandlers, unregisterCalendarHandlers } from './calendar-handlers'
 export { registerCanvasHandlers, unregisterCanvasHandlers } from './canvas-handlers'
+export {
+  registerCanvasFolderHandlers,
+  unregisterCanvasFolderHandlers
+} from './canvas-folder-handlers'
 export { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
 export { registerPropertiesHandlers, unregisterPropertiesHandlers } from './properties-handlers'
 export { registerRelationHandlers, unregisterRelationHandlers } from './relation-handlers'

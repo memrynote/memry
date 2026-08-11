@@ -269,6 +269,7 @@
   "canvas": {
     "sectionLabel": "Canvases",
     "newCanvas": "New canvas",
+    "newCanvasFolder": "New canvas folder",
     "untitled": "Untitled canvas",
     "empty": "No canvases yet",
     "loading": "Loading canvases…",
@@ -284,6 +285,33 @@
     "libraryStoreFailed": "Could not save your shape library. Recent changes to it may be lost.",
     "disabledTitle": "Canvas is not enabled",
     "disabledBody": "This tab belongs to a feature that is not enabled on this device.",
+    "unreadable": "This canvas's document is missing or cannot be read. Reveal it in your file manager, or delete the entry.",
+    "actionFailed": "That canvas action could not be completed",
+    "renameLabel": "Canvas name",
+    "folderNameLabel": "Folder name",
+    "deleteConfirmTitle": "Delete this canvas?",
+    "deleteConfirmBody": "\"{title}\" is removed from memrynote on all your devices. Its file goes to this computer's trash, but putting it back won't restore the canvas.",
+    "dropToRoot": "Drop here to move out of a folder",
+    "filterPlaceholder": "Filter canvases",
+    "filterNoMatches": "No canvases match that filter",
+    "folderCanvasCount": "{count} canvases inside",
+    "folderEmptyHint": "Nothing here yet",
+    "deleteFolderConfirmTitle": "Delete this canvas folder?",
+    "deleteFolderConfirmBody": "\"{name}\" and everything inside it is removed from memrynote on all your devices. Canvases affected: {count}. The folder goes to this computer's trash, but putting it back won't restore them.",
+    "actions": {
+      "rename": "Rename",
+      "duplicate": "Duplicate",
+      "setIcon": "Set icon",
+      "removeIcon": "Remove icon",
+      "moveToFolder": "Move to folder",
+      "moveToRoot": "Root",
+      "openExternal": "Open in external editor",
+      "revealInFinder": "Reveal in Finder",
+      "newCanvasHere": "New canvas here",
+      "newFolder": "New folder",
+      "canvasMenu": "Canvas actions",
+      "folderMenu": "Canvas folder actions"
+    },
     "card": {
       "open": "Open in tab",
       "openToEdit": "Open in tab to edit",
@@ -371,7 +399,9 @@
       "doneLetSGo": "Done — let's go! "
     },
     "componentsFolderIconButton": {
-      "setFolderIcon": "Set folder icon"
+      "setFolderIcon": "Set folder icon",
+      "expandFolder": "Expand folder",
+      "collapseFolder": "Collapse folder"
     },
     "componentsHintOverlayHintIndicator": {
       "hint": "HINT"

@@ -29,6 +29,7 @@ import { initBookmarkSyncService, resetBookmarkSyncService } from './bookmark-sy
 import { initTemplateSyncService, resetTemplateSyncService } from './template-sync'
 import { initReminderSyncService, resetReminderSyncService } from './reminder-sync'
 import { initCanvasSyncService, resetCanvasSyncService } from './canvas-sync'
+import { initCanvasFolderSyncService, resetCanvasFolderSyncService } from './canvas-folder-sync'
 import { initProjectSyncService, resetProjectSyncService } from './project-sync'
 import { initSettingsSyncManager, resetSettingsSyncManager } from './settings-sync'
 import { initNoteSyncService, resetNoteSyncService } from './note-sync'
@@ -172,6 +173,7 @@ function resetSyncServiceSingletons(): void {
   resetTemplateSyncService()
   resetReminderSyncService()
   resetCanvasSyncService()
+  resetCanvasFolderSyncService()
   resetProjectSyncService()
   resetSettingsSyncManager()
   resetNoteSyncService()
@@ -343,6 +345,11 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const templateSync = initTemplateSyncService({ queue, db: runtimeSyncDb, getDeviceId })
       const reminderSync = initReminderSyncService({ queue, db: runtimeSyncDb, getDeviceId })
       const canvasSync = initCanvasSyncService({ queue, db: runtimeSyncDb, getDeviceId })
+      const canvasFolderSync = initCanvasFolderSyncService({
+        queue,
+        db: runtimeSyncDb,
+        getDeviceId
+      })
       const projectSync = initProjectSyncService({ queue, db: runtimeSyncDb, getDeviceId })
       const settingsSync = initSettingsSyncManager({ db: runtimeSyncDb, queue, getDeviceId })
       const noteSync = initNoteSyncService({ queue, getDeviceId })
@@ -482,6 +489,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           kind: 'record',
           local: canvasSync,
           remote: getRemoteSyncAdapter('canvas')
+        },
+        {
+          type: 'canvas_folder',
+          kind: 'record',
+          local: canvasFolderSync,
+          remote: getRemoteSyncAdapter('canvas_folder')
         }
       ])
 

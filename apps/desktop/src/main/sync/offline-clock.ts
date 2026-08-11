@@ -6,6 +6,7 @@ import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters } from '@memry/db-schema/schema/settings'
 import { canvases } from '@memry/db-schema/schema/canvas'
+import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
 import { bookmarks } from '@memry/db-schema/schema/bookmarks'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { templates } from '@memry/db-schema/schema/templates'
@@ -322,5 +323,21 @@ export function incrementCanvasClockOffline(db: DataDb, canvasId: string): void 
     log.debug('Incremented offline canvas clock', { canvasId })
   } catch (err) {
     log.warn('Failed to increment offline canvas clock', { canvasId, error: err })
+  }
+}
+
+export function incrementCanvasFolderClockOffline(db: DataDb, folderId: string): void {
+  try {
+    const folder = db.select().from(canvasFolders).where(eq(canvasFolders.id, folderId)).get()
+    if (!folder) return
+
+    const existingClock = (folder.clock as VectorClock) ?? {}
+    const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
+
+    db.update(canvasFolders).set({ clock: newClock }).where(eq(canvasFolders.id, folderId)).run()
+
+    log.debug('Incremented offline canvas folder clock', { folderId })
+  } catch (err) {
+    log.warn('Failed to increment offline canvas folder clock', { folderId, error: err })
   }
 }

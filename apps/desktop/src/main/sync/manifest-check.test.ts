@@ -14,6 +14,8 @@ import { settings } from '@memry/db-schema/schema/settings'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { canvases } from '@memry/db-schema/schema/canvas'
+import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
+import { canvasFolderSyncId } from '@memry/contracts/canvas-folder-types'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import type { VectorClock } from '@memry/contracts/sync-api'
@@ -548,6 +550,73 @@ describe('checkManifestIntegrity', () => {
 
       const items = queue.dequeue(10)
       expect(items.find((i) => i.itemId === 'canvas-del')).toBeUndefined()
+    })
+  })
+
+  function insertCanvasFolder(folderPath: string, deletedAt: number | null): void {
+    testDb.db
+      .insert(canvasFolders)
+      .values({
+        id: canvasFolderSyncId(folderPath),
+        vaultId: 'vault-1',
+        path: folderPath,
+        icon: null,
+        createdAt: 1,
+        updatedAt: 1,
+        deletedAt,
+        clock: { 'device-A': 1 }
+      })
+      .run()
+  }
+
+  describe('#given a TOMBSTONED canvas folder missing from server #when check runs', () => {
+    it('#then does NOT re-enqueue it (no fleet-wide resurrection)', async () => {
+      // Same rule as the canvas block: the server manifest omits soft-deleted
+      // items, so listing a tombstone here reads as `!serverRef` and re-enqueues
+      // it as a `create`, NULLing the server's deleted_at and bringing the folder
+      // (and its whole subtree) back on every device within 30 minutes.
+      insertCanvasFolder('Deleted', Date.now())
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+      await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      const items = queue.dequeue(10)
+      expect(items.find((i) => i.type === 'canvas_folder')).toBeUndefined()
+    })
+  })
+
+  describe('#given a LIVE canvas folder missing from server #when check runs', () => {
+    it('#then re-enqueues it as a create', async () => {
+      insertCanvasFolder('Work', null)
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+      await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      const items = queue.dequeue(10)
+      const folderItem = items.find((i) => i.type === 'canvas_folder')
+      expect(folderItem).toBeDefined()
+      expect(folderItem!.itemId).toBe(canvasFolderSyncId('Work'))
+      expect(folderItem!.operation).toBe('create')
     })
   })
 

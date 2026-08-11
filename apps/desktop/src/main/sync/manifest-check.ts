@@ -8,6 +8,7 @@ import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters, settings } from '@memry/db-schema/schema/settings'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import { canvases } from '@memry/db-schema/schema/canvas'
+import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
 import { bookmarks } from '@memry/db-schema/schema/bookmarks'
 import { templates } from '@memry/db-schema/schema/templates'
 import { reminders } from '@memry/db-schema/schema/reminders'
@@ -181,6 +182,20 @@ function getLocalSyncableItems(db: DrizzleDb): LocalSyncableItem[] {
   const syncedFilters = db.select().from(savedFilters).where(isNotNull(savedFilters.clock)).all()
   for (const f of syncedFilters) {
     addLocalItem({ id: f.id, type: 'filter', payload: JSON.stringify(f) })
+  }
+
+  // Tombstones MUST be excluded, for the same reason the canvases block below
+  // excludes them: the server manifest omits soft-deleted items, so a
+  // locally-tombstoned folder listed here is seen as `!serverRef` and
+  // re-enqueued as a `create`, NULLing the server's deleted_at and bringing the
+  // folder back on every device within 30 minutes.
+  const syncedCanvasFolders = db
+    .select()
+    .from(canvasFolders)
+    .where(and(isNotNull(canvasFolders.clock), isNull(canvasFolders.deletedAt)))
+    .all()
+  for (const f of syncedCanvasFolders) {
+    addLocalItem({ id: f.id, type: 'canvas_folder', payload: JSON.stringify(f) })
   }
 
   const syncedTemplates = db.select().from(templates).where(isNotNull(templates.clock)).all()

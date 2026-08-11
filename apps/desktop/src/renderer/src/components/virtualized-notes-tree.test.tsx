@@ -10,6 +10,7 @@ import {
   type MoveOperation
 } from './virtualized-notes-tree'
 import type { TreeStructure } from '@/lib/virtualized-tree-utils'
+import { isRevealed } from '@tests/utils/reveal'
 
 const mocks = vi.hoisted(() => ({
   openTab: vi.fn()
@@ -216,6 +217,24 @@ describe('VirtualizedNotesTree', () => {
         type: 'file'
       })
     )
+  })
+
+  it('reveals a folder row action on keyboard focus, not only on hover', () => {
+    // Same defect as the non-virtual tree: the button is in the tab order but
+    // painted at `opacity-0` until hover (WCAG 2.4.7).
+    renderTree()
+
+    const openFolderView = screen.getByRole('button', { name: 'Open folder view' })
+    const reveal = openFolderView.parentElement
+    expect(reveal).not.toBeNull()
+
+    expect(openFolderView.tabIndex).toBeGreaterThanOrEqual(0)
+    expect(isRevealed(reveal!)).toBe(false)
+
+    act(() => openFolderView.focus())
+
+    expect(openFolderView).toHaveFocus()
+    expect(isRevealed(reveal!)).toBe(true)
   })
 
   it('supports folder actions, imperative expansion, and bulk delete keyboard shortcuts', async () => {

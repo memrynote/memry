@@ -365,8 +365,11 @@ function FolderRow({
             </span>
           )}
 
-          {/* Hover action icon to open folder view */}
-          <div className="flex items-center opacity-0 group-hover/folder:opacity-100 transition-opacity">
+          {/* Open-folder-view action. Revealed by focus as well as hover: the
+              button is in the tab order, and the row itself is `tabIndex={0}`
+              with `focus-visible:outline-none`, so hover-only left a keyboard
+              user with nothing on screen (WCAG 2.4.7). */}
+          <div className="flex items-center opacity-0 group-hover/folder:opacity-100 group-focus-within/folder:opacity-100 transition-opacity">
             <button
               type="button"
               onClick={handleOpenFolderViewClick}
