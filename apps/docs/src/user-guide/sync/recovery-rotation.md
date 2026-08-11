@@ -53,6 +53,27 @@ app signs that device out and routes you into this same recovery flow — sign i
 recovery phrase, and the device re-derives the correct key and pulls everything cleanly. Data on
 the server is never affected.
 
+### If the Sign-In Times Out
+
+The sign-in that precedes recovery is only valid for a few minutes. If you go looking for your
+recovery phrase and come back after it has run out, the app tells you the sign-in timed out and
+asks you to sign in again before entering the phrase — the phrase itself is still fine, and
+nothing was lost.
+
+### If You Can't Get Your Recovery Phrase Back
+
+The recovery screen offers **"I can't get my recovery phrase back"**. It is deliberately quiet,
+and it explains everything before it does anything:
+
+- This device signs out and stops syncing.
+- The encryption key held on this device is deleted. Anything already stored in your account
+  stays encrypted under the old key, and without the recovery phrase **nothing can ever read it
+  again**. This cannot be undone.
+- Notes already saved on this computer stay in your vault folder and keep working.
+
+Only use it when the phrase is gone for good. If there is any chance of finding it — a password
+manager, a printout, another device still signed in — recover instead.
+
 ## Key Rotation
 
 The **rotation wizard** generates a new vault key, re-encrypts all payloads under it, and reseals the new key for every linked device.
