@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { isNotNull } from 'drizzle-orm'
 import {
   createTestDataDb,
   createTestIndexDb,
@@ -10,7 +11,8 @@ import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { templates } from '@memry/db-schema/schema/templates'
-import { settings } from '@memry/db-schema/schema/settings'
+import { bookmarks } from '@memry/db-schema/schema/bookmarks'
+import { savedFilters, settings } from '@memry/db-schema/schema/settings'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { canvases } from '@memry/db-schema/schema/canvas'
@@ -576,6 +578,199 @@ describe('checkManifestIntegrity', () => {
       // #then
       expect(result.rePullNeeded).toBe(false)
       expect(result.serverOnlyCount).toBe(0)
+    })
+  })
+
+  /** One row of every syncable type, plus the manifest that matches it. */
+  function seedOneOfEverySyncedType(): Array<{ id: string; type: string }> {
+    const clock: VectorClock = { 'device-A': 1 }
+    const timestamp = '2026-05-15T08:00:00.000Z'
+
+    testDb.db.update(projects).set({ clock }).run()
+    testDb.db
+      .insert(tasks)
+      .values({ id: 'task-1', projectId: 'proj-1', title: 'T', priority: 0, position: 0, clock })
+      .run()
+    testDb.db.insert(inboxItems).values({ id: 'inbox-1', title: 'I', type: 'note', clock }).run()
+    testDb.db
+      .insert(savedFilters)
+      .values({ id: 'filter-1', name: 'F', config: { query: 'x' }, clock })
+      .run()
+    testDb.db.insert(templates).values({ id: 'tpl-1', name: 'Tpl', clock }).run()
+    testDb.db
+      .insert(bookmarks)
+      .values({ id: 'bm-1', itemType: 'note', itemId: 'note-1', clock })
+      .run()
+    testDb.db
+      .insert(reminders)
+      .values({
+        id: 'rem-1',
+        targetType: 'note',
+        targetId: 'note-1',
+        remindAt: timestamp,
+        status: 'triggered',
+        triggeredAt: '2026-05-15T08:00:01.000Z',
+        clock
+      })
+      .run()
+    insertCanvas('canvas-1', null)
+    testDb.db.insert(tagDefinitions).values({ name: 'important', color: '#ff0000', clock }).run()
+    testDb.db.insert(settings).values({ key: 'synced_settings', value: '{}' }).run()
+    testIndexDb.db
+      .insert(noteCache)
+      .values({
+        id: 'note-1',
+        path: 'notes/a.md',
+        title: 'A',
+        clock,
+        createdAt: timestamp,
+        modifiedAt: timestamp
+      })
+      .run()
+    testIndexDb.db
+      .insert(noteCache)
+      .values({
+        id: 'journal-1',
+        path: 'journals/2026-02-18.md',
+        title: '2026-02-18',
+        date: '2026-02-18',
+        clock,
+        createdAt: timestamp,
+        modifiedAt: timestamp
+      })
+      .run()
+
+    return [
+      { id: 'task-1', type: 'task' },
+      { id: 'proj-1', type: 'project' },
+      { id: 'inbox-1', type: 'inbox' },
+      { id: 'filter-1', type: 'filter' },
+      { id: 'tpl-1', type: 'template' },
+      { id: 'bm-1', type: 'bookmark' },
+      { id: 'rem-1', type: 'reminder' },
+      { id: 'canvas-1', type: 'canvas' },
+      { id: 'important', type: 'tag_definition' },
+      { id: 'synced_settings', type: 'settings' },
+      { id: 'note-1', type: 'note' },
+      { id: 'journal-1', type: 'journal' }
+    ]
+  }
+
+  describe('#given a clean vault where every local item is on the server #when check runs', () => {
+    it('#then materializes no row payloads at all', async () => {
+      // #given — one row of every syncable type, all present on the server
+      const manifestItems = seedOneOfEverySyncedType()
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: manifestItems.map((i) => ({ ...i, version: 1, modifiedAt: 1000, size: 50 })),
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      // #when — every row stringify on this path would be wasted work
+      const stringifySpy = vi.spyOn(JSON, 'stringify')
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+      const rowStringifies = stringifySpy.mock.calls.filter(
+        ([value]) => typeof value === 'object' && value !== null
+      )
+      stringifySpy.mockRestore()
+
+      // #then
+      expect(rowStringifies).toEqual([])
+      expect(result.rePullNeeded).toBe(false)
+      expect(result.serverOnlyCount).toBe(0)
+      expect(queue.getPendingCount()).toBe(0)
+    })
+  })
+
+  describe('#given every local item missing from the server #when check runs', () => {
+    it('#then the re-enqueued payloads are byte-identical to a full-table pass', async () => {
+      // #given
+      seedOneOfEverySyncedType()
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+      const { toOutboundReminderPayload } = await import('./reminder-outbound')
+
+      // #when
+      await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      // #then — expectations come from the eager full-table selects the old
+      // implementation used, so any drift in serialized shape or key order
+      // (which the server would read as a changed item) fails here.
+      const queued = new Map(queue.dequeue(50).map((i) => [`${i.type}:${i.itemId}`, i.payload]))
+      const [taskRow] = testDb.db.select().from(tasks).where(isNotNull(tasks.clock)).all()
+      const [projectRow] = testDb.db.select().from(projects).where(isNotNull(projects.clock)).all()
+      const [inboxRow] = testDb.db
+        .select()
+        .from(inboxItems)
+        .where(isNotNull(inboxItems.clock))
+        .all()
+      const [filterRow] = testDb.db
+        .select()
+        .from(savedFilters)
+        .where(isNotNull(savedFilters.clock))
+        .all()
+      const [templateRow] = testDb.db
+        .select()
+        .from(templates)
+        .where(isNotNull(templates.clock))
+        .all()
+      const [bookmarkRow] = testDb.db
+        .select()
+        .from(bookmarks)
+        .where(isNotNull(bookmarks.clock))
+        .all()
+      const [reminderRow] = testDb.db
+        .select()
+        .from(reminders)
+        .where(isNotNull(reminders.clock))
+        .all()
+      const [canvasRow] = testDb.db.select().from(canvases).where(isNotNull(canvases.clock)).all()
+      const [tagRow] = testDb.db
+        .select()
+        .from(tagDefinitions)
+        .where(isNotNull(tagDefinitions.clock))
+        .all()
+      const [settingsRow] = testDb.db.select().from(settings).all()
+
+      expect(queued.get('task:task-1')).toBe(JSON.stringify(taskRow))
+      expect(queued.get('project:proj-1')).toBe(JSON.stringify(projectRow))
+      expect(queued.get('inbox:inbox-1')).toBe(JSON.stringify(inboxRow))
+      expect(queued.get('filter:filter-1')).toBe(JSON.stringify(filterRow))
+      expect(queued.get('template:tpl-1')).toBe(JSON.stringify(templateRow))
+      expect(queued.get('bookmark:bm-1')).toBe(JSON.stringify(bookmarkRow))
+      expect(queued.get('reminder:rem-1')).toBe(
+        JSON.stringify(toOutboundReminderPayload(reminderRow))
+      )
+      expect(queued.get('canvas:canvas-1')).toBe(
+        JSON.stringify({
+          id: canvasRow.id,
+          vaultId: canvasRow.vaultId,
+          title: canvasRow.title,
+          clock: canvasRow.clock,
+          deletedAt: null
+        })
+      )
+      expect(queued.get('tag_definition:important')).toBe(JSON.stringify(tagRow))
+      expect(queued.get('settings:synced_settings')).toBe(JSON.stringify(settingsRow))
+      expect(queued.get('note:note-1')).toBe('')
+      expect(queued.get('journal:journal-1')).toBe('')
     })
   })
 })
