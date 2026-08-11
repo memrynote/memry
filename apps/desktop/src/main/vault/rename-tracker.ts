@@ -11,7 +11,7 @@
  */
 
 import path from 'path'
-import { BrowserWindow } from 'electron'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
 import type { NoteRenamedEvent } from '@memry/contracts/notes-api'
 import { createLogger } from '../lib/logger'
@@ -77,11 +77,9 @@ export function unregisterRenameSyncCallback(): void {
  * Emit note renamed event to all renderer windows.
  */
 function emitNoteRenamed(event: NoteRenamedEvent): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(NotesChannels.events.RENAMED, {
-      ...event,
-      source: 'external'
-    })
+  broadcastToAllWindows(NotesChannels.events.RENAMED, {
+    ...event,
+    source: 'external'
   })
 }
 

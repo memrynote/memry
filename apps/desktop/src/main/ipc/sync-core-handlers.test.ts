@@ -667,7 +667,7 @@ describe('sync IPC handlers', () => {
       mockGetDevicePublicKey.mockReturnValue(new Uint8Array(32).fill(8))
       mockCheckLocalKeyAgainstAccount.mockResolvedValue('mismatch')
       const send = vi.fn()
-      mockGetAllWindows.mockReturnValue([{ webContents: { send } }])
+      mockGetAllWindows.mockReturnValue([{ isDestroyed: () => false, webContents: { send } }])
 
       await checkSyncIntegrity()
 

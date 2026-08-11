@@ -107,6 +107,30 @@ describe('Agent MCP lifecycle', () => {
     expect(getPublicStatus()).toEqual({ url: null, ['token']: null, toolCount: 0 })
   })
 
+  // The listening server's tool closures capture the vault databases at start
+  // time, so stopping has to drop the handle and not just close the socket:
+  // whatever a later start hands to the tools is what an MCP client reaches.
+  it('rebinds to the current vault databases after a stop', async () => {
+    await startAgentMcpLifecycle()
+
+    expect(mocks.createVaultServiceHandles).toHaveBeenLastCalledWith({
+      dataDb: 'data-db',
+      indexDb: 'index-db'
+    })
+
+    await stopAgentMcpLifecycle()
+    mocks.getDatabase.mockReturnValueOnce('next-vault-data-db')
+    mocks.getIndexDatabase.mockReturnValueOnce('next-vault-index-db')
+
+    await startAgentMcpLifecycle()
+
+    expect(mocks.startAgentMcpServer).toHaveBeenCalledTimes(2)
+    expect(mocks.createVaultServiceHandles).toHaveBeenLastCalledWith({
+      dataDb: 'next-vault-data-db',
+      indexDb: 'next-vault-index-db'
+    })
+  })
+
   it('rotates the running server token', async () => {
     expect(() => rotateToken()).toThrow('Agent MCP server not running')
 

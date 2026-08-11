@@ -28,6 +28,11 @@ export interface ChildProcessGoneDetails {
   name?: string
   // Platform exit status: on POSIX this carries the signal (11 SIGSEGV, 6 SIGABRT).
   exitCode?: number
+  // Where the worker was in its own lifecycle when it died, when the owning
+  // module can resolve it (see getEmbeddingWorkerPhase). Resolved by the caller
+  // rather than looked up here: the worker modules already import this one, so
+  // reaching back into them would close an import cycle.
+  phase?: string
 }
 
 // Utility workers (embeddings, image-processing, voice-model) idle-shutdown
@@ -53,12 +58,19 @@ export const trackChildProcessGone = (details: ChildProcessGoneDetails): void =>
   // so it spells out the worker, the reason and the exit status. Every part is an
   // Electron constant or our own worker label: no user content can reach it.
   const worker = details.name ?? details.serviceName ?? details.type
-  const exit = typeof details.exitCode === 'number' ? ` (exit ${details.exitCode})` : ''
+  // Phase joins the exit status in the message, and the log_action dimension, but
+  // deliberately NOT the errorCode: that is the Error Tracking fingerprint, and
+  // splitting it per phase would orphan the history of every existing issue.
+  const detail = [
+    typeof details.exitCode === 'number' ? `exit ${details.exitCode}` : null,
+    details.phase ?? null
+  ].filter((part): part is string => part !== null)
+  const exit = detail.length > 0 ? ` (${detail.join(', ')})` : ''
   // errorCode stays stable (no exit code baked in) so the issue grouping counts
   // crashes per worker; the exit status rides along as a metric instead.
   trackMainLog('error', {
     scope: 'Electron',
-    action: 'child_process_gone',
+    action: details.phase ? `child_process_gone_${details.phase}` : 'child_process_gone',
     errorCode,
     error: { message: `${worker} utility process ${details.reason}${exit}` },
     metrics: typeof details.exitCode === 'number' ? { value: details.exitCode } : undefined

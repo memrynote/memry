@@ -221,6 +221,23 @@ describe('secret-storage call sites — account string preservation and migratio
       expect(harness.keytarStore.has(`${MASTER.service}:${MASTER.account}`)).toBe(false)
     })
 
+    it('stops paying the OS keychain round-trip on repeat vault-key fetches', async () => {
+      const db = freshDb()
+      const masterKey = sodium.randombytes_buf(32)
+      harness.keytarStore.set(`${MASTER.service}:${MASTER.account}`, toB64(masterKey))
+
+      const first = await getOrInitializeLocalVaultKey(db, 'vault-1')
+
+      harness.keytarGet.mockClear()
+      for (let i = 0; i < 10; i += 1) {
+        // Same key every time — the latch only skips work that is provably a
+        // no-op, it never changes what the fetch returns.
+        await expect(getOrInitializeLocalVaultKey(db, 'vault-1')).resolves.toEqual(first)
+      }
+
+      expect(harness.keytarGet).not.toHaveBeenCalled()
+    })
+
     it('keeps the keytar master key when the vault verifier rejects it', async () => {
       const db = freshDb()
       const boundKey = sodium.randombytes_buf(32)

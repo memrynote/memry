@@ -5,7 +5,8 @@
  * @module ipc/bookmarks-handlers
  */
 
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain } from 'electron'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import {
   BookmarksChannels,
   BookmarkItemTypes,
@@ -36,9 +37,7 @@ import { getMainI18n } from '../lib/main-i18n'
  * Emit bookmark event to all windows
  */
 function emitBookmarkEvent(channel: string, data: unknown): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, data)
-  })
+  broadcastToAllWindows(channel, data)
 }
 
 /**

@@ -40,7 +40,14 @@ async function getPassword(accountId: string, kind: GoogleTokenKind): Promise<st
   const account = getAccountKey(accountId, kind)
 
   try {
-    return await getSecret(SERVICE, account)
+    // Every consumer of these tokens either overwrites them (the OAuth connect
+    // and the refresh path), deletes them (disconnect), or only asks whether the
+    // account is still authorized. So an entry we cannot decrypt — the profiles
+    // stranded by the v2026-08-06 app-identity rename — must read as absent
+    // rather than throw, otherwise the pre-write read at oauth.ts kills the
+    // connect flow before the fresh tokens are ever stored and the account can
+    // never be reconnected from inside the app.
+    return await getSecret(SERVICE, account, { treatUnreadableAsAbsent: true })
   } catch (error) {
     throw new Error(
       `Failed to read Google Calendar credential (${account}): ${error instanceof Error ? error.message : 'unknown error'}`

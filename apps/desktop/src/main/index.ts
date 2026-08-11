@@ -13,9 +13,10 @@ import {
   nativeImage,
   Menu,
   MenuItem,
-  dialog
+  dialog,
+  type IpcMainEvent
 } from 'electron'
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { join, resolve, normalize } from 'path'
 import { homedir } from 'node:os'
 import { existsSync, readdirSync, statSync, createReadStream } from 'node:fs'
@@ -48,7 +49,7 @@ import { configureSessionPermissions } from './session-permissions'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { stopVoiceModel } from './inbox/voice-model'
 import { stopImageProcessing } from './image-processing/bridge'
-import { stopEmbeddingModel } from './lib/embeddings'
+import { getEmbeddingWorkerPhase, stopEmbeddingModel } from './lib/embeddings'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { startInboxReviewScheduler, stopInboxReviewScheduler } from './inbox/review-scheduler'
 import { disposeTelemetryRuntime, initializeTelemetryRuntime } from './telemetry/runtime'
@@ -71,6 +72,7 @@ import {
   installCrashMarker,
   markShutdownFailure
 } from './telemetry/crash-marker'
+import { detectFailedUpdateInstall } from './telemetry/update-install-marker'
 import {
   startGoogleCalendarSyncRunner,
   stopGoogleCalendarSyncRunner,
@@ -209,7 +211,15 @@ function registerMainDiagnostics(): void {
     // Idle utility workers (embeddings, image-processing, voice-model) exit
     // cleanly every ~30s — lifecycle, not a fault. trackChildProcessGone skips
     // clean exits and codes real faults as type:reason:serviceName.
-    trackChildProcessGone(details)
+    //
+    // This is also the ONLY report a native worker crash produces: the worker's
+    // own 'exit' event never fires for one, so the owning module never learns it
+    // died. Resolving the lifecycle phase here is what lets that surviving report
+    // say whether the user lost an embedding or the worker died tearing down.
+    trackChildProcessGone({
+      ...details,
+      phase: getEmbeddingWorkerPhase(details.name) ?? undefined
+    })
     // A dead GPU process means this launch may already be painting nothing.
     // Record it so the next launch disables hardware acceleration (see
     // gpu-crash-guard). Exclude 'clean-exit' (normal shutdown) and, since
@@ -1421,6 +1431,10 @@ const appReady = app.whenReady().then(async () => {
   // Order matters: detect the PREVIOUS session's leftover marker before this
   // session writes its own.
   detectUncleanShutdown()
+  // Same shape as the crash marker: an update install that never applied left a
+  // marker behind because the failure itself happened after this runtime was
+  // disposed on the previous quit.
+  detectFailedUpdateInstall(app.getVersion())
   installCrashMarker(telemetryRuntime.context.sessionId, app.getVersion())
   startActiveHeartbeat(() => BrowserWindow.getFocusedWindow() !== null)
 
@@ -1888,21 +1902,40 @@ function flushWindow(win: BrowserWindow, timeoutMs = 2000): Promise<void> {
 
     shutdownLog.info('flushWindow: requesting flush from window', win.id)
 
-    const timer = setTimeout(() => {
-      shutdownLog.warn('flushWindow: timeout for window', win.id)
-      resolve()
-    }, timeoutMs)
-
     const channel = 'app:flush-done'
-    const handler = (): void => {
-      shutdownLog.info('flushWindow: flush-done received from window', win.id)
+    const requestId = randomUUID()
+    let settled = false
+
+    const settle = (): void => {
+      if (settled) return
+      settled = true
       clearTimeout(timer)
+      // The timeout path used to skip this: a renderer that never answers left a
+      // listener on the shared ipcMain forever, and window-close runs this on
+      // every close.
       ipcMain.removeListener(channel, handler)
       resolve()
     }
 
+    // `app:flush-done` is one shared channel for every in-flight flush, so a
+    // reply only counts when it comes from this window AND answers this request.
+    // Without both checks the first window to reply resolved all of them, and a
+    // late reply to an earlier request satisfied the next one — either way a
+    // renderer gets torn down with unsaved edits still pending.
+    const handler = (event: IpcMainEvent, doneRequestId?: string): void => {
+      if (event.sender !== win.webContents) return
+      if (doneRequestId !== requestId) return
+      shutdownLog.info('flushWindow: flush-done received from window', win.id)
+      settle()
+    }
+
+    const timer = setTimeout(() => {
+      shutdownLog.warn('flushWindow: timeout for window', win.id)
+      settle()
+    }, timeoutMs)
+
     ipcMain.on(channel, handler)
-    win.webContents.send('app:request-flush')
+    win.webContents.send('app:request-flush', requestId)
   })
 }
 

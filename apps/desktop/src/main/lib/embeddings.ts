@@ -32,7 +32,7 @@ const logger = createLogger('Embeddings')
  * embedding was already delivered), while `in_flight` means they silently lost
  * semantic-search indexing for that note.
  */
-type WorkerExitPhase = 'starting' | 'in_flight' | 'idle_shutdown' | 'idle'
+export type WorkerExitPhase = 'starting' | 'in_flight' | 'idle_shutdown' | 'idle'
 
 export interface ModelInfo {
   name: string
@@ -56,6 +56,13 @@ const MIN_CONTENT_LENGTH = 10
 
 /** Maximum characters for embedding input (~512 tokens) */
 const MAX_CONTENT_LENGTH = 2000
+/**
+ * The `serviceName` fork option, which is also what Electron reports as
+ * `details.name` on `app.on('child-process-gone')` — the only channel that
+ * actually observes a native worker crash. Shared so the two cannot drift.
+ */
+const WORKER_SERVICE_NAME = 'Embeddings'
+
 const REQUEST_TIMEOUT_MS = 5 * 60_000
 const START_TIMEOUT_MS = 10_000
 const SHUTDOWN_TIMEOUT_MS = 3_000
@@ -286,9 +293,10 @@ class EmbeddingModelBridge {
     this.clearIdleShutdown()
     // Same force-kill race as stop(): latch the phase so the kill's async 'exit'
     // is attributed to a deliberate teardown, not a spontaneous `idle` death.
-    if (this.process) {
-      this.pendingExitPhase = 'idle_shutdown'
-    }
+    // Cleared — not left alone — when there is nothing to kill: the latch now
+    // outlives the exit handler (which never runs for a native crash), so a stale
+    // one would make the NEXT worker's crash read as a teardown it never had.
+    this.pendingExitPhase = this.process ? 'idle_shutdown' : null
     this.process?.kill()
     this.process = null
     this.readyPromise = null
@@ -314,7 +322,7 @@ class EmbeddingModelBridge {
 
     const workerPath = path.join(__dirname, 'embedding-worker.js')
     const child = utilityProcess.fork(workerPath, [], {
-      serviceName: 'Embeddings',
+      serviceName: WORKER_SERVICE_NAME,
       stdio: 'pipe',
       env: {
         ...process.env,
@@ -475,6 +483,24 @@ class EmbeddingModelBridge {
     if (this.shuttingDown) return 'idle_shutdown'
     if (this.pendingRequests.size > 0) return 'in_flight'
     return 'idle'
+  }
+
+  /**
+   * The phase to attribute a death to when it is reported by
+   * `app.on('child-process-gone')` rather than by the worker's own 'exit' event.
+   *
+   * Production says that is the only report we get: across 107 consecutive
+   * `Utility:crashed:Embeddings` events, `trackWorkerExit` below emitted nothing
+   * and neither did `embed_failed` — a native SIGABRT out of the model runtime is
+   * neither a graceful exit nor a V8 fatal error, so no instance event fires and
+   * this bridge never learns its worker died. Reading the phase from outside the
+   * handler is what makes that surviving report answer the only question that
+   * matters: did the user lose an embedding, or did the worker just die tearing
+   * down after already delivering one?
+   */
+  liveWorkerPhase(): WorkerExitPhase | null {
+    if (this.pendingExitPhase) return this.pendingExitPhase
+    return this.process ? this.currentPhase() : null
   }
 
   /**
@@ -655,4 +681,17 @@ export async function stopEmbeddingModel(): Promise<void> {
  */
 export function resetEmbeddingModelFailure(): void {
   bridge.clearLoadFailure()
+}
+
+/**
+ * Lifecycle phase to attribute a `child-process-gone` report to.
+ *
+ * Returns null when the report is not about our embedding worker, or when no
+ * worker was live — so an unrelated crash never inherits a phase.
+ *
+ * @param workerName - `details.name` from `app.on('child-process-gone')`
+ */
+export function getEmbeddingWorkerPhase(workerName: string | undefined): WorkerExitPhase | null {
+  if (workerName !== WORKER_SERVICE_NAME) return null
+  return bridge.liveWorkerPhase()
 }

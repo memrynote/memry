@@ -317,7 +317,7 @@ describe('medium gap renderer surfaces', () => {
     const h2 = document.createElement('h2')
     h2.dataset.id = 'h2'
     h2.getBoundingClientRect = () => rect(760, 800)
-    document.body.append(h1, h2)
+    container.append(h1, h2)
 
     const scrollContainerRef = { current: container }
     const { result } = renderHook(() =>

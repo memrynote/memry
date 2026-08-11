@@ -77,7 +77,17 @@ key for other worktrees.
 
 An unreadable secret is never reported as absent. `getSecret()` throws when a ciphertext exists in
 the store but cannot be decrypted this run, because the callers that act on a `null` are destructive:
-they regenerate the vault master key or tear down local sync state. Relatedly, an `integrity`
+they regenerate the vault master key or tear down local sync state.
+
+The one exception is explicit and per-call. `getSecret(service, account, { treatUnreadableAsAbsent:
+true })` returns `null` instead, and is used only where a false absence cannot lose anything because
+the entry is immediately overwritten, immediately deleted, or only used to answer "is this account
+still connected": the Google Calendar keychain, the capture pairing token, and the OneNote auth
+store. Without it those flows could not recover at all — a re-connect reads the existing tokens
+before it writes the fresh ones, so a throw killed the flow before the write and the undecryptable
+entry could never be replaced. Every other caller, the master key included, keeps the guard armed.
+Each opt-in read that hits an unreadable entry is logged at `warn` so the affected population stays
+visible. Relatedly, an `integrity`
 teardown — which `checkSyncIntegrity()` triggers from a single failed device-signing-key read — clears
 the session tokens and the signing key but **never the vault master key**. That key cannot be
 re-issued by signing in again, so it is not collateral for another entry's absence; only an explicit
