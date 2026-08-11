@@ -1,6 +1,7 @@
 import type { MiddlewareHandler } from 'hono'
 
 import { AppError, ErrorCodes } from '../lib/errors'
+import { isJwtExpiredError } from '../lib/jwt-errors'
 import { JwtKeyError, verifyAccessToken } from '../lib/jwt-verify'
 import type { AppContext } from '../types'
 
@@ -27,7 +28,7 @@ export const authMiddleware: MiddlewareHandler<AppContext> = async (c, next) => 
       throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Invalid JWT verify key configuration', 500)
     }
     const message = err instanceof Error ? err.message : 'Token verification failed'
-    if (message.includes('expired')) {
+    if (isJwtExpiredError(err)) {
       throw new AppError(ErrorCodes.AUTH_TOKEN_EXPIRED, 'Token has expired', 401)
     }
     throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, message, 401)

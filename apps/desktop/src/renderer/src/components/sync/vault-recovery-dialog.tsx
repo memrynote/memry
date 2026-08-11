@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -11,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { AlertTriangle } from '@/lib/icons'
 import { useAuth } from '@/contexts/auth-context'
 import { RecoveryPhraseInput } from './recovery-phrase-input'
+import { StartFreshPanel, StartFreshTrigger } from './start-fresh-panel'
 
 interface VaultRecoveryDialogProps {
   open: boolean
@@ -33,8 +35,9 @@ export function VaultRecoveryDialog({
   onDismiss,
   onSignOut
 }: VaultRecoveryDialogProps): React.JSX.Element {
+  const { t } = useT('settings')
   const { linkViaRecovery } = useAuth()
-  const [phase, setPhase] = useState<'intro' | 'input'>('intro')
+  const [phase, setPhase] = useState<'intro' | 'input' | 'start-fresh'>('intro')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sessionExpired, setSessionExpired] = useState(false)
@@ -98,6 +101,13 @@ export function VaultRecoveryDialog({
               </Button>
             </AlertDialogFooter>
           </>
+        ) : phase === 'start-fresh' ? (
+          <>
+            <AlertDialogHeader className="sr-only">
+              <AlertDialogTitle>{t('setup.startFresh.title')}</AlertDialogTitle>
+            </AlertDialogHeader>
+            <StartFreshPanel onConfirm={onSignOut} onCancel={() => setPhase('input')} />
+          </>
         ) : (
           <>
             <AlertDialogHeader>
@@ -118,6 +128,7 @@ export function VaultRecoveryDialog({
                 </Button>
               </AlertDialogFooter>
             )}
+            <StartFreshTrigger onClick={() => setPhase('start-fresh')} />
           </>
         )}
       </AlertDialogContent>

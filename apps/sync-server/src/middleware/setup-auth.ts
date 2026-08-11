@@ -2,6 +2,7 @@ import { jwtVerify } from 'jose'
 import type { MiddlewareHandler } from 'hono'
 
 import { AppError, ErrorCodes } from '../lib/errors'
+import { isJwtExpiredError } from '../lib/jwt-errors'
 import { getPublicKey } from '../lib/jwt-keys'
 import type { AppContext } from '../types'
 
@@ -37,8 +38,7 @@ export const setupAuthMiddleware: MiddlewareHandler<AppContext> = async (c, next
     })
     payload = result.payload as typeof payload
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Token verification failed'
-    if (message.includes('expired')) {
+    if (isJwtExpiredError(err)) {
       throw new AppError(ErrorCodes.AUTH_TOKEN_EXPIRED, 'Setup token has expired', 401)
     }
     throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Invalid setup token', 401)

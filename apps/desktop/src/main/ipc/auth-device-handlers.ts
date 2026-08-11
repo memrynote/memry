@@ -32,7 +32,13 @@ import {
 } from '../crypto'
 import { getDatabase, isDatabaseInitialized } from '../database/client'
 import { store } from '../store'
-import { deleteFromServer, getFromServer, patchToServer, postToServer } from '../sync/http-client'
+import {
+  deleteFromServer,
+  getFromServer,
+  patchToServer,
+  postToServer,
+  SyncServerError
+} from '../sync/http-client'
 import { persistKeysAndRegisterDevice } from '../sync/device-registration'
 import {
   approveDeviceLinking,
@@ -42,7 +48,12 @@ import {
   initiateDeviceLinking,
   linkViaQr
 } from '../sync/linking-service'
-import { getValidAccessToken, retrieveToken, storeToken } from '../sync/token-manager'
+import {
+  getValidAccessToken,
+  isTokenExpired,
+  retrieveToken,
+  storeToken
+} from '../sync/token-manager'
 import { createLogger } from '../lib/logger'
 import { registerCommand } from './lib/register-command'
 import { getMainI18n } from '../lib/main-i18n'
@@ -173,6 +184,44 @@ export async function performFirstDeviceSetup(setupToken: string): Promise<First
 }
 
 // ============================================================================
+// Setup-token failures
+// ============================================================================
+
+/**
+ * The setup token minted at sign-in is valid for five minutes and is consumed
+ * by the first device registration. Finishing a reinstall takes longer than
+ * that whenever the user has to go and find their 24-word recovery phrase, so
+ * the server answers 401 and its wording — "Invalid setup token", "Setup token
+ * already used" — used to reach the user verbatim (issue #1202). Nobody can
+ * act on a message about an artifact they never saw.
+ *
+ * Every setup-token rejection is translated into one sentence about signing in
+ * again, and logged with the (non-sensitive) reason so a diagnostic report can
+ * separate "expired while the user was reading" from "never persisted". Token
+ * contents are never logged.
+ */
+function isSetupTokenRejection(err: unknown): boolean {
+  return err instanceof SyncServerError && err.statusCode === 401
+}
+
+function setupSessionExpiredMessage(): string {
+  return getMainI18n().t('errors:auth.setupSessionExpired')
+}
+
+function logSetupTokenFailure(
+  stage: 'recovery-info' | 'device-register' | 'first-device-setup',
+  reason: 'absent' | 'locally-expired' | 'rejected',
+  err?: unknown
+): void {
+  logger.warn('Setup token unusable during account setup', {
+    stage,
+    reason,
+    statusCode: err instanceof SyncServerError ? err.statusCode : undefined,
+    serverError: err instanceof SyncServerError ? err.serverError : undefined
+  })
+}
+
+// ============================================================================
 // OTP Clipboard Detection State
 // ============================================================================
 
@@ -272,11 +321,18 @@ export function registerAuthDeviceHandlers(): void {
   ipcMain.handle(SYNC_CHANNELS.SETUP_NEW_ACCOUNT, async () => {
     const setupToken = await retrieveToken(KEYCHAIN_ENTRIES.SETUP_TOKEN)
     if (!setupToken) {
-      return { success: false, error: getMainI18n().t('errors:auth.sessionExpired') }
+      logSetupTokenFailure('first-device-setup', 'absent')
+      return { success: false, error: setupSessionExpiredMessage() }
     }
 
-    const { deviceId } = await performFirstDeviceSetup(setupToken)
-    return { success: true, deviceId }
+    try {
+      const { deviceId } = await performFirstDeviceSetup(setupToken)
+      return { success: true, deviceId }
+    } catch (err) {
+      if (!isSetupTokenRejection(err)) throw err
+      logSetupTokenFailure('first-device-setup', 'rejected', err)
+      return { success: false, error: setupSessionExpiredMessage() }
+    }
   })
 
   registerCommand(
@@ -344,10 +400,25 @@ export function registerAuthDeviceHandlers(): void {
 
       const setupToken = await retrieveToken(KEYCHAIN_ENTRIES.SETUP_TOKEN)
       if (!setupToken) {
-        return { success: false, error: getMainI18n().t('errors:auth.sessionExpired') }
+        logSetupTokenFailure('recovery-info', 'absent')
+        return { success: false, error: setupSessionExpiredMessage() }
       }
 
-      const rawRecovery = await getFromServer<unknown>('/auth/recovery-info', setupToken)
+      // Checked locally first: a token that already ran out cannot be salvaged
+      // by a round trip, and the server's own wording for it is unreadable.
+      if (isTokenExpired(setupToken)) {
+        logSetupTokenFailure('recovery-info', 'locally-expired')
+        return { success: false, error: setupSessionExpiredMessage() }
+      }
+
+      let rawRecovery: unknown
+      try {
+        rawRecovery = await getFromServer<unknown>('/auth/recovery-info', setupToken)
+      } catch (err) {
+        if (!isSetupTokenRejection(err)) throw err
+        logSetupTokenFailure('recovery-info', 'rejected', err)
+        return { success: false, error: setupSessionExpiredMessage() }
+      }
       const recoveryInfo = RecoveryDataResponseSchema.parse(rawRecovery)
 
       const derived = await recoverMasterKeyFromPhrase(input.recoveryPhrase, recoveryInfo.kdfSalt)
@@ -362,16 +433,22 @@ export function registerAuthDeviceHandlers(): void {
         const keyPair = await getOrCreateSigningKeyPair()
         signingSecretKey = keyPair.secretKey
 
-        const deviceId = await persistKeysAndRegisterDevice(
-          derived.masterKey,
-          signingSecretKey,
-          setupToken,
-          derived.kdfSalt,
-          derived.keyVerifier,
-          true
-        )
+        try {
+          const deviceId = await persistKeysAndRegisterDevice(
+            derived.masterKey,
+            signingSecretKey,
+            setupToken,
+            derived.kdfSalt,
+            derived.keyVerifier,
+            true
+          )
 
-        return { success: true, deviceId }
+          return { success: true, deviceId }
+        } catch (err) {
+          if (!isSetupTokenRejection(err)) throw err
+          logSetupTokenFailure('device-register', 'rejected', err)
+          return { success: false, error: setupSessionExpiredMessage() }
+        }
       } finally {
         secureCleanup(derived.masterKey)
         if (signingSecretKey) secureCleanup(signingSecretKey)

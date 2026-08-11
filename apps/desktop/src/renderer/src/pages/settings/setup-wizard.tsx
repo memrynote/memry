@@ -12,6 +12,7 @@ import { OAuthButtons } from '@/components/sync/oauth-buttons'
 import { RecoveryPhraseDisplay } from '@/components/sync/recovery-phrase-display'
 import { RecoveryPhraseConfirm } from '@/components/sync/recovery-phrase-confirm'
 import { RecoveryPhraseInput } from '@/components/sync/recovery-phrase-input'
+import { StartFreshPanel, StartFreshTrigger } from '@/components/sync/start-fresh-panel'
 import { LinkingCodeEntry } from '@/components/sync/linking-code-entry'
 import { LinkingPending } from '@/components/sync/linking-pending'
 import { VaultPickerStep } from '@/components/sync/vault-picker-step'
@@ -62,6 +63,7 @@ export function SetupWizard(): React.JSX.Element {
   const [isResending, setIsResending] = useState(false)
   const [recoveryPhrase, setRecoveryPhrase] = useState<string | null>(null)
   const [recoveryPhraseError, setRecoveryPhraseError] = useState(false)
+  const [isStartingFresh, setIsStartingFresh] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -222,6 +224,15 @@ export function SetupWizard(): React.JSX.Element {
     void logout()
   }, [logout])
 
+  // Signing out is what "start fresh" means here: the session, this device's
+  // key material and the sync tables go, the vault folder on disk stays. See
+  // StartFreshPanel for the consequences the user confirms first.
+  const handleStartFresh = useCallback(() => {
+    setIsStartingFresh(false)
+    clearWizardError()
+    void logout()
+  }, [clearWizardError, logout])
+
   const currentStepIndex = STEP_MAP[wizardStep]
 
   return (
@@ -375,14 +386,23 @@ export function SetupWizard(): React.JSX.Element {
         />
       )}
 
-      {wizardStep === 'recovery-input' && (
-        <RecoveryPhraseInput
-          onSubmit={handleRecoverySubmit}
-          isLoading={isLoading}
-          error={wizardError}
-          onBack={() => setWizardStep('linking-choice')}
-        />
-      )}
+      {wizardStep === 'recovery-input' &&
+        (isStartingFresh ? (
+          <StartFreshPanel
+            onConfirm={handleStartFresh}
+            onCancel={() => setIsStartingFresh(false)}
+          />
+        ) : (
+          <>
+            <RecoveryPhraseInput
+              onSubmit={handleRecoverySubmit}
+              isLoading={isLoading}
+              error={wizardError}
+              onBack={() => setWizardStep('linking-choice')}
+            />
+            <StartFreshTrigger onClick={() => setIsStartingFresh(true)} />
+          </>
+        ))}
     </div>
   )
 }

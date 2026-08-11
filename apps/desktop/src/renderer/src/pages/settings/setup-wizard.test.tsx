@@ -395,4 +395,28 @@ describe('SetupWizard', () => {
     await user.click(screen.getByRole('button', { name: 'back to link choice' }))
     expect(auth.setWizardStep).toHaveBeenCalledWith('linking-choice')
   })
+
+  it('offers a start-fresh escape from the recovery step that only signs out after confirmation', async () => {
+    // #given
+    const user = userEvent.setup()
+    const auth = mockAuth({ wizardStep: 'recovery-input' })
+    render(<SetupWizard />)
+
+    // #when — the escape is one subdued link away, never a default action
+    await user.click(screen.getByRole('button', { name: 'setup.startFresh.trigger' }))
+
+    // #then — consequences first, nothing destroyed yet
+    expect(screen.getByText('setup.startFresh.consequenceKey')).toBeInTheDocument()
+    expect(auth.logout).not.toHaveBeenCalled()
+
+    // #when — backing out leaves the session alone
+    await user.click(screen.getByRole('button', { name: 'setup.startFresh.cancel' }))
+    expect(auth.logout).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'submit recovery phrase' })).toBeInTheDocument()
+
+    // #when / #then — only the explicit confirm signs out
+    await user.click(screen.getByRole('button', { name: 'setup.startFresh.trigger' }))
+    await user.click(screen.getByRole('button', { name: 'setup.startFresh.confirm' }))
+    expect(auth.logout).toHaveBeenCalledTimes(1)
+  })
 })
