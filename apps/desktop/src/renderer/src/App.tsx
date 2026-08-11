@@ -72,7 +72,7 @@ import { createLogger } from '@/lib/logger'
 import { getStartupTheme, THEME_STORAGE_KEY } from '@/lib/startup-theme'
 import { useTaskWorkspaceData, useTaskWorkspaceMutations } from '@/features/tasks/use-task-queries'
 import { useTaskUiStore } from '@/features/tasks/use-task-ui-store'
-import { getFilteredTasks } from '@/lib/task-utils'
+import { getTaskWorkspaceCounts } from '@/lib/task-utils'
 import { useAgentMcpCurrentNoteResponder } from '@/agent-mcp/current-note-handler'
 import { useAgentMcpDesktopApiResponder } from '@/agent-mcp/desktop-api-handler'
 import { useAgentMcpCanvasWriteResponder } from '@/agent-mcp/canvas-write-handler'
@@ -93,6 +93,9 @@ export type TaskSelectionType = 'view' | 'project'
 
 // Combined page type for routing
 export type AppPage = BasePage | 'tasks' | 'home'
+
+// Sidebar badge ids, hoisted so the count pass gets a stable input array.
+const taskViewIds = taskViews.map((view) => view.id)
 
 // =============================================================================
 // THEME SYNC MANAGER (inside ThemeProvider)
@@ -400,27 +403,21 @@ function App(): React.JSX.Element {
     selectedTaskIdsRef.current = selectedTaskIds
   }, [selectedTaskIds])
 
-  // Calculate view counts dynamically
-  const viewCounts = useMemo(() => {
-    const counts: Record<string, number> = {}
-    taskViews.forEach((view) => {
-      const filtered = getFilteredTasks(tasks, view.id, 'view', projects)
-      counts[view.id] = filtered.length
-    })
-    return counts
-  }, [tasks, projects])
+  // Calculate view counts and project task counts in a single pass over the
+  // tasks. Both recompute on every task mutation, so re-filtering the whole list
+  // once per view and once per project is the wrong shape at this level.
+  const { viewCounts, projectTaskCounts } = useMemo(
+    () => getTaskWorkspaceCounts(tasks, projects, taskViewIds),
+    [tasks, projects]
+  )
 
   // Update project task counts
   const projectsWithCounts = useMemo(() => {
-    return projects.map((project) => {
-      const projectTasks = tasks.filter((t) => t.projectId === project.id)
-      const incompleteTasks = projectTasks.filter((t) => {
-        const status = project.statuses.find((s) => s.id === t.statusId)
-        return status?.type !== 'done'
-      })
-      return { ...project, taskCount: incompleteTasks.length }
-    })
-  }, [projects, tasks])
+    return projects.map((project) => ({
+      ...project,
+      taskCount: projectTaskCounts[project.id] ?? 0
+    }))
+  }, [projects, projectTaskCounts])
 
   const taskOrder = useTaskOrder({ persist: true })
 

@@ -7,13 +7,15 @@ export {
   noteCacheExists,
   getLocalOnlyCount,
   listNotesFromCache,
+  listNoteCacheFilesAfter,
   countNotes,
   bulkInsertNotes,
   clearNoteCache,
   getAllNoteIds,
   getAllCrdtNoteIds,
   getNotesModifiedAfter,
-  type ListNotesOptions
+  type ListNotesOptions,
+  type NoteCacheFileRow
 } from './note-crud'
 
 export {

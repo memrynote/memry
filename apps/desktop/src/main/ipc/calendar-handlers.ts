@@ -1,4 +1,5 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { ipcMain } from 'electron'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
 import { CalendarChannels } from '@memry/contracts/ipc-channels'
 import {
@@ -63,6 +64,7 @@ import { getCalendarRangeProjection } from '../calendar/projection'
 import { getCalendarEnabledPropertyNames } from '../calendar/calendar-property-visibility'
 import { getCalendarSettings } from './settings-handlers'
 import {
+  discoverGoogleCalendarSources,
   startGoogleCalendarSyncRunner,
   stopGoogleCalendarSyncRunner,
   syncGoogleCalendarNow,
@@ -92,9 +94,7 @@ import { getMainI18n } from '../lib/main-i18n'
 const log = createLogger('IPC:Calendar')
 
 function emitCalendarChanged(event: CalendarChangedEvent): void {
-  for (const win of BrowserWindow.getAllWindows()) {
-    win.webContents.send(CalendarChannels.events.CHANGED, event)
-  }
+  broadcastToAllWindows(CalendarChannels.events.CHANGED, event)
 }
 
 function mapCalendarEvent(row: typeof calendarEvents.$inferSelect): CalendarEventRecord {
@@ -249,6 +249,80 @@ function syncCalendarSourceUpsert(
   return mapCalendarSource(saved)
 }
 
+/**
+ * Drop the local mirror of one or more calendar sources: the external events
+ * pulled from them and the bindings tying Memry items to their remote events.
+ *
+ * Promoted events live in `calendar_events` and are the user's own copy, so
+ * they deliberately stay — only the mirror of the remote calendar goes. This
+ * runs both when a calendar is de-selected and when its account is
+ * disconnected; in both cases nothing is left to refresh those rows, so
+ * leaving them behind would strand them on the calendar view forever.
+ */
+function purgeCalendarSourceMirrors(
+  db: DataDb,
+  provider: string,
+  sources: (typeof calendarSources.$inferSelect)[]
+): void {
+  if (sources.length === 0) return
+
+  const sourceIds = sources.map((source) => source.id)
+  const remoteIds = sources.map((source) => source.remoteId)
+
+  const externalRows = db
+    .select()
+    .from(calendarExternalEvents)
+    .where(inArray(calendarExternalEvents.sourceId, sourceIds))
+    .all()
+
+  const bindingRows = db
+    .select()
+    .from(calendarBindings)
+    .where(
+      and(
+        eq(calendarBindings.provider, provider),
+        inArray(calendarBindings.remoteCalendarId, remoteIds)
+      )
+    )
+    .all()
+
+  if (externalRows.length === 0 && bindingRows.length === 0) return
+
+  db.transaction((tx) => {
+    if (externalRows.length > 0) {
+      tx.delete(calendarExternalEvents)
+        .where(
+          inArray(
+            calendarExternalEvents.id,
+            externalRows.map((row) => row.id)
+          )
+        )
+        .run()
+    }
+
+    if (bindingRows.length > 0) {
+      tx.delete(calendarBindings)
+        .where(
+          inArray(
+            calendarBindings.id,
+            bindingRows.map((row) => row.id)
+          )
+        )
+        .run()
+    }
+  })
+
+  for (const row of externalRows) {
+    syncCalendarExternalEventDelete(row.id, JSON.stringify(row))
+    emitCalendarChanged({ entityType: 'calendar_external_event', id: row.id })
+  }
+
+  for (const row of bindingRows) {
+    syncCalendarBindingDelete(row.id, JSON.stringify(row))
+    emitCalendarChanged({ entityType: 'calendar_binding', id: row.id })
+  }
+}
+
 async function disconnectGoogleAccount(
   db: DataDb,
   provider: string,
@@ -292,58 +366,15 @@ async function disconnectGoogleAccount(
     }
   }
 
-  const targetSourceIds = targetSources.map((source) => source.id)
-  const externalRows =
-    targetSourceIds.length > 0
-      ? db
-          .select()
-          .from(calendarExternalEvents)
-          .where(inArray(calendarExternalEvents.sourceId, targetSourceIds))
-          .all()
-      : []
-
-  const bindingRows =
-    targetSourceIds.length > 0
-      ? db
-          .select()
-          .from(calendarBindings)
-          .where(
-            and(
-              eq(calendarBindings.provider, provider),
-              inArray(
-                calendarBindings.remoteCalendarId,
-                targetSources.map((s) => s.remoteId)
-              )
-            )
-          )
-          .all()
-      : []
+  // Mirrors first, then the tombstones. If a crash lands between the two the
+  // sources stay unarchived with nothing under them, which the next disconnect
+  // or a rediscovery both resolve — the reverse order would strand events
+  // under a source no longer listed anywhere.
+  purgeCalendarSourceMirrors(db, provider, targetSources)
 
   const now = new Date().toISOString()
 
   db.transaction((tx) => {
-    if (externalRows.length > 0) {
-      tx.delete(calendarExternalEvents)
-        .where(
-          inArray(
-            calendarExternalEvents.id,
-            externalRows.map((row) => row.id)
-          )
-        )
-        .run()
-    }
-
-    if (bindingRows.length > 0) {
-      tx.delete(calendarBindings)
-        .where(
-          inArray(
-            calendarBindings.id,
-            bindingRows.map((row) => row.id)
-          )
-        )
-        .run()
-    }
-
     for (const source of targetSources) {
       if (source.archivedAt) continue
       tx.update(calendarSources)
@@ -352,16 +383,6 @@ async function disconnectGoogleAccount(
         .run()
     }
   })
-
-  for (const row of externalRows) {
-    syncCalendarExternalEventDelete(row.id, JSON.stringify(row))
-    emitCalendarChanged({ entityType: 'calendar_external_event', id: row.id })
-  }
-
-  for (const row of bindingRows) {
-    syncCalendarBindingDelete(row.id, JSON.stringify(row))
-    emitCalendarChanged({ entityType: 'calendar_binding', id: row.id })
-  }
 
   for (const source of targetSources) {
     if (source.archivedAt) continue
@@ -605,6 +626,13 @@ export function registerCalendarHandlers(): void {
           modifiedAt: new Date().toISOString()
         })
 
+        // Turning a calendar off takes its events with it. Nothing polls an
+        // unselected source, so anything left behind would sit on the calendar
+        // view with no way to refresh or remove it.
+        if (!input.isSelected) {
+          purgeCalendarSourceMirrors(db, existing.provider, [existing])
+        }
+
         if (
           updated.provider === 'google' &&
           updated.kind === 'calendar' &&
@@ -687,6 +715,23 @@ export function registerCalendarHandlers(): void {
           createdAt: now,
           modifiedAt: now
         })
+
+        // Pull in the rest of the account's calendars so the picker has more
+        // than the primary to offer. Non-fatal: a failure here leaves the user
+        // connected with the primary working, and the next sync retries it.
+        try {
+          await discoverGoogleCalendarSources(
+            db,
+            createGoogleCalendarClient({ accountId: connected.accountId }),
+            connected.accountId
+          )
+        } catch (error) {
+          log.warn('Calendar discovery failed after connect', {
+            accountId: connected.accountId,
+            error
+          })
+          trackMainError('calendar', 'source_discovery', error)
+        }
 
         void startGoogleCalendarSyncRunner().catch((error) => {
           // Only the inner sync self-logs; pre-sync awaits (keychain read, auth

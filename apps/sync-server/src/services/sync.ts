@@ -18,7 +18,7 @@ import {
 import { encodeSignaturePayload } from '../lib/cbor'
 import { safeBase64Decode, verifyEd25519 } from '../lib/encoding'
 import { AppError, ErrorCodes } from '../lib/errors'
-import { generateItemBlobKey, getBlob, putBlob } from './blob'
+import { deleteBlob, generateItemBlobKey, getBlob, putBlob } from './blob'
 import { getNextCursor } from './cursor'
 import { getDevice } from './device'
 import { adjustStorageUsed, checkQuota, reserveStorage } from './quota'
@@ -35,6 +35,7 @@ const placeholdersFor = (types: readonly RecordSyncItemType[]): string =>
 interface ExistingSyncItemRow {
   version: number
   clock: string | VectorClock | null
+  blob_key?: string | null
   size_bytes?: number | null
   created_at?: number | null
   createdAt?: number | null
@@ -256,7 +257,21 @@ const toPullItemResponse = async (
     return null
   }
 
-  const payload = await readEncryptedPayload(storage, row.blob_key, userId, row.item_id)
+  let payload: EncryptedItemPayload
+  try {
+    payload = await readEncryptedPayload(storage, row.blob_key, userId, row.item_id)
+  } catch (error) {
+    // A missing object must cost only this row, not the page: one dangling row
+    // (or the transient window where a replacing push just deleted the blob
+    // this row version pointed at) used to reject the whole Promise.all, so
+    // every pull retry failed on the same item and the client cursor never
+    // advanced. Skipping is safe — a replaced item re-arrives at a later
+    // cursor, and a genuinely dangling row has no bytes to deliver anyway.
+    if (error instanceof AppError && error.code === ErrorCodes.STORAGE_BLOB_NOT_FOUND) {
+      return null
+    }
+    throw error
+  }
 
   if (!row.signer_device_id || !row.signature) {
     throw new AppError(
@@ -385,7 +400,7 @@ export const processPushItem = async (
       reservedBytes = sizeDelta
     }
 
-    const blobKey = generateItemBlobKey(userId, item.type, item.id, vaultId)
+    const blobKey = generateItemBlobKey(userId, item.type, item.id, vaultId, contentHash)
     try {
       await putBlob(storage, blobKey, payloadBytes.slice().buffer, userId)
     } catch (error) {
@@ -461,6 +476,20 @@ export const processPushItem = async (
         await adjustStorageUsed(db, userId, -reservedBytes)
       }
       throw error
+    }
+
+    // The row now points at the new content-addressed object, so the previous
+    // version's blob is unreachable through any row and can go. Best-effort: a
+    // failed delete leaks one bounded orphan object, never a dangling row. An
+    // in-flight pull that read the old row before this upsert may 404 on the
+    // old key; the pull path tolerates that per item, and the replacement row
+    // re-arrives at a later cursor.
+    if (existing?.blob_key && existing.blob_key !== blobKey) {
+      try {
+        await deleteBlob(storage, existing.blob_key, userId)
+      } catch {
+        // Orphans are invisible to readers; acceptable until a sweep job exists.
+      }
     }
 
     return { accepted: true, serverCursor }

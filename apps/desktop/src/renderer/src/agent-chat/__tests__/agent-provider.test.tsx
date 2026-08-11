@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type {
   AgentBackendStatus,
@@ -360,5 +360,176 @@ describe('AgentProvider', () => {
 
   it('requires an AgentProvider', () => {
     expect(() => renderHook(() => useAgent())).toThrow('useAgent must be used within AgentProvider')
+  })
+
+  describe('assistant text streaming', () => {
+    let frames: Array<() => void>
+
+    beforeEach(() => {
+      frames = []
+      vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+        frames.push(() => callback(0))
+        return frames.length
+      })
+      vi.stubGlobal('cancelAnimationFrame', (handle: number) => {
+        frames[handle - 1] = () => {}
+      })
+    })
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    function runFrame(): void {
+      act(() => {
+        for (const frame of frames.splice(0, frames.length)) frame()
+      })
+    }
+
+    function delta(text: string) {
+      return {
+        kind: 'assistant_text_delta',
+        conversationId: conversation.id,
+        messageId: message.id,
+        text
+      }
+    }
+
+    function streamedText(state: { messagesByConversation: Record<string, Message[]> }): string {
+      const target = (state.messagesByConversation[conversation.id] ?? []).find(
+        (candidate) => candidate.id === message.id
+      )
+      if (!target || target.content.role !== 'assistant') return ''
+      return target.content.data.text
+    }
+
+    async function mountStreamingConversation() {
+      const renders = { count: 0 }
+      const { result } = renderHook(
+        () => {
+          renders.count += 1
+          return useAgent()
+        },
+        { wrapper }
+      )
+
+      await waitFor(() => expect(result.current.state.sourceWindowId).toBe('window-1'))
+      await act(async () => {
+        await result.current.loadConversation(conversation.id)
+      })
+      await waitFor(() =>
+        expect(result.current.state.messagesByConversation[conversation.id]).toHaveLength(1)
+      )
+
+      return { renders, result }
+    }
+
+    it('coalesces a burst of deltas into a single commit without dropping a token', async () => {
+      const { renders, result } = await mountStreamingConversation()
+      const tokens = Array.from({ length: 200 }, (_, index) => `tok${index} `)
+      const rendersBeforeStream = renders.count
+
+      for (const token of tokens) {
+        act(() => {
+          eventHandler?.(delta(token))
+        })
+      }
+
+      // Every token used to dispatch on its own, re-rendering every consumer of
+      // the agent context once per token.
+      expect(renders.count).toBe(rendersBeforeStream)
+
+      runFrame()
+
+      expect(renders.count).toBe(rendersBeforeStream + 1)
+      expect(streamedText(result.current.state)).toBe(`Ready${tokens.join('')}`)
+    })
+
+    it('keeps committing partial text while the turn is still streaming', async () => {
+      const { result } = await mountStreamingConversation()
+
+      for (const token of ['alpha ', 'beta ']) {
+        act(() => {
+          eventHandler?.(delta(token))
+        })
+      }
+      runFrame()
+      expect(streamedText(result.current.state)).toBe('Readyalpha beta ')
+
+      for (const token of ['gamma ', 'delta']) {
+        act(() => {
+          eventHandler?.(delta(token))
+        })
+      }
+      runFrame()
+      expect(streamedText(result.current.state)).toBe('Readyalpha beta gamma delta')
+    })
+
+    it('drains buffered deltas before the next non-delta event is applied', async () => {
+      const { result } = await mountStreamingConversation()
+
+      act(() => {
+        eventHandler?.(delta('one '))
+        eventHandler?.(delta('two '))
+      })
+
+      act(() => {
+        eventHandler?.({
+          kind: 'turn_completed',
+          conversationId: conversation.id,
+          turnId: 'turn-1'
+        })
+      })
+
+      // No frame ran, yet the buffered text must already be in state: a later
+      // event must never be applied ahead of text that arrived before it.
+      expect(streamedText(result.current.state)).toBe('Readyone two ')
+      expect(result.current.state.inFlight[conversation.id]).toBeUndefined()
+
+      runFrame()
+      expect(streamedText(result.current.state)).toBe('Readyone two ')
+    })
+
+    it('keeps interleaved messages in arrival order', async () => {
+      const { result } = await mountStreamingConversation()
+
+      act(() => {
+        eventHandler?.({
+          kind: 'message_upserted',
+          message: {
+            ...message,
+            id: 'message-2',
+            content: { role: 'assistant', data: { text: '' } },
+            status: 'streaming',
+            createdAt: 200,
+            updatedAt: 200
+          }
+        })
+      })
+
+      act(() => {
+        eventHandler?.(delta('a'))
+        eventHandler?.({
+          kind: 'assistant_text_delta',
+          conversationId: conversation.id,
+          messageId: 'message-2',
+          text: 'x'
+        })
+        eventHandler?.(delta('b'))
+        eventHandler?.({
+          kind: 'assistant_text_delta',
+          conversationId: conversation.id,
+          messageId: 'message-2',
+          text: 'y'
+        })
+      })
+
+      runFrame()
+
+      const messages = result.current.state.messagesByConversation[conversation.id]
+      const second = messages.find((candidate) => candidate.id === 'message-2')
+      expect(streamedText(result.current.state)).toBe('Readyab')
+      expect(second?.content.role === 'assistant' ? second.content.data.text : null).toBe('xy')
+    })
   })
 })

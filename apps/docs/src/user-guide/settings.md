@@ -296,7 +296,7 @@ machine-local and are not synced between devices.
 - **Model** — choose from `/v1/models` when available or type a model manually
 - **API Key** — optional, stored in the OS keychain
 - **Test Connection** — checks the endpoint and selected model
-- **Probe Tools** — verifies tool-call emission and tool-result continuation before vault tools are enabled
+- **Probe Tools** — verifies tool-call emission and tool-result continuation before vault tools are enabled, and forces a fresh check when the cached verdict is stale
 
 The Agent Chat prompt bar can override access for one turn and can enable web search when the active
 backend supports it. Vault-only turns keep the CLI backend constrained to memrynote tools; computer
@@ -327,6 +327,8 @@ as collapsed tool rows, or they can require inline approval when **Tool Confirma
 ### Google Calendar
 
 Link a Google account to show external events alongside vault events on the [Calendar](/user-guide/calendar). Status and source pickers appear here.
+
+**Add account** links a second (or third) Google account. Each account is listed with its own calendars and its own Disconnect. Tick the calendars you want in memrynote — unticking one [removes its events](/user-guide/calendar#multiple-accounts-and-calendars).
 
 **Show memrynote events in Google Calendar** controls sync direction. Leave it on for two-way sync, or turn it off for [one-way (inbound only)](/user-guide/calendar#sync-direction) — Google events still appear in memrynote, but memrynote events are not pushed to Google.
 

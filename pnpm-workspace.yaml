@@ -47,7 +47,7 @@ overrides:
   lodash: '>=4.18.1'
   path-to-regexp: '>=8.4.2'
   picomatch: '>=4.0.4'
-  vite: ^7.3.5
+  vite: ^7.3.6
   markdown-it: '>=14.2.0'
   qs: '>=6.15.2'
   protobufjs: '>=7.6.5 <8'
@@ -57,7 +57,7 @@ overrides:
   shell-quote: '>=1.8.4'
   # Stay on the 5.x line: markdown-it 14 declares linkify-it ^5.0.0.
   linkify-it: '>=5.0.2 <6'
-  dompurify: '>=3.4.12'
+  dompurify: '>=3.4.13'
   form-data: '>=4.0.6'
   fast-uri: '>=3.1.4 <4'
   ip-address: '>=10.1.1'
@@ -79,11 +79,11 @@ overrides:
   # Scoped: only bump the vulnerable major line, leave other majors untouched
   'ajv@>=8.0.0 <8.18.0': '8.18.0'
   'body-parser@>=2.0.0 <2.3.0': '2.3.0'
-  'brace-expansion@<1.1.16': '1.1.16'
-  'brace-expansion@>=2.0.0 <2.1.3': '2.1.3'
+  'brace-expansion@<1.1.16': '1.1.18'
+  'brace-expansion@>=2.0.0 <2.1.3': '2.1.4'
   'brace-expansion@>=5.0.0 <5.0.7': '5.0.7'
-  'js-yaml@>=3.0.0 <3.15.0': '3.15.0'
-  'js-yaml@>=4.0.0 <4.3.0': '4.3.0'
+  'js-yaml@>=3.0.0 <3.15.0': '3.15.1'
+  'js-yaml@>=4.0.0 <4.3.0': '4.3.1'
   # nanoid 4.x has no patched release; the advisory's fix ships in 5.0.9.
   'nanoid@>=3.0.0 <3.3.8': '3.3.8'
   'nanoid@>=4.0.0 <5.0.9': '5.0.9'

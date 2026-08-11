@@ -9,10 +9,14 @@ import { CRDT_CHANNELS } from '@memry/contracts/ipc-crdt'
 // electron.app) to keep the test focused on handler lifecycle behaviour.
 // ============================================================================
 
+const senderWindow = vi.hoisted(() => ({
+  current: { id: 1, once: vi.fn() } as { id: number; once: ReturnType<typeof vi.fn> }
+}))
+
 vi.mock('electron', () => ({
   app: { getPath: () => '/tmp/crdt-test-userdata' },
   BrowserWindow: {
-    fromWebContents: () => ({ id: 1 }),
+    fromWebContents: () => senderWindow.current,
     fromId: () => null
   },
   ipcMain: mockIpcMain
@@ -34,8 +38,12 @@ vi.mock('../vault/frontmatter', () => ({
   serializeNote: vi.fn(),
   serializeParsedNote: vi.fn()
 }))
-vi.mock('./blocknote-converter', () => ({ markdownToYFragment: vi.fn() }))
+vi.mock('./blocknote-converter', () => ({
+  markdownToYFragment: vi.fn(),
+  repairEmptyBlockIds: vi.fn(() => 0)
+}))
 vi.mock('./crdt-compact-utils', () => ({ compactYDoc: vi.fn() }))
+vi.mock('./crdt-preflight', () => ({ runCrdtPreflight: vi.fn(async () => ({ ok: true })) }))
 vi.mock('./crdt-writeback', () => ({
   scheduleWriteback: vi.fn(),
   cancelPendingWritebacks: vi.fn(),
@@ -44,6 +52,8 @@ vi.mock('./crdt-writeback', () => ({
 }))
 vi.mock('./microtask-batch-broadcaster', () => ({
   MicrotaskBatchBroadcaster: class {
+    enqueue() {}
+    flush() {}
     flushAll() {}
     schedule() {}
   }
@@ -58,6 +68,7 @@ vi.mock('y-leveldb', () => ({
     }
     async storeUpdate() {}
     async clearDocument() {}
+    async flushDocument() {}
   }
 }))
 
@@ -142,7 +153,7 @@ describe('CRDT IPC handlers — lifecycle resilience', () => {
       // #when — late renderer update arrives post-logout
       const result = await invokeHandler(CRDT_CHANNELS.APPLY_UPDATE, {
         noteId: 'ghost-note',
-        update: [1, 2, 3]
+        update: new Uint8Array([1, 2, 3])
       })
 
       // #then — void return, no throw
@@ -157,7 +168,7 @@ describe('CRDT IPC handlers — lifecycle resilience', () => {
       // #when
       const result = await invokeHandler(CRDT_CHANNELS.SYNC_STEP_2, {
         noteId: 'ghost-note',
-        diff: [0, 0]
+        diff: new Uint8Array([0, 0])
       })
 
       // #then
@@ -171,7 +182,7 @@ describe('CRDT IPC handlers — lifecycle resilience', () => {
       // #when
       const result = await invokeHandler(CRDT_CHANNELS.SYNC_STEP_1, {
         noteId: 'any-note',
-        stateVector: [0]
+        stateVector: new Uint8Array([0])
       })
 
       // #then — handler guards and returns null rather than throwing
@@ -191,6 +202,36 @@ describe('CRDT IPC handlers — lifecycle resilience', () => {
       // #then
       expect(result.success).toBe(false)
       expect(result.error).toMatch(/not initialized/i)
+    })
+  })
+
+  describe('window teardown releases the docs it pinned', () => {
+    beforeEach(() => {
+      senderWindow.current = { id: 42, once: vi.fn() }
+      mockGetNoteCacheById.mockReturnValue({ id: 'n1', path: 'n1.md', fileType: 'markdown' })
+    })
+
+    it('releases every doc the window held once it is closed', async () => {
+      // ⌘W / reload / renderer crash never runs the React cleanup that sends
+      // crdt:close-doc, and BrowserWindow ids are never recycled — so without
+      // this hook the id pins both docs for the rest of the session.
+      const provider = getCrdtProvider()
+      await provider.init()
+
+      await invokeHandler(CRDT_CHANNELS.OPEN_DOC, { noteId: 'n1' })
+      await invokeHandler(CRDT_CHANNELS.OPEN_DOC, { noteId: 'n2' })
+      expect(provider.getOpenNoteIds().sort()).toEqual(['n1', 'n2'])
+
+      // One 'closed' listener per window, not one per doc it opens.
+      expect(senderWindow.current.once).toHaveBeenCalledTimes(1)
+      expect(senderWindow.current.once).toHaveBeenCalledWith('closed', expect.any(Function))
+
+      const onClosed = senderWindow.current.once.mock.calls[0][1] as () => void
+      onClosed()
+
+      await vi.waitFor(() => {
+        expect(provider.getOpenNoteIds()).toEqual([])
+      })
     })
   })
 

@@ -328,7 +328,10 @@ function resetEditor(): void {
     insertBlocks: vi.fn(),
     getTextCursorPosition: vi.fn(() => ({ block: urlBlock })),
     prosemirrorView: { focus: vi.fn(), dom: { blur: vi.fn() } },
-    _tiptapEditor: { state: { selection: { empty: true, $from: { parentOffset: 0 } } } }
+    _tiptapEditor: {
+      state: { selection: { empty: true, $from: { parentOffset: 0 } } },
+      destroy: vi.fn()
+    }
   }
 }
 
@@ -391,6 +394,90 @@ describe('ContentArea', () => {
       path: 'attachments/file.png'
     })
     resetEditor()
+  })
+
+  it('destroys the editor and releases the window handle when it unmounts', async () => {
+    const editor = contentAreaMocks.editor
+    const win = window as unknown as { ProseMirror?: unknown }
+    // `useCreateBlockNote` parks the newest instance here; nothing ever clears it.
+    win.ProseMirror = editor._tiptapEditor
+
+    const { unmount } = render(<ContentArea noteId="note-1" />)
+    expect(editor._tiptapEditor.destroy).not.toHaveBeenCalled()
+
+    unmount()
+    // Teardown is deferred by a microtask so StrictMode's remount can cancel it.
+    await Promise.resolve()
+
+    expect(editor._tiptapEditor.destroy).toHaveBeenCalledTimes(1)
+    expect(win.ProseMirror).toBeUndefined()
+  })
+
+  it('leaves no DOM listener or animation frame behind after unmount', () => {
+    const addEventListener = EventTarget.prototype.addEventListener
+    const removeEventListener = EventTarget.prototype.removeEventListener
+    const requestAnimationFrame = window.requestAnimationFrame
+    const cancelAnimationFrame = window.cancelAnimationFrame
+
+    const live = new Set<string>()
+    const key = (target: EventTarget, type: string, listener: unknown, options: unknown): string =>
+      `${(target as { tagName?: string }).tagName ?? target.constructor.name}:${type}:${
+        (listener as { name?: string })?.name ?? 'anon'
+      }:${typeof options === 'object' ? JSON.stringify(options) : String(options)}`
+
+    // React 19 installs its delegated root listeners on the test container and
+    // deliberately keeps them past unmount — they are the runtime's, not ours.
+    const isReactRootListener = (listener: unknown): boolean =>
+      typeof listener === 'function' && /^bound dispatch/.test(listener.name)
+
+    EventTarget.prototype.addEventListener = function (
+      this: EventTarget,
+      type: string,
+      listener: never,
+      options?: never
+    ) {
+      if (!isReactRootListener(listener)) live.add(key(this, type, listener, options))
+      return addEventListener.call(this, type, listener, options)
+    }
+    EventTarget.prototype.removeEventListener = function (
+      this: EventTarget,
+      type: string,
+      listener: never,
+      options?: never
+    ) {
+      live.delete(key(this, type, listener, options))
+      return removeEventListener.call(this, type, listener, options)
+    }
+
+    const liveFrames = new Set<number>()
+    window.requestAnimationFrame = (callback: FrameRequestCallback): number => {
+      const handle = requestAnimationFrame(callback)
+      liveFrames.add(handle)
+      return handle
+    }
+    window.cancelAnimationFrame = (handle: number): void => {
+      liveFrames.delete(handle)
+      cancelAnimationFrame(handle)
+    }
+
+    try {
+      const { unmount } = render(<ContentArea noteId="note-1" />)
+      live.clear()
+      liveFrames.clear()
+      const { unmount: unmountTracked } = render(<ContentArea noteId="note-2" />)
+      expect(live.size).toBeGreaterThan(0)
+
+      unmountTracked()
+      unmount()
+
+      expect([...live]).toEqual([])
+      expect([...liveFrames]).toEqual([])
+    } finally {
+      EventTarget.prototype.addEventListener = addEventListener
+      EventTarget.prototype.removeEventListener = removeEventListener
+      window.requestAnimationFrame = requestAnimationFrame
+      window.cancelAnimationFrame = cancelAnimationFrame
+    }
   })
 
   it('shows the collaboration loading skeleton while a synced note is not ready', () => {

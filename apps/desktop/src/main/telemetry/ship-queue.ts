@@ -15,9 +15,9 @@ export interface ShipQueueDeps<T> {
   batchLimit?: number
   /**
    * Absolute path of the crash-durable mirror. Set → the queue restores whatever
-   * the previous process left behind and rewrites the file on every enqueue and
-   * flush, so a hard crash no longer discards the last 30s of evidence. Omitted
-   * (tests, callers that do not want on-disk state) → memory only, as before.
+   * the previous process left behind and journals every enqueue and flush, so a
+   * hard crash no longer discards the last 30s of evidence. Omitted (tests,
+   * callers that do not want on-disk state) → memory only, as before.
    */
   persistPath?: string
 }
@@ -52,6 +52,12 @@ export const createShipQueue = <T>(deps: ShipQueueDeps<T>): ShipQueue<T> => {
     store?.save(queue)
   }
 
+  // The enqueue path appends one line rather than rewriting the mirror, so a
+  // queued log line costs the same whether the queue holds 1 line or 500.
+  const persistAppend = (item: T): void => {
+    store?.append(item, queue)
+  }
+
   // The restored set is bounded by the SAME limit as a live one, so a mirror
   // written by a build with a larger queueLimit cannot resurrect an unbounded
   // queue. Rewrite immediately, otherwise the dropped head returns next launch.
@@ -64,7 +70,7 @@ export const createShipQueue = <T>(deps: ShipQueueDeps<T>): ShipQueue<T> => {
     if (!enabled) return
     queue.push(item)
     trimQueue()
-    persist()
+    persistAppend(item)
   }
 
   const flush = async (): Promise<ShipQueueFlushResult> => {

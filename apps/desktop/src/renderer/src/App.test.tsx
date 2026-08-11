@@ -85,7 +85,10 @@ vi.mock('@/data/tasks-data', () => ({
 }))
 
 vi.mock('@/lib/task-utils', () => ({
-  getFilteredTasks: (allTasks: unknown[]) => allTasks
+  getTaskWorkspaceCounts: (allTasks: unknown[], _projects: unknown[], viewIds: string[]) => ({
+    viewCounts: Object.fromEntries(viewIds.map((id) => [id, allTasks.length])),
+    projectTaskCounts: {}
+  })
 }))
 
 vi.mock('@/services/tasks-service', () => ({

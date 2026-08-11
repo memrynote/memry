@@ -39,7 +39,10 @@ that `claude` is available on `PATH`, that it reports version `2.1.0` or newer, 
 disclosure has been accepted; the Codex CLI is detected the same way. On macOS and Linux, memrynote
 resolves your login shell's `PATH` at startup, so CLIs installed in shell-managed locations
 (`~/.local/bin`, Homebrew, nvm, volta) are still found when the app is launched from the Dock or
-Finder rather than from a terminal. For local models, configure a compatible server in
+Finder rather than from a terminal. These checks run in the background rather than pausing the app,
+and a successful check is reused for a few minutes so a burst of turns does not re-run it. A failed
+check is never remembered: if you install or upgrade a CLI while memrynote is running, the next
+message or provider check picks it up without a restart. For local models, configure a compatible server in
 [Settings -> AI Assistant -> Agent Permissions](/user-guide/settings#agent-permissions) first.
 If the global AI switch is off in [Settings -> AI](/user-guide/settings#ai), the Agent tab and Agent
 MCP current-note bridge are hidden and inactive.
@@ -55,6 +58,13 @@ Agent Chat can:
 - fold a turn's tool calls, tool results, and optional approvals into one collapsed activity row
 - stop an in-flight turn
 - compact older conversation history when a prompt grows too large
+
+Naming a new conversation and compacting its history both run the CLI in the background. A CLI that
+prints a lot of diagnostic output while doing so no longer stalls the turn: memrynote reads that
+output as it arrives rather than waiting for the CLI to finish. If the CLI then fails, the tail of
+that output is written to the local log, the conversation falls back to a title derived from your
+first message, and the turn continues with its history uncompacted — your message and the
+conversation are never lost.
 
 While a turn runs, its tool calls collapse into a single activity row instead of stacking one row per
 step, so a long turn no longer pushes the answer off screen. The row names the tool the agent is
@@ -141,6 +151,12 @@ model can emit tool calls and continue after a tool result, memrynote enables th
 the probe fails, local chat can still answer from attached context, but vault tool calls stay
 disabled.
 
+The probe costs a couple of model generations, so memrynote runs it once and reuses the verdict for
+up to ten minutes instead of repeating it on every message. Changing the preset, base URL, model, or
+API key re-checks immediately, and an unreachable provider is never remembered — start your local
+server and the next message picks it up. If you swap the model behind an unchanged configuration,
+press **Probe Tools** in Settings to force a fresh check.
+
 If the configured local provider is not running, the model picker returns no discovered models
 instead of treating the settings page as an Agent runtime error. Start the provider, then load models
 or test the connection again.
@@ -153,6 +169,11 @@ New conversations start with a temporary title. When you send the first prompt, 
 backend also generates a short conversation title. memrynote stores that title on the encrypted
 conversation row and refreshes the sidebar title without giving the title-generation subprocess
 access to memrynote MCP tools.
+
+If a turn fails partway through — a window closing while the reply is still streaming, for example —
+memrynote stops the chat backend it started for that turn instead of leaving it running in the
+background. The unfinished reply is lost, but your message and the rest of the conversation are kept,
+so you can send the prompt again. A turn that is simply taking a long time is never stopped this way.
 
 Conversation rows, message bodies, and message attachments are encrypted at rest before they are
 written to SQLite. Free accounts keep agent chat history local-only. Paid accounts can sync finalized
@@ -184,6 +205,11 @@ memrynote restarts, and can be rotated manually from settings. Missing or stale 
 The localhost MCP endpoint can serve overlapping Agent Chat turns and external read requests. memrynote
 keeps the URL/token stable for the app session, but handles each MCP request with an isolated
 transport so one client connection does not block another.
+
+If the operating system refuses a connection to the endpoint — for example when the app has run out
+of file handles — memrynote records the failure in the app log as an `AgentMcpServer` error and keeps
+the endpoint listening on the same URL and token. Individual client connections can be dropped, but
+Agent Chat and external clients can reconnect without restarting the app or reopening the vault.
 
 Client-specific config keys vary. Use the copied URL as the MCP server URL and the copied token as a
 Bearer authorization header. Plain external clients can use read tools, but they do not get the
@@ -409,6 +435,9 @@ approval controls inside the tool row. You can allow the request once, allow cre
 that conversation, deny it, or edit the arguments before allowing. Note updates load a before/after
 diff before the write is applied. Unauthenticated or context-free write requests continue to be
 denied.
+
+Stopping the turn while an approval is waiting counts as a denial: the pending request is refused,
+the tool never runs, and the approval controls disappear. Nothing is written to your vault.
 
 ## Project Links
 

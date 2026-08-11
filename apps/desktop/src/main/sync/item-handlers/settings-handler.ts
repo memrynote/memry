@@ -1,4 +1,3 @@
-import { BrowserWindow } from 'electron'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import { SettingsSyncPayloadSchema } from '@memry/contracts/settings-sync'
 import type { SettingsSyncPayload, SyncedSettings } from '@memry/contracts/settings-sync'
@@ -15,6 +14,7 @@ import { getDatabase } from '../../database'
 import { getSetting, setSetting, deleteSetting } from '../../database/queries/settings'
 import { INBOX_REVIEW_LAST_NOTIFIED_KEY } from '../../inbox/review-reminder-constants'
 import { createLogger } from '../../lib/logger'
+import { broadcastToAllWindows } from '../../lib/window-broadcast'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
 
 const log = createLogger('SettingsHandler')
@@ -157,39 +157,37 @@ function applySyncedLocale(candidate: string | undefined): void {
   })
 }
 
+/**
+ * This runs inside the sync item's DB transaction (#935, #1000): anything that
+ * escapes here rolls back an item that was already applied. broadcastToAllWindows
+ * skips destroyed windows and contains a per-window send failure, but
+ * BrowserWindow.getAllWindows() itself can still throw during app teardown —
+ * which the previous hand-rolled loop tolerated. Keep tolerating it, but log it
+ * rather than dropping it silently.
+ */
 function broadcastSettingsChanged(merged: SyncedSettings): void {
-  let windows: Electron.BrowserWindow[]
   try {
-    windows = BrowserWindow.getAllWindows()
-  } catch {
-    return
-  }
-  if (windows.length === 0) return
-
-  if (merged.general) {
-    for (const win of windows) {
-      win.webContents.send(SettingsChannels.events.CHANGED, {
+    if (merged.general) {
+      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
         key: 'general',
         value: merged.general
       })
     }
-  }
 
-  if (merged.editor) {
-    for (const win of windows) {
-      win.webContents.send(SettingsChannels.events.CHANGED, {
+    if (merged.editor) {
+      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
         key: 'editor',
         value: merged.editor
       })
     }
-  }
 
-  if (merged.inbox) {
-    for (const win of windows) {
-      win.webContents.send(SettingsChannels.events.CHANGED, {
+    if (merged.inbox) {
+      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
         key: 'inbox',
         value: merged.inbox
       })
     }
+  } catch (err) {
+    log.warn('Failed to broadcast synced settings change:', err)
   }
 }

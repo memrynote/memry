@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const hoisted = vi.hoisted(() => ({
-  windows: [] as Array<{ webContents: { send: ReturnType<typeof vi.fn> } }>,
+  windows: [] as Array<{
+    isDestroyed: () => boolean
+    webContents: { send: ReturnType<typeof vi.fn> }
+  }>,
   getDatabase: vi.fn(() => ({})),
   getSetting: vi.fn(() => null),
   setSetting: vi.fn(),
@@ -73,7 +76,7 @@ describe('locale handler', () => {
     const send = vi.fn()
     const mockI18n = { changeLanguage: vi.fn(), language: 'en' } as any
     const rebuildMenu = vi.fn()
-    hoisted.windows = [{ webContents: { send } }]
+    hoisted.windows = [{ isDestroyed: () => false, webContents: { send } }]
     hoisted.getSetting.mockReturnValue(JSON.stringify({ theme: 'dark', language: 'en' }))
 
     registerLocaleHandlers(mockI18n, rebuildMenu)
@@ -105,7 +108,7 @@ describe('locale handler', () => {
     const send = vi.fn()
     const mockI18n = { changeLanguage: vi.fn(), language: 'en' } as any
     const rebuildMenu = vi.fn()
-    hoisted.windows = [{ webContents: { send } }]
+    hoisted.windows = [{ isDestroyed: () => false, webContents: { send } }]
     hoisted.getCurrentVaultPath.mockReturnValue(null)
     hoisted.getDatabase.mockImplementation(() => {
       throw new Error('Database not initialized')
@@ -138,7 +141,7 @@ describe('locale handler', () => {
       language: 'en'
     } as any
     const rebuildMenu = vi.fn()
-    hoisted.windows = [{ webContents: { send } }]
+    hoisted.windows = [{ isDestroyed: () => false, webContents: { send } }]
 
     registerLocaleHandlers(mockI18n, rebuildMenu)
     const getHandler = (ipcMain.handle as any).mock.calls.find(

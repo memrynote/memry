@@ -85,6 +85,12 @@ log.info('created note', { id })
 
 Main-process code that fans an event out to every open window — sync status, task and calendar change events, inbox capture/filing/snooze/transcription events, search and embedding progress, updater state, reminders, agent events, and FTS rebuild progress — goes through `broadcastToAllWindows(channel, data)` in `src/main/lib/window-broadcast.ts`. The helper skips destroyed windows: short-lived windows (splash, quick capture, print/export) can still appear in `BrowserWindow.getAllWindows()` after destruction, and an unguarded `webContents.send()` throws — inside a sync item handler that throw escapes `ctx.emit` within the item's DB transaction and rolls it back. Use the helper instead of hand-rolling a `getAllWindows()` loop.
 
+The helper also contains a per-window delivery failure: a window that dies between the guard and the send is logged and skipped, so the remaining windows still receive the event and the throw never reaches a caller that is mid-transaction. Payload arity is forwarded as given, so a zero-payload broadcast such as `broadcastToAllWindows('quick-capture:open')` reaches the renderer with no payload argument.
+
+An ESLint `no-restricted-syntax` rule over `apps/desktop/src/main/**` rejects `for...of` and `.forEach` fan-out loops written directly against `BrowserWindow.getAllWindows()`, so the hand-rolled pattern cannot come back. Loops over a deliberate _subset_ of windows are a different thing and stay allowed — for example `crdt-provider` iterates a doc's own `windowIds` and must skip the source window to avoid an IPC echo, which a fan-out would break.
+
+Picking a single window (focusing the app from a notification click, targeting the sender) is also not a fan-out. Those sites take the first _live_ window — `BrowserWindow.getAllWindows().find((w) => !w.isDestroyed())` — rather than `getAllWindows()[0]`, which throws when the window at index 0 has been destroyed.
+
 ### Subscribing to a broadcast from the renderer
 
 A high-frequency broadcast must not be subscribed to per component. `useAppUpdater` originally kept `useState` per instance, so its five mounted consumers each ran `updater.getState()` on mount, each registered `onUpdaterStateChanged`, and each re-rendered on every `download-progress` tick — including the one at the App root, which re-rendered the whole tree several times per second during a download.
