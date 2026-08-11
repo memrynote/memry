@@ -401,6 +401,67 @@ describe('embedding projector', () => {
     expect(generateEmbedding).not.toHaveBeenCalled()
   })
 
+  it('does not stamp the embedding input version when the migration rebuild aborts mid-list', async () => {
+    const run = vi.fn()
+    const prepare = vi.fn(() => ({ run, all: () => [] as Array<{ note_id: string }> }))
+    getRawIndexDatabase.mockReturnValue({ prepare })
+    getIndexDatabase.mockReturnValue({
+      all: vi.fn(() => [
+        { id: 'note-1', path: 'notes/one.md', title: 'One', fileType: 'markdown' },
+        { id: 'note-2', path: 'notes/two.md', title: 'Two', fileType: 'markdown' }
+      ])
+    })
+    getSetting.mockImplementation((_db: unknown, key: string) =>
+      key === 'ai.embeddingInputVersion' ? 'stale' : 'true'
+    )
+    readFile.mockResolvedValue('raw markdown')
+    parseNote.mockReturnValue({ content: 'parsed markdown long enough' })
+
+    const controller = new AbortController()
+    generateEmbedding.mockImplementation(async () => {
+      controller.abort()
+      return new Float32Array([0.1, 0.2])
+    })
+
+    const projector = createEmbeddingProjector(() => '/vault')
+
+    await projector.reconcile(controller.signal)
+
+    // A half-finished rebuild must not record the new input version: doing so
+    // would permanently skip the migration for the notes it never reached.
+    expect(generateEmbedding).toHaveBeenCalledTimes(1)
+    expect(setSetting).not.toHaveBeenCalled()
+  })
+
+  it('skips the backfill when the signal aborts while the model is loading', async () => {
+    const run = vi.fn()
+    const prepare = vi.fn(() => ({ run, all: () => [] as Array<{ note_id: string }> }))
+    getRawIndexDatabase.mockReturnValue({ prepare })
+    getIndexDatabase.mockReturnValue({
+      all: vi.fn(() => [{ id: 'note-1', path: 'notes/one.md', title: 'One' }])
+    })
+    getSetting.mockImplementation((_db: unknown, key: string) =>
+      key === 'ai.embeddingInputVersion' ? String(EMBEDDING_INPUT_VERSION) : 'true'
+    )
+
+    // The load is the multi-second step, so a close landing inside it is the
+    // common case — the work list must not be embedded once it returns.
+    const controller = new AbortController()
+    isModelLoaded.mockReturnValue(false)
+    initEmbeddingModel.mockImplementation(async () => {
+      controller.abort()
+      return true
+    })
+
+    const projector = createEmbeddingProjector(() => '/vault')
+
+    await projector.reconcile(controller.signal)
+
+    expect(initEmbeddingModel).toHaveBeenCalled()
+    expect(readFile).not.toHaveBeenCalled()
+    expect(generateEmbedding).not.toHaveBeenCalled()
+  })
+
   it('lets the projection runtime stop without waiting for a large backfill', async () => {
     const noteCount = 200
     const run = vi.fn()

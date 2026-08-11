@@ -51,6 +51,7 @@ const mocks = vi.hoisted(() => ({
   startProjectionRuntime: vi.fn(),
   stopProjectionRuntime: vi.fn(),
   reconcileProjections: vi.fn(),
+  trackMainError: vi.fn(),
   initEmbeddingModel: vi.fn(),
   isModelLoaded: vi.fn(),
   isModelLoading: vi.fn(),
@@ -166,6 +167,11 @@ vi.mock('../lib/main-i18n', () => ({
 vi.mock('../sync/runtime', () => ({
   startSyncRuntime: (...args: unknown[]) => mocks.startSyncRuntime(...args),
   stopSyncRuntime: (...args: unknown[]) => mocks.stopSyncRuntime(...args)
+}))
+
+vi.mock('../telemetry/diagnostics', () => ({
+  trackMainError: (...args: unknown[]) => mocks.trackMainError(...args),
+  trackMainLog: vi.fn()
 }))
 
 vi.mock('../projections', () => ({
@@ -437,6 +443,22 @@ describe('vault lifecycle', () => {
 
     expect(mocks.rebuildIndex).toHaveBeenCalledWith('/vault/config')
     expect(mocks.reconcileProjections).toHaveBeenCalledWith(['embedding'])
+  })
+
+  it('reports a failed embedding drain without failing the reindex', async () => {
+    await selectVault({ path: '/vault/config' })
+    mocks.reconcileProjections.mockRejectedValueOnce(new Error('drain failed'))
+
+    // The drain is fire-and-forget, so its failure must surface in telemetry
+    // rather than rejecting the reindex the user asked for.
+    await expect(reindex()).resolves.toBeUndefined()
+    await Promise.resolve()
+
+    expect(mocks.trackMainError).toHaveBeenCalledWith(
+      'vault',
+      'projection_reconcile',
+      expect.any(Error)
+    )
   })
 
   it('returns default config when closed and closes/removes the active vault', async () => {

@@ -136,10 +136,6 @@ export function createEmbeddingProjector(
     skipped: number
     error?: string
   }> => {
-    if (signal?.aborted) {
-      return { success: false, computed: 0, skipped: 0, error: 'Aborted' }
-    }
-
     if (!isAIEnabled()) {
       return { success: false, computed: 0, skipped: 0, error: 'AI is disabled' }
     }
