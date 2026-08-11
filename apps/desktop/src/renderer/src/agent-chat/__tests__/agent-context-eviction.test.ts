@@ -206,7 +206,11 @@ describe('agentReducer transcript retention', () => {
 
   it('rebuilds an evicted transcript from main on reopen', () => {
     const persisted = [
-      assistantMessage({ id: 'message-0', conversationId: 'conversation-0', text: 'conversation-0' })
+      assistantMessage({
+        id: 'message-0',
+        conversationId: 'conversation-0',
+        text: 'conversation-0'
+      })
     ]
     let state = hydrateSequence(HYDRATED_CONVERSATION_LIMIT + 2)
     expect(state.messagesByConversation['conversation-0']).toBeUndefined()

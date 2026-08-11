@@ -41,9 +41,16 @@ export interface AgentMcpServerHandle {
 export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpServerHandle> {
   const session = createMcpSession()
   const tools = new Map<string, ToolRegistration>()
+  // Bumped on every tool-set mutation. A parked McpServer holds closures over
+  // the registrations it was built from (including the write-approval gate), so
+  // anything built before a mutation must never serve a later request.
+  let toolGeneration = 0
+  let idleMcp: McpServer | null = null
 
   function bindTool(reg: ToolRegistration): void {
     tools.set(reg.name, reg)
+    toolGeneration += 1
+    idleMcp = null
   }
 
   for (const reg of opts.toolRegistrations) bindTool(reg)
@@ -85,6 +92,27 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
     return mcp
   }
 
+  // The transport is stateless, so every JSON-RPC message arrives as its own
+  // POST. Building all tool registrations per request is pure waste, but the
+  // SDK allows only one transport per McpServer, so a parked instance is handed
+  // out to at most one in-flight request at a time; overlapping requests still
+  // get their own. Nothing request-scoped is captured here: the tool callbacks
+  // read conversation/window identity from each call's own request headers.
+  function acquireMcpServer(): { mcp: McpServer; release: () => void } {
+    const generation = toolGeneration
+    const parked = idleMcp
+    idleMcp = null
+    const mcp = parked ?? createMcpServer()
+    return {
+      mcp,
+      release: () => {
+        if (generation !== toolGeneration) return
+        if (idleMcp || mcp.isConnected()) return
+        idleMcp = mcp
+      }
+    }
+  }
+
   const server = http.createServer((req, res) => {
     void handleRequest(req, res)
   })
@@ -106,7 +134,7 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
 
     if (req.method === 'POST' && req.url === '/mcp') {
       const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
-      const mcp = createMcpServer()
+      const { mcp, release } = acquireMcpServer()
       try {
         await mcp.connect(transport)
         const body = await readJson(req)
@@ -120,6 +148,7 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
         }
       } finally {
         await mcp.close()
+        release()
       }
       return
     }
