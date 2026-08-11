@@ -29,6 +29,9 @@ export interface TurnDeps {
   trackRunHandle?: (conversationId: string, handle: BackendRunHandle) => BackendRunHandle
 }
 
+// How long an abandoned child gets to die before the turn stops waiting on it.
+// Comfortably inside the 5s force-exit budget main gives the whole shutdown.
+const ABANDONED_KILL_GRACE_MS = 2000
 const DEFAULT_CONVERSATION_TITLE = 'New conversation'
 // Title and summary stderr is drained purely to keep the child moving, so it is
 // retained as a bounded tail rather than in full: a CLI can emit megabytes of
@@ -170,6 +173,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
 
   let buffered = ''
   let backendError: string | null = null
+  let exitObserved = false
   let unknownEventCount = 0
   const toolCalls = new Map<string, { name: string; args: unknown }>()
   const sourceRefs = new Map<string, AgentSourceRef>()
@@ -214,6 +218,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
       })
     }
     const exitCode = await sub.waitExit()
+    exitObserved = true
     const stderrText = (await stderrTextPromise).trim()
 
     if (backendError || exitCode !== 0) {
@@ -272,11 +277,45 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     }
     trackTurnCompleted('success')
   } finally {
+    // Only ever reached once the turn is over: either waitExit() already
+    // resolved (exitObserved) or the event loop above threw and abandoned a
+    // child that is still running. A slow turn is still inside the loop, so it
+    // is never touched here.
+    if (!exitObserved) await killAbandonedChild(sub)
     await sub.cleanup()
     await titlePromise
   }
 
   return { turnId }
+}
+
+// cleanup() is where the tracked-handle wrapper untracks the pid, which removes
+// it from the map killAll() walks at quit. A child still alive at that moment is
+// unreachable forever, so it has to be killed first — and cleanup() must wait
+// for it to actually be gone, not merely signalled.
+async function killAbandonedChild(sub: BackendRunHandle): Promise<void> {
+  try {
+    sub.kill()
+  } catch (error) {
+    logger.warn('Failed to kill abandoned agent subprocess', { pid: sub.pid, error })
+    return
+  }
+
+  // Bounded: killAll() awaits in-flight turns and main force-exits 5s into
+  // shutdown, so an unbounded wait here would trade the leak for a hang.
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timedOut = new Promise<false>((resolve) => {
+    timer = setTimeout(() => resolve(false), ABANDONED_KILL_GRACE_MS)
+  })
+  try {
+    if (!(await Promise.race([sub.waitExit().then(() => true), timedOut]))) {
+      logger.warn('Abandoned agent subprocess did not exit after kill', { pid: sub.pid })
+    }
+  } catch (error) {
+    logger.warn('Failed to await abandoned agent subprocess exit', { pid: sub.pid, error })
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 async function maybeGenerateConversationTitle(
