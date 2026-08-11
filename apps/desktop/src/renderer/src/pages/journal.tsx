@@ -41,6 +41,7 @@ import { useNoteTagsQuery, useNoteLinksQuery } from '@/hooks/use-notes-query'
 import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
 import { usePropertySection } from '@/hooks/use-property-section'
 import { useJournalSettings } from '@/hooks/use-journal-settings'
+import { useToday } from '@/hooks/use-today'
 import { useEditorSettings, EDITOR_NORMAL_CONTENT_WIDTH } from '@/hooks/use-editor-settings'
 import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
@@ -51,7 +52,6 @@ import {
   createJournalDateLabels,
   formatDateToISO,
   formatDateParts,
-  getTodayString,
   parseISODate,
   addDays,
   getMonthStats,
@@ -116,7 +116,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const { t: commonT } = useT('common')
   const activeTab = useActiveTab()
   const { openTab } = useTabs()
-  const today = getTodayString()
+  const today = useToday()
   const dateLabels = useMemo(() => createJournalDateLabels(t), [t])
   const tabDate = activeTab?.viewState?.date as string | undefined
 

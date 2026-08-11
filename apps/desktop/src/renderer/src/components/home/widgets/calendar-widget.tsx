@@ -1,6 +1,7 @@
 import type React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useCalendarRange } from '@/hooks/use-calendar-range'
+import { useToday } from '@/hooks/use-today'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { formatTimeOfDay } from '@/lib/time-format'
 import {
@@ -10,6 +11,7 @@ import {
   toCalendarWidgetEvents,
   type CalendarWidgetEvent
 } from '@/lib/home/calendar-widget-events'
+import { parseISODate } from '@/lib/journal-utils'
 import type { WidgetComponentProps } from '@/lib/home/widget-registry'
 import { Skeleton } from '@/components/ui/skeleton'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -21,7 +23,8 @@ export function CalendarWidget({ size }: WidgetComponentProps): React.JSX.Elemen
   const { t } = useT('common')
   const { settings } = useGeneralSettings()
   const clockFormat = settings.clockFormat
-  const range = useMemo(() => todayCalendarRange(new Date()), [])
+  const today = useToday()
+  const range = useMemo(() => todayCalendarRange(parseISODate(today)), [today])
   const { items, isLoading, error } = useCalendarRange(range)
   const [nowMs, setNowMs] = useState(() => Date.now())
 
