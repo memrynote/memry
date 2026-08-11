@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import log from 'electron-log'
 
+import type { DiagnosticLogLine } from '@memry/contracts/diagnostics-api'
+
 vi.mock('electron', () => ({ net: { fetch: vi.fn() } }))
 
 const getCurrentVaultPathMock = vi.fn<() => string | null>(() => null)
@@ -35,6 +37,27 @@ const getTransport = (): RawTransport => {
   const transport = (log.transports as unknown as Record<string, unknown>).logShip
   if (typeof transport !== 'function') throw new Error('logShip transport not installed')
   return transport as RawTransport
+}
+
+// Counts `new Date(...)` constructions inside `run` — the per-line cost the old
+// ring paid once per retained entry. `Date.now()` is a static call, not a
+// construction, so it is deliberately not counted.
+const countDateConstructions = (run: () => void): number => {
+  const RealDate = globalThis.Date
+  let constructions = 0
+  class CountingDate extends RealDate {
+    constructor(...args: unknown[]) {
+      super(...(args as [number]))
+      constructions += 1
+    }
+  }
+  globalThis.Date = CountingDate as unknown as DateConstructor
+  try {
+    run()
+  } finally {
+    globalThis.Date = RealDate
+  }
+  return constructions
 }
 
 const createFetch = () => {
@@ -256,6 +279,109 @@ describe('installLogShip', () => {
     }
 
     expect(shipped.recentLines()).toHaveLength(200)
+  })
+
+  it('does per-line ring work that does not grow with the ring (O(1), not O(buffer))', () => {
+    const { fetchMock } = createFetch()
+    const shipped = installLogShip({
+      buildChannel: 'production',
+      fetch: fetchMock,
+      endpoint: 'https://sync.test/telemetry/logs',
+      salt: FIXED_SALT,
+      flushIntervalMs: null
+    })
+
+    // The old ring re-parsed every retained `ts` (`new Date(l.ts)`) on each push, so
+    // the cost of one warn scaled with how full the ring was: ~1 Date on an empty
+    // ring, ~201 on a full one.
+    const onEmptyRing = countDateConstructions(() => {
+      getTransport()({ level: 'warn', scope: 'Sync', data: ['first'] })
+    })
+
+    for (let i = 0; i < 250; i++) {
+      getTransport()({ level: 'warn', scope: 'Sync', data: [`fill-${i}`] })
+    }
+    expect(shipped.recentLines()).toHaveLength(200)
+
+    const onFullRing = countDateConstructions(() => {
+      getTransport()({ level: 'warn', scope: 'Sync', data: ['on-full-ring'] })
+    })
+
+    expect(onFullRing).toBe(onEmptyRing)
+    expect(onFullRing).toBeLessThan(10)
+  })
+
+  it('keeps the same retention window and eviction order as the filter+slice ring it replaced', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-07T12:00:00.000Z'))
+    try {
+      const { fetchMock } = createFetch()
+      const shipped = installLogShip({
+        buildChannel: 'production',
+        fetch: fetchMock,
+        endpoint: 'https://sync.test/telemetry/logs',
+        salt: FIXED_SALT,
+        flushIntervalMs: null
+      })
+
+      // Byte-for-byte the pre-fix eviction: append, drop anything older than the
+      // 5-minute window, then trim to the newest 200.
+      let reference: DiagnosticLogLine[] = []
+      const referencePush = (line: DiagnosticLogLine): void => {
+        reference.push(line)
+        const cutoff = Date.now() - 5 * 60 * 1000
+        reference = reference.filter((l) => new Date(l.ts).getTime() >= cutoff)
+        if (reference.length > 200) reference = reference.slice(reference.length - 200)
+      }
+
+      // Bursts (0ms) fill the ring to its cap; the 400s gaps blow the whole window
+      // away, so both eviction paths run many times over the fixture.
+      const deltasMs = [0, 0, 250, 1500, 0, 3200, 0, 900, 0, 400_000]
+      for (let i = 0; i < 260; i++) {
+        vi.advanceTimersByTime(deltasMs[i % deltasMs.length])
+        getTransport()({ level: 'warn', scope: 'Sync', data: [`msg-${i}`] })
+
+        const lines = shipped.recentLines()
+        const newest = lines[lines.length - 1]
+        expect(newest?.message).toBe(`msg-${i}`)
+        referencePush(newest)
+        expect(lines).toEqual(reference)
+      }
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('loses nothing under a burst and evicts oldest-first past the cap', async () => {
+    const { calls, fetchMock } = createFetch()
+    const shipped = installLogShip({
+      buildChannel: 'production',
+      fetch: fetchMock,
+      endpoint: 'https://sync.test/telemetry/logs',
+      salt: FIXED_SALT,
+      flushIntervalMs: null
+    })
+
+    for (let i = 0; i < 200; i++) {
+      getTransport()({ level: 'warn', scope: 'Sync', data: [`burst-${i}`] })
+    }
+
+    const full = shipped.recentLines()
+    expect(full.map((l) => l.message)).toEqual(Array.from({ length: 200 }, (_, i) => `burst-${i}`))
+
+    getTransport()({ level: 'warn', scope: 'Sync', data: ['burst-200'] })
+    const evicted = shipped.recentLines()
+    expect(evicted).toHaveLength(200)
+    expect(evicted.map((l) => l.message)).toEqual(
+      Array.from({ length: 200 }, (_, i) => `burst-${i + 1}`)
+    )
+
+    // The burst reaches the wire in emission order too, oldest batch first.
+    await shipped.dispose()
+    const body = calls[0]?.body as { lines: { message: string }[] }
+    expect(body.lines.map((l) => l.message)).toEqual(
+      Array.from({ length: 50 }, (_, i) => `burst-${i}`)
+    )
   })
 
   it('collapses repeated identical warns within the throttle window into a repeat count', () => {
