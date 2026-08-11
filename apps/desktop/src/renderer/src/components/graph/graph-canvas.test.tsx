@@ -490,6 +490,139 @@ describe('GraphCanvas', () => {
       expect(graph.getNodeAttribute('note-a', 'x')).toBe(before)
     })
 
+    describe('repaint scope', () => {
+      /**
+       * Enough of sigma@3.0.3's `refresh` contract to observe what one repaint
+       * costs. A refresh with no `partialGraph` re-runs both reducers over every
+       * node and every edge (`Sigma#refresh` -> `addNode`/`addEdge`); a partial
+       * one only re-runs them for the items it lists. Either way the indexation
+       * pass (`Sigma#process`) re-reads x/y straight off the graph for every
+       * node and re-feeds the node *and* edge programs, which is what stops a
+       * repaint from being a frame behind. `skipIndexation` is what turns that
+       * pass off.
+       *
+       * TRIPWIRE, read this before bumping sigma. This is a hand-written *model*
+       * of that contract, not real Sigma — driving the real renderer needs WebGL.
+       * It is pinned to sigma@3.0.3, where the source of truth is two lines of
+       * `Sigma#refresh`: `fullRefresh = !opts || !opts.partialGraph` (so `{}`
+       * takes the partial branch and reduces nothing) and
+       * `if (fullRefresh || !skipIndexation) this.needToProcess = true` (so
+       * omitting `skipIndexation` keeps the position pass). Sigma's own docstring
+       * scopes `skipIndexation` to "if you haven't modify x, y, zIndex & size".
+       *
+       * A model cannot notice sigma changing underneath it: if an upgrade alters
+       * either mechanism, this file keeps asserting the OLD contract, stays green,
+       * and the graph silently renders a frame behind. A sigma major or minor bump
+       * must therefore re-read `refresh` in the new dist and re-confirm both lines
+       * by hand — the suite will not do it for you.
+       *
+       * Scope, concretely. What is counted here is the reducer work driven by
+       * `LivePhysics.step()`'s own `refresh` call, and nothing else. The model
+       * binds no graphology listeners, so it cannot observe the reducer work the
+       * real renderer does around that call: sigma's `bindGraphHandlers`
+       * subscribes to `nodeAttributesUpdated` independently, and every
+       * `setNodeAttribute` therefore costs a `refresh({partialGraph:{nodes:[key]}})`
+       * -> `updateNode` -> one more `nodeReducer` pass. Before #1045,
+       * `GraphPhysics.syncPositions()` wrote x and y as two separate
+       * `setNodeAttribute` calls per node, so those events contributed ~2N
+       * `updateNode` calls per frame on top of whatever `step()` asked for. A zero
+       * here means `step()` reduces nothing; it does not by itself mean a frame
+       * reduces nothing.
+       */
+      function recordRepaints(): {
+        nodeReducerCalls: string[]
+        edgeReducerCalls: string[]
+        painted: Map<string, { x: number; y: number }>
+      } {
+        const record = {
+          nodeReducerCalls: [] as string[],
+          edgeReducerCalls: [] as string[],
+          painted: new Map<string, { x: number; y: number }>()
+        }
+
+        // Sigma reduces with whatever reducer was last pushed into its settings.
+        const reducer = (key: 'nodeReducer' | 'edgeReducer'): any => {
+          const pushed = graphCanvasMocks.sigma.setSetting.mock.calls.filter(
+            ([setting]: [string]) => setting === key
+          )
+          return pushed.length > 0
+            ? pushed[pushed.length - 1][1]
+            : graphCanvasMocks.sigmaContainerProps?.settings[key]
+        }
+
+        graphCanvasMocks.sigma.refresh.mockImplementation((opts?: any) => {
+          const graph = graphCanvasMocks.sigmaContainerProps?.graph
+          if (!graph) return
+          const partial = opts?.partialGraph
+
+          for (const node of partial ? (partial.nodes ?? []) : graph.nodes()) {
+            record.nodeReducerCalls.push(node)
+            reducer('nodeReducer')(node, graph.getNodeAttributes(node))
+          }
+          for (const edge of partial ? (partial.edges ?? []) : graph.edges()) {
+            record.edgeReducerCalls.push(edge)
+            reducer('edgeReducer')(edge, graph.getEdgeAttributes(edge))
+          }
+
+          if (!partial || !opts?.skipIndexation) {
+            for (const node of graph.nodes()) {
+              record.painted.set(node, {
+                x: graph.getNodeAttribute(node, 'x'),
+                y: graph.getNodeAttribute(node, 'y')
+              })
+            }
+          }
+        })
+
+        return record
+      }
+
+      afterEach(() => {
+        graphCanvasMocks.sigma.refresh.mockReset()
+      })
+
+      it('repaints a physics frame without re-running the reducers over the whole graph', () => {
+        const record = recordRepaints()
+        renderLive()
+        record.nodeReducerCalls.length = 0
+        record.edgeReducerCalls.length = 0
+
+        vi.advanceTimersToNextFrame()
+
+        expect(record.nodeReducerCalls).toEqual([])
+        expect(record.edgeReducerCalls).toEqual([])
+      })
+
+      it('paints every physics frame at the positions that frame just produced', () => {
+        const record = recordRepaints()
+        const { graph } = renderLive()
+
+        for (let i = 0; i < 3; i++) {
+          vi.advanceTimersToNextFrame()
+
+          for (const node of graph.nodes()) {
+            expect(record.painted.get(node)).toEqual({
+              x: graph.getNodeAttribute(node, 'x'),
+              y: graph.getNodeAttribute(node, 'y')
+            })
+          }
+        }
+      })
+
+      it('still re-reduces the whole graph when hover changes the dimming', () => {
+        const record = recordRepaints()
+        const { graph } = renderLive()
+        record.nodeReducerCalls.length = 0
+        record.edgeReducerCalls.length = 0
+
+        fireEvent.click(screen.getByText('hover note'))
+        vi.advanceTimersToNextFrame()
+
+        expect(new Set(record.nodeReducerCalls)).toEqual(new Set(graph.nodes()))
+        expect(new Set(record.edgeReducerCalls)).toEqual(new Set(graph.edges()))
+      })
+    })
+
     it('leaves no graph listeners behind on unmount', () => {
       const { graph, unmount } = renderLive()
       unmount()

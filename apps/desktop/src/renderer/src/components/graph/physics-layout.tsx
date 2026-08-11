@@ -6,6 +6,22 @@ import { GraphPhysics, type GraphPhysicsOptions } from '@/lib/graph-physics'
 /** Upper bound on the synchronous pre-settle, so a huge vault cannot lock the frame forever. */
 const SETTLE_TICK_LIMIT = 400
 
+/**
+ * A physics frame only moves nodes, so this repaints the motion without asking
+ * sigma to re-derive what everything looks like.
+ *
+ * An empty partial graph skips the node and edge reducers — the O(N+E) pass that
+ * spreads every attribute map into a fresh object and walks `areNeighbors` /
+ * `extremities` — while still running indexation, which re-reads x/y off the
+ * graph for every node and re-feeds both the node and the edge programs. Nothing
+ * a reducer produces (colour, label, size, visibility, highlight, zIndex) is
+ * derived from position, and sigma re-runs them itself on every input that is:
+ * `setSetting` with a new reducer identity (filters, focus set, search, theme
+ * colours), the hover fade's own full refresh, and graphology's
+ * added/dropped/attributes-updated events.
+ */
+const REPAINT_MOVEMENT_ONLY = { partialGraph: {} }
+
 export interface PhysicsHandle {
   grab: (nodeId: string) => void
   drag: (nodeId: string, x: number, y: number) => void
@@ -42,7 +58,7 @@ export function LivePhysics({
       // SigmaContainer recreates Sigma when `graph` changes and React may hand us
       // the old, killed instance; refreshing that one throws. Same guard as
       // SigmaSettingsSync.
-      if (sigma.getGraph() === graph) sigma.refresh()
+      if (sigma.getGraph() === graph) sigma.refresh(REPAINT_MOVEMENT_ONLY)
       frame = physics.isSettled ? null : requestAnimationFrame(step)
     }
 
