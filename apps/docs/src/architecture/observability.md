@@ -592,7 +592,10 @@ detail (stacks, operational messages) that a PostHog _event_ deliberately omits.
   30s, drop-4xx-except-429) to `POST /telemetry/logs`, gated on the telemetry toggle
   (`getTelemetryRuntime().getSettings().enabled`) and disabled outright in dev builds. Repeated
   identical `level|scope|message` lines within a 3s window are throttled into one line with a
-  `repeatCount` field. A record's arguments are flattened by `parseRecord`: the first string wins
+  `repeatCount` field. The Path B ring those lines also feed is a fixed-capacity circular buffer
+  (200 slots, 5-minute window) that stores each line's epoch ms at push time and evicts oldest-first
+  through a head index, so one `warn`/`error` costs O(1) instead of re-parsing every retained
+  timestamp — the error path has to stay cheap when something is looping. A record's arguments are flattened by `parseRecord`: the first string wins
   the `message` slot, plain objects merge into the fields, and an `Error` contributes `errorName`
   plus `errorMessage`. That last part matters — `logger.error('updater error', err)` used to ship
   `{"errorName":"Error"}` and nothing else, because the label had already claimed the message slot
