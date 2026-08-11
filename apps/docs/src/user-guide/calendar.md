@@ -152,6 +152,10 @@ The calendar list refreshes on every sync, so a calendar you create in Google la
 
 Each account has its own **Disconnect**, which unlinks only that account and removes only its events.
 
+Disconnecting is reversible. Linking the same account again restores it along with its calendars and your calendar choices, and the events are fetched fresh on the next sync.
+
+The **selected** count above the account groups reflects the calendars listed there. The memrynote calendar memrynote creates in Google to hold your pushed events is managed for you, so it is not listed and not counted.
+
 ### Sync Direction
 
 By default Google Calendar sync is **two-way**: events, tasks, reminders, and snoozes you create in memrynote are pushed up to Google, and changes made in Google flow back into memrynote.
