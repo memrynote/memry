@@ -99,6 +99,51 @@ describe('withRetry', () => {
     })
   })
 
+  describe('#given NetworkError #when isOnline is not supplied', () => {
+    it('#then spaces retries by exponential backoff instead of firing them back-to-back', async () => {
+      const fn = vi.fn().mockRejectedValue(new NetworkError('server unreachable'))
+
+      // Only jitter is pinned. maxRetries / baseDelayMs / maxDelayMs / isOnline
+      // all stay at their defaults — the exact shape most callers use.
+      const promise = withRetry(fn, { jitterMs: 0 })
+      promise.catch(() => {})
+
+      // The first attempt runs straight away and nothing else does.
+      await vi.advanceTimersByTimeAsync(0)
+      expect(fn).toHaveBeenCalledTimes(1)
+
+      const expectedDelaysMs = [1000, 2000, 4000, 8000, 16_000]
+      for (let i = 0; i < expectedDelaysMs.length; i++) {
+        await vi.advanceTimersByTimeAsync(expectedDelaysMs[i] - 1)
+        expect(fn).toHaveBeenCalledTimes(i + 1)
+        await vi.advanceTimersByTimeAsync(1)
+        expect(fn).toHaveBeenCalledTimes(i + 2)
+      }
+
+      // The budget is spent over ~31s, not in one tick, and no attempt is lost.
+      expect(fn).toHaveBeenCalledTimes(6)
+      await expect(promise).rejects.toThrow(DeadLetterError)
+      await expect(promise).rejects.toMatchObject({ attempts: 6 })
+    })
+  })
+
+  describe('#given NetworkError #when the machine stays offline past the wait cap', () => {
+    it('#then throws a bare NetworkError so callers can keep the work queued', async () => {
+      const fn = vi.fn().mockRejectedValue(new NetworkError('offline'))
+
+      const promise = withRetry(fn, { isOnline: () => false, jitterMs: 0 })
+      promise.catch(() => {})
+
+      await vi.advanceTimersByTimeAsync(5 * 60 * 1000 + 2000)
+
+      const err = await promise.catch((e: unknown) => e)
+      expect(err).toBeInstanceOf(NetworkError)
+      expect(err).not.toBeInstanceOf(DeadLetterError)
+      expect((err as Error).message).toBe('Offline wait timeout exceeded')
+      expect(fn).toHaveBeenCalledTimes(1)
+    })
+  })
+
   describe('#given aborted signal #when retrying', () => {
     it('#then throws AbortError', async () => {
       const controller = new AbortController()

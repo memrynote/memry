@@ -54,7 +54,7 @@ const {
 
 vi.mock('electron', () => ({
   BrowserWindow: {
-    getAllWindows: () => [{ webContents: { send: mockSend } }]
+    getAllWindows: () => [{ isDestroyed: () => false, webContents: { send: mockSend } }]
   }
 }))
 

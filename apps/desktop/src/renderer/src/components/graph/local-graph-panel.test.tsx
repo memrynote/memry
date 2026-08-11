@@ -11,6 +11,9 @@ const mocks = vi.hoisted(() => ({
   },
   sigma: {
     refresh: vi.fn(),
+    // The panel freezes SigmaContainer's `settings` prop and pushes later reducers
+    // through setSetting, so the stub has to accept them.
+    setSetting: vi.fn(),
     // The live simulation refreshes only the instance that owns the graph it is
     // stepping, so the mock has to model getGraph like the real Sigma does.
     getGraph: (): unknown => mocks.sigmaContainerProps?.graph
@@ -212,28 +215,41 @@ describe('LocalGraphPanel', () => {
 
   it('runs a live simulation and stops it on unmount', () => {
     // The suite-wide stub runs frames synchronously, which would settle the whole
-    // simulation during mount. Queue them instead so each step is observable.
-    const frames: FrameRequestCallback[] = []
+    // simulation during mount. Queue them instead so each step is observable, keyed by
+    // handle so a cancel really drops the callback — the simulation is rebuilt once the
+    // panel's graph is filled, and its first, superseded frame must not still be pending.
+    const frames = new Map<number, FrameRequestCallback>()
+    let nextHandle = 0
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
-      frames.push(callback)
-      return frames.length
+      nextHandle += 1
+      frames.set(nextHandle, callback)
+      return nextHandle
     })
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((handle) => {
+      frames.delete(handle)
+    })
+    const runNextFrame = (time: number): void => {
+      const next = frames.entries().next()
+      if (next.done) return
+      frames.delete(next.value[0])
+      next.value[1](time)
+    }
 
     const { unmount } = render(<LocalGraphPanel noteId="note-a" onClose={vi.fn()} />)
     const graph = mocks.sigmaContainerProps?.graph
     const before = graph.getNodeAttribute('note-a', 'x')
-    expect(frames).toHaveLength(1)
+    expect(frames.size).toBe(1)
 
     act(() => {
-      frames.shift()?.(16)
+      runNextFrame(16)
     })
     expect(graph.getNodeAttribute('note-a', 'x')).not.toBe(before)
-    expect(frames).toHaveLength(1)
+    expect(frames.size).toBe(1)
 
     unmount()
     const afterUnmount = graph.getNodeAttribute('note-a', 'x')
     act(() => {
-      frames.shift()?.(32)
+      runNextFrame(32)
     })
     expect(graph.getNodeAttribute('note-a', 'x')).toBe(afterUnmount)
   })

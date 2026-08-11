@@ -1,32 +1,15 @@
-import { spawnSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { platform } from 'node:os'
-
 import type { BinaryStatus } from '@memry/contracts/ipc-agent'
+
+import { cacheBinaryDetection, locateBinary, runBinaryCommand } from './binary-detection'
 
 export const MIN_CLAUDE_VERSION = '2.1.0'
 
 const INSTALL_HINT =
   'Install Claude Code CLI from https://claude.ai/code, then run `claude login` to sign in to your subscription.'
 
-function locate(): string | null {
-  const which = platform() === 'win32' ? 'where' : 'which'
-  const result = spawnSync(which, ['claude'])
-  if (result.status !== 0) {
-    return null
-  }
-
-  const binaryPath = result.stdout.toString().split(/\r?\n/).filter(Boolean)[0]
-  if (!binaryPath || !existsSync(binaryPath)) {
-    return null
-  }
-
-  return binaryPath
-}
-
-function readVersion(binaryPath: string): string | null {
-  const result = spawnSync(binaryPath, ['--version'], { encoding: 'utf8' })
-  if (result.status !== 0) {
+async function readVersion(binaryPath: string): Promise<string | null> {
+  const result = await runBinaryCommand(binaryPath, ['--version'])
+  if (!result) {
     return null
   }
 
@@ -49,8 +32,8 @@ function compareSemver(a: string, b: string): number {
   return patchA - patchB
 }
 
-export async function detectClaudeBinary(): Promise<BinaryStatus> {
-  const binaryPath = locate()
+async function probeClaudeBinary(): Promise<BinaryStatus> {
+  const binaryPath = await locateBinary('claude')
   if (!binaryPath) {
     return {
       detected: false,
@@ -61,7 +44,7 @@ export async function detectClaudeBinary(): Promise<BinaryStatus> {
     }
   }
 
-  const version = readVersion(binaryPath)
+  const version = await readVersion(binaryPath)
   if (!version) {
     return {
       detected: true,
@@ -81,3 +64,6 @@ export async function detectClaudeBinary(): Promise<BinaryStatus> {
     installHint: meetsMinimum ? null : INSTALL_HINT
   }
 }
+
+export const detectClaudeBinary: () => Promise<BinaryStatus> =
+  cacheBinaryDetection(probeClaudeBinary)

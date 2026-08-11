@@ -235,15 +235,22 @@ otherwise take the crash report with it, which is why both queues mirror to `use
 | Event queue (`telemetry/client.ts`)        | `telemetry-event-queue.json` | `app_crashed`, `app_error_seen`, all events |
 | Log-ship queue (`telemetry/ship-queue.ts`) | `telemetry-log-queue.json`   | Path A redacted `warn`/`error` log lines    |
 
-The mirror is rewritten on every enqueue and after every flush, so what is on disk is what has not
-yet been accepted by the server. The next launch restores it and drains it; a drained batch is
-removed from the mirror, so nothing is sent twice.
+Every enqueue reaches disk before it returns, and the mirror is rewritten after every flush, so what
+is on disk is what has not yet been accepted by the server. The next launch restores it and drains
+it; a drained batch is removed from the mirror, so nothing is sent twice.
 
 Rules the mirror follows:
 
-- **Format** is `{"version":1,"items":[…]}`. A file whose version this build does not recognise is
-  discarded rather than parsed, and builds that predate the mirror never read it at all — so
-  neither a downgrade nor a future format bump can wedge startup.
+- **Format** is a journal: a `{"version":2}` header line followed by one JSON item per line. An
+  enqueue appends its own line rather than re-serialising the queue, which otherwise made each
+  event cost a full rewrite of up to 500 objects — worst exactly during the error bursts and
+  offline sessions that keep the queue pegged at its limit. The file is rewritten (compacted) on
+  drains, on trims, and once the journal outgrows its bound, so it stays bounded.
+- **Format changes cannot wedge startup.** The previous `{"version":1,"items":[…]}` format is still
+  read, so an upgrading install keeps whatever its last session queued. A file whose version this
+  build does not recognise is discarded rather than parsed, builds that predate the mirror never
+  read it at all, and a build that predates the journal sees it as unparseable and discards it —
+  so a downgrade costs one session's queue, never the launch.
 - **Corruption is expected.** The mirror is most likely to be truncated by exactly the crash it was
   written to survive, so an unparseable file is logged, deleted, and treated as empty.
 - **Write failures are non-fatal.** A read-only or full disk costs durability, never logging or

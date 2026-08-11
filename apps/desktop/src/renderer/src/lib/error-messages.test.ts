@@ -82,6 +82,7 @@ describe('getSyncErrorMessage', () => {
     expect(getSyncErrorMessage('crypto_failure')).toBeTruthy()
     expect(getSyncErrorMessage('version_incompatible')).toBeTruthy()
     expect(getSyncErrorMessage('storage_quota_exceeded')).toBeTruthy()
+    expect(getSyncErrorMessage('note_too_large')).toBeTruthy()
     expect(getSyncErrorMessage('sync_payment_required')).toBeTruthy()
     expect(getSyncErrorMessage('certificate_pin_failed')).toBeTruthy()
     expect(getSyncErrorMessage('unknown')).toBeTruthy()

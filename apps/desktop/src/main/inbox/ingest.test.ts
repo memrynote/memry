@@ -13,8 +13,10 @@ vi.mock('./duplicates', () => ({ findDuplicateByUrl }))
 vi.mock('../projections', () => ({
   publishProjectionEvent: vi.fn()
 }))
+const storeInboxAttachment = vi.fn()
 vi.mock('./attachments', () => ({
-  getItemAttachmentsDir: vi.fn(() => '/tmp/inbox-item')
+  getItemAttachmentsDir: vi.fn(() => '/tmp/inbox-item'),
+  storeInboxAttachment: (...args: unknown[]) => storeInboxAttachment(...args)
 }))
 vi.mock('./domain', () => ({
   insertItemWithTags: (_db: unknown, row: { id: string }, tags: string[]) => {
@@ -44,6 +46,11 @@ describe('ingestArticleCapture', () => {
     findDuplicateByUrl.mockReset()
     findDuplicateByUrl.mockReturnValue(null) // no active duplicate by default
     setArg = {}
+    storeInboxAttachment.mockReset()
+    storeInboxAttachment.mockResolvedValue({
+      success: true,
+      path: 'attachments/inbox/x/ab12-paper.pdf'
+    })
   })
 
   it('creates a new link item with properties + extraction status when no itemId', async () => {
@@ -159,5 +166,72 @@ describe('ingestArticleCapture', () => {
     expect(res.itemId).toBe('active-1')
     expect(insertSpy).not.toHaveBeenCalled()
     expect(updateRun).toHaveBeenCalled()
+  })
+
+  const pdfInput = {
+    url: 'https://example.com/paper.pdf',
+    mode: 'pdf' as const,
+    contentMarkdown: '',
+    excerpt: '',
+    extractionStatus: 'full' as const,
+    force: true,
+    pdfDataUrl: 'data:application/pdf;base64,JVBERi0xLjQK',
+    pdfFilename: 'paper.pdf',
+    properties: {
+      title: 'paper',
+      source: 'https://example.com/paper.pdf',
+      created: '2026-08-08T00:00:00.000Z'
+    }
+  }
+
+  it('stores the pdf bytes and creates a pdf item', async () => {
+    const { ingestArticleCapture } = await import('./ingest')
+    await ingestArticleCapture(pdfInput, 'browser-extension')
+
+    expect(storeInboxAttachment).toHaveBeenCalledOnce()
+    const [, buffer, filename, mime] = storeInboxAttachment.mock.calls[0]
+    expect(filename).toBe('paper.pdf')
+    expect(mime).toBe('application/pdf')
+    expect((buffer as Buffer).subarray(0, 5).toString()).toBe('%PDF-')
+
+    const [row] = insertSpy.mock.calls[0]
+    expect(row.type).toBe('pdf')
+    expect(row.content).toBeNull()
+    expect(row.attachmentPath).toBe('attachments/inbox/x/ab12-paper.pdf')
+    expect(row.sourceUrl).toBe('https://example.com/paper.pdf')
+    expect(row.metadata.originalFilename).toBe('paper.pdf')
+    expect(row.metadata.mimeType).toBe('application/pdf')
+    expect(row.metadata.fileSize).toBeGreaterThan(0)
+  })
+
+  it('falls back to a link item when the data URL is not a pdf', async () => {
+    const { ingestArticleCapture } = await import('./ingest')
+    await ingestArticleCapture(
+      { ...pdfInput, pdfDataUrl: 'data:text/html;base64,PGh0bWw+' },
+      'browser-extension'
+    )
+
+    expect(storeInboxAttachment).not.toHaveBeenCalled()
+    const [row] = insertSpy.mock.calls[0]
+    expect(row.type).toBe('link')
+    expect(row.attachmentPath).toBeNull()
+  })
+
+  it('falls back to a link item when storing the attachment fails', async () => {
+    storeInboxAttachment.mockResolvedValue({ success: false, error: 'File too large' })
+    const { ingestArticleCapture } = await import('./ingest')
+    await ingestArticleCapture(pdfInput, 'browser-extension')
+
+    const [row] = insertSpy.mock.calls[0]
+    expect(row.type).toBe('link')
+    expect(row.attachmentPath).toBeNull()
+  })
+
+  it('defaults the filename when the extension sent none', async () => {
+    const { ingestArticleCapture } = await import('./ingest')
+    const { pdfFilename: _omitted, ...noFilename } = pdfInput
+    await ingestArticleCapture(noFilename, 'browser-extension')
+
+    expect(storeInboxAttachment.mock.calls[0][2]).toBe('document.pdf')
   })
 })

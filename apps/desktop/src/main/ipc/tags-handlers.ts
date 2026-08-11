@@ -6,7 +6,8 @@
  */
 
 import { readFile } from 'fs/promises'
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain } from 'electron'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { eq } from 'drizzle-orm'
 import { TagsChannels } from '@memry/contracts/ipc-channels'
 import {
@@ -87,9 +88,7 @@ const log = createLogger('TagsHandlers')
  * Emit tag event to all windows
  */
 function emitTagEvent(channel: string, data: unknown): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, data)
-  })
+  broadcastToAllWindows(channel, data)
 }
 
 /**

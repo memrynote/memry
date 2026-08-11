@@ -82,6 +82,26 @@ Three pieces of metadata prevent feedback loops:
 2. **Y.Doc origin parameter** distinguishes local typing, IPC re-application, and network apply.
 3. **Update buffering** in `CrdtUpdateQueue` orders updates per `noteId`.
 
+## Markdown Write-Back
+
+Every local or remote Y.Doc update schedules a write-back that re-serializes the whole
+document to its vault `.md` file and re-indexes it for search.
+
+- **Debounce** — 500 ms after the last update, re-armed per update, so a fast typing run
+  produces one write-back at the end rather than one per keystroke.
+- **Cost-proportional cooldown** — a pass re-serializes the entire document, so it costs
+  what the note is big rather than what the edit was. After a pass finishes, the next one
+  waits until the note has been idle for nine times what that pass cost, capped at 5 s.
+  Small notes never reach the 500 ms debounce floor and are unaffected; large notes settle
+  at roughly a tenth of wall clock instead of saturating a core while the user types.
+- **Nothing is deferred indefinitely** — the trailing pass always runs, and
+  `flushPendingWritebacks()` forces any pending pass through before the CRDT provider is
+  destroyed, which covers app quit and vault switch.
+
+While a write-back is queued or mid-write the `.md` file is knowingly behind the Y.Doc, so
+markdown-as-truth readers (task checkbox reconciliation) stand down for that window. Search
+results and the file on disk catch up when the pass runs.
+
 ## Hybrid Sync Model
 
 Notes flow through **both** sync paths:
@@ -90,6 +110,21 @@ Notes flow through **both** sync paths:
 - **Incremental** — small Yjs binary updates via `/sync/crdt/updates`. Used for live collaboration during a session.
 
 Snapshots are pushed **pre-batch** so other devices receive correct state before the sync notification reaches them.
+
+## Reconnect Recovery
+
+A note body only ever travels as a CRDT update, so a remote body edit reaches a device
+as a `crdt_updated` WebSocket broadcast — record changes in the pull feed carry no body.
+Anything broadcast while the socket was down therefore has to be re-discovered when it
+comes back.
+
+When the socket reconnects, the engine pulls the record feed, then re-pulls the CRDT for
+every note that still has an editor window attached. The rest of the LRU-cached docs —
+the ones the provider retains after their editors closed — are swept too, but at most
+once per five minutes, because each pull costs a snapshot fetch, paged incrementals, and
+a vault-key derivation, and reconnect backoff caps at 30 seconds. A sweep suppressed by
+that window is not dropped: it is paid by the next reconnect or by the 60-second pull
+tick, and the vault-wide sweep at the end of a full sync covers every note regardless.
 
 ## Snapshot Failure Handling
 

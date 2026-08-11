@@ -58,6 +58,23 @@ const REPULSION_CUTOFF_FACTOR = 6
 const COLLIDE_ITERATIONS = 1
 
 /**
+ * Grid cells are addressed by one number, so a tick never builds a key string.
+ * `(cellX + OFFSET) * STRIDE + (cellY + OFFSET)` stays exact in a double well
+ * past any coordinate a layout reaches, and two cells can only share a key when
+ * they sit a whole `STRIDE` of rows apart: `key(x, y) === key(x', y')` forces
+ * `y' - y === (x - x') * STRIDE`. Cells inside one 3x3 neighbourhood are at most
+ * two rows apart, so they can never collide — no pair is visited twice or missed
+ * — and anything that does share a bucket is millions of cells away, far outside
+ * the distance cutoff both sweeps already apply.
+ */
+const CELL_KEY_OFFSET = 1 << 20
+const CELL_KEY_STRIDE = 1 << 21
+
+function cellKey(cellX: number, cellY: number): number {
+  return (cellX + CELL_KEY_OFFSET) * CELL_KEY_STRIDE + (cellY + CELL_KEY_OFFSET)
+}
+
+/**
  * A continuously-running force simulation bound to a graphology graph.
  *
  * Unlike a one-shot layout, this never "finishes" on its own terms: it cools
@@ -74,7 +91,17 @@ export class GraphPhysics {
   private readonly nodes: PhysicsNode[] = []
   private readonly nodesById = new Map<string, PhysicsNode>()
   private readonly links: PhysicsLink[] = []
+  /** Edge keys currently modelled, so `sync` can tell a rewire from a no-op. */
+  private linkKeys = new Set<string>()
   private readonly cutoff: number
+  /**
+   * Neighbour grid, kept alive between ticks so the hot loop allocates nothing.
+   * `buildGrid` is the only writer and resets both halves before it bins a
+   * single node. Instance state, never module state: the main graph and the
+   * local-graph panel each run their own simulation at the same time.
+   */
+  private readonly grid = new Map<number, PhysicsNode[]>()
+  private readonly cellPool: PhysicsNode[][] = []
   private alphaValue = 1
   private alphaTarget = 0
   private destroyed = false
@@ -100,23 +127,7 @@ export class GraphPhysics {
       this.nodesById.set(id, node)
     })
 
-    graph.forEachEdge((edge) => {
-      const [sourceId, targetId] = graph.extremities(edge)
-      // Self-loops collapse to a zero-length spring and blow the solver up.
-      if (sourceId === targetId) return
-      const source = this.nodesById.get(sourceId)
-      const target = this.nodesById.get(targetId)
-      if (!source || !target) return
-      source.degree++
-      target.degree++
-      this.links.push({ source, target, strength: 0, bias: 0 })
-    })
-
-    for (const link of this.links) {
-      const total = link.source.degree + link.target.degree
-      link.strength = 1 / Math.min(link.source.degree, link.target.degree)
-      link.bias = total === 0 ? 0.5 : link.source.degree / total
-    }
+    this.rebuildLinks()
   }
 
   get alpha(): number {
@@ -141,6 +152,61 @@ export class GraphPhysics {
     for (let i = 0; i < COLLIDE_ITERATIONS; i++) this.applyCollision()
 
     this.syncPositions()
+  }
+
+  /**
+   * Reconcile with a graph that was patched in place: nodes that survived keep
+   * their position and velocity, new ones join where the builder seeded them,
+   * dropped ones are forgotten. Returns whether the node or link set actually
+   * moved — an attribute-only refresh is not a reason to reheat.
+   */
+  sync(): boolean {
+    if (this.destroyed) return false
+
+    let structureChanged = false
+    const surviving: PhysicsNode[] = []
+    const present = new Set<string>()
+
+    this.graph.forEachNode((id, attrs) => {
+      present.add(id)
+      let node = this.nodesById.get(id)
+      if (!node) {
+        node = {
+          id,
+          x: (attrs.x as number) ?? 0,
+          y: (attrs.y as number) ?? 0,
+          vx: 0,
+          vy: 0,
+          fx: null,
+          fy: null,
+          radius: 0,
+          degree: 0
+        }
+        this.nodesById.set(id, node)
+        structureChanged = true
+      }
+      node.radius = ((attrs.size as number) ?? 4) * 1.2 + this.settings.collidePadding
+      surviving.push(node)
+    })
+
+    for (const id of this.nodesById.keys()) {
+      if (present.has(id)) continue
+      this.nodesById.delete(id)
+      structureChanged = true
+    }
+
+    this.nodes.length = 0
+    for (const node of surviving) this.nodes.push(node)
+
+    const previousLinkKeys = this.linkKeys
+    this.rebuildLinks()
+
+    if (this.linkKeys.size !== previousLinkKeys.size) return true
+    if (structureChanged) return true
+    for (const key of this.linkKeys) {
+      if (!previousLinkKeys.has(key)) return true
+    }
+    return false
   }
 
   reheat(alpha: number = REHEAT_ALPHA): void {
@@ -178,7 +244,68 @@ export class GraphPhysics {
     this.destroyed = true
     this.nodes.length = 0
     this.links.length = 0
+    this.linkKeys.clear()
     this.nodesById.clear()
+    this.grid.clear()
+    this.cellPool.length = 0
+  }
+
+  /**
+   * Bin every node into a uniform grid of `cellSize`.
+   *
+   * The map and the cell arrays outlive the tick, so this is where they are
+   * reset and the only place they are: the map is emptied up front, and the
+   * pool cursor rewinds to zero so each array is truncated the moment it is
+   * handed out again. Nothing from the previous pass can survive into this one.
+   */
+  private buildGrid(cellSize: number): void {
+    this.grid.clear()
+    let pooled = 0
+
+    for (const node of this.nodes) {
+      const key = cellKey(Math.floor(node.x / cellSize), Math.floor(node.y / cellSize))
+      const occupied = this.grid.get(key)
+      if (occupied) {
+        occupied.push(node)
+        continue
+      }
+
+      let cell = this.cellPool[pooled]
+      if (cell) cell.length = 0
+      else {
+        cell = []
+        this.cellPool[pooled] = cell
+      }
+      pooled++
+      cell.push(node)
+      this.grid.set(key, cell)
+    }
+  }
+
+  /** Rederive every spring from the graph's current edges. */
+  private rebuildLinks(): void {
+    this.links.length = 0
+    this.linkKeys = new Set<string>()
+    for (const node of this.nodes) node.degree = 0
+
+    this.graph.forEachEdge((edge) => {
+      const [sourceId, targetId] = this.graph.extremities(edge)
+      // Self-loops collapse to a zero-length spring and blow the solver up.
+      if (sourceId === targetId) return
+      const source = this.nodesById.get(sourceId)
+      const target = this.nodesById.get(targetId)
+      if (!source || !target) return
+      source.degree++
+      target.degree++
+      this.linkKeys.add(edge)
+      this.links.push({ source, target, strength: 0, bias: 0 })
+    })
+
+    for (const link of this.links) {
+      const total = link.source.degree + link.target.degree
+      link.strength = 1 / Math.min(link.source.degree, link.target.degree)
+      link.bias = total === 0 ? 0.5 : link.source.degree / total
+    }
   }
 
   /** Springs pulling each linked pair toward `linkDistance`. */
@@ -208,14 +335,7 @@ export class GraphPhysics {
     const { chargeStrength } = this.settings
     const cutoff = this.cutoff
     const cutoffSquared = cutoff * cutoff
-    const grid = new Map<string, PhysicsNode[]>()
-
-    for (const node of this.nodes) {
-      const key = `${Math.floor(node.x / cutoff)},${Math.floor(node.y / cutoff)}`
-      const cell = grid.get(key)
-      if (cell) cell.push(node)
-      else grid.set(key, [node])
-    }
+    this.buildGrid(cutoff)
 
     for (const node of this.nodes) {
       const cellX = Math.floor(node.x / cutoff)
@@ -223,7 +343,7 @@ export class GraphPhysics {
 
       for (let ox = -1; ox <= 1; ox++) {
         for (let oy = -1; oy <= 1; oy++) {
-          const cell = grid.get(`${cellX + ox},${cellY + oy}`)
+          const cell = this.grid.get(cellKey(cellX + ox, cellY + oy))
           if (!cell) continue
 
           for (const other of cell) {
@@ -281,17 +401,10 @@ export class GraphPhysics {
 
   /** Position-based separation so node discs never overlap — the "cell" packing. */
   private applyCollision(): void {
-    const grid = new Map<string, PhysicsNode[]>()
     let maxRadius = 0
     for (const node of this.nodes) maxRadius = Math.max(maxRadius, node.radius)
     const cellSize = Math.max(maxRadius * 2, 1)
-
-    for (const node of this.nodes) {
-      const key = `${Math.floor(node.x / cellSize)},${Math.floor(node.y / cellSize)}`
-      const cell = grid.get(key)
-      if (cell) cell.push(node)
-      else grid.set(key, [node])
-    }
+    this.buildGrid(cellSize)
 
     for (const node of this.nodes) {
       const cellX = Math.floor(node.x / cellSize)
@@ -299,7 +412,7 @@ export class GraphPhysics {
 
       for (let ox = -1; ox <= 1; ox++) {
         for (let oy = -1; oy <= 1; oy++) {
-          const cell = grid.get(`${cellX + ox},${cellY + oy}`)
+          const cell = this.grid.get(cellKey(cellX + ox, cellY + oy))
           if (!cell) continue
 
           for (const other of cell) {

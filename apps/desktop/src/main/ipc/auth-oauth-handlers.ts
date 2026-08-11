@@ -1,4 +1,5 @@
-import { BrowserWindow, ipcMain, shell } from 'electron'
+import { ipcMain, shell } from 'electron'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import http from 'node:http'
 import https from 'node:https'
 
@@ -185,9 +186,7 @@ export function registerAuthOAuthHandlers(): void {
           const cbState = reqUrl.searchParams.get('state')
           if (cbState) oauthSessions.delete(cbState)
 
-          for (const win of BrowserWindow.getAllWindows()) {
-            win.webContents.send(SYNC_EVENTS.OAUTH_ERROR, { error: oauthError })
-          }
+          broadcastToAllWindows(SYNC_EVENTS.OAUTH_ERROR, { error: oauthError })
 
           shutdownLoopbackServer()
           return
@@ -200,9 +199,7 @@ export function registerAuthOAuthHandlers(): void {
         res.end(SUCCESS_HTML)
 
         if (code && cbState) {
-          for (const win of BrowserWindow.getAllWindows()) {
-            win.webContents.send(SYNC_EVENTS.OAUTH_CALLBACK, { code, state: cbState })
-          }
+          broadcastToAllWindows(SYNC_EVENTS.OAUTH_CALLBACK, { code, state: cbState })
         }
 
         shutdownLoopbackServer()

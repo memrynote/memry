@@ -348,14 +348,35 @@ class VoiceModelBridge {
 
   private failProcess(error: Error): void {
     this.clearIdleShutdown()
-    if (this.process) {
+    const failed = this.process
+    if (failed) {
       this.process = null
+      this.teardownProcess(failed)
     }
     this.readyPromise = null
     this.loaded = false
     this.loading = false
     this.error = error.message
     this.rejectAll(error)
+  }
+
+  /**
+   * Reap a utility process we are giving up on.
+   *
+   * A start timeout leaves a child that is still loading Whisper — hundreds of
+   * MB of resident model — so dropping the reference alone leaks the whole
+   * process. Detach first: Electron drops `stdout`/`stderr` once the child
+   * exits, and a retained `exit`/`message` listener lets a late orphan reach
+   * back into the bridge and knock out the *next* process. `kill()` is not
+   * awaited, so this can never turn the leak into a hang.
+   */
+  private teardownProcess(child: ReturnType<typeof utilityProcess.fork>): void {
+    child.stdout?.removeAllListeners('data')
+    child.stderr?.removeAllListeners('data')
+    child.removeAllListeners('message')
+    child.removeAllListeners('error')
+    child.removeAllListeners('exit')
+    child.kill()
   }
 
   private rejectAll(error: Error): void {

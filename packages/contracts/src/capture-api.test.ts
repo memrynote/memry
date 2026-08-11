@@ -50,3 +50,62 @@ describe('ArticleCaptureSchema', () => {
     if (r.success) expect(r.data.screenshotDataUrl).toBe('data:image/png;base64,AAAA')
   })
 })
+
+describe('ArticleCaptureSchema — pdf mode', () => {
+  const base = {
+    url: 'https://example.com/paper.pdf',
+    contentMarkdown: '',
+    excerpt: '',
+    extractionStatus: 'full' as const,
+    properties: {
+      title: 'paper',
+      source: 'https://example.com/paper.pdf',
+      created: '2026-08-08T00:00:00.000Z'
+    }
+  }
+
+  it('accepts a pdf capture carrying bytes and a filename', () => {
+    const parsed = ArticleCaptureSchema.safeParse({
+      ...base,
+      mode: 'pdf',
+      force: true,
+      pdfDataUrl: 'data:application/pdf;base64,JVBERi0xLjQK',
+      pdfFilename: 'paper.pdf'
+    })
+    expect(parsed.success).toBe(true)
+  })
+
+  it('still accepts an article capture with none of the pdf fields (old extensions)', () => {
+    const parsed = ArticleCaptureSchema.safeParse({
+      ...base,
+      mode: 'article',
+      contentMarkdown: '# Hello'
+    })
+    expect(parsed.success).toBe(true)
+  })
+
+  it('rejects an unknown mode', () => {
+    const parsed = ArticleCaptureSchema.safeParse({ ...base, mode: 'epub' })
+    expect(parsed.success).toBe(false)
+  })
+
+  it('rejects a pdfFilename over 255 chars — it is stored and synced verbatim', () => {
+    const parsed = ArticleCaptureSchema.safeParse({
+      ...base,
+      mode: 'pdf',
+      pdfDataUrl: 'data:application/pdf;base64,JVBERi0xLjQK',
+      pdfFilename: `${'a'.repeat(256)}.pdf`
+    })
+    expect(parsed.success).toBe(false)
+  })
+
+  it('accepts a pdfFilename at the 255-char bound', () => {
+    const parsed = ArticleCaptureSchema.safeParse({
+      ...base,
+      mode: 'pdf',
+      pdfDataUrl: 'data:application/pdf;base64,JVBERi0xLjQK',
+      pdfFilename: 'a'.repeat(255)
+    })
+    expect(parsed.success).toBe(true)
+  })
+})

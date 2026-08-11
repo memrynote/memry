@@ -15,8 +15,17 @@ export interface AgentState {
   activeConversationId: string | null
   conversations: Record<string, Conversation>
   messagesByConversation: Record<string, Message[]>
+  /**
+   * Conversation ids whose transcript was hydrated from main, least recently
+   * hydrated first. Drives transcript eviction; see
+   * {@link HYDRATED_CONVERSATION_LIMIT}.
+   */
+  hydratedConversationIds: string[]
   pendingApprovals: PendingToolApproval[]
   inFlight: Record<string, boolean>
+  /** Derived: any message in any conversation is still streaming. Kept here so
+   * subscribers read a scalar instead of rescanning every transcript. */
+  hasStreamingMessage: boolean
   error: string | null
 }
 
@@ -39,7 +48,25 @@ export type AgentAction =
   | { type: 'set_in_flight'; conversationId: string; inFlight: boolean }
   | { type: 'set_error'; error: string | null }
   | { type: 'event'; event: AgentEvent }
-  | { type: 'clear_pending'; toolCallId: string; status?: 'approved' | 'denied' }
+  | {
+      type: 'clear_pending'
+      conversationId: string
+      toolCallId: string
+      status?: 'approved' | 'denied'
+    }
+
+/**
+ * How many conversation transcripts stay hydrated in renderer memory. Without a
+ * cap, a day of Agent Chat use retains every opened conversation's full message
+ * array — including every tool call's args and every tool result's output — for
+ * the lifetime of the window.
+ *
+ * The cap sits above the number of agent surfaces that can be mounted at once
+ * (four split-view panes plus the right sidebar) so a transcript is never
+ * evicted out from under a view that is rendering it, which would make that
+ * view re-fetch it immediately.
+ */
+export const HYDRATED_CONVERSATION_LIMIT = 6
 
 export const initialAgentState: AgentState = {
   backendStatuses: null,
@@ -48,26 +75,38 @@ export const initialAgentState: AgentState = {
   activeConversationId: null,
   conversations: {},
   messagesByConversation: {},
+  hydratedConversationIds: [],
   pendingApprovals: [],
   inFlight: {},
+  hasStreamingMessage: false,
   error: null
 }
 
 function appendAssistantDelta(messages: Message[], event: AgentEvent): Message[] {
   if (event.kind !== 'assistant_text_delta') return messages
 
-  return messages.map((message) => {
-    if (message.id !== event.messageId || message.content.role !== 'assistant') return message
-    return {
-      ...message,
-      content: {
-        role: 'assistant',
-        data: {
-          text: `${message.content.data.text}${event.text}`
-        }
+  const index = messages.findIndex(
+    (message) => message.id === event.messageId && message.content.role === 'assistant'
+  )
+  // The delta can arrive before the message it belongs to (or for a transcript
+  // this window never loaded). Returning the same reference keeps the array
+  // identity stable so the stream does not re-render for nothing.
+  if (index === -1) return messages
+
+  const target = messages[index]
+  if (target.content.role !== 'assistant') return messages
+
+  const next = messages.slice()
+  next[index] = {
+    ...target,
+    content: {
+      role: 'assistant',
+      data: {
+        text: `${target.content.data.text}${event.text}`
       }
     }
-  })
+  }
+  return next
 }
 
 function upsertMessage(messages: Message[], nextMessage: Message): Message[] {
@@ -121,8 +160,10 @@ function updateToolCallStatus(
   status: ToolCallStatus,
   patch?: { output?: unknown; error?: { code: string; message: string } }
 ): Message[] {
-  return messages.map((message) => {
+  let matched = false
+  const next: Message[] = messages.map((message) => {
     if (message.toolCallId !== toolCallId || message.content.role !== 'tool_call') return message
+    matched = true
     return {
       ...message,
       status:
@@ -141,20 +182,88 @@ function updateToolCallStatus(
       }
     }
   })
+  return matched ? next : messages
 }
 
-function updateToolCallStatusEverywhere(
+function updateToolCallStatusIn(
   messagesByConversation: AgentState['messagesByConversation'],
+  conversationId: string,
   toolCallId: string,
   status: ToolCallStatus,
   patch?: { output?: unknown; error?: { code: string; message: string } }
 ): AgentState['messagesByConversation'] {
-  return Object.fromEntries(
-    Object.entries(messagesByConversation).map(([conversationId, messages]) => [
-      conversationId,
-      updateToolCallStatus(messages, toolCallId, status, patch)
-    ])
+  const messages = messagesByConversation[conversationId]
+  // Transcript not loaded (or already evicted): nothing to patch here. The persisted
+  // transcript is reloaded from the main process on open, so no result is lost.
+  if (!messages) return messagesByConversation
+  const nextMessages = updateToolCallStatus(messages, toolCallId, status, patch)
+  if (nextMessages === messages) return messagesByConversation
+  return { ...messagesByConversation, [conversationId]: nextMessages }
+}
+
+/**
+ * A transcript may only be dropped when main can rebuild it byte for byte.
+ * Anything still live in this window — the conversation on screen, a turn we
+ * started, an approval the user has not answered, or an assistant message whose
+ * streamed text main only persists once the turn ends — is retained regardless
+ * of the cap.
+ */
+function isPinnedTranscript(
+  state: AgentState,
+  input: {
+    activeConversationId: string | null
+    messagesByConversation: AgentState['messagesByConversation']
+    conversationId: string
+  }
+): boolean {
+  if (input.conversationId === input.activeConversationId) return true
+  if (state.inFlight[input.conversationId] === true) return true
+  if (state.pendingApprovals.some((pending) => pending.conversationId === input.conversationId)) {
+    return true
+  }
+  return (input.messagesByConversation[input.conversationId] ?? []).some(
+    (message) => message.status === 'streaming'
   )
+}
+
+/**
+ * Records `hydratedConversationId` as the most recently hydrated transcript and
+ * drops the transcripts that fall outside the cap. Everything dropped here is
+ * re-fetched from main the next time the conversation is opened.
+ */
+function retainHydratedTranscripts(
+  state: AgentState,
+  input: {
+    hydratedConversationId: string
+    activeConversationId: string | null
+    messagesByConversation: AgentState['messagesByConversation']
+  }
+): Pick<AgentState, 'messagesByConversation' | 'hydratedConversationIds'> {
+  const hydratedConversationIds = [
+    ...state.hydratedConversationIds.filter((id) => id !== input.hydratedConversationId),
+    input.hydratedConversationId
+  ]
+  const recent = new Set(hydratedConversationIds.slice(-HYDRATED_CONVERSATION_LIMIT))
+  const evicted = new Set(
+    Object.keys(input.messagesByConversation).filter(
+      (conversationId) =>
+        !recent.has(conversationId) &&
+        !isPinnedTranscript(state, {
+          activeConversationId: input.activeConversationId,
+          messagesByConversation: input.messagesByConversation,
+          conversationId
+        })
+    )
+  )
+  if (evicted.size === 0) {
+    return { messagesByConversation: input.messagesByConversation, hydratedConversationIds }
+  }
+  return {
+    messagesByConversation: Object.fromEntries(
+      Object.entries(input.messagesByConversation).filter(([id]) => !evicted.has(id))
+    ),
+    hydratedConversationIds: hydratedConversationIds.filter((id) => !evicted.has(id))
+  }
 }
 
 function withoutInFlight(state: AgentState, conversationId: string): Record<string, boolean> {
@@ -162,7 +271,30 @@ function withoutInFlight(state: AgentState, conversationId: string): Record<stri
   return rest
 }
 
+function scanForStreamingMessage(
+  messagesByConversation: AgentState['messagesByConversation']
+): boolean {
+  for (const messages of Object.values(messagesByConversation)) {
+    for (const message of messages) {
+      if (message.status === 'streaming') return true
+    }
+  }
+  return false
+}
+
 export function agentReducer(state: AgentState, action: AgentAction): AgentState {
+  const next = reduceAgentState(state, action)
+  // The transcripts are untouched, so no message status can have changed.
+  if (next.messagesByConversation === state.messagesByConversation) return next
+  // `assistant_text_delta` only appends text to an existing message: it never adds,
+  // removes, or restatuses one, so the derived flag survives every streamed token.
+  if (action.type === 'event' && action.event.kind === 'assistant_text_delta') return next
+  const hasStreamingMessage = scanForStreamingMessage(next.messagesByConversation)
+  if (hasStreamingMessage === next.hasStreamingMessage) return next
+  return { ...next, hasStreamingMessage }
+}
+
+function reduceAgentState(state: AgentState, action: AgentAction): AgentState {
   switch (action.type) {
     case 'set_backend_statuses':
       return {
@@ -180,35 +312,47 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
           action.conversations.map((conversation) => [conversation.id, conversation])
         )
       }
-    case 'set_active_conversation':
+    case 'set_active_conversation': {
       if (!action.conversation) {
         return { ...state, activeConversationId: null }
       }
+      const conversationId = action.conversation.id
       return {
         ...state,
-        activeConversationId: action.conversation.id,
+        activeConversationId: conversationId,
         conversations: {
           ...state.conversations,
-          [action.conversation.id]: action.conversation
+          [conversationId]: action.conversation
         },
-        messagesByConversation: {
-          ...state.messagesByConversation,
-          [action.conversation.id]: action.messages
-        }
+        ...retainHydratedTranscripts(state, {
+          hydratedConversationId: conversationId,
+          activeConversationId: conversationId,
+          messagesByConversation: {
+            ...state.messagesByConversation,
+            [conversationId]: action.messages
+          }
+        })
       }
-    case 'set_conversation_messages':
+    }
+    case 'set_conversation_messages': {
       if (!action.conversation) return state
+      const conversationId = action.conversation.id
       return {
         ...state,
         conversations: {
           ...state.conversations,
-          [action.conversation.id]: action.conversation
+          [conversationId]: action.conversation
         },
-        messagesByConversation: {
-          ...state.messagesByConversation,
-          [action.conversation.id]: action.messages
-        }
+        ...retainHydratedTranscripts(state, {
+          hydratedConversationId: conversationId,
+          activeConversationId: state.activeConversationId,
+          messagesByConversation: {
+            ...state.messagesByConversation,
+            [conversationId]: action.messages
+          }
+        })
       }
+    }
     case 'clear_active_conversation':
       return {
         ...state,
@@ -230,8 +374,9 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
           (pending) => pending.toolCallId !== action.toolCallId
         ),
         messagesByConversation: action.status
-          ? updateToolCallStatusEverywhere(
+          ? updateToolCallStatusIn(
               state.messagesByConversation,
+              action.conversationId,
               action.toolCallId,
               action.status === 'denied' ? 'output-denied' : 'approval-responded'
             )
@@ -261,14 +406,14 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
         }
       }
       if (event.kind === 'assistant_text_delta') {
+        const current = state.messagesByConversation[event.conversationId] ?? []
+        const next = appendAssistantDelta(current, event)
+        if (next === current) return state
         return {
           ...state,
           messagesByConversation: {
             ...state.messagesByConversation,
-            [event.conversationId]: appendAssistantDelta(
-              state.messagesByConversation[event.conversationId] ?? [],
-              event
-            )
+            [event.conversationId]: next
           }
         }
       }
@@ -317,8 +462,9 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
           pendingApprovals: state.pendingApprovals.filter(
             (pending) => pending.toolCallId !== event.toolCallId
           ),
-          messagesByConversation: updateToolCallStatusEverywhere(
+          messagesByConversation: updateToolCallStatusIn(
             state.messagesByConversation,
+            event.conversationId,
             event.toolCallId,
             event.kind === 'tool_call_completed'
               ? 'output-available'
