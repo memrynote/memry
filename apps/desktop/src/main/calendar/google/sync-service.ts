@@ -4,6 +4,7 @@ import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { reminders } from '@memry/db-schema/schema/reminders'
+import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { createLogger } from '../../lib/logger'
 import { requireDatabase, type DataDb } from '../../database'
@@ -21,6 +22,7 @@ import {
 import { resolveTargetGoogleAccountId } from './account-routing'
 import { loadSourceAsGoogleEvent, pushEventWithConflictRetry } from './push-conflict-retry'
 import { isMemryUserSignedIn } from '../../sync/auth-state'
+import { increment } from '../../sync/vector-clock'
 import { createGoogleCalendarClient } from './client'
 import { CALENDAR_EVENT_SYNCABLE_FIELDS } from '../field-merge-calendar'
 import {
@@ -52,6 +54,20 @@ let syncInFlight = false
 
 function getNow(): string {
   return new Date().toISOString()
+}
+
+/**
+ * Local copy of the sync runtime's device lookup — `sync/offline-clock` is on
+ * the architecture check's blocked list for feature modules, and this is the
+ * same three-line query `runtime.ts` and `offline-clock.ts` already keep.
+ */
+function getCurrentDeviceId(db: DataDb): string | null {
+  const device = db
+    .select({ id: syncDevices.id })
+    .from(syncDevices)
+    .where(eq(syncDevices.isCurrentDevice, true))
+    .get()
+  return device?.id ?? null
 }
 
 function isGoneError(error: unknown): boolean {
@@ -777,6 +793,8 @@ async function syncGoogleCalendarSourceInner(
     return await syncGoogleCalendarSource(db, sourceId, deps)
   }
 
+  const importDeviceId = getCurrentDeviceId(db)
+
   for (const remoteEvent of result.events) {
     const binding = findCalendarBindingByRemoteEvent(
       db,
@@ -811,7 +829,16 @@ async function syncGoogleCalendarSourceInner(
 
     upsertCalendarExternalEvent(db, {
       ...record,
-      clock: existing?.clock
+      // A brand-new event has no `existing` clock to inherit, and `undefined`
+      // lands the row with a NULL clock. `calendar_external_event` is in
+      // RECORD_CLOCK_REQUIRED_ITEM_TYPES, so the server rejects a clock-less
+      // push item — and because RecordPushRequestSchema validates the whole
+      // items array, that ONE row fails the entire batch and stalls every other
+      // pending change on the device (#1215). Seed the same first clock
+      // `seedUnclocked` assigns. With no device row yet (vault not registered)
+      // there is no id to tick, so the clock stays NULL and the unclocked
+      // sweep/push repair still owns its first push.
+      clock: existing?.clock ?? (importDeviceId ? increment({}, importDeviceId) : undefined)
     })
     markSyncedTableMutation('calendar_external_event', record.id, Boolean(existing))
     emitCalendarChanged({ entityType: 'calendar_external_event', id: record.id })

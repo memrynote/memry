@@ -274,6 +274,18 @@ device forever.
 `agent_conversation` and `agent_message` are the intentional exception — their `seedUnclocked`
 returns `0` because agent data syncs through the entitlement-gated backfill in `main/agent/sync/`.
 
+The seed is a safety net, not a licence to write clock-less rows. A type in
+`RECORD_CLOCK_REQUIRED_ITEM_TYPES` is rejected by `RecordPushItemSchema` when its push item carries
+no clock, and `RecordPushRequestSchema` validates the whole `items` array — so **one** clock-less row
+fails the entire batch with a request-level `VALIDATION_ERROR`, not a per-item rejection. Every push
+then fails and nothing drains until the row is repaired. Any write path that inserts such a row and
+enqueues it must stamp `increment({}, deviceId)` itself; the Google Calendar import
+(`calendar/google/sync-service.ts`) does this for events it has never seen before, and
+`calendarExternalEventHandler.buildPushPayload` stamps and persists a first clock for rows already
+queued by older builds, so a stuck queue drains on the next push instead of waiting for the next full
+sync. Stamping without persisting is not enough: the next local edit would tick from `{}` to the same
+clock the server already acked, and the update would be dropped as a replay.
+
 Handlers that persist locally encrypted fields must receive the vault key from the sync engine during
 pull apply and push payload encoding. Agent conversation and message handlers use that key to decrypt
 their SQLite envelopes and re-encode sync payloads without exposing plaintext to the server.
