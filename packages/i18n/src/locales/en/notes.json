@@ -91,6 +91,11 @@
       "listPlaceholder": "List item",
       "todoPlaceholder": "To-do item"
     },
+    "list": {
+      "bulleted": "Bulleted list",
+      "numbered": "Numbered list",
+      "checklist": "Check list"
+    },
     "toolbar": {
       "reminderSet": "Reminder set",
       "setReminder": "Set reminder",

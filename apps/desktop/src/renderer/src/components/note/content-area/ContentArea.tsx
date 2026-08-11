@@ -6,7 +6,6 @@ import {
   SuggestionMenuController,
   GridSuggestionMenuController,
   useCreateBlockNote,
-  FormattingToolbar,
   getDefaultReactSlashMenuItems,
   type SuggestionMenuProps
 } from '@blocknote/react'
@@ -1220,18 +1219,17 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             knownTaskBlockIdsRef.current = intents.currentTaskIds
           }}
           theme={editorTheme}
-          formattingToolbar={!stickyToolbar && !review}
+          formattingToolbar={false}
           slashMenu={false}
           emojiPicker={false}
         >
-          {stickyToolbar &&
-            (review ? (
-              <ReviewFormattingToolbar variant="sticky" onAddComment={review.onAddComment} />
-            ) : (
-              <FormattingToolbar />
-            ))}
-          {!stickyToolbar && review && (
-            <ReviewFormattingToolbarController onAddComment={review.onAddComment} />
+          {/* Memry's toolbar on every surface, review or not: BlockNote's stock
+              one has no list toggles, so the template editor used to be the odd
+              one out with no visible way to turn selected lines into a list. */}
+          {stickyToolbar ? (
+            <ReviewFormattingToolbar variant="sticky" onAddComment={review?.onAddComment} />
+          ) : (
+            <ReviewFormattingToolbarController onAddComment={review?.onAddComment} />
           )}
           {aiEnabled && aiReady && <AIMenuController aiMenu={CustomAIMenu} />}
           <SuggestionMenuController
