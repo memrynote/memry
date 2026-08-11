@@ -309,6 +309,31 @@ retryable network error instead of pinning the sync lock forever. If the lock is
 and lets the next pull proceed. Skipped periodic pulls log `Periodic pull skipped` with the
 blocking flags, which is the first thing to look for when a device shows stale data.
 
+## Runtime Emitters and Listener Budgets
+
+Three main-process objects in the sync runtime are `EventEmitter`s: `NetworkMonitor`
+(`status-changed`), `WebSocketManager` (`message`, `connected`, `device_revoked`,
+`certificate_pin_failed`, `error`) and `SyncEngine`.
+
+Their subscriber counts are small and fixed. `NetworkMonitor` has three
+`status-changed` subscribers — the `SyncEngine`, the sync runtime itself and the
+attachment `UploadQueue`. `WebSocketManager` has at most one listener per event
+name. Nothing in the main process subscribes to `SyncEngine`: its status reaches
+the renderer through `emitToRenderer`, not through listeners.
+
+Each one calls `setMaxListeners(10)`, Node's default. That is deliberate: the
+ceiling has to stay close enough to the real count that an accumulating-subscriber
+bug trips `MaxListenersExceededWarning` instead of hiding behind a generous budget.
+`src/main/sync/emitter-budget.test.ts` pins both the budget and the observed
+counts, so raising either needs a test change and an explanation.
+
+Every subscriber is detached on teardown: the engine removes its own in `stop()`,
+and the runtime keeps a reference to its `status-changed` handler so
+`stopSyncRuntime()` can remove it. That last detach matters because the attachment
+`UploadQueue` is a module singleton that keeps holding the `NetworkMonitor` past a
+runtime stop — an attached handler would keep the dead CRDT queue and provider
+reachable for the rest of the session.
+
 ## Manifest Integrity
 
 Desktop periodically compares `/sync/manifest` with local syncable records. Notes and journals are
