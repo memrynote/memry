@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { GENERAL_SETTINGS_DEFAULTS } from '@memry/contracts/settings-schemas'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { mergeSettingsPatch } from '@/lib/settings-patch'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import type { GeneralSettingsDTO } from '../../../preload/index.d'
 import { getI18n } from 'react-i18next'
@@ -46,7 +47,7 @@ export function useGeneralSettings(): UseGeneralSettingsReturn {
   useEffect(() => {
     const unsubscribe = window.api.onSettingsChanged((event) => {
       if (event.key === 'general') {
-        setSettings((prev) => ({ ...prev, ...(event.value as Partial<GeneralSettingsDTO>) }))
+        setSettings((prev) => mergeSettingsPatch(prev, event.value as Partial<GeneralSettingsDTO>))
       }
     })
     return unsubscribe

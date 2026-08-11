@@ -1,4 +1,5 @@
 import { getI18n } from 'react-i18next'
+import { mergeSettingsPatch } from '@/lib/settings-patch'
 /**
  * useNoteEditorSettings Hook
  *
@@ -81,10 +82,7 @@ export function useNoteEditorSettings(): UseNoteEditorSettingsReturn {
   useEffect(() => {
     const unsubscribe = window.api.onSettingsChanged((event) => {
       if (event.key === 'noteEditor') {
-        setSettings((prev) => ({
-          ...prev,
-          ...(event.value as Partial<NoteEditorSettings>)
-        }))
+        setSettings((prev) => mergeSettingsPatch(prev, event.value as Partial<NoteEditorSettings>))
       }
     })
 

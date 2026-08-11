@@ -180,6 +180,105 @@ describe('useTaskPreferences', () => {
     })
   })
 
+  // The main process fans settings:changed out to every window including the
+  // writer's, and that echo cannot be suppressed at the sender (#1063) because
+  // sibling instances of the same hook in that window only converge through it.
+  // So the echo has to be free when it carries nothing new.
+  describe('echo of an already-applied value (#1063)', () => {
+    it('keeps state identity when its own write echoes back', async () => {
+      const { result } = renderHook(() => useTaskPreferences())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      await act(async () => {
+        await result.current.updateSettings({ defaultProjectId: 'proj-1' })
+      })
+
+      const settingsAfterOptimisticUpdate = result.current.settings
+
+      act(() => {
+        // Exactly what the main process broadcasts back to this window.
+        settingsChangedListener!({ key: 'tasks', value: { defaultProjectId: 'proj-1' } })
+      })
+
+      // Same object: the state update bailed out, so React skips re-rendering
+      // children and firing effects for this echo.
+      expect(result.current.settings).toBe(settingsAfterOptimisticUpdate)
+      expect(result.current.settings.defaultProjectId).toBe('proj-1')
+    })
+
+    it('costs zero renders for repeated no-op echoes', async () => {
+      let renders = 0
+      const { result } = renderHook(() => {
+        renders++
+        return useTaskPreferences()
+      })
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      // React cannot take its eager-state shortcut on the first dispatch after a
+      // real state change, so it renders this component once more and then bails
+      // out. Every echo after that is free — which is the steady state, since
+      // each sync apply re-broadcasts the whole unchanged group.
+      act(() => {
+        settingsChangedListener!({ key: 'tasks', value: { ...DEFAULTS } })
+      })
+
+      const rendersAfterFirstEcho = renders
+
+      act(() => {
+        settingsChangedListener!({ key: 'tasks', value: { ...DEFAULTS } })
+      })
+      act(() => {
+        settingsChangedListener!({ key: 'tasks', value: { ...DEFAULTS } })
+      })
+
+      expect(renders).toBe(rendersAfterFirstEcho)
+    })
+
+    it('does not re-render when a sync apply re-broadcasts the unchanged group', async () => {
+      const { result } = renderHook(() => useTaskPreferences())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      const settingsBefore = result.current.settings
+
+      act(() => {
+        settingsChangedListener!({ key: 'tasks', value: { ...DEFAULTS } })
+      })
+
+      // Same object identity: no state update happened at all.
+      expect(result.current.settings).toBe(settingsBefore)
+    })
+
+    it('still converges when the echoed value genuinely differs', async () => {
+      let renders = 0
+      const { result } = renderHook(() => {
+        renders++
+        return useTaskPreferences()
+      })
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      const rendersBefore = renders
+
+      act(() => {
+        settingsChangedListener!({ key: 'tasks', value: { defaultProjectId: 'proj-remote' } })
+      })
+
+      expect(renders).toBeGreaterThan(rendersBefore)
+      expect(result.current.settings.defaultProjectId).toBe('proj-remote')
+    })
+  })
+
   it('unsubscribes from settings:changed on unmount', async () => {
     const { unmount } = renderHook(() => useTaskPreferences())
 

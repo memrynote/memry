@@ -1,4 +1,5 @@
 import { getI18n } from 'react-i18next'
+import { mergeSettingsPatch } from '@/lib/settings-patch'
 /**
  * useJournalSettings Hook
  *
@@ -91,10 +92,7 @@ export function useJournalSettings(): UseJournalSettingsReturn {
     const unsubscribe = window.api.onSettingsChanged((event) => {
       if (event.key === 'journal') {
         // Full journal settings update
-        setSettings((prev) => ({
-          ...prev,
-          ...(event.value as Partial<JournalSettings>)
-        }))
+        setSettings((prev) => mergeSettingsPatch(prev, event.value as Partial<JournalSettings>))
       }
     })
 

@@ -1,4 +1,5 @@
 import { getI18n } from 'react-i18next'
+import { mergeSettingsPatch } from '@/lib/settings-patch'
 /**
  * useTabPreferences Hook
  *
@@ -83,10 +84,7 @@ export function useTabPreferences(): UseTabPreferencesReturn {
     const unsubscribe = window.api.onSettingsChanged((event) => {
       if (event.key === 'tabs') {
         // Full tab settings update
-        setSettings((prev) => ({
-          ...prev,
-          ...(event.value as Partial<TabSettings>)
-        }))
+        setSettings((prev) => mergeSettingsPatch(prev, event.value as Partial<TabSettings>))
       }
     })
 
