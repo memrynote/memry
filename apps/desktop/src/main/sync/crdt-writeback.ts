@@ -37,7 +37,7 @@ import { createRemindersService, type RemindersServiceHooks } from '@memry/app-c
 import { syncNoteDateReminders, clearNoteDateReminders } from '../notes/note-date-reminders'
 import { deleteFile } from '../vault/file-ops'
 import { NotesChannels, JournalChannels } from '@memry/contracts/ipc-channels'
-import { BrowserWindow } from 'electron'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import path from 'path'
 import {
   enqueueLocalSyncCreate,
@@ -156,9 +156,7 @@ export function wasRecentNetworkUpdate(noteId: string): boolean {
 }
 
 function emitToRenderer(channel: string, data: unknown): void {
-  for (const win of BrowserWindow.getAllWindows()) {
-    win.webContents.send(channel, data)
-  }
+  broadcastToAllWindows(channel, data)
 }
 
 export function scheduleWriteback(noteId: string, doc: Y.Doc): void {

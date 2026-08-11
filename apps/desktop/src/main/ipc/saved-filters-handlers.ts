@@ -5,7 +5,8 @@
  * @module ipc/saved-filters-handlers
  */
 
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain } from 'electron'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { SavedFiltersChannels } from '@memry/contracts/ipc-channels'
 import {
   SavedFilterCreateSchema,
@@ -29,9 +30,7 @@ import { getMainI18n } from '../lib/main-i18n'
  * Emit saved filter event to all windows
  */
 function emitSavedFilterEvent(channel: string, data: unknown): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, data)
-  })
+  broadcastToAllWindows(channel, data)
 }
 
 /**

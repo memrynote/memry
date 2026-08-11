@@ -1,4 +1,5 @@
 import { BrowserWindow } from 'electron'
+import { broadcastToAllWindows } from './lib/window-broadcast'
 import { join } from 'node:path'
 import { store } from './store'
 import { persistKeysAndRegisterDevice } from './sync/device-registration'
@@ -525,20 +526,18 @@ export function registerTestHooks(): void {
         `)
       }
 
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(CalendarChannels.events.CHANGED, {
-          entityType: 'calendar_external_event',
-          id: 'calendar-e2e-external'
+      broadcastToAllWindows(CalendarChannels.events.CHANGED, {
+        entityType: 'calendar_external_event',
+        id: 'calendar-e2e-external'
+      })
+      if (input.overlapMemryTitle) {
+        broadcastToAllWindows(CalendarChannels.events.CHANGED, {
+          entityType: 'calendar_event',
+          id: 'calendar-e2e-memry-overlap'
         })
-        if (input.overlapMemryTitle) {
-          win.webContents.send(CalendarChannels.events.CHANGED, {
-            entityType: 'calendar_event',
-            id: 'calendar-e2e-memry-overlap'
-          })
-        }
-        win.webContents.send(TasksChannels.events.CREATED, {
-          task: { id: 'calendar-e2e-task' }
-        })
+      }
+      broadcastToAllWindows(TasksChannels.events.CREATED, {
+        task: { id: 'calendar-e2e-task' }
       })
     },
 

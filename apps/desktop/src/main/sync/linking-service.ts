@@ -1,6 +1,6 @@
 import os from 'os'
 import sodium from 'libsodium-wrappers-sumo'
-import { BrowserWindow } from 'electron'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 
 import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
 import type {
@@ -542,9 +542,7 @@ function emitLinkingFinalized(payload: {
   error?: string
   warning?: string
 }): void {
-  for (const win of BrowserWindow.getAllWindows()) {
-    win.webContents.send('sync:linking-finalized', payload)
-  }
+  broadcastToAllWindows('sync:linking-finalized', payload)
 }
 
 // ============================================================================

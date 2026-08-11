@@ -42,6 +42,7 @@ vi.mock('electron', () => ({
   BrowserWindow: {
     getAllWindows: () => [
       {
+        isDestroyed: () => false,
         webContents: {
           send: (channel: string, payload: unknown) => mocks.sent.push({ channel, payload })
         }
