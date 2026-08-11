@@ -101,7 +101,7 @@ export async function withRetry<T>(
 
       if (error instanceof RateLimitError && error.retryAfter !== undefined) {
         delayMs = error.retryAfter * 1000
-      } else if (error instanceof NetworkError) {
+      } else if (error instanceof NetworkError && !opts.isOnline!()) {
         opts.onRetry?.(attempt + 1, lastError, ONLINE_POLL_MS)
         const offlineStart = Date.now()
         while (!opts.isOnline!()) {
@@ -112,6 +112,11 @@ export async function withRetry<T>(
         }
         continue
       } else {
+        // A NetworkError while isOnline() reports true means the machine has a
+        // link but the server is unreachable (captive portal, DNS failure,
+        // server down). The offline poll above never waits in that case, so
+        // without this backoff the whole retry budget fires back-to-back in a
+        // single tick and a two-second blip dead-letters the work.
         delayMs = computeBackoff(attempt, opts)
       }
 

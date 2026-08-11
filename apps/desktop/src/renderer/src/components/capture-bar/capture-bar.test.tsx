@@ -248,6 +248,103 @@ describe('CaptureBar — focus', () => {
 })
 
 // ============================================================================
+// The global `q` binding — one stable listener, one owner
+// ============================================================================
+
+describe('CaptureBar — global q binding', () => {
+  const countKeydown = (calls: readonly unknown[][]): number =>
+    calls.filter((call) => String(call[0]) === 'keydown').length
+
+  it('binds the window listener once instead of rebinding on every keystroke', async () => {
+    const user = userEvent.setup()
+    const addSpy = vi.spyOn(window, 'addEventListener')
+    const removeSpy = vi.spyOn(window, 'removeEventListener')
+
+    try {
+      renderBar(<CaptureBar {...baseProps} onSubmit={vi.fn()} />)
+      expect(countKeydown(addSpy.mock.calls)).toBe(1)
+
+      await user.type(field(), 'Buy milk')
+
+      expect(countKeydown(addSpy.mock.calls)).toBe(1)
+      expect(countKeydown(removeSpy.mock.calls)).toBe(0)
+    } finally {
+      addSpy.mockRestore()
+      removeSpy.mockRestore()
+    }
+  })
+
+  it('removes the window listener on unmount', () => {
+    const addSpy = vi.spyOn(window, 'addEventListener')
+    const removeSpy = vi.spyOn(window, 'removeEventListener')
+
+    try {
+      const { unmount } = renderBar(<CaptureBar {...baseProps} onSubmit={vi.fn()} />)
+      unmount()
+
+      expect(countKeydown(addSpy.mock.calls)).toBe(1)
+      expect(countKeydown(removeSpy.mock.calls)).toBe(1)
+    } finally {
+      addSpy.mockRestore()
+      removeSpy.mockRestore()
+    }
+  })
+
+  it('lets only the active pane act on q when split view mounts two bars', async () => {
+    const user = userEvent.setup()
+    renderBar(
+      <>
+        <div data-pane-active="true">
+          <CaptureBar {...baseProps} ariaLabel="Active pane capture" onSubmit={vi.fn()} />
+        </div>
+        <div data-pane-active="false">
+          <CaptureBar {...baseProps} ariaLabel="Idle pane capture" onSubmit={vi.fn()} />
+        </div>
+      </>
+    )
+
+    const activeField = screen.getByRole('textbox', { name: 'Active pane capture' })
+    const idleField = screen.getByRole('textbox', { name: 'Idle pane capture' })
+    const activeFocus = vi.spyOn(activeField, 'focus')
+    const idleFocus = vi.spyOn(idleField, 'focus')
+
+    await user.keyboard('q')
+
+    // One keypress, one action — and it lands in the pane the user is in.
+    expect(activeFocus).toHaveBeenCalledTimes(1)
+    expect(idleFocus).not.toHaveBeenCalled()
+    expect(activeField).toHaveFocus()
+  })
+
+  it('hands the shortcut to the survivor when a pane unmounts', async () => {
+    const user = userEvent.setup()
+    const Panes = ({ withActivePane }: { withActivePane: boolean }): ReactElement => (
+      <>
+        {withActivePane && (
+          <div data-pane-active="true">
+            <CaptureBar {...baseProps} ariaLabel="Active pane capture" onSubmit={vi.fn()} />
+          </div>
+        )}
+        <div data-pane-active="false">
+          <CaptureBar {...baseProps} ariaLabel="Idle pane capture" onSubmit={vi.fn()} />
+        </div>
+      </>
+    )
+
+    const { rerender } = renderBar(<Panes withActivePane />)
+    rerender(<Panes withActivePane={false} />)
+
+    const survivor = screen.getByRole('textbox', { name: 'Idle pane capture' })
+    const survivorFocus = vi.spyOn(survivor, 'focus')
+
+    await user.keyboard('q')
+
+    expect(survivorFocus).toHaveBeenCalledTimes(1)
+    expect(survivor).toHaveFocus()
+  })
+})
+
+// ============================================================================
 // Capability matrix — an affordance renders only when its prop is passed
 // ============================================================================
 

@@ -1,6 +1,7 @@
-import { act, render, renderHook, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { TabCloseGuard } from './close-guard'
 import {
   TabProvider,
   useActiveGroup,
@@ -110,6 +111,21 @@ describe('TabProvider context', () => {
 
     expect(result.current).toBeInstanceOf(Error)
     expect((result.current as Error).message).toBe('useTabs must be used within a TabProvider')
+  })
+
+  it('throws when useTabActions is used outside a provider', () => {
+    const { result } = renderHook(() => {
+      try {
+        return useTabActions()
+      } catch (error) {
+        return error
+      }
+    })
+
+    expect(result.current).toBeInstanceOf(Error)
+    expect((result.current as Error).message).toBe(
+      'useTabActions must be used within a TabProvider'
+    )
   })
 
   it('merges initial settings, handles settings events, and unsubscribes', async () => {
@@ -315,5 +331,181 @@ describe('tab selector hooks', () => {
     expect(renderHook(() => useTabActions(), { wrapper }).result.current.dispatch).toBeTypeOf(
       'function'
     )
+  })
+})
+
+describe('TabProvider unsaved-changes prompt', () => {
+  // The registry itself is covered in close-guard.test.tsx; these cover the
+  // provider's wiring of it into the dialog — the prompt's title, and each
+  // button actually resolving the close it was raised for.
+  function promptForDirtyTab(guard: TabCloseGuard) {
+    const alpha = makeTab({ id: 'alpha', title: 'Alpha', entityId: 'alpha' })
+    const beta = makeTab({ id: 'beta', title: 'Beta', entityId: 'beta' })
+    const rendered = captureContext(makeState([makeGroup('main', [alpha, beta], 'alpha')]))
+
+    act(() => {
+      rendered.ctx.registerCloseGuard('alpha', guard)
+    })
+    act(() => {
+      rendered.ctx.closeTab('alpha')
+    })
+
+    return {
+      ...rendered,
+      get openTabIds() {
+        return rendered.ctx.state.tabGroups.main.tabs.map((tab) => tab.id)
+      }
+    }
+  }
+
+  it('names the pending tab and keeps it open when the prompt is cancelled', async () => {
+    const save = vi.fn().mockResolvedValue(true)
+    const rendered = promptForDirtyTab({ isDirty: () => true, save })
+
+    expect(screen.getByRole('alertdialog')).toBeTruthy()
+    expect(screen.getByText('"Alpha" has unsaved changes. What would you like to do?')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull()
+    })
+    expect(save).not.toHaveBeenCalled()
+    expect(rendered.openTabIds).toEqual(['alpha', 'beta'])
+  })
+
+  it('closes the tab without saving on Don’t Save', async () => {
+    const save = vi.fn().mockResolvedValue(true)
+    const rendered = promptForDirtyTab({ isDirty: () => true, save })
+
+    fireEvent.click(screen.getByRole('button', { name: "Don't Save" }))
+
+    await waitFor(() => {
+      expect(rendered.openTabIds).toEqual(['beta'])
+    })
+    expect(save).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
+
+  it('saves before closing the tab on Save', async () => {
+    const save = vi.fn().mockResolvedValue(true)
+    const rendered = promptForDirtyTab({ isDirty: () => true, save })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(rendered.openTabIds).toEqual(['beta'])
+    })
+    expect(save).toHaveBeenCalledTimes(1)
+  })
+
+  it('drops the Save button while the pending tab cannot be saved yet', () => {
+    const save = vi.fn().mockResolvedValue(true)
+    promptForDirtyTab({ isDirty: () => true, canSave: () => false, save })
+
+    expect(screen.getByRole('button', { name: "Don't Save" })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
+  })
+})
+
+describe('tab context render scoping', () => {
+  const STATE_UPDATES = 200
+
+  function renderScopingHarness() {
+    const alpha = makeTab({ id: 'alpha', title: 'Alpha', entityId: 'alpha' })
+    const beta = makeTab({ id: 'beta', title: 'Beta', entityId: 'beta' })
+    const initialState = makeState([makeGroup('main', [alpha, beta], 'alpha')])
+
+    const renders = { actions: 0, tabState: 0 }
+    let capturedActions: ReturnType<typeof useTabActions> | null = null
+    let capturedContext: ReturnType<typeof useTabs> | null = null
+    let seenTitle = ''
+
+    // Only ever reads actions: must not re-render when tab state changes.
+    const ActionsProbe = (): null => {
+      renders.actions += 1
+      capturedActions = useTabActions()
+      return null
+    }
+
+    // Reads tab state: must keep re-rendering when tab state changes.
+    const StateProbe = (): null => {
+      renders.tabState += 1
+      seenTitle = useTabs().state.tabGroups.main.tabs.find((t) => t.id === 'alpha')?.title ?? ''
+      return null
+    }
+
+    // Drives the state changes from outside the two probes above.
+    const Driver = (): null => {
+      capturedContext = useTabs()
+      return null
+    }
+
+    const view = render(
+      <TabProvider initialState={initialState}>
+        <ActionsProbe />
+        <StateProbe />
+        <Driver />
+      </TabProvider>
+    )
+
+    return {
+      ...view,
+      renders,
+      get actions() {
+        if (!capturedActions) throw new Error('missing tab actions')
+        return capturedActions
+      },
+      get ctx() {
+        if (!capturedContext) throw new Error('missing tab context')
+        return capturedContext
+      },
+      get seenTitle() {
+        return seenTitle
+      },
+      tab(id: string) {
+        if (!capturedContext) throw new Error('missing tab context')
+        return capturedContext.state.tabGroups.main.tabs.find((t) => t.id === id)
+      }
+    }
+  }
+
+  it('keeps useTabActions consumers out of tab state re-renders', () => {
+    const harness = renderScopingHarness()
+
+    expect(harness.renders.actions).toBe(1)
+    expect(harness.renders.tabState).toBe(1)
+
+    for (let i = 0; i < STATE_UPDATES; i++) {
+      act(() => {
+        harness.ctx.updateTabTitle('alpha', `Alpha ${i}`)
+      })
+    }
+
+    // State consumers must still see every change.
+    expect(harness.seenTitle).toBe(`Alpha ${STATE_UPDATES - 1}`)
+    expect(harness.renders.tabState).toBe(1 + STATE_UPDATES)
+
+    // Action-only consumers must render exactly once.
+    expect(harness.renders.actions).toBe(1)
+  })
+
+  it('runs actions against current tab state from a consumer that never re-rendered', () => {
+    const harness = renderScopingHarness()
+    const actions = harness.actions
+
+    act(() => {
+      harness.ctx.pinTab('alpha')
+    })
+    expect(harness.tab('alpha')?.isPinned).toBe(true)
+
+    // togglePinTab must read the committed state, not the render that captured it.
+    act(() => {
+      actions.togglePinTab('alpha')
+    })
+    expect(harness.tab('alpha')?.isPinned).toBe(false)
+
+    // ...and it did all of that without the action consumer re-rendering once.
+    expect(harness.renders.actions).toBe(1)
   })
 })

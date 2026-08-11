@@ -228,6 +228,133 @@ describe('Google Calendar integration row', () => {
     mockRetryGoogleCalendarSourceSync.mockReset()
   })
 
+  function calendarSource(
+    overrides: Partial<CalendarSourceRecord> & Pick<CalendarSourceRecord, 'id' | 'accountId'>
+  ): CalendarSourceRecord {
+    return {
+      provider: 'google',
+      kind: 'calendar',
+      remoteId: overrides.id,
+      title: 'Calendar',
+      timezone: 'Europe/Istanbul',
+      color: '#0ea5e9',
+      isPrimary: false,
+      isSelected: false,
+      isMemryManaged: false,
+      syncCursor: null,
+      syncStatus: 'ok',
+      lastSyncedAt: null,
+      lastError: null,
+      metadata: null,
+      archivedAt: null,
+      syncedAt: null,
+      createdAt: '2026-04-12T08:00:00.000Z',
+      modifiedAt: '2026-04-12T08:00:00.000Z',
+      ...overrides
+    } as CalendarSourceRecord
+  }
+
+  const TWO_ACCOUNT_SOURCES: CalendarSourceRecord[] = [
+    calendarSource({
+      id: 'google-calendar:alice-work',
+      accountId: 'alice@example.com',
+      title: 'Alice Work',
+      isPrimary: true,
+      isSelected: true
+    }),
+    calendarSource({
+      id: 'google-calendar:alice-team',
+      accountId: 'alice@example.com',
+      title: 'Alice Team'
+    }),
+    calendarSource({
+      id: 'google-calendar:bob-work',
+      accountId: 'bob@example.com',
+      title: 'Bob Work',
+      isPrimary: true,
+      isSelected: true
+    })
+  ]
+
+  it('lists each account with only its own calendars underneath', async () => {
+    mockGetGoogleCalendarStatus.mockResolvedValue(TWO_ACCOUNT_STATUS)
+    mockListSources.mockResolvedValue({ sources: TWO_ACCOUNT_SOURCES })
+
+    renderIntegrationList()
+
+    const aliceGroup = await screen.findByTestId('calendar-account-group-alice@example.com')
+    const bobGroup = await screen.findByTestId('calendar-account-group-bob@example.com')
+
+    // A flat list gives no way to tell which account a calendar belongs to,
+    // and two accounts can both have a calendar called "Work".
+    expect(aliceGroup).toHaveTextContent('alice@example.com')
+    expect(aliceGroup).toHaveTextContent('Alice Work')
+    expect(aliceGroup).toHaveTextContent('Alice Team')
+    expect(aliceGroup).not.toHaveTextContent('Bob Work')
+    expect(bobGroup).toHaveTextContent('Bob Work')
+    expect(bobGroup).not.toHaveTextContent('Alice Work')
+  })
+
+  it('offers adding a second Google account while one is already connected', async () => {
+    const user = userEvent.setup()
+
+    mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
+    mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
+    mockConnectGoogleCalendarProvider.mockResolvedValue({
+      success: true,
+      status: TWO_ACCOUNT_STATUS
+    })
+
+    renderIntegrationList()
+
+    const addAccount = await screen.findByTestId('calendar-add-account')
+    await user.click(addAccount)
+
+    expect(mockConnectGoogleCalendarProvider).toHaveBeenCalledTimes(1)
+  })
+
+  it('disconnects one account without touching the other', async () => {
+    const user = userEvent.setup()
+
+    mockGetGoogleCalendarStatus.mockResolvedValue(TWO_ACCOUNT_STATUS)
+    mockListSources.mockResolvedValue({ sources: TWO_ACCOUNT_SOURCES })
+    mockDisconnectGoogleCalendarProvider.mockResolvedValue({
+      success: true,
+      status: CONNECTED_STATUS
+    })
+
+    renderIntegrationList()
+
+    const disconnectBob = await screen.findByTestId('calendar-account-disconnect-bob@example.com')
+    await user.click(disconnectBob)
+
+    // Without the account id the handler falls through to its disconnect-all
+    // branch and takes the other account down too.
+    expect(mockDisconnectGoogleCalendarProvider).toHaveBeenCalledWith('bob@example.com')
+  })
+
+  it('still offers a disconnect when the install reports no per-account rows', async () => {
+    const user = userEvent.setup()
+
+    // Legacy installs can be connected while every account source predates the
+    // account_id column, so status.accounts comes back empty. Per-account
+    // disconnect lives inside the groups, so with no groups the user would be
+    // connected with no way out.
+    mockGetGoogleCalendarStatus.mockResolvedValue({ ...CONNECTED_STATUS, accounts: [] })
+    mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
+    mockDisconnectGoogleCalendarProvider.mockResolvedValue({
+      success: true,
+      status: DISCONNECTED_STATUS
+    })
+
+    renderIntegrationList()
+
+    const disconnect = await screen.findByTestId('calendar-disconnect-all')
+    await user.click(disconnect)
+
+    expect(mockDisconnectGoogleCalendarProvider).toHaveBeenCalledWith(undefined)
+  })
+
   it('starts the Google Calendar connect flow from Settings', async () => {
     const user = userEvent.setup()
 

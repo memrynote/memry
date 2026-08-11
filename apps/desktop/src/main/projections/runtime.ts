@@ -1,10 +1,12 @@
-import { ProjectionBus } from './bus'
+import { DEFAULT_PROJECTION_QUEUE_LIMIT, ProjectionBus } from './bus'
 import type { ProjectionEvent, ProjectionLogger, ProjectionProjector } from './types'
 
 interface ProjectionRuntimeOptions {
   projectors: ProjectionProjector[]
   logger?: ProjectionLogger
   scheduleDrain?: (task: () => void) => void
+  /** Per-lane pending-event cap. See DEFAULT_PROJECTION_QUEUE_LIMIT. */
+  queueLimit?: number
 }
 
 export interface ProjectionRuntime {
@@ -47,19 +49,30 @@ interface ProjectorLane {
   bus: ProjectionBus
   isScheduled: boolean
   activeDrain: Promise<void> | null
+  /** Set when the cap dropped events; owed repair, paid once the lane empties. */
+  needsReconcile: boolean
 }
 
 export function createProjectionRuntime(options: ProjectionRuntimeOptions): ProjectionRuntime {
   const logger = options.logger
   const scheduleDrain = options.scheduleDrain ?? ((task: () => void) => queueMicrotask(task))
+  const queueLimit = options.queueLimit ?? DEFAULT_PROJECTION_QUEUE_LIMIT
 
   let isStopped = false
 
+  // A reconcile pass runs backgrounded (vault open fires it and does not await
+  // it), so stop() has to be able to cut it short: without this, switching
+  // vaults left the previous runtime's pass reading the old vault path against
+  // a database that closeVault had already closed (#993).
+  let reconcileAbort: AbortController | null = null
+  let activeReconcile: Promise<unknown> | null = null
+
   const lanes: ProjectorLane[] = options.projectors.map((projector) => ({
     projector,
-    bus: new ProjectionBus(),
+    bus: new ProjectionBus(queueLimit),
     isScheduled: false,
-    activeDrain: null
+    activeDrain: null,
+    needsReconcile: false
   }))
 
   const runEvent = async (lane: ProjectorLane, event: ProjectionEvent): Promise<void> => {
@@ -73,6 +86,32 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
       logger?.error?.('Projection projector failed', {
         projector: lane.projector.name,
         event,
+        error
+      })
+    }
+  }
+
+  /**
+   * Pay off the repair the queue cap owes. Dropping the oldest events keeps the
+   * lane bounded, but it also means this projector's output is now missing
+   * whatever they carried, and nothing else calls reconcile() on this path — so
+   * overflow costs a deferred full repair instead of a silently wrong
+   * projection (#992).
+   *
+   * The flag is cleared before reconcile() runs so any event reconcile itself
+   * publishes cannot re-trigger the repair in a loop; only a *new* overflow
+   * sets it again. On failure the flag is restored, so the next drain pass
+   * retries rather than leaving the loss unrepaired forever.
+   */
+  const repairLane = async (lane: ProjectorLane): Promise<void> => {
+    lane.needsReconcile = false
+
+    try {
+      await lane.projector.reconcile()
+    } catch (error) {
+      lane.needsReconcile = true
+      logger?.warn?.('Projection overflow repair failed', {
+        projector: lane.projector.name,
         error
       })
     }
@@ -103,9 +142,24 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
 
           await runEvent(lane, event)
         }
+
+        const dropped = lane.bus.takeDroppedCount()
+        if (dropped > 0) {
+          lane.needsReconcile = true
+          logger?.warn?.('Projection queue overflow — dropped pending events', {
+            projector: lane.projector.name,
+            dropped,
+            limit: queueLimit
+          })
+        }
+
+        if (!isStopped && lane.needsReconcile) {
+          await repairLane(lane)
+        }
       } finally {
         lane.isScheduled = false
         lane.activeDrain = null
+
         settle()
 
         if (!isStopped && lane.bus.size > 0) {
@@ -144,7 +198,19 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
         return
       }
 
+      // Route at enqueue time. Fanning every event into every lane meant a note
+      // body sat in the inbox lane (and an inbox event in the note lanes) until
+      // the slowest lane finally dequeued and discarded it (#992).
+      //
+      // This skip assumes handles() is a pure function of event.type — every
+      // projector's is. runEvent() re-checks at drain time, so a stateful
+      // handles() would still never project an event it rejects; it would only
+      // lose the ones it would have accepted later.
       for (const lane of lanes) {
+        if (!lane.projector.handles(event)) {
+          continue
+        }
+
         lane.bus.enqueue(event)
         schedule(lane)
       }
@@ -165,16 +231,40 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
     },
 
     async reconcile(names) {
-      const results: Record<string, unknown> = {}
+      const controller = new AbortController()
+      const run = (async () => {
+        const results: Record<string, unknown> = {}
 
-      for (const projector of selectProjectors(options.projectors, names)) {
-        results[projector.name] = await projector.reconcile()
+        for (const projector of selectProjectors(options.projectors, names)) {
+          if (controller.signal.aborted) {
+            break
+          }
+
+          results[projector.name] = await projector.reconcile(controller.signal)
+        }
+
+        return results
+      })()
+
+      reconcileAbort = controller
+      activeReconcile = run
+
+      try {
+        return await run
+      } finally {
+        if (reconcileAbort === controller) {
+          reconcileAbort = null
+        }
+        if (activeReconcile === run) {
+          activeReconcile = null
+        }
       }
-
-      return results
     },
 
     async stop(stopOptions) {
+      reconcileAbort?.abort()
+      const pendingReconcile = activeReconcile
+
       const shouldDrain = stopOptions?.drain ?? true
       if (shouldDrain) {
         await drain()
@@ -184,6 +274,12 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
       for (const lane of lanes) {
         lane.isScheduled = false
         lane.bus.clear()
+      }
+
+      // Wait for the aborted pass to unwind before returning: the caller closes
+      // the databases right after this resolves.
+      if (pendingReconcile) {
+        await pendingReconcile.catch(() => {})
       }
     },
 

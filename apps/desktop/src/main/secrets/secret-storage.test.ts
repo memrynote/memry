@@ -317,6 +317,56 @@ describe('secret-storage', () => {
     })
   })
 
+  describe('treatUnreadableAsAbsent opt-in', () => {
+    const seedUndecryptable = (): void => {
+      fs.mkdirSync(harness.userDataDir, { recursive: true })
+      fs.writeFileSync(
+        storeFilePath(),
+        JSON.stringify({ version: 1, entries: { [SERVICE]: { [ACCOUNT]: 'not-decryptable' } } }),
+        'utf-8'
+      )
+      harness.keytarStore.clear()
+    }
+
+    it('returns null instead of throwing for a caller that is about to overwrite', async () => {
+      seedUndecryptable()
+
+      await expect(
+        getSecret(SERVICE, ACCOUNT, { treatUnreadableAsAbsent: true })
+      ).resolves.toBeNull()
+    })
+
+    it('also covers the safeStorage-unavailable-this-run shape', async () => {
+      await setSecret(SERVICE, ACCOUNT, 'store-value')
+      harness.keytarStore.clear()
+      harness.encryptionAvailable = false
+
+      await expect(
+        getSecret(SERVICE, ACCOUNT, { treatUnreadableAsAbsent: true })
+      ).resolves.toBeNull()
+    })
+
+    it('lets the caller heal the entry by writing over it', async () => {
+      seedUndecryptable()
+
+      expect(await getSecret(SERVICE, ACCOUNT, { treatUnreadableAsAbsent: true })).toBeNull()
+      await setSecret(SERVICE, ACCOUNT, 'healed-value')
+
+      await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBe('healed-value')
+    })
+
+    it('leaves the guard armed for every caller that does not opt in', async () => {
+      // The master-key path must keep throwing: a false absence there
+      // regenerates the vault key and orphans the encrypted data (#772).
+      seedUndecryptable()
+
+      await expect(getSecret(SERVICE, ACCOUNT)).rejects.toThrow(/could not be read this run/)
+      await expect(getSecret(SERVICE, ACCOUNT, { treatUnreadableAsAbsent: false })).rejects.toThrow(
+        /could not be read this run/
+      )
+    })
+  })
+
   describe('deferred keytar delete', () => {
     it('persists the migrated secret but keeps the keytar copy until finalize', async () => {
       harness.keytarStore.set(`${SERVICE}:${ACCOUNT}`, 'master-key-material')
@@ -367,6 +417,88 @@ describe('secret-storage', () => {
       await finalizeKeytarMigration(SERVICE, ACCOUNT)
 
       expect(harness.keytarDelete).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('finalize latch', () => {
+    it('stops re-reading the store and the OS keychain once the copy is gone', async () => {
+      seedStoreFile(SERVICE, ACCOUNT, 'master-key-material')
+      harness.keytarStore.set(`${SERVICE}:${ACCOUNT}`, 'master-key-material')
+
+      await finalizeKeytarMigration(SERVICE, ACCOUNT)
+      expect(harness.keytarDelete).toHaveBeenCalledTimes(1)
+
+      vi.clearAllMocks()
+      const readSpy = vi.spyOn(fs, 'readFileSync')
+      try {
+        for (let i = 0; i < 5; i += 1) await finalizeKeytarMigration(SERVICE, ACCOUNT)
+        expect(harness.keytarGet).not.toHaveBeenCalled()
+        expect(readSpy).not.toHaveBeenCalled()
+      } finally {
+        readSpy.mockRestore()
+      }
+    })
+
+    it('latches after a run that finds no OS keychain copy at all', async () => {
+      seedStoreFile(SERVICE, ACCOUNT, 'master-key-material')
+
+      await finalizeKeytarMigration(SERVICE, ACCOUNT)
+      expect(harness.keytarGet).toHaveBeenCalledTimes(1)
+
+      vi.clearAllMocks()
+      await finalizeKeytarMigration(SERVICE, ACCOUNT)
+      expect(harness.keytarGet).not.toHaveBeenCalled()
+    })
+
+    it('keeps retrying while a mismatched keytar copy is still there', async () => {
+      seedStoreFile(SERVICE, ACCOUNT, 'store-value')
+      harness.keytarStore.set(`${SERVICE}:${ACCOUNT}`, 'different-value')
+
+      await finalizeKeytarMigration(SERVICE, ACCOUNT)
+
+      vi.clearAllMocks()
+      await finalizeKeytarMigration(SERVICE, ACCOUNT)
+      expect(harness.keytarGet).toHaveBeenCalledTimes(1)
+      expect(harness.keytarDelete).not.toHaveBeenCalled()
+    })
+
+    it('never latches a missing store entry, so a later migration still runs', async () => {
+      await finalizeKeytarMigration(SERVICE, ACCOUNT)
+
+      seedStoreFile(SERVICE, ACCOUNT, 'master-key-material')
+      harness.keytarStore.set(`${SERVICE}:${ACCOUNT}`, 'master-key-material')
+
+      vi.clearAllMocks()
+      await finalizeKeytarMigration(SERVICE, ACCOUNT)
+      expect(harness.keytarDelete).toHaveBeenCalledWith(SERVICE, ACCOUNT)
+    })
+
+    it('re-arms after the secret is rewritten (rotation / re-provision)', async () => {
+      seedStoreFile(SERVICE, ACCOUNT, 'v1')
+      harness.keytarStore.set(`${SERVICE}:${ACCOUNT}`, 'v1')
+      await finalizeKeytarMigration(SERVICE, ACCOUNT)
+
+      await setSecret(SERVICE, ACCOUNT, 'v2')
+      harness.keytarStore.set(`${SERVICE}:${ACCOUNT}`, 'v2')
+
+      vi.clearAllMocks()
+      await finalizeKeytarMigration(SERVICE, ACCOUNT)
+      expect(harness.keytarDelete).toHaveBeenCalledWith(SERVICE, ACCOUNT)
+    })
+
+    it('re-arms after the secret is deleted (sign-out)', async () => {
+      seedStoreFile(SERVICE, ACCOUNT, 'v1')
+      harness.keytarStore.set(`${SERVICE}:${ACCOUNT}`, 'v1')
+      await finalizeKeytarMigration(SERVICE, ACCOUNT)
+
+      await deleteSecret(SERVICE, ACCOUNT)
+
+      seedStoreFile(SERVICE, ACCOUNT, 'v2')
+      harness.keytarStore.set(`${SERVICE}:${ACCOUNT}`, 'v2')
+
+      vi.clearAllMocks()
+      await finalizeKeytarMigration(SERVICE, ACCOUNT)
+      expect(harness.keytarDelete).toHaveBeenCalledWith(SERVICE, ACCOUNT)
     })
   })
 

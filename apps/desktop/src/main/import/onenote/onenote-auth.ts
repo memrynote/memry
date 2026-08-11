@@ -94,7 +94,11 @@ async function writeSecret(
 }
 
 async function readSecret(accountId: string, kind: OneNoteSecretKind): Promise<string | null> {
-  return getSecret(SERVICE, accountKey(accountId, kind))
+  // Same contract as the Google Calendar keychain: these reads either precede a
+  // write, precede a sign-out, or answer "is this account still connected". An
+  // entry left undecryptable by the v2026-08-06 app-identity rename therefore
+  // reads as absent so the user can simply sign in again.
+  return getSecret(SERVICE, accountKey(accountId, kind), { treatUnreadableAsAbsent: true })
 }
 
 const TokenResponseSchema = z.object({

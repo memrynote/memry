@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { EventEmitter } from 'node:events'
 import { UploadQueue, type UploadFn } from './upload-queue'
 import { NetworkError, RateLimitError } from './http-client'
@@ -39,6 +39,10 @@ describe('UploadQueue', () => {
   beforeEach(() => {
     uploadFn = makeUploadFn(10)
     queue = new UploadQueue(uploadFn)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('caps concurrent uploads to 3', async () => {
@@ -214,6 +218,109 @@ describe('UploadQueue', () => {
       ;(monitor as unknown as { setOnline: (v: boolean) => void }).setOnline(false)
       await new Promise((r) => setTimeout(r, 20))
       expect(drainSpy.mock.calls.length).toBe(callsAfterEvent)
+    })
+
+    it('backs off exponentially between NetworkError retries and caps the delay at 60s', async () => {
+      // #given — an upload that is unreachable for its first 8 attempts. The
+      // bound matters: without backoff the re-queue loop is pure microtasks and
+      // an unbounded failure would starve the timers instead of failing.
+      vi.useFakeTimers()
+      let calls = 0
+      const fn: UploadFn = vi.fn(async (noteId: string) => {
+        calls++
+        if (calls <= 8) throw new NetworkError('offline')
+        return { attachmentId: `att-${noteId}`, sessionId: `sess-${noteId}`, manifest: {} as never }
+      })
+      const q = new UploadQueue(fn)
+
+      // #when
+      const pending = q.enqueue('n1', '/p1')
+      await vi.advanceTimersByTimeAsync(0)
+
+      // #then — one attempt, then each retry waits its exact backoff
+      expect(calls).toBe(1)
+
+      // 1s, 2s, 4s, 8s, 16s, 32s, then the 60s ceiling (not 64s, not 128s)
+      const expectedDelaysMs = [1000, 2000, 4000, 8000, 16_000, 32_000, 60_000, 60_000]
+      for (let i = 0; i < expectedDelaysMs.length; i++) {
+        await vi.advanceTimersByTimeAsync(expectedDelaysMs[i] - 1)
+        expect(calls).toBe(i + 1)
+        await vi.advanceTimersByTimeAsync(1)
+        expect(calls).toBe(i + 2)
+      }
+
+      // the caller's promise settles — the item is never dropped
+      await expect(pending).resolves.toMatchObject({ attachmentId: 'att-n1' })
+    })
+
+    it('resumes immediately on reconnect and resets the escalated backoff', async () => {
+      // #given — offline, escalated all the way to the 60s ceiling
+      vi.useFakeTimers()
+      let calls = 0
+      const fn: UploadFn = vi.fn(async (noteId: string) => {
+        calls++
+        if (calls <= 12) throw new NetworkError('offline')
+        return { attachmentId: `att-${noteId}`, sessionId: `sess-${noteId}`, manifest: {} as never }
+      })
+      const monitor = createMockNetworkMonitor(false)
+      const q = new UploadQueue(fn, monitor)
+
+      const pending = q.enqueue('n1', '/p1')
+      await vi.advanceTimersByTimeAsync(0)
+      for (const delay of [1000, 2000, 4000, 8000, 16_000, 32_000]) {
+        await vi.advanceTimersByTimeAsync(delay)
+      }
+      expect(calls).toBe(7)
+      await vi.advanceTimersByTimeAsync(30_000)
+      expect(calls).toBe(7)
+
+      // #when — network comes back halfway through the 60s ceiling wait
+      ;(monitor as unknown as { setOnline: (v: boolean) => void }).setOnline(true)
+      await vi.advanceTimersByTimeAsync(0)
+
+      // #then — retried at once, not after the remaining 30s
+      expect(calls).toBe(8)
+
+      // and the escalation is reset: the next retry is 1s again, not 60s
+      await vi.advanceTimersByTimeAsync(999)
+      expect(calls).toBe(8)
+      await vi.advanceTimersByTimeAsync(1)
+      expect(calls).toBe(9)
+
+      await vi.advanceTimersByTimeAsync(120_000)
+      await expect(pending).resolves.toMatchObject({ attachmentId: 'att-n1' })
+    })
+
+    it('a successful transfer clears the network backoff holding the rest of the queue', async () => {
+      // #given — n1 is unreachable, n2 succeeds 500ms in
+      vi.useFakeTimers()
+      let n1Calls = 0
+      const fn: UploadFn = vi.fn(async (noteId: string) => {
+        if (noteId === 'n1') {
+          n1Calls++
+          if (n1Calls <= 5) throw new NetworkError('offline')
+        } else {
+          await new Promise((r) => setTimeout(r, 500))
+        }
+        return { attachmentId: `att-${noteId}`, sessionId: `sess-${noteId}`, manifest: {} as never }
+      })
+      const q = new UploadQueue(fn)
+
+      const p1 = q.enqueue('n1', '/p1')
+      const p2 = q.enqueue('n2', '/p2')
+      await vi.advanceTimersByTimeAsync(0)
+      expect(n1Calls).toBe(1)
+
+      // #when — n2 completes at t=500, inside n1's 1000ms network backoff
+      await vi.advanceTimersByTimeAsync(500)
+      await vi.advanceTimersByTimeAsync(0)
+
+      // #then — the proven-good network releases the queue straight away
+      await expect(p2).resolves.toMatchObject({ attachmentId: 'att-n2' })
+      expect(n1Calls).toBe(2)
+
+      await vi.advanceTimersByTimeAsync(300_000)
+      await expect(p1).resolves.toMatchObject({ attachmentId: 'att-n1' })
     })
 
     it('dispose() stops listening without nuking other listeners', async () => {

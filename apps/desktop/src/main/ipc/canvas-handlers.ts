@@ -8,6 +8,7 @@
 
 import { z } from 'zod'
 import { ipcMain, BrowserWindow, shell } from 'electron'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import {
   CanvasChannels,
   CanvasCreateSchema,
@@ -58,9 +59,7 @@ function emitCanvasEvent(
   channel: string,
   data: CanvasCreatedEvent | CanvasUpdatedEvent | CanvasDeletedEvent | CanvasTooLargeEvent
 ): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(channel, data)
-  })
+  broadcastToAllWindows(channel, data)
 }
 
 /** Windows already carrying a 'closed' listener for live-canvas cleanup. */

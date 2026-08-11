@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process'
+import { once } from 'node:events'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -90,6 +91,27 @@ export async function spawnCodexTurn(opts: CodexSpawnOptions): Promise<CodexSubp
         : {})
     }
   })
+  // A child that never starts (binary removed after the version probe, EACCES,
+  // EAGAIN) emits 'error' and never 'exit'. Unhandled, that is a main-process
+  // uncaughtException; and because the caller's exit promise only ever listens
+  // for 'exit', the turn would hang forever and hold its conversation's turn
+  // lock for the rest of the app run. 'spawn' and 'error' are mutually
+  // exclusive and exactly one always fires, so this wait is bounded.
+  proc.on('error', (error) => {
+    logger.error('Codex subprocess error', error)
+  })
+  try {
+    await once(proc, 'spawn')
+  } catch (error) {
+    // No handle reaches the caller, so nothing else would clean the temp dir up.
+    await rm(dir, { recursive: true, force: true }).catch((cleanupError: unknown) => {
+      logger.warn('Failed to clean Codex temp directory', cleanupError)
+    })
+    throw new Error(
+      `Codex CLI failed to start: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error }
+    )
+  }
 
   return {
     pid: proc.pid ?? -1,

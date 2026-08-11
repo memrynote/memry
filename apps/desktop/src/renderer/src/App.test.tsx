@@ -1,8 +1,11 @@
 import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
+
+/** Render tallies for the app tree, used to prove updater ticks do not fan out. */
+const treeRenders = { appSidebar: 0, splitView: 0, settingsModal: 0, taskDragOverlay: 0 }
 
 const queryClientClear = vi.fn()
 const openTab = vi.fn()
@@ -82,7 +85,10 @@ vi.mock('@/data/tasks-data', () => ({
 }))
 
 vi.mock('@/lib/task-utils', () => ({
-  getFilteredTasks: (allTasks: unknown[]) => allTasks
+  getTaskWorkspaceCounts: (allTasks: unknown[], _projects: unknown[], viewIds: string[]) => ({
+    viewCounts: Object.fromEntries(viewIds.map((id) => [id, allTasks.length])),
+    projectTaskCounts: {}
+  })
 }))
 
 vi.mock('@/services/tasks-service', () => ({
@@ -255,9 +261,10 @@ vi.mock('@/contexts/settings-modal-context', () => ({
 }))
 
 vi.mock('@/components/app-sidebar', () => ({
-  AppSidebar: ({ viewCounts }: { viewCounts: Record<string, number> }) => (
-    <aside data-testid="app-sidebar">all:{viewCounts.all}</aside>
-  )
+  AppSidebar: ({ viewCounts }: { viewCounts: Record<string, number> }) => {
+    treeRenders.appSidebar += 1
+    return <aside data-testid="app-sidebar">all:{viewCounts.all}</aside>
+  }
 }))
 
 vi.mock('@/components/ui/sidebar', () => ({
@@ -287,9 +294,10 @@ vi.mock('@/components/day-panel', () => ({
 }))
 
 vi.mock('@/components/tasks/drag-drop', () => ({
-  TaskDragOverlay: ({ projects }: { projects: unknown[] }) => (
-    <div data-testid="task-drag-overlay">{projects.length}</div>
-  )
+  TaskDragOverlay: ({ projects }: { projects: unknown[] }) => {
+    treeRenders.taskDragOverlay += 1
+    return <div data-testid="task-drag-overlay">{projects.length}</div>
+  }
 }))
 
 vi.mock('@/components/tabs', () => ({
@@ -300,7 +308,10 @@ vi.mock('@/components/tabs', () => ({
 }))
 
 vi.mock('@/components/split-view', () => ({
-  SplitViewContainer: () => <div data-testid="split-view" />
+  SplitViewContainer: () => {
+    treeRenders.splitView += 1
+    return <div data-testid="split-view" />
+  }
 }))
 
 vi.mock('@/components/keyboard', () => ({
@@ -324,7 +335,10 @@ vi.mock('@/components/search/command-palette', () => ({
 }))
 
 vi.mock('@/components/settings-modal', () => ({
-  SettingsModal: () => <div data-testid="settings-modal" />
+  SettingsModal: () => {
+    treeRenders.settingsModal += 1
+    return <div data-testid="settings-modal" />
+  }
 }))
 
 vi.mock('@/components/vault-onboarding', () => ({
@@ -457,6 +471,66 @@ describe('App', () => {
         entityId: 'note-1'
       })
     )
+  })
+
+  it('keeps one updater subscription and does not re-render the tree per progress tick', async () => {
+    const updaterListeners: Array<(state: Record<string, unknown>) => void> = []
+    ;(window as Window & { api: { onUpdaterStateChanged?: unknown } }).api.onUpdaterStateChanged =
+      vi.fn((callback: (state: Record<string, unknown>) => void) => {
+        updaterListeners.push(callback)
+        return vi.fn()
+      })
+
+    const downloading = {
+      currentVersion: '1.0.0',
+      status: 'downloading',
+      updateSupported: true,
+      availableVersion: '2.0.0',
+      releaseName: null,
+      releaseDate: null,
+      releaseNotes: null,
+      releaseNotesHtml: null,
+      downloadProgressPercent: 0,
+      lastCheckedAt: null,
+      error: null,
+      autoDownloadEnabled: true,
+      autoCheckEnabled: true
+    }
+
+    await act(async () => {
+      render(<App />)
+    })
+
+    // App, UpdatePromptDialog and UpdateReleaseNotesTabOpener share one subscription.
+    expect(updaterListeners).toHaveLength(1)
+
+    const push = async (percent: number): Promise<void> => {
+      await act(async () => {
+        for (const listener of updaterListeners) {
+          listener({ ...downloading, downloadProgressPercent: percent })
+        }
+      })
+    }
+
+    await push(0)
+    const baseline = { ...treeRenders }
+
+    await push(10)
+    await push(55)
+    await push(100)
+
+    expect(treeRenders.splitView - baseline.splitView).toBe(0)
+    expect(treeRenders.appSidebar - baseline.appSidebar).toBe(0)
+    expect(treeRenders.settingsModal - baseline.settingsModal).toBe(0)
+    expect(treeRenders.taskDragOverlay - baseline.taskDragOverlay).toBe(0)
+
+    // The installing screen still replaces the tree when main says so.
+    await act(async () => {
+      for (const listener of updaterListeners) {
+        listener({ ...downloading, status: 'installing', downloadProgressPercent: 100 })
+      }
+    })
+    expect(screen.queryByTestId('split-view')).not.toBeInTheDocument()
   })
 
   it('handles project drag reordering and delegates task drags', async () => {

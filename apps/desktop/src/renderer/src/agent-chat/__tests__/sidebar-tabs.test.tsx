@@ -1,10 +1,10 @@
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
+import { useReducer, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { Conversation } from '@memry/contracts/ipc-agent'
+import type { Conversation, Message, MessageStatus } from '@memry/contracts/ipc-agent'
 
 const mockUseAgentOptional = vi.hoisted(() => vi.fn())
 const mockOpenTab = vi.hoisted(() => vi.fn())
@@ -36,6 +36,12 @@ vi.mock('@/contexts/ai-settings-context', () => ({
 }))
 
 import { SettingsModalProvider } from '@/contexts/settings-modal-context'
+import {
+  agentReducer,
+  initialAgentState,
+  type AgentAction,
+  type AgentState
+} from '../agent-context.reducer'
 import { SidebarTabs } from '../sidebar-tabs'
 import { AgentPane } from '../agent-pane'
 
@@ -133,9 +139,82 @@ function conversation(id: string, title: string, updatedAt: number): Conversatio
   }
 }
 
+function assistantMessage(
+  id: string,
+  conversationId: string,
+  status: MessageStatus,
+  createdAt: number
+): Message {
+  return {
+    id,
+    conversationId,
+    role: 'assistant',
+    content: { role: 'assistant', data: { text: '' } },
+    toolCallId: null,
+    attachments: [],
+    status,
+    vectorClock: {},
+    createdAt,
+    updatedAt: createdAt,
+    deletedAt: null
+  }
+}
+
+/** Message whose `status` read is observable, so a transcript rescan is measurable. */
+function statusProbeMessage(message: Message, onStatusRead: () => void): Message {
+  const { status, ...rest } = message
+  const probe = { ...rest } as Message
+  Object.defineProperty(probe, 'status', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      onStatusRead()
+      return status
+    }
+  })
+  return probe
+}
+
+let harnessDispatch: React.Dispatch<AgentAction> | null = null
+
+/** Drives SidebarTabs from the real reducer instead of a hand-built state object. */
+function ReducerHarness({ seed }: { seed: AgentState }): React.JSX.Element {
+  const [state, dispatch] = useReducer(agentReducer, seed)
+  harnessDispatch = dispatch
+  mockUseAgentOptional.mockReturnValue({
+    state,
+    createConversation: vi.fn(),
+    loadConversation: vi.fn(),
+    clearActiveConversation: vi.fn()
+  })
+  return (
+    <SidebarTabs>
+      {{
+        day: <div>Day content</div>,
+        agent: <div>Agent content</div>
+      }}
+    </SidebarTabs>
+  )
+}
+
+function renderReducerHarness(seed: AgentState = initialAgentState) {
+  return render(
+    <QueryClientProvider client={testQueryClient()}>
+      <ReducerHarness seed={seed} />
+    </QueryClientProvider>
+  )
+}
+
+function dispatchToHarness(action: AgentAction): void {
+  act(() => {
+    harnessDispatch?.(action)
+  })
+}
+
 describe('SidebarTabs', () => {
   beforeEach(() => {
     localStorage.clear()
+    harnessDispatch = null
     mockUseAgentOptional.mockReturnValue(null)
     mockOpenTab.mockReset()
     mockCloseDayPanel.mockReset()
@@ -386,5 +465,115 @@ describe('SidebarTabs', () => {
     expect(
       screen.queryByRole('button', { name: 'Open conversation in tab' })
     ).not.toBeInTheDocument()
+  })
+
+  it('raises and clears the activity dot as a message starts and stops streaming', () => {
+    renderReducerHarness()
+
+    expect(screen.queryByLabelText('Agent turn in progress')).not.toBeInTheDocument()
+
+    dispatchToHarness({
+      type: 'event',
+      event: {
+        kind: 'message_upserted',
+        message: assistantMessage('message-1', 'conversation-1', 'streaming', 1)
+      }
+    })
+
+    expect(screen.getByLabelText('Agent turn in progress')).toBeInTheDocument()
+
+    dispatchToHarness({
+      type: 'event',
+      event: {
+        kind: 'message_upserted',
+        message: assistantMessage('message-1', 'conversation-1', 'completed', 1)
+      }
+    })
+
+    expect(screen.queryByLabelText('Agent turn in progress')).not.toBeInTheDocument()
+  })
+
+  it('raises and clears the activity dot as a tool call runs and finishes', () => {
+    renderReducerHarness()
+
+    dispatchToHarness({
+      type: 'event',
+      event: {
+        kind: 'tool_call_started',
+        conversationId: 'conversation-1',
+        toolCallId: 'tool-1',
+        name: 'vault_create_task',
+        args: {}
+      }
+    })
+
+    expect(screen.getByLabelText('Agent turn in progress')).toBeInTheDocument()
+
+    dispatchToHarness({
+      type: 'event',
+      event: {
+        kind: 'tool_call_completed',
+        conversationId: 'conversation-1',
+        toolCallId: 'tool-1',
+        result: {}
+      }
+    })
+
+    expect(screen.queryByLabelText('Agent turn in progress')).not.toBeInTheDocument()
+  })
+
+  it('raises the activity dot when a loaded conversation already has a streaming message', () => {
+    renderReducerHarness()
+
+    dispatchToHarness({
+      type: 'set_active_conversation',
+      conversation: conversation('conversation-1', 'Planning', 100),
+      messages: [assistantMessage('message-1', 'conversation-1', 'streaming', 1)]
+    })
+
+    expect(screen.getByLabelText('Agent turn in progress')).toBeInTheDocument()
+  })
+
+  it('does not rescan other conversations on every streamed token', () => {
+    let statusReads = 0
+    const otherTranscript = [
+      assistantMessage('other-1', 'conversation-2', 'completed', 1),
+      assistantMessage('other-2', 'conversation-2', 'completed', 2)
+    ].map((message) =>
+      statusProbeMessage(message, () => {
+        statusReads += 1
+      })
+    )
+
+    renderReducerHarness({
+      ...initialAgentState,
+      messagesByConversation: { 'conversation-2': otherTranscript }
+    })
+
+    dispatchToHarness({
+      type: 'event',
+      event: {
+        kind: 'message_upserted',
+        message: assistantMessage('message-1', 'conversation-1', 'streaming', 10)
+      }
+    })
+
+    expect(screen.getByLabelText('Agent turn in progress')).toBeInTheDocument()
+
+    const readsBeforeTokens = statusReads
+    for (let token = 0; token < 20; token += 1) {
+      dispatchToHarness({
+        type: 'event',
+        event: {
+          kind: 'assistant_text_delta',
+          conversationId: 'conversation-1',
+          messageId: 'message-1',
+          text: 'x'
+        }
+      })
+    }
+
+    expect(statusReads).toBe(readsBeforeTokens)
+    expect(screen.getByLabelText('Agent turn in progress')).toBeInTheDocument()
   })
 })

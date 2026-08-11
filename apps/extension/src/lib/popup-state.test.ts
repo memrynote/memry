@@ -121,8 +121,8 @@ describe('mapError', () => {
     expect(mapError('whatever')).toContain('reach Memry')
   })
 
-  test('a denied host permission asks the user to allow 127.0.0.1', () => {
-    expect(mapError('permission-denied')).toBe('Allow access to 127.0.0.1, then save again.')
+  test('a denied host permission asks the user to allow what Memry requested', () => {
+    expect(mapError('permission-denied')).toBe('Allow the access Memry asked for, then save again.')
   })
 })
 
@@ -171,5 +171,25 @@ describe('mode switching', () => {
 
   it('selectPhase returns capturing while a grab is in flight', () => {
     expect(selectPhase({ ...initialState, capturing: true })).toBe('capturing')
+  })
+})
+
+describe('mapError — pdf codes', () => {
+  it('explains a failed PDF download', () => {
+    expect(mapError('pdf-fetch-failed')).toBe(
+      "Couldn't download this PDF. Open it directly, then try again."
+    )
+  })
+
+  it('explains a response that was not a PDF', () => {
+    expect(mapError('not-a-pdf')).toBe("This isn't a PDF — nothing to save.")
+  })
+
+  it('names the size limit', () => {
+    expect(mapError('pdf-too-large')).toBe('This PDF is too large to clip (limit 16 MB).')
+  })
+
+  it('still maps the pre-existing codes', () => {
+    expect(mapError('bad-token')).toBe('Pairing expired — pair with Memry again.')
   })
 })

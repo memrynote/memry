@@ -59,6 +59,107 @@ function createTestDeps(fetchFn: ReturnType<typeof vi.fn>): AttachmentSyncDeps {
   }
 }
 
+function createDeferred(): { promise: Promise<void>; resolve: () => void } {
+  let resolve!: () => void
+  const promise = new Promise<void>((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
+}
+
+/** Single-chunk encrypted manifest + its on-the-wire chunk (nonce || ciphertext). */
+function buildSignedManifest(opts: {
+  attachmentId: string
+  filename: string
+  plaintext: Buffer
+  vaultKey: Uint8Array
+  signingKeypair: { privateKey: Uint8Array; publicKey: Uint8Array }
+}): { encManifest: Record<string, string>; encryptedChunk: Uint8Array } {
+  const toB64 = (b: Uint8Array): string => sodium.to_base64(b, sodium.base64_variants.ORIGINAL)
+  const fileKey = generateFileKey()
+
+  const chunkNonce = sodium.randombytes_buf(24)
+  const chunkCiphertext = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+    opts.plaintext,
+    null,
+    null,
+    chunkNonce,
+    fileKey
+  )
+  const encryptedChunk = new Uint8Array(chunkNonce.length + chunkCiphertext.length)
+  encryptedChunk.set(chunkNonce, 0)
+  encryptedChunk.set(chunkCiphertext, chunkNonce.length)
+
+  const plaintextHash = sodium.to_hex(sodium.crypto_hash_sha256(opts.plaintext))
+  const manifest = {
+    id: opts.attachmentId,
+    filename: opts.filename,
+    mimeType: 'text/plain',
+    size: opts.plaintext.length,
+    checksum: plaintextHash,
+    chunks: [
+      {
+        index: 0,
+        hash: plaintextHash,
+        encryptedHash: sodium.to_hex(sodium.crypto_hash_sha256(encryptedChunk)),
+        size: opts.plaintext.length
+      }
+    ],
+    chunkSize: 8388608,
+    createdAt: Date.now()
+  }
+
+  const manifestNonce = sodium.randombytes_buf(24)
+  const manifestCiphertext = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+    new TextEncoder().encode(JSON.stringify(manifest)),
+    null,
+    null,
+    manifestNonce,
+    fileKey
+  )
+  const keyNonce = sodium.randombytes_buf(24)
+  const wrappedKey = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+    fileKey,
+    null,
+    null,
+    keyNonce,
+    opts.vaultKey
+  )
+
+  const signaturePayload: Record<string, unknown> = {
+    encryptedManifest: toB64(manifestCiphertext),
+    manifestNonce: toB64(manifestNonce),
+    encryptedFileKey: toB64(wrappedKey),
+    keyNonce: toB64(keyNonce)
+  }
+  const manifestSignature = signPayload(
+    signaturePayload,
+    CBOR_FIELD_ORDER.ATTACHMENT_MANIFEST,
+    opts.signingKeypair.privateKey
+  )
+
+  return {
+    encManifest: {
+      ...(signaturePayload as Record<string, string>),
+      manifestSignature: toB64(manifestSignature),
+      signerDeviceId: 'device-1'
+    },
+    encryptedChunk
+  }
+}
+
+function createDownloadDeps(
+  fetchFn: ReturnType<typeof vi.fn>,
+  vaultKey: Uint8Array,
+  signerPublicKey: Uint8Array
+): AttachmentSyncDeps {
+  return {
+    ...createTestDeps(fetchFn),
+    getVaultKey: vi.fn().mockResolvedValue(vaultKey),
+    getDevicePublicKey: vi.fn().mockResolvedValue(signerPublicKey)
+  }
+}
+
 beforeEach(async () => {
   await sodium.ready
   tmpDir = await mkdtemp(path.join(os.tmpdir(), 'memry-attach-test-'))
@@ -823,6 +924,192 @@ describe('AttachmentSyncService', () => {
       await expect(
         service.uploadAttachment('note-1', testFile, undefined, { signal: controller.signal })
       ).rejects.toThrow('aborted')
+    })
+  })
+
+  describe('active transfer bookkeeping', () => {
+    it('tracks an upload while it runs and drops it when the upload fails', async () => {
+      const testFile = path.join(tmpDir, 'leak-upload.txt')
+      await writeFile(testFile, Buffer.alloc(1024, 'L'))
+
+      let progressDuringUpload: TransferProgress | null = null
+      let service: AttachmentSyncService
+
+      const fetchFn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+        const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url
+        const method = init?.method ?? 'GET'
+
+        if (method === 'POST' && urlStr.includes('/initiate')) {
+          return new Response(
+            JSON.stringify({ sessionId: 'session-leak', expiresAt: Date.now() + 3600000 }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        }
+        if (method === 'GET' && urlStr.includes('/upload/session-leak')) {
+          return new Response(
+            JSON.stringify({
+              sessionId: 'session-leak',
+              attachmentId: '',
+              totalSize: 0,
+              chunkCount: 1,
+              uploadedChunks: [],
+              expiresAt: 0
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        }
+        if (method === 'PUT' && urlStr.includes('/chunk/')) {
+          // Sampled mid-transfer: the session must be observable while the
+          // chunk is on the wire, otherwise "cleaned up" would be satisfied by
+          // never tracking the upload at all.
+          progressDuringUpload = service.getUploadProgress('session-leak')
+          return new Response('chunk rejected', { status: 500 })
+        }
+        return new Response(null, { status: 404 })
+      })
+
+      service = new AttachmentSyncService(createTestDeps(fetchFn))
+
+      // #when
+      await expect(service.uploadAttachment('note-1', testFile)).rejects.toThrow(
+        'Failed to upload chunk'
+      )
+
+      // #then — tracked with real values while in flight...
+      expect(progressDuringUpload).toEqual({
+        attachmentId: expect.any(String),
+        phase: 'uploading',
+        chunksCompleted: 0,
+        totalChunks: 1,
+        bytesTransferred: 0,
+        totalBytes: 1024
+      })
+      // ...and gone once the upload threw
+      expect(service.getUploadProgress('session-leak')).toBeNull()
+    })
+
+    it('tracks a download while it runs and drops it when the download fails', async () => {
+      const vaultKey = generateFileKey()
+      const signingKeypair = sodium.crypto_sign_keypair()
+      const { encManifest } = buildSignedManifest({
+        attachmentId: 'att-leak',
+        filename: 'leak-download.txt',
+        plaintext: Buffer.alloc(256, 'D'),
+        vaultKey,
+        signingKeypair
+      })
+
+      let progressDuringDownload: TransferProgress | null = null
+      let service: AttachmentSyncService
+
+      const fetchFn = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url
+
+        if (urlStr.includes('/att-leak/manifest')) {
+          return new Response(JSON.stringify(encManifest), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+        if (urlStr.includes('/chunks/')) {
+          progressDuringDownload = service.getDownloadProgress('att-leak')
+          return new Response(null, { status: 500 })
+        }
+        return new Response(null, { status: 404 })
+      })
+
+      service = new AttachmentSyncService(
+        createDownloadDeps(fetchFn, vaultKey, signingKeypair.publicKey)
+      )
+
+      // #when
+      await expect(
+        service.downloadAttachment('att-leak', path.join(tmpDir, 'leak-download.txt'))
+      ).rejects.toThrow('Failed to download chunk')
+
+      // #then
+      expect(progressDuringDownload).toEqual({
+        attachmentId: 'att-leak',
+        phase: 'downloading',
+        chunksCompleted: 0,
+        totalChunks: 1,
+        bytesTransferred: 0,
+        totalBytes: 256
+      })
+      expect(service.getDownloadProgress('att-leak')).toBeNull()
+    })
+
+    it('a failed download does not clear a concurrent live download of the same attachment', async () => {
+      const vaultKey = generateFileKey()
+      const signingKeypair = sodium.crypto_sign_keypair()
+      const { encManifest, encryptedChunk } = buildSignedManifest({
+        attachmentId: 'att-shared',
+        filename: 'shared.txt',
+        plaintext: Buffer.alloc(256, 'S'),
+        vaultKey,
+        signingKeypair
+      })
+
+      const firstReachedChunk = createDeferred()
+      const releaseFirst = createDeferred()
+      const secondReachedChunk = createDeferred()
+      const releaseSecond = createDeferred()
+      let chunkCalls = 0
+
+      const fetchFn = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url
+
+        if (urlStr.includes('/att-shared/manifest')) {
+          return new Response(JSON.stringify(encManifest), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+        if (urlStr.includes('/chunks/')) {
+          chunkCalls++
+          if (chunkCalls === 1) {
+            firstReachedChunk.resolve()
+            await releaseFirst.promise
+            return new Response(null, { status: 500 })
+          }
+          secondReachedChunk.resolve()
+          await releaseSecond.promise
+          return new Response(encryptedChunk, {
+            status: 200,
+            headers: { 'Content-Type': 'application/octet-stream' }
+          })
+        }
+        return new Response(null, { status: 404 })
+      })
+
+      const service = new AttachmentSyncService(
+        createDownloadDeps(fetchFn, vaultKey, signingKeypair.publicKey)
+      )
+
+      // #given — the doomed transfer registers first, then a second transfer
+      // for the same attachment overwrites the map entry under the same key
+      const doomed = service.downloadAttachment('att-shared', path.join(tmpDir, 'shared-a.txt'))
+      await firstReachedChunk.promise
+      const live = service.downloadAttachment('att-shared', path.join(tmpDir, 'shared-b.txt'))
+      await secondReachedChunk.promise
+
+      // #when — the first transfer fails while the second is still running
+      releaseFirst.resolve()
+      await expect(doomed).rejects.toThrow('Failed to download chunk')
+
+      // #then — the survivor's progress is untouched
+      expect(service.getDownloadProgress('att-shared')).toEqual({
+        attachmentId: 'att-shared',
+        phase: 'downloading',
+        chunksCompleted: 0,
+        totalChunks: 1,
+        bytesTransferred: 0,
+        totalBytes: 256
+      })
+
+      releaseSecond.resolve()
+      await live
+      expect(service.getDownloadProgress('att-shared')).toBeNull()
     })
   })
 })

@@ -133,7 +133,13 @@ const runtimeMocks = vi.hoisted(() => {
     pushCrdtSnapshot: vi.fn(),
     withRetry: vi.fn((fn: () => Promise<unknown>) => fn()),
     emitSessionExpired: vi.fn(),
-    setOnTokenRefreshed: vi.fn(),
+    // token-manager keeps exactly one callback slot, and a refresh invokes
+    // whatever is in it. Model that instead of a bare spy so "who does a token
+    // refresh actually reach after teardown" is observable.
+    tokenRefreshedCallback: null as (() => void) | null,
+    setOnTokenRefreshed: vi.fn((cb: (() => void) | null) => {
+      runtimeMocks.tokenRefreshedCallback = cb
+    }),
     trackMainEvent: vi.fn(),
     logDebug: vi.fn(),
     logInfo: vi.fn(),
@@ -341,11 +347,22 @@ vi.mock('./crdt-encrypt', () => ({
 vi.mock('./http-client', () => ({
   postToServer: runtimeMocks.postToServer,
   pushCrdtSnapshot: runtimeMocks.pushCrdtSnapshot,
-  SyncServerError: runtimeMocks.SyncServerError
+  SyncServerError: runtimeMocks.SyncServerError,
+  // runtime.ts → sync-errors.ts imports these; they only need to exist here.
+  NetworkError: class NetworkError extends Error {},
+  RateLimitError: class RateLimitError extends Error {},
+  AttachmentTooLargeError: class AttachmentTooLargeError extends Error {}
 }))
 
 vi.mock('./retry', () => ({
-  withRetry: runtimeMocks.withRetry
+  withRetry: runtimeMocks.withRetry,
+  // runtime.ts → sync-errors.ts imports this; the class itself is exercised in
+  // sync-errors.test.ts, here it only needs to exist.
+  DeadLetterError: class DeadLetterError extends Error {
+    constructor(public lastError: unknown) {
+      super('dead letter')
+    }
+  }
 }))
 
 vi.mock('./token-manager', () => ({
@@ -561,7 +578,8 @@ describe('sync runtime', () => {
       { noteId: 'note-1', updates: [Buffer.from(new Uint8Array([10, 11])).toString('base64')] },
       'access-token'
     )
-    expect(runtimeMocks.crdtProvider.pushSnapshotForNote).toHaveBeenCalledWith('note-1')
+    // The snapshot is deferred, not skipped — see the debounce test below.
+    expect(runtimeMocks.crdtProvider.pushSnapshotForNote).not.toHaveBeenCalled()
     expect(runtimeMocks.secureCleanup).toHaveBeenCalledWith(new Uint8Array([1, 2, 3]))
     expect(runtimeMocks.secureCleanup).toHaveBeenCalledWith(new Uint8Array([4, 5, 6]))
 
@@ -589,6 +607,34 @@ describe('sync runtime', () => {
     expect(runtimeMocks.WebSocketManager.instances[0].disconnect).toHaveBeenCalledTimes(1)
     expect(runtimeMocks.NetworkMonitor.instances[0].stop).toHaveBeenCalledTimes(1)
     expect(runtimeMocks.resetCrdtProvider).toHaveBeenCalled()
+  })
+
+  it('defers CRDT snapshot pushes instead of re-uploading after every batch', async () => {
+    const runtime = await loadRuntime()
+    await runtime.startSyncRuntime()
+    const queue = runtimeMocks.CrdtUpdateQueue.instances[0]
+
+    vi.useFakeTimers()
+    try {
+      // Continuous typing: one incremental batch per flush interval. A full
+      // document encode + encrypt + upload must not ride along with each one.
+      for (let i = 0; i < 5; i++) {
+        await queue.onBatch?.('note-1', [new Uint8Array([1])])
+        await vi.advanceTimersByTimeAsync(1000)
+      }
+
+      expect(runtimeMocks.postToServer).toHaveBeenCalledTimes(5)
+      expect(runtimeMocks.crdtProvider.pushSnapshotForNote).not.toHaveBeenCalled()
+
+      // Once typing stops, the snapshot still lands — exactly once.
+      await vi.advanceTimersByTimeAsync(30_000)
+      expect(runtimeMocks.crdtProvider.pushSnapshotForNote).toHaveBeenCalledTimes(1)
+      expect(runtimeMocks.crdtProvider.pushSnapshotForNote).toHaveBeenCalledWith('note-1')
+    } finally {
+      vi.useRealTimers()
+    }
+
+    await runtime.stopSyncRuntime({ skipFinalSync: true })
   })
 
   it('handles CRDT auth and quota failures by pausing and notifying renderer', async () => {
@@ -621,6 +667,9 @@ describe('sync runtime', () => {
     expect(queue.pause).toHaveBeenCalled()
     expect(runtimeMocks.emitSessionExpired).not.toHaveBeenCalled()
 
+    // Bare 413 = body-limit rejection (oversized note), NOT quota: report
+    // note_too_large and keep the queue running for every other note.
+    const pauseCallsBeforeBodyLimit = queue.pause.mock.calls.length
     runtimeMocks.postToServer.mockRejectedValueOnce(new runtimeMocks.SyncServerError(413))
     await expect(queue.onBatch?.('note-1', [new Uint8Array([1])])).rejects.toThrow(
       'sync server error'
@@ -629,9 +678,27 @@ describe('sync runtime', () => {
       'sync:status-changed',
       expect.objectContaining({
         status: 'error',
+        errorCategory: 'note_too_large'
+      })
+    )
+    expect(queue.pause.mock.calls.length).toBe(pauseCallsBeforeBodyLimit)
+
+    // 413 carrying the server's quota code is the real storage-full case:
+    // everything will fail, so pausing the queue is correct.
+    runtimeMocks.postToServer.mockRejectedValueOnce(
+      new runtimeMocks.SyncServerError(413, 'STORAGE_QUOTA_EXCEEDED: Storage quota exceeded')
+    )
+    await expect(queue.onBatch?.('note-1', [new Uint8Array([1])])).rejects.toThrow(
+      'STORAGE_QUOTA_EXCEEDED'
+    )
+    expect(runtimeMocks.browserSend).toHaveBeenCalledWith(
+      'sync:status-changed',
+      expect.objectContaining({
+        status: 'error',
         errorCategory: 'storage_quota_exceeded'
       })
     )
+    expect(queue.pause.mock.calls.length).toBe(pauseCallsBeforeBodyLimit + 1)
 
     await runtime.stopSyncRuntime({ skipFinalSync: true })
     expect(runtimeMocks.crdtProvider.pushAllSnapshots).not.toHaveBeenCalled()
@@ -676,14 +743,30 @@ describe('sync runtime', () => {
     expect(runtimeMocks.refreshAccessToken).toHaveBeenCalled()
     expect(runtimeMocks.emitSessionExpired).not.toHaveBeenCalled()
 
+    // Bare 413 on snapshot push = the note's snapshot is over the body limit:
+    // note_too_large, no queue pause (other notes must keep syncing).
+    const pauseCallsBeforeSnapshot = queue.pause.mock.calls.length
     runtimeMocks.pushCrdtSnapshot.mockRejectedValueOnce(new runtimeMocks.SyncServerError(413))
-    await expect(snapshotPush('note-quota', new Uint8Array([1]))).rejects.toThrow(
+    await expect(snapshotPush('note-oversized', new Uint8Array([1]))).rejects.toThrow(
       'sync server error'
+    )
+    expect(runtimeMocks.browserSend).toHaveBeenCalledWith(
+      'sync:status-changed',
+      expect.objectContaining({ errorCategory: 'note_too_large' })
+    )
+    expect(queue.pause.mock.calls.length).toBe(pauseCallsBeforeSnapshot)
+
+    runtimeMocks.pushCrdtSnapshot.mockRejectedValueOnce(
+      new runtimeMocks.SyncServerError(413, 'STORAGE_QUOTA_EXCEEDED: Storage quota exceeded')
+    )
+    await expect(snapshotPush('note-quota', new Uint8Array([1]))).rejects.toThrow(
+      'STORAGE_QUOTA_EXCEEDED'
     )
     expect(runtimeMocks.browserSend).toHaveBeenCalledWith(
       'sync:status-changed',
       expect.objectContaining({ errorCategory: 'storage_quota_exceeded' })
     )
+    expect(queue.pause.mock.calls.length).toBe(pauseCallsBeforeSnapshot + 1)
   })
 
   it('exposes engine dependency branches for signing keys, device keys, and calendar sync', async () => {
@@ -789,5 +872,95 @@ describe('sync runtime', () => {
     expect(runtimeMocks.WebSocketManager.instances[0].disconnect).toHaveBeenCalled()
     expect(runtimeMocks.NetworkMonitor.instances[0].stop).toHaveBeenCalled()
     expect(runtimeMocks.resetCrdtProvider).toHaveBeenCalled()
+  })
+
+  describe('token-refresh callback lifecycle', () => {
+    /** What token-manager does on a successful refresh: invoke the one slot. */
+    const fireTokenRefresh = (): void => runtimeMocks.tokenRefreshedCallback?.()
+
+    beforeEach(() => {
+      runtimeMocks.tokenRefreshedCallback = null
+    })
+
+    it('detaches the callback on stop so a later refresh cannot reach the dead runtime', async () => {
+      const runtime = await loadRuntime()
+      await runtime.startSyncRuntime()
+
+      const deadQueue = runtimeMocks.CrdtUpdateQueue.instances[0]
+      const deadWs = runtimeMocks.WebSocketManager.instances[0]
+      const deadNetwork = runtimeMocks.NetworkMonitor.instances[0]
+      // The closure the runtime installed really is the one that reaches into
+      // these three — that is what makes leaving it installed a live wire.
+      fireTokenRefresh()
+      expect(deadQueue.resume).toHaveBeenCalledTimes(1)
+      expect(deadWs.refreshAuth).toHaveBeenCalledTimes(1)
+      deadQueue.resume.mockClear()
+      deadWs.refreshAuth.mockClear()
+
+      await runtime.stopSyncRuntime({ skipFinalSync: true })
+      expect(deadQueue.stop).toHaveBeenCalledTimes(1)
+      expect(deadWs.disconnect).toHaveBeenCalledTimes(1)
+      expect(deadNetwork.stop).toHaveBeenCalledTimes(1)
+
+      // The slot token-manager reads is empty: nothing in the token layer still
+      // holds this runtime's queue, socket or network monitor.
+      expect(runtimeMocks.tokenRefreshedCallback).toBeNull()
+
+      fireTokenRefresh()
+      expect(deadQueue.resume).not.toHaveBeenCalled()
+      expect(deadWs.refreshAuth).not.toHaveBeenCalled()
+    })
+
+    it('leaves token refresh working for the runtime that replaces a stopped one', async () => {
+      const runtime = await loadRuntime()
+      await runtime.startSyncRuntime()
+      const firstQueue = runtimeMocks.CrdtUpdateQueue.instances[0]
+      const firstWs = runtimeMocks.WebSocketManager.instances[0]
+
+      await runtime.stopSyncRuntime({ skipFinalSync: true })
+      await runtime.startSyncRuntime()
+
+      const secondQueue = runtimeMocks.CrdtUpdateQueue.instances[1]
+      const secondWs = runtimeMocks.WebSocketManager.instances[1]
+      expect(secondQueue).not.toBe(firstQueue)
+      expect(secondWs).not.toBe(firstWs)
+      firstQueue.resume.mockClear()
+      firstWs.refreshAuth.mockClear()
+
+      fireTokenRefresh()
+
+      // Clearing on stop must not outlive the stop: the vault-switch runtime
+      // still re-authenticates, or sync dies silently for the rest of the session.
+      expect(secondQueue.resume).toHaveBeenCalledTimes(1)
+      expect(secondWs.refreshAuth).toHaveBeenCalledTimes(1)
+      expect(firstQueue.resume).not.toHaveBeenCalled()
+      expect(firstWs.refreshAuth).not.toHaveBeenCalled()
+    })
+
+    it('does not unhook a runtime that starts while the previous one is still tearing down', async () => {
+      const runtime = await loadRuntime()
+      await runtime.startSyncRuntime()
+
+      // stopSyncRuntime clears `runtime` before it awaits its teardown, so a
+      // start that lands during those awaits — the deferred-start timer, a
+      // sync:enable IPC — builds a whole new runtime while the old stop is
+      // still in flight. engine.stop is the first of those awaits.
+      runtimeMocks.SyncEngine.instances[0].stop.mockImplementationOnce(async () => {
+        await runtime.startSyncRuntime()
+      })
+      await runtime.stopSyncRuntime({ skipFinalSync: true })
+
+      const secondQueue = runtimeMocks.CrdtUpdateQueue.instances[1]
+      const secondWs = runtimeMocks.WebSocketManager.instances[1]
+      expect(secondQueue).toBeDefined()
+
+      fireTokenRefresh()
+
+      // The live runtime keeps its token refresh. Detaching any later than the
+      // tick that clears `runtime` would strand this one with no way to
+      // re-authenticate, and sync would stop with no error surfaced.
+      expect(secondQueue.resume).toHaveBeenCalledTimes(1)
+      expect(secondWs.refreshAuth).toHaveBeenCalledTimes(1)
+    })
   })
 })

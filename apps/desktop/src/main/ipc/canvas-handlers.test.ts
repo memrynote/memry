@@ -457,7 +457,9 @@ describe('canvas:duplicate', () => {
     })
     const { BrowserWindow } = await import('electron')
     const send = vi.fn()
-    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([{ webContents: { send } }] as never)
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
+      { isDestroyed: () => false, webContents: { send } }
+    ] as never)
     const handlers = await registerAndGetHandlers()
 
     const result = await handlers[CanvasChannels.invoke.DUPLICATE]({}, 'canvas-1')
@@ -495,7 +497,9 @@ describe('canvas:duplicate', () => {
     vi.mocked(syncCanvasCreate).mockReturnValue(false)
     const { BrowserWindow } = await import('electron')
     const send = vi.fn()
-    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([{ webContents: { send } }] as never)
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
+      { isDestroyed: () => false, webContents: { send } }
+    ] as never)
     const handlers = await registerAndGetHandlers()
 
     await handlers[CanvasChannels.invoke.DUPLICATE]({}, 'canvas-1')
@@ -517,7 +521,9 @@ describe('canvas:duplicate', () => {
     vi.mocked(syncCanvasCreate).mockReturnValue(true)
     const { BrowserWindow } = await import('electron')
     const send = vi.fn()
-    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([{ webContents: { send } }] as never)
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
+      { isDestroyed: () => false, webContents: { send } }
+    ] as never)
     const handlers = await registerAndGetHandlers()
 
     await handlers[CanvasChannels.invoke.DUPLICATE]({}, 'canvas-1')
@@ -530,7 +536,9 @@ describe('canvas:duplicate', () => {
     vi.mocked(duplicateCanvas).mockReturnValue(null)
     const { BrowserWindow } = await import('electron')
     const send = vi.fn()
-    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([{ webContents: { send } }] as never)
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
+      { isDestroyed: () => false, webContents: { send } }
+    ] as never)
     const handlers = await registerAndGetHandlers()
 
     const result = await handlers[CanvasChannels.invoke.DUPLICATE]({}, 'canvas-1')

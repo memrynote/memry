@@ -140,6 +140,18 @@ External events are **read-mostly**: titles and times sync in. Inline edits prop
 
 While no Google account is linked, the calendar toolbar shows a **Connect Google** button. It opens a short prompt covering what a linked calendar unlocks — seeing your Google events beside notes and tasks, two-way sync, and scheduling tasks and notes on your calendar — then runs the same connect flow as Settings. The button disappears once an account is connected.
 
+### Multiple Accounts and Calendars
+
+You can link more than one Google account. In [Settings → Integrations](/user-guide/settings#integrations) → Google Calendar, **Add account** starts the connect flow again and Google shows its account chooser, so you can pick a different account than the one your browser is already signed in to.
+
+Each linked account gets its own group listing every calendar on that account — shared calendars, team calendars, holiday calendars, all of them — with a checkbox each. Tick a calendar to bring its events into memrynote; untick it to take them out. Only your primary calendar is ticked when an account is first linked, so nothing else arrives until you ask for it.
+
+**Unticking a calendar deletes its events from memrynote.** Nothing refreshes a calendar you have turned off, so its events are removed rather than left behind to go stale, and the removal reaches your other devices. Tick it again and the events are fetched fresh. Events you [promoted to your vault](#promote-external-events) are your own copy and are not affected.
+
+The calendar list refreshes on every sync, so a calendar you create in Google later shows up on its own. If you linked an account before this existed, your other calendars appear after the next sync — no need to reconnect.
+
+Each account has its own **Disconnect**, which unlinks only that account and removes only its events.
+
 ### Sync Direction
 
 By default Google Calendar sync is **two-way**: events, tasks, reminders, and snoozes you create in memrynote are pushed up to Google, and changes made in Google flow back into memrynote.
@@ -147,6 +159,29 @@ By default Google Calendar sync is **two-way**: events, tasks, reminders, and sn
 To switch to **one-way (inbound only)**, open [Settings → Integrations](/user-guide/settings#integrations) and turn off **Show memrynote events in Google Calendar**. You'll still see your Google events inside memrynote, but memrynote events will no longer appear in Google.
 
 Switching to one-way is non-destructive — anything already synced to Google before the change stays there; only new pushes, updates, and deletes are stopped.
+
+### How Often Google Events Refresh
+
+Inbound pulls run on a schedule. One pull covers everything at once — every linked account and every
+calendar you have ticked — so accounts never drift out of step with each other. This is also the
+"every sync" that refreshes the calendar list itself, as described under
+[Multiple Accounts and Calendars](#multiple-accounts-and-calendars).
+
+memrynote pulls about every 5 minutes in the background. When Google push notifications are active
+for your selected calendars, changes arrive as they happen and the background pull falls back to
+roughly every 30 minutes.
+
+Two extra pulls sit on top of that: memrynote syncs immediately when your machine wakes from sleep,
+and bringing the memrynote window back to the front pulls again if the last pull was more than two
+minutes ago. Re-focusing the window more often than that is deliberately ignored so alt-tabbing all
+day doesn't hammer the network.
+
+Need something right now? Click the **Refresh Google calendars** button in the calendar toolbar. It
+pulls straight away and never waits on any of the intervals above.
+
+None of these schedules apply to an account showing **Reconnect required** — memrynote will not sync
+an account whose sign-in it cannot read. See
+[If the account says "Reconnect required"](#if-the-account-says-reconnect-required).
 
 ### Promote External Events
 
@@ -178,6 +213,16 @@ improve AI models.
 
 Note that promoting an external event (above) copies it into your vault as a memrynote event. From
 then on it is your own event, and the assistant can read it regardless of this setting.
+
+### If the account says "Reconnect required"
+
+An account can drop back to **Reconnect required** without you doing anything — most often after an
+app update, because the stored Google tokens are encrypted with a key tied to the app's identity on
+your machine and that identity can change across versions. memrynote never guesses at a credential
+it cannot read, so it asks you to reconnect rather than syncing with something stale.
+
+Press **Connect** and sign in again. That writes fresh tokens over the unreadable ones, and your
+calendars, selections and existing events are untouched — only the sign-in is redone.
 
 ## Day Cell Click Behavior
 

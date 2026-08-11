@@ -7,6 +7,7 @@ vi.mock('node:fs/promises', () => ({
 vi.mock('node:child_process', () => ({ spawn: vi.fn() }))
 
 import { spawn } from 'node:child_process'
+import { EventEmitter } from 'node:events'
 
 import { spawnCodexTurn } from '../codex-spawn'
 
@@ -148,12 +149,14 @@ describe('spawnCodexTurn', () => {
 })
 
 function makeFakeProc() {
-  return {
-    stdin: { write: vi.fn(), end: vi.fn() },
-    stdout: { on: vi.fn() },
-    stderr: { on: vi.fn() },
-    on: vi.fn(),
-    kill: vi.fn(),
-    pid: 1234
-  } as any
+  // spawnCodexTurn now waits for the child's 'spawn' event before returning, so
+  // the fake has to be a real emitter that reports a successful start.
+  const proc = new EventEmitter() as any
+  proc.stdin = Object.assign(new EventEmitter(), { write: vi.fn(), end: vi.fn() })
+  proc.stdout = new EventEmitter()
+  proc.stderr = new EventEmitter()
+  proc.kill = vi.fn()
+  proc.pid = 1234
+  setImmediate(() => proc.emit('spawn'))
+  return proc
 }

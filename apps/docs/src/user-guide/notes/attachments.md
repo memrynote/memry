@@ -27,6 +27,8 @@ Each attachment renders as a block with:
 
 PDFs render inline as a clean first-page preview — no viewer chrome — so a note reads as a document with its source embedded. Open the file page (double-click the sidebar item) for the full multi-page viewer with zoom and find-in-page.
 
+The file page viewer has a thumbnail sidebar for jumping between pages. It draws only the thumbnails currently scrolled into view, so a several-hundred-page PDF opens without rendering every page up front.
+
 Hover the preview, or click to select it, to reveal its controls:
 
 - **Resize** — drag either bottom corner. Width scales the whole embed like an image; dragging upward shortens it, cropping the first page from the top so only the opening shows (no inner scroll).
@@ -90,6 +92,8 @@ If a file is over your plan's per-file limit, MemryNote tells you before it spen
 ### When an Attachment Doesn't Sync
 
 If an attachment can't be uploaded, you get a notification naming the file. The file is never lost: it stays in `<vault>/attachments/` and the note keeps working on this device. Only the synced copy is missing, so other devices won't see it until the upload succeeds.
+
+When the upload fails because you're offline or the server is unreachable, MemryNote keeps retrying rather than giving up — being offline for a day is normal, and the queued upload is never discarded. Each retry waits a little longer than the last (one second, then two, four, and so on up to a minute) so a long offline stretch doesn't burn battery re-encrypting the file over and over. As soon as the network comes back, the wait is abandoned and everything queued is retried straight away.
 
 ## Garbage Collection
 
