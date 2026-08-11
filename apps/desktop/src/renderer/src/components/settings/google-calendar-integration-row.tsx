@@ -196,6 +196,15 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     [sourcesData?.sources]
   )
 
+  // Count what this section actually renders. `status.calendars.selected` counts
+  // every selected calendar row including the memrynote-managed one, which the
+  // list above deliberately hides — so a single connected account read as
+  // "2 selected" next to one visible calendar (#1205).
+  const importedSelectedCount = useMemo(
+    () => importedSources.filter((source) => source.isSelected).length,
+    [importedSources]
+  )
+
   // One group per connected account, plus a trailing group for calendars whose
   // accountId matches no account we know about. Those exist on installs that
   // connected before sources carried an account id — dropping them here would
@@ -345,7 +354,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
               {t('integrations.googleCalendar.importedCalendars')}
             </span>
             <span className="text-xs text-muted-foreground">
-              {t('integrations.googleCalendar.selected', { count: status.calendars.selected })}
+              {t('integrations.googleCalendar.selected', { count: importedSelectedCount })}
             </span>
           </div>
 
