@@ -102,3 +102,9 @@ Files that are no longer referenced by any note are pruned during periodic vacuu
 ## Sync Behavior
 
 Attachment payloads sync as encrypted R2 blobs (the same path as note bodies). Large files don't block notes — sync interleaves uploads and prioritizes metadata.
+
+### Transfer Progress
+
+Transfers report progress as a whole percentage, updating only when that percentage changes rather than on every chunk — a large file moves through the same 0–100% either way, without flooding the interface. Every transfer finishes on 100%.
+
+Several attachments can upload and download at once, and each one tracks its own progress. One transfer finishing never stops another that is still running from reporting.
