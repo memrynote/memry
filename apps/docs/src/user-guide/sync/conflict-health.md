@@ -63,15 +63,16 @@ This is the actionable punch list — fix everything here and sync should be cle
 
 ## Common Sync Errors
 
-| Error                            | Likely cause                                          | Fix                                                                                                             |
-| -------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| "Authentication expired"         | Refresh token expired                                 | Sign in again                                                                                                   |
-| "Quota exceeded"                 | Vault size hit storage limit                          | Upgrade plan or clean attachments                                                                               |
-| "Network unreachable"            | Offline                                               | Reconnect; sync auto-resumes                                                                                    |
-| "Server temporarily unavailable" | Cloudflare hiccup                                     | Wait; backoff retries automatically                                                                             |
-| "Blob hash mismatch"             | Corruption (rare)                                     | Push the affected item again from the source device                                                             |
-| "Crypto version mismatch"        | Sync server behind a desktop release                  | Wait for server to update or downgrade desktop                                                                  |
-| "All items failed to decrypt"    | This device's vault key no longer matches the account | The app signs you out and prompts recovery — sign in and enter your recovery phrase; your server data is intact |
+| Error                            | Likely cause                                                                                             | Fix                                                                                                             |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| "Authentication expired"         | Refresh token expired                                                                                    | Sign in again                                                                                                   |
+| "Quota exceeded"                 | Vault size hit storage limit                                                                             | Upgrade plan or clean attachments                                                                               |
+| "A note is too large to sync"    | One note's encrypted sync payload is over the per-request limit — a payload problem, not account storage | Split the note into smaller notes, or move large pasted content into attachments; other notes keep syncing      |
+| "Network unreachable"            | Offline                                                                                                  | Reconnect; sync auto-resumes                                                                                    |
+| "Server temporarily unavailable" | Cloudflare hiccup                                                                                        | Wait; backoff retries automatically                                                                             |
+| "Blob hash mismatch"             | Corruption (rare)                                                                                        | Push the affected item again from the source device                                                             |
+| "Crypto version mismatch"        | Sync server behind a desktop release                                                                     | Wait for server to update or downgrade desktop                                                                  |
+| "All items failed to decrypt"    | This device's vault key no longer matches the account                                                    | The app signs you out and prompts recovery — sign in and enter your recovery phrase; your server data is intact |
 
 ## Resolving a Conflict Manually
 
