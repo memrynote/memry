@@ -567,7 +567,8 @@ describe('sync runtime', () => {
       { noteId: 'note-1', updates: [Buffer.from(new Uint8Array([10, 11])).toString('base64')] },
       'access-token'
     )
-    expect(runtimeMocks.crdtProvider.pushSnapshotForNote).toHaveBeenCalledWith('note-1')
+    // The snapshot is deferred, not skipped — see the debounce test below.
+    expect(runtimeMocks.crdtProvider.pushSnapshotForNote).not.toHaveBeenCalled()
     expect(runtimeMocks.secureCleanup).toHaveBeenCalledWith(new Uint8Array([1, 2, 3]))
     expect(runtimeMocks.secureCleanup).toHaveBeenCalledWith(new Uint8Array([4, 5, 6]))
 
@@ -595,6 +596,34 @@ describe('sync runtime', () => {
     expect(runtimeMocks.WebSocketManager.instances[0].disconnect).toHaveBeenCalledTimes(1)
     expect(runtimeMocks.NetworkMonitor.instances[0].stop).toHaveBeenCalledTimes(1)
     expect(runtimeMocks.resetCrdtProvider).toHaveBeenCalled()
+  })
+
+  it('defers CRDT snapshot pushes instead of re-uploading after every batch', async () => {
+    const runtime = await loadRuntime()
+    await runtime.startSyncRuntime()
+    const queue = runtimeMocks.CrdtUpdateQueue.instances[0]
+
+    vi.useFakeTimers()
+    try {
+      // Continuous typing: one incremental batch per flush interval. A full
+      // document encode + encrypt + upload must not ride along with each one.
+      for (let i = 0; i < 5; i++) {
+        await queue.onBatch?.('note-1', [new Uint8Array([1])])
+        await vi.advanceTimersByTimeAsync(1000)
+      }
+
+      expect(runtimeMocks.postToServer).toHaveBeenCalledTimes(5)
+      expect(runtimeMocks.crdtProvider.pushSnapshotForNote).not.toHaveBeenCalled()
+
+      // Once typing stops, the snapshot still lands — exactly once.
+      await vi.advanceTimersByTimeAsync(30_000)
+      expect(runtimeMocks.crdtProvider.pushSnapshotForNote).toHaveBeenCalledTimes(1)
+      expect(runtimeMocks.crdtProvider.pushSnapshotForNote).toHaveBeenCalledWith('note-1')
+    } finally {
+      vi.useRealTimers()
+    }
+
+    await runtime.stopSyncRuntime({ skipFinalSync: true })
   })
 
   it('handles CRDT auth and quota failures by pausing and notifying renderer', async () => {
