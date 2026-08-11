@@ -44,6 +44,12 @@ After a transformation:
 
 Until you accept, your original text is unchanged.
 
+## Cancelling a Generation
+
+Dismissing the menu while a transformation is still streaming cancels the request to
+the provider. Nothing keeps generating in the background, so a run you walked away
+from stops consuming local model time (Ollama) or API tokens (OpenAI, Anthropic).
+
 ## Provider
 
 Inline AI uses whichever provider you configured in [Settings → AI Inline](/user-guide/settings#ai-inline):
@@ -59,6 +65,10 @@ See [Provider Setup](/user-guide/ai/provider-setup) for configuring each.
 Requests go to whichever provider you chose. With **Ollama**, your text never leaves your machine. With **OpenAI** or **Anthropic**, the request goes to their API — review their data policies before sending sensitive content.
 
 memrynote never proxies these requests through the sync server. The connection is direct from your device to the provider.
+
+Inline AI is served by a small helper that listens only on `127.0.0.1`, so nothing on
+your network can reach it. It rejects requests larger than 25 MB, and it shuts down
+when you quit memrynote — no port stays bound after the app closes.
 
 ## When the Menu Doesn't Appear
 
