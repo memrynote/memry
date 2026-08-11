@@ -410,6 +410,9 @@ that conversation, deny it, or edit the arguments before allowing. Note updates 
 diff before the write is applied. Unauthenticated or context-free write requests continue to be
 denied.
 
+Stopping the turn while an approval is waiting counts as a denial: the pending request is refused,
+the tool never runs, and the approval controls disappear. Nothing is written to your vault.
+
 ## Project Links
 
 `vault_list_projects` returns each project's `icon`, `home_note_id`, and `linked_counts` (notes,
