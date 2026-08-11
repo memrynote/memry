@@ -60,7 +60,7 @@ import { UpdatePromptDialog } from '@/components/updater/update-prompt-dialog'
 import { GithubStarCard } from '@/components/onboarding/github-star-card'
 import { UpdateReleaseNotesTabOpener } from '@/components/updater/update-release-notes-tab-opener'
 import { ReleaseNotesDevTrigger } from '@/components/updater/release-notes-dev-trigger'
-import { useAppUpdater } from '@/hooks/use-app-updater'
+import { useAppUpdaterSelector } from '@/hooks/use-app-updater'
 import { useThemeSync } from '@/hooks/use-theme-sync'
 import { useWeekStartSync } from '@/hooks/use-week-start-sync'
 import { trackTelemetry } from '@/lib/telemetry'
@@ -361,7 +361,10 @@ function App(): React.JSX.Element {
 
   // Update state - show a dedicated "Installing update…" screen while quitting to
   // install, so vault teardown never surfaces as a broken picker / frozen window.
-  const { state: updaterState } = useAppUpdater()
+  // Read only the two fields this screen needs: subscribing to the whole updater
+  // state re-rendered the entire app tree on every download-progress tick.
+  const isInstallingUpdate = useAppUpdaterSelector((state) => state.status === 'installing')
+  const installingVersion = useAppUpdaterSelector((state) => state.availableVersion)
 
   // Vault state - check if vault is open
   const { status: vaultStatus, isLoading: vaultLoading } = useVault()
@@ -533,8 +536,8 @@ function App(): React.JSX.Element {
 
   // Highest priority: once the user triggered install, keep this screen up
   // through the whole quit/relaunch regardless of vault state.
-  if (updaterState.status === 'installing') {
-    return <UpdatingScreen version={updaterState.availableVersion} />
+  if (isInstallingUpdate) {
+    return <UpdatingScreen version={installingVersion} />
   }
 
   if (vaultLoading) {

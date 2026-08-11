@@ -90,3 +90,13 @@ The helper also contains a per-window delivery failure: a window that dies betwe
 An ESLint `no-restricted-syntax` rule over `apps/desktop/src/main/**` rejects `for...of` and `.forEach` fan-out loops written directly against `BrowserWindow.getAllWindows()`, so the hand-rolled pattern cannot come back. Loops over a deliberate _subset_ of windows are a different thing and stay allowed — for example `crdt-provider` iterates a doc's own `windowIds` and must skip the source window to avoid an IPC echo, which a fan-out would break.
 
 Picking a single window (focusing the app from a notification click, targeting the sender) is also not a fan-out. Those sites take the first _live_ window — `BrowserWindow.getAllWindows().find((w) => !w.isDestroyed())` — rather than `getAllWindows()[0]`, which throws when the window at index 0 has been destroyed.
+
+### Subscribing to a broadcast from the renderer
+
+A high-frequency broadcast must not be subscribed to per component. `useAppUpdater` originally kept `useState` per instance, so its five mounted consumers each ran `updater.getState()` on mount, each registered `onUpdaterStateChanged`, and each re-rendered on every `download-progress` tick — including the one at the App root, which re-rendered the whole tree several times per second during a download.
+
+The pattern to follow is in `src/renderer/src/hooks/use-app-updater.ts`:
+
+- One module-level snapshot behind `useSyncExternalStore`. The first consumer opens the single subscription and does the single `getState()` round-trip; later consumers reuse both.
+- Drop the snapshot when the last consumer unsubscribes, so a remount re-reads from main instead of rendering an arbitrarily stale value. Never cache a "nothing to report" result past that.
+- Export a selector hook (`useAppUpdaterSelector`) for consumers that need one field. Selectors must return a primitive or an already-stable reference — `useSyncExternalStore` compares with `Object.is`, so returning a fresh object each call loops.

@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { MessageCircle } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 import { useAuth } from '@/contexts/auth-context'
-import { useAppUpdater } from '@/hooks/use-app-updater'
+import { useAppUpdaterSelector } from '@/hooks/use-app-updater'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   Dialog,
@@ -30,7 +30,9 @@ const log = createLogger('Component:SidebarFeedbackButton')
 export function SidebarFeedbackButton() {
   const { t } = useT('common')
   const { state: authState } = useAuth()
-  const { state: updaterState } = useAppUpdater()
+  // Only the version is needed here; reading the whole updater state re-rendered
+  // this button (tooltip + dialog subtree) on every download-progress tick.
+  const appVersion = useAppUpdaterSelector((state) => state.currentVersion)
 
   const [open, setOpen] = useState(false)
   const [message, setMessage] = useState('')
@@ -49,7 +51,7 @@ export function SidebarFeedbackButton() {
       const result = await window.api.feedback.submit({
         message: trimmed,
         email: signedInEmail ?? (email.trim() || undefined),
-        appVersion: updaterState.currentVersion,
+        appVersion,
         platform: navigator.platform || undefined
       })
 
@@ -69,7 +71,7 @@ export function SidebarFeedbackButton() {
     } finally {
       setSubmitting(false)
     }
-  }, [message, email, signedInEmail, submitting, updaterState.currentVersion, t])
+  }, [message, email, signedInEmail, submitting, appVersion, t])
 
   return (
     <>
