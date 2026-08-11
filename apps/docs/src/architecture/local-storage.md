@@ -52,7 +52,19 @@ Two consequences worth knowing:
   payload, never from another projector's output.
 - **Index reads are eventually consistent.** They settle a microtask after the canonical write,
   not synchronously with it. Callers needing the index to reflect a write immediately must
-  `await flushProjectionEvents()`, which drains every lane.
+  `await flushProjectionEvents()`, which drains every _foreground_ lane.
+
+A lane whose output nothing reads back in the same turn marks itself `background`, and
+`flushProjectionEvents()` does not wait for it. Only the embedding lane does: it awaits a ~23MB
+model load plus per-note CPU inference, and the indexer flushes once per file, so waiting for it
+put that cost in front of every file the indexer touched. A background lane still receives every
+event in publish order and still drains on its own — only the barrier is lifted.
+
+**Closing a vault does not wait out the whole backlog.** `closeVault()` drains the projections
+before closing the databases, but the drain stops accepting new events first (so a lane that is
+still being refilled cannot keep it alive) and gives up after a few seconds. Whatever is still
+queued at that point is derived state; the next open re-derives it. The event already inside
+`project()` is always awaited, so the databases never close underneath a running projector.
 
 ## Where the Files Live
 
