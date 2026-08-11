@@ -1,9 +1,10 @@
 import type { WidgetSize } from './types'
 
-// react-grid-layout config for the Home board. Responsive: column count drops at narrow widths;
-// RGL derives the narrower breakpoint layouts from the stored `lg` layout.
-export const GRID_BREAKPOINTS = { lg: 1024, md: 768, sm: 0 } as const
-export const GRID_COLS = { lg: 8, md: 4, sm: 2 } as const
+// react-grid-layout config for the Home board. One fixed column count at every width — columns
+// scale with the container instead of collapsing at breakpoints. A board has a single stored
+// arrangement, so a responsive grid could only ever derive the narrow layouts from it and throw
+// them away again; edits made at a narrow width were never persisted (issue #1216).
+export const GRID_COLS = 8
 export const GRID_ROW_HEIGHT = 56 // px per row unit
 export const GRID_MARGIN: [number, number] = [12, 12]
 
