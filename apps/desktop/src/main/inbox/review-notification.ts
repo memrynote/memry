@@ -19,15 +19,20 @@ import { createLogger } from '../lib/logger'
 
 const logger = createLogger('InboxReview')
 
-/** Focus the app and route it to the inbox — the review notification's click action. */
+/**
+ * Focus the app and route it to the inbox — the review notification's click action.
+ *
+ * Takes the first *live* window rather than `getAllWindows()[0]`: short-lived
+ * windows (splash, quick capture, print/export) can still be listed after
+ * destruction, and any access to one throws "Object has been destroyed" — which
+ * would kill the click handler with nothing focused and nothing navigated.
+ */
 function openInboxOnClick(): void {
-  const windows = BrowserWindow.getAllWindows()
-  if (windows.length > 0) {
-    const win = windows[0]
-    if (win.isMinimized()) win.restore()
-    win.focus()
-    win.webContents.send(InboxChannels.events.REVIEW_OPEN, {})
-  }
+  const win = BrowserWindow.getAllWindows().find((candidate) => !candidate.isDestroyed())
+  if (!win) return
+  if (win.isMinimized()) win.restore()
+  win.focus()
+  win.webContents.send(InboxChannels.events.REVIEW_OPEN, {})
 }
 
 /**

@@ -3,7 +3,7 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '@tests/utils/render'
 import { NotePage } from './note'
 import { toast } from 'sonner'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type React from 'react'
 
 const mocks = vi.hoisted(() => ({
@@ -44,6 +44,7 @@ const mocks = vi.hoisted(() => ({
   registerPendingSave: vi.fn(),
   unregisterPendingSave: vi.fn(),
   pickerOnValueChange: null as ((value: string) => void) | null,
+  contentAreaMounts: 0,
   onDeleted: vi.fn(),
   onUpdated: vi.fn(),
   onRenamed: vi.fn(),
@@ -291,6 +292,7 @@ vi.mock('@/components/note', () => ({
   ),
   ContentArea: ({
     initialContent,
+    externalContentRevision,
     onMarkdownChange,
     onHeadingsChange,
     onLinkClick,
@@ -299,6 +301,7 @@ vi.mock('@/components/note', () => ({
     focusAtEndRef
   }: {
     initialContent: string
+    externalContentRevision?: number
     onMarkdownChange: (markdown: string) => void
     onHeadingsChange: (
       headings: Array<{ id: string; level: number; text: string; position: number }>
@@ -310,9 +313,20 @@ vi.mock('@/components/note', () => ({
   }) => {
     const [content] = useState(initialContent)
     focusAtEndRef.current = mocks.refetchNote
+    // Counting mounts (not renders) is the point: an update from elsewhere must
+    // reach the live editor as a prop, never as a fresh editor instance.
+    useEffect(() => {
+      mocks.contentAreaMounts += 1
+    }, [])
     return (
       <div>
+        {/* frozen at mount — changes only when the editor is rebuilt */}
         <div data-testid="editor-content">{content}</div>
+        {/* the live prop the editor re-reads when the revision moves */}
+        <div data-testid="editor-live-content">{initialContent}</div>
+        <div data-testid="editor-external-revision">
+          {String(externalContentRevision ?? 'none')}
+        </div>
         <div data-id="heading-1" />
         <button type="button" onClick={() => onMarkdownChange('# Changed')}>
           Change markdown
@@ -666,6 +680,7 @@ describe('NotePage', () => {
     mocks.notesUpdate.mockResolvedValue({ success: true })
     mocks.pickerOnValueChange = null
     mocks.propertyOnBlocked = null
+    mocks.contentAreaMounts = 0
     Element.prototype.scrollIntoView = vi.fn()
     mocks.resolveWikiLink.mockImplementation((target: string) => {
       if (target === 'Existing Note')
@@ -922,9 +937,14 @@ describe('NotePage', () => {
     expect(mocks.findInPage.close).toHaveBeenCalled()
   })
 
-  it('remounts the editor for agent-driven note content updates', async () => {
+  // Was "remounts the editor for agent-driven note content updates". The update
+  // still has to become visible; it must now do so through the live editor
+  // instead of destroying and rebuilding it. `editor-content` is frozen at mount,
+  // so it staying stale while `editor-live-content` moves is exactly the proof.
+  it('hands an agent-driven content update to the live editor instead of remounting it', async () => {
     renderWithProviders(<NotePage noteId="note-1" />)
     expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+    expect(mocks.contentAreaMounts).toBe(1)
 
     act(() => {
       mocks.updatedHandler?.({
@@ -934,7 +954,55 @@ describe('NotePage', () => {
       })
     })
 
-    expect(screen.getByTestId('editor-content')).toHaveTextContent('Agent edited body')
+    expect(screen.getByTestId('editor-live-content')).toHaveTextContent('Agent edited body')
+    expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('1')
+    expect(mocks.contentAreaMounts).toBe(1)
+  })
+
+  it('hands an on-disk external content update to the live editor without remounting', async () => {
+    renderWithProviders(<NotePage noteId="note-1" />)
+    expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+    expect(mocks.contentAreaMounts).toBe(1)
+
+    act(() => {
+      mocks.updatedHandler?.({
+        id: 'note-1',
+        source: 'external',
+        changes: { content: 'Edited on disk' }
+      })
+    })
+
+    expect(screen.getByTestId('editor-live-content')).toHaveTextContent('Edited on disk')
+    expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('1')
+    expect(mocks.contentAreaMounts).toBe(1)
+  })
+
+  // The other direction: a local edit round-tripping through the save path must
+  // not look like an external update. `handleMarkdownChange` stamps
+  // `lastSavedContent`, so the echoed event is dropped — no revision bump, no
+  // reload, nothing to clobber what the user is typing.
+  it('does not bump the editor revision for a note update echoing a local save', async () => {
+    renderWithProviders(<NotePage noteId="note-1" />)
+    await screen.findByTestId('editor-content')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change markdown' }))
+    // handleMarkdownChange debounces the save by a real 1000ms before it stamps
+    // lastSavedContent, which is what makes the echo recognisable.
+    await waitFor(() => expect(mocks.updateNote).toHaveBeenCalled(), { timeout: 3000 })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    act(() => {
+      mocks.updatedHandler?.({
+        id: 'note-1',
+        source: 'internal',
+        changes: { content: '# Changed' }
+      })
+    })
+
+    expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
+    expect(mocks.contentAreaMounts).toBe(1)
   })
 
   // The CRDT write-back fires 500ms after any Y.Doc change — including local
@@ -954,6 +1022,8 @@ describe('NotePage', () => {
     })
 
     expect(screen.getByTestId('editor-content')).toHaveTextContent('Original body')
+    expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
+    expect(mocks.contentAreaMounts).toBe(1)
   })
 
   it('blocks mutations after the note is deleted', async () => {

@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import type { ArticleCapture } from '@memry/article-extract'
-import { badgeText, dequeueById, enqueue, isRetryable, MAX_QUEUE } from './capture-queue'
+import {
+  badgeText,
+  dequeueById,
+  enqueue,
+  isQueueable,
+  isRetryable,
+  MAX_QUEUE
+} from './capture-queue'
 
 const cap = { url: 'https://x.test' } as unknown as ArticleCapture
 const item = (id: string) => ({ id, capture: cap, queuedAt: 0 })
@@ -44,5 +51,23 @@ describe('badgeText', () => {
     expect(badgeText(0)).toBe('')
     expect(badgeText(5)).toBe('5')
     expect(badgeText(150)).toBe('99+')
+  })
+})
+
+describe('isQueueable', () => {
+  it('queues an ordinary article capture', () => {
+    expect(isQueueable({ url: 'https://x.test', mode: 'article' } as ArticleCapture)).toBe(true)
+  })
+
+  it('never queues a capture carrying pdf bytes', () => {
+    // storage.local is capped at 10MB without unlimitedStorage; a 16MB PDF
+    // base64s to ~21MB and would blow the quota.
+    expect(
+      isQueueable({
+        url: 'https://x.test/a.pdf',
+        mode: 'pdf',
+        pdfDataUrl: 'data:application/pdf;base64,JVBERi0='
+      } as ArticleCapture)
+    ).toBe(false)
   })
 })

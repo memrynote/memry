@@ -11,7 +11,8 @@ const mocks = vi.hoisted(() => {
   const windowInstance = {
     loadURL: vi.fn().mockResolvedValue(undefined),
     webContents,
-    destroy: vi.fn()
+    destroy: vi.fn(),
+    isDestroyed: vi.fn(() => false)
   }
   const BrowserWindow = Object.assign(
     vi.fn(function BrowserWindowMock() {
@@ -224,6 +225,7 @@ describe('notes-handlers extra coverage', () => {
     mocks.handlers.clear()
     mocks.webContents.printToPDF.mockResolvedValue(Buffer.from('pdf'))
     mocks.windowInstance.loadURL.mockResolvedValue(undefined)
+    mocks.windowInstance.isDestroyed.mockReturnValue(false)
     mocks.fsWriteFile.mockResolvedValue(undefined)
     mocks.fromMemryFileUrl.mockReturnValue('/vault/.memry/attachments/note-a/file.png')
     mocks.service.get.mockReturnValue(null)
@@ -527,6 +529,57 @@ describe('notes-handlers extra coverage', () => {
       '<html><body>note</body></html>',
       'utf-8'
     )
+  })
+
+  it('destroys the hidden PDF window when rendering fails', async () => {
+    const note = {
+      id: 'note-a',
+      title: 'Daily note',
+      content: '# Today',
+      emoji: null,
+      tags: ['work'],
+      created: new Date('2026-05-10T00:00:00.000Z'),
+      modified: new Date('2026-05-10T00:00:00.000Z')
+    }
+    mocks.getNoteById.mockResolvedValue(note)
+
+    mocks.webContents.printToPDF.mockRejectedValueOnce(new Error('printToPDF crashed'))
+    expect(
+      await invoke(NotesChannels.invoke.EXPORT_PDF, {
+        noteId: 'note-a',
+        outputPath: '/tmp/Daily_note.pdf',
+        includeMetadata: false,
+        pageSize: 'A4'
+      })
+    ).toEqual({ success: false, error: 'printToPDF crashed' })
+    expect(mocks.windowInstance.destroy).toHaveBeenCalledTimes(1)
+    expect(mocks.fsWriteFile).not.toHaveBeenCalled()
+
+    mocks.windowInstance.destroy.mockClear()
+    mocks.windowInstance.loadURL.mockRejectedValueOnce(new Error('loadURL crashed'))
+    expect(
+      await invoke(NotesChannels.invoke.EXPORT_PDF, {
+        noteId: 'note-a',
+        outputPath: '/tmp/Daily_note.pdf',
+        includeMetadata: false,
+        pageSize: 'A4'
+      })
+    ).toEqual({ success: false, error: 'loadURL crashed' })
+    expect(mocks.windowInstance.destroy).toHaveBeenCalledTimes(1)
+
+    // An already-destroyed window is never destroyed twice.
+    mocks.windowInstance.destroy.mockClear()
+    mocks.windowInstance.isDestroyed.mockReturnValue(true)
+    mocks.webContents.printToPDF.mockRejectedValueOnce(new Error('printToPDF crashed'))
+    expect(
+      await invoke(NotesChannels.invoke.EXPORT_PDF, {
+        noteId: 'note-a',
+        outputPath: '/tmp/Daily_note.pdf',
+        includeMetadata: false,
+        pageSize: 'A4'
+      })
+    ).toEqual({ success: false, error: 'printToPDF crashed' })
+    expect(mocks.windowInstance.destroy).not.toHaveBeenCalled()
   })
 
   it('handles position, version, folder, and local-only helper handlers', async () => {

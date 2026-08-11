@@ -1793,6 +1793,58 @@ describe('google calendar sync service', () => {
       )
     })
 
+    it('discovers the account calendars so an already-connected install fills its picker', async () => {
+      // Users connected before multi-calendar shipped only ever got a source
+      // row for their primary. Discovery has to happen on the ordinary sync
+      // pass, or they would have to disconnect and reconnect to see the rest.
+      seedGoogleCalendarSource({
+        id: 'google-calendar:work-primary',
+        remoteId: 'work-primary',
+        title: 'Work',
+        isPrimary: true,
+        isMemryManaged: false
+      })
+
+      const client = buildClient()
+      client.listCalendars.mockResolvedValue([
+        {
+          id: 'work-primary',
+          title: 'Work',
+          timezone: 'Europe/Istanbul',
+          color: '#0ea5e9',
+          isPrimary: true
+        },
+        {
+          id: 'team@group.calendar.google.com',
+          title: 'Team',
+          timezone: 'Europe/Istanbul',
+          color: '#f97316',
+          isPrimary: false
+        }
+      ])
+      client.createCalendar.mockResolvedValue({
+        id: 'memry-managed',
+        title: 'memrynote',
+        timezone: 'UTC',
+        color: '#0f9d58',
+        isPrimary: false
+      })
+      client.listEvents.mockResolvedValue({ nextSyncCursor: 'cursor', events: [] })
+
+      await syncGoogleCalendarNow(db, { client: client as never })
+
+      const team = db
+        .select()
+        .from(calendarSources)
+        .where(eq(calendarSources.remoteId, 'team@group.calendar.google.com'))
+        .get()
+
+      expect(team).toBeDefined()
+      expect(team?.accountId).toBe('test-account@example.com')
+      // Discovered, not silently switched on — that stays the user's choice.
+      expect(team?.isSelected).toBe(false)
+    })
+
     it('skips all Google API calls when memrynote user is not signed in', async () => {
       vi.mocked(isMemryUserSignedIn).mockResolvedValue(false)
       const client = buildClient()

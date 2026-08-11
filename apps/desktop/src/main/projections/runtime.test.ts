@@ -2,29 +2,33 @@ import { describe, expect, it, vi } from 'vitest'
 import { createProjectionRuntime } from './runtime'
 import type { ProjectionEvent, ProjectionProjector } from './types'
 
-const noteEvent: ProjectionEvent = {
-  type: 'note.upserted',
-  note: {
-    kind: 'markdown',
-    noteId: 'note-1',
-    path: 'notes/note-1.md',
-    title: 'Note 1',
-    fileType: 'markdown',
-    localOnly: false,
-    contentHash: 'hash',
-    wordCount: 1,
-    characterCount: 4,
-    snippet: 'test',
-    date: null,
-    emoji: null,
-    createdAt: '2026-01-01T00:00:00.000Z',
-    modifiedAt: '2026-01-01T00:00:00.000Z',
-    parsedContent: 'test',
-    tags: [],
-    properties: {},
-    wikiLinks: []
+function markdownEvent(noteId: string, parsedContent: string): ProjectionEvent {
+  return {
+    type: 'note.upserted',
+    note: {
+      kind: 'markdown',
+      noteId,
+      path: `notes/${noteId}.md`,
+      title: 'Note 1',
+      fileType: 'markdown',
+      localOnly: false,
+      contentHash: 'hash',
+      wordCount: 1,
+      characterCount: parsedContent.length,
+      snippet: parsedContent,
+      date: null,
+      emoji: null,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      modifiedAt: '2026-01-01T00:00:00.000Z',
+      parsedContent,
+      tags: [],
+      properties: {},
+      wikiLinks: []
+    }
   }
 }
+
+const noteEvent: ProjectionEvent = markdownEvent('note-1', 'test')
 
 function createProjector(
   name: string,
@@ -172,6 +176,159 @@ describe('projection runtime', () => {
     expect(runtime.getPendingCount()).toBe(0)
   })
 
+  /**
+   * #992: publish() used to push every event into all five lanes and only ask
+   * handles() at drain time, so an inbox event sat in the note lanes (and a
+   * note body sat in the inbox lane) until the slowest lane got to it.
+   */
+  it('queues an event only in the lanes whose projector handles it', () => {
+    const noteLane = createProjector('note-lane', {
+      handles: (event: ProjectionEvent) => event.type === 'note.upserted'
+    })
+    const inboxLane = createProjector('inbox-lane', {
+      handles: (event: ProjectionEvent) => event.type.startsWith('inbox.')
+    })
+    // Freeze the lanes so the queues stay observable.
+    const runtime = createProjectionRuntime({
+      projectors: [noteLane, inboxLane],
+      scheduleDrain: () => {}
+    })
+
+    runtime.publish(noteEvent)
+
+    expect(runtime.getPendingCount()).toBe(1)
+  })
+
+  /**
+   * #992: the embedding lane awaits a ~23MB model load plus per-note CPU
+   * inference, so a stalled lane used to retain one full `parsedContent` per
+   * queued event. Re-saving one note must not grow its backlog.
+   */
+  it('retains only the newest queued event per note while a lane is stalled', () => {
+    const runtime = createProjectionRuntime({
+      projectors: [createProjector('slow')],
+      scheduleDrain: () => {}
+    })
+
+    for (let i = 0; i < 10_000; i++) {
+      runtime.publish(markdownEvent('note-1', `body ${i}`))
+    }
+
+    expect(runtime.getPendingCount()).toBe(1)
+  })
+
+  it('bounds a stalled lane queue and reports the dropped events', async () => {
+    const logger = { warn: vi.fn() }
+    const runtime = createProjectionRuntime({
+      projectors: [createProjector('slow')],
+      scheduleDrain: () => {},
+      queueLimit: 100,
+      logger
+    })
+
+    for (let i = 0; i < 10_000; i++) {
+      runtime.publish(markdownEvent(`note-${i}`, 'body'))
+    }
+
+    expect(runtime.getPendingCount()).toBe(100)
+
+    await runtime.flush()
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Projection queue overflow — dropped pending events',
+      expect.objectContaining({ projector: 'slow', dropped: 9900, limit: 100 })
+    )
+  })
+
+  /**
+   * #992: the cap drops the oldest pending events, so the lane's output is now
+   * missing whatever they carried — a dropped `note.upserted` in the search lane
+   * means that note is absent from search. Nothing else calls reconcile() on this
+   * path, so overflow must pay for itself with a deferred repair rather than
+   * leaving a quietly wrong projection.
+   */
+  it('reconciles a lane once after an overflowed queue drains', async () => {
+    const slow = createProjector('slow', { reconcile: vi.fn() })
+    const runtime = createProjectionRuntime({
+      projectors: [slow],
+      scheduleDrain: () => {},
+      queueLimit: 2
+    })
+
+    for (let i = 0; i < 10; i++) {
+      runtime.publish(markdownEvent(`note-${i}`, 'body'))
+    }
+    await runtime.flush()
+
+    expect(slow.reconcile).toHaveBeenCalledOnce()
+
+    // A later burst that never overflows must not pay for another repair.
+    runtime.publish(markdownEvent('note-later', 'body'))
+    await runtime.flush()
+
+    expect(slow.reconcile).toHaveBeenCalledOnce()
+  })
+
+  it('does not let an event published by the overflow repair trigger another repair', async () => {
+    // A repair that writes through the bus must not re-arm itself. Publishing is
+    // capped so that a runtime which never clears the flag fails the assertion
+    // below instead of spinning forever.
+    let echoes = 0
+    const slow = createProjector('slow', {
+      reconcile: vi.fn(() => {
+        if (echoes >= 3) {
+          return
+        }
+        echoes++
+        runtime.publish(markdownEvent(`echo-${echoes}`, 'body'))
+      })
+    })
+    const runtime = createProjectionRuntime({
+      projectors: [slow],
+      scheduleDrain: () => {},
+      queueLimit: 2
+    })
+
+    for (let i = 0; i < 10; i++) {
+      runtime.publish(markdownEvent(`note-${i}`, 'body'))
+    }
+    await runtime.flush()
+
+    expect(slow.reconcile).toHaveBeenCalledOnce()
+    expect(echoes).toBe(1)
+  })
+
+  it('logs a failed overflow repair and retries it on the next drain', async () => {
+    const logger = { warn: vi.fn() }
+    const slow = createProjector('slow', {
+      reconcile: vi.fn(async () => {
+        throw new Error('boom')
+      })
+    })
+    const runtime = createProjectionRuntime({
+      projectors: [slow],
+      scheduleDrain: () => {},
+      queueLimit: 2,
+      logger
+    })
+
+    for (let i = 0; i < 10; i++) {
+      runtime.publish(markdownEvent(`note-${i}`, 'body'))
+    }
+    await runtime.flush()
+
+    expect(slow.reconcile).toHaveBeenCalledOnce()
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Projection overflow repair failed',
+      expect.objectContaining({ projector: 'slow' })
+    )
+
+    // The lane is not wedged and the repair is still owed, so the next drain retries.
+    runtime.publish(markdownEvent('note-later', 'body'))
+    await runtime.flush()
+
+    expect(slow.reconcile).toHaveBeenCalledTimes(2)
+  })
+
   it('dispatches rebuild and reconcile to selected projectors', async () => {
     const first = createProjector('first', { rebuild: vi.fn(), reconcile: vi.fn() })
     const second = createProjector('second', { rebuild: vi.fn(), reconcile: vi.fn() })
@@ -184,5 +341,40 @@ describe('projection runtime', () => {
     expect(second.rebuild).toHaveBeenCalledOnce()
     expect(first.reconcile).toHaveBeenCalledOnce()
     expect(second.reconcile).toHaveBeenCalledOnce()
+  })
+
+  it('stop aborts an in-flight reconcile and waits for it to unwind', async () => {
+    const steps: number[] = []
+    let unwound = false
+
+    // Each step parks on a timer, so the pass can only have unwound by the time
+    // stop() resolves if stop() actually awaited it — draining microtasks is
+    // not enough.
+    const slow = createProjector('slow', {
+      reconcile: async (signal?: AbortSignal) => {
+        for (let i = 0; i < 5; i++) {
+          if (signal?.aborted) {
+            break
+          }
+          steps.push(i)
+          await new Promise((resolve) => setTimeout(resolve, 20))
+        }
+        unwound = true
+      }
+    })
+    const runtime = createProjectionRuntime({ projectors: [slow] })
+
+    const reconcilePromise = runtime.reconcile()
+    await Promise.resolve()
+    expect(steps).toEqual([0])
+
+    await runtime.stop()
+
+    // stop() must not resolve while the old pass can still touch the vault...
+    expect(unwound).toBe(true)
+    // ...and the pass must have been cut short rather than run to completion.
+    expect(steps).toEqual([0])
+
+    await reconcilePromise
   })
 })

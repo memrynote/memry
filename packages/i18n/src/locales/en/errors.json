@@ -83,6 +83,7 @@
     "versionIncompatible": "This version of memrynote is no longer supported. Please update.",
     "storageQuotaExceeded": "Your sync storage is full. Free up space or upgrade your plan.",
     "fileTooLarge": "This file is larger than your plan allows. Upgrade your plan to sync larger files.",
+    "noteTooLarge": "A note is too large to sync. Splitting it into smaller notes will fix this.",
     "attachmentUploadFailed": "Couldn't sync attachment \"{filename}\". It stays on this device.",
     "paymentRequired": "A paid Sync plan is required to use hosted encrypted sync.",
     "certificatePinFailed": "Secure connection failed. Check your network connection.",

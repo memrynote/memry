@@ -175,6 +175,54 @@ async function ensureMemryCalendarSource(
   return saved
 }
 
+/**
+ * Bring every calendar on `accountId` into `calendar_sources`, so the settings
+ * picker has something to offer beyond the primary.
+ *
+ * Selection stays the user's: a row we have never seen is pre-selected only if
+ * it is the account's primary, and a row that already exists keeps whatever the
+ * user chose along with its cursor and sync state. Re-running this is therefore
+ * safe — it refreshes titles and colours, it does not re-enable a calendar the
+ * user turned off.
+ */
+export async function discoverGoogleCalendarSources(
+  db: DataDb,
+  client: Pick<GoogleCalendarClient, 'listCalendars'>,
+  accountId: string
+): Promise<void> {
+  const discovered = await client.listCalendars()
+  const now = getNow()
+
+  for (const remote of discovered) {
+    const localId = `google-calendar:${remote.id}`
+    const existing = getCalendarSourceById(db, localId)
+
+    const saved = upsertCalendarSource(db, {
+      ...existing,
+      id: localId,
+      provider: 'google',
+      kind: 'calendar',
+      accountId,
+      remoteId: remote.id,
+      title: remote.title,
+      timezone: remote.timezone ?? LOCAL_TIMEZONE,
+      color: remote.color,
+      isPrimary: remote.isPrimary,
+      isSelected: existing ? existing.isSelected : remote.isPrimary,
+      isMemryManaged: existing?.isMemryManaged ?? false,
+      // Google still lists it, so it is not gone. A stale archivedAt here is
+      // the tombstone a previous disconnect left behind, and leaving it set
+      // would hide the calendar from the picker on reconnect.
+      archivedAt: null,
+      createdAt: existing?.createdAt ?? now,
+      modifiedAt: now
+    })
+
+    markSyncedTableMutation('calendar_source', saved.id, Boolean(existing))
+    emitCalendarChanged({ entityType: 'calendar_source', id: saved.id })
+  }
+}
+
 function getMemryManagedGoogleSource(
   db: DataDb,
   accountId?: string
@@ -793,6 +841,23 @@ export async function syncGoogleCalendarNow(
   try {
     const accountIds = listGoogleAccountIds(db)
     const defaultAccountId = resolveDefaultGoogleAccountId(db)
+
+    // Refresh the calendar list every pass. This is what fills the picker for
+    // installs that connected before multi-calendar support existed — they
+    // only ever got a source row for their primary — and it is how a calendar
+    // created in Google later shows up without a reconnect. Non-fatal: a
+    // failure must not stop the event sync below.
+    for (const accountId of accountIds) {
+      const client =
+        deps.client && accountId === defaultAccountId
+          ? deps.client
+          : createGoogleCalendarClient({ accountId })
+      try {
+        await discoverGoogleCalendarSources(db, client, accountId)
+      } catch (error) {
+        log.warn('Calendar discovery failed', { accountId, error })
+      }
+    }
 
     // One-way (inbound-only) mode: skip provisioning the managed "memrynote"
     // calendar — ensureMemryCalendarSource may call createCalendar, an outbound

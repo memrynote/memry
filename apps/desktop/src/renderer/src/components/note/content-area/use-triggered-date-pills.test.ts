@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import {
   computeFiredAnchorIds,
@@ -12,6 +12,27 @@ function makePill(anchorId: string): HTMLElement {
   el.className = 'date-mention'
   el.setAttribute('data-anchor-id', anchorId)
   return el
+}
+
+/**
+ * Counts the work a paint pass does: every pill it visits has its anchor id
+ * read. Returns the pills that were visited since tracking started.
+ */
+function trackVisits(pills: HTMLElement[]): () => HTMLElement[] {
+  const visited: HTMLElement[] = []
+  for (const pill of pills) {
+    const real = pill.getAttribute.bind(pill)
+    vi.spyOn(pill, 'getAttribute').mockImplementation((name: string) => {
+      if (name === 'data-anchor-id') visited.push(pill)
+      return real(name)
+    })
+  }
+  return () => visited
+}
+
+/** Let the MutationObserver deliver its records. */
+function flushMutations(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0))
 }
 
 describe('computeFiredAnchorIds', () => {
@@ -65,6 +86,81 @@ describe('watchFiredPills', () => {
     await new Promise((resolve) => setTimeout(resolve, 0)) // let the observer flush
 
     expect(p1.getAttribute('data-fired')).toBe('true')
+    stop()
+    container.remove()
+  })
+
+  it('scans no pills when a keystroke only rewrites a text node', async () => {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const paragraph = document.createElement('p')
+    const pills = Array.from({ length: 50 }, (_, i) => makePill(`a${i}`))
+    paragraph.append(...pills)
+    paragraph.appendChild(document.createTextNode(''))
+    container.appendChild(paragraph)
+
+    const stop = watchFiredPills(container, () => new Set(['a0']))
+    const visited = trackVisits(pills)
+
+    // ProseMirror swaps the edited text node on every character.
+    for (let i = 1; i <= 10; i++) {
+      paragraph.replaceChild(document.createTextNode('x'.repeat(i)), paragraph.lastChild!)
+      await flushMutations()
+    }
+
+    expect(visited()).toEqual([])
+    stop()
+    container.remove()
+  })
+
+  it('scans only the pill that was just created, not the whole note', async () => {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const paragraph = document.createElement('p')
+    const pills = Array.from({ length: 50 }, (_, i) => makePill(`a${i}`))
+    paragraph.append(...pills)
+    container.appendChild(paragraph)
+
+    const stop = watchFiredPills(container, () => new Set(['a0', 'fresh']))
+    const visited = trackVisits(pills)
+
+    const fresh = makePill('fresh')
+    paragraph.appendChild(fresh)
+    await flushMutations()
+
+    expect(visited()).toEqual([])
+    expect(fresh.getAttribute('data-fired')).toBe('true')
+    stop()
+    container.remove()
+  })
+
+  it('re-applies fired state to a pill nested inside a re-rendered block', async () => {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const stop = watchFiredPills(container, () => new Set(['a1']))
+
+    const block = document.createElement('div')
+    const pill = makePill('a1')
+    block.appendChild(pill)
+    container.appendChild(block)
+    await flushMutations()
+
+    expect(pill.getAttribute('data-fired')).toBe('true')
+    stop()
+    container.remove()
+  })
+
+  it('re-applies fired state when a pill swaps its anchor id in place', async () => {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const pill = makePill('a2')
+    container.appendChild(pill)
+    const stop = watchFiredPills(container, () => new Set(['a1']))
+
+    pill.setAttribute('data-anchor-id', 'a1')
+    await flushMutations()
+
+    expect(pill.getAttribute('data-fired')).toBe('true')
     stop()
     container.remove()
   })

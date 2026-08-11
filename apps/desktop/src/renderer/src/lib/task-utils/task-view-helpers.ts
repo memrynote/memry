@@ -1,5 +1,5 @@
 import type { Task } from '@/data/task-model'
-import type { Project } from '@/data/tasks-data'
+import type { Project, StatusType } from '@/data/tasks-data'
 import {
   startOfDay,
   addDays,
@@ -109,6 +109,127 @@ export const getFilteredTasks = (
   }
 
   return includeSubtasksForMatchingParents(incompleteTopLevel, nonArchivedTasks)
+}
+
+// ============================================================================
+// WORKSPACE BADGE COUNTS (SINGLE PASS)
+// ============================================================================
+
+export interface TaskWorkspaceCounts {
+  /** Per view id, equal to `getFilteredTasks(tasks, viewId, 'view', projects).length`. */
+  viewCounts: Record<string, number>
+  /** Per `task.projectId`, the number of that project's tasks not in a `done` status. */
+  projectTaskCounts: Record<string, number>
+}
+
+/**
+ * Derives every sidebar view badge and every project badge in one pass over the
+ * task list.
+ *
+ * Calling `getFilteredTasks` once per view re-walks the whole list per view and,
+ * because its status lookup is `projects.find(...)` per task, costs
+ * O(views x tasks x projects) on every task mutation. This bucket-as-you-go
+ * version is O(tasks) after an O(projects x statuses) index build, and is exactly
+ * equivalent — the equivalence is asserted against `getFilteredTasks` in
+ * `task-workspace-counts.test.ts`.
+ */
+export const getTaskWorkspaceCounts = (
+  tasks: Task[],
+  projects: Project[],
+  viewIds: readonly string[]
+): TaskWorkspaceCounts => {
+  const statusTypesByProject = new Map<string, Map<string, StatusType>>()
+  for (const project of projects) {
+    const statusTypes = new Map<string, StatusType>()
+    for (const status of project.statuses) {
+      statusTypes.set(status.id, status.type)
+    }
+    statusTypesByProject.set(project.id, statusTypes)
+  }
+
+  const today = startOfDay(new Date())
+  const tomorrow = addDays(today, 1)
+  const weekFromNow = addDays(today, 7)
+  const weekEnd = endOfWeek(today)
+
+  const matchesView = (viewId: string, task: Task, isIncomplete: boolean): boolean => {
+    if (viewId === 'completed') return !isIncomplete
+    if (!isIncomplete) return false
+
+    switch (viewId) {
+      case 'today': {
+        if (!task.dueDate) return false
+        const taskDate = startOfDay(task.dueDate)
+        return isSameDay(taskDate, today) || isBefore(taskDate, today)
+      }
+
+      case 'upcoming': {
+        if (!task.dueDate) return false
+        const taskDate = startOfDay(task.dueDate)
+        return isAfter(taskDate, today) && !isAfter(taskDate, weekFromNow)
+      }
+
+      case 'tomorrow': {
+        if (!task.dueDate) return false
+        return isSameDay(startOfDay(task.dueDate), tomorrow)
+      }
+
+      case 'week': {
+        if (!task.dueDate) return false
+        const taskDate = startOfDay(task.dueDate)
+        return !isBefore(taskDate, today) && !isAfter(taskDate, weekEnd)
+      }
+
+      // 'all', and every unknown id, land on getFilteredTasks' default arm.
+      default:
+        return true
+    }
+  }
+
+  const viewCounts: Record<string, number> = {}
+  const matchedParentsByView = new Map<string, Set<string>>()
+  for (const viewId of viewIds) {
+    viewCounts[viewId] = 0
+    matchedParentsByView.set(viewId, new Set<string>())
+  }
+
+  const projectTaskCounts: Record<string, number> = {}
+  const nonArchivedSubtaskParentIds: string[] = []
+
+  for (const task of tasks) {
+    const projectId = task.projectId
+    const isIncomplete = statusTypesByProject.get(projectId)?.get(task.statusId) !== 'done'
+
+    if (isIncomplete) {
+      projectTaskCounts[projectId] = (projectTaskCounts[projectId] ?? 0) + 1
+    }
+
+    if (task.archivedAt) continue
+
+    if (task.parentId !== null) {
+      nonArchivedSubtaskParentIds.push(task.parentId)
+      continue
+    }
+
+    for (const viewId of viewIds) {
+      if (!matchesView(viewId, task, isIncomplete)) continue
+      viewCounts[viewId] += 1
+      matchedParentsByView.get(viewId)?.add(task.id)
+    }
+  }
+
+  // `getFilteredTasks` pulls in every non-archived subtask of a matching
+  // top-level task regardless of the subtask's own status, so the badges must
+  // too. Parents can appear after their subtasks, hence the second walk.
+  for (const parentId of nonArchivedSubtaskParentIds) {
+    for (const viewId of viewIds) {
+      if (matchedParentsByView.get(viewId)?.has(parentId)) {
+        viewCounts[viewId] += 1
+      }
+    }
+  }
+
+  return { viewCounts, projectTaskCounts }
 }
 
 // ============================================================================
