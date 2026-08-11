@@ -21,6 +21,8 @@ let syncInterval: NodeJS.Timeout | null = null
 let currentPollIntervalMs = RUN_INTERVAL_MS
 let resumeHandler: (() => void) | null = null
 let lastTriggerAt = 0
+let startInFlight: Promise<void> | null = null
+let startGeneration = 0
 
 export function getCurrentPollIntervalMs(): number {
   return currentPollIntervalMs
@@ -95,10 +97,35 @@ export function reEvaluatePollCadence(activeChannelCount: number): void {
   syncInterval = setInterval(runPeriodicSync, target)
 }
 
+// Startup, sign-in, connect-account and device registration can all call this
+// within the same session. The `syncInterval` guard alone is not enough: it is
+// checked before the awaits below, so two overlapping callers both pass it and
+// the second setInterval orphans the first — unreachable by stop() and by quit.
+// The in-flight latch is assigned synchronously, so the second caller joins the
+// first instead of arming a duplicate timer and resume listener.
 export async function startGoogleCalendarSyncRunner(): Promise<void> {
   if (syncInterval) return
+  if (startInFlight) {
+    await startInFlight
+    return
+  }
+  startInFlight = runStart()
+  try {
+    await startInFlight
+  } finally {
+    startInFlight = null
+  }
+}
+
+async function runStart(): Promise<void> {
+  const generation = startGeneration
   if (!(await isMemryUserSignedIn())) return
   if (!(await hasGoogleCalendarConnection(requireDatabase()))) return
+  // Sign-out / disconnect can call stop() while this start is still parked on
+  // the awaits above. Installing now would arm a timer and resume listener that
+  // nothing is going to stop again. Checked after the last await, before any
+  // install.
+  if (generation !== startGeneration) return
 
   void syncGoogleCalendarNow()
     .then(() => trackSyncCompleted('initial'))
@@ -133,6 +160,11 @@ export async function startGoogleCalendarSyncRunner(): Promise<void> {
 }
 
 export function stopGoogleCalendarSyncRunner(): void {
+  // Bump first, above the `!syncInterval` early return: when the runner has not
+  // installed its interval yet, an in-flight start is exactly what needs
+  // invalidating.
+  startGeneration += 1
+
   if (resumeHandler) {
     powerMonitor.removeListener('resume', resumeHandler)
     resumeHandler = null

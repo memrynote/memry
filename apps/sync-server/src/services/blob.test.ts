@@ -51,23 +51,32 @@ describe('generateBlobKey', () => {
 })
 
 describe('generateItemBlobKey', () => {
-  it('should create type-scoped item key', () => {
-    expect(generateItemBlobKey('user-1', 'task', 'item-1', 'vault-1')).toBe(
-      'user-1/vaults/vault-1/items-v2/task/item-1'
+  it('should create a content-addressed, type-scoped item key', () => {
+    expect(generateItemBlobKey('user-1', 'task', 'item-1', 'vault-1', 'hash-abc')).toBe(
+      'user-1/vaults/vault-1/items-v3/task/item-1/hash-abc'
     )
   })
 
   it('should give distinct keys to same-id items of different types', () => {
-    const projectKey = generateItemBlobKey('user-1', 'project', 'inbox', 'vault-1')
-    const tagKey = generateItemBlobKey('user-1', 'tag_definition', 'inbox', 'vault-1')
+    const projectKey = generateItemBlobKey('user-1', 'project', 'inbox', 'vault-1', 'hash-abc')
+    const tagKey = generateItemBlobKey('user-1', 'tag_definition', 'inbox', 'vault-1', 'hash-abc')
     expect(projectKey).not.toBe(tagKey)
+  })
+
+  it('should give distinct keys to different payloads of the same item', () => {
+    // Two concurrent pushes of the same item must never overwrite each other's
+    // object — the D1 row's signature has to keep pointing at the exact bytes
+    // it was computed over.
+    const first = generateItemBlobKey('user-1', 'task', 'item-1', 'vault-1', 'hash-a')
+    const second = generateItemBlobKey('user-1', 'task', 'item-1', 'vault-1', 'hash-b')
+    expect(first).not.toBe(second)
   })
 
   it('should never collide with the legacy untyped namespace, even for slash-containing ids', () => {
     // folder_config ids are folder paths and may contain slashes; a legacy key
     // like items/task/x must not equal a typed key for task 'x'.
-    const legacyNestedFolder = generateBlobKey('user-1', 'task/x', 'vault-1')
-    const typedTask = generateItemBlobKey('user-1', 'task', 'x', 'vault-1')
+    const legacyNestedFolder = generateBlobKey('user-1', 'task/x/hash-a', 'vault-1')
+    const typedTask = generateItemBlobKey('user-1', 'task', 'x', 'vault-1', 'hash-a')
     expect(legacyNestedFolder).not.toBe(typedTask)
   })
 })

@@ -120,6 +120,49 @@ describe('telemetry diagnostics', () => {
         })
       )
     })
+
+    // The worker's own `exit` handler never fires for a native crash, so this
+    // report is the only place the lifecycle phase can reach production. Without
+    // it every `Utility:crashed:*` is unreadable: 107 embedding-worker crashes
+    // and no way to tell a free teardown death from lost indexing.
+    it('carries the worker lifecycle phase when the caller resolved one', () => {
+      trackChildProcessGone({
+        type: 'Utility',
+        reason: 'crashed',
+        name: 'Embeddings',
+        exitCode: 6,
+        phase: 'idle_shutdown'
+      })
+
+      expect(trackMainEventMock).toHaveBeenCalledWith(
+        'app_log_recorded',
+        expect.objectContaining({
+          // errorCode stays phase-free: it is the Error Tracking fingerprint, and
+          // splitting it would orphan the existing issue's history.
+          errorCode: 'Utility:crashed:Embeddings',
+          dimensions: { log_action: 'child_process_gone_idle_shutdown' },
+          error: { message: 'Embeddings utility process crashed (exit 6, idle_shutdown)' }
+        })
+      )
+    })
+
+    it('reports exactly as before when no phase is available', () => {
+      trackChildProcessGone({
+        type: 'Utility',
+        reason: 'crashed',
+        name: 'CrdtPreflight',
+        exitCode: 11
+      })
+
+      expect(trackMainEventMock).toHaveBeenCalledWith(
+        'app_log_recorded',
+        expect.objectContaining({
+          errorCode: 'Utility:crashed:CrdtPreflight',
+          dimensions: { log_action: 'child_process_gone' },
+          error: { message: 'CrdtPreflight utility process crashed (exit 11)' }
+        })
+      )
+    })
   })
 
   describe('expected conditions', () => {

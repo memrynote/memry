@@ -421,7 +421,31 @@ describe('PushCoordinator', () => {
   })
 
   describe('#given the account is out of storage #when push runs', () => {
-    it('#then an HTTP 413 surfaces as storage_quota_exceeded without discarding the item', async () => {
+    it('#then an HTTP 413 with the quota code surfaces as storage_quota_exceeded without discarding the item', async () => {
+      const { coordinator, queue, ctx, stateManager } = createHarness(getDb())
+      postToServerMock.mockRejectedValue(
+        new SyncServerError(
+          'Storage quota exceeded',
+          413,
+          '{"error":{"code":"STORAGE_QUOTA_EXCEEDED","message":"Storage quota exceeded"}}'
+        )
+      )
+
+      const payload = JSON.stringify({ title: 'Too big' })
+      queue.enqueue({ type: 'note', itemId: 'note-1', operation: 'update', payload })
+
+      await coordinator.push()
+
+      expect(ctx.lastErrorInfo?.category).toBe('storage_quota_exceeded')
+      expect(stateManager.setState).toHaveBeenCalledWith('error')
+      expect(queue.getSize()).toBe(1)
+      expect(queue.peek()[0].payload).toBe(payload)
+    })
+
+    it('#then a bare HTTP 413 surfaces as note_too_large, not storage_quota_exceeded', async () => {
+      // A 413 without the quota code comes from a body-size layer (the server's
+      // body-limit middleware, an edge proxy) — telling the user their storage
+      // is full would send them to free up space, which never fixes it.
       const { coordinator, queue, ctx, stateManager } = createHarness(getDb())
       postToServerMock.mockRejectedValue(new SyncServerError('Payload too large', 413))
 
@@ -430,7 +454,7 @@ describe('PushCoordinator', () => {
 
       await coordinator.push()
 
-      expect(ctx.lastErrorInfo?.category).toBe('storage_quota_exceeded')
+      expect(ctx.lastErrorInfo?.category).toBe('note_too_large')
       expect(stateManager.setState).toHaveBeenCalledWith('error')
       expect(queue.getSize()).toBe(1)
       expect(queue.peek()[0].payload).toBe(payload)

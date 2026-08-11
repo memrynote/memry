@@ -121,10 +121,8 @@ describe('createShipQueue — crash durability', () => {
     // #then the oldest are dropped, and the trim is written back so they do not
     // return on the launch after this one
     expect(q.depth()).toBe(3)
-    expect(JSON.parse(fs.readFileSync(persistPath, 'utf-8'))).toEqual({
-      version: 1,
-      items: [5, 6, 7]
-    })
+    expect(makeDurable(okFetch, 3).depth()).toBe(3)
+    expect(fs.readFileSync(persistPath, 'utf-8')).toBe('{"version":2}\n5\n6\n7\n')
   })
 
   it('starts clean when the mirror is corrupt instead of blocking startup', () => {

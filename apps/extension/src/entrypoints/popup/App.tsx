@@ -4,11 +4,13 @@ import type {
   CaptureResponse,
   ConnectionState,
   ExtractResponse,
+  FetchPdfResponse,
   PairResponse,
   StatusResponse
 } from '@/lib/messages'
 import { initialState, reducer, selectPhase } from '@/lib/popup-state'
-import { ensureHostPermission } from '@/lib/capture-permissions'
+import { ensureCapturePermissions } from '@/lib/capture-permissions'
+import { buildPdfDraft } from '@/lib/pdf-capture'
 import { EditableTitle } from '@/components/EditableTitle'
 import { PropertyRows } from '@/components/PropertyRows'
 import { TagEditor } from '@/components/TagEditor'
@@ -52,12 +54,19 @@ export default function App() {
 
     browser.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
       if (!tab?.id) return dispatch({ type: 'DRAFT_READY', draft: null })
+      // Content scripts never inject into a PDF viewer, so a rejected EXTRACT on
+      // a fetchable http(s) tab whose path ends in .pdf means the browser is
+      // showing the file itself. buildPdfDraft enforces both conditions; a
+      // rejected EXTRACT alone is NOT proof of a PDF, because browsers also skip
+      // injection into tabs left open across an extension update. Everything else
+      // keeps today's "Couldn't read this page" state and prompts for nothing.
+      const pdfFallback = () => buildPdfDraft({ url: tab.url, title: tab.title })
       browser.tabs
         .sendMessage(tab.id, { type: 'EXTRACT' })
         .then((r: ExtractResponse) =>
-          dispatch({ type: 'DRAFT_READY', draft: r.ok ? r.capture : null })
+          dispatch({ type: 'DRAFT_READY', draft: r.ok ? r.capture : pdfFallback() })
         )
-        .catch(() => dispatch({ type: 'DRAFT_READY', draft: null }))
+        .catch(() => dispatch({ type: 'DRAFT_READY', draft: pdfFallback() }))
     })
   }, [])
 
@@ -74,9 +83,11 @@ export default function App() {
   }
 
   const onAdd = async (
-    connectionOverride?: ConnectionState
+    connectionOverride?: ConnectionState,
+    draftOverride?: ArticleCapture
   ): Promise<CaptureResponse | undefined> => {
-    if (!state.draft) return
+    const draft = draftOverride ?? state.draft
+    if (!draft) return
     const connection = connectionOverride ?? state.connection
     // Pair inline if this connection isn't ready yet.
     if (connection === 'needs-pairing') {
@@ -89,7 +100,7 @@ export default function App() {
     }
     dispatch({ type: 'SAVE_START' })
     const result: CaptureResponse = await browser.runtime
-      .sendMessage({ type: 'CAPTURE', capture: state.draft })
+      .sendMessage({ type: 'CAPTURE', capture: draft })
       .catch(() => ({ ok: false, error: 'network' }))
     dispatch({ type: 'SAVE_DONE', result })
     // Flash a "Sent" confirmation, then close. Offline-queued / error stay open.
@@ -97,7 +108,8 @@ export default function App() {
     return result
   }
 
-  const onLaunchAndAdd = async () => {
+  const onLaunchAndAdd = async (draftOverride?: ArticleCapture) => {
+    const draft = draftOverride ?? state.draft
     dispatch({ type: 'LAUNCH_START' })
     browser.tabs.create({ url: 'memry://open' }).catch(() => {})
     const up: { ok: boolean } = await browser.runtime
@@ -107,19 +119,22 @@ export default function App() {
       dispatch({ type: 'LAUNCH_DONE', ok: true })
       const status = await fetchStatus()
       dispatch({ type: 'STATUS', connection: status.connection, port: status.port })
-      await onAdd(status.connection === 'app-closed' ? 'needs-pairing' : status.connection)
+      await onAdd(
+        status.connection === 'app-closed' ? 'needs-pairing' : status.connection,
+        draft ?? undefined
+      )
       return
     }
     // The server never came up in time. Don't drop the draft — hand it to the
     // background, which queues it for the retry alarm (the badge shows the
     // count) instead of losing it when the popup closes.
-    if (!state.draft) {
+    if (!draft) {
       dispatch({ type: 'LAUNCH_DONE', ok: false })
       return
     }
     dispatch({ type: 'SAVE_START' })
     const result: CaptureResponse = await browser.runtime
-      .sendMessage({ type: 'CAPTURE', capture: state.draft })
+      .sendMessage({ type: 'CAPTURE', capture: draft })
       .catch(() => ({ ok: false, error: 'network' }))
     dispatch({ type: 'SAVE_DONE', result })
     // Mirror onAdd: if the server came up between the timeout and this CAPTURE,
@@ -127,21 +142,35 @@ export default function App() {
     if (result.ok) setTimeout(() => window.close(), 600)
   }
 
-  // One button. Firefox MV3 makes the loopback host permission opt-in, so
-  // request it on this click (a user gesture) before any 127.0.0.1 fetch —
-  // a no-op on Chrome/Edge where it's granted at install. Then re-probe: the
-  // mount probe may have been blocked by the missing permission.
+  // One button. Request every origin this capture needs in a single prompt — a
+  // second, await-separated request loses the gesture on Firefox. Then re-probe:
+  // the mount probe may have been blocked by the missing loopback permission.
   const onSend = async () => {
-    if (!(await ensureHostPermission())) {
+    let draft = state.draft
+    if (!(await ensureCapturePermissions(draft?.mode === 'pdf' ? draft.url : null))) {
       dispatch({ type: 'SAVE_DONE', result: { ok: false, error: 'permission-denied' } })
       return
+    }
+    // Pull the PDF bytes before touching the desktop app, so a failed fetch never
+    // launches Memry for a capture that cannot be sent. The result is threaded
+    // through as an argument, not dispatched: this closure's `state` is frozen.
+    if (draft?.mode === 'pdf' && !draft.pdfDataUrl) {
+      dispatch({ type: 'SAVE_START' })
+      const pdf: FetchPdfResponse = await browser.runtime
+        .sendMessage({ type: 'FETCH_PDF', url: draft.url })
+        .catch(() => ({ ok: false, error: 'pdf-fetch-failed' }) as FetchPdfResponse)
+      if (!pdf.ok) {
+        dispatch({ type: 'SAVE_DONE', result: { ok: false, error: pdf.error } })
+        return
+      }
+      draft = { ...draft, pdfDataUrl: pdf.dataUrl, pdfFilename: pdf.filename }
     }
     const status = await fetchStatus()
     dispatch({ type: 'STATUS', connection: status.connection, port: status.port })
     if (status.connection === 'app-closed') {
-      await onLaunchAndAdd()
+      await onLaunchAndAdd(draft ?? undefined)
     } else {
-      await onAdd(status.connection)
+      await onAdd(status.connection, draft ?? undefined)
     }
   }
 
@@ -254,6 +283,11 @@ export default function App() {
                   <span className="truncate text-[12px] text-text-tertiary">
                     {hostOf(draft.properties.source)}
                   </span>
+                  {draft.mode === 'pdf' && (
+                    <span className="rounded bg-surface-active px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-secondary">
+                      PDF
+                    </span>
+                  )}
                 </div>
 
                 <EditableTitle

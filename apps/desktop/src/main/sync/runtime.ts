@@ -56,9 +56,11 @@ import { getDeviceSigningKey } from './device-keys'
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import { CrdtUpdateQueue } from './crdt-queue'
 import { CrdtSnapshotScheduler } from './crdt-snapshot-scheduler'
+import { drainPendingCrdtNotes, recordPendingCrdtNotes } from './crdt-pending-notes'
 import { recoverDirtyItems } from './dirty-recovery'
 import { encryptCrdtUpdate } from './crdt-encrypt'
 import { postToServer, pushCrdtSnapshot, SyncServerError } from './http-client'
+import { classifyError } from './sync-errors'
 import {
   EVENT_CHANNELS,
   type SyncStatusChangedEvent,
@@ -117,6 +119,15 @@ function emitQuotaExceeded(): void {
     pendingCount: 0,
     error: 'Storage quota exceeded',
     errorCategory: 'storage_quota_exceeded'
+  })
+}
+
+function emitNoteTooLarge(): void {
+  emitSyncStatus({
+    status: 'error',
+    pendingCount: 0,
+    error: 'A note is too large to sync',
+    errorCategory: 'note_too_large'
   })
 }
 
@@ -474,7 +485,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         }
       ])
 
-      const crdtQueue = new CrdtUpdateQueue()
+      const crdtQueue = new CrdtUpdateQueue({ persistUnflushed: recordPendingCrdtNotes })
       const snapshotScheduler = new CrdtSnapshotScheduler((noteId) =>
         crdtProvider.pushSnapshotForNote(noteId)
       )
@@ -532,8 +543,14 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
             crdtQueue.pause()
           }
           if (err instanceof SyncServerError && err.statusCode === 413) {
-            crdtQueue.pause()
-            emitQuotaExceeded()
+            if (classifyError(err).category === 'storage_quota_exceeded') {
+              crdtQueue.pause()
+              emitQuotaExceeded()
+            } else {
+              // Body-limit 413: one oversized note must not stall the queue
+              // for every other note.
+              emitNoteTooLarge()
+            }
           }
           throw err
         } finally {
@@ -584,8 +601,14 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
             crdtQueue.pause()
           }
           if (err instanceof SyncServerError && err.statusCode === 413) {
-            crdtQueue.pause()
-            emitQuotaExceeded()
+            if (classifyError(err).category === 'storage_quota_exceeded') {
+              crdtQueue.pause()
+              emitQuotaExceeded()
+            } else {
+              // Body-limit 413: one oversized note must not stall the queue
+              // for every other note.
+              emitNoteTooLarge()
+            }
           }
           throw err
         } finally {
@@ -596,6 +619,16 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       const crdtProvider = getCrdtProvider()
       await crdtProvider.init(crdtQueue, snapshotPushFn)
+
+      // Notes whose updates were still buffered when the app last quit paused
+      // (offline / expired token / quota). Their content is safe in the local
+      // CRDT store; pushing the full state is what the server missed.
+      const replayPendingCrdtNotes = (): void => {
+        void drainPendingCrdtNotes({
+          pushSnapshot: (noteId) => crdtProvider.pushSnapshotForNote(noteId),
+          isSyncable: (noteId) => crdtProvider.validateNoteForCrdt(noteId).ok
+        }).catch((err) => log.warn('Pending CRDT note replay failed', err))
+      }
 
       const emitFn = (channel: string, data: unknown): void => {
         broadcastToAllWindows(channel, data)
@@ -620,6 +653,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       network.on('status-changed', ({ online }: { online: boolean }) => {
         if (online) {
           crdtQueue.resume()
+          replayPendingCrdtNotes()
         } else {
           crdtQueue.pause()
         }
@@ -749,6 +783,8 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       void import('./attachment-outbox')
         .then(({ drainAttachmentOutbox }) => drainAttachmentOutbox())
         .catch(() => {})
+
+      replayPendingCrdtNotes()
 
       trackMainEvent('sync_enabled', {
         surface: 'sync',
