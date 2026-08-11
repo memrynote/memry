@@ -22,6 +22,15 @@ interface TiptapHost {
  * `beforeDestroy` runs first and may return a promise: teardown waits for it so
  * a pending save can still read the document while the editor is intact. It is
  * awaited even when it rejects — a failed save must not strand the editor.
+ *
+ * Teardown is deferred by a microtask so it can be cancelled. In development
+ * StrictMode runs setup → cleanup → setup on the same fiber, and
+ * `useCreateBlockNote` is a `useMemo`, so that simulated remount hands back the
+ * SAME editor. Destroying it in the cleanup would kill every editing surface
+ * the moment it first mounted — the view getter then throws "The editor view is
+ * not available" and the note, journal, task and canvas bodies all render
+ * blank. React runs the double-invoke synchronously, so a microtask lands after
+ * the second setup has had its chance to cancel.
  */
 export function useEditorTeardown(
   editor: unknown,
@@ -32,7 +41,18 @@ export function useEditorTeardown(
     beforeDestroyRef.current = beforeDestroy
   })
 
+  const pendingRef = useRef<{ editor: unknown; cancelled: boolean } | null>(null)
+
   useEffect(() => {
+    // Only a remount of the same editor is StrictMode's doing. A different
+    // editor means the previous one is genuinely gone and must still be torn
+    // down, so its pending teardown is left to run.
+    const pending = pendingRef.current
+    if (pending && pending.editor === editor) {
+      pending.cancelled = true
+      pendingRef.current = null
+    }
+
     return () => {
       const tiptap = (editor as TiptapHost | null)?._tiptapEditor
       const destroy = (): void => {
@@ -47,21 +67,29 @@ export function useEditorTeardown(
         }
       }
 
-      let pending: void | Promise<void> = undefined
-      try {
-        pending = beforeDestroyRef.current?.()
-      } catch (error) {
-        log.warn('Editor teardown flush threw', error)
-      }
+      const token = { editor, cancelled: false }
+      pendingRef.current = token
 
-      if (pending && typeof pending.then === 'function') {
-        void pending.then(destroy, (error: unknown) => {
-          log.warn('Editor teardown flush rejected', error)
-          destroy()
-        })
-        return
-      }
-      destroy()
+      queueMicrotask(() => {
+        if (token.cancelled) return
+        if (pendingRef.current === token) pendingRef.current = null
+
+        let flushed: void | Promise<void> = undefined
+        try {
+          flushed = beforeDestroyRef.current?.()
+        } catch (error) {
+          log.warn('Editor teardown flush threw', error)
+        }
+
+        if (flushed && typeof flushed.then === 'function') {
+          void flushed.then(destroy, (error: unknown) => {
+            log.warn('Editor teardown flush rejected', error)
+            destroy()
+          })
+          return
+        }
+        destroy()
+      })
     }
   }, [editor])
 }

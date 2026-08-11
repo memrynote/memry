@@ -396,7 +396,7 @@ describe('ContentArea', () => {
     resetEditor()
   })
 
-  it('destroys the editor and releases the window handle when it unmounts', () => {
+  it('destroys the editor and releases the window handle when it unmounts', async () => {
     const editor = contentAreaMocks.editor
     const win = window as unknown as { ProseMirror?: unknown }
     // `useCreateBlockNote` parks the newest instance here; nothing ever clears it.
@@ -406,6 +406,8 @@ describe('ContentArea', () => {
     expect(editor._tiptapEditor.destroy).not.toHaveBeenCalled()
 
     unmount()
+    // Teardown is deferred by a microtask so StrictMode's remount can cancel it.
+    await Promise.resolve()
 
     expect(editor._tiptapEditor.destroy).toHaveBeenCalledTimes(1)
     expect(win.ProseMirror).toBeUndefined()
