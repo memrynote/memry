@@ -42,7 +42,11 @@ resolves your login shell's `PATH` at startup, so CLIs installed in shell-manage
 Finder rather than from a terminal. These checks run in the background rather than pausing the app,
 and a successful check is reused for a few minutes so a burst of turns does not re-run it. A failed
 check is never remembered: if you install or upgrade a CLI while memrynote is running, the next
-message or provider check picks it up without a restart. For local models, configure a compatible server in
+message or provider check picks it up without a restart. If the CLI is removed, replaced, or loses
+its executable bit between that check and the moment a turn actually starts, the turn ends right
+away with a `Claude CLI failed to start: ...` (or `Codex CLI failed to start: ...`) error naming the
+reason, and the conversation is free to accept a new message as soon as the CLI is back.
+For local models, configure a compatible server in
 [Settings -> AI Assistant -> Agent Permissions](/user-guide/settings#agent-permissions) first.
 If the global AI switch is off in [Settings -> AI](/user-guide/settings#ai), the Agent tab and Agent
 MCP current-note bridge are hidden and inactive.
