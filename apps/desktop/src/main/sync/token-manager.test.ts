@@ -454,5 +454,32 @@ describe('token-manager', () => {
       // #then
       expect(callback).toHaveBeenCalledTimes(1)
     })
+
+    it('detaches the previous callback when passed null', async () => {
+      // #given a sync runtime that installed a callback and was then stopped
+      const callback = vi.fn()
+      setOnTokenRefreshed(callback)
+      setOnTokenRefreshed(null)
+
+      mockRetrieveKey.mockImplementation((entry) => {
+        if (entry.account === 'refresh-token') {
+          return Promise.resolve(new TextEncoder().encode('refresh-tok'))
+        }
+        return Promise.resolve(null)
+      })
+
+      mockPostToServer.mockResolvedValue({
+        accessToken: 'new-access',
+        refreshToken: 'new-refresh',
+        expiresIn: 900
+      })
+
+      // #when
+      await expect(refreshAccessToken()).resolves.toBe(true)
+
+      // #then the refresh still succeeds, it just no longer calls into the
+      // torn-down runtime the closure captured.
+      expect(callback).not.toHaveBeenCalled()
+    })
   })
 })

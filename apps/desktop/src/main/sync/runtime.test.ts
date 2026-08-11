@@ -133,7 +133,13 @@ const runtimeMocks = vi.hoisted(() => {
     pushCrdtSnapshot: vi.fn(),
     withRetry: vi.fn((fn: () => Promise<unknown>) => fn()),
     emitSessionExpired: vi.fn(),
-    setOnTokenRefreshed: vi.fn(),
+    // token-manager keeps exactly one callback slot, and a refresh invokes
+    // whatever is in it. Model that instead of a bare spy so "who does a token
+    // refresh actually reach after teardown" is observable.
+    tokenRefreshedCallback: null as (() => void) | null,
+    setOnTokenRefreshed: vi.fn((cb: (() => void) | null) => {
+      runtimeMocks.tokenRefreshedCallback = cb
+    }),
     trackMainEvent: vi.fn(),
     logDebug: vi.fn(),
     logInfo: vi.fn(),
@@ -861,5 +867,95 @@ describe('sync runtime', () => {
     expect(runtimeMocks.WebSocketManager.instances[0].disconnect).toHaveBeenCalled()
     expect(runtimeMocks.NetworkMonitor.instances[0].stop).toHaveBeenCalled()
     expect(runtimeMocks.resetCrdtProvider).toHaveBeenCalled()
+  })
+
+  describe('token-refresh callback lifecycle', () => {
+    /** What token-manager does on a successful refresh: invoke the one slot. */
+    const fireTokenRefresh = (): void => runtimeMocks.tokenRefreshedCallback?.()
+
+    beforeEach(() => {
+      runtimeMocks.tokenRefreshedCallback = null
+    })
+
+    it('detaches the callback on stop so a later refresh cannot reach the dead runtime', async () => {
+      const runtime = await loadRuntime()
+      await runtime.startSyncRuntime()
+
+      const deadQueue = runtimeMocks.CrdtUpdateQueue.instances[0]
+      const deadWs = runtimeMocks.WebSocketManager.instances[0]
+      const deadNetwork = runtimeMocks.NetworkMonitor.instances[0]
+      // The closure the runtime installed really is the one that reaches into
+      // these three — that is what makes leaving it installed a live wire.
+      fireTokenRefresh()
+      expect(deadQueue.resume).toHaveBeenCalledTimes(1)
+      expect(deadWs.refreshAuth).toHaveBeenCalledTimes(1)
+      deadQueue.resume.mockClear()
+      deadWs.refreshAuth.mockClear()
+
+      await runtime.stopSyncRuntime({ skipFinalSync: true })
+      expect(deadQueue.stop).toHaveBeenCalledTimes(1)
+      expect(deadWs.disconnect).toHaveBeenCalledTimes(1)
+      expect(deadNetwork.stop).toHaveBeenCalledTimes(1)
+
+      // The slot token-manager reads is empty: nothing in the token layer still
+      // holds this runtime's queue, socket or network monitor.
+      expect(runtimeMocks.tokenRefreshedCallback).toBeNull()
+
+      fireTokenRefresh()
+      expect(deadQueue.resume).not.toHaveBeenCalled()
+      expect(deadWs.refreshAuth).not.toHaveBeenCalled()
+    })
+
+    it('leaves token refresh working for the runtime that replaces a stopped one', async () => {
+      const runtime = await loadRuntime()
+      await runtime.startSyncRuntime()
+      const firstQueue = runtimeMocks.CrdtUpdateQueue.instances[0]
+      const firstWs = runtimeMocks.WebSocketManager.instances[0]
+
+      await runtime.stopSyncRuntime({ skipFinalSync: true })
+      await runtime.startSyncRuntime()
+
+      const secondQueue = runtimeMocks.CrdtUpdateQueue.instances[1]
+      const secondWs = runtimeMocks.WebSocketManager.instances[1]
+      expect(secondQueue).not.toBe(firstQueue)
+      expect(secondWs).not.toBe(firstWs)
+      firstQueue.resume.mockClear()
+      firstWs.refreshAuth.mockClear()
+
+      fireTokenRefresh()
+
+      // Clearing on stop must not outlive the stop: the vault-switch runtime
+      // still re-authenticates, or sync dies silently for the rest of the session.
+      expect(secondQueue.resume).toHaveBeenCalledTimes(1)
+      expect(secondWs.refreshAuth).toHaveBeenCalledTimes(1)
+      expect(firstQueue.resume).not.toHaveBeenCalled()
+      expect(firstWs.refreshAuth).not.toHaveBeenCalled()
+    })
+
+    it('does not unhook a runtime that starts while the previous one is still tearing down', async () => {
+      const runtime = await loadRuntime()
+      await runtime.startSyncRuntime()
+
+      // stopSyncRuntime clears `runtime` before it awaits its teardown, so a
+      // start that lands during those awaits — the deferred-start timer, a
+      // sync:enable IPC — builds a whole new runtime while the old stop is
+      // still in flight. engine.stop is the first of those awaits.
+      runtimeMocks.SyncEngine.instances[0].stop.mockImplementationOnce(async () => {
+        await runtime.startSyncRuntime()
+      })
+      await runtime.stopSyncRuntime({ skipFinalSync: true })
+
+      const secondQueue = runtimeMocks.CrdtUpdateQueue.instances[1]
+      const secondWs = runtimeMocks.WebSocketManager.instances[1]
+      expect(secondQueue).toBeDefined()
+
+      fireTokenRefresh()
+
+      // The live runtime keeps its token refresh. Detaching any later than the
+      // tick that clears `runtime` would strand this one with no way to
+      // re-authenticate, and sync would stop with no error surfaced.
+      expect(secondQueue.resume).toHaveBeenCalledTimes(1)
+      expect(secondWs.refreshAuth).toHaveBeenCalledTimes(1)
+    })
   })
 })
