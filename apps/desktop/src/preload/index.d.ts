@@ -1864,6 +1864,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onMainInvoke: (callback: (payload: MainInvokePayload) => void | Promise<void>) => () => void
   respondToMainInvoke: (requestId: string, response: unknown) => void
   onCrdtStateChanged: (
+    noteId: string,
     callback: (data: { noteId: string; update: Uint8Array; origin: string }) => void
   ) => () => void
   onFlushRequested: (callback: (requestId?: string) => void) => () => void
