@@ -91,6 +91,21 @@ Notes flow through **both** sync paths:
 
 Snapshots are pushed **pre-batch** so other devices receive correct state before the sync notification reaches them.
 
+## Reconnect Recovery
+
+A note body only ever travels as a CRDT update, so a remote body edit reaches a device
+as a `crdt_updated` WebSocket broadcast — record changes in the pull feed carry no body.
+Anything broadcast while the socket was down therefore has to be re-discovered when it
+comes back.
+
+When the socket reconnects, the engine pulls the record feed, then re-pulls the CRDT for
+every note that still has an editor window attached. The rest of the LRU-cached docs —
+the ones the provider retains after their editors closed — are swept too, but at most
+once per five minutes, because each pull costs a snapshot fetch, paged incrementals, and
+a vault-key derivation, and reconnect backoff caps at 30 seconds. A sweep suppressed by
+that window is not dropped: it is paid by the next reconnect or by the 60-second pull
+tick, and the vault-wide sweep at the end of a full sync covers every note regardless.
+
 ## Snapshot Failure Handling
 
 A snapshot is a **compaction optimization**, not the source of truth: the authoritative

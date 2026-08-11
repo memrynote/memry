@@ -470,8 +470,15 @@ export class CrdtProvider {
     log.info('CrdtProvider destroyed')
   }
 
-  getOpenNoteIds(): string[] {
-    return Array.from(this.docs.keys())
+  /**
+   * Every doc the provider holds, which is not the same as every doc an editor
+   * has open: the LRU keeps up to inactiveDocLimit docs cached after their
+   * editors closed. Pass `{ active: true }` for the strict subset that still has
+   * a window attached — what a caller wants when it must bound per-doc work to
+   * what the user is actually looking at.
+   */
+  getOpenNoteIds({ active = false } = {}): string[] {
+    return [...this.docs].filter(([, doc]) => !active || doc.windowIds.size > 0).map(([id]) => id)
   }
 
   getDocSizeMetrics(): CrdtDocSizeMetric[] {

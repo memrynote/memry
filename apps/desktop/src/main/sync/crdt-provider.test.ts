@@ -417,6 +417,21 @@ describe('CrdtProvider', () => {
     )
   })
 
+  it('separates docs with a live editor from the ones the cache merely retains', async () => {
+    // getOpenNoteIds() is every doc in the LRU cache, including the up-to-32 an
+    // editor has already released. Reconnect recovery needs the smaller set.
+    createWindow(1)
+    await provider.open('with-editor', 1, { skipSeed: true })
+    await provider.open('cached-only', undefined, { skipSeed: true })
+
+    expect(provider.getOpenNoteIds().sort()).toEqual(['cached-only', 'with-editor'])
+    expect(provider.getOpenNoteIds({ active: true })).toEqual(['with-editor'])
+
+    await provider.close('with-editor', 1)
+
+    expect(provider.getOpenNoteIds({ active: true })).toEqual([])
+  })
+
   it('exposes aggregate open-doc metrics with per-doc size and window counts', async () => {
     createWindow(1)
     await provider.open('note-1', 1, { skipSeed: true })
