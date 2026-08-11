@@ -211,13 +211,42 @@ class CalendarExternalEventHandler extends BaseItemHandler<CalendarExternalEvent
       .get() as Record<string, unknown> | undefined
   }
 
-  buildPushPayload(db: DrizzleDb, itemId: string): string | null {
+  /**
+   * Stamp the first clock on a row that has none, and persist it.
+   *
+   * Shared by `seedUnclocked` (startup sweep) and `buildPushPayload` (per-push
+   * repair) so both produce the same first-push clock. Persisting is
+   * load-bearing: a clock invented for the payload alone would leave the row
+   * NULL, and the next real edit would tick from `{}` to the SAME clock the
+   * server already acked — a replay the server drops, losing the edit.
+   */
+  private stampFirstClock(db: DrizzleDb, itemId: string, deviceId: string): VectorClock {
+    const clock = increment({}, deviceId)
+    db.update(calendarExternalEvents)
+      .set({ clock })
+      .where(eq(calendarExternalEvents.id, itemId))
+      .run()
+    return clock
+  }
+
+  buildPushPayload(db: DrizzleDb, itemId: string, deviceId?: string): string | null {
     const row = db
       .select()
       .from(calendarExternalEvents)
       .where(eq(calendarExternalEvents.id, itemId))
       .get()
     if (!row) return null
+
+    // #1215 repair for installs that already have the damage. Rows written
+    // before the import seeded a clock are ALREADY in the queue, and
+    // `seedUnclocked` only runs from `runInitialSeed` inside a full sync — an
+    // incremental push cycle never reaches it, so the clock-less row is
+    // re-sent and rejected on every attempt. Since one clock-less item fails
+    // the whole batch at request level, that single row blocks all sync until
+    // the next full sync. Repairing here drains the stuck queue on the very
+    // next push, with no reset and no schema change.
+    const rowClock = (row.clock as VectorClock | null) ?? null
+    const clock = rowClock ?? (deviceId ? this.stampFirstClock(db, itemId, deviceId) : undefined)
     const payload: CalendarExternalEventSyncPayload = {
       sourceId: row.sourceId,
       remoteEventId: row.remoteEventId,
@@ -239,7 +268,7 @@ class CalendarExternalEventHandler extends BaseItemHandler<CalendarExternalEvent
       conferenceData: (row.conferenceData as Record<string, unknown> | null) ?? null,
       rawPayload: row.rawPayload ?? null,
       archivedAt: row.archivedAt ?? null,
-      clock: (row.clock as VectorClock) ?? undefined,
+      clock,
       createdAt: row.createdAt,
       modifiedAt: row.modifiedAt
     }
@@ -253,11 +282,7 @@ class CalendarExternalEventHandler extends BaseItemHandler<CalendarExternalEvent
       .where(isNull(calendarExternalEvents.clock))
       .all()
     for (const item of items) {
-      const nextClock = increment({}, deviceId)
-      db.update(calendarExternalEvents)
-        .set({ clock: nextClock })
-        .where(eq(calendarExternalEvents.id, item.id))
-        .run()
+      const nextClock = this.stampFirstClock(db, item.id, deviceId)
       queue.enqueue({
         type: 'calendar_external_event',
         itemId: item.id,
