@@ -926,6 +926,11 @@ describe('preload api wrappers', () => {
       AgentChannels.invoke.GET_DISCLOSURE_STATE
     )
     await expectInvoke(() => agentApi.getWindowId(), AgentChannels.invoke.GET_WINDOW_ID)
+    await expectInvoke(
+      () => agentApi.setStreamTarget({ conversationId: 'conversation-1' }),
+      AgentChannels.invoke.SET_STREAM_TARGET,
+      { conversationId: 'conversation-1' }
+    )
     expectSubscribe(() => agentApi.onEvent(callback), AgentChannels.events.AGENT_EVENT)
   })
 

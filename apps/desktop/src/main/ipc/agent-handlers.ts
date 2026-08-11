@@ -8,6 +8,7 @@ import {
   AgentChannels,
   AgentLocalProviderSettingsUpdateSchema,
   AgentPreferencesUpdateSchema,
+  AgentStreamTargetRequestSchema,
   ApproveToolRequestSchema,
   PreviewDiffRequestSchema,
   type AgentBackendOptions,
@@ -33,7 +34,7 @@ import type { AgentBackendRegistry } from '../agent/backends/registry'
 import type { ConversationStore } from '../agent/storage/conversation-store'
 import type { MessageStore } from '../agent/storage/message-store'
 import type { Conversation, Message } from '../agent/storage/types'
-import { broadcastAgentEvent } from '../agent/runtime/event-bus'
+import { broadcastAgentEvent, setAgentStreamTarget } from '../agent/runtime/event-bus'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { createLogger } from '../lib/logger'
 import { getMainI18n } from '../lib/main-i18n'
@@ -318,6 +319,10 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
   ipcMain.handle(AgentChannels.invoke.GET_WINDOW_ID, (event) => ({
     windowId: resolveSenderWindowId(event.sender)
   }))
+  ipcMain.handle(AgentChannels.invoke.SET_STREAM_TARGET, (event, payload: unknown) => {
+    recordStreamTarget(event.sender, payload)
+    return { ok: true }
+  })
 }
 
 export function registerUnavailableAgentHandlers(reason: string): void {
@@ -381,6 +386,13 @@ export function registerUnavailableAgentHandlers(reason: string): void {
   registerUnavailableHandler(AgentChannels.invoke.GET_WINDOW_ID, (event) => ({
     windowId: resolveSenderWindowId(event.sender)
   }))
+  // Recording where a conversation is displayed needs no runtime, and keeping it
+  // answered here means a window that mounts Agent Chat while the runtime is
+  // unavailable is still a known target once the runtime does come up.
+  registerUnavailableHandler(AgentChannels.invoke.SET_STREAM_TARGET, (event, payload) => {
+    recordStreamTarget(event.sender, payload)
+    return { ok: true }
+  })
 }
 
 export function unregisterAgentHandlers(): void {
@@ -453,6 +465,19 @@ function broadcastConversation(conversation: Conversation): void {
  */
 function broadcastConversationsChanged(conversationId: string): void {
   broadcastToAllWindows(AgentChannels.events.CONVERSATIONS_CHANGED, { conversationId })
+}
+
+/**
+ * Note which conversation the sending window shows, so streamed deltas can skip
+ * the windows that would only throw them away. A sender whose window cannot be
+ * resolved is left unrecorded — it then counts as "unknown" and keeps receiving
+ * the full stream, rather than being silently cut off.
+ */
+function recordStreamTarget(sender: WebContents, payload: unknown): void {
+  const { conversationId } = AgentStreamTargetRequestSchema.parse(payload)
+  const windowId = resolveSenderWindowId(sender)
+  if (windowId === null) return
+  setAgentStreamTarget(Number(windowId), conversationId)
 }
 
 function resolveSenderWindowId(sender: WebContents): string | null {

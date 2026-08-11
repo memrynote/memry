@@ -29,6 +29,7 @@ export interface MainIpcInvokeHandlers {
   "agent:sendTurn": (...args: [unknown]) => Awaited<Promise<{ ok: boolean; error: string; } | { ok: boolean; error?: undefined; }>>
   "agent:setLocalProviderSettings": (...args: [unknown]) => Awaited<Promise<{ preset: "custom" | "ollama" | "lm_studio" | "llama_cpp"; baseUrl: string; model: string; apiKeyConfigured: boolean; allowNonLoopback: boolean; }>>
   "agent:setPreferences": (...args: [unknown]) => Awaited<Promise<{ accessMode: "vault_only" | "computer_access"; toolApprovalMode: "always_accept" | "ask"; }>>
+  "agent:setStreamTarget": (...args: [unknown]) => Awaited<{ ok: boolean; }>
   "agent:testLocalProvider": (...args: []) => Awaited<Promise<{ connected: boolean; modelAvailable: boolean; streamingSupported: boolean; toolCallingSupported: boolean; toolContinuationSupported: boolean; toolsEnabled: boolean; detail: string | null; }>>
   "ai-inline:get-server-port": (...args: []) => Awaited<number | null>
   "ai-inline:get-settings": (...args: []) => Awaited<import("../../../../../packages/contracts/src/ai-inline-channels").AIInlineSettings>

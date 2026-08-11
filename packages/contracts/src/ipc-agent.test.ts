@@ -48,7 +48,8 @@ describe('AgentChannels', () => {
         PROBE_LOCAL_PROVIDER: 'agent:probeLocalProvider',
         ACCEPT_DISCLOSURE: 'agent:acceptDisclosure',
         GET_DISCLOSURE_STATE: 'agent:getDisclosureState',
-        GET_WINDOW_ID: 'agent:getWindowId'
+        GET_WINDOW_ID: 'agent:getWindowId',
+        SET_STREAM_TARGET: 'agent:setStreamTarget'
       },
       events: {
         AGENT_EVENT: 'agent:event',

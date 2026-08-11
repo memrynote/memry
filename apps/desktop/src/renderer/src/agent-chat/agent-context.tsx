@@ -60,6 +60,12 @@ interface AgentClientApi {
   getDisclosureState: () => Promise<DisclosureState>
   acceptDisclosure: () => Promise<DisclosureState>
   getWindowId: () => Promise<{ windowId: string | null }>
+  /**
+   * Reports which conversation this window shows so main can stream deltas only
+   * here. Optional for the same reason as the sync listeners below: older
+   * preload bundles and the test stubs written against them do not expose it.
+   */
+  setStreamTarget?: (input: { conversationId: string | null }) => Promise<{ ok: boolean }>
   onEvent: (callback: (event: AgentEvent) => void) => () => void
   /**
    * Fired when a sync pull rewrites a conversation row. Optional because older
@@ -465,6 +471,33 @@ export function AgentProvider({
       unsubscribeMessages?.()
     }
   }, [t, active, refreshConversations, loadConversation, flushAssistantDeltas])
+
+  // Main emits one `assistant_text_delta` per token, and a window that does not
+  // show the conversation runs the whole reducer for text it never renders.
+  // Telling main what this window shows lets it address those deltas; a window
+  // that never gets here stays unknown to main and keeps receiving all of them,
+  // so a failure degrades to the old fan-out rather than to a stalled
+  // transcript.
+  useEffect(() => {
+    const setStreamTarget = getAgentApi().setStreamTarget
+    if (!setStreamTarget) return
+
+    const conversationId = active ? state.activeConversationId : null
+    let cancelled = false
+
+    void invokeWhenAgentReady(() =>
+      // A retry that outlives its effect must not overwrite a newer target: the
+      // bootstrap loop retries for seconds, and conversation switches are fast.
+      cancelled ? Promise.resolve({ ok: false }) : setStreamTarget({ conversationId })
+    ).catch((error) => {
+      if (cancelled) return
+      trackRendererError('agent_set_stream_target', error)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [active, state.activeConversationId])
 
   const value = useMemo<AgentContextValue>(
     () => ({
