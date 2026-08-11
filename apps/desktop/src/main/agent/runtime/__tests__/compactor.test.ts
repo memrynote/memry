@@ -77,16 +77,71 @@ describe('Conversation compactor', () => {
     const messages = fakeStore([message({ id: 'm1', createdAt: 1 })])
     const summarize = vi.fn(async () => 'summary')
 
-    await maybeCompact({
+    const compaction = await maybeCompact({
       conversationId: 'conversation-1',
       messages,
+      history: messages.listByConversation('conversation-1'),
       summarize,
       estimateLimit: 100_000,
       currentEstimate: 1_000
     })
 
+    expect(compaction).toBeNull()
     expect(summarize).not.toHaveBeenCalled()
     expect(messages.listByConversation('conversation-1')).toHaveLength(1)
+  })
+
+  it('reads the caller-supplied history instead of re-listing the conversation', async () => {
+    const seed = Array.from({ length: 6 }, (_, index) =>
+      message({
+        id: `m${index}`,
+        content: { role: 'user', data: { text: `msg-${index}` } },
+        createdAt: index
+      })
+    )
+    const messages = fakeStore(seed)
+    const listSpy = vi.spyOn(messages, 'listByConversation')
+    const history = seed.slice()
+
+    await maybeCompact({
+      conversationId: 'conversation-1',
+      messages,
+      history,
+      summarize: vi.fn(async () => 'summary'),
+      estimateLimit: 1,
+      currentEstimate: 2
+    })
+
+    expect(listSpy).not.toHaveBeenCalled()
+    // The caller keeps using this array for the rest of the turn, so compaction
+    // must not sort it out from under them.
+    expect(history).toEqual(seed)
+  })
+
+  it('returns the appended compaction marker so callers can skip a re-list', async () => {
+    const messages = fakeStore(
+      Array.from({ length: 4 }, (_, index) =>
+        message({
+          id: `m${index}`,
+          content: { role: 'user', data: { text: `msg-${index}` } },
+          createdAt: index
+        })
+      )
+    )
+
+    const compaction = await maybeCompact({
+      conversationId: 'conversation-1',
+      messages,
+      history: messages.listByConversation('conversation-1'),
+      summarize: vi.fn(async () => 'Earlier in this conversation: stuff'),
+      estimateLimit: 1,
+      currentEstimate: 2
+    })
+
+    expect(compaction).not.toBeNull()
+    expect(compaction?.role).toBe('system')
+    const stored = messages.listByConversation('conversation-1').at(-1)
+    expect(compaction).toBe(stored)
   })
 
   it('summarizes the oldest half and persists a compacted system message', async () => {
@@ -104,6 +159,7 @@ describe('Conversation compactor', () => {
     await maybeCompact({
       conversationId: 'conversation-1',
       messages,
+      history: messages.listByConversation('conversation-1'),
       summarize,
       estimateLimit: 1,
       currentEstimate: 2
