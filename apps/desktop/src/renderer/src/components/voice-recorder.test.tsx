@@ -30,13 +30,25 @@ class MockMediaRecorder {
   }
 }
 
+// Every constructed context is recorded so a test can assert the one that was
+// orphaned by a failed setup still got closed.
+const audioContexts: MockAudioContext[] = []
+let waveformSetupError: Error | null = null
+
 class MockAudioContext {
-  createMediaStreamSource = vi.fn(() => ({ connect: vi.fn() }))
+  createMediaStreamSource = vi.fn(() => {
+    if (waveformSetupError) throw waveformSetupError
+    return { connect: vi.fn() }
+  })
   createAnalyser = vi.fn(() => ({
     fftSize: 2048,
     getByteTimeDomainData: vi.fn((array: Uint8Array) => array.fill(128))
   }))
   close = vi.fn().mockResolvedValue(undefined)
+
+  constructor() {
+    audioContexts.push(this)
+  }
 }
 
 describe('VoiceRecorder', () => {
@@ -47,6 +59,8 @@ describe('VoiceRecorder', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    audioContexts.length = 0
+    waveformSetupError = null
 
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
@@ -152,6 +166,39 @@ describe('VoiceRecorder', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '' }))
     expect(onCancel).toHaveBeenCalled()
+  })
+
+  // Chromium caps concurrent per-document AudioContexts. A context the cleanup
+  // path cannot reach is never closed, so enough failed setups break every later
+  // waveform for the whole session.
+  it('closes the AudioContext when the waveform graph fails to build', async () => {
+    waveformSetupError = new DOMException('too many contexts', 'NotSupportedError')
+
+    render(<VoiceRecorder onRecordingComplete={onRecordingComplete} onCancel={onCancel} />)
+
+    await userEvent.click(screen.getByLabelText('Start voice recording'))
+
+    // Recording still works; only the waveform is lost.
+    expect(await screen.findByLabelText('Stop recording')).toBeInTheDocument()
+
+    expect(audioContexts).toHaveLength(1)
+    expect(audioContexts[0].close).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not close the AudioContext twice when teardown follows a failed setup', async () => {
+    waveformSetupError = new DOMException('too many contexts', 'NotSupportedError')
+
+    const { unmount } = render(
+      <VoiceRecorder onRecordingComplete={onRecordingComplete} onCancel={onCancel} />
+    )
+
+    await userEvent.click(screen.getByLabelText('Start voice recording'))
+    expect(await screen.findByLabelText('Stop recording')).toBeInTheDocument()
+
+    unmount()
+
+    expect(audioContexts).toHaveLength(1)
+    expect(audioContexts[0].close).toHaveBeenCalledTimes(1)
   })
 
   it('supports imperative start and handles missing microphones', async () => {
