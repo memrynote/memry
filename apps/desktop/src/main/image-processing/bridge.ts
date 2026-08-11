@@ -15,6 +15,12 @@ const REQUEST_TIMEOUT_MS = 60_000
 const START_TIMEOUT_MS = 10_000
 const SHUTDOWN_TIMEOUT_MS = 3_000
 const IDLE_SHUTDOWN_MS = 30_000
+// Bounds how many requests are posted to the worker (and therefore how many
+// request timeout timers exist) at once. Queued work waits without a timer so a
+// burst cannot time out while it is merely waiting its turn.
+const MAX_IN_FLIGHT_REQUESTS = 4
+// Backstop so a runaway caller cannot grow the wait queue without limit.
+const MAX_QUEUED_REQUESTS = 256
 
 export interface ImageProcessingThumbnailResult {
   data: Buffer
@@ -34,9 +40,16 @@ type PendingRequest = {
   timer: ReturnType<typeof setTimeout>
 }
 
+type QueuedRequest = {
+  message: Extract<ImageProcessingMainToWorkerMessage, { requestId: string }>
+  resolve: (value: ImageProcessingWorkerToMainMessage) => void
+  reject: (error: Error) => void
+}
+
 class ImageProcessingBridge {
   private process: ReturnType<typeof utilityProcess.fork> | null = null
   private pendingRequests = new Map<string, PendingRequest>()
+  private queuedRequests: QueuedRequest[] = []
   private readyPromise: Promise<void> | null = null
   private requestCounter = 0
   private shuttingDown = false
@@ -131,6 +144,7 @@ class ImageProcessingBridge {
     this.process = null
     this.readyPromise = null
     this.shuttingDown = false
+    this.rejectAll(new Error('Image processing utility stopped'))
   }
 
   reset(): void {
@@ -250,6 +264,7 @@ class ImageProcessingBridge {
 
         clearTimeout(pending.timer)
         this.pendingRequests.delete(message.requestId)
+        this.drainQueue()
 
         if (message.type === 'error') {
           this.scheduleIdleShutdown()
@@ -287,18 +302,53 @@ class ImageProcessingBridge {
       return Promise.reject(new Error('Image processing utility is not running'))
     }
 
+    if (this.queuedRequests.length >= MAX_QUEUED_REQUESTS) {
+      logger.warn('Image processing queue is full, rejecting request', {
+        type: message.type,
+        queued: this.queuedRequests.length,
+        inFlight: this.pendingRequests.size
+      })
+      return Promise.reject(
+        new Error(
+          `Image processing is busy (${MAX_QUEUED_REQUESTS} images already waiting); try again once the current images finish`
+        )
+      )
+    }
+
     this.clearIdleShutdown()
 
     return new Promise((resolve, reject) => {
+      this.queuedRequests.push({ message, resolve, reject })
+      this.drainQueue()
+    })
+  }
+
+  private drainQueue(): void {
+    while (this.queuedRequests.length > 0 && this.pendingRequests.size < MAX_IN_FLIGHT_REQUESTS) {
+      const next = this.queuedRequests.shift()
+      if (!next) {
+        return
+      }
+
+      if (!this.process) {
+        next.reject(new Error('Image processing utility is not running'))
+        continue
+      }
+
       const timer = setTimeout(() => {
-        this.pendingRequests.delete(message.requestId)
+        this.pendingRequests.delete(next.message.requestId)
+        this.drainQueue()
         this.scheduleIdleShutdown()
-        reject(new Error(`Image processing request timed out: ${message.type}`))
+        next.reject(new Error(`Image processing request timed out: ${next.message.type}`))
       }, REQUEST_TIMEOUT_MS)
 
-      this.pendingRequests.set(message.requestId, { resolve, reject, timer })
-      this.process!.postMessage(message)
-    })
+      this.pendingRequests.set(next.message.requestId, {
+        resolve: next.resolve,
+        reject: next.reject,
+        timer
+      })
+      this.process.postMessage(next.message)
+    }
   }
 
   private nextRequestId(): string {
@@ -320,6 +370,12 @@ class ImageProcessingBridge {
       clearTimeout(pending.timer)
       pending.reject(error)
       this.pendingRequests.delete(requestId)
+    }
+
+    const queued = this.queuedRequests
+    this.queuedRequests = []
+    for (const request of queued) {
+      request.reject(error)
     }
   }
 
