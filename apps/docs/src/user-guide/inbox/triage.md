@@ -43,6 +43,8 @@ Filing, archiving, and snoozing **sync across your devices**, like the item itse
 
 If a device is offline when you file, the decision is queued and pushes on its next sync. Until then that device's inbox is simply behind; nothing is lost.
 
+Items you filed on an older version of Memry are repaired automatically: the first time each device starts up and syncs after updating, it sends any triage decision that never reached your other devices. You do not need to re-file anything.
+
 ## Keyboard Shortcuts
 
 When the inbox or a triage card has focus:
