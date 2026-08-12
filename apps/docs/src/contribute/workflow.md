@@ -77,6 +77,7 @@ GitHub Actions run lint, typecheck, and test suites. For faster local feedback b
 ```bash
 pnpm typecheck:node     # main process
 pnpm typecheck:web      # renderer
+pnpm --filter @memry/desktop typecheck:test   # test files (see Testing)
 pnpm --filter @memry/desktop test
 ```
 

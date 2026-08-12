@@ -169,6 +169,28 @@ pnpm typecheck:node     # main process only
 pnpm typecheck:web      # renderer only
 ```
 
+### Typechecking test files
+
+The two configs above compile app source only — they exclude `**/*.test.ts(x)` and `**/*.spec.ts`.
+Test files are compiled by a separate pair of projects:
+
+```bash
+pnpm --filter @memry/desktop typecheck:test        # both halves
+pnpm --filter @memry/desktop typecheck:test:node   # tests/** harness + main/preload tests
+pnpm --filter @memry/desktop typecheck:test:web    # renderer tests
+```
+
+`pnpm typecheck` runs all four, and CI has a step per project.
+
+`apps/desktop/tsconfig.test.node.json` and `apps/desktop/tsconfig.test.web.json` each carry an
+`exclude` array listing test files that already failed to compile when the gate was introduced.
+That list is a shrinking backlog, not a policy: a new or newly-touched test file must compile, so
+never add an entry. Fixing a listed file's errors means deleting its line as well.
+
+This is what makes type-level guards in test code real. `implements`, `satisfies`, and typed harness
+signatures used to be checked only by your editor — a mock that drifted from the class it stands in
+for would silently answer `undefined` at runtime instead of failing the build.
+
 ## Native Module Rebuild
 
 `better-sqlite3` and `keytar` are the most common source of native runtime failures. If you see `ERR_DLOPEN_FAILED`, `NODE_MODULE_VERSION` mismatches, or a Mach-O architecture error:
