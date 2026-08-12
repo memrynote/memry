@@ -46,6 +46,11 @@ import {
   stopImageProcessing
 } from './bridge'
 
+const requestMessages = (): Array<{ type: string; requestId: string }> =>
+  mockUtilityProcessInstance.postMessage.mock.calls
+    .map((call) => call[0] as { type: string; requestId: string })
+    .filter((message) => message.type !== 'shutdown')
+
 describe('image-processing bridge', () => {
   beforeEach(() => {
     resetImageProcessingForTests()
@@ -192,6 +197,139 @@ describe('image-processing bridge', () => {
     await expect(exitedProcess).rejects.toThrow(
       'Image processing utility exited unexpectedly (code 9)'
     )
+  })
+
+  it('caps in-flight worker requests and drains the queue as results arrive', async () => {
+    const settled: string[] = []
+    const promises = Array.from({ length: 10 }, (_, index) =>
+      generateThumbnailInImageProcess(`/tmp/burst-${index}.jpg`, 'image/jpeg').then(
+        () => {
+          settled.push(`resolved-${index}`)
+        },
+        () => {
+          settled.push(`rejected-${index}`)
+        }
+      )
+    )
+
+    mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+    await vi.waitFor(() => {
+      expect(requestMessages()).toHaveLength(4)
+    })
+
+    for (let index = 0; index < 10; index += 1) {
+      const dispatched = requestMessages()
+      expect(dispatched.length - settled.length).toBeLessThanOrEqual(4)
+
+      mockUtilityProcessInstance.simulateMessage({
+        type: 'thumbnail-result',
+        requestId: dispatched[index].requestId,
+        result: null
+      })
+      await vi.waitFor(() => {
+        expect(settled).toHaveLength(index + 1)
+      })
+    }
+
+    await Promise.all(promises)
+    expect(requestMessages()).toHaveLength(10)
+    expect(new Set(settled).size).toBe(10)
+  })
+
+  it('starts the request timeout only once queued work is dispatched', async () => {
+    vi.useFakeTimers()
+    const outcomes: string[] = []
+    const promises = Array.from({ length: 8 }, (_, index) =>
+      generateThumbnailInImageProcess(`/tmp/timeout-${index}.jpg`, 'image/jpeg')
+        .then(
+          () => 'resolved',
+          (error: Error) => error.message
+        )
+        .then((outcome) => {
+          outcomes.push(outcome)
+        })
+    )
+
+    mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+    await vi.waitFor(() => {
+      expect(requestMessages()).toHaveLength(4)
+    })
+
+    await vi.advanceTimersByTimeAsync(60_000)
+
+    expect(outcomes).toHaveLength(4)
+    expect(
+      outcomes.every((outcome) => outcome.startsWith('Image processing request timed out'))
+    ).toBe(true)
+    expect(requestMessages()).toHaveLength(8)
+
+    for (const message of requestMessages().slice(4)) {
+      mockUtilityProcessInstance.simulateMessage({
+        type: 'thumbnail-result',
+        requestId: message.requestId,
+        result: null
+      })
+    }
+
+    await Promise.all(promises)
+    expect(outcomes.filter((outcome) => outcome === 'resolved')).toHaveLength(4)
+  })
+
+  it('rejects new image work once the wait queue is full', async () => {
+    const promises = Array.from({ length: 261 }, (_, index) =>
+      generateThumbnailInImageProcess(`/tmp/flood-${index}.jpg`, 'image/jpeg').then(
+        () => 'resolved',
+        (error: Error) => error.message
+      )
+    )
+
+    mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+
+    await expect(promises[260]).resolves.toContain('Image processing is busy')
+    expect(requestMessages()).toHaveLength(4)
+
+    resetImageProcessingForTests()
+    const outcomes = await Promise.all(promises)
+    expect(outcomes.filter((outcome) => outcome === 'Image processing utility reset')).toHaveLength(
+      260
+    )
+  })
+
+  it('settles queued and in-flight work when the utility process stops', async () => {
+    vi.useFakeTimers()
+    const promises = Array.from({ length: 10 }, (_, index) =>
+      generateThumbnailInImageProcess(`/tmp/stop-${index}.jpg`, 'image/jpeg').then(
+        () => 'resolved',
+        (error: Error) => error.message
+      )
+    )
+
+    mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+    await vi.waitFor(() => {
+      expect(requestMessages()).toHaveLength(4)
+    })
+
+    const stopPromise = stopImageProcessing()
+    mockUtilityProcessInstance.simulateExit(0)
+    await stopPromise
+
+    const outcomes = await Promise.all(promises)
+    expect(outcomes).toEqual(Array.from({ length: 10 }, () => 'Image processing utility stopped'))
+    expect(vi.getTimerCount()).toBe(0)
+
+    const afterStop = Array.from({ length: 4 }, (_, index) =>
+      generateThumbnailInImageProcess(`/tmp/after-stop-${index}.jpg`, 'image/jpeg').then(
+        () => 'resolved',
+        (error: Error) => error.message
+      )
+    )
+    mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+    await vi.waitFor(() => {
+      expect(requestMessages()).toHaveLength(4)
+    })
+
+    resetImageProcessingForTests()
+    await Promise.all(afterStop)
   })
 
   it('stops a running utility process gracefully', async () => {

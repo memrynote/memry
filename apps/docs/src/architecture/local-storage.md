@@ -293,6 +293,14 @@ thumbnail or inbox image metadata work is requested. That worker owns the lazy `
 load, returns the generated metadata or thumbnail bytes over IPC, and shuts down after it has been
 idle.
 
+The bridge to that worker is bounded. At most four requests are in flight at once; anything beyond
+that waits in a queue in the main process and is dispatched as earlier results come back. Only
+dispatched requests carry the 60-second request timeout, so a large import cannot time out while it
+is merely waiting its turn. The wait queue itself is capped at 256 requests — past that, new image
+work is rejected with a "busy" error rather than growing the queue, which callers surface as a
+missing thumbnail or basic file metadata. Every request is settled exactly once, including when the
+worker crashes or is stopped.
+
 ## better-sqlite3 ABI Quirk
 
 The native module must match the JS runtime. If you see `ERR_DLOPEN_FAILED`, rebuild for the right target:
