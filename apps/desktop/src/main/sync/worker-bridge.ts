@@ -73,8 +73,23 @@ export class SyncWorkerBridge {
   private consecutiveFailures = 0
   private latchedOff = false
   private sweepTimer: ReturnType<typeof setInterval> | null = null
+  /** Non-null for exactly as long as a stop() is inside its shutdown window. */
+  private stopPromise: Promise<void> | null = null
 
   async start(): Promise<void> {
+    // stop() keeps `this.worker` non-null for the whole of its 3 s shutdown
+    // window, so the guard below cannot tell "running" from "being torn down".
+    // Without this wait a start() issued inside that window returned having
+    // spawned nothing, reset nothing and awaited no `ready`; stop()'s
+    // continuation then nulled the field and left the caller believing a worker
+    // was running when there was none, so every later batch rejected with
+    // 'Worker not started' and three of those latch the bridge off for the
+    // session. Waiting the stop out is what a lifecycle caller means by
+    // "start"; the wait is bounded by stop()'s own 3 s timeout, and the loop
+    // re-checks in case another stop() began while this one waited. A stop()
+    // failure belongs to the stop caller, not to this start().
+    while (this.stopPromise) await this.stopPromise.catch(() => {})
+
     if (this.worker) return
 
     // A freshly spawned thread is not the thread that failed, so it gets a
@@ -84,34 +99,35 @@ export class SyncWorkerBridge {
     this.latchedOff = false
 
     const workerPath = join(__dirname, 'sync-worker.js')
-    this.worker = new Worker(workerPath)
+    const worker = new Worker(workerPath)
+    this.worker = worker
 
     this.readyPromise = new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
-        this.disposeFailedWorker()
+        this.disposeFailedWorker(worker)
         reject(new Error('Worker failed to start within timeout'))
       }, 10_000)
 
       const initErrorHandler = (err: Error): void => {
         clearTimeout(timeout)
         log.error('Sync worker init error', err)
-        this.disposeFailedWorker()
+        this.disposeFailedWorker(worker)
         reject(err)
       }
 
       const onMessage = (msg: WorkerToMainMessage): void => {
         if (msg.type === 'ready') {
           clearTimeout(timeout)
-          this.worker!.off('message', onMessage)
-          this.worker!.off('error', initErrorHandler)
+          worker.off('message', onMessage)
+          worker.off('error', initErrorHandler)
           this.setupMessageHandler()
           log.info('Sync worker ready')
           resolve()
         }
       }
 
-      this.worker!.on('message', onMessage)
-      this.worker!.on('error', initErrorHandler)
+      worker.on('message', onMessage)
+      worker.on('error', initErrorHandler)
     })
 
     await this.readyPromise
@@ -120,14 +136,18 @@ export class SyncWorkerBridge {
   // A worker that never reached ready must not stay attached: isRunning would
   // report true and route crypto batches to a dead thread. Detach so callers
   // fall back to main-thread crypto.
-  private disposeFailedWorker(): void {
-    const worker = this.worker
-    this.worker = null
-    this.readyPromise = null
-    if (worker) {
-      worker.removeAllListeners()
-      void worker.terminate()
+  //
+  // Scoped to the thread this start() spawned, on the same identity rule as
+  // isAbandoned(): a start() that waited out a stop() can have put a live
+  // thread in the field before this start()'s 10 s init timeout gets here, and
+  // the unscoped version would tear that one down instead.
+  private disposeFailedWorker(worker: Worker): void {
+    if (this.worker === worker) {
+      this.worker = null
+      this.readyPromise = null
     }
+    worker.removeAllListeners()
+    void worker.terminate()
   }
 
   /**
@@ -383,18 +403,35 @@ export class SyncWorkerBridge {
   // straight to main-thread crypto without a round trip. stop() deliberately
   // checks `this.worker` instead, so a latched-but-alive thread is still shut
   // down cleanly.
+  //
+  // A thread already told to shut down is not running either: it may never
+  // answer again, and a batch handed to it inside the shutdown window buys a
+  // full REQUEST_TIMEOUT_MS wait and a latch step for a reply that is not
+  // coming. Main-thread crypto is the same crypto and is available now.
   get isRunning(): boolean {
-    return this.worker !== null && !this.latchedOff
+    return this.worker !== null && !this.latchedOff && this.stopPromise === null
   }
 
-  async stop(): Promise<void> {
-    if (!this.worker) return
+  stop(): Promise<void> {
+    // A second stop() means the same thing as the one already in flight —
+    // posting another shutdown and racing a second exit against the same thread
+    // only gives the two overlapping windows to null `this.worker` out from
+    // under each other.
+    if (this.stopPromise) return this.stopPromise
 
-    this.worker.postMessage({ type: 'shutdown' } satisfies MainToWorkerMessage)
+    const worker = this.worker
+    if (!worker) return Promise.resolve()
+
+    this.stopPromise = this.shutdownWorker(worker).finally(() => {
+      this.stopPromise = null
+    })
+    return this.stopPromise
+  }
+
+  private async shutdownWorker(worker: Worker): Promise<void> {
+    worker.postMessage({ type: 'shutdown' } satisfies MainToWorkerMessage)
 
     await new Promise<void>((resolve) => {
-      const worker = this.worker!
-
       const onExit = (): void => {
         this.rejectAll(new Error('Worker exited'))
         clearTimeout(timeout)
