@@ -249,6 +249,11 @@ Client-specific config keys vary. Use the copied URL as the MCP server URL and t
 Bearer authorization header. Plain external clients can use read tools, but they do not get the
 in-app conversation/window context that approved writes require.
 
+A write is only approved for a conversation that still exists. A conversation that has been deleted —
+including one deleted on another device and carried here by sync — no longer counts as an existing
+conversation, so its write tools are refused rather than writing into a record that is gone from your
+chat history everywhere.
+
 ## Tools
 
 Read tools are available to Agent Chat and external MCP clients:
