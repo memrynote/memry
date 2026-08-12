@@ -108,11 +108,23 @@ const baselineTasks = (): Task[] => [
   createTask({ id: 'orphan-sub', parentId: 'never-existed' })
 ]
 
-/** The exact expression App.tsx used before the single-pass rewrite. */
-const legacyProjectTaskCount = (tasks: Task[], project: Project): number =>
-  tasks
-    .filter((t) => t.projectId === project.id)
-    .filter((t) => project.statuses.find((s) => s.id === t.statusId)?.type !== 'done').length
+/**
+ * A project badge has to mean "tasks you will see when you open this project".
+ * The project view is `getFilteredTasks(..., 'project', ...)`, which drops
+ * archived rows up front, so the badge is that list minus its completed rows.
+ *
+ * This replaces the pre-single-pass App.tsx expression, which filtered by
+ * project id and status only and therefore counted archived tasks no view can
+ * render (#1323).
+ */
+const expectedProjectTaskCount = (
+  tasks: Task[],
+  project: Project,
+  allProjects: Project[]
+): number =>
+  getFilteredTasks(tasks, project.id, 'project', allProjects).filter(
+    (t) => project.statuses.find((s) => s.id === t.statusId)?.type !== 'done'
+  ).length
 
 const expectMatchesFilters = (tasks: Task[], allProjects: Project[] = projects): void => {
   const { viewCounts, projectTaskCounts } = getTaskWorkspaceCounts(tasks, allProjects, ALL_VIEW_IDS)
@@ -125,7 +137,7 @@ const expectMatchesFilters = (tasks: Task[], allProjects: Project[] = projects):
 
   for (const project of allProjects) {
     expect(`${project.id}:${projectTaskCounts[project.id] ?? 0}`).toBe(
-      `${project.id}:${legacyProjectTaskCount(tasks, project)}`
+      `${project.id}:${expectedProjectTaskCount(tasks, project, allProjects)}`
     )
   }
 }
@@ -158,9 +170,10 @@ describe('getTaskWorkspaceCounts', () => {
       // project-a incomplete: overdue, overdue-sub, due-today, due-tomorrow,
       // due-in-3, due-in-20, no-due-date, done-a-sub, ghost-status, orphan-sub
       'project-a': 10,
-      // project-b incomplete: b-open, b-archived (archived still counts here),
-      // archived-sub
-      'project-b': 3,
+      // project-b incomplete and renderable: b-open only. b-archived and
+      // archived-sub are archived, so the project view never lists them and the
+      // badge must not count them either (#1323).
+      'project-b': 1,
       'project-gone': 1
     })
   })
@@ -270,7 +283,7 @@ describe('getTaskWorkspaceCounts invalidation matrix', () => {
         tasks.map((t) =>
           t.id === 'no-due-date' ? { ...t, projectId: 'project-b', statusId: 'todo' } : t
         ),
-      changes: { 'project-a': 9, 'project-b': 4 }
+      changes: { 'project-a': 9, 'project-b': 2 }
     },
     {
       name: 'status reassigned within the project',
@@ -284,13 +297,16 @@ describe('getTaskWorkspaceCounts invalidation matrix', () => {
     },
     {
       name: 'task archived',
+      // The project badge has to fall with the view: archiving removes the row
+      // from the project list, so project-a drops 10 -> 9 (#1323).
       apply: (tasks) => tasks.map((t) => (t.id === 'due-today' ? { ...t, archivedAt: TODAY } : t)),
-      changes: { all: 9, today: 3 }
+      changes: { all: 9, today: 3, 'project-a': 9 }
     },
     {
       name: 'task unarchived',
+      // ...and rises again when the row comes back: project-b 1 -> 2 (#1323).
       apply: (tasks) => tasks.map((t) => (t.id === 'b-archived' ? { ...t, archivedAt: null } : t)),
-      changes: { all: 11, today: 5 }
+      changes: { all: 11, today: 5, 'project-b': 2 }
     },
     {
       name: 'inbox item converted into a task',
