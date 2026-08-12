@@ -21,7 +21,7 @@ vi.mock('../telemetry/diagnostics', () => ({
 import { getDatabase } from '../database'
 import { trackMainError } from '../telemetry/diagnostics'
 import { markExpectedCondition } from '../telemetry/expected-conditions'
-import { withErrorHandler, withDb } from './validate'
+import { withErrorHandler, withDb, ipcErrorThrottleKeyCount } from './validate'
 
 const mockGetDatabase = vi.mocked(getDatabase)
 const mockTrackMainError = vi.mocked(trackMainError)
@@ -390,6 +390,52 @@ describe('IPC error telemetry', () => {
     expect(mockTrackMainError).toHaveBeenCalledWith('ipc', 'mask probe', genuine)
     // #and the suppressed error never reached telemetry at all
     expect(mockTrackMainError).not.toHaveBeenCalledWith('ipc', 'mask probe', expected)
+  })
+
+  it('bounds the throttle map when distinct codes burst inside one window', async () => {
+    // #given a handler whose errors carry a code we never anticipated — the
+    // throttle Map grew one entry per `action:errorCode` with no cap, so an
+    // error loop producing novel codes retained them for the process lifetime
+    vi.useFakeTimers()
+    try {
+      const handler = withErrorHandler(async (name: string) => {
+        throw namedError(name)
+      }, 'cap probe')
+
+      // #when 1200 distinct codes arrive without the window ever elapsing
+      for (let i = 0; i < 1200; i++) {
+        await handler(`CapProbe${i}Error`)
+      }
+
+      // #then the map never exceeds the cap
+      expect(ipcErrorThrottleKeyCount()).toBeLessThanOrEqual(1000)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('sweeps keys whose throttle window has elapsed', async () => {
+    // #given a full map of keys that have all aged out
+    vi.useFakeTimers()
+    try {
+      const handler = withErrorHandler(async (name: string) => {
+        throw namedError(name)
+      }, 'sweep probe')
+
+      vi.advanceTimersByTime(61_000)
+      for (let i = 0; i < 1000; i++) {
+        await handler(`SweepProbe${i}Error`)
+      }
+      vi.advanceTimersByTime(61_000)
+
+      // #when one more error crosses the cap
+      await handler('SweepTriggerError')
+
+      // #then every expired key is released, leaving only the live one
+      expect(ipcErrorThrottleKeyCount()).toBe(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('separates typed codes from the same handler within one window', async () => {

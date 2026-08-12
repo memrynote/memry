@@ -567,6 +567,21 @@ line is stripped — so a crash's location shows up as, for example, `TypeError`
 files); any home-directory prefix (`/Users/<name>`, `C:\Users\<name>`) is rewritten to `~`, and
 emails, UUIDs, JWTs, and bearer tokens are scrubbed from anything that ships.
 
+### IPC Error Throttling
+
+Every IPC envelope error becomes a telemetry event, so a handler stuck in a failure loop could
+flood the queue. `trackIpcError` (`main/ipc/validate.ts`) therefore emits at most one event per
+`action:errorCode` per 60-second window, in-memory and reset on restart. The key includes the
+action because keying on the error name alone let one handler's benign recurring `Error` mask a
+genuine `Error` from an unrelated handler for the whole window. An expected condition (Ollama not
+running, an abandoned OAuth flow) is skipped before the key is claimed, for the same reason —
+otherwise the suppressed error would keep refreshing a key it never reports on.
+
+That key set is bounded to 1000 entries. Once past the cap, keys whose window has elapsed are
+swept; if a burst of previously unseen codes fills the map inside a single window with nothing to
+expire, the oldest-inserted keys are dropped instead. Dropping a key only forfeits its throttle —
+the next error for it is reported rather than lost.
+
 ### Vault File Errors
 
 A class name alone is often too coarse to act on: every failed note save reported `NoteError`,

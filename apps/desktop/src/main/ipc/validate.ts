@@ -14,7 +14,32 @@ const ipcLog = createLogger('IPC')
 // masked a genuine different "Error" from another handler for a whole window.
 // Keying by action + errorCode keeps the loop protection per failure mode.
 const ERROR_TRACK_THROTTLE_MS = 60_000
+// The key alphabet is finite in practice (handler names × error codes), but
+// `toErrorCode` adopts an error's own `.code`/`.telemetryCode`, so a third-party
+// or errno-suffixed code we never anticipated would grow this Map for the life
+// of the process. Same cap as telemetry/throttle.ts.
+const MAX_TRACKED_ERROR_KEYS = 1000
 const lastTrackedByCode = new Map<string, number>()
+
+const sweepTrackedErrorKeys = (now: number): void => {
+  if (lastTrackedByCode.size <= MAX_TRACKED_ERROR_KEYS) return
+  for (const [key, trackedAt] of lastTrackedByCode) {
+    if (now - trackedAt >= ERROR_TRACK_THROTTLE_MS) lastTrackedByCode.delete(key)
+  }
+  // A burst of more than MAX distinct codes inside a single window leaves
+  // nothing expired to sweep, so the oldest-inserted keys are dropped to keep
+  // the bound hard. Dropping a key only forfeits its throttle, never an event.
+  for (const key of lastTrackedByCode.keys()) {
+    if (lastTrackedByCode.size <= MAX_TRACKED_ERROR_KEYS) break
+    lastTrackedByCode.delete(key)
+  }
+}
+
+/**
+ * Number of live throttle keys. Exported so the memory bound is directly
+ * assertable in tests; production code never reads it.
+ */
+export const ipcErrorThrottleKeyCount = (): number => lastTrackedByCode.size
 
 const trackIpcError = (action: string, error: unknown): void => {
   try {
@@ -28,6 +53,7 @@ const trackIpcError = (action: string, error: unknown): void => {
     const last = lastTrackedByCode.get(code)
     if (last !== undefined && now - last < ERROR_TRACK_THROTTLE_MS) return
     lastTrackedByCode.set(code, now)
+    sweepTrackedErrorKeys(now)
     // Only the action key and error name/stack leave the process; the envelope
     // `error` message may contain note-derived text and must never be sent.
     trackMainError('ipc', action, error)
