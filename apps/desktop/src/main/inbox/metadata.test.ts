@@ -11,6 +11,20 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mkdirSync, rmSync } from 'fs'
 import * as path from 'path'
 import * as os from 'os'
+
+// warn/error records are intercepted by the log-ship transport and shipped off
+// the device (telemetry/log-ship.ts), so what this scope logs at those levels is
+// a privacy surface, not just noise. Captured here to assert on it (#1142).
+const shippedLogs = vi.hoisted(() => ({ warn: vi.fn(), error: vi.fn(), debug: vi.fn() }))
+vi.mock('../lib/logger', () => ({
+  createLogger: () => ({
+    info: vi.fn(),
+    warn: shippedLogs.warn,
+    error: shippedLogs.error,
+    debug: shippedLogs.debug
+  })
+}))
+
 import {
   fetchUrlMetadata,
   fetchUrlHtml,
@@ -643,5 +657,63 @@ describe('fetchUrlHtml', () => {
   it('throws on non-ok status', async () => {
     mockFetch.mockResolvedValue(new Response('nope', { status: 404 }))
     await expect(fetchUrlHtml('https://example.com/missing')).rejects.toThrow()
+  })
+})
+
+// ==========================================================================
+// #1142 — scraped page content must not reach the diagnostics that leave the
+// device. warn/error go to log-ship; thrown messages reach telemetry as
+// app_error_seen.error.message via trackMainError in jobs.ts.
+// ==========================================================================
+describe('scraped content never reaches shipped diagnostics', () => {
+  beforeEach(() => {
+    mockFetch.mockReset()
+    shippedLogs.warn.mockReset()
+    shippedLogs.error.mockReset()
+    shippedLogs.debug.mockReset()
+  })
+
+  it('keeps the clipped url and the scraped title out of warn/error records', async () => {
+    const url = 'https://sensitive-health-forum.example.com/threads/my-diagnosis'
+    const botTitle = 'Just a moment...'
+    mockFetch.mockResolvedValue(
+      new Response(`<html><head><title>${botTitle}</title></head><body></body></html>`, {
+        status: 200
+      })
+    )
+
+    const metadata = await fetchUrlMetadata(url)
+
+    // #then the bot page is still detected and the title discarded
+    expect(metadata.title).toBeUndefined()
+
+    // #and nothing shipped carries the address the user clipped or its title
+    const shipped = [...shippedLogs.warn.mock.calls, ...shippedLogs.error.mock.calls]
+      .flat()
+      .map((arg) => (typeof arg === 'string' ? arg : JSON.stringify(arg)))
+      .join(' ')
+    expect(shipped).not.toContain(url)
+    expect(shipped).not.toContain('sensitive-health-forum')
+    expect(shipped).not.toContain(botTitle)
+    // #and the event stays countable rather than being silently dropped
+    expect(shippedLogs.warn).toHaveBeenCalled()
+  })
+
+  it('omits the remote reason phrase from the metadata fetch error', async () => {
+    const reason = 'Blocked: user 4417 flagged for scraping /threads/my-diagnosis'
+    mockFetch.mockResolvedValue(new Response('nope', { status: 403, statusText: reason }))
+
+    await expect(
+      fetchUrlMetadata('https://sensitive-health-forum.example.com/threads/my-diagnosis')
+    ).rejects.toThrow(/^HTTP 403$/)
+  })
+
+  it('omits the clipped url from the article fetch error', async () => {
+    const url = 'https://sensitive-health-forum.example.com/threads/my-diagnosis'
+    mockFetch.mockResolvedValue(new Response('nope', { status: 500 }))
+
+    await expect(fetchUrlHtml(url)).rejects.toThrow(
+      expect.objectContaining({ message: expect.not.stringContaining('sensitive-health-forum') })
+    )
   })
 })

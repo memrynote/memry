@@ -407,15 +407,18 @@ describe('createTelemetryClient — crash durability', () => {
     expect(revived.getQueueDepth()).toBe(TELEMETRY_QUEUE_LIMIT)
   })
 
-  it('cannot be made to forge mirror entries by a hostile dimension value', () => {
-    // #given an event whose dimension carries remote-controlled text — inbox link
-    // metadata is scraped from arbitrary pages, which is the taint path CodeQL
-    // flags into this file — shaped to break out of a newline-delimited journal
+  it('cannot be made to forge mirror entries by a hostile free-text value', () => {
+    // #given an event whose error message carries remote-controlled text — inbox
+    // link metadata is scraped from arbitrary pages, which is the taint path
+    // CodeQL flags into this file — shaped to break out of a newline-delimited
+    // journal. The message field is used rather than a dimension because
+    // dimensions are now allowlisted away before they ever reach the journal
+    // (see the scraped-metadata test below); free text can still reach here.
     const hostile = '\n{"id":"forged","name":"app_crashed","surface":"app"}\n'
     const client = createTelemetryClient(createDeps({ persistPath }).deps)
     client.track({
       ...buildEvent('11111111-1111-1111-1111-111111111111', 'inbox_item_added'),
-      dimensions: { source: hostile }
+      error: { message: hostile }
     })
     client.track(buildEvent('22222222-2222-2222-2222-222222222222'))
 
@@ -430,7 +433,59 @@ describe('createTelemetryClient — crash durability', () => {
       fs.readFileSync(persistPath, 'utf-8').split('\n')[1]
     ) as TelemetryEvent
     expect(restored.name).toBe('inbox_item_added')
-    expect(restored.dimensions?.source).toBe(hostile)
+    expect(restored.error?.message).toBe(hostile)
+  })
+
+  it('never queues, mirrors or ships scraped page metadata as a dimension', async () => {
+    // #given the metadata a real clip pulls off a third-party page: every one of
+    // these passes the safe-value shape (no @, no ://, no slash, under 64 chars),
+    // which is exactly why a blocklist could not stop them
+    const scraped = {
+      page_title: 'Divorce settlement calculator - LawFirm',
+      description: 'Work out what you are owed after separation',
+      og_site_name: 'Sensitive Health Forum',
+      author: 'Dr. Jane Roe'
+    }
+    const { deps, calls } = createDeps({ persistPath })
+    const client = createTelemetryClient(deps)
+
+    client.track({
+      ...buildEvent('11111111-1111-1111-1111-111111111111', 'inbox_captured'),
+      dimensions: scraped
+    })
+    await client.flush('manual')
+
+    // #then no fragment of the page survives in the queue file or on the wire
+    const mirrored = fs.readFileSync(persistPath, 'utf-8')
+    const shipped = String(calls[0].init?.body)
+    for (const value of Object.values(scraped)) {
+      expect(mirrored).not.toContain(value)
+      expect(shipped).not.toContain(value)
+    }
+    for (const key of Object.keys(scraped)) {
+      expect(mirrored).not.toContain(key)
+      expect(shipped).not.toContain(key)
+    }
+
+    // #and the event itself still ships — the shape is the signal, not the content
+    const batch = JSON.parse(shipped) as { events: TelemetryEvent[] }
+    expect(batch.events).toHaveLength(1)
+    expect(batch.events[0].name).toBe('inbox_captured')
+    expect(batch.events[0].dimensions).toBeUndefined()
+  })
+
+  it('keeps an allowlisted dimension whose value is a bounded enum', async () => {
+    const { deps, calls } = createDeps({ persistPath })
+    const client = createTelemetryClient(deps)
+
+    client.track({
+      ...buildEvent('11111111-1111-1111-1111-111111111111', 'inbox_captured'),
+      dimensions: { capture_type: 'clipper' }
+    })
+    await client.flush('manual')
+
+    const batch = JSON.parse(String(calls[0].init?.body)) as { events: TelemetryEvent[] }
+    expect(batch.events[0].dimensions).toEqual({ capture_type: 'clipper' })
   })
 
   it('never restores events for an install that opted out between launches', () => {

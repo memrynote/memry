@@ -4,36 +4,19 @@ import type {
   TelemetryResult,
   TelemetrySurface
 } from '@memry/contracts/telemetry-api'
+import { sanitizeTelemetryDimensions } from '@memry/contracts/telemetry-api'
 
 /**
  * Renderer-side, non-blocking, safe telemetry wrapper.
  *
  * Privacy guarantees:
  * - Never includes content, paths, URLs, or other free-form text
- * - Strips dimension values that look like emails, URLs, or paths
- * - Truncates over-long dimension values
+ * - Keeps only allowlisted dimension keys carrying bounded, enumerable values
  * - Catches every IPC error so a failing main process never breaks the UI
  */
 
-const SAFE_DIMENSION_VALUE = /^(?!.*@)(?!.*:\/\/)(?!.*[/\\]).{1,64}$/
-const UUID_SHAPED_VALUE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
-
-const isSafeDimensionValue = (value: unknown): value is string =>
-  typeof value === 'string' && SAFE_DIMENSION_VALUE.test(value) && !UUID_SHAPED_VALUE.test(value)
-
-const sanitizeDimensions = (
-  dimensions: Record<string, string> | undefined
-): Record<string, string> | undefined => {
-  if (!dimensions) return undefined
-  const cleaned: Record<string, string> = {}
-  for (const [key, value] of Object.entries(dimensions)) {
-    if (isSafeDimensionValue(key) && isSafeDimensionValue(value)) {
-      cleaned[key] = value
-      break
-    }
-  }
-  return Object.keys(cleaned).length > 0 ? cleaned : undefined
-}
+// Shared with the main process rather than re-derived here: the key allowlist is
+// the whole guarantee, and two copies of it would drift (#1142).
 
 export interface TrackTelemetryOptions {
   surface: TelemetrySurface
@@ -80,7 +63,7 @@ export const trackTelemetry = async (
       source: options.source,
       result: options.result,
       errorCode: options.errorCode,
-      dimensions: sanitizeDimensions(options.dimensions),
+      dimensions: sanitizeTelemetryDimensions(options.dimensions),
       metrics: options.metrics,
       error: options.error
     }

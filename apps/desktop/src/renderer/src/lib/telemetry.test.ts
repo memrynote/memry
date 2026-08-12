@@ -89,7 +89,7 @@ describe('trackTelemetry (renderer wrapper)', () => {
       surface: 'search',
       action: 'queried',
       dimensions: {
-        provider: 'local',
+        format: 'markdown',
         leak: 'alice@example.com',
         leakUrl: 'https://example.com/x',
         leakPath: '/Users/me/docs'
@@ -97,7 +97,22 @@ describe('trackTelemetry (renderer wrapper)', () => {
     })
 
     const event = trackFn.mock.calls[0][0] as TrackedEventShape
-    expect(event.dimensions).toEqual({ provider: 'local' })
+    expect(event.dimensions).toEqual({ format: 'markdown' })
+  })
+
+  it('drops a dimension key that is not on the allowlist, however safe it looks', async () => {
+    const trackFn = window.api.telemetry!.track as ReturnType<typeof vi.fn>
+
+    // Scraped page metadata clears every safe-value rule — short, no @, no ://,
+    // no slash — so only a closed key namespace can keep it off the wire (#1142).
+    await trackTelemetry('inbox_captured', {
+      surface: 'inbox',
+      action: 'captured',
+      dimensions: { page_title: 'Divorce settlement calculator' }
+    })
+
+    const event = trackFn.mock.calls[0][0] as TrackedEventShape
+    expect(event.dimensions).toBeUndefined()
   })
 
   it('drops unsafe dimension keys and UUID-shaped values', async () => {

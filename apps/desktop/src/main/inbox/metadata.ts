@@ -198,14 +198,22 @@ export async function fetchUrlMetadata(url: string): Promise<UrlMetadata> {
     })
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      // Status code only. `statusText` is the remote server's free-text reason
+      // phrase — raw network data — and this message rides along to telemetry as
+      // app_error_seen.error.message via trackMainError in jobs.ts (#1142).
+      throw new Error(`HTTP ${response.status}`)
     }
 
     const html = await response.text()
     const metadata = await scraper({ html, url })
 
     if (metadata.title && isBotPageTitle(metadata.title)) {
-      log.warn(`Bot page detected for ${url}: "${metadata.title}"`)
+      // debug, not warn: log-ship only intercepts warn/error, so the clipped URL
+      // and the scraped title stay in the on-device log file instead of being
+      // redacted-but-preserved into a shipped diagnostic line (#1142). The
+      // warn below keeps the event countable without carrying page content.
+      log.debug(`Bot page detected for ${url}: "${metadata.title}"`)
+      log.warn('Bot page detected; falling back to a URL-derived title')
       return { url, title: undefined }
     }
 
@@ -239,7 +247,11 @@ export async function fetchUrlHtml(url: string): Promise<string> {
       }
     })
     if (!response.ok) {
-      throw new Error(`Failed to fetch ${url}: ${response.status}`)
+      // No URL in the message: this one reaches telemetry as
+      // app_error_seen.error.message (trackMainError('inbox','article_extract')),
+      // and redactText keeps scheme+host+path — so the clipped address would
+      // have shipped verbatim (#1142). The item row still records the URL.
+      throw new Error(`Failed to fetch article HTML: ${response.status}`)
     }
     const contentLength = response.headers.get('content-length')
     if (contentLength && parseInt(contentLength, 10) > MAX_HTML_SIZE) {

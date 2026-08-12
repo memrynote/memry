@@ -6,6 +6,7 @@ import type {
   TelemetryPlatform,
   TelemetrySyncState
 } from '@memry/contracts/telemetry-api'
+import { sanitizeTelemetryDimensions } from '@memry/contracts/telemetry-api'
 
 import { createLogger } from '../lib/logger'
 import { createQueueStore } from './queue-store'
@@ -116,11 +117,19 @@ export const createTelemetryClient = (deps: TelemetryClientDeps): TelemetryClien
     events
   })
 
+  // The single chokepoint every event passes on its way to the queue file and
+  // then off the device: trackMainEvent, the renderer's IPC handler, the
+  // bootstrap events in runtime.ts and the direct runtime.track callers all end
+  // up here. Enforcing the dimension allowlist at this one point is what makes
+  // it structurally impossible for a new call site to ship free text as a
+  // dimension — no producer can opt out by not calling a helper (#1142).
   const track = (event: TelemetryEvent): void => {
     if (!enabled) return
-    queue.push(event)
+    const dimensions = sanitizeTelemetryDimensions(event.dimensions)
+    const safe = dimensions === event.dimensions ? event : { ...event, dimensions }
+    queue.push(safe)
     trimQueue()
-    persistAppend(event)
+    persistAppend(safe)
   }
 
   const flush = async (reason: TelemetryFlushReason): Promise<TelemetryFlushResult> => {
