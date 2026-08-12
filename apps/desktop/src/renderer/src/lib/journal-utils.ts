@@ -164,95 +164,6 @@ export function addDays(date: Date, days: number): Date {
   return result
 }
 
-/**
- * Generate a range of dates centered around a given date
- * @param centerDate - The center date (usually today)
- * @param pastDays - Number of past days to generate (default 14)
- * @param futureDays - Number of future days to generate (default 7)
- */
-export function generateDateRange(
-  centerDate: Date = new Date(),
-  pastDays: number = 14,
-  futureDays: number = 7
-): DayData[] {
-  const today = formatDateToISO(new Date())
-  const days: DayData[] = []
-
-  // Generate past days (oldest first)
-  for (let i = pastDays; i > 0; i--) {
-    const date = addDays(centerDate, -i)
-    const dateStr = formatDateToISO(date)
-    days.push({
-      date: dateStr,
-      isToday: dateStr === today,
-      isFuture: dateStr > today
-    })
-  }
-
-  // Add center date (today)
-  const centerDateStr = formatDateToISO(centerDate)
-  days.push({
-    date: centerDateStr,
-    isToday: centerDateStr === today,
-    isFuture: centerDateStr > today
-  })
-
-  // Generate future days
-  for (let i = 1; i <= futureDays; i++) {
-    const date = addDays(centerDate, i)
-    const dateStr = formatDateToISO(date)
-    days.push({
-      date: dateStr,
-      isToday: false,
-      isFuture: true
-    })
-  }
-
-  return days
-}
-
-/**
- * Generate more past days from a given oldest date
- */
-export function generateMorePastDays(oldestDate: string, count: number = 14): DayData[] {
-  const today = formatDateToISO(new Date())
-  const startDate = parseISODate(oldestDate)
-  const days: DayData[] = []
-
-  for (let i = count; i > 0; i--) {
-    const date = addDays(startDate, -i)
-    const dateStr = formatDateToISO(date)
-    days.push({
-      date: dateStr,
-      isToday: dateStr === today,
-      isFuture: dateStr > today
-    })
-  }
-
-  return days
-}
-
-/**
- * Generate more future days from a given newest date
- */
-export function generateMoreFutureDays(newestDate: string, count: number = 14): DayData[] {
-  const today = formatDateToISO(new Date())
-  const startDate = parseISODate(newestDate)
-  const days: DayData[] = []
-
-  for (let i = 1; i <= count; i++) {
-    const date = addDays(startDate, i)
-    const dateStr = formatDateToISO(date)
-    days.push({
-      date: dateStr,
-      isToday: false,
-      isFuture: dateStr > today
-    })
-  }
-
-  return days
-}
-
 // =============================================================================
 // DATE FORMATTING
 // =============================================================================
@@ -279,36 +190,6 @@ export function formatDayHeader(
     isToday: dateStr === today,
     isFuture: dateStr > today
   }
-}
-
-// =============================================================================
-// OPACITY CALCULATION
-// =============================================================================
-
-/**
- * Calculate opacity based on distance from active day
- * @param distance - Number of days from active day (0 = active)
- * @returns Opacity value between 0.25 and 1.0
- */
-export function getOpacityForDistance(distance: number): number {
-  const absDistance = Math.abs(distance)
-
-  if (absDistance === 0) return 1.0 // Active day
-  if (absDistance === 1) return 0.7 // Adjacent days
-  if (absDistance === 2) return 0.5 // 2 days away
-  if (absDistance === 3) return 0.35 // 3 days away
-  return 0.25 // 4+ days away (minimum)
-}
-
-/**
- * Calculate distance between two date strings
- */
-export function getDateDistance(date1: string, date2: string): number {
-  const d1 = parseISODate(date1)
-  const d2 = parseISODate(date2)
-  const diffTime = d1.getTime() - d2.getTime()
-  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24))
-  return diffDays
 }
 
 // =============================================================================
