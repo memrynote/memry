@@ -11,10 +11,13 @@ export interface HintModeState {
   typedChars: string
 }
 
-export interface HintModeContextType {
-  state: HintModeState
+export interface HintModeActions {
   activate: () => void
   deactivate: () => void
   typeChar: (char: string) => void
   backspace: () => void
+}
+
+export interface HintModeContextType extends HintModeActions {
+  state: HintModeState
 }

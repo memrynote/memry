@@ -1,15 +1,20 @@
 import { useEffect } from 'react'
-import { useHintModeContext } from '@/contexts/hint-mode'
+import { hintModeActiveRef, useHintModeActions } from '@/contexts/hint-mode'
 import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 
 export const useHintActivation = (): void => {
-  const { state, activate, deactivate, typeChar, backspace } = useHintModeContext()
+  // Actions only: the hint state object changes on every typed character, and
+  // subscribing to it here would re-render the whole app shell and tear the
+  // capture-phase window listener down and back up per keystroke. Active-ness is
+  // read from hintModeActiveRef, the same gate use-keyboard-shortcuts-base,
+  // use-chord-shortcuts and use-modifier-held already read at keypress time.
+  const { activate, deactivate, typeChar, backspace } = useHintModeActions()
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.isComposing || e.keyCode === 229) return
 
-      if (state.isActive) {
+      if (hintModeActiveRef.current) {
         if (e.key === 'Escape') {
           e.preventDefault()
           e.stopPropagation()
@@ -57,5 +62,5 @@ export const useHintActivation = (): void => {
 
     window.addEventListener('keydown', handleKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
-  }, [state.isActive, activate, deactivate, typeChar, backspace])
+  }, [activate, deactivate, typeChar, backspace])
 }
