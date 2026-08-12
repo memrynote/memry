@@ -13,6 +13,8 @@ Three ways:
 - **Drag from the sidebar** — drag a file item (PDF, image, audio, …) from the left sidebar onto a note. This **embeds it by reference** using the item's own vault path, so no second copy is made.
 - **Slash menu** — `/file` inserts a File block; click to pick a file.
 
+While you drag over a note, a line marks where the file will land, and dropping inserts it exactly there. The line follows the cursor once per frame instead of on every pointer event, so dragging over a long note stays smooth.
+
 ## File Block
 
 Each attachment renders as a block with:
