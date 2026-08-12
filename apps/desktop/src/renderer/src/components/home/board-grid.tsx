@@ -1,11 +1,6 @@
 import { useMemo } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
-import {
-  Responsive,
-  WidthProvider,
-  type Layout,
-  type ResponsiveLayouts
-} from 'react-grid-layout/legacy'
+import GridLayout, { WidthProvider, type Layout } from 'react-grid-layout/legacy'
 import 'react-grid-layout/css/styles.css'
 import './home-grid.css'
 import { WidgetFrame } from './widget-frame'
@@ -17,7 +12,6 @@ import {
   type GridLayoutItem
 } from '@/lib/home/layout-reducer'
 import {
-  GRID_BREAKPOINTS,
   GRID_COLS,
   GRID_ROW_HEIGHT,
   GRID_MARGIN,
@@ -28,7 +22,7 @@ import {
 import type { HomePage } from '@/lib/home/types'
 import { useT } from '@memry/i18n/renderer'
 
-const ResponsiveGrid = WidthProvider(Responsive)
+const Grid = WidthProvider(GridLayout)
 
 interface BoardGridProps {
   board: HomePage
@@ -67,21 +61,19 @@ export function BoardGrid({ board, onChange }: BoardGridProps): React.JSX.Elemen
     [board.widgets]
   )
 
-  // Responsive RGL switches to a fewer-column breakpoint below `lg` width and reports the COLLAPSED
-  // layout as the first arg. Persisting that would overwrite the stored desktop arrangement and it
-  // never returns on resize-up. The model's x/y/w/h are authored against `lg`, so persist only the
-  // `lg` entry from allLayouts — it stays intact across breakpoint collapses, the first arg doesn't.
-  const handleLayoutChange = (_current: Layout, allLayouts: ResponsiveLayouts): void => {
-    const lg = allLayouts.lg
-    if (!lg || unchanged(board, lg)) return
-    onChange(applyLayout(board, lg as GridLayoutItem[]))
+  // The grid has one column count at every width, so what RGL reports here IS the board's
+  // arrangement — persist it. (It used to be responsive: below the `lg` width RGL reported a
+  // collapsed layout that could not be persisted without destroying the stored arrangement, so
+  // every drag and resize made on a narrower window was silently discarded — issue #1216.)
+  const handleLayoutChange = (next: Layout): void => {
+    if (unchanged(board, next)) return
+    onChange(applyLayout(board, next as GridLayoutItem[]))
   }
 
   return (
-    <ResponsiveGrid
+    <Grid
       className="home-grid"
-      layouts={{ lg: layout }}
-      breakpoints={GRID_BREAKPOINTS}
+      layout={layout}
       cols={GRID_COLS}
       rowHeight={GRID_ROW_HEIGHT}
       margin={GRID_MARGIN}
@@ -148,6 +140,6 @@ export function BoardGrid({ board, onChange }: BoardGridProps): React.JSX.Elemen
           </div>
         )
       })}
-    </ResponsiveGrid>
+    </Grid>
   )
 }

@@ -9,16 +9,16 @@ import type { HomePage } from '@/lib/home/types'
 // react-grid-layout measures container width via ResizeObserver (0 in jsdom), so stub it to a
 // passthrough that renders children and captures onLayoutChange so tests can fire RGL callbacks.
 const rgl = vi.hoisted(() => ({
-  onLayoutChange: undefined as undefined | ((layout: unknown, all: unknown) => void)
+  onLayoutChange: undefined as undefined | ((layout: unknown) => void)
 }))
 vi.mock('react-grid-layout/legacy', () => ({
   WidthProvider: (C: unknown) => C,
-  Responsive: ({
+  default: ({
     children,
     onLayoutChange
   }: {
     children: React.ReactNode
-    onLayoutChange?: (layout: unknown, all: unknown) => void
+    onLayoutChange?: (layout: unknown) => void
   }) => {
     rgl.onLayoutChange = onLayoutChange
     return <div>{children}</div>
@@ -56,31 +56,27 @@ describe('BoardGrid', () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ widgets: [] }))
   })
 
-  // Regression: resizing the window narrow makes RGL switch to a fewer-column breakpoint and
-  // report a collapsed single-column layout. That must NOT be persisted, or widgets lose their
-  // positions and never return when the window is widened again.
-  it('ignores a narrow-breakpoint collapse and keeps the lg layout', () => {
+  // RGL reports a layout on mount and after compaction, not only after a real edit. Persisting
+  // those would loop refetch → re-render, so an identical layout must be ignored.
+  it('ignores a layout callback that changes nothing', () => {
     const onChange = vi.fn()
     render(
       <TooltipProvider>
         <BoardGrid board={board} onChange={onChange} />
       </TooltipProvider>
     )
-    const collapsed = [{ i: 'w1', x: 0, y: 0, w: 2, h: 4 }]
-    const intactLg = [{ i: 'w1', x: 0, y: 0, w: 4, h: 4 }]
-    rgl.onLayoutChange?.(collapsed, { lg: intactLg, sm: collapsed })
+    rgl.onLayoutChange?.([{ i: 'w1', x: 0, y: 0, w: 4, h: 4 }])
     expect(onChange).not.toHaveBeenCalled()
   })
 
-  it('persists a real edit made at the lg breakpoint', () => {
+  it('persists a real edit', () => {
     const onChange = vi.fn()
     render(
       <TooltipProvider>
         <BoardGrid board={board} onChange={onChange} />
       </TooltipProvider>
     )
-    const editedLg = [{ i: 'w1', x: 2, y: 1, w: 4, h: 4 }]
-    rgl.onLayoutChange?.(editedLg, { lg: editedLg })
+    rgl.onLayoutChange?.([{ i: 'w1', x: 2, y: 1, w: 4, h: 4 }])
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
         widgets: [expect.objectContaining({ id: 'w1', x: 2, y: 1, w: 4, h: 4 })]
