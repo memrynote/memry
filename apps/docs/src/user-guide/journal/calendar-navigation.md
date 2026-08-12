@@ -10,7 +10,7 @@ The default writing surface for a single date.
 
 - Header arrows move ±1 day
 - Date in the breadcrumb opens the picker
-- The editor shows that day's entry; sidebar panes show schedule, tasks, AI connections (per your settings)
+- The editor shows that day's entry; sidebar panes show schedule and tasks (per your settings)
 
 ## Month View
 

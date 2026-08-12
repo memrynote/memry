@@ -28,7 +28,6 @@ Show or hide the journal sidebar panes from [Settings → Journal](/user-guide/s
 
 - **Schedule** — calendar / events for the focused date
 - **Tasks** — tasks due that day
-- **AI Connections** — semantically related entries (requires AI enabled)
 
 ## Stats Footer
 

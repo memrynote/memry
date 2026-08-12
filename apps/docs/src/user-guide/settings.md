@@ -173,7 +173,6 @@ Show or hide journal sidebar panes:
 
 - **Show Schedule** — calendar / events for the date
 - **Show Tasks** — tasks due that day
-- **Show AI Connections** — semantically related entries
 
 ### Footer
 
@@ -259,8 +258,8 @@ For the full default list see [Keyboard Shortcuts](/user-guide/keyboard-shortcut
 
 A master toggle for AI features. Off by default — memrynote never reaches out to AI services until you turn this on.
 When off, memrynote also hides AI entry points in the app: inline editor AI, Agent Chat in the right
-sidebar, AI tag/folder/note suggestions, journal AI connections, voice recording/transcription
-controls, and quick-capture voice capture.
+sidebar, AI tag/folder/note suggestions, voice recording/transcription controls, and
+quick-capture voice capture.
 
 ### Voice Transcription
 
