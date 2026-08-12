@@ -29,6 +29,19 @@
   }
 }
 
+/* Width floor. The board keeps eight columns at every width, so on a narrow window every column —
+   and every widget in it — scales down with nothing to stop it: measured at 65px wide on an 800px
+   window with the sidebar and Day Panel open, which drops the widget title entirely. Flooring the
+   board at 640px keeps a minimum four-column widget at ~302px. Below the floor the page container
+   (home.tsx, already overflow-auto) scrolls horizontally instead: a deliberate trade of sideways
+   scrolling for widgets that stay readable. Around 800px and narrower the page already scrolled
+   horizontally for other reasons, but between there and roughly a 1270px window this floor is what
+   introduces it. react-grid-layout reads its column width from this element's measured width, so
+   the floor is what RGL computes against — the stored 8-column coordinates are untouched. */
+.home-grid {
+  min-width: 640px;
+}
+
 /* Drag/resize placeholder under the moving widget. Radius matches the card (rounded-2xl). */
 .home-grid .react-grid-placeholder {
   background: var(--tint);
