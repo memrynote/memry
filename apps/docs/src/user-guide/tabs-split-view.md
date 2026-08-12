@@ -58,6 +58,16 @@ Drag a tab to the left, right, top, or bottom edge of the window to open a secon
 
 <!-- screenshot: tab being dragged into a drop zone to create a split -->
 
+### Open to the Side
+
+Right-click any sidebar item and choose **Open to the Side** to split the current pane and open
+that item in the new pane in one step. The new pane takes focus, so you can start reading or
+editing straight away.
+
+The item always lands in the pane that gesture created — even when the item is already open in
+another pane (you get a second, independent copy), and even if something else takes focus while
+the split is being drawn. Use it to put a note beside a canvas, or a project beside your journal.
+
 ### Drop Zones
 
 When dragging a tab, the workspace highlights drop zones:
