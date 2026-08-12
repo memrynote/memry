@@ -53,6 +53,11 @@
   "tabs": {
     "pin": "Pin Tab",
     "unpin": "Unpin Tab",
+    "persistence": {
+      "saveFailed": "Your open tabs are no longer being saved",
+      "saveFailedQuota": "This session is too large to store. Close some tabs, or it may not be restored the next time you open Memry.",
+      "saveFailedGeneric": "Memry could not store this session, so it may not be restored the next time you open the app."
+    },
     "contextMenu": {
       "close": "Close",
       "closeOthers": "Close Others",
