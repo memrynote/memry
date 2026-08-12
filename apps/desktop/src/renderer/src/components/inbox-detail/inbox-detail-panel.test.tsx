@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -111,7 +111,7 @@ vi.mock('./convert-actions', () => ({
 }))
 
 vi.mock('./type-selector', () => ({
-  TypeSelector: () => null
+  TypeSelector: () => <div data-testid="type-selector" />
 }))
 
 vi.mock('./filing-section', async () => {
@@ -206,6 +206,15 @@ describe('InboxDetailPanel', () => {
         trackSuggestion: vi.fn().mockResolvedValue(undefined)
       }
     }
+  })
+
+  it('shows the type selector for text items but hides it for note-only ones', () => {
+    renderPanel()
+    expect(screen.getByTestId('type-selector')).toBeInTheDocument()
+
+    cleanup()
+    renderPanel({ item: { ...baseItem, id: 'inbox-image', type: 'image' as const } })
+    expect(screen.queryByTestId('type-selector')).not.toBeInTheDocument()
   })
 
   it('renders loading and closed states without item content', () => {

@@ -198,7 +198,6 @@
     "task": "Task",
     "event": "Event",
     "reminder": "Reminder",
-    "binaryOnlyNote": "Files can only become a note",
     "create": "Create",
     "addTask": "Add task",
     "addEvent": "Add event",
