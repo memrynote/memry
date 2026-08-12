@@ -8,7 +8,7 @@
  */
 
 import path from 'path'
-import { rename, copyFile, unlink } from 'fs/promises'
+import { rename, copyFile, unlink, stat } from 'fs/promises'
 import { existsSync } from 'fs'
 import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
@@ -22,8 +22,14 @@ import { inboxItems, inboxItemTags, filingHistory } from '@memry/db-schema/schem
 import { generateId } from '../lib/id'
 import { normalizeRelativePath } from '../lib/paths'
 import { eq } from 'drizzle-orm'
-import { InboxChannels, TasksChannels, CalendarChannels } from '@memry/contracts/ipc-channels'
+import {
+  InboxChannels,
+  NotesChannels,
+  TasksChannels,
+  CalendarChannels
+} from '@memry/contracts/ipc-channels'
 import type { FilingAction } from '@memry/contracts/inbox-api'
+import type { NoteListItem } from '@memry/contracts/notes-api'
 import { upsertCalendarEvent } from '../calendar/repositories/calendar-events-repository'
 import { syncCalendarEventCreate } from '../calendar/runtime-effects'
 import { createReminder } from '../lib/reminders'
@@ -182,14 +188,24 @@ function getItemTags(db: ReturnType<typeof getDatabase>, itemId: string): string
  * path and never touches `note_tags`) and write the tags to the index DB.
  * No-op for unsupported/markdown extensions. See #800.
  */
-async function persistBinaryTags(
+/**
+ * Index a filed binary and hand back the tree entry it produced.
+ *
+ * The vault watcher cannot cover this: indexing happens before chokidar reports
+ * the moved file, so the watcher's add handler finds an existing `note_cache`
+ * row and returns early without emitting. Whoever writes the row therefore owns
+ * the announcement, exactly as `createNote` does for markdown.
+ *
+ * Returns null when there is nothing to announce — a file type the tree does not
+ * carry, or an index write that failed.
+ */
+async function indexFiledBinary(
   relativePath: string,
   absolutePath: string,
   tags: string[]
-): Promise<void> {
-  if (tags.length === 0) return
+): Promise<NoteListItem | null> {
   const fileType = getFileType(path.extname(absolutePath))
-  if (!fileType || fileType === 'markdown') return
+  if (!fileType || fileType === 'markdown') return null
 
   // Best-effort: the caller has already moved the file and deleted the inbox
   // attachment folder, so a failure here (e.g. index DB unavailable) must not
@@ -198,13 +214,34 @@ async function persistBinaryTags(
   try {
     const indexDb = getIndexDatabase()
     const noteId = await indexBinaryFile(indexDb, relativePath, absolutePath, fileType)
-    setNoteTags(indexDb, noteId, tags)
+    if (tags.length > 0) setNoteTags(indexDb, noteId, tags)
+
+    const stats = await stat(absolutePath)
+    return {
+      id: noteId,
+      path: relativePath,
+      title: path.basename(absolutePath, path.extname(absolutePath)),
+      created: stats.birthtime,
+      modified: stats.mtime,
+      tags,
+      wordCount: 0
+    }
   } catch (error) {
     log.warn(
-      'Failed to persist tags for filed binary (continuing):',
+      'Failed to index filed binary (continuing):',
       error instanceof Error ? error.message : String(error)
     )
+    return null
   }
+}
+
+/**
+ * Tell every window a filed binary joined the tree, so the sidebar and folder
+ * view update in place instead of waiting for a restart.
+ */
+function announceFiledBinary(note: NoteListItem | null): void {
+  if (!note) return
+  broadcastToAllWindows(NotesChannels.events.CREATED, { note, source: 'internal' })
 }
 
 /**
@@ -584,8 +621,8 @@ async function fileBinaryToFolder(
     // Calculate relative path from vault root for storage
     const relativePath = normalizeRelativePath(path.relative(vaultPath, finalPath))
 
-    // Persist the assigned tags onto the filed file (index DB / note_tags)
-    await persistBinaryTags(relativePath, finalPath, mergedTags)
+    // Index the filed file and announce it, so the tree picks it up live.
+    announceFiledBinary(await indexFiledBinary(relativePath, finalPath, mergedTags))
 
     // Mark inbox item as filed
     markItemAsFiled(itemId, relativePath, 'folder')
@@ -1110,8 +1147,8 @@ async function linkBinaryToNotes(
     // Calculate relative path for storage
     const relativePath = normalizeRelativePath(path.relative(vaultPath, finalPath))
 
-    // Persist the assigned tags onto the filed file (index DB / note_tags)
-    await persistBinaryTags(relativePath, finalPath, mergedTags)
+    // Index the filed file and announce it, so the tree picks it up live.
+    announceFiledBinary(await indexFiledBinary(relativePath, finalPath, mergedTags))
 
     // Mark inbox item as filed
     markItemAsFiled(itemId, relativePath, 'linked')

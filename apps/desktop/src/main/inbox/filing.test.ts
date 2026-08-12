@@ -19,6 +19,7 @@ vi.mock('../database', () => ({
 }))
 
 const mockIndexBinaryFile = vi.fn()
+const mockStat = vi.fn()
 const mockSetNoteTags = vi.fn()
 
 vi.mock('../vault/indexer', () => ({
@@ -63,7 +64,8 @@ vi.mock('electron', () => ({
 vi.mock('fs/promises', () => ({
   rename: (...args: unknown[]) => mockRename(...args),
   copyFile: (...args: unknown[]) => mockCopyFile(...args),
-  unlink: (...args: unknown[]) => mockUnlink(...args)
+  unlink: (...args: unknown[]) => mockUnlink(...args),
+  stat: (...args: unknown[]) => mockStat(...args)
 }))
 
 vi.mock('fs', () => ({
@@ -182,6 +184,9 @@ describe('Inbox Filing Operations', () => {
     vi.mocked(getIndexDatabase).mockReturnValue({} as never)
 
     mockIndexBinaryFile.mockReset().mockResolvedValue('file-note-id')
+    mockStat
+      .mockReset()
+      .mockResolvedValue({ size: 2048, birthtime: new Date(0), mtime: new Date(0) })
     mockSetNoteTags.mockReset()
 
     mockCreateNote.mockReset()
@@ -377,6 +382,48 @@ describe('Inbox Filing Operations', () => {
       )
       // ...and the merged tags (existing + assigned + 'inbox') are written to note_tags.
       expect(mockSetNoteTags).toHaveBeenCalledWith({}, 'file-note-id', ['Photos', 'Image', 'inbox'])
+    })
+
+    it('announces the filed binary so the sidebar updates without a restart', async () => {
+      // Filing writes the note_cache row before chokidar sees the moved file, so
+      // the watcher's add handler finds an existing row and returns without
+      // emitting (watcher.ts). Nothing else announces a filed binary, which is
+      // why the sidebar only caught up on restart. The writer has to emit, the
+      // same way createNote does for the markdown path.
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'image-evt',
+        type: 'image',
+        title: 'Screenshot'
+      })
+      updateInboxItem(itemId, { attachmentPath: 'attachments/inbox/image-evt/screenshot.png' })
+
+      await fileToFolder(itemId, 'projects')
+
+      expect(mockSend).toHaveBeenCalledWith('notes:created', {
+        note: expect.objectContaining({
+          id: 'file-note-id',
+          path: 'projects/screenshot.png',
+          title: 'screenshot',
+          tags: ['inbox']
+        }),
+        source: 'internal'
+      })
+    })
+
+    it('does not announce a binary it failed to index', async () => {
+      // No index row means no tree entry to announce, and the watcher still owns
+      // the fallback. Emitting here would put a phantom row in the sidebar.
+      mockIndexBinaryFile.mockRejectedValueOnce(new Error('index db unavailable'))
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'image-evtfail',
+        type: 'image',
+        title: 'Screenshot'
+      })
+      updateInboxItem(itemId, { attachmentPath: 'attachments/inbox/image-evtfail/screenshot.png' })
+
+      await fileToFolder(itemId, 'projects')
+
+      expect(mockSend).not.toHaveBeenCalledWith('notes:created', expect.anything())
     })
 
     it('still files the binary when tag persistence fails (best-effort) (#800)', async () => {
@@ -1349,6 +1396,15 @@ describe('Inbox Filing Operations', () => {
       expect(mockUpdateNote.mock.calls[1][0].content).toContain('[[Old]]')
       expect(mockUpdateNote.mock.calls[1][0].content).toContain('[[screenshot]]')
       expect(mockCreateNote).not.toHaveBeenCalled()
+      // Linking moves the binary into the vault just as filing does, so the
+      // tree needs the same announcement to update without a restart.
+      expect(mockSend).toHaveBeenCalledWith('notes:created', {
+        note: expect.objectContaining({
+          id: 'file-note-id',
+          path: 'projects/screenshot.png'
+        }),
+        source: 'internal'
+      })
     })
 
     it('should link voice attachments with the current inbox title', async () => {

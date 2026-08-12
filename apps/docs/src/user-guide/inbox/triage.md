@@ -29,7 +29,7 @@ Each card shows:
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Archive**             | Done; file the item and move on. The item is searchable but out of the active inbox.                                                                  |
 | **Snooze**              | Defer until later. Item disappears from inbox until wake time. See [Snooze & Archive](/user-guide/inbox/snooze-archive).                              |
-| **Quick file**          | Move into a folder, project, or tag without converting.                                                                                               |
+| **Quick file**          | Move into a folder, project, or tag without converting. Notes and attachments alike appear in the sidebar as soon as they are filed.                    |
 | **Convert to Note**     | Create a note seeded with the item's content. The original is archived with a back-reference.                                                         |
 | **Convert to Task**     | Create a task in the current default project, or pick a project, due date, due time, and priority.                                                    |
 | **Convert to Event**    | Create a calendar event from the item: start (and optional end) time, an all-day toggle, and a location. The item body becomes the event description. |
