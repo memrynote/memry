@@ -108,6 +108,10 @@ A small dot appears on a tab title when there are unsaved changes (rare — memr
 
 Canvases open as tabs too, so you can keep a board in one pane and a note in the other. Note that a note open in a visible pane is edited there, not on the canvas card — see [Cards & Links](./canvas/cards-and-links.md).
 
+## Links in Split Panes
+
+Each pane handles its own links. Clicking an external link or a `[[wiki link]]` in either pane opens it from that pane, and closing one pane leaves the other pane's links working.
+
 ## See Also
 
 - [Folder View](/user-guide/folder-view) — opens in a tab like everything else

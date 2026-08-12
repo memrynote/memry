@@ -148,13 +148,19 @@ export function useBlockNoteSetup({
       }
     }
 
-    const editorElement = document.querySelector('.bn-editor')
+    // Scope the lookup to this instance's own container. `document.querySelector`
+    // returns whichever `.bn-editor` is first in the document, so with more than
+    // one editor mounted (split view, or a note alongside the inbox/task
+    // description editors) every instance bound to the same element: clicks in
+    // the first pane fired every pane's callbacks, and clicks in any later pane
+    // fired none.
+    const editorElement = editorContainerRef.current?.querySelector('.bn-editor')
     editorElement?.addEventListener('click', handleClick)
 
     return () => {
       editorElement?.removeEventListener('click', handleClick)
     }
-  }, [onLinkClick, onInternalLinkClick])
+  }, [onLinkClick, onInternalLinkClick, editorContainerRef])
 
   // Scroll to highlight on mount
   useEffect(() => {
