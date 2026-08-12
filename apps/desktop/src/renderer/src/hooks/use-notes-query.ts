@@ -11,6 +11,7 @@ import type {
   FolderInfo,
   Note,
   NoteLinksResponse,
+  NoteListFields,
   NoteListItem,
   NoteListResponse
 } from '@memry/rpc/notes'
@@ -61,6 +62,13 @@ export interface NoteListInput {
   sortOrder?: 'asc' | 'desc'
   limit?: number
   offset?: number
+  /**
+   * Omit for the full row. `'tree'` asks main to skip the fields the sidebar
+   * never renders (`snippet`, `mimeType`, `fileSize`) — it is part of the
+   * query key, so the two shapes are cached separately and a `'tree'` fetch
+   * can never overwrite a full-shape consumer's cache entry.
+   */
+  fields?: NoteListFields
 }
 
 export interface UseNoteOptions {
@@ -537,4 +545,4 @@ export function useNoteMutations() {
 // =============================================================================
 
 // Re-export types
-export type { Note, NoteListItem, NoteListResponse, NoteLinksResponse }
+export type { Note, NoteListFields, NoteListItem, NoteListResponse, NoteLinksResponse }

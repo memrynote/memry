@@ -30,7 +30,11 @@ export interface NoteTreeData {
 }
 
 export function useNoteTreeData(): NoteTreeData {
-  const { notes, isLoading, error } = useNotesList({ limit: 10000 })
+  // `fields: 'tree'` — the sidebar renders path/title/modified/tags/emoji/
+  // localOnly/fileType and nothing else, so main skips the snippet and the
+  // mime/size pair. At a 10k-note ceiling those are the bulk of the payload,
+  // and this list is refetched on every note create/update/rename/move.
+  const { notes, isLoading, error } = useNotesList({ limit: 10000, fields: 'tree' })
   const mutations = useNoteMutations()
   const { folders, createFolder, setFolderIcon, refetch: refreshFolders } = useNoteFoldersQuery()
 
