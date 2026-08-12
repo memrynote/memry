@@ -22,13 +22,6 @@ Use **Add property** or **Add tag** above the date heading to organize a daily e
 
 Journal pages follow the global **Width** setting in [Settings → Editor](/user-guide/settings#editor). To override it just for the Journal, use the **Full width** toggle in the journal ⋮ menu — it widens the writing column edge to edge and applies to every journal page until you turn it off.
 
-## Sidebar Toggles
-
-Show or hide the journal sidebar panes from [Settings → Journal](/user-guide/settings#journal):
-
-- **Schedule** — calendar / events for the focused date
-- **Tasks** — tasks due that day
-
 ## Stats Footer
 
 If enabled, the editor footer shows:

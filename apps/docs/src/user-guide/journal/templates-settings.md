@@ -1,6 +1,6 @@
 # Journal Templates & Settings
 
-Pick a default starting template for new entries and toggle the sidebar panes.
+Pick a default starting template for new entries and toggle the stats footer.
 
 <!-- screenshot: journal settings panel -->
 
@@ -17,17 +17,6 @@ Useful for prompts like:
 - Mood / energy log
 
 If the template uses date variables, they're filled in for the current entry's date.
-
-## Sidebar Visibility
-
-Toggle which panes appear in the journal sidebar:
-
-| Toggle        | Shows                                |
-| ------------- | ------------------------------------ |
-| Show Schedule | Calendar events for the focused date |
-| Show Tasks    | Tasks due that day                   |
-
-Each toggle is independent. Turn them on as you find them useful.
 
 ## Stats Footer
 

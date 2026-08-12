@@ -167,13 +167,6 @@ Clicking a row — built-in or custom — opens it in the [template editor](/use
 
 Pick the template seeded into new journal entries.
 
-### Sidebar Visibility
-
-Show or hide journal sidebar panes:
-
-- **Show Schedule** — calendar / events for the date
-- **Show Tasks** — tasks due that day
-
 ### Footer
 
 **Show Stats Footer** displays writing statistics (word, character, and entry counts).
