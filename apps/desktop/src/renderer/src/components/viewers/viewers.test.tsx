@@ -417,9 +417,9 @@ describe('viewer components', () => {
     await user.click(zoomInButton)
 
     expect(screen.getByText('100%')).toBeInTheDocument()
-    expect(image.style.transform).toBe('translate(0px, 0px) scale(1) rotate(0deg)')
     expect(screen.queryByText('phaseF.componentsViewersImageViewer.dragToPan')).toBeNull()
     expect(imageContainer.className).toContain('cursor-default')
+    expect(image.style.transform).toBe('translate(0px, 0px) scale(1) rotate(0deg)')
   })
 
   it('still recenters on a toolbar-only round trip to 100%', async () => {
