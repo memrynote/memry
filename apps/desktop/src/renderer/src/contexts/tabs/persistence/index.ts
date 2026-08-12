@@ -11,6 +11,7 @@ export { serializeTabState, deserializeTabState, extractPinnedTabs } from './ser
 
 // Storage adapters
 export { localStorageAdapter, getDefaultStorage, saveSync } from './storage'
+export type { SyncSaveFailure, SyncSaveResult } from './storage'
 
 // Migrations
 export { migratePersistedState, needsMigration, getMigrationDescription } from './migrations'

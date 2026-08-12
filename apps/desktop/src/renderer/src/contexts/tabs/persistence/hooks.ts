@@ -10,7 +10,12 @@ import { toast } from 'sonner'
 import { useTabs } from '@/contexts/tabs'
 import type { TabSystemState } from '@/contexts/tabs/types'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import { getDefaultStorage, isQuotaExceededError, saveSync } from './storage'
+import {
+  consumeSyncSaveFailure,
+  getDefaultStorage,
+  isQuotaExceededError,
+  saveSync
+} from './storage'
 import { serializeTabState, deserializeTabState, extractPinnedTabs } from './serialization'
 import type { TabStorage } from './types'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
@@ -20,6 +25,7 @@ import { useFeatureFlags } from '@/hooks/use-feature-flags'
 const log = createLogger('TabPersistence:Hooks')
 const FLUSH_REGISTRY_KEY = 'tab-state'
 const SAVE_FAILURE_TOAST_ID = 'tab-state-save-failed'
+const LAST_SESSION_TOAST_ID = 'tab-state-last-session-not-saved'
 
 // =============================================================================
 // AUTO-SAVE HOOK
@@ -56,7 +62,14 @@ export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void 
 
     registerPendingSave(FLUSH_REGISTRY_KEY, () => {
       const serialized = serializeTabState(stateRef.current)
-      saveSync(serialized)
+      const result = saveSync(serialized)
+      if (!result.ok) {
+        // Claiming a flush that never happened is what made this invisible:
+        // whoever diagnoses "my tabs came back wrong after quitting" needs the
+        // log to say the write was refused, and why.
+        log.error('failed to flush tab state via registry', { reason: result.reason })
+        return
+      }
       log.info('flushed tab state via registry')
     })
 
@@ -136,7 +149,10 @@ export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void 
 
     const handleBeforeUnload = (): void => {
       const serialized = serializeTabState(stateRef.current)
-      saveSync(serialized)
+      const result = saveSync(serialized)
+      if (!result.ok) {
+        log.error('failed to save tab state on unload', { reason: result.reason })
+      }
     }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
@@ -219,6 +235,23 @@ export const useSessionRestore = (
         }
       } else {
         log.info('no persisted tab state found')
+      }
+
+      // The quit-time write is the one save the user can never be told about
+      // while it fails — the window is already closing. If it left a marker,
+      // this launch is the first moment the explanation is worth anything:
+      // whatever just got restored is older than what they closed the app with.
+      const saveFailure = consumeSyncSaveFailure()
+      if (saveFailure) {
+        log.warn('previous session was not saved on exit', { reason: saveFailure.reason })
+        const t = getI18n().getFixedT(null, 'common')
+        toast.warning(t('tabs.persistence.lastSessionNotSaved'), {
+          id: LAST_SESSION_TOAST_ID,
+          description:
+            saveFailure.reason === 'quota'
+              ? t('tabs.persistence.lastSessionNotSavedQuota')
+              : t('tabs.persistence.lastSessionNotSavedGeneric')
+        })
       }
 
       hasRestoredRef.current = true

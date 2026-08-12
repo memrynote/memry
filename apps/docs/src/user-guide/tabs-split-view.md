@@ -137,6 +137,12 @@ memrynote now tells you when that happens: a toast reads **"Your open tabs are n
 
 Previously the failure was silent — the app kept running normally and you only found out at the next launch, when the restored layout turned out to be stale.
 
+### If the last save on quit fails
+
+The layout is written one last time while memrynote closes (⌘Q, or closing the window). If storage is full at that moment, that final write is refused too — the tabs you had when you quit are lost, and what comes back is whatever was stored before them.
+
+A toast is no use while the window is going away, so memrynote records the failure and reports it at the next launch instead: **"Your last session was not saved when Memry closed"**, along with the reason. It appears once, on the first launch after the failed quit, so you know the restored layout is older than the one you left.
+
 ## Modified Indicator
 
 A small dot appears on a tab title when there are unsaved changes (rare — memrynote auto-saves). On a compressed tab the dot takes the close button's place, so unsaved work stays visible. Closing a modified tab triggers a flush before close.

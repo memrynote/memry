@@ -60,7 +60,10 @@
     "persistence": {
       "saveFailed": "Your open tabs are no longer being saved",
       "saveFailedQuota": "This session is too large to store. Close some tabs, or it may not be restored the next time you open Memry.",
-      "saveFailedGeneric": "Memry could not store this session, so it may not be restored the next time you open the app."
+      "saveFailedGeneric": "Memry could not store this session, so it may not be restored the next time you open the app.",
+      "lastSessionNotSaved": "Your last session was not saved when Memry closed",
+      "lastSessionNotSavedQuota": "Storage was full at the time, so these tabs are from an earlier save. Close some tabs to make room.",
+      "lastSessionNotSavedGeneric": "Memry could not store your tabs on exit, so these tabs are from an earlier save."
     },
     "contextMenu": {
       "close": "Close",
