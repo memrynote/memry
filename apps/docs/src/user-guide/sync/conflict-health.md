@@ -39,6 +39,12 @@ When a conflict requires your attention (very rare given the strategies above), 
 - Adds an entry to **Sync History**
 - Lets you choose to keep your version, the remote version, or merge manually
 
+### Conflict Count in the Sync Menu
+
+The sync status menu shows how many items hit a conflict, with a **Dismiss** button to clear the notice once you have seen it.
+
+The count tracks _items_, not events — an item that keeps conflicting is counted once, not once per sync round. The notice clears when you dismiss it, when you sign out, or automatically after 24 hours.
+
 ## Sync History
 
 A panel that lists recent sync events:
