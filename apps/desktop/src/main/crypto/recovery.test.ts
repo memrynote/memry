@@ -80,11 +80,15 @@ describe('validateRecoveryPhrase', () => {
   })
 
   it('rejects a phrase with a corrupted checksum word', async () => {
-    // #given a generated phrase whose final (checksum) word is swapped for a different valid word
+    // #given a generated phrase whose final word is swapped for the neighbouring wordlist entry.
+    // The 24th word packs the last 3 entropy bits followed by all 8 checksum bits, so toggling
+    // only bit 0 of its index leaves the entropy — and therefore the expected checksum —
+    // untouched while claiming a different one. Any other replacement re-derives a matching
+    // checksum by chance (7/2048, ~1 in 293) and would make this case flaky. See #1251.
     const { phrase } = await generateRecoveryPhrase()
     const words = phrase.split(' ')
     const lastWord = words[words.length - 1]
-    const replacement = lastWord === 'abandon' ? 'ability' : 'abandon'
+    const replacement = bip39.wordlists.english[bip39.wordlists.english.indexOf(lastWord) ^ 1]
     words[words.length - 1] = replacement
 
     // #then validation rejects the tampered phrase (checksum mismatch)
