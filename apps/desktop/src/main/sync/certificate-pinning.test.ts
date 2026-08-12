@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type tls from 'node:tls'
-import { PINNED_CERTIFICATE_HASHES_BY_HOST } from './certificate-pins'
+import { DEFAULT_SYNC_CERT_HOSTNAME, PINNED_CERTIFICATE_HASHES_BY_HOST } from './certificate-pins'
 
 const mockApp = vi.hoisted(() => ({ isPackaged: false }))
 
@@ -232,6 +232,23 @@ describe('certificate-pinning', () => {
   })
 
   describe('createPinnedAgent', () => {
+    const STAGING_HOST = 'sync-staging.memrynote.com'
+
+    /** A cert whose SAN covers `hostname`, so the stock TLS identity check
+     *  passes and the pin check is what decides the outcome. */
+    function certFor(hostname: string): tls.PeerCertificate {
+      return {
+        ...makeMockCertWithRaw(getTestCertDer()),
+        subjectaltname: `DNS:${hostname}`
+      } as tls.PeerCertificate
+    }
+
+    function checkOf(agent: ReturnType<typeof createPinnedAgent>) {
+      const check = agent.options.checkServerIdentity
+      expect(check).toBeDefined()
+      return check!
+    }
+
     it('#given dev mode (app.isPackaged=false) #then returns agent without pin checking', () => {
       // #when
       const agent = createPinnedAgent()
@@ -239,6 +256,7 @@ describe('certificate-pinning', () => {
       // #then
       expect(agent).toBeDefined()
       expect(agent.options.rejectUnauthorized).not.toBe(false)
+      expect(agent.options.checkServerIdentity).toBeUndefined()
     })
 
     it('#given packaged mode #then returns agent with checkServerIdentity', () => {
@@ -253,17 +271,107 @@ describe('certificate-pinning', () => {
       expect(agent.options.checkServerIdentity).toBeDefined()
     })
 
-    it('#given packaged mode with placeholder hashes #then returns standard TLS agent', () => {
+    it('#given the connecting host has real pins and the cert does not match #then rejects', () => {
+      // #given a packaged build dialing a host with real (non-placeholder) pins
+      vi.stubEnv('SYNC_SERVER_URL', `https://${STAGING_HOST}`)
+      mockApp.isPackaged = true
+
+      // #when a certificate arrives whose SPKI hash is not in the table
+      const result = checkOf(createPinnedAgent())(STAGING_HOST, certFor(STAGING_HOST))
+
+      // #then it is rejected — pinning still enforces
+      expect(result).toBeInstanceOf(CertificatePinningError)
+    })
+
+    it('#given the connecting host has real pins and the cert matches #then accepts', () => {
+      // #given
+      vi.stubEnv('SYNC_SERVER_URL', `https://${STAGING_HOST}`)
+      mockApp.isPackaged = true
+      const originalPins = PINNED_CERTIFICATE_HASHES_BY_HOST[STAGING_HOST]
+
+      try {
+        PINNED_CERTIFICATE_HASHES_BY_HOST[STAGING_HOST] = [computeSpkiHashFromPem(TEST_CERT_PEM)]
+
+        // #when / #then
+        expect(checkOf(createPinnedAgent())(STAGING_HOST, certFor(STAGING_HOST))).toBeUndefined()
+      } finally {
+        PINNED_CERTIFICATE_HASHES_BY_HOST[STAGING_HOST] = originalPins
+      }
+    })
+
+    it('#given the configured host is placeholder-pinned but the connecting host has real pins #then the connecting host still enforces', () => {
+      // #given SYNC_SERVER_URL naming the shipping host, whose entry is still
+      // placeholders — the branch that used to decide "do not pin at all"
+      vi.stubEnv('SYNC_SERVER_URL', `https://${DEFAULT_SYNC_CERT_HOSTNAME}`)
+      mockApp.isPackaged = true
+
+      // #when the handshake is against a *different* host that does have pins
+      const result = checkOf(createPinnedAgent())(STAGING_HOST, certFor(STAGING_HOST))
+
+      // #then the connecting host's pins decide, so a non-matching cert is
+      // rejected instead of silently accepted under the configured host's
+      // placeholder verdict
+      expect(result).toBeInstanceOf(CertificatePinningError)
+    })
+
+    it('#given the connecting host still has placeholder pins #then standard TLS applies', () => {
+      // #given the shipping configuration: pinning never activated for this host
+      vi.stubEnv('SYNC_SERVER_URL', `https://${DEFAULT_SYNC_CERT_HOSTNAME}`)
+      mockApp.isPackaged = true
+
+      // #when / #then — unchanged behaviour for the host we actually ship
+      expect(
+        checkOf(createPinnedAgent())(
+          DEFAULT_SYNC_CERT_HOSTNAME,
+          certFor(DEFAULT_SYNC_CERT_HOSTNAME)
+        )
+      ).toBeUndefined()
+    })
+
+    it('#given explicit placeholder pins #then standard TLS applies', () => {
       // #given
       mockApp.isPackaged = true
 
-      // #when
-      const agent = createPinnedAgent(['sha256/PLACEHOLDER_PRIMARY_CERT_HASH_BASE64'])
+      // #when / #then
+      expect(
+        checkOf(createPinnedAgent(['sha256/PLACEHOLDER_PRIMARY_CERT_HASH_BASE64']))(
+          STAGING_HOST,
+          certFor(STAGING_HOST)
+        )
+      ).toBeUndefined()
+    })
 
-      // #then
-      expect(agent).toBeDefined()
-      expect(agent.options.checkServerIdentity).toBeUndefined()
-      expect(agent.options.rejectUnauthorized).not.toBe(false)
+    it('#given the connecting host has no pin entry #then falls back to standard TLS and warns once', () => {
+      // #given a pinning agent built for a host that does have pins...
+      vi.stubEnv('SYNC_SERVER_URL', `https://${STAGING_HOST}`)
+      mockApp.isPackaged = true
+      const unpinnedHost = 'sync-unlisted.memrynote.test'
+      mockLog.warn.mockClear()
+
+      // #when the handshake is against a host with no entry at all
+      const check = checkOf(createPinnedAgent())
+      const first = check(unpinnedHost, certFor(unpinnedHost))
+      const second = check(unpinnedHost, certFor(unpinnedHost))
+
+      // #then it is not rejected — an empty pin list has no reference hash to
+      // compare against, so rejecting would kill the legitimate cert too
+      expect(first).toBeUndefined()
+      expect(second).toBeUndefined()
+      expect(mockLog.warn).toHaveBeenCalledTimes(1)
+      expect(mockLog.warn).toHaveBeenCalledWith(expect.any(String), { hostname: unpinnedHost })
+    })
+
+    it('#given a cert whose SAN does not cover the connecting host #then the stock TLS identity check still rejects', () => {
+      // #given
+      vi.stubEnv('SYNC_SERVER_URL', `https://${STAGING_HOST}`)
+      mockApp.isPackaged = true
+
+      // #when the cert is for a different host entirely
+      const result = checkOf(createPinnedAgent())(STAGING_HOST, certFor('evil.example.com'))
+
+      // #then hostname verification rejects before the pin check is reached
+      expect(result).toBeInstanceOf(Error)
+      expect(result).not.toBeInstanceOf(CertificatePinningError)
     })
   })
 
