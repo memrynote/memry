@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { mergeSettingsPatch } from '@/lib/settings-patch'
 import {
   CALENDAR_SETTINGS_DEFAULTS,
   type CalendarSettings
@@ -47,7 +48,7 @@ export function useCalendarPreferences(): UseCalendarPreferencesReturn {
   useEffect(() => {
     const unsubscribe = window.api.onSettingsChanged((event) => {
       if (event.key === 'calendar') {
-        setSettings((prev) => ({ ...prev, ...(event.value as Partial<CalendarSettings>) }))
+        setSettings((prev) => mergeSettingsPatch(prev, event.value as Partial<CalendarSettings>))
       }
     })
     return unsubscribe

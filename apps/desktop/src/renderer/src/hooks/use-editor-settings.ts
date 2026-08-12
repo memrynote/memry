@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { mergeSettingsPatch } from '@/lib/settings-patch'
 import type { EditorSettingsDTO } from '../../../preload/index.d'
 import { getI18n } from 'react-i18next'
 
@@ -51,7 +52,7 @@ export function useEditorSettings(): UseEditorSettingsReturn {
   useEffect(() => {
     const unsubscribe = window.api.onSettingsChanged((event) => {
       if (event.key === 'editor') {
-        setSettings((prev) => ({ ...prev, ...(event.value as Partial<EditorSettingsDTO>) }))
+        setSettings((prev) => mergeSettingsPatch(prev, event.value as Partial<EditorSettingsDTO>))
       }
     })
     return unsubscribe

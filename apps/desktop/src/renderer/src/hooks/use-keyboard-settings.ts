@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { mergeSettingsPatch } from '@/lib/settings-patch'
 import type { KeyboardShortcutsDTO } from '../../../preload/index.d'
 import { getI18n } from 'react-i18next'
 
@@ -48,7 +49,9 @@ export function useKeyboardSettings(): UseKeyboardSettingsReturn {
   useEffect(() => {
     const unsubscribe = window.api.onSettingsChanged((event) => {
       if (event.key === 'keyboard') {
-        setSettings((prev) => ({ ...prev, ...(event.value as Partial<KeyboardShortcutsDTO>) }))
+        setSettings((prev) =>
+          mergeSettingsPatch(prev, event.value as Partial<KeyboardShortcutsDTO>)
+        )
       }
     })
     return unsubscribe
