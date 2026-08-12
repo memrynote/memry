@@ -126,9 +126,15 @@ Notes/**                     → NotePlan/<original tree>
 @Templates/**                → skipped (v1)
 ```
 
-Journal collision: when an entry already exists for that date, the imported
-body is **appended** under an `## Imported from NotePlan` rule. Never
-overwrite — a journal entry is user-authored content.
+Journal collision: when an entry already exists for that date **and its body is
+non-empty**, the imported body is **appended** under an
+`## Imported from NotePlan` rule. An existing-but-empty entry is written
+directly. Never overwrite — a journal entry is user-authored content.
+
+Tasks parsed out of a daily note get `sourceNoteId` = that journal entry's
+canonical id (`getCanonicalJournalByDate` → cache id → entry id, the same
+fallback chain the IPC handler uses), so the task links back to the journal
+day it came from.
 
 ## Two supporting extractions
 
