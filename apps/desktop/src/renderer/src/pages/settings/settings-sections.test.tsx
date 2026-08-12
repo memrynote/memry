@@ -620,10 +620,14 @@ describe('settings section coverage', () => {
       expect(mocks.journalSettings.setDefaultTemplate).toHaveBeenCalledWith('daily')
     )
 
+    // AIConnectionsPanel has no call site, so the journal settings page must not offer a
+    // toggle for it. The persisted `showAIConnections` value is untouched.
+    expect(screen.queryByText('journal.showAIConnections.label')).toBeNull()
+
     fireEvent.click(screen.getAllByRole('switch')[5])
     await waitFor(() =>
       expect(mocks.journalSettings.updateSettings).toHaveBeenCalledWith({
-        showAIConnections: true
+        showStatsFooter: false
       })
     )
   })

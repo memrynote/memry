@@ -22,11 +22,10 @@ If the template uses date variables, they're filled in for the current entry's d
 
 Toggle which panes appear in the journal sidebar:
 
-| Toggle | Shows |
-| --- | --- |
+| Toggle        | Shows                                |
+| ------------- | ------------------------------------ |
 | Show Schedule | Calendar events for the focused date |
-| Show Tasks | Tasks due that day |
-| Show AI Connections | Semantically related entries (requires AI enabled) |
+| Show Tasks    | Tasks due that day                   |
 
 Each toggle is independent. Turn them on as you find them useful.
 
