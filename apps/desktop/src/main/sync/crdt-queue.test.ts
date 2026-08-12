@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
-import { CrdtUpdateQueue } from './crdt-queue'
+import { CrdtUpdateQueue, type CrdtUpdateQueueOptions } from './crdt-queue'
 import { SyncServerError } from './http-client'
 
 vi.mock('../lib/logger', () => ({
@@ -310,7 +310,9 @@ describe('CrdtUpdateQueue', () => {
   })
 
   it('keeps every buffered update when recording notes for replay throws', () => {
-    const persistUnflushed = vi.fn(() => {
+    // Typed off the real option so the throwing implementation does not narrow the
+    // mock's return type to `never` and lock out the `undefined` restore below.
+    const persistUnflushed = vi.fn<NonNullable<CrdtUpdateQueueOptions['persistUnflushed']>>(() => {
       throw new Error('disk full')
     })
     const queue = new CrdtUpdateQueue({ persistUnflushed })
