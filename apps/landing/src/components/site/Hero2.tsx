@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion'
+import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react'
 import { ArrowRight, Play } from 'lucide-react'
 import { Link } from 'react-router'
 import heroBg from '@/assets/hero-bg.png'
@@ -182,7 +182,7 @@ export function Hero2() {
             Two halves of one sheet, each pinned to its own edge so the lined sheets hug the
             left and the yellow legal pad hugs the right. Nudged below the panel edge (negative
             bottom, clipped by overflow-hidden) so only the tops peek, behind the app window
-            (z-5 < z-10). framer-motion owns `transform`, so the push-down uses `bottom`. */}
+            (z-5 < z-10). motion owns `transform`, so the push-down uses `bottom`. */}
         <motion.img
           src={paperLeft}
           alt=""

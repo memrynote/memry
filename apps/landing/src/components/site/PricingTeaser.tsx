@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { Link } from 'react-router'
 import { ArrowRight, Check } from 'lucide-react'
 import { HomeSection, SectionTitle } from '@/components/site/primitives'

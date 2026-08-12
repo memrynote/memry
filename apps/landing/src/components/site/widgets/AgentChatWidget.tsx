@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
-import { motion, useReducedMotion } from 'framer-motion'
+import { motion, useReducedMotion } from 'motion/react'
 import { ChevronDown, FileText, Globe, Send, Shield, Sparkles, Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
 

@@ -4,7 +4,7 @@ import {
   useReducedMotion,
   useTransform,
   type MotionValue
-} from 'framer-motion'
+} from 'motion/react'
 import type { MouseEvent } from 'react'
 import { CLIPS } from './types'
 import { FLOW_STEPS } from '@/lib/constants'

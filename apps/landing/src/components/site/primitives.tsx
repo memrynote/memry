@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { Link } from 'react-router'
 import { cn } from '@/lib/utils'
 import { TINT_CLASSES, type MegaCardTint } from '@/lib/site-tints'

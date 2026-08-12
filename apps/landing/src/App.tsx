@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router'
 import { useEffect } from 'react'
-import { MotionConfig } from 'framer-motion'
+import { MotionConfig } from 'motion/react'
 import { HelmetProvider } from 'react-helmet-async'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'

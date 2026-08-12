@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import {
   ArrowRight,
   ArrowUpRight,

@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { HomeSection, SectionTitle } from '@/components/site/primitives'
 import { Mascot } from '@/components/ui/mascot'
 import { cn } from '@/lib/utils'
