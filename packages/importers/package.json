@@ -13,6 +13,7 @@
     "./google-keep": "./src/google-keep/index.ts",
     "./html": "./src/html/index.ts",
     "./markdown": "./src/markdown/index.ts",
+    "./noteplan": "./src/noteplan/index.ts",
     "./messages": "./src/messages.ts",
     "./onenote": "./src/onenote/index.ts",
     "./raindrop": "./src/raindrop/index.ts",
