@@ -372,6 +372,7 @@ export const TabProvider = ({
           groupId: options.groupId,
           position: options.position,
           background: options.background,
+          forceNew: options.forceNew,
           replaceActive: options.replaceActive
         }
       })

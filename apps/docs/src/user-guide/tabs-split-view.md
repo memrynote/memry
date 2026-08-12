@@ -48,6 +48,21 @@ heavier surfaces such as Tasks, Calendar, Graph, and the right-side Agent/Day Pa
 user opens them. This keeps startup memory tied to the visible workspace instead of every possible
 feature surface.
 
+### Opening a Second Copy
+
+When you want the same item open twice — two places in a long note, a reference you keep alongside your work — ask for a new tab explicitly from the sidebar:
+
+| Gesture                                      | Result                              |
+| -------------------------------------------- | ----------------------------------- |
+| <kbd>⌘</kbd> (macOS) / <kbd>Ctrl</kbd> click | Opens another tab and focuses it    |
+| <kbd>⌘</kbd>+<kbd>⇧</kbd> click              | Opens another tab in the background |
+| Middle-click                                 | Opens another tab in the background |
+| Right-click → **Open in New Tab**            | Opens another tab and focuses it    |
+
+Each copy is an independent tab: close, pin, or move one and the other stays put. Edits made in either appear in both.
+
+Whole-app views — Home, Inbox, Calendar, Tasks, Journal, Graph, and Tags — stay single-instance, since a second copy would show exactly the same thing. These gestures focus the tab that already exists; the background gestures leave your focus where it is.
+
 ## Mouse Navigation
 
 Mouse Back and Forward side buttons move through tab focus history across the whole window, including split panes. Back returns to the previously focused tab; Forward replays the next tab after a Back action. Opening or selecting another tab starts a new history path.

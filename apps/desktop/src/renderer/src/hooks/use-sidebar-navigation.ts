@@ -165,13 +165,20 @@ export const useSidebarNavigation = () => {
         return
       }
 
-      const { inBackground, toTheSide } = options
+      const { inNewTab, inBackground, toTheSide } = options
       const currentState = stateRef.current
+
+      // "Open in New Tab" / Cmd-click / middle-click earn a genuinely new tab —
+      // but only for items that can meaningfully exist twice. SINGLETON_TAB_TYPES
+      // (Home, Inbox, Calendar, Tasks, Journal, Graph, Tags) are declared
+      // single-instance and stay that way; a second identical Inbox is not what
+      // the gesture is for, so those keep focusing the tab that already exists.
+      const forceNewTab = inNewTab === true && !SINGLETON_TAB_TYPES.includes(item.type)
 
       // Check for existing tab
       const existingTab = findExistingTabForItem(currentState, item)
 
-      if (existingTab && !toTheSide) {
+      if (existingTab && !toTheSide && !forceNewTab) {
         // Re-open singletons that carry per-view intent so the reducer merges
         // the fresh viewState (nonce) into the existing tab and refocuses it.
         // Passing the found groupId keeps the merge in the right split-view pane.
@@ -182,8 +189,12 @@ export const useSidebarNavigation = () => {
           })
           return
         }
-        // Focus existing tab
-        setActiveTab(existingTab.tab.id, existingTab.groupId)
+        // Focus existing tab — unless the caller asked to stay put (middle-click
+        // or Shift+Cmd-click on an item we just declined to duplicate). Stealing
+        // focus is the one thing `inBackground` exists to prevent.
+        if (!inBackground) {
+          setActiveTab(existingTab.tab.id, existingTab.groupId)
+        }
         return
       }
 
@@ -200,7 +211,7 @@ export const useSidebarNavigation = () => {
         const newGroupId = splitView('horizontal', currentState.activeGroupId)
         openTab(tabData, { groupId: newGroupId ?? undefined, background: inBackground })
       } else {
-        openTab(tabData, { background: inBackground })
+        openTab(tabData, { background: inBackground, forceNew: forceNewTab })
       }
     },
     [openTab, setActiveTab, splitView, flags, openSettings]

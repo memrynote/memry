@@ -247,18 +247,22 @@ describe('more major hooks coverage', () => {
       { type: 'note', title: 'B', path: '/notes/b.md', entityId: 'note-b' } as never,
       {}
     )
+    // A plain open must never force a duplicate: `forceNew: false` is what keeps
+    // the reducer free to focus a tab this item already has.
     expect(mocks.openTab).toHaveBeenCalledWith(
       expect.objectContaining({ entityId: 'note-b', isPreview: false }),
-      { background: undefined }
+      { background: undefined, forceNew: false }
     )
 
     result.current.openSidebarItem(
       { type: 'note', title: 'C', path: '/notes/c.md', entityId: 'note-c' } as never,
       { inNewTab: true, inBackground: true }
     )
+    // `inNewTab` on a non-singleton reaches the reducer as `forceNew`, which is
+    // what makes it skip entity dedup and mint a genuinely new tab.
     expect(mocks.openTab).toHaveBeenCalledWith(
       expect.objectContaining({ entityId: 'note-c', isPreview: false }),
-      { background: true }
+      { background: true, forceNew: true }
     )
 
     result.current.openSidebarItem(
