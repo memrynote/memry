@@ -68,7 +68,12 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
-  useT: () => ({ t: (key: string) => key })
+  // Keyless calls still render as the bare key; interpolated ones append their
+  // values so a test can prove the caller actually passed them through.
+  useT: () => ({
+    t: (key: string, values?: Record<string, unknown>) =>
+      values ? `${key}:${JSON.stringify(values)}` : key
+  })
 }))
 
 vi.mock('react-i18next', () => ({
@@ -898,7 +903,9 @@ describe('NotePage', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Internal missing file' }))
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('File not found: Missing.png'))
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith('page.toast.fileNotFound:{"target":"Missing.png"}')
+    )
 
     mocks.createNote.mockResolvedValueOnce({ success: false })
     fireEvent.click(screen.getByRole('button', { name: 'Internal create link' }))

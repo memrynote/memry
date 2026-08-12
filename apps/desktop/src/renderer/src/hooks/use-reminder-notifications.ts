@@ -14,6 +14,7 @@ import { useEffect, useCallback } from 'react'
 import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
 import { useTabs } from '@/contexts/tabs'
+import { useT } from '@memry/i18n/renderer'
 import { useDismissReminder } from '@/hooks/use-reminders'
 import type { ReminderWithTarget } from '@/services/reminder-service'
 
@@ -42,6 +43,7 @@ interface ReminderClickedEvent {
  */
 export function useReminderNotifications(): void {
   const { openTab } = useTabs()
+  const { t } = useT('common')
   const dismissMutation = useDismissReminder()
 
   // Navigate to reminder target
@@ -148,8 +150,8 @@ export function useReminderNotifications(): void {
 
       // If there are more than 5, show a summary
       if (event.count > 5) {
-        toast.info(`${event.count - 5} more reminder(s) due`, {
-          description: 'Check the reminders panel for details'
+        toast.info(t('toast.moreRemindersDue', { count: event.count - 5 }), {
+          description: t('toast.moreRemindersDueHint')
         })
       }
     })
@@ -157,7 +159,7 @@ export function useReminderNotifications(): void {
     return () => {
       unsubscribeDue()
     }
-  }, [showReminderToast])
+  }, [showReminderToast, t])
 
   // Handle desktop notification click events (navigate to target)
   useEffect(() => {

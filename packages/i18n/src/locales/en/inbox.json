@@ -108,7 +108,8 @@
     "appliedTags": "{tagCount, plural, one {Applied # tag} other {Applied # tags}} to {itemCount, plural, one {# item} other {# items}}",
     "archivedItems": "{count, plural, one {Archived # item} other {Archived # items}}",
     "snoozedUntil": "Snoozed until {time}",
-    "snoozedItemsUntil": "{count, plural, one {Snoozed # item until {time}} other {Snoozed # items until {time}}}"
+    "snoozedItemsUntil": "{count, plural, one {Snoozed # item until {time}} other {Snoozed # items until {time}}}",
+    "restored": "\"{title}\" restored"
   },
   "bulk": {
     "selected": "{count} selected",
