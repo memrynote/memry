@@ -20,7 +20,30 @@ function createElectronDeps(): NetworkMonitorDeps {
   }
 }
 
-const POLL_INTERVAL_MS = 5000
+// Electron exposes no main-process event for `net.online` — only powerMonitor
+// resume/suspend, which are already wired below — so the status has to be
+// polled. The read itself is a cheap in-process property; the cost is purely
+// the timer wakeup, and a wakeup every 5s for the lifetime of the app is what
+// keeps the main process out of deep idle / App Nap on an otherwise idle
+// machine.
+//
+// The two directions are not worth the same, so they do not poll at the same
+// rate:
+//
+// - Offline -> online is latency-critical. It is what re-arms the WebSocket,
+//   the periodic pull and the CRDT queue, so a returning network must be seen
+//   fast. It stays at 5s, and powerMonitor 'resume' additionally polls at once,
+//   so a machine waking with the network back is picked up immediately rather
+//   than at the next tick.
+// - Online -> offline is not. A lost network is already surfaced by the request
+//   that fails and by the WebSocket heartbeat (25s ping / 31s terminate); all
+//   this transition adds is the offline status and the eager teardown. Seeing
+//   it up to 30s later costs nothing the retry paths do not already cover.
+//
+// Because 'suspend' applies offline immediately, a suspended machine is on the
+// 5s cadence before it sleeps — the slow cadence never applies to a wake.
+export const OFFLINE_POLL_INTERVAL_MS = 5000
+export const ONLINE_POLL_INTERVAL_MS = 30_000
 const DEFAULT_DEBOUNCE_MS = 2000
 // 'status-changed' is the only event, and it has three steady-state
 // subscribers: the SyncEngine (attached in start(), removed in stop()), the
@@ -32,7 +55,8 @@ const MAX_NETWORK_MONITOR_LISTENERS = 10
 export class NetworkMonitor extends EventEmitter {
   private _online: boolean
   private onlineOverrideForTests: boolean | null = null
-  private pollTimer: ReturnType<typeof setInterval> | null = null
+  private pollTimer: ReturnType<typeof setTimeout> | null = null
+  private polling = false
   private debounceTimer: ReturnType<typeof setTimeout> | null = null
   private readonly deps: NetworkMonitorDeps
   private readonly debounceMs: number
@@ -61,7 +85,8 @@ export class NetworkMonitor extends EventEmitter {
   }
 
   start(): void {
-    this.pollTimer = setInterval(() => this.poll(), POLL_INTERVAL_MS)
+    this.polling = true
+    this.schedulePoll()
 
     this.resumeHandler = () => this.poll()
     this.suspendHandler = () => this.applyStatus(false)
@@ -71,8 +96,9 @@ export class NetworkMonitor extends EventEmitter {
   }
 
   stop(): void {
+    this.polling = false
     if (this.pollTimer) {
-      clearInterval(this.pollTimer)
+      clearTimeout(this.pollTimer)
       this.pollTimer = null
     }
     if (this.debounceTimer) {
@@ -87,6 +113,22 @@ export class NetworkMonitor extends EventEmitter {
       this.deps.offSuspend(this.suspendHandler)
       this.suspendHandler = null
     }
+  }
+
+  /**
+   * Re-arms the poll at the cadence for the status we currently believe. A
+   * self-rescheduling timeout rather than an interval so a status change can
+   * switch cadence at once instead of after one tick at the old rate.
+   */
+  private schedulePoll(): void {
+    if (!this.polling) return
+    if (this.pollTimer) clearTimeout(this.pollTimer)
+    const delay = this._online ? ONLINE_POLL_INTERVAL_MS : OFFLINE_POLL_INTERVAL_MS
+    this.pollTimer = setTimeout(() => {
+      this.pollTimer = null
+      this.poll()
+      this.schedulePoll()
+    }, delay)
   }
 
   private poll(): void {
@@ -114,6 +156,9 @@ export class NetworkMonitor extends EventEmitter {
   private applyStatus(status: boolean): void {
     if (status === this._online) return
     this._online = status
+    // Going offline must drop us onto the fast cadence immediately, so the
+    // network coming back is still seen within OFFLINE_POLL_INTERVAL_MS.
+    this.schedulePoll()
     this.emit('status-changed', { online: status })
   }
 

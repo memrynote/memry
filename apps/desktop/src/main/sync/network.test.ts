@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { NetworkMonitor, NetworkMonitorDeps } from './network'
+import {
+  NetworkMonitor,
+  NetworkMonitorDeps,
+  OFFLINE_POLL_INTERVAL_MS,
+  ONLINE_POLL_INTERVAL_MS
+} from './network'
 
 interface MockDeps extends NetworkMonitorDeps {
   triggerResume: () => void
@@ -60,7 +65,7 @@ describe('NetworkMonitor', () => {
       monitor.start()
 
       deps.setOnline(false)
-      vi.advanceTimersByTime(5000)
+      vi.advanceTimersByTime(ONLINE_POLL_INTERVAL_MS)
 
       expect(handler).not.toHaveBeenCalled()
       expect(monitor.online).toBe(true)
@@ -90,7 +95,7 @@ describe('NetworkMonitor', () => {
       monitor.start()
 
       deps.setOnline(false)
-      vi.advanceTimersByTime(5000)
+      vi.advanceTimersByTime(ONLINE_POLL_INTERVAL_MS)
 
       monitor.stop()
 
@@ -122,7 +127,7 @@ describe('NetworkMonitor', () => {
       monitor.start()
 
       deps.setOnline(true)
-      vi.advanceTimersByTime(5000)
+      vi.advanceTimersByTime(OFFLINE_POLL_INTERVAL_MS)
 
       expect(handler).not.toHaveBeenCalled()
 
@@ -173,7 +178,7 @@ describe('NetworkMonitor', () => {
       monitor.start()
 
       deps.setOnline(false)
-      vi.advanceTimersByTime(5000)
+      vi.advanceTimersByTime(ONLINE_POLL_INTERVAL_MS)
 
       deps.setOnline(true)
       deps.triggerResume()
@@ -190,18 +195,90 @@ describe('NetworkMonitor', () => {
       monitor.start()
 
       deps.setOnline(false)
-      vi.advanceTimersByTime(5000)
+      vi.advanceTimersByTime(ONLINE_POLL_INTERVAL_MS)
 
       deps.setOnline(true)
       vi.advanceTimersByTime(2000)
 
       deps.setOnline(false)
-      vi.advanceTimersByTime(5000)
+      vi.advanceTimersByTime(OFFLINE_POLL_INTERVAL_MS)
 
       vi.advanceTimersByTime(200)
 
       expect(handler).toHaveBeenCalledOnce()
       expect(handler).toHaveBeenCalledWith({ online: false })
+    })
+  })
+
+  describe('#given the adaptive poll cadence', () => {
+    it('#when online and idle #then does not wake at the offline cadence', () => {
+      deps = createMockDeps(true)
+      monitor = new NetworkMonitor(200, deps)
+      const handler = vi.fn()
+      monitor.on('status-changed', handler)
+      monitor.start()
+
+      deps.setOnline(false)
+      // A full offline-cadence period plus the debounce: nothing has polled, so
+      // the drop is not seen yet. This is the wakeup the app no longer pays
+      // twelve times a minute while it just sits there connected.
+      vi.advanceTimersByTime(OFFLINE_POLL_INTERVAL_MS + 200)
+      expect(handler).not.toHaveBeenCalled()
+
+      vi.advanceTimersByTime(ONLINE_POLL_INTERVAL_MS - OFFLINE_POLL_INTERVAL_MS + 200)
+      expect(handler).toHaveBeenCalledOnce()
+      expect(handler).toHaveBeenCalledWith({ online: false })
+    })
+
+    it('#when offline #then a returning network is still seen at the fast cadence', () => {
+      deps = createMockDeps(false)
+      monitor = new NetworkMonitor(200, deps)
+      const handler = vi.fn()
+      monitor.on('status-changed', handler)
+      monitor.start()
+
+      deps.setOnline(true)
+      vi.advanceTimersByTime(OFFLINE_POLL_INTERVAL_MS + 200)
+
+      expect(handler).toHaveBeenCalledOnce()
+      expect(handler).toHaveBeenCalledWith({ online: true })
+    })
+
+    it('#when it drops offline while running #then it switches to the fast cadence at once', () => {
+      // The reconnect guarantee: however long the slow cadence took to notice
+      // the drop, the poll that sees the network return is 5s away, not 30s.
+      deps = createMockDeps(true)
+      monitor = new NetworkMonitor(200, deps)
+      const handler = vi.fn()
+      monitor.on('status-changed', handler)
+      monitor.start()
+
+      deps.setOnline(false)
+      vi.advanceTimersByTime(ONLINE_POLL_INTERVAL_MS + 200)
+      expect(handler).toHaveBeenCalledWith({ online: false })
+
+      deps.setOnline(true)
+      vi.advanceTimersByTime(OFFLINE_POLL_INTERVAL_MS + 200)
+
+      expect(handler).toHaveBeenNthCalledWith(2, { online: true })
+      expect(monitor.online).toBe(true)
+    })
+
+    it('#when suspended and resumed #then the wake is polled immediately', () => {
+      deps = createMockDeps(true)
+      monitor = new NetworkMonitor(200, deps)
+      const handler = vi.fn()
+      monitor.on('status-changed', handler)
+      monitor.start()
+
+      deps.triggerSuspend()
+      expect(handler).toHaveBeenCalledWith({ online: false })
+
+      // No timer advance at all: resume polls rather than waiting for a tick.
+      deps.triggerResume()
+      vi.advanceTimersByTime(200)
+
+      expect(handler).toHaveBeenNthCalledWith(2, { online: true })
     })
   })
 

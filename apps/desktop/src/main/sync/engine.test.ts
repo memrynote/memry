@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { SyncEngine, SYNC_LOCK_STALE_MS } from './engine'
+import { SyncEngine, SYNC_LOCK_STALE_MS, PERIODIC_PULL_MAX_QUIET_MS } from './engine'
 import type { WebSocketMessage } from './websocket'
 import { createMockDeps, createMockNetwork, setupTestDb } from '@tests/utils/engine-mocks'
 
@@ -53,6 +53,102 @@ describe('SyncEngine', () => {
       // #then — the 60s tick still pulls, so sync self-heals this session
       const callsAfterStart = getSpy.mock.calls.length
       await vi.advanceTimersByTimeAsync(60_000)
+      expect(getSpy.mock.calls.length).toBeGreaterThan(callsAfterStart)
+
+      await engine.stop()
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given a socket that has not dropped #when the 60s pull tick fires', () => {
+    // deps.ws is an EventEmitter stand-in without the real getter.
+    const withGeneration = (
+      deps: ReturnType<typeof createMockDeps>,
+      read: () => number
+    ): ReturnType<typeof createMockDeps> => {
+      Object.defineProperty(deps.ws, 'connectionGeneration', {
+        configurable: true,
+        get: read
+      })
+      return deps
+    }
+
+    const startArmedEngine = async (
+      getSpy: { mock: { calls: unknown[] } },
+      read: () => number
+    ): Promise<{ engine: SyncEngine; callsAfterStart: number }> => {
+      const deps = withGeneration(createMockDeps(getDb()), read)
+      const engine = new SyncEngine(deps)
+      // fullSync is exercised elsewhere; here it only has to leave the tick armed.
+      vi.spyOn(engine, 'fullSync').mockResolvedValue()
+      await engine.start()
+      return { engine, callsAfterStart: getSpy.mock.calls.length }
+    }
+
+    const mockPullTransport = async (): Promise<ReturnType<typeof vi.spyOn>> =>
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+
+    it('#then it issues no request, and pulls again once the socket generation moves', async () => {
+      vi.useFakeTimers()
+      const getSpy = await mockPullTransport()
+      let generation = 1
+      const { engine, callsAfterStart } = await startArmedEngine(getSpy, () => generation)
+
+      // #when — two ticks on the same, still-connected socket
+      await vi.advanceTimersByTimeAsync(60_000)
+      await vi.advanceTimersByTimeAsync(60_000)
+
+      // #then — nothing could have been missed, so nothing is fetched
+      expect(getSpy.mock.calls.length).toBe(callsAfterStart)
+
+      // #when — the socket dropped and came back between ticks
+      generation += 1
+      await vi.advanceTimersByTimeAsync(60_000)
+
+      // #then — broadcasts may have been missed, so the tick pulls again
+      expect(getSpy.mock.calls.length).toBeGreaterThan(callsAfterStart)
+
+      await engine.stop()
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    })
+
+    it('#then the quiet floor still forces a self-heal pull', async () => {
+      // A server that silently stops broadcasting is indistinguishable from a
+      // quiet vault, so the tick must not go quiet forever.
+      vi.useFakeTimers()
+      const getSpy = await mockPullTransport()
+      const { engine, callsAfterStart } = await startArmedEngine(getSpy, () => 1)
+
+      await vi.advanceTimersByTimeAsync(PERIODIC_PULL_MAX_QUIET_MS - 60_000)
+      expect(getSpy.mock.calls.length).toBe(callsAfterStart)
+
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(getSpy.mock.calls.length).toBeGreaterThan(callsAfterStart)
+
+      await engine.stop()
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    })
+
+    it('#then a disconnected socket keeps the every-tick pull', async () => {
+      vi.useFakeTimers()
+      const getSpy = await mockPullTransport()
+      const deps = withGeneration(createMockDeps(getDb()), () => 1)
+      const engine = new SyncEngine(deps)
+      vi.spyOn(engine, 'fullSync').mockResolvedValue()
+      await engine.start()
+      deps.ws.disconnect()
+      const callsAfterStart = getSpy.mock.calls.length
+
+      await vi.advanceTimersByTimeAsync(60_000)
+
       expect(getSpy.mock.calls.length).toBeGreaterThan(callsAfterStart)
 
       await engine.stop()
