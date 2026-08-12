@@ -171,8 +171,9 @@ export function resolveVaultEmbeds(refs: string[], notePath?: string): Record<st
   const status = getStatus()
   if (!status.isOpen || !status.path) return {}
 
-  // Read once per batch, not once per ref: `getConfig` re-reads and re-parses
-  // config.json off disk on every call.
+  // Read once per batch, not once per ref: `getConfig` no longer re-parses
+  // config.json — the parse is cached — but every call still stats the file to
+  // revalidate that cache and rebuilds the config object it hands back.
   const notesFolder = getConfig().defaultNoteFolder || 'notes'
 
   return resolveAgainstVault(status.path, notesFolder, refs, notePath)
