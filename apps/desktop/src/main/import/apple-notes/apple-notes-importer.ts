@@ -166,6 +166,8 @@ export const appleNotesImporter: Importer = {
     extensions: ['sqlite'],
     allowMultiple: false,
     directory: true,
+    chooseLabelKey: 'import.dialog.chooseFolder',
+    folderHintKey: 'import.dialog.folderHint',
     defaultPath: defaultContainerDir(),
     message:
       'Select the “group.com.apple.notes” folder to let Memry read your Apple Notes — ' +

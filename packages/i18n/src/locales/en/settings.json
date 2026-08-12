@@ -987,6 +987,7 @@
       "folderKeepsAssets": "Choose the folder when images sit outside the notes' own folder — exports often keep media in a shared one.",
       "chooseHint": "Select your {label}",
       "folderHint": "Click below and select the “group.com.apple.notes” folder when the picker opens (it starts there). This lets Memry read your notes and attachments — no Full Disk Access needed.",
+      "noteplanFolderHint": "Choose your NotePlan folder — either the app’s data folder or one of its Backups copies. Memry reads the Calendar, Notes and @Archive folders inside it.",
       "selected": "{count, plural, one {# file selected} other {# files selected}}",
       "start": "Start import",
       "cancel": "Cancel",

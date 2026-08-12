@@ -33,6 +33,39 @@ const markdownItem: ImporterItem = {
   icon: DEFAULT_IMPORT_ICON
 }
 
+// Two directory-picking importers that ask for different things: Apple Notes
+// wants one specific container folder, NotePlan a whole vault.
+const appleNotesItem: ImporterItem = {
+  id: 'apple-notes',
+  name: 'Apple Notes',
+  descriptionKey: 'import.sources.apple-notes',
+  fileSpec: {
+    label: 'Apple Notes database',
+    extensions: ['sqlite'],
+    allowMultiple: false,
+    directory: true,
+    chooseLabelKey: 'import.dialog.chooseFolder',
+    folderHintKey: 'import.dialog.folderHint'
+  },
+  supportsPreview: false,
+  icon: DEFAULT_IMPORT_ICON
+}
+
+const notePlanItem: ImporterItem = {
+  id: 'noteplan',
+  name: 'NotePlan',
+  descriptionKey: 'import.sources.noteplan',
+  fileSpec: {
+    label: 'NotePlan folder',
+    extensions: [],
+    allowMultiple: false,
+    directory: true,
+    folderHintKey: 'import.dialog.noteplanFolderHint'
+  },
+  supportsPreview: false,
+  icon: DEFAULT_IMPORT_ICON
+}
+
 describe('ImportDialog i18n', () => {
   let i18n: I18nInstance
   let pickFiles: ReturnType<typeof vi.fn>
@@ -92,6 +125,34 @@ describe('ImportDialog i18n', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Choose folder…' }))
     await waitFor(() => expect(pickFiles).toHaveBeenCalledTimes(2))
     expect(pickFiles.mock.calls[1][0].directory).toBe(true)
+  })
+
+  // Apple Notes was the only directory importer for a while, so its bespoke
+  // copy ("Select Apple Notes folder…", the group.com.apple.notes hint) was
+  // hardcoded for every directory pick — and surfaced verbatim under NotePlan.
+  // The copy now travels with the importer.
+  it('uses each directory importer’s own picker copy, never a sibling’s', () => {
+    const { unmount } = renderDialog(appleNotesItem)
+    expect(screen.getByRole('button', { name: 'Select Apple Notes folder…' })).toBeInTheDocument()
+    expect(screen.getByText(/group\.com\.apple\.notes/)).toBeInTheDocument()
+    unmount()
+
+    renderDialog(notePlanItem)
+    expect(screen.queryByRole('button', { name: 'Select Apple Notes folder…' })).toBeNull()
+    expect(screen.queryByText(/group\.com\.apple\.notes/)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Choose folder…' })).toBeInTheDocument()
+    // Match the hint specifically — the dialog description also says "NotePlan folder".
+    expect(screen.getByText(/Calendar, Notes and @Archive/)).toBeInTheDocument()
+  })
+
+  it('renders no folder hint when a directory importer supplies none', () => {
+    renderDialog({
+      ...notePlanItem,
+      fileSpec: { ...notePlanItem.fileSpec, folderHintKey: undefined }
+    })
+    expect(screen.queryByText(/group\.com\.apple\.notes/)).toBeNull()
+    expect(screen.queryByText(/Calendar, Notes and @Archive/)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Choose folder…' })).toBeInTheDocument()
   })
 
   it('shows the picked selection and enables the start button', async () => {

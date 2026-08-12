@@ -488,6 +488,7 @@ export const notePlanImporter: Importer = {
     extensions: [],
     allowMultiple: false,
     directory: true,
+    folderHintKey: 'import.dialog.noteplanFolderHint',
     defaultPath: defaultContainerDir(),
     message:
       'Select your NotePlan folder — either the app’s data folder or one of its Backups copies.'

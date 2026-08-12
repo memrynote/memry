@@ -119,6 +119,17 @@ export interface ImporterMeta {
      * second button — Electron cannot combine both in one native panel).
      */
     allowDirectory?: boolean
+    /**
+     * i18n key for the folder-picker button's label. Directory importers differ
+     * in what they ask for, so the copy belongs to the importer; absent → the
+     * dialog's generic "Choose folder…".
+     */
+    chooseLabelKey?: string
+    /**
+     * i18n key for the guidance shown above the picker button. Absent → no
+     * hint, rather than another importer's instructions.
+     */
+    folderHintKey?: string
     /** Pre-navigate the picker to this absolute path. */
     defaultPath?: string
     /** Guidance shown inside the native picker. */
