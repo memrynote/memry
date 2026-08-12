@@ -127,6 +127,26 @@ Keep it that way when editing these hooks:
 - Do not close over that state inside the registered listener either. Read it through the ref, or the shortcut acts on the state from the first render.
 - Callers may keep building a fresh shortcut array on every render; the hook absorbs the churn.
 
+## Timers and rAF Handles Scheduled from Callbacks
+
+A `setTimeout` fired from an event handler or a `useCallback` has no owner: the handle is unreachable, so nothing can cancel it. The pending callback keeps its closure — and every value that closure captured — alive until it fires, then runs `setState` on a component that may already be gone.
+
+Use `useTrackedTimeout` (`hooks/use-tracked-timeout.ts`) for delayed work scheduled from a callback. It returns a stable `(callback, delayMs) => void` that remembers each pending handle and clears the set on unmount:
+
+```ts
+const scheduleTimeout = useTrackedTimeout()
+scheduleTimeout(() => setCopied(false), 2000)
+```
+
+Two cases stay hand-rolled:
+
+- A timer created **inside** an effect belongs to that effect — hold it in an effect-scoped variable and `clearTimeout` it in the effect's own cleanup, so it also dies when the effect re-runs, not just on unmount.
+- A timer already tracked in a ref (a debounce that each new call replaces) only needs the missing unmount cleanup: `useEffect(() => () => clearTimeout(ref.current), [])`.
+
+`requestAnimationFrame` has the same rule: keep the id and `cancelAnimationFrame` it in the cleanup. A queued auto-focus frame that survives its own teardown will steal focus from whatever replaced it.
+
+Regression coverage: `hooks/timer-raf-cleanup.test.tsx` asserts `vi.getTimerCount() === 0` after unmount, which only passes when the handle was really cleared.
+
 ## Cross-Platform Env Vars in package Scripts
 
 `VAR=value cmd` is POSIX-only. pnpm runs package scripts through cmd on Windows, where `MEMRY_ENV=production pnpm ...` fails with `'MEMRY_ENV' is not recognized`. This broke the Windows release build (`apps/desktop` `build` script). Use `cross-env` for any inline env var that must work on Windows too:

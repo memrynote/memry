@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { type NewProperty, type Property } from '@/components/note/info-section'
 import { useProperties } from '@/hooks/use-properties'
 import {
@@ -45,6 +45,9 @@ export function usePropertySection({
 
   const [newlyAddedPropertyId, setNewlyAddedPropertyId] = useState<string | null>(null)
   const clearTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  // Drop the pending "newly added" highlight timer when the section unmounts
+  useEffect(() => () => clearTimeout(clearTimerRef.current), [])
 
   const properties: Property[] = useMemo(() => {
     return backendProperties.map((prop) => ({

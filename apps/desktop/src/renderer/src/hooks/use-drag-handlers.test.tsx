@@ -806,6 +806,41 @@ describe('useDragHandlers', () => {
     expect(onUpdateTask).toHaveBeenCalledWith('task-1', { priority: 'high' })
   })
 
+  it('clears the dropped-priority flash timer when the board unmounts', () => {
+    vi.useFakeTimers()
+    try {
+      const project = createProject()
+      const { result, unmount } = renderHook(() =>
+        useDragHandlers({
+          tasks: [createTask({ id: 'task-1', priority: 'low' })],
+          projects: [project],
+          onUpdateTask: vi.fn(),
+          onDeleteTask: vi.fn(),
+          onReorder: vi.fn()
+        })
+      )
+
+      act(() => {
+        result.current.handleDragEnd(
+          createDragEvent({
+            over: {
+              id: 'priority-high',
+              data: { current: { type: 'column', columnId: 'priority-high' } }
+            }
+          }),
+          createDragState({ sourceContainerId: 'priority-low' })
+        )
+      })
+      expect(vi.getTimerCount()).toBe(1)
+
+      // The 2.5s flash reset must not outlive the board that scheduled it.
+      unmount()
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('handles cross-section canonical and project-status drops, including completion toggles', () => {
     const project = createProject()
     const tasks = [

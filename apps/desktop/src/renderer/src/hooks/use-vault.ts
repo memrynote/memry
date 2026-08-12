@@ -86,10 +86,13 @@ export function useVault() {
       setError(extractErrorMessage(errorMsg, ''))
     })
 
+    let recoveryClearTimer: ReturnType<typeof setTimeout> | undefined
+
     const unsubRecovered = onVaultIndexRecovered((event) => {
       setRecoveryInfo(event)
       // Auto-clear recovery info after 10 seconds
-      setTimeout(() => setRecoveryInfo(null), 10000)
+      clearTimeout(recoveryClearTimer)
+      recoveryClearTimer = setTimeout(() => setRecoveryInfo(null), 10000)
     })
 
     return () => {
@@ -97,6 +100,7 @@ export function useVault() {
       unsubProgress()
       unsubError()
       unsubRecovered()
+      clearTimeout(recoveryClearTimer)
     }
   }, [])
 

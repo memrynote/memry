@@ -67,9 +67,11 @@ export function useFocusTrap({
     }
 
     // Auto-focus first focusable element
+    let autoFocusFrame: number | undefined
     if (autoFocus) {
       // Use requestAnimationFrame to ensure DOM is ready
-      requestAnimationFrame(() => {
+      autoFocusFrame = requestAnimationFrame(() => {
+        autoFocusFrame = undefined
         const focusableElements = getFocusableElements()
         if (focusableElements.length > 0) {
           focusableElements[0].focus()
@@ -111,6 +113,10 @@ export function useFocusTrap({
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
+
+      // Drop a queued auto-focus: a trap torn down inside the same frame must
+      // not steal focus from whatever replaced it.
+      if (autoFocusFrame !== undefined) cancelAnimationFrame(autoFocusFrame)
 
       // Restore focus when deactivating
       if (restoreFocus && previousFocusRef.current) {

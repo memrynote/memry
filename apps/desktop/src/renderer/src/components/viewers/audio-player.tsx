@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
+import { useTrackedTimeout } from '@/hooks/use-tracked-timeout'
 
 // ============================================================================
 // Types
@@ -70,6 +71,8 @@ export function AudioPlayer({
   const [error, setError] = useState(false)
   const [copied, setCopied] = useState(false)
   const transcript = transcription?.trim()
+  // The "copied" badge reset must not outlive the player
+  const scheduleTimeout = useTrackedTimeout()
 
   // Sync audio element with state
   useEffect(() => {
@@ -151,7 +154,7 @@ export function AudioPlayer({
     if (transcript) {
       await navigator.clipboard.writeText(transcript)
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      scheduleTimeout(() => setCopied(false), 2000)
     }
   }
 

@@ -26,6 +26,7 @@ import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 
 import type { SubtaskProgress } from '@/lib/subtask-utils'
 import type { Task } from '@/data/task-model'
+import { useTrackedTimeout } from '@/hooks/use-tracked-timeout'
 
 // ============================================================================
 // TYPES
@@ -334,6 +335,7 @@ export const DragProvider = ({
   onDragCancel: onDragCancelCallback
 }: DragProviderProps): React.JSX.Element => {
   const [dragState, setDragStateInternal] = useState<DragState>(initialDragState)
+  const scheduleTimeout = useTrackedTimeout()
 
   // Sensor configuration
   const sensors = useSensors(
@@ -509,13 +511,16 @@ export const DragProvider = ({
       resetDragState()
 
       if (droppedId && event.over) {
-        setTimeout(() => {
+        scheduleTimeout(() => {
           setDragStateInternal((prev) => ({ ...prev, lastDroppedId: droppedId }))
-          setTimeout(() => setDragStateInternal((prev) => ({ ...prev, lastDroppedId: null })), 1100)
+          scheduleTimeout(
+            () => setDragStateInternal((prev) => ({ ...prev, lastDroppedId: null })),
+            1100
+          )
         }, 200)
       }
     },
-    [dragState, resetDragState, onDragEndCallback]
+    [dragState, resetDragState, onDragEndCallback, scheduleTimeout]
   )
 
   // Handle drag cancel

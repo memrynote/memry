@@ -143,6 +143,8 @@ export function useFindInPage(
   // the debounce window can never feed stale ranges into the highlight.
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingQueryRef = useRef<string | null>(null)
+  // Frame queued by `open()` to focus the input once the bar is painted
+  const focusFrameRef = useRef<number | null>(null)
 
   const cancelPendingSearch = useCallback(() => {
     if (searchTimeoutRef.current !== null) clearTimeout(searchTimeoutRef.current)
@@ -194,7 +196,9 @@ export function useFindInPage(
     if (query) {
       performSearch(query)
     }
-    requestAnimationFrame(() => {
+    if (focusFrameRef.current !== null) cancelAnimationFrame(focusFrameRef.current)
+    focusFrameRef.current = requestAnimationFrame(() => {
+      focusFrameRef.current = null
       inputRef.current?.focus()
       inputRef.current?.select()
     })
@@ -273,6 +277,10 @@ export function useFindInPage(
   useEffect(() => {
     return () => {
       cancelPendingSearch()
+      if (focusFrameRef.current !== null) {
+        cancelAnimationFrame(focusFrameRef.current)
+        focusFrameRef.current = null
+      }
       clearHighlights()
     }
   }, [cancelPendingSearch, clearHighlights])

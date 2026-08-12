@@ -17,6 +17,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { notesService, onNoteDeleted, onNoteExternalChange } from '@/services/notes-service'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
+import { useTrackedTimeout } from '@/hooks/use-tracked-timeout'
 import { toast } from 'sonner'
 
 // ============================================================================
@@ -111,6 +112,9 @@ export function useNoteEditor(
   const lastSavedContentRef = useRef<string>('')
   const pendingContentRef = useRef<string | null>(null)
   const performSaveRef = useRef<(content: string) => Promise<void>>(async () => {})
+
+  // Cancels the "saved" -> "idle" status reset if the editor unmounts first
+  const scheduleTimeout = useTrackedTimeout()
 
   // ============================================================================
   // Load Note
@@ -239,7 +243,7 @@ export function useNoteEditor(
           setSaveStatus('saved')
 
           // Reset to idle after 2 seconds
-          setTimeout(() => {
+          scheduleTimeout(() => {
             setSaveStatus((current) => (current === 'saved' ? 'idle' : current))
           }, 2000)
         }
@@ -256,7 +260,7 @@ export function useNoteEditor(
         }
       }
     },
-    [noteId, note, isDeleted, showToasts]
+    [noteId, note, isDeleted, showToasts, scheduleTimeout]
   )
 
   // Keep ref in sync so cleanup always calls the latest version

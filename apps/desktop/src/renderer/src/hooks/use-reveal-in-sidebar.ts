@@ -5,6 +5,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import type { SidebarItem } from '@/contexts/tabs/types'
+import { useTrackedTimeout } from '@/hooks/use-tracked-timeout'
 
 /**
  * Event detail for reveal-in-sidebar custom event
@@ -38,20 +39,24 @@ export const useRevealInSidebar = (
   expandSection?: (sectionId: string) => void
 ): RevealInSidebarState => {
   const [highlightedItemId, setHighlightedItemIdState] = useState<string | null>(null)
+  const scheduleTimeout = useTrackedTimeout()
 
   /**
    * Set highlighted item with auto-clear
    */
-  const setHighlightedItemId = useCallback((id: string | null) => {
-    setHighlightedItemIdState(id)
+  const setHighlightedItemId = useCallback(
+    (id: string | null) => {
+      setHighlightedItemIdState(id)
 
-    if (id) {
-      // Auto-clear highlight after 2 seconds
-      setTimeout(() => {
-        setHighlightedItemIdState((current) => (current === id ? null : current))
-      }, 2000)
-    }
-  }, [])
+      if (id) {
+        // Auto-clear highlight after 2 seconds
+        scheduleTimeout(() => {
+          setHighlightedItemIdState((current) => (current === id ? null : current))
+        }, 2000)
+      }
+    },
+    [scheduleTimeout]
+  )
 
   /**
    * Find item by path or entityId (recursive)

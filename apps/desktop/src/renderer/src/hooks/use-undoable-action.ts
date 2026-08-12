@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { inboxService } from '@/services/inbox-service'
@@ -23,6 +23,15 @@ export interface UseUndoableActionResult {
 export function useUndoableAction(): UseUndoableActionResult {
   const queryClient = useQueryClient()
   const pendingRef = useRef<Map<string, PendingUndo>>(new Map())
+
+  // Drop every open undo window when the hook owner unmounts
+  useEffect(() => {
+    const pending = pendingRef.current
+    return () => {
+      for (const entry of pending.values()) clearTimeout(entry.timer)
+      pending.clear()
+    }
+  }, [])
 
   const invalidateAll = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })

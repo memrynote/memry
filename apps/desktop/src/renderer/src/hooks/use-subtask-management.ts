@@ -27,6 +27,7 @@ import {
 } from '@/lib/subtask-bulk-utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useTaskSettings } from './use-task-settings'
+import { useTrackedTimeout } from './use-tracked-timeout'
 import type { Task, Priority } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { getI18n } from 'react-i18next'
@@ -131,6 +132,9 @@ export const useSubtaskManagement = ({
   void _projects
   // Get settings
   const { subtaskSettings } = useTaskSettings()
+
+  // Celebration-animation delays must not outlive the list that scheduled them
+  const scheduleTimeout = useTrackedTimeout()
 
   // Delete parent dialog state
   const [deleteParentDialogOpen, setDeleteParentDialogOpen] = useState(false)
@@ -566,7 +570,7 @@ export const useSubtaskManagement = ({
 
         if (subtaskSettings.autoCompleteParent) {
           // Delay auto-complete to let celebration animation play
-          setTimeout(() => {
+          scheduleTimeout(() => {
             // Use database-aware callback if available
             if (onUpdateTask) {
               onUpdateTask(parentId, { completedAt: new Date() })
@@ -603,14 +607,14 @@ export const useSubtaskManagement = ({
           }, 200) // Wait 0.2 seconds for celebration animation
         } else {
           // Show dialog to ask user (after a brief delay for the animation)
-          setTimeout(() => {
+          scheduleTimeout(() => {
             setPendingAutoCompleteParent(parent)
             setAllSubtasksCompleteDialogOpen(true)
           }, 1000)
         }
       }
     },
-    [tasks, onTasksChange, onUpdateTask, subtaskSettings.autoCompleteParent]
+    [tasks, onTasksChange, onUpdateTask, subtaskSettings.autoCompleteParent, scheduleTimeout]
   )
 
   // ========================================================================
@@ -682,7 +686,7 @@ export const useSubtaskManagement = ({
         const allComplete = checkAllSubtasksComplete(parentId, updatedTasks)
 
         if (allComplete && subtaskSettings.autoCompleteParent) {
-          setTimeout(() => {
+          scheduleTimeout(() => {
             if (onUpdateTask) {
               onUpdateTask(parentId, { completedAt: new Date() })
               toast.success(getI18n().getFixedT(null, 'tasks')('phaseI.toasts.taskMarkedAsDone'))
@@ -704,7 +708,7 @@ export const useSubtaskManagement = ({
         )
       }
     },
-    [tasks, onTasksChange, onUpdateTask, subtaskSettings.autoCompleteParent]
+    [tasks, onTasksChange, onUpdateTask, subtaskSettings.autoCompleteParent, scheduleTimeout]
   )
 
   // ========================================================================
