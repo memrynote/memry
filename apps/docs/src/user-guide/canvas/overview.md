@@ -65,6 +65,11 @@ Canvases save into your vault automatically as you draw — there is nothing to
 save by hand. Pressing **Cmd/Ctrl+S** simply confirms this with a short
 "changes are saved" notice; it never opens a file dialog.
 
+Only changes to the drawing itself are written. Moving around a board — panning,
+zooming, selecting — leaves the file untouched, so a board you are only reading
+does not keep rewriting itself or churning through sync. Whatever you have drawn
+is still written when you close the tab, quit, or press **Cmd/Ctrl+S**.
+
 Each canvas is a plain `.excalidraw` file in your vault's `canvases/` folder,
 named after the board's title. The file is the real canvas and the sidebar entry
 is an index of it, so copying that folder to another machine brings the boards

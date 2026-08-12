@@ -135,12 +135,7 @@ describe('list type conversion on a multi-block selection', () => {
     expect(canToggleListType(editor)).toBe(true)
 
     toggleListType(editor, 'bulletListItem')
-    expect(blockTypes(editor)).toEqual([
-      'paragraph',
-      'bulletListItem',
-      'paragraph',
-      'paragraph'
-    ])
+    expect(blockTypes(editor)).toEqual(['paragraph', 'bulletListItem', 'paragraph', 'paragraph'])
   })
 
   it('leaves blocks without inline content alone', () => {

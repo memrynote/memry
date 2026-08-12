@@ -28,6 +28,8 @@ Widgets are the cards on a board. Available types:
 | Calendar        | An at-a-glance calendar of upcoming entries       |
 | Journal         | Today's journal entry and your current streak     |
 
+The Calendar widget shows today's events. If you leave Memry open overnight it rolls over on its own at local midnight — the widget, its event count, and the "Next:" line all switch to the new day without a restart. The same applies after the machine wakes from sleep or the system clock changes.
+
 ### Add a widget
 
 Open the **widget gallery** (the add-widget control on the board) and click a type. The new card drops in at the bottom of the board and the grid compacts it upward. Adding the same type twice is allowed — each is an independent instance with its own configuration.

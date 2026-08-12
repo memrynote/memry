@@ -33,6 +33,7 @@ import { initCanvasFolderSyncService, resetCanvasFolderSyncService } from './can
 import { initProjectSyncService, resetProjectSyncService } from './project-sync'
 import { initSettingsSyncManager, resetSettingsSyncManager } from './settings-sync'
 import { initNoteSyncService, resetNoteSyncService } from './note-sync'
+import { resetRequestedAttachmentDownloads } from './item-handlers/note-handler'
 import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
 import { initTagDefinitionSyncService, resetTagDefinitionSyncService } from './tag-definition-sync'
 import { initTagCategorySyncService, resetTagCategorySyncService } from './tag-category-sync'
@@ -100,6 +101,13 @@ interface SyncRuntimeState {
   crdtQueue: CrdtUpdateQueue
   snapshotScheduler: CrdtSnapshotScheduler
   workerBridge: SyncWorkerBridge
+  /**
+   * Kept so teardown can detach it. The closure reaches this runtime's
+   * crdtQueue and crdtProvider, and the attachment UploadQueue is a module
+   * singleton that holds the NetworkMonitor past a runtime stop — leaving the
+   * subscriber attached keeps the whole dead graph reachable.
+   */
+  onNetworkStatusChanged: (event: { online: boolean }) => void
 }
 
 function getVerifiedVaultKey(db: DataDb): Promise<Uint8Array> {
@@ -185,6 +193,9 @@ function resetSyncServiceSingletons(): void {
   resetCalendarSourceSyncService()
   resetCalendarBindingSyncService()
   resetCalendarExternalEventSyncService()
+  // Module-level state on the note item handler, not a service singleton, but
+  // it is per-vault and torn down on exactly the same paths.
+  resetRequestedAttachmentDownloads()
 }
 
 function getCurrentDeviceId(db: DataDb): string | null {
@@ -663,14 +674,15 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       if (!network.online) {
         crdtQueue.pause()
       }
-      network.on('status-changed', ({ online }: { online: boolean }) => {
+      const onNetworkStatusChanged = ({ online }: { online: boolean }): void => {
         if (online) {
           crdtQueue.resume()
           replayPendingCrdtNotes()
         } else {
           crdtQueue.pause()
         }
-      })
+      }
+      network.on('status-changed', onNetworkStatusChanged)
       const ws = new WebSocketManager({
         getAccessToken: () => getValidAccessToken(),
         getAppVersion: () => app.getVersion(),
@@ -778,7 +790,8 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         engine,
         crdtQueue,
         snapshotScheduler,
-        workerBridge
+        workerBridge,
+        onNetworkStatusChanged
       }
       runtime = pendingRuntime
 
@@ -815,6 +828,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         pendingRuntime.snapshotScheduler.stop()
         pendingRuntime.crdtQueue.stop()
         pendingRuntime.ws.disconnect()
+        pendingRuntime.network.removeListener(
+          'status-changed',
+          pendingRuntime.onNetworkStatusChanged
+        )
         pendingRuntime.network.stop()
         await pendingRuntime.workerBridge.stop().catch(() => {})
         await pendingRuntime.engine.stop().catch(() => {})
@@ -922,6 +939,7 @@ export async function stopSyncRuntime(options?: { skipFinalSync?: boolean }): Pr
     })
   resetCrdtProvider()
   active.ws.disconnect()
+  active.network.removeListener('status-changed', active.onNetworkStatusChanged)
   active.network.stop()
   log.info('Sync runtime stopped')
 }

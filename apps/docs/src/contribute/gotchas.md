@@ -117,6 +117,16 @@ if (
 
 This mirrors `shouldStartMarquee` in `use-block-marquee-selection.ts`. Regression coverage: `tests/e2e/editor-drag-handle-menu.e2e.ts`.
 
+## Global Keydown Listeners Must Not Depend on Render State
+
+`useKeyboardShortcuts` (`hooks/use-keyboard-shortcuts-base.ts`), `useChordShortcuts` and `useInboxKeyboard` each bind exactly one `window` `keydown` listener per mount. The handler reads the shortcut list — and the tab/inbox state it acts on — from a ref refreshed after every render, so it always sees fresh values without re-registering.
+
+Keep it that way when editing these hooks:
+
+- Do not put render-derived values (shortcut arrays, tab state, list items, callbacks) in the registration effect's dependency array. Every tab open/close/switch and every inbox refetch would then detach and reattach the listener.
+- Do not close over that state inside the registered listener either. Read it through the ref, or the shortcut acts on the state from the first render.
+- Callers may keep building a fresh shortcut array on every render; the hook absorbs the churn.
+
 ## Cross-Platform Env Vars in package Scripts
 
 `VAR=value cmd` is POSIX-only. pnpm runs package scripts through cmd on Windows, where `MEMRY_ENV=production pnpm ...` fails with `'MEMRY_ENV' is not recognized`. This broke the Windows release build (`apps/desktop` `build` script). Use `cross-env` for any inline env var that must work on Windows too:

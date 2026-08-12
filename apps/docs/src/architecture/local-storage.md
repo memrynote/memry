@@ -52,7 +52,19 @@ Two consequences worth knowing:
   payload, never from another projector's output.
 - **Index reads are eventually consistent.** They settle a microtask after the canonical write,
   not synchronously with it. Callers needing the index to reflect a write immediately must
-  `await flushProjectionEvents()`, which drains every lane.
+  `await flushProjectionEvents()`, which drains every _foreground_ lane.
+
+A lane whose output nothing reads back in the same turn marks itself `background`, and
+`flushProjectionEvents()` does not wait for it. Only the embedding lane does: it awaits a ~23MB
+model load plus per-note CPU inference, and the indexer flushes once per file, so waiting for it
+put that cost in front of every file the indexer touched. A background lane still receives every
+event in publish order and still drains on its own — only the barrier is lifted.
+
+**Closing a vault does not wait out the whole backlog.** `closeVault()` drains the projections
+before closing the databases, but the drain stops accepting new events first (so a lane that is
+still being refilled cannot keep it alive) and gives up after a few seconds. Whatever is still
+queued at that point is derived state; the next open re-derives it. The event already inside
+`project()` is always awaited, so the databases never close underneath a running projector.
 
 ## Where the Files Live
 
@@ -90,6 +102,32 @@ The cache is validated against the file itself, not against a list of known writ
   config.
 
 The on-disk format is unchanged; the cache is purely a runtime concern.
+
+## App Config File
+
+App-level state that must be readable before any vault opens lives in a single JSON file,
+`<userData>/memry-config.json` (`src/main/store.ts`): the known-vault list, current vault,
+locale, sync state, cached entitlement, capture allowlist, updater preferences and the last
+main-window geometry.
+
+It is read once into an in-memory cache and every `store.set` rewrites the **whole**
+pretty-printed file synchronously. That makes the file cheap to read but expensive to write,
+so high-frequency writers must batch.
+
+### Window Geometry
+
+The main window's size and position are persisted so the next launch (or macOS dock reopen)
+restores them. `resize`, `move`, `maximize` and `unmaximize` all feed one trailing debounce
+(`createWindowBoundsPersister` in `src/main/window-bounds.ts`,
+`WINDOW_BOUNDS_PERSIST_DELAY_MS` = 1500 ms), so a continuous drag settles into a single
+config write instead of rewriting the file throughout the gesture. The persister also drops
+writes whose geometry matches the previous one — `maximize`/`unmaximize` each fire alongside
+their own `resize`, and a window nudged back to where it started re-emits `move` unchanged.
+The window `close` handler flushes the pending write so the final geometry is never lost to
+a timer that never fired.
+
+The persister is deliberately free of Electron imports (it takes `read`/`write` callbacks) so
+the debounce can be unit tested with fake timers.
 
 ## Canvas Files
 
@@ -184,6 +222,25 @@ The pipeline is wired into both duplicated serializers: the renderer save path (
 ## Concurrency
 
 better-sqlite3 is synchronous and single-process. The main process is the only writer. The renderer never touches SQLite directly — all reads and writes go through IPC.
+
+## Background Polling (Shared Minute Tick)
+
+Three features watch the clock rather than an event: due reminders, snoozed inbox items that should
+resurface, and the daily inbox review nudge. They share one 60-second timer in
+`main/lib/minute-tick.ts` instead of each owning an interval, so an idle app wakes the process once
+a minute, not three times. The timer is `unref`'d — polling alone never keeps the process alive —
+and it only exists while at least one poller is registered.
+
+Each poller stays cheap when there is nothing to do:
+
+- **Reminders** count pending/snoozed rows first. Zero means nothing can be due, so the due lookup
+  is skipped and the tick costs one indexed count. The dock badge is only re-asserted when the
+  count actually changes.
+- **Inbox snooze** runs a single filtered query that returns no rows when nothing is due.
+- **Inbox review** returns before touching the database when the reminder is disabled (the default).
+
+All three also short-circuit when no vault is open. Add a new minute-cadence job by registering it
+on the shared tick — do not start another interval.
 
 ## SQLite Memory Budget
 

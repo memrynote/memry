@@ -397,6 +397,97 @@ describe('runTurn against a stub backend', () => {
     ).toBe(true)
   })
 
+  // Every list re-runs two AEAD opens, two JSON.parses and a zod parse per row,
+  // so a turn that lists three or four times pays O(history) that many times.
+  it('lists and decrypts the conversation history once per turn', async () => {
+    const messages = createFakeMessageStore([
+      seedMessage({
+        id: 'old-1',
+        role: 'user',
+        content: { role: 'user', data: { text: 'earlier question' } },
+        createdAt: 1
+      }),
+      seedMessage({
+        id: 'old-2',
+        role: 'assistant',
+        content: { role: 'assistant', data: { text: 'earlier answer' } },
+        createdAt: 2
+      })
+    ])
+    const conversations = createFakeConversationStore({ title: 'Existing conversation' })
+    const backend = createFakeBackend({ turn: [{ kind: 'message_stop' }] })
+    const listSpy = vi.spyOn(messages, 'listByConversation')
+
+    await runTurn(
+      {
+        conversations,
+        messages,
+        backends: createFakeRegistry(backend)
+      },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'follow up',
+        attachments: [],
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'medium' }
+      }
+    )
+
+    expect(listSpy).toHaveBeenCalledTimes(1)
+    expect(backend.summarize).not.toHaveBeenCalled()
+    // The single list still has to carry the whole transcript into the prompt.
+    const prompt = backend.runTurn.mock.calls[0][0].prompt
+    expect(prompt).toContain('earlier question')
+    expect(prompt).toContain('earlier answer')
+    expect(prompt).toContain('follow up')
+  })
+
+  it('lists the conversation history once even when compaction appends a marker', async () => {
+    const messages = createFakeMessageStore([
+      seedMessage({
+        id: 'old-1',
+        role: 'user',
+        content: { role: 'user', data: { text: 'a'.repeat(210_000) } },
+        createdAt: 1
+      }),
+      seedMessage({
+        id: 'old-2',
+        role: 'assistant',
+        content: { role: 'assistant', data: { text: 'b'.repeat(210_000) } },
+        createdAt: 2
+      })
+    ])
+    const conversations = createFakeConversationStore({ title: 'Existing conversation' })
+    const backend = createFakeBackend({
+      summary: [{ kind: 'assistant_delta', text: 'Earlier in this conversation: old summary' }],
+      turn: [{ kind: 'message_stop' }]
+    })
+    const listSpy = vi.spyOn(messages, 'listByConversation')
+
+    await runTurn(
+      {
+        conversations,
+        messages,
+        backends: createFakeRegistry(backend)
+      },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'continue',
+        attachments: [],
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'medium' }
+      }
+    )
+
+    expect(listSpy).toHaveBeenCalledTimes(1)
+    // The compacted prompt is rebuilt from the marker the compactor returned,
+    // not from a fresh list, so it must still replace the summarized history.
+    const prompt = backend.runTurn.mock.calls[0][0].prompt
+    expect(prompt).toContain('Earlier in this conversation: old summary')
+    expect(prompt).not.toContain('a'.repeat(210_000))
+    expect(prompt).toContain('continue')
+  })
+
   it('uses the selected backend subprocess to title a default conversation from the first prompt', async () => {
     const messages = createFakeMessageStore()
     const conversations = createFakeConversationStore()

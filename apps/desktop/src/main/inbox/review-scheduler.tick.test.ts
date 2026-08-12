@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const show = vi.fn()
 const send = vi.fn()
@@ -38,7 +38,14 @@ vi.mock('../database/queries/settings', () => ({
   setSetting: (_db: unknown, k: string, v: string) => void store.set(k, v)
 }))
 
-import { runReviewTick, getLastReviewFireForTest } from './review-scheduler'
+import {
+  runReviewTick,
+  getLastReviewFireForTest,
+  startInboxReviewScheduler,
+  stopInboxReviewScheduler,
+  isReviewSchedulerRunning
+} from './review-scheduler'
+import { getMinuteTickIds, isMinuteTickRunning } from '../lib/minute-tick'
 
 const at = (h: number, mi: number) => new Date(2026, 6, 17, h, mi, 0, 0)
 
@@ -81,5 +88,28 @@ describe('runReviewTick', () => {
   it('does not notify with an empty inbox', () => {
     count = 0
     expect(runReviewTick(at(18, 0)).notified).toBe(false)
+  })
+})
+
+describe('startInboxReviewScheduler', () => {
+  afterEach(() => {
+    stopInboxReviewScheduler()
+  })
+
+  it('subscribes to the shared minute tick instead of owning a timer', () => {
+    enabled = false // keep the startup catch-up quiet
+    const setIntervalSpy = vi.spyOn(globalThis, 'setInterval')
+
+    startInboxReviewScheduler()
+
+    expect(getMinuteTickIds()).toEqual(['inbox-review'])
+    expect(isReviewSchedulerRunning()).toBe(true)
+    expect(setIntervalSpy).toHaveBeenCalledTimes(1)
+
+    stopInboxReviewScheduler()
+
+    expect(getMinuteTickIds()).toEqual([])
+    expect(isMinuteTickRunning()).toBe(false)
+    setIntervalSpy.mockRestore()
   })
 })

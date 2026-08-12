@@ -239,6 +239,8 @@ Eight presets — indigo, amber, emerald, red, violet, cyan, pink, orange — pl
 
 Set a system-wide hotkey to focus the memrynote window from anywhere. macOS requires Accessibility permission.
 
+If your chosen hotkey is already claimed by another app, memrynote keeps its built-in quick capture hotkey (`Cmd`/`Ctrl` + `Shift` + `Space`) registered as a fallback, so quick capture keeps working. Saving keyboard settings re-checks this, and releases the fallback once your own hotkey registers successfully.
+
 ### Shortcut List
 
 Searchable, grouped by category (Navigation, Tabs, Editor, View). Click any row to capture a new binding. Custom bindings show a badge.

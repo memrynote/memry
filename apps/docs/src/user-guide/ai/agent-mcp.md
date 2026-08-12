@@ -72,6 +72,12 @@ that output is written to the local log, the conversation falls back to a title 
 first message, and the turn continues with its history uncompacted — your message and the
 conversation are never lost.
 
+Conversation history is stored encrypted, so every message you send has to decrypt the transcript
+before the agent can see it. memrynote reads and decrypts that history once per message and reuses it
+for the rest of the turn, so sending a message into a long conversation costs the same single pass
+whether or not the turn also compacts. Long conversations stay responsive instead of getting slower
+with every reply.
+
 While a turn runs, its tool calls collapse into a single activity row instead of stacking one row per
 step, so a long turn no longer pushes the answer off screen. The row names the tool the agent is
 running, counts the steps so far, and shows a spinner until the turn ends. Once the turn is done the
@@ -105,6 +111,10 @@ archived events hidden. Choosing a result replaces the active `@` query with one
 prompt such as `summarize @Star Wars Movies` keeps the referenced item visibly attached inside the
 prompt. Mention tags submit as readable `@Title` text plus an encrypted structured attachment
 reference.
+
+The picker waits for a brief pause in typing before it searches, so typing a long mention runs one
+search rather than one per character. The list always reflects the last thing you typed — a slower
+search for an earlier query is discarded rather than shown.
 
 The prompt box uses the operating-system text editing menu, so Cut, Copy, Paste, Select All, and
 native right-click editing work like other text fields.

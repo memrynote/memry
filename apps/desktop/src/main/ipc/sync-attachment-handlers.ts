@@ -18,6 +18,7 @@ import {
 import {
   AttachmentSyncService,
   AttachmentTooLargeError,
+  type ProgressCallback,
   type TransferProgress,
   type UploadResult
 } from '../sync/attachments'
@@ -77,18 +78,54 @@ const getOrCreateUploadQueue = (): UploadQueue | null => {
   return uploadQueue
 }
 
-const broadcastUploadProgress = (progress: TransferProgress): void => {
-  const percent =
-    progress.totalChunks > 0
-      ? Math.round((progress.chunksCompleted / progress.totalChunks) * 100)
-      : 0
-  broadcastToAllWindows(SYNC_EVENTS.UPLOAD_PROGRESS, {
-    attachmentId: progress.attachmentId,
-    sessionId: '',
-    progress: percent,
-    status: progress.phase
-  })
+/**
+ * Wrap a progress sink so it only fires when the broadcast payload would
+ * actually change.
+ *
+ * Progress fires once per chunk: a 500-chunk transfer produced 500 structured
+ * clones to every window for ~100 distinct percent values. The payload is only
+ * (attachmentId, whole percent, phase), so an event repeating the previous
+ * percent AND phase is byte-for-byte what the UI already has — dropping it
+ * cannot leave anything stuck. The final 100% still goes out, because the first
+ * chunk that rounds to 100 is a change like any other.
+ *
+ * The dedupe state is created per transfer, never module-level — a shared slot
+ * would make two concurrent transfers suppress each other's events.
+ */
+const throttlePerTransfer = (
+  send: (percent: number, progress: TransferProgress) => void
+): ProgressCallback => {
+  let lastKey: string | null = null
+  return (progress) => {
+    const percent =
+      progress.totalChunks > 0
+        ? Math.round((progress.chunksCompleted / progress.totalChunks) * 100)
+        : 0
+    const key = `${progress.phase}:${percent}`
+    if (key === lastKey) return
+    lastKey = key
+    send(percent, progress)
+  }
 }
+
+const createUploadProgressBroadcaster = (): ProgressCallback =>
+  throttlePerTransfer((percent, progress) => {
+    broadcastToAllWindows(SYNC_EVENTS.UPLOAD_PROGRESS, {
+      attachmentId: progress.attachmentId,
+      sessionId: '',
+      progress: percent,
+      status: progress.phase
+    })
+  })
+
+const createDownloadProgressBroadcaster = (): ProgressCallback =>
+  throttlePerTransfer((percent, progress) => {
+    broadcastToAllWindows(SYNC_EVENTS.DOWNLOAD_PROGRESS, {
+      attachmentId: progress.attachmentId,
+      progress: percent,
+      status: progress.phase
+    })
+  })
 
 const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
   if (attachmentService) return attachmentService
@@ -154,7 +191,7 @@ export function getCanvasAssetIO(): {
   if (!queue || !service) return null
   return {
     uploadAttachment: (canvasId, filePath) =>
-      queue.enqueue(canvasId, filePath, broadcastUploadProgress),
+      queue.enqueue(canvasId, filePath, createUploadProgressBroadcaster()),
     downloadAttachment: async (attachmentId, targetPath) => {
       await service.downloadAttachment(attachmentId, targetPath)
     }
@@ -186,7 +223,11 @@ export function registerAttachmentHandlers(): void {
         return { success: false, error: getMainI18n().t('errors:sync.engineNotInitialized') }
 
       try {
-        const result = await queue.enqueue(input.noteId, input.filePath, broadcastUploadProgress)
+        const result = await queue.enqueue(
+          input.noteId,
+          input.filePath,
+          createUploadProgressBroadcaster()
+        )
         return { success: true, attachmentId: result.attachmentId, sessionId: result.sessionId }
       } catch (err) {
         logger.error('Attachment upload failed', err)
@@ -228,18 +269,6 @@ export function registerAttachmentHandlers(): void {
       if (!service)
         return { success: false, error: getMainI18n().t('errors:sync.engineNotInitialized') }
 
-      service.setProgressCallback((progress) => {
-        const percent =
-          progress.totalChunks > 0
-            ? Math.round((progress.chunksCompleted / progress.totalChunks) * 100)
-            : 0
-        broadcastToAllWindows(SYNC_EVENTS.DOWNLOAD_PROGRESS, {
-          attachmentId: progress.attachmentId,
-          progress: percent,
-          status: progress.phase
-        })
-      })
-
       try {
         const targetPath = input.targetPath ?? ''
         if (!targetPath) return { success: false, error: 'Target path is required' }
@@ -256,14 +285,14 @@ export function registerAttachmentHandlers(): void {
           }
         }
 
-        const result = await service.downloadAttachment(input.attachmentId, targetPath)
+        const result = await service.downloadAttachment(input.attachmentId, targetPath, {
+          onProgress: createDownloadProgressBroadcaster()
+        })
         return { success: true, filePath: result.filePath }
       } catch (err) {
         logger.error('Attachment download failed', err)
         trackMainError('sync_attachments', 'attachment_download_failed', err)
         return { success: false, error: err instanceof Error ? err.message : String(err) }
-      } finally {
-        service.setProgressCallback(null)
       }
     },
     'errors:attachment.downloadFailed'
@@ -294,7 +323,7 @@ export function registerAttachmentHandlers(): void {
     async (noteId, diskPath) => {
       const queue = getOrCreateUploadQueue()
       if (!queue) throw new Error('Sync not initialized')
-      const result = await queue.enqueue(noteId, diskPath, broadcastUploadProgress)
+      const result = await queue.enqueue(noteId, diskPath, createUploadProgressBroadcaster())
       return { attachmentId: result.attachmentId }
     },
     () => getDatabase(),
@@ -320,7 +349,7 @@ export function registerAttachmentHandlers(): void {
       const queue = getOrCreateUploadQueue()
       if (!queue) return
       try {
-        const result = await queue.enqueue(noteId, diskPath, broadcastUploadProgress)
+        const result = await queue.enqueue(noteId, diskPath, createUploadProgressBroadcaster())
         if (isDatabaseInitialized()) {
           recordUploadedAttachment(noteId, result.attachmentId)
           // Outbox cleanup must never turn a successful upload into a failure.

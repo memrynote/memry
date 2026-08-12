@@ -45,6 +45,16 @@ transcript with the audio file, so opening the file page shows the player and tr
 
 Images render as image blocks (not file blocks). Drag them to resize; double-click for the lightbox.
 
+### Zooming and Panning
+
+Opening an image as a file page gives you the full viewer: zoom in and out, reset to fit, and rotate
+in 90° steps. Above 100% the image can be panned — drag it with the mouse and it tracks the cursor
+one-for-one.
+
+A pan keeps following your pointer even when it leaves the viewer or the app window, and ends
+wherever you release the button, so you can drag a zoomed image right to its edge in one motion.
+Zooming back out to 100% recenters the image.
+
 ### Images From Another App's Vault
 
 Vaults written by Obsidian, Capacities and similar apps keep media in a shared
@@ -102,3 +112,9 @@ Files that are no longer referenced by any note are pruned during periodic vacuu
 ## Sync Behavior
 
 Attachment payloads sync as encrypted R2 blobs (the same path as note bodies). Large files don't block notes — sync interleaves uploads and prioritizes metadata.
+
+### Transfer Progress
+
+Transfers report progress as a whole percentage, updating only when that percentage changes rather than on every chunk — a large file moves through the same 0–100% either way, without flooding the interface. Every transfer finishes on 100%.
+
+Several attachments can upload and download at once, and each one tracks its own progress. One transfer finishing never stops another that is still running from reporting.

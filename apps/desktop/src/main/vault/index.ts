@@ -564,6 +564,25 @@ function syncJournalConfig(config: VaultConfig): void {
  * Update vault configuration.
  * If excludePatterns change, the file watcher is restarted with the new patterns.
  */
+/**
+ * A full index pass runs with `isIndexing` set, and the embedding projector
+ * defers every note it sees in that window instead of embedding it inline, to
+ * keep the model load off the blocking path (#803). Only `openVault` reconciled
+ * afterwards, so notes touched by a manual reindex or a structural config
+ * rebuild kept a stale (or missing) vector — and their ids sat in the
+ * projector's deferred set — until the next vault open.
+ *
+ * Backgrounded and scoped to the embedding projector: the caller must never
+ * wait on a model load, and `stopProjectionRuntime` aborts the pass, so this
+ * cannot hold vault close open.
+ */
+function drainDeferredEmbeddings(): void {
+  void reconcileProjections(['embedding']).catch((error) => {
+    logger.error('Deferred embedding drain failed:', error)
+    trackMainError('vault', 'projection_reconcile', error)
+  })
+}
+
 export async function updateConfig(updates: Partial<VaultConfig>): Promise<VaultConfig> {
   if (!currentStatus.path) {
     throw new VaultError('No vault is currently open', VaultErrorCode.NOT_INITIALIZED)
@@ -601,6 +620,8 @@ export async function updateConfig(updates: Partial<VaultConfig>): Promise<Vault
     } finally {
       updateStatus({ isIndexing: false, indexProgress: 100 })
     }
+
+    drainDeferredEmbeddings()
   }
 
   return newConfig
@@ -767,6 +788,7 @@ export async function reindex(): Promise<void> {
   try {
     await indexVault(currentStatus.path)
     updateStatus({ isIndexing: false, indexProgress: 100 })
+    drainDeferredEmbeddings()
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Reindex failed'
     updateStatus({ isIndexing: false, error: message })

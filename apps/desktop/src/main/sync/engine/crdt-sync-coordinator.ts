@@ -42,6 +42,19 @@ export class CrdtSyncCoordinator {
     return this.pendingPulls.size
   }
 
+  /**
+   * Both maps hold one entry per note ever CRDT-synced — i.e. the whole vault
+   * after the first full sync — so they must not outlive the engine that filled
+   * them. Dropping `lastAppliedSequence` is safe: the next pass re-derives its
+   * `since` cursor from the server snapshot baseline, and re-applying a CRDT
+   * update is a no-op.
+   */
+  clearCaches(): void {
+    this.pendingPulls.clear()
+    this.lastAppliedSequence.clear()
+    this.applyFailureReported.clear()
+  }
+
   private rememberAppliedSequence(noteId: string, sequenceNum: number): number {
     const known = this.lastAppliedSequence.get(noteId) ?? 0
     const next = Math.max(known, sequenceNum)

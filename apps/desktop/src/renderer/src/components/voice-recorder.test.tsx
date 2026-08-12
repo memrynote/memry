@@ -30,13 +30,35 @@ class MockMediaRecorder {
   }
 }
 
+class MockAnalyser {
+  // The real AnalyserNode default, so a test that asserts a smaller window is
+  // asserting something the component actually set.
+  fftSize = 2048
+  getByteTimeDomainData = vi.fn((array: Uint8Array) => array.fill(128))
+}
+
+const createdAnalysers: MockAnalyser[] = []
+
+// Every constructed context is recorded so a test can assert the one that was
+// orphaned by a failed setup still got closed.
+const audioContexts: MockAudioContext[] = []
+let waveformSetupError: Error | null = null
+
 class MockAudioContext {
-  createMediaStreamSource = vi.fn(() => ({ connect: vi.fn() }))
-  createAnalyser = vi.fn(() => ({
-    fftSize: 2048,
-    getByteTimeDomainData: vi.fn((array: Uint8Array) => array.fill(128))
-  }))
+  createMediaStreamSource = vi.fn(() => {
+    if (waveformSetupError) throw waveformSetupError
+    return { connect: vi.fn() }
+  })
+  createAnalyser = vi.fn(() => {
+    const analyser = new MockAnalyser()
+    createdAnalysers.push(analyser)
+    return analyser
+  })
   close = vi.fn().mockResolvedValue(undefined)
+
+  constructor() {
+    audioContexts.push(this)
+  }
 }
 
 describe('VoiceRecorder', () => {
@@ -45,8 +67,27 @@ describe('VoiceRecorder', () => {
   const trackStop = vi.fn()
   const getUserMedia = vi.fn()
 
+  // jsdom has no frame clock, so the waveform loop is driven by hand. Each
+  // "frame" flushes everything queued so far with an explicit timestamp, which
+  // is what a real rAF tick does — and keeps any frame another library queued
+  // from being mistaken for the recorder's.
+  let pendingFrames: FrameRequestCallback[] = []
+
+  const runFrames = async (count: number, stepMs: number): Promise<void> => {
+    for (let i = 0; i < count; i++) {
+      const due = pendingFrames.splice(0, pendingFrames.length)
+      await act(async () => {
+        for (const cb of due) cb(1000 + i * stepMs)
+      })
+    }
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
+    createdAnalysers.length = 0
+    pendingFrames = []
+    audioContexts.length = 0
+    waveformSetupError = null
 
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
@@ -65,7 +106,7 @@ describe('VoiceRecorder', () => {
 
     Object.defineProperty(globalThis, 'requestAnimationFrame', {
       configurable: true,
-      value: vi.fn(() => 1)
+      value: vi.fn((cb: FrameRequestCallback) => pendingFrames.push(cb))
     })
 
     Object.defineProperty(globalThis, 'cancelAnimationFrame', {
@@ -154,6 +195,39 @@ describe('VoiceRecorder', () => {
     expect(onCancel).toHaveBeenCalled()
   })
 
+  // Chromium caps concurrent per-document AudioContexts. A context the cleanup
+  // path cannot reach is never closed, so enough failed setups break every later
+  // waveform for the whole session.
+  it('closes the AudioContext when the waveform graph fails to build', async () => {
+    waveformSetupError = new DOMException('too many contexts', 'NotSupportedError')
+
+    render(<VoiceRecorder onRecordingComplete={onRecordingComplete} onCancel={onCancel} />)
+
+    await userEvent.click(screen.getByLabelText('Start voice recording'))
+
+    // Recording still works; only the waveform is lost.
+    expect(await screen.findByLabelText('Stop recording')).toBeInTheDocument()
+
+    expect(audioContexts).toHaveLength(1)
+    expect(audioContexts[0].close).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not close the AudioContext twice when teardown follows a failed setup', async () => {
+    waveformSetupError = new DOMException('too many contexts', 'NotSupportedError')
+
+    const { unmount } = render(
+      <VoiceRecorder onRecordingComplete={onRecordingComplete} onCancel={onCancel} />
+    )
+
+    await userEvent.click(screen.getByLabelText('Start voice recording'))
+    expect(await screen.findByLabelText('Stop recording')).toBeInTheDocument()
+
+    unmount()
+
+    expect(audioContexts).toHaveLength(1)
+    expect(audioContexts[0].close).toHaveBeenCalledTimes(1)
+  })
+
   it('supports imperative start and handles missing microphones', async () => {
     getUserMedia.mockRejectedValue(new DOMException('missing', 'NotFoundError'))
     const ref = React.createRef<VoiceRecorderHandle>()
@@ -167,5 +241,34 @@ describe('VoiceRecorder', () => {
     })
 
     expect(await screen.findByText('No microphone found')).toBeInTheDocument()
+  })
+
+  // The bars are an RMS level meter. A 2048-sample window buys frequency
+  // resolution nothing here reads, at 4x the per-sample cost.
+  it('analyses the waveform over a short RMS window, not a full 2048-sample FFT', async () => {
+    render(<VoiceRecorder onRecordingComplete={onRecordingComplete} onCancel={onCancel} />)
+
+    await userEvent.click(screen.getByLabelText('Start voice recording'))
+    await screen.findByLabelText('Stop recording')
+
+    expect(createdAnalysers).toHaveLength(1)
+    expect(createdAnalysers[0].fftSize).toBe(512)
+  })
+
+  // The bars only advance every 50 ms, so reading the analyser and running the
+  // RMS loop on every frame is work that gets thrown away.
+  it('samples the analyser at the throttled cadence, not on every frame', async () => {
+    render(<VoiceRecorder onRecordingComplete={onRecordingComplete} onCancel={onCancel} />)
+
+    await userEvent.click(screen.getByLabelText('Start voice recording'))
+    await screen.findByLabelText('Stop recording')
+
+    const analyser = createdAnalysers[0]
+    expect(analyser).toBeDefined()
+
+    // Ten 16 ms frames span 144 ms: the 50 ms throttle admits three of them.
+    await runFrames(10, 16)
+
+    expect(analyser.getByteTimeDomainData).toHaveBeenCalledTimes(3)
   })
 })

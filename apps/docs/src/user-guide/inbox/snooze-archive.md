@@ -30,6 +30,10 @@ A separate view tab lists currently snoozed items and reminder rows generated fr
 - **Reschedule** — pick a different wake time
 - **Cancel snooze** — also returns to inbox
 
+Every countdown refreshes once a minute off a single shared tick, and again as
+soon as the app returns to the foreground, so a long snoozed list stays accurate
+without one timer per row.
+
 ### When the Wake Fires
 
 When wake fires, the item appears at the top of the active inbox. If memrynote isn't running, the item appears next time the app opens.

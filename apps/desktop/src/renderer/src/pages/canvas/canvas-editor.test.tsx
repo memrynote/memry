@@ -38,7 +38,8 @@ const mocks = vi.hoisted(() => ({
   onChange: null as (() => void) | null,
   excalidrawProps: {} as Record<string, unknown>,
   liveOpened: vi.fn(),
-  liveClosed: vi.fn()
+  liveClosed: vi.fn(),
+  serializeAsJSON: vi.fn((elements: unknown[]) => JSON.stringify({ elements }))
 }))
 
 vi.mock('@excalidraw/excalidraw', () => ({
@@ -63,7 +64,8 @@ vi.mock('@excalidraw/excalidraw', () => ({
     }, [])
     return <div data-testid="excalidraw" />
   },
-  serializeAsJSON: (elements: unknown[]) => JSON.stringify({ elements }),
+  serializeAsJSON: (elements: unknown[], ...rest: unknown[]) =>
+    mocks.serializeAsJSON(elements, ...rest),
   // The editor installs the vault-backed shape library on mount; this suite is
   // about scene persistence, so the hook is a no-op here.
   useHandleLibrary: () => undefined,
@@ -114,6 +116,7 @@ describe('CanvasEditor persistence safety', () => {
     vi.useFakeTimers()
     mocks.update.mockReset().mockResolvedValue({ id: 'c1' })
     mocks.toastSuccess.mockReset()
+    mocks.serializeAsJSON.mockClear()
     mocks.api.elements = []
     mocks.api.isLoading = true
     mocks.onChange = null
@@ -186,6 +189,100 @@ describe('CanvasEditor persistence safety', () => {
     } finally {
       document.removeEventListener('keydown', documentKeydown)
     }
+  })
+
+  it('does not re-serialize the scene when only the viewport moved (pan/zoom)', async () => {
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    finishInit()
+
+    // A real edit: serialized once and written.
+    act(() => {
+      mocks.onChange?.()
+    })
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+    expect(mocks.update).toHaveBeenCalledTimes(1)
+
+    // Full-scene serializes only — the appState fingerprint probe passes [].
+    const sceneSerializes = (): number =>
+      mocks.serializeAsJSON.mock.calls.filter((call) => (call[0] as unknown[]).length > 0).length
+    const before = sceneSerializes()
+    expect(before).toBeGreaterThan(0)
+
+    // Pan/zoom fires onChange but leaves every element untouched. Before the
+    // signature gate each of these paid a full serializeAsJSON (multi-MB with
+    // inline images) purely to discover the string was identical.
+    act(() => {
+      mocks.onChange?.()
+    })
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+    act(() => {
+      mocks.onChange?.()
+    })
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+
+    expect(sceneSerializes()).toBe(before)
+    expect(mocks.update).toHaveBeenCalledTimes(1)
+  })
+
+  it('persists an edit made right after the previous save (flush is never gated)', async () => {
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    finishInit()
+    act(() => {
+      mocks.onChange?.()
+    })
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+    expect(mocks.update).toHaveBeenCalledTimes(1)
+
+    // New stroke, then an immediate flush (Cmd+S / tab close / quit) inside the
+    // debounce window: the fingerprint moved, so it must reach the vault.
+    mocks.api.elements = [...mocks.api.elements, { id: 'stroke-2', type: 'freedraw' }]
+    act(() => {
+      mocks.onChange?.()
+    })
+    const wrapper = document.querySelector('[data-canvas-editor="c1"]')!
+    fireEvent.keyDown(wrapper.querySelector('[data-testid="excalidraw"]')!, {
+      key: 's',
+      metaKey: true
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(mocks.update).toHaveBeenCalledTimes(2)
+    expect(mocks.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({ scene: JSON.stringify({ elements: mocks.api.elements }) })
+    )
+  })
+
+  it('parses the stored scene lazily and keeps no copy of it', () => {
+    render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE} />)
+
+    // initialData is a function so the parsed scene lives only for the length
+    // of Excalidraw's componentDidMount, instead of being retained for the
+    // tab's lifetime alongside the raw string and the persister baseline.
+    const initialData = mocks.excalidrawProps.initialData as () => unknown
+    expect(typeof initialData).toBe('function')
+    expect(initialData()).toEqual({
+      elements: [{ id: 'stroke-1', type: 'freedraw' }],
+      appState: {},
+      files: undefined,
+      scrollToContent: true
+    })
+  })
+
+  it('refuses to mount the editor on an unparseable stored scene', () => {
+    const { container } = render(<CanvasEditor canvasId="c1" initialScene="{not json" />)
+
+    expect(container.querySelector('[data-canvas-editor="c1"]')).toBeNull()
+    expect(container.textContent).toContain('canvas.corruptScene')
   })
 
   it('disables Excalidraw file actions (open / save to disk) via UIOptions', () => {

@@ -518,3 +518,57 @@ describe('CrdtSyncCoordinator', () => {
     expect(postToServerMock).not.toHaveBeenCalled()
   })
 })
+
+describe('CrdtSyncCoordinator.clearCaches', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('drops the per-note applied-sequence cursors so a new vault starts from the server baseline', async () => {
+    const applyRemoteUpdate = vi.fn()
+    const crdtProvider = {
+      applyRemoteUpdate,
+      open: vi.fn().mockResolvedValue({}),
+      closeIfInactive: vi.fn().mockResolvedValue(true),
+      getDoc: vi.fn().mockReturnValue({}),
+      getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
+      seedFromMarkdownPublic: vi.fn()
+    }
+    const ctx = {
+      deps: { crdtProvider },
+      abortController: new AbortController()
+    } as unknown as SyncContext
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn().mockResolvedValue(new Uint8Array([9])))
+
+    fetchCrdtSnapshotMock.mockResolvedValue({
+      snapshot: new Uint8Array([1]),
+      sequenceNum: 2,
+      signerDeviceId: 'dev-1'
+    })
+    decryptCrdtUpdateMock.mockReturnValue(new Uint8Array([1]))
+    getFromServerMock
+      .mockResolvedValueOnce({
+        updates: [{ sequenceNum: 7, data: 'eA==', createdAt: 0, signerDeviceId: 'dev-1' }],
+        hasMore: false
+      })
+      .mockResolvedValue({ updates: [], hasMore: false })
+
+    // #given — a pass that advanced this note's cursor past the snapshot baseline
+    await coordinator.applyCrdtIncrementals('note-1', 'token', new Uint8Array([2]))
+    coordinator.addPendingPull('note-1')
+    getFromServerMock.mockClear()
+
+    // #when — a second pass runs against the same remembered cursor
+    await coordinator.applyCrdtIncrementals('note-1', 'token', new Uint8Array([2]))
+    expect(getFromServerMock.mock.calls[0][0]).toContain('since=7')
+
+    // #then — after teardown (engine.stop on vault close) the cursor is gone and
+    // the next pass restarts from the server snapshot baseline
+    coordinator.clearCaches()
+    expect(coordinator.pendingPullCount).toBe(0)
+
+    getFromServerMock.mockClear()
+    await coordinator.applyCrdtIncrementals('note-1', 'token', new Uint8Array([2]))
+    expect(getFromServerMock.mock.calls[0][0]).toContain('since=2')
+  })
+})

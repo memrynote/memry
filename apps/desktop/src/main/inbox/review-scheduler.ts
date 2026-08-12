@@ -17,6 +17,7 @@ import { showReviewNotification } from './review-notification'
 import { InboxChannels } from '@memry/contracts/inbox-channels'
 import { REVIEW_REMINDER_TIME_PATTERN } from '@memry/contracts/settings-schemas'
 import { createLogger } from '../lib/logger'
+import { registerMinuteTick, unregisterMinuteTick, hasMinuteTick } from '../lib/minute-tick'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { INBOX_REVIEW_LAST_NOTIFIED_KEY } from './review-reminder-constants'
 
@@ -71,9 +72,10 @@ export function decideReviewNotification(input: ReviewDecisionInput): ReviewDeci
 }
 
 const logger = createLogger('InboxReview')
-const SCHEDULER_INTERVAL_MS = 60 * 1000
 
-let schedulerInterval: ReturnType<typeof setInterval> | null = null
+/** Id for this poller's subscription to the shared minute tick. */
+const MINUTE_TICK_ID = 'inbox-review'
+
 let resumeHandler: (() => void) | null = null
 let lastFire: { date: string; count: number } | null = null
 
@@ -146,21 +148,18 @@ function safeTick(): void {
 }
 
 export function startInboxReviewScheduler(): void {
-  if (schedulerInterval) {
+  if (hasMinuteTick(MINUTE_TICK_ID)) {
     logger.warn('Review scheduler already running')
     return
   }
   safeTick() // startup catch-up
-  schedulerInterval = setInterval(safeTick, SCHEDULER_INTERVAL_MS)
+  registerMinuteTick(MINUTE_TICK_ID, safeTick)
   resumeHandler = () => safeTick()
   powerMonitor.on('resume', resumeHandler)
 }
 
 export function stopInboxReviewScheduler(): void {
-  if (schedulerInterval) {
-    clearInterval(schedulerInterval)
-    schedulerInterval = null
-  }
+  unregisterMinuteTick(MINUTE_TICK_ID)
   if (resumeHandler) {
     powerMonitor.removeListener('resume', resumeHandler)
     resumeHandler = null
@@ -168,7 +167,7 @@ export function stopInboxReviewScheduler(): void {
 }
 
 export function isReviewSchedulerRunning(): boolean {
-  return schedulerInterval !== null
+  return hasMinuteTick(MINUTE_TICK_ID)
 }
 
 export function getLastReviewFireForTest(): { date: string; count: number } | null {

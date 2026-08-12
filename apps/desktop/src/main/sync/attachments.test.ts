@@ -651,6 +651,25 @@ describe('AttachmentSyncService', () => {
       expect(path.dirname(result.filePath)).toBe(dir)
       expect(result.filePath.includes('..')).toBe(false)
     })
+
+    it('reports progress to the per-call callback instead of the shared slot', async () => {
+      // #given a transfer that passes its own callback while the shared slot is set
+      const { deps } = buildDownloadFixture('per-call.pdf')
+      const service = new AttachmentSyncService(deps)
+      const shared: string[] = []
+      const perCall: string[] = []
+      service.setProgressCallback((p) => shared.push(p.attachmentId))
+
+      // #when
+      await service.downloadAttachment('att-dir', path.join(tmpDir, 'per-call.pdf'), {
+        onProgress: (p) => perCall.push(p.attachmentId)
+      })
+
+      // #then only the caller that owns this transfer hears about it — a second
+      // concurrent download can no longer clobber or silence this one
+      expect(perCall).toEqual(['att-dir'])
+      expect(shared).toEqual([])
+    })
   })
 
   describe('progress tracking', () => {

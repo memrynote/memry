@@ -173,6 +173,24 @@ Migration 0047 resets `attempts` to 0 for rows that an earlier build had already
 stranded by the old in-cycle spend are retried again after upgrading. It preserves the row, its
 payload, and its recorded error.
 
+### Dead-letter purge and the pause flag are kept off the enqueue path
+
+Rows that exhausted their budget are purged once at least 50 of them are older than
+`ERROR_RETENTION_DAYS`. Nothing reads those rows and they can only accumulate at the pace of a
+failing push, so the threshold is probed on the first enqueue and every fiftieth after that rather
+than on every one — and the probe is a bounded existence check, not a count of the table. A bulk
+import therefore no longer scans `sync_queue` once per queued mutation. The purge itself is
+unchanged: same threshold, same retention window, same deletion.
+
+Whether sync is paused is asked on every WebSocket message, every enqueue and every pull tick, so
+the answer is held in memory. Only the _not paused_ answer is cached. Pause and resume write through
+the state manager and flip the cached answer with the row, so they take effect on the next call.
+Paused always re-reads, because `sync_state` rows are also removed outside the manager — the
+emergency wipe, session teardown and device re-registration all delete them — and a removed
+`syncPaused` row can only mean "not paused". A cached `false` can never go stale that way; a cached
+`true` could. That extra read costs nothing, because paused is exactly the state in which every
+caller stops early.
+
 ### Recovering pushes that never landed
 
 Items expose a "the server has this state" stamp (`syncedAt`) that advances on a confirmed push as
@@ -309,11 +327,42 @@ retryable network error instead of pinning the sync lock forever. If the lock is
 and lets the next pull proceed. Skipped periodic pulls log `Periodic pull skipped` with the
 blocking flags, which is the first thing to look for when a device shows stale data.
 
+## Runtime Emitters and Listener Budgets
+
+Three main-process objects in the sync runtime are `EventEmitter`s: `NetworkMonitor`
+(`status-changed`), `WebSocketManager` (`message`, `connected`, `device_revoked`,
+`certificate_pin_failed`, `error`) and `SyncEngine`.
+
+Their subscriber counts are small and fixed. `NetworkMonitor` has three
+`status-changed` subscribers — the `SyncEngine`, the sync runtime itself and the
+attachment `UploadQueue`. `WebSocketManager` has at most one listener per event
+name. Nothing in the main process subscribes to `SyncEngine`: its status reaches
+the renderer through `emitToRenderer`, not through listeners.
+
+Each one calls `setMaxListeners(10)`, Node's default. That is deliberate: the
+ceiling has to stay close enough to the real count that an accumulating-subscriber
+bug trips `MaxListenersExceededWarning` instead of hiding behind a generous budget.
+`src/main/sync/emitter-budget.test.ts` pins both the budget and the observed
+counts, so raising either needs a test change and an explanation.
+
+Every subscriber is detached on teardown: the engine removes its own in `stop()`,
+and the runtime keeps a reference to its `status-changed` handler so
+`stopSyncRuntime()` can remove it. That last detach matters because the attachment
+`UploadQueue` is a module singleton that keeps holding the `NetworkMonitor` past a
+runtime stop — an attached handler would keep the dead CRDT queue and provider
+reachable for the rest of the session.
+
 ## Manifest Integrity
 
 Desktop periodically compares `/sync/manifest` with local syncable records. Notes and journals are
 matched from canonical `note_metadata` first, with the rebuildable index cache as a fallback, so a
 freshly pushed note is not treated as server-only while indexing catches up.
+
+The comparison reads ids only. Repair payloads are built one row at a time, and only for a record
+the server manifest is actually missing, so the usual clean check never materializes or serializes a
+single row body — the cost of the check scales with the size of the disagreement, not with the size
+of the vault. The bytes a repair pushes are unchanged: the lazy build runs the same full-row select
+through the same serialization the eager pass used.
 
 ## Note Attachments
 

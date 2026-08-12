@@ -89,12 +89,20 @@ export function createEmbeddingProjector(
   // reconcile backfill; assumes the model is already loaded and vaultPath is set.
   const embedNotes = async (
     vaultPath: string,
-    notes: Array<{ id: string; path: string; title: string | null }>
+    notes: Array<{ id: string; path: string; title: string | null }>,
+    signal?: AbortSignal
   ): Promise<{ computed: number; skipped: number }> => {
     let computed = 0
     let skipped = 0
 
     for (let i = 0; i < notes.length; i++) {
+      // Checked per note, not per pass: this loop is the long pole (file read +
+      // CPU inference each), so a close or vault switch has to be able to cut it
+      // short between notes instead of after the whole work list.
+      if (signal?.aborted) {
+        break
+      }
+
       const note = notes[i]
       try {
         const absolutePath = path.join(vaultPath, note.path)
@@ -120,7 +128,9 @@ export function createEmbeddingProjector(
     return { computed, skipped }
   }
 
-  const runRebuild = async (): Promise<{
+  const runRebuild = async (
+    signal?: AbortSignal
+  ): Promise<{
     success: boolean
     computed: number
     skipped: number
@@ -165,10 +175,20 @@ export function createEmbeddingProjector(
       }
     }
 
+    // The load above takes seconds; re-check before the destructive DELETE so an
+    // aborted pass does not wipe the vector table it is no longer going to refill.
+    if (signal?.aborted) {
+      return { success: false, computed: 0, skipped: 0, error: 'Aborted' }
+    }
+
     rawDb.prepare('DELETE FROM vec_notes').run()
     emitProgress(0, notes.length, 'embedding')
 
-    const { computed, skipped } = await embedNotes(vaultPath, notes)
+    const { computed, skipped } = await embedNotes(vaultPath, notes, signal)
+
+    if (signal?.aborted) {
+      return { success: false, computed, skipped, error: 'Aborted' }
+    }
 
     emitProgress(notes.length, notes.length, 'complete')
     return { success: true, computed, skipped }
@@ -176,6 +196,11 @@ export function createEmbeddingProjector(
 
   return {
     name: 'embedding',
+
+    // Nothing reads embeddings back in the same turn, and project() below can
+    // await a model load plus CPU inference — so callers of
+    // flushProjectionEvents() must not queue behind this lane (#1078).
+    background: true,
 
     handles(event: ProjectionEvent): boolean {
       return event.type === 'note.upserted' || event.type === 'note.deleted'
@@ -218,7 +243,22 @@ export function createEmbeddingProjector(
 
     rebuild: runRebuild,
 
-    async reconcile(): Promise<void> {
+    /**
+     * `signal` aborts when the runtime stops — vault close, or a superseded
+     * runtime on vault switch (#993, #1024). This pass was the one projector
+     * that ignored it, and it is the expensive one: a ~23MB model load plus CPU
+     * inference per note. Two consequences, both fixed by honouring it here:
+     * `closeVault` awaits the aborted pass before closing the databases, so a
+     * large backfill held vault close (and quit) open for minutes — the class of
+     * stall #803/#805 were about; and a superseded runtime's pass is not awaited
+     * at all, so it kept reading the OLD vault's files and writing them into
+     * whatever `getRawIndexDatabase()` points at by then — the new vault's index.
+     */
+    async reconcile(signal?: AbortSignal): Promise<void> {
+      if (signal?.aborted) {
+        return
+      }
+
       // One-time rebuild when the embedding input formula changed, so stored
       // vectors don't silently mix old and new shapes (Codex #11).
       try {
@@ -229,7 +269,7 @@ export function createEmbeddingProjector(
             from: stored,
             to: EMBEDDING_INPUT_VERSION
           })
-          const result = await runRebuild()
+          const result = await runRebuild(signal)
           if (result.success) {
             setSetting(db, EMBEDDING_VERSION_KEY, String(EMBEDDING_INPUT_VERSION))
             return
@@ -237,6 +277,10 @@ export function createEmbeddingProjector(
         }
       } catch (error) {
         logger.warn('Embedding version check failed', { error })
+      }
+
+      if (signal?.aborted) {
+        return
       }
 
       const rawDb = getRawIndexDatabase()
@@ -305,8 +349,19 @@ export function createEmbeddingProjector(
         }
       }
 
+      if (signal?.aborted) {
+        return
+      }
+
       emitProgress(0, workList.length, 'embedding')
-      await embedNotes(vaultPath, workList)
+      await embedNotes(vaultPath, workList, signal)
+
+      if (signal?.aborted) {
+        // Deferred ids stay: the pass stopped part-way, so the notes it never
+        // reached still owe an embedding on the next reconcile.
+        return
+      }
+
       pendingEmbedding.clear()
       emitProgress(workList.length, workList.length, 'complete')
     }

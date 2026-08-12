@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react'
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { RefPicker } from '../ref-picker'
@@ -8,20 +8,63 @@ import { RefPicker } from '../ref-picker'
 const mockSearchQuery = vi.fn()
 const mockCalendarListEvents = vi.fn()
 
-function renderRefPicker(overrides: Partial<ComponentProps<typeof RefPicker>> = {}) {
-  const props: ComponentProps<typeof RefPicker> = {
-    query: 'star',
+/** Comfortably past the picker's 150 ms search debounce. */
+const SETTLE_MS = 200
+
+function baseProps(query: string): ComponentProps<typeof RefPicker> {
+  return {
+    query,
     selectedIndex: 0,
     anchorRef: { current: document.createElement('div') },
     onItemsChange: vi.fn(),
     onPick: vi.fn(),
     onSelectedIndexChange: vi.fn(),
-    onClose: vi.fn(),
-    ...overrides
+    onClose: vi.fn()
   }
+}
+
+function renderRefPicker(overrides: Partial<ComponentProps<typeof RefPicker>> = {}) {
+  const props: ComponentProps<typeof RefPicker> = { ...baseProps('star'), ...overrides }
 
   render(<RefPicker {...props} />)
   return props
+}
+
+/** Renders the picker and hands back a "type another character" helper. */
+function renderTypeablePicker(query: string) {
+  const props = baseProps(query)
+  const { rerender, unmount } = render(<RefPicker {...props} />)
+  return {
+    props,
+    unmount,
+    retype: (next: string) => rerender(<RefPicker {...props} query={next} />)
+  }
+}
+
+function noteResponse(id: string, title: string) {
+  return {
+    groups: [
+      {
+        type: 'note',
+        totalInGroup: 1,
+        results: [
+          {
+            id,
+            type: 'note',
+            title,
+            snippet: '',
+            score: 1,
+            normalizedScore: 1,
+            matchType: 'title',
+            modifiedAt: '2026-05-10T00:00:00.000Z',
+            metadata: { type: 'note', path: `/${title}`, tags: [], emoji: null }
+          }
+        ]
+      }
+    ],
+    totalCount: 1,
+    queryTimeMs: 1
+  }
 }
 
 describe('RefPicker', () => {
@@ -273,5 +316,114 @@ describe('RefPicker', () => {
         icon: { kind: 'calendar_event' }
       }
     ])
+  })
+
+  it('debounces mention searches so a burst of keystrokes costs one round-trip', async () => {
+    vi.useFakeTimers()
+    try {
+      const { retype } = renderTypeablePicker('s')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(SETTLE_MS)
+      })
+
+      mockSearchQuery.mockClear()
+      mockCalendarListEvents.mockClear()
+
+      const keystrokes = ['st', 'sta', 'star', 'starw', 'starwa', 'starwar', 'starwars']
+      for (const query of keystrokes) {
+        retype(query)
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(20)
+        })
+      }
+
+      // Undebounced these 7 keystrokes cost 7 FTS queries + 7 calendar queries.
+      expect(mockSearchQuery).not.toHaveBeenCalled()
+      expect(mockCalendarListEvents).not.toHaveBeenCalled()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(SETTLE_MS)
+      })
+
+      expect(mockSearchQuery).toHaveBeenCalledTimes(1)
+      expect(mockCalendarListEvents).toHaveBeenCalledTimes(1)
+      expect(mockSearchQuery).toHaveBeenCalledWith({ text: 'starwars', limit: 20 })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps the newest query and discards a stale search that resolves late', async () => {
+    vi.useFakeTimers()
+    try {
+      const resolvers = new Map<string, (value: unknown) => void>()
+      mockSearchQuery.mockImplementation(
+        (args: { text: string }) =>
+          new Promise((resolve) => {
+            resolvers.set(args.text, resolve)
+          })
+      )
+
+      const { props, retype } = renderTypeablePicker('old')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(SETTLE_MS)
+      })
+
+      retype('new')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(SETTLE_MS)
+      })
+
+      expect([...resolvers.keys()]).toEqual(['old', 'new'])
+
+      // The newer search answers first, then the stale one lands behind it.
+      await act(async () => {
+        resolvers.get('new')?.(noteResponse('note-new', 'Newest note'))
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      await act(async () => {
+        resolvers.get('old')?.(noteResponse('note-old', 'Stale note'))
+        await vi.advanceTimersByTimeAsync(0)
+      })
+
+      expect(screen.getByText('Newest note')).toBeInTheDocument()
+      expect(screen.queryByText('Stale note')).not.toBeInTheDocument()
+      expect(props.onItemsChange).toHaveBeenLastCalledWith([
+        {
+          kind: 'note',
+          ref_id: 'note-new',
+          label: 'Newest note',
+          icon: { kind: 'note', emoji: null }
+        }
+      ])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('clears the pending search timer when the picker closes', async () => {
+    vi.useFakeTimers()
+    try {
+      const { retype, unmount } = renderTypeablePicker('a')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(SETTLE_MS)
+      })
+
+      mockSearchQuery.mockClear()
+      mockCalendarListEvents.mockClear()
+      retype('ab')
+
+      // Closing the picker mid-debounce must not leave a timer behind that
+      // still fires a search after the component is gone.
+      unmount()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(SETTLE_MS * 5)
+      })
+
+      expect(mockSearchQuery).not.toHaveBeenCalled()
+      expect(mockCalendarListEvents).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

@@ -36,6 +36,7 @@ function createProjector(
 ): ProjectionProjector {
   return {
     name,
+    background: overrides.background,
     handles: overrides.handles ?? (() => true),
     project: overrides.project ?? vi.fn(),
     rebuild: overrides.rebuild ?? vi.fn(),
@@ -376,5 +377,133 @@ describe('projection runtime', () => {
     expect(steps).toEqual([0])
 
     await reconcilePromise
+  })
+
+  /**
+   * #1078: `flushProjectionEvents()` waited for *every* lane, and the indexer
+   * awaits it once per file. That put the embedding lane's model load plus
+   * per-note inference in front of every file the 8-worker pool touched.
+   */
+  it('flush does not wait for a background lane', async () => {
+    let releaseBackground: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      releaseBackground = resolve
+    })
+    const embedded: string[] = []
+    const embedding = createProjector('embedding', {
+      background: true,
+      project: vi.fn(async (event: ProjectionEvent) => {
+        await gate
+        embedded.push(eventEntityId(event))
+      })
+    })
+    const search = createProjector('search', { project: vi.fn() })
+    const runtime = createProjectionRuntime({ projectors: [embedding, search] })
+
+    runtime.publish(markdownEvent('note-1', 'body'))
+    runtime.publish(markdownEvent('note-2', 'body'))
+
+    await runtime.flush()
+
+    expect(search.project).toHaveBeenCalledTimes(2)
+    expect(embedded).toEqual([])
+
+    // The barrier is lifted, not the work: the lane still holds both events, in
+    // publish order, and stop({ drain: true }) still drains it.
+    releaseBackground()
+    await runtime.stop({ drain: true })
+
+    expect(embedded).toEqual(['note-1', 'note-2'])
+  })
+
+  /**
+   * #1078: publish() kept accepting events for the whole stop drain, so anything
+   * still emitting refilled a lane as fast as it emptied and drain()'s wait loop
+   * never settled — closeVault() hung behind it.
+   */
+  it('refuses events published during stop so a refilled lane cannot keep the drain alive', async () => {
+    const logger = { warn: vi.fn() }
+    let projected = 0
+    const echoing = createProjector('echoing', {
+      project: vi.fn(async () => {
+        projected++
+        // Yield to the macrotask queue so a regression here surfaces as a test
+        // timeout rather than starving the event loop outright.
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        runtime.publish(markdownEvent(`echo-${projected}`, 'body'))
+      })
+    })
+    const runtime = createProjectionRuntime({
+      projectors: [echoing],
+      scheduleDrain: () => {},
+      logger
+    })
+
+    runtime.publish(markdownEvent('note-1', 'body'))
+    await runtime.stop({ drain: true })
+
+    expect(projected).toBe(1)
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Projection event published after runtime stop',
+      expect.anything()
+    )
+  })
+
+  /**
+   * #1078: closeVault() awaits stopProjectionRuntime({ drain: true }), so an
+   * unbounded drain made a vault switch wait out the whole backlog.
+   */
+  it('stops a long backlog at the drain deadline and still finishes the in-flight event', async () => {
+    const logger = { warn: vi.fn() }
+    const started: string[] = []
+    const finished: string[] = []
+    const slow = createProjector('slow', {
+      project: vi.fn(async (event: ProjectionEvent) => {
+        started.push(eventEntityId(event))
+        await new Promise((resolve) => setTimeout(resolve, 30))
+        finished.push(eventEntityId(event))
+      })
+    })
+    const runtime = createProjectionRuntime({ projectors: [slow], logger })
+
+    for (let i = 0; i < 50; i++) {
+      runtime.publish(markdownEvent(`note-${i}`, 'body'))
+    }
+
+    const startedAt = Date.now()
+    await runtime.stop({ drain: true, drainTimeoutMs: 40 })
+
+    // Draining all 50 would take ~1.5s; the deadline plus the one in-flight
+    // event is ~70ms.
+    expect(Date.now() - startedAt).toBeLessThan(600)
+    expect(started.length).toBeLessThan(50)
+    // Cut short, never abandoned: everything that entered project() came back
+    // out before stop() resolved and the caller closed the databases.
+    expect(finished).toEqual(started)
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Projection stop drain timed out — cutting the backlog short',
+      expect.objectContaining({ timeoutMs: 40 })
+    )
+  })
+
+  it('waits for the event already inside a projector even when the drain is skipped', async () => {
+    let started = false
+    let finished = false
+    const slow = createProjector('slow', {
+      project: vi.fn(async () => {
+        started = true
+        await new Promise((resolve) => setTimeout(resolve, 30))
+        finished = true
+      })
+    })
+    const runtime = createProjectionRuntime({ projectors: [slow] })
+
+    runtime.publish(noteEvent)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(started).toBe(true)
+
+    await runtime.stop({ drain: false })
+
+    expect(finished).toBe(true)
   })
 })

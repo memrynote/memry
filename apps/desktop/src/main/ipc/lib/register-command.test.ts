@@ -59,7 +59,9 @@ describe('registerCommand', () => {
     const result = await registeredHandler({}, { id: 'abc' })
 
     // #then
-    expect(command).toHaveBeenCalledWith({ id: 'abc' })
+    // The invoke event trails the validated input for handlers that need the
+    // sender window; this one ignores it.
+    expect(command).toHaveBeenCalledWith({ id: 'abc' }, expect.anything())
     expect(result).toEqual({ success: true, id: 'abc' })
   })
 

@@ -1,5 +1,9 @@
 import { createLogger } from '../lib/logger'
-import { createProjectionRuntime, type ProjectionRuntime } from './runtime'
+import {
+  createProjectionRuntime,
+  type ProjectionRuntime,
+  type ProjectionStopOptions
+} from './runtime'
 import type { ProjectionEvent, ProjectionProjector } from './types'
 
 const logger = createLogger('Projections')
@@ -32,9 +36,9 @@ export function startProjectionRuntime(projectors: ProjectionProjector[]): Proje
     const supersededRuntime = runtime
     runtime = null
     logger.warn('Projection runtime already running; restarting it for the new projectors')
-    // `stop({ drain: false })` has no await before it sets `isStopped`, so this
-    // promise is already settled and cannot reject — `void` only marks it
-    // intentionally unawaited.
+    // `stop({ drain: false })` refuses further publishes synchronously and only
+    // then awaits whatever a lane already has in flight; it never rejects, so
+    // `void` just marks it intentionally unawaited.
     void supersededRuntime.stop({ drain: false })
   }
 
@@ -66,7 +70,7 @@ export async function reconcileProjections(names?: string[]): Promise<Record<str
   return (await runtime?.reconcile(names)) ?? {}
 }
 
-export async function stopProjectionRuntime(options?: { drain?: boolean }): Promise<void> {
+export async function stopProjectionRuntime(options?: ProjectionStopOptions): Promise<void> {
   if (!runtime) {
     return
   }
@@ -77,4 +81,4 @@ export async function stopProjectionRuntime(options?: { drain?: boolean }): Prom
 }
 
 export type { ProjectionEvent, ProjectionLogger, ProjectionProjector } from './types'
-export type { ProjectionRuntime } from './runtime'
+export type { ProjectionRuntime, ProjectionStopOptions } from './runtime'
