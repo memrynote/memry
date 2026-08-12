@@ -128,6 +128,7 @@ import { getHeadlessCliArgs, runHeadlessCli } from './cli/headless'
 import { reconcileBillingAndSync, startBillingCheckout } from './billing/paddle-billing'
 import { openPairingWindow } from './capture/pairing'
 import { startCaptureServer, stopCaptureServer } from './capture/server'
+import { stopChatServer } from './ai-inline/ai-chat-server'
 import { applyLoginShellPath } from './agent/cli/login-shell-path'
 
 if (process.type === 'browser') {
@@ -2059,6 +2060,10 @@ app.on('before-quit', (event) => {
     .then(() => {
       shutdownLog.info('stopping capture server...')
       return stopCaptureServer()
+    })
+    .then(() => {
+      shutdownLog.info('stopping AI inline chat server...')
+      return stopChatServer()
     })
     .then(() => {
       shutdownLog.info('stopping voice transcription utility...')
