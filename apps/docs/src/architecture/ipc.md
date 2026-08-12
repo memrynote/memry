@@ -81,6 +81,19 @@ log.info('created note', { id })
 - The renderer owns UI state, tabs, and the BlockNote editor.
 - CRDT updates flow renderer → main via the Yjs IPC provider; updates are tagged with `sourceWindowId` and Y.Doc origin parameters to prevent loops.
 
+## Response Shape Narrowing
+
+A handler that some caller invokes over the whole vault has to answer two different questions: "give me a row I can display in detail" and "give me just enough to draw a list entry". Answering both with one fat shape means the second caller pays for fields it never reads — on every fetch, and again on every cache invalidation.
+
+`notes:list` is the worked example. The sidebar tree is the only caller that asks for the entire vault (`useNoteTreeData` requests `limit: 10000`), it re-fetches on every note create/update/rename/move, and it renders only `path`, `title`, `modified`, `tags`, `emoji`, `localOnly`, and `fileType`. The full row additionally carries a ~200-character `snippet` plus `mimeType`/`fileSize`, none of which reach the screen. So `NoteListSchema` takes an optional `fields: 'full' | 'tree'`, and `listNotes` builds the trimmed row when it is `'tree'`.
+
+Two properties make this shape kind of narrowing safe to add to a shipped channel:
+
+- **The flag is `.optional()`, not `.default()`.** A caller that omits it gets a byte-identical response to the one it got before the flag existed, so no existing consumer — renderer, MCP tool, or handler test — has to change or even know.
+- **Only already-optional fields may be dropped.** A narrowed row stays a valid instance of the same response type, so it can flow into any consumer of that type without a guard and without a second interface to keep in sync. If a field a caller may rely on unconditionally has to go, that is a different, breaking change and needs its own type.
+
+Put the flag in the query key on the renderer side (`notesKeys.list(options)` already includes the whole options object). The two shapes then cache separately, and a narrowed fetch can never overwrite a full-shape consumer's cache entry with rows missing the fields it reads.
+
 ## Main → Renderer Broadcasts
 
 Main-process code that fans an event out to every open window — sync status, task and calendar change events, inbox capture/filing/snooze/transcription events, search and embedding progress, updater state, reminders, agent events, and FTS rebuild progress — goes through `broadcastToAllWindows(channel, data)` in `src/main/lib/window-broadcast.ts`. The helper skips destroyed windows: short-lived windows (splash, quick capture, print/export) can still appear in `BrowserWindow.getAllWindows()` after destruction, and an unguarded `webContents.send()` throws — inside a sync item handler that throw escapes `ctx.emit` within the item's DB transaction and rolls it back. Use the helper instead of hand-rolling a `getAllWindows()` loop.
