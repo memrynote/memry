@@ -58,7 +58,8 @@ the server is never affected.
 The sign-in that precedes recovery is only valid for a few minutes. If you go looking for your
 recovery phrase and come back after it has run out, the app tells you the sign-in timed out and
 asks you to sign in again before entering the phrase — the phrase itself is still fine, and
-nothing was lost.
+nothing was lost. A **Sign in again** button appears alongside the message so you can act on it
+straight away, in every language memrynote supports.
 
 ### If You Can't Get Your Recovery Phrase Back
 

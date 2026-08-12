@@ -26,6 +26,31 @@ function stripKnownPrefixes(message: string): string {
   return current
 }
 
+/**
+ * An IPC failure envelope carried across a `throw`.
+ *
+ * Main-process handlers localize their `error` string before returning it, so
+ * that string is display text and cannot be used as a branch condition — a
+ * pattern match over it only ever matches in English (issue #1202). This keeps
+ * the handler's machine-readable `code` attached to the error so callers that
+ * need to react differently can, while callers that only render the message are
+ * unaffected: it is a plain `Error` with one extra field.
+ */
+export class IpcFailureError extends Error {
+  readonly code: string | undefined
+
+  constructor(message: string, code?: string) {
+    super(message)
+    this.name = 'IpcFailureError'
+    this.code = code
+  }
+}
+
+/** The machine-readable code an IPC failure carried, if it carried one. */
+export function getIpcErrorCode(error: unknown): string | undefined {
+  return error instanceof IpcFailureError ? error.code : undefined
+}
+
 export function extractErrorMessage(error: unknown, fallback = 'Something went wrong'): string {
   const raw = error instanceof Error ? error.message : typeof error === 'string' ? error : ''
   if (!raw) return fallback

@@ -31,6 +31,12 @@ The new device never sees your passphrase. The existing device never exposes the
    - **Scan the QR code** with your camera (if available)
    - **Enter the linking code** manually
 
+### If the Sign-In Times Out
+
+The sign-in on the new device is only valid for a few minutes. If linking takes longer than that,
+memrynote tells you the sign-in timed out and asks you to sign in again and scan the code once
+more. Nothing is lost — generate a fresh code on the existing device and repeat the steps above.
+
 ## Approval
 
 The existing device shows an approval prompt:
