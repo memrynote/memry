@@ -1927,6 +1927,52 @@ function registerQuickCaptureTestHooks(): void {
 // Track if shutdown is already in progress to prevent duplicate handling
 let isShuttingDown = false
 
+const FLUSH_DONE_CHANNEL = 'app:flush-done'
+
+interface PendingFlush {
+  windowId: number
+  webContents: Electron.WebContents
+  settle: () => void
+}
+
+// One entry per in-flight flush, keyed by request id. `app:flush-done` used to
+// get one ipcMain listener per window, so a multi-window quit registered N
+// listeners on the same channel and tripped Node's MaxListenersExceededWarning
+// past 10 windows. The request id already scopes each reply, so a single shared
+// listener plus this map does the same job with a constant listener count.
+const pendingFlushes = new Map<string, PendingFlush>()
+let flushDoneListenerAttached = false
+
+// A reply only counts when it comes from the window we asked AND answers the
+// request we are waiting on. Without both checks the first window to reply
+// resolved all of them, and a late reply to an earlier request satisfied the
+// next one — either way a renderer gets torn down with unsaved edits pending.
+const handleFlushDone = (event: IpcMainEvent, doneRequestId?: string): void => {
+  if (typeof doneRequestId !== 'string') return
+  const pending = pendingFlushes.get(doneRequestId)
+  if (!pending) return
+  if (event.sender !== pending.webContents) return
+  shutdownLog.info('flushWindow: flush-done received from window', pending.windowId)
+  pending.settle()
+}
+
+function addPendingFlush(requestId: string, pending: PendingFlush): void {
+  pendingFlushes.set(requestId, pending)
+  if (flushDoneListenerAttached) return
+  ipcMain.on(FLUSH_DONE_CHANNEL, handleFlushDone)
+  flushDoneListenerAttached = true
+}
+
+function removePendingFlush(requestId: string): void {
+  pendingFlushes.delete(requestId)
+  if (pendingFlushes.size > 0 || !flushDoneListenerAttached) return
+  // Detach once nothing is waiting. The timeout path used to skip cleanup: a
+  // renderer that never answers left a listener on the shared ipcMain forever,
+  // and window-close runs this on every close.
+  ipcMain.removeListener(FLUSH_DONE_CHANNEL, handleFlushDone)
+  flushDoneListenerAttached = false
+}
+
 function flushWindow(win: BrowserWindow, timeoutMs = 2000): Promise<void> {
   return new Promise<void>((resolve) => {
     if (win.isDestroyed() || !win.webContents) {
@@ -1937,7 +1983,6 @@ function flushWindow(win: BrowserWindow, timeoutMs = 2000): Promise<void> {
 
     shutdownLog.info('flushWindow: requesting flush from window', win.id)
 
-    const channel = 'app:flush-done'
     const requestId = randomUUID()
     let settled = false
 
@@ -1945,23 +1990,8 @@ function flushWindow(win: BrowserWindow, timeoutMs = 2000): Promise<void> {
       if (settled) return
       settled = true
       clearTimeout(timer)
-      // The timeout path used to skip this: a renderer that never answers left a
-      // listener on the shared ipcMain forever, and window-close runs this on
-      // every close.
-      ipcMain.removeListener(channel, handler)
+      removePendingFlush(requestId)
       resolve()
-    }
-
-    // `app:flush-done` is one shared channel for every in-flight flush, so a
-    // reply only counts when it comes from this window AND answers this request.
-    // Without both checks the first window to reply resolved all of them, and a
-    // late reply to an earlier request satisfied the next one — either way a
-    // renderer gets torn down with unsaved edits still pending.
-    const handler = (event: IpcMainEvent, doneRequestId?: string): void => {
-      if (event.sender !== win.webContents) return
-      if (doneRequestId !== requestId) return
-      shutdownLog.info('flushWindow: flush-done received from window', win.id)
-      settle()
     }
 
     const timer = setTimeout(() => {
@@ -1969,7 +1999,7 @@ function flushWindow(win: BrowserWindow, timeoutMs = 2000): Promise<void> {
       settle()
     }, timeoutMs)
 
-    ipcMain.on(channel, handler)
+    addPendingFlush(requestId, { windowId: win.id, webContents: win.webContents, settle })
     win.webContents.send('app:request-flush', requestId)
   })
 }

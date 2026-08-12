@@ -1784,7 +1784,9 @@ describe('main index phase2 exports', () => {
     )?.[1] as (event: { preventDefault: () => void }) => void
     beforeQuitHandler({ preventDefault: vi.fn() })
 
-    expect(getFlushDoneListeners()).toHaveLength(browserWindows.length)
+    // One shared listener covers every in-flight flush; the request id is what
+    // separates them.
+    expect(getFlushDoneListeners()).toHaveLength(1)
 
     completeFlush(browserWindows[0])
     await flushUntil(() => closeVaultMock.mock.calls.length > 0, 40)
@@ -1793,6 +1795,40 @@ describe('main index phase2 exports', () => {
     completeFlush(browserWindows[1])
     await flushUntil(() => closeVaultMock.mock.calls.length > 0)
     expect(closeVaultMock).toHaveBeenCalled()
+  })
+
+  it('keeps one flush-done listener when more than ten windows flush at once', async () => {
+    // `app:flush-done` lives on the shared ipcMain, and Node warns
+    // (MaxListenersExceededWarning) past ten listeners on one channel. A
+    // listener per window tripped that on any quit with enough windows open.
+    vi.useFakeTimers()
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+    const { ipcMain } = await import('electron')
+
+    for (let i = 0; i < 12; i++) createBrowserWindowMock()
+    expect(browserWindows.length).toBeGreaterThan(10)
+
+    const beforeQuitHandler = appOnMock.mock.calls.find(
+      ([event]) => event === 'before-quit'
+    )?.[1] as (event: { preventDefault: () => void }) => void
+    beforeQuitHandler({ preventDefault: vi.fn() })
+
+    const flushListeners = getFlushDoneListeners()
+    expect(flushListeners).toHaveLength(1)
+    // Every window still got its own request, so no flush is silently skipped.
+    const requestIds = browserWindows.map((window) => getFlushRequestId(window))
+    expect(requestIds.every((requestId) => typeof requestId === 'string')).toBe(true)
+    expect(new Set(requestIds).size).toBe(browserWindows.length)
+
+    for (const window of browserWindows) completeFlush(window)
+    await flushUntil(() => closeVaultMock.mock.calls.length > 0)
+
+    expect(closeVaultMock).toHaveBeenCalled()
+    // Nothing is pending any more, so the shared listener is detached too.
+    expect(ipcMain.removeListener).toHaveBeenCalledWith('app:flush-done', flushListeners[0])
   })
 
   it('ignores a flush-done from another window even when it carries the pending request id', async () => {
