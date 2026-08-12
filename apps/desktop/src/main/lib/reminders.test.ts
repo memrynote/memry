@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { reminders } from '@memry/db-schema/schema/reminders'
-import { reminderStatus } from '@memry/contracts/reminders-api'
+import { reminderStatus, type Reminder } from '@memry/contracts/reminders-api'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
@@ -142,6 +142,11 @@ describe('reminders service', () => {
     dataDb.db.insert(reminders).values(reminder).run()
     return reminder.id
   }
+
+  const dismissedEventPayloads = (): { reminder: Reminder }[] =>
+    window.webContents.send.mock.calls
+      .filter((call) => call[0] === ReminderChannels.events.DISMISSED)
+      .map((call) => call[1] as { reminder: Reminder })
 
   const seedTask = (id: string, title: string, projectId: string): void => {
     const now = '2025-01-01T00:00:00.000Z'
@@ -626,6 +631,71 @@ describe('reminders service', () => {
       sourceType: 'reminder',
       sourceId: 'rem-b2'
     })
+  })
+
+  it('emits one dismissed event per bulk-dismissed reminder', () => {
+    seedReminder({
+      id: 'rem-be1',
+      targetType: 'note',
+      targetId: 'note-be',
+      status: reminderStatus.PENDING
+    })
+    seedReminder({
+      id: 'rem-be2',
+      targetType: 'journal',
+      targetId: '2025-01-24',
+      status: reminderStatus.TRIGGERED
+    })
+    // Not part of the batch: no event may mention it.
+    seedReminder({ id: 'rem-be3', status: reminderStatus.PENDING })
+
+    expect(remindersService.bulkDismissReminders(['rem-be1', 'rem-be2'])).toBe(2)
+
+    const payloads = dismissedEventPayloads()
+    expect(payloads).toHaveLength(2)
+    // The target-scoped hooks match on targetType/targetId, so the row itself
+    // has to reach the renderer, not just the id.
+    expect(payloads[0]).toEqual({
+      reminder: expect.objectContaining({
+        id: 'rem-be1',
+        targetType: 'note',
+        targetId: 'note-be',
+        status: reminderStatus.DISMISSED
+      })
+    })
+    expect(payloads[1]).toEqual({
+      reminder: expect.objectContaining({
+        id: 'rem-be2',
+        targetType: 'journal',
+        targetId: '2025-01-24',
+        status: reminderStatus.DISMISSED
+      })
+    })
+    expect(payloads[0].reminder.dismissedAt).toBeTruthy()
+    expect(payloads.map((payload) => payload.reminder.id)).not.toContain('rem-be3')
+  })
+
+  it('emits no dismissed event for a bulk-dismiss id that matched no row', () => {
+    seedReminder({ id: 'rem-bg1', status: reminderStatus.PENDING })
+
+    expect(remindersService.bulkDismissReminders(['rem-bg1', 'rem-bulk-ghost'])).toBe(1)
+
+    expect(dismissedEventPayloads().map((payload) => payload.reminder.id)).toEqual(['rem-bg1'])
+  })
+
+  it('emits exactly one dismissed event for a single-reminder dismiss', () => {
+    seedReminder({ id: 'rem-single-ev', status: reminderStatus.PENDING })
+
+    expect(remindersService.dismissReminder('rem-single-ev')?.status).toBe(reminderStatus.DISMISSED)
+
+    expect(dismissedEventPayloads()).toEqual([
+      {
+        reminder: expect.objectContaining({
+          id: 'rem-single-ev',
+          status: reminderStatus.DISMISSED
+        })
+      }
+    ])
   })
 
   describe('delivered notification cleanup (Electron 42+, macOS)', () => {
