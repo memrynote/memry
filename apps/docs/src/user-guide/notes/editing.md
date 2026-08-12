@@ -149,6 +149,22 @@ Select text to open the floating toolbar. **Comment** creates an anchored review
 
 Comments can carry file attachments. Image attachments show an inline thumbnail; clicking an image or PDF opens it in the in-app viewer (close with Esc, a click outside, or the ✕). Other file types open in your operating system's default app.
 
+### Formatting a Comment
+
+Comment text supports bold, italic, underline, strikethrough and inline code. Select text inside the comment box and a small toolbar appears above the selection, or use the usual shortcuts:
+
+| Shortcut                                   | Mark          |
+| ------------------------------------------ | ------------- |
+| <kbd>⌘</kbd>+<kbd>B</kbd>                  | Bold          |
+| <kbd>⌘</kbd>+<kbd>I</kbd>                  | Italic        |
+| <kbd>⌘</kbd>+<kbd>U</kbd>                  | Underline     |
+| <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> | Strikethrough |
+| <kbd>⌘</kbd>+<kbd>E</kbd>                  | Inline code   |
+
+Markdown shortcuts work too — typing `**bold**` or `` `code` `` formats as you type. The toolbar stays hidden while the `@` mention picker is open.
+
+The comment text itself is stored in your note file as plain text, with the formatting recorded separately alongside the comment's other metadata. Comments written before this feature keep rendering exactly as they did, and a comment you format still reads cleanly if you open the note in another markdown editor. Editing a comment's text outside memrynote drops its formatting rather than applying it to the wrong words.
+
 ## What Notes Are Made Of
 
 Under the hood, every note is a Yjs CRDT (`Y.Doc`). Markdown is a derived export, not the canonical form — this is what lets edits from two devices merge cleanly. See [CRDT & Notes Sync](/architecture/crdt) for details.
