@@ -650,6 +650,45 @@ describe('reminders service', () => {
       expect(MockNotification.remove).toHaveBeenCalledWith('rem-nc2')
     })
 
+    it('removes the delivered notification banner on delete', () => {
+      setPlatform('darwin')
+      seedReminder({ id: 'rem-nc7', status: reminderStatus.TRIGGERED })
+
+      expect(remindersService.deleteReminder('rem-nc7')).toBe(true)
+      expect(MockNotification.remove).toHaveBeenCalledWith('rem-nc7')
+    })
+
+    it('leaves delivered banners alone when the delete finds no row', () => {
+      setPlatform('darwin')
+
+      expect(remindersService.deleteReminder('rem-nc-missing')).toBe(false)
+      expect(MockNotification.remove).not.toHaveBeenCalled()
+    })
+
+    it('removes the delivered banner for every reminder in a bulk dismiss', () => {
+      setPlatform('darwin')
+      seedReminder({ id: 'rem-nc8', status: reminderStatus.TRIGGERED })
+      seedReminder({ id: 'rem-nc9', status: reminderStatus.TRIGGERED })
+      seedReminder({ id: 'rem-nc10', status: reminderStatus.TRIGGERED })
+
+      expect(remindersService.bulkDismissReminders(['rem-nc8', 'rem-nc9'])).toBe(2)
+
+      expect(MockNotification.remove).toHaveBeenCalledWith('rem-nc8')
+      expect(MockNotification.remove).toHaveBeenCalledWith('rem-nc9')
+      // Not part of the batch: its banner must survive.
+      expect(MockNotification.remove).not.toHaveBeenCalledWith('rem-nc10')
+    })
+
+    it('skips bulk-dismiss ids that matched no row', () => {
+      setPlatform('darwin')
+      seedReminder({ id: 'rem-nc11', status: reminderStatus.TRIGGERED })
+
+      expect(remindersService.bulkDismissReminders(['rem-nc11', 'rem-nc-ghost'])).toBe(1)
+
+      expect(MockNotification.remove).toHaveBeenCalledWith('rem-nc11')
+      expect(MockNotification.remove).not.toHaveBeenCalledWith('rem-nc-ghost')
+    })
+
     it('does not touch delivered notifications on non-darwin platforms', () => {
       setPlatform('win32')
       seedReminder({ id: 'rem-nc3', status: reminderStatus.TRIGGERED })
@@ -755,6 +794,36 @@ describe('reminders service', () => {
 
       expect(notification.close).toHaveBeenCalledTimes(1)
       expect(Object.keys(notification.handlers)).toEqual([])
+    })
+
+    it('closes the live banner on delete and leaves other reminders alone', () => {
+      setPlatform('win32')
+      const deleted = fireDueReminder('rem-live-delete')
+      const untouched = fireDueReminder('rem-live-delete-keep')
+
+      remindersService.deleteReminder('rem-live-delete')
+
+      expect(deleted.close).toHaveBeenCalledTimes(1)
+      expect(Object.keys(deleted.handlers)).toEqual([])
+      // A reminder the user did not act on keeps its banner and its click handler.
+      expect(untouched.close).not.toHaveBeenCalled()
+      expect(Object.keys(untouched.handlers)).toContain('click')
+    })
+
+    it('closes the live banner for each bulk-dismissed reminder only', () => {
+      setPlatform('win32')
+      const first = fireDueReminder('rem-live-bulk-1')
+      const second = fireDueReminder('rem-live-bulk-2')
+      const untouched = fireDueReminder('rem-live-bulk-3')
+
+      expect(remindersService.bulkDismissReminders(['rem-live-bulk-1', 'rem-live-bulk-2'])).toBe(2)
+
+      expect(first.close).toHaveBeenCalledTimes(1)
+      expect(second.close).toHaveBeenCalledTimes(1)
+      expect(Object.keys(first.handlers)).toEqual([])
+      expect(Object.keys(second.handlers)).toEqual([])
+      expect(untouched.close).not.toHaveBeenCalled()
+      expect(Object.keys(untouched.handlers)).toContain('click')
     })
 
     it('supersedes its own earlier banner when the same reminder fires again', () => {
