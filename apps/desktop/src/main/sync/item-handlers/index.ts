@@ -22,6 +22,7 @@ import { calendarExternalEventHandler } from './calendar-external-event-handler'
 import { agentConversationHandler } from './agent-conversation-handler'
 import { agentMessageHandler } from './agent-message-handler'
 import { canvasHandler } from './canvas-handler'
+import { canvasFolderHandler } from './canvas-folder-handler'
 
 export type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb, EmitToWindows } from './types'
 export { resolveClockConflict } from './types'
@@ -46,6 +47,7 @@ const handlers = new Map<SyncItemType, SyncItemHandler>([
   ['agent_conversation', agentConversationHandler],
   ['agent_message', agentMessageHandler],
   ['canvas', canvasHandler],
+  ['canvas_folder', canvasFolderHandler],
   ['template', templateHandler]
 ])
 

@@ -139,6 +139,28 @@ describe('setup-auth middleware', () => {
     } satisfies Partial<AppError>)
   })
 
+  it("maps jose's real expiry rejection to AUTH_TOKEN_EXPIRED, not AUTH_INVALID_TOKEN", async () => {
+    // #given — the shape jose actually throws: the message never says "expired",
+    // so a substring check reported timed-out setup tokens as invalid (#1202).
+    const expired = Object.assign(new Error('"exp" claim timestamp check failed'), {
+      code: 'ERR_JWT_EXPIRED'
+    })
+    hoisted.jwtVerifyMock.mockRejectedValue(expired)
+    const { context } = createContext()
+
+    // #when / #then
+    await expect(
+      setupAuthMiddleware(
+        context as never,
+        vi.fn(async () => undefined)
+      )
+    ).rejects.toMatchObject({
+      code: ErrorCodes.AUTH_TOKEN_EXPIRED,
+      message: 'Setup token has expired',
+      statusCode: 401
+    } satisfies Partial<AppError>)
+  })
+
   it('rejects tokens with invalid signature', async () => {
     // #given
     hoisted.jwtVerifyMock.mockRejectedValue(new Error('signature verification failed'))

@@ -3,6 +3,7 @@ import { createRef, type ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { NotesTree, type NotesTreeActions } from './notes-tree'
+import { isRevealed } from '@tests/utils/reveal'
 
 const mocks = vi.hoisted(() => ({
   data: null as any,
@@ -412,6 +413,28 @@ describe('NotesTree isolated coverage', () => {
     expect(mocks.actions.handleFolderTemplateSelect).toHaveBeenCalledWith(null)
 
     vi.useRealTimers()
+  })
+
+  it('reveals a folder row action on keyboard focus, not only on hover', () => {
+    // The "open folder view" button is in the tab order but painted at
+    // `opacity-0` until hover, so a keyboard user landed on a control that was
+    // not on screen (WCAG 2.4.7).
+    render(<NotesTree />)
+
+    const [openFolderView] = screen.getAllByRole('button', {
+      name: 'tree.aria.openFolderView'
+    })
+    const reveal = openFolderView.parentElement
+    expect(reveal).not.toBeNull()
+
+    // Only a bug if the control is reachable by Tab in the first place.
+    expect(openFolderView.tabIndex).toBeGreaterThanOrEqual(0)
+    expect(isRevealed(reveal!)).toBe(false)
+
+    act(() => openFolderView.focus())
+
+    expect(openFolderView).toHaveFocus()
+    expect(isRevealed(reveal!)).toBe(true)
   })
 
   it('covers inline note and folder rename controls', () => {

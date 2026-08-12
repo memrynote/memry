@@ -1,5 +1,11 @@
-import { describe, it, expect } from 'vitest'
-import { resolveStartupBounds, type DisplayLike, type SavedWindowBounds } from './window-bounds'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import {
+  createWindowBoundsPersister,
+  resolveStartupBounds,
+  WINDOW_BOUNDS_PERSIST_DELAY_MS,
+  type DisplayLike,
+  type SavedWindowBounds
+} from './window-bounds'
 
 const FALLBACK = { width: 1550, height: 900 }
 
@@ -70,5 +76,129 @@ describe('resolveStartupBounds', () => {
     const result = resolveStartupBounds(saved, [PRIMARY], FALLBACK)
     expect(result.width).toBe(FALLBACK.width)
     expect(result.height).toBe(FALLBACK.height)
+  })
+})
+
+describe('createWindowBoundsPersister', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  /** Collects every persisted geometry, standing in for the config-file write. */
+  function trackWrites(): {
+    writes: SavedWindowBounds[]
+    write: (bounds: SavedWindowBounds) => void
+  } {
+    const writes: SavedWindowBounds[] = []
+    return { writes, write: (bounds) => void writes.push(bounds) }
+  }
+
+  it('writes once for a continuous 5 s drag gesture', () => {
+    const { writes, write } = trackWrites()
+    let x = 100
+    const persister = createWindowBoundsPersister({
+      read: () => ({ width: 1200, height: 800, x, y: 60, isMaximized: false }),
+      write
+    })
+
+    // Electron emits `move` far faster than the debounce during a real drag.
+    for (let elapsed = 0; elapsed < 5000; elapsed += 16) {
+      x += 1
+      persister.schedule()
+      vi.advanceTimersByTime(16)
+    }
+    expect(writes).toHaveLength(0)
+
+    vi.advanceTimersByTime(WINDOW_BOUNDS_PERSIST_DELAY_MS)
+    expect(writes).toHaveLength(1)
+    expect(writes[0].x).toBe(x)
+  })
+
+  it('rides out the mid-gesture stalls a 400 ms debounce would write through', () => {
+    const { writes, write } = trackWrites()
+    let x = 100
+    const persister = createWindowBoundsPersister({
+      read: () => ({ width: 1200, height: 800, x, y: 60, isMaximized: false }),
+      write
+    })
+
+    // Drags stall — the pointer pauses, or the compositor coalesces events. Each
+    // stall here outlasts the old 400 ms debounce but not the current one, so the
+    // gesture must still settle into a single write.
+    for (let step = 0; step < 5; step += 1) {
+      x += 20
+      persister.schedule()
+      vi.advanceTimersByTime(600)
+    }
+    expect(writes).toHaveLength(0)
+
+    vi.advanceTimersByTime(WINDOW_BOUNDS_PERSIST_DELAY_MS)
+    expect(writes).toHaveLength(1)
+  })
+
+  it('debounces maximize instead of writing immediately', () => {
+    const { writes, write } = trackWrites()
+    let isMaximized = false
+    const persister = createWindowBoundsPersister({
+      read: () => ({ width: 1200, height: 800, x: 100, y: 60, isMaximized }),
+      write
+    })
+
+    // Electron fires `resize` alongside `maximize`; both share the one timer now.
+    isMaximized = true
+    persister.schedule()
+    persister.schedule()
+    expect(writes).toHaveLength(0)
+
+    vi.advanceTimersByTime(WINDOW_BOUNDS_PERSIST_DELAY_MS)
+    expect(writes).toEqual([{ width: 1200, height: 800, x: 100, y: 60, isMaximized: true }])
+  })
+
+  it('skips the write when the geometry is unchanged since the last one', () => {
+    const { writes, write } = trackWrites()
+    const persister = createWindowBoundsPersister({
+      read: () => ({ width: 1200, height: 800, x: 100, y: 60, isMaximized: false }),
+      write
+    })
+
+    persister.schedule()
+    vi.advanceTimersByTime(WINDOW_BOUNDS_PERSIST_DELAY_MS)
+    expect(writes).toHaveLength(1)
+
+    // A window nudged and snapped back re-emits `move` with identical geometry.
+    persister.schedule()
+    vi.advanceTimersByTime(WINDOW_BOUNDS_PERSIST_DELAY_MS)
+    persister.flush()
+    expect(writes).toHaveLength(1)
+  })
+
+  it('flushes the pending geometry once on close and cancels the timer', () => {
+    const { writes, write } = trackWrites()
+    const persister = createWindowBoundsPersister({
+      read: () => ({ width: 1000, height: 700, x: 10, y: 20, isMaximized: false }),
+      write
+    })
+
+    persister.schedule()
+    persister.flush()
+    expect(writes).toHaveLength(1)
+
+    // The cancelled timer must not land a second, redundant write.
+    vi.advanceTimersByTime(WINDOW_BOUNDS_PERSIST_DELAY_MS * 2)
+    expect(writes).toHaveLength(1)
+  })
+
+  it('writes nothing when there is no geometry worth remembering', () => {
+    const { writes, write } = trackWrites()
+    const persister = createWindowBoundsPersister({ read: () => null, write })
+
+    persister.schedule()
+    vi.advanceTimersByTime(WINDOW_BOUNDS_PERSIST_DELAY_MS)
+    persister.flush()
+    expect(writes).toHaveLength(0)
   })
 })

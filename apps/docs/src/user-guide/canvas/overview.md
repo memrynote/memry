@@ -23,7 +23,8 @@ canvas you have already made.
 ## Creating and opening a canvas
 
 - Hover the **Canvases** sidebar section and click the **+** button (**New
-  canvas**) that appears.
+  canvas**) that appears. The folder button beside it makes a folder instead —
+  see [Organizing Canvases](./organizing.md).
 - Click any canvas in the sidebar to open it in a tab, like a note.
 - Canvases open in the normal tab system, so you can split the view and keep a
   canvas beside a note. See [Tabs & Split View](../tabs-split-view.md).
@@ -81,5 +82,6 @@ a file you bring in from elsewhere.
 
 ## Next steps
 
+- [Organizing Canvases](./organizing.md) — folders, drag & drop, renaming, duplicating, deleting
 - [Cards & Links](./cards-and-links.md) — putting notes, tasks, and events on a canvas
 - [Sync & Limits](./sync-and-limits.md) — how canvases sync, and what to watch out for

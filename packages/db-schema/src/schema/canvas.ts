@@ -16,6 +16,12 @@ export const canvases = sqliteTable(
      */
     filePath: text('file_path'),
     /**
+     * Path relative to `canvases/`, forward-slashed (`Work/Q3`). Null is the
+     * root. The FILE's location is the truth; this is the index of it.
+     */
+    folder: text('folder'),
+    icon: text('icon'),
+    /**
      * LEGACY: vault-key-encrypted scene JSON. Written by app versions before
      * canvases became files; `''` once migrated. Kept (never dropped) so a user
      * who restores an old keychain can still recover a row we could not decrypt.

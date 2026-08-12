@@ -26,7 +26,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { LocaleSchema, FALLBACK_LOCALE, type Locale } from '@memry/contracts/locale-api'
 import { createMainI18n, type I18nInstance } from '@memry/i18n/main'
 import { registerAllHandlers } from './ipc'
-import { applyGlobalCaptureShortcut } from './ipc/settings-handlers'
+import { applyGlobalCaptureShortcut, setGlobalCaptureAppliedHandler } from './ipc/settings-handlers'
 import {
   autoOpenLastVault,
   beginVaultShutdown,
@@ -43,7 +43,11 @@ import {
   setStoredLocale,
   setWindowBounds
 } from './store'
-import { resolveStartupBounds } from './window-bounds'
+import {
+  createWindowBoundsPersister,
+  resolveStartupBounds,
+  type SavedWindowBounds
+} from './window-bounds'
 import { resolveOsLocale } from './startup-locale'
 import { configureSessionPermissions } from './session-permissions'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
@@ -620,28 +624,17 @@ function resizeWindowIfNeeded(
   window.setSize(size.width, size.height)
 }
 
-let persistWindowBoundsTimer: ReturnType<typeof setTimeout> | null = null
-
 /**
- * Save the main window's geometry so the next launch / dock reopen restores it.
- * Guarded to the real app window — the compact vault picker is never remembered.
- * When maximized we store the *normal* (un-maximized) bounds plus the flag, so a
- * later restore can place the window correctly and then re-maximize.
+ * Read the main window's geometry for persistence, or null when there is nothing
+ * worth remembering. Guarded to the real app window — the compact vault picker is
+ * never remembered. When maximized we report the *normal* (un-maximized) bounds
+ * plus the flag, so a later restore can place the window correctly and re-maximize.
  */
-function persistWindowBounds(window: BrowserWindow): void {
-  if (window.isDestroyed() || !getCurrentVaultPath()) return
+function readWindowBounds(window: BrowserWindow): SavedWindowBounds | null {
+  if (window.isDestroyed() || !getCurrentVaultPath()) return null
   const isMaximized = window.isMaximized()
   const { width, height, x, y } = isMaximized ? window.getNormalBounds() : window.getBounds()
-  setWindowBounds({ width, height, x, y, isMaximized })
-}
-
-/** Debounced persist for the noisy resize/move event streams. */
-function scheduleWindowBoundsPersist(window: BrowserWindow): void {
-  if (persistWindowBoundsTimer) clearTimeout(persistWindowBoundsTimer)
-  persistWindowBoundsTimer = setTimeout(() => {
-    persistWindowBoundsTimer = null
-    persistWindowBounds(window)
-  }, 400)
+  return { width, height, x, y, isMaximized }
 }
 
 function createWindow(): void {
@@ -691,18 +684,20 @@ function createWindow(): void {
   if (startupBounds.maximize) mainWindow.maximize()
   recordLaunchPhase('window_created')
 
-  // Remember geometry as the user resizes/moves/maximizes it, and on close.
-  mainWindow.on('resize', () => scheduleWindowBoundsPersist(mainWindow))
-  mainWindow.on('move', () => scheduleWindowBoundsPersist(mainWindow))
-  mainWindow.on('maximize', () => persistWindowBounds(mainWindow))
-  mainWindow.on('unmaximize', () => persistWindowBounds(mainWindow))
-  mainWindow.on('close', () => {
-    if (persistWindowBoundsTimer) {
-      clearTimeout(persistWindowBoundsTimer)
-      persistWindowBoundsTimer = null
-    }
-    persistWindowBounds(mainWindow)
+  // Remember geometry as the user resizes/moves/maximizes it, and on close. Every
+  // persist rewrites the whole config file synchronously, so all four event streams
+  // share one trailing debounce that also drops geometry identical to the last write
+  // (maximize/unmaximize each fire alongside their own `resize`). `close` flushes so
+  // the final geometry is never lost to a pending timer.
+  const boundsPersister = createWindowBoundsPersister({
+    read: () => readWindowBounds(mainWindow),
+    write: setWindowBounds
   })
+  mainWindow.on('resize', () => boundsPersister.schedule())
+  mainWindow.on('move', () => boundsPersister.schedule())
+  mainWindow.on('maximize', () => boundsPersister.schedule())
+  mainWindow.on('unmaximize', () => boundsPersister.schedule())
+  mainWindow.on('close', () => boundsPersister.flush())
 
   const unsubscribeVaultStatus = onVaultStatusChanged((status) => {
     if (mainWindow.isDestroyed()) return
@@ -1608,13 +1603,11 @@ const appReady = app.whenReady().then(async () => {
     .initPersistence()
     .catch((err) => mainLog.warn('Early CRDT persistence init failed (non-fatal)', err))
 
-  // Register global shortcut for quick capture from keyboard settings (fallback: hardcoded default)
-  const globalCaptureResult = applyGlobalCaptureShortcut()
-  quickCaptureShortcutRegistration.configuredRegistered = globalCaptureResult.registered
-  quickCaptureShortcutRegistration.registered = globalCaptureResult.registered
-  if (!globalCaptureResult.registered) {
-    registerQuickCaptureShortcut()
-  }
+  // Register global shortcut for quick capture from keyboard settings (fallback: hardcoded default).
+  // The handler also runs on every later re-apply (keyboard settings save), so a save can no
+  // longer leave quick capture with no working shortcut at all.
+  setGlobalCaptureAppliedHandler(syncQuickCaptureFallbackShortcut)
+  applyGlobalCaptureShortcut()
   registerQuickCaptureTestHooks()
 
   // Configure CSP, cert pinning, and permission handlers before the window loads
@@ -1843,6 +1836,12 @@ function handleQuickCaptureShortcut(): void {
 }
 
 function registerQuickCaptureShortcut(): void {
+  // Idempotent: a re-apply must not register an accelerator we already hold.
+  if (quickCaptureShortcutRegistration.fallbackRegistered) {
+    quickCaptureShortcutRegistration.registered = true
+    return
+  }
+
   const registered = globalShortcut.register(QUICK_CAPTURE_SHORTCUT, handleQuickCaptureShortcut)
 
   quickCaptureShortcutRegistration.fallbackAttempted = true
@@ -1863,6 +1862,30 @@ function registerQuickCaptureShortcut(): void {
       })
     }
   }
+}
+
+function unregisterQuickCaptureFallbackShortcut(): void {
+  if (!quickCaptureShortcutRegistration.fallbackRegistered) return
+
+  globalShortcut.unregister(QUICK_CAPTURE_SHORTCUT)
+  quickCaptureShortcutRegistration.fallbackRegistered = false
+}
+
+/**
+ * Keep the hardcoded fallback shortcut in step with the configured global capture
+ * accelerator. Runs at startup and after every keyboard settings save, so saving
+ * settings can no longer drop the fallback (or report one that is not registered).
+ */
+function syncQuickCaptureFallbackShortcut(configuredRegistered: boolean): void {
+  quickCaptureShortcutRegistration.configuredRegistered = configuredRegistered
+
+  if (configuredRegistered) {
+    unregisterQuickCaptureFallbackShortcut()
+    quickCaptureShortcutRegistration.registered = true
+    return
+  }
+
+  registerQuickCaptureShortcut()
 }
 
 function registerQuickCaptureTestHooks(): void {

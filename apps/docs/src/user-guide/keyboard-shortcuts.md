@@ -98,6 +98,24 @@ When the inbox or a card has focus:
 | Open source URL | <kbd>O</kbd>                              |
 | Archive         | <kbd>Delete</kbd> or <kbd>Backspace</kbd> |
 
+## Canvases
+
+When a row in the sidebar **Canvases** tree has focus. Tab reaches the rows and
+their **⋯** menus; there is no arrow-key tree navigation.
+
+| Action               | Shortcut                                  |
+| -------------------- | ----------------------------------------- |
+| Rename               | <kbd>F2</kbd>                             |
+| Delete (asks first)  | <kbd>Delete</kbd> or <kbd>Backspace</kbd> |
+| Clear the filter box | <kbd>Esc</kbd>                            |
+
+<kbd>F2</kbd> turns the row itself into a text field rather than opening a
+dialog: <kbd>Enter</kbd> commits the name, <kbd>Esc</kbd> abandons it, and
+clicking away commits it too.
+
+Moving a canvas or folder has no shortcut — use **Move to folder** in the row
+menu. See [Organizing Canvases](/user-guide/canvas/organizing).
+
 ## Hint Mode
 
 Hint mode overlays numeric badges on interactive elements so you can act without the mouse.

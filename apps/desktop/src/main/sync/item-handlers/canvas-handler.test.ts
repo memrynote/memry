@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest'
 import { and, eq, isNull } from 'drizzle-orm'
 import sodium from 'libsodium-wrappers-sumo'
-import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { asClientDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { canvases, canvasEntityRefs, canvasAssets } from '@memry/db-schema/data-schema'
+import { canvasFolderSyncId } from '@memry/contracts/canvas-folder-types'
 import type { CanvasSyncPayload } from '@memry/contracts/sync-payloads'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { MemryAssetDescriptor } from '@memry/contracts/canvas-api'
@@ -37,13 +38,29 @@ vi.mock('../../canvas/vault-path', () => ({
   getCanvasVaultPath: () => vaultDir.current || null
 }))
 
+// The local folder mutations below (rename/delete) and reconcile all enqueue
+// through the sync runtime, which drags electron in. Stubbed the same way the
+// canvas store suites stub it — nothing here asserts on the queue.
+vi.mock('../local-mutations', () => ({
+  enqueueLocalSyncCreate: vi.fn(),
+  enqueueLocalSyncUpdate: vi.fn(),
+  enqueueLocalSyncDelete: vi.fn()
+}))
+
 import fs from 'node:fs'
 import os from 'node:os'
 import nodePath from 'node:path'
 
 import { canvasHandler } from './canvas-handler'
+import { canvasFolderHandler } from './canvas-folder-handler'
 import { CANVAS_DIR, resolveCanvasFile, withCanvasMeta } from '../../canvas/scene-file'
-import { readCanvasScene } from '../../canvas/store'
+import { getCanvas, readCanvasScene } from '../../canvas/store'
+import {
+  deleteCanvasFolder,
+  listCanvasFolders,
+  renameCanvasFolder
+} from '../../canvas/folder-store'
+import { reconcileCanvasFiles } from '../../canvas/reconcile'
 import { hashesReferencedByOtherCanvases } from '../../canvas/assets/asset-store'
 import { initCanvasSyncService, resetCanvasSyncService } from '../canvas-sync'
 
@@ -407,7 +424,355 @@ describe('canvasHandler', () => {
     })
   })
 
+  describe('folder placement', () => {
+    it('#given a payload with a folder #when a remote create arrives #then files it in that folder', () => {
+      const data: CanvasSyncPayload = {
+        id: 'c1',
+        vaultId: VAULT_ID,
+        title: 'Remote',
+        scene: sceneWith('note-1'),
+        folder: 'Work/Q3',
+        icon: '🎨',
+        clock: { B: 1 }
+      }
+
+      expect(canvasHandler.applyUpsert(ctx, 'c1', data, { B: 1 })).toBe('applied')
+
+      const row = db.select().from(canvases).where(eq(canvases.id, 'c1')).get()
+      expect(row!.folder).toBe('Work/Q3')
+      expect(row!.icon).toBe('🎨')
+      expect(row!.filePath).toBe(`${CANVAS_DIR}/Work/Q3/Remote.excalidraw`)
+      // The directory has to exist before the scene is written, or the write
+      // throws and the whole apply rolls back.
+      expect(fs.existsSync(resolveCanvasFile(vaultDir.current, row!.filePath!))).toBe(true)
+      expectScene(row, data.scene)
+    })
+
+    it('#given an unsafe folder name #then stores the on-disk-canonical form', () => {
+      const data: CanvasSyncPayload = {
+        id: 'c1',
+        vaultId: VAULT_ID,
+        title: 'Remote',
+        scene: sceneWith('note-1'),
+        folder: 'CON',
+        clock: { B: 1 }
+      }
+
+      expect(canvasHandler.applyUpsert(ctx, 'c1', data, { B: 1 })).toBe('applied')
+
+      const row = db.select().from(canvases).where(eq(canvases.id, 'c1')).get()
+      expect(row!.folder).toBe('CON canvas')
+      expect(fs.existsSync(resolveCanvasFile(vaultDir.current, row!.filePath!))).toBe(true)
+    })
+
+    it('#given a remote update #then carries the new folder and icon onto the existing row AND moves the document', () => {
+      seedCanvas(db, 'c1', sceneWith('note-1'), { A: 1 })
+
+      const result = canvasHandler.applyUpsert(
+        ctx,
+        'c1',
+        {
+          id: 'c1',
+          vaultId: VAULT_ID,
+          scene: sceneWith('note-2'),
+          folder: 'Work',
+          icon: '📐',
+          clock: { A: 2 }
+        },
+        { A: 2 }
+      )
+
+      expect(result).toBe('applied')
+      const row = db.select().from(canvases).where(eq(canvases.id, 'c1')).get()
+      expect(row!.folder).toBe('Work')
+      expect(row!.icon).toBe('📐')
+      // The row is only half of a move. A `folder` written without moving the
+      // FILE puts the canvas in Work in the sidebar and at the root in Finder,
+      // and every later placement operation (folder rename, folder delete,
+      // reveal, reconcile) then works off a path the document does not occupy.
+      // The filename is the canvas's own and never re-derived from the title.
+      expect(row!.filePath).toBe(`${CANVAS_DIR}/Work/c1.excalidraw`)
+      expect(fs.existsSync(resolveCanvasFile(vaultDir.current, row!.filePath!))).toBe(true)
+      expect(
+        fs.existsSync(resolveCanvasFile(vaultDir.current, `${CANVAS_DIR}/c1.excalidraw`))
+      ).toBe(false)
+      expectScene(row, sceneWith('note-2'))
+    })
+
+    it('#given a remote move back to the root #then the document returns to the canvases root', () => {
+      seedCanvas(db, 'c1', sceneWith('note-1'), { A: 1 })
+      canvasHandler.applyUpsert(
+        ctx,
+        'c1',
+        {
+          id: 'c1',
+          vaultId: VAULT_ID,
+          scene: sceneWith('note-1'),
+          folder: 'Work',
+          clock: { A: 2 }
+        },
+        { A: 2 }
+      )
+
+      const result = canvasHandler.applyUpsert(
+        ctx,
+        'c1',
+        { id: 'c1', vaultId: VAULT_ID, scene: sceneWith('note-2'), folder: null, clock: { A: 3 } },
+        { A: 3 }
+      )
+
+      expect(result).toBe('applied')
+      const row = db.select().from(canvases).where(eq(canvases.id, 'c1')).get()
+      expect(row!.folder).toBeNull()
+      expect(row!.filePath).toBe(`${CANVAS_DIR}/c1.excalidraw`)
+      expect(fs.existsSync(resolveCanvasFile(vaultDir.current, row!.filePath!))).toBe(true)
+      expect(
+        fs.existsSync(resolveCanvasFile(vaultDir.current, `${CANVAS_DIR}/Work/c1.excalidraw`))
+      ).toBe(false)
+      expectScene(row, sceneWith('note-2'))
+    })
+
+    it('#given the destination folder already holds that filename #then uniquifies instead of overwriting the other canvas', () => {
+      seedCanvas(db, 'c1', sceneWith('note-mine'), { A: 1 })
+      // Another canvas already owns `Work/c1.excalidraw`. A raw rename replaces
+      // the target on every platform — that would be someone else's ink gone.
+      fs.mkdirSync(nodePath.join(vaultDir.current, CANVAS_DIR, 'Work'), { recursive: true })
+      fs.writeFileSync(
+        resolveCanvasFile(vaultDir.current, `${CANVAS_DIR}/Work/c1.excalidraw`),
+        withCanvasMeta(sceneWith('note-theirs'), { id: 'other', createdAt: 1, updatedAt: 1 })
+      )
+
+      canvasHandler.applyUpsert(
+        ctx,
+        'c1',
+        {
+          id: 'c1',
+          vaultId: VAULT_ID,
+          scene: sceneWith('note-mine'),
+          folder: 'Work',
+          clock: { A: 2 }
+        },
+        { A: 2 }
+      )
+
+      const row = db.select().from(canvases).where(eq(canvases.id, 'c1')).get()
+      expect(row!.filePath).toBe(`${CANVAS_DIR}/Work/c1 2.excalidraw`)
+      expect(row!.folder).toBe('Work')
+      expectScene(row, sceneWith('note-mine'))
+      // The squatter is untouched.
+      expect(readCanvasScene(vaultDir.current, `${CANVAS_DIR}/Work/c1.excalidraw`)).not.toBeNull()
+      expect(
+        JSON.parse(readCanvasScene(vaultDir.current, `${CANVAS_DIR}/Work/c1.excalidraw`)!)
+      ).toEqual(JSON.parse(sceneWith('note-theirs')))
+    })
+
+    it('#given the move cannot be made on disk #then the row describes where the file actually IS', () => {
+      seedCanvas(db, 'c1', sceneWith('note-1'), { A: 1 })
+      // A FILE named `Work` where the directory would go: the rename's mkdir
+      // fails, so the document cannot travel. (A locked file or a refused
+      // permission reaches the same place.)
+      fs.writeFileSync(nodePath.join(vaultDir.current, CANVAS_DIR, 'Work'), 'not a directory')
+
+      const result = canvasHandler.applyUpsert(
+        ctx,
+        'c1',
+        {
+          id: 'c1',
+          vaultId: VAULT_ID,
+          scene: sceneWith('note-2'),
+          folder: 'Work',
+          clock: { A: 2 }
+        },
+        { A: 2 }
+      )
+
+      expect(result).toBe('applied')
+      const row = db.select().from(canvases).where(eq(canvases.id, 'c1')).get()
+      // Never lose the ink: the old path is kept, and the stored folder matches
+      // it — a row claiming `Work` would make the canvas unopenable and, worse,
+      // unpushable (buildPushPayload reads the file off `filePath`).
+      expect(row!.filePath).toBe(`${CANVAS_DIR}/c1.excalidraw`)
+      expect(row!.folder).toBeNull()
+      expectScene(row, sceneWith('note-2'))
+      expect(canvasHandler.buildPushPayload!(db, 'c1', 'device-B', 'update')).not.toBeNull()
+    })
+
+    it('#given a pre-folders payload (no folder) #then leaves the document exactly where it is', () => {
+      seedCanvas(db, 'c1', sceneWith('note-1'), { A: 1 })
+      canvasHandler.applyUpsert(
+        ctx,
+        'c1',
+        {
+          id: 'c1',
+          vaultId: VAULT_ID,
+          scene: sceneWith('note-1'),
+          folder: 'Work',
+          clock: { A: 2 }
+        },
+        { A: 2 }
+      )
+
+      // An absent `folder` is an older build talking, not a move to the root.
+      const result = canvasHandler.applyUpsert(
+        ctx,
+        'c1',
+        { id: 'c1', vaultId: VAULT_ID, scene: sceneWith('note-3'), clock: { A: 3 } },
+        { A: 3 }
+      )
+
+      expect(result).toBe('applied')
+      const row = db.select().from(canvases).where(eq(canvases.id, 'c1')).get()
+      expect(row!.filePath).toBe(`${CANVAS_DIR}/Work/c1.excalidraw`)
+      expect(row!.folder).toBe('Work')
+      expect(fs.existsSync(resolveCanvasFile(vaultDir.current, row!.filePath!))).toBe(true)
+    })
+
+    it('#given a legacy payload with no folder #then lands at the canvases root', () => {
+      const data: CanvasSyncPayload = {
+        id: 'c1',
+        vaultId: VAULT_ID,
+        title: 'Remote',
+        scene: sceneWith('note-1'),
+        clock: { B: 1 }
+      }
+
+      expect(canvasHandler.applyUpsert(ctx, 'c1', data, { B: 1 })).toBe('applied')
+
+      const row = db.select().from(canvases).where(eq(canvases.id, 'c1')).get()
+      expect(row!.folder).toBeNull()
+      expect(row!.filePath).toBe(`${CANVAS_DIR}/Remote.excalidraw`)
+    })
+
+    it('#given a conflict on a canvas inside a folder #then the copy lands beside the winner, not at the root', () => {
+      seedCanvas(db, 'c1', sceneWith('note-1'), { A: 1 })
+      canvasHandler.applyUpsert(
+        ctx,
+        'c1',
+        {
+          id: 'c1',
+          vaultId: VAULT_ID,
+          scene: sceneWith('note-local'),
+          folder: 'Work',
+          clock: { A: 2 }
+        },
+        { A: 2 }
+      )
+
+      const result = canvasHandler.applyUpsert(
+        ctx,
+        'c1',
+        { id: 'c1', vaultId: VAULT_ID, scene: sceneWith('note-remote'), clock: { B: 3 } },
+        { B: 3 }
+      )
+
+      expect(result).toBe('conflict')
+      const copy = db
+        .select()
+        .from(canvases)
+        .all()
+        .find((row) => row.id !== 'c1')!
+      // The losing ink is only findable if it is where the user is looking. A
+      // copy dumped at the root also pushes `folder: null`, so every other
+      // device files it at ITS root too.
+      expect(copy.folder).toBe('Work')
+      expect(copy.filePath!.startsWith(`${CANVAS_DIR}/Work/`)).toBe(true)
+      expect(fs.existsSync(resolveCanvasFile(vaultDir.current, copy.filePath!))).toBe(true)
+      expectScene(copy, sceneWith('note-local'))
+      expect(
+        JSON.parse(canvasHandler.buildPushPayload!(db, copy.id, 'device-B', 'create')!).folder
+      ).toBe('Work')
+    })
+  })
+
+  describe('two-device placement lifecycle', () => {
+    /**
+     * Device B, four steps, in order: a remote MOVE arrives, then the user
+     * renames that folder, deletes it, and restarts.
+     *
+     * Every step after the first works off `canvases.file_path`. If the move
+     * only rewrote the row, the damage compounds: the rename re-points the path
+     * at a file that was never there (canvas unopenable AND silently unpushable
+     * — `buildPushPayload` returns null), and the delete cannot take a directory
+     * the document never left, so the next reconcile finds it occupied and
+     * revives a folder the user deleted.
+     */
+    it('#given a remote move, a folder rename, a folder delete and a restart #then the canvas stays openable and pushable and the deleted folder stays deleted', async () => {
+      const clientDb = asClientDb(testDb.db)
+      const vault = vaultDir.current
+
+      // --- 1. device A drags 'Plan' from the root into 'Work' ---------------
+      seedCanvas(db, 'c1', sceneWith('note-1'), { A: 1 }, { title: 'Plan' })
+      canvasFolderHandler.applyUpsert(
+        ctx,
+        canvasFolderSyncId('Work'),
+        { id: canvasFolderSyncId('Work'), vaultId: VAULT_ID, path: 'Work', clock: { A: 2 } },
+        { A: 2 }
+      )
+      expect(
+        canvasHandler.applyUpsert(
+          ctx,
+          'c1',
+          {
+            id: 'c1',
+            vaultId: VAULT_ID,
+            title: 'Plan',
+            scene: sceneWith('note-1'),
+            folder: 'Work',
+            clock: { A: 2 }
+          },
+          { A: 2 }
+        )
+      ).toBe('applied')
+
+      const moved = db.select().from(canvases).where(eq(canvases.id, 'c1')).get()
+      expect(moved!.folder).toBe('Work')
+      expect(moved!.filePath).toBe(`${CANVAS_DIR}/Work/c1.excalidraw`)
+      expect(fs.existsSync(nodePath.join(vault, CANVAS_DIR, 'Work'))).toBe(true)
+      expect(fs.existsSync(resolveCanvasFile(vault, moved!.filePath!))).toBe(true)
+
+      // --- 2. the user renames the folder on B ------------------------------
+      renameCanvasFolder(clientDb, vault, VAULT_ID, 'Work', 'Projects')
+
+      const renamed = db.select().from(canvases).where(eq(canvases.id, 'c1')).get()
+      expect(renamed!.filePath).toBe(`${CANVAS_DIR}/Projects/c1.excalidraw`)
+      expect(fs.existsSync(resolveCanvasFile(vault, renamed!.filePath!))).toBe(true)
+      // Still openable...
+      expect(getCanvas(clientDb, vault, 'c1')!.unreadable).toBeUndefined()
+      // ...and still on the wire. A row pointing at a file that is not there
+      // drops the canvas off sync in silence.
+      expect(canvasHandler.buildPushPayload!(db, 'c1', 'device-B', 'update')).not.toBeNull()
+
+      // --- 3. the user deletes the folder on B ------------------------------
+      const swept = await deleteCanvasFolder(clientDb, vault, VAULT_ID, 'Projects', async (abs) => {
+        fs.rmSync(abs, { recursive: true, force: true })
+      })
+      expect(swept).toEqual(['c1'])
+      expect(listCanvasFolders(clientDb, VAULT_ID)).toEqual([])
+
+      // --- 4. restart: reconcile runs at vault open -------------------------
+      const result = await reconcileCanvasFiles(clientDb, vault, VAULT_ID)
+
+      // The folder the user deleted does NOT come back — on this device or, via
+      // the revival push, on any of the others.
+      expect(result.foldersAdopted).toBe(0)
+      expect(result.adopted).toBe(0)
+      expect(listCanvasFolders(clientDb, VAULT_ID)).toEqual([])
+      expect(fs.existsSync(nodePath.join(vault, CANVAS_DIR, 'Work'))).toBe(false)
+      expect(fs.existsSync(nodePath.join(vault, CANVAS_DIR, 'Projects'))).toBe(false)
+    })
+  })
+
   describe('buildPushPayload', () => {
+    it('#given a row in a folder #then the push payload carries folder and icon', () => {
+      seedCanvas(db, 'c1', sceneWith('note-1'), { A: 1 })
+      db.update(canvases).set({ folder: 'Work', icon: '🎨' }).where(eq(canvases.id, 'c1')).run()
+
+      const parsed = JSON.parse(canvasHandler.buildPushPayload!(db, 'c1', 'device-A', 'update')!)
+
+      expect(parsed.folder).toBe('Work')
+      expect(parsed.icon).toBe('🎨')
+    })
+
     it('#given a row with a document #then returns a scene-bearing payload', () => {
       seedCanvas(db, 'c1', sceneWith('note-1'), { A: 1 })
       const payload = canvasHandler.buildPushPayload!(db, 'c1', 'device-A', 'update')

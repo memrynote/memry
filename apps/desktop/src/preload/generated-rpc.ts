@@ -39,7 +39,10 @@ const eventChannels = {
   "onCanvasCreated": "canvas:created",
   "onCanvasUpdated": "canvas:updated",
   "onCanvasDeleted": "canvas:deleted",
-  "onCanvasTooLarge": "canvas:too-large"
+  "onCanvasTooLarge": "canvas:too-large",
+  "onCanvasFolderCreated": "canvasFolder:created",
+  "onCanvasFolderUpdated": "canvasFolder:updated",
+  "onCanvasFolderDeleted": "canvasFolder:deleted"
 } as const
 
 export interface GeneratedRpcDeps {
@@ -310,6 +313,9 @@ export function createGeneratedRpcApi({
       "update": ((input) => invoke("canvas:update", input)) as GeneratedRpcApi["canvas"]["update"],
       "delete": ((id) => invoke("canvas:delete", id)) as GeneratedRpcApi["canvas"]["delete"],
       "list": (() => invoke("canvas:list")) as GeneratedRpcApi["canvas"]["list"],
+      "duplicate": ((id) => invoke("canvas:duplicate", id)) as GeneratedRpcApi["canvas"]["duplicate"],
+      "revealInFinder": ((id) => invoke("canvas:reveal-in-finder", id)) as GeneratedRpcApi["canvas"]["revealInFinder"],
+      "openExternal": ((id) => invoke("canvas:open-external", id)) as GeneratedRpcApi["canvas"]["openExternal"],
       "uploadAsset": (async (input) =>
         invoke("canvas:upload-asset", {
           canvasId: input.canvasId,
@@ -323,6 +329,14 @@ export function createGeneratedRpcApi({
       "librarySave": ((libraryItems) => invoke("canvas:library-save", { libraryItems })) as GeneratedRpcApi["canvas"]["librarySave"],
       "liveOpened": ((canvasId) => invoke("canvas:live-opened", canvasId)) as GeneratedRpcApi["canvas"]["liveOpened"],
       "liveClosed": ((canvasId) => invoke("canvas:live-closed", canvasId)) as GeneratedRpcApi["canvas"]["liveClosed"],
+    },
+    "canvasFolder": {
+      "list": (() => invoke("canvasFolder:list")) as GeneratedRpcApi["canvasFolder"]["list"],
+      "create": ((input) => invoke("canvasFolder:create", input)) as GeneratedRpcApi["canvasFolder"]["create"],
+      "rename": ((input) => invoke("canvasFolder:rename", input)) as GeneratedRpcApi["canvasFolder"]["rename"],
+      "move": ((input) => invoke("canvasFolder:move", input)) as GeneratedRpcApi["canvasFolder"]["move"],
+      "setIcon": ((input) => invoke("canvasFolder:set-icon", input)) as GeneratedRpcApi["canvasFolder"]["setIcon"],
+      "delete": ((input) => invoke("canvasFolder:delete", input)) as GeneratedRpcApi["canvasFolder"]["delete"],
     },
     "telemetry": {
       "track": ((event) => invoke("telemetry:track", event)) as GeneratedRpcApi["telemetry"]["track"],

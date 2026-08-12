@@ -8,6 +8,7 @@ import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters, settings } from '@memry/db-schema/schema/settings'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import { canvases } from '@memry/db-schema/schema/canvas'
+import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
 import { bookmarks } from '@memry/db-schema/schema/bookmarks'
 import { templates } from '@memry/db-schema/schema/templates'
 import { reminders } from '@memry/db-schema/schema/reminders'
@@ -211,6 +212,20 @@ function getLocalSyncableRefs(db: DrizzleDb): LocalSyncableRef[] {
     addLocalRef({ id: f.id, type: 'filter' })
   }
 
+  // Tombstones MUST be excluded, for the same reason the canvases block below
+  // excludes them: the server manifest omits soft-deleted items, so a
+  // locally-tombstoned folder listed here is seen as `!serverRef` and
+  // re-enqueued as a `create`, NULLing the server's deleted_at and bringing the
+  // folder back on every device within 30 minutes.
+  const syncedCanvasFolders = db
+    .select({ id: canvasFolders.id })
+    .from(canvasFolders)
+    .where(and(isNotNull(canvasFolders.clock), isNull(canvasFolders.deletedAt)))
+    .all()
+  for (const f of syncedCanvasFolders) {
+    addLocalRef({ id: f.id, type: 'canvas_folder' })
+  }
+
   const syncedTemplates = db
     .select({ id: templates.id })
     .from(templates)
@@ -355,6 +370,10 @@ function buildRefPayload(db: DrizzleDb, ref: LocalSyncableRef): string | null {
             deletedAt: null
           })
         : null
+    }
+    case 'canvas_folder': {
+      const row = db.select().from(canvasFolders).where(eq(canvasFolders.id, ref.id)).get()
+      return row ? JSON.stringify(row) : null
     }
     case 'tag_definition': {
       const row = db.select().from(tagDefinitions).where(eq(tagDefinitions.name, ref.id)).get()

@@ -127,6 +127,15 @@ export interface CanvasItemSummary {
 export interface CanvasListEntry {
   id: string
   title: string | null
+  /** Folder relative to `canvases/`, forward-slashed. Null means the root. */
+  folder: string | null
+  /**
+   * Folder-qualified name (`Work/Plan`), which is what the other canvas tools
+   * accept alongside the id. Null for an untitled canvas. Two canvases may be
+   * titled the same in different folders, so the title alone does not identify
+   * one — this does.
+   */
+  path: string | null
   updated_at: number
   item_count: number
 }

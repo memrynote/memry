@@ -701,6 +701,16 @@
         "startOver": "Start over"
       }
     },
+    "startFresh": {
+      "trigger": "I can't get my recovery phrase back",
+      "title": "Start fresh on this device",
+      "description": "Only do this if your recovery phrase is gone for good. It cannot be undone.",
+      "consequenceSignOut": "This device signs out and stops syncing.",
+      "consequenceKey": "The encryption key held on this device is deleted. Anything already stored in your account stays encrypted under the old key — without the recovery phrase, nothing can ever read it again.",
+      "consequenceLocal": "Notes already saved on this computer stay in your vault folder and keep working.",
+      "confirm": "Sign out and start fresh",
+      "cancel": "Go back"
+    },
     "linking": {
       "choiceTitle": "Link this device",
       "choiceDescription": "Transfer encryption keys from another device or restore from your recovery phrase.",

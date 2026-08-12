@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { syncQueue } from '@memry/db-schema/schema/sync-queue'
+import { createTestDataDb, trackPreparedSql, type TestDatabaseResult } from '@tests/utils/test-db'
 import { DEFAULT_MAX_ATTEMPTS, SyncQueueManager, type EnqueueInput } from './queue'
 
 const makeInput = (overrides: Partial<EnqueueInput> = {}): EnqueueInput => ({
@@ -341,6 +342,68 @@ describe('SyncQueueManager', () => {
       const items = queue.peek(1)
       expect(items[0].attempts).toBe(3)
       expect(items[0].errorMessage).toBe('err-3')
+    })
+  })
+
+  describe('auto-purge on enqueue', () => {
+    function seedDeadLetters(count: number, createdAt: Date): void {
+      for (let i = 0; i < count; i++) {
+        testDb.db
+          .insert(syncQueue)
+          .values({
+            id: `dead-${i}`,
+            type: 'note',
+            itemId: `item-dead-${i}`,
+            operation: 'update',
+            payload: '{}',
+            priority: 0,
+            attempts: DEFAULT_MAX_ATTEMPTS,
+            createdAt
+          })
+          .run()
+      }
+    }
+
+    it('does not count the queue on every enqueue', () => {
+      // #given
+      const prepared = trackPreparedSql(testDb)
+
+      // #when a burst of 100 items is queued
+      for (let i = 0; i < 100; i++) {
+        queue.enqueue(makeInput({ itemId: `burst-${i}` }))
+      }
+
+      // #then no aggregate scan of the queue is done for the purge threshold,
+      // and the bounded probe runs a fixed number of times, not per item
+      expect(prepared.filter((s) => /count\(\*\)/i.test(s))).toEqual([])
+      expect(prepared.filter((s) => /OFFSET/i.test(s)).length).toBeLessThanOrEqual(3)
+    })
+
+    it('still purges expired dead-letter items once the threshold is reached', () => {
+      // #given 50 dead-lettered items older than the retention window
+      const longAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      seedDeadLetters(50, longAgo)
+      const fresh = new SyncQueueManager(testDb.db)
+
+      // #when
+      fresh.enqueue(makeInput({ itemId: 'trigger' }))
+
+      // #then
+      expect(fresh.getQueueStats().deadLetter).toBe(0)
+      expect(fresh.getSize()).toBe(1)
+    })
+
+    it('keeps dead-letter items while below the threshold', () => {
+      // #given one short of the threshold
+      const longAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      seedDeadLetters(49, longAgo)
+      const fresh = new SyncQueueManager(testDb.db)
+
+      // #when
+      fresh.enqueue(makeInput({ itemId: 'trigger' }))
+
+      // #then
+      expect(fresh.getQueueStats().deadLetter).toBe(49)
     })
   })
 

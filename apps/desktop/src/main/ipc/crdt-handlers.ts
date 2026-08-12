@@ -104,10 +104,24 @@ export function registerCrdtIpcHandlers(): void {
     CRDT_CHANNELS.SYNC_STEP_1,
     createValidatedHandler(
       CrdtSyncStep1Schema,
-      async (input): Promise<CrdtSyncStep1Result | null> => {
+      async (input, event): Promise<CrdtSyncStep1Result | null> => {
         const provider = getCrdtProvider()
         if (!provider.isInitialized()) return null
-        const doc = await provider.open(input.noteId)
+
+        // The handshake can be the call that creates the doc: crdt:open-doc may
+        // have been skipped or errored, or a provider reset (vault switch) may
+        // have dropped the entry in between. Opening it here without the
+        // sender's windowId left the doc with an EMPTY windowIds set while the
+        // editor was about to type into it — so it counted as inactive, and the
+        // next eviction pass could destroy it mid-edit. applyIpcUpdate() then
+        // silently returns on the missing entry, dropping the keystrokes.
+        // Attribute it to exactly the window crdt:open-doc would have.
+        const win = BrowserWindow.fromWebContents(event.sender)
+        // Hook before the first await, mirroring open-doc: a window destroyed
+        // while open() is in flight has already emitted 'closed'.
+        if (win) hookWindowClose(win)
+
+        const doc = await provider.open(input.noteId, win?.id)
         const diff = Y.encodeStateAsUpdate(doc, input.stateVector)
         const stateVector = Y.encodeStateVector(doc)
         return { diff, stateVector }

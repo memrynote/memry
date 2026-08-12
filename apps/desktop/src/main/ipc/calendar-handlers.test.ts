@@ -1100,6 +1100,77 @@ describe('calendar-handlers', () => {
     expect(sourceIds).toContain('google-calendar:bob-primary')
   })
 
+  it('reconnects an account that was disconnected, reviving its tombstoned rows (#1201)', async () => {
+    registerCalendarHandlers()
+
+    const connection = {
+      accountId: 'adam@example.com',
+      account: {
+        remoteId: 'adam@example.com',
+        email: 'adam@example.com',
+        title: 'Adam Example',
+        timezone: 'Europe/London'
+      },
+      primaryCalendar: {
+        remoteId: 'adam@example.com',
+        title: 'Adam Example',
+        timezone: 'Europe/London',
+        color: '#0ea5e9',
+        isPrimary: true
+      }
+    }
+    mockConnectGoogleCalendar.mockResolvedValue(connection)
+    mockHasAnyGoogleCalendarLocalAuth.mockResolvedValue(true)
+    mockHasGoogleCalendarLocalAuth.mockResolvedValue(true)
+    mockListGoogleAccountIds.mockReturnValue(['adam@example.com'])
+    // Isolate the account + primary rows this test asserts on; discovery has
+    // its own coverage and an earlier test leaves an implementation behind.
+    mockDiscoverGoogleCalendarSources.mockReset()
+
+    await invokeHandler(CalendarChannels.invoke.CONNECT_PROVIDER, { provider: 'google' })
+
+    // Per-account disconnect — the button the settings UI actually wires up.
+    // It tombstones the rows rather than deleting them.
+    mockHasAnyGoogleCalendarLocalAuth.mockResolvedValue(false)
+    mockHasGoogleCalendarLocalAuth.mockResolvedValue(false)
+    const disconnected = await invokeHandler(CalendarChannels.invoke.DISCONNECT_PROVIDER, {
+      provider: 'google',
+      accountId: 'adam@example.com'
+    })
+    expect(disconnected.status.connected).toBe(false)
+
+    // Reconnecting the same account must bring it back. Before the fix the
+    // upsert left `archived_at` set, so every read path kept filtering the
+    // account row out and the user could never connect again.
+    mockHasAnyGoogleCalendarLocalAuth.mockResolvedValue(true)
+    mockHasGoogleCalendarLocalAuth.mockResolvedValue(true)
+    const reconnected = await invokeHandler(CalendarChannels.invoke.CONNECT_PROVIDER, {
+      provider: 'google'
+    })
+
+    expect(reconnected.success).toBe(true)
+    expect(reconnected.status.connected).toBe(true)
+    expect(reconnected.status.account).toEqual({
+      id: 'google-account:adam@example.com',
+      title: 'Adam Example'
+    })
+    expect(reconnected.status.accounts).toEqual([
+      expect.objectContaining({ accountId: 'adam@example.com', status: 'connected' })
+    ])
+    expect(reconnected.status.calendars.selected).toBe(1)
+
+    const sources = await invokeHandler(CalendarChannels.invoke.LIST_SOURCES, {
+      provider: 'google'
+    })
+    expect(sources.sources.map((source: { id: string }) => source.id)).toEqual([
+      'google-account:adam@example.com',
+      'google-calendar:adam@example.com'
+    ])
+    for (const source of sources.sources as Array<{ archivedAt: string | null }>) {
+      expect(source.archivedAt).toBeNull()
+    }
+  })
+
   it('refreshes Google provider state only when local auth exists', async () => {
     registerCalendarHandlers()
     mockHasAnyGoogleCalendarLocalAuth.mockResolvedValue(false)

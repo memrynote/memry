@@ -108,6 +108,29 @@ describe('VaultRecoveryDialog', () => {
     expect(onSignOut).toHaveBeenCalledTimes(1)
   })
 
+  it('offers a start-fresh escape that only signs out after an explicit confirmation', () => {
+    const onSignOut = vi.fn()
+    render(
+      <VaultRecoveryDialog open onRecovered={vi.fn()} onDismiss={vi.fn()} onSignOut={onSignOut} />
+    )
+
+    openInput()
+    fireEvent.click(screen.getByRole('button', { name: /recovery phrase back/i }))
+
+    // Consequences are stated before anything is destroyed.
+    expect(screen.getByText(/without the recovery phrase/i)).toBeInTheDocument()
+    expect(onSignOut).not.toHaveBeenCalled()
+
+    // Backing out returns to the phrase input with the session intact.
+    fireEvent.click(screen.getByRole('button', { name: 'Go back' }))
+    expect(onSignOut).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'submit-phrase' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /recovery phrase back/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out and start fresh' }))
+    expect(onSignOut).toHaveBeenCalledTimes(1)
+  })
+
   it('surfaces a wrong-phrase error without recovering or offering re-auth', async () => {
     hoisted.linkViaRecovery.mockRejectedValueOnce(
       new Error('Recovery phrase does not match. Please try again.')
