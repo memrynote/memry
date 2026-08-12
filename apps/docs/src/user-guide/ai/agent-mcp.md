@@ -473,6 +473,12 @@ denied.
 Stopping the turn while an approval is waiting counts as a denial: the pending request is refused,
 the tool never runs, and the approval controls disappear. Nothing is written to your vault.
 
+An approval you never answer expires after 30 minutes. The controls disappear, the tool never runs,
+and the tool row is marked as expired rather than denied — the agent is told the request timed out,
+not that you refused it. Take as long as you need to read a request or its diff; half an hour is
+there so a prompt left open overnight does not keep the request waiting forever, not to hurry you.
+If a request expires and you still want it, ask the agent again.
+
 ## Project Links
 
 `vault_list_projects` returns each project's `icon`, `home_note_id`, and `linked_counts` (notes,
