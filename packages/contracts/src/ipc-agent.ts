@@ -30,7 +30,14 @@ export const AgentChannels = {
     PROBE_LOCAL_PROVIDER: 'agent:probeLocalProvider',
     ACCEPT_DISCLOSURE: 'agent:acceptDisclosure',
     GET_DISCLOSURE_STATE: 'agent:getDisclosureState',
-    GET_WINDOW_ID: 'agent:getWindowId'
+    GET_WINDOW_ID: 'agent:getWindowId',
+    /**
+     * The calling window tells main which conversation it currently shows, so
+     * per-token `assistant_text_delta` events reach only the windows that can
+     * render them. Purely additive: a window that never calls this is treated
+     * as "unknown", never as "not interested".
+     */
+    SET_STREAM_TARGET: 'agent:setStreamTarget'
   },
   events: {
     AGENT_EVENT: 'agent:event',
@@ -427,6 +434,12 @@ export const SendTurnRequestSchema = z.object({
   permissions: AgentTurnPermissionsSchema.optional()
 })
 export type SendTurnRequest = z.infer<typeof SendTurnRequestSchema>
+
+/** `null` means the window has Agent Chat open but no conversation selected. */
+export const AgentStreamTargetRequestSchema = z.object({
+  conversationId: z.string().nullable()
+})
+export type AgentStreamTargetRequest = z.infer<typeof AgentStreamTargetRequestSchema>
 
 export const SendTurnResponseSchema = z.object({
   ok: z.boolean(),

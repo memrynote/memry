@@ -93,6 +93,7 @@ describe('AgentProvider', () => {
     getDisclosureState: ReturnType<typeof vi.fn>
     acceptDisclosure: ReturnType<typeof vi.fn>
     getWindowId: ReturnType<typeof vi.fn>
+    setStreamTarget: ReturnType<typeof vi.fn>
     onEvent: ReturnType<typeof vi.fn>
   }
 
@@ -114,6 +115,7 @@ describe('AgentProvider', () => {
       getDisclosureState: vi.fn().mockResolvedValue({ accepted: false }),
       acceptDisclosure: vi.fn().mockResolvedValue({ accepted: true }),
       getWindowId: vi.fn().mockResolvedValue({ windowId: 'window-1' }),
+      setStreamTarget: vi.fn().mockResolvedValue({ ok: true }),
       onEvent: vi.fn((callback: (event: unknown) => void) => {
         eventHandler = callback
         return unsubscribe
@@ -137,6 +139,31 @@ describe('AgentProvider', () => {
 
     unmount()
     expect(unsubscribe).toHaveBeenCalled()
+  })
+
+  it('reports which conversation this window shows so deltas can be targeted', async () => {
+    const { result } = renderHook(() => useAgent(), { wrapper })
+
+    await waitFor(() =>
+      expect(agentApi.setStreamTarget).toHaveBeenCalledWith({ conversationId: null })
+    )
+
+    await act(async () => {
+      await result.current.loadConversation(conversation.id)
+    })
+
+    await waitFor(() =>
+      expect(agentApi.setStreamTarget).toHaveBeenCalledWith({ conversationId: conversation.id })
+    )
+  })
+
+  it('keeps bootstrapping when the stream-target report fails', async () => {
+    agentApi.setStreamTarget.mockRejectedValue(new Error('stream target unavailable'))
+
+    const { result } = renderHook(() => useAgent(), { wrapper })
+
+    await waitFor(() => expect(result.current.state.sourceWindowId).toBe('window-1'))
+    expect(agentApi.setStreamTarget).toHaveBeenCalled()
   })
 
   it('retries backend status bootstrap while lazy agent handlers start', async () => {
