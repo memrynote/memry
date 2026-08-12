@@ -187,3 +187,130 @@ describe('parseCriticMarkup', () => {
     ).toBe(plainText)
   })
 })
+
+describe('comment format ranges', () => {
+  const plainText = 'Alpha quote end'
+  const baseMark = {
+    id: 'c1',
+    kind: 'comment' as const,
+    visibleText: 'quote',
+    metadata: 'id=c1;type=comment',
+    start: 6,
+    end: 11
+  }
+
+  it('round-trips format ranges through the comment metadata', () => {
+    const serialized = serializeCriticMarkup(plainText, [
+      {
+        ...baseMark,
+        body: 'see this and that',
+        formatRanges: [{ start: 4, end: 8, marks: ['bold'] }]
+      }
+    ])
+
+    expect(serialized).toContain('format=')
+    const parsed = parseCriticMarkup(serialized)
+    expect(parsed.plainText).toBe(plainText)
+    expect(parsed.marks[0].body).toBe('see this and that')
+    expect(parsed.marks[0].formatRanges).toEqual([{ start: 4, end: 8, marks: ['bold'] }])
+
+    // Re-serializing what we parsed must be byte-identical, or every open note
+    // would look dirty to the resync check in useCriticMarkupReview.
+    expect(serializeCriticMarkup(parsed.plainText, parsed.marks)).toBe(serialized)
+  })
+
+  it('omits the format key for undefined and empty ranges alike', () => {
+    const withoutKey = serializeCriticMarkup(plainText, [{ ...baseMark, body: 'plain body' }])
+
+    expect(withoutKey).not.toContain('format=')
+    expect(
+      serializeCriticMarkup(plainText, [{ ...baseMark, body: 'plain body', formatRanges: [] }])
+    ).toBe(withoutKey)
+  })
+
+  it('drops formatting when the body no longer matches the hash it was measured against', () => {
+    const serialized = serializeCriticMarkup(plainText, [
+      {
+        ...baseMark,
+        body: 'see this and that',
+        mentions: [{ kind: 'note', refId: 'note-1', label: 'Planning' }],
+        formatRanges: [{ start: 4, end: 8, marks: ['bold'] }]
+      }
+    ])
+
+    // Simulates an edit made outside the app (Obsidian, an older client).
+    const edited = serialized.replace('see this and that', 'see that and this')
+    const parsed = parseCriticMarkup(edited)
+
+    expect(parsed.marks[0].body).toBe('see that and this')
+    expect(parsed.marks[0].formatRanges).toBeUndefined()
+    expect(parsed.marks[0].mentions).toHaveLength(1)
+  })
+
+  it('ignores malformed format metadata without throwing', () => {
+    for (const encoded of ['%7Bbad', '%5B%5D', encodeURIComponent('{"v":2,"ranges":[]}')]) {
+      const parsed = parseCriticMarkup(
+        `A {==quote==}{>>id=c1;type=comment;format=${encoded} | body<<}`
+      )
+      expect(parsed.marks[0].formatRanges).toBeUndefined()
+      expect(parsed.marks[0].body).toBe('body')
+    }
+  })
+
+  it('clamps, drops, and canonically orders ranges on the way out', () => {
+    const serialized = serializeCriticMarkup(plainText, [
+      {
+        ...baseMark,
+        body: 'abcdef',
+        formatRanges: [
+          { start: 4, end: 99, marks: ['code'] },
+          { start: 0, end: 2, marks: ['code', 'bold', 'bold'] },
+          { start: 3, end: 3, marks: ['bold'] },
+          { start: -1, end: 2, marks: ['bold'] },
+          { start: 9, end: 11, marks: ['bold'] },
+          { start: 2, end: 3, marks: ['nonsense'] as never }
+        ]
+      }
+    ])
+
+    expect(parseCriticMarkup(serialized).marks[0].formatRanges).toEqual([
+      { start: 0, end: 2, marks: ['bold', 'code'] },
+      { start: 4, end: 6, marks: ['code'] }
+    ])
+  })
+
+  it('rewrites a stale format key and strips it when the ranges are cleared', () => {
+    const serialized = serializeCriticMarkup(plainText, [
+      { ...baseMark, body: 'abcdef', formatRanges: [{ start: 0, end: 3, marks: ['bold'] }] }
+    ])
+    const [parsedMark] = parseCriticMarkup(serialized).marks
+
+    const rewritten = serializeCriticMarkup(plainText, [
+      { ...parsedMark, formatRanges: [{ start: 3, end: 6, marks: ['italic'] }] }
+    ])
+    expect(parseCriticMarkup(rewritten).marks[0].formatRanges).toEqual([
+      { start: 3, end: 6, marks: ['italic'] }
+    ])
+
+    const cleared = serializeCriticMarkup(plainText, [{ ...parsedMark, formatRanges: [] }])
+    expect(cleared).not.toContain('format=')
+    expect(parseCriticMarkup(cleared).marks[0].formatRanges).toBeUndefined()
+  })
+
+  it('keeps formatting and mentions aligned when a range spans a mention', () => {
+    const body = 'ping @Planning now'
+    const serialized = serializeCriticMarkup(plainText, [
+      {
+        ...baseMark,
+        body,
+        mentions: [{ kind: 'note', refId: 'note-1', label: 'Planning' }],
+        formatRanges: [{ start: 0, end: body.length, marks: ['bold'] }]
+      }
+    ])
+
+    const [mark] = parseCriticMarkup(serialized).marks
+    expect(mark.body).toBe(body)
+    expect(mark.mentions).toEqual([{ kind: 'note', refId: 'note-1', label: 'Planning' }])
+    expect(mark.formatRanges).toEqual([{ start: 0, end: body.length, marks: ['bold'] }])
+  })
+})

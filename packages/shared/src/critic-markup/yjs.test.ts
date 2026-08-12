@@ -101,4 +101,28 @@ describe('critic markup Yjs helpers', () => {
       expect.objectContaining({ createdAt: 1748254022000 })
     ])
   })
+
+  it('preserves comment format ranges and drops invalid ones', () => {
+    const doc = new FakeYDoc()
+
+    writeCriticMarkupMarksToYDoc(doc, [
+      {
+        id: 'c1',
+        kind: 'comment',
+        visibleText: 'quote',
+        body: 'see this and that',
+        start: 0,
+        end: 5,
+        formatRanges: [
+          { start: 4, end: 8, marks: ['bold'] },
+          { start: 4, end: 2, marks: ['italic'] },
+          { start: 0, end: 3, marks: [] }
+        ]
+      }
+    ])
+
+    expect(readCriticMarkupMarksFromYDoc(doc)[0].formatRanges).toEqual([
+      { start: 4, end: 8, marks: ['bold'] }
+    ])
+  })
 })

@@ -212,6 +212,41 @@ test.describe('CriticMarkup review flows', () => {
     await expect(page.locator('[data-journal-review-rail]')).toBeHidden()
     await expect(editor).toBeVisible()
   })
+
+  test('formats a comment draft from the selection toolbar without cancelling the draft', async ({
+    page
+  }) => {
+    await createNote(
+      page,
+      `Review Format ${Date.now()}`,
+      'format setup line\n\nsecond setup line\n\nformat target line'
+    )
+
+    await selectEditorText(page, 'format target line')
+    await page.locator('[data-test="review-comment"]').last().click()
+
+    const draft = commentComposer(page)
+    await expect(draft).toBeVisible()
+    const commentInput = draft.getByLabel('Add a comment...')
+    await commentInput.click()
+    await page.keyboard.type('needs a source')
+
+    await selectComposerText(page, 'source')
+
+    const toolbar = page.locator('[data-comment-format-toolbar]').first()
+    await expect(toolbar).toBeVisible()
+
+    await page.locator('[data-test="comment-format-bold"]').click()
+
+    // The bubble is portalled to the body, so clicking it must not trip the
+    // composer's outside-pointerdown auto-cancel.
+    await expect(draft).toBeVisible()
+    await expect(commentInput.locator('strong')).toHaveText('source')
+
+    await draft.getByLabel('Send comment').click()
+    await expect(reviewRail(page)).toContainText('needs a source')
+    await expect(reviewRail(page).locator('.critic-review-body strong')).toHaveText('source')
+  })
 })
 
 async function selectEditorText(page: Page, targetText: string): Promise<void> {
@@ -355,6 +390,37 @@ async function currentLocalDate(page: Page): Promise<string> {
       String(now.getDate()).padStart(2, '0')
     ].join('-')
   })
+}
+
+async function selectComposerText(page: Page, targetText: string): Promise<void> {
+  const didSelect = await page.evaluate((text) => {
+    const root = document.querySelector('.critic-comment-editor .ProseMirror')
+    if (!(root instanceof HTMLElement)) return false
+
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+    let node: Node | null
+    while ((node = walker.nextNode())) {
+      const index = (node.textContent ?? '').indexOf(text)
+      if (index === -1) continue
+
+      root.focus()
+      const range = document.createRange()
+      range.setStart(node, index)
+      range.setEnd(node, index + text.length)
+
+      const selection = window.getSelection()
+      selection?.removeAllRanges()
+      selection?.addRange(range)
+
+      root.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
+      root.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+      document.dispatchEvent(new Event('selectionchange', { bubbles: true }))
+      return true
+    }
+    return false
+  }, targetText)
+
+  expect(didSelect).toBe(true)
 }
 
 function reviewRail(page: Page) {

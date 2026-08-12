@@ -98,6 +98,8 @@ describe('review UI', () => {
     expect(css).toContain(
       ".critic-review-card[data-expanded='true'] .critic-review-text-collapsible"
     )
+    expect(css).toContain('.critic-comment-format-toolbar')
+    expect(css).toContain('.critic-comment-format-button')
     expect(css).toContain('.critic-comment-main-row')
     expect(css).toContain('display: flex')
     expect(css).toContain('.critic-comment-editor .ProseMirror')
@@ -264,7 +266,8 @@ describe('review UI', () => {
     expect(review.submitComment).toHaveBeenCalledWith({
       body: 'Draft body',
       mentions: [],
-      attachments: []
+      attachments: [],
+      formatRanges: []
     })
   })
 
@@ -360,7 +363,8 @@ describe('review UI', () => {
     expect(review.updateComment).toHaveBeenCalledWith('comment-1', {
       body: 'Original body @Planning note more',
       mentions: [{ kind: 'note', refId: 'note-1', label: 'Planning note' }],
-      attachments: [expect.objectContaining({ path: 'attachments/note-1/spec.pdf' })]
+      attachments: [expect.objectContaining({ path: 'attachments/note-1/spec.pdf' })],
+      formatRanges: []
     })
     expect(screen.queryByLabelText('comments.commentPlaceholder')).not.toBeInTheDocument()
   })
@@ -545,7 +549,8 @@ describe('review UI', () => {
           mimeType: 'application/pdf',
           type: 'file'
         }
-      ]
+      ],
+      formatRanges: []
     })
   })
 
@@ -622,7 +627,12 @@ describe('review UI', () => {
     expect(result.current.activeDraft).toMatchObject({ text: 'comment target', top: 72 })
 
     act(() => {
-      result.current.submitComment({ body: 'Needs work', mentions: [], attachments: [] })
+      result.current.submitComment({
+        body: 'Needs work',
+        mentions: [],
+        attachments: [],
+        formatRanges: []
+      })
     })
 
     act(() => {
@@ -634,7 +644,12 @@ describe('review UI', () => {
       result.current.openCommentComposer({ text: 'comment target', isEmpty: false })
     })
     act(() => {
-      result.current.submitComment({ body: 'Needs work', mentions: [], attachments: [] })
+      result.current.submitComment({
+        body: 'Needs work',
+        mentions: [],
+        attachments: [],
+        formatRanges: []
+      })
     })
     act(() => {
       result.current.resolveMark(result.current.marks[0].id)
@@ -690,7 +705,12 @@ describe('review UI', () => {
       result.current.openCommentComposer({ text: 'Mobile', isEmpty: false, from: 13, to: 19 })
     })
     act(() => {
-      result.current.submitComment({ body: 'Needs work', mentions: [], attachments: [] })
+      result.current.submitComment({
+        body: 'Needs work',
+        mentions: [],
+        attachments: [],
+        formatRanges: []
+      })
     })
 
     // Source offset 14: the "\n\n" run collapses to one visible "\n"
@@ -709,7 +729,12 @@ describe('review UI', () => {
       result.current.openCommentComposer({ text: 'Mobile', isEmpty: false })
     })
     act(() => {
-      result.current.submitComment({ body: 'Needs work', mentions: [], attachments: [] })
+      result.current.submitComment({
+        body: 'Needs work',
+        mentions: [],
+        attachments: [],
+        formatRanges: []
+      })
     })
 
     expect(result.current.marks[0]).toMatchObject({ kind: 'comment', start: 0, end: 6 })
@@ -736,7 +761,8 @@ describe('review UI', () => {
             mimeType: 'application/pdf',
             type: 'file'
           }
-        ]
+        ],
+        formatRanges: []
       })
     })
 
@@ -763,7 +789,8 @@ describe('review UI', () => {
       result.current.submitComment({
         body: 'Needs work',
         mentions: [{ kind: 'note', refId: 'note-1', label: 'Planning note' }],
-        attachments: []
+        attachments: [],
+        formatRanges: []
       })
     })
     const commentId = result.current.marks[0].id
@@ -779,7 +806,8 @@ describe('review UI', () => {
             path: 'attachments/note-1/spec.pdf',
             type: 'file'
           }
-        ]
+        ],
+        formatRanges: []
       })
     })
 
@@ -789,7 +817,9 @@ describe('review UI', () => {
       body: 'Needs more work',
       attachments: [expect.objectContaining({ path: 'attachments/note-1/spec.pdf' })]
     })
-    expect(result.current.marks[0].mentions).toBeUndefined()
+    // An edit always writes all three structured keys, so an emptied one is
+    // cleared from the file instead of being stranded there.
+    expect(result.current.marks[0].mentions).toEqual([])
     expect(onMarkdownChange).toHaveBeenLastCalledWith(expect.stringContaining('attachments='))
     expect(onMarkdownChange).toHaveBeenLastCalledWith(expect.not.stringContaining('mentions='))
 
@@ -813,14 +843,29 @@ describe('review UI', () => {
       result.current.openCommentComposer({ text: 'comment target', isEmpty: false })
     })
     act(() => {
-      result.current.submitComment({ body: 'Needs work', mentions: [], attachments: [] })
+      result.current.submitComment({
+        body: 'Needs work',
+        mentions: [],
+        attachments: [],
+        formatRanges: []
+      })
     })
     const commentId = result.current.marks[0].id
     onMarkdownChange.mockClear()
 
     act(() => {
-      result.current.updateComment('missing-id', { body: 'x', mentions: [], attachments: [] })
-      result.current.updateComment(commentId, { body: '   ', mentions: [], attachments: [] })
+      result.current.updateComment('missing-id', {
+        body: 'x',
+        mentions: [],
+        attachments: [],
+        formatRanges: []
+      })
+      result.current.updateComment(commentId, {
+        body: '   ',
+        mentions: [],
+        attachments: [],
+        formatRanges: []
+      })
     })
 
     expect(onMarkdownChange).not.toHaveBeenCalled()
@@ -836,7 +881,12 @@ describe('review UI', () => {
       result.current.openCommentComposer({ text: 'base', isEmpty: false })
     })
     act(() => {
-      result.current.submitComment({ body: 'note', mentions: [], attachments: [] })
+      result.current.submitComment({
+        body: 'note',
+        mentions: [],
+        attachments: [],
+        formatRanges: []
+      })
     })
     expect(result.current.marks).toHaveLength(1)
 
@@ -865,7 +915,12 @@ describe('review UI', () => {
       result.current.openCommentComposer({ text: 'comment target', isEmpty: false })
     })
     act(() => {
-      result.current.submitComment({ body: 'Needs work', mentions: [], attachments: [] })
+      result.current.submitComment({
+        body: 'Needs work',
+        mentions: [],
+        attachments: [],
+        formatRanges: []
+      })
     })
     expect(result.current.marks).toHaveLength(1)
     const commentId = result.current.marks[0].id
@@ -893,5 +948,98 @@ describe('review UI', () => {
       rerender({ markdown: 'totally different external content' })
     })
     expect(result.current.marks).toHaveLength(0)
+  })
+
+  it('renders comment formatting as nested inline elements, outermost mark first', () => {
+    const review = createReview({
+      marks: [
+        {
+          id: 'comment-1',
+          kind: 'comment',
+          visibleText: 'target',
+          body: 'see this now',
+          start: 0,
+          end: 6,
+          formatRanges: [
+            { start: 4, end: 8, marks: ['bold', 'code'] },
+            { start: 9, end: 12, marks: ['italic'] }
+          ]
+        }
+      ]
+    })
+
+    const { container } = render(<ReviewRail review={review} />)
+    const body = container.querySelector('.critic-review-body') as HTMLElement
+
+    expect(body).toHaveTextContent('see this now')
+    expect(body.querySelector('strong > code')?.textContent).toBe('this')
+    expect(body.querySelector('em')?.textContent).toBe('now')
+    // Anything not covered by a range stays unwrapped.
+    expect(body.querySelector('u')).toBeNull()
+  })
+
+  it('renders a comment saved before formatting existed with no mark elements', () => {
+    const review = createReview({
+      marks: [
+        {
+          id: 'comment-1',
+          kind: 'comment',
+          visibleText: 'target',
+          body: 'plain 2 * 3 and snake_case_name',
+          start: 0,
+          end: 6
+        }
+      ]
+    })
+
+    const { container } = render(<ReviewRail review={review} />)
+    const body = container.querySelector('.critic-review-body') as HTMLElement
+
+    expect(body).toHaveTextContent('plain 2 * 3 and snake_case_name')
+    expect(body.querySelector('strong, em, u, s, code')).toBeNull()
+  })
+
+  it('keeps the mention link intact when a format range spans it', () => {
+    const review = createReview({
+      marks: [
+        {
+          id: 'comment-1',
+          kind: 'comment',
+          visibleText: 'target',
+          body: 'ping @Planning note now',
+          mentions: [{ kind: 'note', refId: 'note-1', label: 'Planning note' }],
+          formatRanges: [{ start: 0, end: 23, marks: ['bold'] }],
+          start: 0,
+          end: 6
+        }
+      ]
+    })
+
+    const { container } = render(<ReviewRail review={review} />)
+    const link = container.querySelector('a[href="memry://note/note-1"]') as HTMLElement
+
+    expect(link).not.toBeNull()
+    expect(link.textContent).toContain('@Planning note')
+    // The mark wraps around the anchor; it never subdivides it.
+    expect(link.closest('strong')).not.toBeNull()
+    expect(link.querySelector('strong')).toBeNull()
+  })
+
+  it('does not cancel an empty draft when the pointer goes down on the format toolbar', async () => {
+    const review = createReview({ activeDraft: { text: 'draft target' } })
+    render(<ReviewRail review={review} />)
+    await nextFrame()
+
+    const toolbar = document.createElement('div')
+    toolbar.setAttribute('data-comment-format-toolbar', '')
+    document.body.appendChild(toolbar)
+
+    fireEvent.pointerDown(toolbar)
+    expect(review.cancelCommentDraft).not.toHaveBeenCalled()
+
+    fireEvent.pointerDown(document.body)
+    expect(review.cancelCommentDraft).toHaveBeenCalled()
+
+    toolbar.remove()
   })
 })

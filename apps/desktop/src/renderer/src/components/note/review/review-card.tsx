@@ -9,9 +9,13 @@ import type { ClockFormat } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
 import type { CriticMarkupReviewController } from './use-critic-markup-review'
 import { useT } from '@memry/i18n/renderer'
-import type { CriticMarkupCommentMentionRef, CriticMarkupMark } from '@memry/shared'
+import type {
+  CriticMarkupCommentFormatMark,
+  CriticMarkupCommentMentionRef,
+  CriticMarkupMark
+} from '@memry/shared'
 import { CommentAttachments } from './comment-attachments'
-import { iconForMention, splitCommentBody } from './comment-body'
+import { iconForMention, splitCommentBodyWithFormat } from './comment-body'
 import { CommentComposer } from './comment-composer'
 import { syncInlineHoverClass } from './inline-hover'
 
@@ -74,7 +78,8 @@ export function ReviewCard({
           initialValue={{
             body: mark.body ?? '',
             mentions: mark.mentions ?? [],
-            attachments: mark.attachments ?? []
+            attachments: mark.attachments ?? [],
+            formatRanges: mark.formatRanges ?? []
           }}
           onSubmit={(input) => {
             review.updateComment(mark.id, input)
@@ -186,20 +191,48 @@ function CommentDate({
 function CommentBody({ mark }: { mark: CriticMarkupMark }): React.JSX.Element | null {
   if (!mark.body) return null
 
-  const parts = splitCommentBody(mark.body, mark.mentions ?? [])
+  const parts = splitCommentBodyWithFormat(mark.body, mark.mentions ?? [], mark.formatRanges ?? [])
   return (
     <p className="critic-review-body critic-review-text-collapsible">
-      {parts.map((part, index) =>
-        part.kind === 'mention' ? (
-          <CommentMentionLink
-            key={`${part.mention.kind}-${part.mention.refId}-${index}`}
-            mention={part.mention}
-          />
-        ) : (
-          <span key={`text-${index}`}>{part.text}</span>
-        )
-      )}
+      {parts.map((part, index) => (
+        <FormattedCommentPart key={`part-${index}`} marks={part.marks}>
+          {part.kind === 'mention' ? (
+            <CommentMentionLink mention={part.mention} />
+          ) : (
+            <span>{part.text}</span>
+          )}
+        </FormattedCommentPart>
+      ))}
     </p>
+  )
+}
+
+const MARK_ELEMENTS: Record<CriticMarkupCommentFormatMark, 'strong' | 'em' | 'u' | 's' | 'code'> = {
+  bold: 'strong',
+  italic: 'em',
+  underline: 'u',
+  strikethrough: 's',
+  code: 'code'
+}
+
+/**
+ * Wraps a part in its marks outermost-first, so the same mark set always
+ * produces the same DOM. Everything stays inline — the collapsed card clamps
+ * the body with `text-overflow: ellipsis`.
+ */
+function FormattedCommentPart({
+  marks,
+  children
+}: {
+  marks: CriticMarkupCommentFormatMark[]
+  children: React.ReactNode
+}): React.JSX.Element {
+  return marks.reduceRight<React.JSX.Element>(
+    (wrapped, mark) => {
+      const Element = MARK_ELEMENTS[mark]
+      return <Element className="critic-review-body-mark">{wrapped}</Element>
+    },
+    <>{children}</>
   )
 }
 

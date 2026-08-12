@@ -1,5 +1,6 @@
 import {
   normalizeCriticMarkupCommentAttachments,
+  normalizeCriticMarkupCommentFormatRanges,
   normalizeCriticMarkupCommentMentions,
   type CriticMarkupKind,
   type CriticMarkupMark
@@ -65,6 +66,10 @@ function normalizeCriticMarkupMark(value: unknown): CriticMarkupMark | null {
 
   const mentions = normalizeCriticMarkupCommentMentions(mark.mentions)
   const attachments = normalizeCriticMarkupCommentAttachments(mark.attachments)
+  const formatRanges = normalizeCriticMarkupCommentFormatRanges(
+    mark.formatRanges,
+    (typeof mark.body === 'string' ? mark.body : '').trim().length
+  )
 
   return {
     id: mark.id,
@@ -79,7 +84,8 @@ function normalizeCriticMarkupMark(value: unknown): CriticMarkupMark | null {
       ? { createdAt: mark.createdAt }
       : {}),
     ...(mentions ? { mentions } : {}),
-    ...(attachments ? { attachments } : {})
+    ...(attachments ? { attachments } : {}),
+    ...(formatRanges ? { formatRanges } : {})
   }
 }
 
@@ -95,6 +101,7 @@ function toSerializableMark(mark: CriticMarkupMark): Record<string, unknown> {
     ...(mark.metadata !== undefined ? { metadata: mark.metadata } : {}),
     ...(mark.createdAt !== undefined ? { createdAt: mark.createdAt } : {}),
     ...(mark.mentions !== undefined ? { mentions: mark.mentions } : {}),
-    ...(mark.attachments !== undefined ? { attachments: mark.attachments } : {})
+    ...(mark.attachments !== undefined ? { attachments: mark.attachments } : {}),
+    ...(mark.formatRanges !== undefined ? { formatRanges: mark.formatRanges } : {})
   }
 }

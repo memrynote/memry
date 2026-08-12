@@ -239,6 +239,14 @@
     "attachAria": "Attach file",
     "mentionAria": "Mention a person, page or date",
     "sendAria": "Send comment",
+    "formatToolbarAria": "Text formatting",
+    "format": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "underline": "Underline",
+      "strike": "Strikethrough",
+      "code": "Code"
+    },
     "openImageAria": "Open image {name}",
     "openAttachmentAria": "Open attachment {name}",
     "kind": {

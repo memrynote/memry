@@ -881,6 +881,53 @@
   line-height: 16px;
 }
 
+/* Selection toolbar inside the comment composer. Sizing mirrors the note
+   editor's compact formatting popover above so the two read as one system. */
+.critic-comment-format-toolbar {
+  z-index: 50;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 16px 40px color-mix(in srgb, black 24%, transparent);
+}
+
+.critic-comment-format-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.critic-comment-format-button {
+  display: inline-flex;
+  height: 28px;
+  width: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.critic-comment-format-button:hover,
+.critic-comment-format-button[aria-pressed='true'] {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.critic-comment-format-button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+/* Marks in a saved comment stay inline so the collapsed card can still clamp. */
+.critic-review-body-mark {
+  display: inline;
+}
+
 .critic-review-textarea {
   margin-top: 8px;
   min-height: 78px;

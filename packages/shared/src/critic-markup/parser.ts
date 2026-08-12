@@ -1,11 +1,7 @@
 export type CriticMarkupKind = 'addition' | 'deletion' | 'substitution' | 'comment'
 
 export type CriticMarkupCommentMentionKind =
-  | 'note'
-  | 'task'
-  | 'journal'
-  | 'inbox'
-  | 'calendar_event'
+  'note' | 'task' | 'journal' | 'inbox' | 'calendar_event'
 
 export interface CriticMarkupCommentMentionRef {
   kind: CriticMarkupCommentMentionKind
@@ -22,6 +18,17 @@ export interface CriticMarkupCommentAttachmentRef {
   type?: 'image' | 'file'
 }
 
+export type CriticMarkupCommentFormatMark =
+  'bold' | 'italic' | 'underline' | 'strikethrough' | 'code'
+
+/** Inline formatting for a slice of a comment body, as UTF-16 offsets into it. */
+export interface CriticMarkupCommentFormatRange {
+  start: number
+  /** Exclusive. */
+  end: number
+  marks: CriticMarkupCommentFormatMark[]
+}
+
 export interface CriticMarkupMark {
   id: string
   kind: CriticMarkupKind
@@ -34,6 +41,7 @@ export interface CriticMarkupMark {
   createdAt?: number
   mentions?: CriticMarkupCommentMentionRef[]
   attachments?: CriticMarkupCommentAttachmentRef[]
+  formatRanges?: CriticMarkupCommentFormatRange[]
 }
 
 export interface ParsedCriticMarkup {
@@ -166,6 +174,7 @@ export function parseCriticMarkup(markdown: string): ParsedCriticMarkup {
         createdAt: payload.createdAt ?? createdAtFromCommentMarkId(payload.id),
         mentions: payload.mentions,
         attachments: payload.attachments,
+        formatRanges: payload.formatRanges,
         start,
         end: plainText.length
       })
@@ -213,6 +222,7 @@ export function parseCriticMarkup(markdown: string): ParsedCriticMarkup {
         createdAt: payload.createdAt ?? createdAtFromCommentMarkId(payload.id),
         mentions: payload.mentions,
         attachments: payload.attachments,
+        formatRanges: payload.formatRanges,
         start,
         end: start
       })
@@ -246,10 +256,13 @@ export function serializeCriticMarkup(plainText: string, marks: CriticMarkupMark
 }
 
 export function buildCommentPayload(
-  mark: Pick<CriticMarkupMark, 'id' | 'body' | 'metadata' | 'mentions' | 'attachments'>
+  mark: Pick<
+    CriticMarkupMark,
+    'id' | 'body' | 'metadata' | 'mentions' | 'attachments' | 'formatRanges'
+  >
 ) {
-  const metadata = buildCommentMetadata(mark)
   const body = mark.body ?? ''
+  const metadata = buildCommentMetadata(mark, body)
   return `${metadata} | ${body}`
 }
 
@@ -302,6 +315,86 @@ export function normalizeCriticMarkupCommentAttachments(
   return attachments.length > 0 ? attachments : undefined
 }
 
+/** Canonical mark order. Also the outermost-first nesting order when rendered. */
+export const CRITIC_MARKUP_COMMENT_FORMAT_MARKS: CriticMarkupCommentFormatMark[] = [
+  'bold',
+  'italic',
+  'underline',
+  'strikethrough',
+  'code'
+]
+
+const COMMENT_FORMAT_VERSION = 1
+
+/**
+ * Fingerprints the body the ranges were measured against. Offsets desync when
+ * the body is edited outside the app (another client, Obsidian, a hand edit);
+ * a mismatch drops the formatting instead of painting it over the wrong words.
+ */
+export function criticMarkupCommentBodyHash(body: string): string {
+  return hash(body.trim())
+}
+
+export function normalizeCriticMarkupCommentFormatRanges(
+  value: unknown,
+  bodyLength: number
+): CriticMarkupCommentFormatRange[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  const ranges = value.flatMap((item) => {
+    if (!item || typeof item !== 'object') return []
+    const range = item as Record<string, unknown>
+    const start = range.start
+    const end = range.end
+    if (typeof start !== 'number' || !Number.isFinite(start) || start < 0) return []
+    if (typeof end !== 'number' || !Number.isFinite(end) || end <= start) return []
+    if (start >= bodyLength) return []
+
+    const marks = normalizeCommentFormatMarks(range.marks)
+    if (marks.length === 0) return []
+    return [{ start, end: Math.min(end, bodyLength), marks }]
+  })
+
+  // Canonical order: `areCriticMarkupMarksEqual` and the Y.Doc writer both
+  // compare marks by JSON.stringify, so an unstable order reads as a change.
+  ranges.sort((a, b) => a.start - b.start || a.end - b.end)
+  return ranges.length > 0 ? ranges : undefined
+}
+
+export function parseCriticMarkupCommentFormat(
+  encoded: string | undefined,
+  body: string
+): CriticMarkupCommentFormatRange[] | undefined {
+  if (!encoded) return undefined
+  try {
+    const payload = JSON.parse(decodeURIComponent(encoded)) as Record<string, unknown>
+    if (!payload || typeof payload !== 'object') return undefined
+    if (payload.v !== COMMENT_FORMAT_VERSION) return undefined
+    if (payload.hash !== criticMarkupCommentBodyHash(body)) return undefined
+    return normalizeCriticMarkupCommentFormatRanges(payload.ranges, body.length)
+  } catch {
+    return undefined
+  }
+}
+
+function normalizeCommentFormatMarks(value: unknown): CriticMarkupCommentFormatMark[] {
+  if (!Array.isArray(value)) return []
+  const marks = new Set<CriticMarkupCommentFormatMark>()
+  for (const mark of value) {
+    if (isCriticMarkupCommentFormatMark(mark)) marks.add(mark)
+  }
+  return CRITIC_MARKUP_COMMENT_FORMAT_MARKS.filter((mark) => marks.has(mark))
+}
+
+function isCriticMarkupCommentFormatMark(value: unknown): value is CriticMarkupCommentFormatMark {
+  return (
+    value === 'bold' ||
+    value === 'italic' ||
+    value === 'underline' ||
+    value === 'strikethrough' ||
+    value === 'code'
+  )
+}
+
 function serializeMark(mark: CriticMarkupMark, visibleText: string): string {
   switch (mark.kind) {
     case 'addition':
@@ -343,6 +436,7 @@ function parseCommentPayload(payload: string): {
   createdAt?: number
   mentions?: CriticMarkupCommentMentionRef[]
   attachments?: CriticMarkupCommentAttachmentRef[]
+  formatRanges?: CriticMarkupCommentFormatRange[]
 } {
   const separator = payload.indexOf(' | ')
   const metadata = separator === -1 ? undefined : payload.slice(0, separator).trim()
@@ -361,17 +455,20 @@ function parseCommentPayload(payload: string): {
     attachments: parseStructuredCommentMetadata(
       fields.get('attachments'),
       normalizeCriticMarkupCommentAttachments
-    )
+    ),
+    formatRanges: parseCriticMarkupCommentFormat(fields.get('format'), body)
   }
 }
 
 function buildCommentMetadata(
-  mark: Pick<CriticMarkupMark, 'id' | 'metadata' | 'mentions' | 'attachments'>
+  mark: Pick<CriticMarkupMark, 'id' | 'metadata' | 'mentions' | 'attachments' | 'formatRanges'>,
+  body: string
 ): string {
   const metadata = mark.metadata?.trim() || `id=${mark.id};type=comment`
   const hasMentionInput = Array.isArray(mark.mentions)
   const hasAttachmentInput = Array.isArray(mark.attachments)
-  if (!hasMentionInput && !hasAttachmentInput) return metadata
+  const hasFormatInput = Array.isArray(mark.formatRanges)
+  if (!hasMentionInput && !hasAttachmentInput && !hasFormatInput) return metadata
 
   const parts = metadata
     .split(';')
@@ -380,13 +477,27 @@ function buildCommentMetadata(
       const separator = part.indexOf('=')
       if (separator <= 0) return part.length > 0
       const key = part.slice(0, separator)
-      return key !== 'mentions' && key !== 'attachments'
+      return key !== 'mentions' && key !== 'attachments' && key !== 'format'
     })
 
   const mentions = normalizeCriticMarkupCommentMentions(mark.mentions)
   const attachments = normalizeCriticMarkupCommentAttachments(mark.attachments)
+  const trimmedBody = body.trim()
+  const formatRanges = normalizeCriticMarkupCommentFormatRanges(
+    mark.formatRanges,
+    trimmedBody.length
+  )
   if (mentions) parts.push(`mentions=${encodeURIComponent(JSON.stringify(mentions))}`)
   if (attachments) parts.push(`attachments=${encodeURIComponent(JSON.stringify(attachments))}`)
+  // Last, so comments without formatting serialize byte-identically to before.
+  if (formatRanges) {
+    const payload = {
+      v: COMMENT_FORMAT_VERSION,
+      hash: criticMarkupCommentBodyHash(trimmedBody),
+      ranges: formatRanges
+    }
+    parts.push(`format=${encodeURIComponent(JSON.stringify(payload))}`)
+  }
   return parts.join(';') || `id=${mark.id};type=comment`
 }
 
