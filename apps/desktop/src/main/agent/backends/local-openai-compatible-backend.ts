@@ -74,10 +74,6 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
     return this.run(input, false)
   }
 
-  cancel(conversationId: string): void {
-    void conversationId
-  }
-
   async getStatus(): Promise<AgentBackendStatus> {
     const settings = await this.deps.getSettings()
     const apiKey = await this.deps.getApiKey()

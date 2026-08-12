@@ -30,10 +30,6 @@ export class ClaudeCliBackend implements AgentBackend {
     return this.run(input, 'summary')
   }
 
-  cancel(conversationId: string): void {
-    void conversationId
-  }
-
   async getStatus() {
     const status = await detectClaudeBinary()
     return {

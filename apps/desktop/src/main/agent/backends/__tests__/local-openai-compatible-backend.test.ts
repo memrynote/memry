@@ -161,7 +161,6 @@ describe('LocalOpenAICompatibleBackend', () => {
       prompt: 'User: hello',
       options: { backend: 'local_openai_compatible', model: 'llama3.2', toolsEnabled: false }
     })
-    backend.cancel('conversation-1')
 
     expect(mocks.streamText).toHaveBeenCalledWith(
       expect.not.objectContaining({

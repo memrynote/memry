@@ -53,7 +53,6 @@ function trackApprovalDecided(decision: string, result: 'success' | 'failed'): v
 }
 
 export class AgentRuntime {
-  private inFlight = new Map<string, AbortController>()
   private pending = new Map<string, PendingApproval>()
   private subprocesses = new Map<number, TrackedSubprocess>()
   private turnLocks = new Set<string>()
@@ -147,8 +146,12 @@ export class AgentRuntime {
     }
   }
 
+  // Killing the tracked run handles is the whole of cancellation. Every backend
+  // reaches this map: BackendRunHandle requires `kill()`, and turn.ts routes each
+  // handle through trackRunHandle -> trackSubprocess. For the CLI backends that
+  // kill is a signal to a real child; for the in-process local backend it is the
+  // AbortController driving streamText, registered under a negative pseudo-pid.
   cancelTurn(conversationId: string): void {
-    this.inFlight.get(conversationId)?.abort()
     this.denyPendingApprovals(conversationId)
     for (const sub of this.subprocesses.values()) {
       if (sub.conversationId !== conversationId) continue
@@ -235,10 +238,6 @@ export class AgentRuntime {
     }
     await Promise.all(tracked.map((sub) => this.reapSubprocess(sub)))
 
-    for (const controller of this.inFlight.values()) {
-      controller.abort()
-    }
-    this.inFlight.clear()
     this.turnLocks.clear()
 
     const turns = [...this.activeTurns.values()].flatMap((entries) => [...entries])
