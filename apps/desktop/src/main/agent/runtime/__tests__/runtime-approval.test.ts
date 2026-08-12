@@ -24,6 +24,16 @@ function flushMicrotasks(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0))
 }
 
+/**
+ * Real timers, not fake ones: the runtime's deadline is a real `setTimeout` and
+ * these tests assert it fires (and does not fire) on its own.
+ */
+const APPROVAL_TIMEOUT_TEST_MS = 15
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 function broadcastToolCallIds(): string[] {
   return mocks.broadcastAgentEvent.mock.calls
     .map(([event]) => event as { kind: string; toolCallId: string })
@@ -31,7 +41,22 @@ function broadcastToolCallIds(): string[] {
     .map((event) => event.toolCallId)
 }
 
-function createRuntime(toolApprovalMode: 'always_accept' | 'ask' = 'always_accept') {
+function failedToolCallEvents(): {
+  toolCallId: string
+  error: { code: string; message: string }
+}[] {
+  return mocks.broadcastAgentEvent.mock.calls
+    .map(
+      ([event]) =>
+        event as { kind: string; toolCallId: string; error: { code: string; message: string } }
+    )
+    .filter((event) => event.kind === 'tool_call_failed')
+}
+
+function createRuntime(
+  toolApprovalMode: 'always_accept' | 'ask' = 'always_accept',
+  approvalTimeoutMs?: number
+) {
   const conversations = {
     getById: vi.fn(),
     addToTrustList: vi.fn()
@@ -39,7 +64,8 @@ function createRuntime(toolApprovalMode: 'always_accept' | 'ask' = 'always_accep
   const runtime = new AgentRuntime({
     conversations: conversations as unknown as ConversationStore,
     messages: {} as MessageStore,
-    getPreferences: () => ({ accessMode: 'vault_only', toolApprovalMode })
+    getPreferences: () => ({ accessMode: 'vault_only', toolApprovalMode }),
+    approvalTimeoutMs
   })
 
   return { runtime, conversations }
@@ -250,6 +276,118 @@ describe('AgentRuntime approval gate', () => {
       Promise.race([settled, Promise.resolve('still-pending' as const)])
     ).resolves.toMatchObject({ code: 'PERMISSION_DENIED' })
     expect(create).not.toHaveBeenCalled()
+  })
+
+  it('settles an unanswered approval as expired, not as a denial', async () => {
+    const { runtime, conversations } = createRuntime('ask', APPROVAL_TIMEOUT_TEST_MS)
+    conversations.getById.mockReturnValue({ id: 'conversation-1', trustList: [] })
+
+    runtime.install()
+    const pending = installedGate()({
+      conversationId: 'conversation-1',
+      toolName: 'vault_create_task',
+      parsedArgs: { title: 'Task' }
+    })
+    const [toolCallId] = broadcastToolCallIds()
+    expect(runtime.getPendingApproval(toolCallId)).not.toBeNull()
+
+    await delay(APPROVAL_TIMEOUT_TEST_MS * 8)
+
+    // The map entry is gone, so the tool handler, its socket and the args it
+    // pinned are all released without anyone touching the app.
+    expect(runtime.getPendingApproval(toolCallId)).toBeNull()
+    const settled = await Promise.race([pending, Promise.resolve('still-pending' as const)])
+    expect(settled).toEqual({
+      approved: false,
+      reason: expect.stringContaining('expired') as string
+    })
+    // The model must not be told the user refused.
+    expect((settled as { reason: string }).reason).not.toContain('denied')
+
+    const failure = failedToolCallEvents().find((event) => event.toolCallId === toolCallId)
+    expect(failure?.error).toEqual({
+      code: 'APPROVAL_EXPIRED',
+      message: expect.stringContaining('expired') as string
+    })
+    // PERMISSION_DENIED is what the renderer renders as the "Denied" chip.
+    expect(failure?.error.code).not.toBe('PERMISSION_DENIED')
+  })
+
+  it('fails the awaiting write tool on expiry and never executes it', async () => {
+    const { runtime, conversations } = createRuntime('ask', APPROVAL_TIMEOUT_TEST_MS)
+    conversations.getById.mockReturnValue({ id: 'conversation-1', trustList: [] })
+
+    runtime.install()
+    const create = vi.fn(async () => ({ id: 'note-1' }))
+    const createNote = buildWriteTools(
+      { notes: { create } } as unknown as VaultServiceHandles,
+      installedGate()
+    ).find((tool) => tool.name === 'vault_create_note')
+    if (!createNote) throw new Error('vault_create_note is not registered')
+
+    const settled = createNote
+      .handler(
+        { title: 'Notes', content_markdown: 'body' },
+        { conversationId: 'conversation-1', windowId: null }
+      )
+      .then(
+        () => 'resolved-as-approved' as const,
+        (error: unknown) => error
+      )
+
+    await delay(APPROVAL_TIMEOUT_TEST_MS * 8)
+
+    await expect(
+      Promise.race([settled, Promise.resolve('still-pending' as const)])
+    ).resolves.toMatchObject({ message: expect.stringContaining('expired') as string })
+    expect(create).not.toHaveBeenCalled()
+  })
+
+  it('cancels the deadline when the user decides in time', async () => {
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout')
+    const { runtime, conversations } = createRuntime('ask', APPROVAL_TIMEOUT_TEST_MS)
+    conversations.getById.mockReturnValue({ id: 'conversation-1', trustList: [] })
+
+    runtime.install()
+    const pending = installedGate()({
+      conversationId: 'conversation-1',
+      toolName: 'vault_create_task',
+      parsedArgs: { title: 'Task' }
+    })
+    const [toolCallId] = broadcastToolCallIds()
+
+    runtime.resolveApproval(toolCallId, { kind: 'allow' })
+    await expect(pending).resolves.toEqual({ approved: true, args: { title: 'Task' } })
+    expect(clearTimeoutSpy).toHaveBeenCalled()
+
+    await delay(APPROVAL_TIMEOUT_TEST_MS * 8)
+
+    // An orphaned timer would fire here and broadcast a failure for a tool call
+    // the user already approved.
+    expect(failedToolCallEvents()).toEqual([])
+    clearTimeoutSpy.mockRestore()
+  })
+
+  /**
+   * Guards the deliberate decision NOT to truncate retained args: `previewDiff`
+   * reads this snapshot to build the approval diff, so a slice would show the
+   * user a partial version of what they are consenting to.
+   */
+  it('keeps the full args a pending approval was raised with', async () => {
+    const { runtime, conversations } = createRuntime('ask')
+    conversations.getById.mockReturnValue({ id: 'conversation-1', trustList: [] })
+
+    runtime.install()
+    const args = { id: 'note-1', content_markdown: 'x'.repeat(64 * 1024) }
+    void installedGate()({
+      conversationId: 'conversation-1',
+      toolName: 'vault_update_note',
+      parsedArgs: args
+    })
+    const [toolCallId] = broadcastToolCallIds()
+
+    expect(runtime.getPendingApproval(toolCallId)?.args).toEqual(args)
+    runtime.cancelTurn('conversation-1')
   })
 
   it('denies pending approvals and clears the MCP write gate on shutdown', async () => {

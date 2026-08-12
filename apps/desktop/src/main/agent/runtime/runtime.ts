@@ -11,11 +11,29 @@ import { decideToolGate } from './permission-gate'
 
 const logger = createLogger('AgentRuntime')
 
+/**
+ * What a pending approval can settle as. `expired` is runtime-only: the user
+ * never answered and the runtime settled the request itself. It is deliberately
+ * NOT an `ApproveToolDecision` — nothing outside this file may produce it, and
+ * it must never be reported to the user or the model as a denial.
+ */
+type ApprovalOutcome = ApproveToolDecision | { kind: 'expired' }
+
 interface PendingApproval {
-  resolve: (decision: ApproveToolDecision) => void
+  resolve: (outcome: ApprovalOutcome) => void
+  timer: ReturnType<typeof setTimeout>
   conversationId: string
   toolCallId: string
   name: string
+  /**
+   * Kept whole, on purpose. Slicing this frees nothing: it is the same object
+   * the suspended MCP tool handler already holds across its await
+   * (`write-tools.ts` gateOrDeny) and that the gate closure below reads after
+   * its own await. And it is the only source `agent:previewDiff` has for the
+   * approval diff, so a slice would break the preview on exactly the large
+   * notes that would motivate slicing. Bounding the lifetime — the deadline
+   * below — is what actually releases it.
+   */
   args: unknown
   requiresDiff: boolean
 }
@@ -35,13 +53,39 @@ interface TrackedSubprocess {
 // for a hang and lose the escalation entirely when main exits first.
 const KILL_REAP_BUDGET_MS = 1200
 
+// How long an approval may sit unanswered before the runtime settles it itself.
+//
+// Without a deadline the entry lives as long as the app: it pins the parsed
+// args, the suspended MCP tool handler, its HTTP response and socket, and the
+// per-request McpServer behind it — the same chain that blocks server.close()
+// at quit. One prompt left on screen while the user walks away is enough.
+//
+// Half an hour, not the five minutes the issue first suggested. Auto-denying is
+// the one outcome we must not get wrong: the model is told the call did not go
+// through, and a deadline that can elapse while someone reads a diff turns
+// "I stepped away" into "the user refused". Against a leak measured in days,
+// the retention difference between 5 and 30 minutes is noise, while the odds of
+// firing under a reader's hands are not. Deliberately not gated on window
+// focus either — the leak *is* the app sitting in the background, so a
+// focus-gated timer would never fire in the case it exists to bound, and an
+// approval can sit in a window the user is not currently looking at.
+const APPROVAL_TIMEOUT_MS = 30 * 60 * 1000
+
+// Shown to the user in the failed tool call, and handed to the model as the
+// gate's reason. Both have to say "expired", never "denied" — the user did not
+// refuse anything, and the model must not tell them they did.
+const APPROVAL_EXPIRED_MESSAGE =
+  'Approval request expired after 30 minutes with no answer. This was not a denial — the tool did not run; ask again if it is still needed.'
+
 export interface AgentRuntimeDeps {
   conversations: ConversationStore
   messages: MessageStore
   getPreferences?: () => AgentPreferences
+  /** Overridable for tests. Defaults to {@link APPROVAL_TIMEOUT_MS}. */
+  approvalTimeoutMs?: number
 }
 
-export type PendingApprovalSnapshot = Omit<PendingApproval, 'resolve'>
+export type PendingApprovalSnapshot = Omit<PendingApproval, 'resolve' | 'timer'>
 
 function trackApprovalDecided(decision: string, result: 'success' | 'failed'): void {
   trackMainEvent('ai_action_completed', {
@@ -106,10 +150,16 @@ export class AgentRuntime {
       })
       // Shutdown resolves every pending approval as deny; label that
       // abandonment distinctly so the funnel separates it from a real "No".
+      // An expiry is its own label for the same reason: neither is a decision
+      // the user made, and collapsing them into `deny` would overstate how
+      // often people actually refuse a tool call.
       trackApprovalDecided(
         this.isShuttingDown && userDecision.kind === 'deny' ? 'abandoned' : userDecision.kind,
-        userDecision.kind === 'deny' ? 'failed' : 'success'
+        userDecision.kind === 'deny' || userDecision.kind === 'expired' ? 'failed' : 'success'
       )
+      if (userDecision.kind === 'expired') {
+        return { approved: false, reason: APPROVAL_EXPIRED_MESSAGE }
+      }
       if (userDecision.kind === 'deny') {
         return { approved: false, reason: 'User denied request.' }
       }
@@ -124,14 +174,9 @@ export class AgentRuntime {
   }
 
   resolveApproval(toolCallId: string, decision: ApproveToolDecision): void {
-    const pending = this.pending.get(toolCallId)
-    if (!pending) {
+    if (!this.settleApproval(toolCallId, decision)) {
       logger.warn(`Stale approval for ${toolCallId}`)
-      return
     }
-
-    pending.resolve(decision)
-    this.pending.delete(toolCallId)
   }
 
   getPendingApproval(toolCallId: string): PendingApprovalSnapshot | null {
@@ -223,10 +268,9 @@ export class AgentRuntime {
     this.isShuttingDown = true
     setMcpWriteGate(null)
 
-    for (const approval of this.pending.values()) {
-      approval.resolve({ kind: 'deny' })
+    for (const toolCallId of [...this.pending.keys()]) {
+      this.settleApproval(toolCallId, { kind: 'deny' })
     }
-    this.pending.clear()
 
     const tracked = [...this.subprocesses.values()]
     for (const sub of tracked) {
@@ -279,10 +323,9 @@ export class AgentRuntime {
    * never runs.
    */
   private denyPendingApprovals(conversationId: string): void {
-    for (const [toolCallId, approval] of this.pending) {
+    for (const [toolCallId, approval] of [...this.pending]) {
       if (approval.conversationId !== conversationId) continue
-      this.pending.delete(toolCallId)
-      approval.resolve({ kind: 'deny' })
+      this.settleApproval(toolCallId, { kind: 'deny' })
       // The approval card is only ever cleared by a decision event; without
       // this the cancelled turn leaves a dead card the user can still click.
       broadcastAgentEvent({
@@ -294,9 +337,56 @@ export class AgentRuntime {
     }
   }
 
-  private waitForApproval(input: PendingApprovalSnapshot): Promise<ApproveToolDecision> {
+  /**
+   * Nobody answered in time. Settle the awaiting tool call so its MCP handler,
+   * socket and per-request server are released, and clear the card the user
+   * left on screen.
+   *
+   * The code is `APPROVAL_EXPIRED`, not `PERMISSION_DENIED`: the renderer maps
+   * `PERMISSION_DENIED` to the "Denied" chip, which would tell the user they
+   * refused something they never saw a decision on. Any other code lands on the
+   * generic error chip and surfaces the message below, which says what actually
+   * happened. Card clearing does not depend on the code — the reducer drops the
+   * pending approval for every `tool_call_failed`.
+   */
+  private expireApproval(toolCallId: string): void {
+    const approval = this.settleApproval(toolCallId, { kind: 'expired' })
+    if (!approval) return
+
+    logger.warn(`Approval ${toolCallId} expired with no decision`)
+    broadcastAgentEvent({
+      kind: 'tool_call_failed',
+      conversationId: approval.conversationId,
+      toolCallId,
+      error: { code: 'APPROVAL_EXPIRED', message: APPROVAL_EXPIRED_MESSAGE }
+    })
+  }
+
+  /**
+   * The single exit for a pending approval: drop the entry, cancel its
+   * deadline, then resolve. Clearing the timer matters as much as deleting the
+   * entry — an orphaned timer would fire on an id that is gone and, before
+   * `unref`, would also have kept the event loop alive.
+   */
+  private settleApproval(toolCallId: string, outcome: ApprovalOutcome): PendingApproval | null {
+    const approval = this.pending.get(toolCallId)
+    if (!approval) return null
+
+    clearTimeout(approval.timer)
+    this.pending.delete(toolCallId)
+    approval.resolve(outcome)
+    return approval
+  }
+
+  private waitForApproval(input: PendingApprovalSnapshot): Promise<ApprovalOutcome> {
     return new Promise((resolve) => {
-      this.pending.set(input.toolCallId, { ...input, resolve })
+      const timer = setTimeout(
+        () => this.expireApproval(input.toolCallId),
+        this.deps.approvalTimeoutMs ?? APPROVAL_TIMEOUT_MS
+      )
+      // An unanswered prompt must not be the reason the process refuses to exit.
+      timer.unref?.()
+      this.pending.set(input.toolCallId, { ...input, resolve, timer })
     })
   }
 }
