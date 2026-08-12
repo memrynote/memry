@@ -367,6 +367,105 @@ describe('viewer components', () => {
     expect(mocks.useT).toHaveBeenCalledTimes(1)
   })
 
+  // Zoom mixes 0.1 wheel steps with 0.25 button steps and those do not round-trip in binary
+  // floating point. Nothing below sets a scale directly: each test drives real events, so the
+  // values under test are whatever the component actually accumulates.
+  it('recenters when a wheel step lands back on a displayed 100%', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<ImageViewer src="memry-file://drift-down.png" alt="DriftDown" />)
+    const image = screen.getByRole('img', { name: 'DriftDown' })
+    const imageContainer = image.parentElement as HTMLDivElement
+    const [zoomOutButton, zoomInButton] = container.querySelectorAll('button')
+
+    // wheel-down, zoom-in, zoom-out, wheel-up leaves 0.9999999999999999, shown as "100%".
+    fireEvent.wheel(imageContainer, { deltaY: 1 })
+    await user.click(zoomInButton)
+    expect(screen.getByText('115%')).toBeInTheDocument()
+
+    fireEvent.mouseDown(imageContainer, { clientX: 100, clientY: 100 })
+    fireEvent.mouseMove(window, { clientX: 140, clientY: 170 })
+    fireEvent.mouseUp(window)
+    expect(image.style.transform).toBe('translate(40px, 70px) scale(1.15) rotate(0deg)')
+
+    await user.click(zoomOutButton)
+    fireEvent.wheel(imageContainer, { deltaY: -1 })
+
+    expect(screen.getByText('100%')).toBeInTheDocument()
+    expect(image.style.transform).toBe('translate(0px, 0px) scale(1) rotate(0deg)')
+  })
+
+  it('does not leave drag-to-pan armed at a displayed 100%', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<ImageViewer src="memry-file://drift-up.png" alt="DriftUp" />)
+    const image = screen.getByRole('img', { name: 'DriftUp' })
+    const imageContainer = image.parentElement as HTMLDivElement
+    const [zoomOutButton, zoomInButton] = container.querySelectorAll('button')
+
+    // The mirror sequence lands on 1.0000000000000002 — also "100%", but above 1, so the
+    // pan affordances stayed switched on at what the toolbar called natural size.
+    fireEvent.wheel(imageContainer, { deltaY: -1 })
+    fireEvent.wheel(imageContainer, { deltaY: -1 })
+    expect(screen.getByText('120%')).toBeInTheDocument()
+
+    fireEvent.mouseDown(imageContainer, { clientX: 100, clientY: 100 })
+    fireEvent.mouseMove(window, { clientX: 140, clientY: 170 })
+    fireEvent.mouseUp(window)
+
+    await user.click(zoomOutButton)
+    fireEvent.wheel(imageContainer, { deltaY: 1 })
+    fireEvent.wheel(imageContainer, { deltaY: 1 })
+    await user.click(zoomInButton)
+
+    expect(screen.getByText('100%')).toBeInTheDocument()
+    expect(image.style.transform).toBe('translate(0px, 0px) scale(1) rotate(0deg)')
+    expect(screen.queryByText('phaseF.componentsViewersImageViewer.dragToPan')).toBeNull()
+    expect(imageContainer.className).toContain('cursor-default')
+  })
+
+  it('still recenters on a toolbar-only round trip to 100%', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<ImageViewer src="memry-file://toolbar.png" alt="Toolbar" />)
+    const image = screen.getByRole('img', { name: 'Toolbar' })
+    const imageContainer = image.parentElement as HTMLDivElement
+    const [zoomOutButton, zoomInButton] = container.querySelectorAll('button')
+
+    await user.click(zoomInButton)
+    expect(screen.getByText('125%')).toBeInTheDocument()
+
+    fireEvent.mouseDown(imageContainer, { clientX: 100, clientY: 100 })
+    fireEvent.mouseMove(window, { clientX: 140, clientY: 170 })
+    fireEvent.mouseUp(window)
+    expect(image.style.transform).toBe('translate(40px, 70px) scale(1.25) rotate(0deg)')
+
+    await user.click(zoomOutButton)
+    expect(screen.getByText('100%')).toBeInTheDocument()
+    expect(image.style.transform).toBe('translate(0px, 0px) scale(1) rotate(0deg)')
+  })
+
+  it('leaves a genuine 105% zoom alone instead of snapping it to 100%', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<ImageViewer src="memry-file://real-zoom.png" alt="RealZoom" />)
+    const image = screen.getByRole('img', { name: 'RealZoom' })
+    const imageContainer = image.parentElement as HTMLDivElement
+    const zoomInButton = container.querySelectorAll('button')[1]
+
+    await user.click(zoomInButton)
+    fireEvent.mouseDown(imageContainer, { clientX: 100, clientY: 100 })
+    fireEvent.mouseMove(window, { clientX: 140, clientY: 170 })
+    fireEvent.mouseUp(window)
+
+    // 1.25 -> 1.15 -> 1.0499999999999998: a zoom level the user picked, 0.05 away from 1 and
+    // so nowhere near the snap tolerance. It must keep its offset and its pan affordances.
+    fireEvent.wheel(imageContainer, { deltaY: 1 })
+    fireEvent.wheel(imageContainer, { deltaY: 1 })
+
+    expect(screen.getByText('105%')).toBeInTheDocument()
+    expect(image.style.transform).toBe(
+      'translate(40px, 70px) scale(1.0499999999999998) rotate(0deg)'
+    )
+    expect(screen.getByText('phaseF.componentsViewersImageViewer.dragToPan')).toBeInTheDocument()
+  })
+
   it('loads PDFs, navigates pages, changes zoom/sidebar/rotation, and reports load errors', async () => {
     const user = userEvent.setup()
     const { container } = render(<PdfViewer src="memry-file://spec.pdf" />)
