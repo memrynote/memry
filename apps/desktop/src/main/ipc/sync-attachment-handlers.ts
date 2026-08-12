@@ -34,6 +34,7 @@ import {
   enqueueUpload,
   clearUpload,
   markUploadFailed,
+  registerAttachmentQueueReset,
   registerOutboxUploader
 } from '../sync/attachment-outbox'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
@@ -198,6 +199,26 @@ export function getCanvasAssetIO(): {
   }
 }
 
+/**
+ * Drop both attachment singletons so the next sync runtime builds them fresh.
+ *
+ * Nulling `uploadQueue` is not optional bookkeeping: the queue captured
+ * `getNetworkMonitor()` at construction and only unsubscribes in `dispose()`, so
+ * a queue reused across a runtime restart stays bound to the PREVIOUS,
+ * now-stopped NetworkMonitor — whose `online` flag is frozen and which never
+ * emits 'status-changed' again. The reconnect wake-up would be dead for the rest
+ * of the session. `attachmentService` goes with it because its key/device
+ * closures resolve `getDatabase()` lazily, so a carried-over service would sign
+ * and encrypt vault A's leftovers with vault B's key.
+ *
+ * Pending uploads are rejected by `dispose()` rather than carried over. That is
+ * deliberate and safe for note attachments: the intent row is persisted to the
+ * attachment outbox BEFORE the upload is attempted, the rejection is recorded by
+ * `markUploadFailed`, and the next `startSyncRuntime()` re-drives it via
+ * `drainAttachmentOutbox()`. Carrying items across would be the actual data bug.
+ *
+ * Idempotent — the runtime teardown and session teardown both call it.
+ */
 export function clearAttachmentState(): void {
   if (uploadQueue) {
     uploadQueue.dispose()
@@ -318,6 +339,10 @@ export function registerAttachmentHandlers(): void {
     },
     'errors:attachment.downloadProgressFailed'
   )
+
+  // The sync runtime owns the queue's lifetime (it owns the NetworkMonitor the
+  // queue binds to), so hand it the disposer to call on every teardown.
+  registerAttachmentQueueReset(clearAttachmentState)
 
   registerOutboxUploader(
     async (noteId, diskPath) => {
@@ -453,6 +478,8 @@ export function registerAttachmentHandlers(): void {
 
 export function unregisterAttachmentHandlers(): void {
   registerOutboxUploader(null, null, null)
+  registerAttachmentQueueReset(null)
+  clearAttachmentState()
   attachmentEvents.removeAllListeners('saved')
   attachmentEvents.removeAllListeners('download-needed')
 

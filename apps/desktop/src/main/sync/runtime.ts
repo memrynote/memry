@@ -34,6 +34,7 @@ import { initProjectSyncService, resetProjectSyncService } from './project-sync'
 import { initSettingsSyncManager, resetSettingsSyncManager } from './settings-sync'
 import { initNoteSyncService, resetNoteSyncService } from './note-sync'
 import { resetRequestedAttachmentDownloads } from './item-handlers/note-handler'
+import { resetAttachmentQueue } from './attachment-outbox'
 import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
 import { initTagDefinitionSyncService, resetTagDefinitionSyncService } from './tag-definition-sync'
 import { initTagCategorySyncService, resetTagCategorySyncService } from './tag-category-sync'
@@ -196,6 +197,11 @@ function resetSyncServiceSingletons(): void {
   // Module-level state on the note item handler, not a service singleton, but
   // it is per-vault and torn down on exactly the same paths.
   resetRequestedAttachmentDownloads()
+  // The attachment UploadQueue lives in the IPC layer but captures THIS
+  // runtime's NetworkMonitor, so it has to die with the runtime: a carried-over
+  // queue stays subscribed to a stopped monitor (reconnect wake-up dead, its
+  // `online` flag frozen) and would upload vault A's leftovers under vault B.
+  resetAttachmentQueue()
 }
 
 function getCurrentDeviceId(db: DataDb): string | null {

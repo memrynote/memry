@@ -162,6 +162,7 @@ type RegisteredUploader = (noteId: string, diskPath: string) => Promise<{ attach
 let registeredUploader: RegisteredUploader | null = null
 let getDbForDrain: (() => DrizzleDb) | null = null
 let onUploadedForDrain: ((noteId: string, attachmentId: string) => void) | null = null
+let registeredQueueReset: (() => void) | null = null
 let draining = false
 
 export function registerOutboxUploader(
@@ -172,6 +173,24 @@ export function registerOutboxUploader(
   registeredUploader = uploader
   getDbForDrain = getDb
   onUploadedForDrain = onUploaded
+}
+
+/**
+ * The IPC layer owns the UploadQueue singleton, but the sync RUNTIME owns its
+ * lifetime: the queue subscribes to the NetworkMonitor of the runtime that
+ * built it and only detaches in dispose(). A queue that outlives its runtime is
+ * therefore bound to a stopped monitor, whose `online` flag is frozen and which
+ * can never emit 'status-changed' again — so the reconnect wake-up is dead and
+ * the queue can still serve the wrong vault. The IPC layer registers its
+ * disposer here; the runtime calls it on every teardown.
+ */
+export function registerAttachmentQueueReset(reset: (() => void) | null): void {
+  registeredQueueReset = reset
+}
+
+/** No-ops until the IPC layer has registered a disposer. */
+export function resetAttachmentQueue(): void {
+  registeredQueueReset?.()
 }
 
 export async function drainAttachmentOutbox(): Promise<void> {
