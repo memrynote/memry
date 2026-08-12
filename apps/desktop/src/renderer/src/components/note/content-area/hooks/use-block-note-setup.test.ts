@@ -44,6 +44,51 @@ function createEditor(options?: { registerCreatesExtension?: boolean }) {
   return { editor, getAIExtension: () => aiExtension }
 }
 
+/**
+ * Build the real editor DOM shape — `.bn-container` (the ref'd element) wrapping
+ * a `.bn-editor` surface — and attach it to the document so an unscoped
+ * `document.querySelector('.bn-editor')` can find it too.
+ */
+function mountEditorSurface(container: HTMLElement, href: string): HTMLElement {
+  const editorElement = document.createElement('div')
+  editorElement.className = 'bn-editor'
+  editorElement.innerHTML = `
+      <button data-wiki-link data-target=" Launch Plan ">wiki</button>
+      <a href="${href}">external</a>
+      <a href="#local">local</a>
+    `
+  container.appendChild(editorElement)
+  if (!container.isConnected) document.body.appendChild(container)
+  return editorElement
+}
+
+/** One split-view pane: its own container, its own `.bn-editor`, its own callbacks. */
+function createPane(href: string) {
+  const container = document.createElement('div')
+  container.className = 'bn-container'
+  const editorElement = mountEditorSurface(container, href)
+  const { editor } = createEditor()
+  const onLinkClick = vi.fn()
+  const onInternalLinkClick = vi.fn()
+
+  return {
+    container,
+    editor,
+    onLinkClick,
+    onInternalLinkClick,
+    params: {
+      editorContainerRef: { current: container } as React.RefObject<HTMLDivElement | null>,
+      onLinkClick,
+      onInternalLinkClick
+    },
+    clickExternalLink: (): void => {
+      editorElement
+        .querySelector(`a[href="${href}"]`)!
+        .dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    }
+  }
+}
+
 describe('useBlockNoteSetup', () => {
   let editorContainerRef: React.RefObject<HTMLDivElement | null>
 
@@ -193,14 +238,7 @@ describe('useBlockNoteSetup', () => {
     const onLinkClick = vi.fn()
     const onInternalLinkClick = vi.fn()
     const wikiEvent = vi.fn()
-    const editorElement = document.createElement('div')
-    editorElement.className = 'bn-editor'
-    editorElement.innerHTML = `
-      <button data-wiki-link data-target=" Launch Plan ">wiki</button>
-      <a href="https://memry.app">external</a>
-      <a href="#local">local</a>
-    `
-    document.body.appendChild(editorElement)
+    const editorElement = mountEditorSurface(editorContainerRef.current!, 'https://memry.app')
     window.addEventListener('wikilink:click', wikiEvent)
 
     const { unmount } = renderHook(() =>
@@ -229,6 +267,42 @@ describe('useBlockNoteSetup', () => {
 
     unmount()
     window.removeEventListener('wikilink:click', wikiEvent)
+  })
+
+  it('binds each split-view pane to its own editor surface', () => {
+    const left = createPane('https://left.example')
+    const right = createPane('https://right.example')
+
+    renderHook(() => useBlockNoteSetup({ editor: left.editor, ...left.params }))
+    renderHook(() => useBlockNoteSetup({ editor: right.editor, ...right.params }))
+
+    left.clickExternalLink()
+
+    expect(left.onLinkClick).toHaveBeenCalledTimes(1)
+    expect(left.onLinkClick).toHaveBeenCalledWith('https://left.example')
+    expect(right.onLinkClick).not.toHaveBeenCalled()
+
+    right.clickExternalLink()
+
+    expect(right.onLinkClick).toHaveBeenCalledTimes(1)
+    expect(right.onLinkClick).toHaveBeenCalledWith('https://right.example')
+    expect(left.onLinkClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the surviving pane wired after the other split-view pane unmounts', () => {
+    const left = createPane('https://left.example')
+    const right = createPane('https://right.example')
+
+    const leftHook = renderHook(() => useBlockNoteSetup({ editor: left.editor, ...left.params }))
+    renderHook(() => useBlockNoteSetup({ editor: right.editor, ...right.params }))
+
+    leftHook.unmount()
+    left.container.remove()
+
+    right.clickExternalLink()
+
+    expect(right.onLinkClick).toHaveBeenCalledWith('https://right.example')
+    expect(left.onLinkClick).not.toHaveBeenCalled()
   })
 
   it('opens the AI menu with the keyboard shortcut when a block is selected', async () => {
