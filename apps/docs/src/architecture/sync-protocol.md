@@ -589,3 +589,8 @@ the session its worker — so a successful batch resets the count and only conse
 Waiting longer is expensive, because the penalty is paid in whole minutes. The thread is left alive
 rather than terminated, and restarting the sync runtime gives the bridge a fresh worker and a clean
 count.
+
+Shutting the bridge down asks the worker to exit and waits three seconds before terminating it. A
+worker that misses that window is fully detached first, so the exit that terminating eventually
+produces cannot land on a bridge that has already been restarted and cancel the new worker's
+in-flight batches.

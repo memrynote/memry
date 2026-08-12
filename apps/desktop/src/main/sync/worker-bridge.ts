@@ -290,17 +290,26 @@ export class SyncWorkerBridge {
     this.worker.postMessage({ type: 'shutdown' } satisfies MainToWorkerMessage)
 
     await new Promise<void>((resolve) => {
-      const timeout = setTimeout(() => {
-        this.rejectAll(new Error('Worker shutdown timeout'))
-        void this.worker?.terminate()
-        resolve()
-      }, 3_000)
+      const worker = this.worker!
 
-      this.worker!.once('exit', () => {
+      const onExit = (): void => {
         this.rejectAll(new Error('Worker exited'))
         clearTimeout(timeout)
         resolve()
-      })
+      }
+
+      const timeout = setTimeout(() => {
+        // Detach before terminating. terminate() still emits 'exit', and a
+        // stop()/start() cycle can have handed the bridge a fresh worker by
+        // then — the stale handler would reject that worker's in-flight
+        // requests with 'Worker exited'.
+        worker.off('exit', onExit)
+        this.rejectAll(new Error('Worker shutdown timeout'))
+        void worker.terminate()
+        resolve()
+      }, 3_000)
+
+      worker.once('exit', onExit)
     })
 
     this.worker = null

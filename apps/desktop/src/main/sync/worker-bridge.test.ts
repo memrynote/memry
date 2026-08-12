@@ -166,6 +166,63 @@ describe('SyncWorkerBridge', () => {
       expect(bridge.isRunning).toBe(false)
     })
 
+    it('#then drops the shutdown exit listener when the 3s timeout fires', async () => {
+      // #given
+      const p = bridge.start()
+      mockWorkerInstance.simulateMessage({ type: 'ready' })
+      await p
+      const exitListenersBefore = mockWorkerInstance.listenerCount('exit')
+
+      // #when
+      const stopPromise = bridge.stop()
+      expect(mockWorkerInstance.listenerCount('exit')).toBe(exitListenersBefore + 1)
+      vi.advanceTimersByTime(3_001)
+      await stopPromise
+
+      // #then — only setupMessageHandler's listener is left
+      expect(mockWorkerInstance.listenerCount('exit')).toBe(exitListenersBefore)
+    })
+
+    it('#then a late exit from the timed-out worker cannot reject a restarted bridge', async () => {
+      // #given — a stop() that hit the 3s timeout
+      const p = bridge.start()
+      mockWorkerInstance.simulateMessage({ type: 'ready' })
+      await p
+      const abandonedWorker = mockWorkerInstance
+
+      const stopPromise = bridge.stop()
+      vi.advanceTimersByTime(3_001)
+      await stopPromise
+
+      // #and — the bridge is restarted on a fresh thread
+      const restart = bridge.start()
+      mockWorkerInstance.simulateMessage({ type: 'ready' })
+      await restart
+      expect(mockWorkerInstance).not.toBe(abandonedWorker)
+
+      const encryptPromise = bridge.encryptBatch(
+        [],
+        new Uint8Array(32),
+        new Uint8Array(64),
+        'device-1'
+      )
+
+      // #when — terminate() lands and the abandoned thread finally reports exit
+      abandonedWorker.simulateExit(0)
+
+      // #then — the new worker's in-flight request is untouched by the old thread
+      const posted = mockWorkerInstance.postMessage.mock.calls.find(
+        ([m]) => m.type === 'encrypt-batch'
+      )![0]
+      mockWorkerInstance.simulateMessage({
+        type: 'encrypt-batch-result',
+        requestId: posted.requestId,
+        results: [],
+        errors: []
+      })
+      await expect(encryptPromise).resolves.toEqual({ results: [], errors: [] })
+    })
+
     it('#then no-ops if not running', async () => {
       // #given bridge never started
       // #when / #then
