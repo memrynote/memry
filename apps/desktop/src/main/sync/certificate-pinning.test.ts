@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type tls from 'node:tls'
+import { PINNED_CERTIFICATE_HASHES_BY_HOST } from './certificate-pins'
 
 const mockApp = vi.hoisted(() => ({ isPackaged: false }))
 
@@ -23,6 +24,8 @@ import {
   computeSpkiHashFromPem,
   verifyCertificatePin,
   createPinnedAgent,
+  getSharedPinnedAgent,
+  resetSharedPinnedAgent,
   CertificatePinningError,
   getPinnedCertificateHashes,
   isPinningDisabled,
@@ -261,6 +264,71 @@ describe('certificate-pinning', () => {
       expect(agent).toBeDefined()
       expect(agent.options.checkServerIdentity).toBeUndefined()
       expect(agent.options.rejectUnauthorized).not.toBe(false)
+    })
+  })
+
+  describe('getSharedPinnedAgent', () => {
+    const STAGING_HOST = 'sync-staging.memrynote.com'
+
+    beforeEach(() => {
+      resetSharedPinnedAgent()
+    })
+
+    it('#given repeated connects #then hands back the same agent instance', () => {
+      // #when — what a WebSocket reconnect loop does
+      const first = getSharedPinnedAgent()
+      const second = getSharedPinnedAgent()
+      const third = getSharedPinnedAgent()
+
+      // #then
+      expect(second).toBe(first)
+      expect(third).toBe(first)
+    })
+
+    it('#given the pinning decision flips #then rebuilds and destroys the stale agent', () => {
+      // #given a dev-mode (pinning disabled) agent
+      const devAgent = getSharedPinnedAgent()
+      const destroySpy = vi.spyOn(devAgent, 'destroy')
+
+      // #when the construction-time decision changes
+      mockApp.isPackaged = true
+      const packagedAgent = getSharedPinnedAgent()
+
+      // #then the cached instance is not reused under the new decision
+      expect(packagedAgent).not.toBe(devAgent)
+      expect(destroySpy).toHaveBeenCalled()
+    })
+
+    it('#given a pinned host #then an updated pin table applies to the already-shared agent', () => {
+      // #given a packaged build pinned to a host with real (non-placeholder) pins
+      vi.stubEnv('SYNC_SERVER_URL', `https://${STAGING_HOST}`)
+      mockApp.isPackaged = true
+      const originalPins = PINNED_CERTIFICATE_HASHES_BY_HOST[STAGING_HOST]
+
+      try {
+        const agent = getSharedPinnedAgent()
+        const checkServerIdentity = agent.options.checkServerIdentity
+        expect(checkServerIdentity).toBeDefined()
+
+        // A cert whose SPKI hash is not in the table. subjectaltname makes the
+        // stock TLS hostname check pass so the pin check is what decides.
+        const cert = {
+          ...makeMockCertWithRaw(getTestCertDer()),
+          subjectaltname: `DNS:${STAGING_HOST}`
+        } as tls.PeerCertificate
+
+        // #then it is rejected
+        expect(checkServerIdentity!(STAGING_HOST, cert)).toBeInstanceOf(CertificatePinningError)
+
+        // #when the pin table is updated to trust it — no restart, no cache flush
+        PINNED_CERTIFICATE_HASHES_BY_HOST[STAGING_HOST] = [computeSpkiHashFromPem(TEST_CERT_PEM)]
+
+        // #then the SAME already-shared agent honours the new pins: the check
+        // resolves them per handshake, so reuse never freezes a pin decision
+        expect(checkServerIdentity!(STAGING_HOST, cert)).toBeUndefined()
+      } finally {
+        PINNED_CERTIFICATE_HASHES_BY_HOST[STAGING_HOST] = originalPins
+      }
     })
   })
 

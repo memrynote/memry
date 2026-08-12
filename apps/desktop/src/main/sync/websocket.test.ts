@@ -25,7 +25,7 @@ const { MockWebSocket, getInstances, resetInstances } = vi.hoisted(() => {
 
     constructor(
       public url: string,
-      public options?: { headers?: Record<string, string> }
+      public options?: { headers?: Record<string, string>; agent?: unknown }
     ) {
       super()
       instances.push(this)
@@ -138,6 +138,25 @@ describe('WebSocketManager', () => {
 
       await vi.advanceTimersByTimeAsync(2_000)
       expect(getInstances().length).toBe(3)
+    })
+
+    it('#then reuses one pinned agent across reconnects', async () => {
+      // #given a wss endpoint, so the pinned agent is actually attached
+      const manager = new WebSocketManager(
+        createMockDeps({ serverUrl: 'https://sync.memrynote.com' })
+      )
+
+      // #when the socket drops and the manager reconnects
+      await manager.connect()
+      const firstAgent = lastWs().options?.agent
+      lastWs().simulateOpen()
+      lastWs().simulateClose()
+      await vi.advanceTimersByTimeAsync(2_000)
+
+      // #then the reconnect did not allocate a second agent
+      expect(getInstances().length).toBe(2)
+      expect(firstAgent).toBeDefined()
+      expect(lastWs().options?.agent).toBe(firstAgent)
     })
   })
 
