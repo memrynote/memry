@@ -322,12 +322,14 @@ describe('more major hooks coverage', () => {
     ;(Notification as unknown as { permission: string }).permission = 'granted'
     callback({ items: [{ id: 'item-a', title: 'Read paper' }] })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['inbox', 'lists'] })
+    // `t` is stubbed to echo its key here, so these assert the wiring; the
+    // rendered copy is covered in use-inbox-notifications.test.tsx.
     expect(Notification).toHaveBeenCalledWith('Read paper', {
-      body: 'Your snoozed item is ready for review',
+      body: 'snoozeDue.notificationBody',
       icon: '/icon.png',
       tag: 'inbox-snooze-due:item-a'
     })
-    expect(mocks.toastInfo).toHaveBeenCalledWith('"Read paper" is back from snooze')
+    expect(mocks.toastInfo).toHaveBeenCalledWith('snoozeDue.toast')
 
     callback({
       items: [
@@ -335,12 +337,12 @@ describe('more major hooks coverage', () => {
         { id: 'item-c', title: 'Two' }
       ]
     })
-    expect(Notification).toHaveBeenCalledWith('2 snoozed items', {
-      body: 'Your snoozed items are ready',
+    expect(Notification).toHaveBeenCalledWith('snoozeDue.notificationTitle', {
+      body: 'snoozeDue.notificationBody',
       icon: '/icon.png',
       tag: 'inbox-snooze-due:item-b,item-c'
     })
-    expect(mocks.toastInfo).toHaveBeenCalledWith('2 snoozed items are back')
+    expect(mocks.toastInfo).toHaveBeenCalledWith('snoozeDue.toast')
 
     callback({ items: [] })
     expect(invalidate).toHaveBeenCalledTimes(2)
@@ -373,7 +375,7 @@ describe('more major hooks coverage', () => {
     // A genuinely new resurface sharing the same title is still its own banner.
     first({ items: [{ id: 'item-3', title: 'Read paper' }] })
     expect(Notification).toHaveBeenLastCalledWith('Read paper', {
-      body: 'Your snoozed item is ready for review',
+      body: 'snoozeDue.notificationBody',
       icon: '/icon.png',
       tag: 'inbox-snooze-due:item-3'
     })

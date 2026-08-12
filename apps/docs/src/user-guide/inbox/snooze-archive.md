@@ -40,6 +40,8 @@ When wake fires, the item appears at the top of the active inbox. If memrynote i
 
 If the inbox is open — including in more than one pane or window — you also get a single system notification for that wake, not one per open inbox. A later wake for different items always gets its own notification, even when the titles happen to match.
 
+A wake for one item names that item; a wake for several summarises the count. Both the notification and the in-app toast follow the app language you picked under [Settings → Language & Region](/user-guide/settings#language-region), falling back to English for any language that has no translation for them yet.
+
 ## Archive
 
 Archived items leave the active inbox but stay in your vault. They're still:
