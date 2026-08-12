@@ -195,6 +195,141 @@ describe('CrdtUpdateQueue', () => {
     expect(persistUnflushed).toHaveBeenCalledWith(['note-a', 'note-b'])
   })
 
+  it('flushes instead of releasing when the total budget is crossed while running', async () => {
+    const persistUnflushed = vi.fn()
+    const queue = new CrdtUpdateQueue({ persistUnflushed })
+    const pushedNotes: string[] = []
+    const push = vi.fn(async (noteId: string) => {
+      pushedNotes.push(noteId)
+    })
+
+    queue.start(push)
+    // 40MB across 20 notes, past the 32MB total ceiling, with no pause: the
+    // sweep must drain to the server rather than release anything.
+    for (let i = 0; i < 20; i++) {
+      queue.enqueue(`note-${i}`, new Uint8Array(2 * 1024 * 1024))
+      vi.advanceTimersByTime(1)
+    }
+
+    expect(persistUnflushed).not.toHaveBeenCalled()
+    expect(queue.getPendingBytes()).toBeLessThanOrEqual(32 * 1024 * 1024)
+
+    vi.advanceTimersByTime(1000)
+    await flushPromises()
+    expect(new Set(pushedNotes).size).toBe(20)
+    expect(queue.getPendingBytes()).toBe(0)
+
+    queue.stop()
+  })
+
+  it('bounds the total buffer across notes while paused without losing an update', async () => {
+    const persisted: string[] = []
+    const persistUnflushed = vi.fn((noteIds: string[]) => {
+      persisted.push(...noteIds)
+    })
+    const queue = new CrdtUpdateQueue({ persistUnflushed })
+    const pushedByNote = new Map<string, Uint8Array[]>()
+    const push = vi.fn(async (noteId: string, updates: Uint8Array[]) => {
+      const existing = pushedByNote.get(noteId) ?? []
+      existing.push(...updates)
+      pushedByNote.set(noteId, existing)
+    })
+
+    // 20 notes, ~2MB of real edits each — 40MB in total, well past the 32MB
+    // cross-note ceiling, while every per-note cap is still satisfied.
+    const noteIds = Array.from({ length: 20 }, (_, i) => `note-${i}`)
+    const docs = new Map<string, Y.Doc>()
+    const rawByNote = new Map<string, Uint8Array[]>()
+    for (const noteId of noteIds) {
+      const doc = new Y.Doc()
+      const raw: Uint8Array[] = []
+      doc.on('update', (update: Uint8Array) => raw.push(update))
+      doc.getText('body').insert(0, `${noteId}:${'x'.repeat(2 * 1024 * 1024)}`)
+      docs.set(noteId, doc)
+      rawByNote.set(noteId, raw)
+    }
+
+    queue.start(push)
+    queue.pause()
+    for (const noteId of noteIds) {
+      for (const update of rawByNote.get(noteId)!) {
+        queue.enqueue(noteId, update)
+      }
+      // Distinct timestamps so "oldest first" is a real ordering, not the
+      // stable-sort fallback.
+      vi.advanceTimersByTime(1)
+    }
+
+    // The map is bounded now, not just each note's slot in it.
+    expect(persisted.length).toBeGreaterThan(0)
+    // Released oldest first, and only as far as the low-water mark.
+    expect(persisted).toEqual(noteIds.slice(0, persisted.length))
+    expect(queue.getPendingBytes()).toBeLessThanOrEqual(32 * 1024 * 1024)
+    expect(push).not.toHaveBeenCalled()
+
+    queue.resume()
+    for (let i = 0; i < 5; i++) {
+      await flushPromises()
+      vi.advanceTimersByTime(1000)
+    }
+    await flushPromises()
+    expect(queue.getPendingBytes()).toBe(0)
+
+    // Nothing was lost: every note either reached the server through the queue
+    // or was recorded for the full-state replay `drainPendingCrdtNotes` runs.
+    const replayed = new Set(persisted)
+    expect(new Set([...replayed, ...pushedByNote.keys()])).toEqual(new Set(noteIds))
+    for (const noteId of noteIds) {
+      const replica = new Y.Doc()
+      if (replayed.has(noteId)) {
+        Y.applyUpdate(replica, Y.encodeStateAsUpdate(docs.get(noteId)!))
+      }
+      for (const update of pushedByNote.get(noteId) ?? []) {
+        Y.applyUpdate(replica, update)
+      }
+      expect(replica.getText('body').toString()).toBe(docs.get(noteId)!.getText('body').toString())
+    }
+
+    queue.stop()
+  })
+
+  it('keeps every buffered update when there is no durable store to release into', () => {
+    const queue = new CrdtUpdateQueue()
+
+    queue.start(vi.fn(async () => undefined))
+    queue.pause()
+    for (let i = 0; i < 20; i++) {
+      queue.enqueue(`note-${i}`, new Uint8Array(2 * 1024 * 1024))
+      vi.advanceTimersByTime(1)
+    }
+
+    expect(queue.getPendingCount()).toBe(20)
+    expect(queue.getPendingBytes()).toBe(40 * 1024 * 1024)
+
+    queue.stop()
+  })
+
+  it('keeps every buffered update when recording notes for replay throws', () => {
+    const persistUnflushed = vi.fn(() => {
+      throw new Error('disk full')
+    })
+    const queue = new CrdtUpdateQueue({ persistUnflushed })
+
+    queue.start(vi.fn(async () => undefined))
+    queue.pause()
+    for (let i = 0; i < 20; i++) {
+      queue.enqueue(`note-${i}`, new Uint8Array(2 * 1024 * 1024))
+      vi.advanceTimersByTime(1)
+    }
+
+    expect(persistUnflushed).toHaveBeenCalled()
+    expect(queue.getPendingCount()).toBe(20)
+    expect(queue.getPendingBytes()).toBe(40 * 1024 * 1024)
+
+    persistUnflushed.mockImplementation(() => undefined)
+    queue.stop()
+  })
+
   it('does not persist anything when the shutdown flush drains the buffers', async () => {
     const persistUnflushed = vi.fn()
     const queue = new CrdtUpdateQueue({ persistUnflushed })
