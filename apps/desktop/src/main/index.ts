@@ -1632,9 +1632,10 @@ const appReady = app.whenReady().then(async () => {
   // isOpen — not to the promise, which also waits on the first full sync. Only
   // when there is a vault to restore: a launch onto the picker has no such
   // phase, and stamping one would report it as forever-pending.
+  let unsubscribeLaunchVaultStatus: (() => void) | null = null
   if (getCurrentVaultPath()) {
     recordLaunchPhase('vault_open_start')
-    let unsubscribeLaunchVaultStatus: (() => void) | null = onVaultStatusChanged((status) => {
+    unsubscribeLaunchVaultStatus = onVaultStatusChanged((status) => {
       if (!status.isOpen) return
       recordLaunchPhase('vault_open_ready')
       unsubscribeLaunchVaultStatus?.()
@@ -1696,6 +1697,16 @@ const appReady = app.whenReady().then(async () => {
     .catch((err) => {
       mainLog.error('autoOpenLastVault failed:', err)
       trackMainError('main_process', 'auto_open_last_vault_failed', err)
+    })
+    .finally(() => {
+      // The listener above only clears itself on the first isOpen:true. A vault
+      // that fails to open (or one whose status emit is suppressed by shutdown)
+      // never sends that, so the closure would sit in the vault module's
+      // statusListeners set for the rest of the session. autoOpenLastVault
+      // settles after openVault has already flipped isOpen, so on the happy path
+      // this is a no-op — vault_open_ready is stamped before we get here.
+      unsubscribeLaunchVaultStatus?.()
+      unsubscribeLaunchVaultStatus = null
     })
 
   app.on('activate', function () {
