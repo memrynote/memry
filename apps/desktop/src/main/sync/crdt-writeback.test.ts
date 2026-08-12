@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   deleteNoteFromCache: vi.fn(),
   flushProjectionEvents: vi.fn(),
   closeDoc: vi.fn(),
+  getDoc: vi.fn(),
   syncNoteDateReminders: vi.fn(),
   clearNoteDateReminders: vi.fn(),
   createRemindersService: vi.fn(),
@@ -56,7 +57,7 @@ vi.mock('../lib/logger', () => ({
 }))
 
 vi.mock('./crdt-provider', () => ({
-  getCrdtProvider: () => ({ close: mocks.closeDoc })
+  getCrdtProvider: () => ({ close: mocks.closeDoc, getDoc: mocks.getDoc })
 }))
 
 vi.mock('./blocknote-converter', () => ({
@@ -190,6 +191,10 @@ describe('crdt writeback', () => {
     mocks.deleteFile.mockResolvedValue(undefined)
     mocks.ensureDirectory.mockResolvedValue(undefined)
     mocks.closeDoc.mockResolvedValue(undefined)
+    // Default: the note is not in the provider's map (closed, or never opened
+    // through the provider), so a pending write-back falls back to the doc it
+    // captured — the behaviour every case below except the reopen ones wants.
+    mocks.getDoc.mockReturnValue(undefined)
     mocks.maybeCreateSignificantSnapshot.mockReturnValue({ id: 'snap-1' })
   })
 
@@ -585,6 +590,120 @@ describe('crdt writeback', () => {
         options: { frontmatterEdited: true }
       })
     )
+  })
+
+  /**
+   * The note's markdown file, for real: `safeRead` hands back what the last
+   * `atomicWrite` put there, and the body written is a pure function of the doc
+   * that was serialized. That is what makes an overwrite by a stale doc show up
+   * as the wrong bytes in the file instead of as a mock-call shape.
+   */
+  describe('a note closed and reopened inside the debounce window', () => {
+    let vaultFile = ''
+
+    function makeDocWithBody(body: string): Y.Doc {
+      const doc = makeDoc('Existing')
+      doc.getText('body').insert(0, body)
+      return doc
+    }
+
+    beforeEach(() => {
+      vaultFile = ''
+      mocks.yDocToMarkdown.mockImplementation(async (doc: Y.Doc) => doc.getText('body').toString())
+      mocks.safeRead.mockImplementation(async () => vaultFile)
+      mocks.atomicWrite.mockImplementation(async (_path: string, content: string) => {
+        vaultFile = content
+      })
+      mocks.parseNote.mockImplementation((raw: string) => ({ frontmatter: {}, content: raw }))
+      mocks.serializeParsedNote.mockImplementation((_parsed, markdown: string) => markdown)
+      mocks.serializeNote.mockImplementation((_frontmatter, markdown: string) => markdown)
+    })
+
+    it('does not overwrite the file with the superseded doc when the note was reopened', async () => {
+      // #given — the user edits, arming a write-back against the doc that is
+      // live right now
+      const closedDoc = makeDocWithBody('paragraph one')
+      vaultFile = 'paragraph one'
+      scheduleWriteback('note-1', closedDoc)
+
+      // #when — the note is closed and reopened inside the debounce: the
+      // provider's map now holds a different Y.Doc for the same id, and a sync
+      // pull has already landed the remote paragraph in both the file and the
+      // reopened doc
+      const reopenedDoc = makeDocWithBody('paragraph one\n\nparagraph two from another device')
+      vaultFile = 'paragraph one\n\nparagraph two from another device'
+      mocks.getDoc.mockReturnValue(reopenedDoc)
+
+      await vi.advanceTimersByTimeAsync(500)
+
+      // #then — the file still holds the live content. Serializing the
+      // superseded doc here would have written 'paragraph one' back over it and
+      // destroyed the pulled paragraph.
+      expect(vaultFile).toBe('paragraph one\n\nparagraph two from another device')
+      expect(mocks.atomicWrite).not.toHaveBeenCalled()
+    })
+
+    it('writes the reopened doc, so content only that doc has still reaches disk', async () => {
+      // #given — same race, but this time the file is the stale side: the
+      // reopened doc holds content that has not been written yet
+      const closedDoc = makeDocWithBody('paragraph one')
+      vaultFile = 'paragraph one'
+      scheduleWriteback('note-1', closedDoc)
+
+      const reopenedDoc = makeDocWithBody('paragraph one\n\nparagraph two from another device')
+      mocks.getDoc.mockReturnValue(reopenedDoc)
+
+      await vi.advanceTimersByTimeAsync(500)
+
+      // #then — the pass serialized the live doc, so the new paragraph lands.
+      // Serializing the superseded doc would have produced a byte-identical
+      // no-op and left it on disk-less limbo until the next edit.
+      expect(vaultFile).toBe('paragraph one\n\nparagraph two from another device')
+      expect(mocks.atomicWrite).toHaveBeenCalledWith(
+        '/vault/notes/Existing.md',
+        'paragraph one\n\nparagraph two from another device'
+      )
+    })
+
+    it('still lands a pending write-back for a note that was NOT superseded', async () => {
+      // #given — the note stays open on the same doc for the whole debounce
+      const liveDoc = makeDocWithBody('paragraph one edited')
+      vaultFile = 'paragraph one'
+      mocks.getDoc.mockReturnValue(liveDoc)
+
+      scheduleWriteback('note-1', liveDoc)
+      await vi.advanceTimersByTimeAsync(500)
+
+      expect(vaultFile).toBe('paragraph one edited')
+    })
+
+    it('still lands a pending write-back for a note that was closed and not reopened', async () => {
+      // #given — the note is closed (or LRU-evicted) before the timer fires, so
+      // the provider has no doc for it. The captured doc is the last known
+      // state and must not be dropped on the floor.
+      const closedDoc = makeDocWithBody('paragraph one edited')
+      vaultFile = 'paragraph one'
+      scheduleWriteback('note-1', closedDoc)
+      mocks.getDoc.mockReturnValue(undefined)
+
+      await vi.advanceTimersByTimeAsync(500)
+
+      expect(vaultFile).toBe('paragraph one edited')
+    })
+
+    it('resolves the live doc on the shutdown flush too', async () => {
+      const closedDoc = makeDocWithBody('paragraph one')
+      vaultFile = 'paragraph one\n\nparagraph two from another device'
+      scheduleWriteback('note-1', closedDoc)
+
+      mocks.getDoc.mockReturnValue(
+        makeDocWithBody('paragraph one\n\nparagraph two from another device')
+      )
+      await flushPendingWritebacks()
+
+      expect(vaultFile).toBe('paragraph one\n\nparagraph two from another device')
+      expect(mocks.atomicWrite).not.toHaveBeenCalled()
+    })
   })
 })
 
