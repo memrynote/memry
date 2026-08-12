@@ -18,7 +18,17 @@ export function useInboxNotifications(): void {
           const title = count === 1 ? dueItems[0].title : `${count} snoozed items`
           const body =
             count === 1 ? 'Your snoozed item is ready for review' : 'Your snoozed items are ready'
-          new Notification(title, { body, icon: '/icon.png' })
+          // The snooze-due event is broadcast to every window, and the inbox page
+          // can be mounted more than once inside one window (split view), so a
+          // single resurface would otherwise raise one banner per mount. Tagging
+          // by the exact set of resurfaced item ids makes the OS collapse those
+          // into one banner, while a genuinely different resurface — different
+          // ids, even with an identical title — still gets a banner of its own.
+          const tag = `inbox-snooze-due:${dueItems
+            .map((item) => item.id)
+            .sort()
+            .join(',')}`
+          new Notification(title, { body, icon: '/icon.png', tag })
         }
 
         toast.info(

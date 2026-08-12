@@ -61,6 +61,25 @@ const MINUTE_TICK_ID = 'reminders'
 /** Last value handed to the OS badge, so an idle tick skips the native call. */
 let lastBadgeCount: number | null = null
 
+/**
+ * Reminder notifications that are still alive, keyed by reminder id.
+ *
+ * Two jobs: (1) an in-app dismiss/snooze can pull its own banner down on
+ * Windows/Linux, where the macOS-only `Notification.remove` is a no-op, and
+ * (2) the `click`/`failed` listeners — which capture the whole
+ * `ReminderWithTarget` — get detached once the banner's life is over instead of
+ * being held for as long as the OS keeps the notification around.
+ */
+const liveNotifications = new Map<string, Notification>()
+
+/**
+ * Ceiling on tracked notifications. `close` is not guaranteed on every platform
+ * (macOS can park a banner in Notification Center indefinitely), so the map is
+ * evicted oldest-first rather than trusted to drain on its own. Far above any
+ * plausible number of unactioned reminder banners.
+ */
+const MAX_LIVE_NOTIFICATIONS = 50
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -239,6 +258,49 @@ function createReminderInboxItem(reminder: ReminderWithTarget): void {
 }
 
 /**
+ * Stop tracking a reminder's notification: detach its listeners (releasing the
+ * captured `ReminderWithTarget`) and, when asked, dismiss the banner too.
+ *
+ * `dismissBanner` is only ever set for an explicit user action on that exact
+ * reminder (clicking it, or dismissing/snoozing it in-app) — never on a timer —
+ * so a banner the user has not looked at yet is left on screen.
+ *
+ * @param reminderId - Stable reminder id used as the notification id
+ * @param dismissBanner - Also close the on-screen notification
+ */
+function releaseNotification(reminderId: string, dismissBanner = false): void {
+  const notification = liveNotifications.get(reminderId)
+  if (!notification) return
+
+  liveNotifications.delete(reminderId)
+
+  if (dismissBanner) {
+    try {
+      notification.close()
+    } catch (error) {
+      logger.warn(`Failed to close notification for reminder ${reminderId}:`, error)
+    }
+  }
+
+  notification.removeAllListeners()
+}
+
+/**
+ * Track a shown notification, evicting the oldest entries past the cap so a run
+ * of never-actioned banners cannot grow the map without bound. An evicted entry
+ * only loses its click handler; the banner itself stays where the OS put it.
+ */
+function trackNotification(reminderId: string, notification: Notification): void {
+  liveNotifications.set(reminderId, notification)
+
+  while (liveNotifications.size > MAX_LIVE_NOTIFICATIONS) {
+    const oldest = liveNotifications.keys().next().value
+    if (oldest === undefined) break
+    releaseNotification(oldest)
+  }
+}
+
+/**
  * Show a desktop notification for a due reminder
  * @param reminder - The reminder that is due
  */
@@ -268,6 +330,11 @@ function showDesktopNotification(reminder: ReminderWithTarget): void {
     body = typeLabels[reminder.targetType] || t('notification.reminder.fallback')
   }
 
+  // A reminder that fires a second time (snoozed, then due again) supersedes its
+  // own earlier banner rather than leaving a stale one — and its listeners —
+  // behind. Scoped to this one reminder id, so nothing else on screen is touched.
+  releaseNotification(reminder.id, true)
+
   try {
     const notification = new Notification({
       // Electron 42+: a stable per-reminder id lets a delivered banner be cleared
@@ -286,12 +353,22 @@ function showDesktopNotification(reminder: ReminderWithTarget): void {
     // destruction, and any access to one throws "Object has been destroyed" —
     // which would kill the click with nothing focused and nothing navigated.
     notification.on('click', () => {
+      // Clicking consumes the banner, so drop the tracking (and with it this
+      // closure's hold on `reminder`) before doing the navigation work.
+      releaseNotification(reminder.id)
       const win = BrowserWindow.getAllWindows().find((candidate) => !candidate.isDestroyed())
       if (!win) return
       if (win.isMinimized()) win.restore()
       win.focus()
       // Emit event to navigate to the reminder target
       win.webContents.send(ReminderChannels.events.CLICKED, { reminder })
+    })
+
+    // The banner is gone (user swiped it away, or the toast timed out into the
+    // Windows Action Center) — nothing left to click, so let the captured
+    // reminder go. Not emitted on every platform, hence the cap on the map.
+    notification.on('close', () => {
+      releaseNotification(reminder.id)
     })
 
     // Electron 42+ routes macOS notifications through UNUserNotificationCenter:
@@ -301,9 +378,12 @@ function showDesktopNotification(reminder: ReminderWithTarget): void {
     notification.on('failed', (_event, error) => {
       logger.error(`Desktop notification failed for reminder ${reminder.id}:`, error)
       trackMainError('reminders', 'reminder_notification_failed', error)
+      // Nothing was ever shown, so there is no banner to keep a handle on.
+      releaseNotification(reminder.id)
     })
 
     notification.show()
+    trackNotification(reminder.id, notification)
     logger.debug(`Showed desktop notification for reminder ${reminder.id}`)
   } catch (error) {
     logger.error('Failed to show desktop notification:', error)
@@ -315,9 +395,15 @@ function showDesktopNotification(reminder: ReminderWithTarget): void {
  * Remove a delivered notification banner for a reminder from Notification
  * Center. `Notification.remove` is Electron 42+ and only implemented on
  * macOS — everywhere else this is a silent no-op.
+ *
+ * Called after the user has dismissed or snoozed that reminder in-app, so
+ * closing its own still-live notification is the point, not a side effect:
+ * on Windows/Linux `close()` is the only way to retire the banner at all.
  * @param reminderId - Stable reminder id used as the notification id
  */
 function removeDeliveredNotification(reminderId: string): void {
+  releaseNotification(reminderId, true)
+
   if (process.platform !== 'darwin') return
   if (typeof Notification.remove !== 'function') return
 
