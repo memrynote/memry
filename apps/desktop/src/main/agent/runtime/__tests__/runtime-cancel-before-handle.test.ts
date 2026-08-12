@@ -109,7 +109,7 @@ describe('cancelling a turn before the backend produces its run handle', () => {
 
     const backend = new LocalOpenAICompatibleBackend({
       getSettings: async () => ({
-        preset: 'lmstudio',
+        preset: 'lm_studio',
         baseUrl: 'http://localhost:1234/v1',
         model: MODEL,
         apiKeyConfigured: false,
