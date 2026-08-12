@@ -13,7 +13,7 @@
  * to the database. This is an acceptable limitation per the spec.
  */
 
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useSyncExternalStore } from 'react'
 import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
@@ -47,13 +47,11 @@ let cleanupInterval: ReturnType<typeof setInterval> | null = null
 function startCleanupInterval() {
   if (cleanupInterval) return
   cleanupInterval = setInterval(() => {
-    const now = Date.now()
-    const hadEntries = globalUndoStack.length > 0
-    globalUndoStack = globalUndoStack.filter((entry) => now - entry.timestamp < UNDO_EXPIRY_MS)
+    const pruned = pruneExpiredEntries()
     if (globalUndoStack.length === 0) {
       stopCleanupInterval()
     }
-    if (hadEntries && globalUndoStack.length === 0) {
+    if (pruned) {
       notifyListeners()
     }
   }, 1000)
@@ -67,8 +65,66 @@ function stopCleanupInterval() {
   }
 }
 
+/**
+ * Immutable view of the stack that `useSyncExternalStore` renders from.
+ * Recomputed only inside `notifyListeners`, so `getUndoSnapshot` can stay pure
+ * and returns a referentially stable object between mutations (a fresh object
+ * on every read would make `useSyncExternalStore` loop forever).
+ */
+interface UndoSnapshot {
+  canUndo: boolean
+  lastActionDescription: string | null
+}
+
+let undoSnapshot: UndoSnapshot = { canUndo: false, lastActionDescription: null }
+
+function refreshSnapshot() {
+  const last = globalUndoStack[globalUndoStack.length - 1]
+  const canUndo = !!last
+  const lastActionDescription = last?.description ?? null
+  if (
+    undoSnapshot.canUndo === canUndo &&
+    undoSnapshot.lastActionDescription === lastActionDescription
+  ) {
+    return
+  }
+  undoSnapshot = { canUndo, lastActionDescription }
+}
+
+function getUndoSnapshot(): UndoSnapshot {
+  return undoSnapshot
+}
+
+function subscribeToUndoStack(listener: () => void): () => void {
+  globalUndoListeners.add(listener)
+  return () => {
+    globalUndoListeners.delete(listener)
+    if (globalUndoListeners.size === 0) {
+      globalUndoStack = []
+      stopCleanupInterval()
+      refreshSnapshot()
+    }
+  }
+}
+
 function notifyListeners() {
+  refreshSnapshot()
   globalUndoListeners.forEach((listener) => listener())
+}
+
+/**
+ * Drop entries older than `UNDO_EXPIRY_MS`. Returns whether anything was removed.
+ * Callers are responsible for notifying listeners — never call this during render.
+ */
+function pruneExpiredEntries(): boolean {
+  const now = Date.now()
+  const before = globalUndoStack.length
+  globalUndoStack = globalUndoStack.filter((entry) => now - entry.timestamp < UNDO_EXPIRY_MS)
+  if (globalUndoStack.length === before) return false
+  if (globalUndoStack.length === 0) {
+    stopCleanupInterval()
+  }
+  return true
 }
 
 function pushUndoEntry(entry: Omit<UndoEntry, 'id' | 'timestamp'>) {
@@ -111,12 +167,10 @@ function removeUndoEntryById(id: string): boolean {
   return true
 }
 
+/** Read the newest live entry. Mutates the stack, so event handlers only. */
 function getLastUndoEntry(): UndoEntry | undefined {
-  // Filter out expired entries
-  const now = Date.now()
-  globalUndoStack = globalUndoStack.filter((entry) => now - entry.timestamp < UNDO_EXPIRY_MS)
-  if (globalUndoStack.length === 0) {
-    stopCleanupInterval()
+  if (pruneExpiredEntries()) {
+    notifyListeners()
   }
   return globalUndoStack[globalUndoStack.length - 1]
 }
@@ -145,19 +199,9 @@ interface UseUndoTrackerReturn {
 export const useUndoTracker = (): UseUndoTrackerReturn => {
   const { t } = useT('common')
 
-  // Force re-render when stack changes
-  const forceUpdate = useCallback(() => {}, [])
-
-  useEffect(() => {
-    globalUndoListeners.add(forceUpdate)
-    return () => {
-      globalUndoListeners.delete(forceUpdate)
-      if (globalUndoListeners.size === 0) {
-        globalUndoStack = []
-        stopCleanupInterval()
-      }
-    }
-  }, [forceUpdate])
+  // Re-render when the stack changes. `getUndoSnapshot` is pure and returns a
+  // stable reference until a mutation actually changes the derived values.
+  const snapshot = useSyncExternalStore(subscribeToUndoStack, getUndoSnapshot, getUndoSnapshot)
 
   const registerUndo = useCallback((description: string, undoFn: () => void): string => {
     return pushUndoEntry({ description, undoFn })
@@ -184,14 +228,12 @@ export const useUndoTracker = (): UseUndoTrackerReturn => {
     }
   }, [t])
 
-  const lastEntry = getLastUndoEntry()
-
   return {
     registerUndo,
     removeUndoEntry,
     undo,
-    canUndo: !!lastEntry,
-    lastActionDescription: lastEntry?.description ?? null
+    canUndo: snapshot.canUndo,
+    lastActionDescription: snapshot.lastActionDescription
   }
 }
 

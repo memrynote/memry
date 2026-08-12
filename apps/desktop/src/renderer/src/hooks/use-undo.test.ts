@@ -492,3 +492,140 @@ describe('createUndoableAction', () => {
     expect(result).toEqual(newTask)
   })
 })
+
+// ============================================================================
+// Subscription / render-purity Tests
+// ============================================================================
+
+/** Matches UNDO_EXPIRY_MS in use-undo.ts */
+const UNDO_EXPIRY_MS = 10_000
+
+describe('useUndoTracker subscription', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    // The undo stack is module-global and only resets when the last tracker
+    // unmounts. Mount + unmount one to drain anything earlier tests left behind.
+    renderHook(() => useUndoTracker()).unmount()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('flips canUndo on an already-mounted tracker when an action is registered', () => {
+    const { result } = renderHook(() => useUndoTracker())
+    expect(result.current.canUndo).toBe(false)
+
+    act(() => {
+      result.current.registerUndo('Delete task', vi.fn())
+    })
+
+    expect(result.current.canUndo).toBe(true)
+    expect(result.current.lastActionDescription).toBe('Delete task')
+  })
+
+  it('notifies every mounted tracker, not just the one that registered', () => {
+    const { result: a } = renderHook(() => useUndoTracker())
+    const { result: b } = renderHook(() => useUndoTracker())
+
+    act(() => {
+      a.current.registerUndo('Archive project', vi.fn())
+    })
+
+    expect(b.current.canUndo).toBe(true)
+    expect(b.current.lastActionDescription).toBe('Archive project')
+  })
+
+  it('clears canUndo once the last entry is undone', () => {
+    const { result } = renderHook(() => useUndoTracker())
+
+    act(() => {
+      result.current.registerUndo('Delete task', vi.fn())
+    })
+    expect(result.current.canUndo).toBe(true)
+
+    act(() => {
+      result.current.undo()
+    })
+
+    expect(result.current.canUndo).toBe(false)
+    expect(result.current.lastActionDescription).toBeNull()
+  })
+
+  it('clears canUndo when the last entry is removed by ID', () => {
+    const { result } = renderHook(() => useUndoTracker())
+
+    let id = ''
+    act(() => {
+      id = result.current.registerUndo('Delete task', vi.fn())
+    })
+    expect(result.current.canUndo).toBe(true)
+
+    act(() => {
+      result.current.removeUndoEntry(id)
+    })
+
+    expect(result.current.canUndo).toBe(false)
+  })
+
+  it('updates a mounted tracker when Cmd+Z consumes the entry', () => {
+    Object.defineProperty(navigator, 'platform', { value: 'MacIntel', writable: true })
+
+    const { result } = renderHook(() => useUndoTracker())
+    const undoFn = vi.fn()
+
+    act(() => {
+      result.current.registerUndo('Delete task', undoFn)
+    })
+    expect(result.current.canUndo).toBe(true)
+
+    renderHook(() => useUndoKeyboardShortcut())
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', metaKey: true, bubbles: true }))
+    })
+
+    expect(undoFn).toHaveBeenCalledTimes(1)
+    expect(result.current.canUndo).toBe(false)
+  })
+
+  it('drops the entry on the expiry sweep and re-renders subscribers', () => {
+    vi.useFakeTimers()
+    const start = Date.now()
+
+    const { result } = renderHook(() => useUndoTracker())
+    act(() => {
+      result.current.registerUndo('Delete task', vi.fn())
+    })
+    expect(result.current.canUndo).toBe(true)
+
+    vi.setSystemTime(start + UNDO_EXPIRY_MS + 1)
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+
+    expect(result.current.canUndo).toBe(false)
+    expect(result.current.lastActionDescription).toBeNull()
+  })
+
+  it('does not mutate module state during render', () => {
+    vi.useFakeTimers()
+    const start = Date.now()
+
+    const { result, rerender } = renderHook(() => useUndoTracker())
+    act(() => {
+      result.current.registerUndo('Delete task', vi.fn())
+    })
+
+    // Wall clock passes the expiry window, but the 1s sweep has not run yet.
+    vi.setSystemTime(start + UNDO_EXPIRY_MS + 1)
+
+    const clearIntervalSpy = vi.spyOn(globalThis, 'clearInterval')
+    rerender()
+
+    // Before the fix, render called getLastUndoEntry(), which filtered the
+    // module-level stack and stopped the cleanup interval mid-render.
+    expect(clearIntervalSpy).not.toHaveBeenCalled()
+    clearIntervalSpy.mockRestore()
+  })
+})
