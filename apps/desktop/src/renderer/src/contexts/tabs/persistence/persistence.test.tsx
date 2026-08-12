@@ -3,7 +3,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useManualPersistence, useSessionRestore, useTabPersistence } from './hooks'
-import { isQuotaExceededError, localStorageAdapter, saveSync } from './storage'
+import {
+  consumeSyncSaveFailure,
+  isQuotaExceededError,
+  localStorageAdapter,
+  saveSync
+} from './storage'
 import { deserializeTabState, extractPinnedTabs, serializeTabState } from './serialization'
 import { STORAGE_KEY, type PersistedTabState, type TabStorage } from './types'
 import type { Tab, TabSystemState } from '@/contexts/tabs/types'
@@ -17,11 +22,13 @@ const mocks = vi.hoisted(() => ({
     mocks.pendingSave = callback
   }),
   unregisterPendingSave: vi.fn(),
-  toastError: vi.fn()
+  toastError: vi.fn(),
+  toastWarning: vi.fn(),
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
 }))
 
 vi.mock('sonner', () => ({
-  toast: { error: mocks.toastError }
+  toast: { error: mocks.toastError, warning: mocks.toastWarning }
 }))
 
 // Counts full tab-tree serializations so the auto-save tests can assert how many
@@ -50,8 +57,26 @@ vi.mock('@/lib/save-registry', () => ({
 }))
 
 vi.mock('@/lib/logger', () => ({
-  createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })
+  createLogger: () => mocks.logger
 }))
+
+/**
+ * Refuse writes to one key, the way a full origin refuses the tab payload while
+ * still having room for a handful of bytes.
+ */
+function refuseWritesTo(key: string, error: unknown) {
+  const original = Storage.prototype.setItem
+  return vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (
+    this: Storage,
+    name: string,
+    value: string
+  ) {
+    if (name === key) throw error
+    original.call(this, name, value)
+  })
+}
+
+const quotaError = (): DOMException => new DOMException('over quota', 'QuotaExceededError')
 
 const tab = (overrides: Partial<Tab> = {}): Tab =>
   ({
@@ -316,11 +341,44 @@ describe('tab persistence serialization and storage', () => {
     await localStorageAdapter.clear()
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
 
+    // Every write refused, including the failure marker: the quit path still
+    // must not throw, and it must still tell its caller the write was lost.
     const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('quota')
     })
-    expect(() => saveSync(persisted())).not.toThrow()
+    expect(saveSync(persisted())).toMatchObject({ ok: false, reason: 'error' })
     setItem.mockRestore()
+    expect(consumeSyncSaveFailure()).toBeNull()
+  })
+
+  it('reports a refused synchronous save and leaves a marker for the next launch', () => {
+    const setItem = refuseWritesTo(STORAGE_KEY, quotaError())
+
+    expect(saveSync(persisted())).toEqual({ ok: false, reason: 'quota', at: expect.any(Number) })
+    setItem.mockRestore()
+
+    // The marker is what the next launch reads; consuming it is one-shot, so a
+    // single failed quit cannot nag on every later launch.
+    expect(consumeSyncSaveFailure()).toMatchObject({ reason: 'quota', at: expect.any(Number) })
+    expect(consumeSyncSaveFailure()).toBeNull()
+  })
+
+  it('clears the failure marker once a synchronous save succeeds', () => {
+    const setItem = refuseWritesTo(STORAGE_KEY, quotaError())
+    saveSync(persisted())
+    setItem.mockRestore()
+
+    expect(saveSync(persisted())).toEqual({ ok: true })
+    expect(localStorage.getItem(STORAGE_KEY)).toContain('pin-1')
+    expect(consumeSyncSaveFailure()).toBeNull()
+  })
+
+  it('ignores a corrupt or foreign failure marker', () => {
+    localStorage.setItem('memry_tab_state_save_failed', '{')
+    expect(consumeSyncSaveFailure()).toBeNull()
+
+    localStorage.setItem('memry_tab_state_save_failed', JSON.stringify({ reason: 'whatever' }))
+    expect(consumeSyncSaveFailure()).toBeNull()
   })
 
   it('recognises quota failures and only quota failures', () => {
@@ -542,6 +600,100 @@ describe('tab persistence hooks', () => {
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')).toEqual(
       expectedPersisted(CLOCK_START)
     )
+  })
+
+  it('flushes a normal quit and logs the flush that really happened', () => {
+    const storage: TabStorage = {
+      save: vi.fn().mockResolvedValue(undefined),
+      load: vi.fn(),
+      clear: vi.fn()
+    }
+
+    render(<TabPersistenceProbe storage={storage} debounceMs={25} />)
+
+    act(() => mocks.pendingSave?.())
+
+    expect(localStorage.getItem(STORAGE_KEY)).toContain('pin-1')
+    expect(mocks.logger.info).toHaveBeenCalledWith('flushed tab state via registry')
+    expect(mocks.logger.error).not.toHaveBeenCalled()
+    expect(consumeSyncSaveFailure()).toBeNull()
+  })
+
+  it('does not claim a flush when the quit-time write is refused', () => {
+    const storage: TabStorage = {
+      save: vi.fn().mockResolvedValue(undefined),
+      load: vi.fn(),
+      clear: vi.fn()
+    }
+
+    // What the user would get restored if the last write never lands.
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted({ savedAt: 1 })))
+    const stale = localStorage.getItem(STORAGE_KEY)
+
+    render(<TabPersistenceProbe storage={storage} debounceMs={25} />)
+    const setItem = refuseWritesTo(STORAGE_KEY, quotaError())
+
+    // Neither quit path may throw — an exception here would stop the app closing.
+    expect(() => act(() => mocks.pendingSave?.())).not.toThrow()
+    expect(() => act(() => window.dispatchEvent(new Event('beforeunload')))).not.toThrow()
+
+    setItem.mockRestore()
+
+    expect(mocks.logger.info).not.toHaveBeenCalledWith('flushed tab state via registry')
+    expect(mocks.logger.error).toHaveBeenCalledWith('failed to flush tab state via registry', {
+      reason: 'quota'
+    })
+    expect(mocks.logger.error).toHaveBeenCalledWith('failed to save tab state on unload', {
+      reason: 'quota'
+    })
+    // The stale payload is still what would be restored, and the failure is now
+    // recorded so the next launch can say so.
+    expect(localStorage.getItem(STORAGE_KEY)).toBe(stale)
+    expect(consumeSyncSaveFailure()).toMatchObject({ reason: 'quota' })
+  })
+
+  it('tells the user at the next launch that the last session was never saved', async () => {
+    const setItem = refuseWritesTo(STORAGE_KEY, quotaError())
+    saveSync(serializeTabState(state()))
+    setItem.mockRestore()
+
+    const storage: TabStorage = {
+      save: vi.fn().mockResolvedValue(undefined),
+      load: vi.fn().mockResolvedValue(persisted()),
+      clear: vi.fn()
+    }
+
+    render(withQueryClient(<SessionRestoreProbe storage={storage} />))
+
+    await waitFor(() => expect(mocks.toastWarning).toHaveBeenCalledTimes(1))
+    expect(mocks.toastWarning.mock.calls[0][0]).toBe(
+      'Your last session was not saved when Memry closed'
+    )
+    expect(mocks.toastWarning.mock.calls[0][1]).toMatchObject({
+      description: expect.stringContaining('Storage was full')
+    })
+
+    // One failed quit, one warning: the marker is consumed by the launch that
+    // reported it, so the launch after that is quiet.
+    mocks.dispatch.mockClear()
+    render(withQueryClient(<SessionRestoreProbe storage={storage} />))
+    await waitFor(() =>
+      expect(mocks.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'RESTORE_SESSION' })
+      )
+    )
+    expect(mocks.toastWarning).toHaveBeenCalledTimes(1)
+
+    // A refusal that is not about space explains itself differently.
+    const failAgain = refuseWritesTo(STORAGE_KEY, new Error('storage backend offline'))
+    saveSync(serializeTabState(state()))
+    failAgain.mockRestore()
+
+    render(withQueryClient(<SessionRestoreProbe storage={storage} />))
+    await waitFor(() => expect(mocks.toastWarning).toHaveBeenCalledTimes(2))
+    expect(mocks.toastWarning.mock.calls[1][1]).toMatchObject({
+      description: expect.stringContaining('could not store your tabs on exit')
+    })
   })
 
   it('restores full sessions, pinned-only sessions, errors, and manual operations', async () => {
