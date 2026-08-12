@@ -633,6 +633,11 @@ describe('crdt writeback', () => {
       const reopenedDoc = makeDocWithBody('paragraph one\n\nparagraph two from another device')
       vaultFile = 'paragraph one\n\nparagraph two from another device'
       mocks.getDoc.mockReturnValue(reopenedDoc)
+      // What `CrdtProvider.close()` does to the doc it superseded. It is not
+      // what makes this safe: a destroyed Y.Doc keeps its store readable, so
+      // the stale pass would serialize it just fine.
+      closedDoc.destroy()
+      expect(closedDoc.getText('body').toString()).toBe('paragraph one')
 
       await vi.advanceTimersByTimeAsync(500)
 
