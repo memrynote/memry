@@ -15,12 +15,17 @@ const mocks = vi.hoisted(() => {
     addCustomPlayer: vi.fn((player: unknown) => customPlayers.push(player)),
     videoError: undefined as undefined | (() => void),
     logError: vi.fn(),
-    clipboardWrite: vi.fn()
+    clipboardWrite: vi.fn(),
+    // Render probes. `useT` runs once per component render *pass*, so it catches a render
+    // React throws away and redoes. `sliderRender` runs once per Slider render; `max === 1`
+    // is the volume slider, which the AudioPlayer shell owns.
+    useT: vi.fn(() => ({ t: (key: string) => key })),
+    sliderRender: vi.fn()
   }
 })
 
 vi.mock('@memry/i18n/renderer', () => ({
-  useT: () => ({ t: (key: string) => key })
+  useT: mocks.useT
 }))
 
 vi.mock('react-i18next', () => ({
@@ -40,11 +45,18 @@ vi.mock('@/components/ui/slider', () => ({
     value: number[]
     max?: number
     onValueChange?: (value: number[]) => void
-  }) => (
-    <button type="button" aria-label={`slider-${value[0]}`} onClick={() => onValueChange?.([max])}>
-      slider {value[0]}
-    </button>
-  )
+  }) => {
+    mocks.sliderRender({ max, value: value[0] })
+    return (
+      <button
+        type="button"
+        aria-label={`slider-${value[0]}`}
+        onClick={() => onValueChange?.([max])}
+      >
+        slider {value[0]}
+      </button>
+    )
+  }
 }))
 
 vi.mock('react-pdf', () => ({
@@ -156,6 +168,80 @@ describe('viewer components', () => {
     ).toBeInTheDocument()
   })
 
+  it('tracks playback in the scrubber without re-rendering the rest of the player', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<AudioPlayer src="memry-file://voice.mp3" fileName="Voice" />)
+    const audio = container.querySelector('audio') as HTMLAudioElement
+    Object.defineProperty(audio, 'duration', { value: 100, configurable: true })
+    let elapsed = 0
+    Object.defineProperty(audio, 'currentTime', {
+      configurable: true,
+      get: () => elapsed,
+      set: (next: number) => {
+        elapsed = next
+      }
+    })
+
+    fireEvent.loadedMetadata(audio)
+    const shellRenders = (): number =>
+      mocks.sliderRender.mock.calls.filter(([props]) => props.max === 1).length
+
+    mocks.sliderRender.mockClear()
+
+    // A ~4 Hz timeupdate stream, the way a playing track delivers it.
+    for (let tick = 1; tick <= 10; tick += 1) {
+      elapsed = tick * 1.5
+      fireEvent.timeUpdate(audio)
+    }
+
+    // The scrubber still follows playback at full timeupdate resolution...
+    expect(screen.getByLabelText('slider-15')).toBeInTheDocument()
+    expect(screen.getByText('0:15')).toBeInTheDocument()
+    // ...but the surrounding player (volume slider, controls, transcript) never re-rendered.
+    expect(shellRenders()).toBe(0)
+
+    // Seeking still moves the element and the display together.
+    await user.click(screen.getByLabelText('slider-15'))
+    expect(audio.currentTime).toBe(100)
+    expect(screen.getByLabelText('slider-100')).toBeInTheDocument()
+    // Elapsed and total both read 1:40 once the scrubber is dragged to the end.
+    expect(screen.getAllByText('1:40')).toHaveLength(2)
+
+    // Play, then `ended`, must still leave the button back in its "play" state.
+    const playButton = container.querySelectorAll('button')[2]
+    await user.click(playButton)
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1)
+    fireEvent.ended(audio)
+    await user.click(playButton)
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2)
+    expect(HTMLMediaElement.prototype.pause).not.toHaveBeenCalled()
+
+    // ...and pausing still pauses.
+    await user.click(playButton)
+    expect(HTMLMediaElement.prototype.pause).toHaveBeenCalledTimes(1)
+  })
+
+  // `useTrackedTimeout` (#1266) owns the cancellation; this asserts the player is actually
+  // wired to it, which the hook's own unit test cannot see.
+  it('cancels the copy-confirmation timer when the player unmounts', async () => {
+    vi.useFakeTimers()
+    try {
+      const { unmount } = render(
+        <AudioPlayer src="memry-file://voice.mp3" fileName="Voice" transcription="Launch risks." />
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'content.copyTranscription' }))
+      await act(async () => {})
+      expect(mocks.clipboardWrite).toHaveBeenCalledWith('Launch risks.')
+      expect(vi.getTimerCount()).toBe(1)
+
+      unmount()
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('shows an available audio transcription and copies it', async () => {
     const user = userEvent.setup()
     Object.defineProperty(navigator, 'clipboard', {
@@ -256,6 +342,29 @@ describe('viewer components', () => {
     // Dropping back to 100% still recenters.
     await user.click(screen.getByTitle('phaseF.componentsViewersImageViewer.resetZoom'))
     expect(image).toHaveStyle('transform: translate(0px, 0px) scale(1) rotate(90deg)')
+  })
+
+  it('recenters on zoom-out to 100% without a throwaway render pass', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<ImageViewer src="memry-file://zoom.png" alt="Zoom" />)
+    const image = screen.getByRole('img', { name: 'Zoom' })
+    const imageContainer = image.parentElement as HTMLDivElement
+
+    // Zoom past 100% and pan, so there is an offset left to clear.
+    await user.click(container.querySelectorAll('button')[1])
+    expect(screen.getByText('125%')).toBeInTheDocument()
+    fireEvent.mouseDown(imageContainer, { clientX: 0, clientY: 0 })
+    fireEvent.mouseMove(window, { clientX: 30, clientY: 40 })
+    fireEvent.mouseUp(window)
+    expect(image).toHaveStyle('transform: translate(30px, 40px) scale(1.25) rotate(0deg)')
+
+    mocks.useT.mockClear()
+    await user.click(container.querySelectorAll('button')[0])
+
+    expect(screen.getByText('100%')).toBeInTheDocument()
+    expect(image).toHaveStyle('transform: translate(0px, 0px) scale(1) rotate(0deg)')
+    // Scale and the recenter land in the same batch: one render pass, not two.
+    expect(mocks.useT).toHaveBeenCalledTimes(1)
   })
 
   it('loads PDFs, navigates pages, changes zoom/sidebar/rotation, and reports load errors', async () => {

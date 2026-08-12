@@ -53,15 +53,27 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
   /** Live pan offset. Leads `position` during a drag; `position` catches up on pointer-up. */
   const positionRef = useRef<Position>(position)
   const dragStartRef = useRef<Position>({ x: 0, y: 0 })
+  /** Live scale, so the zoom handlers can compute the next value without a stale closure. */
+  const scaleRef = useRef(scale)
 
   const commitPosition = useCallback((next: Position) => {
     positionRef.current = next
     setPosition(next)
   }, [])
 
-  if (scale === 1 && (position.x !== 0 || position.y !== 0)) {
-    commitPosition({ x: 0, y: 0 })
-  }
+  // Every zoom write goes through here: dropping back to 1x recenters in the same batch as
+  // the scale change. Doing it in the render body instead (`if (scale === 1) setPosition(...)`)
+  // made React throw the render away and run the component a second time on every zoom-out.
+  const applyScale = useCallback(
+    (next: number) => {
+      scaleRef.current = next
+      setScale(next)
+      if (next === 1 && (positionRef.current.x !== 0 || positionRef.current.y !== 0)) {
+        commitPosition({ x: 0, y: 0 })
+      }
+    },
+    [commitPosition]
+  )
 
   // Attach wheel event with passive: false to allow preventDefault
   useEffect(() => {
@@ -71,27 +83,27 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
     const handleWheelEvent = (e: WheelEvent) => {
       e.preventDefault()
       const delta = e.deltaY > 0 ? -0.1 : 0.1
-      setScale((s) => Math.max(0.25, Math.min(5, s + delta)))
+      applyScale(Math.max(0.25, Math.min(5, scaleRef.current + delta)))
     }
 
     container.addEventListener('wheel', handleWheelEvent, { passive: false })
     return () => {
       container.removeEventListener('wheel', handleWheelEvent)
     }
-  }, [])
+  }, [applyScale])
 
   const zoomIn = useCallback(() => {
-    setScale((s) => Math.min(s + 0.25, 5))
-  }, [])
+    applyScale(Math.min(scaleRef.current + 0.25, 5))
+  }, [applyScale])
 
   const zoomOut = useCallback(() => {
-    setScale((s) => Math.max(s - 0.25, 0.25))
-  }, [])
+    applyScale(Math.max(scaleRef.current - 0.25, 0.25))
+  }, [applyScale])
 
   const resetZoom = useCallback(() => {
-    setScale(1)
+    applyScale(1)
     commitPosition({ x: 0, y: 0 })
-  }, [commitPosition])
+  }, [applyScale, commitPosition])
 
   const rotate = useCallback(() => {
     setRotation((r) => (r + 90) % 360)
@@ -108,10 +120,10 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
       const scaleY = containerHeight / imageHeight
       const newScale = Math.min(scaleX, scaleY, 1)
 
-      setScale(newScale)
+      applyScale(newScale)
       commitPosition({ x: 0, y: 0 })
     }
-  }, [commitPosition])
+  }, [applyScale, commitPosition])
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
