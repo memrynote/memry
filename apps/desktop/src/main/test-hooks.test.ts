@@ -21,6 +21,7 @@ const getCrdtQueueMock = vi.fn(() => ({ getOutstandingCount: outstandingCountMoc
 const startSyncRuntimeMock = vi.fn(async () => ({}))
 const getOrInitializeLocalVaultKeyMock = vi.fn(async () => new Uint8Array([1]))
 const getOrCreateVaultUuidMock = vi.fn(() => 'vault-1')
+const resetVaultUuidCacheMock = vi.fn()
 const dbRunMock = vi.fn()
 const dbGetMock = vi.fn(() => ({ id: 'project-1' }))
 const insertRunMock = vi.fn()
@@ -96,7 +97,8 @@ vi.mock('./crypto/vault-key-state', () => ({
 }))
 
 vi.mock('./agent/storage/vault-id', () => ({
-  getOrCreateVaultUuid: getOrCreateVaultUuidMock
+  getOrCreateVaultUuid: getOrCreateVaultUuidMock,
+  resetVaultUuidCache: resetVaultUuidCacheMock
 }))
 
 vi.mock('./database', () => ({
@@ -239,6 +241,10 @@ describe('main test hooks', () => {
       })
     )
     expect(dbRunMock).toHaveBeenCalled()
+    // The hook rewrites vault_metadata on the already-open handle, so the
+    // handle-keyed vault-uuid cache has to be dropped or every later call site
+    // (registration, vault key, request header) keeps the pre-bootstrap id.
+    expect(resetVaultUuidCacheMock).toHaveBeenCalled()
     expect(getOrInitializeLocalVaultKeyMock).toHaveBeenCalled()
     expect(startSyncRuntimeMock).toHaveBeenCalled()
 
