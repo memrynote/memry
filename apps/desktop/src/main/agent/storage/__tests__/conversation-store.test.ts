@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import Database from 'better-sqlite3'
+import { eq } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import sodium from 'libsodium-wrappers-sumo'
 
@@ -144,8 +145,43 @@ describe('Conversation store', () => {
     const conversation = store.create({ vaultId: 'v', title: 'X', backend: 'claude_cli' })
     store.softDelete(conversation.id)
 
-    const fetched = store.getById(conversation.id)
+    const fetched = store.getById(conversation.id, { includeDeleted: true })
     expect(fetched?.deletedAt).not.toBeNull()
+  })
+
+  it('hides a soft-deleted conversation from getById by default', () => {
+    const conversation = store.create({ vaultId: 'v', title: 'X', backend: 'claude_cli' })
+    store.softDelete(conversation.id)
+
+    expect(store.getById(conversation.id)).toBeNull()
+    expect(store.listByVault('v')).toEqual([])
+  })
+
+  it('refuses to mutate the trust list of a soft-deleted conversation', () => {
+    const conversation = store.create({ vaultId: 'v', title: 'X', backend: 'claude_cli' })
+    store.softDelete(conversation.id)
+
+    expect(() => store.addToTrustList(conversation.id, 'vault_create_note')).toThrow(
+      `Conversation ${conversation.id} not found`
+    )
+    expect(() => store.removeFromTrustList(conversation.id, 'vault_create_note')).toThrow(
+      `Conversation ${conversation.id} not found`
+    )
+    expect(store.getById(conversation.id, { includeDeleted: true })?.trustList).toEqual([])
+  })
+
+  it('still soft-deletes a conversation the sync layer already tombstoned', () => {
+    const conversation = store.create({ vaultId: 'v', title: 'X', backend: 'claude_cli' })
+    db.update(schema.agentConversations)
+      .set({ deletedAt: 1 })
+      .where(eq(schema.agentConversations.id, conversation.id))
+      .run()
+
+    store.softDelete(conversation.id)
+
+    const fetched = store.getById(conversation.id, { includeDeleted: true })
+    expect(fetched?.deletedAt).not.toBe(1)
+    expect(fetched?.vectorClock['device-1']).toBe(2)
   })
 
   it('addToTrustList is idempotent', () => {
