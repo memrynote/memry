@@ -187,9 +187,12 @@ describe('#1326 tasks:list row shape', () => {
     expect(response.tasks).toHaveLength(500)
 
     const bytes = JSON.stringify(response).length
-    // Before the strip this response measured 620,032 bytes for these 500 rows.
+    // Before the strip this same response measured 1,061,350 bytes for these
+    // 500 rows; after it is 260,350. The threshold is deliberately loose enough
+    // to survive an added task field and tight enough that re-leaking the
+    // bookkeeping fails it.
     // eslint-disable-next-line no-console
     console.log(`#1326 tasks:list payload for ${response.tasks.length} rows: ${bytes} bytes`)
-    expect(bytes).toBeLessThan(310_016)
+    expect(bytes).toBeLessThan(400_000)
   })
 })
