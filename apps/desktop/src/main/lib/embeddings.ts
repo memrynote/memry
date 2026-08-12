@@ -68,6 +68,22 @@ const START_TIMEOUT_MS = 10_000
 const SHUTDOWN_TIMEOUT_MS = 3_000
 const IDLE_SHUTDOWN_MS = 30_000
 
+/**
+ * Model-load retry policy (#840).
+ *
+ * A failed load is almost always the ~23MB download failing (offline, proxy,
+ * blocked CDN), so it IS worth retrying — one prod install would have recovered
+ * on its own. But it must be retried on a widening schedule: that same install
+ * re-attempted the download 48 times in 10 minutes, and every attempt costs a
+ * worker fork plus two error lines in the log feed.
+ *
+ * 60s → 2m → 4m → 8m, then stop for the session. `resetEmbeddingModelFailure()`
+ * (AI re-enable / manual load / reindex) always bypasses this — an explicit user
+ * retry should never have to wait out a backoff.
+ */
+const LOAD_RETRY_BASE_DELAY_MS = 60_000
+const MAX_CONSECUTIVE_LOAD_FAILURES = 5
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -118,12 +134,19 @@ class EmbeddingModelBridge {
   private requestCounter = 0
   private loaded = false
   private loading = false
-  // Circuit breaker: latched when a model load fails (download stall, worker
-  // crash, timeout). While set, loadModel() short-circuits instead of re-forking
-  // the worker and re-attempting the ~23MB download per note — the loop that made
-  // vault-open hang indefinitely (#803). Cleared on a successful load, on reset(),
-  // and when AI is re-enabled (resetEmbeddingModelFailure).
+  // Circuit breaker: latched when model loads keep failing (download stall, worker
+  // crash, timeout). While set, loadModel() and embed() short-circuit instead of
+  // re-forking the worker and re-attempting the ~23MB download per note — the loop
+  // that made vault-open hang indefinitely (#803). Cleared on a successful load, on
+  // reset(), and when AI is re-enabled (resetEmbeddingModelFailure).
   private loadFailed = false
+  // Consecutive failures feeding the retry backoff. Latching on the FIRST failure
+  // (as this breaker originally did) meant a 5-second network blip silently killed
+  // semantic indexing for the rest of the app session, so instead the failures are
+  // counted and spaced out, and only the Nth latches for good (#840).
+  private consecutiveFailures = 0
+  // Epoch ms before which no load may be attempted. 0 = retry allowed now.
+  private retryNotBefore = 0
   private error: string | null = null
   private shuttingDown = false
   private idleShutdownTimer: ReturnType<typeof setTimeout> | null = null
@@ -153,10 +176,11 @@ class EmbeddingModelBridge {
   }
 
   async loadModel(): Promise<boolean> {
-    // A previous load already failed this session — do not re-fork the worker or
-    // re-attempt the download. Recover via resetEmbeddingModelFailure() (AI
-    // re-enable), unloadModel(), or app restart.
-    if (this.loadFailed) {
+    // A recent load already failed — do not re-fork the worker or re-attempt the
+    // download until the backoff expires. Once the breaker latches for good,
+    // recover via resetEmbeddingModelFailure() (AI re-enable), unloadModel(), or
+    // app restart.
+    if (this.isBreakerOpen()) {
       return false
     }
 
@@ -172,31 +196,44 @@ class EmbeddingModelBridge {
       if (response.type === 'error') {
         this.error = response.error
         this.loading = false
-        this.loadFailed = true
+        this.recordFailure()
         return false
       }
 
       if (response.type !== 'load-model-result') {
         this.error = `Unexpected response type: ${response.type}`
         this.loading = false
-        this.loadFailed = true
+        this.recordFailure()
         return false
       }
 
       this.loaded = true
       this.loading = false
-      this.loadFailed = false
       this.error = null
+      this.recordSuccess()
       return true
     } catch (error) {
       this.loading = false
       this.error = error instanceof Error ? error.message : String(error)
-      this.loadFailed = true
+      this.recordFailure()
       return false
     }
   }
 
   async embed(text: string): Promise<Float32Array | null> {
+    // Belt-and-suspenders for the same loop: callers reach embeddings through
+    // isModelLoaded() -> initEmbeddingModel(), but nothing forces them to, and the
+    // worker re-drives the download inside handleEmbed. Without this an embed()
+    // caller that skips that guard reopens the retry loop the breaker exists to close.
+    if (this.isBreakerOpen()) {
+      return null
+    }
+
+    // A failure on a call that had to (re)load the model is a load failure and
+    // feeds the backoff. A failure with the model already loaded is a crash or an
+    // inference fault — leave the breaker alone so the next note simply re-forks.
+    const wasLoaded = this.loaded
+
     try {
       this.loading = !this.loaded
       await this.start()
@@ -210,6 +247,9 @@ class EmbeddingModelBridge {
       if (response.type === 'error') {
         this.error = response.error
         this.loading = false
+        if (!wasLoaded) {
+          this.recordFailure()
+        }
         logger.warn('Embedding worker failed:', response.error)
         return null
       }
@@ -229,10 +269,14 @@ class EmbeddingModelBridge {
       this.loaded = true
       this.loading = false
       this.error = null
+      this.recordSuccess()
       return embedding
     } catch (error) {
       this.loading = false
       this.error = error instanceof Error ? error.message : String(error)
+      if (!wasLoaded) {
+        this.recordFailure()
+      }
       logger.error('Generation failed:', error)
       // Until now this failure only ever reached electron-log, so a user
       // silently losing semantic-search indexing was invisible to us. Throttled
@@ -303,13 +347,48 @@ class EmbeddingModelBridge {
     this.rejectAll(new Error('Embedding utility reset'))
     this.loaded = false
     this.loading = false
-    this.loadFailed = false
+    this.clearLoadFailure()
     this.error = null
     this.shuttingDown = false
   }
 
   clearLoadFailure(): void {
     this.loadFailed = false
+    this.consecutiveFailures = 0
+    this.retryNotBefore = 0
+  }
+
+  /** True while a load must not be attempted: backing off, or latched for good. */
+  private isBreakerOpen(): boolean {
+    return this.loadFailed || Date.now() < this.retryNotBefore
+  }
+
+  private recordFailure(): void {
+    this.consecutiveFailures += 1
+
+    if (this.consecutiveFailures >= MAX_CONSECUTIVE_LOAD_FAILURES) {
+      this.loadFailed = true
+      this.retryNotBefore = 0
+      logger.error('Embedding model failed repeatedly — giving up until restart', {
+        attempts: this.consecutiveFailures,
+        error: this.error
+      })
+      return
+    }
+
+    const delay = LOAD_RETRY_BASE_DELAY_MS * 2 ** (this.consecutiveFailures - 1)
+    this.retryNotBefore = Date.now() + delay
+    logger.warn('Embedding model failed — backing off before retry', {
+      attempt: this.consecutiveFailures,
+      retryInMs: delay,
+      error: this.error
+    })
+  }
+
+  private recordSuccess(): void {
+    this.loadFailed = false
+    this.consecutiveFailures = 0
+    this.retryNotBefore = 0
   }
 
   private async start(): Promise<void> {
