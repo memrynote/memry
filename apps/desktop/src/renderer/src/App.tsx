@@ -57,6 +57,7 @@ import { IncidentReportProvider } from '@/components/diagnostics/incident-report
 import { VaultOnboarding } from '@/components/vault-onboarding'
 import { UpdatingScreen } from '@/components/updating-screen'
 import { UpdatePromptDialog } from '@/components/updater/update-prompt-dialog'
+import { UpdateInstallFailedDialog } from '@/components/updater/update-install-failed-dialog'
 import { GithubStarCard } from '@/components/onboarding/github-star-card'
 import { UpdateReleaseNotesTabOpener } from '@/components/updater/update-release-notes-tab-opener'
 import { ReleaseNotesDevTrigger } from '@/components/updater/release-notes-dev-trigger'
@@ -574,6 +575,7 @@ function App(): React.JSX.Element {
           </TabErrorBoundary>
         </IncidentReportProvider>
         <UpdatePromptDialog />
+        <UpdateInstallFailedDialog />
         <Toaster />
       </ThemeProvider>
     )
@@ -601,6 +603,7 @@ function App(): React.JSX.Element {
           </DragProvider>
         </SidebarProvider>
         <UpdatePromptDialog />
+        <UpdateInstallFailedDialog />
         {/* Vault-open branch only: the tour that arms this never runs without a vault. */}
         <GithubStarCard />
         <Toaster />

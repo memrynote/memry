@@ -16,7 +16,11 @@
     "remindLater": "Remind Me Later",
     "download": "Download",
     "later": "Later",
-    "restartNow": "Restart Now"
+    "restartNow": "Restart Now",
+    "installFailedTitle": "The update could not be installed",
+    "installFailedBody": "MemryNote tried to install {version} and the installer did not finish, so you are still on {current}. This usually means a file in the install folder was locked — by antivirus, or by a copy of MemryNote that was still running. Downloading the installer and running it yourself normally gets past it.",
+    "installFailedBodyUnknownVersion": "MemryNote tried to install an update and the installer did not finish, so you are still on {current}. This usually means a file in the install folder was locked — by antivirus, or by a copy of MemryNote that was still running. Downloading the installer and running it yourself normally gets past it.",
+    "downloadInstaller": "Download installer"
   },
   "button": {
     "save": "Save",
