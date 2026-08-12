@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useManualPersistence, useSessionRestore, useTabPersistence } from './hooks'
-import { indexedDBAdapter, isQuotaExceededError, localStorageAdapter, saveSync } from './storage'
+import { isQuotaExceededError, localStorageAdapter, saveSync } from './storage'
 import { deserializeTabState, extractPinnedTabs, serializeTabState } from './serialization'
 import { STORAGE_KEY, type PersistedTabState, type TabStorage } from './types'
 import type { Tab, TabSystemState } from '@/contexts/tabs/types'
@@ -247,58 +247,6 @@ function ManualPersistenceProbe({ storage }: { storage: TabStorage }) {
   return null
 }
 
-function installIndexedDbMock(): void {
-  let value: PersistedTabState | null = null
-  const createRequest = <T,>(result: T) => {
-    const request = {
-      error: null,
-      result,
-      onsuccess: null as null | (() => void),
-      onerror: null as null | (() => void)
-    }
-    setTimeout(() => request.onsuccess?.(), 0)
-    return request
-  }
-  const store = {
-    put: vi.fn((nextValue: PersistedTabState) => {
-      value = nextValue
-      return createRequest(undefined)
-    }),
-    get: vi.fn(() => createRequest(value)),
-    delete: vi.fn(() => {
-      value = null
-      return createRequest(undefined)
-    })
-  }
-  const db = {
-    objectStoreNames: { contains: vi.fn(() => false) },
-    createObjectStore: vi.fn(),
-    transaction: vi.fn(() => ({
-      objectStore: vi.fn(() => store)
-    }))
-  }
-
-  Object.defineProperty(globalThis, 'indexedDB', {
-    configurable: true,
-    value: {
-      open: vi.fn(() => {
-        const request = {
-          error: null,
-          result: db,
-          onsuccess: null as null | (() => void),
-          onerror: null as null | (() => void),
-          onupgradeneeded: null as null | ((event: { target: { result: typeof db } }) => void)
-        }
-        setTimeout(() => {
-          request.onupgradeneeded?.({ target: { result: db } })
-          request.onsuccess?.()
-        }, 0)
-        return request
-      })
-    }
-  })
-}
-
 describe('tab persistence serialization and storage', () => {
   beforeEach(() => {
     vi.useRealTimers()
@@ -381,15 +329,6 @@ describe('tab persistence serialization and storage', () => {
     expect(isQuotaExceededError(new Error('disk on fire'))).toBe(false)
     expect(isQuotaExceededError('QuotaExceededError')).toBe(false)
   })
-
-  it('saves, loads, and clears via indexedDB adapter', async () => {
-    installIndexedDbMock()
-
-    await indexedDBAdapter.save(persisted())
-    await expect(indexedDBAdapter.load()).resolves.toMatchObject({ version: 2 })
-    await indexedDBAdapter.clear()
-    await expect(indexedDBAdapter.load()).resolves.toBeNull()
-  })
 })
 
 describe('tab persistence hooks', () => {
@@ -456,6 +395,54 @@ describe('tab persistence hooks', () => {
     expect(mocks.serializeCalls).toBe(1)
     await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
     expect(storage.save).toHaveBeenCalledWith(expectedPersisted(CLOCK_START + 25))
+  })
+
+  it('skips the write when the persisted payload is unchanged, and stamps writes that happen', async () => {
+    const storage: TabStorage = {
+      save: vi.fn().mockResolvedValue(undefined),
+      load: vi.fn(),
+      clear: vi.fn()
+    }
+    vi.setSystemTime(CLOCK_START)
+
+    const { rerender } = render(<TabPersistenceProbe storage={storage} debounceMs={25} />)
+
+    act(() => vi.advanceTimersByTime(25))
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(storage.save).mock.calls[0][0].savedAt).toBe(CLOCK_START + 25)
+
+    // `isModified` flips on every editor dirty/clean transition but is stripped
+    // by `serializeTabState`, so this tab-state change projects to a payload
+    // byte-identical to the one already in storage. It must not be written:
+    // `savedAt: Date.now()` used to make every serialization unique, so the
+    // dedupe never matched and the redundant `setItem` ran anyway.
+    const unchanged = state()
+    unchanged.tabGroups['group-1'].tabs[0] = tab({ isModified: true })
+    mocks.tabsState = unchanged
+    rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />)
+
+    await act(async () => {
+      vi.advanceTimersByTime(25)
+    })
+
+    // The tree is still walked — that is how the payload is compared at all —
+    // but nothing reaches storage.
+    expect(mocks.serializeCalls).toBe(2)
+    expect(storage.save).toHaveBeenCalledTimes(1)
+
+    // A change the payload does carry still writes, with the stamp taken at the
+    // moment of that write rather than the skipped one.
+    const changed = state()
+    changed.tabGroups['group-1'].tabs[0] = tab({ title: 'Renamed' })
+    mocks.tabsState = changed
+    rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />)
+
+    act(() => vi.advanceTimersByTime(25))
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(2))
+
+    const written = vi.mocked(storage.save).mock.calls[1][0]
+    expect(written.savedAt).toBe(CLOCK_START + 75)
+    expect(written.tabGroups['group-1'].tabs[0].title).toBe('Renamed')
   })
 
   it('reports a quota failure to the user and keeps saving afterwards', async () => {
