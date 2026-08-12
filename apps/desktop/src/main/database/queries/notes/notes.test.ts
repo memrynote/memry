@@ -130,6 +130,119 @@ describe('notes cache queries', () => {
     expect(sorted[0].id).toBe('note-4')
   })
 
+  // --------------------------------------------------------------------------
+  // #1329: push PR #1316's field choice down into the SQL projection
+  // --------------------------------------------------------------------------
+
+  const insertProjectionNote = (id: string, overrides: Partial<NewNoteCache> = {}) =>
+    insertNoteCache(db, {
+      id,
+      path: `notes/${id}.md`,
+      title: `Projection ${id}`,
+      fileType: 'markdown',
+      mimeType: 'text/markdown',
+      fileSize: 4096,
+      attachmentId: null,
+      emoji: '📝',
+      localOnly: false,
+      contentHash: `hash-${id}`,
+      wordCount: 320,
+      characterCount: 1800,
+      snippet: 'x'.repeat(200),
+      date: null,
+      clock: null,
+      syncedAt: null,
+      createdAt: '2026-01-10T00:00:00.000Z',
+      modifiedAt: '2026-01-12T00:00:00.000Z',
+      indexedAt: '2026-01-14T00:00:00.000Z',
+      ...overrides
+    })
+
+  it('#1329: the default shape still returns the whole note_cache row, byte for byte', () => {
+    insertProjectionNote('proj-1')
+
+    // Byte-level golden: the full-shape row must survive the projection change
+    // untouched, including column order, for every existing caller.
+    expect(JSON.stringify(listNotesFromCache(db))).toBe(
+      '[{"id":"proj-1","path":"notes/proj-1.md","title":"Projection proj-1","fileType":"markdown",' +
+        '"mimeType":"text/markdown","fileSize":4096,"attachmentId":null,"emoji":"📝","localOnly":false,' +
+        '"contentHash":"hash-proj-1","wordCount":320,"characterCount":1800,"snippet":"' +
+        'x'.repeat(200) +
+        '","date":null,"clock":null,"syncedAt":null,"createdAt":"2026-01-10T00:00:00.000Z",' +
+        '"modifiedAt":"2026-01-12T00:00:00.000Z","indexedAt":"2026-01-14T00:00:00.000Z"}]'
+    )
+  })
+
+  it("#1329: shape: 'tree' selects only the columns the sidebar shape maps", () => {
+    insertProjectionNote('proj-2')
+
+    const [row] = listNotesFromCache(db, { shape: 'tree' })
+
+    expect(Object.keys(row)).toEqual([
+      'id',
+      'path',
+      'title',
+      'fileType',
+      'emoji',
+      'localOnly',
+      'wordCount',
+      'createdAt',
+      'modifiedAt'
+    ])
+    expect('snippet' in row).toBe(false)
+    expect('mimeType' in row).toBe(false)
+    expect('fileSize' in row).toBe(false)
+  })
+
+  it("#1329: shape: 'tree' honours the same filters, sorting and paging", () => {
+    insertProjectionNote('tree-a', {
+      path: 'projects/tree-a.md',
+      modifiedAt: '2026-01-11T00:00:00.000Z'
+    })
+    insertProjectionNote('tree-b', {
+      path: 'projects/tree-b.md',
+      modifiedAt: '2026-01-12T00:00:00.000Z'
+    })
+    insertProjectionNote('tree-c', { path: 'archive/tree-c.md' })
+    insertProjectionNote('tree-d', { path: 'journal/2026-01-10.md', date: '2026-01-10' })
+    setNoteTags(db, 'tree-a', ['alpha', 'beta'])
+    setNoteTags(db, 'tree-b', ['alpha'])
+
+    const ids = (rows: { id: string }[]) => rows.map((r) => r.id)
+
+    expect(ids(listNotesFromCache(db, { shape: 'tree', folder: 'projects' })).sort()).toEqual(
+      ids(listNotesFromCache(db, { folder: 'projects' })).sort()
+    )
+    expect(ids(listNotesFromCache(db, { shape: 'tree', tags: ['alpha', 'beta'] }))).toEqual([
+      'tree-a'
+    ])
+    expect(
+      ids(listNotesFromCache(db, { shape: 'tree', sortBy: 'modified', sortOrder: 'desc' }))
+    ).toEqual(ids(listNotesFromCache(db, { sortBy: 'modified', sortOrder: 'desc' })))
+    expect(
+      ids(listNotesFromCache(db, { shape: 'tree', limit: 1, offset: 1, sortBy: 'title' }))
+    ).toEqual(ids(listNotesFromCache(db, { limit: 1, offset: 1, sortBy: 'title' })))
+  })
+
+  it('#1329: the tree projection cuts the row bytes SQLite marshals for a whole-vault fetch', () => {
+    for (let i = 0; i < 500; i++) {
+      insertProjectionNote(`bulk-${i}`)
+    }
+
+    const fullRows = listNotesFromCache(db, { limit: 10000 })
+    const treeRows = listNotesFromCache(db, { limit: 10000, shape: 'tree' })
+
+    // Same rows either way — this is a column cut, not a row cut.
+    expect(treeRows).toHaveLength(fullRows.length)
+    expect(treeRows).toHaveLength(500)
+
+    const fullBytes = JSON.stringify(fullRows).length
+    const treeBytes = JSON.stringify(treeRows).length
+
+    // Measured: 315,061 B → 111,171 B for these 500 rows (−64.7%).
+    expect(treeBytes).toBeLessThan(fullBytes * 0.55)
+  })
+
   it('counts notes with folder filters', () => {
     createNote('note-7', { path: 'projects/note-7.md' })
     createNote('note-8', { path: 'projects/note-8.md' })
