@@ -464,6 +464,24 @@ list.
 | `POST /devices/*`         | mixed     | Linking, listing, revoking                                                     |
 | `POST /keys/*`            | mixed     | Key sealing during link, rotation                                              |
 
+### CRDT update sizing
+
+`POST /sync/crdt/updates` is bounded by two different server limits, and the client
+(`src/main/sync/crdt-payload.ts`) plans every batch against both:
+
+- **Per update.** Each update is stored as a BLOB inside a D1 `crdt_updates` row, so an update can
+  never exceed D1's 1 MB row limit. The route's own 5 MB check is not the binding one.
+- **Per request.** `/sync/*` bodies are capped at 8 MiB, which limits how many updates one POST can
+  carry.
+
+A batch that exceeds the request budget is split across several POSTs rather than truncated. A
+single update too large for a D1 row cannot use the incremental path at all; the client pushes the
+note's full document to `POST /sync/crdt/snapshot` instead, which is R2-backed and therefore not
+subject to the row limit. The local Y.Doc already contains those operations, so the snapshot carries
+them, and every client version already applies the snapshot as its baseline before pulling
+incrementals. If that fallback fails the push rejects, leaving the batch buffered for the next flush
+and — on quit — recorded for replay. No path discards an update.
+
 ### Server base URL
 
 Every path above is appended to a single resolved base URL. `resolveSyncServerUrl()`
