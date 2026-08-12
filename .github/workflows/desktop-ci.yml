@@ -94,6 +94,12 @@ jobs:
       - name: Test e2e keychain cleanup tooling
         run: node --test apps/desktop/scripts/purge-e2e-keychain.test.mjs
 
+      # Guards the install lock + atomic swap that keep a concurrent Electron
+      # install from breaking unrelated suites at `require('electron')` time.
+      # Runs fully offline against a fixture zip.
+      - name: Test Electron binary installer concurrency
+        run: node --test apps/desktop/scripts/install-electron-binary.test.cjs
+
   unit:
     name: Unit & integration tests
     runs-on: ubuntu-latest
