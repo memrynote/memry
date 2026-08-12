@@ -7,7 +7,6 @@ import { yDocToMarkdown } from './sync/blocknote-converter'
 import { getCrdtProvider, resetCrdtProvider } from './sync/crdt-provider'
 import { getWritebackDebugState } from './sync/crdt-writeback'
 import { getCrdtQueue, getNetworkMonitor, startSyncRuntime } from './sync/runtime'
-import { resetSyncVaultHeadersCache } from './sync/http-client'
 import { getDatabase } from './database'
 import { sql } from 'drizzle-orm'
 import { getNoteMetadataById } from '@memry/storage-data'
@@ -25,7 +24,7 @@ import { listCalendarExternalEventsBySource } from './calendar/repositories/cale
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { getMainI18n } from './lib/main-i18n'
 import { getOrInitializeLocalVaultKey, VAULT_KEY_VERIFIER_SETTING } from './crypto/vault-key-state'
-import { getOrCreateVaultUuid } from './agent/storage/vault-id'
+import { getOrCreateVaultUuid, resetVaultUuidCache } from './agent/storage/vault-id'
 import { inboxItems, inboxItemType } from '@memry/db-schema/schema/inbox'
 import { runReviewTick } from './inbox/review-scheduler'
 import { writeInboxReviewSettings } from './ipc/settings-handlers'
@@ -278,8 +277,8 @@ export function registerTestHooks(): void {
               updated_at = excluded.updated_at`
       )
       // Same in-place rewrite adoptVaultLocally performs, so drop the
-      // handle-keyed vault-header cache for the same reason.
-      resetSyncVaultHeadersCache()
+      // handle-keyed vault-uuid cache for the same reason.
+      resetVaultUuidCache()
 
       const deviceId = await persistKeysAndRegisterDevice(
         Buffer.from(input.masterKeyBase64, 'base64'),

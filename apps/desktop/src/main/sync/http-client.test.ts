@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import Database from 'better-sqlite3'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
+import * as schema from '@memry/db-schema/data-schema'
 
 const mockFetch = vi.fn()
-const mockDb = { name: 'db' }
 const mockGetDatabase = vi.fn()
-const mockGetOrCreateVaultUuid = vi.fn()
 
 vi.stubEnv('SYNC_SERVER_URL', 'http://localhost:8787')
 
@@ -18,9 +19,10 @@ vi.mock('../database', () => ({
   getDatabase: () => mockGetDatabase()
 }))
 
-vi.mock('../agent/storage/vault-id', () => ({
-  getOrCreateVaultUuid: (...args: unknown[]) => mockGetOrCreateVaultUuid(...args)
-}))
+// ../agent/storage/vault-id is deliberately NOT mocked: the vault-identity
+// cache lives inside getOrCreateVaultUuid, so a stubbed module would assert
+// nothing about whether the header path actually stops re-reading SQLite — or
+// whether it observes an in-place adoption. These run against a real handle.
 
 // NetworkError copy resolves through the main-process i18n singleton, which only
 // exists after setMainI18n() during app boot. Echo the key back so the assertion
@@ -37,12 +39,37 @@ import {
   postToServer,
   getFromServer,
   deleteFromServer,
-  resetSyncVaultHeadersCache,
   SyncServerError,
   NetworkError,
   RateLimitError,
   parseRetryAfterHeader
 } from './http-client'
+import { resetVaultUuidCache } from '../agent/storage/vault-id'
+
+/** A real data.db handle carrying the vault_metadata singleton. */
+const createVaultDb = (vaultUuid: string) => {
+  const sqlite = new Database(':memory:')
+  sqlite.exec(`
+    CREATE TABLE vault_metadata (
+      id TEXT PRIMARY KEY,
+      vault_uuid TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+  `)
+  sqlite
+    .prepare(
+      `INSERT INTO vault_metadata (id, vault_uuid, created_at, updated_at)
+       VALUES ('singleton', ?, 0, 0)`
+    )
+    .run(vaultUuid)
+  return { sqlite, db: drizzle(sqlite, { schema }) }
+}
+
+/** Rewrite the singleton in place, the way adoptVaultLocally does. */
+const rewriteVaultUuid = (sqlite: Database.Database, vaultUuid: string): void => {
+  sqlite.prepare(`UPDATE vault_metadata SET vault_uuid = ? WHERE id = 'singleton'`).run(vaultUuid)
+}
 
 const createJsonResponse = (
   body: unknown,
@@ -64,14 +91,15 @@ const lastRequestHeaders = (): Record<string, string> => {
 }
 
 describe('http-client', () => {
+  let vault: ReturnType<typeof createVaultDb>
+
   beforeEach(() => {
     vi.clearAllMocks()
     // The vault identity is cached per DataDb handle for the process lifetime,
-    // and mockDb is one shared object, so without this every test after the
-    // first would silently read the previous test's cached value.
-    resetSyncVaultHeadersCache()
-    mockGetDatabase.mockReturnValue(mockDb)
-    mockGetOrCreateVaultUuid.mockReturnValue('vault-1')
+    // so without this a test could read a previous test's cached value.
+    resetVaultUuidCache()
+    vault = createVaultDb('vault-1')
+    mockGetDatabase.mockReturnValue(vault.db)
   })
 
   describe('syncFetch', () => {
@@ -161,7 +189,6 @@ describe('http-client', () => {
       await syncFetch('GET', '/sync/changes', undefined, 'my-token-123')
 
       // #then
-      expect(mockGetOrCreateVaultUuid).toHaveBeenCalledWith(mockDb)
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
@@ -297,14 +324,15 @@ describe('http-client', () => {
       // #given the vault uuid is a session-stable SQLite row that used to be
       // re-read (drizzle query build + statement) on every request
       mockFetch.mockResolvedValue(createJsonResponse({ success: true }))
-
-      // #when
-      await syncFetch('GET', '/sync/changes', undefined, 'token-1')
-      await syncFetch('GET', '/sync/changes', undefined, 'token-1')
       await syncFetch('GET', '/sync/changes', undefined, 'token-1')
 
-      // #then one read, and every request still carries the identity
-      expect(mockGetOrCreateVaultUuid).toHaveBeenCalledTimes(1)
+      // #when the row changes underneath with no invalidation — an observable
+      // stand-in for "did this request re-run the SELECT?"
+      rewriteVaultUuid(vault.sqlite, 'not-read-again')
+      await syncFetch('GET', '/sync/changes', undefined, 'token-1')
+      await syncFetch('GET', '/sync/changes', undefined, 'token-1')
+
+      // #then no request re-read the row, and every one still carries the identity
       expect(mockFetch).toHaveBeenCalledTimes(3)
       for (const call of mockFetch.mock.calls) {
         expect((call[1].headers as Record<string, string>)['X-Memry-Vault-Id']).toBe('vault-1')
@@ -317,13 +345,10 @@ describe('http-client', () => {
       await syncFetch('GET', '/sync/changes', undefined, 'token-1')
 
       // #when openVault installs a new DataDb instance for a different vault
-      const otherDb = { name: 'other-db' }
-      mockGetDatabase.mockReturnValue(otherDb)
-      mockGetOrCreateVaultUuid.mockReturnValue('vault-2')
+      mockGetDatabase.mockReturnValue(createVaultDb('vault-2').db)
       await syncFetch('GET', '/sync/changes', undefined, 'token-1')
 
       // #then the new vault's identity is used, not the cached one
-      expect(mockGetOrCreateVaultUuid).toHaveBeenLastCalledWith(otherDb)
       expect(lastRequestHeaders()['X-Memry-Vault-Id']).toBe('vault-2')
     })
 
@@ -335,8 +360,8 @@ describe('http-client', () => {
 
       // #when adoptVaultLocally rewrites the uuid on the SAME handle and
       // invalidates the cache
-      mockGetOrCreateVaultUuid.mockReturnValue('adopted-vault')
-      resetSyncVaultHeadersCache()
+      rewriteVaultUuid(vault.sqlite, 'adopted-vault')
+      resetVaultUuidCache()
       await syncFetch('GET', '/sync/changes', undefined, 'token-1')
 
       // #then registration and every later request bind to the adopted vault
@@ -356,7 +381,7 @@ describe('http-client', () => {
       // #then no identity header, and nothing poisoned for the next attempt
       expect(lastRequestHeaders()['X-Memry-Vault-Id']).toBeUndefined()
 
-      mockGetDatabase.mockReturnValue(mockDb)
+      mockGetDatabase.mockReturnValue(vault.db)
       await syncFetch('GET', '/sync/changes', undefined, 'token-1')
       expect(lastRequestHeaders()['X-Memry-Vault-Id']).toBe('vault-1')
     })
