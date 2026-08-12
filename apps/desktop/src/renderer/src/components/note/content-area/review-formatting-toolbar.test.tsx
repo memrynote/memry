@@ -7,21 +7,47 @@ const toolbarMocks = vi.hoisted(() => ({
     prosemirrorState: {
       selection: { empty: false, from: 2, to: 15 },
       doc: { textBetween: vi.fn(() => 'selected text') }
-    }
+    },
+    schema: {
+      blockSchema: {
+        paragraph: { content: 'inline' },
+        bulletListItem: { content: 'inline' },
+        numberedListItem: { content: 'inline' },
+        checkListItem: { content: 'inline' }
+      }
+    },
+    selectedBlocks: [
+      { id: 'b1', type: 'paragraph' },
+      { id: 'b2', type: 'paragraph' }
+    ] as Array<{ id: string; type: string }>,
+    getSelection: vi.fn(() => ({ blocks: toolbarMocks.editor.selectedBlocks })),
+    getTextCursorPosition: vi.fn(() => ({ block: toolbarMocks.editor.selectedBlocks[0] })),
+    focus: vi.fn(),
+    transact: vi.fn((fn: () => void) => fn()),
+    updateBlock: vi.fn()
   }
 }))
+
+const listLabels: Record<string, string> = {
+  'editor.list.bulleted': 'Bulleted list',
+  'editor.list.numbered': 'Numbered list',
+  'editor.list.checklist': 'Check list'
+}
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
     t: (key: string) => {
       if (key === 'comments.toolbarComment') return 'Comment'
-      return key
+      return listLabels[key] ?? key
     }
   })
 }))
 
 vi.mock('@/lib/icons', () => ({
-  MessageCircle: () => <span data-testid="comment-icon" />
+  MessageCircle: () => <span data-testid="comment-icon" />,
+  List: () => <span data-testid="bulleted-icon" />,
+  ListOrdered: () => <span data-testid="numbered-icon" />,
+  ListChecks: () => <span data-testid="checklist-icon" />
 }))
 
 vi.mock('@blocknote/react', () => ({
@@ -81,6 +107,11 @@ describe('ReviewFormattingToolbar', () => {
     toolbarMocks.editor.prosemirrorState.selection.empty = false
     ;(toolbarMocks.editor.prosemirrorState.selection as { node?: unknown }).node = undefined
     toolbarMocks.editor.prosemirrorState.doc.textBetween.mockClear()
+    toolbarMocks.editor.selectedBlocks = [
+      { id: 'b1', type: 'paragraph' },
+      { id: 'b2', type: 'paragraph' }
+    ]
+    toolbarMocks.editor.updateBlock.mockClear()
     ;(toolbarMocks.editor as { _tiptapEditor?: unknown })._tiptapEditor = undefined
   })
 
@@ -100,6 +131,74 @@ describe('ReviewFormattingToolbar', () => {
     render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
 
     expect(screen.getByText('block type')).toBeInTheDocument()
+  })
+
+  // Issue #1206: the block type dropdown could already retype a whole
+  // selection, but it is labelled with the current type ("Paragraph"), so
+  // nobody hunting for bullets opened it. The toggles make that transform
+  // visible in both toolbar variants.
+  it('offers bulleted, numbered and check list toggles in the floating toolbar', () => {
+    render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+
+    expect(screen.getByText('Bulleted list')).toBeInTheDocument()
+    expect(screen.getByText('Numbered list')).toBeInTheDocument()
+    expect(screen.getByText('Check list')).toBeInTheDocument()
+  })
+
+  it('offers the list toggles in the sticky toolbar too', () => {
+    render(<ReviewFormattingToolbar variant="sticky" onAddComment={vi.fn()} />)
+
+    expect(screen.getByText('Bulleted list')).toBeInTheDocument()
+    expect(screen.getByText('Numbered list')).toBeInTheDocument()
+    expect(screen.getByText('Check list')).toBeInTheDocument()
+  })
+
+  it('converts every selected block, not just the first', () => {
+    render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+
+    fireEvent.click(screen.getByText('Bulleted list'))
+
+    expect(toolbarMocks.editor.updateBlock).toHaveBeenCalledTimes(2)
+    expect(toolbarMocks.editor.updateBlock).toHaveBeenNthCalledWith(
+      1,
+      { id: 'b1', type: 'paragraph' },
+      { type: 'bulletListItem' }
+    )
+    expect(toolbarMocks.editor.updateBlock).toHaveBeenNthCalledWith(
+      2,
+      { id: 'b2', type: 'paragraph' },
+      { type: 'bulletListItem' }
+    )
+  })
+
+  it('toggles a fully bulleted selection back to paragraphs', () => {
+    toolbarMocks.editor.selectedBlocks = [
+      { id: 'b1', type: 'bulletListItem' },
+      { id: 'b2', type: 'bulletListItem' }
+    ]
+
+    render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+    fireEvent.click(screen.getByText('Bulleted list'))
+
+    expect(toolbarMocks.editor.updateBlock).toHaveBeenNthCalledWith(1, expect.anything(), {
+      type: 'paragraph'
+    })
+  })
+
+  it('leaves blocks without inline content out of the conversion', () => {
+    toolbarMocks.editor.selectedBlocks = [
+      { id: 'b1', type: 'paragraph' },
+      { id: 'task', type: 'taskBlock' }
+    ]
+
+    render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+    fireEvent.click(screen.getByText('Bulleted list'))
+
+    expect(toolbarMocks.editor.updateBlock).toHaveBeenCalledTimes(1)
+    expect(toolbarMocks.editor.updateBlock).toHaveBeenCalledWith(
+      { id: 'b1', type: 'paragraph' },
+      { type: 'bulletListItem' }
+    )
   })
 
   it('captures selected text before clicking Comment collapses selection', () => {

@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./calendar": "./src/calendar.ts",
     "./canvas": "./src/canvas.ts",
+    "./canvas-folder": "./src/canvas-folder.ts",
     "./tasks": "./src/tasks.ts",
     "./notes": "./src/notes.ts",
     "./inbox": "./src/inbox.ts",

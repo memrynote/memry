@@ -13,6 +13,8 @@
     "./calendar-api": "./src/calendar-api.ts",
     "./canvas-api": "./src/canvas-api.ts",
     "./canvas-draw": "./src/canvas-draw.ts",
+    "./canvas-folder-api": "./src/canvas-folder-api.ts",
+    "./canvas-folder-types": "./src/canvas-folder-types.ts",
     "./cbor-ordering": "./src/cbor-ordering.ts",
     "./crypto": "./src/crypto.ts",
     "./diagnostics-api": "./src/diagnostics-api.ts",

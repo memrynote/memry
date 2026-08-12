@@ -86,7 +86,13 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
 
     const startWaveformAnalysis = useCallback((stream: MediaStream) => {
       try {
+        // Publish the context before wiring the graph: createMediaStreamSource,
+        // createAnalyser and connect can all throw, and a context the cleanup path
+        // cannot reach is never closed. Chromium caps concurrent per-document
+        // AudioContexts, so orphans break every later waveform for the session.
         const audioContext = new AudioContext()
+        audioContextRef.current = audioContext
+
         const source = audioContext.createMediaStreamSource(stream)
         const analyser = audioContext.createAnalyser()
         // The bars are an RMS level meter, not a spectrum: no frequency
@@ -96,7 +102,6 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
         analyser.fftSize = WAVEFORM_FFT_SIZE
         source.connect(analyser)
 
-        audioContextRef.current = audioContext
         analyserRef.current = analyser
 
         const bufferLength = analyser.fftSize
@@ -136,6 +141,13 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
         rafRef.current = requestAnimationFrame(updateBars)
       } catch (err) {
         log.error('Failed to start waveform analysis', err)
+        // Mirrors cleanupAudio for the context it published above (inlined to keep
+        // this callback dependency-free). Nulling the ref as it closes keeps the
+        // close idempotent, so the effect teardown later is a no-op, not a second
+        // close. rafRef is untouched: every throw site here precedes scheduling.
+        void audioContextRef.current?.close().catch(() => {})
+        audioContextRef.current = null
+        analyserRef.current = null
       }
     }, [])
 

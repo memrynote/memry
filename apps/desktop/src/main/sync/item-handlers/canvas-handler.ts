@@ -14,9 +14,15 @@ import { createLogger } from '../../lib/logger'
 import { generateId } from '../../lib/id'
 import {
   allocateCanvasPath,
+  CANVAS_FILE_EXT,
   deleteCanvasFileSync,
+  ensureCanvasFolderDir,
+  folderOfCanvasPath,
+  portableCanvasFolder,
+  renameCanvasFile,
   resolveCanvasFile
 } from '../../canvas/scene-file'
+import { normalizeFolder } from '../../canvas/folder-paths'
 import { readCanvasScene, writeCanvasScene } from '../../canvas/store'
 import { getCanvasVaultPath } from '../../canvas/vault-path'
 import { extractEntityRefsFromScene } from '../../canvas/scene-refs'
@@ -171,7 +177,13 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
           log.warn('Skipping canvas create without vaultId', { itemId })
           return 'skipped'
         }
-        const filePath = allocateCanvasPath(vaultPath, data.title ?? null)
+        // Placement: the directory has to exist before the scene is written, or
+        // the write throws and the whole apply rolls back. A payload with no
+        // folder is either the root or a pre-folders build — both land at the
+        // root, which is where every canvas used to live.
+        const folder = normalizeFolder(data.folder)
+        if (folder) ensureCanvasFolderDir(vaultPath, folder)
+        const filePath = allocateCanvasPath(vaultPath, data.title ?? null, new Set(), null, folder)
         writeCanvasScene(vaultPath, filePath, itemId, scene, now, now)
         tx.insert(canvases)
           .values({
@@ -179,6 +191,12 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
             vaultId,
             title: data.title ?? null,
             filePath,
+            // Read back out of the allocated path, never echoed from the
+            // payload: `allocateCanvasPath` sanitizes each segment, so a folder
+            // the peer called `CON` lives here as `CON canvas`. The STORED
+            // folder is always the on-disk-canonical one.
+            folder: folderOfCanvasPath(filePath),
+            icon: data.icon ?? null,
             snapshotCiphertext: '',
             vectorClock: {},
             createdAt: now,
@@ -222,17 +240,63 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
       // deliberate null the same as an absent field and never propagate the clear.
       const nextTitle = data.title !== undefined ? data.title : existing.title
 
+      // An absent `folder` is a pre-folders payload, not a move to the root:
+      // keep whatever placement this device already has. The stored string stays
+      // the on-disk-canonical form, so a peer's `CON` is filed as `CON canvas`
+      // here too.
+      const folderRequested = data.folder !== undefined
+      // `?? null` only to keep the narrowing the hoisted flag costs us: inside
+      // this branch `data.folder` is `string | null`, never undefined.
+      const nextFolder = folderRequested
+        ? portableCanvasFolder(data.folder ?? null)
+        : existing.folder
+
       // A legacy row we could never decrypt has no file yet; the incoming scene
       // gives it one rather than writing into nowhere. The filename is NOT
       // re-derived from an incoming title: renaming files on every remote edit
       // would churn the user's folder (and their git history) for nothing.
-      const filePath = existing.filePath ?? allocateCanvasPath(vaultPath, nextTitle)
+      let filePath = existing.filePath
+      if (!filePath) {
+        if (nextFolder) ensureCanvasFolderDir(vaultPath, nextFolder)
+        filePath = allocateCanvasPath(vaultPath, nextTitle, new Set(), null, nextFolder)
+      } else if (folderRequested && nextFolder !== folderOfCanvasPath(filePath)) {
+        // A remote MOVE. Both halves or neither: writing `folder` while the
+        // document stays put leaves the row describing a path nothing occupies,
+        // and every later placement operation works off that path — a folder
+        // rename re-points it at a file that was never there (the canvas goes
+        // unopenable AND silently unpushable, since `buildPushPayload` reads the
+        // scene off `filePath`), and a folder delete cannot take a directory the
+        // document never left, so the next reconcile finds it occupied and
+        // revives a folder the user deleted. This mirrors `store.updateCanvas`,
+        // the LOCAL half of the same operation.
+        //
+        // The FILENAME travels unchanged — only the directory changes — for the
+        // same reason it is not re-derived from the title above. Routed through
+        // `allocateCanvasPath` so a name already taken in the destination is
+        // uniquified: `renameSync` replaces the target on every platform, and
+        // that target is another canvas's ink.
+        //
+        // No ensure-the-directory step: `renameCanvasFile` mkdirs the target's
+        // parent itself, and creating it up front would leave an empty directory
+        // behind whenever the rename fails — a folder the next reconcile adopts
+        // even though the canvas never got there.
+        const base = filePath.slice(filePath.lastIndexOf('/') + 1, -CANVAS_FILE_EXT.length)
+        const target = allocateCanvasPath(vaultPath, base, new Set(), filePath, nextFolder)
+        filePath = renameCanvasFile(vaultPath, filePath, target)
+      }
       writeCanvasScene(vaultPath, filePath, itemId, scene, existing.createdAt, now)
 
       tx.update(canvases)
         .set({
           title: nextTitle,
           filePath,
+          // Always read back off the path, never echoed from the payload: the
+          // file's location IS the canvas's folder. A move the filesystem
+          // refused keeps the old path, and the stored folder has to describe
+          // where the document actually is or every later lookup by folder
+          // misses it. Reading it back canonicalizes too (`CON` → `CON canvas`).
+          folder: folderOfCanvasPath(filePath),
+          icon: data.icon !== undefined ? data.icon : existing.icon,
           snapshotCiphertext: '',
           clock: resolution.mergedClock,
           updatedAt: now,
@@ -355,6 +419,8 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
       vaultId: row.vaultId,
       title: row.title,
       scene,
+      folder: row.folder ?? null,
+      icon: row.icon ?? null,
       clock: row.clock ?? {},
       deletedAt: row.deletedAt ?? null
     })
@@ -414,8 +480,13 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
     const copyTitle = `${existing.title ?? 'Canvas'} (conflict copy)`
 
     // The LOSING ink gets its own document on disk, so the user finds it in the
-    // vault next to the winner instead of only inside the app.
-    const copyPath = allocateCanvasPath(vaultPath, copyTitle)
+    // vault next to the winner instead of only inside the app — and "next to"
+    // means the winner's FOLDER, taken off the path the document actually sits
+    // at. Left at the root, the copy is filed away from the canvas it forked
+    // from, and it pushes `folder: null`, so every other device buries it at
+    // ITS root too. A legacy row with no file has no folder to inherit.
+    const copyFolder = existing.filePath ? folderOfCanvasPath(existing.filePath) : null
+    const copyPath = allocateCanvasPath(vaultPath, copyTitle, new Set(), null, copyFolder)
     writeCanvasScene(vaultPath, copyPath, copyId, localScene, now, now)
 
     tx.insert(canvases)
@@ -424,6 +495,9 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
         vaultId: existing.vaultId,
         title: copyTitle,
         filePath: copyPath,
+        // Read back off the allocated path, the same invariant every other
+        // placement write in this module holds to.
+        folder: folderOfCanvasPath(copyPath),
         snapshotCiphertext: '',
         vectorClock: {},
         createdAt: now,

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { mergeSettingsPatch } from '@/lib/settings-patch'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import {
   FEATURES_SETTINGS_DEFAULTS,
@@ -46,7 +47,7 @@ export function useFeatureFlags(): UseFeatureFlagsReturn {
       if (event.key === 'features') {
         const value = event.value as Partial<FeaturesSettings>
         overridesRef.current = { ...overridesRef.current, ...value }
-        setFlags((prev) => ({ ...prev, ...value }))
+        setFlags((prev) => mergeSettingsPatch(prev, value))
       }
     })
     return unsubscribe

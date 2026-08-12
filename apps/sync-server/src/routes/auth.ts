@@ -17,6 +17,7 @@ import {
 import { buildOtpEmailHtml } from '../emails/otp-template'
 import { safeBase64Decode } from '../lib/encoding'
 import { AppError, ErrorCodes } from '../lib/errors'
+import { isJwtExpiredError } from '../lib/jwt-errors'
 import { createLogger } from '../lib/logger'
 import { getPrivateKey, getPublicKey } from '../lib/jwt-keys'
 import { authMiddleware } from '../middleware/auth'
@@ -750,8 +751,7 @@ auth.post('/refresh', refreshRateLimit, async (c) => {
     })
     claims = result.payload as typeof claims
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Token verification failed'
-    if (message.includes('expired')) {
+    if (isJwtExpiredError(err)) {
       throw new AppError(ErrorCodes.AUTH_TOKEN_EXPIRED, 'Refresh token has expired', 401)
     }
     throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Invalid refresh token', 401)

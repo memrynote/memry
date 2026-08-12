@@ -493,7 +493,10 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           ) : (
             <div className="group/folder flex flex-1 items-center min-w-0">
               <TreeLabel className="flex-1">{folder.name}</TreeLabel>
-              <div className="flex items-center opacity-0 group-hover/folder:opacity-100 transition-opacity ms-auto">
+              {/* The button inside is in the tab order, so focus has to reveal
+                  it too — hover-only would land a keyboard user on a control
+                  painted at `opacity-0` (WCAG 2.4.7). */}
+              <div className="flex items-center opacity-0 group-hover/folder:opacity-100 group-focus-within/folder:opacity-100 transition-opacity ms-auto">
                 <button
                   type="button"
                   onClick={(e) => {

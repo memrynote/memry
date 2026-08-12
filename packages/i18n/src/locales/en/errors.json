@@ -123,6 +123,7 @@
   "auth": {
     "notAuthenticated": "Not authenticated",
     "sessionExpired": "Session expired. Please sign in again.",
+    "setupSessionExpired": "Your sign-in timed out before this finished. Sign in again, then enter your recovery phrase.",
     "invalidRecoveryPhraseFormat": "Invalid recovery phrase format",
     "recoveryPhraseMismatch": "Recovery phrase does not match. Please try again.",
     "cannotRemoveCurrentDevice": "Cannot remove the current device",
@@ -165,6 +166,13 @@
     "setDefaultGoogleCalendarFailed": "Failed to set default Google calendar",
     "retryGoogleSourceSyncFailed": "Failed to retry Google Calendar source sync",
     "promoteExternalEventFailed": "Failed to promote external calendar event"
+  },
+  "canvasFolder": {
+    "exists": "A canvas folder with that name already exists here.",
+    "descendant": "A canvas folder cannot be moved into one of its own subfolders.",
+    "moveFailed": "The canvas folder could not be moved. It may be open in another app.",
+    "depth": "Canvas folders cannot be nested any deeper.",
+    "invalidName": "Enter a name for the canvas folder."
   },
   "folder": {
     "createFailed": "Failed to create folder",

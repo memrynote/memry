@@ -108,6 +108,7 @@ function unifiedSidebar() {
           collapsed: true,
           items: [
             { text: 'Overview', link: '/user-guide/canvas/overview' },
+            { text: 'Organizing Canvases', link: '/user-guide/canvas/organizing' },
             { text: 'Cards & Links', link: '/user-guide/canvas/cards-and-links' },
             { text: 'Sync & Limits', link: '/user-guide/canvas/sync-and-limits' }
           ]

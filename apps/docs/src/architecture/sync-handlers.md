@@ -98,6 +98,20 @@ The Yjs `meta` title is not a source of truth in the other direction either. It 
 creation and updated only while the note's doc is open in memory, so a note renamed from the sidebar
 never records the new title there. Read it only when nothing else knows the note.
 
+## Module-Level Handler State Is Per-Vault
+
+A handler that keeps module-level state — the note handler's guard against re-requesting the same
+embedded attachment download is the one that exists — must treat that state as belonging to the open
+vault. It is reset from `resetSyncServiceSingletons()`, which runs on sync-runtime stop and therefore
+on vault close, vault switch and sign-out, alongside the per-type service singletons. Session-scoped
+collections also need a ceiling: the attachment guard is FIFO-capped, because keys are never retired
+individually and re-requesting one is cheap (the downloader skips files already on disk).
+
+The same rule holds inside the engine. `CrdtSyncCoordinator` caches an applied-sequence cursor per
+note, which after a full sync means the entire vault; `engine.stop()` clears it. Dropping the cursors
+is safe because the next pass re-derives `since` from the server snapshot baseline and re-applying a
+CRDT update is a no-op.
+
 ## Renderer Events From the Sync Path
 
 Handlers notify the renderer through `ctx.emit`, typed `(channel: string, data: unknown)`. That
@@ -273,6 +287,18 @@ device forever.
 
 `agent_conversation` and `agent_message` are the intentional exception — their `seedUnclocked`
 returns `0` because agent data syncs through the entitlement-gated backfill in `main/agent/sync/`.
+
+The seed is a safety net, not a licence to write clock-less rows. A type in
+`RECORD_CLOCK_REQUIRED_ITEM_TYPES` is rejected by `RecordPushItemSchema` when its push item carries
+no clock, and `RecordPushRequestSchema` validates the whole `items` array — so **one** clock-less row
+fails the entire batch with a request-level `VALIDATION_ERROR`, not a per-item rejection. Every push
+then fails and nothing drains until the row is repaired. Any write path that inserts such a row and
+enqueues it must stamp `increment({}, deviceId)` itself; the Google Calendar import
+(`calendar/google/sync-service.ts`) does this for events it has never seen before, and
+`calendarExternalEventHandler.buildPushPayload` stamps and persists a first clock for rows already
+queued by older builds, so a stuck queue drains on the next push instead of waiting for the next full
+sync. Stamping without persisting is not enough: the next local edit would tick from `{}` to the same
+clock the server already acked, and the update would be dropped as a replay.
 
 Handlers that persist locally encrypted fields must receive the vault key from the sync engine during
 pull apply and push payload encoding. Agent conversation and message handlers use that key to decrypt

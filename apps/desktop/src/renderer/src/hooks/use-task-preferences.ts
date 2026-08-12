@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { mergeSettingsPatch } from '@/lib/settings-patch'
 import type { TaskSettingsDTO } from '../../../preload/index.d'
 import { getI18n } from 'react-i18next'
 
@@ -49,7 +50,7 @@ export function useTaskPreferences(): UseTaskPreferencesReturn {
   useEffect(() => {
     const unsubscribe = window.api.onSettingsChanged((event) => {
       if (event.key === 'tasks') {
-        setSettings((prev) => ({ ...prev, ...(event.value as Partial<TaskSettingsDTO>) }))
+        setSettings((prev) => mergeSettingsPatch(prev, event.value as Partial<TaskSettingsDTO>))
       }
     })
     return unsubscribe

@@ -149,7 +149,16 @@ function fake(): VaultServiceHandles {
       ]
     },
     canvas: {
-      list: async () => [{ id: 'c1', title: 'Roadmap', updated_at: 5, item_count: 2 }],
+      list: async () => [
+        {
+          id: 'c1',
+          title: 'Roadmap',
+          folder: 'Work',
+          path: 'Work/Roadmap',
+          updated_at: 5,
+          item_count: 2
+        }
+      ],
       read: async (id) =>
         id === 'c1'
           ? {
@@ -179,7 +188,16 @@ function fake(): VaultServiceHandles {
       })
     },
     canvas: {
-      list: async () => [{ id: 'c1', title: 'Roadmap', updated_at: 5, item_count: 2 }],
+      list: async () => [
+        {
+          id: 'c1',
+          title: 'Roadmap',
+          folder: 'Work',
+          path: 'Work/Roadmap',
+          updated_at: 5,
+          item_count: 2
+        }
+      ],
       read: async (id) =>
         id === 'c1'
           ? {
@@ -275,11 +293,20 @@ describe('Read tools', () => {
     expect(out).toMatchObject({ id: 'n1', title: 'Hit', content_markdown: '# Hit' })
   })
 
-  it('vault_list_canvases returns canvases with item counts', async () => {
+  it('vault_list_canvases returns canvases with their folder-qualified path and item counts', async () => {
     const out = await tools
       .find((t) => t.name === 'vault_list_canvases')!
       .handler({}, { conversationId: null, windowId: null })
-    expect(out).toEqual([{ id: 'c1', title: 'Roadmap', updated_at: 5, item_count: 2 }])
+    expect(out).toEqual([
+      {
+        id: 'c1',
+        title: 'Roadmap',
+        folder: 'Work',
+        path: 'Work/Roadmap',
+        updated_at: 5,
+        item_count: 2
+      }
+    ])
   })
 
   it('vault_read_canvas returns entities and text but never the raw scene', async () => {

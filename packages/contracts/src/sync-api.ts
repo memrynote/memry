@@ -23,6 +23,7 @@ export const SYNC_ITEM_TYPES = [
   'agent_conversation',
   'agent_message',
   'canvas',
+  'canvas_folder',
   'bookmark',
   'reminder',
   'template'
@@ -46,6 +47,7 @@ export const RECORD_SYNC_ITEM_TYPES = [
   'agent_conversation',
   'agent_message',
   'canvas',
+  'canvas_folder',
   'bookmark',
   'reminder',
   'template'
@@ -68,6 +70,7 @@ export const RECORD_CLOCK_REQUIRED_ITEM_TYPES = [
   'agent_conversation',
   'agent_message',
   'canvas',
+  'canvas_folder',
   'bookmark',
   'reminder',
   'template'
@@ -127,6 +130,7 @@ export const ENCRYPTABLE_ITEM_TYPES = [
   'agent_conversation',
   'agent_message',
   'canvas',
+  'canvas_folder',
   'bookmark',
   'reminder',
   'template'

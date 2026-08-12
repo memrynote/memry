@@ -355,7 +355,7 @@ describe('vault-handlers', () => {
 
       const result = await invokeHandler(VaultChannels.invoke.REMOVE, '/path/to/vault')
 
-      expect(vault.removeVault).toHaveBeenCalledWith('/path/to/vault')
+      expect(vault.removeVault).toHaveBeenCalledWith('/path/to/vault', expect.anything())
       expect(result).toBeUndefined()
     })
   })

@@ -289,6 +289,7 @@ export class SyncEngine extends EventEmitter {
     this.ctx.deps.ws.disconnect()
     this.fullSyncRunner.dispose()
     this.pullCoordinator.clearCaches()
+    this.crdtSync.clearCaches()
     this.quarantine.clear()
     this.ctx.syncing = false
     this.stateManager.setState('idle')

@@ -793,6 +793,22 @@ describe('LEGACY_RECORD_SYNC_ITEM_TYPES', () => {
   })
 })
 
+describe('canvas_folder sync registration', () => {
+  it('is registered in all four arrays', () => {
+    expect(SYNC_ITEM_TYPES).toContain('canvas_folder')
+    expect(RECORD_SYNC_ITEM_TYPES).toContain('canvas_folder')
+    expect(RECORD_CLOCK_REQUIRED_ITEM_TYPES).toContain('canvas_folder')
+    // Missing here makes encryption refuse the type and sync drops it silently.
+    expect(ENCRYPTABLE_ITEM_TYPES).toContain('canvas_folder')
+  })
+
+  it('stays out of the frozen legacy list', () => {
+    // LEGACY_RECORD_SYNC_ITEM_TYPES is what a pre-negotiation binary is served.
+    // Adding a newer type there fails its whole-page parse and drops real data.
+    expect(LEGACY_RECORD_SYNC_ITEM_TYPES).not.toContain('canvas_folder')
+  })
+})
+
 describe('tag_category sync registration', () => {
   it('is a known sync item type in all three lists', () => {
     expect(SYNC_ITEM_TYPES).toContain('tag_category')

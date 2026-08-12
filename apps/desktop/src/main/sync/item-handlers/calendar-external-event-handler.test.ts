@@ -350,6 +350,72 @@ describe('calendar external event handler — rich fields (M5 Codex P2c)', () =>
     ).toMatchObject({ sourceId: 'source-rich', title: 'Existing' })
   })
 
+  it('stamps and persists a first clock when pushing a row the import left unclocked (#1215)', () => {
+    const handler = getHandler('calendar_external_event')
+    testDb.db
+      .insert(calendarExternalEvents)
+      .values([
+        {
+          id: 'external-unclocked',
+          sourceId: 'source-rich',
+          remoteEventId: 'google-unclocked',
+          title: 'Imported without a clock',
+          startAt: '2026-04-22T09:00:00.000Z',
+          isAllDay: false,
+          status: 'confirmed'
+        },
+        {
+          id: 'external-clocked',
+          sourceId: 'source-rich',
+          remoteEventId: 'google-clocked',
+          title: 'Already clocked',
+          startAt: '2026-04-23T09:00:00.000Z',
+          isAllDay: false,
+          status: 'confirmed',
+          clock: { 'device-b': 3 }
+        }
+      ])
+      .run()
+
+    // #when the stuck row is pushed — the queue row already exists, so the
+    // startup-only seed never gets to repair it before this batch is built
+    const pushed = handler?.buildPushPayload?.(
+      testDb.db as unknown as DrizzleDb,
+      'external-unclocked',
+      'device-a',
+      'create'
+    )
+
+    // #then the payload carries a clock, so the server no longer rejects the
+    // whole batch...
+    expect(JSON.parse(pushed ?? '{}').clock).toEqual({ 'device-a': 1 })
+    // #and it is persisted, so the next local edit ticks forward instead of
+    // re-inventing the acked clock
+    expect(
+      testDb.db
+        .select()
+        .from(calendarExternalEvents)
+        .where(eq(calendarExternalEvents.id, 'external-unclocked'))
+        .get()?.clock
+    ).toEqual({ 'device-a': 1 })
+
+    // #and a row that already has a clock keeps it untouched
+    const clocked = handler?.buildPushPayload?.(
+      testDb.db as unknown as DrizzleDb,
+      'external-clocked',
+      'device-a',
+      'update'
+    )
+    expect(JSON.parse(clocked ?? '{}').clock).toEqual({ 'device-b': 3 })
+    expect(
+      testDb.db
+        .select()
+        .from(calendarExternalEvents)
+        .where(eq(calendarExternalEvents.id, 'external-clocked'))
+        .get()?.clock
+    ).toEqual({ 'device-b': 3 })
+  })
+
   it('handles stale/concurrent clocks, delete guards, fetch, null payload, and seed queueing', () => {
     const handler = getHandler('calendar_external_event')
     testDb.db

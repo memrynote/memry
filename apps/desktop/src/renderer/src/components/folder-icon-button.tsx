@@ -34,13 +34,19 @@ export function FolderIconButton({
   )
 
   // Chevron lets the click bubble to the row, which handles expand/collapse.
+  // Icon-only, so the aria-label is its ONLY name — and it goes through i18n
+  // like every other user-facing string.
   const chevron = useMemo(
     () =>
       hasChildren ? (
         <button
           type="button"
           className="flex h-4 w-4 items-center justify-center cursor-pointer rounded"
-          aria-label={isExpanded ? 'Collapse folder' : 'Expand folder'}
+          aria-label={
+            isExpanded
+              ? tPhaseF('phaseF.componentsFolderIconButton.collapseFolder')
+              : tPhaseF('phaseF.componentsFolderIconButton.expandFolder')
+          }
         >
           <ArrowRight
             className={cn(
@@ -52,7 +58,7 @@ export function FolderIconButton({
       ) : (
         <div className="h-4 w-4" />
       ),
-    [hasChildren, isExpanded]
+    [hasChildren, isExpanded, tPhaseF]
   )
 
   return (

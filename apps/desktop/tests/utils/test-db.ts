@@ -43,6 +43,26 @@ export function asSyncDb(db: TestDb): SyncDrizzleDb {
   return db as unknown as SyncDrizzleDb
 }
 
+/**
+ * Record every SQL statement the given database prepares from now on.
+ *
+ * Drizzle prepares each query as it executes it, so the returned array is a
+ * running log of the statements a unit under test actually sent to SQLite —
+ * which is how a test asserts that a code path stopped hitting the database,
+ * rather than asserting on a mock that was told what to return.
+ *
+ * The patch lives on the per-test connection and dies with `close()`.
+ */
+export function trackPreparedSql(result: TestDatabaseResult): string[] {
+  const sources: string[] = []
+  const original = result.sqlite.prepare.bind(result.sqlite)
+  result.sqlite.prepare = ((source: string) => {
+    sources.push(source)
+    return original(source)
+  }) as typeof result.sqlite.prepare
+  return sources
+}
+
 // ============================================================================
 // Database Factory Functions
 // ============================================================================

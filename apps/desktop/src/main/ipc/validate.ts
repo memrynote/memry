@@ -41,7 +41,9 @@ const trackIpcError = (action: string, error: unknown): void => {
  * Throws an error with validation details if input is invalid.
  *
  * @param schema - Zod schema to validate input against
- * @param handler - Handler function that receives validated input
+ * @param handler - Handler function that receives validated input, plus the raw
+ *   invoke event for the handlers that need to attribute work to the sender
+ *   window (CRDT doc ownership). Handlers that ignore it stay one-parameter.
  * @returns IPC handler function compatible with ipcMain.handle
  *
  * @example
@@ -61,12 +63,12 @@ const trackIpcError = (action: string, error: unknown): void => {
  */
 export function createValidatedHandler<TSchema extends z.ZodSchema, TResult>(
   schema: TSchema,
-  handler: (input: z.infer<TSchema>) => TResult | Promise<TResult>
+  handler: (input: z.infer<TSchema>, event: IpcMainInvokeEvent) => TResult | Promise<TResult>
 ): (event: IpcMainInvokeEvent, rawInput: z.input<TSchema>) => Promise<TResult> {
-  return async (_event: IpcMainInvokeEvent, rawInput: z.input<TSchema>): Promise<TResult> => {
+  return async (event: IpcMainInvokeEvent, rawInput: z.input<TSchema>): Promise<TResult> => {
     try {
       const validated = schema.parse(rawInput)
-      return await handler(validated)
+      return await handler(validated, event)
     } catch (error) {
       if (error instanceof ZodError) {
         const issues = error.issues ?? (error as { errors?: unknown[] }).errors ?? []

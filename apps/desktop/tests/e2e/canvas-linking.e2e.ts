@@ -44,7 +44,7 @@ async function createCanvasFromSidebar(page: Page): Promise<string> {
   const header = page.getByRole('button', { name: /Canvases section/ })
   await expect(header).toBeVisible()
   await header.hover()
-  await page.getByRole('button', { name: 'New canvas' }).click()
+  await page.getByRole('button', { name: 'New canvas', exact: true }).click()
   await expect(page.locator('[data-canvas-editor]')).toBeVisible({ timeout: 20000 })
   await expect(page.locator('.excalidraw').first()).toBeVisible({ timeout: 20000 })
   const list = await page.evaluate(async () => window.api.canvas.list())

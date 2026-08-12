@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import * as Y from 'yjs'
 
 import { invokeHandler, mockIpcMain, resetIpcMocks } from '@tests/utils/mock-ipc'
 import { CRDT_CHANNELS } from '@memry/contracts/ipc-crdt'
@@ -48,7 +49,8 @@ vi.mock('./crdt-writeback', () => ({
   scheduleWriteback: vi.fn(),
   cancelPendingWritebacks: vi.fn(),
   flushPendingWritebacks: vi.fn(),
-  recordNetworkUpdate: vi.fn()
+  recordNetworkUpdate: vi.fn(),
+  resetWritebackState: vi.fn()
 }))
 vi.mock('./microtask-batch-broadcaster', () => ({
   MicrotaskBatchBroadcaster: class {
@@ -232,6 +234,113 @@ describe('CRDT IPC handlers — lifecycle resilience', () => {
       await vi.waitFor(() => {
         expect(provider.getOpenNoteIds()).toEqual([])
       })
+    })
+  })
+
+  describe('the sync handshake attributes the doc to the sender window', () => {
+    const handshake = (noteId: string): Promise<unknown> =>
+      invokeHandler(CRDT_CHANNELS.SYNC_STEP_1, { noteId, stateVector: new Uint8Array([0]) })
+
+    beforeEach(() => {
+      senderWindow.current = { id: 77, once: vi.fn() }
+      mockGetNoteCacheById.mockReturnValue({ id: 'n1', path: 'n1.md', fileType: 'markdown' })
+    })
+
+    it('leaves a handshake-opened doc ineligible for eviction while it is in use', async () => {
+      // crdt:open-doc can be skipped or fail, or a provider reset can drop the
+      // entry — then the handshake is what creates the doc. Opened with no
+      // windowId it had an empty windowIds set, so the doc the editor was about
+      // to type into counted as inactive and was evictable mid-edit.
+      const provider = getCrdtProvider()
+      await provider.init()
+
+      // #when — only the handshake runs, no crdt:open-doc
+      await handshake('n1')
+
+      // #then — closeIfInactive() is the exact primitive the eviction pass runs
+      // per doc; it must refuse this one.
+      await expect(provider.closeIfInactive('n1')).resolves.toBe(false)
+      expect(provider.getOpenNoteIds({ active: true })).toEqual(['n1'])
+    })
+
+    it('keeps an edit that lands after an eviction pass instead of dropping it', async () => {
+      // The eviction destroyed the entry, and applyIpcUpdate() returns early on
+      // a missing entry — so the keystrokes were silently lost.
+      const provider = getCrdtProvider()
+      await provider.init()
+      await handshake('n1')
+
+      // #given — an eviction pass sweeps while the editor is still open
+      await provider.closeIfInactive('n1')
+
+      // #when — the renderer sends the next edit
+      const source = new Y.Doc()
+      source.getMap('probe').set('typed', 'after-eviction-pass')
+      await invokeHandler(CRDT_CHANNELS.APPLY_UPDATE, {
+        noteId: 'n1',
+        update: Y.encodeStateAsUpdate(source)
+      })
+
+      // #then — the update reached the live doc
+      expect(provider.getDoc('n1')?.getMap('probe').get('typed')).toBe('after-eviction-pass')
+    })
+
+    it('hooks the sender window once, not once per handshake', async () => {
+      // Stacking a 'closed' listener per doc would trip Electron's
+      // max-listeners warning on a window holding dozens of notes.
+      const provider = getCrdtProvider()
+      await provider.init()
+
+      await handshake('n1')
+      await handshake('n2')
+      await handshake('n3')
+
+      expect(senderWindow.current.once).toHaveBeenCalledTimes(1)
+      expect(senderWindow.current.once).toHaveBeenCalledWith('closed', expect.any(Function))
+    })
+
+    it('releases the attribution when the window is destroyed', async () => {
+      // The other half of the bug: an id that is never released pins the doc
+      // for the session and disables eviction and compaction with it.
+      const provider = getCrdtProvider()
+      await provider.init()
+      await handshake('n1')
+      await handshake('n2')
+
+      // #when — ⌘W / renderer crash: the window emits 'closed'
+      const onClosed = senderWindow.current.once.mock.calls[0][1] as () => void
+      onClosed()
+
+      // #then — both docs released, so eviction and compaction see them again
+      await vi.waitFor(() => {
+        expect(provider.getOpenNoteIds()).toEqual([])
+      })
+    })
+
+    it('releases the attribution on crdt:close-doc', async () => {
+      // The renderer sends this on unmount, including the remount after a
+      // window reload — the handshake-recorded id must clear the same way.
+      const provider = getCrdtProvider()
+      await provider.init()
+      await handshake('n1')
+
+      // #when
+      await invokeHandler(CRDT_CHANNELS.CLOSE_DOC, { noteId: 'n1' })
+
+      // #then
+      expect(provider.getOpenNoteIds()).toEqual([])
+    })
+
+    it('releases the attribution when the vault closes', async () => {
+      const provider = getCrdtProvider()
+      await provider.init()
+      await handshake('n1')
+
+      // #when — vault close/switch tears the provider down
+      await provider.destroy()
+
+      // #then
+      expect(provider.getOpenNoteIds()).toEqual([])
     })
   })
 

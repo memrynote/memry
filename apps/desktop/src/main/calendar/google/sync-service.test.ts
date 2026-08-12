@@ -12,6 +12,7 @@ import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
+import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { settings } from '@memry/db-schema/schema/settings'
 import { tasks } from '@memry/db-schema/schema/tasks'
@@ -506,6 +507,68 @@ describe('google calendar sync service', () => {
       title: 'Imported review',
       remoteEtag: '"etag-1"'
     })
+  })
+
+  it('seeds a clock on newly imported Google events and preserves an existing one (#1215)', async () => {
+    seedGoogleCalendarSource({
+      id: 'google-calendar:selected',
+      remoteId: 'remote-selected-calendar',
+      title: 'Work',
+      isMemryManaged: false
+    })
+
+    db.insert(syncDevices)
+      .values({
+        id: 'device-a',
+        name: 'Fedora',
+        platform: 'linux',
+        appVersion: '2026.08.11',
+        linkedAt: new Date('2026-04-12T09:00:00.000Z'),
+        isCurrentDevice: true,
+        signingPublicKey: 'pub-key'
+      })
+      .run()
+
+    const client = {
+      listEvents: vi.fn(async () => ({
+        nextSyncCursor: 'cursor-2',
+        events: [
+          {
+            id: 'remote-event-clock',
+            calendarId: 'remote-selected-calendar',
+            title: 'Imported review',
+            startAt: '2026-04-14T13:00:00.000Z',
+            endAt: '2026-04-14T14:00:00.000Z',
+            isAllDay: false,
+            timezone: 'UTC',
+            status: 'confirmed' as const,
+            etag: '"etag-1"',
+            updatedAt: '2026-04-12T10:20:00.000Z',
+            raw: { summary: 'Imported review' }
+          }
+        ]
+      }))
+    }
+
+    // #when an event this device has never seen is imported
+    await syncGoogleCalendarSource(db, 'google-calendar:selected', { client })
+
+    // #then it is stored with a clock — a NULL clock is rejected by the server
+    // for calendar_external_event and fails the entire push batch
+    const [imported] = db.select().from(calendarExternalEvents).all()
+    expect(imported.clock).toEqual({ 'device-a': 1 })
+
+    // #when the same event comes back on a later sync, having been clocked by a peer
+    db.update(calendarExternalEvents)
+      .set({ clock: { 'device-b': 4 } })
+      .where(eq(calendarExternalEvents.id, imported.id))
+      .run()
+
+    await syncGoogleCalendarSource(db, 'google-calendar:selected', { client })
+
+    // #then the import inherits the stored clock instead of restamping it
+    const [reimported] = db.select().from(calendarExternalEvents).all()
+    expect(reimported.clock).toEqual({ 'device-b': 4 })
   })
 
   it('writes truncated lastError + syncStatus="error" when listEvents throws (M6 T6)', async () => {

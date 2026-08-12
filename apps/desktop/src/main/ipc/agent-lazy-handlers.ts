@@ -5,6 +5,7 @@ import {
   AgentChannels,
   AgentLocalProviderSettingsUpdateSchema,
   AgentPreferencesUpdateSchema,
+  AgentStreamTargetRequestSchema,
   type AgentLocalModelList,
   type AgentLocalProviderProbeResult,
   type AgentLocalProviderSettings,
@@ -17,6 +18,7 @@ import {
 
 import { getAgentPreferences, setAgentPreferences } from '../agent/settings'
 import { getDisclosureState, acceptDisclosure } from '../agent/runtime/disclosure-state'
+import { setAgentStreamTarget } from '../agent/runtime/event-bus'
 import { ensureLazyAgentServicesStarted } from '../agent/lazy-services'
 import { createLogger } from '../lib/logger'
 import { getMainI18n } from '../lib/main-i18n'
@@ -178,6 +180,15 @@ export function registerLazyAgentHandlers(): void {
       logger.warn('Failed to start lazy agent services', error)
     })
     return { windowId: resolveSenderWindowId(event.sender) }
+  })
+  // Answered before the runtime exists on purpose: a window that mounts Agent
+  // Chat during the lazy start would otherwise stay "unknown", which forces the
+  // delta fan-out to fall back to every window for the first turn.
+  ipcMain.handle(AgentChannels.invoke.SET_STREAM_TARGET, (event, payload: unknown) => {
+    const { conversationId } = AgentStreamTargetRequestSchema.parse(payload)
+    const windowId = resolveSenderWindowId(event.sender)
+    if (windowId !== null) setAgentStreamTarget(Number(windowId), conversationId)
+    return { ok: true }
   })
 }
 

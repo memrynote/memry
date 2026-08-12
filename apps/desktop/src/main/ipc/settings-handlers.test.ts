@@ -18,6 +18,7 @@ const electronMocks = vi.hoisted(() => {
     getAllWindows: vi.fn(() => [{ isDestroyed: () => false, webContents: { send } }]),
     setLoginItemSettings: vi.fn(),
     globalShortcutUnregisterAll: vi.fn(),
+    globalShortcutUnregister: vi.fn(),
     globalShortcutRegister: vi.fn(),
     isTrustedAccessibilityClient: vi.fn()
   }
@@ -26,6 +27,7 @@ const mockSend = electronMocks.send
 const mockGetAllWindows = electronMocks.getAllWindows
 const mockSetLoginItemSettings = electronMocks.setLoginItemSettings
 const mockGlobalShortcutUnregisterAll = electronMocks.globalShortcutUnregisterAll
+const mockGlobalShortcutUnregister = electronMocks.globalShortcutUnregister
 const mockGlobalShortcutRegister = electronMocks.globalShortcutRegister
 const mockIsTrustedAccessibilityClient = electronMocks.isTrustedAccessibilityClient
 const mockTrackMainEvent = vi.hoisted(() => vi.fn())
@@ -66,6 +68,7 @@ vi.mock('electron', () => ({
   },
   globalShortcut: {
     unregisterAll: electronMocks.globalShortcutUnregisterAll,
+    unregister: electronMocks.globalShortcutUnregister,
     register: electronMocks.globalShortcutRegister
   },
   systemPreferences: {
@@ -149,6 +152,7 @@ vi.mock('../store', () => ({
 import {
   applyGlobalCaptureShortcut,
   registerSettingsHandlers,
+  setGlobalCaptureAppliedHandler,
   unregisterSettingsHandlers
 } from './settings-handlers'
 import { getDatabase } from '../database'
@@ -183,6 +187,7 @@ describe('settings-handlers', () => {
       .mockReturnValue([{ isDestroyed: () => false, webContents: { send: mockSend } }])
     mockSetLoginItemSettings.mockReset()
     mockGlobalShortcutUnregisterAll.mockReset()
+    mockGlobalShortcutUnregister.mockReset()
     mockGlobalShortcutRegister.mockReset().mockReturnValue(true)
     mockIsTrustedAccessibilityClient.mockReset().mockReturnValue(true)
     mockUpdateField.mockClear()
@@ -886,14 +891,16 @@ describe('settings-handlers', () => {
   })
 
   describe('global capture shortcut', () => {
-    it('#given no binding #when registered #then unregisters existing shortcuts only', () => {
+    it('#given no binding #when registered #then leaves shortcuts it does not own alone', () => {
       registerSettingsHandlers()
       ;(settingsQueries.getSetting as Mock).mockReturnValue(JSON.stringify({}))
 
       const result = applyGlobalCaptureShortcut()
 
       expect(result).toEqual({ success: true, registered: false })
-      expect(mockGlobalShortcutUnregisterAll).toHaveBeenCalledTimes(1)
+      // unregisterAll() would also drop the quick capture fallback accelerator
+      // registered by main/index.ts, killing quick capture entirely (#1087).
+      expect(mockGlobalShortcutUnregisterAll).not.toHaveBeenCalled()
       expect(mockGlobalShortcutRegister).not.toHaveBeenCalled()
     })
 
@@ -953,6 +960,78 @@ describe('settings-handlers', () => {
       callback?.()
       expect(mockGlobalShortcutRegister).toHaveBeenCalledWith('Control+K', expect.any(Function))
       expect(mockSend).toHaveBeenCalledWith('quick-capture:open')
+    })
+
+    it('#given a re-apply #when the accelerator changes #then releases only the accelerator it owns', () => {
+      registerSettingsHandlers()
+      Object.defineProperty(process, 'platform', { configurable: true, value: 'linux' })
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(
+        JSON.stringify({ globalCapture: { key: 'J', modifiers: { ctrl: true } } })
+      )
+      applyGlobalCaptureShortcut()
+      mockGlobalShortcutUnregister.mockClear()
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(
+        JSON.stringify({ globalCapture: { key: 'L', modifiers: { ctrl: true } } })
+      )
+
+      expect(applyGlobalCaptureShortcut()).toEqual({ success: true, registered: true })
+      expect(mockGlobalShortcutUnregister).toHaveBeenCalledTimes(1)
+      expect(mockGlobalShortcutUnregister).toHaveBeenCalledWith('Control+J')
+      expect(mockGlobalShortcutUnregisterAll).not.toHaveBeenCalled()
+    })
+
+    it('#given repeated saves #when the accelerator is unchanged #then re-registers exactly once each time', () => {
+      registerSettingsHandlers()
+      Object.defineProperty(process, 'platform', { configurable: true, value: 'linux' })
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(
+        JSON.stringify({ globalCapture: { key: 'P', modifiers: { ctrl: true } } })
+      )
+      applyGlobalCaptureShortcut()
+      mockGlobalShortcutRegister.mockClear()
+      mockGlobalShortcutUnregister.mockClear()
+
+      applyGlobalCaptureShortcut()
+      applyGlobalCaptureShortcut()
+
+      // Each save releases the previous binding before taking it again, so no
+      // stale duplicate registration is left behind.
+      expect(mockGlobalShortcutUnregister.mock.calls).toEqual([['Control+P'], ['Control+P']])
+      expect(mockGlobalShortcutRegister).toHaveBeenCalledTimes(2)
+    })
+
+    it('#given a fallback owner #when applying succeeds or fails #then it is told the real outcome', () => {
+      registerSettingsHandlers()
+      Object.defineProperty(process, 'platform', { configurable: true, value: 'linux' })
+      const onApplied = vi.fn()
+      setGlobalCaptureAppliedHandler(onApplied)
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(
+        JSON.stringify({ globalCapture: { key: 'M', modifiers: { ctrl: true } } })
+      )
+      mockGlobalShortcutRegister.mockReturnValueOnce(false)
+
+      // A conflict is reported to the caller AND handed to the fallback owner,
+      // instead of being swallowed with quick capture left unbound (#1087).
+      const conflict = applyGlobalCaptureShortcut()
+      expect(conflict.success).toBe(false)
+      expect(conflict.error).toBe('Shortcut Control+M is already in use')
+      expect(onApplied).toHaveBeenLastCalledWith(false)
+
+      applyGlobalCaptureShortcut()
+      expect(onApplied).toHaveBeenLastCalledWith(true)
+
+      setGlobalCaptureAppliedHandler(null)
+    })
+
+    it('#given no binding #when applied #then the fallback owner is told nothing is registered', () => {
+      registerSettingsHandlers()
+      const onApplied = vi.fn()
+      setGlobalCaptureAppliedHandler(onApplied)
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(JSON.stringify({}))
+
+      expect(applyGlobalCaptureShortcut()).toEqual({ success: true, registered: false })
+      expect(onApplied).toHaveBeenCalledWith(false)
+
+      setGlobalCaptureAppliedHandler(null)
     })
   })
 

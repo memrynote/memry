@@ -117,6 +117,10 @@ The formatting toolbar can be sticky at the top or float above selections — ch
 
 Both modes offer the same formatting controls: the block type (paragraph, heading, list) plus inline styles, alignment, colour, indent, and links. The block type control is hidden for blocks that have no alternative type, such as tasks, callouts, and files.
 
+### Turning existing lines into a list
+
+Select the lines — a whole pasted block of them if you like — and press **Bulleted list**, **Numbered list**, or **Check list** on the toolbar. Every selected line is converted, not just the one holding the cursor, and pressing the same button again turns them back into paragraphs. Blocks that cannot become list items, such as tasks and files, are left as they are.
+
 ## Text Formatting
 
 Bold, italic and strikethrough are written to the vault as plain Markdown (`**bold**`, `*italic*`, `~~strike~~`).

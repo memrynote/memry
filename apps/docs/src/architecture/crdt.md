@@ -74,6 +74,20 @@ targets docs with zero attached windows, so active editor docs are never evicted
 provider metrics expose the open doc count, encoded size, and per-doc `windowCount`
 so memory growth can be observed without inspecting private provider state.
 
+Because "attached window" is what makes a doc safe from eviction, every IPC entry point
+that can open a doc attributes it to the sender window — `crdt:open-doc` and the
+`crdt:sync-step-1` handshake alike. The handshake matters because it can be the call that
+creates the doc: `crdt:open-doc` may have been skipped or failed, or a provider reset
+during a vault switch may have dropped the entry in between. A doc opened without a window
+would count as inactive while an editor was typing into it, and an update that arrives
+after its entry is gone is dropped rather than applied.
+
+Attribution is released on every path that ends a window's interest in a doc, so it never
+pins a doc for the rest of the session: the renderer's `crdt:close-doc` on unmount, a
+`closed` hook per window for ⌘W and renderer crashes, a broadcast-time backstop for any
+window that turns out to be gone, and provider teardown on vault close or switch. Once
+released, the doc is evictable and compactable again.
+
 ## IPC Loop Prevention
 
 Three pieces of metadata prevent feedback loops:
@@ -97,6 +111,11 @@ document to its vault `.md` file and re-indexes it for search.
 - **Nothing is deferred indefinitely** — the trailing pass always runs, and
   `flushPendingWritebacks()` forces any pending pass through before the CRDT provider is
   destroyed, which covers app quit and vault switch.
+- **Per-vault bookkeeping** — write-back tracks self-written files and recent inbound
+  network updates in short-TTL maps. Entries are evicted in an amortized pass (at most one
+  sweep per TTL window) rather than scanned on every watcher event, and
+  `CrdtProvider.destroy()` clears the maps outright, so no vault's note ids or file paths
+  survive into the next one.
 
 While a write-back is queued or mid-write the `.md` file is knowingly behind the Y.Doc, so
 markdown-as-truth readers (task checkbox reconciliation) stand down for that window. Search

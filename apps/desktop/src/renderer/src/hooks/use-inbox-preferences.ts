@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { mergeSettingsPatch } from '@/lib/settings-patch'
 import { INBOX_SETTINGS_DEFAULTS, type InboxSettings } from '@memry/contracts/settings-schemas'
 import { getI18n } from 'react-i18next'
 
@@ -42,7 +43,7 @@ export function useInboxPreferences(): UseInboxPreferencesReturn {
   useEffect(() => {
     const unsubscribe = window.api.onSettingsChanged((event) => {
       if (event.key === 'inbox') {
-        setSettings((prev) => ({ ...prev, ...(event.value as Partial<InboxSettings>) }))
+        setSettings((prev) => mergeSettingsPatch(prev, event.value as Partial<InboxSettings>))
       }
     })
     return unsubscribe

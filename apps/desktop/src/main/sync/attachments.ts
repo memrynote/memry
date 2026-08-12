@@ -471,9 +471,13 @@ export class AttachmentSyncService {
   async downloadAttachment(
     attachmentId: string,
     targetPath: string,
-    opts?: { targetIsDir?: boolean }
+    opts?: { targetIsDir?: boolean; onProgress?: ProgressCallback }
   ): Promise<DownloadResult> {
     const [token, vaultKey] = await this.requireAuth()
+    // Per-call callback wins over the shared slot, mirroring uploadAttachment:
+    // two concurrent downloads that both went through the singleton clobbered
+    // each other, and whichever finished first cleared it for the survivor.
+    const emit = (p: TransferProgress): void => (opts?.onProgress ?? this.onProgress)?.(p)
 
     log.info('starting download', { attachmentId })
 
@@ -549,7 +553,7 @@ export class AttachmentSyncService {
         downloadProgress.chunksCompleted++
         downloadProgress.bytesTransferred = bytesDownloaded
         downloadProgress.phase = 'decrypting'
-        this.emitProgress({ ...downloadProgress })
+        emit({ ...downloadProgress })
       })
 
       const reassembled = Buffer.concat(decryptedChunks)
@@ -868,10 +872,6 @@ export class AttachmentSyncService {
     if (!signingKeys) throw new Error('Device keys not available')
 
     return [token, vaultKey, signingKeys]
-  }
-
-  private emitProgress(progress: TransferProgress): void {
-    this.onProgress?.(progress)
   }
 
   private async atomicWriteBinary(filePath: string, data: Buffer): Promise<void> {

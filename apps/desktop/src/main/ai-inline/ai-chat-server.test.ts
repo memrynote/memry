@@ -1,3 +1,4 @@
+import http from 'node:http'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getServerPort, startChatServer, stopChatServer } from './ai-chat-server'
 
@@ -10,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   toolDefinitionsToToolSet: vi.fn(),
   pipe: vi.fn(),
   logInfo: vi.fn(),
+  logWarn: vi.fn(),
   logError: vi.fn()
 }))
 
@@ -33,6 +35,7 @@ vi.mock('@blocknote/xl-ai/server', () => ({
 vi.mock('../lib/logger', () => ({
   createLogger: () => ({
     info: (...args: unknown[]) => mocks.logInfo(...args),
+    warn: (...args: unknown[]) => mocks.logWarn(...args),
     error: (...args: unknown[]) => mocks.logError(...args)
   })
 }))
@@ -50,6 +53,80 @@ async function postJson(port: number, body: unknown): Promise<Response> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
+  })
+}
+
+// Declares an oversized body without ever writing it, so the size guard has to
+// reject on the header alone.
+function postDeclaredLength(
+  port: number,
+  contentLength: number
+): Promise<{ status: number; body: string }> {
+  return new Promise((resolve, reject) => {
+    let settled = false
+    const req = http.request(
+      {
+        host: '127.0.0.1',
+        port,
+        path: '/api/ai/chat',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': String(contentLength) }
+      },
+      (res) => {
+        let body = ''
+        res.setEncoding('utf8')
+        res.on('data', (chunk: string) => {
+          body += chunk
+        })
+        res.on('end', () => {
+          settled = true
+          resolve({ status: res.statusCode ?? 0, body })
+        })
+      }
+    )
+    req.on('error', (err) => {
+      if (!settled) reject(err)
+    })
+    // Node only flushes request headers on the first write, and the rest of the
+    // declared body is deliberately never sent.
+    req.write('{')
+  })
+}
+
+// Chunked upload with no declared length, and valid JSON so that an
+// uncapped server would happily buffer it and reach the model.
+function postChunkedJson(port: number, fillerBytes: number): Promise<number | 'errored'> {
+  return new Promise((resolve) => {
+    const req = http.request(
+      {
+        host: '127.0.0.1',
+        port,
+        path: '/api/ai/chat',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      },
+      (res) => {
+        res.resume()
+        res.on('end', () => resolve(res.statusCode ?? 0))
+      }
+    )
+    req.on('error', () => resolve('errored'))
+
+    const chunk = Buffer.alloc(1024 * 1024, 0x61)
+    let written = 0
+    const pump = (): void => {
+      while (written < fillerBytes) {
+        if (req.destroyed || req.writableEnded) return
+        written += chunk.length
+        if (!req.write(chunk)) {
+          req.once('drain', pump)
+          return
+        }
+      }
+      if (!req.destroyed) req.end('"}],"toolDefinitions":[]}')
+    }
+    req.write('{"messages":[{"role":"user","content":"')
+    pump()
   })
 }
 
@@ -130,7 +207,8 @@ describe('AI inline chat server', () => {
       system: 'html-system',
       messages: [{ role: 'user', content: 'hello' }],
       tools: { insert: { description: 'tool' } },
-      toolChoice: 'required'
+      toolChoice: 'required',
+      abortSignal: expect.any(AbortSignal)
     })
 
     const missing = await fetch(`http://127.0.0.1:${port}/nope`, { method: 'POST' })
@@ -154,5 +232,102 @@ describe('AI inline chat server', () => {
     expect(response.status).toBe(500)
     expect(await response.json()).toEqual({ error: 'Internal server error' })
     expect(mocks.logError).toHaveBeenCalledWith('Chat request failed:', expect.any(Error))
+  })
+
+  it('aborts the provider request when the client disconnects mid-stream', async () => {
+    let capturedSignal: AbortSignal | undefined
+    mocks.streamText.mockImplementation((options: { abortSignal: AbortSignal }) => {
+      capturedSignal = options.abortSignal
+      return { pipeUIMessageStreamToResponse: mocks.pipe }
+    })
+    // Never end the response: the generation is still in flight.
+    mocks.pipe.mockImplementation((res: http.ServerResponse) => {
+      res.writeHead(200)
+      res.write('partial')
+    })
+
+    const port = await startChatServer(settings)
+    const controller = new AbortController()
+    const response = await fetch(`http://127.0.0.1:${port}/api/ai/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: [], toolDefinitions: [] }),
+      signal: controller.signal
+    })
+    const drained = response.text().catch(() => undefined)
+
+    await vi.waitFor(() => expect(capturedSignal).toBeDefined())
+    expect(capturedSignal?.aborted).toBe(false)
+
+    controller.abort()
+
+    await vi.waitFor(() => expect(capturedSignal?.aborted).toBe(true))
+    await drained
+  })
+
+  it('stops while a response is still streaming so quit cannot hang', async () => {
+    mocks.pipe.mockImplementation((res: http.ServerResponse) => {
+      res.writeHead(200)
+      res.write('partial')
+    })
+
+    const port = await startChatServer(settings)
+    const response = await postJson(port, { messages: [], toolDefinitions: [] })
+    const drained = response.text().catch(() => undefined)
+    expect(response.status).toBe(200)
+
+    // Without closeAllConnections() this never resolves and the before-quit
+    // chain stalls until the shutdown timeout force-exits the app.
+    await stopChatServer()
+
+    expect(getServerPort()).toBeNull()
+    await expect(fetch(`http://127.0.0.1:${port}/nope`)).rejects.toThrow()
+    await drained
+  })
+
+  it('rejects a body whose declared length exceeds the cap without reading it', async () => {
+    const port = await startChatServer(settings)
+
+    const response = await postDeclaredLength(port, 26 * 1024 * 1024)
+
+    expect(response.status).toBe(413)
+    expect(JSON.parse(response.body)).toEqual({ error: 'Request body too large' })
+    expect(mocks.streamText).not.toHaveBeenCalled()
+    expect(mocks.logWarn).toHaveBeenCalledWith('Rejected oversized chat request body')
+  })
+
+  it('drops a chunked body that grows past the cap instead of buffering it', async () => {
+    const port = await startChatServer(settings)
+
+    const result = await postChunkedJson(port, 26 * 1024 * 1024)
+
+    expect(result).not.toBe(200)
+    expect(mocks.streamText).not.toHaveBeenCalled()
+  }, 20000)
+
+  it('keeps a listening server closable after a post-listen error', async () => {
+    const created: http.Server[] = []
+    const createServer = http.createServer.bind(http) as (...args: unknown[]) => http.Server
+    const spy = vi.spyOn(http, 'createServer').mockImplementation(((...args: unknown[]) => {
+      const instance = createServer(...args)
+      created.push(instance)
+      return instance
+    }) as typeof http.createServer)
+
+    try {
+      const port = await startChatServer(settings)
+      expect(created).toHaveLength(1)
+
+      // A late socket error must not make the module forget a bound server, or
+      // stopChatServer() resolves without closing it and the port leaks.
+      created[0].emit('error', new Error('late socket failure'))
+
+      expect(getServerPort()).toBe(port)
+      await stopChatServer()
+      expect(getServerPort()).toBeNull()
+      await expect(fetch(`http://127.0.0.1:${port}/nope`)).rejects.toThrow()
+    } finally {
+      spy.mockRestore()
+    }
   })
 })

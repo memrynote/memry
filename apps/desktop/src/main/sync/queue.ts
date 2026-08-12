@@ -14,6 +14,18 @@ export const DEFAULT_MAX_ATTEMPTS = 5
 const DEAD_LETTER_PURGE_THRESHOLD = 50
 export const ERROR_RETENTION_DAYS = 7
 
+/**
+ * How many enqueues may pass between two auto-purge probes.
+ *
+ * Purging dead-lettered rows older than ERROR_RETENTION_DAYS is housekeeping,
+ * not correctness: nothing reads those rows, and they can only accumulate at
+ * the pace of `markFailed`. Re-evaluating the threshold on every single
+ * enqueue therefore bought nothing and cost a scan of `sync_queue` per queued
+ * mutation, which a bulk import or an import-sized burst pays thousands of
+ * times. The probe runs on the first enqueue and every Nth one after that.
+ */
+const AUTO_PURGE_CHECK_EVERY_N_ENQUEUES = 50
+
 export interface EnqueueInput {
   type: SyncItemType
   itemId: string
@@ -50,6 +62,9 @@ export class SyncQueueManager {
   constructor(private readonly db: DataDb) {}
 
   private onItemEnqueued: (() => void) | null = null
+
+  /** Seeded at the interval so the very first enqueue still probes. */
+  private enqueuesSincePurgeCheck = AUTO_PURGE_CHECK_EVERY_N_ENQUEUES
 
   setOnItemEnqueued(callback: () => void): void {
     this.onItemEnqueued = callback
@@ -292,11 +307,26 @@ export class SyncQueueManager {
   }
 
   private maybeAutoPurge(): void {
-    const stats = this.getQueueStats()
-    if (stats.deadLetter >= DEAD_LETTER_PURGE_THRESHOLD) {
-      const sevenDaysAgo = new Date(Date.now() - ERROR_RETENTION_DAYS * 24 * 60 * 60 * 1000)
-      this.purgeOldErrors(sevenDaysAgo)
-    }
+    this.enqueuesSincePurgeCheck++
+    if (this.enqueuesSincePurgeCheck < AUTO_PURGE_CHECK_EVERY_N_ENQUEUES) return
+    this.enqueuesSincePurgeCheck = 0
+
+    if (!this.hasDeadLetterBacklog()) return
+    const sevenDaysAgo = new Date(Date.now() - ERROR_RETENTION_DAYS * 24 * 60 * 60 * 1000)
+    this.purgeOldErrors(sevenDaysAgo)
+  }
+
+  /**
+   * Whether at least DEAD_LETTER_PURGE_THRESHOLD rows have exhausted their
+   * retry budget. `LIMIT 1 OFFSET threshold-1` stops walking as soon as the
+   * threshold-th row is reached, so it never counts the rest of the table —
+   * and the exact dead-letter total was never used, only compared.
+   */
+  private hasDeadLetterBacklog(): boolean {
+    const row = this.db.get<{ found: number }>(
+      sql`SELECT 1 AS found FROM sync_queue WHERE attempts >= ${DEFAULT_MAX_ATTEMPTS} LIMIT 1 OFFSET ${DEAD_LETTER_PURGE_THRESHOLD - 1}`
+    )
+    return row !== undefined
   }
 
   getQueueStats(): QueueStats {

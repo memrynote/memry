@@ -9,6 +9,7 @@ import type {
   AgentLocalProviderSettingsUpdate,
   AgentPreferences,
   AgentPreferencesUpdate,
+  AgentStreamTargetRequest,
   ApproveToolRequest,
   BackendStatusesResponse,
   PreviewDiffRequest,
@@ -73,6 +74,8 @@ export const agentApi = {
     invoke(AgentChannels.invoke.GET_DISCLOSURE_STATE),
   getWindowId: (): Promise<{ windowId: string | null }> =>
     invoke(AgentChannels.invoke.GET_WINDOW_ID),
+  setStreamTarget: (input: AgentStreamTargetRequest): Promise<{ ok: boolean }> =>
+    invoke(AgentChannels.invoke.SET_STREAM_TARGET, input),
   onEvent: (callback: (event: AgentEvent) => void): (() => void) =>
     subscribe<AgentEvent>(AgentChannels.events.AGENT_EVENT, callback),
   onConversationsChanged: (callback: (payload: { conversationId: string }) => void): (() => void) =>

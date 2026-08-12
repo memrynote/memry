@@ -573,6 +573,148 @@ describe('google calendar client — push channels (Task 7)', () => {
       })
     })
 
+    it('follows nextPageToken across pages and reads the cursor from the final page only', async () => {
+      const requested: URL[] = []
+      fetchMock
+        .mockImplementationOnce(async (input) => {
+          requested.push(new URL(String(input)))
+          // Google omits nextSyncToken while a nextPageToken exists.
+          return new Response(
+            JSON.stringify({
+              nextPageToken: 'page-2',
+              items: [
+                {
+                  id: 'recurring-instance-1',
+                  summary: 'Standup',
+                  start: { dateTime: '2026-05-05T09:00:00.000Z' },
+                  end: { dateTime: '2026-05-05T09:15:00.000Z' }
+                }
+              ]
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        })
+        .mockImplementationOnce(async (input) => {
+          requested.push(new URL(String(input)))
+          return new Response(
+            JSON.stringify({
+              nextSyncToken: 'cursor-final',
+              items: [
+                {
+                  id: 'one-off-1',
+                  summary: 'Dentist',
+                  start: { dateTime: '2026-05-12T14:00:00.000Z' },
+                  end: { dateTime: '2026-05-12T15:00:00.000Z' }
+                }
+              ]
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        })
+
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+      const result = await client.listEvents({
+        calendarId: 'primary',
+        timeMin: '2026-05-01T00:00:00.000Z',
+        timeMax: '2026-06-01T00:00:00.000Z',
+        syncCursor: null
+      })
+
+      expect(result.events.map((event) => event.id)).toEqual(['recurring-instance-1', 'one-off-1'])
+      expect(result.nextSyncCursor).toBe('cursor-final')
+
+      expect(requested).toHaveLength(2)
+      expect(requested[0]?.searchParams.get('maxResults')).toBe('250')
+      expect(requested[0]?.searchParams.has('pageToken')).toBe(false)
+      expect(requested[1]?.searchParams.get('pageToken')).toBe('page-2')
+      // The window survives across pages.
+      expect(requested[1]?.searchParams.get('timeMin')).toBe('2026-05-01T00:00:00.000Z')
+      expect(requested[1]?.searchParams.get('timeMax')).toBe('2026-06-01T00:00:00.000Z')
+    })
+
+    it('paginates the sync-token branch too, carrying the syncToken on every page', async () => {
+      const requested: URL[] = []
+      fetchMock
+        .mockImplementationOnce(async (input) => {
+          requested.push(new URL(String(input)))
+          return new Response(
+            JSON.stringify({
+              nextPageToken: 'delta-page-2',
+              items: [{ id: 'delta-1', start: { dateTime: '2026-05-05T09:00:00.000Z' } }]
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        })
+        .mockImplementationOnce(async (input) => {
+          requested.push(new URL(String(input)))
+          return new Response(
+            JSON.stringify({
+              nextSyncToken: 'cursor-delta-final',
+              items: [{ id: 'delta-2', start: { dateTime: '2026-05-06T09:00:00.000Z' } }]
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        })
+
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+      const result = await client.listEvents({ calendarId: 'primary', syncCursor: 'cursor-1' })
+
+      expect(result.events.map((event) => event.id)).toEqual(['delta-1', 'delta-2'])
+      expect(result.nextSyncCursor).toBe('cursor-delta-final')
+      expect(requested).toHaveLength(2)
+      expect(requested[0]?.searchParams.get('syncToken')).toBe('cursor-1')
+      expect(requested[1]?.searchParams.get('syncToken')).toBe('cursor-1')
+      expect(requested[1]?.searchParams.get('pageToken')).toBe('delta-page-2')
+    })
+
+    it('makes exactly one request when the first page is the last page', async () => {
+      const requested: URL[] = []
+      fetchMock.mockImplementationOnce(async (input) => {
+        requested.push(new URL(String(input)))
+        return new Response(
+          JSON.stringify({
+            nextSyncToken: 'cursor-single',
+            items: [{ id: 'only-1', start: { dateTime: '2026-05-05T09:00:00.000Z' } }]
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      })
+
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+      const result = await client.listEvents({
+        calendarId: 'primary',
+        timeMin: '2026-05-01T00:00:00.000Z',
+        timeMax: '2026-06-01T00:00:00.000Z',
+        syncCursor: null
+      })
+
+      expect(result.events.map((event) => event.id)).toEqual(['only-1'])
+      expect(result.nextSyncCursor).toBe('cursor-single')
+      expect(requested).toHaveLength(1)
+      expect(requested[0]?.searchParams.has('pageToken')).toBe(false)
+    })
+
+    it('discards partial pages and clears the cursor when Google returns 410 mid-pagination', async () => {
+      fetchMock
+        .mockImplementationOnce(
+          async () =>
+            new Response(
+              JSON.stringify({
+                nextPageToken: 'delta-page-2',
+                items: [{ id: 'delta-1', start: { dateTime: '2026-05-05T09:00:00.000Z' } }]
+              }),
+              { status: 200, headers: { 'Content-Type': 'application/json' } }
+            )
+        )
+        .mockImplementationOnce(async () => new Response('gone', { status: 410 }))
+
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+      await expect(
+        client.listEvents({ calendarId: 'primary', syncCursor: 'stale-cursor' })
+      ).resolves.toEqual({ events: [], nextSyncCursor: null })
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+
     it('sends PATCH headers and optional rich event fields on update', async () => {
       let capturedUrl = ''
       let capturedInit: RequestInit | undefined

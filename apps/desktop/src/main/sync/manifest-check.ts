@@ -8,6 +8,7 @@ import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters, settings } from '@memry/db-schema/schema/settings'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import { canvases } from '@memry/db-schema/schema/canvas'
+import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
 import { bookmarks } from '@memry/db-schema/schema/bookmarks'
 import { templates } from '@memry/db-schema/schema/templates'
 import { reminders } from '@memry/db-schema/schema/reminders'
@@ -79,12 +80,12 @@ export async function checkManifestIntegrity(
       result.value.items.map((item) => [itemRefKey(item.type, item.id), item])
     )
 
-    const localItems = getLocalSyncableItems(deps.db)
+    const localRefs = getLocalSyncableRefs(deps.db)
     // A note held locally counts as present whether the server row calls it
     // 'note' or 'journal' — the classification is derived and must not make
     // the item look server-only.
     const localKeys = new Set(
-      localItems.flatMap((l) =>
+      localRefs.flatMap((l) =>
         l.type === 'note' || l.type === 'journal'
           ? [itemRefKey('note', l.id), itemRefKey('journal', l.id)]
           : [itemRefKey(l.type, l.id)]
@@ -92,10 +93,21 @@ export async function checkManifestIntegrity(
     )
 
     let reEnqueuedCount = 0
-    for (const local of localItems) {
+    for (const local of localRefs) {
       const serverRef = serverItemMap.get(itemRefKey(local.type, local.id))
 
       if (!serverRef) {
+        // Payloads are built here and only here: the diff above needs nothing
+        // but (type, id), so a clean vault never materializes a single row.
+        const payload = buildRefPayload(deps.db, local)
+        if (payload === null) {
+          log.warn('Local item missing from server manifest but row is gone, skipping', {
+            id: local.id,
+            type: local.type
+          })
+          continue
+        }
+
         log.warn('Local item missing from server manifest, enqueuing as create', {
           id: local.id,
           type: local.type
@@ -105,7 +117,7 @@ export async function checkManifestIntegrity(
           type: local.type,
           itemId: local.id,
           operation: 'create',
-          payload: local.payload,
+          payload,
           priority: 0
         })
         reEnqueuedCount++
@@ -138,115 +150,139 @@ export async function checkManifestIntegrity(
   }
 }
 
-interface LocalSyncableItem {
+interface LocalSyncableRef {
   id: string
   type: RecordSyncItemType
-  payload: string
 }
 
-function getLocalSyncableItems(db: DrizzleDb): LocalSyncableItem[] {
-  const items: LocalSyncableItem[] = []
+/**
+ * Ids and types only — deliberately no row bodies. The manifest diff compares
+ * (type, id) pairs, and payloads are only ever needed for the rare ref the
+ * server manifest is missing, so materializing every row up front was pure
+ * waste on the clean path. `buildRefPayload` fetches those rows lazily.
+ */
+function getLocalSyncableRefs(db: DrizzleDb): LocalSyncableRef[] {
+  const refs: LocalSyncableRef[] = []
   const localIds = new Set<string>()
   // Dedup by (type, id): a bare-id dedup silently dropped the same-id sibling
   // of another type (project 'inbox' vs tag 'inbox'), making it look
   // server-only on every manifest check. Notes and journals stay one dedup
   // family: the same note id is listed by both the data DB and the index DB,
   // and their journal-ness classification must not create a double entry.
-  const dedupKey = (item: LocalSyncableItem): string =>
-    item.type === 'note' || item.type === 'journal'
-      ? `note~journal:${item.id}`
-      : itemRefKey(item.type, item.id)
-  const addLocalItem = (item: LocalSyncableItem) => {
-    const key = dedupKey(item)
+  const dedupKey = (ref: LocalSyncableRef): string =>
+    ref.type === 'note' || ref.type === 'journal'
+      ? `note~journal:${ref.id}`
+      : itemRefKey(ref.type, ref.id)
+  const addLocalRef = (ref: LocalSyncableRef) => {
+    const key = dedupKey(ref)
     if (localIds.has(key)) return
     localIds.add(key)
-    items.push(item)
+    refs.push(ref)
   }
 
-  const syncedTasks = db.select().from(tasks).where(isNotNull(tasks.clock)).all()
+  const syncedTasks = db.select({ id: tasks.id }).from(tasks).where(isNotNull(tasks.clock)).all()
   for (const t of syncedTasks) {
-    addLocalItem({ id: t.id, type: 'task', payload: JSON.stringify(t) })
+    addLocalRef({ id: t.id, type: 'task' })
   }
 
-  const syncedProjects = db.select().from(projects).where(isNotNull(projects.clock)).all()
+  const syncedProjects = db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(isNotNull(projects.clock))
+    .all()
   for (const p of syncedProjects) {
-    addLocalItem({ id: p.id, type: 'project', payload: JSON.stringify(p) })
+    addLocalRef({ id: p.id, type: 'project' })
   }
 
-  const syncedInbox = db.select().from(inboxItems).where(isNotNull(inboxItems.clock)).all()
+  const syncedInbox = db
+    .select({ id: inboxItems.id })
+    .from(inboxItems)
+    .where(isNotNull(inboxItems.clock))
+    .all()
   for (const i of syncedInbox) {
-    addLocalItem({ id: i.id, type: 'inbox', payload: JSON.stringify(i) })
+    addLocalRef({ id: i.id, type: 'inbox' })
   }
 
-  const syncedFilters = db.select().from(savedFilters).where(isNotNull(savedFilters.clock)).all()
+  const syncedFilters = db
+    .select({ id: savedFilters.id })
+    .from(savedFilters)
+    .where(isNotNull(savedFilters.clock))
+    .all()
   for (const f of syncedFilters) {
-    addLocalItem({ id: f.id, type: 'filter', payload: JSON.stringify(f) })
+    addLocalRef({ id: f.id, type: 'filter' })
   }
 
-  const syncedTemplates = db.select().from(templates).where(isNotNull(templates.clock)).all()
+  // Tombstones MUST be excluded, for the same reason the canvases block below
+  // excludes them: the server manifest omits soft-deleted items, so a
+  // locally-tombstoned folder listed here is seen as `!serverRef` and
+  // re-enqueued as a `create`, NULLing the server's deleted_at and bringing the
+  // folder back on every device within 30 minutes.
+  const syncedCanvasFolders = db
+    .select({ id: canvasFolders.id })
+    .from(canvasFolders)
+    .where(and(isNotNull(canvasFolders.clock), isNull(canvasFolders.deletedAt)))
+    .all()
+  for (const f of syncedCanvasFolders) {
+    addLocalRef({ id: f.id, type: 'canvas_folder' })
+  }
+
+  const syncedTemplates = db
+    .select({ id: templates.id })
+    .from(templates)
+    .where(isNotNull(templates.clock))
+    .all()
   for (const t of syncedTemplates) {
-    addLocalItem({ id: t.id, type: 'template', payload: JSON.stringify(t) })
+    addLocalRef({ id: t.id, type: 'template' })
   }
 
-  const syncedBookmarks = db.select().from(bookmarks).where(isNotNull(bookmarks.clock)).all()
+  const syncedBookmarks = db
+    .select({ id: bookmarks.id })
+    .from(bookmarks)
+    .where(isNotNull(bookmarks.clock))
+    .all()
   for (const b of syncedBookmarks) {
-    addLocalItem({ id: b.id, type: 'bookmark', payload: JSON.stringify(b) })
+    addLocalRef({ id: b.id, type: 'bookmark' })
   }
 
-  // Device-local reminder fields are stripped by the same helper the real push
-  // paths use, so this manifest payload matches exactly what reminder-sync.ts
-  // and reminder-handler.ts send. A mismatch here reads as a spurious manifest
-  // disagreement with the server. See reminder-outbound.ts.
-  const syncedReminders = db.select().from(reminders).where(isNotNull(reminders.clock)).all()
+  const syncedReminders = db
+    .select({ id: reminders.id })
+    .from(reminders)
+    .where(isNotNull(reminders.clock))
+    .all()
   for (const r of syncedReminders) {
-    addLocalItem({
-      id: r.id,
-      type: 'reminder',
-      payload: JSON.stringify(toOutboundReminderPayload(r))
-    })
+    addLocalRef({ id: r.id, type: 'reminder' })
   }
 
   // Diverges from the tasks template (D2): tombstones MUST be excluded. The
   // server manifest omits soft-deleted items, so a locally-tombstoned canvas
   // listed here would be seen as `!serverRef` and re-enqueued as a `create`,
   // NULLing the server's deleted_at and resurrecting the canvas fleet-wide
-  // within 30 min. The payload is metadata-only (never the encrypted snapshot);
-  // the re-enqueued push rebuilds the scene via canvas-handler.buildPushPayload.
+  // within 30 min.
   const syncedCanvases = db
-    .select()
+    .select({ id: canvases.id })
     .from(canvases)
     .where(and(isNotNull(canvases.clock), isNull(canvases.deletedAt)))
     .all()
   for (const c of syncedCanvases) {
-    addLocalItem({
-      id: c.id,
-      type: 'canvas',
-      payload: JSON.stringify({
-        id: c.id,
-        vaultId: c.vaultId,
-        title: c.title,
-        clock: c.clock,
-        deletedAt: null
-      })
-    })
+    addLocalRef({ id: c.id, type: 'canvas' })
   }
 
   const syncedTagDefs = db
-    .select()
+    .select({ name: tagDefinitions.name })
     .from(tagDefinitions)
     .where(isNotNull(tagDefinitions.clock))
     .all()
   for (const td of syncedTagDefs) {
-    addLocalItem({ id: td.name, type: 'tag_definition', payload: JSON.stringify(td) })
+    addLocalRef({ id: td.name, type: 'tag_definition' })
   }
 
-  const syncedSettings = db.select().from(settings).where(eq(settings.key, 'synced_settings')).get()
+  const syncedSettings = db
+    .select({ key: settings.key })
+    .from(settings)
+    .where(eq(settings.key, 'synced_settings'))
+    .get()
   if (syncedSettings) {
-    addLocalItem({
-      id: 'synced_settings',
-      type: 'settings',
-      payload: JSON.stringify(syncedSettings)
-    })
+    addLocalRef({ id: 'synced_settings', type: 'settings' })
   }
 
   const syncedNoteMetadata = db
@@ -255,7 +291,7 @@ function getLocalSyncableItems(db: DrizzleDb): LocalSyncableItem[] {
     .where(and(isNotNull(noteMetadata.clock), sql`${noteMetadata.localOnly} IS NOT 1`))
     .all()
   for (const n of syncedNoteMetadata) {
-    addLocalItem({ id: n.id, type: n.journalDate ? 'journal' : 'note', payload: '' })
+    addLocalRef({ id: n.id, type: n.journalDate ? 'journal' : 'note' })
   }
 
   const indexDb = getIndexDatabase()
@@ -266,7 +302,7 @@ function getLocalSyncableItems(db: DrizzleDb): LocalSyncableItem[] {
     .where(and(isNotNull(noteCache.clock), isNull(noteCache.date)))
     .all()
   for (const n of syncedNotes) {
-    addLocalItem({ id: n.id, type: 'note', payload: '' })
+    addLocalRef({ id: n.id, type: 'note' })
   }
 
   const syncedJournals = indexDb
@@ -275,8 +311,81 @@ function getLocalSyncableItems(db: DrizzleDb): LocalSyncableItem[] {
     .where(and(isNotNull(noteCache.clock), isNotNull(noteCache.date)))
     .all()
   for (const j of syncedJournals) {
-    addLocalItem({ id: j.id, type: 'journal', payload: '' })
+    addLocalRef({ id: j.id, type: 'journal' })
   }
 
-  return items
+  return refs
+}
+
+/**
+ * Materializes the repair payload for one ref, byte-identical to the eager
+ * pass this replaced: the same full-row select feeds the same `JSON.stringify`,
+ * so what a manifest repair pushes is unchanged for existing installs.
+ * Returns null when the row is gone (nothing to re-create).
+ */
+function buildRefPayload(db: DrizzleDb, ref: LocalSyncableRef): string | null {
+  switch (ref.type) {
+    case 'task': {
+      const row = db.select().from(tasks).where(eq(tasks.id, ref.id)).get()
+      return row ? JSON.stringify(row) : null
+    }
+    case 'project': {
+      const row = db.select().from(projects).where(eq(projects.id, ref.id)).get()
+      return row ? JSON.stringify(row) : null
+    }
+    case 'inbox': {
+      const row = db.select().from(inboxItems).where(eq(inboxItems.id, ref.id)).get()
+      return row ? JSON.stringify(row) : null
+    }
+    case 'filter': {
+      const row = db.select().from(savedFilters).where(eq(savedFilters.id, ref.id)).get()
+      return row ? JSON.stringify(row) : null
+    }
+    case 'template': {
+      const row = db.select().from(templates).where(eq(templates.id, ref.id)).get()
+      return row ? JSON.stringify(row) : null
+    }
+    case 'bookmark': {
+      const row = db.select().from(bookmarks).where(eq(bookmarks.id, ref.id)).get()
+      return row ? JSON.stringify(row) : null
+    }
+    // Device-local reminder fields are stripped by the same helper the real push
+    // paths use, so this manifest payload matches exactly what reminder-sync.ts
+    // and reminder-handler.ts send. A mismatch here reads as a spurious manifest
+    // disagreement with the server. See reminder-outbound.ts.
+    case 'reminder': {
+      const row = db.select().from(reminders).where(eq(reminders.id, ref.id)).get()
+      return row ? JSON.stringify(toOutboundReminderPayload(row)) : null
+    }
+    // Metadata-only (never the encrypted snapshot); the re-enqueued push
+    // rebuilds the scene via canvas-handler.buildPushPayload.
+    case 'canvas': {
+      const row = db.select().from(canvases).where(eq(canvases.id, ref.id)).get()
+      return row
+        ? JSON.stringify({
+            id: row.id,
+            vaultId: row.vaultId,
+            title: row.title,
+            clock: row.clock,
+            deletedAt: null
+          })
+        : null
+    }
+    case 'canvas_folder': {
+      const row = db.select().from(canvasFolders).where(eq(canvasFolders.id, ref.id)).get()
+      return row ? JSON.stringify(row) : null
+    }
+    case 'tag_definition': {
+      const row = db.select().from(tagDefinitions).where(eq(tagDefinitions.name, ref.id)).get()
+      return row ? JSON.stringify(row) : null
+    }
+    case 'settings': {
+      const row = db.select().from(settings).where(eq(settings.key, 'synced_settings')).get()
+      return row ? JSON.stringify(row) : null
+    }
+    // Note and journal bodies never travel in the manifest payload — the CRDT
+    // push path owns them. The eager pass emitted '' here too.
+    default:
+      return ''
+  }
 }

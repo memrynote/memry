@@ -11,6 +11,7 @@
 
 import { eq, and, isNotNull, lte, isNull } from 'drizzle-orm'
 import { createLogger } from '../lib/logger'
+import { registerMinuteTick, unregisterMinuteTick, hasMinuteTick } from '../lib/minute-tick'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getDatabase, requireDatabase } from '../database'
 import { getStatus } from '../vault'
@@ -56,18 +57,8 @@ export interface SnoozedItem {
 // Constants
 // ============================================================================
 
-/** Scheduler check interval in milliseconds (1 minute) */
-const SCHEDULER_INTERVAL_MS = 60 * 1000
-
-// ============================================================================
-// Module State
-// ============================================================================
-
-/** Reference to the scheduler interval */
-let schedulerInterval: NodeJS.Timeout | null = null
-
-/** Flag to track if scheduler is running */
-let isSchedulerRunning = false
+/** Id for this poller's subscription to the shared minute tick */
+const MINUTE_TICK_ID = 'inbox-snooze'
 
 // ============================================================================
 // Helper Functions
@@ -440,7 +431,7 @@ export function checkDueItemsOnStartup(): void {
  * Checks for due items every minute
  */
 export function startSnoozeScheduler(): void {
-  if (isSchedulerRunning) {
+  if (hasMinuteTick(MINUTE_TICK_ID)) {
     log.debug('Scheduler already running')
     return
   }
@@ -448,22 +439,16 @@ export function startSnoozeScheduler(): void {
   // Run immediately on start
   processDueItems()
 
-  // Then run every minute
-  schedulerInterval = setInterval(() => {
-    processDueItems()
-  }, SCHEDULER_INTERVAL_MS)
-
-  isSchedulerRunning = true
+  // Then run on the shared main-process minute tick
+  registerMinuteTick(MINUTE_TICK_ID, processDueItems)
 }
 
 /**
  * Stop the snooze scheduler
  */
 export function stopSnoozeScheduler(): void {
-  if (schedulerInterval) {
-    clearInterval(schedulerInterval)
-    schedulerInterval = null
-    isSchedulerRunning = false
+  if (hasMinuteTick(MINUTE_TICK_ID)) {
+    unregisterMinuteTick(MINUTE_TICK_ID)
     log.info('Scheduler stopped')
   }
 }
@@ -472,7 +457,7 @@ export function stopSnoozeScheduler(): void {
  * Check if scheduler is currently running
  */
 export function isSchedulerActive(): boolean {
-  return isSchedulerRunning
+  return hasMinuteTick(MINUTE_TICK_ID)
 }
 
 // ============================================================================

@@ -9,7 +9,19 @@ const getPathMock = vi.fn((name: string) => `/mock/${name}`)
 const setPathMock = vi.fn()
 const dotenvConfigMock = vi.fn(() => ({ error: undefined }))
 const registerAllHandlersMock = vi.fn()
-const applyGlobalCaptureShortcutMock = vi.fn(() => ({ registered: true }))
+let globalCaptureRegistered = true
+let globalCaptureAppliedHandler: ((configuredRegistered: boolean) => void) | null = null
+// Mirrors the real module: applying the configured accelerator always reports the
+// outcome to the fallback owner in index.ts.
+const applyGlobalCaptureShortcutMock = vi.fn(() => {
+  globalCaptureAppliedHandler?.(globalCaptureRegistered)
+  return { registered: globalCaptureRegistered }
+})
+const setGlobalCaptureAppliedHandlerMock = vi.fn(
+  (handler: ((configuredRegistered: boolean) => void) | null) => {
+    globalCaptureAppliedHandler = handler
+  }
+)
 const autoOpenLastVaultMock = vi.fn(async () => undefined)
 const closeVaultMock = vi.fn(async () => undefined)
 const vaultStatusChangedListeners: Array<(status: VaultStatus) => void> = []
@@ -80,6 +92,7 @@ const setPermissionRequestHandlerMock = vi.fn()
 const setPermissionCheckHandlerMock = vi.fn()
 const crashReporterStartMock = vi.fn()
 const globalShortcutRegisterMock = vi.fn(() => true)
+const globalShortcutUnregisterMock = vi.fn()
 const globalShortcutUnregisterAllMock = vi.fn()
 const menuSetApplicationMenuMock = vi.fn()
 const netFetchMock = vi.fn(async () => new Response('file'))
@@ -157,7 +170,8 @@ vi.mock('./ipc', () => ({
 }))
 
 vi.mock('./ipc/settings-handlers', () => ({
-  applyGlobalCaptureShortcut: applyGlobalCaptureShortcutMock
+  applyGlobalCaptureShortcut: applyGlobalCaptureShortcutMock,
+  setGlobalCaptureAppliedHandler: setGlobalCaptureAppliedHandlerMock
 }))
 
 vi.mock('./vault', () => ({
@@ -379,6 +393,7 @@ vi.mock('electron', () => ({
   },
   globalShortcut: {
     register: globalShortcutRegisterMock,
+    unregister: globalShortcutUnregisterMock,
     unregisterAll: globalShortcutUnregisterAllMock
   },
   clipboard: {
@@ -488,7 +503,8 @@ describe('main index phase2 exports', () => {
     getPathMock.mockImplementation((name: string) => `/mock/${name}`)
     whenReadyMock.mockImplementation(() => new Promise<void>(() => {}))
     requestSingleInstanceLockMock.mockReturnValue(true)
-    applyGlobalCaptureShortcutMock.mockReturnValue({ registered: true })
+    globalCaptureRegistered = true
+    globalCaptureAppliedHandler = null
     getCurrentVaultPathMock.mockReturnValue(null)
     getStoredLocaleMock.mockReturnValue(null)
     getVaultsMock.mockReturnValue([])
@@ -1504,7 +1520,7 @@ describe('main index phase2 exports', () => {
   it('falls back to the global quick-capture shortcut and manages the quick window', async () => {
     vi.useFakeTimers()
     whenReadyMock.mockResolvedValue(undefined)
-    applyGlobalCaptureShortcutMock.mockReturnValue({ registered: false })
+    globalCaptureRegistered = false
 
     await importMainModule()
     await flushReadyWork()
@@ -1553,11 +1569,61 @@ describe('main index phase2 exports', () => {
     expect(BrowserWindowMock).toHaveBeenCalledTimes(3)
   })
 
+  it('keeps the quick-capture fallback shortcut alive across keyboard settings saves', async () => {
+    // Saving keyboard settings re-applies the configured accelerator. That path used
+    // to call globalShortcut.unregisterAll(), which silently dropped the fallback and
+    // left quick capture with no working shortcut at all (#1087).
+    whenReadyMock.mockResolvedValue(undefined)
+    globalCaptureRegistered = false
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const fallbackRegistrations = (): Array<[string, () => void]> =>
+      (globalShortcutRegisterMock.mock.calls as unknown as Array<[string, () => void]>).filter(
+        ([accelerator]) => accelerator === 'CommandOrControl+Shift+Space'
+      )
+
+    expect(fallbackRegistrations()).toHaveLength(1)
+    // Without this wiring a later re-apply can never restore the fallback.
+    expect(setGlobalCaptureAppliedHandlerMock).toHaveBeenCalledWith(expect.any(Function))
+
+    // Two further saves while the configured accelerator is still taken.
+    applyGlobalCaptureShortcutMock()
+    applyGlobalCaptureShortcutMock()
+
+    expect(fallbackRegistrations()).toHaveLength(1)
+    expect(globalShortcutUnregisterMock).not.toHaveBeenCalledWith('CommandOrControl+Shift+Space')
+
+    // Still bound: firing it opens the quick capture window.
+    const shortcutHandler = fallbackRegistrations()[0][1]
+    shortcutHandler()
+    expect(browserWindows.length).toBeGreaterThan(1)
+  })
+
+  it('releases the quick-capture fallback once the configured accelerator registers', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    globalCaptureRegistered = false
+
+    await importMainModule()
+    await flushReadyWork()
+
+    globalCaptureRegistered = true
+    applyGlobalCaptureShortcutMock()
+
+    expect(globalShortcutUnregisterMock).toHaveBeenCalledWith('CommandOrControl+Shift+Space')
+
+    // Idempotent: a repeat save must not release an accelerator we no longer hold.
+    globalShortcutUnregisterMock.mockClear()
+    applyGlobalCaptureShortcutMock()
+    expect(globalShortcutUnregisterMock).not.toHaveBeenCalled()
+  })
+
   it('loads quick capture from the dev renderer URL and wires load-failure logging', async () => {
     whenReadyMock.mockResolvedValue(undefined)
     isDevMock.dev = true
     process.env.ELECTRON_RENDERER_URL = 'http://localhost:5173/'
-    applyGlobalCaptureShortcutMock.mockReturnValue({ registered: false })
+    globalCaptureRegistered = false
 
     await importMainModule()
     await flushReadyWork()
@@ -1576,7 +1642,7 @@ describe('main index phase2 exports', () => {
 
   it('routes quick capture settings to the main window before closing the capture window', async () => {
     whenReadyMock.mockResolvedValue(undefined)
-    applyGlobalCaptureShortcutMock.mockReturnValue({ registered: false })
+    globalCaptureRegistered = false
 
     await importMainModule()
     await flushReadyWork()
@@ -1664,7 +1730,7 @@ describe('main index phase2 exports', () => {
     // slower renderer is torn down with unsaved edits still pending.
     vi.useFakeTimers()
     whenReadyMock.mockResolvedValue(undefined)
-    applyGlobalCaptureShortcutMock.mockReturnValue({ registered: false })
+    globalCaptureRegistered = false
 
     await importMainModule()
     await flushReadyWork()
@@ -1694,7 +1760,7 @@ describe('main index phase2 exports', () => {
     // another window's behalf, because that window's saves are still in flight.
     vi.useFakeTimers()
     whenReadyMock.mockResolvedValue(undefined)
-    applyGlobalCaptureShortcutMock.mockReturnValue({ registered: false })
+    globalCaptureRegistered = false
 
     await importMainModule()
     await flushReadyWork()

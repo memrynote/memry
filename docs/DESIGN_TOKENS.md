@@ -188,11 +188,20 @@ Dark mode uses lighter, more legible variants.
 | `--sidebar-border`             | `#d9d5ce`                   | `#e9e9e7`                   | `#333333`                | `border-sidebar-border`           |
 | `--sidebar-ring`               | `var(--tint)`               | `var(--tint)`               | `var(--tint)`            | `ring-sidebar-ring`               |
 | `--sidebar-muted`              | `#b5b0a6`                   | `#b0afab`                   | `#6b6b6b`                | `text-sidebar-muted`              |
+| `--sidebar-section-heading`    | `#6b6459`                   | `#6b6966`                   | `#9d9d9d`                | `text-sidebar-section-heading`    |
 | `--sidebar-terracotta`         | `var(--tint)`               | `var(--tint)`               | `var(--tint)`            | `bg-sidebar-terracotta`           |
 | `--sidebar-text-folder`        | `#3d3a35`                   | `#37352f`                   | `#c5c0b8`                | `text-sidebar-text-folder`        |
 | `--sidebar-text-child`         | `#5c5850`                   | `#6b6966`                   | `#9a958d`                | `text-sidebar-text-child`         |
 | `--sidebar-dot-inactive`       | `#d9d5ce`                   | `#e3e2e0`                   | `#444444`                | `bg-sidebar-dot-inactive`         |
 | `--sidebar-surface`            | `rgba(0,0,0,0.04)`          | `rgba(0,0,0,0.03)`          | `#2a2a2a`                | `bg-sidebar-surface`              |
+
+**`--sidebar-section-heading`** is the only sidebar token with a contrast floor. It is the sidebar's de-emphasised **small-text** colour: anything in the sidebar that carries real information at 10–11px takes it, because WCAG AA treats that size as small text and holds it to 4.5:1. The token is kept separate from `--sidebar-muted` — that one also colours chevrons and decorative icon buttons, where darkening would be too loud. Current users: `SidebarSection`'s heading and its collapsed item count, and in `SidebarTagList` the tag-group headings, the show-more control, and the per-tag note count.
+
+Measured against each theme's own `--sidebar` in `base.css` (`#efefe9` / `#f9f8f7` / `#1a1a1a`): **5.07:1**, **5.16:1**, **6.42:1**. Two of those users sit on `--muted` instead (`#efefe9` / `#f7f6f3` / `#202020`), because their row paints `hover:bg-muted` while the text is visible: **5.07:1**, **5.06:1**, **6.01:1**.
+
+Headings take no hover colour: `--sidebar-foreground`, the old hover target, is 3.18:1 on the warm sidebar, and the tokens that would clear the floor are the emphasis colours — too loud for a static label. The chevron fading in, or the row's `bg-muted`, carries the affordance instead. The one exception is the tag list's show-more **control**, where `hover:text-sidebar-primary` _raises_ the ratio (15.22:1 / 11.56:1 / 13.84:1).
+
+`sidebar-section.contrast.test.tsx` and `sidebar/sidebar-tag-list.contrast.test.tsx` recompute every one of these ratios from this CSS via `tests/utils/contrast.ts` and fail under 4.5 — including any state variant (`hover:`, `group-hover/name:`, `focus:`, …) that repaints the text below the floor, or merely below where it rested.
 
 ---
 

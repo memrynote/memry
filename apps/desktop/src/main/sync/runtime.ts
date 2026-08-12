@@ -29,9 +29,11 @@ import { initBookmarkSyncService, resetBookmarkSyncService } from './bookmark-sy
 import { initTemplateSyncService, resetTemplateSyncService } from './template-sync'
 import { initReminderSyncService, resetReminderSyncService } from './reminder-sync'
 import { initCanvasSyncService, resetCanvasSyncService } from './canvas-sync'
+import { initCanvasFolderSyncService, resetCanvasFolderSyncService } from './canvas-folder-sync'
 import { initProjectSyncService, resetProjectSyncService } from './project-sync'
 import { initSettingsSyncManager, resetSettingsSyncManager } from './settings-sync'
 import { initNoteSyncService, resetNoteSyncService } from './note-sync'
+import { resetRequestedAttachmentDownloads } from './item-handlers/note-handler'
 import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
 import { initTagDefinitionSyncService, resetTagDefinitionSyncService } from './tag-definition-sync'
 import { initTagCategorySyncService, resetTagCategorySyncService } from './tag-category-sync'
@@ -172,6 +174,7 @@ function resetSyncServiceSingletons(): void {
   resetTemplateSyncService()
   resetReminderSyncService()
   resetCanvasSyncService()
+  resetCanvasFolderSyncService()
   resetProjectSyncService()
   resetSettingsSyncManager()
   resetNoteSyncService()
@@ -183,6 +186,9 @@ function resetSyncServiceSingletons(): void {
   resetCalendarSourceSyncService()
   resetCalendarBindingSyncService()
   resetCalendarExternalEventSyncService()
+  // Module-level state on the note item handler, not a service singleton, but
+  // it is per-vault and torn down on exactly the same paths.
+  resetRequestedAttachmentDownloads()
 }
 
 function getCurrentDeviceId(db: DataDb): string | null {
@@ -343,6 +349,11 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const templateSync = initTemplateSyncService({ queue, db: runtimeSyncDb, getDeviceId })
       const reminderSync = initReminderSyncService({ queue, db: runtimeSyncDb, getDeviceId })
       const canvasSync = initCanvasSyncService({ queue, db: runtimeSyncDb, getDeviceId })
+      const canvasFolderSync = initCanvasFolderSyncService({
+        queue,
+        db: runtimeSyncDb,
+        getDeviceId
+      })
       const projectSync = initProjectSyncService({ queue, db: runtimeSyncDb, getDeviceId })
       const settingsSync = initSettingsSyncManager({ db: runtimeSyncDb, queue, getDeviceId })
       const noteSync = initNoteSyncService({ queue, getDeviceId })
@@ -482,6 +493,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           kind: 'record',
           local: canvasSync,
           remote: getRemoteSyncAdapter('canvas')
+        },
+        {
+          type: 'canvas_folder',
+          kind: 'record',
+          local: canvasFolderSync,
+          remote: getRemoteSyncAdapter('canvas_folder')
         }
       ])
 

@@ -9,15 +9,19 @@ import {
 } from 'fs'
 import { tmpdir } from 'os'
 import path from 'path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { MAX_CANVAS_FOLDER_DEPTH } from './folder-paths'
 import {
   CANVAS_DIR,
   CANVAS_FILE_EXT,
   allocateCanvasPath,
   canvasPathKey,
   deleteCanvasFileSync,
+  ensureCanvasFolderDir,
+  folderOfCanvasPath,
   listCanvasFiles,
+  portableCanvasFolder,
   readCanvasFileSync,
   readCanvasMeta,
   renameCanvasFile,
@@ -27,11 +31,21 @@ import {
   writeCanvasFileSync
 } from './scene-file'
 
+const { warn } = vi.hoisted(() => ({ warn: vi.fn() }))
+vi.mock('../lib/logger', () => ({
+  createLogger: () => ({ info: vi.fn(), warn, error: vi.fn(), debug: vi.fn() })
+}))
+
+/** Exactly at the folder cap, and one segment past it. */
+const AT_CAP = Array.from({ length: MAX_CANVAS_FOLDER_DEPTH }, (_, i) => `d${i + 1}`).join('/')
+const PAST_CAP = `${AT_CAP}/d${MAX_CANVAS_FOLDER_DEPTH + 1}`
+
 const META = { id: 'cnv1', createdAt: 1000, updatedAt: 2000 }
 
 let vault: string
 
 beforeEach(() => {
+  warn.mockClear()
   vault = mkdtempSync(path.join(tmpdir(), 'memry-canvas-file-'))
 })
 
@@ -333,5 +347,130 @@ describe('cross-platform paths and filenames', () => {
     mkdirSync(resolveCanvasFile(vault, rel), { recursive: true })
 
     expect(readCanvasFileSync(resolveCanvasFile(vault, rel))).toBeNull()
+  })
+})
+
+describe('folder-aware canvas paths', () => {
+  it('allocates inside the target folder', () => {
+    expect(allocateCanvasPath(vault, 'Plan', new Set(), null, 'Work')).toBe(
+      'canvases/Work/Plan.excalidraw'
+    )
+  })
+
+  it('lets the same title exist in two folders', () => {
+    writeCanvasFileSync(resolveCanvasFile(vault, 'canvases/Work/Plan.excalidraw'), '{}')
+
+    expect(allocateCanvasPath(vault, 'Plan', new Set(), null, 'Personal')).toBe(
+      'canvases/Personal/Plan.excalidraw'
+    )
+  })
+
+  it('uniquifies within a folder, not across folders', () => {
+    writeCanvasFileSync(resolveCanvasFile(vault, 'canvases/Work/Plan.excalidraw'), '{}')
+
+    expect(allocateCanvasPath(vault, 'Plan', new Set(), null, 'Work')).toBe(
+      'canvases/Work/Plan 2.excalidraw'
+    )
+  })
+
+  it('lists files in subfolders', () => {
+    writeCanvasFileSync(resolveCanvasFile(vault, 'canvases/Root.excalidraw'), '{}')
+    writeCanvasFileSync(resolveCanvasFile(vault, 'canvases/Work/Q3/Deep.excalidraw'), '{}')
+
+    expect(listCanvasFiles(vault)).toEqual([
+      'canvases/Root.excalidraw',
+      'canvases/Work/Q3/Deep.excalidraw'
+    ])
+  })
+
+  it('skips dot-directories and dotfiles', () => {
+    writeCanvasFileSync(resolveCanvasFile(vault, 'canvases/.trash/Old.excalidraw'), '{}')
+    writeCanvasFileSync(resolveCanvasFile(vault, 'canvases/.hidden.excalidraw'), '{}')
+
+    expect(listCanvasFiles(vault)).toEqual([])
+  })
+
+  it('reads the folder back out of a stored path', () => {
+    expect(folderOfCanvasPath('canvases/Work/Q3/Plan.excalidraw')).toBe('Work/Q3')
+    expect(folderOfCanvasPath('canvases/Plan.excalidraw')).toBeNull()
+  })
+
+  it('sanitizes folder segments the same way it sanitizes filenames', () => {
+    expect(portableCanvasFolder('CON/Q3 ')).toBe('CON canvas/Q3')
+  })
+
+  it('is idempotent, so re-canonicalizing a stored folder is a no-op', () => {
+    const once = portableCanvasFolder('CON/Q3 ')
+
+    expect(portableCanvasFolder(once)).toBe(once)
+  })
+
+  it('stores the on-disk-canonical folder, not the requested one', () => {
+    // The index and the disk must name the same folder: a caller that stored
+    // the requested 'CON' would never find the canvas that landed in
+    // 'CON canvas'.
+    for (const requested of ['CON', 'Work.', 'Q3 ', 'nul/Deep']) {
+      const allocated = allocateCanvasPath(vault, 'Plan', new Set(), null, requested)
+
+      expect(folderOfCanvasPath(allocated)).toBe(portableCanvasFolder(requested))
+    }
+    expect(folderOfCanvasPath(allocateCanvasPath(vault, 'Plan', new Set(), null, 'CON'))).toBe(
+      'CON canvas'
+    )
+  })
+
+  it('cannot be steered out of the canvases directory by a traversal folder', () => {
+    // The vault sits one level down, so anything that DID escape lands inside
+    // this test's own temp dir instead of the shared temp root.
+    const nested = path.join(vault, 'inner-vault')
+    mkdirSync(nested)
+    const canvasRoot = path.join(nested, CANVAS_DIR)
+
+    const allocated = allocateCanvasPath(nested, 'Plan', new Set(), null, '../../etc')
+    expect(allocated).not.toContain('..')
+    expect(resolveCanvasFile(nested, allocated).startsWith(canvasRoot + path.sep)).toBe(true)
+
+    ensureCanvasFolderDir(nested, '../../escaped')
+    expect(existsSync(path.join(vault, 'escaped'))).toBe(false)
+    expect(existsSync(path.join(canvasRoot, 'escaped'))).toBe(true)
+  })
+
+  it('creates the folder directory allocateCanvasPath writes into, sanitization included', () => {
+    ensureCanvasFolderDir(vault, 'CON/Q3 ')
+    const allocated = allocateCanvasPath(vault, 'Plan', new Set(), null, 'CON/Q3 ')
+
+    // The directory that appeared on disk must be the file's own directory, or
+    // the write mints a second, unsanitized folder beside it.
+    expect(allocated).toBe(`${CANVAS_DIR}/CON canvas/Q3/Plan.excalidraw`)
+    expect(existsSync(path.dirname(resolveCanvasFile(vault, allocated)))).toBe(true)
+  })
+
+  it('creating the root folder is the canvases directory itself', () => {
+    ensureCanvasFolderDir(vault, null)
+
+    expect(existsSync(path.join(vault, CANVAS_DIR))).toBe(true)
+  })
+
+  it('refuses to place a canvas past the folder depth cap', () => {
+    expect(allocateCanvasPath(vault, 'Plan', new Set(), null, AT_CAP)).toBe(
+      `${CANVAS_DIR}/${AT_CAP}/Plan.excalidraw`
+    )
+    expect(() => allocateCanvasPath(vault, 'Plan', new Set(), null, PAST_CAP)).toThrow(
+      /deeper than/
+    )
+    expect(() => ensureCanvasFolderDir(vault, PAST_CAP)).toThrow(/deeper than/)
+  })
+
+  it('lists canvases at the depth cap and warns about the ones past it', () => {
+    writeCanvasFileSync(resolveCanvasFile(vault, `${CANVAS_DIR}/${AT_CAP}/Deep.excalidraw`), '{}')
+    writeCanvasFileSync(
+      resolveCanvasFile(vault, `${CANVAS_DIR}/${PAST_CAP}/Deeper.excalidraw`),
+      '{}'
+    )
+
+    // A hand-made tree can still go deeper than the app allows; those canvases
+    // are invisible in the app, so the walk must at least say so.
+    expect(listCanvasFiles(vault)).toEqual([`${CANVAS_DIR}/${AT_CAP}/Deep.excalidraw`])
+    expect(warn.mock.calls.some(([message]) => /deeper than/.test(String(message)))).toBe(true)
   })
 })

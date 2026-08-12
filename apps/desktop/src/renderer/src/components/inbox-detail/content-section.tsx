@@ -374,17 +374,27 @@ const VoicePreview = ({
     if (storedWaveform && storedWaveform.length > 0) return
 
     let cancelled = false
+    let activeContext: AudioContext | null = null
+    // Browsers cap concurrent AudioContexts, so every exit path has to release
+    // this one. close() throws if it runs twice, hence the single-shot guard.
+    const releaseContext = (): void => {
+      const context = activeContext
+      if (!context) return
+      activeContext = null
+      void context.close()
+    }
+
     const decodeWaveform = async (): Promise<void> => {
       try {
         const response = await fetch(audioUrl)
         const arrayBuffer = await response.arrayBuffer()
+        if (cancelled) return
+
         const audioContext = new AudioContext()
+        activeContext = audioContext
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
 
-        if (cancelled) {
-          void audioContext.close()
-          return
-        }
+        if (cancelled) return
 
         const rawData = audioBuffer.getChannelData(0)
         const samplesPerBar = Math.floor(rawData.length / PLAYBACK_BAR_COUNT)
@@ -405,19 +415,19 @@ const VoicePreview = ({
           (b) => PLAYBACK_MIN_HEIGHT + (b / maxRms) * (PLAYBACK_MAX_HEIGHT - PLAYBACK_MIN_HEIGHT)
         )
 
-        if (!cancelled) {
-          setWaveformBars(normalized)
-        }
-
-        void audioContext.close()
+        setWaveformBars(normalized)
       } catch (err) {
-        log.error('Failed to decode waveform', err)
+        // A cancelled decode rejects because we closed its context on unmount.
+        if (!cancelled) log.error('Failed to decode waveform', err)
+      } finally {
+        releaseContext()
       }
     }
 
     void decodeWaveform()
     return () => {
       cancelled = true
+      releaseContext()
     }
   }, [audioUrl, storedWaveform])
 

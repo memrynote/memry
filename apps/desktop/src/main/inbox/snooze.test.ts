@@ -74,6 +74,7 @@ vi.mock('./runtime-effects', () => ({
 }))
 
 import { getDatabase, requireDatabase } from '../database'
+import { getMinuteTickIds, isMinuteTickRunning } from '../lib/minute-tick'
 
 describe('Inbox Snooze Service', () => {
   let testDb: TestDatabaseResult
@@ -490,6 +491,21 @@ describe('Inbox Snooze Service', () => {
       startSnoozeScheduler()
 
       expect(isSchedulerActive()).toBe(true)
+    })
+
+    it('should subscribe to the shared minute tick instead of owning a timer', () => {
+      const setIntervalSpy = vi.spyOn(globalThis, 'setInterval')
+
+      startSnoozeScheduler()
+
+      expect(getMinuteTickIds()).toEqual(['inbox-snooze'])
+      expect(setIntervalSpy).toHaveBeenCalledTimes(1)
+
+      stopSnoozeScheduler()
+
+      expect(getMinuteTickIds()).toEqual([])
+      expect(isMinuteTickRunning()).toBe(false)
+      setIntervalSpy.mockRestore()
     })
 
     it('should not start duplicate schedulers', () => {

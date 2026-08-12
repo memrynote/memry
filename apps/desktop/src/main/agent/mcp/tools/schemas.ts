@@ -12,6 +12,15 @@ import {
 import { NoteFileTypeEnum } from '@memry/contracts/search-api'
 
 const idSchema = z.string().min(1)
+/**
+ * Said on every canvas tool that takes a canvas id. Two canvases in different
+ * folders may share a title, so a bare title is refused when it matches more
+ * than one — the tools list the candidates rather than picking one, because
+ * drawing on the wrong canvas destroys work silently.
+ */
+const CANVAS_ID_HINT =
+  'Takes the canvas id or its folder-qualified name ("Work/Plan") from vault_list_canvases; ' +
+  'a bare title matching more than one canvas is refused with the candidates listed.'
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 const isoTimeSchema = z.string().regex(/^\d{2}:\d{2}$/)
 const colorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/)
@@ -168,12 +177,15 @@ export const TOOL_SCHEMAS = {
     input: z.object({}).default({}),
     description:
       'List spatial canvases with how many notes/tasks/events sit on each. ' +
+      'Canvases live in folders, so two can share a title — each entry carries its folder and ' +
+      'the folder-qualified path ("Work/Plan") that names it unambiguously. ' +
       'Never returns scene geometry.'
   },
   vault_read_canvas: {
     input: z.object({ id: idSchema }),
     description:
       'Read one canvas: title, the entities on it (with titles), and any text written on it. ' +
+      `${CANVAS_ID_HINT} ` +
       'Returns no scene geometry — use vault_add_canvas_item to change what is on it.'
   },
   vault_read_canvas_elements: {
@@ -182,8 +194,9 @@ export const TOOL_SCHEMAS = {
       'Read the SHAPES on a canvas: every element with its id, type, position, size, text, ' +
       'colors, arrow bindings and frame. This is the read to use before drawing — an element ' +
       'id from here is what vault_draw_on_canvas binds an arrow to and what ' +
-      'vault_edit_canvas_elements changes. Cards carry entity_type/entity_id. Use ' +
-      'vault_read_canvas instead when you only need to know WHICH notes/tasks/events are on it.'
+      'vault_edit_canvas_elements changes. Cards carry entity_type/entity_id. ' +
+      `${CANVAS_ID_HINT} ` +
+      'Use vault_read_canvas instead when you only need to know WHICH notes/tasks/events are on it.'
   },
   vault_desktop_read: {
     input: desktopReadSchema,
@@ -433,7 +446,7 @@ export const TOOL_SCHEMAS = {
     }),
     description:
       'Put existing notes/tasks/events on a canvas as cards. Applies to the open editor when ' +
-      'the user has that canvas open. Requires user approval.'
+      `the user has that canvas open. ${CANVAS_ID_HINT} Requires user approval.`
   },
   vault_remove_canvas_item: {
     input: z.object({
@@ -443,7 +456,7 @@ export const TOOL_SCHEMAS = {
     }),
     description:
       "Remove an entity's card from a canvas, clearing any arrows bound to it. " +
-      'The note/task/event itself is not deleted. Requires user approval.'
+      `The note/task/event itself is not deleted. ${CANVAS_ID_HINT} Requires user approval.`
   },
   vault_create_canvas: {
     input: z.object({ title: z.string().min(1).max(200).optional() }),
@@ -468,7 +481,7 @@ export const TOOL_SCHEMAS = {
       '"label":{"text":"leads to"}}. Coordinates are scene coordinates; x/y default to 0, so ' +
       'read the canvas first and place relative to what is there. To put a note/task/event on ' +
       'the canvas use vault_add_canvas_item — this tool cannot mint entity cards. Images need ' +
-      'a fileId already attached to the canvas. Requires user approval.'
+      `a fileId already attached to the canvas. ${CANVAS_ID_HINT} Requires user approval.`
   },
   vault_edit_canvas_elements: {
     input: z.object({
@@ -479,7 +492,8 @@ export const TOOL_SCHEMAS = {
       'Move, restyle, retext or delete elements already on a canvas, by element id from ' +
       'vault_read_canvas_elements. Absent fields are left alone; {"delete":true} removes the ' +
       'element and clears any arrow bound to it. Works on entity cards too (move and restyle ' +
-      'them), except their text, which lives in the note. Requires user approval.'
+      `them), except their text, which lives in the note. ${CANVAS_ID_HINT} ` +
+      'Requires user approval.'
   },
   vault_desktop_write: {
     input: desktopWriteSchema,

@@ -64,7 +64,9 @@ the microphone is picking you up. It measures loudness only — memrynote does n
 per second than those 20 updates need, keeping a long recording cheap to leave running.
 
 The recording's waveform is captured alongside the audio, so the detail panel shows the real
-waveform instantly when you open a voice item.
+waveform instantly when you open a voice item. Older voice items recorded before waveforms were
+stored are decoded on demand instead; if that file is missing or unreadable the panel keeps the flat
+placeholder bars, and playback of other voice items stays unaffected no matter how many you open.
 
 If voice transcription is enabled, memrynote transcribes the audio in the background — see [Voice Transcription](/user-guide/ai/voice-transcription).
 

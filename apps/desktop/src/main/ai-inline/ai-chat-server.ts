@@ -13,6 +13,18 @@ import { trackMainError } from '../telemetry/diagnostics'
 
 const logger = createLogger('AI:ChatServer')
 
+// Same ceiling as the capture server: enough for a large document plus its
+// conversation, small enough that a runaway client cannot exhaust main-process
+// memory before the socket is dropped.
+const MAX_BODY_BYTES = 25 * 1024 * 1024
+
+class PayloadTooLargeError extends Error {
+  constructor() {
+    super('Request body too large')
+    this.name = 'PayloadTooLargeError'
+  }
+}
+
 let server: http.Server | null = null
 let currentPort: number | null = null
 let currentSettingsKey: string | null = null
@@ -108,12 +120,15 @@ export async function startChatServer(settings: AIInlineSettings): Promise<numbe
     })
 
     nextServer.on('error', (err) => {
-      if (server === nextServer) {
+      logger.error('Server error:', err)
+      // Only a server that never reached listening is safe to forget. Nulling a
+      // bound server here would make stopChatServer() resolve without closing
+      // it, leaking the listening socket for the rest of the process lifetime.
+      if (server === nextServer && !nextServer.listening) {
         server = null
         currentPort = null
         currentSettingsKey = null
       }
-      logger.error('Server error:', err)
       reject(err)
     })
   })
@@ -154,6 +169,10 @@ export async function stopChatServer(): Promise<void> {
       return
     }
 
+    // close() only refuses new connections and drops idle ones. A socket still
+    // streaming a generation would keep it pending forever, stalling the
+    // before-quit chain until the 5s shutdown timeout force-exits the app.
+    closingServer.closeAllConnections?.()
     closingServer.close(() => {
       if (server === closingServer) {
         server = null
@@ -171,6 +190,15 @@ async function handleChatRequest(
   res: http.ServerResponse,
   model: ReturnType<typeof createLanguageModel>
 ): Promise<void> {
+  // Dismissing the inline AI menu just drops the renderer's fetch. Without this
+  // the provider request keeps generating into a dead socket until the model
+  // finishes. 'close' also fires on a completed response, so writableFinished
+  // tells a normal finish apart from a client that went away.
+  const abortController = new AbortController()
+  res.on('close', () => {
+    if (!res.writableFinished) abortController.abort()
+  })
+
   try {
     const body = await readBody(req)
     const { messages, toolDefinitions } = JSON.parse(body)
@@ -180,11 +208,21 @@ async function handleChatRequest(
       system: aiDocumentFormats.html.systemPrompt,
       messages: await convertToModelMessages(injectDocumentStateMessages(messages)),
       tools: toolDefinitionsToToolSet(toolDefinitions),
-      toolChoice: 'required'
+      toolChoice: 'required',
+      abortSignal: abortController.signal
     })
 
     result.pipeUIMessageStreamToResponse(res)
   } catch (error) {
+    if (error instanceof PayloadTooLargeError) {
+      logger.warn('Rejected oversized chat request body')
+      if (!res.headersSent) {
+        res.writeHead(413, { 'Content-Type': 'application/json', Connection: 'close' })
+      }
+      res.end(JSON.stringify({ error: 'Request body too large' }))
+      return
+    }
+
     logger.error('Chat request failed:', error)
     trackMainError('ai_inline', 'inline_chat_request', error)
     if (!res.headersSent) {
@@ -196,8 +234,26 @@ async function handleChatRequest(
 
 function readBody(req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
+    // Reject before a single byte is buffered when the client declares an
+    // oversized body; the streaming guard below covers chunked bodies and
+    // clients that under-declare their length.
+    const declaredLength = Number(req.headers['content-length'])
+    if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
+      reject(new PayloadTooLargeError())
+      return
+    }
+
     const chunks: Buffer[] = []
-    req.on('data', (chunk: Buffer) => chunks.push(chunk))
+    let size = 0
+    req.on('data', (chunk: Buffer) => {
+      size += chunk.length
+      if (size > MAX_BODY_BYTES) {
+        reject(new PayloadTooLargeError())
+        req.destroy()
+        return
+      }
+      chunks.push(chunk)
+    })
     req.on('end', () => resolve(Buffer.concat(chunks).toString()))
     req.on('error', reject)
   })
