@@ -118,12 +118,39 @@ export const installLogShip = (deps: LogShipDeps): LogShip => {
   const floorRank = Math.max(LEVEL_ORDER.warn, LEVEL_ORDER[configuredLevel] ?? LEVEL_ORDER.warn)
   const transportLevel: 'warn' | 'error' = floorRank >= LEVEL_ORDER.error ? 'error' : 'warn'
 
-  let ring: DiagnosticLogLine[] = []
-  const pushRing = (line: DiagnosticLogLine): void => {
-    ring.push(line)
-    const cutoff = Date.now() - RING_MS
-    ring = ring.filter((l) => new Date(l.ts).getTime() >= cutoff)
-    if (ring.length > RING_LIMIT) ring = ring.slice(ring.length - RING_LIMIT)
+  // Fixed-capacity circular buffer over preallocated slots. Both evictions (the
+  // RING_MS window and the RING_LIMIT cap) only ever drop the oldest entries, so a
+  // head index reproduces exactly what the old filter+slice kept — while doing O(1)
+  // amortized work per line instead of re-parsing up to RING_LIMIT timestamps and
+  // reallocating the array on every warn/error. Epoch ms is captured at push time in
+  // a parallel array, so the shipped line shape (`ts` ISO string) is untouched.
+  const ringLines = new Array<DiagnosticLogLine | null>(RING_LIMIT).fill(null)
+  const ringTsMs = new Array<number>(RING_LIMIT).fill(0)
+  let ringHead = 0
+  let ringSize = 0
+
+  const pushRing = (line: DiagnosticLogLine, tsMs: number): void => {
+    const slot = (ringHead + ringSize) % RING_LIMIT
+    ringLines[slot] = line
+    ringTsMs[slot] = tsMs
+    if (ringSize === RING_LIMIT) ringHead = (ringHead + 1) % RING_LIMIT
+    else ringSize += 1
+    const cutoff = tsMs - RING_MS
+    while (ringSize > 0 && ringTsMs[ringHead] < cutoff) {
+      // Null the evicted slot so the ring stops pinning the line object.
+      ringLines[ringHead] = null
+      ringHead = (ringHead + 1) % RING_LIMIT
+      ringSize -= 1
+    }
+  }
+
+  const snapshotRing = (): DiagnosticLogLine[] => {
+    const out: DiagnosticLogLine[] = []
+    for (let i = 0; i < ringSize; i++) {
+      const line = ringLines[(ringHead + i) % RING_LIMIT]
+      if (line) out.push(line)
+    }
+    return out
   }
 
   const throttleMap = new Map<string, { line: DiagnosticLogLine; windowStart: number }>()
@@ -217,7 +244,7 @@ export const installLogShip = (deps: LogShipDeps): LogShip => {
       }
       throttleMap.set(key, { line, windowStart: now })
       sweepThrottle(now)
-      pushRing(line)
+      pushRing(line, now)
 
       syncQueueEnabled()
       queue.enqueue(line)
@@ -253,7 +280,7 @@ export const installLogShip = (deps: LogShipDeps): LogShip => {
       logShipInstance = null
     },
     ingestForwarded: (record, workerName) => handleRecord(record, 'worker', workerName),
-    recentLines: () => ring.slice()
+    recentLines: () => snapshotRing()
   }
 
   logShipInstance = ship
