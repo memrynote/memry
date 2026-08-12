@@ -337,6 +337,119 @@ describe('ContentSection', () => {
     expect(screen.getByText('cannot decode')).toBeInTheDocument()
   })
 
+  it('closes the waveform AudioContext when the decode fails, and only once', async () => {
+    const close = vi.fn()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        arrayBuffer: vi.fn(async () => new ArrayBuffer(8))
+      }))
+    )
+    vi.stubGlobal(
+      'AudioContext',
+      vi.fn(function AudioContext(this: any) {
+        this.decodeAudioData = vi.fn(async () => {
+          throw new Error('unsupported audio file')
+        })
+        this.close = close
+      })
+    )
+
+    const { unmount } = render(
+      <ContentSection
+        item={baseItem('voice', {
+          title: 'Corrupt memo',
+          attachmentUrl: 'memry-file://corrupt.wav',
+          duration: 12,
+          metadata: { duration: 12, format: 'wav' }
+        })}
+      />
+    )
+
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1))
+
+    unmount()
+    expect(close).toHaveBeenCalledTimes(1)
+  })
+
+  it('closes the waveform AudioContext when the item unmounts mid-decode', async () => {
+    const close = vi.fn()
+    let finishDecode: (buffer: unknown) => void = () => {}
+    const decoded = new Promise((resolve) => {
+      finishDecode = resolve
+    })
+    const audioContextCtor = vi.fn(function AudioContext(this: any) {
+      this.decodeAudioData = vi.fn(() => decoded)
+      this.close = close
+    })
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        arrayBuffer: vi.fn(async () => new ArrayBuffer(8))
+      }))
+    )
+    vi.stubGlobal('AudioContext', audioContextCtor)
+
+    const { unmount } = render(
+      <ContentSection
+        item={baseItem('voice', {
+          title: 'Slow memo',
+          attachmentUrl: 'memry-file://slow.wav',
+          duration: 12,
+          metadata: { duration: 12, format: 'wav' }
+        })}
+      />
+    )
+
+    await waitFor(() => expect(audioContextCtor).toHaveBeenCalledTimes(1))
+
+    unmount()
+    expect(close).toHaveBeenCalledTimes(1)
+
+    // The in-flight decode still settles afterwards; it must not close twice.
+    finishDecode({ getChannelData: vi.fn(() => new Float32Array(120)) })
+    await decoded
+    await Promise.resolve()
+    expect(close).toHaveBeenCalledTimes(1)
+  })
+
+  it('never opens an AudioContext when the item unmounts before the audio bytes arrive', async () => {
+    let sendBytes: (buffer: ArrayBuffer) => void = () => {}
+    const bytes = new Promise<ArrayBuffer>((resolve) => {
+      sendBytes = resolve
+    })
+    const audioContextCtor = vi.fn(function AudioContext(this: any) {
+      this.decodeAudioData = vi.fn(async () => ({
+        getChannelData: vi.fn(() => new Float32Array(120))
+      }))
+      this.close = vi.fn()
+    })
+    const fetchMock = vi.fn(async () => ({ arrayBuffer: vi.fn(() => bytes) }))
+
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('AudioContext', audioContextCtor)
+
+    const { unmount } = render(
+      <ContentSection
+        item={baseItem('voice', {
+          title: 'Pending memo',
+          attachmentUrl: 'memry-file://pending.wav',
+          duration: 12,
+          metadata: { duration: 12, format: 'wav' }
+        })}
+      />
+    )
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+
+    unmount()
+    sendBytes(new ArrayBuffer(8))
+    await bytes
+    await Promise.resolve()
+    expect(audioContextCtor).not.toHaveBeenCalled()
+  })
+
   it('renders voice transcription pending, processing, empty, and failed retrying states', () => {
     const { rerender } = render(
       <ContentSection item={baseItem('voice', { transcriptionStatus: 'processing' })} />
