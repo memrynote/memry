@@ -383,6 +383,128 @@ describe('SyncWorkerBridge', () => {
     })
   })
 
+  describe('#given a stop() inside its shutdown window #when start() races it', () => {
+    const startReady = async (): Promise<MockWorker> => {
+      const p = bridge.start()
+      mockWorkerInstance.simulateMessage({ type: 'ready' })
+      await p
+      return mockWorkerInstance
+    }
+
+    /**
+     * The raced start() resumes on the microtask queue behind stop()'s own
+     * resolution — nothing here is timer-driven — so the fresh Worker is not
+     * constructed yet when `await stopPromise` returns.
+     */
+    const flushMicrotasks = async (): Promise<void> => {
+      for (let i = 0; i < 5; i++) await Promise.resolve()
+    }
+
+    /** stop() that hits the 3s timeout with a start() issued mid-window. */
+    const raceStartAgainstTimingOutStop = async (): Promise<void> => {
+      const stopPromise = bridge.stop()
+      const startPromise = bridge.start()
+
+      vi.advanceTimersByTime(3_001)
+      await stopPromise
+      await flushMicrotasks()
+
+      mockWorkerInstance.simulateMessage({ type: 'ready' })
+      await startPromise
+    }
+
+    it('#then a crypto batch still reaches a worker instead of "Worker not started"', async () => {
+      // #given
+      await startReady()
+
+      // #when — the caller does not await the stop before starting again
+      await raceStartAgainstTimingOutStop()
+
+      // #then — start() reported success and there is a thread behind it. When
+      // start() no-opped on stop()'s still-non-null `this.worker`, stop()'s
+      // continuation left the bridge with no worker at all and this batch
+      // rejected with 'Worker not started' — three of which latch the bridge
+      // off to main-thread crypto for the rest of the session.
+      const promise = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+      const posted = mockWorkerInstance.postMessage.mock.calls
+        .filter(([m]) => m.type === 'encrypt-batch')
+        .at(-1)?.[0]
+      mockWorkerInstance.simulateMessage({
+        type: 'encrypt-batch-result',
+        // Never issued means the bridge refused the batch — assert on the
+        // rejection rather than a TypeError on the missing message.
+        requestId: posted?.requestId ?? 'never-issued',
+        results: [],
+        errors: []
+      })
+      await expect(promise).resolves.toEqual({ results: [], errors: [] })
+      expect(bridge.isRunning).toBe(true)
+    })
+
+    it('#then the raced start spawns a fresh thread, not the one shutting down', async () => {
+      // #given
+      const stopping = await startReady()
+
+      // #when
+      await raceStartAgainstTimingOutStop()
+
+      // #then — terminate() was already fired at the old thread, so reusing it
+      // is not an option
+      expect(mockWorkerInstance).not.toBe(stopping)
+      expect(stopping.terminate).toHaveBeenCalled()
+    })
+
+    it('#then the raced start still clears a latched-off bridge', async () => {
+      // #given — a latched bridge, whose only in-session recovery is stop()
+      // followed by start()
+      await startReady()
+      for (let i = 0; i < MAX_CONSECUTIVE_FAILURES; i++) {
+        const request = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+        vi.advanceTimersByTime(60_001)
+        await expect(request).rejects.toThrow('Worker request timed out')
+      }
+      expect(bridge.isRunning).toBe(false)
+
+      // #when — that recovery is issued without awaiting the stop
+      await raceStartAgainstTimingOutStop()
+
+      // #then — a start() that bails on the `this.worker` guard never reaches
+      // the latch reset, so the recovery silently did nothing
+      expect(bridge.isRunning).toBe(true)
+    })
+
+    it('#then isRunning is false while the thread is being shut down', async () => {
+      // #given
+      const worker = await startReady()
+
+      // #when
+      const stopPromise = bridge.stop()
+
+      // #then — sync-crypto-batch gates on this, so the batch goes to
+      // main-thread crypto now instead of waiting out REQUEST_TIMEOUT_MS for a
+      // reply from a thread that has been told to exit
+      expect(bridge.isRunning).toBe(false)
+
+      worker.simulateExit(0)
+      await stopPromise
+    })
+
+    it('#then a second stop() joins the one in flight instead of racing it', async () => {
+      // #given
+      const worker = await startReady()
+
+      // #when
+      const first = bridge.stop()
+      const second = bridge.stop()
+      worker.simulateExit(0)
+      await Promise.all([first, second])
+
+      // #then — one shutdown, one exit race, one window
+      expect(worker.postMessage.mock.calls.filter(([m]) => m.type === 'shutdown')).toHaveLength(1)
+      expect(bridge.isRunning).toBe(false)
+    })
+  })
+
   describe('#given running bridge #when encryptBatch called', () => {
     it('#then sends message and returns result', async () => {
       // #given
