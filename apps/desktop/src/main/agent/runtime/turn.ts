@@ -53,14 +53,20 @@ export interface RunTurnInput {
 
 export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ turnId: string }> {
   const turnId = randomUUID()
-  const existingMessages = deps.messages.listByConversation(input.conversationId)
+  // Listing the transcript is the expensive part of a turn: every row costs two
+  // AEAD opens, two JSON.parses and a zod parse. It is listed once here and
+  // threaded through the rest of the turn, so the cost stays O(history) per
+  // message instead of a multiple of it. Nothing appends to this conversation
+  // between here and the last use below except this turn itself, and those
+  // appends return the message, so the in-memory copy stays authoritative.
+  const history = deps.messages.listByConversation(input.conversationId)
   const existingConversation = deps.conversations.getById(input.conversationId)
   const backend = deps.backends.get(input.backendOptions.backend)
   const permissions = input.permissions ?? DEFAULT_TURN_PERMISSIONS
   // agent_chat_started keys on this heuristic; revisit if a user-facing rename path is added
   const shouldGenerateTitle =
     existingConversation?.title.trim() === DEFAULT_CONVERSATION_TITLE &&
-    !existingMessages.some((message) => message.role === 'user')
+    !history.some((message) => message.role === 'user')
 
   const user = deps.messages.append({
     conversationId: input.conversationId,
@@ -101,9 +107,6 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
       })
     : Promise.resolve()
 
-  let history = deps.messages
-    .listByConversation(input.conversationId)
-    .filter((message) => message.id !== user.id)
   const promptContext = buildPromptContext()
   const prompt = assemblePrompt({
     history,
@@ -113,10 +116,14 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     context: promptContext
   })
 
+  let compactedPrompt = prompt
   try {
-    await maybeCompact({
+    const compaction = await maybeCompact({
       conversationId: input.conversationId,
       messages: deps.messages,
+      // assemblePrompt renders the turn's own user message separately, but
+      // compaction weighs the whole transcript, so it gets history plus `user`.
+      history: [...history, user],
       summarize: (toSummarize) =>
         summarizeWithBackend(deps, {
           prompt: toSummarize,
@@ -128,6 +135,18 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
       estimateLimit: COMPACTION_THRESHOLD,
       currentEstimate: estimateTokens(prompt)
     })
+    // Compaction only ever appends a marker, so the post-compaction history is
+    // exactly the pre-compaction one plus that marker — no re-list needed. When
+    // it did nothing, re-assembling would have rebuilt a byte-identical prompt.
+    if (compaction) {
+      compactedPrompt = assemblePrompt({
+        history: [...history, compaction],
+        userMessage: input.text,
+        attachments: input.attachments,
+        permissions,
+        context: promptContext
+      })
+    }
   } catch (error) {
     // A failed or empty summarization must not become a 'compacted' marker —
     // compactedHistory replaces all prior history with the summary, so a bad
@@ -136,17 +155,6 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     logger.warn('Conversation compaction failed; skipping compaction for this turn', error)
     trackMainError('agent', 'compact_summarize', error)
   }
-
-  history = deps.messages
-    .listByConversation(input.conversationId)
-    .filter((message) => message.id !== user.id)
-  const compactedPrompt = assemblePrompt({
-    history,
-    userMessage: input.text,
-    attachments: input.attachments,
-    permissions,
-    context: promptContext
-  })
 
   const rawSub = await backend.runTurn({
     prompt: compactedPrompt,
