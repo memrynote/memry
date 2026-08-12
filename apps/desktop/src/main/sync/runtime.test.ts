@@ -880,6 +880,40 @@ describe('sync runtime', () => {
     expect(runtimeMocks.NetworkMonitor.instances[0].stop).toHaveBeenCalled()
   })
 
+  // The attachment UploadQueue lives in the IPC layer but binds THIS runtime's
+  // NetworkMonitor for its lifetime, so it has to be reset on the same paths the
+  // other per-vault singletons are. Left alive it stays subscribed to a stopped
+  // monitor — reconnect wake-up dead, `online` frozen — and serves the next vault.
+  it('resets the attachment upload queue on stop', async () => {
+    const runtime = await loadRuntime()
+    // resetModules ran in beforeEach, so this is the same module instance the
+    // freshly-loaded runtime imports.
+    const { registerAttachmentQueueReset } = await import('./attachment-outbox')
+    const resetAttachmentQueue = vi.fn()
+    registerAttachmentQueueReset(resetAttachmentQueue)
+
+    await runtime.startSyncRuntime()
+    expect(resetAttachmentQueue).not.toHaveBeenCalled()
+
+    await runtime.stopSyncRuntime({ skipFinalSync: true })
+
+    expect(resetAttachmentQueue).toHaveBeenCalled()
+  })
+
+  it('resets the attachment upload queue when startup fails after the runtime is assembled', async () => {
+    const runtime = await loadRuntime()
+    const { registerAttachmentQueueReset } = await import('./attachment-outbox')
+    const resetAttachmentQueue = vi.fn()
+    registerAttachmentQueueReset(resetAttachmentQueue)
+    runtimeMocks.engineStartError = new Error('engine start failed')
+
+    await expect(runtime.startSyncRuntime()).resolves.toBeNull()
+
+    // A queue built during the doomed start would otherwise outlive the monitor
+    // that was just stopped in the same cleanup block.
+    expect(resetAttachmentQueue).toHaveBeenCalled()
+  })
+
   it('destroys CRDT provider when stopped without an active runtime', async () => {
     const runtime = await loadRuntime()
 

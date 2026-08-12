@@ -175,6 +175,10 @@ import {
   unregisterAttachmentHandlers
 } from './sync-attachment-handlers'
 import { getStatus as getVaultStatus } from '../vault/index'
+import { getNetworkMonitor } from '../sync/runtime'
+import { resetAttachmentQueue } from '../sync/attachment-outbox'
+import { UploadQueue } from '../sync/upload-queue'
+import type { NetworkMonitor } from '../sync/network'
 import { getValidAccessToken } from '../sync/token-manager'
 import { isDatabaseInitialized } from '../database/client'
 import {
@@ -204,6 +208,8 @@ describe('sync-attachment-handlers', () => {
       .mockReset()
       .mockResolvedValue({ attachmentId: 'attachment-1', sessionId: 'session-1' })
     attachmentMocks.queue.dispose.mockReset()
+    vi.mocked(UploadQueue).mockClear()
+    vi.mocked(getNetworkMonitor).mockReturnValue(null)
     outboxUploaders.length = 0
     mockOnSaved.mockClear()
     mockOnDownloadNeeded.mockClear()
@@ -264,6 +270,74 @@ describe('sync-attachment-handlers', () => {
 
     // #then — safe to call multiple times without throwing
     expect(() => clearAttachmentState()).not.toThrow()
+  })
+
+  // ==========================================================================
+  // Runtime-restart lifecycle (vault switch, sign-out/in)
+  //
+  // The queue captures getNetworkMonitor() once, at construction, and only
+  // unsubscribes in dispose(). Reusing it across a runtime restart leaves it
+  // bound to the previous, now-stopped monitor: its `online` flag is frozen and
+  // it can never emit 'status-changed' again, so the reconnect wake-up is dead
+  // for the rest of the session and vault A's leftovers upload under vault B.
+  // ==========================================================================
+
+  it('registers its disposer with the sync runtime on register and clears it on unregister', () => {
+    const dispose = vi.fn()
+    attachmentMocks.queue.dispose = dispose
+
+    registerAttachmentHandlers()
+    vi.mocked(getNetworkMonitor).mockReturnValue({ id: 'monitor-a' } as unknown as NetworkMonitor)
+    getCanvasAssetIO()
+
+    // #when the sync runtime tears down
+    resetAttachmentQueue()
+
+    // #then the IPC layer's queue went with it
+    expect(dispose).toHaveBeenCalledTimes(1)
+
+    unregisterAttachmentHandlers()
+    resetAttachmentQueue()
+
+    // #then a deregistered handler set is not reachable from the runtime
+    expect(dispose).toHaveBeenCalledTimes(1)
+  })
+
+  it('rebuilds the upload queue against the CURRENT NetworkMonitor after a runtime reset', () => {
+    const monitorA = { id: 'monitor-a' } as unknown as NetworkMonitor
+    const monitorB = { id: 'monitor-b' } as unknown as NetworkMonitor
+
+    // #given a first runtime built the queue
+    vi.mocked(getNetworkMonitor).mockReturnValue(monitorA)
+    registerAttachmentHandlers()
+    expect(getCanvasAssetIO()).not.toBeNull()
+    expect(vi.mocked(UploadQueue).mock.calls).toHaveLength(1)
+    expect(vi.mocked(UploadQueue).mock.calls[0][1]).toBe(monitorA)
+
+    // #when that runtime stops and a second one starts with a fresh monitor
+    resetAttachmentQueue()
+    expect(attachmentMocks.queue.dispose).toHaveBeenCalledTimes(1)
+    vi.mocked(getNetworkMonitor).mockReturnValue(monitorB)
+    expect(getCanvasAssetIO()).not.toBeNull()
+
+    // #then a NEW queue was constructed, bound to the live monitor
+    expect(vi.mocked(UploadQueue).mock.calls).toHaveLength(2)
+    expect(vi.mocked(UploadQueue).mock.calls[1][1]).toBe(monitorB)
+  })
+
+  it('does not rebuild the queue while a single runtime is alive', () => {
+    const monitorA = { id: 'monitor-a' } as unknown as NetworkMonitor
+    vi.mocked(getNetworkMonitor).mockReturnValue(monitorA)
+    registerAttachmentHandlers()
+
+    getCanvasAssetIO()
+    getCanvasAssetIO()
+    getCanvasAssetIO()
+
+    // The singleton is still a singleton — the fix scopes its lifetime to the
+    // runtime, it does not make every caller build a new queue.
+    expect(vi.mocked(UploadQueue).mock.calls).toHaveLength(1)
+    expect(attachmentMocks.queue.dispose).not.toHaveBeenCalled()
   })
 
   it('uploads through the queue after authentication and maps upload progress', async () => {
