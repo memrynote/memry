@@ -5,6 +5,7 @@ import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters } from '@memry/db-schema/schema/settings'
+import { taskActivity } from '@memry/db-schema/schema/task-activity'
 import { canvases } from '@memry/db-schema/schema/canvas'
 import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
 import { bookmarks } from '@memry/db-schema/schema/bookmarks'
@@ -182,6 +183,28 @@ export function incrementFilterClockOffline(db: DataDb, filterId: string): void 
     log.debug('Incremented offline filter clock', { filterId })
   } catch (err) {
     log.warn('Failed to increment offline filter clock', { filterId, error: err })
+  }
+}
+
+/**
+ * Note there is no rebinding hook for these the way task-sync.ts rebinds
+ * offline task clocks: an activity row stamped `_offline` keeps that key for
+ * its whole life. That is fine — the row is immutable, so the clock is never
+ * compared against a later local edit.
+ */
+export function incrementTaskActivityClockOffline(db: DataDb, activityId: string): void {
+  try {
+    const row = db.select().from(taskActivity).where(eq(taskActivity.id, activityId)).get()
+    if (!row) return
+
+    const existingClock = (row.clock as VectorClock) ?? {}
+    const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
+
+    db.update(taskActivity).set({ clock: newClock }).where(eq(taskActivity.id, activityId)).run()
+
+    log.debug('Incremented offline task activity clock', { activityId })
+  } catch (err) {
+    log.warn('Failed to increment offline task activity clock', { activityId, error: err })
   }
 }
 

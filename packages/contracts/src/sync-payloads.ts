@@ -54,6 +54,26 @@ export const FilterSyncPayloadSchema = z.object({
   createdAt: z.string().optional()
 })
 
+/**
+ * Append-only task audit row. Immutable, so there are no `fieldClocks` and no
+ * `modifiedAt` — a row is written once and only ever inserted on a peer.
+ *
+ * `oldValue`/`newValue` are JSON-encoded scalars, and are always null for the
+ * `description` field: the body is BlockNote markdown and can be note-sized, so
+ * it is never duplicated into the encrypted payload.
+ */
+export const TaskActivitySyncPayloadSchema = z.object({
+  taskId: z.string().optional(),
+  action: z.string().optional(),
+  field: z.string().nullable().optional(),
+  oldValue: z.string().nullable().optional(),
+  newValue: z.string().nullable().optional(),
+  actor: z.string().optional(),
+  deviceId: z.string().nullable().optional(),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional()
+})
+
 export const TemplateSyncPayloadSchema = z.object({
   name: z.string().optional(),
   description: z.string().nullable().optional(),
@@ -490,6 +510,7 @@ export type CalendarExternalEventSyncPayload = z.infer<
 export type TaskSyncPayload = z.infer<typeof TaskSyncPayloadSchema>
 export type InboxSyncPayload = z.infer<typeof InboxSyncPayloadSchema>
 export type FilterSyncPayload = z.infer<typeof FilterSyncPayloadSchema>
+export type TaskActivitySyncPayload = z.infer<typeof TaskActivitySyncPayloadSchema>
 export type TemplateSyncPayload = z.infer<typeof TemplateSyncPayloadSchema>
 export type BookmarkSyncPayload = z.infer<typeof BookmarkSyncPayloadSchema>
 export type ReminderSyncPayload = z.infer<typeof ReminderSyncPayloadSchema>

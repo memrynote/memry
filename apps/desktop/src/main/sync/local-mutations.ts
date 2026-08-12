@@ -13,6 +13,7 @@ import {
   incrementNoteClockOffline,
   incrementProjectClocksOffline,
   incrementReminderClockOffline,
+  incrementTaskActivityClockOffline,
   incrementTaskClocksOffline
 } from './offline-clock'
 import { getBookmarkSyncService } from './bookmark-sync'
@@ -29,6 +30,7 @@ import { getSettingsSyncManager } from './settings-sync'
 import { getTagDefinitionSyncService } from './tag-definition-sync'
 import { getTagCategorySyncService } from './tag-category-sync'
 import { getTaskSyncService } from './task-sync'
+import { getTaskActivitySyncService } from './task-activity-sync'
 import { getFolderConfigSyncService } from './folder-config-sync'
 import { getCalendarEventSyncService } from './calendar-event-sync'
 import { getCalendarSourceSyncService } from './calendar-source-sync'
@@ -143,6 +145,32 @@ const localSyncRegistry = createSyncAdapterRegistry([
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
         svcOrTrackDrop('inbox', getInboxSyncService())?.enqueueDelete(itemId, snapshotPayload)
+      }
+    }
+  },
+  {
+    // Append-only: only `create` reaches the wire. `update` cannot happen (rows
+    // are immutable) and `delete` is deliberately local — every device reaches
+    // the same pruned state from the shared retention age rule, so pushing the
+    // deletes would only duplicate work. Both are no-ops rather than missing so
+    // a future caller gets silence, not a crash.
+    type: 'task_activity',
+    kind: 'record',
+    local: {
+      enqueueCreate(itemId: string): void {
+        const service = getTaskActivitySyncService()
+        if (service) {
+          service.enqueueCreate(itemId)
+          return
+        }
+
+        incrementTaskActivityClockOffline(getDatabase(), itemId)
+      },
+      enqueueUpdate(): void {
+        // Rows are immutable — there is nothing to push.
+      },
+      enqueueDelete(): void {
+        // Retention prunes locally on every device from the same age rule.
       }
     }
   },

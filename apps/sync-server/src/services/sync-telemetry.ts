@@ -37,6 +37,7 @@ const toSyncDomain = (itemType: SyncItemType): SyncDomain => {
     case 'journal':
       return 'notes'
     case 'task':
+    case 'task_activity':
       return 'tasks'
     case 'project':
       return 'projects'

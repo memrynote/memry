@@ -209,6 +209,22 @@ export const TasksChannels = {
 } as const
 
 // ============================================================================
+// Task Activity Channels
+// ============================================================================
+
+/**
+ * Activity rows are append-only and written by the tasks domain, so there is no
+ * renderer CRUD here — only the events the sync handler emits when a peer's row
+ * lands, which the renderer's activity query listens for.
+ */
+export const TaskActivityChannels = {
+  events: {
+    CREATED: 'task-activity:created',
+    DELETED: 'task-activity:deleted'
+  }
+} as const
+
+// ============================================================================
 // Saved Filters Channels
 // ============================================================================
 
