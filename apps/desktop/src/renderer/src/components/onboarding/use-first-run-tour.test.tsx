@@ -1,7 +1,9 @@
+import { StrictMode } from 'react'
 import { renderHook } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const driveSpy = vi.fn()
+const destroySpy = vi.fn()
 type TourStep = {
   element?: string
   onHighlightStarted?: () => void
@@ -13,7 +15,14 @@ let capturedConfig: TourConfig | undefined
 vi.mock('driver.js', () => ({
   driver: (config: TourConfig) => {
     capturedConfig = config
-    return { drive: driveSpy }
+    // Mirror driver.js: destroy() runs the onDestroyed hook.
+    return {
+      drive: driveSpy,
+      destroy: () => {
+        destroySpy()
+        config.onDestroyed?.()
+      }
+    }
   }
 }))
 vi.mock('driver.js/dist/driver.css', () => ({}))
@@ -28,6 +37,7 @@ describe('useFirstRunTour', () => {
   beforeEach(() => {
     localStorage.clear()
     driveSpy.mockClear()
+    destroySpy.mockClear()
     capturedConfig = undefined
     // jsdom lacks matchMedia
     vi.stubGlobal(
@@ -127,5 +137,72 @@ describe('useFirstRunTour', () => {
     expect(dayClick).toHaveBeenCalledTimes(1)
 
     document.body.innerHTML = ''
+  })
+
+  describe('cleanup', () => {
+    /**
+     * Real rAF semantics: a queued callback runs on the next frame unless it is
+     * cancelled first. `flush()` runs only the frames that survived.
+     */
+    const deferFrames = (): (() => void) => {
+      const pending = new Map<number, FrameRequestCallback>()
+      let nextHandle = 0
+      vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+        nextHandle += 1
+        pending.set(nextHandle, cb)
+        return nextHandle
+      })
+      vi.stubGlobal('cancelAnimationFrame', (handle: number) => {
+        pending.delete(handle)
+      })
+      return () => {
+        const frames = [...pending.values()]
+        pending.clear()
+        frames.forEach((cb) => cb(0))
+      }
+    }
+
+    it('cancels the queued frame when unmounted before the tour starts', () => {
+      const flush = deferFrames()
+
+      const { unmount } = renderHook(() => useFirstRunTour())
+      unmount()
+      flush()
+
+      expect(driveSpy).not.toHaveBeenCalled()
+    })
+
+    it('destroys the driver instance when unmounted while the tour is running', () => {
+      const { unmount } = renderHook(() => useFirstRunTour())
+      expect(driveSpy).toHaveBeenCalledTimes(1)
+
+      unmount()
+
+      expect(destroySpy).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not record the tour as seen when unmount is what tore it down', () => {
+      const announced = vi.fn()
+      window.addEventListener(STAR_PROMPT_EVENT, announced)
+
+      const { unmount } = renderHook(() => useFirstRunTour())
+      unmount()
+
+      expect(localStorage.getItem(TOUR_KEY)).toBeNull()
+      expect(localStorage.getItem(STAR_PROMPT_KEY)).toBeNull()
+      expect(announced).not.toHaveBeenCalled()
+
+      window.removeEventListener(STAR_PROMPT_EVENT, announced)
+    })
+
+    it('still starts exactly one tour when effects are double-invoked', () => {
+      const flush = deferFrames()
+
+      renderHook(() => useFirstRunTour(), { wrapper: StrictMode })
+      flush()
+
+      expect(driveSpy).toHaveBeenCalledTimes(1)
+      expect(localStorage.getItem(TOUR_KEY)).toBeNull()
+    })
   })
 })
