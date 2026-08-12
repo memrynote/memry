@@ -93,7 +93,6 @@ describe('ClaudeCliBackend', () => {
       windowId: 'window-1',
       options: { backend: 'codex_cli', reasoningEffort: 'medium' }
     })
-    backend.cancel('conversation-1')
 
     expect(spawn).toHaveBeenNthCalledWith(
       1,

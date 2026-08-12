@@ -33,7 +33,6 @@ export interface AgentBackend {
   runTurn(input: AgentBackendRunInput): Promise<BackendRunHandle>
   generateTitle(input: AgentBackendRunInput): Promise<BackendRunHandle>
   summarize(input: AgentBackendRunInput): Promise<BackendRunHandle>
-  cancel(conversationId: string): void
   getStatus(): Promise<AgentBackendStatus>
   probeCapabilities?(): Promise<AgentLocalProviderProbeResult>
 }
