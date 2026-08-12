@@ -28,6 +28,7 @@ export interface VoiceRecorderHandle {
 }
 
 const WAVEFORM_BAR_COUNT = 40
+const WAVEFORM_FFT_SIZE = 512
 const MIN_BAR_HEIGHT = 3
 const MAX_BAR_HEIGHT = 18
 
@@ -94,7 +95,11 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
 
         const source = audioContext.createMediaStreamSource(stream)
         const analyser = audioContext.createAnalyser()
-        analyser.fftSize = 2048
+        // The bars are an RMS level meter, not a spectrum: no frequency
+        // resolution is needed, only a time-domain window long enough for a
+        // steady reading. 512 samples is ~12 ms at 44.1 kHz — plenty at the
+        // 20 fps the bars redraw at, and a quarter of the per-sample work.
+        analyser.fftSize = WAVEFORM_FFT_SIZE
         source.connect(analyser)
 
         analyserRef.current = analyser
@@ -107,20 +112,23 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
         const updateBars = (timestamp: number) => {
           if (!analyserRef.current) return
 
-          analyserRef.current.getByteTimeDomainData(dataArray)
-
-          let sum = 0
-          for (let i = 0; i < bufferLength; i++) {
-            const amplitude = (dataArray[i] - 128) / 128
-            sum += amplitude * amplitude
-          }
-          const rms = Math.sqrt(sum / bufferLength)
-
-          const SENSITIVITY = 4.0
-          const normalized = Math.min(rms * SENSITIVITY, 1)
-          const height = MIN_BAR_HEIGHT + normalized * (MAX_BAR_HEIGHT - MIN_BAR_HEIGHT)
-
+          // Sample only on the frames we actually commit. The read + RMS loop
+          // used to run at display rate while this throttle threw away ~2 of
+          // every 3 results; the bars still advance at the same 20 fps.
           if (timestamp - lastUpdateTime >= UPDATE_INTERVAL) {
+            analyserRef.current.getByteTimeDomainData(dataArray)
+
+            let sum = 0
+            for (let i = 0; i < bufferLength; i++) {
+              const amplitude = (dataArray[i] - 128) / 128
+              sum += amplitude * amplitude
+            }
+            const rms = Math.sqrt(sum / bufferLength)
+
+            const SENSITIVITY = 4.0
+            const normalized = Math.min(rms * SENSITIVITY, 1)
+            const height = MIN_BAR_HEIGHT + normalized * (MAX_BAR_HEIGHT - MIN_BAR_HEIGHT)
+
             const next = [...barsRef.current.slice(1), height]
             barsRef.current = next
             setWaveformBars(next)
