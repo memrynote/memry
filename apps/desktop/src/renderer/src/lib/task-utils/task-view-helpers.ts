@@ -506,7 +506,7 @@ export const getDayHeaderText = (date: Date): DayHeaderText => {
 }
 
 // ============================================================================
-// COMPLETED VIEW & ARCHIVE HELPERS
+// COMPLETED VIEW HELPERS
 // ============================================================================
 
 export const getCompletedTasks = (tasks: Task[]): Task[] => {
@@ -524,8 +524,4 @@ export const getCompletedTodayTasks = (tasks: Task[]): Task[] => {
       task.parentId === null &&
       isSameDay(task.completedAt, today)
   )
-}
-
-export const getArchivedTasks = (tasks: Task[]): Task[] => {
-  return tasks.filter((task) => task.archivedAt !== null)
 }
