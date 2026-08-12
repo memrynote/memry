@@ -693,13 +693,9 @@ describe('CrdtProvider', () => {
     await provider.compactDoc('note-1')
 
     const compactedLiveDoc = provider.getDoc('note-1')
-    expect(compactedLiveDoc?.getMap('meta').get('title')).toBe('pulled during compaction')
 
-    // 1. The vault markdown file must be scheduled for a rewrite.
-    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', compactedLiveDoc)
-
-    // 2. The queued network broadcast must reach the editor: the user reopens
-    //    the note, then the batcher flushes on shutdown.
+    // The queued network broadcast reaches the editor: the user reopens the
+    // note, then the batcher flushes on shutdown.
     createWindow(9)
     await provider.open('note-1', 9, { skipSeed: true })
     await provider.destroy()
@@ -707,18 +703,32 @@ describe('CrdtProvider', () => {
     const broadcast = mocks.sent.find(
       (sent) => sent.windowId === 9 && sent.channel === CRDT_EVENTS.STATE_CHANGED
     )
-    expect(broadcast).toBeDefined()
     const broadcastDoc = new Y.Doc()
-    Y.applyUpdate(broadcastDoc, (broadcast!.payload as { update: Uint8Array }).update)
-    expect(broadcastDoc.getMap('meta').get('title')).toBe('pulled during compaction')
+    if (broadcast) Y.applyUpdate(broadcastDoc, (broadcast.payload as { update: Uint8Array }).update)
 
-    // 3. It must survive a restart, i.e. be readable back out of the store.
+    // A restart must still see it, i.e. it is readable back out of the store.
     const restarted = new CrdtProvider()
     await restarted.init(queue as any, pushSnapshot)
     wireStore(mocks.persistenceInstances[mocks.persistenceInstances.length - 1])
     const reloaded = await restarted.open('note-1', undefined, { skipSeed: true })
-    expect(reloaded.getMap('meta').get('title')).toBe('pulled during compaction')
-    expect(reloaded.getMap('meta').get('date')).toBe('2026-01-01')
+
+    // Asserted together so a regression reports every limb it broke, not just
+    // the first one.
+    expect({
+      inMemory: compactedLiveDoc?.getMap('meta').get('title'),
+      writtenBackDoc: mocks.scheduleWriteback.mock.calls.at(-1),
+      broadcastToEditor: broadcastDoc.getMap('meta').get('title'),
+      afterRestart: reloaded.getMap('meta').get('title'),
+      // Control: the pre-compaction local edit must survive the same round trip.
+      dateAfterRestart: reloaded.getMap('meta').get('date')
+    }).toEqual({
+      inMemory: 'pulled during compaction',
+      writtenBackDoc: ['note-1', compactedLiveDoc],
+      broadcastToEditor: 'pulled during compaction',
+      afterRestart: 'pulled during compaction',
+      dateAfterRestart: '2026-01-01'
+    })
+
     await restarted.destroy()
   })
 
