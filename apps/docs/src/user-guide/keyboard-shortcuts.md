@@ -118,18 +118,30 @@ menu. See [Organizing Canvases](/user-guide/canvas/organizing).
 
 ## Hint Mode
 
-Hint mode overlays numeric badges on interactive elements so you can act without the mouse.
+Hint mode overlays letter badges on interactive elements so you can act without the mouse.
 
 | Action             | Shortcut                                  |
 | ------------------ | ----------------------------------------- |
 | Activate hint mode | <kbd>F</kbd> or <kbd>⌥</kbd>+<kbd>F</kbd> |
-| Pick a target      | Type the number shown                     |
+| Pick a target      | Type the letters shown                    |
 | Undo a keystroke   | <kbd>Backspace</kbd>                      |
 | Exit               | <kbd>Esc</kbd>                            |
 
-Each keystroke narrows the badges in place, and <kbd>Backspace</kbd> takes back the
-last character you typed. Only the badge overlay repaints as you type, so hint mode
-stays responsive on screens with a lot of targets.
+Badges are mnemonics built from each target's own name — its accessibility label,
+its visible text, or its tooltip, in that order. A target whose first letter is
+unique on screen gets that single letter (**Inbox** → `I`). When several targets
+share a first letter they get two characters: the shared letter plus the next
+distinct letter from that target's own text (**Tags** → `TA`, **Tasks** → `TS`).
+Anything with no usable letter to start from — an icon-only button, or a name that
+doesn't begin with A–Z — falls back to a sequential two-letter code (`AA`, `AB`,
+…), and those codes never reuse a letter that is already a badge on its own.
+
+Typing is case-insensitive and matches from the start of a badge. Each keystroke
+narrows the badges in place, keys that match nothing are ignored, and
+<kbd>Backspace</kbd> takes back the last character you typed. The moment what
+you've typed is a complete badge, that element is clicked and focused and hint
+mode exits. Only the badge overlay repaints as you type, so hint mode stays
+responsive on screens with a lot of targets.
 
 ## Global Undo (Tasks)
 
