@@ -114,12 +114,10 @@ export function incrementTaskClocksOffline(
       .where(eq(tasks.id, taskId))
       .run()
 
-    log.info('=== OFFLINE CLOCK: task incremented ===', {
-      taskId,
-      changedFields,
-      newClock,
-      updatedFieldClocks: Object.fromEntries(changedFields.map((f) => [f, updatedFC[f]]))
-    })
+    // Debug, and ids only. This fires once per field change for every task
+    // edited while the sync runtime is down, and a leftover `info` line built a
+    // fresh clock object per call that then rode the shipped-log queue.
+    log.debug('Incremented offline task clocks', { taskId, changedFields })
   } catch (err) {
     log.warn('Failed to increment offline task clocks', { taskId, error: err })
   }
