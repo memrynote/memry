@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
-import { driver, type DriveStep } from 'driver.js'
+import { useEffect } from 'react'
+import { driver, type DriveStep, type Driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
 import './tour.css'
 import { useT } from '@memry/i18n/renderer'
@@ -19,12 +19,20 @@ export const TOUR_KEY = 'memry:onboarding:tour:v1'
 export function useFirstRunTour(): void {
   const { t } = useT('common')
   const { open: openDayPanel } = useDayPanel()
-  const startedRef = useRef(false)
 
+  // Mount-scoped on purpose. The effect owns a live driver.js instance, so it
+  // must not be torn down and rebuilt just because react-i18next handed back a
+  // new `t` (it does on a language change): that would restart a running tour
+  // from step 1. The labels the tour needs are read once, when it is built.
   useEffect(() => {
-    if (startedRef.current) return
     if (localStorage.getItem(TOUR_KEY)) return
-    startedRef.current = true
+
+    // driver.js appends an overlay <svg> to <body> and attaches its own
+    // resize/scroll/keydown listeners; only destroy() takes those back down.
+    let tour: Driver | undefined
+    // Set by the cleanup so onDestroyed can tell an unmount-driven teardown from
+    // the user finishing, skipping, or closing the tour.
+    let unmounted = false
 
     // Open the right Day Panel so its calendar + Agent steps have live targets,
     // even for returning users whose saved layout has it closed.
@@ -154,12 +162,12 @@ export function useFirstRunTour(): void {
 
     // Defer one frame so the just-opened Day Panel has mounted before we test
     // for each step's target element.
-    requestAnimationFrame(() => {
+    const frame = requestAnimationFrame(() => {
       const visibleSteps = steps.filter(
         (step) => typeof step.element !== 'string' || document.querySelector(step.element) !== null
       )
 
-      const tour = driver({
+      tour = driver({
         showProgress: true,
         progressText,
         nextBtnText: t('onboarding.tour.next'),
@@ -175,6 +183,10 @@ export function useFirstRunTour(): void {
           popover.closeButton.setAttribute('aria-label', t('button.close'))
         },
         onDestroyed: () => {
+          // destroy() also runs on unmount, and that is not the user answering:
+          // leave the flag and the star prompt untouched so the tour still gets
+          // its one run, exactly as it did before this cleanup existed.
+          if (unmounted) return
           // ponytail: localStorage, app-wide once; move to a per-vault setting if we ever need to re-show per vault
           localStorage.setItem(TOUR_KEY, '1')
           // The tour lands here however it ended — finished, skipped, or closed —
@@ -189,5 +201,12 @@ export function useFirstRunTour(): void {
 
       tour.drive()
     })
-  }, [t, openDayPanel])
+
+    return () => {
+      unmounted = true
+      cancelAnimationFrame(frame)
+      tour?.destroy()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-scoped, see above
+  }, [])
 }
