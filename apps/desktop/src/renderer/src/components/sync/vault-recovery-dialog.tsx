@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useT } from '@memry/i18n/renderer'
+import { LINK_FAILURE_SETUP_SESSION_EXPIRED } from '@memry/contracts/ipc-devices'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -11,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { AlertTriangle } from '@/lib/icons'
 import { useAuth } from '@/contexts/auth-context'
+import { extractErrorMessage, getIpcErrorCode } from '@/lib/ipc-error'
 import { RecoveryPhraseInput } from './recovery-phrase-input'
 import { StartFreshPanel, StartFreshTrigger } from './start-fresh-panel'
 
@@ -51,16 +53,19 @@ export function VaultRecoveryDialog({
         await linkViaRecovery(phrase)
         onRecovered()
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
-        if (/sign in again|session expired/i.test(message)) {
+        // The message arrives already translated from the main process, so it
+        // is unusable as a condition — an English regex over it left every
+        // non-English user told to sign in again with no control to do it
+        // (#1202). The handler's code is locale-independent.
+        if (getIpcErrorCode(err) === LINK_FAILURE_SETUP_SESSION_EXPIRED) {
           setSessionExpired(true)
         }
-        setError(message)
+        setError(extractErrorMessage(err, t('setup.recovery.failed')))
       } finally {
         setIsLoading(false)
       }
     },
-    [linkViaRecovery, onRecovered]
+    [linkViaRecovery, onRecovered, t]
   )
 
   return (

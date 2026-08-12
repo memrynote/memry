@@ -120,15 +120,7 @@ export type DeleteAttachmentResponse = NotesRpc.DeleteAttachmentResponse
 
 // Template types (Phase 15)
 export type TemplatePropertyType =
-  | 'text'
-  | 'number'
-  | 'checkbox'
-  | 'date'
-  | 'select'
-  | 'multiselect'
-  | 'url'
-  | 'rating'
-  | 'project'
+  'text' | 'number' | 'checkbox' | 'date' | 'select' | 'multiselect' | 'url' | 'rating' | 'project'
 
 export interface TemplateProperty {
   name: string
@@ -1443,11 +1435,13 @@ interface SyncLinkingClientAPI {
     status?: 'waiting_approval' | 'approved' | 'error'
     verificationCode?: string
     error?: string
+    errorCode?: 'setup-session-expired'
   }>
   linkViaRecovery: (input: { recoveryPhrase: string }) => Promise<{
     success: boolean
     deviceId?: string
     error?: string
+    errorCode?: 'setup-session-expired'
   }>
   approveLinking: (input: { sessionId: string }) => Promise<{
     success: boolean
