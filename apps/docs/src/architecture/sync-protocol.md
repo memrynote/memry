@@ -315,10 +315,26 @@ terminal status.
 
 ## Pull Scheduling and Hang Recovery
 
-A periodic pull fires every 60 seconds; WebSocket `changes_available` and `connected` messages
+A periodic tick fires every 60 seconds; WebSocket `changes_available` and `connected` messages
 schedule additional pulls in between. The interval is armed before the first full sync, and a
 failure in that first sync is logged rather than propagated, so one transient error at startup
 cannot leave a session without a pull cycle.
+
+The tick does not always pull. Its pull exists to heal a `changes_available` broadcast that never
+arrived, so when the socket has been continuously connected since the previous tick — same
+`connectionGeneration`, still `connected` — the request is skipped: the socket pings every 25s and
+terminates itself after 31s of silence, so a half-open connection reports disconnected before a
+tick would trust it. Any drop between ticks bumps the generation and restores the every-tick pull,
+and a reconnect pulls on its own. A 5-minute floor caps the skipping, because a server that stops
+broadcasting is indistinguishable from a quiet vault from the client side. The stale-lock watchdog
+and the owed CRDT sweep run on every tick regardless.
+
+Network status feeds the same scheduling. Electron exposes no main-process event for `net.online`,
+so it is polled — every 5 seconds while offline, every 30 seconds while online, dropping back to
+the fast cadence the moment the status goes offline. A returning network is therefore always
+detected within ~5 seconds (plus a 2-second debounce), and `powerMonitor` `resume` polls
+immediately rather than waiting for a tick; `suspend` applies offline right away, so a machine
+waking from sleep is already on the fast cadence.
 
 Three guards keep a wedged sync from lasting until restart. Every sync HTTP request carries a
 60-second abort timeout, so a black-holed socket (suspend/resume, NAT teardown) surfaces as a

@@ -69,6 +69,26 @@ export const SYNC_LOCK_STALE_MS = 15 * 60 * 1000
 // an outage, never a body that is not pulled at all.
 export const INACTIVE_CRDT_SWEEP_MIN_INTERVAL_MS = 5 * 60 * 1000
 
+// Floor between two pulls issued by the 60s tick while the socket has been
+// continuously up.
+//
+// The tick's pull exists to heal a `changes_available` broadcast that never
+// arrived. When the same socket is still connected as at the previous tick
+// (`connectionGeneration` unchanged, `connected` true) no broadcast could have
+// been missed: the socket pings every 25s and terminates itself after 31s of
+// silence, so a half-open connection reports disconnected long before a tick
+// would trust it. The pull is then a guaranteed-empty request, once a minute,
+// per device, for the life of the app — and the same reasoning already decides
+// the reconnect CRDT sweep in full-sync-runner.ts.
+//
+// Throttled rather than dropped, because one failure mode is not observable
+// from here: a server that stops broadcasting looks exactly like a quiet vault.
+// A floor keeps that self-heal — along with the deferred-apply retries and
+// orphan repair that ride on the same pull — alive at a fifth of the cost, with
+// a bounded worst case. Any drop between ticks bumps the generation and
+// restores the every-tick pull, and the reconnect itself already pulls.
+export const PERIODIC_PULL_MAX_QUIET_MS = 5 * 60 * 1000
+
 const classifySyncErrorCode = (error: unknown): string => {
   try {
     const info = classifyError(error)
@@ -98,6 +118,11 @@ export class SyncEngine extends EventEmitter {
   // a timestamp from a previous process says nothing about this socket.
   private lastInactiveCrdtSweepAt = 0
   private inactiveCrdtSweepOwed = false
+  // The socket generation the previous pull tick observed, and when the tick
+  // last actually pulled. Both are instance state re-armed with the interval —
+  // see armPeriodicPull.
+  private lastPullTickWsGeneration: number | null = null
+  private lastPullTickPullAt = 0
 
   constructor(deps: SyncEngineDeps, options?: Partial<SyncEngineOptions>) {
     super()
@@ -548,11 +573,39 @@ export class SyncEngine extends EventEmitter {
 
   private armPeriodicPull(): void {
     if (this.pullInterval) return
-    this.pullInterval = setInterval(() => {
-      this.recoverStaleSyncLock()
-      this.payOwedInactiveCrdtSweep()
-      this.pullCoordinator.periodicPull()
-    }, 60_000)
+    // Arming always follows a pull that just ran or is about to (start(),
+    // network restored), so the floor starts now rather than firing on the
+    // first tick.
+    this.lastPullTickWsGeneration = this.ctx.deps.ws?.connectionGeneration ?? null
+    this.lastPullTickPullAt = Date.now()
+    this.pullInterval = setInterval(() => this.runPullTick(), 60_000)
+  }
+
+  private runPullTick(): void {
+    // Both of these are in-process watchdogs with no network cost, and both
+    // must keep running every tick regardless of what the socket is doing.
+    this.recoverStaleSyncLock()
+    this.payOwedInactiveCrdtSweep()
+
+    const ws = this.ctx.deps.ws
+    const generation = ws?.connectionGeneration ?? null
+    // Same socket as the previous tick and still up: nothing could have been
+    // missed in between. A drop and reconnect bumps the generation; a drop
+    // without one leaves `connected` false. See PERIODIC_PULL_MAX_QUIET_MS.
+    const sameSocketSinceLastTick =
+      generation !== null && generation === this.lastPullTickWsGeneration && ws?.connected === true
+    this.lastPullTickWsGeneration = generation
+
+    if (
+      sameSocketSinceLastTick &&
+      Date.now() - this.lastPullTickPullAt < PERIODIC_PULL_MAX_QUIET_MS
+    ) {
+      log.debug('Periodic pull skipped: socket continuously connected since last tick')
+      return
+    }
+
+    this.lastPullTickPullAt = Date.now()
+    this.pullCoordinator.periodicPull()
   }
 
   // Last-resort watchdog. Request timeouts make a hung HTTP call settle on its
