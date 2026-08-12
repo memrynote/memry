@@ -39,6 +39,10 @@ Opening a vault never blocks on embeddings. When a vault has notes that still ne
 example the first open after importing a vault — memrynote embeds them in the **background** after the
 vault is already open, so a large vault (or a slow or failed model download) can never hold up opening.
 
+Closing a vault, switching vaults, and quitting never block on embeddings either: a background
+embedding pass stops at the next note rather than finishing its whole queue. Notes it did not reach
+keep their place in line and are embedded by the next background pass.
+
 Beyond that, the model is loaded lazily: semantic surfaces such as search, inbox linked-note
 suggestions, related notes, and reindexing start the local model on first use. The model runs in a
 separate utility process and shuts down after an idle period, so regular note reading does not keep the
@@ -57,6 +61,10 @@ Rebuild the index after:
 - A migration that touched note storage
 
 Reindexing is incremental — memrynote skips notes whose content hash hasn't changed.
+
+A reindex — and a settings change that reclassifies notes, such as moving the journal or default note
+folder — embeds the notes it touched in the background as soon as the pass finishes. You do not need
+to reopen the vault for semantic search to see them.
 
 ## Privacy
 

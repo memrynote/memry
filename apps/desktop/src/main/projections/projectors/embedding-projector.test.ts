@@ -4,6 +4,7 @@ const getDatabase = vi.hoisted(() => vi.fn())
 const getIndexDatabase = vi.hoisted(() => vi.fn())
 const getRawIndexDatabase = vi.hoisted(() => vi.fn())
 const getSetting = vi.hoisted(() => vi.fn())
+const setSetting = vi.hoisted(() => vi.fn())
 const generateEmbedding = vi.hoisted(() => vi.fn())
 const initEmbeddingModel = vi.hoisted(() => vi.fn())
 const isModelLoaded = vi.hoisted(() => vi.fn())
@@ -23,7 +24,8 @@ vi.mock('fs/promises', () => ({
 }))
 
 vi.mock('@main/database/queries/settings', () => ({
-  getSetting
+  getSetting,
+  setSetting
 }))
 
 vi.mock('../../vault/frontmatter', () => ({
@@ -55,6 +57,7 @@ vi.mock('electron', () => ({
 
 import { createEmbeddingProjector } from './embedding-projector'
 import { EMBEDDING_INPUT_VERSION } from '../../lib/embedding-input'
+import { createProjectionRuntime } from '../runtime'
 
 describe('embedding projector', () => {
   beforeEach(() => {
@@ -309,6 +312,192 @@ describe('embedding projector', () => {
       'settings:embeddingProgress',
       expect.objectContaining({ phase: 'complete', current: 2, total: 2 })
     )
+  })
+
+  it('stops the backfill when the reconcile signal aborts and keeps the unreached notes deferred', async () => {
+    const run = vi.fn()
+    const prepare = vi.fn(() => ({ run, all: () => [] as Array<{ note_id: string }> }))
+    getRawIndexDatabase.mockReturnValue({ prepare })
+    getIndexDatabase.mockReturnValue({
+      all: vi.fn(() => [
+        { id: 'note-1', path: 'notes/one.md', title: 'One' },
+        { id: 'note-2', path: 'notes/two.md', title: 'Two' },
+        { id: 'note-3', path: 'notes/three.md', title: 'Three' }
+      ])
+    })
+    getSetting.mockImplementation((_db: unknown, key: string) =>
+      key === 'ai.embeddingInputVersion' ? String(EMBEDDING_INPUT_VERSION) : 'true'
+    )
+    readFile.mockResolvedValue('raw markdown')
+    parseNote.mockReturnValue({ content: 'parsed markdown long enough' })
+
+    // Aborts the moment the first note is embedded, i.e. exactly where a vault
+    // close or switch lands: mid work list.
+    const controller = new AbortController()
+    generateEmbedding.mockImplementation(async () => {
+      controller.abort()
+      return new Float32Array([0.1, 0.2])
+    })
+
+    const projector = createEmbeddingProjector(() => '/vault')
+
+    await projector.reconcile(controller.signal)
+
+    expect(generateEmbedding).toHaveBeenCalledTimes(1)
+    expect(readFile).toHaveBeenCalledWith('/vault/notes/one.md', 'utf-8')
+    // The notes past the abort were never read, so nothing from this vault can
+    // land in whatever index database the next vault installs.
+    expect(readFile).not.toHaveBeenCalledWith('/vault/notes/two.md', 'utf-8')
+    expect(run).not.toHaveBeenCalledWith('note-2', expect.anything())
+
+    // The work is owed, not lost: a later reconcile picks the rest up.
+    generateEmbedding.mockResolvedValue(new Float32Array([0.1, 0.2]))
+    await projector.reconcile()
+    expect(readFile).toHaveBeenCalledWith('/vault/notes/two.md', 'utf-8')
+    expect(readFile).toHaveBeenCalledWith('/vault/notes/three.md', 'utf-8')
+  })
+
+  it('does not load the model when the reconcile signal is already aborted', async () => {
+    isModelLoaded.mockReturnValue(false)
+    const controller = new AbortController()
+    controller.abort()
+
+    const projector = createEmbeddingProjector(() => '/vault')
+
+    await projector.reconcile(controller.signal)
+
+    expect(initEmbeddingModel).not.toHaveBeenCalled()
+    expect(getRawIndexDatabase).not.toHaveBeenCalled()
+    expect(generateEmbedding).not.toHaveBeenCalled()
+  })
+
+  it('does not stamp the embedding input version when the migration rebuild aborts', async () => {
+    const run = vi.fn()
+    const prepare = vi.fn(() => ({ run, all: () => [] as Array<{ note_id: string }> }))
+    getRawIndexDatabase.mockReturnValue({ prepare })
+    getIndexDatabase.mockReturnValue({
+      all: vi.fn(() => [{ id: 'note-1', path: 'notes/one.md', title: 'One', fileType: 'markdown' }])
+    })
+    // Stored version is stale → reconcile takes the full-rebuild migration path.
+    getSetting.mockImplementation((_db: unknown, key: string) =>
+      key === 'ai.embeddingInputVersion' ? 'stale' : 'true'
+    )
+
+    const controller = new AbortController()
+    isModelLoaded.mockReturnValue(false)
+    initEmbeddingModel.mockImplementation(async () => {
+      controller.abort()
+      return true
+    })
+
+    const projector = createEmbeddingProjector(() => '/vault')
+
+    await projector.reconcile(controller.signal)
+
+    // Aborting after the (slow) model load must not wipe the vector table it is
+    // no longer going to refill, and must not record the migration as done.
+    expect(prepare).not.toHaveBeenCalledWith('DELETE FROM vec_notes')
+    expect(setSetting).not.toHaveBeenCalled()
+    expect(generateEmbedding).not.toHaveBeenCalled()
+  })
+
+  it('does not stamp the embedding input version when the migration rebuild aborts mid-list', async () => {
+    const run = vi.fn()
+    const prepare = vi.fn(() => ({ run, all: () => [] as Array<{ note_id: string }> }))
+    getRawIndexDatabase.mockReturnValue({ prepare })
+    getIndexDatabase.mockReturnValue({
+      all: vi.fn(() => [
+        { id: 'note-1', path: 'notes/one.md', title: 'One', fileType: 'markdown' },
+        { id: 'note-2', path: 'notes/two.md', title: 'Two', fileType: 'markdown' }
+      ])
+    })
+    getSetting.mockImplementation((_db: unknown, key: string) =>
+      key === 'ai.embeddingInputVersion' ? 'stale' : 'true'
+    )
+    readFile.mockResolvedValue('raw markdown')
+    parseNote.mockReturnValue({ content: 'parsed markdown long enough' })
+
+    const controller = new AbortController()
+    generateEmbedding.mockImplementation(async () => {
+      controller.abort()
+      return new Float32Array([0.1, 0.2])
+    })
+
+    const projector = createEmbeddingProjector(() => '/vault')
+
+    await projector.reconcile(controller.signal)
+
+    // A half-finished rebuild must not record the new input version: doing so
+    // would permanently skip the migration for the notes it never reached.
+    expect(generateEmbedding).toHaveBeenCalledTimes(1)
+    expect(setSetting).not.toHaveBeenCalled()
+  })
+
+  it('skips the backfill when the signal aborts while the model is loading', async () => {
+    const run = vi.fn()
+    const prepare = vi.fn(() => ({ run, all: () => [] as Array<{ note_id: string }> }))
+    getRawIndexDatabase.mockReturnValue({ prepare })
+    getIndexDatabase.mockReturnValue({
+      all: vi.fn(() => [{ id: 'note-1', path: 'notes/one.md', title: 'One' }])
+    })
+    getSetting.mockImplementation((_db: unknown, key: string) =>
+      key === 'ai.embeddingInputVersion' ? String(EMBEDDING_INPUT_VERSION) : 'true'
+    )
+
+    // The load is the multi-second step, so a close landing inside it is the
+    // common case — the work list must not be embedded once it returns.
+    const controller = new AbortController()
+    isModelLoaded.mockReturnValue(false)
+    initEmbeddingModel.mockImplementation(async () => {
+      controller.abort()
+      return true
+    })
+
+    const projector = createEmbeddingProjector(() => '/vault')
+
+    await projector.reconcile(controller.signal)
+
+    expect(initEmbeddingModel).toHaveBeenCalled()
+    expect(readFile).not.toHaveBeenCalled()
+    expect(generateEmbedding).not.toHaveBeenCalled()
+  })
+
+  it('lets the projection runtime stop without waiting for a large backfill', async () => {
+    const noteCount = 200
+    const run = vi.fn()
+    const prepare = vi.fn(() => ({ run, all: () => [] as Array<{ note_id: string }> }))
+    getRawIndexDatabase.mockReturnValue({ prepare })
+    getIndexDatabase.mockReturnValue({
+      all: vi.fn(() =>
+        Array.from({ length: noteCount }, (_, index) => ({
+          id: `note-${index}`,
+          path: `notes/${index}.md`,
+          title: `Note ${index}`
+        }))
+      )
+    })
+    getSetting.mockImplementation((_db: unknown, key: string) =>
+      key === 'ai.embeddingInputVersion' ? String(EMBEDDING_INPUT_VERSION) : 'true'
+    )
+    readFile.mockResolvedValue('raw markdown')
+    parseNote.mockReturnValue({ content: 'parsed markdown long enough' })
+
+    const runtime = createProjectionRuntime({
+      projectors: [createEmbeddingProjector(() => '/vault')]
+    })
+
+    const reconciling = runtime.reconcile()
+    // Let the pass get inside the work list before the close lands.
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // closeVault awaits this, and stop() awaits the aborted pass before the
+    // caller closes the databases — so an un-abortable backfill would hold the
+    // close path open for the whole 200-note list (#803/#805).
+    await runtime.stop({ drain: false })
+    await reconciling
+
+    expect(generateEmbedding.mock.calls.length).toBeLessThan(noteCount)
   })
 
   it('reports rebuild setup failures before scanning notes', async () => {
