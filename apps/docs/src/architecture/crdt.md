@@ -261,6 +261,15 @@ A separate queue from `SyncQueueManager`:
 - Respects sequence ordering per `noteId`
 - Buffers updates when the network is paused
 
+### Memory bounds while paused
+
+While the queue is paused (offline, expired token, storage quota) nothing drains, so the buffers are capped on two axes:
+
+- **Per note** — a buffer that reaches the batch size is merged in place with `Y.mergeUpdates`, and merged updates and flush payloads are size-bounded. Merging is lossless; a long offline edit costs the size of the edit, not one array per keystroke.
+- **Across all notes** — the queue also caps its total buffered bytes, because the map keeps one live buffer per note touched since the pause. Crossing the ceiling first flushes whatever the server will take and merges every buffer, and only if that is not enough does it release the oldest notes' payloads.
+
+A release is never a drop. The note ids go to the durable pending-note store (`crdt-pending-notes.json`) **before** their payloads are freed, and `drainPendingCrdtNotes` pushes each note's full doc state — which supersedes the buffered updates — on the next reconnect or app start. If no durable store is wired up, or recording fails, the queue keeps the memory instead of releasing it.
+
 ## BlockNote Compatibility
 
 BlockNote uses Yjs natively. The renderer's BlockNote editor binds to the renderer-side Y.Doc proxy provided by the IPC provider; edits flow through main and back to disk.
