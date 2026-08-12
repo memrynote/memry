@@ -62,6 +62,10 @@ A pan keeps following your pointer even when it leaves the viewer or the app win
 wherever you release the button, so you can drag a zoomed image right to its edge in one motion.
 Zooming back out to 100% recenters the image.
 
+The scroll wheel and the toolbar buttons zoom in different increments, but they agree on what
+100% means: whenever the toolbar reads 100%, the image is recentred and the drag-to-pan hint is
+gone, no matter which mix of wheel and buttons you took to get there.
+
 ### Images From Another App's Vault
 
 Vaults written by Obsidian, Capacities and similar apps keep media in a shared
