@@ -55,10 +55,16 @@ the server is never affected.
 
 ### If the Sign-In Times Out
 
-The sign-in that precedes recovery is only valid for a few minutes. If you go looking for your
-recovery phrase and come back after it has run out, the app tells you the sign-in timed out and
-asks you to sign in again before entering the phrase — the phrase itself is still fine, and
-nothing was lost. A **Sign in again** button appears alongside the message so you can act on it
+The sign-in that precedes recovery is only valid for a few minutes, but going away to find your
+recovery phrase no longer costs you that sign-in. When you submit the phrase after the few minutes
+have passed, memrynote renews the sign-in in place — using a key it tied to this device when you
+signed in — and carries straight on. You do not have to do anything, and you can take as long as
+you need within a day of signing in.
+
+If it cannot renew — the app was reinstalled again in between, the sign-in is more than a day old,
+or it came from an older version that did not tie a key to the device — you are told the sign-in
+timed out and asked to sign in again before entering the phrase. The phrase itself is still fine
+and nothing was lost. A **Sign in again** button appears alongside the message so you can act on it
 straight away, in every language memrynote supports.
 
 ### If You Can't Get Your Recovery Phrase Back

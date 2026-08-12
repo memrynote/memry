@@ -19,6 +19,7 @@ import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
 import { startGoogleCalendarSyncRunner } from '../calendar/google/sync-service'
 import { teardownSession } from '../sync/session-teardown'
 import { refreshAccessToken, storeToken } from '../sync/token-manager'
+import { getSetupDevicePublicKey } from '../sync/setup-token'
 import { createLogger } from '../lib/logger'
 import { registerCommand } from './lib/register-command'
 import {
@@ -232,7 +233,10 @@ export function registerAuthOAuthHandlers(): void {
       const raw = await postToServer<unknown>(`/auth/oauth/${input.provider}/callback`, {
         code: input.oauthToken,
         state: input.state,
-        redirectUri: session.redirectUri
+        redirectUri: session.redirectUri,
+        // Committing this device's key here is what lets the setup token be
+        // renewed later, when the user comes back with their recovery phrase.
+        devicePublicKey: await getSetupDevicePublicKey()
       })
       const serverResponse = OAuthCallbackResponseSchema.parse(raw)
 
