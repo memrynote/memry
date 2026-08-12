@@ -117,6 +117,15 @@ compaction are buffered for it rather than applied directly, so an abandoned com
 hands its buffer to whichever doc is live at that point instead of discarding it: the sync
 coordinator counts those updates as applied and will not fetch them again.
 
+A compaction that succeeds hands its buffer over the same way, and only after the compacted
+doc has taken the entry's place and had its update handler attached. That handler is the one
+funnel that stores an update, broadcasts it to open editors and schedules the vault
+write-back, so replaying ahead of it would leave the compaction window's remote updates in
+memory alone — absent from the CRDT store after a restart and from the note's markdown file
+on disk. The compacted snapshot itself is applied before the handler is attached, on purpose:
+compaction has already persisted and pushed it, and routing it through the handler would
+store and broadcast the whole note a second time.
+
 Closing is asynchronous — it flushes the doc to persistence first — so a note can be
 reopened while its own close is still in flight. The reopen builds a fresh Y.Doc and takes
 over the provider's entry for that note, and the close then finds that the entry no longer
