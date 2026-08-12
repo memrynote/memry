@@ -439,6 +439,14 @@ Names are encrypted client-side by `encryptVaultName` (AAD bound to the vault UU
 locally; the server never sees a plaintext vault name. Registration is authenticated but does not
 require the vault to have synced any items, so a freshly created vault still appears in the directory.
 
+Every authenticated sync call — and the WebSocket handshake — stamps the active vault's UUID into
+`X-Memry-Vault-Id`. That UUID is a single `vault_metadata` row, so it is resolved once and cached
+against the open data-database handle rather than re-read per request. Opening, closing or switching
+a vault installs a new handle and therefore misses the cache on its own; the one rewrite that keeps
+the same handle — a linked device adopting the initiator's vault identity — invalidates it
+explicitly, so device registration and the first sync bind to the adopted vault, never the
+pre-adoption one.
+
 Desktop reads the directory over IPC:
 
 | IPC method                                     | Purpose                                                                                              |
@@ -513,6 +521,22 @@ The renewal hook belongs to the running sync runtime, not to the token manager: 
 it at start and detaches it at stop. A refresh that lands after a vault switch or sign-out therefore
 renews nothing instead of reaching into a torn-down socket and CRDT queue, and the runtime that
 replaces it installs its own hook.
+
+### Certificate pinning on the socket
+
+A `wss://` socket connects through a pinned `https.Agent`. One agent is shared for the process
+rather than rebuilt per reconnect: the agent holds nothing between connects (`keepAlive` is off, and
+the WebSocket upgrade detaches its socket), so a fresh one per reconnect only produced garbage.
+
+Sharing does not freeze the pin. The check lives in the agent's `checkServerIdentity`, which
+resolves the connecting hostname's pins from `certificate-pins.ts` on **every** TLS handshake — an
+updated pin table applies to the next handshake with no restart and no cache flush. Only the two
+decisions made when the agent is constructed are cached with it: whether pinning is disabled
+(unpackaged dev/test builds) and whether the configured host still carries placeholder pins. Both
+form the cache key, so a change in either destroys the cached agent and builds a new one.
+
+A pin mismatch is terminal for the session: the manager latches `certificate_pin_failed`, stops
+reconnecting, and requires an app restart.
 
 ## Vault-Key Verification
 
