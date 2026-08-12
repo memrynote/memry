@@ -8,22 +8,23 @@ Each importer writes into its own top-level folder (`Notion/`, `Bear/`, `Evernot
 
 Progress lines, preview warnings and import errors are shown in your selected language.
 
-| Source        | Export format                   | Creates | Details                                                |
-| ------------- | ------------------------------- | ------- | ------------------------------------------------------ |
-| Notion        | HTML export `.zip`              | Notes   | [Notion](#importing-from-notion)                       |
-| Markdown      | `.md` files / folder            | Notes   | [Markdown](#importing-from-markdown)                   |
-| HTML          | `.html` / `.htm` files          | Notes   | [HTML](#importing-from-html)                           |
-| Evernote      | `.enex` export                  | Notes   | [Evernote](#importing-from-evernote)                   |
-| Bear          | `.bear2bk` archive              | Notes   | [Bear](#importing-from-bear)                           |
-| Apple Notes   | `NoteStore.sqlite` (macOS)      | Notes   | [Apple Notes](#importing-from-apple-notes)             |
-| Google Keep   | Google Takeout `.json` / `.zip` | Notes   | [Google Keep](#importing-from-google-keep)             |
-| Roam Research | Graph `.json` export            | Notes   | [Roam](#importing-from-roam-research)                  |
-| Apple Journal | HTML export                     | Notes   | [Apple Journal](#importing-from-apple-journal)         |
-| CSV           | `.csv` file                     | Notes   | [CSV](#importing-from-csv)                             |
-| OneNote       | Microsoft Graph (account)       | Notes   | [OneNote](#importing-from-onenote)                     |
-| Raindrop      | Bookmark CSV `.csv`             | Inbox   | [Raindrop](#importing-from-raindrop)                   |
-| Todoist       | Project CSV `.csv`              | Tasks   | See [Import from Todoist](./tasks/import-todoist.md)   |
-| TickTick      | Backup CSV `.csv`               | Tasks   | See [Import from TickTick](./tasks/import-ticktick.md) |
+| Source        | Export format                   | Creates      | Details                                                |
+| ------------- | ------------------------------- | ------------ | ------------------------------------------------------ |
+| Notion        | HTML export `.zip`              | Notes        | [Notion](#importing-from-notion)                       |
+| Markdown      | `.md` files / folder            | Notes        | [Markdown](#importing-from-markdown)                   |
+| NotePlan      | NotePlan data folder / backup   | Notes, Tasks | [NotePlan](#importing-from-noteplan)                   |
+| HTML          | `.html` / `.htm` files          | Notes        | [HTML](#importing-from-html)                           |
+| Evernote      | `.enex` export                  | Notes        | [Evernote](#importing-from-evernote)                   |
+| Bear          | `.bear2bk` archive              | Notes        | [Bear](#importing-from-bear)                           |
+| Apple Notes   | `NoteStore.sqlite` (macOS)      | Notes        | [Apple Notes](#importing-from-apple-notes)             |
+| Google Keep   | Google Takeout `.json` / `.zip` | Notes        | [Google Keep](#importing-from-google-keep)             |
+| Roam Research | Graph `.json` export            | Notes        | [Roam](#importing-from-roam-research)                  |
+| Apple Journal | HTML export                     | Notes        | [Apple Journal](#importing-from-apple-journal)         |
+| CSV           | `.csv` file                     | Notes        | [CSV](#importing-from-csv)                             |
+| OneNote       | Microsoft Graph (account)       | Notes        | [OneNote](#importing-from-onenote)                     |
+| Raindrop      | Bookmark CSV `.csv`             | Inbox        | [Raindrop](#importing-from-raindrop)                   |
+| Todoist       | Project CSV `.csv`              | Tasks        | See [Import from Todoist](./tasks/import-todoist.md)   |
+| TickTick      | Backup CSV `.csv`               | Tasks        | See [Import from TickTick](./tasks/import-ticktick.md) |
 
 ## Importing from Notion
 
@@ -96,6 +97,34 @@ dropped, since you resize images in the editor instead. `![[Some Note]]` and
 `![[Some Note.md]]` embed another note rather than a file, so they are left untouched.
 
 **Limitations:** only `.md` / `.markdown` files are imported (other files only as referenced attachments); links to files outside the selected folder are not treated as attachments (including files reached through a symlink that leads out of it); links to other `.md` notes stay plain links rather than becoming attachments; note wikilinks are kept literally; the display size on a sized embed is not carried over.
+
+## Importing from NotePlan
+
+Import a [NotePlan 3](https://noteplan.co) vault: daily notes become real journal entries, other notes become notes, and NotePlan tasks become real Memry task rows.
+
+1. Open **Settings → Import** and click **Import** next to **NotePlan**.
+2. Choose the NotePlan folder — either the app's data folder (the picker opens there by default on macOS) or one of its `Backups/<stamp>` copies, which have the same shape. A bare `Notes/` folder also works.
+
+| NotePlan                                                                                     | memrynote                                           |
+| -------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `Calendar/YYYYMMDD.txt` daily note                                                           | Journal entry for that date                         |
+| `Calendar/YYYY-Wnn` / `YYYY-MM` / `YYYY-Qn` / `YYYY`                                         | Note under `NotePlan/Calendar/`                     |
+| `Notes/**`                                                                                   | Note under `NotePlan/<original folder tree>`        |
+| `@Archive/**`                                                                                | Note under `NotePlan/Archive/`                      |
+| First `# H1` line                                                                            | Note title (so `[[Wiki Links]]` to it resolve)      |
+| `* task`, `* [x]` done, `* [-]` cancelled, `* [>]` scheduled                                 | Task row: open, completed, archived, open           |
+| `>YYYY-MM-DD` on a task                                                                      | Task due date                                       |
+| `@done(YYYY-MM-DD)` on a task                                                                | Task completed date                                 |
+| `+ checklist`                                                                                | Plain `- [ ]` checkbox (not promoted to a task row) |
+| `- bullet`                                                                                   | Plain bullet                                        |
+| Hierarchical `#tag/sub`                                                                      | Note tags                                           |
+| Frontmatter (`type`, `status`, `owner`, `team`, `date`, `attendees`, `created`, `folder`, …) | Note properties                                     |
+
+Tasks land in your **Inbox** project, linked back to the note or journal entry they came from.
+
+**Conventions:** checklists (`+` lines) stay as plain checkboxes and are never promoted to tasks — in NotePlan they often carry timeblocks and micro-steps rather than real to-dos; a journal entry that already has content is appended below an `## Imported from NotePlan` rule rather than overwritten (an empty existing entry is written directly).
+
+**Limitations:** `Filters/` (binary-plist saved searches) and `@Templates/` are not imported; NotePlan priority markers (`!`, `!!`, `!!!`) and NotePlan Spaces/team content have no Memry equivalent; NotePlan-only styling frontmatter (`icon`, `icon-color`, `bg-color`, `bg-color-dark`, `bg-pattern`) is dropped. The import is additive and does not de-duplicate against a previous run.
 
 ## Importing from HTML
 
