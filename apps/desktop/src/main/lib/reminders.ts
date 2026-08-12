@@ -262,8 +262,8 @@ function createReminderInboxItem(reminder: ReminderWithTarget): void {
  * captured `ReminderWithTarget`) and, when asked, dismiss the banner too.
  *
  * `dismissBanner` is only ever set for an explicit user action on that exact
- * reminder (clicking it, or dismissing/snoozing it in-app) — never on a timer —
- * so a banner the user has not looked at yet is left on screen.
+ * reminder (clicking it, or dismissing/snoozing/deleting it in-app) — never on
+ * a timer — so a banner the user has not looked at yet is left on screen.
  *
  * @param reminderId - Stable reminder id used as the notification id
  * @param dismissBanner - Also close the on-screen notification
@@ -396,8 +396,8 @@ function showDesktopNotification(reminder: ReminderWithTarget): void {
  * Center. `Notification.remove` is Electron 42+ and only implemented on
  * macOS — everywhere else this is a silent no-op.
  *
- * Called after the user has dismissed or snoozed that reminder in-app, so
- * closing its own still-live notification is the point, not a side effect:
+ * Called after the user has dismissed, snoozed or deleted that reminder in-app,
+ * so closing its own still-live notification is the point, not a side effect:
  * on Windows/Linux `close()` is the only way to retire the banner at all.
  * @param reminderId - Stable reminder id used as the notification id
  */
@@ -568,6 +568,10 @@ export function deleteReminder(id: string): boolean {
     targetId: reminder.targetId
   })
   syncReminderCalendarState(id)
+  // Deleting is an explicit user action on this exact reminder, so its banner
+  // must go with the row — otherwise Notification Center keeps a clickable
+  // banner that navigates to something that no longer exists.
+  removeDeliveredNotification(id)
   updateAppBadge()
 
   logger.info(`Deleted reminder ${id}`)
@@ -820,6 +824,10 @@ export function bulkDismissReminders(reminderIds: string[]): number {
       dismissedCount++
       enqueueLocalSyncUpdate('reminder', id)
       syncReminderCalendarState(id)
+      // Same contract as the single-reminder dismiss: only ids the user actually
+      // dismissed (changes > 0) lose their banner, so an unrelated reminder that
+      // is not part of this batch is left alone.
+      removeDeliveredNotification(id)
     }
   }
 
