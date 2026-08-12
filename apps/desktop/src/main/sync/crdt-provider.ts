@@ -833,8 +833,17 @@ export class CrdtProvider {
 
     try {
       if (this.snapshotPushFn && entry.pendingSnapshotBytes > 0) {
+        // Credit only the bytes this payload actually covers. result.compacted
+        // was encoded before the await, and applyIpcUpdate writes straight to
+        // entry.doc with no compaction guard (only remote updates are
+        // buffered), so a local edit landing during the push is genuinely
+        // unpushed. Zeroing wiped it, and every path that re-pushes a note —
+        // close() and pushAllSnapshots — is gated on this counter, so the note
+        // read as pushed and stayed unpushed until a later edit re-armed it.
+        // Clamped: close() may have zeroed the counter mid-push.
+        const pushedBytes = entry.pendingSnapshotBytes
         await this.snapshotPushFn(noteId, result.compacted)
-        entry.pendingSnapshotBytes = 0
+        entry.pendingSnapshotBytes = Math.max(0, entry.pendingSnapshotBytes - pushedBytes)
       }
 
       if (this.persistence) {

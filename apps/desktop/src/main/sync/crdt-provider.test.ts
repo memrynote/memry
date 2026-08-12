@@ -764,6 +764,66 @@ describe('CrdtProvider', () => {
     expect(mocks.scheduleWriteback).toHaveBeenCalledTimes(1)
   })
 
+  it('keeps a local edit that lands during the compaction push eligible for the next snapshot', async () => {
+    const compactedDoc = new Y.Doc()
+    compactedDoc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [new Y.XmlText('compact')])
+    mocks.compactYDoc.mockReturnValue({
+      compacted: Y.encodeStateAsUpdate(compactedDoc),
+      savedBytes: 120
+    })
+
+    await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { date: '2026-01-01' })
+
+    // crdt:apply-update routes straight to applyIpcUpdate, which has no
+    // compaction guard (only remote updates are buffered), so a keystroke can
+    // reach entry.doc after compactYDoc already encoded the payload being
+    // pushed here.
+    const typed = makeRemoteUpdate('typed during the push')
+    pushSnapshot.mockImplementationOnce(async () => {
+      provider.applyIpcUpdate('note-1', typed, 1)
+    })
+
+    await provider.compactDoc('note-1')
+
+    // Those bytes are not in the pushed payload, so the note must stay armed
+    // instead of reading as fully pushed.
+    expect(provider.getDocSizeMetrics()[0].pendingSnapshotBytes).toBe(typed.byteLength)
+    pushSnapshot.mockClear()
+    await expect(provider.pushAllSnapshots()).resolves.toBe(1)
+  })
+
+  it('re-pushes a local edit that landed while an abandoned compaction was pushing', async () => {
+    const compactedDoc = new Y.Doc()
+    compactedDoc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [new Y.XmlText('compact')])
+    mocks.compactYDoc.mockReturnValue({
+      compacted: Y.encodeStateAsUpdate(compactedDoc),
+      savedBytes: 120
+    })
+
+    const originalDoc = await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { date: '2026-01-01' })
+
+    // The editor reopens the note mid-compaction: open() adds the window to the
+    // same entry, the keystroke that follows lands on the pre-compaction doc,
+    // and the swap is then abandoned — so this edit lives only in originalDoc
+    // and only a later snapshot push can carry it to the server.
+    pushSnapshot.mockImplementationOnce(async () => {
+      await provider.open('note-1', 42, { skipSeed: true })
+      provider.applyIpcUpdate('note-1', makeRemoteUpdate('typed after reopen'), 42)
+    })
+
+    await provider.compactDoc('note-1')
+
+    expect(provider.getDoc('note-1')).toBe(originalDoc)
+
+    pushSnapshot.mockClear()
+    await expect(provider.pushAllSnapshots()).resolves.toBe(1)
+    const roundTrip = new Y.Doc()
+    Y.applyUpdate(roundTrip, pushSnapshot.mock.calls[0][1] as Uint8Array)
+    expect(roundTrip.getMap('meta').get('title')).toBe('typed after reopen')
+  })
+
   it('abandons the compacted swap if an editor opens during compaction', async () => {
     const compactedDoc = new Y.Doc()
     compactedDoc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [new Y.XmlText('compact')])

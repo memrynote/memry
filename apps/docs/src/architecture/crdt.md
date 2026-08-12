@@ -242,6 +242,15 @@ retry `429`s inline — honouring `Retry-After` per note would stall the whole p
 sync cadence is the retry instead. A single note that fails its snapshot baseline is
 skipped and retried on the next pass rather than abandoning the remaining notes.
 
+Whether a note still owes the server a snapshot is tracked per open doc as a byte count of
+the local updates applied since the last successful push; closing a note and the push-all
+pass both skip a note whose count is zero. A push therefore subtracts only the bytes its
+payload actually covered instead of resetting the count to zero. The payload is encoded
+before the push is awaited, and typing can reach the doc during that await — compaction is
+the widest window, since it encodes its snapshot up front and buffers only remote updates,
+not local ones. Discarding the whole count marked that edit as pushed, and the note was
+then skipped until some later edit re-armed it.
+
 ## Sign-Out / Sign-In Ordering
 
 A sign out → sign in cycle has a sharp ordering rule:
