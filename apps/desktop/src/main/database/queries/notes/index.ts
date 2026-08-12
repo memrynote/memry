@@ -15,7 +15,8 @@ export {
   getAllCrdtNoteIds,
   getNotesModifiedAfter,
   type ListNotesOptions,
-  type NoteCacheFileRow
+  type NoteCacheFileRow,
+  type NoteTreeCacheRow
 } from './note-crud'
 
 export {

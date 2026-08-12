@@ -19,8 +19,10 @@ import {
   deleteTagDefinition,
   getPropertiesForNotes,
   getOutgoingLinks,
-  getIncomingReferences
+  getIncomingReferences,
+  type NoteTreeCacheRow
 } from '@main/database/queries/notes'
+import type { NoteCache } from '@memry/db-schema/schema/notes-cache'
 import { getAllTaskTags } from '@main/database/queries/tasks'
 import { getDatabase, getIndexDatabase } from '../database'
 import { toAbsolutePath } from './notes-io'
@@ -38,16 +40,31 @@ import type {
 // List
 // ============================================================================
 
+/**
+ * A row `listNotes` can build a `NoteListItem` from: the narrow tree projection
+ * plus the three columns only the full shape reads. A `NoteCache` satisfies it.
+ */
+type ListedNoteRow = NoteTreeCacheRow &
+  Partial<Pick<NoteCache, 'snippet' | 'mimeType' | 'fileSize'>>
+
 export function listNotes(options: NoteListOptions = {}): NoteListResponse {
   const db = getIndexDatabase()
   const limit = options.limit ?? 100
   const offset = options.offset ?? 0
 
-  const cached = listNotesFromCache(db, {
-    ...options,
-    limit: limit + 1,
-    offset
-  })
+  // The sidebar tree renders path/title/modified/tags/emoji/localOnly/fileType
+  // and nothing else, but a whole-vault fetch of the full shape still ships a
+  // ~200-char snippet plus the mime/size pair for every note in the vault —
+  // over IPC, and again on every list invalidation. 'tree' builds only what the
+  // sidebar reads; the fields it skips are all optional on NoteListItem, so a
+  // 'tree' row stays a valid NoteListItem for any other consumer. The same
+  // choice is pushed down into the SQL projection so SQLite never reads the
+  // dropped columns in the first place.
+  const treeShape = options.fields === 'tree'
+
+  const cached: ListedNoteRow[] = treeShape
+    ? listNotesFromCache(db, { ...options, limit: limit + 1, offset, shape: 'tree' })
+    : listNotesFromCache(db, { ...options, limit: limit + 1, offset })
 
   const hasMore = cached.length > limit
   const notes = cached.slice(0, limit)
@@ -58,14 +75,6 @@ export function listNotes(options: NoteListOptions = {}): NoteListResponse {
   const tagsMap = getTagsForNotes(db, noteIds)
 
   const propertiesMap = options.includeProperties ? getPropertiesForNotes(db, noteIds) : null
-
-  // The sidebar tree renders path/title/modified/tags/emoji/localOnly/fileType
-  // and nothing else, but a whole-vault fetch of the full shape still ships a
-  // ~200-char snippet plus the mime/size pair for every note in the vault —
-  // over IPC, and again on every list invalidation. 'tree' builds only what the
-  // sidebar reads; the fields it skips are all optional on NoteListItem, so a
-  // 'tree' row stays a valid NoteListItem for any other consumer.
-  const treeShape = options.fields === 'tree'
 
   const noteItems: NoteListItem[] = notes.map((c) => ({
     id: c.id,

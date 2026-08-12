@@ -94,6 +94,8 @@ Two properties make this shape kind of narrowing safe to add to a shipped channe
 
 Put the flag in the query key on the renderer side (`notesKeys.list(options)` already includes the whole options object). The two shapes then cache separately, and a narrowed fetch can never overwrite a full-shape consumer's cache entry with rows missing the fields it reads.
 
+Push the narrowing all the way down to the query, not just the mapping step. Dropping a field while building the response still makes SQLite read it and the driver marshal it into JS first. `listNotesFromCache` therefore takes a matching `shape: 'full' | 'tree'` and issues a narrowed `SELECT` for `'tree'`; for 500 rows that cuts the marshalled row data from 315 kB to 111 kB, at roughly half the query wall time. The narrowed row is deliberately a different, smaller type than the full row rather than a lie about the full one, and `'full'` stays the default so every other caller of the query keeps the whole row.
+
 ## Main → Renderer Broadcasts
 
 Main-process code that fans an event out to every open window — sync status, task and calendar change events, inbox capture/filing/snooze/transcription events, search and embedding progress, updater state, reminders, agent events, and FTS rebuild progress — goes through `broadcastToAllWindows(channel, data)` in `src/main/lib/window-broadcast.ts`. The helper skips destroyed windows: short-lived windows (splash, quick capture, print/export) can still appear in `BrowserWindow.getAllWindows()` after destruction, and an unguarded `webContents.send()` throws — inside a sync item handler that throw escapes `ctx.emit` within the item's DB transaction and rolls it back. Use the helper instead of hand-rolling a `getAllWindows()` loop.
