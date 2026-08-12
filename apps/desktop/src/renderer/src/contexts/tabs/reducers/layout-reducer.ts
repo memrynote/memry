@@ -35,7 +35,7 @@ const resetRatiosInTree = (layout: SplitLayout): SplitLayout => {
 export function layoutReducer(state: TabSystemState, action: LayoutAction): TabSystemState {
   switch (action.type) {
     case 'SPLIT_VIEW': {
-      const { direction, groupId } = action.payload
+      const { direction, groupId, newGroupId } = action.payload
 
       const sourceGroup = state.tabGroups[groupId]
       if (!sourceGroup) return state
@@ -52,7 +52,7 @@ export function layoutReducer(state: TabSystemState, action: LayoutAction): TabS
         : createDefaultTab()
 
       const newGroup: TabGroup = {
-        id: generateId(),
+        id: newGroupId ?? generateId(),
         tabs: [clonedTab],
         activeTabId: clonedTab.id,
         isActive: false,

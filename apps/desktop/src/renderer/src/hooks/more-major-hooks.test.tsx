@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => ({
   removeTagFromNote: vi.fn(),
   requestPermission: vi.fn(),
   setActiveTab: vi.fn(),
-  splitView: vi.fn(),
+  splitView: vi.fn(() => 'group-split'),
   tabsDispatch: vi.fn(),
   toastInfo: vi.fn(),
   unpinNoteFromTag: vi.fn()
@@ -266,10 +266,11 @@ describe('more major hooks coverage', () => {
       { toTheSide: true }
     )
     expect(mocks.splitView).toHaveBeenCalledWith('horizontal', 'group-1')
-    act(() => vi.runOnlyPendingTimers())
+    // The open targets the pane splitView reports creating, in the same turn —
+    // no timer to flush, and no dependence on which pane is active by then.
     expect(mocks.openTab).toHaveBeenLastCalledWith(
       expect.objectContaining({ path: '/folder/new' }),
-      { background: undefined }
+      { groupId: 'group-split', background: undefined }
     )
 
     result.current.openAsPin({ type: 'tasks', title: 'Tasks', path: '/tasks' } as never)
