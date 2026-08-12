@@ -100,6 +100,8 @@ All the heavy data is **encrypted at rest** with the vault key. The salt and ver
 
 After setup, memrynote shows a brief in-app tour pointing out the sidebar, tabs, and search. Click through or skip — you can revisit it via the keyboard shortcuts dialog.
 
+The tour counts as seen once you finish it, skip it, or close it. If it never got that far — you quit the app while the tour was still on screen — it is not counted, and memrynote offers it again on the next launch. Either way it opens the right-hand Day Panel so the calendar and Agent steps have something to point at, and leaves it open afterwards.
+
 ## Next Steps
 
 - Take [a Tour of memrynote](/guide/tour)
