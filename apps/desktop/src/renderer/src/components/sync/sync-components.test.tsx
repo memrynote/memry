@@ -41,7 +41,8 @@ const mocks = vi.hoisted(() => ({
     triggerSync: vi.fn(),
     pause: vi.fn(),
     resume: vi.fn(),
-    clearError: vi.fn()
+    clearError: vi.fn(),
+    clearConflicts: vi.fn()
   },
   syncHistory: {
     entries: [] as any[],

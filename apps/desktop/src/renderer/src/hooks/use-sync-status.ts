@@ -46,6 +46,7 @@ interface SyncStatusResult extends SyncStatusDisplay {
   pause: () => Promise<void>
   resume: () => Promise<void>
   clearError: () => void
+  clearConflicts: () => void
 }
 
 const STATUS_MAP: Record<string, Omit<SyncStatusDisplay, 'label'> & { labelKey: string }> = {
@@ -91,7 +92,7 @@ const FALLBACK_DISPLAY = STATUS_MAP.unknown
 
 export function useSyncStatus(): SyncStatusResult {
   const { t } = useT('settings')
-  const { state, triggerSync, pause, resume, clearError } = useSync()
+  const { state, triggerSync, pause, resume, clearError, clearConflicts } = useSync()
   const {
     status,
     lastSyncAt,
@@ -185,6 +186,7 @@ export function useSyncStatus(): SyncStatusResult {
     triggerSync,
     pause,
     resume,
-    clearError
+    clearError,
+    clearConflicts
   }
 }

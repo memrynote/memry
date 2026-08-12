@@ -37,7 +37,8 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
     triggerSync,
     pause,
     resume,
-    clearError
+    clearError,
+    clearConflicts
   } = useSyncStatus()
 
   const isSyncing = status === 'syncing'
@@ -127,10 +128,20 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
                 </p>
               )}
               {conflicts.length > 0 && (
-                <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                  {conflicts.length} {conflicts.length === 1 ? 'conflict' : 'conflicts'}{' '}
-                  {tPhaseF('phaseF.componentsSyncSyncStatus.detected')}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                    {conflicts.length} {conflicts.length === 1 ? 'conflict' : 'conflicts'}{' '}
+                    {tPhaseF('phaseF.componentsSyncSyncStatus.detected')}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearConflicts}
+                    className="ms-auto h-5 px-1.5 text-xs"
+                  >
+                    {tPhaseF('phaseF.componentsSyncSyncStatus.dismissConflicts')}
+                  </Button>
+                </div>
               )}
               {clockSkewDetected && (
                 <p className="text-xs text-yellow-600 dark:text-yellow-400">
