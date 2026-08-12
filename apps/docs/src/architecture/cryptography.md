@@ -163,11 +163,20 @@ allowed through the Electron verifier instead of being compared against an unrel
 pins. Development builds keep pinning disabled so local sync servers and test certificates remain
 usable.
 
+Both pinned surfaces — the Electron session verifier and the `https.Agent` the sync WebSocket
+connects through — resolve pins from the hostname the connection is actually dialing, at handshake
+time. Neither consults the configured `SYNC_SERVER_URL` host to decide whether to pin, so the host
+being verified is always the host whose pins were looked up.
+
 ### Pin activation state
 
 A host entry in `certificate-pins.ts` may hold placeholder hashes, which means pinning has not been
 activated for that host yet. This is a supported state, not a broken one: the runtime falls back to
-standard TLS verification for placeholder pins rather than failing the connection.
+standard TLS verification for placeholder pins rather than failing the connection. A host with no
+entry at all is treated the same way at runtime — pinning was never activated for it, so standard
+TLS applies. Standard TLS here still means full CA-chain validation plus hostname verification; only
+the extra SPKI pin comparison is absent. A missing entry is caught at build time instead, where
+`pnpm cert:check` fails.
 
 `pnpm cert:check` (also run by `prebuild` and `build:release`) audits the configured host and
 reflects the same rule:
